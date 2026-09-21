@@ -7,11 +7,13 @@ import (
 )
 
 type Config struct {
-	GRPCPort    int    `env:"GRPC_PORT,required"`
-	LogLevel    string `env:"LOG_LEVEL,required"`
-	LogFormat   string `env:"LOG_FORMAT,required"`
-	DatabaseURL string `env:"DATABASE_URL,required"`
-	HashSecret  string `env:"HASH_SECRET,required"`
+	GRPCPort          int    `env:"GRPC_PORT,required"`
+	LogLevel          string `env:"LOG_LEVEL,required"`
+	LogFormat         string `env:"LOG_FORMAT,required"`
+	DatabaseURL       string `env:"DATABASE_URL,required"`
+	HashSecret        string `env:"HASH_SECRET,required"`
+	JWTPrivateKeyPath string `env:"JWT_PRIVATE_KEY_PATH,required"`
+	JWTPublicKeyPath  string `env:"JWT_PUBLIC_KEY_PATH,required"`
 }
 
 func Load() (Config, error) {
