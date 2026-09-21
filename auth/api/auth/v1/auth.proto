@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package auth.v1;
+
+option go_package = "github.com/vexner67/freenet/auth/api/auth/v1;authv1";
+
+import "google/protobuf/empty.proto";
+
+service AuthService {
+  rpc RequestCode(RequestCodeRequest) returns (google.protobuf.Empty);
+  rpc VerifyCode(VerifyCodeRequest) returns (TokenPair);
+  rpc RefreshToken(RefreshTokenRequest) returns (TokenPair);
+  rpc Logout(LogoutRequest) returns (google.protobuf.Empty);
+}
+
+message RequestCodeRequest {
+  string email = 1;
+}
+
+message VerifyCodeRequest {
+  string email = 1;
+  string code = 2;
+}
+
+message TokenPair {
+  string access_token = 1;
+  string refresh_token = 2;
+}
+
+message RefreshTokenRequest {
+  string refresh_token = 1;
+}
+
+message LogoutRequest {
+  string refresh_token = 1;
+}
