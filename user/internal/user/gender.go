@@ -2,24 +2,25 @@ package user
 
 import "errors"
 
-type Pronouns string
+type Gender string
 
 const (
-	PronounsHe  Pronouns = "he"
-	PronounsShe Pronouns = "she"
+	GenderNone   Gender = ""
+	GenderMale   Gender = "male"
+	GenderFemale Gender = "female"
 )
 
-var ErrInvalidPronouns = errors.New("invalid pronouns")
+var ErrInvalidGender = errors.New("invalid gender")
 
-func NewPronouns(s string) (Pronouns, error) {
-	switch Pronouns(s) {
-	case PronounsHe, PronounsShe:
-		return Pronouns(s), nil
+func NewGender(s string) (Gender, error) {
+	switch Gender(s) {
+	case GenderNone, GenderMale, GenderFemale:
+		return Gender(s), nil
 	default:
-		return "", ErrInvalidPronouns
+		return "", ErrInvalidGender
 	}
 }
 
-func (p Pronouns) String() string {
-	return string(p)
+func (g Gender) String() string {
+	return string(g)
 }
