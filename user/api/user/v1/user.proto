@@ -1,0 +1,78 @@
+syntax = "proto3";
+
+package user.v1;
+
+option go_package = "github.com/vexner67/freenet/user/api/user/v1;userv1";
+
+import "google/protobuf/timestamp.proto";
+
+service UserService {
+  rpc Create(CreateRequest) returns (User);
+}
+
+message User {
+  string id = 1;
+  string name = 2;
+  string surname = 3;
+  string nickname = 4;
+  string status = 5;
+  Relationship relationship = 6;
+  Worldview worldview = 7;
+  PoliticalViews political_views = 8;
+  string email = 9;
+  google.protobuf.Timestamp birthday = 10;
+  Gender gender = 11;
+}
+
+enum Relationship {
+  RELATIONSHIP_NONE = 0;
+  RELATIONSHIP_SINGLE = 1;
+  RELATIONSHIP_DATING = 2;
+  RELATIONSHIP_MARRIED = 3;
+  RELATIONSHIP_IN_LOVE = 4;
+  RELATIONSHIP_LOOKING = 5;
+}
+
+enum Worldview {
+  WORLDVIEW_NONE = 0;
+  WORLDVIEW_ISLAM = 1;
+  WORLDVIEW_ORTHODOX = 2;
+  WORLDVIEW_CATHOLICISM = 3;
+  WORLDVIEW_JUDAISM = 4;
+  WORLDVIEW_PROTESTANTISM = 5;
+  WORLDVIEW_BUDDHISM = 6;
+  WORLDVIEW_CONFUCIANISM = 7;
+  WORLDVIEW_SECULAR_HUMANISM = 8;
+}
+
+enum PoliticalViews {
+  POLITICAL_VIEWS_NONE = 0;
+  POLITICAL_VIEWS_COMMUNIST = 1;
+  POLITICAL_VIEWS_SOCIALIST = 2;
+  POLITICAL_VIEWS_MODERATE = 3;
+  POLITICAL_VIEWS_LIBERAL = 4;
+  POLITICAL_VIEWS_CONSERVATIVE = 5;
+  POLITICAL_VIEWS_MONARCHIST = 6;
+  POLITICAL_VIEWS_ULTRACONSERVATIVE = 7;
+  POLITICAL_VIEWS_INDIFFERENT = 8;
+  POLITICAL_VIEWS_LIBERTARIAN = 9;
+}
+
+enum Gender {
+  GENDER_NONE = 0;
+  GENDER_MALE = 1;
+  GENDER_FEMALE = 2;
+}
+
+message CreateRequest {
+  string name = 2;
+  string surname = 3;
+  string nickname = 4;
+  string status = 5;
+  Relationship relationship = 6;
+  Worldview worldview = 7;
+  PoliticalViews political_views = 8;
+  string email = 9;
+  google.protobuf.Timestamp birthday = 10;
+  Gender gender = 11;
+}
