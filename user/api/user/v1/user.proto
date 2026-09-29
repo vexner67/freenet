@@ -16,12 +16,18 @@ message User {
   string surname = 3;
   string nickname = 4;
   string status = 5;
-  Relationship relationship = 6;
-  Worldview worldview = 7;
-  PoliticalViews political_views = 8;
-  string email = 9;
+  Gender gender = 6;
+  Relationship relationship = 7;
+  Worldview worldview = 8;
+  PoliticalViews political_views = 9;
   google.protobuf.Timestamp birthday = 10;
-  Gender gender = 11;
+  string email = 11;
+}
+
+enum Gender {
+  GENDER_NONE = 0;
+  GENDER_MALE = 1;
+  GENDER_FEMALE = 2;
 }
 
 enum Relationship {
@@ -58,21 +64,15 @@ enum PoliticalViews {
   POLITICAL_VIEWS_LIBERTARIAN = 9;
 }
 
-enum Gender {
-  GENDER_NONE = 0;
-  GENDER_MALE = 1;
-  GENDER_FEMALE = 2;
-}
-
 message CreateRequest {
   string name = 2;
   string surname = 3;
   string nickname = 4;
   string status = 5;
-  Relationship relationship = 6;
-  Worldview worldview = 7;
-  PoliticalViews political_views = 8;
-  string email = 9;
+  Gender gender = 6;
+  Relationship relationship = 7;
+  Worldview worldview = 8;
+  PoliticalViews political_views = 9;
   google.protobuf.Timestamp birthday = 10;
-  Gender gender = 11;
+  string email = 11;
 }
