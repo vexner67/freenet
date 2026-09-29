@@ -3,5 +3,6 @@ go 1.27.1
 use (
 	./auth
 	./pkg/errs
+	./pkg/logger
 	./user
 )
