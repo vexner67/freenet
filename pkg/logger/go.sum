@@ -1,0 +1,8 @@
+github.com/caarlos0/env/v11 v11.4.1 h1:fYwH0sWEsBSMPG7t4e/PEfTFzrWrpjyygXyUnWiSwEw=
+github.com/caarlos0/env/v11 v11.4.1/go.mod h1:qupehSf/Y0TUTsxKywqRt/vJjN5nz6vauiYEUUr8P4U=
+github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
+github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
+github.com/vexner67/freenet/auth v0.0.0-20260928194619-b6bba7dfffa0 h1:MS/2WCZV43PZ2ivDJXz6fQqv/6lpmHewNM3tdFf1tLc=
+github.com/vexner67/freenet/auth v0.0.0-20260928194619-b6bba7dfffa0/go.mod h1:2WRExbA4e+5iBS/6ysqATNOZstUxCHbUJqIVT9cFBlk=
+github.com/vexner67/freenet/pkg/errs v0.0.0-20260928194619-b6bba7dfffa0 h1:RkuKOmoGZjLFfnSDWhqJ0vpY7UXY5I7pbQQCidkPFZ0=
+github.com/vexner67/freenet/pkg/errs v0.0.0-20260928194619-b6bba7dfffa0/go.mod h1:Wll6PCO2NO8Otgv/8A4ScxoIOaSfyo9GT71oA/gxOtc=
