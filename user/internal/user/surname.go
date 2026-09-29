@@ -18,12 +18,8 @@ type Surname string
 func NewSurname(s string) (Surname, error) {
 	s = strings.TrimSpace(s)
 
-	if s == "" {
-		return "", ErrSurnameTooLong
-	}
-
 	if utf8.RuneCountInString(s) > maxSurnameLen {
-		return "", ErrSurnameEmpty
+		return "", ErrSurnameTooLong
 	}
 
 	return Surname(s), nil
