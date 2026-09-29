@@ -10,12 +10,12 @@ type User struct {
 	surname        Surname
 	nickname       Nickname
 	status         Status
+	gender         Gender
 	relationship   Relationship
 	worldview      Worldview
 	politicalViews PoliticalViews
-	email          Email
 	birthday       Birthday
-	gender         Gender
+	email          Email
 }
 
 func New(
@@ -23,12 +23,12 @@ func New(
 	surname Surname,
 	nickname Nickname,
 	status Status,
+	gender Gender,
 	relationship Relationship,
 	worldview Worldview,
 	politicalViews PoliticalViews,
-	email Email,
 	birthday Birthday,
-	gender Gender,
+	email Email,
 ) (*User, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
@@ -41,12 +41,12 @@ func New(
 		surname:        surname,
 		nickname:       nickname,
 		status:         status,
+		gender:         gender,
 		relationship:   relationship,
 		worldview:      worldview,
 		politicalViews: politicalViews,
-		email:          email,
 		birthday:       birthday,
-		gender:         gender,
+		email:          email,
 	}, nil
 }
 
@@ -70,6 +70,10 @@ func (u *User) Status() Status {
 	return u.status
 }
 
+func (u *User) Gender() Gender {
+	return u.gender
+}
+
 func (u *User) Relationship() Relationship {
 	return u.relationship
 }
@@ -82,14 +86,10 @@ func (u *User) PoliticalViews() PoliticalViews {
 	return u.politicalViews
 }
 
-func (u *User) Email() Email {
-	return u.email
-}
-
 func (u *User) Birthday() Birthday {
 	return u.birthday
 }
 
-func (u *User) Gender() Gender {
-	return u.gender
+func (u *User) Email() Email {
+	return u.email
 }
