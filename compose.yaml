@@ -1,6 +1,6 @@
 services:
   auth-postgres:
-    image: postgres:latest
+    image: postgres:18
     environment:
       POSTGRES_USER: ${AUTH_POSTGRES_USER}
       POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
@@ -16,7 +16,7 @@ services:
       retries: 5
 
   user-postgres:
-    image: postgres:latest
+    image: postgres:18
     environment:
       POSTGRES_USER: ${USER_POSTGRES_USER}
       POSTGRES_PASSWORD: ${USER_POSTGRES_PASSWORD}
@@ -31,6 +31,36 @@ services:
       timeout: 5s
       retries: 5
 
+  post-postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${POST_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POST_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POST_POSTGRES_DB}
+    ports:
+      - "${POST_POSTGRES_PORT}:5432"
+    volumes:
+      - post_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POST_POSTGRES_USER} -d $${POST_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT}:6379"
+    volumes:
+      - redis_data:/data
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
 volumes:
   auth_postgres_data:
   user_postgres_data:
+  post_postgres_data:
+  redis_data:
