@@ -27,6 +27,7 @@ func TestNewNickname(t *testing.T) {
 		{"API", user.ErrNicknameReserved},
 		{"Static", user.ErrNicknameReserved},
 		{"feed", user.ErrNicknameReserved},
+		{"Post", user.ErrNicknameReserved},
 	}
 
 	for _, tt := range tests {

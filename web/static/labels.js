@@ -109,6 +109,11 @@ export function postsCount(n) {
   return `${n} ${plural(n, ['запись', 'записи', 'записей'])}`;
 }
 
+// commentsLink is the link to the comments under a post, as on openvk.
+export function commentsLink(n) {
+  return n > 0 ? `Комментарии (${n})` : 'Комментировать';
+}
+
 const errorTexts = {
   'network error': 'Нет связи с сервером. Проверьте подключение.',
   'invalid email': 'Похоже, в адресе почты опечатка.',
@@ -130,6 +135,11 @@ const errorTexts = {
   'post text is too long': 'Запись длиннее 1000 символов.',
   'post not found': 'Запись уже удалена.',
   'fill in your profile before posting': 'Сначала заполните свою страницу.',
+  'invalid post id': 'Запись не найдена.',
+  'comment text is empty': 'Напишите что-нибудь.',
+  'comment text is too long': 'Комментарий длиннее 1000 символов.',
+  'comment not found': 'Комментарий уже удалён.',
+  'fill in your profile before commenting': 'Сначала заполните свою страницу.',
   'permission denied': 'Недостаточно прав.',
   'you cannot follow yourself': 'Нельзя подписаться на себя.',
   'image is larger than 8 MB': 'Фотография больше 8 МБ.',

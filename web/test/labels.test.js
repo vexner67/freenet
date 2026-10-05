@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount } from '../static/labels.js';
+import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -54,4 +54,10 @@ test('follow counters agree with numbers', () => {
   assert.equal(followersCount(12), '12 подписчиков');
   assert.equal(followingCount(21), '21 подписка');
   assert.equal(followingCount(5), '5 подписок');
+});
+
+test('comments link counts, or invites to comment', () => {
+  assert.equal(commentsLink(0), 'Комментировать');
+  assert.equal(commentsLink(2), 'Комментарии (2)');
+  assert.equal(errorText(new Error('fill in your profile before commenting')), 'Сначала заполните свою страницу.');
 });

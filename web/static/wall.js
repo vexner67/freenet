@@ -8,7 +8,8 @@ import { postNode as renderPost } from './posts.js';
 const COUNTER_FROM = 900;
 const MAX_LENGTH = 1000;
 
-export function initWall(owner, isOwner) {
+// initWall: canLike for signed-in viewers, who may like the posts.
+export function initWall(owner, isOwner, canLike) {
   const posts = $('posts');
   const error = $('wall-error');
 
@@ -20,7 +21,11 @@ export function initWall(owner, isOwner) {
     $('wall-empty').hidden = total > 0 || isOwner;
   }
 
-  const postNode = (post) => renderPost(post, isOwner && remove);
+  const postNode = (post) => renderPost(post, {
+    onDelete: isOwner && remove,
+    canLike,
+    onError: (e) => showError(error, e),
+  });
 
   async function remove(post, node) {
     hideError(error);
