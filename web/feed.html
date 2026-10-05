@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Новости | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/feed.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span>Новости</span><span class="aside">записи ваших подписок</span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+        <div id="posts"></div>
+        <div class="notice" id="empty" hidden>
+          <b>Здесь пока пусто.</b> В новостях появляются записи тех, на кого вы подписаны, и ваши.
+          Откройте страницу друга по адресу <b id="example-url"></b> и нажмите «Подписаться».
+        </div>
+        <a class="wall-more" id="more" hidden>Показать предыдущие записи</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

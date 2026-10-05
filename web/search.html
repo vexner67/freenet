@@ -1,0 +1,44 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Люди | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/search.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span>Поиск людей</span></div>
+      <div class="page-body">
+        <form class="search-form" id="search-form" action="/search" method="get">
+          <input type="text" id="q" name="q" maxlength="64" placeholder="Имя, фамилия или никнейм" aria-label="Кого ищем">
+          <button class="button" type="submit">Искать</button>
+        </form>
+        <div class="error" id="error" hidden></div>
+        <p class="hint" id="intro">Например: <i>Анна Ли</i> или <i>ann</i>. Регистр и порядок слов не важны.</p>
+        <p class="search-count" id="count" hidden></p>
+        <div id="people"></div>
+        <a class="wall-more" id="more" hidden>Показать ещё</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

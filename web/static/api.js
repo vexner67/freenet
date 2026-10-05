@@ -1,0 +1,182 @@
+// Client of the gateway API (same origin). Tokens live in localStorage;
+// the strict Content-Security-Policy of the pages keeps foreign scripts out.
+
+const STORAGE_KEY = 'freenet.tokens';
+
+export class ApiError extends Error {
+  constructor(status, code, message) {
+    super(message);
+    this.status = status;
+    this.code = code;
+  }
+}
+
+export const session = {
+  get() {
+    try {
+      return JSON.parse(localStorage.getItem(STORAGE_KEY));
+    } catch {
+      return null;
+    }
+  },
+  save(tokens) {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({
+      accessToken: tokens.accessToken,
+      refreshToken: tokens.refreshToken,
+    }));
+  },
+  clear() {
+    localStorage.removeItem(STORAGE_KEY);
+  },
+};
+
+// request sends body as JSON, or as is when it is a file (a photo).
+async function request(method, path, body, accessToken) {
+  const isFile = body instanceof Blob;
+  const headers = {};
+  if (body !== undefined) headers['Content-Type'] = isFile ? body.type || 'application/octet-stream' : 'application/json';
+  if (accessToken) headers.Authorization = 'Bearer ' + accessToken;
+
+  let response;
+  try {
+    response = await fetch(path, {
+      method,
+      headers,
+      body: body === undefined || isFile ? body : JSON.stringify(body),
+    });
+  } catch {
+    throw new ApiError(0, 'network', 'network error');
+  }
+
+  if (response.status === 204) return null;
+
+  let data = null;
+  try {
+    data = await response.json();
+  } catch {
+    // Not JSON, e.g. a proxy error page.
+  }
+
+  if (!response.ok) {
+    throw new ApiError(response.status, data?.error?.code ?? 'internal', data?.error?.message ?? '');
+  }
+
+  return data;
+}
+
+// A refresh token works once, and reusing it ends the session. Tabs share
+// localStorage, so they take a lock and skip refreshing if another tab
+// already replaced the expired access token.
+async function refresh(expiredAccessToken) {
+  const run = async () => {
+    const current = session.get();
+    if (!current) throw new ApiError(401, 'unauthenticated', 'missing access token');
+    if (current.accessToken !== expiredAccessToken) return;
+
+    try {
+      session.save(await request('POST', '/api/v1/auth/refresh', { refreshToken: current.refreshToken }));
+    } catch (e) {
+      if (e.status === 401) session.clear();
+      throw e;
+    }
+  };
+
+  if (navigator.locks) {
+    await navigator.locks.request('freenet-refresh', run);
+  } else {
+    await run();
+  }
+}
+
+// optional sends the token when signed in, so the answer can depend on who
+// asks, and works anonymously otherwise.
+function optional(method, path) {
+  return session.get() ? authorized(method, path) : request(method, path);
+}
+
+async function authorized(method, path, body) {
+  const current = session.get();
+  if (!current) throw new ApiError(401, 'unauthenticated', 'missing access token');
+
+  try {
+    return await request(method, path, body, current.accessToken);
+  } catch (e) {
+    if (e.status !== 401) throw e;
+  }
+
+  await refresh(current.accessToken);
+
+  return request(method, path, body, session.get().accessToken);
+}
+
+export const api = {
+  requestCode: (email) => request('POST', '/api/v1/auth/code', { email }),
+
+  async verifyCode(email, code) {
+    session.save(await request('POST', '/api/v1/auth/verify', { email, code }));
+  },
+
+  async logout() {
+    const current = session.get();
+    session.clear();
+
+    if (current) {
+      try {
+        await request('POST', '/api/v1/auth/logout', { refreshToken: current.refreshToken });
+      } catch {
+        // Signed out locally anyway; the session expires on its own.
+      }
+    }
+  },
+
+  me: () => authorized('GET', '/api/v1/me'),
+  updateProfile: (profile) => authorized('PUT', '/api/v1/me/profile', profile),
+  updatePrivacy: (privacy) => authorized('PUT', '/api/v1/me/privacy', privacy),
+  // With a session the profile also says whether you follow the user.
+  profile: (nickname) => optional('GET', '/api/v1/users/' + encodeURIComponent(nickname)),
+
+  wall(nickname, cursor = '') {
+    const query = cursor ? '?cursor=' + encodeURIComponent(cursor) : '';
+    return request('GET', `/api/v1/users/${encodeURIComponent(nickname)}/posts${query}`);
+  },
+  createPost: (text) => authorized('POST', '/api/v1/me/posts', { text }),
+  deletePost: (id) => authorized('DELETE', '/api/v1/posts/' + encodeURIComponent(id)),
+
+  follow: (nickname) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/follow`),
+  unfollow: (nickname) => authorized('DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/follow`),
+  followers: (nickname, cursor = '', limit = 0) => request('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/followers`, cursor, limit)),
+  following: (nickname, cursor = '', limit = 0) => request('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit)),
+  feed: (cursor = '') => authorized('GET', page('/api/v1/feed', cursor, 0)),
+
+  uploadAvatar: (file) => authorized('PUT', '/api/v1/me/avatar', file),
+  deleteAvatar: () => authorized('DELETE', '/api/v1/me/avatar'),
+
+  search(query, cursor = '') {
+    const params = new URLSearchParams({ q: query });
+    if (cursor) params.set('cursor', cursor);
+    return request('GET', '/api/v1/users?' + params);
+  },
+};
+
+function page(path, cursor, limit) {
+  const query = new URLSearchParams();
+  if (cursor) query.set('cursor', cursor);
+  if (limit) query.set('limit', String(limit));
+  return query.size ? `${path}?${query}` : path;
+}
+
+// currentUser is the signed-in user, or null when signed out or the
+// session is no longer valid.
+export async function currentUser() {
+  if (!session.get()) return null;
+
+  try {
+    return await api.me();
+  } catch (e) {
+    if (e.status === 401 || e.status === 404) {
+      session.clear();
+      return null;
+    }
+    throw e;
+  }
+}
