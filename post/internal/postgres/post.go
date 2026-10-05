@@ -49,7 +49,9 @@ const getPostQuery = `
 		id,
 		author_id,
 		text,
-		created_at
+		created_at,
+		like_count,
+		comment_count
 	FROM posts
 	WHERE id = $1
 `
@@ -89,7 +91,9 @@ const listPostsByAuthorQuery = `
 		id,
 		author_id,
 		text,
-		created_at
+		created_at,
+		like_count,
+		comment_count
 	FROM posts
 	WHERE author_id = $1
 		AND id < $2
@@ -134,7 +138,9 @@ const listPostsByAuthorsQuery = `
 		id,
 		author_id,
 		text,
-		created_at
+		created_at,
+		like_count,
+		comment_count
 	FROM posts
 	WHERE author_id = ANY($1)
 		AND id < $2
@@ -167,12 +173,13 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 		id, authorID uuid.UUID
 		text         string
 		createdAt    time.Time
+		counters     post.Counters
 	)
 
-	if err := row.Scan(&id, &authorID, &text, &createdAt); err != nil {
+	if err := row.Scan(&id, &authorID, &text, &createdAt, &counters.Likes, &counters.Comments); err != nil {
 		return nil, err
 	}
 
 	// Data comes from our own table and was validated on write.
-	return post.Restore(id, authorID, post.Text(text), createdAt.UTC()), nil
+	return post.Restore(id, authorID, post.Text(text), createdAt.UTC(), counters), nil
 }

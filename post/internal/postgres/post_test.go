@@ -8,14 +8,17 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/post/internal/post"
 	"github.com/vexner67/freenet/post/internal/postgres"
 )
 
-// Integration test: needs a database with migrations applied, e.g.
-// TEST_DATABASE_URL=postgres://... go test ./internal/postgres
-func TestPostRepository(t *testing.T) {
+// newPool connects to the database of the integration tests, which needs
+// migrations applied, e.g. TEST_DATABASE_URL=postgres://... go test ./internal/postgres
+func newPool(t *testing.T) *pgxpool.Pool {
+	t.Helper()
+
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL is not set")
@@ -30,7 +33,14 @@ func TestPostRepository(t *testing.T) {
 	}
 	t.Cleanup(pool.Close)
 
-	repo := postgres.NewPostRepository(pool)
+	return pool
+}
+
+func TestPostRepository(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	repo := postgres.NewPostRepository(newPool(t))
 	author := uuid.New()
 
 	var saved []*post.Post

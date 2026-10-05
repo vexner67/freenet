@@ -12,26 +12,36 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type PostService interface {
 	Create(ctx context.Context, authorID uuid.UUID, text post.Text) (*post.Post, error)
 	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
-	ListByAuthor(ctx context.Context, authorID, cursor uuid.UUID, size int) (service.Page, error)
-	Feed(ctx context.Context, authorIDs []uuid.UUID, cursor uuid.UUID, size int) (service.Page, error)
+	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
+	ListByAuthor(ctx context.Context, viewerID, authorID, cursor uuid.UUID, size int) (service.Page, error)
+	Feed(ctx context.Context, viewerID uuid.UUID, authorIDs []uuid.UUID, cursor uuid.UUID, size int) (service.Page, error)
+	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
+	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
+}
+
+type CommentService interface {
+	Create(ctx context.Context, authorID, postID uuid.UUID, text post.CommentText) (*post.Comment, error)
+	Delete(ctx context.Context, requesterID, commentID uuid.UUID) error
+	List(ctx context.Context, postID, cursor uuid.UUID, size int) (service.CommentPage, error)
 }
 
 type PostHandler struct {
 	postv1.UnimplementedPostServiceServer
-	postService PostService
-	logger      *slog.Logger
+	postService    PostService
+	commentService CommentService
+	logger         *slog.Logger
 }
 
-func NewPostHandler(postService PostService, logger *slog.Logger) *PostHandler {
+func NewPostHandler(postService PostService, commentService CommentService, logger *slog.Logger) *PostHandler {
 	return &PostHandler{
-		postService: postService,
-		logger:      logger,
+		postService:    postService,
+		commentService: commentService,
+		logger:         logger,
 	}
 }
 
@@ -51,7 +61,7 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		return nil, err
 	}
 
-	return &postv1.CreatePostResponse{Post: toProtoPost(p)}, nil
+	return &postv1.CreatePostResponse{Post: toProtoPost(p, false)}, nil
 }
 
 func (h *PostHandler) DeletePost(ctx context.Context, req *postv1.DeletePostRequest) (*emptypb.Empty, error) {
@@ -72,6 +82,20 @@ func (h *PostHandler) DeletePost(ctx context.Context, req *postv1.DeletePostRequ
 	return &emptypb.Empty{}, nil
 }
 
+func (h *PostHandler) GetPost(ctx context.Context, req *postv1.GetPostRequest) (*postv1.GetPostResponse, error) {
+	postID, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid post id")
+	}
+
+	p, liked, err := h.postService.Get(ctx, viewerID(ctx), postID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.GetPostResponse{Post: toProtoPost(p, liked)}, nil
+}
+
 func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsRequest) (*postv1.ListPostsResponse, error) {
 	authorID, err := uuid.Parse(req.GetAuthorId())
 	if err != nil {
@@ -83,25 +107,16 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 		return nil, err
 	}
 
-	page, err := h.postService.ListByAuthor(ctx, authorID, cursor, int(req.GetLimit()))
+	page, err := h.postService.ListByAuthor(ctx, viewerID(ctx), authorID, cursor, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &postv1.ListPostsResponse{
-		Posts: make([]*postv1.Post, 0, len(page.Posts)),
-		Total: int32(page.Total), //nolint:gosec // a wall will not hold 2^31 posts
-	}
-
-	for _, p := range page.Posts {
-		resp.Posts = append(resp.Posts, toProtoPost(p))
-	}
-
-	if page.NextCursor != uuid.Nil {
-		resp.NextCursor = page.NextCursor.String()
-	}
-
-	return resp, nil
+	return &postv1.ListPostsResponse{
+		Posts:      toProtoPosts(page),
+		NextCursor: cursorString(page.NextCursor),
+		Total:      int32(page.Total), //nolint:gosec // a wall will not hold 2^31 posts
+	}, nil
 }
 
 func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest) (*postv1.ListFeedResponse, error) {
@@ -123,21 +138,58 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 		return nil, err
 	}
 
-	page, err := h.postService.Feed(ctx, authorIDs, cursor, int(req.GetLimit()))
+	page, err := h.postService.Feed(ctx, viewerID(ctx), authorIDs, cursor, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &postv1.ListFeedResponse{Posts: make([]*postv1.Post, 0, len(page.Posts))}
-	for _, p := range page.Posts {
-		resp.Posts = append(resp.Posts, toProtoPost(p))
+	return &postv1.ListFeedResponse{
+		Posts:      toProtoPosts(page),
+		NextCursor: cursorString(page.NextCursor),
+	}, nil
+}
+
+func (h *PostHandler) LikePost(ctx context.Context, req *postv1.LikePostRequest) (*postv1.LikePostResponse, error) {
+	userID, postID, err := likeTarget(ctx, req.GetPostId())
+	if err != nil {
+		return nil, err
 	}
 
-	if page.NextCursor != uuid.Nil {
-		resp.NextCursor = page.NextCursor.String()
+	likes, err := h.postService.Like(ctx, userID, postID)
+	if err != nil {
+		return nil, err
 	}
 
-	return resp, nil
+	return &postv1.LikePostResponse{LikeCount: int32(likes)}, nil //nolint:gosec // likes come from an int4 column
+}
+
+func (h *PostHandler) UnlikePost(ctx context.Context, req *postv1.UnlikePostRequest) (*postv1.UnlikePostResponse, error) {
+	userID, postID, err := likeTarget(ctx, req.GetPostId())
+	if err != nil {
+		return nil, err
+	}
+
+	likes, err := h.postService.Unlike(ctx, userID, postID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.UnlikePostResponse{LikeCount: int32(likes)}, nil //nolint:gosec // likes come from an int4 column
+}
+
+// likeTarget is who likes which post.
+func likeTarget(ctx context.Context, rawPostID string) (uuid.UUID, uuid.UUID, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+
+	postID, err := uuid.Parse(rawPostID)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "invalid post id")
+	}
+
+	return userID, postID, nil
 }
 
 // parseCursor reads a page cursor; "" is the first page.
@@ -154,13 +206,14 @@ func parseCursor(s string) (uuid.UUID, error) {
 	return cursor, nil
 }
 
-func toProtoPost(p *post.Post) *postv1.Post {
-	return &postv1.Post{
-		Id:        p.ID().String(),
-		AuthorId:  p.AuthorID().String(),
-		Text:      p.Text().String(),
-		CreatedAt: timestamppb.New(p.CreatedAt()),
+// viewerID is who reads a public method: uuid.Nil without an access token.
+func viewerID(ctx context.Context) uuid.UUID {
+	identity, ok := jwtauth.IdentityFromContext(ctx)
+	if !ok {
+		return uuid.Nil
 	}
+
+	return identity.UserID
 }
 
 // currentUserID is the caller's ID from the access token verified by

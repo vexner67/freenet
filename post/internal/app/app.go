@@ -59,9 +59,9 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
-	postRepo, err := a.newPostRepository(cfg)
+	repos, err := a.newRepositories(cfg)
 	if err != nil {
-		return errs.Wrap("a.newPostRepository", err)
+		return errs.Wrap("a.newRepositories", err)
 	}
 
 	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
@@ -91,7 +91,11 @@ func (a *App) build(cfg config.Config) error {
 	)
 	postv1.RegisterPostServiceServer(
 		a.server.Registrar(),
-		postgrpc.NewPostHandler(service.NewPostService(postRepo), a.logger),
+		postgrpc.NewPostHandler(
+			service.NewPostService(repos.posts, repos.likes),
+			service.NewCommentService(repos.posts, repos.comments),
+			a.logger,
+		),
 	)
 
 	a.logger.Info("post configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
@@ -99,9 +103,16 @@ func (a *App) build(cfg config.Config) error {
 	return nil
 }
 
-func (a *App) newPostRepository(cfg config.Config) (service.PostRepository, error) {
+type repositories struct {
+	posts    service.PostRepository
+	likes    service.LikeRepository
+	comments service.CommentRepository
+}
+
+func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	if cfg.Storage == config.StorageInmem {
-		return inmem.NewPostRepository(), nil
+		store := inmem.NewStore()
+		return repositories{posts: store.Posts(), likes: store.Likes(), comments: store.Comments()}, nil
 	}
 
 	if cfg.MigrateOnStart {
@@ -110,7 +121,7 @@ func (a *App) newPostRepository(cfg config.Config) (service.PostRepository, erro
 
 		applied, err := pgpool.Migrate(ctx, cfg.DatabaseURL, migrations.FS)
 		if err != nil {
-			return nil, errs.Wrap("pgpool.Migrate", err)
+			return repositories{}, errs.Wrap("pgpool.Migrate", err)
 		}
 
 		a.logger.Info("migrations applied", "count", applied)
@@ -123,10 +134,14 @@ func (a *App) newPostRepository(cfg config.Config) (service.PostRepository, erro
 
 	a.pool, err = pgpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
-		return nil, errs.Wrap("pgpool.New", err)
+		return repositories{}, errs.Wrap("pgpool.New", err)
 	}
 
-	return postgres.NewPostRepository(a.pool), nil
+	return repositories{
+		posts:    postgres.NewPostRepository(a.pool),
+		likes:    postgres.NewLikeRepository(a.pool),
+		comments: postgres.NewCommentRepository(a.pool),
+	}, nil
 }
 
 func (a *App) Run(ctx context.Context) error {
