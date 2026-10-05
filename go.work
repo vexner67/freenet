@@ -2,7 +2,13 @@ go 1.27.1
 
 use (
 	./auth
+	./pkg/envconfig
 	./pkg/errs
+	./pkg/grpcserver
+	./pkg/hmac
+	./pkg/jwtauth
 	./pkg/logger
+	./pkg/mtls
+	./pkg/pgpool
 	./user
 )
