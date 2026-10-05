@@ -1,0 +1,69 @@
+syntax = "proto3";
+
+package post.v1;
+
+option go_package = "github.com/vexner67/freenet/post/api/post/v1;postv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service PostService {
+  // Require an access token; the author is the caller.
+  rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
+  rpc DeletePost(DeletePostRequest) returns (google.protobuf.Empty);
+
+  // Public: a user's wall, newest first.
+  rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
+  // Public: the posts of several authors, newest first, for a news feed.
+  rpc ListFeed(ListFeedRequest) returns (ListFeedResponse);
+}
+
+message Post {
+  string id = 1;
+  string author_id = 2;
+  string text = 3;
+  google.protobuf.Timestamp created_at = 4;
+}
+
+message CreatePostRequest {
+  string text = 1;
+}
+
+message CreatePostResponse {
+  Post post = 1;
+}
+
+message DeletePostRequest {
+  string id = 1;
+}
+
+message ListPostsRequest {
+  string author_id = 1;
+  // Empty for the newest posts, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message ListPostsResponse {
+  repeated Post posts = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // All posts of the author, for "N записей".
+  int32 total = 3;
+}
+
+message ListFeedRequest {
+  // At most 1001: the people a user follows and the user.
+  repeated string author_ids = 1;
+  // Empty for the newest posts, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message ListFeedResponse {
+  repeated Post posts = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+}
