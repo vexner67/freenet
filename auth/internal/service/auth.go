@@ -3,66 +3,373 @@ package service
 import (
 	"context"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"math/big"
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/vexner67/freenet/auth/internal/errs"
+	"github.com/vexner67/freenet/auth/internal/account"
 	"github.com/vexner67/freenet/auth/internal/session"
+	"github.com/vexner67/freenet/pkg/errs"
 )
+
+var (
+	ErrInvalidCode     = errors.New("invalid code")
+	ErrCodeNotFound    = errors.New("code not found")
+	ErrTooManyAttempts = errors.New("too many attempts")
+	ErrTooManyRequests = errors.New("too many requests")
+
+	ErrInvalidRefreshToken = errors.New("invalid refresh token")
+	ErrSessionNotFound     = errors.New("session not found")
+
+	ErrUserServiceUnavailable = errors.New("user service unavailable")
+)
+
+// UserProvider is auth's view of the user service: it only needs the ID.
+type UserProvider interface {
+	GetOrCreateByEmail(ctx context.Context, email account.Email) (uuid.UUID, error)
+}
 
 type SessionRepository interface {
 	Save(ctx context.Context, s *session.Session) error
+	// Get returns ErrSessionNotFound.
+	Get(ctx context.Context, id uuid.UUID) (*session.Session, error)
+	// Rotate replaces the refresh token hash only if it still equals
+	// oldHash, otherwise returns ErrSessionNotFound. This makes two
+	// concurrent refreshes with the same token unable to both succeed.
+	Rotate(ctx context.Context, id uuid.UUID, oldHash, newHash string) error
+	// Delete returns ErrSessionNotFound.
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
 type Hasher interface {
 	Hash(value string) string
+	Compare(value string, hash string) bool
 }
 
 type CodeRepository interface {
-	Save(ctx context.Context, email string, codeHash string, ttl time.Duration) error
+	// Save replaces any previous code for the email and resets its attempts.
+	Save(ctx context.Context, email account.Email, codeHash string, ttl time.Duration) error
+	// Get returns ErrCodeNotFound if there is no active code for the email.
+	Get(ctx context.Context, email account.Email) (string, error)
+	// IncrementAttempts atomically counts one more check of the active code
+	// and returns the new count, or ErrCodeNotFound.
+	IncrementAttempts(ctx context.Context, email account.Email) (int, error)
+	// Delete returns ErrCodeNotFound if there was nothing to delete.
+	Delete(ctx context.Context, email account.Email) error
+}
+
+// RateLimiter counts events per key in fixed time windows.
+type RateLimiter interface {
+	// Allow records an event and reports whether the key is still within
+	// limit events for the current window.
+	Allow(ctx context.Context, key string, limit int, window time.Duration) (bool, error)
 }
 
 type Mailer interface {
 	SendCode(ctx context.Context, email string, code string) error
 }
 
+// Policy tunes sign-in codes against guessing and spam.
+type Policy struct {
+	CodeTTL time.Duration
+	// MaxCodeAttempts is how many checks one code survives, the right one
+	// included; then it is burned and a new code must be requested.
+	MaxCodeAttempts int
+	// CodeResendInterval allows one code per email per interval.
+	CodeResendInterval time.Duration
+	// CodeRequestsPerIP codes per CodeRequestsWindow from one address.
+	CodeRequestsPerIP  int
+	CodeRequestsWindow time.Duration
+}
+
+// RefreshClaims is what auth needs from a verified refresh token.
+type RefreshClaims struct {
+	UserID    uuid.UUID
+	SessionID uuid.UUID
+}
+
+type TokenProvider interface {
+	CreateAccessToken(userID, sessionID, tokenID string) (string, error)
+	CreateRefreshToken(userID, sessionID, tokenID string) (string, error)
+	// ParseRefreshToken returns ErrInvalidRefreshToken for a token that is
+	// malformed, expired, forged or not a refresh token.
+	ParseRefreshToken(token string) (RefreshClaims, error)
+}
+
 type AuthService struct {
-	sessionRepo SessionRepository
-	hasher      Hasher
-	codeRepo    CodeRepository
-	mailer      Mailer
+	userProvider  UserProvider
+	sessionRepo   SessionRepository
+	hasher        Hasher
+	codeRepo      CodeRepository
+	limiter       RateLimiter
+	mailer        Mailer
+	tokenProvider TokenProvider
+	policy        Policy
 }
 
 func NewAuthService(
+	userProvider UserProvider,
 	repo SessionRepository,
 	hasher Hasher,
 	codeRepo CodeRepository,
+	limiter RateLimiter,
 	mailer Mailer,
+	tokenProvider TokenProvider,
+	policy Policy,
 ) *AuthService {
 	return &AuthService{
-		sessionRepo: repo,
-		hasher:      hasher,
-		codeRepo:    codeRepo,
-		mailer:      mailer,
+		userProvider:  userProvider,
+		sessionRepo:   repo,
+		hasher:        hasher,
+		codeRepo:      codeRepo,
+		limiter:       limiter,
+		mailer:        mailer,
+		tokenProvider: tokenProvider,
+		policy:        policy,
 	}
 }
 
-func (s *AuthService) RequestCode(ctx context.Context, email string) error {
+// RequestCode mails a sign-in code. clientIP may be empty when unknown;
+// then only the per-email limit applies.
+func (s *AuthService) RequestCode(ctx context.Context, email account.Email, clientIP string) error {
+	if clientIP != "" {
+		if err := s.allow(ctx, "code_request:ip:"+clientIP, s.policy.CodeRequestsPerIP, s.policy.CodeRequestsWindow); err != nil {
+			return errs.Wrap("s.allow", err)
+		}
+	}
+
+	if err := s.allow(ctx, "code_request:email:"+email.String(), 1, s.policy.CodeResendInterval); err != nil {
+		return errs.Wrap("s.allow", err)
+	}
+
 	code, err := generateCode()
 	if err != nil {
 		return errs.Wrap("generateCode", err)
 	}
 
-	codeHash := s.hasher.Hash(code)
-
-	if err = s.codeRepo.Save(ctx, email, codeHash, 5*time.Minute); err != nil {
+	if err = s.codeRepo.Save(ctx, email, s.hasher.Hash(code), s.policy.CodeTTL); err != nil {
 		return errs.Wrap("s.codeRepo.Save", err)
 	}
 
-	return s.mailer.SendCode(ctx, email, code)
+	if err = s.mailer.SendCode(ctx, email.String(), code); err != nil {
+		return errs.Wrap("s.mailer.SendCode", err)
+	}
+
+	return nil
+}
+
+func (s *AuthService) allow(ctx context.Context, key string, limit int, window time.Duration) error {
+	ok, err := s.limiter.Allow(ctx, key, limit, window)
+	if err != nil {
+		return errs.Wrap("s.limiter.Allow", err)
+	}
+
+	if !ok {
+		return ErrTooManyRequests
+	}
+
+	return nil
+}
+
+type TokenPair struct {
+	Access  string
+	Refresh string
+}
+
+func (s *AuthService) VerifyCode(ctx context.Context, email account.Email, code string) (TokenPair, error) {
+	if err := s.verifyCode(ctx, email, code); err != nil {
+		return TokenPair{}, errs.Wrap("s.verifyCode", err)
+	}
+
+	userID, err := s.getOrCreateUser(ctx, email)
+	if err != nil {
+		return TokenPair{}, errs.Wrap("s.getOrCreateUser", err)
+	}
+
+	return s.createSession(ctx, userID)
+}
+
+// RefreshToken exchanges a refresh token for a new pair and rotates it:
+// the presented token stops working.
+func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (TokenPair, error) {
+	sess, err := s.currentSession(ctx, refreshToken)
+	if err != nil {
+		return TokenPair{}, errs.Wrap("s.currentSession", err)
+	}
+
+	pair, err := s.issueTokens(sess.UserID(), sess.ID())
+	if err != nil {
+		return TokenPair{}, errs.Wrap("s.issueTokens", err)
+	}
+
+	if err = s.sessionRepo.Rotate(
+		ctx,
+		sess.ID(),
+		sess.RefreshTokenHash(),
+		s.hasher.Hash(pair.Refresh),
+	); err != nil {
+		return TokenPair{}, errs.Wrap("s.sessionRepo.Rotate", err)
+	}
+
+	return pair, nil
+}
+
+// Logout ends the session of the refresh token. Logging out of a session
+// that no longer exists succeeds, so clients can retry safely.
+func (s *AuthService) Logout(ctx context.Context, refreshToken string) error {
+	sess, err := s.currentSession(ctx, refreshToken)
+	if errors.Is(err, ErrSessionNotFound) {
+		return nil
+	}
+	if err != nil {
+		return errs.Wrap("s.currentSession", err)
+	}
+
+	if err = s.sessionRepo.Delete(ctx, sess.ID()); err != nil && !errors.Is(err, ErrSessionNotFound) {
+		return errs.Wrap("s.sessionRepo.Delete", err)
+	}
+
+	return nil
+}
+
+// currentSession returns the session the refresh token belongs to, if the
+// token is the latest one issued for it.
+func (s *AuthService) currentSession(ctx context.Context, refreshToken string) (*session.Session, error) {
+	claims, err := s.tokenProvider.ParseRefreshToken(refreshToken)
+	if err != nil {
+		return nil, errs.Wrap("s.tokenProvider.ParseRefreshToken", err)
+	}
+
+	sess, err := s.sessionRepo.Get(ctx, claims.SessionID)
+	if err != nil {
+		return nil, errs.Wrap("s.sessionRepo.Get", err)
+	}
+
+	if sess.UserID() == claims.UserID && s.hasher.Compare(refreshToken, sess.RefreshTokenHash()) {
+		return sess, nil
+	}
+
+	// A correctly signed but already rotated token: someone kept a copy.
+	// We cannot tell the thief from the owner, so end the session for both.
+	if err = s.sessionRepo.Delete(ctx, sess.ID()); err != nil && !errors.Is(err, ErrSessionNotFound) {
+		return nil, errs.Wrap("s.sessionRepo.Delete", err)
+	}
+
+	return nil, ErrInvalidRefreshToken
+}
+
+// verifyCode accepts each code once: a successful check consumes it.
+func (s *AuthService) verifyCode(ctx context.Context, email account.Email, code string) error {
+	// Count the attempt before comparing: otherwise many parallel guesses
+	// could all be compared before the counter reaches the limit.
+	attempts, err := s.codeRepo.IncrementAttempts(ctx, email)
+	if err != nil {
+		return errs.Wrap("s.codeRepo.IncrementAttempts", err)
+	}
+
+	if attempts > s.policy.MaxCodeAttempts {
+		if err = s.codeRepo.Delete(ctx, email); err != nil && !errors.Is(err, ErrCodeNotFound) {
+			return errs.Wrap("s.codeRepo.Delete", err)
+		}
+
+		return ErrTooManyAttempts
+	}
+
+	codeHash, err := s.codeRepo.Get(ctx, email)
+	if err != nil {
+		return errs.Wrap("s.codeRepo.Get", err)
+	}
+
+	if !s.hasher.Compare(code, codeHash) {
+		return ErrInvalidCode
+	}
+
+	// Delete fails with ErrCodeNotFound if a concurrent request consumed
+	// the code first, so only one of them gets the tokens.
+	if err = s.codeRepo.Delete(ctx, email); err != nil {
+		return errs.Wrap("s.codeRepo.Delete", err)
+	}
+
+	return nil
+}
+
+func (s *AuthService) getOrCreateUser(
+	ctx context.Context,
+	email account.Email,
+) (uuid.UUID, error) {
+	userID, err := s.userProvider.GetOrCreateByEmail(ctx, email)
+	if err != nil {
+		return uuid.Nil, errs.Wrap("s.userProvider.GetOrCreateByEmail", err)
+	}
+
+	return userID, nil
+}
+
+func (s *AuthService) createSession(
+	ctx context.Context,
+	userID uuid.UUID,
+) (TokenPair, error) {
+	sessionID, err := uuid.NewV7()
+	if err != nil {
+		return TokenPair{}, errs.Wrap("uuid.NewV7", err)
+	}
+
+	pair, err := s.issueTokens(userID, sessionID)
+	if err != nil {
+		return TokenPair{}, errs.Wrap("s.issueTokens", err)
+	}
+
+	sess, err := session.New(
+		sessionID,
+		userID,
+		s.hasher.Hash(pair.Refresh),
+	)
+	if err != nil {
+		return TokenPair{}, errs.Wrap("session.New", err)
+	}
+
+	if err = s.sessionRepo.Save(ctx, sess); err != nil {
+		return TokenPair{}, errs.Wrap("s.sessionRepo.Save", err)
+	}
+
+	return pair, nil
+}
+
+func (s *AuthService) issueTokens(userID, sessionID uuid.UUID) (TokenPair, error) {
+	refreshTokenID, err := uuid.NewV7()
+	if err != nil {
+		return TokenPair{}, errs.Wrap("uuid.NewV7", err)
+	}
+
+	refreshToken, err := s.tokenProvider.CreateRefreshToken(
+		userID.String(),
+		sessionID.String(),
+		refreshTokenID.String(),
+	)
+	if err != nil {
+		return TokenPair{}, errs.Wrap("s.tokenProvider.CreateRefreshToken", err)
+	}
+
+	accessTokenID, err := uuid.NewV7()
+	if err != nil {
+		return TokenPair{}, errs.Wrap("uuid.NewV7", err)
+	}
+
+	accessToken, err := s.tokenProvider.CreateAccessToken(
+		userID.String(),
+		sessionID.String(),
+		accessTokenID.String(),
+	)
+	if err != nil {
+		return TokenPair{}, errs.Wrap("s.tokenProvider.CreateAccessToken", err)
+	}
+
+	return TokenPair{
+		Access:  accessToken,
+		Refresh: refreshToken,
+	}, nil
 }
 
 func generateCode() (string, error) {
