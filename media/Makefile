@@ -1,11 +1,9 @@
-MIGRATIONS_DIR := migrations
-
 ifneq (,$(wildcard .env))
 	include .env
 	export
 endif
 
-.PHONY: run build test fmt lint tidy proto check migrate-create migrate-up migrate-down migrate-status
+.PHONY: run build test fmt lint tidy proto check
 
 run:
 	go run ./cmd/media
@@ -39,14 +37,3 @@ check:
 	$(MAKE) lint
 	$(MAKE) test
 
-migrate-create:
-	goose -dir $(MIGRATIONS_DIR) create $(name) sql
-
-migrate-up:
-	goose -dir $(MIGRATIONS_DIR) mediagres "$(DATABASE_URL)" up
-
-migrate-down:
-	goose -dir $(MIGRATIONS_DIR) mediagres "$(DATABASE_URL)" down
-
-migrate-status:
-	goose -dir $(MIGRATIONS_DIR) mediagres "$(DATABASE_URL)" status
