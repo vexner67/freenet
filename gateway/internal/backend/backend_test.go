@@ -9,6 +9,7 @@ import (
 	authv1 "github.com/vexner67/freenet/auth/api/auth/v1"
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
+	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"google.golang.org/grpc"
@@ -263,5 +264,61 @@ func TestFollowStatsToken(t *testing.T) {
 	}
 	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" || !stats.IsFollowing {
 		t.Fatalf("signed in: md %v, stats %+v", got, stats)
+	}
+}
+
+type fakeNotificationAPI struct {
+	notificationv1.NotificationServiceClient
+	md  metadata.MD
+	req *notificationv1.ListNotificationsRequest
+}
+
+func (f *fakeNotificationAPI) ListNotifications(ctx context.Context, req *notificationv1.ListNotificationsRequest, _ ...grpc.CallOption) (*notificationv1.ListNotificationsResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	f.req = req
+	return &notificationv1.ListNotificationsResponse{
+		Notifications: []*notificationv1.Notification{
+			{Id: "n2", Kind: notificationv1.Kind_KIND_COMMENT, ActorId: "u2", PostId: "p1", CommentId: "c1", CreatedAt: timestamppb.Now()},
+			{Id: "n1", Kind: notificationv1.Kind_KIND_FOLLOW, ActorId: "u3", CreatedAt: timestamppb.Now()},
+		},
+		NextCursor: "n1",
+	}, nil
+}
+
+func (f *fakeNotificationAPI) MarkRead(_ context.Context, req *notificationv1.MarkReadRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	if req.GetNotificationId() != "n2" {
+		return nil, status.Error(codes.NotFound, "notification not found")
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func TestNotifications(t *testing.T) {
+	t.Parallel()
+
+	api := &fakeNotificationAPI{}
+	notifications := NewNotifications(api)
+
+	page, err := notifications.List(context.Background(), "tok", false, "n9", 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if api.req.GetBox() != notificationv1.Box_BOX_ARCHIVE || api.req.GetCursor() != "n9" || api.req.GetLimit() != 1<<10 {
+		t.Fatalf("request = %v", api.req)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
+		t.Fatalf("authorization metadata = %v", got)
+	}
+
+	comment, follow := page.Notifications[0], page.Notifications[1]
+	if comment.Kind != "comment" || comment.PostID != "p1" || comment.CommentID != "c1" || follow.Kind != "follow" || page.NextCursor != "n1" {
+		t.Fatalf("page = %+v", page)
+	}
+
+	if _, err = notifications.List(context.Background(), "tok", true, "", 0); err != nil || api.req.GetBox() != notificationv1.Box_BOX_UNREAD {
+		t.Fatalf("unread box: %v, %v", api.req, err)
+	}
+
+	if err = notifications.MarkRead(context.Background(), "tok", "n0"); failure.From(err).Kind != failure.NotFound {
+		t.Fatalf("MarkRead of someone else's: %v", err)
 	}
 }

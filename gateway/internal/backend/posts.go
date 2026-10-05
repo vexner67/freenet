@@ -83,6 +83,31 @@ func (p *Posts) Feed(ctx context.Context, accessToken string, authorIDs []string
 	}, nil
 }
 
+// GetMany returns the posts that exist, without Author, in no order.
+func (p *Posts) GetMany(ctx context.Context, ids []string) ([]model.Post, error) {
+	resp, err := p.api.GetPosts(ctx, &postv1.GetPostsRequest{Ids: ids})
+	if err != nil {
+		return nil, errs.Wrap("p.api.GetPosts", fromStatus(err))
+	}
+
+	return toPosts(resp.GetPosts()), nil
+}
+
+// CommentsByID returns the comments that exist, without Author, in no order.
+func (p *Posts) CommentsByID(ctx context.Context, ids []string) ([]model.Comment, error) {
+	resp, err := p.api.GetComments(ctx, &postv1.GetCommentsRequest{Ids: ids})
+	if err != nil {
+		return nil, errs.Wrap("p.api.GetComments", fromStatus(err))
+	}
+
+	comments := make([]model.Comment, 0, len(resp.GetComments()))
+	for _, c := range resp.GetComments() {
+		comments = append(comments, toComment(c))
+	}
+
+	return comments, nil
+}
+
 // Like returns how many likes the post has now.
 func (p *Posts) Like(ctx context.Context, accessToken, postID string) (int, error) {
 	resp, err := p.api.LikePost(withToken(ctx, accessToken), &postv1.LikePostRequest{PostId: postID})

@@ -18,6 +18,7 @@ const (
 	relationshipPrefix   = "RELATIONSHIP_"
 	worldviewPrefix      = "WORLDVIEW_"
 	politicalViewsPrefix = "POLITICAL_VIEWS_"
+	kindPrefix           = "KIND_"
 
 	notSet = "NONE"
 )

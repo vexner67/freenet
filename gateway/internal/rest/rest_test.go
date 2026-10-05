@@ -174,6 +174,28 @@ func (f *fakePosts) Get(_ context.Context, token, id string) (model.Post, error)
 	}
 }
 
+// GetMany knows p1 only.
+func (f *fakePosts) GetMany(_ context.Context, ids []string) ([]model.Post, error) {
+	var found []model.Post
+	for _, id := range ids {
+		if id == "p1" {
+			found = append(found, model.Post{ID: "p1", Author: model.Author{ID: "u1"}, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)})
+		}
+	}
+	return found, nil
+}
+
+// CommentsByID knows c1 only.
+func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comment, error) {
+	var found []model.Comment
+	for _, id := range ids {
+		if id == "c1" {
+			found = append(found, model.Comment{ID: "c1", PostID: "p1", Author: model.Author{ID: "u2"}, Text: "согласен"})
+		}
+	}
+	return found, nil
+}
+
 func (f *fakePosts) Feed(_ context.Context, token string, authorIDs []string, cursor string, _ int) (model.PostPage, error) {
 	f.token, f.authors, f.cursor = token, authorIDs, cursor
 	return model.PostPage{
@@ -277,12 +299,47 @@ func (f *fakeMedia) Avatar(_ context.Context, userID, avatarID string, small boo
 	return []byte("large-jpeg"), nil
 }
 
+// fakeNotifications has a like and a comment by bob (u2), a follow by an
+// account that is gone and a like of a deleted post.
+type fakeNotifications struct {
+	token, cursor, markedUpTo string
+	unread                    bool
+	limit                     int
+	err                       error
+}
+
+func (f *fakeNotifications) List(_ context.Context, token string, unread bool, cursor string, limit int) (model.NotificationPage, error) {
+	f.token, f.unread, f.cursor, f.limit = token, unread, cursor, limit
+	at := time.Date(2026, 10, 5, 18, 0, 0, 0, time.UTC)
+	return model.NotificationPage{
+		Notifications: []model.Notification{
+			{ID: "n4", Kind: "comment", ActorID: "u2", PostID: "p1", CommentID: "c1", CreatedAt: at},
+			{ID: "n3", Kind: "follow", ActorID: "gone", CreatedAt: at},
+			{ID: "n2", Kind: "like", ActorID: "u2", PostID: "p-deleted", CreatedAt: at},
+			{ID: "n1", Kind: "like", ActorID: "u2", PostID: "p1", CreatedAt: at},
+			{ID: "n0", Kind: "follow", ActorID: "u2", CreatedAt: at},
+		},
+		NextCursor: "n0",
+	}, f.err
+}
+
+func (f *fakeNotifications) CountUnread(_ context.Context, token string) (int, error) {
+	f.token = token
+	return 3, f.err
+}
+
+func (f *fakeNotifications) MarkRead(_ context.Context, token, id string) error {
+	f.token, f.markedUpTo = token, id
+	return f.err
+}
+
 type harness struct {
-	handler http.Handler
-	auth    *fakeAuth
-	users   *fakeUsers
-	posts   *fakePosts
-	media   *fakeMedia
+	handler       http.Handler
+	auth          *fakeAuth
+	users         *fakeUsers
+	posts         *fakePosts
+	media         *fakeMedia
+	notifications *fakeNotifications
 }
 
 func newHarness(cfg rest.Config) harness {
@@ -290,8 +347,14 @@ func newHarness(cfg rest.Config) harness {
 		cfg.RequestTimeout = time.Second
 	}
 
-	h := harness{auth: &fakeAuth{}, users: &fakeUsers{}, posts: &fakePosts{}, media: &fakeMedia{}}
-	h.handler = rest.NewServer(cfg, h.auth, h.users, h.posts, h.media, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler()
+	h := harness{auth: &fakeAuth{}, users: &fakeUsers{}, posts: &fakePosts{}, media: &fakeMedia{}, notifications: &fakeNotifications{}}
+	h.handler = rest.NewServer(cfg, rest.Backends{
+		Auth:          h.auth,
+		Users:         h.users,
+		Posts:         h.posts,
+		Media:         h.media,
+		Notifications: h.notifications,
+	}, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler()
 
 	return h
 }

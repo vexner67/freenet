@@ -10,6 +10,7 @@ import (
 	"github.com/vexner67/freenet/gateway/internal/config"
 	"github.com/vexner67/freenet/gateway/internal/rest"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
+	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/mtls"
@@ -19,12 +20,13 @@ import (
 )
 
 type App struct {
-	logger    *slog.Logger
-	authConn  *grpc.ClientConn
-	userConn  *grpc.ClientConn
-	postConn  *grpc.ClientConn
-	mediaConn *grpc.ClientConn
-	server    *rest.Server
+	logger           *slog.Logger
+	authConn         *grpc.ClientConn
+	userConn         *grpc.ClientConn
+	postConn         *grpc.ClientConn
+	mediaConn        *grpc.ClientConn
+	notificationConn *grpc.ClientConn
+	server           *rest.Server
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -77,6 +79,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("grpc.NewClient", err)
 	}
 
+	a.notificationConn, err = grpc.NewClient(cfg.NotificationServiceAddr, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		return errs.Wrap("grpc.NewClient", err)
+	}
+
 	a.server = rest.NewServer(
 		rest.Config{
 			Addr:              fmt.Sprintf(":%d", cfg.HTTPPort),
@@ -85,10 +92,13 @@ func (a *App) build(cfg config.Config) error {
 			RequestTimeout:    cfg.RequestTimeout,
 			WebDir:            cfg.WebDir,
 		},
-		backend.NewAuth(authv1.NewAuthServiceClient(a.authConn)),
-		backend.NewUsers(userv1.NewUserServiceClient(a.userConn)),
-		backend.NewPosts(postv1.NewPostServiceClient(a.postConn)),
-		backend.NewMedia(mediav1.NewMediaServiceClient(a.mediaConn)),
+		rest.Backends{
+			Auth:          backend.NewAuth(authv1.NewAuthServiceClient(a.authConn)),
+			Users:         backend.NewUsers(userv1.NewUserServiceClient(a.userConn)),
+			Posts:         backend.NewPosts(postv1.NewPostServiceClient(a.postConn)),
+			Media:         backend.NewMedia(mediav1.NewMediaServiceClient(a.mediaConn)),
+			Notifications: backend.NewNotifications(notificationv1.NewNotificationServiceClient(a.notificationConn)),
+		},
 		a.logger,
 	)
 
@@ -107,7 +117,15 @@ func (a *App) Run(ctx context.Context) error {
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
-	for name, conn := range map[string]*grpc.ClientConn{"auth": a.authConn, "user": a.userConn, "post": a.postConn, "media": a.mediaConn} {
+	conns := map[string]*grpc.ClientConn{
+		"auth":         a.authConn,
+		"user":         a.userConn,
+		"post":         a.postConn,
+		"media":        a.mediaConn,
+		"notification": a.notificationConn,
+	}
+
+	for name, conn := range conns {
 		if conn == nil {
 			continue
 		}

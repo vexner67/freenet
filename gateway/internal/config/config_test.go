@@ -13,13 +13,14 @@ func TestParse(t *testing.T) {
 	t.Parallel()
 
 	base := map[string]string{
-		"HTTP_PORT":          "8080",
-		"LOG_LEVEL":          "info",
-		"LOG_FORMAT":         "text",
-		"AUTH_SERVICE_ADDR":  "localhost:50051",
-		"USER_SERVICE_ADDR":  "localhost:50052",
-		"POST_SERVICE_ADDR":  "localhost:50053",
-		"MEDIA_SERVICE_ADDR": "localhost:50054",
+		"HTTP_PORT":                 "8080",
+		"LOG_LEVEL":                 "info",
+		"LOG_FORMAT":                "text",
+		"AUTH_SERVICE_ADDR":         "localhost:50051",
+		"USER_SERVICE_ADDR":         "localhost:50052",
+		"POST_SERVICE_ADDR":         "localhost:50053",
+		"MEDIA_SERVICE_ADDR":        "localhost:50054",
+		"NOTIFICATION_SERVICE_ADDR": "localhost:50055",
 	}
 
 	cfg, err := envconfig.Parse[config.Config](env.Options{Environment: base})
