@@ -16,6 +16,7 @@ import (
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	usergrpc "github.com/vexner67/freenet/user/internal/grpc"
 	"github.com/vexner67/freenet/user/internal/inmem"
+	"github.com/vexner67/freenet/user/internal/notifyclient"
 	"github.com/vexner67/freenet/user/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -55,7 +56,7 @@ func newServer(t *testing.T) testServer {
 	))
 	userv1.RegisterUserServiceServer(srv, usergrpc.NewUserHandler(
 		service.NewUserService(users),
-		service.NewFollowService(users, follows, follows),
+		service.NewFollowService(users, follows, follows, notifyclient.Nop{}),
 		log,
 	))
 

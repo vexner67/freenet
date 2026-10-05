@@ -17,6 +17,7 @@ import (
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	postgrpc "github.com/vexner67/freenet/post/internal/grpc"
 	"github.com/vexner67/freenet/post/internal/inmem"
+	"github.com/vexner67/freenet/post/internal/notifyclient"
 	"github.com/vexner67/freenet/post/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -50,8 +51,8 @@ func newServer(t *testing.T) testServer {
 	))
 	store := inmem.NewStore()
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(
-		service.NewPostService(store.Posts(), store.Likes()),
-		service.NewCommentService(store.Posts(), store.Comments()),
+		service.NewPostService(store.Posts(), store.Likes(), notifyclient.Nop{}),
+		service.NewCommentService(store.Posts(), store.Comments(), notifyclient.Nop{}),
 		log,
 	))
 
@@ -245,6 +246,14 @@ func TestErrors(t *testing.T) {
 			_, err := s.client.ListComments(context.Background(), &postv1.ListCommentsRequest{PostId: uuid.NewString()})
 			return err
 		}, codes.NotFound},
+		{"too many posts", func() error {
+			_, err := s.client.GetPosts(context.Background(), &postv1.GetPostsRequest{Ids: make([]string, 51)})
+			return err
+		}, codes.InvalidArgument},
+		{"bad id in GetComments", func() error {
+			_, err := s.client.GetComments(context.Background(), &postv1.GetCommentsRequest{Ids: []string{"x"}})
+			return err
+		}, codes.InvalidArgument},
 		{"comments with a bad cursor", func() error {
 			_, err := s.client.ListComments(context.Background(), &postv1.ListCommentsRequest{PostId: uuid.NewString(), Cursor: "x"})
 			return err

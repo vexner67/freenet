@@ -15,6 +15,8 @@ type CommentRepository interface {
 	Save(ctx context.Context, c *post.Comment) error
 	// Get and Delete return post.ErrCommentNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*post.Comment, error)
+	// GetMany returns the comments that exist, in no particular order.
+	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	// ListByPost returns up to limit comments of a post, oldest first, with
 	// IDs above after (uuid.Nil: from the first).
@@ -38,18 +40,27 @@ type CommentPage struct {
 type CommentService struct {
 	postRepo    PostReader
 	commentRepo CommentRepository
+	notifier    Notifier
 	now         func() time.Time
 }
 
-func NewCommentService(postRepo PostReader, commentRepo CommentRepository) *CommentService {
+func NewCommentService(postRepo PostReader, commentRepo CommentRepository, notifier Notifier) *CommentService {
 	return &CommentService{
 		postRepo:    postRepo,
 		commentRepo: commentRepo,
+		notifier:    notifier,
 		now:         time.Now,
 	}
 }
 
 func (s *CommentService) Create(ctx context.Context, authorID, postID uuid.UUID, text post.CommentText) (*post.Comment, error) {
+	// The post tells whom to notify; Save still reports a post deleted
+	// in between.
+	p, err := s.postRepo.Get(ctx, postID)
+	if err != nil {
+		return nil, errs.Wrap("s.postRepo.Get", err)
+	}
+
 	c, err := post.NewComment(postID, authorID, text, s.now())
 	if err != nil {
 		return nil, errs.Wrap("post.NewComment", err)
@@ -57,6 +68,10 @@ func (s *CommentService) Create(ctx context.Context, authorID, postID uuid.UUID,
 
 	if err = s.commentRepo.Save(ctx, c); err != nil {
 		return nil, errs.Wrap("s.commentRepo.Save", err)
+	}
+
+	if e, ok := commentEvent(p, c); ok {
+		s.notifier.Notify(ctx, e)
 	}
 
 	return c, nil
@@ -81,7 +96,40 @@ func (s *CommentService) Delete(ctx context.Context, requesterID, commentID uuid
 		return errs.Wrap("s.commentRepo.Delete", err)
 	}
 
+	if e, ok := commentEvent(p, c); ok {
+		s.notifier.Retract(ctx, e)
+	}
+
 	return nil
+}
+
+// commentEvent is comment c on p for the post author's notifications;
+// nobody is notified about commenting on their own post.
+func commentEvent(p *post.Post, c *post.Comment) (Event, bool) {
+	if p.AuthorID() == c.AuthorID() {
+		return Event{}, false
+	}
+
+	return Event{Kind: EventComment, RecipientID: p.AuthorID(), ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()}, true
+}
+
+// GetMany returns the comments with these IDs that exist, at most
+// MaxPageSize, in no particular order.
+func (s *CommentService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error) {
+	if len(ids) > MaxPageSize {
+		return nil, ErrTooManyIDs
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	comments, err := s.commentRepo.GetMany(ctx, ids)
+	if err != nil {
+		return nil, errs.Wrap("s.commentRepo.GetMany", err)
+	}
+
+	return comments, nil
 }
 
 // List pages the comments of a post oldest first, as a conversation reads:

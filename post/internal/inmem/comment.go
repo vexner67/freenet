@@ -49,6 +49,24 @@ func (r *CommentRepository) Get(ctx context.Context, id uuid.UUID) (*post.Commen
 	return c, nil
 }
 
+func (r *CommentRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	var found []*post.Comment
+	for _, id := range ids {
+		if c, ok := r.s.comments[id]; ok {
+			found = append(found, c)
+		}
+	}
+
+	return found, nil
+}
+
 func (r *CommentRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)

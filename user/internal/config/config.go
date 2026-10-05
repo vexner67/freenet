@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
@@ -28,6 +29,10 @@ type Config struct {
 	DatabaseURL string `env:"DATABASE_URL"`
 	// MigrateOnStart applies pending migrations before serving.
 	MigrateOnStart bool `env:"MIGRATE_ON_START" envDefault:"true"`
+
+	// NotificationServiceAddr is optional: without it follows notify nobody.
+	NotificationServiceAddr string        `env:"NOTIFICATION_SERVICE_ADDR"`
+	NotifyTimeout           time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
 
 	// Access tokens are issued by the auth service; user only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`

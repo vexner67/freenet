@@ -19,12 +19,17 @@ const (
 	MaxFeedAuthors = 1001
 )
 
-var ErrTooManyAuthors = errors.New("too many authors")
+var (
+	ErrTooManyAuthors = errors.New("too many authors")
+	ErrTooManyIDs     = errors.New("too many ids")
+)
 
 type PostRepository interface {
 	Save(ctx context.Context, p *post.Post) error
 	// Get and Delete return post.ErrNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*post.Post, error)
+	// GetMany returns the posts that exist, in no particular order.
+	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
 	Delete(ctx context.Context, id uuid.UUID) error
 	// ListByAuthor returns up to limit posts, newest first, with IDs below
 	// before (uuid.Nil: from the newest).
@@ -55,13 +60,15 @@ type Page struct {
 type PostService struct {
 	postRepo PostRepository
 	likeRepo LikeRepository
+	notifier Notifier
 	now      func() time.Time
 }
 
-func NewPostService(postRepo PostRepository, likeRepo LikeRepository) *PostService {
+func NewPostService(postRepo PostRepository, likeRepo LikeRepository, notifier Notifier) *PostService {
 	return &PostService{
 		postRepo: postRepo,
 		likeRepo: likeRepo,
+		notifier: notifier,
 		now:      time.Now,
 	}
 }
@@ -93,6 +100,8 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 		return errs.Wrap("s.postRepo.Delete", err)
 	}
 
+	s.notifier.ForgetPost(ctx, postID)
+
 	return nil
 }
 
@@ -112,24 +121,72 @@ func (s *PostService) Get(ctx context.Context, viewerID, postID uuid.UUID) (*pos
 	return p, liked[p.ID()], nil
 }
 
-// Like is idempotent: liking twice counts once. It returns how many likes
-// the post has now.
+// GetMany returns the posts with these IDs that exist, at most
+// MaxPageSize, in no particular order.
+func (s *PostService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error) {
+	if len(ids) > MaxPageSize {
+		return nil, ErrTooManyIDs
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	posts, err := s.postRepo.GetMany(ctx, ids)
+	if err != nil {
+		return nil, errs.Wrap("s.postRepo.GetMany", err)
+	}
+
+	return posts, nil
+}
+
+// Like is idempotent: liking twice counts once, and the notification
+// service notifies the author once. It returns how many likes the post
+// has now.
 func (s *PostService) Like(ctx context.Context, userID, postID uuid.UUID) (int, error) {
+	p, err := s.postRepo.Get(ctx, postID)
+	if err != nil {
+		return 0, errs.Wrap("s.postRepo.Get", err)
+	}
+
 	likes, err := s.likeRepo.Like(ctx, postID, userID)
 	if err != nil {
 		return 0, errs.Wrap("s.likeRepo.Like", err)
+	}
+
+	if e, ok := likeEvent(p, userID); ok {
+		s.notifier.Notify(ctx, e)
 	}
 
 	return likes, nil
 }
 
 func (s *PostService) Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error) {
+	p, err := s.postRepo.Get(ctx, postID)
+	if err != nil {
+		return 0, errs.Wrap("s.postRepo.Get", err)
+	}
+
 	likes, err := s.likeRepo.Unlike(ctx, postID, userID)
 	if err != nil {
 		return 0, errs.Wrap("s.likeRepo.Unlike", err)
 	}
 
+	if e, ok := likeEvent(p, userID); ok {
+		s.notifier.Retract(ctx, e)
+	}
+
 	return likes, nil
+}
+
+// likeEvent is the like of p by userID for its author's notifications;
+// nobody is notified about liking their own post.
+func likeEvent(p *post.Post, userID uuid.UUID) (Event, bool) {
+	if p.AuthorID() == userID {
+		return Event{}, false
+	}
+
+	return Event{Kind: EventLike, RecipientID: p.AuthorID(), ActorID: userID, PostID: p.ID()}, true
 }
 
 // ListByAuthor pages a wall by keyset: cursor is the ID of the last post

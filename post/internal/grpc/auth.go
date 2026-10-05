@@ -11,8 +11,10 @@ func PublicMethods() []string {
 	return []string{
 		grpc_health_v1.Health_Check_FullMethodName,
 		postv1.PostService_GetPost_FullMethodName,
+		postv1.PostService_GetPosts_FullMethodName,
 		postv1.PostService_ListPosts_FullMethodName,
 		postv1.PostService_ListFeed_FullMethodName,
 		postv1.PostService_ListComments_FullMethodName,
+		postv1.PostService_GetComments_FullMethodName,
 	}
 }

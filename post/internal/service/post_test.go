@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 
 	"github.com/google/uuid"
@@ -11,9 +12,35 @@ import (
 	"github.com/vexner67/freenet/post/internal/service"
 )
 
+// fakeNotifier records what the services tell the notification service.
+type fakeNotifier struct {
+	mu        sync.Mutex
+	notified  []service.Event
+	retracted []service.Event
+	forgotten []uuid.UUID
+}
+
+func (f *fakeNotifier) Notify(_ context.Context, e service.Event) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.notified = append(f.notified, e)
+}
+
+func (f *fakeNotifier) Retract(_ context.Context, e service.Event) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.retracted = append(f.retracted, e)
+}
+
+func (f *fakeNotifier) ForgetPost(_ context.Context, postID uuid.UUID) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.forgotten = append(f.forgotten, postID)
+}
+
 func newPostService() *service.PostService {
 	store := inmem.NewStore()
-	return service.NewPostService(store.Posts(), store.Likes())
+	return service.NewPostService(store.Posts(), store.Likes(), &fakeNotifier{})
 }
 
 func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...string) []*post.Post {
@@ -237,5 +264,74 @@ func TestPostService_Likes(t *testing.T) {
 	}
 	if _, _, err = svc.Get(ctx, ann, uuid.New()); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("get a missing post: %v", err)
+	}
+}
+
+func TestPostService_NotifiesAboutLikes(t *testing.T) {
+	t.Parallel()
+
+	store := inmem.NewStore()
+	notifier := &fakeNotifier{}
+	svc := service.NewPostService(store.Posts(), store.Likes(), notifier)
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	p := write(t, svc, ann, "привет")[0]
+
+	for _, step := range []func(context.Context, uuid.UUID, uuid.UUID) (int, error){svc.Like, svc.Unlike} {
+		if _, err := step(ctx, bob, p.ID()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	want := service.Event{Kind: service.EventLike, RecipientID: ann, ActorID: bob, PostID: p.ID()}
+	if len(notifier.notified) != 1 || notifier.notified[0] != want {
+		t.Fatalf("notified = %+v, want %+v", notifier.notified, want)
+	}
+	if len(notifier.retracted) != 1 || notifier.retracted[0] != want {
+		t.Fatalf("retracted = %+v, want %+v", notifier.retracted, want)
+	}
+
+	// Nobody is notified about liking their own post.
+	if _, err := svc.Like(ctx, ann, p.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(notifier.notified) != 1 {
+		t.Fatalf("own like notified: %+v", notifier.notified)
+	}
+
+	if err := svc.Delete(ctx, ann, p.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(notifier.forgotten) != 1 || notifier.forgotten[0] != p.ID() {
+		t.Fatalf("forgotten = %v", notifier.forgotten)
+	}
+
+	// A failed like notifies nobody.
+	if _, err := svc.Like(ctx, bob, p.ID()); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("like a deleted post: %v", err)
+	}
+	if len(notifier.notified) != 1 {
+		t.Fatalf("notified about a failed like: %+v", notifier.notified)
+	}
+}
+
+func TestPostService_GetMany(t *testing.T) {
+	t.Parallel()
+
+	svc := newPostService()
+	ctx := context.Background()
+	posts := write(t, svc, uuid.New(), "раз", "два")
+
+	got, err := svc.GetMany(ctx, []uuid.UUID{posts[0].ID(), uuid.New(), posts[1].ID()})
+	if err != nil || len(got) != 2 {
+		t.Fatalf("GetMany = %v, %v; missing posts are left out", got, err)
+	}
+
+	if got, err = svc.GetMany(ctx, nil); err != nil || len(got) != 0 {
+		t.Fatalf("no ids: %v, %v", got, err)
+	}
+
+	if _, err = svc.GetMany(ctx, make([]uuid.UUID, service.MaxPageSize+1)); !errors.Is(err, service.ErrTooManyIDs) {
+		t.Fatalf("too many ids: %v", err)
 	}
 }

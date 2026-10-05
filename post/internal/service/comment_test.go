@@ -14,14 +14,17 @@ import (
 type commentFixture struct {
 	posts    *service.PostService
 	comments *service.CommentService
+	notifier *fakeNotifier
 }
 
 func newCommentFixture() commentFixture {
 	store := inmem.NewStore()
+	notifier := &fakeNotifier{}
 
 	return commentFixture{
-		posts:    service.NewPostService(store.Posts(), store.Likes()),
-		comments: service.NewCommentService(store.Posts(), store.Comments()),
+		posts:    service.NewPostService(store.Posts(), store.Likes(), notifier),
+		comments: service.NewCommentService(store.Posts(), store.Comments(), notifier),
+		notifier: notifier,
 	}
 }
 
@@ -182,5 +185,48 @@ func TestDeletePostRemovesLikesAndComments(t *testing.T) {
 	}
 	if _, err := f.posts.Like(ctx, bob, p.ID()); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("like a deleted post: %v", err)
+	}
+}
+
+func TestCommentService_Notifies(t *testing.T) {
+	t.Parallel()
+
+	f := newCommentFixture()
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	p := write(t, f.posts, ann, "привет")[0]
+
+	theirs := f.comment(t, bob, p.ID(), "и тебе")[0]
+	f.comment(t, ann, p.ID(), "спасибо") // nobody is notified about their own post
+
+	want := service.Event{Kind: service.EventComment, RecipientID: ann, ActorID: bob, PostID: p.ID(), CommentID: theirs.ID()}
+	if len(f.notifier.notified) != 1 || f.notifier.notified[0] != want {
+		t.Fatalf("notified = %+v, want %+v", f.notifier.notified, want)
+	}
+
+	// Deleted by the author of the post, the comment is taken back all the same.
+	if err := f.comments.Delete(ctx, ann, theirs.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.notifier.retracted) != 1 || f.notifier.retracted[0] != want {
+		t.Fatalf("retracted = %+v, want %+v", f.notifier.retracted, want)
+	}
+}
+
+func TestCommentService_GetMany(t *testing.T) {
+	t.Parallel()
+
+	f := newCommentFixture()
+	ctx := context.Background()
+	p := write(t, f.posts, uuid.New(), "привет")[0]
+	comments := f.comment(t, uuid.New(), p.ID(), "раз", "два")
+
+	got, err := f.comments.GetMany(ctx, []uuid.UUID{comments[1].ID(), uuid.New()})
+	if err != nil || len(got) != 1 || got[0].ID() != comments[1].ID() {
+		t.Fatalf("GetMany = %v, %v", got, err)
+	}
+
+	if _, err = f.comments.GetMany(ctx, make([]uuid.UUID, service.MaxPageSize+1)); !errors.Is(err, service.ErrTooManyIDs) {
+		t.Fatalf("too many ids: %v", err)
 	}
 }

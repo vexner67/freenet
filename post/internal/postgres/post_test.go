@@ -63,6 +63,11 @@ func TestPostRepository(t *testing.T) {
 		t.Fatalf("round trip: got %+v, want %+v", got, saved[0])
 	}
 
+	many, err := repo.GetMany(ctx, []uuid.UUID{saved[2].ID(), uuid.New(), saved[0].ID()})
+	if err != nil || len(many) != 2 {
+		t.Fatalf("GetMany = %v, %v", many, err)
+	}
+
 	page, err := repo.ListByAuthor(ctx, author, uuid.Nil, 2)
 	if err != nil {
 		t.Fatal(err)
