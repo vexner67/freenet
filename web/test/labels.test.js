@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink } from '../static/labels.js';
+import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -60,4 +60,22 @@ test('comments link counts, or invites to comment', () => {
   assert.equal(commentsLink(0), 'Комментировать');
   assert.equal(commentsLink(2), 'Комментарии (2)');
   assert.equal(errorText(new Error('fill in your profile before commenting')), 'Сначала заполните свою страницу.');
+});
+
+test('notification verbs agree with the gender of who did it', () => {
+  assert.equal(notificationVerb('like', 'female'), 'оценила');
+  assert.equal(notificationVerb('comment', 'male'), 'оставил');
+  assert.equal(notificationVerb('follow', ''), 'подписался(-ась)');
+});
+
+test('unread counter', () => {
+  assert.equal(unreadCountText(0), '');
+  assert.equal(unreadCountText(7), '7');
+  assert.equal(unreadCountText(100), '99+');
+});
+
+test('snippet cuts long quotes, by characters', () => {
+  assert.equal(snippet('коротко', 10), 'коротко');
+  assert.equal(snippet('раз два три', 7), 'раз два…');
+  assert.equal(snippet('👋👋👋', 2), '👋👋…');
 });

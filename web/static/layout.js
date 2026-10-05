@@ -2,7 +2,7 @@
 // User data is only ever set with textContent, never as HTML.
 
 import { api } from './api.js';
-import { errorText } from './labels.js';
+import { errorText, unreadCountText } from './labels.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -37,10 +37,13 @@ export function renderChrome(me) {
     menu?.replaceChildren(
       el('a', { href: profilePath(me), textContent: 'Моя Страница' }),
       el('a', { href: '/feed', textContent: 'Мои Новости' }),
+      el('a', { href: '/notifications', textContent: 'Мои Ответы' },
+        el('span', { className: 'counter', id: 'unread-count', hidden: true })),
       el('a', { href: '/search', textContent: 'Люди' }),
       el('a', { href: '/edit', textContent: 'Редактировать' }),
       el('a', { href: '/', textContent: 'Выйти', onclick: logout }),
     );
+    showUnreadCount();
   } else {
     links.replaceChildren(
       el('a', { href: '/', textContent: 'вход' }),
@@ -52,6 +55,34 @@ export function renderChrome(me) {
       el('a', { href: '/search', textContent: 'Люди' }),
     );
   }
+}
+
+// counterVersion grows with every change of the counter, so an answer
+// that left before the change (the notifications page reading them all)
+// does not put the old number back.
+let counterVersion = 0;
+
+// showUnreadCount fills the counter next to "Мои Ответы", as on openvk.
+// The counter is a nicety: a failure leaves it empty.
+export async function showUnreadCount() {
+  const version = counterVersion;
+
+  try {
+    const { count } = await api.unreadCount();
+    if (version === counterVersion) setUnreadCount(count);
+  } catch {
+    // The page works without it.
+  }
+}
+
+export function setUnreadCount(n) {
+  counterVersion++;
+
+  const counter = $('unread-count');
+  if (!counter) return;
+
+  counter.textContent = unreadCountText(n);
+  counter.hidden = n <= 0;
 }
 
 // avatarURL is the photo of a user, author or profile, or the placeholder.
