@@ -1,0 +1,213 @@
+package backend
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	authv1 "github.com/vexner67/freenet/auth/api/auth/v1"
+	"github.com/vexner67/freenet/gateway/internal/failure"
+	"github.com/vexner67/freenet/gateway/internal/model"
+	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	userv1 "github.com/vexner67/freenet/user/api/user/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/metadata"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+)
+
+func TestFromStatus(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		err     error
+		kind    failure.Kind
+		message string
+	}{
+		{"service message passes", status.Error(codes.AlreadyExists, "nickname is already taken"), failure.Conflict, "nickname is already taken"},
+		{"rate limit", status.Error(codes.ResourceExhausted, "too many requests, try again later"), failure.TooManyRequests, "too many requests, try again later"},
+		{"transport errors carry addresses", status.Error(codes.Unavailable, "connection error: desc = dial tcp 10.0.0.5:50051"), failure.Unavailable, "service temporarily unavailable"},
+		{"internal stays internal", status.Error(codes.Internal, "internal error"), failure.Internal, "internal error"},
+		{"not a status", errors.New("boom"), failure.Internal, "internal error"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got := failure.From(fromStatus(tt.err))
+			if got.Kind != tt.kind || got.Message != tt.message {
+				t.Fatalf("got %v %q, want %v %q", got.Kind, got.Message, tt.kind, tt.message)
+			}
+		})
+	}
+}
+
+func TestEnums(t *testing.T) {
+	t.Parallel()
+
+	if got := enumName(userv1.Relationship_RELATIONSHIP_IN_LOVE.String(), relationshipPrefix); got != "in_love" {
+		t.Fatalf("enumName = %q", got)
+	}
+	if got := enumName(userv1.Gender_GENDER_NONE.String(), genderPrefix); got != "" {
+		t.Fatalf("not set must be empty, got %q", got)
+	}
+
+	req, err := toUpdateProfileRequest(model.Profile{
+		Name: "Ann", Nickname: "ann", Gender: "female", PoliticalViews: "secular_humanism",
+	})
+	if err == nil {
+		t.Fatalf("secular_humanism is a worldview, not political views: %v", req)
+	}
+
+	req, err = toUpdateProfileRequest(model.Profile{
+		Name: "Ann", Nickname: "ann", Gender: "female", Worldview: "secular_humanism",
+		Birthday: time.Date(1990, 5, 17, 0, 0, 0, 0, time.UTC),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if req.GetGender() != userv1.Gender_GENDER_FEMALE || req.GetWorldview() != userv1.Worldview_WORLDVIEW_SECULAR_HUMANISM ||
+		req.GetRelationship() != userv1.Relationship_RELATIONSHIP_NONE || req.GetBirthday().AsTime().Year() != 1990 {
+		t.Fatalf("request: %v", req)
+	}
+
+	for _, bad := range []string{"Female", "none", "NONE", "robot"} {
+		_, err = toUpdateProfileRequest(model.Profile{Gender: bad})
+		if failure.From(err).Kind != failure.InvalidArgument {
+			t.Fatalf("gender %q: got %v, want InvalidArgument", bad, err)
+		}
+	}
+}
+
+type fakeAuthAPI struct {
+	authv1.AuthServiceClient
+	md metadata.MD
+}
+
+func (f *fakeAuthAPI) RequestCode(ctx context.Context, _ *authv1.RequestCodeRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &emptypb.Empty{}, nil
+}
+
+type fakeUserAPI struct {
+	userv1.UserServiceClient
+	md metadata.MD
+}
+
+func (f *fakeUserAPI) GetFollowStats(ctx context.Context, _ *userv1.GetFollowStatsRequest, _ ...grpc.CallOption) (*userv1.GetFollowStatsResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &userv1.GetFollowStatsResponse{FollowersCount: 2, FollowingCount: 1, IsFollowing: len(f.md.Get("authorization")) == 1}, nil
+}
+
+func (f *fakeUserAPI) GetMe(ctx context.Context, _ *userv1.GetMeRequest, _ ...grpc.CallOption) (*userv1.GetMeResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &userv1.GetMeResponse{User: &userv1.User{
+		Id: "u1", Nickname: "ann", Gender: userv1.Gender_GENDER_FEMALE,
+		Birthday: timestamppb.New(time.Date(1990, 5, 17, 0, 0, 0, 0, time.UTC)),
+		Privacy:  &userv1.PrivacySettings{ShowBirthday: true},
+	}}, nil
+}
+
+func TestMetadata(t *testing.T) {
+	t.Parallel()
+
+	authAPI := &fakeAuthAPI{}
+	if err := NewAuth(authAPI).RequestCode(context.Background(), "ann@example.com", "198.51.100.7"); err != nil {
+		t.Fatal(err)
+	}
+	if got := authAPI.md.Get(authv1.ClientIPMetadata); len(got) != 1 || got[0] != "198.51.100.7" {
+		t.Fatalf("client ip metadata = %v", got)
+	}
+
+	userAPI := &fakeUserAPI{}
+	u, err := NewUsers(userAPI).GetMe(context.Background(), "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := userAPI.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
+		t.Fatalf("authorization metadata = %v", got)
+	}
+	if u.Profile.Gender != "female" || u.Profile.Birthday.Year() != 1990 || !u.Privacy.ShowBirthday {
+		t.Fatalf("user: %+v", u)
+	}
+}
+
+type fakePostAPI struct {
+	postv1.PostServiceClient
+	md  metadata.MD
+	req *postv1.ListPostsRequest
+}
+
+func (f *fakePostAPI) CreatePost(ctx context.Context, req *postv1.CreatePostRequest, _ ...grpc.CallOption) (*postv1.CreatePostResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &postv1.CreatePostResponse{Post: &postv1.Post{
+		Id: "p1", AuthorId: "u1", Text: req.GetText(),
+		CreatedAt: timestamppb.New(time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)),
+	}}, nil
+}
+
+func (f *fakePostAPI) ListPosts(_ context.Context, req *postv1.ListPostsRequest, _ ...grpc.CallOption) (*postv1.ListPostsResponse, error) {
+	f.req = req
+	return &postv1.ListPostsResponse{
+		Posts:      []*postv1.Post{{Id: "p1", AuthorId: "u1", Text: "привет", CreatedAt: timestamppb.Now()}},
+		NextCursor: "p1",
+		Total:      3,
+	}, nil
+}
+
+func TestPosts(t *testing.T) {
+	t.Parallel()
+
+	api := &fakePostAPI{}
+	posts := NewPosts(api)
+
+	p, err := posts.Create(context.Background(), "tok", "привет")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
+		t.Fatalf("authorization metadata = %v", got)
+	}
+	if p.ID != "p1" || p.Author.ID != "u1" || p.Text != "привет" || p.CreatedAt.Hour() != 15 {
+		t.Fatalf("post = %+v", p)
+	}
+
+	page, err := posts.List(context.Background(), "u1", "p9", 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if api.req.GetAuthorId() != "u1" || api.req.GetCursor() != "p9" || api.req.GetLimit() != 1<<10 {
+		t.Fatalf("request = %v", api.req)
+	}
+	if page.Total != 3 || page.NextCursor != "p1" || len(page.Posts) != 1 {
+		t.Fatalf("page = %+v", page)
+	}
+}
+
+func TestFollowStatsToken(t *testing.T) {
+	t.Parallel()
+
+	api := &fakeUserAPI{}
+	users := NewUsers(api)
+
+	stats, err := users.FollowStats(context.Background(), "", "u1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(api.md.Get("authorization")) != 0 || stats.IsFollowing || stats.Followers != 2 {
+		t.Fatalf("anonymous: md %v, stats %+v", api.md, stats)
+	}
+
+	stats, err = users.FollowStats(context.Background(), "tok", "u1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" || !stats.IsFollowing {
+		t.Fatalf("signed in: md %v, stats %+v", got, stats)
+	}
+}
