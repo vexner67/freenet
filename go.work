@@ -10,5 +10,6 @@ use (
 	./pkg/logger
 	./pkg/mtls
 	./pkg/pgpool
+	./post
 	./user
 )
