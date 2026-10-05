@@ -48,7 +48,12 @@ func newServer(t *testing.T) testServer {
 		postgrpc.ErrorInterceptor(log),
 		jwtauth.UnaryServerInterceptor(jwtauth.NewVerifier(&key.PublicKey, issuer), postgrpc.PublicMethods()...),
 	))
-	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(service.NewPostService(inmem.NewPostRepository()), log))
+	store := inmem.NewStore()
+	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(
+		service.NewPostService(store.Posts(), store.Likes()),
+		service.NewCommentService(store.Posts(), store.Comments()),
+		log,
+	))
 
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
@@ -190,6 +195,58 @@ func TestErrors(t *testing.T) {
 		}, codes.InvalidArgument},
 		{"bad post id", func() error {
 			_, err := s.client.DeletePost(ann, &postv1.DeletePostRequest{Id: "x"})
+			return err
+		}, codes.InvalidArgument},
+		{"get a missing post", func() error {
+			_, err := s.client.GetPost(context.Background(), &postv1.GetPostRequest{Id: uuid.NewString()})
+			return err
+		}, codes.NotFound},
+		{"like without token", func() error {
+			_, err := s.client.LikePost(context.Background(), &postv1.LikePostRequest{PostId: uuid.NewString()})
+			return err
+		}, codes.Unauthenticated},
+		{"like a bad post id", func() error {
+			_, err := s.client.LikePost(ann, &postv1.LikePostRequest{PostId: "x"})
+			return err
+		}, codes.InvalidArgument},
+		{"like a missing post", func() error {
+			_, err := s.client.LikePost(ann, &postv1.LikePostRequest{PostId: uuid.NewString()})
+			return err
+		}, codes.NotFound},
+		{"unlike without token", func() error {
+			_, err := s.client.UnlikePost(context.Background(), &postv1.UnlikePostRequest{PostId: uuid.NewString()})
+			return err
+		}, codes.Unauthenticated},
+		{"comment without token", func() error {
+			_, err := s.client.CreateComment(context.Background(), &postv1.CreateCommentRequest{PostId: uuid.NewString(), Text: "x"})
+			return err
+		}, codes.Unauthenticated},
+		{"empty comment", func() error {
+			_, err := s.client.CreateComment(ann, &postv1.CreateCommentRequest{PostId: uuid.NewString(), Text: " "})
+			return err
+		}, codes.InvalidArgument},
+		{"too long comment", func() error {
+			_, err := s.client.CreateComment(ann, &postv1.CreateCommentRequest{PostId: uuid.NewString(), Text: strings.Repeat("я", 1001)})
+			return err
+		}, codes.InvalidArgument},
+		{"comment a missing post", func() error {
+			_, err := s.client.CreateComment(ann, &postv1.CreateCommentRequest{PostId: uuid.NewString(), Text: "x"})
+			return err
+		}, codes.NotFound},
+		{"delete a missing comment", func() error {
+			_, err := s.client.DeleteComment(ann, &postv1.DeleteCommentRequest{Id: uuid.NewString()})
+			return err
+		}, codes.NotFound},
+		{"delete a bad comment id", func() error {
+			_, err := s.client.DeleteComment(ann, &postv1.DeleteCommentRequest{Id: "x"})
+			return err
+		}, codes.InvalidArgument},
+		{"comments of a missing post", func() error {
+			_, err := s.client.ListComments(context.Background(), &postv1.ListCommentsRequest{PostId: uuid.NewString()})
+			return err
+		}, codes.NotFound},
+		{"comments with a bad cursor", func() error {
+			_, err := s.client.ListComments(context.Background(), &postv1.ListCommentsRequest{PostId: uuid.NewString(), Cursor: "x"})
 			return err
 		}, codes.InvalidArgument},
 	}

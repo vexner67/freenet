@@ -12,17 +12,45 @@ service PostService {
   rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
   rpc DeletePost(DeletePostRequest) returns (google.protobuf.Empty);
 
+  // Public: one post.
+  rpc GetPost(GetPostRequest) returns (GetPostResponse);
   // Public: a user's wall, newest first.
   rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
   // Public: the posts of several authors, newest first, for a news feed.
   rpc ListFeed(ListFeedRequest) returns (ListFeedResponse);
+
+  // Require an access token; the caller likes the post. Both are
+  // idempotent and return how many likes the post has now.
+  rpc LikePost(LikePostRequest) returns (LikePostResponse);
+  rpc UnlikePost(UnlikePostRequest) returns (UnlikePostResponse);
+
+  // Require an access token; the author is the caller. A comment is
+  // deleted by its author or by the author of the post.
+  rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
+  rpc DeleteComment(DeleteCommentRequest) returns (google.protobuf.Empty);
+  // Public: the comments of a post, oldest first.
+  rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
 }
 
+// Public methods that return posts fill liked when the caller sends an
+// access token.
 message Post {
   string id = 1;
   string author_id = 2;
   string text = 3;
   google.protobuf.Timestamp created_at = 4;
+  int32 like_count = 5;
+  int32 comment_count = 6;
+  // The caller likes the post; false without an access token.
+  bool liked = 7;
+}
+
+message Comment {
+  string id = 1;
+  string post_id = 2;
+  string author_id = 3;
+  string text = 4;
+  google.protobuf.Timestamp created_at = 5;
 }
 
 message CreatePostRequest {
@@ -35,6 +63,14 @@ message CreatePostResponse {
 
 message DeletePostRequest {
   string id = 1;
+}
+
+message GetPostRequest {
+  string id = 1;
+}
+
+message GetPostResponse {
+  Post post = 1;
 }
 
 message ListPostsRequest {
@@ -66,4 +102,49 @@ message ListFeedResponse {
   repeated Post posts = 1;
   // Empty on the last page.
   string next_cursor = 2;
+}
+
+message LikePostRequest {
+  string post_id = 1;
+}
+
+message LikePostResponse {
+  int32 like_count = 1;
+}
+
+message UnlikePostRequest {
+  string post_id = 1;
+}
+
+message UnlikePostResponse {
+  int32 like_count = 1;
+}
+
+message CreateCommentRequest {
+  string post_id = 1;
+  string text = 2;
+}
+
+message CreateCommentResponse {
+  Comment comment = 1;
+}
+
+message DeleteCommentRequest {
+  string id = 1;
+}
+
+message ListCommentsRequest {
+  string post_id = 1;
+  // Empty for the first comments, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message ListCommentsResponse {
+  repeated Comment comments = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // All comments of the post, for "Комментарии (N)".
+  int32 total = 3;
 }
