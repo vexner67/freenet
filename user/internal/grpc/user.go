@@ -4,6 +4,8 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/google/uuid"
+	"github.com/vexner67/freenet/pkg/jwtauth"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
@@ -12,100 +14,176 @@ import (
 )
 
 type UserService interface {
-	Create(ctx context.Context, input service.CreateUserInput) (*user.User, error)
+	GetOrCreateByEmail(ctx context.Context, email user.Email) (uuid.UUID, error)
+	GetByID(ctx context.Context, id uuid.UUID) (*user.User, error)
+	GetPublicProfile(ctx context.Context, nickname user.Nickname) (user.PublicProfile, error)
+	UpdateProfile(ctx context.Context, id uuid.UUID, profile user.Profile) (*user.User, error)
+	UpdatePrivacy(ctx context.Context, id uuid.UUID, privacy user.Privacy) (*user.User, error)
+	GetPublicProfiles(ctx context.Context, ids []uuid.UUID) ([]user.PublicProfile, error)
+	SetAvatar(ctx context.Context, id, avatarID uuid.UUID) (*user.User, error)
+	Search(ctx context.Context, q user.SearchQuery, cursor uuid.UUID, size int) (service.SearchPage, error)
 }
 
 type UserHandler struct {
 	userv1.UnimplementedUserServiceServer
-	userService UserService
-	logger      *slog.Logger
+	userService   UserService
+	followService FollowService
+	logger        *slog.Logger
 }
 
-func NewUserHandler(userService UserService, logger *slog.Logger) *UserHandler {
+func NewUserHandler(userService UserService, followService FollowService, logger *slog.Logger) *UserHandler {
 	return &UserHandler{
-		userService: userService,
-		logger:      logger,
+		userService:   userService,
+		followService: followService,
+		logger:        logger,
 	}
 }
 
-func (h *UserHandler) Create(ctx context.Context, req *userv1.CreateRequest) (*userv1.User, error) {
-	name, err := user.NewName(req.GetName())
+func (h *UserHandler) GetOrCreateByEmail(
+	ctx context.Context,
+	req *userv1.GetOrCreateByEmailRequest,
+) (*userv1.GetOrCreateByEmailResponse, error) {
+	email, err := user.NewEmail(req.GetEmail())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	surname, err := user.NewSurname(req.Surname)
+	id, err := h.userService.GetOrCreateByEmail(ctx, email)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetOrCreateByEmailResponse{UserId: id.String()}, nil
+}
+
+func (h *UserHandler) GetMe(ctx context.Context, _ *userv1.GetMeRequest) (*userv1.GetMeResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := h.userService.GetByID(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetMeResponse{User: toProtoUser(u)}, nil
+}
+
+func (h *UserHandler) UpdateProfile(
+	ctx context.Context,
+	req *userv1.UpdateProfileRequest,
+) (*userv1.UpdateProfileResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	profile, err := fromProtoProfile(req)
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	nickname, err := user.NewNickname(req.Nickname)
+	u, err := h.userService.UpdateProfile(ctx, userID, profile)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.UpdateProfileResponse{User: toProtoUser(u)}, nil
+}
+
+func (h *UserHandler) UpdatePrivacy(
+	ctx context.Context,
+	req *userv1.UpdatePrivacyRequest,
+) (*userv1.UpdatePrivacyResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	u, err := h.userService.UpdatePrivacy(ctx, userID, fromProtoPrivacy(req.GetPrivacy()))
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.UpdatePrivacyResponse{User: toProtoUser(u)}, nil
+}
+
+func (h *UserHandler) GetProfile(
+	ctx context.Context,
+	req *userv1.GetProfileRequest,
+) (*userv1.GetProfileResponse, error) {
+	nickname, err := user.NewNickname(req.GetNickname())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	st, err := user.NewStatus(req.Status)
+	profile, err := h.userService.GetPublicProfile(ctx, nickname)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetProfileResponse{Profile: toProtoPublicProfile(profile)}, nil
+}
+
+// currentUserID is the caller's ID from the access token verified by
+// jwtauth.UnaryServerInterceptor; never trust an ID from the request body.
+func currentUserID(ctx context.Context) (uuid.UUID, error) {
+	identity, ok := jwtauth.IdentityFromContext(ctx)
+	if !ok {
+		return uuid.Nil, status.Error(codes.Unauthenticated, "missing access token")
+	}
+
+	return identity.UserID, nil
+}
+
+func (h *UserHandler) SetAvatar(ctx context.Context, req *userv1.SetAvatarRequest) (*userv1.SetAvatarResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	var avatarID uuid.UUID
+	if req.GetAvatarId() != "" {
+		if avatarID, err = parseID(req.GetAvatarId(), "avatar id"); err != nil {
+			return nil, err
+		}
+	}
+
+	u, err := h.userService.SetAvatar(ctx, userID, avatarID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.SetAvatarResponse{User: toProtoUser(u)}, nil
+}
+
+func (h *UserHandler) SearchUsers(ctx context.Context, req *userv1.SearchUsersRequest) (*userv1.SearchUsersResponse, error) {
+	q, err := user.NewSearchQuery(req.GetQuery())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	gender, err := user.NewGender(
-		fromProtoGender(req.Gender),
-	)
+	var cursor uuid.UUID
+	if req.GetCursor() != "" {
+		if cursor, err = parseID(req.GetCursor(), "cursor"); err != nil {
+			return nil, err
+		}
+	}
+
+	page, err := h.userService.Search(ctx, q, cursor, int(req.GetLimit()))
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
-	relationship, err := user.NewRelationship(
-		fromProtoRelationship(req.Relationship),
-	)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	resp := &userv1.SearchUsersResponse{Users: make([]*userv1.PublicProfile, 0, len(page.Users))}
+	for _, p := range page.Users {
+		resp.Users = append(resp.Users, toProtoPublicProfile(p))
 	}
 
-	worldview, err := user.NewWorldview(
-		fromProtoWorldview(req.Worldview),
-	)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+	if page.NextCursor != uuid.Nil {
+		resp.NextCursor = page.NextCursor.String()
 	}
 
-	politicalViews, err := user.NewPoliticalViews(
-		fromProtoPoliticalViews(req.PoliticalViews),
-	)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	birthday, err := user.NewBirthday(
-		fromProtoBirthday(req.Birthday),
-	)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	email, err := user.NewEmail(req.Email)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	input := service.CreateUserInput{
-		Name:           name,
-		Surname:        surname,
-		Nickname:       nickname,
-		Status:         st,
-		Gender:         gender,
-		Relationship:   relationship,
-		Worldview:      worldview,
-		PoliticalViews: politicalViews,
-		Birthday:       birthday,
-		Email:          email,
-	}
-
-	u, err := h.userService.Create(ctx, input)
-	if err != nil {
-		return nil, status.Error(codes.Internal, err.Error())
-	}
-
-	return toProtoUser(u), nil
+	return resp, nil
 }

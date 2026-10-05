@@ -4,29 +4,34 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
-	"net"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/grpcserver"
+	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/logger"
+	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/pgpool"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"github.com/vexner67/freenet/user/internal/config"
 	usergrpc "github.com/vexner67/freenet/user/internal/grpc"
 	"github.com/vexner67/freenet/user/internal/inmem"
 	"github.com/vexner67/freenet/user/internal/postgres"
 	"github.com/vexner67/freenet/user/internal/service"
+	"github.com/vexner67/freenet/user/migrations"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/health"
-	"google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/reflection"
+)
+
+const (
+	connectTimeout = 5 * time.Second
+	migrateTimeout = time.Minute
 )
 
 type App struct {
 	logger *slog.Logger
 	pool   *pgxpool.Pool
-	server *grpc.Server
-	health *health.Server
+	server *grpcserver.Server
 	addr   string
 }
 
@@ -39,79 +44,118 @@ func New(cfg config.Config) (*App, error) {
 		return nil, errs.Wrap("logger.New", err)
 	}
 
-	dbCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-
-	pool, err := postgres.New(dbCtx, cfg.DatabaseURL)
-	if err != nil {
-		return nil, errs.Wrap("postgres.New", err)
+	a := &App{
+		logger: log,
+		addr:   fmt.Sprintf(":%d", cfg.GRPCPort),
 	}
 
-	userRepo := inmem.NewUserRepository()
-	userService := service.NewUserService(userRepo)
-	userHandler := usergrpc.NewUserHandler(userService, log)
+	// On failure Close releases whatever was opened before it.
+	if err = a.build(cfg); err != nil {
+		a.Close()
+		return nil, errs.Wrap("a.build", err)
+	}
 
-	server := grpc.NewServer()
-	userv1.RegisterUserServiceServer(server, userHandler)
+	return a, nil
+}
 
-	healthServer := health.NewServer()
-	grpc_health_v1.RegisterHealthServer(server, healthServer)
-	reflection.Register(server)
+func (a *App) build(cfg config.Config) error {
+	store, err := a.newStorage(cfg)
+	if err != nil {
+		return errs.Wrap("a.newStorage", err)
+	}
 
-	return &App{
-		logger: log,
-		pool:   pool,
-		server: server,
-		health: healthServer,
-		addr:   fmt.Sprintf(":%d", cfg.GRPCPort),
+	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
+	if err != nil {
+		return errs.Wrap("jwtauth.LoadPublicKey", err)
+	}
+
+	creds, err := mtls.ServerCredentials(cfg.TLS)
+	if err != nil {
+		return errs.Wrap("mtls.ServerCredentials", err)
+	}
+
+	interceptors := []grpc.UnaryServerInterceptor{usergrpc.ErrorInterceptor(a.logger)}
+
+	if cfg.TLS.Enabled() {
+		interceptors = append(interceptors, mtls.RestrictMethods(usergrpc.InternalMethods()))
+	} else {
+		a.logger.Warn("mTLS is off: internal RPCs are open to anyone who can connect, do not use in production")
+	}
+
+	interceptors = append(interceptors, jwtauth.UnaryServerInterceptor(
+		jwtauth.NewVerifier(publicKey, cfg.JWTIssuer),
+		usergrpc.PublicMethods()...,
+	))
+
+	a.server = grpcserver.New(a.logger, grpc.Creds(creds), grpc.ChainUnaryInterceptor(interceptors...))
+	userv1.RegisterUserServiceServer(
+		a.server.Registrar(),
+		usergrpc.NewUserHandler(
+			service.NewUserService(store.users),
+			service.NewFollowService(store.users, store.follows, store.follows),
+			a.logger,
+		),
+	)
+
+	a.logger.Info("user configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
+
+	return nil
+}
+
+// storage is the set of repositories chosen by STORAGE.
+type storage struct {
+	users   service.UserRepository
+	follows interface {
+		service.FollowRepository
+		service.FollowListRepository
+	}
+}
+
+func (a *App) newStorage(cfg config.Config) (storage, error) {
+	if cfg.Storage == config.StorageInmem {
+		users := inmem.NewUserRepository()
+		return storage{users: users, follows: inmem.NewFollowRepository(users)}, nil
+	}
+
+	if cfg.MigrateOnStart {
+		ctx, cancel := context.WithTimeout(context.Background(), migrateTimeout)
+		defer cancel()
+
+		applied, err := pgpool.Migrate(ctx, cfg.DatabaseURL, migrations.FS)
+		if err != nil {
+			return storage{}, errs.Wrap("pgpool.Migrate", err)
+		}
+
+		a.logger.Info("migrations applied", "count", applied)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
+	defer cancel()
+
+	var err error
+
+	a.pool, err = pgpool.New(ctx, cfg.DatabaseURL)
+	if err != nil {
+		return storage{}, errs.Wrap("pgpool.New", err)
+	}
+
+	return storage{
+		users:   postgres.NewUserRepository(a.pool),
+		follows: postgres.NewFollowRepository(a.pool),
 	}, nil
 }
 
 func (a *App) Run(ctx context.Context) error {
-	lis, err := net.Listen("tcp", a.addr)
-	if err != nil {
-		return errs.Wrap("net.Listen", err)
-	}
-	defer func() {
-		if err = lis.Close(); err != nil {
-			a.logger.Error("listener close", "error", err)
-		}
-	}()
-
-	a.health.SetServingStatus(
-		"",
-		grpc_health_v1.HealthCheckResponse_SERVING,
-	)
-
-	serveErr := make(chan error, 1)
-	go func() {
-		serveErr <- a.server.Serve(lis)
-	}()
-
-	a.logger.Info("user gRPC server started", "address", a.addr)
-
-	select {
-	case err = <-serveErr:
-		if err != nil {
-			return errs.Wrap("a.server.Serve", err)
-		}
-		return nil
-	case <-ctx.Done():
-		a.logger.Info("stopping user gRPC server")
+	if err := a.server.Run(ctx, a.addr); err != nil {
+		return errs.Wrap("a.server.Run", err)
 	}
 
-	a.health.Shutdown()
-
-	timer := time.AfterFunc(5*time.Second, a.server.Stop)
-	defer timer.Stop()
-
-	a.server.GracefulStop()
-	<-serveErr
-
-	a.logger.Info("user gRPC server stopped")
 	return nil
 }
 
+// Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
-	a.pool.Close()
+	if a.pool != nil {
+		a.pool.Close()
+	}
 }

@@ -9,6 +9,7 @@ package userv1
 import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
+	emptypb "google.golang.org/protobuf/types/known/emptypb"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
@@ -279,8 +280,13 @@ type User struct {
 	PoliticalViews PoliticalViews         `protobuf:"varint,9,opt,name=political_views,json=politicalViews,proto3,enum=user.v1.PoliticalViews" json:"political_views,omitempty"`
 	Birthday       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=birthday,proto3" json:"birthday,omitempty"`
 	Email          string                 `protobuf:"bytes,11,opt,name=email,proto3" json:"email,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// False right after the first sign-in, until UpdateProfile succeeds.
+	ProfileCompleted bool             `protobuf:"varint,12,opt,name=profile_completed,json=profileCompleted,proto3" json:"profile_completed,omitempty"`
+	Privacy          *PrivacySettings `protobuf:"bytes,13,opt,name=privacy,proto3" json:"privacy,omitempty"`
+	// Empty without a photo.
+	AvatarId      string `protobuf:"bytes,14,opt,name=avatar_id,json=avatarId,proto3" json:"avatar_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *User) Reset() {
@@ -390,36 +396,53 @@ func (x *User) GetEmail() string {
 	return ""
 }
 
-type CreateRequest struct {
-	state          protoimpl.MessageState `protogen:"open.v1"`
-	Name           string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
-	Surname        string                 `protobuf:"bytes,3,opt,name=surname,proto3" json:"surname,omitempty"`
-	Nickname       string                 `protobuf:"bytes,4,opt,name=nickname,proto3" json:"nickname,omitempty"`
-	Status         string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
-	Gender         Gender                 `protobuf:"varint,6,opt,name=gender,proto3,enum=user.v1.Gender" json:"gender,omitempty"`
-	Relationship   Relationship           `protobuf:"varint,7,opt,name=relationship,proto3,enum=user.v1.Relationship" json:"relationship,omitempty"`
-	Worldview      Worldview              `protobuf:"varint,8,opt,name=worldview,proto3,enum=user.v1.Worldview" json:"worldview,omitempty"`
-	PoliticalViews PoliticalViews         `protobuf:"varint,9,opt,name=political_views,json=politicalViews,proto3,enum=user.v1.PoliticalViews" json:"political_views,omitempty"`
-	Birthday       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=birthday,proto3" json:"birthday,omitempty"`
-	Email          string                 `protobuf:"bytes,11,opt,name=email,proto3" json:"email,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+func (x *User) GetProfileCompleted() bool {
+	if x != nil {
+		return x.ProfileCompleted
+	}
+	return false
 }
 
-func (x *CreateRequest) Reset() {
-	*x = CreateRequest{}
+func (x *User) GetPrivacy() *PrivacySettings {
+	if x != nil {
+		return x.Privacy
+	}
+	return nil
+}
+
+func (x *User) GetAvatarId() string {
+	if x != nil {
+		return x.AvatarId
+	}
+	return ""
+}
+
+// Which sensitive fields other users see in PublicProfile; all false
+// (hidden) by default.
+type PrivacySettings struct {
+	state              protoimpl.MessageState `protogen:"open.v1"`
+	ShowBirthday       bool                   `protobuf:"varint,1,opt,name=show_birthday,json=showBirthday,proto3" json:"show_birthday,omitempty"`
+	ShowRelationship   bool                   `protobuf:"varint,2,opt,name=show_relationship,json=showRelationship,proto3" json:"show_relationship,omitempty"`
+	ShowWorldview      bool                   `protobuf:"varint,3,opt,name=show_worldview,json=showWorldview,proto3" json:"show_worldview,omitempty"`
+	ShowPoliticalViews bool                   `protobuf:"varint,4,opt,name=show_political_views,json=showPoliticalViews,proto3" json:"show_political_views,omitempty"`
+	unknownFields      protoimpl.UnknownFields
+	sizeCache          protoimpl.SizeCache
+}
+
+func (x *PrivacySettings) Reset() {
+	*x = PrivacySettings{}
 	mi := &file_api_user_v1_user_proto_msgTypes[1]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *CreateRequest) String() string {
+func (x *PrivacySettings) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*CreateRequest) ProtoMessage() {}
+func (*PrivacySettings) ProtoMessage() {}
 
-func (x *CreateRequest) ProtoReflect() protoreflect.Message {
+func (x *PrivacySettings) ProtoReflect() protoreflect.Message {
 	mi := &file_api_user_v1_user_proto_msgTypes[1]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -431,77 +454,1349 @@ func (x *CreateRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use CreateRequest.ProtoReflect.Descriptor instead.
-func (*CreateRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use PrivacySettings.ProtoReflect.Descriptor instead.
+func (*PrivacySettings) Descriptor() ([]byte, []int) {
 	return file_api_user_v1_user_proto_rawDescGZIP(), []int{1}
 }
 
-func (x *CreateRequest) GetName() string {
+func (x *PrivacySettings) GetShowBirthday() bool {
+	if x != nil {
+		return x.ShowBirthday
+	}
+	return false
+}
+
+func (x *PrivacySettings) GetShowRelationship() bool {
+	if x != nil {
+		return x.ShowRelationship
+	}
+	return false
+}
+
+func (x *PrivacySettings) GetShowWorldview() bool {
+	if x != nil {
+		return x.ShowWorldview
+	}
+	return false
+}
+
+func (x *PrivacySettings) GetShowPoliticalViews() bool {
+	if x != nil {
+		return x.ShowPoliticalViews
+	}
+	return false
+}
+
+// Fields 7-10 are empty both when not set and when hidden by the owner.
+type PublicProfile struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Id             string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name           string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Surname        string                 `protobuf:"bytes,3,opt,name=surname,proto3" json:"surname,omitempty"`
+	Nickname       string                 `protobuf:"bytes,4,opt,name=nickname,proto3" json:"nickname,omitempty"`
+	Status         string                 `protobuf:"bytes,5,opt,name=status,proto3" json:"status,omitempty"`
+	Gender         Gender                 `protobuf:"varint,6,opt,name=gender,proto3,enum=user.v1.Gender" json:"gender,omitempty"`
+	Relationship   Relationship           `protobuf:"varint,7,opt,name=relationship,proto3,enum=user.v1.Relationship" json:"relationship,omitempty"`
+	Worldview      Worldview              `protobuf:"varint,8,opt,name=worldview,proto3,enum=user.v1.Worldview" json:"worldview,omitempty"`
+	PoliticalViews PoliticalViews         `protobuf:"varint,9,opt,name=political_views,json=politicalViews,proto3,enum=user.v1.PoliticalViews" json:"political_views,omitempty"`
+	Birthday       *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=birthday,proto3" json:"birthday,omitempty"`
+	// Empty without a photo.
+	AvatarId      string `protobuf:"bytes,11,opt,name=avatar_id,json=avatarId,proto3" json:"avatar_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PublicProfile) Reset() {
+	*x = PublicProfile{}
+	mi := &file_api_user_v1_user_proto_msgTypes[2]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PublicProfile) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PublicProfile) ProtoMessage() {}
+
+func (x *PublicProfile) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[2]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PublicProfile.ProtoReflect.Descriptor instead.
+func (*PublicProfile) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{2}
+}
+
+func (x *PublicProfile) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *PublicProfile) GetName() string {
 	if x != nil {
 		return x.Name
 	}
 	return ""
 }
 
-func (x *CreateRequest) GetSurname() string {
+func (x *PublicProfile) GetSurname() string {
 	if x != nil {
 		return x.Surname
 	}
 	return ""
 }
 
-func (x *CreateRequest) GetNickname() string {
+func (x *PublicProfile) GetNickname() string {
 	if x != nil {
 		return x.Nickname
 	}
 	return ""
 }
 
-func (x *CreateRequest) GetStatus() string {
+func (x *PublicProfile) GetStatus() string {
 	if x != nil {
 		return x.Status
 	}
 	return ""
 }
 
-func (x *CreateRequest) GetGender() Gender {
+func (x *PublicProfile) GetGender() Gender {
 	if x != nil {
 		return x.Gender
 	}
 	return Gender_GENDER_NONE
 }
 
-func (x *CreateRequest) GetRelationship() Relationship {
+func (x *PublicProfile) GetRelationship() Relationship {
 	if x != nil {
 		return x.Relationship
 	}
 	return Relationship_RELATIONSHIP_NONE
 }
 
-func (x *CreateRequest) GetWorldview() Worldview {
+func (x *PublicProfile) GetWorldview() Worldview {
 	if x != nil {
 		return x.Worldview
 	}
 	return Worldview_WORLDVIEW_NONE
 }
 
-func (x *CreateRequest) GetPoliticalViews() PoliticalViews {
+func (x *PublicProfile) GetPoliticalViews() PoliticalViews {
 	if x != nil {
 		return x.PoliticalViews
 	}
 	return PoliticalViews_POLITICAL_VIEWS_NONE
 }
 
-func (x *CreateRequest) GetBirthday() *timestamppb.Timestamp {
+func (x *PublicProfile) GetBirthday() *timestamppb.Timestamp {
 	if x != nil {
 		return x.Birthday
 	}
 	return nil
 }
 
-func (x *CreateRequest) GetEmail() string {
+func (x *PublicProfile) GetAvatarId() string {
+	if x != nil {
+		return x.AvatarId
+	}
+	return ""
+}
+
+type GetOrCreateByEmailRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Email         string                 `protobuf:"bytes,1,opt,name=email,proto3" json:"email,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOrCreateByEmailRequest) Reset() {
+	*x = GetOrCreateByEmailRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[3]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOrCreateByEmailRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOrCreateByEmailRequest) ProtoMessage() {}
+
+func (x *GetOrCreateByEmailRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[3]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOrCreateByEmailRequest.ProtoReflect.Descriptor instead.
+func (*GetOrCreateByEmailRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{3}
+}
+
+func (x *GetOrCreateByEmailRequest) GetEmail() string {
 	if x != nil {
 		return x.Email
+	}
+	return ""
+}
+
+type GetOrCreateByEmailResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetOrCreateByEmailResponse) Reset() {
+	*x = GetOrCreateByEmailResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[4]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetOrCreateByEmailResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetOrCreateByEmailResponse) ProtoMessage() {}
+
+func (x *GetOrCreateByEmailResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[4]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetOrCreateByEmailResponse.ProtoReflect.Descriptor instead.
+func (*GetOrCreateByEmailResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{4}
+}
+
+func (x *GetOrCreateByEmailResponse) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type GetMeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMeRequest) Reset() {
+	*x = GetMeRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMeRequest) ProtoMessage() {}
+
+func (x *GetMeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMeRequest.ProtoReflect.Descriptor instead.
+func (*GetMeRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{5}
+}
+
+type GetMeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetMeResponse) Reset() {
+	*x = GetMeResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetMeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetMeResponse) ProtoMessage() {}
+
+func (x *GetMeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetMeResponse.ProtoReflect.Descriptor instead.
+func (*GetMeResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{6}
+}
+
+func (x *GetMeResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+// Replaces the whole profile: fields left empty are cleared.
+// name and nickname are required.
+type UpdateProfileRequest struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	Name           string                 `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
+	Surname        string                 `protobuf:"bytes,2,opt,name=surname,proto3" json:"surname,omitempty"`
+	Nickname       string                 `protobuf:"bytes,3,opt,name=nickname,proto3" json:"nickname,omitempty"`
+	Status         string                 `protobuf:"bytes,4,opt,name=status,proto3" json:"status,omitempty"`
+	Gender         Gender                 `protobuf:"varint,5,opt,name=gender,proto3,enum=user.v1.Gender" json:"gender,omitempty"`
+	Relationship   Relationship           `protobuf:"varint,6,opt,name=relationship,proto3,enum=user.v1.Relationship" json:"relationship,omitempty"`
+	Worldview      Worldview              `protobuf:"varint,7,opt,name=worldview,proto3,enum=user.v1.Worldview" json:"worldview,omitempty"`
+	PoliticalViews PoliticalViews         `protobuf:"varint,8,opt,name=political_views,json=politicalViews,proto3,enum=user.v1.PoliticalViews" json:"political_views,omitempty"`
+	Birthday       *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=birthday,proto3" json:"birthday,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
+}
+
+func (x *UpdateProfileRequest) Reset() {
+	*x = UpdateProfileRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateProfileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateProfileRequest) ProtoMessage() {}
+
+func (x *UpdateProfileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateProfileRequest.ProtoReflect.Descriptor instead.
+func (*UpdateProfileRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *UpdateProfileRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *UpdateProfileRequest) GetSurname() string {
+	if x != nil {
+		return x.Surname
+	}
+	return ""
+}
+
+func (x *UpdateProfileRequest) GetNickname() string {
+	if x != nil {
+		return x.Nickname
+	}
+	return ""
+}
+
+func (x *UpdateProfileRequest) GetStatus() string {
+	if x != nil {
+		return x.Status
+	}
+	return ""
+}
+
+func (x *UpdateProfileRequest) GetGender() Gender {
+	if x != nil {
+		return x.Gender
+	}
+	return Gender_GENDER_NONE
+}
+
+func (x *UpdateProfileRequest) GetRelationship() Relationship {
+	if x != nil {
+		return x.Relationship
+	}
+	return Relationship_RELATIONSHIP_NONE
+}
+
+func (x *UpdateProfileRequest) GetWorldview() Worldview {
+	if x != nil {
+		return x.Worldview
+	}
+	return Worldview_WORLDVIEW_NONE
+}
+
+func (x *UpdateProfileRequest) GetPoliticalViews() PoliticalViews {
+	if x != nil {
+		return x.PoliticalViews
+	}
+	return PoliticalViews_POLITICAL_VIEWS_NONE
+}
+
+func (x *UpdateProfileRequest) GetBirthday() *timestamppb.Timestamp {
+	if x != nil {
+		return x.Birthday
+	}
+	return nil
+}
+
+type UpdateProfileResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdateProfileResponse) Reset() {
+	*x = UpdateProfileResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdateProfileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdateProfileResponse) ProtoMessage() {}
+
+func (x *UpdateProfileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdateProfileResponse.ProtoReflect.Descriptor instead.
+func (*UpdateProfileResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *UpdateProfileResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+type GetProfileRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Nickname      string                 `protobuf:"bytes,1,opt,name=nickname,proto3" json:"nickname,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetProfileRequest) Reset() {
+	*x = GetProfileRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetProfileRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetProfileRequest) ProtoMessage() {}
+
+func (x *GetProfileRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetProfileRequest.ProtoReflect.Descriptor instead.
+func (*GetProfileRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{9}
+}
+
+func (x *GetProfileRequest) GetNickname() string {
+	if x != nil {
+		return x.Nickname
+	}
+	return ""
+}
+
+type GetProfileResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Profile       *PublicProfile         `protobuf:"bytes,1,opt,name=profile,proto3" json:"profile,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetProfileResponse) Reset() {
+	*x = GetProfileResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetProfileResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetProfileResponse) ProtoMessage() {}
+
+func (x *GetProfileResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetProfileResponse.ProtoReflect.Descriptor instead.
+func (*GetProfileResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *GetProfileResponse) GetProfile() *PublicProfile {
+	if x != nil {
+		return x.Profile
+	}
+	return nil
+}
+
+type UpdatePrivacyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Privacy       *PrivacySettings       `protobuf:"bytes,1,opt,name=privacy,proto3" json:"privacy,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdatePrivacyRequest) Reset() {
+	*x = UpdatePrivacyRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdatePrivacyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdatePrivacyRequest) ProtoMessage() {}
+
+func (x *UpdatePrivacyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdatePrivacyRequest.ProtoReflect.Descriptor instead.
+func (*UpdatePrivacyRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *UpdatePrivacyRequest) GetPrivacy() *PrivacySettings {
+	if x != nil {
+		return x.Privacy
+	}
+	return nil
+}
+
+type UpdatePrivacyResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UpdatePrivacyResponse) Reset() {
+	*x = UpdatePrivacyResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[12]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UpdatePrivacyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UpdatePrivacyResponse) ProtoMessage() {}
+
+func (x *UpdatePrivacyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[12]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UpdatePrivacyResponse.ProtoReflect.Descriptor instead.
+func (*UpdatePrivacyResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{12}
+}
+
+func (x *UpdatePrivacyResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+type GetProfilesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// At most 100.
+	UserIds       []string `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetProfilesRequest) Reset() {
+	*x = GetProfilesRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetProfilesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetProfilesRequest) ProtoMessage() {}
+
+func (x *GetProfilesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetProfilesRequest.ProtoReflect.Descriptor instead.
+func (*GetProfilesRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{13}
+}
+
+func (x *GetProfilesRequest) GetUserIds() []string {
+	if x != nil {
+		return x.UserIds
+	}
+	return nil
+}
+
+type GetProfilesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Unknown IDs are skipped; the order is not kept.
+	Profiles      []*PublicProfile `protobuf:"bytes,1,rep,name=profiles,proto3" json:"profiles,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetProfilesResponse) Reset() {
+	*x = GetProfilesResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetProfilesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetProfilesResponse) ProtoMessage() {}
+
+func (x *GetProfilesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetProfilesResponse.ProtoReflect.Descriptor instead.
+func (*GetProfilesResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *GetProfilesResponse) GetProfiles() []*PublicProfile {
+	if x != nil {
+		return x.Profiles
+	}
+	return nil
+}
+
+type FollowRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *FollowRequest) Reset() {
+	*x = FollowRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *FollowRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*FollowRequest) ProtoMessage() {}
+
+func (x *FollowRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use FollowRequest.ProtoReflect.Descriptor instead.
+func (*FollowRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *FollowRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type UnfollowRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnfollowRequest) Reset() {
+	*x = UnfollowRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnfollowRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnfollowRequest) ProtoMessage() {}
+
+func (x *UnfollowRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnfollowRequest.ProtoReflect.Descriptor instead.
+func (*UnfollowRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *UnfollowRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ListFollowingIDsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFollowingIDsRequest) Reset() {
+	*x = ListFollowingIDsRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFollowingIDsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFollowingIDsRequest) ProtoMessage() {}
+
+func (x *ListFollowingIDsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFollowingIDsRequest.ProtoReflect.Descriptor instead.
+func (*ListFollowingIDsRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{17}
+}
+
+type ListFollowingIDsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Newest follows first, at most 1000.
+	UserIds       []string `protobuf:"bytes,1,rep,name=user_ids,json=userIds,proto3" json:"user_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFollowingIDsResponse) Reset() {
+	*x = ListFollowingIDsResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFollowingIDsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFollowingIDsResponse) ProtoMessage() {}
+
+func (x *ListFollowingIDsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFollowingIDsResponse.ProtoReflect.Descriptor instead.
+func (*ListFollowingIDsResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *ListFollowingIDsResponse) GetUserIds() []string {
+	if x != nil {
+		return x.UserIds
+	}
+	return nil
+}
+
+type GetFollowStatsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFollowStatsRequest) Reset() {
+	*x = GetFollowStatsRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFollowStatsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFollowStatsRequest) ProtoMessage() {}
+
+func (x *GetFollowStatsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFollowStatsRequest.ProtoReflect.Descriptor instead.
+func (*GetFollowStatsRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *GetFollowStatsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type GetFollowStatsResponse struct {
+	state          protoimpl.MessageState `protogen:"open.v1"`
+	FollowersCount int32                  `protobuf:"varint,1,opt,name=followers_count,json=followersCount,proto3" json:"followers_count,omitempty"`
+	FollowingCount int32                  `protobuf:"varint,2,opt,name=following_count,json=followingCount,proto3" json:"following_count,omitempty"`
+	// The caller follows the user; false without an access token.
+	IsFollowing   bool `protobuf:"varint,3,opt,name=is_following,json=isFollowing,proto3" json:"is_following,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetFollowStatsResponse) Reset() {
+	*x = GetFollowStatsResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetFollowStatsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetFollowStatsResponse) ProtoMessage() {}
+
+func (x *GetFollowStatsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetFollowStatsResponse.ProtoReflect.Descriptor instead.
+func (*GetFollowStatsResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *GetFollowStatsResponse) GetFollowersCount() int32 {
+	if x != nil {
+		return x.FollowersCount
+	}
+	return 0
+}
+
+func (x *GetFollowStatsResponse) GetFollowingCount() int32 {
+	if x != nil {
+		return x.FollowingCount
+	}
+	return 0
+}
+
+func (x *GetFollowStatsResponse) GetIsFollowing() bool {
+	if x != nil {
+		return x.IsFollowing
+	}
+	return false
+}
+
+type ListFollowsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// Empty for the newest follows, else next_cursor of the previous page.
+	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	// 1-50; anything else means 20.
+	Limit         int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFollowsRequest) Reset() {
+	*x = ListFollowsRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFollowsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFollowsRequest) ProtoMessage() {}
+
+func (x *ListFollowsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFollowsRequest.ProtoReflect.Descriptor instead.
+func (*ListFollowsRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *ListFollowsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ListFollowsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListFollowsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListFollowsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Users []*PublicProfile       `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	// Empty on the last page.
+	NextCursor    string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	Total         int32  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListFollowsResponse) Reset() {
+	*x = ListFollowsResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListFollowsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListFollowsResponse) ProtoMessage() {}
+
+func (x *ListFollowsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListFollowsResponse.ProtoReflect.Descriptor instead.
+func (*ListFollowsResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *ListFollowsResponse) GetUsers() []*PublicProfile {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+func (x *ListFollowsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListFollowsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type SetAvatarRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AvatarId      string                 `protobuf:"bytes,1,opt,name=avatar_id,json=avatarId,proto3" json:"avatar_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetAvatarRequest) Reset() {
+	*x = SetAvatarRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[23]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetAvatarRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetAvatarRequest) ProtoMessage() {}
+
+func (x *SetAvatarRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[23]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetAvatarRequest.ProtoReflect.Descriptor instead.
+func (*SetAvatarRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *SetAvatarRequest) GetAvatarId() string {
+	if x != nil {
+		return x.AvatarId
+	}
+	return ""
+}
+
+type SetAvatarResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	User          *User                  `protobuf:"bytes,1,opt,name=user,proto3" json:"user,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetAvatarResponse) Reset() {
+	*x = SetAvatarResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[24]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetAvatarResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetAvatarResponse) ProtoMessage() {}
+
+func (x *SetAvatarResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[24]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetAvatarResponse.ProtoReflect.Descriptor instead.
+func (*SetAvatarResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{24}
+}
+
+func (x *SetAvatarResponse) GetUser() *User {
+	if x != nil {
+		return x.User
+	}
+	return nil
+}
+
+type SearchUsersRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Words in any order, each found in the name, surname or nickname.
+	Query  string `protobuf:"bytes,1,opt,name=query,proto3" json:"query,omitempty"`
+	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	// 1-50; anything else means 20.
+	Limit         int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchUsersRequest) Reset() {
+	*x = SearchUsersRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[25]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchUsersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchUsersRequest) ProtoMessage() {}
+
+func (x *SearchUsersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[25]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchUsersRequest.ProtoReflect.Descriptor instead.
+func (*SearchUsersRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{25}
+}
+
+func (x *SearchUsersRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *SearchUsersRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *SearchUsersRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type SearchUsersResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Users []*PublicProfile       `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	// Empty on the last page.
+	NextCursor    string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SearchUsersResponse) Reset() {
+	*x = SearchUsersResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SearchUsersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SearchUsersResponse) ProtoMessage() {}
+
+func (x *SearchUsersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SearchUsersResponse.ProtoReflect.Descriptor instead.
+func (*SearchUsersResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *SearchUsersResponse) GetUsers() []*PublicProfile {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+func (x *SearchUsersResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
 	}
 	return ""
 }
@@ -510,7 +1805,7 @@ var File_api_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_api_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/user/v1/user.proto\x12\auser.v1\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9e\x03\n" +
+	"\x16api/user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9c\x04\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -523,8 +1818,17 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x0fpolitical_views\x18\t \x01(\x0e2\x17.user.v1.PoliticalViewsR\x0epoliticalViews\x126\n" +
 	"\bbirthday\x18\n" +
 	" \x01(\v2\x1a.google.protobuf.TimestampR\bbirthday\x12\x14\n" +
-	"\x05email\x18\v \x01(\tR\x05email\"\x97\x03\n" +
-	"\rCreateRequest\x12\x12\n" +
+	"\x05email\x18\v \x01(\tR\x05email\x12+\n" +
+	"\x11profile_completed\x18\f \x01(\bR\x10profileCompleted\x122\n" +
+	"\aprivacy\x18\r \x01(\v2\x18.user.v1.PrivacySettingsR\aprivacy\x12\x1b\n" +
+	"\tavatar_id\x18\x0e \x01(\tR\bavatarId\"\xbc\x01\n" +
+	"\x0fPrivacySettings\x12#\n" +
+	"\rshow_birthday\x18\x01 \x01(\bR\fshowBirthday\x12+\n" +
+	"\x11show_relationship\x18\x02 \x01(\bR\x10showRelationship\x12%\n" +
+	"\x0eshow_worldview\x18\x03 \x01(\bR\rshowWorldview\x120\n" +
+	"\x14show_political_views\x18\x04 \x01(\bR\x12showPoliticalViews\"\xae\x03\n" +
+	"\rPublicProfile\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
 	"\asurname\x18\x03 \x01(\tR\asurname\x12\x1a\n" +
 	"\bnickname\x18\x04 \x01(\tR\bnickname\x12\x16\n" +
@@ -534,8 +1838,73 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\tworldview\x18\b \x01(\x0e2\x12.user.v1.WorldviewR\tworldview\x12@\n" +
 	"\x0fpolitical_views\x18\t \x01(\x0e2\x17.user.v1.PoliticalViewsR\x0epoliticalViews\x126\n" +
 	"\bbirthday\x18\n" +
-	" \x01(\v2\x1a.google.protobuf.TimestampR\bbirthday\x12\x14\n" +
-	"\x05email\x18\v \x01(\tR\x05email*=\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\bbirthday\x12\x1b\n" +
+	"\tavatar_id\x18\v \x01(\tR\bavatarId\"1\n" +
+	"\x19GetOrCreateByEmailRequest\x12\x14\n" +
+	"\x05email\x18\x01 \x01(\tR\x05email\"5\n" +
+	"\x1aGetOrCreateByEmailResponse\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x0e\n" +
+	"\fGetMeRequest\"2\n" +
+	"\rGetMeResponse\x12!\n" +
+	"\x04user\x18\x01 \x01(\v2\r.user.v1.UserR\x04user\"\x88\x03\n" +
+	"\x14UpdateProfileRequest\x12\x12\n" +
+	"\x04name\x18\x01 \x01(\tR\x04name\x12\x18\n" +
+	"\asurname\x18\x02 \x01(\tR\asurname\x12\x1a\n" +
+	"\bnickname\x18\x03 \x01(\tR\bnickname\x12\x16\n" +
+	"\x06status\x18\x04 \x01(\tR\x06status\x12'\n" +
+	"\x06gender\x18\x05 \x01(\x0e2\x0f.user.v1.GenderR\x06gender\x129\n" +
+	"\frelationship\x18\x06 \x01(\x0e2\x15.user.v1.RelationshipR\frelationship\x120\n" +
+	"\tworldview\x18\a \x01(\x0e2\x12.user.v1.WorldviewR\tworldview\x12@\n" +
+	"\x0fpolitical_views\x18\b \x01(\x0e2\x17.user.v1.PoliticalViewsR\x0epoliticalViews\x126\n" +
+	"\bbirthday\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\bbirthday\":\n" +
+	"\x15UpdateProfileResponse\x12!\n" +
+	"\x04user\x18\x01 \x01(\v2\r.user.v1.UserR\x04user\"/\n" +
+	"\x11GetProfileRequest\x12\x1a\n" +
+	"\bnickname\x18\x01 \x01(\tR\bnickname\"F\n" +
+	"\x12GetProfileResponse\x120\n" +
+	"\aprofile\x18\x01 \x01(\v2\x16.user.v1.PublicProfileR\aprofile\"J\n" +
+	"\x14UpdatePrivacyRequest\x122\n" +
+	"\aprivacy\x18\x01 \x01(\v2\x18.user.v1.PrivacySettingsR\aprivacy\":\n" +
+	"\x15UpdatePrivacyResponse\x12!\n" +
+	"\x04user\x18\x01 \x01(\v2\r.user.v1.UserR\x04user\"/\n" +
+	"\x12GetProfilesRequest\x12\x19\n" +
+	"\buser_ids\x18\x01 \x03(\tR\auserIds\"I\n" +
+	"\x13GetProfilesResponse\x122\n" +
+	"\bprofiles\x18\x01 \x03(\v2\x16.user.v1.PublicProfileR\bprofiles\"(\n" +
+	"\rFollowRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"*\n" +
+	"\x0fUnfollowRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x19\n" +
+	"\x17ListFollowingIDsRequest\"5\n" +
+	"\x18ListFollowingIDsResponse\x12\x19\n" +
+	"\buser_ids\x18\x01 \x03(\tR\auserIds\"0\n" +
+	"\x15GetFollowStatsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x8d\x01\n" +
+	"\x16GetFollowStatsResponse\x12'\n" +
+	"\x0ffollowers_count\x18\x01 \x01(\x05R\x0efollowersCount\x12'\n" +
+	"\x0ffollowing_count\x18\x02 \x01(\x05R\x0efollowingCount\x12!\n" +
+	"\fis_following\x18\x03 \x01(\bR\visFollowing\"[\n" +
+	"\x12ListFollowsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"z\n" +
+	"\x13ListFollowsResponse\x12,\n" +
+	"\x05users\x18\x01 \x03(\v2\x16.user.v1.PublicProfileR\x05users\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"/\n" +
+	"\x10SetAvatarRequest\x12\x1b\n" +
+	"\tavatar_id\x18\x01 \x01(\tR\bavatarId\"6\n" +
+	"\x11SetAvatarResponse\x12!\n" +
+	"\x04user\x18\x01 \x01(\v2\r.user.v1.UserR\x04user\"X\n" +
+	"\x12SearchUsersRequest\x12\x14\n" +
+	"\x05query\x18\x01 \x01(\tR\x05query\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"d\n" +
+	"\x13SearchUsersResponse\x12,\n" +
+	"\x05users\x18\x01 \x03(\v2\x16.user.v1.PublicProfileR\x05users\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor*=\n" +
 	"\x06Gender\x12\x0f\n" +
 	"\vGENDER_NONE\x10\x00\x12\x0f\n" +
 	"\vGENDER_MALE\x10\x01\x12\x11\n" +
@@ -567,9 +1936,23 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x1aPOLITICAL_VIEWS_MONARCHIST\x10\x06\x12%\n" +
 	"!POLITICAL_VIEWS_ULTRACONSERVATIVE\x10\a\x12\x1f\n" +
 	"\x1bPOLITICAL_VIEWS_INDIFFERENT\x10\b\x12\x1f\n" +
-	"\x1bPOLITICAL_VIEWS_LIBERTARIAN\x10\t2>\n" +
-	"\vUserService\x12/\n" +
-	"\x06Create\x12\x16.user.v1.CreateRequest\x1a\r.user.v1.UserB5Z3github.com/vexner67/freenet/user/api/user/v1;userv1b\x06proto3"
+	"\x1bPOLITICAL_VIEWS_LIBERTARIAN\x10\t2\x9f\b\n" +
+	"\vUserService\x12]\n" +
+	"\x12GetOrCreateByEmail\x12\".user.v1.GetOrCreateByEmailRequest\x1a#.user.v1.GetOrCreateByEmailResponse\x126\n" +
+	"\x05GetMe\x12\x15.user.v1.GetMeRequest\x1a\x16.user.v1.GetMeResponse\x12N\n" +
+	"\rUpdateProfile\x12\x1d.user.v1.UpdateProfileRequest\x1a\x1e.user.v1.UpdateProfileResponse\x12N\n" +
+	"\rUpdatePrivacy\x12\x1d.user.v1.UpdatePrivacyRequest\x1a\x1e.user.v1.UpdatePrivacyResponse\x12B\n" +
+	"\tSetAvatar\x12\x19.user.v1.SetAvatarRequest\x1a\x1a.user.v1.SetAvatarResponse\x12E\n" +
+	"\n" +
+	"GetProfile\x12\x1a.user.v1.GetProfileRequest\x1a\x1b.user.v1.GetProfileResponse\x12H\n" +
+	"\vGetProfiles\x12\x1b.user.v1.GetProfilesRequest\x1a\x1c.user.v1.GetProfilesResponse\x12H\n" +
+	"\vSearchUsers\x12\x1b.user.v1.SearchUsersRequest\x1a\x1c.user.v1.SearchUsersResponse\x128\n" +
+	"\x06Follow\x12\x16.user.v1.FollowRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
+	"\bUnfollow\x12\x18.user.v1.UnfollowRequest\x1a\x16.google.protobuf.Empty\x12W\n" +
+	"\x10ListFollowingIDs\x12 .user.v1.ListFollowingIDsRequest\x1a!.user.v1.ListFollowingIDsResponse\x12Q\n" +
+	"\x0eGetFollowStats\x12\x1e.user.v1.GetFollowStatsRequest\x1a\x1f.user.v1.GetFollowStatsResponse\x12J\n" +
+	"\rListFollowers\x12\x1b.user.v1.ListFollowsRequest\x1a\x1c.user.v1.ListFollowsResponse\x12J\n" +
+	"\rListFollowing\x12\x1b.user.v1.ListFollowsRequest\x1a\x1c.user.v1.ListFollowsResponseB5Z3github.com/vexner67/freenet/user/api/user/v1;userv1b\x06proto3"
 
 var (
 	file_api_user_v1_user_proto_rawDescOnce sync.Once
@@ -584,34 +1967,101 @@ func file_api_user_v1_user_proto_rawDescGZIP() []byte {
 }
 
 var file_api_user_v1_user_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
-var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 2)
+var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_api_user_v1_user_proto_goTypes = []any{
-	(Gender)(0),                   // 0: user.v1.Gender
-	(Relationship)(0),             // 1: user.v1.Relationship
-	(Worldview)(0),                // 2: user.v1.Worldview
-	(PoliticalViews)(0),           // 3: user.v1.PoliticalViews
-	(*User)(nil),                  // 4: user.v1.User
-	(*CreateRequest)(nil),         // 5: user.v1.CreateRequest
-	(*timestamppb.Timestamp)(nil), // 6: google.protobuf.Timestamp
+	(Gender)(0),                        // 0: user.v1.Gender
+	(Relationship)(0),                  // 1: user.v1.Relationship
+	(Worldview)(0),                     // 2: user.v1.Worldview
+	(PoliticalViews)(0),                // 3: user.v1.PoliticalViews
+	(*User)(nil),                       // 4: user.v1.User
+	(*PrivacySettings)(nil),            // 5: user.v1.PrivacySettings
+	(*PublicProfile)(nil),              // 6: user.v1.PublicProfile
+	(*GetOrCreateByEmailRequest)(nil),  // 7: user.v1.GetOrCreateByEmailRequest
+	(*GetOrCreateByEmailResponse)(nil), // 8: user.v1.GetOrCreateByEmailResponse
+	(*GetMeRequest)(nil),               // 9: user.v1.GetMeRequest
+	(*GetMeResponse)(nil),              // 10: user.v1.GetMeResponse
+	(*UpdateProfileRequest)(nil),       // 11: user.v1.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil),      // 12: user.v1.UpdateProfileResponse
+	(*GetProfileRequest)(nil),          // 13: user.v1.GetProfileRequest
+	(*GetProfileResponse)(nil),         // 14: user.v1.GetProfileResponse
+	(*UpdatePrivacyRequest)(nil),       // 15: user.v1.UpdatePrivacyRequest
+	(*UpdatePrivacyResponse)(nil),      // 16: user.v1.UpdatePrivacyResponse
+	(*GetProfilesRequest)(nil),         // 17: user.v1.GetProfilesRequest
+	(*GetProfilesResponse)(nil),        // 18: user.v1.GetProfilesResponse
+	(*FollowRequest)(nil),              // 19: user.v1.FollowRequest
+	(*UnfollowRequest)(nil),            // 20: user.v1.UnfollowRequest
+	(*ListFollowingIDsRequest)(nil),    // 21: user.v1.ListFollowingIDsRequest
+	(*ListFollowingIDsResponse)(nil),   // 22: user.v1.ListFollowingIDsResponse
+	(*GetFollowStatsRequest)(nil),      // 23: user.v1.GetFollowStatsRequest
+	(*GetFollowStatsResponse)(nil),     // 24: user.v1.GetFollowStatsResponse
+	(*ListFollowsRequest)(nil),         // 25: user.v1.ListFollowsRequest
+	(*ListFollowsResponse)(nil),        // 26: user.v1.ListFollowsResponse
+	(*SetAvatarRequest)(nil),           // 27: user.v1.SetAvatarRequest
+	(*SetAvatarResponse)(nil),          // 28: user.v1.SetAvatarResponse
+	(*SearchUsersRequest)(nil),         // 29: user.v1.SearchUsersRequest
+	(*SearchUsersResponse)(nil),        // 30: user.v1.SearchUsersResponse
+	(*timestamppb.Timestamp)(nil),      // 31: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 32: google.protobuf.Empty
 }
 var file_api_user_v1_user_proto_depIdxs = []int32{
 	0,  // 0: user.v1.User.gender:type_name -> user.v1.Gender
 	1,  // 1: user.v1.User.relationship:type_name -> user.v1.Relationship
 	2,  // 2: user.v1.User.worldview:type_name -> user.v1.Worldview
 	3,  // 3: user.v1.User.political_views:type_name -> user.v1.PoliticalViews
-	6,  // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
-	0,  // 5: user.v1.CreateRequest.gender:type_name -> user.v1.Gender
-	1,  // 6: user.v1.CreateRequest.relationship:type_name -> user.v1.Relationship
-	2,  // 7: user.v1.CreateRequest.worldview:type_name -> user.v1.Worldview
-	3,  // 8: user.v1.CreateRequest.political_views:type_name -> user.v1.PoliticalViews
-	6,  // 9: user.v1.CreateRequest.birthday:type_name -> google.protobuf.Timestamp
-	5,  // 10: user.v1.UserService.Create:input_type -> user.v1.CreateRequest
-	4,  // 11: user.v1.UserService.Create:output_type -> user.v1.User
-	11, // [11:12] is the sub-list for method output_type
-	10, // [10:11] is the sub-list for method input_type
-	10, // [10:10] is the sub-list for extension type_name
-	10, // [10:10] is the sub-list for extension extendee
-	0,  // [0:10] is the sub-list for field type_name
+	31, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
+	5,  // 5: user.v1.User.privacy:type_name -> user.v1.PrivacySettings
+	0,  // 6: user.v1.PublicProfile.gender:type_name -> user.v1.Gender
+	1,  // 7: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
+	2,  // 8: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
+	3,  // 9: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
+	31, // 10: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	4,  // 11: user.v1.GetMeResponse.user:type_name -> user.v1.User
+	0,  // 12: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
+	1,  // 13: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
+	2,  // 14: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
+	3,  // 15: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
+	31, // 16: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	4,  // 17: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
+	6,  // 18: user.v1.GetProfileResponse.profile:type_name -> user.v1.PublicProfile
+	5,  // 19: user.v1.UpdatePrivacyRequest.privacy:type_name -> user.v1.PrivacySettings
+	4,  // 20: user.v1.UpdatePrivacyResponse.user:type_name -> user.v1.User
+	6,  // 21: user.v1.GetProfilesResponse.profiles:type_name -> user.v1.PublicProfile
+	6,  // 22: user.v1.ListFollowsResponse.users:type_name -> user.v1.PublicProfile
+	4,  // 23: user.v1.SetAvatarResponse.user:type_name -> user.v1.User
+	6,  // 24: user.v1.SearchUsersResponse.users:type_name -> user.v1.PublicProfile
+	7,  // 25: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	9,  // 26: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	11, // 27: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	15, // 28: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	27, // 29: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	13, // 30: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	17, // 31: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	29, // 32: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	19, // 33: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	20, // 34: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	21, // 35: user.v1.UserService.ListFollowingIDs:input_type -> user.v1.ListFollowingIDsRequest
+	23, // 36: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	25, // 37: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	25, // 38: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	8,  // 39: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	10, // 40: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	12, // 41: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	16, // 42: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	28, // 43: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	14, // 44: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	18, // 45: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	30, // 46: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	32, // 47: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	32, // 48: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	22, // 49: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
+	24, // 50: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	26, // 51: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	26, // 52: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	39, // [39:53] is the sub-list for method output_type
+	25, // [25:39] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }
@@ -625,7 +2075,7 @@ func file_api_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_user_v1_user_proto_rawDesc), len(file_api_user_v1_user_proto_rawDesc)),
 			NumEnums:      4,
-			NumMessages:   2,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

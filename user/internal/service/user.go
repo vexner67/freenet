@@ -2,13 +2,35 @@ package service
 
 import (
 	"context"
+	"errors"
 
+	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
 type UserRepository interface {
+	// Save inserts a new user. Returns user.ErrAlreadyExists if the email
+	// is taken and user.ErrNicknameTaken if the nickname is.
 	Save(ctx context.Context, u *user.User) error
+	// Update stores the profile and privacy of an existing user. Returns
+	// user.ErrNotFound and user.ErrNicknameTaken.
+	Update(ctx context.Context, u *user.User) error
+	// GetByID, GetByNickname and GetIDByEmail return user.ErrNotFound.
+	GetByID(ctx context.Context, id uuid.UUID) (*user.User, error)
+	GetByNickname(ctx context.Context, nickname user.Nickname) (*user.User, error)
+	// GetByIDs skips IDs without a user and keeps no particular order.
+	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*user.User, error)
+	GetIDByEmail(ctx context.Context, email user.Email) (uuid.UUID, error)
+	// Search finds users with a filled-in profile matching q, newest first,
+	// with IDs below before (uuid.Nil: from the newest).
+	Search(ctx context.Context, q user.SearchQuery, before uuid.UUID, limit int) ([]*user.User, error)
+}
+
+// SearchPage is one screen of search results; NextCursor is uuid.Nil on the last.
+type SearchPage struct {
+	Users      []user.PublicProfile
+	NextCursor uuid.UUID
 }
 
 type UserService struct {
@@ -21,26 +43,145 @@ func NewUserService(userRepo UserRepository) *UserService {
 	}
 }
 
-func (s *UserService) Create(ctx context.Context, input CreateUserInput) (*user.User, error) {
-	u, err := user.New(
-		input.Name,
-		input.Surname,
-		input.Nickname,
-		input.Status,
-		input.Gender,
-		input.Relationship,
-		input.Worldview,
-		input.PoliticalViews,
-		input.Birthday,
-		input.Email,
-	)
-	if err != nil {
-		return nil, errs.Wrap("user.New", err)
+// GetOrCreateByEmail returns the ID of the user with the given email,
+// registering a new user with an empty profile if there is none.
+func (s *UserService) GetOrCreateByEmail(ctx context.Context, email user.Email) (uuid.UUID, error) {
+	id, err := s.userRepo.GetIDByEmail(ctx, email)
+	if err == nil {
+		return id, nil
+	}
+	if !errors.Is(err, user.ErrNotFound) {
+		return uuid.Nil, errs.Wrap("s.userRepo.GetIDByEmail", err)
 	}
 
-	if err = s.userRepo.Save(ctx, u); err != nil {
-		return nil, errs.Wrap("s.userRepo.Create", err)
+	u, err := user.New(email)
+	if err != nil {
+		return uuid.Nil, errs.Wrap("user.New", err)
+	}
+
+	err = s.userRepo.Save(ctx, u)
+	if err == nil {
+		return u.ID(), nil
+	}
+	if !errors.Is(err, user.ErrAlreadyExists) {
+		return uuid.Nil, errs.Wrap("s.userRepo.Save", err)
+	}
+
+	// A concurrent request registered the same email between our lookup
+	// and insert; the unique constraint decided, so read the winner.
+	id, err = s.userRepo.GetIDByEmail(ctx, email)
+	if err != nil {
+		return uuid.Nil, errs.Wrap("s.userRepo.GetIDByEmail", err)
+	}
+
+	return id, nil
+}
+
+func (s *UserService) GetByID(ctx context.Context, id uuid.UUID) (*user.User, error) {
+	u, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.userRepo.GetByID", err)
 	}
 
 	return u, nil
+}
+
+// GetPublicProfile returns what other users may see about the owner
+// of the nickname.
+func (s *UserService) GetPublicProfile(ctx context.Context, nickname user.Nickname) (user.PublicProfile, error) {
+	u, err := s.userRepo.GetByNickname(ctx, nickname)
+	if err != nil {
+		return user.PublicProfile{}, errs.Wrap("s.userRepo.GetByNickname", err)
+	}
+
+	return u.PublicProfile(), nil
+}
+
+func (s *UserService) UpdateProfile(ctx context.Context, id uuid.UUID, profile user.Profile) (*user.User, error) {
+	u, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	if err = u.UpdateProfile(profile); err != nil {
+		return nil, errs.Wrap("u.UpdateProfile", err)
+	}
+
+	if err = s.userRepo.Update(ctx, u); err != nil {
+		return nil, errs.Wrap("s.userRepo.Update", err)
+	}
+
+	return u, nil
+}
+
+func (s *UserService) UpdatePrivacy(ctx context.Context, id uuid.UUID, privacy user.Privacy) (*user.User, error) {
+	u, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	u.UpdatePrivacy(privacy)
+
+	if err = s.userRepo.Update(ctx, u); err != nil {
+		return nil, errs.Wrap("s.userRepo.Update", err)
+	}
+
+	return u, nil
+}
+
+// GetPublicProfiles is what anyone may see about several users at once,
+// e.g. the authors of a news feed. Unknown IDs are skipped.
+func (s *UserService) GetPublicProfiles(ctx context.Context, ids []uuid.UUID) ([]user.PublicProfile, error) {
+	users, err := s.userRepo.GetByIDs(ctx, ids)
+	if err != nil {
+		return nil, errs.Wrap("s.userRepo.GetByIDs", err)
+	}
+
+	profiles := make([]user.PublicProfile, 0, len(users))
+	for _, u := range users {
+		profiles = append(profiles, u.PublicProfile())
+	}
+
+	return profiles, nil
+}
+
+func (s *UserService) SetAvatar(ctx context.Context, id, avatarID uuid.UUID) (*user.User, error) {
+	u, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	u.SetAvatar(avatarID)
+
+	if err = s.userRepo.Update(ctx, u); err != nil {
+		return nil, errs.Wrap("s.userRepo.Update", err)
+	}
+
+	return u, nil
+}
+
+func (s *UserService) Search(ctx context.Context, q user.SearchQuery, cursor uuid.UUID, size int) (SearchPage, error) {
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	// One extra user tells whether there is a next page.
+	found, err := s.userRepo.Search(ctx, q, cursor, size+1)
+	if err != nil {
+		return SearchPage{}, errs.Wrap("s.userRepo.Search", err)
+	}
+
+	var page SearchPage
+
+	if len(found) > size {
+		found = found[:size]
+		page.NextCursor = found[size-1].ID()
+	}
+
+	page.Users = make([]user.PublicProfile, 0, len(found))
+	for _, u := range found {
+		page.Users = append(page.Users, u.PublicProfile())
+	}
+
+	return page, nil
 }

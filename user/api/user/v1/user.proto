@@ -4,10 +4,38 @@ package user.v1;
 
 option go_package = "github.com/vexner67/freenet/user/api/user/v1;userv1";
 
+import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 service UserService {
-  rpc Create(CreateRequest) returns (User);
+  rpc GetOrCreateByEmail(GetOrCreateByEmailRequest) returns (GetOrCreateByEmailResponse);
+
+  // Requires an access token; works on the caller's own account.
+  rpc GetMe(GetMeRequest) returns (GetMeResponse);
+  rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  rpc UpdatePrivacy(UpdatePrivacyRequest) returns (UpdatePrivacyResponse);
+  // Points the caller's profile to a photo uploaded to the media service;
+  // an empty avatar_id removes the photo.
+  rpc SetAvatar(SetAvatarRequest) returns (SetAvatarResponse);
+
+  // Public: returns only what other users may see.
+  rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
+  // Public: several profiles at once, e.g. the authors of a news feed.
+  rpc GetProfiles(GetProfilesRequest) returns (GetProfilesResponse);
+  // Public: people with a filled-in profile by name, surname or nickname.
+  rpc SearchUsers(SearchUsersRequest) returns (SearchUsersResponse);
+
+  // Require an access token; the follower is the caller. Idempotent.
+  rpc Follow(FollowRequest) returns (google.protobuf.Empty);
+  rpc Unfollow(UnfollowRequest) returns (google.protobuf.Empty);
+  // Requires an access token: whom the caller follows, for the news feed.
+  rpc ListFollowingIDs(ListFollowingIDsRequest) returns (ListFollowingIDsResponse);
+
+  // Public. With an access token GetFollowStats also tells whether the
+  // caller follows the user.
+  rpc GetFollowStats(GetFollowStatsRequest) returns (GetFollowStatsResponse);
+  rpc ListFollowers(ListFollowsRequest) returns (ListFollowsResponse);
+  rpc ListFollowing(ListFollowsRequest) returns (ListFollowsResponse);
 }
 
 message User {
@@ -22,6 +50,36 @@ message User {
   PoliticalViews political_views = 9;
   google.protobuf.Timestamp birthday = 10;
   string email = 11;
+  // False right after the first sign-in, until UpdateProfile succeeds.
+  bool profile_completed = 12;
+  PrivacySettings privacy = 13;
+  // Empty without a photo.
+  string avatar_id = 14;
+}
+
+// Which sensitive fields other users see in PublicProfile; all false
+// (hidden) by default.
+message PrivacySettings {
+  bool show_birthday = 1;
+  bool show_relationship = 2;
+  bool show_worldview = 3;
+  bool show_political_views = 4;
+}
+
+// Fields 7-10 are empty both when not set and when hidden by the owner.
+message PublicProfile {
+  string id = 1;
+  string name = 2;
+  string surname = 3;
+  string nickname = 4;
+  string status = 5;
+  Gender gender = 6;
+  Relationship relationship = 7;
+  Worldview worldview = 8;
+  PoliticalViews political_views = 9;
+  google.protobuf.Timestamp birthday = 10;
+  // Empty without a photo.
+  string avatar_id = 11;
 }
 
 enum Gender {
@@ -64,15 +122,123 @@ enum PoliticalViews {
   POLITICAL_VIEWS_LIBERTARIAN = 9;
 }
 
-message CreateRequest {
-  string name = 2;
-  string surname = 3;
-  string nickname = 4;
-  string status = 5;
-  Gender gender = 6;
-  Relationship relationship = 7;
-  Worldview worldview = 8;
-  PoliticalViews political_views = 9;
-  google.protobuf.Timestamp birthday = 10;
-  string email = 11;
+message GetOrCreateByEmailRequest {
+  string email = 1;
+}
+
+message GetOrCreateByEmailResponse {
+  string user_id = 1;
+}
+
+message GetMeRequest {}
+
+message GetMeResponse {
+  User user = 1;
+}
+
+// Replaces the whole profile: fields left empty are cleared.
+// name and nickname are required.
+message UpdateProfileRequest {
+  string name = 1;
+  string surname = 2;
+  string nickname = 3;
+  string status = 4;
+  Gender gender = 5;
+  Relationship relationship = 6;
+  Worldview worldview = 7;
+  PoliticalViews political_views = 8;
+  google.protobuf.Timestamp birthday = 9;
+}
+
+message UpdateProfileResponse {
+  User user = 1;
+}
+
+message GetProfileRequest {
+  string nickname = 1;
+}
+
+message GetProfileResponse {
+  PublicProfile profile = 1;
+}
+
+message UpdatePrivacyRequest {
+  PrivacySettings privacy = 1;
+}
+
+message UpdatePrivacyResponse {
+  User user = 1;
+}
+
+message GetProfilesRequest {
+  // At most 100.
+  repeated string user_ids = 1;
+}
+
+message GetProfilesResponse {
+  // Unknown IDs are skipped; the order is not kept.
+  repeated PublicProfile profiles = 1;
+}
+
+message FollowRequest {
+  string user_id = 1;
+}
+
+message UnfollowRequest {
+  string user_id = 1;
+}
+
+message ListFollowingIDsRequest {}
+
+message ListFollowingIDsResponse {
+  // Newest follows first, at most 1000.
+  repeated string user_ids = 1;
+}
+
+message GetFollowStatsRequest {
+  string user_id = 1;
+}
+
+message GetFollowStatsResponse {
+  int32 followers_count = 1;
+  int32 following_count = 2;
+  // The caller follows the user; false without an access token.
+  bool is_following = 3;
+}
+
+message ListFollowsRequest {
+  string user_id = 1;
+  // Empty for the newest follows, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message ListFollowsResponse {
+  repeated PublicProfile users = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message SetAvatarRequest {
+  string avatar_id = 1;
+}
+
+message SetAvatarResponse {
+  User user = 1;
+}
+
+message SearchUsersRequest {
+  // Words in any order, each found in the name, surname or nickname.
+  string query = 1;
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message SearchUsersResponse {
+  repeated PublicProfile users = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
 }

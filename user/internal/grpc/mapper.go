@@ -3,25 +3,147 @@ package grpc
 import (
 	"time"
 
+	"github.com/google/uuid"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"github.com/vexner67/freenet/user/internal/user"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 func toProtoUser(u *user.User) *userv1.User {
+	p := u.Profile()
+
 	return &userv1.User{
-		Id:             u.ID().String(),
-		Name:           u.Name().String(),
-		Surname:        u.Surname().String(),
-		Nickname:       u.Nickname().String(),
-		Status:         u.Status().String(),
-		Gender:         toProtoGender(u.Gender()),
-		Relationship:   toProtoRelationship(u.Relationship()),
-		Worldview:      toProtoWorldview(u.Worldview()),
-		PoliticalViews: toProtoPoliticalViews(u.PoliticalViews()),
-		Birthday:       timestamppb.New(u.Birthday().Time()),
-		Email:          u.Email().String(),
+		Id:               u.ID().String(),
+		Name:             p.Name.String(),
+		Surname:          p.Surname.String(),
+		Nickname:         p.Nickname.String(),
+		Status:           p.Status.String(),
+		Gender:           toProtoGender(p.Gender),
+		Relationship:     toProtoRelationship(p.Relationship),
+		Worldview:        toProtoWorldview(p.Worldview),
+		PoliticalViews:   toProtoPoliticalViews(p.PoliticalViews),
+		Birthday:         toProtoBirthday(p.Birthday),
+		Email:            u.Email().String(),
+		ProfileCompleted: u.IsProfileCompleted(),
+		Privacy:          toProtoPrivacy(u.Privacy()),
+		AvatarId:         avatarString(u.AvatarID()),
 	}
+}
+
+// avatarString is "" for no photo, as the proto field says.
+func avatarString(id uuid.UUID) string {
+	if id == uuid.Nil {
+		return ""
+	}
+
+	return id.String()
+}
+
+func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
+	return &userv1.PrivacySettings{
+		ShowBirthday:       p.ShowBirthday,
+		ShowRelationship:   p.ShowRelationship,
+		ShowWorldview:      p.ShowWorldview,
+		ShowPoliticalViews: p.ShowPoliticalViews,
+	}
+}
+
+func fromProtoPrivacy(p *userv1.PrivacySettings) user.Privacy {
+	return user.Privacy{
+		ShowBirthday:       p.GetShowBirthday(),
+		ShowRelationship:   p.GetShowRelationship(),
+		ShowWorldview:      p.GetShowWorldview(),
+		ShowPoliticalViews: p.GetShowPoliticalViews(),
+	}
+}
+
+func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
+	return &userv1.PublicProfile{
+		Id:             p.ID.String(),
+		Name:           p.Name.String(),
+		Surname:        p.Surname.String(),
+		Nickname:       p.Nickname.String(),
+		Status:         p.Status.String(),
+		Gender:         toProtoGender(p.Gender),
+		Relationship:   toProtoRelationship(p.Relationship),
+		Worldview:      toProtoWorldview(p.Worldview),
+		PoliticalViews: toProtoPoliticalViews(p.PoliticalViews),
+		Birthday:       toProtoBirthday(p.Birthday),
+		AvatarId:       avatarString(p.AvatarID),
+	}
+}
+
+// profileRequest is implemented by every request that carries a profile.
+type profileRequest interface {
+	GetName() string
+	GetSurname() string
+	GetNickname() string
+	GetStatus() string
+	GetGender() userv1.Gender
+	GetRelationship() userv1.Relationship
+	GetWorldview() userv1.Worldview
+	GetPoliticalViews() userv1.PoliticalViews
+	GetBirthday() *timestamppb.Timestamp
+}
+
+// fromProtoProfile validates every field; its errors are meant for the client.
+func fromProtoProfile(req profileRequest) (user.Profile, error) {
+	name, err := user.NewName(req.GetName())
+	if err != nil {
+		return user.Profile{}, err
+	}
+
+	surname, err := user.NewSurname(req.GetSurname())
+	if err != nil {
+		return user.Profile{}, err
+	}
+
+	nickname, err := user.NewNickname(req.GetNickname())
+	if err != nil {
+		return user.Profile{}, err
+	}
+
+	st, err := user.NewStatus(req.GetStatus())
+	if err != nil {
+		return user.Profile{}, err
+	}
+
+	gender, err := user.NewGender(fromProtoGender(req.GetGender()))
+	if err != nil {
+		return user.Profile{}, err
+	}
+
+	relationship, err := user.NewRelationship(fromProtoRelationship(req.GetRelationship()))
+	if err != nil {
+		return user.Profile{}, err
+	}
+
+	worldview, err := user.NewWorldview(fromProtoWorldview(req.GetWorldview()))
+	if err != nil {
+		return user.Profile{}, err
+	}
+
+	politicalViews, err := user.NewPoliticalViews(fromProtoPoliticalViews(req.GetPoliticalViews()))
+	if err != nil {
+		return user.Profile{}, err
+	}
+
+	birthday, err := user.NewBirthday(fromProtoBirthday(req.GetBirthday()))
+	if err != nil {
+		return user.Profile{}, err
+	}
+
+	return user.Profile{
+		Name:           name,
+		Surname:        surname,
+		Nickname:       nickname,
+		Status:         st,
+		Gender:         gender,
+		Relationship:   relationship,
+		Worldview:      worldview,
+		PoliticalViews: politicalViews,
+		Birthday:       birthday,
+	}, nil
 }
 
 func toProtoGender(g user.Gender) userv1.Gender {
@@ -174,6 +296,14 @@ func fromProtoPoliticalViews(p userv1.PoliticalViews) string {
 	default:
 		return ""
 	}
+}
+
+func toProtoBirthday(b user.Birthday) *timestamppb.Timestamp {
+	if b.Time().IsZero() {
+		return nil
+	}
+
+	return timestamppb.New(b.Time())
 }
 
 func fromProtoBirthday(t *timestamppb.Timestamp) time.Time {
