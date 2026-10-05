@@ -2,72 +2,93 @@ package inmem
 
 import (
 	"context"
-	"errors"
 	"sync"
 	"time"
-)
 
-var ErrCodeAlreadyExists = errors.New("code already exists")
-var ErrCodeNotFound = errors.New("code not found")
-var ErrCodeExpired = errors.New("code expired")
+	"github.com/vexner67/freenet/auth/internal/account"
+	"github.com/vexner67/freenet/auth/internal/service"
+)
 
 type code struct {
 	hash      string
-	createdAt time.Time
-	ttl       time.Duration
+	expiresAt time.Time
+	attempts  int
 }
 
 type CodeRepository struct {
-	codes map[string]code
+	codes map[account.Email]code
 	mu    sync.Mutex
 }
 
 func NewCodeRepository() *CodeRepository {
 	return &CodeRepository{
-		codes: make(map[string]code),
+		codes: make(map[account.Email]code),
 	}
 }
 
-func (r *CodeRepository) Save(_ context.Context, email, codeHash string, ttl time.Duration) error {
+func (r *CodeRepository) Save(_ context.Context, email account.Email, codeHash string, ttl time.Duration) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.codes[email]; ok {
-		return ErrSessionAlreadyExists
-	}
-
+	// A new code replaces the previous one with its attempts, like SET in Redis.
 	r.codes[email] = code{
 		hash:      codeHash,
-		createdAt: time.Now(),
-		ttl:       ttl,
+		expiresAt: time.Now().Add(ttl),
 	}
 	return nil
 }
 
-func (r *CodeRepository) Get(_ context.Context, email string) (string, error) {
+func (r *CodeRepository) Get(_ context.Context, email account.Email) (string, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	c, ok := r.codes[email]
+	c, ok := r.active(email)
 	if !ok {
-		return "", ErrCodeNotFound
-	}
-
-	if c.createdAt.After(time.Now().Add(c.ttl)) {
-		return "", ErrCodeExpired
+		return "", service.ErrCodeNotFound
 	}
 
 	return c.hash, nil
 }
 
-func (r *CodeRepository) Delete(_ context.Context, email string) error {
+func (r *CodeRepository) IncrementAttempts(_ context.Context, email account.Email) (int, error) {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if _, ok := r.codes[email]; !ok {
-		return ErrCodeNotFound
+	c, ok := r.active(email)
+	if !ok {
+		return 0, service.ErrCodeNotFound
+	}
+
+	c.attempts++
+	r.codes[email] = c
+
+	return c.attempts, nil
+}
+
+func (r *CodeRepository) Delete(_ context.Context, email account.Email) error {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.active(email); !ok {
+		return service.ErrCodeNotFound
 	}
 
 	delete(r.codes, email)
 	return nil
+}
+
+// active returns an unexpired code, dropping an expired one;
+// the caller holds the lock.
+func (r *CodeRepository) active(email account.Email) (code, bool) {
+	c, ok := r.codes[email]
+	if !ok {
+		return code{}, false
+	}
+
+	if !time.Now().Before(c.expiresAt) {
+		delete(r.codes, email)
+		return code{}, false
+	}
+
+	return c, true
 }

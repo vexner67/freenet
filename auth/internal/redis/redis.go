@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/redis/go-redis/v9"
-	"github.com/vexner67/freenet/auth/internal/errs"
+	"github.com/vexner67/freenet/pkg/errs"
 )
 
 func New(ctx context.Context, addr string) (*redis.Client, error) {

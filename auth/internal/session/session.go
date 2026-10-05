@@ -4,7 +4,6 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/vexner67/freenet/auth/internal/errs"
 )
 
 type Session struct {
@@ -14,18 +13,23 @@ type Session struct {
 	createdAt        time.Time
 }
 
-func New(userID uuid.UUID, refreshTokenHash string) (*Session, error) {
-	id, err := uuid.NewV7()
-	if err != nil {
-		return nil, errs.Wrap("uuid.NewV7", err)
-	}
-
+func New(id, userID uuid.UUID, refreshTokenHash string) (*Session, error) {
 	return &Session{
 		id:               id,
 		userID:           userID,
 		refreshTokenHash: refreshTokenHash,
 		createdAt:        time.Now(),
 	}, nil
+}
+
+// Restore rebuilds a session from storage without side effects.
+func Restore(id, userID uuid.UUID, refreshTokenHash string, createdAt time.Time) *Session {
+	return &Session{
+		id:               id,
+		userID:           userID,
+		refreshTokenHash: refreshTokenHash,
+		createdAt:        createdAt,
+	}
 }
 
 func (s *Session) ID() uuid.UUID {
