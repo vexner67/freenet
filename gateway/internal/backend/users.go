@@ -19,8 +19,13 @@ func NewUsers(api userv1.UserServiceClient) *Users {
 	}
 }
 
-// withToken forwards the caller's access token; the user service verifies it.
+// withToken forwards the caller's access token, if any; the service
+// verifies it. Public methods answer anonymous callers without one.
 func withToken(ctx context.Context, accessToken string) context.Context {
+	if accessToken == "" {
+		return ctx
+	}
+
 	return metadata.AppendToOutgoingContext(ctx, "authorization", "Bearer "+accessToken)
 }
 
@@ -113,11 +118,7 @@ func (u *Users) FollowingIDs(ctx context.Context, accessToken string) ([]string,
 
 // FollowStats: accessToken may be empty for an anonymous viewer.
 func (u *Users) FollowStats(ctx context.Context, accessToken, userID string) (model.FollowStats, error) {
-	if accessToken != "" {
-		ctx = withToken(ctx, accessToken)
-	}
-
-	resp, err := u.api.GetFollowStats(ctx, &userv1.GetFollowStatsRequest{UserId: userID})
+	resp, err := u.api.GetFollowStats(withToken(ctx, accessToken), &userv1.GetFollowStatsRequest{UserId: userID})
 	if err != nil {
 		return model.FollowStats{}, errs.Wrap("u.api.GetFollowStats", fromStatus(err))
 	}

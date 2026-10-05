@@ -150,8 +150,9 @@ paths:
     get:
       summary: Someone's wall, newest first
       description: |
-        No token needed. Page with `cursor` = `nextCursor` of the previous
-        page; an empty `nextCursor` means the last page.
+        No token needed; with one, `liked` says whether you like each post.
+        Page with `cursor` = `nextCursor` of the previous page; an empty
+        `nextCursor` means the last page.
       parameters:
         - name: nickname
           in: path
@@ -268,6 +269,22 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
   /api/v1/posts/{id}:
+    get:
+      summary: One post, for its page
+      description: No token needed; with one, `liked` says whether you like it.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The post with its author
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
     delete:
       summary: Delete your own post
       security: [{ bearer: [] }]
@@ -281,6 +298,98 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: Not your post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/posts/{id}/like:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Like the post
+      description: Idempotent; a second like counts once.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Like" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Take your like back
+      description: Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Like" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/posts/{id}/comments:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Comments of a post, oldest first
+      description: |
+        No token needed. Page with `cursor` = `nextCursor` of the previous
+        page; an empty `nextCursor` means the last page.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of comments
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Comment on a post
+      description: Your profile must be filled in first.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 1000 }
+      responses:
+        "201":
+          description: The new comment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Comment" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/comments/{id}:
+    delete:
+      summary: Delete a comment
+      description: By the author of the comment or of the post.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Neither your comment nor your post
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -387,6 +496,16 @@ components:
               refreshToken: { type: string }
 
   responses:
+    Like:
+      description: How many likes the post has now
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [likes, liked]
+            properties:
+              likes: { type: integer }
+              liked: { type: boolean, description: "You like the post now" }
     Tokens:
       description: Token pair
       content:
@@ -495,23 +614,48 @@ components:
         large: { type: string, example: "/media/avatars/<user>/<avatar>/large.jpg" }
         small: { type: string, example: "/media/avatars/<user>/<avatar>/small.jpg" }
 
-    Post:
+    Author:
       type: object
-      required: [id, author, text, createdAt]
+      required: [id, nickname, name, surname, gender]
       properties:
         id: { type: string, format: uuid }
-        author:
-          type: object
-          required: [id, nickname, name, surname, gender]
-          properties:
-            id: { type: string, format: uuid }
-            avatar: { $ref: "#/components/schemas/Avatar" }
-            nickname: { type: string }
-            name: { type: string }
-            surname: { type: string }
-            gender: { type: string, enum: ["", male, female] }
+        avatar: { $ref: "#/components/schemas/Avatar" }
+        nickname: { type: string }
+        name: { type: string }
+        surname: { type: string }
+        gender: { type: string, enum: ["", male, female] }
+
+    Post:
+      type: object
+      required: [id, author, text, createdAt, likes, liked, comments]
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/Author" }
         text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
         createdAt: { type: string, format: date-time }
+        likes: { type: integer }
+        liked: { type: boolean, description: "You like the post; false without a token" }
+        comments: { type: integer }
+
+    Comment:
+      type: object
+      required: [id, postId, author, text, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        postId: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/Author" }
+        text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
+        createdAt: { type: string, format: date-time }
+
+    CommentPage:
+      type: object
+      required: [comments, nextCursor, total]
+      properties:
+        comments:
+          type: array
+          items: { $ref: "#/components/schemas/Comment" }
+        nextCursor: { type: string, description: "Empty on the last page" }
+        total: { type: integer, description: "All comments of the post" }
 
     FollowStats:
       type: object

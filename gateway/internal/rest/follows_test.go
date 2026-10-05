@@ -119,6 +119,9 @@ func TestFeed(t *testing.T) {
 	if len(h.users.profileIDs) != 3 {
 		t.Fatalf("authors looked up in one request: %v", h.users.profileIDs)
 	}
+	if h.posts.token != "tok" || !got.Posts[0].Liked || got.Posts[0].Likes != 1 {
+		t.Fatalf("likes of the viewer: token %q, %+v", h.posts.token, got.Posts[0])
+	}
 
 	if w = newHarness(rest.Config{}).do("GET", "/api/v1/feed", ""); w.Code != http.StatusUnauthorized {
 		t.Fatalf("without token: %d", w.Code)

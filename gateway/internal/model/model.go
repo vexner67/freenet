@@ -63,11 +63,31 @@ type Post struct {
 	Author    Author
 	Text      string
 	CreatedAt time.Time
+	Likes     int
+	Comments  int
+	// Liked: the viewer likes the post; false for anonymous viewers.
+	Liked bool
 }
 
 // PostPage is one screen of a wall; NextCursor is empty on the last one.
 type PostPage struct {
 	Posts      []Post
+	NextCursor string
+	Total      int
+}
+
+type Comment struct {
+	ID        string
+	PostID    string
+	Author    Author
+	Text      string
+	CreatedAt time.Time
+}
+
+// CommentPage is one screen of the comments of a post, oldest first;
+// NextCursor is empty on the last one.
+type CommentPage struct {
+	Comments   []Comment
 	NextCursor string
 	Total      int
 }

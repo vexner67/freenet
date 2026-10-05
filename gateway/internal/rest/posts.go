@@ -28,6 +28,14 @@ type postResponse struct {
 	Author    authorJSON `json:"author"`
 	Text      string     `json:"text"`
 	CreatedAt string     `json:"createdAt"`
+	Likes     int        `json:"likes"`
+	Liked     bool       `json:"liked"`
+	Comments  int        `json:"comments"`
+}
+
+type likeResponse struct {
+	Likes int  `json:"likes"`
+	Liked bool `json:"liked"`
 }
 
 type postPageResponse struct {
@@ -47,25 +55,70 @@ func authorOf(id, avatarID string, p model.Profile) model.Author {
 	}
 }
 
+func toAuthorJSON(a model.Author) authorJSON {
+	return authorJSON{
+		ID:       a.ID,
+		Avatar:   toAvatarJSON(a.ID, a.AvatarID),
+		Nickname: a.Nickname,
+		Name:     a.Name,
+		Surname:  a.Surname,
+		Gender:   a.Gender,
+	}
+}
+
 func toPostResponse(p model.Post) postResponse {
 	return postResponse{
-		ID: p.ID,
-		Author: authorJSON{
-			ID:       p.Author.ID,
-			Avatar:   toAvatarJSON(p.Author.ID, p.Author.AvatarID),
-			Nickname: p.Author.Nickname,
-			Name:     p.Author.Name,
-			Surname:  p.Author.Surname,
-			Gender:   p.Author.Gender,
-		},
+		ID:        p.ID,
+		Author:    toAuthorJSON(p.Author),
 		Text:      p.Text,
 		CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
+		Likes:     p.Likes,
+		Liked:     p.Liked,
+		Comments:  p.Comments,
 	}
+}
+
+// getPost is one post with its author, for the page of the post.
+func (a *api) getPost(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	p, err := a.posts.Get(r.Context(), token, r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	authors, err := a.authors(r, []string{p.Author.ID})
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	// The wall of an author who deleted the account is gone with it.
+	author, ok := authors[p.Author.ID]
+	if !ok {
+		a.writeError(w, r, failure.New(failure.NotFound, "post not found"))
+		return
+	}
+
+	p.Author = author
+
+	writeJSON(w, http.StatusOK, toPostResponse(p))
 }
 
 // listPosts is the wall of a user. All posts are by the wall's owner, so
 // the author is the profile looked up by nickname.
 func (a *api) listPosts(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	limit, err := pageLimit(r)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -78,7 +131,7 @@ func (a *api) listPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := a.posts.List(r.Context(), owner.ID, r.URL.Query().Get("cursor"), limit)
+	page, err := a.posts.List(r.Context(), token, owner.ID, r.URL.Query().Get("cursor"), limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -149,4 +202,34 @@ func (a *api) deletePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// likePost and unlikePost are idempotent, so a double click does no harm.
+func (a *api) likePost(w http.ResponseWriter, r *http.Request) {
+	a.setLike(w, r, true)
+}
+
+func (a *api) unlikePost(w http.ResponseWriter, r *http.Request) {
+	a.setLike(w, r, false)
+}
+
+func (a *api) setLike(w http.ResponseWriter, r *http.Request, liked bool) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	set := a.posts.Unlike
+	if liked {
+		set = a.posts.Like
+	}
+
+	likes, err := set(r.Context(), token, r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, likeResponse{Likes: likes, Liked: liked})
 }
