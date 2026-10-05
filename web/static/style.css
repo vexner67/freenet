@@ -98,6 +98,16 @@ h1, h2, h3, p, ul { margin: 0; }
   padding: 3px 6px;
 }
 .menu a:hover { background: #e9edf1; text-decoration: none; }
+/* The unread counter next to "Мои Ответы", as on openvk. */
+.menu .counter {
+  float: right;
+  margin-top: -1px;
+  padding: 1px 7px;
+  background: #e6e6e6;
+  border-radius: 2px;
+  color: #2b587a;
+  font-weight: bold;
+}
 
 .sidebar-form label { display: block; margin: 6px 0 2px; }
 .sidebar-form .button { width: 100%; margin-top: 6px; }
@@ -401,3 +411,7 @@ a.like:hover svg { opacity: .7; }
 .search-form { display: flex; gap: 6px; margin-bottom: 10px; }
 .search-form input { flex: 1; }
 .search-count { margin-bottom: 4px; color: #808080; }
+
+/* Notifications: a post-like row with the sentence of openvk. */
+.notification { padding-bottom: 8px; border-bottom: 1px solid #ececec; }
+.notification-text { padding: 2px 0 3px; line-height: 1.5; overflow-wrap: anywhere; }

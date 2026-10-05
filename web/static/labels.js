@@ -109,6 +109,31 @@ export function postsCount(n) {
   return `${n} ${plural(n, ['запись', 'записи', 'записей'])}`;
 }
 
+// Notification phrases, as on openvk: "<name> оценил(а) вашу запись" and
+// so on; the verb agrees with the actor's gender.
+const notificationVerbs = {
+  like: ['оценил', 'оценила', 'оценил(а)'],
+  comment: ['оставил', 'оставила', 'оставил(а)'],
+  follow: ['подписался', 'подписалась', 'подписался(-ась)'],
+};
+
+export function notificationVerb(type, gender) {
+  const [male, female, unknown] = notificationVerbs[type];
+  return { male, female }[gender] ?? unknown;
+}
+
+// unreadCountText is the menu counter: nothing at 0, "99+" beyond 99.
+export function unreadCountText(n) {
+  if (n <= 0) return '';
+  return n > 99 ? '99+' : String(n);
+}
+
+// snippet shortens a quoted text to about n characters.
+export function snippet(text, n) {
+  const chars = [...text];
+  return chars.length <= n ? text : chars.slice(0, n).join('').trimEnd() + '…';
+}
+
 // commentsLink is the link to the comments under a post, as on openvk.
 export function commentsLink(n) {
   return n > 0 ? `Комментарии (${n})` : 'Комментировать';
@@ -140,6 +165,7 @@ const errorTexts = {
   'comment text is too long': 'Комментарий длиннее 1000 символов.',
   'comment not found': 'Комментарий уже удалён.',
   'fill in your profile before commenting': 'Сначала заполните свою страницу.',
+  'notification not found': 'Уведомление уже удалено.',
   'permission denied': 'Недостаточно прав.',
   'you cannot follow yourself': 'Нельзя подписаться на себя.',
   'image is larger than 8 MB': 'Фотография больше 8 МБ.',

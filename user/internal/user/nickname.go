@@ -23,8 +23,8 @@ var (
 		"about": {}, "admin": {}, "api": {}, "edit": {}, "feed": {},
 		"follows": {}, "freenet": {}, "healthz": {}, "help": {}, "id": {},
 		"login": {}, "logout": {}, "me": {}, "media": {}, "news": {},
-		"people": {}, "post": {}, "search": {}, "settings": {}, "static": {},
-		"support": {},
+		"notifications": {}, "people": {}, "post": {}, "search": {},
+		"settings": {}, "static": {}, "support": {},
 	}
 )
 

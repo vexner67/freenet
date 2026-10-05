@@ -156,6 +156,14 @@ export const api = {
   uploadAvatar: (file) => authorized('PUT', '/api/v1/me/avatar', file),
   deleteAvatar: () => authorized('DELETE', '/api/v1/me/avatar'),
 
+  notifications(box, cursor = '') {
+    const query = new URLSearchParams({ box });
+    if (cursor) query.set('cursor', cursor);
+    return authorized('GET', '/api/v1/notifications?' + query);
+  },
+  unreadCount: () => authorized('GET', '/api/v1/notifications/unread-count'),
+  markNotificationsRead: (upTo) => authorized('POST', '/api/v1/notifications/read', { upTo }),
+
   search(query, cursor = '') {
     const params = new URLSearchParams({ q: query });
     if (cursor) params.set('cursor', cursor);
