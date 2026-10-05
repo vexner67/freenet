@@ -1,0 +1,50 @@
+syntax = "proto3";
+
+package media.v1;
+
+option go_package = "github.com/vexner67/freenet/media/api/media/v1;mediav1";
+
+import "google/protobuf/empty.proto";
+
+service MediaService {
+  // Require an access token; the avatar belongs to the caller. A new avatar
+  // does not replace the old one by itself: point the profile to it, then
+  // DeleteAvatars keeping it.
+  rpc UploadAvatar(UploadAvatarRequest) returns (UploadAvatarResponse);
+  rpc DeleteAvatars(DeleteAvatarsRequest) returns (google.protobuf.Empty);
+
+  // Public: an avatar as JPEG.
+  rpc GetAvatar(GetAvatarRequest) returns (GetAvatarResponse);
+}
+
+message UploadAvatarRequest {
+  // JPEG, PNG, GIF or WebP, at most 8 MB, at least 50x50.
+  bytes image = 1;
+}
+
+message UploadAvatarResponse {
+  string avatar_id = 1;
+}
+
+message DeleteAvatarsRequest {
+  // The avatar to keep; empty deletes them all.
+  string keep_avatar_id = 1;
+}
+
+enum AvatarSize {
+  AVATAR_SIZE_UNSPECIFIED = 0;
+  // 400x400, the profile photo.
+  AVATAR_SIZE_LARGE = 1;
+  // 100x100, next to posts and in lists.
+  AVATAR_SIZE_SMALL = 2;
+}
+
+message GetAvatarRequest {
+  string user_id = 1;
+  string avatar_id = 2;
+  AvatarSize size = 3;
+}
+
+message GetAvatarResponse {
+  bytes image = 1;
+}

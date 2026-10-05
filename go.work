@@ -2,6 +2,7 @@ go 1.27.1
 
 use (
 	./auth
+	./media
 	./pkg/envconfig
 	./pkg/errs
 	./pkg/grpcserver
