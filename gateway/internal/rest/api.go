@@ -1,0 +1,103 @@
+// Package rest is the public HTTP/JSON API of freenet.
+package rest
+
+import (
+	"context"
+	"log/slog"
+	"net/http"
+
+	"github.com/vexner67/freenet/gateway/internal/model"
+)
+
+type Auth interface {
+	RequestCode(ctx context.Context, email, clientIP string) error
+	VerifyCode(ctx context.Context, email, code string) (model.Tokens, error)
+	RefreshToken(ctx context.Context, refreshToken string) (model.Tokens, error)
+	Logout(ctx context.Context, refreshToken string) error
+}
+
+type Users interface {
+	GetMe(ctx context.Context, accessToken string) (model.User, error)
+	UpdateProfile(ctx context.Context, accessToken string, p model.Profile) (model.User, error)
+	UpdatePrivacy(ctx context.Context, accessToken string, p model.Privacy) (model.User, error)
+	GetProfile(ctx context.Context, nickname string) (model.PublicProfile, error)
+	GetProfiles(ctx context.Context, ids []string) ([]model.PublicProfile, error)
+
+	Follow(ctx context.Context, accessToken, userID string) error
+	Unfollow(ctx context.Context, accessToken, userID string) error
+	FollowingIDs(ctx context.Context, accessToken string) ([]string, error)
+	FollowStats(ctx context.Context, accessToken, userID string) (model.FollowStats, error)
+	ListFollowers(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
+	ListFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
+
+	SetAvatar(ctx context.Context, accessToken, avatarID string) (model.User, error)
+	Search(ctx context.Context, query, cursor string, limit int) (model.UserPage, error)
+}
+
+type Media interface {
+	UploadAvatar(ctx context.Context, accessToken string, image []byte) (string, error)
+	DeleteAvatars(ctx context.Context, accessToken, keep string) error
+	Avatar(ctx context.Context, userID, avatarID string, small bool) ([]byte, error)
+}
+
+type Posts interface {
+	Create(ctx context.Context, accessToken, text string) (model.Post, error)
+	Delete(ctx context.Context, accessToken, id string) error
+	List(ctx context.Context, authorID, cursor string, limit int) (model.PostPage, error)
+	Feed(ctx context.Context, authorIDs []string, cursor string, limit int) (model.PostPage, error)
+}
+
+type api struct {
+	auth              Auth
+	users             Users
+	posts             Posts
+	media             Media
+	logger            *slog.Logger
+	trustForwardedFor bool
+	webDir            string
+}
+
+func (a *api) routes() *http.ServeMux {
+	mux := http.NewServeMux()
+
+	mux.HandleFunc("GET /healthz", a.health)
+
+	mux.HandleFunc("POST /api/v1/auth/code", a.requestCode)
+	mux.HandleFunc("POST /api/v1/auth/verify", a.verifyCode)
+	mux.HandleFunc("POST /api/v1/auth/refresh", a.refreshToken)
+	mux.HandleFunc("POST /api/v1/auth/logout", a.logout)
+
+	mux.HandleFunc("GET /api/v1/me", a.getMe)
+	mux.HandleFunc("PUT /api/v1/me/profile", a.updateProfile)
+	mux.HandleFunc("PUT /api/v1/me/privacy", a.updatePrivacy)
+
+	mux.HandleFunc("GET /api/v1/users/{nickname}", a.getProfile)
+
+	mux.HandleFunc("GET /api/v1/users/{nickname}/posts", a.listPosts)
+	mux.HandleFunc("POST /api/v1/me/posts", a.createPost)
+	mux.HandleFunc("DELETE /api/v1/posts/{id}", a.deletePost)
+
+	mux.HandleFunc("POST /api/v1/users/{nickname}/follow", a.follow)
+	mux.HandleFunc("DELETE /api/v1/users/{nickname}/follow", a.unfollow)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/followers", a.listFollowers)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/following", a.listFollowing)
+
+	mux.HandleFunc("GET /api/v1/feed", a.feed)
+
+	mux.HandleFunc("GET /api/v1/users", a.searchUsers)
+
+	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
+	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)
+	mux.HandleFunc("GET /media/avatars/{userID}/{avatarID}/{file}", a.serveAvatar)
+
+	if a.webDir != "" {
+		registerPages(mux, a.webDir)
+	}
+
+	// Catch-all for JSON errors instead of the mux's plain-text ones.
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		a.noRoute(mux, w, r)
+	})
+
+	return mux
+}

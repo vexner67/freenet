@@ -1,0 +1,128 @@
+package rest
+
+import (
+	"errors"
+	"io"
+	"net/http"
+
+	"github.com/vexner67/freenet/gateway/internal/failure"
+)
+
+const (
+	// maxAvatarBytes matches what the media service accepts.
+	maxAvatarBytes = 8 << 20
+
+	largeAvatarFile = "large.jpg"
+	smallAvatarFile = "small.jpg"
+)
+
+// uploadAvatar takes the raw image as the request body and makes it the
+// caller's photo. The old photo is deleted only after the profile points
+// to the new one, so the profile never shows a missing picture.
+func (a *api) uploadAvatar(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	image, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxAvatarBytes))
+	if err != nil {
+		var tooBig *http.MaxBytesError
+		if errors.As(err, &tooBig) {
+			a.writeError(w, r, failure.New(failure.InvalidArgument, "image is larger than 8 MB"))
+			return
+		}
+
+		a.writeError(w, r, err)
+		return
+	}
+
+	avatarID, err := a.media.UploadAvatar(r.Context(), token, image)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	me, err := a.users.SetAvatar(r.Context(), token, avatarID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.cleanUpAvatars(r, token, avatarID)
+
+	writeJSON(w, http.StatusOK, toUserResponse(me))
+}
+
+func (a *api) deleteAvatar(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	me, err := a.users.SetAvatar(r.Context(), token, "")
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.cleanUpAvatars(r, token, "")
+
+	writeJSON(w, http.StatusOK, toUserResponse(me))
+}
+
+// cleanUpAvatars deletes photos no longer shown. A failure only leaves
+// unused files behind, so it is logged, not returned.
+func (a *api) cleanUpAvatars(r *http.Request, token, keep string) {
+	if err := a.media.DeleteAvatars(r.Context(), token, keep); err != nil {
+		a.logger.WarnContext(r.Context(), "old avatars left behind", "error", err)
+	}
+}
+
+// serveAvatar is the image behind an avatar URL. The URL changes with every
+// new photo, so the response can be cached for good.
+func (a *api) serveAvatar(w http.ResponseWriter, r *http.Request) {
+	file := r.PathValue("file")
+	if file != largeAvatarFile && file != smallAvatarFile {
+		a.writeError(w, r, failure.New(failure.NotFound, "avatar not found"))
+		return
+	}
+
+	image, err := a.media.Avatar(r.Context(), r.PathValue("userID"), r.PathValue("avatarID"), file == smallAvatarFile)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "image/jpeg")
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	_, _ = w.Write(image)
+}
+
+// searchUsers finds people by name, surname or nickname: GET /api/v1/users?q=.
+func (a *api) searchUsers(w http.ResponseWriter, r *http.Request) {
+	limit, err := pageLimit(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	page, err := a.users.Search(r.Context(), r.URL.Query().Get("q"), r.URL.Query().Get("cursor"), limit)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	resp := userPageResponse{
+		Users:      make([]publicProfileResponse, 0, len(page.Users)),
+		NextCursor: page.NextCursor,
+	}
+
+	for _, u := range page.Users {
+		resp.Users = append(resp.Users, toPublicProfileResponse(u))
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}

@@ -1,0 +1,47 @@
+package rest
+
+import (
+	"net/http"
+	"path/filepath"
+	"strings"
+)
+
+// pageCSP allows only our own scripts and styles and no inline code, so
+// markup that slips into a page cannot run. Pages and API share the origin.
+const pageCSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data:; " +
+	"connect-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
+
+// registerPages serves the website from dir: pages at fixed paths and
+// assets under /static/. Profiles live at /<nickname>; the user service
+// reserves nicknames that would clash with these paths.
+func registerPages(mux *http.ServeMux, dir string) {
+	mux.Handle("GET /static/", http.StripPrefix("/static/", noListing(http.FileServer(http.Dir(filepath.Join(dir, "static"))))))
+
+	mux.Handle("GET /{$}", page(dir, "index.html"))
+	mux.Handle("GET /edit", page(dir, "edit.html"))
+	mux.Handle("GET /feed", page(dir, "feed.html"))
+	mux.Handle("GET /follows", page(dir, "follows.html"))
+	mux.Handle("GET /search", page(dir, "search.html"))
+	mux.Handle("GET /{nickname}", page(dir, "profile.html"))
+}
+
+func page(dir, name string) http.Handler {
+	path := filepath.Join(dir, name)
+
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Security-Policy", pageCSP)
+		w.Header().Set("Referrer-Policy", "same-origin")
+		http.ServeFile(w, r, path)
+	})
+}
+
+func noListing(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "" || strings.HasSuffix(r.URL.Path, "/") {
+			http.NotFound(w, r)
+			return
+		}
+
+		next.ServeHTTP(w, r)
+	})
+}

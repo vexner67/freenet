@@ -1,0 +1,551 @@
+openapi: 3.1.0
+info:
+  title: Freenet API
+  version: 1.0.0
+  description: |
+    Public HTTP API of Freenet, served by the gateway.
+
+    Sign-in is passwordless: request a code by email, exchange it for a token
+    pair. Send the access token as `Authorization: Bearer <token>`; it lives
+    15 minutes. Exchange the refresh token for a new pair before that; each
+    refresh token works once, and reusing an old one ends the session.
+
+    Errors always have the shape `{"error": {"code": "...", "message": "..."}}`;
+    `message` is safe to show to the user.
+servers:
+  - url: http://localhost:8080
+    description: Local development
+
+paths:
+  /api/v1/auth/code:
+    post:
+      summary: Email a sign-in code
+      description: |
+        Answers the same way whether or not the email has an account. One
+        code per email per minute and a limited number per client address.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email]
+              additionalProperties: false
+              properties:
+                email: { type: string, format: email, example: ann@example.com }
+      responses:
+        "204": { description: Code sent }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/auth/verify:
+    post:
+      summary: Exchange a code for tokens
+      description: |
+        Creates the account on the first sign-in; its profile is empty until
+        `PUT /api/v1/me/profile` (`profileCompleted` is false). A code works
+        once and survives five attempts.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [email, code]
+              additionalProperties: false
+              properties:
+                email: { type: string, format: email }
+                code: { type: string, pattern: "^[0-9]{6}$", example: "123456" }
+      responses:
+        "200": { $ref: "#/components/responses/Tokens" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/auth/refresh:
+    post:
+      summary: Get a new token pair
+      requestBody: { $ref: "#/components/requestBodies/RefreshToken" }
+      responses:
+        "200": { $ref: "#/components/responses/Tokens" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/auth/logout:
+    post:
+      summary: End the session of a refresh token
+      description: Idempotent. The access token stays valid until it expires.
+      requestBody: { $ref: "#/components/requestBodies/RefreshToken" }
+      responses:
+        "204": { description: Signed out }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me:
+    get:
+      summary: The caller's account
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/profile:
+    put:
+      summary: Replace the profile
+      description: Fields left out are cleared. `name` and `nickname` are required.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Profile" }
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409":
+          description: The nickname is taken (case-insensitive)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/me/privacy:
+    put:
+      summary: Choose which sensitive fields others see
+      description: Everything is hidden by default.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Privacy" }
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/users/{nickname}:
+    get:
+      summary: Someone's public profile with follow counters
+      description: |
+        No token needed. Fields the owner has not opened are empty, the same
+        as fields that are not set. Nickname lookup is case-insensitive.
+        With a token, `isFollowing` tells whether you follow the user.
+      parameters:
+        - name: nickname
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: Public profile
+          content:
+            application/json:
+              schema:
+                allOf:
+                  - $ref: "#/components/schemas/PublicProfile"
+                  - $ref: "#/components/schemas/FollowStats"
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/{nickname}/posts:
+    get:
+      summary: Someone's wall, newest first
+      description: |
+        No token needed. Page with `cursor` = `nextCursor` of the previous
+        page; an empty `nextCursor` means the last page.
+      parameters:
+        - name: nickname
+          in: path
+          required: true
+          schema: { type: string }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of the wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/avatar:
+    put:
+      summary: Set your profile photo
+      description: |
+        The body is the image itself (JPEG, PNG, GIF or WebP, at most 8 MB,
+        at least 50x50), with its Content-Type. The middle square is kept
+        and re-encoded, so EXIF data (location included) is dropped.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema: { type: string, format: binary }
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    delete:
+      summary: Remove your profile photo
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/users:
+    get:
+      summary: Find people
+      description: |
+        Every word of `q` must occur in the name, surname or nickname, in any
+        order and case. Only people with a filled-in profile are found.
+        Newest accounts first; page with `cursor` = `nextCursor`.
+      parameters:
+        - name: q
+          in: query
+          required: true
+          schema: { type: string, maxLength: 64 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of people; total is always 0
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+
+  /media/avatars/{userId}/{avatarId}/{file}:
+    get:
+      summary: A profile photo
+      description: |
+        URLs come from the `avatar` fields; they change with every new photo,
+        so responses are cached for a year.
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string } }
+        - { name: avatarId, in: path, required: true, schema: { type: string } }
+        - name: file
+          in: path
+          required: true
+          schema: { type: string, enum: [large.jpg, small.jpg] }
+      responses:
+        "200":
+          description: JPEG, 400x400 (large) or 100x100 (small)
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/posts:
+    post:
+      summary: Write on your own wall
+      description: The profile must be filled in first (it gives the wall its address).
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              additionalProperties: false
+              properties:
+                text: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        "201":
+          description: The new post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/posts/{id}:
+    delete:
+      summary: Delete your own post
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/{nickname}/follow:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Follow the user
+      description: Idempotent. Your profile must be filled in first.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/FollowStats" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Unfollow the user
+      description: Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/FollowStats" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/{nickname}/followers:
+    get:
+      summary: Who follows the user, newest follow first
+      parameters: &followListParams
+        - name: nickname
+          in: path
+          required: true
+          schema: { type: string }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses: &followListResponses
+        "200":
+          description: One page of people
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/users/{nickname}/following:
+    get:
+      summary: Whom the user follows, newest follow first
+      parameters: *followListParams
+      responses: *followListResponses
+
+  /api/v1/feed:
+    get:
+      summary: Your news feed
+      description: |
+        Posts of the people you follow and your own, newest first, each with
+        its author. Page with `cursor` = `nextCursor`; `total` is always 0.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of the feed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostPage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /healthz:
+    get:
+      summary: Liveness of the gateway
+      responses:
+        "200": { description: Up }
+
+components:
+  securitySchemes:
+    bearer:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+  requestBodies:
+    RefreshToken:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [refreshToken]
+            additionalProperties: false
+            properties:
+              refreshToken: { type: string }
+
+  responses:
+    Tokens:
+      description: Token pair
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [accessToken, refreshToken]
+            properties:
+              accessToken: { type: string }
+              refreshToken: { type: string }
+    User:
+      description: The caller's account
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/User" }
+    FollowStats:
+      description: Fresh follow counters of the user
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/FollowStats" }
+    InvalidArgument:
+      description: Invalid input; the message says what
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    Unauthenticated:
+      description: Missing, invalid or expired token or code
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    NotFound:
+      description: Not found
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+    TooManyRequests:
+      description: Rate limited; try again later or request a new code
+      content:
+        application/json:
+          schema: { $ref: "#/components/schemas/Error" }
+
+  schemas:
+    Error:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: object
+          required: [code, message]
+          properties:
+            code:
+              type: string
+              enum: [invalid_argument, unauthenticated, permission_denied, not_found,
+                     conflict, too_many_requests, unavailable, method_not_allowed, internal]
+            message: { type: string }
+
+    Profile:
+      type: object
+      additionalProperties: false
+      properties:
+        name: { type: string, maxLength: 100 }
+        surname: { type: string, maxLength: 100 }
+        nickname:
+          type: string
+          maxLength: 32
+          pattern: "^[A-Za-z](?:[A-Za-z0-9_]*[A-Za-z0-9])?$"
+        status: { type: string, maxLength: 200 }
+        gender: { type: string, enum: ["", male, female] }
+        relationship: { type: string, enum: ["", single, dating, married, in_love, looking] }
+        worldview:
+          type: string
+          enum: ["", islam, orthodox, catholicism, judaism, protestantism, buddhism,
+                 confucianism, secular_humanism]
+        politicalViews:
+          type: string
+          enum: ["", communist, socialist, moderate, liberal, conservative, monarchist,
+                 ultraconservative, indifferent, libertarian]
+        birthday: { type: [string, "null"], format: date, example: "1990-05-17" }
+
+    Privacy:
+      type: object
+      additionalProperties: false
+      properties:
+        showBirthday: { type: boolean }
+        showRelationship: { type: boolean }
+        showWorldview: { type: boolean }
+        showPoliticalViews: { type: boolean }
+
+    User:
+      allOf:
+        - $ref: "#/components/schemas/Profile"
+        - type: object
+          required: [id, avatar, email, profileCompleted, privacy]
+          properties:
+            id: { type: string, format: uuid }
+            avatar: { $ref: "#/components/schemas/Avatar" }
+            email: { type: string, format: email }
+            profileCompleted: { type: boolean }
+            privacy: { $ref: "#/components/schemas/Privacy" }
+
+    Avatar:
+      type: [object, "null"]
+      description: URLs of the profile photo; null without one
+      required: [large, small]
+      properties:
+        large: { type: string, example: "/media/avatars/<user>/<avatar>/large.jpg" }
+        small: { type: string, example: "/media/avatars/<user>/<avatar>/small.jpg" }
+
+    Post:
+      type: object
+      required: [id, author, text, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        author:
+          type: object
+          required: [id, nickname, name, surname, gender]
+          properties:
+            id: { type: string, format: uuid }
+            avatar: { $ref: "#/components/schemas/Avatar" }
+            nickname: { type: string }
+            name: { type: string }
+            surname: { type: string }
+            gender: { type: string, enum: ["", male, female] }
+        text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
+        createdAt: { type: string, format: date-time }
+
+    FollowStats:
+      type: object
+      required: [followersCount, followingCount, isFollowing]
+      properties:
+        followersCount: { type: integer }
+        followingCount: { type: integer }
+        isFollowing: { type: boolean, description: "You follow the user; false without a token" }
+
+    UserPage:
+      type: object
+      required: [users, nextCursor, total]
+      properties:
+        users:
+          type: array
+          items: { $ref: "#/components/schemas/PublicProfile" }
+        nextCursor: { type: string, description: "Empty on the last page" }
+        total: { type: integer }
+
+    PostPage:
+      type: object
+      required: [posts, nextCursor, total]
+      properties:
+        posts:
+          type: array
+          items: { $ref: "#/components/schemas/Post" }
+        nextCursor: { type: string, description: "Empty on the last page" }
+        total: { type: integer, description: "All posts on the wall" }
+
+    PublicProfile:
+      allOf:
+        - $ref: "#/components/schemas/Profile"
+        - type: object
+          required: [id, avatar]
+          properties:
+            id: { type: string, format: uuid }
+            avatar: { $ref: "#/components/schemas/Avatar" }

@@ -2,6 +2,7 @@ go 1.27.1
 
 use (
 	./auth
+	./gateway
 	./media
 	./pkg/envconfig
 	./pkg/errs
