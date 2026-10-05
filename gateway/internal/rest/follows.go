@@ -153,13 +153,18 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := a.posts.Feed(r.Context(), append(following, me.ID), r.URL.Query().Get("cursor"), limit)
+	page, err := a.posts.Feed(r.Context(), token, append(following, me.ID), r.URL.Query().Get("cursor"), limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	authors, err := a.authors(r, page.Posts)
+	ids := make([]string, len(page.Posts))
+	for i, p := range page.Posts {
+		ids[i] = p.Author.ID
+	}
+
+	authors, err := a.authors(r, ids)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -184,15 +189,16 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// authors looks up everyone who wrote the posts in one request.
-func (a *api) authors(r *http.Request, posts []model.Post) (map[string]model.Author, error) {
-	seen := make(map[string]bool, len(posts))
-	ids := make([]string, 0, len(posts))
+// authors looks up the authors of posts or comments in one request; an
+// author who deleted the account is missing from the result.
+func (a *api) authors(r *http.Request, authorIDs []string) (map[string]model.Author, error) {
+	seen := make(map[string]bool, len(authorIDs))
+	ids := make([]string, 0, len(authorIDs))
 
-	for _, p := range posts {
-		if !seen[p.Author.ID] {
-			seen[p.Author.ID] = true
-			ids = append(ids, p.Author.ID)
+	for _, id := range authorIDs {
+		if !seen[id] {
+			seen[id] = true
+			ids = append(ids, id)
 		}
 	}
 

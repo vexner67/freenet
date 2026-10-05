@@ -22,6 +22,7 @@ func webDir(t *testing.T) string {
 		"index.html":       "INDEX",
 		"edit.html":        "EDIT",
 		"profile.html":     "PROFILE",
+		"post.html":        "POST",
 		"static/style.css": "body{}",
 	}
 
@@ -61,6 +62,7 @@ func TestPages(t *testing.T) {
 		{"/", 200, "INDEX", true},
 		{"/edit", 200, "EDIT", true},
 		{"/ann", 200, "PROFILE", true},
+		{"/post/p1", 200, "POST", true},
 		{"/static/style.css", 200, "body{}", false},
 		{"/static/", 404, "", false},
 		{"/api/v1/users/ann", 200, `"nickname":"ann"`, false},

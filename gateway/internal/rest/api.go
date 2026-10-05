@@ -40,11 +40,21 @@ type Media interface {
 	Avatar(ctx context.Context, userID, avatarID string, small bool) ([]byte, error)
 }
 
+// Posts: methods that read take an optional access token ("" for
+// anonymous viewers), with which posts tell whether the viewer likes them.
 type Posts interface {
 	Create(ctx context.Context, accessToken, text string) (model.Post, error)
 	Delete(ctx context.Context, accessToken, id string) error
-	List(ctx context.Context, authorID, cursor string, limit int) (model.PostPage, error)
-	Feed(ctx context.Context, authorIDs []string, cursor string, limit int) (model.PostPage, error)
+	Get(ctx context.Context, accessToken, id string) (model.Post, error)
+	List(ctx context.Context, accessToken, authorID, cursor string, limit int) (model.PostPage, error)
+	Feed(ctx context.Context, accessToken string, authorIDs []string, cursor string, limit int) (model.PostPage, error)
+
+	Like(ctx context.Context, accessToken, postID string) (int, error)
+	Unlike(ctx context.Context, accessToken, postID string) (int, error)
+
+	CreateComment(ctx context.Context, accessToken, postID, text string) (model.Comment, error)
+	DeleteComment(ctx context.Context, accessToken, id string) error
+	Comments(ctx context.Context, postID, cursor string, limit int) (model.CommentPage, error)
 }
 
 type api struct {
@@ -75,7 +85,14 @@ func (a *api) routes() *http.ServeMux {
 
 	mux.HandleFunc("GET /api/v1/users/{nickname}/posts", a.listPosts)
 	mux.HandleFunc("POST /api/v1/me/posts", a.createPost)
+	mux.HandleFunc("GET /api/v1/posts/{id}", a.getPost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}", a.deletePost)
+	mux.HandleFunc("PUT /api/v1/posts/{id}/like", a.likePost)
+	mux.HandleFunc("DELETE /api/v1/posts/{id}/like", a.unlikePost)
+
+	mux.HandleFunc("GET /api/v1/posts/{id}/comments", a.listComments)
+	mux.HandleFunc("POST /api/v1/posts/{id}/comments", a.createComment)
+	mux.HandleFunc("DELETE /api/v1/comments/{id}", a.deleteComment)
 
 	mux.HandleFunc("POST /api/v1/users/{nickname}/follow", a.follow)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/follow", a.unfollow)

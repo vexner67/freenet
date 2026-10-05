@@ -147,6 +147,7 @@ type fakePosts struct {
 	token, cursor, deleted string
 	limit                  int
 	created                string
+	liked                  map[string]bool
 	err                    error
 }
 
@@ -160,11 +161,24 @@ func (f *fakePosts) Delete(_ context.Context, token, id string) error {
 	return f.err
 }
 
-func (f *fakePosts) Feed(_ context.Context, authorIDs []string, cursor string, _ int) (model.PostPage, error) {
-	f.authors, f.cursor = authorIDs, cursor
+// Get knows p1 by u1 and p2 by an author who deleted the account.
+func (f *fakePosts) Get(_ context.Context, token, id string) (model.Post, error) {
+	f.token = token
+	switch id {
+	case "p1":
+		return model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Text: "первая", Likes: 3, Comments: 2, Liked: token != ""}, nil
+	case "p2":
+		return model.Post{ID: "p2", Author: model.Author{ID: "gone"}, Text: "сирота"}, nil
+	default:
+		return model.Post{}, failure.New(failure.NotFound, "post not found")
+	}
+}
+
+func (f *fakePosts) Feed(_ context.Context, token string, authorIDs []string, cursor string, _ int) (model.PostPage, error) {
+	f.token, f.authors, f.cursor = token, authorIDs, cursor
 	return model.PostPage{
 		Posts: []model.Post{
-			{ID: "p3", Author: model.Author{ID: "u2"}, Text: "от боба"},
+			{ID: "p3", Author: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},
 			{ID: "p2", Author: model.Author{ID: "gone"}, Text: "автор удалился"},
 			{ID: "p1", Author: model.Author{ID: "u1"}, Text: "моя"},
 		},
@@ -172,16 +186,68 @@ func (f *fakePosts) Feed(_ context.Context, authorIDs []string, cursor string, _
 	}, nil
 }
 
-func (f *fakePosts) List(_ context.Context, authorID, cursor string, limit int) (model.PostPage, error) {
-	f.cursor, f.limit = cursor, limit
+func (f *fakePosts) List(_ context.Context, token, authorID, cursor string, limit int) (model.PostPage, error) {
+	f.token, f.cursor, f.limit = token, cursor, limit
 	if authorID != "u1" {
 		return model.PostPage{}, errors.New("wrong author id")
 	}
 	return model.PostPage{
-		Posts:      []model.Post{{ID: "p2", Author: model.Author{ID: "u1"}, Text: "вторая"}, {ID: "p1", Author: model.Author{ID: "u1"}, Text: "первая"}},
+		Posts:      []model.Post{{ID: "p2", Author: model.Author{ID: "u1"}, Text: "вторая", Comments: 4}, {ID: "p1", Author: model.Author{ID: "u1"}, Text: "первая", Likes: 2, Liked: true}},
 		NextCursor: "p1",
 		Total:      7,
 	}, f.err
+}
+
+func (f *fakePosts) Like(_ context.Context, token, postID string) (int, error) {
+	return f.setLike(token, postID, true)
+}
+
+func (f *fakePosts) Unlike(_ context.Context, token, postID string) (int, error) {
+	return f.setLike(token, postID, false)
+}
+
+func (f *fakePosts) setLike(token, postID string, liked bool) (int, error) {
+	if f.err != nil {
+		return 0, f.err
+	}
+	if f.liked == nil {
+		f.liked = make(map[string]bool)
+	}
+	f.token, f.liked[postID] = token, liked
+
+	likes := 0
+	for _, l := range f.liked {
+		if l {
+			likes++
+		}
+	}
+	return likes, nil
+}
+
+func (f *fakePosts) CreateComment(_ context.Context, token, postID, text string) (model.Comment, error) {
+	f.token, f.created = token, text
+	return model.Comment{ID: "c9", PostID: postID, Text: text, CreatedAt: time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)}, f.err
+}
+
+func (f *fakePosts) DeleteComment(_ context.Context, token, id string) error {
+	f.token, f.deleted = token, id
+	return f.err
+}
+
+func (f *fakePosts) Comments(_ context.Context, postID, cursor string, limit int) (model.CommentPage, error) {
+	f.cursor, f.limit = cursor, limit
+	if postID != "p1" {
+		return model.CommentPage{}, failure.New(failure.NotFound, "post not found")
+	}
+	return model.CommentPage{
+		Comments: []model.Comment{
+			{ID: "c1", PostID: "p1", Author: model.Author{ID: "u2"}, Text: "первый"},
+			{ID: "c2", PostID: "p1", Author: model.Author{ID: "gone"}, Text: "автор удалился"},
+			{ID: "c3", PostID: "p1", Author: model.Author{ID: "u1"}, Text: "ответ"},
+		},
+		NextCursor: "c3",
+		Total:      5,
+	}, nil
 }
 
 type fakeMedia struct {

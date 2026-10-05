@@ -151,12 +151,35 @@ func (f *fakePostAPI) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 	}}, nil
 }
 
-func (f *fakePostAPI) ListPosts(_ context.Context, req *postv1.ListPostsRequest, _ ...grpc.CallOption) (*postv1.ListPostsResponse, error) {
+func (f *fakePostAPI) ListPosts(ctx context.Context, req *postv1.ListPostsRequest, _ ...grpc.CallOption) (*postv1.ListPostsResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
 	f.req = req
 	return &postv1.ListPostsResponse{
-		Posts:      []*postv1.Post{{Id: "p1", AuthorId: "u1", Text: "привет", CreatedAt: timestamppb.Now()}},
+		Posts: []*postv1.Post{{
+			Id: "p1", AuthorId: "u1", Text: "привет", CreatedAt: timestamppb.Now(),
+			LikeCount: 4, CommentCount: 2, Liked: len(f.md.Get("authorization")) == 1,
+		}},
 		NextCursor: "p1",
 		Total:      3,
+	}, nil
+}
+
+func (f *fakePostAPI) LikePost(ctx context.Context, req *postv1.LikePostRequest, _ ...grpc.CallOption) (*postv1.LikePostResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	if req.GetPostId() != "p1" {
+		return nil, status.Error(codes.NotFound, "post not found")
+	}
+	return &postv1.LikePostResponse{LikeCount: 5}, nil
+}
+
+func (f *fakePostAPI) ListComments(_ context.Context, req *postv1.ListCommentsRequest, _ ...grpc.CallOption) (*postv1.ListCommentsResponse, error) {
+	return &postv1.ListCommentsResponse{
+		Comments: []*postv1.Comment{{
+			Id: "c1", PostId: req.GetPostId(), AuthorId: "u2", Text: "согласен",
+			CreatedAt: timestamppb.New(time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)),
+		}},
+		NextCursor: "c1",
+		Total:      7,
 	}, nil
 }
 
@@ -177,15 +200,46 @@ func TestPosts(t *testing.T) {
 		t.Fatalf("post = %+v", p)
 	}
 
-	page, err := posts.List(context.Background(), "u1", "p9", 1<<20)
+	page, err := posts.List(context.Background(), "", "u1", "p9", 1<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if api.req.GetAuthorId() != "u1" || api.req.GetCursor() != "p9" || api.req.GetLimit() != 1<<10 {
 		t.Fatalf("request = %v", api.req)
 	}
+	if len(api.md.Get("authorization")) != 0 {
+		t.Fatalf("anonymous wall sent a token: %v", api.md)
+	}
 	if page.Total != 3 || page.NextCursor != "p1" || len(page.Posts) != 1 {
 		t.Fatalf("page = %+v", page)
+	}
+	if got := page.Posts[0]; got.Likes != 4 || got.Comments != 2 || got.Liked {
+		t.Fatalf("anonymous post = %+v", got)
+	}
+
+	page, err = posts.List(context.Background(), "tok", "u1", "", 0)
+	if err != nil || !page.Posts[0].Liked {
+		t.Fatalf("signed-in wall = %+v, %v", page, err)
+	}
+
+	likes, err := posts.Like(context.Background(), "tok", "p1")
+	if err != nil || likes != 5 {
+		t.Fatalf("Like = %d, %v", likes, err)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
+		t.Fatalf("Like metadata = %v", got)
+	}
+
+	if _, err = posts.Like(context.Background(), "tok", "p2"); failure.From(err).Kind != failure.NotFound {
+		t.Fatalf("Like a missing post: %v", err)
+	}
+
+	comments, err := posts.Comments(context.Background(), "p1", "", 0)
+	if err != nil || comments.Total != 7 || comments.NextCursor != "c1" || len(comments.Comments) != 1 {
+		t.Fatalf("Comments = %+v, %v", comments, err)
+	}
+	if c := comments.Comments[0]; c.ID != "c1" || c.PostID != "p1" || c.Author.ID != "u2" || c.Text != "согласен" || c.CreatedAt.Hour() != 12 {
+		t.Fatalf("comment = %+v", c)
 	}
 }
 
