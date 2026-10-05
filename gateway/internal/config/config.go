@@ -17,6 +17,9 @@ type Config struct {
 	UserServiceAddr  string `env:"USER_SERVICE_ADDR,required,notEmpty"`
 	PostServiceAddr  string `env:"POST_SERVICE_ADDR,required,notEmpty"`
 	MediaServiceAddr string `env:"MEDIA_SERVICE_ADDR,required,notEmpty"`
+	// The notifications of the signed-in user: the menu counter and the
+	// "Мои Ответы" page.
+	NotificationServiceAddr string `env:"NOTIFICATION_SERVICE_ADDR,required,notEmpty"`
 
 	// mTLS to the internal services: TLS_CA_PATH, TLS_CERT_PATH, TLS_KEY_PATH.
 	TLS mtls.Config `envPrefix:"TLS_"`

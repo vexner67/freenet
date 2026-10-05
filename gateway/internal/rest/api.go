@@ -46,6 +46,7 @@ type Posts interface {
 	Create(ctx context.Context, accessToken, text string) (model.Post, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	Get(ctx context.Context, accessToken, id string) (model.Post, error)
+	GetMany(ctx context.Context, ids []string) ([]model.Post, error)
 	List(ctx context.Context, accessToken, authorID, cursor string, limit int) (model.PostPage, error)
 	Feed(ctx context.Context, accessToken string, authorIDs []string, cursor string, limit int) (model.PostPage, error)
 
@@ -55,6 +56,22 @@ type Posts interface {
 	CreateComment(ctx context.Context, accessToken, postID, text string) (model.Comment, error)
 	DeleteComment(ctx context.Context, accessToken, id string) error
 	Comments(ctx context.Context, postID, cursor string, limit int) (model.CommentPage, error)
+	CommentsByID(ctx context.Context, ids []string) ([]model.Comment, error)
+}
+
+type Notifications interface {
+	List(ctx context.Context, accessToken string, unread bool, cursor string, limit int) (model.NotificationPage, error)
+	CountUnread(ctx context.Context, accessToken string) (int, error)
+	MarkRead(ctx context.Context, accessToken, id string) error
+}
+
+// Backends are the services the API is made of.
+type Backends struct {
+	Auth          Auth
+	Users         Users
+	Posts         Posts
+	Media         Media
+	Notifications Notifications
 }
 
 type api struct {
@@ -62,6 +79,7 @@ type api struct {
 	users             Users
 	posts             Posts
 	media             Media
+	notifications     Notifications
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -102,6 +120,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/feed", a.feed)
 
 	mux.HandleFunc("GET /api/v1/users", a.searchUsers)
+
+	mux.HandleFunc("GET /api/v1/notifications", a.listNotifications)
+	mux.HandleFunc("GET /api/v1/notifications/unread-count", a.countUnreadNotifications)
+	mux.HandleFunc("POST /api/v1/notifications/read", a.markNotificationsRead)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)

@@ -25,12 +25,13 @@ type Server struct {
 	logger *slog.Logger
 }
 
-func NewServer(cfg Config, auth Auth, users Users, posts Posts, media Media, logger *slog.Logger) *Server {
+func NewServer(cfg Config, backends Backends, logger *slog.Logger) *Server {
 	a := &api{
-		auth:              auth,
-		users:             users,
-		posts:             posts,
-		media:             media,
+		auth:              backends.Auth,
+		users:             backends.Users,
+		posts:             backends.Posts,
+		media:             backends.Media,
+		notifications:     backends.Notifications,
 		logger:            logger,
 		trustForwardedFor: cfg.TrustForwardedFor,
 		webDir:            cfg.WebDir,

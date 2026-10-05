@@ -19,11 +19,12 @@ func webDir(t *testing.T) string {
 
 	dir := t.TempDir()
 	files := map[string]string{
-		"index.html":       "INDEX",
-		"edit.html":        "EDIT",
-		"profile.html":     "PROFILE",
-		"post.html":        "POST",
-		"static/style.css": "body{}",
+		"index.html":         "INDEX",
+		"edit.html":          "EDIT",
+		"profile.html":       "PROFILE",
+		"post.html":          "POST",
+		"notifications.html": "NOTIFICATIONS",
+		"static/style.css":   "body{}",
 	}
 
 	for name, content := range files {
@@ -44,7 +45,8 @@ func TestPages(t *testing.T) {
 
 	handler := rest.NewServer(
 		rest.Config{RequestTimeout: time.Second, WebDir: webDir(t)},
-		&fakeAuth{}, &fakeUsers{}, &fakePosts{}, &fakeMedia{}, slog.New(slog.NewTextHandler(io.Discard, nil)),
+		rest.Backends{Auth: &fakeAuth{}, Users: &fakeUsers{}, Posts: &fakePosts{}, Media: &fakeMedia{}, Notifications: &fakeNotifications{}},
+		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	).Handler()
 
 	get := func(path string) *httptest.ResponseRecorder {
@@ -63,6 +65,7 @@ func TestPages(t *testing.T) {
 		{"/edit", 200, "EDIT", true},
 		{"/ann", 200, "PROFILE", true},
 		{"/post/p1", 200, "POST", true},
+		{"/notifications", 200, "NOTIFICATIONS", true},
 		{"/static/style.css", 200, "body{}", false},
 		{"/static/", 404, "", false},
 		{"/api/v1/users/ann", 200, `"nickname":"ann"`, false},

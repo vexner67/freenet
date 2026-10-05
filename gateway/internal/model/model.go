@@ -92,6 +92,24 @@ type CommentPage struct {
 	Total      int
 }
 
+// Notification kinds are "like", "comment" and "follow". PostID is set
+// for likes and comments, CommentID for comments.
+type Notification struct {
+	ID        string
+	Kind      string
+	ActorID   string
+	PostID    string
+	CommentID string
+	CreatedAt time.Time
+}
+
+// NotificationPage is one screen of notifications, newest first;
+// NextCursor is empty on the last one.
+type NotificationPage struct {
+	Notifications []Notification
+	NextCursor    string
+}
+
 type FollowStats struct {
 	Followers int
 	Following int
