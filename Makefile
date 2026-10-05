@@ -17,7 +17,7 @@ ps:
 down:
 	docker compose down
 
-# Development CA and mTLS certificates for auth, user, post and gateway.
+# Development CA and mTLS certificates for every service.
 certs:
 	./scripts/gen-certs.sh certs
 

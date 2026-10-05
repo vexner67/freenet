@@ -1,0 +1,127 @@
+package postgres_test
+
+import (
+	"context"
+	"errors"
+	"os"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/vexner67/freenet/notification/internal/notification"
+	"github.com/vexner67/freenet/notification/internal/postgres"
+	"github.com/vexner67/freenet/notification/internal/service"
+	"github.com/vexner67/freenet/pkg/pgpool"
+)
+
+// Integration test: needs a database with migrations applied, e.g.
+// TEST_DATABASE_URL=postgres://... go test ./internal/postgres
+func TestRepositories(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	repo := postgres.NewNotificationRepository(pool)
+	marks := postgres.NewReadMarkRepository(pool)
+
+	ann, bob := uuid.New(), uuid.New()
+	post, commentID := uuid.New(), uuid.New()
+
+	events := []notification.Event{
+		{Kind: notification.KindFollow, RecipientID: ann, ActorID: bob},
+		{Kind: notification.KindLike, RecipientID: ann, ActorID: bob, PostID: post},
+		{Kind: notification.KindComment, RecipientID: ann, ActorID: bob, PostID: post, CommentID: commentID},
+	}
+
+	var saved []*notification.Notification
+	for _, e := range append(events, events...) { // each twice: saved once
+		n, err := notification.New(e, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = repo.Save(ctx, n); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		saved = append(saved, n)
+	}
+
+	t.Run("round trip and dedup", func(t *testing.T) {
+		got, err := repo.Get(ctx, saved[2].ID())
+		if err != nil || *got != *saved[2] {
+			t.Fatalf("Get = %+v, %v; want %+v", got, err, saved[2])
+		}
+
+		if _, err = repo.Get(ctx, saved[3].ID()); !errors.Is(err, notification.ErrNotFound) {
+			t.Fatalf("a repeated event was saved: %v", err)
+		}
+
+		all, err := repo.List(ctx, service.Query{RecipientID: ann, Unread: true, Limit: 10})
+		if err != nil || len(all) != 3 || all[0].Event().Kind != notification.KindComment {
+			t.Fatalf("List = %v, %v", all, err)
+		}
+
+		if n, err := repo.CountNewer(ctx, ann, uuid.Nil, 2); err != nil || n != 2 {
+			t.Fatalf("CountNewer capped = %d, %v", n, err)
+		}
+	})
+
+	t.Run("read mark", func(t *testing.T) {
+		if mark, err := marks.ReadUpTo(ctx, ann); err != nil || mark != uuid.Nil {
+			t.Fatalf("ReadUpTo before reading = %v, %v", mark, err)
+		}
+
+		if err := marks.MarkRead(ctx, ann, saved[1].ID()); err != nil {
+			t.Fatal(err)
+		}
+		if err := marks.MarkRead(ctx, ann, saved[0].ID()); err != nil {
+			t.Fatal(err)
+		}
+
+		mark, err := marks.ReadUpTo(ctx, ann)
+		if err != nil || mark != saved[1].ID() {
+			t.Fatalf("mark = %v, %v; the newer mark must stay", mark, err)
+		}
+
+		unread, err := repo.List(ctx, service.Query{RecipientID: ann, Unread: true, ReadUpTo: mark, Limit: 10})
+		if err != nil || len(unread) != 1 || unread[0].ID() != saved[2].ID() {
+			t.Fatalf("unread = %v, %v", unread, err)
+		}
+
+		archive, err := repo.List(ctx, service.Query{RecipientID: ann, ReadUpTo: mark, Limit: 10})
+		if err != nil || len(archive) != 2 || archive[0].ID() != saved[1].ID() {
+			t.Fatalf("archive = %v, %v", archive, err)
+		}
+
+		older, err := repo.List(ctx, service.Query{RecipientID: ann, ReadUpTo: mark, Before: archive[0].ID(), Limit: 10})
+		if err != nil || len(older) != 1 || older[0].ID() != saved[0].ID() {
+			t.Fatalf("archive after cursor = %v, %v", older, err)
+		}
+	})
+
+	t.Run("retract and forget", func(t *testing.T) {
+		for _, e := range []notification.Event{events[0], events[2]} {
+			if err := repo.Delete(ctx, e); err != nil {
+				t.Fatalf("Delete(%+v): %v", e, err)
+			}
+		}
+
+		if err := repo.DeleteByPost(ctx, post); err != nil {
+			t.Fatal(err)
+		}
+
+		left, err := repo.List(ctx, service.Query{RecipientID: ann, Unread: true, Limit: 10})
+		if err != nil || len(left) != 0 {
+			t.Fatalf("left = %v, %v", left, err)
+		}
+	})
+}

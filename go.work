@@ -4,6 +4,7 @@ use (
 	./auth
 	./gateway
 	./media
+	./notification
 	./pkg/envconfig
 	./pkg/errs
 	./pkg/grpcserver
