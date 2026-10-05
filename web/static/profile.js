@@ -45,7 +45,7 @@ function render(user, isOwner) {
   $('edit').hidden = !isOwner;
   $('profile').hidden = false;
 
-  initWall(user, isOwner);
+  initWall(user, isOwner, Boolean(me));
 }
 
 const me = await currentUser().catch(() => null);

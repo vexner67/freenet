@@ -135,12 +135,17 @@ export const api = {
   // With a session the profile also says whether you follow the user.
   profile: (nickname) => optional('GET', '/api/v1/users/' + encodeURIComponent(nickname)),
 
-  wall(nickname, cursor = '') {
-    const query = cursor ? '?cursor=' + encodeURIComponent(cursor) : '';
-    return request('GET', `/api/v1/users/${encodeURIComponent(nickname)}/posts${query}`);
-  },
+  // With a session posts also say whether you like them.
+  wall: (nickname, cursor = '') => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0)),
+  post: (id) => optional('GET', '/api/v1/posts/' + encodeURIComponent(id)),
   createPost: (text) => authorized('POST', '/api/v1/me/posts', { text }),
   deletePost: (id) => authorized('DELETE', '/api/v1/posts/' + encodeURIComponent(id)),
+  like: (postID) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
+  unlike: (postID) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
+
+  comments: (postID, cursor = '') => request('GET', page(`/api/v1/posts/${encodeURIComponent(postID)}/comments`, cursor, 0)),
+  createComment: (postID, text) => authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/comments`, { text }),
+  deleteComment: (id) => authorized('DELETE', '/api/v1/comments/' + encodeURIComponent(id)),
 
   follow: (nickname) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/follow`),
   unfollow: (nickname) => authorized('DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/follow`),

@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Запись | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/post.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+
+        <div id="content" hidden>
+          <div id="post"></div>
+
+          <div class="section-title">Комментарии<span class="count" id="comments-count"></span></div>
+          <div class="error" id="comments-error" hidden></div>
+          <div id="comments"></div>
+          <p class="hint" id="comments-empty" hidden>Комментариев пока нет.</p>
+          <a class="wall-more" id="comments-more" hidden>Показать следующие комментарии</a>
+
+          <form class="wall-form comment-form" id="comment-form" hidden>
+            <textarea id="comment-text" maxlength="1000" placeholder="Ваш комментарий..." aria-label="Новый комментарий"></textarea>
+            <div class="row">
+              <span class="hint" id="comment-counter"></span>
+              <button class="button" type="submit" id="comment-submit">Отправить</button>
+            </div>
+          </form>
+          <p class="hint comment-hint" id="comment-hint" hidden></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

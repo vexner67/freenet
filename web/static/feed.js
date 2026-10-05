@@ -10,7 +10,10 @@ async function loadMore() {
   try {
     const page = await api.feed(cursor);
 
-    $('posts').append(...page.posts.map((post) => postNode(post)));
+    $('posts').append(...page.posts.map((post) => postNode(post, {
+      canLike: true,
+      onError: (e) => showError($('error'), e),
+    })));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
     $('empty').hidden = $('posts').children.length > 0;

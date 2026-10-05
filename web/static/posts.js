@@ -1,12 +1,27 @@
-// One post as on the old sites: avatar, "Name wrote", date, text, menu.
+// One post as on openvk: avatar, "Name wrote", date, text, and a menu with
+// the link to the comments on the left and the like on the right.
 
-import { formatPostDate, wrote } from './labels.js';
+import { api } from './api.js';
+import { commentsLink, formatPostDate, wrote } from './labels.js';
 import { avatarURL, el, fullName } from './layout.js';
 
-// postNode renders a post; onDelete adds a "Удалить" link and is called
-// with the post and its node.
-export function postNode(post, onDelete) {
+const SVG = 'http://www.w3.org/2000/svg';
+
+export function postPath(post) {
+  return '/post/' + encodeURIComponent(post.id);
+}
+
+// postNode renders a post. Options:
+//   onDelete(post, node) adds a "Удалить" link;
+//   canLike makes the heart clickable (signed-in viewers);
+//   onError(e) shows a failed like;
+//   withCommentsLink: false on the page of the post, which shows the comments.
+export function postNode(post, { onDelete, canLike = false, onError, withCommentsLink = true } = {}) {
   const path = '/' + post.author.nickname;
+
+  const links = [];
+  if (withCommentsLink) links.push(el('a', { href: postPath(post), textContent: commentsLink(post.comments) }));
+  if (onDelete) links.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(post, node) }));
 
   const node = el('div', { className: 'post' },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(post.author, 'small'), alt: '' })),
@@ -14,13 +29,68 @@ export function postNode(post, onDelete) {
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
         ' ' + wrote(post.author.gender),
-        el('div', { className: 'post-date', textContent: formatPostDate(post.createdAt) }),
+        el('div', { className: 'post-date' }, el('a', { href: postPath(post), textContent: formatPostDate(post.createdAt) })),
       ),
       el('div', { className: 'post-text', textContent: post.text }),
-      onDelete && el('div', { className: 'post-menu' },
-        el('a', { textContent: 'Удалить', onclick: () => onDelete(post, node) })),
+      el('div', { className: 'post-menu' },
+        el('span', {}, ...separated(links)),
+        likeButton(post, canLike, onError),
+      ),
     ),
   );
 
   return node;
+}
+
+// separated puts " | " between links, as in the menus of openvk.
+export function separated(nodes) {
+  return nodes.flatMap((node, i) => (i === 0 ? [node] : [el('span', { className: 'separator', textContent: '|' }), node]));
+}
+
+// likeButton is the heart with the number of likes. It changes post.likes
+// and post.liked, so the post stays the source of truth.
+function likeButton(post, canLike, onError) {
+  const count = el('span', { className: 'like-count' });
+  const button = el(canLike ? 'a' : 'span', { className: canLike ? 'like' : 'like disabled' }, heart(), count);
+
+  function render() {
+    button.classList.toggle('liked', post.liked);
+    count.textContent = post.likes > 0 ? String(post.likes) : '';
+    button.title = post.liked ? 'Вам нравится' : 'Нравится';
+  }
+
+  let busy = false;
+
+  async function toggle() {
+    if (busy) return;
+    busy = true;
+
+    try {
+      const result = post.liked ? await api.unlike(post.id) : await api.like(post.id);
+      post.likes = result.likes;
+      post.liked = result.liked;
+      render();
+    } catch (e) {
+      onError?.(e);
+    } finally {
+      busy = false;
+    }
+  }
+
+  if (canLike) button.addEventListener('click', toggle);
+  render();
+
+  return button;
+}
+
+function heart() {
+  const path = document.createElementNS(SVG, 'path');
+  path.setAttribute('d', 'M5.5 9.6 1.3 5.4C.1 4.2.1 2.2 1.3 1 2.5-.2 4.4-.1 5.5 1.3 6.6-.1 8.5-.2 9.7 1c1.2 1.2 1.2 3.2 0 4.4Z');
+
+  const svg = document.createElementNS(SVG, 'svg');
+  svg.setAttribute('viewBox', '0 0 11 10');
+  svg.setAttribute('aria-hidden', 'true');
+  svg.append(path);
+
+  return svg;
 }

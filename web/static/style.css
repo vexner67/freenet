@@ -289,8 +289,33 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
   overflow-wrap: anywhere;
 }
 
-.post-menu { padding: 3px 4px; font-size: 9px; }
+.post-date a { color: #777; }
+
+/* As on openvk: links on the left, the heart with its count on the right. */
+.post-menu {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 3px 4px;
+  font-size: 9px;
+}
 .post-menu a { color: #999; }
+.post-menu .separator { margin: 0 5px; color: #ccc; }
+
+.like { display: inline-flex; align-items: center; gap: 3px; color: #2b587a; }
+.like svg { width: 11px; height: 10px; fill: #2b587a; opacity: .4; }
+a.like { cursor: pointer; }
+a.like:hover { text-decoration: none; }
+a.like:hover svg { opacity: .7; }
+.like.liked svg { fill: #d94c4c; opacity: 1; }
+.like-count { color: #000; font-size: 9px; }
+
+/* Comments: a post with a small avatar. */
+.comment .post-avatar img { width: 30px; height: 30px; }
+.comment .post-author { padding: 2px 5px; }
+.comment-form { margin-top: 10px; }
+.comment-form textarea { height: 50px; }
+.comment-hint { margin-top: 10px; }
 
 .post-deleted {
   margin-bottom: 10px;
