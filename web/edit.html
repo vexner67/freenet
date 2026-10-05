@@ -1,0 +1,114 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Редактирование страницы | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/edit.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title">Редактирование страницы</div>
+      <div class="page-body">
+        <p id="loading">Загрузка…</p>
+
+        <form id="form" hidden>
+          <div class="notice" id="welcome" hidden>
+            <b>Добро пожаловать в Freenet!</b> Расскажите немного о себе.
+            Обязательны только имя и никнейм — по никнейму вас найдут друзья.
+          </div>
+          <div class="error" id="error" hidden></div>
+
+          <div class="section-title">Основное</div>
+          <table class="form">
+            <tr>
+              <th><label class="required" for="name">Имя</label></th>
+              <td class="control"><input type="text" id="name" maxlength="100" autocomplete="given-name"></td>
+            </tr>
+            <tr>
+              <th><label for="surname">Фамилия</label></th>
+              <td class="control"><input type="text" id="surname" maxlength="100" autocomplete="family-name"></td>
+            </tr>
+            <tr>
+              <th><label class="required" for="nickname">Никнейм</label></th>
+              <td class="control"><input type="text" id="nickname" maxlength="32" autocomplete="username" spellcheck="false"></td>
+              <td class="note hint">Адрес страницы: <span id="url-preview"></span></td>
+            </tr>
+            <tr>
+              <th><label for="status">Статус</label></th>
+              <td class="control"><input type="text" id="status" maxlength="200"></td>
+            </tr>
+            <tr>
+              <th><label for="gender">Пол</label></th>
+              <td class="control"><select id="gender"></select></td>
+            </tr>
+            <tr>
+              <th><label for="relationship">Семейное положение</label></th>
+              <td class="control"><select id="relationship"></select></td>
+            </tr>
+            <tr>
+              <th><label for="birth-day">Дата рождения</label></th>
+              <td class="control">
+                <div class="date">
+                  <select id="birth-day" aria-label="День"></select>
+                  <select id="birth-month" aria-label="Месяц"></select>
+                  <select id="birth-year" aria-label="Год"></select>
+                </div>
+              </td>
+            </tr>
+          </table>
+
+          <div class="section-title">Взгляды</div>
+          <table class="form">
+            <tr>
+              <th><label for="worldview">Мировоззрение</label></th>
+              <td class="control"><select id="worldview"></select></td>
+            </tr>
+            <tr>
+              <th><label for="political-views">Полит. взгляды</label></th>
+              <td class="control"><select id="political-views"></select></td>
+            </tr>
+          </table>
+
+          <div class="section-title">Приватность</div>
+          <table class="form">
+            <tr>
+              <th>Показывать всем</th>
+              <td class="checks">
+                <label><input type="checkbox" id="show-birthday">дату рождения</label>
+                <label><input type="checkbox" id="show-relationship">семейное положение</label>
+                <label><input type="checkbox" id="show-worldview">мировоззрение</label>
+                <label><input type="checkbox" id="show-political-views">политические взгляды</label>
+                <p class="hint">Остальное видят все. Почту не видит никто.</p>
+              </td>
+            </tr>
+          </table>
+
+          <div class="actions">
+            <button class="button" type="submit" id="save">Сохранить</button>
+            <a class="button secondary" id="cancel" href="/">Отмена</a>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>
