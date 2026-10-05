@@ -1,0 +1,97 @@
+syntax = "proto3";
+
+package notification.v1;
+
+option go_package = "github.com/vexner67/freenet/notification/api/notification/v1;notificationv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+service NotificationService {
+  // Internal, for post and user: an event happened or was undone. Notify
+  // is idempotent, Retract of nothing is fine.
+  rpc Notify(NotifyRequest) returns (google.protobuf.Empty);
+  rpc Retract(RetractRequest) returns (google.protobuf.Empty);
+  // Internal, for post: the post is deleted with its likes and comments.
+  rpc ForgetPost(ForgetPostRequest) returns (google.protobuf.Empty);
+
+  // Require an access token: the caller's own notifications.
+  rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
+  rpc CountUnread(CountUnreadRequest) returns (CountUnreadResponse);
+  rpc MarkRead(MarkReadRequest) returns (google.protobuf.Empty);
+}
+
+enum Kind {
+  KIND_UNSPECIFIED = 0;
+  // The actor liked the recipient's post.
+  KIND_LIKE = 1;
+  // The actor commented on the recipient's post.
+  KIND_COMMENT = 2;
+  // The actor followed the recipient.
+  KIND_FOLLOW = 3;
+}
+
+// Event: post_id is set for likes and comments, comment_id for comments.
+message Event {
+  Kind kind = 1;
+  string recipient_id = 2;
+  string actor_id = 3;
+  string post_id = 4;
+  string comment_id = 5;
+}
+
+message NotifyRequest {
+  Event event = 1;
+}
+
+message RetractRequest {
+  Event event = 1;
+}
+
+message ForgetPostRequest {
+  string post_id = 1;
+}
+
+message Notification {
+  string id = 1;
+  Kind kind = 2;
+  string actor_id = 3;
+  // Empty when the kind has no post or comment.
+  string post_id = 4;
+  string comment_id = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+enum Box {
+  BOX_UNSPECIFIED = 0;
+  // Newer than the read mark.
+  BOX_UNREAD = 1;
+  // The read mark and older.
+  BOX_ARCHIVE = 2;
+}
+
+message ListNotificationsRequest {
+  Box box = 1;
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message ListNotificationsResponse {
+  repeated Notification notifications = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+}
+
+message CountUnreadRequest {}
+
+message CountUnreadResponse {
+  // At most 100.
+  int32 count = 1;
+}
+
+message MarkReadRequest {
+  // The newest notification read; it and older ones go to the archive.
+  string notification_id = 1;
+}

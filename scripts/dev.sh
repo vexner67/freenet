@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
-# Runs the whole backend locally: user, post, media, auth and gateway,
-# each from its own directory with its own .env. Output is merged and
-# labelled by service; Ctrl+C stops everything gracefully. If any service
-# dies, the others are stopped too.
+# Runs the whole backend locally: notification, user, post, media, auth
+# and gateway, each from its own directory with its own .env. Output is
+# merged and labelled by service; Ctrl+C stops everything gracefully. If
+# any service dies, the others are stopped too.
 #
 #   scripts/dev.sh               storage from the .env files (inmem by default)
 #   scripts/dev.sh --persistent  PostgreSQL and Redis from compose.yaml
@@ -12,8 +12,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-services=(user post media auth gateway)
-colors=(36 35 34 33 32)
+services=(notification user post media auth gateway)
+colors=(31 36 35 34 33 32)
 
 die() {
 	echo "dev: $*" >&2
@@ -91,7 +91,7 @@ label() {
 
 for i in "${!services[@]}"; do
 	svc=${services[$i]}
-	tag=$(printf '%-8s|' "$svc")
+	tag=$(printf '%-12s|' "$svc")
 	[ -t 1 ] && tag=$(printf '\033[%sm%s\033[0m' "${colors[$i]}" "$tag")
 
 	(cd "$svc" && exec "$bin/$svc") > >(label "$tag ") 2>&1 &

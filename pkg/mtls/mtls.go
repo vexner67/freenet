@@ -16,11 +16,12 @@ import (
 
 // Service identities: the common names in the certificates from `make certs`.
 const (
-	Auth    = "auth"
-	User    = "user"
-	Post    = "post"
-	Media   = "media"
-	Gateway = "gateway"
+	Auth         = "auth"
+	User         = "user"
+	Post         = "post"
+	Media        = "media"
+	Notification = "notification"
+	Gateway      = "gateway"
 )
 
 // Config is embedded by services with envPrefix "TLS_": TLS_CA_PATH,

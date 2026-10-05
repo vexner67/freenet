@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
 # Creates a development CA and mTLS certificates for the services in certs/.
 # Each certificate's common name is the service identity checked by
-# pkg/mtls (auth, user, post, media, gateway); SANs cover localhost and the service name.
+# pkg/mtls (auth, user, post, media, notification, gateway); SANs cover localhost and the service name.
 # Re-running replaces everything, including the CA.
 set -euo pipefail
 
 out="${1:-certs}"
 days=825
-services=(auth user post media gateway)
+services=(auth user post media notification gateway)
 
 mkdir -p "$out"
 cd "$out"
