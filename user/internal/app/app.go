@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"github.com/vexner67/freenet/pkg/jwtauth"
@@ -17,6 +18,7 @@ import (
 	"github.com/vexner67/freenet/user/internal/config"
 	usergrpc "github.com/vexner67/freenet/user/internal/grpc"
 	"github.com/vexner67/freenet/user/internal/inmem"
+	"github.com/vexner67/freenet/user/internal/notifyclient"
 	"github.com/vexner67/freenet/user/internal/postgres"
 	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/migrations"
@@ -29,10 +31,11 @@ const (
 )
 
 type App struct {
-	logger *slog.Logger
-	pool   *pgxpool.Pool
-	server *grpcserver.Server
-	addr   string
+	logger           *slog.Logger
+	pool             *pgxpool.Pool
+	notificationConn *grpc.ClientConn
+	server           *grpcserver.Server
+	addr             string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -64,6 +67,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newStorage", err)
 	}
 
+	notifier, err := a.newNotifier(cfg)
+	if err != nil {
+		return errs.Wrap("a.newNotifier", err)
+	}
+
 	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
 	if err != nil {
 		return errs.Wrap("jwtauth.LoadPublicKey", err)
@@ -92,14 +100,36 @@ func (a *App) build(cfg config.Config) error {
 		a.server.Registrar(),
 		usergrpc.NewUserHandler(
 			service.NewUserService(store.users),
-			service.NewFollowService(store.users, store.follows, store.follows),
+			service.NewFollowService(store.users, store.follows, store.follows, notifier),
 			a.logger,
 		),
 	)
 
-	a.logger.Info("user configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
+	a.logger.Info("user configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(),
+		"notifications", cfg.NotificationServiceAddr != "")
 
 	return nil
+}
+
+// newNotifier connects to the notification service; the connection is
+// lazy, so the services may start in any order.
+func (a *App) newNotifier(cfg config.Config) (service.Notifier, error) {
+	if cfg.NotificationServiceAddr == "" {
+		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: follows notify nobody")
+		return notifyclient.Nop{}, nil
+	}
+
+	creds, err := mtls.ClientCredentials(cfg.TLS)
+	if err != nil {
+		return nil, errs.Wrap("mtls.ClientCredentials", err)
+	}
+
+	a.notificationConn, err = grpc.NewClient(cfg.NotificationServiceAddr, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		return nil, errs.Wrap("grpc.NewClient", err)
+	}
+
+	return notifyclient.New(notificationv1.NewNotificationServiceClient(a.notificationConn), cfg.NotifyTimeout, a.logger), nil
 }
 
 // storage is the set of repositories chosen by STORAGE.
@@ -155,6 +185,12 @@ func (a *App) Run(ctx context.Context) error {
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.notificationConn != nil {
+		if err := a.notificationConn.Close(); err != nil {
+			a.logger.Error("notification connection close", "error", err)
+		}
+	}
+
 	if a.pool != nil {
 		a.pool.Close()
 	}

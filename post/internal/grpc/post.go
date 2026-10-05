@@ -18,6 +18,7 @@ type PostService interface {
 	Create(ctx context.Context, authorID uuid.UUID, text post.Text) (*post.Post, error)
 	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
 	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
+	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
 	ListByAuthor(ctx context.Context, viewerID, authorID, cursor uuid.UUID, size int) (service.Page, error)
 	Feed(ctx context.Context, viewerID uuid.UUID, authorIDs []uuid.UUID, cursor uuid.UUID, size int) (service.Page, error)
 	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
@@ -28,6 +29,7 @@ type CommentService interface {
 	Create(ctx context.Context, authorID, postID uuid.UUID, text post.CommentText) (*post.Comment, error)
 	Delete(ctx context.Context, requesterID, commentID uuid.UUID) error
 	List(ctx context.Context, postID, cursor uuid.UUID, size int) (service.CommentPage, error)
+	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error)
 }
 
 type PostHandler struct {
@@ -94,6 +96,26 @@ func (h *PostHandler) GetPost(ctx context.Context, req *postv1.GetPostRequest) (
 	}
 
 	return &postv1.GetPostResponse{Post: toProtoPost(p, liked)}, nil
+}
+
+// GetPosts leaves liked unset: the posts are shown without their likes.
+func (h *PostHandler) GetPosts(ctx context.Context, req *postv1.GetPostsRequest) (*postv1.GetPostsResponse, error) {
+	ids, err := parseIDs(req.GetIds())
+	if err != nil {
+		return nil, err
+	}
+
+	posts, err := h.postService.GetMany(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &postv1.GetPostsResponse{Posts: make([]*postv1.Post, 0, len(posts))}
+	for _, p := range posts {
+		resp.Posts = append(resp.Posts, toProtoPost(p, false))
+	}
+
+	return resp, nil
 }
 
 func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsRequest) (*postv1.ListPostsResponse, error) {
@@ -190,6 +212,24 @@ func likeTarget(ctx context.Context, rawPostID string) (uuid.UUID, uuid.UUID, er
 	}
 
 	return userID, postID, nil
+}
+
+// parseIDs reads at most service.MaxPageSize IDs.
+func parseIDs(raw []string) ([]uuid.UUID, error) {
+	if len(raw) > service.MaxPageSize {
+		return nil, status.Error(codes.InvalidArgument, "too many ids")
+	}
+
+	ids := make([]uuid.UUID, 0, len(raw))
+	for _, s := range raw {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid id")
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
 }
 
 // parseCursor reads a page cursor; "" is the first page.

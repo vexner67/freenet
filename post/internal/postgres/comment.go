@@ -75,6 +75,40 @@ func (r *CommentRepository) Get(ctx context.Context, id uuid.UUID) (*post.Commen
 	return c, nil
 }
 
+const getCommentsQuery = `
+	SELECT
+		id,
+		post_id,
+		author_id,
+		text,
+		created_at
+	FROM comments
+	WHERE id = ANY($1)
+`
+
+func (r *CommentRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error) {
+	rows, err := r.pool.Query(ctx, getCommentsQuery, ids)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+	defer rows.Close()
+
+	var comments []*post.Comment
+	for rows.Next() {
+		c, err := scanComment(rows)
+		if err != nil {
+			return nil, errs.Wrap("scanComment", err)
+		}
+		comments = append(comments, c)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, errs.Wrap("rows.Err", err)
+	}
+
+	return comments, nil
+}
+
 // deleteCommentQuery removes the comment and uncounts it in one statement;
 // no row is updated when there was no such comment.
 const deleteCommentQuery = `

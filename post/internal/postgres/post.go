@@ -68,6 +68,41 @@ func (r *PostRepository) Get(ctx context.Context, id uuid.UUID) (*post.Post, err
 	return p, nil
 }
 
+const getPostsQuery = `
+	SELECT
+		id,
+		author_id,
+		text,
+		created_at,
+		like_count,
+		comment_count
+	FROM posts
+	WHERE id = ANY($1)
+`
+
+func (r *PostRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error) {
+	rows, err := r.pool.Query(ctx, getPostsQuery, ids)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+	defer rows.Close()
+
+	var posts []*post.Post
+	for rows.Next() {
+		p, err := scanPost(rows)
+		if err != nil {
+			return nil, errs.Wrap("scanPost", err)
+		}
+		posts = append(posts, p)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, errs.Wrap("rows.Err", err)
+	}
+
+	return posts, nil
+}
+
 const deletePostQuery = `
 	DELETE FROM posts
 	WHERE id = $1

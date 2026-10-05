@@ -53,6 +53,25 @@ func (h *PostHandler) DeleteComment(ctx context.Context, req *postv1.DeleteComme
 	return &emptypb.Empty{}, nil
 }
 
+func (h *PostHandler) GetComments(ctx context.Context, req *postv1.GetCommentsRequest) (*postv1.GetCommentsResponse, error) {
+	ids, err := parseIDs(req.GetIds())
+	if err != nil {
+		return nil, err
+	}
+
+	comments, err := h.commentService.GetMany(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &postv1.GetCommentsResponse{Comments: make([]*postv1.Comment, 0, len(comments))}
+	for _, c := range comments {
+		resp.Comments = append(resp.Comments, toProtoComment(c))
+	}
+
+	return resp, nil
+}
+
 func (h *PostHandler) ListComments(ctx context.Context, req *postv1.ListCommentsRequest) (*postv1.ListCommentsResponse, error) {
 	postID, err := uuid.Parse(req.GetPostId())
 	if err != nil {

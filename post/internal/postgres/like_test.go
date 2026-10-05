@@ -101,6 +101,11 @@ func TestLikesAndComments(t *testing.T) {
 			t.Fatalf("round trip: got %+v, %v; want %+v", got, err, saved[0])
 		}
 
+		many, err := comments.GetMany(ctx, []uuid.UUID{saved[1].ID(), uuid.New()})
+		if err != nil || len(many) != 1 || *many[0] != *saved[1] {
+			t.Fatalf("GetMany = %v, %v", many, err)
+		}
+
 		first, err := comments.ListByPost(ctx, p.ID(), uuid.Nil, 2)
 		if err != nil || len(first) != 2 || first[0].Text() != "раз" || first[1].Text() != "два" {
 			t.Fatalf("first page: %v, %v", first, err)

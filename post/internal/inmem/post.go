@@ -83,6 +83,24 @@ func (r *PostRepository) Get(ctx context.Context, id uuid.UUID) (*post.Post, err
 	return p, nil
 }
 
+func (r *PostRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	var found []*post.Post
+	for _, id := range ids {
+		if p, ok := r.s.posts[id]; ok {
+			found = append(found, p)
+		}
+	}
+
+	return found, nil
+}
+
 func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)

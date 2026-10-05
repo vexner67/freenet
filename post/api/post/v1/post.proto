@@ -14,6 +14,9 @@ service PostService {
 
   // Public: one post.
   rpc GetPost(GetPostRequest) returns (GetPostResponse);
+  // Public: at most 50 posts by ID, for the notifications page; posts that
+  // are gone are left out, the order is not kept.
+  rpc GetPosts(GetPostsRequest) returns (GetPostsResponse);
   // Public: a user's wall, newest first.
   rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
   // Public: the posts of several authors, newest first, for a news feed.
@@ -30,6 +33,8 @@ service PostService {
   rpc DeleteComment(DeleteCommentRequest) returns (google.protobuf.Empty);
   // Public: the comments of a post, oldest first.
   rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
+  // Public: at most 50 comments by ID, like GetPosts.
+  rpc GetComments(GetCommentsRequest) returns (GetCommentsResponse);
 }
 
 // Public methods that return posts fill liked when the caller sends an
@@ -71,6 +76,14 @@ message GetPostRequest {
 
 message GetPostResponse {
   Post post = 1;
+}
+
+message GetPostsRequest {
+  repeated string ids = 1;
+}
+
+message GetPostsResponse {
+  repeated Post posts = 1;
 }
 
 message ListPostsRequest {
@@ -147,4 +160,12 @@ message ListCommentsResponse {
   string next_cursor = 2;
   // All comments of the post, for "Комментарии (N)".
   int32 total = 3;
+}
+
+message GetCommentsRequest {
+  repeated string ids = 1;
+}
+
+message GetCommentsResponse {
+  repeated Comment comments = 1;
 }

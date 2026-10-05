@@ -106,6 +106,16 @@ func TestComments(t *testing.T) {
 		t.Fatalf("comment count: %v, %v", got, err)
 	}
 
+	// Batches by ID without a token, for the notifications page.
+	posts, err := s.client.GetPosts(context.Background(), &postv1.GetPostsRequest{Ids: []string{postID, uuid.NewString()}})
+	if err != nil || len(posts.GetPosts()) != 1 || posts.GetPosts()[0].GetText() != "привет" {
+		t.Fatalf("GetPosts = %v, %v", posts, err)
+	}
+	comments, err := s.client.GetComments(context.Background(), &postv1.GetCommentsRequest{Ids: ids})
+	if err != nil || len(comments.GetComments()) != 3 {
+		t.Fatalf("GetComments = %v, %v", comments, err)
+	}
+
 	_, err = s.client.DeleteComment(s.as(t, cat), &postv1.DeleteCommentRequest{Id: ids[0]})
 	if status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("stranger deletes: %v", err)

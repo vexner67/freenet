@@ -56,13 +56,15 @@ type FollowService struct {
 	userRepo   UserRepository
 	followRepo FollowRepository
 	listRepo   FollowListRepository
+	notifier   Notifier
 }
 
-func NewFollowService(userRepo UserRepository, followRepo FollowRepository, listRepo FollowListRepository) *FollowService {
+func NewFollowService(userRepo UserRepository, followRepo FollowRepository, listRepo FollowListRepository, notifier Notifier) *FollowService {
 	return &FollowService{
 		userRepo:   userRepo,
 		followRepo: followRepo,
 		listRepo:   listRepo,
+		notifier:   notifier,
 	}
 }
 
@@ -79,12 +81,20 @@ func (s *FollowService) Follow(ctx context.Context, followerID, followeeID uuid.
 		return errs.Wrap("s.followRepo.Follow", err)
 	}
 
+	// Following twice notifies once: the notification service keeps one
+	// notification per follow.
+	s.notifier.Followed(ctx, followerID, followeeID)
+
 	return nil
 }
 
 func (s *FollowService) Unfollow(ctx context.Context, followerID, followeeID uuid.UUID) error {
 	if err := s.followRepo.Unfollow(ctx, followerID, followeeID); err != nil {
 		return errs.Wrap("s.followRepo.Unfollow", err)
+	}
+
+	if followerID != followeeID {
+		s.notifier.Unfollowed(ctx, followerID, followeeID)
 	}
 
 	return nil

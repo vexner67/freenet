@@ -23,6 +23,7 @@ const (
 	PostService_CreatePost_FullMethodName    = "/post.v1.PostService/CreatePost"
 	PostService_DeletePost_FullMethodName    = "/post.v1.PostService/DeletePost"
 	PostService_GetPost_FullMethodName       = "/post.v1.PostService/GetPost"
+	PostService_GetPosts_FullMethodName      = "/post.v1.PostService/GetPosts"
 	PostService_ListPosts_FullMethodName     = "/post.v1.PostService/ListPosts"
 	PostService_ListFeed_FullMethodName      = "/post.v1.PostService/ListFeed"
 	PostService_LikePost_FullMethodName      = "/post.v1.PostService/LikePost"
@@ -30,6 +31,7 @@ const (
 	PostService_CreateComment_FullMethodName = "/post.v1.PostService/CreateComment"
 	PostService_DeleteComment_FullMethodName = "/post.v1.PostService/DeleteComment"
 	PostService_ListComments_FullMethodName  = "/post.v1.PostService/ListComments"
+	PostService_GetComments_FullMethodName   = "/post.v1.PostService/GetComments"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -41,6 +43,9 @@ type PostServiceClient interface {
 	DeletePost(ctx context.Context, in *DeletePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: one post.
 	GetPost(ctx context.Context, in *GetPostRequest, opts ...grpc.CallOption) (*GetPostResponse, error)
+	// Public: at most 50 posts by ID, for the notifications page; posts that
+	// are gone are left out, the order is not kept.
+	GetPosts(ctx context.Context, in *GetPostsRequest, opts ...grpc.CallOption) (*GetPostsResponse, error)
 	// Public: a user's wall, newest first.
 	ListPosts(ctx context.Context, in *ListPostsRequest, opts ...grpc.CallOption) (*ListPostsResponse, error)
 	// Public: the posts of several authors, newest first, for a news feed.
@@ -55,6 +60,8 @@ type PostServiceClient interface {
 	DeleteComment(ctx context.Context, in *DeleteCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: the comments of a post, oldest first.
 	ListComments(ctx context.Context, in *ListCommentsRequest, opts ...grpc.CallOption) (*ListCommentsResponse, error)
+	// Public: at most 50 comments by ID, like GetPosts.
+	GetComments(ctx context.Context, in *GetCommentsRequest, opts ...grpc.CallOption) (*GetCommentsResponse, error)
 }
 
 type postServiceClient struct {
@@ -89,6 +96,16 @@ func (c *postServiceClient) GetPost(ctx context.Context, in *GetPostRequest, opt
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPostResponse)
 	err := c.cc.Invoke(ctx, PostService_GetPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetPosts(ctx context.Context, in *GetPostsRequest, opts ...grpc.CallOption) (*GetPostsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPostsResponse)
+	err := c.cc.Invoke(ctx, PostService_GetPosts_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -165,6 +182,16 @@ func (c *postServiceClient) ListComments(ctx context.Context, in *ListCommentsRe
 	return out, nil
 }
 
+func (c *postServiceClient) GetComments(ctx context.Context, in *GetCommentsRequest, opts ...grpc.CallOption) (*GetCommentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetCommentsResponse)
+	err := c.cc.Invoke(ctx, PostService_GetComments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -174,6 +201,9 @@ type PostServiceServer interface {
 	DeletePost(context.Context, *DeletePostRequest) (*emptypb.Empty, error)
 	// Public: one post.
 	GetPost(context.Context, *GetPostRequest) (*GetPostResponse, error)
+	// Public: at most 50 posts by ID, for the notifications page; posts that
+	// are gone are left out, the order is not kept.
+	GetPosts(context.Context, *GetPostsRequest) (*GetPostsResponse, error)
 	// Public: a user's wall, newest first.
 	ListPosts(context.Context, *ListPostsRequest) (*ListPostsResponse, error)
 	// Public: the posts of several authors, newest first, for a news feed.
@@ -188,6 +218,8 @@ type PostServiceServer interface {
 	DeleteComment(context.Context, *DeleteCommentRequest) (*emptypb.Empty, error)
 	// Public: the comments of a post, oldest first.
 	ListComments(context.Context, *ListCommentsRequest) (*ListCommentsResponse, error)
+	// Public: at most 50 comments by ID, like GetPosts.
+	GetComments(context.Context, *GetCommentsRequest) (*GetCommentsResponse, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -206,6 +238,9 @@ func (UnimplementedPostServiceServer) DeletePost(context.Context, *DeletePostReq
 }
 func (UnimplementedPostServiceServer) GetPost(context.Context, *GetPostRequest) (*GetPostResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPost not implemented")
+}
+func (UnimplementedPostServiceServer) GetPosts(context.Context, *GetPostsRequest) (*GetPostsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPosts not implemented")
 }
 func (UnimplementedPostServiceServer) ListPosts(context.Context, *ListPostsRequest) (*ListPostsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPosts not implemented")
@@ -227,6 +262,9 @@ func (UnimplementedPostServiceServer) DeleteComment(context.Context, *DeleteComm
 }
 func (UnimplementedPostServiceServer) ListComments(context.Context, *ListCommentsRequest) (*ListCommentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListComments not implemented")
+}
+func (UnimplementedPostServiceServer) GetComments(context.Context, *GetCommentsRequest) (*GetCommentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetComments not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -299,6 +337,24 @@ func _PostService_GetPost_Handler(srv interface{}, ctx context.Context, dec func
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).GetPost(ctx, req.(*GetPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetPosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetPosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetPosts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetPosts(ctx, req.(*GetPostsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -429,6 +485,24 @@ func _PostService_ListComments_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetCommentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetComments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetComments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetComments(ctx, req.(*GetCommentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -447,6 +521,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPost",
 			Handler:    _PostService_GetPost_Handler,
+		},
+		{
+			MethodName: "GetPosts",
+			Handler:    _PostService_GetPosts_Handler,
 		},
 		{
 			MethodName: "ListPosts",
@@ -475,6 +553,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListComments",
 			Handler:    _PostService_ListComments_Handler,
+		},
+		{
+			MethodName: "GetComments",
+			Handler:    _PostService_GetComments_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
