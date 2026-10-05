@@ -1,0 +1,146 @@
+package grpc_test
+
+import (
+	"context"
+	"testing"
+
+	userv1 "github.com/vexner67/freenet/user/api/user/v1"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+)
+
+// member signs in and fills in a profile, returning their context and ID.
+func (s testServer) member(t *testing.T, nickname string) (context.Context, string) {
+	t.Helper()
+
+	ctx := s.signIn(t, nickname+"@example.com")
+
+	resp, err := s.client.UpdateProfile(ctx, &userv1.UpdateProfileRequest{Name: nickname, Nickname: nickname})
+	if err != nil {
+		t.Fatalf("UpdateProfile: %v", err)
+	}
+
+	return ctx, resp.GetUser().GetId()
+}
+
+func TestFollows(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, annID := s.member(t, "ann")
+	bob, bobID := s.member(t, "bob")
+	cat, catID := s.member(t, "cat")
+
+	for _, follower := range []context.Context{bob, cat, bob} { // bob twice: idempotent
+		if _, err := s.client.Follow(follower, &userv1.FollowRequest{UserId: annID}); err != nil {
+			t.Fatalf("Follow: %v", err)
+		}
+	}
+	if _, err := s.client.Follow(ann, &userv1.FollowRequest{UserId: catID}); err != nil {
+		t.Fatal(err)
+	}
+
+	stats, err := s.client.GetFollowStats(bob, &userv1.GetFollowStatsRequest{UserId: annID})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if stats.GetFollowersCount() != 2 || stats.GetFollowingCount() != 1 || !stats.GetIsFollowing() {
+		t.Fatalf("stats seen by bob: %v", stats)
+	}
+
+	anonymous, err := s.client.GetFollowStats(context.Background(), &userv1.GetFollowStatsRequest{UserId: annID})
+	if err != nil || anonymous.GetIsFollowing() || anonymous.GetFollowersCount() != 2 {
+		t.Fatalf("anonymous stats: %v, %v", anonymous, err)
+	}
+
+	page, err := s.client.ListFollowers(context.Background(), &userv1.ListFollowsRequest{UserId: annID, Limit: 1})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.GetTotal() != 2 || len(page.GetUsers()) != 1 || page.GetUsers()[0].GetNickname() != "cat" || page.GetNextCursor() == "" {
+		t.Fatalf("first page of followers (newest first): %v", page)
+	}
+
+	last, err := s.client.ListFollowers(context.Background(), &userv1.ListFollowsRequest{UserId: annID, Limit: 1, Cursor: page.GetNextCursor()})
+	if err != nil || len(last.GetUsers()) != 1 || last.GetUsers()[0].GetNickname() != "bob" || last.GetNextCursor() != "" {
+		t.Fatalf("last page: %v, %v", last, err)
+	}
+
+	ids, err := s.client.ListFollowingIDs(ann, &userv1.ListFollowingIDsRequest{})
+	if err != nil || len(ids.GetUserIds()) != 1 || ids.GetUserIds()[0] != catID {
+		t.Fatalf("ann follows: %v, %v", ids, err)
+	}
+
+	if _, err = s.client.Unfollow(bob, &userv1.UnfollowRequest{UserId: annID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.Unfollow(bob, &userv1.UnfollowRequest{UserId: annID}); err != nil {
+		t.Fatalf("unfollow twice: %v", err)
+	}
+
+	stats, err = s.client.GetFollowStats(bob, &userv1.GetFollowStatsRequest{UserId: annID})
+	if err != nil || stats.GetIsFollowing() || stats.GetFollowersCount() != 1 {
+		t.Fatalf("after unfollow: %v, %v", stats, err)
+	}
+
+	profiles, err := s.client.GetProfiles(context.Background(), &userv1.GetProfilesRequest{UserIds: []string{annID, bobID, "01a10000-0000-7000-8000-000000000000"}})
+	if err != nil || len(profiles.GetProfiles()) != 2 {
+		t.Fatalf("GetProfiles: %v, %v", profiles, err)
+	}
+}
+
+func TestFollowErrors(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, annID := s.member(t, "ann")
+
+	tests := []struct {
+		name string
+		call func() error
+		want codes.Code
+	}{
+		{"follow yourself", func() error {
+			_, err := s.client.Follow(ann, &userv1.FollowRequest{UserId: annID})
+			return err
+		}, codes.InvalidArgument},
+		{"follow nobody", func() error {
+			_, err := s.client.Follow(ann, &userv1.FollowRequest{UserId: "01a10000-0000-7000-8000-000000000000"})
+			return err
+		}, codes.NotFound},
+		{"follow without token", func() error {
+			_, err := s.client.Follow(context.Background(), &userv1.FollowRequest{UserId: annID})
+			return err
+		}, codes.Unauthenticated},
+		{"following ids without token", func() error {
+			_, err := s.client.ListFollowingIDs(context.Background(), &userv1.ListFollowingIDsRequest{})
+			return err
+		}, codes.Unauthenticated},
+		{"bad user id", func() error {
+			_, err := s.client.GetFollowStats(context.Background(), &userv1.GetFollowStatsRequest{UserId: "ann"})
+			return err
+		}, codes.InvalidArgument},
+		{"bad cursor", func() error {
+			_, err := s.client.ListFollowing(context.Background(), &userv1.ListFollowsRequest{UserId: annID, Cursor: "x"})
+			return err
+		}, codes.InvalidArgument},
+		{"too many profiles", func() error {
+			ids := make([]string, 101)
+			for i := range ids {
+				ids[i] = annID
+			}
+			_, err := s.client.GetProfiles(context.Background(), &userv1.GetProfilesRequest{UserIds: ids})
+			return err
+		}, codes.InvalidArgument},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := status.Code(tt.call()); got != tt.want {
+				t.Fatalf("code = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
