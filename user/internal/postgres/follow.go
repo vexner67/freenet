@@ -122,6 +122,7 @@ const (
 		u.show_relationship,
 		u.show_worldview,
 		u.show_political_views,
+		u.wall_write,
 		u.avatar_id
 	FROM follows f
 	JOIN users u ON u.id = f.follower_id
@@ -149,6 +150,7 @@ const (
 		u.show_relationship,
 		u.show_worldview,
 		u.show_political_views,
+		u.wall_write,
 		u.avatar_id
 	FROM follows f
 	JOIN users u ON u.id = f.followee_id

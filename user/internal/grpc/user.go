@@ -101,7 +101,12 @@ func (h *UserHandler) UpdatePrivacy(
 		return nil, err
 	}
 
-	u, err := h.userService.UpdatePrivacy(ctx, userID, fromProtoPrivacy(req.GetPrivacy()))
+	privacy, err := fromProtoPrivacy(req.GetPrivacy())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	u, err := h.userService.UpdatePrivacy(ctx, userID, privacy)
 	if err != nil {
 		return nil, err
 	}

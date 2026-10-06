@@ -50,9 +50,10 @@ const saveUserQuery = `
 		show_relationship,
 		show_worldview,
 		show_political_views,
+		wall_write,
 		avatar_id
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
 `
 
 func (r *UserRepository) Save(ctx context.Context, u *user.User) error {
@@ -77,6 +78,7 @@ func (r *UserRepository) Save(ctx context.Context, u *user.User) error {
 		pr.ShowRelationship,
 		pr.ShowWorldview,
 		pr.ShowPoliticalViews,
+		pr.WallWrite.String(),
 		avatarToDB(u.AvatarID()),
 	); err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -101,7 +103,8 @@ const updateUserQuery = `
 		show_relationship = $12,
 		show_worldview = $13,
 		show_political_views = $14,
-		avatar_id = $15,
+		wall_write = $15,
+		avatar_id = $16,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -127,6 +130,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		pr.ShowRelationship,
 		pr.ShowWorldview,
 		pr.ShowPoliticalViews,
+		pr.WallWrite.String(),
 		avatarToDB(u.AvatarID()),
 	)
 	if err != nil {
@@ -157,6 +161,7 @@ const getUserByIDQuery = `
 		show_relationship,
 		show_worldview,
 		show_political_views,
+		wall_write,
 		avatar_id
 	FROM users
 	WHERE id = $1
@@ -188,6 +193,7 @@ const getUserByNicknameQuery = `
 		show_relationship,
 		show_worldview,
 		show_political_views,
+		wall_write,
 		avatar_id
 	FROM users
 	WHERE lower(nickname) = lower($1)
@@ -220,6 +226,7 @@ const getUsersByIDsQuery = `
 		show_relationship,
 		show_worldview,
 		show_political_views,
+		wall_write,
 		avatar_id
 	FROM users
 	WHERE id = ANY($1)
@@ -275,6 +282,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		gender, relationship, worldview, political string
 		birthday                                   *time.Time
 		privacy                                    user.Privacy
+		wallWrite                                  string
 		avatarID                                   *uuid.UUID
 	)
 
@@ -294,6 +302,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&privacy.ShowRelationship,
 		&privacy.ShowWorldview,
 		&privacy.ShowPoliticalViews,
+		&wallWrite,
 		&avatarID,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
@@ -304,6 +313,8 @@ func scanUser(row pgx.Row) (*user.User, error) {
 	}
 
 	// Data comes from our own table and was validated on write.
+	privacy.WallWrite = user.WallWrite(wallWrite)
+
 	return user.Restore(id, user.Email(email), user.Profile{
 		Name:           user.Name(name),
 		Surname:        user.Surname(surname),
@@ -371,6 +382,7 @@ const searchUsersSelect = `
 		show_relationship,
 		show_worldview,
 		show_political_views,
+		wall_write,
 		avatar_id
 	FROM users
 	WHERE nickname <> ''

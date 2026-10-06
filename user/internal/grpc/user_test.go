@@ -214,14 +214,21 @@ func TestPrivacyFlow(t *testing.T) {
 		t.Fatalf("sensitive fields must be hidden by default: %+v", p)
 	}
 
-	updated, err := s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{
+	_, err = s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{
 		Privacy: &userv1.PrivacySettings{ShowWorldview: true},
+	})
+	if got := status.Code(err); got != codes.InvalidArgument {
+		t.Fatalf("UpdatePrivacy without wall_write: code = %v, want InvalidArgument", got)
+	}
+
+	updated, err := s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{
+		Privacy: &userv1.PrivacySettings{ShowWorldview: true, WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE},
 	})
 	if err != nil {
 		t.Fatalf("UpdatePrivacy: %v", err)
 	}
-	if !updated.GetUser().GetPrivacy().GetShowWorldview() {
-		t.Fatalf("settings not returned: %+v", updated.GetUser().GetPrivacy())
+	if pr := updated.GetUser().GetPrivacy(); !pr.GetShowWorldview() || pr.GetWallWrite() != userv1.WallWrite_WALL_WRITE_EVERYONE {
+		t.Fatalf("settings not returned: %+v", pr)
 	}
 
 	public, err = s.client.GetProfile(context.Background(), &userv1.GetProfileRequest{Nickname: "ann"})

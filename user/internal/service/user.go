@@ -120,7 +120,9 @@ func (s *UserService) UpdatePrivacy(ctx context.Context, id uuid.UUID, privacy u
 		return nil, errs.Wrap("s.userRepo.GetByID", err)
 	}
 
-	u.UpdatePrivacy(privacy)
+	if err = u.UpdatePrivacy(privacy); err != nil {
+		return nil, errs.Wrap("u.UpdatePrivacy", err)
+	}
 
 	if err = s.userRepo.Update(ctx, u); err != nil {
 		return nil, errs.Wrap("s.userRepo.Update", err)
