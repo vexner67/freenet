@@ -21,6 +21,9 @@ const (
 	KindFollow Kind = "follow"
 	// KindWallPost: the actor wrote a post on the recipient's wall.
 	KindWallPost Kind = "wall_post"
+	// KindRepost: the actor shared the recipient's post; PostID is the
+	// actor's repost, which shows the shared post.
+	KindRepost Kind = "repost"
 )
 
 var (
@@ -33,8 +36,8 @@ var (
 )
 
 // Event is what happened, to whom and by whom. PostID is set for likes,
-// comments and wall posts, CommentID for comments only; unused IDs are
-// uuid.Nil.
+// comments, wall posts and reposts, CommentID for comments only; unused
+// IDs are uuid.Nil.
 type Event struct {
 	Kind        Kind
 	RecipientID uuid.UUID
@@ -62,7 +65,7 @@ func (e Event) Validate() error {
 	var ok bool
 
 	switch e.Kind {
-	case KindLike, KindWallPost:
+	case KindLike, KindWallPost, KindRepost:
 		ok = hasPost && !hasComment
 	case KindComment:
 		ok = hasPost && hasComment
