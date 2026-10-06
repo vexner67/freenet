@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/vexner67/freenet/media/internal/avatar"
+	"github.com/vexner67/freenet/media/internal/imaging"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -17,7 +18,7 @@ func ErrorInterceptor(log *slog.Logger) grpc.UnaryServerInterceptor {
 }
 
 func toStatus(err error) (*status.Status, bool) {
-	for _, invalid := range []error{avatar.ErrTooLarge, avatar.ErrNotImage, avatar.ErrTooManyPixels, avatar.ErrTooSmall} {
+	for _, invalid := range []error{imaging.ErrTooLarge, imaging.ErrNotImage, imaging.ErrTooManyPixels, avatar.ErrTooSmall} {
 		if errors.Is(err, invalid) {
 			return status.New(codes.InvalidArgument, invalid.Error()), true
 		}

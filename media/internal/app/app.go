@@ -6,10 +6,10 @@ import (
 	"log/slog"
 
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
-	"github.com/vexner67/freenet/media/internal/avatar"
 	"github.com/vexner67/freenet/media/internal/config"
 	"github.com/vexner67/freenet/media/internal/fs"
 	mediagrpc "github.com/vexner67/freenet/media/internal/grpc"
+	"github.com/vexner67/freenet/media/internal/imaging"
 	"github.com/vexner67/freenet/media/internal/inmem"
 	"github.com/vexner67/freenet/media/internal/service"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -20,9 +20,9 @@ import (
 	"google.golang.org/grpc"
 )
 
-// maxMessageBytes fits an upload of avatar.MaxUploadBytes with headroom;
+// maxMessageBytes fits an upload of imaging.MaxUploadBytes with headroom;
 // gRPC allows 4 MB by default.
-const maxMessageBytes = avatar.MaxUploadBytes + 1<<20
+const maxMessageBytes = imaging.MaxUploadBytes + 1<<20
 
 type App struct {
 	logger *slog.Logger

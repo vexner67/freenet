@@ -12,6 +12,7 @@ import (
 	"testing"
 
 	"github.com/vexner67/freenet/media/internal/avatar"
+	"github.com/vexner67/freenet/media/internal/imaging"
 )
 
 // picture is a w×h image: red on the left half, blue on the right.
@@ -111,10 +112,10 @@ func TestMake_Rejects(t *testing.T) {
 		data []byte
 		want error
 	}{
-		{"not an image", []byte("hello, i am a text file"), avatar.ErrNotImage},
+		{"not an image", []byte("hello, i am a text file"), imaging.ErrNotImage},
 		{"too small", encode(t, picture(40, 400), "png"), avatar.ErrTooSmall},
-		{"too large file", make([]byte, avatar.MaxUploadBytes+1), avatar.ErrTooLarge},
-		{"pixel bomb", pngHeader(20000, 20000), avatar.ErrTooManyPixels},
+		{"too large file", make([]byte, imaging.MaxUploadBytes+1), imaging.ErrTooLarge},
+		{"pixel bomb", pngHeader(20000, 20000), imaging.ErrTooManyPixels},
 	}
 
 	for _, tt := range tests {
