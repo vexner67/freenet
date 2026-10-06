@@ -44,6 +44,14 @@ export const politicalViews = [
   ['libertarian', 'либертарианские'],
 ];
 
+// wallWrites is "Кто может писать у меня на стене" of openvk. There are no
+// friends here: openvk's "Друзья" are the people you follow.
+export const wallWrites = [
+  ['everyone', 'Все желающие'],
+  ['following', 'Те, на кого я подписан(а)'],
+  ['only_me', 'Только я'],
+];
+
 export const months = [
   'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
   'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
@@ -97,6 +105,60 @@ export function wrote(gender) {
   return gender === 'female' ? 'написала' : 'написал';
 }
 
+// genitiveName is "Петра Петрова" for "на стене Петра Петрова", as openvk
+// says it. Russian names are declined by their endings; whatever the
+// rules do not know (Latin letters, Шевченко, Кармен) stays as it is.
+export function genitiveName({ name = '', surname = '', gender = '' }) {
+  return [genitiveFirstName(name, gender), genitiveSurname(surname, gender)].filter(Boolean).join(' ');
+}
+
+const CYRILLIC = /^[а-яё-]+$/i;
+// After these letters Russian writes и, not ы: Ольга → Ольги.
+const SOFT_BEFORE_A = /[гкхжчшщ]а$/i;
+// Names that lose a vowel or a dot: Павел → Павла.
+const irregularNames = { павел: 'Павла', лев: 'Льва', пётр: 'Петра', петр: 'Петра' };
+
+function genitiveFirstName(name, gender) {
+  const lower = name.toLowerCase();
+  if (!CYRILLIC.test(name)) return name;
+  if (irregularNames[lower]) return irregularNames[lower];
+
+  return declineEnding(name, gender);
+}
+
+function genitiveSurname(surname, gender) {
+  if (!CYRILLIC.test(surname)) return surname;
+
+  // Female forms tell themselves apart even when gender is not set.
+  if (/(ов|ев|ёв|ин|ын)а$/i.test(surname)) return replaceEnd(surname, 1, 'ой');
+  if (/ая$/i.test(surname)) return replaceEnd(surname, 2, 'ой');
+  if (gender === 'female') return surname;
+
+  if (/(ий|ый|ой)$/i.test(surname)) return replaceEnd(surname, 2, 'ого');
+  if (/(ых|их)$/i.test(surname)) return surname;
+
+  return declineEnding(surname, gender);
+}
+
+// declineEnding declines a noun-like name or surname by its last letters.
+function declineEnding(word, gender) {
+  if (/ия$/i.test(word)) return replaceEnd(word, 1, 'и');
+  if (/я$/i.test(word)) return replaceEnd(word, 1, 'и');
+  if (/а$/i.test(word)) return replaceEnd(word, 1, SOFT_BEFORE_A.test(word) ? 'и' : 'ы');
+  if (/[оеиуюэы]$/i.test(word)) return word;
+  if (gender === 'female') return /ь$/i.test(word) ? replaceEnd(word, 1, 'и') : word;
+  if (/[йь]$/i.test(word)) return replaceEnd(word, 1, 'я');
+
+  return replaceEnd(word, 0, 'а');
+}
+
+// replaceEnd swaps the last n letters, keeping capitals of a word written
+// in capitals (ИВАНОВ → ИВАНОВА).
+function replaceEnd(word, n, ending) {
+  const base = n > 0 ? word.slice(0, -n) : word;
+  return base + (word === word.toUpperCase() ? ending.toUpperCase() : ending);
+}
+
 export function followersCount(n) {
   return `${n} ${plural(n, ['подписчик', 'подписчика', 'подписчиков'])}`;
 }
@@ -115,6 +177,7 @@ const notificationVerbs = {
   like: ['оценил', 'оценила', 'оценил(а)'],
   comment: ['оставил', 'оставила', 'оставил(а)'],
   follow: ['подписался', 'подписалась', 'подписался(-ась)'],
+  wall_post: ['написал', 'написала', 'написал(а)'],
 };
 
 export function notificationVerb(type, gender) {
@@ -163,6 +226,7 @@ const errorTexts = {
   'a post has at most 10 photos': 'К записи можно прикрепить не больше 10 фотографий.',
   'the same photo is attached twice': 'Эта фотография уже прикреплена.',
   'fill in your profile before posting': 'Сначала заполните свою страницу.',
+  'you cannot post on this wall': 'Хозяин страницы не разрешает вам писать у него на стене.',
   'invalid post id': 'Запись не найдена.',
   'comment text is empty': 'Напишите что-нибудь.',
   'comment text is too long': 'Комментарий длиннее 1000 символов.',

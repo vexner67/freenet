@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { genders, relationships, worldviews, politicalViews, months } from './labels.js';
+import { genders, relationships, worldviews, politicalViews, months, wallWrites } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 
 const error = $('error');
@@ -57,6 +57,7 @@ function render(me) {
   $('show-relationship').checked = me.privacy.showRelationship;
   $('show-worldview').checked = me.privacy.showWorldview;
   $('show-political-views').checked = me.privacy.showPoliticalViews;
+  fill($('wall-write'), wallWrites, me.privacy.wallWrite);
 
   $('cancel').href = me.profileCompleted ? '/' + me.nickname : '/';
   $('welcome').hidden = me.profileCompleted;
@@ -96,6 +97,7 @@ async function save(event) {
       showRelationship: $('show-relationship').checked,
       showWorldview: $('show-worldview').checked,
       showPoliticalViews: $('show-political-views').checked,
+      wallWrite: $('wall-write').value,
     });
     location.href = '/' + me.nickname;
   } catch (e) {

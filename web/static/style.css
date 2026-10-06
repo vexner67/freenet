@@ -290,6 +290,8 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
   border-bottom: 1px solid #ececec;
 }
 .post-name { font-weight: bold; }
+/* "на стене Петра Петрова" in the news feed, bold as on openvk. */
+.post-wall { font-weight: bold; }
 .post-date { color: #777; font-size: 9px; }
 
 .post-text {

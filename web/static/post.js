@@ -3,6 +3,7 @@
 
 import { api, currentUser } from './api.js';
 import { commentNode } from './comments.js';
+import { genitiveName } from './labels.js';
 import { $, el, fullName, renderChrome, showError, hideError } from './layout.js';
 import { postNode } from './posts.js';
 
@@ -11,15 +12,21 @@ const MAX_LENGTH = 1000;
 
 const postID = decodeURIComponent(location.pathname.slice('/post/'.length));
 
-function renderTitle(post) {
-  const author = '/' + post.author.nickname;
-  const name = fullName(post.author);
+// wallOf is the owner of the wall a post is on.
+const wallOf = (post) => post.wall ?? post.author;
 
-  document.title = `Запись ${name} | Freenet`;
+// renderTitle is "Владелец » Стена » Запись", as openvk heads a post with
+// the owner of its wall.
+function renderTitle(post) {
+  const owner = wallOf(post);
+  const path = '/' + owner.nickname;
+  const name = fullName(owner);
+
+  document.title = `Запись на стене ${genitiveName(owner)} | Freenet`;
   $('title').replaceChildren(
-    el('a', { href: author, textContent: name }),
+    el('a', { href: path, textContent: name }),
     ' » ',
-    el('a', { href: author, textContent: 'Стена' }),
+    el('a', { href: path, textContent: 'Стена' }),
     ' » Запись',
   );
 }
@@ -38,8 +45,9 @@ function initComments(post, me) {
     $('comments-empty').hidden = total > 0;
   }
 
-  // The author of a comment and the author of the post may delete it.
-  const canDelete = (comment) => Boolean(me) && (me.id === comment.author.id || me.id === post.author.id);
+  // The author of a comment, the author of the post and the owner of the
+  // wall may delete it.
+  const canDelete = (comment) => Boolean(me) && [comment.author.id, post.author.id, wallOf(post).id].includes(me.id);
   const commentNodeFor = (comment) => commentNode(comment, canDelete(comment) && remove);
 
   async function remove(comment, node) {
@@ -135,7 +143,7 @@ async function removePost(post) {
 
   try {
     await api.deletePost(post.id);
-    location.href = '/' + post.author.nickname;
+    location.href = '/' + wallOf(post).nickname;
   } catch (e) {
     showError($('error'), e);
   }
@@ -149,7 +157,7 @@ try {
 
   renderTitle(post);
   $('post').append(postNode(post, {
-    onDelete: me?.id === post.author.id && removePost,
+    onDelete: [post.author.id, wallOf(post).id].includes(me?.id) && removePost,
     canLike: Boolean(me),
     onError: (e) => showError($('error'), e),
     withCommentsLink: false,

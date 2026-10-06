@@ -4,7 +4,7 @@ import { postNode } from './posts.js';
 
 let cursor = '';
 
-async function loadMore() {
+async function loadMore(me) {
   hideError($('error'));
 
   try {
@@ -13,6 +13,7 @@ async function loadMore() {
     $('posts').append(...page.posts.map((post) => postNode(post, {
       canLike: true,
       onError: (e) => showError($('error'), e),
+      onWallOf: me,
     })));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
@@ -28,6 +29,6 @@ if (!me) {
 } else {
   renderChrome(me);
   $('example-url').textContent = `${location.host}/никнейм`;
-  $('more').addEventListener('click', loadMore);
-  await loadMore();
+  $('more').addEventListener('click', () => loadMore(me));
+  await loadMore(me);
 }

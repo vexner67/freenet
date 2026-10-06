@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet } from '../static/labels.js';
+import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -82,4 +82,36 @@ test('snippet cuts long quotes, by characters', () => {
 
 test('rate limits ask to wait without promising how long', () => {
   assert.equal(errorText(new Error('too many requests, try again later')), 'Слишком часто. Подождите немного и попробуйте снова.');
+});
+
+test('names in the genitive, for "на стене Петра Петрова"', () => {
+  const cases = [
+    [{ name: 'Пётр', surname: 'Петров', gender: 'male' }, 'Петра Петрова'],
+    [{ name: 'Иван', surname: 'Иванов' }, 'Ивана Иванова'],
+    [{ name: 'Анна', surname: 'Петрова', gender: 'female' }, 'Анны Петровой'],
+    [{ name: 'Ольга', surname: 'Ильина' }, 'Ольги Ильиной'],
+    [{ name: 'Мария', surname: 'Чайковская', gender: 'female' }, 'Марии Чайковской'],
+    [{ name: 'Андрей', surname: 'Достоевский', gender: 'male' }, 'Андрея Достоевского'],
+    [{ name: 'Лев', surname: 'Толстой', gender: 'male' }, 'Льва Толстого'],
+    [{ name: 'Игорь', surname: 'Гоголь', gender: 'male' }, 'Игоря Гоголя'],
+    [{ name: 'Любовь', surname: 'Шевчук', gender: 'female' }, 'Любови Шевчук'],
+    [{ name: 'Никита', surname: 'Шевченко', gender: 'male' }, 'Никиты Шевченко'],
+    [{ name: 'Илья', surname: 'Черных', gender: 'male' }, 'Ильи Черных'],
+    [{ name: 'Павел', surname: 'Шевчук', gender: 'male' }, 'Павла Шевчука'],
+    [{ name: 'Наташа', surname: '', gender: 'female' }, 'Наташи'],
+    [{ name: 'ИВАН', surname: 'ИВАНОВ' }, 'ИВАНА ИВАНОВА'],
+    [{ name: 'John', surname: 'Smith', gender: 'male' }, 'John Smith'],
+    [{ name: 'Кармен', surname: 'Electra', gender: 'female' }, 'Кармен Electra'],
+  ];
+
+  for (const [person, want] of cases) {
+    assert.equal(genitiveName(person), want, JSON.stringify(person));
+  }
+});
+
+test('a wall post notification and its error read like openvk', () => {
+  assert.equal(notificationVerb('wall_post', 'female'), 'написала');
+  assert.equal(notificationVerb('wall_post', ''), 'написал(а)');
+  assert.equal(errorText(new Error('you cannot post on this wall')), 'Хозяин страницы не разрешает вам писать у него на стене.');
+  assert.deepEqual(wallWrites.map(([value]) => value), ['everyone', 'following', 'only_me']);
 });
