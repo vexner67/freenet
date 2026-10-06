@@ -21,7 +21,7 @@ var (
 	// take the path of a page or of the API.
 	reservedNicknames = map[string]struct{}{
 		"about": {}, "admin": {}, "api": {}, "edit": {}, "feed": {},
-		"follows": {}, "freenet": {}, "healthz": {}, "help": {}, "id": {},
+		"follows": {}, "freenet": {}, "healthz": {}, "help": {}, "id": {}, "im": {},
 		"login": {}, "logout": {}, "me": {}, "media": {}, "news": {},
 		"notifications": {}, "people": {}, "post": {}, "search": {},
 		"settings": {}, "static": {}, "support": {},

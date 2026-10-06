@@ -60,6 +60,12 @@ try {
   render(isOwner ? me : profile, isOwner);
   initPhoto(isOwner ? me : profile, isOwner);
   initFollow(profile, me, isOwner);
+
+  // As on openvk: write to anyone but yourself.
+  if (me && !isOwner) {
+    $('write').href = '/im/' + encodeURIComponent(profile.nickname);
+    $('write').hidden = false;
+  }
 } catch (e) {
   $('title').textContent = e.status === 404 || e.status === 400 ? 'Страница не найдена' : 'Ошибка';
   document.title = $('title').textContent + ' | Freenet';
