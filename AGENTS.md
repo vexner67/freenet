@@ -38,7 +38,7 @@ freenet/
 └── message/                 # личные сообщения («Мои Сообщения»): диалоги, прочитанное
 ```
 
-Поток запроса: браузер → `gateway` (страницы из `web/` и HTTP/JSON API на одном origin) → `auth`/`user`/`post`/`media`/`notification`/`message` (gRPC + mTLS); `auth` → `user`, `post` и `user` → `notification` (gRPC + mTLS, внутренние RPC). Порты по умолчанию: `auth` 50051, `user` 50052, `post` 50053, `media` 50054, `notification` 50055, `message` 50056, `gateway` 8080.
+Поток запроса: браузер → `gateway` (страницы из `web/` и HTTP/JSON API на одном origin) → `auth`/`user`/`post`/`media`/`notification`/`message` (gRPC + mTLS); `auth` → `user`, `post` и `user` → `notification` (gRPC + mTLS, внутренние RPC). Порты по умолчанию: `auth` 7051, `user` 7052, `post` 7053, `media` 7054, `notification` 7055, `message` 7056, `gateway` 8080. Порты сервисов — только ниже 32768: выше начинаются диапазоны, из которых ОС раздаёт порты исходящим соединениям (macOS — 49152–65535, Linux — 32768–60999), и любой процесс может случайно занять такой порт — сервис тогда не стартует с `address already in use` (так было с привычными для gRPC 50051–50056).
 
 Структура одного сервиса (эталон — `user/` и `auth/`):
 
@@ -197,7 +197,7 @@ infra (postgres,  ─┘          ▲
 - `main` минимален: `config.Load` → `logger.New` → `app.New` → `app.Run(ctx)`. Контекст должен отменяться по `SIGINT`/`SIGTERM` (`signal.NotifyContext`), а не быть `context.Background()`.
 - `app.New` создаёт ресурсы и **не закрывает** те, что нужны во время работы (нельзя `defer conn.Close()` на gRPC-клиенте/пуле внутри конструктора — они понадобятся после возврата). Все ресурсы закрываются в `App.Close()`, который вызывается из `main` через `defer`/после `Run`.
 - Graceful shutdown: health → `SERVING`/`NOT_SERVING`, `GracefulStop` с таймаутом и fallback на `Stop`, затем закрытие пулов и клиентов.
-- Адреса других сервисов, TTL, таймауты, порты — в конфиге, а не литералами в `app.go` (запрещено: `grpc.NewClient("50052", ...)`, `15*time.Minute` прямо в сборке).
+- Адреса других сервисов, TTL, таймауты, порты — в конфиге, а не литералами в `app.go` (запрещено: `grpc.NewClient("localhost:7052", ...)`, `15*time.Minute` прямо в сборке).
 
 ### 2.8. Фронтенд (`web/`)
 
