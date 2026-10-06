@@ -4,7 +4,7 @@
 
 import { api, currentUser } from './api.js';
 import { formatPostDate, notificationVerb, snippet } from './labels.js';
-import { $, avatarURL, el, fullName, profilePath, renderChrome, setUnreadCount, showError, hideError } from './layout.js';
+import { $, avatarURL, el, fullName, profilePath, renderChrome, setCounter, showError, hideError } from './layout.js';
 import { postPath } from './posts.js';
 
 const COMMENT_SNIPPET = 200;
@@ -61,7 +61,7 @@ async function loadMore() {
 
     if (box === 'unread' && page.newestId) {
       await api.markNotificationsRead(page.newestId);
-      setUnreadCount(0);
+      setCounter('notifications', 0);
       // Everything shown and older is in the archive now: the next pages
       // come from there, from the same cursor.
       box = 'archive';

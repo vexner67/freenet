@@ -1,0 +1,223 @@
+// A dialog at /im/<nickname>, as on openvk: messages oldest first, older
+// ones load when scrolled to the top, new ones are polled while the tab is
+// visible. Enter sends, Shift+Enter breaks the line. Unread messages are
+// grey either way: the peer's until you read them, yours until the peer does.
+
+import { api, currentUser } from './api.js';
+import { formatPostDate } from './labels.js';
+import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError } from './layout.js';
+
+const POLL_MS = 5000;
+// How close to the top, in pixels, loads older messages.
+const LOAD_OLDER_AT = 40;
+
+const nickname = decodeURIComponent(location.pathname.slice('/im/'.length));
+const list = $('messages');
+
+let me;
+let peer;
+let olderCursor = '';
+let newestID = '';
+let loadingOlder = false;
+// Message ID → node, so polling neither repeats a message nor misses a read.
+const shown = new Map();
+
+function messageNode(m) {
+  const author = m.out ? me : peer;
+
+  return el('div', { className: m.read ? 'im-message' : 'im-message unread' },
+    el('a', { href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
+    el('div', { className: 'im-message-content' },
+      el('a', { className: 'post-name', href: '/' + author.nickname, textContent: fullName(author) }),
+      el('div', { className: 'im-message-text', textContent: m.text }),
+    ),
+    el('div', { className: 'im-message-date', textContent: formatPostDate(m.createdAt) }),
+  );
+}
+
+// add puts messages at the end (newer) or the start (older), skipping
+// those already shown.
+function add(messages, atStart) {
+  const fresh = messages.filter((m) => !shown.has(m.id));
+  const nodes = fresh.map((m) => {
+    const node = messageNode(m);
+    node.message = m;
+    shown.set(m.id, node);
+    return node;
+  });
+
+  if (atStart) {
+    $('empty').after(...nodes);
+  } else {
+    list.append(...nodes);
+  }
+
+  for (const m of fresh) {
+    if (m.id > newestID) newestID = m.id;
+  }
+
+  $('empty').hidden = shown.size > 0;
+
+  return fresh;
+}
+
+// markTheirRead greys out my messages up to what the peer has read.
+// UUIDv7 strings compare as their time.
+function markTheirRead(peerReadUpTo) {
+  for (const node of shown.values()) {
+    if (node.message.out && peerReadUpTo && node.message.id <= peerReadUpTo) {
+      node.message.read = true;
+      node.classList.remove('unread');
+    }
+  }
+}
+
+// readIncoming marks the newest message from the peer read, once the user
+// can see it.
+async function readIncoming(messages) {
+  const incoming = messages.filter((m) => !m.out && !m.read);
+  if (incoming.length === 0 || document.hidden) return;
+
+  // The newest by ID: older pages are added after newer ones.
+  const newest = incoming.reduce((a, b) => (b.id > a.id ? b : a));
+
+  try {
+    await api.markDialogRead(nickname, newest.id);
+    for (const m of incoming) {
+      m.read = true;
+      shown.get(m.id)?.classList.remove('unread');
+    }
+    showCounter('messages');
+  } catch {
+    // Stays unread; the next poll tries again.
+  }
+}
+
+const nearBottom = () => list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+const toBottom = () => { list.scrollTop = list.scrollHeight; };
+
+async function loadOlder() {
+  if (loadingOlder || !olderCursor) return;
+  loadingOlder = true;
+
+  try {
+    const page = await api.messages(nickname, { cursor: olderCursor });
+    // Keep the view still while messages appear above it.
+    const fromBottom = list.scrollHeight - list.scrollTop;
+
+    add(page.messages, true);
+    olderCursor = page.nextCursor;
+    list.scrollTop = list.scrollHeight - fromBottom;
+  } catch (e) {
+    showError($('error'), e);
+  } finally {
+    loadingOlder = false;
+  }
+}
+
+async function poll() {
+  if (!document.hidden) {
+    try {
+      const stick = nearBottom();
+      // An empty dialog has nothing to poll after: ask for the newest.
+      const page = await api.messages(nickname, newestID ? { after: newestID } : {});
+      const fresh = add(page.messages, false);
+
+      markTheirRead(page.peerReadUpTo);
+      if (fresh.length > 0 && stick) toBottom();
+      await readIncoming(fresh);
+    } catch {
+      // A missed poll is caught up by the next one.
+    }
+  }
+
+  setTimeout(poll, POLL_MS);
+}
+
+async function send(event) {
+  event.preventDefault();
+  hideError($('error'));
+
+  const text = $('text');
+  const button = $('send');
+  if (!text.value.trim()) return;
+
+  button.disabled = true;
+
+  try {
+    const m = await api.sendMessage(nickname, text.value);
+
+    add([m], false);
+    text.value = '';
+    toBottom();
+  } catch (e) {
+    showError($('error'), e);
+  } finally {
+    button.disabled = false;
+    text.focus();
+  }
+}
+
+function setUpInput() {
+  if (me.id === peer.id) {
+    $('form').hidden = true;
+    $('blocked').textContent = 'Нельзя написать самому себе.';
+    $('blocked').hidden = false;
+    return;
+  }
+
+  if (!me.profileCompleted) {
+    $('form').hidden = true;
+    $('blocked').replaceChildren('Чтобы писать сообщения, ', el('a', { href: '/edit', textContent: 'заполните свою страницу' }), '.');
+    $('blocked').hidden = false;
+    return;
+  }
+
+  $('my-avatar').src = avatarURL(me, 'small');
+  $('peer-avatar').src = avatarURL(peer, 'small');
+  $('form').addEventListener('submit', send);
+  $('text').addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
+      event.preventDefault();
+      $('form').requestSubmit();
+    }
+  });
+}
+
+me = await currentUser().catch(() => null);
+if (!me) {
+  location.replace('/');
+} else {
+  renderChrome(me);
+
+  try {
+    const page = await api.messages(nickname);
+    peer = page.peer;
+
+    document.title = `${fullName(peer)} | Сообщения`;
+    $('title').replaceChildren(
+      el('a', { href: '/im', textContent: 'Мои Сообщения' }),
+      ' » ',
+      el('a', { href: '/' + peer.nickname, textContent: fullName(peer) }),
+    );
+
+    $('messenger').hidden = false;
+    add(page.messages, false);
+    olderCursor = page.nextCursor;
+    toBottom();
+    setUpInput();
+
+    list.addEventListener('scroll', () => {
+      if (list.scrollTop < LOAD_OLDER_AT) loadOlder();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (!document.hidden) readIncoming([...shown.values()].map((node) => node.message));
+    });
+
+    await readIncoming(page.messages);
+    setTimeout(poll, POLL_MS);
+  } catch (e) {
+    $('title').textContent = e.status === 404 ? 'Страница не найдена' : 'Ошибка';
+    showError($('error'), e.status === 404 ? 'Такого пользователя нет.' : e);
+  }
+}

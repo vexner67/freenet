@@ -161,8 +161,21 @@ export const api = {
     if (cursor) query.set('cursor', cursor);
     return authorized('GET', '/api/v1/notifications?' + query);
   },
-  unreadCount: () => authorized('GET', '/api/v1/notifications/unread-count'),
+  unreadNotifications: () => authorized('GET', '/api/v1/notifications/unread-count'),
   markNotificationsRead: (upTo) => authorized('POST', '/api/v1/notifications/read', { upTo }),
+
+  dialogs: (cursor = '') => authorized('GET', page('/api/v1/dialogs', cursor, 0)),
+  unreadDialogs: () => authorized('GET', '/api/v1/dialogs/unread-count'),
+  // Older messages with cursor, or newer ones with after (polling).
+  messages(nickname, { cursor = '', after = '' } = {}) {
+    const query = new URLSearchParams();
+    if (cursor) query.set('cursor', cursor);
+    if (after) query.set('after', after);
+    const path = `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`;
+    return authorized('GET', query.size ? `${path}?${query}` : path);
+  },
+  sendMessage: (nickname, text) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text }),
+  markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
 
   search(query, cursor = '') {
     const params = new URLSearchParams({ q: query });

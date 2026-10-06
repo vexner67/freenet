@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Сообщения | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/dialog.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Мои Сообщения</span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+
+        <div class="messenger" id="messenger" hidden>
+          <div class="messenger-messages" id="messages">
+            <p class="hint center" id="empty" hidden>Сообщений пока нет. Напишите первым!</p>
+          </div>
+          <form class="messenger-input" id="form">
+            <img class="messenger-avatar" id="my-avatar" src="/static/avatar.svg" alt="">
+            <div class="messenger-box">
+              <textarea id="text" maxlength="4096" placeholder="Введите сообщение" aria-label="Сообщение"></textarea>
+              <button class="button" type="submit" id="send">Отправить</button>
+            </div>
+            <img class="messenger-avatar" id="peer-avatar" src="/static/avatar.svg" alt="">
+          </form>
+          <p class="messenger-blocked" id="blocked" hidden></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

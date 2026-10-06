@@ -415,3 +415,54 @@ a.like:hover svg { opacity: .7; }
 /* Notifications: a post-like row with the sentence of openvk. */
 .notification { padding-bottom: 8px; border-bottom: 1px solid #ececec; }
 .notification-text { padding: 2px 0 3px; line-height: 1.5; overflow-wrap: anywhere; }
+
+/* Messages, as on openvk: the list of dialogs and the messenger. */
+.dialogs { margin: 0 -10px; border-top: 1px solid #d6d6d6; }
+.dialog {
+  display: flex;
+  align-items: flex-start;
+  gap: 15px;
+  padding: 8px 10px;
+  border-bottom: 1px solid #d6d6d6;
+  color: #000;
+}
+.dialog:hover { background: #f9f9f9; text-decoration: none; }
+.dialog-avatar { width: 50px; height: 50px; object-fit: cover; border-radius: 3px; }
+.dialog-info { width: 130px; margin-top: 4px; }
+.dialog-name { color: #2b587a; }
+.dialog-date { margin-top: 2px; color: grey; }
+.dialog-message { display: flex; gap: 8px; flex: 1; min-width: 0; padding: 3px; border-radius: 3px; }
+.dialog-message.unread { background: #e6e6e6; }
+.dialog-message img { width: 32px; height: 32px; object-fit: cover; border-radius: 3px; }
+.dialog-text { max-height: 40px; overflow: hidden; color: #404036; overflow-wrap: anywhere; }
+
+.messenger { margin: -10px; border-bottom: 1px solid #c3cad2; }
+.messenger-messages { height: 420px; padding: 10px 20px; overflow-y: auto; }
+.im-message { display: flex; gap: 10px; margin-bottom: 3px; padding: 8px 10px; border-radius: 3px; }
+.im-message.unread { background: #ededed; }
+.im-message img { display: block; width: 37px; height: 37px; object-fit: cover; border-radius: 3px; }
+.im-message-content { flex: 1; min-width: 0; line-height: 1.45; }
+.im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.im-message-date { width: 100px; color: #404036; font-size: 9px; text-align: right; }
+
+.messenger-input {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 10px 20px;
+  background: #f9f9f9;
+  border-top: 1px solid #d6d6d6;
+}
+.messenger-avatar { width: 52px; height: 52px; object-fit: cover; border-radius: 3px; }
+.messenger-box { flex: 1; }
+.messenger-box textarea {
+  display: block;
+  width: 100%;
+  height: 50px;
+  margin-bottom: 6px;
+  padding: 4px;
+  resize: none;
+  border: 1px solid #c0cad5;
+  font: 11px tahoma, verdana, arial, sans-serif;
+}
+.messenger-blocked { padding: 20px; background: #f9f9f9; border-top: 1px solid #d6d6d6; font-weight: bold; text-align: center; }
