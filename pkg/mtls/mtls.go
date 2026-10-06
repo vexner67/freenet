@@ -20,6 +20,7 @@ const (
 	User         = "user"
 	Post         = "post"
 	Media        = "media"
+	Message      = "message"
 	Notification = "notification"
 	Gateway      = "gateway"
 )

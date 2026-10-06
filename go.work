@@ -4,6 +4,7 @@ use (
 	./auth
 	./gateway
 	./media
+	./message
 	./notification
 	./pkg/envconfig
 	./pkg/errs

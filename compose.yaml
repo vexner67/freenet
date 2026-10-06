@@ -63,6 +63,22 @@ services:
       timeout: 5s
       retries: 5
 
+  message-postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${MESSAGE_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${MESSAGE_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${MESSAGE_POSTGRES_DB}
+    ports:
+      - "${MESSAGE_POSTGRES_PORT}:5432"
+    volumes:
+      - message_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${MESSAGE_POSTGRES_USER} -d $${MESSAGE_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     ports:
@@ -80,4 +96,5 @@ volumes:
   user_postgres_data:
   post_postgres_data:
   notification_postgres_data:
+  message_postgres_data:
   redis_data:
