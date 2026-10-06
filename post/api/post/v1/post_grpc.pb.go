@@ -38,7 +38,8 @@ const (
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PostServiceClient interface {
-	// Require an access token; the author is the caller.
+	// Require an access token; the author is the caller. A post is deleted
+	// by its author or by the owner of its wall.
 	CreatePost(ctx context.Context, in *CreatePostRequest, opts ...grpc.CallOption) (*CreatePostResponse, error)
 	DeletePost(ctx context.Context, in *DeletePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: one post.
@@ -46,9 +47,10 @@ type PostServiceClient interface {
 	// Public: at most 50 posts by ID, for the notifications page; posts that
 	// are gone are left out, the order is not kept.
 	GetPosts(ctx context.Context, in *GetPostsRequest, opts ...grpc.CallOption) (*GetPostsResponse, error)
-	// Public: a user's wall, newest first.
+	// Public: a user's wall, newest first, whoever wrote the posts.
 	ListPosts(ctx context.Context, in *ListPostsRequest, opts ...grpc.CallOption) (*ListPostsResponse, error)
-	// Public: the posts of several authors, newest first, for a news feed.
+	// Public: the posts written by several authors on any walls, newest
+	// first, for a news feed.
 	ListFeed(ctx context.Context, in *ListFeedRequest, opts ...grpc.CallOption) (*ListFeedResponse, error)
 	// Require an access token; the caller likes the post. Both are
 	// idempotent and return how many likes the post has now.
@@ -196,7 +198,8 @@ func (c *postServiceClient) GetComments(ctx context.Context, in *GetCommentsRequ
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
 type PostServiceServer interface {
-	// Require an access token; the author is the caller.
+	// Require an access token; the author is the caller. A post is deleted
+	// by its author or by the owner of its wall.
 	CreatePost(context.Context, *CreatePostRequest) (*CreatePostResponse, error)
 	DeletePost(context.Context, *DeletePostRequest) (*emptypb.Empty, error)
 	// Public: one post.
@@ -204,9 +207,10 @@ type PostServiceServer interface {
 	// Public: at most 50 posts by ID, for the notifications page; posts that
 	// are gone are left out, the order is not kept.
 	GetPosts(context.Context, *GetPostsRequest) (*GetPostsResponse, error)
-	// Public: a user's wall, newest first.
+	// Public: a user's wall, newest first, whoever wrote the posts.
 	ListPosts(context.Context, *ListPostsRequest) (*ListPostsResponse, error)
-	// Public: the posts of several authors, newest first, for a news feed.
+	// Public: the posts written by several authors on any walls, newest
+	// first, for a news feed.
 	ListFeed(context.Context, *ListFeedRequest) (*ListFeedResponse, error)
 	// Require an access token; the caller likes the post. Both are
 	// idempotent and return how many likes the post has now.

@@ -8,7 +8,8 @@ import "google/protobuf/empty.proto";
 import "google/protobuf/timestamp.proto";
 
 service PostService {
-  // Require an access token; the author is the caller.
+  // Require an access token; the author is the caller. A post is deleted
+  // by its author or by the owner of its wall.
   rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
   rpc DeletePost(DeletePostRequest) returns (google.protobuf.Empty);
 
@@ -17,9 +18,10 @@ service PostService {
   // Public: at most 50 posts by ID, for the notifications page; posts that
   // are gone are left out, the order is not kept.
   rpc GetPosts(GetPostsRequest) returns (GetPostsResponse);
-  // Public: a user's wall, newest first.
+  // Public: a user's wall, newest first, whoever wrote the posts.
   rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
-  // Public: the posts of several authors, newest first, for a news feed.
+  // Public: the posts written by several authors on any walls, newest
+  // first, for a news feed.
   rpc ListFeed(ListFeedRequest) returns (ListFeedResponse);
 
   // Require an access token; the caller likes the post. Both are
@@ -51,6 +53,8 @@ message Post {
   bool liked = 7;
   // Photos of the author in the media service, in the order shown.
   repeated string photo_ids = 8;
+  // The owner of the wall the post is on: author_id on the author's own wall.
+  string wall_id = 9;
 }
 
 message Comment {
@@ -67,6 +71,10 @@ message CreatePostRequest {
   string text = 1;
   // At most 10.
   repeated string photo_ids = 2;
+  // The owner of the wall to write on; empty for the caller's own wall.
+  // The caller has checked that the owner's privacy lets the author write
+  // there: post does not know users.
+  string wall_id = 3;
 }
 
 message CreatePostResponse {
@@ -94,7 +102,8 @@ message GetPostsResponse {
 }
 
 message ListPostsRequest {
-  string author_id = 1;
+  // The owner of the wall (author_id before posts on others' walls).
+  string wall_id = 1;
   // Empty for the newest posts, else next_cursor of the previous page.
   string cursor = 2;
   // 1-50; anything else means 20.
@@ -105,7 +114,7 @@ message ListPostsResponse {
   repeated Post posts = 1;
   // Empty on the last page.
   string next_cursor = 2;
-  // All posts of the author, for "N записей".
+  // All posts on the wall, for "N записей".
   int32 total = 3;
 }
 

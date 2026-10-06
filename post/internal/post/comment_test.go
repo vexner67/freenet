@@ -42,10 +42,10 @@ func TestNewCommentText(t *testing.T) {
 func TestComment(t *testing.T) {
 	t.Parallel()
 
-	wallOwner, commenter, stranger := uuid.New(), uuid.New(), uuid.New()
+	wallOwner, postAuthor, commenter, stranger := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	now := time.Date(2026, 10, 5, 12, 0, 0, 123456789, time.FixedZone("MSK", 3*3600))
 
-	p, err := post.New(wallOwner, textOnly(t, "привет"), now)
+	p, err := post.New(wallOwner, postAuthor, textOnly(t, "привет"), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,8 +62,8 @@ func TestComment(t *testing.T) {
 		t.Fatalf("createdAt = %v, want UTC with microseconds", c.CreatedAt())
 	}
 
-	if !c.CanBeDeletedBy(commenter, p) || !c.CanBeDeletedBy(wallOwner, p) {
-		t.Fatal("the commenter and the author of the post may delete")
+	if !c.CanBeDeletedBy(commenter, p) || !c.CanBeDeletedBy(postAuthor, p) || !c.CanBeDeletedBy(wallOwner, p) {
+		t.Fatal("the commenter, the author of the post and the owner of the wall may delete")
 	}
 	if c.CanBeDeletedBy(stranger, p) {
 		t.Fatal("a stranger may not delete")

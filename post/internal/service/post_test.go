@@ -53,7 +53,7 @@ func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...st
 			t.Fatal(err)
 		}
 
-		p, err := svc.Create(context.Background(), author, content)
+		p, err := svc.Create(context.Background(), author, author, content)
 		if err != nil {
 			t.Fatalf("Create: %v", err)
 		}
@@ -79,8 +79,8 @@ func TestPostService_Delete(t *testing.T) {
 	author := uuid.New()
 	p := write(t, svc, author, "привет")[0]
 
-	if err := svc.Delete(ctx, uuid.New(), p.ID()); !errors.Is(err, post.ErrNotAuthor) {
-		t.Fatalf("stranger: got %v, want ErrNotAuthor", err)
+	if err := svc.Delete(ctx, uuid.New(), p.ID()); !errors.Is(err, post.ErrCannotDelete) {
+		t.Fatalf("stranger: got %v, want ErrCannotDelete", err)
 	}
 
 	if err := svc.Delete(ctx, author, p.ID()); err != nil {
@@ -92,7 +92,7 @@ func TestPostService_Delete(t *testing.T) {
 	}
 }
 
-func TestPostService_ListByAuthor(t *testing.T) {
+func TestPostService_ListWall(t *testing.T) {
 	t.Parallel()
 
 	svc := newPostService()
@@ -108,7 +108,7 @@ func TestPostService_ListByAuthor(t *testing.T) {
 	)
 
 	for {
-		page, err := svc.ListByAuthor(ctx, uuid.Nil, ann, cursor, 2)
+		page, err := svc.ListWall(ctx, uuid.Nil, ann, cursor, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -135,7 +135,7 @@ func TestPostService_ListByAuthor(t *testing.T) {
 	}
 
 	t.Run("exact multiple of the page size ends without a cursor", func(t *testing.T) {
-		page, err := svc.ListByAuthor(ctx, uuid.Nil, ann, uuid.Nil, 5)
+		page, err := svc.ListWall(ctx, uuid.Nil, ann, uuid.Nil, 5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -145,7 +145,7 @@ func TestPostService_ListByAuthor(t *testing.T) {
 	})
 
 	t.Run("bad size falls back to the default", func(t *testing.T) {
-		page, err := svc.ListByAuthor(ctx, uuid.Nil, ann, uuid.Nil, 1000)
+		page, err := svc.ListWall(ctx, uuid.Nil, ann, uuid.Nil, 1000)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -155,7 +155,7 @@ func TestPostService_ListByAuthor(t *testing.T) {
 	})
 
 	t.Run("empty wall", func(t *testing.T) {
-		page, err := svc.ListByAuthor(ctx, uuid.Nil, uuid.New(), uuid.Nil, 20)
+		page, err := svc.ListWall(ctx, uuid.Nil, uuid.New(), uuid.Nil, 20)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -243,7 +243,7 @@ func TestPostService_Likes(t *testing.T) {
 		t.Fatal("an anonymous viewer likes nothing")
 	}
 
-	wall, err := svc.ListByAuthor(ctx, ann, ann, uuid.Nil, 20)
+	wall, err := svc.ListWall(ctx, ann, ann, uuid.Nil, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +256,7 @@ func TestPostService_Likes(t *testing.T) {
 		t.Fatalf("feed liked = %v, %v", feed.Liked, err)
 	}
 
-	anonymous, err := svc.ListByAuthor(ctx, uuid.Nil, ann, uuid.Nil, 20)
+	anonymous, err := svc.ListWall(ctx, uuid.Nil, ann, uuid.Nil, 20)
 	if err != nil || len(anonymous.Liked) != 0 {
 		t.Fatalf("anonymous liked = %v, %v", anonymous.Liked, err)
 	}
@@ -338,5 +338,63 @@ func TestPostService_GetMany(t *testing.T) {
 
 	if _, err = svc.GetMany(ctx, make([]uuid.UUID, service.MaxPageSize+1)); !errors.Is(err, service.ErrTooManyIDs) {
 		t.Fatalf("too many ids: %v", err)
+	}
+}
+
+func TestPostService_SomeoneElsesWall(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	notifier := &fakeNotifier{}
+	svc := service.NewPostService(store.Posts(), store.Likes(), notifier)
+
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	write(t, svc, ann, "своё")
+
+	content, err := post.NewContent("привет, Аня", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	p, err := svc.Create(ctx, ann, bob, content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p.WallID() != ann || p.AuthorID() != bob {
+		t.Fatalf("wall = %v, author = %v", p.WallID(), p.AuthorID())
+	}
+
+	want := service.Event{Kind: service.EventWallPost, RecipientID: ann, ActorID: bob, PostID: p.ID()}
+	if len(notifier.notified) != 1 || notifier.notified[0] != want {
+		t.Fatalf("notified = %+v, want only %+v (own posts notify nobody)", notifier.notified, want)
+	}
+
+	wall, err := svc.ListWall(ctx, uuid.Nil, ann, uuid.Nil, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := texts(wall.Posts); wall.Total != 2 || len(got) != 2 || got[0] != "привет, Аня" {
+		t.Fatalf("ann's wall = %v (total %d), want bob's post on it", got, wall.Total)
+	}
+
+	bobs, err := svc.ListWall(ctx, uuid.Nil, bob, uuid.Nil, 10)
+	if err != nil || bobs.Total != 0 {
+		t.Fatalf("bob's wall = %+v, %v; want empty", bobs, err)
+	}
+
+	feed, err := svc.Feed(ctx, uuid.Nil, []uuid.UUID{bob}, uuid.Nil, 10)
+	if err != nil || len(feed.Posts) != 1 || feed.Posts[0].ID() != p.ID() {
+		t.Fatalf("bob's posts in a feed = %+v, %v", feed.Posts, err)
+	}
+
+	if err = svc.Delete(ctx, cat, p.ID()); !errors.Is(err, post.ErrCannotDelete) {
+		t.Fatalf("stranger: got %v, want ErrCannotDelete", err)
+	}
+	if err = svc.Delete(ctx, ann, p.ID()); err != nil {
+		t.Fatalf("the owner of the wall: %v", err)
+	}
+	if len(notifier.forgotten) != 1 || notifier.forgotten[0] != p.ID() {
+		t.Fatalf("forgotten = %v", notifier.forgotten)
 	}
 }

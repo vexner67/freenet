@@ -15,11 +15,11 @@ import (
 )
 
 type PostService interface {
-	Create(ctx context.Context, authorID uuid.UUID, content post.Content) (*post.Post, error)
+	Create(ctx context.Context, wallID, authorID uuid.UUID, content post.Content) (*post.Post, error)
 	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
 	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
-	ListByAuthor(ctx context.Context, viewerID, authorID, cursor uuid.UUID, size int) (service.Page, error)
+	ListWall(ctx context.Context, viewerID, wallID, cursor uuid.UUID, size int) (service.Page, error)
 	Feed(ctx context.Context, viewerID uuid.UUID, authorIDs []uuid.UUID, cursor uuid.UUID, size int) (service.Page, error)
 	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
@@ -58,7 +58,14 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		return nil, err
 	}
 
-	p, err := h.postService.Create(ctx, authorID, content)
+	wallID := authorID
+	if req.GetWallId() != "" {
+		if wallID, err = uuid.Parse(req.GetWallId()); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid wall id")
+		}
+	}
+
+	p, err := h.postService.Create(ctx, wallID, authorID, content)
 	if err != nil {
 		return nil, err
 	}
@@ -119,9 +126,9 @@ func (h *PostHandler) GetPosts(ctx context.Context, req *postv1.GetPostsRequest)
 }
 
 func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsRequest) (*postv1.ListPostsResponse, error) {
-	authorID, err := uuid.Parse(req.GetAuthorId())
+	wallID, err := uuid.Parse(req.GetWallId())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, "invalid author id")
+		return nil, status.Error(codes.InvalidArgument, "invalid wall id")
 	}
 
 	cursor, err := parseCursor(req.GetCursor())
@@ -129,7 +136,7 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 		return nil, err
 	}
 
-	page, err := h.postService.ListByAuthor(ctx, viewerID(ctx), authorID, cursor, int(req.GetLimit()))
+	page, err := h.postService.ListWall(ctx, viewerID(ctx), wallID, cursor, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}

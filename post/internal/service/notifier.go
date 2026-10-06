@@ -6,16 +6,18 @@ import (
 	"github.com/google/uuid"
 )
 
-// EventKind is what someone did with a post, for its author's notifications.
+// EventKind is what someone did with a post, for notifications.
 type EventKind int
 
 const (
 	EventLike EventKind = iota + 1
 	EventComment
+	EventWallPost
 )
 
-// Event: RecipientID is the author of the post, ActorID who liked or
-// commented; CommentID is uuid.Nil for likes.
+// Event: RecipientID is the author of the post for likes and comments and
+// the owner of the wall for wall posts, ActorID who liked, commented or
+// wrote; CommentID is uuid.Nil but for comments.
 type Event struct {
 	Kind        EventKind
 	RecipientID uuid.UUID

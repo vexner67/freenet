@@ -103,7 +103,7 @@ func TestWall(t *testing.T) {
 		}
 	}
 
-	page, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{AuthorId: ann.String(), Limit: 2})
+	page, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: ann.String(), Limit: 2})
 	if err != nil {
 		t.Fatalf("ListPosts without a token: %v", err)
 	}
@@ -114,7 +114,7 @@ func TestWall(t *testing.T) {
 		t.Fatalf("post fields: %v", page.GetPosts()[0])
 	}
 
-	last, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{AuthorId: ann.String(), Limit: 2, Cursor: page.GetNextCursor()})
+	last, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: ann.String(), Limit: 2, Cursor: page.GetNextCursor()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,11 +192,11 @@ func TestErrors(t *testing.T) {
 			return err
 		}, codes.InvalidArgument},
 		{"bad author id", func() error {
-			_, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{AuthorId: "ann"})
+			_, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: "ann"})
 			return err
 		}, codes.InvalidArgument},
 		{"bad cursor", func() error {
-			_, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{AuthorId: uuid.NewString(), Cursor: "x"})
+			_, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: uuid.NewString(), Cursor: "x"})
 			return err
 		}, codes.InvalidArgument},
 		{"bad feed author", func() error {
@@ -308,8 +308,46 @@ func TestPhotos(t *testing.T) {
 		t.Fatalf("GetPost = %v, %v", got, err)
 	}
 
-	wall, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{AuthorId: ann.String()})
+	wall, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: ann.String()})
 	if err != nil || len(wall.GetPosts()[0].GetPhotoIds()) != 2 {
 		t.Fatalf("ListPosts = %v, %v", wall, err)
+	}
+}
+
+func TestSomeoneElsesWall(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	created, err := s.client.CreatePost(s.as(t, bob), &postv1.CreatePostRequest{Text: "привет", WallId: ann.String()})
+	if err != nil {
+		t.Fatalf("CreatePost on ann's wall: %v", err)
+	}
+	if p := created.GetPost(); p.GetWallId() != ann.String() || p.GetAuthorId() != bob.String() {
+		t.Fatalf("post = %v", p)
+	}
+
+	own, err := s.client.CreatePost(s.as(t, bob), &postv1.CreatePostRequest{Text: "своё"})
+	if err != nil || own.GetPost().GetWallId() != bob.String() {
+		t.Fatalf("without wall_id the post goes on the author's wall: %v, %v", own, err)
+	}
+
+	wall, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: ann.String()})
+	if err != nil || wall.GetTotal() != 1 || wall.GetPosts()[0].GetAuthorId() != bob.String() {
+		t.Fatalf("ann's wall = %v, %v", wall, err)
+	}
+
+	_, err = s.client.CreatePost(s.as(t, bob), &postv1.CreatePostRequest{Text: "x", WallId: "ann"})
+	if got := status.Code(err); got != codes.InvalidArgument {
+		t.Fatalf("bad wall id: code = %v", got)
+	}
+
+	_, err = s.client.DeletePost(s.as(t, cat), &postv1.DeletePostRequest{Id: created.GetPost().GetId()})
+	if got := status.Code(err); got != codes.PermissionDenied {
+		t.Fatalf("a stranger deletes: code = %v", got)
+	}
+	if _, err = s.client.DeletePost(s.as(t, ann), &postv1.DeletePostRequest{Id: created.GetPost().GetId()}); err != nil {
+		t.Fatalf("the owner of the wall deletes: %v", err)
 	}
 }

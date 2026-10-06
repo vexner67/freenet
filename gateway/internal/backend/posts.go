@@ -51,9 +51,9 @@ func (p *Posts) Get(ctx context.Context, accessToken, id string) (model.Post, er
 // List returns posts without Author: they all belong to authorID.
 func (p *Posts) List(ctx context.Context, accessToken, authorID, cursor string, limit int) (model.PostPage, error) {
 	resp, err := p.api.ListPosts(withToken(ctx, accessToken), &postv1.ListPostsRequest{
-		AuthorId: authorID,
-		Cursor:   cursor,
-		Limit:    toLimit(limit),
+		WallId: authorID,
+		Cursor: cursor,
+		Limit:  toLimit(limit),
 	})
 	if err != nil {
 		return model.PostPage{}, errs.Wrap("p.api.ListPosts", fromStatus(err))

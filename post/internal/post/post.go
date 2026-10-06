@@ -13,10 +13,10 @@ import (
 const maxTextLen = 1000
 
 var (
-	ErrTextEmpty   = errors.New("post text is empty")
-	ErrTextTooLong = errors.New("post text is too long")
-	ErrNotFound    = errors.New("post not found")
-	ErrNotAuthor   = errors.New("only the author can delete the post")
+	ErrTextEmpty    = errors.New("post text is empty")
+	ErrTextTooLong  = errors.New("post text is too long")
+	ErrNotFound     = errors.New("post not found")
+	ErrCannotDelete = errors.New("only the author or the owner of the wall can delete the post")
 )
 
 // Text is what a post says: trimmed, with "\n" line breaks. It may be
@@ -59,17 +59,21 @@ type Counters struct {
 	Comments int
 }
 
+// Post is written by its author on a wall; the wall is that of its owner,
+// the author's own or someone else's.
 type Post struct {
 	id        uuid.UUID
+	wallID    uuid.UUID
 	authorID  uuid.UUID
 	content   Content
 	createdAt time.Time
 	counters  Counters
 }
 
-// New creates a post. Its UUIDv7 ID grows with time, so walls are ordered
-// and paged by ID.
-func New(authorID uuid.UUID, content Content, now time.Time) (*Post, error) {
+// New creates a post by authorID on the wall of wallID. Its UUIDv7 ID
+// grows with time, so walls are ordered and paged by ID. Whether the author
+// may write on that wall is the wall owner's privacy, which the caller checks.
+func New(wallID, authorID uuid.UUID, content Content, now time.Time) (*Post, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
@@ -77,6 +81,7 @@ func New(authorID uuid.UUID, content Content, now time.Time) (*Post, error) {
 
 	return &Post{
 		id:       id,
+		wallID:   wallID,
 		authorID: authorID,
 		content:  content,
 		// PostgreSQL keeps microseconds; trim now so a post reads back equal.
@@ -85,9 +90,10 @@ func New(authorID uuid.UUID, content Content, now time.Time) (*Post, error) {
 }
 
 // Restore rebuilds a post from storage without validation or new IDs.
-func Restore(id, authorID uuid.UUID, content Content, createdAt time.Time, counters Counters) *Post {
+func Restore(id, wallID, authorID uuid.UUID, content Content, createdAt time.Time, counters Counters) *Post {
 	return &Post{
 		id:        id,
+		wallID:    wallID,
 		authorID:  authorID,
 		content:   content,
 		createdAt: createdAt,
@@ -95,13 +101,23 @@ func Restore(id, authorID uuid.UUID, content Content, createdAt time.Time, count
 	}
 }
 
-// CanBeDeletedBy: a wall post is removed only by whoever wrote it.
+// CanBeDeletedBy: a post is removed by whoever wrote it or by the owner of
+// the wall, who keeps the wall clean.
 func (p *Post) CanBeDeletedBy(userID uuid.UUID) bool {
-	return p.authorID == userID
+	return userID == p.authorID || userID == p.wallID
+}
+
+// OnOwnWall tells whether the author wrote on their own wall.
+func (p *Post) OnOwnWall() bool {
+	return p.wallID == p.authorID
 }
 
 func (p *Post) ID() uuid.UUID {
 	return p.id
+}
+
+func (p *Post) WallID() uuid.UUID {
+	return p.wallID
 }
 
 func (p *Post) AuthorID() uuid.UUID {

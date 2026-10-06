@@ -37,7 +37,9 @@ type Post struct {
 	// The caller likes the post; false without an access token.
 	Liked bool `protobuf:"varint,7,opt,name=liked,proto3" json:"liked,omitempty"`
 	// Photos of the author in the media service, in the order shown.
-	PhotoIds      []string `protobuf:"bytes,8,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	PhotoIds []string `protobuf:"bytes,8,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	// The owner of the wall the post is on: author_id on the author's own wall.
+	WallId        string `protobuf:"bytes,9,opt,name=wall_id,json=wallId,proto3" json:"wall_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -128,6 +130,13 @@ func (x *Post) GetPhotoIds() []string {
 	return nil
 }
 
+func (x *Post) GetWallId() string {
+	if x != nil {
+		return x.WallId
+	}
+	return ""
+}
+
 type Comment struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -210,7 +219,11 @@ type CreatePostRequest struct {
 	// that the photos are the author's.
 	Text string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
 	// At most 10.
-	PhotoIds      []string `protobuf:"bytes,2,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	PhotoIds []string `protobuf:"bytes,2,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	// The owner of the wall to write on; empty for the caller's own wall.
+	// The caller has checked that the owner's privacy lets the author write
+	// there: post does not know users.
+	WallId        string `protobuf:"bytes,3,opt,name=wall_id,json=wallId,proto3" json:"wall_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -257,6 +270,13 @@ func (x *CreatePostRequest) GetPhotoIds() []string {
 		return x.PhotoIds
 	}
 	return nil
+}
+
+func (x *CreatePostRequest) GetWallId() string {
+	if x != nil {
+		return x.WallId
+	}
+	return ""
 }
 
 type CreatePostResponse struct {
@@ -524,8 +544,9 @@ func (x *GetPostsResponse) GetPosts() []*Post {
 }
 
 type ListPostsRequest struct {
-	state    protoimpl.MessageState `protogen:"open.v1"`
-	AuthorId string                 `protobuf:"bytes,1,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The owner of the wall (author_id before posts on others' walls).
+	WallId string `protobuf:"bytes,1,opt,name=wall_id,json=wallId,proto3" json:"wall_id,omitempty"`
 	// Empty for the newest posts, else next_cursor of the previous page.
 	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	// 1-50; anything else means 20.
@@ -564,9 +585,9 @@ func (*ListPostsRequest) Descriptor() ([]byte, []int) {
 	return file_api_post_v1_post_proto_rawDescGZIP(), []int{9}
 }
 
-func (x *ListPostsRequest) GetAuthorId() string {
+func (x *ListPostsRequest) GetWallId() string {
 	if x != nil {
-		return x.AuthorId
+		return x.WallId
 	}
 	return ""
 }
@@ -590,7 +611,7 @@ type ListPostsResponse struct {
 	Posts []*Post                `protobuf:"bytes,1,rep,name=posts,proto3" json:"posts,omitempty"`
 	// Empty on the last page.
 	NextCursor string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
-	// All posts of the author, for "N записей".
+	// All posts on the wall, for "N записей".
 	Total         int32 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
@@ -1295,7 +1316,7 @@ var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf9\x01\n" +
+	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x92\x02\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x12\n" +
@@ -1306,17 +1327,19 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"like_count\x18\x05 \x01(\x05R\tlikeCount\x12#\n" +
 	"\rcomment_count\x18\x06 \x01(\x05R\fcommentCount\x12\x14\n" +
 	"\x05liked\x18\a \x01(\bR\x05liked\x12\x1b\n" +
-	"\tphoto_ids\x18\b \x03(\tR\bphotoIds\"\x9e\x01\n" +
+	"\tphoto_ids\x18\b \x03(\tR\bphotoIds\x12\x17\n" +
+	"\awall_id\x18\t \x01(\tR\x06wallId\"\x9e\x01\n" +
 	"\aComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
 	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12\x12\n" +
 	"\x04text\x18\x04 \x01(\tR\x04text\x129\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"D\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"]\n" +
 	"\x11CreatePostRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
-	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\"7\n" +
+	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\x12\x17\n" +
+	"\awall_id\x18\x03 \x01(\tR\x06wallId\"7\n" +
 	"\x12CreatePostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"#\n" +
 	"\x11DeletePostRequest\x12\x0e\n" +
@@ -1328,9 +1351,9 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0fGetPostsRequest\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\"7\n" +
 	"\x10GetPostsResponse\x12#\n" +
-	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\"]\n" +
-	"\x10ListPostsRequest\x12\x1b\n" +
-	"\tauthor_id\x18\x01 \x01(\tR\bauthorId\x12\x16\n" +
+	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\"Y\n" +
+	"\x10ListPostsRequest\x12\x17\n" +
+	"\awall_id\x18\x01 \x01(\tR\x06wallId\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\"o\n" +
 	"\x11ListPostsResponse\x12#\n" +
