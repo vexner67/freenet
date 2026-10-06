@@ -11,14 +11,16 @@ import (
 
 var (
 	kindToProto = map[notification.Kind]notificationv1.Kind{
-		notification.KindLike:    notificationv1.Kind_KIND_LIKE,
-		notification.KindComment: notificationv1.Kind_KIND_COMMENT,
-		notification.KindFollow:  notificationv1.Kind_KIND_FOLLOW,
+		notification.KindLike:     notificationv1.Kind_KIND_LIKE,
+		notification.KindComment:  notificationv1.Kind_KIND_COMMENT,
+		notification.KindFollow:   notificationv1.Kind_KIND_FOLLOW,
+		notification.KindWallPost: notificationv1.Kind_KIND_WALL_POST,
 	}
 	kindFromProto = map[notificationv1.Kind]notification.Kind{
-		notificationv1.Kind_KIND_LIKE:    notification.KindLike,
-		notificationv1.Kind_KIND_COMMENT: notification.KindComment,
-		notificationv1.Kind_KIND_FOLLOW:  notification.KindFollow,
+		notificationv1.Kind_KIND_LIKE:      notification.KindLike,
+		notificationv1.Kind_KIND_COMMENT:   notification.KindComment,
+		notificationv1.Kind_KIND_FOLLOW:    notification.KindFollow,
+		notificationv1.Kind_KIND_WALL_POST: notification.KindWallPost,
 	}
 )
 

@@ -33,6 +33,8 @@ const (
 	Kind_KIND_COMMENT Kind = 2
 	// The actor followed the recipient.
 	Kind_KIND_FOLLOW Kind = 3
+	// The actor wrote a post on the recipient's wall.
+	Kind_KIND_WALL_POST Kind = 4
 )
 
 // Enum value maps for Kind.
@@ -42,12 +44,14 @@ var (
 		1: "KIND_LIKE",
 		2: "KIND_COMMENT",
 		3: "KIND_FOLLOW",
+		4: "KIND_WALL_POST",
 	}
 	Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED": 0,
 		"KIND_LIKE":        1,
 		"KIND_COMMENT":     2,
 		"KIND_FOLLOW":      3,
+		"KIND_WALL_POST":   4,
 	}
 )
 
@@ -129,7 +133,8 @@ func (Box) EnumDescriptor() ([]byte, []int) {
 	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{1}
 }
 
-// Event: post_id is set for likes and comments, comment_id for comments.
+// Event: post_id is set for likes, comments and wall posts, comment_id for
+// comments.
 type Event struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Kind          Kind                   `protobuf:"varint,1,opt,name=kind,proto3,enum=notification.v1.Kind" json:"kind,omitempty"`
@@ -703,12 +708,13 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x13CountUnreadResponse\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x05R\x05count\":\n" +
 	"\x0fMarkReadRequest\x12'\n" +
-	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId*N\n" +
+	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId*b\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
 	"\fKIND_COMMENT\x10\x02\x12\x0f\n" +
-	"\vKIND_FOLLOW\x10\x03*;\n" +
+	"\vKIND_FOLLOW\x10\x03\x12\x12\n" +
+	"\x0eKIND_WALL_POST\x10\x04*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
