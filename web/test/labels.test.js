@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites } from '../static/labels.js';
+import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -114,4 +114,11 @@ test('a wall post notification and its error read like openvk', () => {
   assert.equal(notificationVerb('wall_post', ''), 'написал(а)');
   assert.equal(errorText(new Error('you cannot post on this wall')), 'Хозяин страницы не разрешает вам писать у него на стене.');
   assert.deepEqual(wallWrites.map(([value]) => value), ['everyone', 'following', 'only_me']);
+});
+
+test('the share link counts reposts, as on openvk', () => {
+  assert.equal(shareLink(0), 'Поделиться');
+  assert.equal(shareLink(3), 'Поделиться (3)');
+  assert.equal(notificationVerb('repost', 'male'), 'поделился');
+  assert.equal(notificationVerb('repost', 'female'), 'поделилась');
 });

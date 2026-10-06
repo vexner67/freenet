@@ -142,6 +142,8 @@ export const api = {
   createPost: (nickname, text, photos = []) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos }),
   // Uploads a photo for a post; the post refers to it by ID.
   uploadPhoto: (file) => authorized('POST', '/api/v1/me/photos', file),
+  // Shares a post on your wall, with a comment that may be empty.
+  repost: (postID, text) => authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/reposts`, { text }),
   deletePost: (id) => authorized('DELETE', '/api/v1/posts/' + encodeURIComponent(id)),
   like: (postID) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
   unlike: (postID) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
