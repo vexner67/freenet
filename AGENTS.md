@@ -24,6 +24,7 @@ freenet/
 │   ├── hmac/                #   HMAC-хешер
 │   ├── envconfig/           #   загрузка конфига: необязательный .env + env + Validate()
 │   ├── pgpool/              #   пул PostgreSQL и применение goose-миграций при старте
+│   ├── ratelimit/           #   счётчики событий в фиксированных окнах: в памяти или в Redis
 │   ├── grpcserver/          #   gRPC-сервер: health, reflection, graceful stop, ErrorInterceptor
 │   ├── mtls/                #   mTLS между сервисами, идентичность вызывающего, RestrictMethods
 │   └── jwtauth/             #   формат JWT, проверка токенов, gRPC-интерсептор аутентификации

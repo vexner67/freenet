@@ -1,4 +1,4 @@
-package redis
+package ratelimit
 
 import (
 	"context"
@@ -8,18 +8,20 @@ import (
 	"github.com/vexner67/freenet/pkg/errs"
 )
 
-// RateLimiter keeps fixed-window counters in Redis, shared by all replicas.
-type RateLimiter struct {
+// Redis keeps fixed-window counters in Redis, shared by all replicas.
+type Redis struct {
 	client *redis.Client
 }
 
-func NewRateLimiter(client *redis.Client) *RateLimiter {
-	return &RateLimiter{
+func NewRedis(client *redis.Client) *Redis {
+	return &Redis{
 		client: client,
 	}
 }
 
-func (l *RateLimiter) Allow(ctx context.Context, key string, limit int, window time.Duration) (bool, error) {
+// Allow counts an event of key and tells whether it is within limit
+// events per window.
+func (l *Redis) Allow(ctx context.Context, key string, limit int, window time.Duration) (bool, error) {
 	key = "rate_limit:" + key
 
 	var count *redis.IntCmd

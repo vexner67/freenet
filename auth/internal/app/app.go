@@ -27,6 +27,7 @@ import (
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/pgpool"
+	"github.com/vexner67/freenet/pkg/ratelimit"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"google.golang.org/grpc"
 )
@@ -139,7 +140,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		return storage{
 			sessions: inmem.NewSessionRepository(),
 			codes:    inmem.NewCodeRepository(),
-			limiter:  inmem.NewRateLimiter(),
+			limiter:  ratelimit.NewMemory(),
 		}, nil
 	}
 
@@ -173,7 +174,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	return storage{
 		sessions: postgres.NewSessionRepository(a.pool),
 		codes:    redis.NewCodeRepository(a.redis),
-		limiter:  redis.NewRateLimiter(a.redis),
+		limiter:  ratelimit.NewRedis(a.redis),
 	}, nil
 }
 
