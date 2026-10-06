@@ -52,6 +52,11 @@ func (l *Memory) Allow(_ context.Context, key string, limit int, period time.Dur
 	return w.count <= limit, nil
 }
 
+// Close does nothing: memory needs no cleanup. It makes Memory a Store.
+func (l *Memory) Close() error {
+	return nil
+}
+
 // sweep drops expired windows; the caller holds the lock.
 func (l *Memory) sweep(now time.Time) {
 	if now.Sub(l.lastSweep) < sweepInterval {

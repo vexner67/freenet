@@ -18,11 +18,17 @@ func TestRedis(t *testing.T) {
 		t.Skip("TEST_REDIS_ADDR is not set")
 	}
 
+	ctx := context.Background()
+
+	limiter, err := ratelimit.Connect(ctx, addr)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = limiter.Close() })
+
+	// A second client to look at the key from outside.
 	client := redis.NewClient(&redis.Options{Addr: addr})
 	t.Cleanup(func() { _ = client.Close() })
-
-	limiter := ratelimit.NewRedis(client)
-	ctx := context.Background()
 	key := "test:" + uuid.NewString()
 
 	for i := 1; i <= 3; i++ {
