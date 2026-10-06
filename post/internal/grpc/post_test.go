@@ -166,8 +166,25 @@ func TestErrors(t *testing.T) {
 			_, err := s.client.CreatePost(context.Background(), &postv1.CreatePostRequest{Text: "x"})
 			return err
 		}, codes.Unauthenticated},
-		{"empty text", func() error {
+		{"neither text nor photos", func() error {
 			_, err := s.client.CreatePost(ann, &postv1.CreatePostRequest{Text: "  \n "})
+			return err
+		}, codes.InvalidArgument},
+		{"eleven photos", func() error {
+			ids := make([]string, 11)
+			for i := range ids {
+				ids[i] = uuid.NewString()
+			}
+			_, err := s.client.CreatePost(ann, &postv1.CreatePostRequest{PhotoIds: ids})
+			return err
+		}, codes.InvalidArgument},
+		{"the same photo twice", func() error {
+			id := uuid.NewString()
+			_, err := s.client.CreatePost(ann, &postv1.CreatePostRequest{PhotoIds: []string{id, id}})
+			return err
+		}, codes.InvalidArgument},
+		{"bad photo id", func() error {
+			_, err := s.client.CreatePost(ann, &postv1.CreatePostRequest{PhotoIds: []string{"x"}})
 			return err
 		}, codes.InvalidArgument},
 		{"too long text", func() error {
@@ -268,5 +285,31 @@ func TestErrors(t *testing.T) {
 				t.Fatalf("code = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestPhotos(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann := uuid.New()
+	photos := []string{uuid.NewString(), uuid.NewString()}
+
+	created, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{PhotoIds: photos})
+	if err != nil {
+		t.Fatalf("a post of photos only: %v", err)
+	}
+	if p := created.GetPost(); p.GetText() != "" || len(p.GetPhotoIds()) != 2 || p.GetPhotoIds()[0] != photos[0] {
+		t.Fatalf("created = %v; photos keep their order", p)
+	}
+
+	got, err := s.client.GetPost(context.Background(), &postv1.GetPostRequest{Id: created.GetPost().GetId()})
+	if err != nil || len(got.GetPost().GetPhotoIds()) != 2 || got.GetPost().GetPhotoIds()[1] != photos[1] {
+		t.Fatalf("GetPost = %v, %v", got, err)
+	}
+
+	wall, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{AuthorId: ann.String()})
+	if err != nil || len(wall.GetPosts()[0].GetPhotoIds()) != 2 {
+		t.Fatalf("ListPosts = %v, %v", wall, err)
 	}
 }

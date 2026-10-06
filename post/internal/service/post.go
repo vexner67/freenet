@@ -73,8 +73,8 @@ func NewPostService(postRepo PostRepository, likeRepo LikeRepository, notifier N
 	}
 }
 
-func (s *PostService) Create(ctx context.Context, authorID uuid.UUID, text post.Text) (*post.Post, error) {
-	p, err := post.New(authorID, text, s.now())
+func (s *PostService) Create(ctx context.Context, authorID uuid.UUID, content post.Content) (*post.Post, error) {
+	p, err := post.New(authorID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("post.New", err)
 	}

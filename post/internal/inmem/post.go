@@ -47,7 +47,7 @@ func (s *Store) count(id uuid.UUID, update func(*post.Counters)) {
 	p := s.posts[id]
 	counters := p.Counters()
 	update(&counters)
-	s.posts[id] = post.Restore(p.ID(), p.AuthorID(), p.Text(), p.CreatedAt(), counters)
+	s.posts[id] = post.Restore(p.ID(), p.AuthorID(), p.Content(), p.CreatedAt(), counters)
 }
 
 type PostRepository struct {

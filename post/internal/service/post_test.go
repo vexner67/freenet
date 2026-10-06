@@ -48,7 +48,12 @@ func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...st
 
 	posts := make([]*post.Post, 0, len(texts))
 	for _, text := range texts {
-		p, err := svc.Create(context.Background(), author, post.Text(text))
+		content, err := post.NewContent(post.Text(text), nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		p, err := svc.Create(context.Background(), author, content)
 		if err != nil {
 			t.Fatalf("Create: %v", err)
 		}
@@ -61,7 +66,7 @@ func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...st
 func texts(posts []*post.Post) []string {
 	out := make([]string, len(posts))
 	for i, p := range posts {
-		out[i] = p.Text().String()
+		out[i] = p.Content().Text().String()
 	}
 	return out
 }

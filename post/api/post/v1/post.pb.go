@@ -26,15 +26,18 @@ const (
 // Public methods that return posts fill liked when the caller sends an
 // access token.
 type Post struct {
-	state        protoimpl.MessageState `protogen:"open.v1"`
-	Id           string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
-	AuthorId     string                 `protobuf:"bytes,2,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AuthorId string                 `protobuf:"bytes,2,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	// Empty when the post has photos only.
 	Text         string                 `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
 	CreatedAt    *timestamppb.Timestamp `protobuf:"bytes,4,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	LikeCount    int32                  `protobuf:"varint,5,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`
 	CommentCount int32                  `protobuf:"varint,6,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"`
 	// The caller likes the post; false without an access token.
-	Liked         bool `protobuf:"varint,7,opt,name=liked,proto3" json:"liked,omitempty"`
+	Liked bool `protobuf:"varint,7,opt,name=liked,proto3" json:"liked,omitempty"`
+	// Photos of the author in the media service, in the order shown.
+	PhotoIds      []string `protobuf:"bytes,8,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -118,6 +121,13 @@ func (x *Post) GetLiked() bool {
 	return false
 }
 
+func (x *Post) GetPhotoIds() []string {
+	if x != nil {
+		return x.PhotoIds
+	}
+	return nil
+}
+
 type Comment struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -195,8 +205,12 @@ func (x *Comment) GetCreatedAt() *timestamppb.Timestamp {
 }
 
 type CreatePostRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Text          string                 `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Text, photos or both. The caller has checked with the media service
+	// that the photos are the author's.
+	Text string `protobuf:"bytes,1,opt,name=text,proto3" json:"text,omitempty"`
+	// At most 10.
+	PhotoIds      []string `protobuf:"bytes,2,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -236,6 +250,13 @@ func (x *CreatePostRequest) GetText() string {
 		return x.Text
 	}
 	return ""
+}
+
+func (x *CreatePostRequest) GetPhotoIds() []string {
+	if x != nil {
+		return x.PhotoIds
+	}
+	return nil
 }
 
 type CreatePostResponse struct {
@@ -1274,7 +1295,7 @@ var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdc\x01\n" +
+	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf9\x01\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x12\n" +
@@ -1284,16 +1305,18 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
 	"like_count\x18\x05 \x01(\x05R\tlikeCount\x12#\n" +
 	"\rcomment_count\x18\x06 \x01(\x05R\fcommentCount\x12\x14\n" +
-	"\x05liked\x18\a \x01(\bR\x05liked\"\x9e\x01\n" +
+	"\x05liked\x18\a \x01(\bR\x05liked\x12\x1b\n" +
+	"\tphoto_ids\x18\b \x03(\tR\bphotoIds\"\x9e\x01\n" +
 	"\aComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
 	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12\x12\n" +
 	"\x04text\x18\x04 \x01(\tR\x04text\x129\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"'\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"D\n" +
 	"\x11CreatePostRequest\x12\x12\n" +
-	"\x04text\x18\x01 \x01(\tR\x04text\"7\n" +
+	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
+	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\"7\n" +
 	"\x12CreatePostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"#\n" +
 	"\x11DeletePostRequest\x12\x0e\n" +

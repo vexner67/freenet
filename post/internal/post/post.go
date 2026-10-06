@@ -19,11 +19,12 @@ var (
 	ErrNotAuthor   = errors.New("only the author can delete the post")
 )
 
-// Text is what a post says: trimmed, with "\n" line breaks.
+// Text is what a post says: trimmed, with "\n" line breaks. It may be
+// empty when the post has photos (see NewContent).
 type Text string
 
 func NewText(s string) (Text, error) {
-	s, err := cleanText(s, maxTextLen, ErrTextEmpty, ErrTextTooLong)
+	s, err := cleanText(s, maxTextLen, nil, ErrTextTooLong)
 	if err != nil {
 		return "", err
 	}
@@ -32,11 +33,11 @@ func NewText(s string) (Text, error) {
 }
 
 // cleanText trims s and normalises its line breaks, so length and storage
-// do not depend on the client.
+// do not depend on the client. A nil errEmpty allows empty text.
 func cleanText(s string, maxLen int, errEmpty, errTooLong error) (string, error) {
 	s = strings.TrimSpace(strings.ReplaceAll(s, "\r\n", "\n"))
 
-	if s == "" {
+	if s == "" && errEmpty != nil {
 		return "", errEmpty
 	}
 
@@ -61,14 +62,14 @@ type Counters struct {
 type Post struct {
 	id        uuid.UUID
 	authorID  uuid.UUID
-	text      Text
+	content   Content
 	createdAt time.Time
 	counters  Counters
 }
 
 // New creates a post. Its UUIDv7 ID grows with time, so walls are ordered
 // and paged by ID.
-func New(authorID uuid.UUID, text Text, now time.Time) (*Post, error) {
+func New(authorID uuid.UUID, content Content, now time.Time) (*Post, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
@@ -77,18 +78,18 @@ func New(authorID uuid.UUID, text Text, now time.Time) (*Post, error) {
 	return &Post{
 		id:       id,
 		authorID: authorID,
-		text:     text,
+		content:  content,
 		// PostgreSQL keeps microseconds; trim now so a post reads back equal.
 		createdAt: now.UTC().Truncate(time.Microsecond),
 	}, nil
 }
 
 // Restore rebuilds a post from storage without validation or new IDs.
-func Restore(id, authorID uuid.UUID, text Text, createdAt time.Time, counters Counters) *Post {
+func Restore(id, authorID uuid.UUID, content Content, createdAt time.Time, counters Counters) *Post {
 	return &Post{
 		id:        id,
 		authorID:  authorID,
-		text:      text,
+		content:   content,
 		createdAt: createdAt,
 		counters:  counters,
 	}
@@ -107,8 +108,8 @@ func (p *Post) AuthorID() uuid.UUID {
 	return p.authorID
 }
 
-func (p *Post) Text() Text {
-	return p.text
+func (p *Post) Content() Content {
+	return p.content
 }
 
 func (p *Post) CreatedAt() time.Time {

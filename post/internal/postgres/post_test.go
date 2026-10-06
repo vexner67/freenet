@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"reflect"
 	"testing"
 	"time"
 
@@ -45,7 +46,7 @@ func TestPostRepository(t *testing.T) {
 
 	var saved []*post.Post
 	for _, text := range []string{"раз", "два", "три"} {
-		p, err := post.New(author, post.Text(text), time.Now())
+		p, err := post.New(author, post.RestoreContent(post.Text(text), nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -59,8 +60,26 @@ func TestPostRepository(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Get: %v", err)
 	}
-	if *got != *saved[0] {
+	if !reflect.DeepEqual(got, saved[0]) {
 		t.Fatalf("round trip: got %+v, want %+v", got, saved[0])
+	}
+
+	photos, err := post.NewPhotos([]uuid.UUID{uuid.New(), uuid.New()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	pictured, err := post.New(author, post.RestoreContent("", photos), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = repo.Save(ctx, pictured); err != nil {
+		t.Fatalf("Save a post of photos only: %v", err)
+	}
+	if got, err := repo.Get(ctx, pictured.ID()); err != nil || !reflect.DeepEqual(got, pictured) {
+		t.Fatalf("photos round trip: got %+v, %v; want %+v", got, err, pictured)
+	}
+	if err = repo.Delete(ctx, pictured.ID()); err != nil {
+		t.Fatal(err)
 	}
 
 	many, err := repo.GetMany(ctx, []uuid.UUID{saved[2].ID(), uuid.New(), saved[0].ID()})
@@ -72,7 +91,7 @@ func TestPostRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(page) != 2 || page[0].Text() != "три" || page[1].Text() != "два" {
+	if len(page) != 2 || page[0].Content().Text() != "три" || page[1].Content().Text() != "два" {
 		t.Fatalf("first page: %v", page)
 	}
 
@@ -80,12 +99,12 @@ func TestPostRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(rest) != 1 || rest[0].Text() != "раз" {
+	if len(rest) != 1 || rest[0].Content().Text() != "раз" {
 		t.Fatalf("after cursor: %v", rest)
 	}
 
 	other := uuid.New()
-	theirs, err := post.New(other, "чужая", time.Now())
+	theirs, err := post.New(other, post.RestoreContent("чужая", nil), time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -94,7 +113,7 @@ func TestPostRepository(t *testing.T) {
 	}
 
 	feed, err := repo.ListByAuthors(ctx, []uuid.UUID{author, other}, uuid.Nil, 10)
-	if err != nil || len(feed) != 4 || feed[0].Text() != "чужая" || feed[3].Text() != "раз" {
+	if err != nil || len(feed) != 4 || feed[0].Content().Text() != "чужая" || feed[3].Content().Text() != "раз" {
 		t.Fatalf("ListByAuthors = %v, %v", feed, err)
 	}
 
