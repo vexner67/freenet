@@ -1,4 +1,4 @@
-.PHONY: dev dev-persistent up ps down certs web-test stack smoke
+.PHONY: dev dev-persistent up ps down certs web-test check check-integration stack smoke
 
 # The whole backend and the website in one terminal; Ctrl+C stops it.
 dev:
@@ -30,6 +30,15 @@ stack:
 # Signs a user up through the running stack and touches every service.
 smoke:
 	./scripts/smoke.sh
+
+# Every module as CI checks it: gofmt, vet, golangci-lint, go test -race,
+# and the website tests; check-integration also runs the PostgreSQL and
+# Redis tests against throwaway containers.
+check:
+	./scripts/check.sh
+
+check-integration:
+	./scripts/check.sh --integration
 
 # Development CA, mTLS certificates for every service and the JWT keys.
 certs:
