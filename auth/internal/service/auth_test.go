@@ -16,6 +16,7 @@ import (
 	"github.com/vexner67/freenet/auth/internal/service"
 	"github.com/vexner67/freenet/auth/internal/session"
 	"github.com/vexner67/freenet/pkg/hmac"
+	"github.com/vexner67/freenet/pkg/ratelimit"
 )
 
 const (
@@ -113,7 +114,7 @@ func newFixture(t *testing.T, userErr error, tune ...func(*service.Policy)) fixt
 		f.sessions,
 		hmac.NewHasher([]byte("test-secret")),
 		inmem.NewCodeRepository(),
-		inmem.NewRateLimiter(),
+		ratelimit.NewMemory(),
 		f.mailer,
 		tokens,
 		policy,

@@ -1,4 +1,4 @@
-package inmem
+package ratelimit
 
 import (
 	"context"
@@ -10,7 +10,7 @@ type clock struct{ t time.Time }
 
 func (c *clock) now() time.Time          { return c.t }
 func (c *clock) advance(d time.Duration) { c.t = c.t.Add(d) }
-func allow(t *testing.T, l *RateLimiter, key string) bool {
+func allow(t *testing.T, l *Memory, key string) bool {
 	t.Helper()
 
 	ok, err := l.Allow(context.Background(), key, 2, time.Minute)
@@ -21,11 +21,11 @@ func allow(t *testing.T, l *RateLimiter, key string) bool {
 	return ok
 }
 
-func TestRateLimiter(t *testing.T) {
+func TestMemory(t *testing.T) {
 	t.Parallel()
 
 	c := &clock{t: time.Date(2026, 1, 1, 0, 0, 0, 0, time.UTC)}
-	l := NewRateLimiter()
+	l := NewMemory()
 	l.now = c.now
 
 	for i := 1; i <= 2; i++ {
