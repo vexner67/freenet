@@ -7,6 +7,8 @@ import (
 	"github.com/google/uuid"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	"github.com/vexner67/freenet/media/internal/avatar"
+	"github.com/vexner67/freenet/media/internal/photo"
+	"github.com/vexner67/freenet/media/internal/service"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -19,15 +21,24 @@ type AvatarService interface {
 	DeleteExcept(ctx context.Context, userID, keep uuid.UUID) error
 }
 
+type PhotoService interface {
+	Upload(ctx context.Context, ownerID uuid.UUID, data []byte) (uuid.UUID, error)
+	Get(ctx context.Context, ownerID, photoID uuid.UUID, size photo.Size) ([]byte, error)
+	Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error)
+	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+}
+
 type MediaHandler struct {
 	mediav1.UnimplementedMediaServiceServer
 	avatars AvatarService
+	photos  PhotoService
 	logger  *slog.Logger
 }
 
-func NewMediaHandler(avatars AvatarService, logger *slog.Logger) *MediaHandler {
+func NewMediaHandler(avatars AvatarService, photos PhotoService, logger *slog.Logger) *MediaHandler {
 	return &MediaHandler{
 		avatars: avatars,
+		photos:  photos,
 		logger:  logger,
 	}
 }
@@ -88,6 +99,104 @@ func (h *MediaHandler) GetAvatar(ctx context.Context, req *mediav1.GetAvatarRequ
 	}
 
 	return &mediav1.GetAvatarResponse{Image: data}, nil
+}
+
+func (h *MediaHandler) UploadPhoto(ctx context.Context, req *mediav1.UploadPhotoRequest) (*mediav1.UploadPhotoResponse, error) {
+	ownerID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := h.photos.Upload(ctx, ownerID, req.GetImage())
+	if err != nil {
+		return nil, err
+	}
+
+	return &mediav1.UploadPhotoResponse{PhotoId: id.String()}, nil
+}
+
+func (h *MediaHandler) ListOwnPhotos(ctx context.Context, req *mediav1.ListOwnPhotosRequest) (*mediav1.ListOwnPhotosResponse, error) {
+	ownerID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ids, err := parsePhotoIDs(req.GetPhotoIds())
+	if err != nil {
+		return nil, err
+	}
+
+	found, err := h.photos.Existing(ctx, ownerID, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &mediav1.ListOwnPhotosResponse{PhotoIds: make([]string, 0, len(found))}
+	for _, id := range found {
+		resp.PhotoIds = append(resp.PhotoIds, id.String())
+	}
+
+	return resp, nil
+}
+
+func (h *MediaHandler) DeletePhotos(ctx context.Context, req *mediav1.DeletePhotosRequest) (*emptypb.Empty, error) {
+	ownerID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ids, err := parsePhotoIDs(req.GetPhotoIds())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.photos.Delete(ctx, ownerID, ids); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MediaHandler) GetPhoto(ctx context.Context, req *mediav1.GetPhotoRequest) (*mediav1.GetPhotoResponse, error) {
+	ownerID, err := parseID(req.GetUserId(), "user id")
+	if err != nil {
+		return nil, err
+	}
+
+	photoID, err := parseID(req.GetPhotoId(), "photo id")
+	if err != nil {
+		return nil, err
+	}
+
+	size := photo.Large
+	if req.GetSize() == mediav1.PhotoSize_PHOTO_SIZE_SMALL {
+		size = photo.Small
+	}
+
+	data, err := h.photos.Get(ctx, ownerID, photoID, size)
+	if err != nil {
+		return nil, err
+	}
+
+	return &mediav1.GetPhotoResponse{Image: data}, nil
+}
+
+// parsePhotoIDs reads at most service.MaxPhotoIDs IDs.
+func parsePhotoIDs(raw []string) ([]uuid.UUID, error) {
+	if len(raw) > service.MaxPhotoIDs {
+		return nil, status.Error(codes.InvalidArgument, "too many photo ids")
+	}
+
+	ids := make([]uuid.UUID, 0, len(raw))
+	for _, s := range raw {
+		id, err := parseID(s, "photo id")
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
 }
 
 func parseID(s, what string) (uuid.UUID, error) {

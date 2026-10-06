@@ -6,6 +6,8 @@ import (
 
 	"github.com/vexner67/freenet/media/internal/avatar"
 	"github.com/vexner67/freenet/media/internal/imaging"
+	"github.com/vexner67/freenet/media/internal/photo"
+	"github.com/vexner67/freenet/media/internal/service"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,6 +28,14 @@ func toStatus(err error) (*status.Status, bool) {
 
 	if errors.Is(err, avatar.ErrNotFound) {
 		return status.New(codes.NotFound, "avatar not found"), true
+	}
+
+	if errors.Is(err, photo.ErrNotFound) {
+		return status.New(codes.NotFound, "photo not found"), true
+	}
+
+	if errors.Is(err, service.ErrTooManyPhotoIDs) {
+		return status.New(codes.InvalidArgument, "too many photo ids"), true
 	}
 
 	return nil, false

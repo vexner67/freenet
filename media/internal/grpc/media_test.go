@@ -30,8 +30,14 @@ import (
 
 const issuer = "freenet-test"
 
-func TestAvatars(t *testing.T) {
-	t.Parallel()
+type testServer struct {
+	client mediav1.MediaServiceClient
+	key    *rsa.PrivateKey
+}
+
+// newServer wires the handler the same way app.New does, without mTLS.
+func newServer(t *testing.T) testServer {
+	t.Helper()
 
 	key, err := rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -44,7 +50,11 @@ func TestAvatars(t *testing.T) {
 		mediagrpc.ErrorInterceptor(log),
 		jwtauth.UnaryServerInterceptor(jwtauth.NewVerifier(&key.PublicKey, issuer), mediagrpc.PublicMethods()...),
 	))
-	mediav1.RegisterMediaServiceServer(srv, mediagrpc.NewMediaHandler(service.NewAvatarService(inmem.NewAvatarStore()), log))
+	mediav1.RegisterMediaServiceServer(srv, mediagrpc.NewMediaHandler(
+		service.NewAvatarService(inmem.NewAvatarStore()),
+		service.NewPhotoService(inmem.NewPhotoStore()),
+		log,
+	))
 
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
@@ -58,8 +68,12 @@ func TestAvatars(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = conn.Close() })
 
-	client := mediav1.NewMediaServiceClient(conn)
-	userID := uuid.New()
+	return testServer{client: mediav1.NewMediaServiceClient(conn), key: key}
+}
+
+// as returns a context of the given user with a signed access token.
+func (s testServer) as(t *testing.T, userID uuid.UUID) context.Context {
+	t.Helper()
 
 	token, err := jwt.NewWithClaims(jwt.SigningMethodRS256, jwtauth.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
@@ -67,11 +81,22 @@ func TestAvatars(t *testing.T) {
 		},
 		TokenType: jwtauth.AccessToken,
 		SessionID: uuid.NewString(),
-	}).SignedString(key)
+	}).SignedString(s.key)
 	if err != nil {
 		t.Fatal(err)
 	}
-	me := metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
+
+	return metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
+}
+
+func TestAvatars(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	client := s.client
+	userID := uuid.New()
+	me := s.as(t, userID)
+	var err error
 
 	var picture bytes.Buffer
 	if err = png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 120, 80))); err != nil {
@@ -117,5 +142,70 @@ func TestAvatars(t *testing.T) {
 	}
 	if _, err = get("x", mediav1.AvatarSize_AVATAR_SIZE_LARGE); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("bad id: %v", err)
+	}
+}
+
+func TestPhotos(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	var picture bytes.Buffer
+	if err := png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 1600, 900))); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err := s.client.UploadPhoto(context.Background(), &mediav1.UploadPhotoRequest{Image: picture.Bytes()}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("upload without token: %v", err)
+	}
+	if _, err := s.client.UploadPhoto(s.as(t, ann), &mediav1.UploadPhotoRequest{Image: []byte("text")}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("not an image: %v", err)
+	}
+
+	var ids []string
+	for range 2 {
+		resp, err := s.client.UploadPhoto(s.as(t, ann), &mediav1.UploadPhotoRequest{Image: picture.Bytes()})
+		if err != nil {
+			t.Fatalf("UploadPhoto: %v", err)
+		}
+		ids = append(ids, resp.GetPhotoId())
+	}
+
+	small, err := s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: ids[0], Size: mediav1.PhotoSize_PHOTO_SIZE_SMALL})
+	if err != nil {
+		t.Fatalf("GetPhoto without token: %v", err)
+	}
+	if cfg, format, err := image.DecodeConfig(bytes.NewReader(small.GetImage())); err != nil || format != "jpeg" || cfg.Width != 640 || cfg.Height != 360 {
+		t.Fatalf("small photo: %v %s %v; a photo keeps its proportions", cfg, format, err)
+	}
+
+	// The same IDs under bob are not his.
+	stranger := uuid.NewString()
+	own, err := s.client.ListOwnPhotos(s.as(t, ann), &mediav1.ListOwnPhotosRequest{PhotoIds: append([]string{stranger}, ids...)})
+	if err != nil || len(own.GetPhotoIds()) != 2 {
+		t.Fatalf("ann's photos = %v, %v", own, err)
+	}
+	if bobs, err := s.client.ListOwnPhotos(s.as(t, bob), &mediav1.ListOwnPhotosRequest{PhotoIds: ids}); err != nil || len(bobs.GetPhotoIds()) != 0 {
+		t.Fatalf("bob has none of ann's photos: %v, %v", bobs, err)
+	}
+
+	// Bob cannot delete ann's photos: he deletes only his own.
+	if _, err = s.client.DeletePhotos(s.as(t, bob), &mediav1.DeletePhotosRequest{PhotoIds: ids}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: ids[0]}); err != nil {
+		t.Fatalf("ann's photo after bob's delete: %v", err)
+	}
+
+	if _, err = s.client.DeletePhotos(s.as(t, ann), &mediav1.DeletePhotosRequest{PhotoIds: ids[:1]}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: ids[0]}); status.Code(err) != codes.NotFound {
+		t.Fatalf("deleted photo: %v", err)
+	}
+
+	if _, err = s.client.ListOwnPhotos(s.as(t, ann), &mediav1.ListOwnPhotosRequest{PhotoIds: make([]string, 11)}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("too many ids: %v", err)
 	}
 }
