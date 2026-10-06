@@ -23,6 +23,10 @@ const (
 	MediaService_UploadAvatar_FullMethodName  = "/media.v1.MediaService/UploadAvatar"
 	MediaService_DeleteAvatars_FullMethodName = "/media.v1.MediaService/DeleteAvatars"
 	MediaService_GetAvatar_FullMethodName     = "/media.v1.MediaService/GetAvatar"
+	MediaService_UploadPhoto_FullMethodName   = "/media.v1.MediaService/UploadPhoto"
+	MediaService_ListOwnPhotos_FullMethodName = "/media.v1.MediaService/ListOwnPhotos"
+	MediaService_DeletePhotos_FullMethodName  = "/media.v1.MediaService/DeletePhotos"
+	MediaService_GetPhoto_FullMethodName      = "/media.v1.MediaService/GetPhoto"
 )
 
 // MediaServiceClient is the client API for MediaService service.
@@ -36,6 +40,14 @@ type MediaServiceClient interface {
 	DeleteAvatars(ctx context.Context, in *DeleteAvatarsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: an avatar as JPEG.
 	GetAvatar(ctx context.Context, in *GetAvatarRequest, opts ...grpc.CallOption) (*GetAvatarResponse, error)
+	// Require an access token; the photos belong to the caller. A photo is
+	// uploaded before the post that shows it; ListOwnPhotos tells which of
+	// the given ones the caller has, DeletePhotos removes them with the post.
+	UploadPhoto(ctx context.Context, in *UploadPhotoRequest, opts ...grpc.CallOption) (*UploadPhotoResponse, error)
+	ListOwnPhotos(ctx context.Context, in *ListOwnPhotosRequest, opts ...grpc.CallOption) (*ListOwnPhotosResponse, error)
+	DeletePhotos(ctx context.Context, in *DeletePhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Public: a photo as JPEG.
+	GetPhoto(ctx context.Context, in *GetPhotoRequest, opts ...grpc.CallOption) (*GetPhotoResponse, error)
 }
 
 type mediaServiceClient struct {
@@ -76,6 +88,46 @@ func (c *mediaServiceClient) GetAvatar(ctx context.Context, in *GetAvatarRequest
 	return out, nil
 }
 
+func (c *mediaServiceClient) UploadPhoto(ctx context.Context, in *UploadPhotoRequest, opts ...grpc.CallOption) (*UploadPhotoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadPhotoResponse)
+	err := c.cc.Invoke(ctx, MediaService_UploadPhoto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) ListOwnPhotos(ctx context.Context, in *ListOwnPhotosRequest, opts ...grpc.CallOption) (*ListOwnPhotosResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListOwnPhotosResponse)
+	err := c.cc.Invoke(ctx, MediaService_ListOwnPhotos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) DeletePhotos(ctx context.Context, in *DeletePhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MediaService_DeletePhotos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) GetPhoto(ctx context.Context, in *GetPhotoRequest, opts ...grpc.CallOption) (*GetPhotoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPhotoResponse)
+	err := c.cc.Invoke(ctx, MediaService_GetPhoto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MediaServiceServer is the server API for MediaService service.
 // All implementations must embed UnimplementedMediaServiceServer
 // for forward compatibility.
@@ -87,6 +139,14 @@ type MediaServiceServer interface {
 	DeleteAvatars(context.Context, *DeleteAvatarsRequest) (*emptypb.Empty, error)
 	// Public: an avatar as JPEG.
 	GetAvatar(context.Context, *GetAvatarRequest) (*GetAvatarResponse, error)
+	// Require an access token; the photos belong to the caller. A photo is
+	// uploaded before the post that shows it; ListOwnPhotos tells which of
+	// the given ones the caller has, DeletePhotos removes them with the post.
+	UploadPhoto(context.Context, *UploadPhotoRequest) (*UploadPhotoResponse, error)
+	ListOwnPhotos(context.Context, *ListOwnPhotosRequest) (*ListOwnPhotosResponse, error)
+	DeletePhotos(context.Context, *DeletePhotosRequest) (*emptypb.Empty, error)
+	// Public: a photo as JPEG.
+	GetPhoto(context.Context, *GetPhotoRequest) (*GetPhotoResponse, error)
 	mustEmbedUnimplementedMediaServiceServer()
 }
 
@@ -105,6 +165,18 @@ func (UnimplementedMediaServiceServer) DeleteAvatars(context.Context, *DeleteAva
 }
 func (UnimplementedMediaServiceServer) GetAvatar(context.Context, *GetAvatarRequest) (*GetAvatarResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAvatar not implemented")
+}
+func (UnimplementedMediaServiceServer) UploadPhoto(context.Context, *UploadPhotoRequest) (*UploadPhotoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UploadPhoto not implemented")
+}
+func (UnimplementedMediaServiceServer) ListOwnPhotos(context.Context, *ListOwnPhotosRequest) (*ListOwnPhotosResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListOwnPhotos not implemented")
+}
+func (UnimplementedMediaServiceServer) DeletePhotos(context.Context, *DeletePhotosRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeletePhotos not implemented")
+}
+func (UnimplementedMediaServiceServer) GetPhoto(context.Context, *GetPhotoRequest) (*GetPhotoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPhoto not implemented")
 }
 func (UnimplementedMediaServiceServer) mustEmbedUnimplementedMediaServiceServer() {}
 func (UnimplementedMediaServiceServer) testEmbeddedByValue()                      {}
@@ -181,6 +253,78 @@ func _MediaService_GetAvatar_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MediaService_UploadPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadPhotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).UploadPhoto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_UploadPhoto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).UploadPhoto(ctx, req.(*UploadPhotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_ListOwnPhotos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOwnPhotosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).ListOwnPhotos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_ListOwnPhotos_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).ListOwnPhotos(ctx, req.(*ListOwnPhotosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_DeletePhotos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeletePhotosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).DeletePhotos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_DeletePhotos_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).DeletePhotos(ctx, req.(*DeletePhotosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_GetPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPhotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).GetPhoto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_GetPhoto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).GetPhoto(ctx, req.(*GetPhotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MediaService_ServiceDesc is the grpc.ServiceDesc for MediaService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -199,6 +343,22 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetAvatar",
 			Handler:    _MediaService_GetAvatar_Handler,
+		},
+		{
+			MethodName: "UploadPhoto",
+			Handler:    _MediaService_UploadPhoto_Handler,
+		},
+		{
+			MethodName: "ListOwnPhotos",
+			Handler:    _MediaService_ListOwnPhotos_Handler,
+		},
+		{
+			MethodName: "DeletePhotos",
+			Handler:    _MediaService_DeletePhotos_Handler,
+		},
+		{
+			MethodName: "GetPhoto",
+			Handler:    _MediaService_GetPhoto_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

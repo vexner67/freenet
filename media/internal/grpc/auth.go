@@ -11,5 +11,6 @@ func PublicMethods() []string {
 	return []string{
 		grpc_health_v1.Health_Check_FullMethodName,
 		mediav1.MediaService_GetAvatar_FullMethodName,
+		mediav1.MediaService_GetPhoto_FullMethodName,
 	}
 }

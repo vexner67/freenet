@@ -34,33 +34,10 @@ func (s *AvatarStore) userDir(userID uuid.UUID) string {
 }
 
 func (s *AvatarStore) Save(_ context.Context, userID, avatarID uuid.UUID, images avatar.Images) error {
-	final := filepath.Join(s.userDir(userID), avatarID.String())
-
-	// Write into a temporary directory and rename it, so a reader never
-	// sees half an avatar.
-	tmp, err := os.MkdirTemp(filepath.Dir(final), ".upload-*")
-	if errors.Is(err, fs.ErrNotExist) {
-		if err = os.MkdirAll(filepath.Dir(final), 0o750); err == nil {
-			tmp, err = os.MkdirTemp(filepath.Dir(final), ".upload-*")
-		}
-	}
-	if err != nil {
-		return errs.Wrap("os.MkdirTemp", err)
-	}
-
-	for _, size := range []avatar.Size{avatar.Large, avatar.Small} {
-		if err = os.WriteFile(filepath.Join(tmp, string(size)+".jpg"), images.Of(size), 0o640); err != nil {
-			_ = os.RemoveAll(tmp)
-			return errs.Wrap("os.WriteFile", err)
-		}
-	}
-
-	if err = os.Rename(tmp, final); err != nil {
-		_ = os.RemoveAll(tmp)
-		return errs.Wrap("os.Rename", err)
-	}
-
-	return nil
+	return saveDir(filepath.Join(s.userDir(userID), avatarID.String()), map[string][]byte{
+		string(avatar.Large) + ".jpg": images.Of(avatar.Large),
+		string(avatar.Small) + ".jpg": images.Of(avatar.Small),
+	})
 }
 
 func (s *AvatarStore) Load(_ context.Context, userID, avatarID uuid.UUID, size avatar.Size) ([]byte, error) {

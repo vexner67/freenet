@@ -52,9 +52,9 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
-	store, err := newStore(cfg)
+	stores, err := newStores(cfg)
 	if err != nil {
-		return errs.Wrap("newStore", err)
+		return errs.Wrap("newStores", err)
 	}
 
 	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
@@ -85,7 +85,11 @@ func (a *App) build(cfg config.Config) error {
 	)
 	mediav1.RegisterMediaServiceServer(
 		a.server.Registrar(),
-		mediagrpc.NewMediaHandler(service.NewAvatarService(store), a.logger),
+		mediagrpc.NewMediaHandler(
+			service.NewAvatarService(stores.avatars),
+			service.NewPhotoService(stores.photos),
+			a.logger,
+		),
 	)
 
 	a.logger.Info("media configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
@@ -93,17 +97,27 @@ func (a *App) build(cfg config.Config) error {
 	return nil
 }
 
-func newStore(cfg config.Config) (service.AvatarStore, error) {
+type stores struct {
+	avatars service.AvatarStore
+	photos  service.PhotoStore
+}
+
+func newStores(cfg config.Config) (stores, error) {
 	if cfg.Storage == config.StorageInmem {
-		return inmem.NewAvatarStore(), nil
+		return stores{avatars: inmem.NewAvatarStore(), photos: inmem.NewPhotoStore()}, nil
 	}
 
-	store, err := fs.NewAvatarStore(cfg.MediaDir)
+	avatars, err := fs.NewAvatarStore(cfg.MediaDir)
 	if err != nil {
-		return nil, errs.Wrap("fs.NewAvatarStore", err)
+		return stores{}, errs.Wrap("fs.NewAvatarStore", err)
 	}
 
-	return store, nil
+	photos, err := fs.NewPhotoStore(cfg.MediaDir)
+	if err != nil {
+		return stores{}, errs.Wrap("fs.NewPhotoStore", err)
+	}
+
+	return stores{avatars: avatars, photos: photos}, nil
 }
 
 func (a *App) Run(ctx context.Context) error {

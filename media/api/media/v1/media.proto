@@ -15,6 +15,16 @@ service MediaService {
 
   // Public: an avatar as JPEG.
   rpc GetAvatar(GetAvatarRequest) returns (GetAvatarResponse);
+
+  // Require an access token; the photos belong to the caller. A photo is
+  // uploaded before the post that shows it; ListOwnPhotos tells which of
+  // the given ones the caller has, DeletePhotos removes them with the post.
+  rpc UploadPhoto(UploadPhotoRequest) returns (UploadPhotoResponse);
+  rpc ListOwnPhotos(ListOwnPhotosRequest) returns (ListOwnPhotosResponse);
+  rpc DeletePhotos(DeletePhotosRequest) returns (google.protobuf.Empty);
+
+  // Public: a photo as JPEG.
+  rpc GetPhoto(GetPhotoRequest) returns (GetPhotoResponse);
 }
 
 message UploadAvatarRequest {
@@ -46,5 +56,47 @@ message GetAvatarRequest {
 }
 
 message GetAvatarResponse {
+  bytes image = 1;
+}
+
+message UploadPhotoRequest {
+  // JPEG, PNG, GIF or WebP, at most 8 MB.
+  bytes image = 1;
+}
+
+message UploadPhotoResponse {
+  string photo_id = 1;
+}
+
+message ListOwnPhotosRequest {
+  // At most 10.
+  repeated string photo_ids = 1;
+}
+
+message ListOwnPhotosResponse {
+  // Those of photo_ids the caller has.
+  repeated string photo_ids = 1;
+}
+
+message DeletePhotosRequest {
+  // At most 10; missing ones are fine.
+  repeated string photo_ids = 1;
+}
+
+enum PhotoSize {
+  PHOTO_SIZE_UNSPECIFIED = 0;
+  // Up to 1280 on the longer side, opened on its own.
+  PHOTO_SIZE_LARGE = 1;
+  // Up to 640 on the longer side, in the post.
+  PHOTO_SIZE_SMALL = 2;
+}
+
+message GetPhotoRequest {
+  string user_id = 1;
+  string photo_id = 2;
+  PhotoSize size = 3;
+}
+
+message GetPhotoResponse {
   bytes image = 1;
 }
