@@ -15,9 +15,15 @@ Freenet — социальная сеть наподобие Twitter. Бэкен
 ```
 freenet/
 ├── go.work                  # workspace: все сервисы и pkg/*
-├── compose.yaml             # инфраструктура: postgres на каждый сервис, redis
-├── Makefile                 # docker compose up/ps/down, make certs
-├── scripts/gen-certs.sh     # dev CA и mTLS-сертификаты сервисов → certs/ (в .gitignore)
+├── compose.yaml             # postgres на каждый сервис, redis; сервисы — в профиле app
+├── Dockerfile               # образ любого сервиса: --build-arg SERVICE=<имя>
+├── Makefile                 # dev, check, stack, smoke, certs, docker compose up/ps/down
+├── .github/workflows/ci.yml # CI: make check-integration, make stack + make smoke
+├── scripts/
+│   ├── dev.sh               # весь бэкенд локально (make dev)
+│   ├── check.sh             # проверки всех модулей, как в CI (make check)
+│   ├── smoke.sh             # сквозная проверка запущенного стека (make smoke)
+│   └── gen-certs.sh         # dev CA, mTLS-сертификаты и JWT-ключи → certs/ (в .gitignore)
 ├── pkg/                     # ОБЩИЕ модули (каждый — отдельный go.mod)
 │   ├── errs/                #   errs.Wrap
 │   ├── logger/              #   slog-логгер из конфига
@@ -60,7 +66,11 @@ freenet/
 └── Makefile                 # run build test fmt lint tidy proto check migrate-*
 ```
 
-Новый сервис создаётся копированием этой структуры, добавляется в `go.work` и `compose.yaml` (своя БД на сервис), получает сертификат в `scripts/gen-certs.sh` и строится на `pkg/grpcserver`, `pkg/envconfig`, `pkg/mtls`.
+Новый сервис создаётся копированием этой структуры, добавляется в `go.work` и `compose.yaml` (своя БД на сервис и сам сервис в профиле `app`), в `scripts/dev.sh`, получает сертификат в `scripts/gen-certs.sh` и строится на `pkg/grpcserver`, `pkg/envconfig`, `pkg/mtls`.
+
+Docker: один `Dockerfile` на все сервисы (контекст — корень репозитория из-за `go.work` и `pkg/*`): статический бинарник (`CGO_ENABLED=0`, `-trimpath`) в distroless `static:nonroot`, модули и кеш сборки — в cache mount BuildKit; у `gateway` своя цель `--target gateway` с сайтом в `/web`. `make stack` поднимает весь сайт в Docker на тех же базах, что `make dev-persistent`, с mTLS между сервисами и JWT-ключами из `certs/` (`make certs`), `HASH_SECRET` — в корневом `.env`. Контейнеры работают от имени пользователя, запустившего `make stack` (`FREENET_UID`/`FREENET_GID`): так они читают ключи с правами 600 и пишут фото в `.data/media`. `make smoke` (`scripts/smoke.sh`) регистрирует пользователя и проходит через все сервисы (код входа — из `docker compose logs auth`). В образе нет оболочки, поэтому у контейнеров сервисов нет healthcheck: `smoke.sh` ждёт `/healthz` сам.
+
+CI (GitHub Actions, `.github/workflows/ci.yml`) делает то же, что локальные команды: `make check-integration` (gofmt, vet, golangci-lint, `go test -race` во всех модулях `go.work` с интеграционными тестами на временных Postgres и Redis, тесты сайта) и `make stack` + `make smoke`. Версии инструментов — Go из `go.work`, golangci-lint и goose — закреплены в workflow и `scripts/check.sh`; меняя их, меняй в обоих местах.
 
 `gateway` может собирать ответ из нескольких сервисов (стена = профиль из `user` + записи из `post` + профили авторов; лента = подписки из `user` → записи этих авторов из `post` → профили авторов и владельцев стен одним `GetProfiles`), но правил предметной области не придумывает. Исключение — проверка «писать на стену и подписываться можно после заполнения профиля»: без никнейма у человека нет адреса и имени в списках.
 
@@ -220,7 +230,7 @@ infra (postgres,  ─┘          ▲
 ## 3. Чистый код (Go)
 
 ### 3.1. Общее
-- Код должен проходить `gofmt`, `go vet`, `golangci-lint run`. Перед завершением задачи — `make check` в изменённом сервисе.
+- Код должен проходить `gofmt`, `go vet`, `golangci-lint run`. Перед завершением задачи — `make check` в изменённом сервисе, перед коммитом — `make check-integration` из корня (то же, что CI).
 - Простота важнее «умности». Не добавляй абстракции, пакеты, интерфейсы и параметры «на вырост». Правило трёх: дублируй до третьего повторения, потом выноси.
 - Функция делает одну вещь на одном уровне абстракции. Ориентир: ≤ ~40 строк, ≤ 4 параметра (больше — структура-DTO), вложенность ≤ 3. Используй ранние возвраты (guard clauses), избегай `else` после `return`.
 - Не используй `init()`, глобальное изменяемое состояние, `panic` для обычных ошибок (только в тестах и `Must*`-хелперах при старте).
@@ -304,7 +314,7 @@ infra (postgres,  ─┘          ▲
 - Сервис: зависимости — через порты; используем ручные fake-реализации (`inmem`) или сгенерированные моки; **не мокаем то, чем владеем в домене**.
 - Не используем `time.Sleep` в тестах; время и случайность инъецируются.
 - Тесты детерминированы и независимы; нет зависимости от порядка и внешней сети. Запуск: `make test` (`go test ./...`), перед PR — с `-race`.
-- Интеграционные тесты репозиториев пропускаются без своих переменных: Postgres (`internal/postgres`) — `TEST_DATABASE_URL` (база с применёнными миграциями), Redis (`auth/internal/redis`) — `TEST_REDIS_ADDR`. Пример: `TEST_DATABASE_URL=postgres://... TEST_REDIS_ADDR=localhost:6379 go test ./internal/postgres ./internal/redis`.
+- Интеграционные тесты репозиториев пропускаются без своих переменных: Postgres (`internal/postgres`) — `TEST_DATABASE_URL` (база с применёнными миграциями), Redis (`auth/internal/redis`, `pkg/ratelimit`) — `TEST_REDIS_ADDR`. Проще всего — `make check-integration`: скрипт поднимает временные Postgres 18 и Redis 7 в Docker, создаёт и мигрирует отдельную базу на сервис и удаляет контейнеры после прогона. Вручную: `TEST_DATABASE_URL=postgres://... TEST_REDIS_ADDR=localhost:6379 go test ./internal/postgres ./internal/redis`.
 - Покрытие — не самоцель, но весь бизнес-код (домен + сервис) должен иметь тесты на успешный путь и на каждую ветку ошибки.
 
 ---
@@ -339,7 +349,7 @@ infra (postgres,  ─┘          ▲
   make tidy        # go mod tidy
   make migrate-create name=<name> / migrate-up / migrate-down / migrate-status
   ```
-  Из корня: `make dev` / `make dev-persistent` — весь бэкенд; `make up` / `make ps` / `make down` — инфраструктура в docker compose; `make certs` — dev-сертификаты для mTLS; `make web-test` — тесты сайта.
+  Из корня: `make dev` / `make dev-persistent` — весь бэкенд; `make check` / `make check-integration` — проверки всех модулей и сайта, как в CI; `make stack` / `make smoke` — весь сайт в Docker и его сквозная проверка; `make up` / `make ps` / `make down` — docker compose (`down` останавливает и стек); `make certs` — dev-сертификаты для mTLS и JWT-ключи; `make web-test` — тесты сайта.
 - Локальный запуск всего бэкенда и сайта одной командой из корня: `make dev` (`scripts/dev.sh`) — собирает и запускает `notification`, `message`, `user`, `post`, `media`, `auth`, `gateway` с их `.env`, выводит логи с метками сервисов, Ctrl+C останавливает всё штатно; если один сервис упал, останавливаются и остальные. По умолчанию `STORAGE=inmem` и без mTLS — ничего, кроме Go, не нужно. `make dev-persistent` сначала поднимает Postgres и Redis (`docker compose up -d --wait`) и переключает сервисы на них. Новый сервис добавляется в массив `services` скрипта. Отдельный сервис по-прежнему можно запустить `make run` в его каталоге.
 - Общий код между сервисами — только в `pkg/<name>` как отдельный модуль (с `go.mod`), добавленный в `go.work`. Это должны быть **маленькие технические** пакеты без бизнес-логики. Бизнес-логику между сервисами не шарим — общаемся по gRPC. Сервис не импортирует `internal/` другого сервиса; импорт чужого `api/` (proto-клиента) разрешён только из инфраструктурного адаптера.
 - Коммиты — в стиле истории репозитория: Conventional Commits (`feat:`, `fix:`, `chore:`, `refactor:`, `test:`, `docs:`), краткое описание в повелительном наклонении, английский язык.
@@ -350,7 +360,8 @@ infra (postgres,  ─┘          ▲
 - [ ] Соблюдено правило зависимостей слоёв (§2.1), нет proto/SQL/драйверов не в своём слое.
 - [ ] Все ошибки обёрнуты `errs.Wrap`, нет проглоченных, в gRPC мапятся в корректные коды (§2.5).
 - [ ] Входные данные валидируются value objects; секреты/ПДн не попадают в логи.
-- [ ] Есть тесты (успех + ветки ошибок), `make check` проходит, `go test -race ./...` зелёный.
+- [ ] Есть тесты (успех + ветки ошибок), `make check-integration` из корня проходит (как CI).
+- [ ] Новый сервис или переменная окружения добавлены и в `compose.yaml` (профиль `app`), и стек проходит `make stack && make smoke`.
 - [ ] Миграция (если нужна) с `Up`/`Down`; `.env.example` обновлён; `.proto` совместим и перегенерирован.
 - [ ] Новый код собран в `app` и действительно используется (нет мёртвых реализаций и неподключённых RPC).
 - [ ] Если фича видна на сайте — интерфейс сделан по образцу openvk.org (§2.8), страницы проверены в браузере.
@@ -361,7 +372,7 @@ infra (postgres,  ─┘          ▲
 
 Это не образец для подражания, а технический долг — не копируй эти паттерны:
 
-1. Сервисы не упакованы в контейнеры: нет Dockerfile, `compose.yaml` поднимает только Postgres и Redis.
+1. Docker и CI: образы не публикуются в registry и не подписаны, нет манифестов для оркестратора (Kubernetes); у контейнеров сервисов нет healthcheck (distroless без оболочки — нужна команда проверки в самом бинарнике); CI не проверяет, что сгенерированный protobuf-код соответствует `.proto` (нужен `protoc` нужной версии); `make stack` собирает образы без кеша между запусками CI.
 2. Сайт хранит токены в `localStorage`, защищаясь строгой CSP. Если на страницах появится сторонний код (счётчики, виджеты), перейти на httpOnly-cookie для refresh-токена.
 3. Сертификаты из `make certs` — только для разработки: нет ротации, отзыва и управляемого PKI для продакшена.
 4. Нет наблюдаемости: request ID, метрик и трассировки между gateway и сервисами.
