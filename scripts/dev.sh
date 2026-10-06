@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Runs the whole backend locally: notification, user, post, media, auth
-# and gateway, each from its own directory with its own .env. Output is
+# Runs the whole backend locally: notification, message, user, post,
+# media, auth and gateway, each from its own directory with its own .env. Output is
 # merged and labelled by service; Ctrl+C stops everything gracefully. If
 # any service dies, the others are stopped too.
 #
@@ -12,8 +12,8 @@ set -euo pipefail
 
 cd "$(dirname "$0")/.."
 
-services=(notification user post media auth gateway)
-colors=(31 36 35 34 33 32)
+services=(notification message user post media auth gateway)
+colors=(31 37 36 35 34 33 32)
 
 die() {
 	echo "dev: $*" >&2

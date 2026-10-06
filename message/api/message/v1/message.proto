@@ -1,0 +1,93 @@
+syntax = "proto3";
+
+package message.v1;
+
+option go_package = "github.com/vexner67/freenet/message/api/message/v1;messagev1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// Every RPC requires an access token: the caller is one side of a dialog.
+service MessageService {
+  // The caller writes to recipient_id; the gateway has checked that the
+  // recipient exists.
+  rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
+  // The caller's dialogs, the most recently written first.
+  rpc ListDialogs(ListDialogsRequest) returns (ListDialogsResponse);
+  // How many dialogs have unread messages, at most 100.
+  rpc CountUnreadDialogs(CountUnreadDialogsRequest) returns (CountUnreadDialogsResponse);
+  // Messages of the dialog with peer_id, oldest first.
+  rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
+  // The caller has read the dialog up to a message from the peer.
+  rpc MarkDialogRead(MarkDialogReadRequest) returns (google.protobuf.Empty);
+}
+
+message Message {
+  string id = 1;
+  string sender_id = 2;
+  string recipient_id = 3;
+  string text = 4;
+  google.protobuf.Timestamp created_at = 5;
+  // The recipient has read it.
+  bool read = 6;
+}
+
+message Dialog {
+  string peer_id = 1;
+  Message last_message = 2;
+  // The peer wrote something the caller has not read.
+  bool unread = 3;
+}
+
+message SendMessageRequest {
+  string recipient_id = 1;
+  string text = 2;
+}
+
+message SendMessageResponse {
+  Message message = 1;
+}
+
+message ListDialogsRequest {
+  // Empty for the most recent, else next_cursor of the previous page.
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+}
+
+message ListDialogsResponse {
+  repeated Dialog dialogs = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+}
+
+message CountUnreadDialogsRequest {}
+
+message CountUnreadDialogsResponse {
+  int32 count = 1;
+}
+
+message ListMessagesRequest {
+  string peer_id = 1;
+  // Older messages: empty for the newest, else next_cursor of the
+  // previous page.
+  string cursor = 2;
+  // Newer messages instead: those after this one, for polling.
+  string after = 3;
+  // 1-50; anything else means 20.
+  int32 limit = 4;
+}
+
+message ListMessagesResponse {
+  repeated Message messages = 1;
+  // Older messages remain; empty when there are none, and always with after.
+  string next_cursor = 2;
+  // The newest of the caller's messages the peer has read: lets a page
+  // update messages it already shows. Empty if none.
+  string peer_read_up_to = 3;
+}
+
+message MarkDialogReadRequest {
+  string peer_id = 1;
+  string up_to_id = 2;
+}
