@@ -138,7 +138,8 @@ export const api = {
   // With a session posts also say whether you like them.
   wall: (nickname, cursor = '') => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0)),
   post: (id) => optional('GET', '/api/v1/posts/' + encodeURIComponent(id)),
-  createPost: (text, photos = []) => authorized('POST', '/api/v1/me/posts', { text, photos }),
+  // Writes on the wall of nickname: someone else's or your own.
+  createPost: (nickname, text, photos = []) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos }),
   // Uploads a photo for a post; the post refers to it by ID.
   uploadPhoto: (file) => authorized('POST', '/api/v1/me/photos', file),
   deletePost: (id) => authorized('DELETE', '/api/v1/posts/' + encodeURIComponent(id)),

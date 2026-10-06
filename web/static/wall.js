@@ -1,4 +1,5 @@
-// The wall block of a profile page: posts, the form for the owner, paging.
+// The wall block of a profile page: posts by the owner and by others, the
+// form for whoever may write there, paging.
 
 import { api } from './api.js';
 import { postsCount } from './labels.js';
@@ -9,23 +10,27 @@ import { initAttachments } from './attach.js';
 const COUNTER_FROM = 900;
 const MAX_LENGTH = 1000;
 
-// initWall: canLike for signed-in viewers, who may like the posts.
-export function initWall(owner, isOwner, canLike) {
+// initWall shows the wall of owner to me, the viewer (null if anonymous).
+// The owner deletes any post on the wall, others their own ones; who may
+// write here the first page tells, as the owner's privacy allows.
+export function initWall(owner, me) {
   const posts = $('posts');
   const error = $('wall-error');
+  const isOwner = me?.id === owner.id;
   let attachments;
+  let canPost = false;
 
   let total = 0;
   let cursor = '';
 
   function updateCount() {
     $('wall-count').textContent = total > 0 ? ' · ' + postsCount(total) : '';
-    $('wall-empty').hidden = total > 0 || isOwner;
+    $('wall-empty').hidden = total > 0 || canPost;
   }
 
   const postNode = (post) => renderPost(post, {
-    onDelete: isOwner && remove,
-    canLike,
+    onDelete: (isOwner || post.author.id === me?.id) && remove,
+    canLike: Boolean(me),
     onError: (e) => showError(error, e),
   });
 
@@ -49,7 +54,11 @@ export function initWall(owner, isOwner, canLike) {
     hideError(error);
 
     try {
+      const firstPage = !cursor;
       const page = await api.wall(owner.nickname, cursor);
+
+      // Without a nickname of your own you have no name to sign a post.
+      if (firstPage && page.canPost && me?.profileCompleted) showForm();
 
       total = page.total;
       cursor = page.nextCursor;
@@ -79,7 +88,7 @@ export function initWall(owner, isOwner, canLike) {
     button.disabled = true;
 
     try {
-      const post = await api.createPost($('post-text').value, attachments.ids());
+      const post = await api.createPost(owner.nickname, $('post-text').value, attachments.ids());
 
       posts.prepend(postNode(post));
       $('post-text').value = '';
@@ -96,9 +105,13 @@ export function initWall(owner, isOwner, canLike) {
     }
   }
 
-  if (isOwner) {
+  function showForm() {
     const form = $('post-form');
     const text = $('post-text');
+
+    canPost = true;
+    // As on openvk: "Написать" on someone else's wall.
+    if (!isOwner) text.placeholder = 'Написать';
 
     // The form stays open while it holds text or photos.
     const collapseIfEmpty = () => {

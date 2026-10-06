@@ -2,7 +2,7 @@
 // the link to the comments on the left and the like on the right.
 
 import { api } from './api.js';
-import { commentsLink, formatPostDate, wrote } from './labels.js';
+import { commentsLink, formatPostDate, genitiveName, wrote } from './labels.js';
 import { avatarURL, el, fullName } from './layout.js';
 import { openViewer } from './viewer.js';
 
@@ -16,8 +16,11 @@ export function postPath(post) {
 //   onDelete(post, node) adds a "Удалить" link;
 //   canLike makes the heart clickable (signed-in viewers);
 //   onError(e) shows a failed like;
-//   withCommentsLink: false on the page of the post, which shows the comments.
-export function postNode(post, { onDelete, canLike = false, onError, withCommentsLink = true } = {}) {
+//   withCommentsLink: false on the page of the post, which shows the comments;
+//   onWallOf: the viewer (null for anonymous) when posts of several walls
+//     are mixed, as in the news feed: someone else's wall is then named,
+//     "написал на стене Петра Петрова", as openvk does there only.
+export function postNode(post, { onDelete, canLike = false, onError, withCommentsLink = true, onWallOf } = {}) {
   const path = '/' + post.author.nickname;
 
   const links = [];
@@ -30,6 +33,7 @@ export function postNode(post, { onDelete, canLike = false, onError, withComment
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
         ' ' + wrote(post.author.gender),
+        ...(onWallOf !== undefined && post.wall ? [' ', wallLink(post.wall, onWallOf)] : []),
         el('div', { className: 'post-date' }, el('a', { href: postPath(post), textContent: formatPostDate(post.createdAt) })),
       ),
       post.text ? el('div', { className: 'post-text', textContent: post.text }) : null,
@@ -42,6 +46,12 @@ export function postNode(post, { onDelete, canLike = false, onError, withComment
   );
 
   return node;
+}
+
+// wallLink names the wall a post is on: "на вашей стене" for the viewer's.
+function wallLink(wall, viewer) {
+  const text = viewer?.id === wall.id ? 'на вашей стене' : 'на стене ' + genitiveName(wall);
+  return el('a', { className: 'post-wall', href: '/' + wall.nickname, textContent: text });
 }
 
 // photosNode lays a post's photos out: one at its own proportions, more as
