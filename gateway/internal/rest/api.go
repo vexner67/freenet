@@ -22,6 +22,7 @@ type Users interface {
 	UpdatePrivacy(ctx context.Context, accessToken string, p model.Privacy) (model.User, error)
 	GetProfile(ctx context.Context, nickname string) (model.PublicProfile, error)
 	GetProfiles(ctx context.Context, ids []string) ([]model.PublicProfile, error)
+	CanPostOnWall(ctx context.Context, accessToken, userID string) (bool, error)
 
 	Follow(ctx context.Context, accessToken, userID string) error
 	Unfollow(ctx context.Context, accessToken, userID string) error
@@ -48,11 +49,11 @@ type Media interface {
 // Posts: methods that read take an optional access token ("" for
 // anonymous viewers), with which posts tell whether the viewer likes them.
 type Posts interface {
-	Create(ctx context.Context, accessToken, text string, photoIDs []string) (model.Post, error)
+	Create(ctx context.Context, accessToken, wallID, text string, photoIDs []string) (model.Post, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	Get(ctx context.Context, accessToken, id string) (model.Post, error)
 	GetMany(ctx context.Context, ids []string) ([]model.Post, error)
-	List(ctx context.Context, accessToken, authorID, cursor string, limit int) (model.PostPage, error)
+	List(ctx context.Context, accessToken, wallID, cursor string, limit int) (model.PostPage, error)
 	Feed(ctx context.Context, accessToken string, authorIDs []string, cursor string, limit int) (model.PostPage, error)
 
 	Like(ctx context.Context, accessToken, postID string) (int, error)
@@ -117,6 +118,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/users/{nickname}", a.getProfile)
 
 	mux.HandleFunc("GET /api/v1/users/{nickname}/posts", a.listPosts)
+	mux.HandleFunc("POST /api/v1/users/{nickname}/posts", a.createWallPost)
 	mux.HandleFunc("POST /api/v1/me/posts", a.createPost)
 	mux.HandleFunc("GET /api/v1/posts/{id}", a.getPost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}", a.deletePost)

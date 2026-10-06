@@ -11,6 +11,8 @@ import (
 type notificationPostJSON struct {
 	ID        string `json:"id"`
 	CreatedAt string `json:"createdAt"`
+	// Text is what a post on the recipient's wall says, as openvk quotes it.
+	Text string `json:"text"`
 }
 
 type notificationCommentJSON struct {
@@ -181,7 +183,7 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 		if !ok {
 			return notificationJSON{}, false
 		}
-		item.Post = &notificationPostJSON{ID: p.ID, CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339)}
+		item.Post = &notificationPostJSON{ID: p.ID, CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339), Text: p.Text}
 	}
 
 	if n.CommentID != "" {

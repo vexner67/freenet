@@ -110,8 +110,10 @@ paths:
 
   /api/v1/me/privacy:
     put:
-      summary: Choose which sensitive fields others see
-      description: Everything is hidden by default.
+      summary: Choose which sensitive fields others see and who writes on your wall
+      description: |
+        Sensitive fields are hidden by default; a new wall is open to the
+        people you follow. All settings are sent at once.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -120,6 +122,7 @@ paths:
             schema: { $ref: "#/components/schemas/Privacy" }
       responses:
         "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
   /api/v1/users/{nickname}:
@@ -150,7 +153,9 @@ paths:
     get:
       summary: Someone's wall, newest first
       description: |
-        No token needed; with one, `liked` says whether you like each post.
+        The posts on the wall, by its owner and by others. No token needed;
+        with one, `liked` says whether you like each post, and the first
+        page says in `canPost` whether you may write there.
         Page with `cursor` = `nextCursor` of the previous page; an empty
         `nextCursor` means the last page.
       parameters:
@@ -172,6 +177,39 @@ paths:
               schema: { $ref: "#/components/schemas/PostPage" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Write on someone's wall
+      description: |
+        As the owner's privacy allows (`wallWrite`); on your own nickname it
+        is `POST /api/v1/me/posts`. The owner is notified. Your profile must
+        be filled in first. Text, photos or both; photos are IDs from
+        `POST /api/v1/me/photos` and must be yours.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: nickname
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewPost" }
+      responses:
+        "201":
+          description: The new post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: The owner does not let you write on the wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/me/avatar:
     put:
@@ -299,16 +337,7 @@ paths:
         required: true
         content:
           application/json:
-            schema:
-              type: object
-              additionalProperties: false
-              properties:
-                text: { type: string, maxLength: 1000 }
-                photos:
-                  type: array
-                  maxItems: 10
-                  uniqueItems: true
-                  items: { type: string, format: uuid }
+            schema: { $ref: "#/components/schemas/NewPost" }
       responses:
         "201":
           description: The new post
@@ -330,14 +359,15 @@ paths:
           schema: { type: string, format: uuid }
       responses:
         "200":
-          description: The post with its author
+          description: The post with its author and wall
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Post" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "404": { $ref: "#/components/responses/NotFound" }
     delete:
-      summary: Delete your own post
+      summary: Delete a post
+      description: By its author or by the owner of its wall.
       security: [{ bearer: [] }]
       parameters:
         - name: id
@@ -348,7 +378,7 @@ paths:
         "204": { description: Deleted }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: Not your post
+          description: Neither your post nor your wall
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -432,7 +462,7 @@ paths:
   /api/v1/comments/{id}:
     delete:
       summary: Delete a comment
-      description: By the author of the comment or of the post.
+      description: By the author of the comment or of the post, or by the owner of the wall.
       security: [{ bearer: [] }]
       parameters:
         - name: id
@@ -443,7 +473,7 @@ paths:
         "204": { description: Deleted }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: Neither your comment nor your post
+          description: Neither your comment nor your post nor your wall
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -829,6 +859,10 @@ components:
         showRelationship: { type: boolean }
         showWorldview: { type: boolean }
         showPoliticalViews: { type: boolean }
+        wallWrite:
+          type: string
+          enum: [everyone, following, only_me]
+          description: "Who may write on your wall besides you; following: the people you follow"
 
     User:
       allOf:
@@ -861,12 +895,28 @@ components:
         surname: { type: string }
         gender: { type: string, enum: ["", male, female] }
 
+    NewPost:
+      type: object
+      additionalProperties: false
+      properties:
+        text: { type: string, maxLength: 1000 }
+        photos:
+          type: array
+          maxItems: 10
+          uniqueItems: true
+          items: { type: string, format: uuid }
+
     Post:
       type: object
-      required: [id, author, text, photos, createdAt, likes, liked, comments]
+      required: [id, author, wall, text, photos, createdAt, likes, liked, comments]
       properties:
         id: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
+        wall:
+          description: The owner of the wall when it is not the author's own; null otherwise
+          oneOf:
+            - $ref: "#/components/schemas/Author"
+            - type: "null"
         text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when the post is photos only" }
         photos:
           type: array
@@ -909,17 +959,21 @@ components:
       required: [id, type, createdAt, actor, post, comment]
       properties:
         id: { type: string, format: uuid }
-        type: { type: string, enum: [like, comment, follow] }
+        type:
+          type: string
+          enum: [like, comment, follow, wall_post]
+          description: "wall_post: the actor wrote on your wall"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
-          description: The liked or commented post; null for follows
+          description: The liked, commented or written post; null for follows
           nullable: true
           type: object
-          required: [id, createdAt]
+          required: [id, createdAt, text]
           properties:
             id: { type: string, format: uuid }
             createdAt: { type: string, format: date-time }
+            text: { type: string, description: "What the post says; empty when photos only" }
         comment:
           description: Only for comments
           nullable: true
@@ -1008,6 +1062,9 @@ components:
           items: { $ref: "#/components/schemas/Post" }
         nextCursor: { type: string, description: "Empty on the last page" }
         total: { type: integer, description: "All posts on the wall" }
+        canPost:
+          type: boolean
+          description: "On a wall's first page: you may write on it; false without a token and in the news feed"
 
     PublicProfile:
       allOf:

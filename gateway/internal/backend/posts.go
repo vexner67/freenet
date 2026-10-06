@@ -20,9 +20,14 @@ func NewPosts(api postv1.PostServiceClient) *Posts {
 	}
 }
 
-// Create returns the post without Author: the caller knows who it is.
-func (p *Posts) Create(ctx context.Context, accessToken, text string, photoIDs []string) (model.Post, error) {
-	resp, err := p.api.CreatePost(withToken(ctx, accessToken), &postv1.CreatePostRequest{Text: text, PhotoIds: photoIDs})
+// Create writes on the wall of wallID and returns the post without the
+// profiles of Author and Wall: the caller knows who they are.
+func (p *Posts) Create(ctx context.Context, accessToken, wallID, text string, photoIDs []string) (model.Post, error) {
+	resp, err := p.api.CreatePost(withToken(ctx, accessToken), &postv1.CreatePostRequest{
+		WallId:   wallID,
+		Text:     text,
+		PhotoIds: photoIDs,
+	})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.CreatePost", fromStatus(err))
 	}
@@ -38,7 +43,8 @@ func (p *Posts) Delete(ctx context.Context, accessToken, id string) error {
 	return nil
 }
 
-// Get returns the post without Author; the caller looks the author up.
+// Get returns the post without the profiles of Author and Wall; the caller
+// looks them up. So do List, Feed and GetMany.
 func (p *Posts) Get(ctx context.Context, accessToken, id string) (model.Post, error) {
 	resp, err := p.api.GetPost(withToken(ctx, accessToken), &postv1.GetPostRequest{Id: id})
 	if err != nil {
@@ -48,10 +54,10 @@ func (p *Posts) Get(ctx context.Context, accessToken, id string) (model.Post, er
 	return toPost(resp.GetPost()), nil
 }
 
-// List returns posts without Author: they all belong to authorID.
-func (p *Posts) List(ctx context.Context, accessToken, authorID, cursor string, limit int) (model.PostPage, error) {
+// List is the wall of wallID, whoever wrote the posts.
+func (p *Posts) List(ctx context.Context, accessToken, wallID, cursor string, limit int) (model.PostPage, error) {
 	resp, err := p.api.ListPosts(withToken(ctx, accessToken), &postv1.ListPostsRequest{
-		WallId: authorID,
+		WallId: wallID,
 		Cursor: cursor,
 		Limit:  toLimit(limit),
 	})
@@ -66,7 +72,7 @@ func (p *Posts) List(ctx context.Context, accessToken, authorID, cursor string, 
 	}, nil
 }
 
-// Feed returns posts without Author; the caller looks the authors up.
+// Feed is the posts of several authors on any walls.
 func (p *Posts) Feed(ctx context.Context, accessToken string, authorIDs []string, cursor string, limit int) (model.PostPage, error) {
 	resp, err := p.api.ListFeed(withToken(ctx, accessToken), &postv1.ListFeedRequest{
 		AuthorIds: authorIDs,
@@ -83,7 +89,7 @@ func (p *Posts) Feed(ctx context.Context, accessToken string, authorIDs []string
 	}, nil
 }
 
-// GetMany returns the posts that exist, without Author, in no order.
+// GetMany returns the posts that exist, in no order.
 func (p *Posts) GetMany(ctx context.Context, ids []string) ([]model.Post, error) {
 	resp, err := p.api.GetPosts(ctx, &postv1.GetPostsRequest{Ids: ids})
 	if err != nil {
@@ -177,6 +183,7 @@ func toPost(p *postv1.Post) model.Post {
 	return model.Post{
 		ID:        p.GetId(),
 		Author:    model.Author{ID: p.GetAuthorId()},
+		Wall:      model.Author{ID: p.GetWallId()},
 		Text:      p.GetText(),
 		PhotoIDs:  p.GetPhotoIds(),
 		CreatedAt: p.GetCreatedAt().AsTime(),

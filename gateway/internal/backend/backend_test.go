@@ -99,7 +99,18 @@ func (f *fakeAuthAPI) RequestCode(ctx context.Context, _ *authv1.RequestCodeRequ
 
 type fakeUserAPI struct {
 	userv1.UserServiceClient
-	md metadata.MD
+	md      metadata.MD
+	privacy *userv1.PrivacySettings
+}
+
+func (f *fakeUserAPI) UpdatePrivacy(_ context.Context, req *userv1.UpdatePrivacyRequest, _ ...grpc.CallOption) (*userv1.UpdatePrivacyResponse, error) {
+	f.privacy = req.GetPrivacy()
+	return &userv1.UpdatePrivacyResponse{User: &userv1.User{Id: "u1", Privacy: req.GetPrivacy()}}, nil
+}
+
+func (f *fakeUserAPI) CanPostOnWall(ctx context.Context, req *userv1.CanPostOnWallRequest, _ ...grpc.CallOption) (*userv1.CanPostOnWallResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &userv1.CanPostOnWallResponse{Allowed: req.GetUserId() == "u2"}, nil
 }
 
 func (f *fakeUserAPI) GetFollowStats(ctx context.Context, _ *userv1.GetFollowStatsRequest, _ ...grpc.CallOption) (*userv1.GetFollowStatsResponse, error) {
@@ -112,7 +123,7 @@ func (f *fakeUserAPI) GetMe(ctx context.Context, _ *userv1.GetMeRequest, _ ...gr
 	return &userv1.GetMeResponse{User: &userv1.User{
 		Id: "u1", Nickname: "ann", Gender: userv1.Gender_GENDER_FEMALE,
 		Birthday: timestamppb.New(time.Date(1990, 5, 17, 0, 0, 0, 0, time.UTC)),
-		Privacy:  &userv1.PrivacySettings{ShowBirthday: true},
+		Privacy:  &userv1.PrivacySettings{ShowBirthday: true, WallWrite: userv1.WallWrite_WALL_WRITE_ONLY_ME},
 	}}, nil
 }
 
@@ -135,8 +146,37 @@ func TestMetadata(t *testing.T) {
 	if got := userAPI.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
 		t.Fatalf("authorization metadata = %v", got)
 	}
-	if u.Profile.Gender != "female" || u.Profile.Birthday.Year() != 1990 || !u.Privacy.ShowBirthday {
+	if u.Profile.Gender != "female" || u.Profile.Birthday.Year() != 1990 || !u.Privacy.ShowBirthday || u.Privacy.WallWrite != "only_me" {
 		t.Fatalf("user: %+v", u)
+	}
+}
+
+func TestWallPrivacy(t *testing.T) {
+	t.Parallel()
+
+	api := &fakeUserAPI{}
+	users := NewUsers(api)
+
+	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{ShowWorldview: true, WallWrite: "everyone"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if api.privacy.GetWallWrite() != userv1.WallWrite_WALL_WRITE_EVERYONE || u.Privacy.WallWrite != "everyone" {
+		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
+	}
+
+	for _, bad := range []string{"friends", "EVERYONE"} {
+		if _, err = users.UpdatePrivacy(context.Background(), "tok", model.Privacy{WallWrite: bad}); failure.From(err).Kind != failure.InvalidArgument {
+			t.Fatalf("wall write %q: %v", bad, err)
+		}
+	}
+
+	allowed, err := users.CanPostOnWall(context.Background(), "tok", "u2")
+	if err != nil || !allowed {
+		t.Fatalf("CanPostOnWall = %v, %v", allowed, err)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
+		t.Fatalf("authorization metadata = %v", got)
 	}
 }
 
@@ -149,7 +189,7 @@ type fakePostAPI struct {
 func (f *fakePostAPI) CreatePost(ctx context.Context, req *postv1.CreatePostRequest, _ ...grpc.CallOption) (*postv1.CreatePostResponse, error) {
 	f.md, _ = metadata.FromOutgoingContext(ctx)
 	return &postv1.CreatePostResponse{Post: &postv1.Post{
-		Id: "p1", AuthorId: "u1", Text: req.GetText(), PhotoIds: req.GetPhotoIds(),
+		Id: "p1", AuthorId: "u1", WallId: req.GetWallId(), Text: req.GetText(), PhotoIds: req.GetPhotoIds(),
 		CreatedAt: timestamppb.New(time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)),
 	}}, nil
 }
@@ -159,7 +199,7 @@ func (f *fakePostAPI) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 	f.req = req
 	return &postv1.ListPostsResponse{
 		Posts: []*postv1.Post{{
-			Id: "p1", AuthorId: "u1", Text: "привет", CreatedAt: timestamppb.Now(),
+			Id: "p1", AuthorId: "u2", WallId: "u1", Text: "привет", CreatedAt: timestamppb.Now(),
 			LikeCount: 4, CommentCount: 2, Liked: len(f.md.Get("authorization")) == 1,
 		}},
 		NextCursor: "p1",
@@ -192,7 +232,7 @@ func TestPosts(t *testing.T) {
 	api := &fakePostAPI{}
 	posts := NewPosts(api)
 
-	p, err := posts.Create(context.Background(), "tok", "привет", []string{"ph1", "ph2"})
+	p, err := posts.Create(context.Background(), "tok", "u2", "привет", []string{"ph1", "ph2"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +242,7 @@ func TestPosts(t *testing.T) {
 	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
 		t.Fatalf("authorization metadata = %v", got)
 	}
-	if p.ID != "p1" || p.Author.ID != "u1" || p.Text != "привет" || p.CreatedAt.Hour() != 15 {
+	if p.ID != "p1" || p.Author.ID != "u1" || p.Wall.ID != "u2" || p.Text != "привет" || p.CreatedAt.Hour() != 15 {
 		t.Fatalf("post = %+v", p)
 	}
 
@@ -219,7 +259,7 @@ func TestPosts(t *testing.T) {
 	if page.Total != 3 || page.NextCursor != "p1" || len(page.Posts) != 1 {
 		t.Fatalf("page = %+v", page)
 	}
-	if got := page.Posts[0]; got.Likes != 4 || got.Comments != 2 || got.Liked {
+	if got := page.Posts[0]; got.Likes != 4 || got.Comments != 2 || got.Liked || got.Author.ID != "u2" || got.Wall.ID != "u1" {
 		t.Fatalf("anonymous post = %+v", got)
 	}
 

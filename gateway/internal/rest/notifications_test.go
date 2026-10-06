@@ -17,6 +17,7 @@ type notificationPage struct {
 		Post      *struct {
 			ID        string `json:"id"`
 			CreatedAt string `json:"createdAt"`
+			Text      string `json:"text"`
 		} `json:"post"`
 		Comment *struct {
 			ID   string `json:"id"`
@@ -34,7 +35,7 @@ func TestListNotifications(t *testing.T) {
 	w := h.do("GET", "/api/v1/notifications?cursor=n9&limit=5", "", "Authorization", "Bearer tok")
 	got := decode[notificationPage](t, w)
 
-	if w.Code != http.StatusOK || got.NextCursor != "n0" || got.NewestID != "n4" {
+	if w.Code != http.StatusOK || got.NextCursor != "n-1" || got.NewestID != "n4" {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
 	if h.notifications.token != "tok" || !h.notifications.unread || h.notifications.cursor != "n9" || h.notifications.limit != 5 {
@@ -43,11 +44,11 @@ func TestListNotifications(t *testing.T) {
 
 	// The follow by a vanished account and the like of a deleted post are
 	// left out.
-	if len(got.Notifications) != 3 {
+	if len(got.Notifications) != 4 {
 		t.Fatalf("notifications = %+v", got.Notifications)
 	}
 
-	comment, like, follow := got.Notifications[0], got.Notifications[1], got.Notifications[2]
+	comment, like, follow, wallPost := got.Notifications[0], got.Notifications[1], got.Notifications[2], got.Notifications[3]
 	if comment.Type != "comment" || comment.Actor["nickname"] != "bob" || comment.Comment == nil || comment.Comment.Text != "согласен" ||
 		comment.Post == nil || comment.Post.CreatedAt != "2026-10-04T15:30:00Z" {
 		t.Fatalf("comment = %+v", comment)
@@ -57,6 +58,9 @@ func TestListNotifications(t *testing.T) {
 	}
 	if follow.Type != "follow" || follow.Post != nil || follow.Comment != nil || follow.CreatedAt != "2026-10-05T18:00:00Z" {
 		t.Fatalf("follow = %+v", follow)
+	}
+	if wallPost.Type != "wall_post" || wallPost.Post == nil || wallPost.Post.Text != "первая" || wallPost.Comment != nil {
+		t.Fatalf("wall post = %+v", wallPost)
 	}
 
 	archive := newHarness(rest.Config{})

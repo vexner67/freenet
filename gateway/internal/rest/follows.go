@@ -159,31 +159,11 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	ids := make([]string, len(page.Posts))
-	for i, p := range page.Posts {
-		ids[i] = p.Author.ID
-	}
+	resp := postPageResponse{NextCursor: page.NextCursor}
 
-	authors, err := a.authors(r, ids)
-	if err != nil {
+	if resp.Posts, err = a.withPeople(r, page.Posts); err != nil {
 		a.writeError(w, r, err)
 		return
-	}
-
-	resp := postPageResponse{
-		Posts:      make([]postResponse, 0, len(page.Posts)),
-		NextCursor: page.NextCursor,
-	}
-
-	for _, p := range page.Posts {
-		// An author who deleted the account meanwhile is left out.
-		author, ok := authors[p.Author.ID]
-		if !ok {
-			continue
-		}
-
-		p.Author = author
-		resp.Posts = append(resp.Posts, toPostResponse(p))
 	}
 
 	writeJSON(w, http.StatusOK, resp)

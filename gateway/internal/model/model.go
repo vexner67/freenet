@@ -24,11 +24,14 @@ type Profile struct {
 	Birthday time.Time
 }
 
+// Privacy: WallWrite is who may write on the wall besides its owner,
+// "everyone", "following" (the people the owner follows) or "only_me".
 type Privacy struct {
 	ShowBirthday       bool
 	ShowRelationship   bool
 	ShowWorldview      bool
 	ShowPoliticalViews bool
+	WallWrite          string
 }
 
 // User is the caller's own account. AvatarID is empty without a photo.
@@ -48,7 +51,7 @@ type PublicProfile struct {
 	Profile  Profile
 }
 
-// Author is who wrote a post, as shown next to it.
+// Author is who wrote a post or owns a wall, as shown next to a post.
 type Author struct {
 	ID       string
 	AvatarID string
@@ -61,7 +64,10 @@ type Author struct {
 type Post struct {
 	ID     string
 	Author Author
-	Text   string
+	// Wall is the owner of the wall the post is on; Wall.ID is Author.ID
+	// on the author's own wall.
+	Wall Author
+	Text string
 	// PhotoIDs are the author's photos in the media service, in order.
 	PhotoIDs  []string
 	CreatedAt time.Time

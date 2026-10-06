@@ -52,13 +52,20 @@ func (u *Users) UpdateProfile(ctx context.Context, accessToken string, p model.P
 	return toUser(resp.GetUser()), nil
 }
 
+// UpdatePrivacy: an empty WallWrite is rejected by the user service.
 func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.Privacy) (model.User, error) {
+	wallWrite, err := enumValue(p.WallWrite, wallWritePrefix, "wall write", userv1.WallWrite_value)
+	if err != nil {
+		return model.User{}, errs.Wrap("enumValue", err)
+	}
+
 	resp, err := u.api.UpdatePrivacy(withToken(ctx, accessToken), &userv1.UpdatePrivacyRequest{
 		Privacy: &userv1.PrivacySettings{
 			ShowBirthday:       p.ShowBirthday,
 			ShowRelationship:   p.ShowRelationship,
 			ShowWorldview:      p.ShowWorldview,
 			ShowPoliticalViews: p.ShowPoliticalViews,
+			WallWrite:          userv1.WallWrite(wallWrite),
 		},
 	})
 	if err != nil {
@@ -128,6 +135,16 @@ func (u *Users) FollowStats(ctx context.Context, accessToken, userID string) (mo
 		Following:   int(resp.GetFollowingCount()),
 		IsFollowing: resp.GetIsFollowing(),
 	}, nil
+}
+
+// CanPostOnWall tells whether the caller may write on the wall of userID.
+func (u *Users) CanPostOnWall(ctx context.Context, accessToken, userID string) (bool, error) {
+	resp, err := u.api.CanPostOnWall(withToken(ctx, accessToken), &userv1.CanPostOnWallRequest{UserId: userID})
+	if err != nil {
+		return false, errs.Wrap("u.api.CanPostOnWall", fromStatus(err))
+	}
+
+	return resp.GetAllowed(), nil
 }
 
 func (u *Users) ListFollowers(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error) {

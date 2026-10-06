@@ -45,6 +45,8 @@ type fakeUsers struct {
 	profileIDs                                      []string
 	avatarID, query, cursor                         string
 	profile                                         model.Profile
+	wallAsked                                       string
+	closedWall                                      bool
 	err                                             error
 }
 
@@ -92,6 +94,12 @@ func (f *fakeUsers) GetProfiles(_ context.Context, ids []string) ([]model.Public
 		}
 	}
 	return found, nil
+}
+
+// CanPostOnWall: every wall is open but when closedWall.
+func (f *fakeUsers) CanPostOnWall(_ context.Context, token, userID string) (bool, error) {
+	f.token, f.wallAsked = token, userID
+	return !f.closedWall, f.err
 }
 
 func (f *fakeUsers) Follow(_ context.Context, token, userID string) error {
@@ -146,14 +154,14 @@ type fakePosts struct {
 	authors                []string
 	token, cursor, deleted string
 	limit                  int
-	created                string
+	created, wall          string
 	photos                 []string
 	liked                  map[string]bool
 	err                    error
 }
 
-func (f *fakePosts) Create(_ context.Context, token, text string, photoIDs []string) (model.Post, error) {
-	f.token, f.created, f.photos = token, text, photoIDs
+func (f *fakePosts) Create(_ context.Context, token, wallID, text string, photoIDs []string) (model.Post, error) {
+	f.token, f.wall, f.created, f.photos = token, wallID, text, photoIDs
 	return model.Post{ID: "p9", Text: text, PhotoIDs: photoIDs, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
 }
 
@@ -162,14 +170,17 @@ func (f *fakePosts) Delete(_ context.Context, token, id string) error {
 	return f.err
 }
 
-// Get knows p1 by u1 and p2 by an author who deleted the account.
+// Get knows p1 by u1, p2 by an author who deleted the account and p4 by u2
+// on u1's wall.
 func (f *fakePosts) Get(_ context.Context, token, id string) (model.Post, error) {
 	f.token = token
 	switch id {
 	case "p1":
-		return model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Text: "первая", PhotoIDs: []string{"ph1"}, Likes: 3, Comments: 2, Liked: token != ""}, nil
+		return model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "первая", PhotoIDs: []string{"ph1"}, Likes: 3, Comments: 2, Liked: token != ""}, nil
 	case "p2":
-		return model.Post{ID: "p2", Author: model.Author{ID: "gone"}, Text: "сирота"}, nil
+		return model.Post{ID: "p2", Author: model.Author{ID: "gone"}, Wall: model.Author{ID: "gone"}, Text: "сирота"}, nil
+	case "p4":
+		return model.Post{ID: "p4", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u1"}, Text: "в гостях"}, nil
 	default:
 		return model.Post{}, failure.New(failure.NotFound, "post not found")
 	}
@@ -180,7 +191,7 @@ func (f *fakePosts) GetMany(_ context.Context, ids []string) ([]model.Post, erro
 	var found []model.Post
 	for _, id := range ids {
 		if id == "p1" {
-			found = append(found, model.Post{ID: "p1", Author: model.Author{ID: "u1"}, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)})
+			found = append(found, model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "первая", CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)})
 		}
 	}
 	return found, nil
@@ -201,21 +212,28 @@ func (f *fakePosts) Feed(_ context.Context, token string, authorIDs []string, cu
 	f.token, f.authors, f.cursor = token, authorIDs, cursor
 	return model.PostPage{
 		Posts: []model.Post{
-			{ID: "p3", Author: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},
-			{ID: "p2", Author: model.Author{ID: "gone"}, Text: "автор удалился"},
-			{ID: "p1", Author: model.Author{ID: "u1"}, Text: "моя"},
+			{ID: "p3", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},
+			{ID: "p2", Author: model.Author{ID: "gone"}, Wall: model.Author{ID: "gone"}, Text: "автор удалился"},
+			{ID: "p5", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "gone"}, Text: "на исчезнувшей стене"},
+			{ID: "p1", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "моя"},
 		},
 		NextCursor: "p1",
 	}, nil
 }
 
-func (f *fakePosts) List(_ context.Context, token, authorID, cursor string, limit int) (model.PostPage, error) {
+// List is u1's wall: bob's post p4 on it and u1's own p2 and p1.
+func (f *fakePosts) List(_ context.Context, token, wallID, cursor string, limit int) (model.PostPage, error) {
 	f.token, f.cursor, f.limit = token, cursor, limit
-	if authorID != "u1" {
-		return model.PostPage{}, errors.New("wrong author id")
+	if wallID != "u1" {
+		return model.PostPage{}, errors.New("wrong wall id")
 	}
+	ann := model.Author{ID: "u1"}
 	return model.PostPage{
-		Posts:      []model.Post{{ID: "p2", Author: model.Author{ID: "u1"}, Text: "вторая", Comments: 4}, {ID: "p1", Author: model.Author{ID: "u1"}, Text: "первая", Likes: 2, Liked: true}},
+		Posts: []model.Post{
+			{ID: "p4", Author: model.Author{ID: "u2"}, Wall: ann, Text: "в гостях"},
+			{ID: "p2", Author: ann, Wall: ann, Text: "вторая", Comments: 4},
+			{ID: "p1", Author: ann, Wall: ann, Text: "первая", Likes: 2, Liked: true},
+		},
 		NextCursor: "p1",
 		Total:      7,
 	}, f.err
@@ -351,8 +369,9 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n2", Kind: "like", ActorID: "u2", PostID: "p-deleted", CreatedAt: at},
 			{ID: "n1", Kind: "like", ActorID: "u2", PostID: "p1", CreatedAt: at},
 			{ID: "n0", Kind: "follow", ActorID: "u2", CreatedAt: at},
+			{ID: "n-1", Kind: "wall_post", ActorID: "u2", PostID: "p1", CreatedAt: at},
 		},
-		NextCursor: "n0",
+		NextCursor: "n-1",
 	}, f.err
 }
 
