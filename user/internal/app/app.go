@@ -14,6 +14,7 @@ import (
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/pgpool"
+	"github.com/vexner67/freenet/pkg/ratelimit"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"github.com/vexner67/freenet/user/internal/config"
 	usergrpc "github.com/vexner67/freenet/user/internal/grpc"
@@ -33,6 +34,7 @@ const (
 type App struct {
 	logger           *slog.Logger
 	pool             *pgxpool.Pool
+	limiter          ratelimit.Store
 	notificationConn *grpc.ClientConn
 	server           *grpcserver.Server
 	addr             string
@@ -72,6 +74,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newNotifier", err)
 	}
 
+	limiter, err := a.newLimiter(cfg)
+	if err != nil {
+		return errs.Wrap("a.newLimiter", err)
+	}
+
 	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
 	if err != nil {
 		return errs.Wrap("jwtauth.LoadPublicKey", err)
@@ -94,6 +101,7 @@ func (a *App) build(cfg config.Config) error {
 		jwtauth.NewVerifier(publicKey, cfg.JWTIssuer),
 		usergrpc.PublicMethods()...,
 	))
+	interceptors = append(interceptors, ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger))
 
 	a.server = grpcserver.New(a.logger, grpc.Creds(creds), grpc.ChainUnaryInterceptor(interceptors...))
 	userv1.RegisterUserServiceServer(
@@ -109,6 +117,33 @@ func (a *App) build(cfg config.Config) error {
 		"notifications", cfg.NotificationServiceAddr != "")
 
 	return nil
+}
+
+// rateLimits are how often each user may follow people.
+func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
+	return map[string]ratelimit.Rules{
+		userv1.UserService_Follow_FullMethodName: cfg.FollowLimits,
+	}
+}
+
+// newLimiter counts in Redis when it is configured, so that all replicas
+// share the limits, and in memory otherwise.
+func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
+	if cfg.RedisAddr == "" {
+		a.logger.Warn("REDIS_ADDR is not set: rate limits are counted per replica")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
+	defer cancel()
+
+	var err error
+
+	a.limiter, err = ratelimit.Open(ctx, cfg.RedisAddr)
+	if err != nil {
+		return nil, errs.Wrap("ratelimit.Open", err)
+	}
+
+	return a.limiter, nil
 }
 
 // newNotifier connects to the notification service; the connection is
@@ -185,6 +220,11 @@ func (a *App) Run(ctx context.Context) error {
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.limiter != nil {
+		if err := a.limiter.Close(); err != nil {
+			a.logger.Error("rate limiter close", "error", err)
+		}
+	}
 	if a.notificationConn != nil {
 		if err := a.notificationConn.Close(); err != nil {
 			a.logger.Error("notification connection close", "error", err)

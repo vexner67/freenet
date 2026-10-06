@@ -54,8 +54,10 @@ done
 if $persistent; then
 	echo "==> starting PostgreSQL and Redis (docker compose)"
 	docker compose up -d --wait
-	# Environment wins over .env, so this switches all services at once.
+	# Environment wins over .env, so this switches all services at once:
+	# data to the databases, rate limits to the Redis from compose.yaml.
 	export STORAGE=persistent
+	export REDIS_ADDR="${REDIS_ADDR:-localhost:$(sed -n 's/^REDIS_PORT=//p' .env)}"
 fi
 
 bin=$(mktemp -d)

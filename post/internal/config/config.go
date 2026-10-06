@@ -7,6 +7,7 @@ import (
 
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/ratelimit"
 )
 
 const (
@@ -34,6 +35,13 @@ type Config struct {
 	// notify nobody.
 	NotificationServiceAddr string        `env:"NOTIFICATION_SERVICE_ADDR"`
 	NotifyTimeout           time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
+
+	// Spam protection, per user. REDIS_ADDR shares the counters between
+	// replicas; without it they are kept in memory, per replica.
+	RedisAddr     string          `env:"REDIS_ADDR"`
+	PostLimits    ratelimit.Rules `env:"RATE_LIMIT_POSTS" envDefault:"5/1m,100/24h"`
+	CommentLimits ratelimit.Rules `env:"RATE_LIMIT_COMMENTS" envDefault:"20/1m,500/24h"`
+	LikeLimits    ratelimit.Rules `env:"RATE_LIMIT_LIKES" envDefault:"60/1m,1000/24h"`
 
 	// Access tokens are issued by the auth service; post only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`

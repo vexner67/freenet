@@ -6,6 +6,7 @@ import (
 
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/ratelimit"
 )
 
 const (
@@ -28,6 +29,11 @@ type Config struct {
 	DatabaseURL string `env:"DATABASE_URL"`
 	// MigrateOnStart applies pending migrations before serving.
 	MigrateOnStart bool `env:"MIGRATE_ON_START" envDefault:"true"`
+
+	// Spam protection, per user. REDIS_ADDR shares the counters between
+	// replicas; without it they are kept in memory, per replica.
+	RedisAddr     string          `env:"REDIS_ADDR"`
+	MessageLimits ratelimit.Rules `env:"RATE_LIMIT_MESSAGES" envDefault:"30/1m,1000/24h"`
 
 	// Access tokens are issued by the auth service; message only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`

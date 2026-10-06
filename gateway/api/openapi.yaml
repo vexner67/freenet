@@ -190,6 +190,7 @@ paths:
         "200": { $ref: "#/components/responses/User" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
       summary: Remove your profile photo
       security: [{ bearer: [] }]
@@ -244,6 +245,7 @@ paths:
               schema: { $ref: "#/components/schemas/Photo" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /media/photos/{userId}/{photoId}/{file}:
     get:
@@ -315,6 +317,7 @@ paths:
               schema: { $ref: "#/components/schemas/Post" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/posts/{id}:
     get:
@@ -365,6 +368,7 @@ paths:
         "200": { $ref: "#/components/responses/Like" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
       summary: Take your like back
       description: Idempotent.
@@ -373,6 +377,7 @@ paths:
         "200": { $ref: "#/components/responses/Like" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/posts/{id}/comments:
     parameters:
@@ -422,6 +427,7 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/comments/{id}:
     delete:
@@ -597,6 +603,7 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/dialogs/{nickname}/read:
     post:
@@ -638,6 +645,7 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
       summary: Unfollow the user
       description: Idempotent.
@@ -770,7 +778,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     TooManyRequests:
-      description: Rate limited; try again later or request a new code
+      description: Rate limited (sign-in codes, or spam protection of posts, comments, likes, messages, uploads and follows); try again later
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
