@@ -458,6 +458,123 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/dialogs:
+    get:
+      summary: Your dialogs, the most recently written first
+      description: Dialogs with accounts that are gone are left out.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of dialogs
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/DialogPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/dialogs/unread-count:
+    get:
+      summary: How many dialogs have unread messages, at most 100
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The number for the menu counter
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [count]
+                properties:
+                  count: { type: integer, maximum: 100 }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/dialogs/{nickname}/messages:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: Your dialog with a user, oldest first
+      description: |
+        Without parameters, the newest messages. `cursor` = `nextCursor`
+        pages back in time; `after` = the newest message you have returns
+        what came since, for polling. Not both.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: after
+          in: query
+          schema: { type: string, format: uuid }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: A run of messages
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessagePage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Write to a user
+      description: Your profile must be filled in first; you cannot write to yourself.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 4096 }
+      responses:
+        "201":
+          description: The sent message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/dialogs/{nickname}/read:
+    post:
+      summary: Read your dialog with a user up to one of their messages
+      description: The mark never moves back; `upTo` must be a message from that user to you.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: nickname
+          in: path
+          required: true
+          schema: { type: string }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [upTo]
+              properties:
+                upTo: { type: string, format: uuid }
+      responses:
+        "204": { description: Read }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/users/{nickname}/follow:
     parameters:
       - name: nickname
@@ -756,6 +873,46 @@ components:
         newestId:
           type: string
           description: "The newest notification of the page, shown or not; empty on an empty page"
+
+    Message:
+      type: object
+      required: [id, text, createdAt, out, read]
+      properties:
+        id: { type: string, format: uuid }
+        text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
+        createdAt: { type: string, format: date-time }
+        out: { type: boolean, description: "You sent it" }
+        read: { type: boolean, description: "Its recipient has read it" }
+
+    Dialog:
+      type: object
+      required: [peer, lastMessage, unread]
+      properties:
+        peer: { $ref: "#/components/schemas/Author" }
+        lastMessage: { $ref: "#/components/schemas/Message" }
+        unread: { type: boolean, description: "The peer wrote something you have not read" }
+
+    DialogPage:
+      type: object
+      required: [dialogs, nextCursor]
+      properties:
+        dialogs:
+          type: array
+          items: { $ref: "#/components/schemas/Dialog" }
+        nextCursor: { type: string, description: "Empty on the last page" }
+
+    MessagePage:
+      type: object
+      required: [peer, messages, nextCursor, peerReadUpTo]
+      properties:
+        peer: { $ref: "#/components/schemas/Author" }
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/Message" }
+        nextCursor: { type: string, description: "Older messages remain; empty when none, always with after" }
+        peerReadUpTo:
+          type: string
+          description: "The newest of your messages the peer has read, to update shown ones; empty if none"
 
     FollowStats:
       type: object

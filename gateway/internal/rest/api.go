@@ -65,6 +65,14 @@ type Notifications interface {
 	MarkRead(ctx context.Context, accessToken, id string) error
 }
 
+type Messages interface {
+	Send(ctx context.Context, accessToken, recipientID, text string) (model.Message, error)
+	Dialogs(ctx context.Context, accessToken, cursor string, limit int) (model.DialogPage, error)
+	CountUnread(ctx context.Context, accessToken string) (int, error)
+	History(ctx context.Context, accessToken, peerID, cursor, after string, limit int) (model.MessagePage, error)
+	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
+}
+
 // Backends are the services the API is made of.
 type Backends struct {
 	Auth          Auth
@@ -72,6 +80,7 @@ type Backends struct {
 	Posts         Posts
 	Media         Media
 	Notifications Notifications
+	Messages      Messages
 }
 
 type api struct {
@@ -80,6 +89,7 @@ type api struct {
 	posts             Posts
 	media             Media
 	notifications     Notifications
+	messages          Messages
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -124,6 +134,12 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/notifications", a.listNotifications)
 	mux.HandleFunc("GET /api/v1/notifications/unread-count", a.countUnreadNotifications)
 	mux.HandleFunc("POST /api/v1/notifications/read", a.markNotificationsRead)
+
+	mux.HandleFunc("GET /api/v1/dialogs", a.listDialogs)
+	mux.HandleFunc("GET /api/v1/dialogs/unread-count", a.countUnreadDialogs)
+	mux.HandleFunc("GET /api/v1/dialogs/{nickname}/messages", a.listMessages)
+	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/messages", a.sendMessage)
+	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/read", a.markDialogRead)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)
