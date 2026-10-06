@@ -35,7 +35,7 @@ func TestListNotifications(t *testing.T) {
 	w := h.do("GET", "/api/v1/notifications?cursor=n9&limit=5", "", "Authorization", "Bearer tok")
 	got := decode[notificationPage](t, w)
 
-	if w.Code != http.StatusOK || got.NextCursor != "n-1" || got.NewestID != "n4" {
+	if w.Code != http.StatusOK || got.NextCursor != "n-2" || got.NewestID != "n4" {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
 	if h.notifications.token != "tok" || !h.notifications.unread || h.notifications.cursor != "n9" || h.notifications.limit != 5 {
@@ -44,7 +44,7 @@ func TestListNotifications(t *testing.T) {
 
 	// The follow by a vanished account and the like of a deleted post are
 	// left out.
-	if len(got.Notifications) != 4 {
+	if len(got.Notifications) != 5 {
 		t.Fatalf("notifications = %+v", got.Notifications)
 	}
 
@@ -61,6 +61,9 @@ func TestListNotifications(t *testing.T) {
 	}
 	if wallPost.Type != "wall_post" || wallPost.Post == nil || wallPost.Post.Text != "первая" || wallPost.Comment != nil {
 		t.Fatalf("wall post = %+v", wallPost)
+	}
+	if repost := got.Notifications[4]; repost.Type != "repost" || repost.Post == nil || repost.Post.ID != "p1" {
+		t.Fatalf("repost = %+v", repost)
 	}
 
 	archive := newHarness(rest.Config{})

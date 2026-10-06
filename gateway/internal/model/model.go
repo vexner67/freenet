@@ -73,8 +73,12 @@ type Post struct {
 	CreatedAt time.Time
 	Likes     int
 	Comments  int
+	Reposts   int
 	// Liked: the viewer likes the post; false for anonymous viewers.
 	Liked bool
+	// RepostOf is the shared post of a repost, "" for other posts; the
+	// shared post may be gone.
+	RepostOf string
 }
 
 // PostPage is one screen of a wall; NextCursor is empty on the last one.

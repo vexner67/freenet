@@ -200,11 +200,21 @@ func (f *fakePostAPI) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 	return &postv1.ListPostsResponse{
 		Posts: []*postv1.Post{{
 			Id: "p1", AuthorId: "u2", WallId: "u1", Text: "привет", CreatedAt: timestamppb.Now(),
-			LikeCount: 4, CommentCount: 2, Liked: len(f.md.Get("authorization")) == 1,
+			LikeCount: 4, CommentCount: 2, RepostCount: 5, Liked: len(f.md.Get("authorization")) == 1,
 		}},
 		NextCursor: "p1",
 		Total:      3,
 	}, nil
+}
+
+func (f *fakePostAPI) RepostPost(ctx context.Context, req *postv1.RepostPostRequest, _ ...grpc.CallOption) (*postv1.RepostPostResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	if req.GetPostId() != "p1" {
+		return nil, status.Error(codes.NotFound, "post not found")
+	}
+	return &postv1.RepostPostResponse{Post: &postv1.Post{
+		Id: "p2", AuthorId: "u2", WallId: "u2", Text: req.GetText(), RepostOf: "p1", CreatedAt: timestamppb.Now(),
+	}}, nil
 }
 
 func (f *fakePostAPI) LikePost(ctx context.Context, req *postv1.LikePostRequest, _ ...grpc.CallOption) (*postv1.LikePostResponse, error) {
@@ -259,13 +269,21 @@ func TestPosts(t *testing.T) {
 	if page.Total != 3 || page.NextCursor != "p1" || len(page.Posts) != 1 {
 		t.Fatalf("page = %+v", page)
 	}
-	if got := page.Posts[0]; got.Likes != 4 || got.Comments != 2 || got.Liked || got.Author.ID != "u2" || got.Wall.ID != "u1" {
+	if got := page.Posts[0]; got.Likes != 4 || got.Comments != 2 || got.Reposts != 5 || got.Liked || got.Author.ID != "u2" || got.Wall.ID != "u1" {
 		t.Fatalf("anonymous post = %+v", got)
 	}
 
 	page, err = posts.List(context.Background(), "tok", "u1", "", 0)
 	if err != nil || !page.Posts[0].Liked {
 		t.Fatalf("signed-in wall = %+v, %v", page, err)
+	}
+
+	repost, err := posts.Repost(context.Background(), "tok", "p1", "смотрите")
+	if err != nil || repost.RepostOf != "p1" || repost.Text != "смотрите" || repost.Wall.ID != "u2" {
+		t.Fatalf("Repost = %+v, %v", repost, err)
+	}
+	if _, err = posts.Repost(context.Background(), "tok", "p2", ""); failure.From(err).Kind != failure.NotFound {
+		t.Fatalf("Repost a missing post: %v", err)
 	}
 
 	likes, err := posts.Like(context.Background(), "tok", "p1")

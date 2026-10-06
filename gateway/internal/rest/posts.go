@@ -1,7 +1,9 @@
 package rest
 
 import (
+	"maps"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
@@ -37,6 +39,29 @@ type postResponse struct {
 	Likes     int         `json:"likes"`
 	Liked     bool        `json:"liked"`
 	Comments  int         `json:"comments"`
+	Reposts   int         `json:"reposts"`
+	// Repost is the shared post of a repost, null for other posts.
+	Repost *repostJSON `json:"repost"`
+}
+
+type repostRequest struct {
+	// What the caller says about the shared post; may be empty.
+	Text string `json:"text"`
+}
+
+// repostJSON is the post a repost shares, shown inside it as openvk does:
+// without its counters and menu. Deleted (the post or its author is gone)
+// leaves only the ID. RepostOf is set when the shared post is itself a
+// repost with words of its own: the site links to it instead of nesting.
+type repostJSON struct {
+	ID        string      `json:"id"`
+	Deleted   bool        `json:"deleted"`
+	Author    *authorJSON `json:"author"`
+	Wall      *authorJSON `json:"wall"`
+	Text      string      `json:"text"`
+	Photos    []photoJSON `json:"photos"`
+	CreatedAt string      `json:"createdAt"`
+	RepostOf  string      `json:"repostOf"`
 }
 
 type likeResponse struct {
@@ -75,23 +100,44 @@ func toAuthorJSON(a model.Author) authorJSON {
 	}
 }
 
-func toPostResponse(p model.Post) postResponse {
-	var wall *authorJSON
-	if p.Wall.ID != p.Author.ID {
-		w := toAuthorJSON(p.Wall)
-		wall = &w
+// wallJSON is the owner of the wall when not the author: null otherwise.
+func wallJSON(p model.Post) *authorJSON {
+	if p.Wall.ID == p.Author.ID {
+		return nil
 	}
 
+	w := toAuthorJSON(p.Wall)
+
+	return &w
+}
+
+func toPostResponse(p model.Post) postResponse {
 	return postResponse{
 		ID:        p.ID,
 		Author:    toAuthorJSON(p.Author),
-		Wall:      wall,
+		Wall:      wallJSON(p),
 		Text:      p.Text,
 		Photos:    toPhotosJSON(p.Author.ID, p.PhotoIDs),
 		CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
 		Likes:     p.Likes,
 		Liked:     p.Liked,
 		Comments:  p.Comments,
+		Reposts:   p.Reposts,
+	}
+}
+
+// toRepostJSON is p as shared inside a repost; p has its people filled in.
+func toRepostJSON(p model.Post) *repostJSON {
+	author := toAuthorJSON(p.Author)
+
+	return &repostJSON{
+		ID:        p.ID,
+		Author:    &author,
+		Wall:      wallJSON(p),
+		Text:      p.Text,
+		Photos:    toPhotosJSON(p.Author.ID, p.PhotoIDs),
+		CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
+		RepostOf:  p.RepostOf,
 	}
 }
 
@@ -123,13 +169,19 @@ func (a *api) getPost(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, shown[0])
 }
 
-// withPeople fills in the profiles of the authors and of the owners of the
-// walls, looked up in one request. A post whose author or wall owner
-// deleted the account is left out: the wall is gone, and so is what the
-// author wrote.
+// withPeople fills in the posts that reposts share and the profiles of the
+// authors and of the owners of the walls, each looked up in one request.
+// A post whose author or wall owner deleted the account is left out: the
+// wall is gone, and so is what the author wrote. A shared post that is
+// gone is shown as deleted inside its repost.
 func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, error) {
-	ids := make([]string, 0, 2*len(posts))
-	for _, p := range posts {
+	shared, err := a.sharedPosts(r, posts)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]string, 0, 2*(len(posts)+len(shared)))
+	for _, p := range slices.Concat(posts, slices.Collect(maps.Values(shared))) {
 		ids = append(ids, p.Author.ID, p.Wall.ID)
 	}
 
@@ -140,17 +192,60 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 
 	shown := make([]postResponse, 0, len(posts))
 	for _, p := range posts {
-		author, hasAuthor := people[p.Author.ID]
-		wall, hasWall := people[p.Wall.ID]
-		if !hasAuthor || !hasWall {
+		if !withProfiles(&p, people) {
 			continue
 		}
 
-		p.Author, p.Wall = author, wall
-		shown = append(shown, toPostResponse(p))
+		resp := toPostResponse(p)
+
+		if p.RepostOf != "" {
+			resp.Repost = &repostJSON{ID: p.RepostOf, Deleted: true}
+			if s, ok := shared[p.RepostOf]; ok && withProfiles(&s, people) {
+				resp.Repost = toRepostJSON(s)
+			}
+		}
+
+		shown = append(shown, resp)
 	}
 
 	return shown, nil
+}
+
+// sharedPosts are the posts that reposts among posts share, by ID; those
+// that are gone are missing.
+func (a *api) sharedPosts(r *http.Request, posts []model.Post) (map[string]model.Post, error) {
+	var ids []string
+	for _, p := range posts {
+		if p.RepostOf != "" {
+			ids = append(ids, p.RepostOf)
+		}
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	found, err := a.posts.GetMany(r.Context(), unique(ids))
+	if err != nil {
+		return nil, err
+	}
+
+	shared := make(map[string]model.Post, len(found))
+	for _, p := range found {
+		shared[p.ID] = p
+	}
+
+	return shared, nil
+}
+
+// withProfiles puts the profiles of p's author and wall owner into p;
+// false when either deleted the account.
+func withProfiles(p *model.Post, people map[string]model.Author) bool {
+	author, hasAuthor := people[p.Author.ID]
+	wall, hasWall := people[p.Wall.ID]
+	p.Author, p.Wall = author, wall
+
+	return hasAuthor && hasWall
 }
 
 // listPosts is the wall of a user, whoever wrote the posts. Its first page
@@ -292,6 +387,54 @@ func (a *api) wallFor(r *http.Request, token, myID, nickname string) (model.Auth
 	}
 
 	return authorOf(owner.ID, owner.AvatarID, owner.Profile), nil
+}
+
+// repostPost shares a post on the caller's wall, as openvk's "Поделиться",
+// and returns the repost with the shared post inside.
+func (a *api) repostPost(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req repostRequest
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	me, err := a.users.GetMe(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if !me.ProfileCompleted {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "fill in your profile before posting"))
+		return
+	}
+
+	p, err := a.posts.Repost(r.Context(), token, r.PathValue("id"), req.Text)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	shown, err := a.withPeople(r, []model.Post{p})
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	// The caller's own profile was just read: only a race with deleting
+	// the account leaves nothing to show.
+	if len(shown) == 0 {
+		a.writeError(w, r, failure.New(failure.NotFound, "user not found"))
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, shown[0])
 }
 
 // deletePost deletes a post, by its author or the owner of its wall, and
