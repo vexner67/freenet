@@ -1,0 +1,76 @@
+# The checks of scripts/check.sh and the Docker stack with its smoke test,
+# the same as locally: make check-integration, make stack, make smoke.
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  GOLANGCI_LINT_VERSION: v2.13.2
+
+jobs:
+  check:
+    name: Go and website
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-go@v6
+        with:
+          go-version-file: go.work
+          cache-dependency-path: "**/go.sum"
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: 24
+
+      - name: Install golangci-lint
+        run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" "$GOLANGCI_LINT_VERSION"
+
+      # gofmt, vet, golangci-lint and go test -race in every module, with
+      # the PostgreSQL and Redis tests against throwaway containers.
+      - run: make check-integration
+
+  stack:
+    name: Docker stack
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v5
+
+      - name: Configure the stack
+        run: |
+          port=5433
+          for db in AUTH USER POST NOTIFICATION MESSAGE; do
+            echo "${db}_POSTGRES_USER=freenet"
+            echo "${db}_POSTGRES_PASSWORD=$(openssl rand -hex 16)"
+            echo "${db}_POSTGRES_DB=freenet"
+            echo "${db}_POSTGRES_PORT=$port"
+            port=$((port + 1))
+          done > .env
+          echo "REDIS_PORT=6379" >> .env
+          echo "HASH_SECRET=$(openssl rand -hex 32)" >> .env
+          make certs
+
+      - name: Build and start
+        run: make stack
+
+      - run: make smoke
+
+      - name: Logs
+        if: failure()
+        run: docker compose --profile app logs
+
+      - name: Stop
+        if: always()
+        run: make down
