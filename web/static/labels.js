@@ -143,7 +143,7 @@ const errorTexts = {
   'network error': 'Нет связи с сервером. Проверьте подключение.',
   'invalid email': 'Похоже, в адресе почты опечатка.',
   'invalid or expired code': 'Неверный или устаревший код.',
-  'too many requests, try again later': 'Слишком часто. Подождите минуту и попробуйте снова.',
+  'too many requests, try again later': 'Слишком часто. Подождите немного и попробуйте снова.',
   'too many attempts, request a new code': 'Слишком много неверных попыток. Запросите новый код.',
   'name is empty': 'Укажите имя.',
   'name is too long': 'Имя слишком длинное.',
