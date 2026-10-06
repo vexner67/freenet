@@ -1,3 +1,25 @@
+# Infrastructure (PostgreSQL per service, Redis) starts by default: it is
+# what `make dev-persistent` runs the services against. The services
+# themselves are in the "app" profile, built from Dockerfile, with mTLS
+# between them (`make certs`) and the same databases: `make stack`.
+
+x-service: &service
+  profiles: [app]
+  restart: unless-stopped
+  # `make stack` runs them as you, so they can read the keys in certs/
+  # (mode 600) and write .data/media.
+  user: "${FREENET_UID:-65532}:${FREENET_GID:-65532}"
+  volumes:
+    - ./certs:/certs:ro
+
+x-env: &env
+  LOG_LEVEL: info
+  LOG_FORMAT: json
+  TLS_CA_PATH: /certs/ca.pem
+  JWT_PUBLIC_KEY_PATH: /certs/jwt-public.pem
+  JWT_ISSUER: freenet-auth
+  NOTIFY_TIMEOUT: 2s
+
 services:
   auth-postgres:
     image: postgres:18
@@ -90,6 +112,138 @@ services:
       interval: 5s
       timeout: 5s
       retries: 5
+
+  notification:
+    <<: *service
+    image: freenet-notification
+    build: { context: ., args: { SERVICE: notification } }
+    environment:
+      <<: *env
+      GRPC_PORT: 7055
+      TLS_CERT_PATH: /certs/notification.pem
+      TLS_KEY_PATH: /certs/notification-key.pem
+      STORAGE: persistent
+      DATABASE_URL: postgres://${NOTIFICATION_POSTGRES_USER}:${NOTIFICATION_POSTGRES_PASSWORD}@notification-postgres:5432/${NOTIFICATION_POSTGRES_DB}?sslmode=disable
+    depends_on:
+      notification-postgres: { condition: service_healthy }
+
+  message:
+    <<: *service
+    image: freenet-message
+    build: { context: ., args: { SERVICE: message } }
+    environment:
+      <<: *env
+      GRPC_PORT: 7056
+      TLS_CERT_PATH: /certs/message.pem
+      TLS_KEY_PATH: /certs/message-key.pem
+      STORAGE: persistent
+      DATABASE_URL: postgres://${MESSAGE_POSTGRES_USER}:${MESSAGE_POSTGRES_PASSWORD}@message-postgres:5432/${MESSAGE_POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+    depends_on:
+      message-postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  user:
+    <<: *service
+    image: freenet-user
+    build: { context: ., args: { SERVICE: user } }
+    environment:
+      <<: *env
+      GRPC_PORT: 7052
+      TLS_CERT_PATH: /certs/user.pem
+      TLS_KEY_PATH: /certs/user-key.pem
+      STORAGE: persistent
+      DATABASE_URL: postgres://${USER_POSTGRES_USER}:${USER_POSTGRES_PASSWORD}@user-postgres:5432/${USER_POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+      NOTIFICATION_SERVICE_ADDR: notification:7055
+    depends_on:
+      user-postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  post:
+    <<: *service
+    image: freenet-post
+    build: { context: ., args: { SERVICE: post } }
+    environment:
+      <<: *env
+      GRPC_PORT: 7053
+      TLS_CERT_PATH: /certs/post.pem
+      TLS_KEY_PATH: /certs/post-key.pem
+      STORAGE: persistent
+      DATABASE_URL: postgres://${POST_POSTGRES_USER}:${POST_POSTGRES_PASSWORD}@post-postgres:5432/${POST_POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+      NOTIFICATION_SERVICE_ADDR: notification:7055
+    depends_on:
+      post-postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
+  media:
+    <<: *service
+    image: freenet-media
+    build: { context: ., args: { SERVICE: media } }
+    environment:
+      <<: *env
+      GRPC_PORT: 7054
+      TLS_CERT_PATH: /certs/media.pem
+      TLS_KEY_PATH: /certs/media-key.pem
+      STORAGE: persistent
+      MEDIA_DIR: /data/media
+      REDIS_ADDR: redis:6379
+    volumes:
+      - ./certs:/certs:ro
+      - ./.data/media:/data/media
+    depends_on:
+      redis: { condition: service_healthy }
+
+  auth:
+    <<: *service
+    image: freenet-auth
+    build: { context: ., args: { SERVICE: auth } }
+    environment:
+      <<: *env
+      GRPC_PORT: 7051
+      TLS_CERT_PATH: /certs/auth.pem
+      TLS_KEY_PATH: /certs/auth-key.pem
+      STORAGE: persistent
+      DATABASE_URL: postgres://${AUTH_POSTGRES_USER}:${AUTH_POSTGRES_PASSWORD}@auth-postgres:5432/${AUTH_POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+      USER_SERVICE_ADDR: user:7052
+      # Codes go to `docker compose logs auth`; no SMTP in development.
+      MAILER: console
+      HASH_SECRET: ${HASH_SECRET:-}
+      JWT_PRIVATE_KEY_PATH: /certs/jwt-private.pem
+      ISSUER: freenet-auth
+    depends_on:
+      auth-postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+      user: { condition: service_started }
+
+  gateway:
+    <<: *service
+    image: freenet-gateway
+    build: { context: ., target: gateway, args: { SERVICE: gateway } }
+    environment:
+      LOG_LEVEL: info
+      LOG_FORMAT: json
+      HTTP_PORT: 8080
+      TLS_CA_PATH: /certs/ca.pem
+      TLS_CERT_PATH: /certs/gateway.pem
+      TLS_KEY_PATH: /certs/gateway-key.pem
+      AUTH_SERVICE_ADDR: auth:7051
+      USER_SERVICE_ADDR: user:7052
+      POST_SERVICE_ADDR: post:7053
+      MEDIA_SERVICE_ADDR: media:7054
+      NOTIFICATION_SERVICE_ADDR: notification:7055
+      MESSAGE_SERVICE_ADDR: message:7056
+    ports:
+      - "${GATEWAY_PORT:-8080}:8080"
+    depends_on:
+      - auth
+      - user
+      - post
+      - media
+      - notification
+      - message
 
 volumes:
   auth_postgres_data:

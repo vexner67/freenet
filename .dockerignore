@@ -1,0 +1,9 @@
+# Only sources go to the build: no secrets, local data or history.
+.git
+.github
+.idea
+.data
+certs
+**/certs
+**/.env
+**/*.pem
