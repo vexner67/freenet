@@ -49,6 +49,10 @@ func TestMemory(t *testing.T) {
 	if _, ok := l.windows["b"]; ok {
 		t.Fatal("expired windows must be swept")
 	}
+	if err := l.Close(); err != nil {
+		t.Fatal(err)
+	}
+
 	if len(l.windows) != 1 {
 		t.Fatalf("windows = %d, want only the fresh one", len(l.windows))
 	}
