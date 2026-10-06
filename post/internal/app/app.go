@@ -124,6 +124,7 @@ func (a *App) build(cfg config.Config) error {
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		postv1.PostService_CreatePost_FullMethodName:    cfg.PostLimits,
+		postv1.PostService_RepostPost_FullMethodName:    cfg.PostLimits,
 		postv1.PostService_CreateComment_FullMethodName: cfg.CommentLimits,
 		postv1.PostService_LikePost_FullMethodName:      cfg.LikeLimits,
 		postv1.PostService_UnlikePost_FullMethodName:    cfg.LikeLimits,

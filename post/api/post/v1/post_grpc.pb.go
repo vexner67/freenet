@@ -22,6 +22,7 @@ const _ = grpc.SupportPackageIsVersion9
 const (
 	PostService_CreatePost_FullMethodName    = "/post.v1.PostService/CreatePost"
 	PostService_DeletePost_FullMethodName    = "/post.v1.PostService/DeletePost"
+	PostService_RepostPost_FullMethodName    = "/post.v1.PostService/RepostPost"
 	PostService_GetPost_FullMethodName       = "/post.v1.PostService/GetPost"
 	PostService_GetPosts_FullMethodName      = "/post.v1.PostService/GetPosts"
 	PostService_ListPosts_FullMethodName     = "/post.v1.PostService/ListPosts"
@@ -42,6 +43,9 @@ type PostServiceClient interface {
 	// by its author or by the owner of its wall.
 	CreatePost(ctx context.Context, in *CreatePostRequest, opts ...grpc.CallOption) (*CreatePostResponse, error)
 	DeletePost(ctx context.Context, in *DeletePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Requires an access token: shares a post on the caller's own wall. A
+	// repost without text of a repost without text shares its original.
+	RepostPost(ctx context.Context, in *RepostPostRequest, opts ...grpc.CallOption) (*RepostPostResponse, error)
 	// Public: one post.
 	GetPost(ctx context.Context, in *GetPostRequest, opts ...grpc.CallOption) (*GetPostResponse, error)
 	// Public: at most 50 posts by ID, for the notifications page; posts that
@@ -88,6 +92,16 @@ func (c *postServiceClient) DeletePost(ctx context.Context, in *DeletePostReques
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, PostService_DeletePost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) RepostPost(ctx context.Context, in *RepostPostRequest, opts ...grpc.CallOption) (*RepostPostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RepostPostResponse)
+	err := c.cc.Invoke(ctx, PostService_RepostPost_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -202,6 +216,9 @@ type PostServiceServer interface {
 	// by its author or by the owner of its wall.
 	CreatePost(context.Context, *CreatePostRequest) (*CreatePostResponse, error)
 	DeletePost(context.Context, *DeletePostRequest) (*emptypb.Empty, error)
+	// Requires an access token: shares a post on the caller's own wall. A
+	// repost without text of a repost without text shares its original.
+	RepostPost(context.Context, *RepostPostRequest) (*RepostPostResponse, error)
 	// Public: one post.
 	GetPost(context.Context, *GetPostRequest) (*GetPostResponse, error)
 	// Public: at most 50 posts by ID, for the notifications page; posts that
@@ -239,6 +256,9 @@ func (UnimplementedPostServiceServer) CreatePost(context.Context, *CreatePostReq
 }
 func (UnimplementedPostServiceServer) DeletePost(context.Context, *DeletePostRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeletePost not implemented")
+}
+func (UnimplementedPostServiceServer) RepostPost(context.Context, *RepostPostRequest) (*RepostPostResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RepostPost not implemented")
 }
 func (UnimplementedPostServiceServer) GetPost(context.Context, *GetPostRequest) (*GetPostResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPost not implemented")
@@ -323,6 +343,24 @@ func _PostService_DeletePost_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).DeletePost(ctx, req.(*DeletePostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_RepostPost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RepostPostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).RepostPost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_RepostPost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).RepostPost(ctx, req.(*RepostPostRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -521,6 +559,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeletePost",
 			Handler:    _PostService_DeletePost_Handler,
+		},
+		{
+			MethodName: "RepostPost",
+			Handler:    _PostService_RepostPost_Handler,
 		},
 		{
 			MethodName: "GetPost",

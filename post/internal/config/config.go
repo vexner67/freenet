@@ -37,7 +37,8 @@ type Config struct {
 	NotifyTimeout           time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
 
 	// Spam protection, per user. REDIS_ADDR shares the counters between
-	// replicas; without it they are kept in memory, per replica.
+	// replicas; without it they are kept in memory, per replica. Posts and
+	// reposts both follow RATE_LIMIT_POSTS, each counted on its own.
 	RedisAddr     string          `env:"REDIS_ADDR"`
 	PostLimits    ratelimit.Rules `env:"RATE_LIMIT_POSTS" envDefault:"5/1m,100/24h"`
 	CommentLimits ratelimit.Rules `env:"RATE_LIMIT_COMMENTS" envDefault:"20/1m,500/24h"`

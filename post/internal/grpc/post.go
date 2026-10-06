@@ -16,6 +16,7 @@ import (
 
 type PostService interface {
 	Create(ctx context.Context, wallID, authorID uuid.UUID, content post.Content) (*post.Post, error)
+	Repost(ctx context.Context, authorID, postID uuid.UUID, text post.Text) (*post.Post, error)
 	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
 	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
@@ -71,6 +72,25 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 	}
 
 	return &postv1.CreatePostResponse{Post: toProtoPost(p, false)}, nil
+}
+
+func (h *PostHandler) RepostPost(ctx context.Context, req *postv1.RepostPostRequest) (*postv1.RepostPostResponse, error) {
+	authorID, postID, err := likeTarget(ctx, req.GetPostId())
+	if err != nil {
+		return nil, err
+	}
+
+	text, err := post.NewText(req.GetText())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	p, err := h.postService.Repost(ctx, authorID, postID, text)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.RepostPostResponse{Post: toProtoPost(p, false)}, nil
 }
 
 func (h *PostHandler) DeletePost(ctx context.Context, req *postv1.DeletePostRequest) (*emptypb.Empty, error) {
@@ -206,7 +226,7 @@ func (h *PostHandler) UnlikePost(ctx context.Context, req *postv1.UnlikePostRequ
 	return &postv1.UnlikePostResponse{LikeCount: int32(likes)}, nil //nolint:gosec // likes come from an int4 column
 }
 
-// likeTarget is who likes which post.
+// likeTarget is who likes (or shares) which post.
 func likeTarget(ctx context.Context, rawPostID string) (uuid.UUID, uuid.UUID, error) {
 	userID, err := currentUserID(ctx)
 	if err != nil {

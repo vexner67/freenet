@@ -23,7 +23,7 @@ func TestLikesAndComments(t *testing.T) {
 
 	ann, bob := uuid.New(), uuid.New()
 
-	p, err := post.New(ann, ann, post.RestoreContent("привет", nil), time.Now())
+	p, err := post.New(ann, ann, post.RestoreContent("привет", nil, uuid.Nil), time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -173,3 +173,61 @@ func TestNewContent(t *testing.T) {
 		})
 	}
 }
+
+func TestNewRepost(t *testing.T) {
+	t.Parallel()
+
+	original := uuid.New()
+
+	c, err := post.NewRepost(original, "")
+	if err != nil || c.RepostOf() != original || c.Text() != "" {
+		t.Fatalf("a repost without a word = %+v, %v", c, err)
+	}
+
+	if _, err = post.NewRepost(uuid.Nil, "смотрите"); !errors.Is(err, post.ErrInvalidRepost) {
+		t.Fatalf("a repost of nothing: %v, want ErrInvalidRepost", err)
+	}
+
+	if plain := textOnly(t, "привет"); plain.RepostOf() != uuid.Nil {
+		t.Fatalf("a plain post shares %v", plain.RepostOf())
+	}
+}
+
+func TestPost_Shared(t *testing.T) {
+	t.Parallel()
+
+	ann, bob := uuid.New(), uuid.New()
+	original := uuid.New()
+
+	plain, err := post.New(ann, ann, textOnly(t, "привет"), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if plain.Shared() != plain.ID() {
+		t.Fatal("reposting a post shares the post itself")
+	}
+
+	silent, err := post.NewRepost(original, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	passedOn, err := post.New(bob, bob, silent, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if passedOn.Shared() != original {
+		t.Fatal("reposting a repost without a word shares its original")
+	}
+
+	said, err := post.NewRepost(original, "согласен")
+	if err != nil {
+		t.Fatal(err)
+	}
+	commented, err := post.New(bob, bob, said, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if commented.Shared() != commented.ID() {
+		t.Fatal("a repost with a word of its own is shared itself")
+	}
+}

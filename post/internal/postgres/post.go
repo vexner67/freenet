@@ -38,6 +38,28 @@ const savePostQuery = `
 	VALUES ($1, $2, $3, $4, $5, $6)
 `
 
+// saveRepostQuery counts the repost in the shared post and adds it in one
+// statement; nothing is added when the shared post is gone.
+const saveRepostQuery = `
+	WITH shared AS (
+		UPDATE posts
+		SET repost_count = repost_count + 1
+		WHERE id = $7
+		RETURNING id
+	)
+	INSERT INTO posts (
+		id,
+		wall_id,
+		author_id,
+		text,
+		photo_ids,
+		created_at,
+		repost_of
+	)
+	SELECT $1, $2, $3, $4, $5, $6, shared.id
+	FROM shared
+`
+
 func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	content := p.Content()
 
@@ -47,9 +69,23 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 		photos = []uuid.UUID{}
 	}
 
-	_, err := r.pool.Exec(ctx, savePostQuery, p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photos, p.CreatedAt())
+	args := []any{p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photos, p.CreatedAt()}
+
+	if content.RepostOf() == uuid.Nil {
+		if _, err := r.pool.Exec(ctx, savePostQuery, args...); err != nil {
+			return errs.Wrap("r.pool.Exec", err)
+		}
+
+		return nil
+	}
+
+	tag, err := r.pool.Exec(ctx, saveRepostQuery, append(args, content.RepostOf())...)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return post.ErrNotFound
 	}
 
 	return nil
@@ -63,8 +99,10 @@ const getPostQuery = `
 		text,
 		photo_ids,
 		created_at,
+		repost_of,
 		like_count,
-		comment_count
+		comment_count,
+		repost_count
 	FROM posts
 	WHERE id = $1
 `
@@ -89,8 +127,10 @@ const getPostsQuery = `
 		text,
 		photo_ids,
 		created_at,
+		repost_of,
 		like_count,
-		comment_count
+		comment_count,
+		repost_count
 	FROM posts
 	WHERE id = ANY($1)
 `
@@ -118,18 +158,31 @@ func (r *PostRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.
 	return posts, nil
 }
 
+// deletePostQuery deletes a post and uncounts it in the post it shared,
+// if any and still there, in one statement; it returns how many posts it
+// deleted.
 const deletePostQuery = `
-	DELETE FROM posts
-	WHERE id = $1
+	WITH deleted AS (
+		DELETE FROM posts
+		WHERE id = $1
+		RETURNING repost_of
+	), uncounted AS (
+		UPDATE posts
+		SET repost_count = repost_count - 1
+		WHERE id = (SELECT repost_of FROM deleted)
+	)
+	SELECT count(*)
+	FROM deleted
 `
 
 func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	tag, err := r.pool.Exec(ctx, deletePostQuery, id)
-	if err != nil {
-		return errs.Wrap("r.pool.Exec", err)
+	var deleted int
+
+	if err := r.pool.QueryRow(ctx, deletePostQuery, id).Scan(&deleted); err != nil {
+		return errs.Wrap("r.pool.QueryRow", err)
 	}
 
-	if tag.RowsAffected() == 0 {
+	if deleted == 0 {
 		return post.ErrNotFound
 	}
 
@@ -144,8 +197,10 @@ const listPostsByWallQuery = `
 		text,
 		photo_ids,
 		created_at,
+		repost_of,
 		like_count,
-		comment_count
+		comment_count,
+		repost_count
 	FROM posts
 	WHERE wall_id = $1
 		AND id < $2
@@ -194,8 +249,10 @@ const listPostsByAuthorsQuery = `
 		text,
 		photo_ids,
 		created_at,
+		repost_of,
 		like_count,
-		comment_count
+		comment_count,
+		repost_count
 	FROM posts
 	WHERE author_id = ANY($1)
 		AND id < $2
@@ -229,10 +286,12 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 		text                 string
 		photos               []uuid.UUID
 		createdAt            time.Time
+		repostOf             *uuid.UUID
 		counters             post.Counters
 	)
 
-	if err := row.Scan(&id, &wallID, &authorID, &text, &photos, &createdAt, &counters.Likes, &counters.Comments); err != nil {
+	err := row.Scan(&id, &wallID, &authorID, &text, &photos, &createdAt, &repostOf, &counters.Likes, &counters.Comments, &counters.Reposts)
+	if err != nil {
 		return nil, err
 	}
 
@@ -241,7 +300,12 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	}
 
 	// Data comes from our own table and was validated on write.
-	content := post.RestoreContent(post.Text(text), post.Photos(photos))
+	shared := uuid.Nil
+	if repostOf != nil {
+		shared = *repostOf
+	}
+
+	content := post.RestoreContent(post.Text(text), post.Photos(photos), shared)
 
 	return post.Restore(id, wallID, authorID, content, createdAt.UTC(), counters), nil
 }
