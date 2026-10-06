@@ -14,44 +14,64 @@ type wall struct {
 		ID       string            `json:"id"`
 		Text     string            `json:"text"`
 		Author   map[string]string `json:"author"`
+		Wall     map[string]string `json:"wall"`
 		Likes    int               `json:"likes"`
 		Liked    bool              `json:"liked"`
 		Comments int               `json:"comments"`
 	} `json:"posts"`
 	NextCursor string `json:"nextCursor"`
 	Total      int    `json:"total"`
+	CanPost    bool   `json:"canPost"`
 }
 
 func TestListPosts(t *testing.T) {
 	t.Parallel()
 
-	t.Run("wall of a nickname with its author", func(t *testing.T) {
+	t.Run("wall of a nickname with the authors of its posts", func(t *testing.T) {
 		t.Parallel()
 
 		h := newHarness(rest.Config{})
 		w := h.do("GET", "/api/v1/users/ann/posts?cursor=p5&limit=2", "")
 		got := decode[wall](t, w)
 
-		if w.Code != http.StatusOK || got.Total != 7 || got.NextCursor != "p1" || len(got.Posts) != 2 {
+		if w.Code != http.StatusOK || got.Total != 7 || got.NextCursor != "p1" || len(got.Posts) != 3 {
 			t.Fatalf("%d %+v", w.Code, got)
 		}
-		if a := got.Posts[0].Author; a["nickname"] != "ann" || a["name"] != "Ann" || a["id"] != "u1" {
-			t.Fatalf("author = %v", a)
+		if p := got.Posts[0]; p.Author["nickname"] != "bob" || p.Wall["nickname"] != "ann" {
+			t.Fatalf("bob's post on ann's wall: author = %v, wall = %v", p.Author, p.Wall)
+		}
+		if p := got.Posts[1]; p.Author["nickname"] != "ann" || p.Author["name"] != "Ann" || p.Author["id"] != "u1" || p.Wall != nil {
+			t.Fatalf("ann's own post: author = %v, wall = %v (want null)", p.Author, p.Wall)
 		}
 		if h.posts.cursor != "p5" || h.posts.limit != 2 || h.posts.token != "" {
 			t.Fatalf("cursor = %q, limit = %d, token = %q", h.posts.cursor, h.posts.limit, h.posts.token)
 		}
-		if p := got.Posts[1]; p.Likes != 2 || !p.Liked || got.Posts[0].Comments != 4 {
+		if p := got.Posts[2]; p.Likes != 2 || !p.Liked || got.Posts[1].Comments != 4 {
 			t.Fatalf("counters: %+v", got.Posts)
+		}
+		if got.CanPost || h.users.wallAsked != "" {
+			t.Fatalf("anonymous viewer: canPost = %v, asked about %q", got.CanPost, h.users.wallAsked)
 		}
 	})
 
-	t.Run("a signed-in viewer's token goes along for likes", func(t *testing.T) {
+	t.Run("a signed-in viewer's token goes along for likes and canPost", func(t *testing.T) {
 		t.Parallel()
 
 		h := newHarness(rest.Config{})
-		if w := h.do("GET", "/api/v1/users/ann/posts", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.posts.token != "tok" {
-			t.Fatalf("status = %d, token = %q", w.Code, h.posts.token)
+		w := h.do("GET", "/api/v1/users/ann/posts", "", "Authorization", "Bearer tok")
+		if got := decode[wall](t, w); w.Code != http.StatusOK || h.posts.token != "tok" || !got.CanPost || h.users.wallAsked != "u1" {
+			t.Fatalf("status = %d, token = %q, canPost = %v", w.Code, h.posts.token, got.CanPost)
+		}
+
+		closed := newHarness(rest.Config{})
+		closed.users.closedWall = true
+		if got := decode[wall](t, closed.do("GET", "/api/v1/users/ann/posts", "", "Authorization", "Bearer tok")); got.CanPost {
+			t.Fatal("canPost on a closed wall")
+		}
+
+		next := newHarness(rest.Config{})
+		if got := decode[wall](t, next.do("GET", "/api/v1/users/ann/posts?cursor=p1", "", "Authorization", "Bearer tok")); got.CanPost || next.users.wallAsked != "" {
+			t.Fatal("canPost is told on the first page only")
 		}
 	})
 
@@ -117,6 +137,76 @@ func TestCreatePost(t *testing.T) {
 	})
 }
 
+func TestCreateWallPost(t *testing.T) {
+	t.Parallel()
+
+	newAnn := func() harness {
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann", Gender: "female"}
+		return h
+	}
+
+	t.Run("on someone else's wall", func(t *testing.T) {
+		t.Parallel()
+
+		h := newAnn()
+		w := h.do("POST", "/api/v1/users/bob/posts", `{"text":"привет, Боб"}`, "Authorization", "Bearer tok")
+		got := decode[map[string]any](t, w)
+
+		if w.Code != http.StatusCreated || h.posts.wall != "u2" || h.users.wallAsked != "u2" || h.posts.created != "привет, Боб" {
+			t.Fatalf("%d %v; wall = %q, asked = %q", w.Code, got, h.posts.wall, h.users.wallAsked)
+		}
+		if author, _ := got["author"].(map[string]any); author["nickname"] != "ann" {
+			t.Fatalf("author = %v", got["author"])
+		}
+		if wall, _ := got["wall"].(map[string]any); wall["nickname"] != "bob" {
+			t.Fatalf("wall = %v", got["wall"])
+		}
+	})
+
+	t.Run("on the caller's own wall by nickname", func(t *testing.T) {
+		t.Parallel()
+
+		h := newAnn()
+		w := h.do("POST", "/api/v1/users/ann/posts", `{"text":"своё"}`, "Authorization", "Bearer tok")
+		got := decode[map[string]any](t, w)
+
+		if w.Code != http.StatusCreated || h.posts.wall != "" || h.users.wallAsked != "" || got["wall"] != nil {
+			t.Fatalf("%d %v; wall = %q, asked = %q", w.Code, got, h.posts.wall, h.users.wallAsked)
+		}
+	})
+
+	t.Run("a closed wall", func(t *testing.T) {
+		t.Parallel()
+
+		h := newAnn()
+		h.users.closedWall = true
+		w := h.do("POST", "/api/v1/users/bob/posts", `{"text":"x"}`, "Authorization", "Bearer tok")
+
+		got := decode[map[string]map[string]string](t, w)
+		if w.Code != http.StatusForbidden || got["error"]["message"] != "you cannot post on this wall" || h.posts.created != "" {
+			t.Fatalf("%d %v", w.Code, got)
+		}
+	})
+
+	t.Run("an unknown wall", func(t *testing.T) {
+		t.Parallel()
+
+		if w := newAnn().do("POST", "/api/v1/users/nobody/posts", `{"text":"x"}`, "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+			t.Fatalf("status = %d", w.Code)
+		}
+	})
+
+	t.Run("profile must be filled in first", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		if w := h.do("POST", "/api/v1/users/bob/posts", `{"text":"x"}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest || h.posts.created != "" {
+			t.Fatalf("status = %d", w.Code)
+		}
+	})
+}
+
 func TestDeletePost(t *testing.T) {
 	t.Parallel()
 
@@ -171,6 +261,14 @@ func TestGetPost(t *testing.T) {
 	// The wall of an author who deleted the account is gone with it.
 	if w = newHarness(rest.Config{}).do("GET", "/api/v1/posts/p2", ""); w.Code != http.StatusNotFound {
 		t.Fatalf("author gone: status = %d", w.Code)
+	}
+
+	guest := decode[map[string]any](t, newHarness(rest.Config{}).do("GET", "/api/v1/posts/p4", ""))
+	if author, _ := guest["author"].(map[string]any); author["nickname"] != "bob" {
+		t.Fatalf("author of a post on someone else's wall = %v", guest["author"])
+	}
+	if wall, _ := guest["wall"].(map[string]any); wall["nickname"] != "ann" {
+		t.Fatalf("wall = %v", guest["wall"])
 	}
 
 	if w = newHarness(rest.Config{}).do("GET", "/api/v1/posts/p404", ""); w.Code != http.StatusNotFound {
