@@ -124,4 +124,47 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("left = %v, %v", left, err)
 		}
 	})
+	t.Run("wall post", func(t *testing.T) {
+		wallPost := uuid.New()
+		e := notification.Event{Kind: notification.KindWallPost, RecipientID: bob, ActorID: ann, PostID: wallPost}
+
+		count := func() int {
+			t.Helper()
+
+			got, err := repo.List(ctx, service.Query{RecipientID: bob, Unread: true, Limit: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return len(got)
+		}
+
+		for range 2 { // one notification per post
+			n, err := notification.New(e, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = repo.Save(ctx, n); err != nil {
+				t.Fatalf("Save: %v", err)
+			}
+		}
+		if got := count(); got != 1 {
+			t.Fatalf("notifications about one wall post = %d, want 1", got)
+		}
+
+		if err := repo.Delete(ctx, e); err != nil || count() != 0 {
+			t.Fatalf("Delete: %v, left %d", err, count())
+		}
+
+		n, err := notification.New(e, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = repo.Save(ctx, n); err != nil {
+			t.Fatal(err)
+		}
+		if err = repo.DeleteByPost(ctx, wallPost); err != nil || count() != 0 {
+			t.Fatalf("DeleteByPost: %v, left %d", err, count())
+		}
+	})
 }

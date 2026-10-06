@@ -19,6 +19,8 @@ const (
 	KindComment Kind = "comment"
 	// KindFollow: the actor followed the recipient.
 	KindFollow Kind = "follow"
+	// KindWallPost: the actor wrote a post on the recipient's wall.
+	KindWallPost Kind = "wall_post"
 )
 
 var (
@@ -30,8 +32,9 @@ var (
 	ErrNotFound       = errors.New("notification not found")
 )
 
-// Event is what happened, to whom and by whom. PostID is set for likes and
-// comments, CommentID for comments only; unused IDs are uuid.Nil.
+// Event is what happened, to whom and by whom. PostID is set for likes,
+// comments and wall posts, CommentID for comments only; unused IDs are
+// uuid.Nil.
 type Event struct {
 	Kind        Kind
 	RecipientID uuid.UUID
@@ -59,7 +62,7 @@ func (e Event) Validate() error {
 	var ok bool
 
 	switch e.Kind {
-	case KindLike:
+	case KindLike, KindWallPost:
 		ok = hasPost && !hasComment
 	case KindComment:
 		ok = hasPost && hasComment

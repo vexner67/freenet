@@ -99,6 +99,11 @@ const (
 			AND actor_id = $1
 			AND recipient_id = $2
 	`
+	deleteWallPostNotificationQuery = `
+		DELETE FROM notifications
+		WHERE kind = 'wall_post'
+			AND post_id = $1
+	`
 )
 
 func (r *NotificationRepository) Delete(ctx context.Context, e notification.Event) error {
@@ -111,6 +116,8 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deleteCommentNotificationQuery, e.CommentID)
 	case notification.KindFollow:
 		_, err = r.pool.Exec(ctx, deleteFollowNotificationQuery, e.ActorID, e.RecipientID)
+	case notification.KindWallPost:
+		_, err = r.pool.Exec(ctx, deleteWallPostNotificationQuery, e.PostID)
 	default:
 		return notification.ErrUnknownKind
 	}

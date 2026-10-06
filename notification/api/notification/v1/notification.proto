@@ -29,9 +29,12 @@ enum Kind {
   KIND_COMMENT = 2;
   // The actor followed the recipient.
   KIND_FOLLOW = 3;
+  // The actor wrote a post on the recipient's wall.
+  KIND_WALL_POST = 4;
 }
 
-// Event: post_id is set for likes and comments, comment_id for comments.
+// Event: post_id is set for likes, comments and wall posts, comment_id for
+// comments.
 message Event {
   Kind kind = 1;
   string recipient_id = 2;
