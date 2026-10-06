@@ -79,3 +79,7 @@ test('snippet cuts long quotes, by characters', () => {
   assert.equal(snippet('раз два три', 7), 'раз два…');
   assert.equal(snippet('👋👋👋', 2), '👋👋…');
 });
+
+test('rate limits ask to wait without promising how long', () => {
+  assert.equal(errorText(new Error('too many requests, try again later')), 'Слишком часто. Подождите немного и попробуйте снова.');
+});
