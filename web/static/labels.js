@@ -178,6 +178,7 @@ const notificationVerbs = {
   comment: ['оставил', 'оставила', 'оставил(а)'],
   follow: ['подписался', 'подписалась', 'подписался(-ась)'],
   wall_post: ['написал', 'написала', 'написал(а)'],
+  repost: ['поделился', 'поделилась', 'поделился(-лась)'],
 };
 
 export function notificationVerb(type, gender) {
@@ -200,6 +201,11 @@ export function snippet(text, n) {
 // commentsLink is the link to the comments under a post, as on openvk.
 export function commentsLink(n) {
   return n > 0 ? `Комментарии (${n})` : 'Комментировать';
+}
+
+// shareLink is openvk's "Поделиться" with how many times it was shared.
+export function shareLink(n) {
+  return n > 0 ? `Поделиться (${n})` : 'Поделиться';
 }
 
 const errorTexts = {

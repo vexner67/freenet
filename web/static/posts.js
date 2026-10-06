@@ -1,9 +1,11 @@
-// One post as on openvk: avatar, "Name wrote", date, text, and a menu with
-// the link to the comments on the left and the like on the right.
+// One post as on openvk: avatar, "Name wrote", date, text, photos, the
+// shared post of a repost, and a menu with the links to the comments and
+// "Поделиться" on the left and the like on the right.
 
 import { api } from './api.js';
-import { commentsLink, formatPostDate, genitiveName, wrote } from './labels.js';
+import { commentsLink, formatPostDate, genitiveName, shareLink, wrote } from './labels.js';
 import { avatarURL, el, fullName } from './layout.js';
+import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
@@ -14,7 +16,7 @@ export function postPath(post) {
 
 // postNode renders a post. Options:
 //   onDelete(post, node) adds a "Удалить" link;
-//   canLike makes the heart clickable (signed-in viewers);
+//   canLike makes the heart and "Поделиться" clickable (signed-in viewers);
 //   onError(e) shows a failed like;
 //   withCommentsLink: false on the page of the post, which shows the comments;
 //   onWallOf: the viewer (null for anonymous) when posts of several walls
@@ -25,6 +27,7 @@ export function postNode(post, { onDelete, canLike = false, onError, withComment
 
   const links = [];
   if (withCommentsLink) links.push(el('a', { href: postPath(post), textContent: commentsLink(post.comments) }));
+  links.push(shareButton(post, canLike));
   if (onDelete) links.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(post, node) }));
 
   const node = el('div', { className: 'post' },
@@ -38,6 +41,7 @@ export function postNode(post, { onDelete, canLike = false, onError, withComment
       ),
       post.text ? el('div', { className: 'post-text', textContent: post.text }) : null,
       photosNode(post.photos ?? []),
+      post.repost ? sharedNode(post.repost) : null,
       el('div', { className: 'post-menu' },
         el('span', {}, ...separated(links)),
         likeButton(post, canLike, onError),
@@ -46,6 +50,47 @@ export function postNode(post, { onDelete, canLike = false, onError, withComment
   );
 
   return node;
+}
+
+// sharedNode is the post a repost shares, compact as on openvk: a small
+// avatar, the name, the date, the text and photos, no menu. A post shared
+// by the shared post itself is a link, not one more box inside.
+function sharedNode(shared) {
+  if (shared.deleted) {
+    return el('div', { className: 'post-shared deleted', textContent: 'Запись удалена.' });
+  }
+
+  const path = '/' + shared.author.nickname;
+
+  return el('div', { className: 'post-shared' },
+    el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(shared.author, 'small'), alt: '' })),
+    el('div', { className: 'post-main' },
+      el('div', { className: 'post-author' },
+        el('a', { className: 'post-name', href: path, textContent: fullName(shared.author) }),
+        ' ' + wrote(shared.author.gender),
+        ...(shared.wall ? [' ', wallLink(shared.wall, null)] : []),
+        el('div', { className: 'post-date' }, el('a', { href: postPath(shared), textContent: formatPostDate(shared.createdAt) })),
+      ),
+      shared.text ? el('div', { className: 'post-text', textContent: shared.text }) : null,
+      photosNode(shared.photos ?? []),
+      shared.repostOf ? el('a', { className: 'post-shared-link', href: postPath({ id: shared.repostOf }), textContent: 'Открыть запись' }) : null,
+    ),
+  );
+}
+
+// shareButton is "Поделиться (N)"; it changes post.reposts, as likeButton
+// changes the likes.
+function shareButton(post, canShare) {
+  const button = el(canShare ? 'a' : 'span', { textContent: shareLink(post.reposts) });
+
+  if (canShare) {
+    button.addEventListener('click', () => openShare(post, () => {
+      post.reposts++;
+      button.textContent = shareLink(post.reposts);
+    }));
+  }
+
+  return button;
 }
 
 // wallLink names the wall a post is on: "на вашей стене" for the viewer's.

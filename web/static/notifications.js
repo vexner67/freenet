@@ -30,6 +30,9 @@ function notificationText(n) {
         ` от ${formatPostDate(n.post.createdAt)}: «${snippet(n.comment.text, COMMENT_SNIPPET)}».`];
     case 'follow':
       return [name, ` ${verb} на вас.`];
+    case 'repost':
+      return [name, ` ${verb} вашей `, postLink(n.post, 'записью'),
+        ...(n.post.text ? [`: «${snippet(n.post.text, COMMENT_SNIPPET)}».`] : ['.'])];
     case 'wall_post':
       return [name, ` ${verb} на вашей стене `, postLink(n.post, 'запись'),
         ...(n.post.text ? [`: «${snippet(n.post.text, COMMENT_SNIPPET)}».`] : ['.'])];
