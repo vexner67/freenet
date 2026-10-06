@@ -95,7 +95,9 @@ func TestUser_PublicProfile_Privacy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	u.UpdatePrivacy(user.Privacy{ShowWorldview: true, ShowBirthday: true})
+	if err = u.UpdatePrivacy(user.Privacy{ShowWorldview: true, ShowBirthday: true, WallWrite: user.WallWriteEveryone}); err != nil {
+		t.Fatal(err)
+	}
 	got := u.PublicProfile()
 
 	if got.Worldview != user.WorldviewBuddhism || got.Birthday != birthday {

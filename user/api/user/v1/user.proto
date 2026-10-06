@@ -36,6 +36,10 @@ service UserService {
   rpc GetFollowStats(GetFollowStatsRequest) returns (GetFollowStatsResponse);
   rpc ListFollowers(ListFollowsRequest) returns (ListFollowsResponse);
   rpc ListFollowing(ListFollowsRequest) returns (ListFollowsResponse);
+
+  // Requires an access token: whether the caller may write on the user's
+  // wall, as the user's privacy allows.
+  rpc CanPostOnWall(CanPostOnWallRequest) returns (CanPostOnWallResponse);
 }
 
 message User {
@@ -57,13 +61,24 @@ message User {
   string avatar_id = 14;
 }
 
-// Which sensitive fields other users see in PublicProfile; all false
-// (hidden) by default.
+// Which sensitive fields other users see in PublicProfile, all false
+// (hidden) by default, and who may write on the wall.
 message PrivacySettings {
   bool show_birthday = 1;
   bool show_relationship = 2;
   bool show_worldview = 3;
   bool show_political_views = 4;
+  // Required in UpdatePrivacy; WALL_WRITE_FOLLOWING by default.
+  WallWrite wall_write = 5;
+}
+
+// Who may write on a user's wall besides the user.
+enum WallWrite {
+  WALL_WRITE_UNSPECIFIED = 0;
+  WALL_WRITE_EVERYONE = 1;
+  // The people the user follows.
+  WALL_WRITE_FOLLOWING = 2;
+  WALL_WRITE_ONLY_ME = 3;
 }
 
 // Fields 7-10 are empty both when not set and when hidden by the owner.
@@ -241,4 +256,13 @@ message SearchUsersResponse {
   repeated PublicProfile users = 1;
   // Empty on the last page.
   string next_cursor = 2;
+}
+
+message CanPostOnWallRequest {
+  // The owner of the wall.
+  string user_id = 1;
+}
+
+message CanPostOnWallResponse {
+  bool allowed = 1;
 }

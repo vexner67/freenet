@@ -127,6 +127,23 @@ func (s *FollowService) ListFollowing(ctx context.Context, userID, cursor uuid.U
 	return s.page(ctx, userID, cursor, size, s.listRepo.ListFollowing, func(_, following int) int { return following })
 }
 
+// CanPostOnWall tells whether authorID may write on ownerID's wall: the
+// owner's privacy decides, and "following" depends on the owner's follows,
+// which is why it lives here. user.ErrNotFound for an unknown owner.
+func (s *FollowService) CanPostOnWall(ctx context.Context, authorID, ownerID uuid.UUID) (bool, error) {
+	owner, err := s.userRepo.GetByID(ctx, ownerID)
+	if err != nil {
+		return false, errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	follows, err := s.followRepo.IsFollowing(ctx, ownerID, authorID)
+	if err != nil {
+		return false, errs.Wrap("s.followRepo.IsFollowing", err)
+	}
+
+	return owner.CanPostOnWall(authorID, follows), nil
+}
+
 // FollowingIDs are the users whose posts make up userID's news feed.
 func (s *FollowService) FollowingIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	ids, err := s.listRepo.FollowingIDs(ctx, userID, MaxFeedSources)

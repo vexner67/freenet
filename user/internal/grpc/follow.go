@@ -21,6 +21,7 @@ type FollowService interface {
 	ListFollowers(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
 	ListFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
 	FollowingIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+	CanPostOnWall(ctx context.Context, authorID, ownerID uuid.UUID) (bool, error)
 }
 
 func parseID(s, what string) (uuid.UUID, error) {
@@ -185,4 +186,26 @@ func (h *UserHandler) listFollows(
 	}
 
 	return resp, nil
+}
+
+func (h *UserHandler) CanPostOnWall(
+	ctx context.Context,
+	req *userv1.CanPostOnWallRequest,
+) (*userv1.CanPostOnWallResponse, error) {
+	authorID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ownerID, err := parseID(req.GetUserId(), "user id")
+	if err != nil {
+		return nil, err
+	}
+
+	allowed, err := h.followService.CanPostOnWall(ctx, authorID, ownerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.CanPostOnWallResponse{Allowed: allowed}, nil
 }

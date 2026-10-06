@@ -30,14 +30,16 @@ func (p Profile) validate() error {
 	return nil
 }
 
-// Privacy says which sensitive fields other users may see. Worldview,
-// political views, relationship and birthday are special categories of
-// personal data, so all of them are hidden until the owner opens them.
+// Privacy says which sensitive fields other users may see and who may
+// write on the wall. Worldview, political views, relationship and birthday
+// are special categories of personal data, so all of them are hidden until
+// the owner opens them.
 type Privacy struct {
 	ShowBirthday       bool
 	ShowRelationship   bool
 	ShowWorldview      bool
 	ShowPoliticalViews bool
+	WallWrite          WallWrite
 }
 
 // PublicProfile is the part of a profile other users may see. Hidden
@@ -75,8 +77,9 @@ func New(email Email) (*User, error) {
 	}
 
 	return &User{
-		id:    id,
-		email: email,
+		id:      id,
+		email:   email,
+		privacy: Privacy{WallWrite: DefaultWallWrite},
 	}, nil
 }
 
@@ -102,8 +105,15 @@ func (u *User) UpdateProfile(profile Profile) error {
 	return nil
 }
 
-func (u *User) UpdatePrivacy(privacy Privacy) {
+// UpdatePrivacy replaces all privacy settings; WallWrite must be set.
+func (u *User) UpdatePrivacy(privacy Privacy) error {
+	if _, err := NewWallWrite(privacy.WallWrite.String()); err != nil {
+		return err
+	}
+
 	u.privacy = privacy
+
+	return nil
 }
 
 // SetAvatar points to the photo stored by the media service; uuid.Nil

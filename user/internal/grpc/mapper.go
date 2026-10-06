@@ -45,15 +45,49 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		ShowRelationship:   p.ShowRelationship,
 		ShowWorldview:      p.ShowWorldview,
 		ShowPoliticalViews: p.ShowPoliticalViews,
+		WallWrite:          toProtoWallWrite(p.WallWrite),
 	}
 }
 
-func fromProtoPrivacy(p *userv1.PrivacySettings) user.Privacy {
+// fromProtoPrivacy validates the settings; its errors are meant for the client.
+func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
+	wallWrite, err := user.NewWallWrite(fromProtoWallWrite(p.GetWallWrite()))
+	if err != nil {
+		return user.Privacy{}, err
+	}
+
 	return user.Privacy{
 		ShowBirthday:       p.GetShowBirthday(),
 		ShowRelationship:   p.GetShowRelationship(),
 		ShowWorldview:      p.GetShowWorldview(),
 		ShowPoliticalViews: p.GetShowPoliticalViews(),
+		WallWrite:          wallWrite,
+	}, nil
+}
+
+func toProtoWallWrite(w user.WallWrite) userv1.WallWrite {
+	switch w {
+	case user.WallWriteEveryone:
+		return userv1.WallWrite_WALL_WRITE_EVERYONE
+	case user.WallWriteFollowing:
+		return userv1.WallWrite_WALL_WRITE_FOLLOWING
+	case user.WallWriteOnlyMe:
+		return userv1.WallWrite_WALL_WRITE_ONLY_ME
+	default:
+		return userv1.WallWrite_WALL_WRITE_UNSPECIFIED
+	}
+}
+
+func fromProtoWallWrite(w userv1.WallWrite) string {
+	switch w {
+	case userv1.WallWrite_WALL_WRITE_EVERYONE:
+		return "everyone"
+	case userv1.WallWrite_WALL_WRITE_FOLLOWING:
+		return "following"
+	case userv1.WallWrite_WALL_WRITE_ONLY_ME:
+		return "only_me"
+	default:
+		return ""
 	}
 }
 

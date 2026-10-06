@@ -34,6 +34,7 @@ const (
 	UserService_GetFollowStats_FullMethodName     = "/user.v1.UserService/GetFollowStats"
 	UserService_ListFollowers_FullMethodName      = "/user.v1.UserService/ListFollowers"
 	UserService_ListFollowing_FullMethodName      = "/user.v1.UserService/ListFollowing"
+	UserService_CanPostOnWall_FullMethodName      = "/user.v1.UserService/CanPostOnWall"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -64,6 +65,9 @@ type UserServiceClient interface {
 	GetFollowStats(ctx context.Context, in *GetFollowStatsRequest, opts ...grpc.CallOption) (*GetFollowStatsResponse, error)
 	ListFollowers(ctx context.Context, in *ListFollowsRequest, opts ...grpc.CallOption) (*ListFollowsResponse, error)
 	ListFollowing(ctx context.Context, in *ListFollowsRequest, opts ...grpc.CallOption) (*ListFollowsResponse, error)
+	// Requires an access token: whether the caller may write on the user's
+	// wall, as the user's privacy allows.
+	CanPostOnWall(ctx context.Context, in *CanPostOnWallRequest, opts ...grpc.CallOption) (*CanPostOnWallResponse, error)
 }
 
 type userServiceClient struct {
@@ -214,6 +218,16 @@ func (c *userServiceClient) ListFollowing(ctx context.Context, in *ListFollowsRe
 	return out, nil
 }
 
+func (c *userServiceClient) CanPostOnWall(ctx context.Context, in *CanPostOnWallRequest, opts ...grpc.CallOption) (*CanPostOnWallResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CanPostOnWallResponse)
+	err := c.cc.Invoke(ctx, UserService_CanPostOnWall_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -242,6 +256,9 @@ type UserServiceServer interface {
 	GetFollowStats(context.Context, *GetFollowStatsRequest) (*GetFollowStatsResponse, error)
 	ListFollowers(context.Context, *ListFollowsRequest) (*ListFollowsResponse, error)
 	ListFollowing(context.Context, *ListFollowsRequest) (*ListFollowsResponse, error)
+	// Requires an access token: whether the caller may write on the user's
+	// wall, as the user's privacy allows.
+	CanPostOnWall(context.Context, *CanPostOnWallRequest) (*CanPostOnWallResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -293,6 +310,9 @@ func (UnimplementedUserServiceServer) ListFollowers(context.Context, *ListFollow
 }
 func (UnimplementedUserServiceServer) ListFollowing(context.Context, *ListFollowsRequest) (*ListFollowsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListFollowing not implemented")
+}
+func (UnimplementedUserServiceServer) CanPostOnWall(context.Context, *CanPostOnWallRequest) (*CanPostOnWallResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CanPostOnWall not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -567,6 +587,24 @@ func _UserService_ListFollowing_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_CanPostOnWall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CanPostOnWallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CanPostOnWall(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CanPostOnWall_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CanPostOnWall(ctx, req.(*CanPostOnWallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -629,6 +667,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListFollowing",
 			Handler:    _UserService_ListFollowing_Handler,
+		},
+		{
+			MethodName: "CanPostOnWall",
+			Handler:    _UserService_CanPostOnWall_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

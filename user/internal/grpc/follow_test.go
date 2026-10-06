@@ -144,3 +144,56 @@ func TestFollowErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestCanPostOnWall(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, annID := s.member(t, "ann")
+	bob, bobID := s.member(t, "bob")
+
+	canPost := func(ctx context.Context, ownerID string) bool {
+		t.Helper()
+
+		resp, err := s.client.CanPostOnWall(ctx, &userv1.CanPostOnWallRequest{UserId: ownerID})
+		if err != nil {
+			t.Fatalf("CanPostOnWall: %v", err)
+		}
+
+		return resp.GetAllowed()
+	}
+
+	me, err := s.client.GetMe(ann, &userv1.GetMeRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := me.GetUser().GetPrivacy().GetWallWrite(); got != userv1.WallWrite_WALL_WRITE_FOLLOWING {
+		t.Fatalf("default wall_write = %v, want FOLLOWING", got)
+	}
+
+	if !canPost(ann, annID) || canPost(bob, annID) {
+		t.Fatal("a new wall is open to its owner and to the people the owner follows")
+	}
+
+	if _, err = s.client.Follow(ann, &userv1.FollowRequest{UserId: bobID}); err != nil {
+		t.Fatal(err)
+	}
+	if !canPost(bob, annID) {
+		t.Fatal("ann follows bob, so he may post on her wall")
+	}
+
+	_, err = s.client.CanPostOnWall(context.Background(), &userv1.CanPostOnWallRequest{UserId: annID})
+	if got := status.Code(err); got != codes.Unauthenticated {
+		t.Fatalf("without token: code = %v", got)
+	}
+
+	_, err = s.client.CanPostOnWall(bob, &userv1.CanPostOnWallRequest{UserId: "nope"})
+	if got := status.Code(err); got != codes.InvalidArgument {
+		t.Fatalf("bad id: code = %v", got)
+	}
+
+	_, err = s.client.CanPostOnWall(bob, &userv1.CanPostOnWallRequest{UserId: "0192f0a0-0000-7000-8000-000000000000"})
+	if got := status.Code(err); got != codes.NotFound {
+		t.Fatalf("unknown owner: code = %v", got)
+	}
+}
