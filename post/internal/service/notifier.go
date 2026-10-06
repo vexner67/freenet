@@ -13,11 +13,13 @@ const (
 	EventLike EventKind = iota + 1
 	EventComment
 	EventWallPost
+	EventRepost
 )
 
-// Event: RecipientID is the author of the post for likes and comments and
-// the owner of the wall for wall posts, ActorID who liked, commented or
-// wrote; CommentID is uuid.Nil but for comments.
+// Event: RecipientID is the author of the post for likes, comments and
+// reposts and the owner of the wall for wall posts, ActorID who did it.
+// PostID is the post, but for reposts the repost, which shows the shared
+// post. CommentID is uuid.Nil but for comments.
 type Event struct {
 	Kind        EventKind
 	RecipientID uuid.UUID

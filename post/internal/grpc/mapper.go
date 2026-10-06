@@ -54,6 +54,8 @@ func toProtoPost(p *post.Post, liked bool) *postv1.Post {
 		CreatedAt:    timestamppb.New(p.CreatedAt()),
 		LikeCount:    int32(counters.Likes),    //nolint:gosec // counters come from int4 columns
 		CommentCount: int32(counters.Comments), //nolint:gosec // counters come from int4 columns
+		RepostCount:  int32(counters.Reposts),  //nolint:gosec // counters come from int4 columns
+		RepostOf:     idString(p.Content().RepostOf()),
 		Liked:        liked,
 	}
 }
@@ -79,9 +81,14 @@ func toProtoComment(c *post.Comment) *postv1.Comment {
 
 // cursorString is "" on the last page.
 func cursorString(cursor uuid.UUID) string {
-	if cursor == uuid.Nil {
+	return idString(cursor)
+}
+
+// idString is "" for uuid.Nil, as proto fields say "none".
+func idString(id uuid.UUID) string {
+	if id == uuid.Nil {
 		return ""
 	}
 
-	return cursor.String()
+	return id.String()
 }

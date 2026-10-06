@@ -52,11 +52,12 @@ func (t Text) String() string {
 	return string(t)
 }
 
-// Counters are how many likes and comments a post has. Storage keeps them
-// with the post, so a wall is read without counting.
+// Counters are how many likes, comments and reposts a post has. Storage
+// keeps them with the post, so a wall is read without counting.
 type Counters struct {
 	Likes    int
 	Comments int
+	Reposts  int
 }
 
 // Post is written by its author on a wall; the wall is that of its owner,
@@ -105,6 +106,17 @@ func Restore(id, wallID, authorID uuid.UUID, content Content, createdAt time.Tim
 // the wall, who keeps the wall clean.
 func (p *Post) CanBeDeletedBy(userID uuid.UUID) bool {
 	return userID == p.authorID || userID == p.wallID
+}
+
+// Shared is what reposting p shares: p itself, or, when p only passes on
+// another post without a word, that post — a chain of empty reposts
+// would show nothing but the post at its end.
+func (p *Post) Shared() uuid.UUID {
+	if p.content.passesOn() {
+		return p.content.repostOf
+	}
+
+	return p.id
 }
 
 // OnOwnWall tells whether the author wrote on their own wall.

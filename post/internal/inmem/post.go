@@ -62,6 +62,13 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	r.s.mu.Lock()
 	defer r.s.mu.Unlock()
 
+	if shared := p.Content().RepostOf(); shared != uuid.Nil {
+		if _, ok := r.s.posts[shared]; !ok {
+			return post.ErrNotFound
+		}
+		r.s.count(shared, func(c *post.Counters) { c.Reposts++ })
+	}
+
 	r.s.posts[p.ID()] = p
 
 	return nil
@@ -109,8 +116,14 @@ func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	r.s.mu.Lock()
 	defer r.s.mu.Unlock()
 
-	if _, ok := r.s.posts[id]; !ok {
+	p, ok := r.s.posts[id]
+	if !ok {
 		return post.ErrNotFound
+	}
+
+	// The shared post may be gone already: reposts outlive it.
+	if shared := p.Content().RepostOf(); shared != uuid.Nil && r.s.posts[shared] != nil {
+		r.s.count(shared, func(c *post.Counters) { c.Reposts-- })
 	}
 
 	delete(r.s.posts, id)

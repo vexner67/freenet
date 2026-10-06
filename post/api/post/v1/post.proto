@@ -12,6 +12,9 @@ service PostService {
   // by its author or by the owner of its wall.
   rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
   rpc DeletePost(DeletePostRequest) returns (google.protobuf.Empty);
+  // Requires an access token: shares a post on the caller's own wall. A
+  // repost without text of a repost without text shares its original.
+  rpc RepostPost(RepostPostRequest) returns (RepostPostResponse);
 
   // Public: one post.
   rpc GetPost(GetPostRequest) returns (GetPostResponse);
@@ -55,6 +58,10 @@ message Post {
   repeated string photo_ids = 8;
   // The owner of the wall the post is on: author_id on the author's own wall.
   string wall_id = 9;
+  // The shared post when this is a repost, else empty. It may be gone:
+  // a repost outlives it.
+  string repost_of = 10;
+  int32 repost_count = 11;
 }
 
 message Comment {
@@ -78,6 +85,16 @@ message CreatePostRequest {
 }
 
 message CreatePostResponse {
+  Post post = 1;
+}
+
+message RepostPostRequest {
+  string post_id = 1;
+  // What the caller says about it; may be empty.
+  string text = 2;
+}
+
+message RepostPostResponse {
   Post post = 1;
 }
 

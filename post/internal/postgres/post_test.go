@@ -46,7 +46,7 @@ func TestPostRepository(t *testing.T) {
 
 	var saved []*post.Post
 	for _, text := range []string{"раз", "два", "три"} {
-		p, err := post.New(author, author, post.RestoreContent(post.Text(text), nil), time.Now())
+		p, err := post.New(author, author, post.RestoreContent(post.Text(text), nil, uuid.Nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +68,7 @@ func TestPostRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pictured, err := post.New(author, author, post.RestoreContent("", photos), time.Now())
+	pictured, err := post.New(author, author, post.RestoreContent("", photos, uuid.Nil), time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestPostRepository(t *testing.T) {
 	}
 
 	other := uuid.New()
-	theirs, err := post.New(other, other, post.RestoreContent("чужая", nil), time.Now())
+	theirs, err := post.New(other, other, post.RestoreContent("чужая", nil, uuid.Nil), time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -114,7 +114,7 @@ func TestPostRepository(t *testing.T) {
 
 	// other writes on author's wall: the post is on that wall and among
 	// other's posts.
-	guest, err := post.New(author, other, post.RestoreContent("в гостях", nil), time.Now())
+	guest, err := post.New(author, other, post.RestoreContent("в гостях", nil, uuid.Nil), time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -74,6 +74,12 @@ func TestClient(t *testing.T) {
 		t.Fatalf("wall post event = %v", e)
 	}
 
+	repost := service.Event{Kind: service.EventRepost, RecipientID: uuid.New(), ActorID: uuid.New(), PostID: uuid.New()}
+	c.Notify(context.Background(), repost)
+	if e := api.notified; e.GetKind() != notificationv1.Kind_KIND_REPOST || e.GetPostId() != repost.PostID.String() {
+		t.Fatalf("repost event = %v", e)
+	}
+
 	postID := uuid.New()
 	c.ForgetPost(context.Background(), postID)
 	if api.forgot != postID.String() {

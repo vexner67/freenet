@@ -12,6 +12,7 @@ var (
 	ErrTooManyPhotos  = errors.New("a post has at most 10 photos")
 	ErrDuplicatePhoto = errors.New("the same photo is attached twice")
 	ErrInvalidPhoto   = errors.New("invalid photo id")
+	ErrInvalidRepost  = errors.New("invalid post id to share")
 )
 
 // Photos are the IDs of a post's photos in the media service, in the order
@@ -38,10 +39,12 @@ func NewPhotos(ids []uuid.UUID) (Photos, error) {
 	return Photos(ids), nil
 }
 
-// Content is what a post shows: text, photos or both, never nothing.
+// Content is what a post shows: text, photos, a shared post (a repost)
+// or some of them, never nothing.
 type Content struct {
-	text   Text
-	photos Photos
+	text     Text
+	photos   Photos
+	repostOf uuid.UUID
 }
 
 func NewContent(text Text, photos Photos) (Content, error) {
@@ -52,9 +55,20 @@ func NewContent(text Text, photos Photos) (Content, error) {
 	return Content{text: text, photos: photos}, nil
 }
 
-// RestoreContent rebuilds content from storage without validation.
-func RestoreContent(text Text, photos Photos) Content {
-	return Content{text: text, photos: photos}
+// NewRepost is the content of a repost: the shared post repostOf, with
+// what the reposter says about it, if anything.
+func NewRepost(repostOf uuid.UUID, text Text) (Content, error) {
+	if repostOf == uuid.Nil {
+		return Content{}, ErrInvalidRepost
+	}
+
+	return Content{text: text, repostOf: repostOf}, nil
+}
+
+// RestoreContent rebuilds content from storage without validation;
+// repostOf is uuid.Nil but for reposts.
+func RestoreContent(text Text, photos Photos, repostOf uuid.UUID) Content {
+	return Content{text: text, photos: photos, repostOf: repostOf}
 }
 
 func (c Content) Text() Text {
@@ -63,4 +77,14 @@ func (c Content) Text() Text {
 
 func (c Content) Photos() Photos {
 	return c.photos
+}
+
+// RepostOf is the shared post; uuid.Nil when the post is not a repost.
+func (c Content) RepostOf() uuid.UUID {
+	return c.repostOf
+}
+
+// passesOn tells a repost that adds nothing to the post it shares.
+func (c Content) passesOn() bool {
+	return c.repostOf != uuid.Nil && c.text == "" && len(c.photos) == 0
 }

@@ -16,6 +16,7 @@ var kinds = map[service.EventKind]notificationv1.Kind{
 	service.EventLike:     notificationv1.Kind_KIND_LIKE,
 	service.EventComment:  notificationv1.Kind_KIND_COMMENT,
 	service.EventWallPost: notificationv1.Kind_KIND_WALL_POST,
+	service.EventRepost:   notificationv1.Kind_KIND_REPOST,
 }
 
 // Client is a best-effort service.Notifier: a failed call is logged and

@@ -351,3 +351,49 @@ func TestSomeoneElsesWall(t *testing.T) {
 		t.Fatalf("the owner of the wall deletes: %v", err)
 	}
 }
+
+func TestRepostPost(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	original, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: "оригинал"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := s.client.RepostPost(s.as(t, bob), &postv1.RepostPostRequest{PostId: original.GetPost().GetId(), Text: " смотрите "})
+	if err != nil {
+		t.Fatalf("RepostPost: %v", err)
+	}
+	if p := resp.GetPost(); p.GetRepostOf() != original.GetPost().GetId() || p.GetWallId() != bob.String() || p.GetText() != "смотрите" {
+		t.Fatalf("repost = %v", p)
+	}
+
+	got, err := s.client.GetPost(context.Background(), &postv1.GetPostRequest{Id: original.GetPost().GetId()})
+	if err != nil || got.GetPost().GetRepostCount() != 1 || got.GetPost().GetRepostOf() != "" {
+		t.Fatalf("original = %v, %v", got.GetPost(), err)
+	}
+
+	tests := []struct {
+		name string
+		ctx  context.Context
+		req  *postv1.RepostPostRequest
+		code codes.Code
+	}{
+		{"without a token", context.Background(), &postv1.RepostPostRequest{PostId: original.GetPost().GetId()}, codes.Unauthenticated},
+		{"bad id", s.as(t, bob), &postv1.RepostPostRequest{PostId: "x"}, codes.InvalidArgument},
+		{"missing post", s.as(t, bob), &postv1.RepostPostRequest{PostId: uuid.NewString()}, codes.NotFound},
+		{"text too long", s.as(t, bob), &postv1.RepostPostRequest{PostId: original.GetPost().GetId(), Text: strings.Repeat("я", 1001)}, codes.InvalidArgument},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := s.client.RepostPost(tt.ctx, tt.req)
+			if got := status.Code(err); got != tt.code {
+				t.Fatalf("code = %v, want %v", got, tt.code)
+			}
+		})
+	}
+}

@@ -398,3 +398,73 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 		t.Fatalf("forgotten = %v", notifier.forgotten)
 	}
 }
+
+func TestPostService_Repost(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	notifier := &fakeNotifier{}
+	svc := service.NewPostService(store.Posts(), store.Likes(), notifier)
+
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	original := write(t, svc, ann, "оригинал")[0]
+
+	shared, err := svc.Repost(ctx, bob, original.ID(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if shared.WallID() != bob || shared.AuthorID() != bob || shared.Content().RepostOf() != original.ID() {
+		t.Fatalf("bob's repost: wall %v, author %v, shares %v", shared.WallID(), shared.AuthorID(), shared.Content().RepostOf())
+	}
+
+	want := service.Event{Kind: service.EventRepost, RecipientID: ann, ActorID: bob, PostID: shared.ID()}
+	if len(notifier.notified) != 1 || notifier.notified[0] != want {
+		t.Fatalf("notified = %+v, want %+v", notifier.notified, want)
+	}
+
+	// Cat shares bob's repost without a word: the original is shared.
+	passed, err := svc.Repost(ctx, cat, shared.ID(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if passed.Content().RepostOf() != original.ID() {
+		t.Fatalf("a repost of an empty repost shares %v, want the original", passed.Content().RepostOf())
+	}
+
+	// A repost with a word of its own is shared itself.
+	said, err := svc.Repost(ctx, cat, original.ID(), "согласна")
+	if err != nil {
+		t.Fatal(err)
+	}
+	ownWord, err := svc.Repost(ctx, bob, said.ID(), "")
+	if err != nil || ownWord.Content().RepostOf() != said.ID() {
+		t.Fatalf("sharing a repost with a word: %v, %v", ownWord, err)
+	}
+
+	got, _, err := svc.Get(ctx, uuid.Nil, original.ID())
+	if err != nil || got.Counters().Reposts != 3 {
+		t.Fatalf("original reposts = %+v, %v; want 3", got.Counters(), err)
+	}
+
+	if _, err = svc.Repost(ctx, ann, original.ID(), "моё"); err != nil {
+		t.Fatal(err)
+	}
+	if n := len(notifier.notified); n != 4 {
+		t.Fatalf("notifications = %d, want 4 (own reposts notify nobody)", n)
+	}
+
+	if err = svc.Delete(ctx, bob, shared.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if got, _, _ = svc.Get(ctx, uuid.Nil, original.ID()); got.Counters().Reposts != 3 {
+		t.Fatalf("after deleting a repost: %+v", got.Counters())
+	}
+	if f := notifier.forgotten; len(f) != 1 || f[0] != shared.ID() {
+		t.Fatalf("forgotten = %v, want the repost (its notification goes)", f)
+	}
+
+	if _, err = svc.Repost(ctx, bob, uuid.New(), ""); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("sharing nothing: %v, want ErrNotFound", err)
+	}
+}

@@ -25,6 +25,8 @@ var (
 )
 
 type PostRepository interface {
+	// Save counts a repost in the post it shares and returns
+	// post.ErrNotFound when that post is gone; Delete uncounts it.
 	Save(ctx context.Context, p *post.Post) error
 	// Get and Delete return post.ErrNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*post.Post, error)
@@ -94,6 +96,46 @@ func (s *PostService) Create(ctx context.Context, wallID, authorID uuid.UUID, co
 	return p, nil
 }
 
+// Repost shares postID on the author's own wall, with text that may be
+// empty, as openvk's "Поделиться" does. A repost that passes another post
+// on without a word is not shared itself: its original is (see
+// post.Shared). The author of the shared post hears about it.
+func (s *PostService) Repost(ctx context.Context, authorID, postID uuid.UUID, text post.Text) (*post.Post, error) {
+	shared, err := s.postRepo.Get(ctx, postID)
+	if err != nil {
+		return nil, errs.Wrap("s.postRepo.Get", err)
+	}
+
+	if id := shared.Shared(); id != shared.ID() {
+		if shared, err = s.postRepo.Get(ctx, id); err != nil {
+			return nil, errs.Wrap("s.postRepo.Get", err)
+		}
+	}
+
+	content, err := post.NewRepost(shared.ID(), text)
+	if err != nil {
+		return nil, errs.Wrap("post.NewRepost", err)
+	}
+
+	repost, err := post.New(authorID, authorID, content, s.now())
+	if err != nil {
+		return nil, errs.Wrap("post.New", err)
+	}
+
+	// Save still reports a shared post deleted in between.
+	if err = s.postRepo.Save(ctx, repost); err != nil {
+		return nil, errs.Wrap("s.postRepo.Save", err)
+	}
+
+	if shared.AuthorID() != authorID {
+		s.notifier.Notify(ctx, Event{Kind: EventRepost, RecipientID: shared.AuthorID(), ActorID: authorID, PostID: repost.ID()})
+	}
+
+	return repost, nil
+}
+
+// Delete removes a post; a deleted repost takes its notification with it,
+// since the notification is about the repost (ForgetPost).
 func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID) error {
 	p, err := s.postRepo.Get(ctx, postID)
 	if err != nil {
