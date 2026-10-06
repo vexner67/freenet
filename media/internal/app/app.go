@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"time"
 
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	"github.com/vexner67/freenet/media/internal/config"
@@ -17,17 +18,23 @@ import (
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/ratelimit"
 	"google.golang.org/grpc"
 )
 
-// maxMessageBytes fits an upload of imaging.MaxUploadBytes with headroom;
-// gRPC allows 4 MB by default.
-const maxMessageBytes = imaging.MaxUploadBytes + 1<<20
+const (
+	// maxMessageBytes fits an upload of imaging.MaxUploadBytes with
+	// headroom; gRPC allows 4 MB by default.
+	maxMessageBytes = imaging.MaxUploadBytes + 1<<20
+
+	connectTimeout = 5 * time.Second
+)
 
 type App struct {
-	logger *slog.Logger
-	server *grpcserver.Server
-	addr   string
+	logger  *slog.Logger
+	limiter ratelimit.Store
+	server  *grpcserver.Server
+	addr    string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -57,6 +64,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("newStores", err)
 	}
 
+	limiter, err := a.newLimiter(cfg)
+	if err != nil {
+		return errs.Wrap("a.newLimiter", err)
+	}
+
 	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
 	if err != nil {
 		return errs.Wrap("jwtauth.LoadPublicKey", err)
@@ -81,6 +93,7 @@ func (a *App) build(cfg config.Config) error {
 				jwtauth.NewVerifier(publicKey, cfg.JWTIssuer),
 				mediagrpc.PublicMethods()...,
 			),
+			ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger),
 		),
 	)
 	mediav1.RegisterMediaServiceServer(
@@ -95,6 +108,34 @@ func (a *App) build(cfg config.Config) error {
 	a.logger.Info("media configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
 
 	return nil
+}
+
+// rateLimits are how often each user may upload.
+func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
+	return map[string]ratelimit.Rules{
+		mediav1.MediaService_UploadPhoto_FullMethodName:  cfg.PhotoLimits,
+		mediav1.MediaService_UploadAvatar_FullMethodName: cfg.AvatarLimits,
+	}
+}
+
+// newLimiter counts in Redis when it is configured, so that all replicas
+// share the limits, and in memory otherwise.
+func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
+	if cfg.RedisAddr == "" {
+		a.logger.Warn("REDIS_ADDR is not set: rate limits are counted per replica")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
+	defer cancel()
+
+	var err error
+
+	a.limiter, err = ratelimit.Open(ctx, cfg.RedisAddr)
+	if err != nil {
+		return nil, errs.Wrap("ratelimit.Open", err)
+	}
+
+	return a.limiter, nil
 }
 
 type stores struct {
@@ -130,4 +171,10 @@ func (a *App) Run(ctx context.Context) error {
 
 // Close is here for symmetry with the other services: media holds no
 // connections.
-func (a *App) Close() {}
+func (a *App) Close() {
+	if a.limiter != nil {
+		if err := a.limiter.Close(); err != nil {
+			a.logger.Error("rate limiter close", "error", err)
+		}
+	}
+}

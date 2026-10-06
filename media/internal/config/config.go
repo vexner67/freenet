@@ -6,6 +6,7 @@ import (
 
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/ratelimit"
 )
 
 const (
@@ -26,6 +27,12 @@ type Config struct {
 
 	Storage  string `env:"STORAGE" envDefault:"inmem"`
 	MediaDir string `env:"MEDIA_DIR"`
+
+	// Spam protection, per user. REDIS_ADDR shares the counters between
+	// replicas; without it they are kept in memory, per replica.
+	RedisAddr    string          `env:"REDIS_ADDR"`
+	PhotoLimits  ratelimit.Rules `env:"RATE_LIMIT_PHOTOS" envDefault:"30/1m,300/24h"`
+	AvatarLimits ratelimit.Rules `env:"RATE_LIMIT_AVATARS" envDefault:"5/1m,30/24h"`
 
 	// Access tokens are issued by the auth service; media only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`

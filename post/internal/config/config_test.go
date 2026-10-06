@@ -53,3 +53,24 @@ func TestParse(t *testing.T) {
 		})
 	}
 }
+
+func TestParse_RateLimits(t *testing.T) {
+	t.Parallel()
+
+	cfg, err := envconfig.Parse[config.Config](env.Options{Environment: vars(nil)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.PostLimits.String(); got != "5/1m0s,100/24h0m0s" {
+		t.Fatalf("default post limits = %s", got)
+	}
+
+	cfg, err = envconfig.Parse[config.Config](env.Options{Environment: vars(map[string]string{"RATE_LIMIT_POSTS": "1/1s"})})
+	if err != nil || cfg.PostLimits.String() != "1/1s" {
+		t.Fatalf("custom limits = %s, %v", cfg.PostLimits, err)
+	}
+
+	if _, err = envconfig.Parse[config.Config](env.Options{Environment: vars(map[string]string{"RATE_LIMIT_LIKES": "often"})}); err == nil {
+		t.Fatal("bad limits must fail the start")
+	}
+}

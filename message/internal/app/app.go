@@ -20,6 +20,7 @@ import (
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/pgpool"
+	"github.com/vexner67/freenet/pkg/ratelimit"
 	"google.golang.org/grpc"
 )
 
@@ -29,10 +30,11 @@ const (
 )
 
 type App struct {
-	logger *slog.Logger
-	pool   *pgxpool.Pool
-	server *grpcserver.Server
-	addr   string
+	logger  *slog.Logger
+	pool    *pgxpool.Pool
+	limiter ratelimit.Store
+	server  *grpcserver.Server
+	addr    string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -64,6 +66,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newRepositories", err)
 	}
 
+	limiter, err := a.newLimiter(cfg)
+	if err != nil {
+		return errs.Wrap("a.newLimiter", err)
+	}
+
 	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
 	if err != nil {
 		return errs.Wrap("jwtauth.LoadPublicKey", err)
@@ -87,6 +94,7 @@ func (a *App) build(cfg config.Config) error {
 				jwtauth.NewVerifier(publicKey, cfg.JWTIssuer),
 				messagegrpc.PublicMethods()...,
 			),
+			ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger),
 		),
 	)
 	messagev1.RegisterMessageServiceServer(
@@ -100,6 +108,33 @@ func (a *App) build(cfg config.Config) error {
 	a.logger.Info("message configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
 
 	return nil
+}
+
+// rateLimits are how often each user may write.
+func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
+	return map[string]ratelimit.Rules{
+		messagev1.MessageService_SendMessage_FullMethodName: cfg.MessageLimits,
+	}
+}
+
+// newLimiter counts in Redis when it is configured, so that all replicas
+// share the limits, and in memory otherwise.
+func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
+	if cfg.RedisAddr == "" {
+		a.logger.Warn("REDIS_ADDR is not set: rate limits are counted per replica")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
+	defer cancel()
+
+	var err error
+
+	a.limiter, err = ratelimit.Open(ctx, cfg.RedisAddr)
+	if err != nil {
+		return nil, errs.Wrap("ratelimit.Open", err)
+	}
+
+	return a.limiter, nil
 }
 
 type repositories struct {
@@ -151,6 +186,11 @@ func (a *App) Run(ctx context.Context) error {
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.limiter != nil {
+		if err := a.limiter.Close(); err != nil {
+			a.logger.Error("rate limiter close", "error", err)
+		}
+	}
 	if a.pool != nil {
 		a.pool.Close()
 	}
