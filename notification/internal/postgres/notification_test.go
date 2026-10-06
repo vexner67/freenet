@@ -167,4 +167,36 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("DeleteByPost: %v, left %d", err, count())
 		}
 	})
+	t.Run("repost", func(t *testing.T) {
+		repost := uuid.New()
+		e := notification.Event{Kind: notification.KindRepost, RecipientID: bob, ActorID: ann, PostID: repost}
+
+		count := func() int {
+			t.Helper()
+
+			got, err := repo.List(ctx, service.Query{RecipientID: bob, Unread: true, Limit: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return len(got)
+		}
+
+		for range 2 { // one notification per repost
+			n, err := notification.New(e, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = repo.Save(ctx, n); err != nil {
+				t.Fatalf("Save: %v", err)
+			}
+		}
+		if got := count(); got != 1 {
+			t.Fatalf("notifications about one repost = %d, want 1", got)
+		}
+
+		if err := repo.DeleteByPost(ctx, repost); err != nil || count() != 0 {
+			t.Fatalf("a deleted repost takes its notification: %v, left %d", err, count())
+		}
+	})
 }
