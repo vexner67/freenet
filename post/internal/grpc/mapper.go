@@ -47,6 +47,7 @@ func toProtoPost(p *post.Post, liked bool) *postv1.Post {
 
 	return &postv1.Post{
 		Id:           p.ID().String(),
+		WallId:       p.WallID().String(),
 		AuthorId:     p.AuthorID().String(),
 		Text:         p.Content().Text().String(),
 		PhotoIds:     photos,

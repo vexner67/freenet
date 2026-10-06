@@ -47,7 +47,7 @@ func (s *Store) count(id uuid.UUID, update func(*post.Counters)) {
 	p := s.posts[id]
 	counters := p.Counters()
 	update(&counters)
-	s.posts[id] = post.Restore(p.ID(), p.AuthorID(), p.Content(), p.CreatedAt(), counters)
+	s.posts[id] = post.Restore(p.ID(), p.WallID(), p.AuthorID(), p.Content(), p.CreatedAt(), counters)
 }
 
 type PostRepository struct {
@@ -125,11 +125,17 @@ func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-func (r *PostRepository) ListByAuthor(ctx context.Context, authorID, before uuid.UUID, limit int) ([]*post.Post, error) {
-	return r.ListByAuthors(ctx, []uuid.UUID{authorID}, before, limit)
+func (r *PostRepository) ListByWall(ctx context.Context, wallID, before uuid.UUID, limit int) ([]*post.Post, error) {
+	return r.list(ctx, func(p *post.Post) bool { return p.WallID() == wallID }, before, limit)
 }
 
 func (r *PostRepository) ListByAuthors(ctx context.Context, authorIDs []uuid.UUID, before uuid.UUID, limit int) ([]*post.Post, error) {
+	return r.list(ctx, func(p *post.Post) bool { return slices.Contains(authorIDs, p.AuthorID()) }, before, limit)
+}
+
+// list returns up to limit matching posts, newest first, with IDs below
+// before (uuid.Nil: from the newest).
+func (r *PostRepository) list(ctx context.Context, match func(*post.Post) bool, before uuid.UUID, limit int) ([]*post.Post, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
 	}
@@ -140,7 +146,7 @@ func (r *PostRepository) ListByAuthors(ctx context.Context, authorIDs []uuid.UUI
 	var found []*post.Post
 	for _, p := range r.s.posts {
 		id := p.ID()
-		if slices.Contains(authorIDs, p.AuthorID()) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
+		if match(p) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
 			found = append(found, p)
 		}
 	}
@@ -158,7 +164,7 @@ func (r *PostRepository) ListByAuthors(ctx context.Context, authorIDs []uuid.UUI
 	return found, nil
 }
 
-func (r *PostRepository) CountByAuthor(ctx context.Context, authorID uuid.UUID) (int, error) {
+func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, errs.Wrap("ctx.Err", err)
 	}
@@ -168,7 +174,7 @@ func (r *PostRepository) CountByAuthor(ctx context.Context, authorID uuid.UUID) 
 
 	count := 0
 	for _, p := range r.s.posts {
-		if p.AuthorID() == authorID {
+		if p.WallID() == wallID {
 			count++
 		}
 	}

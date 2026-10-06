@@ -25,12 +25,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "too many authors"), true
 	case errors.Is(err, service.ErrTooManyIDs):
 		return status.New(codes.InvalidArgument, "too many ids"), true
-	case errors.Is(err, post.ErrNotAuthor):
-		return status.New(codes.PermissionDenied, "only the author can delete the post"), true
+	case errors.Is(err, post.ErrCannotDelete):
+		return status.New(codes.PermissionDenied, "only the author or the owner of the wall can delete the post"), true
 	case errors.Is(err, post.ErrCommentNotFound):
 		return status.New(codes.NotFound, "comment not found"), true
 	case errors.Is(err, post.ErrCannotDeleteComment):
-		return status.New(codes.PermissionDenied, "only the author of the comment or of the post can delete it"), true
+		return status.New(codes.PermissionDenied, "only the author of the comment or of the post or the owner of the wall can delete it"), true
 	default:
 		return nil, false
 	}

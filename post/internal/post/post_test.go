@@ -45,7 +45,7 @@ func TestPost(t *testing.T) {
 	author := uuid.New()
 	now := time.Date(2026, 10, 4, 18, 30, 0, 123456789, time.FixedZone("MSK", 3*3600))
 
-	p, err := post.New(author, textOnly(t, "привет"), now)
+	p, err := post.New(author, author, textOnly(t, "привет"), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -53,16 +53,40 @@ func TestPost(t *testing.T) {
 	if p.CreatedAt().Location() != time.UTC || p.CreatedAt().Nanosecond() != 123456000 {
 		t.Fatalf("createdAt = %v, want UTC with microseconds", p.CreatedAt())
 	}
+	if !p.OnOwnWall() || p.WallID() != author {
+		t.Fatalf("wall = %v, want the author's own", p.WallID())
+	}
 	if !p.CanBeDeletedBy(author) || p.CanBeDeletedBy(uuid.New()) {
-		t.Fatal("only the author may delete")
+		t.Fatal("only the author may delete a post on their own wall")
 	}
 
-	later, err := post.New(author, textOnly(t, "ещё"), now)
+	later, err := post.New(author, author, textOnly(t, "ещё"), now)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if later.ID().String() <= p.ID().String() {
 		t.Fatal("IDs must grow, walls are ordered by them")
+	}
+}
+
+func TestPost_OnSomeoneElsesWall(t *testing.T) {
+	t.Parallel()
+
+	owner, author, stranger := uuid.New(), uuid.New(), uuid.New()
+
+	p, err := post.New(owner, author, textOnly(t, "привет"), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if p.OnOwnWall() || p.WallID() != owner || p.AuthorID() != author {
+		t.Fatalf("wall = %v, author = %v", p.WallID(), p.AuthorID())
+	}
+	if !p.CanBeDeletedBy(author) || !p.CanBeDeletedBy(owner) {
+		t.Fatal("the author and the owner of the wall may delete")
+	}
+	if p.CanBeDeletedBy(stranger) {
+		t.Fatal("a stranger may not delete")
 	}
 }
 

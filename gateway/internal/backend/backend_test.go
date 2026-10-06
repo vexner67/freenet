@@ -210,7 +210,7 @@ func TestPosts(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if api.req.GetAuthorId() != "u1" || api.req.GetCursor() != "p9" || api.req.GetLimit() != 1<<10 {
+	if api.req.GetWallId() != "u1" || api.req.GetCursor() != "p9" || api.req.GetLimit() != 1<<10 {
 		t.Fatalf("request = %v", api.req)
 	}
 	if len(api.md.Get("authorization")) != 0 {

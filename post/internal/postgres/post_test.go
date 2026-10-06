@@ -46,7 +46,7 @@ func TestPostRepository(t *testing.T) {
 
 	var saved []*post.Post
 	for _, text := range []string{"раз", "два", "три"} {
-		p, err := post.New(author, post.RestoreContent(post.Text(text), nil), time.Now())
+		p, err := post.New(author, author, post.RestoreContent(post.Text(text), nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -68,7 +68,7 @@ func TestPostRepository(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pictured, err := post.New(author, post.RestoreContent("", photos), time.Now())
+	pictured, err := post.New(author, author, post.RestoreContent("", photos), time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +87,7 @@ func TestPostRepository(t *testing.T) {
 		t.Fatalf("GetMany = %v, %v", many, err)
 	}
 
-	page, err := repo.ListByAuthor(ctx, author, uuid.Nil, 2)
+	page, err := repo.ListByWall(ctx, author, uuid.Nil, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -95,7 +95,7 @@ func TestPostRepository(t *testing.T) {
 		t.Fatalf("first page: %v", page)
 	}
 
-	rest, err := repo.ListByAuthor(ctx, author, page[1].ID(), 2)
+	rest, err := repo.ListByWall(ctx, author, page[1].ID(), 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -104,7 +104,7 @@ func TestPostRepository(t *testing.T) {
 	}
 
 	other := uuid.New()
-	theirs, err := post.New(other, post.RestoreContent("чужая", nil), time.Now())
+	theirs, err := post.New(other, other, post.RestoreContent("чужая", nil), time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,13 +112,38 @@ func TestPostRepository(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	feed, err := repo.ListByAuthors(ctx, []uuid.UUID{author, other}, uuid.Nil, 10)
-	if err != nil || len(feed) != 4 || feed[0].Content().Text() != "чужая" || feed[3].Content().Text() != "раз" {
-		t.Fatalf("ListByAuthors = %v, %v", feed, err)
+	// other writes on author's wall: the post is on that wall and among
+	// other's posts.
+	guest, err := post.New(author, other, post.RestoreContent("в гостях", nil), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = repo.Save(ctx, guest); err != nil {
+		t.Fatal(err)
 	}
 
-	if n, err := repo.CountByAuthor(ctx, author); err != nil || n != 3 {
-		t.Fatalf("CountByAuthor = %d, %v", n, err)
+	visit, err := repo.Get(ctx, guest.ID())
+	if err != nil || visit.WallID() != author || visit.AuthorID() != other {
+		t.Fatalf("Get(guest) = %+v, %v", visit, err)
+	}
+
+	wall, err := repo.ListByWall(ctx, author, uuid.Nil, 10)
+	if err != nil || len(wall) != 4 || wall[0].ID() != guest.ID() || wall[3].Content().Text() != "раз" {
+		t.Fatalf("ListByWall with a guest post = %v, %v", wall, err)
+	}
+
+	if n, err := repo.CountByWall(ctx, author); err != nil || n != 4 {
+		t.Fatalf("CountByWall = %d, %v", n, err)
+	}
+
+	byOther, err := repo.ListByAuthors(ctx, []uuid.UUID{other}, uuid.Nil, 10)
+	if err != nil || len(byOther) != 2 || byOther[0].ID() != guest.ID() || byOther[1].ID() != theirs.ID() {
+		t.Fatalf("ListByAuthors(other) = %v, %v", byOther, err)
+	}
+
+	feed, err := repo.ListByAuthors(ctx, []uuid.UUID{author, other}, uuid.Nil, 10)
+	if err != nil || len(feed) != 5 || feed[0].ID() != guest.ID() || feed[4].Content().Text() != "раз" {
+		t.Fatalf("ListByAuthors = %v, %v", feed, err)
 	}
 
 	if err = repo.Delete(ctx, saved[0].ID()); err != nil {

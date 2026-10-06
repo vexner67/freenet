@@ -13,7 +13,7 @@ var (
 	ErrCommentEmpty        = errors.New("comment text is empty")
 	ErrCommentTooLong      = errors.New("comment text is too long")
 	ErrCommentNotFound     = errors.New("comment not found")
-	ErrCannotDeleteComment = errors.New("only the author of the comment or of the post can delete it")
+	ErrCannotDeleteComment = errors.New("only the author of the comment or of the post or the owner of the wall can delete it")
 )
 
 // CommentText is what a comment says: trimmed, with "\n" line breaks.
@@ -69,10 +69,11 @@ func RestoreComment(id, postID, authorID uuid.UUID, text CommentText, createdAt 
 	}
 }
 
-// CanBeDeletedBy: a comment is removed by whoever wrote it or by the author
-// of the post, who keeps their wall clean. p is the post of the comment.
+// CanBeDeletedBy: a comment is removed by whoever wrote it, by the author
+// of the post, who looks after the discussion, or by the owner of the wall,
+// who keeps the wall clean. p is the post of the comment.
 func (c *Comment) CanBeDeletedBy(userID uuid.UUID, p *Post) bool {
-	return userID == c.authorID || userID == p.AuthorID()
+	return userID == c.authorID || userID == p.AuthorID() || userID == p.WallID()
 }
 
 func (c *Comment) ID() uuid.UUID {

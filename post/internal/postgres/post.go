@@ -29,12 +29,13 @@ func NewPostRepository(pool *pgxpool.Pool) *PostRepository {
 const savePostQuery = `
 	INSERT INTO posts (
 		id,
+		wall_id,
 		author_id,
 		text,
 		photo_ids,
 		created_at
 	)
-	VALUES ($1, $2, $3, $4, $5)
+	VALUES ($1, $2, $3, $4, $5, $6)
 `
 
 func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
@@ -46,7 +47,7 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 		photos = []uuid.UUID{}
 	}
 
-	_, err := r.pool.Exec(ctx, savePostQuery, p.ID(), p.AuthorID(), content.Text().String(), photos, p.CreatedAt())
+	_, err := r.pool.Exec(ctx, savePostQuery, p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photos, p.CreatedAt())
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
@@ -57,6 +58,7 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 const getPostQuery = `
 	SELECT
 		id,
+		wall_id,
 		author_id,
 		text,
 		photo_ids,
@@ -82,6 +84,7 @@ func (r *PostRepository) Get(ctx context.Context, id uuid.UUID) (*post.Post, err
 const getPostsQuery = `
 	SELECT
 		id,
+		wall_id,
 		author_id,
 		text,
 		photo_ids,
@@ -133,9 +136,10 @@ func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-const listPostsByAuthorQuery = `
+const listPostsByWallQuery = `
 	SELECT
 		id,
+		wall_id,
 		author_id,
 		text,
 		photo_ids,
@@ -143,23 +147,24 @@ const listPostsByAuthorQuery = `
 		like_count,
 		comment_count
 	FROM posts
-	WHERE author_id = $1
+	WHERE wall_id = $1
 		AND id < $2
 	ORDER BY id DESC
 	LIMIT $3
 `
 
-func (r *PostRepository) ListByAuthor(ctx context.Context, authorID, before uuid.UUID, limit int) ([]*post.Post, error) {
-	return r.list(ctx, listPostsByAuthorQuery, authorID, before, limit)
+func (r *PostRepository) ListByWall(ctx context.Context, wallID, before uuid.UUID, limit int) ([]*post.Post, error) {
+	return r.list(ctx, listPostsByWallQuery, wallID, before, limit)
 }
 
-// list runs a newest-first keyset query; authors is one ID or a slice.
-func (r *PostRepository) list(ctx context.Context, query string, authors any, before uuid.UUID, limit int) ([]*post.Post, error) {
+// list runs a newest-first keyset query; owners is a wall ID or a slice of
+// author IDs.
+func (r *PostRepository) list(ctx context.Context, query string, owners any, before uuid.UUID, limit int) ([]*post.Post, error) {
 	if before == uuid.Nil {
 		before = newestCursor
 	}
 
-	rows, err := r.pool.Query(ctx, query, authors, before, limit)
+	rows, err := r.pool.Query(ctx, query, owners, before, limit)
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
@@ -184,6 +189,7 @@ func (r *PostRepository) list(ctx context.Context, query string, authors any, be
 const listPostsByAuthorsQuery = `
 	SELECT
 		id,
+		wall_id,
 		author_id,
 		text,
 		photo_ids,
@@ -201,16 +207,16 @@ func (r *PostRepository) ListByAuthors(ctx context.Context, authorIDs []uuid.UUI
 	return r.list(ctx, listPostsByAuthorsQuery, authorIDs, before, limit)
 }
 
-const countPostsByAuthorQuery = `
+const countPostsByWallQuery = `
 	SELECT count(*)
 	FROM posts
-	WHERE author_id = $1
+	WHERE wall_id = $1
 `
 
-func (r *PostRepository) CountByAuthor(ctx context.Context, authorID uuid.UUID) (int, error) {
+func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID) (int, error) {
 	var count int
 
-	if err := r.pool.QueryRow(ctx, countPostsByAuthorQuery, authorID).Scan(&count); err != nil {
+	if err := r.pool.QueryRow(ctx, countPostsByWallQuery, wallID).Scan(&count); err != nil {
 		return 0, errs.Wrap("r.pool.QueryRow", err)
 	}
 
@@ -219,14 +225,14 @@ func (r *PostRepository) CountByAuthor(ctx context.Context, authorID uuid.UUID) 
 
 func scanPost(row pgx.Row) (*post.Post, error) {
 	var (
-		id, authorID uuid.UUID
-		text         string
-		photos       []uuid.UUID
-		createdAt    time.Time
-		counters     post.Counters
+		id, wallID, authorID uuid.UUID
+		text                 string
+		photos               []uuid.UUID
+		createdAt            time.Time
+		counters             post.Counters
 	)
 
-	if err := row.Scan(&id, &authorID, &text, &photos, &createdAt, &counters.Likes, &counters.Comments); err != nil {
+	if err := row.Scan(&id, &wallID, &authorID, &text, &photos, &createdAt, &counters.Likes, &counters.Comments); err != nil {
 		return nil, err
 	}
 
@@ -237,5 +243,5 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	// Data comes from our own table and was validated on write.
 	content := post.RestoreContent(post.Text(text), post.Photos(photos))
 
-	return post.Restore(id, authorID, content, createdAt.UTC(), counters), nil
+	return post.Restore(id, wallID, authorID, content, createdAt.UTC(), counters), nil
 }

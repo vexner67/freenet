@@ -31,11 +31,12 @@ type PostRepository interface {
 	// GetMany returns the posts that exist, in no particular order.
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
 	Delete(ctx context.Context, id uuid.UUID) error
-	// ListByAuthor returns up to limit posts, newest first, with IDs below
-	// before (uuid.Nil: from the newest).
-	ListByAuthor(ctx context.Context, authorID, before uuid.UUID, limit int) ([]*post.Post, error)
-	CountByAuthor(ctx context.Context, authorID uuid.UUID) (int, error)
-	// ListByAuthors is ListByAuthor for several authors at once.
+	// ListByWall returns up to limit posts on a wall, whoever wrote them,
+	// newest first, with IDs below before (uuid.Nil: from the newest).
+	ListByWall(ctx context.Context, wallID, before uuid.UUID, limit int) ([]*post.Post, error)
+	CountByWall(ctx context.Context, wallID uuid.UUID) (int, error)
+	// ListByAuthors is ListByWall for the posts written by several authors,
+	// on whichever walls.
 	ListByAuthors(ctx context.Context, authorIDs []uuid.UUID, before uuid.UUID, limit int) ([]*post.Post, error)
 }
 
@@ -73,14 +74,21 @@ func NewPostService(postRepo PostRepository, likeRepo LikeRepository, notifier N
 	}
 }
 
-func (s *PostService) Create(ctx context.Context, authorID uuid.UUID, content post.Content) (*post.Post, error) {
-	p, err := post.New(authorID, content, s.now())
+// Create writes a post on the wall of wallID; the owner of a wall hears
+// about posts by others. The caller has checked that the owner's privacy
+// lets the author write there: post does not know users.
+func (s *PostService) Create(ctx context.Context, wallID, authorID uuid.UUID, content post.Content) (*post.Post, error) {
+	p, err := post.New(wallID, authorID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("post.New", err)
 	}
 
 	if err = s.postRepo.Save(ctx, p); err != nil {
 		return nil, errs.Wrap("s.postRepo.Save", err)
+	}
+
+	if !p.OnOwnWall() {
+		s.notifier.Notify(ctx, Event{Kind: EventWallPost, RecipientID: wallID, ActorID: authorID, PostID: p.ID()})
 	}
 
 	return p, nil
@@ -93,7 +101,7 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 	}
 
 	if !p.CanBeDeletedBy(requesterID) {
-		return post.ErrNotAuthor
+		return post.ErrCannotDelete
 	}
 
 	if err = s.postRepo.Delete(ctx, postID); err != nil {
@@ -189,22 +197,22 @@ func likeEvent(p *post.Post, userID uuid.UUID) (Event, bool) {
 	return Event{Kind: EventLike, RecipientID: p.AuthorID(), ActorID: userID, PostID: p.ID()}, true
 }
 
-// ListByAuthor pages a wall by keyset: cursor is the ID of the last post
-// of the previous page, so new posts never shift the pages.
-func (s *PostService) ListByAuthor(ctx context.Context, viewerID, authorID, cursor uuid.UUID, size int) (Page, error) {
+// ListWall pages a wall by keyset: cursor is the ID of the last post of
+// the previous page, so new posts never shift the pages.
+func (s *PostService) ListWall(ctx context.Context, viewerID, wallID, cursor uuid.UUID, size int) (Page, error) {
 	if size <= 0 || size > MaxPageSize {
 		size = DefaultPageSize
 	}
 
 	// One extra post tells whether there is a next page.
-	posts, err := s.postRepo.ListByAuthor(ctx, authorID, cursor, size+1)
+	posts, err := s.postRepo.ListByWall(ctx, wallID, cursor, size+1)
 	if err != nil {
-		return Page{}, errs.Wrap("s.postRepo.ListByAuthor", err)
+		return Page{}, errs.Wrap("s.postRepo.ListByWall", err)
 	}
 
-	total, err := s.postRepo.CountByAuthor(ctx, authorID)
+	total, err := s.postRepo.CountByWall(ctx, wallID)
 	if err != nil {
-		return Page{}, errs.Wrap("s.postRepo.CountByAuthor", err)
+		return Page{}, errs.Wrap("s.postRepo.CountByWall", err)
 	}
 
 	page := Page{Posts: posts, Total: total}
@@ -221,8 +229,9 @@ func (s *PostService) ListByAuthor(ctx context.Context, viewerID, authorID, curs
 	return page, nil
 }
 
-// Feed pages the posts of several authors together, newest first. Total
-// is not counted: a feed is read page by page, not as a whole.
+// Feed pages the posts written by several authors together, on their own
+// walls and on others', newest first. Total is not counted: a feed is read
+// page by page, not as a whole.
 func (s *PostService) Feed(ctx context.Context, viewerID uuid.UUID, authorIDs []uuid.UUID, cursor uuid.UUID, size int) (Page, error) {
 	if len(authorIDs) > MaxFeedAuthors {
 		return Page{}, ErrTooManyAuthors
