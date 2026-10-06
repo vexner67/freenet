@@ -4,6 +4,7 @@ import { api } from './api.js';
 import { postsCount } from './labels.js';
 import { $, el, showError, hideError } from './layout.js';
 import { postNode as renderPost } from './posts.js';
+import { initAttachments } from './attach.js';
 
 const COUNTER_FROM = 900;
 const MAX_LENGTH = 1000;
@@ -12,6 +13,7 @@ const MAX_LENGTH = 1000;
 export function initWall(owner, isOwner, canLike) {
   const posts = $('posts');
   const error = $('wall-error');
+  let attachments;
 
   let total = 0;
   let cursor = '';
@@ -68,15 +70,21 @@ export function initWall(owner, isOwner, canLike) {
     event.preventDefault();
     hideError(error);
 
+    if (attachments.busy()) {
+      showError(error, 'Дождитесь, пока загрузятся фотографии.');
+      return;
+    }
+
     const button = $('post-submit');
     button.disabled = true;
 
     try {
-      const post = await api.createPost($('post-text').value);
+      const post = await api.createPost($('post-text').value, attachments.ids());
 
       posts.prepend(postNode(post));
       $('post-text').value = '';
       $('post-text').blur();
+      attachments.clear();
       $('post-form').classList.remove('expanded');
       total++;
       updateCount();
@@ -92,12 +100,27 @@ export function initWall(owner, isOwner, canLike) {
     const form = $('post-form');
     const text = $('post-text');
 
+    // The form stays open while it holds text or photos.
+    const collapseIfEmpty = () => {
+      if (!text.value.trim() && attachments.count() === 0 && document.activeElement !== text) {
+        form.classList.remove('expanded');
+      }
+    };
+
+    attachments = initAttachments({
+      link: $('post-attach'),
+      input: $('post-file'),
+      list: $('post-photos'),
+      error,
+      onChange: () => {
+        if (attachments?.count()) form.classList.add('expanded');
+      },
+    });
+
     form.hidden = false;
     form.addEventListener('submit', submit);
     text.addEventListener('focus', () => form.classList.add('expanded'));
-    text.addEventListener('blur', () => {
-      if (!text.value.trim()) form.classList.remove('expanded');
-    });
+    text.addEventListener('blur', collapseIfEmpty);
     text.addEventListener('input', updateCounter);
     // Ctrl+Enter (Cmd+Enter on a Mac) sends, as on the old sites.
     text.addEventListener('keydown', (event) => {
