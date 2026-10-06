@@ -50,6 +50,7 @@ type Media interface {
 // anonymous viewers), with which posts tell whether the viewer likes them.
 type Posts interface {
 	Create(ctx context.Context, accessToken, wallID, text string, photoIDs []string) (model.Post, error)
+	Repost(ctx context.Context, accessToken, postID, text string) (model.Post, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	Get(ctx context.Context, accessToken, id string) (model.Post, error)
 	GetMany(ctx context.Context, ids []string) ([]model.Post, error)
@@ -122,6 +123,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/me/posts", a.createPost)
 	mux.HandleFunc("GET /api/v1/posts/{id}", a.getPost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}", a.deletePost)
+	mux.HandleFunc("POST /api/v1/posts/{id}/reposts", a.repostPost)
 	mux.HandleFunc("PUT /api/v1/posts/{id}/like", a.likePost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}/like", a.unlikePost)
 

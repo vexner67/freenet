@@ -3,6 +3,7 @@ package rest
 import (
 	"context"
 	"net/http"
+	"slices"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
@@ -171,6 +172,9 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 
 // authors looks up the authors of posts or comments in one request; an
 // author who deleted the account is missing from the result.
+// maxProfilesPerRequest is what one GetProfiles of the user service takes.
+const maxProfilesPerRequest = 100
+
 func (a *api) authors(r *http.Request, authorIDs []string) (map[string]model.Author, error) {
 	seen := make(map[string]bool, len(authorIDs))
 	ids := make([]string, 0, len(authorIDs))
@@ -186,14 +190,18 @@ func (a *api) authors(r *http.Request, authorIDs []string) (map[string]model.Aut
 		return nil, nil
 	}
 
-	profiles, err := a.users.GetProfiles(r.Context(), ids)
-	if err != nil {
-		return nil, err
-	}
+	authors := make(map[string]model.Author, len(ids))
 
-	authors := make(map[string]model.Author, len(profiles))
-	for _, p := range profiles {
-		authors[p.ID] = authorOf(p.ID, p.AvatarID, p.Profile)
+	// A page of reposts names up to four people a post.
+	for chunk := range slices.Chunk(ids, maxProfilesPerRequest) {
+		profiles, err := a.users.GetProfiles(r.Context(), chunk)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, p := range profiles {
+			authors[p.ID] = authorOf(p.ID, p.AvatarID, p.Profile)
+		}
 	}
 
 	return authors, nil

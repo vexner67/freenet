@@ -43,6 +43,7 @@ func (f *fakeAuth) Logout(context.Context, string) error { return f.err }
 type fakeUsers struct {
 	token, statsToken, followed, unfollowed, listed string
 	profileIDs                                      []string
+	profileCalls                                    int
 	avatarID, query, cursor                         string
 	profile                                         model.Profile
 	wallAsked                                       string
@@ -82,10 +83,19 @@ func (f *fakeUsers) GetProfile(_ context.Context, nickname string) (model.Public
 	}
 }
 
+// GetProfiles knows u1, u2 and anyone whose ID starts with "x", and takes
+// at most 100 IDs, as the user service.
 func (f *fakeUsers) GetProfiles(_ context.Context, ids []string) ([]model.PublicProfile, error) {
 	f.profileIDs = ids
+	f.profileCalls++
+	if len(ids) > 100 {
+		return nil, failure.New(failure.InvalidArgument, "too many user ids")
+	}
 	var found []model.PublicProfile
 	for _, id := range ids {
+		if strings.HasPrefix(id, "x") {
+			found = append(found, model.PublicProfile{ID: id, Profile: model.Profile{Name: id, Nickname: id}})
+		}
 		if id == "u2" {
 			found = append(found, model.PublicProfile{ID: "u2", Profile: model.Profile{Name: "Bob", Nickname: "bob", Gender: "male"}})
 		}
@@ -154,7 +164,8 @@ type fakePosts struct {
 	authors                []string
 	token, cursor, deleted string
 	limit                  int
-	created, wall          string
+	wallPosts              []model.Post
+	created, wall, shared  string
 	photos                 []string
 	liked                  map[string]bool
 	err                    error
@@ -165,13 +176,23 @@ func (f *fakePosts) Create(_ context.Context, token, wallID, text string, photoI
 	return model.Post{ID: "p9", Text: text, PhotoIDs: photoIDs, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
 }
 
+// Repost shares p1 only, as u1's repost p7.
+func (f *fakePosts) Repost(_ context.Context, token, postID, text string) (model.Post, error) {
+	f.token, f.shared, f.created = token, postID, text
+	if postID != "p1" {
+		return model.Post{}, failure.New(failure.NotFound, "post not found")
+	}
+	ann := model.Author{ID: "u1"}
+	return model.Post{ID: "p7", Author: ann, Wall: ann, Text: text, RepostOf: "p1", CreatedAt: time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)}, f.err
+}
+
 func (f *fakePosts) Delete(_ context.Context, token, id string) error {
 	f.token, f.deleted = token, id
 	return f.err
 }
 
-// Get knows p1 by u1, p2 by an author who deleted the account and p4 by u2
-// on u1's wall.
+// Get knows p1 by u1, p2 by an author who deleted the account, p4 by u2
+// on u1's wall and p8, u2's repost of a deleted post.
 func (f *fakePosts) Get(_ context.Context, token, id string) (model.Post, error) {
 	f.token = token
 	switch id {
@@ -181,6 +202,8 @@ func (f *fakePosts) Get(_ context.Context, token, id string) (model.Post, error)
 		return model.Post{ID: "p2", Author: model.Author{ID: "gone"}, Wall: model.Author{ID: "gone"}, Text: "сирота"}, nil
 	case "p4":
 		return model.Post{ID: "p4", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u1"}, Text: "в гостях"}, nil
+	case "p8":
+		return model.Post{ID: "p8", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, RepostOf: "p-deleted"}, nil
 	default:
 		return model.Post{}, failure.New(failure.NotFound, "post not found")
 	}
@@ -191,7 +214,7 @@ func (f *fakePosts) GetMany(_ context.Context, ids []string) ([]model.Post, erro
 	var found []model.Post
 	for _, id := range ids {
 		if id == "p1" {
-			found = append(found, model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "первая", CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)})
+			found = append(found, model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "первая", PhotoIDs: []string{"ph1"}, Reposts: 1, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)})
 		}
 	}
 	return found, nil
@@ -226,6 +249,9 @@ func (f *fakePosts) List(_ context.Context, token, wallID, cursor string, limit 
 	f.token, f.cursor, f.limit = token, cursor, limit
 	if wallID != "u1" {
 		return model.PostPage{}, errors.New("wrong wall id")
+	}
+	if f.wallPosts != nil {
+		return model.PostPage{Posts: f.wallPosts}, f.err
 	}
 	ann := model.Author{ID: "u1"}
 	return model.PostPage{
@@ -370,8 +396,9 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n1", Kind: "like", ActorID: "u2", PostID: "p1", CreatedAt: at},
 			{ID: "n0", Kind: "follow", ActorID: "u2", CreatedAt: at},
 			{ID: "n-1", Kind: "wall_post", ActorID: "u2", PostID: "p1", CreatedAt: at},
+			{ID: "n-2", Kind: "repost", ActorID: "u2", PostID: "p1", CreatedAt: at},
 		},
-		NextCursor: "n-1",
+		NextCursor: "n-2",
 	}, f.err
 }
 

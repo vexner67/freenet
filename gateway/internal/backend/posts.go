@@ -35,6 +35,16 @@ func (p *Posts) Create(ctx context.Context, accessToken, wallID, text string, ph
 	return toPost(resp.GetPost()), nil
 }
 
+// Repost shares the post on the caller's wall and returns the repost.
+func (p *Posts) Repost(ctx context.Context, accessToken, postID, text string) (model.Post, error) {
+	resp, err := p.api.RepostPost(withToken(ctx, accessToken), &postv1.RepostPostRequest{PostId: postID, Text: text})
+	if err != nil {
+		return model.Post{}, errs.Wrap("p.api.RepostPost", fromStatus(err))
+	}
+
+	return toPost(resp.GetPost()), nil
+}
+
 func (p *Posts) Delete(ctx context.Context, accessToken, id string) error {
 	if _, err := p.api.DeletePost(withToken(ctx, accessToken), &postv1.DeletePostRequest{Id: id}); err != nil {
 		return errs.Wrap("p.api.DeletePost", fromStatus(err))
@@ -189,7 +199,9 @@ func toPost(p *postv1.Post) model.Post {
 		CreatedAt: p.GetCreatedAt().AsTime(),
 		Likes:     int(p.GetLikeCount()),
 		Comments:  int(p.GetCommentCount()),
+		Reposts:   int(p.GetRepostCount()),
 		Liked:     p.GetLiked(),
+		RepostOf:  p.GetRepostOf(),
 	}
 }
 

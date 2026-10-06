@@ -384,6 +384,40 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/posts/{id}/reposts:
+    post:
+      summary: Share a post on your wall
+      description: |
+        As openvk's "Поделиться": a repost on your own wall shows the shared
+        post inside, with what you say about it (may be empty). Sharing a
+        repost that says nothing shares its original. The author of the
+        shared post is notified. Your profile must be filled in first.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                text: { type: string, maxLength: 1000 }
+      responses:
+        "201":
+          description: The repost
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/posts/{id}/like:
     parameters:
       - name: id
@@ -908,7 +942,7 @@ components:
 
     Post:
       type: object
-      required: [id, author, wall, text, photos, createdAt, likes, liked, comments]
+      required: [id, author, wall, text, photos, createdAt, likes, liked, comments, reposts, repost]
       properties:
         id: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
@@ -917,7 +951,7 @@ components:
           oneOf:
             - $ref: "#/components/schemas/Author"
             - type: "null"
-        text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when the post is photos only" }
+        text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when the post is photos only or a repost without a word" }
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
@@ -925,6 +959,38 @@ components:
         likes: { type: integer }
         liked: { type: boolean, description: "You like the post; false without a token" }
         comments: { type: integer }
+        reposts: { type: integer, description: "How many times the post was shared" }
+        repost:
+          description: The shared post when this is a repost; null otherwise
+          oneOf:
+            - $ref: "#/components/schemas/SharedPost"
+            - type: "null"
+
+    SharedPost:
+      type: object
+      description: |
+        The post a repost shares, without counters. When it or its author is
+        gone, only id and deleted: true are set ("Запись удалена"). repostOf
+        is set when the shared post is itself a repost: link to it.
+      required: [id, deleted, author, wall, text, photos, createdAt, repostOf]
+      properties:
+        id: { type: string, format: uuid }
+        deleted: { type: boolean }
+        author:
+          oneOf:
+            - $ref: "#/components/schemas/Author"
+            - type: "null"
+        wall:
+          description: The owner of the wall when not the author's own; null otherwise
+          oneOf:
+            - $ref: "#/components/schemas/Author"
+            - type: "null"
+        text: { type: string }
+        photos:
+          type: [array, "null"]
+          items: { $ref: "#/components/schemas/Photo" }
+        createdAt: { type: string }
+        repostOf: { type: string, description: "Empty unless the shared post is itself a repost" }
 
     Photo:
       type: object
@@ -961,12 +1027,12 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post]
-          description: "wall_post: the actor wrote on your wall"
+          enum: [like, comment, follow, wall_post, repost]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
-          description: The liked, commented or written post; null for follows
+          description: The liked, commented or written post, or the repost; null for follows
           nullable: true
           type: object
           required: [id, createdAt, text]
