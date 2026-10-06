@@ -15,7 +15,7 @@ import (
 )
 
 type PostService interface {
-	Create(ctx context.Context, authorID uuid.UUID, text post.Text) (*post.Post, error)
+	Create(ctx context.Context, authorID uuid.UUID, content post.Content) (*post.Post, error)
 	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
 	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
@@ -53,12 +53,12 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		return nil, err
 	}
 
-	text, err := post.NewText(req.GetText())
+	content, err := fromProtoContent(req)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
-	p, err := h.postService.Create(ctx, authorID, text)
+	p, err := h.postService.Create(ctx, authorID, content)
 	if err != nil {
 		return nil, err
 	}

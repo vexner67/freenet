@@ -31,13 +31,23 @@ const savePostQuery = `
 		id,
 		author_id,
 		text,
+		photo_ids,
 		created_at
 	)
-	VALUES ($1, $2, $3, $4)
+	VALUES ($1, $2, $3, $4, $5)
 `
 
 func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
-	if _, err := r.pool.Exec(ctx, savePostQuery, p.ID(), p.AuthorID(), p.Text().String(), p.CreatedAt()); err != nil {
+	content := p.Content()
+
+	// pgx writes a nil slice as NULL; the column wants an empty array.
+	photos := []uuid.UUID(content.Photos())
+	if photos == nil {
+		photos = []uuid.UUID{}
+	}
+
+	_, err := r.pool.Exec(ctx, savePostQuery, p.ID(), p.AuthorID(), content.Text().String(), photos, p.CreatedAt())
+	if err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
 
@@ -49,6 +59,7 @@ const getPostQuery = `
 		id,
 		author_id,
 		text,
+		photo_ids,
 		created_at,
 		like_count,
 		comment_count
@@ -73,6 +84,7 @@ const getPostsQuery = `
 		id,
 		author_id,
 		text,
+		photo_ids,
 		created_at,
 		like_count,
 		comment_count
@@ -126,6 +138,7 @@ const listPostsByAuthorQuery = `
 		id,
 		author_id,
 		text,
+		photo_ids,
 		created_at,
 		like_count,
 		comment_count
@@ -173,6 +186,7 @@ const listPostsByAuthorsQuery = `
 		id,
 		author_id,
 		text,
+		photo_ids,
 		created_at,
 		like_count,
 		comment_count
@@ -207,14 +221,21 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	var (
 		id, authorID uuid.UUID
 		text         string
+		photos       []uuid.UUID
 		createdAt    time.Time
 		counters     post.Counters
 	)
 
-	if err := row.Scan(&id, &authorID, &text, &createdAt, &counters.Likes, &counters.Comments); err != nil {
+	if err := row.Scan(&id, &authorID, &text, &photos, &createdAt, &counters.Likes, &counters.Comments); err != nil {
 		return nil, err
 	}
 
+	if len(photos) == 0 {
+		photos = nil // no photos, as a new post has them
+	}
+
 	// Data comes from our own table and was validated on write.
-	return post.Restore(id, authorID, post.Text(text), createdAt.UTC(), counters), nil
+	content := post.RestoreContent(post.Text(text), post.Photos(photos))
+
+	return post.Restore(id, authorID, content, createdAt.UTC(), counters), nil
 }

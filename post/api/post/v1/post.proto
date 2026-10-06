@@ -42,12 +42,15 @@ service PostService {
 message Post {
   string id = 1;
   string author_id = 2;
+  // Empty when the post has photos only.
   string text = 3;
   google.protobuf.Timestamp created_at = 4;
   int32 like_count = 5;
   int32 comment_count = 6;
   // The caller likes the post; false without an access token.
   bool liked = 7;
+  // Photos of the author in the media service, in the order shown.
+  repeated string photo_ids = 8;
 }
 
 message Comment {
@@ -59,7 +62,11 @@ message Comment {
 }
 
 message CreatePostRequest {
+  // Text, photos or both. The caller has checked with the media service
+  // that the photos are the author's.
   string text = 1;
+  // At most 10.
+  repeated string photo_ids = 2;
 }
 
 message CreatePostResponse {

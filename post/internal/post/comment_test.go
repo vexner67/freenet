@@ -45,7 +45,7 @@ func TestComment(t *testing.T) {
 	wallOwner, commenter, stranger := uuid.New(), uuid.New(), uuid.New()
 	now := time.Date(2026, 10, 5, 12, 0, 0, 123456789, time.FixedZone("MSK", 3*3600))
 
-	p, err := post.New(wallOwner, "привет", now)
+	p, err := post.New(wallOwner, textOnly(t, "привет"), now)
 	if err != nil {
 		t.Fatal(err)
 	}
