@@ -38,12 +38,17 @@ type Media interface {
 	UploadAvatar(ctx context.Context, accessToken string, image []byte) (string, error)
 	DeleteAvatars(ctx context.Context, accessToken, keep string) error
 	Avatar(ctx context.Context, userID, avatarID string, small bool) ([]byte, error)
+
+	UploadPhoto(ctx context.Context, accessToken string, image []byte) (string, error)
+	OwnPhotos(ctx context.Context, accessToken string, photoIDs []string) ([]string, error)
+	DeletePhotos(ctx context.Context, accessToken string, photoIDs []string) error
+	Photo(ctx context.Context, userID, photoID string, small bool) ([]byte, error)
 }
 
 // Posts: methods that read take an optional access token ("" for
 // anonymous viewers), with which posts tell whether the viewer likes them.
 type Posts interface {
-	Create(ctx context.Context, accessToken, text string) (model.Post, error)
+	Create(ctx context.Context, accessToken, text string, photoIDs []string) (model.Post, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	Get(ctx context.Context, accessToken, id string) (model.Post, error)
 	GetMany(ctx context.Context, ids []string) ([]model.Post, error)
@@ -144,6 +149,9 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)
 	mux.HandleFunc("GET /media/avatars/{userID}/{avatarID}/{file}", a.serveAvatar)
+
+	mux.HandleFunc("POST /api/v1/me/photos", a.uploadPhoto)
+	mux.HandleFunc("GET /media/photos/{userID}/{photoID}/{file}", a.servePhoto)
 
 	if a.webDir != "" {
 		registerPages(mux, a.webDir)

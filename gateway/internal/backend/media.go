@@ -60,3 +60,50 @@ func (m *Media) Avatar(ctx context.Context, userID, avatarID string, small bool)
 
 	return resp.GetImage(), nil
 }
+
+// UploadPhoto stores a photo of the caller for a post and returns its ID.
+func (m *Media) UploadPhoto(ctx context.Context, accessToken string, image []byte) (string, error) {
+	resp, err := m.api.UploadPhoto(
+		withToken(ctx, accessToken),
+		&mediav1.UploadPhotoRequest{Image: image},
+		grpc.MaxCallSendMsgSize(maxMessageBytes),
+	)
+	if err != nil {
+		return "", errs.Wrap("m.api.UploadPhoto", fromStatus(err))
+	}
+
+	return resp.GetPhotoId(), nil
+}
+
+// OwnPhotos returns which of photoIDs the caller has.
+func (m *Media) OwnPhotos(ctx context.Context, accessToken string, photoIDs []string) ([]string, error) {
+	resp, err := m.api.ListOwnPhotos(withToken(ctx, accessToken), &mediav1.ListOwnPhotosRequest{PhotoIds: photoIDs})
+	if err != nil {
+		return nil, errs.Wrap("m.api.ListOwnPhotos", fromStatus(err))
+	}
+
+	return resp.GetPhotoIds(), nil
+}
+
+func (m *Media) DeletePhotos(ctx context.Context, accessToken string, photoIDs []string) error {
+	if _, err := m.api.DeletePhotos(withToken(ctx, accessToken), &mediav1.DeletePhotosRequest{PhotoIds: photoIDs}); err != nil {
+		return errs.Wrap("m.api.DeletePhotos", fromStatus(err))
+	}
+
+	return nil
+}
+
+// Photo returns the JPEG of a photo, small (up to 640px) or large (1280px).
+func (m *Media) Photo(ctx context.Context, userID, photoID string, small bool) ([]byte, error) {
+	size := mediav1.PhotoSize_PHOTO_SIZE_LARGE
+	if small {
+		size = mediav1.PhotoSize_PHOTO_SIZE_SMALL
+	}
+
+	resp, err := m.api.GetPhoto(ctx, &mediav1.GetPhotoRequest{UserId: userID, PhotoId: photoID, Size: size})
+	if err != nil {
+		return nil, errs.Wrap("m.api.GetPhoto", fromStatus(err))
+	}
+
+	return resp.GetImage(), nil
+}

@@ -223,6 +223,47 @@ paths:
               schema: { $ref: "#/components/schemas/UserPage" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
 
+  /api/v1/me/photos:
+    post:
+      summary: Upload a photo for a post
+      description: |
+        The raw image is the request body (JPEG, PNG, GIF or WebP, at most
+        8 MB). It is scaled down whole, keeping its proportions; attach it
+        to a post by its `id`. Deleting the post deletes its photos.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: The stored photo
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Photo" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /media/photos/{userId}/{photoId}/{file}:
+    get:
+      summary: A photo of a post
+      description: URLs come from the `photos` of posts and never change, so responses are cached for a year.
+      parameters:
+        - { name: userId, in: path, required: true, schema: { type: string } }
+        - { name: photoId, in: path, required: true, schema: { type: string } }
+        - name: file
+          in: path
+          required: true
+          schema: { type: string, enum: [large.jpg, small.jpg] }
+      responses:
+        "200":
+          description: JPEG, up to 1280 (large) or 640 (small) on the longer side
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /media/avatars/{userId}/{avatarId}/{file}:
     get:
       summary: A profile photo
@@ -247,7 +288,10 @@ paths:
   /api/v1/me/posts:
     post:
       summary: Write on your own wall
-      description: The profile must be filled in first (it gives the wall its address).
+      description: |
+        The profile must be filled in first (it gives the wall its address).
+        Text, photos or both; photos are IDs from `POST /api/v1/me/photos`
+        and must be yours.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -255,10 +299,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [text]
               additionalProperties: false
               properties:
-                text: { type: string, minLength: 1, maxLength: 1000 }
+                text: { type: string, maxLength: 1000 }
+                photos:
+                  type: array
+                  maxItems: 10
+                  uniqueItems: true
+                  items: { type: string, format: uuid }
       responses:
         "201":
           description: The new post
@@ -807,15 +855,26 @@ components:
 
     Post:
       type: object
-      required: [id, author, text, createdAt, likes, liked, comments]
+      required: [id, author, text, photos, createdAt, likes, liked, comments]
       properties:
         id: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
-        text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
+        text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when the post is photos only" }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
         createdAt: { type: string, format: date-time }
         likes: { type: integer }
         liked: { type: boolean, description: "You like the post; false without a token" }
         comments: { type: integer }
+
+    Photo:
+      type: object
+      required: [id, large, small]
+      properties:
+        id: { type: string, format: uuid }
+        large: { type: string, description: "URL, up to 1280 on the longer side" }
+        small: { type: string, description: "URL, up to 640 on the longer side" }
 
     Comment:
       type: object

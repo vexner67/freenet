@@ -59,9 +59,11 @@ type Author struct {
 }
 
 type Post struct {
-	ID        string
-	Author    Author
-	Text      string
+	ID     string
+	Author Author
+	Text   string
+	// PhotoIDs are the author's photos in the media service, in order.
+	PhotoIDs  []string
 	CreatedAt time.Time
 	Likes     int
 	Comments  int

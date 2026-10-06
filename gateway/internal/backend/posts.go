@@ -21,8 +21,8 @@ func NewPosts(api postv1.PostServiceClient) *Posts {
 }
 
 // Create returns the post without Author: the caller knows who it is.
-func (p *Posts) Create(ctx context.Context, accessToken, text string) (model.Post, error) {
-	resp, err := p.api.CreatePost(withToken(ctx, accessToken), &postv1.CreatePostRequest{Text: text})
+func (p *Posts) Create(ctx context.Context, accessToken, text string, photoIDs []string) (model.Post, error) {
+	resp, err := p.api.CreatePost(withToken(ctx, accessToken), &postv1.CreatePostRequest{Text: text, PhotoIds: photoIDs})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.CreatePost", fromStatus(err))
 	}
@@ -178,6 +178,7 @@ func toPost(p *postv1.Post) model.Post {
 		ID:        p.GetId(),
 		Author:    model.Author{ID: p.GetAuthorId()},
 		Text:      p.GetText(),
+		PhotoIDs:  p.GetPhotoIds(),
 		CreatedAt: p.GetCreatedAt().AsTime(),
 		Likes:     int(p.GetLikeCount()),
 		Comments:  int(p.GetCommentCount()),

@@ -9,12 +9,33 @@ import (
 )
 
 const (
-	// maxAvatarBytes matches what the media service accepts.
-	maxAvatarBytes = 8 << 20
+	// maxImageBytes matches what the media service accepts.
+	maxImageBytes = 8 << 20
 
-	largeAvatarFile = "large.jpg"
-	smallAvatarFile = "small.jpg"
+	// The files behind avatar and photo URLs.
+	largeImageFile = "large.jpg"
+	smallImageFile = "small.jpg"
 )
+
+// readImage reads an uploaded image, the raw request body.
+func readImage(w http.ResponseWriter, r *http.Request) ([]byte, error) {
+	image, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxImageBytes))
+
+	var tooBig *http.MaxBytesError
+	if errors.As(err, &tooBig) {
+		return nil, failure.New(failure.InvalidArgument, "image is larger than 8 MB")
+	}
+
+	return image, err
+}
+
+// serveImage writes a JPEG behind a URL that changes with the picture, so
+// it can be cached for good.
+func serveImage(w http.ResponseWriter, image []byte) {
+	w.Header().Set("Content-Type", "image/jpeg")
+	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
+	_, _ = w.Write(image)
+}
 
 // uploadAvatar takes the raw image as the request body and makes it the
 // caller's photo. The old photo is deleted only after the profile points
@@ -26,14 +47,8 @@ func (a *api) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	image, err := io.ReadAll(http.MaxBytesReader(w, r.Body, maxAvatarBytes))
+	image, err := readImage(w, r)
 	if err != nil {
-		var tooBig *http.MaxBytesError
-		if errors.As(err, &tooBig) {
-			a.writeError(w, r, failure.New(failure.InvalidArgument, "image is larger than 8 MB"))
-			return
-		}
-
 		a.writeError(w, r, err)
 		return
 	}
@@ -85,20 +100,18 @@ func (a *api) cleanUpAvatars(r *http.Request, token, keep string) {
 // new photo, so the response can be cached for good.
 func (a *api) serveAvatar(w http.ResponseWriter, r *http.Request) {
 	file := r.PathValue("file")
-	if file != largeAvatarFile && file != smallAvatarFile {
+	if file != largeImageFile && file != smallImageFile {
 		a.writeError(w, r, failure.New(failure.NotFound, "avatar not found"))
 		return
 	}
 
-	image, err := a.media.Avatar(r.Context(), r.PathValue("userID"), r.PathValue("avatarID"), file == smallAvatarFile)
+	image, err := a.media.Avatar(r.Context(), r.PathValue("userID"), r.PathValue("avatarID"), file == smallImageFile)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	w.Header().Set("Content-Type", "image/jpeg")
-	w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")
-	_, _ = w.Write(image)
+	serveImage(w, image)
 }
 
 // searchUsers finds people by name, surname or nickname: GET /api/v1/users?q=.
