@@ -12,6 +12,8 @@ const maxPageSize = 50
 
 type postRequest struct {
 	Text string `json:"text"`
+	// Photos are IDs from POST /api/v1/me/photos.
+	Photos []string `json:"photos"`
 }
 
 type authorJSON struct {
@@ -24,13 +26,14 @@ type authorJSON struct {
 }
 
 type postResponse struct {
-	ID        string     `json:"id"`
-	Author    authorJSON `json:"author"`
-	Text      string     `json:"text"`
-	CreatedAt string     `json:"createdAt"`
-	Likes     int        `json:"likes"`
-	Liked     bool       `json:"liked"`
-	Comments  int        `json:"comments"`
+	ID        string      `json:"id"`
+	Author    authorJSON  `json:"author"`
+	Text      string      `json:"text"`
+	Photos    []photoJSON `json:"photos"`
+	CreatedAt string      `json:"createdAt"`
+	Likes     int         `json:"likes"`
+	Liked     bool        `json:"liked"`
+	Comments  int         `json:"comments"`
 }
 
 type likeResponse struct {
@@ -71,6 +74,7 @@ func toPostResponse(p model.Post) postResponse {
 		ID:        p.ID,
 		Author:    toAuthorJSON(p.Author),
 		Text:      p.Text,
+		Photos:    toPhotosJSON(p.Author.ID, p.PhotoIDs),
 		CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
 		Likes:     p.Likes,
 		Liked:     p.Liked,
@@ -178,7 +182,12 @@ func (a *api) createPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := a.posts.Create(r.Context(), token, req.Text)
+	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	p, err := a.posts.Create(r.Context(), token, req.Text, req.Photos)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -189,6 +198,8 @@ func (a *api) createPost(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, toPostResponse(p))
 }
 
+// deletePost deletes the caller's post and then its photos: only the
+// author may delete a post, and the photos are the author's.
 func (a *api) deletePost(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -196,10 +207,20 @@ func (a *api) deletePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.posts.Delete(r.Context(), token, r.PathValue("id")); err != nil {
+	id := r.PathValue("id")
+
+	p, err := a.posts.Get(r.Context(), token, id)
+	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
+
+	if err = a.posts.Delete(r.Context(), token, id); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.forgetPhotos(r, token, p.PhotoIDs)
 
 	w.WriteHeader(http.StatusNoContent)
 }

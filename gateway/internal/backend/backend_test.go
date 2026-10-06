@@ -9,6 +9,7 @@ import (
 	authv1 "github.com/vexner67/freenet/auth/api/auth/v1"
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
+	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
@@ -148,7 +149,7 @@ type fakePostAPI struct {
 func (f *fakePostAPI) CreatePost(ctx context.Context, req *postv1.CreatePostRequest, _ ...grpc.CallOption) (*postv1.CreatePostResponse, error) {
 	f.md, _ = metadata.FromOutgoingContext(ctx)
 	return &postv1.CreatePostResponse{Post: &postv1.Post{
-		Id: "p1", AuthorId: "u1", Text: req.GetText(),
+		Id: "p1", AuthorId: "u1", Text: req.GetText(), PhotoIds: req.GetPhotoIds(),
 		CreatedAt: timestamppb.New(time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)),
 	}}, nil
 }
@@ -191,9 +192,12 @@ func TestPosts(t *testing.T) {
 	api := &fakePostAPI{}
 	posts := NewPosts(api)
 
-	p, err := posts.Create(context.Background(), "tok", "привет")
+	p, err := posts.Create(context.Background(), "tok", "привет", []string{"ph1", "ph2"})
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(p.PhotoIDs) != 2 || p.PhotoIDs[1] != "ph2" {
+		t.Fatalf("photos = %v", p.PhotoIDs)
 	}
 	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
 		t.Fatalf("authorization metadata = %v", got)
@@ -378,5 +382,52 @@ func TestMessages(t *testing.T) {
 	_, err = messages.Send(context.Background(), "tok", "u1", "x")
 	if f := failure.From(err); f.Kind != failure.InvalidArgument || f.Message != "you cannot write to yourself" {
 		t.Fatalf("Send to yourself: %v", err)
+	}
+}
+
+type fakeMediaAPI struct {
+	mediav1.MediaServiceClient
+	md   metadata.MD
+	size mediav1.PhotoSize
+}
+
+func (f *fakeMediaAPI) UploadPhoto(ctx context.Context, _ *mediav1.UploadPhotoRequest, _ ...grpc.CallOption) (*mediav1.UploadPhotoResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &mediav1.UploadPhotoResponse{PhotoId: "ph1"}, nil
+}
+
+func (f *fakeMediaAPI) GetPhoto(_ context.Context, req *mediav1.GetPhotoRequest, _ ...grpc.CallOption) (*mediav1.GetPhotoResponse, error) {
+	f.size = req.GetSize()
+	return &mediav1.GetPhotoResponse{Image: []byte("jpeg")}, nil
+}
+
+func (f *fakeMediaAPI) ListOwnPhotos(_ context.Context, req *mediav1.ListOwnPhotosRequest, _ ...grpc.CallOption) (*mediav1.ListOwnPhotosResponse, error) {
+	return &mediav1.ListOwnPhotosResponse{PhotoIds: req.GetPhotoIds()[:1]}, nil
+}
+
+func TestMediaPhotos(t *testing.T) {
+	t.Parallel()
+
+	api := &fakeMediaAPI{}
+	media := NewMedia(api)
+
+	id, err := media.UploadPhoto(context.Background(), "tok", []byte("png"))
+	if err != nil || id != "ph1" {
+		t.Fatalf("UploadPhoto = %q, %v", id, err)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
+		t.Fatalf("authorization metadata = %v", got)
+	}
+
+	if _, err = media.Photo(context.Background(), "u1", "ph1", true); err != nil || api.size != mediav1.PhotoSize_PHOTO_SIZE_SMALL {
+		t.Fatalf("small photo: size %v, %v", api.size, err)
+	}
+	if _, err = media.Photo(context.Background(), "u1", "ph1", false); err != nil || api.size != mediav1.PhotoSize_PHOTO_SIZE_LARGE {
+		t.Fatalf("large photo: size %v, %v", api.size, err)
+	}
+
+	own, err := media.OwnPhotos(context.Background(), "tok", []string{"ph1", "ph2"})
+	if err != nil || len(own) != 1 || own[0] != "ph1" {
+		t.Fatalf("OwnPhotos = %v, %v", own, err)
 	}
 }

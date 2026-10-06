@@ -127,8 +127,8 @@ func toAvatarJSON(userID, avatarID string) *avatarJSON {
 	base := "/media/avatars/" + url.PathEscape(userID) + "/" + url.PathEscape(avatarID) + "/"
 
 	return &avatarJSON{
-		Large: base + largeAvatarFile,
-		Small: base + smallAvatarFile,
+		Large: base + largeImageFile,
+		Small: base + smallImageFile,
 	}
 }
 

@@ -147,13 +147,14 @@ type fakePosts struct {
 	token, cursor, deleted string
 	limit                  int
 	created                string
+	photos                 []string
 	liked                  map[string]bool
 	err                    error
 }
 
-func (f *fakePosts) Create(_ context.Context, token, text string) (model.Post, error) {
-	f.token, f.created = token, text
-	return model.Post{ID: "p9", Text: text, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
+func (f *fakePosts) Create(_ context.Context, token, text string, photoIDs []string) (model.Post, error) {
+	f.token, f.created, f.photos = token, text, photoIDs
+	return model.Post{ID: "p9", Text: text, PhotoIDs: photoIDs, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
 }
 
 func (f *fakePosts) Delete(_ context.Context, token, id string) error {
@@ -166,7 +167,7 @@ func (f *fakePosts) Get(_ context.Context, token, id string) (model.Post, error)
 	f.token = token
 	switch id {
 	case "p1":
-		return model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Text: "первая", Likes: 3, Comments: 2, Liked: token != ""}, nil
+		return model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Text: "первая", PhotoIDs: []string{"ph1"}, Likes: 3, Comments: 2, Liked: token != ""}, nil
 	case "p2":
 		return model.Post{ID: "p2", Author: model.Author{ID: "gone"}, Text: "сирота"}, nil
 	default:
@@ -272,11 +273,43 @@ func (f *fakePosts) Comments(_ context.Context, postID, cursor string, limit int
 	}, nil
 }
 
+// fakeMedia: u1 has the photos ph1 and ph2.
 type fakeMedia struct {
-	uploaded []byte
-	kept     string
-	deleted  bool
-	err      error
+	uploaded      []byte
+	kept          string
+	deleted       bool
+	deletedPhotos []string
+	err           error
+}
+
+func (f *fakeMedia) UploadPhoto(_ context.Context, _ string, image []byte) (string, error) {
+	f.uploaded = image
+	return "ph9", f.err
+}
+
+func (f *fakeMedia) OwnPhotos(_ context.Context, _ string, photoIDs []string) ([]string, error) {
+	var own []string
+	for _, id := range photoIDs {
+		if id == "ph1" || id == "ph2" {
+			own = append(own, id)
+		}
+	}
+	return own, f.err
+}
+
+func (f *fakeMedia) DeletePhotos(_ context.Context, _ string, photoIDs []string) error {
+	f.deletedPhotos = photoIDs
+	return f.err
+}
+
+func (f *fakeMedia) Photo(_ context.Context, userID, photoID string, small bool) ([]byte, error) {
+	if userID != "u1" || photoID != "ph1" {
+		return nil, failure.New(failure.NotFound, "photo not found")
+	}
+	if small {
+		return []byte("small-photo"), nil
+	}
+	return []byte("large-photo"), nil
 }
 
 func (f *fakeMedia) UploadAvatar(_ context.Context, _ string, image []byte) (string, error) {

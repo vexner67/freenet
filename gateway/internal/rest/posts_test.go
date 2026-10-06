@@ -124,11 +124,21 @@ func TestDeletePost(t *testing.T) {
 	if w := h.do("DELETE", "/api/v1/posts/p1", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.posts.deleted != "p1" {
 		t.Fatalf("status = %d, deleted = %q", w.Code, h.posts.deleted)
 	}
+	if len(h.media.deletedPhotos) != 1 || h.media.deletedPhotos[0] != "ph1" {
+		t.Fatalf("photos of the post = %v, want them deleted too", h.media.deletedPhotos)
+	}
 
 	h = newHarness(rest.Config{})
 	h.posts.err = failure.New(failure.PermissionDenied, "permission denied")
 	if w := h.do("DELETE", "/api/v1/posts/p1", "", "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
 		t.Fatalf("someone else's post: status = %d", w.Code)
+	}
+	if h.media.deletedPhotos != nil {
+		t.Fatalf("photos of someone else's post deleted: %v", h.media.deletedPhotos)
+	}
+
+	if w := newHarness(rest.Config{}).do("DELETE", "/api/v1/posts/p404", "", "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		t.Fatalf("missing post: status = %d", w.Code)
 	}
 
 	if w := newHarness(rest.Config{}).do("DELETE", "/api/v1/posts/p1", ""); w.Code != http.StatusUnauthorized {
