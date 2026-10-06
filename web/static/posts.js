@@ -4,6 +4,7 @@
 import { api } from './api.js';
 import { commentsLink, formatPostDate, wrote } from './labels.js';
 import { avatarURL, el, fullName } from './layout.js';
+import { openViewer } from './viewer.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -31,7 +32,8 @@ export function postNode(post, { onDelete, canLike = false, onError, withComment
         ' ' + wrote(post.author.gender),
         el('div', { className: 'post-date' }, el('a', { href: postPath(post), textContent: formatPostDate(post.createdAt) })),
       ),
-      el('div', { className: 'post-text', textContent: post.text }),
+      post.text ? el('div', { className: 'post-text', textContent: post.text }) : null,
+      photosNode(post.photos ?? []),
       el('div', { className: 'post-menu' },
         el('span', {}, ...separated(links)),
         likeButton(post, canLike, onError),
@@ -40,6 +42,24 @@ export function postNode(post, { onDelete, canLike = false, onError, withComment
   );
 
   return node;
+}
+
+// photosNode lays a post's photos out: one at its own proportions, more as
+// a grid of tiles. A click opens the viewer.
+function photosNode(photos) {
+  if (photos.length === 0) return null;
+
+  // Rows stay full: 2 and 4 photos in two columns, 3 and more in three.
+  const layout = photos.length === 1 ? 'single' : photos.length === 2 || photos.length === 4 ? 'grid-2' : 'grid-3';
+
+  return el('div', { className: 'post-photos ' + layout }, ...photos.map((photo, i) =>
+    el('a', {
+      href: photo.large,
+      onclick: (event) => {
+        event.preventDefault();
+        openViewer(photos, i);
+      },
+    }, el('img', { src: photo.small, alt: '', loading: 'lazy' }))));
 }
 
 // separated puts " | " between links, as in the menus of openvk.

@@ -64,10 +64,15 @@
 
             <form class="wall-form" id="post-form" hidden>
               <textarea id="post-text" maxlength="1000" placeholder="Что у вас нового?" aria-label="Новая запись"></textarea>
+              <div class="attachments" id="post-photos" hidden></div>
               <div class="row">
-                <span class="hint" id="post-counter"></span>
+                <span>
+                  <a class="attach-link" id="post-attach">Прикрепить фотографию</a>
+                  <span class="hint" id="post-counter"></span>
+                </span>
                 <button class="button" type="submit" id="post-submit">Отправить</button>
               </div>
+              <input type="file" id="post-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
             </form>
 
             <div class="error" id="wall-error" hidden></div>
