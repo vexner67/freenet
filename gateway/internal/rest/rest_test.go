@@ -333,6 +333,51 @@ func (f *fakeNotifications) MarkRead(_ context.Context, token, id string) error 
 	return f.err
 }
 
+// fakeMessages: ann is u1, bob u2. Ann has dialogs with bob and with an
+// account that is gone.
+type fakeMessages struct {
+	token, peerID, cursor, after, sentText, markedUpTo string
+	err                                                error
+}
+
+func (f *fakeMessages) Send(_ context.Context, token, recipientID, text string) (model.Message, error) {
+	f.token, f.peerID, f.sentText = token, recipientID, text
+	return model.Message{ID: "m9", SenderID: "u1", RecipientID: recipientID, Text: text, CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC)}, f.err
+}
+
+func (f *fakeMessages) Dialogs(_ context.Context, token, cursor string, _ int) (model.DialogPage, error) {
+	f.token, f.cursor = token, cursor
+	return model.DialogPage{
+		Dialogs: []model.Dialog{
+			{PeerID: "u2", LastMessage: model.Message{ID: "m2", SenderID: "u2", RecipientID: "u1", Text: "как дела?"}, Unread: true},
+			{PeerID: "gone", LastMessage: model.Message{ID: "m1", SenderID: "u1", RecipientID: "gone", Text: "ау", Read: true}},
+		},
+		NextCursor: "m1",
+	}, f.err
+}
+
+func (f *fakeMessages) CountUnread(_ context.Context, token string) (int, error) {
+	f.token = token
+	return 2, f.err
+}
+
+func (f *fakeMessages) History(_ context.Context, token, peerID, cursor, after string, _ int) (model.MessagePage, error) {
+	f.token, f.peerID, f.cursor, f.after = token, peerID, cursor, after
+	return model.MessagePage{
+		Messages: []model.Message{
+			{ID: "m1", SenderID: "u1", RecipientID: peerID, Text: "привет", Read: true},
+			{ID: "m2", SenderID: peerID, RecipientID: "u1", Text: "как дела?"},
+		},
+		NextCursor:   "m1",
+		PeerReadUpTo: "m1",
+	}, f.err
+}
+
+func (f *fakeMessages) MarkRead(_ context.Context, token, peerID, upTo string) error {
+	f.token, f.peerID, f.markedUpTo = token, peerID, upTo
+	return f.err
+}
+
 type harness struct {
 	handler       http.Handler
 	auth          *fakeAuth
@@ -340,6 +385,7 @@ type harness struct {
 	posts         *fakePosts
 	media         *fakeMedia
 	notifications *fakeNotifications
+	messages      *fakeMessages
 }
 
 func newHarness(cfg rest.Config) harness {
@@ -347,13 +393,21 @@ func newHarness(cfg rest.Config) harness {
 		cfg.RequestTimeout = time.Second
 	}
 
-	h := harness{auth: &fakeAuth{}, users: &fakeUsers{}, posts: &fakePosts{}, media: &fakeMedia{}, notifications: &fakeNotifications{}}
+	h := harness{
+		auth:          &fakeAuth{},
+		users:         &fakeUsers{},
+		posts:         &fakePosts{},
+		media:         &fakeMedia{},
+		notifications: &fakeNotifications{},
+		messages:      &fakeMessages{},
+	}
 	h.handler = rest.NewServer(cfg, rest.Backends{
 		Auth:          h.auth,
 		Users:         h.users,
 		Posts:         h.posts,
 		Media:         h.media,
 		Notifications: h.notifications,
+		Messages:      h.messages,
 	}, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler()
 
 	return h

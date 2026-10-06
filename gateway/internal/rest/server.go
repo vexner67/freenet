@@ -32,6 +32,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger) *Server {
 		posts:             backends.Posts,
 		media:             backends.Media,
 		notifications:     backends.Notifications,
+		messages:          backends.Messages,
 		logger:            logger,
 		trustForwardedFor: cfg.TrustForwardedFor,
 		webDir:            cfg.WebDir,

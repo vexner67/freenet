@@ -110,6 +110,39 @@ type NotificationPage struct {
 	NextCursor    string
 }
 
+// Message is one private message; Read means its recipient has read it.
+type Message struct {
+	ID          string
+	SenderID    string
+	RecipientID string
+	Text        string
+	CreatedAt   time.Time
+	Read        bool
+}
+
+// Dialog is the caller's conversation with PeerID; Unread means the peer
+// wrote something the caller has not read.
+type Dialog struct {
+	PeerID      string
+	LastMessage Message
+	Unread      bool
+}
+
+// DialogPage is one screen of dialogs, the most recent first.
+type DialogPage struct {
+	Dialogs    []Dialog
+	NextCursor string
+}
+
+// MessagePage is a run of messages of one dialog, oldest first.
+// NextCursor pages to older ones; PeerReadUpTo is the newest of the
+// caller's messages the peer has read ("" if none).
+type MessagePage struct {
+	Messages     []Message
+	NextCursor   string
+	PeerReadUpTo string
+}
+
 type FollowStats struct {
 	Followers int
 	Following int

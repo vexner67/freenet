@@ -24,6 +24,8 @@ func webDir(t *testing.T) string {
 		"profile.html":       "PROFILE",
 		"post.html":          "POST",
 		"notifications.html": "NOTIFICATIONS",
+		"im.html":            "DIALOGS",
+		"dialog.html":        "DIALOG",
 		"static/style.css":   "body{}",
 	}
 
@@ -45,7 +47,7 @@ func TestPages(t *testing.T) {
 
 	handler := rest.NewServer(
 		rest.Config{RequestTimeout: time.Second, WebDir: webDir(t)},
-		rest.Backends{Auth: &fakeAuth{}, Users: &fakeUsers{}, Posts: &fakePosts{}, Media: &fakeMedia{}, Notifications: &fakeNotifications{}},
+		rest.Backends{Auth: &fakeAuth{}, Users: &fakeUsers{}, Posts: &fakePosts{}, Media: &fakeMedia{}, Notifications: &fakeNotifications{}, Messages: &fakeMessages{}},
 		slog.New(slog.NewTextHandler(io.Discard, nil)),
 	).Handler()
 
@@ -66,6 +68,8 @@ func TestPages(t *testing.T) {
 		{"/ann", 200, "PROFILE", true},
 		{"/post/p1", 200, "POST", true},
 		{"/notifications", 200, "NOTIFICATIONS", true},
+		{"/im", 200, "DIALOGS", true},
+		{"/im/bob", 200, "DIALOG", true},
 		{"/static/style.css", 200, "body{}", false},
 		{"/static/", 404, "", false},
 		{"/api/v1/users/ann", 200, `"nickname":"ann"`, false},

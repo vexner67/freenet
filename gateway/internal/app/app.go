@@ -10,6 +10,7 @@ import (
 	"github.com/vexner67/freenet/gateway/internal/config"
 	"github.com/vexner67/freenet/gateway/internal/rest"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
+	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/logger"
@@ -26,6 +27,7 @@ type App struct {
 	postConn         *grpc.ClientConn
 	mediaConn        *grpc.ClientConn
 	notificationConn *grpc.ClientConn
+	messageConn      *grpc.ClientConn
 	server           *rest.Server
 }
 
@@ -84,6 +86,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("grpc.NewClient", err)
 	}
 
+	a.messageConn, err = grpc.NewClient(cfg.MessageServiceAddr, grpc.WithTransportCredentials(creds))
+	if err != nil {
+		return errs.Wrap("grpc.NewClient", err)
+	}
+
 	a.server = rest.NewServer(
 		rest.Config{
 			Addr:              fmt.Sprintf(":%d", cfg.HTTPPort),
@@ -98,6 +105,7 @@ func (a *App) build(cfg config.Config) error {
 			Posts:         backend.NewPosts(postv1.NewPostServiceClient(a.postConn)),
 			Media:         backend.NewMedia(mediav1.NewMediaServiceClient(a.mediaConn)),
 			Notifications: backend.NewNotifications(notificationv1.NewNotificationServiceClient(a.notificationConn)),
+			Messages:      backend.NewMessages(messagev1.NewMessageServiceClient(a.messageConn)),
 		},
 		a.logger,
 	)
@@ -123,6 +131,7 @@ func (a *App) Close() {
 		"post":         a.postConn,
 		"media":        a.mediaConn,
 		"notification": a.notificationConn,
+		"message":      a.messageConn,
 	}
 
 	for name, conn := range conns {

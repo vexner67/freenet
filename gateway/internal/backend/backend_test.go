@@ -9,6 +9,7 @@ import (
 	authv1 "github.com/vexner67/freenet/auth/api/auth/v1"
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
+	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
@@ -320,5 +321,62 @@ func TestNotifications(t *testing.T) {
 
 	if err = notifications.MarkRead(context.Background(), "tok", "n0"); failure.From(err).Kind != failure.NotFound {
 		t.Fatalf("MarkRead of someone else's: %v", err)
+	}
+}
+
+type fakeMessageAPI struct {
+	messagev1.MessageServiceClient
+	md  metadata.MD
+	req *messagev1.ListMessagesRequest
+}
+
+func (f *fakeMessageAPI) ListMessages(ctx context.Context, req *messagev1.ListMessagesRequest, _ ...grpc.CallOption) (*messagev1.ListMessagesResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	f.req = req
+	return &messagev1.ListMessagesResponse{
+		Messages:     []*messagev1.Message{{Id: "m1", SenderId: "u1", RecipientId: "u2", Text: "привет", CreatedAt: timestamppb.Now(), Read: true}},
+		NextCursor:   "m1",
+		PeerReadUpTo: "m1",
+	}, nil
+}
+
+func (f *fakeMessageAPI) ListDialogs(_ context.Context, _ *messagev1.ListDialogsRequest, _ ...grpc.CallOption) (*messagev1.ListDialogsResponse, error) {
+	return &messagev1.ListDialogsResponse{Dialogs: []*messagev1.Dialog{
+		{PeerId: "u2", LastMessage: &messagev1.Message{Id: "m3", SenderId: "u2", Text: "ау"}, Unread: true},
+	}}, nil
+}
+
+func (f *fakeMessageAPI) SendMessage(_ context.Context, _ *messagev1.SendMessageRequest, _ ...grpc.CallOption) (*messagev1.SendMessageResponse, error) {
+	return nil, status.Error(codes.InvalidArgument, "you cannot write to yourself")
+}
+
+func TestMessages(t *testing.T) {
+	t.Parallel()
+
+	api := &fakeMessageAPI{}
+	messages := NewMessages(api)
+
+	page, err := messages.History(context.Background(), "tok", "u2", "", "m0", 1<<20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if api.req.GetPeerId() != "u2" || api.req.GetAfter() != "m0" || api.req.GetLimit() != 1<<10 {
+		t.Fatalf("request = %v", api.req)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
+		t.Fatalf("authorization metadata = %v", got)
+	}
+	if m := page.Messages[0]; m.ID != "m1" || m.SenderID != "u1" || !m.Read || page.PeerReadUpTo != "m1" || page.NextCursor != "m1" {
+		t.Fatalf("page = %+v", page)
+	}
+
+	dialogs, err := messages.Dialogs(context.Background(), "tok", "", 0)
+	if err != nil || len(dialogs.Dialogs) != 1 || !dialogs.Dialogs[0].Unread || dialogs.Dialogs[0].LastMessage.Text != "ау" {
+		t.Fatalf("dialogs = %+v, %v", dialogs, err)
+	}
+
+	_, err = messages.Send(context.Background(), "tok", "u1", "x")
+	if f := failure.From(err); f.Kind != failure.InvalidArgument || f.Message != "you cannot write to yourself" {
+		t.Fatalf("Send to yourself: %v", err)
 	}
 }
