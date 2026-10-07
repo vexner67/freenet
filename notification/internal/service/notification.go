@@ -71,10 +71,11 @@ const (
 	ChangeRead Change = "read"
 )
 
-// Events delivers live updates within this process (pkg/pubsub): best
-// effort, as a subscriber catches up from storage after any gap.
+// Events delivers live updates to the subscribers on every replica
+// (pubsub.Redis) or on this one (pubsub.Hub): best effort, as a subscriber
+// catches up from storage after any gap.
 type Events interface {
-	Publish(userID uuid.UUID, c Change)
+	Publish(ctx context.Context, userID uuid.UUID, c Change)
 	Subscribe(userID uuid.UUID) (<-chan Change, func())
 }
 
@@ -106,7 +107,7 @@ func (s *NotificationService) Notify(ctx context.Context, e notification.Event) 
 		return errs.Wrap("s.notificationRepo.Save", err)
 	}
 
-	s.events.Publish(e.RecipientID, ChangeNew)
+	s.events.Publish(ctx, e.RecipientID, ChangeNew)
 
 	return nil
 }
@@ -122,7 +123,7 @@ func (s *NotificationService) Retract(ctx context.Context, e notification.Event)
 		return errs.Wrap("s.notificationRepo.Delete", err)
 	}
 
-	s.events.Publish(e.RecipientID, ChangeGone)
+	s.events.Publish(ctx, e.RecipientID, ChangeGone)
 
 	return nil
 }
@@ -205,7 +206,7 @@ func (s *NotificationService) MarkRead(ctx context.Context, userID, notification
 	}
 
 	// The user's other pages clear their counters.
-	s.events.Publish(userID, ChangeRead)
+	s.events.Publish(ctx, userID, ChangeRead)
 
 	return nil
 }
