@@ -267,6 +267,8 @@ const errorTexts = {
   'post text is empty': 'Напишите что-нибудь.',
   'post text is too long': 'Запись длиннее 1000 символов.',
   'post not found': 'Запись уже удалена.',
+  'the post can no longer be edited': 'Запись можно редактировать только в течение недели после публикации.',
+  'a repost has no photos of its own': 'К репосту нельзя прикрепить фотографии.',
   'photo not found': 'Фотография не найдена, прикрепите её снова.',
   'a post has at most 10 photos': 'К записи можно прикрепить не больше 10 фотографий.',
   'the same photo is attached twice': 'Эта фотография уже прикреплена.',

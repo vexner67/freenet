@@ -307,6 +307,12 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
 
 .post-date a { color: #777; }
 
+/* Editing in place, as on openvk: the form takes the place of the text
+   and photos (postedit.js). */
+.post.editing .post-content { display: none; }
+.post-edit { margin: 6px 0 4px; }
+.post-edit-buttons { display: flex; gap: 4px; }
+
 /* As on openvk: links on the left, the heart with its count on the right. */
 .post-menu {
   display: flex;

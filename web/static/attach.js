@@ -9,11 +9,12 @@ export const MAX_PHOTOS = 10;
 const MAX_BYTES = 8 << 20;
 
 // initAttachments wires the link, the hidden file input and the list of
-// thumbnails; onChange runs whenever photos come or go.
-export function initAttachments({ link, input, list, error, onChange }) {
+// thumbnails; onChange runs whenever photos come or go. photos are those
+// attached already, as when a post is edited.
+export function initAttachments({ link, input, list, error, onChange, photos = [] }) {
   // Entries keep the order the photos were picked in; an entry has its
   // photo once the upload is done.
-  let entries = [];
+  let entries = photos.map((photo) => ({ photo }));
 
   const uploaded = () => entries.filter((e) => e.photo);
 
@@ -68,6 +69,8 @@ export function initAttachments({ link, input, list, error, onChange }) {
 
     render();
   });
+
+  render();
 
   return {
     ids: () => uploaded().map((e) => e.photo.id),
