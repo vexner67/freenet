@@ -263,7 +263,9 @@ paths:
       description: |
         The posts on the wall, by its owner and by others. No token needed;
         with one, `liked` says whether you like each post, and the first
-        page says in `canPost` whether you may write there.
+        page says in `canPost` whether you may write there. The pinned post
+        (`pinned`) comes first on the first page, on top of `limit` others,
+        and not again later.
         Page with `cursor` = `nextCursor` of the previous page; an empty
         `nextCursor` means the last page.
       parameters:
@@ -495,6 +497,80 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: Neither your post nor your wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Edit your post
+      description: |
+        Its author changes the text and photos until `editableUntil`, a week
+        after posting, as in openvk; the post then shows `editedAt`. The
+        body is the whole new content, as when posting: text, photos or
+        both; new photos must be yours. A repost keeps the post it shares
+        and takes text only. Photos taken away are deleted.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewPost" }
+      responses:
+        "200":
+          description: The edited post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The week to edit the post is over
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/posts/{id}/pin:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Pin the post on your wall
+      description: |
+        The owner of the wall shows the post first there, whoever wrote it;
+        the post pinned before is unpinned. Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Pinned }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Unpin the post
+      description: Idempotent; the post goes back to its place on the wall.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Unpinned }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your wall
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1118,7 +1194,7 @@ components:
 
     Post:
       type: object
-      required: [id, author, wall, text, photos, createdAt, likes, liked, comments, reposts, repost]
+      required: [id, author, wall, text, photos, createdAt, likes, liked, comments, reposts, repost, editedAt, editableUntil, pinned]
       properties:
         id: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
@@ -1141,6 +1217,13 @@ components:
           oneOf:
             - $ref: "#/components/schemas/SharedPost"
             - type: "null"
+        editedAt:
+          description: When the author last edited the post; null if never ("ред.")
+          oneOf:
+            - { type: string, format: date-time }
+            - type: "null"
+        editableUntil: { type: string, format: date-time, description: "Until when the author may edit it" }
+        pinned: { type: boolean, description: "Shown first on its wall (\"закреплено\")" }
 
     SharedPost:
       type: object

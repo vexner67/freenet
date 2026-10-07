@@ -224,6 +224,7 @@ type fakePosts struct {
 	limit                  int
 	wallPosts              []model.Post
 	created, wall, shared  string
+	edited, pinned         string
 	photos                 []string
 	liked                  map[string]bool
 	err                    error
@@ -232,6 +233,38 @@ type fakePosts struct {
 func (f *fakePosts) Create(_ context.Context, token, wallID, text string, photoIDs []string) (model.Post, error) {
 	f.token, f.wall, f.created, f.photos = token, wallID, text, photoIDs
 	return model.Post{ID: "p9", Text: text, PhotoIDs: photoIDs, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
+}
+
+// Edit edits the posts Get knows.
+func (f *fakePosts) Edit(ctx context.Context, token, id, text string, photoIDs []string) (model.Post, error) {
+	p, err := f.Get(ctx, token, id)
+	if err != nil {
+		return model.Post{}, err
+	}
+
+	f.edited, f.photos = text, photoIDs
+	p.Text, p.PhotoIDs, p.EditedAt = text, photoIDs, time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
+
+	return p, f.err
+}
+
+// Pin pins the posts Get knows; Unpin is "-" before the ID.
+func (f *fakePosts) Pin(ctx context.Context, token, id string) error {
+	if _, err := f.Get(ctx, token, id); err != nil {
+		return err
+	}
+
+	f.pinned = id
+	return f.err
+}
+
+func (f *fakePosts) Unpin(ctx context.Context, token, id string) error {
+	if _, err := f.Get(ctx, token, id); err != nil {
+		return err
+	}
+
+	f.pinned = "-" + id
+	return f.err
 }
 
 // Repost shares p1 only, as u1's repost p7.

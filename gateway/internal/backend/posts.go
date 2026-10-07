@@ -53,6 +53,33 @@ func (p *Posts) Delete(ctx context.Context, accessToken, id string) error {
 	return nil
 }
 
+// Edit changes the text and photos of the caller's post and returns it.
+func (p *Posts) Edit(ctx context.Context, accessToken, id, text string, photoIDs []string) (model.Post, error) {
+	resp, err := p.api.EditPost(withToken(ctx, accessToken), &postv1.EditPostRequest{Id: id, Text: text, PhotoIds: photoIDs})
+	if err != nil {
+		return model.Post{}, errs.Wrap("p.api.EditPost", fromStatus(err))
+	}
+
+	return toPost(resp.GetPost()), nil
+}
+
+// Pin shows the post first on its wall, which is the caller's.
+func (p *Posts) Pin(ctx context.Context, accessToken, id string) error {
+	if _, err := p.api.PinPost(withToken(ctx, accessToken), &postv1.PinPostRequest{Id: id}); err != nil {
+		return errs.Wrap("p.api.PinPost", fromStatus(err))
+	}
+
+	return nil
+}
+
+func (p *Posts) Unpin(ctx context.Context, accessToken, id string) error {
+	if _, err := p.api.UnpinPost(withToken(ctx, accessToken), &postv1.UnpinPostRequest{Id: id}); err != nil {
+		return errs.Wrap("p.api.UnpinPost", fromStatus(err))
+	}
+
+	return nil
+}
+
 // Get returns the post without the profiles of Author and Wall; the caller
 // looks them up. So do List, Feed and GetMany.
 func (p *Posts) Get(ctx context.Context, accessToken, id string) (model.Post, error) {
@@ -202,6 +229,10 @@ func toPost(p *postv1.Post) model.Post {
 		Reposts:   int(p.GetRepostCount()),
 		Liked:     p.GetLiked(),
 		RepostOf:  p.GetRepostOf(),
+		// Unset timestamps are zero times, not the Unix epoch.
+		EditedAt:      fromTimestamp(p.GetEditedAt()),
+		EditableUntil: fromTimestamp(p.GetEditableUntil()),
+		Pinned:        p.GetPinned(),
 	}
 }
 
