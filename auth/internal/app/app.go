@@ -25,14 +25,19 @@ import (
 	"github.com/vexner67/freenet/pkg/hmac"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/logger"
+	"github.com/vexner67/freenet/pkg/metrics"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/ratelimit"
+	"github.com/vexner67/freenet/pkg/reqid"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
 const (
+	// probeTimeout bounds the healthcheck.
+	probeTimeout   = 3 * time.Second
 	connectTimeout = 5 * time.Second
 	migrateTimeout = time.Minute
 )
@@ -43,6 +48,7 @@ type App struct {
 	redis    *goredis.Client
 	userConn *grpc.ClientConn
 	server   *grpcserver.Server
+	metrics  *metrics.Server
 	addr     string
 }
 
@@ -87,7 +93,7 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("mtls.ClientCredentials", err)
 	}
 
-	a.userConn, err = grpc.NewClient(cfg.UserServiceAddr, grpc.WithTransportCredentials(clientCreds))
+	a.userConn, err = grpc.NewClient(cfg.UserServiceAddr, append(reqid.DialOptions(), grpc.WithTransportCredentials(clientCreds))...)
 	if err != nil {
 		return errs.Wrap("grpc.NewClient", err)
 	}
@@ -123,12 +129,24 @@ func (a *App) build(cfg config.Config) error {
 		a.logger.Warn("mTLS is off: client addresses from the gateway are not trusted, do not use in production")
 	}
 
-	a.server = grpcserver.New(
+	reg := metrics.NewRegistry()
+
+	a.server, err = grpcserver.New(
 		a.logger,
+		reg,
 		grpc.Creds(serverCreds),
 		grpc.ChainUnaryInterceptor(authgrpc.ErrorInterceptor(a.logger)),
 	)
+	if err != nil {
+		return errs.Wrap("grpcserver.New", err)
+	}
 	authv1.RegisterAuthServiceServer(a.server.Registrar(), authgrpc.NewAuthHandler(authService, a.logger))
+
+	if cfg.MetricsPort == 0 {
+		a.logger.Info("METRICS_PORT is not set: metrics are not served")
+	} else {
+		a.metrics = metrics.NewServer(fmt.Sprintf(":%d", cfg.MetricsPort), reg, a.logger)
+	}
 
 	a.logger.Info("auth configured", "storage", cfg.Storage, "mailer", cfg.Mailer, "mtls", cfg.TLS.Enabled())
 
@@ -214,12 +232,36 @@ func newTokenProvider(cfg config.Config) (*jwt.JWT, error) {
 	}), nil
 }
 
+// Run serves until ctx is cancelled or the gRPC or metrics server fails,
+// which stops the other one too.
 func (a *App) Run(ctx context.Context) error {
-	if err := a.server.Run(ctx, a.addr); err != nil {
-		return errs.Wrap("a.server.Run", err)
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return errs.Wrap("a.server.Run", a.server.Run(ctx, a.addr))
+	})
+
+	if a.metrics != nil {
+		g.Go(func() error {
+			return errs.Wrap("a.metrics.Run", a.metrics.Run(ctx))
+		})
 	}
 
-	return nil
+	return g.Wait()
+}
+
+// Healthcheck asks the service running with cfg on this host whether it
+// serves: the container healthcheck, as the image has no shell or curl.
+func Healthcheck(ctx context.Context, cfg config.Config) error {
+	creds, err := mtls.ClientCredentials(cfg.TLS)
+	if err != nil {
+		return errs.Wrap("mtls.ClientCredentials", err)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+
+	return errs.Wrap("grpcserver.Probe", grpcserver.Probe(ctx, fmt.Sprintf("localhost:%d", cfg.GRPCPort), creds))
 }
 
 // Close releases everything New opened; safe after a partial New.

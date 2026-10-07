@@ -48,7 +48,7 @@ func (c *Client) call(ctx context.Context, op string, rpc func(context.Context) 
 	defer cancel()
 
 	if err := rpc(ctx); err != nil {
-		c.logger.Warn("notification not delivered", "op", op, "error", err)
+		c.logger.WarnContext(ctx, "notification not delivered", "op", op, "error", err)
 	}
 }
 

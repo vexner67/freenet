@@ -7,6 +7,7 @@ import (
 
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -30,8 +31,13 @@ func IdentityFromContext(ctx context.Context) (Identity, bool) {
 // Public methods work without a token, but a token that is sent is still
 // verified: then the handler knows the viewer (e.g. "you follow them"),
 // and an expired token is reported so the client can refresh it.
+//
+// The health check is always public: it tells only whether the service
+// serves, and the container healthcheck has no token.
 func UnaryServerInterceptor(v *Verifier, publicMethods ...string) grpc.UnaryServerInterceptor {
-	public := make(map[string]struct{}, len(publicMethods))
+	public := map[string]struct{}{
+		grpc_health_v1.Health_Check_FullMethodName: {},
+	}
 	for _, m := range publicMethods {
 		public[m] = struct{}{}
 	}

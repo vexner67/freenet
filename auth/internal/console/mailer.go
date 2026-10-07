@@ -15,7 +15,7 @@ func NewMailer(l *slog.Logger) *Mailer {
 	}
 }
 
-func (c *Mailer) SendCode(_ context.Context, email, code string) error {
-	c.l.Info("verification code", "email", email, "code", code)
+func (c *Mailer) SendCode(ctx context.Context, email, code string) error {
+	c.l.InfoContext(ctx, "verification code", "email", email, "code", code)
 	return nil
 }

@@ -13,6 +13,7 @@ import (
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 )
@@ -211,6 +212,14 @@ func TestUnaryServerInterceptor(t *testing.T) {
 		}
 		if found {
 			t.Fatal("identity must not be set for anonymous calls")
+		}
+	})
+
+	t.Run("health check without a token", func(t *testing.T) {
+		t.Parallel()
+
+		if _, _, err := call(grpc_health_v1.Health_Check_FullMethodName, metadata.MD{}); err != nil {
+			t.Fatalf("err = %v", err)
 		}
 	})
 

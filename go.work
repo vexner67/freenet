@@ -12,10 +12,12 @@ use (
 	./pkg/hmac
 	./pkg/jwtauth
 	./pkg/logger
+	./pkg/metrics
 	./pkg/mtls
 	./pkg/pgpool
 	./pkg/pubsub
 	./pkg/ratelimit
+	./pkg/reqid
 	./post
 	./user
 )
