@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink } from '../static/labels.js';
+import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -121,4 +121,15 @@ test('the share link counts reposts, as on openvk', () => {
   assert.equal(shareLink(3), 'Поделиться (3)');
   assert.equal(notificationVerb('repost', 'male'), 'поделился');
   assert.equal(notificationVerb('repost', 'female'), 'поделилась');
+});
+
+test('blacklist and messages privacy read like openvk', () => {
+  assert.equal(blacklistCount(0), 'В вашем чёрном списке ещё нет пользователей.');
+  assert.equal(blacklistCount(1), 'В вашем чёрном списке 1 пользователь.');
+  assert.equal(blacklistCount(3), 'В вашем чёрном списке 3 пользователя.');
+  assert.equal(blacklistCount(11), 'В вашем чёрном списке 11 пользователей.');
+  assert.equal(limitedAccess('female'), 'ограничила');
+  assert.equal(limitedAccess(''), 'ограничил(а)');
+  assert.deepEqual(messagesWrites.map(([value]) => value), ['everyone', 'following', 'nobody']);
+  assert.match(errorText(new Error('you cannot write to this user')), /ограничил круг лиц/);
 });

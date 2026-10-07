@@ -1,6 +1,7 @@
 import { api, currentUser } from './api.js';
-import { genders, relationships, worldviews, politicalViews, label, formatBirthday } from './labels.js';
-import { $, el, renderChrome, showError } from './layout.js';
+import { genders, relationships, worldviews, politicalViews, label, formatBirthday, limitedAccess } from './labels.js';
+import { $, el, fullName, renderChrome, showError } from './layout.js';
+import { initBlacklistLink } from './blacklist.js';
 import { initFollow } from './follow.js';
 import { initPhoto } from './photo.js';
 import { initWall } from './wall.js';
@@ -48,6 +49,24 @@ function render(user, isOwner) {
   initWall(user, me);
 }
 
+// renderLimited is openvk's page of someone blacklisted either way: the
+// photo, the name and why there is nothing else. The data stays public
+// (anonymous visitors see it), the page only stops inviting contact.
+function renderLimited(profile) {
+  const name = fullName(profile);
+
+  document.title = `${name} | Freenet`;
+  $('title').textContent = name;
+  $('title-aside').textContent = '@' + profile.nickname;
+  $('name').textContent = name;
+  $('limited').textContent = profile.blockedMe
+    ? `${name} ${limitedAccess(profile.gender)} доступ к своей странице.`
+    : `${name} — в вашем чёрном списке.`;
+  $('limited').hidden = false;
+  $('profile-content').hidden = true;
+  $('profile').hidden = false;
+}
+
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
@@ -57,14 +76,24 @@ try {
   const profile = await api.profile(nickname);
   const isOwner = Boolean(me) && me.id === profile.id;
 
-  render(isOwner ? me : profile, isOwner);
-  initPhoto(isOwner ? me : profile, isOwner);
-  initFollow(profile, me, isOwner);
+  if (profile.blockedMe || profile.blockedByMe) {
+    renderLimited(profile);
+    initPhoto(profile, false);
+  } else {
+    render(isOwner ? me : profile, isOwner);
+    initPhoto(isOwner ? me : profile, isOwner);
+    initFollow(profile, me, isOwner);
 
-  // As on openvk: write to anyone but yourself.
+    // As on openvk: write to anyone but yourself.
+    if (me && !isOwner) {
+      $('write').href = '/im/' + encodeURIComponent(profile.nickname);
+      $('write').hidden = false;
+    }
+  }
+
+  // As on openvk, also on the page of whoever blacklisted the viewer.
   if (me && !isOwner) {
-    $('write').href = '/im/' + encodeURIComponent(profile.nickname);
-    $('write').hidden = false;
+    initBlacklistLink(profile, () => location.reload());
   }
 } catch (e) {
   $('title').textContent = e.status === 404 || e.status === 400 ? 'Страница не найдена' : 'Ошибка';

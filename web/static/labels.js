@@ -52,6 +52,14 @@ export const wallWrites = [
   ['only_me', 'Только я'],
 ];
 
+// messagesWrites is "Кто может писать мне сообщения" of openvk, with its
+// "Друзья" as the people you follow; whoever you wrote to may answer.
+export const messagesWrites = [
+  ['everyone', 'Все желающие'],
+  ['following', 'Те, на кого я подписан(а)'],
+  ['nobody', 'Никто'],
+];
+
 export const months = [
   'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
   'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
@@ -103,6 +111,18 @@ export function formatPostDate(iso, now = new Date()) {
 
 export function wrote(gender) {
   return gender === 'female' ? 'написала' : 'написал';
+}
+
+// limitedAccess is openvk's "$1 ограничил доступ к своей странице." for
+// whoever blacklisted the viewer.
+export function limitedAccess(gender) {
+  return { male: 'ограничил', female: 'ограничила' }[gender] ?? 'ограничил(а)';
+}
+
+// blacklistCount is the head of the blacklist, as on openvk.
+export function blacklistCount(n) {
+  if (n <= 0) return 'В вашем чёрном списке ещё нет пользователей.';
+  return `В вашем чёрном списке ${n} ${plural(n, ['пользователь', 'пользователя', 'пользователей'])}.`;
 }
 
 // genitiveName is "Петра Петрова" for "на стене Петра Петрова", as openvk
@@ -233,6 +253,9 @@ const errorTexts = {
   'the same photo is attached twice': 'Эта фотография уже прикреплена.',
   'fill in your profile before posting': 'Сначала заполните свою страницу.',
   'you cannot post on this wall': 'Хозяин страницы не разрешает вам писать у него на стене.',
+  'you cannot write to this user': 'Вы не можете отправить сообщение этому пользователю, поскольку он ограничил круг лиц, которые могут присылать ему сообщения.',
+  'you cannot comment on this post': 'Вы не можете комментировать эту запись.',
+  'you cannot blacklist yourself': 'Нельзя внести в чёрный список самого себя.',
   'invalid post id': 'Запись не найдена.',
   'comment text is empty': 'Напишите что-нибудь.',
   'comment text is too long': 'Комментарий длиннее 1000 символов.',

@@ -22,6 +22,10 @@
     <div class="page">
       <div class="page-title">Редактирование страницы</div>
       <div class="page-body">
+        <div class="tabs">
+          <a class="active" href="/edit">Основное</a>
+          <a href="/settings/blacklist">Чёрный список</a>
+        </div>
         <p id="loading">Загрузка…</p>
 
         <form id="form" hidden>
@@ -97,6 +101,13 @@
             <tr>
               <th><label for="wall-write">Кто может писать у меня на стене</label></th>
               <td class="control"><select id="wall-write"></select></td>
+            </tr>
+            <tr>
+              <th><label for="messages-write">Кто может писать мне сообщения</label></th>
+              <td class="control">
+                <select id="messages-write"></select>
+                <p class="hint">Вам смогут ответить, если вы напишете первыми.</p>
+              </td>
             </tr>
           </table>
 
