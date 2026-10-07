@@ -26,6 +26,7 @@ const (
 	MessageService_ListMessages_FullMethodName       = "/message.v1.MessageService/ListMessages"
 	MessageService_MarkDialogRead_FullMethodName     = "/message.v1.MessageService/MarkDialogRead"
 	MessageService_HasMessagesFrom_FullMethodName    = "/message.v1.MessageService/HasMessagesFrom"
+	MessageService_Subscribe_FullMethodName          = "/message.v1.MessageService/Subscribe"
 )
 
 // MessageServiceClient is the client API for MessageService service.
@@ -48,6 +49,12 @@ type MessageServiceClient interface {
 	// Requires an access token: whether the peer has ever written to the
 	// caller, who may then answer whatever the peer's privacy.
 	HasMessagesFrom(ctx context.Context, in *HasMessagesFromRequest, opts ...grpc.CallOption) (*HasMessagesFromResponse, error)
+	// Requires an access token: the caller's events as they happen — new
+	// messages of their dialogs, sent or received, and read marks that move.
+	// Best effort: the stream ends with Unauthenticated when the token
+	// expires and with ResourceExhausted when the caller falls behind; then
+	// subscribe again and catch up with ListMessages and ListDialogs.
+	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeResponse], error)
 }
 
 type messageServiceClient struct {
@@ -118,6 +125,25 @@ func (c *messageServiceClient) HasMessagesFrom(ctx context.Context, in *HasMessa
 	return out, nil
 }
 
+func (c *messageServiceClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &MessageService_ServiceDesc.Streams[0], MessageService_Subscribe_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SubscribeRequest, SubscribeResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type MessageService_SubscribeClient = grpc.ServerStreamingClient[SubscribeResponse]
+
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility.
@@ -138,6 +164,12 @@ type MessageServiceServer interface {
 	// Requires an access token: whether the peer has ever written to the
 	// caller, who may then answer whatever the peer's privacy.
 	HasMessagesFrom(context.Context, *HasMessagesFromRequest) (*HasMessagesFromResponse, error)
+	// Requires an access token: the caller's events as they happen — new
+	// messages of their dialogs, sent or received, and read marks that move.
+	// Best effort: the stream ends with Unauthenticated when the token
+	// expires and with ResourceExhausted when the caller falls behind; then
+	// subscribe again and catch up with ListMessages and ListDialogs.
+	Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -165,6 +197,9 @@ func (UnimplementedMessageServiceServer) MarkDialogRead(context.Context, *MarkDi
 }
 func (UnimplementedMessageServiceServer) HasMessagesFrom(context.Context, *HasMessagesFromRequest) (*HasMessagesFromResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method HasMessagesFrom not implemented")
+}
+func (UnimplementedMessageServiceServer) Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error {
+	return status.Error(codes.Unimplemented, "method Subscribe not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 func (UnimplementedMessageServiceServer) testEmbeddedByValue()                        {}
@@ -295,6 +330,17 @@ func _MessageService_HasMessagesFrom_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(MessageServiceServer).Subscribe(m, &grpc.GenericServerStream[SubscribeRequest, SubscribeResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type MessageService_SubscribeServer = grpc.ServerStreamingServer[SubscribeResponse]
+
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -327,6 +373,12 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MessageService_HasMessagesFrom_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Subscribe",
+			Handler:       _MessageService_Subscribe_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "api/message/v1/message.proto",
 }

@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	"github.com/vexner67/freenet/message/internal/config"
@@ -20,12 +21,16 @@ import (
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/pgpool"
+	"github.com/vexner67/freenet/pkg/pubsub"
 	"github.com/vexner67/freenet/pkg/ratelimit"
 	"google.golang.org/grpc"
 )
 
 const (
 	connectTimeout = 5 * time.Second
+	// eventBuffer is how far a subscriber may lag before it is dropped
+	// and has to catch up from storage.
+	eventBuffer    = 64
 	migrateTimeout = time.Minute
 )
 
@@ -85,22 +90,26 @@ func (a *App) build(cfg config.Config) error {
 		a.logger.Warn("mTLS is off: the service accepts plaintext connections, do not use in production")
 	}
 
+	verifier := jwtauth.NewVerifier(publicKey, cfg.JWTIssuer)
+
 	a.server = grpcserver.New(
 		a.logger,
 		grpc.Creds(creds),
 		grpc.ChainUnaryInterceptor(
 			messagegrpc.ErrorInterceptor(a.logger),
-			jwtauth.UnaryServerInterceptor(
-				jwtauth.NewVerifier(publicKey, cfg.JWTIssuer),
-				messagegrpc.PublicMethods()...,
-			),
+			jwtauth.UnaryServerInterceptor(verifier, messagegrpc.PublicMethods()...),
 			ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger),
 		),
+		grpc.ChainStreamInterceptor(jwtauth.StreamServerInterceptor(verifier)),
 	)
+
+	// Live updates stay within this replica; see Subscribe in the proto.
+	events := pubsub.New[uuid.UUID, service.Event](eventBuffer)
+
 	messagev1.RegisterMessageServiceServer(
 		a.server.Registrar(),
 		messagegrpc.NewMessageHandler(
-			service.NewMessageService(repos.messages, repos.dialogs),
+			service.NewMessageService(repos.messages, repos.dialogs, events),
 			a.logger,
 		),
 	)

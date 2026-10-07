@@ -18,6 +18,7 @@ import (
 	"github.com/vexner67/freenet/message/internal/inmem"
 	"github.com/vexner67/freenet/message/internal/service"
 	"github.com/vexner67/freenet/pkg/jwtauth"
+	"github.com/vexner67/freenet/pkg/pubsub"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -44,12 +45,17 @@ func newServer(t *testing.T) testServer {
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	lis := bufconn.Listen(1 << 20)
-	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		messagegrpc.ErrorInterceptor(log),
-		jwtauth.UnaryServerInterceptor(jwtauth.NewVerifier(&key.PublicKey, issuer), messagegrpc.PublicMethods()...),
-	))
+	verifier := jwtauth.NewVerifier(&key.PublicKey, issuer)
+	srv := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			messagegrpc.ErrorInterceptor(log),
+			jwtauth.UnaryServerInterceptor(verifier, messagegrpc.PublicMethods()...),
+		),
+		grpc.ChainStreamInterceptor(jwtauth.StreamServerInterceptor(verifier)),
+	)
 	store := inmem.NewStore()
-	messagev1.RegisterMessageServiceServer(srv, messagegrpc.NewMessageHandler(service.NewMessageService(store.Messages(), store.Dialogs()), log))
+	events := pubsub.New[uuid.UUID, service.Event](64)
+	messagev1.RegisterMessageServiceServer(srv, messagegrpc.NewMessageHandler(service.NewMessageService(store.Messages(), store.Dialogs(), events), log))
 
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
@@ -234,5 +240,75 @@ func TestHasMessagesFrom(t *testing.T) {
 	_, err = s.client.HasMessagesFrom(s.as(t, ann), &messagev1.HasMessagesFromRequest{PeerId: "x"})
 	if got := status.Code(err); got != codes.InvalidArgument {
 		t.Fatalf("bad peer id: code = %v", got)
+	}
+}
+
+func TestSubscribe(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	ctx, cancel := context.WithCancel(s.as(t, ann))
+	defer cancel()
+
+	stream, err := s.client.Subscribe(ctx, &messagev1.SubscribeRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The stream is open once the server has the subscription; until then
+	// a message could be missed, so send until one arrives.
+	var got *messagev1.SubscribeResponse
+	received := make(chan *messagev1.SubscribeResponse, 1)
+	go func() {
+		resp, err := stream.Recv()
+		if err == nil {
+			received <- resp
+		}
+	}()
+
+	var sent *messagev1.Message
+	for got == nil {
+		resp, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "привет"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		sent = resp.GetMessage()
+
+		select {
+		case got = <-received:
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+
+	if m := got.GetMessage(); m == nil || m.GetSenderId() != bob.String() || m.GetText() != "привет" {
+		t.Fatalf("event = %v, want bob's message", got)
+	}
+
+	if _, err = s.client.MarkDialogRead(s.as(t, ann), &messagev1.MarkDialogReadRequest{PeerId: bob.String(), UpToId: sent.GetId()}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Earlier sends of the loop may come first; the read mark follows them.
+	for {
+		resp, err := stream.Recv()
+		if err != nil {
+			t.Fatalf("Recv: %v", err)
+		}
+		if r := resp.GetRead(); r != nil {
+			if r.GetReaderId() != ann.String() || r.GetPeerId() != bob.String() || r.GetUpToId() != sent.GetId() {
+				t.Fatalf("read mark = %v", r)
+			}
+			break
+		}
+	}
+
+	noToken, err := s.client.Subscribe(context.Background(), &messagev1.SubscribeRequest{})
+	if err == nil {
+		_, err = noToken.Recv()
+	}
+	if got := status.Code(err); got != codes.Unauthenticated {
+		t.Fatalf("without a token: code = %v", got)
 	}
 }

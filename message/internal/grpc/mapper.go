@@ -49,3 +49,16 @@ func optionalID(id uuid.UUID) string {
 
 	return id.String()
 }
+
+// toProtoEvent: a new message is sent unread, as it was just written.
+func toProtoEvent(e service.Event) *messagev1.SubscribeResponse {
+	if e.Read != nil {
+		return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_Read{Read: &messagev1.ReadMark{
+			ReaderId: e.Read.ReaderID.String(),
+			PeerId:   e.Read.PeerID.String(),
+			UpToId:   e.Read.UpTo.String(),
+		}}}
+	}
+
+	return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_Message{Message: toProtoMessage(e.Message, false)}}
+}
