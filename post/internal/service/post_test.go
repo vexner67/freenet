@@ -12,35 +12,58 @@ import (
 	"github.com/vexner67/freenet/post/internal/service"
 )
 
-// fakeNotifier records what the services tell the notification service.
+// fakeNotifier records what the services tell the notification service,
+// and fails with err when set.
 type fakeNotifier struct {
 	mu        sync.Mutex
 	notified  []service.Event
 	retracted []service.Event
 	forgotten []uuid.UUID
+	outsideTx int
+	err       error
 }
 
-func (f *fakeNotifier) Notify(_ context.Context, e service.Event) {
+func (f *fakeNotifier) record(ctx context.Context, add func()) error {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.notified = append(f.notified, e)
+
+	if ctx.Value(inTx{}) == nil {
+		f.outsideTx++
+	}
+	if f.err != nil {
+		return f.err
+	}
+
+	add()
+
+	return nil
 }
 
-func (f *fakeNotifier) Retract(_ context.Context, e service.Event) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.retracted = append(f.retracted, e)
+func (f *fakeNotifier) Notify(ctx context.Context, e service.Event) error {
+	return f.record(ctx, func() { f.notified = append(f.notified, e) })
 }
 
-func (f *fakeNotifier) ForgetPost(_ context.Context, postID uuid.UUID) {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.forgotten = append(f.forgotten, postID)
+func (f *fakeNotifier) Retract(ctx context.Context, e service.Event) error {
+	return f.record(ctx, func() { f.retracted = append(f.retracted, e) })
+}
+
+func (f *fakeNotifier) ForgetPost(ctx context.Context, postID uuid.UUID) error {
+	return f.record(ctx, func() { f.forgotten = append(f.forgotten, postID) })
+}
+
+type inTx struct{}
+
+// fakeTx marks the context of the transaction, so that the notifier can
+// tell it was called inside one.
+type fakeTx struct{}
+
+func (fakeTx) WithinTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(context.WithValue(ctx, inTx{}, true))
 }
 
 func newPostService() *service.PostService {
 	store := inmem.NewStore()
-	return service.NewPostService(store.Posts(), store.Likes(), &fakeNotifier{})
+	return service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, &fakeNotifier{})
 }
 
 func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...string) []*post.Post {
@@ -277,7 +300,7 @@ func TestPostService_NotifiesAboutLikes(t *testing.T) {
 
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(store.Posts(), store.Likes(), notifier)
+	svc := service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, notifier)
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
 	p := write(t, svc, ann, "привет")[0]
@@ -318,6 +341,39 @@ func TestPostService_NotifiesAboutLikes(t *testing.T) {
 	if len(notifier.notified) != 1 {
 		t.Fatalf("notified about a failed like: %+v", notifier.notified)
 	}
+
+	if notifier.outsideTx != 0 {
+		t.Errorf("%d notifications recorded outside the transaction of their change", notifier.outsideTx)
+	}
+}
+
+// A notification that cannot be recorded fails its change: the two are
+// saved together or not at all.
+func TestPostService_NotifierFailureFailsTheChange(t *testing.T) {
+	t.Parallel()
+
+	store := inmem.NewStore()
+	notifier := &fakeNotifier{}
+	svc := service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, notifier)
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	p := write(t, svc, ann, "привет")[0]
+
+	notifier.err = errors.New("outbox is down")
+
+	if _, err := svc.Like(ctx, bob, p.ID()); !errors.Is(err, notifier.err) {
+		t.Errorf("Like = %v, want the notifier's error", err)
+	}
+	content, err := post.NewContent("на стене", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Create(ctx, ann, bob, content); !errors.Is(err, notifier.err) {
+		t.Errorf("Create on another's wall = %v, want the notifier's error", err)
+	}
+	if err := svc.Delete(ctx, ann, p.ID()); !errors.Is(err, notifier.err) {
+		t.Errorf("Delete = %v, want the notifier's error", err)
+	}
 }
 
 func TestPostService_GetMany(t *testing.T) {
@@ -347,7 +403,7 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(store.Posts(), store.Likes(), notifier)
+	svc := service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, notifier)
 
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	write(t, svc, ann, "своё")
@@ -405,7 +461,7 @@ func TestPostService_Repost(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(store.Posts(), store.Likes(), notifier)
+	svc := service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, notifier)
 
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	original := write(t, svc, ann, "оригинал")[0]

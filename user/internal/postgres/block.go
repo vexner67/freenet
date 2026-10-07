@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 )
@@ -21,6 +22,12 @@ func NewBlockRepository(pool *pgxpool.Pool) *BlockRepository {
 	return &BlockRepository{
 		pool: pool,
 	}
+}
+
+// conn is the transaction of ctx (service.TxManager), or the pool outside
+// one.
+func (r *BlockRepository) conn(ctx context.Context) pgpool.Querier {
+	return pgpool.Conn(ctx, r.pool)
 }
 
 // blockQuery blocks and drops the follows between the two either way in one
@@ -54,9 +61,9 @@ func (r *BlockRepository) Block(ctx context.Context, blockerID, blockedID uuid.U
 		return nil, errs.Wrap("uuid.NewV7", err)
 	}
 
-	rows, err := r.pool.Query(ctx, blockQuery, id, blockerID, blockedID)
+	rows, err := r.conn(ctx).Query(ctx, blockQuery, id, blockerID, blockedID)
 	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 
 	dropped, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (service.Edge, error) {
@@ -84,8 +91,8 @@ const unblockQuery = `
 `
 
 func (r *BlockRepository) Unblock(ctx context.Context, blockerID, blockedID uuid.UUID) error {
-	if _, err := r.pool.Exec(ctx, unblockQuery, blockerID, blockedID); err != nil {
-		return errs.Wrap("r.pool.Exec", err)
+	if _, err := r.conn(ctx).Exec(ctx, unblockQuery, blockerID, blockedID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
 	}
 
 	return nil
@@ -98,8 +105,8 @@ const blocksQuery = `
 `
 
 func (r *BlockRepository) Blocks(ctx context.Context, a, b uuid.UUID) (aBlockedB, bBlockedA bool, err error) {
-	if err = r.pool.QueryRow(ctx, blocksQuery, a, b).Scan(&aBlockedB, &bBlockedA); err != nil {
-		return false, false, errs.Wrap("r.pool.QueryRow", err)
+	if err = r.conn(ctx).QueryRow(ctx, blocksQuery, a, b).Scan(&aBlockedB, &bBlockedA); err != nil {
+		return false, false, errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	return aBlockedB, bBlockedA, nil
@@ -140,9 +147,9 @@ func (r *BlockRepository) ListBlocked(ctx context.Context, blockerID, before uui
 		before = uuid.Max
 	}
 
-	rows, err := r.pool.Query(ctx, listBlockedQuery, blockerID, before, limit)
+	rows, err := r.conn(ctx).Query(ctx, listBlockedQuery, blockerID, before, limit)
 	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 	defer rows.Close()
 
@@ -174,8 +181,8 @@ const countBlockedQuery = `
 func (r *BlockRepository) CountBlocked(ctx context.Context, blockerID uuid.UUID) (int, error) {
 	var count int
 
-	if err := r.pool.QueryRow(ctx, countBlockedQuery, blockerID).Scan(&count); err != nil {
-		return 0, errs.Wrap("r.pool.QueryRow", err)
+	if err := r.conn(ctx).QueryRow(ctx, countBlockedQuery, blockerID).Scan(&count); err != nil {
+		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	return count, nil

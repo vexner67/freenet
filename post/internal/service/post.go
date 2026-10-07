@@ -63,14 +63,16 @@ type Page struct {
 type PostService struct {
 	postRepo PostRepository
 	likeRepo LikeRepository
+	tx       TxManager
 	notifier Notifier
 	now      func() time.Time
 }
 
-func NewPostService(postRepo PostRepository, likeRepo LikeRepository, notifier Notifier) *PostService {
+func NewPostService(postRepo PostRepository, likeRepo LikeRepository, tx TxManager, notifier Notifier) *PostService {
 	return &PostService{
 		postRepo: postRepo,
 		likeRepo: likeRepo,
+		tx:       tx,
 		notifier: notifier,
 		now:      time.Now,
 	}
@@ -85,12 +87,19 @@ func (s *PostService) Create(ctx context.Context, wallID, authorID uuid.UUID, co
 		return nil, errs.Wrap("post.New", err)
 	}
 
-	if err = s.postRepo.Save(ctx, p); err != nil {
-		return nil, errs.Wrap("s.postRepo.Save", err)
-	}
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.postRepo.Save(ctx, p); err != nil {
+			return errs.Wrap("s.postRepo.Save", err)
+		}
 
-	if !p.OnOwnWall() {
-		s.notifier.Notify(ctx, Event{Kind: EventWallPost, RecipientID: wallID, ActorID: authorID, PostID: p.ID()})
+		if p.OnOwnWall() {
+			return nil
+		}
+
+		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, Event{Kind: EventWallPost, RecipientID: wallID, ActorID: authorID, PostID: p.ID()}))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return p, nil
@@ -122,13 +131,20 @@ func (s *PostService) Repost(ctx context.Context, authorID, postID uuid.UUID, te
 		return nil, errs.Wrap("post.New", err)
 	}
 
-	// Save still reports a shared post deleted in between.
-	if err = s.postRepo.Save(ctx, repost); err != nil {
-		return nil, errs.Wrap("s.postRepo.Save", err)
-	}
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		// Save still reports a shared post deleted in between.
+		if err := s.postRepo.Save(ctx, repost); err != nil {
+			return errs.Wrap("s.postRepo.Save", err)
+		}
 
-	if shared.AuthorID() != authorID {
-		s.notifier.Notify(ctx, Event{Kind: EventRepost, RecipientID: shared.AuthorID(), ActorID: authorID, PostID: repost.ID()})
+		if shared.AuthorID() == authorID {
+			return nil
+		}
+
+		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, Event{Kind: EventRepost, RecipientID: shared.AuthorID(), ActorID: authorID, PostID: repost.ID()}))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return repost, nil
@@ -146,11 +162,16 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 		return post.ErrCannotDelete
 	}
 
-	if err = s.postRepo.Delete(ctx, postID); err != nil {
-		return errs.Wrap("s.postRepo.Delete", err)
-	}
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.postRepo.Delete(ctx, postID); err != nil {
+			return errs.Wrap("s.postRepo.Delete", err)
+		}
 
-	s.notifier.ForgetPost(ctx, postID)
+		return errs.Wrap("s.notifier.ForgetPost", s.notifier.ForgetPost(ctx, postID))
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
+	}
 
 	return nil
 }
@@ -199,13 +220,23 @@ func (s *PostService) Like(ctx context.Context, userID, postID uuid.UUID) (int, 
 		return 0, errs.Wrap("s.postRepo.Get", err)
 	}
 
-	likes, err := s.likeRepo.Like(ctx, postID, userID)
-	if err != nil {
-		return 0, errs.Wrap("s.likeRepo.Like", err)
-	}
+	var likes int
 
-	if e, ok := likeEvent(p, userID); ok {
-		s.notifier.Notify(ctx, e)
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		var err error
+		if likes, err = s.likeRepo.Like(ctx, postID, userID); err != nil {
+			return errs.Wrap("s.likeRepo.Like", err)
+		}
+
+		e, ok := likeEvent(p, userID)
+		if !ok {
+			return nil
+		}
+
+		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, e))
+	})
+	if err != nil {
+		return 0, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return likes, nil
@@ -217,13 +248,23 @@ func (s *PostService) Unlike(ctx context.Context, userID, postID uuid.UUID) (int
 		return 0, errs.Wrap("s.postRepo.Get", err)
 	}
 
-	likes, err := s.likeRepo.Unlike(ctx, postID, userID)
-	if err != nil {
-		return 0, errs.Wrap("s.likeRepo.Unlike", err)
-	}
+	var likes int
 
-	if e, ok := likeEvent(p, userID); ok {
-		s.notifier.Retract(ctx, e)
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		var err error
+		if likes, err = s.likeRepo.Unlike(ctx, postID, userID); err != nil {
+			return errs.Wrap("s.likeRepo.Unlike", err)
+		}
+
+		e, ok := likeEvent(p, userID)
+		if !ok {
+			return nil
+		}
+
+		return errs.Wrap("s.notifier.Retract", s.notifier.Retract(ctx, e))
+	})
+	if err != nil {
+		return 0, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return likes, nil

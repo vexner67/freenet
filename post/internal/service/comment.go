@@ -40,14 +40,16 @@ type CommentPage struct {
 type CommentService struct {
 	postRepo    PostReader
 	commentRepo CommentRepository
+	tx          TxManager
 	notifier    Notifier
 	now         func() time.Time
 }
 
-func NewCommentService(postRepo PostReader, commentRepo CommentRepository, notifier Notifier) *CommentService {
+func NewCommentService(postRepo PostReader, commentRepo CommentRepository, tx TxManager, notifier Notifier) *CommentService {
 	return &CommentService{
 		postRepo:    postRepo,
 		commentRepo: commentRepo,
+		tx:          tx,
 		notifier:    notifier,
 		now:         time.Now,
 	}
@@ -66,12 +68,20 @@ func (s *CommentService) Create(ctx context.Context, authorID, postID uuid.UUID,
 		return nil, errs.Wrap("post.NewComment", err)
 	}
 
-	if err = s.commentRepo.Save(ctx, c); err != nil {
-		return nil, errs.Wrap("s.commentRepo.Save", err)
-	}
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.commentRepo.Save(ctx, c); err != nil {
+			return errs.Wrap("s.commentRepo.Save", err)
+		}
 
-	if e, ok := commentEvent(p, c); ok {
-		s.notifier.Notify(ctx, e)
+		e, ok := commentEvent(p, c)
+		if !ok {
+			return nil
+		}
+
+		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, e))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return c, nil
@@ -92,12 +102,20 @@ func (s *CommentService) Delete(ctx context.Context, requesterID, commentID uuid
 		return post.ErrCannotDeleteComment
 	}
 
-	if err = s.commentRepo.Delete(ctx, commentID); err != nil {
-		return errs.Wrap("s.commentRepo.Delete", err)
-	}
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.commentRepo.Delete(ctx, commentID); err != nil {
+			return errs.Wrap("s.commentRepo.Delete", err)
+		}
 
-	if e, ok := commentEvent(p, c); ok {
-		s.notifier.Retract(ctx, e)
+		e, ok := commentEvent(p, c)
+		if !ok {
+			return nil
+		}
+
+		return errs.Wrap("s.notifier.Retract", s.notifier.Retract(ctx, e))
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return nil

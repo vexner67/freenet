@@ -34,9 +34,9 @@ func newWorld(t *testing.T) world {
 		ctx:   context.Background(),
 		users: service.NewUserService(users),
 		follows: service.NewFollowService(service.FollowDeps{
-			Users: users, Follows: followRepo, Lists: followRepo, Blocks: blockRepo, Notifier: notifier,
+			Users: users, Follows: followRepo, Lists: followRepo, Blocks: blockRepo, Tx: inmem.TxManager{}, Notifier: notifier,
 		}),
-		blocks:      service.NewBlockService(users, blockRepo, notifier),
+		blocks:      service.NewBlockService(users, blockRepo, inmem.TxManager{}, notifier),
 		permissions: service.NewPermissionService(users, followRepo, blockRepo),
 		notifier:    notifier,
 	}

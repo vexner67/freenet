@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/grpcserver"
@@ -14,6 +15,7 @@ import (
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/metrics"
 	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/outbox"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/ratelimit"
 	"github.com/vexner67/freenet/pkg/reqid"
@@ -41,6 +43,8 @@ type App struct {
 	pool             *pgxpool.Pool
 	limiter          ratelimit.Store
 	notificationConn *grpc.ClientConn
+	outbox           *outbox.Postgres
+	relay            *outbox.Relay
 	server           *grpcserver.Server
 	metrics          *metrics.Server
 	addr             string
@@ -70,12 +74,14 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
+	reg := metrics.NewRegistry()
+
 	store, err := a.newStorage(cfg)
 	if err != nil {
 		return errs.Wrap("a.newStorage", err)
 	}
 
-	notifier, err := a.newNotifier(cfg)
+	notifier, err := a.newNotifier(cfg, store.outbox, reg)
 	if err != nil {
 		return errs.Wrap("a.newNotifier", err)
 	}
@@ -109,8 +115,6 @@ func (a *App) build(cfg config.Config) error {
 	))
 	interceptors = append(interceptors, ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger))
 
-	reg := metrics.NewRegistry()
-
 	a.server, err = grpcserver.New(a.logger, reg, grpc.Creds(creds), grpc.ChainUnaryInterceptor(interceptors...))
 	if err != nil {
 		return errs.Wrap("grpcserver.New", err)
@@ -124,9 +128,10 @@ func (a *App) build(cfg config.Config) error {
 				Follows:  store.follows,
 				Lists:    store.follows,
 				Blocks:   store.blocks,
+				Tx:       store.tx,
 				Notifier: notifier,
 			}),
-			Blocks:      service.NewBlockService(store.users, store.blocks, notifier),
+			Blocks:      service.NewBlockService(store.users, store.blocks, store.tx, notifier),
 			Permissions: service.NewPermissionService(store.users, store.follows, store.blocks),
 		}, a.logger),
 	)
@@ -170,9 +175,11 @@ func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
 	return a.limiter, nil
 }
 
-// newNotifier connects to the notification service; the connection is
-// lazy, so the services may start in any order.
-func (a *App) newNotifier(cfg config.Config) (service.Notifier, error) {
+// newNotifier records notifications in the outbox and sets up the relay
+// that delivers them to the notification service. The connection is lazy,
+// so the services may start in any order; until notification is up, the
+// relay retries.
+func (a *App) newNotifier(cfg config.Config, queue outboxQueue, reg prometheus.Registerer) (service.Notifier, error) {
 	if cfg.NotificationServiceAddr == "" {
 		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: follows notify nobody")
 		return notifyclient.Nop{}, nil
@@ -188,7 +195,20 @@ func (a *App) newNotifier(cfg config.Config) (service.Notifier, error) {
 		return nil, errs.Wrap("grpc.NewClient", err)
 	}
 
-	return notifyclient.New(notificationv1.NewNotificationServiceClient(a.notificationConn), cfg.NotifyTimeout, a.logger), nil
+	deliverer := notifyclient.NewDeliverer(notificationv1.NewNotificationServiceClient(a.notificationConn), cfg.NotifyTimeout)
+
+	a.relay, err = outbox.NewRelay(queue, deliverer.Deliver, reg, a.logger)
+	if err != nil {
+		return nil, errs.Wrap("outbox.NewRelay", err)
+	}
+
+	return notifyclient.NewOutbox(queue), nil
+}
+
+// outboxQueue is the outbox of the storage in use.
+type outboxQueue interface {
+	outbox.Queue
+	notifyclient.Recorder
 }
 
 // storage is the set of repositories chosen by STORAGE.
@@ -199,13 +219,21 @@ type storage struct {
 		service.FollowListRepository
 	}
 	blocks service.BlockRepository
+	tx     service.TxManager
+	outbox outboxQueue
 }
 
 func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		users := inmem.NewUserRepository()
 		follows := inmem.NewFollowRepository(users)
-		return storage{users: users, follows: follows, blocks: inmem.NewBlockRepository(follows)}, nil
+		return storage{
+			users:   users,
+			follows: follows,
+			blocks:  inmem.NewBlockRepository(follows),
+			tx:      inmem.TxManager{},
+			outbox:  outbox.NewMemory(),
+		}, nil
 	}
 
 	if cfg.MigrateOnStart {
@@ -230,15 +258,19 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		return storage{}, errs.Wrap("pgpool.New", err)
 	}
 
+	a.outbox = outbox.NewPostgres(a.pool)
+
 	return storage{
 		users:   postgres.NewUserRepository(a.pool),
 		follows: postgres.NewFollowRepository(a.pool),
 		blocks:  postgres.NewBlockRepository(a.pool),
+		tx:      pgpool.NewTxManager(a.pool),
+		outbox:  a.outbox,
 	}, nil
 }
 
-// Run serves until ctx is cancelled or the gRPC or metrics server fails,
-// which stops the other one too.
+// Run serves and delivers notifications until ctx is cancelled or the gRPC
+// or metrics server fails, which stops the rest too.
 func (a *App) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -249,6 +281,12 @@ func (a *App) Run(ctx context.Context) error {
 	if a.metrics != nil {
 		g.Go(func() error {
 			return errs.Wrap("a.metrics.Run", a.metrics.Run(ctx))
+		})
+	}
+
+	if a.relay != nil {
+		g.Go(func() error {
+			return errs.Wrap("a.relay.Run", a.relay.Run(ctx))
 		})
 	}
 
@@ -276,6 +314,11 @@ func (a *App) Close() {
 			a.logger.Error("rate limiter close", "error", err)
 		}
 	}
+	// After Run: the relay owns the outbox connection while it runs.
+	if a.outbox != nil {
+		a.outbox.Close()
+	}
+
 	if a.notificationConn != nil {
 		if err := a.notificationConn.Close(); err != nil {
 			a.logger.Error("notification connection close", "error", err)

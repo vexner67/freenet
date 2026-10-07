@@ -28,14 +28,20 @@ type Event struct {
 	CommentID   uuid.UUID
 }
 
-// Notifier tells the notification service what happened to posts. Delivery
-// is best effort: a lost notification must not fail the like or comment
-// that caused it, so the methods return nothing and implementations handle
-// their failures themselves.
+// Notifier records what the notification service has to hear about posts.
+// It is called inside the transaction of the change (TxManager), so the
+// notification is recorded if and only if the change is; it is delivered
+// afterwards, retried while the notification service is down.
 type Notifier interface {
-	Notify(ctx context.Context, e Event)
+	Notify(ctx context.Context, e Event) error
 	// Retract takes back the notification of an undone like or comment.
-	Retract(ctx context.Context, e Event)
+	Retract(ctx context.Context, e Event) error
 	// ForgetPost drops the notifications about a deleted post.
-	ForgetPost(ctx context.Context, postID uuid.UUID)
+	ForgetPost(ctx context.Context, postID uuid.UUID) error
+}
+
+// TxManager runs fn in one transaction: everything it saves is kept if it
+// returns nil and undone otherwise.
+type TxManager interface {
+	WithinTx(ctx context.Context, fn func(ctx context.Context) error) error
 }

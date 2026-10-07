@@ -57,6 +57,7 @@ type FollowService struct {
 	followRepo FollowRepository
 	listRepo   FollowListRepository
 	blockRepo  BlockChecker
+	tx         TxManager
 	notifier   Notifier
 }
 
@@ -66,6 +67,7 @@ type FollowDeps struct {
 	Follows  FollowRepository
 	Lists    FollowListRepository
 	Blocks   BlockChecker
+	Tx       TxManager
 	Notifier Notifier
 }
 
@@ -75,6 +77,7 @@ func NewFollowService(d FollowDeps) *FollowService {
 		followRepo: d.Follows,
 		listRepo:   d.Lists,
 		blockRepo:  d.Blocks,
+		tx:         d.Tx,
 		notifier:   d.Notifier,
 	}
 }
@@ -98,24 +101,36 @@ func (s *FollowService) Follow(ctx context.Context, followerID, followeeID uuid.
 		return user.ErrFollowBlocked
 	}
 
-	if err := s.followRepo.Follow(ctx, followerID, followeeID); err != nil {
-		return errs.Wrap("s.followRepo.Follow", err)
-	}
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.followRepo.Follow(ctx, followerID, followeeID); err != nil {
+			return errs.Wrap("s.followRepo.Follow", err)
+		}
 
-	// Following twice notifies once: the notification service keeps one
-	// notification per follow.
-	s.notifier.Followed(ctx, followerID, followeeID)
+		// Following twice notifies once: the notification service keeps
+		// one notification per follow.
+		return errs.Wrap("s.notifier.Followed", s.notifier.Followed(ctx, followerID, followeeID))
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
+	}
 
 	return nil
 }
 
 func (s *FollowService) Unfollow(ctx context.Context, followerID, followeeID uuid.UUID) error {
-	if err := s.followRepo.Unfollow(ctx, followerID, followeeID); err != nil {
-		return errs.Wrap("s.followRepo.Unfollow", err)
-	}
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.followRepo.Unfollow(ctx, followerID, followeeID); err != nil {
+			return errs.Wrap("s.followRepo.Unfollow", err)
+		}
 
-	if followerID != followeeID {
-		s.notifier.Unfollowed(ctx, followerID, followeeID)
+		if followerID == followeeID {
+			return nil
+		}
+
+		return errs.Wrap("s.notifier.Unfollowed", s.notifier.Unfollowed(ctx, followerID, followeeID))
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return nil
