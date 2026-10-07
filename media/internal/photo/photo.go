@@ -3,7 +3,6 @@ package photo
 
 import (
 	"errors"
-	"image"
 
 	"github.com/vexner67/freenet/media/internal/imaging"
 )
@@ -63,7 +62,7 @@ func Make(data []byte) (Images, error) {
 
 // fit scales img down so that its longer side is at most side; a smaller
 // picture keeps its size, enlarging would only blur it.
-func fit(img image.Image, side int) ([]byte, error) {
+func fit(img imaging.Picture, side int) ([]byte, error) {
 	b := img.Bounds()
 	width, height := b.Dx(), b.Dy()
 
@@ -72,5 +71,5 @@ func fit(img image.Image, side int) ([]byte, error) {
 		height = max(1, height*side/longest)
 	}
 
-	return imaging.Scale(img, b, width, height)
+	return img.Scale(b, width, height)
 }
