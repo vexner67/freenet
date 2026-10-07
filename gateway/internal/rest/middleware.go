@@ -23,6 +23,12 @@ func (r *statusRecorder) WriteHeader(status int) {
 	r.ResponseWriter.WriteHeader(status)
 }
 
+// Unwrap lets http.ResponseController and the WebSocket upgrade reach the
+// connection underneath.
+func (r *statusRecorder) Unwrap() http.ResponseWriter {
+	return r.ResponseWriter
+}
+
 // logRequests records method, path, status and duration; never bodies or
 // headers, which carry codes and tokens.
 func logRequests(logger *slog.Logger) middleware {
@@ -105,9 +111,16 @@ func secureHeaders(next http.Handler) http.Handler {
 	})
 }
 
+// timeout bounds every request but the event stream, which lives as long
+// as the page that opened it.
 func timeout(d time.Duration) middleware {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == eventsPath {
+				next.ServeHTTP(w, r)
+				return
+			}
+
 			ctx, cancel := context.WithTimeout(r.Context(), d)
 			defer cancel()
 

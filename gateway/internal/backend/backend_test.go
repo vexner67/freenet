@@ -543,3 +543,85 @@ func TestMediaPhotos(t *testing.T) {
 		t.Fatalf("OwnPhotos = %v, %v", own, err)
 	}
 }
+
+// fakeStream yields responses, then err.
+type fakeStream[T any] struct {
+	grpc.ServerStreamingClient[T]
+	responses []*T
+	err       error
+}
+
+func (s *fakeStream[T]) Recv() (*T, error) {
+	if len(s.responses) == 0 {
+		return nil, s.err
+	}
+
+	r := s.responses[0]
+	s.responses = s.responses[1:]
+
+	return r, nil
+}
+
+func (f *fakeMessageAPI) Subscribe(ctx context.Context, _ *messagev1.SubscribeRequest, _ ...grpc.CallOption) (grpc.ServerStreamingClient[messagev1.SubscribeResponse], error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &fakeStream[messagev1.SubscribeResponse]{
+		responses: []*messagev1.SubscribeResponse{
+			{Event: &messagev1.SubscribeResponse_Message{Message: &messagev1.Message{Id: "m1", SenderId: "u2", RecipientId: "u1", Text: "привет"}}},
+			{Event: &messagev1.SubscribeResponse_Read{Read: &messagev1.ReadMark{ReaderId: "u2", PeerId: "u1", UpToId: "m1"}}},
+		},
+		err: status.Error(codes.Unauthenticated, "access token expired"),
+	}, nil
+}
+
+func TestMessages_Subscribe(t *testing.T) {
+	t.Parallel()
+
+	api := &fakeMessageAPI{}
+	next, err := NewMessages(api).Subscribe(context.Background(), "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
+		t.Fatalf("authorization metadata = %v", got)
+	}
+
+	e, err := next()
+	if err != nil || e.Message == nil || e.Message.ID != "m1" || e.Message.Text != "привет" || e.Read != nil {
+		t.Fatalf("first event = %+v, %v", e, err)
+	}
+
+	e, err = next()
+	if err != nil || e.Read == nil || *e.Read != (model.ReadMark{ReaderID: "u2", PeerID: "u1", UpTo: "m1"}) {
+		t.Fatalf("second event = %+v, %v", e, err)
+	}
+
+	if _, err = next(); failure.From(err).Kind != failure.Unauthenticated {
+		t.Fatalf("the end of the stream: %v, want Unauthenticated", err)
+	}
+}
+
+func (f *fakeNotificationAPI) Subscribe(context.Context, *notificationv1.SubscribeRequest, ...grpc.CallOption) (grpc.ServerStreamingClient[notificationv1.SubscribeResponse], error) {
+	return &fakeStream[notificationv1.SubscribeResponse]{
+		responses: []*notificationv1.SubscribeResponse{{Change: notificationv1.Change_CHANGE_NEW}, {Change: notificationv1.Change_CHANGE_READ}},
+		err:       status.Error(codes.ResourceExhausted, "fell behind, subscribe again"),
+	}, nil
+}
+
+func TestNotifications_Subscribe(t *testing.T) {
+	t.Parallel()
+
+	next, err := NewNotifications(&fakeNotificationAPI{}).Subscribe(context.Background(), "tok")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, want := range []string{"new", "read"} {
+		if got, err := next(); err != nil || got != want {
+			t.Fatalf("change = %q, %v; want %q", got, err, want)
+		}
+	}
+
+	if _, err = next(); failure.From(err).Kind != failure.TooManyRequests {
+		t.Fatalf("the end of the stream: %v, want TooManyRequests", err)
+	}
+}

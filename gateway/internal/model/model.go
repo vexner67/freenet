@@ -161,6 +161,28 @@ type DialogPage struct {
 	NextCursor string
 }
 
+// MessageEvent is what happened in the caller's dialogs: a new message,
+// sent or received, or a read mark that moved. One of the two is set.
+type MessageEvent struct {
+	Message *Message
+	Read    *ReadMark
+}
+
+// ReadMark: ReaderID has read the dialog with PeerID up to UpTo.
+type ReadMark struct {
+	ReaderID string
+	PeerID   string
+	UpTo     string
+}
+
+// MessageEvents yields the caller's message events as they happen, until
+// it returns an error: the stream ended.
+type MessageEvents func() (MessageEvent, error)
+
+// NotificationChanges yields what happens to the caller's notifications,
+// "new", "gone" or "read", until it returns an error.
+type NotificationChanges func() (string, error)
+
 // MessagePage is a run of messages of one dialog, oldest first.
 // NextCursor pages to older ones; PeerReadUpTo is the newest of the
 // caller's messages the peer has read ("" if none).

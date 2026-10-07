@@ -631,6 +631,33 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/events:
+    get:
+      summary: Live events of a page (WebSocket)
+      description: |
+        A WebSocket: upgrade, then send `{"token": "<access token>"}` as the
+        first message within 10 s (the token is not put in the URL, which
+        would land in logs). Then the server sends JSON events, told apart
+        by `type`:
+
+        - `ready` — connected; `messages` and `notifications` are the menu
+          counters (unread dialogs and notifications).
+        - `counters` — a counter changed; only the changed one is set.
+        - `message` — a new message of your dialogs, sent or received:
+          `peer` (Author) and `message` (Message).
+        - `read` — the dialog with `peer` was read up to `upTo`, by you on
+          another page (`byMe`) or by the peer.
+        - `notification` — `change` is `new`, `gone` or `read`.
+
+        The connection lives until the access token expires: then it is
+        closed with code 4001 — refresh the token and connect again. 1001:
+        the server stops; 1013: connect again a bit later. After any gap,
+        catch up with the usual requests: events are not replayed. Browser
+        origins other than the API's need `CORS_ALLOWED_ORIGINS`.
+      responses:
+        "101": { description: Switching to the WebSocket protocol }
+        "403": { description: The origin is not allowed }
+
   /api/v1/dialogs:
     get:
       summary: Your dialogs, the most recently written first

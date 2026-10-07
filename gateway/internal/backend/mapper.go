@@ -21,6 +21,7 @@ const (
 	wallWritePrefix      = "WALL_WRITE_"
 	messagesWritePrefix  = "MESSAGES_WRITE_"
 	kindPrefix           = "KIND_"
+	changePrefix         = "CHANGE_"
 
 	notSet = "NONE"
 )

@@ -70,3 +70,21 @@ func (n *Notifications) MarkRead(ctx context.Context, accessToken, id string) er
 
 	return nil
 }
+
+// Subscribe streams what happens to the caller's notifications until ctx
+// ends, the token expires (Unauthenticated) or the caller falls behind.
+func (n *Notifications) Subscribe(ctx context.Context, accessToken string) (model.NotificationChanges, error) {
+	stream, err := n.api.Subscribe(withToken(ctx, accessToken), &notificationv1.SubscribeRequest{})
+	if err != nil {
+		return nil, errs.Wrap("n.api.Subscribe", fromStatus(err))
+	}
+
+	return func() (string, error) {
+		resp, err := stream.Recv()
+		if err != nil {
+			return "", errs.Wrap("stream.Recv", fromStatus(err))
+		}
+
+		return enumName(resp.GetChange().String(), changePrefix), nil
+	}, nil
+}
