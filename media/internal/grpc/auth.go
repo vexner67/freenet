@@ -14,6 +14,8 @@ func PublicMethods() []string {
 		grpc_health_v1.Health_Check_FullMethodName,
 		mediav1.MediaService_GetAvatar_FullMethodName,
 		mediav1.MediaService_GetPhoto_FullMethodName,
+		mediav1.MediaService_PublishPhotos_FullMethodName,
+		mediav1.MediaService_DeletePostPhotos_FullMethodName,
 		mediav1.MediaService_PurgeUser_FullMethodName,
 	}
 }
@@ -22,6 +24,8 @@ func PublicMethods() []string {
 // (see mtls.RestrictMethods).
 func InternalMethods() map[string][]string {
 	return map[string][]string{
-		mediav1.MediaService_PurgeUser_FullMethodName: {mtls.User},
+		mediav1.MediaService_PublishPhotos_FullMethodName:    {mtls.Post},
+		mediav1.MediaService_DeletePostPhotos_FullMethodName: {mtls.Post},
+		mediav1.MediaService_PurgeUser_FullMethodName:        {mtls.User},
 	}
 }

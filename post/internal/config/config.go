@@ -40,6 +40,11 @@ type Config struct {
 	NotificationServiceAddr string        `env:"NOTIFICATION_SERVICE_ADDR"`
 	NotifyTimeout           time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
 
+	// MediaServiceAddr is where post tells which photos its posts publish
+	// and delete, within NOTIFY_TIMEOUT too. Without it media takes the
+	// photos of posts for never published and deletes them.
+	MediaServiceAddr string `env:"MEDIA_SERVICE_ADDR"`
+
 	// Spam protection, per user. REDIS_ADDR shares the counters between
 	// replicas; without it they are kept in memory, per replica. Posts and
 	// reposts both follow RATE_LIMIT_POSTS, each counted on its own.

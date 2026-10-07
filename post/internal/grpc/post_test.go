@@ -17,6 +17,7 @@ import (
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	postgrpc "github.com/vexner67/freenet/post/internal/grpc"
 	"github.com/vexner67/freenet/post/internal/inmem"
+	"github.com/vexner67/freenet/post/internal/mediaclient"
 	"github.com/vexner67/freenet/post/internal/notifyclient"
 	"github.com/vexner67/freenet/post/internal/service"
 	"google.golang.org/grpc"
@@ -51,7 +52,7 @@ func newServer(t *testing.T) testServer {
 	))
 	store := inmem.NewStore()
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(
-		service.NewPostService(store.Posts(), store.Likes(), inmem.TxManager{}, notifyclient.Nop{}),
+		service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}}),
 		service.NewCommentService(store.Posts(), store.Comments(), inmem.TxManager{}, notifyclient.Nop{}),
 		service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), Comments: store.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},

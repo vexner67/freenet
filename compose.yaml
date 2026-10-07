@@ -188,10 +188,12 @@ services:
       DATABASE_URL: postgres://${POST_POSTGRES_USER}:${POST_POSTGRES_PASSWORD}@post-postgres:5432/${POST_POSTGRES_DB}?sslmode=disable
       REDIS_ADDR: redis:6379
       NOTIFICATION_SERVICE_ADDR: notification:7055
+      MEDIA_SERVICE_ADDR: media:7054
     depends_on:
       post-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       notification: { condition: service_healthy }
+      media: { condition: service_healthy }
 
   media:
     <<: *service
@@ -206,6 +208,7 @@ services:
       STORAGE: persistent
       MEDIA_DIR: /data/media
       REDIS_ADDR: redis:6379
+      UNPUBLISHED_PHOTO_TTL: ${UNPUBLISHED_PHOTO_TTL:-24h}
     volumes:
       - ./certs:/certs:ro
       - ./.data/media:/data/media

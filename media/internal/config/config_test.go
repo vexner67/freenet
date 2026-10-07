@@ -37,6 +37,9 @@ func TestParse(t *testing.T) {
 		{"full mtls", map[string]string{"TLS_CA_PATH": "ca.pem", "TLS_CERT_PATH": "c.pem", "TLS_KEY_PATH": "k.pem"}, true},
 		{"partial mtls", map[string]string{"TLS_KEY_PATH": "key.pem"}, false},
 		{"empty issuer", map[string]string{"JWT_ISSUER": ""}, false},
+		{"photos kept for a week", map[string]string{"UNPUBLISHED_PHOTO_TTL": "168h"}, true},
+		{"unpublished photos never kept", map[string]string{"UNPUBLISHED_PHOTO_TTL": "0s"}, false},
+		{"no cleanup interval", map[string]string{"PHOTO_CLEANUP_INTERVAL": "0s"}, false},
 	}
 
 	for _, tt := range tests {

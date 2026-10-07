@@ -40,6 +40,15 @@ type Notifier interface {
 	ForgetPost(ctx context.Context, postID uuid.UUID) error
 }
 
+// PhotoKeeper records what the media service has to do with the photos
+// of posts, inside the transaction of the change, as Notifier: media keeps
+// the photos of a published post for good and deletes those of a deleted
+// one. Unpublished photos it deletes after a while by itself.
+type PhotoKeeper interface {
+	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+}
+
 // TxManager runs fn in one transaction: everything it saves is kept if it
 // returns nil and undone otherwise.
 type TxManager interface {

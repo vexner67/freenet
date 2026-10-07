@@ -17,17 +17,26 @@ func TestPurgeService(t *testing.T) {
 
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	posts := service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, notifier)
+	photos := &fakePhotos{}
+	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
 	comments := service.NewCommentService(store.Posts(), store.Comments(), fakeTx{}, notifier)
 	purge := service.NewPurgeService(service.PurgeDeps{
-		Posts: store.Posts(), Likes: store.Likes(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier,
+		Posts: store.Posts(), Likes: store.Likes(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
 	})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
 
-	annsPost := write(t, posts, ann, "запись Анны")[0]
+	annsPhoto, bobsPhoto := uuid.New(), uuid.New()
+	annsContent, err := post.NewContent("запись Анны", post.Photos{annsPhoto})
+	if err != nil {
+		t.Fatal(err)
+	}
+	annsPost, err := posts.Create(ctx, ann, ann, annsContent)
+	if err != nil {
+		t.Fatal(err)
+	}
 	bobsPost := write(t, posts, bob, "запись Петра")[0]
-	content, err := post.NewContent("Пётр на стене Анны", nil)
+	content, err := post.NewContent("Пётр на стене Анны", post.Photos{bobsPhoto})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,5 +96,14 @@ func TestPurgeService(t *testing.T) {
 	}
 	if notifier.outsideTx != 0 {
 		t.Errorf("%d notifications recorded outside the transaction", notifier.outsideTx)
+	}
+
+	// Bob's photo goes with his post on ann's wall; ann's own media erases
+	// with the rest of her.
+	if len(photos.deleted) != 1 || photos.deleted[0].owner != bob || !slices.Equal(photos.deleted[0].photos, []uuid.UUID{bobsPhoto}) {
+		t.Errorf("photos deleted = %+v, want bob's photo once", photos.deleted)
+	}
+	if photos.outsideTx != 0 {
+		t.Errorf("%d photo calls outside the transaction", photos.outsideTx)
 	}
 }

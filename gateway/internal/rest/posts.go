@@ -454,10 +454,8 @@ func (a *api) repostPost(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, shown[0])
 }
 
-// deletePost deletes a post, by its author or the owner of its wall, and
-// then its photos. The media service deletes only the caller's own
-// photos, so when the owner of the wall deletes someone's post, the
-// author's photos stay (see the debt in AGENTS.md).
+// deletePost deletes a post, by its author or the owner of its wall; the
+// post service has media delete its photos.
 func (a *api) deletePost(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -465,20 +463,10 @@ func (a *api) deletePost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	id := r.PathValue("id")
-
-	p, err := a.posts.Get(r.Context(), token, id)
-	if err != nil {
+	if err = a.posts.Delete(r.Context(), token, r.PathValue("id")); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
-
-	if err = a.posts.Delete(r.Context(), token, id); err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	a.forgetPhotos(r, token, p.PhotoIDs)
 
 	w.WriteHeader(http.StatusNoContent)
 }

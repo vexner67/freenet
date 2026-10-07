@@ -329,8 +329,9 @@ paths:
       summary: Set your profile photo
       description: |
         The body is the image itself (JPEG, PNG, GIF or WebP, at most 8 MB,
-        at least 50x50), with its Content-Type. The middle square is kept
-        and re-encoded, so EXIF data (location included) is dropped.
+        at least 50x50), with its Content-Type. It is turned upright by its
+        EXIF orientation, the middle square is kept and re-encoded, so EXIF
+        data (location included) is dropped.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -380,8 +381,10 @@ paths:
       summary: Upload a photo for a post
       description: |
         The raw image is the request body (JPEG, PNG, GIF or WebP, at most
-        8 MB). It is scaled down whole, keeping its proportions; attach it
-        to a post by its `id`. Deleting the post deletes its photos.
+        8 MB). It is turned upright by its EXIF orientation and scaled down
+        whole, keeping its proportions; attach it to a post by its `id`.
+        A photo that no post publishes within a day is deleted, and
+        deleting the post deletes its photos.
       security: [{ bearer: [] }]
       requestBody:
         required: true

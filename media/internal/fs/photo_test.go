@@ -3,7 +3,11 @@ package fs_test
 import (
 	"context"
 	"errors"
+	iofs "io/fs"
+	"os"
+	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/media/internal/fs"
@@ -84,9 +88,14 @@ func TestPhotoStore_DeleteAll(t *testing.T) {
 			ctx := context.Background()
 			ann, bob := uuid.New(), uuid.New()
 			images := photo.Images{Large: []byte("L"), Small: []byte("S")}
-			annsPhoto, bobsPhoto := uuid.New(), uuid.New()
+			annsPhoto, annsUpload, bobsPhoto := uuid.New(), uuid.New(), uuid.New()
 
-			if err := store.Save(ctx, ann, annsPhoto, images); err != nil {
+			for _, id := range []uuid.UUID{annsPhoto, annsUpload} {
+				if err := store.Save(ctx, ann, id, images); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := store.Publish(ctx, ann, []uuid.UUID{annsPhoto}); err != nil {
 				t.Fatal(err)
 			}
 			if err := store.Save(ctx, bob, bobsPhoto, images); err != nil {
@@ -99,12 +108,116 @@ func TestPhotoStore_DeleteAll(t *testing.T) {
 				}
 			}
 
-			if _, err := store.Load(ctx, ann, annsPhoto, photo.Small); !errors.Is(err, photo.ErrNotFound) {
-				t.Fatalf("ann's photo after DeleteAll: %v", err)
+			if found, err := store.Existing(ctx, ann, []uuid.UUID{annsPhoto, annsUpload}); err != nil || len(found) != 0 {
+				t.Fatalf("ann's photos after DeleteAll, published or not: %v, %v", found, err)
 			}
 			if _, err := store.Load(ctx, bob, bobsPhoto, photo.Small); err != nil {
 				t.Fatalf("bob's photo after ann's DeleteAll: %v", err)
 			}
 		})
 	}
+}
+
+func TestPhotoStore_Unpublished(t *testing.T) {
+	t.Parallel()
+
+	for name, store := range photoStores(t) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ann, bob := uuid.New(), uuid.New()
+			images := photo.Images{Large: []byte("L"), Small: []byte("S")}
+			published, upload, bobsUpload := mustV7(t), mustV7(t), mustV7(t)
+
+			for _, p := range []struct{ owner, id uuid.UUID }{{ann, published}, {ann, upload}, {bob, bobsUpload}} {
+				if err := store.Save(ctx, p.owner, p.id, images); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			for range 2 { // published already and missing photos are fine
+				if err := store.Publish(ctx, ann, []uuid.UUID{published, uuid.New()}); err != nil {
+					t.Fatalf("Publish: %v", err)
+				}
+			}
+			// bob's name does not publish ann's photo.
+			if err := store.Publish(ctx, bob, []uuid.UUID{upload}); err != nil {
+				t.Fatal(err)
+			}
+
+			if data, err := store.Load(ctx, ann, published, photo.Large); err != nil || string(data) != "L" {
+				t.Fatalf("published photo = %q, %v", data, err)
+			}
+			if found, err := store.Existing(ctx, ann, []uuid.UUID{published, upload}); err != nil || len(found) != 2 {
+				t.Fatalf("Existing, published or not = %v, %v", found, err)
+			}
+
+			if n, err := store.DeleteUnpublished(ctx, time.Now().Add(-time.Hour)); err != nil || n != 0 {
+				t.Fatalf("fresh uploads wait for their post: DeleteUnpublished = %d, %v", n, err)
+			}
+			if _, err := store.Load(ctx, ann, upload, photo.Small); err != nil {
+				t.Fatalf("a fresh upload is shown, as in the post being written: %v", err)
+			}
+
+			if n, err := store.DeleteUnpublished(ctx, time.Now().Add(time.Second)); err != nil || n != 2 {
+				t.Fatalf("DeleteUnpublished = %d, %v; want ann's and bob's uploads", n, err)
+			}
+			for _, p := range []struct{ owner, id uuid.UUID }{{ann, upload}, {bob, bobsUpload}} {
+				if _, err := store.Load(ctx, p.owner, p.id, photo.Small); !errors.Is(err, photo.ErrNotFound) {
+					t.Fatalf("an old upload stays: %v", err)
+				}
+			}
+			if _, err := store.Load(ctx, ann, published, photo.Small); err != nil {
+				t.Fatalf("the published photo goes with the uploads: %v", err)
+			}
+
+			if err := store.Delete(ctx, ann, []uuid.UUID{published}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.Load(ctx, ann, published, photo.Small); !errors.Is(err, photo.ErrNotFound) {
+				t.Fatalf("deleted published photo: %v", err)
+			}
+		})
+	}
+}
+
+// TestPhotoStore_Leftovers: a save that failed half way leaves its
+// temporary directory, which goes with the old uploads.
+func TestPhotoStore_Leftovers(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	store, err := fs.NewPhotoStore(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	owner := filepath.Join(root, "uploads", uuid.NewString())
+	leftover := filepath.Join(owner, ".upload-123")
+	if err = os.MkdirAll(leftover, 0o750); err != nil {
+		t.Fatal(err)
+	}
+	old := time.Now().Add(-48 * time.Hour)
+	if err = os.Chtimes(leftover, old, old); err != nil {
+		t.Fatal(err)
+	}
+
+	if n, err := store.DeleteUnpublished(context.Background(), time.Now().Add(-24*time.Hour)); err != nil || n != 0 {
+		t.Fatalf("DeleteUnpublished = %d, %v; a leftover is not a photo", n, err)
+	}
+	if _, err = os.Stat(owner); !errors.Is(err, iofs.ErrNotExist) {
+		t.Fatalf("the leftover and the emptied owner's directory must go: %v", err)
+	}
+}
+
+func mustV7(t *testing.T) uuid.UUID {
+	t.Helper()
+
+	id, err := uuid.NewV7()
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return id
 }

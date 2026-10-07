@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
@@ -32,6 +33,12 @@ type Config struct {
 	Storage  string `env:"STORAGE" envDefault:"inmem"`
 	MediaDir string `env:"MEDIA_DIR"`
 
+	// A photo uploaded for a post that is never published is deleted
+	// after UnpublishedPhotoTTL; the uploads are looked through every
+	// PhotoCleanupInterval.
+	UnpublishedPhotoTTL  time.Duration `env:"UNPUBLISHED_PHOTO_TTL" envDefault:"24h"`
+	PhotoCleanupInterval time.Duration `env:"PHOTO_CLEANUP_INTERVAL" envDefault:"1h"`
+
 	// Spam protection, per user. REDIS_ADDR shares the counters between
 	// replicas; without it they are kept in memory, per replica.
 	RedisAddr    string          `env:"REDIS_ADDR"`
@@ -56,6 +63,10 @@ func (c Config) Validate() error {
 		}
 	default:
 		return fmt.Errorf("unknown STORAGE %q, want %q or %q", c.Storage, StorageInmem, StoragePersistent)
+	}
+
+	if c.UnpublishedPhotoTTL <= 0 || c.PhotoCleanupInterval <= 0 {
+		return errors.New("UNPUBLISHED_PHOTO_TTL and PHOTO_CLEANUP_INTERVAL must be positive")
 	}
 
 	return c.TLS.Validate()

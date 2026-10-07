@@ -244,7 +244,12 @@ func (f *fakePosts) Repost(_ context.Context, token, postID, text string) (model
 	return model.Post{ID: "p7", Author: ann, Wall: ann, Text: text, RepostOf: "p1", CreatedAt: time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)}, f.err
 }
 
-func (f *fakePosts) Delete(_ context.Context, token, id string) error {
+// Delete knows the posts Get knows.
+func (f *fakePosts) Delete(ctx context.Context, token, id string) error {
+	if _, err := f.Get(ctx, token, id); err != nil {
+		return err
+	}
+
 	f.token, f.deleted = token, id
 	return f.err
 }
@@ -377,11 +382,10 @@ func (f *fakePosts) Comments(_ context.Context, postID, cursor string, limit int
 
 // fakeMedia: u1 has the photos ph1 and ph2.
 type fakeMedia struct {
-	uploaded      []byte
-	kept          string
-	deleted       bool
-	deletedPhotos []string
-	err           error
+	uploaded []byte
+	kept     string
+	deleted  bool
+	err      error
 }
 
 func (f *fakeMedia) UploadPhoto(_ context.Context, _ string, image []byte) (string, error) {
@@ -397,11 +401,6 @@ func (f *fakeMedia) OwnPhotos(_ context.Context, _ string, photoIDs []string) ([
 		}
 	}
 	return own, f.err
-}
-
-func (f *fakeMedia) DeletePhotos(_ context.Context, _ string, photoIDs []string) error {
-	f.deletedPhotos = photoIDs
-	return f.err
 }
 
 func (f *fakeMedia) Photo(_ context.Context, userID, photoID string, small bool) ([]byte, error) {

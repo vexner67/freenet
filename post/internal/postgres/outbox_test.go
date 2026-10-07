@@ -10,6 +10,7 @@ import (
 	"github.com/vexner67/freenet/pkg/outbox"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/reqid"
+	"github.com/vexner67/freenet/post/internal/mediaclient"
 	"github.com/vexner67/freenet/post/internal/notifyclient"
 	"github.com/vexner67/freenet/post/internal/post"
 	"github.com/vexner67/freenet/post/internal/postgres"
@@ -50,7 +51,7 @@ func TestLikeAndItsNotification(t *testing.T) {
 		return n
 	}
 
-	failing := service.NewPostService(posts, likes, tx, notifyclient.NewOutbox(failingRecorder{}))
+	failing := service.NewPostService(service.PostDeps{Posts: posts, Likes: likes, Tx: tx, Notifier: notifyclient.NewOutbox(failingRecorder{}), Photos: mediaclient.Nop{}})
 	if _, err = failing.Like(ctx, bob, p.ID()); err == nil {
 		t.Fatal("Like with a broken outbox = nil, want an error")
 	}
@@ -58,7 +59,9 @@ func TestLikeAndItsNotification(t *testing.T) {
 		t.Fatal("the like stayed although its notification was not recorded")
 	}
 
-	svc := service.NewPostService(posts, likes, tx, notifyclient.NewOutbox(outbox.NewPostgres(pool, notifyclient.Stream)))
+	svc := service.NewPostService(service.PostDeps{
+		Posts: posts, Likes: likes, Tx: tx, Notifier: notifyclient.NewOutbox(outbox.NewPostgres(pool, notifyclient.Stream)), Photos: mediaclient.Nop{},
+	})
 	reqCtx := reqid.ContextWithID(ctx, uuid.NewString())
 
 	if n, err := svc.Like(reqCtx, bob, p.ID()); err != nil || n != 1 {

@@ -22,7 +22,7 @@ func newCommentFixture() commentFixture {
 	notifier := &fakeNotifier{}
 
 	return commentFixture{
-		posts:    service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, notifier),
+		posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}}),
 		comments: service.NewCommentService(store.Posts(), store.Comments(), fakeTx{}, notifier),
 		notifier: notifier,
 	}

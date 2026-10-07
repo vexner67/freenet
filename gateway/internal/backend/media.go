@@ -85,14 +85,6 @@ func (m *Media) OwnPhotos(ctx context.Context, accessToken string, photoIDs []st
 	return resp.GetPhotoIds(), nil
 }
 
-func (m *Media) DeletePhotos(ctx context.Context, accessToken string, photoIDs []string) error {
-	if _, err := m.api.DeletePhotos(withToken(ctx, accessToken), &mediav1.DeletePhotosRequest{PhotoIds: photoIDs}); err != nil {
-		return errs.Wrap("m.api.DeletePhotos", fromStatus(err))
-	}
-
-	return nil
-}
-
 // Photo returns the JPEG of a photo, small (up to 640px) or large (1280px).
 func (m *Media) Photo(ctx context.Context, userID, photoID string, small bool) ([]byte, error) {
 	size := mediav1.PhotoSize_PHOTO_SIZE_LARGE

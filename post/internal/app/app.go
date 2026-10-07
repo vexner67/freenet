@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
+	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/grpcserver"
@@ -23,6 +24,7 @@ import (
 	"github.com/vexner67/freenet/post/internal/config"
 	postgrpc "github.com/vexner67/freenet/post/internal/grpc"
 	"github.com/vexner67/freenet/post/internal/inmem"
+	"github.com/vexner67/freenet/post/internal/mediaclient"
 	"github.com/vexner67/freenet/post/internal/notifyclient"
 	"github.com/vexner67/freenet/post/internal/postgres"
 	"github.com/vexner67/freenet/post/internal/service"
@@ -39,15 +41,17 @@ const (
 )
 
 type App struct {
-	logger           *slog.Logger
-	pool             *pgxpool.Pool
-	limiter          ratelimit.Store
-	notificationConn *grpc.ClientConn
-	outbox           *outbox.Postgres
-	relay            *outbox.Relay
-	server           *grpcserver.Server
-	metrics          *metrics.Server
-	addr             string
+	logger  *slog.Logger
+	pool    *pgxpool.Pool
+	limiter ratelimit.Store
+	// conns are the clients of notification and media, one outbox stream
+	// each; queues are the PostgreSQL streams, held by the relays.
+	conns   []*grpc.ClientConn
+	queues  []*outbox.Postgres
+	relays  []*outbox.Relay
+	server  *grpcserver.Server
+	metrics *metrics.Server
+	addr    string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -81,9 +85,14 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newRepositories", err)
 	}
 
-	notifier, err := a.newNotifier(cfg, repos.outbox, reg)
+	notifier, err := a.newNotifier(cfg, repos.newQueue, reg)
 	if err != nil {
 		return errs.Wrap("a.newNotifier", err)
+	}
+
+	photos, err := a.newPhotoKeeper(cfg, repos.newQueue, reg)
+	if err != nil {
+		return errs.Wrap("a.newPhotoKeeper", err)
 	}
 
 	limiter, err := a.newLimiter(cfg)
@@ -125,10 +134,12 @@ func (a *App) build(cfg config.Config) error {
 	postv1.RegisterPostServiceServer(
 		a.server.Registrar(),
 		postgrpc.NewPostHandler(
-			service.NewPostService(repos.posts, repos.likes, repos.tx, notifier),
+			service.NewPostService(service.PostDeps{
+				Posts: repos.posts, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
+			}),
 			service.NewCommentService(repos.posts, repos.comments, repos.tx, notifier),
 			service.NewPurgeService(service.PurgeDeps{
-				Posts: repos.posts, Likes: repos.likes, Comments: repos.comments, Tx: repos.tx, Notifier: notifier,
+				Posts: repos.posts, Likes: repos.likes, Comments: repos.comments, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
 			a.logger,
 		),
@@ -141,7 +152,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 
 	a.logger.Info("post configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(),
-		"notifications", cfg.NotificationServiceAddr != "")
+		"notifications", cfg.NotificationServiceAddr != "", "media", cfg.MediaServiceAddr != "")
 
 	return nil
 }
@@ -190,37 +201,72 @@ func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
 }
 
 // newNotifier records notifications in the outbox and sets up the relay
-// that delivers them to the notification service. The connection is lazy,
-// so the services may start in any order; until notification is up, the
-// relay retries.
-func (a *App) newNotifier(cfg config.Config, queue outboxQueue, reg prometheus.Registerer) (service.Notifier, error) {
+// that delivers them to the notification service.
+func (a *App) newNotifier(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (service.Notifier, error) {
 	if cfg.NotificationServiceAddr == "" {
 		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: likes and comments notify nobody")
 		return notifyclient.Nop{}, nil
 	}
 
+	q, err := a.stream(cfg, notifyclient.Stream, cfg.NotificationServiceAddr, newQueue, reg, func(conn *grpc.ClientConn) outbox.Deliver {
+		return notifyclient.NewDeliverer(notificationv1.NewNotificationServiceClient(conn), cfg.NotifyTimeout).Deliver
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return notifyclient.NewOutbox(q), nil
+}
+
+// newPhotoKeeper records in the outbox what media has to do with the
+// photos of posts and sets up the relay that tells it.
+func (a *App) newPhotoKeeper(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (service.PhotoKeeper, error) {
+	if cfg.MediaServiceAddr == "" {
+		a.logger.Warn("MEDIA_SERVICE_ADDR is not set: media deletes the photos of posts as never published, those of deleted posts stay")
+		return mediaclient.Nop{}, nil
+	}
+
+	q, err := a.stream(cfg, mediaclient.Stream, cfg.MediaServiceAddr, newQueue, reg, func(conn *grpc.ClientConn) outbox.Deliver {
+		return mediaclient.NewDeliverer(mediav1.NewMediaServiceClient(conn), cfg.NotifyTimeout).Deliver
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	return mediaclient.NewOutbox(q), nil
+}
+
+// stream opens the outbox stream name and its relay, which delivers to the
+// service at addr by deliver. The connection is lazy, so the services may
+// start in any order; until the service is up, the relay retries.
+func (a *App) stream(
+	cfg config.Config, name, addr string, newQueue func(stream string) outboxQueue,
+	reg prometheus.Registerer, deliver func(*grpc.ClientConn) outbox.Deliver,
+) (outboxQueue, error) {
 	creds, err := mtls.ClientCredentials(cfg.TLS)
 	if err != nil {
 		return nil, errs.Wrap("mtls.ClientCredentials", err)
 	}
 
-	a.notificationConn, err = grpc.NewClient(cfg.NotificationServiceAddr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
+	conn, err := grpc.NewClient(addr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
 	if err != nil {
 		return nil, errs.Wrap("grpc.NewClient", err)
 	}
+	a.conns = append(a.conns, conn)
 
-	deliverer := notifyclient.NewDeliverer(notificationv1.NewNotificationServiceClient(a.notificationConn), cfg.NotifyTimeout)
+	q := newQueue(name)
 
-	// As in user, whose streams share the metrics, told apart by a label.
-	a.relay, err = outbox.NewRelay(queue, deliverer.Deliver, prometheus.WrapRegistererWith(prometheus.Labels{"stream": notifyclient.Stream}, reg), a.logger)
+	// The streams share the metrics, told apart by a label.
+	relay, err := outbox.NewRelay(q, deliver(conn), prometheus.WrapRegistererWith(prometheus.Labels{"stream": name}, reg), a.logger)
 	if err != nil {
 		return nil, errs.Wrap("outbox.NewRelay", err)
 	}
+	a.relays = append(a.relays, relay)
 
-	return notifyclient.NewOutbox(queue), nil
+	return q, nil
 }
 
-// outboxQueue is the outbox of the storage in use.
+// outboxQueue is a stream of the outbox of the storage in use.
 type outboxQueue interface {
 	outbox.Queue
 	notifyclient.Recorder
@@ -239,8 +285,9 @@ type repositories struct {
 		service.CommentRepository
 		service.ReactionEraser
 	}
-	tx     service.TxManager
-	outbox outboxQueue
+	tx service.TxManager
+	// newQueue opens a stream of the outbox.
+	newQueue func(stream string) outboxQueue
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
@@ -251,7 +298,9 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			likes:    store.Likes(),
 			comments: store.Comments(),
 			tx:       inmem.TxManager{},
-			outbox:   outbox.NewMemory(),
+			newQueue: func(string) outboxQueue {
+				return outbox.NewMemory()
+			},
 		}, nil
 	}
 
@@ -277,14 +326,16 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		return repositories{}, errs.Wrap("pgpool.New", err)
 	}
 
-	a.outbox = outbox.NewPostgres(a.pool, notifyclient.Stream)
-
 	return repositories{
 		posts:    postgres.NewPostRepository(a.pool),
 		likes:    postgres.NewLikeRepository(a.pool),
 		comments: postgres.NewCommentRepository(a.pool),
 		tx:       pgpool.NewTxManager(a.pool),
-		outbox:   a.outbox,
+		newQueue: func(stream string) outboxQueue {
+			q := outbox.NewPostgres(a.pool, stream)
+			a.queues = append(a.queues, q)
+			return q
+		},
 	}, nil
 }
 
@@ -303,9 +354,9 @@ func (a *App) Run(ctx context.Context) error {
 		})
 	}
 
-	if a.relay != nil {
+	for _, relay := range a.relays {
 		g.Go(func() error {
-			return errs.Wrap("a.relay.Run", a.relay.Run(ctx))
+			return errs.Wrap("relay.Run", relay.Run(ctx))
 		})
 	}
 
@@ -334,14 +385,14 @@ func (a *App) Close() {
 		}
 	}
 
-	// After Run: the relay owns the outbox connection while it runs.
-	if a.outbox != nil {
-		a.outbox.Close()
+	// After Run: the relays own the outbox connections while they run.
+	for _, q := range a.queues {
+		q.Close()
 	}
 
-	if a.notificationConn != nil {
-		if err := a.notificationConn.Close(); err != nil {
-			a.logger.Error("notification connection close", "error", err)
+	for _, conn := range a.conns {
+		if err := conn.Close(); err != nil {
+			a.logger.Error("connection close", "error", err, "target", conn.Target())
 		}
 	}
 
