@@ -83,6 +83,9 @@ func (a *api) events(w http.ResponseWriter, r *http.Request) {
 	a.streams.Add(1)
 	defer a.streams.Done()
 
+	a.eventStreams.Inc()
+	defer a.eventStreams.Dec()
+
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 

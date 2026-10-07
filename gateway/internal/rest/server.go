@@ -8,6 +8,8 @@ import (
 	"net/http"
 	"sync"
 	"time"
+
+	"github.com/prometheus/client_golang/prometheus"
 )
 
 const shutdownTimeout = 5 * time.Second
@@ -21,6 +23,9 @@ type Config struct {
 	WebDir string
 }
 
+// HealthPath answers 200 while the server serves.
+const HealthPath = "/healthz"
+
 type Server struct {
 	http   *http.Server
 	logger *slog.Logger
@@ -29,7 +34,13 @@ type Server struct {
 	streams *sync.WaitGroup
 }
 
-func NewServer(cfg Config, backends Backends, logger *slog.Logger) *Server {
+// NewServer registers the HTTP metrics in reg.
+func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheus.Registerer) (*Server, error) {
+	metrics, err := newHTTPMetrics(reg)
+	if err != nil {
+		return nil, fmt.Errorf("newHTTPMetrics: %w", err)
+	}
+
 	stopping, stop := context.WithCancel(context.Background())
 
 	a := &api{
@@ -43,16 +54,19 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger) *Server {
 		trustForwardedFor: cfg.TrustForwardedFor,
 		webDir:            cfg.WebDir,
 		eventOrigins:      eventOrigins(cfg.AllowedOrigins),
+		eventStreams:      metrics.events,
 		stopping:          stopping,
 	}
 
 	handler := chain(
 		a.routes(),
+		requestID(cfg.TrustForwardedFor),
 		a.recoverPanics,
 		logRequests(logger),
 		secureHeaders,
 		cors(cfg.AllowedOrigins),
 		timeout(cfg.RequestTimeout),
+		metrics.observe,
 	)
 
 	srv := &Server{
@@ -70,7 +84,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger) *Server {
 	}
 	srv.http.RegisterOnShutdown(stop)
 
-	return srv
+	return srv, nil
 }
 
 // Handler is the whole API with its middleware, for tests.

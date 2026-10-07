@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
+	"github.com/vexner67/freenet/pkg/reqid"
 )
 
 type middleware func(http.Handler) http.Handler
@@ -49,6 +50,24 @@ func logRequests(logger *slog.Logger) middleware {
 	}
 }
 
+// requestID names each request for the logs of the gateway and of every
+// service it calls, and tells the name to the client. An ID that came with
+// the request is kept only behind our own proxy, which sets it.
+func requestID(trustProxy bool) middleware {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			id := r.Header.Get(reqid.Header)
+			if !trustProxy || !reqid.Valid(id) {
+				id = reqid.New()
+			}
+
+			w.Header().Set(reqid.Header, id)
+
+			next.ServeHTTP(w, r.WithContext(reqid.ContextWithID(r.Context(), id)))
+		})
+	}
+}
+
 func (a *api) recoverPanics(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		defer func() {
@@ -82,6 +101,7 @@ func cors(allowedOrigins []string) middleware {
 
 			if allowed {
 				w.Header().Set("Access-Control-Allow-Origin", origin)
+				w.Header().Set("Access-Control-Expose-Headers", reqid.Header)
 			}
 
 			if r.Method == http.MethodOptions && r.Header.Get("Access-Control-Request-Method") != "" {

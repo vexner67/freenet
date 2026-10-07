@@ -13,18 +13,22 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/gateway/internal/rest"
+	"github.com/vexner67/freenet/pkg/reqid"
 )
 
 type fakeAuth struct {
-	clientIP string
-	err      error
+	clientIP  string
+	requestID string
+	err       error
 }
 
-func (f *fakeAuth) RequestCode(_ context.Context, _, clientIP string) error {
+func (f *fakeAuth) RequestCode(ctx context.Context, _, clientIP string) error {
 	f.clientIP = clientIP
+	f.requestID = reqid.FromContext(ctx)
 	return f.err
 }
 
@@ -541,6 +545,7 @@ func (f *fakeMessages) MarkRead(_ context.Context, token, peerID, upTo string) e
 
 type harness struct {
 	handler       http.Handler
+	metrics       *prometheus.Registry
 	auth          *fakeAuth
 	users         *fakeUsers
 	posts         *fakePosts
@@ -562,16 +567,27 @@ func newHarness(cfg rest.Config) harness {
 		notifications: &fakeNotifications{},
 		messages:      &fakeMessages{},
 	}
-	h.handler = rest.NewServer(cfg, rest.Backends{
+	h.metrics = prometheus.NewRegistry()
+	h.handler = mustServer(cfg, rest.Backends{
 		Auth:          h.auth,
 		Users:         h.users,
 		Posts:         h.posts,
 		Media:         h.media,
 		Notifications: h.notifications,
 		Messages:      h.messages,
-	}, slog.New(slog.NewTextHandler(io.Discard, nil))).Handler()
+	}, h.metrics).Handler()
 
 	return h
+}
+
+// mustServer is rest.NewServer for tests, with metrics in reg.
+func mustServer(cfg rest.Config, backends rest.Backends, reg prometheus.Registerer) *rest.Server {
+	srv, err := rest.NewServer(cfg, backends, slog.New(slog.NewTextHandler(io.Discard, nil)), reg)
+	if err != nil {
+		panic(err)
+	}
+
+	return srv
 }
 
 func (h harness) do(method, path, body string, headers ...string) *httptest.ResponseRecorder {

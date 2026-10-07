@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
 	"os/signal"
@@ -13,6 +14,9 @@ import (
 )
 
 func main() {
+	healthcheck := flag.Bool("healthcheck", false, "check that the gateway running with this configuration serves, then exit")
+	flag.Parse()
+
 	cfg, err := config.Load()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, "config.Load:", err)
@@ -31,6 +35,14 @@ func main() {
 	// Ctrl+C locally, SIGTERM from Docker/Kubernetes: stop gracefully.
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
+
+	if *healthcheck {
+		if err = app.Healthcheck(ctx, cfg); err != nil {
+			fmt.Fprintln(os.Stderr, "app.Healthcheck:", err)
+			os.Exit(1)
+		}
+		return
+	}
 
 	a, err := app.New(cfg)
 	if err != nil {

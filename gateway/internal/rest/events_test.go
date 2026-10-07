@@ -3,8 +3,6 @@ package rest_test
 import (
 	"context"
 	"errors"
-	"io"
-	"log/slog"
 	"net"
 	"net/http"
 	"net/http/httptest"
@@ -14,6 +12,8 @@ import (
 
 	"github.com/coder/websocket"
 	"github.com/coder/websocket/wsjson"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/gateway/internal/rest"
@@ -108,6 +108,14 @@ func TestEvents(t *testing.T) {
 	}
 	if e := next(t, conn); e.Type != "counters" || e.Notifications == nil || *e.Notifications != 3 || e.Messages != nil {
 		t.Fatalf("after a notification = %+v, want the notifications counter only", e)
+	}
+
+	if err := testutil.GatherAndCompare(h.metrics, strings.NewReader(`
+# HELP gateway_event_streams_open Event streams (WebSockets) open now.
+# TYPE gateway_event_streams_open gauge
+gateway_event_streams_open 1
+`), "gateway_event_streams_open"); err != nil {
+		t.Errorf("open streams: %v", err)
 	}
 }
 
@@ -212,9 +220,9 @@ func TestEvents_Shutdown(t *testing.T) {
 	_ = lis.Close()
 
 	h := newHarness(rest.Config{})
-	server := rest.NewServer(rest.Config{Addr: addr, RequestTimeout: time.Second}, rest.Backends{
+	server := mustServer(rest.Config{Addr: addr, RequestTimeout: time.Second}, rest.Backends{
 		Auth: h.auth, Users: h.users, Posts: h.posts, Media: h.media, Notifications: h.notifications, Messages: h.messages,
-	}, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	}, prometheus.NewRegistry())
 
 	ctx, stop := context.WithCancel(context.Background())
 	done := make(chan error, 1)

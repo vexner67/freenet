@@ -13,6 +13,10 @@ type Config struct {
 	LogLevel  string `env:"LOG_LEVEL,required,notEmpty"`
 	LogFormat string `env:"LOG_FORMAT,required,notEmpty"`
 
+	// MetricsPort serves Prometheus metrics on a port of its own, not to
+	// be published outside; 0 does not serve them.
+	MetricsPort int `env:"METRICS_PORT"`
+
 	AuthServiceAddr  string `env:"AUTH_SERVICE_ADDR,required,notEmpty"`
 	UserServiceAddr  string `env:"USER_SERVICE_ADDR,required,notEmpty"`
 	PostServiceAddr  string `env:"POST_SERVICE_ADDR,required,notEmpty"`
@@ -28,8 +32,9 @@ type Config struct {
 	// CORSAllowedOrigins are the web frontends allowed to call the API,
 	// e.g. "http://localhost:5173,https://freenet.example".
 	CORSAllowedOrigins []string `env:"CORS_ALLOWED_ORIGINS" envSeparator:","`
-	// TrustForwardedFor takes the client address from X-Forwarded-For;
-	// enable only behind a proxy that sets it.
+	// TrustForwardedFor takes the client address from X-Forwarded-For and
+	// the request ID from X-Request-ID; enable only behind a proxy that
+	// sets them.
 	TrustForwardedFor bool          `env:"TRUST_FORWARDED_FOR" envDefault:"false"`
 	RequestTimeout    time.Duration `env:"REQUEST_TIMEOUT" envDefault:"10s"`
 

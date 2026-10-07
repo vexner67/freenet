@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"sync"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vexner67/freenet/gateway/internal/model"
 )
 
@@ -111,6 +112,7 @@ type api struct {
 	trustForwardedFor bool
 	webDir            string
 	eventOrigins      []string
+	eventStreams      prometheus.Gauge
 	// stopping ends when the server stops, closing the event streams,
 	// whose connections Shutdown leaves alone; streams counts them.
 	stopping context.Context
@@ -120,7 +122,7 @@ type api struct {
 func (a *api) routes() *http.ServeMux {
 	mux := http.NewServeMux()
 
-	mux.HandleFunc("GET /healthz", a.health)
+	mux.HandleFunc("GET "+HealthPath, a.health)
 
 	mux.HandleFunc("POST /api/v1/auth/code", a.requestCode)
 	mux.HandleFunc("POST /api/v1/auth/verify", a.verifyCode)

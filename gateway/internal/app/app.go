@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"log/slog"
+	"net/http"
+	"time"
 
 	authv1 "github.com/vexner67/freenet/auth/api/auth/v1"
 	"github.com/vexner67/freenet/gateway/internal/backend"
@@ -14,10 +16,14 @@ import (
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/logger"
+	"github.com/vexner67/freenet/pkg/metrics"
 	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/reqid"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/credentials"
 )
 
 type App struct {
@@ -29,7 +35,11 @@ type App struct {
 	notificationConn *grpc.ClientConn
 	messageConn      *grpc.ClientConn
 	server           *rest.Server
+	metrics          *metrics.Server
 }
+
+// probeTimeout bounds the healthcheck.
+const probeTimeout = 3 * time.Second
 
 func New(cfg config.Config) (*App, error) {
 	log, err := logger.New(logger.Config{
@@ -61,37 +71,39 @@ func (a *App) build(cfg config.Config) error {
 		a.logger.Warn("mTLS is off: calls to internal services are plaintext, do not use in production")
 	}
 
-	a.authConn, err = grpc.NewClient(cfg.AuthServiceAddr, grpc.WithTransportCredentials(creds))
+	a.authConn, err = dial(cfg.AuthServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("grpc.NewClient", err)
+		return errs.Wrap("dial", err)
 	}
 
-	a.userConn, err = grpc.NewClient(cfg.UserServiceAddr, grpc.WithTransportCredentials(creds))
+	a.userConn, err = dial(cfg.UserServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("grpc.NewClient", err)
+		return errs.Wrap("dial", err)
 	}
 
-	a.postConn, err = grpc.NewClient(cfg.PostServiceAddr, grpc.WithTransportCredentials(creds))
+	a.postConn, err = dial(cfg.PostServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("grpc.NewClient", err)
+		return errs.Wrap("dial", err)
 	}
 
-	a.mediaConn, err = grpc.NewClient(cfg.MediaServiceAddr, grpc.WithTransportCredentials(creds))
+	a.mediaConn, err = dial(cfg.MediaServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("grpc.NewClient", err)
+		return errs.Wrap("dial", err)
 	}
 
-	a.notificationConn, err = grpc.NewClient(cfg.NotificationServiceAddr, grpc.WithTransportCredentials(creds))
+	a.notificationConn, err = dial(cfg.NotificationServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("grpc.NewClient", err)
+		return errs.Wrap("dial", err)
 	}
 
-	a.messageConn, err = grpc.NewClient(cfg.MessageServiceAddr, grpc.WithTransportCredentials(creds))
+	a.messageConn, err = dial(cfg.MessageServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("grpc.NewClient", err)
+		return errs.Wrap("dial", err)
 	}
 
-	a.server = rest.NewServer(
+	reg := metrics.NewRegistry()
+
+	a.server, err = rest.NewServer(
 		rest.Config{
 			Addr:              fmt.Sprintf(":%d", cfg.HTTPPort),
 			AllowedOrigins:    cfg.CORSAllowedOrigins,
@@ -108,19 +120,70 @@ func (a *App) build(cfg config.Config) error {
 			Messages:      backend.NewMessages(messagev1.NewMessageServiceClient(a.messageConn)),
 		},
 		a.logger,
+		reg,
 	)
+	if err != nil {
+		return errs.Wrap("rest.NewServer", err)
+	}
+
+	if cfg.MetricsPort == 0 {
+		a.logger.Info("METRICS_PORT is not set: metrics are not served")
+	} else {
+		a.metrics = metrics.NewServer(fmt.Sprintf(":%d", cfg.MetricsPort), reg, a.logger)
+	}
 
 	a.logger.Info("gateway configured", "mtls", cfg.TLS.Enabled(), "cors_origins", cfg.CORSAllowedOrigins, "web_dir", cfg.WebDir)
 
 	return nil
 }
 
+// Run serves until ctx is cancelled or the API or metrics server fails,
+// which stops the other one too.
 func (a *App) Run(ctx context.Context) error {
-	if err := a.server.Run(ctx); err != nil {
-		return errs.Wrap("a.server.Run", err)
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return errs.Wrap("a.server.Run", a.server.Run(ctx))
+	})
+
+	if a.metrics != nil {
+		g.Go(func() error {
+			return errs.Wrap("a.metrics.Run", a.metrics.Run(ctx))
+		})
+	}
+
+	return g.Wait()
+}
+
+// Healthcheck asks the gateway running with cfg on this host whether it
+// serves: the container healthcheck, as the image has no shell or curl.
+func Healthcheck(ctx context.Context, cfg config.Config) error {
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+
+	url := fmt.Sprintf("http://localhost:%d%s", cfg.HTTPPort, rest.HealthPath)
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	if err != nil {
+		return errs.Wrap("http.NewRequestWithContext", err)
+	}
+
+	resp, err := (&http.Client{Timeout: probeTimeout}).Do(req)
+	if err != nil {
+		return errs.Wrap("client.Do", err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("%s: status %d", url, resp.StatusCode)
 	}
 
 	return nil
+}
+
+// dial connects to a service; calls carry the request's ID.
+func dial(addr string, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
+	return grpc.NewClient(addr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
 }
 
 // Close releases everything New opened; safe after a partial New.

@@ -1,8 +1,6 @@
 package rest_test
 
 import (
-	"io"
-	"log/slog"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -11,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vexner67/freenet/gateway/internal/rest"
 )
 
@@ -46,10 +45,10 @@ func webDir(t *testing.T) string {
 func TestPages(t *testing.T) {
 	t.Parallel()
 
-	handler := rest.NewServer(
+	handler := mustServer(
 		rest.Config{RequestTimeout: time.Second, WebDir: webDir(t)},
 		rest.Backends{Auth: &fakeAuth{}, Users: &fakeUsers{}, Posts: &fakePosts{}, Media: &fakeMedia{}, Notifications: &fakeNotifications{}, Messages: &fakeMessages{}},
-		slog.New(slog.NewTextHandler(io.Discard, nil)),
+		prometheus.NewRegistry(),
 	).Handler()
 
 	get := func(path string) *httptest.ResponseRecorder {
