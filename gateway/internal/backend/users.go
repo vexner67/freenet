@@ -249,10 +249,31 @@ func toUserPage(resp userPageMessage) model.UserPage {
 
 func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 	return model.PublicProfile{
-		ID:       p.GetId(),
-		AvatarID: p.GetAvatarId(),
-		Profile:  toProfile(p),
+		ID:          p.GetId(),
+		AvatarID:    p.GetAvatarId(),
+		Profile:     toProfile(p),
+		Deactivated: p.GetDeactivated(),
 	}
+}
+
+// Deactivate deletes the caller's page; reason may be empty.
+func (u *Users) Deactivate(ctx context.Context, accessToken, reason string) (model.User, error) {
+	resp, err := u.api.DeactivateAccount(withToken(ctx, accessToken), &userv1.DeactivateAccountRequest{Reason: reason})
+	if err != nil {
+		return model.User{}, errs.Wrap("u.api.DeactivateAccount", fromStatus(err))
+	}
+
+	return toUser(resp.GetUser()), nil
+}
+
+// Reactivate restores the caller's deleted page.
+func (u *Users) Reactivate(ctx context.Context, accessToken string) (model.User, error) {
+	resp, err := u.api.ReactivateAccount(withToken(ctx, accessToken), &userv1.ReactivateAccountRequest{})
+	if err != nil {
+		return model.User{}, errs.Wrap("u.api.ReactivateAccount", fromStatus(err))
+	}
+
+	return toUser(resp.GetUser()), nil
 }
 
 // SetAvatar points the caller's profile to an uploaded avatar; "" removes it.

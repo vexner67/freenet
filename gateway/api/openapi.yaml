@@ -130,6 +130,59 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
+  /api/v1/me/deactivate:
+    post:
+      summary: Delete your page
+      description: |
+        openvk's "Удаление страницы": the page is hidden at once and can be
+        restored until `purgeAt` (seven months by default); then its data is
+        erased in every service: the profile, posts and posts on its wall,
+        likes, comments, photos, dialogs on both sides and notifications.
+        Meanwhile others see only the name and the photo (`deactivated`),
+        nobody may follow it, write on its wall or to it, and what its owner
+        wrote is hidden. Refresh the tokens right after: those of a deleted
+        page are good only for `GET /api/v1/me` and
+        `POST /api/v1/me/reactivate`; send other requests without a token,
+        as an anonymous visitor.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                reason:
+                  type: string
+                  maxLength: 1000
+                  description: "Why, in the owner's words or one of openvk's reasons; may be empty"
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: The page is deleted already (`your page is deleted`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/me/reactivate:
+    post:
+      summary: Restore your deleted page
+      description: |
+        Works with the token of a deleted page; refresh the tokens right
+        after to get full ones again.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409":
+          description: "`this page is not deleted`, or `this page can no longer be restored` after `purgeAt`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/users/{nickname}:
     get:
       summary: Someone's public profile with follow counters
@@ -231,6 +284,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/PostPage" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
+        "403":
+          description: The owner deleted the page (`this page is deleted`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
     post:
       summary: Write on someone's wall
@@ -1007,13 +1065,20 @@ components:
       allOf:
         - $ref: "#/components/schemas/Profile"
         - type: object
-          required: [id, avatar, email, profileCompleted, privacy]
+          required: [id, avatar, email, profileCompleted, privacy, deactivated]
           properties:
             id: { type: string, format: uuid }
             avatar: { $ref: "#/components/schemas/Avatar" }
             email: { type: string, format: email }
             profileCompleted: { type: boolean }
             privacy: { $ref: "#/components/schemas/Privacy" }
+            deactivated:
+              type: boolean
+              description: "You deleted the page; see POST /api/v1/me/deactivate"
+            purgeAt:
+              type: string
+              format: date-time
+              description: "Only for a deleted page: when it can no longer be restored and its data is erased"
 
     Avatar:
       type: [object, "null"]
@@ -1033,6 +1098,9 @@ components:
         name: { type: string }
         surname: { type: string }
         gender: { type: string, enum: ["", male, female] }
+        deactivated:
+          type: boolean
+          description: "Only in dialogs: the person deleted the page. Elsewhere such people and what they wrote are left out"
 
     NewPost:
       type: object
@@ -1251,7 +1319,10 @@ components:
       allOf:
         - $ref: "#/components/schemas/Profile"
         - type: object
-          required: [id, avatar]
+          required: [id, avatar, deactivated]
           properties:
             id: { type: string, format: uuid }
             avatar: { $ref: "#/components/schemas/Avatar" }
+            deactivated:
+              type: boolean
+              description: "The owner deleted the page: only the names and the photo are left"

@@ -25,7 +25,7 @@ func fromStatus(err error) error {
 		return failure.New(failure.PermissionDenied, "permission denied")
 	case codes.NotFound:
 		return failure.New(failure.NotFound, st.Message())
-	case codes.AlreadyExists:
+	case codes.AlreadyExists, codes.FailedPrecondition:
 		return failure.New(failure.Conflict, st.Message())
 	case codes.ResourceExhausted:
 		return failure.New(failure.TooManyRequests, st.Message())

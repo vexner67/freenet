@@ -57,6 +57,10 @@ type User struct {
 	Profile          Profile
 	ProfileCompleted bool
 	Privacy          Privacy
+	// Deactivated: the owner deleted the page, which can be restored until
+	// PurgeAt.
+	Deactivated bool
+	PurgeAt     time.Time
 }
 
 // PublicProfile is what anyone may see; fields hidden by the owner are empty.
@@ -64,6 +68,8 @@ type PublicProfile struct {
 	ID       string
 	AvatarID string
 	Profile  Profile
+	// Deactivated: the page is deleted, only names and the photo are left.
+	Deactivated bool
 }
 
 // Author is who wrote a post or owns a wall, as shown next to a post.
@@ -74,6 +80,8 @@ type Author struct {
 	Name     string
 	Surname  string
 	Gender   string
+	// Deactivated: the page is deleted; what its owner wrote is hidden.
+	Deactivated bool
 }
 
 type Post struct {
