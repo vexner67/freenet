@@ -569,3 +569,11 @@ a.like:hover svg { opacity: .7; }
 .modal-body .error { margin-bottom: 0; }
 .modal-option input { margin: 0 4px 0 0; vertical-align: middle; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; background: #f2f2f2; border-top: 1px solid #ddd; }
+
+/* Links under the profile photo, as openvk's profile_link. */
+.profile-link { display: block; margin-top: 4px; padding: 3px 6px; background: #f2f2f2; color: #2b587a; cursor: pointer; }
+.profile-link:hover { background: #e6e6e6; text-decoration: none; }
+
+/* The blacklist page: people with "Удалить из чёрного списка". */
+.blacklist-row { display: flex; justify-content: space-between; align-items: center; }
+.blacklist-row .person { flex: 1; }

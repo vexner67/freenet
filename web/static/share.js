@@ -1,34 +1,39 @@
 // openvk's "Поделиться" box: the audience (your wall, the only one here),
-// your comment, "Отправить" and "Отмена". Esc or a click beside the box
-// closes it.
+// your comment, "Отправить" and "Отмена".
 
 import { api } from './api.js';
-import { postPath } from './posts.js';
 import { el, showError, hideError } from './layout.js';
+import { button, openModal } from './modal.js';
+import { postPath } from './posts.js';
 
 const MAX_LENGTH = 1000;
 
 // openShare shares post; onShared(repost) runs once it is on the wall.
 export function openShare(post, onShared) {
+  const modal = openModal('Поделиться', { tag: 'form' });
   const text = el('textarea', { maxLength: MAX_LENGTH, placeholder: '…', ariaLabel: 'Ваш комментарий' });
   const error = el('div', { className: 'error', hidden: true });
-  const send = el('button', { className: 'button', type: 'submit', textContent: 'Отправить' });
-  const cancel = el('button', { className: 'button secondary', type: 'button', textContent: 'Отмена', onclick: hide });
+  const send = button('Отправить', null, { type: 'submit' });
 
-  const form = el('form', { className: 'modal-box' },
-    el('div', { className: 'modal-header', textContent: 'Поделиться' }),
-    el('div', { className: 'modal-body' },
-      error,
-      el('b', { textContent: 'Аудитория' }),
-      el('label', { className: 'modal-option' }, el('input', { type: 'radio', checked: true }), 'на стену'),
-      el('b', { textContent: 'Ваш комментарий' }),
-      text,
-    ),
-    el('div', { className: 'modal-actions' }, send, cancel),
+  modal.body.append(
+    error,
+    el('b', { textContent: 'Аудитория' }),
+    el('label', { className: 'modal-option' }, el('input', { type: 'radio', checked: true }), 'на стену'),
+    el('b', { textContent: 'Ваш комментарий' }),
+    text,
   );
-  const overlay = el('div', { className: 'modal' }, form);
+  modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
 
-  async function submit(event) {
+  // done says where the repost is, as openvk's "Запись появится на вашей стене".
+  function done(repost) {
+    modal.body.replaceChildren(el('div', {},
+      'Запись опубликована на вашей стене. ',
+      el('a', { href: postPath(repost), textContent: 'Перейти к записи' }),
+    ));
+    modal.actions.replaceChildren(button('Закрыть', modal.close));
+  }
+
+  modal.box.addEventListener('submit', async (event) => {
     event.preventDefault();
     hideError(error);
     send.disabled = true;
@@ -41,33 +46,7 @@ export function openShare(post, onShared) {
       showError(error, e);
       send.disabled = false;
     }
-  }
-
-  // done says where the repost is, as openvk's "Запись появится на вашей стене".
-  function done(repost) {
-    form.querySelector('.modal-body').replaceChildren(el('div', {},
-      'Запись опубликована на вашей стене. ',
-      el('a', { href: postPath(repost), textContent: 'Перейти к записи' }),
-    ));
-    form.querySelector('.modal-actions').replaceChildren(
-      el('button', { className: 'button', type: 'button', textContent: 'Закрыть', onclick: hide }),
-    );
-  }
-
-  function onKey(event) {
-    if (event.key === 'Escape') hide();
-  }
-
-  function hide() {
-    overlay.remove();
-    document.removeEventListener('keydown', onKey);
-  }
-
-  form.addEventListener('submit', submit);
-  overlay.addEventListener('click', (event) => {
-    if (event.target === overlay) hide();
   });
-  document.addEventListener('keydown', onKey);
-  document.body.append(overlay);
+
   text.focus();
 }

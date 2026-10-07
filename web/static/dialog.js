@@ -4,7 +4,7 @@
 // grey either way: the peer's until you read them, yours until the peer does.
 
 import { api, currentUser } from './api.js';
-import { formatPostDate } from './labels.js';
+import { errorText, formatPostDate } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError } from './layout.js';
 
 const POLL_MS = 5000;
@@ -158,7 +158,9 @@ async function send(event) {
   }
 }
 
-function setUpInput() {
+// setUpInput shows the form, or why there is none; canWrite is the
+// peer's privacy and blacklists, as the first page of the dialog says.
+async function setUpInput(canWrite) {
   if (me.id === peer.id) {
     $('form').hidden = true;
     $('blocked').textContent = 'Нельзя написать самому себе.';
@@ -173,6 +175,13 @@ function setUpInput() {
     return;
   }
 
+  if (!canWrite) {
+    $('form').hidden = true;
+    $('blocked').replaceChildren(...await whyNotWrite());
+    $('blocked').hidden = false;
+    return;
+  }
+
   $('my-avatar').src = avatarURL(me, 'small');
   $('peer-avatar').src = avatarURL(peer, 'small');
   $('form').addEventListener('submit', send);
@@ -182,6 +191,18 @@ function setUpInput() {
       $('form').requestSubmit();
     }
   });
+}
+
+// whyNotWrite tells the caller's own blacklist apart from the peer's
+// choice, which openvk words the same for both.
+async function whyNotWrite() {
+  const profile = await api.profile(peer.nickname).catch(() => null);
+
+  if (profile?.blockedByMe) {
+    return [`${fullName(peer)} — в вашем `, el('a', { href: '/settings/blacklist', textContent: 'чёрном списке' }), '.'];
+  }
+
+  return [errorText({ message: 'you cannot write to this user' })];
 }
 
 me = await currentUser().catch(() => null);
@@ -205,7 +226,7 @@ if (!me) {
     add(page.messages, false);
     olderCursor = page.nextCursor;
     toBottom();
-    setUpInput();
+    await setUpInput(page.canWrite);
 
     list.addEventListener('scroll', () => {
       if (list.scrollTop < LOAD_OLDER_AT) loadOlder();
