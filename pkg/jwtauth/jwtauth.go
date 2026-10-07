@@ -7,6 +7,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/golang-jwt/jwt/v5"
 	"github.com/google/uuid"
@@ -33,6 +34,8 @@ var ErrInvalidToken = errors.New("invalid token")
 type Identity struct {
 	UserID    uuid.UUID
 	SessionID uuid.UUID
+	// ExpiresAt is when the token stops being valid: streams end there.
+	ExpiresAt time.Time
 }
 
 type Verifier struct {
@@ -83,6 +86,7 @@ func (v *Verifier) Verify(token string, want TokenType) (Identity, error) {
 	return Identity{
 		UserID:    userID,
 		SessionID: sessionID,
+		ExpiresAt: claims.ExpiresAt.Time,
 	}, nil
 }
 

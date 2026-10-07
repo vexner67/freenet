@@ -2,6 +2,7 @@ package jwtauth
 
 import (
 	"context"
+	"errors"
 	"strings"
 
 	"google.golang.org/grpc"
@@ -59,6 +60,54 @@ func UnaryServerInterceptor(v *Verifier, publicMethods ...string) grpc.UnaryServ
 
 		return handler(ContextWithIdentity(ctx, id), req)
 	}
+}
+
+// StreamServerInterceptor requires a valid access token on every stream:
+// streams carry a user's own events, none is public. The stream lives no
+// longer than the token: at its expiry the context's deadline ends it, and
+// the handler reports Unauthenticated (see ErrTokenExpired), so the client
+// subscribes again with a fresh token. A token that was revoked meanwhile
+// keeps its stream until then, as it keeps its calls.
+func StreamServerInterceptor(v *Verifier) grpc.StreamServerInterceptor {
+	return func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+		token, ok := bearerToken(ss.Context())
+		if !ok {
+			return status.Error(codes.Unauthenticated, "missing access token")
+		}
+
+		id, err := v.Verify(token, AccessToken)
+		if err != nil {
+			return status.Error(codes.Unauthenticated, "invalid access token")
+		}
+
+		ctx, cancel := context.WithDeadline(ContextWithIdentity(ss.Context(), id), id.ExpiresAt)
+		defer cancel()
+
+		return handler(srv, &identityStream{ServerStream: ss, ctx: ctx})
+	}
+}
+
+// StreamEnd is what a stream handler returns when its context is done: the
+// token expired (Unauthenticated, to subscribe again with a fresh one) or
+// the client left or the server stops (Canceled).
+func StreamEnd(ctx context.Context) error {
+	if errors.Is(ctx.Err(), context.DeadlineExceeded) {
+		return status.Error(codes.Unauthenticated, ErrTokenExpired.Error())
+	}
+
+	return status.Error(codes.Canceled, "stream closed")
+}
+
+// ErrTokenExpired ends a stream whose access token expired.
+var ErrTokenExpired = errors.New("access token expired")
+
+type identityStream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (s *identityStream) Context() context.Context {
+	return s.ctx
 }
 
 func bearerToken(ctx context.Context) (string, bool) {
