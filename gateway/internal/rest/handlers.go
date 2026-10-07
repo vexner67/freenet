@@ -5,6 +5,7 @@ import (
 	"strings"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
+	"github.com/vexner67/freenet/gateway/internal/model"
 )
 
 func (a *api) health(w http.ResponseWriter, _ *http.Request) {
@@ -182,8 +183,18 @@ func (a *api) getProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The blacklist is the viewer's: anonymous viewers have none.
+	var rel model.Relation
+	if token != "" {
+		if rel, err = a.users.Relation(r.Context(), token, profile.ID); err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+	}
+
 	writeJSON(w, http.StatusOK, profileWithStatsResponse{
 		publicProfileResponse: toPublicProfileResponse(profile),
 		followStatsJSON:       toFollowStatsJSON(stats),
+		relationJSON:          relationJSON{BlockedByMe: rel.BlockedByMe, BlockedMe: rel.BlockedMe},
 	})
 }

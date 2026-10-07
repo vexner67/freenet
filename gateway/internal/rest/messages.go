@@ -38,6 +38,9 @@ type messagePageResponse struct {
 	Messages     []messageJSON `json:"messages"`
 	NextCursor   string        `json:"nextCursor"`
 	PeerReadUpTo string        `json:"peerReadUpTo"`
+	// CanWrite: the peer's privacy and blacklists let the caller write;
+	// told on the first page of a dialog, not on older pages or polls.
+	CanWrite bool `json:"canWrite"`
 }
 
 // toMessageJSON: a message is the caller's when the peer did not send it.
@@ -161,7 +164,26 @@ func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 		resp.Messages = append(resp.Messages, toMessageJSON(m, peer.ID))
 	}
 
+	if query.Get("cursor") == "" && query.Get("after") == "" {
+		if resp.CanWrite, err = a.canMessage(r, token, peer.ID); err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+	}
+
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// canMessage asks the user service, which keeps privacy and blacklists,
+// whether the caller may write to peerID, telling it what only the message
+// service knows: whether the peer wrote first, so may be answered.
+func (a *api) canMessage(r *http.Request, token, peerID string) (bool, error) {
+	wroteFirst, err := a.messages.HasMessagesFrom(r.Context(), token, peerID)
+	if err != nil {
+		return false, err
+	}
+
+	return a.users.CanMessage(r.Context(), token, peerID, wroteFirst)
 }
 
 // sendMessage needs a filled-in profile, as posting does: the recipient
@@ -194,6 +216,17 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 	recipient, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
+		return
+	}
+
+	allowed, err := a.canMessage(r, token, recipient.ID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if !allowed {
+		a.writeError(w, r, failure.New(failure.PermissionDenied, "you cannot write to this user"))
 		return
 	}
 

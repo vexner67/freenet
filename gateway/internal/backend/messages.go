@@ -92,6 +92,16 @@ func (m *Messages) MarkRead(ctx context.Context, accessToken, peerID, upTo strin
 	return nil
 }
 
+// HasMessagesFrom tells whether peerID has ever written to the caller.
+func (m *Messages) HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error) {
+	resp, err := m.api.HasMessagesFrom(withToken(ctx, accessToken), &messagev1.HasMessagesFromRequest{PeerId: peerID})
+	if err != nil {
+		return false, errs.Wrap("m.api.HasMessagesFrom", fromStatus(err))
+	}
+
+	return resp.GetHasMessages(), nil
+}
+
 func toMessage(pm *messagev1.Message) model.Message {
 	return model.Message{
 		ID:          pm.GetId(),

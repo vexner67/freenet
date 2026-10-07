@@ -26,6 +26,7 @@ func toFollowStatsJSON(s model.FollowStats) followStatsJSON {
 type profileWithStatsResponse struct {
 	publicProfileResponse
 	followStatsJSON
+	relationJSON
 }
 
 type userPageResponse struct {

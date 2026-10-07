@@ -108,6 +108,30 @@ func (f *fakeUserAPI) UpdatePrivacy(_ context.Context, req *userv1.UpdatePrivacy
 	return &userv1.UpdatePrivacyResponse{User: &userv1.User{Id: "u1", Privacy: req.GetPrivacy()}}, nil
 }
 
+func (f *fakeUserAPI) CanMessage(ctx context.Context, req *userv1.CanMessageRequest, _ ...grpc.CallOption) (*userv1.CanMessageResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &userv1.CanMessageResponse{Allowed: req.GetWroteFirst()}, nil
+}
+
+func (f *fakeUserAPI) GetRelation(context.Context, *userv1.GetRelationRequest, ...grpc.CallOption) (*userv1.GetRelationResponse, error) {
+	return &userv1.GetRelationResponse{BlockedMe: true}, nil
+}
+
+func (f *fakeUserAPI) ListBlocked(_ context.Context, req *userv1.ListBlockedRequest, _ ...grpc.CallOption) (*userv1.ListBlockedResponse, error) {
+	return &userv1.ListBlockedResponse{
+		Users:      []*userv1.PublicProfile{{Id: "u2", Nickname: "bob"}},
+		NextCursor: req.GetCursor() + "+",
+		Total:      1,
+	}, nil
+}
+
+func (f *fakeUserAPI) Block(_ context.Context, req *userv1.BlockRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	if req.GetUserId() == "self" {
+		return nil, status.Error(codes.InvalidArgument, "you cannot blacklist yourself")
+	}
+	return &emptypb.Empty{}, nil
+}
+
 func (f *fakeUserAPI) CanPostOnWall(ctx context.Context, req *userv1.CanPostOnWallRequest, _ ...grpc.CallOption) (*userv1.CanPostOnWallResponse, error) {
 	f.md, _ = metadata.FromOutgoingContext(ctx)
 	return &userv1.CanPostOnWallResponse{Allowed: req.GetUserId() == "u2"}, nil
@@ -157,23 +181,44 @@ func TestWallPrivacy(t *testing.T) {
 	api := &fakeUserAPI{}
 	users := NewUsers(api)
 
-	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{ShowWorldview: true, WallWrite: "everyone"})
+	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{ShowWorldview: true, WallWrite: "everyone", MessagesWrite: "nobody"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if api.privacy.GetWallWrite() != userv1.WallWrite_WALL_WRITE_EVERYONE || u.Privacy.WallWrite != "everyone" {
 		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
 	}
+	if api.privacy.GetMessagesWrite() != userv1.MessagesWrite_MESSAGES_WRITE_NOBODY || u.Privacy.MessagesWrite != "nobody" {
+		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
+	}
 
-	for _, bad := range []string{"friends", "EVERYONE"} {
-		if _, err = users.UpdatePrivacy(context.Background(), "tok", model.Privacy{WallWrite: bad}); failure.From(err).Kind != failure.InvalidArgument {
-			t.Fatalf("wall write %q: %v", bad, err)
+	for _, bad := range []model.Privacy{{WallWrite: "friends", MessagesWrite: "everyone"}, {WallWrite: "everyone", MessagesWrite: "only_me"}} {
+		if _, err = users.UpdatePrivacy(context.Background(), "tok", bad); failure.From(err).Kind != failure.InvalidArgument {
+			t.Fatalf("privacy %+v: %v", bad, err)
 		}
 	}
 
 	allowed, err := users.CanPostOnWall(context.Background(), "tok", "u2")
 	if err != nil || !allowed {
 		t.Fatalf("CanPostOnWall = %v, %v", allowed, err)
+	}
+
+	if allowed, err = users.CanMessage(context.Background(), "tok", "u2", true); err != nil || !allowed {
+		t.Fatalf("CanMessage passes wroteFirst on: %v, %v", allowed, err)
+	}
+
+	rel, err := users.Relation(context.Background(), "tok", "u2")
+	if err != nil || !rel.BlockedMe || rel.BlockedByMe || !rel.Blocked() {
+		t.Fatalf("Relation = %+v, %v", rel, err)
+	}
+
+	page, err := users.Blacklist(context.Background(), "tok", "c1", 10)
+	if err != nil || page.Total != 1 || page.Users[0].Profile.Nickname != "bob" || page.NextCursor != "c1+" {
+		t.Fatalf("Blacklist = %+v, %v", page, err)
+	}
+
+	if err = users.Block(context.Background(), "tok", "self"); failure.From(err).Kind != failure.InvalidArgument {
+		t.Fatalf("Block yourself: %v", err)
 	}
 	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
 		t.Fatalf("authorization metadata = %v", got)
@@ -392,6 +437,11 @@ type fakeMessageAPI struct {
 	req *messagev1.ListMessagesRequest
 }
 
+func (f *fakeMessageAPI) HasMessagesFrom(ctx context.Context, req *messagev1.HasMessagesFromRequest, _ ...grpc.CallOption) (*messagev1.HasMessagesFromResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &messagev1.HasMessagesFromResponse{HasMessages: req.GetPeerId() == "u2"}, nil
+}
+
 func (f *fakeMessageAPI) ListMessages(ctx context.Context, req *messagev1.ListMessagesRequest, _ ...grpc.CallOption) (*messagev1.ListMessagesResponse, error) {
 	f.md, _ = metadata.FromOutgoingContext(ctx)
 	f.req = req
@@ -417,6 +467,10 @@ func TestMessages(t *testing.T) {
 
 	api := &fakeMessageAPI{}
 	messages := NewMessages(api)
+
+	if wrote, err := messages.HasMessagesFrom(context.Background(), "tok", "u2"); err != nil || !wrote || len(api.md.Get("authorization")) != 1 {
+		t.Fatalf("HasMessagesFrom = %v, %v (metadata %v)", wrote, err, api.md)
+	}
 
 	page, err := messages.History(context.Background(), "tok", "u2", "", "m0", 1<<20)
 	if err != nil {
