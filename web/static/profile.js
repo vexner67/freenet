@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { genders, relationships, worldviews, politicalViews, label, formatBirthday, limitedAccess } from './labels.js';
+import { genders, relationships, worldviews, politicalViews, label, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
 import { $, el, fullName, renderChrome, showError } from './layout.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initFollow } from './follow.js';
@@ -67,16 +67,55 @@ function renderLimited(profile) {
   $('profile').hidden = false;
 }
 
+// renderDeactivated is openvk's page that its owner deleted: the photo,
+// the name, "Страница удалена" and nothing else. Its owner also gets the
+// way back until the page is erased.
+function renderDeactivated(profile, isOwner) {
+  const name = fullName(profile);
+
+  document.title = `${name} | Freenet`;
+  $('title').textContent = name;
+  $('title-aside').textContent = '@' + profile.nickname;
+  $('name').textContent = name;
+  $('status').textContent = 'Страница удалена';
+  $('status').classList.add('empty');
+  $('profile-content').replaceChildren(el('p', { className: 'deleted-info' },
+    'Страница пользователя удалена.', el('br'), 'Информация недоступна.'));
+  $('profile').hidden = false;
+
+  if (isOwner) {
+    const restore = el('a', { textContent: 'восстановить свою страницу', onclick: reactivate });
+    $('deactivated').replaceChildren(
+      el('p', {}, 'Ваша страница ', el('b', { textContent: 'удалена' }), '.'),
+      el('p', {}, 'Если Вы захотите снова начать пользоваться сайтом, Вы можете ', restore,
+        ` до ${formatDateTime(me.purgeAt)}.`),
+    );
+    $('deactivated').hidden = false;
+  }
+}
+
+async function reactivate() {
+  try {
+    await api.reactivate();
+    location.reload();
+  } catch (e) {
+    showError($('error'), e);
+  }
+}
+
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
   // The public profile also brings the follow counters; the owner sees the
   // whole profile from /me.
-  const profile = await api.profile(nickname);
+  const profile = await (me?.deactivated ? api.publicProfile(nickname) : api.profile(nickname));
   const isOwner = Boolean(me) && me.id === profile.id;
 
-  if (profile.blockedMe || profile.blockedByMe) {
+  if (profile.deactivated) {
+    renderDeactivated(profile, isOwner);
+    initPhoto(profile, false);
+  } else if (profile.blockedMe || profile.blockedByMe) {
     renderLimited(profile);
     initPhoto(profile, false);
   } else {
@@ -92,7 +131,7 @@ try {
   }
 
   // As on openvk, also on the page of whoever blacklisted the viewer.
-  if (me && !isOwner) {
+  if (me && !isOwner && !profile.deactivated) {
     initBlacklistLink(profile, () => location.reload());
   }
 } catch (e) {

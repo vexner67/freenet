@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites } from '../static/labels.js';
+import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -132,4 +132,19 @@ test('blacklist and messages privacy read like openvk', () => {
   assert.equal(limitedAccess(''), 'ограничил(а)');
   assert.deepEqual(messagesWrites.map(([value]) => value), ['everyone', 'following', 'nobody']);
   assert.match(errorText(new Error('you cannot write to this user')), /ограничил круг лиц/);
+});
+
+test('formatDateTime is openvk\'s date of a deleted page', () => {
+  assert.equal(formatDateTime(new Date(2027, 4, 7, 12, 5).toISOString()), '7 мая 2027 в 12:05');
+});
+
+test('deactivationReasons are openvk\'s, the last one without words', () => {
+  assert.equal(deactivationReasons.length, 6);
+  assert.equal(deactivationReasons.at(-1)[1], '');
+  assert.ok(deactivationReasons.slice(0, -1).every(([title, text]) => title && text));
+});
+
+test('errorText knows deleted pages', () => {
+  assert.equal(errorText({ message: 'this page is deleted' }), 'Страница пользователя заблокирована или удалена.');
+  assert.equal(errorText({ message: 'this page can no longer be restored' }), 'Срок восстановления страницы истёк.');
 });

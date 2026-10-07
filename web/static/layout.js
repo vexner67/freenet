@@ -29,6 +29,11 @@ export function renderChrome(me) {
   const links = $('header-links');
   const menu = $('menu');
 
+  if (me?.deactivated) {
+    renderDeactivatedChrome(me, links, menu);
+    return;
+  }
+
   if (me) {
     links.replaceChildren(
       el('a', { href: profilePath(me), textContent: 'моя страница' }),
@@ -64,6 +69,19 @@ export function renderChrome(me) {
       el('a', { href: '/search', textContent: 'Люди' }),
     );
   }
+}
+
+// renderDeactivatedChrome is openvk's for the owner of a deleted page: no
+// menu, only "выход" in the header, and no page but their own, where they
+// can restore it.
+function renderDeactivatedChrome(me, links, menu) {
+  links.replaceChildren(el('a', { href: '/', textContent: 'выход', onclick: logout }));
+
+  const sidebar = menu?.closest('.sidebar');
+  if (sidebar) sidebar.hidden = true;
+
+  const own = profilePath(me);
+  if (decodeURIComponent(location.pathname) !== own) location.replace(own);
 }
 
 // The unread counters of the menu, as on openvk: dialogs with unread

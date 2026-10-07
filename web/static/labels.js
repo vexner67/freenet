@@ -109,6 +109,25 @@ export function formatPostDate(iso, now = new Date()) {
   return date.getFullYear() === now.getFullYear() ? `${day} в ${time}` : `${day} ${date.getFullYear()} в ${time}`;
 }
 
+// formatDateTime turns an ISO time into openvk's "7 мая 2027 в 12:00".
+export function formatDateTime(iso) {
+  const date = new Date(iso);
+  const time = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+
+  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} в ${time}`;
+}
+
+// deactivationReasons are openvk's reasons to delete a page: a title and
+// the words it puts in the message; the last one leaves them to the user.
+export const deactivationReasons = [
+  ['У меня есть другая страница на сайте', 'Я создал новую страницу и теперь хочу подтереть своё прошлое.'],
+  ['Сайт отнимает у меня слишком много времени', 'Пусть этот сайт хорош и прекрасен, но он отнимает у меня время, которое мне нужно для работы и жизни.'],
+  ['Сайт содержит слишком много неприемлемых материалов', 'Я нашёл достаточно порнографии и пиратского контента - хватит на всю жизнь. Теперь я ухожу.'],
+  ['Меня беспокоит безопасность моих данных', 'За мной следят и мне страшно здесь находится. Извините, я вынужден уйти.'],
+  ['Мою страницу не комментируют', 'Меня никто не смотрит здесь и это грустно. Вы пожалеете о том, что я ушёл.'],
+  ['Другая причина', ''],
+];
+
 export function wrote(gender) {
   return gender === 'female' ? 'написала' : 'написал';
 }
@@ -268,6 +287,10 @@ const errorTexts = {
   'you cannot write to yourself': 'Нельзя написать самому себе.',
   'fill in your profile before writing messages': 'Сначала заполните свою страницу.',
   'permission denied': 'Недостаточно прав.',
+  'this page is deleted': 'Страница пользователя заблокирована или удалена.',
+  'this page is not deleted': 'Ваша страница не удалена.',
+  'this page can no longer be restored': 'Срок восстановления страницы истёк.',
+  'reason is too long': 'Сообщение длиннее 1000 символов.',
   'you cannot follow yourself': 'Нельзя подписаться на себя.',
   'image is larger than 8 MB': 'Фотография больше 8 МБ.',
   'not a JPEG, PNG, GIF or WebP image': 'Это не фотография: подойдут JPEG, PNG, GIF и WebP.',

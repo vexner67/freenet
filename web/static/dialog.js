@@ -216,13 +216,17 @@ async function setUpInput(canWrite) {
   });
 }
 
-// whyNotWrite tells the caller's own blacklist apart from the peer's
-// choice, which openvk words the same for both.
+// whyNotWrite tells the caller's own blacklist and a deleted page apart
+// from the peer's choice, which openvk words the same for both.
 async function whyNotWrite() {
   const profile = await api.profile(peer.nickname).catch(() => null);
 
   if (profile?.blockedByMe) {
     return [`${fullName(peer)} — в вашем `, el('a', { href: '/settings/blacklist', textContent: 'чёрном списке' }), '.'];
+  }
+
+  if (profile?.deactivated) {
+    return [errorText({ message: 'this page is deleted' })];
   }
 
   return [errorText({ message: 'you cannot write to this user' })];
