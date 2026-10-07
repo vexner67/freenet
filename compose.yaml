@@ -1,7 +1,10 @@
 # Infrastructure (PostgreSQL per service, Redis) starts by default: it is
 # what `make dev-persistent` runs the services against. The services
 # themselves are in the "app" profile, built from Dockerfile, with mTLS
-# between them (`make certs`) and the same databases: `make stack`.
+# between them (`make certs`) and the same databases, and Prometheus
+# collecting their metrics: `make stack`. The images check their own
+# health (HEALTHCHECK in Dockerfile), so a service waits for those it
+# calls.
 
 x-service: &service
   profiles: [app]
@@ -120,6 +123,7 @@ services:
     environment:
       <<: *env
       GRPC_PORT: 7055
+      METRICS_PORT: 9055
       TLS_CERT_PATH: /certs/notification.pem
       TLS_KEY_PATH: /certs/notification-key.pem
       STORAGE: persistent
@@ -134,6 +138,7 @@ services:
     environment:
       <<: *env
       GRPC_PORT: 7056
+      METRICS_PORT: 9056
       TLS_CERT_PATH: /certs/message.pem
       TLS_KEY_PATH: /certs/message-key.pem
       STORAGE: persistent
@@ -150,6 +155,7 @@ services:
     environment:
       <<: *env
       GRPC_PORT: 7052
+      METRICS_PORT: 9052
       TLS_CERT_PATH: /certs/user.pem
       TLS_KEY_PATH: /certs/user-key.pem
       STORAGE: persistent
@@ -159,6 +165,7 @@ services:
     depends_on:
       user-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      notification: { condition: service_healthy }
 
   post:
     <<: *service
@@ -167,6 +174,7 @@ services:
     environment:
       <<: *env
       GRPC_PORT: 7053
+      METRICS_PORT: 9053
       TLS_CERT_PATH: /certs/post.pem
       TLS_KEY_PATH: /certs/post-key.pem
       STORAGE: persistent
@@ -176,6 +184,7 @@ services:
     depends_on:
       post-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      notification: { condition: service_healthy }
 
   media:
     <<: *service
@@ -184,6 +193,7 @@ services:
     environment:
       <<: *env
       GRPC_PORT: 7054
+      METRICS_PORT: 9054
       TLS_CERT_PATH: /certs/media.pem
       TLS_KEY_PATH: /certs/media-key.pem
       STORAGE: persistent
@@ -202,6 +212,7 @@ services:
     environment:
       <<: *env
       GRPC_PORT: 7051
+      METRICS_PORT: 9051
       TLS_CERT_PATH: /certs/auth.pem
       TLS_KEY_PATH: /certs/auth-key.pem
       STORAGE: persistent
@@ -216,7 +227,7 @@ services:
     depends_on:
       auth-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
-      user: { condition: service_started }
+      user: { condition: service_healthy }
 
   gateway:
     <<: *service
@@ -226,6 +237,7 @@ services:
       LOG_LEVEL: info
       LOG_FORMAT: json
       HTTP_PORT: 8080
+      METRICS_PORT: 9080
       TLS_CA_PATH: /certs/ca.pem
       TLS_CERT_PATH: /certs/gateway.pem
       TLS_KEY_PATH: /certs/gateway-key.pem
@@ -238,12 +250,23 @@ services:
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
     depends_on:
-      - auth
-      - user
-      - post
-      - media
-      - notification
-      - message
+      auth: { condition: service_healthy }
+      user: { condition: service_healthy }
+      post: { condition: service_healthy }
+      media: { condition: service_healthy }
+      notification: { condition: service_healthy }
+      message: { condition: service_healthy }
+
+  # Metrics of every service: http://localhost:9090 (PROMETHEUS_PORT).
+  # The services' metrics ports are not published.
+  prometheus:
+    profiles: [app]
+    image: prom/prometheus:v3.13.4
+    restart: unless-stopped
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml:ro
+    ports:
+      - "127.0.0.1:${PROMETHEUS_PORT:-9090}:9090"
 
 volumes:
   auth_postgres_data:

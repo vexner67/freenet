@@ -40,15 +40,27 @@ port_of() {
 	sed -n -E 's/^(GRPC|HTTP)_PORT=([0-9]+).*/\2/p' "$1/.env" | head -1
 }
 
+# metrics_port_of prints METRICS_PORT from a service's .env or, without
+# one, the service's port with a 9 in front of its last three digits:
+# 7051 -> 9051, 8080 -> 9080.
+metrics_port_of() {
+	local port
+	port=$(sed -n -E 's/^METRICS_PORT=([0-9]+).*/\1/p' "$1/.env" | head -1)
+	[ -n "$port" ] || { port=$(port_of "$1"); port=9${port: -3}; }
+	echo "$port"
+}
+
 for svc in "${services[@]}"; do
 	[ -f "$svc/.env" ] || die "$svc/.env is missing: copy $svc/.env.example and fill it in"
 
 	port=$(port_of "$svc")
 	[ -n "$port" ] || die "$svc/.env has no GRPC_PORT/HTTP_PORT"
 
-	if nc -z localhost "$port" 2>/dev/null; then
-		die "port $port of $svc is busy: is the backend already running?"
-	fi
+	for p in "$port" "$(metrics_port_of "$svc")"; do
+		if nc -z localhost "$p" 2>/dev/null; then
+			die "port $p of $svc is busy: is the backend already running?"
+		fi
+	done
 done
 
 if $persistent; then
@@ -96,7 +108,8 @@ for i in "${!services[@]}"; do
 	tag=$(printf '%-12s|' "$svc")
 	[ -t 1 ] && tag=$(printf '\033[%sm%s\033[0m' "${colors[$i]}" "$tag")
 
-	(cd "$svc" && exec "$bin/$svc") > >(label "$tag ") 2>&1 &
+	metrics_port=$(metrics_port_of "$svc")
+	(cd "$svc" && METRICS_PORT=$metrics_port exec "$bin/$svc") > >(label "$tag ") 2>&1 &
 	pids+=($!)
 done
 
@@ -109,6 +122,11 @@ done
 mode="storage from .env"
 $persistent && mode="persistent storage"
 echo "==> Freenet is up ($mode): http://localhost:$http_port  (Ctrl+C to stop)"
+metrics=
+for svc in "${services[@]}"; do
+	metrics="$metrics $svc :$(metrics_port_of "$svc")"
+done
+echo "    metrics at /metrics:$metrics"
 
 # Supervise: bash 3.2 has no `wait -n`, so poll.
 while true; do
