@@ -88,6 +88,13 @@ func (r *NotificationRepository) DeleteByPost(ctx context.Context, postID uuid.U
 	return r.deleteWhere(ctx, func(n *notification.Notification) bool { return n.Event().PostID == postID })
 }
 
+func (r *NotificationRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	return r.deleteWhere(ctx, func(n *notification.Notification) bool {
+		e := n.Event()
+		return e.RecipientID == userID || e.ActorID == userID
+	})
+}
+
 func (r *NotificationRepository) deleteWhere(ctx context.Context, match func(*notification.Notification) bool) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
@@ -187,6 +194,19 @@ func (r *ReadMarkRepository) MarkRead(ctx context.Context, userID, notificationI
 	if mark := r.marks[userID]; bytes.Compare(notificationID[:], mark[:]) > 0 {
 		r.marks[userID] = notificationID
 	}
+
+	return nil
+}
+
+func (r *ReadMarkRepository) Delete(ctx context.Context, userID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.marks, userID)
 
 	return nil
 }

@@ -81,3 +81,21 @@ func (r *LikeRepository) Liked(ctx context.Context, userID uuid.UUID, postIDs []
 
 	return liked, nil
 }
+
+func (r *LikeRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	for postID, users := range r.s.likes {
+		if _, ok := users[userID]; ok {
+			delete(users, userID)
+			r.s.count(postID, func(c *post.Counters) { c.Likes-- })
+		}
+	}
+
+	return nil
+}

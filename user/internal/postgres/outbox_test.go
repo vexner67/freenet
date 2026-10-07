@@ -67,7 +67,7 @@ func TestFollowsAndTheirNotifications(t *testing.T) {
 	ann, bob := newUser(), newUser()
 	reqCtx := reqid.ContextWithID(ctx, uuid.NewString())
 
-	followSvc, blockSvc := services(outbox.NewPostgres(pool))
+	followSvc, blockSvc := services(outbox.NewPostgres(pool, notifyclient.Stream))
 	if err := followSvc.Follow(reqCtx, bob, ann); err != nil {
 		t.Fatalf("Follow: %v", err)
 	}

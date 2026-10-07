@@ -27,7 +27,18 @@ func toProtoUser(u *user.User) *userv1.User {
 		ProfileCompleted: u.IsProfileCompleted(),
 		Privacy:          toProtoPrivacy(u.Privacy()),
 		AvatarId:         avatarString(u.AvatarID()),
+		Deactivated:      u.IsDeactivated(),
+		PurgeAt:          toProtoTime(u.Deactivation().PurgeAt),
 	}
+}
+
+// toProtoTime leaves the zero time unset.
+func toProtoTime(t time.Time) *timestamppb.Timestamp {
+	if t.IsZero() {
+		return nil
+	}
+
+	return timestamppb.New(t)
 }
 
 // avatarString is "" for no photo, as the proto field says.
@@ -137,6 +148,7 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 		PoliticalViews: toProtoPoliticalViews(p.PoliticalViews),
 		Birthday:       toProtoBirthday(p.Birthday),
 		AvatarId:       avatarString(p.AvatarID),
+		Deactivated:    p.Deactivated,
 	}
 }
 

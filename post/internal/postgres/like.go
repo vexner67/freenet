@@ -122,3 +122,29 @@ func (r *LikeRepository) Liked(ctx context.Context, userID uuid.UUID, postIDs []
 
 	return liked, nil
 }
+
+// deleteLikesByUserQuery deletes a user's likes and uncounts them in one
+// statement.
+const deleteLikesByUserQuery = `
+	WITH deleted AS (
+		DELETE FROM post_likes
+		WHERE user_id = $1
+		RETURNING post_id
+	)
+	UPDATE posts p
+	SET like_count = p.like_count - d.n
+	FROM (
+		SELECT post_id, count(*) AS n
+		FROM deleted
+		GROUP BY post_id
+	) d
+	WHERE p.id = d.post_id
+`
+
+func (r *LikeRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	if _, err := r.conn(ctx).Exec(ctx, deleteLikesByUserQuery, userID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}

@@ -156,6 +156,29 @@ func (r *MessageRepository) between(ctx context.Context, a, b uuid.UUID, match f
 	return found, nil
 }
 
+func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	for id, m := range r.s.messages {
+		if m.SenderID() == userID || m.RecipientID() == userID {
+			delete(r.s.messages, id)
+		}
+	}
+
+	for key := range r.s.dialogs {
+		if key.userID == userID || key.peerID == userID {
+			delete(r.s.dialogs, key)
+		}
+	}
+
+	return nil
+}
+
 type DialogRepository struct {
 	s *Store
 }

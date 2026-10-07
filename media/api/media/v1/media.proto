@@ -25,6 +25,10 @@ service MediaService {
 
   // Public: a photo as JPEG.
   rpc GetPhoto(GetPhotoRequest) returns (GetPhotoResponse);
+
+  // Internal, for user: the user's page was deleted and not restored in
+  // time; all their avatars and photos go. Idempotent.
+  rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
 }
 
 message UploadAvatarRequest {
@@ -99,4 +103,8 @@ message GetPhotoRequest {
 
 message GetPhotoResponse {
   bytes image = 1;
+}
+
+message PurgeUserRequest {
+  string user_id = 1;
 }

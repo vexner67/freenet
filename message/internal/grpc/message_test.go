@@ -49,7 +49,7 @@ func newServer(t *testing.T) testServer {
 	srv := grpc.NewServer(
 		grpc.ChainUnaryInterceptor(
 			messagegrpc.ErrorInterceptor(log),
-			jwtauth.UnaryServerInterceptor(verifier, messagegrpc.PublicMethods()...),
+			jwtauth.UnaryServerInterceptor(verifier, jwtauth.Access{Public: messagegrpc.PublicMethods()}),
 		),
 		grpc.ChainStreamInterceptor(jwtauth.StreamServerInterceptor(verifier)),
 	)

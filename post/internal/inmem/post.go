@@ -194,3 +194,39 @@ func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID) (int
 
 	return count, nil
 }
+
+func (r *PostRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	var deleted []uuid.UUID
+	for id, p := range r.s.posts {
+		if p.AuthorID() == userID || p.WallID() == userID {
+			deleted = append(deleted, id)
+		}
+	}
+
+	for _, id := range deleted {
+		p := r.s.posts[id]
+		if shared := p.Content().RepostOf(); shared != uuid.Nil && r.s.posts[shared] != nil {
+			r.s.count(shared, func(c *post.Counters) { c.Reposts-- })
+		}
+	}
+
+	for _, id := range deleted {
+		delete(r.s.posts, id)
+		delete(r.s.likes, id)
+	}
+
+	for commentID, c := range r.s.comments {
+		if r.s.posts[c.PostID()] == nil {
+			delete(r.s.comments, commentID)
+		}
+	}
+
+	return deleted, nil
+}

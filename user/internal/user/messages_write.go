@@ -45,12 +45,12 @@ type Ties struct {
 	WroteFirst bool
 }
 
-// CanBeMessagedBy tells whether senderID may write to u. A block shuts
-// messages both ways; otherwise u's setting decides, but whoever u wrote to
-// may answer, as openvk promises: "Вам смогут ответить, если вы напишете
-// первыми".
+// CanBeMessagedBy tells whether senderID may write to u. Nobody writes to
+// a deleted page, and a block shuts messages both ways; otherwise u's
+// setting decides, but whoever u wrote to may answer, as openvk promises:
+// "Вам смогут ответить, если вы напишете первыми".
 func (u *User) CanBeMessagedBy(senderID uuid.UUID, t Ties) bool {
-	if senderID == u.id || t.Blocked {
+	if senderID == u.id || t.Blocked || u.IsDeactivated() {
 		return false
 	}
 

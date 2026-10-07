@@ -102,7 +102,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 
 	if !cfg.TLS.Enabled() {
-		a.logger.Warn("mTLS is off: the service accepts plaintext connections, do not use in production")
+		a.logger.Warn("mTLS is off: internal RPCs are open to anyone who can connect, do not use in production")
 	}
 
 	a.server, err = grpcserver.New(
@@ -111,9 +111,10 @@ func (a *App) build(cfg config.Config) error {
 		grpc.Creds(creds),
 		grpc.ChainUnaryInterceptor(
 			postgrpc.ErrorInterceptor(a.logger),
+			restrictInternal(cfg),
 			jwtauth.UnaryServerInterceptor(
 				jwtauth.NewVerifier(publicKey, cfg.JWTIssuer),
-				postgrpc.PublicMethods()...,
+				jwtauth.Access{Public: postgrpc.PublicMethods()},
 			),
 			ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger),
 		),
@@ -126,6 +127,9 @@ func (a *App) build(cfg config.Config) error {
 		postgrpc.NewPostHandler(
 			service.NewPostService(repos.posts, repos.likes, repos.tx, notifier),
 			service.NewCommentService(repos.posts, repos.comments, repos.tx, notifier),
+			service.NewPurgeService(service.PurgeDeps{
+				Posts: repos.posts, Likes: repos.likes, Comments: repos.comments, Tx: repos.tx, Notifier: notifier,
+			}),
 			a.logger,
 		),
 	)
@@ -140,6 +144,18 @@ func (a *App) build(cfg config.Config) error {
 		"notifications", cfg.NotificationServiceAddr != "")
 
 	return nil
+}
+
+// restrictInternal lets only their services call the internal methods; with
+// mTLS off, which is for development, nobody can tell who calls.
+func restrictInternal(cfg config.Config) grpc.UnaryServerInterceptor {
+	if !cfg.TLS.Enabled() {
+		return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+			return handler(ctx, req)
+		}
+	}
+
+	return mtls.RestrictMethods(postgrpc.InternalMethods())
 }
 
 // rateLimits are what each user may write how often.
@@ -195,7 +211,8 @@ func (a *App) newNotifier(cfg config.Config, queue outboxQueue, reg prometheus.R
 
 	deliverer := notifyclient.NewDeliverer(notificationv1.NewNotificationServiceClient(a.notificationConn), cfg.NotifyTimeout)
 
-	a.relay, err = outbox.NewRelay(queue, deliverer.Deliver, reg, a.logger)
+	// As in user, whose streams share the metrics, told apart by a label.
+	a.relay, err = outbox.NewRelay(queue, deliverer.Deliver, prometheus.WrapRegistererWith(prometheus.Labels{"stream": notifyclient.Stream}, reg), a.logger)
 	if err != nil {
 		return nil, errs.Wrap("outbox.NewRelay", err)
 	}
@@ -210,11 +227,20 @@ type outboxQueue interface {
 }
 
 type repositories struct {
-	posts    service.PostRepository
-	likes    service.LikeRepository
-	comments service.CommentRepository
-	tx       service.TxManager
-	outbox   outboxQueue
+	posts interface {
+		service.PostRepository
+		service.PostEraser
+	}
+	likes interface {
+		service.LikeRepository
+		service.ReactionEraser
+	}
+	comments interface {
+		service.CommentRepository
+		service.ReactionEraser
+	}
+	tx     service.TxManager
+	outbox outboxQueue
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
@@ -251,7 +277,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		return repositories{}, errs.Wrap("pgpool.New", err)
 	}
 
-	a.outbox = outbox.NewPostgres(a.pool)
+	a.outbox = outbox.NewPostgres(a.pool, notifyclient.Stream)
 
 	return repositories{
 		posts:    postgres.NewPostRepository(a.pool),

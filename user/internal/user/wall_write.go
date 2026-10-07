@@ -36,8 +36,13 @@ func (w WallWrite) String() string {
 }
 
 // CanPostOnWall tells whether authorID may write on u's wall. The owner
-// always may; a block shuts the wall both ways.
+// always may, but for a deleted page, whose wall is gone; a block shuts
+// the wall both ways.
 func (u *User) CanPostOnWall(authorID uuid.UUID, t Ties) bool {
+	if u.IsDeactivated() {
+		return false
+	}
+
 	if authorID == u.id {
 		return true
 	}

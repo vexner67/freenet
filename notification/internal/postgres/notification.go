@@ -149,6 +149,20 @@ func (r *NotificationRepository) DeleteByPost(ctx context.Context, postID uuid.U
 	return nil
 }
 
+const deleteNotificationsByUserQuery = `
+	DELETE FROM notifications
+	WHERE recipient_id = $1
+		OR actor_id = $1
+`
+
+func (r *NotificationRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	if _, err := r.pool.Exec(ctx, deleteNotificationsByUserQuery, userID); err != nil {
+		return errs.Wrap("r.pool.Exec", err)
+	}
+
+	return nil
+}
+
 const (
 	listUnreadNotificationsQuery = `
 		SELECT
@@ -322,6 +336,19 @@ const markReadQuery = `
 
 func (r *ReadMarkRepository) MarkRead(ctx context.Context, userID, notificationID uuid.UUID) error {
 	if _, err := r.pool.Exec(ctx, markReadQuery, userID, notificationID); err != nil {
+		return errs.Wrap("r.pool.Exec", err)
+	}
+
+	return nil
+}
+
+const deleteReadMarkQuery = `
+	DELETE FROM notification_reads
+	WHERE user_id = $1
+`
+
+func (r *ReadMarkRepository) Delete(ctx context.Context, userID uuid.UUID) error {
+	if _, err := r.pool.Exec(ctx, deleteReadMarkQuery, userID); err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
 

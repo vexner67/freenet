@@ -194,3 +194,29 @@ func scanComment(row pgx.Row) (*post.Comment, error) {
 	// Data comes from our own table and was validated on write.
 	return post.RestoreComment(id, postID, authorID, post.CommentText(text), createdAt.UTC()), nil
 }
+
+// deleteCommentsByUserQuery deletes a user's comments and uncounts them in
+// one statement.
+const deleteCommentsByUserQuery = `
+	WITH deleted AS (
+		DELETE FROM comments
+		WHERE author_id = $1
+		RETURNING post_id
+	)
+	UPDATE posts p
+	SET comment_count = p.comment_count - d.n
+	FROM (
+		SELECT post_id, count(*) AS n
+		FROM deleted
+		GROUP BY post_id
+	) d
+	WHERE p.id = d.post_id
+`
+
+func (r *CommentRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	if _, err := r.conn(ctx).Exec(ctx, deleteCommentsByUserQuery, userID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}

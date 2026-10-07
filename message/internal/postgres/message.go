@@ -333,3 +333,30 @@ func (r *DialogRepository) MarkRead(ctx context.Context, userID, peerID, upTo uu
 
 	return nil
 }
+
+// deleteUserDialogsQuery deletes the messages of every dialog of the user
+// and both sides of each dialog; the CTE sees the dialogs as they were.
+const deleteUserDialogsQuery = `
+	WITH gone_messages AS (
+		DELETE FROM messages m
+		USING dialogs d
+		WHERE d.user_id = $1
+			AND m.user_lo = LEAST(d.user_id, d.peer_id)
+			AND m.user_hi = GREATEST(d.user_id, d.peer_id)
+	)
+	DELETE FROM dialogs
+	WHERE user_id = $1
+		OR (user_id, peer_id) IN (
+			SELECT peer_id, user_id
+			FROM dialogs
+			WHERE user_id = $1
+		)
+`
+
+func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	if _, err := r.pool.Exec(ctx, deleteUserDialogsQuery, userID); err != nil {
+		return errs.Wrap("r.pool.Exec", err)
+	}
+
+	return nil
+}

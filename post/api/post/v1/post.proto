@@ -40,6 +40,11 @@ service PostService {
   rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
   // Public: at most 50 comments by ID, like GetPosts.
   rpc GetComments(GetCommentsRequest) returns (GetCommentsResponse);
+
+  // Internal, for user: the user's page was deleted and not restored in
+  // time. Their posts and the posts on their wall go, with all their likes
+  // and comments, and their likes and comments on others' posts. Idempotent.
+  rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
 }
 
 // Public methods that return posts fill liked when the caller sends an
@@ -201,4 +206,8 @@ message GetCommentsRequest {
 
 message GetCommentsResponse {
   repeated Comment comments = 1;
+}
+
+message PurgeUserRequest {
+  string user_id = 1;
 }

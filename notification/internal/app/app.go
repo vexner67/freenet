@@ -98,7 +98,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 
 	verifier := jwtauth.NewVerifier(publicKey, cfg.JWTIssuer)
-	interceptors = append(interceptors, jwtauth.UnaryServerInterceptor(verifier, notificationgrpc.PublicMethods()...))
+	interceptors = append(interceptors, jwtauth.UnaryServerInterceptor(verifier, jwtauth.Access{Public: notificationgrpc.PublicMethods()}))
 
 	reg := metrics.NewRegistry()
 

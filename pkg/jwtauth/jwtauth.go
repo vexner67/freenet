@@ -26,6 +26,9 @@ type Claims struct {
 	jwt.RegisteredClaims
 	TokenType TokenType `json:"type"`
 	SessionID string    `json:"sessionId"`
+	// Deactivated marks the access token of a page its owner deleted: it
+	// is good only to see and restore the page (Access.Deactivated).
+	Deactivated bool `json:"deactivated,omitempty"`
 }
 
 var ErrInvalidToken = errors.New("invalid token")
@@ -36,6 +39,8 @@ type Identity struct {
 	SessionID uuid.UUID
 	// ExpiresAt is when the token stops being valid: streams end there.
 	ExpiresAt time.Time
+	// Deactivated: the owner deleted the page (Claims.Deactivated).
+	Deactivated bool
 }
 
 type Verifier struct {
@@ -84,9 +89,10 @@ func (v *Verifier) Verify(token string, want TokenType) (Identity, error) {
 	}
 
 	return Identity{
-		UserID:    userID,
-		SessionID: sessionID,
-		ExpiresAt: claims.ExpiresAt.Time,
+		UserID:      userID,
+		SessionID:   sessionID,
+		ExpiresAt:   claims.ExpiresAt.Time,
+		Deactivated: claims.Deactivated,
 	}, nil
 }
 

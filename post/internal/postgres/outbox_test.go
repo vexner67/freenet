@@ -58,7 +58,7 @@ func TestLikeAndItsNotification(t *testing.T) {
 		t.Fatal("the like stayed although its notification was not recorded")
 	}
 
-	svc := service.NewPostService(posts, likes, tx, notifyclient.NewOutbox(outbox.NewPostgres(pool)))
+	svc := service.NewPostService(posts, likes, tx, notifyclient.NewOutbox(outbox.NewPostgres(pool, notifyclient.Stream)))
 	reqCtx := reqid.ContextWithID(ctx, uuid.NewString())
 
 	if n, err := svc.Like(reqCtx, bob, p.ID()); err != nil || n != 1 {

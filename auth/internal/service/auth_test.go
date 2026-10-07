@@ -16,6 +16,7 @@ import (
 	"github.com/vexner67/freenet/auth/internal/service"
 	"github.com/vexner67/freenet/auth/internal/session"
 	"github.com/vexner67/freenet/pkg/hmac"
+	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/ratelimit"
 )
 
@@ -33,14 +34,24 @@ var testKey = sync.OnceValue(func() *rsa.PrivateKey {
 })
 
 type fakeUserProvider struct {
-	id    uuid.UUID
+	id          uuid.UUID
+	deactivated bool
+	// gone: the user was erased, Account finds nobody.
+	gone  bool
 	err   error
 	calls int
 }
 
-func (f *fakeUserProvider) GetOrCreateByEmail(context.Context, account.Email) (uuid.UUID, error) {
+func (f *fakeUserProvider) GetOrCreateByEmail(context.Context, account.Email) (service.Account, error) {
 	f.calls++
-	return f.id, f.err
+	return service.Account{UserID: f.id, Deactivated: f.deactivated}, f.err
+}
+
+func (f *fakeUserProvider) Account(_ context.Context, id uuid.UUID) (service.Account, error) {
+	if f.gone {
+		return service.Account{}, service.ErrAccountNotFound
+	}
+	return service.Account{UserID: id, Deactivated: f.deactivated}, f.err
 }
 
 // countingSessions records saves on top of the real in-memory repository.
@@ -72,6 +83,7 @@ type fixture struct {
 	sessions *countingSessions
 	mailer   *captureMailer
 	tokens   *jwt.JWT
+	key      *rsa.PrivateKey
 }
 
 // testPolicy does not get in the way unless a test tightens it.
@@ -107,6 +119,7 @@ func newFixture(t *testing.T, userErr error, tune ...func(*service.Policy)) fixt
 		sessions: &countingSessions{SessionRepository: inmem.NewSessionRepository()},
 		mailer:   &captureMailer{codes: map[string]string{}},
 		tokens:   tokens,
+		key:      key,
 	}
 
 	f.svc = service.NewAuthService(
@@ -520,4 +533,56 @@ func TestAuthService_Logout(t *testing.T) {
 			t.Fatalf("got %v, want ErrInvalidRefreshToken", err)
 		}
 	})
+}
+
+// A deleted page gets access tokens good only to restore it, refreshed
+// as the page changes; an erased user's session ends.
+func TestAuthService_DeactivatedAccount(t *testing.T) {
+	t.Parallel()
+
+	f := newFixture(t, nil)
+	verifier := jwtauth.NewVerifier(&f.key.PublicKey, "freenet-test")
+	ctx := context.Background()
+
+	deactivated := func(access string) bool {
+		t.Helper()
+
+		id, err := verifier.Verify(access, jwtauth.AccessToken)
+		if err != nil {
+			t.Fatalf("Verify: %v", err)
+		}
+		return id.Deactivated
+	}
+
+	pair := f.signIn(t)
+	if deactivated(pair.Access) {
+		t.Fatal("the token of an active page is marked deleted")
+	}
+
+	f.users.deactivated = true
+	pair, err := f.svc.RefreshToken(ctx, pair.Refresh)
+	if err != nil {
+		t.Fatalf("RefreshToken: %v", err)
+	}
+	if !deactivated(pair.Access) {
+		t.Fatal("refresh after deleting the page kept a full token")
+	}
+
+	if again := f.signIn(t); !deactivated(again.Access) {
+		t.Fatal("signing in to a deleted page gave a full token")
+	}
+
+	f.users.deactivated = false
+	if pair, err = f.svc.RefreshToken(ctx, pair.Refresh); err != nil || deactivated(pair.Access) {
+		t.Fatalf("refresh after restoring: %v, deactivated %v", err, err == nil && deactivated(pair.Access))
+	}
+
+	f.users.gone = true
+	if _, err = f.svc.RefreshToken(ctx, pair.Refresh); !errors.Is(err, service.ErrInvalidRefreshToken) {
+		t.Fatalf("refresh of an erased user: %v, want ErrInvalidRefreshToken", err)
+	}
+	f.users.gone = false
+	if _, err = f.svc.RefreshToken(ctx, pair.Refresh); !errors.Is(err, service.ErrSessionNotFound) {
+		t.Fatalf("the session of an erased user is still there: %v", err)
+	}
 }

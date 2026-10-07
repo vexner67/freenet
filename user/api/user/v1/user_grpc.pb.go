@@ -40,6 +40,9 @@ const (
 	UserService_Unblock_FullMethodName            = "/user.v1.UserService/Unblock"
 	UserService_ListBlocked_FullMethodName        = "/user.v1.UserService/ListBlocked"
 	UserService_GetRelation_FullMethodName        = "/user.v1.UserService/GetRelation"
+	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
+	UserService_ReactivateAccount_FullMethodName  = "/user.v1.UserService/ReactivateAccount"
+	UserService_GetAccountState_FullMethodName    = "/user.v1.UserService/GetAccountState"
 )
 
 // UserServiceClient is the client API for UserService service.
@@ -85,6 +88,17 @@ type UserServiceClient interface {
 	// Requires an access token: who of the caller and the user blacklisted
 	// the other.
 	GetRelation(ctx context.Context, in *GetRelationRequest, opts ...grpc.CallOption) (*GetRelationResponse, error)
+	// Require an access token: deleting the caller's page ("Удаление
+	// страницы" on openvk) and restoring it. A deleted page is hidden: others
+	// see only its name and photo, nobody may follow it, write on its wall
+	// or to it. Its owner may restore it until purge_at, when its data is
+	// erased in every service. The access tokens of a deleted page work only
+	// for GetMe and ReactivateAccount; on public methods they are anonymous.
+	DeactivateAccount(ctx context.Context, in *DeactivateAccountRequest, opts ...grpc.CallOption) (*DeactivateAccountResponse, error)
+	ReactivateAccount(ctx context.Context, in *ReactivateAccountRequest, opts ...grpc.CallOption) (*ReactivateAccountResponse, error)
+	// Internal (auth): whether the page is deleted, for the access tokens
+	// it issues; NotFound once its data is erased.
+	GetAccountState(ctx context.Context, in *GetAccountStateRequest, opts ...grpc.CallOption) (*GetAccountStateResponse, error)
 }
 
 type userServiceClient struct {
@@ -295,6 +309,36 @@ func (c *userServiceClient) GetRelation(ctx context.Context, in *GetRelationRequ
 	return out, nil
 }
 
+func (c *userServiceClient) DeactivateAccount(ctx context.Context, in *DeactivateAccountRequest, opts ...grpc.CallOption) (*DeactivateAccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeactivateAccountResponse)
+	err := c.cc.Invoke(ctx, UserService_DeactivateAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ReactivateAccount(ctx context.Context, in *ReactivateAccountRequest, opts ...grpc.CallOption) (*ReactivateAccountResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ReactivateAccountResponse)
+	err := c.cc.Invoke(ctx, UserService_ReactivateAccount_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetAccountState(ctx context.Context, in *GetAccountStateRequest, opts ...grpc.CallOption) (*GetAccountStateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAccountStateResponse)
+	err := c.cc.Invoke(ctx, UserService_GetAccountState_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // UserServiceServer is the server API for UserService service.
 // All implementations must embed UnimplementedUserServiceServer
 // for forward compatibility.
@@ -338,6 +382,17 @@ type UserServiceServer interface {
 	// Requires an access token: who of the caller and the user blacklisted
 	// the other.
 	GetRelation(context.Context, *GetRelationRequest) (*GetRelationResponse, error)
+	// Require an access token: deleting the caller's page ("Удаление
+	// страницы" on openvk) and restoring it. A deleted page is hidden: others
+	// see only its name and photo, nobody may follow it, write on its wall
+	// or to it. Its owner may restore it until purge_at, when its data is
+	// erased in every service. The access tokens of a deleted page work only
+	// for GetMe and ReactivateAccount; on public methods they are anonymous.
+	DeactivateAccount(context.Context, *DeactivateAccountRequest) (*DeactivateAccountResponse, error)
+	ReactivateAccount(context.Context, *ReactivateAccountRequest) (*ReactivateAccountResponse, error)
+	// Internal (auth): whether the page is deleted, for the access tokens
+	// it issues; NotFound once its data is erased.
+	GetAccountState(context.Context, *GetAccountStateRequest) (*GetAccountStateResponse, error)
 	mustEmbedUnimplementedUserServiceServer()
 }
 
@@ -407,6 +462,15 @@ func (UnimplementedUserServiceServer) ListBlocked(context.Context, *ListBlockedR
 }
 func (UnimplementedUserServiceServer) GetRelation(context.Context, *GetRelationRequest) (*GetRelationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRelation not implemented")
+}
+func (UnimplementedUserServiceServer) DeactivateAccount(context.Context, *DeactivateAccountRequest) (*DeactivateAccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeactivateAccount not implemented")
+}
+func (UnimplementedUserServiceServer) ReactivateAccount(context.Context, *ReactivateAccountRequest) (*ReactivateAccountResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReactivateAccount not implemented")
+}
+func (UnimplementedUserServiceServer) GetAccountState(context.Context, *GetAccountStateRequest) (*GetAccountStateResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAccountState not implemented")
 }
 func (UnimplementedUserServiceServer) mustEmbedUnimplementedUserServiceServer() {}
 func (UnimplementedUserServiceServer) testEmbeddedByValue()                     {}
@@ -789,6 +853,60 @@ func _UserService_GetRelation_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_DeactivateAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeactivateAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeactivateAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeactivateAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeactivateAccount(ctx, req.(*DeactivateAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ReactivateAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReactivateAccountRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ReactivateAccount(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ReactivateAccount_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ReactivateAccount(ctx, req.(*ReactivateAccountRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetAccountState_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAccountStateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetAccountState(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetAccountState_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetAccountState(ctx, req.(*GetAccountStateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // UserService_ServiceDesc is the grpc.ServiceDesc for UserService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -875,6 +993,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRelation",
 			Handler:    _UserService_GetRelation_Handler,
+		},
+		{
+			MethodName: "DeactivateAccount",
+			Handler:    _UserService_DeactivateAccount_Handler,
+		},
+		{
+			MethodName: "ReactivateAccount",
+			Handler:    _UserService_ReactivateAccount_Handler,
+		},
+		{
+			MethodName: "GetAccountState",
+			Handler:    _UserService_GetAccountState_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

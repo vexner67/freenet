@@ -37,6 +37,8 @@ func TestParse(t *testing.T) {
 		{"full mtls", map[string]string{"TLS_CA_PATH": "ca.pem", "TLS_CERT_PATH": "c.pem", "TLS_KEY_PATH": "k.pem"}, true},
 		{"partial mtls", map[string]string{"TLS_KEY_PATH": "key.pem"}, false},
 		{"empty issuer", map[string]string{"JWT_ISSUER": ""}, false},
+		{"retention", map[string]string{"ACCOUNT_RETENTION": "720h"}, true},
+		{"no retention", map[string]string{"ACCOUNT_RETENTION": "0s"}, false},
 	}
 
 	for _, tt := range tests {

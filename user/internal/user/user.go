@@ -1,6 +1,8 @@
 package user
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 )
 
@@ -45,9 +47,11 @@ type Privacy struct {
 
 // PublicProfile is the part of a profile other users may see. Hidden
 // fields hold their zero values ("not set"), so a viewer cannot tell
-// a hidden field from an empty one. Email is never public.
+// a hidden field from an empty one. Email is never public. Of a deleted
+// page only the name and the photo are left, as on openvk.
 type PublicProfile struct {
-	ID uuid.UUID
+	ID          uuid.UUID
+	Deactivated bool
 	// AvatarID is uuid.Nil without a photo; photos are always public.
 	AvatarID       uuid.UUID
 	Name           Name
@@ -62,11 +66,12 @@ type PublicProfile struct {
 }
 
 type User struct {
-	id       uuid.UUID
-	email    Email
-	profile  Profile
-	privacy  Privacy
-	avatarID uuid.UUID
+	id           uuid.UUID
+	email        Email
+	profile      Profile
+	privacy      Privacy
+	avatarID     uuid.UUID
+	deactivation Deactivation
 }
 
 // New creates a user with only an email set, as happens on the first
@@ -84,14 +89,25 @@ func New(email Email) (*User, error) {
 	}, nil
 }
 
+// Stored is a user as storage keeps it, for Restore.
+type Stored struct {
+	ID           uuid.UUID
+	Email        Email
+	Profile      Profile
+	Privacy      Privacy
+	AvatarID     uuid.UUID
+	Deactivation Deactivation
+}
+
 // Restore rebuilds a user from storage without validation or new IDs.
-func Restore(id uuid.UUID, email Email, profile Profile, privacy Privacy, avatarID uuid.UUID) *User {
+func Restore(s Stored) *User {
 	return &User{
-		id:       id,
-		email:    email,
-		profile:  profile,
-		privacy:  privacy,
-		avatarID: avatarID,
+		id:           s.ID,
+		email:        s.Email,
+		profile:      s.Profile,
+		privacy:      s.Privacy,
+		avatarID:     s.AvatarID,
+		deactivation: s.Deactivation,
 	}
 }
 
@@ -134,7 +150,54 @@ func (u *User) IsProfileCompleted() bool {
 	return u.profile.Nickname != ""
 }
 
+// Deactivate deletes the page, as its owner asks: restorable until
+// keepFor has passed since now, then erased.
+func (u *User) Deactivate(reason DeactivationReason, now time.Time, keepFor time.Duration) error {
+	if u.IsDeactivated() {
+		return ErrDeactivated
+	}
+
+	u.deactivation = Deactivation{At: now, PurgeAt: now.Add(keepFor), Reason: reason}
+
+	return nil
+}
+
+// Reactivate restores a deleted page, until it is due to be erased.
+func (u *User) Reactivate(now time.Time) error {
+	if !u.IsDeactivated() {
+		return ErrNotDeactivated
+	}
+
+	if !now.Before(u.deactivation.PurgeAt) {
+		return ErrRestoreExpired
+	}
+
+	u.deactivation = Deactivation{}
+
+	return nil
+}
+
+// IsDeactivated reports whether the owner has deleted the page.
+func (u *User) IsDeactivated() bool {
+	return !u.deactivation.At.IsZero()
+}
+
+func (u *User) Deactivation() Deactivation {
+	return u.deactivation
+}
+
 func (u *User) PublicProfile() PublicProfile {
+	if u.IsDeactivated() {
+		return PublicProfile{
+			ID:          u.id,
+			Deactivated: true,
+			AvatarID:    u.avatarID,
+			Name:        u.profile.Name,
+			Surname:     u.profile.Surname,
+			Nickname:    u.profile.Nickname,
+		}
+	}
+
 	p := PublicProfile{
 		ID:       u.id,
 		AvatarID: u.avatarID,

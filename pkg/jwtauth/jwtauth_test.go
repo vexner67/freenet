@@ -39,6 +39,8 @@ type tokenOpts struct {
 	subject   string
 	sessionID string
 	expiresAt time.Time
+	// deactivated signs the token of a deleted page.
+	deactivated bool
 }
 
 func sign(t *testing.T, o tokenOpts) string {
@@ -50,8 +52,9 @@ func sign(t *testing.T, o tokenOpts) string {
 			Issuer:    o.issuer,
 			ExpiresAt: jwt.NewNumericDate(o.expiresAt),
 		},
-		TokenType: o.typ,
-		SessionID: o.sessionID,
+		TokenType:   o.typ,
+		SessionID:   o.sessionID,
+		Deactivated: o.deactivated,
 	}
 
 	var signKey any = o.key
@@ -144,9 +147,13 @@ func TestUnaryServerInterceptor(t *testing.T) {
 	userID, sessionID := uuid.New(), uuid.New()
 	token := sign(t, validOpts(key, userID, sessionID))
 
+	deactivatedOpts := validOpts(key, userID, sessionID)
+	deactivatedOpts.deactivated = true
+	deactivated := sign(t, deactivatedOpts)
+
 	interceptor := jwtauth.UnaryServerInterceptor(
 		jwtauth.NewVerifier(&key.PublicKey, issuer),
-		"/svc/Public",
+		jwtauth.Access{Public: []string{"/svc/Public"}, Deactivated: []string{"/svc/Restore"}},
 	)
 
 	call := func(method string, md metadata.MD) (jwtauth.Identity, bool, error) {
@@ -212,6 +219,41 @@ func TestUnaryServerInterceptor(t *testing.T) {
 		}
 		if found {
 			t.Fatal("identity must not be set for anonymous calls")
+		}
+	})
+
+	t.Run("deleted page: allowed method knows its owner", func(t *testing.T) {
+		t.Parallel()
+
+		id, found, err := call("/svc/Restore", metadata.Pairs("authorization", "Bearer "+deactivated))
+		if err != nil || !found || id.UserID != userID || !id.Deactivated {
+			t.Fatalf("err = %v, found = %v, id = %+v", err, found, id)
+		}
+	})
+
+	t.Run("deleted page: public method sees an anonymous viewer", func(t *testing.T) {
+		t.Parallel()
+
+		_, found, err := call("/svc/Public", metadata.Pairs("authorization", "Bearer "+deactivated))
+		if err != nil || found {
+			t.Fatalf("err = %v, found = %v; want an anonymous call", err, found)
+		}
+	})
+
+	t.Run("deleted page: other methods refuse it", func(t *testing.T) {
+		t.Parallel()
+
+		_, _, err := call("/svc/Private", metadata.Pairs("authorization", "Bearer "+deactivated))
+		if status.Code(err) != codes.PermissionDenied || status.Convert(err).Message() != jwtauth.ErrPageDeleted.Error() {
+			t.Fatalf("err = %v, want PermissionDenied: your page is deleted", err)
+		}
+	})
+
+	t.Run("active page on a method for deleted ones", func(t *testing.T) {
+		t.Parallel()
+
+		if _, found, err := call("/svc/Restore", metadata.Pairs("authorization", "Bearer "+token)); err != nil || !found {
+			t.Fatalf("err = %v, found = %v", err, found)
 		}
 	})
 

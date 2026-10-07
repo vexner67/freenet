@@ -33,19 +33,40 @@ type CommentService interface {
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error)
 }
 
+// PurgeService erases a user's posts, likes and comments once the page is
+// deleted for good.
+type PurgeService interface {
+	PurgeUser(ctx context.Context, userID uuid.UUID) error
+}
+
 type PostHandler struct {
 	postv1.UnimplementedPostServiceServer
 	postService    PostService
 	commentService CommentService
+	purgeService   PurgeService
 	logger         *slog.Logger
 }
 
-func NewPostHandler(postService PostService, commentService CommentService, logger *slog.Logger) *PostHandler {
+func NewPostHandler(postService PostService, commentService CommentService, purgeService PurgeService, logger *slog.Logger) *PostHandler {
 	return &PostHandler{
 		postService:    postService,
 		commentService: commentService,
+		purgeService:   purgeService,
 		logger:         logger,
 	}
+}
+
+func (h *PostHandler) PurgeUser(ctx context.Context, req *postv1.PurgeUserRequest) (*emptypb.Empty, error) {
+	userID, err := uuid.Parse(req.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+
+	if err = h.purgeService.PurgeUser(ctx, userID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequest) (*postv1.CreatePostResponse, error) {

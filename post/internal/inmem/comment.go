@@ -114,3 +114,21 @@ func (r *CommentRepository) ListByPost(ctx context.Context, postID, after uuid.U
 
 	return found, nil
 }
+
+func (r *CommentRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	for id, c := range r.s.comments {
+		if c.AuthorID() == userID {
+			delete(r.s.comments, id)
+			r.s.count(c.PostID(), func(c *post.Counters) { c.Comments-- })
+		}
+	}
+
+	return nil
+}

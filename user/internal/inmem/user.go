@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 
@@ -20,6 +21,9 @@ type UserRepository struct {
 	users      map[uuid.UUID]user.User
 	byEmail    map[string]uuid.UUID
 	byNickname map[string]uuid.UUID
+	// cascade drops what other repositories keep of a deleted user, as
+	// the foreign keys do in PostgreSQL.
+	cascade []func(uuid.UUID)
 }
 
 func NewUserRepository() *UserRepository {
@@ -139,7 +143,7 @@ func (r *UserRepository) Search(ctx context.Context, q user.SearchQuery, before 
 
 	var found []*user.User
 	for id, u := range r.users {
-		if u.IsProfileCompleted() && q.Matches(u.Profile()) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
+		if u.IsProfileCompleted() && !u.IsDeactivated() && q.Matches(u.Profile()) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
 			found = append(found, &u)
 		}
 	}
@@ -202,4 +206,52 @@ func emailKey(email user.Email) string {
 
 func nicknameKey(nickname user.Nickname) string {
 	return strings.ToLower(nickname.String())
+}
+
+// onDelete adds what a deleted user's ID takes with it.
+func (r *UserRepository) onDelete(fn func(uuid.UUID)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.cascade = append(r.cascade, fn)
+}
+
+func (r *UserRepository) DeleteDue(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+
+	var due []uuid.UUID
+	for id, u := range r.users {
+		if len(due) == limit {
+			break
+		}
+
+		if d := u.Deactivation(); u.IsDeactivated() && !d.PurgeAt.After(now) {
+			due = append(due, id)
+		}
+	}
+
+	for _, id := range due {
+		u := r.users[id]
+		delete(r.users, id)
+		delete(r.byEmail, emailKey(u.Email()))
+		if nickname := u.Profile().Nickname; nickname != "" {
+			delete(r.byNickname, nicknameKey(nickname))
+		}
+	}
+
+	cascade := r.cascade
+	r.mu.Unlock()
+
+	// Outside the lock: the other repositories read users under theirs.
+	for _, id := range due {
+		for _, fn := range cascade {
+			fn(id)
+		}
+	}
+
+	return due, nil
 }

@@ -22,8 +22,8 @@ type UserRepository interface {
 	// GetByIDs skips IDs without a user and keeps no particular order.
 	GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*user.User, error)
 	GetIDByEmail(ctx context.Context, email user.Email) (uuid.UUID, error)
-	// Search finds users with a filled-in profile matching q, newest first,
-	// with IDs below before (uuid.Nil: from the newest).
+	// Search finds users with a filled-in profile matching q, but deleted
+	// pages, newest first, with IDs below before (uuid.Nil: from the newest).
 	Search(ctx context.Context, q user.SearchQuery, before uuid.UUID, limit int) ([]*user.User, error)
 }
 

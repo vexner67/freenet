@@ -200,3 +200,59 @@ func TestRepositories(t *testing.T) {
 		}
 	})
 }
+
+func TestRepositories_DeleteByUser(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	repo := postgres.NewNotificationRepository(pool)
+	marks := postgres.NewReadMarkRepository(pool)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	var last *notification.Notification
+	for _, e := range []notification.Event{
+		{Kind: notification.KindFollow, RecipientID: ann, ActorID: bob},
+		{Kind: notification.KindFollow, RecipientID: bob, ActorID: ann},
+		{Kind: notification.KindFollow, RecipientID: cat, ActorID: bob},
+	} {
+		if last, err = notification.New(e, time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		if err = repo.Save(ctx, last); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err = marks.MarkRead(ctx, ann, uuid.Max); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = repo.DeleteByUser(ctx, ann); err != nil {
+		t.Fatalf("DeleteByUser: %v", err)
+	}
+	if err = marks.Delete(ctx, ann); err != nil {
+		t.Fatalf("Delete mark: %v", err)
+	}
+
+	for _, who := range []uuid.UUID{ann, bob} {
+		if n, err := repo.CountNewer(ctx, who, uuid.Nil, 10); err != nil || n != 0 {
+			t.Errorf("notifications of %s left: %d, %v", who, n, err)
+		}
+	}
+	if n, err := repo.CountNewer(ctx, cat, uuid.Nil, 10); err != nil || n != 1 {
+		t.Errorf("cat's notification = %d, %v; want kept", n, err)
+	}
+	if mark, err := marks.ReadUpTo(ctx, ann); err != nil || mark != uuid.Nil {
+		t.Errorf("ann's mark = %v, %v; want none", mark, err)
+	}
+}

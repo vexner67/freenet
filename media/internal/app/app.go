@@ -85,7 +85,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 
 	if !cfg.TLS.Enabled() {
-		a.logger.Warn("mTLS is off: the service accepts plaintext connections, do not use in production")
+		a.logger.Warn("mTLS is off: internal RPCs are open to anyone who can connect, do not use in production")
 	}
 
 	reg := metrics.NewRegistry()
@@ -97,9 +97,10 @@ func (a *App) build(cfg config.Config) error {
 		grpc.MaxRecvMsgSize(maxMessageBytes),
 		grpc.ChainUnaryInterceptor(
 			mediagrpc.ErrorInterceptor(a.logger),
+			restrictInternal(cfg),
 			jwtauth.UnaryServerInterceptor(
 				jwtauth.NewVerifier(publicKey, cfg.JWTIssuer),
-				mediagrpc.PublicMethods()...,
+				jwtauth.Access{Public: mediagrpc.PublicMethods()},
 			),
 			ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger),
 		),
@@ -112,6 +113,7 @@ func (a *App) build(cfg config.Config) error {
 		mediagrpc.NewMediaHandler(
 			service.NewAvatarService(stores.avatars),
 			service.NewPhotoService(stores.photos),
+			service.NewPurgeService(stores.avatars, stores.photos),
 			a.logger,
 		),
 	)
@@ -125,6 +127,18 @@ func (a *App) build(cfg config.Config) error {
 	a.logger.Info("media configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
 
 	return nil
+}
+
+// restrictInternal lets only their services call the internal methods; with
+// mTLS off, which is for development, nobody can tell who calls.
+func restrictInternal(cfg config.Config) grpc.UnaryServerInterceptor {
+	if !cfg.TLS.Enabled() {
+		return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+			return handler(ctx, req)
+		}
+	}
+
+	return mtls.RestrictMethods(mediagrpc.InternalMethods())
 }
 
 // rateLimits are how often each user may upload.

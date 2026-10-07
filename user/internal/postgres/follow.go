@@ -131,7 +131,10 @@ const (
 		u.show_political_views,
 		u.wall_write,
 		u.messages_write,
-		u.avatar_id
+		u.avatar_id,
+		u.deactivated_at,
+		u.purge_at,
+		u.deactivation_reason
 	FROM follows f
 	JOIN users u ON u.id = f.follower_id
 	WHERE f.followee_id = $1
@@ -160,7 +163,10 @@ const (
 		u.show_political_views,
 		u.wall_write,
 		u.messages_write,
-		u.avatar_id
+		u.avatar_id,
+		u.deactivated_at,
+		u.purge_at,
+		u.deactivation_reason
 	FROM follows f
 	JOIN users u ON u.id = f.followee_id
 	WHERE f.follower_id = $1

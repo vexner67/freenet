@@ -33,6 +33,7 @@ const (
 	PostService_DeleteComment_FullMethodName = "/post.v1.PostService/DeleteComment"
 	PostService_ListComments_FullMethodName  = "/post.v1.PostService/ListComments"
 	PostService_GetComments_FullMethodName   = "/post.v1.PostService/GetComments"
+	PostService_PurgeUser_FullMethodName     = "/post.v1.PostService/PurgeUser"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -68,6 +69,10 @@ type PostServiceClient interface {
 	ListComments(ctx context.Context, in *ListCommentsRequest, opts ...grpc.CallOption) (*ListCommentsResponse, error)
 	// Public: at most 50 comments by ID, like GetPosts.
 	GetComments(ctx context.Context, in *GetCommentsRequest, opts ...grpc.CallOption) (*GetCommentsResponse, error)
+	// Internal, for user: the user's page was deleted and not restored in
+	// time. Their posts and the posts on their wall go, with all their likes
+	// and comments, and their likes and comments on others' posts. Idempotent.
+	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type postServiceClient struct {
@@ -208,6 +213,16 @@ func (c *postServiceClient) GetComments(ctx context.Context, in *GetCommentsRequ
 	return out, nil
 }
 
+func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_PurgeUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -241,6 +256,10 @@ type PostServiceServer interface {
 	ListComments(context.Context, *ListCommentsRequest) (*ListCommentsResponse, error)
 	// Public: at most 50 comments by ID, like GetPosts.
 	GetComments(context.Context, *GetCommentsRequest) (*GetCommentsResponse, error)
+	// Internal, for user: the user's page was deleted and not restored in
+	// time. Their posts and the posts on their wall go, with all their likes
+	// and comments, and their likes and comments on others' posts. Idempotent.
+	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -289,6 +308,9 @@ func (UnimplementedPostServiceServer) ListComments(context.Context, *ListComment
 }
 func (UnimplementedPostServiceServer) GetComments(context.Context, *GetCommentsRequest) (*GetCommentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetComments not implemented")
+}
+func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -545,6 +567,24 @@ func _PostService_GetComments_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PurgeUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).PurgeUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_PurgeUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).PurgeUser(ctx, req.(*PurgeUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -603,6 +643,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetComments",
 			Handler:    _PostService_GetComments_Handler,
+		},
+		{
+			MethodName: "PurgeUser",
+			Handler:    _PostService_PurgeUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -84,3 +84,16 @@ func (s *PhotoStore) Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []u
 
 	return nil
 }
+
+func (s *PhotoStore) DeleteAll(ctx context.Context, ownerID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	delete(s.photos, ownerID)
+
+	return nil
+}

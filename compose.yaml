@@ -164,6 +164,11 @@ services:
       DATABASE_URL: postgres://${USER_POSTGRES_USER}:${USER_POSTGRES_PASSWORD}@user-postgres:5432/${USER_POSTGRES_DB}?sslmode=disable
       REDIS_ADDR: redis:6379
       NOTIFICATION_SERVICE_ADDR: notification:7055
+      POST_SERVICE_ADDR: post:7053
+      MEDIA_SERVICE_ADDR: media:7054
+      MESSAGE_SERVICE_ADDR: message:7056
+      # Shorter in tests: how long a deleted page can be restored.
+      ACCOUNT_RETENTION: ${ACCOUNT_RETENTION:-5040h}
     depends_on:
       user-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

@@ -22,6 +22,8 @@ type PhotoStore interface {
 	Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error)
 	// Delete removes the owner's photos; missing ones are fine.
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+	// DeleteAll removes every photo of the owner.
+	DeleteAll(ctx context.Context, ownerID uuid.UUID) error
 }
 
 type PhotoService struct {

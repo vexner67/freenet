@@ -57,6 +57,14 @@ func (s *AvatarStore) Load(_ context.Context, userID, avatarID uuid.UUID, size a
 }
 
 func (s *AvatarStore) DeleteExcept(_ context.Context, userID, keep uuid.UUID) error {
+	// Nothing to keep: the user's directory goes too.
+	if keep == uuid.Nil {
+		if err := os.RemoveAll(s.userDir(userID)); err != nil {
+			return errs.Wrap("os.RemoveAll", err)
+		}
+		return nil
+	}
+
 	entries, err := os.ReadDir(s.userDir(userID))
 	if errors.Is(err, fs.ErrNotExist) {
 		return nil

@@ -132,7 +132,10 @@ const listBlockedQuery = `
 		u.show_political_views,
 		u.wall_write,
 		u.messages_write,
-		u.avatar_id
+		u.avatar_id,
+		u.deactivated_at,
+		u.purge_at,
+		u.deactivation_reason
 	FROM blocks b
 	JOIN users u ON u.id = b.blocked_id
 	WHERE b.blocker_id = $1

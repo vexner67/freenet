@@ -18,9 +18,18 @@ import (
 type fakeAPI struct {
 	userv1.UserServiceClient
 
-	resp *userv1.GetOrCreateByEmailResponse
-	err  error
-	req  *userv1.GetOrCreateByEmailRequest
+	resp  *userv1.GetOrCreateByEmailResponse
+	state *userv1.GetAccountStateResponse
+	err   error
+	req   *userv1.GetOrCreateByEmailRequest
+}
+
+func (f *fakeAPI) GetAccountState(
+	_ context.Context,
+	_ *userv1.GetAccountStateRequest,
+	_ ...grpc.CallOption,
+) (*userv1.GetAccountStateResponse, error) {
+	return f.state, f.err
 }
 
 func (f *fakeAPI) GetOrCreateByEmail(
@@ -39,14 +48,14 @@ func TestClient_GetOrCreateByEmail(t *testing.T) {
 		t.Parallel()
 
 		want := uuid.New()
-		api := &fakeAPI{resp: &userv1.GetOrCreateByEmailResponse{UserId: want.String()}}
+		api := &fakeAPI{resp: &userv1.GetOrCreateByEmailResponse{UserId: want.String(), Deactivated: true}}
 
 		got, err := userclient.New(api).GetOrCreateByEmail(context.Background(), "ann@example.com")
 		if err != nil {
 			t.Fatalf("GetOrCreateByEmail: %v", err)
 		}
-		if got != want {
-			t.Fatalf("got %s, want %s", got, want)
+		if got != (service.Account{UserID: want, Deactivated: true}) {
+			t.Fatalf("got %+v, want %s deactivated", got, want)
 		}
 		if api.req.GetEmail() != "ann@example.com" {
 			t.Fatalf("email = %q", api.req.GetEmail())
@@ -84,5 +93,21 @@ func TestClient_GetOrCreateByEmail(t *testing.T) {
 				t.Fatalf("got %v, want %v", err, tt.want)
 			}
 		})
+	}
+}
+
+func TestClient_Account(t *testing.T) {
+	t.Parallel()
+
+	id := uuid.New()
+
+	got, err := userclient.New(&fakeAPI{state: &userv1.GetAccountStateResponse{Deactivated: true}}).Account(context.Background(), id)
+	if err != nil || got != (service.Account{UserID: id, Deactivated: true}) {
+		t.Fatalf("Account = %+v, %v", got, err)
+	}
+
+	_, err = userclient.New(&fakeAPI{err: status.Error(codes.NotFound, "user not found")}).Account(context.Background(), id)
+	if !errors.Is(err, service.ErrAccountNotFound) {
+		t.Fatalf("erased user: %v, want ErrAccountNotFound", err)
 	}
 }

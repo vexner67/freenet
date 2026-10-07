@@ -27,6 +27,7 @@ const (
 	MessageService_MarkDialogRead_FullMethodName     = "/message.v1.MessageService/MarkDialogRead"
 	MessageService_HasMessagesFrom_FullMethodName    = "/message.v1.MessageService/HasMessagesFrom"
 	MessageService_Subscribe_FullMethodName          = "/message.v1.MessageService/Subscribe"
+	MessageService_PurgeUser_FullMethodName          = "/message.v1.MessageService/PurgeUser"
 )
 
 // MessageServiceClient is the client API for MessageService service.
@@ -55,6 +56,10 @@ type MessageServiceClient interface {
 	// expires and with ResourceExhausted when the caller falls behind; then
 	// subscribe again and catch up with ListMessages and ListDialogs.
 	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeResponse], error)
+	// Internal, for user: the user's page was deleted and not restored in
+	// time; their dialogs go, with every message in them, from both sides.
+	// Idempotent.
+	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type messageServiceClient struct {
@@ -144,6 +149,16 @@ func (c *messageServiceClient) Subscribe(ctx context.Context, in *SubscribeReque
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type MessageService_SubscribeClient = grpc.ServerStreamingClient[SubscribeResponse]
 
+func (c *messageServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_PurgeUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility.
@@ -170,6 +185,10 @@ type MessageServiceServer interface {
 	// expires and with ResourceExhausted when the caller falls behind; then
 	// subscribe again and catch up with ListMessages and ListDialogs.
 	Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error
+	// Internal, for user: the user's page was deleted and not restored in
+	// time; their dialogs go, with every message in them, from both sides.
+	// Idempotent.
+	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -200,6 +219,9 @@ func (UnimplementedMessageServiceServer) HasMessagesFrom(context.Context, *HasMe
 }
 func (UnimplementedMessageServiceServer) Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error {
 	return status.Error(codes.Unimplemented, "method Subscribe not implemented")
+}
+func (UnimplementedMessageServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 func (UnimplementedMessageServiceServer) testEmbeddedByValue()                        {}
@@ -341,6 +363,24 @@ func _MessageService_Subscribe_Handler(srv interface{}, stream grpc.ServerStream
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type MessageService_SubscribeServer = grpc.ServerStreamingServer[SubscribeResponse]
 
+func _MessageService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PurgeUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).PurgeUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_PurgeUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).PurgeUser(ctx, req.(*PurgeUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -371,6 +411,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HasMessagesFrom",
 			Handler:    _MessageService_HasMessagesFrom_Handler,
+		},
+		{
+			MethodName: "PurgeUser",
+			Handler:    _MessageService_PurgeUser_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

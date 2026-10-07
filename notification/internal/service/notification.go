@@ -28,6 +28,8 @@ type NotificationRepository interface {
 	Delete(ctx context.Context, e notification.Event) error
 	// DeleteByPost removes every notification about a post.
 	DeleteByPost(ctx context.Context, postID uuid.UUID) error
+	// DeleteByUser removes the notifications a user got or caused.
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 	// List returns up to q.Limit notifications, newest first.
 	List(ctx context.Context, q Query) ([]*notification.Notification, error)
 	// CountNewer counts, up to limit, the notifications of a recipient with
@@ -42,6 +44,8 @@ type ReadMarkRepository interface {
 	ReadUpTo(ctx context.Context, userID uuid.UUID) (uuid.UUID, error)
 	// MarkRead moves the mark to notificationID, never back.
 	MarkRead(ctx context.Context, userID, notificationID uuid.UUID) error
+	// Delete forgets the mark of a user.
+	Delete(ctx context.Context, userID uuid.UUID) error
 }
 
 // Query selects the unread notifications of a recipient (IDs above
@@ -134,6 +138,21 @@ func (s *NotificationService) Retract(ctx context.Context, e notification.Event)
 func (s *NotificationService) ForgetPost(ctx context.Context, postID uuid.UUID) error {
 	if err := s.notificationRepo.DeleteByPost(ctx, postID); err != nil {
 		return errs.Wrap("s.notificationRepo.DeleteByPost", err)
+	}
+
+	return nil
+}
+
+// PurgeUser erases what notification keeps about a user whose page was
+// deleted for good: the notifications they got or caused and their read
+// mark. Like ForgetPost it tells nobody live.
+func (s *NotificationService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
+	if err := s.notificationRepo.DeleteByUser(ctx, userID); err != nil {
+		return errs.Wrap("s.notificationRepo.DeleteByUser", err)
+	}
+
+	if err := s.readMarkRepo.Delete(ctx, userID); err != nil {
+		return errs.Wrap("s.readMarkRepo.Delete", err)
 	}
 
 	return nil

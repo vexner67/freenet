@@ -73,3 +73,38 @@ func TestPhotoStore(t *testing.T) {
 		})
 	}
 }
+
+func TestPhotoStore_DeleteAll(t *testing.T) {
+	t.Parallel()
+
+	for name, store := range photoStores(t) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ann, bob := uuid.New(), uuid.New()
+			images := photo.Images{Large: []byte("L"), Small: []byte("S")}
+			annsPhoto, bobsPhoto := uuid.New(), uuid.New()
+
+			if err := store.Save(ctx, ann, annsPhoto, images); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.Save(ctx, bob, bobsPhoto, images); err != nil {
+				t.Fatal(err)
+			}
+
+			for range 2 { // missing photos are fine
+				if err := store.DeleteAll(ctx, ann); err != nil {
+					t.Fatalf("DeleteAll: %v", err)
+				}
+			}
+
+			if _, err := store.Load(ctx, ann, annsPhoto, photo.Small); !errors.Is(err, photo.ErrNotFound) {
+				t.Fatalf("ann's photo after DeleteAll: %v", err)
+			}
+			if _, err := store.Load(ctx, bob, bobsPhoto, photo.Small); err != nil {
+				t.Fatalf("bob's photo after ann's DeleteAll: %v", err)
+			}
+		})
+	}
+}

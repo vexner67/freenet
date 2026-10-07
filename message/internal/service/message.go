@@ -29,6 +29,9 @@ type MessageRepository interface {
 	// ListAfter returns up to limit messages between a and b with IDs
 	// above after, oldest first.
 	ListAfter(ctx context.Context, a, b, after uuid.UUID, limit int) ([]*message.Message, error)
+	// DeleteByUser removes the dialogs of a user, both sides of each, with
+	// every message in them.
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 }
 
 type DialogRepository interface {
@@ -240,4 +243,14 @@ func pageSize(size int) int {
 	}
 
 	return size
+}
+
+// PurgeUser erases the dialogs of a user whose page was deleted for good,
+// from both sides: the peers would only keep a dialog with nobody.
+func (s *MessageService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
+	if err := s.messageRepo.DeleteByUser(ctx, userID); err != nil {
+		return errs.Wrap("s.messageRepo.DeleteByUser", err)
+	}
+
+	return nil
 }

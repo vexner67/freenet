@@ -20,6 +20,9 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
+// Stream is the outbox stream of the notification service.
+const Stream = "notification"
+
 // Outbox kinds: the payload is the request of the RPC of the same name.
 const (
 	kindNotify  = "notify"
