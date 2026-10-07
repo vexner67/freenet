@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/media/internal/photo"
@@ -14,29 +15,43 @@ const MaxPhotoIDs = 10
 
 var ErrTooManyPhotoIDs = errors.New("too many photo ids")
 
+// PhotoStore keeps photos; a photo is saved unpublished. Photo IDs are
+// UUIDv7: the store tells the upload time by them.
 type PhotoStore interface {
 	Save(ctx context.Context, ownerID, photoID uuid.UUID, images photo.Images) error
 	// Load returns photo.ErrNotFound.
 	Load(ctx context.Context, ownerID, photoID uuid.UUID, size photo.Size) ([]byte, error)
-	// Existing returns which of photoIDs the owner has.
+	// Existing returns which of photoIDs the owner has, published or not.
 	Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error)
+	// Publish keeps the owner's photos for good; missing ones are fine.
+	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	// Delete removes the owner's photos; missing ones are fine.
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	// DeleteAll removes every photo of the owner.
 	DeleteAll(ctx context.Context, ownerID uuid.UUID) error
+	// DeleteUnpublished removes the photos uploaded before the time and
+	// never published, returning how many.
+	DeleteUnpublished(ctx context.Context, before time.Time) (int, error)
 }
 
 type PhotoService struct {
 	store PhotoStore
+	// keepUnpublished is how long a photo may wait for its post.
+	keepUnpublished time.Duration
+	now             func() time.Time
 }
 
-func NewPhotoService(store PhotoStore) *PhotoService {
+func NewPhotoService(store PhotoStore, keepUnpublished time.Duration) *PhotoService {
 	return &PhotoService{
-		store: store,
+		store:           store,
+		keepUnpublished: keepUnpublished,
+		now:             time.Now,
 	}
 }
 
-// Upload stores a photo of ownerID for a post they are writing.
+// Upload stores a photo of ownerID for a post they are writing. Until the
+// post is published (Publish), the photo is kept only for a while: one
+// attached to a post that was never sent is not left forever.
 func (s *PhotoService) Upload(ctx context.Context, ownerID uuid.UUID, data []byte) (uuid.UUID, error) {
 	images, err := photo.Make(data)
 	if err != nil {
@@ -77,6 +92,30 @@ func (s *PhotoService) Existing(ctx context.Context, ownerID uuid.UUID, photoIDs
 	}
 
 	return found, nil
+}
+
+// Publish keeps the photos of a published post for good.
+func (s *PhotoService) Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error {
+	if len(photoIDs) > MaxPhotoIDs {
+		return ErrTooManyPhotoIDs
+	}
+
+	if err := s.store.Publish(ctx, ownerID, photoIDs); err != nil {
+		return errs.Wrap("s.store.Publish", err)
+	}
+
+	return nil
+}
+
+// DeleteUnpublished deletes the photos that waited for their post longer
+// than they may, returning how many.
+func (s *PhotoService) DeleteUnpublished(ctx context.Context) (int, error) {
+	deleted, err := s.store.DeleteUnpublished(ctx, s.now().Add(-s.keepUnpublished))
+	if err != nil {
+		return deleted, errs.Wrap("s.store.DeleteUnpublished", err)
+	}
+
+	return deleted, nil
 }
 
 // Delete removes photos of the owner, as when their post is deleted.

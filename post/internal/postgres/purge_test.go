@@ -40,7 +40,8 @@ func TestDeleteByUser(t *testing.T) {
 
 	bobsPost := save(bob, bob, post.RestoreContent("запись Петра", nil, uuid.Nil))
 	annsPost := save(ann, ann, post.RestoreContent("запись Анны", nil, uuid.Nil))
-	onAnnsWall := save(ann, bob, post.RestoreContent("Пётр у Анны", nil, uuid.Nil))
+	bobsPhoto := uuid.New()
+	onAnnsWall := save(ann, bob, post.RestoreContent("Пётр у Анны", post.Photos{bobsPhoto}, uuid.Nil))
 	annsRepost := save(ann, ann, post.RestoreContent("", nil, bobsPost.ID()))
 	bobsRepostOfAnn := save(bob, bob, post.RestoreContent("", nil, annsPost.ID()))
 
@@ -68,14 +69,22 @@ func TestDeleteByUser(t *testing.T) {
 		t.Fatalf("posts.DeleteByUser: %v", err)
 	}
 
+	// The deleted posts come back whole: their photos are deleted next.
+	byID := make(map[uuid.UUID]*post.Post, len(deleted))
+	for _, p := range deleted {
+		byID[p.ID()] = p
+	}
 	want := []uuid.UUID{annsPost.ID(), onAnnsWall.ID(), annsRepost.ID()}
-	if len(deleted) != len(want) {
-		t.Fatalf("deleted %v, want %v", deleted, want)
+	if len(byID) != len(want) {
+		t.Fatalf("deleted %d posts, want %v", len(deleted), want)
 	}
 	for _, id := range want {
-		if !slices.Contains(deleted, id) {
+		if byID[id] == nil {
 			t.Errorf("%s was not deleted", id)
 		}
+	}
+	if p := byID[onAnnsWall.ID()]; p == nil || p.AuthorID() != bob || !slices.Equal(p.Content().Photos(), post.Photos{bobsPhoto}) {
+		t.Errorf("bob's post on ann's wall came back as %+v", p)
 	}
 
 	kept, err := posts.Get(ctx, bobsPost.ID())

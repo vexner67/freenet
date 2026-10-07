@@ -195,7 +195,7 @@ func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID) (int
 	return count, nil
 }
 
-func (r *PostRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+func (r *PostRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*post.Post, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
 	}
@@ -203,23 +203,22 @@ func (r *PostRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]
 	r.s.mu.Lock()
 	defer r.s.mu.Unlock()
 
-	var deleted []uuid.UUID
-	for id, p := range r.s.posts {
+	var deleted []*post.Post
+	for _, p := range r.s.posts {
 		if p.AuthorID() == userID || p.WallID() == userID {
-			deleted = append(deleted, id)
+			deleted = append(deleted, p)
 		}
 	}
 
-	for _, id := range deleted {
-		p := r.s.posts[id]
+	for _, p := range deleted {
 		if shared := p.Content().RepostOf(); shared != uuid.Nil && r.s.posts[shared] != nil {
 			r.s.count(shared, func(c *post.Counters) { c.Reposts-- })
 		}
 	}
 
-	for _, id := range deleted {
-		delete(r.s.posts, id)
-		delete(r.s.likes, id)
+	for _, p := range deleted {
+		delete(r.s.posts, p.ID())
+		delete(r.s.likes, p.ID())
 	}
 
 	for commentID, c := range r.s.comments {

@@ -35,11 +35,13 @@ const (
 )
 
 type App struct {
-	logger  *slog.Logger
-	limiter ratelimit.Store
-	server  *grpcserver.Server
-	metrics *metrics.Server
-	addr    string
+	logger       *slog.Logger
+	limiter      ratelimit.Store
+	server       *grpcserver.Server
+	metrics      *metrics.Server
+	photos       *service.PhotoService
+	cleanupEvery time.Duration
+	addr         string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -52,8 +54,9 @@ func New(cfg config.Config) (*App, error) {
 	}
 
 	a := &App{
-		logger: log,
-		addr:   fmt.Sprintf(":%d", cfg.GRPCPort),
+		logger:       log,
+		cleanupEvery: cfg.PhotoCleanupInterval,
+		addr:         fmt.Sprintf(":%d", cfg.GRPCPort),
 	}
 
 	if err = a.build(cfg); err != nil {
@@ -108,11 +111,13 @@ func (a *App) build(cfg config.Config) error {
 	if err != nil {
 		return errs.Wrap("grpcserver.New", err)
 	}
+	a.photos = service.NewPhotoService(stores.photos, cfg.UnpublishedPhotoTTL)
+
 	mediav1.RegisterMediaServiceServer(
 		a.server.Registrar(),
 		mediagrpc.NewMediaHandler(
 			service.NewAvatarService(stores.avatars),
-			service.NewPhotoService(stores.photos),
+			a.photos,
 			service.NewPurgeService(stores.avatars, stores.photos),
 			a.logger,
 		),
@@ -124,7 +129,8 @@ func (a *App) build(cfg config.Config) error {
 		a.metrics = metrics.NewServer(fmt.Sprintf(":%d", cfg.MetricsPort), reg, a.logger)
 	}
 
-	a.logger.Info("media configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
+	a.logger.Info("media configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(),
+		"unpublished_photo_ttl", cfg.UnpublishedPhotoTTL)
 
 	return nil
 }
@@ -192,8 +198,8 @@ func newStores(cfg config.Config) (stores, error) {
 	return stores{avatars: avatars, photos: photos}, nil
 }
 
-// Run serves until ctx is cancelled or the gRPC or metrics server fails,
-// which stops the other one too.
+// Run serves and deletes unpublished photos until ctx is cancelled or the
+// gRPC or metrics server fails, which stops the rest too.
 func (a *App) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -207,7 +213,35 @@ func (a *App) Run(ctx context.Context) error {
 		})
 	}
 
+	g.Go(func() error {
+		a.runCleanup(ctx)
+		return nil
+	})
+
 	return g.Wait()
+}
+
+// runCleanup deletes the photos that never got their post, every
+// cleanupEvery until ctx ends; a failure is logged and tried next time.
+func (a *App) runCleanup(ctx context.Context) {
+	t := time.NewTicker(a.cleanupEvery)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+
+		deleted, err := a.photos.DeleteUnpublished(ctx)
+		if err != nil && ctx.Err() == nil {
+			a.logger.ErrorContext(ctx, "delete unpublished photos", "error", err)
+		}
+		if deleted > 0 {
+			a.logger.InfoContext(ctx, "unpublished photos deleted", "count", deleted)
+		}
+	}
 }
 
 // Healthcheck asks the service running with cfg on this host whether it

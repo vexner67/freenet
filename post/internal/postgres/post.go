@@ -147,22 +147,8 @@ func (r *PostRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
-	defer rows.Close()
 
-	var posts []*post.Post
-	for rows.Next() {
-		p, err := scanPost(rows)
-		if err != nil {
-			return nil, errs.Wrap("scanPost", err)
-		}
-		posts = append(posts, p)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, errs.Wrap("rows.Err", err)
-	}
-
-	return posts, nil
+	return collectPosts(rows)
 }
 
 // deletePostQuery deletes a post and uncounts it in the post it shared,
@@ -230,22 +216,8 @@ func (r *PostRepository) list(ctx context.Context, query string, owners any, bef
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
-	defer rows.Close()
 
-	var posts []*post.Post
-	for rows.Next() {
-		p, err := scanPost(rows)
-		if err != nil {
-			return nil, errs.Wrap("scanPost", err)
-		}
-		posts = append(posts, p)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, errs.Wrap("rows.Err", err)
-	}
-
-	return posts, nil
+	return collectPosts(rows)
 }
 
 const listPostsByAuthorsQuery = `
@@ -287,6 +259,26 @@ func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID) (int
 	return count, nil
 }
 
+// collectPosts reads the posts of rows and closes them.
+func collectPosts(rows pgx.Rows) ([]*post.Post, error) {
+	defer rows.Close()
+
+	var posts []*post.Post
+	for rows.Next() {
+		p, err := scanPost(rows)
+		if err != nil {
+			return nil, errs.Wrap("scanPost", err)
+		}
+		posts = append(posts, p)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, errs.Wrap("rows.Err", err)
+	}
+
+	return posts, nil
+}
+
 func scanPost(row pgx.Row) (*post.Post, error) {
 	var (
 		id, wallID, authorID uuid.UUID
@@ -326,7 +318,17 @@ const deletePostsByUserQuery = `
 		DELETE FROM posts
 		WHERE author_id = $1
 			OR wall_id = $1
-		RETURNING id, repost_of
+		RETURNING
+			id,
+			wall_id,
+			author_id,
+			text,
+			photo_ids,
+			created_at,
+			repost_of,
+			like_count,
+			comment_count,
+			repost_count
 	), uncounted AS (
 		UPDATE posts p
 		SET repost_count = p.repost_count - d.n
@@ -340,20 +342,25 @@ const deletePostsByUserQuery = `
 			AND p.author_id <> $1
 			AND p.wall_id <> $1
 	)
-	SELECT id
+	SELECT
+		id,
+		wall_id,
+		author_id,
+		text,
+		photo_ids,
+		created_at,
+		repost_of,
+		like_count,
+		comment_count,
+		repost_count
 	FROM deleted
 `
 
-func (r *PostRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+func (r *PostRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*post.Post, error) {
 	rows, err := r.conn(ctx).Query(ctx, deletePostsByUserQuery, userID)
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
 
-	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
-	if err != nil {
-		return nil, errs.Wrap("pgx.CollectRows", err)
-	}
-
-	return ids, nil
+	return collectPosts(rows)
 }

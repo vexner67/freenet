@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"sync"
 	"testing"
 
@@ -51,6 +52,46 @@ func (f *fakeNotifier) ForgetPost(ctx context.Context, postID uuid.UUID) error {
 	return f.record(ctx, func() { f.forgotten = append(f.forgotten, postID) })
 }
 
+// photoCall is what PhotoKeeper was told about whose photos.
+type photoCall struct {
+	owner  uuid.UUID
+	photos []uuid.UUID
+}
+
+// fakePhotos records the photos published and deleted, and in how many
+// calls it was not in a transaction.
+type fakePhotos struct {
+	mu        sync.Mutex
+	published []photoCall
+	deleted   []photoCall
+	outsideTx int
+	err       error
+}
+
+func (f *fakePhotos) record(ctx context.Context, to *[]photoCall, c photoCall) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+
+	if ctx.Value(inTx{}) == nil {
+		f.outsideTx++
+	}
+	if f.err != nil {
+		return f.err
+	}
+
+	*to = append(*to, c)
+
+	return nil
+}
+
+func (f *fakePhotos) Publish(ctx context.Context, owner uuid.UUID, photos []uuid.UUID) error {
+	return f.record(ctx, &f.published, photoCall{owner, photos})
+}
+
+func (f *fakePhotos) Delete(ctx context.Context, owner uuid.UUID, photos []uuid.UUID) error {
+	return f.record(ctx, &f.deleted, photoCall{owner, photos})
+}
+
 type inTx struct{}
 
 // fakeTx marks the context of the transaction, so that the notifier can
@@ -63,7 +104,7 @@ func (fakeTx) WithinTx(ctx context.Context, fn func(ctx context.Context) error) 
 
 func newPostService() *service.PostService {
 	store := inmem.NewStore()
-	return service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, &fakeNotifier{})
+	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}})
 }
 
 func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...string) []*post.Post {
@@ -300,7 +341,7 @@ func TestPostService_NotifiesAboutLikes(t *testing.T) {
 
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, notifier)
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
 	p := write(t, svc, ann, "привет")[0]
@@ -354,7 +395,7 @@ func TestPostService_NotifierFailureFailsTheChange(t *testing.T) {
 
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, notifier)
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
 	p := write(t, svc, ann, "привет")[0]
@@ -403,7 +444,7 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, notifier)
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	write(t, svc, ann, "своё")
@@ -461,7 +502,7 @@ func TestPostService_Repost(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(store.Posts(), store.Likes(), fakeTx{}, notifier)
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	original := write(t, svc, ann, "оригинал")[0]
@@ -522,5 +563,47 @@ func TestPostService_Repost(t *testing.T) {
 
 	if _, err = svc.Repost(ctx, bob, uuid.New(), ""); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("sharing nothing: %v, want ErrNotFound", err)
+	}
+}
+
+func TestPostService_Photos(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	photos := &fakePhotos{}
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos})
+	owner, author := uuid.New(), uuid.New()
+	ids := []uuid.UUID{uuid.New(), uuid.New()}
+
+	withPhotos, err := post.NewContent("на стене", ids)
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := svc.Create(ctx, owner, author, withPhotos)
+	if err != nil {
+		t.Fatal(err)
+	}
+	write(t, svc, author, "без фото")
+
+	if len(photos.published) != 1 || photos.published[0].owner != author || !slices.Equal(photos.published[0].photos, ids) {
+		t.Fatalf("published = %+v, want the author's two photos once", photos.published)
+	}
+
+	// The owner of the wall deletes it: the photos are the author's still.
+	if err = svc.Delete(ctx, owner, p.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(photos.deleted) != 1 || photos.deleted[0].owner != author || !slices.Equal(photos.deleted[0].photos, ids) {
+		t.Fatalf("deleted = %+v, want the author's two photos", photos.deleted)
+	}
+	if photos.outsideTx != 0 {
+		t.Fatalf("%d photo calls outside the transaction", photos.outsideTx)
+	}
+
+	// Photos that cannot be recorded fail the post, which is not saved.
+	photos.err = errors.New("outbox is down")
+	if _, err = svc.Create(ctx, author, author, withPhotos); !errors.Is(err, photos.err) {
+		t.Fatalf("Create with a broken outbox: %v", err)
 	}
 }

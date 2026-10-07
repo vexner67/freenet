@@ -18,13 +18,19 @@ service MediaService {
 
   // Require an access token; the photos belong to the caller. A photo is
   // uploaded before the post that shows it; ListOwnPhotos tells which of
-  // the given ones the caller has, DeletePhotos removes them with the post.
+  // the given ones the caller has. A photo that no post publishes is
+  // deleted after a while.
   rpc UploadPhoto(UploadPhotoRequest) returns (UploadPhotoResponse);
   rpc ListOwnPhotos(ListOwnPhotosRequest) returns (ListOwnPhotosResponse);
-  rpc DeletePhotos(DeletePhotosRequest) returns (google.protobuf.Empty);
 
   // Public: a photo as JPEG.
   rpc GetPhoto(GetPhotoRequest) returns (GetPhotoResponse);
+
+  // Internal, for post: a post with these photos of owner_id was published
+  // (they are kept for good) or deleted (they go). Idempotent; missing
+  // photos are fine.
+  rpc PublishPhotos(PublishPhotosRequest) returns (google.protobuf.Empty);
+  rpc DeletePostPhotos(DeletePostPhotosRequest) returns (google.protobuf.Empty);
 
   // Internal, for user: the user's page was deleted and not restored in
   // time; all their avatars and photos go. Idempotent.
@@ -82,9 +88,16 @@ message ListOwnPhotosResponse {
   repeated string photo_ids = 1;
 }
 
-message DeletePhotosRequest {
-  // At most 10; missing ones are fine.
-  repeated string photo_ids = 1;
+message PublishPhotosRequest {
+  string owner_id = 1;
+  // At most 10.
+  repeated string photo_ids = 2;
+}
+
+message DeletePostPhotosRequest {
+  string owner_id = 1;
+  // At most 10.
+  repeated string photo_ids = 2;
 }
 
 enum PhotoSize {

@@ -90,18 +90,6 @@ func (a *api) checkOwnPhotos(r *http.Request, token string, photoIDs []string) e
 	return nil
 }
 
-// forgetPhotos deletes the photos of a deleted post. A failure only leaves
-// unused files behind, so it is logged, not returned.
-func (a *api) forgetPhotos(r *http.Request, token string, photoIDs []string) {
-	if len(photoIDs) == 0 {
-		return
-	}
-
-	if err := a.media.DeletePhotos(r.Context(), token, photoIDs); err != nil {
-		a.logger.WarnContext(r.Context(), "photos of a deleted post left behind", "error", err)
-	}
-}
-
 // servePhoto is the image behind a photo URL.
 func (a *api) servePhoto(w http.ResponseWriter, r *http.Request) {
 	file := r.PathValue("file")

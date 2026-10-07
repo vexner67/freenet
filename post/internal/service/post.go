@@ -65,22 +65,34 @@ type PostService struct {
 	likeRepo LikeRepository
 	tx       TxManager
 	notifier Notifier
+	photos   PhotoKeeper
 	now      func() time.Time
 }
 
-func NewPostService(postRepo PostRepository, likeRepo LikeRepository, tx TxManager, notifier Notifier) *PostService {
+// PostDeps are what PostService works with.
+type PostDeps struct {
+	Posts    PostRepository
+	Likes    LikeRepository
+	Tx       TxManager
+	Notifier Notifier
+	Photos   PhotoKeeper
+}
+
+func NewPostService(d PostDeps) *PostService {
 	return &PostService{
-		postRepo: postRepo,
-		likeRepo: likeRepo,
-		tx:       tx,
-		notifier: notifier,
+		postRepo: d.Posts,
+		likeRepo: d.Likes,
+		tx:       d.Tx,
+		notifier: d.Notifier,
+		photos:   d.Photos,
 		now:      time.Now,
 	}
 }
 
 // Create writes a post on the wall of wallID; the owner of a wall hears
-// about posts by others. The caller has checked that the owner's privacy
-// lets the author write there: post does not know users.
+// about posts by others, and media keeps the photos. The caller has
+// checked that the owner's privacy lets the author write there and that
+// the photos are the author's: post does not know users.
 func (s *PostService) Create(ctx context.Context, wallID, authorID uuid.UUID, content post.Content) (*post.Post, error) {
 	p, err := post.New(wallID, authorID, content, s.now())
 	if err != nil {
@@ -90,6 +102,12 @@ func (s *PostService) Create(ctx context.Context, wallID, authorID uuid.UUID, co
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.postRepo.Save(ctx, p); err != nil {
 			return errs.Wrap("s.postRepo.Save", err)
+		}
+
+		if photos := content.Photos(); len(photos) > 0 {
+			if err := s.photos.Publish(ctx, authorID, photos); err != nil {
+				return errs.Wrap("s.photos.Publish", err)
+			}
 		}
 
 		if p.OnOwnWall() {
@@ -150,7 +168,8 @@ func (s *PostService) Repost(ctx context.Context, authorID, postID uuid.UUID, te
 	return repost, nil
 }
 
-// Delete removes a post; a deleted repost takes its notification with it,
+// Delete removes a post with its photos, whoever deletes it, the author or
+// the owner of the wall; a deleted repost takes its notification with it,
 // since the notification is about the repost (ForgetPost).
 func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID) error {
 	p, err := s.postRepo.Get(ctx, postID)
@@ -167,7 +186,15 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 			return errs.Wrap("s.postRepo.Delete", err)
 		}
 
-		return errs.Wrap("s.notifier.ForgetPost", s.notifier.ForgetPost(ctx, postID))
+		if err := s.notifier.ForgetPost(ctx, postID); err != nil {
+			return errs.Wrap("s.notifier.ForgetPost", err)
+		}
+
+		if photos := p.Content().Photos(); len(photos) > 0 {
+			return errs.Wrap("s.photos.Delete", s.photos.Delete(ctx, p.AuthorID(), photos))
+		}
+
+		return nil
 	})
 	if err != nil {
 		return errs.Wrap("s.tx.WithinTx", err)

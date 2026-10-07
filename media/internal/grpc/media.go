@@ -25,6 +25,7 @@ type PhotoService interface {
 	Upload(ctx context.Context, ownerID uuid.UUID, data []byte) (uuid.UUID, error)
 	Get(ctx context.Context, ownerID, photoID uuid.UUID, size photo.Size) ([]byte, error)
 	Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error)
+	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 }
 
@@ -159,13 +160,23 @@ func (h *MediaHandler) ListOwnPhotos(ctx context.Context, req *mediav1.ListOwnPh
 	return resp, nil
 }
 
-func (h *MediaHandler) DeletePhotos(ctx context.Context, req *mediav1.DeletePhotosRequest) (*emptypb.Empty, error) {
-	ownerID, err := currentUserID(ctx)
+// PublishPhotos and DeletePostPhotos are internal, for post: the owner
+// comes in the request, not from a token.
+func (h *MediaHandler) PublishPhotos(ctx context.Context, req *mediav1.PublishPhotosRequest) (*emptypb.Empty, error) {
+	ownerID, ids, err := parseOwnerPhotos(req.GetOwnerId(), req.GetPhotoIds())
 	if err != nil {
 		return nil, err
 	}
 
-	ids, err := parsePhotoIDs(req.GetPhotoIds())
+	if err = h.photos.Publish(ctx, ownerID, ids); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MediaHandler) DeletePostPhotos(ctx context.Context, req *mediav1.DeletePostPhotosRequest) (*emptypb.Empty, error) {
+	ownerID, ids, err := parseOwnerPhotos(req.GetOwnerId(), req.GetPhotoIds())
 	if err != nil {
 		return nil, err
 	}
@@ -175,6 +186,20 @@ func (h *MediaHandler) DeletePhotos(ctx context.Context, req *mediav1.DeletePhot
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func parseOwnerPhotos(owner string, photos []string) (uuid.UUID, []uuid.UUID, error) {
+	ownerID, err := parseID(owner, "owner id")
+	if err != nil {
+		return uuid.Nil, nil, err
+	}
+
+	ids, err := parsePhotoIDs(photos)
+	if err != nil {
+		return uuid.Nil, nil, err
+	}
+
+	return ownerID, ids, nil
 }
 
 func (h *MediaHandler) GetPhoto(ctx context.Context, req *mediav1.GetPhotoRequest) (*mediav1.GetPhotoResponse, error) {

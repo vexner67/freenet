@@ -52,7 +52,6 @@ type Media interface {
 
 	UploadPhoto(ctx context.Context, accessToken string, image []byte) (string, error)
 	OwnPhotos(ctx context.Context, accessToken string, photoIDs []string) ([]string, error)
-	DeletePhotos(ctx context.Context, accessToken string, photoIDs []string) error
 	Photo(ctx context.Context, userID, photoID string, small bool) ([]byte, error)
 }
 

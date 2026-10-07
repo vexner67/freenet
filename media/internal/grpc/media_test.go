@@ -53,7 +53,7 @@ func newServer(t *testing.T) testServer {
 	))
 	mediav1.RegisterMediaServiceServer(srv, mediagrpc.NewMediaHandler(
 		service.NewAvatarService(avatars),
-		service.NewPhotoService(photos),
+		service.NewPhotoService(photos, time.Hour),
 		service.NewPurgeService(avatars, photos),
 		log,
 	))
@@ -192,19 +192,26 @@ func TestPhotos(t *testing.T) {
 		t.Fatalf("bob has none of ann's photos: %v, %v", bobs, err)
 	}
 
-	// Bob cannot delete ann's photos: he deletes only his own.
-	if _, err = s.client.DeletePhotos(s.as(t, bob), &mediav1.DeletePhotosRequest{PhotoIds: ids}); err != nil {
+	// post publishes and deletes the photos of posts, with no user token,
+	// for the owner it names: bob's name does not reach ann's photos.
+	if _, err = s.client.PublishPhotos(context.Background(), &mediav1.PublishPhotosRequest{OwnerId: ann.String(), PhotoIds: ids}); err != nil {
+		t.Fatalf("PublishPhotos: %v", err)
+	}
+	if _, err = s.client.DeletePostPhotos(context.Background(), &mediav1.DeletePostPhotosRequest{OwnerId: bob.String(), PhotoIds: ids}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: ids[0]}); err != nil {
-		t.Fatalf("ann's photo after bob's delete: %v", err)
+		t.Fatalf("ann's published photo after bob's delete: %v", err)
 	}
 
-	if _, err = s.client.DeletePhotos(s.as(t, ann), &mediav1.DeletePhotosRequest{PhotoIds: ids[:1]}); err != nil {
+	if _, err = s.client.DeletePostPhotos(context.Background(), &mediav1.DeletePostPhotosRequest{OwnerId: ann.String(), PhotoIds: ids[:1]}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: ids[0]}); status.Code(err) != codes.NotFound {
 		t.Fatalf("deleted photo: %v", err)
+	}
+	if _, err = s.client.PublishPhotos(context.Background(), &mediav1.PublishPhotosRequest{OwnerId: "ann", PhotoIds: ids}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("PublishPhotos of a bad owner: %v", err)
 	}
 
 	if _, err = s.client.ListOwnPhotos(s.as(t, ann), &mediav1.ListOwnPhotosRequest{PhotoIds: make([]string, 11)}); status.Code(err) != codes.InvalidArgument {
