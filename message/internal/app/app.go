@@ -8,11 +8,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	goredis "github.com/redis/go-redis/v9"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	"github.com/vexner67/freenet/message/internal/config"
 	messagegrpc "github.com/vexner67/freenet/message/internal/grpc"
 	"github.com/vexner67/freenet/message/internal/inmem"
 	"github.com/vexner67/freenet/message/internal/postgres"
+	messageredis "github.com/vexner67/freenet/message/internal/redis"
 	"github.com/vexner67/freenet/message/internal/service"
 	"github.com/vexner67/freenet/message/migrations"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -42,6 +44,9 @@ type App struct {
 	logger  *slog.Logger
 	pool    *pgxpool.Pool
 	limiter ratelimit.Store
+	redis   *goredis.Client
+	// shared carries live events between replicas; nil keeps them here.
+	shared  *pubsub.Redis[uuid.UUID, service.Event]
 	server  *grpcserver.Server
 	metrics *metrics.Server
 	addr    string
@@ -114,13 +119,10 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("grpcserver.New", err)
 	}
 
-	// Live updates stay within this replica; see Subscribe in the proto.
-	events := pubsub.New[uuid.UUID, service.Event](eventBuffer)
-
 	messagev1.RegisterMessageServiceServer(
 		a.server.Registrar(),
 		messagegrpc.NewMessageHandler(
-			service.NewMessageService(repos.messages, repos.dialogs, events),
+			service.NewMessageService(repos.messages, repos.dialogs, a.newEvents(cfg)),
 			a.logger,
 		),
 	)
@@ -134,6 +136,20 @@ func (a *App) build(cfg config.Config) error {
 	a.logger.Info("message configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
 
 	return nil
+}
+
+// newEvents shares live events between the replicas through Redis when it
+// is configured; otherwise a stream gets only the events of its replica.
+func (a *App) newEvents(cfg config.Config) service.Events {
+	if cfg.RedisAddr == "" {
+		a.logger.Warn("REDIS_ADDR is not set: live events stay within this replica")
+		return pubsub.New[uuid.UUID, service.Event](eventBuffer)
+	}
+
+	a.redis = goredis.NewClient(&goredis.Options{Addr: cfg.RedisAddr})
+	a.shared = pubsub.NewRedis(a.redis, messageredis.Channel, messageredis.EventCodec{}, eventBuffer, a.logger)
+
+	return a.shared
 }
 
 // rateLimits are how often each user may write.
@@ -202,8 +218,8 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	}, nil
 }
 
-// Run serves until ctx is cancelled or the gRPC or metrics server fails,
-// which stops the other one too.
+// Run serves and shares live events until ctx is cancelled or the gRPC or
+// metrics server fails, which stops the rest too.
 func (a *App) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -214,6 +230,12 @@ func (a *App) Run(ctx context.Context) error {
 	if a.metrics != nil {
 		g.Go(func() error {
 			return errs.Wrap("a.metrics.Run", a.metrics.Run(ctx))
+		})
+	}
+
+	if a.shared != nil {
+		g.Go(func() error {
+			return errs.Wrap("a.shared.Run", a.shared.Run(ctx))
 		})
 	}
 
@@ -236,6 +258,12 @@ func Healthcheck(ctx context.Context, cfg config.Config) error {
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.redis != nil {
+		if err := a.redis.Close(); err != nil {
+			a.logger.Error("redis close", "error", err)
+		}
+	}
+
 	if a.limiter != nil {
 		if err := a.limiter.Close(); err != nil {
 			a.logger.Error("rate limiter close", "error", err)

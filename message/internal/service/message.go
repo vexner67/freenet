@@ -74,10 +74,11 @@ type ReadMark struct {
 	UpTo     uuid.UUID
 }
 
-// Events delivers live updates within this process (pkg/pubsub): best
-// effort, as a subscriber catches up from storage after any gap.
+// Events delivers live updates to the subscribers on every replica
+// (pubsub.Redis) or on this one (pubsub.Hub): best effort, as a subscriber
+// catches up from storage after any gap.
 type Events interface {
-	Publish(userID uuid.UUID, e Event)
+	Publish(ctx context.Context, userID uuid.UUID, e Event)
 	Subscribe(userID uuid.UUID) (<-chan Event, func())
 }
 
@@ -109,8 +110,8 @@ func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UU
 		return nil, errs.Wrap("s.messageRepo.Save", err)
 	}
 
-	s.events.Publish(senderID, Event{Message: m})
-	s.events.Publish(recipientID, Event{Message: m})
+	s.events.Publish(ctx, senderID, Event{Message: m})
+	s.events.Publish(ctx, recipientID, Event{Message: m})
 
 	return m, nil
 }
@@ -220,8 +221,8 @@ func (s *MessageService) MarkRead(ctx context.Context, userID, peerID, upTo uuid
 	}
 
 	read := Event{Read: &ReadMark{ReaderID: userID, PeerID: peerID, UpTo: upTo}}
-	s.events.Publish(userID, read)
-	s.events.Publish(peerID, read)
+	s.events.Publish(ctx, userID, read)
+	s.events.Publish(ctx, peerID, read)
 
 	return nil
 }

@@ -1,12 +1,16 @@
 // Package pubsub delivers events to whoever is subscribed to a key (a
-// user), within one process: the live updates a service streams to the
-// gateway. Delivery is in order per subscriber and never blocks the
-// publisher: a subscriber that falls behind is dropped — its channel is
-// closed — and has to subscribe again and catch up from storage, rather
-// than miss events without knowing.
+// user): the live updates a service streams to the gateway. Hub does it
+// within one process, Redis between the replicas of a service. Delivery
+// is in order per subscriber and never blocks the publisher: a subscriber
+// that falls behind is dropped — its channel is closed — and has to
+// subscribe again and catch up from storage, rather than miss events
+// without knowing.
 package pubsub
 
-import "sync"
+import (
+	"context"
+	"sync"
+)
 
 // Hub is safe for concurrent use. The zero value is not usable: use New.
 type Hub[K comparable, T any] struct {
@@ -52,8 +56,9 @@ func (h *Hub[K, T]) Subscribe(key K) (<-chan T, func()) {
 	}
 }
 
-// Publish hands event to every subscriber of key without waiting.
-func (h *Hub[K, T]) Publish(key K, event T) {
+// Publish hands event to every subscriber of key without waiting; ctx is
+// there for hubs that publish further (Redis).
+func (h *Hub[K, T]) Publish(_ context.Context, key K, event T) {
 	h.mu.Lock()
 	defer h.mu.Unlock()
 

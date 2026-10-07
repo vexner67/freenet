@@ -128,8 +128,10 @@ services:
       TLS_KEY_PATH: /certs/notification-key.pem
       STORAGE: persistent
       DATABASE_URL: postgres://${NOTIFICATION_POSTGRES_USER}:${NOTIFICATION_POSTGRES_PASSWORD}@notification-postgres:5432/${NOTIFICATION_POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
     depends_on:
       notification-postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
 
   message:
     <<: *service

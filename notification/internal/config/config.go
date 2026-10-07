@@ -33,6 +33,10 @@ type Config struct {
 	// MigrateOnStart applies pending migrations before serving.
 	MigrateOnStart bool `env:"MIGRATE_ON_START" envDefault:"true"`
 
+	// RedisAddr shares live events between replicas; without it a stream
+	// gets only the events of its replica.
+	RedisAddr string `env:"REDIS_ADDR"`
+
 	// Access tokens are issued by the auth service; notification only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
 	JWTIssuer        string `env:"JWT_ISSUER,required,notEmpty"`

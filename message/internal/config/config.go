@@ -34,8 +34,9 @@ type Config struct {
 	// MigrateOnStart applies pending migrations before serving.
 	MigrateOnStart bool `env:"MIGRATE_ON_START" envDefault:"true"`
 
-	// Spam protection, per user. REDIS_ADDR shares the counters between
-	// replicas; without it they are kept in memory, per replica.
+	// Spam protection, per user, and live events. REDIS_ADDR shares the
+	// counters and the events between replicas; without it they stay in
+	// one.
 	RedisAddr     string          `env:"REDIS_ADDR"`
 	MessageLimits ratelimit.Rules `env:"RATE_LIMIT_MESSAGES" envDefault:"30/1m,1000/24h"`
 

@@ -1,6 +1,7 @@
 package pubsub_test
 
 import (
+	"context"
 	"sync"
 	"testing"
 
@@ -19,9 +20,9 @@ func TestHub_Delivers(t *testing.T) {
 	bob, cancelBob := hub.Subscribe("bob")
 	defer cancelBob()
 
-	hub.Publish("ann", 1)
-	hub.Publish("ann", 2)
-	hub.Publish("cat", 3) // nobody listens
+	hub.Publish(context.Background(), "ann", 1)
+	hub.Publish(context.Background(), "ann", 2)
+	hub.Publish(context.Background(), "cat", 3) // nobody listens
 
 	for _, ch := range []<-chan int{ann1, ann2} {
 		if a, b := <-ch, <-ch; a != 1 || b != 2 {
@@ -44,7 +45,7 @@ func TestHub_DropsWhoFallsBehind(t *testing.T) {
 	defer cancel()
 
 	for i := range 3 { // one more than the buffer
-		hub.Publish("ann", i)
+		hub.Publish(context.Background(), "ann", i)
 	}
 
 	got := 0
@@ -56,7 +57,7 @@ func TestHub_DropsWhoFallsBehind(t *testing.T) {
 		t.Fatalf("got %d events before the channel closed, want the 2 buffered", got)
 	}
 
-	hub.Publish("ann", 4) // must not panic on the dropped subscriber
+	hub.Publish(context.Background(), "ann", 4) // must not panic on the dropped subscriber
 }
 
 func TestHub_CancelAndClose(t *testing.T) {
@@ -93,7 +94,7 @@ func TestHub_Concurrent(t *testing.T) {
 			ch, cancel := hub.Subscribe(key % 2)
 			defer cancel()
 			for i := range 100 {
-				hub.Publish(key%2, i)
+				hub.Publish(context.Background(), key%2, i)
 				select {
 				case <-ch:
 				default:
