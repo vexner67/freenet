@@ -6,7 +6,9 @@
 #   scripts/check.sh                 unit tests
 #   scripts/check.sh --integration   also the PostgreSQL and Redis tests,
 #                                    against throwaway containers: each
-#                                    service gets its own migrated database
+#                                    service gets its own migrated database,
+#                                    shared packages that need PostgreSQL
+#                                    an empty one
 #
 # Needs Go, golangci-lint and Node.js; --integration also Docker.
 set -euo pipefail
@@ -74,16 +76,18 @@ start_databases() {
 	export TEST_REDIS_ADDR
 }
 
-# database_for creates and migrates a fresh database for module $1 and
-# prints its URL.
+# database_for creates a fresh database for module $1, migrated if the
+# module has migrations, and prints its URL.
 database_for() {
-	local name=$1 url
+	local module=$1 name=${1//\//_} url
 	url="postgres://postgres:check@127.0.0.1:$(host_port "$pg" 5432/tcp)/$name?sslmode=disable"
 
 	docker exec "$pg" psql -q -U postgres -c "CREATE DATABASE \"$name\"" >/dev/null
 
+	[ -d "$module/migrations" ] || { echo "$url"; return 0; }
+
 	local out
-	if ! out=$(go run "$goose" -dir "$name/migrations" postgres "$url" up 2>&1); then
+	if ! out=$(go run "$goose" -dir "$module/migrations" postgres "$url" up 2>&1); then
 		echo "$out" >&2
 		return 1
 	fi
@@ -107,7 +111,9 @@ check_module() {
 	(cd "$module" && go vet ./... && golangci-lint run ./...) || return 1
 
 	local db=
-	if $integration && [ -d "$module/migrations" ]; then
+	# Services test against their migrated database, shared packages that
+	# need PostgreSQL against an empty one.
+	if $integration && { [ -d "$module/migrations" ] || grep -rqs --include='*_test.go' TEST_DATABASE_URL "$module"; }; then
 		db=$(database_for "$module") || return 1
 	fi
 
