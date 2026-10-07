@@ -21,6 +21,7 @@ func webDir(t *testing.T) string {
 	files := map[string]string{
 		"index.html":         "INDEX",
 		"edit.html":          "EDIT",
+		"blacklist.html":     "BLACKLIST",
 		"profile.html":       "PROFILE",
 		"post.html":          "POST",
 		"notifications.html": "NOTIFICATIONS",
@@ -65,6 +66,7 @@ func TestPages(t *testing.T) {
 	}{
 		{"/", 200, "INDEX", true},
 		{"/edit", 200, "EDIT", true},
+		{"/settings/blacklist", 200, "BLACKLIST", true},
 		{"/ann", 200, "PROFILE", true},
 		{"/post/p1", 200, "POST", true},
 		{"/notifications", 200, "NOTIFICATIONS", true},

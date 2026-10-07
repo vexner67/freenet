@@ -23,6 +23,12 @@ type Users interface {
 	GetProfile(ctx context.Context, nickname string) (model.PublicProfile, error)
 	GetProfiles(ctx context.Context, ids []string) ([]model.PublicProfile, error)
 	CanPostOnWall(ctx context.Context, accessToken, userID string) (bool, error)
+	CanMessage(ctx context.Context, accessToken, userID string, wroteFirst bool) (bool, error)
+
+	Block(ctx context.Context, accessToken, userID string) error
+	Unblock(ctx context.Context, accessToken, userID string) error
+	Blacklist(ctx context.Context, accessToken, cursor string, limit int) (model.UserPage, error)
+	Relation(ctx context.Context, accessToken, userID string) (model.Relation, error)
 
 	Follow(ctx context.Context, accessToken, userID string) error
 	Unfollow(ctx context.Context, accessToken, userID string) error
@@ -78,6 +84,7 @@ type Messages interface {
 	CountUnread(ctx context.Context, accessToken string) (int, error)
 	History(ctx context.Context, accessToken, peerID, cursor, after string, limit int) (model.MessagePage, error)
 	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
+	HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error)
 }
 
 // Backends are the services the API is made of.
@@ -117,6 +124,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/me/privacy", a.updatePrivacy)
 
 	mux.HandleFunc("GET /api/v1/users/{nickname}", a.getProfile)
+
+	mux.HandleFunc("GET /api/v1/me/blacklist", a.listBlacklist)
+	mux.HandleFunc("PUT /api/v1/me/blacklist/{nickname}", a.block)
+	mux.HandleFunc("DELETE /api/v1/me/blacklist/{nickname}", a.unblock)
 
 	mux.HandleFunc("GET /api/v1/users/{nickname}/posts", a.listPosts)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/posts", a.createWallPost)

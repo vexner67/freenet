@@ -19,6 +19,7 @@ const (
 	worldviewPrefix      = "WORLDVIEW_"
 	politicalViewsPrefix = "POLITICAL_VIEWS_"
 	wallWritePrefix      = "WALL_WRITE_"
+	messagesWritePrefix  = "MESSAGES_WRITE_"
 	kindPrefix           = "KIND_"
 
 	notSet = "NONE"
@@ -121,6 +122,7 @@ func toUser(u *userv1.User) model.User {
 			ShowWorldview:      u.GetPrivacy().GetShowWorldview(),
 			ShowPoliticalViews: u.GetPrivacy().GetShowPoliticalViews(),
 			WallWrite:          enumName(u.GetPrivacy().GetWallWrite().String(), wallWritePrefix),
+			MessagesWrite:      enumName(u.GetPrivacy().GetMessagesWrite().String(), messagesWritePrefix),
 		},
 	}
 }

@@ -131,7 +131,9 @@ paths:
       description: |
         No token needed. Fields the owner has not opened are empty, the same
         as fields that are not set. Nickname lookup is case-insensitive.
-        With a token, `isFollowing` tells whether you follow the user.
+        With a token, `isFollowing` tells whether you follow the user, and
+        `blockedByMe` / `blockedMe` who of you blacklisted the other: the
+        website then shows the limited page of openvk instead of the profile.
       parameters:
         - name: nickname
           in: path
@@ -146,7 +148,55 @@ paths:
                 allOf:
                   - $ref: "#/components/schemas/PublicProfile"
                   - $ref: "#/components/schemas/FollowStats"
+                  - $ref: "#/components/schemas/Relation"
         "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/blacklist:
+    get:
+      summary: Your blacklist, newest first
+      description: |
+        "Чёрный список" of openvk. A block shuts messages, wall posts,
+        comments and follows between you and the user, both ways.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of the blacklist
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/blacklist/{nickname}:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Blacklist the user
+      description: Idempotent. Drops the follows between you, both ways.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Blacklisted }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Take the user off your blacklist
+      description: Idempotent. Follows dropped by the block do not come back.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken off }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/users/{nickname}/posts:
@@ -490,6 +540,11 @@ paths:
               schema: { $ref: "#/components/schemas/Comment" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You and the author of the post or the owner of its wall blacklisted one another
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
@@ -647,7 +702,11 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     post:
       summary: Write to a user
-      description: Your profile must be filled in first; you cannot write to yourself.
+      description: |
+        Your profile must be filled in first; you cannot write to yourself.
+        The user's privacy (`messagesWrite`) and blacklists decide whether
+        you may; whoever wrote to you may always be answered, unless one of
+        you blacklisted the other.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -666,6 +725,11 @@ paths:
               schema: { $ref: "#/components/schemas/Message" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: The user's privacy or a blacklist does not let you write
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
@@ -708,6 +772,11 @@ paths:
         "200": { $ref: "#/components/responses/FollowStats" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: One of you blacklisted the other
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
@@ -897,6 +966,10 @@ components:
           type: string
           enum: [everyone, following, only_me]
           description: "Who may write on your wall besides you; following: the people you follow"
+        messagesWrite:
+          type: string
+          enum: [everyone, following, nobody]
+          description: "Who may write private messages to you; whoever you wrote to may answer anyway"
 
     User:
       allOf:
@@ -1090,7 +1163,7 @@ components:
 
     MessagePage:
       type: object
-      required: [peer, messages, nextCursor, peerReadUpTo]
+      required: [peer, messages, nextCursor, peerReadUpTo, canWrite]
       properties:
         peer: { $ref: "#/components/schemas/Author" }
         messages:
@@ -1100,6 +1173,16 @@ components:
         peerReadUpTo:
           type: string
           description: "The newest of your messages the peer has read, to update shown ones; empty if none"
+        canWrite:
+          type: boolean
+          description: "You may write to the peer; told on the first page, false on older pages and with after"
+
+    Relation:
+      type: object
+      required: [blockedByMe, blockedMe]
+      properties:
+        blockedByMe: { type: boolean, description: "You blacklisted the user; false without a token" }
+        blockedMe: { type: boolean, description: "The user blacklisted you; false without a token" }
 
     FollowStats:
       type: object

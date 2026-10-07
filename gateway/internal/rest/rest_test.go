@@ -48,7 +48,13 @@ type fakeUsers struct {
 	profile                                         model.Profile
 	wallAsked                                       string
 	closedWall                                      bool
-	err                                             error
+	// Messages: closed unless the peer wrote first; wroteFirst is what the
+	// gateway passed on.
+	closedMessages, wroteFirst bool
+	// Blacklists: relation is the same with everyone.
+	relation                         model.Relation
+	blocked, unblocked, relationWith string
+	err                              error
 }
 
 func (f *fakeUsers) user() model.User {
@@ -110,6 +116,31 @@ func (f *fakeUsers) GetProfiles(_ context.Context, ids []string) ([]model.Public
 func (f *fakeUsers) CanPostOnWall(_ context.Context, token, userID string) (bool, error) {
 	f.token, f.wallAsked = token, userID
 	return !f.closedWall, f.err
+}
+
+func (f *fakeUsers) CanMessage(_ context.Context, token, _ string, wroteFirst bool) (bool, error) {
+	f.token, f.wroteFirst = token, wroteFirst
+	return !f.relation.Blocked() && (!f.closedMessages || wroteFirst), f.err
+}
+
+func (f *fakeUsers) Block(_ context.Context, token, userID string) error {
+	f.token, f.blocked = token, userID
+	return f.err
+}
+
+func (f *fakeUsers) Unblock(_ context.Context, token, userID string) error {
+	f.token, f.unblocked = token, userID
+	return f.err
+}
+
+func (f *fakeUsers) Blacklist(_ context.Context, token, cursor string, _ int) (model.UserPage, error) {
+	f.token, f.cursor = token, cursor
+	return model.UserPage{Users: []model.PublicProfile{{ID: "u2", Profile: model.Profile{Name: "Bob", Nickname: "bob"}}}, Total: 1}, f.err
+}
+
+func (f *fakeUsers) Relation(_ context.Context, token, userID string) (model.Relation, error) {
+	f.token, f.relationWith = token, userID
+	return f.relation, f.err
 }
 
 func (f *fakeUsers) Follow(_ context.Context, token, userID string) error {
@@ -416,7 +447,14 @@ func (f *fakeNotifications) MarkRead(_ context.Context, token, id string) error 
 // account that is gone.
 type fakeMessages struct {
 	token, peerID, cursor, after, sentText, markedUpTo string
-	err                                                error
+	// peerWrote: the peer has written to the caller.
+	peerWrote bool
+	err       error
+}
+
+func (f *fakeMessages) HasMessagesFrom(_ context.Context, token, peerID string) (bool, error) {
+	f.token, f.peerID = token, peerID
+	return f.peerWrote, f.err
 }
 
 func (f *fakeMessages) Send(_ context.Context, token, recipientID, text string) (model.Message, error) {

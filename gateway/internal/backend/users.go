@@ -52,9 +52,15 @@ func (u *Users) UpdateProfile(ctx context.Context, accessToken string, p model.P
 	return toUser(resp.GetUser()), nil
 }
 
-// UpdatePrivacy: an empty WallWrite is rejected by the user service.
+// UpdatePrivacy: an empty WallWrite or MessagesWrite is rejected by the
+// user service.
 func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.Privacy) (model.User, error) {
 	wallWrite, err := enumValue(p.WallWrite, wallWritePrefix, "wall write", userv1.WallWrite_value)
+	if err != nil {
+		return model.User{}, errs.Wrap("enumValue", err)
+	}
+
+	messagesWrite, err := enumValue(p.MessagesWrite, messagesWritePrefix, "messages write", userv1.MessagesWrite_value)
 	if err != nil {
 		return model.User{}, errs.Wrap("enumValue", err)
 	}
@@ -66,6 +72,7 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 			ShowWorldview:      p.ShowWorldview,
 			ShowPoliticalViews: p.ShowPoliticalViews,
 			WallWrite:          userv1.WallWrite(wallWrite),
+			MessagesWrite:      userv1.MessagesWrite(messagesWrite),
 		},
 	})
 	if err != nil {
@@ -147,6 +154,52 @@ func (u *Users) CanPostOnWall(ctx context.Context, accessToken, userID string) (
 	return resp.GetAllowed(), nil
 }
 
+// CanMessage tells whether the caller may write to userID; wroteFirst is
+// whether userID has written to the caller, from the message service.
+func (u *Users) CanMessage(ctx context.Context, accessToken, userID string, wroteFirst bool) (bool, error) {
+	resp, err := u.api.CanMessage(withToken(ctx, accessToken), &userv1.CanMessageRequest{UserId: userID, WroteFirst: wroteFirst})
+	if err != nil {
+		return false, errs.Wrap("u.api.CanMessage", fromStatus(err))
+	}
+
+	return resp.GetAllowed(), nil
+}
+
+func (u *Users) Block(ctx context.Context, accessToken, userID string) error {
+	if _, err := u.api.Block(withToken(ctx, accessToken), &userv1.BlockRequest{UserId: userID}); err != nil {
+		return errs.Wrap("u.api.Block", fromStatus(err))
+	}
+
+	return nil
+}
+
+func (u *Users) Unblock(ctx context.Context, accessToken, userID string) error {
+	if _, err := u.api.Unblock(withToken(ctx, accessToken), &userv1.UnblockRequest{UserId: userID}); err != nil {
+		return errs.Wrap("u.api.Unblock", fromStatus(err))
+	}
+
+	return nil
+}
+
+// Blacklist is the caller's blacklist, newest block first.
+func (u *Users) Blacklist(ctx context.Context, accessToken, cursor string, limit int) (model.UserPage, error) {
+	resp, err := u.api.ListBlocked(withToken(ctx, accessToken), &userv1.ListBlockedRequest{Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.UserPage{}, errs.Wrap("u.api.ListBlocked", fromStatus(err))
+	}
+
+	return toUserPage(resp), nil
+}
+
+func (u *Users) Relation(ctx context.Context, accessToken, userID string) (model.Relation, error) {
+	resp, err := u.api.GetRelation(withToken(ctx, accessToken), &userv1.GetRelationRequest{UserId: userID})
+	if err != nil {
+		return model.Relation{}, errs.Wrap("u.api.GetRelation", fromStatus(err))
+	}
+
+	return model.Relation{BlockedByMe: resp.GetBlockedByMe(), BlockedMe: resp.GetBlockedMe()}, nil
+}
+
 func (u *Users) ListFollowers(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error) {
 	resp, err := u.api.ListFollowers(ctx, listFollowsRequest(userID, cursor, limit))
 	if err != nil {
@@ -173,7 +226,14 @@ func listFollowsRequest(userID, cursor string, limit int) *userv1.ListFollowsReq
 	}
 }
 
-func toUserPage(resp *userv1.ListFollowsResponse) model.UserPage {
+// userPageMessage is implemented by the responses that list people.
+type userPageMessage interface {
+	GetUsers() []*userv1.PublicProfile
+	GetNextCursor() string
+	GetTotal() int32
+}
+
+func toUserPage(resp userPageMessage) model.UserPage {
 	page := model.UserPage{
 		Users:      make([]model.PublicProfile, 0, len(resp.GetUsers())),
 		NextCursor: resp.GetNextCursor(),

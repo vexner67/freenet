@@ -106,6 +106,11 @@ func (a *api) createComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = a.checkNotBlocked(r, token, me.ID, r.PathValue("id")); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	c, err := a.posts.CreateComment(r.Context(), token, r.PathValue("id"), req.Text)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -115,6 +120,33 @@ func (a *api) createComment(w http.ResponseWriter, r *http.Request) {
 	c.Author = authorOf(me.ID, me.AvatarID, me.Profile)
 
 	writeJSON(w, http.StatusCreated, toCommentResponse(c))
+}
+
+// checkNotBlocked refuses a comment under the post of someone who
+// blacklisted the caller, or whom the caller blacklisted: the author of the
+// post and the owner of its wall.
+func (a *api) checkNotBlocked(r *http.Request, token, myID, postID string) error {
+	p, err := a.posts.Get(r.Context(), token, postID)
+	if err != nil {
+		return err
+	}
+
+	for _, id := range unique([]string{p.Author.ID, p.Wall.ID}) {
+		if id == myID {
+			continue
+		}
+
+		rel, err := a.users.Relation(r.Context(), token, id)
+		if err != nil {
+			return err
+		}
+
+		if rel.Blocked() {
+			return failure.New(failure.PermissionDenied, "you cannot comment on this post")
+		}
+	}
+
+	return nil
 }
 
 func (a *api) deleteComment(w http.ResponseWriter, r *http.Request) {

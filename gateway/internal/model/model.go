@@ -25,13 +25,28 @@ type Profile struct {
 }
 
 // Privacy: WallWrite is who may write on the wall besides its owner,
-// "everyone", "following" (the people the owner follows) or "only_me".
+// "everyone", "following" (the people the owner follows) or "only_me";
+// MessagesWrite who may write private messages, "everyone", "following"
+// or "nobody".
 type Privacy struct {
 	ShowBirthday       bool
 	ShowRelationship   bool
 	ShowWorldview      bool
 	ShowPoliticalViews bool
 	WallWrite          string
+	MessagesWrite      string
+}
+
+// Relation is who of the viewer and a user blacklisted the other.
+type Relation struct {
+	BlockedByMe bool
+	BlockedMe   bool
+}
+
+// Blocked: either blacklisted the other, which shuts messages, wall posts,
+// comments and follows between them.
+func (r Relation) Blocked() bool {
+	return r.BlockedByMe || r.BlockedMe
 }
 
 // User is the caller's own account. AvatarID is empty without a photo.
