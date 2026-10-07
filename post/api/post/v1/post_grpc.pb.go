@@ -23,6 +23,9 @@ const (
 	PostService_CreatePost_FullMethodName    = "/post.v1.PostService/CreatePost"
 	PostService_DeletePost_FullMethodName    = "/post.v1.PostService/DeletePost"
 	PostService_RepostPost_FullMethodName    = "/post.v1.PostService/RepostPost"
+	PostService_EditPost_FullMethodName      = "/post.v1.PostService/EditPost"
+	PostService_PinPost_FullMethodName       = "/post.v1.PostService/PinPost"
+	PostService_UnpinPost_FullMethodName     = "/post.v1.PostService/UnpinPost"
 	PostService_GetPost_FullMethodName       = "/post.v1.PostService/GetPost"
 	PostService_GetPosts_FullMethodName      = "/post.v1.PostService/GetPosts"
 	PostService_ListPosts_FullMethodName     = "/post.v1.PostService/ListPosts"
@@ -47,6 +50,14 @@ type PostServiceClient interface {
 	// Requires an access token: shares a post on the caller's own wall. A
 	// repost without text of a repost without text shares its original.
 	RepostPost(ctx context.Context, in *RepostPostRequest, opts ...grpc.CallOption) (*RepostPostResponse, error)
+	// Requires an access token: the author changes the text and photos of
+	// their post within a week of posting (editable_until); a repost keeps
+	// what it shares and takes no photos.
+	EditPost(ctx context.Context, in *EditPostRequest, opts ...grpc.CallOption) (*EditPostResponse, error)
+	// Require an access token: the owner of the wall shows the post first
+	// on it, instead of the one pinned before, or stops. Both idempotent.
+	PinPost(ctx context.Context, in *PinPostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UnpinPost(ctx context.Context, in *UnpinPostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: one post.
 	GetPost(ctx context.Context, in *GetPostRequest, opts ...grpc.CallOption) (*GetPostResponse, error)
 	// Public: at most 50 posts by ID, for the notifications page; posts that
@@ -107,6 +118,36 @@ func (c *postServiceClient) RepostPost(ctx context.Context, in *RepostPostReques
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(RepostPostResponse)
 	err := c.cc.Invoke(ctx, PostService_RepostPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) EditPost(ctx context.Context, in *EditPostRequest, opts ...grpc.CallOption) (*EditPostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditPostResponse)
+	err := c.cc.Invoke(ctx, PostService_EditPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) PinPost(ctx context.Context, in *PinPostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_PinPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) UnpinPost(ctx context.Context, in *UnpinPostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_UnpinPost_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -234,6 +275,14 @@ type PostServiceServer interface {
 	// Requires an access token: shares a post on the caller's own wall. A
 	// repost without text of a repost without text shares its original.
 	RepostPost(context.Context, *RepostPostRequest) (*RepostPostResponse, error)
+	// Requires an access token: the author changes the text and photos of
+	// their post within a week of posting (editable_until); a repost keeps
+	// what it shares and takes no photos.
+	EditPost(context.Context, *EditPostRequest) (*EditPostResponse, error)
+	// Require an access token: the owner of the wall shows the post first
+	// on it, instead of the one pinned before, or stops. Both idempotent.
+	PinPost(context.Context, *PinPostRequest) (*emptypb.Empty, error)
+	UnpinPost(context.Context, *UnpinPostRequest) (*emptypb.Empty, error)
 	// Public: one post.
 	GetPost(context.Context, *GetPostRequest) (*GetPostResponse, error)
 	// Public: at most 50 posts by ID, for the notifications page; posts that
@@ -278,6 +327,15 @@ func (UnimplementedPostServiceServer) DeletePost(context.Context, *DeletePostReq
 }
 func (UnimplementedPostServiceServer) RepostPost(context.Context, *RepostPostRequest) (*RepostPostResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method RepostPost not implemented")
+}
+func (UnimplementedPostServiceServer) EditPost(context.Context, *EditPostRequest) (*EditPostResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditPost not implemented")
+}
+func (UnimplementedPostServiceServer) PinPost(context.Context, *PinPostRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method PinPost not implemented")
+}
+func (UnimplementedPostServiceServer) UnpinPost(context.Context, *UnpinPostRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnpinPost not implemented")
 }
 func (UnimplementedPostServiceServer) GetPost(context.Context, *GetPostRequest) (*GetPostResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPost not implemented")
@@ -383,6 +441,60 @@ func _PostService_RepostPost_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).RepostPost(ctx, req.(*RepostPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_EditPost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditPostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).EditPost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_EditPost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).EditPost(ctx, req.(*EditPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_PinPost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PinPostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).PinPost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_PinPost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).PinPost(ctx, req.(*PinPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_UnpinPost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnpinPostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).UnpinPost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_UnpinPost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).UnpinPost(ctx, req.(*UnpinPostRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -603,6 +715,18 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RepostPost",
 			Handler:    _PostService_RepostPost_Handler,
+		},
+		{
+			MethodName: "EditPost",
+			Handler:    _PostService_EditPost_Handler,
+		},
+		{
+			MethodName: "PinPost",
+			Handler:    _PostService_PinPost_Handler,
+		},
+		{
+			MethodName: "UnpinPost",
+			Handler:    _PostService_UnpinPost_Handler,
 		},
 		{
 			MethodName: "GetPost",

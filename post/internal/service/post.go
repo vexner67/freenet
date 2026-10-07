@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -33,13 +34,27 @@ type PostRepository interface {
 	// GetMany returns the posts that exist, in no particular order.
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
 	Delete(ctx context.Context, id uuid.UUID) error
+	// Update saves what an edited post says; post.ErrNotFound.
+	Update(ctx context.Context, p *post.Post) error
 	// ListByWall returns up to limit posts on a wall, whoever wrote them,
-	// newest first, with IDs below before (uuid.Nil: from the newest).
+	// newest first, with IDs below before (uuid.Nil: from the newest). The
+	// pinned post is left out: the wall shows it first.
 	ListByWall(ctx context.Context, wallID, before uuid.UUID, limit int) ([]*post.Post, error)
 	CountByWall(ctx context.Context, wallID uuid.UUID) (int, error)
 	// ListByAuthors is ListByWall for the posts written by several authors,
 	// on whichever walls.
 	ListByAuthors(ctx context.Context, authorIDs []uuid.UUID, before uuid.UUID, limit int) ([]*post.Post, error)
+}
+
+// PinRepository keeps the post each wall shows first.
+type PinRepository interface {
+	// Pin pins a post on its wall instead of the one pinned before;
+	// post.ErrNotFound for a missing post.
+	Pin(ctx context.Context, id uuid.UUID) error
+	// Unpin is fine for a post that is not pinned.
+	Unpin(ctx context.Context, id uuid.UUID) error
+	// Pinned returns post.ErrNotFound when nothing is pinned on the wall.
+	Pinned(ctx context.Context, wallID uuid.UUID) (*post.Post, error)
 }
 
 type LikeRepository interface {
@@ -62,6 +77,7 @@ type Page struct {
 
 type PostService struct {
 	postRepo PostRepository
+	pinRepo  PinRepository
 	likeRepo LikeRepository
 	tx       TxManager
 	notifier Notifier
@@ -72,6 +88,7 @@ type PostService struct {
 // PostDeps are what PostService works with.
 type PostDeps struct {
 	Posts    PostRepository
+	Pins     PinRepository
 	Likes    LikeRepository
 	Tx       TxManager
 	Notifier Notifier
@@ -81,6 +98,7 @@ type PostDeps struct {
 func NewPostService(d PostDeps) *PostService {
 	return &PostService{
 		postRepo: d.Posts,
+		pinRepo:  d.Pins,
 		likeRepo: d.Likes,
 		tx:       d.Tx,
 		notifier: d.Notifier,
@@ -203,6 +221,92 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 	return nil
 }
 
+// Edit changes what a post says, by its author within a week (see
+// post.Edited). Media keeps the photos added and deletes those taken away.
+// It returns the edited post and whether the author likes it.
+func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, text post.Text, photos post.Photos) (*post.Post, bool, error) {
+	p, err := s.postRepo.Get(ctx, postID)
+	if err != nil {
+		return nil, false, errs.Wrap("s.postRepo.Get", err)
+	}
+
+	edited, err := p.Edited(requesterID, text, photos, s.now())
+	if err != nil {
+		return nil, false, errs.Wrap("p.Edited", err)
+	}
+
+	added, removed := diffPhotos(p.Content().Photos(), photos)
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.postRepo.Update(ctx, edited); err != nil {
+			return errs.Wrap("s.postRepo.Update", err)
+		}
+
+		if len(added) > 0 {
+			if err := s.photos.Publish(ctx, p.AuthorID(), added); err != nil {
+				return errs.Wrap("s.photos.Publish", err)
+			}
+		}
+
+		if len(removed) > 0 {
+			return errs.Wrap("s.photos.Delete", s.photos.Delete(ctx, p.AuthorID(), removed))
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, false, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	liked, err := s.liked(ctx, requesterID, []*post.Post{edited})
+	if err != nil {
+		return nil, false, errs.Wrap("s.liked", err)
+	}
+
+	return edited, liked[edited.ID()], nil
+}
+
+// diffPhotos tells which photos an edit adds and which it takes away.
+func diffPhotos(before, after post.Photos) (added, removed []uuid.UUID) {
+	for _, id := range after {
+		if !slices.Contains(before, id) {
+			added = append(added, id)
+		}
+	}
+
+	for _, id := range before {
+		if !slices.Contains(after, id) {
+			removed = append(removed, id)
+		}
+	}
+
+	return added, removed
+}
+
+// Pin shows a post first on its wall, instead of the one pinned before;
+// only the owner of the wall pins.
+func (s *PostService) Pin(ctx context.Context, requesterID, postID uuid.UUID) error {
+	return s.setPinned(ctx, requesterID, postID, s.pinRepo.Pin)
+}
+
+// Unpin returns a pinned post to its place on the wall.
+func (s *PostService) Unpin(ctx context.Context, requesterID, postID uuid.UUID) error {
+	return s.setPinned(ctx, requesterID, postID, s.pinRepo.Unpin)
+}
+
+func (s *PostService) setPinned(ctx context.Context, requesterID, postID uuid.UUID, set func(context.Context, uuid.UUID) error) error {
+	p, err := s.postRepo.Get(ctx, postID)
+	if err != nil {
+		return errs.Wrap("s.postRepo.Get", err)
+	}
+
+	if !p.CanBePinnedBy(requesterID) {
+		return post.ErrCannotPin
+	}
+
+	return errs.Wrap("set", set(ctx, postID))
+}
+
 // Get returns a post and whether viewerID likes it; viewerID is uuid.Nil
 // for an anonymous viewer.
 func (s *PostService) Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error) {
@@ -308,7 +412,8 @@ func likeEvent(p *post.Post, userID uuid.UUID) (Event, bool) {
 }
 
 // ListWall pages a wall by keyset: cursor is the ID of the last post of
-// the previous page, so new posts never shift the pages.
+// the previous page, so new posts never shift the pages. The pinned post
+// comes first on the first page, on top of size others.
 func (s *PostService) ListWall(ctx context.Context, viewerID, wallID, cursor uuid.UUID, size int) (Page, error) {
 	if size <= 0 || size > MaxPageSize {
 		size = DefaultPageSize
@@ -318,6 +423,13 @@ func (s *PostService) ListWall(ctx context.Context, viewerID, wallID, cursor uui
 	posts, err := s.postRepo.ListByWall(ctx, wallID, cursor, size+1)
 	if err != nil {
 		return Page{}, errs.Wrap("s.postRepo.ListByWall", err)
+	}
+
+	var pinned *post.Post
+	if cursor == uuid.Nil {
+		if pinned, err = s.pinRepo.Pinned(ctx, wallID); err != nil && !errors.Is(err, post.ErrNotFound) {
+			return Page{}, errs.Wrap("s.pinRepo.Pinned", err)
+		}
 	}
 
 	total, err := s.postRepo.CountByWall(ctx, wallID)
@@ -330,6 +442,10 @@ func (s *PostService) ListWall(ctx context.Context, viewerID, wallID, cursor uui
 	if len(posts) > size {
 		page.Posts = posts[:size]
 		page.NextCursor = posts[size-1].ID()
+	}
+
+	if pinned != nil {
+		page.Posts = append([]*post.Post{pinned}, page.Posts...)
 	}
 
 	if page.Liked, err = s.liked(ctx, viewerID, page.Posts); err != nil {

@@ -19,6 +19,7 @@ type Store struct {
 	posts    map[uuid.UUID]*post.Post
 	likes    map[uuid.UUID]map[uuid.UUID]struct{} // post → users
 	comments map[uuid.UUID]*post.Comment
+	pins     map[uuid.UUID]uuid.UUID // wall → its pinned post
 }
 
 func NewStore() *Store {
@@ -26,6 +27,7 @@ func NewStore() *Store {
 		posts:    make(map[uuid.UUID]*post.Post),
 		likes:    make(map[uuid.UUID]map[uuid.UUID]struct{}),
 		comments: make(map[uuid.UUID]*post.Comment),
+		pins:     make(map[uuid.UUID]uuid.UUID),
 	}
 }
 
@@ -44,10 +46,27 @@ func (s *Store) Comments() *CommentRepository {
 // count replaces a post with a copy whose counters are changed by update;
 // posts are immutable, so callers may keep the pointers they got.
 func (s *Store) count(id uuid.UUID, update func(*post.Counters)) {
-	p := s.posts[id]
-	counters := p.Counters()
-	update(&counters)
-	s.posts[id] = post.Restore(p.ID(), p.WallID(), p.AuthorID(), p.Content(), p.CreatedAt(), counters)
+	stored := s.posts[id].Stored()
+	update(&stored.Counters)
+	s.posts[id] = post.Restore(stored)
+}
+
+// setPinned replaces a post with a copy pinned or not, as count does.
+func (s *Store) setPinned(id uuid.UUID, pinned bool) {
+	stored := s.posts[id].Stored()
+	stored.Pinned = pinned
+	s.posts[id] = post.Restore(stored)
+}
+
+// remove deletes a post with its likes and pin; its comments the caller
+// deletes.
+func (s *Store) remove(p *post.Post) {
+	delete(s.posts, p.ID())
+	delete(s.likes, p.ID())
+
+	if s.pins[p.WallID()] == p.ID() {
+		delete(s.pins, p.WallID())
+	}
 }
 
 type PostRepository struct {
@@ -126,8 +145,7 @@ func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 		r.s.count(shared, func(c *post.Counters) { c.Reposts-- })
 	}
 
-	delete(r.s.posts, id)
-	delete(r.s.likes, id)
+	r.s.remove(p)
 
 	for commentID, c := range r.s.comments {
 		if c.PostID() == id {
@@ -138,8 +156,88 @@ func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+// ListByWall leaves out the pinned post, which the wall shows first.
 func (r *PostRepository) ListByWall(ctx context.Context, wallID, before uuid.UUID, limit int) ([]*post.Post, error) {
-	return r.list(ctx, func(p *post.Post) bool { return p.WallID() == wallID }, before, limit)
+	return r.list(ctx, func(p *post.Post) bool { return p.WallID() == wallID && !p.Pinned() }, before, limit)
+}
+
+func (r *PostRepository) Update(ctx context.Context, p *post.Post) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	old, ok := r.s.posts[p.ID()]
+	if !ok {
+		return post.ErrNotFound
+	}
+
+	// Only what an edit changes: the counters and pin are the store's.
+	stored := old.Stored()
+	stored.Content, stored.EditedAt = p.Content(), p.EditedAt()
+	r.s.posts[p.ID()] = post.Restore(stored)
+
+	return nil
+}
+
+func (r *PostRepository) Pin(ctx context.Context, id uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	p, ok := r.s.posts[id]
+	if !ok {
+		return post.ErrNotFound
+	}
+
+	if before, ok := r.s.pins[p.WallID()]; ok && before != id {
+		r.s.setPinned(before, false)
+	}
+
+	r.s.pins[p.WallID()] = id
+	r.s.setPinned(id, true)
+
+	return nil
+}
+
+func (r *PostRepository) Unpin(ctx context.Context, id uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	p, ok := r.s.posts[id]
+	if !ok || r.s.pins[p.WallID()] != id {
+		return nil
+	}
+
+	delete(r.s.pins, p.WallID())
+	r.s.setPinned(id, false)
+
+	return nil
+}
+
+func (r *PostRepository) Pinned(ctx context.Context, wallID uuid.UUID) (*post.Post, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	id, ok := r.s.pins[wallID]
+	if !ok {
+		return nil, post.ErrNotFound
+	}
+
+	return r.s.posts[id], nil
 }
 
 func (r *PostRepository) ListByAuthors(ctx context.Context, authorIDs []uuid.UUID, before uuid.UUID, limit int) ([]*post.Post, error) {
@@ -217,8 +315,7 @@ func (r *PostRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]
 	}
 
 	for _, p := range deleted {
-		delete(r.s.posts, p.ID())
-		delete(r.s.likes, p.ID())
+		r.s.remove(p)
 	}
 
 	for commentID, c := range r.s.comments {

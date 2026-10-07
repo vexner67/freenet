@@ -231,3 +231,92 @@ func TestPost_Shared(t *testing.T) {
 		t.Fatal("a repost with a word of its own is shared itself")
 	}
 }
+
+func TestPost_Edited(t *testing.T) {
+	t.Parallel()
+
+	author, owner := uuid.New(), uuid.New()
+	posted := time.Date(2026, 10, 4, 18, 30, 0, 0, time.UTC)
+	photo := uuid.New()
+
+	p, err := post.New(owner, author, textOnly(t, "привет"), posted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	repost, err := post.New(author, author, mustRepost(t, uuid.New(), "смотрите"), posted)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name   string
+		p      *post.Post
+		editor uuid.UUID
+		text   post.Text
+		photos post.Photos
+		at     time.Time
+		err    error
+	}{
+		{"the author fixes a typo", p, author, "превед", nil, posted.Add(time.Hour), nil},
+		{"photos instead of text", p, author, "", post.Photos{photo}, posted.Add(time.Hour), nil},
+		{"on the last second of the week", p, author, "ок", nil, posted.Add(7 * 24 * time.Hour), nil},
+		{"after a week", p, author, "поздно", nil, posted.Add(7*24*time.Hour + time.Second), post.ErrEditExpired},
+		{"the owner of the wall does not edit others' words", p, owner, "чужое", nil, posted.Add(time.Hour), post.ErrCannotEdit},
+		{"nothing left", p, author, "", nil, posted.Add(time.Hour), post.ErrTextEmpty},
+		{"a repost changes its words", repost, author, "лучше так", nil, posted.Add(time.Hour), nil},
+		{"a repost may say nothing", repost, author, "", nil, posted.Add(time.Hour), nil},
+		{"a repost takes no photos", repost, author, "", post.Photos{photo}, posted.Add(time.Hour), post.ErrRepostPhotos},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			edited, err := tt.p.Edited(tt.editor, tt.text, tt.photos, tt.at)
+			if !errors.Is(err, tt.err) {
+				t.Fatalf("Edited: %v, want %v", err, tt.err)
+			}
+			if err != nil {
+				return
+			}
+
+			if c := edited.Content(); c.Text() != tt.text || len(c.Photos()) != len(tt.photos) || c.RepostOf() != tt.p.Content().RepostOf() {
+				t.Fatalf("edited content = %+v", c)
+			}
+			if !edited.EditedAt().Equal(tt.at) || edited.ID() != tt.p.ID() || edited.CreatedAt() != tt.p.CreatedAt() {
+				t.Fatalf("edited at %v, id %v; want %v, the same post", edited.EditedAt(), edited.ID(), tt.at)
+			}
+			if !tt.p.EditedAt().IsZero() {
+				t.Fatal("the original post changed: readers may hold it")
+			}
+		})
+	}
+}
+
+func TestPost_Pinning(t *testing.T) {
+	t.Parallel()
+
+	author, owner := uuid.New(), uuid.New()
+	p, err := post.New(owner, author, textOnly(t, "в гостях"), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !p.CanBePinnedBy(owner) || p.CanBePinnedBy(author) {
+		t.Fatal("the owner of the wall pins on it, whoever wrote the post")
+	}
+	if p.Pinned() || !p.EditableUntil().Equal(p.CreatedAt().Add(7*24*time.Hour)) {
+		t.Fatalf("pinned %v, editable until %v", p.Pinned(), p.EditableUntil())
+	}
+}
+
+func mustRepost(t *testing.T, of uuid.UUID, text post.Text) post.Content {
+	t.Helper()
+
+	c, err := post.NewRepost(of, text)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return c
+}

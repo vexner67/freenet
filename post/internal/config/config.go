@@ -52,6 +52,7 @@ type Config struct {
 	PostLimits    ratelimit.Rules `env:"RATE_LIMIT_POSTS" envDefault:"5/1m,100/24h"`
 	CommentLimits ratelimit.Rules `env:"RATE_LIMIT_COMMENTS" envDefault:"20/1m,500/24h"`
 	LikeLimits    ratelimit.Rules `env:"RATE_LIMIT_LIKES" envDefault:"60/1m,1000/24h"`
+	EditLimits    ratelimit.Rules `env:"RATE_LIMIT_POST_EDITS" envDefault:"10/1m,200/24h"`
 
 	// Access tokens are issued by the auth service; post only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`

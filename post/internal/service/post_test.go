@@ -104,7 +104,7 @@ func (fakeTx) WithinTx(ctx context.Context, fn func(ctx context.Context) error) 
 
 func newPostService() *service.PostService {
 	store := inmem.NewStore()
-	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}})
+	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}})
 }
 
 func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...string) []*post.Post {
@@ -341,7 +341,7 @@ func TestPostService_NotifiesAboutLikes(t *testing.T) {
 
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
 	p := write(t, svc, ann, "привет")[0]
@@ -395,7 +395,7 @@ func TestPostService_NotifierFailureFailsTheChange(t *testing.T) {
 
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
 	p := write(t, svc, ann, "привет")[0]
@@ -444,7 +444,7 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	write(t, svc, ann, "своё")
@@ -502,7 +502,7 @@ func TestPostService_Repost(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	original := write(t, svc, ann, "оригинал")[0]
@@ -572,7 +572,7 @@ func TestPostService_Photos(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos})
 	owner, author := uuid.New(), uuid.New()
 	ids := []uuid.UUID{uuid.New(), uuid.New()}
 
@@ -605,5 +605,141 @@ func TestPostService_Photos(t *testing.T) {
 	photos.err = errors.New("outbox is down")
 	if _, err = svc.Create(ctx, author, author, withPhotos); !errors.Is(err, photos.err) {
 		t.Fatalf("Create with a broken outbox: %v", err)
+	}
+}
+
+func TestPostService_Edit(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	photos := &fakePhotos{}
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos})
+	author, stranger := uuid.New(), uuid.New()
+	kept, dropped, added := uuid.New(), uuid.New(), uuid.New()
+
+	content, err := post.NewContent("было", post.Photos{kept, dropped})
+	if err != nil {
+		t.Fatal(err)
+	}
+	p, err := svc.Create(ctx, author, author, content)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.Like(ctx, author, p.ID()); err != nil {
+		t.Fatal(err)
+	}
+	photos.published = nil
+
+	if _, _, err = svc.Edit(ctx, stranger, p.ID(), "чужое", nil); !errors.Is(err, post.ErrCannotEdit) {
+		t.Fatalf("a stranger edits: %v", err)
+	}
+
+	edited, liked, err := svc.Edit(ctx, author, p.ID(), "стало", post.Photos{added, kept})
+	if err != nil {
+		t.Fatalf("Edit: %v", err)
+	}
+	if !liked || edited.EditedAt().IsZero() || edited.Content().Text() != "стало" {
+		t.Fatalf("edited = %+v, liked %v", edited.Content(), liked)
+	}
+
+	got, _, err := svc.Get(ctx, uuid.Nil, p.ID())
+	if err != nil || got.Content().Text() != "стало" || !slices.Equal(got.Content().Photos(), post.Photos{added, kept}) || got.Counters().Likes != 1 {
+		t.Fatalf("stored post = %+v, %+v, %v", got.Content(), got.Counters(), err)
+	}
+
+	// Media keeps the new photo and deletes the one taken away, in the
+	// transaction of the edit.
+	if len(photos.published) != 1 || !slices.Equal(photos.published[0].photos, []uuid.UUID{added}) {
+		t.Errorf("published = %+v, want the added photo", photos.published)
+	}
+	if len(photos.deleted) != 1 || photos.deleted[0].owner != author || !slices.Equal(photos.deleted[0].photos, []uuid.UUID{dropped}) {
+		t.Errorf("deleted = %+v, want the dropped photo", photos.deleted)
+	}
+	if photos.outsideTx != 0 {
+		t.Errorf("%d photo calls outside the transaction", photos.outsideTx)
+	}
+
+	if _, _, err = svc.Edit(ctx, author, uuid.New(), "нет", nil); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("a missing post: %v", err)
+	}
+}
+
+func TestPostService_Pin(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newPostService()
+	owner, guest := uuid.New(), uuid.New()
+	posts := write(t, svc, owner, "первая", "вторая", "третья", "четвёртая")
+	first, third := posts[0], posts[2]
+
+	if err := svc.Pin(ctx, guest, first.ID()); !errors.Is(err, post.ErrCannotPin) {
+		t.Fatalf("a guest pins: %v", err)
+	}
+	if err := svc.Pin(ctx, owner, uuid.New()); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("pin a missing post: %v", err)
+	}
+
+	for range 2 { // idempotent
+		if err := svc.Pin(ctx, owner, first.ID()); err != nil {
+			t.Fatalf("Pin: %v", err)
+		}
+	}
+
+	page, err := svc.ListWall(ctx, uuid.Nil, owner, uuid.Nil, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := texts(page.Posts); !slices.Equal(got, []string{"первая", "четвёртая", "третья"}) || !page.Posts[0].Pinned() {
+		t.Fatalf("first page = %v; want the pinned post on top of two others", got)
+	}
+	if page.Total != 4 {
+		t.Fatalf("total = %d, the pinned post counts", page.Total)
+	}
+
+	next, err := svc.ListWall(ctx, uuid.Nil, owner, page.NextCursor, 2)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := texts(next.Posts); !slices.Equal(got, []string{"вторая"}) {
+		t.Fatalf("next page = %v; the pinned post is not shown twice", got)
+	}
+
+	// Pinning another replaces it; unpinning returns it to its place.
+	if err = svc.Pin(ctx, owner, third.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if page, err = svc.ListWall(ctx, uuid.Nil, owner, uuid.Nil, 10); err != nil {
+		t.Fatal(err)
+	}
+	if got := texts(page.Posts); !slices.Equal(got, []string{"третья", "четвёртая", "вторая", "первая"}) {
+		t.Fatalf("after pinning the third = %v", got)
+	}
+
+	if err = svc.Unpin(ctx, guest, third.ID()); !errors.Is(err, post.ErrCannotPin) {
+		t.Fatalf("a guest unpins: %v", err)
+	}
+	for range 2 {
+		if err = svc.Unpin(ctx, owner, third.ID()); err != nil {
+			t.Fatalf("Unpin: %v", err)
+		}
+	}
+	if page, err = svc.ListWall(ctx, uuid.Nil, owner, uuid.Nil, 10); err != nil {
+		t.Fatal(err)
+	}
+	if got := texts(page.Posts); !slices.Equal(got, []string{"четвёртая", "третья", "вторая", "первая"}) || page.Posts[1].Pinned() {
+		t.Fatalf("after unpinning = %v", got)
+	}
+
+	// A deleted pinned post takes its pin with it.
+	if err = svc.Pin(ctx, owner, first.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Delete(ctx, owner, first.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if page, err = svc.ListWall(ctx, uuid.Nil, owner, uuid.Nil, 10); err != nil || len(page.Posts) != 3 {
+		t.Fatalf("after deleting the pinned post: %v, %v", texts(page.Posts), err)
 	}
 }

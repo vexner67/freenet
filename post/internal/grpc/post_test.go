@@ -52,10 +52,10 @@ func newServer(t *testing.T) testServer {
 	))
 	store := inmem.NewStore()
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(
-		service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}}),
+		service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}}),
 		service.NewCommentService(store.Posts(), store.Comments(), inmem.TxManager{}, notifyclient.Nop{}),
 		service.NewPurgeService(service.PurgeDeps{
-			Posts: store.Posts(), Likes: store.Likes(), Comments: store.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
+			Posts: store.Posts(), Likes: store.Likes(), Comments: store.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
 		}),
 		log,
 	))
@@ -399,5 +399,79 @@ func TestRepostPost(t *testing.T) {
 				t.Fatalf("code = %v, want %v", got, tt.code)
 			}
 		})
+	}
+}
+
+func TestEditAndPin(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	// Bob writes on ann's wall.
+	created, err := s.client.CreatePost(s.as(t, bob), &postv1.CreatePostRequest{Text: "привет", WallId: ann.String()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := created.GetPost().GetId()
+	if created.GetPost().GetEditedAt() != nil || created.GetPost().GetEditableUntil() == nil {
+		t.Fatalf("new post: edited at %v, editable until %v", created.GetPost().GetEditedAt(), created.GetPost().GetEditableUntil())
+	}
+
+	edited, err := s.client.EditPost(s.as(t, bob), &postv1.EditPostRequest{Id: id, Text: "  привет, Аня \r\n"})
+	if err != nil {
+		t.Fatalf("EditPost: %v", err)
+	}
+	if p := edited.GetPost(); p.GetText() != "привет, Аня" || p.GetEditedAt() == nil {
+		t.Fatalf("edited post = %v", p)
+	}
+
+	for _, tt := range []struct {
+		name string
+		call func() error
+		code codes.Code
+	}{
+		{"the owner of the wall does not edit bob's words", func() error {
+			_, err := s.client.EditPost(s.as(t, ann), &postv1.EditPostRequest{Id: id, Text: "иначе"})
+			return err
+		}, codes.PermissionDenied},
+		{"nothing left", func() error {
+			_, err := s.client.EditPost(s.as(t, bob), &postv1.EditPostRequest{Id: id, Text: " "})
+			return err
+		}, codes.InvalidArgument},
+		{"a bad photo", func() error {
+			_, err := s.client.EditPost(s.as(t, bob), &postv1.EditPostRequest{Id: id, PhotoIds: []string{"x"}})
+			return err
+		}, codes.InvalidArgument},
+		{"edit without a token", func() error {
+			_, err := s.client.EditPost(context.Background(), &postv1.EditPostRequest{Id: id, Text: "x"})
+			return err
+		}, codes.Unauthenticated},
+		{"bob does not pin on ann's wall", func() error {
+			_, err := s.client.PinPost(s.as(t, bob), &postv1.PinPostRequest{Id: id})
+			return err
+		}, codes.PermissionDenied},
+		{"pin a missing post", func() error {
+			_, err := s.client.PinPost(s.as(t, ann), &postv1.PinPostRequest{Id: uuid.NewString()})
+			return err
+		}, codes.NotFound},
+	} {
+		if err := tt.call(); status.Code(err) != tt.code {
+			t.Errorf("%s: %v, want %v", tt.name, err, tt.code)
+		}
+	}
+
+	if _, err = s.client.PinPost(s.as(t, ann), &postv1.PinPostRequest{Id: id}); err != nil {
+		t.Fatalf("PinPost: %v", err)
+	}
+	got, err := s.client.GetPost(context.Background(), &postv1.GetPostRequest{Id: id})
+	if err != nil || !got.GetPost().GetPinned() {
+		t.Fatalf("GetPost of the pinned post = %v, %v", got, err)
+	}
+	if _, err = s.client.UnpinPost(s.as(t, ann), &postv1.UnpinPostRequest{Id: id}); err != nil {
+		t.Fatalf("UnpinPost: %v", err)
+	}
+	if got, _ = s.client.GetPost(context.Background(), &postv1.GetPostRequest{Id: id}); got.GetPost().GetPinned() {
+		t.Fatal("the post is still pinned")
 	}
 }

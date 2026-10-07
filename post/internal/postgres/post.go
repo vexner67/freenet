@@ -70,13 +70,7 @@ const saveRepostQuery = `
 func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	content := p.Content()
 
-	// pgx writes a nil slice as NULL; the column wants an empty array.
-	photos := []uuid.UUID(content.Photos())
-	if photos == nil {
-		photos = []uuid.UUID{}
-	}
-
-	args := []any{p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photos, p.CreatedAt()}
+	args := []any{p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photoIDs(content.Photos()), p.CreatedAt()}
 
 	if content.RepostOf() == uuid.Nil {
 		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, args...); err != nil {
@@ -109,7 +103,9 @@ const getPostQuery = `
 		repost_of,
 		like_count,
 		comment_count,
-		repost_count
+		repost_count,
+		edited_at,
+		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = $1
 `
@@ -137,7 +133,9 @@ const getPostsQuery = `
 		repost_of,
 		like_count,
 		comment_count,
-		repost_count
+		repost_count,
+		edited_at,
+		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = ANY($1)
 `
@@ -182,6 +180,100 @@ func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
+const updatePostQuery = `
+	UPDATE posts
+	SET text = $2,
+		photo_ids = $3,
+		edited_at = $4
+	WHERE id = $1
+`
+
+// Update saves what an edited post says.
+func (r *PostRepository) Update(ctx context.Context, p *post.Post) error {
+	content := p.Content()
+
+	tag, err := r.conn(ctx).Exec(ctx, updatePostQuery, p.ID(), content.Text().String(), photoIDs(content.Photos()), p.EditedAt())
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return post.ErrNotFound
+	}
+
+	return nil
+}
+
+// pinPostQuery pins a post on its own wall, replacing the post pinned
+// there before; nothing when the post is gone.
+const pinPostQuery = `
+	INSERT INTO pinned_posts (
+		wall_id,
+		post_id
+	)
+	SELECT wall_id, id
+	FROM posts
+	WHERE id = $1
+	ON CONFLICT (wall_id) DO UPDATE
+	SET post_id = EXCLUDED.post_id
+`
+
+func (r *PostRepository) Pin(ctx context.Context, id uuid.UUID) error {
+	tag, err := r.conn(ctx).Exec(ctx, pinPostQuery, id)
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return post.ErrNotFound
+	}
+
+	return nil
+}
+
+const unpinPostQuery = `
+	DELETE FROM pinned_posts
+	WHERE post_id = $1
+`
+
+func (r *PostRepository) Unpin(ctx context.Context, id uuid.UUID) error {
+	if _, err := r.conn(ctx).Exec(ctx, unpinPostQuery, id); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}
+
+const getPinnedPostQuery = `
+	SELECT
+		id,
+		wall_id,
+		author_id,
+		text,
+		photo_ids,
+		created_at,
+		repost_of,
+		like_count,
+		comment_count,
+		repost_count,
+		edited_at,
+		true AS pinned
+	FROM posts
+	WHERE id = (SELECT post_id FROM pinned_posts WHERE wall_id = $1)
+`
+
+func (r *PostRepository) Pinned(ctx context.Context, wallID uuid.UUID) (*post.Post, error) {
+	p, err := scanPost(r.conn(ctx).QueryRow(ctx, getPinnedPostQuery, wallID))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, post.ErrNotFound
+	}
+	if err != nil {
+		return nil, errs.Wrap("scanPost", err)
+	}
+
+	return p, nil
+}
+
 const listPostsByWallQuery = `
 	SELECT
 		id,
@@ -193,14 +285,18 @@ const listPostsByWallQuery = `
 		repost_of,
 		like_count,
 		comment_count,
-		repost_count
+		repost_count,
+		edited_at,
+		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE wall_id = $1
 		AND id < $2
+		AND id IS DISTINCT FROM (SELECT post_id FROM pinned_posts WHERE wall_id = $1)
 	ORDER BY id DESC
 	LIMIT $3
 `
 
+// ListByWall leaves out the pinned post, which the wall shows first.
 func (r *PostRepository) ListByWall(ctx context.Context, wallID, before uuid.UUID, limit int) ([]*post.Post, error) {
 	return r.list(ctx, listPostsByWallQuery, wallID, before, limit)
 }
@@ -231,7 +327,9 @@ const listPostsByAuthorsQuery = `
 		repost_of,
 		like_count,
 		comment_count,
-		repost_count
+		repost_count,
+		edited_at,
+		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE author_id = ANY($1)
 		AND id < $2
@@ -259,6 +357,16 @@ func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID) (int
 	return count, nil
 }
 
+// photoIDs is photos for the photo_ids column: pgx writes a nil slice as
+// NULL, the column wants an empty array.
+func photoIDs(photos post.Photos) []uuid.UUID {
+	if photos == nil {
+		return []uuid.UUID{}
+	}
+
+	return photos
+}
+
 // collectPosts reads the posts of rows and closes them.
 func collectPosts(rows pgx.Rows) ([]*post.Post, error) {
 	defer rows.Close()
@@ -281,15 +389,15 @@ func collectPosts(rows pgx.Rows) ([]*post.Post, error) {
 
 func scanPost(row pgx.Row) (*post.Post, error) {
 	var (
-		id, wallID, authorID uuid.UUID
-		text                 string
-		photos               []uuid.UUID
-		createdAt            time.Time
-		repostOf             *uuid.UUID
-		counters             post.Counters
+		s        post.Stored
+		text     string
+		photos   []uuid.UUID
+		repostOf *uuid.UUID
+		editedAt *time.Time
 	)
 
-	err := row.Scan(&id, &wallID, &authorID, &text, &photos, &createdAt, &repostOf, &counters.Likes, &counters.Comments, &counters.Reposts)
+	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
+		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -304,9 +412,13 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 		shared = *repostOf
 	}
 
-	content := post.RestoreContent(post.Text(text), post.Photos(photos), shared)
+	s.Content = post.RestoreContent(post.Text(text), post.Photos(photos), shared)
+	s.CreatedAt = s.CreatedAt.UTC()
+	if editedAt != nil {
+		s.EditedAt = editedAt.UTC()
+	}
 
-	return post.Restore(id, wallID, authorID, content, createdAt.UTC(), counters), nil
+	return post.Restore(s), nil
 }
 
 // deletePostsByUserQuery deletes the posts a user wrote and those on their
@@ -328,7 +440,9 @@ const deletePostsByUserQuery = `
 			repost_of,
 			like_count,
 			comment_count,
-			repost_count
+			repost_count,
+			edited_at,
+			EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	), uncounted AS (
 		UPDATE posts p
 		SET repost_count = p.repost_count - d.n
@@ -352,7 +466,9 @@ const deletePostsByUserQuery = `
 		repost_of,
 		like_count,
 		comment_count,
-		repost_count
+		repost_count,
+		edited_at,
+		pinned
 	FROM deleted
 `
 
