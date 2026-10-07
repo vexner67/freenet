@@ -23,6 +23,13 @@ service MessageService {
   // Requires an access token: whether the peer has ever written to the
   // caller, who may then answer whatever the peer's privacy.
   rpc HasMessagesFrom(HasMessagesFromRequest) returns (HasMessagesFromResponse);
+
+  // Requires an access token: the caller's events as they happen — new
+  // messages of their dialogs, sent or received, and read marks that move.
+  // Best effort: the stream ends with Unauthenticated when the token
+  // expires and with ResourceExhausted when the caller falls behind; then
+  // subscribe again and catch up with ListMessages and ListDialogs.
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
 }
 
 message Message {
@@ -101,4 +108,20 @@ message HasMessagesFromRequest {
 
 message HasMessagesFromResponse {
   bool has_messages = 1;
+}
+
+message SubscribeRequest {}
+
+message SubscribeResponse {
+  oneof event {
+    Message message = 1;
+    ReadMark read = 2;
+  }
+}
+
+// reader_id has read the dialog with peer_id up to up_to_id.
+message ReadMark {
+  string reader_id = 1;
+  string peer_id = 2;
+  string up_to_id = 3;
 }

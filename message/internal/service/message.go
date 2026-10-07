@@ -60,22 +60,45 @@ type HistoryPage struct {
 	NextCursor uuid.UUID
 }
 
+// Event is what happened in a user's dialogs, for live updates: a new
+// message, sent or received, or a read mark that moved.
+type Event struct {
+	Message *message.Message
+	Read    *ReadMark
+}
+
+// ReadMark: ReaderID has read the dialog with PeerID up to UpTo.
+type ReadMark struct {
+	ReaderID uuid.UUID
+	PeerID   uuid.UUID
+	UpTo     uuid.UUID
+}
+
+// Events delivers live updates within this process (pkg/pubsub): best
+// effort, as a subscriber catches up from storage after any gap.
+type Events interface {
+	Publish(userID uuid.UUID, e Event)
+	Subscribe(userID uuid.UUID) (<-chan Event, func())
+}
+
 type MessageService struct {
 	messageRepo MessageRepository
 	dialogRepo  DialogRepository
+	events      Events
 	now         func() time.Time
 }
 
-func NewMessageService(messageRepo MessageRepository, dialogRepo DialogRepository) *MessageService {
+func NewMessageService(messageRepo MessageRepository, dialogRepo DialogRepository, events Events) *MessageService {
 	return &MessageService{
 		messageRepo: messageRepo,
 		dialogRepo:  dialogRepo,
+		events:      events,
 		now:         time.Now,
 	}
 }
 
 // Send writes from senderID to recipientID; the caller has made sure the
-// recipient exists.
+// recipient exists. Both hear of it: the sender's other pages too.
 func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UUID, text message.Text) (*message.Message, error) {
 	m, err := message.New(senderID, recipientID, text, s.now())
 	if err != nil {
@@ -85,6 +108,9 @@ func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UU
 	if err = s.messageRepo.Save(ctx, m); err != nil {
 		return nil, errs.Wrap("s.messageRepo.Save", err)
 	}
+
+	s.events.Publish(senderID, Event{Message: m})
+	s.events.Publish(recipientID, Event{Message: m})
 
 	return m, nil
 }
@@ -163,9 +189,6 @@ func (s *MessageService) Newer(ctx context.Context, userID, peerID, after uuid.U
 	return HistoryPage{Messages: messages, Marks: marks}, nil
 }
 
-// MarkRead reads the dialog up to upTo, a message from the peer to the
-// user: an ID made up "in the future" would mark every message still to
-// come as read.
 // HasMessagesFrom tells whether peerID has ever written to userID: whom
 // the user wrote to may answer whatever their privacy, which the user
 // service decides.
@@ -178,6 +201,10 @@ func (s *MessageService) HasMessagesFrom(ctx context.Context, userID, peerID uui
 	return ok, nil
 }
 
+// MarkRead reads the dialog up to upTo, a message from the peer to the
+// user: an ID made up "in the future" would mark every message still to
+// come as read. Both sides hear of it: the peer's messages show as read,
+// the user's other pages update their counters.
 func (s *MessageService) MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error {
 	m, err := s.messageRepo.Get(ctx, upTo)
 	if err != nil {
@@ -192,7 +219,18 @@ func (s *MessageService) MarkRead(ctx context.Context, userID, peerID, upTo uuid
 		return errs.Wrap("s.dialogRepo.MarkRead", err)
 	}
 
+	read := Event{Read: &ReadMark{ReaderID: userID, PeerID: peerID, UpTo: upTo}}
+	s.events.Publish(userID, read)
+	s.events.Publish(peerID, read)
+
 	return nil
+}
+
+// Subscribe streams userID's events from now on until cancel, which must
+// be called; the channel also closes when the subscriber falls behind and
+// has to catch up from storage.
+func (s *MessageService) Subscribe(userID uuid.UUID) (<-chan Event, func()) {
+	return s.events.Subscribe(userID)
 }
 
 func pageSize(size int) int {

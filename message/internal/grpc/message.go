@@ -22,6 +22,7 @@ type MessageService interface {
 	Newer(ctx context.Context, userID, peerID, after uuid.UUID, size int) (service.HistoryPage, error)
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
 	HasMessagesFrom(ctx context.Context, userID, peerID uuid.UUID) (bool, error)
+	Subscribe(userID uuid.UUID) (<-chan service.Event, func())
 }
 
 type MessageHandler struct {
@@ -162,6 +163,35 @@ func (h *MessageHandler) HasMessagesFrom(ctx context.Context, req *messagev1.Has
 	}
 
 	return &messagev1.HasMessagesFromResponse{HasMessages: ok}, nil
+}
+
+// Subscribe streams the caller's events until the token expires (the
+// stream's deadline), the client leaves or the server stops, or the caller
+// falls behind and has to catch up from storage.
+func (h *MessageHandler) Subscribe(_ *messagev1.SubscribeRequest, stream messagev1.MessageService_SubscribeServer) error {
+	ctx := stream.Context()
+
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
+	events, cancel := h.messageService.Subscribe(userID)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return jwtauth.StreamEnd(ctx)
+		case e, ok := <-events:
+			if !ok {
+				return status.Error(codes.ResourceExhausted, "fell behind, subscribe again")
+			}
+			if err = stream.Send(toProtoEvent(e)); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 func (h *MessageHandler) MarkDialogRead(ctx context.Context, req *messagev1.MarkDialogReadRequest) (*emptypb.Empty, error) {

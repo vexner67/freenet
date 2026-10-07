@@ -9,11 +9,12 @@ import (
 	"github.com/vexner67/freenet/message/internal/inmem"
 	"github.com/vexner67/freenet/message/internal/message"
 	"github.com/vexner67/freenet/message/internal/service"
+	"github.com/vexner67/freenet/pkg/pubsub"
 )
 
 func newService() *service.MessageService {
 	store := inmem.NewStore()
-	return service.NewMessageService(store.Messages(), store.Dialogs())
+	return service.NewMessageService(store.Messages(), store.Dialogs(), pubsub.New[uuid.UUID, service.Event](64))
 }
 
 func send(t *testing.T, svc *service.MessageService, from, to uuid.UUID, texts ...string) []*message.Message {
@@ -282,5 +283,47 @@ func TestMessageService_HasMessagesFrom(t *testing.T) {
 	}
 	if has(ann, bob) {
 		t.Fatal("bob has not written to ann yet")
+	}
+}
+
+func TestMessageService_Events(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newService()
+	ann, bob := uuid.New(), uuid.New()
+
+	annEvents, cancelAnn := svc.Subscribe(ann)
+	defer cancelAnn()
+	bobEvents, cancelBob := svc.Subscribe(bob)
+	defer cancelBob()
+
+	m := send(t, svc, bob, ann, "привет")[0]
+
+	for name, events := range map[string]<-chan service.Event{"recipient": annEvents, "sender": bobEvents} {
+		if e := <-events; e.Message == nil || e.Message.ID() != m.ID() {
+			t.Fatalf("%s got %+v, want the message", name, e)
+		}
+	}
+
+	if err := svc.MarkRead(ctx, ann, bob, m.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	want := service.ReadMark{ReaderID: ann, PeerID: bob, UpTo: m.ID()}
+	for name, events := range map[string]<-chan service.Event{"reader": annEvents, "peer": bobEvents} {
+		if e := <-events; e.Read == nil || *e.Read != want {
+			t.Fatalf("%s got %+v, want read mark %+v", name, e, want)
+		}
+	}
+
+	// A failed mark tells nobody.
+	if err := svc.MarkRead(ctx, bob, ann, m.ID()); err == nil {
+		t.Fatal("bob cannot mark his own message read")
+	}
+	select {
+	case e := <-annEvents:
+		t.Fatalf("unexpected event %+v", e)
+	default:
 	}
 }

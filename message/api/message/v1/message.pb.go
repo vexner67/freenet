@@ -727,6 +727,185 @@ func (x *HasMessagesFromResponse) GetHasMessages() bool {
 	return false
 }
 
+type SubscribeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeRequest) Reset() {
+	*x = SubscribeRequest{}
+	mi := &file_api_message_v1_message_proto_msgTypes[13]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeRequest) ProtoMessage() {}
+
+func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_message_v1_message_proto_msgTypes[13]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeRequest.ProtoReflect.Descriptor instead.
+func (*SubscribeRequest) Descriptor() ([]byte, []int) {
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{13}
+}
+
+type SubscribeResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Types that are valid to be assigned to Event:
+	//
+	//	*SubscribeResponse_Message
+	//	*SubscribeResponse_Read
+	Event         isSubscribeResponse_Event `protobuf_oneof:"event"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeResponse) Reset() {
+	*x = SubscribeResponse{}
+	mi := &file_api_message_v1_message_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeResponse) ProtoMessage() {}
+
+func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_message_v1_message_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeResponse.ProtoReflect.Descriptor instead.
+func (*SubscribeResponse) Descriptor() ([]byte, []int) {
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{14}
+}
+
+func (x *SubscribeResponse) GetEvent() isSubscribeResponse_Event {
+	if x != nil {
+		return x.Event
+	}
+	return nil
+}
+
+func (x *SubscribeResponse) GetMessage() *Message {
+	if x != nil {
+		if x, ok := x.Event.(*SubscribeResponse_Message); ok {
+			return x.Message
+		}
+	}
+	return nil
+}
+
+func (x *SubscribeResponse) GetRead() *ReadMark {
+	if x != nil {
+		if x, ok := x.Event.(*SubscribeResponse_Read); ok {
+			return x.Read
+		}
+	}
+	return nil
+}
+
+type isSubscribeResponse_Event interface {
+	isSubscribeResponse_Event()
+}
+
+type SubscribeResponse_Message struct {
+	Message *Message `protobuf:"bytes,1,opt,name=message,proto3,oneof"`
+}
+
+type SubscribeResponse_Read struct {
+	Read *ReadMark `protobuf:"bytes,2,opt,name=read,proto3,oneof"`
+}
+
+func (*SubscribeResponse_Message) isSubscribeResponse_Event() {}
+
+func (*SubscribeResponse_Read) isSubscribeResponse_Event() {}
+
+// reader_id has read the dialog with peer_id up to up_to_id.
+type ReadMark struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ReaderId      string                 `protobuf:"bytes,1,opt,name=reader_id,json=readerId,proto3" json:"reader_id,omitempty"`
+	PeerId        string                 `protobuf:"bytes,2,opt,name=peer_id,json=peerId,proto3" json:"peer_id,omitempty"`
+	UpToId        string                 `protobuf:"bytes,3,opt,name=up_to_id,json=upToId,proto3" json:"up_to_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ReadMark) Reset() {
+	*x = ReadMark{}
+	mi := &file_api_message_v1_message_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ReadMark) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ReadMark) ProtoMessage() {}
+
+func (x *ReadMark) ProtoReflect() protoreflect.Message {
+	mi := &file_api_message_v1_message_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ReadMark.ProtoReflect.Descriptor instead.
+func (*ReadMark) Descriptor() ([]byte, []int) {
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *ReadMark) GetReaderId() string {
+	if x != nil {
+		return x.ReaderId
+	}
+	return ""
+}
+
+func (x *ReadMark) GetPeerId() string {
+	if x != nil {
+		return x.PeerId
+	}
+	return ""
+}
+
+func (x *ReadMark) GetUpToId() string {
+	if x != nil {
+		return x.UpToId
+	}
+	return ""
+}
+
 var File_api_message_v1_message_proto protoreflect.FileDescriptor
 
 const file_api_message_v1_message_proto_rawDesc = "" +
@@ -776,14 +955,24 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x16HasMessagesFromRequest\x12\x17\n" +
 	"\apeer_id\x18\x01 \x01(\tR\x06peerId\"<\n" +
 	"\x17HasMessagesFromResponse\x12!\n" +
-	"\fhas_messages\x18\x01 \x01(\bR\vhasMessages2\x91\x04\n" +
+	"\fhas_messages\x18\x01 \x01(\bR\vhasMessages\"\x12\n" +
+	"\x10SubscribeRequest\"y\n" +
+	"\x11SubscribeResponse\x12/\n" +
+	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageH\x00R\amessage\x12*\n" +
+	"\x04read\x18\x02 \x01(\v2\x14.message.v1.ReadMarkH\x00R\x04readB\a\n" +
+	"\x05event\"Z\n" +
+	"\bReadMark\x12\x1b\n" +
+	"\treader_id\x18\x01 \x01(\tR\breaderId\x12\x17\n" +
+	"\apeer_id\x18\x02 \x01(\tR\x06peerId\x12\x18\n" +
+	"\bup_to_id\x18\x03 \x01(\tR\x06upToId2\xdd\x04\n" +
 	"\x0eMessageService\x12N\n" +
 	"\vSendMessage\x12\x1e.message.v1.SendMessageRequest\x1a\x1f.message.v1.SendMessageResponse\x12N\n" +
 	"\vListDialogs\x12\x1e.message.v1.ListDialogsRequest\x1a\x1f.message.v1.ListDialogsResponse\x12c\n" +
 	"\x12CountUnreadDialogs\x12%.message.v1.CountUnreadDialogsRequest\x1a&.message.v1.CountUnreadDialogsResponse\x12Q\n" +
 	"\fListMessages\x12\x1f.message.v1.ListMessagesRequest\x1a .message.v1.ListMessagesResponse\x12K\n" +
 	"\x0eMarkDialogRead\x12!.message.v1.MarkDialogReadRequest\x1a\x16.google.protobuf.Empty\x12Z\n" +
-	"\x0fHasMessagesFrom\x12\".message.v1.HasMessagesFromRequest\x1a#.message.v1.HasMessagesFromResponseB>Z<github.com/vexner67/freenet/message/api/message/v1;messagev1b\x06proto3"
+	"\x0fHasMessagesFrom\x12\".message.v1.HasMessagesFromRequest\x1a#.message.v1.HasMessagesFromResponse\x12J\n" +
+	"\tSubscribe\x12\x1c.message.v1.SubscribeRequest\x1a\x1d.message.v1.SubscribeResponse0\x01B>Z<github.com/vexner67/freenet/message/api/message/v1;messagev1b\x06proto3"
 
 var (
 	file_api_message_v1_message_proto_rawDescOnce sync.Once
@@ -797,7 +986,7 @@ func file_api_message_v1_message_proto_rawDescGZIP() []byte {
 	return file_api_message_v1_message_proto_rawDescData
 }
 
-var file_api_message_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 13)
+var file_api_message_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
 var file_api_message_v1_message_proto_goTypes = []any{
 	(*Message)(nil),                    // 0: message.v1.Message
 	(*Dialog)(nil),                     // 1: message.v1.Dialog
@@ -812,32 +1001,39 @@ var file_api_message_v1_message_proto_goTypes = []any{
 	(*MarkDialogReadRequest)(nil),      // 10: message.v1.MarkDialogReadRequest
 	(*HasMessagesFromRequest)(nil),     // 11: message.v1.HasMessagesFromRequest
 	(*HasMessagesFromResponse)(nil),    // 12: message.v1.HasMessagesFromResponse
-	(*timestamppb.Timestamp)(nil),      // 13: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 14: google.protobuf.Empty
+	(*SubscribeRequest)(nil),           // 13: message.v1.SubscribeRequest
+	(*SubscribeResponse)(nil),          // 14: message.v1.SubscribeResponse
+	(*ReadMark)(nil),                   // 15: message.v1.ReadMark
+	(*timestamppb.Timestamp)(nil),      // 16: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 17: google.protobuf.Empty
 }
 var file_api_message_v1_message_proto_depIdxs = []int32{
-	13, // 0: message.v1.Message.created_at:type_name -> google.protobuf.Timestamp
+	16, // 0: message.v1.Message.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 1: message.v1.Dialog.last_message:type_name -> message.v1.Message
 	0,  // 2: message.v1.SendMessageResponse.message:type_name -> message.v1.Message
 	1,  // 3: message.v1.ListDialogsResponse.dialogs:type_name -> message.v1.Dialog
 	0,  // 4: message.v1.ListMessagesResponse.messages:type_name -> message.v1.Message
-	2,  // 5: message.v1.MessageService.SendMessage:input_type -> message.v1.SendMessageRequest
-	4,  // 6: message.v1.MessageService.ListDialogs:input_type -> message.v1.ListDialogsRequest
-	6,  // 7: message.v1.MessageService.CountUnreadDialogs:input_type -> message.v1.CountUnreadDialogsRequest
-	8,  // 8: message.v1.MessageService.ListMessages:input_type -> message.v1.ListMessagesRequest
-	10, // 9: message.v1.MessageService.MarkDialogRead:input_type -> message.v1.MarkDialogReadRequest
-	11, // 10: message.v1.MessageService.HasMessagesFrom:input_type -> message.v1.HasMessagesFromRequest
-	3,  // 11: message.v1.MessageService.SendMessage:output_type -> message.v1.SendMessageResponse
-	5,  // 12: message.v1.MessageService.ListDialogs:output_type -> message.v1.ListDialogsResponse
-	7,  // 13: message.v1.MessageService.CountUnreadDialogs:output_type -> message.v1.CountUnreadDialogsResponse
-	9,  // 14: message.v1.MessageService.ListMessages:output_type -> message.v1.ListMessagesResponse
-	14, // 15: message.v1.MessageService.MarkDialogRead:output_type -> google.protobuf.Empty
-	12, // 16: message.v1.MessageService.HasMessagesFrom:output_type -> message.v1.HasMessagesFromResponse
-	11, // [11:17] is the sub-list for method output_type
-	5,  // [5:11] is the sub-list for method input_type
-	5,  // [5:5] is the sub-list for extension type_name
-	5,  // [5:5] is the sub-list for extension extendee
-	0,  // [0:5] is the sub-list for field type_name
+	0,  // 5: message.v1.SubscribeResponse.message:type_name -> message.v1.Message
+	15, // 6: message.v1.SubscribeResponse.read:type_name -> message.v1.ReadMark
+	2,  // 7: message.v1.MessageService.SendMessage:input_type -> message.v1.SendMessageRequest
+	4,  // 8: message.v1.MessageService.ListDialogs:input_type -> message.v1.ListDialogsRequest
+	6,  // 9: message.v1.MessageService.CountUnreadDialogs:input_type -> message.v1.CountUnreadDialogsRequest
+	8,  // 10: message.v1.MessageService.ListMessages:input_type -> message.v1.ListMessagesRequest
+	10, // 11: message.v1.MessageService.MarkDialogRead:input_type -> message.v1.MarkDialogReadRequest
+	11, // 12: message.v1.MessageService.HasMessagesFrom:input_type -> message.v1.HasMessagesFromRequest
+	13, // 13: message.v1.MessageService.Subscribe:input_type -> message.v1.SubscribeRequest
+	3,  // 14: message.v1.MessageService.SendMessage:output_type -> message.v1.SendMessageResponse
+	5,  // 15: message.v1.MessageService.ListDialogs:output_type -> message.v1.ListDialogsResponse
+	7,  // 16: message.v1.MessageService.CountUnreadDialogs:output_type -> message.v1.CountUnreadDialogsResponse
+	9,  // 17: message.v1.MessageService.ListMessages:output_type -> message.v1.ListMessagesResponse
+	17, // 18: message.v1.MessageService.MarkDialogRead:output_type -> google.protobuf.Empty
+	12, // 19: message.v1.MessageService.HasMessagesFrom:output_type -> message.v1.HasMessagesFromResponse
+	14, // 20: message.v1.MessageService.Subscribe:output_type -> message.v1.SubscribeResponse
+	14, // [14:21] is the sub-list for method output_type
+	7,  // [7:14] is the sub-list for method input_type
+	7,  // [7:7] is the sub-list for extension type_name
+	7,  // [7:7] is the sub-list for extension extendee
+	0,  // [0:7] is the sub-list for field type_name
 }
 
 func init() { file_api_message_v1_message_proto_init() }
@@ -845,13 +1041,17 @@ func file_api_message_v1_message_proto_init() {
 	if File_api_message_v1_message_proto != nil {
 		return
 	}
+	file_api_message_v1_message_proto_msgTypes[14].OneofWrappers = []any{
+		(*SubscribeResponse_Message)(nil),
+		(*SubscribeResponse_Read)(nil),
+	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_message_v1_message_proto_rawDesc), len(file_api_message_v1_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   13,
+			NumMessages:   16,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
