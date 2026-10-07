@@ -52,6 +52,22 @@ func TestRepositories(t *testing.T) {
 	m3 := save(bob, ann, "три")
 	toCat := save(ann, cat, "кату")
 
+	t.Run("who has written to whom", func(t *testing.T) {
+		for _, tt := range []struct {
+			user, peer uuid.UUID
+			want       bool
+		}{
+			{ann, bob, true},  // bob wrote to ann
+			{cat, ann, true},  // ann wrote to cat
+			{ann, cat, false}, // cat never answered
+			{bob, cat, false}, // no dialog at all
+		} {
+			if got, err := dialogs.HasIncoming(ctx, tt.user, tt.peer); err != nil || got != tt.want {
+				t.Fatalf("HasIncoming(%v, %v) = %v, %v; want %v", tt.user, tt.peer, got, err, tt.want)
+			}
+		}
+	})
+
 	t.Run("history in both directions", func(t *testing.T) {
 		got, err := messages.Get(ctx, m2.ID())
 		if err != nil || *got != *m2 {

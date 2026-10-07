@@ -20,6 +20,9 @@ service MessageService {
   rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
   // The caller has read the dialog up to a message from the peer.
   rpc MarkDialogRead(MarkDialogReadRequest) returns (google.protobuf.Empty);
+  // Requires an access token: whether the peer has ever written to the
+  // caller, who may then answer whatever the peer's privacy.
+  rpc HasMessagesFrom(HasMessagesFromRequest) returns (HasMessagesFromResponse);
 }
 
 message Message {
@@ -90,4 +93,12 @@ message ListMessagesResponse {
 message MarkDialogReadRequest {
   string peer_id = 1;
   string up_to_id = 2;
+}
+
+message HasMessagesFromRequest {
+  string peer_id = 1;
+}
+
+message HasMessagesFromResponse {
+  bool has_messages = 1;
 }

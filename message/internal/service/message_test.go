@@ -252,3 +252,35 @@ func TestCountUnread_Capped(t *testing.T) {
 		t.Fatalf("unread = %d, %v; want the cap", n, err)
 	}
 }
+
+func TestMessageService_HasMessagesFrom(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newService()
+	ann, bob := uuid.New(), uuid.New()
+
+	has := func(user, peer uuid.UUID) bool {
+		t.Helper()
+
+		ok, err := svc.HasMessagesFrom(ctx, user, peer)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return ok
+	}
+
+	if has(bob, ann) {
+		t.Fatal("strangers have no messages")
+	}
+
+	send(t, svc, ann, bob, "привет")
+
+	if !has(bob, ann) {
+		t.Fatal("ann wrote to bob")
+	}
+	if has(ann, bob) {
+		t.Fatal("bob has not written to ann yet")
+	}
+}

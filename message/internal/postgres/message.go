@@ -295,6 +295,28 @@ func (r *DialogRepository) ReadMarks(ctx context.Context, userID, peerID uuid.UU
 	return marks, nil
 }
 
+// hasIncomingQuery reads the user's side of the dialog: its last incoming
+// message is the zero UUID until the peer writes.
+const hasIncomingQuery = `
+	SELECT EXISTS (
+		SELECT 1
+		FROM dialogs
+		WHERE user_id = $1
+			AND peer_id = $2
+			AND last_incoming_id <> '00000000-0000-0000-0000-000000000000'
+	)
+`
+
+func (r *DialogRepository) HasIncoming(ctx context.Context, userID, peerID uuid.UUID) (bool, error) {
+	var ok bool
+
+	if err := r.pool.QueryRow(ctx, hasIncomingQuery, userID, peerID).Scan(&ok); err != nil {
+		return false, errs.Wrap("r.pool.QueryRow", err)
+	}
+
+	return ok, nil
+}
+
 // markReadQuery never moves the mark back. The dialog exists: the user
 // can only mark a message they received.
 const markReadQuery = `
