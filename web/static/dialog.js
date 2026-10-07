@@ -1,9 +1,11 @@
 // A dialog at /im/<nickname>, as on openvk: messages oldest first, older
-// ones load when scrolled to the top, new ones are polled while the tab is
-// visible. Enter sends, Shift+Enter breaks the line. Unread messages are
-// grey either way: the peer's until you read them, yours until the peer does.
+// ones load when scrolled to the top, new ones and read marks come live
+// (events.js) and are polled only while that is down. Enter sends,
+// Shift+Enter breaks the line. Unread messages are grey either way: the
+// peer's until you read them, yours until the peer does.
 
 import { api, currentUser } from './api.js';
+import { isLive, onEvent } from './events.js';
 import { errorText, formatPostDate } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError } from './layout.js';
 
@@ -115,23 +117,44 @@ async function loadOlder() {
   }
 }
 
-async function poll() {
-  if (!document.hidden) {
-    try {
-      const stick = nearBottom();
-      // An empty dialog has nothing to poll after: ask for the newest.
-      const page = await api.messages(nickname, newestID ? { after: newestID } : {});
-      const fresh = add(page.messages, false);
+// showNew adds new messages, keeping the view at the bottom if it was.
+async function showNew(messages) {
+  const stick = nearBottom();
+  const fresh = add(messages, false);
 
-      markTheirRead(page.peerReadUpTo);
-      if (fresh.length > 0 && stick) toBottom();
-      await readIncoming(fresh);
-    } catch {
-      // A missed poll is caught up by the next one.
-    }
+  if (fresh.length > 0 && stick) toBottom();
+  await readIncoming(fresh);
+}
+
+// catchUp asks for what came after the newest message shown: by polling
+// while events are down, and once after they come back.
+async function catchUp() {
+  try {
+    // An empty dialog has nothing to ask after: ask for the newest.
+    const page = await api.messages(nickname, newestID ? { after: newestID } : {});
+
+    markTheirRead(page.peerReadUpTo);
+    await showNew(page.messages);
+  } catch {
+    // A missed poll is caught up by the next one.
   }
+}
+
+async function poll() {
+  if (!document.hidden && !isLive()) await catchUp();
 
   setTimeout(poll, POLL_MS);
+}
+
+function listenToEvents() {
+  onEvent('message', (e) => {
+    if (e.peer.id === peer.id) showNew([e.message]);
+  });
+  onEvent('read', (e) => {
+    if (e.peer.id === peer.id && !e.byMe) markTheirRead(e.upTo);
+  });
+  // Whatever happened while disconnected.
+  onEvent('ready', catchUp);
 }
 
 async function send(event) {
@@ -236,6 +259,7 @@ if (!me) {
     });
 
     await readIncoming(page.messages);
+    listenToEvents();
     setTimeout(poll, POLL_MS);
   } catch (e) {
     $('title').textContent = e.status === 404 ? 'Страница не найдена' : 'Ошибка';

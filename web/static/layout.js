@@ -2,6 +2,7 @@
 // User data is only ever set with textContent, never as HTML.
 
 import { api } from './api.js';
+import { connectEvents, onEvent } from './events.js';
 import { errorText, unreadCountText } from './labels.js';
 
 export const $ = (id) => document.getElementById(id);
@@ -47,6 +48,11 @@ export function renderChrome(me) {
     );
     showCounter('messages');
     showCounter('notifications');
+
+    // Live counters: the stream says them on connecting and on changes.
+    onEvent('ready', applyCounters);
+    onEvent('counters', applyCounters);
+    connectEvents();
   } else {
     links.replaceChildren(
       el('a', { href: '/', textContent: 'вход' }),
@@ -82,6 +88,11 @@ export async function showCounter(name) {
   } catch {
     // The page works without it.
   }
+}
+
+function applyCounters(event) {
+  if (event.messages !== undefined) setCounter('messages', event.messages);
+  if (event.notifications !== undefined) setCounter('notifications', event.notifications);
 }
 
 export function setCounter(name, n) {
