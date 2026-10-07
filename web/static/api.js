@@ -164,6 +164,9 @@ export const api = {
   // Shares a post on your wall, with a comment that may be empty.
   repost: (postID, text) => authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/reposts`, { text }),
   deletePost: (id) => authorized('DELETE', '/api/v1/posts/' + encodeURIComponent(id)),
+  editPost: (id, text, photos = []) => authorized('PATCH', '/api/v1/posts/' + encodeURIComponent(id), { text, photos }),
+  pinPost: (id) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(id)}/pin`),
+  unpinPost: (id) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(id)}/pin`),
   like: (postID) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
   unlike: (postID) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
 

@@ -5,6 +5,7 @@
 import { api } from './api.js';
 import { commentsLink, formatPostDate, genitiveName, shareLink, wrote } from './labels.js';
 import { avatarURL, el, fullName } from './layout.js';
+import { editPost } from './postedit.js';
 import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
 
@@ -15,20 +16,78 @@ export function postPath(post) {
 }
 
 // postNode renders a post. Options:
+//   viewer: the signed-in viewer, null for anonymous; the author edits the
+//     post for a week ("Редактировать"), the owner of the wall pins it
+//     ("Закрепить"), as on openvk;
 //   onDelete(post, node) adds a "Удалить" link;
+//   onPinned(post) runs after the post is pinned or unpinned;
 //   canLike makes the heart and "Поделиться" clickable (signed-in viewers);
-//   onError(e) shows a failed like;
+//   onError(e) shows a failed like, edit or pin;
 //   withCommentsLink: false on the page of the post, which shows the comments;
 //   onWallOf: the viewer (null for anonymous) when posts of several walls
 //     are mixed, as in the news feed: someone else's wall is then named,
 //     "написал на стене Петра Петрова", as openvk does there only.
-export function postNode(post, { onDelete, canLike = false, onError, withCommentsLink = true, onWallOf } = {}) {
+export function postNode(post, { viewer = null, onDelete, onPinned, canLike = false, onError, withCommentsLink = true, onWallOf } = {}) {
   const path = '/' + post.author.nickname;
+  const date = el('div', { className: 'post-date' });
+  const content = el('div', { className: 'post-content' });
+  const menu = el('span', {});
 
-  const links = [];
-  if (withCommentsLink) links.push(el('a', { href: postPath(post), textContent: commentsLink(post.comments) }));
-  links.push(shareButton(post, canLike));
-  if (onDelete) links.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(post, node) }));
+  function render() {
+    date.replaceChildren(
+      el('a', { href: postPath(post), textContent: formatPostDate(post.createdAt) }),
+      post.editedAt ? el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }) : '',
+      post.pinned ? ', закреплено' : '',
+    );
+    content.replaceChildren(
+      post.text ? el('div', { className: 'post-text', textContent: post.text }) : '',
+      photosNode(post.photos ?? []) ?? '',
+    );
+    menu.replaceChildren(...separated(menuLinks()));
+    node.classList.toggle('pinned', Boolean(post.pinned));
+  }
+
+  function menuLinks() {
+    const links = [];
+    if (withCommentsLink) links.push(el('a', { href: postPath(post), textContent: commentsLink(post.comments) }));
+    links.push(shareButton(post, canLike));
+    if (canEdit(post, viewer)) links.push(el('a', { textContent: 'Редактировать', onclick: edit }));
+    if (onDelete) links.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(post, node) }));
+    if (viewer && wallOwnerID(post) === viewer.id) {
+      links.push(el('a', { textContent: post.pinned ? 'Открепить' : 'Закрепить', onclick: togglePin }));
+    }
+    return links;
+  }
+
+  function edit() {
+    if (node.classList.contains('editing')) return;
+
+    editPost(post, node, {
+      onSaved: (edited) => {
+        Object.assign(post, edited);
+        render();
+      },
+    });
+  }
+
+  let pinning = false;
+
+  async function togglePin() {
+    if (pinning) return;
+    pinning = true;
+
+    try {
+      if (post.pinned) await api.unpinPost(post.id);
+      else await api.pinPost(post.id);
+      post.pinned = !post.pinned;
+      render();
+      onPinned?.(post);
+    } catch (e) {
+      onError?.(e);
+    } finally {
+      pinning = false;
+    }
+  }
 
   const node = el('div', { className: 'post' },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(post.author, 'small'), alt: '' })),
@@ -37,19 +96,32 @@ export function postNode(post, { onDelete, canLike = false, onError, withComment
         el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
         ' ' + wrote(post.author.gender),
         ...(onWallOf !== undefined && post.wall ? [' ', wallLink(post.wall, onWallOf)] : []),
-        el('div', { className: 'post-date' }, el('a', { href: postPath(post), textContent: formatPostDate(post.createdAt) })),
+        date,
       ),
-      post.text ? el('div', { className: 'post-text', textContent: post.text }) : null,
-      photosNode(post.photos ?? []),
+      content,
       post.repost ? sharedNode(post.repost) : null,
       el('div', { className: 'post-menu' },
-        el('span', {}, ...separated(links)),
+        menu,
         likeButton(post, canLike, onError),
       ),
     ),
   );
 
+  render();
+
   return node;
+}
+
+// canEdit: the author edits a post until editableUntil, a week after
+// posting; the server checks it again.
+export function canEdit(post, viewer, now = new Date()) {
+  return Boolean(viewer) && post.author.id === viewer.id && now < new Date(post.editableUntil);
+}
+
+// wallOwnerID is whose wall the post is on: its wall is null on the
+// author's own.
+function wallOwnerID(post) {
+  return post.wall?.id ?? post.author.id;
 }
 
 // sharedNode is the post a repost shares, compact as on openvk: a small

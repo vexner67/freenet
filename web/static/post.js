@@ -157,6 +157,7 @@ try {
 
   renderTitle(post);
   $('post').append(postNode(post, {
+    viewer: me,
     onDelete: [post.author.id, wallOf(post).id].includes(me?.id) && removePost,
     canLike: Boolean(me),
     onError: (e) => showError($('error'), e),

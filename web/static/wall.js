@@ -29,10 +29,19 @@ export function initWall(owner, me) {
   }
 
   const postNode = (post) => renderPost(post, {
+    viewer: me,
     onDelete: (isOwner || post.author.id === me?.id) && remove,
+    // The pinned post comes first: the wall is read again from the top.
+    onPinned: reload,
     canLike: Boolean(me),
     onError: (e) => showError(error, e),
   });
+
+  function reload() {
+    cursor = '';
+    posts.replaceChildren();
+    return loadMore();
+  }
 
   async function remove(post, node) {
     hideError(error);
@@ -90,7 +99,10 @@ export function initWall(owner, me) {
     try {
       const post = await api.createPost(owner.nickname, $('post-text').value, attachments.ids());
 
-      posts.prepend(postNode(post));
+      // Below the pinned post, which stays first.
+      const pinned = posts.firstElementChild?.classList.contains('pinned') ? posts.firstElementChild : null;
+      if (pinned) pinned.after(postNode(post));
+      else posts.prepend(postNode(post));
       $('post-text').value = '';
       $('post-text').blur();
       attachments.clear();

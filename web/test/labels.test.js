@@ -27,6 +27,7 @@ test('birthday with age in the right form', () => {
 test('API errors are translated, unknown ones stay generic', () => {
   assert.equal(errorText(new Error('not a JPEG, PNG, GIF or WebP image')), 'Это не фотография: подойдут JPEG, PNG, GIF и WebP.');
   assert.equal(errorText(new Error('nickname is already taken')), 'Этот никнейм уже занят.');
+  assert.equal(errorText(new Error('the post can no longer be edited')), 'Запись можно редактировать только в течение недели после публикации.');
   assert.equal(errorText(new Error('dial tcp 10.0.0.5')), 'Что-то пошло не так. Попробуйте позже.');
 });
 
