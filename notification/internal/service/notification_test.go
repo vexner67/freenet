@@ -149,6 +149,48 @@ func TestForgetPost(t *testing.T) {
 	}
 }
 
+func TestPurgeUser(t *testing.T) {
+	t.Parallel()
+
+	svc := newService()
+	ctx := context.Background()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	// Ann got some and caused some; bob and cat have their own as well.
+	notify(t, svc, follow(ann, bob), like(bob, ann, uuid.New()), follow(cat, bob), like(cat, ann, uuid.New()))
+
+	page, err := svc.List(ctx, ann, true, uuid.Nil, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.MarkRead(ctx, ann, page.Notifications[0].ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = svc.PurgeUser(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.PurgeUser(ctx, ann); err != nil {
+		t.Fatalf("purge twice: %v", err)
+	}
+
+	if got := list(t, svc, ann, false); len(got) != 0 {
+		t.Fatalf("ann's notifications left: %+v", got)
+	}
+	if got := list(t, svc, bob, true); len(got) != 0 {
+		t.Fatalf("bob still hears of ann's like: %+v", got)
+	}
+	if got := list(t, svc, cat, true); len(got) != 1 || got[0].ActorID != bob {
+		t.Fatalf("cat's = %+v, want bob's follow only", got)
+	}
+
+	// The read mark went too: a new notification for the same ID is unread.
+	notify(t, svc, follow(ann, cat))
+	if n := count(t, svc, ann); n != 1 {
+		t.Fatalf("unread after the purge = %d, want 1", n)
+	}
+}
+
 func TestReadMark(t *testing.T) {
 	t.Parallel()
 

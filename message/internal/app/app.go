@@ -97,7 +97,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 
 	if !cfg.TLS.Enabled() {
-		a.logger.Warn("mTLS is off: the service accepts plaintext connections, do not use in production")
+		a.logger.Warn("mTLS is off: internal RPCs are open to anyone who can connect, do not use in production")
 	}
 
 	verifier := jwtauth.NewVerifier(publicKey, cfg.JWTIssuer)
@@ -110,7 +110,8 @@ func (a *App) build(cfg config.Config) error {
 		grpc.Creds(creds),
 		grpc.ChainUnaryInterceptor(
 			messagegrpc.ErrorInterceptor(a.logger),
-			jwtauth.UnaryServerInterceptor(verifier, messagegrpc.PublicMethods()...),
+			restrictInternal(cfg),
+			jwtauth.UnaryServerInterceptor(verifier, jwtauth.Access{Public: messagegrpc.PublicMethods()}),
 			ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger),
 		),
 		grpc.ChainStreamInterceptor(jwtauth.StreamServerInterceptor(verifier)),
@@ -150,6 +151,18 @@ func (a *App) newEvents(cfg config.Config) service.Events {
 	a.shared = pubsub.NewRedis(a.redis, messageredis.Channel, messageredis.EventCodec{}, eventBuffer, a.logger)
 
 	return a.shared
+}
+
+// restrictInternal lets only their services call the internal methods; with
+// mTLS off, which is for development, nobody can tell who calls.
+func restrictInternal(cfg config.Config) grpc.UnaryServerInterceptor {
+	if !cfg.TLS.Enabled() {
+		return func(ctx context.Context, req any, _ *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
+			return handler(ctx, req)
+		}
+	}
+
+	return mtls.RestrictMethods(messagegrpc.InternalMethods())
 }
 
 // rateLimits are how often each user may write.

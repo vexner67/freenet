@@ -51,12 +51,13 @@ func newServer(t *testing.T) testServer {
 		usergrpc.ErrorInterceptor(log),
 		jwtauth.UnaryServerInterceptor(
 			jwtauth.NewVerifier(&key.PublicKey, issuer),
-			usergrpc.PublicMethods()...,
+			jwtauth.Access{Public: usergrpc.PublicMethods(), Deactivated: usergrpc.DeactivatedMethods()},
 		),
 	))
 	blocks := inmem.NewBlockRepository(follows)
 	userv1.RegisterUserServiceServer(srv, usergrpc.NewUserHandler(usergrpc.Services{
-		Users: service.NewUserService(users),
+		Users:    service.NewUserService(users),
+		Accounts: service.NewAccountService(users, time.Hour),
 		Follows: service.NewFollowService(service.FollowDeps{
 			Users: users, Follows: follows, Lists: follows, Blocks: blocks, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
 		}),
@@ -84,7 +85,8 @@ func newServer(t *testing.T) testServer {
 }
 
 // signIn registers the email like auth does and returns a context
-// carrying an access token for that user.
+// carrying an access token for that user, restricted like auth's if the
+// page is deleted.
 func (s testServer) signIn(t *testing.T, email string) context.Context {
 	t.Helper()
 
@@ -99,8 +101,9 @@ func (s testServer) signIn(t *testing.T, email string) context.Context {
 			Issuer:    issuer,
 			ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Minute)),
 		},
-		TokenType: jwtauth.AccessToken,
-		SessionID: uuid.NewString(),
+		TokenType:   jwtauth.AccessToken,
+		SessionID:   uuid.NewString(),
+		Deactivated: resp.GetDeactivated(),
 	}).SignedString(s.key)
 	if err != nil {
 		t.Fatalf("SignedString: %v", err)

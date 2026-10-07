@@ -47,12 +47,15 @@ func newServer(t *testing.T) testServer {
 	lis := bufconn.Listen(1 << 20)
 	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		postgrpc.ErrorInterceptor(log),
-		jwtauth.UnaryServerInterceptor(jwtauth.NewVerifier(&key.PublicKey, issuer), postgrpc.PublicMethods()...),
+		jwtauth.UnaryServerInterceptor(jwtauth.NewVerifier(&key.PublicKey, issuer), jwtauth.Access{Public: postgrpc.PublicMethods()}),
 	))
 	store := inmem.NewStore()
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(
 		service.NewPostService(store.Posts(), store.Likes(), inmem.TxManager{}, notifyclient.Nop{}),
 		service.NewCommentService(store.Posts(), store.Comments(), inmem.TxManager{}, notifyclient.Nop{}),
+		service.NewPurgeService(service.PurgeDeps{
+			Posts: store.Posts(), Likes: store.Likes(), Comments: store.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
+		}),
 		log,
 	))
 

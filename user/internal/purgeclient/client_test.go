@@ -1,0 +1,121 @@
+package purgeclient
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
+	"github.com/vexner67/freenet/pkg/outbox"
+	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+)
+
+type fakePost struct {
+	postv1.PostServiceClient
+	purged   string
+	deadline bool
+	err      error
+}
+
+func (f *fakePost) PurgeUser(ctx context.Context, req *postv1.PurgeUserRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.purged = req.GetUserId()
+	_, f.deadline = ctx.Deadline()
+	return &emptypb.Empty{}, f.err
+}
+
+type fakeNotification struct {
+	notificationv1.NotificationServiceClient
+	purged string
+}
+
+func (f *fakeNotification) PurgeUser(_ context.Context, req *notificationv1.PurgeUserRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.purged = req.GetUserId()
+	return &emptypb.Empty{}, nil
+}
+
+func TestOutboxAndDelivery(t *testing.T) {
+	t.Parallel()
+
+	post, media := outbox.NewMemory(), outbox.NewMemory()
+	ann := uuid.New()
+
+	if err := NewOutbox(post, media).UserErased(context.Background(), ann); err != nil {
+		t.Fatal(err)
+	}
+
+	for _, q := range []*outbox.Memory{post, media} {
+		if head, _ := q.Head(context.Background(), 10); len(head) != 1 || head[0].Kind != Kind {
+			t.Fatalf("recorded %+v, want one erasure in each stream", head)
+		}
+	}
+
+	head, _ := post.Head(context.Background(), 1)
+	api := &fakePost{}
+	if err := Post(api, time.Second)(context.Background(), head[0]); err != nil {
+		t.Fatalf("deliver: %v", err)
+	}
+	if api.purged != ann.String() || !api.deadline {
+		t.Fatalf("purged %q (deadline %v), want ann with a timeout", api.purged, api.deadline)
+	}
+}
+
+func TestDeliver_Errors(t *testing.T) {
+	t.Parallel()
+
+	ann := uuid.New()
+	erase := outbox.Message{Kind: Kind, Payload: ann[:]}
+
+	tests := []struct {
+		name      string
+		message   outbox.Message
+		apiErr    error
+		permanent bool
+	}{
+		{name: "down is retried", message: erase, apiErr: status.Error(codes.Unavailable, "down")},
+		{name: "plain error is retried", message: erase, apiErr: errors.New("broken")},
+		{name: "rejected is dropped", message: erase, apiErr: status.Error(codes.InvalidArgument, "bad"), permanent: true},
+		{name: "unknown kind is dropped", message: outbox.Message{Kind: "notify"}, permanent: true},
+		{name: "bad payload is dropped", message: outbox.Message{Kind: Kind, Payload: []byte{1, 2}}, permanent: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := Post(&fakePost{err: tt.apiErr}, time.Second)(context.Background(), tt.message)
+			if err == nil || outbox.IsPermanent(err) != tt.permanent {
+				t.Errorf("deliver = %v (permanent %v), want an error, permanent %v", err, outbox.IsPermanent(err), tt.permanent)
+			}
+		})
+	}
+}
+
+// The notification stream carries notifications too: they go on to the
+// notification deliverer.
+func TestNotification(t *testing.T) {
+	t.Parallel()
+
+	var others []string
+	api := &fakeNotification{}
+	deliver := Notification(api, time.Second, func(_ context.Context, m outbox.Message) error {
+		others = append(others, m.Kind)
+		return nil
+	})
+
+	ann := uuid.New()
+	for _, m := range []outbox.Message{{Kind: "notify"}, {Kind: Kind, Payload: ann[:]}} {
+		if err := deliver(context.Background(), m); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if len(others) != 1 || others[0] != "notify" || api.purged != ann.String() {
+		t.Fatalf("others %v, purged %q", others, api.purged)
+	}
+}

@@ -327,3 +327,37 @@ func TestMessageService_Events(t *testing.T) {
 	default:
 	}
 }
+
+func TestPurgeUser(t *testing.T) {
+	t.Parallel()
+
+	svc := newService()
+	ctx := context.Background()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	send(t, svc, ann, bob, "привет")
+	send(t, svc, bob, ann, "и тебе")
+	send(t, svc, cat, ann, "ау")
+	send(t, svc, bob, cat, "кот?")
+
+	if err := svc.PurgeUser(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.PurgeUser(ctx, ann); err != nil {
+		t.Fatalf("purge twice: %v", err)
+	}
+
+	// Both sides of ann's dialogs are gone; bob and cat keep theirs.
+	for who, want := range map[uuid.UUID]int{ann: 0, bob: 1, cat: 1} {
+		page, err := svc.Dialogs(ctx, who, uuid.Nil, 20)
+		if err != nil || len(page.Dialogs) != want {
+			t.Errorf("dialogs of %s = %d, %v; want %d", who, len(page.Dialogs), err, want)
+		}
+	}
+	if page, err := svc.History(ctx, bob, ann, uuid.Nil, 20); err != nil || len(page.Messages) != 0 {
+		t.Errorf("history with ann = %d, %v; want none", len(page.Messages), err)
+	}
+	if page, err := svc.History(ctx, bob, cat, uuid.Nil, 20); err != nil || len(page.Messages) != 1 {
+		t.Errorf("history of bob and cat = %d, %v; want 1", len(page.Messages), err)
+	}
+}

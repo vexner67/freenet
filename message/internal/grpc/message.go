@@ -23,6 +23,7 @@ type MessageService interface {
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
 	HasMessagesFrom(ctx context.Context, userID, peerID uuid.UUID) (bool, error)
 	Subscribe(userID uuid.UUID) (<-chan service.Event, func())
+	PurgeUser(ctx context.Context, userID uuid.UUID) error
 }
 
 type MessageHandler struct {
@@ -144,6 +145,19 @@ func (h *MessageHandler) history(ctx context.Context, userID, peerID uuid.UUID, 
 	}
 
 	return h.messageService.Newer(ctx, userID, peerID, after, int(req.GetLimit()))
+}
+
+func (h *MessageHandler) PurgeUser(ctx context.Context, req *messagev1.PurgeUserRequest) (*emptypb.Empty, error) {
+	userID, err := uuid.Parse(req.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+
+	if err = h.messageService.PurgeUser(ctx, userID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (h *MessageHandler) HasMessagesFrom(ctx context.Context, req *messagev1.HasMessagesFromRequest) (*messagev1.HasMessagesFromResponse, error) {

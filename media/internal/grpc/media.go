@@ -28,19 +28,39 @@ type PhotoService interface {
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 }
 
+// PurgeService erases a user's files once the page is deleted for good.
+type PurgeService interface {
+	PurgeUser(ctx context.Context, userID uuid.UUID) error
+}
+
 type MediaHandler struct {
 	mediav1.UnimplementedMediaServiceServer
 	avatars AvatarService
 	photos  PhotoService
+	purges  PurgeService
 	logger  *slog.Logger
 }
 
-func NewMediaHandler(avatars AvatarService, photos PhotoService, logger *slog.Logger) *MediaHandler {
+func NewMediaHandler(avatars AvatarService, photos PhotoService, purges PurgeService, logger *slog.Logger) *MediaHandler {
 	return &MediaHandler{
 		avatars: avatars,
 		photos:  photos,
+		purges:  purges,
 		logger:  logger,
 	}
+}
+
+func (h *MediaHandler) PurgeUser(ctx context.Context, req *mediav1.PurgeUserRequest) (*emptypb.Empty, error) {
+	userID, err := uuid.Parse(req.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+
+	if err = h.purges.PurgeUser(ctx, userID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (h *MediaHandler) UploadAvatar(ctx context.Context, req *mediav1.UploadAvatarRequest) (*mediav1.UploadAvatarResponse, error) {

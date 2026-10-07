@@ -906,6 +906,50 @@ func (x *ReadMark) GetUpToId() string {
 	return ""
 }
 
+type PurgeUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PurgeUserRequest) Reset() {
+	*x = PurgeUserRequest{}
+	mi := &file_api_message_v1_message_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PurgeUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PurgeUserRequest) ProtoMessage() {}
+
+func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_message_v1_message_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PurgeUserRequest.ProtoReflect.Descriptor instead.
+func (*PurgeUserRequest) Descriptor() ([]byte, []int) {
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *PurgeUserRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 var File_api_message_v1_message_proto protoreflect.FileDescriptor
 
 const file_api_message_v1_message_proto_rawDesc = "" +
@@ -964,7 +1008,9 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\bReadMark\x12\x1b\n" +
 	"\treader_id\x18\x01 \x01(\tR\breaderId\x12\x17\n" +
 	"\apeer_id\x18\x02 \x01(\tR\x06peerId\x12\x18\n" +
-	"\bup_to_id\x18\x03 \x01(\tR\x06upToId2\xdd\x04\n" +
+	"\bup_to_id\x18\x03 \x01(\tR\x06upToId\"+\n" +
+	"\x10PurgeUserRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId2\xa0\x05\n" +
 	"\x0eMessageService\x12N\n" +
 	"\vSendMessage\x12\x1e.message.v1.SendMessageRequest\x1a\x1f.message.v1.SendMessageResponse\x12N\n" +
 	"\vListDialogs\x12\x1e.message.v1.ListDialogsRequest\x1a\x1f.message.v1.ListDialogsResponse\x12c\n" +
@@ -972,7 +1018,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\fListMessages\x12\x1f.message.v1.ListMessagesRequest\x1a .message.v1.ListMessagesResponse\x12K\n" +
 	"\x0eMarkDialogRead\x12!.message.v1.MarkDialogReadRequest\x1a\x16.google.protobuf.Empty\x12Z\n" +
 	"\x0fHasMessagesFrom\x12\".message.v1.HasMessagesFromRequest\x1a#.message.v1.HasMessagesFromResponse\x12J\n" +
-	"\tSubscribe\x12\x1c.message.v1.SubscribeRequest\x1a\x1d.message.v1.SubscribeResponse0\x01B>Z<github.com/vexner67/freenet/message/api/message/v1;messagev1b\x06proto3"
+	"\tSubscribe\x12\x1c.message.v1.SubscribeRequest\x1a\x1d.message.v1.SubscribeResponse0\x01\x12A\n" +
+	"\tPurgeUser\x12\x1c.message.v1.PurgeUserRequest\x1a\x16.google.protobuf.EmptyB>Z<github.com/vexner67/freenet/message/api/message/v1;messagev1b\x06proto3"
 
 var (
 	file_api_message_v1_message_proto_rawDescOnce sync.Once
@@ -986,7 +1033,7 @@ func file_api_message_v1_message_proto_rawDescGZIP() []byte {
 	return file_api_message_v1_message_proto_rawDescData
 }
 
-var file_api_message_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 16)
+var file_api_message_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 17)
 var file_api_message_v1_message_proto_goTypes = []any{
 	(*Message)(nil),                    // 0: message.v1.Message
 	(*Dialog)(nil),                     // 1: message.v1.Dialog
@@ -1004,11 +1051,12 @@ var file_api_message_v1_message_proto_goTypes = []any{
 	(*SubscribeRequest)(nil),           // 13: message.v1.SubscribeRequest
 	(*SubscribeResponse)(nil),          // 14: message.v1.SubscribeResponse
 	(*ReadMark)(nil),                   // 15: message.v1.ReadMark
-	(*timestamppb.Timestamp)(nil),      // 16: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 17: google.protobuf.Empty
+	(*PurgeUserRequest)(nil),           // 16: message.v1.PurgeUserRequest
+	(*timestamppb.Timestamp)(nil),      // 17: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 18: google.protobuf.Empty
 }
 var file_api_message_v1_message_proto_depIdxs = []int32{
-	16, // 0: message.v1.Message.created_at:type_name -> google.protobuf.Timestamp
+	17, // 0: message.v1.Message.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 1: message.v1.Dialog.last_message:type_name -> message.v1.Message
 	0,  // 2: message.v1.SendMessageResponse.message:type_name -> message.v1.Message
 	1,  // 3: message.v1.ListDialogsResponse.dialogs:type_name -> message.v1.Dialog
@@ -1022,15 +1070,17 @@ var file_api_message_v1_message_proto_depIdxs = []int32{
 	10, // 11: message.v1.MessageService.MarkDialogRead:input_type -> message.v1.MarkDialogReadRequest
 	11, // 12: message.v1.MessageService.HasMessagesFrom:input_type -> message.v1.HasMessagesFromRequest
 	13, // 13: message.v1.MessageService.Subscribe:input_type -> message.v1.SubscribeRequest
-	3,  // 14: message.v1.MessageService.SendMessage:output_type -> message.v1.SendMessageResponse
-	5,  // 15: message.v1.MessageService.ListDialogs:output_type -> message.v1.ListDialogsResponse
-	7,  // 16: message.v1.MessageService.CountUnreadDialogs:output_type -> message.v1.CountUnreadDialogsResponse
-	9,  // 17: message.v1.MessageService.ListMessages:output_type -> message.v1.ListMessagesResponse
-	17, // 18: message.v1.MessageService.MarkDialogRead:output_type -> google.protobuf.Empty
-	12, // 19: message.v1.MessageService.HasMessagesFrom:output_type -> message.v1.HasMessagesFromResponse
-	14, // 20: message.v1.MessageService.Subscribe:output_type -> message.v1.SubscribeResponse
-	14, // [14:21] is the sub-list for method output_type
-	7,  // [7:14] is the sub-list for method input_type
+	16, // 14: message.v1.MessageService.PurgeUser:input_type -> message.v1.PurgeUserRequest
+	3,  // 15: message.v1.MessageService.SendMessage:output_type -> message.v1.SendMessageResponse
+	5,  // 16: message.v1.MessageService.ListDialogs:output_type -> message.v1.ListDialogsResponse
+	7,  // 17: message.v1.MessageService.CountUnreadDialogs:output_type -> message.v1.CountUnreadDialogsResponse
+	9,  // 18: message.v1.MessageService.ListMessages:output_type -> message.v1.ListMessagesResponse
+	18, // 19: message.v1.MessageService.MarkDialogRead:output_type -> google.protobuf.Empty
+	12, // 20: message.v1.MessageService.HasMessagesFrom:output_type -> message.v1.HasMessagesFromResponse
+	14, // 21: message.v1.MessageService.Subscribe:output_type -> message.v1.SubscribeResponse
+	18, // 22: message.v1.MessageService.PurgeUser:output_type -> google.protobuf.Empty
+	15, // [15:23] is the sub-list for method output_type
+	7,  // [7:15] is the sub-list for method input_type
 	7,  // [7:7] is the sub-list for extension type_name
 	7,  // [7:7] is the sub-list for extension extendee
 	0,  // [0:7] is the sub-list for field type_name
@@ -1051,7 +1101,7 @@ func file_api_message_v1_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_message_v1_message_proto_rawDesc), len(file_api_message_v1_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   16,
+			NumMessages:   17,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

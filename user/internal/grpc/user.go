@@ -27,6 +27,7 @@ type UserService interface {
 type UserHandler struct {
 	userv1.UnimplementedUserServiceServer
 	userService       UserService
+	accountService    AccountService
 	followService     FollowService
 	blockService      BlockService
 	permissionService PermissionService
@@ -36,6 +37,7 @@ type UserHandler struct {
 // Services are the use cases behind the handler.
 type Services struct {
 	Users       UserService
+	Accounts    AccountService
 	Follows     FollowService
 	Blocks      BlockService
 	Permissions PermissionService
@@ -44,6 +46,7 @@ type Services struct {
 func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 	return &UserHandler{
 		userService:       s.Users,
+		accountService:    s.Accounts,
 		followService:     s.Follows,
 		blockService:      s.Blocks,
 		permissionService: s.Permissions,
@@ -65,7 +68,13 @@ func (h *UserHandler) GetOrCreateByEmail(
 		return nil, err
 	}
 
-	return &userv1.GetOrCreateByEmailResponse{UserId: id.String()}, nil
+	// For the access tokens auth issues: a deleted page gets restricted ones.
+	deactivated, err := h.accountService.IsDeactivated(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetOrCreateByEmailResponse{UserId: id.String(), Deactivated: deactivated}, nil
 }
 
 func (h *UserHandler) GetMe(ctx context.Context, _ *userv1.GetMeRequest) (*userv1.GetMeResponse, error) {

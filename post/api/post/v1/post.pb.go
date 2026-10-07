@@ -1427,6 +1427,50 @@ func (x *GetCommentsResponse) GetComments() []*Comment {
 	return nil
 }
 
+type PurgeUserRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PurgeUserRequest) Reset() {
+	*x = PurgeUserRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[26]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PurgeUserRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PurgeUserRequest) ProtoMessage() {}
+
+func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[26]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PurgeUserRequest.ProtoReflect.Descriptor instead.
+func (*PurgeUserRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{26}
+}
+
+func (x *PurgeUserRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
 var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
@@ -1522,7 +1566,9 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x12GetCommentsRequest\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\"C\n" +
 	"\x13GetCommentsResponse\x12,\n" +
-	"\bcomments\x18\x01 \x03(\v2\x10.post.v1.CommentR\bcomments2\x98\a\n" +
+	"\bcomments\x18\x01 \x03(\v2\x10.post.v1.CommentR\bcomments\"+\n" +
+	"\x10PurgeUserRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId2\xd8\a\n" +
 	"\vPostService\x12E\n" +
 	"\n" +
 	"CreatePost\x12\x1a.post.v1.CreatePostRequest\x1a\x1b.post.v1.CreatePostResponse\x12@\n" +
@@ -1540,7 +1586,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\rCreateComment\x12\x1d.post.v1.CreateCommentRequest\x1a\x1e.post.v1.CreateCommentResponse\x12F\n" +
 	"\rDeleteComment\x12\x1d.post.v1.DeleteCommentRequest\x1a\x16.google.protobuf.Empty\x12K\n" +
 	"\fListComments\x12\x1c.post.v1.ListCommentsRequest\x1a\x1d.post.v1.ListCommentsResponse\x12H\n" +
-	"\vGetComments\x12\x1b.post.v1.GetCommentsRequest\x1a\x1c.post.v1.GetCommentsResponseB5Z3github.com/vexner67/freenet/post/api/post/v1;postv1b\x06proto3"
+	"\vGetComments\x12\x1b.post.v1.GetCommentsRequest\x1a\x1c.post.v1.GetCommentsResponse\x12>\n" +
+	"\tPurgeUser\x12\x19.post.v1.PurgeUserRequest\x1a\x16.google.protobuf.EmptyB5Z3github.com/vexner67/freenet/post/api/post/v1;postv1b\x06proto3"
 
 var (
 	file_api_post_v1_post_proto_rawDescOnce sync.Once
@@ -1554,7 +1601,7 @@ func file_api_post_v1_post_proto_rawDescGZIP() []byte {
 	return file_api_post_v1_post_proto_rawDescData
 }
 
-var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
+var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 27)
 var file_api_post_v1_post_proto_goTypes = []any{
 	(*Post)(nil),                  // 0: post.v1.Post
 	(*Comment)(nil),               // 1: post.v1.Comment
@@ -1582,12 +1629,13 @@ var file_api_post_v1_post_proto_goTypes = []any{
 	(*ListCommentsResponse)(nil),  // 23: post.v1.ListCommentsResponse
 	(*GetCommentsRequest)(nil),    // 24: post.v1.GetCommentsRequest
 	(*GetCommentsResponse)(nil),   // 25: post.v1.GetCommentsResponse
-	(*timestamppb.Timestamp)(nil), // 26: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),         // 27: google.protobuf.Empty
+	(*PurgeUserRequest)(nil),      // 26: post.v1.PurgeUserRequest
+	(*timestamppb.Timestamp)(nil), // 27: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),         // 28: google.protobuf.Empty
 }
 var file_api_post_v1_post_proto_depIdxs = []int32{
-	26, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
-	26, // 1: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
+	27, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
+	27, // 1: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 2: post.v1.CreatePostResponse.post:type_name -> post.v1.Post
 	0,  // 3: post.v1.RepostPostResponse.post:type_name -> post.v1.Post
 	0,  // 4: post.v1.GetPostResponse.post:type_name -> post.v1.Post
@@ -1610,21 +1658,23 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	21, // 21: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
 	22, // 22: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
 	24, // 23: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
-	3,  // 24: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
-	27, // 25: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
-	5,  // 26: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
-	8,  // 27: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
-	10, // 28: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
-	12, // 29: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
-	14, // 30: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
-	16, // 31: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
-	18, // 32: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
-	20, // 33: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
-	27, // 34: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
-	23, // 35: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
-	25, // 36: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
-	24, // [24:37] is the sub-list for method output_type
-	11, // [11:24] is the sub-list for method input_type
+	26, // 24: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
+	3,  // 25: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
+	28, // 26: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
+	5,  // 27: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
+	8,  // 28: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
+	10, // 29: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
+	12, // 30: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
+	14, // 31: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
+	16, // 32: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
+	18, // 33: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
+	20, // 34: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
+	28, // 35: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
+	23, // 36: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
+	25, // 37: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
+	28, // 38: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
+	25, // [25:39] is the sub-list for method output_type
+	11, // [11:25] is the sub-list for method input_type
 	11, // [11:11] is the sub-list for extension type_name
 	11, // [11:11] is the sub-list for extension extendee
 	0,  // [0:11] is the sub-list for field type_name
@@ -1641,7 +1691,7 @@ func file_api_post_v1_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_post_v1_post_proto_rawDesc), len(file_api_post_v1_post_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   26,
+			NumMessages:   27,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

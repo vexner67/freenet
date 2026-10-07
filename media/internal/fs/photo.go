@@ -81,3 +81,11 @@ func (s *PhotoStore) Delete(_ context.Context, ownerID uuid.UUID, photoIDs []uui
 
 	return nil
 }
+
+func (s *PhotoStore) DeleteAll(_ context.Context, ownerID uuid.UUID) error {
+	if err := os.RemoveAll(filepath.Join(s.root, ownerID.String())); err != nil {
+		return errs.Wrap("os.RemoveAll", err)
+	}
+
+	return nil
+}

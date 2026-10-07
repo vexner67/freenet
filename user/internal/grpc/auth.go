@@ -18,6 +18,16 @@ func PublicMethods() []string {
 		userv1.UserService_ListFollowers_FullMethodName,
 		userv1.UserService_ListFollowing_FullMethodName,
 		userv1.UserService_GetOrCreateByEmail_FullMethodName,
+		userv1.UserService_GetAccountState_FullMethodName,
+	}
+}
+
+// DeactivatedMethods take the access token of a deleted page: its owner
+// sees and restores it (see jwtauth.Access).
+func DeactivatedMethods() []string {
+	return []string{
+		userv1.UserService_GetMe_FullMethodName,
+		userv1.UserService_ReactivateAccount_FullMethodName,
 	}
 }
 
@@ -26,5 +36,6 @@ func PublicMethods() []string {
 func InternalMethods() map[string][]string {
 	return map[string][]string{
 		userv1.UserService_GetOrCreateByEmail_FullMethodName: {mtls.Auth},
+		userv1.UserService_GetAccountState_FullMethodName:    {mtls.Auth},
 	}
 }

@@ -45,14 +45,16 @@ func newServer(t *testing.T) testServer {
 	}
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
+	avatars, photos := inmem.NewAvatarStore(), inmem.NewPhotoStore()
 	lis := bufconn.Listen(1 << 20)
 	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		mediagrpc.ErrorInterceptor(log),
-		jwtauth.UnaryServerInterceptor(jwtauth.NewVerifier(&key.PublicKey, issuer), mediagrpc.PublicMethods()...),
+		jwtauth.UnaryServerInterceptor(jwtauth.NewVerifier(&key.PublicKey, issuer), jwtauth.Access{Public: mediagrpc.PublicMethods()}),
 	))
 	mediav1.RegisterMediaServiceServer(srv, mediagrpc.NewMediaHandler(
-		service.NewAvatarService(inmem.NewAvatarStore()),
-		service.NewPhotoService(inmem.NewPhotoStore()),
+		service.NewAvatarService(avatars),
+		service.NewPhotoService(photos),
+		service.NewPurgeService(avatars, photos),
 		log,
 	))
 
@@ -207,5 +209,50 @@ func TestPhotos(t *testing.T) {
 
 	if _, err = s.client.ListOwnPhotos(s.as(t, ann), &mediav1.ListOwnPhotosRequest{PhotoIds: make([]string, 11)}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("too many ids: %v", err)
+	}
+}
+
+func TestPurgeUser(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	var picture bytes.Buffer
+	if err := png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 120, 80))); err != nil {
+		t.Fatal(err)
+	}
+
+	avatar, err := s.client.UploadAvatar(s.as(t, ann), &mediav1.UploadAvatarRequest{Image: picture.Bytes()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	annsPhoto, err := s.client.UploadPhoto(s.as(t, ann), &mediav1.UploadPhotoRequest{Image: picture.Bytes()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bobsPhoto, err := s.client.UploadPhoto(s.as(t, bob), &mediav1.UploadPhotoRequest{Image: picture.Bytes()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Called by the user service, with no user token; twice is fine.
+	for range 2 {
+		if _, err = s.client.PurgeUser(context.Background(), &mediav1.PurgeUserRequest{UserId: ann.String()}); err != nil {
+			t.Fatalf("PurgeUser: %v", err)
+		}
+	}
+	if _, err = s.client.PurgeUser(context.Background(), &mediav1.PurgeUserRequest{UserId: "nobody"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("PurgeUser of a bad ID: %v", err)
+	}
+
+	if _, err = s.client.GetAvatar(context.Background(), &mediav1.GetAvatarRequest{UserId: ann.String(), AvatarId: avatar.GetAvatarId()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("ann's avatar after the purge: %v", err)
+	}
+	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: annsPhoto.GetPhotoId()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("ann's photo after the purge: %v", err)
+	}
+	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: bob.String(), PhotoId: bobsPhoto.GetPhotoId()}); err != nil {
+		t.Fatalf("bob's photo after ann's purge: %v", err)
 	}
 }

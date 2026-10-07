@@ -28,9 +28,24 @@ type FollowRepository struct {
 }
 
 func NewFollowRepository(users *UserRepository) *FollowRepository {
-	return &FollowRepository{
+	r := &FollowRepository{
 		follows: make(map[edge]uuid.UUID),
 		users:   users,
+	}
+	users.onDelete(r.forget)
+
+	return r
+}
+
+// forget drops the follows of a deleted user, both ways.
+func (r *FollowRepository) forget(userID uuid.UUID) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for e := range r.follows {
+		if e.follower == userID || e.followee == userID {
+			delete(r.follows, e)
+		}
 	}
 }
 

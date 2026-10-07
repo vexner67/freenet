@@ -23,6 +23,7 @@ const (
 	NotificationService_Notify_FullMethodName            = "/notification.v1.NotificationService/Notify"
 	NotificationService_Retract_FullMethodName           = "/notification.v1.NotificationService/Retract"
 	NotificationService_ForgetPost_FullMethodName        = "/notification.v1.NotificationService/ForgetPost"
+	NotificationService_PurgeUser_FullMethodName         = "/notification.v1.NotificationService/PurgeUser"
 	NotificationService_ListNotifications_FullMethodName = "/notification.v1.NotificationService/ListNotifications"
 	NotificationService_CountUnread_FullMethodName       = "/notification.v1.NotificationService/CountUnread"
 	NotificationService_MarkRead_FullMethodName          = "/notification.v1.NotificationService/MarkRead"
@@ -39,6 +40,10 @@ type NotificationServiceClient interface {
 	Retract(ctx context.Context, in *RetractRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for post: the post is deleted with its likes and comments.
 	ForgetPost(ctx context.Context, in *ForgetPostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for user: the user's page was deleted and not restored in
+	// time; their notifications go, whether they got them or caused them,
+	// and their read mark. Idempotent.
+	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token: the caller's own notifications.
 	ListNotifications(ctx context.Context, in *ListNotificationsRequest, opts ...grpc.CallOption) (*ListNotificationsResponse, error)
 	CountUnread(ctx context.Context, in *CountUnreadRequest, opts ...grpc.CallOption) (*CountUnreadResponse, error)
@@ -82,6 +87,16 @@ func (c *notificationServiceClient) ForgetPost(ctx context.Context, in *ForgetPo
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, NotificationService_ForgetPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *notificationServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, NotificationService_PurgeUser_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -147,6 +162,10 @@ type NotificationServiceServer interface {
 	Retract(context.Context, *RetractRequest) (*emptypb.Empty, error)
 	// Internal, for post: the post is deleted with its likes and comments.
 	ForgetPost(context.Context, *ForgetPostRequest) (*emptypb.Empty, error)
+	// Internal, for user: the user's page was deleted and not restored in
+	// time; their notifications go, whether they got them or caused them,
+	// and their read mark. Idempotent.
+	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
 	// Require an access token: the caller's own notifications.
 	ListNotifications(context.Context, *ListNotificationsRequest) (*ListNotificationsResponse, error)
 	CountUnread(context.Context, *CountUnreadRequest) (*CountUnreadResponse, error)
@@ -174,6 +193,9 @@ func (UnimplementedNotificationServiceServer) Retract(context.Context, *RetractR
 }
 func (UnimplementedNotificationServiceServer) ForgetPost(context.Context, *ForgetPostRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method ForgetPost not implemented")
+}
+func (UnimplementedNotificationServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
 }
 func (UnimplementedNotificationServiceServer) ListNotifications(context.Context, *ListNotificationsRequest) (*ListNotificationsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListNotifications not implemented")
@@ -262,6 +284,24 @@ func _NotificationService_ForgetPost_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NotificationService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PurgeUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotificationServiceServer).PurgeUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotificationService_PurgeUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotificationServiceServer).PurgeUser(ctx, req.(*PurgeUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _NotificationService_ListNotifications_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListNotificationsRequest)
 	if err := dec(in); err != nil {
@@ -345,6 +385,10 @@ var NotificationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ForgetPost",
 			Handler:    _NotificationService_ForgetPost_Handler,
+		},
+		{
+			MethodName: "PurgeUser",
+			Handler:    _NotificationService_PurgeUser_Handler,
 		},
 		{
 			MethodName: "ListNotifications",

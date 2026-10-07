@@ -39,12 +39,24 @@ func New(cfg Config) *JWT {
 	}
 }
 
-func (j *JWT) CreateAccessToken(userID, sessionID, tokenID string) (string, error) {
-	return j.create(jwtauth.AccessToken, j.accessTTL, userID, sessionID, tokenID)
+func (j *JWT) CreateAccessToken(userID, sessionID, tokenID string, deactivated bool) (string, error) {
+	return j.create(token{typ: jwtauth.AccessToken, ttl: j.accessTTL, userID: userID, sessionID: sessionID, id: tokenID, deactivated: deactivated})
 }
 
+// CreateRefreshToken: a refresh token never says whether the page is
+// deleted, RefreshToken asks the user service each time.
 func (j *JWT) CreateRefreshToken(userID, sessionID, tokenID string) (string, error) {
-	return j.create(jwtauth.RefreshToken, j.refreshTTL, userID, sessionID, tokenID)
+	return j.create(token{typ: jwtauth.RefreshToken, ttl: j.refreshTTL, userID: userID, sessionID: sessionID, id: tokenID})
+}
+
+// token is what create signs.
+type token struct {
+	typ         jwtauth.TokenType
+	ttl         time.Duration
+	userID      string
+	sessionID   string
+	id          string
+	deactivated bool
 }
 
 func (j *JWT) ParseRefreshToken(token string) (service.RefreshClaims, error) {
@@ -61,23 +73,20 @@ func (j *JWT) ParseRefreshToken(token string) (service.RefreshClaims, error) {
 	}, nil
 }
 
-func (j *JWT) create(
-	typ jwtauth.TokenType,
-	ttl time.Duration,
-	userID, sessionID, tokenID string,
-) (string, error) {
+func (j *JWT) create(t token) (string, error) {
 	now := time.Now()
 
 	claims := jwtauth.Claims{
 		RegisteredClaims: jwt.RegisteredClaims{
-			Subject:   userID,
-			ID:        tokenID,
+			Subject:   t.userID,
+			ID:        t.id,
 			Issuer:    j.issuer,
 			IssuedAt:  jwt.NewNumericDate(now),
-			ExpiresAt: jwt.NewNumericDate(now.Add(ttl)),
+			ExpiresAt: jwt.NewNumericDate(now.Add(t.ttl)),
 		},
-		TokenType: typ,
-		SessionID: sessionID,
+		TokenType:   t.typ,
+		SessionID:   t.sessionID,
+		Deactivated: t.deactivated,
 	}
 
 	token, err := jwt.NewWithClaims(jwt.SigningMethodRS256, claims).SignedString(j.privateKey)

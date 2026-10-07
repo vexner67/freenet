@@ -30,6 +30,11 @@ service MessageService {
   // expires and with ResourceExhausted when the caller falls behind; then
   // subscribe again and catch up with ListMessages and ListDialogs.
   rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
+
+  // Internal, for user: the user's page was deleted and not restored in
+  // time; their dialogs go, with every message in them, from both sides.
+  // Idempotent.
+  rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
 }
 
 message Message {
@@ -124,4 +129,8 @@ message ReadMark {
   string reader_id = 1;
   string peer_id = 2;
   string up_to_id = 3;
+}
+
+message PurgeUserRequest {
+  string user_id = 1;
 }

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -13,9 +14,7 @@ import (
 )
 
 const (
-	channel = "outbox"
-	// lockKey is the advisory lock of the relay that delivers ("outbox").
-	lockKey      = 0x6f7574626f78
+	channel      = "outbox"
 	closeTimeout = 5 * time.Second
 )
 
@@ -23,6 +22,7 @@ const (
 //
 //	CREATE TABLE outbox (
 //	    id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+//	    stream text NOT NULL,
 //	    kind text NOT NULL,
 //	    payload bytea NOT NULL,
 //	    request_id text NOT NULL DEFAULT '',
@@ -30,36 +30,51 @@ const (
 //	    due_at timestamptz NOT NULL DEFAULT now(),
 //	    created_at timestamptz NOT NULL DEFAULT now()
 //	);
+//	CREATE INDEX outbox_stream_idx ON outbox (stream, id);
+//
+// A table holds several streams, one per receiver: each has its own order
+// and relay, so a receiver that is down holds back only its own messages.
 //
 // The order is that of the identity, given out by the database: clocks of
-// replicas do not matter. The relay that holds an advisory lock on its own
-// connection delivers; it learns about new messages by LISTEN, and as a
+// replicas do not matter. The relay that holds the advisory lock of the
+// stream on its own connection delivers; it learns about new messages by LISTEN, and as a
 // NOTIFY arrives only once its transaction commits, it never wakes up
 // for a message it cannot see yet.
 type Postgres struct {
-	pool *pgxpool.Pool
+	pool   *pgxpool.Pool
+	stream string
+	// lockKey is the advisory lock of the stream's relay.
+	lockKey int64
 	// conn holds the lock and listens; the relay owns it.
 	conn   *pgx.Conn
 	leader bool
 }
 
-func NewPostgres(pool *pgxpool.Pool) *Postgres {
+// NewPostgres is the stream of the outbox table, e.g. the messages for one
+// receiving service.
+func NewPostgres(pool *pgxpool.Pool, stream string) *Postgres {
+	h := fnv.New64a()
+	_, _ = h.Write([]byte("outbox:" + stream)) // a hash never fails to write
+
 	return &Postgres{
-		pool: pool,
+		pool:    pool,
+		stream:  stream,
+		lockKey: int64(h.Sum64()), //nolint:gosec // any 64 bits make a lock key
 	}
 }
 
 const addQuery = `
 	WITH added AS (
 		INSERT INTO outbox (
+			stream,
 			kind,
 			payload,
 			request_id
 		)
-		VALUES ($1, $2, $3)
-		RETURNING id
+		VALUES ($1, $2, $3, $4)
+		RETURNING stream
 	)
-	SELECT pg_notify('` + channel + `', '')
+	SELECT pg_notify('` + channel + `', stream)
 	FROM added
 `
 
@@ -68,7 +83,7 @@ const addQuery = `
 func (q *Postgres) Add(ctx context.Context, kind string, payload []byte) error {
 	conn := pgpool.Conn(ctx, q.pool)
 
-	if _, err := conn.Exec(ctx, addQuery, kind, payload, reqid.FromContext(ctx)); err != nil {
+	if _, err := conn.Exec(ctx, addQuery, q.stream, kind, payload, reqid.FromContext(ctx)); err != nil {
 		return fmt.Errorf("conn.Exec: %w", err)
 	}
 
@@ -85,8 +100,9 @@ const headQuery = `
 		due_at,
 		created_at
 	FROM outbox
+	WHERE stream = $1
 	ORDER BY id
-	LIMIT $1
+	LIMIT $2
 `
 
 func (q *Postgres) Head(ctx context.Context, limit int) ([]Message, error) {
@@ -94,7 +110,7 @@ func (q *Postgres) Head(ctx context.Context, limit int) ([]Message, error) {
 		return nil, nil
 	}
 
-	rows, err := q.pool.Query(ctx, headQuery, limit)
+	rows, err := q.pool.Query(ctx, headQuery, q.stream, limit)
 	if err != nil {
 		return nil, fmt.Errorf("q.pool.Query: %w", err)
 	}
@@ -149,18 +165,23 @@ func (q *Postgres) Wait(ctx context.Context, d time.Duration) error {
 	wctx, cancel := context.WithTimeout(ctx, d)
 	defer cancel()
 
-	_, err := q.conn.WaitForNotification(wctx)
+	for {
+		n, err := q.conn.WaitForNotification(wctx)
 
-	switch {
-	case err == nil:
-		return nil
-	case ctx.Err() != nil:
-		return ctx.Err()
-	case errors.Is(wctx.Err(), context.DeadlineExceeded):
-		return nil // nothing new: look at postponed messages
-	default:
-		q.Close()
-		return fmt.Errorf("q.conn.WaitForNotification: %w", err)
+		switch {
+		case err == nil:
+			// The channel is shared by the streams of the table.
+			if n.Payload == q.stream {
+				return nil
+			}
+		case ctx.Err() != nil:
+			return ctx.Err()
+		case errors.Is(wctx.Err(), context.DeadlineExceeded):
+			return nil // nothing new: look at postponed messages
+		default:
+			q.Close()
+			return fmt.Errorf("q.conn.WaitForNotification: %w", err)
+		}
 	}
 }
 
@@ -176,7 +197,7 @@ func (q *Postgres) lead(ctx context.Context, d time.Duration) error {
 	}
 
 	var locked bool
-	if err := q.conn.QueryRow(ctx, lockQuery, int64(lockKey)).Scan(&locked); err != nil {
+	if err := q.conn.QueryRow(ctx, lockQuery, q.lockKey).Scan(&locked); err != nil {
 		q.Close()
 		return fmt.Errorf("q.conn.QueryRow: %w", err)
 	}

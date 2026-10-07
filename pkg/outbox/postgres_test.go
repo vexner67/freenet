@@ -18,6 +18,7 @@ import (
 const schema = `
 	CREATE TABLE outbox (
 		id bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+		stream text NOT NULL,
 		kind text NOT NULL,
 		payload bytea NOT NULL,
 		request_id text NOT NULL DEFAULT '',
@@ -57,8 +58,8 @@ func TestPostgres(t *testing.T) {
 	ctx := context.Background()
 	tm := pgpool.NewTxManager(pool)
 
-	first := outbox.NewPostgres(pool)
-	second := outbox.NewPostgres(pool)
+	first := outbox.NewPostgres(pool, "notification")
+	second := outbox.NewPostgres(pool, "notification")
 	t.Cleanup(first.Close)
 	t.Cleanup(second.Close)
 
@@ -132,6 +133,23 @@ func TestPostgres(t *testing.T) {
 	head, err = first.Head(ctx, 10)
 	if err != nil || len(head) != 1 || head[0].Attempts != 3 || !head[0].DueAt.Equal(due) {
 		t.Fatalf("after Postpone and Delete: %+v, %v", head, err)
+	}
+
+	// Another stream of the table has its own order and its own relay: it
+	// leads at once and sees only its own messages.
+	media := outbox.NewPostgres(pool, "media")
+	t.Cleanup(media.Close)
+	if err = media.Add(ctx, "erase", []byte{9}); err != nil {
+		t.Fatalf("Add to another stream: %v", err)
+	}
+	if err = media.Wait(ctx, time.Second); err != nil {
+		t.Fatalf("Wait of another stream: %v", err)
+	}
+	if head, err := media.Head(ctx, 10); err != nil || len(head) != 1 || head[0].Kind != "erase" {
+		t.Fatalf("Head of another stream = %+v, %v", head, err)
+	}
+	if head, err := first.Head(ctx, 10); err != nil || len(head) != 1 {
+		t.Fatalf("the first stream sees %d messages, %v; want its own one", len(head), err)
 	}
 
 	// The lead passes on when the leader goes.

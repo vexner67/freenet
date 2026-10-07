@@ -316,3 +316,44 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 
 	return post.Restore(id, wallID, authorID, content, createdAt.UTC(), counters), nil
 }
+
+// deletePostsByUserQuery deletes the posts a user wrote and those on their
+// wall, with their likes and comments, and uncounts the deleted reposts in
+// the posts they shared. A row cannot be both deleted and updated by one
+// statement, so shared posts that go too are left alone.
+const deletePostsByUserQuery = `
+	WITH deleted AS (
+		DELETE FROM posts
+		WHERE author_id = $1
+			OR wall_id = $1
+		RETURNING id, repost_of
+	), uncounted AS (
+		UPDATE posts p
+		SET repost_count = p.repost_count - d.n
+		FROM (
+			SELECT repost_of, count(*) AS n
+			FROM deleted
+			WHERE repost_of IS NOT NULL
+			GROUP BY repost_of
+		) d
+		WHERE p.id = d.repost_of
+			AND p.author_id <> $1
+			AND p.wall_id <> $1
+	)
+	SELECT id
+	FROM deleted
+`
+
+func (r *PostRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.conn(ctx).Query(ctx, deletePostsByUserQuery, userID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return ids, nil
+}

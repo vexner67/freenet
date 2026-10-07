@@ -53,6 +53,18 @@ service UserService {
   // Requires an access token: who of the caller and the user blacklisted
   // the other.
   rpc GetRelation(GetRelationRequest) returns (GetRelationResponse);
+
+  // Require an access token: deleting the caller's page ("Удаление
+  // страницы" on openvk) and restoring it. A deleted page is hidden: others
+  // see only its name and photo, nobody may follow it, write on its wall
+  // or to it. Its owner may restore it until purge_at, when its data is
+  // erased in every service. The access tokens of a deleted page work only
+  // for GetMe and ReactivateAccount; on public methods they are anonymous.
+  rpc DeactivateAccount(DeactivateAccountRequest) returns (DeactivateAccountResponse);
+  rpc ReactivateAccount(ReactivateAccountRequest) returns (ReactivateAccountResponse);
+  // Internal (auth): whether the page is deleted, for the access tokens
+  // it issues; NotFound once its data is erased.
+  rpc GetAccountState(GetAccountStateRequest) returns (GetAccountStateResponse);
 }
 
 message User {
@@ -72,6 +84,9 @@ message User {
   PrivacySettings privacy = 13;
   // Empty without a photo.
   string avatar_id = 14;
+  // The owner deleted the page; it can be restored until purge_at.
+  bool deactivated = 15;
+  google.protobuf.Timestamp purge_at = 16;
 }
 
 // Which sensitive fields other users see in PublicProfile, all false
@@ -120,6 +135,8 @@ message PublicProfile {
   google.protobuf.Timestamp birthday = 10;
   // Empty without a photo.
   string avatar_id = 11;
+  // The owner deleted the page: only names and the photo are left.
+  bool deactivated = 12;
 }
 
 enum Gender {
@@ -168,6 +185,8 @@ message GetOrCreateByEmailRequest {
 
 message GetOrCreateByEmailResponse {
   string user_id = 1;
+  // The page is deleted (see DeactivateAccount).
+  bool deactivated = 2;
 }
 
 message GetMeRequest {}
@@ -335,4 +354,27 @@ message GetRelationResponse {
   bool blocked_by_me = 1;
   // The user blacklisted the caller.
   bool blocked_me = 2;
+}
+
+message DeactivateAccountRequest {
+  // Why, in the owner's words or one of openvk's reasons; may be empty.
+  string reason = 1;
+}
+
+message DeactivateAccountResponse {
+  User user = 1;
+}
+
+message ReactivateAccountRequest {}
+
+message ReactivateAccountResponse {
+  User user = 1;
+}
+
+message GetAccountStateRequest {
+  string user_id = 1;
+}
+
+message GetAccountStateResponse {
+  bool deactivated = 1;
 }

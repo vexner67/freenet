@@ -21,9 +21,24 @@ type BlockRepository struct {
 }
 
 func NewBlockRepository(follows *FollowRepository) *BlockRepository {
-	return &BlockRepository{
+	r := &BlockRepository{
 		follows: follows,
 		blocks:  make(map[edge]uuid.UUID),
+	}
+	follows.users.onDelete(r.forget)
+
+	return r
+}
+
+// forget drops the blocks of a deleted user, both ways.
+func (r *BlockRepository) forget(userID uuid.UUID) {
+	r.follows.mu.Lock()
+	defer r.follows.mu.Unlock()
+
+	for e := range r.blocks {
+		if e.follower == userID || e.followee == userID {
+			delete(r.blocks, e)
+		}
 	}
 }
 

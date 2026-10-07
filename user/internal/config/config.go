@@ -36,13 +36,25 @@ type Config struct {
 	MigrateOnStart bool `env:"MIGRATE_ON_START" envDefault:"true"`
 
 	// NotificationServiceAddr is optional: without it follows notify nobody.
-	NotificationServiceAddr string        `env:"NOTIFICATION_SERVICE_ADDR"`
-	NotifyTimeout           time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
+	NotificationServiceAddr string `env:"NOTIFICATION_SERVICE_ADDR"`
+	// The services that keep data of users, told to erase a page deleted
+	// for good; one left unset keeps the data of erased users.
+	PostServiceAddr    string `env:"POST_SERVICE_ADDR"`
+	MediaServiceAddr   string `env:"MEDIA_SERVICE_ADDR"`
+	MessageServiceAddr string `env:"MESSAGE_SERVICE_ADDR"`
+	// NotifyTimeout bounds one delivery to another service.
+	NotifyTimeout time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
 
 	// Spam protection, per user. REDIS_ADDR shares the counters between
 	// replicas; without it they are kept in memory, per replica.
 	RedisAddr    string          `env:"REDIS_ADDR"`
 	FollowLimits ratelimit.Rules `env:"RATE_LIMIT_FOLLOWS" envDefault:"30/1m,300/24h"`
+
+	// AccountRetention is how long a deleted page can be restored before
+	// its data is erased; openvk keeps it seven months.
+	AccountRetention time.Duration `env:"ACCOUNT_RETENTION" envDefault:"5040h"`
+	// AccountPurgeInterval is how often the pages that are due are erased.
+	AccountPurgeInterval time.Duration `env:"ACCOUNT_PURGE_INTERVAL" envDefault:"1m"`
 
 	// Access tokens are issued by the auth service; user only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
@@ -62,6 +74,10 @@ func (c Config) Validate() error {
 		}
 	default:
 		return fmt.Errorf("unknown STORAGE %q, want %q or %q", c.Storage, StorageInmem, StoragePersistent)
+	}
+
+	if c.AccountRetention <= 0 || c.AccountPurgeInterval <= 0 {
+		return errors.New("ACCOUNT_RETENTION and ACCOUNT_PURGE_INTERVAL must be positive")
 	}
 
 	return c.TLS.Validate()

@@ -174,3 +174,49 @@ func TestRepositories(t *testing.T) {
 		}
 	})
 }
+
+func TestMessageRepository_DeleteByUser(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	messages := postgres.NewMessageRepository(pool)
+	dialogs := postgres.NewDialogRepository(pool)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	for _, pair := range [][2]uuid.UUID{{ann, bob}, {bob, ann}, {cat, ann}, {bob, cat}} {
+		m, err := message.New(pair[0], pair[1], "привет", time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = messages.Save(ctx, m); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err = messages.DeleteByUser(ctx, ann); err != nil {
+		t.Fatalf("DeleteByUser: %v", err)
+	}
+
+	for who, want := range map[uuid.UUID]int{ann: 0, bob: 1, cat: 1} {
+		if got, err := dialogs.List(ctx, who, uuid.Nil, 10); err != nil || len(got) != want {
+			t.Errorf("dialogs of %s = %d, %v; want %d", who, len(got), err, want)
+		}
+	}
+	if got, err := messages.ListBefore(ctx, bob, ann, uuid.Nil, 10); err != nil || len(got) != 0 {
+		t.Errorf("messages of bob and ann = %d, %v; want none", len(got), err)
+	}
+	if got, err := messages.ListBefore(ctx, bob, cat, uuid.Nil, 10); err != nil || len(got) != 1 {
+		t.Errorf("messages of bob and cat = %d, %v; want 1", len(got), err)
+	}
+}

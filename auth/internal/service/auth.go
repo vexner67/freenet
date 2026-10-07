@@ -24,11 +24,22 @@ var (
 	ErrSessionNotFound     = errors.New("session not found")
 
 	ErrUserServiceUnavailable = errors.New("user service unavailable")
+	// ErrAccountNotFound: the user was erased after deleting the page.
+	ErrAccountNotFound = errors.New("account not found")
 )
 
-// UserProvider is auth's view of the user service: it only needs the ID.
+// Account is auth's view of a user: who it is and whether the page is
+// deleted, which restricts its access tokens to restoring it.
+type Account struct {
+	UserID      uuid.UUID
+	Deactivated bool
+}
+
+// UserProvider is auth's view of the user service.
 type UserProvider interface {
-	GetOrCreateByEmail(ctx context.Context, email account.Email) (uuid.UUID, error)
+	GetOrCreateByEmail(ctx context.Context, email account.Email) (Account, error)
+	// Account returns ErrAccountNotFound once the user is erased.
+	Account(ctx context.Context, userID uuid.UUID) (Account, error)
 }
 
 type SessionRepository interface {
@@ -91,7 +102,8 @@ type RefreshClaims struct {
 }
 
 type TokenProvider interface {
-	CreateAccessToken(userID, sessionID, tokenID string) (string, error)
+	// CreateAccessToken marks the token of a deleted page (deactivated).
+	CreateAccessToken(userID, sessionID, tokenID string, deactivated bool) (string, error)
 	CreateRefreshToken(userID, sessionID, tokenID string) (string, error)
 	// ParseRefreshToken returns ErrInvalidRefreshToken for a token that is
 	// malformed, expired, forged or not a refresh token.
@@ -183,23 +195,36 @@ func (s *AuthService) VerifyCode(ctx context.Context, email account.Email, code 
 		return TokenPair{}, errs.Wrap("s.verifyCode", err)
 	}
 
-	userID, err := s.getOrCreateUser(ctx, email)
+	acc, err := s.getOrCreateUser(ctx, email)
 	if err != nil {
 		return TokenPair{}, errs.Wrap("s.getOrCreateUser", err)
 	}
 
-	return s.createSession(ctx, userID)
+	return s.createSession(ctx, acc)
 }
 
 // RefreshToken exchanges a refresh token for a new pair and rotates it:
-// the presented token stops working.
+// the presented token stops working. The new access token says anew
+// whether the page is deleted; the session of an erased user ends.
 func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (TokenPair, error) {
 	sess, err := s.currentSession(ctx, refreshToken)
 	if err != nil {
 		return TokenPair{}, errs.Wrap("s.currentSession", err)
 	}
 
-	pair, err := s.issueTokens(sess.UserID(), sess.ID())
+	acc, err := s.userProvider.Account(ctx, sess.UserID())
+	if errors.Is(err, ErrAccountNotFound) {
+		if err = s.sessionRepo.Delete(ctx, sess.ID()); err != nil && !errors.Is(err, ErrSessionNotFound) {
+			return TokenPair{}, errs.Wrap("s.sessionRepo.Delete", err)
+		}
+
+		return TokenPair{}, ErrInvalidRefreshToken
+	}
+	if err != nil {
+		return TokenPair{}, errs.Wrap("s.userProvider.Account", err)
+	}
+
+	pair, err := s.issueTokens(acc, sess.ID())
 	if err != nil {
 		return TokenPair{}, errs.Wrap("s.issueTokens", err)
 	}
@@ -298,32 +323,32 @@ func (s *AuthService) verifyCode(ctx context.Context, email account.Email, code 
 func (s *AuthService) getOrCreateUser(
 	ctx context.Context,
 	email account.Email,
-) (uuid.UUID, error) {
-	userID, err := s.userProvider.GetOrCreateByEmail(ctx, email)
+) (Account, error) {
+	acc, err := s.userProvider.GetOrCreateByEmail(ctx, email)
 	if err != nil {
-		return uuid.Nil, errs.Wrap("s.userProvider.GetOrCreateByEmail", err)
+		return Account{}, errs.Wrap("s.userProvider.GetOrCreateByEmail", err)
 	}
 
-	return userID, nil
+	return acc, nil
 }
 
 func (s *AuthService) createSession(
 	ctx context.Context,
-	userID uuid.UUID,
+	acc Account,
 ) (TokenPair, error) {
 	sessionID, err := uuid.NewV7()
 	if err != nil {
 		return TokenPair{}, errs.Wrap("uuid.NewV7", err)
 	}
 
-	pair, err := s.issueTokens(userID, sessionID)
+	pair, err := s.issueTokens(acc, sessionID)
 	if err != nil {
 		return TokenPair{}, errs.Wrap("s.issueTokens", err)
 	}
 
 	sess, err := session.New(
 		sessionID,
-		userID,
+		acc.UserID,
 		s.hasher.Hash(pair.Refresh),
 	)
 	if err != nil {
@@ -337,14 +362,14 @@ func (s *AuthService) createSession(
 	return pair, nil
 }
 
-func (s *AuthService) issueTokens(userID, sessionID uuid.UUID) (TokenPair, error) {
+func (s *AuthService) issueTokens(acc Account, sessionID uuid.UUID) (TokenPair, error) {
 	refreshTokenID, err := uuid.NewV7()
 	if err != nil {
 		return TokenPair{}, errs.Wrap("uuid.NewV7", err)
 	}
 
 	refreshToken, err := s.tokenProvider.CreateRefreshToken(
-		userID.String(),
+		acc.UserID.String(),
 		sessionID.String(),
 		refreshTokenID.String(),
 	)
@@ -358,9 +383,10 @@ func (s *AuthService) issueTokens(userID, sessionID uuid.UUID) (TokenPair, error
 	}
 
 	accessToken, err := s.tokenProvider.CreateAccessToken(
-		userID.String(),
+		acc.UserID.String(),
 		sessionID.String(),
 		accessTokenID.String(),
+		acc.Deactivated,
 	)
 	if err != nil {
 		return TokenPair{}, errs.Wrap("s.tokenProvider.CreateAccessToken", err)

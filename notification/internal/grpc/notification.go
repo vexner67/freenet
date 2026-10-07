@@ -18,6 +18,7 @@ type NotificationService interface {
 	Notify(ctx context.Context, e notification.Event) error
 	Retract(ctx context.Context, e notification.Event) error
 	ForgetPost(ctx context.Context, postID uuid.UUID) error
+	PurgeUser(ctx context.Context, userID uuid.UUID) error
 	List(ctx context.Context, userID uuid.UUID, unread bool, cursor uuid.UUID, size int) (service.Page, error)
 	CountUnread(ctx context.Context, userID uuid.UUID) (int, error)
 	MarkRead(ctx context.Context, userID, notificationID uuid.UUID) error
@@ -105,6 +106,19 @@ func (h *NotificationHandler) ForgetPost(ctx context.Context, req *notificationv
 	}
 
 	if err = h.notificationService.ForgetPost(ctx, postID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *NotificationHandler) PurgeUser(ctx context.Context, req *notificationv1.PurgeUserRequest) (*emptypb.Empty, error) {
+	userID, err := uuid.Parse(req.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+
+	if err = h.notificationService.PurgeUser(ctx, userID); err != nil {
 		return nil, err
 	}
 

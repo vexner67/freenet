@@ -87,8 +87,13 @@ func (s *FollowService) Follow(ctx context.Context, followerID, followeeID uuid.
 		return user.ErrFollowSelf
 	}
 
-	if _, err := s.userRepo.GetByID(ctx, followeeID); err != nil {
+	followee, err := s.userRepo.GetByID(ctx, followeeID)
+	if err != nil {
 		return errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	if followee.IsDeactivated() {
+		return user.ErrDeactivated
 	}
 
 	// A follow racing a block may slip in; the next block drops it.

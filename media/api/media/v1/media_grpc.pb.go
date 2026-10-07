@@ -27,6 +27,7 @@ const (
 	MediaService_ListOwnPhotos_FullMethodName = "/media.v1.MediaService/ListOwnPhotos"
 	MediaService_DeletePhotos_FullMethodName  = "/media.v1.MediaService/DeletePhotos"
 	MediaService_GetPhoto_FullMethodName      = "/media.v1.MediaService/GetPhoto"
+	MediaService_PurgeUser_FullMethodName     = "/media.v1.MediaService/PurgeUser"
 )
 
 // MediaServiceClient is the client API for MediaService service.
@@ -48,6 +49,9 @@ type MediaServiceClient interface {
 	DeletePhotos(ctx context.Context, in *DeletePhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: a photo as JPEG.
 	GetPhoto(ctx context.Context, in *GetPhotoRequest, opts ...grpc.CallOption) (*GetPhotoResponse, error)
+	// Internal, for user: the user's page was deleted and not restored in
+	// time; all their avatars and photos go. Idempotent.
+	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type mediaServiceClient struct {
@@ -128,6 +132,16 @@ func (c *mediaServiceClient) GetPhoto(ctx context.Context, in *GetPhotoRequest, 
 	return out, nil
 }
 
+func (c *mediaServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MediaService_PurgeUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MediaServiceServer is the server API for MediaService service.
 // All implementations must embed UnimplementedMediaServiceServer
 // for forward compatibility.
@@ -147,6 +161,9 @@ type MediaServiceServer interface {
 	DeletePhotos(context.Context, *DeletePhotosRequest) (*emptypb.Empty, error)
 	// Public: a photo as JPEG.
 	GetPhoto(context.Context, *GetPhotoRequest) (*GetPhotoResponse, error)
+	// Internal, for user: the user's page was deleted and not restored in
+	// time; all their avatars and photos go. Idempotent.
+	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMediaServiceServer()
 }
 
@@ -177,6 +194,9 @@ func (UnimplementedMediaServiceServer) DeletePhotos(context.Context, *DeletePhot
 }
 func (UnimplementedMediaServiceServer) GetPhoto(context.Context, *GetPhotoRequest) (*GetPhotoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPhoto not implemented")
+}
+func (UnimplementedMediaServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
 }
 func (UnimplementedMediaServiceServer) mustEmbedUnimplementedMediaServiceServer() {}
 func (UnimplementedMediaServiceServer) testEmbeddedByValue()                      {}
@@ -325,6 +345,24 @@ func _MediaService_GetPhoto_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MediaService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PurgeUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).PurgeUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_PurgeUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).PurgeUser(ctx, req.(*PurgeUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MediaService_ServiceDesc is the grpc.ServiceDesc for MediaService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -359,6 +397,10 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPhoto",
 			Handler:    _MediaService_GetPhoto_Handler,
+		},
+		{
+			MethodName: "PurgeUser",
+			Handler:    _MediaService_PurgeUser_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
