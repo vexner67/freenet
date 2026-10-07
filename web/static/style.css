@@ -235,6 +235,9 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
 .name { color: #45688e; font-size: 13px; font-weight: bold; }
 .status { margin: 3px 0 10px; }
 .status.empty { color: #999; }
+/* openvk's deleted page: what is left instead of the information. */
+.settings-delete { margin-top: 20px; padding-left: 170px; }
+.deleted-info { margin: 40px 0; color: #aaa; font-size: 13px; text-align: center; }
 
 .info { width: 100%; border-collapse: collapse; }
 .info th {

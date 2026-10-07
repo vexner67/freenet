@@ -1,6 +1,7 @@
 import { api, currentUser } from './api.js';
 import { genders, relationships, worldviews, politicalViews, months, wallWrites, messagesWrites } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
+import { openDeactivate } from './deactivate.js';
 
 const error = $('error');
 
@@ -120,6 +121,10 @@ if (!me) {
   $('nickname').addEventListener('input', updateURLPreview);
   $('gender').addEventListener('change', updateRelationshipLabels);
   $('form').addEventListener('submit', save);
+
+  // As openvk: under the settings, once there is a page to delete.
+  $('delete-page').hidden = !me.profileCompleted;
+  $('delete-link').addEventListener('click', () => openDeactivate(me));
 
   $('loading').hidden = true;
   $('form').hidden = false;

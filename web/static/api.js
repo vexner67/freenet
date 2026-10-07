@@ -94,6 +94,12 @@ export function renewSession(expiredAccessToken) {
   return refresh(expiredAccessToken);
 }
 
+async function withNewTokens(answer) {
+  const me = await answer;
+  await refresh(session.get()?.accessToken);
+  return me;
+}
+
 // optional sends the token when signed in, so the answer can depend on who
 // asks, and works anonymously otherwise.
 function optional(method, path) {
@@ -138,8 +144,15 @@ export const api = {
   me: () => authorized('GET', '/api/v1/me'),
   updateProfile: (profile) => authorized('PUT', '/api/v1/me/profile', profile),
   updatePrivacy: (privacy) => authorized('PUT', '/api/v1/me/privacy', privacy),
+  // Deleting and restoring the page change what its access tokens may do,
+  // so the tokens are refreshed at once (under the lock, like any refresh).
+  deactivate: (reason) => withNewTokens(authorized('POST', '/api/v1/me/deactivate', { reason })),
+  reactivate: () => withNewTokens(authorized('POST', '/api/v1/me/reactivate')),
   // With a session the profile also says whether you follow the user.
   profile: (nickname) => optional('GET', '/api/v1/users/' + encodeURIComponent(nickname)),
+  // As an anonymous visitor sees it: for the owner of a deleted page, whose
+  // token is good only to restore it.
+  publicProfile: (nickname) => request('GET', '/api/v1/users/' + encodeURIComponent(nickname)),
 
   // With a session posts also say whether you like them.
   wall: (nickname, cursor = '') => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0)),
