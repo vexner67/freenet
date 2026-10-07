@@ -22,14 +22,24 @@ type Server struct {
 	grpc   *grpc.Server
 	health *health.Server
 	logger *slog.Logger
+	// streams is the context of every stream; stopping cancels it, since
+	// GracefulStop would otherwise wait for streams that never end.
+	streams     context.Context
+	stopStreams context.CancelFunc
 }
 
 func New(logger *slog.Logger, opts ...grpc.ServerOption) *Server {
+	streams, stopStreams := context.WithCancel(context.Background())
+
 	s := &Server{
-		grpc:   grpc.NewServer(opts...),
-		health: health.NewServer(),
-		logger: logger,
+		health:      health.NewServer(),
+		logger:      logger,
+		streams:     streams,
+		stopStreams: stopStreams,
 	}
+
+	// Outermost, so the streams of every handler and interceptor end.
+	s.grpc = grpc.NewServer(append([]grpc.ServerOption{grpc.ChainStreamInterceptor(s.endOnStop)}, opts...)...)
 
 	grpc_health_v1.RegisterHealthServer(s.grpc, s.health)
 	reflection.Register(s.grpc)
@@ -70,6 +80,7 @@ func (s *Server) Run(ctx context.Context, addr string) error {
 	}
 
 	s.health.Shutdown()
+	s.stopStreams()
 
 	timer := time.AfterFunc(stopTimeout, s.grpc.Stop)
 	defer timer.Stop()
@@ -80,4 +91,24 @@ func (s *Server) Run(ctx context.Context, addr string) error {
 	s.logger.Info("gRPC server stopped")
 
 	return nil
+}
+
+// endOnStop cancels a stream's context when the server stops.
+func (s *Server) endOnStop(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
+	ctx, cancel := context.WithCancel(ss.Context())
+	defer cancel()
+
+	stop := context.AfterFunc(s.streams, cancel)
+	defer stop()
+
+	return handler(srv, &stream{ServerStream: ss, ctx: ctx})
+}
+
+type stream struct {
+	grpc.ServerStream
+	ctx context.Context
+}
+
+func (s *stream) Context() context.Context {
+	return s.ctx
 }
