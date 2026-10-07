@@ -57,12 +57,12 @@ func Make(data []byte) (Images, error) {
 
 	square := centerSquare(img.Bounds())
 
-	large, err := imaging.Scale(img, square, largeSide, largeSide)
+	large, err := img.Scale(square, largeSide, largeSide)
 	if err != nil {
 		return Images{}, err
 	}
 
-	small, err := imaging.Scale(img, square, smallSide, smallSide)
+	small, err := img.Scale(square, smallSide, smallSide)
 	if err != nil {
 		return Images{}, err
 	}
