@@ -9,10 +9,11 @@ import (
 	"github.com/vexner67/freenet/notification/internal/inmem"
 	"github.com/vexner67/freenet/notification/internal/notification"
 	"github.com/vexner67/freenet/notification/internal/service"
+	"github.com/vexner67/freenet/pkg/pubsub"
 )
 
 func newService() *service.NotificationService {
-	return service.NewNotificationService(inmem.NewNotificationRepository(), inmem.NewReadMarkRepository())
+	return service.NewNotificationService(inmem.NewNotificationRepository(), inmem.NewReadMarkRepository(), pubsub.New[uuid.UUID, service.Change](64))
 }
 
 func like(recipient, actor, post uuid.UUID) notification.Event {
@@ -257,5 +258,52 @@ func TestCountUnread_Capped(t *testing.T) {
 
 	if n := count(t, svc, ann); n != service.MaxUnreadCount {
 		t.Fatalf("unread = %d, want the cap %d", n, service.MaxUnreadCount)
+	}
+}
+
+func TestNotificationService_Events(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newService()
+	ann, bob := uuid.New(), uuid.New()
+
+	changes, cancel := svc.Subscribe(ann)
+	defer cancel()
+
+	follow := notification.Event{Kind: notification.KindFollow, RecipientID: ann, ActorID: bob}
+	if err := svc.Notify(ctx, follow); err != nil {
+		t.Fatal(err)
+	}
+	if c := <-changes; c != service.ChangeNew {
+		t.Fatalf("after Notify: %q, want new", c)
+	}
+
+	page, err := svc.List(ctx, ann, true, uuid.Nil, 10)
+	if err != nil || len(page.Notifications) != 1 {
+		t.Fatalf("List = %+v, %v", page, err)
+	}
+	if err = svc.MarkRead(ctx, ann, page.Notifications[0].ID()); err != nil {
+		t.Fatal(err)
+	}
+	if c := <-changes; c != service.ChangeRead {
+		t.Fatalf("after MarkRead: %q, want read", c)
+	}
+
+	if err = svc.Retract(ctx, follow); err != nil {
+		t.Fatal(err)
+	}
+	if c := <-changes; c != service.ChangeGone {
+		t.Fatalf("after Retract: %q, want gone", c)
+	}
+
+	// A notification that fails tells nobody.
+	if err = svc.Notify(ctx, notification.Event{Kind: notification.KindFollow, RecipientID: ann, ActorID: ann}); err == nil {
+		t.Fatal("nobody is notified about themselves")
+	}
+	select {
+	case c := <-changes:
+		t.Fatalf("unexpected change %q", c)
+	default:
 	}
 }

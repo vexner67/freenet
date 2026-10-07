@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/notification/internal/config"
@@ -20,12 +21,16 @@ import (
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/pgpool"
+	"github.com/vexner67/freenet/pkg/pubsub"
 	"google.golang.org/grpc"
 )
 
 const (
 	connectTimeout = 5 * time.Second
 	migrateTimeout = time.Minute
+	// eventBuffer is how far a subscriber may lag before it is dropped
+	// and has to catch up from storage.
+	eventBuffer = 64
 )
 
 type App struct {
@@ -82,16 +87,23 @@ func (a *App) build(cfg config.Config) error {
 		a.logger.Warn("mTLS is off: internal RPCs are open to anyone who can connect, do not use in production")
 	}
 
-	interceptors = append(interceptors, jwtauth.UnaryServerInterceptor(
-		jwtauth.NewVerifier(publicKey, cfg.JWTIssuer),
-		notificationgrpc.PublicMethods()...,
-	))
+	verifier := jwtauth.NewVerifier(publicKey, cfg.JWTIssuer)
+	interceptors = append(interceptors, jwtauth.UnaryServerInterceptor(verifier, notificationgrpc.PublicMethods()...))
 
-	a.server = grpcserver.New(a.logger, grpc.Creds(creds), grpc.ChainUnaryInterceptor(interceptors...))
+	a.server = grpcserver.New(
+		a.logger,
+		grpc.Creds(creds),
+		grpc.ChainUnaryInterceptor(interceptors...),
+		grpc.ChainStreamInterceptor(jwtauth.StreamServerInterceptor(verifier)),
+	)
+
+	// Live updates stay within this replica; see Subscribe in the proto.
+	events := pubsub.New[uuid.UUID, service.Change](eventBuffer)
+
 	notificationv1.RegisterNotificationServiceServer(
 		a.server.Registrar(),
 		notificationgrpc.NewNotificationHandler(
-			service.NewNotificationService(repos.notifications, repos.readMarks),
+			service.NewNotificationService(repos.notifications, repos.readMarks, events),
 			a.logger,
 		),
 	)

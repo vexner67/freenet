@@ -61,21 +61,41 @@ type Page struct {
 	NextCursor    uuid.UUID
 }
 
+// Change is what happened to a user's notifications, for live updates:
+// the page refreshes its counter and, for a new one, can show it.
+type Change string
+
+const (
+	ChangeNew  Change = "new"
+	ChangeGone Change = "gone"
+	ChangeRead Change = "read"
+)
+
+// Events delivers live updates within this process (pkg/pubsub): best
+// effort, as a subscriber catches up from storage after any gap.
+type Events interface {
+	Publish(userID uuid.UUID, c Change)
+	Subscribe(userID uuid.UUID) (<-chan Change, func())
+}
+
 type NotificationService struct {
 	notificationRepo NotificationRepository
 	readMarkRepo     ReadMarkRepository
+	events           Events
 	now              func() time.Time
 }
 
-func NewNotificationService(notificationRepo NotificationRepository, readMarkRepo ReadMarkRepository) *NotificationService {
+func NewNotificationService(notificationRepo NotificationRepository, readMarkRepo ReadMarkRepository, events Events) *NotificationService {
 	return &NotificationService{
 		notificationRepo: notificationRepo,
 		readMarkRepo:     readMarkRepo,
+		events:           events,
 		now:              time.Now,
 	}
 }
 
-// Notify records an event; a repeated event is notified once.
+// Notify records an event; a repeated event is notified once. The
+// recipient hears of it at once.
 func (s *NotificationService) Notify(ctx context.Context, e notification.Event) error {
 	n, err := notification.New(e, s.now())
 	if err != nil {
@@ -85,6 +105,8 @@ func (s *NotificationService) Notify(ctx context.Context, e notification.Event) 
 	if err = s.notificationRepo.Save(ctx, n); err != nil {
 		return errs.Wrap("s.notificationRepo.Save", err)
 	}
+
+	s.events.Publish(e.RecipientID, ChangeNew)
 
 	return nil
 }
@@ -100,10 +122,14 @@ func (s *NotificationService) Retract(ctx context.Context, e notification.Event)
 		return errs.Wrap("s.notificationRepo.Delete", err)
 	}
 
+	s.events.Publish(e.RecipientID, ChangeGone)
+
 	return nil
 }
 
-// ForgetPost drops the notifications about a deleted post.
+// ForgetPost drops the notifications about a deleted post. Whose they were
+// is not looked up, so nobody hears of it live: counters catch up on the
+// next change or page.
 func (s *NotificationService) ForgetPost(ctx context.Context, postID uuid.UUID) error {
 	if err := s.notificationRepo.DeleteByPost(ctx, postID); err != nil {
 		return errs.Wrap("s.notificationRepo.DeleteByPost", err)
@@ -178,5 +204,15 @@ func (s *NotificationService) MarkRead(ctx context.Context, userID, notification
 		return errs.Wrap("s.readMarkRepo.MarkRead", err)
 	}
 
+	// The user's other pages clear their counters.
+	s.events.Publish(userID, ChangeRead)
+
 	return nil
+}
+
+// Subscribe streams what happens to userID's notifications from now on
+// until cancel, which must be called; the channel also closes when the
+// subscriber falls behind.
+func (s *NotificationService) Subscribe(userID uuid.UUID) (<-chan Change, func()) {
+	return s.events.Subscribe(userID)
 }
