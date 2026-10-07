@@ -143,6 +143,10 @@ type userResponse struct {
 	profileJSON
 	ProfileCompleted bool        `json:"profileCompleted"`
 	Privacy          privacyJSON `json:"privacy"`
+	// Deactivated: the owner deleted the page; PurgeAt is when it can no
+	// longer be restored (RFC 3339, only for a deleted page).
+	Deactivated bool   `json:"deactivated"`
+	PurgeAt     string `json:"purgeAt,omitempty"`
 }
 
 func toUserResponse(u model.User) userResponse {
@@ -160,13 +164,26 @@ func toUserResponse(u model.User) userResponse {
 			WallWrite:          u.Privacy.WallWrite,
 			MessagesWrite:      u.Privacy.MessagesWrite,
 		},
+		Deactivated: u.Deactivated,
+		PurgeAt:     timeString(u.PurgeAt),
 	}
+}
+
+// timeString is "" for the zero time.
+func timeString(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+
+	return t.UTC().Format(time.RFC3339)
 }
 
 type publicProfileResponse struct {
 	ID     string      `json:"id"`
 	Avatar *avatarJSON `json:"avatar"`
 	profileJSON
+	// Deactivated: the page is deleted; only names and the photo are left.
+	Deactivated bool `json:"deactivated"`
 }
 
 func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
@@ -174,5 +191,6 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 		ID:          p.ID,
 		Avatar:      toAvatarJSON(p.ID, p.AvatarID),
 		profileJSON: toProfileJSON(p.Profile),
+		Deactivated: p.Deactivated,
 	}
 }

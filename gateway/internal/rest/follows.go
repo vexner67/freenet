@@ -2,6 +2,7 @@ package rest
 
 import (
 	"context"
+	"maps"
 	"net/http"
 	"slices"
 
@@ -171,12 +172,26 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// authors looks up the authors of posts or comments in one request; an
-// author who deleted the account is missing from the result.
 // maxProfilesPerRequest is what one GetProfiles of the user service takes.
 const maxProfilesPerRequest = 100
 
+// authors looks up the authors of posts, comments or notifications; those
+// whose page is deleted or erased are missing from the result, so what
+// they wrote is hidden.
 func (a *api) authors(r *http.Request, authorIDs []string) (map[string]model.Author, error) {
+	people, err := a.people(r, authorIDs)
+	if err != nil {
+		return nil, err
+	}
+
+	maps.DeleteFunc(people, func(_ string, p model.Author) bool { return p.Deactivated })
+
+	return people, nil
+}
+
+// people looks up users in as few requests as it can; those whose page is
+// deleted are there, marked, and those erased are missing.
+func (a *api) people(r *http.Request, authorIDs []string) (map[string]model.Author, error) {
 	seen := make(map[string]bool, len(authorIDs))
 	ids := make([]string, 0, len(authorIDs))
 
@@ -201,7 +216,7 @@ func (a *api) authors(r *http.Request, authorIDs []string) (map[string]model.Aut
 		}
 
 		for _, p := range profiles {
-			authors[p.ID] = authorOf(p.ID, p.AvatarID, p.Profile)
+			authors[p.ID] = authorOfProfile(p)
 		}
 	}
 

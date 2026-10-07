@@ -59,11 +59,28 @@ type fakeUsers struct {
 	// Blacklists: relation is the same with everyone.
 	relation                         model.Relation
 	blocked, unblocked, relationWith string
-	err                              error
+	// deactivated: the caller's page is deleted, with this reason.
+	deactivated bool
+	reason      string
+	err         error
 }
 
 func (f *fakeUsers) user() model.User {
-	return model.User{ID: "u1", Email: "ann@example.com", Profile: f.profile, ProfileCompleted: f.profile.Nickname != ""}
+	u := model.User{ID: "u1", Email: "ann@example.com", Profile: f.profile, ProfileCompleted: f.profile.Nickname != ""}
+	if f.deactivated {
+		u.Deactivated, u.PurgeAt = true, time.Date(2027, 5, 7, 12, 0, 0, 0, time.UTC)
+	}
+	return u
+}
+
+func (f *fakeUsers) Deactivate(_ context.Context, token, reason string) (model.User, error) {
+	f.token, f.reason, f.deactivated = token, reason, f.err == nil
+	return f.user(), f.err
+}
+
+func (f *fakeUsers) Reactivate(_ context.Context, token string) (model.User, error) {
+	f.token, f.deactivated = token, false
+	return f.user(), f.err
 }
 
 func (f *fakeUsers) GetMe(_ context.Context, token string) (model.User, error) {
@@ -89,13 +106,15 @@ func (f *fakeUsers) GetProfile(_ context.Context, nickname string) (model.Public
 		return model.PublicProfile{ID: "u1", Profile: model.Profile{Name: "Ann", Nickname: "ann", Worldview: "buddhism"}}, nil
 	case "bob":
 		return model.PublicProfile{ID: "u2", Profile: model.Profile{Name: "Bob", Nickname: "bob"}}, nil
+	case "cat":
+		return model.PublicProfile{ID: "u3", Profile: model.Profile{Name: "Cat", Nickname: "cat"}, Deactivated: true}, nil
 	default:
 		return model.PublicProfile{}, failure.New(failure.NotFound, "user not found")
 	}
 }
 
-// GetProfiles knows u1, u2 and anyone whose ID starts with "x", and takes
-// at most 100 IDs, as the user service.
+// GetProfiles knows u1, u2, u3 (a deleted page) and anyone whose ID starts
+// with "x", and takes at most 100 IDs, as the user service.
 func (f *fakeUsers) GetProfiles(_ context.Context, ids []string) ([]model.PublicProfile, error) {
 	f.profileIDs = ids
 	f.profileCalls++
@@ -112,6 +131,9 @@ func (f *fakeUsers) GetProfiles(_ context.Context, ids []string) ([]model.Public
 		}
 		if id == "u1" {
 			found = append(found, model.PublicProfile{ID: "u1", Profile: model.Profile{Name: "Ann", Nickname: "ann"}})
+		}
+		if id == "u3" {
+			found = append(found, model.PublicProfile{ID: "u3", Profile: model.Profile{Name: "Cat", Nickname: "cat"}, Deactivated: true})
 		}
 	}
 	return found, nil
@@ -477,6 +499,8 @@ type fakeMessages struct {
 	token, peerID, cursor, after, sentText, markedUpTo string
 	// peerWrote: the peer has written to the caller.
 	peerWrote bool
+	// dialogs replace the default page when set.
+	dialogs []model.Dialog
 	// events feed Subscribe; closing it ends the stream with streamEnd.
 	events    chan model.MessageEvent
 	streamEnd error
@@ -510,6 +534,9 @@ func (f *fakeMessages) Send(_ context.Context, token, recipientID, text string) 
 
 func (f *fakeMessages) Dialogs(_ context.Context, token, cursor string, _ int) (model.DialogPage, error) {
 	f.token, f.cursor = token, cursor
+	if f.dialogs != nil {
+		return model.DialogPage{Dialogs: f.dialogs}, f.err
+	}
 	return model.DialogPage{
 		Dialogs: []model.Dialog{
 			{PeerID: "u2", LastMessage: model.Message{ID: "m2", SenderID: "u2", RecipientID: "u1", Text: "как дела?"}, Unread: true},

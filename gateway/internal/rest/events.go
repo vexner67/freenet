@@ -295,7 +295,7 @@ func (s *eventSession) peer(id string) (authorJSON, bool, error) {
 		return p, true, nil
 	}
 
-	found, err := s.api.authors(s.r, []string{id})
+	found, err := s.api.people(s.r, []string{id})
 	if err != nil {
 		return authorJSON{}, false, err
 	}

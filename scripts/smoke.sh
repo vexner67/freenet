@@ -71,7 +71,8 @@ done
 code=$(echo "$line" | grep -o '"code":"[0-9]*"' | grep -o '[0-9]\+')
 echo "$line" | grep -qF "\"request_id\":\"$request_id\"" || die "the auth log line has no request_id $request_id: $line"
 step "request ID: from the gateway to the auth log"
-token=$(call POST /api/v1/auth/verify "{\"email\":\"$email\",\"code\":\"$code\"}" | jq -r .accessToken)
+tokens=$(call POST /api/v1/auth/verify "{\"email\":\"$email\",\"code\":\"$code\"}")
+token=$(echo "$tokens" | jq -r .accessToken)
 step "auth: signed in with the code from the log"
 
 call PUT /api/v1/me/profile "{\"name\":\"Smoke\",\"nickname\":\"$nickname\"}" | jq -e '.profileCompleted' >/dev/null
@@ -94,6 +95,22 @@ step "notification: unread count"
 
 call GET /api/v1/dialogs | jq -e '.dialogs | length == 0' >/dev/null
 step "message: dialogs"
+
+# refresh replaces the tokens, as the website does after deleting and
+# restoring the page.
+refresh() {
+	tokens=$(token='' call POST /api/v1/auth/refresh "{\"refreshToken\":$(echo "$tokens" | jq .refreshToken)}")
+	token=$(echo "$tokens" | jq -r .accessToken)
+}
+
+call POST /api/v1/me/deactivate '{"reason":"smoke test"}' | jq -e '.deactivated and .purgeAt != null' >/dev/null
+refresh
+expect=403 call PUT /api/v1/me/profile "{\"name\":\"Smoke\",\"nickname\":\"$nickname\"}" >/dev/null
+token='' call GET "/api/v1/users/$nickname" | jq -e '.deactivated' >/dev/null
+call POST /api/v1/me/reactivate | jq -e '.deactivated == false' >/dev/null
+refresh
+call PUT /api/v1/me/profile "{\"name\":\"Smoke\",\"nickname\":\"$nickname\"}" >/dev/null
+step "user: page deleted (its token restricted) and restored"
 
 for svc in "${services[@]}"; do
 	health=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || true)

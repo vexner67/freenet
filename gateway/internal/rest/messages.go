@@ -80,7 +80,7 @@ func (a *api) listDialogs(w http.ResponseWriter, r *http.Request) {
 		ids[i] = d.PeerID
 	}
 
-	peers, err := a.authors(r, ids)
+	peers, err := a.people(r, ids)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

@@ -20,6 +20,8 @@ type Auth interface {
 
 type Users interface {
 	GetMe(ctx context.Context, accessToken string) (model.User, error)
+	Deactivate(ctx context.Context, accessToken, reason string) (model.User, error)
+	Reactivate(ctx context.Context, accessToken string) (model.User, error)
 	UpdateProfile(ctx context.Context, accessToken string, p model.Profile) (model.User, error)
 	UpdatePrivacy(ctx context.Context, accessToken string, p model.Privacy) (model.User, error)
 	GetProfile(ctx context.Context, nickname string) (model.PublicProfile, error)
@@ -132,6 +134,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/me", a.getMe)
 	mux.HandleFunc("PUT /api/v1/me/profile", a.updateProfile)
 	mux.HandleFunc("PUT /api/v1/me/privacy", a.updatePrivacy)
+	mux.HandleFunc("POST /api/v1/me/deactivate", a.deactivate)
+	mux.HandleFunc("POST /api/v1/me/reactivate", a.reactivate)
 
 	mux.HandleFunc("GET /api/v1/users/{nickname}", a.getProfile)
 

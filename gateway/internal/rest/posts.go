@@ -25,6 +25,9 @@ type authorJSON struct {
 	Name     string      `json:"name"`
 	Surname  string      `json:"surname"`
 	Gender   string      `json:"gender"`
+	// Deactivated: the page is deleted (in dialogs; elsewhere such people
+	// are left out).
+	Deactivated bool `json:"deactivated,omitempty"`
 }
 
 type postResponse struct {
@@ -89,14 +92,22 @@ func authorOf(id, avatarID string, p model.Profile) model.Author {
 	}
 }
 
+func authorOfProfile(p model.PublicProfile) model.Author {
+	a := authorOf(p.ID, p.AvatarID, p.Profile)
+	a.Deactivated = p.Deactivated
+
+	return a
+}
+
 func toAuthorJSON(a model.Author) authorJSON {
 	return authorJSON{
-		ID:       a.ID,
-		Avatar:   toAvatarJSON(a.ID, a.AvatarID),
-		Nickname: a.Nickname,
-		Name:     a.Name,
-		Surname:  a.Surname,
-		Gender:   a.Gender,
+		ID:          a.ID,
+		Avatar:      toAvatarJSON(a.ID, a.AvatarID),
+		Nickname:    a.Nickname,
+		Name:        a.Name,
+		Surname:     a.Surname,
+		Gender:      a.Gender,
+		Deactivated: a.Deactivated,
 	}
 }
 
@@ -266,6 +277,12 @@ func (a *api) listPosts(w http.ResponseWriter, r *http.Request) {
 	owner, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
+		return
+	}
+
+	// The wall of a deleted page is gone, as on openvk, until restored.
+	if owner.Deactivated {
+		a.writeError(w, r, failure.New(failure.PermissionDenied, "this page is deleted"))
 		return
 	}
 

@@ -117,6 +117,8 @@ func toUser(u *userv1.User) model.User {
 		Email:            u.GetEmail(),
 		Profile:          toProfile(u),
 		ProfileCompleted: u.GetProfileCompleted(),
+		Deactivated:      u.GetDeactivated(),
+		PurgeAt:          fromTimestamp(u.GetPurgeAt()),
 		Privacy: model.Privacy{
 			ShowBirthday:       u.GetPrivacy().GetShowBirthday(),
 			ShowRelationship:   u.GetPrivacy().GetShowRelationship(),
