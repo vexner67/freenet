@@ -25,6 +25,7 @@ const (
 	MessageService_CountUnreadDialogs_FullMethodName = "/message.v1.MessageService/CountUnreadDialogs"
 	MessageService_ListMessages_FullMethodName       = "/message.v1.MessageService/ListMessages"
 	MessageService_MarkDialogRead_FullMethodName     = "/message.v1.MessageService/MarkDialogRead"
+	MessageService_HasMessagesFrom_FullMethodName    = "/message.v1.MessageService/HasMessagesFrom"
 )
 
 // MessageServiceClient is the client API for MessageService service.
@@ -44,6 +45,9 @@ type MessageServiceClient interface {
 	ListMessages(ctx context.Context, in *ListMessagesRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error)
 	// The caller has read the dialog up to a message from the peer.
 	MarkDialogRead(ctx context.Context, in *MarkDialogReadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Requires an access token: whether the peer has ever written to the
+	// caller, who may then answer whatever the peer's privacy.
+	HasMessagesFrom(ctx context.Context, in *HasMessagesFromRequest, opts ...grpc.CallOption) (*HasMessagesFromResponse, error)
 }
 
 type messageServiceClient struct {
@@ -104,6 +108,16 @@ func (c *messageServiceClient) MarkDialogRead(ctx context.Context, in *MarkDialo
 	return out, nil
 }
 
+func (c *messageServiceClient) HasMessagesFrom(ctx context.Context, in *HasMessagesFromRequest, opts ...grpc.CallOption) (*HasMessagesFromResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(HasMessagesFromResponse)
+	err := c.cc.Invoke(ctx, MessageService_HasMessagesFrom_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // MessageServiceServer is the server API for MessageService service.
 // All implementations must embed UnimplementedMessageServiceServer
 // for forward compatibility.
@@ -121,6 +135,9 @@ type MessageServiceServer interface {
 	ListMessages(context.Context, *ListMessagesRequest) (*ListMessagesResponse, error)
 	// The caller has read the dialog up to a message from the peer.
 	MarkDialogRead(context.Context, *MarkDialogReadRequest) (*emptypb.Empty, error)
+	// Requires an access token: whether the peer has ever written to the
+	// caller, who may then answer whatever the peer's privacy.
+	HasMessagesFrom(context.Context, *HasMessagesFromRequest) (*HasMessagesFromResponse, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
 
@@ -145,6 +162,9 @@ func (UnimplementedMessageServiceServer) ListMessages(context.Context, *ListMess
 }
 func (UnimplementedMessageServiceServer) MarkDialogRead(context.Context, *MarkDialogReadRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkDialogRead not implemented")
+}
+func (UnimplementedMessageServiceServer) HasMessagesFrom(context.Context, *HasMessagesFromRequest) (*HasMessagesFromResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method HasMessagesFrom not implemented")
 }
 func (UnimplementedMessageServiceServer) mustEmbedUnimplementedMessageServiceServer() {}
 func (UnimplementedMessageServiceServer) testEmbeddedByValue()                        {}
@@ -257,6 +277,24 @@ func _MessageService_MarkDialogRead_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_HasMessagesFrom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(HasMessagesFromRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).HasMessagesFrom(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_HasMessagesFrom_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).HasMessagesFrom(ctx, req.(*HasMessagesFromRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // MessageService_ServiceDesc is the grpc.ServiceDesc for MessageService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -283,6 +321,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MarkDialogRead",
 			Handler:    _MessageService_MarkDialogRead_Handler,
+		},
+		{
+			MethodName: "HasMessagesFrom",
+			Handler:    _MessageService_HasMessagesFrom_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

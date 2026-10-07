@@ -210,3 +210,29 @@ func TestErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestHasMessagesFrom(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	if _, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "привет"}); err != nil {
+		t.Fatal(err)
+	}
+
+	resp, err := s.client.HasMessagesFrom(s.as(t, ann), &messagev1.HasMessagesFromRequest{PeerId: bob.String()})
+	if err != nil || !resp.GetHasMessages() {
+		t.Fatalf("ann has messages from bob: %v, %v", resp, err)
+	}
+
+	resp, err = s.client.HasMessagesFrom(s.as(t, bob), &messagev1.HasMessagesFromRequest{PeerId: ann.String()})
+	if err != nil || resp.GetHasMessages() {
+		t.Fatalf("bob has none from ann: %v, %v", resp, err)
+	}
+
+	_, err = s.client.HasMessagesFrom(s.as(t, ann), &messagev1.HasMessagesFromRequest{PeerId: "x"})
+	if got := status.Code(err); got != codes.InvalidArgument {
+		t.Fatalf("bad peer id: code = %v", got)
+	}
+}

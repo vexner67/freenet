@@ -21,6 +21,7 @@ type MessageService interface {
 	History(ctx context.Context, userID, peerID, cursor uuid.UUID, size int) (service.HistoryPage, error)
 	Newer(ctx context.Context, userID, peerID, after uuid.UUID, size int) (service.HistoryPage, error)
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
+	HasMessagesFrom(ctx context.Context, userID, peerID uuid.UUID) (bool, error)
 }
 
 type MessageHandler struct {
@@ -142,6 +143,25 @@ func (h *MessageHandler) history(ctx context.Context, userID, peerID uuid.UUID, 
 	}
 
 	return h.messageService.Newer(ctx, userID, peerID, after, int(req.GetLimit()))
+}
+
+func (h *MessageHandler) HasMessagesFrom(ctx context.Context, req *messagev1.HasMessagesFromRequest) (*messagev1.HasMessagesFromResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	peerID, err := parseID(req.GetPeerId(), "invalid peer id")
+	if err != nil {
+		return nil, err
+	}
+
+	ok, err := h.messageService.HasMessagesFrom(ctx, userID, peerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &messagev1.HasMessagesFromResponse{HasMessages: ok}, nil
 }
 
 func (h *MessageHandler) MarkDialogRead(ctx context.Context, req *messagev1.MarkDialogReadRequest) (*emptypb.Empty, error) {

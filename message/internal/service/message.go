@@ -41,6 +41,8 @@ type DialogRepository interface {
 	ReadMarks(ctx context.Context, userID, peerID uuid.UUID) (message.ReadMarks, error)
 	// MarkRead moves the user's mark in the dialog to upTo, never back.
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
+	// HasIncoming tells whether peerID has ever written to userID.
+	HasIncoming(ctx context.Context, userID, peerID uuid.UUID) (bool, error)
 }
 
 // DialogPage is one screen of dialogs; NextCursor is uuid.Nil on the last.
@@ -164,6 +166,18 @@ func (s *MessageService) Newer(ctx context.Context, userID, peerID, after uuid.U
 // MarkRead reads the dialog up to upTo, a message from the peer to the
 // user: an ID made up "in the future" would mark every message still to
 // come as read.
+// HasMessagesFrom tells whether peerID has ever written to userID: whom
+// the user wrote to may answer whatever their privacy, which the user
+// service decides.
+func (s *MessageService) HasMessagesFrom(ctx context.Context, userID, peerID uuid.UUID) (bool, error) {
+	ok, err := s.dialogRepo.HasIncoming(ctx, userID, peerID)
+	if err != nil {
+		return false, errs.Wrap("s.dialogRepo.HasIncoming", err)
+	}
+
+	return ok, nil
+}
+
 func (s *MessageService) MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error {
 	m, err := s.messageRepo.Get(ctx, upTo)
 	if err != nil {

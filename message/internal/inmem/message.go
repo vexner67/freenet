@@ -220,6 +220,19 @@ func (r *DialogRepository) ReadMarks(ctx context.Context, userID, peerID uuid.UU
 	return r.marks(userID, peerID), nil
 }
 
+func (r *DialogRepository) HasIncoming(ctx context.Context, userID, peerID uuid.UUID) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	d := r.s.dialogs[side{userID, peerID}]
+
+	return d != nil && d.lastIncomingID != uuid.Nil, nil
+}
+
 // marks reads both sides' marks; the caller holds a lock.
 func (r *DialogRepository) marks(userID, peerID uuid.UUID) message.ReadMarks {
 	var marks message.ReadMarks
