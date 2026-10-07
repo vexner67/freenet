@@ -12,6 +12,11 @@ info:
 
     Errors always have the shape `{"error": {"code": "...", "message": "..."}}`;
     `message` is safe to show to the user.
+
+    Every response carries `X-Request-ID`, the name of the request in the
+    logs of the gateway and of every service it called: quote it when
+    reporting a problem. An `X-Request-ID` sent by the client is ignored
+    unless the gateway runs behind its own proxy.
 servers:
   - url: http://localhost:8080
     description: Local development
