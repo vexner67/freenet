@@ -1,5 +1,6 @@
 // Package grpcserver runs the gRPC servers of freenet services the same way:
-// health checks, reflection, graceful shutdown and safe error statuses.
+// health checks, reflection, request IDs, metrics, graceful shutdown and
+// safe error statuses.
 package grpcserver
 
 import (
@@ -9,6 +10,8 @@ import (
 	"net"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/vexner67/freenet/pkg/reqid"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/health"
 	"google.golang.org/grpc/health/grpc_health_v1"
@@ -28,7 +31,15 @@ type Server struct {
 	stopStreams context.CancelFunc
 }
 
-func New(logger *slog.Logger, opts ...grpc.ServerOption) *Server {
+// New registers the server's metrics in reg. Its own interceptors run
+// before those in opts: the request ID is known to every log line and
+// the metrics see the status the client gets.
+func New(logger *slog.Logger, reg prometheus.Registerer, opts ...grpc.ServerOption) (*Server, error) {
+	observer, err := newObserver(reg, logger)
+	if err != nil {
+		return nil, fmt.Errorf("newObserver: %w", err)
+	}
+
 	streams, stopStreams := context.WithCancel(context.Background())
 
 	s := &Server{
@@ -38,13 +49,18 @@ func New(logger *slog.Logger, opts ...grpc.ServerOption) *Server {
 		stopStreams: stopStreams,
 	}
 
-	// Outermost, so the streams of every handler and interceptor end.
-	s.grpc = grpc.NewServer(append([]grpc.ServerOption{grpc.ChainStreamInterceptor(s.endOnStop)}, opts...)...)
+	own := []grpc.ServerOption{
+		grpc.ChainUnaryInterceptor(reqid.UnaryServerInterceptor, observer.unary),
+		// endOnStop outermost, so the streams of every handler and
+		// interceptor end.
+		grpc.ChainStreamInterceptor(s.endOnStop, reqid.StreamServerInterceptor, observer.stream),
+	}
+	s.grpc = grpc.NewServer(append(own, opts...)...)
 
 	grpc_health_v1.RegisterHealthServer(s.grpc, s.health)
 	reflection.Register(s.grpc)
 
-	return s
+	return s, nil
 }
 
 // Registrar is what generated Register<Service>Server functions take.

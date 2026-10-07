@@ -12,9 +12,11 @@ import (
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/logger"
+	"github.com/vexner67/freenet/pkg/metrics"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/ratelimit"
+	"github.com/vexner67/freenet/pkg/reqid"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"github.com/vexner67/freenet/user/internal/config"
 	usergrpc "github.com/vexner67/freenet/user/internal/grpc"
@@ -23,10 +25,13 @@ import (
 	"github.com/vexner67/freenet/user/internal/postgres"
 	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/migrations"
+	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
 
 const (
+	// probeTimeout bounds the healthcheck.
+	probeTimeout   = 3 * time.Second
 	connectTimeout = 5 * time.Second
 	migrateTimeout = time.Minute
 )
@@ -37,6 +42,7 @@ type App struct {
 	limiter          ratelimit.Store
 	notificationConn *grpc.ClientConn
 	server           *grpcserver.Server
+	metrics          *metrics.Server
 	addr             string
 }
 
@@ -103,7 +109,12 @@ func (a *App) build(cfg config.Config) error {
 	))
 	interceptors = append(interceptors, ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger))
 
-	a.server = grpcserver.New(a.logger, grpc.Creds(creds), grpc.ChainUnaryInterceptor(interceptors...))
+	reg := metrics.NewRegistry()
+
+	a.server, err = grpcserver.New(a.logger, reg, grpc.Creds(creds), grpc.ChainUnaryInterceptor(interceptors...))
+	if err != nil {
+		return errs.Wrap("grpcserver.New", err)
+	}
 	userv1.RegisterUserServiceServer(
 		a.server.Registrar(),
 		usergrpc.NewUserHandler(usergrpc.Services{
@@ -119,6 +130,12 @@ func (a *App) build(cfg config.Config) error {
 			Permissions: service.NewPermissionService(store.users, store.follows, store.blocks),
 		}, a.logger),
 	)
+
+	if cfg.MetricsPort == 0 {
+		a.logger.Info("METRICS_PORT is not set: metrics are not served")
+	} else {
+		a.metrics = metrics.NewServer(fmt.Sprintf(":%d", cfg.MetricsPort), reg, a.logger)
+	}
 
 	a.logger.Info("user configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(),
 		"notifications", cfg.NotificationServiceAddr != "")
@@ -166,7 +183,7 @@ func (a *App) newNotifier(cfg config.Config) (service.Notifier, error) {
 		return nil, errs.Wrap("mtls.ClientCredentials", err)
 	}
 
-	a.notificationConn, err = grpc.NewClient(cfg.NotificationServiceAddr, grpc.WithTransportCredentials(creds))
+	a.notificationConn, err = grpc.NewClient(cfg.NotificationServiceAddr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
 	if err != nil {
 		return nil, errs.Wrap("grpc.NewClient", err)
 	}
@@ -220,12 +237,36 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	}, nil
 }
 
+// Run serves until ctx is cancelled or the gRPC or metrics server fails,
+// which stops the other one too.
 func (a *App) Run(ctx context.Context) error {
-	if err := a.server.Run(ctx, a.addr); err != nil {
-		return errs.Wrap("a.server.Run", err)
+	g, ctx := errgroup.WithContext(ctx)
+
+	g.Go(func() error {
+		return errs.Wrap("a.server.Run", a.server.Run(ctx, a.addr))
+	})
+
+	if a.metrics != nil {
+		g.Go(func() error {
+			return errs.Wrap("a.metrics.Run", a.metrics.Run(ctx))
+		})
 	}
 
-	return nil
+	return g.Wait()
+}
+
+// Healthcheck asks the service running with cfg on this host whether it
+// serves: the container healthcheck, as the image has no shell or curl.
+func Healthcheck(ctx context.Context, cfg config.Config) error {
+	creds, err := mtls.ClientCredentials(cfg.TLS)
+	if err != nil {
+		return errs.Wrap("mtls.ClientCredentials", err)
+	}
+
+	ctx, cancel := context.WithTimeout(ctx, probeTimeout)
+	defer cancel()
+
+	return errs.Wrap("grpcserver.Probe", grpcserver.Probe(ctx, fmt.Sprintf("localhost:%d", cfg.GRPCPort), creds))
 }
 
 // Close releases everything New opened; safe after a partial New.

@@ -22,6 +22,10 @@ type Config struct {
 	LogLevel  string `env:"LOG_LEVEL,required,notEmpty"`
 	LogFormat string `env:"LOG_FORMAT,required,notEmpty"`
 
+	// MetricsPort serves Prometheus metrics on a port of its own, not to
+	// be published outside; 0 does not serve them.
+	MetricsPort int `env:"METRICS_PORT"`
+
 	// mTLS with other services: TLS_CA_PATH, TLS_CERT_PATH, TLS_KEY_PATH.
 	TLS mtls.Config `envPrefix:"TLS_"`
 

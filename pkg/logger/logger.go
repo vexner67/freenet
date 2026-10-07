@@ -6,6 +6,7 @@ import (
 	"os"
 
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/reqid"
 )
 
 func New(cfg Config) (*slog.Logger, error) {
@@ -30,7 +31,8 @@ func New(cfg Config) (*slog.Logger, error) {
 		return nil, fmt.Errorf("unsupported log format: %q", cfg.LogFormat)
 	}
 
-	return slog.New(handler), nil
+	// Every line logged with a request's context says which request it was.
+	return slog.New(reqid.LogHandler(handler)), nil
 }
 
 func parseLevel(level string) (slog.Level, error) {
