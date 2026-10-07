@@ -54,11 +54,15 @@ func newServer(t *testing.T) testServer {
 			usergrpc.PublicMethods()...,
 		),
 	))
-	userv1.RegisterUserServiceServer(srv, usergrpc.NewUserHandler(
-		service.NewUserService(users),
-		service.NewFollowService(users, follows, follows, notifyclient.Nop{}),
-		log,
-	))
+	blocks := inmem.NewBlockRepository(follows)
+	userv1.RegisterUserServiceServer(srv, usergrpc.NewUserHandler(usergrpc.Services{
+		Users: service.NewUserService(users),
+		Follows: service.NewFollowService(service.FollowDeps{
+			Users: users, Follows: follows, Lists: follows, Blocks: blocks, Notifier: notifyclient.Nop{},
+		}),
+		Blocks:      service.NewBlockService(users, blocks, notifyclient.Nop{}),
+		Permissions: service.NewPermissionService(users, follows, blocks),
+	}, log))
 
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
@@ -222,7 +226,7 @@ func TestPrivacyFlow(t *testing.T) {
 	}
 
 	updated, err := s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{
-		Privacy: &userv1.PrivacySettings{ShowWorldview: true, WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE},
+		Privacy: &userv1.PrivacySettings{ShowWorldview: true, WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE, MessagesWrite: userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING},
 	})
 	if err != nil {
 		t.Fatalf("UpdatePrivacy: %v", err)

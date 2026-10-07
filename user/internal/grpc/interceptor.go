@@ -26,6 +26,10 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.AlreadyExists, "nickname is already taken"), true
 	case errors.Is(err, user.ErrFollowSelf):
 		return status.New(codes.InvalidArgument, "you cannot follow yourself"), true
+	case errors.Is(err, user.ErrFollowBlocked):
+		return status.New(codes.PermissionDenied, "you cannot follow this user"), true
+	case errors.Is(err, user.ErrBlockSelf):
+		return status.New(codes.InvalidArgument, "you cannot blacklist yourself"), true
 	default:
 		return nil, false
 	}

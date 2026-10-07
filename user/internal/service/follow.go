@@ -56,15 +56,26 @@ type FollowService struct {
 	userRepo   UserRepository
 	followRepo FollowRepository
 	listRepo   FollowListRepository
+	blockRepo  BlockChecker
 	notifier   Notifier
 }
 
-func NewFollowService(userRepo UserRepository, followRepo FollowRepository, listRepo FollowListRepository, notifier Notifier) *FollowService {
+// FollowDeps are what FollowService works with.
+type FollowDeps struct {
+	Users    UserRepository
+	Follows  FollowRepository
+	Lists    FollowListRepository
+	Blocks   BlockChecker
+	Notifier Notifier
+}
+
+func NewFollowService(d FollowDeps) *FollowService {
 	return &FollowService{
-		userRepo:   userRepo,
-		followRepo: followRepo,
-		listRepo:   listRepo,
-		notifier:   notifier,
+		userRepo:   d.Users,
+		followRepo: d.Follows,
+		listRepo:   d.Lists,
+		blockRepo:  d.Blocks,
+		notifier:   d.Notifier,
 	}
 }
 
@@ -75,6 +86,16 @@ func (s *FollowService) Follow(ctx context.Context, followerID, followeeID uuid.
 
 	if _, err := s.userRepo.GetByID(ctx, followeeID); err != nil {
 		return errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	// A follow racing a block may slip in; the next block drops it.
+	byFollower, byFollowee, err := s.blockRepo.Blocks(ctx, followerID, followeeID)
+	if err != nil {
+		return errs.Wrap("s.blockRepo.Blocks", err)
+	}
+
+	if byFollower || byFollowee {
+		return user.ErrFollowBlocked
 	}
 
 	if err := s.followRepo.Follow(ctx, followerID, followeeID); err != nil {
@@ -125,23 +146,6 @@ func (s *FollowService) ListFollowers(ctx context.Context, userID, cursor uuid.U
 
 func (s *FollowService) ListFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (FollowPage, error) {
 	return s.page(ctx, userID, cursor, size, s.listRepo.ListFollowing, func(_, following int) int { return following })
-}
-
-// CanPostOnWall tells whether authorID may write on ownerID's wall: the
-// owner's privacy decides, and "following" depends on the owner's follows,
-// which is why it lives here. user.ErrNotFound for an unknown owner.
-func (s *FollowService) CanPostOnWall(ctx context.Context, authorID, ownerID uuid.UUID) (bool, error) {
-	owner, err := s.userRepo.GetByID(ctx, ownerID)
-	if err != nil {
-		return false, errs.Wrap("s.userRepo.GetByID", err)
-	}
-
-	follows, err := s.followRepo.IsFollowing(ctx, ownerID, authorID)
-	if err != nil {
-		return false, errs.Wrap("s.followRepo.IsFollowing", err)
-	}
-
-	return owner.CanPostOnWall(authorID, follows), nil
 }
 
 // FollowingIDs are the users whose posts make up userID's news feed.

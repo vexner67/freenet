@@ -23,6 +23,61 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// Who may write private messages to a user. Whoever the user wrote to may
+// answer whatever the setting.
+type MessagesWrite int32
+
+const (
+	MessagesWrite_MESSAGES_WRITE_UNSPECIFIED MessagesWrite = 0
+	MessagesWrite_MESSAGES_WRITE_EVERYONE    MessagesWrite = 1
+	// The people the user follows.
+	MessagesWrite_MESSAGES_WRITE_FOLLOWING MessagesWrite = 2
+	MessagesWrite_MESSAGES_WRITE_NOBODY    MessagesWrite = 3
+)
+
+// Enum value maps for MessagesWrite.
+var (
+	MessagesWrite_name = map[int32]string{
+		0: "MESSAGES_WRITE_UNSPECIFIED",
+		1: "MESSAGES_WRITE_EVERYONE",
+		2: "MESSAGES_WRITE_FOLLOWING",
+		3: "MESSAGES_WRITE_NOBODY",
+	}
+	MessagesWrite_value = map[string]int32{
+		"MESSAGES_WRITE_UNSPECIFIED": 0,
+		"MESSAGES_WRITE_EVERYONE":    1,
+		"MESSAGES_WRITE_FOLLOWING":   2,
+		"MESSAGES_WRITE_NOBODY":      3,
+	}
+)
+
+func (x MessagesWrite) Enum() *MessagesWrite {
+	p := new(MessagesWrite)
+	*p = x
+	return p
+}
+
+func (x MessagesWrite) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (MessagesWrite) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_user_v1_user_proto_enumTypes[0].Descriptor()
+}
+
+func (MessagesWrite) Type() protoreflect.EnumType {
+	return &file_api_user_v1_user_proto_enumTypes[0]
+}
+
+func (x MessagesWrite) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use MessagesWrite.Descriptor instead.
+func (MessagesWrite) EnumDescriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{0}
+}
+
 // Who may write on a user's wall besides the user.
 type WallWrite int32
 
@@ -61,11 +116,11 @@ func (x WallWrite) String() string {
 }
 
 func (WallWrite) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_user_v1_user_proto_enumTypes[0].Descriptor()
+	return file_api_user_v1_user_proto_enumTypes[1].Descriptor()
 }
 
 func (WallWrite) Type() protoreflect.EnumType {
-	return &file_api_user_v1_user_proto_enumTypes[0]
+	return &file_api_user_v1_user_proto_enumTypes[1]
 }
 
 func (x WallWrite) Number() protoreflect.EnumNumber {
@@ -74,7 +129,7 @@ func (x WallWrite) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use WallWrite.Descriptor instead.
 func (WallWrite) EnumDescriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{0}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{1}
 }
 
 type Gender int32
@@ -110,11 +165,11 @@ func (x Gender) String() string {
 }
 
 func (Gender) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_user_v1_user_proto_enumTypes[1].Descriptor()
+	return file_api_user_v1_user_proto_enumTypes[2].Descriptor()
 }
 
 func (Gender) Type() protoreflect.EnumType {
-	return &file_api_user_v1_user_proto_enumTypes[1]
+	return &file_api_user_v1_user_proto_enumTypes[2]
 }
 
 func (x Gender) Number() protoreflect.EnumNumber {
@@ -123,7 +178,7 @@ func (x Gender) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Gender.Descriptor instead.
 func (Gender) EnumDescriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{1}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{2}
 }
 
 type Relationship int32
@@ -168,11 +223,11 @@ func (x Relationship) String() string {
 }
 
 func (Relationship) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_user_v1_user_proto_enumTypes[2].Descriptor()
+	return file_api_user_v1_user_proto_enumTypes[3].Descriptor()
 }
 
 func (Relationship) Type() protoreflect.EnumType {
-	return &file_api_user_v1_user_proto_enumTypes[2]
+	return &file_api_user_v1_user_proto_enumTypes[3]
 }
 
 func (x Relationship) Number() protoreflect.EnumNumber {
@@ -181,7 +236,7 @@ func (x Relationship) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Relationship.Descriptor instead.
 func (Relationship) EnumDescriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{2}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{3}
 }
 
 type Worldview int32
@@ -235,11 +290,11 @@ func (x Worldview) String() string {
 }
 
 func (Worldview) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_user_v1_user_proto_enumTypes[3].Descriptor()
+	return file_api_user_v1_user_proto_enumTypes[4].Descriptor()
 }
 
 func (Worldview) Type() protoreflect.EnumType {
-	return &file_api_user_v1_user_proto_enumTypes[3]
+	return &file_api_user_v1_user_proto_enumTypes[4]
 }
 
 func (x Worldview) Number() protoreflect.EnumNumber {
@@ -248,7 +303,7 @@ func (x Worldview) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use Worldview.Descriptor instead.
 func (Worldview) EnumDescriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{3}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{4}
 }
 
 type PoliticalViews int32
@@ -305,11 +360,11 @@ func (x PoliticalViews) String() string {
 }
 
 func (PoliticalViews) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_user_v1_user_proto_enumTypes[4].Descriptor()
+	return file_api_user_v1_user_proto_enumTypes[5].Descriptor()
 }
 
 func (PoliticalViews) Type() protoreflect.EnumType {
-	return &file_api_user_v1_user_proto_enumTypes[4]
+	return &file_api_user_v1_user_proto_enumTypes[5]
 }
 
 func (x PoliticalViews) Number() protoreflect.EnumNumber {
@@ -318,7 +373,7 @@ func (x PoliticalViews) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use PoliticalViews.Descriptor instead.
 func (PoliticalViews) EnumDescriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{4}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{5}
 }
 
 type User struct {
@@ -480,7 +535,9 @@ type PrivacySettings struct {
 	ShowWorldview      bool                   `protobuf:"varint,3,opt,name=show_worldview,json=showWorldview,proto3" json:"show_worldview,omitempty"`
 	ShowPoliticalViews bool                   `protobuf:"varint,4,opt,name=show_political_views,json=showPoliticalViews,proto3" json:"show_political_views,omitempty"`
 	// Required in UpdatePrivacy; WALL_WRITE_FOLLOWING by default.
-	WallWrite     WallWrite `protobuf:"varint,5,opt,name=wall_write,json=wallWrite,proto3,enum=user.v1.WallWrite" json:"wall_write,omitempty"`
+	WallWrite WallWrite `protobuf:"varint,5,opt,name=wall_write,json=wallWrite,proto3,enum=user.v1.WallWrite" json:"wall_write,omitempty"`
+	// Required in UpdatePrivacy; MESSAGES_WRITE_EVERYONE by default.
+	MessagesWrite MessagesWrite `protobuf:"varint,6,opt,name=messages_write,json=messagesWrite,proto3,enum=user.v1.MessagesWrite" json:"messages_write,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -548,6 +605,13 @@ func (x *PrivacySettings) GetWallWrite() WallWrite {
 		return x.WallWrite
 	}
 	return WallWrite_WALL_WRITE_UNSPECIFIED
+}
+
+func (x *PrivacySettings) GetMessagesWrite() MessagesWrite {
+	if x != nil {
+		return x.MessagesWrite
+	}
+	return MessagesWrite_MESSAGES_WRITE_UNSPECIFIED
 }
 
 // Fields 7-10 are empty both when not set and when hidden by the owner.
@@ -1953,6 +2017,406 @@ func (x *CanPostOnWallResponse) GetAllowed() bool {
 	return false
 }
 
+type CanMessageRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The recipient.
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// The recipient has written to the caller, which the message service
+	// knows: they may then answer whatever the setting.
+	WroteFirst    bool `protobuf:"varint,2,opt,name=wrote_first,json=wroteFirst,proto3" json:"wrote_first,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CanMessageRequest) Reset() {
+	*x = CanMessageRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CanMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CanMessageRequest) ProtoMessage() {}
+
+func (x *CanMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CanMessageRequest.ProtoReflect.Descriptor instead.
+func (*CanMessageRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *CanMessageRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *CanMessageRequest) GetWroteFirst() bool {
+	if x != nil {
+		return x.WroteFirst
+	}
+	return false
+}
+
+type CanMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Allowed       bool                   `protobuf:"varint,1,opt,name=allowed,proto3" json:"allowed,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CanMessageResponse) Reset() {
+	*x = CanMessageResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[30]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CanMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CanMessageResponse) ProtoMessage() {}
+
+func (x *CanMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[30]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CanMessageResponse.ProtoReflect.Descriptor instead.
+func (*CanMessageResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{30}
+}
+
+func (x *CanMessageResponse) GetAllowed() bool {
+	if x != nil {
+		return x.Allowed
+	}
+	return false
+}
+
+type BlockRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *BlockRequest) Reset() {
+	*x = BlockRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[31]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *BlockRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*BlockRequest) ProtoMessage() {}
+
+func (x *BlockRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[31]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use BlockRequest.ProtoReflect.Descriptor instead.
+func (*BlockRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{31}
+}
+
+func (x *BlockRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type UnblockRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnblockRequest) Reset() {
+	*x = UnblockRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[32]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnblockRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnblockRequest) ProtoMessage() {}
+
+func (x *UnblockRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[32]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnblockRequest.ProtoReflect.Descriptor instead.
+func (*UnblockRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{32}
+}
+
+func (x *UnblockRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type ListBlockedRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty for the newest blocks, else next_cursor of the previous page.
+	Cursor string `protobuf:"bytes,1,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	// 1-50; anything else means 20.
+	Limit         int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBlockedRequest) Reset() {
+	*x = ListBlockedRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[33]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBlockedRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBlockedRequest) ProtoMessage() {}
+
+func (x *ListBlockedRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[33]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBlockedRequest.ProtoReflect.Descriptor instead.
+func (*ListBlockedRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{33}
+}
+
+func (x *ListBlockedRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListBlockedRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListBlockedResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Users []*PublicProfile       `protobuf:"bytes,1,rep,name=users,proto3" json:"users,omitempty"`
+	// Empty on the last page.
+	NextCursor    string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	Total         int32  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListBlockedResponse) Reset() {
+	*x = ListBlockedResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[34]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListBlockedResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListBlockedResponse) ProtoMessage() {}
+
+func (x *ListBlockedResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[34]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListBlockedResponse.ProtoReflect.Descriptor instead.
+func (*ListBlockedResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{34}
+}
+
+func (x *ListBlockedResponse) GetUsers() []*PublicProfile {
+	if x != nil {
+		return x.Users
+	}
+	return nil
+}
+
+func (x *ListBlockedResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListBlockedResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type GetRelationRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRelationRequest) Reset() {
+	*x = GetRelationRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[35]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRelationRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRelationRequest) ProtoMessage() {}
+
+func (x *GetRelationRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[35]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRelationRequest.ProtoReflect.Descriptor instead.
+func (*GetRelationRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{35}
+}
+
+func (x *GetRelationRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+type GetRelationResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The caller blacklisted the user.
+	BlockedByMe bool `protobuf:"varint,1,opt,name=blocked_by_me,json=blockedByMe,proto3" json:"blocked_by_me,omitempty"`
+	// The user blacklisted the caller.
+	BlockedMe     bool `protobuf:"varint,2,opt,name=blocked_me,json=blockedMe,proto3" json:"blocked_me,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetRelationResponse) Reset() {
+	*x = GetRelationResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[36]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetRelationResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetRelationResponse) ProtoMessage() {}
+
+func (x *GetRelationResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[36]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetRelationResponse.ProtoReflect.Descriptor instead.
+func (*GetRelationResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{36}
+}
+
+func (x *GetRelationResponse) GetBlockedByMe() bool {
+	if x != nil {
+		return x.BlockedByMe
+	}
+	return false
+}
+
+func (x *GetRelationResponse) GetBlockedMe() bool {
+	if x != nil {
+		return x.BlockedMe
+	}
+	return false
+}
+
 var File_api_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_api_user_v1_user_proto_rawDesc = "" +
@@ -1973,14 +2437,15 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x05email\x18\v \x01(\tR\x05email\x12+\n" +
 	"\x11profile_completed\x18\f \x01(\bR\x10profileCompleted\x122\n" +
 	"\aprivacy\x18\r \x01(\v2\x18.user.v1.PrivacySettingsR\aprivacy\x12\x1b\n" +
-	"\tavatar_id\x18\x0e \x01(\tR\bavatarId\"\xef\x01\n" +
+	"\tavatar_id\x18\x0e \x01(\tR\bavatarId\"\xae\x02\n" +
 	"\x0fPrivacySettings\x12#\n" +
 	"\rshow_birthday\x18\x01 \x01(\bR\fshowBirthday\x12+\n" +
 	"\x11show_relationship\x18\x02 \x01(\bR\x10showRelationship\x12%\n" +
 	"\x0eshow_worldview\x18\x03 \x01(\bR\rshowWorldview\x120\n" +
 	"\x14show_political_views\x18\x04 \x01(\bR\x12showPoliticalViews\x121\n" +
 	"\n" +
-	"wall_write\x18\x05 \x01(\x0e2\x12.user.v1.WallWriteR\twallWrite\"\xae\x03\n" +
+	"wall_write\x18\x05 \x01(\x0e2\x12.user.v1.WallWriteR\twallWrite\x12=\n" +
+	"\x0emessages_write\x18\x06 \x01(\x0e2\x16.user.v1.MessagesWriteR\rmessagesWrite\"\xae\x03\n" +
 	"\rPublicProfile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -2062,7 +2527,36 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x14CanPostOnWallRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"1\n" +
 	"\x15CanPostOnWallResponse\x12\x18\n" +
-	"\aallowed\x18\x01 \x01(\bR\aallowed*r\n" +
+	"\aallowed\x18\x01 \x01(\bR\aallowed\"M\n" +
+	"\x11CanMessageRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1f\n" +
+	"\vwrote_first\x18\x02 \x01(\bR\n" +
+	"wroteFirst\".\n" +
+	"\x12CanMessageResponse\x12\x18\n" +
+	"\aallowed\x18\x01 \x01(\bR\aallowed\"'\n" +
+	"\fBlockRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\")\n" +
+	"\x0eUnblockRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"B\n" +
+	"\x12ListBlockedRequest\x12\x16\n" +
+	"\x06cursor\x18\x01 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"z\n" +
+	"\x13ListBlockedResponse\x12,\n" +
+	"\x05users\x18\x01 \x03(\v2\x16.user.v1.PublicProfileR\x05users\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"-\n" +
+	"\x12GetRelationRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"X\n" +
+	"\x13GetRelationResponse\x12\"\n" +
+	"\rblocked_by_me\x18\x01 \x01(\bR\vblockedByMe\x12\x1d\n" +
+	"\n" +
+	"blocked_me\x18\x02 \x01(\bR\tblockedMe*\x85\x01\n" +
+	"\rMessagesWrite\x12\x1e\n" +
+	"\x1aMESSAGES_WRITE_UNSPECIFIED\x10\x00\x12\x1b\n" +
+	"\x17MESSAGES_WRITE_EVERYONE\x10\x01\x12\x1c\n" +
+	"\x18MESSAGES_WRITE_FOLLOWING\x10\x02\x12\x19\n" +
+	"\x15MESSAGES_WRITE_NOBODY\x10\x03*r\n" +
 	"\tWallWrite\x12\x1a\n" +
 	"\x16WALL_WRITE_UNSPECIFIED\x10\x00\x12\x17\n" +
 	"\x13WALL_WRITE_EVERYONE\x10\x01\x12\x18\n" +
@@ -2099,7 +2593,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x1aPOLITICAL_VIEWS_MONARCHIST\x10\x06\x12%\n" +
 	"!POLITICAL_VIEWS_ULTRACONSERVATIVE\x10\a\x12\x1f\n" +
 	"\x1bPOLITICAL_VIEWS_INDIFFERENT\x10\b\x12\x1f\n" +
-	"\x1bPOLITICAL_VIEWS_LIBERTARIAN\x10\t2\xef\b\n" +
+	"\x1bPOLITICAL_VIEWS_LIBERTARIAN\x10\t2\xbe\v\n" +
 	"\vUserService\x12]\n" +
 	"\x12GetOrCreateByEmail\x12\".user.v1.GetOrCreateByEmailRequest\x1a#.user.v1.GetOrCreateByEmailResponse\x126\n" +
 	"\x05GetMe\x12\x15.user.v1.GetMeRequest\x1a\x16.user.v1.GetMeResponse\x12N\n" +
@@ -2116,7 +2610,13 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x0eGetFollowStats\x12\x1e.user.v1.GetFollowStatsRequest\x1a\x1f.user.v1.GetFollowStatsResponse\x12J\n" +
 	"\rListFollowers\x12\x1b.user.v1.ListFollowsRequest\x1a\x1c.user.v1.ListFollowsResponse\x12J\n" +
 	"\rListFollowing\x12\x1b.user.v1.ListFollowsRequest\x1a\x1c.user.v1.ListFollowsResponse\x12N\n" +
-	"\rCanPostOnWall\x12\x1d.user.v1.CanPostOnWallRequest\x1a\x1e.user.v1.CanPostOnWallResponseB5Z3github.com/vexner67/freenet/user/api/user/v1;userv1b\x06proto3"
+	"\rCanPostOnWall\x12\x1d.user.v1.CanPostOnWallRequest\x1a\x1e.user.v1.CanPostOnWallResponse\x12E\n" +
+	"\n" +
+	"CanMessage\x12\x1a.user.v1.CanMessageRequest\x1a\x1b.user.v1.CanMessageResponse\x126\n" +
+	"\x05Block\x12\x15.user.v1.BlockRequest\x1a\x16.google.protobuf.Empty\x12:\n" +
+	"\aUnblock\x12\x17.user.v1.UnblockRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
+	"\vListBlocked\x12\x1b.user.v1.ListBlockedRequest\x1a\x1c.user.v1.ListBlockedResponse\x12H\n" +
+	"\vGetRelation\x12\x1b.user.v1.GetRelationRequest\x1a\x1c.user.v1.GetRelationResponseB5Z3github.com/vexner67/freenet/user/api/user/v1;userv1b\x06proto3"
 
 var (
 	file_api_user_v1_user_proto_rawDescOnce sync.Once
@@ -2130,108 +2630,129 @@ func file_api_user_v1_user_proto_rawDescGZIP() []byte {
 	return file_api_user_v1_user_proto_rawDescData
 }
 
-var file_api_user_v1_user_proto_enumTypes = make([]protoimpl.EnumInfo, 5)
-var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 29)
+var file_api_user_v1_user_proto_enumTypes = make([]protoimpl.EnumInfo, 6)
+var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 37)
 var file_api_user_v1_user_proto_goTypes = []any{
-	(WallWrite)(0),                     // 0: user.v1.WallWrite
-	(Gender)(0),                        // 1: user.v1.Gender
-	(Relationship)(0),                  // 2: user.v1.Relationship
-	(Worldview)(0),                     // 3: user.v1.Worldview
-	(PoliticalViews)(0),                // 4: user.v1.PoliticalViews
-	(*User)(nil),                       // 5: user.v1.User
-	(*PrivacySettings)(nil),            // 6: user.v1.PrivacySettings
-	(*PublicProfile)(nil),              // 7: user.v1.PublicProfile
-	(*GetOrCreateByEmailRequest)(nil),  // 8: user.v1.GetOrCreateByEmailRequest
-	(*GetOrCreateByEmailResponse)(nil), // 9: user.v1.GetOrCreateByEmailResponse
-	(*GetMeRequest)(nil),               // 10: user.v1.GetMeRequest
-	(*GetMeResponse)(nil),              // 11: user.v1.GetMeResponse
-	(*UpdateProfileRequest)(nil),       // 12: user.v1.UpdateProfileRequest
-	(*UpdateProfileResponse)(nil),      // 13: user.v1.UpdateProfileResponse
-	(*GetProfileRequest)(nil),          // 14: user.v1.GetProfileRequest
-	(*GetProfileResponse)(nil),         // 15: user.v1.GetProfileResponse
-	(*UpdatePrivacyRequest)(nil),       // 16: user.v1.UpdatePrivacyRequest
-	(*UpdatePrivacyResponse)(nil),      // 17: user.v1.UpdatePrivacyResponse
-	(*GetProfilesRequest)(nil),         // 18: user.v1.GetProfilesRequest
-	(*GetProfilesResponse)(nil),        // 19: user.v1.GetProfilesResponse
-	(*FollowRequest)(nil),              // 20: user.v1.FollowRequest
-	(*UnfollowRequest)(nil),            // 21: user.v1.UnfollowRequest
-	(*ListFollowingIDsRequest)(nil),    // 22: user.v1.ListFollowingIDsRequest
-	(*ListFollowingIDsResponse)(nil),   // 23: user.v1.ListFollowingIDsResponse
-	(*GetFollowStatsRequest)(nil),      // 24: user.v1.GetFollowStatsRequest
-	(*GetFollowStatsResponse)(nil),     // 25: user.v1.GetFollowStatsResponse
-	(*ListFollowsRequest)(nil),         // 26: user.v1.ListFollowsRequest
-	(*ListFollowsResponse)(nil),        // 27: user.v1.ListFollowsResponse
-	(*SetAvatarRequest)(nil),           // 28: user.v1.SetAvatarRequest
-	(*SetAvatarResponse)(nil),          // 29: user.v1.SetAvatarResponse
-	(*SearchUsersRequest)(nil),         // 30: user.v1.SearchUsersRequest
-	(*SearchUsersResponse)(nil),        // 31: user.v1.SearchUsersResponse
-	(*CanPostOnWallRequest)(nil),       // 32: user.v1.CanPostOnWallRequest
-	(*CanPostOnWallResponse)(nil),      // 33: user.v1.CanPostOnWallResponse
-	(*timestamppb.Timestamp)(nil),      // 34: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 35: google.protobuf.Empty
+	(MessagesWrite)(0),                 // 0: user.v1.MessagesWrite
+	(WallWrite)(0),                     // 1: user.v1.WallWrite
+	(Gender)(0),                        // 2: user.v1.Gender
+	(Relationship)(0),                  // 3: user.v1.Relationship
+	(Worldview)(0),                     // 4: user.v1.Worldview
+	(PoliticalViews)(0),                // 5: user.v1.PoliticalViews
+	(*User)(nil),                       // 6: user.v1.User
+	(*PrivacySettings)(nil),            // 7: user.v1.PrivacySettings
+	(*PublicProfile)(nil),              // 8: user.v1.PublicProfile
+	(*GetOrCreateByEmailRequest)(nil),  // 9: user.v1.GetOrCreateByEmailRequest
+	(*GetOrCreateByEmailResponse)(nil), // 10: user.v1.GetOrCreateByEmailResponse
+	(*GetMeRequest)(nil),               // 11: user.v1.GetMeRequest
+	(*GetMeResponse)(nil),              // 12: user.v1.GetMeResponse
+	(*UpdateProfileRequest)(nil),       // 13: user.v1.UpdateProfileRequest
+	(*UpdateProfileResponse)(nil),      // 14: user.v1.UpdateProfileResponse
+	(*GetProfileRequest)(nil),          // 15: user.v1.GetProfileRequest
+	(*GetProfileResponse)(nil),         // 16: user.v1.GetProfileResponse
+	(*UpdatePrivacyRequest)(nil),       // 17: user.v1.UpdatePrivacyRequest
+	(*UpdatePrivacyResponse)(nil),      // 18: user.v1.UpdatePrivacyResponse
+	(*GetProfilesRequest)(nil),         // 19: user.v1.GetProfilesRequest
+	(*GetProfilesResponse)(nil),        // 20: user.v1.GetProfilesResponse
+	(*FollowRequest)(nil),              // 21: user.v1.FollowRequest
+	(*UnfollowRequest)(nil),            // 22: user.v1.UnfollowRequest
+	(*ListFollowingIDsRequest)(nil),    // 23: user.v1.ListFollowingIDsRequest
+	(*ListFollowingIDsResponse)(nil),   // 24: user.v1.ListFollowingIDsResponse
+	(*GetFollowStatsRequest)(nil),      // 25: user.v1.GetFollowStatsRequest
+	(*GetFollowStatsResponse)(nil),     // 26: user.v1.GetFollowStatsResponse
+	(*ListFollowsRequest)(nil),         // 27: user.v1.ListFollowsRequest
+	(*ListFollowsResponse)(nil),        // 28: user.v1.ListFollowsResponse
+	(*SetAvatarRequest)(nil),           // 29: user.v1.SetAvatarRequest
+	(*SetAvatarResponse)(nil),          // 30: user.v1.SetAvatarResponse
+	(*SearchUsersRequest)(nil),         // 31: user.v1.SearchUsersRequest
+	(*SearchUsersResponse)(nil),        // 32: user.v1.SearchUsersResponse
+	(*CanPostOnWallRequest)(nil),       // 33: user.v1.CanPostOnWallRequest
+	(*CanPostOnWallResponse)(nil),      // 34: user.v1.CanPostOnWallResponse
+	(*CanMessageRequest)(nil),          // 35: user.v1.CanMessageRequest
+	(*CanMessageResponse)(nil),         // 36: user.v1.CanMessageResponse
+	(*BlockRequest)(nil),               // 37: user.v1.BlockRequest
+	(*UnblockRequest)(nil),             // 38: user.v1.UnblockRequest
+	(*ListBlockedRequest)(nil),         // 39: user.v1.ListBlockedRequest
+	(*ListBlockedResponse)(nil),        // 40: user.v1.ListBlockedResponse
+	(*GetRelationRequest)(nil),         // 41: user.v1.GetRelationRequest
+	(*GetRelationResponse)(nil),        // 42: user.v1.GetRelationResponse
+	(*timestamppb.Timestamp)(nil),      // 43: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 44: google.protobuf.Empty
 }
 var file_api_user_v1_user_proto_depIdxs = []int32{
-	1,  // 0: user.v1.User.gender:type_name -> user.v1.Gender
-	2,  // 1: user.v1.User.relationship:type_name -> user.v1.Relationship
-	3,  // 2: user.v1.User.worldview:type_name -> user.v1.Worldview
-	4,  // 3: user.v1.User.political_views:type_name -> user.v1.PoliticalViews
-	34, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
-	6,  // 5: user.v1.User.privacy:type_name -> user.v1.PrivacySettings
-	0,  // 6: user.v1.PrivacySettings.wall_write:type_name -> user.v1.WallWrite
-	1,  // 7: user.v1.PublicProfile.gender:type_name -> user.v1.Gender
-	2,  // 8: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
-	3,  // 9: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
-	4,  // 10: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
-	34, // 11: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
-	5,  // 12: user.v1.GetMeResponse.user:type_name -> user.v1.User
-	1,  // 13: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
-	2,  // 14: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
-	3,  // 15: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
-	4,  // 16: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
-	34, // 17: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
-	5,  // 18: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
-	7,  // 19: user.v1.GetProfileResponse.profile:type_name -> user.v1.PublicProfile
-	6,  // 20: user.v1.UpdatePrivacyRequest.privacy:type_name -> user.v1.PrivacySettings
-	5,  // 21: user.v1.UpdatePrivacyResponse.user:type_name -> user.v1.User
-	7,  // 22: user.v1.GetProfilesResponse.profiles:type_name -> user.v1.PublicProfile
-	7,  // 23: user.v1.ListFollowsResponse.users:type_name -> user.v1.PublicProfile
-	5,  // 24: user.v1.SetAvatarResponse.user:type_name -> user.v1.User
-	7,  // 25: user.v1.SearchUsersResponse.users:type_name -> user.v1.PublicProfile
-	8,  // 26: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
-	10, // 27: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
-	12, // 28: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	16, // 29: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
-	28, // 30: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
-	14, // 31: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	18, // 32: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
-	30, // 33: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
-	20, // 34: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
-	21, // 35: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
-	22, // 36: user.v1.UserService.ListFollowingIDs:input_type -> user.v1.ListFollowingIDsRequest
-	24, // 37: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
-	26, // 38: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
-	26, // 39: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
-	32, // 40: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
-	9,  // 41: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	11, // 42: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	13, // 43: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	17, // 44: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	29, // 45: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	15, // 46: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	19, // 47: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	31, // 48: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	35, // 49: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	35, // 50: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	23, // 51: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
-	25, // 52: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	27, // 53: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	27, // 54: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	33, // 55: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	41, // [41:56] is the sub-list for method output_type
-	26, // [26:41] is the sub-list for method input_type
-	26, // [26:26] is the sub-list for extension type_name
-	26, // [26:26] is the sub-list for extension extendee
-	0,  // [0:26] is the sub-list for field type_name
+	2,  // 0: user.v1.User.gender:type_name -> user.v1.Gender
+	3,  // 1: user.v1.User.relationship:type_name -> user.v1.Relationship
+	4,  // 2: user.v1.User.worldview:type_name -> user.v1.Worldview
+	5,  // 3: user.v1.User.political_views:type_name -> user.v1.PoliticalViews
+	43, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
+	7,  // 5: user.v1.User.privacy:type_name -> user.v1.PrivacySettings
+	1,  // 6: user.v1.PrivacySettings.wall_write:type_name -> user.v1.WallWrite
+	0,  // 7: user.v1.PrivacySettings.messages_write:type_name -> user.v1.MessagesWrite
+	2,  // 8: user.v1.PublicProfile.gender:type_name -> user.v1.Gender
+	3,  // 9: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
+	4,  // 10: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
+	5,  // 11: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
+	43, // 12: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	6,  // 13: user.v1.GetMeResponse.user:type_name -> user.v1.User
+	2,  // 14: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
+	3,  // 15: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
+	4,  // 16: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
+	5,  // 17: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
+	43, // 18: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	6,  // 19: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
+	8,  // 20: user.v1.GetProfileResponse.profile:type_name -> user.v1.PublicProfile
+	7,  // 21: user.v1.UpdatePrivacyRequest.privacy:type_name -> user.v1.PrivacySettings
+	6,  // 22: user.v1.UpdatePrivacyResponse.user:type_name -> user.v1.User
+	8,  // 23: user.v1.GetProfilesResponse.profiles:type_name -> user.v1.PublicProfile
+	8,  // 24: user.v1.ListFollowsResponse.users:type_name -> user.v1.PublicProfile
+	6,  // 25: user.v1.SetAvatarResponse.user:type_name -> user.v1.User
+	8,  // 26: user.v1.SearchUsersResponse.users:type_name -> user.v1.PublicProfile
+	8,  // 27: user.v1.ListBlockedResponse.users:type_name -> user.v1.PublicProfile
+	9,  // 28: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	11, // 29: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	13, // 30: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	17, // 31: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	29, // 32: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	15, // 33: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	19, // 34: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	31, // 35: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	21, // 36: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	22, // 37: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	23, // 38: user.v1.UserService.ListFollowingIDs:input_type -> user.v1.ListFollowingIDsRequest
+	25, // 39: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	27, // 40: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	27, // 41: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	33, // 42: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
+	35, // 43: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
+	37, // 44: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
+	38, // 45: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
+	39, // 46: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
+	41, // 47: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	10, // 48: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	12, // 49: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	14, // 50: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	18, // 51: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	30, // 52: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	16, // 53: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	20, // 54: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	32, // 55: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	44, // 56: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	44, // 57: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	24, // 58: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
+	26, // 59: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	28, // 60: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	28, // 61: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	34, // 62: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	36, // 63: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	44, // 64: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	44, // 65: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	40, // 66: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	42, // 67: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	48, // [48:68] is the sub-list for method output_type
+	28, // [28:48] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }
@@ -2244,8 +2765,8 @@ func file_api_user_v1_user_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_user_v1_user_proto_rawDesc), len(file_api_user_v1_user_proto_rawDesc)),
-			NumEnums:      5,
-			NumMessages:   29,
+			NumEnums:      6,
+			NumMessages:   37,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

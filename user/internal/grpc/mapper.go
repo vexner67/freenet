@@ -46,6 +46,7 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		ShowWorldview:      p.ShowWorldview,
 		ShowPoliticalViews: p.ShowPoliticalViews,
 		WallWrite:          toProtoWallWrite(p.WallWrite),
+		MessagesWrite:      toProtoMessagesWrite(p.MessagesWrite),
 	}
 }
 
@@ -56,13 +57,45 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		return user.Privacy{}, err
 	}
 
+	messagesWrite, err := user.NewMessagesWrite(fromProtoMessagesWrite(p.GetMessagesWrite()))
+	if err != nil {
+		return user.Privacy{}, err
+	}
+
 	return user.Privacy{
 		ShowBirthday:       p.GetShowBirthday(),
 		ShowRelationship:   p.GetShowRelationship(),
 		ShowWorldview:      p.GetShowWorldview(),
 		ShowPoliticalViews: p.GetShowPoliticalViews(),
 		WallWrite:          wallWrite,
+		MessagesWrite:      messagesWrite,
 	}, nil
+}
+
+func toProtoMessagesWrite(w user.MessagesWrite) userv1.MessagesWrite {
+	switch w {
+	case user.MessagesWriteEveryone:
+		return userv1.MessagesWrite_MESSAGES_WRITE_EVERYONE
+	case user.MessagesWriteFollowing:
+		return userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING
+	case user.MessagesWriteNobody:
+		return userv1.MessagesWrite_MESSAGES_WRITE_NOBODY
+	default:
+		return userv1.MessagesWrite_MESSAGES_WRITE_UNSPECIFIED
+	}
+}
+
+func fromProtoMessagesWrite(w userv1.MessagesWrite) string {
+	switch w {
+	case userv1.MessagesWrite_MESSAGES_WRITE_EVERYONE:
+		return "everyone"
+	case userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING:
+		return "following"
+	case userv1.MessagesWrite_MESSAGES_WRITE_NOBODY:
+		return "nobody"
+	default:
+		return ""
+	}
 }
 
 func toProtoWallWrite(w user.WallWrite) userv1.WallWrite {

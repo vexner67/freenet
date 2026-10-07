@@ -35,18 +35,22 @@ func (w WallWrite) String() string {
 	return string(w)
 }
 
-// CanPostOnWall tells whether authorID may write on u's wall; follows is
-// whether u follows authorID. The owner always may.
-func (u *User) CanPostOnWall(authorID uuid.UUID, follows bool) bool {
+// CanPostOnWall tells whether authorID may write on u's wall. The owner
+// always may; a block shuts the wall both ways.
+func (u *User) CanPostOnWall(authorID uuid.UUID, t Ties) bool {
 	if authorID == u.id {
 		return true
+	}
+
+	if t.Blocked {
+		return false
 	}
 
 	switch u.privacy.WallWrite {
 	case WallWriteEveryone:
 		return true
 	case WallWriteFollowing:
-		return follows
+		return t.Followed
 	default:
 		return false
 	}

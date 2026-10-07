@@ -106,11 +106,18 @@ func (a *App) build(cfg config.Config) error {
 	a.server = grpcserver.New(a.logger, grpc.Creds(creds), grpc.ChainUnaryInterceptor(interceptors...))
 	userv1.RegisterUserServiceServer(
 		a.server.Registrar(),
-		usergrpc.NewUserHandler(
-			service.NewUserService(store.users),
-			service.NewFollowService(store.users, store.follows, store.follows, notifier),
-			a.logger,
-		),
+		usergrpc.NewUserHandler(usergrpc.Services{
+			Users: service.NewUserService(store.users),
+			Follows: service.NewFollowService(service.FollowDeps{
+				Users:    store.users,
+				Follows:  store.follows,
+				Lists:    store.follows,
+				Blocks:   store.blocks,
+				Notifier: notifier,
+			}),
+			Blocks:      service.NewBlockService(store.users, store.blocks, notifier),
+			Permissions: service.NewPermissionService(store.users, store.follows, store.blocks),
+		}, a.logger),
 	)
 
 	a.logger.Info("user configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(),
@@ -174,12 +181,14 @@ type storage struct {
 		service.FollowRepository
 		service.FollowListRepository
 	}
+	blocks service.BlockRepository
 }
 
 func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		users := inmem.NewUserRepository()
-		return storage{users: users, follows: inmem.NewFollowRepository(users)}, nil
+		follows := inmem.NewFollowRepository(users)
+		return storage{users: users, follows: follows, blocks: inmem.NewBlockRepository(follows)}, nil
 	}
 
 	if cfg.MigrateOnStart {
@@ -207,6 +216,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	return storage{
 		users:   postgres.NewUserRepository(a.pool),
 		follows: postgres.NewFollowRepository(a.pool),
+		blocks:  postgres.NewBlockRepository(a.pool),
 	}, nil
 }
 
