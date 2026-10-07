@@ -90,6 +90,11 @@ expect=201 call POST "/api/v1/posts/$post/reposts" '{"text":""}' | jq -e ".repos
 call GET "/api/v1/users/$nickname/posts" | jq -e '.total == 2' >/dev/null
 step "post: a post, its repost and the wall"
 
+call PATCH "/api/v1/posts/$post" '{"text":"smoke test, edited"}' | jq -e '.editedAt != null and .photos == []' >/dev/null
+expect=204 call PUT "/api/v1/posts/$post/pin" >/dev/null
+call GET "/api/v1/users/$nickname/posts" | jq -e ".posts[0].id == \"$post\" and .posts[0].pinned" >/dev/null
+step "post: edited and pinned first on the wall"
+
 call GET /api/v1/notifications/unread-count | jq -e '.count == 0' >/dev/null
 step "notification: unread count"
 

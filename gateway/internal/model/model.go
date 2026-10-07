@@ -102,6 +102,12 @@ type Post struct {
 	// RepostOf is the shared post of a repost, "" for other posts; the
 	// shared post may be gone.
 	RepostOf string
+	// EditedAt is zero for a post never edited; the author may edit it
+	// until EditableUntil.
+	EditedAt      time.Time
+	EditableUntil time.Time
+	// Pinned: the owner of the wall shows it first there.
+	Pinned bool
 }
 
 // PostPage is one screen of a wall; NextCursor is empty on the last one.

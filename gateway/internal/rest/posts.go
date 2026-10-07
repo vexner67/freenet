@@ -45,6 +45,12 @@ type postResponse struct {
 	Reposts   int         `json:"reposts"`
 	// Repost is the shared post of a repost, null for other posts.
 	Repost *repostJSON `json:"repost"`
+	// EditedAt is null for a post never edited; its author may edit it
+	// until EditableUntil.
+	EditedAt      *string `json:"editedAt"`
+	EditableUntil string  `json:"editableUntil"`
+	// Pinned: shown first on its wall.
+	Pinned bool `json:"pinned"`
 }
 
 type repostRequest struct {
@@ -124,17 +130,31 @@ func wallJSON(p model.Post) *authorJSON {
 
 func toPostResponse(p model.Post) postResponse {
 	return postResponse{
-		ID:        p.ID,
-		Author:    toAuthorJSON(p.Author),
-		Wall:      wallJSON(p),
-		Text:      p.Text,
-		Photos:    toPhotosJSON(p.Author.ID, p.PhotoIDs),
-		CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
-		Likes:     p.Likes,
-		Liked:     p.Liked,
-		Comments:  p.Comments,
-		Reposts:   p.Reposts,
+		ID:            p.ID,
+		Author:        toAuthorJSON(p.Author),
+		Wall:          wallJSON(p),
+		Text:          p.Text,
+		Photos:        toPhotosJSON(p.Author.ID, p.PhotoIDs),
+		CreatedAt:     p.CreatedAt.UTC().Format(time.RFC3339),
+		Likes:         p.Likes,
+		Liked:         p.Liked,
+		Comments:      p.Comments,
+		Reposts:       p.Reposts,
+		EditedAt:      optionalTime(p.EditedAt),
+		EditableUntil: timeString(p.EditableUntil),
+		Pinned:        p.Pinned,
 	}
+}
+
+// optionalTime is t as RFC 3339, null when zero.
+func optionalTime(t time.Time) *string {
+	if t.IsZero() {
+		return nil
+	}
+
+	s := timeString(t)
+
+	return &s
 }
 
 // toRepostJSON is p as shared inside a repost; p has its people filled in.
@@ -464,6 +484,77 @@ func (a *api) deletePost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.posts.Delete(r.Context(), token, r.PathValue("id")); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// editPost changes the text and photos of the caller's post, as openvk's
+// "Редактировать"; new photos must be the caller's, as when posting.
+func (a *api) editPost(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req postRequest
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	p, err := a.posts.Edit(r.Context(), token, r.PathValue("id"), req.Text, req.Photos)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	shown, err := a.withPeople(r, []model.Post{p})
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	// Only a race with deleting the account leaves nothing to show.
+	if len(shown) == 0 {
+		a.writeError(w, r, failure.New(failure.NotFound, "post not found"))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, shown[0])
+}
+
+// pinPost and unpinPost are idempotent: the owner of the wall shows the
+// post first there, instead of the one pinned before, or stops.
+func (a *api) pinPost(w http.ResponseWriter, r *http.Request) {
+	a.setPinned(w, r, true)
+}
+
+func (a *api) unpinPost(w http.ResponseWriter, r *http.Request) {
+	a.setPinned(w, r, false)
+}
+
+func (a *api) setPinned(w http.ResponseWriter, r *http.Request, pinned bool) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	set := a.posts.Unpin
+	if pinned {
+		set = a.posts.Pin
+	}
+
+	if err = set(r.Context(), token, r.PathValue("id")); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

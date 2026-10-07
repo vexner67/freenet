@@ -1,6 +1,7 @@
 package rest_test
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
 	"testing"
@@ -396,5 +397,73 @@ func TestListPosts_ManyPeople(t *testing.T) {
 	w := h.do("GET", "/api/v1/users/ann/posts", "")
 	if got := decode[wall](t, w); w.Code != http.StatusOK || len(got.Posts) != 60 || h.users.profileCalls != 2 {
 		t.Fatalf("%d: %d posts in %d GetProfiles", w.Code, len(got.Posts), h.users.profileCalls)
+	}
+}
+
+func TestEditPost(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	w := h.do("PATCH", "/api/v1/posts/p1", `{"text":"по-новому","photos":["ph2"]}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusOK || h.posts.edited != "по-новому" || len(h.posts.photos) != 1 {
+		t.Fatalf("status = %d, edited %q with %v: %s", w.Code, h.posts.edited, h.posts.photos, w.Body)
+	}
+
+	var p struct {
+		Text     string  `json:"text"`
+		EditedAt *string `json:"editedAt"`
+		Author   struct {
+			Nickname string `json:"nickname"`
+		} `json:"author"`
+	}
+	if err := json.Unmarshal(w.Body.Bytes(), &p); err != nil {
+		t.Fatal(err)
+	}
+	if p.Text != "по-новому" || p.EditedAt == nil || *p.EditedAt != "2026-10-05T09:00:00Z" || p.Author.Nickname == "" {
+		t.Fatalf("edited post = %+v", p)
+	}
+
+	for _, tt := range []struct {
+		name, path, body string
+		headers          []string
+		want             int
+	}{
+		{"someone else's photo", "/api/v1/posts/p1", `{"text":"x","photos":["ph7"]}`, []string{"Authorization", "Bearer tok"}, http.StatusBadRequest},
+		{"a missing post", "/api/v1/posts/p404", `{"text":"x"}`, []string{"Authorization", "Bearer tok"}, http.StatusNotFound},
+		{"no token", "/api/v1/posts/p1", `{"text":"x"}`, nil, http.StatusUnauthorized},
+	} {
+		if w := newHarness(rest.Config{}).do("PATCH", tt.path, tt.body, tt.headers...); w.Code != tt.want {
+			t.Errorf("%s: status = %d, want %d", tt.name, w.Code, tt.want)
+		}
+	}
+
+	h = newHarness(rest.Config{})
+	h.posts.err = failure.New(failure.Conflict, "the post can no longer be edited")
+	if w := h.do("PATCH", "/api/v1/posts/p1", `{"text":"поздно"}`, "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
+		t.Fatalf("an old post: status = %d", w.Code)
+	}
+}
+
+func TestPinPost(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	if w := h.do("PUT", "/api/v1/posts/p4/pin", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.posts.pinned != "p4" {
+		t.Fatalf("pin: status = %d, pinned %q", w.Code, h.posts.pinned)
+	}
+	if w := h.do("DELETE", "/api/v1/posts/p4/pin", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.posts.pinned != "-p4" {
+		t.Fatalf("unpin: status = %d, pinned %q", w.Code, h.posts.pinned)
+	}
+
+	h = newHarness(rest.Config{})
+	h.posts.err = failure.New(failure.PermissionDenied, "permission denied")
+	if w := h.do("PUT", "/api/v1/posts/p1/pin", "", "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("someone else's wall: status = %d", w.Code)
+	}
+	if w := newHarness(rest.Config{}).do("PUT", "/api/v1/posts/p404/pin", "", "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		t.Fatalf("a missing post: status = %d", w.Code)
+	}
+	if w := newHarness(rest.Config{}).do("PUT", "/api/v1/posts/p1/pin", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("no token: status = %d", w.Code)
 	}
 }
