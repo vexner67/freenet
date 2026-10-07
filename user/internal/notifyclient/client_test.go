@@ -2,16 +2,15 @@ package notifyclient
 
 import (
 	"context"
-	"errors"
-	"io"
-	"log/slog"
-	"strings"
 	"testing"
 	"time"
 
 	"github.com/google/uuid"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
+	"github.com/vexner67/freenet/pkg/outbox"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -19,12 +18,11 @@ type fakeAPI struct {
 	notificationv1.NotificationServiceClient
 	notified  *notificationv1.Event
 	retracted *notificationv1.Event
-	ctxErr    error
 	err       error
 }
 
-func (f *fakeAPI) Notify(ctx context.Context, req *notificationv1.NotifyRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
-	f.notified, f.ctxErr = req.GetEvent(), ctx.Err()
+func (f *fakeAPI) Notify(_ context.Context, req *notificationv1.NotifyRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.notified = req.GetEvent()
 	return &emptypb.Empty{}, f.err
 }
 
@@ -33,41 +31,73 @@ func (f *fakeAPI) Retract(_ context.Context, req *notificationv1.RetractRequest,
 	return &emptypb.Empty{}, f.err
 }
 
-func TestClient(t *testing.T) {
+// deliverAll delivers what Outbox recorded, as the relay would.
+func deliverAll(t *testing.T, queue *outbox.Memory, d *Deliverer) []error {
+	t.Helper()
+
+	messages, _ := queue.Head(context.Background(), 10)
+
+	var errs []error
+	for _, m := range messages {
+		errs = append(errs, d.Deliver(context.Background(), m))
+	}
+
+	return errs
+}
+
+func TestOutboxAndDeliverer(t *testing.T) {
 	t.Parallel()
 
-	api := &fakeAPI{}
-	c := New(api, time.Second, slog.New(slog.NewTextHandler(io.Discard, nil)))
+	queue := outbox.NewMemory()
+	o := NewOutbox(queue)
 	follower, followee := uuid.New(), uuid.New()
 
-	// The request is over, the notification still goes.
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-
-	c.Followed(ctx, follower, followee)
-	if api.ctxErr != nil {
-		t.Fatalf("the call inherited the cancellation: %v", api.ctxErr)
+	if err := o.Followed(context.Background(), follower, followee); err != nil {
+		t.Fatal(err)
 	}
-	if e := api.notified; e.GetKind() != notificationv1.Kind_KIND_FOLLOW || e.GetRecipientId() != followee.String() ||
-		e.GetActorId() != follower.String() || e.GetPostId() != "" {
+
+	api := &fakeAPI{}
+	if errs := deliverAll(t, queue, NewDeliverer(api, time.Second)); len(errs) != 1 || errs[0] != nil {
+		t.Fatalf("deliver = %v", errs)
+	}
+	if e := api.notified; e.GetKind() != notificationv1.Kind_KIND_FOLLOW || e.GetActorId() != follower.String() ||
+		e.GetRecipientId() != followee.String() || e.GetPostId() != "" {
 		t.Fatalf("follow event = %v", e)
 	}
 
-	c.Unfollowed(context.Background(), follower, followee)
-	if e := api.retracted; e.GetRecipientId() != followee.String() || e.GetActorId() != follower.String() {
+	queue = outbox.NewMemory()
+	if err := NewOutbox(queue).Unfollowed(context.Background(), follower, followee); err != nil {
+		t.Fatal(err)
+	}
+	if errs := deliverAll(t, queue, NewDeliverer(api, time.Second)); len(errs) != 1 || errs[0] != nil {
+		t.Fatalf("deliver = %v", errs)
+	}
+	if e := api.retracted; e.GetKind() != notificationv1.Kind_KIND_FOLLOW || e.GetActorId() != follower.String() {
 		t.Fatalf("unfollow event = %v", e)
 	}
 }
 
-func TestClient_FailureIsLogged(t *testing.T) {
+func TestDeliverer_Errors(t *testing.T) {
 	t.Parallel()
 
-	var logs strings.Builder
-	c := New(&fakeAPI{err: errors.New("unavailable")}, time.Second, slog.New(slog.NewTextHandler(&logs, nil)))
+	queue := outbox.NewMemory()
+	if err := NewOutbox(queue).Followed(context.Background(), uuid.New(), uuid.New()); err != nil {
+		t.Fatal(err)
+	}
+	messages, _ := queue.Head(context.Background(), 1)
 
-	c.Followed(context.Background(), uuid.New(), uuid.New())
+	retried := NewDeliverer(&fakeAPI{err: status.Error(codes.Unavailable, "down")}, time.Second).Deliver(context.Background(), messages[0])
+	if retried == nil || outbox.IsPermanent(retried) {
+		t.Errorf("unavailable = %v, want an error to retry", retried)
+	}
 
-	if !strings.Contains(logs.String(), "notification not delivered") {
-		t.Fatalf("logs = %q", logs.String())
+	dropped := NewDeliverer(&fakeAPI{err: status.Error(codes.InvalidArgument, "self")}, time.Second).Deliver(context.Background(), messages[0])
+	if !outbox.IsPermanent(dropped) {
+		t.Errorf("invalid argument = %v, want a permanent error", dropped)
+	}
+
+	unknown := NewDeliverer(&fakeAPI{}, time.Second).Deliver(context.Background(), outbox.Message{Kind: "forget_post"})
+	if !outbox.IsPermanent(unknown) {
+		t.Errorf("unknown kind = %v, want a permanent error", unknown)
 	}
 }

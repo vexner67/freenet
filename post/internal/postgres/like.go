@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/post/internal/post"
 )
 
@@ -28,6 +29,12 @@ func NewLikeRepository(pool *pgxpool.Pool) *LikeRepository {
 	return &LikeRepository{
 		pool: pool,
 	}
+}
+
+// conn is the transaction of ctx (service.TxManager), or the pool outside
+// one.
+func (r *LikeRepository) conn(ctx context.Context) pgpool.Querier {
+	return pgpool.Conn(ctx, r.pool)
 }
 
 // likePostQuery adds the like and counts it in one statement, so the
@@ -52,12 +59,12 @@ const likePostQuery = `
 func (r *LikeRepository) Like(ctx context.Context, postID, userID uuid.UUID) (int, error) {
 	var likes int
 
-	err := r.pool.QueryRow(ctx, likePostQuery, postID, userID).Scan(&likes)
+	err := r.conn(ctx).QueryRow(ctx, likePostQuery, postID, userID).Scan(&likes)
 	if isForeignKeyViolation(err) {
 		return 0, post.ErrNotFound
 	}
 	if err != nil {
-		return 0, errs.Wrap("r.pool.QueryRow", err)
+		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	return likes, nil
@@ -79,12 +86,12 @@ const unlikePostQuery = `
 func (r *LikeRepository) Unlike(ctx context.Context, postID, userID uuid.UUID) (int, error) {
 	var likes int
 
-	err := r.pool.QueryRow(ctx, unlikePostQuery, postID, userID).Scan(&likes)
+	err := r.conn(ctx).QueryRow(ctx, unlikePostQuery, postID, userID).Scan(&likes)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return 0, post.ErrNotFound
 	}
 	if err != nil {
-		return 0, errs.Wrap("r.pool.QueryRow", err)
+		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	return likes, nil
@@ -98,9 +105,9 @@ const listLikedPostsQuery = `
 `
 
 func (r *LikeRepository) Liked(ctx context.Context, userID uuid.UUID, postIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
-	rows, err := r.pool.Query(ctx, listLikedPostsQuery, userID, postIDs)
+	rows, err := r.conn(ctx).Query(ctx, listLikedPostsQuery, userID, postIDs)
 	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 
 	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])

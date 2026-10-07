@@ -58,13 +58,15 @@ type Relation struct {
 type BlockService struct {
 	userRepo  UserRepository
 	blockRepo BlockRepository
+	tx        TxManager
 	notifier  Notifier
 }
 
-func NewBlockService(userRepo UserRepository, blockRepo BlockRepository, notifier Notifier) *BlockService {
+func NewBlockService(userRepo UserRepository, blockRepo BlockRepository, tx TxManager, notifier Notifier) *BlockService {
 	return &BlockService{
 		userRepo:  userRepo,
 		blockRepo: blockRepo,
+		tx:        tx,
 		notifier:  notifier,
 	}
 }
@@ -80,13 +82,22 @@ func (s *BlockService) Block(ctx context.Context, blockerID, blockedID uuid.UUID
 		return errs.Wrap("s.userRepo.GetByID", err)
 	}
 
-	dropped, err := s.blockRepo.Block(ctx, blockerID, blockedID)
-	if err != nil {
-		return errs.Wrap("s.blockRepo.Block", err)
-	}
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		dropped, err := s.blockRepo.Block(ctx, blockerID, blockedID)
+		if err != nil {
+			return errs.Wrap("s.blockRepo.Block", err)
+		}
 
-	for _, e := range dropped {
-		s.notifier.Unfollowed(ctx, e.Follower, e.Followee)
+		for _, e := range dropped {
+			if err = s.notifier.Unfollowed(ctx, e.Follower, e.Followee); err != nil {
+				return errs.Wrap("s.notifier.Unfollowed", err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return nil

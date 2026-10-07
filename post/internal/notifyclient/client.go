@@ -1,15 +1,31 @@
-// Package notifyclient delivers post events to the notification service.
-// It is the only place in post that knows the notification proto contract.
+// Package notifyclient tells the notification service about post events
+// through the outbox: Outbox records them with the change that caused
+// them, Deliverer hands them over afterwards. It is the only place in post
+// that knows the notification proto contract.
 package notifyclient
 
 import (
 	"context"
-	"log/slog"
+	"fmt"
 	"time"
 
 	"github.com/google/uuid"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
+	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/outbox"
 	"github.com/vexner67/freenet/post/internal/service"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/emptypb"
+)
+
+// Outbox kinds: the payload is the request of the RPC of the same name.
+const (
+	kindNotify     = "notify"
+	kindRetract    = "retract"
+	kindForgetPost = "forget_post"
 )
 
 var kinds = map[service.EventKind]notificationv1.Kind{
@@ -19,52 +35,92 @@ var kinds = map[service.EventKind]notificationv1.Kind{
 	service.EventRepost:   notificationv1.Kind_KIND_REPOST,
 }
 
-// Client is a best-effort service.Notifier: a failed call is logged and
-// dropped, so the like or comment that caused it still succeeds.
-type Client struct {
-	api     notificationv1.NotificationServiceClient
-	timeout time.Duration
-	logger  *slog.Logger
+// Recorder adds a message to the outbox in the transaction of ctx.
+type Recorder interface {
+	Add(ctx context.Context, kind string, payload []byte) error
 }
 
-func New(api notificationv1.NotificationServiceClient, timeout time.Duration, logger *slog.Logger) *Client {
-	return &Client{
-		api:     api,
-		timeout: timeout,
-		logger:  logger,
+// Outbox is the service.Notifier: it records the requests to make.
+type Outbox struct {
+	recorder Recorder
+}
+
+func NewOutbox(recorder Recorder) *Outbox {
+	return &Outbox{
+		recorder: recorder,
 	}
 }
 
-func (c *Client) Notify(ctx context.Context, e service.Event) {
-	c.call(ctx, "notify", func(ctx context.Context) error {
-		_, err := c.api.Notify(ctx, &notificationv1.NotifyRequest{Event: toProtoEvent(e)})
-		return err
-	})
+func (o *Outbox) Notify(ctx context.Context, e service.Event) error {
+	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: toProtoEvent(e)})
 }
 
-func (c *Client) Retract(ctx context.Context, e service.Event) {
-	c.call(ctx, "retract", func(ctx context.Context) error {
-		_, err := c.api.Retract(ctx, &notificationv1.RetractRequest{Event: toProtoEvent(e)})
-		return err
-	})
+func (o *Outbox) Retract(ctx context.Context, e service.Event) error {
+	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: toProtoEvent(e)})
 }
 
-func (c *Client) ForgetPost(ctx context.Context, postID uuid.UUID) {
-	c.call(ctx, "forget post", func(ctx context.Context) error {
-		_, err := c.api.ForgetPost(ctx, &notificationv1.ForgetPostRequest{PostId: postID.String()})
-		return err
-	})
+func (o *Outbox) ForgetPost(ctx context.Context, postID uuid.UUID) error {
+	return o.add(ctx, kindForgetPost, &notificationv1.ForgetPostRequest{PostId: postID.String()})
 }
 
-// call runs one RPC with its own timeout. It ignores the cancellation of
-// ctx: the user may close the page right after the like is saved, and
-// the author should still hear about it.
-func (c *Client) call(ctx context.Context, op string, rpc func(context.Context) error) {
-	ctx, cancel := context.WithTimeout(context.WithoutCancel(ctx), c.timeout)
+func (o *Outbox) add(ctx context.Context, kind string, req proto.Message) error {
+	payload, err := proto.Marshal(req)
+	if err != nil {
+		return errs.Wrap("proto.Marshal", err)
+	}
+
+	return errs.Wrap("o.recorder.Add", o.recorder.Add(ctx, kind, payload))
+}
+
+// Deliverer makes the recorded requests to the notification service.
+type Deliverer struct {
+	api     notificationv1.NotificationServiceClient
+	timeout time.Duration
+}
+
+func NewDeliverer(api notificationv1.NotificationServiceClient, timeout time.Duration) *Deliverer {
+	return &Deliverer{
+		api:     api,
+		timeout: timeout,
+	}
+}
+
+// Deliver is an outbox.Deliver.
+func (d *Deliverer) Deliver(ctx context.Context, m outbox.Message) error {
+	ctx, cancel := context.WithTimeout(ctx, d.timeout)
 	defer cancel()
 
-	if err := rpc(ctx); err != nil {
-		c.logger.WarnContext(ctx, "notification not delivered", "op", op, "error", err)
+	switch m.Kind {
+	case kindNotify:
+		return call(ctx, m.Payload, &notificationv1.NotifyRequest{}, d.api.Notify)
+	case kindRetract:
+		return call(ctx, m.Payload, &notificationv1.RetractRequest{}, d.api.Retract)
+	case kindForgetPost:
+		return call(ctx, m.Payload, &notificationv1.ForgetPostRequest{}, d.api.ForgetPost)
+	default:
+		return outbox.Permanent(fmt.Errorf("unknown kind %q", m.Kind))
+	}
+}
+
+type rpc[Req proto.Message] func(ctx context.Context, req Req, opts ...grpc.CallOption) (*emptypb.Empty, error)
+
+// call decodes req from payload and makes the call. Errors that a retry
+// cannot fix are permanent: the notification service rejects the request
+// itself, not its own state.
+func call[Req proto.Message](ctx context.Context, payload []byte, req Req, fn rpc[Req]) error {
+	if err := proto.Unmarshal(payload, req); err != nil {
+		return outbox.Permanent(errs.Wrap("proto.Unmarshal", err))
+	}
+
+	_, err := fn(ctx, req)
+
+	switch status.Code(err) {
+	case codes.OK:
+		return nil
+	case codes.InvalidArgument, codes.NotFound, codes.AlreadyExists, codes.FailedPrecondition, codes.OutOfRange, codes.Unimplemented:
+		return outbox.Permanent(err)
+	default:
+		return err
 	}
 }
 
@@ -86,6 +142,6 @@ func toProtoEvent(e service.Event) *notificationv1.Event {
 // Nop is the Notifier when no notification service is configured.
 type Nop struct{}
 
-func (Nop) Notify(context.Context, service.Event)  {}
-func (Nop) Retract(context.Context, service.Event) {}
-func (Nop) ForgetPost(context.Context, uuid.UUID)  {}
+func (Nop) Notify(context.Context, service.Event) error  { return nil }
+func (Nop) Retract(context.Context, service.Event) error { return nil }
+func (Nop) ForgetPost(context.Context, uuid.UUID) error  { return nil }

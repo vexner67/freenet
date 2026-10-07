@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/post/internal/post"
 )
 
@@ -24,6 +25,12 @@ func NewPostRepository(pool *pgxpool.Pool) *PostRepository {
 	return &PostRepository{
 		pool: pool,
 	}
+}
+
+// conn is the transaction of ctx (service.TxManager), or the pool outside
+// one.
+func (r *PostRepository) conn(ctx context.Context) pgpool.Querier {
+	return pgpool.Conn(ctx, r.pool)
 }
 
 const savePostQuery = `
@@ -72,16 +79,16 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	args := []any{p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photos, p.CreatedAt()}
 
 	if content.RepostOf() == uuid.Nil {
-		if _, err := r.pool.Exec(ctx, savePostQuery, args...); err != nil {
-			return errs.Wrap("r.pool.Exec", err)
+		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, args...); err != nil {
+			return errs.Wrap("r.conn.Exec", err)
 		}
 
 		return nil
 	}
 
-	tag, err := r.pool.Exec(ctx, saveRepostQuery, append(args, content.RepostOf())...)
+	tag, err := r.conn(ctx).Exec(ctx, saveRepostQuery, append(args, content.RepostOf())...)
 	if err != nil {
-		return errs.Wrap("r.pool.Exec", err)
+		return errs.Wrap("r.conn.Exec", err)
 	}
 
 	if tag.RowsAffected() == 0 {
@@ -108,7 +115,7 @@ const getPostQuery = `
 `
 
 func (r *PostRepository) Get(ctx context.Context, id uuid.UUID) (*post.Post, error) {
-	p, err := scanPost(r.pool.QueryRow(ctx, getPostQuery, id))
+	p, err := scanPost(r.conn(ctx).QueryRow(ctx, getPostQuery, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, post.ErrNotFound
 	}
@@ -136,9 +143,9 @@ const getPostsQuery = `
 `
 
 func (r *PostRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error) {
-	rows, err := r.pool.Query(ctx, getPostsQuery, ids)
+	rows, err := r.conn(ctx).Query(ctx, getPostsQuery, ids)
 	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 	defer rows.Close()
 
@@ -178,8 +185,8 @@ const deletePostQuery = `
 func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	var deleted int
 
-	if err := r.pool.QueryRow(ctx, deletePostQuery, id).Scan(&deleted); err != nil {
-		return errs.Wrap("r.pool.QueryRow", err)
+	if err := r.conn(ctx).QueryRow(ctx, deletePostQuery, id).Scan(&deleted); err != nil {
+		return errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	if deleted == 0 {
@@ -219,9 +226,9 @@ func (r *PostRepository) list(ctx context.Context, query string, owners any, bef
 		before = newestCursor
 	}
 
-	rows, err := r.pool.Query(ctx, query, owners, before, limit)
+	rows, err := r.conn(ctx).Query(ctx, query, owners, before, limit)
 	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 	defer rows.Close()
 
@@ -273,8 +280,8 @@ const countPostsByWallQuery = `
 func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID) (int, error) {
 	var count int
 
-	if err := r.pool.QueryRow(ctx, countPostsByWallQuery, wallID).Scan(&count); err != nil {
-		return 0, errs.Wrap("r.pool.QueryRow", err)
+	if err := r.conn(ctx).QueryRow(ctx, countPostsByWallQuery, wallID).Scan(&count); err != nil {
+		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	return count, nil

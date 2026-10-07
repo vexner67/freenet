@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgconn"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 )
@@ -23,6 +24,12 @@ func NewFollowRepository(pool *pgxpool.Pool) *FollowRepository {
 	return &FollowRepository{
 		pool: pool,
 	}
+}
+
+// conn is the transaction of ctx (service.TxManager), or the pool outside
+// one.
+func (r *FollowRepository) conn(ctx context.Context) pgpool.Querier {
+	return pgpool.Conn(ctx, r.pool)
 }
 
 // Following twice is not an error: the unique pair keeps one follow.
@@ -42,14 +49,14 @@ func (r *FollowRepository) Follow(ctx context.Context, followerID, followeeID uu
 		return errs.Wrap("uuid.NewV7", err)
 	}
 
-	if _, err = r.pool.Exec(ctx, followQuery, id, followerID, followeeID); err != nil {
+	if _, err = r.conn(ctx).Exec(ctx, followQuery, id, followerID, followeeID); err != nil {
 		var pgErr *pgconn.PgError
 		if errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode {
 			// The user was deleted between the check and the insert.
 			return user.ErrNotFound
 		}
 
-		return errs.Wrap("r.pool.Exec", err)
+		return errs.Wrap("r.conn.Exec", err)
 	}
 
 	return nil
@@ -62,8 +69,8 @@ const unfollowQuery = `
 `
 
 func (r *FollowRepository) Unfollow(ctx context.Context, followerID, followeeID uuid.UUID) error {
-	if _, err := r.pool.Exec(ctx, unfollowQuery, followerID, followeeID); err != nil {
-		return errs.Wrap("r.pool.Exec", err)
+	if _, err := r.conn(ctx).Exec(ctx, unfollowQuery, followerID, followeeID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
 	}
 
 	return nil
@@ -81,8 +88,8 @@ const isFollowingQuery = `
 func (r *FollowRepository) IsFollowing(ctx context.Context, followerID, followeeID uuid.UUID) (bool, error) {
 	var ok bool
 
-	if err := r.pool.QueryRow(ctx, isFollowingQuery, followerID, followeeID).Scan(&ok); err != nil {
-		return false, errs.Wrap("r.pool.QueryRow", err)
+	if err := r.conn(ctx).QueryRow(ctx, isFollowingQuery, followerID, followeeID).Scan(&ok); err != nil {
+		return false, errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	return ok, nil
@@ -95,8 +102,8 @@ const followCountsQuery = `
 `
 
 func (r *FollowRepository) Counts(ctx context.Context, userID uuid.UUID) (followers, following int, err error) {
-	if err = r.pool.QueryRow(ctx, followCountsQuery, userID).Scan(&followers, &following); err != nil {
-		return 0, 0, errs.Wrap("r.pool.QueryRow", err)
+	if err = r.conn(ctx).QueryRow(ctx, followCountsQuery, userID).Scan(&followers, &following); err != nil {
+		return 0, 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	return followers, following, nil
@@ -177,9 +184,9 @@ func (r *FollowRepository) list(ctx context.Context, query string, userID, befor
 		before = uuid.Max
 	}
 
-	rows, err := r.pool.Query(ctx, query, userID, before, limit)
+	rows, err := r.conn(ctx).Query(ctx, query, userID, before, limit)
 	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 	defer rows.Close()
 
@@ -211,9 +218,9 @@ const followingIDsQuery = `
 `
 
 func (r *FollowRepository) FollowingIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error) {
-	rows, err := r.pool.Query(ctx, followingIDsQuery, userID, limit)
+	rows, err := r.conn(ctx).Query(ctx, followingIDsQuery, userID, limit)
 	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 
 	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])

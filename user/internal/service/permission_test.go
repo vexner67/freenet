@@ -20,7 +20,7 @@ func TestPermissionService_CanPostOnWall(t *testing.T) {
 
 	userSvc := service.NewUserService(users)
 	follow := service.NewFollowService(service.FollowDeps{
-		Users: users, Follows: follows, Lists: follows, Blocks: inmem.NewBlockRepository(follows), Notifier: &fakeNotifier{},
+		Users: users, Follows: follows, Lists: follows, Blocks: inmem.NewBlockRepository(follows), Tx: inmem.TxManager{}, Notifier: &fakeNotifier{},
 	})
 	svc := service.NewPermissionService(users, follows, inmem.NewBlockRepository(follows))
 

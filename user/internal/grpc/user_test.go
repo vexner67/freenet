@@ -58,9 +58,9 @@ func newServer(t *testing.T) testServer {
 	userv1.RegisterUserServiceServer(srv, usergrpc.NewUserHandler(usergrpc.Services{
 		Users: service.NewUserService(users),
 		Follows: service.NewFollowService(service.FollowDeps{
-			Users: users, Follows: follows, Lists: follows, Blocks: blocks, Notifier: notifyclient.Nop{},
+			Users: users, Follows: follows, Lists: follows, Blocks: blocks, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
 		}),
-		Blocks:      service.NewBlockService(users, blocks, notifyclient.Nop{}),
+		Blocks:      service.NewBlockService(users, blocks, inmem.TxManager{}, notifyclient.Nop{}),
 		Permissions: service.NewPermissionService(users, follows, blocks),
 	}, log))
 

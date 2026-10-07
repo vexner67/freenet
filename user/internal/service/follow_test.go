@@ -13,18 +13,28 @@ import (
 
 type follow struct{ follower, followee uuid.UUID }
 
-// fakeNotifier records the follows told to the notification service.
+// fakeNotifier records the follows told to the notification service, and
+// fails with err when set.
 type fakeNotifier struct {
 	followed   []follow
 	unfollowed []follow
+	err        error
 }
 
-func (f *fakeNotifier) Followed(_ context.Context, follower, followee uuid.UUID) {
+func (f *fakeNotifier) Followed(_ context.Context, follower, followee uuid.UUID) error {
+	if f.err != nil {
+		return f.err
+	}
 	f.followed = append(f.followed, follow{follower, followee})
+	return nil
 }
 
-func (f *fakeNotifier) Unfollowed(_ context.Context, follower, followee uuid.UUID) {
+func (f *fakeNotifier) Unfollowed(_ context.Context, follower, followee uuid.UUID) error {
+	if f.err != nil {
+		return f.err
+	}
 	f.unfollowed = append(f.unfollowed, follow{follower, followee})
+	return nil
 }
 
 func TestFollowService_Notifies(t *testing.T) {
@@ -37,7 +47,7 @@ func TestFollowService_Notifies(t *testing.T) {
 
 	userSvc := service.NewUserService(users)
 	svc := service.NewFollowService(service.FollowDeps{
-		Users: users, Follows: follows, Lists: follows, Blocks: inmem.NewBlockRepository(follows), Notifier: notifier,
+		Users: users, Follows: follows, Lists: follows, Blocks: inmem.NewBlockRepository(follows), Tx: inmem.TxManager{}, Notifier: notifier,
 	})
 
 	ann, err := userSvc.GetOrCreateByEmail(ctx, mustEmail(t, "ann@example.com"))
@@ -76,5 +86,15 @@ func TestFollowService_Notifies(t *testing.T) {
 	}
 	if len(notifier.followed) != 1 || len(notifier.unfollowed) != 1 {
 		t.Fatalf("notified about failed follows: %+v %+v", notifier.followed, notifier.unfollowed)
+	}
+
+	// A notification that cannot be recorded fails the follow: the two
+	// are saved together (in one transaction) or not at all.
+	notifier.err = errors.New("outbox is down")
+	if err = svc.Follow(ctx, bob, ann); !errors.Is(err, notifier.err) {
+		t.Fatalf("follow with a broken outbox: %v, want its error", err)
+	}
+	if err = svc.Unfollow(ctx, bob, ann); !errors.Is(err, notifier.err) {
+		t.Fatalf("unfollow with a broken outbox: %v, want its error", err)
 	}
 }

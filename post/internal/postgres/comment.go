@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/post/internal/post"
 )
 
@@ -20,6 +21,12 @@ func NewCommentRepository(pool *pgxpool.Pool) *CommentRepository {
 	return &CommentRepository{
 		pool: pool,
 	}
+}
+
+// conn is the transaction of ctx (service.TxManager), or the pool outside
+// one.
+func (r *CommentRepository) conn(ctx context.Context) pgpool.Querier {
+	return pgpool.Conn(ctx, r.pool)
 }
 
 // saveCommentQuery adds the comment and counts it in one statement.
@@ -41,12 +48,12 @@ const saveCommentQuery = `
 `
 
 func (r *CommentRepository) Save(ctx context.Context, c *post.Comment) error {
-	_, err := r.pool.Exec(ctx, saveCommentQuery, c.ID(), c.PostID(), c.AuthorID(), c.Text().String(), c.CreatedAt())
+	_, err := r.conn(ctx).Exec(ctx, saveCommentQuery, c.ID(), c.PostID(), c.AuthorID(), c.Text().String(), c.CreatedAt())
 	if isForeignKeyViolation(err) {
 		return post.ErrNotFound
 	}
 	if err != nil {
-		return errs.Wrap("r.pool.Exec", err)
+		return errs.Wrap("r.conn.Exec", err)
 	}
 
 	return nil
@@ -64,7 +71,7 @@ const getCommentQuery = `
 `
 
 func (r *CommentRepository) Get(ctx context.Context, id uuid.UUID) (*post.Comment, error) {
-	c, err := scanComment(r.pool.QueryRow(ctx, getCommentQuery, id))
+	c, err := scanComment(r.conn(ctx).QueryRow(ctx, getCommentQuery, id))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, post.ErrCommentNotFound
 	}
@@ -87,9 +94,9 @@ const getCommentsQuery = `
 `
 
 func (r *CommentRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error) {
-	rows, err := r.pool.Query(ctx, getCommentsQuery, ids)
+	rows, err := r.conn(ctx).Query(ctx, getCommentsQuery, ids)
 	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 	defer rows.Close()
 
@@ -123,9 +130,9 @@ const deleteCommentQuery = `
 `
 
 func (r *CommentRepository) Delete(ctx context.Context, id uuid.UUID) error {
-	tag, err := r.pool.Exec(ctx, deleteCommentQuery, id)
+	tag, err := r.conn(ctx).Exec(ctx, deleteCommentQuery, id)
 	if err != nil {
-		return errs.Wrap("r.pool.Exec", err)
+		return errs.Wrap("r.conn.Exec", err)
 	}
 
 	if tag.RowsAffected() == 0 {
@@ -151,9 +158,9 @@ const listCommentsByPostQuery = `
 `
 
 func (r *CommentRepository) ListByPost(ctx context.Context, postID, after uuid.UUID, limit int) ([]*post.Comment, error) {
-	rows, err := r.pool.Query(ctx, listCommentsByPostQuery, postID, after, limit)
+	rows, err := r.conn(ctx).Query(ctx, listCommentsByPostQuery, postID, after, limit)
 	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 	defer rows.Close()
 
