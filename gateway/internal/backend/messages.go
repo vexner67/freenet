@@ -102,6 +102,30 @@ func (m *Messages) HasMessagesFrom(ctx context.Context, accessToken, peerID stri
 	return resp.GetHasMessages(), nil
 }
 
+// Subscribe streams the caller's message events until ctx ends, the token
+// expires (Unauthenticated) or the caller falls behind (TooManyRequests).
+func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.MessageEvents, error) {
+	stream, err := m.api.Subscribe(withToken(ctx, accessToken), &messagev1.SubscribeRequest{})
+	if err != nil {
+		return nil, errs.Wrap("m.api.Subscribe", fromStatus(err))
+	}
+
+	return func() (model.MessageEvent, error) {
+		resp, err := stream.Recv()
+		if err != nil {
+			return model.MessageEvent{}, errs.Wrap("stream.Recv", fromStatus(err))
+		}
+
+		if r := resp.GetRead(); r != nil {
+			return model.MessageEvent{Read: &model.ReadMark{ReaderID: r.GetReaderId(), PeerID: r.GetPeerId(), UpTo: r.GetUpToId()}}, nil
+		}
+
+		msg := toMessage(resp.GetMessage())
+
+		return model.MessageEvent{Message: &msg}, nil
+	}, nil
+}
+
 func toMessage(pm *messagev1.Message) model.Message {
 	return model.Message{
 		ID:          pm.GetId(),

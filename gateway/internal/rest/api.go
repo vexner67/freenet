@@ -5,6 +5,7 @@ import (
 	"context"
 	"log/slog"
 	"net/http"
+	"sync"
 
 	"github.com/vexner67/freenet/gateway/internal/model"
 )
@@ -76,6 +77,7 @@ type Notifications interface {
 	List(ctx context.Context, accessToken string, unread bool, cursor string, limit int) (model.NotificationPage, error)
 	CountUnread(ctx context.Context, accessToken string) (int, error)
 	MarkRead(ctx context.Context, accessToken, id string) error
+	Subscribe(ctx context.Context, accessToken string) (model.NotificationChanges, error)
 }
 
 type Messages interface {
@@ -85,6 +87,7 @@ type Messages interface {
 	History(ctx context.Context, accessToken, peerID, cursor, after string, limit int) (model.MessagePage, error)
 	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
 	HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error)
+	Subscribe(ctx context.Context, accessToken string) (model.MessageEvents, error)
 }
 
 // Backends are the services the API is made of.
@@ -107,6 +110,11 @@ type api struct {
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
+	eventOrigins      []string
+	// stopping ends when the server stops, closing the event streams,
+	// whose connections Shutdown leaves alone; streams counts them.
+	stopping context.Context
+	streams  sync.WaitGroup
 }
 
 func (a *api) routes() *http.ServeMux {
@@ -154,6 +162,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/notifications", a.listNotifications)
 	mux.HandleFunc("GET /api/v1/notifications/unread-count", a.countUnreadNotifications)
 	mux.HandleFunc("POST /api/v1/notifications/read", a.markNotificationsRead)
+
+	mux.HandleFunc("GET "+eventsPath, a.events)
 
 	mux.HandleFunc("GET /api/v1/dialogs", a.listDialogs)
 	mux.HandleFunc("GET /api/v1/dialogs/unread-count", a.countUnreadDialogs)

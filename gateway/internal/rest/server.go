@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"sync"
 	"time"
 )
 
@@ -23,9 +24,14 @@ type Config struct {
 type Server struct {
 	http   *http.Server
 	logger *slog.Logger
+	// streams are the event streams still open; Shutdown does not wait
+	// for hijacked connections, so Run does.
+	streams *sync.WaitGroup
 }
 
 func NewServer(cfg Config, backends Backends, logger *slog.Logger) *Server {
+	stopping, stop := context.WithCancel(context.Background())
+
 	a := &api{
 		auth:              backends.Auth,
 		users:             backends.Users,
@@ -36,6 +42,8 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger) *Server {
 		logger:            logger,
 		trustForwardedFor: cfg.TrustForwardedFor,
 		webDir:            cfg.WebDir,
+		eventOrigins:      eventOrigins(cfg.AllowedOrigins),
+		stopping:          stopping,
 	}
 
 	handler := chain(
@@ -47,7 +55,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger) *Server {
 		timeout(cfg.RequestTimeout),
 	)
 
-	return &Server{
+	srv := &Server{
 		http: &http.Server{
 			Addr:              cfg.Addr,
 			Handler:           handler,
@@ -57,8 +65,12 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger) *Server {
 			WriteTimeout: cfg.RequestTimeout + 5*time.Second,
 			IdleTimeout:  time.Minute,
 		},
-		logger: logger,
+		logger:  logger,
+		streams: &a.streams,
 	}
+	srv.http.RegisterOnShutdown(stop)
+
+	return srv
 }
 
 // Handler is the whole API with its middleware, for tests.
@@ -90,6 +102,19 @@ func (s *Server) Run(ctx context.Context) error {
 
 	if err := s.http.Shutdown(shutdownCtx); err != nil {
 		return fmt.Errorf("s.http.Shutdown: %w", err)
+	}
+
+	// The event streams got "going away" as Shutdown began; let them close.
+	closed := make(chan struct{})
+	go func() {
+		s.streams.Wait()
+		close(closed)
+	}()
+
+	select {
+	case <-closed:
+	case <-shutdownCtx.Done():
+		s.logger.Warn("event streams still open after shutdown")
 	}
 
 	s.logger.Info("HTTP server stopped")

@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -413,7 +414,11 @@ type fakeNotifications struct {
 	token, cursor, markedUpTo string
 	unread                    bool
 	limit                     int
-	err                       error
+	// changes feed Subscribe; closing it ends the stream with streamEnd.
+	changes   chan string
+	streamEnd error
+	mu        sync.Mutex // the event stream counts from its goroutines
+	err       error
 }
 
 func (f *fakeNotifications) List(_ context.Context, token string, unread bool, cursor string, limit int) (model.NotificationPage, error) {
@@ -434,8 +439,27 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 }
 
 func (f *fakeNotifications) CountUnread(_ context.Context, token string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.token = token
 	return 3, f.err
+}
+
+func (f *fakeNotifications) Subscribe(ctx context.Context, token string) (model.NotificationChanges, error) {
+	if token != "tok" {
+		return nil, failure.New(failure.Unauthenticated, "invalid access token")
+	}
+	return func() (string, error) {
+		select {
+		case c, ok := <-f.changes:
+			if !ok {
+				return "", f.streamEnd
+			}
+			return c, nil
+		case <-ctx.Done():
+			return "", ctx.Err()
+		}
+	}, nil
 }
 
 func (f *fakeNotifications) MarkRead(_ context.Context, token, id string) error {
@@ -449,7 +473,25 @@ type fakeMessages struct {
 	token, peerID, cursor, after, sentText, markedUpTo string
 	// peerWrote: the peer has written to the caller.
 	peerWrote bool
+	// events feed Subscribe; closing it ends the stream with streamEnd.
+	events    chan model.MessageEvent
+	streamEnd error
+	mu        sync.Mutex // the event stream counts from its goroutines
 	err       error
+}
+
+func (f *fakeMessages) Subscribe(ctx context.Context, _ string) (model.MessageEvents, error) {
+	return func() (model.MessageEvent, error) {
+		select {
+		case e, ok := <-f.events:
+			if !ok {
+				return model.MessageEvent{}, f.streamEnd
+			}
+			return e, nil
+		case <-ctx.Done():
+			return model.MessageEvent{}, ctx.Err()
+		}
+	}, nil
 }
 
 func (f *fakeMessages) HasMessagesFrom(_ context.Context, token, peerID string) (bool, error) {
@@ -474,6 +516,8 @@ func (f *fakeMessages) Dialogs(_ context.Context, token, cursor string, _ int) (
 }
 
 func (f *fakeMessages) CountUnread(_ context.Context, token string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
 	f.token = token
 	return 2, f.err
 }
