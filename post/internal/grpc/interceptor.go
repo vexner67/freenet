@@ -27,6 +27,16 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "too many ids"), true
 	case errors.Is(err, post.ErrCannotDelete):
 		return status.New(codes.PermissionDenied, "only the author or the owner of the wall can delete the post"), true
+	case errors.Is(err, post.ErrCannotEdit):
+		return status.New(codes.PermissionDenied, "only the author can edit the post"), true
+	case errors.Is(err, post.ErrEditExpired):
+		return status.New(codes.FailedPrecondition, "the post can no longer be edited"), true
+	case errors.Is(err, post.ErrTextEmpty):
+		return status.New(codes.InvalidArgument, "post text is empty"), true
+	case errors.Is(err, post.ErrRepostPhotos):
+		return status.New(codes.InvalidArgument, "a repost has no photos of its own"), true
+	case errors.Is(err, post.ErrCannotPin):
+		return status.New(codes.PermissionDenied, "only the owner of the wall can pin the post"), true
 	case errors.Is(err, post.ErrCommentNotFound):
 		return status.New(codes.NotFound, "comment not found"), true
 	case errors.Is(err, post.ErrCannotDeleteComment):

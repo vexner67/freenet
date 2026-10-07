@@ -135,7 +135,7 @@ func (a *App) build(cfg config.Config) error {
 		a.server.Registrar(),
 		postgrpc.NewPostHandler(
 			service.NewPostService(service.PostDeps{
-				Posts: repos.posts, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Posts: repos.posts, Pins: repos.posts, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
 			service.NewCommentService(repos.posts, repos.comments, repos.tx, notifier),
 			service.NewPurgeService(service.PurgeDeps{
@@ -177,6 +177,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_CreateComment_FullMethodName: cfg.CommentLimits,
 		postv1.PostService_LikePost_FullMethodName:      cfg.LikeLimits,
 		postv1.PostService_UnlikePost_FullMethodName:    cfg.LikeLimits,
+		postv1.PostService_EditPost_FullMethodName:      cfg.EditLimits,
 	}
 }
 
@@ -275,6 +276,7 @@ type outboxQueue interface {
 type repositories struct {
 	posts interface {
 		service.PostRepository
+		service.PinRepository
 		service.PostEraser
 	}
 	likes interface {

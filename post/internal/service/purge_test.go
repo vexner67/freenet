@@ -18,7 +18,7 @@ func TestPurgeService(t *testing.T) {
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
 	photos := &fakePhotos{}
-	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
+	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
 	comments := service.NewCommentService(store.Posts(), store.Comments(), fakeTx{}, notifier)
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,

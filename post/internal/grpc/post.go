@@ -18,6 +18,9 @@ type PostService interface {
 	Create(ctx context.Context, wallID, authorID uuid.UUID, content post.Content) (*post.Post, error)
 	Repost(ctx context.Context, authorID, postID uuid.UUID, text post.Text) (*post.Post, error)
 	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
+	Edit(ctx context.Context, requesterID, postID uuid.UUID, text post.Text, photos post.Photos) (*post.Post, bool, error)
+	Pin(ctx context.Context, requesterID, postID uuid.UUID) error
+	Unpin(ctx context.Context, requesterID, postID uuid.UUID) error
 	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
 	ListWall(ctx context.Context, viewerID, wallID, cursor uuid.UUID, size int) (service.Page, error)
@@ -112,6 +115,56 @@ func (h *PostHandler) RepostPost(ctx context.Context, req *postv1.RepostPostRequ
 	}
 
 	return &postv1.RepostPostResponse{Post: toProtoPost(p, false)}, nil
+}
+
+func (h *PostHandler) EditPost(ctx context.Context, req *postv1.EditPostRequest) (*postv1.EditPostResponse, error) {
+	requesterID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	postID, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid post id")
+	}
+
+	text, photos, err := fromProtoTextPhotos(req.GetText(), req.GetPhotoIds())
+	if err != nil {
+		return nil, err
+	}
+
+	p, liked, err := h.postService.Edit(ctx, requesterID, postID, text, photos)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.EditPostResponse{Post: toProtoPost(p, liked)}, nil
+}
+
+func (h *PostHandler) PinPost(ctx context.Context, req *postv1.PinPostRequest) (*emptypb.Empty, error) {
+	return h.setPinned(ctx, req.GetId(), h.postService.Pin)
+}
+
+func (h *PostHandler) UnpinPost(ctx context.Context, req *postv1.UnpinPostRequest) (*emptypb.Empty, error) {
+	return h.setPinned(ctx, req.GetId(), h.postService.Unpin)
+}
+
+func (h *PostHandler) setPinned(ctx context.Context, id string, set func(ctx context.Context, requesterID, postID uuid.UUID) error) (*emptypb.Empty, error) {
+	requesterID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	postID, err := uuid.Parse(id)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid post id")
+	}
+
+	if err = set(ctx, requesterID, postID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (h *PostHandler) DeletePost(ctx context.Context, req *postv1.DeletePostRequest) (*emptypb.Empty, error) {

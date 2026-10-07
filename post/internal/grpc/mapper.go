@@ -11,23 +11,9 @@ import (
 )
 
 func fromProtoContent(req *postv1.CreatePostRequest) (post.Content, error) {
-	text, err := post.NewText(req.GetText())
+	text, photos, err := fromProtoTextPhotos(req.GetText(), req.GetPhotoIds())
 	if err != nil {
-		return post.Content{}, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	ids := make([]uuid.UUID, 0, len(req.GetPhotoIds()))
-	for _, s := range req.GetPhotoIds() {
-		id, err := uuid.Parse(s)
-		if err != nil {
-			return post.Content{}, status.Error(codes.InvalidArgument, post.ErrInvalidPhoto.Error())
-		}
-		ids = append(ids, id)
-	}
-
-	photos, err := post.NewPhotos(ids)
-	if err != nil {
-		return post.Content{}, status.Error(codes.InvalidArgument, err.Error())
+		return post.Content{}, err
 	}
 
 	content, err := post.NewContent(text, photos)
@@ -38,6 +24,34 @@ func fromProtoContent(req *postv1.CreatePostRequest) (post.Content, error) {
 	return content, nil
 }
 
+// fromProtoTextPhotos reads what a post says, for a new post or an edit.
+func fromProtoTextPhotos(rawText string, rawPhotos []string) (post.Text, post.Photos, error) {
+	text, err := post.NewText(rawText)
+	if err != nil {
+		return "", nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	ids := make([]uuid.UUID, 0, len(rawPhotos))
+	for _, s := range rawPhotos {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return "", nil, status.Error(codes.InvalidArgument, post.ErrInvalidPhoto.Error())
+		}
+		ids = append(ids, id)
+	}
+
+	photos, err := post.NewPhotos(ids)
+	if err != nil {
+		return "", nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if len(photos) == 0 {
+		photos = nil // no photos, as storage reads them back
+	}
+
+	return text, photos, nil
+}
+
 func toProtoPost(p *post.Post, liked bool) *postv1.Post {
 	counters := p.Counters()
 	photos := make([]string, len(p.Content().Photos()))
@@ -45,19 +59,27 @@ func toProtoPost(p *post.Post, liked bool) *postv1.Post {
 		photos[i] = id.String()
 	}
 
-	return &postv1.Post{
-		Id:           p.ID().String(),
-		WallId:       p.WallID().String(),
-		AuthorId:     p.AuthorID().String(),
-		Text:         p.Content().Text().String(),
-		PhotoIds:     photos,
-		CreatedAt:    timestamppb.New(p.CreatedAt()),
-		LikeCount:    int32(counters.Likes),    //nolint:gosec // counters come from int4 columns
-		CommentCount: int32(counters.Comments), //nolint:gosec // counters come from int4 columns
-		RepostCount:  int32(counters.Reposts),  //nolint:gosec // counters come from int4 columns
-		RepostOf:     idString(p.Content().RepostOf()),
-		Liked:        liked,
+	pp := &postv1.Post{
+		Id:            p.ID().String(),
+		WallId:        p.WallID().String(),
+		AuthorId:      p.AuthorID().String(),
+		Text:          p.Content().Text().String(),
+		PhotoIds:      photos,
+		CreatedAt:     timestamppb.New(p.CreatedAt()),
+		LikeCount:     int32(counters.Likes),    //nolint:gosec // counters come from int4 columns
+		CommentCount:  int32(counters.Comments), //nolint:gosec // counters come from int4 columns
+		RepostCount:   int32(counters.Reposts),  //nolint:gosec // counters come from int4 columns
+		RepostOf:      idString(p.Content().RepostOf()),
+		Liked:         liked,
+		Pinned:        p.Pinned(),
+		EditableUntil: timestamppb.New(p.EditableUntil()),
 	}
+
+	if !p.EditedAt().IsZero() {
+		pp.EditedAt = timestamppb.New(p.EditedAt())
+	}
+
+	return pp
 }
 
 func toProtoPosts(page service.Page) []*postv1.Post {

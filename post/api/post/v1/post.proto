@@ -15,6 +15,14 @@ service PostService {
   // Requires an access token: shares a post on the caller's own wall. A
   // repost without text of a repost without text shares its original.
   rpc RepostPost(RepostPostRequest) returns (RepostPostResponse);
+  // Requires an access token: the author changes the text and photos of
+  // their post within a week of posting (editable_until); a repost keeps
+  // what it shares and takes no photos.
+  rpc EditPost(EditPostRequest) returns (EditPostResponse);
+  // Require an access token: the owner of the wall shows the post first
+  // on it, instead of the one pinned before, or stops. Both idempotent.
+  rpc PinPost(PinPostRequest) returns (google.protobuf.Empty);
+  rpc UnpinPost(UnpinPostRequest) returns (google.protobuf.Empty);
 
   // Public: one post.
   rpc GetPost(GetPostRequest) returns (GetPostResponse);
@@ -67,6 +75,12 @@ message Post {
   // a repost outlives it.
   string repost_of = 10;
   int32 repost_count = 11;
+  // Unset for a post never edited.
+  google.protobuf.Timestamp edited_at = 12;
+  // Shown first on its wall; ListPosts puts it on top of the first page.
+  bool pinned = 13;
+  // Until when the author may edit the post.
+  google.protobuf.Timestamp editable_until = 14;
 }
 
 message Comment {
@@ -104,6 +118,26 @@ message RepostPostResponse {
 }
 
 message DeletePostRequest {
+  string id = 1;
+}
+
+message EditPostRequest {
+  string id = 1;
+  // Text, photos or both, as in CreatePostRequest; the caller has checked
+  // that the photos are the author's.
+  string text = 2;
+  repeated string photo_ids = 3;
+}
+
+message EditPostResponse {
+  Post post = 1;
+}
+
+message PinPostRequest {
+  string id = 1;
+}
+
+message UnpinPostRequest {
   string id = 1;
 }
 

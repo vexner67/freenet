@@ -10,13 +10,24 @@ import (
 	"github.com/google/uuid"
 )
 
-const maxTextLen = 1000
+const (
+	maxTextLen = 1000
+
+	// editWindow is how long a post can be edited, as in openvk: long
+	// enough to fix a typo, short enough that an old post is not rewritten
+	// under its likes and comments.
+	editWindow = 7 * 24 * time.Hour
+)
 
 var (
 	ErrTextEmpty    = errors.New("post text is empty")
 	ErrTextTooLong  = errors.New("post text is too long")
 	ErrNotFound     = errors.New("post not found")
 	ErrCannotDelete = errors.New("only the author or the owner of the wall can delete the post")
+	ErrCannotEdit   = errors.New("only the author can edit the post")
+	ErrEditExpired  = errors.New("the post can no longer be edited")
+	ErrRepostPhotos = errors.New("a repost has no photos of its own")
+	ErrCannotPin    = errors.New("only the owner of the wall can pin the post")
 )
 
 // Text is what a post says: trimmed, with "\n" line breaks. It may be
@@ -61,14 +72,19 @@ type Counters struct {
 }
 
 // Post is written by its author on a wall; the wall is that of its owner,
-// the author's own or someone else's.
+// the author's own or someone else's. A post does not change once made:
+// Edited returns a new one, so readers may keep the pointers they got.
 type Post struct {
 	id        uuid.UUID
 	wallID    uuid.UUID
 	authorID  uuid.UUID
 	content   Content
 	createdAt time.Time
-	counters  Counters
+	// editedAt is zero for a post never edited.
+	editedAt time.Time
+	counters Counters
+	// pinned: the owner of the wall shows the post first on it.
+	pinned bool
 }
 
 // New creates a post by authorID on the wall of wallID. Its UUIDv7 ID
@@ -90,22 +106,93 @@ func New(wallID, authorID uuid.UUID, content Content, now time.Time) (*Post, err
 	}, nil
 }
 
+// Stored is a post as storage keeps it.
+type Stored struct {
+	ID        uuid.UUID
+	WallID    uuid.UUID
+	AuthorID  uuid.UUID
+	Content   Content
+	CreatedAt time.Time
+	EditedAt  time.Time
+	Counters  Counters
+	Pinned    bool
+}
+
 // Restore rebuilds a post from storage without validation or new IDs.
-func Restore(id, wallID, authorID uuid.UUID, content Content, createdAt time.Time, counters Counters) *Post {
+func Restore(s Stored) *Post {
 	return &Post{
-		id:        id,
-		wallID:    wallID,
-		authorID:  authorID,
-		content:   content,
-		createdAt: createdAt,
-		counters:  counters,
+		id:        s.ID,
+		wallID:    s.WallID,
+		authorID:  s.AuthorID,
+		content:   s.Content,
+		createdAt: s.CreatedAt,
+		editedAt:  s.EditedAt,
+		counters:  s.Counters,
+		pinned:    s.Pinned,
 	}
+}
+
+// Stored is what storage keeps of p.
+func (p *Post) Stored() Stored {
+	return Stored{
+		ID:        p.id,
+		WallID:    p.wallID,
+		AuthorID:  p.authorID,
+		Content:   p.content,
+		CreatedAt: p.createdAt,
+		EditedAt:  p.editedAt,
+		Counters:  p.counters,
+		Pinned:    p.pinned,
+	}
+}
+
+// Edited returns p saying text with photos instead, edited by requesterID
+// at now. Only the author edits, and for editWindow after posting, as in
+// openvk. A repost keeps the post it shares and, as when it was made, has
+// no photos of its own.
+func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.Time) (*Post, error) {
+	if requesterID != p.authorID {
+		return nil, ErrCannotEdit
+	}
+
+	if now.After(p.EditableUntil()) {
+		return nil, ErrEditExpired
+	}
+
+	var (
+		content Content
+		err     error
+	)
+
+	if p.content.repostOf != uuid.Nil {
+		if len(photos) > 0 {
+			return nil, ErrRepostPhotos
+		}
+		content, err = NewRepost(p.content.repostOf, text)
+	} else {
+		content, err = NewContent(text, photos)
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	edited := *p
+	edited.content = content
+	edited.editedAt = now.UTC().Truncate(time.Microsecond)
+
+	return &edited, nil
 }
 
 // CanBeDeletedBy: a post is removed by whoever wrote it or by the owner of
 // the wall, who keeps the wall clean.
 func (p *Post) CanBeDeletedBy(userID uuid.UUID) bool {
 	return userID == p.authorID || userID == p.wallID
+}
+
+// CanBePinnedBy: the owner of the wall chooses what it shows first,
+// whoever wrote it.
+func (p *Post) CanBePinnedBy(userID uuid.UUID) bool {
+	return userID == p.wallID
 }
 
 // Shared is what reposting p shares: p itself, or, when p only passes on
@@ -144,6 +231,20 @@ func (p *Post) CreatedAt() time.Time {
 	return p.createdAt
 }
 
+// EditableUntil is when the author can no longer edit the post.
+func (p *Post) EditableUntil() time.Time {
+	return p.createdAt.Add(editWindow)
+}
+
+// EditedAt is zero for a post never edited.
+func (p *Post) EditedAt() time.Time {
+	return p.editedAt
+}
+
 func (p *Post) Counters() Counters {
 	return p.counters
+}
+
+func (p *Post) Pinned() bool {
+	return p.pinned
 }
