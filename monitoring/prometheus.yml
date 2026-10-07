@@ -1,0 +1,22 @@
+# Prometheus of the Docker stack (`make stack`): every service serves its
+# metrics on METRICS_PORT inside the compose network.
+global:
+  scrape_interval: 10s
+
+scrape_configs:
+  - job_name: freenet
+    static_configs:
+      - targets: ["gateway:9080"]
+        labels: { service: gateway }
+      - targets: ["auth:9051"]
+        labels: { service: auth }
+      - targets: ["user:9052"]
+        labels: { service: user }
+      - targets: ["post:9053"]
+        labels: { service: post }
+      - targets: ["media:9054"]
+        labels: { service: media }
+      - targets: ["notification:9055"]
+        labels: { service: notification }
+      - targets: ["message:9056"]
+        labels: { service: message }

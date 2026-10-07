@@ -32,6 +32,10 @@ COPY --from=build --chown=nonroot:nonroot /out/data /data
 # another user, who could not even look for an optional .env there.
 WORKDIR /
 ENTRYPOINT ["/service"]
+# The binary asks the running service itself: no shell or curl here. Often
+# while starting, so that dependants start soon.
+HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --start-interval=1s \
+    CMD ["/service", "-healthcheck"]
 
 # The gateway also serves the website on the same origin.
 FROM runtime AS gateway

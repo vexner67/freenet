@@ -4,9 +4,12 @@
 # its database: auth (code from its log), user (profile), media (a photo,
 # written to its volume and served back), post (a post with it and a
 # repost), notification (unread count), message (dialogs) and the website
-# itself.
+# itself; then observability: every container healthy, a request ID from
+# the gateway in the auth log, every service's metrics in Prometheus.
 #
 #   scripts/smoke.sh [base URL]   default http://localhost:8080
+#
+# PROMETHEUS_URL is the stack's Prometheus, default http://localhost:9090.
 #
 # Needs curl and jq.
 set -euo pipefail
@@ -14,6 +17,8 @@ set -euo pipefail
 cd "$(dirname "$0")/.."
 
 base=${1:-http://localhost:8080}
+prometheus=${PROMETHEUS_URL:-http://localhost:9090}
+services=(gateway auth user post media notification message)
 email="smoke-$(date +%s)-$RANDOM@example.com"
 nickname="smoke$RANDOM$RANDOM"
 
@@ -53,14 +58,19 @@ step "website is served"
 expect=404 call GET "/api/v1/users/$nickname" >/dev/null
 step "user: unknown nickname is 404"
 
-expect=204 call POST /api/v1/auth/code "{\"email\":\"$email\"}" >/dev/null
-code=
+request_id=$(curl -sSf -o /dev/null -D - -X POST -H 'Content-Type: application/json' -d "{\"email\":\"$email\"}" \
+	"$base/api/v1/auth/code" | tr -d '\r' | sed -n 's/^[Xx]-[Rr]equest-[Ii][Dd]: //p')
+[ -n "$request_id" ] || die "POST /api/v1/auth/code: no X-Request-ID in the response"
+line=
 for _ in $(seq 1 20); do
-	code=$(docker compose logs auth 2>/dev/null | grep -F "\"email\":\"$email\"" | grep -o '"code":"[0-9]*"' | tail -1 | grep -o '[0-9]\+' || true)
-	[ -n "$code" ] && break
+	line=$(docker compose logs auth 2>/dev/null | grep -F "\"email\":\"$email\"" | tail -1 || true)
+	[ -n "$line" ] && break
 	sleep 0.5
 done
-[ -n "$code" ] || die "no sign-in code for $email in the auth log"
+[ -n "$line" ] || die "no sign-in code for $email in the auth log"
+code=$(echo "$line" | grep -o '"code":"[0-9]*"' | grep -o '[0-9]\+')
+echo "$line" | grep -qF "\"request_id\":\"$request_id\"" || die "the auth log line has no request_id $request_id: $line"
+step "request ID: from the gateway to the auth log"
 token=$(call POST /api/v1/auth/verify "{\"email\":\"$email\",\"code\":\"$code\"}" | jq -r .accessToken)
 step "auth: signed in with the code from the log"
 
@@ -84,5 +94,21 @@ step "notification: unread count"
 
 call GET /api/v1/dialogs | jq -e '.dialogs | length == 0' >/dev/null
 step "message: dialogs"
+
+for svc in "${services[@]}"; do
+	health=$(docker inspect -f '{{.State.Health.Status}}' "$(docker compose ps -q "$svc")" 2>/dev/null || true)
+	[ "$health" = healthy ] || die "$svc is ${health:-not running}, want healthy"
+done
+step "healthcheck: every service is healthy"
+
+# Prometheus scrapes every 10s: the first round may be on its way.
+up=
+for _ in $(seq 1 30); do
+	up=$(curl -sf "$prometheus/api/v1/query?query=up" | jq -r '[.data.result[] | select(.value[1] == "1") | .metric.service] | sort | join(" ")' || true)
+	[ "$up" = "$(printf '%s\n' "${services[@]}" | sort | xargs)" ] && break
+	sleep 1
+done
+[ "$up" = "$(printf '%s\n' "${services[@]}" | sort | xargs)" ] || die "Prometheus at $prometheus sees up: ${up:-nothing}"
+step "metrics: Prometheus scrapes every service"
 
 echo "smoke test passed"
