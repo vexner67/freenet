@@ -26,16 +26,28 @@ type UserService interface {
 
 type UserHandler struct {
 	userv1.UnimplementedUserServiceServer
-	userService   UserService
-	followService FollowService
-	logger        *slog.Logger
+	userService       UserService
+	followService     FollowService
+	blockService      BlockService
+	permissionService PermissionService
+	logger            *slog.Logger
 }
 
-func NewUserHandler(userService UserService, followService FollowService, logger *slog.Logger) *UserHandler {
+// Services are the use cases behind the handler.
+type Services struct {
+	Users       UserService
+	Follows     FollowService
+	Blocks      BlockService
+	Permissions PermissionService
+}
+
+func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 	return &UserHandler{
-		userService:   userService,
-		followService: followService,
-		logger:        logger,
+		userService:       s.Users,
+		followService:     s.Follows,
+		blockService:      s.Blocks,
+		permissionService: s.Permissions,
+		logger:            logger,
 	}
 }
 

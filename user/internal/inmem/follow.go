@@ -13,6 +13,8 @@ import (
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
+// edge is a directed pair: a follow (follower → followee) or, in
+// BlockRepository, a block (blocker → blocked).
 type edge struct {
 	follower, followee uuid.UUID
 }

@@ -48,14 +48,17 @@ func TestUser_CanPostOnWall(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = u.UpdatePrivacy(user.Privacy{WallWrite: tt.wallWrite}); err != nil {
+			if err = u.UpdatePrivacy(user.Privacy{WallWrite: tt.wallWrite, MessagesWrite: user.MessagesWriteEveryone}); err != nil {
 				t.Fatal(err)
 			}
 
-			if got := u.CanPostOnWall(stranger, tt.follows); got != tt.want {
+			if got := u.CanPostOnWall(stranger, user.Ties{Followed: tt.follows}); got != tt.want {
 				t.Fatalf("CanPostOnWall(follows = %v) = %v, want %v", tt.follows, got, tt.want)
 			}
-			if !u.CanPostOnWall(u.ID(), false) {
+			if u.CanPostOnWall(stranger, user.Ties{Followed: true, Blocked: true}) {
+				t.Fatal("a block shuts the wall")
+			}
+			if !u.CanPostOnWall(u.ID(), user.Ties{}) {
 				t.Fatal("the owner always may post on their wall")
 			}
 		})

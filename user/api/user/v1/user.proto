@@ -38,8 +38,21 @@ service UserService {
   rpc ListFollowing(ListFollowsRequest) returns (ListFollowsResponse);
 
   // Requires an access token: whether the caller may write on the user's
-  // wall, as the user's privacy allows.
+  // wall, as the user's privacy and blacklists allow.
   rpc CanPostOnWall(CanPostOnWallRequest) returns (CanPostOnWallResponse);
+  // Requires an access token: whether the caller may write private
+  // messages to the user, as the user's privacy and blacklists allow.
+  rpc CanMessage(CanMessageRequest) returns (CanMessageResponse);
+
+  // Require an access token: the caller's blacklist ("Чёрный список"). A
+  // block shuts messages, wall posts and follows between the two, both
+  // ways, and drops their follows. Block and Unblock are idempotent.
+  rpc Block(BlockRequest) returns (google.protobuf.Empty);
+  rpc Unblock(UnblockRequest) returns (google.protobuf.Empty);
+  rpc ListBlocked(ListBlockedRequest) returns (ListBlockedResponse);
+  // Requires an access token: who of the caller and the user blacklisted
+  // the other.
+  rpc GetRelation(GetRelationRequest) returns (GetRelationResponse);
 }
 
 message User {
@@ -70,6 +83,18 @@ message PrivacySettings {
   bool show_political_views = 4;
   // Required in UpdatePrivacy; WALL_WRITE_FOLLOWING by default.
   WallWrite wall_write = 5;
+  // Required in UpdatePrivacy; MESSAGES_WRITE_EVERYONE by default.
+  MessagesWrite messages_write = 6;
+}
+
+// Who may write private messages to a user. Whoever the user wrote to may
+// answer whatever the setting.
+enum MessagesWrite {
+  MESSAGES_WRITE_UNSPECIFIED = 0;
+  MESSAGES_WRITE_EVERYONE = 1;
+  // The people the user follows.
+  MESSAGES_WRITE_FOLLOWING = 2;
+  MESSAGES_WRITE_NOBODY = 3;
 }
 
 // Who may write on a user's wall besides the user.
@@ -265,4 +290,49 @@ message CanPostOnWallRequest {
 
 message CanPostOnWallResponse {
   bool allowed = 1;
+}
+
+message CanMessageRequest {
+  // The recipient.
+  string user_id = 1;
+  // The recipient has written to the caller, which the message service
+  // knows: they may then answer whatever the setting.
+  bool wrote_first = 2;
+}
+
+message CanMessageResponse {
+  bool allowed = 1;
+}
+
+message BlockRequest {
+  string user_id = 1;
+}
+
+message UnblockRequest {
+  string user_id = 1;
+}
+
+message ListBlockedRequest {
+  // Empty for the newest blocks, else next_cursor of the previous page.
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+}
+
+message ListBlockedResponse {
+  repeated PublicProfile users = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message GetRelationRequest {
+  string user_id = 1;
+}
+
+message GetRelationResponse {
+  // The caller blacklisted the user.
+  bool blocked_by_me = 1;
+  // The user blacklisted the caller.
+  bool blocked_me = 2;
 }

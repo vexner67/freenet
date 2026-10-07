@@ -197,3 +197,79 @@ func TestCanPostOnWall(t *testing.T) {
 		t.Fatalf("unknown owner: code = %v", got)
 	}
 }
+
+func TestBlacklist(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, annID := s.member(t, "ann")
+	bob, bobID := s.member(t, "bob")
+
+	if _, err := s.client.Follow(bob, &userv1.FollowRequest{UserId: annID}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := s.client.Block(ann, &userv1.BlockRequest{UserId: bobID}); err != nil {
+		t.Fatalf("Block: %v", err)
+	}
+
+	_, err := s.client.Follow(bob, &userv1.FollowRequest{UserId: annID})
+	if got := status.Code(err); got != codes.PermissionDenied {
+		t.Fatalf("follow across a block: code = %v", got)
+	}
+
+	stats, err := s.client.GetFollowStats(bob, &userv1.GetFollowStatsRequest{UserId: annID})
+	if err != nil || stats.GetFollowersCount() != 0 || stats.GetIsFollowing() {
+		t.Fatalf("bob's follow must be dropped: %v, %v", stats, err)
+	}
+
+	rel, err := s.client.GetRelation(bob, &userv1.GetRelationRequest{UserId: annID})
+	if err != nil || rel.GetBlockedByMe() || !rel.GetBlockedMe() {
+		t.Fatalf("bob's relation to ann = %v, %v", rel, err)
+	}
+
+	msg, err := s.client.CanMessage(bob, &userv1.CanMessageRequest{UserId: annID, WroteFirst: true})
+	if err != nil || msg.GetAllowed() {
+		t.Fatalf("bob may not write to ann: %v, %v", msg, err)
+	}
+
+	list, err := s.client.ListBlocked(ann, &userv1.ListBlockedRequest{})
+	if err != nil || list.GetTotal() != 1 || list.GetUsers()[0].GetNickname() != "bob" {
+		t.Fatalf("ann's blacklist = %v, %v", list, err)
+	}
+
+	if _, err = s.client.Unblock(ann, &userv1.UnblockRequest{UserId: bobID}); err != nil {
+		t.Fatal(err)
+	}
+	if msg, err = s.client.CanMessage(bob, &userv1.CanMessageRequest{UserId: annID}); err != nil || !msg.GetAllowed() {
+		t.Fatalf("after unblocking: %v, %v", msg, err)
+	}
+
+	tests := []struct {
+		name string
+		call func() error
+		code codes.Code
+	}{
+		{"block yourself", func() error {
+			_, err := s.client.Block(ann, &userv1.BlockRequest{UserId: annID})
+			return err
+		}, codes.InvalidArgument},
+		{"block nobody", func() error {
+			_, err := s.client.Block(ann, &userv1.BlockRequest{UserId: "0192f0a0-0000-7000-8000-000000000000"})
+			return err
+		}, codes.NotFound},
+		{"bad id", func() error {
+			_, err := s.client.GetRelation(ann, &userv1.GetRelationRequest{UserId: "x"})
+			return err
+		}, codes.InvalidArgument},
+		{"without a token", func() error {
+			_, err := s.client.ListBlocked(context.Background(), &userv1.ListBlockedRequest{})
+			return err
+		}, codes.Unauthenticated},
+	}
+
+	for _, tt := range tests {
+		if got := status.Code(tt.call()); got != tt.code {
+			t.Fatalf("%s: code = %v, want %v", tt.name, got, tt.code)
+		}
+	}
+}
