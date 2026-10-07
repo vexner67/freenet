@@ -19,6 +19,12 @@ service NotificationService {
   rpc ListNotifications(ListNotificationsRequest) returns (ListNotificationsResponse);
   rpc CountUnread(CountUnreadRequest) returns (CountUnreadResponse);
   rpc MarkRead(MarkReadRequest) returns (google.protobuf.Empty);
+
+  // Requires an access token: what happens to the caller's notifications
+  // as it happens, for the live counter. Best effort: the stream ends with
+  // Unauthenticated when the token expires and with ResourceExhausted when
+  // the caller falls behind; then subscribe again and count afresh.
+  rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
 }
 
 enum Kind {
@@ -99,4 +105,20 @@ message CountUnreadResponse {
 message MarkReadRequest {
   // The newest notification read; it and older ones go to the archive.
   string notification_id = 1;
+}
+
+message SubscribeRequest {}
+
+message SubscribeResponse {
+  Change change = 1;
+}
+
+enum Change {
+  CHANGE_UNSPECIFIED = 0;
+  // A new notification.
+  CHANGE_NEW = 1;
+  // One was taken back.
+  CHANGE_GONE = 2;
+  // The caller read them, on another page.
+  CHANGE_READ = 3;
 }

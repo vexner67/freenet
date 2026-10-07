@@ -137,6 +137,61 @@ func (Box) EnumDescriptor() ([]byte, []int) {
 	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{1}
 }
 
+type Change int32
+
+const (
+	Change_CHANGE_UNSPECIFIED Change = 0
+	// A new notification.
+	Change_CHANGE_NEW Change = 1
+	// One was taken back.
+	Change_CHANGE_GONE Change = 2
+	// The caller read them, on another page.
+	Change_CHANGE_READ Change = 3
+)
+
+// Enum value maps for Change.
+var (
+	Change_name = map[int32]string{
+		0: "CHANGE_UNSPECIFIED",
+		1: "CHANGE_NEW",
+		2: "CHANGE_GONE",
+		3: "CHANGE_READ",
+	}
+	Change_value = map[string]int32{
+		"CHANGE_UNSPECIFIED": 0,
+		"CHANGE_NEW":         1,
+		"CHANGE_GONE":        2,
+		"CHANGE_READ":        3,
+	}
+)
+
+func (x Change) Enum() *Change {
+	p := new(Change)
+	*p = x
+	return p
+}
+
+func (x Change) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (Change) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_notification_v1_notification_proto_enumTypes[2].Descriptor()
+}
+
+func (Change) Type() protoreflect.EnumType {
+	return &file_api_notification_v1_notification_proto_enumTypes[2]
+}
+
+func (x Change) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use Change.Descriptor instead.
+func (Change) EnumDescriptor() ([]byte, []int) {
+	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{2}
+}
+
 // Event: post_id is set for likes, comments, wall posts and reposts,
 // comment_id for comments.
 type Event struct {
@@ -673,6 +728,86 @@ func (x *MarkReadRequest) GetNotificationId() string {
 	return ""
 }
 
+type SubscribeRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeRequest) Reset() {
+	*x = SubscribeRequest{}
+	mi := &file_api_notification_v1_notification_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeRequest) ProtoMessage() {}
+
+func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notification_v1_notification_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeRequest.ProtoReflect.Descriptor instead.
+func (*SubscribeRequest) Descriptor() ([]byte, []int) {
+	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{10}
+}
+
+type SubscribeResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Change        Change                 `protobuf:"varint,1,opt,name=change,proto3,enum=notification.v1.Change" json:"change,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribeResponse) Reset() {
+	*x = SubscribeResponse{}
+	mi := &file_api_notification_v1_notification_proto_msgTypes[11]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribeResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribeResponse) ProtoMessage() {}
+
+func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notification_v1_notification_proto_msgTypes[11]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribeResponse.ProtoReflect.Descriptor instead.
+func (*SubscribeResponse) Descriptor() ([]byte, []int) {
+	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{11}
+}
+
+func (x *SubscribeResponse) GetChange() Change {
+	if x != nil {
+		return x.Change
+	}
+	return Change_CHANGE_UNSPECIFIED
+}
+
 var File_api_notification_v1_notification_proto protoreflect.FileDescriptor
 
 const file_api_notification_v1_notification_proto_rawDesc = "" +
@@ -712,7 +847,10 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x13CountUnreadResponse\x12\x14\n" +
 	"\x05count\x18\x01 \x01(\x05R\x05count\":\n" +
 	"\x0fMarkReadRequest\x12'\n" +
-	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId*s\n" +
+	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId\"\x12\n" +
+	"\x10SubscribeRequest\"D\n" +
+	"\x11SubscribeResponse\x12/\n" +
+	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*s\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -724,7 +862,13 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
 	"BOX_UNREAD\x10\x01\x12\x0f\n" +
-	"\vBOX_ARCHIVE\x10\x022\xf1\x03\n" +
+	"\vBOX_ARCHIVE\x10\x02*R\n" +
+	"\x06Change\x12\x16\n" +
+	"\x12CHANGE_UNSPECIFIED\x10\x00\x12\x0e\n" +
+	"\n" +
+	"CHANGE_NEW\x10\x01\x12\x0f\n" +
+	"\vCHANGE_GONE\x10\x02\x12\x0f\n" +
+	"\vCHANGE_READ\x10\x032\xc7\x04\n" +
 	"\x13NotificationService\x12@\n" +
 	"\x06Notify\x12\x1e.notification.v1.NotifyRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
 	"\aRetract\x12\x1f.notification.v1.RetractRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
@@ -732,7 +876,8 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"ForgetPost\x12\".notification.v1.ForgetPostRequest\x1a\x16.google.protobuf.Empty\x12j\n" +
 	"\x11ListNotifications\x12).notification.v1.ListNotificationsRequest\x1a*.notification.v1.ListNotificationsResponse\x12X\n" +
 	"\vCountUnread\x12#.notification.v1.CountUnreadRequest\x1a$.notification.v1.CountUnreadResponse\x12D\n" +
-	"\bMarkRead\x12 .notification.v1.MarkReadRequest\x1a\x16.google.protobuf.EmptyBMZKgithub.com/vexner67/freenet/notification/api/notification/v1;notificationv1b\x06proto3"
+	"\bMarkRead\x12 .notification.v1.MarkReadRequest\x1a\x16.google.protobuf.Empty\x12T\n" +
+	"\tSubscribe\x12!.notification.v1.SubscribeRequest\x1a\".notification.v1.SubscribeResponse0\x01BMZKgithub.com/vexner67/freenet/notification/api/notification/v1;notificationv1b\x06proto3"
 
 var (
 	file_api_notification_v1_notification_proto_rawDescOnce sync.Once
@@ -746,49 +891,55 @@ func file_api_notification_v1_notification_proto_rawDescGZIP() []byte {
 	return file_api_notification_v1_notification_proto_rawDescData
 }
 
-var file_api_notification_v1_notification_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_notification_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 10)
+var file_api_notification_v1_notification_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
+var file_api_notification_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 12)
 var file_api_notification_v1_notification_proto_goTypes = []any{
 	(Kind)(0),                         // 0: notification.v1.Kind
 	(Box)(0),                          // 1: notification.v1.Box
-	(*Event)(nil),                     // 2: notification.v1.Event
-	(*NotifyRequest)(nil),             // 3: notification.v1.NotifyRequest
-	(*RetractRequest)(nil),            // 4: notification.v1.RetractRequest
-	(*ForgetPostRequest)(nil),         // 5: notification.v1.ForgetPostRequest
-	(*Notification)(nil),              // 6: notification.v1.Notification
-	(*ListNotificationsRequest)(nil),  // 7: notification.v1.ListNotificationsRequest
-	(*ListNotificationsResponse)(nil), // 8: notification.v1.ListNotificationsResponse
-	(*CountUnreadRequest)(nil),        // 9: notification.v1.CountUnreadRequest
-	(*CountUnreadResponse)(nil),       // 10: notification.v1.CountUnreadResponse
-	(*MarkReadRequest)(nil),           // 11: notification.v1.MarkReadRequest
-	(*timestamppb.Timestamp)(nil),     // 12: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),             // 13: google.protobuf.Empty
+	(Change)(0),                       // 2: notification.v1.Change
+	(*Event)(nil),                     // 3: notification.v1.Event
+	(*NotifyRequest)(nil),             // 4: notification.v1.NotifyRequest
+	(*RetractRequest)(nil),            // 5: notification.v1.RetractRequest
+	(*ForgetPostRequest)(nil),         // 6: notification.v1.ForgetPostRequest
+	(*Notification)(nil),              // 7: notification.v1.Notification
+	(*ListNotificationsRequest)(nil),  // 8: notification.v1.ListNotificationsRequest
+	(*ListNotificationsResponse)(nil), // 9: notification.v1.ListNotificationsResponse
+	(*CountUnreadRequest)(nil),        // 10: notification.v1.CountUnreadRequest
+	(*CountUnreadResponse)(nil),       // 11: notification.v1.CountUnreadResponse
+	(*MarkReadRequest)(nil),           // 12: notification.v1.MarkReadRequest
+	(*SubscribeRequest)(nil),          // 13: notification.v1.SubscribeRequest
+	(*SubscribeResponse)(nil),         // 14: notification.v1.SubscribeResponse
+	(*timestamppb.Timestamp)(nil),     // 15: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),             // 16: google.protobuf.Empty
 }
 var file_api_notification_v1_notification_proto_depIdxs = []int32{
 	0,  // 0: notification.v1.Event.kind:type_name -> notification.v1.Kind
-	2,  // 1: notification.v1.NotifyRequest.event:type_name -> notification.v1.Event
-	2,  // 2: notification.v1.RetractRequest.event:type_name -> notification.v1.Event
+	3,  // 1: notification.v1.NotifyRequest.event:type_name -> notification.v1.Event
+	3,  // 2: notification.v1.RetractRequest.event:type_name -> notification.v1.Event
 	0,  // 3: notification.v1.Notification.kind:type_name -> notification.v1.Kind
-	12, // 4: notification.v1.Notification.created_at:type_name -> google.protobuf.Timestamp
+	15, // 4: notification.v1.Notification.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 5: notification.v1.ListNotificationsRequest.box:type_name -> notification.v1.Box
-	6,  // 6: notification.v1.ListNotificationsResponse.notifications:type_name -> notification.v1.Notification
-	3,  // 7: notification.v1.NotificationService.Notify:input_type -> notification.v1.NotifyRequest
-	4,  // 8: notification.v1.NotificationService.Retract:input_type -> notification.v1.RetractRequest
-	5,  // 9: notification.v1.NotificationService.ForgetPost:input_type -> notification.v1.ForgetPostRequest
-	7,  // 10: notification.v1.NotificationService.ListNotifications:input_type -> notification.v1.ListNotificationsRequest
-	9,  // 11: notification.v1.NotificationService.CountUnread:input_type -> notification.v1.CountUnreadRequest
-	11, // 12: notification.v1.NotificationService.MarkRead:input_type -> notification.v1.MarkReadRequest
-	13, // 13: notification.v1.NotificationService.Notify:output_type -> google.protobuf.Empty
-	13, // 14: notification.v1.NotificationService.Retract:output_type -> google.protobuf.Empty
-	13, // 15: notification.v1.NotificationService.ForgetPost:output_type -> google.protobuf.Empty
-	8,  // 16: notification.v1.NotificationService.ListNotifications:output_type -> notification.v1.ListNotificationsResponse
-	10, // 17: notification.v1.NotificationService.CountUnread:output_type -> notification.v1.CountUnreadResponse
-	13, // 18: notification.v1.NotificationService.MarkRead:output_type -> google.protobuf.Empty
-	13, // [13:19] is the sub-list for method output_type
-	7,  // [7:13] is the sub-list for method input_type
-	7,  // [7:7] is the sub-list for extension type_name
-	7,  // [7:7] is the sub-list for extension extendee
-	0,  // [0:7] is the sub-list for field type_name
+	7,  // 6: notification.v1.ListNotificationsResponse.notifications:type_name -> notification.v1.Notification
+	2,  // 7: notification.v1.SubscribeResponse.change:type_name -> notification.v1.Change
+	4,  // 8: notification.v1.NotificationService.Notify:input_type -> notification.v1.NotifyRequest
+	5,  // 9: notification.v1.NotificationService.Retract:input_type -> notification.v1.RetractRequest
+	6,  // 10: notification.v1.NotificationService.ForgetPost:input_type -> notification.v1.ForgetPostRequest
+	8,  // 11: notification.v1.NotificationService.ListNotifications:input_type -> notification.v1.ListNotificationsRequest
+	10, // 12: notification.v1.NotificationService.CountUnread:input_type -> notification.v1.CountUnreadRequest
+	12, // 13: notification.v1.NotificationService.MarkRead:input_type -> notification.v1.MarkReadRequest
+	13, // 14: notification.v1.NotificationService.Subscribe:input_type -> notification.v1.SubscribeRequest
+	16, // 15: notification.v1.NotificationService.Notify:output_type -> google.protobuf.Empty
+	16, // 16: notification.v1.NotificationService.Retract:output_type -> google.protobuf.Empty
+	16, // 17: notification.v1.NotificationService.ForgetPost:output_type -> google.protobuf.Empty
+	9,  // 18: notification.v1.NotificationService.ListNotifications:output_type -> notification.v1.ListNotificationsResponse
+	11, // 19: notification.v1.NotificationService.CountUnread:output_type -> notification.v1.CountUnreadResponse
+	16, // 20: notification.v1.NotificationService.MarkRead:output_type -> google.protobuf.Empty
+	14, // 21: notification.v1.NotificationService.Subscribe:output_type -> notification.v1.SubscribeResponse
+	15, // [15:22] is the sub-list for method output_type
+	8,  // [8:15] is the sub-list for method input_type
+	8,  // [8:8] is the sub-list for extension type_name
+	8,  // [8:8] is the sub-list for extension extendee
+	0,  // [0:8] is the sub-list for field type_name
 }
 
 func init() { file_api_notification_v1_notification_proto_init() }
@@ -801,8 +952,8 @@ func file_api_notification_v1_notification_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_notification_v1_notification_proto_rawDesc), len(file_api_notification_v1_notification_proto_rawDesc)),
-			NumEnums:      2,
-			NumMessages:   10,
+			NumEnums:      3,
+			NumMessages:   12,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

@@ -21,6 +21,42 @@ type NotificationService interface {
 	List(ctx context.Context, userID uuid.UUID, unread bool, cursor uuid.UUID, size int) (service.Page, error)
 	CountUnread(ctx context.Context, userID uuid.UUID) (int, error)
 	MarkRead(ctx context.Context, userID, notificationID uuid.UUID) error
+	Subscribe(userID uuid.UUID) (<-chan service.Change, func())
+}
+
+var changeToProto = map[service.Change]notificationv1.Change{
+	service.ChangeNew:  notificationv1.Change_CHANGE_NEW,
+	service.ChangeGone: notificationv1.Change_CHANGE_GONE,
+	service.ChangeRead: notificationv1.Change_CHANGE_READ,
+}
+
+// Subscribe streams what happens to the caller's notifications until the
+// token expires (the stream's deadline), the client leaves or the server
+// stops, or the caller falls behind.
+func (h *NotificationHandler) Subscribe(_ *notificationv1.SubscribeRequest, stream notificationv1.NotificationService_SubscribeServer) error {
+	ctx := stream.Context()
+
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return err
+	}
+
+	changes, cancel := h.notificationService.Subscribe(userID)
+	defer cancel()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return jwtauth.StreamEnd(ctx)
+		case c, ok := <-changes:
+			if !ok {
+				return status.Error(codes.ResourceExhausted, "fell behind, subscribe again")
+			}
+			if err = stream.Send(&notificationv1.SubscribeResponse{Change: changeToProto[c]}); err != nil {
+				return err
+			}
+		}
+	}
 }
 
 type NotificationHandler struct {

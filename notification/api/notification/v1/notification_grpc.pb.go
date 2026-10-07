@@ -26,6 +26,7 @@ const (
 	NotificationService_ListNotifications_FullMethodName = "/notification.v1.NotificationService/ListNotifications"
 	NotificationService_CountUnread_FullMethodName       = "/notification.v1.NotificationService/CountUnread"
 	NotificationService_MarkRead_FullMethodName          = "/notification.v1.NotificationService/MarkRead"
+	NotificationService_Subscribe_FullMethodName         = "/notification.v1.NotificationService/Subscribe"
 )
 
 // NotificationServiceClient is the client API for NotificationService service.
@@ -42,6 +43,11 @@ type NotificationServiceClient interface {
 	ListNotifications(ctx context.Context, in *ListNotificationsRequest, opts ...grpc.CallOption) (*ListNotificationsResponse, error)
 	CountUnread(ctx context.Context, in *CountUnreadRequest, opts ...grpc.CallOption) (*CountUnreadResponse, error)
 	MarkRead(ctx context.Context, in *MarkReadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Requires an access token: what happens to the caller's notifications
+	// as it happens, for the live counter. Best effort: the stream ends with
+	// Unauthenticated when the token expires and with ResourceExhausted when
+	// the caller falls behind; then subscribe again and count afresh.
+	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeResponse], error)
 }
 
 type notificationServiceClient struct {
@@ -112,6 +118,25 @@ func (c *notificationServiceClient) MarkRead(ctx context.Context, in *MarkReadRe
 	return out, nil
 }
 
+func (c *notificationServiceClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeResponse], error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	stream, err := c.cc.NewStream(ctx, &NotificationService_ServiceDesc.Streams[0], NotificationService_Subscribe_FullMethodName, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	x := &grpc.GenericClientStream[SubscribeRequest, SubscribeResponse]{ClientStream: stream}
+	if err := x.ClientStream.SendMsg(in); err != nil {
+		return nil, err
+	}
+	if err := x.ClientStream.CloseSend(); err != nil {
+		return nil, err
+	}
+	return x, nil
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type NotificationService_SubscribeClient = grpc.ServerStreamingClient[SubscribeResponse]
+
 // NotificationServiceServer is the server API for NotificationService service.
 // All implementations must embed UnimplementedNotificationServiceServer
 // for forward compatibility.
@@ -126,6 +151,11 @@ type NotificationServiceServer interface {
 	ListNotifications(context.Context, *ListNotificationsRequest) (*ListNotificationsResponse, error)
 	CountUnread(context.Context, *CountUnreadRequest) (*CountUnreadResponse, error)
 	MarkRead(context.Context, *MarkReadRequest) (*emptypb.Empty, error)
+	// Requires an access token: what happens to the caller's notifications
+	// as it happens, for the live counter. Best effort: the stream ends with
+	// Unauthenticated when the token expires and with ResourceExhausted when
+	// the caller falls behind; then subscribe again and count afresh.
+	Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error
 	mustEmbedUnimplementedNotificationServiceServer()
 }
 
@@ -153,6 +183,9 @@ func (UnimplementedNotificationServiceServer) CountUnread(context.Context, *Coun
 }
 func (UnimplementedNotificationServiceServer) MarkRead(context.Context, *MarkReadRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkRead not implemented")
+}
+func (UnimplementedNotificationServiceServer) Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error {
+	return status.Error(codes.Unimplemented, "method Subscribe not implemented")
 }
 func (UnimplementedNotificationServiceServer) mustEmbedUnimplementedNotificationServiceServer() {}
 func (UnimplementedNotificationServiceServer) testEmbeddedByValue()                             {}
@@ -283,6 +316,17 @@ func _NotificationService_MarkRead_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _NotificationService_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
+	m := new(SubscribeRequest)
+	if err := stream.RecvMsg(m); err != nil {
+		return err
+	}
+	return srv.(NotificationServiceServer).Subscribe(m, &grpc.GenericServerStream[SubscribeRequest, SubscribeResponse]{ServerStream: stream})
+}
+
+// This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
+type NotificationService_SubscribeServer = grpc.ServerStreamingServer[SubscribeResponse]
+
 // NotificationService_ServiceDesc is the grpc.ServiceDesc for NotificationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -315,6 +359,12 @@ var NotificationService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _NotificationService_MarkRead_Handler,
 		},
 	},
-	Streams:  []grpc.StreamDesc{},
+	Streams: []grpc.StreamDesc{
+		{
+			StreamName:    "Subscribe",
+			Handler:       _NotificationService_Subscribe_Handler,
+			ServerStreams: true,
+		},
+	},
 	Metadata: "api/notification/v1/notification.proto",
 }

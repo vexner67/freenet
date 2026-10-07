@@ -17,6 +17,7 @@ import (
 	"github.com/vexner67/freenet/notification/internal/inmem"
 	"github.com/vexner67/freenet/notification/internal/service"
 	"github.com/vexner67/freenet/pkg/jwtauth"
+	"github.com/vexner67/freenet/pkg/pubsub"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -43,12 +44,16 @@ func newServer(t *testing.T) testServer {
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
 	lis := bufconn.Listen(1 << 20)
-	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(
-		notificationgrpc.ErrorInterceptor(log),
-		jwtauth.UnaryServerInterceptor(jwtauth.NewVerifier(&key.PublicKey, issuer), notificationgrpc.PublicMethods()...),
-	))
+	verifier := jwtauth.NewVerifier(&key.PublicKey, issuer)
+	srv := grpc.NewServer(
+		grpc.ChainUnaryInterceptor(
+			notificationgrpc.ErrorInterceptor(log),
+			jwtauth.UnaryServerInterceptor(verifier, notificationgrpc.PublicMethods()...),
+		),
+		grpc.ChainStreamInterceptor(jwtauth.StreamServerInterceptor(verifier)),
+	)
 	notificationv1.RegisterNotificationServiceServer(srv, notificationgrpc.NewNotificationHandler(
-		service.NewNotificationService(inmem.NewNotificationRepository(), inmem.NewReadMarkRepository()),
+		service.NewNotificationService(inmem.NewNotificationRepository(), inmem.NewReadMarkRepository(), pubsub.New[uuid.UUID, service.Change](64)),
 		log,
 	))
 
@@ -219,5 +224,54 @@ func TestErrors(t *testing.T) {
 				t.Fatalf("code = %v, want %v", got, tt.want)
 			}
 		})
+	}
+}
+
+func TestSubscribe(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann := uuid.New()
+
+	ctx, cancel := context.WithCancel(s.as(t, ann))
+	defer cancel()
+
+	stream, err := s.client.Subscribe(ctx, &notificationv1.SubscribeRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	received := make(chan *notificationv1.SubscribeResponse, 1)
+	go func() {
+		resp, err := stream.Recv()
+		if err == nil {
+			received <- resp
+		}
+	}()
+
+	// Notify until the subscription is in place and the change arrives.
+	var got *notificationv1.SubscribeResponse
+	for got == nil {
+		event := &notificationv1.Event{Kind: notificationv1.Kind_KIND_FOLLOW, RecipientId: ann.String(), ActorId: uuid.NewString()}
+		if _, err = s.client.Notify(context.Background(), &notificationv1.NotifyRequest{Event: event}); err != nil {
+			t.Fatal(err)
+		}
+
+		select {
+		case got = <-received:
+		case <-time.After(50 * time.Millisecond):
+		}
+	}
+
+	if got.GetChange() != notificationv1.Change_CHANGE_NEW {
+		t.Fatalf("change = %v, want NEW", got.GetChange())
+	}
+
+	noToken, err := s.client.Subscribe(context.Background(), &notificationv1.SubscribeRequest{})
+	if err == nil {
+		_, err = noToken.Recv()
+	}
+	if code := status.Code(err); code != codes.Unauthenticated {
+		t.Fatalf("without a token: code = %v", code)
 	}
 }
