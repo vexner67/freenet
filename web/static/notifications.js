@@ -1,8 +1,10 @@
 // "Мои Ответы", as on openvk: what others did with your posts and page,
 // with the tabs "Непрочитанное" and "Архив". Opening the unread tab reads
 // it: the notifications move to the archive and the menu counter clears.
+// While it is open, new ones appear at the top live (events.js).
 
 import { api, currentUser } from './api.js';
+import { onEvent } from './events.js';
 import { formatPostDate, notificationVerb, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, profilePath, renderChrome, setCounter, showError, hideError } from './layout.js';
 import { postPath } from './posts.js';
@@ -10,7 +12,46 @@ import { postPath } from './posts.js';
 const COMMENT_SNIPPET = 200;
 
 let box = new URLSearchParams(location.search).get('box') === 'archive' ? 'archive' : 'unread';
+const unreadTab = box === 'unread';
 let cursor = '';
+// IDs of the notifications shown, so a live update repeats none.
+const shownIDs = new Set();
+
+function nodesOf(notifications) {
+  const fresh = notifications.filter((n) => !shownIDs.has(n.id));
+  for (const n of fresh) shownIDs.add(n.id);
+  return fresh.map(notificationNode).filter(Boolean);
+}
+
+// unseen is the newest notification shown while the tab was hidden: it is
+// read once the tab is seen.
+let unseen = '';
+
+async function markRead(newestId) {
+  if (document.hidden) {
+    unseen = newestId;
+    return;
+  }
+
+  unseen = '';
+  await api.markNotificationsRead(newestId);
+  setCounter('notifications', 0);
+}
+
+// showNew puts what arrived since at the top and reads it, as opening the
+// tab would.
+async function showNew() {
+  try {
+    const page = await api.notifications('unread', '');
+
+    $('notifications').prepend(...nodesOf(page.notifications));
+    $('empty').hidden = $('notifications').children.length > 0;
+
+    if (page.newestId) await markRead(page.newestId);
+  } catch (e) {
+    showError($('error'), e);
+  }
+}
 
 function postLink(post, text) {
   return el('a', { href: postPath(post) }, el('b', { textContent: text }));
@@ -60,7 +101,7 @@ async function loadMore() {
   try {
     const page = await api.notifications(box, cursor);
 
-    $('notifications').append(...page.notifications.map(notificationNode).filter(Boolean));
+    $('notifications').append(...nodesOf(page.notifications));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
     $('empty').hidden = $('notifications').children.length > 0;
@@ -91,4 +132,13 @@ if (!me) {
   $('more').addEventListener('click', loadMore);
 
   await loadMore();
+
+  if (unreadTab) {
+    onEvent('notification', (e) => {
+      if (e.change === 'new') showNew();
+    });
+    document.addEventListener('visibilitychange', () => {
+      if (unseen) markRead(unseen).catch((e) => showError($('error'), e));
+    });
+  }
 }

@@ -88,6 +88,12 @@ async function refresh(expiredAccessToken) {
   }
 }
 
+// renewSession replaces an access token that expired, for the event
+// stream, which is no fetch; under the same lock as the requests.
+export function renewSession(expiredAccessToken) {
+  return refresh(expiredAccessToken);
+}
+
 // optional sends the token when signed in, so the answer can depend on who
 // asks, and works anonymously otherwise.
 function optional(method, path) {
