@@ -181,7 +181,7 @@ func TestWallPrivacy(t *testing.T) {
 	api := &fakeUserAPI{}
 	users := NewUsers(api)
 
-	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{ShowWorldview: true, WallWrite: "everyone", MessagesWrite: "nobody"})
+	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{ShowWorldview: true, WallWrite: "everyone", MessagesWrite: "nobody", ClubsRead: "only_me"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -191,8 +191,11 @@ func TestWallPrivacy(t *testing.T) {
 	if api.privacy.GetMessagesWrite() != userv1.MessagesWrite_MESSAGES_WRITE_NOBODY || u.Privacy.MessagesWrite != "nobody" {
 		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
 	}
+	if api.privacy.GetClubsRead() != userv1.ClubsRead_CLUBS_READ_ONLY_ME || u.Privacy.ClubsRead != "only_me" {
+		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
+	}
 
-	for _, bad := range []model.Privacy{{WallWrite: "friends", MessagesWrite: "everyone"}, {WallWrite: "everyone", MessagesWrite: "only_me"}} {
+	for _, bad := range []model.Privacy{{WallWrite: "friends", MessagesWrite: "everyone"}, {WallWrite: "everyone", MessagesWrite: "only_me"}, {WallWrite: "everyone", MessagesWrite: "everyone", ClubsRead: "nobody"}} {
 		if _, err = users.UpdatePrivacy(context.Background(), "tok", bad); failure.From(err).Kind != failure.InvalidArgument {
 			t.Fatalf("privacy %+v: %v", bad, err)
 		}

@@ -997,8 +997,10 @@ paths:
     put:
       summary: Change a community's settings
       description: |
-        Its admins only. The whole form: an empty address takes the address
-        away; `wall` is `open` (everyone writes) or `closed` (only admins).
+        Its admins only. The whole form: an empty address or website takes
+        it away; `wall` is `open` (everyone writes) or `closed` (only
+        admins); `adminsDisplay` is what the page shows of those who run
+        the community ("Список админов").
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -1006,12 +1008,14 @@ paths:
           application/json:
             schema:
               type: object
-              required: [name, description, address, wall]
+              required: [name, description, address, website, wall, adminsDisplay]
               properties:
                 name: { type: string, maxLength: 64 }
                 description: { type: string, maxLength: 1000 }
                 address: { type: string, maxLength: 32, description: "Latin letters, digits and _, a letter first; unique whatever the case" }
+                website: { type: string, maxLength: 256, description: "An http or https link; https:// is added when the scheme is left out" }
                 wall: { type: string, enum: [open, closed] }
+                adminsDisplay: { $ref: "#/components/schemas/AdminsDisplay" }
       responses:
         "200": { $ref: "#/components/responses/Club" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -1079,7 +1083,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [members, nextCursor]
+                required: [members, nextCursor, total]
                 properties:
                   members:
                     type: array
@@ -1090,6 +1094,7 @@ paths:
                         user: { $ref: "#/components/schemas/Author" }
                         role: { type: string, enum: [member, admin, owner] }
                   nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer, description: "Members, or admins, on all pages, those whose page is deleted too" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/clubs/{ref}/admins/{nickname}:
@@ -1125,6 +1130,33 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { description: "The community, the user, or the user is not a member", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /api/v1/clubs/{ref}/owner/{nickname}:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Hand the community over to an admin ("Назначить владельцем")
+      description: The owner only; the owner stays an admin. It cannot be undone by the old owner.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Handed over }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not the owner
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`the new owner must be an admin of the club`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/clubs/{ref}/posts:
     parameters:
@@ -1393,6 +1425,36 @@ paths:
       parameters: *followListParams
       responses: *followListResponses
 
+  /api/v1/users/{nickname}/clubs:
+    get:
+      summary: The communities of a user, the newest joined first
+      description: |
+        The block "Группы" of a page. No token needed; whether you may see
+        them is the user's `clubsRead`, and those of a deleted page are
+        hidden.
+      parameters: *followListParams
+      responses:
+        "200":
+          description: One page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [clubs, nextCursor, total]
+                properties:
+                  clubs:
+                    type: array
+                    items: { $ref: "#/components/schemas/ClubInfo" }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer, description: "How many on all pages" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "403":
+          description: "`this user's clubs are hidden`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/feed:
     get:
       summary: Your news feed
@@ -1582,6 +1644,10 @@ components:
           type: string
           enum: [everyone, following, nobody]
           description: "Who may write private messages to you; whoever you wrote to may answer anyway"
+        clubsRead:
+          type: string
+          enum: [everyone, following, only_me]
+          description: "Who sees your communities on your page (\"Кому видно мои группы\"); the communities show their members anyway"
 
     User:
       allOf:
@@ -1628,15 +1694,22 @@ components:
           description: "A community, as the owner of a wall or the voice of a post: only `id`, `name` and `address` are set, its page is /club/<address or id>"
         address: { type: string, description: "A community's address; empty for none" }
 
+    AdminsDisplay:
+      type: string
+      enum: [creator, all, none]
+      description: "What the page shows of those who run the community: only its creator (\"Создатель\"), all the admins (\"Администраторы\") or nothing"
+
     ClubInfo:
       type: object
-      required: [id, name, description, address, wall, members, createdAt]
+      required: [id, name, description, address, website, wall, adminsDisplay, members, createdAt]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
         description: { type: string, description: "Plain text with \\n line breaks" }
         address: { type: string, description: "Empty for none: the page is then /club/<id>" }
+        website: { type: string, description: "An http or https link (\"Сайт\"); empty for none" }
         wall: { type: string, enum: [open, closed], description: "Who may write on the wall: everyone, or only its admins" }
+        adminsDisplay: { $ref: "#/components/schemas/AdminsDisplay" }
         members: { type: integer }
         createdAt: { type: string, format: date-time }
         avatar: { $ref: "#/components/schemas/Avatar" }

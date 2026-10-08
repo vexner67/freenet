@@ -52,8 +52,8 @@ func (u *Users) UpdateProfile(ctx context.Context, accessToken string, p model.P
 	return toUser(resp.GetUser()), nil
 }
 
-// UpdatePrivacy: an empty WallWrite or MessagesWrite is rejected by the
-// user service.
+// UpdatePrivacy: an empty WallWrite, MessagesWrite or ClubsRead is
+// rejected by the user service.
 func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.Privacy) (model.User, error) {
 	wallWrite, err := enumValue(p.WallWrite, wallWritePrefix, "wall write", userv1.WallWrite_value)
 	if err != nil {
@@ -61,6 +61,11 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 	}
 
 	messagesWrite, err := enumValue(p.MessagesWrite, messagesWritePrefix, "messages write", userv1.MessagesWrite_value)
+	if err != nil {
+		return model.User{}, errs.Wrap("enumValue", err)
+	}
+
+	clubsRead, err := enumValue(p.ClubsRead, clubsReadPrefix, "clubs read", userv1.ClubsRead_value)
 	if err != nil {
 		return model.User{}, errs.Wrap("enumValue", err)
 	}
@@ -73,6 +78,7 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 			ShowPoliticalViews: p.ShowPoliticalViews,
 			WallWrite:          userv1.WallWrite(wallWrite),
 			MessagesWrite:      userv1.MessagesWrite(messagesWrite),
+			ClubsRead:          userv1.ClubsRead(clubsRead),
 		},
 	})
 	if err != nil {
@@ -149,6 +155,17 @@ func (u *Users) CanPostOnWall(ctx context.Context, accessToken, userID string) (
 	resp, err := u.api.CanPostOnWall(withToken(ctx, accessToken), &userv1.CanPostOnWallRequest{UserId: userID})
 	if err != nil {
 		return false, errs.Wrap("u.api.CanPostOnWall", fromStatus(err))
+	}
+
+	return resp.GetAllowed(), nil
+}
+
+// CanSeeClubs tells whether the caller, anonymous without a token, may
+// see which clubs userID is in.
+func (u *Users) CanSeeClubs(ctx context.Context, accessToken, userID string) (bool, error) {
+	resp, err := u.api.CanSeeClubs(withToken(ctx, accessToken), &userv1.CanSeeClubsRequest{UserId: userID})
+	if err != nil {
+		return false, errs.Wrap("u.api.CanSeeClubs", fromStatus(err))
 	}
 
 	return resp.GetAllowed(), nil

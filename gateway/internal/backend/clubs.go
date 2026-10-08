@@ -26,6 +26,11 @@ var (
 		clubv1.Wall_WALL_OPEN:   "open",
 		clubv1.Wall_WALL_CLOSED: "closed",
 	}
+	adminsDisplays = map[clubv1.AdminsDisplay]string{
+		clubv1.AdminsDisplay_ADMINS_DISPLAY_CREATOR: "creator",
+		clubv1.AdminsDisplay_ADMINS_DISPLAY_ALL:     "all",
+		clubv1.AdminsDisplay_ADMINS_DISPLAY_NONE:    "none",
+	}
 	roles = map[clubv1.Role]string{
 		clubv1.Role_ROLE_NONE:   "",
 		clubv1.Role_ROLE_MEMBER: "member",
@@ -75,12 +80,25 @@ func (c *Clubs) Update(ctx context.Context, accessToken, clubID string, changes 
 		return model.ClubView{}, failure.New(failure.InvalidArgument, "invalid wall mode")
 	}
 
+	var adminsDisplay clubv1.AdminsDisplay
+	for pd, d := range adminsDisplays {
+		if d == changes.AdminsDisplay {
+			adminsDisplay = pd
+		}
+	}
+
+	if adminsDisplay == clubv1.AdminsDisplay_ADMINS_DISPLAY_UNSPECIFIED {
+		return model.ClubView{}, failure.New(failure.InvalidArgument, "invalid admins display")
+	}
+
 	resp, err := c.api.UpdateClub(withToken(ctx, accessToken), &clubv1.UpdateClubRequest{
-		ClubId:      clubID,
-		Name:        changes.Name,
-		Description: changes.Description,
-		Address:     changes.Address,
-		Wall:        wall,
+		ClubId:        clubID,
+		Name:          changes.Name,
+		Description:   changes.Description,
+		Address:       changes.Address,
+		Website:       changes.Website,
+		Wall:          wall,
+		AdminsDisplay: adminsDisplay,
 	})
 	if err != nil {
 		return model.ClubView{}, errs.Wrap("c.api.UpdateClub", fromStatus(err))
@@ -123,6 +141,7 @@ func (c *Clubs) Members(ctx context.Context, clubID, cursor string, limit int, a
 	page := model.ClubMemberPage{
 		Members:    make([]model.ClubMember, 0, len(resp.GetMembers())),
 		NextCursor: resp.GetNextCursor(),
+		Total:      int(resp.GetTotal()),
 	}
 	for _, m := range resp.GetMembers() {
 		page.Members = append(page.Members, model.ClubMember{UserID: m.GetUserId(), Role: roles[m.GetRole()]})
@@ -144,6 +163,27 @@ func (c *Clubs) SetAdmin(ctx context.Context, accessToken, clubID, userID string
 	}
 
 	return nil
+}
+
+// Transfer hands the club over to one of its admins.
+func (c *Clubs) Transfer(ctx context.Context, accessToken, clubID, userID string) error {
+	_, err := c.api.TransferClub(withToken(ctx, accessToken), &clubv1.TransferClubRequest{ClubId: clubID, UserId: userID})
+	if err != nil {
+		return errs.Wrap("c.api.TransferClub", fromStatus(err))
+	}
+
+	return nil
+}
+
+// OfUser pages the clubs of a user; whether the viewer may see them is
+// for the caller to check.
+func (c *Clubs) OfUser(ctx context.Context, userID, cursor string, limit int) (model.UserClubPage, error) {
+	resp, err := c.api.ListUserClubs(ctx, &clubv1.ListUserClubsRequest{UserId: userID, Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.UserClubPage{}, errs.Wrap("c.api.ListUserClubs", fromStatus(err))
+	}
+
+	return model.UserClubPage{Clubs: toClubs(resp.GetClubs()), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
 }
 
 // Mine pages the caller's clubs; with managed only those they run.
@@ -236,14 +276,16 @@ func (c *Clubs) CanPostOnWall(ctx context.Context, accessToken, clubID string, f
 
 func toClub(c *clubv1.Club) model.Club {
 	return model.Club{
-		ID:          c.GetId(),
-		Name:        c.GetName(),
-		Description: c.GetDescription(),
-		Address:     c.GetAddress(),
-		Wall:        walls[c.GetWall()],
-		Members:     int(c.GetMemberCount()),
-		CreatedAt:   c.GetCreatedAt().AsTime(),
-		AvatarID:    c.GetAvatarId(),
+		ID:            c.GetId(),
+		Name:          c.GetName(),
+		Description:   c.GetDescription(),
+		Address:       c.GetAddress(),
+		Website:       c.GetWebsite(),
+		Wall:          walls[c.GetWall()],
+		AdminsDisplay: adminsDisplays[c.GetAdminsDisplay()],
+		Members:       int(c.GetMemberCount()),
+		CreatedAt:     c.GetCreatedAt().AsTime(),
+		AvatarID:      c.GetAvatarId(),
 	}
 }
 

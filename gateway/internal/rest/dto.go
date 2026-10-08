@@ -102,6 +102,7 @@ type privacyJSON struct {
 	ShowPoliticalViews bool   `json:"showPoliticalViews"`
 	WallWrite          string `json:"wallWrite"`
 	MessagesWrite      string `json:"messagesWrite"`
+	ClubsRead          string `json:"clubsRead"`
 }
 
 func (p privacyJSON) toModel() model.Privacy {
@@ -112,6 +113,7 @@ func (p privacyJSON) toModel() model.Privacy {
 		ShowPoliticalViews: p.ShowPoliticalViews,
 		WallWrite:          p.WallWrite,
 		MessagesWrite:      p.MessagesWrite,
+		ClubsRead:          p.ClubsRead,
 	}
 }
 
@@ -163,6 +165,7 @@ func toUserResponse(u model.User) userResponse {
 			ShowPoliticalViews: u.Privacy.ShowPoliticalViews,
 			WallWrite:          u.Privacy.WallWrite,
 			MessagesWrite:      u.Privacy.MessagesWrite,
+			ClubsRead:          u.Privacy.ClubsRead,
 		},
 		Deactivated: u.Deactivated,
 		PurgeAt:     timeString(u.PurgeAt),
