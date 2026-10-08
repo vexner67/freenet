@@ -5,6 +5,8 @@ import (
 
 	"github.com/google/uuid"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	"github.com/vexner67/freenet/post/internal/post"
+	"github.com/vexner67/freenet/post/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -26,12 +28,59 @@ func (h *PostHandler) CreateComment(ctx context.Context, req *postv1.CreateComme
 		return nil, err
 	}
 
-	c, err := h.commentService.Create(ctx, authorID, postID, content)
+	var c *post.Comment
+
+	if req.GetReplyToId() == "" {
+		c, err = h.commentService.Create(ctx, authorID, postID, content)
+	} else {
+		parentID, perr := uuid.Parse(req.GetReplyToId())
+		if perr != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid comment id")
+		}
+		c, err = h.commentService.Reply(ctx, service.ReplyInput{AuthorID: authorID, PostID: postID, ParentID: parentID, Content: content})
+	}
 	if err != nil {
 		return nil, err
 	}
 
-	return &postv1.CreateCommentResponse{Comment: toProtoComment(c)}, nil
+	return &postv1.CreateCommentResponse{Comment: toProtoComment(c, false)}, nil
+}
+
+func (h *PostHandler) LikeComment(ctx context.Context, req *postv1.LikeCommentRequest) (*postv1.LikeCommentResponse, error) {
+	likes, err := h.setCommentLike(ctx, req.GetCommentId(), h.commentService.Like)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.LikeCommentResponse{LikeCount: likes}, nil
+}
+
+func (h *PostHandler) UnlikeComment(ctx context.Context, req *postv1.UnlikeCommentRequest) (*postv1.UnlikeCommentResponse, error) {
+	likes, err := h.setCommentLike(ctx, req.GetCommentId(), h.commentService.Unlike)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.UnlikeCommentResponse{LikeCount: likes}, nil
+}
+
+func (h *PostHandler) setCommentLike(ctx context.Context, id string, set func(ctx context.Context, userID, commentID uuid.UUID) (int, error)) (int32, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	commentID, err := uuid.Parse(id)
+	if err != nil {
+		return 0, status.Error(codes.InvalidArgument, "invalid comment id")
+	}
+
+	likes, err := set(ctx, userID, commentID)
+	if err != nil {
+		return 0, err
+	}
+
+	return int32(likes), nil //nolint:gosec // counters come from int4 columns
 }
 
 func (h *PostHandler) DeleteComment(ctx context.Context, req *postv1.DeleteCommentRequest) (*emptypb.Empty, error) {
@@ -65,7 +114,7 @@ func (h *PostHandler) GetComments(ctx context.Context, req *postv1.GetCommentsRe
 
 	resp := &postv1.GetCommentsResponse{Comments: make([]*postv1.Comment, 0, len(comments))}
 	for _, c := range comments {
-		resp.Comments = append(resp.Comments, toProtoComment(c))
+		resp.Comments = append(resp.Comments, toProtoComment(c, false))
 	}
 
 	return resp, nil
@@ -82,7 +131,7 @@ func (h *PostHandler) ListComments(ctx context.Context, req *postv1.ListComments
 		return nil, err
 	}
 
-	page, err := h.commentService.List(ctx, postID, cursor, int(req.GetLimit()))
+	page, err := h.commentService.List(ctx, viewerID(ctx), postID, cursor, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}
@@ -94,7 +143,7 @@ func (h *PostHandler) ListComments(ctx context.Context, req *postv1.ListComments
 	}
 
 	for _, c := range page.Comments {
-		resp.Comments = append(resp.Comments, toProtoComment(c))
+		resp.Comments = append(resp.Comments, toProtoComment(c, page.Liked[c.ID()]))
 	}
 
 	return resp, nil

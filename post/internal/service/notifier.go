@@ -14,12 +14,18 @@ const (
 	EventComment
 	EventWallPost
 	EventRepost
+	// EventCommentReply: an answer to the recipient's comment; CommentID
+	// is the answer.
+	EventCommentReply
+	// EventCommentLike: a like of the recipient's comment CommentID.
+	EventCommentLike
 )
 
 // Event: RecipientID is the author of the post for likes, comments and
-// reposts and the owner of the wall for wall posts, ActorID who did it.
-// PostID is the post, but for reposts the repost, which shows the shared
-// post. CommentID is uuid.Nil but for comments.
+// reposts, the owner of the wall for wall posts and the author of the
+// comment for replies and comment likes; ActorID who did it. PostID is the
+// post, but for reposts the repost, which shows the shared post.
+// CommentID is uuid.Nil but for comments, replies and comment likes.
 type Event struct {
 	Kind        EventKind
 	RecipientID uuid.UUID
@@ -38,6 +44,9 @@ type Notifier interface {
 	Retract(ctx context.Context, e Event) error
 	// ForgetPost drops the notifications about a deleted post.
 	ForgetPost(ctx context.Context, postID uuid.UUID) error
+	// ForgetComment drops the notifications about a deleted comment: of
+	// it, of the reply it was and of its likes.
+	ForgetComment(ctx context.Context, commentID uuid.UUID) error
 }
 
 // PhotoKeeper records what the media service has to do with the photos

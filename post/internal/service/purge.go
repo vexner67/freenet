@@ -29,32 +29,35 @@ type CommentEraser interface {
 // PurgeService erases what post keeps of a user whose page was deleted for
 // good.
 type PurgeService struct {
-	posts    PostEraser
-	likes    ReactionEraser
-	comments CommentEraser
-	tx       TxManager
-	notifier Notifier
-	photos   PhotoKeeper
+	posts        PostEraser
+	likes        ReactionEraser
+	commentLikes ReactionEraser
+	comments     CommentEraser
+	tx           TxManager
+	notifier     Notifier
+	photos       PhotoKeeper
 }
 
 // PurgeDeps are what PurgeService works with.
 type PurgeDeps struct {
-	Posts    PostEraser
-	Likes    ReactionEraser
-	Comments CommentEraser
-	Tx       TxManager
-	Notifier Notifier
-	Photos   PhotoKeeper
+	Posts        PostEraser
+	Likes        ReactionEraser
+	CommentLikes ReactionEraser
+	Comments     CommentEraser
+	Tx           TxManager
+	Notifier     Notifier
+	Photos       PhotoKeeper
 }
 
 func NewPurgeService(d PurgeDeps) *PurgeService {
 	return &PurgeService{
-		posts:    d.Posts,
-		likes:    d.Likes,
-		comments: d.Comments,
-		tx:       d.Tx,
-		notifier: d.Notifier,
-		photos:   d.Photos,
+		posts:        d.Posts,
+		likes:        d.Likes,
+		commentLikes: d.CommentLikes,
+		comments:     d.Comments,
+		tx:           d.Tx,
+		notifier:     d.Notifier,
+		photos:       d.Photos,
 	}
 }
 
@@ -67,6 +70,10 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.likes.DeleteByUser(ctx, userID); err != nil {
 			return errs.Wrap("s.likes.DeleteByUser", err)
+		}
+
+		if err := s.commentLikes.DeleteByUser(ctx, userID); err != nil {
+			return errs.Wrap("s.commentLikes.DeleteByUser", err)
 		}
 
 		if err := s.comments.DeleteByUser(ctx, userID); err != nil {

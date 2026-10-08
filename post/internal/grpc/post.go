@@ -31,8 +31,11 @@ type PostService interface {
 
 type CommentService interface {
 	Create(ctx context.Context, authorID, postID uuid.UUID, content post.CommentContent) (*post.Comment, error)
+	Reply(ctx context.Context, in service.ReplyInput) (*post.Comment, error)
+	Like(ctx context.Context, userID, commentID uuid.UUID) (int, error)
+	Unlike(ctx context.Context, userID, commentID uuid.UUID) (int, error)
 	Delete(ctx context.Context, requesterID, commentID uuid.UUID) error
-	List(ctx context.Context, postID, cursor uuid.UUID, size int) (service.CommentPage, error)
+	List(ctx context.Context, viewerID, postID, cursor uuid.UUID, size int) (service.CommentPage, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error)
 }
 

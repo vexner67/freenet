@@ -37,9 +37,10 @@ const saveCommentQuery = `
 			author_id,
 			text,
 			photo_ids,
+			reply_to,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING post_id
 	)
 	UPDATE posts
@@ -48,8 +49,12 @@ const saveCommentQuery = `
 `
 
 func (r *CommentRepository) Save(ctx context.Context, c *post.Comment) error {
-	_, err := r.conn(ctx).Exec(ctx, saveCommentQuery, c.ID(), c.PostID(), c.AuthorID(), c.Text().String(), photoIDs(c.Photos()), c.CreatedAt())
+	_, err := r.conn(ctx).Exec(ctx, saveCommentQuery, c.ID(), c.PostID(), c.AuthorID(), c.Text().String(), photoIDs(c.Photos()), nullable(c.ReplyTo()), c.CreatedAt())
 	if isForeignKeyViolation(err) {
+		// The comment answered, or else the post, is gone.
+		if constraintOf(err) == "comments_reply_to_fkey" {
+			return post.ErrCommentNotFound
+		}
 		return post.ErrNotFound
 	}
 	if err != nil {
@@ -66,6 +71,8 @@ const getCommentQuery = `
 		author_id,
 		text,
 		photo_ids,
+		reply_to,
+		like_count,
 		created_at
 	FROM comments
 	WHERE id = $1
@@ -90,6 +97,8 @@ const getCommentsQuery = `
 		author_id,
 		text,
 		photo_ids,
+		reply_to,
+		like_count,
 		created_at
 	FROM comments
 	WHERE id = ANY($1)
@@ -138,6 +147,8 @@ const listCommentsByPostQuery = `
 		author_id,
 		text,
 		photo_ids,
+		reply_to,
+		like_count,
 		created_at
 	FROM comments
 	WHERE post_id = $1
@@ -177,13 +188,18 @@ func collectComments(rows pgx.Rows) ([]*post.Comment, error) {
 
 func scanComment(row pgx.Row) (*post.Comment, error) {
 	var (
-		s      post.StoredComment
-		text   string
-		photos []uuid.UUID
+		s       post.StoredComment
+		text    string
+		photos  []uuid.UUID
+		replyTo *uuid.UUID
 	)
 
-	if err := row.Scan(&s.ID, &s.PostID, &s.AuthorID, &text, &photos, &s.CreatedAt); err != nil {
+	if err := row.Scan(&s.ID, &s.PostID, &s.AuthorID, &text, &photos, &replyTo, &s.Likes, &s.CreatedAt); err != nil {
 		return nil, err
+	}
+
+	if replyTo != nil {
+		s.ReplyTo = *replyTo
 	}
 
 	if len(photos) == 0 {
@@ -213,6 +229,8 @@ const deleteCommentsByPostQuery = `
 		author_id,
 		text,
 		photo_ids,
+		reply_to,
+		like_count,
 		created_at
 `
 
@@ -248,6 +266,8 @@ const deleteCommentsOnWallQuery = `
 		author_id,
 		text,
 		photo_ids,
+		reply_to,
+		like_count,
 		created_at
 `
 
@@ -286,4 +306,13 @@ func (r *CommentRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) 
 	}
 
 	return nil
+}
+
+// nullable is id for a column where NULL means none.
+func nullable(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+
+	return &id
 }
