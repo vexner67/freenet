@@ -496,6 +496,11 @@ a.like:hover svg { opacity: .7; }
 .im-message .post-photos img { width: 100%; height: auto; border-radius: 0; }
 .im-message .post-photos.single img { width: auto; }
 
+/* "Ответ на комментарий ×" over the comment form, as openvk's. */
+.reply-to { margin-top: 4px; color: #777; }
+.reply-cancel { margin-left: 4px; color: #999; font-weight: bold; cursor: pointer; }
+.reply-cancel:hover { color: #555; text-decoration: none; }
+
 /* Photos attached to a post being written. */
 .attach-link { margin-right: 8px; }
 .attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }

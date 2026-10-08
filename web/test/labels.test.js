@@ -67,6 +67,8 @@ test('notification verbs agree with the gender of who did it', () => {
   assert.equal(notificationVerb('like', 'female'), 'оценила');
   assert.equal(notificationVerb('comment', 'male'), 'оставил');
   assert.equal(notificationVerb('follow', ''), 'подписался(-ась)');
+  assert.equal(notificationVerb('comment_reply', 'female'), 'ответила');
+  assert.equal(notificationVerb('comment_like', ''), 'оценил(а)');
 });
 
 test('unread counter', () => {

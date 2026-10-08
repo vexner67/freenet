@@ -102,7 +102,7 @@ export function postNode(post, { viewer = null, onDelete, onPinned, canLike = fa
       post.repost ? sharedNode(post.repost) : null,
       el('div', { className: 'post-menu' },
         menu,
-        likeButton(post, canLike, onError),
+        likeButton(post, { canLike, onError }),
       ),
     ),
   );
@@ -194,16 +194,17 @@ export function separated(nodes) {
   return nodes.flatMap((node, i) => (i === 0 ? [node] : [el('span', { className: 'separator', textContent: '|' }), node]));
 }
 
-// likeButton is the heart with the number of likes. It changes post.likes
-// and post.liked, so the post stays the source of truth.
-function likeButton(post, canLike, onError) {
+// likeButton is the heart with the number of likes of a post, or of a
+// comment with its own like and unlike. It changes item.likes and
+// item.liked, so the item stays the source of truth.
+export function likeButton(item, { canLike = false, onError, like = api.like, unlike = api.unlike } = {}) {
   const count = el('span', { className: 'like-count' });
   const button = el(canLike ? 'a' : 'span', { className: canLike ? 'like' : 'like disabled' }, heart(), count);
 
   function render() {
-    button.classList.toggle('liked', post.liked);
-    count.textContent = post.likes > 0 ? String(post.likes) : '';
-    button.title = post.liked ? 'Вам нравится' : 'Нравится';
+    button.classList.toggle('liked', item.liked);
+    count.textContent = item.likes > 0 ? String(item.likes) : '';
+    button.title = item.liked ? 'Вам нравится' : 'Нравится';
   }
 
   let busy = false;
@@ -213,9 +214,9 @@ function likeButton(post, canLike, onError) {
     busy = true;
 
     try {
-      const result = post.liked ? await api.unlike(post.id) : await api.like(post.id);
-      post.likes = result.likes;
-      post.liked = result.liked;
+      const result = item.liked ? await unlike(item.id) : await like(item.id);
+      item.likes = result.likes;
+      item.liked = result.liked;
       render();
     } catch (e) {
       onError?.(e);

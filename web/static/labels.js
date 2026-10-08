@@ -218,6 +218,8 @@ const notificationVerbs = {
   follow: ['подписался', 'подписалась', 'подписался(-ась)'],
   wall_post: ['написал', 'написала', 'написал(а)'],
   repost: ['поделился', 'поделилась', 'поделился(-лась)'],
+  comment_reply: ['ответил', 'ответила', 'ответил(а)'],
+  comment_like: ['оценил', 'оценила', 'оценил(а)'],
 };
 
 export function notificationVerb(type, gender) {

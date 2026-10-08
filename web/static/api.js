@@ -170,8 +170,13 @@ export const api = {
   like: (postID) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
   unlike: (postID) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
 
-  comments: (postID, cursor = '') => request('GET', page(`/api/v1/posts/${encodeURIComponent(postID)}/comments`, cursor, 0)),
-  createComment: (postID, text, photos = []) => authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/comments`, { text, photos }),
+  // With a session comments also say whether you like them.
+  comments: (postID, cursor = '') => optional('GET', page(`/api/v1/posts/${encodeURIComponent(postID)}/comments`, cursor, 0)),
+  // replyTo answers a comment of the post, "" for none.
+  createComment: (postID, text, photos = [], replyTo = '') =>
+    authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/comments`, { text, photos, ...(replyTo && { replyTo }) }),
+  likeComment: (id) => authorized('PUT', `/api/v1/comments/${encodeURIComponent(id)}/like`),
+  unlikeComment: (id) => authorized('DELETE', `/api/v1/comments/${encodeURIComponent(id)}/like`),
   deleteComment: (id) => authorized('DELETE', '/api/v1/comments/' + encodeURIComponent(id)),
 
   follow: (nickname) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/follow`),
