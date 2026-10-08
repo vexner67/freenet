@@ -333,8 +333,11 @@ paths:
         The body is the image itself (JPEG, PNG, GIF or WebP, at most 8 MB,
         at least 50x50), with its Content-Type. It is turned upright by its
         EXIF orientation, the middle square is kept and re-encoded, so EXIF
-        data (location included) is dropped.
+        data (location included) is dropped. The site crops the square you
+        choose before sending it, as openvk does.
       security: [{ bearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/OnWall"
       requestBody:
         required: true
         content:
@@ -959,6 +962,8 @@ paths:
       summary: Set the community's photo
       description: Its admins only. The body is the image itself, as for your own photo; the old photo is deleted.
       security: [{ bearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/OnWall"
       requestBody:
         required: true
         content:
@@ -1640,6 +1645,15 @@ components:
               refreshToken: { type: string }
 
   parameters:
+    OnWall:
+      name: onWall
+      in: query
+      description: |
+        `true`: also post the photo on the wall ("Опубликовать запись на
+        стене"), yours or the community's, speaking for it. Without a filled
+        profile there is no post. If the post is refused (too many posts),
+        the photo is changed all the same and the error tells why.
+      schema: { type: boolean }
     ClubRef:
       name: ref
       in: path
@@ -1876,7 +1890,7 @@ components:
 
     Post:
       type: object
-      required: [id, author, wall, text, photos, createdAt, likes, liked, comments, reposts, repost, editedAt, editableUntil, pinned, fromWall, mine, signer]
+      required: [id, author, wall, text, photos, createdAt, likes, liked, comments, reposts, repost, editedAt, editableUntil, pinned, fromWall, avatarUpdate, mine, signer]
       properties:
         id: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
@@ -1909,6 +1923,7 @@ components:
         fromWall:
           type: boolean
           description: "The post speaks for its wall, a community (\"От имени сообщества\"): `author` is the community, `wall` null, who wrote it is not told"
+        avatarUpdate: { type: boolean, description: "The post shows the new photo of its wall's owner, its one photo (\"обновил фотографию на своей странице\", \"обновило фотографию группы\"); never edited" }
         mine: { type: boolean, description: "You wrote it and may edit it; false without a token, and for a post you suggested that a community published, which is the community's" }
         signer:
           description: "Who wrote a post for a community that names its author (\"Автор: ...\"); null otherwise"
@@ -1922,10 +1937,11 @@ components:
         The post a repost shares, without counters. When it or its author is
         gone, only id and deleted: true are set ("Запись удалена"). repostOf
         is set when the shared post is itself a repost: link to it.
-      required: [id, deleted, author, wall, text, photos, createdAt, repostOf]
+      required: [id, deleted, author, wall, text, photos, createdAt, repostOf, avatarUpdate]
       properties:
         id: { type: string, format: uuid }
         deleted: { type: boolean }
+        avatarUpdate: { type: boolean, description: "It shows a new photo, as Post's avatarUpdate" }
         author:
           oneOf:
             - $ref: "#/components/schemas/Author"

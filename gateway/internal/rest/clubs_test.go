@@ -381,6 +381,16 @@ func TestClubAvatar(t *testing.T) {
 		t.Fatalf("the club's post = %+v", posts.Posts[0])
 	}
 
+	if h.posts.newPost.AvatarUpdate {
+		t.Fatal("posted without onWall")
+	}
+	if w = h.do("PUT", "/api/v1/clubs/cats/avatar?onWall=true", "jpeg", "Authorization", "Bearer tok"); w.Code != http.StatusOK {
+		t.Fatalf("upload on the wall: %d", w.Code)
+	}
+	if np := h.posts.newPost; !np.AvatarUpdate || np.WallID != "k1" || !np.ClubWall || !np.FromWall || len(np.PhotoIDs) != 1 {
+		t.Fatalf("the club's post = %+v", np)
+	}
+
 	if w = h.do("DELETE", "/api/v1/clubs/cats/avatar", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.clubs.avatarID != "" || h.media.kept != "" {
 		t.Fatalf("delete: %d, club %+v, media %+v", w.Code, h.clubs, h.media)
 	}

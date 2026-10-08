@@ -30,6 +30,8 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 		ClubWall: np.ClubWall,
 		FromWall: np.FromWall,
 		Signed:   np.Signed,
+
+		AvatarUpdate: np.AvatarUpdate,
 	})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.CreatePost", fromStatus(err))
@@ -330,6 +332,7 @@ func toPost(p *postv1.Post) model.Post {
 		Pinned:        p.GetPinned(),
 		FromWall:      p.GetFromWall(),
 		Signed:        p.GetSigned(),
+		AvatarUpdate:  p.GetAvatarUpdate(),
 		Mine:          p.GetMine(),
 	}
 }

@@ -118,6 +118,9 @@ type Post struct {
 	// still its writer, whom the API shows only when Signed.
 	FromWall bool
 	Signed   bool
+	// AvatarUpdate: the post shows the new photo of its wall's owner, a
+	// user or a community; nobody edits it.
+	AvatarUpdate bool
 	// Mine: the viewer wrote it; false for anonymous viewers.
 	Mine bool
 }
@@ -132,6 +135,9 @@ type NewPost struct {
 	ClubWall bool
 	FromWall bool
 	Signed   bool
+	// AvatarUpdate: the post of the new photo of the wall's owner, the
+	// photo alone.
+	AvatarUpdate bool
 }
 
 // Suggestion is a post suggested for a community's wall ("Предложка"),

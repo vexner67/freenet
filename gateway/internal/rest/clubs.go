@@ -548,7 +548,8 @@ func (a *api) setPinnedClub(w http.ResponseWriter, r *http.Request, pinned bool)
 
 // uploadClubAvatar takes the raw image as the request body and makes it
 // the club's photo, as the user's own: the old one goes only once the club
-// shows the new one. Only its admins may; media trusts the gateway to
+// shows the new one, and ?onWall=true posts it for the club ("обновило
+// фотографию группы"). Only its admins may; media trusts the gateway to
 // have checked.
 func (a *api) uploadClubAvatar(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
@@ -569,6 +570,12 @@ func (a *api) uploadClubAvatar(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	onWall, err := a.newAvatarPost(r, token, image)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	avatarID, err := a.media.UploadClubAvatar(r.Context(), token, c.Club.ID, image)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -582,6 +589,14 @@ func (a *api) uploadClubAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.cleanUpClubAvatars(r, token, c.Club.ID, avatarID)
+
+	if onWall != nil {
+		if err = onWall(model.NewPost{WallID: c.Club.ID, ClubWall: true, FromWall: true}); err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+	}
+
 	a.writeClub(w, r, http.StatusOK, v)
 }
 

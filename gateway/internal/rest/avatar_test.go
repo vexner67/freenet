@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
+	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/gateway/internal/rest"
 )
 
@@ -28,6 +29,31 @@ func TestUploadAvatar(t *testing.T) {
 		avatar, _ := me["avatar"].(map[string]any)
 		if avatar["large"] != "/media/avatars/u1/a2/large.jpg" || avatar["small"] != "/media/avatars/u1/a2/small.jpg" {
 			t.Fatalf("avatar = %v", me["avatar"])
+		}
+	})
+
+	t.Run("posted on the wall", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Анна", Nickname: "ann"}
+		w := h.do("PUT", "/api/v1/me/avatar?onWall=true", "\x89PNG...", "Authorization", "Bearer tok")
+
+		np := h.posts.newPost
+		if w.Code != http.StatusOK || h.users.avatarID != "a2" || !np.AvatarUpdate || np.WallID != "" || np.FromWall || len(np.PhotoIDs) != 1 || np.PhotoIDs[0] != "ph9" {
+			t.Fatalf("%d, avatar %q, post %+v", w.Code, h.users.avatarID, np)
+		}
+
+		// Without a profile there is no one to post as; without onWall
+		// nothing is asked.
+		for _, path := range []string{"/api/v1/me/avatar?onWall=true", "/api/v1/me/avatar"} {
+			h := newHarness(rest.Config{})
+			if path == "/api/v1/me/avatar" {
+				h.users.profile = model.Profile{Name: "Анна", Nickname: "ann"}
+			}
+			if w := h.do("PUT", path, "\x89PNG...", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.posts.newPost.AvatarUpdate {
+				t.Fatalf("%s: %d, post %+v", path, w.Code, h.posts.newPost)
+			}
 		}
 	})
 
