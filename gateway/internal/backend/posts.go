@@ -181,6 +181,7 @@ func (p *Posts) CreateComment(ctx context.Context, accessToken, postID string, c
 		Text:      c.Text,
 		PhotoIds:  c.PhotoIDs,
 		ReplyToId: c.ReplyTo,
+		FromWall:  c.FromWall,
 	})
 	if err != nil {
 		return model.Comment{}, errs.Wrap("p.api.CreateComment", fromStatus(err))
@@ -353,5 +354,7 @@ func toComment(c *postv1.Comment) model.Comment {
 		ReplyTo:   c.GetReplyToId(),
 		Likes:     int(c.GetLikeCount()),
 		Liked:     c.GetLiked(),
+		FromWall:  c.GetFromWall(),
+		Mine:      c.GetMine(),
 	}
 }
