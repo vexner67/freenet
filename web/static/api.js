@@ -172,9 +172,10 @@ export const api = {
 
   // With a session comments also say whether you like them.
   comments: (postID, cursor = '') => optional('GET', page(`/api/v1/posts/${encodeURIComponent(postID)}/comments`, cursor, 0)),
-  // replyTo answers a comment of the post, "" for none.
-  createComment: (postID, text, photos = [], replyTo = '') =>
-    authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/comments`, { text, photos, ...(replyTo && { replyTo }) }),
+  // replyTo answers a comment of the post, "" for none; fromClub speaks for
+  // the community of its wall ("От имени сообщества").
+  createComment: (postID, text, photos = [], { replyTo = '', fromClub = false } = {}) =>
+    authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/comments`, { text, photos, fromClub, ...(replyTo && { replyTo }) }),
   likeComment: (id) => authorized('PUT', `/api/v1/comments/${encodeURIComponent(id)}/like`),
   unlikeComment: (id) => authorized('DELETE', `/api/v1/comments/${encodeURIComponent(id)}/like`),
   deleteComment: (id) => authorized('DELETE', '/api/v1/comments/' + encodeURIComponent(id)),

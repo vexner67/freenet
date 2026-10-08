@@ -270,20 +270,23 @@ export function postsCount(n) {
 }
 
 // Notification phrases, as on openvk: "<name> оценил(а) вашу запись" and
-// so on; the verb agrees with the actor's gender.
+// so on; the verb agrees with the actor's gender, or is neuter for a
+// community: "Сообщество Кошки оставило комментарий".
 const notificationVerbs = {
-  like: ['оценил', 'оценила', 'оценил(а)'],
-  comment: ['оставил', 'оставила', 'оставил(а)'],
-  follow: ['подписался', 'подписалась', 'подписался(-ась)'],
-  wall_post: ['написал', 'написала', 'написал(а)'],
-  repost: ['поделился', 'поделилась', 'поделился(-лась)'],
-  comment_reply: ['ответил', 'ответила', 'ответил(а)'],
-  comment_like: ['оценил', 'оценила', 'оценил(а)'],
+  like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
+  comment: ['оставил', 'оставила', 'оставил(а)', 'оставило'],
+  follow: ['подписался', 'подписалась', 'подписался(-ась)', 'подписалось'],
+  wall_post: ['написал', 'написала', 'написал(а)', 'написало'],
+  repost: ['поделился', 'поделилась', 'поделился(-лась)', 'поделилось'],
+  comment_reply: ['ответил', 'ответила', 'ответил(а)', 'ответило'],
+  comment_like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
 };
 
-export function notificationVerb(type, gender) {
-  const [male, female, unknown] = notificationVerbs[type];
-  return { male, female }[gender] ?? unknown;
+// notificationVerb agrees with actor: a person's gender, or a community.
+export function notificationVerb(type, actor) {
+  const [male, female, unknown, neuter] = notificationVerbs[type];
+  if (actor.club) return neuter;
+  return { male, female }[actor.gender] ?? unknown;
 }
 
 // unreadCountText is the menu counter: nothing at 0, "99+" beyond 99.
