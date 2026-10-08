@@ -14,7 +14,7 @@ async function loadMore() {
   try {
     const page = await api[type](nickname, cursor);
 
-    $('people').append(...page.users.map(personRow));
+    $('people').append(...page.users.map((user) => personRow(user)));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
     $('empty').hidden = $('people').children.length > 0;
