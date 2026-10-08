@@ -1,5 +1,7 @@
 # The checks of scripts/check.sh and the Docker stack with its smoke test,
 # the same as locally: make check-integration, make stack, make smoke.
+# A push to main that passes them is deployed: the images go to GHCR and
+# the server runs them (deploy/deploy.sh).
 name: CI
 
 on:
@@ -12,7 +14,9 @@ permissions:
 
 concurrency:
   group: ci-${{ github.ref }}
-  cancel-in-progress: true
+  # A newer push to a pull request supersedes its checks; on main the runs
+  # wait their turn, so a deployment is never cut off halfway.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 env:
   GOLANGCI_LINT_VERSION: v2.13.2
@@ -74,3 +78,89 @@ jobs:
       - name: Stop
         if: always()
         run: make down
+
+  images:
+    name: Images
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs: [check, stack]
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      packages: write
+    strategy:
+      matrix:
+        service: [auth, user, post, media, notification, message, club, gateway]
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: docker/setup-buildx-action@v3
+
+      - uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      # The gateway image carries the website (target gateway).
+      - uses: docker/build-push-action@v6
+        with:
+          context: .
+          build-args: SERVICE=${{ matrix.service }}
+          target: ${{ matrix.service == 'gateway' && 'gateway' || '' }}
+          push: true
+          tags: |
+            ghcr.io/vexner67/freenet-${{ matrix.service }}:${{ github.sha }}
+            ghcr.io/vexner67/freenet-${{ matrix.service }}:latest
+          # Links the package to the repository, so the deploy job's token
+          # may pull it.
+          labels: org.opencontainers.image.source=https://github.com/${{ github.repository }}
+          cache-from: type=gha,scope=${{ matrix.service }}
+          cache-to: type=gha,mode=max,scope=${{ matrix.service }}
+
+  deploy:
+    name: Deploy
+    needs: images
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+      packages: read
+    # One deployment at a time, in the order of the pushes.
+    concurrency:
+      group: deploy
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@v5
+
+      # DEPLOY_HOST, the deploy user's key and the server's host key, so
+      # that nobody in the middle gets the token.
+      - name: SSH
+        env:
+          SSH_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.DEPLOY_KNOWN_HOSTS }}
+        run: |
+          install -d -m 700 ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Copy the configuration
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+        run: |
+          rsync -az --delete-after -e "ssh -i ~/.ssh/deploy" \
+            compose.yaml deploy monitoring "freenet@$HOST:/opt/freenet/"
+
+      - name: Run the commit
+        env:
+          HOST: ${{ secrets.DEPLOY_HOST }}
+          TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          printf '%s' "$TOKEN" | ssh -i ~/.ssh/deploy "freenet@$HOST" \
+            "/opt/freenet/deploy/deploy.sh ${{ github.sha }} ${{ github.actor }}"
+
+      - name: The website answers
+        env:
+          SITE_URL: ${{ vars.SITE_URL }}
+        run: curl -fsS --retry 5 --retry-delay 3 --retry-all-errors "$SITE_URL/healthz"

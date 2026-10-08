@@ -9,8 +9,12 @@
 
 ARG GO_VERSION=1.27.1
 
-FROM golang:${GO_VERSION}-alpine AS build
+# The build runs on the builder's own platform and Go cross-compiles for
+# the target: an amd64 server's images build fast on an arm64 Mac too.
+FROM --platform=$BUILDPLATFORM golang:${GO_VERSION}-alpine AS build
 ARG SERVICE
+ARG TARGETOS
+ARG TARGETARCH
 WORKDIR /src
 
 RUN test -n "$SERVICE" || (echo "pass --build-arg SERVICE=<auth|user|post|media|notification|message|club|gateway>" && exit 1)
@@ -19,7 +23,7 @@ RUN test -n "$SERVICE" || (echo "pass --build-arg SERVICE=<auth|user|post|media|
 RUN --mount=type=bind,target=. \
     --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -ldflags="-s -w" -o /out/service ./${SERVICE}/cmd/${SERVICE}
+    CGO_ENABLED=0 GOOS=$TARGETOS GOARCH=$TARGETARCH go build -trimpath -ldflags="-s -w" -o /out/service ./${SERVICE}/cmd/${SERVICE}
 
 RUN mkdir /out/data
 

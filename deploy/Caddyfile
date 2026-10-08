@@ -1,0 +1,27 @@
+# The website: Caddy in front of the gateway. SITE_ADDRESS is the domain
+# (HTTPS with a certificate Caddy gets and renews itself, HTTP redirected
+# to it) or ":80" without one.
+{
+	admin off
+}
+
+{$SITE_ADDRESS} {
+	encode zstd gzip
+
+	# The gateway trusts X-Request-ID from its proxy (TRUST_FORWARDED_FOR):
+	# Caddy gives every request its own, never the client's.
+	reverse_proxy gateway:8080 {
+		header_up X-Request-ID {http.request.uuid}
+	}
+
+	header {
+		-Server
+		# Browsers keep to HTTPS once they have seen it; ignored over HTTP.
+		Strict-Transport-Security "max-age=31536000"
+	}
+
+	log {
+		output stdout
+		format json
+	}
+}
