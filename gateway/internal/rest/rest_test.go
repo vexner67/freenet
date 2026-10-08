@@ -387,9 +387,9 @@ func (f *fakePosts) setLike(token, postID string, liked bool) (int, error) {
 	return likes, nil
 }
 
-func (f *fakePosts) CreateComment(_ context.Context, token, postID, text string) (model.Comment, error) {
-	f.token, f.created = token, text
-	return model.Comment{ID: "c9", PostID: postID, Text: text, CreatedAt: time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)}, f.err
+func (f *fakePosts) CreateComment(_ context.Context, token, postID, text string, photoIDs []string) (model.Comment, error) {
+	f.token, f.created, f.photos = token, text, photoIDs
+	return model.Comment{ID: "c9", PostID: postID, Text: text, PhotoIDs: photoIDs, CreatedAt: time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)}, f.err
 }
 
 func (f *fakePosts) DeleteComment(_ context.Context, token, id string) error {
@@ -559,9 +559,9 @@ func (f *fakeMessages) HasMessagesFrom(_ context.Context, token, peerID string) 
 	return f.peerWrote, f.err
 }
 
-func (f *fakeMessages) Send(_ context.Context, token, recipientID, text string) (model.Message, error) {
+func (f *fakeMessages) Send(_ context.Context, token, recipientID, text string, photoIDs []string) (model.Message, error) {
 	f.token, f.peerID, f.sentText = token, recipientID, text
-	return model.Message{ID: "m9", SenderID: "u1", RecipientID: recipientID, Text: text, CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC)}, f.err
+	return model.Message{ID: "m9", SenderID: "u1", RecipientID: recipientID, Text: text, PhotoIDs: photoIDs, CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC)}, f.err
 }
 
 func (f *fakeMessages) Dialogs(_ context.Context, token, cursor string, _ int) (model.DialogPage, error) {

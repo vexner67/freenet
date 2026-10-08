@@ -118,10 +118,12 @@ type PostPage struct {
 }
 
 type Comment struct {
-	ID        string
-	PostID    string
-	Author    Author
-	Text      string
+	ID     string
+	PostID string
+	Author Author
+	Text   string
+	// PhotoIDs are the author's photos in the media service, in order.
+	PhotoIDs  []string
 	CreatedAt time.Time
 }
 
@@ -157,8 +159,10 @@ type Message struct {
 	SenderID    string
 	RecipientID string
 	Text        string
-	CreatedAt   time.Time
-	Read        bool
+	// PhotoIDs are the sender's photos in the media service, in order.
+	PhotoIDs  []string
+	CreatedAt time.Time
+	Read      bool
 }
 
 // Dialog is the caller's conversation with PeerID; Unread means the peer

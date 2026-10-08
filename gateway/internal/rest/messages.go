@@ -10,16 +10,19 @@ import (
 
 type messageRequest struct {
 	Text string `json:"text"`
+	// Photos are IDs from POST /api/v1/me/photos.
+	Photos []string `json:"photos"`
 }
 
 // messageJSON: Out is the caller's own message, Read means its recipient
 // has read it.
 type messageJSON struct {
-	ID        string `json:"id"`
-	Text      string `json:"text"`
-	CreatedAt string `json:"createdAt"`
-	Out       bool   `json:"out"`
-	Read      bool   `json:"read"`
+	ID        string      `json:"id"`
+	Text      string      `json:"text"`
+	Photos    []photoJSON `json:"photos"`
+	CreatedAt string      `json:"createdAt"`
+	Out       bool        `json:"out"`
+	Read      bool        `json:"read"`
 }
 
 type dialogJSON struct {
@@ -48,6 +51,7 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 	return messageJSON{
 		ID:        m.ID,
 		Text:      m.Text,
+		Photos:    toPhotosJSON(m.SenderID, m.PhotoIDs),
 		CreatedAt: m.CreatedAt.UTC().Format(time.RFC3339),
 		Out:       m.SenderID != peerID,
 		Read:      m.Read,
@@ -230,7 +234,12 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := a.messages.Send(r.Context(), token, recipient.ID, req.Text)
+	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	m, err := a.messages.Send(r.Context(), token, recipient.ID, req.Text, req.Photos)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

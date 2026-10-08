@@ -491,7 +491,7 @@ func TestMessages(t *testing.T) {
 		t.Fatalf("dialogs = %+v, %v", dialogs, err)
 	}
 
-	_, err = messages.Send(context.Background(), "tok", "u1", "x")
+	_, err = messages.Send(context.Background(), "tok", "u1", "x", nil)
 	if f := failure.From(err); f.Kind != failure.InvalidArgument || f.Message != "you cannot write to yourself" {
 		t.Fatalf("Send to yourself: %v", err)
 	}
