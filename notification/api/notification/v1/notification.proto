@@ -50,10 +50,13 @@ enum Kind {
   KIND_COMMENT_REPLY = 6;
   // The actor liked the recipient's comment comment_id.
   KIND_COMMENT_LIKE = 7;
+  // The actor, a community, published the post the recipient suggested
+  // for its wall; post_id is the published post.
+  KIND_POST_ACCEPTED = 8;
 }
 
-// Event: post_id is set for likes, comments, wall posts and reposts,
-// comment_id for comments.
+// Event: post_id is set for all but follows,
+// comment_id for comments, replies and comment likes.
 message Event {
   Kind kind = 1;
   string recipient_id = 2;
