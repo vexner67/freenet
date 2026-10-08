@@ -1,0 +1,88 @@
+# Production on top of compose.yaml (the server's .env sets COMPOSE_FILE to
+# both and COMPOSE_PROFILES=app, so a plain `docker compose` there means
+# this):
+#
+# - the services run the images CI built and pushed to GHCR, tagged with
+#   the commit (FREENET_TAG, which deploy/deploy.sh sets), not local builds;
+# - nothing but Caddy is published: Docker writes its own iptables rules
+#   past ufw, so a published database port would be open to the internet.
+#   Prometheus, Alertmanager and Grafana stay on 127.0.0.1, for an SSH
+#   tunnel;
+# - Caddy terminates HTTP(S) in front of the gateway: SITE_ADDRESS is the
+#   domain once there is one (Caddy then gets and renews its certificate
+#   itself), ":80" until then.
+
+# Six databases share a small server: a few connections each (a service
+# pools at most a handful) and small buffers.
+x-postgres: &postgres
+  ports: !reset []
+  command: [postgres, -c, shared_buffers=32MB, -c, max_connections=30, -c, work_mem=2MB, -c, maintenance_work_mem=16MB]
+
+services:
+  auth-postgres: *postgres
+  user-postgres: *postgres
+  post-postgres: *postgres
+  notification-postgres: *postgres
+  message-postgres: *postgres
+  club-postgres: *postgres
+  redis: { ports: !reset [] }
+
+  notification:
+    image: ghcr.io/vexner67/freenet-notification:${FREENET_TAG:?set FREENET_TAG}
+    build: !reset null
+  message:
+    image: ghcr.io/vexner67/freenet-message:${FREENET_TAG:?set FREENET_TAG}
+    build: !reset null
+  club:
+    image: ghcr.io/vexner67/freenet-club:${FREENET_TAG:?set FREENET_TAG}
+    build: !reset null
+  user:
+    image: ghcr.io/vexner67/freenet-user:${FREENET_TAG:?set FREENET_TAG}
+    build: !reset null
+  post:
+    image: ghcr.io/vexner67/freenet-post:${FREENET_TAG:?set FREENET_TAG}
+    build: !reset null
+  media:
+    image: ghcr.io/vexner67/freenet-media:${FREENET_TAG:?set FREENET_TAG}
+    build: !reset null
+  auth:
+    image: ghcr.io/vexner67/freenet-auth:${FREENET_TAG:?set FREENET_TAG}
+    build: !reset null
+    environment:
+      # Codes go to `docker compose logs auth` until SMTP is set up: then
+      # MAILER=smtp and SMTP_* in the server's .env.
+      MAILER: ${MAILER:-console}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+
+  gateway:
+    image: ghcr.io/vexner67/freenet-gateway:${FREENET_TAG:?set FREENET_TAG}
+    build: !reset null
+    ports: !reset []
+    environment:
+      # Caddy sets X-Forwarded-For and X-Request-ID.
+      TRUST_FORWARDED_FOR: "true"
+
+  caddy:
+    profiles: [app]
+    image: caddy:2.10.2
+    restart: unless-stopped
+    environment:
+      SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      gateway: { condition: service_healthy }
+
+volumes:
+  caddy_data:
+  caddy_config:

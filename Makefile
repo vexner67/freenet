@@ -1,4 +1,4 @@
-.PHONY: dev dev-persistent up ps down certs web-test check check-integration stack smoke
+.PHONY: dev dev-persistent up ps down certs web-test check check-integration stack smoke ssh
 
 # The whole backend and the website in one terminal; Ctrl+C stops it.
 dev:
@@ -47,3 +47,13 @@ certs:
 # Unit tests of the website scripts (needs Node.js).
 web-test:
 	node --test web/test/*.test.js
+
+# The production server, as root by key (deploy/bootstrap.sh turned
+# passwords off). One connection is reused for 10 minutes: ufw lets in at
+# most 6 SSH connections in 30 seconds. There, `cd /opt/freenet` and
+# `docker compose ps|logs`; the sign-in codes are in `docker compose logs auth`.
+PROD_HOST ?= 31.59.104.78
+PROD_KEY ?= ~/.ssh/freenet-prod_ed25519
+
+ssh:
+	ssh -i $(PROD_KEY) -o ControlMaster=auto -o 'ControlPath=~/.ssh/freenet-%C' -o ControlPersist=10m root@$(PROD_HOST)
