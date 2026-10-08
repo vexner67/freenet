@@ -38,7 +38,7 @@ function render(club, me) {
   $('edit').href = path + '/edit';
 
   initPhoto(club, manages(club), {
-    upload: (file) => api.uploadClubAvatar(ref, file),
+    upload: (file, onWall) => api.uploadClubAvatar(ref, file, onWall),
     remove: () => api.deleteClubAvatar(ref),
     error: $('join-error'),
     club: true,

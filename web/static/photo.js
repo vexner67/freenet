@@ -1,10 +1,10 @@
 // The controls under the photo of a profile, for its owner, or of a
-// community (club), for its admins: upload and remove call the API.
+// community (club), for its admins: upload (through openvk's dialog,
+// avatar.js) and remove call the API.
 
 import { api } from './api.js';
+import { openAvatarDialog } from './avatar.js';
 import { $, avatarURL, showError, hideError } from './layout.js';
-
-const MAX_BYTES = 8 << 20;
 
 export function initPhoto(user, isOwner, {
   upload = api.uploadAvatar, remove = api.deleteAvatar, error = $('follow-error'), club = false,
@@ -34,23 +34,14 @@ export function initPhoto(user, isOwner, {
   render(user);
   if (!isOwner) return;
 
-  const file = $('avatar-file');
-
   $('avatar-actions').hidden = false;
-  $('avatar-upload').addEventListener('click', () => file.click());
+  $('avatar-upload').addEventListener('click', () => openAvatarDialog({
+    club,
+    // The dialog shows what went wrong itself and stays open.
+    upload: async (blob, onWall) => {
+      hideError(error);
+      render(await upload(blob, onWall));
+    },
+  }));
   $('avatar-delete').addEventListener('click', () => change(() => remove(), 'Удаление…'));
-
-  file.addEventListener('change', () => {
-    const picked = file.files[0];
-    file.value = '';
-    if (!picked) return;
-
-    // Checked here too, so a huge file is not sent for nothing.
-    if (picked.size > MAX_BYTES) {
-      showError(error, 'Фотография больше 8 МБ.');
-      return;
-    }
-
-    change(() => upload(picked), 'Загрузка…');
-  });
 }

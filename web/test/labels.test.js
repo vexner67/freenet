@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -48,6 +48,9 @@ test('posts count and verb agree', () => {
   assert.equal(postsCount(554), '554 записи');
   assert.equal(wrote('female'), 'написала');
   assert.equal(wrote(''), 'написал');
+  assert.equal(updatedPhoto({ gender: 'female' }), 'обновила фотографию на своей странице');
+  assert.equal(updatedPhoto({ gender: '' }), 'обновил фотографию на своей странице');
+  assert.equal(updatedPhoto({ club: true }), 'обновило фотографию группы');
 });
 
 test('follow counters agree with numbers', () => {

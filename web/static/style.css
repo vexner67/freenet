@@ -605,6 +605,10 @@ a.like:hover svg { opacity: .7; }
 .modal-body textarea { height: 60px; }
 .modal-body .error { margin-bottom: 0; }
 .modal-option input { margin: 0 4px 0 0; vertical-align: middle; }
+/* openvk's "Загрузка новой фотографии" (avatar.js). */
+.modal-box.avatar-dialog { width: 487px; }
+.avatar-crop { display: block; margin: 4px auto; cursor: move; touch-action: none; }
+.avatar-turn { display: flex; justify-content: center; gap: 6px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; background: #f2f2f2; border-top: 1px solid #ddd; }
 
 /* Links under the profile photo, as openvk's profile_link. */
