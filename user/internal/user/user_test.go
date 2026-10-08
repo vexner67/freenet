@@ -95,7 +95,7 @@ func TestUser_PublicProfile_Privacy(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err = u.UpdatePrivacy(user.Privacy{ShowWorldview: true, ShowBirthday: true, WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone}); err != nil {
+	if err = u.UpdatePrivacy(user.Privacy{ShowWorldview: true, ShowBirthday: true, WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone}); err != nil {
 		t.Fatal(err)
 	}
 	got := u.PublicProfile()

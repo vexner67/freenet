@@ -55,6 +55,17 @@ func (s *PermissionService) CanMessage(ctx context.Context, senderID, recipientI
 	return recipient.CanBeMessagedBy(senderID, ties), nil
 }
 
+// CanSeeClubs tells whether viewerID (uuid.Nil: anonymous) may see which
+// communities ownerID is in. user.ErrNotFound for an unknown owner.
+func (s *PermissionService) CanSeeClubs(ctx context.Context, viewerID, ownerID uuid.UUID) (bool, error) {
+	owner, ties, err := s.ties(ctx, viewerID, ownerID)
+	if err != nil {
+		return false, errs.Wrap("s.ties", err)
+	}
+
+	return owner.ClubsVisibleTo(viewerID, ties), nil
+}
+
 // ties loads ownerID and how it is tied to otherID.
 func (s *PermissionService) ties(ctx context.Context, otherID, ownerID uuid.UUID) (*user.User, user.Ties, error) {
 	owner, err := s.userRepo.GetByID(ctx, ownerID)

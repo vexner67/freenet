@@ -36,6 +36,7 @@ const (
 	UserService_ListFollowing_FullMethodName      = "/user.v1.UserService/ListFollowing"
 	UserService_CanPostOnWall_FullMethodName      = "/user.v1.UserService/CanPostOnWall"
 	UserService_CanMessage_FullMethodName         = "/user.v1.UserService/CanMessage"
+	UserService_CanSeeClubs_FullMethodName        = "/user.v1.UserService/CanSeeClubs"
 	UserService_Block_FullMethodName              = "/user.v1.UserService/Block"
 	UserService_Unblock_FullMethodName            = "/user.v1.UserService/Unblock"
 	UserService_ListBlocked_FullMethodName        = "/user.v1.UserService/ListBlocked"
@@ -79,6 +80,9 @@ type UserServiceClient interface {
 	// Requires an access token: whether the caller may write private
 	// messages to the user, as the user's privacy and blacklists allow.
 	CanMessage(ctx context.Context, in *CanMessageRequest, opts ...grpc.CallOption) (*CanMessageResponse, error)
+	// Public: whether the caller, anonymous without a token, may see which
+	// communities the user is in, as the user's privacy allows.
+	CanSeeClubs(ctx context.Context, in *CanSeeClubsRequest, opts ...grpc.CallOption) (*CanSeeClubsResponse, error)
 	// Require an access token: the caller's blacklist ("Чёрный список"). A
 	// block shuts messages, wall posts and follows between the two, both
 	// ways, and drops their follows. Block and Unblock are idempotent.
@@ -269,6 +273,16 @@ func (c *userServiceClient) CanMessage(ctx context.Context, in *CanMessageReques
 	return out, nil
 }
 
+func (c *userServiceClient) CanSeeClubs(ctx context.Context, in *CanSeeClubsRequest, opts ...grpc.CallOption) (*CanSeeClubsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CanSeeClubsResponse)
+	err := c.cc.Invoke(ctx, UserService_CanSeeClubs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) Block(ctx context.Context, in *BlockRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -373,6 +387,9 @@ type UserServiceServer interface {
 	// Requires an access token: whether the caller may write private
 	// messages to the user, as the user's privacy and blacklists allow.
 	CanMessage(context.Context, *CanMessageRequest) (*CanMessageResponse, error)
+	// Public: whether the caller, anonymous without a token, may see which
+	// communities the user is in, as the user's privacy allows.
+	CanSeeClubs(context.Context, *CanSeeClubsRequest) (*CanSeeClubsResponse, error)
 	// Require an access token: the caller's blacklist ("Чёрный список"). A
 	// block shuts messages, wall posts and follows between the two, both
 	// ways, and drops their follows. Block and Unblock are idempotent.
@@ -450,6 +467,9 @@ func (UnimplementedUserServiceServer) CanPostOnWall(context.Context, *CanPostOnW
 }
 func (UnimplementedUserServiceServer) CanMessage(context.Context, *CanMessageRequest) (*CanMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CanMessage not implemented")
+}
+func (UnimplementedUserServiceServer) CanSeeClubs(context.Context, *CanSeeClubsRequest) (*CanSeeClubsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CanSeeClubs not implemented")
 }
 func (UnimplementedUserServiceServer) Block(context.Context, *BlockRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Block not implemented")
@@ -781,6 +801,24 @@ func _UserService_CanMessage_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_CanSeeClubs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CanSeeClubsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CanSeeClubs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CanSeeClubs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CanSeeClubs(ctx, req.(*CanSeeClubsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_Block_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(BlockRequest)
 	if err := dec(in); err != nil {
@@ -977,6 +1015,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CanMessage",
 			Handler:    _UserService_CanMessage_Handler,
+		},
+		{
+			MethodName: "CanSeeClubs",
+			Handler:    _UserService_CanSeeClubs_Handler,
 		},
 		{
 			MethodName: "Block",

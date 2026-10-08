@@ -43,6 +43,9 @@ service UserService {
   // Requires an access token: whether the caller may write private
   // messages to the user, as the user's privacy and blacklists allow.
   rpc CanMessage(CanMessageRequest) returns (CanMessageResponse);
+  // Public: whether the caller, anonymous without a token, may see which
+  // communities the user is in, as the user's privacy allows.
+  rpc CanSeeClubs(CanSeeClubsRequest) returns (CanSeeClubsResponse);
 
   // Require an access token: the caller's blacklist ("Чёрный список"). A
   // block shuts messages, wall posts and follows between the two, both
@@ -100,6 +103,17 @@ message PrivacySettings {
   WallWrite wall_write = 5;
   // Required in UpdatePrivacy; MESSAGES_WRITE_EVERYONE by default.
   MessagesWrite messages_write = 6;
+  // Required in UpdatePrivacy; CLUBS_READ_EVERYONE by default.
+  ClubsRead clubs_read = 7;
+}
+
+// Who sees which communities a user is in besides the user.
+enum ClubsRead {
+  CLUBS_READ_UNSPECIFIED = 0;
+  CLUBS_READ_EVERYONE = 1;
+  // The people the user follows.
+  CLUBS_READ_FOLLOWING = 2;
+  CLUBS_READ_ONLY_ME = 3;
 }
 
 // Who may write private messages to a user. Whoever the user wrote to may
@@ -308,6 +322,14 @@ message CanPostOnWallRequest {
 }
 
 message CanPostOnWallResponse {
+  bool allowed = 1;
+}
+
+message CanSeeClubsRequest {
+  string user_id = 1;
+}
+
+message CanSeeClubsResponse {
   bool allowed = 1;
 }
 

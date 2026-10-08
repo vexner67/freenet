@@ -43,6 +43,7 @@ type Privacy struct {
 	ShowPoliticalViews bool
 	WallWrite          WallWrite
 	MessagesWrite      MessagesWrite
+	ClubsRead          ClubsRead
 }
 
 // PublicProfile is the part of a profile other users may see. Hidden
@@ -85,7 +86,7 @@ func New(email Email) (*User, error) {
 	return &User{
 		id:      id,
 		email:   email,
-		privacy: Privacy{WallWrite: DefaultWallWrite, MessagesWrite: DefaultMessagesWrite},
+		privacy: Privacy{WallWrite: DefaultWallWrite, MessagesWrite: DefaultMessagesWrite, ClubsRead: DefaultClubsRead},
 	}, nil
 }
 
@@ -122,14 +123,18 @@ func (u *User) UpdateProfile(profile Profile) error {
 	return nil
 }
 
-// UpdatePrivacy replaces all privacy settings; WallWrite and
-// MessagesWrite must be set.
+// UpdatePrivacy replaces all privacy settings; WallWrite, MessagesWrite
+// and ClubsRead must be set.
 func (u *User) UpdatePrivacy(privacy Privacy) error {
 	if _, err := NewWallWrite(privacy.WallWrite.String()); err != nil {
 		return err
 	}
 
 	if _, err := NewMessagesWrite(privacy.MessagesWrite.String()); err != nil {
+		return err
+	}
+
+	if _, err := NewClubsRead(privacy.ClubsRead.String()); err != nil {
 		return err
 	}
 

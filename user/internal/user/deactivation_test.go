@@ -49,7 +49,7 @@ func newCompleted(t *testing.T) *user.User {
 	if err = u.UpdateProfile(profile); err != nil {
 		t.Fatal(err)
 	}
-	if err = u.UpdatePrivacy(user.Privacy{WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone}); err != nil {
+	if err = u.UpdatePrivacy(user.Privacy{WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone}); err != nil {
 		t.Fatal(err)
 	}
 

@@ -53,7 +53,7 @@ func TestUser_CanBeMessagedBy(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = u.UpdatePrivacy(user.Privacy{WallWrite: user.WallWriteEveryone, MessagesWrite: tt.setting}); err != nil {
+			if err = u.UpdatePrivacy(user.Privacy{WallWrite: user.WallWriteEveryone, MessagesWrite: tt.setting, ClubsRead: user.ClubsReadEveryone}); err != nil {
 				t.Fatal(err)
 			}
 

@@ -53,9 +53,10 @@ const saveUserQuery = `
 		show_political_views,
 		wall_write,
 		messages_write,
-		avatar_id
+		avatar_id,
+		clubs_read
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19)
 `
 
 func (r *UserRepository) Save(ctx context.Context, u *user.User) error {
@@ -83,6 +84,7 @@ func (r *UserRepository) Save(ctx context.Context, u *user.User) error {
 		pr.WallWrite.String(),
 		pr.MessagesWrite.String(),
 		avatarToDB(u.AvatarID()),
+		pr.ClubsRead.String(),
 	); err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
 	}
@@ -112,6 +114,7 @@ const updateUserQuery = `
 		deactivated_at = $18,
 		purge_at = $19,
 		deactivation_reason = $20,
+		clubs_read = $21,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -144,6 +147,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		timeToDB(d.At),
 		timeToDB(d.PurgeAt),
 		d.Reason.String(),
+		pr.ClubsRead.String(),
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -175,6 +179,7 @@ const getUserByIDQuery = `
 		show_political_views,
 		wall_write,
 		messages_write,
+		clubs_read,
 		avatar_id,
 		deactivated_at,
 		purge_at,
@@ -211,6 +216,7 @@ const getUserByNicknameQuery = `
 		show_political_views,
 		wall_write,
 		messages_write,
+		clubs_read,
 		avatar_id,
 		deactivated_at,
 		purge_at,
@@ -248,6 +254,7 @@ const getUsersByIDsQuery = `
 		show_political_views,
 		wall_write,
 		messages_write,
+		clubs_read,
 		avatar_id,
 		deactivated_at,
 		purge_at,
@@ -306,7 +313,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		gender, relationship, worldview, political string
 		birthday                                   *time.Time
 		privacy                                    user.Privacy
-		wallWrite, messagesWrite                   string
+		wallWrite, messagesWrite, clubsRead        string
 		avatarID                                   *uuid.UUID
 		deactivatedAt, purgeAt                     *time.Time
 		reason                                     string
@@ -330,6 +337,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&privacy.ShowPoliticalViews,
 		&wallWrite,
 		&messagesWrite,
+		&clubsRead,
 		&avatarID,
 		&deactivatedAt,
 		&purgeAt,
@@ -345,6 +353,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 	// Data comes from our own table and was validated on write.
 	privacy.WallWrite = user.WallWrite(wallWrite)
 	privacy.MessagesWrite = user.MessagesWrite(messagesWrite)
+	privacy.ClubsRead = user.ClubsRead(clubsRead)
 
 	return user.Restore(user.Stored{
 		ID:    id,
@@ -443,6 +452,7 @@ const searchUsersSelect = `
 		show_political_views,
 		wall_write,
 		messages_write,
+		clubs_read,
 		avatar_id,
 		deactivated_at,
 		purge_at,
