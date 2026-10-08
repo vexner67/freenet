@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
-	"github.com/vexner67/freenet/post/internal/post"
 	"github.com/vexner67/freenet/post/internal/service"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,22 +27,21 @@ func (h *PostHandler) CreateComment(ctx context.Context, req *postv1.CreateComme
 		return nil, err
 	}
 
-	var c *post.Comment
-
-	if req.GetReplyToId() == "" {
-		c, err = h.commentService.Create(ctx, authorID, postID, content)
-	} else {
-		parentID, perr := uuid.Parse(req.GetReplyToId())
-		if perr != nil {
+	parentID := uuid.Nil
+	if req.GetReplyToId() != "" {
+		if parentID, err = uuid.Parse(req.GetReplyToId()); err != nil {
 			return nil, status.Error(codes.InvalidArgument, "invalid comment id")
 		}
-		c, err = h.commentService.Reply(ctx, service.ReplyInput{AuthorID: authorID, PostID: postID, ParentID: parentID, Content: content})
 	}
+
+	c, err := h.commentService.Create(ctx, service.CommentInput{
+		AuthorID: authorID, PostID: postID, ParentID: parentID, Content: content, FromWall: req.GetFromWall(),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &postv1.CreateCommentResponse{Comment: toProtoComment(c, false)}, nil
+	return &postv1.CreateCommentResponse{Comment: toProtoComment(c, false, authorID)}, nil
 }
 
 func (h *PostHandler) LikeComment(ctx context.Context, req *postv1.LikeCommentRequest) (*postv1.LikeCommentResponse, error) {
@@ -114,7 +112,7 @@ func (h *PostHandler) GetComments(ctx context.Context, req *postv1.GetCommentsRe
 
 	resp := &postv1.GetCommentsResponse{Comments: make([]*postv1.Comment, 0, len(comments))}
 	for _, c := range comments {
-		resp.Comments = append(resp.Comments, toProtoComment(c, false))
+		resp.Comments = append(resp.Comments, toProtoComment(c, false, uuid.Nil))
 	}
 
 	return resp, nil
@@ -143,7 +141,7 @@ func (h *PostHandler) ListComments(ctx context.Context, req *postv1.ListComments
 	}
 
 	for _, c := range page.Comments {
-		resp.Comments = append(resp.Comments, toProtoComment(c, page.Liked[c.ID()]))
+		resp.Comments = append(resp.Comments, toProtoComment(c, page.Liked[c.ID()], viewerID(ctx)))
 	}
 
 	return resp, nil

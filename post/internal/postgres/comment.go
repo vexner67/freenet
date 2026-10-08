@@ -38,9 +38,10 @@ const saveCommentQuery = `
 			text,
 			photo_ids,
 			reply_to,
-			created_at
+			created_at,
+			from_wall
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING post_id
 	)
 	UPDATE posts
@@ -49,7 +50,7 @@ const saveCommentQuery = `
 `
 
 func (r *CommentRepository) Save(ctx context.Context, c *post.Comment) error {
-	_, err := r.conn(ctx).Exec(ctx, saveCommentQuery, c.ID(), c.PostID(), c.AuthorID(), c.Text().String(), photoIDs(c.Photos()), nullable(c.ReplyTo()), c.CreatedAt())
+	_, err := r.conn(ctx).Exec(ctx, saveCommentQuery, c.ID(), c.PostID(), c.AuthorID(), c.Text().String(), photoIDs(c.Photos()), nullable(c.ReplyTo()), c.CreatedAt(), c.FromWall())
 	if isForeignKeyViolation(err) {
 		// The comment answered, or else the post, is gone.
 		if constraintOf(err) == "comments_reply_to_fkey" {
@@ -73,7 +74,8 @@ const getCommentQuery = `
 		photo_ids,
 		reply_to,
 		like_count,
-		created_at
+		created_at,
+		from_wall
 	FROM comments
 	WHERE id = $1
 `
@@ -99,7 +101,8 @@ const getCommentsQuery = `
 		photo_ids,
 		reply_to,
 		like_count,
-		created_at
+		created_at,
+		from_wall
 	FROM comments
 	WHERE id = ANY($1)
 `
@@ -149,7 +152,8 @@ const listCommentsByPostQuery = `
 		photo_ids,
 		reply_to,
 		like_count,
-		created_at
+		created_at,
+		from_wall
 	FROM comments
 	WHERE post_id = $1
 		AND id > $2
@@ -194,7 +198,7 @@ func scanComment(row pgx.Row) (*post.Comment, error) {
 		replyTo *uuid.UUID
 	)
 
-	if err := row.Scan(&s.ID, &s.PostID, &s.AuthorID, &text, &photos, &replyTo, &s.Likes, &s.CreatedAt); err != nil {
+	if err := row.Scan(&s.ID, &s.PostID, &s.AuthorID, &text, &photos, &replyTo, &s.Likes, &s.CreatedAt, &s.FromWall); err != nil {
 		return nil, err
 	}
 
@@ -231,7 +235,8 @@ const deleteCommentsByPostQuery = `
 		photo_ids,
 		reply_to,
 		like_count,
-		created_at
+		created_at,
+		from_wall
 `
 
 // DeleteByPost deletes the comments of a post about to be deleted,
@@ -268,7 +273,8 @@ const deleteCommentsOnWallQuery = `
 		photo_ids,
 		reply_to,
 		like_count,
-		created_at
+		created_at,
+		from_wall
 `
 
 // DeleteOnPostsOf deletes the comments on the posts a user wrote and on

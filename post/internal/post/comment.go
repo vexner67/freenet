@@ -74,6 +74,10 @@ type Comment struct {
 	content   CommentContent
 	createdAt time.Time
 	likes     int
+	// fromWall: the comment speaks for the community whose wall the post
+	// is on ("От имени сообщества" of openvk), which readers see instead
+	// of its author.
+	fromWall bool
 }
 
 // NewComment creates a comment on a post. Its UUIDv7 ID grows with time,
@@ -111,6 +115,20 @@ func NewReply(postID uuid.UUID, parent *Comment, authorID uuid.UUID, content Com
 	return c, nil
 }
 
+// ForWall returns c speaking for the wall of p, its post: a community's.
+// Whether the author may speak for it is the community's, which the
+// caller checks; nobody speaks for their own wall but themselves.
+func (c *Comment) ForWall(p *Post) (*Comment, error) {
+	if p.WallID() == c.authorID {
+		return nil, ErrFromOwnWall
+	}
+
+	forWall := *c
+	forWall.fromWall = true
+
+	return &forWall, nil
+}
+
 // StoredComment is a comment as storage keeps it.
 type StoredComment struct {
 	ID        uuid.UUID
@@ -120,6 +138,7 @@ type StoredComment struct {
 	Content   CommentContent
 	CreatedAt time.Time
 	Likes     int
+	FromWall  bool
 }
 
 // RestoreComment rebuilds a comment from storage without validation or new IDs.
@@ -132,6 +151,7 @@ func RestoreComment(s StoredComment) *Comment {
 		content:   s.Content,
 		createdAt: s.CreatedAt,
 		likes:     s.Likes,
+		fromWall:  s.FromWall,
 	}
 }
 
@@ -140,6 +160,22 @@ func RestoreComment(s StoredComment) *Comment {
 // who keeps the wall clean. p is the post of the comment.
 func (c *Comment) CanBeDeletedBy(userID uuid.UUID, p *Post) bool {
 	return userID == c.authorID || userID == p.AuthorID() || userID == p.WallID()
+}
+
+// Notified is who hears about answers to the comment and its likes: its
+// author, or nobody for a comment that speaks for a community, whose
+// author readers are not told.
+func (c *Comment) Notified() uuid.UUID {
+	if c.fromWall {
+		return uuid.Nil
+	}
+
+	return c.authorID
+}
+
+// FromWall: the comment speaks for the community of its post's wall.
+func (c *Comment) FromWall() bool {
+	return c.fromWall
 }
 
 func (c *Comment) ID() uuid.UUID {

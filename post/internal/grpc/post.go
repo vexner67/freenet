@@ -30,8 +30,7 @@ type PostService interface {
 }
 
 type CommentService interface {
-	Create(ctx context.Context, authorID, postID uuid.UUID, content post.CommentContent) (*post.Comment, error)
-	Reply(ctx context.Context, in service.ReplyInput) (*post.Comment, error)
+	Create(ctx context.Context, in service.CommentInput) (*post.Comment, error)
 	Like(ctx context.Context, userID, commentID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, commentID uuid.UUID) (int, error)
 	Delete(ctx context.Context, requesterID, commentID uuid.UUID) error

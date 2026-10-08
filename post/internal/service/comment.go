@@ -86,53 +86,52 @@ func NewCommentService(d CommentDeps) *CommentService {
 	}
 }
 
-// Create comments on a post with text, photos or both; media keeps the
-// photos, which the caller has checked are the author's.
-func (s *CommentService) Create(ctx context.Context, authorID, postID uuid.UUID, content post.CommentContent) (*post.Comment, error) {
-	// The post tells whom to notify; Save still reports a post deleted
-	// in between.
-	p, err := s.postRepo.Get(ctx, postID)
-	if err != nil {
-		return nil, errs.Wrap("s.postRepo.Get", err)
-	}
-
-	c, err := post.NewComment(postID, authorID, content, s.now())
-	if err != nil {
-		return nil, errs.Wrap("post.NewComment", err)
-	}
-
-	if err = s.save(ctx, p, c, nil); err != nil {
-		return nil, errs.Wrap("s.save", err)
-	}
-
-	return c, nil
-}
-
-// ReplyInput is an answer by AuthorID to the comment ParentID under the
-// post PostID.
-type ReplyInput struct {
+// CommentInput is a comment by AuthorID under the post PostID: an answer
+// to the comment ParentID under the same post, as openvk's "Ответить",
+// unless that is uuid.Nil. FromWall: it speaks for the community whose
+// wall the post is on, which the caller has checked the author may.
+type CommentInput struct {
 	AuthorID uuid.UUID
 	PostID   uuid.UUID
 	ParentID uuid.UUID
 	Content  post.CommentContent
+	FromWall bool
 }
 
-// Reply answers a comment under its post, as openvk's "Ответить": the
-// author of the comment hears of the answer.
-func (s *CommentService) Reply(ctx context.Context, in ReplyInput) (*post.Comment, error) {
-	parent, err := s.commentRepo.Get(ctx, in.ParentID)
-	if err != nil {
-		return nil, errs.Wrap("s.commentRepo.Get", err)
+// Create comments on a post with text, photos or both; media keeps the
+// photos, which the caller has checked are the author's. The author of
+// the post hears of it, and the author of the comment answered of the
+// answer.
+func (s *CommentService) Create(ctx context.Context, in CommentInput) (*post.Comment, error) {
+	var parent *post.Comment
+	if in.ParentID != uuid.Nil {
+		var err error
+		if parent, err = s.commentRepo.Get(ctx, in.ParentID); err != nil {
+			return nil, errs.Wrap("s.commentRepo.Get", err)
+		}
 	}
 
+	// The post tells whom to notify; Save still reports a post deleted
+	// in between.
 	p, err := s.postRepo.Get(ctx, in.PostID)
 	if err != nil {
 		return nil, errs.Wrap("s.postRepo.Get", err)
 	}
 
-	c, err := post.NewReply(in.PostID, parent, in.AuthorID, in.Content, s.now())
+	var c *post.Comment
+	if parent == nil {
+		c, err = post.NewComment(in.PostID, in.AuthorID, in.Content, s.now())
+	} else {
+		c, err = post.NewReply(in.PostID, parent, in.AuthorID, in.Content, s.now())
+	}
 	if err != nil {
-		return nil, errs.Wrap("post.NewReply", err)
+		return nil, errs.Wrap("post.NewComment", err)
+	}
+
+	if in.FromWall {
+		if c, err = c.ForWall(p); err != nil {
+			return nil, errs.Wrap("c.ForWall", err)
+		}
 	}
 
 	if err = s.save(ctx, p, c, parent); err != nil {
@@ -235,12 +234,14 @@ func (s *CommentService) setLike(ctx context.Context, userID, commentID uuid.UUI
 			return errs.Wrap("set", err)
 		}
 
-		// Nobody is notified about liking their own comment.
-		if c.AuthorID() == userID {
+		// Nobody is notified about liking their own comment, nor about a
+		// comment that speaks for a community (post.Comment.Notified).
+		recipient := c.Notified()
+		if recipient == uuid.Nil || recipient == userID {
 			return nil
 		}
 
-		e := Event{Kind: EventCommentLike, RecipientID: c.AuthorID(), ActorID: userID, PostID: c.PostID(), CommentID: commentID}
+		e := Event{Kind: EventCommentLike, RecipientID: recipient, ActorID: userID, PostID: c.PostID(), CommentID: commentID}
 
 		return errs.Wrap("tell", tell(ctx, e))
 	})
@@ -268,18 +269,29 @@ func deleteCommentPhotos(ctx context.Context, photos PhotoKeeper, comments []*po
 // commentEvents are the notifications of comment c on p, which answers
 // parent (nil for none): the author of parent hears of the answer, the
 // author of the post of a new comment, unless they heard of the answer
-// already. Nobody hears of their own comments.
+// already. Nobody hears of their own comments, and a post or a comment
+// that speaks for a community notifies nobody (Notified). A comment for
+// the community comes from the community, not from its author.
 func commentEvents(p *post.Post, c, parent *post.Comment) []Event {
 	var events []Event
 
-	if parent != nil && parent.AuthorID() != c.AuthorID() {
-		events = append(events, Event{Kind: EventCommentReply, RecipientID: parent.AuthorID(), ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()})
+	actor := c.AuthorID()
+	if c.FromWall() {
+		actor = p.WallID()
 	}
 
-	// A post that speaks for a community notifies nobody (post.Notified).
+	answered := uuid.Nil
+	if parent != nil {
+		answered = parent.Notified()
+	}
+
+	if answered != uuid.Nil && answered != c.AuthorID() {
+		events = append(events, Event{Kind: EventCommentReply, RecipientID: answered, ActorID: actor, PostID: p.ID(), CommentID: c.ID()})
+	}
+
 	author := p.Notified()
-	if author != uuid.Nil && author != c.AuthorID() && (parent == nil || parent.AuthorID() != author) {
-		events = append(events, Event{Kind: EventComment, RecipientID: author, ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()})
+	if author != uuid.Nil && author != c.AuthorID() && author != answered {
+		events = append(events, Event{Kind: EventComment, RecipientID: author, ActorID: actor, PostID: p.ID(), CommentID: c.ID()})
 	}
 
 	return events

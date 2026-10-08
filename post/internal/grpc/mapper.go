@@ -129,7 +129,7 @@ func toProtoPosts(page service.Page, viewerID uuid.UUID) []*postv1.Post {
 	return posts
 }
 
-func toProtoComment(c *post.Comment, liked bool) *postv1.Comment {
+func toProtoComment(c *post.Comment, liked bool, viewerID uuid.UUID) *postv1.Comment {
 	return &postv1.Comment{
 		Id:        c.ID().String(),
 		PostId:    c.PostID().String(),
@@ -140,6 +140,8 @@ func toProtoComment(c *post.Comment, liked bool) *postv1.Comment {
 		ReplyToId: idString(c.ReplyTo()),
 		LikeCount: int32(c.Likes()), //nolint:gosec // counters come from int4 columns
 		Liked:     liked,
+		FromWall:  c.FromWall(),
+		Mine:      viewerID != uuid.Nil && viewerID == c.AuthorID(),
 	}
 }
 

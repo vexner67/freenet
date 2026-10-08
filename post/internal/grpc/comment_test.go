@@ -133,3 +133,30 @@ func TestComments(t *testing.T) {
 		t.Fatalf("after deleting: %v, %v", left, err)
 	}
 }
+
+func TestComments_ForWall(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, admin := uuid.New(), uuid.New()
+	club := uuid.NewString()
+
+	created, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: "вопрос", WallId: club, ClubWall: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	postID := created.GetPost().GetId()
+
+	c, err := s.client.CreateComment(s.as(t, admin), &postv1.CreateCommentRequest{PostId: postID, Text: "ответ", FromWall: true})
+	if err != nil || !c.GetComment().GetFromWall() || !c.GetComment().GetMine() {
+		t.Fatalf("CreateComment for the club = %v, %v", c, err)
+	}
+
+	page, err := s.client.ListComments(s.as(t, ann), &postv1.ListCommentsRequest{PostId: postID})
+	if err != nil || len(page.GetComments()) != 1 || !page.GetComments()[0].GetFromWall() || page.GetComments()[0].GetMine() {
+		t.Fatalf("ann's view = %v, %v", page, err)
+	}
+	if mine, err := s.client.ListComments(s.as(t, admin), &postv1.ListCommentsRequest{PostId: postID}); err != nil || !mine.GetComments()[0].GetMine() {
+		t.Fatalf("the admin's view = %v, %v", mine, err)
+	}
+}

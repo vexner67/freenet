@@ -63,11 +63,11 @@ func TestPurgeService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = comments.Create(ctx, ann, bobsPost.ID(), post.RestoreCommentContent(text, nil)); err != nil {
+	if _, err = comments.Create(ctx, service.CommentInput{AuthorID: ann, PostID: bobsPost.ID(), Content: post.RestoreCommentContent(text, nil)}); err != nil {
 		t.Fatal(err)
 	}
 	// Bob comments on his post, and ann likes it.
-	bobsComment, err := comments.Create(ctx, bob, bobsPost.ID(), post.RestoreCommentContent("моя запись", nil))
+	bobsComment, err := comments.Create(ctx, service.CommentInput{AuthorID: bob, PostID: bobsPost.ID(), Content: post.RestoreCommentContent("моя запись", nil)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +76,7 @@ func TestPurgeService(t *testing.T) {
 	}
 	// Cat comments on ann's post with a photo, which goes with the post.
 	cat, catsPhoto := uuid.New(), uuid.New()
-	if _, err = comments.Create(ctx, cat, annsPost.ID(), post.RestoreCommentContent("", post.Photos{catsPhoto})); err != nil {
+	if _, err = comments.Create(ctx, service.CommentInput{AuthorID: cat, PostID: annsPost.ID(), Content: post.RestoreCommentContent("", post.Photos{catsPhoto})}); err != nil {
 		t.Fatal(err)
 	}
 
