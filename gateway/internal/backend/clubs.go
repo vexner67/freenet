@@ -100,6 +100,9 @@ func (c *Clubs) Update(ctx context.Context, accessToken, clubID string, changes 
 		Website:       changes.Website,
 		Wall:          wall,
 		AdminsDisplay: adminsDisplay,
+
+		OpenTopics:      changes.OpenTopics,
+		TopicsAboveWall: changes.TopicsAboveWall,
 	})
 	if err != nil {
 		return model.ClubView{}, errs.Wrap("c.api.UpdateClub", fromStatus(err))
@@ -287,6 +290,9 @@ func toClub(c *clubv1.Club) model.Club {
 		Members:       int(c.GetMemberCount()),
 		CreatedAt:     c.GetCreatedAt().AsTime(),
 		AvatarID:      c.GetAvatarId(),
+
+		OpenTopics:      c.GetOpenTopics(),
+		TopicsAboveWall: c.GetTopicsAboveWall(),
 	}
 }
 
@@ -295,5 +301,7 @@ func toClubView(v *clubv1.ClubView) model.ClubView {
 		Club:    toClub(v.GetClub()),
 		Role:    roles[v.GetRole()],
 		OwnerID: v.GetOwnerId(),
+
+		CanStartTopic: v.GetCanStartTopic(),
 	}
 }

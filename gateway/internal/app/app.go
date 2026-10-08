@@ -126,6 +126,7 @@ func (a *App) build(cfg config.Config) error {
 			Notifications: backend.NewNotifications(notificationv1.NewNotificationServiceClient(a.notificationConn)),
 			Messages:      backend.NewMessages(messagev1.NewMessageServiceClient(a.messageConn)),
 			Clubs:         backend.NewClubs(clubv1.NewClubServiceClient(a.clubConn)),
+			Topics:        backend.NewTopics(postv1.NewPostServiceClient(a.postConn)),
 		},
 		a.logger,
 		reg,

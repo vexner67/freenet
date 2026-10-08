@@ -336,25 +336,33 @@ type Club struct {
 	CreatedAt     time.Time
 	// AvatarID is the club's photo, filed under its ID; "" for none.
 	AvatarID string
+	// OpenTopics: anyone starts topics in its discussions, not only its
+	// admins; TopicsAboveWall: its page lists them above the wall.
+	OpenTopics      bool
+	TopicsAboveWall bool
 }
 
 // ClubView is a club as the caller sees it. Role is what the caller is in
 // it: "" (not a member, or anonymous), "member", "admin" or "owner";
-// OwnerID is "" when its owner's page was erased.
+// OwnerID is "" when its owner's page was erased. CanStartTopic: the
+// caller may start a topic in its discussions.
 type ClubView struct {
-	Club    Club
-	Role    string
-	OwnerID string
+	Club          Club
+	Role          string
+	OwnerID       string
+	CanStartTopic bool
 }
 
 // ClubChanges are a club's settings form: everything at once.
 type ClubChanges struct {
-	Name          string
-	Description   string
-	Address       string
-	Website       string
-	Wall          string
-	AdminsDisplay string
+	Name            string
+	Description     string
+	Address         string
+	Website         string
+	Wall            string
+	AdminsDisplay   string
+	OpenTopics      bool
+	TopicsAboveWall bool
 }
 
 // ClubMember is one member of a club, with their role.
@@ -399,4 +407,74 @@ type UserClubPage struct {
 	Clubs      []Club
 	NextCursor string
 	Total      int
+}
+
+// Topic is a discussion of a community ("Обсуждения"). AuthorID started
+// it; FromWall shows the community instead. Last is the newest message,
+// set in lists only and nil without one; Mine: the viewer started it.
+type Topic struct {
+	ID         string
+	ClubID     string
+	AuthorID   string
+	Title      string
+	FromWall   bool
+	Closed     bool
+	Pinned     bool
+	Restricted bool
+	CreatedAt  time.Time
+	UpdatedAt  time.Time
+	Messages   int
+	Last       *TopicMessage
+	Mine       bool
+}
+
+// TopicMessage is what someone wrote in a topic: text, photos or both,
+// for the community if FromWall; Mine: the viewer wrote it.
+type TopicMessage struct {
+	ID        string
+	TopicID   string
+	AuthorID  string
+	Text      string
+	PhotoIDs  []string
+	FromWall  bool
+	CreatedAt time.Time
+	Mine      bool
+}
+
+// TopicPage and TopicMessagePage are one screen of a list; NextCursor is
+// empty on the last, Total counts them on all pages.
+type TopicPage struct {
+	Topics     []Topic
+	NextCursor string
+	Total      int
+}
+
+type TopicMessagePage struct {
+	Messages   []TopicMessage
+	NextCursor string
+	Total      int
+}
+
+// NewTopic is a topic to start in ClubID with a first message, if Text
+// or PhotoIDs say anything.
+type NewTopic struct {
+	ClubID   string
+	Title    string
+	Text     string
+	PhotoIDs []string
+	FromWall bool
+}
+
+type NewTopicMessage struct {
+	Text     string
+	PhotoIDs []string
+	FromWall bool
+}
+
+// TopicChanges are the title and the settings, all at once.
+type TopicChanges struct {
+	Title      string
+	Closed     bool
+	Pinned     bool
+	Restricted bool
 }

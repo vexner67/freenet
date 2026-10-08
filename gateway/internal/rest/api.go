@@ -90,6 +90,20 @@ type Posts interface {
 	DeleteSuggestion(ctx context.Context, accessToken, id string) error
 }
 
+// Topics are the discussions of communities; methods that read take an
+// optional access token, with which topics and messages tell whether they
+// are the viewer's.
+type Topics interface {
+	Create(ctx context.Context, accessToken string, nt model.NewTopic) (model.Topic, error)
+	Get(ctx context.Context, accessToken, id string) (model.Topic, error)
+	List(ctx context.Context, accessToken, clubID, query, cursor string, limit int) (model.TopicPage, error)
+	Edit(ctx context.Context, accessToken, id string, changes model.TopicChanges) (model.Topic, error)
+	Delete(ctx context.Context, accessToken, id string) error
+	Write(ctx context.Context, accessToken, topicID string, nm model.NewTopicMessage) (model.TopicMessage, error)
+	Messages(ctx context.Context, accessToken, topicID, cursor string, limit int) (model.TopicMessagePage, error)
+	DeleteMessage(ctx context.Context, accessToken, id string) error
+}
+
 type Notifications interface {
 	List(ctx context.Context, accessToken string, unread bool, cursor string, limit int) (model.NotificationPage, error)
 	CountUnread(ctx context.Context, accessToken string) (int, error)
@@ -139,6 +153,7 @@ type Backends struct {
 	Notifications Notifications
 	Messages      Messages
 	Clubs         Clubs
+	Topics        Topics
 }
 
 type api struct {
@@ -149,6 +164,7 @@ type api struct {
 	notifications     Notifications
 	messages          Messages
 	clubs             Clubs
+	topics            Topics
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -245,6 +261,14 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/clubs/{ref}/suggestions", a.suggestClubPost)
 	mux.HandleFunc("POST /api/v1/suggestions/{id}/publish", a.publishSuggestion)
 	mux.HandleFunc("DELETE /api/v1/suggestions/{id}", a.deleteSuggestion)
+	mux.HandleFunc("GET /api/v1/clubs/{ref}/topics", a.listTopics)
+	mux.HandleFunc("POST /api/v1/clubs/{ref}/topics", a.createTopic)
+	mux.HandleFunc("GET /api/v1/topics/{id}", a.getTopic)
+	mux.HandleFunc("PATCH /api/v1/topics/{id}", a.editTopic)
+	mux.HandleFunc("DELETE /api/v1/topics/{id}", a.deleteTopic)
+	mux.HandleFunc("GET /api/v1/topics/{id}/messages", a.listTopicMessages)
+	mux.HandleFunc("POST /api/v1/topics/{id}/messages", a.createTopicMessage)
+	mux.HandleFunc("DELETE /api/v1/topic-messages/{id}", a.deleteTopicMessage)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)

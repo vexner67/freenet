@@ -23,6 +23,10 @@ type clubSettingsRequest struct {
 	Website       string `json:"website"`
 	Wall          string `json:"wall"`
 	AdminsDisplay string `json:"adminsDisplay"`
+	// "Обсуждения": anyone starts topics ("Все могут создавать темы"),
+	// listed above the wall ("Отображать список тем над стеной").
+	OpenTopics      bool `json:"openTopics"`
+	TopicsAboveWall bool `json:"topicsAboveWall"`
 }
 
 type clubPostRequest struct {
@@ -45,6 +49,9 @@ type clubJSON struct {
 	Members       int         `json:"members"`
 	CreatedAt     string      `json:"createdAt"`
 	Avatar        *avatarJSON `json:"avatar"`
+
+	OpenTopics      bool `json:"openTopics"`
+	TopicsAboveWall bool `json:"topicsAboveWall"`
 }
 
 // clubResponse is a club as the viewer sees it: role is "" (not a member,
@@ -54,6 +61,8 @@ type clubResponse struct {
 	clubJSON
 	Role  string      `json:"role"`
 	Owner *authorJSON `json:"owner"`
+	// CanStartTopic: "Создать тему" for the viewer.
+	CanStartTopic bool `json:"canStartTopic"`
 }
 
 type clubMemberJSON struct {
@@ -105,6 +114,9 @@ func toClubJSON(c model.Club) clubJSON {
 		Members:       c.Members,
 		CreatedAt:     c.CreatedAt.UTC().Format(time.RFC3339),
 		Avatar:        toAvatarJSON(c.ID, c.AvatarID),
+
+		OpenTopics:      c.OpenTopics,
+		TopicsAboveWall: c.TopicsAboveWall,
 	}
 }
 
@@ -120,7 +132,7 @@ func toClubsJSON(clubs []model.Club) []clubJSON {
 // clubResponseOf adds the owner's profile to a club, looked up unless the
 // caller knows it (owner, "" for none).
 func (a *api) clubResponseOf(r *http.Request, v model.ClubView) (clubResponse, error) {
-	resp := clubResponse{clubJSON: toClubJSON(v.Club), Role: v.Role}
+	resp := clubResponse{clubJSON: toClubJSON(v.Club), Role: v.Role, CanStartTopic: v.CanStartTopic}
 
 	if v.OwnerID == "" {
 		return resp, nil
