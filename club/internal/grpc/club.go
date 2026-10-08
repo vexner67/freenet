@@ -30,7 +30,7 @@ type ClubService interface {
 	Pin(ctx context.Context, userID, clubID uuid.UUID, pinned bool) error
 	Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error)
 	ClubIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
-	CanPostOnWall(ctx context.Context, userID, clubID uuid.UUID, fromClub bool) (bool, error)
+	CanPostOnWall(ctx context.Context, userID, clubID uuid.UUID, fromClub bool) (service.WallAccess, error)
 	CanModerateWall(ctx context.Context, wallID, userID uuid.UUID) (bool, error)
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
 }
@@ -399,12 +399,12 @@ func (h *ClubHandler) CanPostOnWall(ctx context.Context, req *clubv1.CanPostOnWa
 		return nil, err
 	}
 
-	ok, err := h.clubService.CanPostOnWall(ctx, userID, clubID, req.GetFromClub())
+	access, err := h.clubService.CanPostOnWall(ctx, userID, clubID, req.GetFromClub())
 	if err != nil {
 		return nil, err
 	}
 
-	return &clubv1.CanPostOnWallResponse{Allowed: ok}, nil
+	return &clubv1.CanPostOnWallResponse{Allowed: access.Post, Suggest: access.Suggest}, nil
 }
 
 func (h *ClubHandler) CanModerateWall(ctx context.Context, req *clubv1.CanModerateWallRequest) (*clubv1.CanModerateWallResponse, error) {

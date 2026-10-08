@@ -91,7 +91,7 @@ type ClubServiceClient interface {
 	// The caller's newest 1000 clubs, whose walls their feed shows.
 	ListMyClubIDs(ctx context.Context, in *ListMyClubIDsRequest, opts ...grpc.CallOption) (*ListMyClubIDsResponse, error)
 	// Whether the caller may write on the club's wall, on their own behalf
-	// or, with from_club, on the club's.
+	// or, with from_club, on the club's, or else suggest a post.
 	CanPostOnWall(ctx context.Context, in *CanPostOnWallRequest, opts ...grpc.CallOption) (*CanPostOnWallResponse, error)
 	// Internal, for post: whether user_id keeps the wall of wall_id clean,
 	// deleting and pinning others' posts and comments there: the club's
@@ -350,7 +350,7 @@ type ClubServiceServer interface {
 	// The caller's newest 1000 clubs, whose walls their feed shows.
 	ListMyClubIDs(context.Context, *ListMyClubIDsRequest) (*ListMyClubIDsResponse, error)
 	// Whether the caller may write on the club's wall, on their own behalf
-	// or, with from_club, on the club's.
+	// or, with from_club, on the club's, or else suggest a post.
 	CanPostOnWall(context.Context, *CanPostOnWallRequest) (*CanPostOnWallResponse, error)
 	// Internal, for post: whether user_id keeps the wall of wall_id clean,
 	// deleting and pinning others' posts and comments there: the club's

@@ -266,11 +266,11 @@ func TestClubService_Walls(t *testing.T) {
 
 	can := func(user uuid.UUID, fromClub bool) bool {
 		t.Helper()
-		ok, err := svc.CanPostOnWall(ctx, user, c.ID(), fromClub)
+		access, err := svc.CanPostOnWall(ctx, user, c.ID(), fromClub)
 		if err != nil {
 			t.Fatal(err)
 		}
-		return ok
+		return access.Post
 	}
 
 	if !can(bob, false) || can(bob, true) || !can(ann, true) {
@@ -282,6 +282,19 @@ func TestClubService_Walls(t *testing.T) {
 	}
 	if can(bob, false) || !can(ann, false) {
 		t.Fatal("closed wall: only the admins")
+	}
+	if access, _ := svc.CanPostOnWall(ctx, bob, c.ID(), false); access.Suggest {
+		t.Fatal("closed wall: nobody suggests")
+	}
+
+	if _, err := svc.Update(ctx, ann, c.ID(), club.Changes{Name: c.Name(), Wall: club.WallSuggest}); err != nil {
+		t.Fatal(err)
+	}
+	if access, err := svc.CanPostOnWall(ctx, bob, c.ID(), false); err != nil || access.Post || !access.Suggest {
+		t.Fatalf("suggest wall: bob suggests = %+v, %v", access, err)
+	}
+	if access, err := svc.CanPostOnWall(ctx, ann, c.ID(), true); err != nil || !access.Post || access.Suggest {
+		t.Fatalf("suggest wall: ann posts for the club = %+v, %v", access, err)
 	}
 
 	if _, err := svc.CanPostOnWall(ctx, bob, uuid.New(), false); !errors.Is(err, club.ErrNotFound) {

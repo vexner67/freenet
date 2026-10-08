@@ -10,8 +10,9 @@ import (
 
 var (
 	walls = map[club.Wall]clubv1.Wall{
-		club.WallOpen:   clubv1.Wall_WALL_OPEN,
-		club.WallClosed: clubv1.Wall_WALL_CLOSED,
+		club.WallOpen:    clubv1.Wall_WALL_OPEN,
+		club.WallClosed:  clubv1.Wall_WALL_CLOSED,
+		club.WallSuggest: clubv1.Wall_WALL_SUGGEST,
 	}
 	adminsDisplays = map[club.AdminsDisplay]clubv1.AdminsDisplay{
 		club.AdminsDisplayCreator: clubv1.AdminsDisplay_ADMINS_DISPLAY_CREATOR,
