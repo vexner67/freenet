@@ -1,0 +1,211 @@
+syntax = "proto3";
+
+package club.v1;
+
+option go_package = "github.com/vexner67/freenet/club/api/club/v1;clubv1";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+// Communities, the "группы" of openvk: a page with a wall that people
+// join. Every RPC requires an access token unless said otherwise.
+service ClubService {
+  // The caller creates a club and owns it.
+  rpc CreateClub(CreateClubRequest) returns (CreateClubResponse);
+  // Public: a club by its ID or address, as the caller, if any, sees it.
+  rpc GetClub(GetClubRequest) returns (GetClubResponse);
+  // Public: the clubs found among ids, at most 100, in no particular
+  // order: what a page of posts needs to name their walls.
+  rpc GetClubs(GetClubsRequest) returns (GetClubsResponse);
+  // Its admins change a club, everything at once as the settings form
+  // sends it.
+  rpc UpdateClub(UpdateClubRequest) returns (UpdateClubResponse);
+  // Idempotent.
+  rpc JoinClub(JoinClubRequest) returns (JoinClubResponse);
+  // Idempotent; the owner cannot leave.
+  rpc LeaveClub(LeaveClubRequest) returns (LeaveClubResponse);
+  // Public: the members of a club, the newest first; with admins_only,
+  // only the owner and the admins.
+  rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+  // The owner makes a member an admin, or an admin a member again.
+  rpc SetMemberRole(SetMemberRoleRequest) returns (google.protobuf.Empty);
+  // The caller's clubs ("Мои Группы"), the newest joined first.
+  rpc ListMyClubs(ListMyClubsRequest) returns (ListMyClubsResponse);
+  // The caller's newest 1000 clubs, whose walls their feed shows.
+  rpc ListMyClubIDs(ListMyClubIDsRequest) returns (ListMyClubIDsResponse);
+  // Whether the caller may write on the club's wall, on their own behalf
+  // or, with from_club, on the club's.
+  rpc CanPostOnWall(CanPostOnWallRequest) returns (CanPostOnWallResponse);
+
+  // Internal, for post: whether user_id keeps the wall of wall_id clean,
+  // deleting and pinning others' posts and comments there: the club's
+  // admins do. False for any other wall, a user's.
+  rpc CanModerateWall(CanModerateWallRequest) returns (CanModerateWallResponse);
+  // Internal, for user: the user's page was deleted and not restored in
+  // time; they leave every club. Idempotent.
+  rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
+}
+
+// Who may write on the wall: everyone, or only the admins.
+enum Wall {
+  WALL_UNSPECIFIED = 0;
+  WALL_OPEN = 1;
+  WALL_CLOSED = 2;
+}
+
+enum Role {
+  // Not a member.
+  ROLE_NONE = 0;
+  ROLE_MEMBER = 1;
+  ROLE_ADMIN = 2;
+  ROLE_OWNER = 3;
+}
+
+message Club {
+  string id = 1;
+  string name = 2;
+  // Plain text with \n line breaks; may be empty.
+  string description = 3;
+  // The short name of its page; empty for none.
+  string address = 4;
+  Wall wall = 5;
+  int32 member_count = 6;
+  google.protobuf.Timestamp created_at = 7;
+}
+
+// ClubView is a club as the caller sees it.
+message ClubView {
+  Club club = 1;
+  // What the caller is in it; ROLE_NONE for an anonymous caller.
+  Role role = 2;
+  // Empty when its owner's page was erased.
+  string owner_id = 3;
+}
+
+message CreateClubRequest {
+  string name = 1;
+  string description = 2;
+}
+
+message CreateClubResponse {
+  ClubView club = 1;
+}
+
+message GetClubRequest {
+  // The club's ID or its address.
+  string ref = 1;
+}
+
+message GetClubResponse {
+  ClubView club = 1;
+}
+
+message GetClubsRequest {
+  repeated string ids = 1;
+}
+
+message GetClubsResponse {
+  repeated Club clubs = 1;
+}
+
+message UpdateClubRequest {
+  string club_id = 1;
+  string name = 2;
+  string description = 3;
+  // Empty takes the address away.
+  string address = 4;
+  Wall wall = 5;
+}
+
+message UpdateClubResponse {
+  ClubView club = 1;
+}
+
+message JoinClubRequest {
+  string club_id = 1;
+}
+
+message JoinClubResponse {
+  ClubView club = 1;
+}
+
+message LeaveClubRequest {
+  string club_id = 1;
+}
+
+message LeaveClubResponse {
+  ClubView club = 1;
+}
+
+message ListMembersRequest {
+  string club_id = 1;
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+  bool admins_only = 4;
+}
+
+message Member {
+  string user_id = 1;
+  Role role = 2;
+}
+
+message ListMembersResponse {
+  repeated Member members = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+}
+
+message SetMemberRoleRequest {
+  string club_id = 1;
+  string user_id = 2;
+  // ROLE_MEMBER or ROLE_ADMIN.
+  Role role = 3;
+}
+
+message ListMyClubsRequest {
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+}
+
+message Membership {
+  Club club = 1;
+  Role role = 2;
+}
+
+message ListMyClubsResponse {
+  repeated Membership clubs = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+}
+
+message ListMyClubIDsRequest {}
+
+message ListMyClubIDsResponse {
+  repeated string club_ids = 1;
+}
+
+message CanPostOnWallRequest {
+  string club_id = 1;
+  bool from_club = 2;
+}
+
+message CanPostOnWallResponse {
+  bool allowed = 1;
+}
+
+message CanModerateWallRequest {
+  string wall_id = 1;
+  string user_id = 2;
+}
+
+message CanModerateWallResponse {
+  bool allowed = 1;
+}
+
+message PurgeUserRequest {
+  string user_id = 1;
+}

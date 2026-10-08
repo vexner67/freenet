@@ -22,6 +22,7 @@ const (
 	Media        = "media"
 	Message      = "message"
 	Notification = "notification"
+	Club         = "club"
 	Gateway      = "gateway"
 )
 
