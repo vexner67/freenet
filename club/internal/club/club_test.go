@@ -77,12 +77,12 @@ func TestNewAddress(t *testing.T) {
 func TestNewWallAndRole(t *testing.T) {
 	t.Parallel()
 
-	for _, s := range []string{"open", "closed"} {
+	for _, s := range []string{"open", "suggest", "closed"} {
 		if _, err := club.NewWall(s); err != nil {
 			t.Errorf("NewWall(%q): %v", s, err)
 		}
 	}
-	if _, err := club.NewWall("suggest"); !errors.Is(err, club.ErrInvalidWall) {
+	if _, err := club.NewWall("limited"); !errors.Is(err, club.ErrInvalidWall) {
 		t.Errorf("unknown wall: %v", err)
 	}
 
@@ -152,6 +152,11 @@ func TestCanPostOnWall(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	suggest, err := open.Edited(club.RoleOwner, club.Changes{Name: open.Name(), Wall: club.WallSuggest})
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	tests := []struct {
 		name     string
 		c        *club.Club
@@ -159,6 +164,8 @@ func TestCanPostOnWall(t *testing.T) {
 		fromClub bool
 		want     bool
 	}{
+		{"suggest: a member", suggest, club.RoleMember, false, false},
+		{"suggest: an admin", suggest, club.RoleAdmin, false, true},
 		{"open: a stranger", open, club.RoleNone, false, true},
 		{"open: a member", open, club.RoleMember, false, true},
 		{"open: a member for the club", open, club.RoleMember, true, false},
@@ -171,6 +178,25 @@ func TestCanPostOnWall(t *testing.T) {
 	for _, tt := range tests {
 		if got := tt.c.CanPostOnWall(tt.role, tt.fromClub); got != tt.want {
 			t.Errorf("%s: %v, want %v", tt.name, got, tt.want)
+		}
+	}
+
+	// Only those who may not post suggest, and only on a "Предложка".
+	for _, tt := range []struct {
+		name string
+		c    *club.Club
+		role club.Role
+		want bool
+	}{
+		{"suggest: a stranger", suggest, club.RoleNone, true},
+		{"suggest: a member", suggest, club.RoleMember, true},
+		{"suggest: an admin", suggest, club.RoleAdmin, false},
+		{"suggest: the owner", suggest, club.RoleOwner, false},
+		{"open: a member", open, club.RoleMember, false},
+		{"closed: a member", closed, club.RoleMember, false},
+	} {
+		if got := tt.c.CanSuggest(tt.role); got != tt.want {
+			t.Errorf("CanSuggest, %s: %v, want %v", tt.name, got, tt.want)
 		}
 	}
 }

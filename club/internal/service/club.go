@@ -462,20 +462,27 @@ func (s *ClubService) ClubIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUI
 	return ids, nil
 }
 
+// WallAccess is what a user may do on a club's wall: Post, or else
+// Suggest a post for its admins to publish ("Предложка").
+type WallAccess struct {
+	Post    bool
+	Suggest bool
+}
+
 // CanPostOnWall tells whether userID may write on the club's wall, on
-// their own behalf or, fromClub, on the club's.
-func (s *ClubService) CanPostOnWall(ctx context.Context, userID, clubID uuid.UUID, fromClub bool) (bool, error) {
+// their own behalf or, fromClub, on the club's, or else suggest a post.
+func (s *ClubService) CanPostOnWall(ctx context.Context, userID, clubID uuid.UUID, fromClub bool) (WallAccess, error) {
 	c, err := s.clubs.Get(ctx, clubID)
 	if err != nil {
-		return false, errs.Wrap("s.clubs.Get", err)
+		return WallAccess{}, errs.Wrap("s.clubs.Get", err)
 	}
 
 	role, err := s.members.Role(ctx, clubID, userID)
 	if err != nil {
-		return false, errs.Wrap("s.members.Role", err)
+		return WallAccess{}, errs.Wrap("s.members.Role", err)
 	}
 
-	return c.CanPostOnWall(role, fromClub), nil
+	return WallAccess{Post: c.CanPostOnWall(role, fromClub), Suggest: c.CanSuggest(role)}, nil
 }
 
 // CanModerateWall tells whether userID keeps the wall of wallID clean:

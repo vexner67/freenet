@@ -53,7 +53,7 @@ service ClubService {
   // The caller's newest 1000 clubs, whose walls their feed shows.
   rpc ListMyClubIDs(ListMyClubIDsRequest) returns (ListMyClubIDsResponse);
   // Whether the caller may write on the club's wall, on their own behalf
-  // or, with from_club, on the club's.
+  // or, with from_club, on the club's, or else suggest a post.
   rpc CanPostOnWall(CanPostOnWallRequest) returns (CanPostOnWallResponse);
 
   // Internal, for post: whether user_id keeps the wall of wall_id clean,
@@ -65,11 +65,13 @@ service ClubService {
   rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
 }
 
-// Who may write on the wall: everyone, or only the admins.
+// Who may write on the wall: everyone, only the admins, or only the
+// admins who publish what others suggest ("Предложка").
 enum Wall {
   WALL_UNSPECIFIED = 0;
   WALL_OPEN = 1;
   WALL_CLOSED = 2;
+  WALL_SUGGEST = 3;
 }
 
 // What the page of a club shows of those who run it, openvk's "Список
@@ -296,6 +298,10 @@ message CanPostOnWallRequest {
 
 message CanPostOnWallResponse {
   bool allowed = 1;
+  // The caller may suggest a post for the admins to publish
+  // ("Предложить новость"): the wall is a "Предложка" and the caller is
+  // not one of its admins.
+  bool suggest = 2;
 }
 
 message CanModerateWallRequest {

@@ -23,13 +23,15 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
-// Who may write on the wall: everyone, or only the admins.
+// Who may write on the wall: everyone, only the admins, or only the
+// admins who publish what others suggest ("Предложка").
 type Wall int32
 
 const (
 	Wall_WALL_UNSPECIFIED Wall = 0
 	Wall_WALL_OPEN        Wall = 1
 	Wall_WALL_CLOSED      Wall = 2
+	Wall_WALL_SUGGEST     Wall = 3
 )
 
 // Enum value maps for Wall.
@@ -38,11 +40,13 @@ var (
 		0: "WALL_UNSPECIFIED",
 		1: "WALL_OPEN",
 		2: "WALL_CLOSED",
+		3: "WALL_SUGGEST",
 	}
 	Wall_value = map[string]int32{
 		"WALL_UNSPECIFIED": 0,
 		"WALL_OPEN":        1,
 		"WALL_CLOSED":      2,
+		"WALL_SUGGEST":     3,
 	}
 )
 
@@ -2035,8 +2039,12 @@ func (x *CanPostOnWallRequest) GetFromClub() bool {
 }
 
 type CanPostOnWallResponse struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Allowed       bool                   `protobuf:"varint,1,opt,name=allowed,proto3" json:"allowed,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Allowed bool                   `protobuf:"varint,1,opt,name=allowed,proto3" json:"allowed,omitempty"`
+	// The caller may suggest a post for the admins to publish
+	// ("Предложить новость"): the wall is a "Предложка" and the caller is
+	// not one of its admins.
+	Suggest       bool `protobuf:"varint,2,opt,name=suggest,proto3" json:"suggest,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2074,6 +2082,13 @@ func (*CanPostOnWallResponse) Descriptor() ([]byte, []int) {
 func (x *CanPostOnWallResponse) GetAllowed() bool {
 	if x != nil {
 		return x.Allowed
+	}
+	return false
+}
+
+func (x *CanPostOnWallResponse) GetSuggest() bool {
+	if x != nil {
+		return x.Suggest
 	}
 	return false
 }
@@ -2339,20 +2354,22 @@ const file_api_club_v1_club_proto_rawDesc = "" +
 	"\bclub_ids\x18\x01 \x03(\tR\aclubIds\"L\n" +
 	"\x14CanPostOnWallRequest\x12\x17\n" +
 	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x1b\n" +
-	"\tfrom_club\x18\x02 \x01(\bR\bfromClub\"1\n" +
+	"\tfrom_club\x18\x02 \x01(\bR\bfromClub\"K\n" +
 	"\x15CanPostOnWallResponse\x12\x18\n" +
-	"\aallowed\x18\x01 \x01(\bR\aallowed\"J\n" +
+	"\aallowed\x18\x01 \x01(\bR\aallowed\x12\x18\n" +
+	"\asuggest\x18\x02 \x01(\bR\asuggest\"J\n" +
 	"\x16CanModerateWallRequest\x12\x17\n" +
 	"\awall_id\x18\x01 \x01(\tR\x06wallId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"3\n" +
 	"\x17CanModerateWallResponse\x12\x18\n" +
 	"\aallowed\x18\x01 \x01(\bR\aallowed\"+\n" +
 	"\x10PurgeUserRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId*<\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId*N\n" +
 	"\x04Wall\x12\x14\n" +
 	"\x10WALL_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tWALL_OPEN\x10\x01\x12\x0f\n" +
-	"\vWALL_CLOSED\x10\x02*|\n" +
+	"\vWALL_CLOSED\x10\x02\x12\x10\n" +
+	"\fWALL_SUGGEST\x10\x03*|\n" +
 	"\rAdminsDisplay\x12\x1e\n" +
 	"\x1aADMINS_DISPLAY_UNSPECIFIED\x10\x00\x12\x1a\n" +
 	"\x16ADMINS_DISPLAY_CREATOR\x10\x01\x12\x16\n" +

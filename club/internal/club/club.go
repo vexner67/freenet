@@ -148,14 +148,21 @@ func CheckPin(role Role) error {
 
 // CanPostOnWall tells whether someone who is role in the club may write
 // on its wall, on their own behalf or, fromClub, on the club's. Only the
-// admins speak for the club and write on a closed wall; an open one
-// takes posts from anyone, members or not, as in openvk.
+// admins speak for the club and write on a wall that is not open; an
+// open one takes posts from anyone, members or not, as in openvk.
 func (c *Club) CanPostOnWall(role Role, fromClub bool) bool {
-	if fromClub || c.wall == WallClosed {
+	if fromClub || c.wall != WallOpen {
 		return role.Manages()
 	}
 
 	return true
+}
+
+// CanSuggest tells whether someone who is role in the club may suggest a
+// post for its wall, "Предложить новость" of openvk: anyone but the admins,
+// who post themselves, when the wall is "Предложка".
+func (c *Club) CanSuggest(role Role) bool {
+	return c.wall == WallSuggest && !role.Manages()
 }
 
 // CheckLeave: anyone may leave a club but its owner, who would leave it
