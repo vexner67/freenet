@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -187,6 +188,9 @@ func TestClubService_Appoint(t *testing.T) {
 	if ok, err := svc.CanModerateWall(ctx, c.ID(), bob); err != nil || !ok {
 		t.Fatalf("the admin moderates: %v, %v", ok, err)
 	}
+	if ids, err := svc.WallModerators(ctx, c.ID()); err != nil || !slices.Equal(ids, []uuid.UUID{bob, ann}) {
+		t.Fatalf("WallModerators = %v, %v; bob, then the owner", ids, err)
+	}
 	if err = svc.Appoint(ctx, bob, c.ID(), bob, club.RoleMember); !errors.Is(err, club.ErrCannotAppoint) {
 		t.Fatalf("the admin appoints: %v", err)
 	}
@@ -304,6 +308,9 @@ func TestClubService_Walls(t *testing.T) {
 	// A user's wall is no club's: nobody moderates it here.
 	if ok, err := svc.CanModerateWall(ctx, ann, ann); err != nil || ok {
 		t.Fatalf("a user's wall = %v, %v", ok, err)
+	}
+	if ids, err := svc.WallModerators(ctx, ann); err != nil || len(ids) != 0 {
+		t.Fatalf("a user's wall has moderators %v, %v", ids, err)
 	}
 }
 

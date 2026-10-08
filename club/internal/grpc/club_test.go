@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"slices"
 	"testing"
 	"time"
 
@@ -142,6 +143,10 @@ func TestClub(t *testing.T) {
 	mod, err := s.client.CanModerateWall(context.Background(), &clubv1.CanModerateWallRequest{WallId: id, UserId: bob.String()})
 	if err != nil || !mod.GetAllowed() {
 		t.Fatalf("CanModerateWall = %v, %v", mod, err)
+	}
+	mods, err := s.client.ListWallModerators(context.Background(), &clubv1.ListWallModeratorsRequest{WallId: id})
+	if err != nil || !slices.Equal(mods.GetUserIds(), []string{bob.String(), ann.String()}) {
+		t.Fatalf("ListWallModerators = %v, %v", mods, err)
 	}
 
 	admins, err := s.client.ListMembers(context.Background(), &clubv1.ListMembersRequest{ClubId: id, AdminsOnly: true})
