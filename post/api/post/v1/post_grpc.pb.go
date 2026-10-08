@@ -46,7 +46,8 @@ const (
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type PostServiceClient interface {
 	// Require an access token; the author is the caller. A post is deleted
-	// by its author or by the owner of its wall.
+	// by its author or by the owner of its wall; on a community's wall by
+	// its admins too, whom post asks the club service about.
 	CreatePost(ctx context.Context, in *CreatePostRequest, opts ...grpc.CallOption) (*CreatePostResponse, error)
 	DeletePost(ctx context.Context, in *DeletePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token: shares a post on the caller's own wall. A
@@ -56,8 +57,9 @@ type PostServiceClient interface {
 	// their post within a week of posting (editable_until); a repost keeps
 	// what it shares and takes no photos.
 	EditPost(ctx context.Context, in *EditPostRequest, opts ...grpc.CallOption) (*EditPostResponse, error)
-	// Require an access token: the owner of the wall shows the post first
-	// on it, instead of the one pinned before, or stops. Both idempotent.
+	// Require an access token: the owner of the wall (the admins of a
+	// community) shows the post first on it, instead of the one pinned
+	// before, or stops. Both idempotent.
 	PinPost(ctx context.Context, in *PinPostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UnpinPost(ctx context.Context, in *UnpinPostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: one post.
@@ -67,15 +69,17 @@ type PostServiceClient interface {
 	GetPosts(ctx context.Context, in *GetPostsRequest, opts ...grpc.CallOption) (*GetPostsResponse, error)
 	// Public: a user's wall, newest first, whoever wrote the posts.
 	ListPosts(ctx context.Context, in *ListPostsRequest, opts ...grpc.CallOption) (*ListPostsResponse, error)
-	// Public: the posts written by several authors on any walls, newest
-	// first, for a news feed.
+	// Public: the posts written by several authors on any walls, but for
+	// those that speak for a community, and every post on several walls,
+	// newest first, for a news feed.
 	ListFeed(ctx context.Context, in *ListFeedRequest, opts ...grpc.CallOption) (*ListFeedResponse, error)
 	// Require an access token; the caller likes the post. Both are
 	// idempotent and return how many likes the post has now.
 	LikePost(ctx context.Context, in *LikePostRequest, opts ...grpc.CallOption) (*LikePostResponse, error)
 	UnlikePost(ctx context.Context, in *UnlikePostRequest, opts ...grpc.CallOption) (*UnlikePostResponse, error)
 	// Require an access token; the author is the caller. A comment is
-	// deleted by its author or by the author of the post.
+	// deleted by its author, by the author of the post or by the owner of
+	// the wall, the admins of a community.
 	CreateComment(ctx context.Context, in *CreateCommentRequest, opts ...grpc.CallOption) (*CreateCommentResponse, error)
 	DeleteComment(ctx context.Context, in *DeleteCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token; the caller likes the comment. Both are
@@ -295,7 +299,8 @@ func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest,
 // for forward compatibility.
 type PostServiceServer interface {
 	// Require an access token; the author is the caller. A post is deleted
-	// by its author or by the owner of its wall.
+	// by its author or by the owner of its wall; on a community's wall by
+	// its admins too, whom post asks the club service about.
 	CreatePost(context.Context, *CreatePostRequest) (*CreatePostResponse, error)
 	DeletePost(context.Context, *DeletePostRequest) (*emptypb.Empty, error)
 	// Requires an access token: shares a post on the caller's own wall. A
@@ -305,8 +310,9 @@ type PostServiceServer interface {
 	// their post within a week of posting (editable_until); a repost keeps
 	// what it shares and takes no photos.
 	EditPost(context.Context, *EditPostRequest) (*EditPostResponse, error)
-	// Require an access token: the owner of the wall shows the post first
-	// on it, instead of the one pinned before, or stops. Both idempotent.
+	// Require an access token: the owner of the wall (the admins of a
+	// community) shows the post first on it, instead of the one pinned
+	// before, or stops. Both idempotent.
 	PinPost(context.Context, *PinPostRequest) (*emptypb.Empty, error)
 	UnpinPost(context.Context, *UnpinPostRequest) (*emptypb.Empty, error)
 	// Public: one post.
@@ -316,15 +322,17 @@ type PostServiceServer interface {
 	GetPosts(context.Context, *GetPostsRequest) (*GetPostsResponse, error)
 	// Public: a user's wall, newest first, whoever wrote the posts.
 	ListPosts(context.Context, *ListPostsRequest) (*ListPostsResponse, error)
-	// Public: the posts written by several authors on any walls, newest
-	// first, for a news feed.
+	// Public: the posts written by several authors on any walls, but for
+	// those that speak for a community, and every post on several walls,
+	// newest first, for a news feed.
 	ListFeed(context.Context, *ListFeedRequest) (*ListFeedResponse, error)
 	// Require an access token; the caller likes the post. Both are
 	// idempotent and return how many likes the post has now.
 	LikePost(context.Context, *LikePostRequest) (*LikePostResponse, error)
 	UnlikePost(context.Context, *UnlikePostRequest) (*UnlikePostResponse, error)
 	// Require an access token; the author is the caller. A comment is
-	// deleted by its author or by the author of the post.
+	// deleted by its author, by the author of the post or by the owner of
+	// the wall, the admins of a community.
 	CreateComment(context.Context, *CreateCommentRequest) (*CreateCommentResponse, error)
 	DeleteComment(context.Context, *DeleteCommentRequest) (*emptypb.Empty, error)
 	// Require an access token; the caller likes the comment. Both are

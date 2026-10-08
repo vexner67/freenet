@@ -13,6 +13,7 @@ import (
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/post/internal/post"
 	"github.com/vexner67/freenet/post/internal/postgres"
+	"github.com/vexner67/freenet/post/internal/service"
 )
 
 // newPool connects to the database of the integration tests, which needs
@@ -136,14 +137,14 @@ func TestPostRepository(t *testing.T) {
 		t.Fatalf("CountByWall = %d, %v", n, err)
 	}
 
-	byOther, err := repo.ListByAuthors(ctx, []uuid.UUID{other}, uuid.Nil, 10)
+	byOther, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{other}}, uuid.Nil, 10)
 	if err != nil || len(byOther) != 2 || byOther[0].ID() != guest.ID() || byOther[1].ID() != theirs.ID() {
-		t.Fatalf("ListByAuthors(other) = %v, %v", byOther, err)
+		t.Fatalf("ListFeed(other) = %v, %v", byOther, err)
 	}
 
-	feed, err := repo.ListByAuthors(ctx, []uuid.UUID{author, other}, uuid.Nil, 10)
+	feed, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{author, other}}, uuid.Nil, 10)
 	if err != nil || len(feed) != 5 || feed[0].ID() != guest.ID() || feed[4].Content().Text() != "раз" {
-		t.Fatalf("ListByAuthors = %v, %v", feed, err)
+		t.Fatalf("ListFeed = %v, %v", feed, err)
 	}
 
 	if err = repo.Delete(ctx, saved[0].ID()); err != nil {
@@ -154,5 +155,54 @@ func TestPostRepository(t *testing.T) {
 	}
 	if _, err = repo.Get(ctx, saved[0].ID()); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("Get after Delete: %v", err)
+	}
+}
+
+func TestPostRepository_ClubWalls(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	repo := postgres.NewPostRepository(newPool(t))
+	club, admin, member := uuid.New(), uuid.New(), uuid.New()
+	content := post.RestoreContent("x", nil, uuid.Nil)
+
+	news, err := post.NewFromWall(club, admin, content, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	byMember, err := post.New(club, member, content, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	adminsOwn, err := post.New(admin, admin, content, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, p := range []*post.Post{news, byMember, adminsOwn} {
+		if err = repo.Save(ctx, p); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+	}
+
+	got, err := repo.Get(ctx, news.ID())
+	if err != nil || !got.FromWall() || got.AuthorID() != admin {
+		t.Fatalf("Get = %+v, %v; it speaks for the club", got, err)
+	}
+	if got, _ = repo.Get(ctx, byMember.ID()); got.FromWall() {
+		t.Fatal("the member's post speaks for the member")
+	}
+
+	byAuthor, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{admin}}, uuid.Nil, 10)
+	if err != nil || len(byAuthor) != 1 || byAuthor[0].ID() != adminsOwn.ID() {
+		t.Fatalf("feed of the admin = %v, %v; not the club's post", byAuthor, err)
+	}
+
+	both, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{admin}, Walls: []uuid.UUID{club}}, uuid.Nil, 10)
+	if err != nil || len(both) != 3 || both[0].ID() != adminsOwn.ID() || both[1].ID() != byMember.ID() || both[2].ID() != news.ID() {
+		t.Fatalf("feed of the admin and the club = %v, %v", both, err)
+	}
+
+	if older, err := repo.ListFeed(ctx, service.FeedSources{Walls: []uuid.UUID{club}}, byMember.ID(), 10); err != nil || len(older) != 1 || older[0].ID() != news.ID() {
+		t.Fatalf("feed after a cursor = %v, %v", older, err)
 	}
 }

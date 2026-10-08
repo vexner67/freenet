@@ -15,7 +15,7 @@ import (
 )
 
 type PostService interface {
-	Create(ctx context.Context, wallID, authorID uuid.UUID, content post.Content) (*post.Post, error)
+	Create(ctx context.Context, in service.CreateInput) (*post.Post, error)
 	Repost(ctx context.Context, authorID, postID uuid.UUID, text post.Text) (*post.Post, error)
 	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
 	Edit(ctx context.Context, requesterID, postID uuid.UUID, text post.Text, photos post.Photos) (*post.Post, bool, error)
@@ -24,7 +24,7 @@ type PostService interface {
 	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
 	ListWall(ctx context.Context, viewerID, wallID, cursor uuid.UUID, size int) (service.Page, error)
-	Feed(ctx context.Context, viewerID uuid.UUID, authorIDs []uuid.UUID, cursor uuid.UUID, size int) (service.Page, error)
+	Feed(ctx context.Context, viewerID uuid.UUID, sources service.FeedSources, cursor uuid.UUID, size int) (service.Page, error)
 	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
 }
@@ -93,12 +93,18 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		}
 	}
 
-	p, err := h.postService.Create(ctx, wallID, authorID, content)
+	p, err := h.postService.Create(ctx, service.CreateInput{
+		WallID:   wallID,
+		AuthorID: authorID,
+		Content:  content,
+		ClubWall: req.GetClubWall(),
+		FromWall: req.GetFromWall(),
+	})
 	if err != nil {
 		return nil, err
 	}
 
-	return &postv1.CreatePostResponse{Post: toProtoPost(p, false)}, nil
+	return &postv1.CreatePostResponse{Post: toProtoPost(p, false, viewerID(ctx))}, nil
 }
 
 func (h *PostHandler) RepostPost(ctx context.Context, req *postv1.RepostPostRequest) (*postv1.RepostPostResponse, error) {
@@ -117,7 +123,7 @@ func (h *PostHandler) RepostPost(ctx context.Context, req *postv1.RepostPostRequ
 		return nil, err
 	}
 
-	return &postv1.RepostPostResponse{Post: toProtoPost(p, false)}, nil
+	return &postv1.RepostPostResponse{Post: toProtoPost(p, false, viewerID(ctx))}, nil
 }
 
 func (h *PostHandler) EditPost(ctx context.Context, req *postv1.EditPostRequest) (*postv1.EditPostResponse, error) {
@@ -141,7 +147,7 @@ func (h *PostHandler) EditPost(ctx context.Context, req *postv1.EditPostRequest)
 		return nil, err
 	}
 
-	return &postv1.EditPostResponse{Post: toProtoPost(p, liked)}, nil
+	return &postv1.EditPostResponse{Post: toProtoPost(p, liked, viewerID(ctx))}, nil
 }
 
 func (h *PostHandler) PinPost(ctx context.Context, req *postv1.PinPostRequest) (*emptypb.Empty, error) {
@@ -199,7 +205,7 @@ func (h *PostHandler) GetPost(ctx context.Context, req *postv1.GetPostRequest) (
 		return nil, err
 	}
 
-	return &postv1.GetPostResponse{Post: toProtoPost(p, liked)}, nil
+	return &postv1.GetPostResponse{Post: toProtoPost(p, liked, viewerID(ctx))}, nil
 }
 
 // GetPosts leaves liked unset: the posts are shown without their likes.
@@ -216,7 +222,7 @@ func (h *PostHandler) GetPosts(ctx context.Context, req *postv1.GetPostsRequest)
 
 	resp := &postv1.GetPostsResponse{Posts: make([]*postv1.Post, 0, len(posts))}
 	for _, p := range posts {
-		resp.Posts = append(resp.Posts, toProtoPost(p, false))
+		resp.Posts = append(resp.Posts, toProtoPost(p, false, viewerID(ctx)))
 	}
 
 	return resp, nil
@@ -239,24 +245,25 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 	}
 
 	return &postv1.ListPostsResponse{
-		Posts:      toProtoPosts(page),
+		Posts:      toProtoPosts(page, viewerID(ctx)),
 		NextCursor: cursorString(page.NextCursor),
 		Total:      int32(page.Total), //nolint:gosec // a wall will not hold 2^31 posts
 	}, nil
 }
 
 func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest) (*postv1.ListFeedResponse, error) {
-	if len(req.GetAuthorIds()) > service.MaxFeedAuthors {
+	if len(req.GetAuthorIds()) > service.MaxFeedAuthors || len(req.GetWallIds()) > service.MaxFeedAuthors {
 		return nil, status.Error(codes.InvalidArgument, "too many authors")
 	}
 
-	authorIDs := make([]uuid.UUID, 0, len(req.GetAuthorIds()))
-	for _, s := range req.GetAuthorIds() {
-		id, err := uuid.Parse(s)
-		if err != nil {
-			return nil, status.Error(codes.InvalidArgument, "invalid author id")
-		}
-		authorIDs = append(authorIDs, id)
+	authorIDs, err := parseFeedIDs(req.GetAuthorIds(), "invalid author id")
+	if err != nil {
+		return nil, err
+	}
+
+	wallIDs, err := parseFeedIDs(req.GetWallIds(), "invalid wall id")
+	if err != nil {
+		return nil, err
 	}
 
 	cursor, err := parseCursor(req.GetCursor())
@@ -264,13 +271,15 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 		return nil, err
 	}
 
-	page, err := h.postService.Feed(ctx, viewerID(ctx), authorIDs, cursor, int(req.GetLimit()))
+	sources := service.FeedSources{Authors: authorIDs, Walls: wallIDs}
+
+	page, err := h.postService.Feed(ctx, viewerID(ctx), sources, cursor, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}
 
 	return &postv1.ListFeedResponse{
-		Posts:      toProtoPosts(page),
+		Posts:      toProtoPosts(page, viewerID(ctx)),
 		NextCursor: cursorString(page.NextCursor),
 	}, nil
 }
@@ -369,4 +378,17 @@ func currentUserID(ctx context.Context) (uuid.UUID, error) {
 	}
 
 	return identity.UserID, nil
+}
+
+func parseFeedIDs(ss []string, invalid string) ([]uuid.UUID, error) {
+	ids := make([]uuid.UUID, 0, len(ss))
+	for _, s := range ss {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, invalid)
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
 }

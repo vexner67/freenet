@@ -11,6 +11,7 @@ import (
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/post/internal/post"
+	"github.com/vexner67/freenet/post/internal/service"
 )
 
 // newestCursor is above every UUID, so "id < newestCursor" starts a wall
@@ -40,9 +41,10 @@ const savePostQuery = `
 		author_id,
 		text,
 		photo_ids,
-		created_at
+		created_at,
+		from_wall
 	)
-	VALUES ($1, $2, $3, $4, $5, $6)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -51,7 +53,7 @@ const saveRepostQuery = `
 	WITH shared AS (
 		UPDATE posts
 		SET repost_count = repost_count + 1
-		WHERE id = $7
+		WHERE id = $8
 		RETURNING id
 	)
 	INSERT INTO posts (
@@ -61,16 +63,17 @@ const saveRepostQuery = `
 		text,
 		photo_ids,
 		created_at,
+		from_wall,
 		repost_of
 	)
-	SELECT $1, $2, $3, $4, $5, $6, shared.id
+	SELECT $1, $2, $3, $4, $5, $6, $7, shared.id
 	FROM shared
 `
 
 func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	content := p.Content()
 
-	args := []any{p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photoIDs(content.Photos()), p.CreatedAt()}
+	args := []any{p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photoIDs(content.Photos()), p.CreatedAt(), p.FromWall()}
 
 	if content.RepostOf() == uuid.Nil {
 		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, args...); err != nil {
@@ -105,6 +108,7 @@ const getPostQuery = `
 		comment_count,
 		repost_count,
 		edited_at,
+		from_wall,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = $1
@@ -135,6 +139,7 @@ const getPostsQuery = `
 		comment_count,
 		repost_count,
 		edited_at,
+		from_wall,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = ANY($1)
@@ -257,6 +262,7 @@ const getPinnedPostQuery = `
 		comment_count,
 		repost_count,
 		edited_at,
+		from_wall,
 		true AS pinned
 	FROM posts
 	WHERE id = (SELECT post_id FROM pinned_posts WHERE wall_id = $1)
@@ -287,6 +293,7 @@ const listPostsByWallQuery = `
 		comment_count,
 		repost_count,
 		edited_at,
+		from_wall,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE wall_id = $1
@@ -301,8 +308,7 @@ func (r *PostRepository) ListByWall(ctx context.Context, wallID, before uuid.UUI
 	return r.list(ctx, listPostsByWallQuery, wallID, before, limit)
 }
 
-// list runs a newest-first keyset query; owners is a wall ID or a slice of
-// author IDs.
+// list runs a newest-first keyset query of the posts of a wall.
 func (r *PostRepository) list(ctx context.Context, query string, owners any, before uuid.UUID, limit int) ([]*post.Post, error) {
 	if before == uuid.Nil {
 		before = newestCursor
@@ -316,7 +322,9 @@ func (r *PostRepository) list(ctx context.Context, query string, owners any, bef
 	return collectPosts(rows)
 }
 
-const listPostsByAuthorsQuery = `
+// listFeedQuery: a post that speaks for a community is the community's,
+// so it comes with the walls, never with its author.
+const listFeedQuery = `
 	SELECT
 		id,
 		wall_id,
@@ -329,16 +337,36 @@ const listPostsByAuthorsQuery = `
 		comment_count,
 		repost_count,
 		edited_at,
+		from_wall,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
-	WHERE author_id = ANY($1)
-		AND id < $2
+	WHERE ((author_id = ANY($1) AND NOT from_wall) OR wall_id = ANY($2))
+		AND id < $3
 	ORDER BY id DESC
-	LIMIT $3
+	LIMIT $4
 `
 
-func (r *PostRepository) ListByAuthors(ctx context.Context, authorIDs []uuid.UUID, before uuid.UUID, limit int) ([]*post.Post, error) {
-	return r.list(ctx, listPostsByAuthorsQuery, authorIDs, before, limit)
+func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSources, before uuid.UUID, limit int) ([]*post.Post, error) {
+	if before == uuid.Nil {
+		before = newestCursor
+	}
+
+	rows, err := r.conn(ctx).Query(ctx, listFeedQuery, ids(sources.Authors), ids(sources.Walls), before, limit)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	return collectPosts(rows)
+}
+
+// ids is a slice for ANY($n): pgx writes a nil slice as NULL, which
+// matches nothing either, but an empty array says so.
+func ids(s []uuid.UUID) []uuid.UUID {
+	if s == nil {
+		return []uuid.UUID{}
+	}
+
+	return s
 }
 
 const countPostsByWallQuery = `
@@ -397,7 +425,7 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	)
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
-		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.Pinned)
+		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -442,6 +470,7 @@ const deletePostsByUserQuery = `
 			comment_count,
 			repost_count,
 			edited_at,
+			from_wall,
 			EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	), uncounted AS (
 		UPDATE posts p
@@ -468,6 +497,7 @@ const deletePostsByUserQuery = `
 		comment_count,
 		repost_count,
 		edited_at,
+		from_wall,
 		pinned
 	FROM deleted
 `

@@ -15,6 +15,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	"github.com/vexner67/freenet/post/internal/clubclient"
 	postgrpc "github.com/vexner67/freenet/post/internal/grpc"
 	"github.com/vexner67/freenet/post/internal/inmem"
 	"github.com/vexner67/freenet/post/internal/mediaclient"
@@ -52,8 +53,8 @@ func newServer(t *testing.T) testServer {
 	))
 	store := inmem.NewStore()
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(
-		service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}}),
-		service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}}),
+		service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
+		service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
 		service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
 		}),
@@ -193,6 +194,14 @@ func TestErrors(t *testing.T) {
 		}, codes.InvalidArgument},
 		{"too long text", func() error {
 			_, err := s.client.CreatePost(ann, &postv1.CreatePostRequest{Text: strings.Repeat("я", 1001)})
+			return err
+		}, codes.InvalidArgument},
+		{"speaking for one's own wall", func() error {
+			_, err := s.client.CreatePost(ann, &postv1.CreatePostRequest{Text: "я", FromWall: true})
+			return err
+		}, codes.InvalidArgument},
+		{"a bad wall in the feed", func() error {
+			_, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{WallIds: []string{"x"}})
 			return err
 		}, codes.InvalidArgument},
 		{"bad author id", func() error {
@@ -473,5 +482,38 @@ func TestEditAndPin(t *testing.T) {
 	}
 	if got, _ = s.client.GetPost(context.Background(), &postv1.GetPostRequest{Id: id}); got.GetPost().GetPinned() {
 		t.Fatal("the post is still pinned")
+	}
+}
+
+func TestClubWall(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	club, admin := uuid.New(), uuid.New()
+
+	created, err := s.client.CreatePost(s.as(t, admin), &postv1.CreatePostRequest{Text: "новости", WallId: club.String(), ClubWall: true, FromWall: true})
+	if err != nil || !created.GetPost().GetFromWall() || created.GetPost().GetWallId() != club.String() || !created.GetPost().GetMine() {
+		t.Fatalf("CreatePost = %v, %v", created, err)
+	}
+
+	// Only its author is told it is theirs.
+	got, err := s.client.GetPost(s.as(t, admin), &postv1.GetPostRequest{Id: created.GetPost().GetId()})
+	if err != nil || !got.GetPost().GetMine() {
+		t.Fatalf("GetPost by the author = %v, %v", got, err)
+	}
+	for _, ctx := range []context.Context{s.as(t, uuid.New()), context.Background()} {
+		if got, err = s.client.GetPost(ctx, &postv1.GetPostRequest{Id: created.GetPost().GetId()}); err != nil || got.GetPost().GetMine() {
+			t.Fatalf("GetPost by someone else = %v, %v", got, err)
+		}
+	}
+
+	feed, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{WallIds: []string{club.String()}})
+	if err != nil || len(feed.GetPosts()) != 1 || !feed.GetPosts()[0].GetFromWall() {
+		t.Fatalf("ListFeed of the club = %v, %v", feed, err)
+	}
+
+	byAuthor, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{admin.String()}})
+	if err != nil || len(byAuthor.GetPosts()) != 0 {
+		t.Fatalf("ListFeed of the admin = %v, %v; the post is the club's", byAuthor, err)
 	}
 }

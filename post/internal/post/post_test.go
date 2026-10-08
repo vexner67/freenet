@@ -90,6 +90,38 @@ func TestPost_OnSomeoneElsesWall(t *testing.T) {
 	}
 }
 
+func TestPost_FromWall(t *testing.T) {
+	t.Parallel()
+
+	club, admin := uuid.New(), uuid.New()
+
+	p, err := post.NewFromWall(club, admin, textOnly(t, "новости группы"), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !p.FromWall() || p.AuthorID() != admin || p.WallID() != club || p.Notified() != uuid.Nil {
+		t.Fatalf("post = %+v; it speaks for the club and notifies nobody", p.Stored())
+	}
+
+	// The author still edits it, and it keeps speaking for the club.
+	edited, err := p.Edited(admin, "новости", nil, time.Now())
+	if err != nil || !edited.FromWall() {
+		t.Fatalf("Edited = %+v, %v", edited, err)
+	}
+	if !post.Restore(p.Stored()).FromWall() {
+		t.Fatal("storage loses fromWall")
+	}
+
+	if _, err = post.NewFromWall(admin, admin, textOnly(t, "я"), time.Now()); !errors.Is(err, post.ErrFromOwnWall) {
+		t.Fatalf("on one's own wall: %v", err)
+	}
+
+	own, err := post.New(club, admin, textOnly(t, "от себя"), time.Now())
+	if err != nil || own.FromWall() || own.Notified() != admin {
+		t.Fatalf("a post of one's own = %+v, %v; its author hears of it", own, err)
+	}
+}
+
 // textOnly is the content of a post without photos.
 func textOnly(t *testing.T, text string) post.Content {
 	t.Helper()

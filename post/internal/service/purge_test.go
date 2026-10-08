@@ -19,8 +19,8 @@ func TestPurgeService(t *testing.T) {
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
 	photos := &fakePhotos{}
-	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
-	comments := service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
+	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos, Moderators: fakeModerators{}})
+	comments := service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos, Moderators: fakeModerators{}})
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
 	})
@@ -32,7 +32,7 @@ func TestPurgeService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	annsPost, err := posts.Create(ctx, ann, ann, annsContent)
+	annsPost, err := posts.Create(ctx, service.CreateInput{WallID: ann, AuthorID: ann, Content: annsContent})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,7 +41,7 @@ func TestPurgeService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	onAnnsWall, err := posts.Create(ctx, ann, bob, content)
+	onAnnsWall, err := posts.Create(ctx, service.CreateInput{WallID: ann, AuthorID: bob, Content: content})
 	if err != nil {
 		t.Fatal(err)
 	}

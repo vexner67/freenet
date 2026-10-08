@@ -9,7 +9,8 @@ import "google/protobuf/timestamp.proto";
 
 service PostService {
   // Require an access token; the author is the caller. A post is deleted
-  // by its author or by the owner of its wall.
+  // by its author or by the owner of its wall; on a community's wall by
+  // its admins too, whom post asks the club service about.
   rpc CreatePost(CreatePostRequest) returns (CreatePostResponse);
   rpc DeletePost(DeletePostRequest) returns (google.protobuf.Empty);
   // Requires an access token: shares a post on the caller's own wall. A
@@ -19,8 +20,9 @@ service PostService {
   // their post within a week of posting (editable_until); a repost keeps
   // what it shares and takes no photos.
   rpc EditPost(EditPostRequest) returns (EditPostResponse);
-  // Require an access token: the owner of the wall shows the post first
-  // on it, instead of the one pinned before, or stops. Both idempotent.
+  // Require an access token: the owner of the wall (the admins of a
+  // community) shows the post first on it, instead of the one pinned
+  // before, or stops. Both idempotent.
   rpc PinPost(PinPostRequest) returns (google.protobuf.Empty);
   rpc UnpinPost(UnpinPostRequest) returns (google.protobuf.Empty);
 
@@ -31,8 +33,9 @@ service PostService {
   rpc GetPosts(GetPostsRequest) returns (GetPostsResponse);
   // Public: a user's wall, newest first, whoever wrote the posts.
   rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
-  // Public: the posts written by several authors on any walls, newest
-  // first, for a news feed.
+  // Public: the posts written by several authors on any walls, but for
+  // those that speak for a community, and every post on several walls,
+  // newest first, for a news feed.
   rpc ListFeed(ListFeedRequest) returns (ListFeedResponse);
 
   // Require an access token; the caller likes the post. Both are
@@ -41,7 +44,8 @@ service PostService {
   rpc UnlikePost(UnlikePostRequest) returns (UnlikePostResponse);
 
   // Require an access token; the author is the caller. A comment is
-  // deleted by its author or by the author of the post.
+  // deleted by its author, by the author of the post or by the owner of
+  // the wall, the admins of a community.
   rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
   rpc DeleteComment(DeleteCommentRequest) returns (google.protobuf.Empty);
   // Require an access token; the caller likes the comment. Both are
@@ -85,6 +89,13 @@ message Post {
   bool pinned = 13;
   // Until when the author may edit the post.
   google.protobuf.Timestamp editable_until = 14;
+  // The post speaks for its wall, a community, rather than for its
+  // author, whom readers are not shown.
+  bool from_wall = 15;
+  // The caller wrote the post; false without an access token. Tells the
+  // author a post that speaks for a community, whose author_id the
+  // gateway does not show.
+  bool mine = 16;
 }
 
 message Comment {
@@ -113,6 +124,12 @@ message CreatePostRequest {
   // The caller has checked that the owner's privacy lets the author write
   // there: post does not know users.
   string wall_id = 3;
+  // The wall is a community's, as the caller knows: nobody owns it to be
+  // notified of the post.
+  bool club_wall = 4;
+  // The post speaks for the community: the caller has checked with the
+  // club service that the author may.
+  bool from_wall = 5;
 }
 
 message CreatePostResponse {
@@ -189,6 +206,9 @@ message ListPostsResponse {
 message ListFeedRequest {
   // At most 1001: the people a user follows and the user.
   repeated string author_ids = 1;
+  // At most 1001: the communities the user is in, every post on whose
+  // walls the feed shows.
+  repeated string wall_ids = 4;
   // Empty for the newest posts, else next_cursor of the previous page.
   string cursor = 2;
   // 1-50; anything else means 20.

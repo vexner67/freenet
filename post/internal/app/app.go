@@ -8,6 +8,7 @@ import (
 
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/prometheus/client_golang/prometheus"
+	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -21,6 +22,7 @@ import (
 	"github.com/vexner67/freenet/pkg/ratelimit"
 	"github.com/vexner67/freenet/pkg/reqid"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	"github.com/vexner67/freenet/post/internal/clubclient"
 	"github.com/vexner67/freenet/post/internal/config"
 	postgrpc "github.com/vexner67/freenet/post/internal/grpc"
 	"github.com/vexner67/freenet/post/internal/inmem"
@@ -45,7 +47,8 @@ type App struct {
 	pool    *pgxpool.Pool
 	limiter ratelimit.Store
 	// conns are the clients of notification and media, one outbox stream
-	// each; queues are the PostgreSQL streams, held by the relays.
+	// each, and of club; queues are the PostgreSQL streams, held by the
+	// relays.
 	conns   []*grpc.ClientConn
 	queues  []*outbox.Postgres
 	relays  []*outbox.Relay
@@ -95,6 +98,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newPhotoKeeper", err)
 	}
 
+	moderators, err := a.newModerators(cfg)
+	if err != nil {
+		return errs.Wrap("a.newModerators", err)
+	}
+
 	limiter, err := a.newLimiter(cfg)
 	if err != nil {
 		return errs.Wrap("a.newLimiter", err)
@@ -136,9 +144,11 @@ func (a *App) build(cfg config.Config) error {
 		postgrpc.NewPostHandler(
 			service.NewPostService(service.PostDeps{
 				Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Moderators: moderators,
 			}),
 			service.NewCommentService(service.CommentDeps{
 				Posts: repos.posts, Comments: repos.comments, Likes: repos.commentLikes, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Moderators: moderators,
 			}),
 			service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Tx: repos.tx, Notifier: notifier, Photos: photos,
@@ -221,6 +231,28 @@ func (a *App) newNotifier(cfg config.Config, newQueue func(stream string) outbox
 	}
 
 	return notifyclient.NewOutbox(q), nil
+}
+
+// newModerators asks the club service about the walls of communities. The
+// connection is lazy, so the services may start in any order.
+func (a *App) newModerators(cfg config.Config) (service.WallModerators, error) {
+	if cfg.ClubServiceAddr == "" {
+		a.logger.Warn("CLUB_SERVICE_ADDR is not set: community admins cannot delete or pin others' posts and comments")
+		return clubclient.Nop{}, nil
+	}
+
+	creds, err := mtls.ClientCredentials(cfg.TLS)
+	if err != nil {
+		return nil, errs.Wrap("mtls.ClientCredentials", err)
+	}
+
+	conn, err := grpc.NewClient(cfg.ClubServiceAddr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
+	if err != nil {
+		return nil, errs.Wrap("grpc.NewClient", err)
+	}
+	a.conns = append(a.conns, conn)
+
+	return clubclient.New(clubv1.NewClubServiceClient(conn), cfg.NotifyTimeout), nil
 }
 
 // newPhotoKeeper records in the outbox what media has to do with the

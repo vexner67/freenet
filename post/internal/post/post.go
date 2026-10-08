@@ -28,6 +28,7 @@ var (
 	ErrEditExpired  = errors.New("the post can no longer be edited")
 	ErrRepostPhotos = errors.New("a repost has no photos of its own")
 	ErrCannotPin    = errors.New("only the owner of the wall can pin the post")
+	ErrFromOwnWall  = errors.New("a post on your own wall speaks for you")
 )
 
 // Text is what a post says: trimmed, with "\n" line breaks. It may be
@@ -85,6 +86,9 @@ type Post struct {
 	counters Counters
 	// pinned: the owner of the wall shows the post first on it.
 	pinned bool
+	// fromWall: the post speaks for its wall, a community, rather than
+	// for its author, who is not shown ("От имени сообщества" of openvk).
+	fromWall bool
 }
 
 // New creates a post by authorID on the wall of wallID. Its UUIDv7 ID
@@ -106,6 +110,25 @@ func New(wallID, authorID uuid.UUID, content Content, now time.Time) (*Post, err
 	}, nil
 }
 
+// NewFromWall creates a post by authorID that speaks for the wall of
+// wallID, a community: its readers see the community, not the author.
+// Whether the author may speak for it is the community's, which the caller
+// checks.
+func NewFromWall(wallID, authorID uuid.UUID, content Content, now time.Time) (*Post, error) {
+	if wallID == authorID {
+		return nil, ErrFromOwnWall
+	}
+
+	p, err := New(wallID, authorID, content, now)
+	if err != nil {
+		return nil, err
+	}
+
+	p.fromWall = true
+
+	return p, nil
+}
+
 // Stored is a post as storage keeps it.
 type Stored struct {
 	ID        uuid.UUID
@@ -116,6 +139,7 @@ type Stored struct {
 	EditedAt  time.Time
 	Counters  Counters
 	Pinned    bool
+	FromWall  bool
 }
 
 // Restore rebuilds a post from storage without validation or new IDs.
@@ -129,6 +153,7 @@ func Restore(s Stored) *Post {
 		editedAt:  s.EditedAt,
 		counters:  s.Counters,
 		pinned:    s.Pinned,
+		fromWall:  s.FromWall,
 	}
 }
 
@@ -143,6 +168,7 @@ func (p *Post) Stored() Stored {
 		EditedAt:  p.editedAt,
 		Counters:  p.counters,
 		Pinned:    p.pinned,
+		FromWall:  p.fromWall,
 	}
 }
 
@@ -206,6 +232,17 @@ func (p *Post) Shared() uuid.UUID {
 	return p.id
 }
 
+// Notified is who hears of the likes, comments and reposts of p: its
+// author, or nobody (uuid.Nil) when it speaks for a community, which has
+// no notifications and whose author is not to be told apart.
+func (p *Post) Notified() uuid.UUID {
+	if p.fromWall {
+		return uuid.Nil
+	}
+
+	return p.authorID
+}
+
 // OnOwnWall tells whether the author wrote on their own wall.
 func (p *Post) OnOwnWall() bool {
 	return p.wallID == p.authorID
@@ -247,4 +284,8 @@ func (p *Post) Counters() Counters {
 
 func (p *Post) Pinned() bool {
 	return p.pinned
+}
+
+func (p *Post) FromWall() bool {
+	return p.fromWall
 }

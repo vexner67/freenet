@@ -9,6 +9,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/post/internal/post"
+	"github.com/vexner67/freenet/post/internal/service"
 )
 
 // Store keeps posts, likes and comments together, so that likes and
@@ -272,8 +273,14 @@ func (r *PostRepository) Pinned(ctx context.Context, wallID uuid.UUID) (*post.Po
 	return r.s.posts[id], nil
 }
 
-func (r *PostRepository) ListByAuthors(ctx context.Context, authorIDs []uuid.UUID, before uuid.UUID, limit int) ([]*post.Post, error) {
-	return r.list(ctx, func(p *post.Post) bool { return slices.Contains(authorIDs, p.AuthorID()) }, before, limit)
+// ListFeed: a post that speaks for a community comes with its wall, not
+// with its author, as in PostgreSQL.
+func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSources, before uuid.UUID, limit int) ([]*post.Post, error) {
+	match := func(p *post.Post) bool {
+		return (slices.Contains(sources.Authors, p.AuthorID()) && !p.FromWall()) || slices.Contains(sources.Walls, p.WallID())
+	}
+
+	return r.list(ctx, match, before, limit)
 }
 
 // list returns up to limit matching posts, newest first, with IDs below
