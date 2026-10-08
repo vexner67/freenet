@@ -60,7 +60,10 @@ type Post struct {
 	Mine bool `protobuf:"varint,16,opt,name=mine,proto3" json:"mine,omitempty"`
 	// A post that speaks for a community names its author, author_id, as
 	// "Автор: ..." under it.
-	Signed        bool `protobuf:"varint,17,opt,name=signed,proto3" json:"signed,omitempty"`
+	Signed bool `protobuf:"varint,17,opt,name=signed,proto3" json:"signed,omitempty"`
+	// The post shows the new photo of the wall's owner, a user or a
+	// community ("обновил фотографию на своей странице"); never edited.
+	AvatarUpdate  bool `protobuf:"varint,18,opt,name=avatar_update,json=avatarUpdate,proto3" json:"avatar_update,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -210,6 +213,13 @@ func (x *Post) GetMine() bool {
 func (x *Post) GetSigned() bool {
 	if x != nil {
 		return x.Signed
+	}
+	return false
+}
+
+func (x *Post) GetAvatarUpdate() bool {
+	if x != nil {
+		return x.AvatarUpdate
 	}
 	return false
 }
@@ -841,7 +851,11 @@ type CreatePostRequest struct {
 	// club service that the author may.
 	FromWall bool `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
 	// With from_wall: the post names its author ("Подпись автора").
-	Signed        bool `protobuf:"varint,6,opt,name=signed,proto3" json:"signed,omitempty"`
+	Signed bool `protobuf:"varint,6,opt,name=signed,proto3" json:"signed,omitempty"`
+	// The post of the new photo of the wall's owner: the caller's own wall,
+	// or a community's they run, as the caller has checked; one photo and
+	// nothing else. It speaks for the community on its wall.
+	AvatarUpdate  bool `protobuf:"varint,7,opt,name=avatar_update,json=avatarUpdate,proto3" json:"avatar_update,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -914,6 +928,13 @@ func (x *CreatePostRequest) GetFromWall() bool {
 func (x *CreatePostRequest) GetSigned() bool {
 	if x != nil {
 		return x.Signed
+	}
+	return false
+}
+
+func (x *CreatePostRequest) GetAvatarUpdate() bool {
+	if x != nil {
+		return x.AvatarUpdate
 	}
 	return false
 }
@@ -2505,7 +2526,7 @@ var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xaf\x04\n" +
+	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd4\x04\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x12\n" +
@@ -2526,7 +2547,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0eeditable_until\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\reditableUntil\x12\x1b\n" +
 	"\tfrom_wall\x18\x0f \x01(\bR\bfromWall\x12\x12\n" +
 	"\x04mine\x18\x10 \x01(\bR\x04mine\x12\x16\n" +
-	"\x06signed\x18\x11 \x01(\bR\x06signed\"\xc1\x02\n" +
+	"\x06signed\x18\x11 \x01(\bR\x06signed\x12#\n" +
+	"\ravatar_update\x18\x12 \x01(\bR\favatarUpdate\"\xc1\x02\n" +
 	"\aComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
@@ -2576,14 +2598,15 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x19PublishSuggestionResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\")\n" +
 	"\x17DeleteSuggestionRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xaf\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xd4\x01\n" +
 	"\x11CreatePostRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\x12\x17\n" +
 	"\awall_id\x18\x03 \x01(\tR\x06wallId\x12\x1b\n" +
 	"\tclub_wall\x18\x04 \x01(\bR\bclubWall\x12\x1b\n" +
 	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\x12\x16\n" +
-	"\x06signed\x18\x06 \x01(\bR\x06signed\"7\n" +
+	"\x06signed\x18\x06 \x01(\bR\x06signed\x12#\n" +
+	"\ravatar_update\x18\a \x01(\bR\favatarUpdate\"7\n" +
 	"\x12CreatePostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"@\n" +
 	"\x11RepostPostRequest\x12\x17\n" +

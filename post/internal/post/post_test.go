@@ -130,6 +130,42 @@ func TestPost_FromWall(t *testing.T) {
 	}
 }
 
+func TestNewAvatarUpdate(t *testing.T) {
+	t.Parallel()
+
+	ann, club, photo := uuid.New(), uuid.New(), uuid.New()
+	now := time.Now()
+	content, err := post.NewContent("", post.Photos{photo})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	own, err := post.NewAvatarUpdate(ann, ann, content, now)
+	if err != nil || !own.AvatarUpdate() || own.FromWall() || own.Notified() != ann {
+		t.Fatalf("on ann's wall = %+v, %v; hers", own, err)
+	}
+	if _, err = own.Edited(ann, "подпись", nil, now); !errors.Is(err, post.ErrCannotEdit) {
+		t.Fatalf("edited: %v", err)
+	}
+	if !own.EditableUntil().Equal(own.CreatedAt()) || !post.Restore(own.Stored()).AvatarUpdate() {
+		t.Fatalf("editable until %v; storage keeps it", own.EditableUntil())
+	}
+
+	clubs, err := post.NewAvatarUpdate(club, ann, content, now)
+	if err != nil || !clubs.FromWall() || clubs.Notified() != uuid.Nil {
+		t.Fatalf("for the club = %+v, %v; it speaks for the club", clubs, err)
+	}
+
+	withText, _ := post.NewContent("новое фото", post.Photos{photo})
+	twoPhotos, _ := post.NewContent("", post.Photos{photo, uuid.New()})
+	repost, _ := post.NewRepost(uuid.New(), "")
+	for _, c := range []post.Content{withText, twoPhotos, repost} {
+		if _, err = post.NewAvatarUpdate(ann, ann, c, now); !errors.Is(err, post.ErrAvatarUpdate) {
+			t.Errorf("NewAvatarUpdate(%+v) = %v", c, err)
+		}
+	}
+}
+
 // textOnly is the content of a post without photos.
 func textOnly(t *testing.T, text string) post.Content {
 	t.Helper()

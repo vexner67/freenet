@@ -113,6 +113,9 @@ message Post {
   // A post that speaks for a community names its author, author_id, as
   // "Автор: ..." under it.
   bool signed = 17;
+  // The post shows the new photo of the wall's owner, a user or a
+  // community ("обновил фотографию на своей странице"); never edited.
+  bool avatar_update = 18;
 }
 
 message Comment {
@@ -214,6 +217,10 @@ message CreatePostRequest {
   bool from_wall = 5;
   // With from_wall: the post names its author ("Подпись автора").
   bool signed = 6;
+  // The post of the new photo of the wall's owner: the caller's own wall,
+  // or a community's they run, as the caller has checked; one photo and
+  // nothing else. It speaks for the community on its wall.
+  bool avatar_update = 7;
 }
 
 message CreatePostResponse {
