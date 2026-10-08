@@ -172,8 +172,11 @@ func TestClubService_Appoint(t *testing.T) {
 	}
 
 	admins, err := svc.Members(ctx, c.ID(), uuid.Nil, 10, true)
-	if err != nil || len(admins.Members) != 2 {
+	if err != nil || len(admins.Members) != 2 || admins.Total != 2 {
 		t.Fatalf("admins = %+v, %v; the owner and bob", admins, err)
+	}
+	if all, err := svc.Members(ctx, c.ID(), uuid.Nil, 1, false); err != nil || len(all.Members) != 1 || all.Total != 2 {
+		t.Fatalf("members = %+v, %v; one of two shown", all, err)
 	}
 
 	// An admin edits, writes for the club and keeps its wall clean, but
@@ -193,6 +196,63 @@ func TestClubService_Appoint(t *testing.T) {
 	}
 	if ok, _ := svc.CanModerateWall(ctx, c.ID(), bob); ok {
 		t.Fatal("bob is a member again")
+	}
+}
+
+func TestClubService_Transfer(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newService()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	c := create(t, svc, ann)
+
+	for _, id := range []uuid.UUID{bob, cat} {
+		if _, err := svc.Join(ctx, id, c.ID()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := svc.Appoint(ctx, ann, c.ID(), bob, club.RoleAdmin); err != nil {
+		t.Fatal(err)
+	}
+
+	tests := []struct {
+		name              string
+		requester, target uuid.UUID
+		err               error
+	}{
+		{"an admin hands it over", bob, bob, club.ErrCannotTransfer},
+		{"a member hands it over", cat, bob, club.ErrCannotTransfer},
+		{"to a member", ann, cat, club.ErrNotAdmin},
+		{"to a stranger", ann, uuid.New(), club.ErrNotAdmin},
+		{"to the owner", ann, ann, club.ErrNotAdmin},
+	}
+	for _, tt := range tests {
+		if err := svc.Transfer(ctx, tt.requester, c.ID(), tt.target); !errors.Is(err, tt.err) {
+			t.Errorf("%s: %v, want %v", tt.name, err, tt.err)
+		}
+	}
+	if err := svc.Transfer(ctx, ann, uuid.New(), bob); !errors.Is(err, club.ErrNotFound) {
+		t.Fatalf("an unknown club: %v", err)
+	}
+
+	if err := svc.Transfer(ctx, ann, c.ID(), bob); err != nil {
+		t.Fatal(err)
+	}
+
+	// Bob owns the club now; Ann stays an admin and may leave.
+	v, err := svc.Find(ctx, ann, service.Ref{ID: c.ID()})
+	if err != nil || v.OwnerID != bob || v.Role != club.RoleAdmin {
+		t.Fatalf("after the transfer = %+v, %v", v, err)
+	}
+	if err = svc.Appoint(ctx, bob, c.ID(), ann, club.RoleMember); err != nil {
+		t.Fatalf("the new owner appoints: %v", err)
+	}
+	if _, err = svc.Leave(ctx, ann, c.ID()); err != nil {
+		t.Fatalf("the old owner leaves: %v", err)
+	}
+	if err = svc.Transfer(ctx, ann, c.ID(), bob); !errors.Is(err, club.ErrCannotTransfer) {
+		t.Fatalf("the old owner hands it over again: %v", err)
 	}
 }
 

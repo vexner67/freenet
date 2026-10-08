@@ -22,6 +22,7 @@ type ClubService interface {
 	Join(ctx context.Context, userID, clubID uuid.UUID) (service.View, error)
 	Leave(ctx context.Context, userID, clubID uuid.UUID) (service.View, error)
 	Appoint(ctx context.Context, requesterID, clubID, userID uuid.UUID, role club.Role) error
+	Transfer(ctx context.Context, requesterID, clubID, userID uuid.UUID) error
 	Members(ctx context.Context, clubID, cursor uuid.UUID, size int, adminsOnly bool) (service.MemberPage, error)
 	Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, managed bool) (service.ClubPage, error)
 	Search(ctx context.Context, query club.SearchQuery, cursor uuid.UUID, size int) (service.SearchPage, error)
@@ -176,6 +177,7 @@ func (h *ClubHandler) ListMembers(ctx context.Context, req *clubv1.ListMembersRe
 	resp := &clubv1.ListMembersResponse{
 		Members:    make([]*clubv1.Member, 0, len(page.Members)),
 		NextCursor: optionalID(page.NextCursor),
+		Total:      int32(page.Total), //nolint:gosec // a count of rows
 	}
 	for _, m := range page.Members {
 		resp.Members = append(resp.Members, &clubv1.Member{UserId: m.UserID.String(), Role: roles[m.Role]})
@@ -210,6 +212,58 @@ func (h *ClubHandler) SetMemberRole(ctx context.Context, req *clubv1.SetMemberRo
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (h *ClubHandler) TransferClub(ctx context.Context, req *clubv1.TransferClubRequest) (*emptypb.Empty, error) {
+	requesterID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clubID, err := parseID(req.GetClubId(), "invalid club id")
+	if err != nil {
+		return nil, err
+	}
+
+	userID, err := parseID(req.GetUserId(), "invalid user id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.clubService.Transfer(ctx, requesterID, clubID, userID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *ClubHandler) ListUserClubs(ctx context.Context, req *clubv1.ListUserClubsRequest) (*clubv1.ListUserClubsResponse, error) {
+	userID, err := parseID(req.GetUserId(), "invalid user id")
+	if err != nil {
+		return nil, err
+	}
+
+	cursor, err := parseOptionalID(req.GetCursor(), "invalid cursor")
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), false)
+	if err != nil {
+		return nil, err
+	}
+
+	// Only the clubs: what the user is in them and their menu are theirs.
+	resp := &clubv1.ListUserClubsResponse{
+		Clubs:      make([]*clubv1.Club, 0, len(page.Clubs)),
+		NextCursor: optionalID(page.NextCursor),
+		Total:      int32(page.Total), //nolint:gosec // a count of rows
+	}
+	for _, m := range page.Clubs {
+		resp.Clubs = append(resp.Clubs, toProtoClub(m.Club))
+	}
+
+	return resp, nil
 }
 
 func (h *ClubHandler) ListMyClubs(ctx context.Context, req *clubv1.ListMyClubsRequest) (*clubv1.ListMyClubsResponse, error) {

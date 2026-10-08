@@ -113,18 +113,22 @@ func TestEdited(t *testing.T) {
 	t.Parallel()
 
 	c := newClub(t)
-	if c.Wall() != club.WallOpen || c.Address() != "" || c.Members() != 0 {
-		t.Fatalf("new club = %+v; open, with no address", c)
+	if c.Wall() != club.WallOpen || c.Address() != "" || c.Website() != "" || c.AdminsDisplay() != club.AdminsDisplayCreator || c.Members() != 0 {
+		t.Fatalf("new club = %+v; open, showing its creator, with no address", c)
 	}
 
-	changes := club.Changes{Name: "Кошки", Description: "мяу", Address: "cats", Wall: club.WallClosed}
+	changes := club.Changes{
+		Name: "Кошки", Description: "мяу", Address: "cats", Website: "https://cats.example",
+		Wall: club.WallClosed, AdminsDisplay: club.AdminsDisplayAll,
+	}
 
 	for _, role := range []club.Role{club.RoleAdmin, club.RoleOwner} {
 		edited, err := c.Edited(role, changes)
 		if err != nil {
 			t.Fatalf("%s: %v", role, err)
 		}
-		if edited.Name() != "Кошки" || edited.Description() != "мяу" || edited.Address() != "cats" || edited.Wall() != club.WallClosed || edited.ID() != c.ID() {
+		if edited.Name() != "Кошки" || edited.Description() != "мяу" || edited.Address() != "cats" || edited.Wall() != club.WallClosed || edited.ID() != c.ID() ||
+			edited.Website() != "https://cats.example" || edited.AdminsDisplay() != club.AdminsDisplayAll {
 			t.Fatalf("edited = %+v", edited)
 		}
 	}
@@ -244,6 +248,71 @@ func TestSearchQuery(t *testing.T) {
 		}
 		if got := q.Matches(c); got != want {
 			t.Errorf("%q matches = %v, want %v", query, got, want)
+		}
+	}
+}
+
+func TestNewWebsite(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		input string
+		want  club.Website
+		err   error
+	}{
+		{"", "", nil},
+		{"  ", "", nil},
+		{"cats.example", "https://cats.example", nil},
+		{" http://cats.example/about?a=1 ", "http://cats.example/about?a=1", nil},
+		{"https://кошки.рф", "https://кошки.рф", nil},
+		{"javascript://alert(1)", "", club.ErrWebsiteInvalid},
+		{"ftp://cats.example", "", club.ErrWebsiteInvalid},
+		{"https://", "", club.ErrWebsiteInvalid},
+		{"cats example", "", club.ErrWebsiteInvalid},
+		{"https://me:secret@cats.example", "", club.ErrWebsiteInvalid},
+		{"cats.example/" + strings.Repeat("я", 240), "", club.ErrWebsiteTooLong},
+	}
+
+	for _, tt := range tests {
+		if got, err := club.NewWebsite(tt.input); got != tt.want || !errors.Is(err, tt.err) {
+			t.Errorf("NewWebsite(%q) = %q, %v; want %q, %v", tt.input, got, err, tt.want, tt.err)
+		}
+	}
+}
+
+func TestNewAdminsDisplay(t *testing.T) {
+	t.Parallel()
+
+	for _, s := range []string{"creator", "all", "none"} {
+		if got, err := club.NewAdminsDisplay(s); err != nil || got.String() != s {
+			t.Errorf("NewAdminsDisplay(%q) = %q, %v", s, got, err)
+		}
+	}
+	for _, s := range []string{"", "admins", "ALL"} {
+		if _, err := club.NewAdminsDisplay(s); !errors.Is(err, club.ErrInvalidAdminsDisplay) {
+			t.Errorf("NewAdminsDisplay(%q): %v", s, err)
+		}
+	}
+}
+
+func TestCheckTransfer(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		requester, target club.Role
+		err               error
+	}{
+		{club.RoleOwner, club.RoleAdmin, nil},
+		{club.RoleOwner, club.RoleMember, club.ErrNotAdmin},
+		{club.RoleOwner, club.RoleNone, club.ErrNotAdmin},
+		{club.RoleOwner, club.RoleOwner, club.ErrNotAdmin},
+		{club.RoleAdmin, club.RoleAdmin, club.ErrCannotTransfer},
+		{club.RoleMember, club.RoleAdmin, club.ErrCannotTransfer},
+	}
+
+	for _, tt := range tests {
+		if err := club.CheckTransfer(tt.requester, tt.target); !errors.Is(err, tt.err) {
+			t.Errorf("CheckTransfer(%q, %q) = %v; want %v", tt.requester, tt.target, err, tt.err)
 		}
 	}
 }

@@ -28,7 +28,9 @@ const (
 	ClubService_LeaveClub_FullMethodName       = "/club.v1.ClubService/LeaveClub"
 	ClubService_ListMembers_FullMethodName     = "/club.v1.ClubService/ListMembers"
 	ClubService_SetMemberRole_FullMethodName   = "/club.v1.ClubService/SetMemberRole"
+	ClubService_TransferClub_FullMethodName    = "/club.v1.ClubService/TransferClub"
 	ClubService_ListMyClubs_FullMethodName     = "/club.v1.ClubService/ListMyClubs"
+	ClubService_ListUserClubs_FullMethodName   = "/club.v1.ClubService/ListUserClubs"
 	ClubService_SearchClubs_FullMethodName     = "/club.v1.ClubService/SearchClubs"
 	ClubService_SetClubAvatar_FullMethodName   = "/club.v1.ClubService/SetClubAvatar"
 	ClubService_PinClub_FullMethodName         = "/club.v1.ClubService/PinClub"
@@ -65,9 +67,16 @@ type ClubServiceClient interface {
 	ListMembers(ctx context.Context, in *ListMembersRequest, opts ...grpc.CallOption) (*ListMembersResponse, error)
 	// The owner makes a member an admin, or an admin a member again.
 	SetMemberRole(ctx context.Context, in *SetMemberRoleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The owner hands the club over to one of its admins and stays an
+	// admin ("Назначить владельцем").
+	TransferClub(ctx context.Context, in *TransferClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The caller's clubs ("Мои Группы"), the newest joined first; with
 	// managed only those they run ("Управление").
 	ListMyClubs(ctx context.Context, in *ListMyClubsRequest, opts ...grpc.CallOption) (*ListMyClubsResponse, error)
+	// Public: the clubs of a user, the newest joined first. Whether the
+	// viewer may see them is the user's privacy setting, which the caller
+	// checks.
+	ListUserClubs(ctx context.Context, in *ListUserClubsRequest, opts ...grpc.CallOption) (*ListUserClubsResponse, error)
 	// Public: clubs whose name or address has every word of the query, the
 	// newest first.
 	SearchClubs(ctx context.Context, in *SearchClubsRequest, opts ...grpc.CallOption) (*SearchClubsResponse, error)
@@ -181,10 +190,30 @@ func (c *clubServiceClient) SetMemberRole(ctx context.Context, in *SetMemberRole
 	return out, nil
 }
 
+func (c *clubServiceClient) TransferClub(ctx context.Context, in *TransferClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ClubService_TransferClub_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clubServiceClient) ListMyClubs(ctx context.Context, in *ListMyClubsRequest, opts ...grpc.CallOption) (*ListMyClubsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListMyClubsResponse)
 	err := c.cc.Invoke(ctx, ClubService_ListMyClubs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clubServiceClient) ListUserClubs(ctx context.Context, in *ListUserClubsRequest, opts ...grpc.CallOption) (*ListUserClubsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUserClubsResponse)
+	err := c.cc.Invoke(ctx, ClubService_ListUserClubs_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -297,9 +326,16 @@ type ClubServiceServer interface {
 	ListMembers(context.Context, *ListMembersRequest) (*ListMembersResponse, error)
 	// The owner makes a member an admin, or an admin a member again.
 	SetMemberRole(context.Context, *SetMemberRoleRequest) (*emptypb.Empty, error)
+	// The owner hands the club over to one of its admins and stays an
+	// admin ("Назначить владельцем").
+	TransferClub(context.Context, *TransferClubRequest) (*emptypb.Empty, error)
 	// The caller's clubs ("Мои Группы"), the newest joined first; with
 	// managed only those they run ("Управление").
 	ListMyClubs(context.Context, *ListMyClubsRequest) (*ListMyClubsResponse, error)
+	// Public: the clubs of a user, the newest joined first. Whether the
+	// viewer may see them is the user's privacy setting, which the caller
+	// checks.
+	ListUserClubs(context.Context, *ListUserClubsRequest) (*ListUserClubsResponse, error)
 	// Public: clubs whose name or address has every word of the query, the
 	// newest first.
 	SearchClubs(context.Context, *SearchClubsRequest) (*SearchClubsResponse, error)
@@ -357,8 +393,14 @@ func (UnimplementedClubServiceServer) ListMembers(context.Context, *ListMembersR
 func (UnimplementedClubServiceServer) SetMemberRole(context.Context, *SetMemberRoleRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetMemberRole not implemented")
 }
+func (UnimplementedClubServiceServer) TransferClub(context.Context, *TransferClubRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method TransferClub not implemented")
+}
 func (UnimplementedClubServiceServer) ListMyClubs(context.Context, *ListMyClubsRequest) (*ListMyClubsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMyClubs not implemented")
+}
+func (UnimplementedClubServiceServer) ListUserClubs(context.Context, *ListUserClubsRequest) (*ListUserClubsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListUserClubs not implemented")
 }
 func (UnimplementedClubServiceServer) SearchClubs(context.Context, *SearchClubsRequest) (*SearchClubsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchClubs not implemented")
@@ -549,6 +591,24 @@ func _ClubService_SetMemberRole_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClubService_TransferClub_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransferClubRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).TransferClub(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_TransferClub_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).TransferClub(ctx, req.(*TransferClubRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClubService_ListMyClubs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListMyClubsRequest)
 	if err := dec(in); err != nil {
@@ -563,6 +623,24 @@ func _ClubService_ListMyClubs_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ClubServiceServer).ListMyClubs(ctx, req.(*ListMyClubsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClubService_ListUserClubs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUserClubsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).ListUserClubs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_ListUserClubs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).ListUserClubs(ctx, req.(*ListUserClubsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -751,8 +829,16 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ClubService_SetMemberRole_Handler,
 		},
 		{
+			MethodName: "TransferClub",
+			Handler:    _ClubService_TransferClub_Handler,
+		},
+		{
 			MethodName: "ListMyClubs",
 			Handler:    _ClubService_ListMyClubs_Handler,
+		},
+		{
+			MethodName: "ListUserClubs",
+			Handler:    _ClubService_ListUserClubs_Handler,
 		},
 		{
 			MethodName: "SearchClubs",

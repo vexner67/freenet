@@ -13,6 +13,11 @@ var (
 		club.WallOpen:   clubv1.Wall_WALL_OPEN,
 		club.WallClosed: clubv1.Wall_WALL_CLOSED,
 	}
+	adminsDisplays = map[club.AdminsDisplay]clubv1.AdminsDisplay{
+		club.AdminsDisplayCreator: clubv1.AdminsDisplay_ADMINS_DISPLAY_CREATOR,
+		club.AdminsDisplayAll:     clubv1.AdminsDisplay_ADMINS_DISPLAY_ALL,
+		club.AdminsDisplayNone:    clubv1.AdminsDisplay_ADMINS_DISPLAY_NONE,
+	}
 	roles = map[club.Role]clubv1.Role{
 		club.RoleNone:   clubv1.Role_ROLE_NONE,
 		club.RoleMember: clubv1.Role_ROLE_MEMBER,
@@ -23,14 +28,16 @@ var (
 
 func toProtoClub(c *club.Club) *clubv1.Club {
 	return &clubv1.Club{
-		Id:          c.ID().String(),
-		Name:        c.Name().String(),
-		Description: c.Description().String(),
-		Address:     c.Address().String(),
-		Wall:        walls[c.Wall()],
-		MemberCount: int32(c.Members()), //nolint:gosec // counters come from int4 columns
-		CreatedAt:   timestamppb.New(c.CreatedAt()),
-		AvatarId:    optionalID(c.AvatarID()),
+		Id:            c.ID().String(),
+		Name:          c.Name().String(),
+		Description:   c.Description().String(),
+		Address:       c.Address().String(),
+		Wall:          walls[c.Wall()],
+		MemberCount:   int32(c.Members()), //nolint:gosec // counters come from int4 columns
+		CreatedAt:     timestamppb.New(c.CreatedAt()),
+		AvatarId:      optionalID(c.AvatarID()),
+		Website:       c.Website().String(),
+		AdminsDisplay: adminsDisplays[c.AdminsDisplay()],
 	}
 }
 
@@ -62,6 +69,18 @@ func fromProtoWall(w clubv1.Wall) (club.Wall, error) {
 	return "", club.ErrInvalidWall
 }
 
+// fromProtoAdminsDisplay reads what a page shows of its admins;
+// ADMINS_DISPLAY_UNSPECIFIED is nothing chosen.
+func fromProtoAdminsDisplay(d clubv1.AdminsDisplay) (club.AdminsDisplay, error) {
+	for display, pd := range adminsDisplays {
+		if pd == d {
+			return display, nil
+		}
+	}
+
+	return "", club.ErrInvalidAdminsDisplay
+}
+
 // fromProtoRole reads a role the owner may give.
 func fromProtoRole(r clubv1.Role) (club.Role, error) {
 	for role, pr := range roles {
@@ -90,12 +109,25 @@ func fromProtoChanges(req *clubv1.UpdateClubRequest) (club.Changes, error) {
 		return club.Changes{}, err
 	}
 
+	website, err := club.NewWebsite(req.GetWebsite())
+	if err != nil {
+		return club.Changes{}, err
+	}
+
 	wall, err := fromProtoWall(req.GetWall())
 	if err != nil {
 		return club.Changes{}, err
 	}
 
-	return club.Changes{Name: name, Description: description, Address: address, Wall: wall}, nil
+	adminsDisplay, err := fromProtoAdminsDisplay(req.GetAdminsDisplay())
+	if err != nil {
+		return club.Changes{}, err
+	}
+
+	return club.Changes{
+		Name: name, Description: description, Address: address, Website: website,
+		Wall: wall, AdminsDisplay: adminsDisplay,
+	}, nil
 }
 
 // fromProtoRef reads a club's ID or address: an address never parses as a

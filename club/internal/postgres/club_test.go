@@ -70,7 +70,7 @@ func TestRepositories(t *testing.T) {
 	})
 
 	t.Run("address", func(t *testing.T) {
-		edited, err := c.Edited(club.RoleOwner, club.Changes{Name: "Кошки", Address: address, Wall: club.WallClosed})
+		edited, err := c.Edited(club.RoleOwner, club.Changes{Name: "Кошки", Address: address, Wall: club.WallClosed, AdminsDisplay: club.AdminsDisplayCreator})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -84,7 +84,7 @@ func TestRepositories(t *testing.T) {
 		}
 
 		other := create(uuid.New())
-		taken, err := other.Edited(club.RoleOwner, club.Changes{Name: "Другие", Address: club.Address("CATS" + address.String()[4:]), Wall: club.WallOpen})
+		taken, err := other.Edited(club.RoleOwner, club.Changes{Name: "Другие", Address: club.Address("CATS" + address.String()[4:]), Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -93,7 +93,7 @@ func TestRepositories(t *testing.T) {
 		}
 
 		// No address is no address: any number of clubs have none.
-		none, err := other.Edited(club.RoleOwner, club.Changes{Name: "Другие", Wall: club.WallOpen})
+		none, err := other.Edited(club.RoleOwner, club.Changes{Name: "Другие", Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -318,5 +318,91 @@ func TestRepositories_AvatarSearchAndMenu(t *testing.T) {
 	}
 	if ok, err := members.Pin(ctx, other.ID(), bob, false, 1); err != nil || !ok {
 		t.Fatalf("Unpin = %v, %v", ok, err)
+	}
+}
+
+func TestRepositories_SettingsAndTransfer(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	clubs := postgres.NewClubRepository(pool)
+	members := postgres.NewMemberRepository(pool)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	c, err := club.New("Любители котов", "", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = clubs.Create(ctx, c, ann); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := clubs.Get(ctx, c.ID()); err != nil || got.AdminsDisplay() != club.AdminsDisplayCreator || got.Website() != "" {
+		t.Fatalf("a new club = %+v, %v; showing its creator", got, err)
+	}
+
+	edited, err := c.Edited(club.RoleOwner, club.Changes{
+		Name: c.Name(), Website: "https://cats.example", Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayAll,
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = clubs.Update(ctx, edited); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := clubs.Get(ctx, c.ID()); err != nil || got.Website() != "https://cats.example" || got.AdminsDisplay() != club.AdminsDisplayAll {
+		t.Fatalf("Get after Update = %+v, %v", got, err)
+	}
+
+	for _, id := range []uuid.UUID{bob, cat} {
+		if err = members.Join(ctx, c.ID(), id); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err = members.SetRole(ctx, c.ID(), bob, club.RoleAdmin); err != nil {
+		t.Fatal(err)
+	}
+	if n, err := members.CountAdmins(ctx, c.ID()); err != nil || n != 2 {
+		t.Fatalf("CountAdmins = %d, %v", n, err)
+	}
+	if mine, err := members.ListClubs(ctx, bob, uuid.Nil, 10, false); err != nil || len(mine) != 1 || mine[0].Club.Website() != "https://cats.example" {
+		t.Fatalf("ListClubs = %+v, %v; with the settings", mine, err)
+	}
+
+	if err = members.Transfer(ctx, c.ID(), ann, cat); !errors.Is(err, club.ErrNotAdmin) {
+		t.Fatalf("to a member: %v", err)
+	}
+	if owner, _ := members.Owner(ctx, c.ID()); owner != ann {
+		t.Fatalf("a failed transfer changed the owner to %v", owner)
+	}
+	if err = members.Transfer(ctx, c.ID(), bob, ann); !errors.Is(err, club.ErrCannotTransfer) {
+		t.Fatalf("by an admin: %v", err)
+	}
+
+	// Two transfers at once: one goes through, the other finds no owner.
+	errs := make(chan error, 2)
+	for range 2 {
+		go func() { errs <- members.Transfer(ctx, c.ID(), ann, bob) }()
+	}
+	first, second := <-errs, <-errs
+	if (first == nil) == (second == nil) || !errors.Is(errors.Join(first, second), club.ErrCannotTransfer) {
+		t.Fatalf("concurrent transfers = %v, %v; one of them", first, second)
+	}
+
+	if owner, _ := members.Owner(ctx, c.ID()); owner != bob {
+		t.Fatalf("owner = %v, want bob", owner)
+	}
+	if role, _ := members.Role(ctx, c.ID(), ann); role != club.RoleAdmin {
+		t.Fatalf("the old owner = %q, want an admin", role)
 	}
 }

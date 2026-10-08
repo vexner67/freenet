@@ -29,9 +29,16 @@ service ClubService {
   rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
   // The owner makes a member an admin, or an admin a member again.
   rpc SetMemberRole(SetMemberRoleRequest) returns (google.protobuf.Empty);
+  // The owner hands the club over to one of its admins and stays an
+  // admin ("Назначить владельцем").
+  rpc TransferClub(TransferClubRequest) returns (google.protobuf.Empty);
   // The caller's clubs ("Мои Группы"), the newest joined first; with
   // managed only those they run ("Управление").
   rpc ListMyClubs(ListMyClubsRequest) returns (ListMyClubsResponse);
+  // Public: the clubs of a user, the newest joined first. Whether the
+  // viewer may see them is the user's privacy setting, which the caller
+  // checks.
+  rpc ListUserClubs(ListUserClubsRequest) returns (ListUserClubsResponse);
   // Public: clubs whose name or address has every word of the query, the
   // newest first.
   rpc SearchClubs(SearchClubsRequest) returns (SearchClubsResponse);
@@ -65,6 +72,16 @@ enum Wall {
   WALL_CLOSED = 2;
 }
 
+// What the page of a club shows of those who run it, openvk's "Список
+// админов".
+enum AdminsDisplay {
+  ADMINS_DISPLAY_UNSPECIFIED = 0;
+  // Only the creator, the owner.
+  ADMINS_DISPLAY_CREATOR = 1;
+  ADMINS_DISPLAY_ALL = 2;
+  ADMINS_DISPLAY_NONE = 3;
+}
+
 enum Role {
   // Not a member.
   ROLE_NONE = 0;
@@ -85,6 +102,9 @@ message Club {
   google.protobuf.Timestamp created_at = 7;
   // The club's photo in the media service; empty for none.
   string avatar_id = 8;
+  // An http or https link; empty for none.
+  string website = 9;
+  AdminsDisplay admins_display = 10;
 }
 
 // ClubView is a club as the caller sees it.
@@ -129,6 +149,9 @@ message UpdateClubRequest {
   // Empty takes the address away.
   string address = 4;
   Wall wall = 5;
+  // Empty for none; https:// is added when the scheme is left out.
+  string website = 6;
+  AdminsDisplay admins_display = 7;
 }
 
 message UpdateClubResponse {
@@ -169,6 +192,8 @@ message ListMembersResponse {
   repeated Member members = 1;
   // Empty on the last page.
   string next_cursor = 2;
+  // How many there are on all pages.
+  int32 total = 3;
 }
 
 message SetMemberRoleRequest {
@@ -176,6 +201,12 @@ message SetMemberRoleRequest {
   string user_id = 2;
   // ROLE_MEMBER or ROLE_ADMIN.
   Role role = 3;
+}
+
+message TransferClubRequest {
+  string club_id = 1;
+  // The new owner, one of the admins.
+  string user_id = 2;
 }
 
 message ListMyClubsRequest {
@@ -196,6 +227,22 @@ message Membership {
 
 message ListMyClubsResponse {
   repeated Membership clubs = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // How many there are on all pages.
+  int32 total = 3;
+}
+
+message ListUserClubsRequest {
+  string user_id = 1;
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message ListUserClubsResponse {
+  repeated Club clubs = 1;
   // Empty on the last page.
   string next_cursor = 2;
   // How many there are on all pages.

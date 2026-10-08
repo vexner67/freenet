@@ -107,8 +107,11 @@ func TestClub(t *testing.T) {
 
 	updated, err := s.client.UpdateClub(s.as(t, ann), &clubv1.UpdateClubRequest{
 		ClubId: id, Name: "Кошки", Description: "мяу", Address: "cats", Wall: clubv1.Wall_WALL_CLOSED,
+		Website: "cats.example", AdminsDisplay: clubv1.AdminsDisplay_ADMINS_DISPLAY_ALL,
 	})
-	if err != nil || updated.GetClub().GetClub().GetAddress() != "cats" || updated.GetClub().GetClub().GetWall() != clubv1.Wall_WALL_CLOSED {
+	if err != nil || updated.GetClub().GetClub().GetAddress() != "cats" || updated.GetClub().GetClub().GetWall() != clubv1.Wall_WALL_CLOSED ||
+		updated.GetClub().GetClub().GetWebsite() != "https://cats.example" ||
+		updated.GetClub().GetClub().GetAdminsDisplay() != clubv1.AdminsDisplay_ADMINS_DISPLAY_ALL {
 		t.Fatalf("UpdateClub = %v, %v", updated, err)
 	}
 
@@ -142,8 +145,14 @@ func TestClub(t *testing.T) {
 	}
 
 	admins, err := s.client.ListMembers(context.Background(), &clubv1.ListMembersRequest{ClubId: id, AdminsOnly: true})
-	if err != nil || len(admins.GetMembers()) != 2 || admins.GetMembers()[0].GetUserId() != bob.String() || admins.GetMembers()[0].GetRole() != clubv1.Role_ROLE_ADMIN {
+	if err != nil || len(admins.GetMembers()) != 2 || admins.GetTotal() != 2 || admins.GetMembers()[0].GetUserId() != bob.String() || admins.GetMembers()[0].GetRole() != clubv1.Role_ROLE_ADMIN {
 		t.Fatalf("admins = %v, %v", admins, err)
+	}
+
+	// Public: anyone sees the clubs of a user, but not their role or menu.
+	theirs, err := s.client.ListUserClubs(context.Background(), &clubv1.ListUserClubsRequest{UserId: bob.String()})
+	if err != nil || len(theirs.GetClubs()) != 1 || theirs.GetClubs()[0].GetId() != id || theirs.GetTotal() != 1 {
+		t.Fatalf("ListUserClubs = %v, %v", theirs, err)
 	}
 
 	mine, err := s.client.ListMyClubs(s.as(t, bob), &clubv1.ListMyClubsRequest{})
@@ -159,8 +168,12 @@ func TestClub(t *testing.T) {
 		t.Fatalf("GetClubs = %v, %v", many, err)
 	}
 
-	left, err := s.client.LeaveClub(s.as(t, bob), &clubv1.LeaveClubRequest{ClubId: id})
-	if err != nil || left.GetClub().GetRole() != clubv1.Role_ROLE_NONE || left.GetClub().GetClub().GetMemberCount() != 1 {
+	// Ann hands the club over to Bob and leaves it to him.
+	if _, err = s.client.TransferClub(s.as(t, ann), &clubv1.TransferClubRequest{ClubId: id, UserId: bob.String()}); err != nil {
+		t.Fatalf("TransferClub: %v", err)
+	}
+	left, err := s.client.LeaveClub(s.as(t, ann), &clubv1.LeaveClubRequest{ClubId: id})
+	if err != nil || left.GetClub().GetRole() != clubv1.Role_ROLE_NONE || left.GetClub().GetOwnerId() != bob.String() || left.GetClub().GetClub().GetMemberCount() != 1 {
 		t.Fatalf("LeaveClub = %v, %v", left, err)
 	}
 
@@ -202,15 +215,35 @@ func TestErrors(t *testing.T) {
 			return err
 		}, codes.NotFound},
 		{"a stranger edits", func() error {
-			_, err := s.client.UpdateClub(s.as(t, bob), &clubv1.UpdateClubRequest{ClubId: id, Name: "x", Wall: clubv1.Wall_WALL_OPEN})
+			_, err := s.client.UpdateClub(s.as(t, bob), &clubv1.UpdateClubRequest{ClubId: id, Name: "x", Wall: clubv1.Wall_WALL_OPEN, AdminsDisplay: clubv1.AdminsDisplay_ADMINS_DISPLAY_CREATOR})
 			return err
 		}, codes.PermissionDenied},
 		{"no wall mode", func() error {
-			_, err := s.client.UpdateClub(s.as(t, ann), &clubv1.UpdateClubRequest{ClubId: id, Name: "x"})
+			_, err := s.client.UpdateClub(s.as(t, ann), &clubv1.UpdateClubRequest{ClubId: id, Name: "x", AdminsDisplay: clubv1.AdminsDisplay_ADMINS_DISPLAY_CREATOR})
+			return err
+		}, codes.InvalidArgument},
+		{"nothing chosen for the admins", func() error {
+			_, err := s.client.UpdateClub(s.as(t, ann), &clubv1.UpdateClubRequest{ClubId: id, Name: "x", Wall: clubv1.Wall_WALL_OPEN})
+			return err
+		}, codes.InvalidArgument},
+		{"a bad website", func() error {
+			_, err := s.client.UpdateClub(s.as(t, ann), &clubv1.UpdateClubRequest{ClubId: id, Name: "x", Website: "javascript://x", Wall: clubv1.Wall_WALL_OPEN, AdminsDisplay: clubv1.AdminsDisplay_ADMINS_DISPLAY_CREATOR})
 			return err
 		}, codes.InvalidArgument},
 		{"a bad address", func() error {
-			_, err := s.client.UpdateClub(s.as(t, ann), &clubv1.UpdateClubRequest{ClubId: id, Name: "x", Address: "2cats", Wall: clubv1.Wall_WALL_OPEN})
+			_, err := s.client.UpdateClub(s.as(t, ann), &clubv1.UpdateClubRequest{ClubId: id, Name: "x", Address: "2cats", Wall: clubv1.Wall_WALL_OPEN, AdminsDisplay: clubv1.AdminsDisplay_ADMINS_DISPLAY_CREATOR})
+			return err
+		}, codes.InvalidArgument},
+		{"a member takes the club", func() error {
+			_, err := s.client.TransferClub(s.as(t, bob), &clubv1.TransferClubRequest{ClubId: id, UserId: bob.String()})
+			return err
+		}, codes.PermissionDenied},
+		{"hand it over to a stranger", func() error {
+			_, err := s.client.TransferClub(s.as(t, ann), &clubv1.TransferClubRequest{ClubId: id, UserId: bob.String()})
+			return err
+		}, codes.FailedPrecondition},
+		{"the clubs of a bad user id", func() error {
+			_, err := s.client.ListUserClubs(context.Background(), &clubv1.ListUserClubsRequest{UserId: "x"})
 			return err
 		}, codes.InvalidArgument},
 		{"the owner leaves", func() error {

@@ -17,6 +17,8 @@ var (
 	ErrNotMember        = errors.New("the user is not a member of the club")
 	ErrCannotPin        = errors.New("only the admins can add the club to their menu")
 	ErrTooManyPinned    = errors.New("at most 10 clubs in the menu")
+	ErrCannotTransfer   = errors.New("only the owner hands the club over")
+	ErrNotAdmin         = errors.New("the new owner must be an admin of the club")
 )
 
 // MaxPinned is how many of the clubs they run a user keeps in the left
@@ -31,16 +33,20 @@ type Club struct {
 	name        Name
 	description Description
 	address     Address
+	website     Website
 	wall        Wall
-	createdAt   time.Time
+	// adminsDisplay is what the page shows of those who run the club.
+	adminsDisplay AdminsDisplay
+	createdAt     time.Time
 	// members counts everyone in the club, the owner and admins too.
 	members int
 	// avatarID is the club's photo in the media service; uuid.Nil for none.
 	avatarID uuid.UUID
 }
 
-// New creates a club, open to posts from everyone as in openvk, with no
-// address and no members yet: storing it makes its creator the owner.
+// New creates a club, open to posts from everyone and showing its creator
+// as in openvk, with no address and no members yet: storing it makes its
+// creator the owner.
 func New(name Name, description Description, now time.Time) (*Club, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
@@ -48,10 +54,11 @@ func New(name Name, description Description, now time.Time) (*Club, error) {
 	}
 
 	return &Club{
-		id:          id,
-		name:        name,
-		description: description,
-		wall:        WallOpen,
+		id:            id,
+		name:          name,
+		description:   description,
+		wall:          WallOpen,
+		adminsDisplay: AdminsDisplayCreator,
 		// PostgreSQL keeps microseconds; trim now so a club reads back equal.
 		createdAt: now.UTC().Truncate(time.Microsecond),
 	}, nil
@@ -59,37 +66,43 @@ func New(name Name, description Description, now time.Time) (*Club, error) {
 
 // Stored is a club as storage keeps it.
 type Stored struct {
-	ID          uuid.UUID
-	Name        Name
-	Description Description
-	Address     Address
-	Wall        Wall
-	CreatedAt   time.Time
-	Members     int
-	AvatarID    uuid.UUID
+	ID            uuid.UUID
+	Name          Name
+	Description   Description
+	Address       Address
+	Website       Website
+	Wall          Wall
+	AdminsDisplay AdminsDisplay
+	CreatedAt     time.Time
+	Members       int
+	AvatarID      uuid.UUID
 }
 
 // Restore rebuilds a club from storage without validation or new IDs.
 func Restore(s Stored) *Club {
 	return &Club{
-		id:          s.ID,
-		name:        s.Name,
-		description: s.Description,
-		address:     s.Address,
-		wall:        s.Wall,
-		createdAt:   s.CreatedAt,
-		members:     s.Members,
-		avatarID:    s.AvatarID,
+		id:            s.ID,
+		name:          s.Name,
+		description:   s.Description,
+		address:       s.Address,
+		website:       s.Website,
+		wall:          s.Wall,
+		adminsDisplay: s.AdminsDisplay,
+		createdAt:     s.CreatedAt,
+		members:       s.Members,
+		avatarID:      s.AvatarID,
 	}
 }
 
 // Changes are what the admins may change in a club: everything at once,
 // as the settings form sends it.
 type Changes struct {
-	Name        Name
-	Description Description
-	Address     Address
-	Wall        Wall
+	Name          Name
+	Description   Description
+	Address       Address
+	Website       Website
+	Wall          Wall
+	AdminsDisplay AdminsDisplay
 }
 
 // Edited returns c with changes made by someone who is role in it: only
@@ -103,7 +116,9 @@ func (c *Club) Edited(role Role, changes Changes) (*Club, error) {
 	edited.name = changes.Name
 	edited.description = changes.Description
 	edited.address = changes.Address
+	edited.website = changes.Website
 	edited.wall = changes.Wall
+	edited.adminsDisplay = changes.AdminsDisplay
 
 	return &edited, nil
 }
@@ -171,6 +186,21 @@ func CheckAppoint(requester, target Role) error {
 	}
 }
 
+// CheckTransfer tells whether requester may hand the club over to someone
+// who is target in it, openvk's "Назначить владельцем": only the owner,
+// and only to one of the admins. The owner stays an admin.
+func CheckTransfer(requester, target Role) error {
+	if requester != RoleOwner {
+		return ErrCannotTransfer
+	}
+
+	if target != RoleAdmin {
+		return ErrNotAdmin
+	}
+
+	return nil
+}
+
 func (c *Club) ID() uuid.UUID {
 	return c.id
 }
@@ -185,6 +215,14 @@ func (c *Club) Description() Description {
 
 func (c *Club) Address() Address {
 	return c.address
+}
+
+func (c *Club) Website() Website {
+	return c.website
+}
+
+func (c *Club) AdminsDisplay() AdminsDisplay {
+	return c.adminsDisplay
 }
 
 func (c *Club) Wall() Wall {

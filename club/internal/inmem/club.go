@@ -104,13 +104,15 @@ func (r *ClubRepository) Create(ctx context.Context, c *club.Club, ownerID uuid.
 
 func stored(c *club.Club) club.Stored {
 	return club.Stored{
-		ID:          c.ID(),
-		Name:        c.Name(),
-		Description: c.Description(),
-		Address:     c.Address(),
-		Wall:        c.Wall(),
-		CreatedAt:   c.CreatedAt(),
-		AvatarID:    c.AvatarID(),
+		ID:            c.ID(),
+		Name:          c.Name(),
+		Description:   c.Description(),
+		Address:       c.Address(),
+		Website:       c.Website(),
+		Wall:          c.Wall(),
+		AdminsDisplay: c.AdminsDisplay(),
+		CreatedAt:     c.CreatedAt(),
+		AvatarID:      c.AvatarID(),
 	}
 }
 
@@ -321,6 +323,31 @@ func (r *MemberRepository) SetRole(ctx context.Context, clubID, userID uuid.UUID
 	return nil
 }
 
+// Transfer swaps the roles of the owner and an admin, as the transaction
+// does in PostgreSQL.
+func (r *MemberRepository) Transfer(ctx context.Context, clubID, ownerID, newOwnerID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	_, owner := r.s.membership(clubID, ownerID)
+	if owner == nil || owner.role != club.RoleOwner {
+		return club.ErrCannotTransfer
+	}
+
+	_, admin := r.s.membership(clubID, newOwnerID)
+	if admin == nil || admin.role != club.RoleAdmin {
+		return club.ErrNotAdmin
+	}
+
+	owner.role, admin.role = club.RoleAdmin, club.RoleOwner
+
+	return nil
+}
+
 // sorted returns the memberships that match, the newest first; the caller
 // holds a lock.
 func (s *Store) sorted(match func(*member) bool, before uuid.UUID, limit int) []uuid.UUID {
@@ -354,6 +381,24 @@ func (r *MemberRepository) List(ctx context.Context, clubID, before uuid.UUID, l
 	}
 
 	return found, nil
+}
+
+func (r *MemberRepository) CountAdmins(ctx context.Context, clubID uuid.UUID) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	count := 0
+	for _, m := range r.s.members {
+		if m.clubID == clubID && m.role.Manages() {
+			count++
+		}
+	}
+
+	return count, nil
 }
 
 func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, managed bool) ([]service.Membership, error) {
