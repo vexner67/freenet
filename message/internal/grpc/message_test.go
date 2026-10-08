@@ -105,7 +105,8 @@ func TestDialog(t *testing.T) {
 		if err != nil {
 			t.Fatalf("SendMessage: %v", err)
 		}
-		if m := resp.GetMessage(); m.GetSenderId() != bob.String() || m.GetRecipientId() != ann.String() || m.GetRead() || m.GetCreatedAt() == nil {
+		if m := resp.GetMessage(); m.GetSenderId() != bob.String() || m.GetRecipientId() != ann.String() || m.GetRead() || m.GetCreatedAt() == nil ||
+			!m.GetDeletableUntil().AsTime().Equal(m.GetCreatedAt().AsTime().Add(24*time.Hour)) {
 			t.Fatalf("sent = %v", m)
 		}
 		fromBob = append(fromBob, resp.GetMessage().GetId())
@@ -149,6 +150,14 @@ func TestDialog(t *testing.T) {
 	newer, err := s.client.ListMessages(s.as(t, bob), &messagev1.ListMessagesRequest{PeerId: ann.String(), After: fromBob[1]})
 	if err != nil || len(newer.GetMessages()) != 1 || newer.GetMessages()[0].GetId() != reply.GetMessage().GetId() {
 		t.Fatalf("newer = %v, %v", newer, err)
+	}
+
+	// Ann takes her answer back: bob can no longer see it.
+	if _, err = s.client.DeleteMessage(s.as(t, ann), &messagev1.DeleteMessageRequest{Id: reply.GetMessage().GetId()}); err != nil {
+		t.Fatalf("DeleteMessage: %v", err)
+	}
+	if history, err = s.client.ListMessages(s.as(t, bob), &messagev1.ListMessagesRequest{PeerId: ann.String()}); err != nil || len(history.GetMessages()) != 2 {
+		t.Fatalf("bob's history after the deletion = %v, %v", history, err)
 	}
 }
 
@@ -201,6 +210,26 @@ func TestErrors(t *testing.T) {
 			_, err := s.client.ListDialogs(asAnn, &messagev1.ListDialogsRequest{Cursor: "x"})
 			return err
 		}, codes.InvalidArgument},
+		{"delete without token", func() error {
+			_, err := s.client.DeleteMessage(context.Background(), &messagev1.DeleteMessageRequest{Id: uuid.NewString()})
+			return err
+		}, codes.Unauthenticated},
+		{"delete a bad id", func() error {
+			_, err := s.client.DeleteMessage(asAnn, &messagev1.DeleteMessageRequest{Id: "x"})
+			return err
+		}, codes.InvalidArgument},
+		{"delete an unknown message", func() error {
+			_, err := s.client.DeleteMessage(asAnn, &messagev1.DeleteMessageRequest{Id: uuid.NewString()})
+			return err
+		}, codes.NotFound},
+		{"delete a message to you", func() error {
+			resp, err := s.client.SendMessage(s.as(t, uuid.MustParse(bob)), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "x"})
+			if err != nil {
+				return err
+			}
+			_, err = s.client.DeleteMessage(asAnn, &messagev1.DeleteMessageRequest{Id: resp.GetMessage().GetId()})
+			return err
+		}, codes.PermissionDenied},
 		{"mark an unknown message", func() error {
 			_, err := s.client.MarkDialogRead(asAnn, &messagev1.MarkDialogReadRequest{PeerId: bob, UpToId: uuid.NewString()})
 			return err
@@ -303,6 +332,14 @@ func TestSubscribe(t *testing.T) {
 			}
 			break
 		}
+	}
+
+	if _, err = s.client.DeleteMessage(s.as(t, bob), &messagev1.DeleteMessageRequest{Id: sent.GetId()}); err != nil {
+		t.Fatal(err)
+	}
+	if resp, err := stream.Recv(); err != nil || resp.GetDeleted().GetId() != sent.GetId() ||
+		resp.GetDeleted().GetSenderId() != bob.String() || resp.GetDeleted().GetRecipientId() != ann.String() {
+		t.Fatalf("event = %v, %v; want the deletion", resp, err)
 	}
 
 	noToken, err := s.client.Subscribe(context.Background(), &messagev1.SubscribeRequest{})

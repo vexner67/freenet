@@ -29,6 +29,9 @@ type MessageRepository interface {
 	// ListAfter returns up to limit messages between a and b with IDs
 	// above after, oldest first.
 	ListAfter(ctx context.Context, a, b, after uuid.UUID, limit int) ([]*message.Message, error)
+	// Delete removes the message and brings both sides' dialogs back to
+	// the messages left; message.ErrNotFound if it is gone already.
+	Delete(ctx context.Context, m *message.Message) error
 	// DeleteByUser removes the dialogs of a user, both sides of each, with
 	// every message in them, and returns the deleted messages that had
 	// photos.
@@ -80,10 +83,18 @@ type HistoryPage struct {
 }
 
 // Event is what happened in a user's dialogs, for live updates: a new
-// message, sent or received, or a read mark that moved.
+// message, sent or received, a read mark that moved or a message deleted.
 type Event struct {
 	Message *message.Message
 	Read    *ReadMark
+	Deleted *Deleted
+}
+
+// Deleted: the sender took message ID back from both sides.
+type Deleted struct {
+	ID          uuid.UUID
+	SenderID    uuid.UUID
+	RecipientID uuid.UUID
 }
 
 // ReadMark: ReaderID has read the dialog with PeerID up to UpTo.
@@ -158,6 +169,48 @@ func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UU
 	s.events.Publish(ctx, recipientID, Event{Message: m})
 
 	return m, nil
+}
+
+// Delete takes a message back from both sides of the dialog: only its
+// sender may, for a day after sending (message.CheckDelete). Media deletes
+// its photos. Both hear of it: the peer's open dialog drops the message
+// and the counters follow.
+func (s *MessageService) Delete(ctx context.Context, userID, id uuid.UUID) error {
+	m, err := s.messageRepo.Get(ctx, id)
+	if err != nil {
+		return errs.Wrap("s.messageRepo.Get", err)
+	}
+
+	// Others' dialogs are none of the user's business, not even that a
+	// message exists.
+	if m.SenderID() != userID && m.RecipientID() != userID {
+		return message.ErrNotFound
+	}
+
+	if err = m.CheckDelete(userID, s.now()); err != nil {
+		return errs.Wrap("m.CheckDelete", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.messageRepo.Delete(ctx, m); err != nil {
+			return errs.Wrap("s.messageRepo.Delete", err)
+		}
+
+		if photos := m.Photos(); len(photos) > 0 {
+			return errs.Wrap("s.photos.Delete", s.photos.Delete(ctx, m.SenderID(), photos))
+		}
+
+		return nil
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	deleted := Event{Deleted: &Deleted{ID: m.ID(), SenderID: m.SenderID(), RecipientID: m.RecipientID()}}
+	s.events.Publish(ctx, m.SenderID(), deleted)
+	s.events.Publish(ctx, m.RecipientID(), deleted)
+
+	return nil
 }
 
 // Dialogs pages a user's dialogs, the most recently written first; cursor

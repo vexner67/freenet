@@ -47,6 +47,14 @@ func TestEventCodec(t *testing.T) {
 		t.Fatalf("read round trip = %v %+v %v", key, e.Read, err)
 	}
 
+	deleted := &service.Deleted{ID: sent.ID(), SenderID: ann, RecipientID: bob}
+	if data, err = codec.Encode(bob, service.Event{Deleted: deleted}); err != nil {
+		t.Fatalf("Encode deleted: %v", err)
+	}
+	if key, e, err = codec.Decode(data); err != nil || key != bob || e.Message != nil || e.Read != nil || e.Deleted == nil || *e.Deleted != *deleted {
+		t.Fatalf("deleted round trip = %v %+v %v", key, e.Deleted, err)
+	}
+
 	if _, err = codec.Encode(ann, service.Event{}); err == nil {
 		t.Error("Encode of an empty event = nil, want an error")
 	}

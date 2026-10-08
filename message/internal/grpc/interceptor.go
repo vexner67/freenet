@@ -22,6 +22,10 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.NotFound, "message not found"), true
 	case errors.Is(err, message.ErrToYourself):
 		return status.New(codes.InvalidArgument, "you cannot write to yourself"), true
+	case errors.Is(err, message.ErrCannotDelete):
+		return status.New(codes.PermissionDenied, "only the sender can delete the message"), true
+	case errors.Is(err, message.ErrDeleteExpired):
+		return status.New(codes.FailedPrecondition, "the message can no longer be deleted"), true
 	default:
 		return nil, false
 	}

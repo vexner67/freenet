@@ -12,13 +12,14 @@ import (
 
 func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 	return &messagev1.Message{
-		Id:          m.ID().String(),
-		SenderId:    m.SenderID().String(),
-		RecipientId: m.RecipientID().String(),
-		Text:        m.Text().String(),
-		CreatedAt:   timestamppb.New(m.CreatedAt()),
-		Read:        read,
-		PhotoIds:    photoStrings(m.Photos()),
+		Id:             m.ID().String(),
+		SenderId:       m.SenderID().String(),
+		RecipientId:    m.RecipientID().String(),
+		Text:           m.Text().String(),
+		CreatedAt:      timestamppb.New(m.CreatedAt()),
+		Read:           read,
+		PhotoIds:       photoStrings(m.Photos()),
+		DeletableUntil: timestamppb.New(m.DeletableUntil()),
 	}
 }
 
@@ -93,6 +94,14 @@ func optionalID(id uuid.UUID) string {
 
 // toProtoEvent: a new message is sent unread, as it was just written.
 func toProtoEvent(e service.Event) *messagev1.SubscribeResponse {
+	if e.Deleted != nil {
+		return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_Deleted{Deleted: &messagev1.MessageDeleted{
+			Id:          e.Deleted.ID.String(),
+			SenderId:    e.Deleted.SenderID.String(),
+			RecipientId: e.Deleted.RecipientID.String(),
+		}}}
+	}
+
 	if e.Read != nil {
 		return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_Read{Read: &messagev1.ReadMark{
 			ReaderId: e.Read.ReaderID.String(),

@@ -25,6 +25,7 @@ const (
 	MessageService_CountUnreadDialogs_FullMethodName = "/message.v1.MessageService/CountUnreadDialogs"
 	MessageService_ListMessages_FullMethodName       = "/message.v1.MessageService/ListMessages"
 	MessageService_MarkDialogRead_FullMethodName     = "/message.v1.MessageService/MarkDialogRead"
+	MessageService_DeleteMessage_FullMethodName      = "/message.v1.MessageService/DeleteMessage"
 	MessageService_HasMessagesFrom_FullMethodName    = "/message.v1.MessageService/HasMessagesFrom"
 	MessageService_Subscribe_FullMethodName          = "/message.v1.MessageService/Subscribe"
 	MessageService_PurgeUser_FullMethodName          = "/message.v1.MessageService/PurgeUser"
@@ -47,11 +48,15 @@ type MessageServiceClient interface {
 	ListMessages(ctx context.Context, in *ListMessagesRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error)
 	// The caller has read the dialog up to a message from the peer.
 	MarkDialogRead(ctx context.Context, in *MarkDialogReadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller takes their message back from both sides of the dialog,
+	// within a day of sending (deletable_until); media deletes its photos.
+	DeleteMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token: whether the peer has ever written to the
 	// caller, who may then answer whatever the peer's privacy.
 	HasMessagesFrom(ctx context.Context, in *HasMessagesFromRequest, opts ...grpc.CallOption) (*HasMessagesFromResponse, error)
 	// Requires an access token: the caller's events as they happen — new
-	// messages of their dialogs, sent or received, and read marks that move.
+	// messages of their dialogs, sent or received, read marks that move and
+	// messages deleted.
 	// Best effort: the stream ends with Unauthenticated when the token
 	// expires and with ResourceExhausted when the caller falls behind; then
 	// subscribe again and catch up with ListMessages and ListDialogs.
@@ -120,6 +125,16 @@ func (c *messageServiceClient) MarkDialogRead(ctx context.Context, in *MarkDialo
 	return out, nil
 }
 
+func (c *messageServiceClient) DeleteMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_DeleteMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) HasMessagesFrom(ctx context.Context, in *HasMessagesFromRequest, opts ...grpc.CallOption) (*HasMessagesFromResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(HasMessagesFromResponse)
@@ -176,11 +191,15 @@ type MessageServiceServer interface {
 	ListMessages(context.Context, *ListMessagesRequest) (*ListMessagesResponse, error)
 	// The caller has read the dialog up to a message from the peer.
 	MarkDialogRead(context.Context, *MarkDialogReadRequest) (*emptypb.Empty, error)
+	// The caller takes their message back from both sides of the dialog,
+	// within a day of sending (deletable_until); media deletes its photos.
+	DeleteMessage(context.Context, *DeleteMessageRequest) (*emptypb.Empty, error)
 	// Requires an access token: whether the peer has ever written to the
 	// caller, who may then answer whatever the peer's privacy.
 	HasMessagesFrom(context.Context, *HasMessagesFromRequest) (*HasMessagesFromResponse, error)
 	// Requires an access token: the caller's events as they happen — new
-	// messages of their dialogs, sent or received, and read marks that move.
+	// messages of their dialogs, sent or received, read marks that move and
+	// messages deleted.
 	// Best effort: the stream ends with Unauthenticated when the token
 	// expires and with ResourceExhausted when the caller falls behind; then
 	// subscribe again and catch up with ListMessages and ListDialogs.
@@ -213,6 +232,9 @@ func (UnimplementedMessageServiceServer) ListMessages(context.Context, *ListMess
 }
 func (UnimplementedMessageServiceServer) MarkDialogRead(context.Context, *MarkDialogReadRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkDialogRead not implemented")
+}
+func (UnimplementedMessageServiceServer) DeleteMessage(context.Context, *DeleteMessageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteMessage not implemented")
 }
 func (UnimplementedMessageServiceServer) HasMessagesFrom(context.Context, *HasMessagesFromRequest) (*HasMessagesFromResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method HasMessagesFrom not implemented")
@@ -334,6 +356,24 @@ func _MessageService_MarkDialogRead_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_DeleteMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).DeleteMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_DeleteMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).DeleteMessage(ctx, req.(*DeleteMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_HasMessagesFrom_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HasMessagesFromRequest)
 	if err := dec(in); err != nil {
@@ -407,6 +447,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MarkDialogRead",
 			Handler:    _MessageService_MarkDialogRead_Handler,
+		},
+		{
+			MethodName: "DeleteMessage",
+			Handler:    _MessageService_DeleteMessage_Handler,
 		},
 		{
 			MethodName: "HasMessagesFrom",

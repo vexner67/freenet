@@ -15,6 +15,12 @@ import (
 const (
 	maxTextLen = 4096
 	maxPhotos  = 10
+
+	// deleteWindow is how long the sender may take a message back from
+	// both sides, as "delete for everyone" in VK: long enough to take back
+	// a message sent in haste, short enough that the peer can rely on what
+	// was said before.
+	deleteWindow = 24 * time.Hour
 )
 
 var (
@@ -27,6 +33,8 @@ var (
 	ErrTooManyPhotos  = errors.New("a message has at most 10 photos")
 	ErrDuplicatePhoto = errors.New("the same photo is attached twice")
 	ErrInvalidPhoto   = errors.New("invalid photo id")
+	ErrCannotDelete   = errors.New("only the sender can delete the message")
+	ErrDeleteExpired  = errors.New("the message can no longer be deleted")
 )
 
 // Text is what a message says: trimmed, with "\n" line breaks. It may be
@@ -175,6 +183,25 @@ func (m *Message) Photos() Photos {
 
 func (m *Message) CreatedAt() time.Time {
 	return m.createdAt
+}
+
+// DeletableUntil is when the sender can no longer delete the message.
+func (m *Message) DeletableUntil() time.Time {
+	return m.createdAt.Add(deleteWindow)
+}
+
+// CheckDelete tells whether requesterID may delete the message, from both
+// sides, at now: only its sender, for deleteWindow after sending.
+func (m *Message) CheckDelete(requesterID uuid.UUID, now time.Time) error {
+	if requesterID != m.senderID {
+		return ErrCannotDelete
+	}
+
+	if now.After(m.DeletableUntil()) {
+		return ErrDeleteExpired
+	}
+
+	return nil
 }
 
 // ReadMarks are how far each side of a dialog has read: Mine is the newest

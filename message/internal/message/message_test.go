@@ -151,3 +151,41 @@ func TestReadMarks(t *testing.T) {
 		t.Fatal("nothing incoming, nothing unread")
 	}
 }
+
+func TestCheckDelete(t *testing.T) {
+	t.Parallel()
+
+	ann, bob := uuid.New(), uuid.New()
+	sent := time.Date(2026, 10, 5, 18, 0, 0, 0, time.UTC)
+
+	m, err := message.New(ann, bob, message.RestoreContent("ой", nil), sent)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if want := sent.Add(24 * time.Hour); !m.DeletableUntil().Equal(want) {
+		t.Fatalf("DeletableUntil = %v, want %v", m.DeletableUntil(), want)
+	}
+
+	tests := []struct {
+		name      string
+		requester uuid.UUID
+		now       time.Time
+		err       error
+	}{
+		{"the sender at once", ann, sent, nil},
+		{"the sender on the last moment", ann, m.DeletableUntil(), nil},
+		{"the sender a day later", ann, m.DeletableUntil().Add(time.Second), message.ErrDeleteExpired},
+		{"the recipient", bob, sent, message.ErrCannotDelete},
+		{"a stranger", uuid.New(), sent, message.ErrCannotDelete},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if err := m.CheckDelete(tt.requester, tt.now); !errors.Is(err, tt.err) {
+				t.Fatalf("CheckDelete = %v, want %v", err, tt.err)
+			}
+		})
+	}
+}
