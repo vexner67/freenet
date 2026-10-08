@@ -171,13 +171,37 @@ func (p *Posts) Unlike(ctx context.Context, accessToken, postID string) (int, er
 }
 
 // CreateComment returns the comment without Author: the caller knows who it is.
-func (p *Posts) CreateComment(ctx context.Context, accessToken, postID, text string, photoIDs []string) (model.Comment, error) {
-	resp, err := p.api.CreateComment(withToken(ctx, accessToken), &postv1.CreateCommentRequest{PostId: postID, Text: text, PhotoIds: photoIDs})
+func (p *Posts) CreateComment(ctx context.Context, accessToken, postID string, c model.NewComment) (model.Comment, error) {
+	resp, err := p.api.CreateComment(withToken(ctx, accessToken), &postv1.CreateCommentRequest{
+		PostId:    postID,
+		Text:      c.Text,
+		PhotoIds:  c.PhotoIDs,
+		ReplyToId: c.ReplyTo,
+	})
 	if err != nil {
 		return model.Comment{}, errs.Wrap("p.api.CreateComment", fromStatus(err))
 	}
 
 	return toComment(resp.GetComment()), nil
+}
+
+// LikeComment and UnlikeComment return how many likes the comment has now.
+func (p *Posts) LikeComment(ctx context.Context, accessToken, id string) (int, error) {
+	resp, err := p.api.LikeComment(withToken(ctx, accessToken), &postv1.LikeCommentRequest{CommentId: id})
+	if err != nil {
+		return 0, errs.Wrap("p.api.LikeComment", fromStatus(err))
+	}
+
+	return int(resp.GetLikeCount()), nil
+}
+
+func (p *Posts) UnlikeComment(ctx context.Context, accessToken, id string) (int, error) {
+	resp, err := p.api.UnlikeComment(withToken(ctx, accessToken), &postv1.UnlikeCommentRequest{CommentId: id})
+	if err != nil {
+		return 0, errs.Wrap("p.api.UnlikeComment", fromStatus(err))
+	}
+
+	return int(resp.GetLikeCount()), nil
 }
 
 func (p *Posts) DeleteComment(ctx context.Context, accessToken, id string) error {
@@ -189,8 +213,10 @@ func (p *Posts) DeleteComment(ctx context.Context, accessToken, id string) error
 }
 
 // Comments returns comments without Author; the caller looks the authors up.
-func (p *Posts) Comments(ctx context.Context, postID, cursor string, limit int) (model.CommentPage, error) {
-	resp, err := p.api.ListComments(ctx, &postv1.ListCommentsRequest{
+// Comments are a page of a post's comments; with a token, Liked says
+// which the caller likes.
+func (p *Posts) Comments(ctx context.Context, accessToken, postID, cursor string, limit int) (model.CommentPage, error) {
+	resp, err := p.api.ListComments(withToken(ctx, accessToken), &postv1.ListCommentsRequest{
 		PostId: postID,
 		Cursor: cursor,
 		Limit:  toLimit(limit),
@@ -253,5 +279,8 @@ func toComment(c *postv1.Comment) model.Comment {
 		Text:      c.GetText(),
 		PhotoIDs:  c.GetPhotoIds(),
 		CreatedAt: c.GetCreatedAt().AsTime(),
+		ReplyTo:   c.GetReplyToId(),
+		Likes:     int(c.GetLikeCount()),
+		Liked:     c.GetLiked(),
 	}
 }

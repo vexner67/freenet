@@ -72,9 +72,11 @@ type Posts interface {
 	Like(ctx context.Context, accessToken, postID string) (int, error)
 	Unlike(ctx context.Context, accessToken, postID string) (int, error)
 
-	CreateComment(ctx context.Context, accessToken, postID, text string, photoIDs []string) (model.Comment, error)
+	CreateComment(ctx context.Context, accessToken, postID string, c model.NewComment) (model.Comment, error)
+	LikeComment(ctx context.Context, accessToken, id string) (int, error)
+	UnlikeComment(ctx context.Context, accessToken, id string) (int, error)
 	DeleteComment(ctx context.Context, accessToken, id string) error
-	Comments(ctx context.Context, postID, cursor string, limit int) (model.CommentPage, error)
+	Comments(ctx context.Context, accessToken, postID, cursor string, limit int) (model.CommentPage, error)
 	CommentsByID(ctx context.Context, ids []string) ([]model.Comment, error)
 }
 
@@ -160,6 +162,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/posts/{id}/comments", a.listComments)
 	mux.HandleFunc("POST /api/v1/posts/{id}/comments", a.createComment)
 	mux.HandleFunc("DELETE /api/v1/comments/{id}", a.deleteComment)
+	mux.HandleFunc("PUT /api/v1/comments/{id}/like", a.likeComment)
+	mux.HandleFunc("DELETE /api/v1/comments/{id}/like", a.unlikeComment)
 
 	mux.HandleFunc("POST /api/v1/users/{nickname}/follow", a.follow)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/follow", a.unfollow)

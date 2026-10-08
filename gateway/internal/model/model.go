@@ -125,6 +125,19 @@ type Comment struct {
 	// PhotoIDs are the author's photos in the media service, in order.
 	PhotoIDs  []string
 	CreatedAt time.Time
+	// ReplyTo is the comment this one answers, "" for none.
+	ReplyTo string
+	Likes   int
+	// Liked: the viewer likes the comment; false for anonymous viewers.
+	Liked bool
+}
+
+// NewComment is what a comment to write says: text, photos or both, and
+// the comment it answers, "" for none.
+type NewComment struct {
+	Text     string
+	PhotoIDs []string
+	ReplyTo  string
 }
 
 // CommentPage is one screen of the comments of a post, oldest first;

@@ -343,7 +343,7 @@ func TestPosts(t *testing.T) {
 		t.Fatalf("Like a missing post: %v", err)
 	}
 
-	comments, err := posts.Comments(context.Background(), "p1", "", 0)
+	comments, err := posts.Comments(context.Background(), "", "p1", "", 0)
 	if err != nil || comments.Total != 7 || comments.NextCursor != "c1" || len(comments.Comments) != 1 {
 		t.Fatalf("Comments = %+v, %v", comments, err)
 	}

@@ -666,7 +666,9 @@ paths:
       description: |
         Your profile must be filled in first. Text, photos or both; photos
         are IDs from `POST /api/v1/me/photos` and must be yours. They are
-        deleted with the comment and with its post.
+        deleted with the comment and with its post. `replyTo` answers a
+        comment of the same post, as "Ответить": its author is notified
+        (comment_reply); the text is yours to start with their name.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -678,6 +680,7 @@ paths:
               properties:
                 text: { type: string, maxLength: 1000 }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
+                replyTo: { type: string, format: uuid, description: "The comment of this post to answer" }
       responses:
         "201":
           description: The new comment
@@ -713,6 +716,31 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/comments/{id}/like:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Like the comment
+      description: Idempotent; its author is notified (comment_like).
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Like" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Take your like of the comment back
+      description: Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Like" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/notifications:
     get:
@@ -1270,7 +1298,7 @@ components:
 
     Comment:
       type: object
-      required: [id, postId, author, text, photos, createdAt]
+      required: [id, postId, author, text, photos, createdAt, replyTo, likes, liked]
       properties:
         id: { type: string, format: uuid }
         postId: { type: string, format: uuid }
@@ -1280,6 +1308,13 @@ components:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
         createdAt: { type: string, format: date-time }
+        replyTo:
+          description: The comment this one answers ("в ответ"); null for none, and once it is deleted
+          oneOf:
+            - { type: string, format: uuid }
+            - type: "null"
+        likes: { type: integer }
+        liked: { type: boolean, description: "You like the comment; false without a token" }
 
     CommentPage:
       type: object
@@ -1298,8 +1333,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:

@@ -12,6 +12,8 @@ type commentRequest struct {
 	Text string `json:"text"`
 	// Photos are IDs from POST /api/v1/me/photos.
 	Photos []string `json:"photos"`
+	// ReplyTo is the comment of the same post this one answers.
+	ReplyTo string `json:"replyTo"`
 }
 
 type commentResponse struct {
@@ -21,6 +23,11 @@ type commentResponse struct {
 	Text      string      `json:"text"`
 	Photos    []photoJSON `json:"photos"`
 	CreatedAt string      `json:"createdAt"`
+	// ReplyTo is the comment this one answers: null for none, and once it
+	// is deleted.
+	ReplyTo *string `json:"replyTo"`
+	Likes   int     `json:"likes"`
+	Liked   bool    `json:"liked"`
 }
 
 type commentPageResponse struct {
@@ -37,17 +44,36 @@ func toCommentResponse(c model.Comment) commentResponse {
 		Text:      c.Text,
 		Photos:    toPhotosJSON(c.Author.ID, c.PhotoIDs),
 		CreatedAt: c.CreatedAt.UTC().Format(time.RFC3339),
+		ReplyTo:   optionalString(c.ReplyTo),
+		Likes:     c.Likes,
+		Liked:     c.Liked,
 	}
 }
 
+// optionalString is s, null when empty.
+func optionalString(s string) *string {
+	if s == "" {
+		return nil
+	}
+
+	return &s
+}
+
+// listComments is public; with a token, liked says which the caller likes.
 func (a *api) listComments(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	limit, err := pageLimit(r)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	page, err := a.posts.Comments(r.Context(), r.PathValue("id"), r.URL.Query().Get("cursor"), limit)
+	page, err := a.posts.Comments(r.Context(), token, r.PathValue("id"), r.URL.Query().Get("cursor"), limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -120,7 +146,7 @@ func (a *api) createComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := a.posts.CreateComment(r.Context(), token, r.PathValue("id"), req.Text, req.Photos)
+	c, err := a.posts.CreateComment(r.Context(), token, r.PathValue("id"), model.NewComment{Text: req.Text, PhotoIDs: req.Photos, ReplyTo: req.ReplyTo})
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -129,6 +155,36 @@ func (a *api) createComment(w http.ResponseWriter, r *http.Request) {
 	c.Author = authorOf(me.ID, me.AvatarID, me.Profile)
 
 	writeJSON(w, http.StatusCreated, toCommentResponse(c))
+}
+
+// likeComment and unlikeComment are idempotent, as for posts.
+func (a *api) likeComment(w http.ResponseWriter, r *http.Request) {
+	a.setCommentLike(w, r, true)
+}
+
+func (a *api) unlikeComment(w http.ResponseWriter, r *http.Request) {
+	a.setCommentLike(w, r, false)
+}
+
+func (a *api) setCommentLike(w http.ResponseWriter, r *http.Request, liked bool) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	set := a.posts.UnlikeComment
+	if liked {
+		set = a.posts.LikeComment
+	}
+
+	likes, err := set(r.Context(), token, r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, likeResponse{Likes: likes, Liked: liked})
 }
 
 // checkNotBlocked refuses a comment under the post of someone who
