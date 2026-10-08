@@ -237,7 +237,44 @@ type fakePosts struct {
 	replyTo, likedComment  string
 	photos                 []string
 	liked                  map[string]bool
-	err                    error
+	// Suggestions: suggested is the last one, mine whether only the
+	// caller's were asked for; published and withdrawn are IDs.
+	suggested            model.Suggestion
+	mine                 bool
+	published, withdrawn string
+	signed               bool
+	err                  error
+}
+
+// Suggest keeps one suggestion by u1.
+func (f *fakePosts) Suggest(_ context.Context, token, wallID, text string, photoIDs []string) (model.Suggestion, error) {
+	f.token = token
+	f.suggested = model.Suggestion{ID: "s1", WallID: wallID, AuthorID: "u1", Text: text, PhotoIDs: photoIDs, CreatedAt: time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)}
+	return f.suggested, f.err
+}
+
+// Suggestions are one by Bob and one by Cat, whose page is deleted.
+func (f *fakePosts) Suggestions(_ context.Context, token, wallID string, mine bool, cursor string, limit int) (model.SuggestionPage, error) {
+	f.token, f.mine = token, mine
+	return model.SuggestionPage{
+		Suggestions: []model.Suggestion{
+			{ID: "s2", WallID: wallID, AuthorID: "u2", Text: "от Петра", PhotoIDs: []string{"ph2"}},
+			{ID: "s3", WallID: wallID, AuthorID: "u3", Text: "от Кати"},
+		},
+		NextCursor: "s3",
+		Total:      2,
+	}, f.err
+}
+
+// PublishSuggestion makes a post by Bob for the club k1.
+func (f *fakePosts) PublishSuggestion(_ context.Context, token, id, text string, signed bool) (model.Post, error) {
+	f.token, f.published, f.signed = token, id, signed
+	return model.Post{ID: "p8", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "k1"}, Text: text, FromWall: true, Signed: signed}, f.err
+}
+
+func (f *fakePosts) DeleteSuggestion(_ context.Context, token, id string) error {
+	f.token, f.withdrawn = token, id
+	return f.err
 }
 
 func (f *fakePosts) Create(_ context.Context, token string, np model.NewPost) (model.Post, error) {

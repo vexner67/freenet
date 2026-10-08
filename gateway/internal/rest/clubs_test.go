@@ -24,6 +24,7 @@ type fakeClubs struct {
 	avatarID, query      string
 	role                 string
 	closedWall           bool
+	suggestWall          bool
 	transferredTo        string
 	clubsOf              string
 	err                  error
@@ -36,6 +37,9 @@ func (f *fakeClubs) view() model.ClubView {
 	c.AvatarID = f.avatarID
 	if f.closedWall {
 		c.Wall = "closed"
+	}
+	if f.suggestWall {
+		c.Wall = "suggest"
 	}
 	return model.ClubView{Club: c, Role: f.role, OwnerID: "u1"}
 }
@@ -147,12 +151,15 @@ func (f *fakeClubs) MineIDs(_ context.Context, token string) ([]string, error) {
 	return []string{"k1"}, f.err
 }
 
-func (f *fakeClubs) CanPostOnWall(_ context.Context, token, clubID string, fromClub bool) (bool, error) {
+// CanPostOnWall lets the admins only for the club or on a wall that is
+// not open; others suggest on a "Предложка".
+func (f *fakeClubs) CanPostOnWall(_ context.Context, token, clubID string, fromClub bool) (model.WallAccess, error) {
 	f.fromClub = fromClub
-	if fromClub || f.closedWall {
-		return f.role == "admin" || f.role == "owner", nil
+	admin := f.role == "admin" || f.role == "owner"
+	if fromClub || f.closedWall || f.suggestWall {
+		return model.WallAccess{Post: admin, Suggest: f.suggestWall && !admin}, nil
 	}
-	return true, nil
+	return model.WallAccess{Post: true}, nil
 }
 
 type clubJSON struct {
@@ -499,5 +506,91 @@ func TestUserClubs(t *testing.T) {
 	}
 	if w = h.do("GET", "/api/v1/users/nobody/clubs", ""); w.Code != http.StatusNotFound {
 		t.Fatalf("unknown user: %d", w.Code)
+	}
+}
+
+func TestClubSuggestions(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = ann
+	h.clubs.role = "member"
+
+	// An open wall takes posts, not suggestions.
+	if w := h.do("POST", "/api/v1/clubs/cats/suggestions", `{"text":"котик"}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("suggest on an open wall: %d", w.Code)
+	}
+
+	h.clubs.suggestWall = true
+	w := h.do("GET", "/api/v1/clubs/cats/posts", "", "Authorization", "Bearer tok")
+	wall := decode[struct {
+		CanPost    bool `json:"canPost"`
+		CanSuggest bool `json:"canSuggest"`
+	}](t, w)
+	if w.Code != http.StatusOK || wall.CanPost || !wall.CanSuggest {
+		t.Fatalf("a member on a suggest wall: %d %+v", w.Code, wall)
+	}
+	if w = h.do("POST", "/api/v1/clubs/cats/posts", `{"text":"котик"}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("a member posts on a suggest wall: %d", w.Code)
+	}
+
+	w = h.do("POST", "/api/v1/clubs/cats/suggestions", `{"text":"котик","photos":["ph1"]}`, "Authorization", "Bearer tok")
+	got := decode[struct {
+		ID     string              `json:"id"`
+		Author map[string]any      `json:"author"`
+		Text   string              `json:"text"`
+		Photos []map[string]string `json:"photos"`
+	}](t, w)
+	if w.Code != http.StatusCreated || got.ID != "s1" || got.Author["nickname"] != "ann" || got.Text != "котик" ||
+		len(got.Photos) != 1 || got.Photos[0]["large"] != "/media/photos/u1/ph1/large.jpg" || h.posts.suggested.WallID != "k1" {
+		t.Fatalf("suggest: %d %+v", w.Code, got)
+	}
+
+	w = h.do("GET", "/api/v1/clubs/cats/suggestions?mine=true", "", "Authorization", "Bearer tok")
+	list := decode[struct {
+		Suggestions []struct {
+			ID     string         `json:"id"`
+			Author map[string]any `json:"author"`
+		} `json:"suggestions"`
+		NextCursor string `json:"nextCursor"`
+		Total      int    `json:"total"`
+	}](t, w)
+	// Cat's page is deleted: her suggestion is left out, but counted.
+	if w.Code != http.StatusOK || len(list.Suggestions) != 1 || list.Suggestions[0].Author["nickname"] != "bob" || list.Total != 2 ||
+		list.NextCursor != "s3" || !h.posts.mine {
+		t.Fatalf("list: %d %+v", w.Code, list)
+	}
+
+	w = h.do("POST", "/api/v1/suggestions/s2/publish", `{"text":"от Петра!","signed":true}`, "Authorization", "Bearer tok")
+	published := decode[struct {
+		ID       string         `json:"id"`
+		Author   map[string]any `json:"author"`
+		Signer   map[string]any `json:"signer"`
+		FromWall bool           `json:"fromWall"`
+	}](t, w)
+	if w.Code != http.StatusCreated || published.ID != "p8" || !published.FromWall || published.Author["club"] != true ||
+		published.Signer["nickname"] != "bob" || h.posts.published != "s2" || !h.posts.signed {
+		t.Fatalf("publish: %d %+v", w.Code, published)
+	}
+
+	if w = h.do("DELETE", "/api/v1/suggestions/s2", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.posts.withdrawn != "s2" {
+		t.Fatalf("delete: %d", w.Code)
+	}
+	if w = h.do("GET", "/api/v1/clubs/cats/suggestions", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("suggestions without a token: %d", w.Code)
+	}
+}
+
+func TestCreateClubPost_SuggestWall(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = ann
+	h.clubs.role = "admin"
+	h.clubs.suggestWall = true
+
+	// As in openvk, admins speak for a club whose wall is not open.
+	if w := h.do("POST", "/api/v1/clubs/cats/posts", `{"text":"новости"}`, "Authorization", "Bearer tok"); w.Code != http.StatusCreated || !h.posts.newPost.FromWall {
+		t.Fatalf("an admin on a suggest wall: %d %+v", w.Code, h.posts.newPost)
 	}
 }

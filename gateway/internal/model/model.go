@@ -134,6 +134,32 @@ type NewPost struct {
 	Signed   bool
 }
 
+// Suggestion is a post suggested for a community's wall ("Предложка"),
+// seen by its author and the community's admins until published.
+type Suggestion struct {
+	ID        string
+	WallID    string
+	AuthorID  string
+	Text      string
+	PhotoIDs  []string
+	CreatedAt time.Time
+}
+
+// SuggestionPage is one screen of suggestions, newest first; Total counts
+// them on all pages.
+type SuggestionPage struct {
+	Suggestions []Suggestion
+	NextCursor  string
+	Total       int
+}
+
+// WallAccess is what a user may do on a club's wall: Post, or else
+// Suggest a post for its admins to publish.
+type WallAccess struct {
+	Post    bool
+	Suggest bool
+}
+
 // FeedSources are what a news feed shows: the posts of Authors and every
 // post on Walls, the clubs of the reader.
 type FeedSources struct {

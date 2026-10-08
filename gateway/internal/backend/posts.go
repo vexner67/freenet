@@ -246,6 +246,70 @@ func toLimit(limit int) int32 {
 	return int32(min(max(limit, 0), 1<<10)) //nolint:gosec // clamped
 }
 
+// Suggest suggests a post for the club wallID; the caller has checked that
+// the user may and that the photos are theirs.
+func (p *Posts) Suggest(ctx context.Context, accessToken, wallID, text string, photoIDs []string) (model.Suggestion, error) {
+	resp, err := p.api.SuggestPost(withToken(ctx, accessToken), &postv1.SuggestPostRequest{WallId: wallID, Text: text, PhotoIds: photoIDs})
+	if err != nil {
+		return model.Suggestion{}, errs.Wrap("p.api.SuggestPost", fromStatus(err))
+	}
+
+	return toSuggestion(resp.GetSuggestion()), nil
+}
+
+// Suggestions pages the suggestions for a club's wall: the caller's own
+// with mine, all of them for its admins.
+func (p *Posts) Suggestions(ctx context.Context, accessToken, wallID string, mine bool, cursor string, limit int) (model.SuggestionPage, error) {
+	resp, err := p.api.ListSuggestions(withToken(ctx, accessToken), &postv1.ListSuggestionsRequest{
+		WallId: wallID, Mine: mine, Cursor: cursor, Limit: toLimit(limit),
+	})
+	if err != nil {
+		return model.SuggestionPage{}, errs.Wrap("p.api.ListSuggestions", fromStatus(err))
+	}
+
+	page := model.SuggestionPage{
+		Suggestions: make([]model.Suggestion, 0, len(resp.GetSuggestions())),
+		NextCursor:  resp.GetNextCursor(),
+		Total:       int(resp.GetTotal()),
+	}
+	for _, s := range resp.GetSuggestions() {
+		page.Suggestions = append(page.Suggestions, toSuggestion(s))
+	}
+
+	return page, nil
+}
+
+// PublishSuggestion makes a post for the club of a suggestion, saying text
+// and, signed, naming its author.
+func (p *Posts) PublishSuggestion(ctx context.Context, accessToken, id, text string, signed bool) (model.Post, error) {
+	resp, err := p.api.PublishSuggestion(withToken(ctx, accessToken), &postv1.PublishSuggestionRequest{Id: id, Text: text, Signed: signed})
+	if err != nil {
+		return model.Post{}, errs.Wrap("p.api.PublishSuggestion", fromStatus(err))
+	}
+
+	return toPost(resp.GetPost()), nil
+}
+
+// DeleteSuggestion withdraws or declines a suggestion.
+func (p *Posts) DeleteSuggestion(ctx context.Context, accessToken, id string) error {
+	if _, err := p.api.DeleteSuggestion(withToken(ctx, accessToken), &postv1.DeleteSuggestionRequest{Id: id}); err != nil {
+		return errs.Wrap("p.api.DeleteSuggestion", fromStatus(err))
+	}
+
+	return nil
+}
+
+func toSuggestion(s *postv1.Suggestion) model.Suggestion {
+	return model.Suggestion{
+		ID:        s.GetId(),
+		WallID:    s.GetWallId(),
+		AuthorID:  s.GetAuthorId(),
+		Text:      s.GetText(),
+		PhotoIDs:  s.GetPhotoIds(),
+		CreatedAt: s.GetCreatedAt().AsTime(),
+	}
+}
+
 func toPost(p *postv1.Post) model.Post {
 	return model.Post{
 		ID:        p.GetId(),

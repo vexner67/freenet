@@ -98,6 +98,9 @@ type postPageResponse struct {
 	// CanPost: the viewer may write on this wall; told on a wall's first
 	// page, false for anonymous viewers.
 	CanPost bool `json:"canPost"`
+	// CanSuggest: the viewer may suggest a post for this community's wall
+	// instead ("Предложка"); told as CanPost.
+	CanSuggest bool `json:"canSuggest"`
 }
 
 func authorOf(id, avatarID string, p model.Profile) model.Author {
