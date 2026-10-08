@@ -58,6 +58,9 @@ type postResponse struct {
 	// FromWall: the post speaks for its wall, a community, shown as its
 	// author; who wrote it is not told.
 	FromWall bool `json:"fromWall"`
+	// AvatarUpdate: the post shows the new photo of its wall's owner
+	// ("обновил фотографию на своей странице"); never edited.
+	AvatarUpdate bool `json:"avatarUpdate"`
 	// Mine: the viewer wrote it, and may edit it; false for anonymous
 	// viewers.
 	Mine bool `json:"mine"`
@@ -84,6 +87,8 @@ type repostJSON struct {
 	Photos    []photoJSON `json:"photos"`
 	CreatedAt string      `json:"createdAt"`
 	RepostOf  string      `json:"repostOf"`
+	// AvatarUpdate: the shared post shows a new photo, as Post's.
+	AvatarUpdate bool `json:"avatarUpdate"`
 }
 
 type likeResponse struct {
@@ -178,6 +183,7 @@ func toPostResponse(p model.Post) postResponse {
 		EditableUntil: timeString(p.EditableUntil),
 		Pinned:        p.Pinned,
 		FromWall:      p.FromWall,
+		AvatarUpdate:  p.AvatarUpdate,
 		Mine:          p.Mine,
 		Signer:        signerJSON(p),
 	}
@@ -218,6 +224,8 @@ func toRepostJSON(p model.Post) *repostJSON {
 		Photos:    toPhotosJSON(p.Author.ID, p.PhotoIDs),
 		CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
 		RepostOf:  p.RepostOf,
+
+		AvatarUpdate: p.AvatarUpdate,
 	}
 }
 

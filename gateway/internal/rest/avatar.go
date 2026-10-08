@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
+	"github.com/vexner67/freenet/gateway/internal/model"
 )
 
 const (
@@ -39,7 +40,9 @@ func serveImage(w http.ResponseWriter, image []byte) {
 
 // uploadAvatar takes the raw image as the request body and makes it the
 // caller's photo. The old photo is deleted only after the profile points
-// to the new one, so the profile never shows a missing picture.
+// to the new one, so the profile never shows a missing picture. With
+// ?onWall=true the photo is posted on the caller's wall too, as openvk's
+// "Опубликовать запись на стене" — once there is a profile to post from.
 func (a *api) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -48,6 +51,12 @@ func (a *api) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	image, err := readImage(w, r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	onWall, err := a.newAvatarPost(r, token, image)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -67,7 +76,38 @@ func (a *api) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 
 	a.cleanUpAvatars(r, token, avatarID)
 
+	if onWall != nil && me.Profile.Nickname != "" {
+		if err = onWall(model.NewPost{}); err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+	}
+
 	writeJSON(w, http.StatusOK, toUserResponse(me))
+}
+
+// newAvatarPost prepares, for ?onWall=true, the post of a new photo: the
+// image goes to media as a photo of a post first, so a picture media
+// refuses changes nothing. The returned func publishes it once the photo
+// is set; it is nil without ?onWall. The post may still be refused then
+// (too many posts): the photo is changed, and the caller hears why there
+// is no post.
+func (a *api) newAvatarPost(r *http.Request, token string, image []byte) (func(np model.NewPost) error, error) {
+	if r.URL.Query().Get("onWall") != "true" {
+		return nil, nil
+	}
+
+	photoID, err := a.media.UploadPhoto(r.Context(), token, image)
+	if err != nil {
+		return nil, err
+	}
+
+	return func(np model.NewPost) error {
+		np.PhotoIDs, np.AvatarUpdate = []string{photoID}, true
+		_, err := a.posts.Create(r.Context(), token, np)
+
+		return err
+	}, nil
 }
 
 func (a *api) deleteAvatar(w http.ResponseWriter, r *http.Request) {
