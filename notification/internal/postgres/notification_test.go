@@ -231,6 +231,46 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("Delete: %v, left %d", err, count())
 		}
 	})
+	t.Run("suggested post", func(t *testing.T) {
+		suggestion, club, admin := uuid.New(), uuid.New(), uuid.New()
+
+		count := func(recipient uuid.UUID) int {
+			t.Helper()
+
+			got, err := repo.List(ctx, service.Query{RecipientID: recipient, Unread: true, Limit: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return len(got)
+		}
+
+		for range 2 { // one notification per suggestion and admin
+			for _, recipient := range []uuid.UUID{bob, admin} {
+				e := notification.Event{Kind: notification.KindSuggestedPost, RecipientID: recipient, ActorID: club, PostID: suggestion}
+
+				n, err := notification.New(e, time.Now())
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err = repo.Save(ctx, n); err != nil {
+					t.Fatalf("Save: %v", err)
+				}
+			}
+		}
+		if count(bob) != 1 || count(admin) != 1 {
+			t.Fatalf("notifications about one suggestion = %d and %d, want 1 each", count(bob), count(admin))
+		}
+
+		e := notification.Event{Kind: notification.KindSuggestedPost, RecipientID: admin, ActorID: club, PostID: suggestion}
+		if err := repo.Delete(ctx, e); err != nil || count(admin) != 0 || count(bob) != 1 {
+			t.Fatalf("Delete takes only its recipient's: %v, left %d and %d", err, count(bob), count(admin))
+		}
+
+		if err := repo.DeleteByPost(ctx, suggestion); err != nil || count(bob) != 0 {
+			t.Fatalf("the suggestion gone takes the rest: %v, left %d", err, count(bob))
+		}
+	})
 }
 
 func TestRepositories_DeleteByUser(t *testing.T) {

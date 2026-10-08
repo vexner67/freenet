@@ -53,6 +53,9 @@ enum Kind {
   // The actor, a community, published the post the recipient suggested
   // for its wall; post_id is the published post.
   KIND_POST_ACCEPTED = 8;
+  // Someone suggested a post for the wall of the actor, a community the
+  // recipient runs; post_id is the suggestion, not a post.
+  KIND_SUGGESTED_POST = 9;
 }
 
 // Event: post_id is set for all but follows,
