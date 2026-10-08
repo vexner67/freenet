@@ -45,6 +45,12 @@ type markReadRequest struct {
 	UpTo string `json:"upTo"`
 }
 
+// kindSuggestedPost names a suggestion, not a post, by PostID: a
+// suggestion is not public and the community, the actor, is all its
+// admins are told about ("новые записи в предложке" of openvk). The
+// notification goes when the suggestion does.
+const kindSuggestedPost = "suggested_post"
+
 // targets are what a page of notifications refers to, by ID; what was
 // deleted meanwhile is missing.
 type targets struct {
@@ -121,7 +127,7 @@ func (a *api) notificationTargets(r *http.Request, notifications []model.Notific
 
 	for _, n := range notifications {
 		actorIDs = append(actorIDs, n.ActorID)
-		if n.PostID != "" {
+		if n.PostID != "" && n.Kind != kindSuggestedPost {
 			postIDs = append(postIDs, n.PostID)
 		}
 		if n.CommentID != "" {
@@ -178,7 +184,7 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 		Actor:     toAuthorJSON(actor),
 	}
 
-	if n.PostID != "" {
+	if n.PostID != "" && n.Kind != kindSuggestedPost {
 		p, ok := t.posts[n.PostID]
 		if !ok {
 			return notificationJSON{}, false

@@ -10,10 +10,10 @@ import (
 
 type notificationPage struct {
 	Notifications []struct {
-		ID        string            `json:"id"`
-		Type      string            `json:"type"`
-		CreatedAt string            `json:"createdAt"`
-		Actor     map[string]string `json:"actor"`
+		ID        string         `json:"id"`
+		Type      string         `json:"type"`
+		CreatedAt string         `json:"createdAt"`
+		Actor     map[string]any `json:"actor"`
 		Post      *struct {
 			ID        string `json:"id"`
 			CreatedAt string `json:"createdAt"`
@@ -44,7 +44,7 @@ func TestListNotifications(t *testing.T) {
 
 	// The follow by a vanished account and the like of a deleted post are
 	// left out.
-	if len(got.Notifications) != 5 {
+	if len(got.Notifications) != 6 {
 		t.Fatalf("notifications = %+v", got.Notifications)
 	}
 
@@ -64,6 +64,10 @@ func TestListNotifications(t *testing.T) {
 	}
 	if repost := got.Notifications[4]; repost.Type != "repost" || repost.Post == nil || repost.Post.ID != "p1" {
 		t.Fatalf("repost = %+v", repost)
+	}
+	// A suggestion is no post: the community is all there is to show.
+	if suggested := got.Notifications[5]; suggested.Type != "suggested_post" || suggested.Actor["name"] != "Кошки" || suggested.Post != nil {
+		t.Fatalf("suggested post = %+v", suggested)
 	}
 
 	archive := newHarness(rest.Config{})
