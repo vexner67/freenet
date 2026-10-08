@@ -16,6 +16,12 @@ service MediaService {
   // Public: an avatar as JPEG.
   rpc GetAvatar(GetAvatarRequest) returns (GetAvatarResponse);
 
+  // Internal, for the gateway, which has checked that the caller (whose
+  // access token comes along) runs the club: the avatars of a community,
+  // filed under its ID and served by GetAvatar as a user's.
+  rpc UploadClubAvatar(UploadClubAvatarRequest) returns (UploadAvatarResponse);
+  rpc DeleteClubAvatars(DeleteClubAvatarsRequest) returns (google.protobuf.Empty);
+
   // Require an access token; the photos belong to the caller. A photo is
   // uploaded before the post that shows it; ListOwnPhotos tells which of
   // the given ones the caller has. A photo that no post publishes is
@@ -44,6 +50,18 @@ message UploadAvatarRequest {
 
 message UploadAvatarResponse {
   string avatar_id = 1;
+}
+
+message UploadClubAvatarRequest {
+  string club_id = 1;
+  // JPEG, PNG, GIF or WebP, at most 8 MB, at least 50x50.
+  bytes image = 2;
+}
+
+message DeleteClubAvatarsRequest {
+  string club_id = 1;
+  // The avatar to keep; empty deletes them all.
+  string keep_avatar_id = 2;
 }
 
 message DeleteAvatarsRequest {

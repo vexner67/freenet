@@ -27,5 +27,7 @@ func InternalMethods() map[string][]string {
 		mediav1.MediaService_PublishPhotos_FullMethodName:         {mtls.Post, mtls.Message},
 		mediav1.MediaService_DeletePublishedPhotos_FullMethodName: {mtls.Post, mtls.Message},
 		mediav1.MediaService_PurgeUser_FullMethodName:             {mtls.User},
+		mediav1.MediaService_UploadClubAvatar_FullMethodName:      {mtls.Gateway},
+		mediav1.MediaService_DeleteClubAvatars_FullMethodName:     {mtls.Gateway},
 	}
 }
