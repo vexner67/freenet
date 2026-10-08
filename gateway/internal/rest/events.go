@@ -56,6 +56,14 @@ type (
 		UpTo string     `json:"upTo"`
 	}
 
+	// deleteEventJSON: message ID of the dialog with Peer is gone, taken
+	// back by its sender.
+	deleteEventJSON struct {
+		Type string     `json:"type"` // "delete"
+		Peer authorJSON `json:"peer"`
+		ID   string     `json:"id"`
+	}
+
 	notificationEventJSON struct {
 		Type   string `json:"type"`   // "notification"
 		Change string `json:"change"` // "new", "gone" or "read"
@@ -248,7 +256,8 @@ func (s *eventSession) forwardMessages(ctx context.Context, next model.MessageEv
 			return err
 		}
 
-		// Unread dialogs change with incoming messages and own reads.
+		// Unread dialogs change with incoming messages, own reads and
+		// unread messages taken back.
 		counters, err := s.counters(ctx, "counters", true, false)
 		if err != nil {
 			return err
@@ -273,6 +282,20 @@ func (s *eventSession) messageEvent(e model.MessageEvent) (any, error) {
 		}
 
 		return readEventJSON{Type: "read", Peer: peer, ByMe: byMe, UpTo: e.Read.UpTo}, nil
+	}
+
+	if d := e.Deleted; d != nil {
+		peerID := d.SenderID
+		if peerID == s.me {
+			peerID = d.RecipientID
+		}
+
+		peer, ok, err := s.peer(peerID)
+		if err != nil || !ok {
+			return nil, err
+		}
+
+		return deleteEventJSON{Type: "delete", Peer: peer, ID: d.ID}, nil
 	}
 
 	m := *e.Message

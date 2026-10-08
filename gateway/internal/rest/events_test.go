@@ -27,6 +27,7 @@ type eventJSON struct {
 	Message       map[string]any `json:"message"`
 	ByMe          bool           `json:"byMe"`
 	UpTo          string         `json:"upTo"`
+	ID            string         `json:"id"`
 	Change        string         `json:"change"`
 }
 
@@ -100,6 +101,16 @@ func TestEvents(t *testing.T) {
 		t.Fatalf("read event = %+v, want bob's read", e)
 	}
 	next(t, conn) // counters
+
+	// The caller takes a message to bob back.
+	h.messages.events <- model.MessageEvent{Deleted: &model.DeletedMessage{ID: "m3", SenderID: "u1", RecipientID: "u2"}}
+
+	if e := next(t, conn); e.Type != "delete" || e.Peer["nickname"] != "bob" || e.ID != "m3" {
+		t.Fatalf("delete event = %+v, want the message to bob", e)
+	}
+	if e := next(t, conn); e.Type != "counters" || e.Messages == nil {
+		t.Fatalf("after a deletion = %+v, want the messages counter", e)
+	}
 
 	h.notifications.changes <- "new"
 

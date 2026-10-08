@@ -92,6 +92,16 @@ func (m *Messages) MarkRead(ctx context.Context, accessToken, peerID, upTo strin
 	return nil
 }
 
+// Delete takes the caller's message back from both sides of the dialog.
+func (m *Messages) Delete(ctx context.Context, accessToken, id string) error {
+	_, err := m.api.DeleteMessage(withToken(ctx, accessToken), &messagev1.DeleteMessageRequest{Id: id})
+	if err != nil {
+		return errs.Wrap("m.api.DeleteMessage", fromStatus(err))
+	}
+
+	return nil
+}
+
 // HasMessagesFrom tells whether peerID has ever written to the caller.
 func (m *Messages) HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error) {
 	resp, err := m.api.HasMessagesFrom(withToken(ctx, accessToken), &messagev1.HasMessagesFromRequest{PeerId: peerID})
@@ -120,6 +130,10 @@ func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.Mes
 			return model.MessageEvent{Read: &model.ReadMark{ReaderID: r.GetReaderId(), PeerID: r.GetPeerId(), UpTo: r.GetUpToId()}}, nil
 		}
 
+		if d := resp.GetDeleted(); d != nil {
+			return model.MessageEvent{Deleted: &model.DeletedMessage{ID: d.GetId(), SenderID: d.GetSenderId(), RecipientID: d.GetRecipientId()}}, nil
+		}
+
 		msg := toMessage(resp.GetMessage())
 
 		return model.MessageEvent{Message: &msg}, nil
@@ -128,12 +142,13 @@ func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.Mes
 
 func toMessage(pm *messagev1.Message) model.Message {
 	return model.Message{
-		ID:          pm.GetId(),
-		SenderID:    pm.GetSenderId(),
-		RecipientID: pm.GetRecipientId(),
-		Text:        pm.GetText(),
-		PhotoIDs:    pm.GetPhotoIds(),
-		CreatedAt:   pm.GetCreatedAt().AsTime(),
-		Read:        pm.GetRead(),
+		ID:             pm.GetId(),
+		SenderID:       pm.GetSenderId(),
+		RecipientID:    pm.GetRecipientId(),
+		Text:           pm.GetText(),
+		PhotoIDs:       pm.GetPhotoIds(),
+		CreatedAt:      pm.GetCreatedAt().AsTime(),
+		Read:           pm.GetRead(),
+		DeletableUntil: fromTimestamp(pm.GetDeletableUntil()),
 	}
 }

@@ -15,14 +15,16 @@ type messageRequest struct {
 }
 
 // messageJSON: Out is the caller's own message, Read means its recipient
-// has read it.
+// has read it. The caller may delete their message until DeletableUntil,
+// "" for the peer's.
 type messageJSON struct {
-	ID        string      `json:"id"`
-	Text      string      `json:"text"`
-	Photos    []photoJSON `json:"photos"`
-	CreatedAt string      `json:"createdAt"`
-	Out       bool        `json:"out"`
-	Read      bool        `json:"read"`
+	ID             string      `json:"id"`
+	Text           string      `json:"text"`
+	Photos         []photoJSON `json:"photos"`
+	CreatedAt      string      `json:"createdAt"`
+	Out            bool        `json:"out"`
+	Read           bool        `json:"read"`
+	DeletableUntil string      `json:"deletableUntil"`
 }
 
 type dialogJSON struct {
@@ -48,7 +50,7 @@ type messagePageResponse struct {
 
 // toMessageJSON: a message is the caller's when the peer did not send it.
 func toMessageJSON(m model.Message, peerID string) messageJSON {
-	return messageJSON{
+	j := messageJSON{
 		ID:        m.ID,
 		Text:      m.Text,
 		Photos:    toPhotosJSON(m.SenderID, m.PhotoIDs),
@@ -56,6 +58,12 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 		Out:       m.SenderID != peerID,
 		Read:      m.Read,
 	}
+
+	if j.Out {
+		j.DeletableUntil = timeString(m.DeletableUntil)
+	}
+
+	return j
 }
 
 // listDialogs is the caller's dialogs with who is on the other side,
@@ -270,6 +278,23 @@ func (a *api) markDialogRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.messages.MarkRead(r.Context(), token, peer.ID, req.UpTo); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// deleteMessage takes the caller's message back from both sides of the
+// dialog; the message service decides whether they may.
+func (a *api) deleteMessage(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.messages.Delete(r.Context(), token, r.PathValue("id")); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

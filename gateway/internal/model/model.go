@@ -176,6 +176,8 @@ type Message struct {
 	PhotoIDs  []string
 	CreatedAt time.Time
 	Read      bool
+	// DeletableUntil: the sender may delete it from both sides until then.
+	DeletableUntil time.Time
 }
 
 // Dialog is the caller's conversation with PeerID; Unread means the peer
@@ -193,10 +195,20 @@ type DialogPage struct {
 }
 
 // MessageEvent is what happened in the caller's dialogs: a new message,
-// sent or received, or a read mark that moved. One of the two is set.
+// sent or received, a read mark that moved or a message deleted. One of
+// the three is set.
 type MessageEvent struct {
 	Message *Message
 	Read    *ReadMark
+	Deleted *DeletedMessage
+}
+
+// DeletedMessage: SenderID took message ID back from the dialog with
+// RecipientID.
+type DeletedMessage struct {
+	ID          string
+	SenderID    string
+	RecipientID string
 }
 
 // ReadMark: ReaderID has read the dialog with PeerID up to UpTo.

@@ -446,7 +446,10 @@ func (f *fakeMessageAPI) ListMessages(ctx context.Context, req *messagev1.ListMe
 	f.md, _ = metadata.FromOutgoingContext(ctx)
 	f.req = req
 	return &messagev1.ListMessagesResponse{
-		Messages:     []*messagev1.Message{{Id: "m1", SenderId: "u1", RecipientId: "u2", Text: "привет", CreatedAt: timestamppb.Now(), Read: true}},
+		Messages: []*messagev1.Message{{
+			Id: "m1", SenderId: "u1", RecipientId: "u2", Text: "привет", CreatedAt: timestamppb.Now(), Read: true,
+			DeletableUntil: timestamppb.New(time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)),
+		}},
 		NextCursor:   "m1",
 		PeerReadUpTo: "m1",
 	}, nil
@@ -456,6 +459,13 @@ func (f *fakeMessageAPI) ListDialogs(_ context.Context, _ *messagev1.ListDialogs
 	return &messagev1.ListDialogsResponse{Dialogs: []*messagev1.Dialog{
 		{PeerId: "u2", LastMessage: &messagev1.Message{Id: "m3", SenderId: "u2", Text: "ау"}, Unread: true},
 	}}, nil
+}
+
+func (f *fakeMessageAPI) DeleteMessage(_ context.Context, req *messagev1.DeleteMessageRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	if req.GetId() != "m1" {
+		return nil, status.Error(codes.PermissionDenied, "only the sender can delete the message")
+	}
+	return &emptypb.Empty{}, nil
 }
 
 func (f *fakeMessageAPI) SendMessage(_ context.Context, _ *messagev1.SendMessageRequest, _ ...grpc.CallOption) (*messagev1.SendMessageResponse, error) {
@@ -482,8 +492,21 @@ func TestMessages(t *testing.T) {
 	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
 		t.Fatalf("authorization metadata = %v", got)
 	}
-	if m := page.Messages[0]; m.ID != "m1" || m.SenderID != "u1" || !m.Read || page.PeerReadUpTo != "m1" || page.NextCursor != "m1" {
+	if m := page.Messages[0]; m.ID != "m1" || m.SenderID != "u1" || !m.Read || page.PeerReadUpTo != "m1" || page.NextCursor != "m1" ||
+		!m.DeletableUntil.Equal(time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)) {
 		t.Fatalf("page = %+v", page)
+	}
+
+	dialogs0, err := messages.Dialogs(context.Background(), "tok", "", 0)
+	if err != nil || !dialogs0.Dialogs[0].LastMessage.DeletableUntil.IsZero() {
+		t.Fatalf("a message without a deadline = %+v, %v; want a zero time", dialogs0, err)
+	}
+
+	if err = messages.Delete(context.Background(), "tok", "m1"); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if f := failure.From(messages.Delete(context.Background(), "tok", "m2")); f.Kind != failure.PermissionDenied {
+		t.Fatalf("Delete of someone else's: %+v", f)
 	}
 
 	dialogs, err := messages.Dialogs(context.Background(), "tok", "", 0)
