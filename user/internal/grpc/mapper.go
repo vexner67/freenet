@@ -58,6 +58,7 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		ShowPoliticalViews: p.ShowPoliticalViews,
 		WallWrite:          toProtoWallWrite(p.WallWrite),
 		MessagesWrite:      toProtoMessagesWrite(p.MessagesWrite),
+		ClubsRead:          toProtoClubsRead(p.ClubsRead),
 	}
 }
 
@@ -73,6 +74,11 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		return user.Privacy{}, err
 	}
 
+	clubsRead, err := user.NewClubsRead(fromProtoClubsRead(p.GetClubsRead()))
+	if err != nil {
+		return user.Privacy{}, err
+	}
+
 	return user.Privacy{
 		ShowBirthday:       p.GetShowBirthday(),
 		ShowRelationship:   p.GetShowRelationship(),
@@ -80,7 +86,34 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		ShowPoliticalViews: p.GetShowPoliticalViews(),
 		WallWrite:          wallWrite,
 		MessagesWrite:      messagesWrite,
+		ClubsRead:          clubsRead,
 	}, nil
+}
+
+func toProtoClubsRead(r user.ClubsRead) userv1.ClubsRead {
+	switch r {
+	case user.ClubsReadEveryone:
+		return userv1.ClubsRead_CLUBS_READ_EVERYONE
+	case user.ClubsReadFollowing:
+		return userv1.ClubsRead_CLUBS_READ_FOLLOWING
+	case user.ClubsReadOnlyMe:
+		return userv1.ClubsRead_CLUBS_READ_ONLY_ME
+	default:
+		return userv1.ClubsRead_CLUBS_READ_UNSPECIFIED
+	}
+}
+
+func fromProtoClubsRead(r userv1.ClubsRead) string {
+	switch r {
+	case userv1.ClubsRead_CLUBS_READ_EVERYONE:
+		return "everyone"
+	case userv1.ClubsRead_CLUBS_READ_FOLLOWING:
+		return "following"
+	case userv1.ClubsRead_CLUBS_READ_ONLY_ME:
+		return "only_me"
+	default:
+		return ""
+	}
 }
 
 func toProtoMessagesWrite(w user.MessagesWrite) userv1.MessagesWrite {

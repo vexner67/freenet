@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/google/uuid"
+	"github.com/vexner67/freenet/pkg/jwtauth"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"github.com/vexner67/freenet/user/internal/service"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -19,6 +20,7 @@ type BlockService interface {
 type PermissionService interface {
 	CanPostOnWall(ctx context.Context, authorID, ownerID uuid.UUID) (bool, error)
 	CanMessage(ctx context.Context, senderID, recipientID uuid.UUID, wroteFirst bool) (bool, error)
+	CanSeeClubs(ctx context.Context, viewerID, ownerID uuid.UUID) (bool, error)
 }
 
 // callerAnd is the caller from the token and the user the request names.
@@ -51,6 +53,26 @@ func (h *UserHandler) CanPostOnWall(
 	}
 
 	return &userv1.CanPostOnWallResponse{Allowed: allowed}, nil
+}
+
+func (h *UserHandler) CanSeeClubs(ctx context.Context, req *userv1.CanSeeClubsRequest) (*userv1.CanSeeClubsResponse, error) {
+	ownerID, err := parseID(req.GetUserId(), "user id")
+	if err != nil {
+		return nil, err
+	}
+
+	// A public method: the viewer is known only if a token was sent.
+	var viewerID uuid.UUID
+	if identity, ok := jwtauth.IdentityFromContext(ctx); ok {
+		viewerID = identity.UserID
+	}
+
+	allowed, err := h.permissionService.CanSeeClubs(ctx, viewerID, ownerID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.CanSeeClubsResponse{Allowed: allowed}, nil
 }
 
 func (h *UserHandler) CanMessage(ctx context.Context, req *userv1.CanMessageRequest) (*userv1.CanMessageResponse, error) {

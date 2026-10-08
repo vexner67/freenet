@@ -132,6 +132,7 @@ const listBlockedQuery = `
 		u.show_political_views,
 		u.wall_write,
 		u.messages_write,
+		u.clubs_read,
 		u.avatar_id,
 		u.deactivated_at,
 		u.purge_at,

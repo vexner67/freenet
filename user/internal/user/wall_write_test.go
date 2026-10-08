@@ -48,7 +48,7 @@ func TestUser_CanPostOnWall(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = u.UpdatePrivacy(user.Privacy{WallWrite: tt.wallWrite, MessagesWrite: user.MessagesWriteEveryone}); err != nil {
+			if err = u.UpdatePrivacy(user.Privacy{WallWrite: tt.wallWrite, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone}); err != nil {
 				t.Fatal(err)
 			}
 
