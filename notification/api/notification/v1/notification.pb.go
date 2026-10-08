@@ -41,6 +41,9 @@ const (
 	Kind_KIND_COMMENT_REPLY Kind = 6
 	// The actor liked the recipient's comment comment_id.
 	Kind_KIND_COMMENT_LIKE Kind = 7
+	// The actor, a community, published the post the recipient suggested
+	// for its wall; post_id is the published post.
+	Kind_KIND_POST_ACCEPTED Kind = 8
 )
 
 // Enum value maps for Kind.
@@ -54,6 +57,7 @@ var (
 		5: "KIND_REPOST",
 		6: "KIND_COMMENT_REPLY",
 		7: "KIND_COMMENT_LIKE",
+		8: "KIND_POST_ACCEPTED",
 	}
 	Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":   0,
@@ -64,6 +68,7 @@ var (
 		"KIND_REPOST":        5,
 		"KIND_COMMENT_REPLY": 6,
 		"KIND_COMMENT_LIKE":  7,
+		"KIND_POST_ACCEPTED": 8,
 	}
 )
 
@@ -200,8 +205,8 @@ func (Change) EnumDescriptor() ([]byte, []int) {
 	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{2}
 }
 
-// Event: post_id is set for likes, comments, wall posts and reposts,
-// comment_id for comments.
+// Event: post_id is set for all but follows,
+// comment_id for comments, replies and comment likes.
 type Event struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Kind          Kind                   `protobuf:"varint,1,opt,name=kind,proto3,enum=notification.v1.Kind" json:"kind,omitempty"`
@@ -951,7 +956,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId\"\x12\n" +
 	"\x10SubscribeRequest\"D\n" +
 	"\x11SubscribeResponse\x12/\n" +
-	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xa2\x01\n" +
+	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xba\x01\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -960,7 +965,8 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x0eKIND_WALL_POST\x10\x04\x12\x0f\n" +
 	"\vKIND_REPOST\x10\x05\x12\x16\n" +
 	"\x12KIND_COMMENT_REPLY\x10\x06\x12\x15\n" +
-	"\x11KIND_COMMENT_LIKE\x10\a*;\n" +
+	"\x11KIND_COMMENT_LIKE\x10\a\x12\x16\n" +
+	"\x12KIND_POST_ACCEPTED\x10\b*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
