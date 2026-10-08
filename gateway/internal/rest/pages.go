@@ -33,6 +33,10 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /club/{ref}/edit", page(dir, "club-edit.html"))
 	mux.Handle("GET /club/{ref}/members", page(dir, "club-members.html"))
 	mux.Handle("GET /club/{ref}/suggested", page(dir, "club-suggested.html"))
+	mux.Handle("GET /club/{ref}/board", page(dir, "board.html"))
+	mux.Handle("GET /club/{ref}/board/create", page(dir, "topic-create.html"))
+	mux.Handle("GET /topic/{id}", page(dir, "topic.html"))
+	mux.Handle("GET /topic/{id}/edit", page(dir, "topic-edit.html"))
 	mux.Handle("GET /{nickname}", page(dir, "profile.html"))
 }
 

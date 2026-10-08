@@ -25,6 +25,7 @@ type fakeClubs struct {
 	role                 string
 	closedWall           bool
 	suggestWall          bool
+	openTopics           bool
 	transferredTo        string
 	clubsOf              string
 	err                  error
@@ -41,7 +42,7 @@ func (f *fakeClubs) view() model.ClubView {
 	if f.suggestWall {
 		c.Wall = "suggest"
 	}
-	return model.ClubView{Club: c, Role: f.role, OwnerID: "u1"}
+	return model.ClubView{Club: c, Role: f.role, OwnerID: "u1", CanStartTopic: f.openTopics || f.role == "admin" || f.role == "owner"}
 }
 
 func (f *fakeClubs) Create(_ context.Context, token, name, description string) (model.ClubView, error) {

@@ -1010,7 +1010,9 @@ paths:
         it away; `wall` is `open` (everyone writes), `suggest` (only
         admins write, others suggest posts: "Предложка") or `closed` (only
         admins); `adminsDisplay` is what the page shows of those who run
-        the community ("Список админов").
+        the community ("Список админов"); `openTopics` lets anyone start
+        topics ("Все могут создавать темы"), `topicsAboveWall` lists them
+        above the wall.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -1026,6 +1028,8 @@ paths:
                 website: { type: string, maxLength: 256, description: "An http or https link; https:// is added when the scheme is left out" }
                 wall: { type: string, enum: [open, suggest, closed] }
                 adminsDisplay: { $ref: "#/components/schemas/AdminsDisplay" }
+                openTopics: { type: boolean }
+                topicsAboveWall: { type: boolean }
       responses:
         "200": { $ref: "#/components/responses/Club" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -1289,6 +1293,219 @@ paths:
     delete:
       summary: Withdraw your suggestion, or decline one as an admin ("Отклонить")
       description: Its photos go with it.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Neither its author nor an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/clubs/{ref}/topics:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    get:
+      summary: A community's discussions ("Обсуждения")
+      description: |
+        Pinned first, then the most recently active. `q` finds topics by
+        their titles, whatever the case. Topics whose authors' pages are
+        deleted are left out, but counted in `total`.
+      parameters:
+        - name: q
+          in: query
+          schema: { type: string }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50 }
+      responses:
+        "200":
+          description: One page of topics
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [topics, nextCursor, total]
+                properties:
+                  topics:
+                    type: array
+                    items: { $ref: "#/components/schemas/Topic" }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Start a topic ("Новая тема")
+      description: |
+        Whom the community lets (`canStartTopic`); `fromClub` speaks for it,
+        its admins only. `text` and `photos` are the first message and may
+        both be empty. Your profile must be filled in first.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, maxLength: 127 }
+                text: { type: string, maxLength: 1000 }
+                photos: { $ref: "#/components/schemas/PhotoIDs" }
+                fromClub: { type: boolean }
+      responses:
+        "201":
+          description: The topic
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Topic" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "`you cannot start topics here` or `you cannot write for this community`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/topics/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: A topic with its community, for its page
+      responses:
+        "200": { $ref: "#/components/responses/TopicPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Rename a topic and change its settings ("Редактирование темы")
+      description: |
+        Its author or an admin renames and closes it; only an admin pins it
+        and restricts it, and only a topic of the community is restricted.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title, closed, pinned, restricted]
+              properties:
+                title: { type: string, maxLength: 127 }
+                closed: { type: boolean }
+                pinned: { type: boolean }
+                restricted: { type: boolean }
+      responses:
+        "200": { $ref: "#/components/responses/TopicPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Neither its author nor an admin, or not an admin for pinning and restricting
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Delete a topic with its messages ("Удалить тему")
+      description: Its author or an admin; the photos of its messages go too.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Neither its author nor an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/topics/{id}/messages:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: What is written in a topic, oldest first
+      description: Messages whose authors' pages are deleted are left out, but counted in `total`.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50 }
+      responses:
+        "200":
+          description: One page of messages
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [messages, nextCursor, total]
+                properties:
+                  messages:
+                    type: array
+                    items: { $ref: "#/components/schemas/TopicMessage" }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Write in a topic
+      description: |
+        Nobody writes in a closed topic (409), only the admins in a
+        restricted one; `fromClub` speaks for the community, its admins
+        only. Your profile must be filled in first; the photos must be yours.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text: { type: string, maxLength: 1000 }
+                photos: { $ref: "#/components/schemas/PhotoIDs" }
+                fromClub: { type: boolean }
+      responses:
+        "201":
+          description: The message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/TopicMessage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "`only the admins comment on this topic` or `you cannot write for this community`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`the topic is closed`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/topic-messages/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Delete a message of a topic
+      description: Its author or an admin; its photos go with it.
       security: [{ bearer: [] }]
       responses:
         "204": { description: Deleted }
@@ -1682,14 +1899,26 @@ components:
             allOf:
               - { $ref: "#/components/schemas/ClubInfo" }
               - type: object
-                required: [role, owner]
+                required: [role, owner, canStartTopic]
                 properties:
                   role: { type: string, enum: ["", member, admin, owner], description: "What you are in it; empty without a token or membership" }
+                  canStartTopic: { type: boolean, description: "You may start a topic in its discussions (\"Создать тему\")" }
                   owner:
                     description: Its creator; null when the page is deleted or erased
                     oneOf:
                       - { $ref: "#/components/schemas/Author" }
                       - { type: "null" }
+    TopicPage:
+      description: A topic with its community; role is what you are in it
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [topic, club, role]
+            properties:
+              topic: { $ref: "#/components/schemas/Topic" }
+              club: { $ref: "#/components/schemas/Author" }
+              role: { type: string, enum: ["", member, admin, owner] }
     Like:
       description: How many likes the post has now
       content:
@@ -1852,7 +2081,7 @@ components:
 
     ClubInfo:
       type: object
-      required: [id, name, description, address, website, wall, adminsDisplay, members, createdAt]
+      required: [id, name, description, address, website, wall, adminsDisplay, members, createdAt, openTopics, topicsAboveWall]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -1864,6 +2093,49 @@ components:
         members: { type: integer }
         createdAt: { type: string, format: date-time }
         avatar: { $ref: "#/components/schemas/Avatar" }
+        openTopics: { type: boolean, description: "Anyone starts topics in its discussions, not only its admins (\"Все могут создавать темы\")" }
+        topicsAboveWall: { type: boolean, description: "Its page lists the topics above the wall (\"Отображать список тем над стеной\")" }
+
+    Topic:
+      type: object
+      description: A discussion of a community ("Обсуждения")
+      required: [id, author, title, fromWall, closed, pinned, restricted, createdAt, updatedAt, messages, lastMessage, mine]
+      properties:
+        id: { type: string, format: uuid }
+        author: { description: "Who started it, or the community for a topic of the community", allOf: [{ $ref: "#/components/schemas/Author" }] }
+        title: { type: string, maxLength: 127 }
+        fromWall: { type: boolean, description: "Started for the community, shown as its author" }
+        closed: { type: boolean, description: "Nobody writes in it (\"Закрыть тему\")" }
+        pinned: { type: boolean, description: "On top of the list (\"Закрепить тему\")" }
+        restricted: { type: boolean, description: "Only the admins write in it (\"Комментировать могут только администраторы\")" }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time, description: "The newest message, or createdAt without one" }
+        messages: { type: integer }
+        lastMessage:
+          description: Who answered last and when ("ответил"); only in lists, null without a message
+          oneOf:
+            - type: object
+              required: [author, createdAt]
+              properties:
+                author: { $ref: "#/components/schemas/Author" }
+                createdAt: { type: string, format: date-time }
+            - type: "null"
+        mine: { type: boolean, description: "You started it; false without a token" }
+
+    TopicMessage:
+      type: object
+      description: What someone wrote in a topic, shaped as a comment
+      required: [id, author, text, photos, createdAt, fromWall, mine]
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/Author" }
+        text: { type: string, description: "Plain text with \\n line breaks; empty when photos only" }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
+        createdAt: { type: string, format: date-time }
+        fromWall: { type: boolean, description: "It speaks for the community, shown as its author" }
+        mine: { type: boolean, description: "You wrote it; false without a token" }
 
     NewClubPost:
       type: object
