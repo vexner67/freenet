@@ -61,6 +61,9 @@ type postResponse struct {
 	// Mine: the viewer wrote it, and may edit it; false for anonymous
 	// viewers.
 	Mine bool `json:"mine"`
+	// Signer is who wrote a post for a community that names its author
+	// ("Автор: ..."); null otherwise.
+	Signer *authorJSON `json:"signer"`
 }
 
 type repostRequest struct {
@@ -117,7 +120,7 @@ func authorOfProfile(p model.PublicProfile) model.Author {
 
 // clubAuthor is a community as the owner of a wall or the voice of a post.
 func clubAuthor(c model.Club) model.Author {
-	return model.Author{ID: c.ID, Name: c.Name, Club: true, Address: c.Address}
+	return model.Author{ID: c.ID, AvatarID: c.AvatarID, Name: c.Name, Club: true, Address: c.Address}
 }
 
 func toAuthorJSON(a model.Author) authorJSON {
@@ -173,7 +176,20 @@ func toPostResponse(p model.Post) postResponse {
 		Pinned:        p.Pinned,
 		FromWall:      p.FromWall,
 		Mine:          p.Mine,
+		Signer:        signerJSON(p),
 	}
+}
+
+// signerJSON is the author named under a signed post for a community; null
+// when not signed, or when the author's page is gone (no name left).
+func signerJSON(p model.Post) *authorJSON {
+	if !p.FromWall || !p.Signed || p.Author.Nickname == "" {
+		return nil
+	}
+
+	a := toAuthorJSON(p.Author)
+
+	return &a
 }
 
 // optionalTime is t as RFC 3339, null when zero.
@@ -301,13 +317,17 @@ func (a *api) sharedPosts(r *http.Request, posts []model.Post) (map[string]model
 
 // withProfiles puts the profiles of p's author and wall owner into p;
 // false when either deleted the account. A post that speaks for its wall
-// needs only the wall: its author is not shown, and keeps just the ID
-// that the photos are filed under.
+// needs only the wall: its author is not shown, unless the post is signed,
+// and keeps at least the ID that the photos are filed under.
 func withProfiles(p *model.Post, people map[string]model.Author) bool {
 	wall, hasWall := people[p.Wall.ID]
 	p.Wall = wall
 
 	if p.FromWall {
+		if author, ok := people[p.Author.ID]; ok && p.Signed {
+			p.Author = author
+		}
+
 		return hasWall
 	}
 

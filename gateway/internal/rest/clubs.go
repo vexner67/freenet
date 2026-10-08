@@ -26,18 +26,21 @@ type clubSettingsRequest struct {
 type clubPostRequest struct {
 	Text   string   `json:"text"`
 	Photos []string `json:"photos"`
-	// FromClub: the post speaks for the club ("От имени сообщества").
+	// FromClub: the post speaks for the club ("От имени сообщества"),
+	// naming its author with Signed ("Подпись автора").
 	FromClub bool `json:"fromClub"`
+	Signed   bool `json:"signed"`
 }
 
 type clubJSON struct {
-	ID          string `json:"id"`
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Address     string `json:"address"`
-	Wall        string `json:"wall"`
-	Members     int    `json:"members"`
-	CreatedAt   string `json:"createdAt"`
+	ID          string      `json:"id"`
+	Name        string      `json:"name"`
+	Description string      `json:"description"`
+	Address     string      `json:"address"`
+	Wall        string      `json:"wall"`
+	Members     int         `json:"members"`
+	CreatedAt   string      `json:"createdAt"`
+	Avatar      *avatarJSON `json:"avatar"`
 }
 
 // clubResponse is a club as the viewer sees it: role is "" (not a member,
@@ -59,14 +62,22 @@ type clubMembersResponse struct {
 	NextCursor string           `json:"nextCursor"`
 }
 
+// myClubJSON: Pinned is in the caller's left menu.
 type myClubJSON struct {
 	clubJSON
-	Role string `json:"role"`
+	Role   string `json:"role"`
+	Pinned bool   `json:"pinned"`
 }
 
 type myClubsResponse struct {
 	Clubs      []myClubJSON `json:"clubs"`
 	NextCursor string       `json:"nextCursor"`
+	Total      int          `json:"total"`
+}
+
+type clubListResponse struct {
+	Clubs      []clubJSON `json:"clubs"`
+	NextCursor string     `json:"nextCursor"`
 }
 
 func toClubJSON(c model.Club) clubJSON {
@@ -78,7 +89,17 @@ func toClubJSON(c model.Club) clubJSON {
 		Wall:        c.Wall,
 		Members:     c.Members,
 		CreatedAt:   c.CreatedAt.UTC().Format(time.RFC3339),
+		Avatar:      toAvatarJSON(c.ID, c.AvatarID),
 	}
+}
+
+func toClubsJSON(clubs []model.Club) []clubJSON {
+	out := make([]clubJSON, 0, len(clubs))
+	for _, c := range clubs {
+		out = append(out, toClubJSON(c))
+	}
+
+	return out
 }
 
 // clubResponseOf adds the owner's profile to a club, looked up unless the
@@ -341,7 +362,8 @@ func (a *api) setAdmin(w http.ResponseWriter, r *http.Request, admin bool) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// listMyClubs is "Мои Группы": the caller's clubs, the newest joined first.
+// listMyClubs is "Мои Группы": the caller's clubs, the newest joined
+// first; with ?managed=true only those they run ("Управление").
 func (a *api) listMyClubs(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -355,18 +377,175 @@ func (a *api) listMyClubs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := a.clubs.Mine(r.Context(), token, r.URL.Query().Get("cursor"), limit)
+	query := r.URL.Query()
+
+	page, err := a.clubs.Mine(r.Context(), token, query.Get("cursor"), limit, query.Get("managed") == "true")
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	resp := myClubsResponse{Clubs: make([]myClubJSON, 0, len(page.Clubs)), NextCursor: page.NextCursor}
+	resp := myClubsResponse{Clubs: make([]myClubJSON, 0, len(page.Clubs)), NextCursor: page.NextCursor, Total: page.Total}
 	for _, m := range page.Clubs {
-		resp.Clubs = append(resp.Clubs, myClubJSON{clubJSON: toClubJSON(m.Club), Role: m.Role})
+		resp.Clubs = append(resp.Clubs, myClubJSON{clubJSON: toClubJSON(m.Club), Role: m.Role, Pinned: m.Pinned})
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// listPinnedClubs are the clubs in the caller's left menu.
+func (a *api) listPinnedClubs(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	clubs, err := a.clubs.Pinned(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, clubListResponse{Clubs: toClubsJSON(clubs)})
+}
+
+// searchClubs finds clubs by name or address: GET /api/v1/clubs?q=.
+func (a *api) searchClubs(w http.ResponseWriter, r *http.Request) {
+	limit, err := pageLimit(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	query := r.URL.Query()
+
+	page, err := a.clubs.Search(r.Context(), query.Get("q"), query.Get("cursor"), limit)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, clubListResponse{Clubs: toClubsJSON(page.Clubs), NextCursor: page.NextCursor})
+}
+
+// pinClub and unpinClub are openvk's "Добавить в левое меню" and "Убрать
+// из левого меню", for the clubs the caller runs.
+func (a *api) pinClub(w http.ResponseWriter, r *http.Request) {
+	a.setPinnedClub(w, r, true)
+}
+
+func (a *api) unpinClub(w http.ResponseWriter, r *http.Request) {
+	a.setPinnedClub(w, r, false)
+}
+
+func (a *api) setPinnedClub(w http.ResponseWriter, r *http.Request, pinned bool) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.club(r, token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.clubs.Pin(r.Context(), token, c.Club.ID, pinned); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// uploadClubAvatar takes the raw image as the request body and makes it
+// the club's photo, as the user's own: the old one goes only once the club
+// shows the new one. Only its admins may; media trusts the gateway to
+// have checked.
+func (a *api) uploadClubAvatar(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.managedClub(r, token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	image, err := readImage(w, r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	avatarID, err := a.media.UploadClubAvatar(r.Context(), token, c.Club.ID, image)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	v, err := a.clubs.SetAvatar(r.Context(), token, c.Club.ID, avatarID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.cleanUpClubAvatars(r, token, c.Club.ID, avatarID)
+	a.writeClub(w, r, http.StatusOK, v)
+}
+
+func (a *api) deleteClubAvatar(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.managedClub(r, token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	v, err := a.clubs.SetAvatar(r.Context(), token, c.Club.ID, "")
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.cleanUpClubAvatars(r, token, c.Club.ID, "")
+	a.writeClub(w, r, http.StatusOK, v)
+}
+
+// managedClub is the club of the path, which the caller must run.
+func (a *api) managedClub(r *http.Request, token string) (model.ClubView, error) {
+	c, err := a.club(r, token)
+	if err != nil {
+		return model.ClubView{}, err
+	}
+
+	if !manages(c.Role) {
+		return model.ClubView{}, failure.New(failure.PermissionDenied, "only the admins can edit the club")
+	}
+
+	return c, nil
+}
+
+func manages(role string) bool {
+	return role == "admin" || role == "owner"
+}
+
+// cleanUpClubAvatars deletes photos the club no longer shows. A failure
+// only leaves unused files behind, so it is logged, not returned.
+func (a *api) cleanUpClubAvatars(r *http.Request, token, clubID, keep string) {
+	if err := a.media.DeleteClubAvatars(r.Context(), token, clubID, keep); err != nil {
+		a.logger.WarnContext(r.Context(), "old club avatars left behind", "error", err)
+	}
 }
 
 // listClubPosts is the wall of a club. Its first page tells a signed-in
@@ -416,7 +595,8 @@ func (a *api) listClubPosts(w http.ResponseWriter, r *http.Request) {
 }
 
 // createClubPost writes on the wall of a club, on the author's behalf or,
-// for its admins, on the club's.
+// for its admins, on the club's, maybe signed. As in openvk, its admins
+// always speak for a club with a closed wall.
 func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -442,7 +622,9 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	allowed, err := a.clubs.CanPostOnWall(r.Context(), token, c.Club.ID, req.FromClub)
+	fromClub := req.FromClub || (c.Club.Wall == "closed" && manages(c.Role))
+
+	allowed, err := a.clubs.CanPostOnWall(r.Context(), token, c.Club.ID, fromClub)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -463,7 +645,8 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		Text:     req.Text,
 		PhotoIDs: req.Photos,
 		ClubWall: true,
-		FromWall: req.FromClub,
+		FromWall: fromClub,
+		Signed:   fromClub && req.Signed,
 	})
 	if err != nil {
 		a.writeError(w, r, err)

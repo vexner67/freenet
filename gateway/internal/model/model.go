@@ -113,8 +113,9 @@ type Post struct {
 	// Pinned: the owner of the wall shows it first there.
 	Pinned bool
 	// FromWall: the post speaks for its wall, a community; Author is
-	// still its writer, whom the API does not show.
+	// still its writer, whom the API shows only when Signed.
 	FromWall bool
+	Signed   bool
 	// Mine: the viewer wrote it; false for anonymous viewers.
 	Mine bool
 }
@@ -128,6 +129,7 @@ type NewPost struct {
 	PhotoIDs []string
 	ClubWall bool
 	FromWall bool
+	Signed   bool
 }
 
 // FeedSources are what a news feed shows: the posts of Authors and every
@@ -287,6 +289,8 @@ type Club struct {
 	Wall      string
 	Members   int
 	CreatedAt time.Time
+	// AvatarID is the club's photo, filed under its ID; "" for none.
+	AvatarID string
 }
 
 // ClubView is a club as the caller sees it. Role is what the caller is in
@@ -318,14 +322,24 @@ type ClubMemberPage struct {
 	NextCursor string
 }
 
-// Membership is one club of the caller and what they are in it.
+// Membership is one club of the caller and what they are in it; Pinned:
+// in their left menu.
 type Membership struct {
-	Club Club
-	Role string
+	Club   Club
+	Role   string
+	Pinned bool
 }
 
-// ClubPage is one screen of the caller's clubs, the newest joined first.
+// ClubPage is one screen of the caller's clubs, the newest joined first;
+// Total counts all of them.
 type ClubPage struct {
 	Clubs      []Membership
+	NextCursor string
+	Total      int
+}
+
+// ClubSearchPage is one screen of found clubs, the newest first.
+type ClubSearchPage struct {
+	Clubs      []Club
 	NextCursor string
 }
