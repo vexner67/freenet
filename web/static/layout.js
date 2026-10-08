@@ -64,6 +64,7 @@ export function renderChrome(me) {
     );
     showCounter('messages');
     showCounter('notifications');
+    showPinnedClubs(menu);
 
     // Live counters: the stream says them on connecting and on changes.
     onEvent('ready', applyCounters);
@@ -93,6 +94,34 @@ function renderDeactivatedChrome(me, links, menu) {
 
   const own = profilePath(me);
   if (decodeURIComponent(location.pathname) !== own) location.replace(own);
+}
+
+// showPinnedClubs adds the clubs you run and keep in the menu under it,
+// after a divider, as openvk does ("Добавить в левое меню"). A nicety: a
+// failure leaves the menu as it is.
+export async function showPinnedClubs(menu) {
+  if (!menu) return;
+
+  try {
+    const { clubs } = await api.pinnedClubs();
+
+    menu.querySelector('.menu-clubs')?.remove();
+    if (clubs.length === 0) return;
+
+    menu.append(el('div', { className: 'menu-clubs' },
+      el('div', { className: 'menu-divider' }),
+      ...clubs.map((c) => el('a', { href: pagePath({ ...c, club: true }), textContent: shortened(c.name, PINNED_NAME_LENGTH) })),
+    ));
+  } catch {
+    // The page works without it.
+  }
+}
+
+// openvk cuts the names of pinned clubs to fit the menu.
+const PINNED_NAME_LENGTH = 14;
+
+function shortened(s, n) {
+  return s.length > n ? s.slice(0, n) + '…' : s;
 }
 
 // The unread counters of the menu, as on openvk: dialogs with unread

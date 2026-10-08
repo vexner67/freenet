@@ -21,8 +21,10 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   const error = $('wall-error');
   const isOwner = me?.id === owner.id;
   const load = owner.club ? (c) => api.clubWall(clubRef(owner), c) : (c) => api.wall(owner.nickname, c);
+  // On a closed wall its admins always speak for the club, as on openvk.
+  const fromClub = () => owner.wall === 'closed' || $('post-from-club').checked;
   const create = owner.club
-    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, $('post-from-club').checked)
+    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked })
     : (text, photos) => api.createPost(owner.nickname, text, photos);
   let attachments;
   let canPost = false;
@@ -132,7 +134,14 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     canPost = true;
     // As on openvk: "Написать" on someone else's wall.
     if (!isOwner && !owner.club) text.placeholder = 'Написать';
-    if (speaksForClub) $('post-from-club-label').hidden = false;
+    if (speaksForClub) {
+      // "От имени сообщества" only where there is a choice; "Подпись
+      // автора" while the post speaks for the club.
+      $('post-from-club-label').hidden = owner.wall === 'closed';
+      const showSigned = () => { $('post-signed-label').hidden = !fromClub(); };
+      $('post-from-club').addEventListener('change', showSigned);
+      showSigned();
+    }
 
     // The form stays open while it holds text or photos.
     const collapseIfEmpty = () => {

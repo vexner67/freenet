@@ -1,17 +1,19 @@
-// The owner's controls under the profile photo.
+// The controls under the photo of a profile, for its owner, or of a
+// community (club), for its admins: upload and remove call the API.
 
 import { api } from './api.js';
 import { $, avatarURL, showError, hideError } from './layout.js';
 
 const MAX_BYTES = 8 << 20;
 
-export function initPhoto(user, isOwner) {
+export function initPhoto(user, isOwner, {
+  upload = api.uploadAvatar, remove = api.deleteAvatar, error = $('follow-error'), club = false,
+} = {}) {
   const img = $('avatar');
-  const error = $('follow-error');
   const status = $('avatar-status');
 
   function render(u) {
-    img.src = avatarURL(u, 'large');
+    img.src = avatarURL({ ...u, club }, 'large');
     $('avatar-delete').hidden = !u.avatar;
   }
 
@@ -36,7 +38,7 @@ export function initPhoto(user, isOwner) {
 
   $('avatar-actions').hidden = false;
   $('avatar-upload').addEventListener('click', () => file.click());
-  $('avatar-delete').addEventListener('click', () => change(() => api.deleteAvatar(), 'Удаление…'));
+  $('avatar-delete').addEventListener('click', () => change(() => remove(), 'Удаление…'));
 
   file.addEventListener('change', () => {
     const picked = file.files[0];
@@ -49,6 +51,6 @@ export function initPhoto(user, isOwner) {
       return;
     }
 
-    change(() => api.uploadAvatar(picked), 'Загрузка…');
+    change(() => upload(picked), 'Загрузка…');
   });
 }
