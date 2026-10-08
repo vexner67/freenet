@@ -353,6 +353,7 @@ func TestRepositories_SettingsAndTransfer(t *testing.T) {
 
 	edited, err := c.Edited(club.RoleOwner, club.Changes{
 		Name: c.Name(), Website: "https://cats.example", Wall: club.WallSuggest, AdminsDisplay: club.AdminsDisplayAll,
+		OpenTopics: true, TopicsAboveWall: true,
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -361,7 +362,7 @@ func TestRepositories_SettingsAndTransfer(t *testing.T) {
 		t.Fatal(err)
 	}
 	if got, err := clubs.Get(ctx, c.ID()); err != nil || got.Website() != "https://cats.example" || got.AdminsDisplay() != club.AdminsDisplayAll ||
-		got.Wall() != club.WallSuggest {
+		got.Wall() != club.WallSuggest || !got.OpenTopics() || !got.TopicsAboveWall() {
 		t.Fatalf("Get after Update = %+v, %v", got, err)
 	}
 

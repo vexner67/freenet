@@ -201,8 +201,13 @@ type Club struct {
 	// An http or https link; empty for none.
 	Website       string        `protobuf:"bytes,9,opt,name=website,proto3" json:"website,omitempty"`
 	AdminsDisplay AdminsDisplay `protobuf:"varint,10,opt,name=admins_display,json=adminsDisplay,proto3,enum=club.v1.AdminsDisplay" json:"admins_display,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// Anyone starts topics in its discussions, not only the admins ("Все
+	// могут создавать темы").
+	OpenTopics bool `protobuf:"varint,11,opt,name=open_topics,json=openTopics,proto3" json:"open_topics,omitempty"`
+	// Its page lists the topics above the wall.
+	TopicsAboveWall bool `protobuf:"varint,12,opt,name=topics_above_wall,json=topicsAboveWall,proto3" json:"topics_above_wall,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *Club) Reset() {
@@ -305,6 +310,20 @@ func (x *Club) GetAdminsDisplay() AdminsDisplay {
 	return AdminsDisplay_ADMINS_DISPLAY_UNSPECIFIED
 }
 
+func (x *Club) GetOpenTopics() bool {
+	if x != nil {
+		return x.OpenTopics
+	}
+	return false
+}
+
+func (x *Club) GetTopicsAboveWall() bool {
+	if x != nil {
+		return x.TopicsAboveWall
+	}
+	return false
+}
+
 // ClubView is a club as the caller sees it.
 type ClubView struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
@@ -312,7 +331,9 @@ type ClubView struct {
 	// What the caller is in it; ROLE_NONE for an anonymous caller.
 	Role Role `protobuf:"varint,2,opt,name=role,proto3,enum=club.v1.Role" json:"role,omitempty"`
 	// Empty when its owner's page was erased.
-	OwnerId       string `protobuf:"bytes,3,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	OwnerId string `protobuf:"bytes,3,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	// The caller may start a topic in its discussions.
+	CanStartTopic bool `protobuf:"varint,4,opt,name=can_start_topic,json=canStartTopic,proto3" json:"can_start_topic,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -366,6 +387,13 @@ func (x *ClubView) GetOwnerId() string {
 		return x.OwnerId
 	}
 	return ""
+}
+
+func (x *ClubView) GetCanStartTopic() bool {
+	if x != nil {
+		return x.CanStartTopic
+	}
+	return false
 }
 
 type CreateClubRequest struct {
@@ -650,10 +678,12 @@ type UpdateClubRequest struct {
 	Address string `protobuf:"bytes,4,opt,name=address,proto3" json:"address,omitempty"`
 	Wall    Wall   `protobuf:"varint,5,opt,name=wall,proto3,enum=club.v1.Wall" json:"wall,omitempty"`
 	// Empty for none; https:// is added when the scheme is left out.
-	Website       string        `protobuf:"bytes,6,opt,name=website,proto3" json:"website,omitempty"`
-	AdminsDisplay AdminsDisplay `protobuf:"varint,7,opt,name=admins_display,json=adminsDisplay,proto3,enum=club.v1.AdminsDisplay" json:"admins_display,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	Website         string        `protobuf:"bytes,6,opt,name=website,proto3" json:"website,omitempty"`
+	AdminsDisplay   AdminsDisplay `protobuf:"varint,7,opt,name=admins_display,json=adminsDisplay,proto3,enum=club.v1.AdminsDisplay" json:"admins_display,omitempty"`
+	OpenTopics      bool          `protobuf:"varint,8,opt,name=open_topics,json=openTopics,proto3" json:"open_topics,omitempty"`
+	TopicsAboveWall bool          `protobuf:"varint,9,opt,name=topics_above_wall,json=topicsAboveWall,proto3" json:"topics_above_wall,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *UpdateClubRequest) Reset() {
@@ -733,6 +763,20 @@ func (x *UpdateClubRequest) GetAdminsDisplay() AdminsDisplay {
 		return x.AdminsDisplay
 	}
 	return AdminsDisplay_ADMINS_DISPLAY_UNSPECIFIED
+}
+
+func (x *UpdateClubRequest) GetOpenTopics() bool {
+	if x != nil {
+		return x.OpenTopics
+	}
+	return false
+}
+
+func (x *UpdateClubRequest) GetTopicsAboveWall() bool {
+	if x != nil {
+		return x.TopicsAboveWall
+	}
+	return false
 }
 
 type UpdateClubResponse struct {
@@ -2325,7 +2369,7 @@ var File_api_club_v1_club_proto protoreflect.FileDescriptor
 
 const file_api_club_v1_club_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/club/v1/club.proto\x12\aclub.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xdd\x02\n" +
+	"\x16api/club/v1/club.proto\x12\aclub.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xaa\x03\n" +
 	"\x04Club\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -2338,11 +2382,15 @@ const file_api_club_v1_club_proto_rawDesc = "" +
 	"\tavatar_id\x18\b \x01(\tR\bavatarId\x12\x18\n" +
 	"\awebsite\x18\t \x01(\tR\awebsite\x12=\n" +
 	"\x0eadmins_display\x18\n" +
-	" \x01(\x0e2\x16.club.v1.AdminsDisplayR\radminsDisplay\"k\n" +
+	" \x01(\x0e2\x16.club.v1.AdminsDisplayR\radminsDisplay\x12\x1f\n" +
+	"\vopen_topics\x18\v \x01(\bR\n" +
+	"openTopics\x12*\n" +
+	"\x11topics_above_wall\x18\f \x01(\bR\x0ftopicsAboveWall\"\x93\x01\n" +
 	"\bClubView\x12!\n" +
 	"\x04club\x18\x01 \x01(\v2\r.club.v1.ClubR\x04club\x12!\n" +
 	"\x04role\x18\x02 \x01(\x0e2\r.club.v1.RoleR\x04role\x12\x19\n" +
-	"\bowner_id\x18\x03 \x01(\tR\aownerId\"I\n" +
+	"\bowner_id\x18\x03 \x01(\tR\aownerId\x12&\n" +
+	"\x0fcan_start_topic\x18\x04 \x01(\bR\rcanStartTopic\"I\n" +
 	"\x11CreateClubRequest\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12 \n" +
 	"\vdescription\x18\x02 \x01(\tR\vdescription\";\n" +
@@ -2355,7 +2403,7 @@ const file_api_club_v1_club_proto_rawDesc = "" +
 	"\x0fGetClubsRequest\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\"7\n" +
 	"\x10GetClubsResponse\x12#\n" +
-	"\x05clubs\x18\x01 \x03(\v2\r.club.v1.ClubR\x05clubs\"\xf8\x01\n" +
+	"\x05clubs\x18\x01 \x03(\v2\r.club.v1.ClubR\x05clubs\"\xc5\x02\n" +
 	"\x11UpdateClubRequest\x12\x17\n" +
 	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -2363,7 +2411,10 @@ const file_api_club_v1_club_proto_rawDesc = "" +
 	"\aaddress\x18\x04 \x01(\tR\aaddress\x12!\n" +
 	"\x04wall\x18\x05 \x01(\x0e2\r.club.v1.WallR\x04wall\x12\x18\n" +
 	"\awebsite\x18\x06 \x01(\tR\awebsite\x12=\n" +
-	"\x0eadmins_display\x18\a \x01(\x0e2\x16.club.v1.AdminsDisplayR\radminsDisplay\";\n" +
+	"\x0eadmins_display\x18\a \x01(\x0e2\x16.club.v1.AdminsDisplayR\radminsDisplay\x12\x1f\n" +
+	"\vopen_topics\x18\b \x01(\bR\n" +
+	"openTopics\x12*\n" +
+	"\x11topics_above_wall\x18\t \x01(\bR\x0ftopicsAboveWall\";\n" +
 	"\x12UpdateClubResponse\x12%\n" +
 	"\x04club\x18\x01 \x01(\v2\x11.club.v1.ClubViewR\x04club\"*\n" +
 	"\x0fJoinClubRequest\x12\x17\n" +

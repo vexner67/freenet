@@ -113,6 +113,9 @@ func stored(c *club.Club) club.Stored {
 		AdminsDisplay: c.AdminsDisplay(),
 		CreatedAt:     c.CreatedAt(),
 		AvatarID:      c.AvatarID(),
+
+		OpenTopics:      c.OpenTopics(),
+		TopicsAboveWall: c.TopicsAboveWall(),
 	}
 }
 

@@ -111,6 +111,11 @@ message Club {
   // An http or https link; empty for none.
   string website = 9;
   AdminsDisplay admins_display = 10;
+  // Anyone starts topics in its discussions, not only the admins ("Все
+  // могут создавать темы").
+  bool open_topics = 11;
+  // Its page lists the topics above the wall.
+  bool topics_above_wall = 12;
 }
 
 // ClubView is a club as the caller sees it.
@@ -120,6 +125,8 @@ message ClubView {
   Role role = 2;
   // Empty when its owner's page was erased.
   string owner_id = 3;
+  // The caller may start a topic in its discussions.
+  bool can_start_topic = 4;
 }
 
 message CreateClubRequest {
@@ -158,6 +165,8 @@ message UpdateClubRequest {
   // Empty for none; https:// is added when the scheme is left out.
   string website = 6;
   AdminsDisplay admins_display = 7;
+  bool open_topics = 8;
+  bool topics_above_wall = 9;
 }
 
 message UpdateClubResponse {

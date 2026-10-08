@@ -119,7 +119,7 @@ func TestEdited(t *testing.T) {
 
 	changes := club.Changes{
 		Name: "Кошки", Description: "мяу", Address: "cats", Website: "https://cats.example",
-		Wall: club.WallClosed, AdminsDisplay: club.AdminsDisplayAll,
+		Wall: club.WallClosed, AdminsDisplay: club.AdminsDisplayAll, OpenTopics: true, TopicsAboveWall: true,
 	}
 
 	for _, role := range []club.Role{club.RoleAdmin, club.RoleOwner} {
@@ -128,7 +128,7 @@ func TestEdited(t *testing.T) {
 			t.Fatalf("%s: %v", role, err)
 		}
 		if edited.Name() != "Кошки" || edited.Description() != "мяу" || edited.Address() != "cats" || edited.Wall() != club.WallClosed || edited.ID() != c.ID() ||
-			edited.Website() != "https://cats.example" || edited.AdminsDisplay() != club.AdminsDisplayAll {
+			edited.Website() != "https://cats.example" || edited.AdminsDisplay() != club.AdminsDisplayAll || !edited.OpenTopics() || !edited.TopicsAboveWall() {
 			t.Fatalf("edited = %+v", edited)
 		}
 	}
@@ -197,6 +197,35 @@ func TestCanPostOnWall(t *testing.T) {
 	} {
 		if got := tt.c.CanSuggest(tt.role); got != tt.want {
 			t.Errorf("CanSuggest, %s: %v, want %v", tt.name, got, tt.want)
+		}
+	}
+}
+
+func TestCanStartTopic(t *testing.T) {
+	t.Parallel()
+
+	c := newClub(t)
+	if c.OpenTopics() || c.TopicsAboveWall() {
+		t.Fatal("a new club lets only its admins start topics, listed beside the wall")
+	}
+	open, err := c.Edited(club.RoleOwner, club.Changes{Name: c.Name(), Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator, OpenTopics: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for _, tt := range []struct {
+		name string
+		c    *club.Club
+		role club.Role
+		want bool
+	}{
+		{"admins only: an admin", c, club.RoleAdmin, true},
+		{"admins only: the owner", c, club.RoleOwner, true},
+		{"admins only: a member", c, club.RoleMember, false},
+		{"everyone: a stranger", open, club.RoleNone, true},
+	} {
+		if got := tt.c.CanStartTopic(tt.role); got != tt.want {
+			t.Errorf("CanStartTopic, %s: %v, want %v", tt.name, got, tt.want)
 		}
 	}
 }

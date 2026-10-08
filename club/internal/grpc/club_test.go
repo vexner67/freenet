@@ -105,21 +105,25 @@ func TestClub(t *testing.T) {
 		v.GetClub().GetWall() != clubv1.Wall_WALL_OPEN || v.GetClub().GetMemberCount() != 1 || v.GetClub().GetCreatedAt() == nil {
 		t.Fatalf("created = %v", v)
 	}
+	if !v.GetCanStartTopic() {
+		t.Fatal("the owner cannot start topics")
+	}
 
 	updated, err := s.client.UpdateClub(s.as(t, ann), &clubv1.UpdateClubRequest{
 		ClubId: id, Name: "Кошки", Description: "мяу", Address: "cats", Wall: clubv1.Wall_WALL_CLOSED,
-		Website: "cats.example", AdminsDisplay: clubv1.AdminsDisplay_ADMINS_DISPLAY_ALL,
+		Website: "cats.example", AdminsDisplay: clubv1.AdminsDisplay_ADMINS_DISPLAY_ALL, OpenTopics: true, TopicsAboveWall: true,
 	})
 	if err != nil || updated.GetClub().GetClub().GetAddress() != "cats" || updated.GetClub().GetClub().GetWall() != clubv1.Wall_WALL_CLOSED ||
 		updated.GetClub().GetClub().GetWebsite() != "https://cats.example" ||
-		updated.GetClub().GetClub().GetAdminsDisplay() != clubv1.AdminsDisplay_ADMINS_DISPLAY_ALL {
+		updated.GetClub().GetClub().GetAdminsDisplay() != clubv1.AdminsDisplay_ADMINS_DISPLAY_ALL ||
+		!updated.GetClub().GetClub().GetOpenTopics() || !updated.GetClub().GetClub().GetTopicsAboveWall() {
 		t.Fatalf("UpdateClub = %v, %v", updated, err)
 	}
 
 	// Public, by the ID or the address, anonymous or not.
 	for _, ref := range []string{id, "cats", "CATS"} {
 		got, err := s.client.GetClub(context.Background(), &clubv1.GetClubRequest{Ref: ref})
-		if err != nil || got.GetClub().GetClub().GetId() != id || got.GetClub().GetRole() != clubv1.Role_ROLE_NONE {
+		if err != nil || got.GetClub().GetClub().GetId() != id || got.GetClub().GetRole() != clubv1.Role_ROLE_NONE || !got.GetClub().GetCanStartTopic() {
 			t.Fatalf("GetClub(%s) = %v, %v", ref, got, err)
 		}
 	}

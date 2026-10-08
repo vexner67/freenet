@@ -88,7 +88,9 @@ const (
 			member_count,
 			avatar_id,
 			website,
-			admins_display
+			admins_display,
+			open_topics,
+			topics_above_wall
 		FROM clubs
 		WHERE id = $1
 	`
@@ -103,7 +105,9 @@ const (
 			member_count,
 			avatar_id,
 			website,
-			admins_display
+			admins_display,
+			open_topics,
+			topics_above_wall
 		FROM clubs
 		WHERE lower(address) = lower($1)
 	`
@@ -118,7 +122,9 @@ const (
 			member_count,
 			avatar_id,
 			website,
-			admins_display
+			admins_display,
+			open_topics,
+			topics_above_wall
 		FROM clubs
 		WHERE id = ANY($1)
 	`
@@ -185,7 +191,7 @@ func scanClub(row pgx.Row, before ...any) (*club.Club, error) {
 	)
 
 	dest := append(before, &s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID,
-		&website, &adminsDisplay)
+		&website, &adminsDisplay, &s.OpenTopics, &s.TopicsAboveWall)
 	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
@@ -212,14 +218,16 @@ const updateClubQuery = `
 		address = NULLIF($4, ''),
 		wall = $5,
 		website = $6,
-		admins_display = $7
+		admins_display = $7,
+		open_topics = $8,
+		topics_above_wall = $9
 	WHERE id = $1
 `
 
 func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 	tag, err := r.pool.Exec(ctx, updateClubQuery,
 		c.ID(), c.Name().String(), c.Description().String(), c.Address().String(), c.Wall().String(),
-		c.Website().String(), c.AdminsDisplay().String())
+		c.Website().String(), c.AdminsDisplay().String(), c.OpenTopics(), c.TopicsAboveWall())
 	if constraintOf(err) == "clubs_address_key" {
 		return club.ErrAddressTaken
 	}
@@ -270,7 +278,9 @@ const searchClubsSelect = `
 		member_count,
 		avatar_id,
 		website,
-		admins_display
+		admins_display,
+		open_topics,
+		topics_above_wall
 	FROM clubs
 	WHERE id < $1`
 
