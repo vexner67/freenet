@@ -32,6 +32,12 @@ type SuggestionEraser interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
 
+// TopicEraser deletes the messages a user wrote in topics and the topics
+// they started, returning the messages of others those took with them.
+type TopicEraser interface {
+	DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*post.TopicMessage, error)
+}
+
 // PurgeService erases what post keeps of a user whose page was deleted for
 // good.
 type PurgeService struct {
@@ -40,6 +46,7 @@ type PurgeService struct {
 	commentLikes ReactionEraser
 	comments     CommentEraser
 	suggestions  SuggestionEraser
+	topics       TopicEraser
 	tx           TxManager
 	notifier     Notifier
 	photos       PhotoKeeper
@@ -52,6 +59,7 @@ type PurgeDeps struct {
 	CommentLikes ReactionEraser
 	Comments     CommentEraser
 	Suggestions  SuggestionEraser
+	Topics       TopicEraser
 	Tx           TxManager
 	Notifier     Notifier
 	Photos       PhotoKeeper
@@ -64,6 +72,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		commentLikes: d.CommentLikes,
 		comments:     d.Comments,
 		suggestions:  d.Suggestions,
+		topics:       d.Topics,
 		tx:           d.Tx,
 		notifier:     d.Notifier,
 		photos:       d.Photos,
@@ -71,7 +80,8 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 }
 
 // PurgeUser deletes, in one transaction, the user's likes and comments on
-// others' posts, what they suggested, the posts they wrote and those on
+// others' posts, what they suggested, their topics and the messages they
+// wrote in topics, the posts they wrote and those on
 // their wall (others' on
 // it included, as a deleted post takes its comments). The notifications
 // about the deleted posts and suggestions and the photos of the posts go
@@ -100,6 +110,17 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 			if err = s.notifier.ForgetPost(ctx, id); err != nil {
 				return errs.Wrap("s.notifier.ForgetPost", err)
 			}
+		}
+
+		// Others' messages in the user's topics go with the topics, and
+		// their photos with them.
+		messages, err := s.topics.DeleteByUser(ctx, userID)
+		if err != nil {
+			return errs.Wrap("s.topics.DeleteByUser", err)
+		}
+
+		if err = deleteMessagePhotos(ctx, s.photos, messages); err != nil {
+			return errs.Wrap("deleteMessagePhotos", err)
 		}
 
 		// Others' comments on the posts about to go: their photos go too.

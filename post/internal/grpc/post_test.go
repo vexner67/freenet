@@ -53,15 +53,19 @@ func newServer(t *testing.T) testServer {
 	))
 	store := inmem.NewStore()
 	suggestions := inmem.NewSuggestionRepository()
+	topics := inmem.NewTopicRepository()
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(postgrpc.Services{
 		Posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
 		Comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
 		Suggestions: service.NewSuggestionService(service.SuggestionDeps{
 			Suggestions: suggestions, Posts: store.Posts(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
 		}),
+		Topics: service.NewTopicService(service.TopicDeps{
+			Topics: topics, Messages: topics.Messages(), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
+		}),
 		Purge: service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: suggestions,
-			Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
+			Topics: topics, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
 		}),
 	}, log))
 
@@ -616,5 +620,65 @@ func TestSuggestions(t *testing.T) {
 
 	if _, err = s.client.DeleteSuggestion(s.as(t, ann), &postv1.DeleteSuggestionRequest{Id: id}); err != nil {
 		t.Fatalf("the author withdraws: %v", err)
+	}
+}
+
+func TestTopics(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	club, ann, bob := uuid.New(), uuid.New(), uuid.New()
+
+	created, err := s.client.CreateTopic(s.as(t, ann), &postv1.CreateTopicRequest{ClubId: club.String(), Title: "  Знакомство ", Text: "Привет!"})
+	if err != nil || created.GetTopic().GetTitle() != "Знакомство" || created.GetTopic().GetMessageCount() != 1 || !created.GetTopic().GetMine() {
+		t.Fatalf("CreateTopic = %v, %v", created, err)
+	}
+	id := created.GetTopic().GetId()
+
+	if _, err = s.client.CreateTopic(s.as(t, ann), &postv1.CreateTopicRequest{ClubId: club.String(), Title: " "}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("no title: %v", err)
+	}
+
+	// Public, with the newest message and whose it is.
+	list, err := s.client.ListTopics(context.Background(), &postv1.ListTopicsRequest{ClubId: club.String()})
+	if err != nil || len(list.GetTopics()) != 1 || list.GetTotal() != 1 || list.GetTopics()[0].GetLastMessage().GetText() != "Привет!" || list.GetTopics()[0].GetMine() {
+		t.Fatalf("ListTopics = %v, %v", list, err)
+	}
+	if _, err = s.client.ListTopics(context.Background(), &postv1.ListTopicsRequest{ClubId: club.String(), Cursor: "x"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bad cursor: %v", err)
+	}
+
+	msg, err := s.client.CreateTopicMessage(s.as(t, bob), &postv1.CreateTopicMessageRequest{TopicId: id, Text: "И тебе"})
+	if err != nil || !msg.GetMessage().GetMine() {
+		t.Fatalf("CreateTopicMessage = %v, %v", msg, err)
+	}
+	messages, err := s.client.ListTopicMessages(context.Background(), &postv1.ListTopicMessagesRequest{TopicId: id})
+	if err != nil || len(messages.GetMessages()) != 2 || messages.GetTotal() != 2 || messages.GetMessages()[1].GetId() != msg.GetMessage().GetId() {
+		t.Fatalf("ListTopicMessages = %v, %v", messages, err)
+	}
+	if _, err = s.client.DeleteTopicMessage(s.as(t, ann), &postv1.DeleteTopicMessageRequest{Id: msg.GetMessage().GetId()}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("ann deletes bob's message: %v", err)
+	}
+
+	_, err = s.client.EditTopic(s.as(t, ann), &postv1.EditTopicRequest{Id: id, Title: "Знакомство", Restricted: true})
+	if status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("ann restricts: %v", err)
+	}
+	edited, err := s.client.EditTopic(s.as(t, ann), &postv1.EditTopicRequest{Id: id, Title: "Знакомимся", Closed: true})
+	if err != nil || !edited.GetTopic().GetClosed() || edited.GetTopic().GetTitle() != "Знакомимся" {
+		t.Fatalf("EditTopic = %v, %v", edited, err)
+	}
+	if _, err = s.client.CreateTopicMessage(s.as(t, bob), &postv1.CreateTopicMessageRequest{TopicId: id, Text: "ещё"}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("writes in a closed topic: %v", err)
+	}
+
+	if _, err = s.client.DeleteTopic(s.as(t, bob), &postv1.DeleteTopicRequest{Id: id}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("bob deletes: %v", err)
+	}
+	if _, err = s.client.DeleteTopic(s.as(t, ann), &postv1.DeleteTopicRequest{Id: id}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.GetTopic(context.Background(), &postv1.GetTopicRequest{Id: id}); status.Code(err) != codes.NotFound {
+		t.Fatalf("GetTopic after delete: %v", err)
 	}
 }

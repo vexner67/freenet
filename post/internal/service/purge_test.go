@@ -25,7 +25,7 @@ func TestPurgeService(t *testing.T) {
 	suggestions := inmem.NewSuggestionRepository()
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: suggestions,
-		Tx: fakeTx{}, Notifier: notifier, Photos: photos,
+		Topics: inmem.NewTopicRepository(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
 	})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
@@ -138,5 +138,48 @@ func TestPurgeService(t *testing.T) {
 	}
 	if photos.outsideTx != 0 {
 		t.Errorf("%d photo calls outside the transaction", photos.outsideTx)
+	}
+}
+
+func TestPurgeService_Topics(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	topicRepo := inmem.NewTopicRepository()
+	photos := &fakePhotos{}
+	topics := service.NewTopicService(service.TopicDeps{Topics: topicRepo, Messages: topicRepo.Messages(), Tx: fakeTx{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}})
+	purge := service.NewPurgeService(service.PurgeDeps{
+		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
+		Topics: topicRepo, Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
+	})
+	club, ann, bob := uuid.New(), uuid.New(), uuid.New()
+
+	annsTopic, err := topics.Start(ctx, service.StartTopicInput{ClubID: club, AuthorID: ann, Title: "Анна", Content: words(t, "моя тема")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	bobsPhoto := uuid.New()
+	if _, err = topics.Write(ctx, service.TopicMessageInput{TopicID: annsTopic.ID(), AuthorID: bob, Content: *words(t, "", bobsPhoto)}); err != nil {
+		t.Fatal(err)
+	}
+	bobsTopic, _ := topics.Start(ctx, service.StartTopicInput{ClubID: club, AuthorID: bob, Title: "Пётр", Content: words(t, "моя тема")})
+	if _, err = topics.Write(ctx, service.TopicMessageInput{TopicID: bobsTopic.ID(), AuthorID: ann, Content: *words(t, "и я тут")}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = purge.PurgeUser(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = topics.Get(ctx, annsTopic.ID()); !errors.Is(err, post.ErrTopicNotFound) {
+		t.Fatalf("ann's topic: %v", err)
+	}
+	if got, err := topics.Get(ctx, bobsTopic.ID()); err != nil || got.Messages() != 1 {
+		t.Fatalf("bob's topic = %+v, %v; without ann's message", got, err)
+	}
+	// Bob's photo in ann's topic goes with it; ann's own media erases.
+	if want := []photoCall{{bob, []uuid.UUID{bobsPhoto}}}; !reflect.DeepEqual(photos.deleted, want) {
+		t.Fatalf("photos deleted = %+v, want %+v", photos.deleted, want)
 	}
 }

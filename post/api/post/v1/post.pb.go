@@ -2522,6 +2522,1042 @@ func (x *PurgeUserRequest) GetUserId() string {
 	return ""
 }
 
+// Topic is a discussion of a community.
+type Topic struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Id     string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	ClubId string                 `protobuf:"bytes,2,opt,name=club_id,json=clubId,proto3" json:"club_id,omitempty"`
+	// Who started it, also for a topic that speaks for the community.
+	AuthorId string `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	Title    string `protobuf:"bytes,4,opt,name=title,proto3" json:"title,omitempty"`
+	// Started for the community, shown as its author.
+	FromWall bool `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	// Nobody writes in it ("Закрыть тему").
+	Closed bool `protobuf:"varint,6,opt,name=closed,proto3" json:"closed,omitempty"`
+	// On top of the list ("Закрепить тему").
+	Pinned bool `protobuf:"varint,7,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	// Only the admins write in it ("Комментировать могут только
+	// администраторы").
+	Restricted bool                   `protobuf:"varint,8,opt,name=restricted,proto3" json:"restricted,omitempty"`
+	CreatedAt  *timestamppb.Timestamp `protobuf:"bytes,9,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The newest message, or created_at while it has none.
+	UpdatedAt    *timestamppb.Timestamp `protobuf:"bytes,10,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	MessageCount int32                  `protobuf:"varint,11,opt,name=message_count,json=messageCount,proto3" json:"message_count,omitempty"`
+	// The newest message; set by ListTopics only, absent when there is none.
+	LastMessage *TopicMessage `protobuf:"bytes,12,opt,name=last_message,json=lastMessage,proto3" json:"last_message,omitempty"`
+	// The caller started it.
+	Mine          bool `protobuf:"varint,13,opt,name=mine,proto3" json:"mine,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Topic) Reset() {
+	*x = Topic{}
+	mi := &file_api_post_v1_post_proto_msgTypes[43]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Topic) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Topic) ProtoMessage() {}
+
+func (x *Topic) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[43]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Topic.ProtoReflect.Descriptor instead.
+func (*Topic) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{43}
+}
+
+func (x *Topic) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Topic) GetClubId() string {
+	if x != nil {
+		return x.ClubId
+	}
+	return ""
+}
+
+func (x *Topic) GetAuthorId() string {
+	if x != nil {
+		return x.AuthorId
+	}
+	return ""
+}
+
+func (x *Topic) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *Topic) GetFromWall() bool {
+	if x != nil {
+		return x.FromWall
+	}
+	return false
+}
+
+func (x *Topic) GetClosed() bool {
+	if x != nil {
+		return x.Closed
+	}
+	return false
+}
+
+func (x *Topic) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
+}
+
+func (x *Topic) GetRestricted() bool {
+	if x != nil {
+		return x.Restricted
+	}
+	return false
+}
+
+func (x *Topic) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Topic) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *Topic) GetMessageCount() int32 {
+	if x != nil {
+		return x.MessageCount
+	}
+	return 0
+}
+
+func (x *Topic) GetLastMessage() *TopicMessage {
+	if x != nil {
+		return x.LastMessage
+	}
+	return nil
+}
+
+func (x *Topic) GetMine() bool {
+	if x != nil {
+		return x.Mine
+	}
+	return false
+}
+
+type TopicMessage struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	TopicId  string                 `protobuf:"bytes,2,opt,name=topic_id,json=topicId,proto3" json:"topic_id,omitempty"`
+	AuthorId string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	// Text, photos or both, as a comment.
+	Text     string   `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	PhotoIds []string `protobuf:"bytes,5,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	// It speaks for the community, shown as its author.
+	FromWall  bool                   `protobuf:"varint,6,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,7,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The caller wrote it.
+	Mine          bool `protobuf:"varint,8,opt,name=mine,proto3" json:"mine,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TopicMessage) Reset() {
+	*x = TopicMessage{}
+	mi := &file_api_post_v1_post_proto_msgTypes[44]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TopicMessage) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TopicMessage) ProtoMessage() {}
+
+func (x *TopicMessage) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[44]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TopicMessage.ProtoReflect.Descriptor instead.
+func (*TopicMessage) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{44}
+}
+
+func (x *TopicMessage) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *TopicMessage) GetTopicId() string {
+	if x != nil {
+		return x.TopicId
+	}
+	return ""
+}
+
+func (x *TopicMessage) GetAuthorId() string {
+	if x != nil {
+		return x.AuthorId
+	}
+	return ""
+}
+
+func (x *TopicMessage) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *TopicMessage) GetPhotoIds() []string {
+	if x != nil {
+		return x.PhotoIds
+	}
+	return nil
+}
+
+func (x *TopicMessage) GetFromWall() bool {
+	if x != nil {
+		return x.FromWall
+	}
+	return false
+}
+
+func (x *TopicMessage) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *TopicMessage) GetMine() bool {
+	if x != nil {
+		return x.Mine
+	}
+	return false
+}
+
+type CreateTopicRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	ClubId string                 `protobuf:"bytes,1,opt,name=club_id,json=clubId,proto3" json:"club_id,omitempty"`
+	Title  string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	// The first message, "Текст": text, photos, both or neither.
+	Text          string   `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+	PhotoIds      []string `protobuf:"bytes,4,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	FromWall      bool     `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateTopicRequest) Reset() {
+	*x = CreateTopicRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[45]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateTopicRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateTopicRequest) ProtoMessage() {}
+
+func (x *CreateTopicRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[45]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateTopicRequest.ProtoReflect.Descriptor instead.
+func (*CreateTopicRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{45}
+}
+
+func (x *CreateTopicRequest) GetClubId() string {
+	if x != nil {
+		return x.ClubId
+	}
+	return ""
+}
+
+func (x *CreateTopicRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *CreateTopicRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *CreateTopicRequest) GetPhotoIds() []string {
+	if x != nil {
+		return x.PhotoIds
+	}
+	return nil
+}
+
+func (x *CreateTopicRequest) GetFromWall() bool {
+	if x != nil {
+		return x.FromWall
+	}
+	return false
+}
+
+type CreateTopicResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Topic         *Topic                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateTopicResponse) Reset() {
+	*x = CreateTopicResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[46]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateTopicResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateTopicResponse) ProtoMessage() {}
+
+func (x *CreateTopicResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[46]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateTopicResponse.ProtoReflect.Descriptor instead.
+func (*CreateTopicResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{46}
+}
+
+func (x *CreateTopicResponse) GetTopic() *Topic {
+	if x != nil {
+		return x.Topic
+	}
+	return nil
+}
+
+type GetTopicRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTopicRequest) Reset() {
+	*x = GetTopicRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[47]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTopicRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTopicRequest) ProtoMessage() {}
+
+func (x *GetTopicRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[47]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTopicRequest.ProtoReflect.Descriptor instead.
+func (*GetTopicRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{47}
+}
+
+func (x *GetTopicRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetTopicResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Topic         *Topic                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetTopicResponse) Reset() {
+	*x = GetTopicResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[48]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetTopicResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetTopicResponse) ProtoMessage() {}
+
+func (x *GetTopicResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[48]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetTopicResponse.ProtoReflect.Descriptor instead.
+func (*GetTopicResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{48}
+}
+
+func (x *GetTopicResponse) GetTopic() *Topic {
+	if x != nil {
+		return x.Topic
+	}
+	return nil
+}
+
+type ListTopicsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	ClubId string                 `protobuf:"bytes,1,opt,name=club_id,json=clubId,proto3" json:"club_id,omitempty"`
+	// Only the topics whose titles contain it, whatever the case; empty for
+	// all.
+	Query         string `protobuf:"bytes,2,opt,name=query,proto3" json:"query,omitempty"`
+	Cursor        string `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Limit         int32  `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTopicsRequest) Reset() {
+	*x = ListTopicsRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[49]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTopicsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTopicsRequest) ProtoMessage() {}
+
+func (x *ListTopicsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[49]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTopicsRequest.ProtoReflect.Descriptor instead.
+func (*ListTopicsRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{49}
+}
+
+func (x *ListTopicsRequest) GetClubId() string {
+	if x != nil {
+		return x.ClubId
+	}
+	return ""
+}
+
+func (x *ListTopicsRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
+func (x *ListTopicsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListTopicsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListTopicsResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Topics []*Topic               `protobuf:"bytes,1,rep,name=topics,proto3" json:"topics,omitempty"`
+	// Empty on the last page.
+	NextCursor string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	// All the topics that match, on all pages.
+	Total         int32 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTopicsResponse) Reset() {
+	*x = ListTopicsResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[50]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTopicsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTopicsResponse) ProtoMessage() {}
+
+func (x *ListTopicsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[50]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTopicsResponse.ProtoReflect.Descriptor instead.
+func (*ListTopicsResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{50}
+}
+
+func (x *ListTopicsResponse) GetTopics() []*Topic {
+	if x != nil {
+		return x.Topics
+	}
+	return nil
+}
+
+func (x *ListTopicsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListTopicsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type EditTopicRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The title and the settings at once, as the form sends them.
+	Title         string `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
+	Closed        bool   `protobuf:"varint,3,opt,name=closed,proto3" json:"closed,omitempty"`
+	Pinned        bool   `protobuf:"varint,4,opt,name=pinned,proto3" json:"pinned,omitempty"`
+	Restricted    bool   `protobuf:"varint,5,opt,name=restricted,proto3" json:"restricted,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditTopicRequest) Reset() {
+	*x = EditTopicRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[51]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditTopicRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditTopicRequest) ProtoMessage() {}
+
+func (x *EditTopicRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[51]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditTopicRequest.ProtoReflect.Descriptor instead.
+func (*EditTopicRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{51}
+}
+
+func (x *EditTopicRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EditTopicRequest) GetTitle() string {
+	if x != nil {
+		return x.Title
+	}
+	return ""
+}
+
+func (x *EditTopicRequest) GetClosed() bool {
+	if x != nil {
+		return x.Closed
+	}
+	return false
+}
+
+func (x *EditTopicRequest) GetPinned() bool {
+	if x != nil {
+		return x.Pinned
+	}
+	return false
+}
+
+func (x *EditTopicRequest) GetRestricted() bool {
+	if x != nil {
+		return x.Restricted
+	}
+	return false
+}
+
+type EditTopicResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Topic         *Topic                 `protobuf:"bytes,1,opt,name=topic,proto3" json:"topic,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditTopicResponse) Reset() {
+	*x = EditTopicResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[52]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditTopicResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditTopicResponse) ProtoMessage() {}
+
+func (x *EditTopicResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[52]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditTopicResponse.ProtoReflect.Descriptor instead.
+func (*EditTopicResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{52}
+}
+
+func (x *EditTopicResponse) GetTopic() *Topic {
+	if x != nil {
+		return x.Topic
+	}
+	return nil
+}
+
+type DeleteTopicRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteTopicRequest) Reset() {
+	*x = DeleteTopicRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[53]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteTopicRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteTopicRequest) ProtoMessage() {}
+
+func (x *DeleteTopicRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[53]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteTopicRequest.ProtoReflect.Descriptor instead.
+func (*DeleteTopicRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{53}
+}
+
+func (x *DeleteTopicRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type CreateTopicMessageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TopicId       string                 `protobuf:"bytes,1,opt,name=topic_id,json=topicId,proto3" json:"topic_id,omitempty"`
+	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	PhotoIds      []string               `protobuf:"bytes,3,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	FromWall      bool                   `protobuf:"varint,4,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateTopicMessageRequest) Reset() {
+	*x = CreateTopicMessageRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[54]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateTopicMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateTopicMessageRequest) ProtoMessage() {}
+
+func (x *CreateTopicMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[54]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateTopicMessageRequest.ProtoReflect.Descriptor instead.
+func (*CreateTopicMessageRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{54}
+}
+
+func (x *CreateTopicMessageRequest) GetTopicId() string {
+	if x != nil {
+		return x.TopicId
+	}
+	return ""
+}
+
+func (x *CreateTopicMessageRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *CreateTopicMessageRequest) GetPhotoIds() []string {
+	if x != nil {
+		return x.PhotoIds
+	}
+	return nil
+}
+
+func (x *CreateTopicMessageRequest) GetFromWall() bool {
+	if x != nil {
+		return x.FromWall
+	}
+	return false
+}
+
+type CreateTopicMessageResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Message       *TopicMessage          `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateTopicMessageResponse) Reset() {
+	*x = CreateTopicMessageResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[55]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateTopicMessageResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateTopicMessageResponse) ProtoMessage() {}
+
+func (x *CreateTopicMessageResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[55]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateTopicMessageResponse.ProtoReflect.Descriptor instead.
+func (*CreateTopicMessageResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{55}
+}
+
+func (x *CreateTopicMessageResponse) GetMessage() *TopicMessage {
+	if x != nil {
+		return x.Message
+	}
+	return nil
+}
+
+type ListTopicMessagesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	TopicId       string                 `protobuf:"bytes,1,opt,name=topic_id,json=topicId,proto3" json:"topic_id,omitempty"`
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTopicMessagesRequest) Reset() {
+	*x = ListTopicMessagesRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[56]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTopicMessagesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTopicMessagesRequest) ProtoMessage() {}
+
+func (x *ListTopicMessagesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[56]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTopicMessagesRequest.ProtoReflect.Descriptor instead.
+func (*ListTopicMessagesRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{56}
+}
+
+func (x *ListTopicMessagesRequest) GetTopicId() string {
+	if x != nil {
+		return x.TopicId
+	}
+	return ""
+}
+
+func (x *ListTopicMessagesRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListTopicMessagesRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListTopicMessagesResponse struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Messages []*TopicMessage        `protobuf:"bytes,1,rep,name=messages,proto3" json:"messages,omitempty"`
+	// Empty on the last page.
+	NextCursor    string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	Total         int32  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListTopicMessagesResponse) Reset() {
+	*x = ListTopicMessagesResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[57]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListTopicMessagesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListTopicMessagesResponse) ProtoMessage() {}
+
+func (x *ListTopicMessagesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[57]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListTopicMessagesResponse.ProtoReflect.Descriptor instead.
+func (*ListTopicMessagesResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{57}
+}
+
+func (x *ListTopicMessagesResponse) GetMessages() []*TopicMessage {
+	if x != nil {
+		return x.Messages
+	}
+	return nil
+}
+
+func (x *ListTopicMessagesResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListTopicMessagesResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type DeleteTopicMessageRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteTopicMessageRequest) Reset() {
+	*x = DeleteTopicMessageRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteTopicMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteTopicMessageRequest) ProtoMessage() {}
+
+func (x *DeleteTopicMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteTopicMessageRequest.ProtoReflect.Descriptor instead.
+func (*DeleteTopicMessageRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *DeleteTopicMessageRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
 var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
@@ -2699,7 +3735,88 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x13GetCommentsResponse\x12,\n" +
 	"\bcomments\x18\x01 \x03(\v2\x10.post.v1.CommentR\bcomments\"+\n" +
 	"\x10PurgeUserRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId2\xf9\f\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xb9\x03\n" +
+	"\x05Topic\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
+	"\aclub_id\x18\x02 \x01(\tR\x06clubId\x12\x1b\n" +
+	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12\x14\n" +
+	"\x05title\x18\x04 \x01(\tR\x05title\x12\x1b\n" +
+	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\x12\x16\n" +
+	"\x06closed\x18\x06 \x01(\bR\x06closed\x12\x16\n" +
+	"\x06pinned\x18\a \x01(\bR\x06pinned\x12\x1e\n" +
+	"\n" +
+	"restricted\x18\b \x01(\bR\n" +
+	"restricted\x129\n" +
+	"\n" +
+	"created_at\x18\t \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\n" +
+	" \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12#\n" +
+	"\rmessage_count\x18\v \x01(\x05R\fmessageCount\x128\n" +
+	"\flast_message\x18\f \x01(\v2\x15.post.v1.TopicMessageR\vlastMessage\x12\x12\n" +
+	"\x04mine\x18\r \x01(\bR\x04mine\"\xf3\x01\n" +
+	"\fTopicMessage\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
+	"\btopic_id\x18\x02 \x01(\tR\atopicId\x12\x1b\n" +
+	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12\x12\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text\x12\x1b\n" +
+	"\tphoto_ids\x18\x05 \x03(\tR\bphotoIds\x12\x1b\n" +
+	"\tfrom_wall\x18\x06 \x01(\bR\bfromWall\x129\n" +
+	"\n" +
+	"created_at\x18\a \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x12\n" +
+	"\x04mine\x18\b \x01(\bR\x04mine\"\x91\x01\n" +
+	"\x12CreateTopicRequest\x12\x17\n" +
+	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
+	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1b\n" +
+	"\tphoto_ids\x18\x04 \x03(\tR\bphotoIds\x12\x1b\n" +
+	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\";\n" +
+	"\x13CreateTopicResponse\x12$\n" +
+	"\x05topic\x18\x01 \x01(\v2\x0e.post.v1.TopicR\x05topic\"!\n" +
+	"\x0fGetTopicRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"8\n" +
+	"\x10GetTopicResponse\x12$\n" +
+	"\x05topic\x18\x01 \x01(\v2\x0e.post.v1.TopicR\x05topic\"p\n" +
+	"\x11ListTopicsRequest\x12\x17\n" +
+	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x14\n" +
+	"\x05query\x18\x02 \x01(\tR\x05query\x12\x16\n" +
+	"\x06cursor\x18\x03 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\"s\n" +
+	"\x12ListTopicsResponse\x12&\n" +
+	"\x06topics\x18\x01 \x03(\v2\x0e.post.v1.TopicR\x06topics\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\x88\x01\n" +
+	"\x10EditTopicRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05title\x18\x02 \x01(\tR\x05title\x12\x16\n" +
+	"\x06closed\x18\x03 \x01(\bR\x06closed\x12\x16\n" +
+	"\x06pinned\x18\x04 \x01(\bR\x06pinned\x12\x1e\n" +
+	"\n" +
+	"restricted\x18\x05 \x01(\bR\n" +
+	"restricted\"9\n" +
+	"\x11EditTopicResponse\x12$\n" +
+	"\x05topic\x18\x01 \x01(\v2\x0e.post.v1.TopicR\x05topic\"$\n" +
+	"\x12DeleteTopicRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x84\x01\n" +
+	"\x19CreateTopicMessageRequest\x12\x19\n" +
+	"\btopic_id\x18\x01 \x01(\tR\atopicId\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
+	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x1b\n" +
+	"\tfrom_wall\x18\x04 \x01(\bR\bfromWall\"M\n" +
+	"\x1aCreateTopicMessageResponse\x12/\n" +
+	"\amessage\x18\x01 \x01(\v2\x15.post.v1.TopicMessageR\amessage\"c\n" +
+	"\x18ListTopicMessagesRequest\x12\x19\n" +
+	"\btopic_id\x18\x01 \x01(\tR\atopicId\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\x85\x01\n" +
+	"\x19ListTopicMessagesResponse\x121\n" +
+	"\bmessages\x18\x01 \x03(\v2\x15.post.v1.TopicMessageR\bmessages\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"+\n" +
+	"\x19DeleteTopicMessageRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id2\xe0\x11\n" +
 	"\vPostService\x12E\n" +
 	"\n" +
 	"CreatePost\x12\x1a.post.v1.CreatePostRequest\x1a\x1b.post.v1.CreatePostResponse\x12@\n" +
@@ -2726,7 +3843,16 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\vSuggestPost\x12\x1b.post.v1.SuggestPostRequest\x1a\x1c.post.v1.SuggestPostResponse\x12T\n" +
 	"\x0fListSuggestions\x12\x1f.post.v1.ListSuggestionsRequest\x1a .post.v1.ListSuggestionsResponse\x12Z\n" +
 	"\x11PublishSuggestion\x12!.post.v1.PublishSuggestionRequest\x1a\".post.v1.PublishSuggestionResponse\x12L\n" +
-	"\x10DeleteSuggestion\x12 .post.v1.DeleteSuggestionRequest\x1a\x16.google.protobuf.Empty\x12>\n" +
+	"\x10DeleteSuggestion\x12 .post.v1.DeleteSuggestionRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
+	"\vCreateTopic\x12\x1b.post.v1.CreateTopicRequest\x1a\x1c.post.v1.CreateTopicResponse\x12?\n" +
+	"\bGetTopic\x12\x18.post.v1.GetTopicRequest\x1a\x19.post.v1.GetTopicResponse\x12E\n" +
+	"\n" +
+	"ListTopics\x12\x1a.post.v1.ListTopicsRequest\x1a\x1b.post.v1.ListTopicsResponse\x12B\n" +
+	"\tEditTopic\x12\x19.post.v1.EditTopicRequest\x1a\x1a.post.v1.EditTopicResponse\x12B\n" +
+	"\vDeleteTopic\x12\x1b.post.v1.DeleteTopicRequest\x1a\x16.google.protobuf.Empty\x12]\n" +
+	"\x12CreateTopicMessage\x12\".post.v1.CreateTopicMessageRequest\x1a#.post.v1.CreateTopicMessageResponse\x12Z\n" +
+	"\x11ListTopicMessages\x12!.post.v1.ListTopicMessagesRequest\x1a\".post.v1.ListTopicMessagesResponse\x12P\n" +
+	"\x12DeleteTopicMessage\x12\".post.v1.DeleteTopicMessageRequest\x1a\x16.google.protobuf.Empty\x12>\n" +
 	"\tPurgeUser\x12\x19.post.v1.PurgeUserRequest\x1a\x16.google.protobuf.EmptyB5Z3github.com/vexner67/freenet/post/api/post/v1;postv1b\x06proto3"
 
 var (
@@ -2741,60 +3867,76 @@ func file_api_post_v1_post_proto_rawDescGZIP() []byte {
 	return file_api_post_v1_post_proto_rawDescData
 }
 
-var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 43)
+var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 59)
 var file_api_post_v1_post_proto_goTypes = []any{
-	(*Post)(nil),                      // 0: post.v1.Post
-	(*Comment)(nil),                   // 1: post.v1.Comment
-	(*Suggestion)(nil),                // 2: post.v1.Suggestion
-	(*SuggestPostRequest)(nil),        // 3: post.v1.SuggestPostRequest
-	(*SuggestPostResponse)(nil),       // 4: post.v1.SuggestPostResponse
-	(*ListSuggestionsRequest)(nil),    // 5: post.v1.ListSuggestionsRequest
-	(*ListSuggestionsResponse)(nil),   // 6: post.v1.ListSuggestionsResponse
-	(*PublishSuggestionRequest)(nil),  // 7: post.v1.PublishSuggestionRequest
-	(*PublishSuggestionResponse)(nil), // 8: post.v1.PublishSuggestionResponse
-	(*DeleteSuggestionRequest)(nil),   // 9: post.v1.DeleteSuggestionRequest
-	(*CreatePostRequest)(nil),         // 10: post.v1.CreatePostRequest
-	(*CreatePostResponse)(nil),        // 11: post.v1.CreatePostResponse
-	(*RepostPostRequest)(nil),         // 12: post.v1.RepostPostRequest
-	(*RepostPostResponse)(nil),        // 13: post.v1.RepostPostResponse
-	(*DeletePostRequest)(nil),         // 14: post.v1.DeletePostRequest
-	(*EditPostRequest)(nil),           // 15: post.v1.EditPostRequest
-	(*EditPostResponse)(nil),          // 16: post.v1.EditPostResponse
-	(*PinPostRequest)(nil),            // 17: post.v1.PinPostRequest
-	(*UnpinPostRequest)(nil),          // 18: post.v1.UnpinPostRequest
-	(*GetPostRequest)(nil),            // 19: post.v1.GetPostRequest
-	(*GetPostResponse)(nil),           // 20: post.v1.GetPostResponse
-	(*GetPostsRequest)(nil),           // 21: post.v1.GetPostsRequest
-	(*GetPostsResponse)(nil),          // 22: post.v1.GetPostsResponse
-	(*ListPostsRequest)(nil),          // 23: post.v1.ListPostsRequest
-	(*ListPostsResponse)(nil),         // 24: post.v1.ListPostsResponse
-	(*ListFeedRequest)(nil),           // 25: post.v1.ListFeedRequest
-	(*ListFeedResponse)(nil),          // 26: post.v1.ListFeedResponse
-	(*LikePostRequest)(nil),           // 27: post.v1.LikePostRequest
-	(*LikePostResponse)(nil),          // 28: post.v1.LikePostResponse
-	(*UnlikePostRequest)(nil),         // 29: post.v1.UnlikePostRequest
-	(*UnlikePostResponse)(nil),        // 30: post.v1.UnlikePostResponse
-	(*CreateCommentRequest)(nil),      // 31: post.v1.CreateCommentRequest
-	(*CreateCommentResponse)(nil),     // 32: post.v1.CreateCommentResponse
-	(*DeleteCommentRequest)(nil),      // 33: post.v1.DeleteCommentRequest
-	(*LikeCommentRequest)(nil),        // 34: post.v1.LikeCommentRequest
-	(*LikeCommentResponse)(nil),       // 35: post.v1.LikeCommentResponse
-	(*UnlikeCommentRequest)(nil),      // 36: post.v1.UnlikeCommentRequest
-	(*UnlikeCommentResponse)(nil),     // 37: post.v1.UnlikeCommentResponse
-	(*ListCommentsRequest)(nil),       // 38: post.v1.ListCommentsRequest
-	(*ListCommentsResponse)(nil),      // 39: post.v1.ListCommentsResponse
-	(*GetCommentsRequest)(nil),        // 40: post.v1.GetCommentsRequest
-	(*GetCommentsResponse)(nil),       // 41: post.v1.GetCommentsResponse
-	(*PurgeUserRequest)(nil),          // 42: post.v1.PurgeUserRequest
-	(*timestamppb.Timestamp)(nil),     // 43: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),             // 44: google.protobuf.Empty
+	(*Post)(nil),                       // 0: post.v1.Post
+	(*Comment)(nil),                    // 1: post.v1.Comment
+	(*Suggestion)(nil),                 // 2: post.v1.Suggestion
+	(*SuggestPostRequest)(nil),         // 3: post.v1.SuggestPostRequest
+	(*SuggestPostResponse)(nil),        // 4: post.v1.SuggestPostResponse
+	(*ListSuggestionsRequest)(nil),     // 5: post.v1.ListSuggestionsRequest
+	(*ListSuggestionsResponse)(nil),    // 6: post.v1.ListSuggestionsResponse
+	(*PublishSuggestionRequest)(nil),   // 7: post.v1.PublishSuggestionRequest
+	(*PublishSuggestionResponse)(nil),  // 8: post.v1.PublishSuggestionResponse
+	(*DeleteSuggestionRequest)(nil),    // 9: post.v1.DeleteSuggestionRequest
+	(*CreatePostRequest)(nil),          // 10: post.v1.CreatePostRequest
+	(*CreatePostResponse)(nil),         // 11: post.v1.CreatePostResponse
+	(*RepostPostRequest)(nil),          // 12: post.v1.RepostPostRequest
+	(*RepostPostResponse)(nil),         // 13: post.v1.RepostPostResponse
+	(*DeletePostRequest)(nil),          // 14: post.v1.DeletePostRequest
+	(*EditPostRequest)(nil),            // 15: post.v1.EditPostRequest
+	(*EditPostResponse)(nil),           // 16: post.v1.EditPostResponse
+	(*PinPostRequest)(nil),             // 17: post.v1.PinPostRequest
+	(*UnpinPostRequest)(nil),           // 18: post.v1.UnpinPostRequest
+	(*GetPostRequest)(nil),             // 19: post.v1.GetPostRequest
+	(*GetPostResponse)(nil),            // 20: post.v1.GetPostResponse
+	(*GetPostsRequest)(nil),            // 21: post.v1.GetPostsRequest
+	(*GetPostsResponse)(nil),           // 22: post.v1.GetPostsResponse
+	(*ListPostsRequest)(nil),           // 23: post.v1.ListPostsRequest
+	(*ListPostsResponse)(nil),          // 24: post.v1.ListPostsResponse
+	(*ListFeedRequest)(nil),            // 25: post.v1.ListFeedRequest
+	(*ListFeedResponse)(nil),           // 26: post.v1.ListFeedResponse
+	(*LikePostRequest)(nil),            // 27: post.v1.LikePostRequest
+	(*LikePostResponse)(nil),           // 28: post.v1.LikePostResponse
+	(*UnlikePostRequest)(nil),          // 29: post.v1.UnlikePostRequest
+	(*UnlikePostResponse)(nil),         // 30: post.v1.UnlikePostResponse
+	(*CreateCommentRequest)(nil),       // 31: post.v1.CreateCommentRequest
+	(*CreateCommentResponse)(nil),      // 32: post.v1.CreateCommentResponse
+	(*DeleteCommentRequest)(nil),       // 33: post.v1.DeleteCommentRequest
+	(*LikeCommentRequest)(nil),         // 34: post.v1.LikeCommentRequest
+	(*LikeCommentResponse)(nil),        // 35: post.v1.LikeCommentResponse
+	(*UnlikeCommentRequest)(nil),       // 36: post.v1.UnlikeCommentRequest
+	(*UnlikeCommentResponse)(nil),      // 37: post.v1.UnlikeCommentResponse
+	(*ListCommentsRequest)(nil),        // 38: post.v1.ListCommentsRequest
+	(*ListCommentsResponse)(nil),       // 39: post.v1.ListCommentsResponse
+	(*GetCommentsRequest)(nil),         // 40: post.v1.GetCommentsRequest
+	(*GetCommentsResponse)(nil),        // 41: post.v1.GetCommentsResponse
+	(*PurgeUserRequest)(nil),           // 42: post.v1.PurgeUserRequest
+	(*Topic)(nil),                      // 43: post.v1.Topic
+	(*TopicMessage)(nil),               // 44: post.v1.TopicMessage
+	(*CreateTopicRequest)(nil),         // 45: post.v1.CreateTopicRequest
+	(*CreateTopicResponse)(nil),        // 46: post.v1.CreateTopicResponse
+	(*GetTopicRequest)(nil),            // 47: post.v1.GetTopicRequest
+	(*GetTopicResponse)(nil),           // 48: post.v1.GetTopicResponse
+	(*ListTopicsRequest)(nil),          // 49: post.v1.ListTopicsRequest
+	(*ListTopicsResponse)(nil),         // 50: post.v1.ListTopicsResponse
+	(*EditTopicRequest)(nil),           // 51: post.v1.EditTopicRequest
+	(*EditTopicResponse)(nil),          // 52: post.v1.EditTopicResponse
+	(*DeleteTopicRequest)(nil),         // 53: post.v1.DeleteTopicRequest
+	(*CreateTopicMessageRequest)(nil),  // 54: post.v1.CreateTopicMessageRequest
+	(*CreateTopicMessageResponse)(nil), // 55: post.v1.CreateTopicMessageResponse
+	(*ListTopicMessagesRequest)(nil),   // 56: post.v1.ListTopicMessagesRequest
+	(*ListTopicMessagesResponse)(nil),  // 57: post.v1.ListTopicMessagesResponse
+	(*DeleteTopicMessageRequest)(nil),  // 58: post.v1.DeleteTopicMessageRequest
+	(*timestamppb.Timestamp)(nil),      // 59: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 60: google.protobuf.Empty
 }
 var file_api_post_v1_post_proto_depIdxs = []int32{
-	43, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
-	43, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
-	43, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
-	43, // 3: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
-	43, // 4: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
+	59, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
+	59, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
+	59, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
+	59, // 3: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
+	59, // 4: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
 	2,  // 5: post.v1.SuggestPostResponse.suggestion:type_name -> post.v1.Suggestion
 	2,  // 6: post.v1.ListSuggestionsResponse.suggestions:type_name -> post.v1.Suggestion
 	0,  // 7: post.v1.PublishSuggestionResponse.post:type_name -> post.v1.Post
@@ -2808,57 +3950,83 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	1,  // 15: post.v1.CreateCommentResponse.comment:type_name -> post.v1.Comment
 	1,  // 16: post.v1.ListCommentsResponse.comments:type_name -> post.v1.Comment
 	1,  // 17: post.v1.GetCommentsResponse.comments:type_name -> post.v1.Comment
-	10, // 18: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
-	14, // 19: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
-	12, // 20: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
-	15, // 21: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
-	17, // 22: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
-	18, // 23: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
-	19, // 24: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
-	21, // 25: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
-	23, // 26: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
-	25, // 27: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
-	27, // 28: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
-	29, // 29: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
-	31, // 30: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
-	33, // 31: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
-	34, // 32: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
-	36, // 33: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
-	38, // 34: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
-	40, // 35: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
-	3,  // 36: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
-	5,  // 37: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
-	7,  // 38: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
-	9,  // 39: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
-	42, // 40: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
-	11, // 41: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
-	44, // 42: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
-	13, // 43: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
-	16, // 44: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
-	44, // 45: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
-	44, // 46: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
-	20, // 47: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
-	22, // 48: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
-	24, // 49: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
-	26, // 50: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
-	28, // 51: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
-	30, // 52: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
-	32, // 53: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
-	44, // 54: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
-	35, // 55: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
-	37, // 56: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
-	39, // 57: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
-	41, // 58: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
-	4,  // 59: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
-	6,  // 60: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
-	8,  // 61: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
-	44, // 62: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
-	44, // 63: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
-	41, // [41:64] is the sub-list for method output_type
-	18, // [18:41] is the sub-list for method input_type
-	18, // [18:18] is the sub-list for extension type_name
-	18, // [18:18] is the sub-list for extension extendee
-	0,  // [0:18] is the sub-list for field type_name
+	59, // 18: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
+	59, // 19: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
+	44, // 20: post.v1.Topic.last_message:type_name -> post.v1.TopicMessage
+	59, // 21: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
+	43, // 22: post.v1.CreateTopicResponse.topic:type_name -> post.v1.Topic
+	43, // 23: post.v1.GetTopicResponse.topic:type_name -> post.v1.Topic
+	43, // 24: post.v1.ListTopicsResponse.topics:type_name -> post.v1.Topic
+	43, // 25: post.v1.EditTopicResponse.topic:type_name -> post.v1.Topic
+	44, // 26: post.v1.CreateTopicMessageResponse.message:type_name -> post.v1.TopicMessage
+	44, // 27: post.v1.ListTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
+	10, // 28: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
+	14, // 29: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
+	12, // 30: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
+	15, // 31: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
+	17, // 32: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
+	18, // 33: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
+	19, // 34: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
+	21, // 35: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
+	23, // 36: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
+	25, // 37: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
+	27, // 38: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
+	29, // 39: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
+	31, // 40: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
+	33, // 41: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
+	34, // 42: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
+	36, // 43: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
+	38, // 44: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
+	40, // 45: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
+	3,  // 46: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
+	5,  // 47: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
+	7,  // 48: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
+	9,  // 49: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
+	45, // 50: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
+	47, // 51: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
+	49, // 52: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
+	51, // 53: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
+	53, // 54: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
+	54, // 55: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
+	56, // 56: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
+	58, // 57: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
+	42, // 58: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
+	11, // 59: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
+	60, // 60: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
+	13, // 61: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
+	16, // 62: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
+	60, // 63: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
+	60, // 64: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
+	20, // 65: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
+	22, // 66: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
+	24, // 67: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
+	26, // 68: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
+	28, // 69: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
+	30, // 70: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
+	32, // 71: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
+	60, // 72: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
+	35, // 73: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
+	37, // 74: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
+	39, // 75: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
+	41, // 76: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
+	4,  // 77: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
+	6,  // 78: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
+	8,  // 79: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
+	60, // 80: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
+	46, // 81: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
+	48, // 82: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
+	50, // 83: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
+	52, // 84: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
+	60, // 85: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
+	55, // 86: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
+	57, // 87: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
+	60, // 88: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
+	60, // 89: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
+	59, // [59:90] is the sub-list for method output_type
+	28, // [28:59] is the sub-list for method input_type
+	28, // [28:28] is the sub-list for extension type_name
+	28, // [28:28] is the sub-list for extension extendee
+	0,  // [0:28] is the sub-list for field type_name
 }
 
 func init() { file_api_post_v1_post_proto_init() }
@@ -2872,7 +4040,7 @@ func file_api_post_v1_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_post_v1_post_proto_rawDesc), len(file_api_post_v1_post_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   43,
+			NumMessages:   59,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

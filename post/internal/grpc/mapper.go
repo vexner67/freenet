@@ -41,12 +41,17 @@ func fromProtoTextPhotos(rawText string, rawPhotos []string) (post.Text, post.Ph
 
 // fromProtoCommentContent reads what a new comment says.
 func fromProtoCommentContent(req *postv1.CreateCommentRequest) (post.CommentContent, error) {
-	text, err := post.NewCommentText(req.GetText())
+	return commentContent(req.GetText(), req.GetPhotoIds())
+}
+
+// commentContent reads what a comment or a message in a topic says.
+func commentContent(rawText string, rawPhotos []string) (post.CommentContent, error) {
+	text, err := post.NewCommentText(rawText)
 	if err != nil {
 		return post.CommentContent{}, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	photos, err := fromProtoPhotos(req.GetPhotoIds())
+	photos, err := fromProtoPhotos(rawPhotos)
 	if err != nil {
 		return post.CommentContent{}, err
 	}
