@@ -138,10 +138,10 @@ func (a *App) build(cfg config.Config) error {
 				Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
 			service.NewCommentService(service.CommentDeps{
-				Posts: repos.posts, Comments: repos.comments, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Posts: repos.posts, Comments: repos.comments, Likes: repos.commentLikes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
 			service.NewPurgeService(service.PurgeDeps{
-				Posts: repos.posts, Likes: repos.likes, Comments: repos.comments, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
 			a.logger,
 		),
@@ -179,6 +179,8 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_CreateComment_FullMethodName: cfg.CommentLimits,
 		postv1.PostService_LikePost_FullMethodName:      cfg.LikeLimits,
 		postv1.PostService_UnlikePost_FullMethodName:    cfg.LikeLimits,
+		postv1.PostService_LikeComment_FullMethodName:   cfg.LikeLimits,
+		postv1.PostService_UnlikeComment_FullMethodName: cfg.LikeLimits,
 		postv1.PostService_EditPost_FullMethodName:      cfg.EditLimits,
 	}
 }
@@ -290,6 +292,10 @@ type repositories struct {
 		service.PostCommentEraser
 		service.CommentEraser
 	}
+	commentLikes interface {
+		service.CommentLikeRepository
+		service.ReactionEraser
+	}
 	tx service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
@@ -299,10 +305,11 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
 		return repositories{
-			posts:    store.Posts(),
-			likes:    store.Likes(),
-			comments: store.Comments(),
-			tx:       inmem.TxManager{},
+			posts:        store.Posts(),
+			likes:        store.Likes(),
+			comments:     store.Comments(),
+			commentLikes: store.CommentLikes(),
+			tx:           inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -332,10 +339,11 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	}
 
 	return repositories{
-		posts:    postgres.NewPostRepository(a.pool),
-		likes:    postgres.NewLikeRepository(a.pool),
-		comments: postgres.NewCommentRepository(a.pool),
-		tx:       pgpool.NewTxManager(a.pool),
+		posts:        postgres.NewPostRepository(a.pool),
+		likes:        postgres.NewLikeRepository(a.pool),
+		comments:     postgres.NewCommentRepository(a.pool),
+		commentLikes: postgres.NewCommentLikeRepository(a.pool),
+		tx:           pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)

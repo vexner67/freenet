@@ -20,9 +20,9 @@ func TestPurgeService(t *testing.T) {
 	notifier := &fakeNotifier{}
 	photos := &fakePhotos{}
 	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
-	comments := service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
+	comments := service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
 	purge := service.NewPurgeService(service.PurgeDeps{
-		Posts: store.Posts(), Likes: store.Likes(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
+		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
 	})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
@@ -63,6 +63,14 @@ func TestPurgeService(t *testing.T) {
 	if _, err = comments.Create(ctx, ann, bobsPost.ID(), post.RestoreCommentContent(text, nil)); err != nil {
 		t.Fatal(err)
 	}
+	// Bob comments on his post, and ann likes it.
+	bobsComment, err := comments.Create(ctx, bob, bobsPost.ID(), post.RestoreCommentContent("моя запись", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = comments.Like(ctx, ann, bobsComment.ID()); err != nil {
+		t.Fatal(err)
+	}
 	// Cat comments on ann's post with a photo, which goes with the post.
 	cat, catsPhoto := uuid.New(), uuid.New()
 	if _, err = comments.Create(ctx, cat, annsPost.ID(), post.RestoreCommentContent("", post.Photos{catsPhoto})); err != nil {
@@ -87,8 +95,11 @@ func TestPurgeService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if c := kept.Counters(); c.Likes != 1 || c.Comments != 0 || c.Reposts != 0 {
-		t.Errorf("bob's post counters = %+v, want bob's like only", c)
+	if c := kept.Counters(); c.Likes != 1 || c.Comments != 1 || c.Reposts != 0 {
+		t.Errorf("bob's post counters = %+v, want bob's like and comment only", c)
+	}
+	if page, err := comments.List(ctx, uuid.Nil, bobsPost.ID(), uuid.Nil, 20); err != nil || page.Comments[0].Likes() != 0 {
+		t.Errorf("bob's comment keeps ann's like: %v", err)
 	}
 
 	want := []uuid.UUID{annsPost.ID(), onAnnsWall.ID(), annsRepost.ID()}

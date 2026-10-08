@@ -34,6 +34,8 @@ const (
 	PostService_UnlikePost_FullMethodName    = "/post.v1.PostService/UnlikePost"
 	PostService_CreateComment_FullMethodName = "/post.v1.PostService/CreateComment"
 	PostService_DeleteComment_FullMethodName = "/post.v1.PostService/DeleteComment"
+	PostService_LikeComment_FullMethodName   = "/post.v1.PostService/LikeComment"
+	PostService_UnlikeComment_FullMethodName = "/post.v1.PostService/UnlikeComment"
 	PostService_ListComments_FullMethodName  = "/post.v1.PostService/ListComments"
 	PostService_GetComments_FullMethodName   = "/post.v1.PostService/GetComments"
 	PostService_PurgeUser_FullMethodName     = "/post.v1.PostService/PurgeUser"
@@ -76,6 +78,10 @@ type PostServiceClient interface {
 	// deleted by its author or by the author of the post.
 	CreateComment(ctx context.Context, in *CreateCommentRequest, opts ...grpc.CallOption) (*CreateCommentResponse, error)
 	DeleteComment(ctx context.Context, in *DeleteCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token; the caller likes the comment. Both are
+	// idempotent and return how many likes the comment has now.
+	LikeComment(ctx context.Context, in *LikeCommentRequest, opts ...grpc.CallOption) (*LikeCommentResponse, error)
+	UnlikeComment(ctx context.Context, in *UnlikeCommentRequest, opts ...grpc.CallOption) (*UnlikeCommentResponse, error)
 	// Public: the comments of a post, oldest first.
 	ListComments(ctx context.Context, in *ListCommentsRequest, opts ...grpc.CallOption) (*ListCommentsResponse, error)
 	// Public: at most 50 comments by ID, like GetPosts.
@@ -234,6 +240,26 @@ func (c *postServiceClient) DeleteComment(ctx context.Context, in *DeleteComment
 	return out, nil
 }
 
+func (c *postServiceClient) LikeComment(ctx context.Context, in *LikeCommentRequest, opts ...grpc.CallOption) (*LikeCommentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LikeCommentResponse)
+	err := c.cc.Invoke(ctx, PostService_LikeComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) UnlikeComment(ctx context.Context, in *UnlikeCommentRequest, opts ...grpc.CallOption) (*UnlikeCommentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnlikeCommentResponse)
+	err := c.cc.Invoke(ctx, PostService_UnlikeComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) ListComments(ctx context.Context, in *ListCommentsRequest, opts ...grpc.CallOption) (*ListCommentsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListCommentsResponse)
@@ -301,6 +327,10 @@ type PostServiceServer interface {
 	// deleted by its author or by the author of the post.
 	CreateComment(context.Context, *CreateCommentRequest) (*CreateCommentResponse, error)
 	DeleteComment(context.Context, *DeleteCommentRequest) (*emptypb.Empty, error)
+	// Require an access token; the caller likes the comment. Both are
+	// idempotent and return how many likes the comment has now.
+	LikeComment(context.Context, *LikeCommentRequest) (*LikeCommentResponse, error)
+	UnlikeComment(context.Context, *UnlikeCommentRequest) (*UnlikeCommentResponse, error)
 	// Public: the comments of a post, oldest first.
 	ListComments(context.Context, *ListCommentsRequest) (*ListCommentsResponse, error)
 	// Public: at most 50 comments by ID, like GetPosts.
@@ -360,6 +390,12 @@ func (UnimplementedPostServiceServer) CreateComment(context.Context, *CreateComm
 }
 func (UnimplementedPostServiceServer) DeleteComment(context.Context, *DeleteCommentRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteComment not implemented")
+}
+func (UnimplementedPostServiceServer) LikeComment(context.Context, *LikeCommentRequest) (*LikeCommentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LikeComment not implemented")
+}
+func (UnimplementedPostServiceServer) UnlikeComment(context.Context, *UnlikeCommentRequest) (*UnlikeCommentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnlikeComment not implemented")
 }
 func (UnimplementedPostServiceServer) ListComments(context.Context, *ListCommentsRequest) (*ListCommentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListComments not implemented")
@@ -643,6 +679,42 @@ func _PostService_DeleteComment_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_LikeComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LikeCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).LikeComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_LikeComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).LikeComment(ctx, req.(*LikeCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_UnlikeComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnlikeCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).UnlikeComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_UnlikeComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).UnlikeComment(ctx, req.(*UnlikeCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_ListComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListCommentsRequest)
 	if err := dec(in); err != nil {
@@ -759,6 +831,14 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteComment",
 			Handler:    _PostService_DeleteComment_Handler,
+		},
+		{
+			MethodName: "LikeComment",
+			Handler:    _PostService_LikeComment_Handler,
+		},
+		{
+			MethodName: "UnlikeComment",
+			Handler:    _PostService_UnlikeComment_Handler,
 		},
 		{
 			MethodName: "ListComments",

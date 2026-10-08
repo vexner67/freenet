@@ -24,7 +24,7 @@ func newCommentFixture() commentFixture {
 
 	return commentFixture{
 		posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}}),
-		comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}}),
+		comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}}),
 		notifier: notifier,
 	}
 }
@@ -71,7 +71,7 @@ func TestCommentService_List(t *testing.T) {
 	)
 
 	for {
-		page, err := f.comments.List(ctx, p.ID(), cursor, 2)
+		page, err := f.comments.List(ctx, uuid.Nil, p.ID(), cursor, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -103,12 +103,12 @@ func TestCommentService_List(t *testing.T) {
 		t.Fatalf("post counters = %v, %v", counted.Counters(), err)
 	}
 
-	empty, err := f.comments.List(ctx, write(t, f.posts, bob, "пусто")[0].ID(), uuid.Nil, 0)
+	empty, err := f.comments.List(ctx, uuid.Nil, write(t, f.posts, bob, "пусто")[0].ID(), uuid.Nil, 0)
 	if err != nil || len(empty.Comments) != 0 || empty.Total != 0 || empty.NextCursor != uuid.Nil {
 		t.Fatalf("no comments: %+v, %v", empty, err)
 	}
 
-	if _, err = f.comments.List(ctx, uuid.New(), uuid.Nil, 20); !errors.Is(err, post.ErrNotFound) {
+	if _, err = f.comments.List(ctx, uuid.Nil, uuid.New(), uuid.Nil, 20); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("missing post: %v", err)
 	}
 }
@@ -156,7 +156,7 @@ func TestCommentService_Delete(t *testing.T) {
 		t.Fatalf("twice: got %v, want ErrCommentNotFound", err)
 	}
 
-	page, err := f.comments.List(ctx, p.ID(), uuid.Nil, 20)
+	page, err := f.comments.List(ctx, uuid.Nil, p.ID(), uuid.Nil, 20)
 	if err != nil || len(page.Comments) != 0 || page.Total != 0 {
 		t.Fatalf("after deleting: %+v, %v", page, err)
 	}
@@ -205,12 +205,129 @@ func TestCommentService_Notifies(t *testing.T) {
 		t.Fatalf("notified = %+v, want %+v", f.notifier.notified, want)
 	}
 
-	// Deleted by the author of the post, the comment is taken back all the same.
+	// Deleted by the author of the post, the comment takes every
+	// notification of it all the same: of it, its replies, its likes.
 	if err := f.comments.Delete(ctx, ann, theirs.ID()); err != nil {
 		t.Fatal(err)
 	}
-	if len(f.notifier.retracted) != 1 || f.notifier.retracted[0] != want {
-		t.Fatalf("retracted = %+v, want %+v", f.notifier.retracted, want)
+	if !slices.Equal(f.notifier.forgottenComments, []uuid.UUID{theirs.ID()}) {
+		t.Fatalf("forgotten comments = %v, want bob's", f.notifier.forgottenComments)
+	}
+}
+
+func TestCommentService_Reply(t *testing.T) {
+	t.Parallel()
+
+	f := newCommentFixture()
+	ctx := context.Background()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	p := write(t, f.posts, ann, "привет")[0]
+	other := write(t, f.posts, ann, "другая")[0]
+	content := post.RestoreCommentContent("Пётр, согласна", nil)
+
+	bobs := f.comment(t, bob, p.ID(), "и тебе")[0]
+	f.notifier.notified = nil
+
+	// Cat answers bob: bob hears of the answer, ann of a new comment.
+	reply, err := f.comments.Reply(ctx, service.ReplyInput{AuthorID: cat, PostID: p.ID(), ParentID: bobs.ID(), Content: content})
+	if err != nil {
+		t.Fatalf("Reply: %v", err)
+	}
+	if reply.ReplyTo() != bobs.ID() || reply.PostID() != p.ID() {
+		t.Fatalf("reply answers %v under %v", reply.ReplyTo(), reply.PostID())
+	}
+	want := []service.Event{
+		{Kind: service.EventCommentReply, RecipientID: bob, ActorID: cat, PostID: p.ID(), CommentID: reply.ID()},
+		{Kind: service.EventComment, RecipientID: ann, ActorID: cat, PostID: p.ID(), CommentID: reply.ID()},
+	}
+	if !slices.Equal(f.notifier.notified, want) {
+		t.Fatalf("notified = %+v, want %+v", f.notifier.notified, want)
+	}
+
+	// Ann answers cat on her own post: cat only, once.
+	f.notifier.notified = nil
+	if _, err = f.comments.Reply(ctx, service.ReplyInput{AuthorID: ann, PostID: p.ID(), ParentID: reply.ID(), Content: content}); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.notifier.notified) != 1 || f.notifier.notified[0].Kind != service.EventCommentReply || f.notifier.notified[0].RecipientID != cat {
+		t.Fatalf("notified = %+v, want cat's reply", f.notifier.notified)
+	}
+
+	// Cat answers her own comment: only ann hears, of a new comment.
+	f.notifier.notified = nil
+	if _, err = f.comments.Reply(ctx, service.ReplyInput{AuthorID: cat, PostID: p.ID(), ParentID: reply.ID(), Content: content}); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.notifier.notified) != 1 || f.notifier.notified[0].Kind != service.EventComment {
+		t.Fatalf("answering yourself: notified = %+v, want ann's comment only", f.notifier.notified)
+	}
+
+	// A reply under another post than the comment's is refused.
+	if _, err = f.comments.Reply(ctx, service.ReplyInput{AuthorID: cat, PostID: other.ID(), ParentID: bobs.ID(), Content: content}); !errors.Is(err, post.ErrReplyOtherPost) {
+		t.Fatalf("reply under another post: %v", err)
+	}
+	if _, err = f.comments.Reply(ctx, service.ReplyInput{AuthorID: cat, PostID: p.ID(), ParentID: uuid.New(), Content: content}); !errors.Is(err, post.ErrCommentNotFound) {
+		t.Fatalf("reply to nothing: %v", err)
+	}
+
+	// The comment answered is deleted: the reply stays, answering nothing.
+	if err = f.comments.Delete(ctx, bob, bobs.ID()); err != nil {
+		t.Fatal(err)
+	}
+	page, err := f.comments.List(ctx, uuid.Nil, p.ID(), uuid.Nil, 20)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if page.Comments[0].ID() != reply.ID() || page.Comments[0].ReplyTo() != uuid.Nil {
+		t.Fatalf("after deleting the comment answered: %v answers %v", page.Comments[0].ID(), page.Comments[0].ReplyTo())
+	}
+}
+
+func TestCommentService_Like(t *testing.T) {
+	t.Parallel()
+
+	f := newCommentFixture()
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	p := write(t, f.posts, ann, "привет")[0]
+	c := f.comment(t, bob, p.ID(), "и тебе")[0]
+	f.notifier.notified = nil
+
+	for range 2 { // idempotent
+		if likes, err := f.comments.Like(ctx, ann, c.ID()); err != nil || likes != 1 {
+			t.Fatalf("Like = %d, %v", likes, err)
+		}
+	}
+	if likes, err := f.comments.Like(ctx, bob, c.ID()); err != nil || likes != 2 {
+		t.Fatalf("bob likes his own = %d, %v", likes, err)
+	}
+
+	like := service.Event{Kind: service.EventCommentLike, RecipientID: bob, ActorID: ann, PostID: p.ID(), CommentID: c.ID()}
+	// Twice: notification dedups the repeat; bob's own like tells nobody.
+	if !slices.Equal(f.notifier.notified, []service.Event{like, like}) {
+		t.Fatalf("notified = %+v", f.notifier.notified)
+	}
+
+	page, err := f.comments.List(ctx, ann, p.ID(), uuid.Nil, 20)
+	if err != nil || !page.Liked[c.ID()] || page.Comments[0].Likes() != 2 {
+		t.Fatalf("ann's view: liked %v, likes %d, %v", page.Liked, page.Comments[0].Likes(), err)
+	}
+	if anon, _ := f.comments.List(ctx, uuid.Nil, p.ID(), uuid.Nil, 20); len(anon.Liked) != 0 {
+		t.Fatalf("an anonymous viewer likes %v", anon.Liked)
+	}
+
+	if likes, err := f.comments.Unlike(ctx, ann, c.ID()); err != nil || likes != 1 {
+		t.Fatalf("Unlike = %d, %v", likes, err)
+	}
+	if !slices.Equal(f.notifier.retracted, []service.Event{like}) {
+		t.Fatalf("retracted = %+v", f.notifier.retracted)
+	}
+
+	if _, err := f.comments.Like(ctx, ann, uuid.New()); !errors.Is(err, post.ErrCommentNotFound) {
+		t.Fatalf("like a missing comment: %v", err)
+	}
+	if f.notifier.outsideTx != 0 {
+		t.Fatalf("%d notifications outside the transaction", f.notifier.outsideTx)
 	}
 }
 
@@ -242,7 +359,7 @@ func TestCommentService_Photos(t *testing.T) {
 		Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
 	})
 	comments := service.NewCommentService(service.CommentDeps{
-		Posts: store.Posts(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
+		Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
 	})
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	bobsPhoto, catsPhoto := uuid.New(), uuid.New()

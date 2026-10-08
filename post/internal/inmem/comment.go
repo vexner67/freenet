@@ -80,7 +80,7 @@ func (r *CommentRepository) Delete(ctx context.Context, id uuid.UUID) error {
 		return post.ErrCommentNotFound
 	}
 
-	delete(r.s.comments, id)
+	r.s.removeComment(id)
 	r.s.count(c.PostID(), func(c *post.Counters) { c.Comments-- })
 
 	return nil
@@ -125,7 +125,7 @@ func (r *CommentRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) 
 
 	for id, c := range r.s.comments {
 		if c.AuthorID() == userID {
-			delete(r.s.comments, id)
+			r.s.removeComment(id)
 			r.s.count(c.PostID(), func(c *post.Counters) { c.Comments-- })
 		}
 	}
@@ -159,7 +159,7 @@ func (r *CommentRepository) deleteWhere(ctx context.Context, match func(*post.Co
 	var deleted []*post.Comment
 	for id, c := range r.s.comments {
 		if match(c) {
-			delete(r.s.comments, id)
+			r.s.removeComment(id)
 			deleted = append(deleted, c)
 		}
 	}

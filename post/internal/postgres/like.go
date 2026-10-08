@@ -15,10 +15,21 @@ import (
 
 const foreignKeyViolationCode = "23503"
 
-// isForeignKeyViolation: a like or a comment refers to a post that is gone.
+// isForeignKeyViolation: a like or a comment refers to a post or comment
+// that is gone.
 func isForeignKeyViolation(err error) bool {
 	var pgErr *pgconn.PgError
 	return errors.As(err, &pgErr) && pgErr.Code == foreignKeyViolationCode
+}
+
+// constraintOf is the constraint a PostgreSQL error is about, "" if none.
+func constraintOf(err error) string {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.ConstraintName
+	}
+
+	return ""
 }
 
 type LikeRepository struct {

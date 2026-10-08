@@ -101,3 +101,27 @@ func TestComment(t *testing.T) {
 		t.Fatal("IDs must grow, comments are ordered by them")
 	}
 }
+
+func TestNewReply(t *testing.T) {
+	t.Parallel()
+
+	postID, other := uuid.New(), uuid.New()
+	content := post.RestoreCommentContent("согласен", nil)
+
+	parent, err := post.NewComment(postID, uuid.New(), content, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reply, err := post.NewReply(postID, parent, uuid.New(), content, time.Now())
+	if err != nil || reply.ReplyTo() != parent.ID() || reply.PostID() != postID || reply.Likes() != 0 {
+		t.Fatalf("NewReply = %+v, %v", reply, err)
+	}
+	if parent.ReplyTo() != uuid.Nil {
+		t.Fatal("a comment answers nothing")
+	}
+
+	if _, err = post.NewReply(other, parent, uuid.New(), content, time.Now()); !errors.Is(err, post.ErrReplyOtherPost) {
+		t.Fatalf("a reply under another post: %v", err)
+	}
+}

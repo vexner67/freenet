@@ -10,8 +10,9 @@ import (
 )
 
 type CommentRepository interface {
-	// Save returns post.ErrNotFound when the post is gone; storage counts
-	// the comment in the post's counters.
+	// Save returns post.ErrNotFound when the post is gone and
+	// post.ErrCommentNotFound when the comment it answers is; storage
+	// counts the comment in the post's counters.
 	Save(ctx context.Context, c *post.Comment) error
 	// Get and Delete return post.ErrCommentNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*post.Comment, error)
@@ -23,6 +24,17 @@ type CommentRepository interface {
 	ListByPost(ctx context.Context, postID, after uuid.UUID, limit int) ([]*post.Comment, error)
 }
 
+// CommentLikeRepository keeps the likes of comments as LikeRepository
+// does those of posts.
+type CommentLikeRepository interface {
+	// Like and Unlike are idempotent and return how many likes the
+	// comment has now; post.ErrCommentNotFound for a missing comment.
+	Like(ctx context.Context, commentID, userID uuid.UUID) (int, error)
+	Unlike(ctx context.Context, commentID, userID uuid.UUID) (int, error)
+	// Liked returns which of commentIDs the user likes.
+	Liked(ctx context.Context, userID uuid.UUID, commentIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+}
+
 // PostReader finds the post a comment belongs to.
 type PostReader interface {
 	// Get returns post.ErrNotFound.
@@ -30,9 +42,11 @@ type PostReader interface {
 }
 
 // CommentPage is one screen of the comments of a post. NextCursor is
-// uuid.Nil on the last page.
+// uuid.Nil on the last page. Liked marks the comments the viewer likes;
+// it is empty for anonymous viewers.
 type CommentPage struct {
 	Comments   []*post.Comment
+	Liked      map[uuid.UUID]bool
 	NextCursor uuid.UUID
 	Total      int
 }
@@ -40,6 +54,7 @@ type CommentPage struct {
 type CommentService struct {
 	postRepo    PostReader
 	commentRepo CommentRepository
+	likeRepo    CommentLikeRepository
 	tx          TxManager
 	notifier    Notifier
 	photos      PhotoKeeper
@@ -50,6 +65,7 @@ type CommentService struct {
 type CommentDeps struct {
 	Posts    PostReader
 	Comments CommentRepository
+	Likes    CommentLikeRepository
 	Tx       TxManager
 	Notifier Notifier
 	Photos   PhotoKeeper
@@ -59,6 +75,7 @@ func NewCommentService(d CommentDeps) *CommentService {
 	return &CommentService{
 		postRepo:    d.Posts,
 		commentRepo: d.Comments,
+		likeRepo:    d.Likes,
 		tx:          d.Tx,
 		notifier:    d.Notifier,
 		photos:      d.Photos,
@@ -81,31 +98,73 @@ func (s *CommentService) Create(ctx context.Context, authorID, postID uuid.UUID,
 		return nil, errs.Wrap("post.NewComment", err)
 	}
 
-	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if err := s.commentRepo.Save(ctx, c); err != nil {
-			return errs.Wrap("s.commentRepo.Save", err)
-		}
-
-		if photos := c.Photos(); len(photos) > 0 {
-			if err := s.photos.Publish(ctx, authorID, photos); err != nil {
-				return errs.Wrap("s.photos.Publish", err)
-			}
-		}
-
-		e, ok := commentEvent(p, c)
-		if !ok {
-			return nil
-		}
-
-		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, e))
-	})
-	if err != nil {
-		return nil, errs.Wrap("s.tx.WithinTx", err)
+	if err = s.save(ctx, p, c, nil); err != nil {
+		return nil, errs.Wrap("s.save", err)
 	}
 
 	return c, nil
 }
 
+// ReplyInput is an answer by AuthorID to the comment ParentID under the
+// post PostID.
+type ReplyInput struct {
+	AuthorID uuid.UUID
+	PostID   uuid.UUID
+	ParentID uuid.UUID
+	Content  post.CommentContent
+}
+
+// Reply answers a comment under its post, as openvk's "Ответить": the
+// author of the comment hears of the answer.
+func (s *CommentService) Reply(ctx context.Context, in ReplyInput) (*post.Comment, error) {
+	parent, err := s.commentRepo.Get(ctx, in.ParentID)
+	if err != nil {
+		return nil, errs.Wrap("s.commentRepo.Get", err)
+	}
+
+	p, err := s.postRepo.Get(ctx, in.PostID)
+	if err != nil {
+		return nil, errs.Wrap("s.postRepo.Get", err)
+	}
+
+	c, err := post.NewReply(in.PostID, parent, in.AuthorID, in.Content, s.now())
+	if err != nil {
+		return nil, errs.Wrap("post.NewReply", err)
+	}
+
+	if err = s.save(ctx, p, c, parent); err != nil {
+		return nil, errs.Wrap("s.save", err)
+	}
+
+	return c, nil
+}
+
+// save stores comment c on p, which answers parent (nil for none), with
+// its photos and notifications in one transaction.
+func (s *CommentService) save(ctx context.Context, p *post.Post, c, parent *post.Comment) error {
+	return errs.Wrap("s.tx.WithinTx", s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.commentRepo.Save(ctx, c); err != nil {
+			return errs.Wrap("s.commentRepo.Save", err)
+		}
+
+		if photos := c.Photos(); len(photos) > 0 {
+			if err := s.photos.Publish(ctx, c.AuthorID(), photos); err != nil {
+				return errs.Wrap("s.photos.Publish", err)
+			}
+		}
+
+		for _, e := range commentEvents(p, c, parent) {
+			if err := s.notifier.Notify(ctx, e); err != nil {
+				return errs.Wrap("s.notifier.Notify", err)
+			}
+		}
+
+		return nil
+	}))
+}
+
+// Delete removes a comment with its photos and likes; every notification
+// of it goes, those of the reply it was and of its likes too.
 func (s *CommentService) Delete(ctx context.Context, requesterID, commentID uuid.UUID) error {
 	c, err := s.commentRepo.Get(ctx, commentID)
 	if err != nil {
@@ -130,18 +189,58 @@ func (s *CommentService) Delete(ctx context.Context, requesterID, commentID uuid
 			return errs.Wrap("deleteCommentPhotos", err)
 		}
 
-		e, ok := commentEvent(p, c)
-		if !ok {
-			return nil
-		}
-
-		return errs.Wrap("s.notifier.Retract", s.notifier.Retract(ctx, e))
+		return errs.Wrap("s.notifier.ForgetComment", s.notifier.ForgetComment(ctx, commentID))
 	})
 	if err != nil {
 		return errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return nil
+}
+
+// Like is idempotent, as for posts; the author of the comment hears of it.
+// It returns how many likes the comment has now.
+func (s *CommentService) Like(ctx context.Context, userID, commentID uuid.UUID) (int, error) {
+	return s.setLike(ctx, userID, commentID, true)
+}
+
+func (s *CommentService) Unlike(ctx context.Context, userID, commentID uuid.UUID) (int, error) {
+	return s.setLike(ctx, userID, commentID, false)
+}
+
+func (s *CommentService) setLike(ctx context.Context, userID, commentID uuid.UUID, like bool) (int, error) {
+	c, err := s.commentRepo.Get(ctx, commentID)
+	if err != nil {
+		return 0, errs.Wrap("s.commentRepo.Get", err)
+	}
+
+	set, tell := s.likeRepo.Unlike, s.notifier.Retract
+	if like {
+		set, tell = s.likeRepo.Like, s.notifier.Notify
+	}
+
+	var likes int
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		var err error
+		if likes, err = set(ctx, commentID, userID); err != nil {
+			return errs.Wrap("set", err)
+		}
+
+		// Nobody is notified about liking their own comment.
+		if c.AuthorID() == userID {
+			return nil
+		}
+
+		e := Event{Kind: EventCommentLike, RecipientID: c.AuthorID(), ActorID: userID, PostID: c.PostID(), CommentID: commentID}
+
+		return errs.Wrap("tell", tell(ctx, e))
+	})
+	if err != nil {
+		return 0, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return likes, nil
 }
 
 // deleteCommentPhotos records, in the transaction of ctx, that media
@@ -158,14 +257,22 @@ func deleteCommentPhotos(ctx context.Context, photos PhotoKeeper, comments []*po
 	return nil
 }
 
-// commentEvent is comment c on p for the post author's notifications;
-// nobody is notified about commenting on their own post.
-func commentEvent(p *post.Post, c *post.Comment) (Event, bool) {
-	if p.AuthorID() == c.AuthorID() {
-		return Event{}, false
+// commentEvents are the notifications of comment c on p, which answers
+// parent (nil for none): the author of parent hears of the answer, the
+// author of the post of a new comment, unless they heard of the answer
+// already. Nobody hears of their own comments.
+func commentEvents(p *post.Post, c, parent *post.Comment) []Event {
+	var events []Event
+
+	if parent != nil && parent.AuthorID() != c.AuthorID() {
+		events = append(events, Event{Kind: EventCommentReply, RecipientID: parent.AuthorID(), ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()})
 	}
 
-	return Event{Kind: EventComment, RecipientID: p.AuthorID(), ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()}, true
+	if p.AuthorID() != c.AuthorID() && (parent == nil || parent.AuthorID() != p.AuthorID()) {
+		events = append(events, Event{Kind: EventComment, RecipientID: p.AuthorID(), ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()})
+	}
+
+	return events
 }
 
 // GetMany returns the comments with these IDs that exist, at most
@@ -188,8 +295,9 @@ func (s *CommentService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.
 }
 
 // List pages the comments of a post oldest first, as a conversation reads:
-// cursor is the ID of the last comment of the previous page.
-func (s *CommentService) List(ctx context.Context, postID, cursor uuid.UUID, size int) (CommentPage, error) {
+// cursor is the ID of the last comment of the previous page. viewerID is
+// uuid.Nil for an anonymous viewer.
+func (s *CommentService) List(ctx context.Context, viewerID, postID, cursor uuid.UUID, size int) (CommentPage, error) {
 	if size <= 0 || size > MaxPageSize {
 		size = DefaultPageSize
 	}
@@ -212,6 +320,17 @@ func (s *CommentService) List(ctx context.Context, postID, cursor uuid.UUID, siz
 	if len(comments) > size {
 		page.Comments = comments[:size]
 		page.NextCursor = comments[size-1].ID()
+	}
+
+	if viewerID != uuid.Nil && len(page.Comments) > 0 {
+		ids := make([]uuid.UUID, len(page.Comments))
+		for i, c := range page.Comments {
+			ids[i] = c.ID()
+		}
+
+		if page.Liked, err = s.likeRepo.Liked(ctx, viewerID, ids); err != nil {
+			return CommentPage{}, errs.Wrap("s.likeRepo.Liked", err)
+		}
 	}
 
 	return page, nil

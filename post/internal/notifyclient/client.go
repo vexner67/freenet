@@ -26,9 +26,10 @@ const Stream = "notification"
 
 // Outbox kinds: the payload is the request of the RPC of the same name.
 const (
-	kindNotify     = "notify"
-	kindRetract    = "retract"
-	kindForgetPost = "forget_post"
+	kindNotify        = "notify"
+	kindRetract       = "retract"
+	kindForgetPost    = "forget_post"
+	kindForgetComment = "forget_comment"
 )
 
 var kinds = map[service.EventKind]notificationv1.Kind{
@@ -36,6 +37,9 @@ var kinds = map[service.EventKind]notificationv1.Kind{
 	service.EventComment:  notificationv1.Kind_KIND_COMMENT,
 	service.EventWallPost: notificationv1.Kind_KIND_WALL_POST,
 	service.EventRepost:   notificationv1.Kind_KIND_REPOST,
+
+	service.EventCommentReply: notificationv1.Kind_KIND_COMMENT_REPLY,
+	service.EventCommentLike:  notificationv1.Kind_KIND_COMMENT_LIKE,
 }
 
 // Recorder adds a message to the outbox in the transaction of ctx.
@@ -64,6 +68,10 @@ func (o *Outbox) Retract(ctx context.Context, e service.Event) error {
 
 func (o *Outbox) ForgetPost(ctx context.Context, postID uuid.UUID) error {
 	return o.add(ctx, kindForgetPost, &notificationv1.ForgetPostRequest{PostId: postID.String()})
+}
+
+func (o *Outbox) ForgetComment(ctx context.Context, commentID uuid.UUID) error {
+	return o.add(ctx, kindForgetComment, &notificationv1.ForgetCommentRequest{CommentId: commentID.String()})
 }
 
 func (o *Outbox) add(ctx context.Context, kind string, req proto.Message) error {
@@ -100,6 +108,8 @@ func (d *Deliverer) Deliver(ctx context.Context, m outbox.Message) error {
 		return call(ctx, m.Payload, &notificationv1.RetractRequest{}, d.api.Retract)
 	case kindForgetPost:
 		return call(ctx, m.Payload, &notificationv1.ForgetPostRequest{}, d.api.ForgetPost)
+	case kindForgetComment:
+		return call(ctx, m.Payload, &notificationv1.ForgetCommentRequest{}, d.api.ForgetComment)
 	default:
 		return outbox.Permanent(fmt.Errorf("unknown kind %q", m.Kind))
 	}
@@ -148,3 +158,5 @@ type Nop struct{}
 func (Nop) Notify(context.Context, service.Event) error  { return nil }
 func (Nop) Retract(context.Context, service.Event) error { return nil }
 func (Nop) ForgetPost(context.Context, uuid.UUID) error  { return nil }
+
+func (Nop) ForgetComment(context.Context, uuid.UUID) error { return nil }

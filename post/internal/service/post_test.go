@@ -20,8 +20,10 @@ type fakeNotifier struct {
 	notified  []service.Event
 	retracted []service.Event
 	forgotten []uuid.UUID
-	outsideTx int
-	err       error
+	// forgottenComments are the comments whose notifications went.
+	forgottenComments []uuid.UUID
+	outsideTx         int
+	err               error
 }
 
 func (f *fakeNotifier) record(ctx context.Context, add func()) error {
@@ -50,6 +52,10 @@ func (f *fakeNotifier) Retract(ctx context.Context, e service.Event) error {
 
 func (f *fakeNotifier) ForgetPost(ctx context.Context, postID uuid.UUID) error {
 	return f.record(ctx, func() { f.forgotten = append(f.forgotten, postID) })
+}
+
+func (f *fakeNotifier) ForgetComment(ctx context.Context, commentID uuid.UUID) error {
+	return f.record(ctx, func() { f.forgottenComments = append(f.forgottenComments, commentID) })
 }
 
 // photoCall is what PhotoKeeper was told about whose photos.

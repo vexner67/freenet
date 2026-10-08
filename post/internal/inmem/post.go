@@ -19,15 +19,18 @@ type Store struct {
 	posts    map[uuid.UUID]*post.Post
 	likes    map[uuid.UUID]map[uuid.UUID]struct{} // post → users
 	comments map[uuid.UUID]*post.Comment
-	pins     map[uuid.UUID]uuid.UUID // wall → its pinned post
+	// commentLikes are comment → users, counted in the comments.
+	commentLikes map[uuid.UUID]map[uuid.UUID]struct{}
+	pins         map[uuid.UUID]uuid.UUID // wall → its pinned post
 }
 
 func NewStore() *Store {
 	return &Store{
-		posts:    make(map[uuid.UUID]*post.Post),
-		likes:    make(map[uuid.UUID]map[uuid.UUID]struct{}),
-		comments: make(map[uuid.UUID]*post.Comment),
-		pins:     make(map[uuid.UUID]uuid.UUID),
+		posts:        make(map[uuid.UUID]*post.Post),
+		likes:        make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		comments:     make(map[uuid.UUID]*post.Comment),
+		commentLikes: make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		pins:         make(map[uuid.UUID]uuid.UUID),
 	}
 }
 
@@ -41,6 +44,35 @@ func (s *Store) Likes() *LikeRepository {
 
 func (s *Store) Comments() *CommentRepository {
 	return &CommentRepository{s: s}
+}
+
+func (s *Store) CommentLikes() *CommentLikeRepository {
+	return &CommentLikeRepository{s: s}
+}
+
+// removeComment deletes a comment with its likes; its replies answer
+// nothing then, as ON DELETE SET NULL does. Comments are immutable, so a
+// reply is replaced by a copy.
+func (s *Store) removeComment(id uuid.UUID) {
+	delete(s.comments, id)
+	delete(s.commentLikes, id)
+
+	for replyID, c := range s.comments {
+		if c.ReplyTo() == id {
+			s.restoreComment(replyID, func(sc *post.StoredComment) { sc.ReplyTo = uuid.Nil })
+		}
+	}
+}
+
+// restoreComment replaces a comment with a copy changed by update.
+func (s *Store) restoreComment(id uuid.UUID, update func(*post.StoredComment)) {
+	c := s.comments[id]
+	sc := post.StoredComment{
+		ID: c.ID(), PostID: c.PostID(), AuthorID: c.AuthorID(), ReplyTo: c.ReplyTo(),
+		Content: post.RestoreCommentContent(c.Text(), c.Photos()), CreatedAt: c.CreatedAt(), Likes: c.Likes(),
+	}
+	update(&sc)
+	s.comments[id] = post.RestoreComment(sc)
 }
 
 // count replaces a post with a copy whose counters are changed by update;
@@ -149,7 +181,7 @@ func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 
 	for commentID, c := range r.s.comments {
 		if c.PostID() == id {
-			delete(r.s.comments, commentID)
+			r.s.removeComment(commentID)
 		}
 	}
 
@@ -320,7 +352,7 @@ func (r *PostRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]
 
 	for commentID, c := range r.s.comments {
 		if r.s.posts[c.PostID()] == nil {
-			delete(r.s.comments, commentID)
+			r.s.removeComment(commentID)
 		}
 	}
 

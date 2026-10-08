@@ -21,6 +21,7 @@ type fakeAPI struct {
 	notified  *notificationv1.Event
 	retracted *notificationv1.Event
 	forgot    string
+	forgotC   string
 	deadline  bool
 	err       error
 }
@@ -38,6 +39,11 @@ func (f *fakeAPI) Retract(_ context.Context, req *notificationv1.RetractRequest,
 
 func (f *fakeAPI) ForgetPost(_ context.Context, req *notificationv1.ForgetPostRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.forgot = req.GetPostId()
+	return &emptypb.Empty{}, f.err
+}
+
+func (f *fakeAPI) ForgetComment(_ context.Context, req *notificationv1.ForgetCommentRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.forgotC = req.GetCommentId()
 	return &emptypb.Empty{}, f.err
 }
 
@@ -99,6 +105,30 @@ func TestOutboxAndDeliverer(t *testing.T) {
 	}
 	if e := api.notified; e.GetKind() != notificationv1.Kind_KIND_REPOST || e.GetPostId() != repost.PostID.String() {
 		t.Fatalf("repost event = %v", e)
+	}
+
+	reply := service.Event{Kind: service.EventCommentReply, RecipientID: uuid.New(), ActorID: uuid.New(), PostID: uuid.New(), CommentID: uuid.New()}
+	if err := roundTrip(t, api, func(o *Outbox) error { return o.Notify(ctx, reply) }); err != nil {
+		t.Fatalf("deliver reply: %v", err)
+	}
+	if e := api.notified; e.GetKind() != notificationv1.Kind_KIND_COMMENT_REPLY || e.GetCommentId() != reply.CommentID.String() {
+		t.Fatalf("reply event = %v", e)
+	}
+
+	commentLike := service.Event{Kind: service.EventCommentLike, RecipientID: uuid.New(), ActorID: uuid.New(), PostID: uuid.New(), CommentID: uuid.New()}
+	if err := roundTrip(t, api, func(o *Outbox) error { return o.Retract(ctx, commentLike) }); err != nil {
+		t.Fatalf("deliver comment like: %v", err)
+	}
+	if e := api.retracted; e.GetKind() != notificationv1.Kind_KIND_COMMENT_LIKE {
+		t.Fatalf("comment like event = %v", e)
+	}
+
+	commentID := uuid.New()
+	if err := roundTrip(t, api, func(o *Outbox) error { return o.ForgetComment(ctx, commentID) }); err != nil {
+		t.Fatalf("deliver forget comment: %v", err)
+	}
+	if api.forgotC != commentID.String() {
+		t.Fatalf("forgot comment %q", api.forgotC)
 	}
 
 	postID := uuid.New()

@@ -16,6 +16,7 @@ var (
 	ErrCommentTooLong      = errors.New("comment text is too long")
 	ErrCommentNotFound     = errors.New("comment not found")
 	ErrCannotDeleteComment = errors.New("only the author of the comment or of the post or the owner of the wall can delete it")
+	ErrReplyOtherPost      = errors.New("the comment to reply to is under another post")
 )
 
 // CommentText is what a comment says: trimmed, with "\n" line breaks. It
@@ -64,11 +65,15 @@ func (c CommentContent) Photos() Photos {
 }
 
 type Comment struct {
-	id        uuid.UUID
-	postID    uuid.UUID
-	authorID  uuid.UUID
+	id       uuid.UUID
+	postID   uuid.UUID
+	authorID uuid.UUID
+	// replyTo is the comment this one answers, uuid.Nil for none; it may
+	// be gone since.
+	replyTo   uuid.UUID
 	content   CommentContent
 	createdAt time.Time
+	likes     int
 }
 
 // NewComment creates a comment on a post. Its UUIDv7 ID grows with time,
@@ -89,13 +94,32 @@ func NewComment(postID, authorID uuid.UUID, content CommentContent, now time.Tim
 	}, nil
 }
 
+// NewReply creates a comment on postID that answers parent, as openvk's
+// "Ответить": parent must be under the same post.
+func NewReply(postID uuid.UUID, parent *Comment, authorID uuid.UUID, content CommentContent, now time.Time) (*Comment, error) {
+	if parent.postID != postID {
+		return nil, ErrReplyOtherPost
+	}
+
+	c, err := NewComment(postID, authorID, content, now)
+	if err != nil {
+		return nil, err
+	}
+
+	c.replyTo = parent.id
+
+	return c, nil
+}
+
 // StoredComment is a comment as storage keeps it.
 type StoredComment struct {
 	ID        uuid.UUID
 	PostID    uuid.UUID
 	AuthorID  uuid.UUID
+	ReplyTo   uuid.UUID
 	Content   CommentContent
 	CreatedAt time.Time
+	Likes     int
 }
 
 // RestoreComment rebuilds a comment from storage without validation or new IDs.
@@ -104,8 +128,10 @@ func RestoreComment(s StoredComment) *Comment {
 		id:        s.ID,
 		postID:    s.PostID,
 		authorID:  s.AuthorID,
+		replyTo:   s.ReplyTo,
 		content:   s.Content,
 		createdAt: s.CreatedAt,
+		likes:     s.Likes,
 	}
 }
 
@@ -126,6 +152,16 @@ func (c *Comment) PostID() uuid.UUID {
 
 func (c *Comment) AuthorID() uuid.UUID {
 	return c.authorID
+}
+
+// ReplyTo is the comment this one answers; uuid.Nil for none.
+func (c *Comment) ReplyTo() uuid.UUID {
+	return c.replyTo
+}
+
+// Likes is how many people like the comment.
+func (c *Comment) Likes() int {
+	return c.likes
 }
 
 func (c *Comment) Text() CommentText {

@@ -44,6 +44,10 @@ service PostService {
   // deleted by its author or by the author of the post.
   rpc CreateComment(CreateCommentRequest) returns (CreateCommentResponse);
   rpc DeleteComment(DeleteCommentRequest) returns (google.protobuf.Empty);
+  // Require an access token; the caller likes the comment. Both are
+  // idempotent and return how many likes the comment has now.
+  rpc LikeComment(LikeCommentRequest) returns (LikeCommentResponse);
+  rpc UnlikeComment(UnlikeCommentRequest) returns (UnlikeCommentResponse);
   // Public: the comments of a post, oldest first.
   rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
   // Public: at most 50 comments by ID, like GetPosts.
@@ -92,6 +96,11 @@ message Comment {
   google.protobuf.Timestamp created_at = 5;
   // Photos of the author in the media service, in the order shown.
   repeated string photo_ids = 6;
+  // The comment this one answers; empty for none, and once it is deleted.
+  string reply_to_id = 7;
+  int32 like_count = 8;
+  // The caller likes the comment; false without an access token.
+  bool liked = 9;
 }
 
 message CreatePostRequest {
@@ -214,6 +223,8 @@ message CreateCommentRequest {
   // that the photos are the author's.
   string text = 2;
   repeated string photo_ids = 3;
+  // The comment under the same post this one answers; empty for none.
+  string reply_to_id = 4;
 }
 
 message CreateCommentResponse {
@@ -222,6 +233,22 @@ message CreateCommentResponse {
 
 message DeleteCommentRequest {
   string id = 1;
+}
+
+message LikeCommentRequest {
+  string comment_id = 1;
+}
+
+message LikeCommentResponse {
+  int32 like_count = 1;
+}
+
+message UnlikeCommentRequest {
+  string comment_id = 1;
+}
+
+message UnlikeCommentResponse {
+  int32 like_count = 1;
 }
 
 message ListCommentsRequest {
