@@ -39,26 +39,43 @@ type CommentService interface {
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error)
 }
 
+type SuggestionService interface {
+	Suggest(ctx context.Context, wallID, authorID uuid.UUID, content post.Content) (*post.Suggestion, error)
+	List(ctx context.Context, viewerID, wallID uuid.UUID, mine bool, cursor uuid.UUID, size int) (service.SuggestionPage, error)
+	Publish(ctx context.Context, requesterID, id uuid.UUID, text post.Text, signed bool) (*post.Post, error)
+	Withdraw(ctx context.Context, requesterID, id uuid.UUID) error
+}
+
 // PurgeService erases a user's posts, likes and comments once the page is
 // deleted for good.
 type PurgeService interface {
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
 }
 
-type PostHandler struct {
-	postv1.UnimplementedPostServiceServer
-	postService    PostService
-	commentService CommentService
-	purgeService   PurgeService
-	logger         *slog.Logger
+// Services are the use cases behind the handler.
+type Services struct {
+	Posts       PostService
+	Comments    CommentService
+	Suggestions SuggestionService
+	Purge       PurgeService
 }
 
-func NewPostHandler(postService PostService, commentService CommentService, purgeService PurgeService, logger *slog.Logger) *PostHandler {
+type PostHandler struct {
+	postv1.UnimplementedPostServiceServer
+	postService       PostService
+	commentService    CommentService
+	suggestionService SuggestionService
+	purgeService      PurgeService
+	logger            *slog.Logger
+}
+
+func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 	return &PostHandler{
-		postService:    postService,
-		commentService: commentService,
-		purgeService:   purgeService,
-		logger:         logger,
+		postService:       s.Posts,
+		commentService:    s.Comments,
+		suggestionService: s.Suggestions,
+		purgeService:      s.Purge,
+		logger:            logger,
 	}
 }
 

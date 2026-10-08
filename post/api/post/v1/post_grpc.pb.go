@@ -20,25 +20,29 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PostService_CreatePost_FullMethodName    = "/post.v1.PostService/CreatePost"
-	PostService_DeletePost_FullMethodName    = "/post.v1.PostService/DeletePost"
-	PostService_RepostPost_FullMethodName    = "/post.v1.PostService/RepostPost"
-	PostService_EditPost_FullMethodName      = "/post.v1.PostService/EditPost"
-	PostService_PinPost_FullMethodName       = "/post.v1.PostService/PinPost"
-	PostService_UnpinPost_FullMethodName     = "/post.v1.PostService/UnpinPost"
-	PostService_GetPost_FullMethodName       = "/post.v1.PostService/GetPost"
-	PostService_GetPosts_FullMethodName      = "/post.v1.PostService/GetPosts"
-	PostService_ListPosts_FullMethodName     = "/post.v1.PostService/ListPosts"
-	PostService_ListFeed_FullMethodName      = "/post.v1.PostService/ListFeed"
-	PostService_LikePost_FullMethodName      = "/post.v1.PostService/LikePost"
-	PostService_UnlikePost_FullMethodName    = "/post.v1.PostService/UnlikePost"
-	PostService_CreateComment_FullMethodName = "/post.v1.PostService/CreateComment"
-	PostService_DeleteComment_FullMethodName = "/post.v1.PostService/DeleteComment"
-	PostService_LikeComment_FullMethodName   = "/post.v1.PostService/LikeComment"
-	PostService_UnlikeComment_FullMethodName = "/post.v1.PostService/UnlikeComment"
-	PostService_ListComments_FullMethodName  = "/post.v1.PostService/ListComments"
-	PostService_GetComments_FullMethodName   = "/post.v1.PostService/GetComments"
-	PostService_PurgeUser_FullMethodName     = "/post.v1.PostService/PurgeUser"
+	PostService_CreatePost_FullMethodName        = "/post.v1.PostService/CreatePost"
+	PostService_DeletePost_FullMethodName        = "/post.v1.PostService/DeletePost"
+	PostService_RepostPost_FullMethodName        = "/post.v1.PostService/RepostPost"
+	PostService_EditPost_FullMethodName          = "/post.v1.PostService/EditPost"
+	PostService_PinPost_FullMethodName           = "/post.v1.PostService/PinPost"
+	PostService_UnpinPost_FullMethodName         = "/post.v1.PostService/UnpinPost"
+	PostService_GetPost_FullMethodName           = "/post.v1.PostService/GetPost"
+	PostService_GetPosts_FullMethodName          = "/post.v1.PostService/GetPosts"
+	PostService_ListPosts_FullMethodName         = "/post.v1.PostService/ListPosts"
+	PostService_ListFeed_FullMethodName          = "/post.v1.PostService/ListFeed"
+	PostService_LikePost_FullMethodName          = "/post.v1.PostService/LikePost"
+	PostService_UnlikePost_FullMethodName        = "/post.v1.PostService/UnlikePost"
+	PostService_CreateComment_FullMethodName     = "/post.v1.PostService/CreateComment"
+	PostService_DeleteComment_FullMethodName     = "/post.v1.PostService/DeleteComment"
+	PostService_LikeComment_FullMethodName       = "/post.v1.PostService/LikeComment"
+	PostService_UnlikeComment_FullMethodName     = "/post.v1.PostService/UnlikeComment"
+	PostService_ListComments_FullMethodName      = "/post.v1.PostService/ListComments"
+	PostService_GetComments_FullMethodName       = "/post.v1.PostService/GetComments"
+	PostService_SuggestPost_FullMethodName       = "/post.v1.PostService/SuggestPost"
+	PostService_ListSuggestions_FullMethodName   = "/post.v1.PostService/ListSuggestions"
+	PostService_PublishSuggestion_FullMethodName = "/post.v1.PostService/PublishSuggestion"
+	PostService_DeleteSuggestion_FullMethodName  = "/post.v1.PostService/DeleteSuggestion"
+	PostService_PurgeUser_FullMethodName         = "/post.v1.PostService/PurgeUser"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -90,6 +94,18 @@ type PostServiceClient interface {
 	ListComments(ctx context.Context, in *ListCommentsRequest, opts ...grpc.CallOption) (*ListCommentsResponse, error)
 	// Public: at most 50 comments by ID, like GetPosts.
 	GetComments(ctx context.Context, in *GetCommentsRequest, opts ...grpc.CallOption) (*GetCommentsResponse, error)
+	// Require an access token: posts suggested for a community's wall
+	// ("Предложка" of openvk), seen only by their authors and the
+	// community's admins, whom post asks the club service about. The caller
+	// of SuggestPost has checked that the author may suggest there and that
+	// the photos are theirs.
+	SuggestPost(ctx context.Context, in *SuggestPostRequest, opts ...grpc.CallOption) (*SuggestPostResponse, error)
+	// The caller's own suggestions with mine; all of them for the admins.
+	ListSuggestions(ctx context.Context, in *ListSuggestionsRequest, opts ...grpc.CallOption) (*ListSuggestionsResponse, error)
+	// An admin publishes a suggestion as a new post for the community.
+	PublishSuggestion(ctx context.Context, in *PublishSuggestionRequest, opts ...grpc.CallOption) (*PublishSuggestionResponse, error)
+	// The author withdraws a suggestion, or an admin declines it.
+	DeleteSuggestion(ctx context.Context, in *DeleteSuggestionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -284,6 +300,46 @@ func (c *postServiceClient) GetComments(ctx context.Context, in *GetCommentsRequ
 	return out, nil
 }
 
+func (c *postServiceClient) SuggestPost(ctx context.Context, in *SuggestPostRequest, opts ...grpc.CallOption) (*SuggestPostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SuggestPostResponse)
+	err := c.cc.Invoke(ctx, PostService_SuggestPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListSuggestions(ctx context.Context, in *ListSuggestionsRequest, opts ...grpc.CallOption) (*ListSuggestionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSuggestionsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListSuggestions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) PublishSuggestion(ctx context.Context, in *PublishSuggestionRequest, opts ...grpc.CallOption) (*PublishSuggestionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PublishSuggestionResponse)
+	err := c.cc.Invoke(ctx, PostService_PublishSuggestion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteSuggestion(ctx context.Context, in *DeleteSuggestionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeleteSuggestion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -343,6 +399,18 @@ type PostServiceServer interface {
 	ListComments(context.Context, *ListCommentsRequest) (*ListCommentsResponse, error)
 	// Public: at most 50 comments by ID, like GetPosts.
 	GetComments(context.Context, *GetCommentsRequest) (*GetCommentsResponse, error)
+	// Require an access token: posts suggested for a community's wall
+	// ("Предложка" of openvk), seen only by their authors and the
+	// community's admins, whom post asks the club service about. The caller
+	// of SuggestPost has checked that the author may suggest there and that
+	// the photos are theirs.
+	SuggestPost(context.Context, *SuggestPostRequest) (*SuggestPostResponse, error)
+	// The caller's own suggestions with mine; all of them for the admins.
+	ListSuggestions(context.Context, *ListSuggestionsRequest) (*ListSuggestionsResponse, error)
+	// An admin publishes a suggestion as a new post for the community.
+	PublishSuggestion(context.Context, *PublishSuggestionRequest) (*PublishSuggestionResponse, error)
+	// The author withdraws a suggestion, or an admin declines it.
+	DeleteSuggestion(context.Context, *DeleteSuggestionRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -410,6 +478,18 @@ func (UnimplementedPostServiceServer) ListComments(context.Context, *ListComment
 }
 func (UnimplementedPostServiceServer) GetComments(context.Context, *GetCommentsRequest) (*GetCommentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetComments not implemented")
+}
+func (UnimplementedPostServiceServer) SuggestPost(context.Context, *SuggestPostRequest) (*SuggestPostResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SuggestPost not implemented")
+}
+func (UnimplementedPostServiceServer) ListSuggestions(context.Context, *ListSuggestionsRequest) (*ListSuggestionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSuggestions not implemented")
+}
+func (UnimplementedPostServiceServer) PublishSuggestion(context.Context, *PublishSuggestionRequest) (*PublishSuggestionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PublishSuggestion not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteSuggestion(context.Context, *DeleteSuggestionRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteSuggestion not implemented")
 }
 func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -759,6 +839,78 @@ func _PostService_GetComments_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_SuggestPost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SuggestPostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).SuggestPost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_SuggestPost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).SuggestPost(ctx, req.(*SuggestPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListSuggestions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSuggestionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListSuggestions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListSuggestions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListSuggestions(ctx, req.(*ListSuggestionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_PublishSuggestion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishSuggestionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).PublishSuggestion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_PublishSuggestion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).PublishSuggestion(ctx, req.(*PublishSuggestionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteSuggestion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteSuggestionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteSuggestion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteSuggestion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteSuggestion(ctx, req.(*DeleteSuggestionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -855,6 +1007,22 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetComments",
 			Handler:    _PostService_GetComments_Handler,
+		},
+		{
+			MethodName: "SuggestPost",
+			Handler:    _PostService_SuggestPost_Handler,
+		},
+		{
+			MethodName: "ListSuggestions",
+			Handler:    _PostService_ListSuggestions_Handler,
+		},
+		{
+			MethodName: "PublishSuggestion",
+			Handler:    _PostService_PublishSuggestion_Handler,
+		},
+		{
+			MethodName: "DeleteSuggestion",
+			Handler:    _PostService_DeleteSuggestion_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

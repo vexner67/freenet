@@ -6,6 +6,7 @@ import (
 	"reflect"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/post/internal/inmem"
@@ -21,8 +22,10 @@ func TestPurgeService(t *testing.T) {
 	photos := &fakePhotos{}
 	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos, Moderators: fakeModerators{}})
 	comments := service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos, Moderators: fakeModerators{}})
+	suggestions := inmem.NewSuggestionRepository()
 	purge := service.NewPurgeService(service.PurgeDeps{
-		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
+		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: suggestions,
+		Tx: fakeTx{}, Notifier: notifier, Photos: photos,
 	})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
@@ -77,9 +80,21 @@ func TestPurgeService(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	club := uuid.New()
+	suggestion, err := post.NewSuggestion(club, ann, annsContent, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = suggestions.Save(ctx, suggestion); err != nil {
+		t.Fatal(err)
+	}
+
 	notifier.forgotten = nil
 	if err = purge.PurgeUser(ctx, ann); err != nil {
 		t.Fatal(err)
+	}
+	if n, _ := suggestions.Count(ctx, club, uuid.Nil); n != 0 {
+		t.Fatalf("ann's suggestions left: %d", n)
 	}
 	if err = purge.PurgeUser(ctx, ann); err != nil {
 		t.Fatalf("purge twice: %v", err)

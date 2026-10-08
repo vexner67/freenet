@@ -26,6 +26,12 @@ type CommentEraser interface {
 	DeleteOnPostsOf(ctx context.Context, userID uuid.UUID) ([]*post.Comment, error)
 }
 
+// SuggestionEraser deletes what a user suggested for communities' walls;
+// media erases their photos with the rest of the user.
+type SuggestionEraser interface {
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+}
+
 // PurgeService erases what post keeps of a user whose page was deleted for
 // good.
 type PurgeService struct {
@@ -33,6 +39,7 @@ type PurgeService struct {
 	likes        ReactionEraser
 	commentLikes ReactionEraser
 	comments     CommentEraser
+	suggestions  SuggestionEraser
 	tx           TxManager
 	notifier     Notifier
 	photos       PhotoKeeper
@@ -44,6 +51,7 @@ type PurgeDeps struct {
 	Likes        ReactionEraser
 	CommentLikes ReactionEraser
 	Comments     CommentEraser
+	Suggestions  SuggestionEraser
 	Tx           TxManager
 	Notifier     Notifier
 	Photos       PhotoKeeper
@@ -55,6 +63,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		likes:        d.Likes,
 		commentLikes: d.CommentLikes,
 		comments:     d.Comments,
+		suggestions:  d.Suggestions,
 		tx:           d.Tx,
 		notifier:     d.Notifier,
 		photos:       d.Photos,
@@ -62,7 +71,8 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 }
 
 // PurgeUser deletes, in one transaction, the user's likes and comments on
-// others' posts, the posts they wrote and those on their wall (others' on
+// others' posts, what they suggested, the posts they wrote and those on
+// their wall (others' on
 // it included, as a deleted post takes its comments). The notifications
 // about the deleted posts and their photos go with them, as when a post is
 // deleted; the user's own photos media erases itself.
@@ -78,6 +88,10 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 
 		if err := s.comments.DeleteByUser(ctx, userID); err != nil {
 			return errs.Wrap("s.comments.DeleteByUser", err)
+		}
+
+		if err := s.suggestions.DeleteByUser(ctx, userID); err != nil {
+			return errs.Wrap("s.suggestions.DeleteByUser", err)
 		}
 
 		// Others' comments on the posts about to go: their photos go too.

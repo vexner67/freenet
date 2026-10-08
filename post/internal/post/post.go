@@ -91,6 +91,11 @@ type Post struct {
 	// unless signed ("Подпись автора").
 	fromWall bool
 	signed   bool
+	// suggested: the post was suggested for a community's wall and
+	// published by its admins; it is the community's now, and its author
+	// neither edits nor deletes it, as openvk's "Вы не можете удалить ваш
+	// принятый пост".
+	suggested bool
 }
 
 // New creates a post by authorID on the wall of wallID. Its UUIDv7 ID
@@ -144,6 +149,7 @@ type Stored struct {
 	Pinned    bool
 	FromWall  bool
 	Signed    bool
+	Suggested bool
 }
 
 // Restore rebuilds a post from storage without validation or new IDs.
@@ -159,6 +165,7 @@ func Restore(s Stored) *Post {
 		pinned:    s.Pinned,
 		fromWall:  s.FromWall,
 		signed:    s.Signed,
+		suggested: s.Suggested,
 	}
 }
 
@@ -175,6 +182,7 @@ func (p *Post) Stored() Stored {
 		Pinned:    p.pinned,
 		FromWall:  p.fromWall,
 		Signed:    p.signed,
+		Suggested: p.suggested,
 	}
 }
 
@@ -183,7 +191,7 @@ func (p *Post) Stored() Stored {
 // openvk. A repost keeps the post it shares and, as when it was made, has
 // no photos of its own.
 func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.Time) (*Post, error) {
-	if requesterID != p.authorID {
+	if !p.BelongsTo(requesterID) {
 		return nil, ErrCannotEdit
 	}
 
@@ -218,7 +226,14 @@ func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.
 // CanBeDeletedBy: a post is removed by whoever wrote it or by the owner of
 // the wall, who keeps the wall clean.
 func (p *Post) CanBeDeletedBy(userID uuid.UUID) bool {
-	return userID == p.authorID || userID == p.wallID
+	return p.BelongsTo(userID) || userID == p.wallID
+}
+
+// BelongsTo tells whether userID wrote the post and still has it: the
+// author of a post suggested and published for a community no longer
+// does.
+func (p *Post) BelongsTo(userID uuid.UUID) bool {
+	return userID == p.authorID && !p.suggested
 }
 
 // CanBePinnedBy: the owner of the wall chooses what it shows first,
@@ -299,4 +314,8 @@ func (p *Post) FromWall() bool {
 // Signed: a post that speaks for a community names its author.
 func (p *Post) Signed() bool {
 	return p.signed
+}
+
+func (p *Post) Suggested() bool {
+	return p.suggested
 }

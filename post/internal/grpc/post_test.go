@@ -52,14 +52,18 @@ func newServer(t *testing.T) testServer {
 		jwtauth.UnaryServerInterceptor(jwtauth.NewVerifier(&key.PublicKey, issuer), jwtauth.Access{Public: postgrpc.PublicMethods()}),
 	))
 	store := inmem.NewStore()
-	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(
-		service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
-		service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
-		service.NewPurgeService(service.PurgeDeps{
-			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
+	suggestions := inmem.NewSuggestionRepository()
+	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(postgrpc.Services{
+		Posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
+		Comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
+		Suggestions: service.NewSuggestionService(service.SuggestionDeps{
+			Suggestions: suggestions, Posts: store.Posts(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
 		}),
-		log,
-	))
+		Purge: service.NewPurgeService(service.PurgeDeps{
+			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: suggestions,
+			Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
+		}),
+	}, log))
 
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
@@ -515,5 +519,73 @@ func TestClubWall(t *testing.T) {
 	byAuthor, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{admin.String()}})
 	if err != nil || len(byAuthor.GetPosts()) != 0 {
 		t.Fatalf("ListFeed of the admin = %v, %v; the post is the club's", byAuthor, err)
+	}
+}
+
+func TestSuggestions(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+	club := uuid.NewString()
+
+	suggested, err := s.client.SuggestPost(s.as(t, ann), &postv1.SuggestPostRequest{WallId: club, Text: " Котик нашёлся "})
+	if err != nil || suggested.GetSuggestion().GetText() != "Котик нашёлся" || suggested.GetSuggestion().GetAuthorId() != ann.String() ||
+		suggested.GetSuggestion().GetWallId() != club || suggested.GetSuggestion().GetCreatedAt() == nil {
+		t.Fatalf("SuggestPost = %v, %v", suggested, err)
+	}
+	id := suggested.GetSuggestion().GetId()
+
+	mine, err := s.client.ListSuggestions(s.as(t, ann), &postv1.ListSuggestionsRequest{WallId: club, Mine: true})
+	if err != nil || len(mine.GetSuggestions()) != 1 || mine.GetTotal() != 1 || mine.GetNextCursor() != "" {
+		t.Fatalf("ListSuggestions = %v, %v", mine, err)
+	}
+
+	tests := []struct {
+		name string
+		call func() error
+		want codes.Code
+	}{
+		{"suggest without a token", func() error {
+			_, err := s.client.SuggestPost(context.Background(), &postv1.SuggestPostRequest{WallId: club, Text: "x"})
+			return err
+		}, codes.Unauthenticated},
+		{"suggest nothing", func() error {
+			_, err := s.client.SuggestPost(s.as(t, ann), &postv1.SuggestPostRequest{WallId: club})
+			return err
+		}, codes.InvalidArgument},
+		{"suggest for a bad wall", func() error {
+			_, err := s.client.SuggestPost(s.as(t, ann), &postv1.SuggestPostRequest{WallId: "x", Text: "x"})
+			return err
+		}, codes.InvalidArgument},
+		{"all of them, not an admin", func() error {
+			_, err := s.client.ListSuggestions(s.as(t, ann), &postv1.ListSuggestionsRequest{WallId: club})
+			return err
+		}, codes.PermissionDenied},
+		{"publish, not an admin", func() error {
+			_, err := s.client.PublishSuggestion(s.as(t, ann), &postv1.PublishSuggestionRequest{Id: id, Text: "x"})
+			return err
+		}, codes.PermissionDenied},
+		{"withdraw someone else's", func() error {
+			_, err := s.client.DeleteSuggestion(s.as(t, bob), &postv1.DeleteSuggestionRequest{Id: id})
+			return err
+		}, codes.PermissionDenied},
+		{"publish a missing one", func() error {
+			_, err := s.client.PublishSuggestion(s.as(t, ann), &postv1.PublishSuggestionRequest{Id: uuid.NewString(), Text: "x"})
+			return err
+		}, codes.NotFound},
+		{"a bad id", func() error {
+			_, err := s.client.DeleteSuggestion(s.as(t, ann), &postv1.DeleteSuggestionRequest{Id: "x"})
+			return err
+		}, codes.InvalidArgument},
+	}
+	for _, tt := range tests {
+		if got := status.Code(tt.call()); got != tt.want {
+			t.Errorf("%s: %v, want %v", tt.name, got, tt.want)
+		}
+	}
+
+	if _, err = s.client.DeleteSuggestion(s.as(t, ann), &postv1.DeleteSuggestionRequest{Id: id}); err != nil {
+		t.Fatalf("the author withdraws: %v", err)
 	}
 }

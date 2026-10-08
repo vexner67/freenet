@@ -141,20 +141,23 @@ func (a *App) build(cfg config.Config) error {
 	}
 	postv1.RegisterPostServiceServer(
 		a.server.Registrar(),
-		postgrpc.NewPostHandler(
-			service.NewPostService(service.PostDeps{
+		postgrpc.NewPostHandler(postgrpc.Services{
+			Posts: service.NewPostService(service.PostDeps{
 				Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Moderators: moderators,
 			}),
-			service.NewCommentService(service.CommentDeps{
+			Comments: service.NewCommentService(service.CommentDeps{
 				Posts: repos.posts, Comments: repos.comments, Likes: repos.commentLikes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Moderators: moderators,
 			}),
-			service.NewPurgeService(service.PurgeDeps{
-				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Tx: repos.tx, Notifier: notifier, Photos: photos,
+			Suggestions: service.NewSuggestionService(service.SuggestionDeps{
+				Suggestions: repos.suggestions, Posts: repos.posts, Tx: repos.tx, Notifier: notifier, Photos: photos, Moderators: moderators,
 			}),
-			a.logger,
-		),
+			Purge: service.NewPurgeService(service.PurgeDeps{
+				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
+				Tx: repos.tx, Notifier: notifier, Photos: photos,
+			}),
+		}, a.logger),
 	)
 
 	if cfg.MetricsPort == 0 {
@@ -192,6 +195,10 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_LikeComment_FullMethodName:   cfg.LikeLimits,
 		postv1.PostService_UnlikeComment_FullMethodName: cfg.LikeLimits,
 		postv1.PostService_EditPost_FullMethodName:      cfg.EditLimits,
+		// A suggestion is content for the admins to read; publishing it is
+		// a post for everyone. Each has its own counter.
+		postv1.PostService_SuggestPost_FullMethodName:       cfg.PostLimits,
+		postv1.PostService_PublishSuggestion_FullMethodName: cfg.PostLimits,
 	}
 }
 
@@ -328,6 +335,10 @@ type repositories struct {
 		service.CommentLikeRepository
 		service.ReactionEraser
 	}
+	suggestions interface {
+		service.SuggestionRepository
+		service.SuggestionEraser
+	}
 	tx service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
@@ -341,6 +352,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			likes:        store.Likes(),
 			comments:     store.Comments(),
 			commentLikes: store.CommentLikes(),
+			suggestions:  inmem.NewSuggestionRepository(),
 			tx:           inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
@@ -375,6 +387,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		likes:        postgres.NewLikeRepository(a.pool),
 		comments:     postgres.NewCommentRepository(a.pool),
 		commentLikes: postgres.NewCommentLikeRepository(a.pool),
+		suggestions:  postgres.NewSuggestionRepository(a.pool),
 		tx:           pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)

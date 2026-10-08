@@ -57,6 +57,19 @@ service PostService {
   // Public: at most 50 comments by ID, like GetPosts.
   rpc GetComments(GetCommentsRequest) returns (GetCommentsResponse);
 
+  // Require an access token: posts suggested for a community's wall
+  // ("Предложка" of openvk), seen only by their authors and the
+  // community's admins, whom post asks the club service about. The caller
+  // of SuggestPost has checked that the author may suggest there and that
+  // the photos are theirs.
+  rpc SuggestPost(SuggestPostRequest) returns (SuggestPostResponse);
+  // The caller's own suggestions with mine; all of them for the admins.
+  rpc ListSuggestions(ListSuggestionsRequest) returns (ListSuggestionsResponse);
+  // An admin publishes a suggestion as a new post for the community.
+  rpc PublishSuggestion(PublishSuggestionRequest) returns (PublishSuggestionResponse);
+  // The author withdraws a suggestion, or an admin declines it.
+  rpc DeleteSuggestion(DeleteSuggestionRequest) returns (google.protobuf.Empty);
+
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
   // and comments, and their likes and comments on others' posts. Idempotent.
@@ -92,9 +105,10 @@ message Post {
   // The post speaks for its wall, a community, rather than for its
   // author, whom readers are not shown.
   bool from_wall = 15;
-  // The caller wrote the post; false without an access token. Tells the
-  // author a post that speaks for a community, whose author_id the
-  // gateway does not show.
+  // The caller wrote the post and still has it, to edit and delete; false
+  // without an access token, and for a post suggested and published for
+  // a community, which is the community's. Tells the author a post that
+  // speaks for a community, whose author_id the gateway does not show.
   bool mine = 16;
   // A post that speaks for a community names its author, author_id, as
   // "Автор: ..." under it.
@@ -115,6 +129,65 @@ message Comment {
   int32 like_count = 8;
   // The caller likes the comment; false without an access token.
   bool liked = 9;
+}
+
+// Suggestion is a post suggested for a community's wall.
+message Suggestion {
+  string id = 1;
+  // The community.
+  string wall_id = 2;
+  string author_id = 3;
+  string text = 4;
+  repeated string photo_ids = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message SuggestPostRequest {
+  // The community.
+  string wall_id = 1;
+  // Text, photos or both.
+  string text = 2;
+  // At most 10.
+  repeated string photo_ids = 3;
+}
+
+message SuggestPostResponse {
+  Suggestion suggestion = 1;
+}
+
+message ListSuggestionsRequest {
+  string wall_id = 1;
+  // Only the caller's.
+  bool mine = 2;
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 3;
+  // 1-50; anything else means 20.
+  int32 limit = 4;
+}
+
+message ListSuggestionsResponse {
+  repeated Suggestion suggestions = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // How many there are on all pages.
+  int32 total = 3;
+}
+
+message PublishSuggestionRequest {
+  string id = 1;
+  // What the post says, as the admin may have changed it; it keeps the
+  // suggested photos.
+  string text = 2;
+  // The post names its author ("Подпись автора").
+  bool signed = 3;
+}
+
+message PublishSuggestionResponse {
+  Post post = 1;
+}
+
+message DeleteSuggestionRequest {
+  string id = 1;
 }
 
 message CreatePostRequest {
