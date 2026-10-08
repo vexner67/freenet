@@ -456,6 +456,10 @@ a.like:hover svg { opacity: .7; }
 .im-message-content { flex: 1; min-width: 0; line-height: 1.45; }
 .im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .im-message-date { width: 100px; color: #404036; font-size: 9px; text-align: right; }
+/* Shown on hover, as the message actions of VK; always on touch screens. */
+.im-message-delete { display: block; margin-top: 4px; font-size: 10px; visibility: hidden; }
+.im-message:hover .im-message-delete { visibility: visible; }
+@media (hover: none) { .im-message-delete { visibility: visible; } }
 
 .messenger-input {
   display: flex;

@@ -212,6 +212,8 @@ export const api = {
   },
   sendMessage: (nickname, text, photos = []) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos }),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
+  // Your own message, from both sides, within a day of sending.
+  deleteMessage: (id) => authorized('DELETE', `/api/v1/messages/${encodeURIComponent(id)}`),
 
   search(query, cursor = '') {
     const params = new URLSearchParams({ q: query });
