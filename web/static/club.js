@@ -1,10 +1,11 @@
 // The page of a community at /club/<address or id>, as openvk's: on the
 // left "Информация", "Участники" and the wall; on the right the photo,
 // "Вступить в группу" or "Выйти из группы", "Редактировать группу" for
-// its admins, "Тип группы" and its creator.
+// its admins, "Тип группы" and, as its settings say, its creator, all its
+// admins or nobody.
 
 import { api, currentUser } from './api.js';
-import { membersCount } from './labels.js';
+import { adminsCount, membersCount } from './labels.js';
 import { $, avatarURL, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
 import { personCell } from './people.js';
 import { initPhoto } from './photo.js';
@@ -12,6 +13,7 @@ import { initWall } from './wall.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length));
 const MEMBERS_SHOWN = 6;
+const ADMINS_SHOWN = 5;
 
 const manages = (club) => club.role === 'admin' || club.role === 'owner';
 
@@ -26,6 +28,7 @@ function render(club, me) {
   $('info').replaceChildren(...[
     ['Название:', el('b', { textContent: club.name })],
     ['Описание:', club.description && el('span', { className: 'pre-wrap', textContent: club.description })],
+    ['Сайт:', club.website && el('a', { href: club.website, target: '_blank', rel: 'ugc noopener noreferrer', textContent: club.website })],
   ].filter(([, value]) => value).map(([title, value]) => el('tr', {},
     el('th', { textContent: title }),
     el('td', {}, value),
@@ -40,7 +43,8 @@ function render(club, me) {
     error: $('join-error'),
     club: true,
   });
-  renderOwner(club.owner);
+  renderOwner(club.adminsDisplay === 'creator' ? club.owner : null);
+  if (club.adminsDisplay === 'all') showAdmins(club);
   renderJoin(club, me);
   $('club').hidden = false;
 }
@@ -48,13 +52,31 @@ function render(club, me) {
 // renderOwner is openvk's "Создатель": a small photo and the name.
 function renderOwner(owner) {
   $('owner-block').hidden = !owner;
-  if (!owner) return;
+  if (owner) $('owner').replaceChildren(avatarItem(owner));
+}
 
-  const path = '/' + owner.nickname;
-  $('owner').replaceChildren(el('div', { className: 'avatar-item' },
-    el('a', { href: path }, el('img', { src: avatarURL(owner, 'small'), alt: '' })),
-    el('a', { href: path, textContent: fullName(owner) }),
-  ));
+function avatarItem(user) {
+  const path = '/' + user.nickname;
+  return el('div', { className: 'avatar-item' },
+    el('a', { href: path }, el('img', { src: avatarURL(user, 'small'), alt: '' })),
+    el('a', { href: path, textContent: fullName(user) }),
+  );
+}
+
+// showAdmins is openvk's "Администраторы": how many, "Все" and the first
+// of them, the owner first.
+async function showAdmins(club) {
+  try {
+    const page = await api.clubMembers(ref, { limit: ADMINS_SHOWN, admins: true });
+    const admins = page.members.toSorted((a, b) => (b.role === 'owner') - (a.role === 'owner'));
+
+    $('admins-count').textContent = adminsCount(page.total);
+    $('admins-all').href = `/club/${encodeURIComponent(clubRef(club))}/members?admins=true`;
+    $('admins').replaceChildren(...admins.map((m) => avatarItem(m.user)));
+    $('admins-block').hidden = admins.length === 0;
+  } catch {
+    // The page works without it.
+  }
 }
 
 // renderJoin is the one button openvk has: "Вступить в группу", or a grey

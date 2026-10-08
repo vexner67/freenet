@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { genders, relationships, worldviews, politicalViews, months, wallWrites, messagesWrites } from './labels.js';
+import { genders, relationships, worldviews, politicalViews, months, wallWrites, messagesWrites, clubsReads } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { openDeactivate } from './deactivate.js';
 
@@ -60,6 +60,7 @@ function render(me) {
   $('show-political-views').checked = me.privacy.showPoliticalViews;
   fill($('wall-write'), wallWrites, me.privacy.wallWrite);
   fill($('messages-write'), messagesWrites, me.privacy.messagesWrite);
+  fill($('clubs-read'), clubsReads, me.privacy.clubsRead);
 
   $('cancel').href = me.profileCompleted ? '/' + me.nickname : '/';
   $('welcome').hidden = me.profileCompleted;
@@ -101,6 +102,7 @@ async function save(event) {
       showPoliticalViews: $('show-political-views').checked,
       wallWrite: $('wall-write').value,
       messagesWrite: $('messages-write').value,
+      clubsRead: $('clubs-read').value,
     });
     location.href = '/' + me.nickname;
   } catch (e) {

@@ -22,11 +22,11 @@
     <div class="page">
       <div class="page-title"><span id="title">Мои Группы</span></div>
       <div class="page-body">
-        <div class="tabs">
+        <div class="tabs" id="tabs" hidden>
           <a id="tab-all" href="/groups">Группы</a>
           <a id="tab-managed" href="/groups?act=managed">Управляемые</a>
         </div>
-        <div class="gray-bar">
+        <div class="gray-bar" id="gray-bar" hidden>
           <form class="gray-bar-search" action="/search" method="get">
             <input type="hidden" name="section" value="groups">
             <input type="text" name="q" maxlength="64" placeholder="Поиск по группам" aria-label="Поиск по группам">

@@ -1,8 +1,10 @@
 // "Редактировать группу", as on openvk: the name, the description, the
-// address of the page and who may write on the wall. Only the admins get
-// here; the club service checks it again.
+// address of the page, the site, who may write on the wall and what the
+// page shows of its admins ("Список админов"). Only the admins get here;
+// the club service checks it again.
 
 import { api, currentUser } from './api.js';
+import { adminsDisplays } from './labels.js';
 import { $, clubRef, el, renderChrome, showError, hideError } from './layout.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/edit'.length));
@@ -17,7 +19,10 @@ function fill(club) {
   $('name').value = club.name;
   $('description').value = club.description;
   $('address').value = club.address;
+  $('website').value = club.website;
   $('wall').value = club.wall;
+  $('admins-display').replaceChildren(...adminsDisplays.map(([value, text]) => el('label', {},
+    el('input', { type: 'radio', name: 'admins-display', value, checked: value === club.adminsDisplay }), text)));
   preview();
 }
 
@@ -37,7 +42,9 @@ async function submit(event, club) {
       name: $('name').value,
       description: $('description').value,
       address: $('address').value.trim(),
+      website: $('website').value.trim(),
       wall: $('wall').value,
+      adminsDisplay: document.querySelector('input[name="admins-display"]:checked')?.value ?? 'creator',
     });
 
     Object.assign(club, saved);

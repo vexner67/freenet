@@ -2,14 +2,18 @@
 // clubs you run), a grey bar with the search by groups and "Создать
 // группу", how many there are, and the clubs, the newest joined first,
 // each with "Просмотр группы", "Добавить в левое меню" for those you run
-// and "Выйти из группы".
+// and "Выйти из группы". With ?u=<nickname> it is someone else's list, as
+// "Все" of the block "Группы" on their page leads: "Имя » Группы", how
+// many and the clubs, as their "Кому видно мои группы" allows.
 
 import { api, currentUser } from './api.js';
 import { clubsCount, myClubsCount } from './labels.js';
-import { $, clubRef, el, pagePath, renderChrome, showPinnedClubs, showError, hideError } from './layout.js';
+import { $, clubRef, el, fullName, pagePath, renderChrome, showPinnedClubs, showError, hideError } from './layout.js';
 import { clubRow } from './clubs.js';
 
-const managed = new URLSearchParams(location.search).get('act') === 'managed';
+const params = new URLSearchParams(location.search);
+const managed = params.get('act') === 'managed';
+const other = params.get('u');
 let cursor = '';
 
 function clubNode(club) {
@@ -65,14 +69,16 @@ function leaveLink(club, ref, node) {
   });
 }
 
-async function loadMore() {
+// load shows one more page: list gives it, node draws a club, summary
+// says how many there are.
+async function load(list, node, summary) {
   hideError($('error'));
 
   try {
-    const page = await api.myClubs(cursor, managed);
+    const page = await list(cursor);
 
-    if (!cursor) $('summary').textContent = managed ? clubsCount(page.total) : myClubsCount(page.total);
-    $('clubs').append(...page.clubs.map(clubNode));
+    if (!cursor) $('summary').textContent = summary(page.total);
+    $('clubs').append(...page.clubs.map((club) => node(club)));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
   } catch (e) {
@@ -80,13 +86,46 @@ async function loadMore() {
   }
 }
 
+// showMine is "Мои Группы".
+async function showMine() {
+  document.title = 'Мои Группы | Freenet';
+  $(managed ? 'tab-managed' : 'tab-all').classList.add('active');
+  $('tabs').hidden = false;
+  $('gray-bar').hidden = false;
+
+  const more = () => load((c) => api.myClubs(c, managed), clubNode, managed ? clubsCount : myClubsCount);
+  $('more').addEventListener('click', more);
+  await more();
+}
+
+// showTheirs is someone else's list: only "Просмотр группы" by each club.
+async function showTheirs(nickname) {
+  try {
+    const user = await api.profile(nickname);
+    const name = fullName(user);
+
+    document.title = `Группы: ${name} | Freenet`;
+    $('title').replaceChildren(el('a', { href: '/' + user.nickname, textContent: name }), ' » Группы');
+  } catch (e) {
+    $('title').textContent = 'Группы';
+    showError($('error'), e);
+    return;
+  }
+
+  const view = (club) => clubRow(club,
+    el('a', { className: 'profile-link', href: pagePath({ ...club, club: true }), textContent: 'Просмотр группы' }));
+  const more = () => load((c) => api.userClubs(nickname, c), view, clubsCount);
+  $('more').addEventListener('click', more);
+  await more();
+}
+
 const me = await currentUser().catch(() => null);
-if (!me) {
+if (other && other !== me?.nickname) {
+  renderChrome(me);
+  await showTheirs(other);
+} else if (!me) {
   location.replace('/');
 } else {
   renderChrome(me);
-  document.title = 'Мои Группы | Freenet';
-  $(managed ? 'tab-managed' : 'tab-all').classList.add('active');
-  $('more').addEventListener('click', loadMore);
-  await loadMore();
+  await showMine();
 }

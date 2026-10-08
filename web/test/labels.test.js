@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { membersCount, myClubsCount, clubsCount, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { membersCount, myClubsCount, clubsCount, adminsCount, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -165,4 +165,14 @@ test('clubs', () => {
   assert.equal(clubsCount(2), '2 группы');
   assert.equal(clubsCount(5), '5 групп');
   assert.equal(errorText(new Error('club address is already taken')), 'Этот адрес уже занят.');
+});
+
+test('club admins and who sees the clubs, as openvk says', () => {
+  assert.equal(adminsCount(1), '1 администратор');
+  assert.equal(adminsCount(3), '3 администратора');
+  assert.equal(adminsCount(12), '12 администраторов');
+  assert.deepEqual(clubsReads.map(([value]) => value), ['everyone', 'following', 'only_me']);
+  assert.deepEqual(adminsDisplays.map(([value]) => value), ['creator', 'all', 'none']);
+  assert.equal(errorText(new Error('the new owner must be an admin of the club')), 'Владельцем можно назначить только администратора группы.');
+  assert.equal(errorText(new Error("this user's clubs are hidden")), 'Пользователь скрыл список своих групп.');
 });
