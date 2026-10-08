@@ -5,9 +5,11 @@
 // peer's until you read them, yours until the peer does.
 
 import { api, currentUser } from './api.js';
+import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
 import { errorText, formatPostDate } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError } from './layout.js';
+import { photosNode } from './posts.js';
 
 const POLL_MS = 5000;
 // How close to the top, in pixels, loads older messages.
@@ -21,6 +23,7 @@ let peer;
 let olderCursor = '';
 let newestID = '';
 let loadingOlder = false;
+let attachments;
 // Message ID → node, so polling neither repeats a message nor misses a read.
 const shown = new Map();
 
@@ -31,7 +34,8 @@ function messageNode(m) {
     el('a', { href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       el('a', { className: 'post-name', href: '/' + author.nickname, textContent: fullName(author) }),
-      el('div', { className: 'im-message-text', textContent: m.text }),
+      m.text ? el('div', { className: 'im-message-text', textContent: m.text }) : null,
+      photosNode(m.photos ?? []),
     ),
     el('div', { className: 'im-message-date', textContent: formatPostDate(m.createdAt) }),
   );
@@ -163,15 +167,21 @@ async function send(event) {
 
   const text = $('text');
   const button = $('send');
-  if (!text.value.trim()) return;
+  if (!text.value.trim() && attachments.count() === 0) return;
+
+  if (attachments.busy()) {
+    showError($('error'), 'Дождитесь, пока загрузятся фотографии.');
+    return;
+  }
 
   button.disabled = true;
 
   try {
-    const m = await api.sendMessage(nickname, text.value);
+    const m = await api.sendMessage(nickname, text.value, attachments.ids());
 
     add([m], false);
     text.value = '';
+    attachments.clear();
     toBottom();
   } catch (e) {
     showError($('error'), e);
@@ -207,6 +217,7 @@ async function setUpInput(canWrite) {
 
   $('my-avatar').src = avatarURL(me, 'small');
   $('peer-avatar').src = avatarURL(peer, 'small');
+  attachments = initAttachments({ link: $('attach'), input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
   $('form').addEventListener('submit', send);
   $('text').addEventListener('keydown', (event) => {
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {

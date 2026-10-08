@@ -32,7 +32,12 @@
             <img class="messenger-avatar" id="my-avatar" src="/static/avatar.svg" alt="">
             <div class="messenger-box">
               <textarea id="text" maxlength="4096" placeholder="Введите сообщение" aria-label="Сообщение"></textarea>
-              <button class="button" type="submit" id="send">Отправить</button>
+              <div class="attachments" id="photos" hidden></div>
+              <div class="messenger-buttons">
+                <button class="button" type="submit" id="send">Отправить</button>
+                <a class="attach-link" id="attach">Прикрепить фотографию</a>
+              </div>
+              <input type="file" id="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
             </div>
             <img class="messenger-avatar" id="peer-avatar" src="/static/avatar.svg" alt="">
           </form>

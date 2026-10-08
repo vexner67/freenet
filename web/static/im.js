@@ -28,7 +28,8 @@ function dialogNode(d) {
     ),
     el('div', { className: unread ? 'dialog-message unread' : 'dialog-message' },
       m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
-      el('div', { className: 'dialog-text', textContent: snippet(m.text, PREVIEW) }),
+      // A message of photos only says so, as on VK.
+      el('div', { className: 'dialog-text', textContent: snippet(m.text || 'Фотография', PREVIEW) }),
     ),
   );
 }

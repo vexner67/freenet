@@ -2,6 +2,7 @@
 // the form for a new comment, as on openvk.
 
 import { api, currentUser } from './api.js';
+import { initAttachments } from './attach.js';
 import { commentNode } from './comments.js';
 import { genitiveName } from './labels.js';
 import { $, el, fullName, renderChrome, showError, hideError } from './layout.js';
@@ -37,6 +38,7 @@ function initComments(post, me) {
 
   let total = 0;
   let cursor = '';
+  let attachments;
   // Comments sent from this page go last; pages loaded later skip them.
   const sent = new Set();
 
@@ -93,17 +95,23 @@ function initComments(post, me) {
     event.preventDefault();
     hideError(error);
 
+    if (attachments.busy()) {
+      showError(error, 'Дождитесь, пока загрузятся фотографии.');
+      return;
+    }
+
     const button = $('comment-submit');
     button.disabled = true;
 
     try {
-      const comment = await api.createComment(post.id, $('comment-text').value);
+      const comment = await api.createComment(post.id, $('comment-text').value, attachments.ids());
       const node = commentNodeFor(comment);
 
       node.dataset.sent = '';
       sent.add(comment.id);
       list.append(node);
       $('comment-text').value = '';
+      attachments.clear();
       total++;
       updateCount();
       updateCounter();
@@ -117,6 +125,14 @@ function initComments(post, me) {
   if (me?.profileCompleted) {
     const form = $('comment-form');
     const text = $('comment-text');
+
+    attachments = initAttachments({
+      link: $('comment-attach'),
+      input: $('comment-file'),
+      list: $('comment-photos'),
+      error,
+      onChange: () => {},
+    });
 
     form.hidden = false;
     form.addEventListener('submit', submit);

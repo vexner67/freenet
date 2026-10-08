@@ -477,6 +477,8 @@ a.like:hover svg { opacity: .7; }
   border: 1px solid #c0cad5;
   font: 11px tahoma, verdana, arial, sans-serif;
 }
+.messenger-buttons { display: flex; align-items: center; gap: 10px; }
+.messenger-box .attachments { margin: 0 0 6px; }
 .messenger-blocked { padding: 20px; background: #f9f9f9; border-top: 1px solid #d6d6d6; font-weight: bold; text-align: center; }
 
 /* Photos of a post, as on openvk: one at its own proportions, more as tiles. */
@@ -486,6 +488,13 @@ a.like:hover svg { opacity: .7; }
 .post-photos.grid-2 { grid-template-columns: repeat(2, 1fr); }
 .post-photos.grid-3 { grid-template-columns: repeat(3, 1fr); }
 .post-photos.grid-2 img, .post-photos.grid-3 img { aspect-ratio: 1; }
+
+/* Photos of comments and messages: the same tiles, smaller. The rule
+   for the avatar of a message must not shrink them. */
+.comment .post-photos, .im-message .post-photos { max-width: 300px; padding: 4px 0; border-bottom: 0; }
+.comment .post-photos.single img, .im-message .post-photos.single img { max-height: 240px; }
+.im-message .post-photos img { width: 100%; height: auto; border-radius: 0; }
+.im-message .post-photos.single img { width: auto; }
 
 /* Photos attached to a post being written. */
 .attach-link { margin-right: 8px; }

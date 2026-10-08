@@ -35,10 +35,15 @@
 
           <form class="wall-form comment-form" id="comment-form" hidden>
             <textarea id="comment-text" maxlength="1000" placeholder="Ваш комментарий..." aria-label="Новый комментарий"></textarea>
+            <div class="attachments" id="comment-photos" hidden></div>
             <div class="row">
-              <span class="hint" id="comment-counter"></span>
+              <span>
+                <a class="attach-link" id="comment-attach">Прикрепить фотографию</a>
+                <span class="hint" id="comment-counter"></span>
+              </span>
               <button class="button" type="submit" id="comment-submit">Отправить</button>
             </div>
+            <input type="file" id="comment-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
           </form>
           <p class="hint comment-hint" id="comment-hint" hidden></p>
         </div>

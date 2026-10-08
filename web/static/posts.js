@@ -171,9 +171,9 @@ function wallLink(wall, viewer) {
   return el('a', { className: 'post-wall', href: '/' + wall.nickname, textContent: text });
 }
 
-// photosNode lays a post's photos out: one at its own proportions, more as
-// a grid of tiles. A click opens the viewer.
-function photosNode(photos) {
+// photosNode lays the photos of a post, comment or message out: one at its
+// own proportions, more as a grid of tiles. A click opens the viewer.
+export function photosNode(photos) {
   if (photos.length === 0) return null;
 
   // Rows stay full: 2 and 4 photos in two columns, 3 and more in three.
