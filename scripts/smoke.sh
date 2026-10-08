@@ -157,8 +157,13 @@ step "alerts: rules loaded, Alertmanager ready"
 # Anonymous viewers see the dashboard, and its data source answers.
 curl -sf "$grafana/api/dashboards/uid/freenet" | jq -e '.dashboard.panels | length > 0' >/dev/null \
 	|| die "no Freenet dashboard in Grafana at $grafana"
-curl -sf "$grafana/api/datasources/uid/prometheus/health" | jq -e '.status == "OK"' >/dev/null \
-	|| die "Grafana does not reach Prometheus"
+# Grafana may ask before its connection to Prometheus is up: a few tries.
+reached=
+for _ in $(seq 1 15); do
+	curl -sf "$grafana/api/datasources/uid/prometheus/health" | jq -e '.status == "OK"' >/dev/null && reached=1 && break
+	sleep 1
+done
+[ -n "$reached" ] || die "Grafana does not reach Prometheus"
 step "grafana: the dashboard and its data source"
 
 echo "smoke test passed"
