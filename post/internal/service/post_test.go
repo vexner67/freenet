@@ -792,6 +792,10 @@ func TestPostService_ClubWalls(t *testing.T) {
 	if err != nil || !news.FromWall() {
 		t.Fatalf("Create from the wall = %+v, %v", news, err)
 	}
+	signed, err := posts.Create(ctx, service.CreateInput{WallID: club, AuthorID: admin, Content: content, ClubWall: true, FromWall: true, Signed: true})
+	if err != nil || !signed.Signed() || !signed.FromWall() {
+		t.Fatalf("Create signed = %+v, %v", signed, err)
+	}
 	byMember, err := posts.Create(ctx, service.CreateInput{WallID: club, AuthorID: member, Content: content, ClubWall: true})
 	if err != nil || byMember.FromWall() {
 		t.Fatalf("Create by a member = %+v, %v", byMember, err)

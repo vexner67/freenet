@@ -491,8 +491,8 @@ func TestClubWall(t *testing.T) {
 	s := newServer(t)
 	club, admin := uuid.New(), uuid.New()
 
-	created, err := s.client.CreatePost(s.as(t, admin), &postv1.CreatePostRequest{Text: "новости", WallId: club.String(), ClubWall: true, FromWall: true})
-	if err != nil || !created.GetPost().GetFromWall() || created.GetPost().GetWallId() != club.String() || !created.GetPost().GetMine() {
+	created, err := s.client.CreatePost(s.as(t, admin), &postv1.CreatePostRequest{Text: "новости", WallId: club.String(), ClubWall: true, FromWall: true, Signed: true})
+	if err != nil || !created.GetPost().GetFromWall() || created.GetPost().GetWallId() != club.String() || !created.GetPost().GetMine() || !created.GetPost().GetSigned() {
 		t.Fatalf("CreatePost = %v, %v", created, err)
 	}
 

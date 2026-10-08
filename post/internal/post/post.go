@@ -87,8 +87,10 @@ type Post struct {
 	// pinned: the owner of the wall shows the post first on it.
 	pinned bool
 	// fromWall: the post speaks for its wall, a community, rather than
-	// for its author, who is not shown ("От имени сообщества" of openvk).
+	// for its author, who is not shown ("От имени сообщества" of openvk)
+	// unless signed ("Подпись автора").
 	fromWall bool
+	signed   bool
 }
 
 // New creates a post by authorID on the wall of wallID. Its UUIDv7 ID
@@ -111,10 +113,10 @@ func New(wallID, authorID uuid.UUID, content Content, now time.Time) (*Post, err
 }
 
 // NewFromWall creates a post by authorID that speaks for the wall of
-// wallID, a community: its readers see the community, not the author.
-// Whether the author may speak for it is the community's, which the caller
-// checks.
-func NewFromWall(wallID, authorID uuid.UUID, content Content, now time.Time) (*Post, error) {
+// wallID, a community: its readers see the community and, if signed, the
+// author's name under it ("Автор: ..."). Whether the author may speak for
+// it is the community's, which the caller checks.
+func NewFromWall(wallID, authorID uuid.UUID, content Content, signed bool, now time.Time) (*Post, error) {
 	if wallID == authorID {
 		return nil, ErrFromOwnWall
 	}
@@ -125,6 +127,7 @@ func NewFromWall(wallID, authorID uuid.UUID, content Content, now time.Time) (*P
 	}
 
 	p.fromWall = true
+	p.signed = signed
 
 	return p, nil
 }
@@ -140,6 +143,7 @@ type Stored struct {
 	Counters  Counters
 	Pinned    bool
 	FromWall  bool
+	Signed    bool
 }
 
 // Restore rebuilds a post from storage without validation or new IDs.
@@ -154,6 +158,7 @@ func Restore(s Stored) *Post {
 		counters:  s.Counters,
 		pinned:    s.Pinned,
 		fromWall:  s.FromWall,
+		signed:    s.Signed,
 	}
 }
 
@@ -169,6 +174,7 @@ func (p *Post) Stored() Stored {
 		Counters:  p.counters,
 		Pinned:    p.pinned,
 		FromWall:  p.fromWall,
+		Signed:    p.signed,
 	}
 }
 
@@ -288,4 +294,9 @@ func (p *Post) Pinned() bool {
 
 func (p *Post) FromWall() bool {
 	return p.fromWall
+}
+
+// Signed: a post that speaks for a community names its author.
+func (p *Post) Signed() bool {
+	return p.signed
 }

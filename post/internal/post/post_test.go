@@ -95,7 +95,7 @@ func TestPost_FromWall(t *testing.T) {
 
 	club, admin := uuid.New(), uuid.New()
 
-	p, err := post.NewFromWall(club, admin, textOnly(t, "новости группы"), time.Now())
+	p, err := post.NewFromWall(club, admin, textOnly(t, "новости группы"), false, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,8 +112,16 @@ func TestPost_FromWall(t *testing.T) {
 		t.Fatal("storage loses fromWall")
 	}
 
-	if _, err = post.NewFromWall(admin, admin, textOnly(t, "я"), time.Now()); !errors.Is(err, post.ErrFromOwnWall) {
+	if _, err = post.NewFromWall(admin, admin, textOnly(t, "я"), false, time.Now()); !errors.Is(err, post.ErrFromOwnWall) {
 		t.Fatalf("on one's own wall: %v", err)
+	}
+
+	signed, err := post.NewFromWall(club, admin, textOnly(t, "с подписью"), true, time.Now())
+	if err != nil || !signed.Signed() || !signed.FromWall() || signed.Notified() != uuid.Nil {
+		t.Fatalf("signed = %+v, %v; still the club's, notifying nobody", signed, err)
+	}
+	if edited, err := signed.Edited(admin, "правка", nil, time.Now()); err != nil || !edited.Signed() || !post.Restore(signed.Stored()).Signed() {
+		t.Fatalf("the signature does not stay: %v", err)
 	}
 
 	own, err := post.New(club, admin, textOnly(t, "от себя"), time.Now())
