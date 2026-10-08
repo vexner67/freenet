@@ -14,9 +14,15 @@ import (
 
 type fakeClub struct {
 	clubv1.ClubServiceClient
-	req      *clubv1.CanModerateWallRequest
-	deadline bool
-	err      error
+	req        *clubv1.CanModerateWallRequest
+	moderators []string
+	deadline   bool
+	err        error
+}
+
+func (f *fakeClub) ListWallModerators(ctx context.Context, req *clubv1.ListWallModeratorsRequest, _ ...grpc.CallOption) (*clubv1.ListWallModeratorsResponse, error) {
+	_, f.deadline = ctx.Deadline()
+	return &clubv1.ListWallModeratorsResponse{UserIds: f.moderators}, f.err
 }
 
 func (f *fakeClub) CanModerateWall(ctx context.Context, req *clubv1.CanModerateWallRequest, _ ...grpc.CallOption) (*clubv1.CanModerateWallResponse, error) {
@@ -46,5 +52,31 @@ func TestClient(t *testing.T) {
 
 	if ok, err = (clubclient.Nop{}).CanModerate(context.Background(), wall, user); err != nil || ok {
 		t.Fatalf("Nop = %v, %v", ok, err)
+	}
+}
+
+func TestClient_Moderators(t *testing.T) {
+	t.Parallel()
+
+	wall, admin := uuid.New(), uuid.New()
+	api := &fakeClub{moderators: []string{admin.String()}}
+
+	ids, err := clubclient.New(api, time.Second).Moderators(context.Background(), wall)
+	if err != nil || len(ids) != 1 || ids[0] != admin || !api.deadline {
+		t.Fatalf("Moderators = %v, %v (deadline %v)", ids, err, api.deadline)
+	}
+
+	api.moderators = []string{"nobody"}
+	if _, err = clubclient.New(api, time.Second).Moderators(context.Background(), wall); err == nil {
+		t.Fatal("an invalid ID from the club service is accepted")
+	}
+
+	api.err = errors.New("down")
+	if _, err = clubclient.New(api, time.Second).Moderators(context.Background(), wall); err == nil {
+		t.Fatal("an unreachable club service is an error, not nobody")
+	}
+
+	if ids, err = (clubclient.Nop{}).Moderators(context.Background(), wall); err != nil || len(ids) != 0 {
+		t.Fatalf("Nop = %v, %v", ids, err)
 	}
 }

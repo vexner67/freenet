@@ -106,6 +106,17 @@ func (f fakeModerators) CanModerate(_ context.Context, wallID, userID uuid.UUID)
 	return f[[2]uuid.UUID{wallID, userID}], nil
 }
 
+func (f fakeModerators) Moderators(_ context.Context, wallID uuid.UUID) ([]uuid.UUID, error) {
+	var ids []uuid.UUID
+	for key, ok := range f {
+		if key[0] == wallID && ok {
+			ids = append(ids, key[1])
+		}
+	}
+
+	return ids, nil
+}
+
 type inTx struct{}
 
 // fakeTx marks the context of the transaction, so that the notifier can

@@ -78,8 +78,10 @@ func TestSuggestionRepository(t *testing.T) {
 		t.Fatalf("the published post = %+v, %v", got, err)
 	}
 
-	if err = repo.DeleteByUser(ctx, ann); err != nil {
-		t.Fatal(err)
+	before, _ := repo.Count(ctx, club, uuid.Nil)
+	deleted, err := repo.DeleteByUser(ctx, ann)
+	if err != nil || len(deleted) != before || before == 0 {
+		t.Fatalf("DeleteByUser = %v, %v; %d suggested", deleted, err, before)
 	}
 	if n, _ := repo.Count(ctx, club, uuid.Nil); n != 0 {
 		t.Fatalf("left after DeleteByUser = %d", n)

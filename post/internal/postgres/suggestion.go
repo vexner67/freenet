@@ -158,16 +158,23 @@ func (r *SuggestionRepository) Count(ctx context.Context, wallID, authorID uuid.
 const deleteUserSuggestionsQuery = `
 	DELETE FROM suggestions
 	WHERE author_id = $1
+	RETURNING id
 `
 
-// DeleteByUser deletes what a user suggested; media erases their photos
-// with the rest of the user.
-func (r *SuggestionRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
-	if _, err := r.conn(ctx).Exec(ctx, deleteUserSuggestionsQuery, userID); err != nil {
-		return errs.Wrap("r.conn.Exec", err)
+// DeleteByUser deletes what a user suggested, returning the IDs; media
+// erases their photos with the rest of the user.
+func (r *SuggestionRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	rows, err := r.conn(ctx).Query(ctx, deleteUserSuggestionsQuery, userID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 
-	return nil
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return ids, nil
 }
 
 // optionalAuthor is NULL for uuid.Nil: the suggestions of everyone.

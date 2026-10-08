@@ -242,9 +242,9 @@ func (a *App) newNotifier(cfg config.Config, newQueue func(stream string) outbox
 
 // newModerators asks the club service about the walls of communities. The
 // connection is lazy, so the services may start in any order.
-func (a *App) newModerators(cfg config.Config) (service.WallModerators, error) {
+func (a *App) newModerators(cfg config.Config) (service.SuggestionModerators, error) {
 	if cfg.ClubServiceAddr == "" {
-		a.logger.Warn("CLUB_SERVICE_ADDR is not set: community admins cannot delete or pin others' posts and comments")
+		a.logger.Warn("CLUB_SERVICE_ADDR is not set: community admins cannot delete or pin others' posts and comments, nor hear about suggested posts")
 		return clubclient.Nop{}, nil
 	}
 

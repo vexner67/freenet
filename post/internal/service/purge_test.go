@@ -117,9 +117,9 @@ func TestPurgeService(t *testing.T) {
 		t.Errorf("bob's comment keeps ann's like: %v", err)
 	}
 
-	want := []uuid.UUID{annsPost.ID(), onAnnsWall.ID(), annsRepost.ID()}
+	want := []uuid.UUID{annsPost.ID(), onAnnsWall.ID(), annsRepost.ID(), suggestion.ID()}
 	if len(notifier.forgotten) != len(want) {
-		t.Errorf("forgotten = %v, want the 3 deleted posts", notifier.forgotten)
+		t.Errorf("forgotten = %v, want the 3 deleted posts and the suggestion", notifier.forgotten)
 	}
 	for _, id := range want {
 		if !slices.Contains(notifier.forgotten, id) {

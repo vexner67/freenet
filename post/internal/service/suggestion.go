@@ -22,6 +22,15 @@ type SuggestionRepository interface {
 	Count(ctx context.Context, wallID, authorID uuid.UUID) (int, error)
 }
 
+// SuggestionModerators are the WallModerators that also list the admins
+// of a community, who hear about the posts suggested for its wall.
+type SuggestionModerators interface {
+	WallModerators
+	// Moderators are the admins of the community wallID, none for the
+	// wall of a user.
+	Moderators(ctx context.Context, wallID uuid.UUID) ([]uuid.UUID, error)
+}
+
 // SuggestionPage is one screen of suggestions; NextCursor is uuid.Nil on
 // the last, Total counts them on all pages.
 type SuggestionPage struct {
@@ -38,7 +47,7 @@ type SuggestionService struct {
 	tx          TxManager
 	notifier    Notifier
 	photos      PhotoKeeper
-	moderators  WallModerators
+	moderators  SuggestionModerators
 	now         func() time.Time
 }
 
@@ -49,7 +58,7 @@ type SuggestionDeps struct {
 	Tx          TxManager
 	Notifier    Notifier
 	Photos      PhotoKeeper
-	Moderators  WallModerators
+	Moderators  SuggestionModerators
 }
 
 func NewSuggestionService(d SuggestionDeps) *SuggestionService {
@@ -65,19 +74,36 @@ func NewSuggestionService(d SuggestionDeps) *SuggestionService {
 }
 
 // Suggest keeps content by authorID for the admins of the community
-// wallID to publish. Its photos are kept for good at once, as a post's:
-// a suggestion may wait longer than media keeps unpublished photos. The
-// caller has checked that the author may suggest there and that the
-// photos are theirs.
+// wallID to publish, and tells them from the community ("новые записи в
+// предложке" of openvk) until it is published, declined or withdrawn. Its
+// photos are kept for good at once, as a post's: a suggestion may wait
+// longer than media keeps unpublished photos. The caller has checked that
+// the author may suggest there and that the photos are theirs.
 func (s *SuggestionService) Suggest(ctx context.Context, wallID, authorID uuid.UUID, content post.Content) (*post.Suggestion, error) {
 	suggestion, err := post.NewSuggestion(wallID, authorID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("post.NewSuggestion", err)
 	}
 
+	admins, err := s.moderators.Moderators(ctx, wallID)
+	if err != nil {
+		return nil, errs.Wrap("s.moderators.Moderators", err)
+	}
+
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.suggestions.Save(ctx, suggestion); err != nil {
 			return errs.Wrap("s.suggestions.Save", err)
+		}
+
+		for _, admin := range admins {
+			if admin == authorID {
+				continue
+			}
+
+			e := Event{Kind: EventSuggestedPost, RecipientID: admin, ActorID: wallID, PostID: suggestion.ID()}
+			if err := s.notifier.Notify(ctx, e); err != nil {
+				return errs.Wrap("s.notifier.Notify", err)
+			}
 		}
 
 		if photos := content.Photos(); len(photos) > 0 {
@@ -137,7 +163,8 @@ func (s *SuggestionService) List(ctx context.Context, viewerID, wallID uuid.UUID
 // Publish makes a post of a suggestion, an admin's "Опубликовать запись":
 // it speaks for the community, says text and, signed, names the author
 // (see post.Suggestion.Published). The author hears about it from the
-// community, unless they published it themselves.
+// community, unless they published it themselves; the admins' notifications
+// about the suggestion go.
 func (s *SuggestionService) Publish(ctx context.Context, requesterID, id uuid.UUID, text post.Text, signed bool) (*post.Post, error) {
 	suggestion, err := s.suggestions.Get(ctx, id)
 	if err != nil {
@@ -164,6 +191,11 @@ func (s *SuggestionService) Publish(ctx context.Context, requesterID, id uuid.UU
 			return errs.Wrap("s.suggestions.Delete", err)
 		}
 
+		// The admins no longer need to hear about it.
+		if err := s.notifier.ForgetPost(ctx, id); err != nil {
+			return errs.Wrap("s.notifier.ForgetPost", err)
+		}
+
 		// The photos were kept when the post was suggested.
 		if err := s.posts.Save(ctx, published); err != nil {
 			return errs.Wrap("s.posts.Save", err)
@@ -185,7 +217,8 @@ func (s *SuggestionService) Publish(ctx context.Context, requesterID, id uuid.UU
 }
 
 // Withdraw deletes a suggestion with its photos: its author takes it
-// back, or an admin of the community declines it ("Отклонить").
+// back, or an admin of the community declines it ("Отклонить"); the
+// admins' notifications about it go too.
 func (s *SuggestionService) Withdraw(ctx context.Context, requesterID, id uuid.UUID) error {
 	suggestion, err := s.suggestions.Get(ctx, id)
 	if err != nil {
@@ -204,6 +237,10 @@ func (s *SuggestionService) Withdraw(ctx context.Context, requesterID, id uuid.U
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.suggestions.Delete(ctx, id); err != nil {
 			return errs.Wrap("s.suggestions.Delete", err)
+		}
+
+		if err := s.notifier.ForgetPost(ctx, id); err != nil {
+			return errs.Wrap("s.notifier.ForgetPost", err)
 		}
 
 		if photos := suggestion.Content().Photos(); len(photos) > 0 {

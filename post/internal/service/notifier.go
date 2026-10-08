@@ -22,13 +22,18 @@ const (
 	// EventPostAccepted: the actor, a community, published the post the
 	// recipient suggested; PostID is the published post.
 	EventPostAccepted
+	// EventSuggestedPost: someone suggested a post for the wall of the
+	// actor, a community the recipient runs; PostID is the suggestion.
+	EventSuggestedPost
 )
 
 // Event: RecipientID is the author of the post for likes, comments,
-// reposts and accepted posts, the owner of the wall for wall posts and the
-// author of the comment for replies and comment likes; ActorID who did it,
-// the community for accepted posts. PostID is the
-// post, but for reposts the repost, which shows the shared post.
+// reposts and accepted posts, the owner of the wall for wall posts, the
+// author of the comment for replies and comment likes and an admin of the
+// community for suggested posts; ActorID who did it, the community for
+// accepted and suggested posts. PostID is the post, but for reposts the
+// repost, which shows the shared post, and for suggested posts the
+// suggestion.
 // CommentID is uuid.Nil but for comments, replies and comment likes.
 type Event struct {
 	Kind        EventKind
