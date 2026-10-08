@@ -3,13 +3,13 @@ package postgres
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/message/internal/message"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/pgpool"
 )
 
 // newestCursor is above every UUID, so "id < newestCursor" starts from the
@@ -26,6 +26,12 @@ func NewMessageRepository(pool *pgxpool.Pool) *MessageRepository {
 	}
 }
 
+// conn is the transaction of ctx (service.TxManager), or the pool outside
+// one.
+func (r *MessageRepository) conn(ctx context.Context) pgpool.Querier {
+	return pgpool.Conn(ctx, r.pool)
+}
+
 // saveMessageQuery stores the message and brings both sides' dialogs up to
 // it in one statement, so the list of dialogs never lags behind. GREATEST
 // keeps a dialog right when two messages race. The sides are written in
@@ -38,9 +44,10 @@ const saveMessageQuery = `
 			sender_id,
 			recipient_id,
 			text,
+			photo_ids,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING id, sender_id, recipient_id
 	)
 	INSERT INTO dialogs (
@@ -65,9 +72,9 @@ const saveMessageQuery = `
 `
 
 func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error {
-	_, err := r.pool.Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), m.CreatedAt())
+	_, err := r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), m.CreatedAt())
 	if err != nil {
-		return errs.Wrap("r.pool.Exec", err)
+		return errs.Wrap("r.conn.Exec", err)
 	}
 
 	return nil
@@ -79,6 +86,7 @@ const getMessageQuery = `
 		sender_id,
 		recipient_id,
 		text,
+		photo_ids,
 		created_at
 	FROM messages
 	WHERE id = $1
@@ -104,6 +112,7 @@ const (
 			sender_id,
 			recipient_id,
 			text,
+			photo_ids,
 			created_at
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
@@ -118,6 +127,7 @@ const (
 			sender_id,
 			recipient_id,
 			text,
+			photo_ids,
 			created_at
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
@@ -145,6 +155,12 @@ func (r *MessageRepository) list(ctx context.Context, query string, a, b, bound 
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
+
+	return collectMessages(rows)
+}
+
+// collectMessages reads the messages of rows and closes them.
+func collectMessages(rows pgx.Rows) ([]*message.Message, error) {
 	defer rows.Close()
 
 	var messages []*message.Message
@@ -156,7 +172,7 @@ func (r *MessageRepository) list(ctx context.Context, query string, a, b, bound 
 		messages = append(messages, m)
 	}
 
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, errs.Wrap("rows.Err", err)
 	}
 
@@ -165,17 +181,39 @@ func (r *MessageRepository) list(ctx context.Context, query string, a, b, bound 
 
 func scanMessage(row pgx.Row) (*message.Message, error) {
 	var (
-		id, senderID, recipientID uuid.UUID
-		text                      string
-		createdAt                 time.Time
+		s      message.Stored
+		text   string
+		photos []uuid.UUID
 	)
 
-	if err := row.Scan(&id, &senderID, &recipientID, &text, &createdAt); err != nil {
+	if err := row.Scan(&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &s.CreatedAt); err != nil {
 		return nil, err
 	}
 
-	// Data comes from our own table and was validated on write.
-	return message.Restore(id, senderID, recipientID, message.Text(text), createdAt.UTC()), nil
+	return restore(s, text, photos), nil
+}
+
+// restore finishes a scanned message. Data comes from our own table and
+// was validated on write.
+func restore(s message.Stored, text string, photos []uuid.UUID) *message.Message {
+	if len(photos) == 0 {
+		photos = nil // no photos, as a new message has them
+	}
+
+	s.Content = message.RestoreContent(message.Text(text), message.Photos(photos))
+	s.CreatedAt = s.CreatedAt.UTC()
+
+	return message.Restore(s)
+}
+
+// photoIDs is photos for the photo_ids column: pgx writes a nil slice as
+// NULL, the column wants an empty array.
+func photoIDs(photos message.Photos) []uuid.UUID {
+	if photos == nil {
+		return []uuid.UUID{}
+	}
+
+	return photos
 }
 
 type DialogRepository struct {
@@ -200,6 +238,7 @@ const listDialogsQuery = `
 		m.sender_id,
 		m.recipient_id,
 		m.text,
+		m.photo_ids,
 		m.created_at
 	FROM dialogs d
 	JOIN messages m ON m.id = d.last_message_id
@@ -239,19 +278,19 @@ func (r *DialogRepository) List(ctx context.Context, userID, before uuid.UUID, l
 
 func scanDialog(row pgx.Row) (message.Dialog, error) {
 	var (
-		d                         message.Dialog
-		id, senderID, recipientID uuid.UUID
-		text                      string
-		createdAt                 time.Time
+		d      message.Dialog
+		s      message.Stored
+		text   string
+		photos []uuid.UUID
 	)
 
 	err := row.Scan(&d.PeerID, &d.LastIncomingID, &d.Marks.Mine, &d.Marks.Theirs,
-		&id, &senderID, &recipientID, &text, &createdAt)
+		&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &s.CreatedAt)
 	if err != nil {
 		return message.Dialog{}, err
 	}
 
-	d.LastMessage = message.Restore(id, senderID, recipientID, message.Text(text), createdAt.UTC())
+	d.LastMessage = restore(s, text, photos)
 
 	return d, nil
 }
@@ -335,7 +374,8 @@ func (r *DialogRepository) MarkRead(ctx context.Context, userID, peerID, upTo uu
 }
 
 // deleteUserDialogsQuery deletes the messages of every dialog of the user
-// and both sides of each dialog; the CTE sees the dialogs as they were.
+// and both sides of each dialog, and returns the deleted messages that had
+// photos; the CTEs see the dialogs as they were.
 const deleteUserDialogsQuery = `
 	WITH gone_messages AS (
 		DELETE FROM messages m
@@ -343,20 +383,38 @@ const deleteUserDialogsQuery = `
 		WHERE d.user_id = $1
 			AND m.user_lo = LEAST(d.user_id, d.peer_id)
 			AND m.user_hi = GREATEST(d.user_id, d.peer_id)
+		RETURNING
+			m.id,
+			m.sender_id,
+			m.recipient_id,
+			m.text,
+			m.photo_ids,
+			m.created_at
+	), gone_dialogs AS (
+		DELETE FROM dialogs
+		WHERE user_id = $1
+			OR (user_id, peer_id) IN (
+				SELECT peer_id, user_id
+				FROM dialogs
+				WHERE user_id = $1
+			)
 	)
-	DELETE FROM dialogs
-	WHERE user_id = $1
-		OR (user_id, peer_id) IN (
-			SELECT peer_id, user_id
-			FROM dialogs
-			WHERE user_id = $1
-		)
+	SELECT
+		id,
+		sender_id,
+		recipient_id,
+		text,
+		photo_ids,
+		created_at
+	FROM gone_messages
+	WHERE cardinality(photo_ids) > 0
 `
 
-func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
-	if _, err := r.pool.Exec(ctx, deleteUserDialogsQuery, userID); err != nil {
-		return errs.Wrap("r.pool.Exec", err)
+func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*message.Message, error) {
+	rows, err := r.conn(ctx).Query(ctx, deleteUserDialogsQuery, userID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
 	}
 
-	return nil
+	return collectMessages(rows)
 }

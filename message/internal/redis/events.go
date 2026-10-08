@@ -28,11 +28,12 @@ type eventJSON struct {
 }
 
 type messageJSON struct {
-	ID          uuid.UUID `json:"id"`
-	SenderID    uuid.UUID `json:"sender_id"`
-	RecipientID uuid.UUID `json:"recipient_id"`
-	Text        string    `json:"text"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID          uuid.UUID   `json:"id"`
+	SenderID    uuid.UUID   `json:"sender_id"`
+	RecipientID uuid.UUID   `json:"recipient_id"`
+	Text        string      `json:"text"`
+	Photos      []uuid.UUID `json:"photos,omitempty"`
+	CreatedAt   time.Time   `json:"created_at"`
 }
 
 type readJSON struct {
@@ -52,6 +53,7 @@ func (EventCodec) Encode(userID uuid.UUID, e service.Event) ([]byte, error) {
 			SenderID:    m.SenderID(),
 			RecipientID: m.RecipientID(),
 			Text:        m.Text().String(),
+			Photos:      m.Photos(),
 			CreatedAt:   m.CreatedAt(),
 		}
 	case e.Read != nil:
@@ -78,13 +80,26 @@ func (EventCodec) Decode(data []byte) (uuid.UUID, service.Event, error) {
 	case ej.Message != nil:
 		m := ej.Message
 
+		// From Redis, so checked as any input is.
 		text, err := message.NewText(m.Text)
 		if err != nil {
 			return uuid.Nil, service.Event{}, errs.Wrap("message.NewText", err)
 		}
 
+		photos, err := message.NewPhotos(m.Photos)
+		if err != nil {
+			return uuid.Nil, service.Event{}, errs.Wrap("message.NewPhotos", err)
+		}
+
+		content, err := message.NewContent(text, photos)
+		if err != nil {
+			return uuid.Nil, service.Event{}, errs.Wrap("message.NewContent", err)
+		}
+
 		return ej.UserID, service.Event{
-			Message: message.Restore(m.ID, m.SenderID, m.RecipientID, text, m.CreatedAt),
+			Message: message.Restore(message.Stored{
+				ID: m.ID, SenderID: m.SenderID, RecipientID: m.RecipientID, Content: content, CreatedAt: m.CreatedAt,
+			}),
 		}, nil
 	case ej.Read != nil:
 		return ej.UserID, service.Event{

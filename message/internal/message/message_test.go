@@ -10,6 +10,43 @@ import (
 	"github.com/vexner67/freenet/message/internal/message"
 )
 
+func TestNewContent(t *testing.T) {
+	t.Parallel()
+
+	photo := uuid.New()
+
+	if _, err := message.NewContent("", nil); !errors.Is(err, message.ErrTextEmpty) {
+		t.Fatalf("neither text nor photos: %v", err)
+	}
+	if c, err := message.NewContent("", message.Photos{photo}); err != nil || len(c.Photos()) != 1 {
+		t.Fatalf("photos only = %+v, %v", c, err)
+	}
+
+	for _, tt := range []struct {
+		name string
+		ids  []uuid.UUID
+		err  error
+	}{
+		{"none", nil, nil},
+		{"ten", make11()[:10], nil},
+		{"eleven", make11(), message.ErrTooManyPhotos},
+		{"twice the same", []uuid.UUID{photo, photo}, message.ErrDuplicatePhoto},
+		{"nil", []uuid.UUID{uuid.Nil}, message.ErrInvalidPhoto},
+	} {
+		if _, err := message.NewPhotos(tt.ids); !errors.Is(err, tt.err) {
+			t.Errorf("%s: NewPhotos = %v, want %v", tt.name, err, tt.err)
+		}
+	}
+}
+
+func make11() []uuid.UUID {
+	ids := make([]uuid.UUID, 11)
+	for i := range ids {
+		ids[i] = uuid.New()
+	}
+	return ids
+}
+
 func TestNewText(t *testing.T) {
 	t.Parallel()
 
@@ -22,8 +59,8 @@ func TestNewText(t *testing.T) {
 		{"plain", "привет", "привет", nil},
 		{"trimmed, windows line breaks", "  раз\r\nдва \n", "раз\nдва", nil},
 		{"emoji count as one character", strings.Repeat("👋", 4096), message.Text(strings.Repeat("👋", 4096)), nil},
-		{"empty", "", "", message.ErrTextEmpty},
-		{"only spaces and breaks", " \n\t\r\n ", "", message.ErrTextEmpty},
+		{"empty is fine, photos may say it all", "", "", nil},
+		{"only spaces and breaks", " \n\t\r\n ", "", nil},
 		{"too long", strings.Repeat("я", 4097), "", message.ErrTextTooLong},
 	}
 
@@ -45,7 +82,7 @@ func TestNew(t *testing.T) {
 	ann, bob := uuid.New(), uuid.New()
 	now := time.Date(2026, 10, 5, 18, 0, 0, 123456789, time.FixedZone("MSK", 3*3600))
 
-	m, err := message.New(ann, bob, "привет", now)
+	m, err := message.New(ann, bob, message.RestoreContent("привет", nil), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +93,7 @@ func TestNew(t *testing.T) {
 		t.Fatalf("createdAt = %v, want UTC with microseconds", m.CreatedAt())
 	}
 
-	later, err := message.New(bob, ann, "и тебе", now)
+	later, err := message.New(bob, ann, message.RestoreContent("и тебе", nil), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +101,7 @@ func TestNew(t *testing.T) {
 		t.Fatal("IDs must grow, dialogs are ordered by them")
 	}
 
-	if _, err = message.New(ann, ann, "сам себе", now); !errors.Is(err, message.ErrToYourself) {
+	if _, err = message.New(ann, ann, message.RestoreContent("сам себе", nil), now); !errors.Is(err, message.ErrToYourself) {
 		t.Fatalf("to yourself: %v", err)
 	}
 }
@@ -76,7 +113,7 @@ func TestReadMarks(t *testing.T) {
 	now := time.Now()
 
 	mustNew := func(sender, recipient uuid.UUID) *message.Message {
-		m, err := message.New(sender, recipient, "x", now)
+		m, err := message.New(sender, recipient, message.RestoreContent("x", nil), now)
 		if err != nil {
 			t.Fatal(err)
 		}

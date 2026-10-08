@@ -15,7 +15,7 @@ import (
 )
 
 type MessageService interface {
-	Send(ctx context.Context, senderID, recipientID uuid.UUID, text message.Text) (*message.Message, error)
+	Send(ctx context.Context, senderID, recipientID uuid.UUID, content message.Content) (*message.Message, error)
 	Dialogs(ctx context.Context, userID, cursor uuid.UUID, size int) (service.DialogPage, error)
 	CountUnread(ctx context.Context, userID uuid.UUID) (int, error)
 	History(ctx context.Context, userID, peerID, cursor uuid.UUID, size int) (service.HistoryPage, error)
@@ -50,12 +50,12 @@ func (h *MessageHandler) SendMessage(ctx context.Context, req *messagev1.SendMes
 		return nil, err
 	}
 
-	text, err := message.NewText(req.GetText())
+	content, err := fromProtoContent(req)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
-	m, err := h.messageService.Send(ctx, senderID, recipientID, text)
+	m, err := h.messageService.Send(ctx, senderID, recipientID, content)
 	if err != nil {
 		return nil, err
 	}

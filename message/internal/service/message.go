@@ -30,8 +30,24 @@ type MessageRepository interface {
 	// above after, oldest first.
 	ListAfter(ctx context.Context, a, b, after uuid.UUID, limit int) ([]*message.Message, error)
 	// DeleteByUser removes the dialogs of a user, both sides of each, with
-	// every message in them.
-	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+	// every message in them, and returns the deleted messages that had
+	// photos.
+	DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*message.Message, error)
+}
+
+// PhotoKeeper records what the media service has to do with the photos of
+// messages, inside the transaction of the change: media keeps the photos
+// of a sent message for good and deletes those of an erased one. Photos
+// never sent it deletes after a while by itself.
+type PhotoKeeper interface {
+	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+}
+
+// TxManager runs fn in one transaction: everything it saves is kept if it
+// returns nil and undone otherwise.
+type TxManager interface {
+	WithinTx(ctx context.Context, fn func(ctx context.Context) error) error
 }
 
 type DialogRepository interface {
@@ -89,28 +105,53 @@ type MessageService struct {
 	messageRepo MessageRepository
 	dialogRepo  DialogRepository
 	events      Events
+	tx          TxManager
+	photos      PhotoKeeper
 	now         func() time.Time
 }
 
-func NewMessageService(messageRepo MessageRepository, dialogRepo DialogRepository, events Events) *MessageService {
+// Deps are what MessageService works with.
+type Deps struct {
+	Messages MessageRepository
+	Dialogs  DialogRepository
+	Events   Events
+	Tx       TxManager
+	Photos   PhotoKeeper
+}
+
+func NewMessageService(d Deps) *MessageService {
 	return &MessageService{
-		messageRepo: messageRepo,
-		dialogRepo:  dialogRepo,
-		events:      events,
+		messageRepo: d.Messages,
+		dialogRepo:  d.Dialogs,
+		events:      d.Events,
+		tx:          d.Tx,
+		photos:      d.Photos,
 		now:         time.Now,
 	}
 }
 
 // Send writes from senderID to recipientID; the caller has made sure the
-// recipient exists. Both hear of it: the sender's other pages too.
-func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UUID, text message.Text) (*message.Message, error) {
-	m, err := message.New(senderID, recipientID, text, s.now())
+// recipient exists and the photos are the sender's. Media keeps the
+// photos. Both hear of it: the sender's other pages too.
+func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UUID, content message.Content) (*message.Message, error) {
+	m, err := message.New(senderID, recipientID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("message.New", err)
 	}
 
-	if err = s.messageRepo.Save(ctx, m); err != nil {
-		return nil, errs.Wrap("s.messageRepo.Save", err)
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.messageRepo.Save(ctx, m); err != nil {
+			return errs.Wrap("s.messageRepo.Save", err)
+		}
+
+		if photos := m.Photos(); len(photos) > 0 {
+			return errs.Wrap("s.photos.Publish", s.photos.Publish(ctx, senderID, photos))
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	s.events.Publish(ctx, senderID, Event{Message: m})
@@ -246,10 +287,30 @@ func pageSize(size int) int {
 }
 
 // PurgeUser erases the dialogs of a user whose page was deleted for good,
-// from both sides: the peers would only keep a dialog with nobody.
+// from both sides: the peers would only keep a dialog with nobody. The
+// photos the peers sent there go too; the user's own media erases with the
+// rest of the user.
 func (s *MessageService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
-	if err := s.messageRepo.DeleteByUser(ctx, userID); err != nil {
-		return errs.Wrap("s.messageRepo.DeleteByUser", err)
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		withPhotos, err := s.messageRepo.DeleteByUser(ctx, userID)
+		if err != nil {
+			return errs.Wrap("s.messageRepo.DeleteByUser", err)
+		}
+
+		for _, m := range withPhotos {
+			if m.SenderID() == userID {
+				continue
+			}
+
+			if err = s.photos.Delete(ctx, m.SenderID(), m.Photos()); err != nil {
+				return errs.Wrap("s.photos.Delete", err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return nil

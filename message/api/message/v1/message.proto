@@ -41,10 +41,13 @@ message Message {
   string id = 1;
   string sender_id = 2;
   string recipient_id = 3;
+  // Empty when the message has photos only.
   string text = 4;
   google.protobuf.Timestamp created_at = 5;
   // The recipient has read it.
   bool read = 6;
+  // Photos of the sender in the media service, in the order shown.
+  repeated string photo_ids = 7;
 }
 
 message Dialog {
@@ -56,7 +59,10 @@ message Dialog {
 
 message SendMessageRequest {
   string recipient_id = 1;
+  // Text, photos or both. The caller has checked with the media service
+  // that the photos are the sender's.
   string text = 2;
+  repeated string photo_ids = 3;
 }
 
 message SendMessageResponse {
