@@ -4,6 +4,8 @@ import (
 	"context"
 	"errors"
 	"os"
+	"reflect"
+	"slices"
 	"sync"
 	"testing"
 	"time"
@@ -37,7 +39,7 @@ func TestRepositories(t *testing.T) {
 
 	save := func(from, to uuid.UUID, text string) *message.Message {
 		t.Helper()
-		m, err := message.New(from, to, message.Text(text), time.Now())
+		m, err := message.New(from, to, message.RestoreContent(message.Text(text), nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -70,7 +72,7 @@ func TestRepositories(t *testing.T) {
 
 	t.Run("history in both directions", func(t *testing.T) {
 		got, err := messages.Get(ctx, m2.ID())
-		if err != nil || *got != *m2 {
+		if err != nil || !reflect.DeepEqual(got, m2) {
 			t.Fatalf("Get = %+v, %v; want %+v", got, err, m2)
 		}
 
@@ -150,7 +152,7 @@ func TestRepositories(t *testing.T) {
 				from, to = eve, dan
 			}
 			wg.Go(func() {
-				m, err := message.New(from, to, "x", time.Now())
+				m, err := message.New(from, to, message.RestoreContent("x", nil), time.Now())
 				if err == nil {
 					err = messages.Save(ctx, m)
 				}
@@ -194,8 +196,14 @@ func TestMessageRepository_DeleteByUser(t *testing.T) {
 	dialogs := postgres.NewDialogRepository(pool)
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 
+	bobsPhoto := uuid.New()
 	for _, pair := range [][2]uuid.UUID{{ann, bob}, {bob, ann}, {cat, ann}, {bob, cat}} {
-		m, err := message.New(pair[0], pair[1], "привет", time.Now())
+		var photos message.Photos
+		if pair == [2]uuid.UUID{bob, ann} {
+			photos = message.Photos{bobsPhoto}
+		}
+
+		m, err := message.New(pair[0], pair[1], message.RestoreContent("привет", photos), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -204,8 +212,13 @@ func TestMessageRepository_DeleteByUser(t *testing.T) {
 		}
 	}
 
-	if err = messages.DeleteByUser(ctx, ann); err != nil {
+	// The deleted messages with photos come back, for media.
+	withPhotos, err := messages.DeleteByUser(ctx, ann)
+	if err != nil {
 		t.Fatalf("DeleteByUser: %v", err)
+	}
+	if len(withPhotos) != 1 || withPhotos[0].SenderID() != bob || !slices.Equal(withPhotos[0].Photos(), message.Photos{bobsPhoto}) {
+		t.Fatalf("deleted messages with photos = %v", withPhotos)
 	}
 
 	for who, want := range map[uuid.UUID]int{ann: 0, bob: 1, cat: 1} {

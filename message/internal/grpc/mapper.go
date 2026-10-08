@@ -5,6 +5,8 @@ import (
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	"github.com/vexner67/freenet/message/internal/message"
 	"github.com/vexner67/freenet/message/internal/service"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -16,7 +18,46 @@ func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 		Text:        m.Text().String(),
 		CreatedAt:   timestamppb.New(m.CreatedAt()),
 		Read:        read,
+		PhotoIds:    photoStrings(m.Photos()),
 	}
+}
+
+func photoStrings(photos message.Photos) []string {
+	out := make([]string, len(photos))
+	for i, id := range photos {
+		out[i] = id.String()
+	}
+
+	return out
+}
+
+// fromProtoContent reads what a message to send says.
+func fromProtoContent(req *messagev1.SendMessageRequest) (message.Content, error) {
+	text, err := message.NewText(req.GetText())
+	if err != nil {
+		return message.Content{}, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.GetPhotoIds()))
+	for _, s := range req.GetPhotoIds() {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return message.Content{}, status.Error(codes.InvalidArgument, message.ErrInvalidPhoto.Error())
+		}
+		ids = append(ids, id)
+	}
+
+	photos, err := message.NewPhotos(ids)
+	if err != nil {
+		return message.Content{}, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	content, err := message.NewContent(text, photos)
+	if err != nil {
+		return message.Content{}, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	return content, nil
 }
 
 func toProtoDialog(d message.Dialog, userID uuid.UUID) *messagev1.Dialog {

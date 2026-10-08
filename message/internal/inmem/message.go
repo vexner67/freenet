@@ -156,17 +156,21 @@ func (r *MessageRepository) between(ctx context.Context, a, b uuid.UUID, match f
 	return found, nil
 }
 
-func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*message.Message, error) {
 	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
+		return nil, errs.Wrap("ctx.Err", err)
 	}
 
 	r.s.mu.Lock()
 	defer r.s.mu.Unlock()
 
+	var withPhotos []*message.Message
 	for id, m := range r.s.messages {
 		if m.SenderID() == userID || m.RecipientID() == userID {
 			delete(r.s.messages, id)
+			if len(m.Photos()) > 0 {
+				withPhotos = append(withPhotos, m)
+			}
 		}
 	}
 
@@ -176,7 +180,7 @@ func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) 
 		}
 	}
 
-	return nil
+	return withPhotos, nil
 }
 
 type DialogRepository struct {

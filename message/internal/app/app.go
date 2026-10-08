@@ -8,11 +8,14 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
 	goredis "github.com/redis/go-redis/v9"
+	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	"github.com/vexner67/freenet/message/internal/config"
 	messagegrpc "github.com/vexner67/freenet/message/internal/grpc"
 	"github.com/vexner67/freenet/message/internal/inmem"
+	"github.com/vexner67/freenet/message/internal/mediaclient"
 	"github.com/vexner67/freenet/message/internal/postgres"
 	messageredis "github.com/vexner67/freenet/message/internal/redis"
 	"github.com/vexner67/freenet/message/internal/service"
@@ -23,9 +26,11 @@ import (
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/metrics"
 	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/outbox"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/pubsub"
 	"github.com/vexner67/freenet/pkg/ratelimit"
+	"github.com/vexner67/freenet/pkg/reqid"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
@@ -44,7 +49,11 @@ type App struct {
 	logger  *slog.Logger
 	pool    *pgxpool.Pool
 	limiter ratelimit.Store
-	redis   *goredis.Client
+	// mediaConn, queue and relay tell media about the photos of messages.
+	mediaConn *grpc.ClientConn
+	queue     *outbox.Postgres
+	relay     *outbox.Relay
+	redis     *goredis.Client
 	// shared carries live events between replicas; nil keeps them here.
 	shared  *pubsub.Redis[uuid.UUID, service.Event]
 	server  *grpcserver.Server
@@ -76,9 +85,16 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
+	reg := metrics.NewRegistry()
+
 	repos, err := a.newRepositories(cfg)
 	if err != nil {
 		return errs.Wrap("a.newRepositories", err)
+	}
+
+	photos, err := a.newPhotoKeeper(cfg, repos.outbox, reg)
+	if err != nil {
+		return errs.Wrap("a.newPhotoKeeper", err)
 	}
 
 	limiter, err := a.newLimiter(cfg)
@@ -102,8 +118,6 @@ func (a *App) build(cfg config.Config) error {
 
 	verifier := jwtauth.NewVerifier(publicKey, cfg.JWTIssuer)
 
-	reg := metrics.NewRegistry()
-
 	a.server, err = grpcserver.New(
 		a.logger,
 		reg,
@@ -123,7 +137,9 @@ func (a *App) build(cfg config.Config) error {
 	messagev1.RegisterMessageServiceServer(
 		a.server.Registrar(),
 		messagegrpc.NewMessageHandler(
-			service.NewMessageService(repos.messages, repos.dialogs, a.newEvents(cfg)),
+			service.NewMessageService(service.Deps{
+				Messages: repos.messages, Dialogs: repos.dialogs, Events: a.newEvents(cfg), Tx: repos.tx, Photos: photos,
+			}),
 			a.logger,
 		),
 	)
@@ -134,7 +150,7 @@ func (a *App) build(cfg config.Config) error {
 		a.metrics = metrics.NewServer(fmt.Sprintf(":%d", cfg.MetricsPort), reg, a.logger)
 	}
 
-	a.logger.Info("message configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
+	a.logger.Info("message configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(), "media", cfg.MediaServiceAddr != "")
 
 	return nil
 }
@@ -151,6 +167,44 @@ func (a *App) newEvents(cfg config.Config) service.Events {
 	a.shared = pubsub.NewRedis(a.redis, messageredis.Channel, messageredis.EventCodec{}, eventBuffer, a.logger)
 
 	return a.shared
+}
+
+// newPhotoKeeper records in the outbox what media has to do with the
+// photos of messages and sets up the relay that tells it. The connection is
+// lazy, so the services may start in any order; until media is up, the
+// relay retries.
+func (a *App) newPhotoKeeper(cfg config.Config, queue outboxQueue, reg prometheus.Registerer) (service.PhotoKeeper, error) {
+	if cfg.MediaServiceAddr == "" {
+		a.logger.Warn("MEDIA_SERVICE_ADDR is not set: media deletes the photos of messages as never sent")
+		return mediaclient.Nop{}, nil
+	}
+
+	creds, err := mtls.ClientCredentials(cfg.TLS)
+	if err != nil {
+		return nil, errs.Wrap("mtls.ClientCredentials", err)
+	}
+
+	a.mediaConn, err = grpc.NewClient(cfg.MediaServiceAddr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
+	if err != nil {
+		return nil, errs.Wrap("grpc.NewClient", err)
+	}
+
+	deliverer := mediaclient.NewDeliverer(mediav1.NewMediaServiceClient(a.mediaConn), cfg.MediaTimeout)
+
+	// As in post and user, whose streams share the metrics, told apart by
+	// a label.
+	a.relay, err = outbox.NewRelay(queue, deliverer.Deliver, prometheus.WrapRegistererWith(prometheus.Labels{"stream": mediaclient.Stream}, reg), a.logger)
+	if err != nil {
+		return nil, errs.Wrap("outbox.NewRelay", err)
+	}
+
+	return mediaclient.NewOutbox(queue), nil
+}
+
+// outboxQueue is the outbox of the storage in use.
+type outboxQueue interface {
+	outbox.Queue
+	mediaclient.Recorder
 }
 
 // restrictInternal lets only their services call the internal methods; with
@@ -195,12 +249,19 @@ func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
 type repositories struct {
 	messages service.MessageRepository
 	dialogs  service.DialogRepository
+	tx       service.TxManager
+	outbox   outboxQueue
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
-		return repositories{messages: store.Messages(), dialogs: store.Dialogs()}, nil
+		return repositories{
+			messages: store.Messages(),
+			dialogs:  store.Dialogs(),
+			tx:       inmem.TxManager{},
+			outbox:   outbox.NewMemory(),
+		}, nil
 	}
 
 	if cfg.MigrateOnStart {
@@ -225,9 +286,13 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		return repositories{}, errs.Wrap("pgpool.New", err)
 	}
 
+	a.queue = outbox.NewPostgres(a.pool, mediaclient.Stream)
+
 	return repositories{
 		messages: postgres.NewMessageRepository(a.pool),
 		dialogs:  postgres.NewDialogRepository(a.pool),
+		tx:       pgpool.NewTxManager(a.pool),
+		outbox:   a.queue,
 	}, nil
 }
 
@@ -249,6 +314,12 @@ func (a *App) Run(ctx context.Context) error {
 	if a.shared != nil {
 		g.Go(func() error {
 			return errs.Wrap("a.shared.Run", a.shared.Run(ctx))
+		})
+	}
+
+	if a.relay != nil {
+		g.Go(func() error {
+			return errs.Wrap("a.relay.Run", a.relay.Run(ctx))
 		})
 	}
 
@@ -282,6 +353,17 @@ func (a *App) Close() {
 			a.logger.Error("rate limiter close", "error", err)
 		}
 	}
+	// After Run: the relay owns the outbox connection while it runs.
+	if a.queue != nil {
+		a.queue.Close()
+	}
+
+	if a.mediaConn != nil {
+		if err := a.mediaConn.Close(); err != nil {
+			a.logger.Error("media connection close", "error", err)
+		}
+	}
+
 	if a.pool != nil {
 		a.pool.Close()
 	}

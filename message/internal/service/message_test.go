@@ -3,10 +3,12 @@ package service_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/message/internal/inmem"
+	"github.com/vexner67/freenet/message/internal/mediaclient"
 	"github.com/vexner67/freenet/message/internal/message"
 	"github.com/vexner67/freenet/message/internal/service"
 	"github.com/vexner67/freenet/pkg/pubsub"
@@ -14,7 +16,9 @@ import (
 
 func newService() *service.MessageService {
 	store := inmem.NewStore()
-	return service.NewMessageService(store.Messages(), store.Dialogs(), pubsub.New[uuid.UUID, service.Event](64))
+	return service.NewMessageService(service.Deps{
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{},
+	})
 }
 
 func send(t *testing.T, svc *service.MessageService, from, to uuid.UUID, texts ...string) []*message.Message {
@@ -22,7 +26,7 @@ func send(t *testing.T, svc *service.MessageService, from, to uuid.UUID, texts .
 
 	sent := make([]*message.Message, 0, len(texts))
 	for _, text := range texts {
-		m, err := svc.Send(context.Background(), from, to, message.Text(text))
+		m, err := svc.Send(context.Background(), from, to, message.RestoreContent(message.Text(text), nil))
 		if err != nil {
 			t.Fatalf("Send: %v", err)
 		}
@@ -234,7 +238,7 @@ func TestSend_ToYourself(t *testing.T) {
 	t.Parallel()
 
 	ann := uuid.New()
-	if _, err := newService().Send(context.Background(), ann, ann, "сам себе"); !errors.Is(err, message.ErrToYourself) {
+	if _, err := newService().Send(context.Background(), ann, ann, message.RestoreContent("сам себе", nil)); !errors.Is(err, message.ErrToYourself) {
 		t.Fatalf("to yourself: %v", err)
 	}
 }
@@ -359,5 +363,83 @@ func TestPurgeUser(t *testing.T) {
 	}
 	if page, err := svc.History(ctx, bob, cat, uuid.Nil, 20); err != nil || len(page.Messages) != 1 {
 		t.Errorf("history of bob and cat = %d, %v; want 1", len(page.Messages), err)
+	}
+}
+
+// fakePhotos records what media is told, and whether in a transaction.
+type fakePhotos struct {
+	published, deleted []photoCall
+	outsideTx          int
+}
+
+type photoCall struct {
+	owner  uuid.UUID
+	photos []uuid.UUID
+}
+
+type inTx struct{}
+
+type fakeTx struct{}
+
+func (fakeTx) WithinTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	return fn(context.WithValue(ctx, inTx{}, true))
+}
+
+func (f *fakePhotos) Publish(ctx context.Context, owner uuid.UUID, photos []uuid.UUID) error {
+	return f.record(ctx, &f.published, photoCall{owner, photos})
+}
+
+func (f *fakePhotos) Delete(ctx context.Context, owner uuid.UUID, photos []uuid.UUID) error {
+	return f.record(ctx, &f.deleted, photoCall{owner, photos})
+}
+
+func (f *fakePhotos) record(ctx context.Context, to *[]photoCall, c photoCall) error {
+	if ctx.Value(inTx{}) == nil {
+		f.outsideTx++
+	}
+	*to = append(*to, c)
+	return nil
+}
+
+func TestMessageService_Photos(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	photos := &fakePhotos{}
+	svc := service.NewMessageService(service.Deps{
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+	})
+	ann, bob := uuid.New(), uuid.New()
+	annsPhoto, bobsPhoto := uuid.New(), uuid.New()
+
+	send := func(from, to, photo uuid.UUID) {
+		t.Helper()
+
+		content, err := message.NewContent("", message.Photos{photo})
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = svc.Send(ctx, from, to, content); err != nil {
+			t.Fatalf("Send: %v", err)
+		}
+	}
+
+	send(ann, bob, annsPhoto)
+	send(bob, ann, bobsPhoto)
+	if len(photos.published) != 2 || photos.published[0].owner != ann || photos.published[1].owner != bob {
+		t.Fatalf("published = %+v, want each sender's photo", photos.published)
+	}
+
+	// Ann's page is erased: bob's photo in their dialog goes; hers media
+	// erases with the rest of her.
+	if err := svc.PurgeUser(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+	if len(photos.deleted) != 1 || photos.deleted[0].owner != bob || !slices.Equal(photos.deleted[0].photos, []uuid.UUID{bobsPhoto}) {
+		t.Fatalf("deleted = %+v, want bob's photo", photos.deleted)
+	}
+	if photos.outsideTx != 0 {
+		t.Fatalf("%d photo calls outside the transaction", photos.outsideTx)
 	}
 }

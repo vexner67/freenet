@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
@@ -37,8 +38,14 @@ type Config struct {
 	// Spam protection, per user, and live events. REDIS_ADDR shares the
 	// counters and the events between replicas; without it they stay in
 	// one.
-	RedisAddr     string          `env:"REDIS_ADDR"`
-	MessageLimits ratelimit.Rules `env:"RATE_LIMIT_MESSAGES" envDefault:"30/1m,1000/24h"`
+	RedisAddr string `env:"REDIS_ADDR"`
+
+	// MediaServiceAddr is where message tells which photos its messages
+	// publish and delete, each call within MediaTimeout. Without it media
+	// takes the photos of messages for never sent and deletes them.
+	MediaServiceAddr string          `env:"MEDIA_SERVICE_ADDR"`
+	MediaTimeout     time.Duration   `env:"MEDIA_TIMEOUT" envDefault:"2s"`
+	MessageLimits    ratelimit.Rules `env:"RATE_LIMIT_MESSAGES" envDefault:"30/1m,1000/24h"`
 
 	// Access tokens are issued by the auth service; message only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`

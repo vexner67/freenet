@@ -12,25 +12,30 @@ import (
 	"github.com/google/uuid"
 )
 
-const maxTextLen = 4096
-
-var (
-	ErrTextEmpty   = errors.New("message text is empty")
-	ErrTextTooLong = errors.New("message text is too long")
-	ErrToYourself  = errors.New("you cannot write to yourself")
-	ErrNotFound    = errors.New("message not found")
+const (
+	maxTextLen = 4096
+	maxPhotos  = 10
 )
 
-// Text is what a message says: trimmed, with "\n" line breaks.
+var (
+	// ErrTextEmpty: neither text nor photos. The message keeps the words
+	// it had before messages took photos: clients know it.
+	ErrTextEmpty      = errors.New("message text is empty")
+	ErrTextTooLong    = errors.New("message text is too long")
+	ErrToYourself     = errors.New("you cannot write to yourself")
+	ErrNotFound       = errors.New("message not found")
+	ErrTooManyPhotos  = errors.New("a message has at most 10 photos")
+	ErrDuplicatePhoto = errors.New("the same photo is attached twice")
+	ErrInvalidPhoto   = errors.New("invalid photo id")
+)
+
+// Text is what a message says: trimmed, with "\n" line breaks. It may be
+// empty when the message has photos (see NewContent).
 type Text string
 
 func NewText(s string) (Text, error) {
 	// Normalise line breaks so length and storage do not depend on the client.
 	s = strings.TrimSpace(strings.ReplaceAll(s, "\r\n", "\n"))
-
-	if s == "" {
-		return "", ErrTextEmpty
-	}
 
 	if utf8.RuneCountInString(s) > maxTextLen {
 		return "", ErrTextTooLong
@@ -43,17 +48,72 @@ func (t Text) String() string {
 	return string(t)
 }
 
+// Photos are the IDs of a message's photos in the media service, in the
+// order they are shown. Whose photos they are the gateway checks with the
+// media service when the message is sent.
+type Photos []uuid.UUID
+
+func NewPhotos(ids []uuid.UUID) (Photos, error) {
+	if len(ids) > maxPhotos {
+		return nil, ErrTooManyPhotos
+	}
+
+	seen := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		if id == uuid.Nil {
+			return nil, ErrInvalidPhoto
+		}
+		if seen[id] {
+			return nil, ErrDuplicatePhoto
+		}
+		seen[id] = true
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	return Photos(ids), nil
+}
+
+// Content is what a message shows: text, photos or both, never nothing.
+type Content struct {
+	text   Text
+	photos Photos
+}
+
+func NewContent(text Text, photos Photos) (Content, error) {
+	if text == "" && len(photos) == 0 {
+		return Content{}, ErrTextEmpty
+	}
+
+	return Content{text: text, photos: photos}, nil
+}
+
+// RestoreContent rebuilds content from storage without validation.
+func RestoreContent(text Text, photos Photos) Content {
+	return Content{text: text, photos: photos}
+}
+
+func (c Content) Text() Text {
+	return c.text
+}
+
+func (c Content) Photos() Photos {
+	return c.photos
+}
+
 type Message struct {
 	id          uuid.UUID
 	senderID    uuid.UUID
 	recipientID uuid.UUID
-	text        Text
+	content     Content
 	createdAt   time.Time
 }
 
 // New creates a message. Its UUIDv7 ID grows with time, so a dialog is
 // ordered and paged by ID, and "read up to" is one ID.
-func New(senderID, recipientID uuid.UUID, text Text, now time.Time) (*Message, error) {
+func New(senderID, recipientID uuid.UUID, content Content, now time.Time) (*Message, error) {
 	if senderID == recipientID {
 		return nil, ErrToYourself
 	}
@@ -67,20 +127,29 @@ func New(senderID, recipientID uuid.UUID, text Text, now time.Time) (*Message, e
 		id:          id,
 		senderID:    senderID,
 		recipientID: recipientID,
-		text:        text,
+		content:     content,
 		// PostgreSQL keeps microseconds; trim now so a message reads back equal.
 		createdAt: now.UTC().Truncate(time.Microsecond),
 	}, nil
 }
 
+// Stored is a message as storage keeps it.
+type Stored struct {
+	ID          uuid.UUID
+	SenderID    uuid.UUID
+	RecipientID uuid.UUID
+	Content     Content
+	CreatedAt   time.Time
+}
+
 // Restore rebuilds a message from storage without validation or new IDs.
-func Restore(id, senderID, recipientID uuid.UUID, text Text, createdAt time.Time) *Message {
+func Restore(s Stored) *Message {
 	return &Message{
-		id:          id,
-		senderID:    senderID,
-		recipientID: recipientID,
-		text:        text,
-		createdAt:   createdAt,
+		id:          s.ID,
+		senderID:    s.SenderID,
+		recipientID: s.RecipientID,
+		content:     s.Content,
+		createdAt:   s.CreatedAt,
 	}
 }
 
@@ -97,7 +166,11 @@ func (m *Message) RecipientID() uuid.UUID {
 }
 
 func (m *Message) Text() Text {
-	return m.text
+	return m.content.text
+}
+
+func (m *Message) Photos() Photos {
+	return m.content.photos
 }
 
 func (m *Message) CreatedAt() time.Time {

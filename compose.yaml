@@ -146,9 +146,11 @@ services:
       STORAGE: persistent
       DATABASE_URL: postgres://${MESSAGE_POSTGRES_USER}:${MESSAGE_POSTGRES_PASSWORD}@message-postgres:5432/${MESSAGE_POSTGRES_DB}?sslmode=disable
       REDIS_ADDR: redis:6379
+      MEDIA_SERVICE_ADDR: media:7054
     depends_on:
       message-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      media: { condition: service_healthy }
 
   user:
     <<: *service

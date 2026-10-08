@@ -16,6 +16,7 @@ import (
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	messagegrpc "github.com/vexner67/freenet/message/internal/grpc"
 	"github.com/vexner67/freenet/message/internal/inmem"
+	"github.com/vexner67/freenet/message/internal/mediaclient"
 	"github.com/vexner67/freenet/message/internal/service"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/pubsub"
@@ -55,7 +56,7 @@ func newServer(t *testing.T) testServer {
 	)
 	store := inmem.NewStore()
 	events := pubsub.New[uuid.UUID, service.Event](64)
-	messagev1.RegisterMessageServiceServer(srv, messagegrpc.NewMessageHandler(service.NewMessageService(store.Messages(), store.Dialogs(), events), log))
+	messagev1.RegisterMessageServiceServer(srv, messagegrpc.NewMessageHandler(service.NewMessageService(service.Deps{Messages: store.Messages(), Dialogs: store.Dialogs(), Events: events, Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}}), log))
 
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
