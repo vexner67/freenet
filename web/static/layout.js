@@ -18,6 +18,16 @@ export function profilePath(user) {
   return user.profileCompleted ? '/' + user.nickname : '/edit';
 }
 
+// clubRef names a club in its paths: its address or, without one, its ID.
+export function clubRef(club) {
+  return club.address || club.id;
+}
+
+// pagePath is the page of an author: a user's, or a community's.
+export function pagePath(author) {
+  return author.club ? '/club/' + encodeURIComponent(clubRef(author)) : '/' + author.nickname;
+}
+
 async function logout(event) {
   event.preventDefault();
   await api.logout();
@@ -44,6 +54,7 @@ export function renderChrome(me) {
       el('a', { href: profilePath(me), textContent: 'Моя Страница' }),
       el('a', { href: '/im', textContent: 'Мои Сообщения' },
         el('span', { className: 'counter', id: 'messages-count', hidden: true })),
+      el('a', { href: '/groups', textContent: 'Мои Группы' }),
       el('a', { href: '/feed', textContent: 'Мои Новости' }),
       el('a', { href: '/notifications', textContent: 'Мои Ответы' },
         el('span', { className: 'counter', id: 'notifications-count', hidden: true })),
@@ -123,9 +134,10 @@ export function setCounter(name, n) {
   counter.hidden = n <= 0;
 }
 
-// avatarURL is the photo of a user, author or profile, or the placeholder.
+// avatarURL is the photo of a user, author or profile, or the placeholder;
+// a community has a placeholder of its own, the camera of openvk.
 export function avatarURL(user, size) {
-  return user.avatar?.[size] ?? '/static/avatar.svg';
+  return user.avatar?.[size] ?? (user.club ? '/static/club.svg' : '/static/avatar.svg');
 }
 
 export function fullName(user) {

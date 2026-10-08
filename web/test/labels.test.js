@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { membersCount, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -151,4 +151,12 @@ test('deactivationReasons are openvk\'s, the last one without words', () => {
 test('errorText knows deleted pages', () => {
   assert.equal(errorText({ message: 'this page is deleted' }), 'Страница пользователя заблокирована или удалена.');
   assert.equal(errorText({ message: 'this page can no longer be restored' }), 'Срок восстановления страницы истёк.');
+});
+
+test('clubs', () => {
+  assert.equal(membersCount(0), 'Ни одного участника');
+  assert.equal(membersCount(1), '1 участник');
+  assert.equal(membersCount(3), '3 участника');
+  assert.equal(membersCount(11), '11 участников');
+  assert.equal(errorText(new Error('club address is already taken')), 'Этот адрес уже занят.');
 });

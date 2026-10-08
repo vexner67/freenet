@@ -215,6 +215,26 @@ export const api = {
   // Your own message, from both sides, within a day of sending.
   deleteMessage: (id) => authorized('DELETE', `/api/v1/messages/${encodeURIComponent(id)}`),
 
+  // Communities ("группы"); ref is a club's address or, without one, its ID.
+  createClub: (name, description) => authorized('POST', '/api/v1/clubs', { name, description }),
+  // With a session the club also says what you are in it.
+  club: (ref) => optional('GET', '/api/v1/clubs/' + encodeURIComponent(ref)),
+  updateClub: (ref, settings) => authorized('PUT', '/api/v1/clubs/' + encodeURIComponent(ref), settings),
+  joinClub: (ref) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/membership`),
+  leaveClub: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/membership`),
+  // admins: only the owner and the admins ("Руководство").
+  clubMembers(ref, { cursor = '', limit = 0, admins = false } = {}) {
+    const path = page(`/api/v1/clubs/${encodeURIComponent(ref)}/members`, cursor, limit);
+    return request('GET', admins ? path + (path.includes('?') ? '&' : '?') + 'admins=true' : path);
+  },
+  appointAdmin: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
+  dismissAdmin: (ref, nickname) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
+  myClubs: (cursor = '') => authorized('GET', page('/api/v1/me/clubs', cursor, 0)),
+  clubWall: (ref, cursor = '') => optional('GET', page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0)),
+  // fromClub: the post speaks for the club ("От имени сообщества").
+  createClubPost: (ref, text, photos = [], fromClub = false) =>
+    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub }),
+
   search(query, cursor = '') {
     const params = new URLSearchParams({ q: query });
     if (cursor) params.set('cursor', cursor);

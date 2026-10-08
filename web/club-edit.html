@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Редактировать группу | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/club-edit.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span></div>
+      <div class="page-body">
+        <div class="tabs" id="tabs" hidden>
+          <a class="active" id="tab-main">Основное</a>
+          <a id="tab-members">Участники</a>
+        </div>
+        <form id="form" hidden>
+          <div class="error" id="error" hidden></div>
+          <div class="notice" id="saved" hidden>Изменения сохранены.</div>
+          <div class="section-title">Основная информация</div>
+          <table class="form">
+            <tr>
+              <th><label class="required" for="name">Название</label></th>
+              <td class="control"><input type="text" id="name" maxlength="64" required></td>
+            </tr>
+            <tr>
+              <th><label for="description">Описание</label></th>
+              <td class="control"><textarea id="description" maxlength="1000" rows="5"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="address">Адрес страницы</label></th>
+              <td class="control"><input type="text" id="address" maxlength="32" spellcheck="false"></td>
+              <td class="note hint">Адрес страницы: <span id="url-preview"></span></td>
+            </tr>
+            <tr>
+              <th><label for="wall">Стена</label></th>
+              <td class="control">
+                <select id="wall">
+                  <option value="open">Открытая</option>
+                  <option value="closed">Закрытая</option>
+                </select>
+              </td>
+              <td class="note hint">Открытая — писать может любой, закрытая — только администраторы.</td>
+            </tr>
+            <tr>
+              <th></th>
+              <td class="control"><button class="button" type="submit" id="submit">Сохранить</button></td>
+            </tr>
+          </table>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>
