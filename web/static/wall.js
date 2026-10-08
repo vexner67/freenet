@@ -15,19 +15,24 @@ const MAX_LENGTH = 1000;
 // or a community's admins, deletes and pins any post on it, others their
 // own ones; who may write here the first page tells, as the owner's privacy
 // or the community allows. An admin also speaks for the community, a box
-// on the form ("От имени сообщества").
+// on the form ("От имени сообщества"); on a "Предложка" others suggest
+// posts instead ("Предложить новость") and see their suggestions after,
+// as on openvk.
 export function initWall(owner, me, { moderates = me?.id === owner.id, speaksForClub = false } = {}) {
   const posts = $('posts');
   const error = $('wall-error');
   const isOwner = me?.id === owner.id;
   const load = owner.club ? (c) => api.clubWall(clubRef(owner), c) : (c) => api.wall(owner.nickname, c);
-  // On a closed wall its admins always speak for the club, as on openvk.
-  const fromClub = () => owner.wall === 'closed' || $('post-from-club').checked;
+  // On a wall that is not open its admins always speak for the club, as on
+  // openvk.
+  const fromClub = () => owner.wall !== 'open' || $('post-from-club').checked;
   const create = owner.club
     ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked })
     : (text, photos) => api.createPost(owner.nickname, text, photos);
   let attachments;
   let canPost = false;
+  // suggesting: the form suggests a post for the admins of the club.
+  let suggesting = false;
 
   let total = 0;
   let cursor = '';
@@ -77,7 +82,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       const page = await load(cursor);
 
       // Without a nickname of your own you have no name to sign a post.
-      if (firstPage && page.canPost && me?.profileCompleted) showForm();
+      if (firstPage && (page.canPost || page.canSuggest) && me?.profileCompleted) showForm(!page.canPost);
 
       total = page.total;
       cursor = page.nextCursor;
@@ -107,6 +112,12 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     button.disabled = true;
 
     try {
+      if (suggesting) {
+        await api.suggestClubPost(clubRef(owner), $('post-text').value, attachments.ids());
+        location.href = `/club/${encodeURIComponent(clubRef(owner))}/suggested?type=my`;
+        return;
+      }
+
       const post = await create($('post-text').value, attachments.ids());
 
       // Below the pinned post, which stays first.
@@ -127,17 +138,21 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     }
   }
 
-  function showForm() {
+  // showForm shows the form to write, or with suggest to suggest a post.
+  function showForm(suggest) {
     const form = $('post-form');
     const text = $('post-text');
 
     canPost = true;
-    // As on openvk: "Написать" on someone else's wall.
+    suggesting = suggest;
+    // As on openvk: "Написать" on someone else's wall, "Предложить
+    // новость" on a "Предложка".
     if (!isOwner && !owner.club) text.placeholder = 'Написать';
+    if (suggest) text.placeholder = 'Предложить новость';
     if (speaksForClub) {
       // "От имени сообщества" only where there is a choice; "Подпись
       // автора" while the post speaks for the club.
-      $('post-from-club-label').hidden = owner.wall === 'closed';
+      $('post-from-club-label').hidden = owner.wall !== 'open';
       const showSigned = () => { $('post-signed-label').hidden = !fromClub(); };
       $('post-from-club').addEventListener('change', showSigned);
       showSigned();

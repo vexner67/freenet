@@ -5,7 +5,7 @@
 // admins or nobody.
 
 import { api, currentUser } from './api.js';
-import { adminsCount, membersCount } from './labels.js';
+import { adminsCount, membersCount, suggestedByEveryone, suggestedByYou } from './labels.js';
 import { $, avatarURL, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
 import { personCell } from './people.js';
 import { initPhoto } from './photo.js';
@@ -79,6 +79,25 @@ async function showAdmins(club) {
   }
 }
 
+// showSuggestions is the link above the wall of openvk: "N предложенных
+// записей" for the admins, "N предложенных вами записей" for whoever
+// suggested some, none when there are none.
+async function showSuggestions(club, me) {
+  const admin = manages(club);
+  if (!me || (!admin && club.wall !== 'suggest')) return;
+
+  try {
+    const page = await api.clubSuggestions(ref, { mine: !admin, limit: 1 });
+    if (page.total === 0) return;
+
+    $('suggestions-link').textContent = admin ? suggestedByEveryone(page.total) : suggestedByYou(page.total);
+    $('suggestions-link').href = `/club/${encodeURIComponent(clubRef(club))}/suggested${admin ? '' : '?type=my'}`;
+    $('suggestions').hidden = false;
+  } catch {
+    // The page works without it.
+  }
+}
+
 // renderJoin is the one button openvk has: "Вступить в группу", or a grey
 // "Выйти из группы" for a member; the owner cannot leave and has neither.
 function renderJoin(club, me) {
@@ -128,6 +147,7 @@ try {
 
   render(club, me);
   showMembers(club);
+  showSuggestions(club, me);
   await initWall({ ...club, club: true }, me, { moderates: manages(club), speaksForClub: manages(club) });
 } catch (e) {
   $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';

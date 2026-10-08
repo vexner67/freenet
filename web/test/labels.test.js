@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { membersCount, myClubsCount, clubsCount, adminsCount, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -175,4 +175,16 @@ test('club admins and who sees the clubs, as openvk says', () => {
   assert.deepEqual(adminsDisplays.map(([value]) => value), ['creator', 'all', 'none']);
   assert.equal(errorText(new Error('the new owner must be an admin of the club')), 'Владельцем можно назначить только администратора группы.');
   assert.equal(errorText(new Error("this user's clubs are hidden")), 'Пользователь скрыл список своих групп.');
+});
+
+test('suggested posts are counted as openvk counts them', () => {
+  assert.equal(suggestedByEveryone(1), '1 предложенная запись');
+  assert.equal(suggestedByEveryone(3), '3 предложенные записи');
+  assert.equal(suggestedByEveryone(5), '5 предложенных записей');
+  assert.equal(suggestedByYou(21), '21 предложенная вами запись');
+  assert.equal(suggestedByYou(2), '2 предложенные вами записи');
+  assert.equal(suggestedInClub(1, false), 'В эту группу предложили 1 запись');
+  assert.equal(suggestedInClub(12, true), 'Вы предложили в эту группу 12 записей');
+  assert.equal(suggestedInClub(0, false), 'Вы посмотрели всю предложку, поздравляю!');
+  assert.equal(errorText(new Error('suggestion not found')), 'Запись уже опубликована или отклонена.');
 });
