@@ -27,7 +27,7 @@ export function initFollow(profile, me, isOwner) {
     $(`${type}-all`).href = listURL(type);
 
     const page = await api[type](profile.nickname, '', SIDE_BLOCK_SIZE);
-    $(`${type}-grid`).replaceChildren(...page.users.map(personCell));
+    $(`${type}-grid`).replaceChildren(...page.users.map((user) => personCell(user)));
   }
 
   function render() {

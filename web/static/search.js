@@ -13,7 +13,7 @@ async function loadMore() {
   try {
     const page = await api.search(query, cursor);
 
-    $('people').append(...page.users.map(personRow));
+    $('people').append(...page.users.map((user) => personRow(user)));
     shown += page.users.length;
     cursor = page.nextCursor;
 
