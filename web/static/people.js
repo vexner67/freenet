@@ -13,7 +13,9 @@ export function personCell(user) {
   );
 }
 
-export function personRow(user) {
+// personRow is a person of a list; extra goes under the name, as the role
+// and the links of a club's member.
+export function personRow(user, ...extra) {
   const path = '/' + user.nickname;
 
   return el('div', { className: 'person' },
@@ -21,6 +23,7 @@ export function personRow(user) {
     el('div', {},
       el('a', { className: 'post-name', href: path, textContent: fullName(user) }),
       user.status && el('div', { className: 'person-status', textContent: user.status }),
+      ...extra,
     ),
   );
 }

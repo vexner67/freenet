@@ -1,22 +1,29 @@
-// The wall block of a profile page: posts by the owner and by others, the
-// form for whoever may write there, paging.
+// The wall block of a profile or community page: posts by the owner and
+// by others, the form for whoever may write there, paging.
 
 import { api } from './api.js';
 import { postsCount } from './labels.js';
-import { $, el, showError, hideError } from './layout.js';
+import { $, clubRef, el, showError, hideError } from './layout.js';
 import { postNode as renderPost } from './posts.js';
 import { initAttachments } from './attach.js';
 
 const COUNTER_FROM = 900;
 const MAX_LENGTH = 1000;
 
-// initWall shows the wall of owner to me, the viewer (null if anonymous).
-// The owner deletes any post on the wall, others their own ones; who may
-// write here the first page tells, as the owner's privacy allows.
-export function initWall(owner, me) {
+// initWall shows the wall of owner, a user or a community (owner.club), to
+// me, the viewer (null if anonymous). Whoever moderates the wall, its owner
+// or a community's admins, deletes and pins any post on it, others their
+// own ones; who may write here the first page tells, as the owner's privacy
+// or the community allows. An admin also speaks for the community, a box
+// on the form ("От имени сообщества").
+export function initWall(owner, me, { moderates = me?.id === owner.id, speaksForClub = false } = {}) {
   const posts = $('posts');
   const error = $('wall-error');
   const isOwner = me?.id === owner.id;
+  const load = owner.club ? (c) => api.clubWall(clubRef(owner), c) : (c) => api.wall(owner.nickname, c);
+  const create = owner.club
+    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, $('post-from-club').checked)
+    : (text, photos) => api.createPost(owner.nickname, text, photos);
   let attachments;
   let canPost = false;
 
@@ -30,7 +37,8 @@ export function initWall(owner, me) {
 
   const postNode = (post) => renderPost(post, {
     viewer: me,
-    onDelete: (isOwner || post.author.id === me?.id) && remove,
+    moderates,
+    onDelete: (moderates || post.mine) && remove,
     // The pinned post comes first: the wall is read again from the top.
     onPinned: reload,
     canLike: Boolean(me),
@@ -64,7 +72,7 @@ export function initWall(owner, me) {
 
     try {
       const firstPage = !cursor;
-      const page = await api.wall(owner.nickname, cursor);
+      const page = await load(cursor);
 
       // Without a nickname of your own you have no name to sign a post.
       if (firstPage && page.canPost && me?.profileCompleted) showForm();
@@ -97,7 +105,7 @@ export function initWall(owner, me) {
     button.disabled = true;
 
     try {
-      const post = await api.createPost(owner.nickname, $('post-text').value, attachments.ids());
+      const post = await create($('post-text').value, attachments.ids());
 
       // Below the pinned post, which stays first.
       const pinned = posts.firstElementChild?.classList.contains('pinned') ? posts.firstElementChild : null;
@@ -123,7 +131,8 @@ export function initWall(owner, me) {
 
     canPost = true;
     // As on openvk: "Написать" on someone else's wall.
-    if (!isOwner) text.placeholder = 'Написать';
+    if (!isOwner && !owner.club) text.placeholder = 'Написать';
+    if (speaksForClub) $('post-from-club-label').hidden = false;
 
     // The form stays open while it holds text or photos.
     const collapseIfEmpty = () => {

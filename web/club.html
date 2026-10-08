@@ -1,0 +1,89 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/club.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span><span class="aside" id="title-aside"></span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+
+        <div class="profile" id="club" hidden>
+          <div class="profile-left">
+            <img class="avatar" id="avatar" src="/static/club.svg" alt="">
+            <button class="button" type="button" id="join" hidden>Вступить в группу</button>
+            <a class="button" id="edit" hidden>Редактировать группу</a>
+            <div class="error" id="join-error" hidden></div>
+
+            <div class="side-block">
+              <div class="section-title">Тип группы</div>
+              <p class="hint">Это открытая группа. В неё может вступить любой желающий.</p>
+            </div>
+
+            <div class="side-block" id="members-block" hidden>
+              <div class="section-title">Участники</div>
+              <div class="subtitle"><span id="members-count"></span><a id="members-all">Все</a></div>
+              <div class="people-grid" id="members-grid"></div>
+            </div>
+
+            <div class="side-block" id="owner-block" hidden>
+              <div class="section-title">Создатель</div>
+              <div id="owner"></div>
+            </div>
+          </div>
+
+          <div class="profile-right">
+            <h2 class="name" id="name"></h2>
+
+            <div class="section-title">Информация</div>
+            <table class="info" id="info"></table>
+
+            <div class="section-title">Стена<span class="count" id="wall-count"></span></div>
+
+            <form class="wall-form" id="post-form" hidden>
+              <textarea id="post-text" maxlength="1000" placeholder="Что у вас нового?" aria-label="Новая запись"></textarea>
+              <div class="attachments" id="post-photos" hidden></div>
+              <div class="row">
+                <span>
+                  <a class="attach-link" id="post-attach">Прикрепить фотографию</a>
+                  <label class="from-club" id="post-from-club-label" hidden><input type="checkbox" id="post-from-club" checked> От имени сообщества</label>
+                  <span class="hint" id="post-counter"></span>
+                </span>
+                <button class="button" type="submit" id="post-submit">Отправить</button>
+              </div>
+              <input type="file" id="post-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+            </form>
+
+            <div class="error" id="wall-error" hidden></div>
+            <div id="posts"></div>
+            <p class="hint" id="wall-empty" hidden>На стене пока нет ни одной записи.</p>
+            <a class="wall-more" id="wall-more" hidden>Показать предыдущие записи</a>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

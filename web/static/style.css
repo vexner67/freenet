@@ -206,6 +206,14 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
 .form td { padding: 3px 0; }
 .form td.control { width: 260px; }
 .form td.note { padding-left: 10px; }
+.form textarea {
+  width: 100%;
+  padding: 3px 4px;
+  border: 1px solid #c0cad5;
+  font: 11px tahoma, verdana, arial, sans-serif;
+  resize: vertical;
+}
+.form textarea:focus { outline: 1px solid #8fa7c2; }
 .required::after { content: " *"; color: #c33; }
 
 .date { display: flex; gap: 4px; }
@@ -249,6 +257,8 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
   vertical-align: top;
 }
 .info td { padding: 2px 0; }
+/* Text people write, as a club's description: their line breaks stay. */
+.pre-wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
 .private-mark { color: #a0a0a0; }
 
 /* Footer */
@@ -604,3 +614,10 @@ a.like:hover svg { opacity: .7; }
 /* The blacklist page: people with "Удалить из чёрного списка". */
 .blacklist-row { display: flex; justify-content: space-between; align-items: center; }
 .blacklist-row .person { flex: 1; }
+
+/* Communities: "От имени сообщества" next to "Прикрепить фотографию". */
+.from-club { margin-left: 10px; color: #555; }
+.from-club input { vertical-align: middle; margin: 0 3px 0 0; }
+.club-role { color: #808080; }
+.club-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #ececec; }
+.club-row img { width: 50px; height: 50px; object-fit: cover; }

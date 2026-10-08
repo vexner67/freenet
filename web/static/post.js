@@ -5,7 +5,7 @@ import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { commentNode } from './comments.js';
 import { genitiveName } from './labels.js';
-import { $, el, fullName, renderChrome, showError, hideError } from './layout.js';
+import { $, clubRef, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { postNode } from './posts.js';
 
 const COUNTER_FROM = 900;
@@ -20,10 +20,10 @@ const wallOf = (post) => post.wall ?? post.author;
 // the owner of its wall.
 function renderTitle(post) {
   const owner = wallOf(post);
-  const path = '/' + owner.nickname;
+  const path = pagePath(owner);
   const name = fullName(owner);
 
-  document.title = `Запись на стене ${genitiveName(owner)} | Freenet`;
+  document.title = owner.club ? `Запись в группе ${owner.name} | Freenet` : `Запись на стене ${genitiveName(owner)} | Freenet`;
   $('title').replaceChildren(
     el('a', { href: path, textContent: name }),
     ' » ',
@@ -32,7 +32,19 @@ function renderTitle(post) {
   );
 }
 
-function initComments(post, me) {
+// moderatesWall tells whether the viewer keeps the wall of the post clean:
+// its owner, or an admin of the community whose wall it is.
+async function moderatesWall(post, me) {
+  const owner = wallOf(post);
+  if (!me) return false;
+  if (!owner.club) return owner.id === me.id;
+
+  const club = await api.club(clubRef(owner)).catch(() => null);
+
+  return club?.role === 'admin' || club?.role === 'owner';
+}
+
+function initComments(post, me, moderates) {
   const list = $('comments');
   const error = $('comments-error');
 
@@ -47,9 +59,9 @@ function initComments(post, me) {
     $('comments-empty').hidden = total > 0;
   }
 
-  // The author of a comment, the author of the post and the owner of the
-  // wall may delete it.
-  const canDelete = (comment) => Boolean(me) && [comment.author.id, post.author.id, wallOf(post).id].includes(me.id);
+  // The author of a comment, the author of the post and whoever keeps the
+  // wall clean may delete it.
+  const canDelete = (comment) => Boolean(me) && (moderates || post.mine || comment.author.id === me.id);
   const commentNodeFor = (comment) => commentNode(comment, {
     onDelete: canDelete(comment) && remove,
     onReply: me?.profileCompleted && reply,
@@ -188,7 +200,7 @@ async function removePost(post) {
 
   try {
     await api.deletePost(post.id);
-    location.href = '/' + wallOf(post).nickname;
+    location.href = pagePath(wallOf(post));
   } catch (e) {
     showError($('error'), e);
   }
@@ -201,16 +213,18 @@ try {
   const post = await api.post(postID);
 
   renderTitle(post);
+  const moderates = await moderatesWall(post, me);
   $('post').append(postNode(post, {
     viewer: me,
-    onDelete: [post.author.id, wallOf(post).id].includes(me?.id) && removePost,
+    moderates,
+    onDelete: (moderates || post.mine) && removePost,
     canLike: Boolean(me),
     onError: (e) => showError($('error'), e),
     withCommentsLink: false,
   }));
   $('content').hidden = false;
 
-  await initComments(post, me);
+  await initComments(post, me, moderates);
 } catch (e) {
   const notFound = e.status === 404 || e.status === 400;
   $('title').textContent = notFound ? 'Запись не найдена' : 'Ошибка';

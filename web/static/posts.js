@@ -4,7 +4,7 @@
 
 import { api } from './api.js';
 import { commentsLink, formatPostDate, genitiveName, shareLink, wrote } from './labels.js';
-import { avatarURL, el, fullName } from './layout.js';
+import { avatarURL, el, fullName, pagePath } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
@@ -19,6 +19,8 @@ export function postPath(post) {
 //   viewer: the signed-in viewer, null for anonymous; the author edits the
 //     post for a week ("Редактировать"), the owner of the wall pins it
 //     ("Закрепить"), as on openvk;
+//   moderates: the viewer keeps this wall clean, as the admins of a
+//     community do theirs: they pin any post too;
 //   onDelete(post, node) adds a "Удалить" link;
 //   onPinned(post) runs after the post is pinned or unpinned;
 //   canLike makes the heart and "Поделиться" clickable (signed-in viewers);
@@ -27,8 +29,8 @@ export function postPath(post) {
 //   onWallOf: the viewer (null for anonymous) when posts of several walls
 //     are mixed, as in the news feed: someone else's wall is then named,
 //     "написал на стене Петра Петрова", as openvk does there only.
-export function postNode(post, { viewer = null, onDelete, onPinned, canLike = false, onError, withCommentsLink = true, onWallOf } = {}) {
-  const path = '/' + post.author.nickname;
+export function postNode(post, { viewer = null, moderates = false, onDelete, onPinned, canLike = false, onError, withCommentsLink = true, onWallOf } = {}) {
+  const path = pagePath(post.author);
   const date = el('div', { className: 'post-date' });
   const content = el('div', { className: 'post-content' });
   const menu = el('span', {});
@@ -53,7 +55,7 @@ export function postNode(post, { viewer = null, onDelete, onPinned, canLike = fa
     links.push(shareButton(post, canLike));
     if (canEdit(post, viewer)) links.push(el('a', { textContent: 'Редактировать', onclick: edit }));
     if (onDelete) links.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(post, node) }));
-    if (viewer && wallOwnerID(post) === viewer.id) {
+    if (moderates || (viewer && wallOwnerID(post) === viewer.id)) {
       links.push(el('a', { textContent: post.pinned ? 'Открепить' : 'Закрепить', onclick: togglePin }));
     }
     return links;
@@ -94,7 +96,7 @@ export function postNode(post, { viewer = null, onDelete, onPinned, canLike = fa
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
-        ' ' + wrote(post.author.gender),
+        wroteBy(post.author),
         ...(onWallOf !== undefined && post.wall ? [' ', wallLink(post.wall, onWallOf)] : []),
         date,
       ),
@@ -113,9 +115,16 @@ export function postNode(post, { viewer = null, onDelete, onPinned, canLike = fa
 }
 
 // canEdit: the author edits a post until editableUntil, a week after
-// posting; the server checks it again.
+// posting; the server checks it again. mine tells the author a post that
+// speaks for a community, shown by the community.
 export function canEdit(post, viewer, now = new Date()) {
-  return Boolean(viewer) && post.author.id === viewer.id && now < new Date(post.editableUntil);
+  return Boolean(viewer) && Boolean(post.mine) && now < new Date(post.editableUntil);
+}
+
+// wroteBy is " написал" after the name of a person; a community, as on
+// openvk, just says.
+function wroteBy(author) {
+  return author.club ? '' : ' ' + wrote(author.gender);
 }
 
 // wallOwnerID is whose wall the post is on: its wall is null on the
@@ -132,14 +141,14 @@ function sharedNode(shared) {
     return el('div', { className: 'post-shared deleted', textContent: 'Запись удалена.' });
   }
 
-  const path = '/' + shared.author.nickname;
+  const path = pagePath(shared.author);
 
   return el('div', { className: 'post-shared' },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(shared.author, 'small'), alt: '' })),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(shared.author) }),
-        ' ' + wrote(shared.author.gender),
+        wroteBy(shared.author),
         ...(shared.wall ? [' ', wallLink(shared.wall, null)] : []),
         el('div', { className: 'post-date' }, el('a', { href: postPath(shared), textContent: formatPostDate(shared.createdAt) })),
       ),
@@ -165,10 +174,14 @@ function shareButton(post, canShare) {
   return button;
 }
 
-// wallLink names the wall a post is on: "на вашей стене" for the viewer's.
+// wallLink names the wall a post is on: "на вашей стене" for the viewer's,
+// "в Любители котов" for a community's: openvk's "в $1", the name as is.
 function wallLink(wall, viewer) {
-  const text = viewer?.id === wall.id ? 'на вашей стене' : 'на стене ' + genitiveName(wall);
-  return el('a', { className: 'post-wall', href: '/' + wall.nickname, textContent: text });
+  let text = 'на стене ' + genitiveName(wall);
+  if (wall.club) text = 'в ' + wall.name;
+  else if (viewer?.id === wall.id) text = 'на вашей стене';
+
+  return el('a', { className: 'post-wall', href: pagePath(wall), textContent: text });
 }
 
 // photosNode lays the photos of a post, comment or message out: one at its

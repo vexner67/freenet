@@ -206,6 +206,14 @@ export function followingCount(n) {
   return `${n} ${plural(n, ['подписка', 'подписки', 'подписок'])}`;
 }
 
+// membersCount is openvk's "participants": "Ни одного участника", "3 участника".
+export function membersCount(n) {
+  return n === 0 ? 'Ни одного участника' : `${n} ${plural(n, ['участник', 'участника', 'участников'])}`;
+}
+
+// clubRoles name what a member is in a community.
+export const clubRoles = { owner: 'Владелец', admin: 'Администратор', member: 'Участник' };
+
 export function postsCount(n) {
   return `${n} ${plural(n, ['запись', 'записи', 'записей'])}`;
 }
@@ -288,6 +296,16 @@ const errorTexts = {
   'message text is empty': 'Напишите что-нибудь.',
   'message text is too long': 'Сообщение слишком длинное.',
   'message not found': 'Сообщение не найдено.',
+  'club not found': 'Группа не найдена.',
+  'club name is empty': 'Укажите название группы.',
+  'club name is too long': 'Название группы длиннее 64 символов.',
+  'club description is too long': 'Описание длиннее 1000 символов.',
+  'club address is too long': 'Адрес страницы длиннее 32 символов.',
+  'club address contains invalid characters': 'Адрес страницы может состоять из латинских букв, цифр и _ и начинаться с буквы.',
+  'club address is already taken': 'Этот адрес уже занят.',
+  'the owner cannot leave the club': 'Владелец не может выйти из своей группы.',
+  'fill in your profile before creating a club': 'Сначала заполните свою страницу.',
+  'fill in your profile before joining a club': 'Сначала заполните свою страницу.',
   'the message can no longer be deleted': 'Сообщение можно удалить только в течение суток после отправки.',
   'you cannot write to yourself': 'Нельзя написать самому себе.',
   'fill in your profile before writing messages': 'Сначала заполните свою страницу.',
