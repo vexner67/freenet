@@ -20,6 +20,7 @@ const (
 	politicalViewsPrefix = "POLITICAL_VIEWS_"
 	wallWritePrefix      = "WALL_WRITE_"
 	messagesWritePrefix  = "MESSAGES_WRITE_"
+	clubsReadPrefix      = "CLUBS_READ_"
 	kindPrefix           = "KIND_"
 	changePrefix         = "CHANGE_"
 
@@ -126,6 +127,7 @@ func toUser(u *userv1.User) model.User {
 			ShowPoliticalViews: u.GetPrivacy().GetShowPoliticalViews(),
 			WallWrite:          enumName(u.GetPrivacy().GetWallWrite().String(), wallWritePrefix),
 			MessagesWrite:      enumName(u.GetPrivacy().GetMessagesWrite().String(), messagesWritePrefix),
+			ClubsRead:          enumName(u.GetPrivacy().GetClubsRead().String(), clubsReadPrefix),
 		},
 	}
 }

@@ -28,6 +28,7 @@ type Users interface {
 	GetProfiles(ctx context.Context, ids []string) ([]model.PublicProfile, error)
 	CanPostOnWall(ctx context.Context, accessToken, userID string) (bool, error)
 	CanMessage(ctx context.Context, accessToken, userID string, wroteFirst bool) (bool, error)
+	CanSeeClubs(ctx context.Context, accessToken, userID string) (bool, error)
 
 	Block(ctx context.Context, accessToken, userID string) error
 	Unblock(ctx context.Context, accessToken, userID string) error
@@ -113,6 +114,8 @@ type Clubs interface {
 	Leave(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
 	Members(ctx context.Context, clubID, cursor string, limit int, adminsOnly bool) (model.ClubMemberPage, error)
 	SetAdmin(ctx context.Context, accessToken, clubID, userID string, admin bool) error
+	Transfer(ctx context.Context, accessToken, clubID, userID string) error
+	OfUser(ctx context.Context, userID, cursor string, limit int) (model.UserClubPage, error)
 	Mine(ctx context.Context, accessToken, cursor string, limit int, managed bool) (model.ClubPage, error)
 	Search(ctx context.Context, query, cursor string, limit int) (model.ClubSearchPage, error)
 	SetAvatar(ctx context.Context, accessToken, clubID, avatarID string) (model.ClubView, error)
@@ -196,6 +199,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/follow", a.unfollow)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/followers", a.listFollowers)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/following", a.listFollowing)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/clubs", a.listUserClubs)
 
 	mux.HandleFunc("GET /api/v1/feed", a.feed)
 
@@ -229,6 +233,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/members", a.listClubMembers)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/admins/{nickname}", a.appointAdmin)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/admins/{nickname}", a.dismissAdmin)
+	mux.HandleFunc("PUT /api/v1/clubs/{ref}/owner/{nickname}", a.transferClub)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/posts", a.listClubPosts)
 	mux.HandleFunc("POST /api/v1/clubs/{ref}/posts", a.createClubPost)
 

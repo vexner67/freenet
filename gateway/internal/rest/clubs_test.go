@@ -24,6 +24,8 @@ type fakeClubs struct {
 	avatarID, query      string
 	role                 string
 	closedWall           bool
+	transferredTo        string
+	clubsOf              string
 	err                  error
 }
 
@@ -84,7 +86,21 @@ func (f *fakeClubs) Leave(_ context.Context, token, clubID string) (model.ClubVi
 
 func (f *fakeClubs) Members(_ context.Context, clubID, cursor string, limit int, adminsOnly bool) (model.ClubMemberPage, error) {
 	f.adminsOnly = adminsOnly
-	return model.ClubMemberPage{Members: f.members, NextCursor: "m1"}, f.err
+	return model.ClubMemberPage{Members: f.members, NextCursor: "m1", Total: len(f.members)}, f.err
+}
+
+// Transfer lets the owner only, as the club service.
+func (f *fakeClubs) Transfer(_ context.Context, token, clubID, userID string) error {
+	if f.role != "owner" {
+		return failure.New(failure.PermissionDenied, "permission denied")
+	}
+	f.token, f.transferredTo = token, userID
+	return f.err
+}
+
+func (f *fakeClubs) OfUser(_ context.Context, userID, cursor string, limit int) (model.UserClubPage, error) {
+	f.clubsOf = userID
+	return model.UserClubPage{Clubs: []model.Club{cats}, NextCursor: "k1", Total: 4}, f.err
 }
 
 func (f *fakeClubs) SetAdmin(_ context.Context, token, clubID, userID string, admin bool) error {
@@ -175,11 +191,11 @@ func TestClub(t *testing.T) {
 		t.Fatalf("unknown club: %d", w.Code)
 	}
 
-	w = h.do("PUT", "/api/v1/clubs/cats", `{"name":"Коты","description":"","address":"kotiki","wall":"closed"}`, "Authorization", "Bearer tok")
+	w = h.do("PUT", "/api/v1/clubs/cats", `{"name":"Коты","description":"","address":"kotiki","website":"cats.example","wall":"closed","adminsDisplay":"all"}`, "Authorization", "Bearer tok")
 	if got = decode[clubJSON](t, w); w.Code != http.StatusOK || got.Address != "kotiki" || got.Wall != "closed" {
 		t.Fatalf("update: %d %+v", w.Code, got)
 	}
-	if h.clubs.changes != (model.ClubChanges{Name: "Коты", Address: "kotiki", Wall: "closed"}) {
+	if h.clubs.changes != (model.ClubChanges{Name: "Коты", Address: "kotiki", Website: "cats.example", Wall: "closed", AdminsDisplay: "all"}) {
 		t.Fatalf("changes = %+v", h.clubs.changes)
 	}
 
@@ -227,10 +243,11 @@ func TestClubMembers(t *testing.T) {
 			Role string         `json:"role"`
 		} `json:"members"`
 		NextCursor string `json:"nextCursor"`
+		Total      int    `json:"total"`
 	}](t, w)
 
-	// Cat's page is deleted: she is left out.
-	if w.Code != http.StatusOK || len(got.Members) != 2 || got.Members[0].User["nickname"] != "bob" || got.Members[0].Role != "admin" || got.NextCursor != "m1" || !h.clubs.adminsOnly {
+	// Cat's page is deleted: she is left out, but counted.
+	if w.Code != http.StatusOK || len(got.Members) != 2 || got.Members[0].User["nickname"] != "bob" || got.Members[0].Role != "admin" || got.NextCursor != "m1" || got.Total != 3 || !h.clubs.adminsOnly {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
 
@@ -431,5 +448,56 @@ func TestClubPost_Signed(t *testing.T) {
 	h.clubs.closedWall = true
 	if w = h.do("POST", "/api/v1/clubs/cats/posts", `{"text":"новости"}`, "Authorization", "Bearer tok"); w.Code != http.StatusCreated || !h.posts.newPost.FromWall {
 		t.Fatalf("closed wall: %d %+v", w.Code, h.posts.newPost)
+	}
+}
+
+func TestTransferClub(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.clubs.role = "admin"
+	if w := h.do("PUT", "/api/v1/clubs/cats/owner/bob", "", "Authorization", "Bearer tok"); w.Code != http.StatusForbidden || h.clubs.transferredTo != "" {
+		t.Fatalf("an admin hands it over: %d", w.Code)
+	}
+
+	h.clubs.role = "owner"
+	if w := h.do("PUT", "/api/v1/clubs/cats/owner/bob", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.clubs.transferredTo != "u2" {
+		t.Fatalf("transfer: %d, to %q", w.Code, h.clubs.transferredTo)
+	}
+	if w := h.do("PUT", "/api/v1/clubs/cats/owner/nobody", "", "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		t.Fatalf("to nobody: %d", w.Code)
+	}
+	if w := h.do("PUT", "/api/v1/clubs/cats/owner/bob", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", w.Code)
+	}
+}
+
+func TestUserClubs(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+
+	// Public, as the user's setting allows.
+	w := h.do("GET", "/api/v1/users/bob/clubs", "")
+	got := decode[struct {
+		Clubs []struct {
+			Name   string            `json:"name"`
+			Avatar map[string]string `json:"avatar"`
+		} `json:"clubs"`
+		NextCursor string `json:"nextCursor"`
+		Total      int    `json:"total"`
+	}](t, w)
+	if w.Code != http.StatusOK || len(got.Clubs) != 1 || got.Clubs[0].Name != "Кошки" || got.Total != 4 || got.NextCursor != "k1" ||
+		h.clubs.clubsOf != "u2" || h.users.clubsAsked != "u2" {
+		t.Fatalf("%d %+v", w.Code, got)
+	}
+
+	h.users.hiddenClubs = true
+	h.clubs.clubsOf = ""
+	if w = h.do("GET", "/api/v1/users/bob/clubs", "", "Authorization", "Bearer tok"); w.Code != http.StatusForbidden || h.clubs.clubsOf != "" || h.users.token != "tok" {
+		t.Fatalf("hidden clubs: %d, listed for %q", w.Code, h.clubs.clubsOf)
+	}
+	if w = h.do("GET", "/api/v1/users/nobody/clubs", ""); w.Code != http.StatusNotFound {
+		t.Fatalf("unknown user: %d", w.Code)
 	}
 }

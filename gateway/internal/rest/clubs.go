@@ -14,13 +14,15 @@ type createClubRequest struct {
 	Description string `json:"description"`
 }
 
-// clubSettingsRequest is the whole settings form: an empty address takes
-// the address away.
+// clubSettingsRequest is the whole settings form: an empty address or
+// website takes it away.
 type clubSettingsRequest struct {
-	Name        string `json:"name"`
-	Description string `json:"description"`
-	Address     string `json:"address"`
-	Wall        string `json:"wall"`
+	Name          string `json:"name"`
+	Description   string `json:"description"`
+	Address       string `json:"address"`
+	Website       string `json:"website"`
+	Wall          string `json:"wall"`
+	AdminsDisplay string `json:"adminsDisplay"`
 }
 
 type clubPostRequest struct {
@@ -33,14 +35,16 @@ type clubPostRequest struct {
 }
 
 type clubJSON struct {
-	ID          string      `json:"id"`
-	Name        string      `json:"name"`
-	Description string      `json:"description"`
-	Address     string      `json:"address"`
-	Wall        string      `json:"wall"`
-	Members     int         `json:"members"`
-	CreatedAt   string      `json:"createdAt"`
-	Avatar      *avatarJSON `json:"avatar"`
+	ID            string      `json:"id"`
+	Name          string      `json:"name"`
+	Description   string      `json:"description"`
+	Address       string      `json:"address"`
+	Website       string      `json:"website"`
+	Wall          string      `json:"wall"`
+	AdminsDisplay string      `json:"adminsDisplay"`
+	Members       int         `json:"members"`
+	CreatedAt     string      `json:"createdAt"`
+	Avatar        *avatarJSON `json:"avatar"`
 }
 
 // clubResponse is a club as the viewer sees it: role is "" (not a member,
@@ -57,9 +61,12 @@ type clubMemberJSON struct {
 	Role string     `json:"role"`
 }
 
+// clubMembersResponse: Total counts the members, or the admins, on all
+// pages, those whose page is deleted too.
 type clubMembersResponse struct {
 	Members    []clubMemberJSON `json:"members"`
 	NextCursor string           `json:"nextCursor"`
+	Total      int              `json:"total"`
 }
 
 // myClubJSON: Pinned is in the caller's left menu.
@@ -80,16 +87,24 @@ type clubListResponse struct {
 	NextCursor string     `json:"nextCursor"`
 }
 
+type userClubsResponse struct {
+	Clubs      []clubJSON `json:"clubs"`
+	NextCursor string     `json:"nextCursor"`
+	Total      int        `json:"total"`
+}
+
 func toClubJSON(c model.Club) clubJSON {
 	return clubJSON{
-		ID:          c.ID,
-		Name:        c.Name,
-		Description: c.Description,
-		Address:     c.Address,
-		Wall:        c.Wall,
-		Members:     c.Members,
-		CreatedAt:   c.CreatedAt.UTC().Format(time.RFC3339),
-		Avatar:      toAvatarJSON(c.ID, c.AvatarID),
+		ID:            c.ID,
+		Name:          c.Name,
+		Description:   c.Description,
+		Address:       c.Address,
+		Website:       c.Website,
+		Wall:          c.Wall,
+		AdminsDisplay: c.AdminsDisplay,
+		Members:       c.Members,
+		CreatedAt:     c.CreatedAt.UTC().Format(time.RFC3339),
+		Avatar:        toAvatarJSON(c.ID, c.AvatarID),
 	}
 }
 
@@ -315,7 +330,7 @@ func (a *api) listClubMembers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := clubMembersResponse{Members: make([]clubMemberJSON, 0, len(page.Members)), NextCursor: page.NextCursor}
+	resp := clubMembersResponse{Members: make([]clubMemberJSON, 0, len(page.Members)), NextCursor: page.NextCursor, Total: page.Total}
 	for _, m := range page.Members {
 		if p, ok := people[m.UserID]; ok && !p.Club {
 			resp.Members = append(resp.Members, clubMemberJSON{User: toAuthorJSON(p), Role: m.Role})
@@ -360,6 +375,77 @@ func (a *api) setAdmin(w http.ResponseWriter, r *http.Request, admin bool) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// transferClub is the owner's "Назначить владельцем": the club goes to
+// one of its admins, and the owner stays an admin.
+func (a *api) transferClub(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.club(r, token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	user, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.clubs.Transfer(r.Context(), token, c.Club.ID, user.ID); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// listUserClubs is the block "Группы" of a user's page and its list, as
+// the user's "Кому видно мои группы" allows; the clubs of a deleted page
+// are hidden.
+func (a *api) listUserClubs(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	limit, err := pageLimit(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	user, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	allowed, err := a.users.CanSeeClubs(r.Context(), token, user.ID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if !allowed {
+		a.writeError(w, r, failure.New(failure.PermissionDenied, "this user's clubs are hidden"))
+		return
+	}
+
+	page, err := a.clubs.OfUser(r.Context(), user.ID, r.URL.Query().Get("cursor"), limit)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, userClubsResponse{Clubs: toClubsJSON(page.Clubs), NextCursor: page.NextCursor, Total: page.Total})
 }
 
 // listMyClubs is "Мои Группы": the caller's clubs, the newest joined

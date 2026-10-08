@@ -27,7 +27,8 @@ type Profile struct {
 // Privacy: WallWrite is who may write on the wall besides its owner,
 // "everyone", "following" (the people the owner follows) or "only_me";
 // MessagesWrite who may write private messages, "everyone", "following"
-// or "nobody".
+// or "nobody"; ClubsRead who sees the user's communities, "everyone",
+// "following" or "only_me".
 type Privacy struct {
 	ShowBirthday       bool
 	ShowRelationship   bool
@@ -35,6 +36,7 @@ type Privacy struct {
 	ShowPoliticalViews bool
 	WallWrite          string
 	MessagesWrite      string
+	ClubsRead          string
 }
 
 // Relation is who of the viewer and a user blacklisted the other.
@@ -279,16 +281,20 @@ type UserPage struct {
 }
 
 // Club is a community. Wall is who may write on its wall: "open" for
-// everyone, "closed" for its admins.
+// everyone, "closed" for its admins; AdminsDisplay what its page shows of
+// those who run it: "creator", "all" or "none".
 type Club struct {
 	ID          string
 	Name        string
 	Description string
 	// Address is the short name of its page, "" for none.
-	Address   string
-	Wall      string
-	Members   int
-	CreatedAt time.Time
+	Address string
+	// Website is an http or https link, "" for none.
+	Website       string
+	Wall          string
+	AdminsDisplay string
+	Members       int
+	CreatedAt     time.Time
 	// AvatarID is the club's photo, filed under its ID; "" for none.
 	AvatarID string
 }
@@ -304,10 +310,12 @@ type ClubView struct {
 
 // ClubChanges are a club's settings form: everything at once.
 type ClubChanges struct {
-	Name        string
-	Description string
-	Address     string
-	Wall        string
+	Name          string
+	Description   string
+	Address       string
+	Website       string
+	Wall          string
+	AdminsDisplay string
 }
 
 // ClubMember is one member of a club, with their role.
@@ -316,10 +324,12 @@ type ClubMember struct {
 	Role   string
 }
 
-// ClubMemberPage is one screen of members, the newest first.
+// ClubMemberPage is one screen of members, the newest first; Total counts
+// them, or the admins, on all pages.
 type ClubMemberPage struct {
 	Members    []ClubMember
 	NextCursor string
+	Total      int
 }
 
 // Membership is one club of the caller and what they are in it; Pinned:
@@ -342,4 +352,12 @@ type ClubPage struct {
 type ClubSearchPage struct {
 	Clubs      []Club
 	NextCursor string
+}
+
+// UserClubPage is one screen of the clubs of a user, the newest joined
+// first; Total counts all of them.
+type UserClubPage struct {
+	Clubs      []Club
+	NextCursor string
+	Total      int
 }
