@@ -23,7 +23,11 @@ type ClubService interface {
 	Leave(ctx context.Context, userID, clubID uuid.UUID) (service.View, error)
 	Appoint(ctx context.Context, requesterID, clubID, userID uuid.UUID, role club.Role) error
 	Members(ctx context.Context, clubID, cursor uuid.UUID, size int, adminsOnly bool) (service.MemberPage, error)
-	Clubs(ctx context.Context, userID, cursor uuid.UUID, size int) (service.ClubPage, error)
+	Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, managed bool) (service.ClubPage, error)
+	Search(ctx context.Context, query club.SearchQuery, cursor uuid.UUID, size int) (service.SearchPage, error)
+	SetAvatar(ctx context.Context, userID, clubID, avatarID uuid.UUID) (service.View, error)
+	Pin(ctx context.Context, userID, clubID uuid.UUID, pinned bool) error
+	Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error)
 	ClubIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	CanPostOnWall(ctx context.Context, userID, clubID uuid.UUID, fromClub bool) (bool, error)
 	CanModerateWall(ctx context.Context, wallID, userID uuid.UUID) (bool, error)
@@ -94,12 +98,7 @@ func (h *ClubHandler) GetClubs(ctx context.Context, req *clubv1.GetClubsRequest)
 		return nil, err
 	}
 
-	resp := &clubv1.GetClubsResponse{Clubs: make([]*clubv1.Club, 0, len(clubs))}
-	for _, c := range clubs {
-		resp.Clubs = append(resp.Clubs, toProtoClub(c))
-	}
-
-	return resp, nil
+	return &clubv1.GetClubsResponse{Clubs: toProtoClubs(clubs)}, nil
 }
 
 func (h *ClubHandler) UpdateClub(ctx context.Context, req *clubv1.UpdateClubRequest) (*clubv1.UpdateClubResponse, error) {
@@ -224,7 +223,7 @@ func (h *ClubHandler) ListMyClubs(ctx context.Context, req *clubv1.ListMyClubsRe
 		return nil, err
 	}
 
-	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()))
+	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), req.GetManaged())
 	if err != nil {
 		return nil, err
 	}
@@ -232,12 +231,88 @@ func (h *ClubHandler) ListMyClubs(ctx context.Context, req *clubv1.ListMyClubsRe
 	resp := &clubv1.ListMyClubsResponse{
 		Clubs:      make([]*clubv1.Membership, 0, len(page.Clubs)),
 		NextCursor: optionalID(page.NextCursor),
+		Total:      int32(page.Total), //nolint:gosec // a count of rows
 	}
 	for _, m := range page.Clubs {
-		resp.Clubs = append(resp.Clubs, &clubv1.Membership{Club: toProtoClub(m.Club), Role: roles[m.Role]})
+		resp.Clubs = append(resp.Clubs, &clubv1.Membership{Club: toProtoClub(m.Club), Role: roles[m.Role], Pinned: m.Pinned})
 	}
 
 	return resp, nil
+}
+
+func (h *ClubHandler) SearchClubs(ctx context.Context, req *clubv1.SearchClubsRequest) (*clubv1.SearchClubsResponse, error) {
+	query, err := club.NewSearchQuery(req.GetQuery())
+	if err != nil {
+		return nil, err
+	}
+
+	cursor, err := parseOptionalID(req.GetCursor(), "invalid cursor")
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.clubService.Search(ctx, query, cursor, int(req.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+
+	return &clubv1.SearchClubsResponse{Clubs: toProtoClubs(page.Clubs), NextCursor: optionalID(page.NextCursor)}, nil
+}
+
+func (h *ClubHandler) SetClubAvatar(ctx context.Context, req *clubv1.SetClubAvatarRequest) (*clubv1.SetClubAvatarResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clubID, err := parseID(req.GetClubId(), "invalid club id")
+	if err != nil {
+		return nil, err
+	}
+
+	avatarID, err := parseOptionalID(req.GetAvatarId(), "invalid avatar id")
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := h.clubService.SetAvatar(ctx, userID, clubID, avatarID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &clubv1.SetClubAvatarResponse{Club: toProtoView(v)}, nil
+}
+
+func (h *ClubHandler) PinClub(ctx context.Context, req *clubv1.PinClubRequest) (*emptypb.Empty, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clubID, err := parseID(req.GetClubId(), "invalid club id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.clubService.Pin(ctx, userID, clubID, req.GetPinned()); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *ClubHandler) ListPinnedClubs(ctx context.Context, _ *clubv1.ListPinnedClubsRequest) (*clubv1.ListPinnedClubsResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clubs, err := h.clubService.Pinned(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &clubv1.ListPinnedClubsResponse{Clubs: toProtoClubs(clubs)}, nil
 }
 
 func (h *ClubHandler) ListMyClubIDs(ctx context.Context, _ *clubv1.ListMyClubIDsRequest) (*clubv1.ListMyClubIDsResponse, error) {

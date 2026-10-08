@@ -4,6 +4,8 @@ package postgres
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -81,7 +83,8 @@ const (
 			COALESCE(address, ''),
 			wall,
 			created_at,
-			member_count
+			member_count,
+			avatar_id
 		FROM clubs
 		WHERE id = $1
 	`
@@ -93,7 +96,8 @@ const (
 			COALESCE(address, ''),
 			wall,
 			created_at,
-			member_count
+			member_count,
+			avatar_id
 		FROM clubs
 		WHERE lower(address) = lower($1)
 	`
@@ -105,7 +109,8 @@ const (
 			COALESCE(address, ''),
 			wall,
 			created_at,
-			member_count
+			member_count,
+			avatar_id
 		FROM clubs
 		WHERE id = ANY($1)
 	`
@@ -136,6 +141,12 @@ func (r *ClubRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*club.
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
+
+	return collectClubs(rows)
+}
+
+// collectClubs reads the clubs of rows and closes them.
+func collectClubs(rows pgx.Rows) ([]*club.Club, error) {
 	defer rows.Close()
 
 	var found []*club.Club
@@ -147,7 +158,7 @@ func (r *ClubRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*club.
 		found = append(found, c)
 	}
 
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, errs.Wrap("rows.Err", err)
 	}
 
@@ -160,10 +171,15 @@ func scanClub(row pgx.Row) (*club.Club, error) {
 	var (
 		s                                club.Stored
 		name, description, address, wall string
+		avatarID                         *uuid.UUID
 	)
 
-	if err := row.Scan(&s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members); err != nil {
+	if err := row.Scan(&s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID); err != nil {
 		return nil, err
+	}
+
+	if avatarID != nil {
+		s.AvatarID = *avatarID
 	}
 
 	s.Name = club.Name(name)
@@ -199,4 +215,80 @@ func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 	}
 
 	return nil
+}
+
+const setClubAvatarQuery = `
+	UPDATE clubs
+	SET avatar_id = $2
+	WHERE id = $1
+`
+
+func (r *ClubRepository) SetAvatar(ctx context.Context, c *club.Club) error {
+	var avatarID *uuid.UUID
+	if id := c.AvatarID(); id != uuid.Nil {
+		avatarID = &id
+	}
+
+	tag, err := r.pool.Exec(ctx, setClubAvatarQuery, c.ID(), avatarID)
+	if err != nil {
+		return errs.Wrap("r.pool.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return club.ErrNotFound
+	}
+
+	return nil
+}
+
+// searchClubsSelect is completed by searchClubsQuery with one LIKE per word.
+const searchClubsSelect = `
+	SELECT
+		id,
+		name,
+		description,
+		COALESCE(address, ''),
+		wall,
+		created_at,
+		member_count,
+		avatar_id
+	FROM clubs
+	WHERE id < $1`
+
+// searchHaystack must match the expression of clubs_search_idx exactly,
+// or the trigram index is not used.
+const searchHaystack = `lower(name || ' ' || COALESCE(address, ''))`
+
+// searchClubsQuery ANDs one "LIKE $n" per word: unlike LIKE ALL (array),
+// such conditions are served by the trigram index. Only placeholders are
+// added to the text; the words are passed as parameters.
+func searchClubsQuery(words int) string {
+	var b strings.Builder
+
+	b.WriteString(searchClubsSelect)
+	for i := range words {
+		fmt.Fprintf(&b, "\n\t\tAND %s LIKE $%d", searchHaystack, i+3)
+	}
+	b.WriteString("\n\tORDER BY id DESC\n\tLIMIT $2")
+
+	return b.String()
+}
+
+func (r *ClubRepository) Search(ctx context.Context, q club.SearchQuery, before uuid.UUID, limit int) ([]*club.Club, error) {
+	args := []any{cursor(before), limit}
+	for _, w := range q.Words() {
+		args = append(args, "%"+escapeLike(w)+"%")
+	}
+
+	rows, err := r.pool.Query(ctx, searchClubsQuery(len(q.Words())), args...)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+
+	return collectClubs(rows)
+}
+
+// escapeLike makes % and _ in a word match themselves.
+func escapeLike(s string) string {
+	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)
 }

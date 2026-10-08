@@ -15,7 +15,13 @@ var (
 	ErrOwnerCannotLeave = errors.New("the owner cannot leave the club")
 	ErrCannotAppoint    = errors.New("only the owner appoints the admins")
 	ErrNotMember        = errors.New("the user is not a member of the club")
+	ErrCannotPin        = errors.New("only the admins can add the club to their menu")
+	ErrTooManyPinned    = errors.New("at most 10 clubs in the menu")
 )
+
+// MaxPinned is how many of the clubs they run a user keeps in the left
+// menu, as openvk allows.
+const MaxPinned = 10
 
 // Club is a community: a page with a wall that people join. Whoever
 // creates it is its owner. A club does not change once made: Edited
@@ -29,6 +35,8 @@ type Club struct {
 	createdAt   time.Time
 	// members counts everyone in the club, the owner and admins too.
 	members int
+	// avatarID is the club's photo in the media service; uuid.Nil for none.
+	avatarID uuid.UUID
 }
 
 // New creates a club, open to posts from everyone as in openvk, with no
@@ -58,6 +66,7 @@ type Stored struct {
 	Wall        Wall
 	CreatedAt   time.Time
 	Members     int
+	AvatarID    uuid.UUID
 }
 
 // Restore rebuilds a club from storage without validation or new IDs.
@@ -70,6 +79,7 @@ func Restore(s Stored) *Club {
 		wall:        s.Wall,
 		createdAt:   s.CreatedAt,
 		members:     s.Members,
+		avatarID:    s.AvatarID,
 	}
 }
 
@@ -96,6 +106,29 @@ func (c *Club) Edited(role Role, changes Changes) (*Club, error) {
 	edited.wall = changes.Wall
 
 	return &edited, nil
+}
+
+// WithAvatar returns c showing the photo avatarID (uuid.Nil: none), set by
+// someone who is role in it: only the admins change it.
+func (c *Club) WithAvatar(role Role, avatarID uuid.UUID) (*Club, error) {
+	if !role.Manages() {
+		return nil, ErrCannotEdit
+	}
+
+	changed := *c
+	changed.avatarID = avatarID
+
+	return &changed, nil
+}
+
+// CheckPin: only those who run a club put it in their left menu, as the
+// "Добавить в левое меню" of openvk's "Управление".
+func CheckPin(role Role) error {
+	if !role.Manages() {
+		return ErrCannotPin
+	}
+
+	return nil
 }
 
 // CanPostOnWall tells whether someone who is role in the club may write
@@ -164,4 +197,8 @@ func (c *Club) CreatedAt() time.Time {
 
 func (c *Club) Members() int {
 	return c.members
+}
+
+func (c *Club) AvatarID() uuid.UUID {
+	return c.avatarID
 }

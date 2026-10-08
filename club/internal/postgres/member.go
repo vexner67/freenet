@@ -193,27 +193,31 @@ func cursor(before uuid.UUID) uuid.UUID {
 	return before
 }
 
+// listUserClubsQuery: with $4, only the clubs the user runs.
 const listUserClubsQuery = `
 	SELECT
 		m.id,
 		m.role,
+		m.pinned,
 		c.id,
 		c.name,
 		c.description,
 		COALESCE(c.address, ''),
 		c.wall,
 		c.created_at,
-		c.member_count
+		c.member_count,
+		c.avatar_id
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1
 		AND m.id < $2
+		AND (NOT $4 OR m.role IN ('admin', 'owner'))
 	ORDER BY m.id DESC
 	LIMIT $3
 `
 
-func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int) ([]service.Membership, error) {
-	rows, err := r.pool.Query(ctx, listUserClubsQuery, userID, cursor(before), limit)
+func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, managed bool) ([]service.Membership, error) {
+	rows, err := r.pool.Query(ctx, listUserClubsQuery, userID, cursor(before), limit, managed)
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
@@ -240,11 +244,16 @@ func scanMembership(row pgx.Row) (service.Membership, error) {
 		m                                      service.Membership
 		s                                      club.Stored
 		role, name, description, address, wall string
+		avatarID                               *uuid.UUID
 	)
 
-	err := row.Scan(&m.ID, &role, &s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members)
+	err := row.Scan(&m.ID, &role, &m.Pinned, &s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID)
 	if err != nil {
 		return service.Membership{}, err
+	}
+
+	if avatarID != nil {
+		s.AvatarID = *avatarID
 	}
 
 	s.Name = club.Name(name)
@@ -257,6 +266,94 @@ func scanMembership(row pgx.Row) (service.Membership, error) {
 	m.Club = club.Restore(s)
 
 	return m, nil
+}
+
+const countUserClubsQuery = `
+	SELECT count(*)
+	FROM club_members
+	WHERE user_id = $1
+		AND (NOT $2 OR role IN ('admin', 'owner'))
+`
+
+func (r *MemberRepository) CountClubs(ctx context.Context, userID uuid.UUID, managed bool) (int, error) {
+	var n int
+
+	if err := r.pool.QueryRow(ctx, countUserClubsQuery, userID, managed).Scan(&n); err != nil {
+		return 0, errs.Wrap("r.pool.QueryRow", err)
+	}
+
+	return n, nil
+}
+
+// pinQuery pins only a club the user runs, and only while fewer than $4
+// of those are pinned, counted in the same statement; unpinning, or
+// pinning a pinned one, always goes through. Two pins at once may both
+// see room for one: the menu then holds one more than the limit.
+const pinQuery = `
+	UPDATE club_members
+	SET pinned = $3
+	WHERE club_id = $1
+		AND user_id = $2
+		AND (
+			NOT $3
+			OR pinned
+			OR (
+				role IN ('admin', 'owner')
+				AND (
+					SELECT count(*)
+					FROM club_members
+					WHERE user_id = $2
+						AND pinned
+						AND role IN ('admin', 'owner')
+				) < $4
+			)
+		)
+`
+
+func (r *MemberRepository) Pin(ctx context.Context, clubID, userID uuid.UUID, pinned bool, limit int) (bool, error) {
+	tag, err := r.pool.Exec(ctx, pinQuery, clubID, userID, pinned, limit)
+	if err != nil {
+		return false, errs.Wrap("r.pool.Exec", err)
+	}
+
+	// Not a member is not a full menu: the service checked the role.
+	if tag.RowsAffected() == 0 && pinned {
+		role, err := r.Role(ctx, clubID, userID)
+		if err != nil {
+			return false, errs.Wrap("r.Role", err)
+		}
+
+		return !role.Manages(), nil
+	}
+
+	return true, nil
+}
+
+const pinnedClubsQuery = `
+	SELECT
+		c.id,
+		c.name,
+		c.description,
+		COALESCE(c.address, ''),
+		c.wall,
+		c.created_at,
+		c.member_count,
+		c.avatar_id
+	FROM club_members m
+	JOIN clubs c ON c.id = m.club_id
+	WHERE m.user_id = $1
+		AND m.pinned
+		AND m.role IN ('admin', 'owner')
+	ORDER BY m.id
+`
+
+func (r *MemberRepository) Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error) {
+	rows, err := r.pool.Query(ctx, pinnedClubsQuery, userID)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+
+	return collectClubs(rows)
 }
 
 const userClubIDsQuery = `

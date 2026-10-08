@@ -130,7 +130,7 @@ func TestClubService_Membership(t *testing.T) {
 		t.Fatalf("leave twice: %v", err)
 	}
 
-	mine, err := svc.Clubs(ctx, bob, uuid.Nil, 10)
+	mine, err := svc.Clubs(ctx, bob, uuid.Nil, 10, false)
 	if err != nil || len(mine.Clubs) != 1 || mine.Clubs[0].Club.ID() != c.ID() || mine.Clubs[0].Role != club.RoleMember {
 		t.Fatalf("bob's clubs = %+v, %v", mine, err)
 	}
@@ -273,5 +273,89 @@ func TestClubService_PurgeUser(t *testing.T) {
 	v, err := svc.Find(ctx, bob, service.Ref{ID: c.ID()})
 	if err != nil || v.OwnerID != uuid.Nil || v.Club.Members() != 1 || v.Role != club.RoleMember {
 		t.Fatalf("after the owner is erased = %+v, %v; the club stays with bob", v, err)
+	}
+}
+
+func TestClubService_AvatarSearchAndMenu(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newService()
+	ann, bob := uuid.New(), uuid.New()
+	cats := create(t, svc, ann)
+	if _, err := svc.Update(ctx, ann, cats.ID(), club.Changes{Name: "Любители котов", Address: "cats", Wall: club.WallOpen}); err != nil {
+		t.Fatal(err)
+	}
+	dogs, err := svc.Create(ctx, bob, "Собаки", "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.Join(ctx, bob, cats.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	photo := uuid.New()
+	v, err := svc.SetAvatar(ctx, ann, cats.ID(), photo)
+	if err != nil || v.Club.AvatarID() != photo {
+		t.Fatalf("SetAvatar = %+v, %v", v, err)
+	}
+	if _, err = svc.SetAvatar(ctx, bob, cats.ID(), uuid.New()); !errors.Is(err, club.ErrCannotEdit) {
+		t.Fatalf("a member sets the photo: %v", err)
+	}
+	if v, err = svc.SetAvatar(ctx, ann, cats.ID(), uuid.Nil); err != nil || v.Club.AvatarID() != uuid.Nil {
+		t.Fatalf("take the photo away = %+v, %v", v, err)
+	}
+
+	q, _ := club.NewSearchQuery("кот")
+	found, err := svc.Search(ctx, q, uuid.Nil, 10)
+	if err != nil || len(found.Clubs) != 1 || found.Clubs[0].ID() != cats.ID() {
+		t.Fatalf("Search = %+v, %v", found, err)
+	}
+
+	// Bob is in two clubs and runs one: "Управление".
+	all, err := svc.Clubs(ctx, bob, uuid.Nil, 10, false)
+	if err != nil || len(all.Clubs) != 2 || all.Total != 2 {
+		t.Fatalf("bob's clubs = %+v, %v", all, err)
+	}
+	managed, err := svc.Clubs(ctx, bob, uuid.Nil, 10, true)
+	if err != nil || len(managed.Clubs) != 1 || managed.Total != 1 || managed.Clubs[0].Club.ID() != dogs.Club.ID() {
+		t.Fatalf("bob's managed clubs = %+v, %v", managed, err)
+	}
+
+	if err = svc.Pin(ctx, bob, cats.ID(), true); !errors.Is(err, club.ErrCannotPin) {
+		t.Fatalf("pin a club one does not run: %v", err)
+	}
+	if err = svc.Pin(ctx, bob, dogs.Club.ID(), true); err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Pin(ctx, bob, dogs.Club.ID(), true); err != nil {
+		t.Fatalf("pin twice: %v", err)
+	}
+	pinned, err := svc.Pinned(ctx, bob)
+	if err != nil || len(pinned) != 1 || pinned[0].ID() != dogs.Club.ID() {
+		t.Fatalf("Pinned = %v, %v", pinned, err)
+	}
+	if managed, _ = svc.Clubs(ctx, bob, uuid.Nil, 10, true); !managed.Clubs[0].Pinned {
+		t.Fatal("the list says the club is pinned")
+	}
+	if err = svc.Pin(ctx, bob, dogs.Club.ID(), false); err != nil {
+		t.Fatal(err)
+	}
+	if pinned, _ = svc.Pinned(ctx, bob); len(pinned) != 0 {
+		t.Fatalf("unpinned = %v", pinned)
+	}
+
+	// At most club.MaxPinned.
+	for range club.MaxPinned {
+		v, err := svc.Create(ctx, ann, "ещё", "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = svc.Pin(ctx, ann, v.Club.ID(), true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err = svc.Pin(ctx, ann, cats.ID(), true); !errors.Is(err, club.ErrTooManyPinned) {
+		t.Fatalf("the eleventh: %v", err)
 	}
 }

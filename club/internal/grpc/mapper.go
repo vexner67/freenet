@@ -30,7 +30,17 @@ func toProtoClub(c *club.Club) *clubv1.Club {
 		Wall:        walls[c.Wall()],
 		MemberCount: int32(c.Members()), //nolint:gosec // counters come from int4 columns
 		CreatedAt:   timestamppb.New(c.CreatedAt()),
+		AvatarId:    optionalID(c.AvatarID()),
 	}
+}
+
+func toProtoClubs(clubs []*club.Club) []*clubv1.Club {
+	out := make([]*clubv1.Club, 0, len(clubs))
+	for _, c := range clubs {
+		out = append(out, toProtoClub(c))
+	}
+
+	return out
 }
 
 func toProtoView(v service.View) *clubv1.ClubView {

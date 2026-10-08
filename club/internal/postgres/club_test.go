@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"reflect"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -141,7 +142,7 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("demote the owner: %v", err)
 		}
 
-		mine, err := members.ListClubs(ctx, bob, uuid.Nil, 10)
+		mine, err := members.ListClubs(ctx, bob, uuid.Nil, 10, false)
 		if err != nil || len(mine) != 1 || mine[0].Club.ID() != c.ID() || mine[0].Role != club.RoleAdmin || mine[0].Club.Members() != 2 {
 			t.Fatalf("ListClubs = %+v, %v", mine, err)
 		}
@@ -216,4 +217,106 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("Owner = %v, %v; want none", owner, err)
 		}
 	})
+}
+
+func TestRepositories_AvatarSearchAndMenu(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	clubs := postgres.NewClubRepository(pool)
+	members := postgres.NewMemberRepository(pool)
+	ann, bob := uuid.New(), uuid.New()
+	// Words unique to this run: the database is shared with other runs.
+	word := "кот" + uuid.NewString()[:6]
+
+	create := func(owner uuid.UUID, name string) *club.Club {
+		t.Helper()
+		c, err := club.New(club.Name(name), "", time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = clubs.Create(ctx, c, owner); err != nil {
+			t.Fatal(err)
+		}
+		return c
+	}
+
+	cats := create(ann, "Любители "+word)
+	other := create(bob, "Собаки")
+	if err = members.Join(ctx, cats.ID(), bob); err != nil {
+		t.Fatal(err)
+	}
+
+	photo := uuid.New()
+	withPhoto, err := cats.WithAvatar(club.RoleOwner, photo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = clubs.SetAvatar(ctx, withPhoto); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := clubs.Get(ctx, cats.ID()); err != nil || got.AvatarID() != photo {
+		t.Fatalf("Get after SetAvatar = %+v, %v", got, err)
+	}
+	noPhoto, _ := cats.WithAvatar(club.RoleOwner, uuid.Nil)
+	if err = clubs.SetAvatar(ctx, noPhoto); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := clubs.Get(ctx, cats.ID()); got.AvatarID() != uuid.Nil {
+		t.Fatal("the photo stays")
+	}
+
+	q, err := club.NewSearchQuery(strings.ToUpper(word) + " любит")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if found, err := clubs.Search(ctx, q, uuid.Nil, 10); err != nil || len(found) != 1 || found[0].ID() != cats.ID() {
+		t.Fatalf("Search = %v, %v", found, err)
+	}
+	pct, _ := club.NewSearchQuery("%")
+	if found, err := clubs.Search(ctx, pct, uuid.Nil, 10); err != nil || len(found) != 0 {
+		t.Fatalf("%% matches itself only: %v, %v", found, err)
+	}
+
+	if n, err := members.CountClubs(ctx, bob, false); err != nil || n != 2 {
+		t.Fatalf("CountClubs = %d, %v", n, err)
+	}
+	if managed, err := members.ListClubs(ctx, bob, uuid.Nil, 10, true); err != nil || len(managed) != 1 || managed[0].Club.ID() != other.ID() {
+		t.Fatalf("managed = %+v, %v", managed, err)
+	}
+
+	if ok, err := members.Pin(ctx, cats.ID(), bob, true, 10); err != nil || !ok {
+		t.Fatalf("Pin by a member = %v, %v; not refused for a full menu", ok, err)
+	}
+	if pinned, _ := members.Pinned(ctx, bob); len(pinned) != 0 {
+		t.Fatalf("a member's pin counts: %v", pinned)
+	}
+	if ok, err := members.Pin(ctx, other.ID(), bob, true, 1); err != nil || !ok {
+		t.Fatalf("Pin = %v, %v", ok, err)
+	}
+	if ok, err := members.Pin(ctx, other.ID(), bob, true, 1); err != nil || !ok {
+		t.Fatalf("Pin twice at the limit = %v, %v", ok, err)
+	}
+	third := create(bob, "Хомяки")
+	if ok, err := members.Pin(ctx, third.ID(), bob, true, 1); err != nil || ok {
+		t.Fatalf("Pin over the limit = %v, %v", ok, err)
+	}
+	pinned, err := members.Pinned(ctx, bob)
+	if err != nil || len(pinned) != 1 || pinned[0].ID() != other.ID() {
+		t.Fatalf("Pinned = %v, %v", pinned, err)
+	}
+	if ok, err := members.Pin(ctx, other.ID(), bob, false, 1); err != nil || !ok {
+		t.Fatalf("Unpin = %v, %v", ok, err)
+	}
 }

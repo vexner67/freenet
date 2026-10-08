@@ -29,8 +29,20 @@ service ClubService {
   rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
   // The owner makes a member an admin, or an admin a member again.
   rpc SetMemberRole(SetMemberRoleRequest) returns (google.protobuf.Empty);
-  // The caller's clubs ("Мои Группы"), the newest joined first.
+  // The caller's clubs ("Мои Группы"), the newest joined first; with
+  // managed only those they run ("Управление").
   rpc ListMyClubs(ListMyClubsRequest) returns (ListMyClubsResponse);
+  // Public: clubs whose name or address has every word of the query, the
+  // newest first.
+  rpc SearchClubs(SearchClubsRequest) returns (SearchClubsResponse);
+  // Its admins show a photo as the club's, which the media service has
+  // stored; an empty avatar_id takes it away.
+  rpc SetClubAvatar(SetClubAvatarRequest) returns (SetClubAvatarResponse);
+  // The caller puts a club they run in their left menu, at most 10, or
+  // takes it out ("Добавить в левое меню").
+  rpc PinClub(PinClubRequest) returns (google.protobuf.Empty);
+  // The clubs in the caller's left menu that they still run.
+  rpc ListPinnedClubs(ListPinnedClubsRequest) returns (ListPinnedClubsResponse);
   // The caller's newest 1000 clubs, whose walls their feed shows.
   rpc ListMyClubIDs(ListMyClubIDsRequest) returns (ListMyClubIDsResponse);
   // Whether the caller may write on the club's wall, on their own behalf
@@ -71,6 +83,8 @@ message Club {
   Wall wall = 5;
   int32 member_count = 6;
   google.protobuf.Timestamp created_at = 7;
+  // The club's photo in the media service; empty for none.
+  string avatar_id = 8;
 }
 
 // ClubView is a club as the caller sees it.
@@ -169,17 +183,57 @@ message ListMyClubsRequest {
   string cursor = 1;
   // 1-50; anything else means 20.
   int32 limit = 2;
+  // Only the clubs the caller runs.
+  bool managed = 3;
 }
 
 message Membership {
   Club club = 1;
   Role role = 2;
+  // In the caller's left menu.
+  bool pinned = 3;
 }
 
 message ListMyClubsResponse {
   repeated Membership clubs = 1;
   // Empty on the last page.
   string next_cursor = 2;
+  // How many there are on all pages.
+  int32 total = 3;
+}
+
+message SearchClubsRequest {
+  string query = 1;
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message SearchClubsResponse {
+  repeated Club clubs = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+}
+
+message SetClubAvatarRequest {
+  string club_id = 1;
+  string avatar_id = 2;
+}
+
+message SetClubAvatarResponse {
+  ClubView club = 1;
+}
+
+message PinClubRequest {
+  string club_id = 1;
+  bool pinned = 2;
+}
+
+message ListPinnedClubsRequest {}
+
+message ListPinnedClubsResponse {
+  repeated Club clubs = 1;
 }
 
 message ListMyClubIDsRequest {}

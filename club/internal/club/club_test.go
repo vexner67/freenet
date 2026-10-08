@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/vexner67/freenet/club/internal/club"
 )
 
@@ -195,6 +196,54 @@ func TestCheckLeaveAndAppoint(t *testing.T) {
 	for _, tt := range tests {
 		if err := club.CheckAppoint(tt.requester, tt.target); !errors.Is(err, tt.err) {
 			t.Errorf("%q appoints %q: %v, want %v", tt.requester, tt.target, err, tt.err)
+		}
+	}
+}
+
+func TestWithAvatarAndPin(t *testing.T) {
+	t.Parallel()
+
+	c := newClub(t)
+	photo := uuid.New()
+
+	changed, err := c.WithAvatar(club.RoleAdmin, photo)
+	if err != nil || changed.AvatarID() != photo || c.AvatarID() != uuid.Nil {
+		t.Fatalf("WithAvatar = %v, %v", changed, err)
+	}
+	if _, err = c.WithAvatar(club.RoleMember, photo); !errors.Is(err, club.ErrCannotEdit) {
+		t.Fatalf("a member sets the photo: %v", err)
+	}
+
+	if err = club.CheckPin(club.RoleOwner); err != nil {
+		t.Fatalf("the owner pins: %v", err)
+	}
+	if err = club.CheckPin(club.RoleMember); !errors.Is(err, club.ErrCannotPin) {
+		t.Fatalf("a member pins: %v", err)
+	}
+}
+
+func TestSearchQuery(t *testing.T) {
+	t.Parallel()
+
+	if _, err := club.NewSearchQuery("  "); !errors.Is(err, club.ErrSearchQueryEmpty) {
+		t.Fatalf("empty: %v", err)
+	}
+	if _, err := club.NewSearchQuery(strings.Repeat("я", 65)); !errors.Is(err, club.ErrSearchQueryTooLong) {
+		t.Fatalf("too long: %v", err)
+	}
+
+	c, err := newClub(t).Edited(club.RoleOwner, club.Changes{Name: "Любители Котов", Address: "cats", Wall: club.WallOpen})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	for query, want := range map[string]bool{"котов": true, "КОТ любит": true, "cat": true, "собак": false, "котов собак": false} {
+		q, err := club.NewSearchQuery(query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := q.Matches(c); got != want {
+			t.Errorf("%q matches = %v, want %v", query, got, want)
 		}
 	}
 }
