@@ -254,6 +254,15 @@ export const api = {
   // signed: naming you under it ("Подпись автора").
   createClubPost: (ref, text, photos = [], { fromClub = false, signed = false } = {}) =>
     authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub, signed }),
+  // "Предложка": a post suggested for the admins of a club to publish.
+  suggestClubPost: (ref, text, photos = []) => authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/suggestions`, { text, photos }),
+  // mine: only yours ("Предложенные вами записи"); all of them for the admins.
+  clubSuggestions(ref, { mine = false, cursor = '', limit = 0 } = {}) {
+    const path = page(`/api/v1/clubs/${encodeURIComponent(ref)}/suggestions`, cursor, limit);
+    return authorized('GET', mine ? path + (path.includes('?') ? '&' : '?') + 'mine=true' : path);
+  },
+  publishSuggestion: (id, text, signed) => authorized('POST', `/api/v1/suggestions/${encodeURIComponent(id)}/publish`, { text, signed }),
+  deleteSuggestion: (id) => authorized('DELETE', `/api/v1/suggestions/${encodeURIComponent(id)}`),
 
   search(query, cursor = '') {
     const params = new URLSearchParams({ q: query });

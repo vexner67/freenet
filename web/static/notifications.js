@@ -6,7 +6,7 @@
 import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
 import { formatPostDate, notificationVerb, snippet } from './labels.js';
-import { $, avatarURL, el, fullName, profilePath, renderChrome, setCounter, showError, hideError } from './layout.js';
+import { $, avatarURL, el, fullName, pagePath, profilePath, renderChrome, setCounter, showError, hideError } from './layout.js';
 import { postPath } from './posts.js';
 
 const COMMENT_SNIPPET = 200;
@@ -60,7 +60,13 @@ function postLink(post, text) {
 // notificationText is the sentence of openvk; null for a type this page
 // does not know yet.
 function notificationText(n) {
-  const name = el('a', { className: 'post-name', href: '/' + n.actor.nickname, textContent: fullName(n.actor) });
+  const name = el('a', { className: 'post-name', href: pagePath(n.actor), textContent: fullName(n.actor) });
+
+  // A community acts on its own: openvk's "Сообщество ... опубликовало".
+  if (n.type === 'post_accepted') {
+    return ['Сообщество ', name, ' опубликовало вашу предложенную ', postLink(n.post, 'запись'), '.'];
+  }
+
   const verb = notificationVerb(n.type, n.actor.gender);
 
   switch (n.type) {
@@ -93,7 +99,7 @@ function notificationNode(n) {
   if (!text) return null;
 
   return el('div', { className: 'post notification' },
-    el('a', { className: 'post-avatar', href: '/' + n.actor.nickname }, el('img', { src: avatarURL(n.actor, 'small'), alt: '' })),
+    el('a', { className: 'post-avatar', href: pagePath(n.actor) }, el('img', { src: avatarURL(n.actor, 'small'), alt: '' })),
     el('div', { className: 'post-main' },
       el('div', { className: 'notification-text' }, ...text),
       el('div', { className: 'post-date', textContent: formatPostDate(n.createdAt) }),

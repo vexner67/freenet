@@ -242,6 +242,26 @@ export function adminsCount(n) {
   return `${n} ${plural(n, ['администратор', 'администратора', 'администраторов'])}`;
 }
 
+// suggestedByEveryone and suggestedByYou are the links above the wall of
+// a "Предложка", openvk's "suggested_by_everyone" and "suggested_by_you".
+export function suggestedByEveryone(n) {
+  return `${n} ${plural(n, ['предложенная запись', 'предложенные записи', 'предложенных записей'])}`;
+}
+
+export function suggestedByYou(n) {
+  return `${n} ${plural(n, ['предложенная вами запись', 'предложенные вами записи', 'предложенных вами записей'])}`;
+}
+
+// suggestedInClub is the head of the suggestions of a club, openvk's
+// "suggested_posts_in_group" and, for your own, "..._by_you"; at 0, once
+// all are handled.
+export function suggestedInClub(n, mine) {
+  if (n === 0) return mine ? 'Вы не предлагали в эту группу никаких записей' : 'Вы посмотрели всю предложку, поздравляю!';
+
+  const posts = `${n} ${plural(n, ['запись', 'записи', 'записей'])}`;
+  return mine ? `Вы предложили в эту группу ${posts}` : `В эту группу предложили ${posts}`;
+}
+
 // clubRoles name what a member is in a community.
 export const clubRoles = { owner: 'Владелец', admin: 'Администратор', member: 'Участник' };
 
@@ -342,6 +362,8 @@ const errorTexts = {
   'club website is not a link': 'Укажите адрес сайта, например example.com.',
   'the new owner must be an admin of the club': 'Владельцем можно назначить только администратора группы.',
   "this user's clubs are hidden": 'Пользователь скрыл список своих групп.',
+  'you cannot suggest posts here': 'В эту группу нельзя предлагать записи.',
+  'suggestion not found': 'Запись уже опубликована или отклонена.',
   'fill in your profile before creating a club': 'Сначала заполните свою страницу.',
   'fill in your profile before joining a club': 'Сначала заполните свою страницу.',
   'the message can no longer be deleted': 'Сообщение можно удалить только в течение суток после отправки.',

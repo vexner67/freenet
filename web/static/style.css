@@ -665,3 +665,13 @@ a.like:hover svg { opacity: .7; }
 .gray-bar-search { flex: 1; }
 .summary-bar { margin: 0 -10px; padding: 11px 10px; border-bottom: 1px solid #dedede; color: #45688e; font-weight: bold; }
 .profile-links { margin-top: 6px; }
+
+/* "Предложка": the link above the wall, the head of the suggestions and
+   the buttons of an admin under each, as on openvk. */
+.sugglist { margin: 5px 0 -5px; padding: 5px 9px; border-top: 1px solid #808080; background: #e6e6e6; }
+.sugglist a { color: #626262; }
+.suggested-count { margin: 0 0 7px; border-bottom: 1px solid #e8ebee; color: #45688e; font-size: 12px; font-weight: bold; }
+.suggestion-controls { margin: 4px 0 7px; text-align: center; }
+.suggestion-controls .button { margin: 0 2px; }
+.publish-signed { display: block; margin-top: 4px; }
+.publish-signed input { vertical-align: middle; margin: 0 3px 0 0; }
