@@ -1,9 +1,11 @@
 // The members of a club ("Участники") and its admins ("Руководство"), as
-// on openvk, the newest first. Its owner makes members admins and back.
+// on openvk, the newest first. Its owner makes members admins and back,
+// and hands the club over to an admin ("Назначить владельцем").
 
 import { api, currentUser } from './api.js';
 import { clubRoles, membersCount } from './labels.js';
-import { $, clubRef, el, renderChrome, showError, hideError } from './layout.js';
+import { $, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
+import { button, openModal } from './modal.js';
 import { personRow } from './people.js';
 import { separated } from './posts.js';
 
@@ -19,18 +21,22 @@ function memberNode(member) {
 
   function render() {
     role.textContent = clubRoles[member.role];
-    links.replaceChildren(...separated(actions()));
+    links.replaceChildren(...separated(actions().filter(Boolean)));
   }
 
-  // The owner appoints and dismisses the admins; nobody touches the owner.
+  // The owner appoints and dismisses the admins and hands the club over to
+  // one of them; nobody touches the owner.
   function actions() {
     if (club.role !== 'owner' || member.role === 'owner') return [];
 
     const appoint = member.role === 'member';
-    return [el('a', {
-      textContent: appoint ? 'Назначить администратором' : 'Снять полномочия администратора',
-      onclick: () => setAdmin(appoint),
-    })];
+    return [
+      el('a', {
+        textContent: appoint ? 'Назначить администратором' : 'Снять полномочия администратора',
+        onclick: () => setAdmin(appoint),
+      }),
+      !appoint && el('a', { textContent: 'Назначить владельцем', onclick: () => confirmTransfer(member.user) }),
+    ];
   }
 
   async function setAdmin(appoint) {
@@ -49,6 +55,47 @@ function memberNode(member) {
   render();
 
   return personRow(member.user, el('div', { className: 'hint' }, role), el('div', {}, links));
+}
+
+// confirmTransfer is openvk's "Передача прав владельца". openvk also asks
+// for the password; there are no passwords here, sign-in is by email.
+function confirmTransfer(user) {
+  const modal = openModal('Передача прав владельца');
+  const error = el('div', { className: 'error', hidden: true });
+
+  modal.body.append(
+    el('p', {}, `Внимание! Вы передаёте права владельца пользователю ${fullName(user)}. Это действие необратимо. ` +
+      'После передачи вы останетесь администратором, но сможете легко перестать им быть.'),
+    error,
+  );
+  modal.actions.append(
+    button('Передать', async (event) => {
+      event.target.disabled = true;
+      hideError(error);
+
+      try {
+        await api.transferClub(clubRef(club), user.nickname);
+        modal.close();
+        transferred(user);
+      } catch (e) {
+        showError(error, e);
+        event.target.disabled = false;
+      }
+    }),
+    button('Отмена', modal.close, { secondary: true }),
+  );
+}
+
+// transferred shows what openvk says and the list again, with the roles
+// as they now are.
+function transferred(user) {
+  club.role = 'admin';
+  $('notice').textContent = `Новый владелец (${fullName(user)}) успешно назначен в сообщество ${club.name}. ` +
+    'Вам выданы права администратора в сообществе.';
+  $('notice').hidden = false;
+  $('people').replaceChildren();
+  cursor = '';
+  loadMore();
 }
 
 async function loadMore() {

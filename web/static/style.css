@@ -332,7 +332,7 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
   font-size: 9px;
 }
 .post-menu a { color: #999; }
-.post-menu .separator { margin: 0 5px; color: #ccc; }
+.separator { margin: 0 5px; color: #ccc; }
 
 .like { display: inline-flex; align-items: center; gap: 3px; color: #2b587a; }
 .like svg { width: 11px; height: 10px; fill: #2b587a; opacity: .4; }

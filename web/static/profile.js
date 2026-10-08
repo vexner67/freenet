@@ -1,12 +1,13 @@
 import { api, currentUser } from './api.js';
-import { genders, relationships, worldviews, politicalViews, label, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
-import { $, el, fullName, renderChrome, showError } from './layout.js';
+import { genders, relationships, worldviews, politicalViews, label, clubsCount, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
+import { $, el, fullName, pagePath, renderChrome, showError } from './layout.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initFollow } from './follow.js';
 import { initPhoto } from './photo.js';
 import { initWall } from './wall.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
+const CLUBS_SHOWN = 6;
 
 // rows lists what to show; private marks rows others cannot see (only the
 // owner gets them at all, from /me).
@@ -47,6 +48,22 @@ function render(user, isOwner) {
   $('profile').hidden = false;
 
   initWall(user, me);
+}
+
+// showClubs is openvk's block "Группы": how many, "Все" and the names of
+// the newest, as the user's "Кому видно мои группы" allows.
+async function showClubs(user) {
+  try {
+    const page = await api.userClubs(user.nickname, '', CLUBS_SHOWN);
+    const links = page.clubs.map((club) => el('a', { href: pagePath({ ...club, club: true }), textContent: club.name }));
+
+    $('clubs-count').textContent = clubsCount(page.total);
+    $('clubs-all').href = '/groups?u=' + encodeURIComponent(user.nickname);
+    $('clubs-list').replaceChildren(...links.flatMap((link, i) => (i === 0 ? [link] : [' • ', link])));
+    $('clubs-block').hidden = page.total === 0;
+  } catch {
+    // Hidden by the user, or not to be had: the page works without it.
+  }
 }
 
 // renderLimited is openvk's page of someone blacklisted either way: the
@@ -122,6 +139,7 @@ try {
     render(isOwner ? me : profile, isOwner);
     initPhoto(isOwner ? me : profile, isOwner);
     initFollow(profile, me, isOwner);
+    showClubs(profile);
 
     // As on openvk: write to anyone but yourself.
     if (me && !isOwner) {

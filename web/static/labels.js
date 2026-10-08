@@ -60,6 +60,21 @@ export const messagesWrites = [
   ['nobody', 'Никто'],
 ];
 
+// clubsReads is "Кому видно мои группы" of openvk, with its "Друзьям" as
+// the people you follow.
+export const clubsReads = [
+  ['everyone', 'Всем желающим'],
+  ['following', 'Тем, на кого я подписан(а)'],
+  ['only_me', 'Только мне'],
+];
+
+// adminsDisplays is "Список админов" of a community's settings in openvk.
+export const adminsDisplays = [
+  ['creator', 'Отображать только создателя группы'],
+  ['all', 'Отображать всех администраторов'],
+  ['none', 'Ничего не отображать'],
+];
+
 export const months = [
   'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
   'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
@@ -222,6 +237,11 @@ export function clubsCount(n) {
   return n === 0 ? 'Ни одной группы' : `${n} ${plural(n, ['группа', 'группы', 'групп'])}`;
 }
 
+// adminsCount is openvk's "administrators": "1 администратор", "5 администраторов".
+export function adminsCount(n) {
+  return `${n} ${plural(n, ['администратор', 'администратора', 'администраторов'])}`;
+}
+
 // clubRoles name what a member is in a community.
 export const clubRoles = { owner: 'Владелец', admin: 'Администратор', member: 'Участник' };
 
@@ -318,6 +338,10 @@ const errorTexts = {
   'only the admins can add the club to their menu': 'Добавить группу в левое меню могут только её администраторы.',
   'at most 10 clubs in the menu': 'В левом меню может быть не больше 10 групп.',
   'only the admins can edit the club': 'Изменять группу могут только её администраторы.',
+  'club website is too long': 'Адрес сайта длиннее 256 символов.',
+  'club website is not a link': 'Укажите адрес сайта, например example.com.',
+  'the new owner must be an admin of the club': 'Владельцем можно назначить только администратора группы.',
+  "this user's clubs are hidden": 'Пользователь скрыл список своих групп.',
   'fill in your profile before creating a club': 'Сначала заполните свою страницу.',
   'fill in your profile before joining a club': 'Сначала заполните свою страницу.',
   'the message can no longer be deleted': 'Сообщение можно удалить только в течение суток после отправки.',

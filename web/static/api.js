@@ -229,6 +229,10 @@ export const api = {
   },
   appointAdmin: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
   dismissAdmin: (ref, nickname) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
+  // The owner hands the club over to one of its admins ("Назначить владельцем").
+  transferClub: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/owner/${encodeURIComponent(nickname)}`),
+  // The clubs of a user, as their "Кому видно мои группы" allows: 403 if hidden.
+  userClubs: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/clubs`, cursor, limit)),
   // managed: only the clubs you run ("Управляемые").
   myClubs(cursor = '', managed = false) {
     const path = page('/api/v1/me/clubs', cursor, 0);
