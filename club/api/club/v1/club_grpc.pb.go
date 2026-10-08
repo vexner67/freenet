@@ -29,6 +29,10 @@ const (
 	ClubService_ListMembers_FullMethodName     = "/club.v1.ClubService/ListMembers"
 	ClubService_SetMemberRole_FullMethodName   = "/club.v1.ClubService/SetMemberRole"
 	ClubService_ListMyClubs_FullMethodName     = "/club.v1.ClubService/ListMyClubs"
+	ClubService_SearchClubs_FullMethodName     = "/club.v1.ClubService/SearchClubs"
+	ClubService_SetClubAvatar_FullMethodName   = "/club.v1.ClubService/SetClubAvatar"
+	ClubService_PinClub_FullMethodName         = "/club.v1.ClubService/PinClub"
+	ClubService_ListPinnedClubs_FullMethodName = "/club.v1.ClubService/ListPinnedClubs"
 	ClubService_ListMyClubIDs_FullMethodName   = "/club.v1.ClubService/ListMyClubIDs"
 	ClubService_CanPostOnWall_FullMethodName   = "/club.v1.ClubService/CanPostOnWall"
 	ClubService_CanModerateWall_FullMethodName = "/club.v1.ClubService/CanModerateWall"
@@ -61,8 +65,20 @@ type ClubServiceClient interface {
 	ListMembers(ctx context.Context, in *ListMembersRequest, opts ...grpc.CallOption) (*ListMembersResponse, error)
 	// The owner makes a member an admin, or an admin a member again.
 	SetMemberRole(ctx context.Context, in *SetMemberRoleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// The caller's clubs ("Мои Группы"), the newest joined first.
+	// The caller's clubs ("Мои Группы"), the newest joined first; with
+	// managed only those they run ("Управление").
 	ListMyClubs(ctx context.Context, in *ListMyClubsRequest, opts ...grpc.CallOption) (*ListMyClubsResponse, error)
+	// Public: clubs whose name or address has every word of the query, the
+	// newest first.
+	SearchClubs(ctx context.Context, in *SearchClubsRequest, opts ...grpc.CallOption) (*SearchClubsResponse, error)
+	// Its admins show a photo as the club's, which the media service has
+	// stored; an empty avatar_id takes it away.
+	SetClubAvatar(ctx context.Context, in *SetClubAvatarRequest, opts ...grpc.CallOption) (*SetClubAvatarResponse, error)
+	// The caller puts a club they run in their left menu, at most 10, or
+	// takes it out ("Добавить в левое меню").
+	PinClub(ctx context.Context, in *PinClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The clubs in the caller's left menu that they still run.
+	ListPinnedClubs(ctx context.Context, in *ListPinnedClubsRequest, opts ...grpc.CallOption) (*ListPinnedClubsResponse, error)
 	// The caller's newest 1000 clubs, whose walls their feed shows.
 	ListMyClubIDs(ctx context.Context, in *ListMyClubIDsRequest, opts ...grpc.CallOption) (*ListMyClubIDsResponse, error)
 	// Whether the caller may write on the club's wall, on their own behalf
@@ -175,6 +191,46 @@ func (c *clubServiceClient) ListMyClubs(ctx context.Context, in *ListMyClubsRequ
 	return out, nil
 }
 
+func (c *clubServiceClient) SearchClubs(ctx context.Context, in *SearchClubsRequest, opts ...grpc.CallOption) (*SearchClubsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchClubsResponse)
+	err := c.cc.Invoke(ctx, ClubService_SearchClubs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clubServiceClient) SetClubAvatar(ctx context.Context, in *SetClubAvatarRequest, opts ...grpc.CallOption) (*SetClubAvatarResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetClubAvatarResponse)
+	err := c.cc.Invoke(ctx, ClubService_SetClubAvatar_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clubServiceClient) PinClub(ctx context.Context, in *PinClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ClubService_PinClub_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clubServiceClient) ListPinnedClubs(ctx context.Context, in *ListPinnedClubsRequest, opts ...grpc.CallOption) (*ListPinnedClubsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPinnedClubsResponse)
+	err := c.cc.Invoke(ctx, ClubService_ListPinnedClubs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clubServiceClient) ListMyClubIDs(ctx context.Context, in *ListMyClubIDsRequest, opts ...grpc.CallOption) (*ListMyClubIDsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListMyClubIDsResponse)
@@ -241,8 +297,20 @@ type ClubServiceServer interface {
 	ListMembers(context.Context, *ListMembersRequest) (*ListMembersResponse, error)
 	// The owner makes a member an admin, or an admin a member again.
 	SetMemberRole(context.Context, *SetMemberRoleRequest) (*emptypb.Empty, error)
-	// The caller's clubs ("Мои Группы"), the newest joined first.
+	// The caller's clubs ("Мои Группы"), the newest joined first; with
+	// managed only those they run ("Управление").
 	ListMyClubs(context.Context, *ListMyClubsRequest) (*ListMyClubsResponse, error)
+	// Public: clubs whose name or address has every word of the query, the
+	// newest first.
+	SearchClubs(context.Context, *SearchClubsRequest) (*SearchClubsResponse, error)
+	// Its admins show a photo as the club's, which the media service has
+	// stored; an empty avatar_id takes it away.
+	SetClubAvatar(context.Context, *SetClubAvatarRequest) (*SetClubAvatarResponse, error)
+	// The caller puts a club they run in their left menu, at most 10, or
+	// takes it out ("Добавить в левое меню").
+	PinClub(context.Context, *PinClubRequest) (*emptypb.Empty, error)
+	// The clubs in the caller's left menu that they still run.
+	ListPinnedClubs(context.Context, *ListPinnedClubsRequest) (*ListPinnedClubsResponse, error)
 	// The caller's newest 1000 clubs, whose walls their feed shows.
 	ListMyClubIDs(context.Context, *ListMyClubIDsRequest) (*ListMyClubIDsResponse, error)
 	// Whether the caller may write on the club's wall, on their own behalf
@@ -291,6 +359,18 @@ func (UnimplementedClubServiceServer) SetMemberRole(context.Context, *SetMemberR
 }
 func (UnimplementedClubServiceServer) ListMyClubs(context.Context, *ListMyClubsRequest) (*ListMyClubsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMyClubs not implemented")
+}
+func (UnimplementedClubServiceServer) SearchClubs(context.Context, *SearchClubsRequest) (*SearchClubsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchClubs not implemented")
+}
+func (UnimplementedClubServiceServer) SetClubAvatar(context.Context, *SetClubAvatarRequest) (*SetClubAvatarResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetClubAvatar not implemented")
+}
+func (UnimplementedClubServiceServer) PinClub(context.Context, *PinClubRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method PinClub not implemented")
+}
+func (UnimplementedClubServiceServer) ListPinnedClubs(context.Context, *ListPinnedClubsRequest) (*ListPinnedClubsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPinnedClubs not implemented")
 }
 func (UnimplementedClubServiceServer) ListMyClubIDs(context.Context, *ListMyClubIDsRequest) (*ListMyClubIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMyClubIDs not implemented")
@@ -487,6 +567,78 @@ func _ClubService_ListMyClubs_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClubService_SearchClubs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchClubsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).SearchClubs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_SearchClubs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).SearchClubs(ctx, req.(*SearchClubsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClubService_SetClubAvatar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetClubAvatarRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).SetClubAvatar(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_SetClubAvatar_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).SetClubAvatar(ctx, req.(*SetClubAvatarRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClubService_PinClub_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PinClubRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).PinClub(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_PinClub_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).PinClub(ctx, req.(*PinClubRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClubService_ListPinnedClubs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPinnedClubsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).ListPinnedClubs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_ListPinnedClubs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).ListPinnedClubs(ctx, req.(*ListPinnedClubsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClubService_ListMyClubIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListMyClubIDsRequest)
 	if err := dec(in); err != nil {
@@ -601,6 +753,22 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListMyClubs",
 			Handler:    _ClubService_ListMyClubs_Handler,
+		},
+		{
+			MethodName: "SearchClubs",
+			Handler:    _ClubService_SearchClubs_Handler,
+		},
+		{
+			MethodName: "SetClubAvatar",
+			Handler:    _ClubService_SetClubAvatar_Handler,
+		},
+		{
+			MethodName: "PinClub",
+			Handler:    _ClubService_PinClub_Handler,
+		},
+		{
+			MethodName: "ListPinnedClubs",
+			Handler:    _ClubService_ListPinnedClubs_Handler,
 		},
 		{
 			MethodName: "ListMyClubIDs",

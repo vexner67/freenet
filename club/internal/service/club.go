@@ -34,6 +34,11 @@ type ClubRepository interface {
 	// Update saves the editable fields; club.ErrAddressTaken when another
 	// club has the address.
 	Update(ctx context.Context, c *club.Club) error
+	// SetAvatar saves the photo of c; club.ErrNotFound.
+	SetAvatar(ctx context.Context, c *club.Club) error
+	// Search returns up to limit clubs that match q with IDs below before
+	// (uuid.Nil: from the newest), the newest first.
+	Search(ctx context.Context, q club.SearchQuery, before uuid.UUID, limit int) ([]*club.Club, error)
 }
 
 type MemberRepository interface {
@@ -51,8 +56,18 @@ type MemberRepository interface {
 	// with adminsOnly) who joined before the membership before (uuid.Nil:
 	// from the newest), the newest first.
 	List(ctx context.Context, clubID, before uuid.UUID, limit int, adminsOnly bool) ([]Member, error)
-	// ListClubs is the same for the clubs of a user.
-	ListClubs(ctx context.Context, userID, before uuid.UUID, limit int) ([]Membership, error)
+	// ListClubs is the same for the clubs of a user, only those they run
+	// with managed.
+	ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, managed bool) ([]Membership, error)
+	// CountClubs counts the clubs of a user, only those they run with
+	// managed.
+	CountClubs(ctx context.Context, userID uuid.UUID, managed bool) (int, error)
+	// Pin puts a club the user runs in their menu, or takes it out; false
+	// when limit clubs are there already.
+	Pin(ctx context.Context, clubID, userID uuid.UUID, pinned bool, limit int) (bool, error)
+	// Pinned are the clubs in the user's menu that they still run, in the
+	// order of joining.
+	Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error)
 	// ClubIDs are the newest limit clubs of a user.
 	ClubIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error)
 	// DeleteByUser takes a user out of every club.
@@ -66,11 +81,13 @@ type Member struct {
 	Role   club.Role
 }
 
-// Membership is one club of a user and what the user is in it.
+// Membership is one club of a user and what the user is in it; Pinned:
+// in their left menu.
 type Membership struct {
-	ID   uuid.UUID
-	Club *club.Club
-	Role club.Role
+	ID     uuid.UUID
+	Club   *club.Club
+	Role   club.Role
+	Pinned bool
 }
 
 // View is a club as a viewer sees it: what they are in it and who owns it
@@ -90,6 +107,13 @@ type MemberPage struct {
 
 type ClubPage struct {
 	Clubs      []Membership
+	NextCursor uuid.UUID
+	Total      int
+}
+
+// SearchPage is one screen of found clubs.
+type SearchPage struct {
+	Clubs      []*club.Club
 	NextCursor uuid.UUID
 }
 
@@ -283,11 +307,13 @@ func (s *ClubService) Members(ctx context.Context, clubID, cursor uuid.UUID, siz
 	return page, nil
 }
 
-// Clubs pages the clubs of a user ("Мои Группы"), the newest joined first.
-func (s *ClubService) Clubs(ctx context.Context, userID, cursor uuid.UUID, size int) (ClubPage, error) {
+// Clubs pages the clubs of a user ("Мои Группы"), the newest joined
+// first; with managed only those they run ("Управление"). Total counts
+// them all.
+func (s *ClubService) Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, managed bool) (ClubPage, error) {
 	size = pageSize(size)
 
-	clubs, err := s.members.ListClubs(ctx, userID, cursor, size+1)
+	clubs, err := s.members.ListClubs(ctx, userID, cursor, size+1, managed)
 	if err != nil {
 		return ClubPage{}, errs.Wrap("s.members.ListClubs", err)
 	}
@@ -298,7 +324,91 @@ func (s *ClubService) Clubs(ctx context.Context, userID, cursor uuid.UUID, size 
 		page.NextCursor = clubs[size-1].ID
 	}
 
+	if page.Total, err = s.members.CountClubs(ctx, userID, managed); err != nil {
+		return ClubPage{}, errs.Wrap("s.members.CountClubs", err)
+	}
+
 	return page, nil
+}
+
+// Search pages the clubs whose name or address has every word of query,
+// the newest first.
+func (s *ClubService) Search(ctx context.Context, query club.SearchQuery, cursor uuid.UUID, size int) (SearchPage, error) {
+	size = pageSize(size)
+
+	clubs, err := s.clubs.Search(ctx, query, cursor, size+1)
+	if err != nil {
+		return SearchPage{}, errs.Wrap("s.clubs.Search", err)
+	}
+
+	page := SearchPage{Clubs: clubs}
+	if len(clubs) > size {
+		page.Clubs = clubs[:size]
+		page.NextCursor = clubs[size-1].ID()
+	}
+
+	return page, nil
+}
+
+// SetAvatar shows a photo as the club's, uuid.Nil none: its admins'
+// call. The media service has stored it already.
+func (s *ClubService) SetAvatar(ctx context.Context, userID, clubID, avatarID uuid.UUID) (View, error) {
+	c, err := s.clubs.Get(ctx, clubID)
+	if err != nil {
+		return View{}, errs.Wrap("s.clubs.Get", err)
+	}
+
+	role, err := s.members.Role(ctx, clubID, userID)
+	if err != nil {
+		return View{}, errs.Wrap("s.members.Role", err)
+	}
+
+	changed, err := c.WithAvatar(role, avatarID)
+	if err != nil {
+		return View{}, errs.Wrap("c.WithAvatar", err)
+	}
+
+	if err = s.clubs.SetAvatar(ctx, changed); err != nil {
+		return View{}, errs.Wrap("s.clubs.SetAvatar", err)
+	}
+
+	return s.view(ctx, userID, clubID)
+}
+
+// Pin puts a club the user runs in their left menu, at most
+// club.MaxPinned of them, or takes it out.
+func (s *ClubService) Pin(ctx context.Context, userID, clubID uuid.UUID, pinned bool) error {
+	role, err := s.members.Role(ctx, clubID, userID)
+	if err != nil {
+		return errs.Wrap("s.members.Role", err)
+	}
+
+	if pinned {
+		if err = club.CheckPin(role); err != nil {
+			return errs.Wrap("club.CheckPin", err)
+		}
+	}
+
+	ok, err := s.members.Pin(ctx, clubID, userID, pinned, club.MaxPinned)
+	if err != nil {
+		return errs.Wrap("s.members.Pin", err)
+	}
+
+	if !ok {
+		return club.ErrTooManyPinned
+	}
+
+	return nil
+}
+
+// Pinned are the clubs in the user's left menu.
+func (s *ClubService) Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error) {
+	clubs, err := s.members.Pinned(ctx, userID)
+	if err != nil {
+		return nil, errs.Wrap("s.members.Pinned", err)
+	}
+
+	return clubs, nil
 }
 
 // ClubIDs are the clubs whose walls the feed of userID shows.

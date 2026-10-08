@@ -27,6 +27,7 @@ type Store struct {
 type member struct {
 	clubID, userID uuid.UUID
 	role           club.Role
+	pinned         bool
 }
 
 func NewStore() *Store {
@@ -109,6 +110,7 @@ func stored(c *club.Club) club.Stored {
 		Address:     c.Address(),
 		Wall:        c.Wall(),
 		CreatedAt:   c.CreatedAt(),
+		AvatarID:    c.AvatarID(),
 	}
 }
 
@@ -185,6 +187,50 @@ func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 	r.s.clubs[c.ID()] = stored(c)
 
 	return nil
+}
+
+func (r *ClubRepository) SetAvatar(ctx context.Context, c *club.Club) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	stored, ok := r.s.clubs[c.ID()]
+	if !ok {
+		return club.ErrNotFound
+	}
+
+	stored.AvatarID = c.AvatarID()
+	r.s.clubs[c.ID()] = stored
+
+	return nil
+}
+
+func (r *ClubRepository) Search(ctx context.Context, q club.SearchQuery, before uuid.UUID, limit int) ([]*club.Club, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	var found []*club.Club
+	for id := range r.s.clubs {
+		c, _ := r.s.club(id)
+		if q.Matches(c) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
+			found = append(found, c)
+		}
+	}
+
+	// UUIDv7 bytes sort by time, as in PostgreSQL.
+	slices.SortFunc(found, func(a, b *club.Club) int {
+		ai, bi := a.ID(), b.ID()
+		return bytes.Compare(bi[:], ai[:])
+	})
+
+	return found[:min(limit, len(found))], nil
 }
 
 type MemberRepository struct {
@@ -310,7 +356,7 @@ func (r *MemberRepository) List(ctx context.Context, clubID, before uuid.UUID, l
 	return found, nil
 }
 
-func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int) ([]service.Membership, error) {
+func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, managed bool) ([]service.Membership, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
 	}
@@ -319,17 +365,82 @@ func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UU
 	defer r.s.mu.RUnlock()
 
 	var found []service.Membership
-	for _, id := range r.s.sorted(func(m *member) bool { return m.userID == userID }, before, limit) {
+	for _, id := range r.s.sorted(clubsOf(userID, managed), before, limit) {
 		m := r.s.members[id]
 		c, _ := r.s.club(m.clubID)
-		found = append(found, service.Membership{ID: id, Club: c, Role: m.role})
+		found = append(found, service.Membership{ID: id, Club: c, Role: m.role, Pinned: m.pinned})
 	}
 
 	return found, nil
 }
 
+// clubsOf matches the memberships of userID, those that run a club with
+// managed.
+func clubsOf(userID uuid.UUID, managed bool) func(*member) bool {
+	return func(m *member) bool { return m.userID == userID && (!managed || m.role.Manages()) }
+}
+
+func (r *MemberRepository) CountClubs(ctx context.Context, userID uuid.UUID, managed bool) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	return len(r.s.sorted(clubsOf(userID, managed), uuid.Nil, len(r.s.members))), nil
+}
+
+// Pin keeps at most limit of the user's clubs that they run pinned, as the
+// statement does in PostgreSQL.
+func (r *MemberRepository) Pin(ctx context.Context, clubID, userID uuid.UUID, pinned bool, limit int) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	_, m := r.s.membership(clubID, userID)
+	if m == nil || m.pinned == pinned {
+		return true, nil
+	}
+
+	if pinned && len(r.s.sorted(pinnedOf(userID), uuid.Nil, len(r.s.members))) >= limit {
+		return false, nil
+	}
+
+	m.pinned = pinned
+
+	return true, nil
+}
+
+func pinnedOf(userID uuid.UUID) func(*member) bool {
+	return func(m *member) bool { return m.userID == userID && m.pinned && m.role.Manages() }
+}
+
+func (r *MemberRepository) Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	ids := r.s.sorted(pinnedOf(userID), uuid.Nil, len(r.s.members))
+	slices.Reverse(ids)
+
+	clubs := make([]*club.Club, 0, len(ids))
+	for _, id := range ids {
+		c, _ := r.s.club(r.s.members[id].clubID)
+		clubs = append(clubs, c)
+	}
+
+	return clubs, nil
+}
+
 func (r *MemberRepository) ClubIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error) {
-	clubs, err := r.ListClubs(ctx, userID, uuid.Nil, limit)
+	clubs, err := r.ListClubs(ctx, userID, uuid.Nil, limit, false)
 	if err != nil {
 		return nil, err
 	}

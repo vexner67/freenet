@@ -21,7 +21,7 @@ func ErrorInterceptor(log *slog.Logger) grpc.UnaryServerInterceptor {
 var invalid = []error{
 	club.ErrNameEmpty, club.ErrNameTooLong, club.ErrDescriptionTooLong,
 	club.ErrAddressTooLong, club.ErrAddressInvalid, club.ErrInvalidWall, club.ErrInvalidRole,
-	service.ErrTooManyIDs,
+	club.ErrSearchQueryEmpty, club.ErrSearchQueryTooLong, service.ErrTooManyIDs,
 }
 
 func toStatus(err error) (*status.Status, bool) {
@@ -42,6 +42,10 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.PermissionDenied, "only the admins can edit the club"), true
 	case errors.Is(err, club.ErrCannotAppoint):
 		return status.New(codes.PermissionDenied, "only the owner appoints the admins"), true
+	case errors.Is(err, club.ErrCannotPin):
+		return status.New(codes.PermissionDenied, "only the admins can add the club to their menu"), true
+	case errors.Is(err, club.ErrTooManyPinned):
+		return status.New(codes.FailedPrecondition, "at most 10 clubs in the menu"), true
 	case errors.Is(err, club.ErrOwnerCannotLeave):
 		return status.New(codes.FailedPrecondition, "the owner cannot leave the club"), true
 	default:
