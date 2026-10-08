@@ -69,6 +69,12 @@ function notificationText(n) {
     case 'comment':
       return [name, ` ${verb} комментарий под вашей `, postLink(n.post, 'записью'),
         ` от ${formatPostDate(n.post.createdAt)}: «${snippet(n.comment.text || 'Фотография', COMMENT_SNIPPET)}».`];
+    case 'comment_reply':
+      return [name, ` ${verb} на ваш комментарий под `, postLink(n.post, 'записью'),
+        ` от ${formatPostDate(n.post.createdAt)}: «${snippet(n.comment.text || 'Фотография', COMMENT_SNIPPET)}».`];
+    case 'comment_like':
+      return [name, ` ${verb} ваш комментарий под `, postLink(n.post, 'записью'),
+        ` от ${formatPostDate(n.post.createdAt)}: «${snippet(n.comment.text || 'Фотография', COMMENT_SNIPPET)}».`];
     case 'follow':
       return [name, ` ${verb} на вас.`];
     case 'repost':

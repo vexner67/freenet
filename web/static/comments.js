@@ -1,19 +1,33 @@
 // One comment as on openvk: a small avatar, the name, the text, then the
-// date and the menu.
+// date, "в ответ" for a reply and the menu on the left, the heart on the
+// right.
 
+import { api } from './api.js';
 import { formatPostDate } from './labels.js';
 import { avatarURL, el, fullName } from './layout.js';
-import { photosNode, separated } from './posts.js';
+import { likeButton, photosNode, separated } from './posts.js';
 
-// commentNode renders a comment; onDelete adds a "Удалить" link and is
-// called with the comment and its node.
-export function commentNode(comment, onDelete) {
+// commentAnchor is the id of a comment's node, for links to it.
+export function commentAnchor(id) {
+  return 'comment-' + id;
+}
+
+// commentNode renders a comment. Options:
+//   onDelete(comment, node) adds a "Удалить" link;
+//   onReply(comment) adds "Ответить";
+//   canLike makes the heart clickable (signed-in viewers), onError shows
+//   a failed like.
+export function commentNode(comment, { onDelete, onReply, canLike = false, onError } = {}) {
   const path = '/' + comment.author.nickname;
 
-  const menu = [el('span', { className: 'post-date', textContent: formatPostDate(comment.createdAt) })];
+  const menu = [el('a', { className: 'post-date', href: '#' + commentAnchor(comment.id), textContent: formatPostDate(comment.createdAt) })];
+  if (comment.replyTo) menu.push(el('a', { href: '#' + commentAnchor(comment.replyTo), textContent: 'в ответ' }));
   if (onDelete) menu.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(comment, node) }));
+  if (onReply) menu.push(el('a', { textContent: 'Ответить', onclick: () => onReply(comment) }));
 
-  const node = el('div', { className: 'post comment' },
+  const like = likeButton(comment, { canLike, onError, like: api.likeComment, unlike: api.unlikeComment });
+
+  const node = el('div', { className: 'post comment', id: commentAnchor(comment.id) },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(comment.author, 'small'), alt: '' })),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
@@ -21,7 +35,7 @@ export function commentNode(comment, onDelete) {
       ),
       comment.text ? el('div', { className: 'post-text', textContent: comment.text }) : null,
       photosNode(comment.photos ?? []),
-      el('div', { className: 'post-menu' }, el('span', {}, ...separated(menu))),
+      el('div', { className: 'post-menu' }, el('span', {}, ...separated(menu)), like),
     ),
   );
 

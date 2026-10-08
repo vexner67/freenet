@@ -50,7 +50,34 @@ function initComments(post, me) {
   // The author of a comment, the author of the post and the owner of the
   // wall may delete it.
   const canDelete = (comment) => Boolean(me) && [comment.author.id, post.author.id, wallOf(post).id].includes(me.id);
-  const commentNodeFor = (comment) => commentNode(comment, canDelete(comment) && remove);
+  const commentNodeFor = (comment) => commentNode(comment, {
+    onDelete: canDelete(comment) && remove,
+    onReply: me?.profileCompleted && reply,
+    canLike: Boolean(me),
+    onError: (e) => showError(error, e),
+  });
+
+  // The comment the form answers, null for none.
+  let replyTo = null;
+
+  // reply starts an answer as openvk's "Ответить": the name of the author
+  // first, in place of the name of an earlier answer.
+  function reply(comment) {
+    const text = $('comment-text');
+    const mention = replyTo ? replyTo.author.name + ', ' : null;
+    const rest = mention && text.value.startsWith(mention) ? text.value.slice(mention.length) : text.value;
+
+    replyTo = comment;
+    text.value = comment.author.name + ', ' + rest;
+    $('comment-reply-to').hidden = false;
+    text.focus();
+    text.setSelectionRange(text.value.length, text.value.length);
+  }
+
+  function cancelReply() {
+    replyTo = null;
+    $('comment-reply-to').hidden = true;
+  }
 
   async function remove(comment, node) {
     hideError(error);
@@ -104,7 +131,7 @@ function initComments(post, me) {
     button.disabled = true;
 
     try {
-      const comment = await api.createComment(post.id, $('comment-text').value, attachments.ids());
+      const comment = await api.createComment(post.id, $('comment-text').value, attachments.ids(), replyTo?.id);
       const node = commentNodeFor(comment);
 
       node.dataset.sent = '';
@@ -112,6 +139,7 @@ function initComments(post, me) {
       list.append(node);
       $('comment-text').value = '';
       attachments.clear();
+      cancelReply();
       total++;
       updateCount();
       updateCounter();
@@ -136,6 +164,7 @@ function initComments(post, me) {
 
     form.hidden = false;
     form.addEventListener('submit', submit);
+    $('comment-reply-cancel').addEventListener('click', cancelReply);
     text.addEventListener('input', updateCounter);
     // Ctrl+Enter (Cmd+Enter on a Mac) sends, as on the old sites.
     text.addEventListener('keydown', (event) => {
