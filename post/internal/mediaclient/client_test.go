@@ -19,7 +19,7 @@ import (
 type fakeAPI struct {
 	mediav1.MediaServiceClient
 	published *mediav1.PublishPhotosRequest
-	deleted   *mediav1.DeletePostPhotosRequest
+	deleted   *mediav1.DeletePublishedPhotosRequest
 	deadline  bool
 	err       error
 }
@@ -30,7 +30,7 @@ func (f *fakeAPI) PublishPhotos(ctx context.Context, req *mediav1.PublishPhotosR
 	return &emptypb.Empty{}, f.err
 }
 
-func (f *fakeAPI) DeletePostPhotos(_ context.Context, req *mediav1.DeletePostPhotosRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+func (f *fakeAPI) DeletePublishedPhotos(_ context.Context, req *mediav1.DeletePublishedPhotosRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.deleted = req
 	return &emptypb.Empty{}, f.err
 }

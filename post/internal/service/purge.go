@@ -19,12 +19,19 @@ type ReactionEraser interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 }
 
+// CommentEraser also deletes, returning them, the comments on the posts a
+// user wrote and on those on their wall, which others wrote too.
+type CommentEraser interface {
+	ReactionEraser
+	DeleteOnPostsOf(ctx context.Context, userID uuid.UUID) ([]*post.Comment, error)
+}
+
 // PurgeService erases what post keeps of a user whose page was deleted for
 // good.
 type PurgeService struct {
 	posts    PostEraser
 	likes    ReactionEraser
-	comments ReactionEraser
+	comments CommentEraser
 	tx       TxManager
 	notifier Notifier
 	photos   PhotoKeeper
@@ -34,7 +41,7 @@ type PurgeService struct {
 type PurgeDeps struct {
 	Posts    PostEraser
 	Likes    ReactionEraser
-	Comments ReactionEraser
+	Comments CommentEraser
 	Tx       TxManager
 	Notifier Notifier
 	Photos   PhotoKeeper
@@ -64,6 +71,16 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 
 		if err := s.comments.DeleteByUser(ctx, userID); err != nil {
 			return errs.Wrap("s.comments.DeleteByUser", err)
+		}
+
+		// Others' comments on the posts about to go: their photos go too.
+		comments, err := s.comments.DeleteOnPostsOf(ctx, userID)
+		if err != nil {
+			return errs.Wrap("s.comments.DeleteOnPostsOf", err)
+		}
+
+		if err = deleteCommentPhotos(ctx, s.photos, comments); err != nil {
+			return errs.Wrap("deleteCommentPhotos", err)
 		}
 
 		deleted, err := s.posts.DeleteByUser(ctx, userID)

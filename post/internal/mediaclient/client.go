@@ -27,7 +27,7 @@ const Stream = "media"
 // Outbox kinds: the payload is the request of the RPC of the same name.
 const (
 	kindPublish = "publish_photos"
-	kindDelete  = "delete_post_photos"
+	kindDelete  = "delete_photos"
 )
 
 // Recorder adds a message to the outbox in the transaction of ctx.
@@ -51,7 +51,7 @@ func (o *Outbox) Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid
 }
 
 func (o *Outbox) Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error {
-	return o.add(ctx, kindDelete, &mediav1.DeletePostPhotosRequest{OwnerId: ownerID.String(), PhotoIds: toStrings(photoIDs)})
+	return o.add(ctx, kindDelete, &mediav1.DeletePublishedPhotosRequest{OwnerId: ownerID.String(), PhotoIds: toStrings(photoIDs)})
 }
 
 func (o *Outbox) add(ctx context.Context, kind string, req proto.Message) error {
@@ -94,7 +94,7 @@ func (d *Deliverer) Deliver(ctx context.Context, m outbox.Message) error {
 	case kindPublish:
 		return call(ctx, m.Payload, &mediav1.PublishPhotosRequest{}, d.api.PublishPhotos)
 	case kindDelete:
-		return call(ctx, m.Payload, &mediav1.DeletePostPhotosRequest{}, d.api.DeletePostPhotos)
+		return call(ctx, m.Payload, &mediav1.DeletePublishedPhotosRequest{}, d.api.DeletePublishedPhotos)
 	default:
 		return outbox.Permanent(fmt.Errorf("unknown kind %q", m.Kind))
 	}

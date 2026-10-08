@@ -31,40 +31,74 @@ func fromProtoTextPhotos(rawText string, rawPhotos []string) (post.Text, post.Ph
 		return "", nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	ids := make([]uuid.UUID, 0, len(rawPhotos))
-	for _, s := range rawPhotos {
+	photos, err := fromProtoPhotos(rawPhotos)
+	if err != nil {
+		return "", nil, err
+	}
+
+	return text, photos, nil
+}
+
+// fromProtoCommentContent reads what a new comment says.
+func fromProtoCommentContent(req *postv1.CreateCommentRequest) (post.CommentContent, error) {
+	text, err := post.NewCommentText(req.GetText())
+	if err != nil {
+		return post.CommentContent{}, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	photos, err := fromProtoPhotos(req.GetPhotoIds())
+	if err != nil {
+		return post.CommentContent{}, err
+	}
+
+	content, err := post.NewCommentContent(text, photos)
+	if err != nil {
+		return post.CommentContent{}, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	return content, nil
+}
+
+func fromProtoPhotos(raw []string) (post.Photos, error) {
+	ids := make([]uuid.UUID, 0, len(raw))
+	for _, s := range raw {
 		id, err := uuid.Parse(s)
 		if err != nil {
-			return "", nil, status.Error(codes.InvalidArgument, post.ErrInvalidPhoto.Error())
+			return nil, status.Error(codes.InvalidArgument, post.ErrInvalidPhoto.Error())
 		}
 		ids = append(ids, id)
 	}
 
 	photos, err := post.NewPhotos(ids)
 	if err != nil {
-		return "", nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	if len(photos) == 0 {
-		photos = nil // no photos, as storage reads them back
+		return nil, nil // no photos, as storage reads them back
 	}
 
-	return text, photos, nil
+	return photos, nil
+}
+
+func photoStrings(photos post.Photos) []string {
+	out := make([]string, len(photos))
+	for i, id := range photos {
+		out[i] = id.String()
+	}
+
+	return out
 }
 
 func toProtoPost(p *post.Post, liked bool) *postv1.Post {
 	counters := p.Counters()
-	photos := make([]string, len(p.Content().Photos()))
-	for i, id := range p.Content().Photos() {
-		photos[i] = id.String()
-	}
 
 	pp := &postv1.Post{
 		Id:            p.ID().String(),
 		WallId:        p.WallID().String(),
 		AuthorId:      p.AuthorID().String(),
 		Text:          p.Content().Text().String(),
-		PhotoIds:      photos,
+		PhotoIds:      photoStrings(p.Content().Photos()),
 		CreatedAt:     timestamppb.New(p.CreatedAt()),
 		LikeCount:     int32(counters.Likes),    //nolint:gosec // counters come from int4 columns
 		CommentCount:  int32(counters.Comments), //nolint:gosec // counters come from int4 columns
@@ -98,6 +132,7 @@ func toProtoComment(c *post.Comment) *postv1.Comment {
 		AuthorId:  c.AuthorID().String(),
 		Text:      c.Text().String(),
 		CreatedAt: timestamppb.New(c.CreatedAt()),
+		PhotoIds:  photoStrings(c.Photos()),
 	}
 }
 

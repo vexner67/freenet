@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -22,8 +23,8 @@ func newCommentFixture() commentFixture {
 	notifier := &fakeNotifier{}
 
 	return commentFixture{
-		posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}}),
-		comments: service.NewCommentService(store.Posts(), store.Comments(), fakeTx{}, notifier),
+		posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}}),
+		comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}}),
 		notifier: notifier,
 	}
 }
@@ -33,7 +34,7 @@ func (f commentFixture) comment(t *testing.T, author, postID uuid.UUID, texts ..
 
 	comments := make([]*post.Comment, 0, len(texts))
 	for _, text := range texts {
-		c, err := f.comments.Create(context.Background(), author, postID, post.CommentText(text))
+		c, err := f.comments.Create(context.Background(), author, postID, post.RestoreCommentContent(post.CommentText(text), nil))
 		if err != nil {
 			t.Fatalf("Create: %v", err)
 		}
@@ -125,7 +126,7 @@ func TestCommentService_Create(t *testing.T) {
 		t.Fatalf("comment = %v %v %q", c.PostID(), c.AuthorID(), c.Text())
 	}
 
-	if _, err := f.comments.Create(ctx, bob, uuid.New(), "куда?"); !errors.Is(err, post.ErrNotFound) {
+	if _, err := f.comments.Create(ctx, bob, uuid.New(), post.RestoreCommentContent("куда?", nil)); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("comment a missing post: %v", err)
 	}
 }
@@ -228,5 +229,62 @@ func TestCommentService_GetMany(t *testing.T) {
 
 	if _, err = f.comments.GetMany(ctx, make([]uuid.UUID, service.MaxPageSize+1)); !errors.Is(err, service.ErrTooManyIDs) {
 		t.Fatalf("too many ids: %v", err)
+	}
+}
+
+func TestCommentService_Photos(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	photos := &fakePhotos{}
+	posts := service.NewPostService(service.PostDeps{
+		Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
+	})
+	comments := service.NewCommentService(service.CommentDeps{
+		Posts: store.Posts(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
+	})
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	bobsPhoto, catsPhoto := uuid.New(), uuid.New()
+
+	p := write(t, posts, ann, "запись")[0]
+
+	withPhoto := func(author, photo uuid.UUID) *post.Comment {
+		t.Helper()
+
+		content, err := post.NewCommentContent("", post.Photos{photo})
+		if err != nil {
+			t.Fatal(err)
+		}
+		c, err := comments.Create(ctx, author, p.ID(), content)
+		if err != nil {
+			t.Fatalf("Create: %v", err)
+		}
+		return c
+	}
+
+	bobs := withPhoto(bob, bobsPhoto)
+	withPhoto(cat, catsPhoto)
+	if len(photos.published) != 2 || photos.published[0].owner != bob || !slices.Equal(photos.published[0].photos, []uuid.UUID{bobsPhoto}) {
+		t.Fatalf("published = %+v, want each commenter's photo", photos.published)
+	}
+
+	// Ann, the author of the post, deletes bob's comment: bob's photo goes.
+	if err := comments.Delete(ctx, ann, bobs.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(photos.deleted) != 1 || photos.deleted[0].owner != bob || !slices.Equal(photos.deleted[0].photos, []uuid.UUID{bobsPhoto}) {
+		t.Fatalf("deleted = %+v, want bob's photo", photos.deleted)
+	}
+
+	// The post takes cat's comment with its photo.
+	if err := posts.Delete(ctx, ann, p.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(photos.deleted) != 2 || photos.deleted[1].owner != cat || !slices.Equal(photos.deleted[1].photos, []uuid.UUID{catsPhoto}) {
+		t.Fatalf("deleted = %+v, want cat's photo with the post", photos.deleted)
+	}
+	if photos.outsideTx != 0 {
+		t.Fatalf("%d photo calls outside the transaction", photos.outsideTx)
 	}
 }

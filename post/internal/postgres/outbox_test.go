@@ -51,7 +51,7 @@ func TestLikeAndItsNotification(t *testing.T) {
 		return n
 	}
 
-	failing := service.NewPostService(service.PostDeps{Posts: posts, Pins: posts, Likes: likes, Tx: tx, Notifier: notifyclient.NewOutbox(failingRecorder{}), Photos: mediaclient.Nop{}})
+	failing := service.NewPostService(service.PostDeps{Posts: posts, Pins: posts, Comments: postgres.NewCommentRepository(pool), Likes: likes, Tx: tx, Notifier: notifyclient.NewOutbox(failingRecorder{}), Photos: mediaclient.Nop{}})
 	if _, err = failing.Like(ctx, bob, p.ID()); err == nil {
 		t.Fatal("Like with a broken outbox = nil, want an error")
 	}
@@ -60,7 +60,7 @@ func TestLikeAndItsNotification(t *testing.T) {
 	}
 
 	svc := service.NewPostService(service.PostDeps{
-		Posts: posts, Pins: posts, Likes: likes, Tx: tx, Notifier: notifyclient.NewOutbox(outbox.NewPostgres(pool, notifyclient.Stream)), Photos: mediaclient.Nop{},
+		Posts: posts, Pins: posts, Comments: postgres.NewCommentRepository(pool), Likes: likes, Tx: tx, Notifier: notifyclient.NewOutbox(outbox.NewPostgres(pool, notifyclient.Stream)), Photos: mediaclient.Nop{},
 	})
 	reqCtx := reqid.ContextWithID(ctx, uuid.NewString())
 

@@ -3,7 +3,6 @@ package postgres
 import (
 	"context"
 	"errors"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -37,9 +36,10 @@ const saveCommentQuery = `
 			post_id,
 			author_id,
 			text,
+			photo_ids,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING post_id
 	)
 	UPDATE posts
@@ -48,7 +48,7 @@ const saveCommentQuery = `
 `
 
 func (r *CommentRepository) Save(ctx context.Context, c *post.Comment) error {
-	_, err := r.conn(ctx).Exec(ctx, saveCommentQuery, c.ID(), c.PostID(), c.AuthorID(), c.Text().String(), c.CreatedAt())
+	_, err := r.conn(ctx).Exec(ctx, saveCommentQuery, c.ID(), c.PostID(), c.AuthorID(), c.Text().String(), photoIDs(c.Photos()), c.CreatedAt())
 	if isForeignKeyViolation(err) {
 		return post.ErrNotFound
 	}
@@ -65,6 +65,7 @@ const getCommentQuery = `
 		post_id,
 		author_id,
 		text,
+		photo_ids,
 		created_at
 	FROM comments
 	WHERE id = $1
@@ -88,6 +89,7 @@ const getCommentsQuery = `
 		post_id,
 		author_id,
 		text,
+		photo_ids,
 		created_at
 	FROM comments
 	WHERE id = ANY($1)
@@ -98,22 +100,8 @@ func (r *CommentRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*po
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
-	defer rows.Close()
 
-	var comments []*post.Comment
-	for rows.Next() {
-		c, err := scanComment(rows)
-		if err != nil {
-			return nil, errs.Wrap("scanComment", err)
-		}
-		comments = append(comments, c)
-	}
-
-	if err = rows.Err(); err != nil {
-		return nil, errs.Wrap("rows.Err", err)
-	}
-
-	return comments, nil
+	return collectComments(rows)
 }
 
 // deleteCommentQuery removes the comment and uncounts it in one statement;
@@ -149,6 +137,7 @@ const listCommentsByPostQuery = `
 		post_id,
 		author_id,
 		text,
+		photo_ids,
 		created_at
 	FROM comments
 	WHERE post_id = $1
@@ -162,6 +151,12 @@ func (r *CommentRepository) ListByPost(ctx context.Context, postID, after uuid.U
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
+
+	return collectComments(rows)
+}
+
+// collectComments reads the comments of rows and closes them.
+func collectComments(rows pgx.Rows) ([]*post.Comment, error) {
 	defer rows.Close()
 
 	var comments []*post.Comment
@@ -173,7 +168,7 @@ func (r *CommentRepository) ListByPost(ctx context.Context, postID, after uuid.U
 		comments = append(comments, c)
 	}
 
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, errs.Wrap("rows.Err", err)
 	}
 
@@ -182,17 +177,89 @@ func (r *CommentRepository) ListByPost(ctx context.Context, postID, after uuid.U
 
 func scanComment(row pgx.Row) (*post.Comment, error) {
 	var (
-		id, postID, authorID uuid.UUID
-		text                 string
-		createdAt            time.Time
+		s      post.StoredComment
+		text   string
+		photos []uuid.UUID
 	)
 
-	if err := row.Scan(&id, &postID, &authorID, &text, &createdAt); err != nil {
+	if err := row.Scan(&s.ID, &s.PostID, &s.AuthorID, &text, &photos, &s.CreatedAt); err != nil {
 		return nil, err
 	}
 
+	if len(photos) == 0 {
+		photos = nil // no photos, as a new comment has them
+	}
+
 	// Data comes from our own table and was validated on write.
-	return post.RestoreComment(id, postID, authorID, post.CommentText(text), createdAt.UTC()), nil
+	s.Content = post.RestoreCommentContent(post.CommentText(text), post.Photos(photos))
+	s.CreatedAt = s.CreatedAt.UTC()
+
+	return post.RestoreComment(s), nil
+}
+
+const lockPostQuery = `
+	SELECT 1
+	FROM posts
+	WHERE id = $1
+	FOR UPDATE
+`
+
+const deleteCommentsByPostQuery = `
+	DELETE FROM comments
+	WHERE post_id = $1
+	RETURNING
+		id,
+		post_id,
+		author_id,
+		text,
+		photo_ids,
+		created_at
+`
+
+// DeleteByPost deletes the comments of a post about to be deleted,
+// returning them, so that their photos go too; the post's counter is left
+// alone. It locks the post first, in the transaction of ctx: a comment
+// written meanwhile waits for the post's deletion and fails, instead of
+// slipping in after this and being deleted unseen with the post.
+func (r *CommentRepository) DeleteByPost(ctx context.Context, postID uuid.UUID) ([]*post.Comment, error) {
+	if _, err := r.conn(ctx).Exec(ctx, lockPostQuery, postID); err != nil {
+		return nil, errs.Wrap("r.conn.Exec", err)
+	}
+
+	rows, err := r.conn(ctx).Query(ctx, deleteCommentsByPostQuery, postID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	return collectComments(rows)
+}
+
+const deleteCommentsOnWallQuery = `
+	DELETE FROM comments
+	WHERE post_id IN (
+		SELECT id
+		FROM posts
+		WHERE author_id = $1
+			OR wall_id = $1
+	)
+	RETURNING
+		id,
+		post_id,
+		author_id,
+		text,
+		photo_ids,
+		created_at
+`
+
+// DeleteOnPostsOf deletes the comments on the posts a user wrote and on
+// those on their wall, returning them, before the posts go too.
+func (r *CommentRepository) DeleteOnPostsOf(ctx context.Context, userID uuid.UUID) ([]*post.Comment, error) {
+	rows, err := r.conn(ctx).Query(ctx, deleteCommentsOnWallQuery, userID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	return collectComments(rows)
 }
 
 // deleteCommentsByUserQuery deletes a user's comments and uncounts them in

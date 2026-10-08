@@ -135,9 +135,11 @@ func (a *App) build(cfg config.Config) error {
 		a.server.Registrar(),
 		postgrpc.NewPostHandler(
 			service.NewPostService(service.PostDeps{
-				Posts: repos.posts, Pins: repos.posts, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
-			service.NewCommentService(repos.posts, repos.comments, repos.tx, notifier),
+			service.NewCommentService(service.CommentDeps{
+				Posts: repos.posts, Comments: repos.comments, Tx: repos.tx, Notifier: notifier, Photos: photos,
+			}),
 			service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, Comments: repos.comments, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
@@ -285,7 +287,8 @@ type repositories struct {
 	}
 	comments interface {
 		service.CommentRepository
-		service.ReactionEraser
+		service.PostCommentEraser
+		service.CommentEraser
 	}
 	tx service.TxManager
 	// newQueue opens a stream of the outbox.

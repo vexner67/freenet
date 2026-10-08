@@ -5,7 +5,6 @@ import (
 
 	"github.com/google/uuid"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
-	"github.com/vexner67/freenet/post/internal/post"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
@@ -22,12 +21,12 @@ func (h *PostHandler) CreateComment(ctx context.Context, req *postv1.CreateComme
 		return nil, status.Error(codes.InvalidArgument, "invalid post id")
 	}
 
-	text, err := post.NewCommentText(req.GetText())
+	content, err := fromProtoCommentContent(req)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
-	c, err := h.commentService.Create(ctx, authorID, postID, text)
+	c, err := h.commentService.Create(ctx, authorID, postID, content)
 	if err != nil {
 		return nil, err
 	}
