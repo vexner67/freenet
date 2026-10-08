@@ -45,6 +45,17 @@ type SuggestionService interface {
 	Withdraw(ctx context.Context, requesterID, id uuid.UUID) error
 }
 
+type TopicService interface {
+	Start(ctx context.Context, in service.StartTopicInput) (*post.Topic, error)
+	Get(ctx context.Context, id uuid.UUID) (*post.Topic, error)
+	List(ctx context.Context, clubID uuid.UUID, query string, after *service.TopicCursor, size int) (service.TopicPage, error)
+	Change(ctx context.Context, requesterID, id uuid.UUID, changes post.TopicChanges) (*post.Topic, error)
+	Delete(ctx context.Context, requesterID, id uuid.UUID) error
+	Write(ctx context.Context, in service.TopicMessageInput) (*post.TopicMessage, error)
+	Messages(ctx context.Context, topicID, after uuid.UUID, size int) (service.TopicMessagePage, error)
+	DeleteMessage(ctx context.Context, requesterID, id uuid.UUID) error
+}
+
 // PurgeService erases a user's posts, likes and comments once the page is
 // deleted for good.
 type PurgeService interface {
@@ -56,6 +67,7 @@ type Services struct {
 	Posts       PostService
 	Comments    CommentService
 	Suggestions SuggestionService
+	Topics      TopicService
 	Purge       PurgeService
 }
 
@@ -64,6 +76,7 @@ type PostHandler struct {
 	postService       PostService
 	commentService    CommentService
 	suggestionService SuggestionService
+	topicService      TopicService
 	purgeService      PurgeService
 	logger            *slog.Logger
 }
@@ -73,6 +86,7 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		postService:       s.Posts,
 		commentService:    s.Comments,
 		suggestionService: s.Suggestions,
+		topicService:      s.Topics,
 		purgeService:      s.Purge,
 		logger:            logger,
 	}

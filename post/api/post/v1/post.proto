@@ -70,6 +70,28 @@ service PostService {
   // The author withdraws a suggestion, or an admin declines it.
   rpc DeleteSuggestion(DeleteSuggestionRequest) returns (google.protobuf.Empty);
 
+  // The discussions of communities ("Обсуждения" of openvk). The caller
+  // of CreateTopic has checked with the club service that the author may
+  // start a topic there and, with from_wall, speak for the community, and
+  // that the photos are theirs; the rest post asks the club service about.
+  rpc CreateTopic(CreateTopicRequest) returns (CreateTopicResponse);
+  // Public.
+  rpc GetTopic(GetTopicRequest) returns (GetTopicResponse);
+  // Public: the topics of a club, pinned first, then the most recently
+  // active.
+  rpc ListTopics(ListTopicsRequest) returns (ListTopicsResponse);
+  // The author or an admin renames and closes a topic; only an admin pins
+  // and restricts it.
+  rpc EditTopic(EditTopicRequest) returns (EditTopicResponse);
+  rpc DeleteTopic(DeleteTopicRequest) returns (google.protobuf.Empty);
+  // Nobody writes in a closed topic, only the admins in a restricted one.
+  // The caller has checked from_wall and the photos, as for CreateTopic.
+  rpc CreateTopicMessage(CreateTopicMessageRequest) returns (CreateTopicMessageResponse);
+  // Public: oldest first.
+  rpc ListTopicMessages(ListTopicMessagesRequest) returns (ListTopicMessagesResponse);
+  // Its author or an admin.
+  rpc DeleteTopicMessage(DeleteTopicMessageRequest) returns (google.protobuf.Empty);
+
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
   // and comments, and their likes and comments on others' posts. Idempotent.
@@ -391,4 +413,127 @@ message GetCommentsResponse {
 
 message PurgeUserRequest {
   string user_id = 1;
+}
+
+// Topic is a discussion of a community.
+message Topic {
+  string id = 1;
+  string club_id = 2;
+  // Who started it, also for a topic that speaks for the community.
+  string author_id = 3;
+  string title = 4;
+  // Started for the community, shown as its author.
+  bool from_wall = 5;
+  // Nobody writes in it ("Закрыть тему").
+  bool closed = 6;
+  // On top of the list ("Закрепить тему").
+  bool pinned = 7;
+  // Only the admins write in it ("Комментировать могут только
+  // администраторы").
+  bool restricted = 8;
+  google.protobuf.Timestamp created_at = 9;
+  // The newest message, or created_at while it has none.
+  google.protobuf.Timestamp updated_at = 10;
+  int32 message_count = 11;
+  // The newest message; set by ListTopics only, absent when there is none.
+  TopicMessage last_message = 12;
+  // The caller started it.
+  bool mine = 13;
+}
+
+message TopicMessage {
+  string id = 1;
+  string topic_id = 2;
+  string author_id = 3;
+  // Text, photos or both, as a comment.
+  string text = 4;
+  repeated string photo_ids = 5;
+  // It speaks for the community, shown as its author.
+  bool from_wall = 6;
+  google.protobuf.Timestamp created_at = 7;
+  // The caller wrote it.
+  bool mine = 8;
+}
+
+message CreateTopicRequest {
+  string club_id = 1;
+  string title = 2;
+  // The first message, "Текст": text, photos, both or neither.
+  string text = 3;
+  repeated string photo_ids = 4;
+  bool from_wall = 5;
+}
+
+message CreateTopicResponse {
+  Topic topic = 1;
+}
+
+message GetTopicRequest {
+  string id = 1;
+}
+
+message GetTopicResponse {
+  Topic topic = 1;
+}
+
+message ListTopicsRequest {
+  string club_id = 1;
+  // Only the topics whose titles contain it, whatever the case; empty for
+  // all.
+  string query = 2;
+  string cursor = 3;
+  int32 limit = 4;
+}
+
+message ListTopicsResponse {
+  repeated Topic topics = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // All the topics that match, on all pages.
+  int32 total = 3;
+}
+
+message EditTopicRequest {
+  string id = 1;
+  // The title and the settings at once, as the form sends them.
+  string title = 2;
+  bool closed = 3;
+  bool pinned = 4;
+  bool restricted = 5;
+}
+
+message EditTopicResponse {
+  Topic topic = 1;
+}
+
+message DeleteTopicRequest {
+  string id = 1;
+}
+
+message CreateTopicMessageRequest {
+  string topic_id = 1;
+  string text = 2;
+  repeated string photo_ids = 3;
+  bool from_wall = 4;
+}
+
+message CreateTopicMessageResponse {
+  TopicMessage message = 1;
+}
+
+message ListTopicMessagesRequest {
+  string topic_id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListTopicMessagesResponse {
+  repeated TopicMessage messages = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message DeleteTopicMessageRequest {
+  string id = 1;
 }

@@ -56,6 +56,29 @@ func toStatus(err error) (*status.Status, bool) {
 	case errors.Is(err, post.ErrCannotDeleteComment):
 		return status.New(codes.PermissionDenied, "only the author of the comment or of the post or the owner of the wall can delete it"), true
 	default:
-		return nil, false
+		return topicStatus(err)
 	}
+}
+
+// topicStatus is toStatus for the discussions of communities.
+func topicStatus(err error) (*status.Status, bool) {
+	for _, known := range []struct {
+		err  error
+		code codes.Code
+	}{
+		{post.ErrTopicNotFound, codes.NotFound},
+		{post.ErrMessageNotFound, codes.NotFound},
+		{post.ErrCannotChangeTopic, codes.PermissionDenied},
+		{post.ErrCannotPinTopic, codes.PermissionDenied},
+		{post.ErrCannotDeleteMessage, codes.PermissionDenied},
+		{post.ErrTopicRestricted, codes.PermissionDenied},
+		{post.ErrRestrictOwnTopic, codes.InvalidArgument},
+		{post.ErrTopicClosed, codes.FailedPrecondition},
+	} {
+		if errors.Is(err, known.err) {
+			return status.New(known.code, known.err.Error()), true
+		}
+	}
+
+	return nil, false
 }

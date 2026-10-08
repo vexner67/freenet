@@ -20,29 +20,37 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PostService_CreatePost_FullMethodName        = "/post.v1.PostService/CreatePost"
-	PostService_DeletePost_FullMethodName        = "/post.v1.PostService/DeletePost"
-	PostService_RepostPost_FullMethodName        = "/post.v1.PostService/RepostPost"
-	PostService_EditPost_FullMethodName          = "/post.v1.PostService/EditPost"
-	PostService_PinPost_FullMethodName           = "/post.v1.PostService/PinPost"
-	PostService_UnpinPost_FullMethodName         = "/post.v1.PostService/UnpinPost"
-	PostService_GetPost_FullMethodName           = "/post.v1.PostService/GetPost"
-	PostService_GetPosts_FullMethodName          = "/post.v1.PostService/GetPosts"
-	PostService_ListPosts_FullMethodName         = "/post.v1.PostService/ListPosts"
-	PostService_ListFeed_FullMethodName          = "/post.v1.PostService/ListFeed"
-	PostService_LikePost_FullMethodName          = "/post.v1.PostService/LikePost"
-	PostService_UnlikePost_FullMethodName        = "/post.v1.PostService/UnlikePost"
-	PostService_CreateComment_FullMethodName     = "/post.v1.PostService/CreateComment"
-	PostService_DeleteComment_FullMethodName     = "/post.v1.PostService/DeleteComment"
-	PostService_LikeComment_FullMethodName       = "/post.v1.PostService/LikeComment"
-	PostService_UnlikeComment_FullMethodName     = "/post.v1.PostService/UnlikeComment"
-	PostService_ListComments_FullMethodName      = "/post.v1.PostService/ListComments"
-	PostService_GetComments_FullMethodName       = "/post.v1.PostService/GetComments"
-	PostService_SuggestPost_FullMethodName       = "/post.v1.PostService/SuggestPost"
-	PostService_ListSuggestions_FullMethodName   = "/post.v1.PostService/ListSuggestions"
-	PostService_PublishSuggestion_FullMethodName = "/post.v1.PostService/PublishSuggestion"
-	PostService_DeleteSuggestion_FullMethodName  = "/post.v1.PostService/DeleteSuggestion"
-	PostService_PurgeUser_FullMethodName         = "/post.v1.PostService/PurgeUser"
+	PostService_CreatePost_FullMethodName         = "/post.v1.PostService/CreatePost"
+	PostService_DeletePost_FullMethodName         = "/post.v1.PostService/DeletePost"
+	PostService_RepostPost_FullMethodName         = "/post.v1.PostService/RepostPost"
+	PostService_EditPost_FullMethodName           = "/post.v1.PostService/EditPost"
+	PostService_PinPost_FullMethodName            = "/post.v1.PostService/PinPost"
+	PostService_UnpinPost_FullMethodName          = "/post.v1.PostService/UnpinPost"
+	PostService_GetPost_FullMethodName            = "/post.v1.PostService/GetPost"
+	PostService_GetPosts_FullMethodName           = "/post.v1.PostService/GetPosts"
+	PostService_ListPosts_FullMethodName          = "/post.v1.PostService/ListPosts"
+	PostService_ListFeed_FullMethodName           = "/post.v1.PostService/ListFeed"
+	PostService_LikePost_FullMethodName           = "/post.v1.PostService/LikePost"
+	PostService_UnlikePost_FullMethodName         = "/post.v1.PostService/UnlikePost"
+	PostService_CreateComment_FullMethodName      = "/post.v1.PostService/CreateComment"
+	PostService_DeleteComment_FullMethodName      = "/post.v1.PostService/DeleteComment"
+	PostService_LikeComment_FullMethodName        = "/post.v1.PostService/LikeComment"
+	PostService_UnlikeComment_FullMethodName      = "/post.v1.PostService/UnlikeComment"
+	PostService_ListComments_FullMethodName       = "/post.v1.PostService/ListComments"
+	PostService_GetComments_FullMethodName        = "/post.v1.PostService/GetComments"
+	PostService_SuggestPost_FullMethodName        = "/post.v1.PostService/SuggestPost"
+	PostService_ListSuggestions_FullMethodName    = "/post.v1.PostService/ListSuggestions"
+	PostService_PublishSuggestion_FullMethodName  = "/post.v1.PostService/PublishSuggestion"
+	PostService_DeleteSuggestion_FullMethodName   = "/post.v1.PostService/DeleteSuggestion"
+	PostService_CreateTopic_FullMethodName        = "/post.v1.PostService/CreateTopic"
+	PostService_GetTopic_FullMethodName           = "/post.v1.PostService/GetTopic"
+	PostService_ListTopics_FullMethodName         = "/post.v1.PostService/ListTopics"
+	PostService_EditTopic_FullMethodName          = "/post.v1.PostService/EditTopic"
+	PostService_DeleteTopic_FullMethodName        = "/post.v1.PostService/DeleteTopic"
+	PostService_CreateTopicMessage_FullMethodName = "/post.v1.PostService/CreateTopicMessage"
+	PostService_ListTopicMessages_FullMethodName  = "/post.v1.PostService/ListTopicMessages"
+	PostService_DeleteTopicMessage_FullMethodName = "/post.v1.PostService/DeleteTopicMessage"
+	PostService_PurgeUser_FullMethodName          = "/post.v1.PostService/PurgeUser"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -106,6 +114,27 @@ type PostServiceClient interface {
 	PublishSuggestion(ctx context.Context, in *PublishSuggestionRequest, opts ...grpc.CallOption) (*PublishSuggestionResponse, error)
 	// The author withdraws a suggestion, or an admin declines it.
 	DeleteSuggestion(ctx context.Context, in *DeleteSuggestionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The discussions of communities ("Обсуждения" of openvk). The caller
+	// of CreateTopic has checked with the club service that the author may
+	// start a topic there and, with from_wall, speak for the community, and
+	// that the photos are theirs; the rest post asks the club service about.
+	CreateTopic(ctx context.Context, in *CreateTopicRequest, opts ...grpc.CallOption) (*CreateTopicResponse, error)
+	// Public.
+	GetTopic(ctx context.Context, in *GetTopicRequest, opts ...grpc.CallOption) (*GetTopicResponse, error)
+	// Public: the topics of a club, pinned first, then the most recently
+	// active.
+	ListTopics(ctx context.Context, in *ListTopicsRequest, opts ...grpc.CallOption) (*ListTopicsResponse, error)
+	// The author or an admin renames and closes a topic; only an admin pins
+	// and restricts it.
+	EditTopic(ctx context.Context, in *EditTopicRequest, opts ...grpc.CallOption) (*EditTopicResponse, error)
+	DeleteTopic(ctx context.Context, in *DeleteTopicRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Nobody writes in a closed topic, only the admins in a restricted one.
+	// The caller has checked from_wall and the photos, as for CreateTopic.
+	CreateTopicMessage(ctx context.Context, in *CreateTopicMessageRequest, opts ...grpc.CallOption) (*CreateTopicMessageResponse, error)
+	// Public: oldest first.
+	ListTopicMessages(ctx context.Context, in *ListTopicMessagesRequest, opts ...grpc.CallOption) (*ListTopicMessagesResponse, error)
+	// Its author or an admin.
+	DeleteTopicMessage(ctx context.Context, in *DeleteTopicMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -340,6 +369,86 @@ func (c *postServiceClient) DeleteSuggestion(ctx context.Context, in *DeleteSugg
 	return out, nil
 }
 
+func (c *postServiceClient) CreateTopic(ctx context.Context, in *CreateTopicRequest, opts ...grpc.CallOption) (*CreateTopicResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateTopicResponse)
+	err := c.cc.Invoke(ctx, PostService_CreateTopic_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetTopic(ctx context.Context, in *GetTopicRequest, opts ...grpc.CallOption) (*GetTopicResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTopicResponse)
+	err := c.cc.Invoke(ctx, PostService_GetTopic_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListTopics(ctx context.Context, in *ListTopicsRequest, opts ...grpc.CallOption) (*ListTopicsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTopicsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListTopics_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) EditTopic(ctx context.Context, in *EditTopicRequest, opts ...grpc.CallOption) (*EditTopicResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditTopicResponse)
+	err := c.cc.Invoke(ctx, PostService_EditTopic_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteTopic(ctx context.Context, in *DeleteTopicRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeleteTopic_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) CreateTopicMessage(ctx context.Context, in *CreateTopicMessageRequest, opts ...grpc.CallOption) (*CreateTopicMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateTopicMessageResponse)
+	err := c.cc.Invoke(ctx, PostService_CreateTopicMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListTopicMessages(ctx context.Context, in *ListTopicMessagesRequest, opts ...grpc.CallOption) (*ListTopicMessagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListTopicMessagesResponse)
+	err := c.cc.Invoke(ctx, PostService_ListTopicMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteTopicMessage(ctx context.Context, in *DeleteTopicMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeleteTopicMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -411,6 +520,27 @@ type PostServiceServer interface {
 	PublishSuggestion(context.Context, *PublishSuggestionRequest) (*PublishSuggestionResponse, error)
 	// The author withdraws a suggestion, or an admin declines it.
 	DeleteSuggestion(context.Context, *DeleteSuggestionRequest) (*emptypb.Empty, error)
+	// The discussions of communities ("Обсуждения" of openvk). The caller
+	// of CreateTopic has checked with the club service that the author may
+	// start a topic there and, with from_wall, speak for the community, and
+	// that the photos are theirs; the rest post asks the club service about.
+	CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error)
+	// Public.
+	GetTopic(context.Context, *GetTopicRequest) (*GetTopicResponse, error)
+	// Public: the topics of a club, pinned first, then the most recently
+	// active.
+	ListTopics(context.Context, *ListTopicsRequest) (*ListTopicsResponse, error)
+	// The author or an admin renames and closes a topic; only an admin pins
+	// and restricts it.
+	EditTopic(context.Context, *EditTopicRequest) (*EditTopicResponse, error)
+	DeleteTopic(context.Context, *DeleteTopicRequest) (*emptypb.Empty, error)
+	// Nobody writes in a closed topic, only the admins in a restricted one.
+	// The caller has checked from_wall and the photos, as for CreateTopic.
+	CreateTopicMessage(context.Context, *CreateTopicMessageRequest) (*CreateTopicMessageResponse, error)
+	// Public: oldest first.
+	ListTopicMessages(context.Context, *ListTopicMessagesRequest) (*ListTopicMessagesResponse, error)
+	// Its author or an admin.
+	DeleteTopicMessage(context.Context, *DeleteTopicMessageRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -490,6 +620,30 @@ func (UnimplementedPostServiceServer) PublishSuggestion(context.Context, *Publis
 }
 func (UnimplementedPostServiceServer) DeleteSuggestion(context.Context, *DeleteSuggestionRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteSuggestion not implemented")
+}
+func (UnimplementedPostServiceServer) CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateTopic not implemented")
+}
+func (UnimplementedPostServiceServer) GetTopic(context.Context, *GetTopicRequest) (*GetTopicResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTopic not implemented")
+}
+func (UnimplementedPostServiceServer) ListTopics(context.Context, *ListTopicsRequest) (*ListTopicsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTopics not implemented")
+}
+func (UnimplementedPostServiceServer) EditTopic(context.Context, *EditTopicRequest) (*EditTopicResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditTopic not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteTopic(context.Context, *DeleteTopicRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteTopic not implemented")
+}
+func (UnimplementedPostServiceServer) CreateTopicMessage(context.Context, *CreateTopicMessageRequest) (*CreateTopicMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateTopicMessage not implemented")
+}
+func (UnimplementedPostServiceServer) ListTopicMessages(context.Context, *ListTopicMessagesRequest) (*ListTopicMessagesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListTopicMessages not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteTopicMessage(context.Context, *DeleteTopicMessageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteTopicMessage not implemented")
 }
 func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -911,6 +1065,150 @@ func _PostService_DeleteSuggestion_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_CreateTopic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateTopicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CreateTopic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CreateTopic_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CreateTopic(ctx, req.(*CreateTopicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetTopic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTopicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetTopic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetTopic_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetTopic(ctx, req.(*GetTopicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListTopics_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTopicsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListTopics(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListTopics_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListTopics(ctx, req.(*ListTopicsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_EditTopic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditTopicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).EditTopic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_EditTopic_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).EditTopic(ctx, req.(*EditTopicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteTopic_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteTopicRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteTopic(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteTopic_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteTopic(ctx, req.(*DeleteTopicRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_CreateTopicMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateTopicMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CreateTopicMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CreateTopicMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CreateTopicMessage(ctx, req.(*CreateTopicMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListTopicMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListTopicMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListTopicMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListTopicMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListTopicMessages(ctx, req.(*ListTopicMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteTopicMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteTopicMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteTopicMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteTopicMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteTopicMessage(ctx, req.(*DeleteTopicMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -1023,6 +1321,38 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteSuggestion",
 			Handler:    _PostService_DeleteSuggestion_Handler,
+		},
+		{
+			MethodName: "CreateTopic",
+			Handler:    _PostService_CreateTopic_Handler,
+		},
+		{
+			MethodName: "GetTopic",
+			Handler:    _PostService_GetTopic_Handler,
+		},
+		{
+			MethodName: "ListTopics",
+			Handler:    _PostService_ListTopics_Handler,
+		},
+		{
+			MethodName: "EditTopic",
+			Handler:    _PostService_EditTopic_Handler,
+		},
+		{
+			MethodName: "DeleteTopic",
+			Handler:    _PostService_DeleteTopic_Handler,
+		},
+		{
+			MethodName: "CreateTopicMessage",
+			Handler:    _PostService_CreateTopicMessage_Handler,
+		},
+		{
+			MethodName: "ListTopicMessages",
+			Handler:    _PostService_ListTopicMessages_Handler,
+		},
+		{
+			MethodName: "DeleteTopicMessage",
+			Handler:    _PostService_DeleteTopicMessage_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

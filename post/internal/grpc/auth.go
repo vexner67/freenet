@@ -26,6 +26,9 @@ func PublicMethods() []string {
 		postv1.PostService_ListFeed_FullMethodName,
 		postv1.PostService_ListComments_FullMethodName,
 		postv1.PostService_GetComments_FullMethodName,
+		postv1.PostService_GetTopic_FullMethodName,
+		postv1.PostService_ListTopics_FullMethodName,
+		postv1.PostService_ListTopicMessages_FullMethodName,
 		postv1.PostService_PurgeUser_FullMethodName,
 	}
 }

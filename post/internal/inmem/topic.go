@@ -1,0 +1,328 @@
+package inmem
+
+import (
+	"bytes"
+	"context"
+	"slices"
+	"strings"
+	"sync"
+
+	"github.com/google/uuid"
+	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/post/internal/post"
+	"github.com/vexner67/freenet/post/internal/service"
+)
+
+// TopicRepository keeps topics and their messages, as the two tables do
+// in PostgreSQL: a message counts in its topic and dates it, a deleted
+// topic takes its messages. Topics are stored as StoredTopic and handed
+// out anew, so callers never share them; messages are immutable.
+type TopicRepository struct {
+	mu       sync.RWMutex
+	topics   map[uuid.UUID]post.StoredTopic
+	messages map[uuid.UUID]*post.TopicMessage
+}
+
+func NewTopicRepository() *TopicRepository {
+	return &TopicRepository{
+		topics:   make(map[uuid.UUID]post.StoredTopic),
+		messages: make(map[uuid.UUID]*post.TopicMessage),
+	}
+}
+
+// Messages is the same repository as service.TopicMessageRepository.
+func (r *TopicRepository) Messages() *TopicMessageRepository {
+	return &TopicMessageRepository{r: r}
+}
+
+func (r *TopicRepository) Save(ctx context.Context, t *post.Topic) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.topics[t.ID()] = t.Stored()
+
+	return nil
+}
+
+func (r *TopicRepository) Get(ctx context.Context, id uuid.UUID) (*post.Topic, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	s, ok := r.topics[id]
+	if !ok {
+		return nil, post.ErrTopicNotFound
+	}
+
+	return post.RestoreTopic(s), nil
+}
+
+func (r *TopicRepository) Update(ctx context.Context, t *post.Topic) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	s, ok := r.topics[t.ID()]
+	if !ok {
+		return post.ErrTopicNotFound
+	}
+
+	changed := t.Stored()
+	s.Title, s.Closed, s.Pinned, s.Restricted = changed.Title, changed.Closed, changed.Pinned, changed.Restricted
+	r.topics[t.ID()] = s
+
+	return nil
+}
+
+func (r *TopicRepository) Delete(ctx context.Context, id uuid.UUID) ([]*post.TopicMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.topics[id]; !ok {
+		return nil, post.ErrTopicNotFound
+	}
+
+	return r.deleteTopic(id, uuid.Nil), nil
+}
+
+// deleteTopic removes a topic with its messages, returning those not by
+// keepOut; the lock is held.
+func (r *TopicRepository) deleteTopic(id, keepOut uuid.UUID) []*post.TopicMessage {
+	delete(r.topics, id)
+
+	var gone []*post.TopicMessage
+	for mid, m := range r.messages {
+		if m.TopicID() == id {
+			delete(r.messages, mid)
+			if m.AuthorID() != keepOut {
+				gone = append(gone, m)
+			}
+		}
+	}
+
+	return gone
+}
+
+func (r *TopicRepository) List(ctx context.Context, clubID uuid.UUID, query string, after *service.TopicCursor, limit int) ([]*post.Topic, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	found := r.matching(clubID, query)
+	slices.SortFunc(found, func(a, b post.StoredTopic) int { return -compareTopics(a, b) })
+
+	var out []*post.Topic
+	for _, s := range found {
+		if after != nil && compareTopics(s, post.StoredTopic{Pinned: after.Pinned, UpdatedAt: after.UpdatedAt, ID: after.ID}) >= 0 {
+			continue
+		}
+		if len(out) == limit {
+			break
+		}
+		out = append(out, post.RestoreTopic(s))
+	}
+
+	return out, nil
+}
+
+func (r *TopicRepository) Count(ctx context.Context, clubID uuid.UUID, query string) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	return len(r.matching(clubID, query)), nil
+}
+
+// matching are the topics of a club whose titles contain query; the lock
+// is held.
+func (r *TopicRepository) matching(clubID uuid.UUID, query string) []post.StoredTopic {
+	var found []post.StoredTopic
+	for _, s := range r.topics {
+		if s.ClubID == clubID && strings.Contains(strings.ToLower(s.Title.String()), strings.ToLower(query)) {
+			found = append(found, s)
+		}
+	}
+
+	return found
+}
+
+// compareTopics orders topics as (pinned, updated_at, id) in PostgreSQL.
+func compareTopics(a, b post.StoredTopic) int {
+	switch {
+	case a.Pinned != b.Pinned:
+		if a.Pinned {
+			return 1
+		}
+		return -1
+	case !a.UpdatedAt.Equal(b.UpdatedAt):
+		return a.UpdatedAt.Compare(b.UpdatedAt)
+	default:
+		return compareIDs(a.ID, b.ID)
+	}
+}
+
+func (r *TopicRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*post.TopicMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	for id, m := range r.messages {
+		if m.AuthorID() == userID {
+			delete(r.messages, id)
+			r.recount(m.TopicID(), -1)
+		}
+	}
+
+	var gone []*post.TopicMessage
+	for id, s := range r.topics {
+		if s.AuthorID == userID {
+			gone = append(gone, r.deleteTopic(id, userID)...)
+		}
+	}
+
+	return gone, nil
+}
+
+// recount changes the count of a topic by delta; the lock is held.
+func (r *TopicRepository) recount(topicID uuid.UUID, delta int) {
+	if s, ok := r.topics[topicID]; ok {
+		s.Messages += delta
+		r.topics[topicID] = s
+	}
+}
+
+// TopicMessageRepository is the service.TopicMessageRepository side of
+// TopicRepository.
+type TopicMessageRepository struct {
+	r *TopicRepository
+}
+
+func (m *TopicMessageRepository) Save(ctx context.Context, msg *post.TopicMessage) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	m.r.mu.Lock()
+	defer m.r.mu.Unlock()
+
+	s, ok := m.r.topics[msg.TopicID()]
+	if !ok {
+		return post.ErrTopicNotFound
+	}
+
+	s.Messages++
+	s.UpdatedAt = msg.CreatedAt()
+	m.r.topics[msg.TopicID()] = s
+	m.r.messages[msg.ID()] = msg
+
+	return nil
+}
+
+func (m *TopicMessageRepository) Get(ctx context.Context, id uuid.UUID) (*post.TopicMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	m.r.mu.RLock()
+	defer m.r.mu.RUnlock()
+
+	msg, ok := m.r.messages[id]
+	if !ok {
+		return nil, post.ErrMessageNotFound
+	}
+
+	return msg, nil
+}
+
+func (m *TopicMessageRepository) Delete(ctx context.Context, id uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	m.r.mu.Lock()
+	defer m.r.mu.Unlock()
+
+	msg, ok := m.r.messages[id]
+	if !ok {
+		return post.ErrMessageNotFound
+	}
+
+	delete(m.r.messages, id)
+	m.r.recount(msg.TopicID(), -1)
+
+	return nil
+}
+
+func (m *TopicMessageRepository) List(ctx context.Context, topicID, after uuid.UUID, limit int) ([]*post.TopicMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	m.r.mu.RLock()
+	defer m.r.mu.RUnlock()
+
+	var found []*post.TopicMessage
+	for _, msg := range m.r.messages {
+		if msg.TopicID() == topicID && compareIDs(msg.ID(), after) > 0 {
+			found = append(found, msg)
+		}
+	}
+
+	slices.SortFunc(found, func(a, b *post.TopicMessage) int { return compareIDs(a.ID(), b.ID()) })
+
+	return found[:min(limit, len(found))], nil
+}
+
+func (m *TopicMessageRepository) Last(ctx context.Context, topicIDs []uuid.UUID) ([]*post.TopicMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	m.r.mu.RLock()
+	defer m.r.mu.RUnlock()
+
+	last := make(map[uuid.UUID]*post.TopicMessage)
+	for _, msg := range m.r.messages {
+		if !slices.Contains(topicIDs, msg.TopicID()) {
+			continue
+		}
+		if prev, ok := last[msg.TopicID()]; !ok || compareIDs(msg.ID(), prev.ID()) > 0 {
+			last[msg.TopicID()] = msg
+		}
+	}
+
+	out := make([]*post.TopicMessage, 0, len(last))
+	for _, msg := range last {
+		out = append(out, msg)
+	}
+
+	return out, nil
+}
+
+// compareIDs orders UUIDs as PostgreSQL does.
+func compareIDs(a, b uuid.UUID) int {
+	return bytes.Compare(a[:], b[:])
+}

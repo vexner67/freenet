@@ -153,9 +153,12 @@ func (a *App) build(cfg config.Config) error {
 			Suggestions: service.NewSuggestionService(service.SuggestionDeps{
 				Suggestions: repos.suggestions, Posts: repos.posts, Tx: repos.tx, Notifier: notifier, Photos: photos, Moderators: moderators,
 			}),
+			Topics: service.NewTopicService(service.TopicDeps{
+				Topics: repos.topics, Messages: repos.topicMessages, Tx: repos.tx, Photos: photos, Moderators: moderators,
+			}),
 			Purge: service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
-				Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Topics: repos.topics, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
 		}, a.logger),
 	)
@@ -199,6 +202,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// a post for everyone. Each has its own counter.
 		postv1.PostService_SuggestPost_FullMethodName:       cfg.PostLimits,
 		postv1.PostService_PublishSuggestion_FullMethodName: cfg.PostLimits,
+		// A topic is a post of the discussions, a message in it a comment.
+		postv1.PostService_CreateTopic_FullMethodName:        cfg.PostLimits,
+		postv1.PostService_CreateTopicMessage_FullMethodName: cfg.CommentLimits,
 	}
 }
 
@@ -339,7 +345,12 @@ type repositories struct {
 		service.SuggestionRepository
 		service.SuggestionEraser
 	}
-	tx service.TxManager
+	topics interface {
+		service.TopicRepository
+		service.TopicEraser
+	}
+	topicMessages service.TopicMessageRepository
+	tx            service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }
@@ -347,13 +358,17 @@ type repositories struct {
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
+		topics := inmem.NewTopicRepository()
 		return repositories{
 			posts:        store.Posts(),
 			likes:        store.Likes(),
 			comments:     store.Comments(),
 			commentLikes: store.CommentLikes(),
 			suggestions:  inmem.NewSuggestionRepository(),
+			topics:       topics,
 			tx:           inmem.TxManager{},
+
+			topicMessages: topics.Messages(),
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -382,13 +397,18 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		return repositories{}, errs.Wrap("pgpool.New", err)
 	}
 
+	topics := postgres.NewTopicRepository(a.pool)
+
 	return repositories{
 		posts:        postgres.NewPostRepository(a.pool),
 		likes:        postgres.NewLikeRepository(a.pool),
 		comments:     postgres.NewCommentRepository(a.pool),
 		commentLikes: postgres.NewCommentLikeRepository(a.pool),
 		suggestions:  postgres.NewSuggestionRepository(a.pool),
+		topics:       topics,
 		tx:           pgpool.NewTxManager(a.pool),
+
+		topicMessages: topics.Messages(),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)
