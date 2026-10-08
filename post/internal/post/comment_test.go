@@ -125,3 +125,30 @@ func TestNewReply(t *testing.T) {
 		t.Fatalf("a reply under another post: %v", err)
 	}
 }
+
+func TestComment_ForWall(t *testing.T) {
+	t.Parallel()
+
+	club, admin := uuid.New(), uuid.New()
+	p, err := post.New(club, admin, post.RestoreContent("новости", nil, uuid.Nil), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	c, err := post.NewComment(p.ID(), admin, post.RestoreCommentContent("ответ", nil), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if c.FromWall() || c.Notified() != admin {
+		t.Fatalf("a comment = %+v", c)
+	}
+
+	forClub, err := c.ForWall(p)
+	if err != nil || !forClub.FromWall() || forClub.Notified() != uuid.Nil || forClub.AuthorID() != admin || c.FromWall() {
+		t.Fatalf("ForWall = %+v, %v", forClub, err)
+	}
+
+	own, _ := post.New(admin, admin, post.RestoreContent("моя", nil, uuid.Nil), time.Now())
+	if _, err = c.ForWall(own); !errors.Is(err, post.ErrFromOwnWall) {
+		t.Fatalf("for one's own wall: %v", err)
+	}
+}

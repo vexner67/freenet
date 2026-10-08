@@ -129,6 +129,12 @@ message Comment {
   int32 like_count = 8;
   // The caller likes the comment; false without an access token.
   bool liked = 9;
+  // The comment speaks for the community whose wall its post is on
+  // ("От имени сообщества"); readers are not told author_id.
+  bool from_wall = 10;
+  // The caller wrote the comment; false without an access token. Tells
+  // the author a comment that speaks for a community.
+  bool mine = 11;
 }
 
 // Suggestion is a post suggested for a community's wall.
@@ -323,6 +329,9 @@ message CreateCommentRequest {
   repeated string photo_ids = 3;
   // The comment under the same post this one answers; empty for none.
   string reply_to_id = 4;
+  // The comment speaks for the community whose wall the post is on: the
+  // caller has checked with the club service that the author may.
+  bool from_wall = 5;
 }
 
 message CreateCommentResponse {

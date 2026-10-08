@@ -37,6 +37,32 @@ func TestCommentRepository_RepliesAndLikes(t *testing.T) {
 	if err = comments.Save(ctx, parent); err != nil {
 		t.Fatal(err)
 	}
+	// A comment for the wall reads back as one.
+	if _, err = parent.ForWall(p); err == nil {
+		t.Fatal("ann speaks for her own wall")
+	}
+	clubPost, err := post.New(uuid.New(), ann, post.RestoreContent("запись в группе", nil, uuid.Nil), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = posts.Save(ctx, clubPost); err != nil {
+		t.Fatal(err)
+	}
+	onClub, err := post.NewComment(clubPost.ID(), bob, content, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	forWall, err := onClub.ForWall(clubPost)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = comments.Save(ctx, forWall); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := comments.Get(ctx, forWall.ID()); err != nil || !got.FromWall() {
+		t.Fatalf("Get = %+v, %v; for the wall", got, err)
+	}
+
 	reply, err := post.NewReply(p.ID(), parent, bob, content, time.Now())
 	if err != nil {
 		t.Fatal(err)

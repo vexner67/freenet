@@ -34,7 +34,7 @@ func (f commentFixture) comment(t *testing.T, author, postID uuid.UUID, texts ..
 
 	comments := make([]*post.Comment, 0, len(texts))
 	for _, text := range texts {
-		c, err := f.comments.Create(context.Background(), author, postID, post.RestoreCommentContent(post.CommentText(text), nil))
+		c, err := f.comments.Create(context.Background(), service.CommentInput{AuthorID: author, PostID: postID, Content: post.RestoreCommentContent(post.CommentText(text), nil)})
 		if err != nil {
 			t.Fatalf("Create: %v", err)
 		}
@@ -126,7 +126,7 @@ func TestCommentService_Create(t *testing.T) {
 		t.Fatalf("comment = %v %v %q", c.PostID(), c.AuthorID(), c.Text())
 	}
 
-	if _, err := f.comments.Create(ctx, bob, uuid.New(), post.RestoreCommentContent("куда?", nil)); !errors.Is(err, post.ErrNotFound) {
+	if _, err := f.comments.Create(ctx, service.CommentInput{AuthorID: bob, PostID: uuid.New(), Content: post.RestoreCommentContent("куда?", nil)}); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("comment a missing post: %v", err)
 	}
 }
@@ -229,7 +229,7 @@ func TestCommentService_Reply(t *testing.T) {
 	f.notifier.notified = nil
 
 	// Cat answers bob: bob hears of the answer, ann of a new comment.
-	reply, err := f.comments.Reply(ctx, service.ReplyInput{AuthorID: cat, PostID: p.ID(), ParentID: bobs.ID(), Content: content})
+	reply, err := f.comments.Create(ctx, service.CommentInput{AuthorID: cat, PostID: p.ID(), ParentID: bobs.ID(), Content: content})
 	if err != nil {
 		t.Fatalf("Reply: %v", err)
 	}
@@ -246,7 +246,7 @@ func TestCommentService_Reply(t *testing.T) {
 
 	// Ann answers cat on her own post: cat only, once.
 	f.notifier.notified = nil
-	if _, err = f.comments.Reply(ctx, service.ReplyInput{AuthorID: ann, PostID: p.ID(), ParentID: reply.ID(), Content: content}); err != nil {
+	if _, err = f.comments.Create(ctx, service.CommentInput{AuthorID: ann, PostID: p.ID(), ParentID: reply.ID(), Content: content}); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.notifier.notified) != 1 || f.notifier.notified[0].Kind != service.EventCommentReply || f.notifier.notified[0].RecipientID != cat {
@@ -255,7 +255,7 @@ func TestCommentService_Reply(t *testing.T) {
 
 	// Cat answers her own comment: only ann hears, of a new comment.
 	f.notifier.notified = nil
-	if _, err = f.comments.Reply(ctx, service.ReplyInput{AuthorID: cat, PostID: p.ID(), ParentID: reply.ID(), Content: content}); err != nil {
+	if _, err = f.comments.Create(ctx, service.CommentInput{AuthorID: cat, PostID: p.ID(), ParentID: reply.ID(), Content: content}); err != nil {
 		t.Fatal(err)
 	}
 	if len(f.notifier.notified) != 1 || f.notifier.notified[0].Kind != service.EventComment {
@@ -263,10 +263,10 @@ func TestCommentService_Reply(t *testing.T) {
 	}
 
 	// A reply under another post than the comment's is refused.
-	if _, err = f.comments.Reply(ctx, service.ReplyInput{AuthorID: cat, PostID: other.ID(), ParentID: bobs.ID(), Content: content}); !errors.Is(err, post.ErrReplyOtherPost) {
+	if _, err = f.comments.Create(ctx, service.CommentInput{AuthorID: cat, PostID: other.ID(), ParentID: bobs.ID(), Content: content}); !errors.Is(err, post.ErrReplyOtherPost) {
 		t.Fatalf("reply under another post: %v", err)
 	}
-	if _, err = f.comments.Reply(ctx, service.ReplyInput{AuthorID: cat, PostID: p.ID(), ParentID: uuid.New(), Content: content}); !errors.Is(err, post.ErrCommentNotFound) {
+	if _, err = f.comments.Create(ctx, service.CommentInput{AuthorID: cat, PostID: p.ID(), ParentID: uuid.New(), Content: content}); !errors.Is(err, post.ErrCommentNotFound) {
 		t.Fatalf("reply to nothing: %v", err)
 	}
 
@@ -375,7 +375,7 @@ func TestCommentService_Photos(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		c, err := comments.Create(ctx, author, p.ID(), content)
+		c, err := comments.Create(ctx, service.CommentInput{AuthorID: author, PostID: p.ID(), Content: content})
 		if err != nil {
 			t.Fatalf("Create: %v", err)
 		}
@@ -405,5 +405,48 @@ func TestCommentService_Photos(t *testing.T) {
 	}
 	if photos.outsideTx != 0 {
 		t.Fatalf("%d photo calls outside the transaction", photos.outsideTx)
+	}
+}
+
+func TestCommentService_ForWall(t *testing.T) {
+	t.Parallel()
+
+	f := newCommentFixture()
+	ctx := context.Background()
+	club, admin, ann := uuid.New(), uuid.New(), uuid.New()
+	content := post.RestoreCommentContent("от группы", nil)
+
+	// Ann writes on the club's wall; the admin answers for the club.
+	annsContent, _ := post.NewContent("вопрос", nil)
+	annsPost, err := f.posts.Create(ctx, service.CreateInput{WallID: club, AuthorID: ann, Content: annsContent, ClubWall: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.notifier.notified = nil
+
+	forClub, err := f.comments.Create(ctx, service.CommentInput{AuthorID: admin, PostID: annsPost.ID(), Content: content, FromWall: true})
+	if err != nil || !forClub.FromWall() || forClub.AuthorID() != admin {
+		t.Fatalf("Create for the club = %+v, %v", forClub, err)
+	}
+	if n := f.notifier.notified; len(n) != 1 || n[0].Kind != service.EventComment || n[0].RecipientID != ann || n[0].ActorID != club {
+		t.Fatalf("ann hears from the club, not the admin: %+v", n)
+	}
+
+	// Answers to it and its likes tell nobody: its author is not shown.
+	f.notifier.notified = nil
+	if _, err = f.comments.Create(ctx, service.CommentInput{AuthorID: ann, PostID: annsPost.ID(), ParentID: forClub.ID(), Content: content}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = f.comments.Like(ctx, ann, forClub.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if n := f.notifier.notified; len(n) != 0 {
+		t.Fatalf("the admin hears of answers and likes: %+v", n)
+	}
+
+	// Nobody speaks for their own wall but themselves.
+	own := write(t, f.posts, ann, "моя запись")[0]
+	if _, err = f.comments.Create(ctx, service.CommentInput{AuthorID: ann, PostID: own.ID(), Content: content, FromWall: true}); !errors.Is(err, post.ErrFromOwnWall) {
+		t.Fatalf("for one's own wall: %v", err)
 	}
 }

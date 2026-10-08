@@ -809,7 +809,7 @@ func TestPostService_ClubWalls(t *testing.T) {
 	if _, err = posts.Like(ctx, member, news.ID()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = comments.Create(ctx, member, news.ID(), post.RestoreCommentContent("ура", nil)); err != nil {
+	if _, err = comments.Create(ctx, service.CommentInput{AuthorID: member, PostID: news.ID(), Content: post.RestoreCommentContent("ура", nil)}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = posts.Repost(ctx, member, news.ID(), ""); err != nil {
@@ -828,14 +828,14 @@ func TestPostService_ClubWalls(t *testing.T) {
 	}
 
 	// The admins keep the wall clean; strangers do not.
-	strangers, err := comments.Create(ctx, stranger, byMember.ID(), post.RestoreCommentContent("спам", nil))
+	strangers, err := comments.Create(ctx, service.CommentInput{AuthorID: stranger, PostID: byMember.ID(), Content: post.RestoreCommentContent("спам", nil)})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = comments.Delete(ctx, member, strangers.ID()); err != nil {
 		t.Fatalf("the author of the post deletes a comment: %v", err)
 	}
-	if strangers, err = comments.Create(ctx, stranger, news.ID(), post.RestoreCommentContent("спам", nil)); err != nil {
+	if strangers, err = comments.Create(ctx, service.CommentInput{AuthorID: stranger, PostID: news.ID(), Content: post.RestoreCommentContent("спам", nil)}); err != nil {
 		t.Fatal(err)
 	}
 	if err = comments.Delete(ctx, member, strangers.ID()); !errors.Is(err, post.ErrCannotDeleteComment) {

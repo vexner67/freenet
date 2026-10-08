@@ -71,6 +71,7 @@ func (s *Store) restoreComment(id uuid.UUID, update func(*post.StoredComment)) {
 	sc := post.StoredComment{
 		ID: c.ID(), PostID: c.PostID(), AuthorID: c.AuthorID(), ReplyTo: c.ReplyTo(),
 		Content: post.RestoreCommentContent(c.Text(), c.Photos()), CreatedAt: c.CreatedAt(), Likes: c.Likes(),
+		FromWall: c.FromWall(),
 	}
 	update(&sc)
 	s.comments[id] = post.RestoreComment(sc)

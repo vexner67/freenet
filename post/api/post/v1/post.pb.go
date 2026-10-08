@@ -228,7 +228,13 @@ type Comment struct {
 	ReplyToId string `protobuf:"bytes,7,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
 	LikeCount int32  `protobuf:"varint,8,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`
 	// The caller likes the comment; false without an access token.
-	Liked         bool `protobuf:"varint,9,opt,name=liked,proto3" json:"liked,omitempty"`
+	Liked bool `protobuf:"varint,9,opt,name=liked,proto3" json:"liked,omitempty"`
+	// The comment speaks for the community whose wall its post is on
+	// ("От имени сообщества"); readers are not told author_id.
+	FromWall bool `protobuf:"varint,10,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	// The caller wrote the comment; false without an access token. Tells
+	// the author a comment that speaks for a community.
+	Mine          bool `protobuf:"varint,11,opt,name=mine,proto3" json:"mine,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -322,6 +328,20 @@ func (x *Comment) GetLikeCount() int32 {
 func (x *Comment) GetLiked() bool {
 	if x != nil {
 		return x.Liked
+	}
+	return false
+}
+
+func (x *Comment) GetFromWall() bool {
+	if x != nil {
+		return x.FromWall
+	}
+	return false
+}
+
+func (x *Comment) GetMine() bool {
+	if x != nil {
+		return x.Mine
 	}
 	return false
 }
@@ -1888,7 +1908,10 @@ type CreateCommentRequest struct {
 	Text     string   `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
 	PhotoIds []string `protobuf:"bytes,3,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
 	// The comment under the same post this one answers; empty for none.
-	ReplyToId     string `protobuf:"bytes,4,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
+	ReplyToId string `protobuf:"bytes,4,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
+	// The comment speaks for the community whose wall the post is on: the
+	// caller has checked with the club service that the author may.
+	FromWall      bool `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1949,6 +1972,13 @@ func (x *CreateCommentRequest) GetReplyToId() string {
 		return x.ReplyToId
 	}
 	return ""
+}
+
+func (x *CreateCommentRequest) GetFromWall() bool {
+	if x != nil {
+		return x.FromWall
+	}
+	return false
 }
 
 type CreateCommentResponse struct {
@@ -2496,7 +2526,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0eeditable_until\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\reditableUntil\x12\x1b\n" +
 	"\tfrom_wall\x18\x0f \x01(\bR\bfromWall\x12\x12\n" +
 	"\x04mine\x18\x10 \x01(\bR\x04mine\x12\x16\n" +
-	"\x06signed\x18\x11 \x01(\bR\x06signed\"\x90\x02\n" +
+	"\x06signed\x18\x11 \x01(\bR\x06signed\"\xc1\x02\n" +
 	"\aComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
@@ -2508,7 +2538,10 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\vreply_to_id\x18\a \x01(\tR\treplyToId\x12\x1d\n" +
 	"\n" +
 	"like_count\x18\b \x01(\x05R\tlikeCount\x12\x14\n" +
-	"\x05liked\x18\t \x01(\bR\x05liked\"\xbe\x01\n" +
+	"\x05liked\x18\t \x01(\bR\x05liked\x12\x1b\n" +
+	"\tfrom_wall\x18\n" +
+	" \x01(\bR\bfromWall\x12\x12\n" +
+	"\x04mine\x18\v \x01(\bR\x04mine\"\xbe\x01\n" +
 	"\n" +
 	"Suggestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
@@ -2606,12 +2639,13 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\apost_id\x18\x01 \x01(\tR\x06postId\"3\n" +
 	"\x12UnlikePostResponse\x12\x1d\n" +
 	"\n" +
-	"like_count\x18\x01 \x01(\x05R\tlikeCount\"\x80\x01\n" +
+	"like_count\x18\x01 \x01(\x05R\tlikeCount\"\x9d\x01\n" +
 	"\x14CreateCommentRequest\x12\x17\n" +
 	"\apost_id\x18\x01 \x01(\tR\x06postId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x1e\n" +
-	"\vreply_to_id\x18\x04 \x01(\tR\treplyToId\"C\n" +
+	"\vreply_to_id\x18\x04 \x01(\tR\treplyToId\x12\x1b\n" +
+	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\"C\n" +
 	"\x15CreateCommentResponse\x12*\n" +
 	"\acomment\x18\x01 \x01(\v2\x10.post.v1.CommentR\acomment\"&\n" +
 	"\x14DeleteCommentRequest\x12\x0e\n" +
