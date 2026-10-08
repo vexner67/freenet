@@ -10,7 +10,7 @@
 #   tunnel;
 # - Caddy terminates HTTP(S) in front of the gateway: SITE_ADDRESS is the
 #   domain once there is one (Caddy then gets and renews its certificate
-#   itself), ":80" until then.
+#   itself), ":80" until then; REDIRECT_ADDRESS (www.<domain>) leads there.
 
 # Six databases share a small server: a few connections each (a service
 # pools at most a handful) and small buffers.
@@ -72,6 +72,7 @@ services:
     restart: unless-stopped
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
+      REDIRECT_ADDRESS: ${REDIRECT_ADDRESS:-:8081}
     ports:
       - "80:80"
       - "443:443"
