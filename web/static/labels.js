@@ -288,6 +288,7 @@ const errorTexts = {
   'message text is empty': 'Напишите что-нибудь.',
   'message text is too long': 'Сообщение слишком длинное.',
   'message not found': 'Сообщение не найдено.',
+  'the message can no longer be deleted': 'Сообщение можно удалить только в течение суток после отправки.',
   'you cannot write to yourself': 'Нельзя написать самому себе.',
   'fill in your profile before writing messages': 'Сначала заполните свою страницу.',
   'permission denied': 'Недостаточно прав.',

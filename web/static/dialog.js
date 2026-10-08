@@ -2,13 +2,15 @@
 // ones load when scrolled to the top, new ones and read marks come live
 // (events.js) and are polled only while that is down. Enter sends,
 // Shift+Enter breaks the line. Unread messages are grey either way: the
-// peer's until you read them, yours until the peer does.
+// peer's until you read them, yours until the peer does. Your own message
+// can be deleted for both for a day, as "delete for everyone" on VK.
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
-import { errorText, formatPostDate } from './labels.js';
+import { errorText, formatPostDate, genitiveName } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError } from './layout.js';
+import { button, openModal } from './modal.js';
 import { photosNode } from './posts.js';
 
 const POLL_MS = 5000;
@@ -37,8 +39,51 @@ function messageNode(m) {
       m.text ? el('div', { className: 'im-message-text', textContent: m.text }) : null,
       photosNode(m.photos ?? []),
     ),
-    el('div', { className: 'im-message-date', textContent: formatPostDate(m.createdAt) }),
+    el('div', { className: 'im-message-date' },
+      formatPostDate(m.createdAt),
+      canDelete(m) && el('a', { className: 'im-message-delete', textContent: 'Удалить', onclick: () => confirmDelete(m) }),
+    ),
   );
+}
+
+// canDelete: your own message, until deletableUntil; the server says no
+// once it passes while the page is open.
+function canDelete(m) {
+  return m.out && Boolean(m.deletableUntil) && Date.now() < new Date(m.deletableUntil);
+}
+
+function confirmDelete(m) {
+  const modal = openModal('Удаление сообщения');
+  const error = el('div', { className: 'error', hidden: true });
+  const remove = button('Удалить', async () => {
+    hideError(error);
+    remove.disabled = true;
+
+    try {
+      await api.deleteMessage(m.id);
+      drop(m.id);
+      modal.close();
+    } catch (e) {
+      // Gone already: what the user wanted.
+      if (e.status === 404) {
+        drop(m.id);
+        modal.close();
+        return;
+      }
+      showError(error, e);
+      remove.disabled = false;
+    }
+  });
+
+  modal.body.append(error, el('div', {}, `Сообщение будет удалено и у вас, и у ${genitiveName(peer)}.`));
+  modal.actions.append(remove, button('Отмена', modal.close, { secondary: true }));
+}
+
+// drop takes a deleted message off the page.
+function drop(id) {
+  shown.get(id)?.remove();
+  shown.delete(id);
+  $('empty').hidden = shown.size > 0;
 }
 
 // add puts messages at the end (newer) or the start (older), skipping
@@ -156,6 +201,10 @@ function listenToEvents() {
   });
   onEvent('read', (e) => {
     if (e.peer.id === peer.id && !e.byMe) markTheirRead(e.upTo);
+  });
+  // Taken back by the peer, or by me on another page.
+  onEvent('delete', (e) => {
+    if (e.peer.id === peer.id) drop(e.id);
   });
   // Whatever happened while disconnected.
   onEvent('ready', catchUp);

@@ -1,6 +1,8 @@
 // "Мои Сообщения", as on openvk: dialogs, the most recently written first.
 // A row shows who, when, and the last message, grey while unread. New
-// messages bring their dialog to the top live (events.js).
+// messages bring their dialog to the top live (events.js); a deleted last
+// message makes the list load afresh, since only the server knows what is
+// last now.
 
 import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
@@ -69,6 +71,23 @@ function listenToEvents() {
     if (e.byMe && !m.out) dialog.unread = false;
     if (!e.byMe && m.out) m.read = true;
     show(dialog, false);
+  });
+
+  onEvent('delete', (e) => {
+    if (shown.get(e.peer.id)?.dialog.lastMessage.id === e.id) reload();
+  });
+}
+
+// reload draws the list from its first page again, one reload after
+// another: two at once would interleave their rows.
+let reloading = Promise.resolve();
+
+function reload() {
+  reloading = reloading.then(() => {
+    shown.clear();
+    cursor = '';
+    $('dialogs').replaceChildren();
+    return loadMore();
   });
 }
 
