@@ -39,6 +39,9 @@ func toProtoClub(c *club.Club) *clubv1.Club {
 		AvatarId:      optionalID(c.AvatarID()),
 		Website:       c.Website().String(),
 		AdminsDisplay: adminsDisplays[c.AdminsDisplay()],
+
+		OpenTopics:      c.OpenTopics(),
+		TopicsAboveWall: c.TopicsAboveWall(),
 	}
 }
 
@@ -56,6 +59,8 @@ func toProtoView(v service.View) *clubv1.ClubView {
 		Club:    toProtoClub(v.Club),
 		Role:    roles[v.Role],
 		OwnerId: optionalID(v.OwnerID),
+
+		CanStartTopic: v.Club.CanStartTopic(v.Role),
 	}
 }
 
@@ -128,6 +133,7 @@ func fromProtoChanges(req *clubv1.UpdateClubRequest) (club.Changes, error) {
 	return club.Changes{
 		Name: name, Description: description, Address: address, Website: website,
 		Wall: wall, AdminsDisplay: adminsDisplay,
+		OpenTopics: req.GetOpenTopics(), TopicsAboveWall: req.GetTopicsAboveWall(),
 	}, nil
 }
 

@@ -42,6 +42,11 @@ type Club struct {
 	members int
 	// avatarID is the club's photo in the media service; uuid.Nil for none.
 	avatarID uuid.UUID
+	// openTopics: anyone starts topics in its discussions, not only the
+	// admins ("Все могут создавать темы" of openvk); topicsAboveWall: the
+	// page lists them above the wall rather than in the right column.
+	openTopics      bool
+	topicsAboveWall bool
 }
 
 // New creates a club, open to posts from everyone and showing its creator
@@ -76,6 +81,9 @@ type Stored struct {
 	CreatedAt     time.Time
 	Members       int
 	AvatarID      uuid.UUID
+
+	OpenTopics      bool
+	TopicsAboveWall bool
 }
 
 // Restore rebuilds a club from storage without validation or new IDs.
@@ -91,6 +99,9 @@ func Restore(s Stored) *Club {
 		createdAt:     s.CreatedAt,
 		members:       s.Members,
 		avatarID:      s.AvatarID,
+
+		openTopics:      s.OpenTopics,
+		topicsAboveWall: s.TopicsAboveWall,
 	}
 }
 
@@ -103,6 +114,9 @@ type Changes struct {
 	Website       Website
 	Wall          Wall
 	AdminsDisplay AdminsDisplay
+	// "Обсуждения": who starts topics and where the page lists them.
+	OpenTopics      bool
+	TopicsAboveWall bool
 }
 
 // Edited returns c with changes made by someone who is role in it: only
@@ -119,6 +133,8 @@ func (c *Club) Edited(role Role, changes Changes) (*Club, error) {
 	edited.website = changes.Website
 	edited.wall = changes.Wall
 	edited.adminsDisplay = changes.AdminsDisplay
+	edited.openTopics = changes.OpenTopics
+	edited.topicsAboveWall = changes.TopicsAboveWall
 
 	return &edited, nil
 }
@@ -156,6 +172,13 @@ func (c *Club) CanPostOnWall(role Role, fromClub bool) bool {
 	}
 
 	return true
+}
+
+// CanStartTopic tells whether someone who is role in the club may start a
+// topic in its discussions: the admins, or anyone when the club lets
+// everyone ("Все могут создавать темы"), members or not, as in openvk.
+func (c *Club) CanStartTopic(role Role) bool {
+	return c.openTopics || role.Manages()
 }
 
 // CanSuggest tells whether someone who is role in the club may suggest a
@@ -246,4 +269,12 @@ func (c *Club) Members() int {
 
 func (c *Club) AvatarID() uuid.UUID {
 	return c.avatarID
+}
+
+func (c *Club) OpenTopics() bool {
+	return c.openTopics
+}
+
+func (c *Club) TopicsAboveWall() bool {
+	return c.topicsAboveWall
 }
