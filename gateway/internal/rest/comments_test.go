@@ -133,3 +133,45 @@ func TestDeleteComment(t *testing.T) {
 		t.Fatalf("without token: status = %d", w.Code)
 	}
 }
+
+func TestCommentRepliesAndLikes(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+	w := h.do("POST", "/api/v1/posts/p1/comments", `{"text":"Пётр, согласна","replyTo":"c1"}`, "Authorization", "Bearer tok")
+	got := decode[map[string]any](t, w)
+	if w.Code != http.StatusCreated || h.posts.replyTo != "c1" || got["replyTo"] != "c1" {
+		t.Fatalf("reply: %d %v, sent replyTo %q", w.Code, got, h.posts.replyTo)
+	}
+
+	if w = h.do("PUT", "/api/v1/comments/c1/like", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.posts.likedComment != "c1" {
+		t.Fatalf("like: %d", w.Code)
+	}
+	if like := decode[map[string]any](t, w); like["likes"] != float64(2) || like["liked"] != true {
+		t.Fatalf("like = %v", like)
+	}
+	if w = h.do("DELETE", "/api/v1/comments/c1/like", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.posts.likedComment != "-c1" {
+		t.Fatalf("unlike: %d", w.Code)
+	}
+	if w = h.do("PUT", "/api/v1/comments/c404/like", "", "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		t.Fatalf("like a missing comment: %d", w.Code)
+	}
+	if w = h.do("PUT", "/api/v1/comments/c1/like", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("like without a token: %d", w.Code)
+	}
+
+	// The list tells the caller what they like, and what answers what.
+	page := decode[map[string]any](t, h.do("GET", "/api/v1/posts/p1/comments", "", "Authorization", "Bearer tok"))
+	comments, _ := page["comments"].([]any)
+	last, _ := comments[len(comments)-1].(map[string]any)
+	first, _ := comments[0].(map[string]any)
+	if last["replyTo"] != "c1" || last["liked"] != true || last["likes"] != float64(2) || first["replyTo"] != nil {
+		t.Fatalf("comments = %v", comments)
+	}
+	anon := decode[map[string]any](t, h.do("GET", "/api/v1/posts/p1/comments", ""))
+	if c, _ := anon["comments"].([]any)[len(comments)-1].(map[string]any); c["liked"] != false {
+		t.Fatalf("an anonymous viewer likes %v", c)
+	}
+}

@@ -225,6 +225,7 @@ type fakePosts struct {
 	wallPosts              []model.Post
 	created, wall, shared  string
 	edited, pinned         string
+	replyTo, likedComment  string
 	photos                 []string
 	liked                  map[string]bool
 	err                    error
@@ -387,9 +388,26 @@ func (f *fakePosts) setLike(token, postID string, liked bool) (int, error) {
 	return likes, nil
 }
 
-func (f *fakePosts) CreateComment(_ context.Context, token, postID, text string, photoIDs []string) (model.Comment, error) {
-	f.token, f.created, f.photos = token, text, photoIDs
-	return model.Comment{ID: "c9", PostID: postID, Text: text, PhotoIDs: photoIDs, CreatedAt: time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)}, f.err
+func (f *fakePosts) CreateComment(_ context.Context, token, postID string, c model.NewComment) (model.Comment, error) {
+	f.token, f.created, f.photos, f.replyTo = token, c.Text, c.PhotoIDs, c.ReplyTo
+	return model.Comment{ID: "c9", PostID: postID, Text: c.Text, PhotoIDs: c.PhotoIDs, ReplyTo: c.ReplyTo, CreatedAt: time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)}, f.err
+}
+
+// LikeComment knows c1, liked once before; Unlike takes the like back.
+func (f *fakePosts) LikeComment(_ context.Context, token, id string) (int, error) {
+	f.token, f.likedComment = token, id
+	if id != "c1" {
+		return 0, failure.New(failure.NotFound, "comment not found")
+	}
+	return 2, f.err
+}
+
+func (f *fakePosts) UnlikeComment(_ context.Context, token, id string) (int, error) {
+	f.token, f.likedComment = token, "-"+id
+	if id != "c1" {
+		return 0, failure.New(failure.NotFound, "comment not found")
+	}
+	return 1, f.err
 }
 
 func (f *fakePosts) DeleteComment(_ context.Context, token, id string) error {
@@ -397,8 +415,8 @@ func (f *fakePosts) DeleteComment(_ context.Context, token, id string) error {
 	return f.err
 }
 
-func (f *fakePosts) Comments(_ context.Context, postID, cursor string, limit int) (model.CommentPage, error) {
-	f.cursor, f.limit = cursor, limit
+func (f *fakePosts) Comments(_ context.Context, token, postID, cursor string, limit int) (model.CommentPage, error) {
+	f.token, f.cursor, f.limit = token, cursor, limit
 	if postID != "p1" {
 		return model.CommentPage{}, failure.New(failure.NotFound, "post not found")
 	}
@@ -406,7 +424,7 @@ func (f *fakePosts) Comments(_ context.Context, postID, cursor string, limit int
 		Comments: []model.Comment{
 			{ID: "c1", PostID: "p1", Author: model.Author{ID: "u2"}, Text: "первый"},
 			{ID: "c2", PostID: "p1", Author: model.Author{ID: "gone"}, Text: "автор удалился"},
-			{ID: "c3", PostID: "p1", Author: model.Author{ID: "u1"}, Text: "ответ"},
+			{ID: "c3", PostID: "p1", Author: model.Author{ID: "u1"}, Text: "ответ", ReplyTo: "c1", Likes: 2, Liked: token != ""},
 		},
 		NextCursor: "c3",
 		Total:      5,
