@@ -16,6 +16,9 @@ var (
 		notification.KindFollow:   notificationv1.Kind_KIND_FOLLOW,
 		notification.KindWallPost: notificationv1.Kind_KIND_WALL_POST,
 		notification.KindRepost:   notificationv1.Kind_KIND_REPOST,
+
+		notification.KindCommentReply: notificationv1.Kind_KIND_COMMENT_REPLY,
+		notification.KindCommentLike:  notificationv1.Kind_KIND_COMMENT_LIKE,
 	}
 	kindFromProto = map[notificationv1.Kind]notification.Kind{
 		notificationv1.Kind_KIND_LIKE:      notification.KindLike,
@@ -23,6 +26,9 @@ var (
 		notificationv1.Kind_KIND_FOLLOW:    notification.KindFollow,
 		notificationv1.Kind_KIND_WALL_POST: notification.KindWallPost,
 		notificationv1.Kind_KIND_REPOST:    notification.KindRepost,
+
+		notificationv1.Kind_KIND_COMMENT_REPLY: notification.KindCommentReply,
+		notificationv1.Kind_KIND_COMMENT_LIKE:  notification.KindCommentLike,
 	}
 )
 

@@ -26,7 +26,7 @@ func NewNotificationRepository() *NotificationRepository {
 }
 
 // sameEvent tells whether two events are the same like, comment, follow,
-// wall post or repost.
+// wall post, repost, reply or comment like.
 func sameEvent(a, b notification.Event) bool {
 	if a.Kind != b.Kind {
 		return false
@@ -35,8 +35,10 @@ func sameEvent(a, b notification.Event) bool {
 	switch a.Kind {
 	case notification.KindLike:
 		return a.ActorID == b.ActorID && a.PostID == b.PostID
-	case notification.KindComment:
+	case notification.KindComment, notification.KindCommentReply:
 		return a.CommentID == b.CommentID
+	case notification.KindCommentLike:
+		return a.ActorID == b.ActorID && a.CommentID == b.CommentID
 	case notification.KindWallPost, notification.KindRepost:
 		return a.PostID == b.PostID
 	default:
@@ -86,6 +88,10 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 
 func (r *NotificationRepository) DeleteByPost(ctx context.Context, postID uuid.UUID) error {
 	return r.deleteWhere(ctx, func(n *notification.Notification) bool { return n.Event().PostID == postID })
+}
+
+func (r *NotificationRepository) DeleteByComment(ctx context.Context, commentID uuid.UUID) error {
+	return r.deleteWhere(ctx, func(n *notification.Notification) bool { return n.Event().CommentID == commentID })
 }
 
 func (r *NotificationRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {

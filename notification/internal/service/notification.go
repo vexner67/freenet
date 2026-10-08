@@ -28,6 +28,9 @@ type NotificationRepository interface {
 	Delete(ctx context.Context, e notification.Event) error
 	// DeleteByPost removes every notification about a post.
 	DeleteByPost(ctx context.Context, postID uuid.UUID) error
+	// DeleteByComment removes every notification about a comment: the
+	// comment itself, the reply it is, the likes it got.
+	DeleteByComment(ctx context.Context, commentID uuid.UUID) error
 	// DeleteByUser removes the notifications a user got or caused.
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 	// List returns up to q.Limit notifications, newest first.
@@ -138,6 +141,16 @@ func (s *NotificationService) Retract(ctx context.Context, e notification.Event)
 func (s *NotificationService) ForgetPost(ctx context.Context, postID uuid.UUID) error {
 	if err := s.notificationRepo.DeleteByPost(ctx, postID); err != nil {
 		return errs.Wrap("s.notificationRepo.DeleteByPost", err)
+	}
+
+	return nil
+}
+
+// ForgetComment drops the notifications about a deleted comment, as
+// ForgetPost does for a post.
+func (s *NotificationService) ForgetComment(ctx context.Context, commentID uuid.UUID) error {
+	if err := s.notificationRepo.DeleteByComment(ctx, commentID); err != nil {
+		return errs.Wrap("s.notificationRepo.DeleteByComment", err)
 	}
 
 	return nil

@@ -15,6 +15,7 @@ func PublicMethods() []string {
 		notificationv1.NotificationService_Notify_FullMethodName,
 		notificationv1.NotificationService_Retract_FullMethodName,
 		notificationv1.NotificationService_ForgetPost_FullMethodName,
+		notificationv1.NotificationService_ForgetComment_FullMethodName,
 		notificationv1.NotificationService_PurgeUser_FullMethodName,
 	}
 }
@@ -23,9 +24,10 @@ func PublicMethods() []string {
 // (see mtls.RestrictMethods).
 func InternalMethods() map[string][]string {
 	return map[string][]string{
-		notificationv1.NotificationService_Notify_FullMethodName:     {mtls.Post, mtls.User},
-		notificationv1.NotificationService_Retract_FullMethodName:    {mtls.Post, mtls.User},
-		notificationv1.NotificationService_ForgetPost_FullMethodName: {mtls.Post},
-		notificationv1.NotificationService_PurgeUser_FullMethodName:  {mtls.User},
+		notificationv1.NotificationService_Notify_FullMethodName:        {mtls.Post, mtls.User},
+		notificationv1.NotificationService_Retract_FullMethodName:       {mtls.Post, mtls.User},
+		notificationv1.NotificationService_ForgetPost_FullMethodName:    {mtls.Post},
+		notificationv1.NotificationService_ForgetComment_FullMethodName: {mtls.Post},
+		notificationv1.NotificationService_PurgeUser_FullMethodName:     {mtls.User},
 	}
 }

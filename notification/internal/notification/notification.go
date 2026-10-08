@@ -24,6 +24,12 @@ const (
 	// KindRepost: the actor shared the recipient's post; PostID is the
 	// actor's repost, which shows the shared post.
 	KindRepost Kind = "repost"
+	// KindCommentReply: the actor answered the recipient's comment under
+	// PostID; CommentID is the answer.
+	KindCommentReply Kind = "comment_reply"
+	// KindCommentLike: the actor liked the recipient's comment CommentID
+	// under PostID.
+	KindCommentLike Kind = "comment_like"
 )
 
 var (
@@ -35,9 +41,9 @@ var (
 	ErrNotFound       = errors.New("notification not found")
 )
 
-// Event is what happened, to whom and by whom. PostID is set for likes,
-// comments, wall posts and reposts, CommentID for comments only; unused
-// IDs are uuid.Nil.
+// Event is what happened, to whom and by whom. PostID is set for all but
+// follows, CommentID for comments, replies and comment likes; unused IDs
+// are uuid.Nil.
 type Event struct {
 	Kind        Kind
 	RecipientID uuid.UUID
@@ -67,7 +73,7 @@ func (e Event) Validate() error {
 	switch e.Kind {
 	case KindLike, KindWallPost, KindRepost:
 		ok = hasPost && !hasComment
-	case KindComment:
+	case KindComment, KindCommentReply, KindCommentLike:
 		ok = hasPost && hasComment
 	case KindFollow:
 		ok = !hasPost && !hasComment
