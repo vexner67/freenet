@@ -171,7 +171,7 @@ export const api = {
   unlike: (postID) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
 
   comments: (postID, cursor = '') => request('GET', page(`/api/v1/posts/${encodeURIComponent(postID)}/comments`, cursor, 0)),
-  createComment: (postID, text) => authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/comments`, { text }),
+  createComment: (postID, text, photos = []) => authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/comments`, { text, photos }),
   deleteComment: (id) => authorized('DELETE', '/api/v1/comments/' + encodeURIComponent(id)),
 
   follow: (nickname) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/follow`),
@@ -205,7 +205,7 @@ export const api = {
     const path = `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`;
     return authorized('GET', query.size ? `${path}?${query}` : path);
   },
-  sendMessage: (nickname, text) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text }),
+  sendMessage: (nickname, text, photos = []) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos }),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
 
   search(query, cursor = '') {

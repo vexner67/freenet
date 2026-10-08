@@ -3,7 +3,7 @@
 
 import { formatPostDate } from './labels.js';
 import { avatarURL, el, fullName } from './layout.js';
-import { separated } from './posts.js';
+import { photosNode, separated } from './posts.js';
 
 // commentNode renders a comment; onDelete adds a "Удалить" link and is
 // called with the comment and its node.
@@ -19,7 +19,8 @@ export function commentNode(comment, onDelete) {
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(comment.author) }),
       ),
-      el('div', { className: 'post-text', textContent: comment.text }),
+      comment.text ? el('div', { className: 'post-text', textContent: comment.text }) : null,
+      photosNode(comment.photos ?? []),
       el('div', { className: 'post-menu' }, el('span', {}, ...separated(menu))),
     ),
   );

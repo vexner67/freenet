@@ -68,7 +68,7 @@ function notificationText(n) {
       return [name, ` ${verb} вашу `, postLink(n.post, 'запись'), ` от ${formatPostDate(n.post.createdAt)}.`];
     case 'comment':
       return [name, ` ${verb} комментарий под вашей `, postLink(n.post, 'записью'),
-        ` от ${formatPostDate(n.post.createdAt)}: «${snippet(n.comment.text, COMMENT_SNIPPET)}».`];
+        ` от ${formatPostDate(n.post.createdAt)}: «${snippet(n.comment.text || 'Фотография', COMMENT_SNIPPET)}».`];
     case 'follow':
       return [name, ` ${verb} на вас.`];
     case 'repost':
