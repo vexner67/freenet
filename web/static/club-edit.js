@@ -23,6 +23,8 @@ function fill(club) {
   $('wall').value = club.wall;
   $('admins-display').replaceChildren(...adminsDisplays.map(([value, text]) => el('label', {},
     el('input', { type: 'radio', name: 'admins-display', value, checked: value === club.adminsDisplay }), text)));
+  $('open-topics').checked = club.openTopics;
+  $('topics-above-wall').checked = club.topicsAboveWall;
   preview();
 }
 
@@ -45,6 +47,8 @@ async function submit(event, club) {
       website: $('website').value.trim(),
       wall: $('wall').value,
       adminsDisplay: document.querySelector('input[name="admins-display"]:checked')?.value ?? 'creator',
+      openTopics: $('open-topics').checked,
+      topicsAboveWall: $('topics-above-wall').checked,
     });
 
     Object.assign(club, saved);

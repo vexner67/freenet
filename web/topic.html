@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Просмотр темы | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/topic.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span><span class="title-links" id="title-links"></span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+
+        <div id="content" hidden>
+          <div class="topic-head">
+            <div><b id="topic-title"></b><br><a id="topic-author"></a></div>
+            <span class="hint" id="topic-created"></span>
+          </div>
+
+          <div class="section-title" id="topic-count"></div>
+          <div class="error" id="messages-error" hidden></div>
+          <div id="messages"></div>
+          <a class="wall-more" id="messages-more" hidden>Показать следующие сообщения</a>
+
+          <form class="wall-form comment-form" id="message-form" hidden>
+            <textarea id="message-text" maxlength="1000" placeholder="Ваше сообщение..." aria-label="Новое сообщение"></textarea>
+            <div class="attachments" id="message-photos" hidden></div>
+            <div class="row">
+              <span>
+                <a class="attach-link" id="message-attach">Прикрепить фотографию</a>
+                <span class="hint" id="message-counter"></span>
+              </span>
+              <button class="button" type="submit" id="message-submit">Отправить</button>
+            </div>
+            <div class="post-options">
+              <label id="message-from-club-label" hidden><input type="checkbox" id="message-from-club"> От имени сообщества</label>
+            </div>
+            <input type="file" id="message-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+          </form>
+          <p class="hint comment-hint" id="message-hint" hidden></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

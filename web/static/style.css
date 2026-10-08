@@ -679,3 +679,17 @@ a.like:hover svg { opacity: .7; }
 .suggestion-controls .button { margin: 0 2px; }
 .publish-signed { display: block; margin-top: 4px; }
 .publish-signed input { vertical-align: middle; margin: 0 3px 0 0; }
+
+/* openvk's "Обсуждения": the list of topics (board.js), the head of a
+   topic and the block on the page of a club. */
+.board-search { display: flex; gap: 6px; margin-bottom: 8px; }
+.board-search input { flex: 1; padding: 3px 4px; border: 1px solid #c0cad5; font: inherit; }
+.board-count { margin: 0 0 8px; }
+.topic-item { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; padding: 8px 10px; border: 1px solid #dae1e8; }
+.topic-name { font-weight: bold; }
+.topic-last { display: flex; gap: 6px; align-items: flex-start; min-width: 170px; }
+.topic-last img { width: 30px; height: 30px; object-fit: cover; }
+.topic-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; padding: 10px; background: #f2f2f2; }
+.topic-short { padding: 4px 0; }
+.page-title .title-links { font-weight: bold; }
+.topic-form textarea { width: 100%; height: 80px; }

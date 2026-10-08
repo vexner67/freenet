@@ -1,0 +1,64 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Редактирование темы | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/topic-edit.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+        <div class="notice" id="notice" hidden></div>
+
+        <div id="content" hidden>
+          <div class="topic-head">
+            <div><b id="topic-title"></b><br><a id="topic-author"></a></div>
+          </div>
+
+          <form class="topic-form" id="form">
+            <table class="form">
+              <tr>
+                <th><label for="title-input">Заголовок</label></th>
+                <td class="control"><input type="text" id="title-input" maxlength="127" required></td>
+              </tr>
+              <tr>
+                <th>Настройки темы</th>
+                <td class="checks">
+                  <label id="pinned-label" hidden><input type="checkbox" id="pinned"> Закрепить тему</label>
+                  <label id="restricted-label" hidden><input type="checkbox" id="restricted"> Комментировать могут только администраторы</label>
+                  <label><input type="checkbox" id="closed"> Закрыть тему</label>
+                </td>
+              </tr>
+              <tr>
+                <th><button class="button secondary" type="button" id="delete">Удалить тему</button></th>
+                <td class="control"><button class="button" type="submit" id="save">Сохранить</button></td>
+              </tr>
+            </table>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

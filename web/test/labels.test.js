@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -192,4 +192,15 @@ test('suggested posts are counted as openvk counts them', () => {
   assert.equal(suggestedInClub(12, true), 'Вы предложили в эту группу 12 записей');
   assert.equal(suggestedInClub(0, false), 'Вы посмотрели всю предложку, поздравляю!');
   assert.equal(errorText(new Error('suggestion not found')), 'Запись уже опубликована или отклонена.');
+});
+
+test('the counts of openvk\'s discussions', () => {
+  assert.equal(topicsCount(1), '1 тема');
+  assert.equal(topicsCount(3), '3 темы');
+  assert.equal(topicsCount(0), '0 тем');
+  assert.equal(topicMessages(21), '21 сообщение');
+  assert.equal(topicMessagesCount(0), 'В теме нет сообщений');
+  assert.equal(topicMessagesCount(2), 'В теме 2 сообщения');
+  assert.equal(resultsCount(0), 'Ни одного результата');
+  assert.equal(resultsCount(5), '5 результатов');
 });
