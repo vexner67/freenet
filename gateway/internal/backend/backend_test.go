@@ -287,7 +287,7 @@ func TestPosts(t *testing.T) {
 	api := &fakePostAPI{}
 	posts := NewPosts(api)
 
-	p, err := posts.Create(context.Background(), "tok", "u2", "привет", []string{"ph1", "ph2"})
+	p, err := posts.Create(context.Background(), "tok", model.NewPost{WallID: "u2", Text: "привет", PhotoIDs: []string{"ph1", "ph2"}})
 	if err != nil {
 		t.Fatal(err)
 	}

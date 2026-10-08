@@ -189,14 +189,20 @@ func (a *api) setCommentLike(w http.ResponseWriter, r *http.Request, liked bool)
 
 // checkNotBlocked refuses a comment under the post of someone who
 // blacklisted the caller, or whom the caller blacklisted: the author of the
-// post and the owner of its wall.
+// post and the owner of its wall. A community blacklists nobody, and the
+// author of a post that speaks for one is not to be told by a refusal.
 func (a *api) checkNotBlocked(r *http.Request, token, myID, postID string) error {
 	p, err := a.posts.Get(r.Context(), token, postID)
 	if err != nil {
 		return err
 	}
 
-	for _, id := range unique([]string{p.Author.ID, p.Wall.ID}) {
+	people := []string{p.Wall.ID}
+	if !p.FromWall {
+		people = append(people, p.Author.ID)
+	}
+
+	for _, id := range unique(people) {
 		if id == myID {
 			continue
 		}

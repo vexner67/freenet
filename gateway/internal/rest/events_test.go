@@ -232,7 +232,7 @@ func TestEvents_Shutdown(t *testing.T) {
 
 	h := newHarness(rest.Config{})
 	server := mustServer(rest.Config{Addr: addr, RequestTimeout: time.Second}, rest.Backends{
-		Auth: h.auth, Users: h.users, Posts: h.posts, Media: h.media, Notifications: h.notifications, Messages: h.messages,
+		Auth: h.auth, Users: h.users, Posts: h.posts, Media: h.media, Notifications: h.notifications, Messages: h.messages, Clubs: h.clubs,
 	}, prometheus.NewRegistry())
 
 	ctx, stop := context.WithCancel(context.Background())

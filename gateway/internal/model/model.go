@@ -72,7 +72,9 @@ type PublicProfile struct {
 	Deactivated bool
 }
 
-// Author is who wrote a post or owns a wall, as shown next to a post.
+// Author is who wrote a post or owns a wall, as shown next to a post: a
+// user, or a community (Club), which has only a name and maybe an
+// address.
 type Author struct {
 	ID       string
 	AvatarID string
@@ -82,6 +84,8 @@ type Author struct {
 	Gender   string
 	// Deactivated: the page is deleted; what its owner wrote is hidden.
 	Deactivated bool
+	Club        bool
+	Address     string
 }
 
 type Post struct {
@@ -108,6 +112,29 @@ type Post struct {
 	EditableUntil time.Time
 	// Pinned: the owner of the wall shows it first there.
 	Pinned bool
+	// FromWall: the post speaks for its wall, a community; Author is
+	// still its writer, whom the API does not show.
+	FromWall bool
+	// Mine: the viewer wrote it; false for anonymous viewers.
+	Mine bool
+}
+
+// NewPost is what a post to write says and where: on the wall of WallID
+// ("" for the caller's own), a community's if ClubWall, speaking for it
+// if FromWall.
+type NewPost struct {
+	WallID   string
+	Text     string
+	PhotoIDs []string
+	ClubWall bool
+	FromWall bool
+}
+
+// FeedSources are what a news feed shows: the posts of Authors and every
+// post on Walls, the clubs of the reader.
+type FeedSources struct {
+	Authors []string
+	Walls   []string
 }
 
 // PostPage is one screen of a wall; NextCursor is empty on the last one.
@@ -247,4 +274,58 @@ type UserPage struct {
 	Users      []PublicProfile
 	NextCursor string
 	Total      int
+}
+
+// Club is a community. Wall is who may write on its wall: "open" for
+// everyone, "closed" for its admins.
+type Club struct {
+	ID          string
+	Name        string
+	Description string
+	// Address is the short name of its page, "" for none.
+	Address   string
+	Wall      string
+	Members   int
+	CreatedAt time.Time
+}
+
+// ClubView is a club as the caller sees it. Role is what the caller is in
+// it: "" (not a member, or anonymous), "member", "admin" or "owner";
+// OwnerID is "" when its owner's page was erased.
+type ClubView struct {
+	Club    Club
+	Role    string
+	OwnerID string
+}
+
+// ClubChanges are a club's settings form: everything at once.
+type ClubChanges struct {
+	Name        string
+	Description string
+	Address     string
+	Wall        string
+}
+
+// ClubMember is one member of a club, with their role.
+type ClubMember struct {
+	UserID string
+	Role   string
+}
+
+// ClubMemberPage is one screen of members, the newest first.
+type ClubMemberPage struct {
+	Members    []ClubMember
+	NextCursor string
+}
+
+// Membership is one club of the caller and what they are in it.
+type Membership struct {
+	Club Club
+	Role string
+}
+
+// ClubPage is one screen of the caller's clubs, the newest joined first.
+type ClubPage struct {
+	Clubs      []Membership
+	NextCursor string
 }

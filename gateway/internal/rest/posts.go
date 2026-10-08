@@ -28,6 +28,10 @@ type authorJSON struct {
 	// Deactivated: the page is deleted (in dialogs; elsewhere such people
 	// are left out).
 	Deactivated bool `json:"deactivated,omitempty"`
+	// Club: a community, which has only a name (in name) and maybe an
+	// address, its page being /club/<address or id>.
+	Club    bool   `json:"club,omitempty"`
+	Address string `json:"address,omitempty"`
 }
 
 type postResponse struct {
@@ -51,6 +55,12 @@ type postResponse struct {
 	EditableUntil string  `json:"editableUntil"`
 	// Pinned: shown first on its wall.
 	Pinned bool `json:"pinned"`
+	// FromWall: the post speaks for its wall, a community, shown as its
+	// author; who wrote it is not told.
+	FromWall bool `json:"fromWall"`
+	// Mine: the viewer wrote it, and may edit it; false for anonymous
+	// viewers.
+	Mine bool `json:"mine"`
 }
 
 type repostRequest struct {
@@ -105,6 +115,11 @@ func authorOfProfile(p model.PublicProfile) model.Author {
 	return a
 }
 
+// clubAuthor is a community as the owner of a wall or the voice of a post.
+func clubAuthor(c model.Club) model.Author {
+	return model.Author{ID: c.ID, Name: c.Name, Club: true, Address: c.Address}
+}
+
 func toAuthorJSON(a model.Author) authorJSON {
 	return authorJSON{
 		ID:          a.ID,
@@ -114,12 +129,25 @@ func toAuthorJSON(a model.Author) authorJSON {
 		Surname:     a.Surname,
 		Gender:      a.Gender,
 		Deactivated: a.Deactivated,
+		Club:        a.Club,
+		Address:     a.Address,
 	}
 }
 
-// wallJSON is the owner of the wall when not the author: null otherwise.
+// shownAuthor is who a post is shown by: its author, or the community it
+// speaks for.
+func shownAuthor(p model.Post) authorJSON {
+	if p.FromWall {
+		return toAuthorJSON(p.Wall)
+	}
+
+	return toAuthorJSON(p.Author)
+}
+
+// wallJSON is the owner of the wall when not the author shown: null
+// otherwise.
 func wallJSON(p model.Post) *authorJSON {
-	if p.Wall.ID == p.Author.ID {
+	if p.Wall.ID == p.Author.ID || p.FromWall {
 		return nil
 	}
 
@@ -131,7 +159,7 @@ func wallJSON(p model.Post) *authorJSON {
 func toPostResponse(p model.Post) postResponse {
 	return postResponse{
 		ID:            p.ID,
-		Author:        toAuthorJSON(p.Author),
+		Author:        shownAuthor(p),
 		Wall:          wallJSON(p),
 		Text:          p.Text,
 		Photos:        toPhotosJSON(p.Author.ID, p.PhotoIDs),
@@ -143,6 +171,8 @@ func toPostResponse(p model.Post) postResponse {
 		EditedAt:      optionalTime(p.EditedAt),
 		EditableUntil: timeString(p.EditableUntil),
 		Pinned:        p.Pinned,
+		FromWall:      p.FromWall,
+		Mine:          p.Mine,
 	}
 }
 
@@ -159,7 +189,7 @@ func optionalTime(t time.Time) *string {
 
 // toRepostJSON is p as shared inside a repost; p has its people filled in.
 func toRepostJSON(p model.Post) *repostJSON {
-	author := toAuthorJSON(p.Author)
+	author := shownAuthor(p)
 
 	return &repostJSON{
 		ID:        p.ID,
@@ -270,11 +300,19 @@ func (a *api) sharedPosts(r *http.Request, posts []model.Post) (map[string]model
 }
 
 // withProfiles puts the profiles of p's author and wall owner into p;
-// false when either deleted the account.
+// false when either deleted the account. A post that speaks for its wall
+// needs only the wall: its author is not shown, and keeps just the ID
+// that the photos are filed under.
 func withProfiles(p *model.Post, people map[string]model.Author) bool {
-	author, hasAuthor := people[p.Author.ID]
 	wall, hasWall := people[p.Wall.ID]
-	p.Author, p.Wall = author, wall
+	p.Wall = wall
+
+	if p.FromWall {
+		return hasWall
+	}
+
+	author, hasAuthor := people[p.Author.ID]
+	p.Author = author
 
 	return hasAuthor && hasWall
 }
@@ -383,7 +421,7 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 		return
 	}
 
-	p, err := a.posts.Create(r.Context(), token, wall.ID, req.Text, req.Photos)
+	p, err := a.posts.Create(r.Context(), token, model.NewPost{WallID: wall.ID, Text: req.Text, PhotoIDs: req.Photos})
 	if err != nil {
 		a.writeError(w, r, err)
 		return

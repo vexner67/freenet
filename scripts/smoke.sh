@@ -3,10 +3,11 @@
 # through the gateway and goes over the services, each behind mTLS and on
 # its database: auth (code from its log), user (profile), media (a photo,
 # written to its volume and served back), post (a post with it and a
-# repost), notification (unread count), message (dialogs) and the website
-# itself; then observability: every container healthy, a request ID from
-# the gateway in the auth log, every service's metrics in Prometheus, its
-# alert rules loaded and sent to Alertmanager, the Grafana dashboard.
+# repost), notification (unread count), message (dialogs), club (a club
+# and a post for it) and the website itself; then observability: every
+# container healthy, a request ID from the gateway in the auth log, every
+# service's metrics in Prometheus, its alert rules loaded and sent to
+# Alertmanager, the Grafana dashboard.
 #
 #   scripts/smoke.sh [base URL]   default http://localhost:8080
 #
@@ -22,7 +23,7 @@ base=${1:-http://localhost:8080}
 prometheus=${PROMETHEUS_URL:-http://localhost:9090}
 alertmanager=${ALERTMANAGER_URL:-http://localhost:9093}
 grafana=${GRAFANA_URL:-http://localhost:3001}
-services=(gateway auth user post media notification message)
+services=(gateway auth user post media notification message club)
 email="smoke-$(date +%s)-$RANDOM@example.com"
 nickname="smoke$RANDOM$RANDOM"
 
@@ -104,6 +105,12 @@ step "notification: unread count"
 
 call GET /api/v1/dialogs | jq -e '.dialogs | length == 0' >/dev/null
 step "message: dialogs"
+
+club=$(expect=201 call POST /api/v1/clubs '{"name":"Smoke club","description":"smoke test"}' | jq -r .id)
+expect=201 call POST "/api/v1/clubs/$club/posts" '{"text":"club news","fromClub":true}' | jq -e '.fromWall and .author.club' >/dev/null
+call GET "/api/v1/clubs/$club/posts" | jq -e '.total == 1 and .canPost' >/dev/null
+call GET /api/v1/feed | jq -e '[.posts[] | select(.fromWall)] | length == 1' >/dev/null
+step "club: a club, a post for it on its wall and in the feed"
 
 # refresh replaces the tokens, as the website does after deleting and
 # restoring the page.

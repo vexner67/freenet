@@ -1,0 +1,211 @@
+package backend
+
+import (
+	"context"
+
+	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
+	"github.com/vexner67/freenet/gateway/internal/failure"
+	"github.com/vexner67/freenet/gateway/internal/model"
+	"github.com/vexner67/freenet/pkg/errs"
+)
+
+// Clubs talks to the club service. Methods that read a club take an
+// optional access token: with it, the club tells what the viewer is in it.
+type Clubs struct {
+	api clubv1.ClubServiceClient
+}
+
+func NewClubs(api clubv1.ClubServiceClient) *Clubs {
+	return &Clubs{
+		api: api,
+	}
+}
+
+var (
+	walls = map[clubv1.Wall]string{
+		clubv1.Wall_WALL_OPEN:   "open",
+		clubv1.Wall_WALL_CLOSED: "closed",
+	}
+	roles = map[clubv1.Role]string{
+		clubv1.Role_ROLE_NONE:   "",
+		clubv1.Role_ROLE_MEMBER: "member",
+		clubv1.Role_ROLE_ADMIN:  "admin",
+		clubv1.Role_ROLE_OWNER:  "owner",
+	}
+)
+
+func (c *Clubs) Create(ctx context.Context, accessToken, name, description string) (model.ClubView, error) {
+	resp, err := c.api.CreateClub(withToken(ctx, accessToken), &clubv1.CreateClubRequest{Name: name, Description: description})
+	if err != nil {
+		return model.ClubView{}, errs.Wrap("c.api.CreateClub", fromStatus(err))
+	}
+
+	return toClubView(resp.GetClub()), nil
+}
+
+// Get is the club ref names: its ID or its address.
+func (c *Clubs) Get(ctx context.Context, accessToken, ref string) (model.ClubView, error) {
+	resp, err := c.api.GetClub(withToken(ctx, accessToken), &clubv1.GetClubRequest{Ref: ref})
+	if err != nil {
+		return model.ClubView{}, errs.Wrap("c.api.GetClub", fromStatus(err))
+	}
+
+	return toClubView(resp.GetClub()), nil
+}
+
+// GetMany returns the clubs found among ids, at most 100, in no order.
+func (c *Clubs) GetMany(ctx context.Context, ids []string) ([]model.Club, error) {
+	resp, err := c.api.GetClubs(ctx, &clubv1.GetClubsRequest{Ids: ids})
+	if err != nil {
+		return nil, errs.Wrap("c.api.GetClubs", fromStatus(err))
+	}
+
+	clubs := make([]model.Club, 0, len(resp.GetClubs()))
+	for _, pc := range resp.GetClubs() {
+		clubs = append(clubs, toClub(pc))
+	}
+
+	return clubs, nil
+}
+
+func (c *Clubs) Update(ctx context.Context, accessToken, clubID string, changes model.ClubChanges) (model.ClubView, error) {
+	var wall clubv1.Wall
+	for pw, w := range walls {
+		if w == changes.Wall {
+			wall = pw
+		}
+	}
+
+	if wall == clubv1.Wall_WALL_UNSPECIFIED {
+		return model.ClubView{}, failure.New(failure.InvalidArgument, "invalid wall mode")
+	}
+
+	resp, err := c.api.UpdateClub(withToken(ctx, accessToken), &clubv1.UpdateClubRequest{
+		ClubId:      clubID,
+		Name:        changes.Name,
+		Description: changes.Description,
+		Address:     changes.Address,
+		Wall:        wall,
+	})
+	if err != nil {
+		return model.ClubView{}, errs.Wrap("c.api.UpdateClub", fromStatus(err))
+	}
+
+	return toClubView(resp.GetClub()), nil
+}
+
+func (c *Clubs) Join(ctx context.Context, accessToken, clubID string) (model.ClubView, error) {
+	resp, err := c.api.JoinClub(withToken(ctx, accessToken), &clubv1.JoinClubRequest{ClubId: clubID})
+	if err != nil {
+		return model.ClubView{}, errs.Wrap("c.api.JoinClub", fromStatus(err))
+	}
+
+	return toClubView(resp.GetClub()), nil
+}
+
+func (c *Clubs) Leave(ctx context.Context, accessToken, clubID string) (model.ClubView, error) {
+	resp, err := c.api.LeaveClub(withToken(ctx, accessToken), &clubv1.LeaveClubRequest{ClubId: clubID})
+	if err != nil {
+		return model.ClubView{}, errs.Wrap("c.api.LeaveClub", fromStatus(err))
+	}
+
+	return toClubView(resp.GetClub()), nil
+}
+
+// Members pages the members of a club; only the owner and the admins with
+// adminsOnly.
+func (c *Clubs) Members(ctx context.Context, clubID, cursor string, limit int, adminsOnly bool) (model.ClubMemberPage, error) {
+	resp, err := c.api.ListMembers(ctx, &clubv1.ListMembersRequest{
+		ClubId:     clubID,
+		Cursor:     cursor,
+		Limit:      toLimit(limit),
+		AdminsOnly: adminsOnly,
+	})
+	if err != nil {
+		return model.ClubMemberPage{}, errs.Wrap("c.api.ListMembers", fromStatus(err))
+	}
+
+	page := model.ClubMemberPage{
+		Members:    make([]model.ClubMember, 0, len(resp.GetMembers())),
+		NextCursor: resp.GetNextCursor(),
+	}
+	for _, m := range resp.GetMembers() {
+		page.Members = append(page.Members, model.ClubMember{UserID: m.GetUserId(), Role: roles[m.GetRole()]})
+	}
+
+	return page, nil
+}
+
+// SetAdmin makes a member of the club an admin, or an admin a member.
+func (c *Clubs) SetAdmin(ctx context.Context, accessToken, clubID, userID string, admin bool) error {
+	role := clubv1.Role_ROLE_MEMBER
+	if admin {
+		role = clubv1.Role_ROLE_ADMIN
+	}
+
+	_, err := c.api.SetMemberRole(withToken(ctx, accessToken), &clubv1.SetMemberRoleRequest{ClubId: clubID, UserId: userID, Role: role})
+	if err != nil {
+		return errs.Wrap("c.api.SetMemberRole", fromStatus(err))
+	}
+
+	return nil
+}
+
+// Mine pages the caller's clubs.
+func (c *Clubs) Mine(ctx context.Context, accessToken, cursor string, limit int) (model.ClubPage, error) {
+	resp, err := c.api.ListMyClubs(withToken(ctx, accessToken), &clubv1.ListMyClubsRequest{Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.ClubPage{}, errs.Wrap("c.api.ListMyClubs", fromStatus(err))
+	}
+
+	page := model.ClubPage{
+		Clubs:      make([]model.Membership, 0, len(resp.GetClubs())),
+		NextCursor: resp.GetNextCursor(),
+	}
+	for _, m := range resp.GetClubs() {
+		page.Clubs = append(page.Clubs, model.Membership{Club: toClub(m.GetClub()), Role: roles[m.GetRole()]})
+	}
+
+	return page, nil
+}
+
+// MineIDs are the caller's newest 1000 clubs, for the feed.
+func (c *Clubs) MineIDs(ctx context.Context, accessToken string) ([]string, error) {
+	resp, err := c.api.ListMyClubIDs(withToken(ctx, accessToken), &clubv1.ListMyClubIDsRequest{})
+	if err != nil {
+		return nil, errs.Wrap("c.api.ListMyClubIDs", fromStatus(err))
+	}
+
+	return resp.GetClubIds(), nil
+}
+
+// CanPostOnWall tells whether the caller may write on the club's wall, on
+// their own behalf or, fromClub, on the club's.
+func (c *Clubs) CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (bool, error) {
+	resp, err := c.api.CanPostOnWall(withToken(ctx, accessToken), &clubv1.CanPostOnWallRequest{ClubId: clubID, FromClub: fromClub})
+	if err != nil {
+		return false, errs.Wrap("c.api.CanPostOnWall", fromStatus(err))
+	}
+
+	return resp.GetAllowed(), nil
+}
+
+func toClub(c *clubv1.Club) model.Club {
+	return model.Club{
+		ID:          c.GetId(),
+		Name:        c.GetName(),
+		Description: c.GetDescription(),
+		Address:     c.GetAddress(),
+		Wall:        walls[c.GetWall()],
+		Members:     int(c.GetMemberCount()),
+		CreatedAt:   c.GetCreatedAt().AsTime(),
+	}
+}
+
+func toClubView(v *clubv1.ClubView) model.ClubView {
+	return model.ClubView{
+		Club:    toClub(v.GetClub()),
+		Role:    roles[v.GetRole()],
+		OwnerID: v.GetOwnerId(),
+	}
+}

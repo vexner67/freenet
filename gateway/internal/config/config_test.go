@@ -22,6 +22,7 @@ func TestParse(t *testing.T) {
 		"MEDIA_SERVICE_ADDR":        "localhost:50054",
 		"NOTIFICATION_SERVICE_ADDR": "localhost:50055",
 		"MESSAGE_SERVICE_ADDR":      "localhost:50056",
+		"CLUB_SERVICE_ADDR":         "localhost:7057",
 	}
 
 	cfg, err := envconfig.Parse[config.Config](env.Options{Environment: base})

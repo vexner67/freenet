@@ -58,7 +58,7 @@ type Media interface {
 // Posts: methods that read take an optional access token ("" for
 // anonymous viewers), with which posts tell whether the viewer likes them.
 type Posts interface {
-	Create(ctx context.Context, accessToken, wallID, text string, photoIDs []string) (model.Post, error)
+	Create(ctx context.Context, accessToken string, np model.NewPost) (model.Post, error)
 	Repost(ctx context.Context, accessToken, postID, text string) (model.Post, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	Edit(ctx context.Context, accessToken, id, text string, photoIDs []string) (model.Post, error)
@@ -67,7 +67,7 @@ type Posts interface {
 	Get(ctx context.Context, accessToken, id string) (model.Post, error)
 	GetMany(ctx context.Context, ids []string) ([]model.Post, error)
 	List(ctx context.Context, accessToken, wallID, cursor string, limit int) (model.PostPage, error)
-	Feed(ctx context.Context, accessToken string, authorIDs []string, cursor string, limit int) (model.PostPage, error)
+	Feed(ctx context.Context, accessToken string, sources model.FeedSources, cursor string, limit int) (model.PostPage, error)
 
 	Like(ctx context.Context, accessToken, postID string) (int, error)
 	Unlike(ctx context.Context, accessToken, postID string) (int, error)
@@ -98,6 +98,22 @@ type Messages interface {
 	Subscribe(ctx context.Context, accessToken string) (model.MessageEvents, error)
 }
 
+// Clubs: Get and Members take an optional access token ("" for anonymous
+// viewers); a club ref is its ID or its address.
+type Clubs interface {
+	Create(ctx context.Context, accessToken, name, description string) (model.ClubView, error)
+	Get(ctx context.Context, accessToken, ref string) (model.ClubView, error)
+	GetMany(ctx context.Context, ids []string) ([]model.Club, error)
+	Update(ctx context.Context, accessToken, clubID string, changes model.ClubChanges) (model.ClubView, error)
+	Join(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
+	Leave(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
+	Members(ctx context.Context, clubID, cursor string, limit int, adminsOnly bool) (model.ClubMemberPage, error)
+	SetAdmin(ctx context.Context, accessToken, clubID, userID string, admin bool) error
+	Mine(ctx context.Context, accessToken, cursor string, limit int) (model.ClubPage, error)
+	MineIDs(ctx context.Context, accessToken string) ([]string, error)
+	CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (bool, error)
+}
+
 // Backends are the services the API is made of.
 type Backends struct {
 	Auth          Auth
@@ -106,6 +122,7 @@ type Backends struct {
 	Media         Media
 	Notifications Notifications
 	Messages      Messages
+	Clubs         Clubs
 }
 
 type api struct {
@@ -115,6 +132,7 @@ type api struct {
 	media             Media
 	notifications     Notifications
 	messages          Messages
+	clubs             Clubs
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -187,6 +205,18 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/messages", a.sendMessage)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/read", a.markDialogRead)
 	mux.HandleFunc("DELETE /api/v1/messages/{id}", a.deleteMessage)
+
+	mux.HandleFunc("POST /api/v1/clubs", a.createClub)
+	mux.HandleFunc("GET /api/v1/me/clubs", a.listMyClubs)
+	mux.HandleFunc("GET /api/v1/clubs/{ref}", a.getClub)
+	mux.HandleFunc("PUT /api/v1/clubs/{ref}", a.updateClub)
+	mux.HandleFunc("PUT /api/v1/clubs/{ref}/membership", a.joinClub)
+	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/membership", a.leaveClub)
+	mux.HandleFunc("GET /api/v1/clubs/{ref}/members", a.listClubMembers)
+	mux.HandleFunc("PUT /api/v1/clubs/{ref}/admins/{nickname}", a.appointAdmin)
+	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/admins/{nickname}", a.dismissAdmin)
+	mux.HandleFunc("GET /api/v1/clubs/{ref}/posts", a.listClubPosts)
+	mux.HandleFunc("POST /api/v1/clubs/{ref}/posts", a.createClubPost)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)

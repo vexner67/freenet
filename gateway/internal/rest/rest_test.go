@@ -219,7 +219,8 @@ func (f *fakeUsers) ListFollowing(_ context.Context, userID, cursor string, _ in
 }
 
 type fakePosts struct {
-	authors                []string
+	authors, walls         []string
+	newPost                model.NewPost
 	token, cursor, deleted string
 	limit                  int
 	wallPosts              []model.Post
@@ -231,9 +232,9 @@ type fakePosts struct {
 	err                    error
 }
 
-func (f *fakePosts) Create(_ context.Context, token, wallID, text string, photoIDs []string) (model.Post, error) {
-	f.token, f.wall, f.created, f.photos = token, wallID, text, photoIDs
-	return model.Post{ID: "p9", Text: text, PhotoIDs: photoIDs, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
+func (f *fakePosts) Create(_ context.Context, token string, np model.NewPost) (model.Post, error) {
+	f.token, f.wall, f.created, f.photos, f.newPost = token, np.WallID, np.Text, np.PhotoIDs, np
+	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Mine: true, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
 }
 
 // Edit edits the posts Get knows.
@@ -328,8 +329,8 @@ func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comme
 	return found, nil
 }
 
-func (f *fakePosts) Feed(_ context.Context, token string, authorIDs []string, cursor string, _ int) (model.PostPage, error) {
-	f.token, f.authors, f.cursor = token, authorIDs, cursor
+func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSources, cursor string, _ int) (model.PostPage, error) {
+	f.token, f.authors, f.walls, f.cursor = token, sources.Authors, sources.Walls, cursor
 	return model.PostPage{
 		Posts: []model.Post{
 			{ID: "p3", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},
@@ -344,6 +345,13 @@ func (f *fakePosts) Feed(_ context.Context, token string, authorIDs []string, cu
 // List is u1's wall: bob's post p4 on it and u1's own p2 and p1.
 func (f *fakePosts) List(_ context.Context, token, wallID, cursor string, limit int) (model.PostPage, error) {
 	f.token, f.cursor, f.limit = token, cursor, limit
+	if wallID == "k1" {
+		ann, club := model.Author{ID: "u1"}, model.Author{ID: "k1"}
+		return model.PostPage{Posts: []model.Post{
+			{ID: "p8", Author: ann, Wall: club, Text: "новости", FromWall: true, PhotoIDs: []string{"ph1"}},
+			{ID: "p7", Author: model.Author{ID: "u2"}, Wall: club, Text: "от боба"},
+		}, Total: 2}, f.err
+	}
 	if wallID != "u1" {
 		return model.PostPage{}, errors.New("wrong wall id")
 	}
@@ -634,6 +642,7 @@ type harness struct {
 	media         *fakeMedia
 	notifications *fakeNotifications
 	messages      *fakeMessages
+	clubs         *fakeClubs
 }
 
 func newHarness(cfg rest.Config) harness {
@@ -648,6 +657,7 @@ func newHarness(cfg rest.Config) harness {
 		media:         &fakeMedia{},
 		notifications: &fakeNotifications{},
 		messages:      &fakeMessages{},
+		clubs:         &fakeClubs{},
 	}
 	h.metrics = prometheus.NewRegistry()
 	h.handler = mustServer(cfg, rest.Backends{
@@ -657,6 +667,7 @@ func newHarness(cfg rest.Config) harness {
 		Media:         h.media,
 		Notifications: h.notifications,
 		Messages:      h.messages,
+		Clubs:         h.clubs,
 	}, h.metrics).Handler()
 
 	return h

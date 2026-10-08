@@ -26,6 +26,11 @@ func webDir(t *testing.T) string {
 		"notifications.html": "NOTIFICATIONS",
 		"im.html":            "DIALOGS",
 		"dialog.html":        "DIALOG",
+		"groups.html":        "GROUPS",
+		"club-create.html":   "CLUB_CREATE",
+		"club.html":          "CLUB",
+		"club-edit.html":     "CLUB_EDIT",
+		"club-members.html":  "CLUB_MEMBERS",
 		"static/style.css":   "body{}",
 	}
 
@@ -47,7 +52,7 @@ func TestPages(t *testing.T) {
 
 	handler := mustServer(
 		rest.Config{RequestTimeout: time.Second, WebDir: webDir(t)},
-		rest.Backends{Auth: &fakeAuth{}, Users: &fakeUsers{}, Posts: &fakePosts{}, Media: &fakeMedia{}, Notifications: &fakeNotifications{}, Messages: &fakeMessages{}},
+		rest.Backends{Auth: &fakeAuth{}, Users: &fakeUsers{}, Posts: &fakePosts{}, Media: &fakeMedia{}, Notifications: &fakeNotifications{}, Messages: &fakeMessages{}, Clubs: &fakeClubs{}},
 		prometheus.NewRegistry(),
 	).Handler()
 
@@ -71,6 +76,11 @@ func TestPages(t *testing.T) {
 		{"/notifications", 200, "NOTIFICATIONS", true},
 		{"/im", 200, "DIALOGS", true},
 		{"/im/bob", 200, "DIALOG", true},
+		{"/groups", 200, "GROUPS", true},
+		{"/groups/create", 200, "CLUB_CREATE", true},
+		{"/club/cats", 200, "CLUB", true},
+		{"/club/cats/edit", 200, "CLUB_EDIT", true},
+		{"/club/cats/members", 200, "CLUB_MEMBERS", true},
 		{"/static/style.css", 200, "body{}", false},
 		{"/static/", 404, "", false},
 		{"/api/v1/users/ann", 200, `"nickname":"ann"`, false},

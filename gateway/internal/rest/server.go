@@ -50,6 +50,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 		media:             backends.Media,
 		notifications:     backends.Notifications,
 		messages:          backends.Messages,
+		clubs:             backends.Clubs,
 		logger:            logger,
 		trustForwardedFor: cfg.TrustForwardedFor,
 		webDir:            cfg.WebDir,
