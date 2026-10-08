@@ -22,6 +22,13 @@ docker login ghcr.io --username "$user" --password-stdin >/dev/null
 trap 'docker logout ghcr.io >/dev/null' EXIT
 
 docker compose pull --quiet
+
+# A Caddyfile Caddy cannot read, with this server's .env, would take the
+# site down: the deployment fails here instead, before anything restarts.
+docker compose run --rm --no-deps --entrypoint caddy caddy \
+	validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1 ||
+	{ echo "deploy/Caddyfile does not work with this .env"; exit 1; }
+
 docker compose up --detach --wait --wait-timeout 300 --remove-orphans
 
 # Images of older commits, kept a few days for a quick rollback.
