@@ -56,6 +56,13 @@ type MemberRepository interface {
 	// with adminsOnly) who joined before the membership before (uuid.Nil:
 	// from the newest), the newest first.
 	List(ctx context.Context, clubID, before uuid.UUID, limit int, adminsOnly bool) ([]Member, error)
+	// CountAdmins counts the admins and the owner of a club.
+	CountAdmins(ctx context.Context, clubID uuid.UUID) (int, error)
+	// Transfer makes newOwnerID, an admin, the owner of the club and
+	// ownerID, its owner, an admin, both at once; club.ErrCannotTransfer
+	// when ownerID no longer owns it, club.ErrNotAdmin when newOwnerID is
+	// no longer an admin.
+	Transfer(ctx context.Context, clubID, ownerID, newOwnerID uuid.UUID) error
 	// ListClubs is the same for the clubs of a user, only those they run
 	// with managed.
 	ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, managed bool) ([]Membership, error)
@@ -103,6 +110,8 @@ type View struct {
 type MemberPage struct {
 	Members    []Member
 	NextCursor uuid.UUID
+	// Total counts the members, or the admins, on all pages.
+	Total int
 }
 
 type ClubPage struct {
@@ -283,10 +292,36 @@ func (s *ClubService) Appoint(ctx context.Context, requesterID, clubID, userID u
 	return errs.Wrap("s.members.SetRole", s.members.SetRole(ctx, clubID, userID, role))
 }
 
+// Transfer hands the club over to one of its admins, openvk's "Назначить
+// владельцем": the owner's call. The owner stays an admin.
+func (s *ClubService) Transfer(ctx context.Context, requesterID, clubID, userID uuid.UUID) error {
+	if _, err := s.clubs.Get(ctx, clubID); err != nil {
+		return errs.Wrap("s.clubs.Get", err)
+	}
+
+	requester, err := s.members.Role(ctx, clubID, requesterID)
+	if err != nil {
+		return errs.Wrap("s.members.Role", err)
+	}
+
+	target, err := s.members.Role(ctx, clubID, userID)
+	if err != nil {
+		return errs.Wrap("s.members.Role", err)
+	}
+
+	if err = club.CheckTransfer(requester, target); err != nil {
+		return errs.Wrap("club.CheckTransfer", err)
+	}
+
+	// Roles may have changed since: the repository checks them again.
+	return errs.Wrap("s.members.Transfer", s.members.Transfer(ctx, clubID, requesterID, userID))
+}
+
 // Members pages the members of a club, the newest first; cursor is the
 // last membership of the previous page.
 func (s *ClubService) Members(ctx context.Context, clubID, cursor uuid.UUID, size int, adminsOnly bool) (MemberPage, error) {
-	if _, err := s.clubs.Get(ctx, clubID); err != nil {
+	c, err := s.clubs.Get(ctx, clubID)
+	if err != nil {
 		return MemberPage{}, errs.Wrap("s.clubs.Get", err)
 	}
 
@@ -298,10 +333,16 @@ func (s *ClubService) Members(ctx context.Context, clubID, cursor uuid.UUID, siz
 		return MemberPage{}, errs.Wrap("s.members.List", err)
 	}
 
-	page := MemberPage{Members: members}
+	page := MemberPage{Members: members, Total: c.Members()}
 	if len(members) > size {
 		page.Members = members[:size]
 		page.NextCursor = members[size-1].ID
+	}
+
+	if adminsOnly {
+		if page.Total, err = s.members.CountAdmins(ctx, clubID); err != nil {
+			return MemberPage{}, errs.Wrap("s.members.CountAdmins", err)
+		}
 	}
 
 	return page, nil

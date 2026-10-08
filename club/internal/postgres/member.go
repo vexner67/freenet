@@ -144,6 +144,67 @@ func (r *MemberRepository) SetRole(ctx context.Context, clubID, userID uuid.UUID
 	return nil
 }
 
+// Transfer swaps the roles in a transaction: one statement would
+// briefly hold two owners, which the unique index does not allow.
+const (
+	demoteOwnerQuery = `
+		UPDATE club_members
+		SET role = 'admin'
+		WHERE club_id = $1
+			AND user_id = $2
+			AND role = 'owner'
+	`
+	promoteAdminQuery = `
+		UPDATE club_members
+		SET role = 'owner'
+		WHERE club_id = $1
+			AND user_id = $2
+			AND role = 'admin'
+	`
+)
+
+func (r *MemberRepository) Transfer(ctx context.Context, clubID, ownerID, newOwnerID uuid.UUID) error {
+	err := pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
+		// The owner's row stays locked to the end: a second transfer waits
+		// and finds no owner to demote.
+		tag, err := tx.Exec(ctx, demoteOwnerQuery, clubID, ownerID)
+		if err != nil {
+			return errs.Wrap("tx.Exec", err)
+		}
+		if tag.RowsAffected() == 0 {
+			return club.ErrCannotTransfer
+		}
+
+		if tag, err = tx.Exec(ctx, promoteAdminQuery, clubID, newOwnerID); err != nil {
+			return errs.Wrap("tx.Exec", err)
+		}
+		if tag.RowsAffected() == 0 {
+			return club.ErrNotAdmin
+		}
+
+		return nil
+	})
+
+	return errs.Wrap("pgx.BeginFunc", err)
+}
+
+const countAdminsQuery = `
+	SELECT count(*)
+	FROM club_members
+	WHERE club_id = $1
+		AND role IN ('admin', 'owner')
+`
+
+func (r *MemberRepository) CountAdmins(ctx context.Context, clubID uuid.UUID) (int, error) {
+	var n int
+
+	if err := r.pool.QueryRow(ctx, countAdminsQuery, clubID).Scan(&n); err != nil {
+		return 0, errs.Wrap("r.pool.QueryRow", err)
+	}
+
+	return n, nil
+}
+
 const listMembersQuery = `
 	SELECT
 		id,
@@ -206,7 +267,9 @@ const listUserClubsQuery = `
 		c.wall,
 		c.created_at,
 		c.member_count,
-		c.avatar_id
+		c.avatar_id,
+		c.website,
+		c.admins_display
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1
@@ -241,29 +304,17 @@ func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UU
 
 func scanMembership(row pgx.Row) (service.Membership, error) {
 	var (
-		m                                      service.Membership
-		s                                      club.Stored
-		role, name, description, address, wall string
-		avatarID                               *uuid.UUID
+		m    service.Membership
+		role string
 	)
 
-	err := row.Scan(&m.ID, &role, &m.Pinned, &s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID)
+	c, err := scanClub(row, &m.ID, &role, &m.Pinned)
 	if err != nil {
 		return service.Membership{}, err
 	}
 
-	if avatarID != nil {
-		s.AvatarID = *avatarID
-	}
-
-	s.Name = club.Name(name)
-	s.Description = club.Description(description)
-	s.Address = club.Address(address)
-	s.Wall = club.Wall(wall)
-	s.CreatedAt = s.CreatedAt.UTC()
-
 	m.Role = club.Role(role)
-	m.Club = club.Restore(s)
+	m.Club = c
 
 	return m, nil
 }
@@ -338,7 +389,9 @@ const pinnedClubsQuery = `
 		c.wall,
 		c.created_at,
 		c.member_count,
-		c.avatar_id
+		c.avatar_id,
+		c.website,
+		c.admins_display
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1

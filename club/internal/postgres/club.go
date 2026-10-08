@@ -45,10 +45,11 @@ const createClubQuery = `
 			name,
 			description,
 			wall,
+			admins_display,
 			member_count,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, 1, $5)
+		VALUES ($1, $2, $3, $4, $8, 1, $5)
 	)
 	INSERT INTO club_members (
 		id,
@@ -66,7 +67,8 @@ func (r *ClubRepository) Create(ctx context.Context, c *club.Club, ownerID uuid.
 	}
 
 	_, err = r.pool.Exec(ctx, createClubQuery,
-		c.ID(), c.Name().String(), c.Description().String(), c.Wall().String(), c.CreatedAt(), membershipID, ownerID)
+		c.ID(), c.Name().String(), c.Description().String(), c.Wall().String(), c.CreatedAt(), membershipID, ownerID,
+		c.AdminsDisplay().String())
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
@@ -84,7 +86,9 @@ const (
 			wall,
 			created_at,
 			member_count,
-			avatar_id
+			avatar_id,
+			website,
+			admins_display
 		FROM clubs
 		WHERE id = $1
 	`
@@ -97,7 +101,9 @@ const (
 			wall,
 			created_at,
 			member_count,
-			avatar_id
+			avatar_id,
+			website,
+			admins_display
 		FROM clubs
 		WHERE lower(address) = lower($1)
 	`
@@ -110,7 +116,9 @@ const (
 			wall,
 			created_at,
 			member_count,
-			avatar_id
+			avatar_id,
+			website,
+			admins_display
 		FROM clubs
 		WHERE id = ANY($1)
 	`
@@ -165,16 +173,20 @@ func collectClubs(rows pgx.Rows) ([]*club.Club, error) {
 	return found, nil
 }
 
-// scanClub reads the columns of the queries above. Data comes from our own
-// table and was validated on write.
-func scanClub(row pgx.Row) (*club.Club, error) {
+// scanClub reads the columns of the queries above, after those that
+// before point to. Data comes from our own table and was validated on
+// write.
+func scanClub(row pgx.Row, before ...any) (*club.Club, error) {
 	var (
 		s                                club.Stored
 		name, description, address, wall string
+		website, adminsDisplay           string
 		avatarID                         *uuid.UUID
 	)
 
-	if err := row.Scan(&s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID); err != nil {
+	dest := append(before, &s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID,
+		&website, &adminsDisplay)
+	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
 
@@ -185,7 +197,9 @@ func scanClub(row pgx.Row) (*club.Club, error) {
 	s.Name = club.Name(name)
 	s.Description = club.Description(description)
 	s.Address = club.Address(address)
+	s.Website = club.Website(website)
 	s.Wall = club.Wall(wall)
+	s.AdminsDisplay = club.AdminsDisplay(adminsDisplay)
 	s.CreatedAt = s.CreatedAt.UTC()
 
 	return club.Restore(s), nil
@@ -196,13 +210,16 @@ const updateClubQuery = `
 	SET name = $2,
 		description = $3,
 		address = NULLIF($4, ''),
-		wall = $5
+		wall = $5,
+		website = $6,
+		admins_display = $7
 	WHERE id = $1
 `
 
 func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 	tag, err := r.pool.Exec(ctx, updateClubQuery,
-		c.ID(), c.Name().String(), c.Description().String(), c.Address().String(), c.Wall().String())
+		c.ID(), c.Name().String(), c.Description().String(), c.Address().String(), c.Wall().String(),
+		c.Website().String(), c.AdminsDisplay().String())
 	if constraintOf(err) == "clubs_address_key" {
 		return club.ErrAddressTaken
 	}
@@ -251,7 +268,9 @@ const searchClubsSelect = `
 		wall,
 		created_at,
 		member_count,
-		avatar_id
+		avatar_id,
+		website,
+		admins_display
 	FROM clubs
 	WHERE id < $1`
 
