@@ -149,6 +149,42 @@ func TestForgetPost(t *testing.T) {
 	}
 }
 
+func TestForgetComment(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newService()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	post, gone, kept := uuid.New(), uuid.New(), uuid.New()
+
+	// The comment gone is bob's answer to ann's comment kept; cat liked
+	// both.
+	reply := notification.Event{Kind: notification.KindCommentReply, RecipientID: ann, ActorID: bob, PostID: post, CommentID: gone}
+	likeGone := notification.Event{Kind: notification.KindCommentLike, RecipientID: bob, ActorID: cat, PostID: post, CommentID: gone}
+	likeKept := notification.Event{Kind: notification.KindCommentLike, RecipientID: ann, ActorID: cat, PostID: post, CommentID: kept}
+	notify(t, svc, reply, likeGone, likeKept)
+
+	// Unliking takes back that like only.
+	if err := svc.Retract(ctx, likeKept); err != nil {
+		t.Fatal(err)
+	}
+	if got := list(t, svc, ann, true); len(got) != 1 || got[0].Kind != notification.KindCommentReply {
+		t.Fatalf("after the unlike: %+v", got)
+	}
+	notify(t, svc, likeKept)
+
+	if err := svc.ForgetComment(ctx, gone); err != nil {
+		t.Fatal(err)
+	}
+
+	if got := list(t, svc, ann, true); len(got) != 1 || got[0].CommentID != kept {
+		t.Fatalf("ann after forgetting bob's answer: %+v", got)
+	}
+	if got := list(t, svc, bob, true); len(got) != 0 {
+		t.Fatalf("bob keeps the like of a deleted comment: %+v", got)
+	}
+}
+
 func TestPurgeUser(t *testing.T) {
 	t.Parallel()
 

@@ -256,3 +256,66 @@ func TestRepositories_DeleteByUser(t *testing.T) {
 		t.Errorf("ann's mark = %v, %v; want none", mark, err)
 	}
 }
+
+func TestRepositories_CommentReplyAndLike(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	repo := postgres.NewNotificationRepository(pool)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	post, answer, liked := uuid.New(), uuid.New(), uuid.New()
+
+	reply := notification.Event{Kind: notification.KindCommentReply, RecipientID: ann, ActorID: bob, PostID: post, CommentID: answer}
+	likeAnswer := notification.Event{Kind: notification.KindCommentLike, RecipientID: bob, ActorID: cat, PostID: post, CommentID: answer}
+	likeOther := notification.Event{Kind: notification.KindCommentLike, RecipientID: ann, ActorID: cat, PostID: post, CommentID: liked}
+
+	for _, e := range []notification.Event{reply, likeAnswer, likeOther, reply, likeOther} { // repeats saved once
+		n, err := notification.New(e, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = repo.Save(ctx, n); err != nil {
+			t.Fatalf("Save %s: %v", e.Kind, err)
+		}
+	}
+
+	count := func(userID uuid.UUID) int {
+		t.Helper()
+
+		page, err := repo.List(ctx, service.Query{RecipientID: userID, Unread: true, Limit: 10})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return len(page)
+	}
+
+	if got := count(ann); got != 2 {
+		t.Fatalf("ann has %d notifications, want the reply and the like once each", got)
+	}
+
+	if err = repo.Delete(ctx, likeOther); err != nil {
+		t.Fatal(err)
+	}
+	if got := count(ann); got != 1 {
+		t.Fatalf("after the unlike ann has %d", got)
+	}
+
+	// The answer is deleted: its reply and its like go.
+	if err = repo.DeleteByComment(ctx, answer); err != nil {
+		t.Fatal(err)
+	}
+	if count(ann) != 0 || count(bob) != 0 {
+		t.Fatalf("after deleting the answer: ann %d, bob %d", count(ann), count(bob))
+	}
+}

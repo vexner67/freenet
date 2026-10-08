@@ -109,6 +109,17 @@ const (
 		WHERE kind = 'repost'
 			AND post_id = $1
 	`
+	deleteCommentReplyNotificationQuery = `
+		DELETE FROM notifications
+		WHERE kind = 'comment_reply'
+			AND comment_id = $1
+	`
+	deleteCommentLikeNotificationQuery = `
+		DELETE FROM notifications
+		WHERE kind = 'comment_like'
+			AND actor_id = $1
+			AND comment_id = $2
+	`
 )
 
 func (r *NotificationRepository) Delete(ctx context.Context, e notification.Event) error {
@@ -125,6 +136,10 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deleteWallPostNotificationQuery, e.PostID)
 	case notification.KindRepost:
 		_, err = r.pool.Exec(ctx, deleteRepostNotificationQuery, e.PostID)
+	case notification.KindCommentReply:
+		_, err = r.pool.Exec(ctx, deleteCommentReplyNotificationQuery, e.CommentID)
+	case notification.KindCommentLike:
+		_, err = r.pool.Exec(ctx, deleteCommentLikeNotificationQuery, e.ActorID, e.CommentID)
 	default:
 		return notification.ErrUnknownKind
 	}
@@ -143,6 +158,19 @@ const deleteNotificationsByPostQuery = `
 
 func (r *NotificationRepository) DeleteByPost(ctx context.Context, postID uuid.UUID) error {
 	if _, err := r.pool.Exec(ctx, deleteNotificationsByPostQuery, postID); err != nil {
+		return errs.Wrap("r.pool.Exec", err)
+	}
+
+	return nil
+}
+
+const deleteNotificationsByCommentQuery = `
+	DELETE FROM notifications
+	WHERE comment_id = $1
+`
+
+func (r *NotificationRepository) DeleteByComment(ctx context.Context, commentID uuid.UUID) error {
+	if _, err := r.pool.Exec(ctx, deleteNotificationsByCommentQuery, commentID); err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
 

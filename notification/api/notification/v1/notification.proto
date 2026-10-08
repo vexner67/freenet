@@ -14,6 +14,9 @@ service NotificationService {
   rpc Retract(RetractRequest) returns (google.protobuf.Empty);
   // Internal, for post: the post is deleted with its likes and comments.
   rpc ForgetPost(ForgetPostRequest) returns (google.protobuf.Empty);
+  // Internal, for post: the comment is deleted; the notifications of it,
+  // of the reply it was and of its likes go.
+  rpc ForgetComment(ForgetCommentRequest) returns (google.protobuf.Empty);
   // Internal, for user: the user's page was deleted and not restored in
   // time; their notifications go, whether they got them or caused them,
   // and their read mark. Idempotent.
@@ -43,6 +46,10 @@ enum Kind {
   KIND_WALL_POST = 4;
   // The actor shared the recipient's post; post_id is the actor's repost.
   KIND_REPOST = 5;
+  // The actor answered the recipient's comment; comment_id is the answer.
+  KIND_COMMENT_REPLY = 6;
+  // The actor liked the recipient's comment comment_id.
+  KIND_COMMENT_LIKE = 7;
 }
 
 // Event: post_id is set for likes, comments, wall posts and reposts,
@@ -65,6 +72,10 @@ message RetractRequest {
 
 message ForgetPostRequest {
   string post_id = 1;
+}
+
+message ForgetCommentRequest {
+  string comment_id = 1;
 }
 
 message PurgeUserRequest {
