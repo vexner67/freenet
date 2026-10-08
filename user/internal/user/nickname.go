@@ -24,7 +24,7 @@ var (
 		"follows": {}, "freenet": {}, "groups": {}, "healthz": {}, "help": {}, "id": {}, "im": {},
 		"login": {}, "logout": {}, "me": {}, "media": {}, "news": {},
 		"notifications": {}, "people": {}, "post": {}, "search": {},
-		"settings": {}, "static": {}, "support": {},
+		"settings": {}, "static": {}, "support": {}, "topic": {},
 	}
 )
 
