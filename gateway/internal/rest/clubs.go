@@ -671,10 +671,13 @@ func (a *api) listClubPosts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if token != "" && cursor == "" {
-		if resp.CanPost, err = a.clubs.CanPostOnWall(r.Context(), token, c.Club.ID, false); err != nil {
+		access, err := a.clubs.CanPostOnWall(r.Context(), token, c.Club.ID, false)
+		if err != nil {
 			a.writeError(w, r, err)
 			return
 		}
+
+		resp.CanPost, resp.CanSuggest = access.Post, access.Suggest
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -682,7 +685,7 @@ func (a *api) listClubPosts(w http.ResponseWriter, r *http.Request) {
 
 // createClubPost writes on the wall of a club, on the author's behalf or,
 // for its admins, on the club's, maybe signed. As in openvk, its admins
-// always speak for a club with a closed wall.
+// always speak for a club whose wall is not open.
 func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -708,15 +711,15 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	fromClub := req.FromClub || (c.Club.Wall == "closed" && manages(c.Role))
+	fromClub := req.FromClub || (c.Club.Wall != "open" && manages(c.Role))
 
-	allowed, err := a.clubs.CanPostOnWall(r.Context(), token, c.Club.ID, fromClub)
+	access, err := a.clubs.CanPostOnWall(r.Context(), token, c.Club.ID, fromClub)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	if !allowed {
+	if !access.Post {
 		a.writeError(w, r, failure.New(failure.PermissionDenied, "you cannot post on this wall"))
 		return
 	}

@@ -18,20 +18,21 @@ func webDir(t *testing.T) string {
 
 	dir := t.TempDir()
 	files := map[string]string{
-		"index.html":         "INDEX",
-		"edit.html":          "EDIT",
-		"blacklist.html":     "BLACKLIST",
-		"profile.html":       "PROFILE",
-		"post.html":          "POST",
-		"notifications.html": "NOTIFICATIONS",
-		"im.html":            "DIALOGS",
-		"dialog.html":        "DIALOG",
-		"groups.html":        "GROUPS",
-		"club-create.html":   "CLUB_CREATE",
-		"club.html":          "CLUB",
-		"club-edit.html":     "CLUB_EDIT",
-		"club-members.html":  "CLUB_MEMBERS",
-		"static/style.css":   "body{}",
+		"index.html":          "INDEX",
+		"edit.html":           "EDIT",
+		"blacklist.html":      "BLACKLIST",
+		"profile.html":        "PROFILE",
+		"post.html":           "POST",
+		"notifications.html":  "NOTIFICATIONS",
+		"im.html":             "DIALOGS",
+		"dialog.html":         "DIALOG",
+		"groups.html":         "GROUPS",
+		"club-create.html":    "CLUB_CREATE",
+		"club.html":           "CLUB",
+		"club-edit.html":      "CLUB_EDIT",
+		"club-members.html":   "CLUB_MEMBERS",
+		"club-suggested.html": "CLUB_SUGGESTED",
+		"static/style.css":    "body{}",
 	}
 
 	for name, content := range files {
@@ -81,6 +82,7 @@ func TestPages(t *testing.T) {
 		{"/club/cats", 200, "CLUB", true},
 		{"/club/cats/edit", 200, "CLUB_EDIT", true},
 		{"/club/cats/members", 200, "CLUB_MEMBERS", true},
+		{"/club/cats/suggested", 200, "CLUB_SUGGESTED", true},
 		{"/static/style.css", 200, "body{}", false},
 		{"/static/", 404, "", false},
 		{"/api/v1/users/ann", 200, `"nickname":"ann"`, false},

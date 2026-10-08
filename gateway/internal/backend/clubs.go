@@ -23,8 +23,9 @@ func NewClubs(api clubv1.ClubServiceClient) *Clubs {
 
 var (
 	walls = map[clubv1.Wall]string{
-		clubv1.Wall_WALL_OPEN:   "open",
-		clubv1.Wall_WALL_CLOSED: "closed",
+		clubv1.Wall_WALL_OPEN:    "open",
+		clubv1.Wall_WALL_CLOSED:  "closed",
+		clubv1.Wall_WALL_SUGGEST: "suggest",
 	}
 	adminsDisplays = map[clubv1.AdminsDisplay]string{
 		clubv1.AdminsDisplay_ADMINS_DISPLAY_CREATOR: "creator",
@@ -264,14 +265,14 @@ func (c *Clubs) MineIDs(ctx context.Context, accessToken string) ([]string, erro
 }
 
 // CanPostOnWall tells whether the caller may write on the club's wall, on
-// their own behalf or, fromClub, on the club's.
-func (c *Clubs) CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (bool, error) {
+// their own behalf or, fromClub, on the club's, or else suggest a post.
+func (c *Clubs) CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (model.WallAccess, error) {
 	resp, err := c.api.CanPostOnWall(withToken(ctx, accessToken), &clubv1.CanPostOnWallRequest{ClubId: clubID, FromClub: fromClub})
 	if err != nil {
-		return false, errs.Wrap("c.api.CanPostOnWall", fromStatus(err))
+		return model.WallAccess{}, errs.Wrap("c.api.CanPostOnWall", fromStatus(err))
 	}
 
-	return resp.GetAllowed(), nil
+	return model.WallAccess{Post: resp.GetAllowed(), Suggest: resp.GetSuggest()}, nil
 }
 
 func toClub(c *clubv1.Club) model.Club {

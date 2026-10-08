@@ -83,6 +83,11 @@ type Posts interface {
 	DeleteComment(ctx context.Context, accessToken, id string) error
 	Comments(ctx context.Context, accessToken, postID, cursor string, limit int) (model.CommentPage, error)
 	CommentsByID(ctx context.Context, ids []string) ([]model.Comment, error)
+
+	Suggest(ctx context.Context, accessToken, wallID, text string, photoIDs []string) (model.Suggestion, error)
+	Suggestions(ctx context.Context, accessToken, wallID string, mine bool, cursor string, limit int) (model.SuggestionPage, error)
+	PublishSuggestion(ctx context.Context, accessToken, id, text string, signed bool) (model.Post, error)
+	DeleteSuggestion(ctx context.Context, accessToken, id string) error
 }
 
 type Notifications interface {
@@ -122,7 +127,7 @@ type Clubs interface {
 	Pin(ctx context.Context, accessToken, clubID string, pinned bool) error
 	Pinned(ctx context.Context, accessToken string) ([]model.Club, error)
 	MineIDs(ctx context.Context, accessToken string) ([]string, error)
-	CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (bool, error)
+	CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (model.WallAccess, error)
 }
 
 // Backends are the services the API is made of.
@@ -236,6 +241,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/owner/{nickname}", a.transferClub)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/posts", a.listClubPosts)
 	mux.HandleFunc("POST /api/v1/clubs/{ref}/posts", a.createClubPost)
+	mux.HandleFunc("GET /api/v1/clubs/{ref}/suggestions", a.listClubSuggestions)
+	mux.HandleFunc("POST /api/v1/clubs/{ref}/suggestions", a.suggestClubPost)
+	mux.HandleFunc("POST /api/v1/suggestions/{id}/publish", a.publishSuggestion)
+	mux.HandleFunc("DELETE /api/v1/suggestions/{id}", a.deleteSuggestion)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)

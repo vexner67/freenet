@@ -73,7 +73,7 @@ func TestClubs(t *testing.T) {
 		api.update.GetWebsite() != "cats.example" || api.update.GetAdminsDisplay() != clubv1.AdminsDisplay_ADMINS_DISPLAY_NONE {
 		t.Fatalf("Update = %v, request %v", err, api.update)
 	}
-	if _, err = clubs.Update(ctx, "tok", "k1", model.ClubChanges{Name: "Коты", Wall: "suggest", AdminsDisplay: "all"}); failure.From(err).Kind != failure.InvalidArgument {
+	if _, err = clubs.Update(ctx, "tok", "k1", model.ClubChanges{Name: "Коты", Wall: "limited", AdminsDisplay: "all"}); failure.From(err).Kind != failure.InvalidArgument {
 		t.Fatalf("an unknown wall mode: %v", err)
 	}
 	if _, err = clubs.Update(ctx, "tok", "k1", model.ClubChanges{Name: "Коты", Wall: "open"}); failure.From(err).Kind != failure.InvalidArgument {

@@ -998,7 +998,8 @@ paths:
       summary: Change a community's settings
       description: |
         Its admins only. The whole form: an empty address or website takes
-        it away; `wall` is `open` (everyone writes) or `closed` (only
+        it away; `wall` is `open` (everyone writes), `suggest` (only
+        admins write, others suggest posts: "Предложка") or `closed` (only
         admins); `adminsDisplay` is what the page shows of those who run
         the community ("Список админов").
       security: [{ bearer: [] }]
@@ -1014,7 +1015,7 @@ paths:
                 description: { type: string, maxLength: 1000 }
                 address: { type: string, maxLength: 32, description: "Latin letters, digits and _, a letter first; unique whatever the case" }
                 website: { type: string, maxLength: 256, description: "An http or https link; https:// is added when the scheme is left out" }
-                wall: { type: string, enum: [open, closed] }
+                wall: { type: string, enum: [open, suggest, closed] }
                 adminsDisplay: { $ref: "#/components/schemas/AdminsDisplay" }
       responses:
         "200": { $ref: "#/components/responses/Club" }
@@ -1158,12 +1159,143 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/clubs/{ref}/suggestions:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    get:
+      summary: Posts suggested for a community's wall ("Предложенные записи")
+      description: |
+        All of them for its admins; with `mine=true` yours ("Предложенные
+        вами записи"). Those whose author's page is deleted are left out,
+        but counted in `total`.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: mine
+          in: query
+          schema: { type: boolean }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page, newest first
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [suggestions, nextCursor, total]
+                properties:
+                  suggestions:
+                    type: array
+                    items: { $ref: "#/components/schemas/Suggestion" }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: All of them, and not an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Suggest a post ("Предложить новость")
+      description: |
+        On a `suggest` wall, by anyone but its admins (`canSuggest`). Only
+        you and the admins see it until an admin publishes it for the
+        community or it is withdrawn or declined. Your profile must be
+        filled in first; the photos must be yours.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewPost" }
+      responses:
+        "201":
+          description: The suggestion
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Suggestion" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "`you cannot suggest posts here`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/suggestions/{id}/publish:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Publish a suggestion ("Опубликовать запись")
+      description: |
+        The community's admins only. The post is new, on top of the wall,
+        speaks for the community and keeps the suggested photos; its author
+        is notified (post_accepted).
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              additionalProperties: false
+              properties:
+                text: { type: string, maxLength: 1000, description: "What the post says, as you leave it; may be empty when it has photos" }
+                signed: { type: boolean, description: "Name the author under the post (\"Подпись автора\")" }
+      responses:
+        "201":
+          description: The post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "204": { description: "Published, but its author's page was deleted meanwhile, so it is not shown" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not an admin of the community
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { description: "`suggestion not found`: published, withdrawn or declined", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/suggestions/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Withdraw your suggestion, or decline one as an admin ("Отклонить")
+      description: Its photos go with it.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Neither its author nor an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/clubs/{ref}/posts:
     parameters:
       - $ref: "#/components/parameters/ClubRef"
     get:
       summary: A community's wall, newest first
-      description: As a user's wall; `canPost` says whether you may write there on your own behalf.
+      description: As a user's wall; `canPost` says whether you may write there on your own behalf, `canSuggest` whether you may suggest a post instead.
       parameters:
         - name: cursor
           in: query
@@ -1181,9 +1313,9 @@ paths:
     post:
       summary: Write on a community's wall
       description: |
-        On an open wall anyone may, on a closed one only its admins; with
-        `fromClub` the post speaks for the community ("От имени
-        сообщества"), admins only. Your profile must be filled in first.
+        On an open wall anyone may, on any other only its admins, and then
+        for the community; with `fromClub` the post speaks for the
+        community ("От имени сообщества"), admins only. Your profile must be filled in first.
         Nobody is notified of posts here, nor the writer of a post for the
         community of its likes, comments and reposts.
       security: [{ bearer: [] }]
@@ -1708,7 +1840,7 @@ components:
         description: { type: string, description: "Plain text with \\n line breaks" }
         address: { type: string, description: "Empty for none: the page is then /club/<id>" }
         website: { type: string, description: "An http or https link (\"Сайт\"); empty for none" }
-        wall: { type: string, enum: [open, closed], description: "Who may write on the wall: everyone, or only its admins" }
+        wall: { type: string, enum: [open, suggest, closed], description: "Who may write on the wall: everyone, only its admins with posts suggested by others (\"Предложка\"), or only its admins" }
         adminsDisplay: { $ref: "#/components/schemas/AdminsDisplay" }
         members: { type: integer }
         createdAt: { type: string, format: date-time }
@@ -1772,7 +1904,7 @@ components:
         fromWall:
           type: boolean
           description: "The post speaks for its wall, a community (\"От имени сообщества\"): `author` is the community, `wall` null, who wrote it is not told"
-        mine: { type: boolean, description: "You wrote it and may edit it; false without a token" }
+        mine: { type: boolean, description: "You wrote it and may edit it; false without a token, and for a post you suggested that a community published, which is the community's" }
         signer:
           description: "Who wrote a post for a community that names its author (\"Автор: ...\"); null otherwise"
           oneOf:
@@ -1850,8 +1982,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -1970,6 +2102,21 @@ components:
         canPost:
           type: boolean
           description: "On a wall's first page: you may write on it; false without a token and in the news feed"
+        canSuggest:
+          type: boolean
+          description: "On a community's wall, as canPost: you may suggest a post for it instead"
+
+    Suggestion:
+      type: object
+      required: [id, author, text, photos, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/Author" }
+        text: { type: string }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
+        createdAt: { type: string, format: date-time }
 
     PublicProfile:
       allOf:
