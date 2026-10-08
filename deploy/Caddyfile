@@ -1,6 +1,8 @@
 # The website: Caddy in front of the gateway. SITE_ADDRESS is the domain
 # (HTTPS with a certificate Caddy gets and renews itself, HTTP redirected
-# to it) or ":80" without one.
+# to it) or ":80" without one. REDIRECT_ADDRESS, www.<domain>, leads to
+# it: the site has one address, so signing in holds wherever one comes
+# from; without a domain it is an internal port nobody reaches.
 {
 	admin off
 }
@@ -24,4 +26,8 @@
 		output stdout
 		format json
 	}
+}
+
+{$REDIRECT_ADDRESS::8081} {
+	redir https://{$SITE_ADDRESS}{uri} permanent
 }

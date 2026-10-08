@@ -133,6 +133,8 @@ if [ ! -f "$app_dir/.env" ]; then
 		echo "FREENET_TAG="
 		echo "# The domain once there is one (Caddy gets its certificate), :80 until then."
 		echo "SITE_ADDRESS=:80"
+		echo "# www.<domain>, redirected to SITE_ADDRESS; an unused port without a domain."
+		echo "REDIRECT_ADDRESS=:8081"
 		port=5433
 		for db in AUTH USER POST NOTIFICATION MESSAGE CLUB; do
 			echo "${db}_POSTGRES_USER=freenet"
