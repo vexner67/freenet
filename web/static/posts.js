@@ -3,7 +3,7 @@
 // "Поделиться" on the left and the like on the right.
 
 import { api } from './api.js';
-import { commentsLink, formatPostDate, genitiveName, shareLink, wrote } from './labels.js';
+import { commentsLink, formatPostDate, genitiveName, shareLink, updatedPhoto, wrote } from './labels.js';
 import { avatarURL, el, fullName, pagePath } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
@@ -97,7 +97,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
-        wroteBy(post.author),
+        wroteBy(post),
         ...(onWallOf !== undefined && post.wall ? [' ', wallLink(post.wall, onWallOf)] : []),
         date,
       ),
@@ -123,8 +123,12 @@ export function canEdit(post, viewer, now = new Date()) {
 }
 
 // wroteBy is " написал" after the name of a person, " опубликовали"
-// after a community's, as on openvk.
-function wroteBy(author) {
+// after a community's, as on openvk; for a new photo, openvk's "обновил
+// фотографию на своей странице" or "обновило фотографию группы".
+function wroteBy(post) {
+  const { author } = post;
+  if (post.avatarUpdate) return ' ' + updatedPhoto(author);
+
   return ' ' + (author.club ? 'опубликовали' : wrote(author.gender));
 }
 
@@ -160,7 +164,7 @@ function sharedNode(shared) {
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(shared.author) }),
-        wroteBy(shared.author),
+        wroteBy(shared),
         ...(shared.wall ? [' ', wallLink(shared.wall, null)] : []),
         el('div', { className: 'post-date' }, el('a', { href: postPath(shared), textContent: formatPostDate(shared.createdAt) })),
       ),

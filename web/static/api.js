@@ -190,7 +190,8 @@ export const api = {
   following: (nickname, cursor = '', limit = 0) => request('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit)),
   feed: (cursor = '') => authorized('GET', page('/api/v1/feed', cursor, 0)),
 
-  uploadAvatar: (file) => authorized('PUT', '/api/v1/me/avatar', file),
+  // onWall: post the photo on your wall too ("Опубликовать запись на стене").
+  uploadAvatar: (file, onWall = false) => authorized('PUT', '/api/v1/me/avatar' + (onWall ? '?onWall=true' : ''), file),
   deleteAvatar: () => authorized('DELETE', '/api/v1/me/avatar'),
 
   notifications(box, cursor = '') {
@@ -248,7 +249,8 @@ export const api = {
     if (cursor) params.set('cursor', cursor);
     return request('GET', '/api/v1/clubs?' + params);
   },
-  uploadClubAvatar: (ref, file) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/avatar`, file),
+  uploadClubAvatar: (ref, file, onWall = false) =>
+    authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/avatar` + (onWall ? '?onWall=true' : ''), file),
   deleteClubAvatar: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/avatar`),
   clubWall: (ref, cursor = '') => optional('GET', page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0)),
   // fromClub: the post speaks for the club ("От имени сообщества"),

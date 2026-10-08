@@ -147,6 +147,14 @@ export function wrote(gender) {
   return gender === 'female' ? 'написала' : 'написал';
 }
 
+// updatedPhoto is what openvk says of the post of a new photo (upd_m,
+// upd_f, upd_g).
+export function updatedPhoto(author) {
+  if (author.club) return 'обновило фотографию группы';
+
+  return author.gender === 'female' ? 'обновила фотографию на своей странице' : 'обновил фотографию на своей странице';
+}
+
 // limitedAccess is openvk's "$1 ограничил доступ к своей странице." for
 // whoever blacklisted the viewer.
 export function limitedAccess(gender) {
