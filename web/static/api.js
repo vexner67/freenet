@@ -229,11 +229,27 @@ export const api = {
   },
   appointAdmin: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
   dismissAdmin: (ref, nickname) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
-  myClubs: (cursor = '') => authorized('GET', page('/api/v1/me/clubs', cursor, 0)),
+  // managed: only the clubs you run ("Управляемые").
+  myClubs(cursor = '', managed = false) {
+    const path = page('/api/v1/me/clubs', cursor, 0);
+    return authorized('GET', managed ? path + (path.includes('?') ? '&' : '?') + 'managed=true' : path);
+  },
+  // The clubs you keep in the left menu ("Добавить в левое меню").
+  pinnedClubs: () => authorized('GET', '/api/v1/me/clubs/pinned'),
+  pinClub: (ref) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/pin`),
+  unpinClub: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/pin`),
+  searchClubs(query, cursor = '') {
+    const params = new URLSearchParams({ q: query });
+    if (cursor) params.set('cursor', cursor);
+    return request('GET', '/api/v1/clubs?' + params);
+  },
+  uploadClubAvatar: (ref, file) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/avatar`, file),
+  deleteClubAvatar: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/avatar`),
   clubWall: (ref, cursor = '') => optional('GET', page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0)),
-  // fromClub: the post speaks for the club ("От имени сообщества").
-  createClubPost: (ref, text, photos = [], fromClub = false) =>
-    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub }),
+  // fromClub: the post speaks for the club ("От имени сообщества"),
+  // signed: naming you under it ("Подпись автора").
+  createClubPost: (ref, text, photos = [], { fromClub = false, signed = false } = {}) =>
+    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub, signed }),
 
   search(query, cursor = '') {
     const params = new URLSearchParams({ q: query });

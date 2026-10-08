@@ -20,11 +20,22 @@
     </div>
 
     <div class="page">
-      <div class="page-title"><span id="title">Мои Группы</span><a class="aside" href="/groups/create">Создать группу</a></div>
+      <div class="page-title"><span id="title">Мои Группы</span></div>
       <div class="page-body">
+        <div class="tabs">
+          <a id="tab-all" href="/groups">Группы</a>
+          <a id="tab-managed" href="/groups?act=managed">Управляемые</a>
+        </div>
+        <div class="gray-bar">
+          <form class="gray-bar-search" action="/search" method="get">
+            <input type="hidden" name="section" value="groups">
+            <input type="text" name="q" maxlength="64" placeholder="Поиск по группам" aria-label="Поиск по группам">
+          </form>
+          <a class="button" href="/groups/create">Создать группу</a>
+        </div>
+        <div class="summary-bar" id="summary"></div>
         <div class="error" id="error" hidden></div>
         <div id="clubs"></div>
-        <p class="hint" id="empty" hidden>Вы не состоите ни в одной группе.</p>
         <a class="wall-more" id="more" hidden>Показать ещё</a>
       </div>
     </div>

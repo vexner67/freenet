@@ -211,6 +211,17 @@ export function membersCount(n) {
   return n === 0 ? 'Ни одного участника' : `${n} ${plural(n, ['участник', 'участника', 'участников'])}`;
 }
 
+// myClubsCount is the head of "Мои Группы", openvk's "groups_list".
+export function myClubsCount(n) {
+  if (n === 0) return 'Вы не состоите ни в одной группе';
+  return `Вы состоите в ${n} ${plural(n, ['группе', 'группах', 'группах'])}`;
+}
+
+// clubsCount is openvk's "groups": "1 группа", "5 групп".
+export function clubsCount(n) {
+  return n === 0 ? 'Ни одной группы' : `${n} ${plural(n, ['группа', 'группы', 'групп'])}`;
+}
+
 // clubRoles name what a member is in a community.
 export const clubRoles = { owner: 'Владелец', admin: 'Администратор', member: 'Участник' };
 
@@ -304,6 +315,9 @@ const errorTexts = {
   'club address contains invalid characters': 'Адрес страницы может состоять из латинских букв, цифр и _ и начинаться с буквы.',
   'club address is already taken': 'Этот адрес уже занят.',
   'the owner cannot leave the club': 'Владелец не может выйти из своей группы.',
+  'only the admins can add the club to their menu': 'Добавить группу в левое меню могут только её администраторы.',
+  'at most 10 clubs in the menu': 'В левом меню может быть не больше 10 групп.',
+  'only the admins can edit the club': 'Изменять группу могут только её администраторы.',
   'fill in your profile before creating a club': 'Сначала заполните свою страницу.',
   'fill in your profile before joining a club': 'Сначала заполните свою страницу.',
   'the message can no longer be deleted': 'Сообщение можно удалить только в течение суток после отправки.',

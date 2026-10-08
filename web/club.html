@@ -24,35 +24,16 @@
       <div class="page-body">
         <div class="error" id="error" hidden></div>
 
-        <div class="profile" id="club" hidden>
-          <div class="profile-left">
-            <img class="avatar" id="avatar" src="/static/club.svg" alt="">
-            <button class="button" type="button" id="join" hidden>Вступить в группу</button>
-            <a class="button" id="edit" hidden>Редактировать группу</a>
-            <div class="error" id="join-error" hidden></div>
-
-            <div class="side-block">
-              <div class="section-title">Тип группы</div>
-              <p class="hint">Это открытая группа. В неё может вступить любой желающий.</p>
-            </div>
-
-            <div class="side-block" id="members-block" hidden>
-              <div class="section-title">Участники</div>
-              <div class="subtitle"><span id="members-count"></span><a id="members-all">Все</a></div>
-              <div class="people-grid" id="members-grid"></div>
-            </div>
-
-            <div class="side-block" id="owner-block" hidden>
-              <div class="section-title">Создатель</div>
-              <div id="owner"></div>
-            </div>
-          </div>
-
-          <div class="profile-right">
-            <h2 class="name" id="name"></h2>
-
+        <div class="club" id="club" hidden>
+          <div class="club-main">
             <div class="section-title">Информация</div>
             <table class="info" id="info"></table>
+
+            <div id="members-block" hidden>
+              <div class="section-title">Участники</div>
+              <div class="subtitle"><span id="members-count"></span><a id="members-all">Все</a></div>
+              <div class="people-grid wide" id="members-grid"></div>
+            </div>
 
             <div class="section-title">Стена<span class="count" id="wall-count"></span></div>
 
@@ -62,10 +43,13 @@
               <div class="row">
                 <span>
                   <a class="attach-link" id="post-attach">Прикрепить фотографию</a>
-                  <label class="from-club" id="post-from-club-label" hidden><input type="checkbox" id="post-from-club" checked> От имени сообщества</label>
                   <span class="hint" id="post-counter"></span>
                 </span>
                 <button class="button" type="submit" id="post-submit">Отправить</button>
+              </div>
+              <div class="post-options">
+                <label id="post-from-club-label" hidden><input type="checkbox" id="post-from-club" checked> От имени сообщества</label>
+                <label id="post-signed-label" hidden><input type="checkbox" id="post-signed"> Подпись автора</label>
               </div>
               <input type="file" id="post-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
             </form>
@@ -74,6 +58,30 @@
             <div id="posts"></div>
             <p class="hint" id="wall-empty" hidden>На стене пока нет ни одной записи.</p>
             <a class="wall-more" id="wall-more" hidden>Показать предыдущие записи</a>
+          </div>
+
+          <div class="club-side">
+            <img class="avatar" id="avatar" src="/static/club.svg" alt="">
+            <div class="avatar-actions" id="avatar-actions" hidden>
+              <a id="avatar-upload">Загрузить фотографию</a>
+              <a id="avatar-delete" hidden>Удалить фотографию</a>
+              <input type="file" id="avatar-file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+            </div>
+            <p class="hint center" id="avatar-status" hidden></p>
+
+            <div class="profile-links">
+              <button class="button" type="button" id="join" hidden>Вступить в группу</button>
+              <a class="profile-link" id="edit" hidden>Редактировать группу</a>
+            </div>
+            <div class="error" id="join-error" hidden></div>
+
+            <div class="section-title">Тип группы</div>
+            <p class="side-text">Это открытая группа. В неё может вступить любой желающий.</p>
+
+            <div id="owner-block" hidden>
+              <div class="section-title">Создатель</div>
+              <div id="owner"></div>
+            </div>
           </div>
         </div>
       </div>

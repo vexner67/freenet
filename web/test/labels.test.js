@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { membersCount, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { membersCount, myClubsCount, clubsCount, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -158,5 +158,11 @@ test('clubs', () => {
   assert.equal(membersCount(1), '1 участник');
   assert.equal(membersCount(3), '3 участника');
   assert.equal(membersCount(11), '11 участников');
+  assert.equal(myClubsCount(0), 'Вы не состоите ни в одной группе');
+  assert.equal(myClubsCount(1), 'Вы состоите в 1 группе');
+  assert.equal(myClubsCount(21), 'Вы состоите в 21 группе');
+  assert.equal(myClubsCount(5), 'Вы состоите в 5 группах');
+  assert.equal(clubsCount(2), '2 группы');
+  assert.equal(clubsCount(5), '5 групп');
   assert.equal(errorText(new Error('club address is already taken')), 'Этот адрес уже занят.');
 });

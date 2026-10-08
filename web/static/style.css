@@ -615,9 +615,53 @@ a.like:hover svg { opacity: .7; }
 .blacklist-row { display: flex; justify-content: space-between; align-items: center; }
 .blacklist-row .person { flex: 1; }
 
-/* Communities: "От имени сообщества" next to "Прикрепить фотографию". */
-.from-club { margin-left: 10px; color: #555; }
-.from-club input { vertical-align: middle; margin: 0 3px 0 0; }
+/* The page of a community, as openvk's: the information, members and
+   wall on the left, the photo and links in a narrow column on the right
+   (a person's page is the other way round). */
+.club { display: flex; gap: 10px; }
+.club-main { flex: 1; min-width: 0; }
+.club-main .section-title { margin-right: 0; }
+/* Blocks that may be hidden open with their title: not the page's first. */
+.club-main > div > .section-title:first-child { margin-top: 12px; }
+.club-side { width: 200px; flex-shrink: 0; }
+.club-side .section-title,
+.club-side > div > .section-title:first-child { margin: 10px 0 0; }
+.club-side .button { display: block; width: 100%; margin-top: 6px; }
+.side-text { padding: 4px; }
+.people-grid.wide { grid-template-columns: repeat(6, 1fr); }
+
+/* An item of an openvk list: "Создатель", admins. */
+.avatar-item { display: flex; gap: 8px; align-items: center; padding: 4px 0; }
+.avatar-item img { width: 32px; height: 32px; object-fit: cover; }
+
+/* "От имени сообщества" and "Подпись автора" under the form. */
+.post-options { margin-top: 4px; }
+.post-options label { display: block; padding: 1px 0; color: #555; }
+.post-options input { vertical-align: middle; margin: 0 3px 0 0; }
 .club-role { color: #808080; }
 .club-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #ececec; }
 .club-row img { width: 50px; height: 50px; object-fit: cover; }
+
+/* The clubs pinned to the left menu, under a line, as on openvk. */
+.menu-divider { margin: 4px 0; border-top: 1px solid #dadada; }
+
+/* "Автор: Иван Иванов" under a signed post of a community. */
+.post-signature { padding: 2px 4px 4px; }
+.post-signature span { color: #808080; }
+.post-signature a { font-weight: bold; }
+
+/* openvk's lists ("Мои Группы", search): the photo, the information and
+   the links on the right. */
+.list-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #ececec; }
+.list-cover img { display: block; width: 75px; height: 75px; object-fit: cover; }
+.list-info { flex: 1; min-width: 0; }
+.list-info .info th { width: 70px; }
+.list-description { padding-top: 4px; white-space: pre-wrap; overflow-wrap: anywhere; }
+.list-actions { width: 200px; flex-shrink: 0; }
+.list-actions .profile-link { margin-top: 0; margin-bottom: 2px; }
+
+/* The grey bar of "Мои Группы": search and "Создать группу". */
+.gray-bar { display: flex; gap: 8px; margin: -10px -10px 0; padding: 12px; background: #f6f6f6; }
+.gray-bar-search { flex: 1; }
+.summary-bar { margin: 0 -10px; padding: 11px 10px; border-bottom: 1px solid #dedede; color: #45688e; font-weight: bold; }
+.profile-links { margin-top: 6px; }

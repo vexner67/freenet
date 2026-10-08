@@ -44,6 +44,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     content.replaceChildren(
       post.text ? el('div', { className: 'post-text', textContent: post.text }) : '',
       photosNode(post.photos ?? []) ?? '',
+      signatureNode(post.signer) ?? '',
     );
     menu.replaceChildren(...separated(menuLinks()));
     node.classList.toggle('pinned', Boolean(post.pinned));
@@ -121,10 +122,21 @@ export function canEdit(post, viewer, now = new Date()) {
   return Boolean(viewer) && Boolean(post.mine) && now < new Date(post.editableUntil);
 }
 
-// wroteBy is " написал" after the name of a person; a community, as on
-// openvk, just says.
+// wroteBy is " написал" after the name of a person, " опубликовали"
+// after a community's, as on openvk.
 function wroteBy(author) {
-  return author.club ? '' : ' ' + wrote(author.gender);
+  return ' ' + (author.club ? 'опубликовали' : wrote(author.gender));
+}
+
+// signatureNode is openvk's "Автор: Иван Иванов" under a post that speaks
+// for a community and names its author ("Подпись автора").
+function signatureNode(signer) {
+  if (!signer) return null;
+
+  return el('div', { className: 'post-signature' },
+    el('span', { textContent: 'Автор: ' }),
+    el('a', { href: pagePath(signer), textContent: fullName(signer) }),
+  );
 }
 
 // wallOwnerID is whose wall the post is on: its wall is null on the
