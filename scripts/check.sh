@@ -8,7 +8,10 @@
 #                                    against throwaway containers: each
 #                                    service gets its own migrated database,
 #                                    shared packages that need PostgreSQL
-#                                    an empty one
+#                                    an empty one; and the monitoring of the
+#                                    stack: Prometheus and Alertmanager
+#                                    configs and the alert rule tests, with
+#                                    the tools of their compose.yaml images
 #
 # Needs Go, golangci-lint and Node.js; --integration also Docker.
 set -euo pipefail
@@ -135,6 +138,28 @@ done
 
 echo "==> web"
 node --test web/test/*.test.js >/dev/null || failed+=(web)
+
+# check_monitoring checks the configs with the promtool and amtool of the
+# very images the stack runs, and runs the tests of the alert rules.
+check_monitoring() {
+	local prometheus alertmanager
+	prometheus=$(sed -n 's|^ *image: \(prom/prometheus:.*\)$|\1|p' compose.yaml)
+	alertmanager=$(sed -n 's|^ *image: \(prom/alertmanager:.*\)$|\1|p' compose.yaml)
+
+	docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool "$prometheus" check config prometheus.yml &&
+		docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool "$prometheus" test rules alerts_test.yml &&
+		docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint amtool "$alertmanager" check-config /m/alertmanager.yml &&
+		node -e 'JSON.parse(require("fs").readFileSync(process.argv[1]))' monitoring/grafana/dashboards/freenet.json
+}
+
+if $integration; then
+	echo "==> monitoring"
+	# Quiet unless it fails, as the tests of the modules are.
+	if ! out=$(check_monitoring 2>&1); then
+		echo "$out"
+		failed+=(monitoring)
+	fi
+fi
 
 if [ ${#failed[@]} -gt 0 ]; then
 	die "failed: ${failed[*]}"

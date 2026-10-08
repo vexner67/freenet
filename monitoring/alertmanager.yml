@@ -1,0 +1,21 @@
+# Alertmanager of the Docker stack (`make stack`): Prometheus sends it the
+# alerts of alerts.yml. It groups and silences them; they show at
+# http://localhost:9093 and in Grafana (Alerting). Nobody is notified yet:
+# to get them by email or in Telegram, add email_configs or
+# telegram_configs to the receiver (with the password or bot token in a
+# file, *_file, not here: this file is in git).
+route:
+  receiver: team
+  group_by: [alertname, service]
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+
+receivers:
+  - name: team
+
+# A service down explains its errors and latency: say only that.
+inhibit_rules:
+  - source_matchers: [alertname = ServiceDown]
+    target_matchers: [alertname =~ "GRPCServerErrors|GRPCSlow"]
+    equal: [service]
