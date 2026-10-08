@@ -72,6 +72,29 @@ func TestCreateComment(t *testing.T) {
 		}
 	})
 
+	t.Run("with photos, the caller's only", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+		w := h.do("POST", "/api/v1/posts/p1/comments", `{"photos":["ph1"]}`, "Authorization", "Bearer tok")
+		got := decode[map[string]any](t, w)
+		photos, _ := got["photos"].([]any)
+		if w.Code != http.StatusCreated || len(photos) != 1 || len(h.posts.photos) != 1 {
+			t.Fatalf("%d %v", w.Code, got)
+		}
+		if photo, _ := photos[0].(map[string]any); photo["small"] != "/media/photos/u1/ph1/small.jpg" {
+			t.Fatalf("photo = %v", photos[0])
+		}
+
+		h = newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+		if w = h.do("POST", "/api/v1/posts/p1/comments", `{"photos":["ph7"]}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest || h.posts.created != "" {
+			t.Fatalf("someone else's photo: %d", w.Code)
+		}
+	})
+
 	t.Run("profile must be filled in first", func(t *testing.T) {
 		t.Parallel()
 

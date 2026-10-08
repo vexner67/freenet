@@ -111,6 +111,25 @@ func TestSendMessage(t *testing.T) {
 		}
 	})
 
+	t.Run("with photos, the caller's only", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"photos":["ph1","ph2"]}`, "Authorization", "Bearer tok")
+		got := decode[map[string]any](t, w)
+		if photos, _ := got["photos"].([]any); w.Code != http.StatusCreated || len(photos) != 2 {
+			t.Fatalf("%d %v", w.Code, got)
+		}
+
+		h = newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+		if w = h.do("POST", "/api/v1/dialogs/bob/messages", `{"photos":["ph7"]}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
+			t.Fatalf("someone else's photo: %d", w.Code)
+		}
+	})
+
 	t.Run("profile must be filled in first", func(t *testing.T) {
 		t.Parallel()
 

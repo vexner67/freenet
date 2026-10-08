@@ -72,7 +72,7 @@ type Posts interface {
 	Like(ctx context.Context, accessToken, postID string) (int, error)
 	Unlike(ctx context.Context, accessToken, postID string) (int, error)
 
-	CreateComment(ctx context.Context, accessToken, postID, text string) (model.Comment, error)
+	CreateComment(ctx context.Context, accessToken, postID, text string, photoIDs []string) (model.Comment, error)
 	DeleteComment(ctx context.Context, accessToken, id string) error
 	Comments(ctx context.Context, postID, cursor string, limit int) (model.CommentPage, error)
 	CommentsByID(ctx context.Context, ids []string) ([]model.Comment, error)
@@ -86,7 +86,7 @@ type Notifications interface {
 }
 
 type Messages interface {
-	Send(ctx context.Context, accessToken, recipientID, text string) (model.Message, error)
+	Send(ctx context.Context, accessToken, recipientID, text string, photoIDs []string) (model.Message, error)
 	Dialogs(ctx context.Context, accessToken, cursor string, limit int) (model.DialogPage, error)
 	CountUnread(ctx context.Context, accessToken string) (int, error)
 	History(ctx context.Context, accessToken, peerID, cursor, after string, limit int) (model.MessagePage, error)

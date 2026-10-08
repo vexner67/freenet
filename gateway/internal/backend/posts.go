@@ -171,8 +171,8 @@ func (p *Posts) Unlike(ctx context.Context, accessToken, postID string) (int, er
 }
 
 // CreateComment returns the comment without Author: the caller knows who it is.
-func (p *Posts) CreateComment(ctx context.Context, accessToken, postID, text string) (model.Comment, error) {
-	resp, err := p.api.CreateComment(withToken(ctx, accessToken), &postv1.CreateCommentRequest{PostId: postID, Text: text})
+func (p *Posts) CreateComment(ctx context.Context, accessToken, postID, text string, photoIDs []string) (model.Comment, error) {
+	resp, err := p.api.CreateComment(withToken(ctx, accessToken), &postv1.CreateCommentRequest{PostId: postID, Text: text, PhotoIds: photoIDs})
 	if err != nil {
 		return model.Comment{}, errs.Wrap("p.api.CreateComment", fromStatus(err))
 	}
@@ -251,6 +251,7 @@ func toComment(c *postv1.Comment) model.Comment {
 		PostID:    c.GetPostId(),
 		Author:    model.Author{ID: c.GetAuthorId()},
 		Text:      c.GetText(),
+		PhotoIDs:  c.GetPhotoIds(),
 		CreatedAt: c.GetCreatedAt().AsTime(),
 	}
 }

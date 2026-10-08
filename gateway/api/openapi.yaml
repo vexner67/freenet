@@ -663,7 +663,10 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     post:
       summary: Comment on a post
-      description: Your profile must be filled in first.
+      description: |
+        Your profile must be filled in first. Text, photos or both; photos
+        are IDs from `POST /api/v1/me/photos` and must be yours. They are
+        deleted with the comment and with its post.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -671,9 +674,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [text]
+              additionalProperties: false
               properties:
                 text: { type: string, maxLength: 1000 }
+                photos: { $ref: "#/components/schemas/PhotoIDs" }
       responses:
         "201":
           description: The new comment
@@ -875,7 +879,8 @@ paths:
         Your profile must be filled in first; you cannot write to yourself.
         The user's privacy (`messagesWrite`) and blacklists decide whether
         you may; whoever wrote to you may always be answered, unless one of
-        you blacklisted the other.
+        you blacklisted the other. Text, photos or both; photos are IDs from
+        `POST /api/v1/me/photos` and must be yours.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -883,9 +888,10 @@ paths:
           application/json:
             schema:
               type: object
-              required: [text]
+              additionalProperties: false
               properties:
                 text: { type: string, maxLength: 4096 }
+                photos: { $ref: "#/components/schemas/PhotoIDs" }
       responses:
         "201":
           description: The sent message
@@ -1186,11 +1192,14 @@ components:
       additionalProperties: false
       properties:
         text: { type: string, maxLength: 1000 }
-        photos:
-          type: array
-          maxItems: 10
-          uniqueItems: true
-          items: { type: string, format: uuid }
+        photos: { $ref: "#/components/schemas/PhotoIDs" }
+
+    PhotoIDs:
+      description: IDs from `POST /api/v1/me/photos`, yours, in the order shown
+      type: array
+      maxItems: 10
+      uniqueItems: true
+      items: { type: string, format: uuid }
 
     Post:
       type: object
@@ -1261,12 +1270,15 @@ components:
 
     Comment:
       type: object
-      required: [id, postId, author, text, createdAt]
+      required: [id, postId, author, text, photos, createdAt]
       properties:
         id: { type: string, format: uuid }
         postId: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
-        text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
+        text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when photos only" }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
         createdAt: { type: string, format: date-time }
 
     CommentPage:
@@ -1322,10 +1334,13 @@ components:
 
     Message:
       type: object
-      required: [id, text, createdAt, out, read]
+      required: [id, text, photos, createdAt, out, read]
       properties:
         id: { type: string, format: uuid }
-        text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
+        text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when photos only" }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
         createdAt: { type: string, format: date-time }
         out: { type: boolean, description: "You sent it" }
         read: { type: boolean, description: "Its recipient has read it" }

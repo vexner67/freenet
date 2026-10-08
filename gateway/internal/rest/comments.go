@@ -10,14 +10,17 @@ import (
 
 type commentRequest struct {
 	Text string `json:"text"`
+	// Photos are IDs from POST /api/v1/me/photos.
+	Photos []string `json:"photos"`
 }
 
 type commentResponse struct {
-	ID        string     `json:"id"`
-	PostID    string     `json:"postId"`
-	Author    authorJSON `json:"author"`
-	Text      string     `json:"text"`
-	CreatedAt string     `json:"createdAt"`
+	ID        string      `json:"id"`
+	PostID    string      `json:"postId"`
+	Author    authorJSON  `json:"author"`
+	Text      string      `json:"text"`
+	Photos    []photoJSON `json:"photos"`
+	CreatedAt string      `json:"createdAt"`
 }
 
 type commentPageResponse struct {
@@ -32,6 +35,7 @@ func toCommentResponse(c model.Comment) commentResponse {
 		PostID:    c.PostID,
 		Author:    toAuthorJSON(c.Author),
 		Text:      c.Text,
+		Photos:    toPhotosJSON(c.Author.ID, c.PhotoIDs),
 		CreatedAt: c.CreatedAt.UTC().Format(time.RFC3339),
 	}
 }
@@ -111,7 +115,12 @@ func (a *api) createComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := a.posts.CreateComment(r.Context(), token, r.PathValue("id"), req.Text)
+	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.posts.CreateComment(r.Context(), token, r.PathValue("id"), req.Text, req.Photos)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
