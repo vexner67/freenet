@@ -68,6 +68,13 @@ function notificationText(n) {
     return [name, ' опубликовало вашу предложенную ', postLink(n.post, 'запись'), '.'];
   }
 
+  // The community you run, as openvk says it; the link opens the
+  // suggestions, which only its admins see.
+  if (n.type === 'suggested_post') {
+    return ['В сообществе ', el('a', { href: `${pagePath(n.actor)}/suggested` }, el('b', { textContent: fullName(n.actor) })),
+      ' новые записи в предложке'];
+  }
+
   const verb = notificationVerb(n.type, n.actor);
 
   switch (n.type) {
