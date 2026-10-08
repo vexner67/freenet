@@ -16,8 +16,9 @@ export function commentAnchor(id) {
 //   onDelete(comment, node) adds a "Удалить" link;
 //   onReply(comment) adds "Ответить";
 //   canLike makes the heart clickable (signed-in viewers), onError shows
-//   a failed like.
-export function commentNode(comment, { onDelete, onReply, canLike = false, onError } = {}) {
+//   a failed like;
+//   withLike: false for what has no likes, the messages of a topic.
+export function commentNode(comment, { onDelete, onReply, canLike = false, onError, withLike = true } = {}) {
   // A comment for a community shows the community (fromWall).
   const path = pagePath(comment.author);
 
@@ -26,7 +27,7 @@ export function commentNode(comment, { onDelete, onReply, canLike = false, onErr
   if (onDelete) menu.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(comment, node) }));
   if (onReply) menu.push(el('a', { textContent: 'Ответить', onclick: () => onReply(comment) }));
 
-  const like = likeButton(comment, { canLike, onError, like: api.likeComment, unlike: api.unlikeComment });
+  const like = withLike ? likeButton(comment, { canLike, onError, like: api.likeComment, unlike: api.unlikeComment }) : '';
 
   const node = el('div', { className: 'post comment', id: commentAnchor(comment.id) },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(comment.author, 'small'), alt: '' })),

@@ -260,6 +260,26 @@ export function suggestedByYou(n) {
   return `${n} ${plural(n, ['предложенная вами запись', 'предложенные вами записи', 'предложенных вами записей'])}`;
 }
 
+// topicsCount is openvk's "topics": "1 тема", "5 тем".
+export function topicsCount(n) {
+  return `${n} ${plural(n, ['тема', 'темы', 'тем'])}`;
+}
+
+// topicMessages is under a topic in the list, openvk's "messages".
+export function topicMessages(n) {
+  return `${n} ${plural(n, ['сообщение', 'сообщения', 'сообщений'])}`;
+}
+
+// topicMessagesCount heads a topic, openvk's "topic_messages_count".
+export function topicMessagesCount(n) {
+  return n === 0 ? 'В теме нет сообщений' : `В теме ${topicMessages(n)}`;
+}
+
+// resultsCount is openvk's "results": "Ни одного результата", "2 результата".
+export function resultsCount(n) {
+  return n === 0 ? 'Ни одного результата' : `${n} ${plural(n, ['результат', 'результата', 'результатов'])}`;
+}
+
 // suggestedInClub is the head of the suggestions of a club, openvk's
 // "suggested_posts_in_group" and, for your own, "..._by_you"; at 0, once
 // all are handled.
@@ -348,6 +368,14 @@ const errorTexts = {
   'you cannot post on this wall': 'Хозяин страницы не разрешает вам писать у него на стене.',
   'you cannot write to this user': 'Вы не можете отправить сообщение этому пользователю, поскольку он ограничил круг лиц, которые могут присылать ему сообщения.',
   'you cannot comment on this post': 'Вы не можете комментировать эту запись.',
+  'topic title is empty': 'Заголовок не указан.',
+  'topic title is too long': 'Заголовок длиннее 127 символов.',
+  'topic not found': 'Тема не найдена или удалена.',
+  'message not found': 'Сообщение уже удалено.',
+  'you cannot start topics here': 'Создавать темы в этой группе могут только администраторы.',
+  'you cannot write for this community': 'Писать от имени сообщества могут только его администраторы.',
+  'the topic is closed': 'Тема закрыта.',
+  'only a topic of the community can be restricted': 'Ограничить комментарии можно только в теме от имени сообщества.',
   'you cannot blacklist yourself': 'Нельзя внести в чёрный список самого себя.',
   'invalid post id': 'Запись не найдена.',
   'comment text is empty': 'Напишите что-нибудь.',

@@ -1,0 +1,43 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Обсуждения | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/board.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span><span class="title-links" id="title-links"></span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+        <form class="board-search" id="search" hidden>
+          <input type="search" name="q" id="q" maxlength="127" placeholder="Поиск" aria-label="Поиск по темам">
+          <button class="button" type="submit">Найти</button>
+        </form>
+        <p class="board-count" id="count" hidden></p>
+        <div class="topic-list" id="topics"></div>
+        <a class="wall-more" id="more" hidden>Показать ещё</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

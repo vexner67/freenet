@@ -5,15 +5,17 @@
 // admins or nobody.
 
 import { api, currentUser } from './api.js';
-import { adminsCount, membersCount, suggestedByEveryone, suggestedByYou } from './labels.js';
+import { adminsCount, formatPostDate, membersCount, suggestedByEveryone, suggestedByYou, topicsCount } from './labels.js';
 import { $, avatarURL, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
 import { personCell } from './people.js';
 import { initPhoto } from './photo.js';
+import { boardPath, topicPath } from './topics.js';
 import { initWall } from './wall.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length));
 const MEMBERS_SHOWN = 6;
 const ADMINS_SHOWN = 5;
+const TOPICS_SHOWN = 3;
 
 const manages = (club) => club.role === 'admin' || club.role === 'owner';
 
@@ -98,6 +100,36 @@ async function showSuggestions(club, me) {
   }
 }
 
+// showTopics is openvk's block "Обсуждения": how many, "Все" and the
+// most recently active topics with "Обновлено", or "Создать" when there
+// are none; above the wall or in the right column, as the club chooses.
+// Nobody sees it in a club without topics where they may start none.
+async function showTopics(club) {
+  try {
+    const page = await api.clubTopics(ref, { limit: TOPICS_SHOWN });
+    if (page.total === 0 && !club.canStartTopic) return;
+
+    const items = page.topics.map((topic) => el('div', { className: 'topic-short' },
+      el('b', {}, el('a', { href: topicPath(topic), textContent: topic.title })),
+      el('div', { className: 'hint', textContent: 'Обновлено ' + formatPostDate(topic.updatedAt) }),
+    ));
+    if (page.total === 0) {
+      items.push(el('p', { className: 'side-text' }, el('a', { href: boardPath(club) + '/create', textContent: 'Создать' })));
+    }
+
+    const block = el('div', { className: 'topics-block' },
+      el('div', { className: 'section-title', textContent: 'Обсуждения' }),
+      el('div', { className: 'subtitle' }, el('span', { textContent: topicsCount(page.total) }), el('a', { href: boardPath(club), textContent: 'Все' })),
+      ...items,
+    );
+
+    if (club.topicsAboveWall) $('wall-title').before(block);
+    else $('club-side').append(block);
+  } catch {
+    // The page works without it.
+  }
+}
+
 // renderJoin is the one button openvk has: "Вступить в группу", or a grey
 // "Выйти из группы" for a member; the owner cannot leave and has neither.
 function renderJoin(club, me) {
@@ -148,6 +180,7 @@ try {
   render(club, me);
   showMembers(club);
   showSuggestions(club, me);
+  showTopics(club);
   await initWall({ ...club, club: true }, me, { moderates: manages(club), speaksForClub: manages(club) });
 } catch (e) {
   $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';

@@ -267,6 +267,23 @@ export const api = {
   publishSuggestion: (id, text, signed) => authorized('POST', `/api/v1/suggestions/${encodeURIComponent(id)}/publish`, { text, signed }),
   deleteSuggestion: (id) => authorized('DELETE', `/api/v1/suggestions/${encodeURIComponent(id)}`),
 
+  // "Обсуждения": q finds topics by their titles.
+  clubTopics(ref, { q = '', cursor = '', limit = 0 } = {}) {
+    const path = page(`/api/v1/clubs/${encodeURIComponent(ref)}/topics`, cursor, limit);
+    return optional('GET', q ? path + (path.includes('?') ? '&' : '?') + new URLSearchParams({ q }) : path);
+  },
+  // text and photos are the first message; fromClub speaks for the club.
+  createTopic: (ref, title, text, photos = [], { fromClub = false } = {}) =>
+    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/topics`, { title, text, photos, fromClub }),
+  topic: (id) => optional('GET', `/api/v1/topics/${encodeURIComponent(id)}`),
+  editTopic: (id, { title, closed, pinned, restricted }) =>
+    authorized('PATCH', `/api/v1/topics/${encodeURIComponent(id)}`, { title, closed, pinned, restricted }),
+  deleteTopic: (id) => authorized('DELETE', `/api/v1/topics/${encodeURIComponent(id)}`),
+  topicMessages: (id, cursor = '') => optional('GET', page(`/api/v1/topics/${encodeURIComponent(id)}/messages`, cursor, 0)),
+  writeTopicMessage: (id, text, photos = [], { fromClub = false } = {}) =>
+    authorized('POST', `/api/v1/topics/${encodeURIComponent(id)}/messages`, { text, photos, fromClub }),
+  deleteTopicMessage: (id) => authorized('DELETE', `/api/v1/topic-messages/${encodeURIComponent(id)}`),
+
   search(query, cursor = '') {
     const params = new URLSearchParams({ q: query });
     if (cursor) params.set('cursor', cursor);
