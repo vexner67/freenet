@@ -60,12 +60,7 @@ func (c *Clubs) GetMany(ctx context.Context, ids []string) ([]model.Club, error)
 		return nil, errs.Wrap("c.api.GetClubs", fromStatus(err))
 	}
 
-	clubs := make([]model.Club, 0, len(resp.GetClubs()))
-	for _, pc := range resp.GetClubs() {
-		clubs = append(clubs, toClub(pc))
-	}
-
-	return clubs, nil
+	return toClubs(resp.GetClubs()), nil
 }
 
 func (c *Clubs) Update(ctx context.Context, accessToken, clubID string, changes model.ClubChanges) (model.ClubView, error) {
@@ -151,9 +146,9 @@ func (c *Clubs) SetAdmin(ctx context.Context, accessToken, clubID, userID string
 	return nil
 }
 
-// Mine pages the caller's clubs.
-func (c *Clubs) Mine(ctx context.Context, accessToken, cursor string, limit int) (model.ClubPage, error) {
-	resp, err := c.api.ListMyClubs(withToken(ctx, accessToken), &clubv1.ListMyClubsRequest{Cursor: cursor, Limit: toLimit(limit)})
+// Mine pages the caller's clubs; with managed only those they run.
+func (c *Clubs) Mine(ctx context.Context, accessToken, cursor string, limit int, managed bool) (model.ClubPage, error) {
+	resp, err := c.api.ListMyClubs(withToken(ctx, accessToken), &clubv1.ListMyClubsRequest{Cursor: cursor, Limit: toLimit(limit), Managed: managed})
 	if err != nil {
 		return model.ClubPage{}, errs.Wrap("c.api.ListMyClubs", fromStatus(err))
 	}
@@ -161,12 +156,61 @@ func (c *Clubs) Mine(ctx context.Context, accessToken, cursor string, limit int)
 	page := model.ClubPage{
 		Clubs:      make([]model.Membership, 0, len(resp.GetClubs())),
 		NextCursor: resp.GetNextCursor(),
+		Total:      int(resp.GetTotal()),
 	}
 	for _, m := range resp.GetClubs() {
-		page.Clubs = append(page.Clubs, model.Membership{Club: toClub(m.GetClub()), Role: roles[m.GetRole()]})
+		page.Clubs = append(page.Clubs, model.Membership{Club: toClub(m.GetClub()), Role: roles[m.GetRole()], Pinned: m.GetPinned()})
 	}
 
 	return page, nil
+}
+
+// Search pages the clubs whose name or address has every word of query.
+func (c *Clubs) Search(ctx context.Context, query, cursor string, limit int) (model.ClubSearchPage, error) {
+	resp, err := c.api.SearchClubs(ctx, &clubv1.SearchClubsRequest{Query: query, Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.ClubSearchPage{}, errs.Wrap("c.api.SearchClubs", fromStatus(err))
+	}
+
+	return model.ClubSearchPage{Clubs: toClubs(resp.GetClubs()), NextCursor: resp.GetNextCursor()}, nil
+}
+
+// SetAvatar shows a photo stored in media as the club's; "" takes it away.
+func (c *Clubs) SetAvatar(ctx context.Context, accessToken, clubID, avatarID string) (model.ClubView, error) {
+	resp, err := c.api.SetClubAvatar(withToken(ctx, accessToken), &clubv1.SetClubAvatarRequest{ClubId: clubID, AvatarId: avatarID})
+	if err != nil {
+		return model.ClubView{}, errs.Wrap("c.api.SetClubAvatar", fromStatus(err))
+	}
+
+	return toClubView(resp.GetClub()), nil
+}
+
+// Pin puts a club the caller runs in their left menu, or takes it out.
+func (c *Clubs) Pin(ctx context.Context, accessToken, clubID string, pinned bool) error {
+	if _, err := c.api.PinClub(withToken(ctx, accessToken), &clubv1.PinClubRequest{ClubId: clubID, Pinned: pinned}); err != nil {
+		return errs.Wrap("c.api.PinClub", fromStatus(err))
+	}
+
+	return nil
+}
+
+// Pinned are the clubs in the caller's left menu.
+func (c *Clubs) Pinned(ctx context.Context, accessToken string) ([]model.Club, error) {
+	resp, err := c.api.ListPinnedClubs(withToken(ctx, accessToken), &clubv1.ListPinnedClubsRequest{})
+	if err != nil {
+		return nil, errs.Wrap("c.api.ListPinnedClubs", fromStatus(err))
+	}
+
+	return toClubs(resp.GetClubs()), nil
+}
+
+func toClubs(clubs []*clubv1.Club) []model.Club {
+	out := make([]model.Club, 0, len(clubs))
+	for _, pc := range clubs {
+		out = append(out, toClub(pc))
+	}
+
+	return out
 }
 
 // MineIDs are the caller's newest 1000 clubs, for the feed.
@@ -199,6 +243,7 @@ func toClub(c *clubv1.Club) model.Club {
 		Wall:        walls[c.GetWall()],
 		Members:     int(c.GetMemberCount()),
 		CreatedAt:   c.GetCreatedAt().AsTime(),
+		AvatarID:    c.GetAvatarId(),
 	}
 }
 

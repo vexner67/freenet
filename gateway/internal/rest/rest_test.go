@@ -234,7 +234,7 @@ type fakePosts struct {
 
 func (f *fakePosts) Create(_ context.Context, token string, np model.NewPost) (model.Post, error) {
 	f.token, f.wall, f.created, f.photos, f.newPost = token, np.WallID, np.Text, np.PhotoIDs, np
-	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Mine: true, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
+	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, Mine: true, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
 }
 
 // Edit edits the posts Get knows.
@@ -444,7 +444,19 @@ type fakeMedia struct {
 	uploaded []byte
 	kept     string
 	deleted  bool
-	err      error
+	// clubAvatarOf is the club whose photo was uploaded or cleaned up.
+	clubAvatarOf string
+	err          error
+}
+
+func (f *fakeMedia) UploadClubAvatar(_ context.Context, _, clubID string, image []byte) (string, error) {
+	f.uploaded, f.clubAvatarOf = image, clubID
+	return "ka1", f.err
+}
+
+func (f *fakeMedia) DeleteClubAvatars(_ context.Context, _, clubID, keep string) error {
+	f.clubAvatarOf, f.kept, f.deleted = clubID, keep, true
+	return nil
 }
 
 func (f *fakeMedia) UploadPhoto(_ context.Context, _ string, image []byte) (string, error) {

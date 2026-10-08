@@ -49,6 +49,10 @@ type Media interface {
 	UploadAvatar(ctx context.Context, accessToken string, image []byte) (string, error)
 	DeleteAvatars(ctx context.Context, accessToken, keep string) error
 	Avatar(ctx context.Context, userID, avatarID string, small bool) ([]byte, error)
+	// The photos of a club, served as avatars under its ID; the caller
+	// checks that the user runs the club.
+	UploadClubAvatar(ctx context.Context, accessToken, clubID string, image []byte) (string, error)
+	DeleteClubAvatars(ctx context.Context, accessToken, clubID, keep string) error
 
 	UploadPhoto(ctx context.Context, accessToken string, image []byte) (string, error)
 	OwnPhotos(ctx context.Context, accessToken string, photoIDs []string) ([]string, error)
@@ -109,7 +113,11 @@ type Clubs interface {
 	Leave(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
 	Members(ctx context.Context, clubID, cursor string, limit int, adminsOnly bool) (model.ClubMemberPage, error)
 	SetAdmin(ctx context.Context, accessToken, clubID, userID string, admin bool) error
-	Mine(ctx context.Context, accessToken, cursor string, limit int) (model.ClubPage, error)
+	Mine(ctx context.Context, accessToken, cursor string, limit int, managed bool) (model.ClubPage, error)
+	Search(ctx context.Context, query, cursor string, limit int) (model.ClubSearchPage, error)
+	SetAvatar(ctx context.Context, accessToken, clubID, avatarID string) (model.ClubView, error)
+	Pin(ctx context.Context, accessToken, clubID string, pinned bool) error
+	Pinned(ctx context.Context, accessToken string) ([]model.Club, error)
 	MineIDs(ctx context.Context, accessToken string) ([]string, error)
 	CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (bool, error)
 }
@@ -208,8 +216,14 @@ func (a *api) routes() *http.ServeMux {
 
 	mux.HandleFunc("POST /api/v1/clubs", a.createClub)
 	mux.HandleFunc("GET /api/v1/me/clubs", a.listMyClubs)
+	mux.HandleFunc("GET /api/v1/me/clubs/pinned", a.listPinnedClubs)
+	mux.HandleFunc("GET /api/v1/clubs", a.searchClubs)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}", a.getClub)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}", a.updateClub)
+	mux.HandleFunc("PUT /api/v1/clubs/{ref}/avatar", a.uploadClubAvatar)
+	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/avatar", a.deleteClubAvatar)
+	mux.HandleFunc("PUT /api/v1/clubs/{ref}/pin", a.pinClub)
+	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/pin", a.unpinClub)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/membership", a.joinClub)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/membership", a.leaveClub)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/members", a.listClubMembers)

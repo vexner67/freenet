@@ -20,6 +20,8 @@ type fakeClubs struct {
 	admin                map[string]bool
 	members              []model.ClubMember
 	adminsOnly, fromClub bool
+	managed, pinned      bool
+	avatarID, query      string
 	role                 string
 	closedWall           bool
 	err                  error
@@ -28,7 +30,12 @@ type fakeClubs struct {
 var cats = model.Club{ID: "k1", Name: "Кошки", Address: "cats", Wall: "open", Members: 2, CreatedAt: time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)}
 
 func (f *fakeClubs) view() model.ClubView {
-	return model.ClubView{Club: cats, Role: f.role, OwnerID: "u1"}
+	c := cats
+	c.AvatarID = f.avatarID
+	if f.closedWall {
+		c.Wall = "closed"
+	}
+	return model.ClubView{Club: c, Role: f.role, OwnerID: "u1"}
 }
 
 func (f *fakeClubs) Create(_ context.Context, token, name, description string) (model.ClubView, error) {
@@ -50,7 +57,7 @@ func (f *fakeClubs) GetMany(_ context.Context, ids []string) ([]model.Club, erro
 	var found []model.Club
 	for _, id := range ids {
 		if id == "k1" {
-			found = append(found, cats)
+			found = append(found, f.view().Club)
 		}
 	}
 	return found, nil
@@ -89,9 +96,35 @@ func (f *fakeClubs) SetAdmin(_ context.Context, token, clubID, userID string, ad
 	return f.err
 }
 
-func (f *fakeClubs) Mine(_ context.Context, token, cursor string, limit int) (model.ClubPage, error) {
-	f.token = token
-	return model.ClubPage{Clubs: []model.Membership{{Club: cats, Role: "admin"}}}, f.err
+func (f *fakeClubs) Mine(_ context.Context, token, cursor string, limit int, managed bool) (model.ClubPage, error) {
+	f.token, f.managed = token, managed
+	return model.ClubPage{Clubs: []model.Membership{{Club: cats, Role: "admin", Pinned: true}}, Total: 3}, f.err
+}
+
+func (f *fakeClubs) Search(_ context.Context, query, cursor string, limit int) (model.ClubSearchPage, error) {
+	f.query = query
+	if query == "" {
+		return model.ClubSearchPage{}, failure.New(failure.InvalidArgument, "search query is empty")
+	}
+	return model.ClubSearchPage{Clubs: []model.Club{cats}, NextCursor: "k1"}, f.err
+}
+
+// SetAvatar lets admins only, as the club service.
+func (f *fakeClubs) SetAvatar(_ context.Context, token, clubID, avatarID string) (model.ClubView, error) {
+	if f.role != "admin" && f.role != "owner" {
+		return model.ClubView{}, failure.New(failure.PermissionDenied, "permission denied")
+	}
+	f.avatarID = avatarID
+	return f.view(), f.err
+}
+
+func (f *fakeClubs) Pin(_ context.Context, token, clubID string, pinned bool) error {
+	f.pinned = pinned
+	return f.err
+}
+
+func (f *fakeClubs) Pinned(_ context.Context, token string) ([]model.Club, error) {
+	return []model.Club{cats}, f.err
 }
 
 func (f *fakeClubs) MineIDs(_ context.Context, token string) ([]string, error) {
@@ -293,5 +326,110 @@ func TestFeed_Clubs(t *testing.T) {
 	h := newHarness(rest.Config{})
 	if w := h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || len(h.posts.walls) != 1 || h.posts.walls[0] != "k1" {
 		t.Fatalf("feed: %d, walls %v", w.Code, h.posts.walls)
+	}
+}
+
+func TestClubAvatar(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	if w := h.do("PUT", "/api/v1/clubs/cats/avatar", "jpeg", "Authorization", "Bearer tok"); w.Code != http.StatusForbidden || h.media.uploaded != nil {
+		t.Fatalf("a member uploads: %d, uploaded %q", w.Code, h.media.uploaded)
+	}
+
+	h.clubs.role = "admin"
+	w := h.do("PUT", "/api/v1/clubs/cats/avatar", "jpeg", "Authorization", "Bearer tok")
+	got := decode[struct {
+		Avatar map[string]string `json:"avatar"`
+	}](t, w)
+	if w.Code != http.StatusOK || got.Avatar["small"] != "/media/avatars/k1/ka1/small.jpg" || h.media.clubAvatarOf != "k1" || h.media.kept != "ka1" {
+		t.Fatalf("upload: %d %+v, media %+v", w.Code, got, h.media)
+	}
+
+	// The club's photo comes with its posts too.
+	w = h.do("GET", "/api/v1/clubs/cats/posts", "")
+	posts := decode[struct {
+		Posts []struct {
+			Author map[string]any `json:"author"`
+		} `json:"posts"`
+	}](t, w)
+	if avatar, _ := posts.Posts[0].Author["avatar"].(map[string]any); avatar["small"] != "/media/avatars/k1/ka1/small.jpg" {
+		t.Fatalf("the club's post = %+v", posts.Posts[0])
+	}
+
+	if w = h.do("DELETE", "/api/v1/clubs/cats/avatar", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.clubs.avatarID != "" || h.media.kept != "" {
+		t.Fatalf("delete: %d, club %+v, media %+v", w.Code, h.clubs, h.media)
+	}
+}
+
+func TestClubSearchAndMenu(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+
+	w := h.do("GET", "/api/v1/clubs?q=кошки", "")
+	found := decode[struct {
+		Clubs      []clubJSON `json:"clubs"`
+		NextCursor string     `json:"nextCursor"`
+	}](t, w)
+	if w.Code != http.StatusOK || len(found.Clubs) != 1 || found.Clubs[0].Address != "cats" || found.NextCursor != "k1" || h.clubs.query != "кошки" {
+		t.Fatalf("search: %d %+v", w.Code, found)
+	}
+	if w = h.do("GET", "/api/v1/clubs?q=", ""); w.Code != http.StatusBadRequest {
+		t.Fatalf("an empty query: %d", w.Code)
+	}
+
+	w = h.do("GET", "/api/v1/me/clubs?managed=true", "", "Authorization", "Bearer tok")
+	mine := decode[struct {
+		Clubs []struct {
+			Pinned bool `json:"pinned"`
+		} `json:"clubs"`
+		Total int `json:"total"`
+	}](t, w)
+	if w.Code != http.StatusOK || !h.clubs.managed || mine.Total != 3 || !mine.Clubs[0].Pinned {
+		t.Fatalf("managed: %d %+v", w.Code, mine)
+	}
+
+	if w = h.do("PUT", "/api/v1/clubs/cats/pin", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || !h.clubs.pinned {
+		t.Fatalf("pin: %d", w.Code)
+	}
+	if w = h.do("DELETE", "/api/v1/clubs/cats/pin", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.clubs.pinned {
+		t.Fatalf("unpin: %d", w.Code)
+	}
+
+	w = h.do("GET", "/api/v1/me/clubs/pinned", "", "Authorization", "Bearer tok")
+	pinned := decode[struct {
+		Clubs []clubJSON `json:"clubs"`
+	}](t, w)
+	if w.Code != http.StatusOK || len(pinned.Clubs) != 1 || pinned.Clubs[0].Name != "Кошки" {
+		t.Fatalf("pinned: %d %+v", w.Code, pinned)
+	}
+}
+
+func TestClubPost_Signed(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = ann
+	h.clubs.role = "admin"
+
+	w := h.do("POST", "/api/v1/clubs/cats/posts", `{"text":"новости","fromClub":true,"signed":true}`, "Authorization", "Bearer tok")
+	got := decode[struct {
+		Author map[string]any `json:"author"`
+		Signer map[string]any `json:"signer"`
+	}](t, w)
+	if w.Code != http.StatusCreated || got.Author["club"] != true || got.Signer["nickname"] != "ann" || !h.posts.newPost.Signed {
+		t.Fatalf("%d %+v", w.Code, got)
+	}
+
+	// A signature needs a post for the club.
+	if w = h.do("POST", "/api/v1/clubs/cats/posts", `{"text":"я","signed":true}`, "Authorization", "Bearer tok"); w.Code != http.StatusCreated || h.posts.newPost.Signed {
+		t.Fatalf("signed but not for the club: %d %+v", w.Code, h.posts.newPost)
+	}
+
+	// On a closed wall the admins always speak for the club, as in openvk.
+	h.clubs.closedWall = true
+	if w = h.do("POST", "/api/v1/clubs/cats/posts", `{"text":"новости"}`, "Authorization", "Bearer tok"); w.Code != http.StatusCreated || !h.posts.newPost.FromWall {
+		t.Fatalf("closed wall: %d %+v", w.Code, h.posts.newPost)
 	}
 }
