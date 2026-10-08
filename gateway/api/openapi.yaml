@@ -1209,8 +1209,9 @@ paths:
       description: |
         On a `suggest` wall, by anyone but its admins (`canSuggest`). Only
         you and the admins see it until an admin publishes it for the
-        community or it is withdrawn or declined. Your profile must be
-        filled in first; the photos must be yours.
+        community or it is withdrawn or declined; the admins are notified
+        until then (suggested_post). Your profile must be filled in first;
+        the photos must be yours.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -1988,12 +1989,12 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn)"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
-          description: The liked, commented or written post, or the repost; null for follows
+          description: The liked, commented or written post, or the repost; null for follows and suggested posts
           nullable: true
           type: object
           required: [id, createdAt, text]
