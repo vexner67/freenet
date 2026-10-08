@@ -10,11 +10,12 @@ import (
 )
 
 type messageJSON struct {
-	ID        string `json:"id"`
-	Text      string `json:"text"`
-	CreatedAt string `json:"createdAt"`
-	Out       bool   `json:"out"`
-	Read      bool   `json:"read"`
+	ID             string `json:"id"`
+	Text           string `json:"text"`
+	CreatedAt      string `json:"createdAt"`
+	Out            bool   `json:"out"`
+	Read           bool   `json:"read"`
+	DeletableUntil string `json:"deletableUntil"`
 }
 
 func TestListDialogs(t *testing.T) {
@@ -79,6 +80,9 @@ func TestListMessages(t *testing.T) {
 	}
 	if len(got.Messages) != 2 || !got.Messages[0].Out || !got.Messages[0].Read || got.Messages[1].Out {
 		t.Fatalf("messages = %+v; ann's own first, then bob's", got.Messages)
+	}
+	if got.Messages[0].DeletableUntil != "2026-10-06T22:00:00Z" || got.Messages[1].DeletableUntil != "" {
+		t.Fatalf("messages = %+v; only ann's own can be deleted", got.Messages)
 	}
 
 	poll := newHarness(rest.Config{})
@@ -175,5 +179,30 @@ func TestMarkDialogRead(t *testing.T) {
 	h.messages.err = failure.New(failure.NotFound, "message not found")
 	if w = h.do("POST", "/api/v1/dialogs/bob/read", `{"upTo":"someone-else"}`, "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
 		t.Fatalf("not a message from bob: %d", w.Code)
+	}
+}
+
+func TestDeleteMessage(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	if w := h.do("DELETE", "/api/v1/messages/m1", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.messages.token != "tok" || h.messages.deleted != "m1" {
+		t.Fatalf("%d %+v", w.Code, h.messages)
+	}
+
+	if w := newHarness(rest.Config{}).do("DELETE", "/api/v1/messages/m1", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", w.Code)
+	}
+
+	for kind, want := range map[failure.Kind]int{
+		failure.PermissionDenied: http.StatusForbidden,
+		failure.Conflict:         http.StatusConflict,
+		failure.NotFound:         http.StatusNotFound,
+	} {
+		h = newHarness(rest.Config{})
+		h.messages.err = failure.New(kind, "no")
+		if w := h.do("DELETE", "/api/v1/messages/m1", "", "Authorization", "Bearer tok"); w.Code != want {
+			t.Errorf("%v: %d, want %d", kind, w.Code, want)
+		}
 	}
 }

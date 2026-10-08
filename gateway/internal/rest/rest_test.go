@@ -546,7 +546,7 @@ func (f *fakeNotifications) MarkRead(_ context.Context, token, id string) error 
 // fakeMessages: ann is u1, bob u2. Ann has dialogs with bob and with an
 // account that is gone.
 type fakeMessages struct {
-	token, peerID, cursor, after, sentText, markedUpTo string
+	token, peerID, cursor, after, sentText, markedUpTo, deleted string
 	// peerWrote: the peer has written to the caller.
 	peerWrote bool
 	// dialogs replace the default page when set.
@@ -607,12 +607,17 @@ func (f *fakeMessages) History(_ context.Context, token, peerID, cursor, after s
 	f.token, f.peerID, f.cursor, f.after = token, peerID, cursor, after
 	return model.MessagePage{
 		Messages: []model.Message{
-			{ID: "m1", SenderID: "u1", RecipientID: peerID, Text: "привет", Read: true},
+			{ID: "m1", SenderID: "u1", RecipientID: peerID, Text: "привет", Read: true, DeletableUntil: time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)},
 			{ID: "m2", SenderID: peerID, RecipientID: "u1", Text: "как дела?"},
 		},
 		NextCursor:   "m1",
 		PeerReadUpTo: "m1",
 	}, f.err
+}
+
+func (f *fakeMessages) Delete(_ context.Context, token, id string) error {
+	f.token, f.deleted = token, id
+	return f.err
 }
 
 func (f *fakeMessages) MarkRead(_ context.Context, token, peerID, upTo string) error {

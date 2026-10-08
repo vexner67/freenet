@@ -805,6 +805,34 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/messages/{id}:
+    delete:
+      summary: Delete your message from both sides of the dialog
+      description: |
+        Within a day of sending (`deletableUntil`), as "delete for everyone"
+        in VK; its photos go too. Both sides get a `delete` event.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`the message can no longer be deleted` after `deletableUntil`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/events:
     get:
       summary: Live events of a page (WebSocket)
@@ -821,6 +849,8 @@ paths:
           `peer` (Author) and `message` (Message).
         - `read` — the dialog with `peer` was read up to `upTo`, by you on
           another page (`byMe`) or by the peer.
+        - `delete` — message `id` of the dialog with `peer` was deleted by
+          its sender, you or the peer.
         - `notification` — `change` is `new`, `gone` or `read`.
 
         The connection lives until the access token expires: then it is
@@ -1369,7 +1399,7 @@ components:
 
     Message:
       type: object
-      required: [id, text, photos, createdAt, out, read]
+      required: [id, text, photos, createdAt, out, read, deletableUntil]
       properties:
         id: { type: string, format: uuid }
         text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when photos only" }
@@ -1379,6 +1409,9 @@ components:
         createdAt: { type: string, format: date-time }
         out: { type: boolean, description: "You sent it" }
         read: { type: boolean, description: "Its recipient has read it" }
+        deletableUntil:
+          type: string
+          description: "Until when you may delete your message (date-time); empty for the peer's"
 
     Dialog:
       type: object

@@ -93,6 +93,7 @@ type Messages interface {
 	CountUnread(ctx context.Context, accessToken string) (int, error)
 	History(ctx context.Context, accessToken, peerID, cursor, after string, limit int) (model.MessagePage, error)
 	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
+	Delete(ctx context.Context, accessToken, id string) error
 	HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error)
 	Subscribe(ctx context.Context, accessToken string) (model.MessageEvents, error)
 }
@@ -185,6 +186,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/dialogs/{nickname}/messages", a.listMessages)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/messages", a.sendMessage)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/read", a.markDialogRead)
+	mux.HandleFunc("DELETE /api/v1/messages/{id}", a.deleteMessage)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)
