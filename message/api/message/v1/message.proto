@@ -20,12 +20,16 @@ service MessageService {
   rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
   // The caller has read the dialog up to a message from the peer.
   rpc MarkDialogRead(MarkDialogReadRequest) returns (google.protobuf.Empty);
+  // The caller takes their message back from both sides of the dialog,
+  // within a day of sending (deletable_until); media deletes its photos.
+  rpc DeleteMessage(DeleteMessageRequest) returns (google.protobuf.Empty);
   // Requires an access token: whether the peer has ever written to the
   // caller, who may then answer whatever the peer's privacy.
   rpc HasMessagesFrom(HasMessagesFromRequest) returns (HasMessagesFromResponse);
 
   // Requires an access token: the caller's events as they happen — new
-  // messages of their dialogs, sent or received, and read marks that move.
+  // messages of their dialogs, sent or received, read marks that move and
+  // messages deleted.
   // Best effort: the stream ends with Unauthenticated when the token
   // expires and with ResourceExhausted when the caller falls behind; then
   // subscribe again and catch up with ListMessages and ListDialogs.
@@ -48,6 +52,8 @@ message Message {
   bool read = 6;
   // Photos of the sender in the media service, in the order shown.
   repeated string photo_ids = 7;
+  // Until when the sender may delete it.
+  google.protobuf.Timestamp deletable_until = 8;
 }
 
 message Dialog {
@@ -113,6 +119,10 @@ message MarkDialogReadRequest {
   string up_to_id = 2;
 }
 
+message DeleteMessageRequest {
+  string id = 1;
+}
+
 message HasMessagesFromRequest {
   string peer_id = 1;
 }
@@ -127,7 +137,15 @@ message SubscribeResponse {
   oneof event {
     Message message = 1;
     ReadMark read = 2;
+    MessageDeleted deleted = 3;
   }
+}
+
+// sender_id took message id back from the dialog with recipient_id.
+message MessageDeleted {
+  string id = 1;
+  string sender_id = 2;
+  string recipient_id = 3;
 }
 
 // reader_id has read the dialog with peer_id up to up_to_id.

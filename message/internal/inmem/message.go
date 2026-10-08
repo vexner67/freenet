@@ -156,6 +156,55 @@ func (r *MessageRepository) between(ctx context.Context, a, b uuid.UUID, match f
 	return found, nil
 }
 
+// Delete brings a side back to the newest message left only if the
+// deleted one was its last, as the statement does in PostgreSQL. A side
+// with no messages left keeps its read mark and drops out of the list.
+func (r *MessageRepository) Delete(ctx context.Context, m *message.Message) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	if _, ok := r.s.messages[m.ID()]; !ok {
+		return message.ErrNotFound
+	}
+
+	delete(r.s.messages, m.ID())
+
+	for _, key := range []side{{m.SenderID(), m.RecipientID()}, {m.RecipientID(), m.SenderID()}} {
+		d := r.s.dialogs[key]
+		if d == nil {
+			continue
+		}
+
+		if d.lastMessageID == m.ID() {
+			d.lastMessageID = r.s.newest(key, func(*message.Message) bool { return true })
+		}
+		if d.lastIncomingID == m.ID() {
+			d.lastIncomingID = r.s.newest(key, func(m *message.Message) bool { return m.SenderID() == key.peerID })
+		}
+	}
+
+	return nil
+}
+
+// newest is the ID of the newest message of a dialog that matches,
+// uuid.Nil if none; the caller holds a lock.
+func (s *Store) newest(key side, match func(*message.Message) bool) uuid.UUID {
+	var id uuid.UUID
+
+	for _, m := range s.messages {
+		pair := (m.SenderID() == key.userID && m.RecipientID() == key.peerID) || (m.SenderID() == key.peerID && m.RecipientID() == key.userID)
+		if pair && match(m) {
+			id = later(id, m.ID())
+		}
+	}
+
+	return id
+}
+
 func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*message.Message, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
@@ -197,13 +246,15 @@ func (r *DialogRepository) List(ctx context.Context, userID, before uuid.UUID, l
 
 	var found []message.Dialog
 	for key, d := range r.s.dialogs {
-		if key.userID != userID || !below(d.lastMessageID, before) {
+		// A dialog whose messages were all deleted has no last one.
+		last := r.s.messages[d.lastMessageID]
+		if key.userID != userID || last == nil || !below(d.lastMessageID, before) {
 			continue
 		}
 
 		found = append(found, message.Dialog{
 			PeerID:         key.peerID,
-			LastMessage:    r.s.messages[d.lastMessageID],
+			LastMessage:    last,
 			LastIncomingID: d.lastIncomingID,
 			Marks:          r.marks(userID, key.peerID),
 		})

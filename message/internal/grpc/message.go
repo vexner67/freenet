@@ -21,6 +21,7 @@ type MessageService interface {
 	History(ctx context.Context, userID, peerID, cursor uuid.UUID, size int) (service.HistoryPage, error)
 	Newer(ctx context.Context, userID, peerID, after uuid.UUID, size int) (service.HistoryPage, error)
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
+	Delete(ctx context.Context, userID, id uuid.UUID) error
 	HasMessagesFrom(ctx context.Context, userID, peerID uuid.UUID) (bool, error)
 	Subscribe(userID uuid.UUID) (<-chan service.Event, func())
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
@@ -225,6 +226,24 @@ func (h *MessageHandler) MarkDialogRead(ctx context.Context, req *messagev1.Mark
 	}
 
 	if err = h.messageService.MarkRead(ctx, userID, peerID, upTo); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) DeleteMessage(ctx context.Context, req *messagev1.DeleteMessageRequest) (*emptypb.Empty, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := parseID(req.GetId(), "invalid message id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.messageService.Delete(ctx, userID, id); err != nil {
 		return nil, err
 	}
 

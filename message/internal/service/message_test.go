@@ -321,14 +321,101 @@ func TestMessageService_Events(t *testing.T) {
 		}
 	}
 
-	// A failed mark tells nobody.
+	// A failed mark or deletion tells nobody.
 	if err := svc.MarkRead(ctx, bob, ann, m.ID()); err == nil {
 		t.Fatal("bob cannot mark his own message read")
+	}
+	if err := svc.Delete(ctx, ann, m.ID()); err == nil {
+		t.Fatal("ann cannot delete bob's message")
 	}
 	select {
 	case e := <-annEvents:
 		t.Fatalf("unexpected event %+v", e)
 	default:
+	}
+
+	if err := svc.Delete(ctx, bob, m.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	gone := service.Deleted{ID: m.ID(), SenderID: bob, RecipientID: ann}
+	for name, events := range map[string]<-chan service.Event{"recipient": annEvents, "sender": bobEvents} {
+		if e := <-events; e.Deleted == nil || *e.Deleted != gone {
+			t.Fatalf("%s got %+v, want deletion %+v", name, e, gone)
+		}
+	}
+}
+
+func TestMessageService_Delete(t *testing.T) {
+	t.Parallel()
+
+	svc := newService()
+	ctx := context.Background()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	fromAnn := send(t, svc, ann, bob, "привет", "ой, не то")
+	fromBob := send(t, svc, bob, ann, "что?")[0]
+
+	tests := []struct {
+		name      string
+		requester uuid.UUID
+		id        uuid.UUID
+		err       error
+	}{
+		{"the recipient", bob, fromAnn[1].ID(), message.ErrCannotDelete},
+		{"a stranger cannot even tell it exists", cat, fromAnn[1].ID(), message.ErrNotFound},
+		{"a made-up ID", ann, uuid.Max, message.ErrNotFound},
+	}
+	for _, tt := range tests {
+		if err := svc.Delete(ctx, tt.requester, tt.id); !errors.Is(err, tt.err) {
+			t.Fatalf("%s: Delete = %v, want %v", tt.name, err, tt.err)
+		}
+	}
+
+	if err := svc.Delete(ctx, ann, fromAnn[1].ID()); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Delete(ctx, ann, fromAnn[1].ID()); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("delete twice: %v", err)
+	}
+
+	for who, peer := range map[uuid.UUID]uuid.UUID{ann: bob, bob: ann} {
+		page, err := svc.History(ctx, who, peer, uuid.Nil, 50)
+		if got := texts(page.Messages); err != nil || !slices.Equal(got, []string{"привет", "что?"}) {
+			t.Fatalf("history = %v, %v; the message is gone from both sides", got, err)
+		}
+	}
+
+	// Bob takes his message back too: ann's first is the last of the
+	// dialog for both, ann has nothing unread, and bob is no longer
+	// someone who wrote to her first.
+	if err := svc.Delete(ctx, bob, fromBob.ID()); err != nil {
+		t.Fatal(err)
+	}
+	for _, who := range []uuid.UUID{ann, bob} {
+		page, err := svc.Dialogs(ctx, who, uuid.Nil, 20)
+		if err != nil || len(page.Dialogs) != 1 || page.Dialogs[0].LastMessage.ID() != fromAnn[0].ID() {
+			t.Fatalf("dialogs = %+v, %v; want the first message last", page.Dialogs, err)
+		}
+	}
+	if n, _ := svc.CountUnread(ctx, ann); n != 0 {
+		t.Fatalf("ann's unread = %d: bob took his message back", n)
+	}
+	if ok, _ := svc.HasMessagesFrom(ctx, ann, bob); ok {
+		t.Fatal("bob has no messages to ann left")
+	}
+
+	// The last message gone, the dialog leaves both lists.
+	if err := svc.Delete(ctx, ann, fromAnn[0].ID()); err != nil {
+		t.Fatal(err)
+	}
+	for _, who := range []uuid.UUID{ann, bob} {
+		if page, err := svc.Dialogs(ctx, who, uuid.Nil, 20); err != nil || len(page.Dialogs) != 0 {
+			t.Fatalf("dialogs = %+v, %v; want none", page.Dialogs, err)
+		}
+	}
+	if n, _ := svc.CountUnread(ctx, bob); n != 0 {
+		t.Fatalf("bob's unread = %d", n)
 	}
 }
 
@@ -430,6 +517,21 @@ func TestMessageService_Photos(t *testing.T) {
 	if len(photos.published) != 2 || photos.published[0].owner != ann || photos.published[1].owner != bob {
 		t.Fatalf("published = %+v, want each sender's photo", photos.published)
 	}
+
+	// A deleted message takes its photos along.
+	annsSecond := uuid.New()
+	send(ann, bob, annsSecond)
+	page, err := svc.History(ctx, ann, bob, uuid.Nil, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Delete(ctx, ann, page.Messages[0].ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(photos.deleted) != 1 || photos.deleted[0].owner != ann || !slices.Equal(photos.deleted[0].photos, []uuid.UUID{annsSecond}) {
+		t.Fatalf("deleted = %+v, want ann's second photo", photos.deleted)
+	}
+	photos.deleted = nil
 
 	// Ann's page is erased: bob's photo in their dialog goes; hers media
 	// erases with the rest of her.

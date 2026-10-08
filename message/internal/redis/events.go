@@ -16,7 +16,7 @@ import (
 // Channel is the Redis channel of the events.
 const Channel = "message:events"
 
-var errNoEvent = errors.New("event is neither a message nor a read mark")
+var errNoEvent = errors.New("event is neither a message, a read mark nor a deletion")
 
 // EventCodec is a pubsub.Codec for service.Event.
 type EventCodec struct{}
@@ -25,6 +25,13 @@ type eventJSON struct {
 	UserID  uuid.UUID    `json:"user_id"`
 	Message *messageJSON `json:"message,omitempty"`
 	Read    *readJSON    `json:"read,omitempty"`
+	Deleted *deletedJSON `json:"deleted,omitempty"`
+}
+
+type deletedJSON struct {
+	ID          uuid.UUID `json:"id"`
+	SenderID    uuid.UUID `json:"sender_id"`
+	RecipientID uuid.UUID `json:"recipient_id"`
 }
 
 type messageJSON struct {
@@ -58,6 +65,8 @@ func (EventCodec) Encode(userID uuid.UUID, e service.Event) ([]byte, error) {
 		}
 	case e.Read != nil:
 		ej.Read = &readJSON{ReaderID: e.Read.ReaderID, PeerID: e.Read.PeerID, UpTo: e.Read.UpTo}
+	case e.Deleted != nil:
+		ej.Deleted = &deletedJSON{ID: e.Deleted.ID, SenderID: e.Deleted.SenderID, RecipientID: e.Deleted.RecipientID}
 	default:
 		return nil, errNoEvent
 	}
@@ -104,6 +113,10 @@ func (EventCodec) Decode(data []byte) (uuid.UUID, service.Event, error) {
 	case ej.Read != nil:
 		return ej.UserID, service.Event{
 			Read: &service.ReadMark{ReaderID: ej.Read.ReaderID, PeerID: ej.Read.PeerID, UpTo: ej.Read.UpTo},
+		}, nil
+	case ej.Deleted != nil:
+		return ej.UserID, service.Event{
+			Deleted: &service.Deleted{ID: ej.Deleted.ID, SenderID: ej.Deleted.SenderID, RecipientID: ej.Deleted.RecipientID},
 		}, nil
 	default:
 		return uuid.Nil, service.Event{}, errNoEvent

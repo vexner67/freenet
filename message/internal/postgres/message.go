@@ -373,6 +373,73 @@ func (r *DialogRepository) MarkRead(ctx context.Context, userID, peerID, upTo uu
 	return nil
 }
 
+// deleteMessageQuery deletes the message and brings each side of its
+// dialog back to the newest message left, if the deleted one was its last
+// (the zero UUID when none is left: the dialog leaves the list, its read
+// mark stays). The sides are locked in user_id order first, as Save
+// writes them. A message sent meanwhile has moved the side on, and a side
+// pointing elsewhere is left alone: the CTEs see the messages as they
+// were, hence "id <> g.id".
+const deleteMessageQuery = `
+	WITH gone AS (
+		DELETE FROM messages
+		WHERE id = $1
+		RETURNING id, user_lo, user_hi
+	), sides AS (
+		SELECT d.user_id, d.peer_id
+		FROM dialogs d
+		JOIN gone g ON (d.user_id, d.peer_id) IN ((g.user_lo, g.user_hi), (g.user_hi, g.user_lo))
+		ORDER BY d.user_id
+		FOR UPDATE OF d
+	), moved AS (
+		UPDATE dialogs d
+		SET last_message_id = CASE
+				WHEN d.last_message_id <> g.id THEN d.last_message_id
+				ELSE COALESCE((
+					SELECT m.id
+					FROM messages m
+					WHERE m.user_lo = g.user_lo
+						AND m.user_hi = g.user_hi
+						AND m.id <> g.id
+					ORDER BY m.id DESC
+					LIMIT 1
+				), '00000000-0000-0000-0000-000000000000')
+			END,
+			last_incoming_id = CASE
+				WHEN d.last_incoming_id <> g.id THEN d.last_incoming_id
+				ELSE COALESCE((
+					SELECT m.id
+					FROM messages m
+					WHERE m.user_lo = g.user_lo
+						AND m.user_hi = g.user_hi
+						AND m.sender_id = d.peer_id
+						AND m.id <> g.id
+					ORDER BY m.id DESC
+					LIMIT 1
+				), '00000000-0000-0000-0000-000000000000')
+			END
+		FROM sides s, gone g
+		WHERE d.user_id = s.user_id
+			AND d.peer_id = s.peer_id
+	)
+	SELECT count(*)
+	FROM gone
+`
+
+func (r *MessageRepository) Delete(ctx context.Context, m *message.Message) error {
+	var deleted int
+
+	if err := r.conn(ctx).QueryRow(ctx, deleteMessageQuery, m.ID()).Scan(&deleted); err != nil {
+		return errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	if deleted == 0 {
+		return message.ErrNotFound
+	}
+
+	return nil
+}
+
 // deleteUserDialogsQuery deletes the messages of every dialog of the user
 // and both sides of each dialog, and returns the deleted messages that had
 // photos; the CTEs see the dialogs as they were.

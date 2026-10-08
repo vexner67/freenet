@@ -233,3 +233,146 @@ func TestMessageRepository_DeleteByUser(t *testing.T) {
 		t.Errorf("messages of bob and cat = %d, %v; want 1", len(got), err)
 	}
 }
+
+func TestMessageRepository_Delete(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	messages := postgres.NewMessageRepository(pool)
+	dialogs := postgres.NewDialogRepository(pool)
+
+	save := func(from, to uuid.UUID) *message.Message {
+		t.Helper()
+		m, err := message.New(from, to, message.RestoreContent("x", nil), time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = messages.Save(ctx, m); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		return m
+	}
+
+	last := func(user, peer uuid.UUID) message.Dialog {
+		t.Helper()
+		list, err := dialogs.List(ctx, user, uuid.Nil, 10)
+		if err != nil || len(list) > 1 {
+			t.Fatalf("List = %+v, %v", list, err)
+		}
+		if len(list) == 0 {
+			return message.Dialog{}
+		}
+		return list[0]
+	}
+
+	t.Run("sides follow the messages left", func(t *testing.T) {
+		ann, bob := uuid.New(), uuid.New()
+
+		fromBob := save(bob, ann)
+		older := save(ann, bob)
+		newer := save(ann, bob)
+
+		// Not the last one: the sides stay as they were.
+		if err := messages.Delete(ctx, older); err != nil {
+			t.Fatal(err)
+		}
+		if d := last(ann, bob); d.LastMessage.ID() != newer.ID() || d.LastIncomingID != fromBob.ID() {
+			t.Fatalf("ann's side = %+v", d)
+		}
+
+		if err := messages.Delete(ctx, newer); err != nil {
+			t.Fatal(err)
+		}
+		for _, user := range []uuid.UUID{ann, bob} {
+			if d := last(user, uuid.Nil); d.LastMessage == nil || d.LastMessage.ID() != fromBob.ID() {
+				t.Fatalf("side of %v = %+v; want bob's message last", user, d)
+			}
+		}
+		if d := last(ann, bob); d.LastIncomingID != fromBob.ID() || !d.HasUnread() {
+			t.Fatalf("ann's side = %+v; bob's message is still unread", d)
+		}
+
+		if err := messages.Delete(ctx, newer); !errors.Is(err, message.ErrNotFound) {
+			t.Fatalf("delete twice: %v", err)
+		}
+
+		// Nothing left: the dialog leaves both lists and nobody wrote first.
+		if err := messages.Delete(ctx, fromBob); err != nil {
+			t.Fatal(err)
+		}
+		for _, user := range []uuid.UUID{ann, bob} {
+			if d := last(user, uuid.Nil); d.LastMessage != nil {
+				t.Fatalf("side of %v = %+v; want no dialog", user, d)
+			}
+		}
+		if n, err := dialogs.CountUnread(ctx, ann, 10); err != nil || n != 0 {
+			t.Fatalf("CountUnread = %d, %v", n, err)
+		}
+		if ok, err := dialogs.HasIncoming(ctx, ann, bob); err != nil || ok {
+			t.Fatalf("HasIncoming = %v, %v", ok, err)
+		}
+
+		// A new message brings the dialog back.
+		again := save(bob, ann)
+		if d := last(ann, bob); d.LastMessage == nil || d.LastMessage.ID() != again.ID() || d.LastIncomingID != again.ID() {
+			t.Fatalf("ann's side = %+v", d)
+		}
+	})
+
+	// Deleting and sending lock both sides in the same order, so they never
+	// deadlock, and the sides end up at the newest message left.
+	t.Run("deleting while both write", func(t *testing.T) {
+		dan, eve := uuid.New(), uuid.New()
+
+		doomed := make([]*message.Message, 10)
+		for i := range doomed {
+			doomed[i] = save(dan, eve)
+		}
+
+		var wg sync.WaitGroup
+		for i := range 20 {
+			from, to := dan, eve
+			if i%2 == 0 {
+				from, to = eve, dan
+			}
+			wg.Go(func() {
+				m, err := message.New(from, to, message.RestoreContent("x", nil), time.Now())
+				if err == nil {
+					err = messages.Save(ctx, m)
+				}
+				if err != nil {
+					t.Error(err)
+				}
+			})
+		}
+		for _, m := range doomed {
+			wg.Go(func() {
+				if err := messages.Delete(ctx, m); err != nil {
+					t.Error(err)
+				}
+			})
+		}
+		wg.Wait()
+
+		newest, err := messages.ListBefore(ctx, dan, eve, uuid.Nil, 1)
+		if err != nil || len(newest) != 1 {
+			t.Fatal(err)
+		}
+		for _, user := range []uuid.UUID{dan, eve} {
+			if d := last(user, uuid.Nil); d.LastMessage == nil || d.LastMessage.ID() != newest[0].ID() {
+				t.Fatalf("%v's dialog = %+v; want the newest message", user, d)
+			}
+		}
+	})
+}
