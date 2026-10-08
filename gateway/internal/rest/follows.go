@@ -130,7 +130,8 @@ func (a *api) listFollows(
 }
 
 // feed is the caller's news: posts of the people they follow and their own,
-// newest first, each with its author.
+// and every post on the walls of their clubs, newest first, each with its
+// author.
 func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -156,7 +157,15 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := a.posts.Feed(r.Context(), token, append(following, me.ID), r.URL.Query().Get("cursor"), limit)
+	clubs, err := a.clubs.MineIDs(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	sources := model.FeedSources{Authors: append(following, me.ID), Walls: clubs}
+
+	page, err := a.posts.Feed(r.Context(), token, sources, r.URL.Query().Get("cursor"), limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -172,19 +181,51 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// maxProfilesPerRequest is what one GetProfiles of the user service takes.
-const maxProfilesPerRequest = 100
+// maxProfilesPerRequest is what one GetProfiles of the user service takes,
+// maxClubsPerRequest one GetClubs of the club service.
+const (
+	maxProfilesPerRequest = 100
+	maxClubsPerRequest    = 100
+)
 
-// authors looks up the authors of posts, comments or notifications; those
-// whose page is deleted or erased are missing from the result, so what
-// they wrote is hidden.
+// authors looks up the authors of posts, comments or notifications, and
+// the communities among the owners of walls; people whose page is deleted
+// or erased are missing from the result, so what they wrote is hidden.
 func (a *api) authors(r *http.Request, authorIDs []string) (map[string]model.Author, error) {
 	people, err := a.people(r, authorIDs)
 	if err != nil {
 		return nil, err
 	}
 
+	// Who is no user may be a community: the owner of a wall, the voice of
+	// the posts that speak for it.
+	var rest []string
+	for _, id := range unique(authorIDs) {
+		if _, ok := people[id]; !ok {
+			rest = append(rest, id)
+		}
+	}
+
 	maps.DeleteFunc(people, func(_ string, p model.Author) bool { return p.Deactivated })
+
+	if len(rest) == 0 {
+		return people, nil
+	}
+
+	if people == nil {
+		people = make(map[string]model.Author, len(rest))
+	}
+
+	for chunk := range slices.Chunk(rest, maxClubsPerRequest) {
+		clubs, err := a.clubs.GetMany(r.Context(), chunk)
+		if err != nil {
+			return nil, err
+		}
+
+		for _, c := range clubs {
+			people[c.ID] = clubAuthor(c)
+		}
+	}
 
 	return people, nil
 }

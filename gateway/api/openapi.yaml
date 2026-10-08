@@ -833,6 +833,250 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/clubs:
+    post:
+      summary: Create a community ("Создать группу")
+      description: You own it. Your profile must be filled in first. It starts with an open wall and no address.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, maxLength: 64 }
+                description: { type: string, maxLength: 1000 }
+      responses:
+        "201": { $ref: "#/components/responses/Club" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/clubs:
+    get:
+      summary: Your communities ("Мои Группы"), the newest joined first
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [clubs, nextCursor]
+                properties:
+                  clubs:
+                    type: array
+                    items:
+                      allOf:
+                        - { $ref: "#/components/schemas/ClubInfo" }
+                        - type: object
+                          required: [role]
+                          properties:
+                            role: { type: string, enum: [member, admin, owner] }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/clubs/{ref}:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    get:
+      summary: A community's page
+      description: No token needed; with one, `role` says what you are in it.
+      responses:
+        "200": { $ref: "#/components/responses/Club" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    put:
+      summary: Change a community's settings
+      description: |
+        Its admins only. The whole form: an empty address takes the address
+        away; `wall` is `open` (everyone writes) or `closed` (only admins).
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name, description, address, wall]
+              properties:
+                name: { type: string, maxLength: 64 }
+                description: { type: string, maxLength: 1000 }
+                address: { type: string, maxLength: 32, description: "Latin letters, digits and _, a letter first; unique whatever the case" }
+                wall: { type: string, enum: [open, closed] }
+      responses:
+        "200": { $ref: "#/components/responses/Club" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not an admin of the community
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`club address is already taken`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/clubs/{ref}/membership:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    put:
+      summary: Join the community ("Вступить в группу")
+      description: Idempotent. Your profile must be filled in first.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Club" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Leave the community ("Выйти из группы")
+      description: Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Club" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`the owner cannot leave the club`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/clubs/{ref}/members:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    get:
+      summary: The members of a community, the newest first
+      description: With `admins=true` only the owner and the admins ("Руководство"). People whose page is deleted are left out.
+      parameters:
+        - name: admins
+          in: query
+          schema: { type: boolean }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [members, nextCursor]
+                properties:
+                  members:
+                    type: array
+                    items:
+                      type: object
+                      required: [user, role]
+                      properties:
+                        user: { $ref: "#/components/schemas/Author" }
+                        role: { type: string, enum: [member, admin, owner] }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/clubs/{ref}/admins/{nickname}:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Make a member an admin ("Назначить администратором")
+      description: The owner only.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Appointed }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not the owner, or the user is the owner
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { description: "The community, the user, or the user is not a member", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    delete:
+      summary: Make an admin a member again ("Снять полномочия администратора")
+      description: The owner only.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Dismissed }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not the owner, or the user is the owner
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { description: "The community, the user, or the user is not a member", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /api/v1/clubs/{ref}/posts:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    get:
+      summary: A community's wall, newest first
+      description: As a user's wall; `canPost` says whether you may write there on your own behalf.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of the wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Write on a community's wall
+      description: |
+        On an open wall anyone may, on a closed one only its admins; with
+        `fromClub` the post speaks for the community ("От имени
+        сообщества"), admins only. Your profile must be filled in first.
+        Nobody is notified of posts here, nor the writer of a post for the
+        community of its likes, comments and reposts.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewClubPost" }
+      responses:
+        "201":
+          description: The new post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "`you cannot post on this wall`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/events:
     get:
       summary: Live events of a page (WebSocket)
@@ -1097,7 +1341,31 @@ components:
             properties:
               refreshToken: { type: string }
 
+  parameters:
+    ClubRef:
+      name: ref
+      in: path
+      required: true
+      description: A community's address (whatever the case) or, without one, its ID
+      schema: { type: string }
+
   responses:
+    Club:
+      description: The community as you see it
+      content:
+        application/json:
+          schema:
+            allOf:
+              - { $ref: "#/components/schemas/ClubInfo" }
+              - type: object
+                required: [role, owner]
+                properties:
+                  role: { type: string, enum: ["", member, admin, owner], description: "What you are in it; empty without a token or membership" }
+                  owner:
+                    description: Its creator; null when the page is deleted or erased
+                    oneOf:
+                      - { $ref: "#/components/schemas/Author" }
+                      - { type: "null" }
     Like:
       description: How many likes the post has now
       content:
@@ -1144,7 +1412,7 @@ components:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
     TooManyRequests:
-      description: Rate limited (sign-in codes, or spam protection of posts, comments, likes, messages, uploads and follows); try again later
+      description: Rate limited (sign-in codes, or spam protection of posts, comments, likes, messages, uploads, follows and communities); try again later
       content:
         application/json:
           schema: { $ref: "#/components/schemas/Error" }
@@ -1244,6 +1512,30 @@ components:
         deactivated:
           type: boolean
           description: "Only in dialogs: the person deleted the page. Elsewhere such people and what they wrote are left out"
+        club:
+          type: boolean
+          description: "A community, as the owner of a wall or the voice of a post: only `id`, `name` and `address` are set, its page is /club/<address or id>"
+        address: { type: string, description: "A community's address; empty for none" }
+
+    ClubInfo:
+      type: object
+      required: [id, name, description, address, wall, members, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string, description: "Plain text with \\n line breaks" }
+        address: { type: string, description: "Empty for none: the page is then /club/<id>" }
+        wall: { type: string, enum: [open, closed], description: "Who may write on the wall: everyone, or only its admins" }
+        members: { type: integer }
+        createdAt: { type: string, format: date-time }
+
+    NewClubPost:
+      type: object
+      additionalProperties: false
+      properties:
+        text: { type: string, maxLength: 1000 }
+        photos: { $ref: "#/components/schemas/PhotoIDs" }
+        fromClub: { type: boolean, description: "Speak for the community (admins only)" }
 
     NewPost:
       type: object
@@ -1261,7 +1553,7 @@ components:
 
     Post:
       type: object
-      required: [id, author, wall, text, photos, createdAt, likes, liked, comments, reposts, repost, editedAt, editableUntil, pinned]
+      required: [id, author, wall, text, photos, createdAt, likes, liked, comments, reposts, repost, editedAt, editableUntil, pinned, fromWall, mine]
       properties:
         id: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
@@ -1291,6 +1583,10 @@ components:
             - type: "null"
         editableUntil: { type: string, format: date-time, description: "Until when the author may edit it" }
         pinned: { type: boolean, description: "Shown first on its wall (\"закреплено\")" }
+        fromWall:
+          type: boolean
+          description: "The post speaks for its wall, a community (\"От имени сообщества\"): `author` is the community, `wall` null, who wrote it is not told"
+        mine: { type: boolean, description: "You wrote it and may edit it; false without a token" }
 
     SharedPost:
       type: object

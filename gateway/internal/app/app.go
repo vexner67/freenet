@@ -8,6 +8,7 @@ import (
 	"time"
 
 	authv1 "github.com/vexner67/freenet/auth/api/auth/v1"
+	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	"github.com/vexner67/freenet/gateway/internal/backend"
 	"github.com/vexner67/freenet/gateway/internal/config"
 	"github.com/vexner67/freenet/gateway/internal/rest"
@@ -34,6 +35,7 @@ type App struct {
 	mediaConn        *grpc.ClientConn
 	notificationConn *grpc.ClientConn
 	messageConn      *grpc.ClientConn
+	clubConn         *grpc.ClientConn
 	server           *rest.Server
 	metrics          *metrics.Server
 }
@@ -101,6 +103,11 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("dial", err)
 	}
 
+	a.clubConn, err = dial(cfg.ClubServiceAddr, creds)
+	if err != nil {
+		return errs.Wrap("dial", err)
+	}
+
 	reg := metrics.NewRegistry()
 
 	a.server, err = rest.NewServer(
@@ -118,6 +125,7 @@ func (a *App) build(cfg config.Config) error {
 			Media:         backend.NewMedia(mediav1.NewMediaServiceClient(a.mediaConn)),
 			Notifications: backend.NewNotifications(notificationv1.NewNotificationServiceClient(a.notificationConn)),
 			Messages:      backend.NewMessages(messagev1.NewMessageServiceClient(a.messageConn)),
+			Clubs:         backend.NewClubs(clubv1.NewClubServiceClient(a.clubConn)),
 		},
 		a.logger,
 		reg,
@@ -195,6 +203,7 @@ func (a *App) Close() {
 		"media":        a.mediaConn,
 		"notification": a.notificationConn,
 		"message":      a.messageConn,
+		"club":         a.clubConn,
 	}
 
 	for name, conn := range conns {

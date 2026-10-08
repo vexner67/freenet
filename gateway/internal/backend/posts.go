@@ -20,13 +20,15 @@ func NewPosts(api postv1.PostServiceClient) *Posts {
 	}
 }
 
-// Create writes on the wall of wallID and returns the post without the
-// profiles of Author and Wall: the caller knows who they are.
-func (p *Posts) Create(ctx context.Context, accessToken, wallID, text string, photoIDs []string) (model.Post, error) {
+// Create writes a post and returns it without the profiles of Author and
+// Wall: the caller knows who they are.
+func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost) (model.Post, error) {
 	resp, err := p.api.CreatePost(withToken(ctx, accessToken), &postv1.CreatePostRequest{
-		WallId:   wallID,
-		Text:     text,
-		PhotoIds: photoIDs,
+		WallId:   np.WallID,
+		Text:     np.Text,
+		PhotoIds: np.PhotoIDs,
+		ClubWall: np.ClubWall,
+		FromWall: np.FromWall,
 	})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.CreatePost", fromStatus(err))
@@ -109,10 +111,11 @@ func (p *Posts) List(ctx context.Context, accessToken, wallID, cursor string, li
 	}, nil
 }
 
-// Feed is the posts of several authors on any walls.
-func (p *Posts) Feed(ctx context.Context, accessToken string, authorIDs []string, cursor string, limit int) (model.PostPage, error) {
+// Feed is the posts of several authors on any walls and of several walls.
+func (p *Posts) Feed(ctx context.Context, accessToken string, sources model.FeedSources, cursor string, limit int) (model.PostPage, error) {
 	resp, err := p.api.ListFeed(withToken(ctx, accessToken), &postv1.ListFeedRequest{
-		AuthorIds: authorIDs,
+		AuthorIds: sources.Authors,
+		WallIds:   sources.Walls,
 		Cursor:    cursor,
 		Limit:     toLimit(limit),
 	})
@@ -259,6 +262,8 @@ func toPost(p *postv1.Post) model.Post {
 		EditedAt:      fromTimestamp(p.GetEditedAt()),
 		EditableUntil: fromTimestamp(p.GetEditableUntil()),
 		Pinned:        p.GetPinned(),
+		FromWall:      p.GetFromWall(),
+		Mine:          p.GetMine(),
 	}
 }
 
