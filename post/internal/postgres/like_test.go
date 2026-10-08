@@ -3,6 +3,7 @@ package postgres_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"sync"
 	"testing"
 	"time"
@@ -86,7 +87,7 @@ func TestLikesAndComments(t *testing.T) {
 	t.Run("comments", func(t *testing.T) {
 		var saved []*post.Comment
 		for _, text := range []string{"раз", "два", "три"} {
-			c, err := post.NewComment(p.ID(), bob, post.CommentText(text), time.Now())
+			c, err := post.NewComment(p.ID(), bob, post.RestoreCommentContent(post.CommentText(text), nil), time.Now())
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -97,12 +98,12 @@ func TestLikesAndComments(t *testing.T) {
 		}
 
 		got, err := comments.Get(ctx, saved[0].ID())
-		if err != nil || *got != *saved[0] {
+		if err != nil || !reflect.DeepEqual(got, saved[0]) {
 			t.Fatalf("round trip: got %+v, %v; want %+v", got, err, saved[0])
 		}
 
 		many, err := comments.GetMany(ctx, []uuid.UUID{saved[1].ID(), uuid.New()})
-		if err != nil || len(many) != 1 || *many[0] != *saved[1] {
+		if err != nil || len(many) != 1 || !reflect.DeepEqual(many[0], saved[1]) {
 			t.Fatalf("GetMany = %v, %v", many, err)
 		}
 
@@ -134,7 +135,7 @@ func TestLikesAndComments(t *testing.T) {
 			t.Fatalf("comment count = %d, want 2", counted.Counters().Comments)
 		}
 
-		orphan, err := post.NewComment(uuid.New(), bob, "куда?", time.Now())
+		orphan, err := post.NewComment(uuid.New(), bob, post.RestoreCommentContent("куда?", nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}

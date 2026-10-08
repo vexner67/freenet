@@ -132,3 +132,37 @@ func (r *CommentRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) 
 
 	return nil
 }
+
+// DeleteByPost deletes the comments of a post about to be deleted,
+// returning them; the post's counter is left alone.
+func (r *CommentRepository) DeleteByPost(ctx context.Context, postID uuid.UUID) ([]*post.Comment, error) {
+	return r.deleteWhere(ctx, func(c *post.Comment) bool { return c.PostID() == postID })
+}
+
+// DeleteOnPostsOf deletes the comments on the posts a user wrote and on
+// those on their wall, returning them.
+func (r *CommentRepository) DeleteOnPostsOf(ctx context.Context, userID uuid.UUID) ([]*post.Comment, error) {
+	return r.deleteWhere(ctx, func(c *post.Comment) bool {
+		p := r.s.posts[c.PostID()]
+		return p != nil && (p.AuthorID() == userID || p.WallID() == userID)
+	})
+}
+
+func (r *CommentRepository) deleteWhere(ctx context.Context, match func(*post.Comment) bool) ([]*post.Comment, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	var deleted []*post.Comment
+	for id, c := range r.s.comments {
+		if match(c) {
+			delete(r.s.comments, id)
+			deleted = append(deleted, c)
+		}
+	}
+
+	return deleted, nil
+}

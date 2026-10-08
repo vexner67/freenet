@@ -87,8 +87,11 @@ message Comment {
   string id = 1;
   string post_id = 2;
   string author_id = 3;
+  // Empty when the comment has photos only.
   string text = 4;
   google.protobuf.Timestamp created_at = 5;
+  // Photos of the author in the media service, in the order shown.
+  repeated string photo_ids = 6;
 }
 
 message CreatePostRequest {
@@ -207,7 +210,10 @@ message UnlikePostResponse {
 
 message CreateCommentRequest {
   string post_id = 1;
+  // Text, photos or both. The caller has checked with the media service
+  // that the photos are the author's.
   string text = 2;
+  repeated string photo_ids = 3;
 }
 
 message CreateCommentResponse {

@@ -50,7 +50,7 @@ func TestDeleteByUser(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	c, err := post.NewComment(bobsPost.ID(), ann, "привет", time.Now())
+	c, err := post.NewComment(bobsPost.ID(), ann, post.RestoreCommentContent("привет", nil), time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

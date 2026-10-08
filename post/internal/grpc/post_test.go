@@ -52,8 +52,8 @@ func newServer(t *testing.T) testServer {
 	))
 	store := inmem.NewStore()
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(
-		service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}}),
-		service.NewCommentService(store.Posts(), store.Comments(), inmem.TxManager{}, notifyclient.Nop{}),
+		service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}}),
+		service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}}),
 		service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), Comments: store.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
 		}),

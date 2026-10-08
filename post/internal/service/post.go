@@ -46,6 +46,13 @@ type PostRepository interface {
 	ListByAuthors(ctx context.Context, authorIDs []uuid.UUID, before uuid.UUID, limit int) ([]*post.Post, error)
 }
 
+// PostCommentEraser deletes the comments of a post about to be deleted,
+// returning them, in the transaction of ctx; a comment written meanwhile
+// fails rather than goes unseen with the post.
+type PostCommentEraser interface {
+	DeleteByPost(ctx context.Context, postID uuid.UUID) ([]*post.Comment, error)
+}
+
 // PinRepository keeps the post each wall shows first.
 type PinRepository interface {
 	// Pin pins a post on its wall instead of the one pinned before;
@@ -76,19 +83,21 @@ type Page struct {
 }
 
 type PostService struct {
-	postRepo PostRepository
-	pinRepo  PinRepository
-	likeRepo LikeRepository
-	tx       TxManager
-	notifier Notifier
-	photos   PhotoKeeper
-	now      func() time.Time
+	postRepo    PostRepository
+	pinRepo     PinRepository
+	commentRepo PostCommentEraser
+	likeRepo    LikeRepository
+	tx          TxManager
+	notifier    Notifier
+	photos      PhotoKeeper
+	now         func() time.Time
 }
 
 // PostDeps are what PostService works with.
 type PostDeps struct {
 	Posts    PostRepository
 	Pins     PinRepository
+	Comments PostCommentEraser
 	Likes    LikeRepository
 	Tx       TxManager
 	Notifier Notifier
@@ -97,13 +106,14 @@ type PostDeps struct {
 
 func NewPostService(d PostDeps) *PostService {
 	return &PostService{
-		postRepo: d.Posts,
-		pinRepo:  d.Pins,
-		likeRepo: d.Likes,
-		tx:       d.Tx,
-		notifier: d.Notifier,
-		photos:   d.Photos,
-		now:      time.Now,
+		postRepo:    d.Posts,
+		pinRepo:     d.Pins,
+		commentRepo: d.Comments,
+		likeRepo:    d.Likes,
+		tx:          d.Tx,
+		notifier:    d.Notifier,
+		photos:      d.Photos,
+		now:         time.Now,
 	}
 }
 
@@ -186,9 +196,10 @@ func (s *PostService) Repost(ctx context.Context, authorID, postID uuid.UUID, te
 	return repost, nil
 }
 
-// Delete removes a post with its photos, whoever deletes it, the author or
-// the owner of the wall; a deleted repost takes its notification with it,
-// since the notification is about the repost (ForgetPost).
+// Delete removes a post with its comments and all their photos, whoever
+// deletes it, the author or the owner of the wall; a deleted repost takes
+// its notification with it, since the notification is about the repost
+// (ForgetPost).
 func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID) error {
 	p, err := s.postRepo.Get(ctx, postID)
 	if err != nil {
@@ -200,7 +211,16 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if err := s.postRepo.Delete(ctx, postID); err != nil {
+		comments, err := s.commentRepo.DeleteByPost(ctx, postID)
+		if err != nil {
+			return errs.Wrap("s.commentRepo.DeleteByPost", err)
+		}
+
+		if err = deleteCommentPhotos(ctx, s.photos, comments); err != nil {
+			return errs.Wrap("deleteCommentPhotos", err)
+		}
+
+		if err = s.postRepo.Delete(ctx, postID); err != nil {
 			return errs.Wrap("s.postRepo.Delete", err)
 		}
 

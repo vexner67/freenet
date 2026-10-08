@@ -594,7 +594,7 @@ func (x *PublishPhotosRequest) GetPhotoIds() []string {
 	return nil
 }
 
-type DeletePostPhotosRequest struct {
+type DeletePublishedPhotosRequest struct {
 	state   protoimpl.MessageState `protogen:"open.v1"`
 	OwnerId string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
 	// At most 10.
@@ -603,20 +603,20 @@ type DeletePostPhotosRequest struct {
 	sizeCache     protoimpl.SizeCache
 }
 
-func (x *DeletePostPhotosRequest) Reset() {
-	*x = DeletePostPhotosRequest{}
+func (x *DeletePublishedPhotosRequest) Reset() {
+	*x = DeletePublishedPhotosRequest{}
 	mi := &file_api_media_v1_media_proto_msgTypes[10]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
 
-func (x *DeletePostPhotosRequest) String() string {
+func (x *DeletePublishedPhotosRequest) String() string {
 	return protoimpl.X.MessageStringOf(x)
 }
 
-func (*DeletePostPhotosRequest) ProtoMessage() {}
+func (*DeletePublishedPhotosRequest) ProtoMessage() {}
 
-func (x *DeletePostPhotosRequest) ProtoReflect() protoreflect.Message {
+func (x *DeletePublishedPhotosRequest) ProtoReflect() protoreflect.Message {
 	mi := &file_api_media_v1_media_proto_msgTypes[10]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
@@ -628,19 +628,19 @@ func (x *DeletePostPhotosRequest) ProtoReflect() protoreflect.Message {
 	return mi.MessageOf(x)
 }
 
-// Deprecated: Use DeletePostPhotosRequest.ProtoReflect.Descriptor instead.
-func (*DeletePostPhotosRequest) Descriptor() ([]byte, []int) {
+// Deprecated: Use DeletePublishedPhotosRequest.ProtoReflect.Descriptor instead.
+func (*DeletePublishedPhotosRequest) Descriptor() ([]byte, []int) {
 	return file_api_media_v1_media_proto_rawDescGZIP(), []int{10}
 }
 
-func (x *DeletePostPhotosRequest) GetOwnerId() string {
+func (x *DeletePublishedPhotosRequest) GetOwnerId() string {
 	if x != nil {
 		return x.OwnerId
 	}
 	return ""
 }
 
-func (x *DeletePostPhotosRequest) GetPhotoIds() []string {
+func (x *DeletePublishedPhotosRequest) GetPhotoIds() []string {
 	if x != nil {
 		return x.PhotoIds
 	}
@@ -822,8 +822,8 @@ const file_api_media_v1_media_proto_rawDesc = "" +
 	"\tphoto_ids\x18\x01 \x03(\tR\bphotoIds\"N\n" +
 	"\x14PublishPhotosRequest\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x1b\n" +
-	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\"Q\n" +
-	"\x17DeletePostPhotosRequest\x12\x19\n" +
+	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\"V\n" +
+	"\x1cDeletePublishedPhotosRequest\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x1b\n" +
 	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\"n\n" +
 	"\x0fGetPhotoRequest\x12\x17\n" +
@@ -842,7 +842,7 @@ const file_api_media_v1_media_proto_rawDesc = "" +
 	"\tPhotoSize\x12\x1a\n" +
 	"\x16PHOTO_SIZE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10PHOTO_SIZE_LARGE\x10\x01\x12\x14\n" +
-	"\x10PHOTO_SIZE_SMALL\x10\x022\xa6\x05\n" +
+	"\x10PHOTO_SIZE_SMALL\x10\x022\xb0\x05\n" +
 	"\fMediaService\x12M\n" +
 	"\fUploadAvatar\x12\x1d.media.v1.UploadAvatarRequest\x1a\x1e.media.v1.UploadAvatarResponse\x12G\n" +
 	"\rDeleteAvatars\x12\x1e.media.v1.DeleteAvatarsRequest\x1a\x16.google.protobuf.Empty\x12D\n" +
@@ -850,8 +850,8 @@ const file_api_media_v1_media_proto_rawDesc = "" +
 	"\vUploadPhoto\x12\x1c.media.v1.UploadPhotoRequest\x1a\x1d.media.v1.UploadPhotoResponse\x12P\n" +
 	"\rListOwnPhotos\x12\x1e.media.v1.ListOwnPhotosRequest\x1a\x1f.media.v1.ListOwnPhotosResponse\x12A\n" +
 	"\bGetPhoto\x12\x19.media.v1.GetPhotoRequest\x1a\x1a.media.v1.GetPhotoResponse\x12G\n" +
-	"\rPublishPhotos\x12\x1e.media.v1.PublishPhotosRequest\x1a\x16.google.protobuf.Empty\x12M\n" +
-	"\x10DeletePostPhotos\x12!.media.v1.DeletePostPhotosRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
+	"\rPublishPhotos\x12\x1e.media.v1.PublishPhotosRequest\x1a\x16.google.protobuf.Empty\x12W\n" +
+	"\x15DeletePublishedPhotos\x12&.media.v1.DeletePublishedPhotosRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
 	"\tPurgeUser\x12\x1a.media.v1.PurgeUserRequest\x1a\x16.google.protobuf.EmptyB8Z6github.com/vexner67/freenet/media/api/media/v1;mediav1b\x06proto3"
 
 var (
@@ -869,23 +869,23 @@ func file_api_media_v1_media_proto_rawDescGZIP() []byte {
 var file_api_media_v1_media_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_api_media_v1_media_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
 var file_api_media_v1_media_proto_goTypes = []any{
-	(AvatarSize)(0),                 // 0: media.v1.AvatarSize
-	(PhotoSize)(0),                  // 1: media.v1.PhotoSize
-	(*UploadAvatarRequest)(nil),     // 2: media.v1.UploadAvatarRequest
-	(*UploadAvatarResponse)(nil),    // 3: media.v1.UploadAvatarResponse
-	(*DeleteAvatarsRequest)(nil),    // 4: media.v1.DeleteAvatarsRequest
-	(*GetAvatarRequest)(nil),        // 5: media.v1.GetAvatarRequest
-	(*GetAvatarResponse)(nil),       // 6: media.v1.GetAvatarResponse
-	(*UploadPhotoRequest)(nil),      // 7: media.v1.UploadPhotoRequest
-	(*UploadPhotoResponse)(nil),     // 8: media.v1.UploadPhotoResponse
-	(*ListOwnPhotosRequest)(nil),    // 9: media.v1.ListOwnPhotosRequest
-	(*ListOwnPhotosResponse)(nil),   // 10: media.v1.ListOwnPhotosResponse
-	(*PublishPhotosRequest)(nil),    // 11: media.v1.PublishPhotosRequest
-	(*DeletePostPhotosRequest)(nil), // 12: media.v1.DeletePostPhotosRequest
-	(*GetPhotoRequest)(nil),         // 13: media.v1.GetPhotoRequest
-	(*GetPhotoResponse)(nil),        // 14: media.v1.GetPhotoResponse
-	(*PurgeUserRequest)(nil),        // 15: media.v1.PurgeUserRequest
-	(*emptypb.Empty)(nil),           // 16: google.protobuf.Empty
+	(AvatarSize)(0),                      // 0: media.v1.AvatarSize
+	(PhotoSize)(0),                       // 1: media.v1.PhotoSize
+	(*UploadAvatarRequest)(nil),          // 2: media.v1.UploadAvatarRequest
+	(*UploadAvatarResponse)(nil),         // 3: media.v1.UploadAvatarResponse
+	(*DeleteAvatarsRequest)(nil),         // 4: media.v1.DeleteAvatarsRequest
+	(*GetAvatarRequest)(nil),             // 5: media.v1.GetAvatarRequest
+	(*GetAvatarResponse)(nil),            // 6: media.v1.GetAvatarResponse
+	(*UploadPhotoRequest)(nil),           // 7: media.v1.UploadPhotoRequest
+	(*UploadPhotoResponse)(nil),          // 8: media.v1.UploadPhotoResponse
+	(*ListOwnPhotosRequest)(nil),         // 9: media.v1.ListOwnPhotosRequest
+	(*ListOwnPhotosResponse)(nil),        // 10: media.v1.ListOwnPhotosResponse
+	(*PublishPhotosRequest)(nil),         // 11: media.v1.PublishPhotosRequest
+	(*DeletePublishedPhotosRequest)(nil), // 12: media.v1.DeletePublishedPhotosRequest
+	(*GetPhotoRequest)(nil),              // 13: media.v1.GetPhotoRequest
+	(*GetPhotoResponse)(nil),             // 14: media.v1.GetPhotoResponse
+	(*PurgeUserRequest)(nil),             // 15: media.v1.PurgeUserRequest
+	(*emptypb.Empty)(nil),                // 16: google.protobuf.Empty
 }
 var file_api_media_v1_media_proto_depIdxs = []int32{
 	0,  // 0: media.v1.GetAvatarRequest.size:type_name -> media.v1.AvatarSize
@@ -897,7 +897,7 @@ var file_api_media_v1_media_proto_depIdxs = []int32{
 	9,  // 6: media.v1.MediaService.ListOwnPhotos:input_type -> media.v1.ListOwnPhotosRequest
 	13, // 7: media.v1.MediaService.GetPhoto:input_type -> media.v1.GetPhotoRequest
 	11, // 8: media.v1.MediaService.PublishPhotos:input_type -> media.v1.PublishPhotosRequest
-	12, // 9: media.v1.MediaService.DeletePostPhotos:input_type -> media.v1.DeletePostPhotosRequest
+	12, // 9: media.v1.MediaService.DeletePublishedPhotos:input_type -> media.v1.DeletePublishedPhotosRequest
 	15, // 10: media.v1.MediaService.PurgeUser:input_type -> media.v1.PurgeUserRequest
 	3,  // 11: media.v1.MediaService.UploadAvatar:output_type -> media.v1.UploadAvatarResponse
 	16, // 12: media.v1.MediaService.DeleteAvatars:output_type -> google.protobuf.Empty
@@ -906,7 +906,7 @@ var file_api_media_v1_media_proto_depIdxs = []int32{
 	10, // 15: media.v1.MediaService.ListOwnPhotos:output_type -> media.v1.ListOwnPhotosResponse
 	14, // 16: media.v1.MediaService.GetPhoto:output_type -> media.v1.GetPhotoResponse
 	16, // 17: media.v1.MediaService.PublishPhotos:output_type -> google.protobuf.Empty
-	16, // 18: media.v1.MediaService.DeletePostPhotos:output_type -> google.protobuf.Empty
+	16, // 18: media.v1.MediaService.DeletePublishedPhotos:output_type -> google.protobuf.Empty
 	16, // 19: media.v1.MediaService.PurgeUser:output_type -> google.protobuf.Empty
 	11, // [11:20] is the sub-list for method output_type
 	2,  // [2:11] is the sub-list for method input_type

@@ -197,14 +197,14 @@ func TestPhotos(t *testing.T) {
 	if _, err = s.client.PublishPhotos(context.Background(), &mediav1.PublishPhotosRequest{OwnerId: ann.String(), PhotoIds: ids}); err != nil {
 		t.Fatalf("PublishPhotos: %v", err)
 	}
-	if _, err = s.client.DeletePostPhotos(context.Background(), &mediav1.DeletePostPhotosRequest{OwnerId: bob.String(), PhotoIds: ids}); err != nil {
+	if _, err = s.client.DeletePublishedPhotos(context.Background(), &mediav1.DeletePublishedPhotosRequest{OwnerId: bob.String(), PhotoIds: ids}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: ids[0]}); err != nil {
 		t.Fatalf("ann's published photo after bob's delete: %v", err)
 	}
 
-	if _, err = s.client.DeletePostPhotos(context.Background(), &mediav1.DeletePostPhotosRequest{OwnerId: ann.String(), PhotoIds: ids[:1]}); err != nil {
+	if _, err = s.client.DeletePublishedPhotos(context.Background(), &mediav1.DeletePublishedPhotosRequest{OwnerId: ann.String(), PhotoIds: ids[:1]}); err != nil {
 		t.Fatal(err)
 	}
 	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: ids[0]}); status.Code(err) != codes.NotFound {

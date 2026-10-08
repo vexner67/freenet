@@ -26,11 +26,11 @@ service MediaService {
   // Public: a photo as JPEG.
   rpc GetPhoto(GetPhotoRequest) returns (GetPhotoResponse);
 
-  // Internal, for post: a post with these photos of owner_id was published
-  // (they are kept for good) or deleted (they go). Idempotent; missing
-  // photos are fine.
+  // Internal, for post and message: a post, comment or message with these
+  // photos of owner_id was published (they are kept for good) or deleted
+  // (they go). Idempotent; missing photos are fine.
   rpc PublishPhotos(PublishPhotosRequest) returns (google.protobuf.Empty);
-  rpc DeletePostPhotos(DeletePostPhotosRequest) returns (google.protobuf.Empty);
+  rpc DeletePublishedPhotos(DeletePublishedPhotosRequest) returns (google.protobuf.Empty);
 
   // Internal, for user: the user's page was deleted and not restored in
   // time; all their avatars and photos go. Idempotent.
@@ -94,7 +94,7 @@ message PublishPhotosRequest {
   repeated string photo_ids = 2;
 }
 
-message DeletePostPhotosRequest {
+message DeletePublishedPhotosRequest {
   string owner_id = 1;
   // At most 10.
   repeated string photo_ids = 2;

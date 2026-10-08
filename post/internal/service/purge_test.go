@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -18,8 +19,8 @@ func TestPurgeService(t *testing.T) {
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
 	photos := &fakePhotos{}
-	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
-	comments := service.NewCommentService(store.Posts(), store.Comments(), fakeTx{}, notifier)
+	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
+	comments := service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: photos})
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), Comments: store.Comments(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
 	})
@@ -59,7 +60,12 @@ func TestPurgeService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = comments.Create(ctx, ann, bobsPost.ID(), text); err != nil {
+	if _, err = comments.Create(ctx, ann, bobsPost.ID(), post.RestoreCommentContent(text, nil)); err != nil {
+		t.Fatal(err)
+	}
+	// Cat comments on ann's post with a photo, which goes with the post.
+	cat, catsPhoto := uuid.New(), uuid.New()
+	if _, err = comments.Create(ctx, cat, annsPost.ID(), post.RestoreCommentContent("", post.Photos{catsPhoto})); err != nil {
 		t.Fatal(err)
 	}
 
@@ -98,10 +104,11 @@ func TestPurgeService(t *testing.T) {
 		t.Errorf("%d notifications recorded outside the transaction", notifier.outsideTx)
 	}
 
-	// Bob's photo goes with his post on ann's wall; ann's own media erases
-	// with the rest of her.
-	if len(photos.deleted) != 1 || photos.deleted[0].owner != bob || !slices.Equal(photos.deleted[0].photos, []uuid.UUID{bobsPhoto}) {
-		t.Errorf("photos deleted = %+v, want bob's photo once", photos.deleted)
+	// Cat's photo goes with the comment on ann's post, bob's with his post
+	// on ann's wall; ann's own media erases with the rest of her.
+	wantPhotos := []photoCall{{cat, []uuid.UUID{catsPhoto}}, {bob, []uuid.UUID{bobsPhoto}}}
+	if !reflect.DeepEqual(photos.deleted, wantPhotos) {
+		t.Errorf("photos deleted = %+v, want %+v", photos.deleted, wantPhotos)
 	}
 	if photos.outsideTx != 0 {
 		t.Errorf("%d photo calls outside the transaction", photos.outsideTx)

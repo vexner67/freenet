@@ -42,20 +42,33 @@ type CommentService struct {
 	commentRepo CommentRepository
 	tx          TxManager
 	notifier    Notifier
+	photos      PhotoKeeper
 	now         func() time.Time
 }
 
-func NewCommentService(postRepo PostReader, commentRepo CommentRepository, tx TxManager, notifier Notifier) *CommentService {
+// CommentDeps are what CommentService works with.
+type CommentDeps struct {
+	Posts    PostReader
+	Comments CommentRepository
+	Tx       TxManager
+	Notifier Notifier
+	Photos   PhotoKeeper
+}
+
+func NewCommentService(d CommentDeps) *CommentService {
 	return &CommentService{
-		postRepo:    postRepo,
-		commentRepo: commentRepo,
-		tx:          tx,
-		notifier:    notifier,
+		postRepo:    d.Posts,
+		commentRepo: d.Comments,
+		tx:          d.Tx,
+		notifier:    d.Notifier,
+		photos:      d.Photos,
 		now:         time.Now,
 	}
 }
 
-func (s *CommentService) Create(ctx context.Context, authorID, postID uuid.UUID, text post.CommentText) (*post.Comment, error) {
+// Create comments on a post with text, photos or both; media keeps the
+// photos, which the caller has checked are the author's.
+func (s *CommentService) Create(ctx context.Context, authorID, postID uuid.UUID, content post.CommentContent) (*post.Comment, error) {
 	// The post tells whom to notify; Save still reports a post deleted
 	// in between.
 	p, err := s.postRepo.Get(ctx, postID)
@@ -63,7 +76,7 @@ func (s *CommentService) Create(ctx context.Context, authorID, postID uuid.UUID,
 		return nil, errs.Wrap("s.postRepo.Get", err)
 	}
 
-	c, err := post.NewComment(postID, authorID, text, s.now())
+	c, err := post.NewComment(postID, authorID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("post.NewComment", err)
 	}
@@ -71,6 +84,12 @@ func (s *CommentService) Create(ctx context.Context, authorID, postID uuid.UUID,
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.commentRepo.Save(ctx, c); err != nil {
 			return errs.Wrap("s.commentRepo.Save", err)
+		}
+
+		if photos := c.Photos(); len(photos) > 0 {
+			if err := s.photos.Publish(ctx, authorID, photos); err != nil {
+				return errs.Wrap("s.photos.Publish", err)
+			}
 		}
 
 		e, ok := commentEvent(p, c)
@@ -107,6 +126,10 @@ func (s *CommentService) Delete(ctx context.Context, requesterID, commentID uuid
 			return errs.Wrap("s.commentRepo.Delete", err)
 		}
 
+		if err := deleteCommentPhotos(ctx, s.photos, []*post.Comment{c}); err != nil {
+			return errs.Wrap("deleteCommentPhotos", err)
+		}
+
 		e, ok := commentEvent(p, c)
 		if !ok {
 			return nil
@@ -116,6 +139,20 @@ func (s *CommentService) Delete(ctx context.Context, requesterID, commentID uuid
 	})
 	if err != nil {
 		return errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return nil
+}
+
+// deleteCommentPhotos records, in the transaction of ctx, that media
+// deletes the photos of deleted comments.
+func deleteCommentPhotos(ctx context.Context, photos PhotoKeeper, comments []*post.Comment) error {
+	for _, c := range comments {
+		if ids := c.Photos(); len(ids) > 0 {
+			if err := photos.Delete(ctx, c.AuthorID(), ids); err != nil {
+				return errs.Wrap("photos.Delete", err)
+			}
+		}
 	}
 
 	return nil

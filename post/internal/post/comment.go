@@ -10,17 +10,20 @@ import (
 const maxCommentLen = 1000
 
 var (
+	// ErrCommentEmpty: neither text nor photos. The message keeps the
+	// words it had before comments took photos: clients know it.
 	ErrCommentEmpty        = errors.New("comment text is empty")
 	ErrCommentTooLong      = errors.New("comment text is too long")
 	ErrCommentNotFound     = errors.New("comment not found")
 	ErrCannotDeleteComment = errors.New("only the author of the comment or of the post or the owner of the wall can delete it")
 )
 
-// CommentText is what a comment says: trimmed, with "\n" line breaks.
+// CommentText is what a comment says: trimmed, with "\n" line breaks. It
+// may be empty when the comment has photos (see NewCommentContent).
 type CommentText string
 
 func NewCommentText(s string) (CommentText, error) {
-	s, err := cleanText(s, maxCommentLen, ErrCommentEmpty, ErrCommentTooLong)
+	s, err := cleanText(s, maxCommentLen, nil, ErrCommentTooLong)
 	if err != nil {
 		return "", err
 	}
@@ -32,17 +35,45 @@ func (t CommentText) String() string {
 	return string(t)
 }
 
+// CommentContent is what a comment shows: text, photos or both, never
+// nothing, as in openvk.
+type CommentContent struct {
+	text   CommentText
+	photos Photos
+}
+
+func NewCommentContent(text CommentText, photos Photos) (CommentContent, error) {
+	if text == "" && len(photos) == 0 {
+		return CommentContent{}, ErrCommentEmpty
+	}
+
+	return CommentContent{text: text, photos: photos}, nil
+}
+
+// RestoreCommentContent rebuilds content from storage without validation.
+func RestoreCommentContent(text CommentText, photos Photos) CommentContent {
+	return CommentContent{text: text, photos: photos}
+}
+
+func (c CommentContent) Text() CommentText {
+	return c.text
+}
+
+func (c CommentContent) Photos() Photos {
+	return c.photos
+}
+
 type Comment struct {
 	id        uuid.UUID
 	postID    uuid.UUID
 	authorID  uuid.UUID
-	text      CommentText
+	content   CommentContent
 	createdAt time.Time
 }
 
 // NewComment creates a comment on a post. Its UUIDv7 ID grows with time,
 // so the comments of a post are ordered and paged by ID.
-func NewComment(postID, authorID uuid.UUID, text CommentText, now time.Time) (*Comment, error) {
+func NewComment(postID, authorID uuid.UUID, content CommentContent, now time.Time) (*Comment, error) {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return nil, err
@@ -52,20 +83,29 @@ func NewComment(postID, authorID uuid.UUID, text CommentText, now time.Time) (*C
 		id:       id,
 		postID:   postID,
 		authorID: authorID,
-		text:     text,
+		content:  content,
 		// PostgreSQL keeps microseconds; trim now so a comment reads back equal.
 		createdAt: now.UTC().Truncate(time.Microsecond),
 	}, nil
 }
 
+// StoredComment is a comment as storage keeps it.
+type StoredComment struct {
+	ID        uuid.UUID
+	PostID    uuid.UUID
+	AuthorID  uuid.UUID
+	Content   CommentContent
+	CreatedAt time.Time
+}
+
 // RestoreComment rebuilds a comment from storage without validation or new IDs.
-func RestoreComment(id, postID, authorID uuid.UUID, text CommentText, createdAt time.Time) *Comment {
+func RestoreComment(s StoredComment) *Comment {
 	return &Comment{
-		id:        id,
-		postID:    postID,
-		authorID:  authorID,
-		text:      text,
-		createdAt: createdAt,
+		id:        s.ID,
+		postID:    s.PostID,
+		authorID:  s.AuthorID,
+		content:   s.Content,
+		createdAt: s.CreatedAt,
 	}
 }
 
@@ -89,7 +129,11 @@ func (c *Comment) AuthorID() uuid.UUID {
 }
 
 func (c *Comment) Text() CommentText {
-	return c.text
+	return c.content.text
+}
+
+func (c *Comment) Photos() Photos {
+	return c.content.photos
 }
 
 func (c *Comment) CreatedAt() time.Time {

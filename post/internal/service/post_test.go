@@ -104,7 +104,7 @@ func (fakeTx) WithinTx(ctx context.Context, fn func(ctx context.Context) error) 
 
 func newPostService() *service.PostService {
 	store := inmem.NewStore()
-	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}})
+	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}})
 }
 
 func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...string) []*post.Post {
@@ -341,7 +341,7 @@ func TestPostService_NotifiesAboutLikes(t *testing.T) {
 
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
 	p := write(t, svc, ann, "привет")[0]
@@ -395,7 +395,7 @@ func TestPostService_NotifierFailureFailsTheChange(t *testing.T) {
 
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
 	p := write(t, svc, ann, "привет")[0]
@@ -444,7 +444,7 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	write(t, svc, ann, "своё")
@@ -502,7 +502,7 @@ func TestPostService_Repost(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
 
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	original := write(t, svc, ann, "оригинал")[0]
@@ -572,7 +572,7 @@ func TestPostService_Photos(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos})
 	owner, author := uuid.New(), uuid.New()
 	ids := []uuid.UUID{uuid.New(), uuid.New()}
 
@@ -614,7 +614,7 @@ func TestPostService_Edit(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos})
 	author, stranger := uuid.New(), uuid.New()
 	kept, dropped, added := uuid.New(), uuid.New(), uuid.New()
 

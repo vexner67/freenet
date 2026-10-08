@@ -10,6 +10,30 @@ import (
 	"github.com/vexner67/freenet/post/internal/post"
 )
 
+func TestNewCommentContent(t *testing.T) {
+	t.Parallel()
+
+	photo := uuid.New()
+
+	if _, err := post.NewCommentContent("", nil); !errors.Is(err, post.ErrCommentEmpty) {
+		t.Fatalf("neither text nor photos: %v", err)
+	}
+
+	c, err := post.NewCommentContent("", post.Photos{photo})
+	if err != nil || c.Text() != "" || len(c.Photos()) != 1 {
+		t.Fatalf("photos only = %+v, %v", c, err)
+	}
+
+	p, err := post.New(uuid.New(), uuid.New(), textOnly(t, "запись"), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	comment, err := post.NewComment(p.ID(), uuid.New(), c, time.Now())
+	if err != nil || len(comment.Photos()) != 1 || comment.Photos()[0] != photo {
+		t.Fatalf("comment photos = %v, %v", comment.Photos(), err)
+	}
+}
+
 func TestNewCommentText(t *testing.T) {
 	t.Parallel()
 
@@ -22,8 +46,8 @@ func TestNewCommentText(t *testing.T) {
 		{"plain", "согласен", "согласен", nil},
 		{"trimmed, windows line breaks", "  раз\r\nдва \n", "раз\nдва", nil},
 		{"emoji count as one character", strings.Repeat("👍", 1000), post.CommentText(strings.Repeat("👍", 1000)), nil},
-		{"empty", "", "", post.ErrCommentEmpty},
-		{"only spaces and breaks", " \n\t\r\n ", "", post.ErrCommentEmpty},
+		{"empty is fine, photos may say it all", "", "", nil},
+		{"only spaces and breaks", " \n\t\r\n ", "", nil},
 		{"too long", strings.Repeat("я", 1001), "", post.ErrCommentTooLong},
 	}
 
@@ -50,7 +74,7 @@ func TestComment(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	c, err := post.NewComment(p.ID(), commenter, "и тебе", now)
+	c, err := post.NewComment(p.ID(), commenter, post.RestoreCommentContent("и тебе", nil), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +93,7 @@ func TestComment(t *testing.T) {
 		t.Fatal("a stranger may not delete")
 	}
 
-	later, err := post.NewComment(p.ID(), commenter, "ещё", now)
+	later, err := post.NewComment(p.ID(), commenter, post.RestoreCommentContent("ещё", nil), now)
 	if err != nil {
 		t.Fatal(err)
 	}
