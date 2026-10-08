@@ -26,10 +26,10 @@ type CommentEraser interface {
 	DeleteOnPostsOf(ctx context.Context, userID uuid.UUID) ([]*post.Comment, error)
 }
 
-// SuggestionEraser deletes what a user suggested for communities' walls;
-// media erases their photos with the rest of the user.
+// SuggestionEraser deletes what a user suggested for communities' walls,
+// returning the IDs; media erases their photos with the rest of the user.
 type SuggestionEraser interface {
-	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+	DeleteByUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
 
 // PurgeService erases what post keeps of a user whose page was deleted for
@@ -74,8 +74,8 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 // others' posts, what they suggested, the posts they wrote and those on
 // their wall (others' on
 // it included, as a deleted post takes its comments). The notifications
-// about the deleted posts and their photos go with them, as when a post is
-// deleted; the user's own photos media erases itself.
+// about the deleted posts and suggestions and the photos of the posts go
+// with them, as when a post is deleted; the user's own photos media erases itself.
 func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.likes.DeleteByUser(ctx, userID); err != nil {
@@ -90,8 +90,16 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 			return errs.Wrap("s.comments.DeleteByUser", err)
 		}
 
-		if err := s.suggestions.DeleteByUser(ctx, userID); err != nil {
+		suggestions, err := s.suggestions.DeleteByUser(ctx, userID)
+		if err != nil {
 			return errs.Wrap("s.suggestions.DeleteByUser", err)
+		}
+
+		// The admins heard about them.
+		for _, id := range suggestions {
+			if err = s.notifier.ForgetPost(ctx, id); err != nil {
+				return errs.Wrap("s.notifier.ForgetPost", err)
+			}
 		}
 
 		// Others' comments on the posts about to go: their photos go too.

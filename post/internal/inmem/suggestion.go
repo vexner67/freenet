@@ -120,19 +120,22 @@ func (r *SuggestionRepository) Count(ctx context.Context, wallID, authorID uuid.
 	return len(r.matching(wallID, authorID)), nil
 }
 
-func (r *SuggestionRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+func (r *SuggestionRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
 	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
+		return nil, errs.Wrap("ctx.Err", err)
 	}
 
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	var deleted []uuid.UUID
+
 	for id, s := range r.suggestions {
 		if s.AuthorID() == userID {
 			delete(r.suggestions, id)
+			deleted = append(deleted, id)
 		}
 	}
 
-	return nil
+	return deleted, nil
 }

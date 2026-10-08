@@ -42,8 +42,14 @@ func TestSuggestionService(t *testing.T) {
 	if len(photos.published) != 1 || photos.published[0].owner != ann {
 		t.Fatalf("the photos are kept at once: %+v", photos.published)
 	}
+	if n := notifier.notified; len(n) != 1 || n[0].Kind != service.EventSuggestedPost || n[0].RecipientID != admin || n[0].ActorID != club || n[0].PostID != first.ID() || notifier.outsideTx != 0 {
+		t.Fatalf("the admin hears from the club: %+v", n)
+	}
+	notifier.notified = nil
+
 	second, _ := svc.Suggest(ctx, club, ann, words)
 	bobs, _ := svc.Suggest(ctx, club, bob, words)
+	notifier.notified = nil
 
 	// The wall shows none of them.
 	if wall, err := posts.ListWall(ctx, uuid.Nil, club, uuid.Nil, 10); err != nil || len(wall.Posts) != 0 || wall.Total != 0 {
@@ -78,6 +84,9 @@ func TestSuggestionService(t *testing.T) {
 	if n := notifier.notified; len(n) != 1 || n[0].Kind != service.EventPostAccepted || n[0].RecipientID != ann || n[0].ActorID != club || n[0].PostID != published.ID() {
 		t.Fatalf("notified = %+v", n)
 	}
+	if f := notifier.forgotten; len(f) != 1 || f[0] != first.ID() {
+		t.Fatalf("the admins' notifications about the suggestion stay: %v", f)
+	}
 	if wall, _ := posts.ListWall(ctx, uuid.Nil, club, uuid.Nil, 10); len(wall.Posts) != 1 || wall.Posts[0].ID() != published.ID() {
 		t.Fatalf("the wall after publishing = %+v", wall)
 	}
@@ -98,6 +107,9 @@ func TestSuggestionService(t *testing.T) {
 	if left, _ := svc.List(ctx, admin, club, false, uuid.Nil, 10); left.Total != 0 {
 		t.Fatalf("left = %+v", left)
 	}
+	if f := notifier.forgotten; len(f) != 3 || f[1] != bobs.ID() || f[2] != second.ID() {
+		t.Fatalf("withdrawn and declined take their notifications: %v", f)
+	}
 	if err = svc.Withdraw(ctx, admin, second.ID()); !errors.Is(err, post.ErrSuggestionNotFound) {
 		t.Fatalf("declined twice: %v", err)
 	}
@@ -105,6 +117,9 @@ func TestSuggestionService(t *testing.T) {
 	// An admin's own suggestion, from before they ran the club, tells
 	// nobody; a suggestion of words only needs words.
 	own, _ := svc.Suggest(ctx, club, admin, words)
+	if len(notifier.notified) != 1 {
+		t.Fatalf("the admin hears about their own: %+v", notifier.notified)
+	}
 	if _, err = svc.Publish(ctx, admin, own.ID(), "", false); !errors.Is(err, post.ErrTextEmpty) {
 		t.Fatalf("published empty: %v", err)
 	}
