@@ -1,0 +1,354 @@
+package service
+
+import (
+	"context"
+	"errors"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/vexner67/freenet/club/internal/club"
+	"github.com/vexner67/freenet/pkg/errs"
+)
+
+const (
+	DefaultPageSize = 20
+	MaxPageSize     = 50
+
+	// MaxClubs bounds GetMany: the gateway asks for the clubs of one page.
+	MaxClubs = 100
+	// MaxClubIDs is how many of a user's clubs the feed reads posts from.
+	MaxClubIDs = 1000
+)
+
+var ErrTooManyIDs = errors.New("too many ids")
+
+type ClubRepository interface {
+	// Create stores c with ownerID as its owner and only member.
+	Create(ctx context.Context, c *club.Club, ownerID uuid.UUID) error
+	// Get and GetByAddress return club.ErrNotFound; the address is
+	// matched whatever the case.
+	Get(ctx context.Context, id uuid.UUID) (*club.Club, error)
+	GetByAddress(ctx context.Context, address club.Address) (*club.Club, error)
+	// GetMany returns the clubs found, in no particular order.
+	GetMany(ctx context.Context, ids []uuid.UUID) ([]*club.Club, error)
+	// Update saves the editable fields; club.ErrAddressTaken when another
+	// club has the address.
+	Update(ctx context.Context, c *club.Club) error
+}
+
+type MemberRepository interface {
+	// Role is club.RoleNone for a user who is not a member.
+	Role(ctx context.Context, clubID, userID uuid.UUID) (club.Role, error)
+	// Owner is uuid.Nil when the club has none (its owner was erased).
+	Owner(ctx context.Context, clubID uuid.UUID) (uuid.UUID, error)
+	// Join is idempotent; club.ErrNotFound when the club is gone.
+	Join(ctx context.Context, clubID, userID uuid.UUID) error
+	Leave(ctx context.Context, clubID, userID uuid.UUID) error
+	// SetRole changes the role of a member who is not the owner;
+	// club.ErrNotMember when there is no such member.
+	SetRole(ctx context.Context, clubID, userID uuid.UUID, role club.Role) error
+	// List returns up to limit members (only the admins and the owner
+	// with adminsOnly) who joined before the membership before (uuid.Nil:
+	// from the newest), the newest first.
+	List(ctx context.Context, clubID, before uuid.UUID, limit int, adminsOnly bool) ([]Member, error)
+	// ListClubs is the same for the clubs of a user.
+	ListClubs(ctx context.Context, userID, before uuid.UUID, limit int) ([]Membership, error)
+	// ClubIDs are the newest limit clubs of a user.
+	ClubIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error)
+	// DeleteByUser takes a user out of every club.
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+}
+
+// Member is one user in a club; ID is the membership, the cursor of lists.
+type Member struct {
+	ID     uuid.UUID
+	UserID uuid.UUID
+	Role   club.Role
+}
+
+// Membership is one club of a user and what the user is in it.
+type Membership struct {
+	ID   uuid.UUID
+	Club *club.Club
+	Role club.Role
+}
+
+// View is a club as a viewer sees it: what they are in it and who owns it
+// (uuid.Nil if nobody).
+type View struct {
+	Club    *club.Club
+	Role    club.Role
+	OwnerID uuid.UUID
+}
+
+// MemberPage and ClubPage are one screen of a list; NextCursor is
+// uuid.Nil on the last.
+type MemberPage struct {
+	Members    []Member
+	NextCursor uuid.UUID
+}
+
+type ClubPage struct {
+	Clubs      []Membership
+	NextCursor uuid.UUID
+}
+
+// Ref names a club by its ID or, if ID is uuid.Nil, by its address.
+type Ref struct {
+	ID      uuid.UUID
+	Address club.Address
+}
+
+type ClubService struct {
+	clubs   ClubRepository
+	members MemberRepository
+	now     func() time.Time
+}
+
+func NewClubService(clubs ClubRepository, members MemberRepository) *ClubService {
+	return &ClubService{
+		clubs:   clubs,
+		members: members,
+		now:     time.Now,
+	}
+}
+
+// Create makes a club with ownerID as its owner, as "Создать группу" in
+// openvk.
+func (s *ClubService) Create(ctx context.Context, ownerID uuid.UUID, name club.Name, description club.Description) (View, error) {
+	c, err := club.New(name, description, s.now())
+	if err != nil {
+		return View{}, errs.Wrap("club.New", err)
+	}
+
+	if err = s.clubs.Create(ctx, c, ownerID); err != nil {
+		return View{}, errs.Wrap("s.clubs.Create", err)
+	}
+
+	return s.view(ctx, ownerID, c.ID())
+}
+
+// Find is the club ref names as viewerID sees it; uuid.Nil is an
+// anonymous viewer.
+func (s *ClubService) Find(ctx context.Context, viewerID uuid.UUID, ref Ref) (View, error) {
+	id := ref.ID
+	if id == uuid.Nil {
+		c, err := s.clubs.GetByAddress(ctx, ref.Address)
+		if err != nil {
+			return View{}, errs.Wrap("s.clubs.GetByAddress", err)
+		}
+		id = c.ID()
+	}
+
+	return s.view(ctx, viewerID, id)
+}
+
+func (s *ClubService) view(ctx context.Context, viewerID, clubID uuid.UUID) (View, error) {
+	c, err := s.clubs.Get(ctx, clubID)
+	if err != nil {
+		return View{}, errs.Wrap("s.clubs.Get", err)
+	}
+
+	v := View{Club: c}
+
+	if v.OwnerID, err = s.members.Owner(ctx, clubID); err != nil {
+		return View{}, errs.Wrap("s.members.Owner", err)
+	}
+
+	if viewerID != uuid.Nil {
+		if v.Role, err = s.members.Role(ctx, clubID, viewerID); err != nil {
+			return View{}, errs.Wrap("s.members.Role", err)
+		}
+	}
+
+	return v, nil
+}
+
+// GetMany returns the clubs found among ids, for a page that names them.
+func (s *ClubService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*club.Club, error) {
+	if len(ids) > MaxClubs {
+		return nil, ErrTooManyIDs
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	clubs, err := s.clubs.GetMany(ctx, ids)
+	if err != nil {
+		return nil, errs.Wrap("s.clubs.GetMany", err)
+	}
+
+	return clubs, nil
+}
+
+// Update changes a club with its admins' settings form.
+func (s *ClubService) Update(ctx context.Context, userID, clubID uuid.UUID, changes club.Changes) (View, error) {
+	c, err := s.clubs.Get(ctx, clubID)
+	if err != nil {
+		return View{}, errs.Wrap("s.clubs.Get", err)
+	}
+
+	role, err := s.members.Role(ctx, clubID, userID)
+	if err != nil {
+		return View{}, errs.Wrap("s.members.Role", err)
+	}
+
+	edited, err := c.Edited(role, changes)
+	if err != nil {
+		return View{}, errs.Wrap("c.Edited", err)
+	}
+
+	if err = s.clubs.Update(ctx, edited); err != nil {
+		return View{}, errs.Wrap("s.clubs.Update", err)
+	}
+
+	return s.view(ctx, userID, clubID)
+}
+
+// Join makes userID a member ("Вступить в группу"); joining twice is
+// fine.
+func (s *ClubService) Join(ctx context.Context, userID, clubID uuid.UUID) (View, error) {
+	if err := s.members.Join(ctx, clubID, userID); err != nil {
+		return View{}, errs.Wrap("s.members.Join", err)
+	}
+
+	return s.view(ctx, userID, clubID)
+}
+
+// Leave takes userID out of the club ("Выйти из группы"), unless they own
+// it; leaving a club one is not in is fine.
+func (s *ClubService) Leave(ctx context.Context, userID, clubID uuid.UUID) (View, error) {
+	role, err := s.members.Role(ctx, clubID, userID)
+	if err != nil {
+		return View{}, errs.Wrap("s.members.Role", err)
+	}
+
+	if err = club.CheckLeave(role); err != nil {
+		return View{}, errs.Wrap("club.CheckLeave", err)
+	}
+
+	if err = s.members.Leave(ctx, clubID, userID); err != nil {
+		return View{}, errs.Wrap("s.members.Leave", err)
+	}
+
+	return s.view(ctx, userID, clubID)
+}
+
+// Appoint makes a member of the club an admin, or an admin a member
+// again: the owner's call.
+func (s *ClubService) Appoint(ctx context.Context, requesterID, clubID, userID uuid.UUID, role club.Role) error {
+	if _, err := s.clubs.Get(ctx, clubID); err != nil {
+		return errs.Wrap("s.clubs.Get", err)
+	}
+
+	requester, err := s.members.Role(ctx, clubID, requesterID)
+	if err != nil {
+		return errs.Wrap("s.members.Role", err)
+	}
+
+	target, err := s.members.Role(ctx, clubID, userID)
+	if err != nil {
+		return errs.Wrap("s.members.Role", err)
+	}
+
+	if err = club.CheckAppoint(requester, target); err != nil {
+		return errs.Wrap("club.CheckAppoint", err)
+	}
+
+	return errs.Wrap("s.members.SetRole", s.members.SetRole(ctx, clubID, userID, role))
+}
+
+// Members pages the members of a club, the newest first; cursor is the
+// last membership of the previous page.
+func (s *ClubService) Members(ctx context.Context, clubID, cursor uuid.UUID, size int, adminsOnly bool) (MemberPage, error) {
+	if _, err := s.clubs.Get(ctx, clubID); err != nil {
+		return MemberPage{}, errs.Wrap("s.clubs.Get", err)
+	}
+
+	size = pageSize(size)
+
+	// One extra tells whether there is a next page.
+	members, err := s.members.List(ctx, clubID, cursor, size+1, adminsOnly)
+	if err != nil {
+		return MemberPage{}, errs.Wrap("s.members.List", err)
+	}
+
+	page := MemberPage{Members: members}
+	if len(members) > size {
+		page.Members = members[:size]
+		page.NextCursor = members[size-1].ID
+	}
+
+	return page, nil
+}
+
+// Clubs pages the clubs of a user ("Мои Группы"), the newest joined first.
+func (s *ClubService) Clubs(ctx context.Context, userID, cursor uuid.UUID, size int) (ClubPage, error) {
+	size = pageSize(size)
+
+	clubs, err := s.members.ListClubs(ctx, userID, cursor, size+1)
+	if err != nil {
+		return ClubPage{}, errs.Wrap("s.members.ListClubs", err)
+	}
+
+	page := ClubPage{Clubs: clubs}
+	if len(clubs) > size {
+		page.Clubs = clubs[:size]
+		page.NextCursor = clubs[size-1].ID
+	}
+
+	return page, nil
+}
+
+// ClubIDs are the clubs whose walls the feed of userID shows.
+func (s *ClubService) ClubIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
+	ids, err := s.members.ClubIDs(ctx, userID, MaxClubIDs)
+	if err != nil {
+		return nil, errs.Wrap("s.members.ClubIDs", err)
+	}
+
+	return ids, nil
+}
+
+// CanPostOnWall tells whether userID may write on the club's wall, on
+// their own behalf or, fromClub, on the club's.
+func (s *ClubService) CanPostOnWall(ctx context.Context, userID, clubID uuid.UUID, fromClub bool) (bool, error) {
+	c, err := s.clubs.Get(ctx, clubID)
+	if err != nil {
+		return false, errs.Wrap("s.clubs.Get", err)
+	}
+
+	role, err := s.members.Role(ctx, clubID, userID)
+	if err != nil {
+		return false, errs.Wrap("s.members.Role", err)
+	}
+
+	return c.CanPostOnWall(role, fromClub), nil
+}
+
+// CanModerateWall tells whether userID keeps the wall of wallID clean:
+// deletes and pins others' posts and comments there. Only a club's admins
+// do; for any other wall, a user's, the answer is no.
+func (s *ClubService) CanModerateWall(ctx context.Context, wallID, userID uuid.UUID) (bool, error) {
+	role, err := s.members.Role(ctx, wallID, userID)
+	if err != nil {
+		return false, errs.Wrap("s.members.Role", err)
+	}
+
+	return role.Manages(), nil
+}
+
+// PurgeUser takes a user whose page was erased out of every club. A club
+// they owned stays, with its admins but no owner.
+func (s *ClubService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
+	return errs.Wrap("s.members.DeleteByUser", s.members.DeleteByUser(ctx, userID))
+}
+
+func pageSize(size int) int {
+	if size <= 0 || size > MaxPageSize {
+		return DefaultPageSize
+	}
+
+	return size
+}

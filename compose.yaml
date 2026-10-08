@@ -104,6 +104,22 @@ services:
       timeout: 5s
       retries: 5
 
+  club-postgres:
+    image: postgres:18
+    environment:
+      POSTGRES_USER: ${CLUB_POSTGRES_USER}
+      POSTGRES_PASSWORD: ${CLUB_POSTGRES_PASSWORD}
+      POSTGRES_DB: ${CLUB_POSTGRES_DB}
+    ports:
+      - "${CLUB_POSTGRES_PORT}:5432"
+    volumes:
+      - club_postgres_data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${CLUB_POSTGRES_USER} -d $${CLUB_POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   redis:
     image: redis:7-alpine
     ports:
@@ -152,6 +168,23 @@ services:
       redis: { condition: service_healthy }
       media: { condition: service_healthy }
 
+  club:
+    <<: *service
+    image: freenet-club
+    build: { context: ., args: { SERVICE: club } }
+    environment:
+      <<: *env
+      GRPC_PORT: 7057
+      METRICS_PORT: 9057
+      TLS_CERT_PATH: /certs/club.pem
+      TLS_KEY_PATH: /certs/club-key.pem
+      STORAGE: persistent
+      DATABASE_URL: postgres://${CLUB_POSTGRES_USER}:${CLUB_POSTGRES_PASSWORD}@club-postgres:5432/${CLUB_POSTGRES_DB}?sslmode=disable
+      REDIS_ADDR: redis:6379
+    depends_on:
+      club-postgres: { condition: service_healthy }
+      redis: { condition: service_healthy }
+
   user:
     <<: *service
     image: freenet-user
@@ -169,6 +202,7 @@ services:
       POST_SERVICE_ADDR: post:7053
       MEDIA_SERVICE_ADDR: media:7054
       MESSAGE_SERVICE_ADDR: message:7056
+      CLUB_SERVICE_ADDR: club:7057
       # Shorter in tests: how long a deleted page can be restored.
       ACCOUNT_RETENTION: ${ACCOUNT_RETENTION:-5040h}
     depends_on:
@@ -191,11 +225,13 @@ services:
       REDIS_ADDR: redis:6379
       NOTIFICATION_SERVICE_ADDR: notification:7055
       MEDIA_SERVICE_ADDR: media:7054
+      CLUB_SERVICE_ADDR: club:7057
     depends_on:
       post-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       notification: { condition: service_healthy }
       media: { condition: service_healthy }
+      club: { condition: service_healthy }
 
   media:
     <<: *service
@@ -259,6 +295,7 @@ services:
       MEDIA_SERVICE_ADDR: media:7054
       NOTIFICATION_SERVICE_ADDR: notification:7055
       MESSAGE_SERVICE_ADDR: message:7056
+      CLUB_SERVICE_ADDR: club:7057
     ports:
       - "${GATEWAY_PORT:-8080}:8080"
     depends_on:
@@ -268,6 +305,7 @@ services:
       media: { condition: service_healthy }
       notification: { condition: service_healthy }
       message: { condition: service_healthy }
+      club: { condition: service_healthy }
 
   # Metrics of every service and the alerts on them (monitoring/alerts.yml):
   # http://localhost:9090 (PROMETHEUS_PORT). The services' metrics ports
@@ -341,6 +379,7 @@ volumes:
   post_postgres_data:
   notification_postgres_data:
   message_postgres_data:
+  club_postgres_data:
   redis_data:
   alertmanager_data:
   grafana_data:

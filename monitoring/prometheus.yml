@@ -30,3 +30,5 @@ scrape_configs:
         labels: { service: notification }
       - targets: ["message:9056"]
         labels: { service: message }
+      - targets: ["club:9057"]
+        labels: { service: club }
