@@ -205,4 +205,19 @@ func TestPostRepository_ClubWalls(t *testing.T) {
 	if older, err := repo.ListFeed(ctx, service.FeedSources{Walls: []uuid.UUID{club}}, byMember.ID(), 10); err != nil || len(older) != 1 || older[0].ID() != news.ID() {
 		t.Fatalf("feed after a cursor = %v, %v", older, err)
 	}
+
+	photo, err := post.NewContent("", post.Photos{uuid.New()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	newPhoto, err := post.NewAvatarUpdate(club, admin, photo, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = repo.Save(ctx, newPhoto); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	if got, err := repo.Get(ctx, newPhoto.ID()); err != nil || !got.AvatarUpdate() || !got.FromWall() {
+		t.Fatalf("the club's new photo = %+v, %v", got, err)
+	}
 }

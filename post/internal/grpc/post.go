@@ -116,6 +116,8 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		ClubWall: req.GetClubWall(),
 		FromWall: req.GetFromWall(),
 		Signed:   req.GetSigned(),
+
+		AvatarUpdate: req.GetAvatarUpdate(),
 	})
 	if err != nil {
 		return nil, err
