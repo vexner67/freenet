@@ -594,3 +594,47 @@ func TestCreateClubPost_SuggestWall(t *testing.T) {
 		t.Fatalf("an admin on a suggest wall: %d %+v", w.Code, h.posts.newPost)
 	}
 }
+
+func TestComment_ForClub(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = ann
+
+	// Only the club's admins speak for it, and only on its wall.
+	h.clubs.role = "member"
+	if w := h.do("POST", "/api/v1/posts/p5/comments", `{"text":"от группы","fromClub":true}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("a member for the club: %d", w.Code)
+	}
+	h.clubs.role = "admin"
+	if w := h.do("POST", "/api/v1/posts/p4/comments", `{"text":"от группы","fromClub":true}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("for a user's wall: %d", w.Code)
+	}
+
+	w := h.do("POST", "/api/v1/posts/p5/comments", `{"text":"от группы","photos":["ph1"],"fromClub":true}`, "Authorization", "Bearer tok")
+	got := decode[struct {
+		Author   map[string]any      `json:"author"`
+		Photos   []map[string]string `json:"photos"`
+		FromWall bool                `json:"fromWall"`
+		Mine     bool                `json:"mine"`
+	}](t, w)
+	if w.Code != http.StatusCreated || got.Author["club"] != true || got.Author["name"] != "Кошки" || !got.FromWall || !got.Mine ||
+		got.Photos[0]["large"] != "/media/photos/u1/ph1/large.jpg" || !h.posts.newComment.FromWall {
+		t.Fatalf("for the club: %d %+v", w.Code, got)
+	}
+
+	// Readers see the club, not who wrote it; photos stay under the writer.
+	w = h.do("GET", "/api/v1/posts/p5/comments", "")
+	page := decode[struct {
+		Comments []struct {
+			Author   map[string]any      `json:"author"`
+			Photos   []map[string]string `json:"photos"`
+			FromWall bool                `json:"fromWall"`
+			Mine     bool                `json:"mine"`
+		} `json:"comments"`
+	}](t, w)
+	if w.Code != http.StatusOK || len(page.Comments) != 1 || page.Comments[0].Author["club"] != true || page.Comments[0].Author["id"] != "k1" ||
+		page.Comments[0].Mine || page.Comments[0].Photos[0]["large"] != "/media/photos/u1/ph1/large.jpg" {
+		t.Fatalf("list: %d %+v", w.Code, page)
+	}
+}

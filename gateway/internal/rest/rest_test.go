@@ -237,6 +237,7 @@ type fakePosts struct {
 	replyTo, likedComment  string
 	photos                 []string
 	liked                  map[string]bool
+	newComment             model.NewComment
 	// Suggestions: suggested is the last one, mine whether only the
 	// caller's were asked for; published and withdrawn are IDs.
 	suggested            model.Suggestion
@@ -347,6 +348,8 @@ func (f *fakePosts) Get(_ context.Context, token, id string) (model.Post, error)
 		return model.Post{ID: "p4", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u1"}, Text: "в гостях"}, nil
 	case "p8":
 		return model.Post{ID: "p8", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, RepostOf: "p-deleted"}, nil
+	case "p5":
+		return model.Post{ID: "p5", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "k1"}, Text: "в группе"}, nil
 	default:
 		return model.Post{}, failure.New(failure.NotFound, "post not found")
 	}
@@ -442,8 +445,11 @@ func (f *fakePosts) setLike(token, postID string, liked bool) (int, error) {
 }
 
 func (f *fakePosts) CreateComment(_ context.Context, token, postID string, c model.NewComment) (model.Comment, error) {
-	f.token, f.created, f.photos, f.replyTo = token, c.Text, c.PhotoIDs, c.ReplyTo
-	return model.Comment{ID: "c9", PostID: postID, Text: c.Text, PhotoIDs: c.PhotoIDs, ReplyTo: c.ReplyTo, CreatedAt: time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC)}, f.err
+	f.token, f.created, f.photos, f.replyTo, f.newComment = token, c.Text, c.PhotoIDs, c.ReplyTo, c
+	return model.Comment{
+		ID: "c9", PostID: postID, Text: c.Text, PhotoIDs: c.PhotoIDs, ReplyTo: c.ReplyTo, CreatedAt: time.Date(2026, 10, 5, 12, 0, 0, 0, time.UTC),
+		FromWall: c.FromWall, Mine: true,
+	}, f.err
 }
 
 // LikeComment knows c1, liked once before; Unlike takes the like back.
@@ -470,6 +476,12 @@ func (f *fakePosts) DeleteComment(_ context.Context, token, id string) error {
 
 func (f *fakePosts) Comments(_ context.Context, token, postID, cursor string, limit int) (model.CommentPage, error) {
 	f.token, f.cursor, f.limit = token, cursor, limit
+	if postID == "p5" {
+		// u1 answers for the club k1, with a photo of theirs.
+		return model.CommentPage{Comments: []model.Comment{
+			{ID: "c5", PostID: "p5", Author: model.Author{ID: "u1"}, Text: "от группы", PhotoIDs: []string{"ph1"}, FromWall: true, Mine: token != ""},
+		}, Total: 1}, nil
+	}
 	if postID != "p1" {
 		return model.CommentPage{}, failure.New(failure.NotFound, "post not found")
 	}

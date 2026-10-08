@@ -187,14 +187,21 @@ type Comment struct {
 	Likes   int
 	// Liked: the viewer likes the comment; false for anonymous viewers.
 	Liked bool
+	// FromWall: the comment speaks for the community whose wall its post
+	// is on, shown instead of the author; Mine tells the author it is
+	// theirs.
+	FromWall bool
+	Mine     bool
 }
 
 // NewComment is what a comment to write says: text, photos or both, and
-// the comment it answers, "" for none.
+// the comment it answers, "" for none; FromWall: for the community whose
+// wall the post is on.
 type NewComment struct {
 	Text     string
 	PhotoIDs []string
 	ReplyTo  string
+	FromWall bool
 }
 
 // CommentPage is one screen of the comments of a post, oldest first;

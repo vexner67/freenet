@@ -669,6 +669,9 @@ paths:
         deleted with the comment and with its post. `replyTo` answers a
         comment of the same post, as "Ответить": its author is notified
         (comment_reply); the text is yours to start with their name.
+        `fromClub` speaks for the community whose wall the post is on
+        ("От имени сообщества"), its admins only: readers see the
+        community, and those it notifies hear from it.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -681,6 +684,7 @@ paths:
                 text: { type: string, maxLength: 1000 }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 replyTo: { type: string, format: uuid, description: "The comment of this post to answer" }
+                fromClub: { type: boolean, description: "For the community of the post's wall, its admins only" }
       responses:
         "201":
           description: The new comment
@@ -690,7 +694,7 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
-          description: You and the author of the post or the owner of its wall blacklisted one another
+          description: You and the author of the post or the owner of its wall blacklisted one another, or `fromClub` and you do not run the community of its wall
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1947,7 +1951,7 @@ components:
 
     Comment:
       type: object
-      required: [id, postId, author, text, photos, createdAt, replyTo, likes, liked]
+      required: [id, postId, author, text, photos, createdAt, replyTo, likes, liked, fromWall, mine]
       properties:
         id: { type: string, format: uuid }
         postId: { type: string, format: uuid }
@@ -1964,6 +1968,8 @@ components:
             - type: "null"
         likes: { type: integer }
         liked: { type: boolean, description: "You like the comment; false without a token" }
+        fromWall: { type: boolean, description: "It speaks for the community, which is its author; who wrote it is not told" }
+        mine: { type: boolean, description: "You wrote it; false without a token" }
 
     CommentPage:
       type: object
