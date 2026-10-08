@@ -263,3 +263,47 @@ func TestPurgeUser(t *testing.T) {
 		t.Fatalf("bob's photo after ann's purge: %v", err)
 	}
 }
+
+func TestClubAvatars(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	club, admin := uuid.New(), uuid.New()
+
+	var picture bytes.Buffer
+	if err := png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 120, 80))); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := s.client.UploadClubAvatar(s.as(t, admin), &mediav1.UploadClubAvatarRequest{ClubId: club.String(), Image: picture.Bytes()})
+	if err != nil {
+		t.Fatalf("UploadClubAvatar: %v", err)
+	}
+	second, err := s.client.UploadClubAvatar(s.as(t, admin), &mediav1.UploadClubAvatarRequest{ClubId: club.String(), Image: picture.Bytes()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Served under the club's ID, as a user's avatar.
+	get := func(id string) error {
+		_, err := s.client.GetAvatar(context.Background(), &mediav1.GetAvatarRequest{UserId: club.String(), AvatarId: id, Size: mediav1.AvatarSize_AVATAR_SIZE_LARGE})
+		return err
+	}
+	if err = get(first.GetAvatarId()); err != nil {
+		t.Fatalf("GetAvatar: %v", err)
+	}
+
+	if _, err = s.client.DeleteClubAvatars(s.as(t, admin), &mediav1.DeleteClubAvatarsRequest{ClubId: club.String(), KeepAvatarId: second.GetAvatarId()}); err != nil {
+		t.Fatalf("DeleteClubAvatars: %v", err)
+	}
+	if err = get(first.GetAvatarId()); status.Code(err) != codes.NotFound {
+		t.Fatalf("the old avatar: %v", err)
+	}
+	if err = get(second.GetAvatarId()); err != nil {
+		t.Fatalf("the kept avatar: %v", err)
+	}
+
+	if _, err = s.client.UploadClubAvatar(s.as(t, admin), &mediav1.UploadClubAvatarRequest{ClubId: "x", Image: picture.Bytes()}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bad club id: %v", err)
+	}
+}

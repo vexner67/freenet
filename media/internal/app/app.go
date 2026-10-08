@@ -152,6 +152,8 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		mediav1.MediaService_UploadPhoto_FullMethodName:  cfg.PhotoLimits,
 		mediav1.MediaService_UploadAvatar_FullMethodName: cfg.AvatarLimits,
+		// Counted by the caller, the admin who uploads.
+		mediav1.MediaService_UploadClubAvatar_FullMethodName: cfg.AvatarLimits,
 	}
 }
 

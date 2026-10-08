@@ -98,6 +98,40 @@ func (h *MediaHandler) DeleteAvatars(ctx context.Context, req *mediav1.DeleteAva
 	return &emptypb.Empty{}, nil
 }
 
+func (h *MediaHandler) UploadClubAvatar(ctx context.Context, req *mediav1.UploadClubAvatarRequest) (*mediav1.UploadAvatarResponse, error) {
+	clubID, err := parseID(req.GetClubId(), "club id")
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := h.avatars.Upload(ctx, clubID, req.GetImage())
+	if err != nil {
+		return nil, err
+	}
+
+	return &mediav1.UploadAvatarResponse{AvatarId: id.String()}, nil
+}
+
+func (h *MediaHandler) DeleteClubAvatars(ctx context.Context, req *mediav1.DeleteClubAvatarsRequest) (*emptypb.Empty, error) {
+	clubID, err := parseID(req.GetClubId(), "club id")
+	if err != nil {
+		return nil, err
+	}
+
+	var keep uuid.UUID
+	if req.GetKeepAvatarId() != "" {
+		if keep, err = parseID(req.GetKeepAvatarId(), "avatar id"); err != nil {
+			return nil, err
+		}
+	}
+
+	if err = h.avatars.DeleteExcept(ctx, clubID, keep); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (h *MediaHandler) GetAvatar(ctx context.Context, req *mediav1.GetAvatarRequest) (*mediav1.GetAvatarResponse, error) {
 	userID, err := parseID(req.GetUserId(), "user id")
 	if err != nil {
