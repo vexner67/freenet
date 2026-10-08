@@ -19,11 +19,15 @@ const (
 	EventCommentReply
 	// EventCommentLike: a like of the recipient's comment CommentID.
 	EventCommentLike
+	// EventPostAccepted: the actor, a community, published the post the
+	// recipient suggested; PostID is the published post.
+	EventPostAccepted
 )
 
-// Event: RecipientID is the author of the post for likes, comments and
-// reposts, the owner of the wall for wall posts and the author of the
-// comment for replies and comment likes; ActorID who did it. PostID is the
+// Event: RecipientID is the author of the post for likes, comments,
+// reposts and accepted posts, the owner of the wall for wall posts and the
+// author of the comment for replies and comment likes; ActorID who did it,
+// the community for accepted posts. PostID is the
 // post, but for reposts the repost, which shows the shared post.
 // CommentID is uuid.Nil but for comments, replies and comment likes.
 type Event struct {

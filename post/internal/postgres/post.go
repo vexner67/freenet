@@ -43,9 +43,10 @@ const savePostQuery = `
 		photo_ids,
 		created_at,
 		from_wall,
-		signed
+		signed,
+		suggested
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -54,7 +55,7 @@ const saveRepostQuery = `
 	WITH shared AS (
 		UPDATE posts
 		SET repost_count = repost_count + 1
-		WHERE id = $9
+		WHERE id = $10
 		RETURNING id
 	)
 	INSERT INTO posts (
@@ -66,16 +67,17 @@ const saveRepostQuery = `
 		created_at,
 		from_wall,
 		signed,
+		suggested,
 		repost_of
 	)
-	SELECT $1, $2, $3, $4, $5, $6, $7, $8, shared.id
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, shared.id
 	FROM shared
 `
 
 func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	content := p.Content()
 
-	args := []any{p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photoIDs(content.Photos()), p.CreatedAt(), p.FromWall(), p.Signed()}
+	args := []any{p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photoIDs(content.Photos()), p.CreatedAt(), p.FromWall(), p.Signed(), p.Suggested()}
 
 	if content.RepostOf() == uuid.Nil {
 		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, args...); err != nil {
@@ -112,6 +114,7 @@ const getPostQuery = `
 		edited_at,
 		from_wall,
 		signed,
+		suggested,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = $1
@@ -144,6 +147,7 @@ const getPostsQuery = `
 		edited_at,
 		from_wall,
 		signed,
+		suggested,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = ANY($1)
@@ -268,6 +272,7 @@ const getPinnedPostQuery = `
 		edited_at,
 		from_wall,
 		signed,
+		suggested,
 		true AS pinned
 	FROM posts
 	WHERE id = (SELECT post_id FROM pinned_posts WHERE wall_id = $1)
@@ -300,6 +305,7 @@ const listPostsByWallQuery = `
 		edited_at,
 		from_wall,
 		signed,
+		suggested,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE wall_id = $1
@@ -345,6 +351,7 @@ const listFeedQuery = `
 		edited_at,
 		from_wall,
 		signed,
+		suggested,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE ((author_id = ANY($1) AND NOT from_wall) OR wall_id = ANY($2))
@@ -432,7 +439,7 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	)
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
-		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Pinned)
+		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -479,6 +486,7 @@ const deletePostsByUserQuery = `
 			edited_at,
 			from_wall,
 			signed,
+			suggested,
 			EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	), uncounted AS (
 		UPDATE posts p
@@ -507,6 +515,7 @@ const deletePostsByUserQuery = `
 		edited_at,
 		from_wall,
 		signed,
+		suggested,
 		pinned
 	FROM deleted
 `

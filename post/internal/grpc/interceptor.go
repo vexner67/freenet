@@ -43,6 +43,14 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "the comment to reply to is under another post"), true
 	case errors.Is(err, post.ErrCommentNotFound):
 		return status.New(codes.NotFound, "comment not found"), true
+	case errors.Is(err, post.ErrSuggestionNotFound):
+		return status.New(codes.NotFound, "suggestion not found"), true
+	case errors.Is(err, post.ErrCannotWithdraw):
+		return status.New(codes.PermissionDenied, "only the author or the admins can delete the suggestion"), true
+	case errors.Is(err, post.ErrCannotPublish):
+		return status.New(codes.PermissionDenied, "only the admins can publish the suggestion"), true
+	case errors.Is(err, post.ErrCannotSeeAll):
+		return status.New(codes.PermissionDenied, "only the admins see all the suggestions"), true
 	case errors.Is(err, post.ErrCannotDeleteComment):
 		return status.New(codes.PermissionDenied, "only the author of the comment or of the post or the owner of the wall can delete it"), true
 	default:
