@@ -99,6 +99,7 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		Content:  content,
 		ClubWall: req.GetClubWall(),
 		FromWall: req.GetFromWall(),
+		Signed:   req.GetSigned(),
 	})
 	if err != nil {
 		return nil, err

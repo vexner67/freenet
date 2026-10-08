@@ -96,6 +96,9 @@ message Post {
   // author a post that speaks for a community, whose author_id the
   // gateway does not show.
   bool mine = 16;
+  // A post that speaks for a community names its author, author_id, as
+  // "Автор: ..." under it.
+  bool signed = 17;
 }
 
 message Comment {
@@ -130,6 +133,8 @@ message CreatePostRequest {
   // The post speaks for the community: the caller has checked with the
   // club service that the author may.
   bool from_wall = 5;
+  // With from_wall: the post names its author ("Подпись автора").
+  bool signed = 6;
 }
 
 message CreatePostResponse {

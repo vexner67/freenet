@@ -109,6 +109,7 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 		Pinned:        p.Pinned(),
 		EditableUntil: timestamppb.New(p.EditableUntil()),
 		FromWall:      p.FromWall(),
+		Signed:        p.Signed(),
 		Mine:          viewerID != uuid.Nil && viewerID == p.AuthorID(),
 	}
 

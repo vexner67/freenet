@@ -166,7 +166,7 @@ func TestPostRepository_ClubWalls(t *testing.T) {
 	club, admin, member := uuid.New(), uuid.New(), uuid.New()
 	content := post.RestoreContent("x", nil, uuid.Nil)
 
-	news, err := post.NewFromWall(club, admin, content, time.Now())
+	news, err := post.NewFromWall(club, admin, content, true, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -185,7 +185,7 @@ func TestPostRepository_ClubWalls(t *testing.T) {
 	}
 
 	got, err := repo.Get(ctx, news.ID())
-	if err != nil || !got.FromWall() || got.AuthorID() != admin {
+	if err != nil || !got.FromWall() || !got.Signed() || got.AuthorID() != admin {
 		t.Fatalf("Get = %+v, %v; it speaks for the club", got, err)
 	}
 	if got, _ = repo.Get(ctx, byMember.ID()); got.FromWall() {

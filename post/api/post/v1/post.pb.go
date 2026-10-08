@@ -56,7 +56,10 @@ type Post struct {
 	// The caller wrote the post; false without an access token. Tells the
 	// author a post that speaks for a community, whose author_id the
 	// gateway does not show.
-	Mine          bool `protobuf:"varint,16,opt,name=mine,proto3" json:"mine,omitempty"`
+	Mine bool `protobuf:"varint,16,opt,name=mine,proto3" json:"mine,omitempty"`
+	// A post that speaks for a community names its author, author_id, as
+	// "Автор: ..." under it.
+	Signed        bool `protobuf:"varint,17,opt,name=signed,proto3" json:"signed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -203,6 +206,13 @@ func (x *Post) GetMine() bool {
 	return false
 }
 
+func (x *Post) GetSigned() bool {
+	if x != nil {
+		return x.Signed
+	}
+	return false
+}
+
 type Comment struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -331,7 +341,9 @@ type CreatePostRequest struct {
 	ClubWall bool `protobuf:"varint,4,opt,name=club_wall,json=clubWall,proto3" json:"club_wall,omitempty"`
 	// The post speaks for the community: the caller has checked with the
 	// club service that the author may.
-	FromWall      bool `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	FromWall bool `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	// With from_wall: the post names its author ("Подпись автора").
+	Signed        bool `protobuf:"varint,6,opt,name=signed,proto3" json:"signed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -397,6 +409,13 @@ func (x *CreatePostRequest) GetClubWall() bool {
 func (x *CreatePostRequest) GetFromWall() bool {
 	if x != nil {
 		return x.FromWall
+	}
+	return false
+}
+
+func (x *CreatePostRequest) GetSigned() bool {
+	if x != nil {
+		return x.Signed
 	}
 	return false
 }
@@ -1978,7 +1997,7 @@ var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x97\x04\n" +
+	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xaf\x04\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x12\n" +
@@ -1998,7 +2017,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x06pinned\x18\r \x01(\bR\x06pinned\x12A\n" +
 	"\x0eeditable_until\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\reditableUntil\x12\x1b\n" +
 	"\tfrom_wall\x18\x0f \x01(\bR\bfromWall\x12\x12\n" +
-	"\x04mine\x18\x10 \x01(\bR\x04mine\"\x90\x02\n" +
+	"\x04mine\x18\x10 \x01(\bR\x04mine\x12\x16\n" +
+	"\x06signed\x18\x11 \x01(\bR\x06signed\"\x90\x02\n" +
 	"\aComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
@@ -2010,13 +2030,14 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\vreply_to_id\x18\a \x01(\tR\treplyToId\x12\x1d\n" +
 	"\n" +
 	"like_count\x18\b \x01(\x05R\tlikeCount\x12\x14\n" +
-	"\x05liked\x18\t \x01(\bR\x05liked\"\x97\x01\n" +
+	"\x05liked\x18\t \x01(\bR\x05liked\"\xaf\x01\n" +
 	"\x11CreatePostRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\x12\x17\n" +
 	"\awall_id\x18\x03 \x01(\tR\x06wallId\x12\x1b\n" +
 	"\tclub_wall\x18\x04 \x01(\bR\bclubWall\x12\x1b\n" +
-	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\"7\n" +
+	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\x12\x16\n" +
+	"\x06signed\x18\x06 \x01(\bR\x06signed\"7\n" +
 	"\x12CreatePostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"@\n" +
 	"\x11RepostPostRequest\x12\x17\n" +

@@ -139,13 +139,14 @@ func NewPostService(d PostDeps) *PostService {
 // CreateInput is a post to write: by AuthorID on the wall of WallID, the
 // author's or someone else's. ClubWall tells that the wall is a
 // community's, whose owner is nobody to notify; FromWall that the post
-// speaks for that community.
+// speaks for that community, Signed that it names its author too.
 type CreateInput struct {
 	WallID   uuid.UUID
 	AuthorID uuid.UUID
 	Content  post.Content
 	ClubWall bool
 	FromWall bool
+	Signed   bool
 }
 
 // Create writes a post; the owner of a user's wall hears about posts by
@@ -153,16 +154,19 @@ type CreateInput struct {
 // author may write there, on their own behalf or the community's, and
 // that the photos are the author's: post knows neither users nor clubs.
 func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, error) {
-	newPost := post.New
-	if in.FromWall {
-		newPost = post.NewFromWall
-	}
-
 	wallID, authorID, content := in.WallID, in.AuthorID, in.Content
 
-	p, err := newPost(wallID, authorID, content, s.now())
+	var (
+		p   *post.Post
+		err error
+	)
+	if in.FromWall {
+		p, err = post.NewFromWall(wallID, authorID, content, in.Signed, s.now())
+	} else {
+		p, err = post.New(wallID, authorID, content, s.now())
+	}
 	if err != nil {
-		return nil, errs.Wrap("newPost", err)
+		return nil, errs.Wrap("post.New", err)
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
