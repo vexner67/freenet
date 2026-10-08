@@ -44,6 +44,9 @@ const (
 	// The actor, a community, published the post the recipient suggested
 	// for its wall; post_id is the published post.
 	Kind_KIND_POST_ACCEPTED Kind = 8
+	// Someone suggested a post for the wall of the actor, a community the
+	// recipient runs; post_id is the suggestion, not a post.
+	Kind_KIND_SUGGESTED_POST Kind = 9
 )
 
 // Enum value maps for Kind.
@@ -58,17 +61,19 @@ var (
 		6: "KIND_COMMENT_REPLY",
 		7: "KIND_COMMENT_LIKE",
 		8: "KIND_POST_ACCEPTED",
+		9: "KIND_SUGGESTED_POST",
 	}
 	Kind_value = map[string]int32{
-		"KIND_UNSPECIFIED":   0,
-		"KIND_LIKE":          1,
-		"KIND_COMMENT":       2,
-		"KIND_FOLLOW":        3,
-		"KIND_WALL_POST":     4,
-		"KIND_REPOST":        5,
-		"KIND_COMMENT_REPLY": 6,
-		"KIND_COMMENT_LIKE":  7,
-		"KIND_POST_ACCEPTED": 8,
+		"KIND_UNSPECIFIED":    0,
+		"KIND_LIKE":           1,
+		"KIND_COMMENT":        2,
+		"KIND_FOLLOW":         3,
+		"KIND_WALL_POST":      4,
+		"KIND_REPOST":         5,
+		"KIND_COMMENT_REPLY":  6,
+		"KIND_COMMENT_LIKE":   7,
+		"KIND_POST_ACCEPTED":  8,
+		"KIND_SUGGESTED_POST": 9,
 	}
 )
 
@@ -956,7 +961,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId\"\x12\n" +
 	"\x10SubscribeRequest\"D\n" +
 	"\x11SubscribeResponse\x12/\n" +
-	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xba\x01\n" +
+	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xd3\x01\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -966,7 +971,8 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\vKIND_REPOST\x10\x05\x12\x16\n" +
 	"\x12KIND_COMMENT_REPLY\x10\x06\x12\x15\n" +
 	"\x11KIND_COMMENT_LIKE\x10\a\x12\x16\n" +
-	"\x12KIND_POST_ACCEPTED\x10\b*;\n" +
+	"\x12KIND_POST_ACCEPTED\x10\b\x12\x17\n" +
+	"\x13KIND_SUGGESTED_POST\x10\t*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

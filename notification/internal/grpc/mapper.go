@@ -20,6 +20,8 @@ var (
 		notification.KindCommentReply: notificationv1.Kind_KIND_COMMENT_REPLY,
 		notification.KindCommentLike:  notificationv1.Kind_KIND_COMMENT_LIKE,
 		notification.KindPostAccepted: notificationv1.Kind_KIND_POST_ACCEPTED,
+
+		notification.KindSuggestedPost: notificationv1.Kind_KIND_SUGGESTED_POST,
 	}
 	kindFromProto = map[notificationv1.Kind]notification.Kind{
 		notificationv1.Kind_KIND_LIKE:      notification.KindLike,
@@ -31,6 +33,8 @@ var (
 		notificationv1.Kind_KIND_COMMENT_REPLY: notification.KindCommentReply,
 		notificationv1.Kind_KIND_COMMENT_LIKE:  notification.KindCommentLike,
 		notificationv1.Kind_KIND_POST_ACCEPTED: notification.KindPostAccepted,
+
+		notificationv1.Kind_KIND_SUGGESTED_POST: notification.KindSuggestedPost,
 	}
 )
 

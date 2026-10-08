@@ -33,6 +33,10 @@ const (
 	// KindPostAccepted: the actor, a community, published the post the
 	// recipient suggested for its wall; PostID is the published post.
 	KindPostAccepted Kind = "post_accepted"
+	// KindSuggestedPost: someone suggested a post for the wall of the
+	// actor, a community the recipient runs ("новые записи в предложке" of
+	// openvk); PostID is the suggestion, not a post.
+	KindSuggestedPost Kind = "suggested_post"
 )
 
 var (
@@ -74,7 +78,7 @@ func (e Event) Validate() error {
 	var ok bool
 
 	switch e.Kind {
-	case KindLike, KindWallPost, KindRepost, KindPostAccepted:
+	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost:
 		ok = hasPost && !hasComment
 	case KindComment, KindCommentReply, KindCommentLike:
 		ok = hasPost && hasComment

@@ -114,6 +114,12 @@ const (
 		WHERE kind = 'post_accepted'
 			AND post_id = $1
 	`
+	deleteSuggestedPostNotificationQuery = `
+		DELETE FROM notifications
+		WHERE kind = 'suggested_post'
+			AND recipient_id = $1
+			AND post_id = $2
+	`
 	deleteCommentReplyNotificationQuery = `
 		DELETE FROM notifications
 		WHERE kind = 'comment_reply'
@@ -143,6 +149,8 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deleteRepostNotificationQuery, e.PostID)
 	case notification.KindPostAccepted:
 		_, err = r.pool.Exec(ctx, deletePostAcceptedNotificationQuery, e.PostID)
+	case notification.KindSuggestedPost:
+		_, err = r.pool.Exec(ctx, deleteSuggestedPostNotificationQuery, e.RecipientID, e.PostID)
 	case notification.KindCommentReply:
 		_, err = r.pool.Exec(ctx, deleteCommentReplyNotificationQuery, e.CommentID)
 	case notification.KindCommentLike:
