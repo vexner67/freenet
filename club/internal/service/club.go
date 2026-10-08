@@ -18,6 +18,9 @@ const (
 	MaxClubs = 100
 	// MaxClubIDs is how many of a user's clubs the feed reads posts from.
 	MaxClubIDs = 1000
+	// MaxWallModerators is how many admins of a club hear about a post
+	// suggested for its wall; a club rarely has more.
+	MaxWallModerators = 100
 )
 
 var ErrTooManyIDs = errors.New("too many ids")
@@ -495,6 +498,23 @@ func (s *ClubService) CanModerateWall(ctx context.Context, wallID, userID uuid.U
 	}
 
 	return role.Manages(), nil
+}
+
+// WallModerators are the owner and admins of the club wallID, the newest
+// appointed first, up to MaxWallModerators: they hear about the posts
+// suggested for its wall. Any other wall, a user's, has none.
+func (s *ClubService) WallModerators(ctx context.Context, wallID uuid.UUID) ([]uuid.UUID, error) {
+	admins, err := s.members.List(ctx, wallID, uuid.Nil, MaxWallModerators, true)
+	if err != nil {
+		return nil, errs.Wrap("s.members.List", err)
+	}
+
+	ids := make([]uuid.UUID, 0, len(admins))
+	for _, m := range admins {
+		ids = append(ids, m.UserID)
+	}
+
+	return ids, nil
 }
 
 // PurgeUser takes a user whose page was erased out of every club. A club

@@ -32,6 +32,7 @@ type ClubService interface {
 	ClubIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	CanPostOnWall(ctx context.Context, userID, clubID uuid.UUID, fromClub bool) (service.WallAccess, error)
 	CanModerateWall(ctx context.Context, wallID, userID uuid.UUID) (bool, error)
+	WallModerators(ctx context.Context, wallID uuid.UUID) ([]uuid.UUID, error)
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -424,6 +425,25 @@ func (h *ClubHandler) CanModerateWall(ctx context.Context, req *clubv1.CanModera
 	}
 
 	return &clubv1.CanModerateWallResponse{Allowed: ok}, nil
+}
+
+func (h *ClubHandler) ListWallModerators(ctx context.Context, req *clubv1.ListWallModeratorsRequest) (*clubv1.ListWallModeratorsResponse, error) {
+	wallID, err := parseID(req.GetWallId(), "invalid wall id")
+	if err != nil {
+		return nil, err
+	}
+
+	ids, err := h.clubService.WallModerators(ctx, wallID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &clubv1.ListWallModeratorsResponse{UserIds: make([]string, 0, len(ids))}
+	for _, id := range ids {
+		resp.UserIds = append(resp.UserIds, id.String())
+	}
+
+	return resp, nil
 }
 
 func (h *ClubHandler) PurgeUser(ctx context.Context, req *clubv1.PurgeUserRequest) (*emptypb.Empty, error) {

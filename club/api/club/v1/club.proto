@@ -60,6 +60,10 @@ service ClubService {
   // deleting and pinning others' posts and comments there: the club's
   // admins do. False for any other wall, a user's.
   rpc CanModerateWall(CanModerateWallRequest) returns (CanModerateWallResponse);
+  // Internal, for post: the users who keep the wall of wall_id clean, the
+  // owner and admins of the club, to hear about posts suggested there; up
+  // to 100, the newest appointed first. None for any other wall.
+  rpc ListWallModerators(ListWallModeratorsRequest) returns (ListWallModeratorsResponse);
   // Internal, for user: the user's page was deleted and not restored in
   // time; they leave every club. Idempotent.
   rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
@@ -311,6 +315,14 @@ message CanModerateWallRequest {
 
 message CanModerateWallResponse {
   bool allowed = 1;
+}
+
+message ListWallModeratorsRequest {
+  string wall_id = 1;
+}
+
+message ListWallModeratorsResponse {
+  repeated string user_ids = 1;
 }
 
 message PurgeUserRequest {

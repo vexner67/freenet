@@ -20,25 +20,26 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	ClubService_CreateClub_FullMethodName      = "/club.v1.ClubService/CreateClub"
-	ClubService_GetClub_FullMethodName         = "/club.v1.ClubService/GetClub"
-	ClubService_GetClubs_FullMethodName        = "/club.v1.ClubService/GetClubs"
-	ClubService_UpdateClub_FullMethodName      = "/club.v1.ClubService/UpdateClub"
-	ClubService_JoinClub_FullMethodName        = "/club.v1.ClubService/JoinClub"
-	ClubService_LeaveClub_FullMethodName       = "/club.v1.ClubService/LeaveClub"
-	ClubService_ListMembers_FullMethodName     = "/club.v1.ClubService/ListMembers"
-	ClubService_SetMemberRole_FullMethodName   = "/club.v1.ClubService/SetMemberRole"
-	ClubService_TransferClub_FullMethodName    = "/club.v1.ClubService/TransferClub"
-	ClubService_ListMyClubs_FullMethodName     = "/club.v1.ClubService/ListMyClubs"
-	ClubService_ListUserClubs_FullMethodName   = "/club.v1.ClubService/ListUserClubs"
-	ClubService_SearchClubs_FullMethodName     = "/club.v1.ClubService/SearchClubs"
-	ClubService_SetClubAvatar_FullMethodName   = "/club.v1.ClubService/SetClubAvatar"
-	ClubService_PinClub_FullMethodName         = "/club.v1.ClubService/PinClub"
-	ClubService_ListPinnedClubs_FullMethodName = "/club.v1.ClubService/ListPinnedClubs"
-	ClubService_ListMyClubIDs_FullMethodName   = "/club.v1.ClubService/ListMyClubIDs"
-	ClubService_CanPostOnWall_FullMethodName   = "/club.v1.ClubService/CanPostOnWall"
-	ClubService_CanModerateWall_FullMethodName = "/club.v1.ClubService/CanModerateWall"
-	ClubService_PurgeUser_FullMethodName       = "/club.v1.ClubService/PurgeUser"
+	ClubService_CreateClub_FullMethodName         = "/club.v1.ClubService/CreateClub"
+	ClubService_GetClub_FullMethodName            = "/club.v1.ClubService/GetClub"
+	ClubService_GetClubs_FullMethodName           = "/club.v1.ClubService/GetClubs"
+	ClubService_UpdateClub_FullMethodName         = "/club.v1.ClubService/UpdateClub"
+	ClubService_JoinClub_FullMethodName           = "/club.v1.ClubService/JoinClub"
+	ClubService_LeaveClub_FullMethodName          = "/club.v1.ClubService/LeaveClub"
+	ClubService_ListMembers_FullMethodName        = "/club.v1.ClubService/ListMembers"
+	ClubService_SetMemberRole_FullMethodName      = "/club.v1.ClubService/SetMemberRole"
+	ClubService_TransferClub_FullMethodName       = "/club.v1.ClubService/TransferClub"
+	ClubService_ListMyClubs_FullMethodName        = "/club.v1.ClubService/ListMyClubs"
+	ClubService_ListUserClubs_FullMethodName      = "/club.v1.ClubService/ListUserClubs"
+	ClubService_SearchClubs_FullMethodName        = "/club.v1.ClubService/SearchClubs"
+	ClubService_SetClubAvatar_FullMethodName      = "/club.v1.ClubService/SetClubAvatar"
+	ClubService_PinClub_FullMethodName            = "/club.v1.ClubService/PinClub"
+	ClubService_ListPinnedClubs_FullMethodName    = "/club.v1.ClubService/ListPinnedClubs"
+	ClubService_ListMyClubIDs_FullMethodName      = "/club.v1.ClubService/ListMyClubIDs"
+	ClubService_CanPostOnWall_FullMethodName      = "/club.v1.ClubService/CanPostOnWall"
+	ClubService_CanModerateWall_FullMethodName    = "/club.v1.ClubService/CanModerateWall"
+	ClubService_ListWallModerators_FullMethodName = "/club.v1.ClubService/ListWallModerators"
+	ClubService_PurgeUser_FullMethodName          = "/club.v1.ClubService/PurgeUser"
 )
 
 // ClubServiceClient is the client API for ClubService service.
@@ -97,6 +98,10 @@ type ClubServiceClient interface {
 	// deleting and pinning others' posts and comments there: the club's
 	// admins do. False for any other wall, a user's.
 	CanModerateWall(ctx context.Context, in *CanModerateWallRequest, opts ...grpc.CallOption) (*CanModerateWallResponse, error)
+	// Internal, for post: the users who keep the wall of wall_id clean, the
+	// owner and admins of the club, to hear about posts suggested there; up
+	// to 100, the newest appointed first. None for any other wall.
+	ListWallModerators(ctx context.Context, in *ListWallModeratorsRequest, opts ...grpc.CallOption) (*ListWallModeratorsResponse, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time; they leave every club. Idempotent.
 	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -290,6 +295,16 @@ func (c *clubServiceClient) CanModerateWall(ctx context.Context, in *CanModerate
 	return out, nil
 }
 
+func (c *clubServiceClient) ListWallModerators(ctx context.Context, in *ListWallModeratorsRequest, opts ...grpc.CallOption) (*ListWallModeratorsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWallModeratorsResponse)
+	err := c.cc.Invoke(ctx, ClubService_ListWallModerators_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clubServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -356,6 +371,10 @@ type ClubServiceServer interface {
 	// deleting and pinning others' posts and comments there: the club's
 	// admins do. False for any other wall, a user's.
 	CanModerateWall(context.Context, *CanModerateWallRequest) (*CanModerateWallResponse, error)
+	// Internal, for post: the users who keep the wall of wall_id clean, the
+	// owner and admins of the club, to hear about posts suggested there; up
+	// to 100, the newest appointed first. None for any other wall.
+	ListWallModerators(context.Context, *ListWallModeratorsRequest) (*ListWallModeratorsResponse, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time; they leave every club. Idempotent.
 	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
@@ -422,6 +441,9 @@ func (UnimplementedClubServiceServer) CanPostOnWall(context.Context, *CanPostOnW
 }
 func (UnimplementedClubServiceServer) CanModerateWall(context.Context, *CanModerateWallRequest) (*CanModerateWallResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CanModerateWall not implemented")
+}
+func (UnimplementedClubServiceServer) ListWallModerators(context.Context, *ListWallModeratorsRequest) (*ListWallModeratorsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListWallModerators not implemented")
 }
 func (UnimplementedClubServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -771,6 +793,24 @@ func _ClubService_CanModerateWall_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClubService_ListWallModerators_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWallModeratorsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).ListWallModerators(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_ListWallModerators_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).ListWallModerators(ctx, req.(*ListWallModeratorsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClubService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -867,6 +907,10 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CanModerateWall",
 			Handler:    _ClubService_CanModerateWall_Handler,
+		},
+		{
+			MethodName: "ListWallModerators",
+			Handler:    _ClubService_ListWallModerators_Handler,
 		},
 		{
 			MethodName: "PurgeUser",
