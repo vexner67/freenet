@@ -11,6 +11,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
@@ -31,6 +32,7 @@ const (
 	PostStream    = "post"
 	MediaStream   = "media"
 	MessageStream = "message"
+	ClubStream    = "club"
 )
 
 // Recorder adds a message to an outbox stream in the transaction of ctx.
@@ -80,6 +82,13 @@ func Media(api mediav1.MediaServiceClient, timeout time.Duration) outbox.Deliver
 func Message(api messagev1.MessageServiceClient, timeout time.Duration) outbox.Deliver {
 	return deliver(timeout, func(ctx context.Context, id string) error {
 		_, err := api.PurgeUser(ctx, &messagev1.PurgeUserRequest{UserId: id})
+		return err
+	})
+}
+
+func Club(api clubv1.ClubServiceClient, timeout time.Duration) outbox.Deliver {
+	return deliver(timeout, func(ctx context.Context, id string) error {
+		_, err := api.PurgeUser(ctx, &clubv1.PurgeUserRequest{UserId: id})
 		return err
 	})
 }

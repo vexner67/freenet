@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
@@ -93,6 +94,9 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 		}},
 		{purgeclient.MessageStream, cfg.MessageServiceAddr, "MESSAGE_SERVICE_ADDR", func(c *grpc.ClientConn) outbox.Deliver {
 			return purgeclient.Message(messagev1.NewMessageServiceClient(c), cfg.NotifyTimeout)
+		}},
+		{purgeclient.ClubStream, cfg.ClubServiceAddr, "CLUB_SERVICE_ADDR", func(c *grpc.ClientConn) outbox.Deliver {
+			return purgeclient.Club(clubv1.NewClubServiceClient(c), cfg.NotifyTimeout)
 		}},
 	} {
 		if s.addr == "" {
