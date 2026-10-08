@@ -16,7 +16,7 @@ const (
 	MaxPageSize     = 50
 
 	// MaxFeedAuthors bounds one news feed: the people a user follows plus
-	// the user.
+	// the user, and as many clubs.
 	MaxFeedAuthors = 1001
 )
 
@@ -41,9 +41,25 @@ type PostRepository interface {
 	// pinned post is left out: the wall shows it first.
 	ListByWall(ctx context.Context, wallID, before uuid.UUID, limit int) ([]*post.Post, error)
 	CountByWall(ctx context.Context, wallID uuid.UUID) (int, error)
-	// ListByAuthors is ListByWall for the posts written by several authors,
-	// on whichever walls.
-	ListByAuthors(ctx context.Context, authorIDs []uuid.UUID, before uuid.UUID, limit int) ([]*post.Post, error)
+	// ListFeed is ListByWall for the posts written by several authors, on
+	// whichever walls, but for those that speak for a wall, together with
+	// all the posts on several walls.
+	ListFeed(ctx context.Context, sources FeedSources, before uuid.UUID, limit int) ([]*post.Post, error)
+}
+
+// FeedSources are what a news feed shows: the posts of Authors (those
+// that speak for a community are the community's, not theirs) and every
+// post on Walls, the clubs the reader is in.
+type FeedSources struct {
+	Authors []uuid.UUID
+	Walls   []uuid.UUID
+}
+
+// WallModerators tells who keeps a wall clean besides its owner: the
+// admins of a community, whom the club service knows. It says no for the
+// wall of a user.
+type WallModerators interface {
+	CanModerate(ctx context.Context, wallID, userID uuid.UUID) (bool, error)
 }
 
 // PostCommentEraser deletes the comments of a post about to be deleted,
@@ -90,18 +106,20 @@ type PostService struct {
 	tx          TxManager
 	notifier    Notifier
 	photos      PhotoKeeper
+	moderators  WallModerators
 	now         func() time.Time
 }
 
 // PostDeps are what PostService works with.
 type PostDeps struct {
-	Posts    PostRepository
-	Pins     PinRepository
-	Comments PostCommentEraser
-	Likes    LikeRepository
-	Tx       TxManager
-	Notifier Notifier
-	Photos   PhotoKeeper
+	Posts      PostRepository
+	Pins       PinRepository
+	Comments   PostCommentEraser
+	Likes      LikeRepository
+	Tx         TxManager
+	Notifier   Notifier
+	Photos     PhotoKeeper
+	Moderators WallModerators
 }
 
 func NewPostService(d PostDeps) *PostService {
@@ -113,18 +131,38 @@ func NewPostService(d PostDeps) *PostService {
 		tx:          d.Tx,
 		notifier:    d.Notifier,
 		photos:      d.Photos,
+		moderators:  d.Moderators,
 		now:         time.Now,
 	}
 }
 
-// Create writes a post on the wall of wallID; the owner of a wall hears
-// about posts by others, and media keeps the photos. The caller has
-// checked that the owner's privacy lets the author write there and that
-// the photos are the author's: post does not know users.
-func (s *PostService) Create(ctx context.Context, wallID, authorID uuid.UUID, content post.Content) (*post.Post, error) {
-	p, err := post.New(wallID, authorID, content, s.now())
+// CreateInput is a post to write: by AuthorID on the wall of WallID, the
+// author's or someone else's. ClubWall tells that the wall is a
+// community's, whose owner is nobody to notify; FromWall that the post
+// speaks for that community.
+type CreateInput struct {
+	WallID   uuid.UUID
+	AuthorID uuid.UUID
+	Content  post.Content
+	ClubWall bool
+	FromWall bool
+}
+
+// Create writes a post; the owner of a user's wall hears about posts by
+// others, and media keeps the photos. The caller has checked that the
+// author may write there, on their own behalf or the community's, and
+// that the photos are the author's: post knows neither users nor clubs.
+func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, error) {
+	newPost := post.New
+	if in.FromWall {
+		newPost = post.NewFromWall
+	}
+
+	wallID, authorID, content := in.WallID, in.AuthorID, in.Content
+
+	p, err := newPost(wallID, authorID, content, s.now())
 	if err != nil {
-		return nil, errs.Wrap("post.New", err)
+		return nil, errs.Wrap("newPost", err)
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
@@ -138,7 +176,7 @@ func (s *PostService) Create(ctx context.Context, wallID, authorID uuid.UUID, co
 			}
 		}
 
-		if p.OnOwnWall() {
+		if p.OnOwnWall() || in.ClubWall {
 			return nil
 		}
 
@@ -183,11 +221,12 @@ func (s *PostService) Repost(ctx context.Context, authorID, postID uuid.UUID, te
 			return errs.Wrap("s.postRepo.Save", err)
 		}
 
-		if shared.AuthorID() == authorID {
+		recipient := shared.Notified()
+		if recipient == uuid.Nil || recipient == authorID {
 			return nil
 		}
 
-		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, Event{Kind: EventRepost, RecipientID: shared.AuthorID(), ActorID: authorID, PostID: repost.ID()}))
+		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, Event{Kind: EventRepost, RecipientID: recipient, ActorID: authorID, PostID: repost.ID()}))
 	})
 	if err != nil {
 		return nil, errs.Wrap("s.tx.WithinTx", err)
@@ -197,7 +236,8 @@ func (s *PostService) Repost(ctx context.Context, authorID, postID uuid.UUID, te
 }
 
 // Delete removes a post with its comments and all their photos, whoever
-// deletes it, the author or the owner of the wall; a deleted repost takes
+// deletes it: the author, the owner of the wall or, on a community's,
+// its admins. A deleted repost takes
 // its notification with it, since the notification is about the repost
 // (ForgetPost).
 func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID) error {
@@ -206,7 +246,12 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 		return errs.Wrap("s.postRepo.Get", err)
 	}
 
-	if !p.CanBeDeletedBy(requesterID) {
+	ok, err := moderates(ctx, s.moderators, p.WallID(), requesterID, p.CanBeDeletedBy(requesterID))
+	if err != nil {
+		return errs.Wrap("moderates", err)
+	}
+
+	if !ok {
 		return post.ErrCannotDelete
 	}
 
@@ -304,7 +349,7 @@ func diffPhotos(before, after post.Photos) (added, removed []uuid.UUID) {
 }
 
 // Pin shows a post first on its wall, instead of the one pinned before;
-// only the owner of the wall pins.
+// only the owner of the wall pins, or the admins of a community.
 func (s *PostService) Pin(ctx context.Context, requesterID, postID uuid.UUID) error {
 	return s.setPinned(ctx, requesterID, postID, s.pinRepo.Pin)
 }
@@ -320,11 +365,32 @@ func (s *PostService) setPinned(ctx context.Context, requesterID, postID uuid.UU
 		return errs.Wrap("s.postRepo.Get", err)
 	}
 
-	if !p.CanBePinnedBy(requesterID) {
+	ok, err := moderates(ctx, s.moderators, p.WallID(), requesterID, p.CanBePinnedBy(requesterID))
+	if err != nil {
+		return errs.Wrap("moderates", err)
+	}
+
+	if !ok {
 		return post.ErrCannotPin
 	}
 
 	return errs.Wrap("set", set(ctx, postID))
+}
+
+// moderates tells whether userID may act on a wall: allowed by the rules
+// of post itself, or else as an admin of the community the wall is.
+// Asking the club service only then spares it every call by an owner.
+func moderates(ctx context.Context, moderators WallModerators, wallID, userID uuid.UUID, allowed bool) (bool, error) {
+	if allowed {
+		return true, nil
+	}
+
+	ok, err := moderators.CanModerate(ctx, wallID, userID)
+	if err != nil {
+		return false, errs.Wrap("moderators.CanModerate", err)
+	}
+
+	return ok, nil
 }
 
 // Get returns a post and whether viewerID likes it; viewerID is uuid.Nil
@@ -422,13 +488,15 @@ func (s *PostService) Unlike(ctx context.Context, userID, postID uuid.UUID) (int
 }
 
 // likeEvent is the like of p by userID for its author's notifications;
-// nobody is notified about liking their own post.
+// nobody is notified about liking their own post, nor about a post that
+// speaks for a community.
 func likeEvent(p *post.Post, userID uuid.UUID) (Event, bool) {
-	if p.AuthorID() == userID {
+	recipient := p.Notified()
+	if recipient == uuid.Nil || recipient == userID {
 		return Event{}, false
 	}
 
-	return Event{Kind: EventLike, RecipientID: p.AuthorID(), ActorID: userID, PostID: p.ID()}, true
+	return Event{Kind: EventLike, RecipientID: recipient, ActorID: userID, PostID: p.ID()}, true
 }
 
 // ListWall pages a wall by keyset: cursor is the ID of the last post of
@@ -476,14 +544,15 @@ func (s *PostService) ListWall(ctx context.Context, viewerID, wallID, cursor uui
 }
 
 // Feed pages the posts written by several authors together, on their own
-// walls and on others', newest first. Total is not counted: a feed is read
-// page by page, not as a whole.
-func (s *PostService) Feed(ctx context.Context, viewerID uuid.UUID, authorIDs []uuid.UUID, cursor uuid.UUID, size int) (Page, error) {
-	if len(authorIDs) > MaxFeedAuthors {
+// walls and on others', with every post on the walls of the reader's
+// clubs, newest first. Total is not counted: a feed is read page by page,
+// not as a whole.
+func (s *PostService) Feed(ctx context.Context, viewerID uuid.UUID, sources FeedSources, cursor uuid.UUID, size int) (Page, error) {
+	if len(sources.Authors) > MaxFeedAuthors || len(sources.Walls) > MaxFeedAuthors {
 		return Page{}, ErrTooManyAuthors
 	}
 
-	if len(authorIDs) == 0 {
+	if len(sources.Authors) == 0 && len(sources.Walls) == 0 {
 		return Page{}, nil
 	}
 
@@ -491,9 +560,9 @@ func (s *PostService) Feed(ctx context.Context, viewerID uuid.UUID, authorIDs []
 		size = DefaultPageSize
 	}
 
-	posts, err := s.postRepo.ListByAuthors(ctx, authorIDs, cursor, size+1)
+	posts, err := s.postRepo.ListFeed(ctx, sources, cursor, size+1)
 	if err != nil {
-		return Page{}, errs.Wrap("s.postRepo.ListByAuthors", err)
+		return Page{}, errs.Wrap("s.postRepo.ListFeed", err)
 	}
 
 	page := Page{Posts: posts}

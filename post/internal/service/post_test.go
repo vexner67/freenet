@@ -98,6 +98,14 @@ func (f *fakePhotos) Delete(ctx context.Context, owner uuid.UUID, photos []uuid.
 	return f.record(ctx, &f.deleted, photoCall{owner, photos})
 }
 
+// fakeModerators makes users admins of community walls, keyed by wall and
+// user; the empty one moderates nothing, as for the walls of users.
+type fakeModerators map[[2]uuid.UUID]bool
+
+func (f fakeModerators) CanModerate(_ context.Context, wallID, userID uuid.UUID) (bool, error) {
+	return f[[2]uuid.UUID{wallID, userID}], nil
+}
+
 type inTx struct{}
 
 // fakeTx marks the context of the transaction, so that the notifier can
@@ -110,7 +118,7 @@ func (fakeTx) WithinTx(ctx context.Context, fn func(ctx context.Context) error) 
 
 func newPostService() *service.PostService {
 	store := inmem.NewStore()
-	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}})
+	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}})
 }
 
 func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...string) []*post.Post {
@@ -123,7 +131,7 @@ func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...st
 			t.Fatal(err)
 		}
 
-		p, err := svc.Create(context.Background(), author, author, content)
+		p, err := svc.Create(context.Background(), service.CreateInput{WallID: author, AuthorID: author, Content: content})
 		if err != nil {
 			t.Fatalf("Create: %v", err)
 		}
@@ -131,6 +139,18 @@ func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...st
 	}
 
 	return posts
+}
+
+// textContent is text-only content.
+func textContent(t *testing.T, text string) post.Content {
+	t.Helper()
+
+	content, err := post.NewContent(post.Text(text), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	return content
 }
 
 func texts(posts []*post.Post) []string {
@@ -247,7 +267,7 @@ func TestPostService_Feed(t *testing.T) {
 	write(t, svc, cat, "cat: not followed")
 	write(t, svc, ann, "ann 2")
 
-	first, err := svc.Feed(ctx, uuid.Nil, []uuid.UUID{ann, bob}, uuid.Nil, 2)
+	first, err := svc.Feed(ctx, uuid.Nil, service.FeedSources{Authors: []uuid.UUID{ann, bob}}, uuid.Nil, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -255,7 +275,7 @@ func TestPostService_Feed(t *testing.T) {
 		t.Fatalf("first page: %v", got)
 	}
 
-	rest, err := svc.Feed(ctx, uuid.Nil, []uuid.UUID{ann, bob}, first.NextCursor, 2)
+	rest, err := svc.Feed(ctx, uuid.Nil, service.FeedSources{Authors: []uuid.UUID{ann, bob}}, first.NextCursor, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -263,12 +283,12 @@ func TestPostService_Feed(t *testing.T) {
 		t.Fatalf("last page: %v", got)
 	}
 
-	empty, err := svc.Feed(ctx, uuid.Nil, nil, uuid.Nil, 20)
+	empty, err := svc.Feed(ctx, uuid.Nil, service.FeedSources{}, uuid.Nil, 20)
 	if err != nil || len(empty.Posts) != 0 {
 		t.Fatalf("no authors: %+v, %v", empty, err)
 	}
 
-	if _, err = svc.Feed(ctx, uuid.Nil, make([]uuid.UUID, service.MaxFeedAuthors+1), uuid.Nil, 20); !errors.Is(err, service.ErrTooManyAuthors) {
+	if _, err = svc.Feed(ctx, uuid.Nil, service.FeedSources{Authors: make([]uuid.UUID, service.MaxFeedAuthors+1)}, uuid.Nil, 20); !errors.Is(err, service.ErrTooManyAuthors) {
 		t.Fatalf("too many authors: %v", err)
 	}
 }
@@ -321,7 +341,7 @@ func TestPostService_Likes(t *testing.T) {
 		t.Fatalf("wall liked = %v", wall.Liked)
 	}
 
-	feed, err := svc.Feed(ctx, ann, []uuid.UUID{ann}, uuid.Nil, 20)
+	feed, err := svc.Feed(ctx, ann, service.FeedSources{Authors: []uuid.UUID{ann}}, uuid.Nil, 20)
 	if err != nil || !feed.Liked[first.ID()] || len(feed.Liked) != 1 {
 		t.Fatalf("feed liked = %v, %v", feed.Liked, err)
 	}
@@ -347,7 +367,7 @@ func TestPostService_NotifiesAboutLikes(t *testing.T) {
 
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}, Moderators: fakeModerators{}})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
 	p := write(t, svc, ann, "привет")[0]
@@ -401,7 +421,7 @@ func TestPostService_NotifierFailureFailsTheChange(t *testing.T) {
 
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}, Moderators: fakeModerators{}})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
 	p := write(t, svc, ann, "привет")[0]
@@ -415,7 +435,7 @@ func TestPostService_NotifierFailureFailsTheChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := svc.Create(ctx, ann, bob, content); !errors.Is(err, notifier.err) {
+	if _, err := svc.Create(ctx, service.CreateInput{WallID: ann, AuthorID: bob, Content: content}); !errors.Is(err, notifier.err) {
 		t.Errorf("Create on another's wall = %v, want the notifier's error", err)
 	}
 	if err := svc.Delete(ctx, ann, p.ID()); !errors.Is(err, notifier.err) {
@@ -450,7 +470,7 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}, Moderators: fakeModerators{}})
 
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	write(t, svc, ann, "своё")
@@ -460,7 +480,7 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	p, err := svc.Create(ctx, ann, bob, content)
+	p, err := svc.Create(ctx, service.CreateInput{WallID: ann, AuthorID: bob, Content: content})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -486,7 +506,7 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 		t.Fatalf("bob's wall = %+v, %v; want empty", bobs, err)
 	}
 
-	feed, err := svc.Feed(ctx, uuid.Nil, []uuid.UUID{bob}, uuid.Nil, 10)
+	feed, err := svc.Feed(ctx, uuid.Nil, service.FeedSources{Authors: []uuid.UUID{bob}}, uuid.Nil, 10)
 	if err != nil || len(feed.Posts) != 1 || feed.Posts[0].ID() != p.ID() {
 		t.Fatalf("bob's posts in a feed = %+v, %v", feed.Posts, err)
 	}
@@ -508,7 +528,7 @@ func TestPostService_Repost(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	notifier := &fakeNotifier{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}, Moderators: fakeModerators{}})
 
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	original := write(t, svc, ann, "оригинал")[0]
@@ -578,7 +598,7 @@ func TestPostService_Photos(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos, Moderators: fakeModerators{}})
 	owner, author := uuid.New(), uuid.New()
 	ids := []uuid.UUID{uuid.New(), uuid.New()}
 
@@ -586,7 +606,7 @@ func TestPostService_Photos(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := svc.Create(ctx, owner, author, withPhotos)
+	p, err := svc.Create(ctx, service.CreateInput{WallID: owner, AuthorID: author, Content: withPhotos})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -609,7 +629,7 @@ func TestPostService_Photos(t *testing.T) {
 
 	// Photos that cannot be recorded fail the post, which is not saved.
 	photos.err = errors.New("outbox is down")
-	if _, err = svc.Create(ctx, author, author, withPhotos); !errors.Is(err, photos.err) {
+	if _, err = svc.Create(ctx, service.CreateInput{WallID: author, AuthorID: author, Content: withPhotos}); !errors.Is(err, photos.err) {
 		t.Fatalf("Create with a broken outbox: %v", err)
 	}
 }
@@ -620,7 +640,7 @@ func TestPostService_Edit(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos})
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos, Moderators: fakeModerators{}})
 	author, stranger := uuid.New(), uuid.New()
 	kept, dropped, added := uuid.New(), uuid.New(), uuid.New()
 
@@ -628,7 +648,7 @@ func TestPostService_Edit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := svc.Create(ctx, author, author, content)
+	p, err := svc.Create(ctx, service.CreateInput{WallID: author, AuthorID: author, Content: content})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -748,4 +768,138 @@ func TestPostService_Pin(t *testing.T) {
 	if page, err = svc.ListWall(ctx, uuid.Nil, owner, uuid.Nil, 10); err != nil || len(page.Posts) != 3 {
 		t.Fatalf("after deleting the pinned post: %v, %v", texts(page.Posts), err)
 	}
+}
+
+func TestPostService_ClubWalls(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	notifier := &fakeNotifier{}
+	club, admin, member, stranger := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	moderators := fakeModerators{{club, admin}: true}
+	posts := service.NewPostService(service.PostDeps{
+		Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{},
+		Moderators: moderators,
+	})
+	comments := service.NewCommentService(service.CommentDeps{
+		Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{},
+		Moderators: moderators,
+	})
+	content := textContent(t, "новости")
+
+	news, err := posts.Create(ctx, service.CreateInput{WallID: club, AuthorID: admin, Content: content, ClubWall: true, FromWall: true})
+	if err != nil || !news.FromWall() {
+		t.Fatalf("Create from the wall = %+v, %v", news, err)
+	}
+	byMember, err := posts.Create(ctx, service.CreateInput{WallID: club, AuthorID: member, Content: content, ClubWall: true})
+	if err != nil || byMember.FromWall() {
+		t.Fatalf("Create by a member = %+v, %v", byMember, err)
+	}
+	if _, err = posts.Create(ctx, service.CreateInput{WallID: admin, AuthorID: admin, Content: content, FromWall: true}); !errors.Is(err, post.ErrFromOwnWall) {
+		t.Fatalf("from one's own wall: %v", err)
+	}
+
+	// Nobody owns a community's wall to hear of posts on it, and a post
+	// that speaks for the community tells its author nothing.
+	if _, err = posts.Like(ctx, member, news.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = comments.Create(ctx, member, news.ID(), post.RestoreCommentContent("ура", nil)); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = posts.Repost(ctx, member, news.ID(), ""); err != nil {
+		t.Fatal(err)
+	}
+	if len(notifier.notified) != 0 {
+		t.Fatalf("notified = %+v, want nobody", notifier.notified)
+	}
+
+	// The member's own post on the club's wall notifies the member.
+	if _, err = posts.Like(ctx, stranger, byMember.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(notifier.notified) != 1 || notifier.notified[0].RecipientID != member {
+		t.Fatalf("notified = %+v, want the member", notifier.notified)
+	}
+
+	// The admins keep the wall clean; strangers do not.
+	strangers, err := comments.Create(ctx, stranger, byMember.ID(), post.RestoreCommentContent("спам", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = comments.Delete(ctx, member, strangers.ID()); err != nil {
+		t.Fatalf("the author of the post deletes a comment: %v", err)
+	}
+	if strangers, err = comments.Create(ctx, stranger, news.ID(), post.RestoreCommentContent("спам", nil)); err != nil {
+		t.Fatal(err)
+	}
+	if err = comments.Delete(ctx, member, strangers.ID()); !errors.Is(err, post.ErrCannotDeleteComment) {
+		t.Fatalf("a member deletes a comment: %v", err)
+	}
+	if err = comments.Delete(ctx, admin, strangers.ID()); err != nil {
+		t.Fatalf("the admin deletes a comment: %v", err)
+	}
+
+	if err = posts.Pin(ctx, member, byMember.ID()); !errors.Is(err, post.ErrCannotPin) {
+		t.Fatalf("a member pins: %v", err)
+	}
+	if err = posts.Pin(ctx, admin, byMember.ID()); err != nil {
+		t.Fatalf("the admin pins: %v", err)
+	}
+	if err = posts.Delete(ctx, stranger, byMember.ID()); !errors.Is(err, post.ErrCannotDelete) {
+		t.Fatalf("a stranger deletes: %v", err)
+	}
+	if err = posts.Delete(ctx, admin, byMember.ID()); err != nil {
+		t.Fatalf("the admin deletes: %v", err)
+	}
+}
+
+func TestPostService_FeedOfClubs(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newPostService()
+	club, admin, member, ann := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	content := textContent(t, "x")
+
+	mustCreate := func(in service.CreateInput) *post.Post {
+		t.Helper()
+		in.Content = content
+		p, err := svc.Create(ctx, in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+
+	news := mustCreate(service.CreateInput{WallID: club, AuthorID: admin, ClubWall: true, FromWall: true})
+	byMember := mustCreate(service.CreateInput{WallID: club, AuthorID: member, ClubWall: true})
+	adminsOwn := mustCreate(service.CreateInput{WallID: admin, AuthorID: admin})
+	mustCreate(service.CreateInput{WallID: ann, AuthorID: ann})
+
+	// Following the admin shows their own posts, not those that speak for
+	// the club: who wrote those is the club's secret.
+	page, err := svc.Feed(ctx, ann, service.FeedSources{Authors: []uuid.UUID{admin}}, uuid.Nil, 20)
+	if err != nil || len(page.Posts) != 1 || page.Posts[0].ID() != adminsOwn.ID() {
+		t.Fatalf("feed of the admin = %v, %v", ids(page.Posts), err)
+	}
+
+	// Being in the club shows everything on its wall.
+	page, err = svc.Feed(ctx, ann, service.FeedSources{Walls: []uuid.UUID{club}}, uuid.Nil, 20)
+	if err != nil || len(page.Posts) != 2 || page.Posts[0].ID() != byMember.ID() || page.Posts[1].ID() != news.ID() {
+		t.Fatalf("feed of the club = %v, %v", ids(page.Posts), err)
+	}
+
+	if _, err = svc.Feed(ctx, ann, service.FeedSources{Walls: make([]uuid.UUID, service.MaxFeedAuthors+1)}, uuid.Nil, 20); !errors.Is(err, service.ErrTooManyAuthors) {
+		t.Fatalf("too many clubs: %v", err)
+	}
+}
+
+func ids(posts []*post.Post) []uuid.UUID {
+	out := make([]uuid.UUID, len(posts))
+	for i, p := range posts {
+		out[i] = p.ID()
+	}
+	return out
 }

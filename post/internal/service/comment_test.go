@@ -23,8 +23,8 @@ func newCommentFixture() commentFixture {
 	notifier := &fakeNotifier{}
 
 	return commentFixture{
-		posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}}),
-		comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}}),
+		posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}, Moderators: fakeModerators{}}),
+		comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}, Moderators: fakeModerators{}}),
 		notifier: notifier,
 	}
 }
@@ -357,9 +357,11 @@ func TestCommentService_Photos(t *testing.T) {
 	photos := &fakePhotos{}
 	posts := service.NewPostService(service.PostDeps{
 		Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
+		Moderators: fakeModerators{},
 	})
 	comments := service.NewCommentService(service.CommentDeps{
 		Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
+		Moderators: fakeModerators{},
 	})
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	bobsPhoto, catsPhoto := uuid.New(), uuid.New()

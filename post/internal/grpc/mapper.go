@@ -90,7 +90,8 @@ func photoStrings(photos post.Photos) []string {
 	return out
 }
 
-func toProtoPost(p *post.Post, liked bool) *postv1.Post {
+// toProtoPost: viewerID is the caller, uuid.Nil if anonymous.
+func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 	counters := p.Counters()
 
 	pp := &postv1.Post{
@@ -107,6 +108,8 @@ func toProtoPost(p *post.Post, liked bool) *postv1.Post {
 		Liked:         liked,
 		Pinned:        p.Pinned(),
 		EditableUntil: timestamppb.New(p.EditableUntil()),
+		FromWall:      p.FromWall(),
+		Mine:          viewerID != uuid.Nil && viewerID == p.AuthorID(),
 	}
 
 	if !p.EditedAt().IsZero() {
@@ -116,10 +119,10 @@ func toProtoPost(p *post.Post, liked bool) *postv1.Post {
 	return pp
 }
 
-func toProtoPosts(page service.Page) []*postv1.Post {
+func toProtoPosts(page service.Page, viewerID uuid.UUID) []*postv1.Post {
 	posts := make([]*postv1.Post, 0, len(page.Posts))
 	for _, p := range page.Posts {
-		posts = append(posts, toProtoPost(p, page.Liked[p.ID()]))
+		posts = append(posts, toProtoPost(p, page.Liked[p.ID()], viewerID))
 	}
 
 	return posts

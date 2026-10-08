@@ -58,17 +58,19 @@ type CommentService struct {
 	tx          TxManager
 	notifier    Notifier
 	photos      PhotoKeeper
+	moderators  WallModerators
 	now         func() time.Time
 }
 
 // CommentDeps are what CommentService works with.
 type CommentDeps struct {
-	Posts    PostReader
-	Comments CommentRepository
-	Likes    CommentLikeRepository
-	Tx       TxManager
-	Notifier Notifier
-	Photos   PhotoKeeper
+	Posts      PostReader
+	Comments   CommentRepository
+	Likes      CommentLikeRepository
+	Tx         TxManager
+	Notifier   Notifier
+	Photos     PhotoKeeper
+	Moderators WallModerators
 }
 
 func NewCommentService(d CommentDeps) *CommentService {
@@ -79,6 +81,7 @@ func NewCommentService(d CommentDeps) *CommentService {
 		tx:          d.Tx,
 		notifier:    d.Notifier,
 		photos:      d.Photos,
+		moderators:  d.Moderators,
 		now:         time.Now,
 	}
 }
@@ -176,7 +179,12 @@ func (s *CommentService) Delete(ctx context.Context, requesterID, commentID uuid
 		return errs.Wrap("s.postRepo.Get", err)
 	}
 
-	if !c.CanBeDeletedBy(requesterID, p) {
+	ok, err := moderates(ctx, s.moderators, p.WallID(), requesterID, c.CanBeDeletedBy(requesterID, p))
+	if err != nil {
+		return errs.Wrap("moderates", err)
+	}
+
+	if !ok {
 		return post.ErrCannotDeleteComment
 	}
 
@@ -268,8 +276,10 @@ func commentEvents(p *post.Post, c, parent *post.Comment) []Event {
 		events = append(events, Event{Kind: EventCommentReply, RecipientID: parent.AuthorID(), ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()})
 	}
 
-	if p.AuthorID() != c.AuthorID() && (parent == nil || parent.AuthorID() != p.AuthorID()) {
-		events = append(events, Event{Kind: EventComment, RecipientID: p.AuthorID(), ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()})
+	// A post that speaks for a community notifies nobody (post.Notified).
+	author := p.Notified()
+	if author != uuid.Nil && author != c.AuthorID() && (parent == nil || parent.AuthorID() != author) {
+		events = append(events, Event{Kind: EventComment, RecipientID: author, ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()})
 	}
 
 	return events

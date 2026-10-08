@@ -50,6 +50,13 @@ type Post struct {
 	Pinned bool `protobuf:"varint,13,opt,name=pinned,proto3" json:"pinned,omitempty"`
 	// Until when the author may edit the post.
 	EditableUntil *timestamppb.Timestamp `protobuf:"bytes,14,opt,name=editable_until,json=editableUntil,proto3" json:"editable_until,omitempty"`
+	// The post speaks for its wall, a community, rather than for its
+	// author, whom readers are not shown.
+	FromWall bool `protobuf:"varint,15,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	// The caller wrote the post; false without an access token. Tells the
+	// author a post that speaks for a community, whose author_id the
+	// gateway does not show.
+	Mine          bool `protobuf:"varint,16,opt,name=mine,proto3" json:"mine,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -182,6 +189,20 @@ func (x *Post) GetEditableUntil() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Post) GetFromWall() bool {
+	if x != nil {
+		return x.FromWall
+	}
+	return false
+}
+
+func (x *Post) GetMine() bool {
+	if x != nil {
+		return x.Mine
+	}
+	return false
+}
+
 type Comment struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -304,7 +325,13 @@ type CreatePostRequest struct {
 	// The owner of the wall to write on; empty for the caller's own wall.
 	// The caller has checked that the owner's privacy lets the author write
 	// there: post does not know users.
-	WallId        string `protobuf:"bytes,3,opt,name=wall_id,json=wallId,proto3" json:"wall_id,omitempty"`
+	WallId string `protobuf:"bytes,3,opt,name=wall_id,json=wallId,proto3" json:"wall_id,omitempty"`
+	// The wall is a community's, as the caller knows: nobody owns it to be
+	// notified of the post.
+	ClubWall bool `protobuf:"varint,4,opt,name=club_wall,json=clubWall,proto3" json:"club_wall,omitempty"`
+	// The post speaks for the community: the caller has checked with the
+	// club service that the author may.
+	FromWall      bool `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -358,6 +385,20 @@ func (x *CreatePostRequest) GetWallId() string {
 		return x.WallId
 	}
 	return ""
+}
+
+func (x *CreatePostRequest) GetClubWall() bool {
+	if x != nil {
+		return x.ClubWall
+	}
+	return false
+}
+
+func (x *CreatePostRequest) GetFromWall() bool {
+	if x != nil {
+		return x.FromWall
+	}
+	return false
 }
 
 type CreatePostResponse struct {
@@ -1044,6 +1085,9 @@ type ListFeedRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// At most 1001: the people a user follows and the user.
 	AuthorIds []string `protobuf:"bytes,1,rep,name=author_ids,json=authorIds,proto3" json:"author_ids,omitempty"`
+	// At most 1001: the communities the user is in, every post on whose
+	// walls the feed shows.
+	WallIds []string `protobuf:"bytes,4,rep,name=wall_ids,json=wallIds,proto3" json:"wall_ids,omitempty"`
 	// Empty for the newest posts, else next_cursor of the previous page.
 	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	// 1-50; anything else means 20.
@@ -1085,6 +1129,13 @@ func (*ListFeedRequest) Descriptor() ([]byte, []int) {
 func (x *ListFeedRequest) GetAuthorIds() []string {
 	if x != nil {
 		return x.AuthorIds
+	}
+	return nil
+}
+
+func (x *ListFeedRequest) GetWallIds() []string {
+	if x != nil {
+		return x.WallIds
 	}
 	return nil
 }
@@ -1927,7 +1978,7 @@ var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe6\x03\n" +
+	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x97\x04\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x12\n" +
@@ -1945,7 +1996,9 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\frepost_count\x18\v \x01(\x05R\vrepostCount\x127\n" +
 	"\tedited_at\x18\f \x01(\v2\x1a.google.protobuf.TimestampR\beditedAt\x12\x16\n" +
 	"\x06pinned\x18\r \x01(\bR\x06pinned\x12A\n" +
-	"\x0eeditable_until\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\reditableUntil\"\x90\x02\n" +
+	"\x0eeditable_until\x18\x0e \x01(\v2\x1a.google.protobuf.TimestampR\reditableUntil\x12\x1b\n" +
+	"\tfrom_wall\x18\x0f \x01(\bR\bfromWall\x12\x12\n" +
+	"\x04mine\x18\x10 \x01(\bR\x04mine\"\x90\x02\n" +
 	"\aComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
@@ -1957,11 +2010,13 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\vreply_to_id\x18\a \x01(\tR\treplyToId\x12\x1d\n" +
 	"\n" +
 	"like_count\x18\b \x01(\x05R\tlikeCount\x12\x14\n" +
-	"\x05liked\x18\t \x01(\bR\x05liked\"]\n" +
+	"\x05liked\x18\t \x01(\bR\x05liked\"\x97\x01\n" +
 	"\x11CreatePostRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\x12\x17\n" +
-	"\awall_id\x18\x03 \x01(\tR\x06wallId\"7\n" +
+	"\awall_id\x18\x03 \x01(\tR\x06wallId\x12\x1b\n" +
+	"\tclub_wall\x18\x04 \x01(\bR\bclubWall\x12\x1b\n" +
+	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\"7\n" +
 	"\x12CreatePostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"@\n" +
 	"\x11RepostPostRequest\x12\x17\n" +
@@ -1997,10 +2052,11 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"^\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"y\n" +
 	"\x0fListFeedRequest\x12\x1d\n" +
 	"\n" +
-	"author_ids\x18\x01 \x03(\tR\tauthorIds\x12\x16\n" +
+	"author_ids\x18\x01 \x03(\tR\tauthorIds\x12\x19\n" +
+	"\bwall_ids\x18\x04 \x03(\tR\awallIds\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\"X\n" +
 	"\x10ListFeedResponse\x12#\n" +

@@ -45,6 +45,11 @@ type Config struct {
 	// photos of posts for never published and deletes them.
 	MediaServiceAddr string `env:"MEDIA_SERVICE_ADDR"`
 
+	// ClubServiceAddr is whom post asks, within NOTIFY_TIMEOUT too, whether
+	// someone keeps a community's wall clean. Without it only the authors
+	// delete their posts and comments on community walls.
+	ClubServiceAddr string `env:"CLUB_SERVICE_ADDR"`
+
 	// Spam protection, per user. REDIS_ADDR shares the counters between
 	// replicas; without it they are kept in memory, per replica. Posts and
 	// reposts both follow RATE_LIMIT_POSTS, each counted on its own.
