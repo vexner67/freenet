@@ -60,14 +60,15 @@ function postLink(post, text) {
 // notificationText is the sentence of openvk; null for a type this page
 // does not know yet.
 function notificationText(n) {
-  const name = el('a', { className: 'post-name', href: pagePath(n.actor), textContent: fullName(n.actor) });
+  const link = el('a', { className: 'post-name', href: pagePath(n.actor), textContent: fullName(n.actor) });
+  // A community acts by itself, as openvk says: "Сообщество Кошки ...".
+  const name = n.actor.club ? el('span', {}, 'Сообщество ', link) : link;
 
-  // A community acts on its own: openvk's "Сообщество ... опубликовало".
   if (n.type === 'post_accepted') {
-    return ['Сообщество ', name, ' опубликовало вашу предложенную ', postLink(n.post, 'запись'), '.'];
+    return [name, ' опубликовало вашу предложенную ', postLink(n.post, 'запись'), '.'];
   }
 
-  const verb = notificationVerb(n.type, n.actor.gender);
+  const verb = notificationVerb(n.type, n.actor);
 
   switch (n.type) {
     case 'like':

@@ -65,11 +65,11 @@ test('comments link counts, or invites to comment', () => {
 });
 
 test('notification verbs agree with the gender of who did it', () => {
-  assert.equal(notificationVerb('like', 'female'), 'оценила');
-  assert.equal(notificationVerb('comment', 'male'), 'оставил');
-  assert.equal(notificationVerb('follow', ''), 'подписался(-ась)');
-  assert.equal(notificationVerb('comment_reply', 'female'), 'ответила');
-  assert.equal(notificationVerb('comment_like', ''), 'оценил(а)');
+  assert.equal(notificationVerb('like', { gender: 'female' }), 'оценила');
+  assert.equal(notificationVerb('comment', { gender: 'male' }), 'оставил');
+  assert.equal(notificationVerb('follow', { gender: '' }), 'подписался(-ась)');
+  assert.equal(notificationVerb('comment_reply', { gender: 'female' }), 'ответила');
+  assert.equal(notificationVerb('comment_like', { gender: '' }), 'оценил(а)');
 });
 
 test('unread counter', () => {
@@ -114,8 +114,8 @@ test('names in the genitive, for "на стене Петра Петрова"', (
 });
 
 test('a wall post notification and its error read like openvk', () => {
-  assert.equal(notificationVerb('wall_post', 'female'), 'написала');
-  assert.equal(notificationVerb('wall_post', ''), 'написал(а)');
+  assert.equal(notificationVerb('wall_post', { gender: 'female' }), 'написала');
+  assert.equal(notificationVerb('wall_post', { gender: '' }), 'написал(а)');
   assert.equal(errorText(new Error('you cannot post on this wall')), 'Хозяин страницы не разрешает вам писать у него на стене.');
   assert.deepEqual(wallWrites.map(([value]) => value), ['everyone', 'following', 'only_me']);
 });
@@ -123,8 +123,10 @@ test('a wall post notification and its error read like openvk', () => {
 test('the share link counts reposts, as on openvk', () => {
   assert.equal(shareLink(0), 'Поделиться');
   assert.equal(shareLink(3), 'Поделиться (3)');
-  assert.equal(notificationVerb('repost', 'male'), 'поделился');
-  assert.equal(notificationVerb('repost', 'female'), 'поделилась');
+  assert.equal(notificationVerb('repost', { gender: 'male' }), 'поделился');
+  assert.equal(notificationVerb('repost', { gender: 'female' }), 'поделилась');
+  assert.equal(notificationVerb('comment', { club: true, gender: '' }), 'оставило');
+  assert.equal(notificationVerb('comment_reply', { club: true }), 'ответило');
 });
 
 test('blacklist and messages privacy read like openvk', () => {

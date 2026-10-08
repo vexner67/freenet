@@ -4,7 +4,7 @@
 
 import { api } from './api.js';
 import { formatPostDate } from './labels.js';
-import { avatarURL, el, fullName } from './layout.js';
+import { avatarURL, el, fullName, pagePath } from './layout.js';
 import { likeButton, photosNode, separated } from './posts.js';
 
 // commentAnchor is the id of a comment's node, for links to it.
@@ -18,7 +18,8 @@ export function commentAnchor(id) {
 //   canLike makes the heart clickable (signed-in viewers), onError shows
 //   a failed like.
 export function commentNode(comment, { onDelete, onReply, canLike = false, onError } = {}) {
-  const path = '/' + comment.author.nickname;
+  // A comment for a community shows the community (fromWall).
+  const path = pagePath(comment.author);
 
   const menu = [el('a', { className: 'post-date', href: '#' + commentAnchor(comment.id), textContent: formatPostDate(comment.createdAt) })];
   if (comment.replyTo) menu.push(el('a', { href: '#' + commentAnchor(comment.replyTo), textContent: 'в ответ' }));

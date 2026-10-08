@@ -33,7 +33,8 @@ function renderTitle(post) {
 }
 
 // moderatesWall tells whether the viewer keeps the wall of the post clean:
-// its owner, or an admin of the community whose wall it is.
+// its owner, or an admin of the community whose wall it is, who also
+// comments for it ("От имени сообщества").
 async function moderatesWall(post, me) {
   const owner = wallOf(post);
   if (!me) return false;
@@ -60,8 +61,11 @@ function initComments(post, me, moderates) {
   }
 
   // The author of a comment, the author of the post and whoever keeps the
-  // wall clean may delete it.
-  const canDelete = (comment) => Boolean(me) && (moderates || post.mine || comment.author.id === me.id);
+  // wall clean may delete it; mine tells the author a comment for the
+  // community.
+  const canDelete = (comment) => Boolean(me) && (moderates || post.mine || comment.mine || comment.author.id === me.id);
+  // The admins of a community comment for it, if they tick the box.
+  const speaksForClub = moderates && Boolean(wallOf(post).club);
   const commentNodeFor = (comment) => commentNode(comment, {
     onDelete: canDelete(comment) && remove,
     onReply: me?.profileCompleted && reply,
@@ -143,7 +147,10 @@ function initComments(post, me, moderates) {
     button.disabled = true;
 
     try {
-      const comment = await api.createComment(post.id, $('comment-text').value, attachments.ids(), replyTo?.id);
+      const comment = await api.createComment(post.id, $('comment-text').value, attachments.ids(), {
+        replyTo: replyTo?.id,
+        fromClub: speaksForClub && $('comment-from-club').checked,
+      });
       const node = commentNodeFor(comment);
 
       node.dataset.sent = '';
@@ -174,6 +181,7 @@ function initComments(post, me, moderates) {
       onChange: () => {},
     });
 
+    $('comment-from-club-label').hidden = !speaksForClub;
     form.hidden = false;
     form.addEventListener('submit', submit);
     $('comment-reply-cancel').addEventListener('click', cancelReply);
