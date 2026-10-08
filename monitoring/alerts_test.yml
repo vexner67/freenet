@@ -1,0 +1,146 @@
+# Unit tests of alerts.yml: promtool test rules monitoring/alerts_test.yml
+# (scripts/check.sh runs it in Docker with --integration).
+rule_files:
+  - alerts.yml
+
+evaluation_interval: 1m
+
+tests:
+  - name: a service that stops answering
+    interval: 1m
+    input_series:
+      - series: 'up{job="freenet", service="post", instance="post:9053"}'
+        values: "1 1 0 0 0"
+      - series: 'up{job="freenet", service="user", instance="user:9052"}'
+        values: "1 1 1 1 1"
+    alert_rule_test:
+      # Down for one evaluation: not yet.
+      - eval_time: 2m
+        alertname: ServiceDown
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: ServiceDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: freenet, service: post, instance: "post:9053" }
+            exp_annotations:
+              summary: "post is down"
+              description: "Prometheus has not reached post for a minute: the service, or its metrics port, is not answering."
+
+  - name: gRPC errors above 5% of calls
+    interval: 1m
+    input_series:
+      # post: 10 of 110 calls a minute fail.
+      - series: 'grpc_server_handled_total{service="post", grpc_code="OK"}'
+        values: "0+100x20"
+      - series: 'grpc_server_handled_total{service="post", grpc_code="Internal"}'
+        values: "0+10x20"
+      # user: 1 of 101, below the threshold.
+      - series: 'grpc_server_handled_total{service="user", grpc_code="OK"}'
+        values: "0+100x20"
+      - series: 'grpc_server_handled_total{service="user", grpc_code="Internal"}'
+        values: "0+1x20"
+      # message: refusals are the callers' doing, not errors.
+      - series: 'grpc_server_handled_total{service="message", grpc_code="PermissionDenied"}'
+        values: "0+100x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: GRPCServerErrors
+        exp_alerts:
+          - exp_labels: { severity: warning, service: post }
+            exp_annotations:
+              summary: "post fails 9.091% of its calls"
+              description: "More than 5% of the gRPC calls of post ended in Internal, Unknown or DataLoss over 5 minutes. Look for ERROR lines in its log."
+
+  - name: HTTP 5xx above 5% of requests
+    interval: 1m
+    input_series:
+      - series: 'http_requests_total{service="gateway", method="GET", route="/api/v1/feed", code="200"}'
+        values: "0+90x20"
+      - series: 'http_requests_total{service="gateway", method="GET", route="/api/v1/feed", code="503"}'
+        values: "0+10x20"
+      # 4xx are the client's: not errors, though they count as requests.
+      - series: 'http_requests_total{service="gateway", method="POST", route="/api/v1/me/posts", code="429"}'
+        values: "0+10x20"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: HTTPServerErrors
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "The gateway answers 9.091% of requests with 5xx"
+              description: "More than 5% of HTTP requests failed on the server side over 5 minutes; the routes are on the Freenet dashboard."
+
+  - name: slow requests
+    interval: 1m
+    input_series:
+      # 90 of 100 HTTP requests a minute take 1 to 2.5 seconds.
+      - series: 'http_request_duration_seconds_bucket{service="gateway", route="/api/v1/feed", le="0.5"}'
+        values: "0+10x30"
+      - series: 'http_request_duration_seconds_bucket{service="gateway", route="/api/v1/feed", le="1"}'
+        values: "0+10x30"
+      - series: 'http_request_duration_seconds_bucket{service="gateway", route="/api/v1/feed", le="2.5"}'
+        values: "0+100x30"
+      - series: 'http_request_duration_seconds_bucket{service="gateway", route="/api/v1/feed", le="+Inf"}'
+        values: "0+100x30"
+      # post answers within 0.1 second.
+      - series: 'grpc_server_handling_seconds_bucket{service="post", le="0.1"}'
+        values: "0+100x30"
+      - series: 'grpc_server_handling_seconds_bucket{service="post", le="+Inf"}'
+        values: "0+100x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: HTTPSlow
+        exp_alerts:
+          - exp_labels: { severity: warning }
+            exp_annotations:
+              summary: "95% of HTTP requests take up to 2.417s"
+              description: "The 95th percentile of gateway requests has been above a second for 10 minutes."
+      - eval_time: 20m
+        alertname: GRPCSlow
+        exp_alerts: []
+
+  - name: an outbox stream falling behind
+    interval: 1m
+    input_series:
+      # The oldest message of post's media stream ages a minute a minute.
+      - series: 'outbox_lag_seconds{service="post", stream="media"}'
+        values: "0+60x80"
+      - series: 'outbox_lag_seconds{service="post", stream="notification"}'
+        values: "0x80"
+    alert_rule_test:
+      - eval_time: 11m
+        alertname: OutboxLagging
+        exp_alerts:
+          - exp_labels: { severity: warning, service: post, stream: media }
+            exp_annotations:
+              summary: "post has not delivered to media for 11m 0s"
+              description: "The oldest undelivered message of the media stream of post is older than 5 minutes. Is media up? Look for retries in the log of post."
+      - eval_time: 11m
+        alertname: OutboxStuck
+        exp_alerts: []
+      - eval_time: 70m
+        alertname: OutboxStuck
+        exp_alerts:
+          - exp_labels: { severity: critical, service: post, stream: media }
+            exp_annotations:
+              summary: "post has not delivered to media for 1h 10m 0s"
+              description: "The media stream of post has been stuck for over an hour. Photos of new posts, comments and messages are deleted as unpublished once the media stream is a day late."
+
+  - name: dropped outbox messages
+    interval: 1m
+    input_series:
+      - series: 'outbox_messages_total{service="user", stream="notification", result="dropped"}'
+        values: "0 0 1 1 1"
+      - series: 'outbox_messages_total{service="user", stream="notification", result="delivered"}'
+        values: "0+5x4"
+    alert_rule_test:
+      - eval_time: 1m
+        alertname: OutboxDropped
+        exp_alerts: []
+      - eval_time: 3m
+        alertname: OutboxDropped
+        exp_alerts:
+          - exp_labels: { severity: warning, service: user, stream: notification, result: dropped }
+            exp_annotations:
+              summary: "user dropped messages to notification"
+              description: "notification rejected messages of user with an error a retry cannot fix; they are lost. The ERROR lines in the log of user say which."

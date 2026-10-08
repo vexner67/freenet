@@ -1,0 +1,99 @@
+# Alerting rules of the Docker stack's Prometheus (`make stack`), sent to
+# Alertmanager (alertmanager.yml). Tested by promtool with alerts_test.yml
+# (`make check-integration`). A ratio over no traffic is no number at all,
+# so a quiet service raises no error alert.
+groups:
+  - name: availability
+    rules:
+      - alert: ServiceDown
+        expr: up{job="freenet"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }} is down"
+          description: "Prometheus has not reached {{ $labels.service }} for a minute: the service, or its metrics port, is not answering."
+
+  - name: errors
+    rules:
+      # Codes that mean the service failed, not the caller: Internal hides
+      # a bug or a broken dependency (the log line has the request_id).
+      - alert: GRPCServerErrors
+        expr: |
+          sum by (service) (rate(grpc_server_handled_total{grpc_code=~"Internal|Unknown|DataLoss"}[5m]))
+            / sum by (service) (rate(grpc_server_handled_total[5m]))
+            > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} fails {{ $value | humanizePercentage }} of its calls"
+          description: "More than 5% of the gRPC calls of {{ $labels.service }} ended in Internal, Unknown or DataLoss over 5 minutes. Look for ERROR lines in its log."
+
+      - alert: HTTPServerErrors
+        expr: |
+          sum (rate(http_requests_total{code=~"5.."}[5m]))
+            / sum (rate(http_requests_total[5m]))
+            > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The gateway answers {{ $value | humanizePercentage }} of requests with 5xx"
+          description: "More than 5% of HTTP requests failed on the server side over 5 minutes; the routes are on the Freenet dashboard."
+
+  - name: latency
+    rules:
+      - alert: HTTPSlow
+        expr: |
+          histogram_quantile(0.95, sum by (le) (rate(http_request_duration_seconds_bucket[5m]))) > 1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "95% of HTTP requests take up to {{ $value | humanizeDuration }}"
+          description: "The 95th percentile of gateway requests has been above a second for 10 minutes."
+
+      - alert: GRPCSlow
+        expr: |
+          histogram_quantile(0.95, sum by (service, le) (rate(grpc_server_handling_seconds_bucket[5m]))) > 0.5
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "95% of the calls of {{ $labels.service }} take up to {{ $value | humanizeDuration }}"
+          description: "The 95th percentile of the unary calls of {{ $labels.service }} has been above half a second for 10 minutes."
+
+  # The outbox delivers what one service tells another: notifications,
+  # erasures, which photos posts, comments and messages keep (pkg/outbox).
+  - name: outbox
+    rules:
+      # A receiver that is down, or a message it keeps rejecting with a
+      # temporary error, holds back its whole stream.
+      - alert: OutboxLagging
+        expr: outbox_lag_seconds > 300
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} has not delivered to {{ $labels.stream }} for {{ $value | humanizeDuration }}"
+          description: "The oldest undelivered message of the {{ $labels.stream }} stream of {{ $labels.service }} is older than 5 minutes. Is {{ $labels.stream }} up? Look for retries in the log of {{ $labels.service }}."
+
+      # media deletes photos unpublished after UNPUBLISHED_PHOTO_TTL (a day
+      # by default): a media stream stuck that long loses published photos.
+      - alert: OutboxStuck
+        expr: outbox_lag_seconds > 3600
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "{{ $labels.service }} has not delivered to {{ $labels.stream }} for {{ $value | humanizeDuration }}"
+          description: "The {{ $labels.stream }} stream of {{ $labels.service }} has been stuck for over an hour. Photos of new posts, comments and messages are deleted as unpublished once the media stream is a day late."
+
+      - alert: OutboxDropped
+        expr: increase(outbox_messages_total{result="dropped"}[15m]) > 0
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $labels.service }} dropped messages to {{ $labels.stream }}"
+          description: "{{ $labels.stream }} rejected messages of {{ $labels.service }} with an error a retry cannot fix; they are lost. The ERROR lines in the log of {{ $labels.service }} say which."

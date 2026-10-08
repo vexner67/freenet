@@ -5,11 +5,13 @@
 # written to its volume and served back), post (a post with it and a
 # repost), notification (unread count), message (dialogs) and the website
 # itself; then observability: every container healthy, a request ID from
-# the gateway in the auth log, every service's metrics in Prometheus.
+# the gateway in the auth log, every service's metrics in Prometheus, its
+# alert rules loaded and sent to Alertmanager, the Grafana dashboard.
 #
 #   scripts/smoke.sh [base URL]   default http://localhost:8080
 #
-# PROMETHEUS_URL is the stack's Prometheus, default http://localhost:9090.
+# PROMETHEUS_URL, ALERTMANAGER_URL and GRAFANA_URL are the stack's, default
+# http://localhost:9090, :9093 and :3001.
 #
 # Needs curl and jq.
 set -euo pipefail
@@ -18,6 +20,8 @@ cd "$(dirname "$0")/.."
 
 base=${1:-http://localhost:8080}
 prometheus=${PROMETHEUS_URL:-http://localhost:9090}
+alertmanager=${ALERTMANAGER_URL:-http://localhost:9093}
+grafana=${GRAFANA_URL:-http://localhost:3001}
 services=(gateway auth user post media notification message)
 email="smoke-$(date +%s)-$RANDOM@example.com"
 nickname="smoke$RANDOM$RANDOM"
@@ -132,5 +136,22 @@ for _ in $(seq 1 30); do
 done
 [ "$up" = "$(printf '%s\n' "${services[@]}" | sort | xargs)" ] || die "Prometheus at $prometheus sees up: ${up:-nothing}"
 step "metrics: Prometheus scrapes every service"
+
+# Rules that fail to evaluate (a typo in a metric name does not) say so in
+# their health.
+rules=$(curl -sf "$prometheus/api/v1/rules?type=alert") || die "no rules from Prometheus at $prometheus"
+echo "$rules" | jq -e '[.data.groups[].rules[]] | length >= 8 and all(.health == "ok" or .health == "unknown")' >/dev/null \
+	|| die "Prometheus alert rules are missing or broken: $(echo "$rules" | jq -c '[.data.groups[].rules[] | {name, health, lastError}]')"
+curl -sf "$prometheus/api/v1/alertmanagers" | jq -e '.data.activeAlertmanagers | length == 1' >/dev/null \
+	|| die "Prometheus has no Alertmanager"
+curl -sf -o /dev/null "$alertmanager/-/ready" || die "Alertmanager at $alertmanager is not ready"
+step "alerts: rules loaded, Alertmanager ready"
+
+# Anonymous viewers see the dashboard, and its data source answers.
+curl -sf "$grafana/api/dashboards/uid/freenet" | jq -e '.dashboard.panels | length > 0' >/dev/null \
+	|| die "no Freenet dashboard in Grafana at $grafana"
+curl -sf "$grafana/api/datasources/uid/prometheus/health" | jq -e '.status == "OK"' >/dev/null \
+	|| die "Grafana does not reach Prometheus"
+step "grafana: the dashboard and its data source"
 
 echo "smoke test passed"
