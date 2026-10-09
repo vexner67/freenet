@@ -21,10 +21,10 @@ func TestNewText(t *testing.T) {
 	}{
 		{"plain", "привет", "привет", nil},
 		{"trimmed, windows line breaks", "  раз\r\nдва \n", "раз\nдва", nil},
-		{"emoji count as one character", strings.Repeat("👋", 1000), post.Text(strings.Repeat("👋", 1000)), nil},
+		{"emoji count as one character", strings.Repeat("👋", 60000), post.Text(strings.Repeat("👋", 60000)), nil},
 		{"empty is fine, photos may say it all", "", "", nil},
 		{"only spaces and breaks", " \n\t\r\n ", "", nil},
-		{"too long", strings.Repeat("я", 1001), "", post.ErrTextTooLong},
+		{"too long", strings.Repeat("я", 60001), "", post.ErrTextTooLong},
 	}
 
 	for _, tt := range tests {

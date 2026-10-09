@@ -207,7 +207,7 @@ func TestErrors(t *testing.T) {
 			return err
 		}, codes.InvalidArgument},
 		{"too long text", func() error {
-			_, err := s.client.CreatePost(ann, &postv1.CreatePostRequest{Text: strings.Repeat("я", 1001)})
+			_, err := s.client.CreatePost(ann, &postv1.CreatePostRequest{Text: strings.Repeat("я", 60001)})
 			return err
 		}, codes.InvalidArgument},
 		{"speaking for one's own wall", func() error {
@@ -271,7 +271,7 @@ func TestErrors(t *testing.T) {
 			return err
 		}, codes.InvalidArgument},
 		{"too long comment", func() error {
-			_, err := s.client.CreateComment(ann, &postv1.CreateCommentRequest{PostId: uuid.NewString(), Text: strings.Repeat("я", 1001)})
+			_, err := s.client.CreateComment(ann, &postv1.CreateCommentRequest{PostId: uuid.NewString(), Text: strings.Repeat("я", 60001)})
 			return err
 		}, codes.InvalidArgument},
 		{"comment a missing post", func() error {
@@ -412,7 +412,7 @@ func TestRepostPost(t *testing.T) {
 		{"without a token", context.Background(), &postv1.RepostPostRequest{PostId: original.GetPost().GetId()}, codes.Unauthenticated},
 		{"bad id", s.as(t, bob), &postv1.RepostPostRequest{PostId: "x"}, codes.InvalidArgument},
 		{"missing post", s.as(t, bob), &postv1.RepostPostRequest{PostId: uuid.NewString()}, codes.NotFound},
-		{"text too long", s.as(t, bob), &postv1.RepostPostRequest{PostId: original.GetPost().GetId(), Text: strings.Repeat("я", 1001)}, codes.InvalidArgument},
+		{"text too long", s.as(t, bob), &postv1.RepostPostRequest{PostId: original.GetPost().GetId(), Text: strings.Repeat("я", 60001)}, codes.InvalidArgument},
 	}
 
 	for _, tt := range tests {

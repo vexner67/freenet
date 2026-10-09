@@ -11,7 +11,9 @@ import (
 )
 
 const (
-	maxTextLen = 1000
+	// maxTextLen is openvk's (wall.postSizes.maxSize), for posts and
+	// comments alike.
+	maxTextLen = 60000
 
 	// editWindow is how long a post can be edited, as in openvk: long
 	// enough to fix a typo, short enough that an old post is not rewritten
