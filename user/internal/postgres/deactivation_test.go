@@ -43,7 +43,7 @@ func TestUserRepository_Deactivation(t *testing.T) {
 		t.Fatalf("stored deactivation = %+v", d)
 	}
 
-	q, err := user.NewSearchQuery(nickname)
+	q, err := user.NewSearchQuery(nickname, user.SearchFilters{})
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -18,6 +18,13 @@ type Profile struct {
 	Worldview      Worldview
 	PoliticalViews PoliticalViews
 	Birthday       Birthday
+	// HideBirthYear shows only the day and the month of the birthday
+	// ("Показывать только день и месяц").
+	HideBirthYear bool
+	Hometown      Place
+	// Partner is whom the relationship names ("Встречается с …"),
+	// uuid.Nil for nobody; only a relationship that TakesPartner has one.
+	Partner uuid.UUID
 }
 
 func (p Profile) validate() error {
@@ -64,12 +71,36 @@ type PublicProfile struct {
 	Worldview      Worldview
 	PoliticalViews PoliticalViews
 	Birthday       Birthday
+	// BirthYearHidden: Birthday is told without its year, which is then
+	// birthYearMask.
+	BirthYearHidden bool
+	Hometown        Place
+	// Partner is shown with the relationship, uuid.Nil when hidden too.
+	Partner     uuid.UUID
+	Contacts    Contacts
+	Interests   Interests
+	ExtraFields []ExtraField
+}
+
+// birthYearMask is the year of a birthday told without one: a leap year,
+// so that February 29 stays a date.
+const birthYearMask = 2000
+
+// RegisteredAt is when the page was made ("Дата регистрации"): the time
+// of its UUIDv7.
+func RegisteredAt(id uuid.UUID) time.Time {
+	sec, nsec := id.Time().UnixTime()
+
+	return time.Unix(sec, nsec).UTC()
 }
 
 type User struct {
 	id           uuid.UUID
 	email        Email
 	profile      Profile
+	contacts     Contacts
+	interests    Interests
+	extraFields  []ExtraField
 	privacy      Privacy
 	avatarID     uuid.UUID
 	deactivation Deactivation
@@ -95,6 +126,9 @@ type Stored struct {
 	ID           uuid.UUID
 	Email        Email
 	Profile      Profile
+	Contacts     Contacts
+	Interests    Interests
+	ExtraFields  []ExtraField
 	Privacy      Privacy
 	AvatarID     uuid.UUID
 	Deactivation Deactivation
@@ -106,19 +140,52 @@ func Restore(s Stored) *User {
 		id:           s.ID,
 		email:        s.Email,
 		profile:      s.Profile,
+		contacts:     s.Contacts,
+		interests:    s.Interests,
+		extraFields:  s.ExtraFields,
 		privacy:      s.Privacy,
 		avatarID:     s.AvatarID,
 		deactivation: s.Deactivation,
 	}
 }
 
-// UpdateProfile replaces the whole profile.
+// UpdateProfile replaces the whole profile ("Основное"). A partner is kept
+// only by a relationship that takes one, as openvk does.
 func (u *User) UpdateProfile(profile Profile) error {
 	if err := profile.validate(); err != nil {
 		return err
 	}
 
+	if !profile.Relationship.TakesPartner() {
+		profile.Partner = uuid.Nil
+	}
+
+	if profile.Partner == u.id {
+		return ErrPartnerIsSelf
+	}
+
 	u.profile = profile
+
+	return nil
+}
+
+// UpdateContacts replaces "Контактная информация".
+func (u *User) UpdateContacts(contacts Contacts) {
+	u.contacts = contacts
+}
+
+// UpdateInterests replaces "Личная информация".
+func (u *User) UpdateInterests(interests Interests) {
+	u.interests = interests
+}
+
+// UpdateExtraFields replaces "Дополнительно": up to MaxExtraFields.
+func (u *User) UpdateExtraFields(fields []ExtraField) error {
+	if len(fields) > MaxExtraFields {
+		return ErrTooManyExtraFields
+	}
+
+	u.extraFields = fields
 
 	return nil
 }
@@ -204,21 +271,31 @@ func (u *User) PublicProfile() PublicProfile {
 	}
 
 	p := PublicProfile{
-		ID:       u.id,
-		AvatarID: u.avatarID,
-		Name:     u.profile.Name,
-		Surname:  u.profile.Surname,
-		Nickname: u.profile.Nickname,
-		Status:   u.profile.Status,
-		Gender:   u.profile.Gender,
+		ID:          u.id,
+		AvatarID:    u.avatarID,
+		Name:        u.profile.Name,
+		Surname:     u.profile.Surname,
+		Nickname:    u.profile.Nickname,
+		Status:      u.profile.Status,
+		Gender:      u.profile.Gender,
+		Hometown:    u.profile.Hometown,
+		Contacts:    u.contacts,
+		Interests:   u.interests,
+		ExtraFields: u.extraFields,
 	}
 
 	if u.privacy.ShowBirthday {
 		p.Birthday = u.profile.Birthday
+		if u.profile.HideBirthYear && !p.Birthday.Time().IsZero() {
+			b := p.Birthday.Time()
+			p.Birthday = Birthday(time.Date(birthYearMask, b.Month(), b.Day(), 0, 0, 0, 0, b.Location()))
+			p.BirthYearHidden = true
+		}
 	}
 
 	if u.privacy.ShowRelationship {
 		p.Relationship = u.profile.Relationship
+		p.Partner = u.profile.Partner
 	}
 
 	if u.privacy.ShowWorldview {
@@ -242,6 +319,18 @@ func (u *User) Email() Email {
 
 func (u *User) Profile() Profile {
 	return u.profile
+}
+
+func (u *User) Contacts() Contacts {
+	return u.contacts
+}
+
+func (u *User) Interests() Interests {
+	return u.interests
+}
+
+func (u *User) ExtraFields() []ExtraField {
+	return u.extraFields
 }
 
 func (u *User) Privacy() Privacy {

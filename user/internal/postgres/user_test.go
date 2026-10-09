@@ -221,7 +221,7 @@ func TestUserRepository(t *testing.T) {
 
 		// The nickname is unique per run, so it finds exactly this user;
 		// the name words come in another order and case.
-		q, err := user.NewSearchQuery("LEE " + nickname.String())
+		q, err := user.NewSearchQuery("LEE "+nickname.String(), user.SearchFilters{})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -230,7 +230,7 @@ func TestUserRepository(t *testing.T) {
 			t.Fatalf("Search = %v, %v", found, err)
 		}
 
-		percent, err := user.NewSearchQuery("%")
+		percent, err := user.NewSearchQuery("%", user.SearchFilters{})
 		if err != nil {
 			t.Fatal(err)
 		}

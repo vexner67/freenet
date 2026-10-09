@@ -24,6 +24,9 @@ const (
 	UserService_GetMe_FullMethodName              = "/user.v1.UserService/GetMe"
 	UserService_UpdateProfile_FullMethodName      = "/user.v1.UserService/UpdateProfile"
 	UserService_UpdatePrivacy_FullMethodName      = "/user.v1.UserService/UpdatePrivacy"
+	UserService_UpdateContacts_FullMethodName     = "/user.v1.UserService/UpdateContacts"
+	UserService_UpdateInterests_FullMethodName    = "/user.v1.UserService/UpdateInterests"
+	UserService_UpdateExtraFields_FullMethodName  = "/user.v1.UserService/UpdateExtraFields"
 	UserService_SetAvatar_FullMethodName          = "/user.v1.UserService/SetAvatar"
 	UserService_GetProfile_FullMethodName         = "/user.v1.UserService/GetProfile"
 	UserService_GetProfiles_FullMethodName        = "/user.v1.UserService/GetProfiles"
@@ -55,6 +58,11 @@ type UserServiceClient interface {
 	GetMe(ctx context.Context, in *GetMeRequest, opts ...grpc.CallOption) (*GetMeResponse, error)
 	UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error)
 	UpdatePrivacy(ctx context.Context, in *UpdatePrivacyRequest, opts ...grpc.CallOption) (*UpdatePrivacyResponse, error)
+	// openvk's "Контакты", "Интересы" and "Дополнительно" of the page; each
+	// replaces its part at once.
+	UpdateContacts(ctx context.Context, in *UpdateContactsRequest, opts ...grpc.CallOption) (*UpdateContactsResponse, error)
+	UpdateInterests(ctx context.Context, in *UpdateInterestsRequest, opts ...grpc.CallOption) (*UpdateInterestsResponse, error)
+	UpdateExtraFields(ctx context.Context, in *UpdateExtraFieldsRequest, opts ...grpc.CallOption) (*UpdateExtraFieldsResponse, error)
 	// Points the caller's profile to a photo uploaded to the media service;
 	// an empty avatar_id removes the photo.
 	SetAvatar(ctx context.Context, in *SetAvatarRequest, opts ...grpc.CallOption) (*SetAvatarResponse, error)
@@ -147,6 +155,36 @@ func (c *userServiceClient) UpdatePrivacy(ctx context.Context, in *UpdatePrivacy
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UpdatePrivacyResponse)
 	err := c.cc.Invoke(ctx, UserService_UpdatePrivacy_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UpdateContacts(ctx context.Context, in *UpdateContactsRequest, opts ...grpc.CallOption) (*UpdateContactsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateContactsResponse)
+	err := c.cc.Invoke(ctx, UserService_UpdateContacts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UpdateInterests(ctx context.Context, in *UpdateInterestsRequest, opts ...grpc.CallOption) (*UpdateInterestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateInterestsResponse)
+	err := c.cc.Invoke(ctx, UserService_UpdateInterests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UpdateExtraFields(ctx context.Context, in *UpdateExtraFieldsRequest, opts ...grpc.CallOption) (*UpdateExtraFieldsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateExtraFieldsResponse)
+	err := c.cc.Invoke(ctx, UserService_UpdateExtraFields_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -362,6 +400,11 @@ type UserServiceServer interface {
 	GetMe(context.Context, *GetMeRequest) (*GetMeResponse, error)
 	UpdateProfile(context.Context, *UpdateProfileRequest) (*UpdateProfileResponse, error)
 	UpdatePrivacy(context.Context, *UpdatePrivacyRequest) (*UpdatePrivacyResponse, error)
+	// openvk's "Контакты", "Интересы" and "Дополнительно" of the page; each
+	// replaces its part at once.
+	UpdateContacts(context.Context, *UpdateContactsRequest) (*UpdateContactsResponse, error)
+	UpdateInterests(context.Context, *UpdateInterestsRequest) (*UpdateInterestsResponse, error)
+	UpdateExtraFields(context.Context, *UpdateExtraFieldsRequest) (*UpdateExtraFieldsResponse, error)
 	// Points the caller's profile to a photo uploaded to the media service;
 	// an empty avatar_id removes the photo.
 	SetAvatar(context.Context, *SetAvatarRequest) (*SetAvatarResponse, error)
@@ -431,6 +474,15 @@ func (UnimplementedUserServiceServer) UpdateProfile(context.Context, *UpdateProf
 }
 func (UnimplementedUserServiceServer) UpdatePrivacy(context.Context, *UpdatePrivacyRequest) (*UpdatePrivacyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdatePrivacy not implemented")
+}
+func (UnimplementedUserServiceServer) UpdateContacts(context.Context, *UpdateContactsRequest) (*UpdateContactsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateContacts not implemented")
+}
+func (UnimplementedUserServiceServer) UpdateInterests(context.Context, *UpdateInterestsRequest) (*UpdateInterestsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateInterests not implemented")
+}
+func (UnimplementedUserServiceServer) UpdateExtraFields(context.Context, *UpdateExtraFieldsRequest) (*UpdateExtraFieldsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateExtraFields not implemented")
 }
 func (UnimplementedUserServiceServer) SetAvatar(context.Context, *SetAvatarRequest) (*SetAvatarResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetAvatar not implemented")
@@ -581,6 +633,60 @@ func _UserService_UpdatePrivacy_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).UpdatePrivacy(ctx, req.(*UpdatePrivacyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UpdateContacts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateContactsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpdateContacts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpdateContacts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpdateContacts(ctx, req.(*UpdateContactsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UpdateInterests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateInterestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpdateInterests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpdateInterests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpdateInterests(ctx, req.(*UpdateInterestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UpdateExtraFields_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateExtraFieldsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpdateExtraFields(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpdateExtraFields_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpdateExtraFields(ctx, req.(*UpdateExtraFieldsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -967,6 +1073,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdatePrivacy",
 			Handler:    _UserService_UpdatePrivacy_Handler,
+		},
+		{
+			MethodName: "UpdateContacts",
+			Handler:    _UserService_UpdateContacts_Handler,
+		},
+		{
+			MethodName: "UpdateInterests",
+			Handler:    _UserService_UpdateInterests_Handler,
+		},
+		{
+			MethodName: "UpdateExtraFields",
+			Handler:    _UserService_UpdateExtraFields_Handler,
 		},
 		{
 			MethodName: "SetAvatar",

@@ -32,7 +32,7 @@ func TestAccountService(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = userSvc.UpdateProfile(ctx, id, user.Profile{Name: "Анна", Nickname: mustNickname(t, nickname)}); err != nil {
+		if _, err = userSvc.UpdateProfile(ctx, id, user.Profile{Name: "Анна", Nickname: mustNickname(t, nickname)}, ""); err != nil {
 			t.Fatal(err)
 		}
 
@@ -60,7 +60,7 @@ func TestAccountService(t *testing.T) {
 	}
 
 	// Hidden: nobody finds or follows it; its profile has the name only.
-	q, err := user.NewSearchQuery("анна")
+	q, err := user.NewSearchQuery("анна", user.SearchFilters{})
 	if err != nil {
 		t.Fatal(err)
 	}

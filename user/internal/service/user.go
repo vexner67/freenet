@@ -97,14 +97,69 @@ func (s *UserService) GetPublicProfile(ctx context.Context, nickname user.Nickna
 	return u.PublicProfile(), nil
 }
 
-func (s *UserService) UpdateProfile(ctx context.Context, id uuid.UUID, profile user.Profile) (*user.User, error) {
+// UpdateProfile replaces "Основное"; partner is the nickname of whom the
+// relationship names, "" for nobody (user.ErrPartnerNotFound for no one).
+func (s *UserService) UpdateProfile(ctx context.Context, id uuid.UUID, profile user.Profile, partner user.Nickname) (*user.User, error) {
 	u, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
 		return nil, errs.Wrap("s.userRepo.GetByID", err)
 	}
 
+	profile.Partner = uuid.Nil
+	if partner != "" && profile.Relationship.TakesPartner() {
+		p, err := s.userRepo.GetByNickname(ctx, partner)
+		if errors.Is(err, user.ErrNotFound) {
+			return nil, user.ErrPartnerNotFound
+		}
+		if err != nil {
+			return nil, errs.Wrap("s.userRepo.GetByNickname", err)
+		}
+		profile.Partner = p.ID()
+	}
+
 	if err = u.UpdateProfile(profile); err != nil {
 		return nil, errs.Wrap("u.UpdateProfile", err)
+	}
+
+	if err = s.userRepo.Update(ctx, u); err != nil {
+		return nil, errs.Wrap("s.userRepo.Update", err)
+	}
+
+	return u, nil
+}
+
+// UpdateContacts replaces "Контактная информация".
+func (s *UserService) UpdateContacts(ctx context.Context, id uuid.UUID, contacts user.Contacts) (*user.User, error) {
+	return s.update(ctx, id, func(u *user.User) error {
+		u.UpdateContacts(contacts)
+		return nil
+	})
+}
+
+// UpdateInterests replaces "Личная информация".
+func (s *UserService) UpdateInterests(ctx context.Context, id uuid.UUID, interests user.Interests) (*user.User, error) {
+	return s.update(ctx, id, func(u *user.User) error {
+		u.UpdateInterests(interests)
+		return nil
+	})
+}
+
+// UpdateExtraFields replaces "Дополнительно".
+func (s *UserService) UpdateExtraFields(ctx context.Context, id uuid.UUID, fields []user.ExtraField) (*user.User, error) {
+	return s.update(ctx, id, func(u *user.User) error {
+		return errs.Wrap("u.UpdateExtraFields", u.UpdateExtraFields(fields))
+	})
+}
+
+// update reads a user, changes it with change and stores it.
+func (s *UserService) update(ctx context.Context, id uuid.UUID, change func(u *user.User) error) (*user.User, error) {
+	u, err := s.userRepo.GetByID(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	if err = change(u); err != nil {
+		return nil, err
 	}
 
 	if err = s.userRepo.Update(ctx, u); err != nil {
