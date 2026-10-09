@@ -52,6 +52,15 @@ type clubJSON struct {
 
 	OpenTopics      bool `json:"openTopics"`
 	TopicsAboveWall bool `json:"topicsAboveWall"`
+	// Backdrop is "Фон страницы", null for none.
+	Backdrop *backdropJSON `json:"backdrop"`
+}
+
+// backdropJSON is the photos on the left and on the right of a club's
+// page; either may be null.
+type backdropJSON struct {
+	Left  *photoJSON `json:"left"`
+	Right *photoJSON `json:"right"`
 }
 
 // clubResponse is a club as the viewer sees it: role is "" (not a member,
@@ -117,7 +126,24 @@ func toClubJSON(c model.Club) clubJSON {
 
 		OpenTopics:      c.OpenTopics,
 		TopicsAboveWall: c.TopicsAboveWall,
+		Backdrop:        toBackdropJSON(c),
 	}
+}
+
+func toBackdropJSON(c model.Club) *backdropJSON {
+	if c.BackdropLeft == "" && c.BackdropRight == "" {
+		return nil
+	}
+
+	side := func(id string) *photoJSON {
+		if id == "" {
+			return nil
+		}
+		p := toPhotoJSON(c.ID, id)
+		return &p
+	}
+
+	return &backdropJSON{Left: side(c.BackdropLeft), Right: side(c.BackdropRight)}
 }
 
 func toClubsJSON(clubs []model.Club) []clubJSON {

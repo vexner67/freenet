@@ -340,6 +340,10 @@ type Club struct {
 	// admins; TopicsAboveWall: its page lists them above the wall.
 	OpenTopics      bool
 	TopicsAboveWall bool
+	// BackdropLeft and BackdropRight are "Фон страницы": photos of the
+	// club, filed under its ID; "" for none.
+	BackdropLeft  string
+	BackdropRight string
 }
 
 // ClubView is a club as the caller sees it. Role is what the caller is in

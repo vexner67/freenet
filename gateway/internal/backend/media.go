@@ -70,6 +70,31 @@ func (m *Media) DeleteClubAvatars(ctx context.Context, accessToken, clubID, keep
 	return nil
 }
 
+// UploadClubPhoto keeps a photo of the club for good: a side of its
+// backdrop.
+func (m *Media) UploadClubPhoto(ctx context.Context, accessToken, clubID string, image []byte) (string, error) {
+	resp, err := m.api.UploadClubPhoto(
+		withToken(ctx, accessToken),
+		&mediav1.UploadClubPhotoRequest{ClubId: clubID, Image: image},
+		grpc.MaxCallSendMsgSize(maxMessageBytes),
+	)
+	if err != nil {
+		return "", errs.Wrap("m.api.UploadClubPhoto", fromStatus(err))
+	}
+
+	return resp.GetPhotoId(), nil
+}
+
+// DeleteClubPhotos deletes the photos of the club but keep.
+func (m *Media) DeleteClubPhotos(ctx context.Context, accessToken, clubID string, keep []string) error {
+	_, err := m.api.DeleteClubPhotos(withToken(ctx, accessToken), &mediav1.DeleteClubPhotosRequest{ClubId: clubID, KeepPhotoIds: keep})
+	if err != nil {
+		return errs.Wrap("m.api.DeleteClubPhotos", fromStatus(err))
+	}
+
+	return nil
+}
+
 // Avatar returns the JPEG of an avatar, small (100px) or large (400px).
 func (m *Media) Avatar(ctx context.Context, userID, avatarID string, small bool) ([]byte, error) {
 	size := mediav1.AvatarSize_AVATAR_SIZE_LARGE

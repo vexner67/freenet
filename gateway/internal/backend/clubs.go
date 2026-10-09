@@ -229,6 +229,27 @@ func (c *Clubs) SetAvatar(ctx context.Context, accessToken, clubID, avatarID str
 	return toClubView(resp.GetClub()), nil
 }
 
+var backdropSides = map[string]clubv1.BackdropSide{
+	"left":  clubv1.BackdropSide_BACKDROP_SIDE_LEFT,
+	"right": clubv1.BackdropSide_BACKDROP_SIDE_RIGHT,
+}
+
+// SetBackdrop shows photoID ("" for none) on side, "left" or "right", of
+// the club's page.
+func (c *Clubs) SetBackdrop(ctx context.Context, accessToken, clubID, side, photoID string) (model.ClubView, error) {
+	ps, ok := backdropSides[side]
+	if !ok {
+		return model.ClubView{}, failure.New(failure.InvalidArgument, "invalid backdrop side")
+	}
+
+	resp, err := c.api.SetClubBackdrop(withToken(ctx, accessToken), &clubv1.SetClubBackdropRequest{ClubId: clubID, Side: ps, PhotoId: photoID})
+	if err != nil {
+		return model.ClubView{}, errs.Wrap("c.api.SetClubBackdrop", fromStatus(err))
+	}
+
+	return toClubView(resp.GetClub()), nil
+}
+
 // Pin puts a club the caller runs in their left menu, or takes it out.
 func (c *Clubs) Pin(ctx context.Context, accessToken, clubID string, pinned bool) error {
 	if _, err := c.api.PinClub(withToken(ctx, accessToken), &clubv1.PinClubRequest{ClubId: clubID, Pinned: pinned}); err != nil {
@@ -293,6 +314,8 @@ func toClub(c *clubv1.Club) model.Club {
 
 		OpenTopics:      c.GetOpenTopics(),
 		TopicsAboveWall: c.GetTopicsAboveWall(),
+		BackdropLeft:    c.GetBackdropLeft(),
+		BackdropRight:   c.GetBackdropRight(),
 	}
 }
 
