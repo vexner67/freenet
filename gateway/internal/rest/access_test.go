@@ -73,6 +73,23 @@ func TestPagePartsPrivacy(t *testing.T) {
 	}
 }
 
+func TestProfilePresence(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	type presence struct {
+		LastSeenAt *string `json:"lastSeenAt"`
+		Online     bool    `json:"online"`
+	}
+
+	if got := decode[presence](t, h.do("GET", "/api/v1/users/bob", "")); got.LastSeenAt == nil || *got.LastSeenAt != "2026-10-09T12:00:00Z" || !got.Online {
+		t.Fatalf("bob: %+v", got)
+	}
+	if got := decode[presence](t, h.do("GET", "/api/v1/users/ann", "")); got.LastSeenAt != nil || got.Online {
+		t.Fatalf("never seen: %+v", got)
+	}
+}
+
 func TestProfileAccess(t *testing.T) {
 	t.Parallel()
 

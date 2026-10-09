@@ -87,7 +87,7 @@ func TestAboutTheUser(t *testing.T) {
 	// Shown to users only, with the information to ann alone.
 	if _, err = s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{Privacy: &userv1.PrivacySettings{
 		WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE, MessagesWrite: userv1.MessagesWrite_MESSAGES_WRITE_EVERYONE, ClubsRead: userv1.ClubsRead_CLUBS_READ_USERS,
-		PageRead: userv1.Audience_AUDIENCE_USERS, InfoRead: userv1.Audience_AUDIENCE_ONLY_ME, PhotosRead: userv1.Audience_AUDIENCE_EVERYONE, FriendsRead: userv1.Audience_AUDIENCE_EVERYONE,
+		PageRead: userv1.Audience_AUDIENCE_USERS, InfoRead: userv1.Audience_AUDIENCE_ONLY_ME, PhotosRead: userv1.Audience_AUDIENCE_EVERYONE, FriendsRead: userv1.Audience_AUDIENCE_EVERYONE, OnlineRead: userv1.Audience_AUDIENCE_EVERYONE,
 	}}); err != nil {
 		t.Fatal(err)
 	}

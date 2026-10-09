@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -152,6 +153,17 @@ func (r *FollowRepository) list(ctx context.Context, query string, userID, befor
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
+
+	found, err := scanFollowed(rows)
+	if err != nil {
+		return nil, errs.Wrap("scanFollowed", err)
+	}
+
+	return found, nil
+}
+
+// scanFollowed reads rows of a follow ID and a user, and closes them.
+func scanFollowed(rows pgx.Rows) ([]service.Followed, error) {
 	defer rows.Close()
 
 	var found []service.Followed
@@ -166,11 +178,70 @@ func (r *FollowRepository) list(ctx context.Context, query string, userID, befor
 		found = append(found, service.Followed{FollowID: followID, User: u})
 	}
 
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, errs.Wrap("rows.Err", err)
 	}
 
 	return found, nil
+}
+
+// The people online are few: the follows of the user are read by its
+// index and the visits checked on their rows.
+const (
+	listOnlineFollowingQuery = `
+	SELECT
+		f.id,` + qualifiedUserColumns + `
+	FROM follows f
+	JOIN users u ON u.id = f.followee_id
+	WHERE f.follower_id = $1
+		AND u.last_seen_at > $2
+		AND u.deactivated_at IS NULL
+		AND f.id < $3
+	ORDER BY f.id DESC
+	LIMIT $4
+`
+
+	countOnlineFollowingQuery = `
+	SELECT count(*)
+	FROM follows f
+	JOIN users u ON u.id = f.followee_id
+	WHERE f.follower_id = $1
+		AND u.last_seen_at > $2
+		AND u.deactivated_at IS NULL
+`
+)
+
+func (r *FollowRepository) ListOnlineFollowing(
+	ctx context.Context,
+	userID uuid.UUID,
+	since time.Time,
+	before uuid.UUID,
+	limit int,
+) ([]service.Followed, error) {
+	if before == uuid.Nil {
+		before = uuid.Max
+	}
+
+	rows, err := r.conn(ctx).Query(ctx, listOnlineFollowingQuery, userID, since, before, limit)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	found, err := scanFollowed(rows)
+	if err != nil {
+		return nil, errs.Wrap("scanFollowed", err)
+	}
+
+	return found, nil
+}
+
+func (r *FollowRepository) CountOnlineFollowing(ctx context.Context, userID uuid.UUID, since time.Time) (int, error) {
+	var n int
+	if err := r.conn(ctx).QueryRow(ctx, countOnlineFollowingQuery, userID, since).Scan(&n); err != nil {
+		return 0, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return n, nil
 }
 
 const followingIDsQuery = `

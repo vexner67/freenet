@@ -76,7 +76,27 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		delete(r.byNickname, nicknameKey(nickname))
 	}
 
-	r.put(u)
+	// As in PostgreSQL, Update does not store visits: a user read before
+	// a newer one keeps it.
+	stored := *u
+	stored.MarkSeen(old.LastSeen())
+	r.put(&stored)
+
+	return nil
+}
+
+func (r *UserRepository) MarkSeen(ctx context.Context, id uuid.UUID, at time.Time) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if u, ok := r.users[id]; ok {
+		u.MarkSeen(at)
+		r.users[id] = u
+	}
 
 	return nil
 }

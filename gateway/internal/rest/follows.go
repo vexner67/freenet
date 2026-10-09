@@ -103,6 +103,12 @@ func (a *api) listFollowers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) listFollowing(w http.ResponseWriter, r *http.Request) {
+	// "?online=true" is openvk's "Друзья онлайн".
+	if r.URL.Query().Get("online") == "true" {
+		a.listFollows(w, r, a.users.ListOnlineFollowing)
+		return
+	}
+
 	a.listFollows(w, r, a.users.ListFollowing)
 }
 

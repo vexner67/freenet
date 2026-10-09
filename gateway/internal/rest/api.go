@@ -49,6 +49,10 @@ type Users interface {
 	FollowStats(ctx context.Context, accessToken, userID string) (model.FollowStats, error)
 	ListFollowers(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
 	ListFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
+	// ListOnlineFollowing is whom userID follows who is online now.
+	ListOnlineFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
+	// MarkOnline: the caller is on the site now.
+	MarkOnline(ctx context.Context, accessToken string) error
 
 	SetAvatar(ctx context.Context, accessToken, avatarID string) (model.User, error)
 	Search(ctx context.Context, q model.UserQuery, cursor string, limit int) (model.UserPage, error)

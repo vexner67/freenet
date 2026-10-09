@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -20,6 +21,7 @@ type PermissionService struct {
 	userRepo   UserRepository
 	followRepo FollowChecker
 	blockRepo  BlockChecker
+	now        func() time.Time
 }
 
 func NewPermissionService(userRepo UserRepository, followRepo FollowChecker, blockRepo BlockChecker) *PermissionService {
@@ -27,6 +29,7 @@ func NewPermissionService(userRepo UserRepository, followRepo FollowChecker, blo
 		userRepo:   userRepo,
 		followRepo: followRepo,
 		blockRepo:  blockRepo,
+		now:        time.Now,
 	}
 }
 
@@ -80,7 +83,7 @@ func (s *PermissionService) ProfileFor(ctx context.Context, viewerID uuid.UUID, 
 		return user.PublicProfile{}, errs.Wrap("s.tiesOf", err)
 	}
 
-	return owner.PublicProfileFor(viewerID, ties), nil
+	return owner.PublicProfileFor(viewerID, ties, s.now()), nil
 }
 
 // ties loads ownerID and how it is tied to otherID.

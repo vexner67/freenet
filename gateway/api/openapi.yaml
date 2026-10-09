@@ -1962,6 +1962,8 @@ paths:
           its sender, you or the peer.
         - `notification` — `change` is `new`, `gone` or `read`.
 
+        While it is open, you are on the site ("Онлайн" on your page).
+
         The connection lives until the access token expires: then it is
         closed with code 4001 — refresh the token and connect again. 1001:
         the server stops; 1013: connect again a bit later. After any gap,
@@ -2164,7 +2166,23 @@ paths:
   /api/v1/users/{nickname}/following:
     get:
       summary: Whom the user follows, newest follow first
-      parameters: *followListParams
+      description: |
+        With `online=true` only those online now, openvk's "Друзья онлайн";
+        `total` then counts them.
+      parameters:
+        - name: nickname
+          in: path
+          required: true
+          schema: { type: string }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+        - name: online
+          in: query
+          schema: { type: boolean, default: false }
       responses: *followListResponses
 
   /api/v1/users/{nickname}/clubs:
@@ -2531,6 +2549,10 @@ components:
           type: string
           enum: [everyone, users, following, only_me]
           description: "Who sees whom you follow and who follows you (\"Кому видно моих друзей\")"
+        onlineRead:
+          type: string
+          enum: [everyone, users, following, only_me]
+          description: "Who sees when you were last online after a long absence (\"Кто видит мою неактивность\"); a shorter one anyone sees, as on openvk"
 
     User:
       allOf:
@@ -2976,6 +2998,14 @@ components:
             infoHidden:
               type: boolean
               description: "The owner hid the information of the page from you (`infoRead`): only the names, the photo, the status and the pronouns are left"
+            lastSeenAt:
+              description: "When the user last visited the site (\"был в сети\"); null if never, when hidden (`onlineRead`) and in lists"
+              oneOf:
+                - { type: string, format: date-time }
+                - { type: "null" }
+            online:
+              type: boolean
+              description: "The user is on the site now (\"Онлайн\"); only on the page itself"
 
     Access:
       type: object

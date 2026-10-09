@@ -6,6 +6,7 @@ import (
 	"net"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -81,6 +82,11 @@ func TestEvents(t *testing.T) {
 
 	if e := next(t, conn); e.Type != "ready" || *e.Messages != 2 || *e.Notifications != 3 {
 		t.Fatalf("first event = %+v, want ready with both counters", e)
+	}
+
+	// An open page tells that its user is on the site ("Онлайн").
+	if got := h.users.markedOnline(); !slices.Equal(got, []string{"tok"}) {
+		t.Fatalf("marked online with %q", got)
 	}
 
 	// u1 is the caller (GetMe), u2 is bob.

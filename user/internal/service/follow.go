@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -30,6 +31,10 @@ type FollowListRepository interface {
 	ListFollowers(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error)
 	ListFollowing(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error)
 	FollowingIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error)
+	// ListOnlineFollowing and CountOnlineFollowing are whom userID follows
+	// who visited after since, but deleted pages.
+	ListOnlineFollowing(ctx context.Context, userID uuid.UUID, since time.Time, before uuid.UUID, limit int) ([]Followed, error)
+	CountOnlineFollowing(ctx context.Context, userID uuid.UUID, since time.Time) (int, error)
 }
 
 // Followed is a user in a follow list with the ID of that follow.
@@ -59,6 +64,7 @@ type FollowService struct {
 	blockRepo  BlockChecker
 	tx         TxManager
 	notifier   Notifier
+	now        func() time.Time
 }
 
 // FollowDeps are what FollowService works with.
@@ -79,6 +85,7 @@ func NewFollowService(d FollowDeps) *FollowService {
 		blockRepo:  d.Blocks,
 		tx:         d.Tx,
 		notifier:   d.Notifier,
+		now:        time.Now,
 	}
 }
 
@@ -161,11 +168,32 @@ func (s *FollowService) Stats(ctx context.Context, userID, viewerID uuid.UUID) (
 }
 
 func (s *FollowService) ListFollowers(ctx context.Context, userID, cursor uuid.UUID, size int) (FollowPage, error) {
-	return s.page(ctx, userID, cursor, size, s.listRepo.ListFollowers, func(followers, _ int) int { return followers })
+	return s.page(ctx, userID, cursor, size, s.listRepo.ListFollowers, func(ctx context.Context) (int, error) {
+		followers, _, err := s.followRepo.Counts(ctx, userID)
+		return followers, errs.Wrap("s.followRepo.Counts", err)
+	})
 }
 
 func (s *FollowService) ListFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (FollowPage, error) {
-	return s.page(ctx, userID, cursor, size, s.listRepo.ListFollowing, func(_, following int) int { return following })
+	return s.page(ctx, userID, cursor, size, s.listRepo.ListFollowing, func(ctx context.Context) (int, error) {
+		_, following, err := s.followRepo.Counts(ctx, userID)
+		return following, errs.Wrap("s.followRepo.Counts", err)
+	})
+}
+
+// ListOnlineFollowing is whom userID follows who is online now, openvk's
+// "Друзья онлайн".
+func (s *FollowService) ListOnlineFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (FollowPage, error) {
+	since := s.now().UTC().Add(-user.OnlineFor)
+
+	list := func(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error) {
+		return s.listRepo.ListOnlineFollowing(ctx, userID, since, before, limit)
+	}
+
+	return s.page(ctx, userID, cursor, size, list, func(ctx context.Context) (int, error) {
+		online, err := s.listRepo.CountOnlineFollowing(ctx, userID, since)
+		return online, errs.Wrap("s.listRepo.CountOnlineFollowing", err)
+	})
 }
 
 // FollowingIDs are the users whose posts make up userID's news feed.
@@ -185,7 +213,7 @@ func (s *FollowService) page(
 	userID, cursor uuid.UUID,
 	size int,
 	list listFunc,
-	total func(followers, following int) int,
+	total func(ctx context.Context) (int, error),
 ) (FollowPage, error) {
 	if size <= 0 || size > MaxPageSize {
 		size = DefaultPageSize
@@ -197,12 +225,12 @@ func (s *FollowService) page(
 		return FollowPage{}, errs.Wrap("list", err)
 	}
 
-	followers, following, err := s.followRepo.Counts(ctx, userID)
+	count, err := total(ctx)
 	if err != nil {
-		return FollowPage{}, errs.Wrap("s.followRepo.Counts", err)
+		return FollowPage{}, errs.Wrap("total", err)
 	}
 
-	page := FollowPage{Total: total(followers, following)}
+	page := FollowPage{Total: count}
 
 	if len(found) > size {
 		found = found[:size]

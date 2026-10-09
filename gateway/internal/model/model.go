@@ -91,11 +91,13 @@ type Privacy struct {
 	ClubsRead          string
 	// PageRead ("everyone" or "users"), InfoRead, PhotosRead and
 	// FriendsRead are openvk's "Кому видно …": "everyone", "users",
-	// "following" or "only_me".
+	// "following" or "only_me"; OnlineRead is "Кто видит мою
+	// неактивность", the same.
 	PageRead    string
 	InfoRead    string
 	PhotosRead  string
 	FriendsRead string
+	OnlineRead  string
 }
 
 // Access is what of a page the viewer may see: the page, its information,
@@ -148,7 +150,11 @@ type PublicProfile struct {
 	// photo; InfoHidden: nor its information, left empty.
 	PageHidden bool
 	InfoHidden bool
-	About      About
+	// LastSeen is when the user last visited ("был в сети"), zero if never
+	// or hidden; Online: just now ("Онлайн").
+	LastSeen time.Time
+	Online   bool
+	About    About
 }
 
 // Author is who wrote a post or owns a wall, as shown next to a post: a

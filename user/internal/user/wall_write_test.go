@@ -48,7 +48,7 @@ func TestUser_CanPostOnWall(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = u.UpdatePrivacy(user.Privacy{WallWrite: tt.wallWrite, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone}); err != nil {
+			if err = u.UpdatePrivacy(user.Privacy{WallWrite: tt.wallWrite, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone}); err != nil {
 				t.Fatal(err)
 			}
 

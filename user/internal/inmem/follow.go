@@ -4,8 +4,10 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"math"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -117,15 +119,43 @@ func (r *FollowRepository) Counts(ctx context.Context, userID uuid.UUID) (follow
 }
 
 func (r *FollowRepository) ListFollowers(ctx context.Context, userID, before uuid.UUID, limit int) ([]service.Followed, error) {
-	return r.list(ctx, before, limit, func(e edge) (uuid.UUID, bool) { return e.follower, e.followee == userID })
+	return r.list(ctx, before, limit, func(e edge) (uuid.UUID, bool) { return e.follower, e.followee == userID }, nil)
 }
 
 func (r *FollowRepository) ListFollowing(ctx context.Context, userID, before uuid.UUID, limit int) ([]service.Followed, error) {
-	return r.list(ctx, before, limit, func(e edge) (uuid.UUID, bool) { return e.followee, e.follower == userID })
+	return r.list(ctx, before, limit, following(userID), nil)
+}
+
+func (r *FollowRepository) ListOnlineFollowing(
+	ctx context.Context,
+	userID uuid.UUID,
+	since time.Time,
+	before uuid.UUID,
+	limit int,
+) ([]service.Followed, error) {
+	return r.list(ctx, before, limit, following(userID), seenAfter(since))
+}
+
+func (r *FollowRepository) CountOnlineFollowing(ctx context.Context, userID uuid.UUID, since time.Time) (int, error) {
+	found, err := r.list(ctx, uuid.Nil, math.MaxInt, following(userID), seenAfter(since))
+	if err != nil {
+		return 0, err
+	}
+
+	return len(found), nil
+}
+
+func following(userID uuid.UUID) func(edge) (uuid.UUID, bool) {
+	return func(e edge) (uuid.UUID, bool) { return e.followee, e.follower == userID }
+}
+
+// seenAfter keeps the people who visited after since, but deleted pages.
+func seenAfter(since time.Time) func(*user.User) bool {
+	return func(u *user.User) bool { return u.LastSeen().After(since) && !u.IsDeactivated() }
 }
 
 func (r *FollowRepository) FollowingIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error) {
-	found, err := r.list(ctx, uuid.Nil, limit, func(e edge) (uuid.UUID, bool) { return e.followee, e.follower == userID })
+	found, err := r.list(ctx, uuid.Nil, limit, following(userID), nil)
 	if err != nil {
 		return nil, err
 	}
@@ -138,12 +168,14 @@ func (r *FollowRepository) FollowingIDs(ctx context.Context, userID uuid.UUID, l
 	return ids, nil
 }
 
-// list returns the other side of matching follows, newest follow first.
+// list returns the other side of matching follows, newest follow first;
+// keep, if set, picks the users.
 func (r *FollowRepository) list(
 	ctx context.Context,
 	before uuid.UUID,
 	limit int,
 	match func(edge) (other uuid.UUID, ok bool),
+	keep func(*user.User) bool,
 ) ([]service.Followed, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
@@ -177,7 +209,7 @@ func (r *FollowRepository) list(
 		if err != nil && !errors.Is(err, user.ErrNotFound) {
 			return nil, errs.Wrap("r.users.GetByID", err)
 		}
-		if u != nil {
+		if u != nil && (keep == nil || keep(u)) {
 			found = append(found, service.Followed{FollowID: h.followID, User: u})
 		}
 	}

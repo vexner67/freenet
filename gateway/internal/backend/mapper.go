@@ -196,6 +196,7 @@ func toUser(u *userv1.User) model.User {
 			InfoRead:           enumName(u.GetPrivacy().GetInfoRead().String(), audiencePrefix),
 			PhotosRead:         enumName(u.GetPrivacy().GetPhotosRead().String(), audiencePrefix),
 			FriendsRead:        enumName(u.GetPrivacy().GetFriendsRead().String(), audiencePrefix),
+			OnlineRead:         enumName(u.GetPrivacy().GetOnlineRead().String(), audiencePrefix),
 		},
 	}
 }

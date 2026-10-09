@@ -93,6 +93,12 @@ func TestFollowLists(t *testing.T) {
 		t.Fatal("an empty list must be [], not null")
 	}
 
+	// openvk's "Друзья онлайн".
+	w = h.do("GET", "/api/v1/users/ann/following?online=true", "")
+	if page = decode[map[string]any](t, w); h.users.listed != "online:u1:" || page["total"] != float64(1) {
+		t.Fatalf("online: %v (%s)", page, h.users.listed)
+	}
+
 	if w = h.do("GET", "/api/v1/users/nobody/followers", ""); w.Code != http.StatusNotFound {
 		t.Fatalf("unknown nickname: %d", w.Code)
 	}
