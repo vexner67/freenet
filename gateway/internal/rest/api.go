@@ -54,6 +54,8 @@ type Media interface {
 	// checks that the user runs the club.
 	UploadClubAvatar(ctx context.Context, accessToken, clubID string, image []byte) (string, error)
 	DeleteClubAvatars(ctx context.Context, accessToken, clubID, keep string) error
+	UploadClubPhoto(ctx context.Context, accessToken, clubID string, image []byte) (string, error)
+	DeleteClubPhotos(ctx context.Context, accessToken, clubID string, keep []string) error
 
 	UploadPhoto(ctx context.Context, accessToken string, image []byte) (string, error)
 	OwnPhotos(ctx context.Context, accessToken string, photoIDs []string) ([]string, error)
@@ -138,6 +140,7 @@ type Clubs interface {
 	Mine(ctx context.Context, accessToken, cursor string, limit int, managed bool) (model.ClubPage, error)
 	Search(ctx context.Context, query, cursor string, limit int) (model.ClubSearchPage, error)
 	SetAvatar(ctx context.Context, accessToken, clubID, avatarID string) (model.ClubView, error)
+	SetBackdrop(ctx context.Context, accessToken, clubID, side, photoID string) (model.ClubView, error)
 	Pin(ctx context.Context, accessToken, clubID string, pinned bool) error
 	Pinned(ctx context.Context, accessToken string) ([]model.Club, error)
 	MineIDs(ctx context.Context, accessToken string) ([]string, error)
@@ -247,6 +250,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}", a.updateClub)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/avatar", a.uploadClubAvatar)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/avatar", a.deleteClubAvatar)
+	mux.HandleFunc("PUT /api/v1/clubs/{ref}/backdrop/{side}", a.uploadClubBackdrop)
+	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/backdrop", a.deleteClubBackdrop)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/pin", a.pinClub)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/pin", a.unpinClub)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/membership", a.joinClub)

@@ -503,7 +503,9 @@ type fakeMedia struct {
 	deleted  bool
 	// clubAvatarOf is the club whose photo was uploaded or cleaned up.
 	clubAvatarOf string
-	err          error
+	// keptPhotos are the club's photos kept by the last clean-up.
+	keptPhotos []string
+	err        error
 }
 
 func (f *fakeMedia) UploadClubAvatar(_ context.Context, _, clubID string, image []byte) (string, error) {
@@ -513,6 +515,16 @@ func (f *fakeMedia) UploadClubAvatar(_ context.Context, _, clubID string, image 
 
 func (f *fakeMedia) DeleteClubAvatars(_ context.Context, _, clubID, keep string) error {
 	f.clubAvatarOf, f.kept, f.deleted = clubID, keep, true
+	return nil
+}
+
+func (f *fakeMedia) UploadClubPhoto(_ context.Context, _, clubID string, image []byte) (string, error) {
+	f.uploaded, f.clubAvatarOf = image, clubID
+	return "kp1", f.err
+}
+
+func (f *fakeMedia) DeleteClubPhotos(_ context.Context, _, clubID string, keep []string) error {
+	f.clubAvatarOf, f.keptPhotos, f.deleted = clubID, keep, true
 	return nil
 }
 

@@ -22,6 +22,7 @@ type fakeClubs struct {
 	adminsOnly, fromClub bool
 	managed, pinned      bool
 	avatarID, query      string
+	backdrop             [2]string
 	role                 string
 	closedWall           bool
 	suggestWall          bool
@@ -36,6 +37,7 @@ var cats = model.Club{ID: "k1", Name: "Кошки", Address: "cats", Wall: "open
 func (f *fakeClubs) view() model.ClubView {
 	c := cats
 	c.AvatarID = f.avatarID
+	c.BackdropLeft, c.BackdropRight = f.backdrop[0], f.backdrop[1]
 	if f.closedWall {
 		c.Wall = "closed"
 	}
@@ -136,6 +138,21 @@ func (f *fakeClubs) SetAvatar(_ context.Context, token, clubID, avatarID string)
 		return model.ClubView{}, failure.New(failure.PermissionDenied, "permission denied")
 	}
 	f.avatarID = avatarID
+	return f.view(), f.err
+}
+
+func (f *fakeClubs) SetBackdrop(_ context.Context, _, _, side, photoID string) (model.ClubView, error) {
+	if f.role != "admin" && f.role != "owner" {
+		return model.ClubView{}, failure.New(failure.PermissionDenied, "permission denied")
+	}
+	switch side {
+	case "left":
+		f.backdrop[0] = photoID
+	case "right":
+		f.backdrop[1] = photoID
+	default:
+		return model.ClubView{}, failure.New(failure.InvalidArgument, "invalid backdrop side")
+	}
 	return f.view(), f.err
 }
 

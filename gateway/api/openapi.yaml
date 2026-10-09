@@ -1304,6 +1304,50 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/clubs/{ref}/backdrop/{side}:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+      - name: side
+        in: path
+        required: true
+        schema: { type: string, enum: [left, right] }
+    put:
+      summary: Set one side of a community's backdrop ("Фон страницы")
+      description: Its admins only. The body is the image itself, as for a photo; the other side stays, the photo this one replaces is deleted.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema: { type: string, format: binary }
+      responses:
+        "200": { $ref: "#/components/responses/Club" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not an admin of the community
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/clubs/{ref}/backdrop:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    delete:
+      summary: Take a community's backdrop away ("Удалить фон"), both sides
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Club" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not an admin of the community
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/clubs/{ref}/topics:
     parameters:
       - $ref: "#/components/parameters/ClubRef"
@@ -2081,7 +2125,7 @@ components:
 
     ClubInfo:
       type: object
-      required: [id, name, description, address, website, wall, adminsDisplay, members, createdAt, openTopics, topicsAboveWall]
+      required: [id, name, description, address, website, wall, adminsDisplay, members, createdAt, openTopics, topicsAboveWall, backdrop]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -2095,6 +2139,15 @@ components:
         avatar: { $ref: "#/components/schemas/Avatar" }
         openTopics: { type: boolean, description: "Anyone starts topics in its discussions, not only its admins (\"Все могут создавать темы\")" }
         topicsAboveWall: { type: boolean, description: "Its page lists the topics above the wall (\"Отображать список тем над стеной\")" }
+        backdrop:
+          description: '"Фон страницы": the photos on the left and on the right of its page; null for none'
+          oneOf:
+            - type: object
+              required: [left, right]
+              properties:
+                left: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
+                right: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
+            - type: "null"
 
     Topic:
       type: object
