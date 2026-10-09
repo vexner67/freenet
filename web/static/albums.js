@@ -40,14 +40,20 @@ export function canChange(owner, role, me) {
   return owner.id === me.id;
 }
 
-// isKeptBySite: "Фотографии со страницы", which the site fills with every
-// new photo of the page; nobody renames, deletes or fills it by hand, as
-// on openvk.
+// isKeptBySite: "Фотографии со страницы" and "Фотографии со стены", which
+// the site fills with every new photo of the page and of the posts on its
+// wall; nobody renames, deletes or fills them by hand, as on openvk.
 export function isKeptBySite(album) {
+  return album.kind !== '';
+}
+
+// isAvatarAlbum: "Фотографии со страницы", where the photo of a page leads.
+export function isAvatarAlbum(album) {
   return album.kind === 'avatars';
 }
 
-// coverURL is the first photo of an album, or the camera of openvk.
+// coverURL is the photo that shows an album — the one chosen, else its
+// first — or the camera of openvk.
 export function coverURL(album) {
   return album.cover?.small ?? '/static/club.svg';
 }

@@ -18,12 +18,14 @@ const MAX_LENGTH = 1000;
 // on the form ("От имени сообщества"); on a "Предложка" others suggest
 // posts instead ("Предложить новость") and see their suggestions after,
 // as on openvk. type is a tab of the wall page (wall-page.js): '' for all
-// posts, the only one with the form, 'owner' or 'others'.
-export function initWall(owner, me, { moderates = me?.id === owner.id, speaksForClub = false, type = '' } = {}) {
+// posts, the only one with the form, 'owner', 'others' or 'archive', the
+// posts put away; query is what the posts say ("Поиск"), without a form.
+export function initWall(owner, me, { moderates = me?.id === owner.id, speaksForClub = false, type = '', query = '' } = {}) {
   const posts = $('posts');
   const error = $('wall-error');
   const isOwner = me?.id === owner.id;
-  const load = owner.club ? (c) => api.clubWall(clubRef(owner), c, type) : (c) => api.wall(owner.nickname, c, type);
+  const load = owner.club ? (c) => api.clubWall(clubRef(owner), c, type, query) : (c) => api.wall(owner.nickname, c, type, query);
+  const plain = !type && !query;
   // On a wall that is not open its admins always speak for the club, as on
   // openvk.
   const fromClub = () => owner.wall !== 'open' || $('post-from-club').checked;
@@ -42,6 +44,8 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   function updateCount() {
     $('wall-count').textContent = wallCount(total);
     $('wall-empty').hidden = total > 0 || canPost;
+    if (query) $('wall-empty').textContent = 'Ничего не найдено.';
+    else if (type === 'archive') $('wall-empty').textContent = 'В архиве пока нет ни одной записи.';
   }
 
   const postNode = (post) => renderPost(post, {
@@ -50,6 +54,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     onDelete: (moderates || post.mine) && remove,
     // The pinned post comes first: the wall is read again from the top.
     onPinned: reload,
+    onArchived: archived,
     canLike: Boolean(me),
     onError: (e) => showError(error, e),
   });
@@ -58,6 +63,15 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     cursor = '';
     posts.replaceChildren();
     return loadMore();
+  }
+
+  // archived: a post put away leaves the wall, one returned the archive.
+  function archived(post, node) {
+    if (post.archived === (type === 'archive')) return;
+
+    node.replaceWith(el('div', { className: 'post-deleted', textContent: post.archived ? 'Запись перенесена в архив.' : 'Запись возвращена на стену.' }));
+    total--;
+    updateCount();
   }
 
   async function remove(post, node) {
@@ -84,7 +98,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       const page = await load(cursor);
 
       // Without a nickname of your own you have no name to sign a post.
-      if (firstPage && !type && (page.canPost || page.canSuggest) && me?.profileCompleted) showForm(!page.canPost);
+      if (firstPage && plain && (page.canPost || page.canSuggest) && me?.profileCompleted) showForm(!page.canPost);
 
       total = page.total;
       cursor = page.nextCursor;

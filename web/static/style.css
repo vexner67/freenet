@@ -836,3 +836,7 @@ a.like:hover svg { opacity: .7; }
 .viewer-description { margin: 0 0 6px; white-space: pre-wrap; }
 .viewer-actions { display: flex; gap: 14px; align-items: center; }
 .photo-page-meta .like { display: inline-flex; margin-left: 4px; }
+
+/* "Это архив записей" over the archive of a wall, as on openvk. */
+.archive-banner { margin-bottom: 10px; padding: 8px 10px; border: 1px solid #d5ddb6; background: #f9f6e7; }
+.archive-banner b { display: block; margin-bottom: 2px; }

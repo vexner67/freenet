@@ -29,6 +29,19 @@
             <a id="tab-all">Все записи</a>
             <a id="tab-owner"></a>
             <a id="tab-others">Чужие записи</a>
+            <a id="tab-archive" hidden>Архив записей</a>
+            <a id="tab-search">Поиск</a>
+          </div>
+
+          <form class="search-form" id="wall-search" method="get" hidden>
+            <input type="hidden" name="type" value="search">
+            <input type="text" name="q" id="wall-search-text" maxlength="100" autocomplete="off" aria-label="Поиск по стене">
+            <button class="button" type="submit">Поиск</button>
+          </form>
+
+          <div class="archive-banner" id="archive-banner" hidden>
+            <b>Это архив записей</b>
+            <span class="hint">Здесь Вы можете сохранять свои любимые записи со стены в архив для истории и прочих воспоминаний. Архив записей видите только Вы.</span>
           </div>
 
           <form class="wall-form" id="post-form" hidden>
