@@ -145,8 +145,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		clubv1.ClubService_TransferClub_FullMethodName: cfg.EditLimits,
 		// A photo is uploaded to media first, under its own limit; this
 		// counts as one more change of the settings.
-		clubv1.ClubService_SetClubAvatar_FullMethodName: cfg.EditLimits,
-		clubv1.ClubService_JoinClub_FullMethodName:      cfg.JoinLimits,
+		clubv1.ClubService_SetClubAvatar_FullMethodName:   cfg.EditLimits,
+		clubv1.ClubService_SetClubBackdrop_FullMethodName: cfg.EditLimits,
+		clubv1.ClubService_JoinClub_FullMethodName:        cfg.JoinLimits,
 	}
 }
 

@@ -116,6 +116,7 @@ func stored(c *club.Club) club.Stored {
 
 		OpenTopics:      c.OpenTopics(),
 		TopicsAboveWall: c.TopicsAboveWall(),
+		Backdrop:        c.Backdrop(),
 	}
 }
 
@@ -208,6 +209,30 @@ func (r *ClubRepository) SetAvatar(ctx context.Context, c *club.Club) error {
 	}
 
 	stored.AvatarID = c.AvatarID()
+	r.s.clubs[c.ID()] = stored
+
+	return nil
+}
+
+func (r *ClubRepository) SetBackdrop(ctx context.Context, c *club.Club, side club.BackdropSide) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	stored, ok := r.s.clubs[c.ID()]
+	if !ok {
+		return club.ErrNotFound
+	}
+
+	// One side only, as the UPDATE of one column.
+	if side == club.BackdropLeft {
+		stored.Backdrop.Left = c.Backdrop().Left
+	} else {
+		stored.Backdrop.Right = c.Backdrop().Right
+	}
 	r.s.clubs[c.ID()] = stored
 
 	return nil

@@ -277,6 +277,27 @@ func TestRepositories_AvatarSearchAndMenu(t *testing.T) {
 		t.Fatal("the photo stays")
 	}
 
+	// Each side on its own: one does not undo the other.
+	left, right := uuid.New(), uuid.New()
+	withLeft, _ := cats.WithBackdrop(club.RoleOwner, club.BackdropLeft, left)
+	withRight, _ := cats.WithBackdrop(club.RoleOwner, club.BackdropRight, right)
+	if err = clubs.SetBackdrop(ctx, withLeft, club.BackdropLeft); err != nil {
+		t.Fatal(err)
+	}
+	if err = clubs.SetBackdrop(ctx, withRight, club.BackdropRight); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := clubs.Get(ctx, cats.ID()); err != nil || got.Backdrop() != (club.Backdrop{Left: left, Right: right}) {
+		t.Fatalf("Get after SetBackdrop = %+v, %v", got, err)
+	}
+	noLeft, _ := cats.WithBackdrop(club.RoleOwner, club.BackdropLeft, uuid.Nil)
+	if err = clubs.SetBackdrop(ctx, noLeft, club.BackdropLeft); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := clubs.Get(ctx, cats.ID()); got.Backdrop() != (club.Backdrop{Right: right}) {
+		t.Fatalf("after taking the left away = %+v", got.Backdrop())
+	}
+
 	q, err := club.NewSearchQuery(strings.ToUpper(word) + " любит")
 	if err != nil {
 		t.Fatal(err)

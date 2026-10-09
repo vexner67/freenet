@@ -27,6 +27,7 @@ type ClubService interface {
 	Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, managed bool) (service.ClubPage, error)
 	Search(ctx context.Context, query club.SearchQuery, cursor uuid.UUID, size int) (service.SearchPage, error)
 	SetAvatar(ctx context.Context, userID, clubID, avatarID uuid.UUID) (service.View, error)
+	SetBackdrop(ctx context.Context, userID, clubID uuid.UUID, side club.BackdropSide, photoID uuid.UUID) (service.View, error)
 	Pin(ctx context.Context, userID, clubID uuid.UUID, pinned bool) error
 	Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error)
 	ClubIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
@@ -336,6 +337,40 @@ func (h *ClubHandler) SetClubAvatar(ctx context.Context, req *clubv1.SetClubAvat
 	}
 
 	return &clubv1.SetClubAvatarResponse{Club: toProtoView(v)}, nil
+}
+
+var backdropSides = map[clubv1.BackdropSide]club.BackdropSide{
+	clubv1.BackdropSide_BACKDROP_SIDE_LEFT:  club.BackdropLeft,
+	clubv1.BackdropSide_BACKDROP_SIDE_RIGHT: club.BackdropRight,
+}
+
+func (h *ClubHandler) SetClubBackdrop(ctx context.Context, req *clubv1.SetClubBackdropRequest) (*clubv1.SetClubBackdropResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clubID, err := parseID(req.GetClubId(), "invalid club id")
+	if err != nil {
+		return nil, err
+	}
+
+	photoID, err := parseOptionalID(req.GetPhotoId(), "invalid photo id")
+	if err != nil {
+		return nil, err
+	}
+
+	side, ok := backdropSides[req.GetSide()]
+	if !ok {
+		return nil, club.ErrInvalidBackdropSide
+	}
+
+	v, err := h.clubService.SetBackdrop(ctx, userID, clubID, side, photoID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &clubv1.SetClubBackdropResponse{Club: toProtoView(v)}, nil
 }
 
 func (h *ClubHandler) PinClub(ctx context.Context, req *clubv1.PinClubRequest) (*emptypb.Empty, error) {

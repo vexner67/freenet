@@ -259,6 +259,24 @@ func TestCheckLeaveAndAppoint(t *testing.T) {
 	}
 }
 
+func TestWithBackdrop(t *testing.T) {
+	t.Parallel()
+
+	c := newClub(t)
+	left := uuid.New()
+
+	changed, err := c.WithBackdrop(club.RoleAdmin, club.BackdropLeft, left)
+	if err != nil || changed.Backdrop() != (club.Backdrop{Left: left}) || c.Backdrop() != (club.Backdrop{}) {
+		t.Fatalf("WithBackdrop = %+v, %v", changed, err)
+	}
+	if _, err = c.WithBackdrop(club.RoleMember, club.BackdropLeft, left); !errors.Is(err, club.ErrCannotEdit) {
+		t.Fatalf("a member: %v", err)
+	}
+	if _, err = c.WithBackdrop(club.RoleOwner, "top", left); !errors.Is(err, club.ErrInvalidBackdropSide) {
+		t.Fatalf("a bad side: %v", err)
+	}
+}
+
 func TestWithAvatarAndPin(t *testing.T) {
 	t.Parallel()
 

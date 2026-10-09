@@ -90,7 +90,9 @@ const (
 			website,
 			admins_display,
 			open_topics,
-			topics_above_wall
+			topics_above_wall,
+			backdrop_left,
+			backdrop_right
 		FROM clubs
 		WHERE id = $1
 	`
@@ -107,7 +109,9 @@ const (
 			website,
 			admins_display,
 			open_topics,
-			topics_above_wall
+			topics_above_wall,
+			backdrop_left,
+			backdrop_right
 		FROM clubs
 		WHERE lower(address) = lower($1)
 	`
@@ -124,7 +128,9 @@ const (
 			website,
 			admins_display,
 			open_topics,
-			topics_above_wall
+			topics_above_wall,
+			backdrop_left,
+			backdrop_right
 		FROM clubs
 		WHERE id = ANY($1)
 	`
@@ -188,16 +194,23 @@ func scanClub(row pgx.Row, before ...any) (*club.Club, error) {
 		name, description, address, wall string
 		website, adminsDisplay           string
 		avatarID                         *uuid.UUID
+		backdropLeft, backdropRight      *uuid.UUID
 	)
 
 	dest := append(before, &s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID,
-		&website, &adminsDisplay, &s.OpenTopics, &s.TopicsAboveWall)
+		&website, &adminsDisplay, &s.OpenTopics, &s.TopicsAboveWall, &backdropLeft, &backdropRight)
 	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
 
 	if avatarID != nil {
 		s.AvatarID = *avatarID
+	}
+	if backdropLeft != nil {
+		s.Backdrop.Left = *backdropLeft
+	}
+	if backdropRight != nil {
+		s.Backdrop.Right = *backdropRight
 	}
 
 	s.Name = club.Name(name)
@@ -266,6 +279,44 @@ func (r *ClubRepository) SetAvatar(ctx context.Context, c *club.Club) error {
 	return nil
 }
 
+// setClubBackdropQueries change one side only: admins replacing the two
+// sides at once do not undo each other.
+var setClubBackdropQueries = map[club.BackdropSide]string{
+	club.BackdropLeft: `
+		UPDATE clubs
+		SET backdrop_left = $2
+		WHERE id = $1
+	`,
+	club.BackdropRight: `
+		UPDATE clubs
+		SET backdrop_right = $2
+		WHERE id = $1
+	`,
+}
+
+func (r *ClubRepository) SetBackdrop(ctx context.Context, c *club.Club, side club.BackdropSide) error {
+	photoID := c.Backdrop().Left
+	if side == club.BackdropRight {
+		photoID = c.Backdrop().Right
+	}
+
+	var arg *uuid.UUID
+	if photoID != uuid.Nil {
+		arg = &photoID
+	}
+
+	tag, err := r.pool.Exec(ctx, setClubBackdropQueries[side], c.ID(), arg)
+	if err != nil {
+		return errs.Wrap("r.pool.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return club.ErrNotFound
+	}
+
+	return nil
+}
+
 // searchClubsSelect is completed by searchClubsQuery with one LIKE per word.
 const searchClubsSelect = `
 	SELECT
@@ -280,7 +331,9 @@ const searchClubsSelect = `
 		website,
 		admins_display,
 		open_topics,
-		topics_above_wall
+		topics_above_wall,
+		backdrop_left,
+		backdrop_right
 	FROM clubs
 	WHERE id < $1`
 

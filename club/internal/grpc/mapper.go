@@ -42,6 +42,8 @@ func toProtoClub(c *club.Club) *clubv1.Club {
 
 		OpenTopics:      c.OpenTopics(),
 		TopicsAboveWall: c.TopicsAboveWall(),
+		BackdropLeft:    optionalID(c.Backdrop().Left),
+		BackdropRight:   optionalID(c.Backdrop().Right),
 	}
 }
 

@@ -287,3 +287,27 @@ func TestErrors(t *testing.T) {
 		})
 	}
 }
+
+func TestSetClubBackdrop(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	created, err := s.client.CreateClub(s.as(t, ann), &clubv1.CreateClubRequest{Name: "Кошки"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id, photo := created.GetClub().GetClub().GetId(), uuid.NewString()
+
+	set, err := s.client.SetClubBackdrop(s.as(t, ann), &clubv1.SetClubBackdropRequest{ClubId: id, Side: clubv1.BackdropSide_BACKDROP_SIDE_RIGHT, PhotoId: photo})
+	if err != nil || set.GetClub().GetClub().GetBackdropRight() != photo || set.GetClub().GetClub().GetBackdropLeft() != "" {
+		t.Fatalf("SetClubBackdrop = %v, %v", set, err)
+	}
+	if _, err = s.client.SetClubBackdrop(s.as(t, bob), &clubv1.SetClubBackdropRequest{ClubId: id, Side: clubv1.BackdropSide_BACKDROP_SIDE_LEFT, PhotoId: photo}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("a stranger: %v", err)
+	}
+	if _, err = s.client.SetClubBackdrop(s.as(t, ann), &clubv1.SetClubBackdropRequest{ClubId: id, PhotoId: photo}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("no side: %v", err)
+	}
+}

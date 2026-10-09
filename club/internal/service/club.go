@@ -39,6 +39,8 @@ type ClubRepository interface {
 	Update(ctx context.Context, c *club.Club) error
 	// SetAvatar saves the photo of c; club.ErrNotFound.
 	SetAvatar(ctx context.Context, c *club.Club) error
+	// SetBackdrop saves one side of the backdrop of c; club.ErrNotFound.
+	SetBackdrop(ctx context.Context, c *club.Club, side club.BackdropSide) error
 	// Search returns up to limit clubs that match q with IDs below before
 	// (uuid.Nil: from the newest), the newest first.
 	Search(ctx context.Context, q club.SearchQuery, before uuid.UUID, limit int) ([]*club.Club, error)
@@ -414,6 +416,31 @@ func (s *ClubService) SetAvatar(ctx context.Context, userID, clubID, avatarID uu
 
 	if err = s.clubs.SetAvatar(ctx, changed); err != nil {
 		return View{}, errs.Wrap("s.clubs.SetAvatar", err)
+	}
+
+	return s.view(ctx, userID, clubID)
+}
+
+// SetBackdrop shows photoID (uuid.Nil: none) on side of the club's page,
+// "Фон страницы" of openvk: only its admins change it.
+func (s *ClubService) SetBackdrop(ctx context.Context, userID, clubID uuid.UUID, side club.BackdropSide, photoID uuid.UUID) (View, error) {
+	c, err := s.clubs.Get(ctx, clubID)
+	if err != nil {
+		return View{}, errs.Wrap("s.clubs.Get", err)
+	}
+
+	role, err := s.members.Role(ctx, clubID, userID)
+	if err != nil {
+		return View{}, errs.Wrap("s.members.Role", err)
+	}
+
+	changed, err := c.WithBackdrop(role, side, photoID)
+	if err != nil {
+		return View{}, errs.Wrap("c.WithBackdrop", err)
+	}
+
+	if err = s.clubs.SetBackdrop(ctx, changed, side); err != nil {
+		return View{}, errs.Wrap("s.clubs.SetBackdrop", err)
 	}
 
 	return s.view(ctx, userID, clubID)

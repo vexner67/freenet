@@ -45,6 +45,9 @@ service ClubService {
   // Its admins show a photo as the club's, which the media service has
   // stored; an empty avatar_id takes it away.
   rpc SetClubAvatar(SetClubAvatarRequest) returns (SetClubAvatarResponse);
+  // Its admins only: one side of "Фон страницы", a photo of the club in
+  // the media service; an empty photo_id takes it away.
+  rpc SetClubBackdrop(SetClubBackdropRequest) returns (SetClubBackdropResponse);
   // The caller puts a club they run in their left menu, at most 10, or
   // takes it out ("Добавить в левое меню").
   rpc PinClub(PinClubRequest) returns (google.protobuf.Empty);
@@ -116,6 +119,10 @@ message Club {
   bool open_topics = 11;
   // Its page lists the topics above the wall.
   bool topics_above_wall = 12;
+  // "Фон страницы": photos of the club in the media service on the left
+  // and on the right of its page; empty for none.
+  string backdrop_left = 13;
+  string backdrop_right = 14;
 }
 
 // ClubView is a club as the caller sees it.
@@ -284,6 +291,22 @@ message SetClubAvatarRequest {
 }
 
 message SetClubAvatarResponse {
+  ClubView club = 1;
+}
+
+enum BackdropSide {
+  BACKDROP_SIDE_UNSPECIFIED = 0;
+  BACKDROP_SIDE_LEFT = 1;
+  BACKDROP_SIDE_RIGHT = 2;
+}
+
+message SetClubBackdropRequest {
+  string club_id = 1;
+  BackdropSide side = 2;
+  string photo_id = 3;
+}
+
+message SetClubBackdropResponse {
   ClubView club = 1;
 }
 
