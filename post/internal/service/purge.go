@@ -38,6 +38,13 @@ type TopicEraser interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*post.TopicMessage, error)
 }
 
+// AlbumEraser deletes the albums a user owns with their photos and the
+// photos they put in others' albums: all of them uploaded by the user,
+// whose images media erases with the rest of the user.
+type AlbumEraser interface {
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+}
+
 // PurgeService erases what post keeps of a user whose page was deleted for
 // good.
 type PurgeService struct {
@@ -47,6 +54,7 @@ type PurgeService struct {
 	comments     CommentEraser
 	suggestions  SuggestionEraser
 	topics       TopicEraser
+	albums       AlbumEraser
 	tx           TxManager
 	notifier     Notifier
 	photos       PhotoKeeper
@@ -60,6 +68,7 @@ type PurgeDeps struct {
 	Comments     CommentEraser
 	Suggestions  SuggestionEraser
 	Topics       TopicEraser
+	Albums       AlbumEraser
 	Tx           TxManager
 	Notifier     Notifier
 	Photos       PhotoKeeper
@@ -73,6 +82,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		comments:     d.Comments,
 		suggestions:  d.Suggestions,
 		topics:       d.Topics,
+		albums:       d.Albums,
 		tx:           d.Tx,
 		notifier:     d.Notifier,
 		photos:       d.Photos,
@@ -81,9 +91,9 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 
 // PurgeUser deletes, in one transaction, the user's likes and comments on
 // others' posts, what they suggested, their topics and the messages they
-// wrote in topics, the posts they wrote and those on
-// their wall (others' on
-// it included, as a deleted post takes its comments). The notifications
+// wrote in topics, their albums and the photos they put in others', the
+// posts they wrote and those on their wall (others' on it included, as a
+// deleted post takes its comments). The notifications
 // about the deleted posts and suggestions and the photos of the posts go
 // with them, as when a post is deleted; the user's own photos media erases itself.
 func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
@@ -121,6 +131,10 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 
 		if err = deleteMessagePhotos(ctx, s.photos, messages); err != nil {
 			return errs.Wrap("deleteMessagePhotos", err)
+		}
+
+		if err = s.albums.DeleteByUser(ctx, userID); err != nil {
+			return errs.Wrap("s.albums.DeleteByUser", err)
 		}
 
 		// Others' comments on the posts about to go: their photos go too.

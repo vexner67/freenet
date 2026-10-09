@@ -3558,6 +3558,1166 @@ func (x *DeleteTopicMessageRequest) GetId() string {
 	return ""
 }
 
+// Album is a photo album of a person or a community.
+type Album struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The person or the community it belongs to.
+	OwnerId     string                 `protobuf:"bytes,2,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	Name        string                 `protobuf:"bytes,3,opt,name=name,proto3" json:"name,omitempty"`
+	Description string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The last change: renamed, photos added or deleted.
+	UpdatedAt  *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
+	PhotoCount int32                  `protobuf:"varint,7,opt,name=photo_count,json=photoCount,proto3" json:"photo_count,omitempty"`
+	// The first photo, absent while it has none.
+	Cover         *AlbumPhoto `protobuf:"bytes,8,opt,name=cover,proto3" json:"cover,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Album) Reset() {
+	*x = Album{}
+	mi := &file_api_post_v1_post_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Album) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Album) ProtoMessage() {}
+
+func (x *Album) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Album.ProtoReflect.Descriptor instead.
+func (*Album) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *Album) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Album) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *Album) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *Album) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *Album) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Album) GetUpdatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.UpdatedAt
+	}
+	return nil
+}
+
+func (x *Album) GetPhotoCount() int32 {
+	if x != nil {
+		return x.PhotoCount
+	}
+	return 0
+}
+
+func (x *Album) GetCover() *AlbumPhoto {
+	if x != nil {
+		return x.Cover
+	}
+	return nil
+}
+
+// AlbumPhoto is a photo of an album; its ID is that of the photo in the
+// media service.
+type AlbumPhoto struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	Id      string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	AlbumId string                 `protobuf:"bytes,2,opt,name=album_id,json=albumId,proto3" json:"album_id,omitempty"`
+	// Who uploaded it: media keeps the image under them.
+	AuthorId    string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	Description string                 `protobuf:"bytes,4,opt,name=description,proto3" json:"description,omitempty"`
+	CreatedAt   *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The caller uploaded it.
+	Mine          bool `protobuf:"varint,6,opt,name=mine,proto3" json:"mine,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AlbumPhoto) Reset() {
+	*x = AlbumPhoto{}
+	mi := &file_api_post_v1_post_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AlbumPhoto) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AlbumPhoto) ProtoMessage() {}
+
+func (x *AlbumPhoto) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AlbumPhoto.ProtoReflect.Descriptor instead.
+func (*AlbumPhoto) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{60}
+}
+
+func (x *AlbumPhoto) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *AlbumPhoto) GetAlbumId() string {
+	if x != nil {
+		return x.AlbumId
+	}
+	return ""
+}
+
+func (x *AlbumPhoto) GetAuthorId() string {
+	if x != nil {
+		return x.AuthorId
+	}
+	return ""
+}
+
+func (x *AlbumPhoto) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+func (x *AlbumPhoto) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *AlbumPhoto) GetMine() bool {
+	if x != nil {
+		return x.Mine
+	}
+	return false
+}
+
+type CreateAlbumRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// A community the caller runs; empty for the caller's own album.
+	ClubId        string `protobuf:"bytes,1,opt,name=club_id,json=clubId,proto3" json:"club_id,omitempty"`
+	Name          string `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateAlbumRequest) Reset() {
+	*x = CreateAlbumRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAlbumRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAlbumRequest) ProtoMessage() {}
+
+func (x *CreateAlbumRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAlbumRequest.ProtoReflect.Descriptor instead.
+func (*CreateAlbumRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *CreateAlbumRequest) GetClubId() string {
+	if x != nil {
+		return x.ClubId
+	}
+	return ""
+}
+
+func (x *CreateAlbumRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *CreateAlbumRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type CreateAlbumResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Album         *Album                 `protobuf:"bytes,1,opt,name=album,proto3" json:"album,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateAlbumResponse) Reset() {
+	*x = CreateAlbumResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[62]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateAlbumResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateAlbumResponse) ProtoMessage() {}
+
+func (x *CreateAlbumResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[62]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateAlbumResponse.ProtoReflect.Descriptor instead.
+func (*CreateAlbumResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{62}
+}
+
+func (x *CreateAlbumResponse) GetAlbum() *Album {
+	if x != nil {
+		return x.Album
+	}
+	return nil
+}
+
+type GetAlbumRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAlbumRequest) Reset() {
+	*x = GetAlbumRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[63]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAlbumRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAlbumRequest) ProtoMessage() {}
+
+func (x *GetAlbumRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[63]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAlbumRequest.ProtoReflect.Descriptor instead.
+func (*GetAlbumRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{63}
+}
+
+func (x *GetAlbumRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetAlbumResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Album         *Album                 `protobuf:"bytes,1,opt,name=album,proto3" json:"album,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAlbumResponse) Reset() {
+	*x = GetAlbumResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[64]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAlbumResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAlbumResponse) ProtoMessage() {}
+
+func (x *GetAlbumResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[64]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAlbumResponse.ProtoReflect.Descriptor instead.
+func (*GetAlbumResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{64}
+}
+
+func (x *GetAlbumResponse) GetAlbum() *Album {
+	if x != nil {
+		return x.Album
+	}
+	return nil
+}
+
+type ListAlbumsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	OwnerId       string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAlbumsRequest) Reset() {
+	*x = ListAlbumsRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[65]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAlbumsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAlbumsRequest) ProtoMessage() {}
+
+func (x *ListAlbumsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[65]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAlbumsRequest.ProtoReflect.Descriptor instead.
+func (*ListAlbumsRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{65}
+}
+
+func (x *ListAlbumsRequest) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *ListAlbumsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListAlbumsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListAlbumsResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Albums []*Album               `protobuf:"bytes,1,rep,name=albums,proto3" json:"albums,omitempty"`
+	// Empty on the last page.
+	NextCursor string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	// All the albums of the owner.
+	Total         int32 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAlbumsResponse) Reset() {
+	*x = ListAlbumsResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[66]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAlbumsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAlbumsResponse) ProtoMessage() {}
+
+func (x *ListAlbumsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[66]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAlbumsResponse.ProtoReflect.Descriptor instead.
+func (*ListAlbumsResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{66}
+}
+
+func (x *ListAlbumsResponse) GetAlbums() []*Album {
+	if x != nil {
+		return x.Albums
+	}
+	return nil
+}
+
+func (x *ListAlbumsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListAlbumsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type EditAlbumRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Name          string                 `protobuf:"bytes,2,opt,name=name,proto3" json:"name,omitempty"`
+	Description   string                 `protobuf:"bytes,3,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditAlbumRequest) Reset() {
+	*x = EditAlbumRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[67]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditAlbumRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditAlbumRequest) ProtoMessage() {}
+
+func (x *EditAlbumRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[67]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditAlbumRequest.ProtoReflect.Descriptor instead.
+func (*EditAlbumRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{67}
+}
+
+func (x *EditAlbumRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EditAlbumRequest) GetName() string {
+	if x != nil {
+		return x.Name
+	}
+	return ""
+}
+
+func (x *EditAlbumRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type EditAlbumResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Album         *Album                 `protobuf:"bytes,1,opt,name=album,proto3" json:"album,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditAlbumResponse) Reset() {
+	*x = EditAlbumResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[68]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditAlbumResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditAlbumResponse) ProtoMessage() {}
+
+func (x *EditAlbumResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[68]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditAlbumResponse.ProtoReflect.Descriptor instead.
+func (*EditAlbumResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{68}
+}
+
+func (x *EditAlbumResponse) GetAlbum() *Album {
+	if x != nil {
+		return x.Album
+	}
+	return nil
+}
+
+type DeleteAlbumRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteAlbumRequest) Reset() {
+	*x = DeleteAlbumRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[69]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteAlbumRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAlbumRequest) ProtoMessage() {}
+
+func (x *DeleteAlbumRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[69]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAlbumRequest.ProtoReflect.Descriptor instead.
+func (*DeleteAlbumRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{69}
+}
+
+func (x *DeleteAlbumRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type NewAlbumPhoto struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PhotoId       string                 `protobuf:"bytes,1,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
+	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *NewAlbumPhoto) Reset() {
+	*x = NewAlbumPhoto{}
+	mi := &file_api_post_v1_post_proto_msgTypes[70]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *NewAlbumPhoto) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*NewAlbumPhoto) ProtoMessage() {}
+
+func (x *NewAlbumPhoto) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[70]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use NewAlbumPhoto.ProtoReflect.Descriptor instead.
+func (*NewAlbumPhoto) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{70}
+}
+
+func (x *NewAlbumPhoto) GetPhotoId() string {
+	if x != nil {
+		return x.PhotoId
+	}
+	return ""
+}
+
+func (x *NewAlbumPhoto) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type AddAlbumPhotosRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AlbumId       string                 `protobuf:"bytes,1,opt,name=album_id,json=albumId,proto3" json:"album_id,omitempty"`
+	Photos        []*NewAlbumPhoto       `protobuf:"bytes,2,rep,name=photos,proto3" json:"photos,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddAlbumPhotosRequest) Reset() {
+	*x = AddAlbumPhotosRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[71]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddAlbumPhotosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddAlbumPhotosRequest) ProtoMessage() {}
+
+func (x *AddAlbumPhotosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[71]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddAlbumPhotosRequest.ProtoReflect.Descriptor instead.
+func (*AddAlbumPhotosRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{71}
+}
+
+func (x *AddAlbumPhotosRequest) GetAlbumId() string {
+	if x != nil {
+		return x.AlbumId
+	}
+	return ""
+}
+
+func (x *AddAlbumPhotosRequest) GetPhotos() []*NewAlbumPhoto {
+	if x != nil {
+		return x.Photos
+	}
+	return nil
+}
+
+type AddAlbumPhotosResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Photos        []*AlbumPhoto          `protobuf:"bytes,1,rep,name=photos,proto3" json:"photos,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *AddAlbumPhotosResponse) Reset() {
+	*x = AddAlbumPhotosResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[72]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *AddAlbumPhotosResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*AddAlbumPhotosResponse) ProtoMessage() {}
+
+func (x *AddAlbumPhotosResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[72]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use AddAlbumPhotosResponse.ProtoReflect.Descriptor instead.
+func (*AddAlbumPhotosResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{72}
+}
+
+func (x *AddAlbumPhotosResponse) GetPhotos() []*AlbumPhoto {
+	if x != nil {
+		return x.Photos
+	}
+	return nil
+}
+
+type ListAlbumPhotosRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AlbumId       string                 `protobuf:"bytes,1,opt,name=album_id,json=albumId,proto3" json:"album_id,omitempty"`
+	Cursor        string                 `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	Limit         int32                  `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAlbumPhotosRequest) Reset() {
+	*x = ListAlbumPhotosRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[73]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAlbumPhotosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAlbumPhotosRequest) ProtoMessage() {}
+
+func (x *ListAlbumPhotosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[73]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAlbumPhotosRequest.ProtoReflect.Descriptor instead.
+func (*ListAlbumPhotosRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{73}
+}
+
+func (x *ListAlbumPhotosRequest) GetAlbumId() string {
+	if x != nil {
+		return x.AlbumId
+	}
+	return ""
+}
+
+func (x *ListAlbumPhotosRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListAlbumPhotosRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListAlbumPhotosResponse struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	Photos []*AlbumPhoto          `protobuf:"bytes,1,rep,name=photos,proto3" json:"photos,omitempty"`
+	// Empty on the last page.
+	NextCursor    string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	Total         int32  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListAlbumPhotosResponse) Reset() {
+	*x = ListAlbumPhotosResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[74]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListAlbumPhotosResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListAlbumPhotosResponse) ProtoMessage() {}
+
+func (x *ListAlbumPhotosResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[74]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListAlbumPhotosResponse.ProtoReflect.Descriptor instead.
+func (*ListAlbumPhotosResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{74}
+}
+
+func (x *ListAlbumPhotosResponse) GetPhotos() []*AlbumPhoto {
+	if x != nil {
+		return x.Photos
+	}
+	return nil
+}
+
+func (x *ListAlbumPhotosResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListAlbumPhotosResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type GetAlbumPhotoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAlbumPhotoRequest) Reset() {
+	*x = GetAlbumPhotoRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[75]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAlbumPhotoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAlbumPhotoRequest) ProtoMessage() {}
+
+func (x *GetAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[75]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAlbumPhotoRequest.ProtoReflect.Descriptor instead.
+func (*GetAlbumPhotoRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{75}
+}
+
+func (x *GetAlbumPhotoRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetAlbumPhotoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Photo         *AlbumPhoto            `protobuf:"bytes,1,opt,name=photo,proto3" json:"photo,omitempty"`
+	Album         *Album                 `protobuf:"bytes,2,opt,name=album,proto3" json:"album,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetAlbumPhotoResponse) Reset() {
+	*x = GetAlbumPhotoResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[76]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetAlbumPhotoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetAlbumPhotoResponse) ProtoMessage() {}
+
+func (x *GetAlbumPhotoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[76]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetAlbumPhotoResponse.ProtoReflect.Descriptor instead.
+func (*GetAlbumPhotoResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{76}
+}
+
+func (x *GetAlbumPhotoResponse) GetPhoto() *AlbumPhoto {
+	if x != nil {
+		return x.Photo
+	}
+	return nil
+}
+
+func (x *GetAlbumPhotoResponse) GetAlbum() *Album {
+	if x != nil {
+		return x.Album
+	}
+	return nil
+}
+
+type EditAlbumPhotoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	Description   string                 `protobuf:"bytes,2,opt,name=description,proto3" json:"description,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditAlbumPhotoRequest) Reset() {
+	*x = EditAlbumPhotoRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[77]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditAlbumPhotoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditAlbumPhotoRequest) ProtoMessage() {}
+
+func (x *EditAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[77]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditAlbumPhotoRequest.ProtoReflect.Descriptor instead.
+func (*EditAlbumPhotoRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{77}
+}
+
+func (x *EditAlbumPhotoRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *EditAlbumPhotoRequest) GetDescription() string {
+	if x != nil {
+		return x.Description
+	}
+	return ""
+}
+
+type EditAlbumPhotoResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Photo         *AlbumPhoto            `protobuf:"bytes,1,opt,name=photo,proto3" json:"photo,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EditAlbumPhotoResponse) Reset() {
+	*x = EditAlbumPhotoResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[78]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EditAlbumPhotoResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EditAlbumPhotoResponse) ProtoMessage() {}
+
+func (x *EditAlbumPhotoResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[78]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EditAlbumPhotoResponse.ProtoReflect.Descriptor instead.
+func (*EditAlbumPhotoResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{78}
+}
+
+func (x *EditAlbumPhotoResponse) GetPhoto() *AlbumPhoto {
+	if x != nil {
+		return x.Photo
+	}
+	return nil
+}
+
+type DeleteAlbumPhotoRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteAlbumPhotoRequest) Reset() {
+	*x = DeleteAlbumPhotoRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[79]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteAlbumPhotoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteAlbumPhotoRequest) ProtoMessage() {}
+
+func (x *DeleteAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[79]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteAlbumPhotoRequest.ProtoReflect.Descriptor instead.
+func (*DeleteAlbumPhotoRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{79}
+}
+
+func (x *DeleteAlbumPhotoRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
 var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
@@ -3816,7 +4976,84 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"nextCursor\x12\x14\n" +
 	"\x05total\x18\x03 \x01(\x05R\x05total\"+\n" +
 	"\x19DeleteTopicMessageRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id2\xe0\x11\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xaa\x02\n" +
+	"\x05Album\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
+	"\bowner_id\x18\x02 \x01(\tR\aownerId\x12\x12\n" +
+	"\x04name\x18\x03 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x129\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x129\n" +
+	"\n" +
+	"updated_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\tupdatedAt\x12\x1f\n" +
+	"\vphoto_count\x18\a \x01(\x05R\n" +
+	"photoCount\x12)\n" +
+	"\x05cover\x18\b \x01(\v2\x13.post.v1.AlbumPhotoR\x05cover\"\xc5\x01\n" +
+	"\n" +
+	"AlbumPhoto\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
+	"\balbum_id\x18\x02 \x01(\tR\aalbumId\x12\x1b\n" +
+	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12 \n" +
+	"\vdescription\x18\x04 \x01(\tR\vdescription\x129\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x12\n" +
+	"\x04mine\x18\x06 \x01(\bR\x04mine\"c\n" +
+	"\x12CreateAlbumRequest\x12\x17\n" +
+	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\";\n" +
+	"\x13CreateAlbumResponse\x12$\n" +
+	"\x05album\x18\x01 \x01(\v2\x0e.post.v1.AlbumR\x05album\"!\n" +
+	"\x0fGetAlbumRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"8\n" +
+	"\x10GetAlbumResponse\x12$\n" +
+	"\x05album\x18\x01 \x01(\v2\x0e.post.v1.AlbumR\x05album\"\\\n" +
+	"\x11ListAlbumsRequest\x12\x19\n" +
+	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"s\n" +
+	"\x12ListAlbumsResponse\x12&\n" +
+	"\x06albums\x18\x01 \x03(\v2\x0e.post.v1.AlbumR\x06albums\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"X\n" +
+	"\x10EditAlbumRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
+	"\vdescription\x18\x03 \x01(\tR\vdescription\"9\n" +
+	"\x11EditAlbumResponse\x12$\n" +
+	"\x05album\x18\x01 \x01(\v2\x0e.post.v1.AlbumR\x05album\"$\n" +
+	"\x12DeleteAlbumRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"L\n" +
+	"\rNewAlbumPhoto\x12\x19\n" +
+	"\bphoto_id\x18\x01 \x01(\tR\aphotoId\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\"b\n" +
+	"\x15AddAlbumPhotosRequest\x12\x19\n" +
+	"\balbum_id\x18\x01 \x01(\tR\aalbumId\x12.\n" +
+	"\x06photos\x18\x02 \x03(\v2\x16.post.v1.NewAlbumPhotoR\x06photos\"E\n" +
+	"\x16AddAlbumPhotosResponse\x12+\n" +
+	"\x06photos\x18\x01 \x03(\v2\x13.post.v1.AlbumPhotoR\x06photos\"a\n" +
+	"\x16ListAlbumPhotosRequest\x12\x19\n" +
+	"\balbum_id\x18\x01 \x01(\tR\aalbumId\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"}\n" +
+	"\x17ListAlbumPhotosResponse\x12+\n" +
+	"\x06photos\x18\x01 \x03(\v2\x13.post.v1.AlbumPhotoR\x06photos\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"&\n" +
+	"\x14GetAlbumPhotoRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"h\n" +
+	"\x15GetAlbumPhotoResponse\x12)\n" +
+	"\x05photo\x18\x01 \x01(\v2\x13.post.v1.AlbumPhotoR\x05photo\x12$\n" +
+	"\x05album\x18\x02 \x01(\v2\x0e.post.v1.AlbumR\x05album\"I\n" +
+	"\x15EditAlbumPhotoRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12 \n" +
+	"\vdescription\x18\x02 \x01(\tR\vdescription\"C\n" +
+	"\x16EditAlbumPhotoResponse\x12)\n" +
+	"\x05photo\x18\x01 \x01(\v2\x13.post.v1.AlbumPhotoR\x05photo\")\n" +
+	"\x17DeleteAlbumPhotoRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id2\xd4\x17\n" +
 	"\vPostService\x12E\n" +
 	"\n" +
 	"CreatePost\x12\x1a.post.v1.CreatePostRequest\x1a\x1b.post.v1.CreatePostResponse\x12@\n" +
@@ -3852,7 +5089,18 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\vDeleteTopic\x12\x1b.post.v1.DeleteTopicRequest\x1a\x16.google.protobuf.Empty\x12]\n" +
 	"\x12CreateTopicMessage\x12\".post.v1.CreateTopicMessageRequest\x1a#.post.v1.CreateTopicMessageResponse\x12Z\n" +
 	"\x11ListTopicMessages\x12!.post.v1.ListTopicMessagesRequest\x1a\".post.v1.ListTopicMessagesResponse\x12P\n" +
-	"\x12DeleteTopicMessage\x12\".post.v1.DeleteTopicMessageRequest\x1a\x16.google.protobuf.Empty\x12>\n" +
+	"\x12DeleteTopicMessage\x12\".post.v1.DeleteTopicMessageRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
+	"\vCreateAlbum\x12\x1b.post.v1.CreateAlbumRequest\x1a\x1c.post.v1.CreateAlbumResponse\x12?\n" +
+	"\bGetAlbum\x12\x18.post.v1.GetAlbumRequest\x1a\x19.post.v1.GetAlbumResponse\x12E\n" +
+	"\n" +
+	"ListAlbums\x12\x1a.post.v1.ListAlbumsRequest\x1a\x1b.post.v1.ListAlbumsResponse\x12B\n" +
+	"\tEditAlbum\x12\x19.post.v1.EditAlbumRequest\x1a\x1a.post.v1.EditAlbumResponse\x12B\n" +
+	"\vDeleteAlbum\x12\x1b.post.v1.DeleteAlbumRequest\x1a\x16.google.protobuf.Empty\x12Q\n" +
+	"\x0eAddAlbumPhotos\x12\x1e.post.v1.AddAlbumPhotosRequest\x1a\x1f.post.v1.AddAlbumPhotosResponse\x12T\n" +
+	"\x0fListAlbumPhotos\x12\x1f.post.v1.ListAlbumPhotosRequest\x1a .post.v1.ListAlbumPhotosResponse\x12N\n" +
+	"\rGetAlbumPhoto\x12\x1d.post.v1.GetAlbumPhotoRequest\x1a\x1e.post.v1.GetAlbumPhotoResponse\x12Q\n" +
+	"\x0eEditAlbumPhoto\x12\x1e.post.v1.EditAlbumPhotoRequest\x1a\x1f.post.v1.EditAlbumPhotoResponse\x12L\n" +
+	"\x10DeleteAlbumPhoto\x12 .post.v1.DeleteAlbumPhotoRequest\x1a\x16.google.protobuf.Empty\x12>\n" +
 	"\tPurgeUser\x12\x19.post.v1.PurgeUserRequest\x1a\x16.google.protobuf.EmptyB5Z3github.com/vexner67/freenet/post/api/post/v1;postv1b\x06proto3"
 
 var (
@@ -3867,7 +5115,7 @@ func file_api_post_v1_post_proto_rawDescGZIP() []byte {
 	return file_api_post_v1_post_proto_rawDescData
 }
 
-var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 59)
+var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 80)
 var file_api_post_v1_post_proto_goTypes = []any{
 	(*Post)(nil),                       // 0: post.v1.Post
 	(*Comment)(nil),                    // 1: post.v1.Comment
@@ -3928,15 +5176,36 @@ var file_api_post_v1_post_proto_goTypes = []any{
 	(*ListTopicMessagesRequest)(nil),   // 56: post.v1.ListTopicMessagesRequest
 	(*ListTopicMessagesResponse)(nil),  // 57: post.v1.ListTopicMessagesResponse
 	(*DeleteTopicMessageRequest)(nil),  // 58: post.v1.DeleteTopicMessageRequest
-	(*timestamppb.Timestamp)(nil),      // 59: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 60: google.protobuf.Empty
+	(*Album)(nil),                      // 59: post.v1.Album
+	(*AlbumPhoto)(nil),                 // 60: post.v1.AlbumPhoto
+	(*CreateAlbumRequest)(nil),         // 61: post.v1.CreateAlbumRequest
+	(*CreateAlbumResponse)(nil),        // 62: post.v1.CreateAlbumResponse
+	(*GetAlbumRequest)(nil),            // 63: post.v1.GetAlbumRequest
+	(*GetAlbumResponse)(nil),           // 64: post.v1.GetAlbumResponse
+	(*ListAlbumsRequest)(nil),          // 65: post.v1.ListAlbumsRequest
+	(*ListAlbumsResponse)(nil),         // 66: post.v1.ListAlbumsResponse
+	(*EditAlbumRequest)(nil),           // 67: post.v1.EditAlbumRequest
+	(*EditAlbumResponse)(nil),          // 68: post.v1.EditAlbumResponse
+	(*DeleteAlbumRequest)(nil),         // 69: post.v1.DeleteAlbumRequest
+	(*NewAlbumPhoto)(nil),              // 70: post.v1.NewAlbumPhoto
+	(*AddAlbumPhotosRequest)(nil),      // 71: post.v1.AddAlbumPhotosRequest
+	(*AddAlbumPhotosResponse)(nil),     // 72: post.v1.AddAlbumPhotosResponse
+	(*ListAlbumPhotosRequest)(nil),     // 73: post.v1.ListAlbumPhotosRequest
+	(*ListAlbumPhotosResponse)(nil),    // 74: post.v1.ListAlbumPhotosResponse
+	(*GetAlbumPhotoRequest)(nil),       // 75: post.v1.GetAlbumPhotoRequest
+	(*GetAlbumPhotoResponse)(nil),      // 76: post.v1.GetAlbumPhotoResponse
+	(*EditAlbumPhotoRequest)(nil),      // 77: post.v1.EditAlbumPhotoRequest
+	(*EditAlbumPhotoResponse)(nil),     // 78: post.v1.EditAlbumPhotoResponse
+	(*DeleteAlbumPhotoRequest)(nil),    // 79: post.v1.DeleteAlbumPhotoRequest
+	(*timestamppb.Timestamp)(nil),      // 80: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 81: google.protobuf.Empty
 }
 var file_api_post_v1_post_proto_depIdxs = []int32{
-	59, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
-	59, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
-	59, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
-	59, // 3: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
-	59, // 4: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
+	80, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
+	80, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
+	80, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
+	80, // 3: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
+	80, // 4: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
 	2,  // 5: post.v1.SuggestPostResponse.suggestion:type_name -> post.v1.Suggestion
 	2,  // 6: post.v1.ListSuggestionsResponse.suggestions:type_name -> post.v1.Suggestion
 	0,  // 7: post.v1.PublishSuggestionResponse.post:type_name -> post.v1.Post
@@ -3950,83 +5219,117 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	1,  // 15: post.v1.CreateCommentResponse.comment:type_name -> post.v1.Comment
 	1,  // 16: post.v1.ListCommentsResponse.comments:type_name -> post.v1.Comment
 	1,  // 17: post.v1.GetCommentsResponse.comments:type_name -> post.v1.Comment
-	59, // 18: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
-	59, // 19: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
+	80, // 18: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
+	80, // 19: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
 	44, // 20: post.v1.Topic.last_message:type_name -> post.v1.TopicMessage
-	59, // 21: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
+	80, // 21: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
 	43, // 22: post.v1.CreateTopicResponse.topic:type_name -> post.v1.Topic
 	43, // 23: post.v1.GetTopicResponse.topic:type_name -> post.v1.Topic
 	43, // 24: post.v1.ListTopicsResponse.topics:type_name -> post.v1.Topic
 	43, // 25: post.v1.EditTopicResponse.topic:type_name -> post.v1.Topic
 	44, // 26: post.v1.CreateTopicMessageResponse.message:type_name -> post.v1.TopicMessage
 	44, // 27: post.v1.ListTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
-	10, // 28: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
-	14, // 29: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
-	12, // 30: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
-	15, // 31: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
-	17, // 32: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
-	18, // 33: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
-	19, // 34: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
-	21, // 35: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
-	23, // 36: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
-	25, // 37: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
-	27, // 38: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
-	29, // 39: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
-	31, // 40: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
-	33, // 41: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
-	34, // 42: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
-	36, // 43: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
-	38, // 44: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
-	40, // 45: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
-	3,  // 46: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
-	5,  // 47: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
-	7,  // 48: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
-	9,  // 49: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
-	45, // 50: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
-	47, // 51: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
-	49, // 52: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
-	51, // 53: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
-	53, // 54: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
-	54, // 55: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
-	56, // 56: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
-	58, // 57: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
-	42, // 58: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
-	11, // 59: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
-	60, // 60: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
-	13, // 61: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
-	16, // 62: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
-	60, // 63: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
-	60, // 64: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
-	20, // 65: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
-	22, // 66: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
-	24, // 67: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
-	26, // 68: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
-	28, // 69: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
-	30, // 70: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
-	32, // 71: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
-	60, // 72: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
-	35, // 73: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
-	37, // 74: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
-	39, // 75: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
-	41, // 76: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
-	4,  // 77: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
-	6,  // 78: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
-	8,  // 79: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
-	60, // 80: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
-	46, // 81: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
-	48, // 82: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
-	50, // 83: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
-	52, // 84: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
-	60, // 85: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
-	55, // 86: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
-	57, // 87: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
-	60, // 88: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
-	60, // 89: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
-	59, // [59:90] is the sub-list for method output_type
-	28, // [28:59] is the sub-list for method input_type
-	28, // [28:28] is the sub-list for extension type_name
-	28, // [28:28] is the sub-list for extension extendee
-	0,  // [0:28] is the sub-list for field type_name
+	80, // 28: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
+	80, // 29: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
+	60, // 30: post.v1.Album.cover:type_name -> post.v1.AlbumPhoto
+	80, // 31: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
+	59, // 32: post.v1.CreateAlbumResponse.album:type_name -> post.v1.Album
+	59, // 33: post.v1.GetAlbumResponse.album:type_name -> post.v1.Album
+	59, // 34: post.v1.ListAlbumsResponse.albums:type_name -> post.v1.Album
+	59, // 35: post.v1.EditAlbumResponse.album:type_name -> post.v1.Album
+	70, // 36: post.v1.AddAlbumPhotosRequest.photos:type_name -> post.v1.NewAlbumPhoto
+	60, // 37: post.v1.AddAlbumPhotosResponse.photos:type_name -> post.v1.AlbumPhoto
+	60, // 38: post.v1.ListAlbumPhotosResponse.photos:type_name -> post.v1.AlbumPhoto
+	60, // 39: post.v1.GetAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
+	59, // 40: post.v1.GetAlbumPhotoResponse.album:type_name -> post.v1.Album
+	60, // 41: post.v1.EditAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
+	10, // 42: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
+	14, // 43: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
+	12, // 44: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
+	15, // 45: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
+	17, // 46: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
+	18, // 47: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
+	19, // 48: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
+	21, // 49: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
+	23, // 50: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
+	25, // 51: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
+	27, // 52: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
+	29, // 53: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
+	31, // 54: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
+	33, // 55: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
+	34, // 56: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
+	36, // 57: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
+	38, // 58: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
+	40, // 59: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
+	3,  // 60: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
+	5,  // 61: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
+	7,  // 62: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
+	9,  // 63: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
+	45, // 64: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
+	47, // 65: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
+	49, // 66: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
+	51, // 67: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
+	53, // 68: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
+	54, // 69: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
+	56, // 70: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
+	58, // 71: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
+	61, // 72: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
+	63, // 73: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
+	65, // 74: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
+	67, // 75: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
+	69, // 76: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
+	71, // 77: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
+	73, // 78: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
+	75, // 79: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
+	77, // 80: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
+	79, // 81: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
+	42, // 82: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
+	11, // 83: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
+	81, // 84: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
+	13, // 85: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
+	16, // 86: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
+	81, // 87: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
+	81, // 88: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
+	20, // 89: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
+	22, // 90: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
+	24, // 91: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
+	26, // 92: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
+	28, // 93: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
+	30, // 94: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
+	32, // 95: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
+	81, // 96: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
+	35, // 97: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
+	37, // 98: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
+	39, // 99: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
+	41, // 100: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
+	4,  // 101: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
+	6,  // 102: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
+	8,  // 103: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
+	81, // 104: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
+	46, // 105: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
+	48, // 106: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
+	50, // 107: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
+	52, // 108: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
+	81, // 109: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
+	55, // 110: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
+	57, // 111: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
+	81, // 112: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
+	62, // 113: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
+	64, // 114: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
+	66, // 115: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
+	68, // 116: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
+	81, // 117: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
+	72, // 118: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
+	74, // 119: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
+	76, // 120: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
+	78, // 121: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
+	81, // 122: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
+	81, // 123: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
+	83, // [83:124] is the sub-list for method output_type
+	42, // [42:83] is the sub-list for method input_type
+	42, // [42:42] is the sub-list for extension type_name
+	42, // [42:42] is the sub-list for extension extendee
+	0,  // [0:42] is the sub-list for field type_name
 }
 
 func init() { file_api_post_v1_post_proto_init() }
@@ -4040,7 +5343,7 @@ func file_api_post_v1_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_post_v1_post_proto_rawDesc), len(file_api_post_v1_post_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   59,
+			NumMessages:   80,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

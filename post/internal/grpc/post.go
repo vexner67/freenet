@@ -56,6 +56,19 @@ type TopicService interface {
 	DeleteMessage(ctx context.Context, requesterID, id uuid.UUID) error
 }
 
+type AlbumService interface {
+	Create(ctx context.Context, in service.CreateAlbumInput) (*post.Album, error)
+	Get(ctx context.Context, id uuid.UUID) (*post.Album, *post.AlbumPhoto, error)
+	List(ctx context.Context, ownerID, before uuid.UUID, size int) (service.AlbumPage, error)
+	Change(ctx context.Context, requesterID, id uuid.UUID, name post.AlbumName, description post.Description) (*post.Album, error)
+	Delete(ctx context.Context, requesterID, id uuid.UUID) error
+	AddPhotos(ctx context.Context, requesterID, albumID uuid.UUID, in []service.NewAlbumPhoto) ([]*post.AlbumPhoto, error)
+	Photos(ctx context.Context, albumID, after uuid.UUID, size int) (service.AlbumPhotoPage, error)
+	Photo(ctx context.Context, id uuid.UUID) (*post.AlbumPhoto, *post.Album, error)
+	Describe(ctx context.Context, requesterID, id uuid.UUID, description post.Description) (*post.AlbumPhoto, error)
+	DeletePhoto(ctx context.Context, requesterID, id uuid.UUID) error
+}
+
 // PurgeService erases a user's posts, likes and comments once the page is
 // deleted for good.
 type PurgeService interface {
@@ -68,6 +81,7 @@ type Services struct {
 	Comments    CommentService
 	Suggestions SuggestionService
 	Topics      TopicService
+	Albums      AlbumService
 	Purge       PurgeService
 }
 
@@ -77,6 +91,7 @@ type PostHandler struct {
 	commentService    CommentService
 	suggestionService SuggestionService
 	topicService      TopicService
+	albumService      AlbumService
 	purgeService      PurgeService
 	logger            *slog.Logger
 }
@@ -87,6 +102,7 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		commentService:    s.Comments,
 		suggestionService: s.Suggestions,
 		topicService:      s.Topics,
+		albumService:      s.Albums,
 		purgeService:      s.Purge,
 		logger:            logger,
 	}

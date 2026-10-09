@@ -54,6 +54,7 @@ func newServer(t *testing.T) testServer {
 	store := inmem.NewStore()
 	suggestions := inmem.NewSuggestionRepository()
 	topics := inmem.NewTopicRepository()
+	albums := inmem.NewAlbumRepository()
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(postgrpc.Services{
 		Posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
 		Comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
@@ -63,9 +64,12 @@ func newServer(t *testing.T) testServer {
 		Topics: service.NewTopicService(service.TopicDeps{
 			Topics: topics, Messages: topics.Messages(), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
 		}),
+		Albums: service.NewAlbumService(service.AlbumDeps{
+			Albums: albums, Photos: albums.Photos(), Tx: inmem.TxManager{}, Media: mediaclient.Nop{}, Moderators: clubclient.Nop{},
+		}),
 		Purge: service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: suggestions,
-			Topics: topics, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
+			Topics: topics, Albums: albums, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
 		}),
 	}, log))
 
@@ -680,5 +684,105 @@ func TestTopics(t *testing.T) {
 	}
 	if _, err = s.client.GetTopic(context.Background(), &postv1.GetTopicRequest{Id: id}); status.Code(err) != codes.NotFound {
 		t.Fatalf("GetTopic after delete: %v", err)
+	}
+}
+
+func TestAlbums(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	club, ann, bob := uuid.New(), uuid.New(), uuid.New()
+
+	created, err := s.client.CreateAlbum(s.as(t, ann), &postv1.CreateAlbumRequest{Name: "  Лето ", Description: "На даче"})
+	if err != nil || created.GetAlbum().GetName() != "Лето" || created.GetAlbum().GetOwnerId() != ann.String() || created.GetAlbum().GetCover() != nil {
+		t.Fatalf("CreateAlbum = %v, %v", created, err)
+	}
+	id := created.GetAlbum().GetId()
+
+	for name, req := range map[string]*postv1.CreateAlbumRequest{
+		"no name":    {Name: " "},
+		"long name":  {Name: strings.Repeat("я", 37)},
+		"bad club":   {ClubId: "x", Name: "Кошки"},
+		"long words": {Name: "Лето", Description: strings.Repeat("я", 256)},
+	} {
+		if _, err = s.client.CreateAlbum(s.as(t, ann), req); status.Code(err) != codes.InvalidArgument {
+			t.Errorf("CreateAlbum with %s: %v", name, err)
+		}
+	}
+	// Nobody runs the club here (clubclient.Nop).
+	if _, err = s.client.CreateAlbum(s.as(t, ann), &postv1.CreateAlbumRequest{ClubId: club.String(), Name: "Кошки"}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("CreateAlbum for a club: %v", err)
+	}
+	if _, err = s.client.CreateAlbum(context.Background(), &postv1.CreateAlbumRequest{Name: "Лето"}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("CreateAlbum without a token: %v", err)
+	}
+
+	first, second := uuid.Must(uuid.NewV7()).String(), uuid.Must(uuid.NewV7()).String()
+	added, err := s.client.AddAlbumPhotos(s.as(t, ann), &postv1.AddAlbumPhotosRequest{AlbumId: id, Photos: []*postv1.NewAlbumPhoto{
+		{PhotoId: first, Description: "Море"}, {PhotoId: second},
+	}})
+	if err != nil || len(added.GetPhotos()) != 2 || !added.GetPhotos()[0].GetMine() || added.GetPhotos()[0].GetDescription() != "Море" {
+		t.Fatalf("AddAlbumPhotos = %v, %v", added, err)
+	}
+	if _, err = s.client.AddAlbumPhotos(s.as(t, bob), &postv1.AddAlbumPhotosRequest{AlbumId: id, Photos: []*postv1.NewAlbumPhoto{{PhotoId: uuid.NewString()}}}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("AddAlbumPhotos by a stranger: %v", err)
+	}
+	if _, err = s.client.AddAlbumPhotos(s.as(t, ann), &postv1.AddAlbumPhotosRequest{AlbumId: id, Photos: []*postv1.NewAlbumPhoto{{PhotoId: first}}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("AddAlbumPhotos again: %v", err)
+	}
+	if _, err = s.client.AddAlbumPhotos(s.as(t, ann), &postv1.AddAlbumPhotosRequest{AlbumId: id}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("AddAlbumPhotos without photos: %v", err)
+	}
+
+	// Public: the albums, an album, its photos and a photo.
+	list, err := s.client.ListAlbums(context.Background(), &postv1.ListAlbumsRequest{OwnerId: ann.String()})
+	if err != nil || list.GetTotal() != 1 || list.GetAlbums()[0].GetPhotoCount() != 2 || list.GetAlbums()[0].GetCover().GetId() != first {
+		t.Fatalf("ListAlbums = %v, %v", list, err)
+	}
+	album, err := s.client.GetAlbum(context.Background(), &postv1.GetAlbumRequest{Id: id})
+	if err != nil || album.GetAlbum().GetCover().GetId() != first || album.GetAlbum().GetCover().GetMine() {
+		t.Fatalf("GetAlbum = %v, %v", album, err)
+	}
+	photos, err := s.client.ListAlbumPhotos(context.Background(), &postv1.ListAlbumPhotosRequest{AlbumId: id, Limit: 1})
+	if err != nil || photos.GetTotal() != 2 || len(photos.GetPhotos()) != 1 || photos.GetNextCursor() != first {
+		t.Fatalf("ListAlbumPhotos = %v, %v", photos, err)
+	}
+	photo, err := s.client.GetAlbumPhoto(context.Background(), &postv1.GetAlbumPhotoRequest{Id: second})
+	if err != nil || photo.GetAlbum().GetName() != "Лето" || photo.GetPhoto().GetAuthorId() != ann.String() {
+		t.Fatalf("GetAlbumPhoto = %v, %v", photo, err)
+	}
+
+	edited, err := s.client.EditAlbumPhoto(s.as(t, ann), &postv1.EditAlbumPhotoRequest{Id: second, Description: "Закат"})
+	if err != nil || edited.GetPhoto().GetDescription() != "Закат" {
+		t.Fatalf("EditAlbumPhoto = %v, %v", edited, err)
+	}
+	if _, err = s.client.EditAlbumPhoto(s.as(t, bob), &postv1.EditAlbumPhotoRequest{Id: second}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("EditAlbumPhoto by a stranger: %v", err)
+	}
+	if _, err = s.client.DeleteAlbumPhoto(s.as(t, bob), &postv1.DeleteAlbumPhotoRequest{Id: second}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("DeleteAlbumPhoto by a stranger: %v", err)
+	}
+	if _, err = s.client.DeleteAlbumPhoto(s.as(t, ann), &postv1.DeleteAlbumPhotoRequest{Id: second}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.GetAlbumPhoto(context.Background(), &postv1.GetAlbumPhotoRequest{Id: second}); status.Code(err) != codes.NotFound {
+		t.Fatalf("GetAlbumPhoto after delete: %v", err)
+	}
+
+	renamed, err := s.client.EditAlbum(s.as(t, ann), &postv1.EditAlbumRequest{Id: id, Name: "Осень"})
+	if err != nil || renamed.GetAlbum().GetName() != "Осень" || renamed.GetAlbum().GetDescription() != "" {
+		t.Fatalf("EditAlbum = %v, %v", renamed, err)
+	}
+	if _, err = s.client.DeleteAlbum(s.as(t, bob), &postv1.DeleteAlbumRequest{Id: id}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("DeleteAlbum by a stranger: %v", err)
+	}
+	if _, err = s.client.DeleteAlbum(s.as(t, ann), &postv1.DeleteAlbumRequest{Id: id}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.GetAlbum(context.Background(), &postv1.GetAlbumRequest{Id: id}); status.Code(err) != codes.NotFound {
+		t.Fatalf("GetAlbum after delete: %v", err)
+	}
+	if _, err = s.client.GetAlbumPhoto(context.Background(), &postv1.GetAlbumPhotoRequest{Id: first}); status.Code(err) != codes.NotFound {
+		t.Fatalf("a photo of a deleted album: %v", err)
 	}
 }
