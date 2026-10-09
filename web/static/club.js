@@ -6,6 +6,7 @@
 
 import { api, currentUser } from './api.js';
 import { albumsBlock } from './albums.js';
+import { showBackdrop } from './backdrop.js';
 import { adminsCount, formatPostDate, membersCount, suggestedByEveryone, suggestedByYou, topicsCount } from './labels.js';
 import { $, avatarURL, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
 import { personCell } from './people.js';
@@ -51,18 +52,6 @@ function render(club, me) {
   if (club.adminsDisplay === 'all') showAdmins(club);
   renderJoin(club, me);
   $('club').hidden = false;
-}
-
-// showBackdrop is openvk's "Фон страницы": the two photos on the sides of
-// the page, behind it, fading into white towards the middle. The images
-// are set through the CSSOM, which the CSP allows, unlike style="".
-function showBackdrop(club) {
-  const { left, right } = club.backdrop ?? {};
-  if (!left && !right) return;
-
-  const backdrop = el('div', { className: 'backdrop' }, el('div', { className: 'backdrop-dripper' }));
-  backdrop.style.backgroundImage = [left, right].map((photo) => (photo ? `url("${photo.large}")` : 'none')).join(', ');
-  document.body.prepend(backdrop);
 }
 
 // renderOwner is openvk's "Создатель": a small photo and the name.
@@ -205,7 +194,7 @@ try {
   const club = await api.club(ref);
 
   render(club, me);
-  showBackdrop(club);
+  showBackdrop(club.backdrop);
   showMembers(club);
   showSuggestions(club, me);
   showTopics(club);

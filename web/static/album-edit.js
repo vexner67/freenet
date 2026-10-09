@@ -5,7 +5,7 @@
 import { api, ApiError, currentUser } from './api.js';
 import { $, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
-import { albumPath, albumsPath, albumsTitle, canChange } from './albums.js';
+import { albumPath, albumsPath, albumsTitle, canChange, isKeptBySite } from './albums.js';
 
 const albumID = decodeURIComponent(location.pathname.slice('/album/'.length, -'/edit'.length));
 
@@ -44,6 +44,7 @@ if (!me) {
 
     renderHead(album, owner);
     if (!canChange(owner, role, me)) throw new Error('Недостаточно прав.');
+    if (isKeptBySite(album)) throw new Error('Этот альбом сайт ведёт сам: его нельзя изменить.');
 
     $('tab-edit').href = albumPath(album) + '/edit';
     $('tab-upload').href = albumPath(album) + '/upload';

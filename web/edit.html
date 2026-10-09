@@ -28,6 +28,7 @@
           <a id="tab-interests" href="/edit?act=interests">Интересы</a>
           <a id="tab-additional" href="/edit?act=additional">Дополнительно</a>
           <a id="tab-avatar" href="/edit?act=avatar">Аватар</a>
+          <a id="tab-backdrop" href="/edit?act=backdrop">Фон</a>
         </div>
         <p id="loading">Загрузка…</p>
         <div class="error" id="error" hidden></div>
@@ -178,6 +179,35 @@
             <button class="button" type="submit">Сохранить</button>
           </div>
         </form>
+
+        <div id="backdrop-tab" hidden>
+          <form class="backdrop-form" id="form">
+            <h4>Фон страницы</h4>
+            <p>Вы можете установить два изображения в качестве фона вашей страницы. Они будут отображаться по бокам у тех, кто зайдёт на вашу страницу. С помощью этой возможности вы можете добавить своему профилю больше индивидуальности.</p>
+
+            <div class="backdrop-editor">
+              <div class="backdrop-side">
+                <img id="left-preview" alt="" hidden>
+                <button class="button secondary" type="button" id="left-browse">Обзор</button>
+                <input type="file" id="left-file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+              </div>
+              <div class="backdrop-page"></div>
+              <div class="backdrop-side">
+                <img id="right-preview" alt="" hidden>
+                <button class="button secondary" type="button" id="right-browse">Обзор</button>
+                <input type="file" id="right-file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+              </div>
+            </div>
+
+            <p class="hint">Изображения будут расположены так, как на схеме выше. Их высота будет автоматически увеличена, чтобы они занимали 100% высоты экрана, посередине будет размытие. Заменить фон основного интерфейса Freenet нельзя. Фон будет виден только на широких мониторах.</p>
+            <p class="hint">Вы можете установить только 1 изображение (но будет некрасиво), а так же заменить только одно: если у вас уже стоит два, а вы хотите заменить второе — то загружайте только второе, первое сохранится, а чтобы удалить, надо нажать на соответствующую кнопку внизу, удалять по одной нельзя.</p>
+
+            <div class="center">
+              <button class="button" type="submit" id="save">Сохранить фон</button>
+              <button class="button" type="button" id="remove">Удалить фон</button>
+            </div>
+          </form>
+        </div>
 
         <div id="avatar-tab" hidden>
           <div class="section-title">Изображение страницы</div>
