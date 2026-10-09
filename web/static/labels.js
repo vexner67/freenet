@@ -377,6 +377,11 @@ export function postsCount(n) {
   return `${n} ${plural(n, ['запись', 'записи', 'записей'])}`;
 }
 
+// likedBy is openvk's "Понравилось 3 людям".
+export function likedBy(n) {
+  return n === 0 ? 'Никому не понравилось' : `Понравилось ${n} ${plural(n, ['человеку', 'людям', 'людям'])}`;
+}
+
 // wallCount is openvk's counter of a wall: "нет записей", "5 записей".
 export function wallCount(n) {
   return n === 0 ? 'нет записей' : postsCount(n);

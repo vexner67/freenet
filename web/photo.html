@@ -28,16 +28,26 @@
           <div class="photo-page-details">
             <div class="photo-page-description">
               <p class="photo-page-text" id="description" hidden></p>
-              <div class="hint">Дата загрузки: <span id="uploaded-at"></span></div>
+              <div class="hint photo-page-meta">Дата загрузки: <span id="uploaded-at"></span><span id="photo-like"></span></div>
             </div>
             <hr>
             <div class="photo-page-columns">
-              <div class="photo-page-main"></div>
+              <div class="photo-page-main">
+                <div class="section-title" id="comments-title">Комментарии</div>
+                <div class="error" id="comments-error" hidden></div>
+                <div id="comments"></div>
+                <a class="wall-more" id="comments-more" hidden>Показать ещё</a>
+                <form class="comment-form" id="comment-form" hidden>
+                  <textarea id="comment-text" maxlength="1000" aria-label="Комментарий"></textarea>
+                  <button class="button" type="submit">Отправить</button>
+                </form>
+              </div>
               <div class="photo-page-actions">
                 <a class="photo-page-author" id="author"><img id="author-avatar" alt=""><b id="author-name"></b></a>
                 <a class="profile-link" id="edit" hidden>Редактировать</a>
                 <a class="profile-link" id="delete" hidden>Удалить</a>
                 <a class="profile-link" id="original" target="_blank" rel="noopener">Открыть оригинал</a>
+                <a class="profile-link" id="share" hidden>Поделиться</a>
               </div>
             </div>
           </div>

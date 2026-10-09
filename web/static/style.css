@@ -815,3 +815,24 @@ a.like:hover svg { opacity: .7; }
 
 /* "Все" on the right of a block's title. */
 .section-title .title-link { float: right; font-weight: normal; }
+
+/* openvk's "Понравилось N людям": a tooltip over a heart and a box. */
+.likers-tooltip { position: absolute; z-index: 50; width: 196px; background: #fff; border: 1px solid #c5d0db; box-shadow: 0 2px 6px rgb(0 0 0 / 20%); }
+.likers-tooltip-head { display: block; padding: 5px 8px; background: #f2f5f8; border-bottom: 1px solid #e0e6ec; cursor: pointer; }
+.likers-tooltip-grid { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; }
+.likers-tooltip-grid img { display: block; width: 30px; height: 30px; object-fit: cover; }
+.likers-box { width: 460px; }
+.likers-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; max-height: 360px; overflow-y: auto; }
+.likers-item { text-align: center; overflow-wrap: anywhere; }
+.likers-item img { display: block; width: 64px; height: 64px; margin: 0 auto 4px; object-fit: cover; }
+
+/* "Поделиться": the community and the dialog to share in. */
+.modal-body select { display: block; width: 100%; margin: 2px 0 6px; }
+.share-signs label { display: block; margin-top: 4px; }
+
+/* Under a photo of an album in the viewer: its description, heart,
+   comments and "Поделиться". */
+.viewer-details { padding: 8px 12px; background: #fff; }
+.viewer-description { margin: 0 0 6px; white-space: pre-wrap; }
+.viewer-actions { display: flex; gap: 14px; align-items: center; }
+.photo-page-meta .like { display: inline-flex; margin-left: 4px; }

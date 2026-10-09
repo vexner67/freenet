@@ -27,7 +27,7 @@ export function commentNode(comment, { onDelete, onReply, canLike = false, onErr
   if (onDelete) menu.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(comment, node) }));
   if (onReply) menu.push(el('a', { textContent: 'Ответить', onclick: () => onReply(comment) }));
 
-  const like = withLike ? likeButton(comment, { canLike, onError, like: api.likeComment, unlike: api.unlikeComment }) : '';
+  const like = withLike ? likeButton(comment, { canLike, onError, like: api.likeComment, unlike: api.unlikeComment, likers: api.commentLikers }) : '';
 
   const node = el('div', { className: 'post comment', id: commentAnchor(comment.id) },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(comment.author, 'small'), alt: '' })),

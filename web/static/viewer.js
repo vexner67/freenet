@@ -1,10 +1,11 @@
 // The photo viewer, as openvk's: the large photo over a dark page with
 // "Фотография N из M", arrows between the photos of a post and "Закрыть".
-// Esc closes, ← and → page.
+// Esc closes, ← and → page. details(photo), if given, is shown under the
+// photo: for a photo of an album its description, heart and comments.
 
 import { el } from './layout.js';
 
-export function openViewer(photos, start) {
+export function openViewer(photos, start, { details } = {}) {
   let index = start;
 
   const counter = el('span');
@@ -13,9 +14,11 @@ export function openViewer(photos, start) {
   const next = el('a', { className: 'viewer-nav viewer-next', title: 'Следующая', textContent: '›' });
   const close = el('a', { className: 'viewer-close', textContent: 'Закрыть' });
 
+  const footer = el('div', { className: 'viewer-details', hidden: !details });
   const box = el('div', { className: 'viewer-box' },
     el('div', { className: 'viewer-header' }, counter, close),
     el('div', { className: 'viewer-body' }, prev, img, next),
+    footer,
   );
   const overlay = el('div', { className: 'viewer' }, box);
 
@@ -23,6 +26,7 @@ export function openViewer(photos, start) {
     index = (i + photos.length) % photos.length;
     img.src = photos[index].large;
     counter.textContent = `Фотография ${index + 1} из ${photos.length}`;
+    if (details) footer.replaceChildren(details(photos[index]));
   }
 
   function onKey(event) {

@@ -143,6 +143,9 @@ export const api = {
 
   me: () => authorized('GET', '/api/v1/me'),
   updateProfile: (profile) => authorized('PUT', '/api/v1/me/profile', profile),
+  // postLikers and commentLikers are openvk's "Понравилось N людям".
+  postLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/posts/${encodeURIComponent(id)}/likes`, cursor, limit)),
+  commentLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/comments/${encodeURIComponent(id)}/likes`, cursor, limit)),
   updateStatus: (status) => authorized('PUT', '/api/v1/me/status', { status }),
   updatePrivacy: (privacy) => authorized('PUT', '/api/v1/me/privacy', privacy),
   // "Контакты", "Интересы" and "Дополнительно" of "Редактировать страницу".
@@ -168,7 +171,8 @@ export const api = {
   // Uploads a photo for a post; the post refers to it by ID.
   uploadPhoto: (file) => authorized('POST', '/api/v1/me/photos', file),
   // Shares a post on your wall, with a comment that may be empty.
-  repost: (postID, text) => authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/reposts`, { text }),
+  // to is { club, fromClub, signed } to share it in a community ("в группу").
+  repost: (postID, text, to = {}) => authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/reposts`, { text, ...to }),
   deletePost: (id) => authorized('DELETE', '/api/v1/posts/' + encodeURIComponent(id)),
   editPost: (id, text, photos = []) => authorized('PATCH', '/api/v1/posts/' + encodeURIComponent(id), { text, photos }),
   pinPost: (id) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(id)}/pin`),
@@ -231,7 +235,8 @@ export const api = {
     const path = `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`;
     return authorized('GET', query.size ? `${path}?${query}` : path);
   },
-  sendMessage: (nickname, text, photos = []) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos }),
+  // post shares a post into the dialog ("Поделиться" "в переписку").
+  sendMessage: (nickname, text, photos = [], post = '') => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos, post }),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
   // Your own message, from both sides, within a day of sending.
   deleteMessage: (id) => authorized('DELETE', `/api/v1/messages/${encodeURIComponent(id)}`),
@@ -323,6 +328,14 @@ export const api = {
   albumPhoto: (id) => optional('GET', `/api/v1/album-photos/${encodeURIComponent(id)}`),
   describeAlbumPhoto: (id, description) => authorized('PATCH', `/api/v1/album-photos/${encodeURIComponent(id)}`, { description }),
   deleteAlbumPhoto: (id) => authorized('DELETE', `/api/v1/album-photos/${encodeURIComponent(id)}`),
+  // The heart, likers, comments and "Поделиться" of a photo, as of a post.
+  likePhoto: (id) => authorized('PUT', `/api/v1/album-photos/${encodeURIComponent(id)}/like`),
+  unlikePhoto: (id) => authorized('DELETE', `/api/v1/album-photos/${encodeURIComponent(id)}/like`),
+  photoLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/album-photos/${encodeURIComponent(id)}/likes`, cursor, limit)),
+  photoComments: (id, cursor = '') => optional('GET', page(`/api/v1/album-photos/${encodeURIComponent(id)}/comments`, cursor, 0)),
+  commentPhoto: (id, text) => authorized('POST', `/api/v1/album-photos/${encodeURIComponent(id)}/comments`, { text }),
+  deletePhotoComment: (id) => authorized('DELETE', `/api/v1/photo-comments/${encodeURIComponent(id)}`),
+  sharePhoto: (id, text, to = {}) => authorized('POST', `/api/v1/album-photos/${encodeURIComponent(id)}/reposts`, { text, ...to }),
 
   // filters are those openvk's page links to: { hometown, city, film,
   // show, book }; with one, query may be empty.

@@ -1,13 +1,17 @@
 // A photo of an album at /photo/<id>, as openvk's: "Анна » Альбомы » Лето
-// » Фотография", the photo, its description and "Дата загрузки", and on
-// the right who uploaded it with "Редактировать" and "Удалить" for them
-// and "Открыть оригинал".
+// » Фотография", the photo, its description, "Дата загрузки" and the
+// heart, its comments, and on the right who uploaded it with
+// "Редактировать" and "Удалить" for them, "Открыть оригинал" and
+// "Поделиться".
 
 import { api, currentUser } from './api.js';
 import { formatPostDate } from './labels.js';
 import { $, avatarURL, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
-import { albumPath, albumsTitle } from './albums.js';
+import { albumPath, albumsTitle, canChange } from './albums.js';
+import { commentNode } from './comments.js';
+import { likeButton } from './posts.js';
+import { openShare } from './share.js';
 
 const photoID = decodeURIComponent(location.pathname.slice('/photo/'.length));
 
@@ -72,6 +76,67 @@ function remove(photo, album) {
   );
 }
 
+// initComments is openvk's "Комментарии" under a photo, oldest first, and
+// the form for whoever signed in with a page; who uploaded the photo or
+// runs its album deletes any of them.
+function initComments(page) {
+  const photo = page.photo;
+  let cursor = '';
+  let total = photo.comments;
+  const moderates = Boolean(me) && (photo.mine || canChange(page.owner, page.role, me));
+
+  function updateTitle() {
+    $('comments-title').textContent = total > 0 ? `Комментарии (${total})` : 'Комментарии';
+  }
+
+  const node = (c) => commentNode({ ...c, photos: [] }, {
+    withLike: false,
+    onDelete: (c.mine || moderates) && (async (comment, shown) => {
+      try {
+        await api.deletePhotoComment(comment.id);
+        shown.remove();
+        total--;
+        updateTitle();
+      } catch (e) {
+        showError($('comments-error'), e);
+      }
+    }),
+  });
+
+  async function loadMore() {
+    try {
+      const next = await api.photoComments(photo.id, cursor);
+      $('comments').append(...next.comments.map(node));
+      cursor = next.nextCursor;
+      $('comments-more').hidden = !cursor;
+    } catch (e) {
+      showError($('comments-error'), e);
+    }
+  }
+
+  $('comments-more').addEventListener('click', loadMore);
+  if (me?.profileCompleted) {
+    $('comment-form').hidden = false;
+    $('comment-form').addEventListener('submit', async (event) => {
+      event.preventDefault();
+      hideError($('comments-error'));
+
+      try {
+        const c = await api.commentPhoto(photo.id, $('comment-text').value);
+        $('comments').append(node(c));
+        $('comment-text').value = '';
+        total++;
+        updateTitle();
+      } catch (e) {
+        showError($('comments-error'), e);
+      }
+    });
+  }
+
+  updateTitle();
+  loadMore();
+}
+
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
@@ -80,6 +145,17 @@ try {
 
   render(page);
   $('content').hidden = false;
+
+  // As openvk: the heart for whoever signed in, "Поделиться" too.
+  $('photo-like').replaceChildren(' | ', likeButton(page.photo, {
+    canLike: Boolean(me), like: api.likePhoto, unlike: api.unlikePhoto, likers: api.photoLikers,
+    onError: (e) => showError($('error'), e),
+  }));
+  if (me) {
+    $('share').hidden = false;
+    $('share').addEventListener('click', () => openShare(page.photo, () => {}, { share: api.sharePhoto }));
+  }
+  initComments(page);
 
   // Who uploaded it changes and deletes it, as on openvk.
   if (me && page.photo.mine) {

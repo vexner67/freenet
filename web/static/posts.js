@@ -3,6 +3,7 @@
 // "Поделиться" on the left and the like on the right.
 
 import { api } from './api.js';
+import { attachLikers } from './likers.js';
 import { commentsLink, formatPostDate, genitiveName, shareLink, updatedPhoto, wrote } from './labels.js';
 import { avatarURL, el, fullName, pagePath } from './layout.js';
 import { editPost } from './postedit.js';
@@ -103,6 +104,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       ),
       content,
       post.repost ? sharedNode(post.repost) : null,
+      post.sharedPhoto ? sharedPhotoNode(post.sharedPhoto) : null,
       el('div', { className: 'post-menu' },
         menu,
         likeButton(post, { canLike, onError }),
@@ -152,7 +154,7 @@ function wallOwnerID(post) {
 // sharedNode is the post a repost shares, compact as on openvk: a small
 // avatar, the name, the date, the text and photos, no menu. A post shared
 // by the shared post itself is a link, not one more box inside.
-function sharedNode(shared) {
+export function sharedNode(shared) {
   if (shared.deleted) {
     return el('div', { className: 'post-shared deleted', textContent: 'Запись удалена.' });
   }
@@ -202,6 +204,17 @@ function wallLink(wall, viewer) {
 
 // photosNode lays the photos of a post, comment or message out: one at its
 // own proportions, more as a grid of tiles. A click opens the viewer.
+// sharedPhotoNode is the photo of an album a post shares, leading to its
+// page, as openvk attaches a photo; a deleted one says so.
+function sharedPhotoNode(shared) {
+  if (shared.deleted) {
+    return el('div', { className: 'post-shared deleted', textContent: 'Фотография удалена.' });
+  }
+
+  return el('div', { className: 'post-photos single' },
+    el('a', { href: '/photo/' + encodeURIComponent(shared.id) }, el('img', { src: shared.photo.small, alt: '', loading: 'lazy' })));
+}
+
 export function photosNode(photos) {
   if (photos.length === 0) return null;
 
@@ -224,9 +237,10 @@ export function separated(nodes) {
 }
 
 // likeButton is the heart with the number of likes of a post, or of a
-// comment with its own like and unlike. It changes item.likes and
+// comment with its own like, unlike and likers; over it, who like it
+// (likers.js). It changes item.likes and
 // item.liked, so the item stays the source of truth.
-export function likeButton(item, { canLike = false, onError, like = api.like, unlike = api.unlike } = {}) {
+export function likeButton(item, { canLike = false, onError, like = api.like, unlike = api.unlike, likers = api.postLikers } = {}) {
   const count = el('span', { className: 'like-count' });
   const button = el(canLike ? 'a' : 'span', { className: canLike ? 'like' : 'like disabled' }, heart(), count);
 
@@ -255,6 +269,7 @@ export function likeButton(item, { canLike = false, onError, like = api.like, un
   }
 
   if (canLike) button.addEventListener('click', toggle);
+  attachLikers(button, item, likers);
   render();
 
   return button;

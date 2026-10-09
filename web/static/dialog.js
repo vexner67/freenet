@@ -11,7 +11,7 @@ import { isLive, onEvent } from './events.js';
 import { errorText, formatPostDate, genitiveName } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
-import { photosNode } from './posts.js';
+import { photosNode, sharedNode } from './posts.js';
 
 const POLL_MS = 5000;
 // How close to the top, in pixels, loads older messages.
@@ -38,6 +38,7 @@ function messageNode(m) {
       el('a', { className: 'post-name', href: '/' + author.nickname, textContent: fullName(author) }),
       m.text ? el('div', { className: 'im-message-text', textContent: m.text }) : null,
       photosNode(m.photos ?? []),
+      m.repost ? sharedNode(m.repost) : null,
     ),
     el('div', { className: 'im-message-date' },
       formatPostDate(m.createdAt),
