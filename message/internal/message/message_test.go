@@ -62,10 +62,10 @@ func TestNewText(t *testing.T) {
 	}{
 		{"plain", "привет", "привет", nil},
 		{"trimmed, windows line breaks", "  раз\r\nдва \n", "раз\nдва", nil},
-		{"emoji count as one character", strings.Repeat("👋", 4096), message.Text(strings.Repeat("👋", 4096)), nil},
+		{"emoji count as one character", strings.Repeat("👋", 60000), message.Text(strings.Repeat("👋", 60000)), nil},
 		{"empty is fine, photos may say it all", "", "", nil},
 		{"only spaces and breaks", " \n\t\r\n ", "", nil},
-		{"too long", strings.Repeat("я", 4097), "", message.ErrTextTooLong},
+		{"too long", strings.Repeat("я", 60001), "", message.ErrTextTooLong},
 	}
 
 	for _, tt := range tests {

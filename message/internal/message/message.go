@@ -13,7 +13,9 @@ import (
 )
 
 const (
-	maxTextLen = 4096
+	// maxTextLen is as long as a post of the wall may be, openvk's 60000;
+	// openvk itself does not limit a message at all.
+	maxTextLen = 60000
 	maxPhotos  = 10
 
 	// deleteWindow is how long the sender may take a message back from
