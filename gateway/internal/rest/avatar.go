@@ -83,7 +83,7 @@ func (a *api) uploadAvatar(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	writeJSON(w, http.StatusOK, toUserResponse(me))
+	a.writeUser(w, r, me)
 }
 
 // newAvatarPost prepares, for ?onWall=true, the post of a new photo: the
@@ -125,7 +125,7 @@ func (a *api) deleteAvatar(w http.ResponseWriter, r *http.Request) {
 
 	a.cleanUpAvatars(r, token, "")
 
-	writeJSON(w, http.StatusOK, toUserResponse(me))
+	a.writeUser(w, r, me)
 }
 
 // cleanUpAvatars deletes photos no longer shown. A failure only leaves
@@ -154,7 +154,9 @@ func (a *api) serveAvatar(w http.ResponseWriter, r *http.Request) {
 	serveImage(w, image)
 }
 
-// searchUsers finds people by name, surname or nickname: GET /api/v1/users?q=.
+// searchUsers finds people by name, surname or nickname: GET
+// /api/v1/users?q=, also by the filters openvk's page links to: hometown,
+// city, film, show and book.
 func (a *api) searchUsers(w http.ResponseWriter, r *http.Request) {
 	limit, err := pageLimit(r)
 	if err != nil {
@@ -162,7 +164,12 @@ func (a *api) searchUsers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := a.users.Search(r.Context(), r.URL.Query().Get("q"), r.URL.Query().Get("cursor"), limit)
+	query := r.URL.Query()
+
+	page, err := a.users.Search(r.Context(), model.UserQuery{
+		Text: query.Get("q"), Hometown: query.Get("hometown"), City: query.Get("city"),
+		Film: query.Get("film"), Show: query.Get("show"), Book: query.Get("book"),
+	}, query.Get("cursor"), limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

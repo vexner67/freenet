@@ -38,15 +38,26 @@ func toTokensResponse(t model.Tokens) tokensResponse {
 // profileJSON is both the body of PUT /me/profile (it replaces the whole
 // profile) and the profile part of responses.
 type profileJSON struct {
-	Name           string  `json:"name"`
-	Surname        string  `json:"surname"`
-	Nickname       string  `json:"nickname"`
-	Status         string  `json:"status"`
-	Gender         string  `json:"gender"`
-	Relationship   string  `json:"relationship"`
-	Worldview      string  `json:"worldview"`
-	PoliticalViews string  `json:"politicalViews"`
-	Birthday       *string `json:"birthday"`
+	Name           string `json:"name"`
+	Surname        string `json:"surname"`
+	Nickname       string `json:"nickname"`
+	Status         string `json:"status"`
+	Gender         string `json:"gender"`
+	Relationship   string `json:"relationship"`
+	Worldview      string `json:"worldview"`
+	PoliticalViews string `json:"politicalViews"`
+	// Birthday is "YYYY-MM-DD", or "--MM-DD" when the owner shows only the
+	// day and the month (in public profiles).
+	Birthday      *string `json:"birthday"`
+	HideBirthYear bool    `json:"hideBirthYear"`
+	Hometown      string  `json:"hometown"`
+}
+
+// profileRequest is PUT /me/profile: the profile with the nickname of
+// whom the relationship names, "" for nobody.
+type profileRequest struct {
+	profileJSON
+	Partner string `json:"partner"`
 }
 
 func (p profileJSON) toModel() (model.Profile, error) {
@@ -71,6 +82,8 @@ func (p profileJSON) toModel() (model.Profile, error) {
 		Worldview:      p.Worldview,
 		PoliticalViews: p.PoliticalViews,
 		Birthday:       birthday,
+		HideBirthYear:  p.HideBirthYear,
+		Hometown:       p.Hometown,
 	}, nil
 }
 
@@ -92,7 +105,74 @@ func toProfileJSON(p model.Profile) profileJSON {
 		Worldview:      p.Worldview,
 		PoliticalViews: p.PoliticalViews,
 		Birthday:       birthday,
+		HideBirthYear:  p.HideBirthYear,
+		Hometown:       p.Hometown,
 	}
+}
+
+type contactsJSON struct {
+	Email    string `json:"email"`
+	Telegram string `json:"telegram"`
+	Website  string `json:"website"`
+	City     string `json:"city"`
+	Address  string `json:"address"`
+}
+
+type interestsJSON struct {
+	Interests string `json:"interests"`
+	Music     string `json:"music"`
+	Films     string `json:"films"`
+	Shows     string `json:"shows"`
+	Books     string `json:"books"`
+	Quotes    string `json:"quotes"`
+	Games     string `json:"games"`
+	About     string `json:"about"`
+}
+
+// extraFieldJSON is a field of "Дополнительно"; place is "contacts" or
+// "interests".
+type extraFieldJSON struct {
+	Name  string `json:"name"`
+	Text  string `json:"text"`
+	Place string `json:"place"`
+}
+
+type extraFieldsRequest struct {
+	Fields []extraFieldJSON `json:"fields"`
+}
+
+// aboutJSON is the rest of the page and the partner of the relationship
+// (null for nobody, when hidden, and when the partner's page is deleted).
+type aboutJSON struct {
+	Contacts     contactsJSON     `json:"contacts"`
+	Interests    interestsJSON    `json:"interests"`
+	Fields       []extraFieldJSON `json:"fields"`
+	RegisteredAt string           `json:"registeredAt"`
+	Partner      *authorJSON      `json:"partner"`
+}
+
+func toAboutJSON(a model.About, partner *authorJSON) aboutJSON {
+	fields := make([]extraFieldJSON, 0, len(a.ExtraFields))
+	for _, f := range a.ExtraFields {
+		fields = append(fields, extraFieldJSON(f))
+	}
+
+	return aboutJSON{
+		Contacts:     contactsJSON(a.Contacts),
+		Interests:    interestsJSON(a.Interests),
+		Fields:       fields,
+		RegisteredAt: timeString(a.RegisteredAt),
+		Partner:      partner,
+	}
+}
+
+func (f extraFieldsRequest) toModel() []model.ExtraField {
+	fields := make([]model.ExtraField, 0, len(f.Fields))
+	for _, field := range f.Fields {
+		fields = append(fields, model.ExtraField(field))
+	}
+
+	return fields
 }
 
 type privacyJSON struct {
@@ -149,9 +229,11 @@ type userResponse struct {
 	// longer be restored (RFC 3339, only for a deleted page).
 	Deactivated bool   `json:"deactivated"`
 	PurgeAt     string `json:"purgeAt,omitempty"`
+	aboutJSON
 }
 
-func toUserResponse(u model.User) userResponse {
+// toUserResponse: partner is whom the relationship names, nil for nobody.
+func toUserResponse(u model.User, partner *authorJSON) userResponse {
 	return userResponse{
 		ID:               u.ID,
 		Avatar:           toAvatarJSON(u.ID, u.AvatarID),
@@ -169,6 +251,7 @@ func toUserResponse(u model.User) userResponse {
 		},
 		Deactivated: u.Deactivated,
 		PurgeAt:     timeString(u.PurgeAt),
+		aboutJSON:   toAboutJSON(u.About, partner),
 	}
 }
 
@@ -190,10 +273,19 @@ type publicProfileResponse struct {
 }
 
 func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
+	profile := toProfileJSON(p.Profile)
+	if p.BirthYearHidden && profile.Birthday != nil {
+		monthDay := "--" + p.Profile.Birthday.UTC().Format("01-02")
+		profile.Birthday = &monthDay
+	}
+
+	// A visitor learns what is shown, not how the owner chose it.
+	profile.HideBirthYear = false
+
 	return publicProfileResponse{
 		ID:          p.ID,
 		Avatar:      toAvatarJSON(p.ID, p.AvatarID),
-		profileJSON: toProfileJSON(p.Profile),
+		profileJSON: profile,
 		Deactivated: p.Deactivated,
 	}
 }

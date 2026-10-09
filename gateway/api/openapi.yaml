@@ -95,14 +95,23 @@ paths:
 
   /api/v1/me/profile:
     put:
-      summary: Replace the profile
-      description: Fields left out are cleared. `name` and `nickname` are required.
+      summary: Replace the profile ("Основное" of "Редактировать страницу")
+      description: |
+        Fields left out are cleared. `name` and `nickname` are required.
+        `partner` is the nickname of whom the relationship names (`dating`,
+        `engaged`, `married`, `civil_union`, `in_love`, `complicated`);
+        others name nobody.
       security: [{ bearer: [] }]
       requestBody:
         required: true
         content:
           application/json:
-            schema: { $ref: "#/components/schemas/Profile" }
+            schema:
+              allOf:
+                - $ref: "#/components/schemas/Profile"
+                - type: object
+                  properties:
+                    partner: { type: string, description: "A nickname; `partner not found` if nobody has it" }
       responses:
         "200": { $ref: "#/components/responses/User" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -112,6 +121,56 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/me/contacts:
+    put:
+      summary: Replace "Контактная информация"
+      description: Every field is optional; `https://` is added to a website without a scheme, `@` and t.me links are taken for Telegram.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Contacts" }
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/interests:
+    put:
+      summary: Replace "Личная информация"
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Interests" }
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/fields:
+    put:
+      summary: Replace "Дополнительно", the fields you name
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [fields]
+              properties:
+                fields:
+                  type: array
+                  maxItems: 7
+                  items: { $ref: "#/components/schemas/ExtraField" }
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
 
   /api/v1/me/privacy:
     put:
@@ -205,6 +264,7 @@ paths:
               schema:
                 allOf:
                   - $ref: "#/components/schemas/PublicProfile"
+                  - $ref: "#/components/schemas/About"
                   - $ref: "#/components/schemas/FollowStats"
                   - $ref: "#/components/schemas/Relation"
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -360,13 +420,20 @@ paths:
       summary: Find people
       description: |
         Every word of `q` must occur in the name, surname or nickname, in any
-        order and case. Only people with a filled-in profile are found.
-        Newest accounts first; page with `cursor` = `nextCursor`.
+        order and case. The filters are the links of openvk's page: people of
+        a hometown or a city (whatever the case), or who name a film, a show
+        or a book among their favourites; `q` may be empty with a filter.
+        Only people with a filled-in profile are found. Newest accounts
+        first; page with `cursor` = `nextCursor`.
       parameters:
         - name: q
           in: query
-          required: true
           schema: { type: string, maxLength: 64 }
+        - { name: hometown, in: query, schema: { type: string, maxLength: 64 } }
+        - { name: city, in: query, schema: { type: string, maxLength: 64 } }
+        - { name: film, in: query, schema: { type: string, maxLength: 64 } }
+        - { name: show, in: query, schema: { type: string, maxLength: 64 } }
+        - { name: book, in: query, schema: { type: string, maxLength: 64 } }
         - name: cursor
           in: query
           schema: { type: string }
@@ -2339,8 +2406,12 @@ components:
           maxLength: 32
           pattern: "^[A-Za-z](?:[A-Za-z0-9_]*[A-Za-z0-9])?$"
         status: { type: string, maxLength: 200 }
-        gender: { type: string, enum: ["", male, female] }
-        relationship: { type: string, enum: ["", single, dating, married, in_love, looking] }
+        gender: { type: string, enum: ["", male, female, neutral], description: "openvk's \"Местоимения\": neutral is \"они/их\"" }
+        relationship:
+          type: string
+          enum: ["", single, dating, engaged, married, civil_union, in_love, complicated, looking]
+        hometown: { type: string, maxLength: 64 }
+        hideBirthYear: { type: boolean, description: "Show only the day and the month of the birthday" }
         worldview:
           type: string
           enum: ["", islam, orthodox, catholicism, judaism, protestantism, buddhism,
@@ -2349,7 +2420,58 @@ components:
           type: string
           enum: ["", communist, socialist, moderate, liberal, conservative, monarchist,
                  ultraconservative, indifferent, libertarian]
-        birthday: { type: [string, "null"], format: date, example: "1990-05-17" }
+        birthday:
+          type: [string, "null"]
+          example: "1990-05-17"
+          description: "YYYY-MM-DD, or --MM-DD in a public profile whose owner shows only the day and the month"
+
+    Contacts:
+      type: object
+      description: openvk's "Контактная информация"
+      properties:
+        email: { type: string, maxLength: 254, description: "To show on the page, not the one to sign in with" }
+        telegram: { type: string, description: "A username, without @" }
+        website: { type: string, maxLength: 256 }
+        city: { type: string, maxLength: 64 }
+        address: { type: string, maxLength: 255 }
+
+    Interests:
+      type: object
+      description: openvk's "Личная информация"; each up to 1000 characters
+      properties:
+        interests: { type: string }
+        music: { type: string }
+        films: { type: string }
+        shows: { type: string }
+        books: { type: string }
+        quotes: { type: string }
+        games: { type: string }
+        about: { type: string, description: "\"О себе\"" }
+
+    ExtraField:
+      type: object
+      required: [name, text, place]
+      properties:
+        name: { type: string, maxLength: 50 }
+        text: { type: string, maxLength: 1000 }
+        place: { type: string, enum: [contacts, interests], description: Where it shows }
+
+    About:
+      type: object
+      description: The rest of the page, public
+      required: [contacts, interests, fields, registeredAt, partner]
+      properties:
+        contacts: { $ref: "#/components/schemas/Contacts" }
+        interests: { $ref: "#/components/schemas/Interests" }
+        fields:
+          type: array
+          items: { $ref: "#/components/schemas/ExtraField" }
+        registeredAt: { type: string, format: date-time, description: "\"Дата регистрации\"" }
+        partner:
+          description: Whom the relationship names; null for nobody, when it is hidden and when that page is deleted
+          oneOf:
+            - { $ref: "#/components/schemas/Author" }
+            - { type: "null" }
 
     Privacy:
       type: object
@@ -2375,6 +2497,7 @@ components:
     User:
       allOf:
         - $ref: "#/components/schemas/Profile"
+        - $ref: "#/components/schemas/About"
         - type: object
           required: [id, avatar, email, profileCompleted, privacy, deactivated]
           properties:

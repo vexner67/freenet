@@ -22,7 +22,12 @@ type Users interface {
 	GetMe(ctx context.Context, accessToken string) (model.User, error)
 	Deactivate(ctx context.Context, accessToken, reason string) (model.User, error)
 	Reactivate(ctx context.Context, accessToken string) (model.User, error)
-	UpdateProfile(ctx context.Context, accessToken string, p model.Profile) (model.User, error)
+	// UpdateProfile: partner is the nickname of whom the relationship
+	// names, "" for nobody.
+	UpdateProfile(ctx context.Context, accessToken string, p model.Profile, partner string) (model.User, error)
+	UpdateContacts(ctx context.Context, accessToken string, c model.Contacts) (model.User, error)
+	UpdateInterests(ctx context.Context, accessToken string, in model.Interests) (model.User, error)
+	UpdateExtraFields(ctx context.Context, accessToken string, fields []model.ExtraField) (model.User, error)
 	UpdatePrivacy(ctx context.Context, accessToken string, p model.Privacy) (model.User, error)
 	GetProfile(ctx context.Context, nickname string) (model.PublicProfile, error)
 	GetProfiles(ctx context.Context, ids []string) ([]model.PublicProfile, error)
@@ -43,7 +48,7 @@ type Users interface {
 	ListFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
 
 	SetAvatar(ctx context.Context, accessToken, avatarID string) (model.User, error)
-	Search(ctx context.Context, query, cursor string, limit int) (model.UserPage, error)
+	Search(ctx context.Context, q model.UserQuery, cursor string, limit int) (model.UserPage, error)
 }
 
 type Media interface {
@@ -209,6 +214,9 @@ func (a *api) routes() *http.ServeMux {
 
 	mux.HandleFunc("GET /api/v1/me", a.getMe)
 	mux.HandleFunc("PUT /api/v1/me/profile", a.updateProfile)
+	mux.HandleFunc("PUT /api/v1/me/contacts", a.updateContacts)
+	mux.HandleFunc("PUT /api/v1/me/interests", a.updateInterests)
+	mux.HandleFunc("PUT /api/v1/me/fields", a.updateExtraFields)
 	mux.HandleFunc("PUT /api/v1/me/privacy", a.updatePrivacy)
 	mux.HandleFunc("POST /api/v1/me/deactivate", a.deactivate)
 	mux.HandleFunc("POST /api/v1/me/reactivate", a.reactivate)

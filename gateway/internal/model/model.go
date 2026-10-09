@@ -22,6 +22,58 @@ type Profile struct {
 	PoliticalViews string
 	// Birthday is a date at midnight UTC; zero means not set.
 	Birthday time.Time
+	// HideBirthYear: the owner shows only the day and the month.
+	HideBirthYear bool
+	Hometown      string
+	// PartnerID is whom the relationship names, "" for nobody (or hidden).
+	PartnerID string
+}
+
+// About is the rest of openvk's page: "Контактная информация", "Личная
+// информация" and "Дополнительно", public, and the date of registration.
+type About struct {
+	Contacts     Contacts
+	Interests    Interests
+	ExtraFields  []ExtraField
+	RegisteredAt time.Time
+}
+
+type Contacts struct {
+	Email    string
+	Telegram string
+	Website  string
+	City     string
+	Address  string
+}
+
+type Interests struct {
+	Interests string
+	Music     string
+	Films     string
+	Shows     string
+	Books     string
+	Quotes    string
+	Games     string
+	About     string
+}
+
+// ExtraField is a field of the page its owner names; Place is "contacts"
+// or "interests", where it shows.
+type ExtraField struct {
+	Name  string
+	Text  string
+	Place string
+}
+
+// UserQuery is a search for people: words and the filters openvk's page
+// links to, all optional but not all empty.
+type UserQuery struct {
+	Text     string
+	Hometown string
+	City     string
+	Film     string
+	Show     string
+	Book     string
 }
 
 // Privacy: WallWrite is who may write on the wall besides its owner,
@@ -63,6 +115,7 @@ type User struct {
 	// PurgeAt.
 	Deactivated bool
 	PurgeAt     time.Time
+	About       About
 }
 
 // PublicProfile is what anyone may see; fields hidden by the owner are empty.
@@ -72,6 +125,9 @@ type PublicProfile struct {
 	Profile  Profile
 	// Deactivated: the page is deleted, only names and the photo are left.
 	Deactivated bool
+	// BirthYearHidden: Profile.Birthday has no real year.
+	BirthYearHidden bool
+	About           About
 }
 
 // Author is who wrote a post or owns a wall, as shown next to a post: a

@@ -24,8 +24,12 @@ func toFollowStatsJSON(s model.FollowStats) followStatsJSON {
 	}
 }
 
+// profileWithStatsResponse is the page of a person: the profile with the
+// rest of the page, the follows and the blacklist between the viewer and
+// them.
 type profileWithStatsResponse struct {
 	publicProfileResponse
+	aboutJSON
 	followStatsJSON
 	relationJSON
 }

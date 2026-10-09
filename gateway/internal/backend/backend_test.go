@@ -62,25 +62,26 @@ func TestEnums(t *testing.T) {
 
 	req, err := toUpdateProfileRequest(model.Profile{
 		Name: "Ann", Nickname: "ann", Gender: "female", PoliticalViews: "secular_humanism",
-	})
+	}, "")
 	if err == nil {
 		t.Fatalf("secular_humanism is a worldview, not political views: %v", req)
 	}
 
 	req, err = toUpdateProfileRequest(model.Profile{
 		Name: "Ann", Nickname: "ann", Gender: "female", Worldview: "secular_humanism",
-		Birthday: time.Date(1990, 5, 17, 0, 0, 0, 0, time.UTC),
-	})
+		Birthday: time.Date(1990, 5, 17, 0, 0, 0, 0, time.UTC), Hometown: "Тверь", Relationship: "civil_union",
+	}, "bob")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if req.GetGender() != userv1.Gender_GENDER_FEMALE || req.GetWorldview() != userv1.Worldview_WORLDVIEW_SECULAR_HUMANISM ||
-		req.GetRelationship() != userv1.Relationship_RELATIONSHIP_NONE || req.GetBirthday().AsTime().Year() != 1990 {
+		req.GetRelationship() != userv1.Relationship_RELATIONSHIP_CIVIL_UNION || req.GetBirthday().AsTime().Year() != 1990 ||
+		req.GetHometown() != "Тверь" || req.GetRelationshipPartner() != "bob" {
 		t.Fatalf("request: %v", req)
 	}
 
 	for _, bad := range []string{"Female", "none", "NONE", "robot"} {
-		_, err = toUpdateProfileRequest(model.Profile{Gender: bad})
+		_, err = toUpdateProfileRequest(model.Profile{Gender: bad}, "")
 		if failure.From(err).Kind != failure.InvalidArgument {
 			t.Fatalf("gender %q: got %v, want InvalidArgument", bad, err)
 		}

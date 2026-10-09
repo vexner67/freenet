@@ -30,7 +30,7 @@ func (a *api) deactivate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, toUserResponse(u))
+	a.writeUser(w, r, u)
 }
 
 // reactivate restores the caller's deleted page; the client refreshes its
@@ -48,5 +48,5 @@ func (a *api) reactivate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusOK, toUserResponse(u))
+	a.writeUser(w, r, u)
 }

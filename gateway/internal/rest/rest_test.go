@@ -65,11 +65,16 @@ type fakeUsers struct {
 	// deactivated: the caller's page is deleted, with this reason.
 	deactivated bool
 	reason      string
-	err         error
+	// partner is the nickname UpdateProfile got; about the rest of the
+	// page, and search the last query.
+	partner string
+	about   model.About
+	search  model.UserQuery
+	err     error
 }
 
 func (f *fakeUsers) user() model.User {
-	u := model.User{ID: "u1", Email: "ann@example.com", Profile: f.profile, ProfileCompleted: f.profile.Nickname != ""}
+	u := model.User{ID: "u1", Email: "ann@example.com", Profile: f.profile, ProfileCompleted: f.profile.Nickname != "", About: f.about}
 	if f.deactivated {
 		u.Deactivated, u.PurgeAt = true, time.Date(2027, 5, 7, 12, 0, 0, 0, time.UTC)
 	}
@@ -91,8 +96,26 @@ func (f *fakeUsers) GetMe(_ context.Context, token string) (model.User, error) {
 	return f.user(), f.err
 }
 
-func (f *fakeUsers) UpdateProfile(_ context.Context, token string, p model.Profile) (model.User, error) {
-	f.token, f.profile = token, p
+func (f *fakeUsers) UpdateProfile(_ context.Context, token string, p model.Profile, partner string) (model.User, error) {
+	f.token, f.profile, f.partner = token, p, partner
+	if partner == "bob" {
+		f.profile.PartnerID = "u2"
+	}
+	return f.user(), f.err
+}
+
+func (f *fakeUsers) UpdateContacts(_ context.Context, token string, c model.Contacts) (model.User, error) {
+	f.token, f.about.Contacts = token, c
+	return f.user(), f.err
+}
+
+func (f *fakeUsers) UpdateInterests(_ context.Context, token string, in model.Interests) (model.User, error) {
+	f.token, f.about.Interests = token, in
+	return f.user(), f.err
+}
+
+func (f *fakeUsers) UpdateExtraFields(_ context.Context, token string, fields []model.ExtraField) (model.User, error) {
+	f.token, f.about.ExtraFields = token, fields
 	return f.user(), f.err
 }
 
@@ -111,6 +134,15 @@ func (f *fakeUsers) GetProfile(_ context.Context, nickname string) (model.Public
 		return model.PublicProfile{ID: "u2", Profile: model.Profile{Name: "Bob", Nickname: "bob"}}, nil
 	case "cat":
 		return model.PublicProfile{ID: "u3", Profile: model.Profile{Name: "Cat", Nickname: "cat"}, Deactivated: true}, nil
+	case "dina":
+		return model.PublicProfile{
+			ID: "u4", Profile: model.Profile{Name: "Dina", Nickname: "dina", Birthday: time.Date(2000, 5, 17, 0, 0, 0, 0, time.UTC), PartnerID: "u2"},
+			BirthYearHidden: true,
+			About: model.About{
+				Contacts: model.Contacts{City: "Москва"}, RegisteredAt: time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC),
+				ExtraFields: []model.ExtraField{{Name: "Цвет", Text: "синий", Place: "interests"}},
+			},
+		}, nil
 	default:
 		return model.PublicProfile{}, failure.New(failure.NotFound, "user not found")
 	}
@@ -195,9 +227,9 @@ func (f *fakeUsers) SetAvatar(_ context.Context, token, avatarID string) (model.
 	return u, f.err
 }
 
-func (f *fakeUsers) Search(_ context.Context, query, cursor string, _ int) (model.UserPage, error) {
-	f.query, f.cursor = query, cursor
-	if query == "" {
+func (f *fakeUsers) Search(_ context.Context, q model.UserQuery, cursor string, _ int) (model.UserPage, error) {
+	f.query, f.cursor, f.search = q.Text, cursor, q
+	if q == (model.UserQuery{}) {
 		return model.UserPage{}, failure.New(failure.InvalidArgument, "search query is empty")
 	}
 	return model.UserPage{
