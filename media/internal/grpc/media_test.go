@@ -307,3 +307,47 @@ func TestClubAvatars(t *testing.T) {
 		t.Fatalf("a bad club id: %v", err)
 	}
 }
+
+func TestClubPhotos(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	club, admin := uuid.New(), uuid.New()
+
+	var picture bytes.Buffer
+	if err := png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 120, 300))); err != nil {
+		t.Fatal(err)
+	}
+
+	left, err := s.client.UploadClubPhoto(s.as(t, admin), &mediav1.UploadClubPhotoRequest{ClubId: club.String(), Image: picture.Bytes()})
+	if err != nil {
+		t.Fatalf("UploadClubPhoto: %v", err)
+	}
+	right, err := s.client.UploadClubPhoto(s.as(t, admin), &mediav1.UploadClubPhotoRequest{ClubId: club.String(), Image: picture.Bytes()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Served under the club's ID as a photo, and kept: no post publishes it.
+	get := func(id string) error {
+		_, err := s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: club.String(), PhotoId: id, Size: mediav1.PhotoSize_PHOTO_SIZE_LARGE})
+		return err
+	}
+	if err = get(left.GetPhotoId()); err != nil {
+		t.Fatalf("GetPhoto: %v", err)
+	}
+
+	if _, err = s.client.DeleteClubPhotos(s.as(t, admin), &mediav1.DeleteClubPhotosRequest{ClubId: club.String(), KeepPhotoIds: []string{right.GetPhotoId()}}); err != nil {
+		t.Fatalf("DeleteClubPhotos: %v", err)
+	}
+	if err = get(left.GetPhotoId()); status.Code(err) != codes.NotFound {
+		t.Fatalf("the dropped photo: %v", err)
+	}
+	if err = get(right.GetPhotoId()); err != nil {
+		t.Fatalf("the kept photo: %v", err)
+	}
+
+	if _, err = s.client.DeleteClubPhotos(s.as(t, admin), &mediav1.DeleteClubPhotosRequest{ClubId: club.String(), KeepPhotoIds: []string{"x"}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bad photo id: %v", err)
+	}
+}

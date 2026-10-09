@@ -6,6 +6,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -137,6 +138,30 @@ func (s *PhotoStore) Delete(_ context.Context, ownerID uuid.UUID, photoIDs []uui
 func (s *PhotoStore) DeleteAll(_ context.Context, ownerID uuid.UUID) error {
 	for _, root := range []string{s.published, s.uploads} {
 		if err := os.RemoveAll(filepath.Join(root, ownerID.String())); err != nil {
+			return errs.Wrap("os.RemoveAll", err)
+		}
+	}
+
+	return nil
+}
+
+func (s *PhotoStore) DeleteExcept(_ context.Context, ownerID uuid.UUID, keep []uuid.UUID) error {
+	dir := filepath.Join(s.published, ownerID.String())
+
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil
+	}
+	if err != nil {
+		return errs.Wrap("os.ReadDir", err)
+	}
+
+	for _, e := range entries {
+		if id, err := uuid.Parse(e.Name()); err == nil && slices.Contains(keep, id) {
+			continue
+		}
+
+		if err = os.RemoveAll(filepath.Join(dir, e.Name())); err != nil {
 			return errs.Wrap("os.RemoveAll", err)
 		}
 	}
