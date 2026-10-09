@@ -840,3 +840,8 @@ a.like:hover svg { opacity: .7; }
 /* "Это архив записей" over the archive of a wall, as on openvk. */
 .archive-banner { margin-bottom: 10px; padding: 8px 10px; border: 1px solid #d5ddb6; background: #f9f6e7; }
 .archive-banner b { display: block; margin-bottom: 2px; }
+
+/* Long text of a post or a comment, cut short as on openvk until
+   "Показать больше". */
+.post-text.collapsed { max-height: 115px; overflow: hidden; }
+.post-text-more { display: block; margin-top: 2px; cursor: pointer; }

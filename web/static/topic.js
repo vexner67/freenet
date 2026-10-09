@@ -7,11 +7,12 @@ import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { commentNode } from './comments.js';
 import { formatPostDate, topicMessagesCount } from './labels.js';
-import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
+import { $, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
 import { boardTitle, topicPath } from './topics.js';
 
-const COUNTER_FROM = 900;
-const MAX_LENGTH = 1000;
+// openvk's limit of a post or a comment; the counter shows near the end.
+const MAX_LENGTH = 60000;
+const COUNTER_FROM = MAX_LENGTH - 100;
 
 const topicID = decodeURIComponent(location.pathname.slice('/topic/'.length));
 
@@ -69,6 +70,7 @@ function initMessages(topic, me, admin) {
   function reply(m) {
     const text = $('message-text');
     text.value = m.author.name + ', ' + text.value;
+    autosize(text);
     text.focus();
     text.setSelectionRange(text.value.length, text.value.length);
   }
@@ -134,6 +136,7 @@ function initMessages(topic, me, admin) {
       sent.add(m.id);
       list.append(node);
       $('message-text').value = '';
+      autosize($('message-text'));
       attachments.clear();
       total++;
       updateCount();

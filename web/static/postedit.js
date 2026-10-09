@@ -4,9 +4,9 @@
 
 import { api } from './api.js';
 import { initAttachments } from './attach.js';
-import { el, showError, hideError } from './layout.js';
+import { el, showError, hideError, autosize } from './layout.js';
 
-const MAX_LENGTH = 1000;
+const MAX_LENGTH = 60000;
 
 // editPost opens the form in node, the post's; onSaved gets the edited post.
 export function editPost(post, node, { onSaved }) {
@@ -72,6 +72,7 @@ export function editPost(post, node, { onSaved }) {
 
   node.classList.add('editing');
   node.querySelector('.post-content').after(form);
+  autosize(text);
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
 }

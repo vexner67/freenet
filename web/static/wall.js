@@ -3,12 +3,13 @@
 
 import { api } from './api.js';
 import { wallCount } from './labels.js';
-import { $, clubRef, el, showError, hideError } from './layout.js';
+import { $, clubRef, el, showError, hideError, autosize } from './layout.js';
 import { postNode as renderPost } from './posts.js';
 import { initAttachments } from './attach.js';
 
-const COUNTER_FROM = 900;
-const MAX_LENGTH = 1000;
+// openvk's limit of a post or a comment; the counter shows near the end.
+const MAX_LENGTH = 60000;
+const COUNTER_FROM = MAX_LENGTH - 100;
 
 // initWall shows the wall of owner, a user or a community (owner.club), to
 // me, the viewer (null if anonymous). Whoever moderates the wall, its owner
@@ -141,6 +142,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       if (pinned) pinned.after(postNode(post));
       else posts.prepend(postNode(post));
       $('post-text').value = '';
+      autosize($('post-text'));
       $('post-text').blur();
       attachments.clear();
       $('post-form').classList.remove('expanded');

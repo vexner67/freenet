@@ -5,7 +5,7 @@
 
 import { api, currentUser } from './api.js';
 import { formatPostDate, suggestedInClub, wrote } from './labels.js';
-import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
+import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, postPath } from './posts.js';
 
@@ -59,11 +59,12 @@ function suggestionNode(s) {
 // leave or change and "Подпись автора", on by default.
 function openPublish(s, node) {
   const modal = openModal('Публикация предложенной записи');
-  const text = el('textarea', { className: 'publish-text', maxLength: 1000, value: s.text });
+  const text = el('textarea', { className: 'publish-text', maxLength: 60000, value: s.text });
   const signed = el('input', { type: 'checkbox', checked: true });
   const error = el('div', { className: 'error', hidden: true });
 
   modal.body.append(text, el('label', { className: 'publish-signed' }, signed, ' Подпись автора'), error);
+  autosize(text);
   modal.actions.append(
     button('Опубликовать', async (event) => {
       event.target.disabled = true;

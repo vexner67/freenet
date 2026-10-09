@@ -7,7 +7,7 @@ import { clubRef, el, fullName, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { postPath } from './posts.js';
 
-const MAX_LENGTH = 1000;
+const MAX_LENGTH = 60000;
 
 // openShare shares post, or with share a photo of an album (api.sharePhoto,
 // which a dialog does not take); onShared(repost) runs once it is on a wall.

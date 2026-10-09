@@ -9,7 +9,7 @@ import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
 import { errorText, formatPostDate, genitiveName } from './labels.js';
-import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError } from './layout.js';
+import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, sharedNode } from './posts.js';
 
@@ -231,6 +231,7 @@ async function send(event) {
 
     add([m], false);
     text.value = '';
+    autosize(text);
     attachments.clear();
     toBottom();
   } catch (e) {
