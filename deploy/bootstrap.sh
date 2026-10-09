@@ -56,8 +56,11 @@ X11Forwarding no
 EOF
 # Refuse to cut ourselves off: root must already have a key.
 test -s /root/.ssh/authorized_keys || { echo "root has no SSH key: add one before turning passwords off"; exit 1; }
+# Ubuntu 24.04 starts sshd from a socket: until the first connection there
+# is no /run/sshd, and sshd -t refuses to check without it.
+install -d -m 755 /run/sshd
 sshd -t
-systemctl reload ssh
+systemctl try-reload-or-restart ssh
 
 step "fail2ban for SSH"
 cat > /etc/fail2ban/jail.d/sshd.local <<'EOF'
