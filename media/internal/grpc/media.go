@@ -27,6 +27,8 @@ type PhotoService interface {
 	Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error)
 	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+	UploadKept(ctx context.Context, ownerID uuid.UUID, data []byte) (uuid.UUID, error)
+	DeleteExcept(ctx context.Context, ownerID uuid.UUID, keep []uuid.UUID) error
 }
 
 // PurgeService erases a user's files once the page is deleted for good.
@@ -126,6 +128,42 @@ func (h *MediaHandler) DeleteClubAvatars(ctx context.Context, req *mediav1.Delet
 	}
 
 	if err = h.avatars.DeleteExcept(ctx, clubID, keep); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MediaHandler) UploadClubPhoto(ctx context.Context, req *mediav1.UploadClubPhotoRequest) (*mediav1.UploadPhotoResponse, error) {
+	clubID, err := parseID(req.GetClubId(), "club id")
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := h.photos.UploadKept(ctx, clubID, req.GetImage())
+	if err != nil {
+		return nil, err
+	}
+
+	return &mediav1.UploadPhotoResponse{PhotoId: id.String()}, nil
+}
+
+func (h *MediaHandler) DeleteClubPhotos(ctx context.Context, req *mediav1.DeleteClubPhotosRequest) (*emptypb.Empty, error) {
+	clubID, err := parseID(req.GetClubId(), "club id")
+	if err != nil {
+		return nil, err
+	}
+
+	keep := make([]uuid.UUID, 0, len(req.GetKeepPhotoIds()))
+	for _, raw := range req.GetKeepPhotoIds() {
+		id, err := parseID(raw, "photo id")
+		if err != nil {
+			return nil, err
+		}
+		keep = append(keep, id)
+	}
+
+	if err = h.photos.DeleteExcept(ctx, clubID, keep); err != nil {
 		return nil, err
 	}
 

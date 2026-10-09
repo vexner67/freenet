@@ -6,6 +6,7 @@ import (
 	iofs "io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"testing"
 	"time"
 
@@ -220,4 +221,40 @@ func mustV7(t *testing.T) uuid.UUID {
 	}
 
 	return id
+}
+
+func TestPhotoStore_DeleteExcept(t *testing.T) {
+	t.Parallel()
+
+	for name, store := range photoStores(t) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			club := uuid.New()
+			images := photo.Images{Large: []byte("L"), Small: []byte("S")}
+			left, right, old, upload := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+
+			for _, id := range []uuid.UUID{left, right, old, upload} {
+				if err := store.Save(ctx, club, id, images); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := store.Publish(ctx, club, []uuid.UUID{left, right, old}); err != nil {
+				t.Fatal(err)
+			}
+
+			if err := store.DeleteExcept(ctx, club, []uuid.UUID{left, right}); err != nil {
+				t.Fatalf("DeleteExcept: %v", err)
+			}
+			found, err := store.Existing(ctx, club, []uuid.UUID{left, right, old, upload})
+			if err != nil || len(found) != 3 || slices.Contains(found, old) {
+				t.Fatalf("after DeleteExcept = %v, %v; the kept two and the upload", found, err)
+			}
+
+			if err = store.DeleteExcept(ctx, uuid.New(), nil); err != nil {
+				t.Fatalf("an owner without photos: %v", err)
+			}
+		})
+	}
 }

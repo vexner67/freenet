@@ -29,6 +29,8 @@ type PhotoStore interface {
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	// DeleteAll removes every photo of the owner.
 	DeleteAll(ctx context.Context, ownerID uuid.UUID) error
+	// DeleteExcept removes the owner's published photos but keep.
+	DeleteExcept(ctx context.Context, ownerID uuid.UUID, keep []uuid.UUID) error
 	// DeleteUnpublished removes the photos uploaded before the time and
 	// never published, returning how many.
 	DeleteUnpublished(ctx context.Context, before time.Time) (int, error)
@@ -129,4 +131,29 @@ func (s *PhotoService) Delete(ctx context.Context, ownerID uuid.UUID, photoIDs [
 	}
 
 	return nil
+}
+
+// UploadKept stores a photo of ownerID, a community, for good at once:
+// its backdrop ("Фон страницы"), which no post publishes.
+func (s *PhotoService) UploadKept(ctx context.Context, ownerID uuid.UUID, data []byte) (uuid.UUID, error) {
+	id, err := s.Upload(ctx, ownerID, data)
+	if err != nil {
+		return uuid.Nil, errs.Wrap("s.Upload", err)
+	}
+
+	if err = s.store.Publish(ctx, ownerID, []uuid.UUID{id}); err != nil {
+		return uuid.Nil, errs.Wrap("s.store.Publish", err)
+	}
+
+	return id, nil
+}
+
+// DeleteExcept removes the kept photos of ownerID but keep, those it no
+// longer shows.
+func (s *PhotoService) DeleteExcept(ctx context.Context, ownerID uuid.UUID, keep []uuid.UUID) error {
+	if len(keep) > MaxPhotoIDs {
+		return ErrTooManyPhotoIDs
+	}
+
+	return errs.Wrap("s.store.DeleteExcept", s.store.DeleteExcept(ctx, ownerID, keep))
 }

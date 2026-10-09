@@ -2,6 +2,7 @@ package inmem
 
 import (
 	"context"
+	"slices"
 	"sync"
 	"time"
 
@@ -104,6 +105,23 @@ func (s *PhotoStore) Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []u
 
 	for _, id := range photoIDs {
 		delete(s.photos[ownerID], id)
+	}
+
+	return nil
+}
+
+func (s *PhotoStore) DeleteExcept(ctx context.Context, ownerID uuid.UUID, keep []uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	for id, p := range s.photos[ownerID] {
+		if p.published && !slices.Contains(keep, id) {
+			delete(s.photos[ownerID], id)
+		}
 	}
 
 	return nil
