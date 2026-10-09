@@ -23,7 +23,7 @@ type PostService interface {
 	Unpin(ctx context.Context, requesterID, postID uuid.UUID) error
 	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
-	ListWall(ctx context.Context, viewerID, wallID, cursor uuid.UUID, size int) (service.Page, error)
+	ListWall(ctx context.Context, viewerID, wallID uuid.UUID, filter post.WallFilter, cursor uuid.UUID, size int) (service.Page, error)
 	Feed(ctx context.Context, viewerID uuid.UUID, sources service.FeedSources, cursor uuid.UUID, size int) (service.Page, error)
 	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
@@ -278,6 +278,12 @@ func (h *PostHandler) GetPosts(ctx context.Context, req *postv1.GetPostsRequest)
 	return resp, nil
 }
 
+var wallFilters = map[postv1.WallFilter]post.WallFilter{
+	postv1.WallFilter_WALL_FILTER_NONE:   post.WallAll,
+	postv1.WallFilter_WALL_FILTER_OWNER:  post.WallOwner,
+	postv1.WallFilter_WALL_FILTER_OTHERS: post.WallOthers,
+}
+
 func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsRequest) (*postv1.ListPostsResponse, error) {
 	wallID, err := uuid.Parse(req.GetWallId())
 	if err != nil {
@@ -289,7 +295,12 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 		return nil, err
 	}
 
-	page, err := h.postService.ListWall(ctx, viewerID(ctx), wallID, cursor, int(req.GetLimit()))
+	filter, ok := wallFilters[req.GetFilter()]
+	if !ok {
+		return nil, status.Error(codes.InvalidArgument, post.ErrInvalidWallFilter.Error())
+	}
+
+	page, err := h.postService.ListWall(ctx, viewerID(ctx), wallID, filter, cursor, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}

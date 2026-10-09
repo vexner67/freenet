@@ -335,6 +335,18 @@ message ListPostsRequest {
   string cursor = 2;
   // 1-50; anything else means 20.
   int32 limit = 3;
+  // Which posts, as the tabs of openvk's wall; total counts them.
+  WallFilter filter = 4;
+}
+
+// WallFilter picks the posts of a wall: all ("Все записи"), the wall's
+// own — by its owner, or for the community whose wall it is ("Записи
+// Анны", "Записи сообщества") — or the others ("Чужие записи"). Only all
+// posts show the pinned one first.
+enum WallFilter {
+  WALL_FILTER_NONE = 0;
+  WALL_FILTER_OWNER = 1;
+  WALL_FILTER_OTHERS = 2;
 }
 
 message ListPostsResponse {

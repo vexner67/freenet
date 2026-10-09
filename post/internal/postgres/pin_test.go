@@ -101,7 +101,7 @@ func TestPostRepository_Pin(t *testing.T) {
 		t.Fatal("Get must tell the post is pinned")
 	}
 
-	wall, err := posts.ListByWall(ctx, owner, uuid.Nil, 10)
+	wall, err := posts.ListByWall(ctx, owner, post.WallAll, uuid.Nil, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
