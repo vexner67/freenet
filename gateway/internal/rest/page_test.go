@@ -41,6 +41,13 @@ func TestWallTabs(t *testing.T) {
 	if w := h.do("GET", "/api/v1/clubs/cats/posts?type=others", ""); w.Code != http.StatusOK || h.posts.wallFilter != "others" {
 		t.Fatalf("the club's: %d, asked for %q", w.Code, h.posts.wallFilter)
 	}
+	// "Архив записей" and "Поиск".
+	if w := h.do("GET", "/api/v1/users/ann/posts?type=archive&q=%D0%BC%D0%BE%D1%80%D0%B5", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.posts.wallFilter != "archive" || h.posts.wallQuery != "море" {
+		t.Fatalf("the archive searched: %d, asked for %q and %q", w.Code, h.posts.wallFilter, h.posts.wallQuery)
+	}
+	if w := h.do("GET", "/api/v1/clubs/cats/posts?q=x", ""); w.Code != http.StatusOK || h.posts.wallQuery != "x" {
+		t.Fatalf("the club's searched: %d, asked for %q", w.Code, h.posts.wallQuery)
+	}
 	if w := h.do("GET", "/api/v1/users/ann/posts", ""); w.Code != http.StatusOK || h.posts.wallFilter != "" {
 		t.Fatalf("all: %d, asked for %q", w.Code, h.posts.wallFilter)
 	}

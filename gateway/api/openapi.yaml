@@ -392,8 +392,12 @@ paths:
           schema: { type: string }
         - name: type
           in: query
-          description: 'The tab of openvk''s wall: none for all posts ("Все записи", the pinned one first), `owner` for the wall''s own — by its owner, or for the community whose wall it is ("Записи Анны", "Записи сообщества") — and `others` for the rest ("Чужие записи"); `total` counts the tab'
-          schema: { type: string, enum: [owner, others] }
+          description: 'The tab of openvk''s wall: none for all posts ("Все записи", the pinned one first), `owner` for the wall''s own — by its owner, or for the community whose wall it is ("Записи Анны", "Записи сообщества") — `others` for the rest ("Чужие записи") and `archive` for the posts put away ("Архив записей"), which the other tabs leave out and only the owner of the wall or the admins of the community read (403); `total` counts the tab'
+          schema: { type: string, enum: [owner, others, archive] }
+        - name: q
+          in: query
+          description: '"Поиск" of the wall: the posts of the tab that say this, in any case; the pinned post is then in its place'
+          schema: { type: string, maxLength: 100 }
         - name: cursor
           in: query
           schema: { type: string }
@@ -672,6 +676,84 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/posts/{id}/archive:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Put the post away in the archive of your wall
+      description: |
+        "Архивировать" of openvk: the owner of the wall, or the admins of
+        the community it is, whoever wrote the post. No wall, feed or other
+        post shows it then, others do not find it by its address either,
+        and it is no longer pinned; it is read with `?type=archive`.
+        Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Archived }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Return the post from the archive
+      description: Idempotent; the post goes back to its place on the wall.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Returned }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/posts/{id}/closed-comments:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Close the comments of a post on your wall
+      description: |
+        The owner of the wall, or the admins of the community it is: the
+        post takes no new comments from anyone (409 "the comments are
+        closed"), those written before stay. Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Closed }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Open the comments of the post again
+      description: Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Opened }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/posts/{id}/pin:
@@ -2185,6 +2267,73 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/album-photos/{id}/album:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Move a photo to another album
+      description: To an album of the same owner that people fill by hand; the owner of the albums or the admins of the community that owns them. The photo no longer shows the album it leaves.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [albumId]
+              properties:
+                albumId: { type: string, format: uuid }
+      responses:
+        "204": { description: Moved }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not who may edit the albums
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The album is kept by the site
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/albums/{id}/cover:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Choose the photo that shows an album
+      description: '"Обложка альбома": a photo of the album instead of its first one, until it is deleted or moved away; the owner of the album or the admins of the community that owns it.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [photoId]
+              properties:
+                photoId: { type: string, format: uuid }
+      responses:
+        "204": { description: Chosen }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not who may edit the album
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/clubs/{ref}/posts:
     parameters:
       - $ref: "#/components/parameters/ClubRef"
@@ -2194,8 +2343,12 @@ paths:
       parameters:
         - name: type
           in: query
-          description: 'The tab of openvk''s wall: none for all posts ("Все записи", the pinned one first), `owner` for the wall''s own — by its owner, or for the community whose wall it is ("Записи Анны", "Записи сообщества") — and `others` for the rest ("Чужие записи"); `total` counts the tab'
-          schema: { type: string, enum: [owner, others] }
+          description: 'The tab of openvk''s wall: none for all posts ("Все записи", the pinned one first), `owner` for the wall''s own — by its owner, or for the community whose wall it is ("Записи Анны", "Записи сообщества") — `others` for the rest ("Чужие записи") and `archive` for the posts put away ("Архив записей"), which the other tabs leave out and only the owner of the wall or the admins of the community read (403); `total` counts the tab'
+          schema: { type: string, enum: [owner, others, archive] }
+        - name: q
+          in: query
+          description: '"Поиск" of the wall: the posts of the tab that say this, in any case; the pinned post is then in its place'
+          schema: { type: string, maxLength: 100 }
         - name: cursor
           in: query
           schema: { type: string }
@@ -3042,6 +3195,8 @@ components:
             - type: "null"
         editableUntil: { type: string, format: date-time, description: "Until when the author may edit it" }
         pinned: { type: boolean, description: "Shown first on its wall (\"закреплено\")" }
+        archived: { type: boolean, description: "Put away in the archive of its wall (\"Архив записей\"): only the owner of the wall, or the admins of the community, see it" }
+        commentsClosed: { type: boolean, description: "It takes no new comments: the owner of the wall closed them" }
         fromWall:
           type: boolean
           description: "The post speaks for its wall, a community (\"От имени сообщества\"): `author` is the community, `wall` null, who wrote it is not told"
@@ -3099,14 +3254,14 @@ components:
         createdAt: { type: string, format: date-time }
         updatedAt: { type: string, format: date-time, description: "Renamed, photos added or deleted (\"Обновлён\")" }
         cover:
-          description: Its first photo; null while it has none
+          description: The photo chosen to show it, else its first; null while it has none
           oneOf:
             - { $ref: "#/components/schemas/Photo" }
             - { type: "null" }
         kind:
           type: string
-          enum: ["", avatars]
-          description: '"" for an album people make; "avatars" is "Фотографии со страницы", which the site keeps with every new photo of the page: nobody renames, deletes or fills it by hand, its photos may be deleted'
+          enum: ["", avatars, wall]
+          description: '"" for an album people make; "avatars" is "Фотографии со страницы", which the site keeps with every new photo of the page, and "wall" is "Фотографии со стены", where it keeps a copy of every photo of the posts a person writes on their own wall: nobody renames, deletes or fills them by hand, their photos may be deleted and moved to other albums'
 
     AlbumPhoto:
       allOf:

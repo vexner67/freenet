@@ -145,6 +145,24 @@ func (a *Albums) DeletePhoto(ctx context.Context, accessToken, id string) error 
 	return nil
 }
 
+func (a *Albums) SetCover(ctx context.Context, accessToken, albumID, photoID string) error {
+	req := &postv1.SetAlbumCoverRequest{AlbumId: albumID, PhotoId: photoID}
+	if _, err := a.api.SetAlbumCover(withToken(ctx, accessToken), req); err != nil {
+		return errs.Wrap("a.api.SetAlbumCover", fromStatus(err))
+	}
+
+	return nil
+}
+
+func (a *Albums) MovePhoto(ctx context.Context, accessToken, photoID, albumID string) error {
+	req := &postv1.MoveAlbumPhotoRequest{PhotoId: photoID, AlbumId: albumID}
+	if _, err := a.api.MoveAlbumPhoto(withToken(ctx, accessToken), req); err != nil {
+		return errs.Wrap("a.api.MoveAlbumPhoto", fromStatus(err))
+	}
+
+	return nil
+}
+
 func toAlbum(pa *postv1.Album) model.Album {
 	a := model.Album{
 		ID:          pa.GetId(),
@@ -155,8 +173,12 @@ func toAlbum(pa *postv1.Album) model.Album {
 		UpdatedAt:   fromTimestamp(pa.GetUpdatedAt()),
 		Photos:      int(pa.GetPhotoCount()),
 	}
-	if pa.GetKind() == postv1.AlbumKind_ALBUM_KIND_AVATARS {
+	switch pa.GetKind() {
+	case postv1.AlbumKind_ALBUM_KIND_AVATARS:
 		a.Kind = "avatars"
+	case postv1.AlbumKind_ALBUM_KIND_WALL:
+		a.Kind = "wall"
+	case postv1.AlbumKind_ALBUM_KIND_NONE:
 	}
 	if pa.GetCover() != nil {
 		cover := toAlbumPhoto(pa.GetCover())

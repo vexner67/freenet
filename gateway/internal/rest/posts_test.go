@@ -444,6 +444,39 @@ func TestEditPost(t *testing.T) {
 	}
 }
 
+func TestArchivePostAndCloseComments(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+
+	for _, path := range []string{"/api/v1/posts/p4/archive", "/api/v1/posts/p4/closed-comments"} {
+		if w := h.do("PUT", path, ""); w.Code != http.StatusUnauthorized {
+			t.Fatalf("%s without a token: %d", path, w.Code)
+		}
+	}
+
+	if w := h.do("PUT", "/api/v1/posts/p4/archive", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.posts.archived != "p4" {
+		t.Fatalf("archive: %d, %q", w.Code, h.posts.archived)
+	}
+	if w := h.do("DELETE", "/api/v1/posts/p4/archive", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.posts.archived != "-p4" {
+		t.Fatalf("unarchive: %d, %q", w.Code, h.posts.archived)
+	}
+	if w := h.do("PUT", "/api/v1/posts/p4/closed-comments", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.posts.closed != "p4" {
+		t.Fatalf("close: %d, %q", w.Code, h.posts.closed)
+	}
+	if w := h.do("DELETE", "/api/v1/posts/p4/closed-comments", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.posts.closed != "-p4" {
+		t.Fatalf("open: %d, %q", w.Code, h.posts.closed)
+	}
+	if w := h.do("PUT", "/api/v1/posts/p404/archive", "", "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		t.Fatalf("no post: %d", w.Code)
+	}
+
+	h.posts.err = failure.New(failure.PermissionDenied, "permission denied")
+	if w := h.do("PUT", "/api/v1/posts/p1/archive", "", "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("someone else's wall: %d", w.Code)
+	}
+}
+
 func TestPinPost(t *testing.T) {
 	t.Parallel()
 
