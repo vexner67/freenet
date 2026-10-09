@@ -482,3 +482,54 @@ type TopicChanges struct {
 	Pinned     bool
 	Restricted bool
 }
+
+// Album is a photo album of a person or a community ("Альбомы"); OwnerID
+// is either. Cover is its first photo, nil while it has none.
+type Album struct {
+	ID          string
+	OwnerID     string
+	Name        string
+	Description string
+	CreatedAt   time.Time
+	UpdatedAt   time.Time
+	Photos      int
+	Cover       *AlbumPhoto
+}
+
+// AlbumPhoto is a photo of an album: media keeps the image under its ID
+// and AuthorID, who uploaded it; Mine: the viewer did.
+type AlbumPhoto struct {
+	ID          string
+	AlbumID     string
+	AuthorID    string
+	Description string
+	CreatedAt   time.Time
+	Mine        bool
+}
+
+// AlbumPage and AlbumPhotoPage are one screen of a list; NextCursor is
+// empty on the last, Total counts them on all pages.
+type AlbumPage struct {
+	Albums     []Album
+	NextCursor string
+	Total      int
+}
+
+type AlbumPhotoPage struct {
+	Photos     []AlbumPhoto
+	NextCursor string
+	Total      int
+}
+
+// NewAlbum is an album to create: the caller's own, or of ClubID.
+type NewAlbum struct {
+	ClubID      string
+	Name        string
+	Description string
+}
+
+// NewAlbumPhoto is a photo the caller uploaded, to add to an album.
+type NewAlbumPhoto struct {
+	PhotoID     string
+	Description string
+}

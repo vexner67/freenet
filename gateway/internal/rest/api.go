@@ -106,6 +106,22 @@ type Topics interface {
 	DeleteMessage(ctx context.Context, accessToken, id string) error
 }
 
+// Albums are the photo albums of people and communities; methods that
+// read take an optional access token, with which photos tell whether the
+// viewer uploaded them.
+type Albums interface {
+	Create(ctx context.Context, accessToken string, na model.NewAlbum) (model.Album, error)
+	Get(ctx context.Context, accessToken, id string) (model.Album, error)
+	List(ctx context.Context, accessToken, ownerID, cursor string, limit int) (model.AlbumPage, error)
+	Edit(ctx context.Context, accessToken, id, name, description string) (model.Album, error)
+	Delete(ctx context.Context, accessToken, id string) error
+	AddPhotos(ctx context.Context, accessToken, albumID string, photos []model.NewAlbumPhoto) ([]model.AlbumPhoto, error)
+	Photos(ctx context.Context, accessToken, albumID, cursor string, limit int) (model.AlbumPhotoPage, error)
+	Photo(ctx context.Context, accessToken, id string) (model.AlbumPhoto, model.Album, error)
+	Describe(ctx context.Context, accessToken, id, description string) (model.AlbumPhoto, error)
+	DeletePhoto(ctx context.Context, accessToken, id string) error
+}
+
 type Notifications interface {
 	List(ctx context.Context, accessToken string, unread bool, cursor string, limit int) (model.NotificationPage, error)
 	CountUnread(ctx context.Context, accessToken string) (int, error)
@@ -157,6 +173,7 @@ type Backends struct {
 	Messages      Messages
 	Clubs         Clubs
 	Topics        Topics
+	Albums        Albums
 }
 
 type api struct {
@@ -168,6 +185,7 @@ type api struct {
 	messages          Messages
 	clubs             Clubs
 	topics            Topics
+	albums            Albums
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -274,6 +292,19 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/topics/{id}/messages", a.listTopicMessages)
 	mux.HandleFunc("POST /api/v1/topics/{id}/messages", a.createTopicMessage)
 	mux.HandleFunc("DELETE /api/v1/topic-messages/{id}", a.deleteTopicMessage)
+
+	mux.HandleFunc("GET /api/v1/users/{nickname}/albums", a.listUserAlbums)
+	mux.HandleFunc("GET /api/v1/clubs/{ref}/albums", a.listClubAlbums)
+	mux.HandleFunc("POST /api/v1/me/albums", a.createAlbum)
+	mux.HandleFunc("POST /api/v1/clubs/{ref}/albums", a.createClubAlbum)
+	mux.HandleFunc("GET /api/v1/albums/{id}", a.getAlbum)
+	mux.HandleFunc("PATCH /api/v1/albums/{id}", a.editAlbum)
+	mux.HandleFunc("DELETE /api/v1/albums/{id}", a.deleteAlbum)
+	mux.HandleFunc("GET /api/v1/albums/{id}/photos", a.listAlbumPhotos)
+	mux.HandleFunc("POST /api/v1/albums/{id}/photos", a.addAlbumPhotos)
+	mux.HandleFunc("GET /api/v1/album-photos/{id}", a.getAlbumPhoto)
+	mux.HandleFunc("PATCH /api/v1/album-photos/{id}", a.editAlbumPhoto)
+	mux.HandleFunc("DELETE /api/v1/album-photos/{id}", a.deleteAlbumPhoto)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)

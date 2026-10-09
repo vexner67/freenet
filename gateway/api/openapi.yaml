@@ -1561,6 +1561,256 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/users/{nickname}/albums:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: A person's photo albums ("Альбомы"), newest first
+      description: Those of a deleted page are gone, as its wall (403).
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50 }
+      responses:
+        "200": { $ref: "#/components/responses/AlbumList" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "403":
+          description: "`this page is deleted`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/clubs/{ref}/albums:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    get:
+      summary: A community's photo albums, newest first
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50 }
+      responses:
+        "200": { $ref: "#/components/responses/AlbumList" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Create an album of a community ("Создать альбом")
+      description: Its admins only. Your profile must be filled in first.
+      security: [{ bearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/Album" }
+      responses:
+        "201":
+          description: The album
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Album" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/albums:
+    post:
+      summary: Create an album of your own ("Создать альбом")
+      description: Your profile must be filled in first.
+      security: [{ bearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/Album" }
+      responses:
+        "201":
+          description: The album
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Album" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/albums/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: An album with whom it belongs to, for its page
+      description: The albums of a deleted page are not found.
+      responses:
+        "200": { $ref: "#/components/responses/AlbumPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Rename an album ("Редактировать альбом")
+      description: Its owner or the admins of the community that owns it.
+      security: [{ bearer: [] }]
+      requestBody: { $ref: "#/components/requestBodies/Album" }
+      responses:
+        "200": { $ref: "#/components/responses/AlbumPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Neither its owner nor an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Delete an album with its photos ("удалить альбом")
+      description: As renaming it.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Neither its owner nor an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/albums/{id}/photos:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: The photos of an album, oldest first
+      description: Photos of people whose pages are deleted are left out, but counted in `total`.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50 }
+      responses:
+        "200":
+          description: One page of photos
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [photos, nextCursor, total]
+                properties:
+                  photos:
+                    type: array
+                    items: { $ref: "#/components/schemas/AlbumPhoto" }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Add photos to an album ("Завершить загрузку")
+      description: |
+        Up to 10 photos you uploaded with `POST /api/v1/me/photos`, each with
+        its description; a photo is in one album at most. The owner of the
+        album or the admins of the community that owns it; your profile
+        must be filled in first.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [photos]
+              properties:
+                photos:
+                  type: array
+                  minItems: 1
+                  maxItems: 10
+                  items:
+                    type: object
+                    required: [id]
+                    properties:
+                      id: { type: string, format: uuid }
+                      description: { type: string, maxLength: 255 }
+      responses:
+        "201":
+          description: The photos added
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [photos]
+                properties:
+                  photos:
+                    type: array
+                    items: { $ref: "#/components/schemas/AlbumPhoto" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Neither the owner of the album nor an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/album-photos/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: A photo of an album, for its page
+      description: With who uploaded it (`author`) and its album with whom that belongs to; the photos of a deleted page are not found.
+      responses:
+        "200": { $ref: "#/components/responses/AlbumPhotoPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Change the description of a photo
+      description: Who uploaded it only.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                description: { type: string, maxLength: 255 }
+      responses:
+        "200": { $ref: "#/components/responses/AlbumPhotoPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not who uploaded it
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Delete a photo of an album
+      description: Who uploaded it, the owner of the album or the admins of the community that owns it; the image goes too.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: None of them
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/clubs/{ref}/posts:
     parameters:
       - $ref: "#/components/parameters/ClubRef"
@@ -1894,6 +2144,16 @@ components:
       bearerFormat: JWT
 
   requestBodies:
+    Album:
+      required: true
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [name]
+            properties:
+              name: { type: string, maxLength: 36 }
+              description: { type: string, maxLength: 255 }
     RefreshToken:
       required: true
       content:
@@ -1952,6 +2212,45 @@ components:
                     oneOf:
                       - { $ref: "#/components/schemas/Author" }
                       - { type: "null" }
+    AlbumList:
+      description: One page of albums with whom they belong to
+      content:
+        application/json:
+          schema:
+            allOf:
+              - { $ref: "#/components/schemas/AlbumOwner" }
+              - type: object
+                required: [albums, nextCursor, total]
+                properties:
+                  albums:
+                    type: array
+                    items: { $ref: "#/components/schemas/Album" }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer }
+    AlbumPage:
+      description: An album with whom it belongs to
+      content:
+        application/json:
+          schema:
+            allOf:
+              - { $ref: "#/components/schemas/AlbumOwner" }
+              - type: object
+                required: [album]
+                properties:
+                  album: { $ref: "#/components/schemas/Album" }
+    AlbumPhotoPage:
+      description: A photo with who uploaded it and its album
+      content:
+        application/json:
+          schema:
+            allOf:
+              - { $ref: "#/components/schemas/AlbumOwner" }
+              - type: object
+                required: [photo, author, album]
+                properties:
+                  photo: { $ref: "#/components/schemas/AlbumPhoto" }
+                  author: { $ref: "#/components/schemas/Author" }
+                  album: { $ref: "#/components/schemas/Album" }
     TopicPage:
       description: A topic with its community; role is what you are in it
       content:
@@ -2290,6 +2589,39 @@ components:
         id: { type: string, format: uuid }
         large: { type: string, description: "URL, up to 1280 on the longer side" }
         small: { type: string, description: "URL, up to 640 on the longer side" }
+
+    Album:
+      type: object
+      required: [id, name, description, photos, createdAt, updatedAt, cover]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string }
+        description: { type: string }
+        photos: { type: integer, description: How many photos it has }
+        createdAt: { type: string, format: date-time }
+        updatedAt: { type: string, format: date-time, description: "Renamed, photos added or deleted (\"Обновлён\")" }
+        cover:
+          description: Its first photo; null while it has none
+          oneOf:
+            - { $ref: "#/components/schemas/Photo" }
+            - { type: "null" }
+
+    AlbumPhoto:
+      allOf:
+        - { $ref: "#/components/schemas/Photo" }
+        - type: object
+          required: [description, createdAt, mine]
+          properties:
+            description: { type: string }
+            createdAt: { type: string, format: date-time }
+            mine: { type: boolean, description: You uploaded it }
+
+    AlbumOwner:
+      type: object
+      required: [owner, role]
+      properties:
+        owner: { $ref: "#/components/schemas/Author" }
+        role: { type: string, enum: ["", member, admin, owner], description: "What you are in the community that owns it; empty for a person" }
 
     Comment:
       type: object
