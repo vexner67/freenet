@@ -76,10 +76,12 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		delete(r.byNickname, nicknameKey(nickname))
 	}
 
-	// As in PostgreSQL, Update does not store visits: a user read before
-	// a newer one keeps it.
+	// As in PostgreSQL, Update stores neither visits nor backdrops, which
+	// change on their own: a user read before keeps the newer ones.
 	stored := *u
 	stored.MarkSeen(old.LastSeen())
+	stored.SetBackdrop(user.BackdropLeft, old.Backdrop().Left)
+	stored.SetBackdrop(user.BackdropRight, old.Backdrop().Right)
 	r.put(&stored)
 
 	return nil
@@ -283,4 +285,23 @@ func (r *UserRepository) DeleteDue(ctx context.Context, now time.Time, limit int
 	}
 
 	return due, nil
+}
+
+func (r *UserRepository) SetBackdrop(ctx context.Context, id uuid.UUID, side user.BackdropSide, photoID uuid.UUID) (uuid.UUID, error) {
+	if err := ctx.Err(); err != nil {
+		return uuid.Nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	u, ok := r.users[id]
+	if !ok {
+		return uuid.Nil, user.ErrNotFound
+	}
+
+	previous := u.SetBackdrop(side, photoID)
+	r.users[id] = u
+
+	return previous, nil
 }

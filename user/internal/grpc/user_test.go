@@ -64,6 +64,7 @@ func newServer(t *testing.T) testServer {
 		Blocks:      service.NewBlockService(users, blocks, inmem.TxManager{}, notifyclient.Nop{}),
 		Permissions: service.NewPermissionService(users, follows, blocks),
 		Presence:    service.NewPresenceService(users),
+		Backdrops:   service.NewBackdropService(users, users),
 	}, log))
 
 	go func() { _ = srv.Serve(lis) }()

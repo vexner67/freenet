@@ -36,6 +36,8 @@ func toProtoUser(u *user.User) *userv1.User {
 		Interests:             toProtoInterests(u.Interests()),
 		ExtraFields:           toProtoExtraFields(u.ExtraFields()),
 		RegisteredAt:          timestamppb.New(user.RegisteredAt(u.ID())),
+		BackdropLeft:          avatarString(u.Backdrop().Left),
+		BackdropRight:         avatarString(u.Backdrop().Right),
 	}
 }
 
@@ -375,6 +377,8 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 	if !p.LastSeen.IsZero() {
 		pp.LastSeenAt, pp.Online = timestamppb.New(p.LastSeen), p.Online
 	}
+
+	pp.BackdropLeft, pp.BackdropRight = avatarString(p.Backdrop.Left), avatarString(p.Backdrop.Right)
 
 	if !p.InfoHidden {
 		pp.RegisteredAt = timestamppb.New(user.RegisteredAt(p.ID))

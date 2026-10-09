@@ -28,6 +28,7 @@ const (
 	UserService_UpdateInterests_FullMethodName    = "/user.v1.UserService/UpdateInterests"
 	UserService_UpdateExtraFields_FullMethodName  = "/user.v1.UserService/UpdateExtraFields"
 	UserService_SetAvatar_FullMethodName          = "/user.v1.UserService/SetAvatar"
+	UserService_SetBackdrop_FullMethodName        = "/user.v1.UserService/SetBackdrop"
 	UserService_GetProfile_FullMethodName         = "/user.v1.UserService/GetProfile"
 	UserService_GetProfiles_FullMethodName        = "/user.v1.UserService/GetProfiles"
 	UserService_SearchUsers_FullMethodName        = "/user.v1.UserService/SearchUsers"
@@ -67,6 +68,11 @@ type UserServiceClient interface {
 	// Points the caller's profile to a photo uploaded to the media service;
 	// an empty avatar_id removes the photo.
 	SetAvatar(ctx context.Context, in *SetAvatarRequest, opts ...grpc.CallOption) (*SetAvatarResponse, error)
+	// Shows a photo the media service keeps under the caller on one side of
+	// their page ("Фон страницы"), the other side as it is; an empty
+	// photo_id clears the side. Tells which photo the side showed before,
+	// for the caller to delete.
+	SetBackdrop(ctx context.Context, in *SetBackdropRequest, opts ...grpc.CallOption) (*SetBackdropResponse, error)
 	// Public: returns only what other users may see.
 	GetProfile(ctx context.Context, in *GetProfileRequest, opts ...grpc.CallOption) (*GetProfileResponse, error)
 	// Public: several profiles at once, e.g. the authors of a news feed.
@@ -198,6 +204,16 @@ func (c *userServiceClient) SetAvatar(ctx context.Context, in *SetAvatarRequest,
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetAvatarResponse)
 	err := c.cc.Invoke(ctx, UserService_SetAvatar_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetBackdrop(ctx context.Context, in *SetBackdropRequest, opts ...grpc.CallOption) (*SetBackdropResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetBackdropResponse)
+	err := c.cc.Invoke(ctx, UserService_SetBackdrop_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -421,6 +437,11 @@ type UserServiceServer interface {
 	// Points the caller's profile to a photo uploaded to the media service;
 	// an empty avatar_id removes the photo.
 	SetAvatar(context.Context, *SetAvatarRequest) (*SetAvatarResponse, error)
+	// Shows a photo the media service keeps under the caller on one side of
+	// their page ("Фон страницы"), the other side as it is; an empty
+	// photo_id clears the side. Tells which photo the side showed before,
+	// for the caller to delete.
+	SetBackdrop(context.Context, *SetBackdropRequest) (*SetBackdropResponse, error)
 	// Public: returns only what other users may see.
 	GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error)
 	// Public: several profiles at once, e.g. the authors of a news feed.
@@ -501,6 +522,9 @@ func (UnimplementedUserServiceServer) UpdateExtraFields(context.Context, *Update
 }
 func (UnimplementedUserServiceServer) SetAvatar(context.Context, *SetAvatarRequest) (*SetAvatarResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetAvatar not implemented")
+}
+func (UnimplementedUserServiceServer) SetBackdrop(context.Context, *SetBackdropRequest) (*SetBackdropResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetBackdrop not implemented")
 }
 func (UnimplementedUserServiceServer) GetProfile(context.Context, *GetProfileRequest) (*GetProfileResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetProfile not implemented")
@@ -723,6 +747,24 @@ func _UserService_SetAvatar_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).SetAvatar(ctx, req.(*SetAvatarRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetBackdrop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetBackdropRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetBackdrop(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetBackdrop_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetBackdrop(ctx, req.(*SetBackdropRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1125,6 +1167,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetAvatar",
 			Handler:    _UserService_SetAvatar_Handler,
+		},
+		{
+			MethodName: "SetBackdrop",
+			Handler:    _UserService_SetBackdrop_Handler,
 		},
 		{
 			MethodName: "GetProfile",

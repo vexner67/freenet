@@ -229,6 +229,41 @@ func (r *UserRepository) MarkSeen(ctx context.Context, id uuid.UUID, at time.Tim
 	return nil
 }
 
+// setBackdropQueries change one side of a page each, so that two changes
+// of the two sides do not undo each other, and return what the side
+// showed before: the row is locked by the subquery, so a second change of
+// the side waits and reads the first one's photo.
+var setBackdropQueries = map[user.BackdropSide]string{
+	user.BackdropLeft: `
+	UPDATE users u
+	SET backdrop_left = $2
+	FROM (SELECT id, backdrop_left FROM users WHERE id = $1 FOR UPDATE) old
+	WHERE u.id = old.id
+	RETURNING old.backdrop_left
+`,
+	user.BackdropRight: `
+	UPDATE users u
+	SET backdrop_right = $2
+	FROM (SELECT id, backdrop_right FROM users WHERE id = $1 FOR UPDATE) old
+	WHERE u.id = old.id
+	RETURNING old.backdrop_right
+`,
+}
+
+func (r *UserRepository) SetBackdrop(ctx context.Context, id uuid.UUID, side user.BackdropSide, photoID uuid.UUID) (uuid.UUID, error) {
+	var previous *uuid.UUID
+
+	err := r.pool.QueryRow(ctx, setBackdropQueries[side], id, idToDB(photoID)).Scan(&previous)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return uuid.Nil, user.ErrNotFound
+	}
+	if err != nil {
+		return uuid.Nil, errs.Wrap("r.pool.QueryRow", err)
+	}
+
+	return idFromDB(previous), nil
+}
+
 // userColumns are what scanUser reads, in its order.
 const userColumns = `
 		id,
@@ -275,7 +310,9 @@ const userColumns = `
 		photos_read,
 		friends_read,
 		online_read,
-		last_seen_at`
+		last_seen_at,
+		backdrop_left,
+		backdrop_right`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -323,7 +360,9 @@ const qualifiedUserColumns = `
 		u.photos_read,
 		u.friends_read,
 		u.online_read,
-		u.last_seen_at`
+		u.last_seen_at,
+		u.backdrop_left,
+		u.backdrop_right`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -424,6 +463,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		hideBirthYear                              bool
 		reads                                      [5]string
 		lastSeen                                   *time.Time
+		backdrop                                   [2]*uuid.UUID
 	)
 
 	err := row.Scan(
@@ -458,6 +498,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&extraFields,
 		&reads[0], &reads[1], &reads[2], &reads[3], &reads[4],
 		&lastSeen,
+		&backdrop[0], &backdrop[1],
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -522,6 +563,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 			Reason:  user.DeactivationReason(reason),
 		},
 		LastSeen: timeFromDB(lastSeen),
+		Backdrop: user.Backdrop{Left: idFromDB(backdrop[0]), Right: idFromDB(backdrop[1])},
 	}), nil
 }
 
