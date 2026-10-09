@@ -42,6 +42,9 @@ service UserService {
   rpc ListFollowers(ListFollowsRequest) returns (ListFollowsResponse);
   rpc ListFollowing(ListFollowsRequest) returns (ListFollowsResponse);
 
+  // Requires an access token: the caller is on the site now ("Онлайн").
+  rpc MarkOnline(MarkOnlineRequest) returns (google.protobuf.Empty);
+
   // Requires an access token: whether the caller may write on the user's
   // wall, as the user's privacy and blacklists allow.
   rpc CanPostOnWall(CanPostOnWallRequest) returns (CanPostOnWallResponse);
@@ -162,6 +165,10 @@ message PrivacySettings {
   Audience info_read = 9;
   Audience photos_read = 10;
   Audience friends_read = 11;
+  // Required in UpdatePrivacy, everyone by default: who sees when the
+  // owner was last online after a long absence ("Кто видит мою
+  // неактивность"); anyone sees a short one, as on openvk.
+  Audience online_read = 12;
 }
 
 // Who sees a part of a page.
@@ -236,6 +243,11 @@ message PublicProfile {
   // The caller may not see its information, left empty (registered_at
   // too).
   bool info_hidden = 21;
+  // When the user last visited the site ("был в сети"); unset if never
+  // or hidden from the caller. Only GetProfile tells it.
+  google.protobuf.Timestamp last_seen_at = 22;
+  // The user visited within the last minutes ("Онлайн").
+  bool online = 23;
 }
 
 enum Gender {
@@ -404,7 +416,11 @@ message ListFollowsRequest {
   string cursor = 2;
   // 1-50; anything else means 20.
   int32 limit = 3;
+  // Only the people online now ("Друзья онлайн"); total counts them.
+  bool online = 4;
 }
+
+message MarkOnlineRequest {}
 
 message ListFollowsResponse {
   repeated PublicProfile users = 1;

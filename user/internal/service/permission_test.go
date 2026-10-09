@@ -65,7 +65,7 @@ func TestPermissionService_CanPostOnWall(t *testing.T) {
 		t.Fatal("ann follows bob, so he may post on her wall")
 	}
 
-	if _, err = userSvc.UpdatePrivacy(ctx, ann, user.Privacy{WallWrite: user.WallWriteOnlyMe, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone}); err != nil {
+	if _, err = userSvc.UpdatePrivacy(ctx, ann, user.Privacy{WallWrite: user.WallWriteOnlyMe, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone}); err != nil {
 		t.Fatal(err)
 	}
 	if canPost(bob, ann) {
@@ -114,7 +114,7 @@ func TestPermissionService_Access(t *testing.T) {
 		t.Fatal("clubs are open to everyone by default")
 	}
 
-	if _, err = userSvc.UpdatePrivacy(ctx, ann, user.Privacy{WallWrite: user.WallWriteFollowing, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadFollowing, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone}); err != nil {
+	if _, err = userSvc.UpdatePrivacy(ctx, ann, user.Privacy{WallWrite: user.WallWriteFollowing, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadFollowing, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone}); err != nil {
 		t.Fatal(err)
 	}
 	if canSee(uuid.Nil) || canSee(bob) {
@@ -138,7 +138,7 @@ func TestPermissionService_Access(t *testing.T) {
 	}
 	if _, err = userSvc.UpdatePrivacy(ctx, ann, user.Privacy{
 		WallWrite: user.WallWriteFollowing, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
-		PageRead: user.AudienceUsers, InfoRead: user.AudienceFollowing, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone,
+		PageRead: user.AudienceUsers, InfoRead: user.AudienceFollowing, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
 	}); err != nil {
 		t.Fatal(err)
 	}

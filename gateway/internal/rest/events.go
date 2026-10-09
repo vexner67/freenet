@@ -19,7 +19,10 @@ const (
 	// authWait is how long a new connection may take to send its token.
 	authWait  = 10 * time.Second
 	pingEvery = 30 * time.Second
-	writeWait = 10 * time.Second
+	// onlineEvery is how often an open page tells that its user is on the
+	// site: well within the minutes the user service counts them online.
+	onlineEvery = 2 * time.Minute
+	writeWait   = 10 * time.Second
 
 	// closeTokenExpired asks the page to refresh its token and connect
 	// again; 4000-4999 are the codes of the application.
@@ -145,6 +148,9 @@ func (a *api) streamEvents(ctx context.Context, conn *websocket.Conn, r *http.Re
 	go func() { done <- s.forwardNotifications(ctx, notifications) }()
 	go func() { done <- ping(ctx, conn) }()
 
+	s.markOnline(ctx)
+	go s.keepOnline(ctx)
+
 	ready, err := s.counters(ctx, "ready", true, true)
 	if err != nil {
 		return err
@@ -164,6 +170,29 @@ func (a *api) streamEvents(ctx context.Context, conn *websocket.Conn, r *http.Re
 			if err != nil {
 				return err
 			}
+		}
+	}
+}
+
+// markOnline tells the user service the user is on the site ("Онлайн").
+// A failure is only logged: the events matter more.
+func (s *eventSession) markOnline(ctx context.Context) {
+	if err := s.api.users.MarkOnline(ctx, s.token); err != nil && ctx.Err() == nil {
+		s.api.logger.WarnContext(ctx, "mark online", "error", err)
+	}
+}
+
+// keepOnline marks the user online while the page is open.
+func (s *eventSession) keepOnline(ctx context.Context) {
+	ticker := time.NewTicker(onlineEvery)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+			s.markOnline(ctx)
 		}
 	}
 }

@@ -138,6 +138,7 @@ func (a *App) build(cfg config.Config) error {
 			}),
 			Blocks:      service.NewBlockService(store.users, store.blocks, store.tx, notifier),
 			Permissions: service.NewPermissionService(store.users, store.follows, store.blocks),
+			Presence:    service.NewPresenceService(store.users),
 		}, a.logger),
 	)
 
@@ -185,6 +186,7 @@ type storage struct {
 	users interface {
 		service.UserRepository
 		service.DueUserDeleter
+		service.PresenceRepository
 	}
 	follows interface {
 		service.FollowRepository

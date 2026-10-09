@@ -102,6 +102,8 @@ type fakeUserAPI struct {
 	userv1.UserServiceClient
 	md      metadata.MD
 	privacy *userv1.PrivacySettings
+	// online: ListFollowing was asked for the people online.
+	online bool
 }
 
 func (f *fakeUserAPI) UpdatePrivacy(_ context.Context, req *userv1.UpdatePrivacyRequest, _ ...grpc.CallOption) (*userv1.UpdatePrivacyResponse, error) {
@@ -118,7 +120,20 @@ func (f *fakeUserAPI) GetAccess(ctx context.Context, req *userv1.GetAccessReques
 
 func (f *fakeUserAPI) GetProfile(ctx context.Context, req *userv1.GetProfileRequest, _ ...grpc.CallOption) (*userv1.GetProfileResponse, error) {
 	f.md, _ = metadata.FromOutgoingContext(ctx)
-	return &userv1.GetProfileResponse{Profile: &userv1.PublicProfile{Id: "u2", Nickname: req.GetNickname(), PageHidden: true, InfoHidden: true}}, nil
+	return &userv1.GetProfileResponse{Profile: &userv1.PublicProfile{
+		Id: "u2", Nickname: req.GetNickname(), PageHidden: true, InfoHidden: true,
+		LastSeenAt: timestamppb.New(time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)), Online: true,
+	}}, nil
+}
+
+func (f *fakeUserAPI) MarkOnline(ctx context.Context, _ *userv1.MarkOnlineRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &emptypb.Empty{}, nil
+}
+
+func (f *fakeUserAPI) ListFollowing(_ context.Context, req *userv1.ListFollowsRequest, _ ...grpc.CallOption) (*userv1.ListFollowsResponse, error) {
+	f.online = req.GetOnline()
+	return &userv1.ListFollowsResponse{Total: 1}, nil
 }
 
 func (f *fakeUserAPI) CanMessage(ctx context.Context, req *userv1.CanMessageRequest, _ ...grpc.CallOption) (*userv1.CanMessageResponse, error) {
@@ -196,7 +211,7 @@ func TestWallPrivacy(t *testing.T) {
 
 	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{
 		ShowWorldview: true, WallWrite: "everyone", MessagesWrite: "nobody", ClubsRead: "only_me",
-		PageRead: "users", InfoRead: "following", PhotosRead: "only_me", FriendsRead: "everyone",
+		PageRead: "users", InfoRead: "following", PhotosRead: "only_me", FriendsRead: "everyone", OnlineRead: "following",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -212,7 +227,8 @@ func TestWallPrivacy(t *testing.T) {
 	}
 	if api.privacy.GetPageRead() != userv1.Audience_AUDIENCE_USERS || api.privacy.GetInfoRead() != userv1.Audience_AUDIENCE_FOLLOWING ||
 		api.privacy.GetPhotosRead() != userv1.Audience_AUDIENCE_ONLY_ME || api.privacy.GetFriendsRead() != userv1.Audience_AUDIENCE_EVERYONE ||
-		u.Privacy.PageRead != "users" || u.Privacy.InfoRead != "following" || u.Privacy.PhotosRead != "only_me" || u.Privacy.FriendsRead != "everyone" {
+		u.Privacy.PageRead != "users" || u.Privacy.InfoRead != "following" || u.Privacy.PhotosRead != "only_me" || u.Privacy.FriendsRead != "everyone" ||
+		api.privacy.GetOnlineRead() != userv1.Audience_AUDIENCE_FOLLOWING || u.Privacy.OnlineRead != "following" {
 		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
 	}
 
@@ -230,8 +246,17 @@ func TestWallPrivacy(t *testing.T) {
 	}
 
 	profile, err := users.GetProfile(context.Background(), "tok", "bob")
-	if err != nil || !profile.PageHidden || !profile.InfoHidden || api.md.Get("authorization")[0] != "Bearer tok" {
+	if err != nil || !profile.PageHidden || !profile.InfoHidden || api.md.Get("authorization")[0] != "Bearer tok" ||
+		!profile.Online || profile.LastSeen.Hour() != 12 {
 		t.Fatalf("GetProfile = %+v, %v", profile, err)
+	}
+
+	api.md = nil
+	if err = users.MarkOnline(context.Background(), "tok"); err != nil || api.md.Get("authorization")[0] != "Bearer tok" {
+		t.Fatalf("MarkOnline: %v", err)
+	}
+	if page, err := users.ListOnlineFollowing(context.Background(), "u1", "", 6); err != nil || !api.online || page.Total != 1 {
+		t.Fatalf("ListOnlineFollowing = %+v, %v (online %v)", page, err, api.online)
 	}
 
 	allowed, err := users.CanPostOnWall(context.Background(), "tok", "u2")

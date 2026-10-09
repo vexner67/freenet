@@ -20,6 +20,7 @@ type FollowService interface {
 	Stats(ctx context.Context, userID, viewerID uuid.UUID) (service.FollowStats, error)
 	ListFollowers(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
 	ListFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
+	ListOnlineFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
 	FollowingIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
 
@@ -144,8 +145,13 @@ func (h *UserHandler) ListFollowers(ctx context.Context, req *userv1.ListFollows
 	})
 }
 
+// ListFollowing with online is openvk's "Друзья онлайн".
 func (h *UserHandler) ListFollowing(ctx context.Context, req *userv1.ListFollowsRequest) (*userv1.ListFollowsResponse, error) {
 	return h.listFollows(req, func(userID, cursor uuid.UUID, size int) (service.FollowPage, error) {
+		if req.GetOnline() {
+			return h.followService.ListOnlineFollowing(ctx, userID, cursor, size)
+		}
+
 		return h.followService.ListFollowing(ctx, userID, cursor, size)
 	})
 }

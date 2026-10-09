@@ -187,6 +187,7 @@ type privacyJSON struct {
 	InfoRead           string `json:"infoRead"`
 	PhotosRead         string `json:"photosRead"`
 	FriendsRead        string `json:"friendsRead"`
+	OnlineRead         string `json:"onlineRead"`
 }
 
 func (p privacyJSON) toModel() model.Privacy {
@@ -202,6 +203,7 @@ func (p privacyJSON) toModel() model.Privacy {
 		InfoRead:           p.InfoRead,
 		PhotosRead:         p.PhotosRead,
 		FriendsRead:        p.FriendsRead,
+		OnlineRead:         p.OnlineRead,
 	}
 }
 
@@ -260,6 +262,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			InfoRead:           u.Privacy.InfoRead,
 			PhotosRead:         u.Privacy.PhotosRead,
 			FriendsRead:        u.Privacy.FriendsRead,
+			OnlineRead:         u.Privacy.OnlineRead,
 		},
 		Deactivated: u.Deactivated,
 		PurgeAt:     timeString(u.PurgeAt),
@@ -287,6 +290,10 @@ type publicProfileResponse struct {
 	// told; InfoHidden: they hide its information, left empty.
 	PageHidden bool `json:"pageHidden"`
 	InfoHidden bool `json:"infoHidden"`
+	// LastSeenAt is when the user last visited ("был в сети"), null if
+	// never, hidden or in a list; Online: just now ("Онлайн").
+	LastSeenAt *string `json:"lastSeenAt"`
+	Online     bool    `json:"online"`
 }
 
 func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
@@ -306,5 +313,7 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 		Deactivated: p.Deactivated,
 		PageHidden:  p.PageHidden,
 		InfoHidden:  p.InfoHidden,
+		LastSeenAt:  optionalTime(p.LastSeen),
+		Online:      p.Online,
 	}
 }

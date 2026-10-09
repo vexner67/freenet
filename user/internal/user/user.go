@@ -59,6 +59,9 @@ type Privacy struct {
 	InfoRead    Audience
 	PhotosRead  Audience
 	FriendsRead Audience
+	// OnlineRead is "Кто видит мою неактивность": who sees when the owner
+	// was last online after a long absence (see LastSeen).
+	OnlineRead Audience
 }
 
 // PublicProfile is the part of a profile other users may see. Hidden
@@ -93,6 +96,10 @@ type PublicProfile struct {
 	// (Access.Info), which is left empty.
 	PageHidden bool
 	InfoHidden bool
+	// LastSeen is when the person last visited ("был в сети"), the zero
+	// time if never or hidden; Online: within OnlineFor ("Онлайн").
+	LastSeen time.Time
+	Online   bool
 }
 
 // birthYearMask is the year of a birthday told without one: a leap year,
@@ -117,6 +124,7 @@ type User struct {
 	privacy      Privacy
 	avatarID     uuid.UUID
 	deactivation Deactivation
+	lastSeen     time.Time
 }
 
 // New creates a user with only an email set, as happens on the first
@@ -133,6 +141,7 @@ func New(email Email) (*User, error) {
 		privacy: Privacy{
 			WallWrite: DefaultWallWrite, MessagesWrite: DefaultMessagesWrite, ClubsRead: DefaultClubsRead,
 			PageRead: AudienceEveryone, InfoRead: AudienceEveryone, PhotosRead: AudienceEveryone, FriendsRead: AudienceEveryone,
+			OnlineRead: AudienceEveryone,
 		},
 	}, nil
 }
@@ -148,6 +157,7 @@ type Stored struct {
 	Privacy      Privacy
 	AvatarID     uuid.UUID
 	Deactivation Deactivation
+	LastSeen     time.Time
 }
 
 // Restore rebuilds a user from storage without validation or new IDs.
@@ -162,6 +172,7 @@ func Restore(s Stored) *User {
 		privacy:      s.Privacy,
 		avatarID:     s.AvatarID,
 		deactivation: s.Deactivation,
+		lastSeen:     s.LastSeen,
 	}
 }
 
@@ -225,7 +236,7 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 		return err
 	}
 
-	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead} {
+	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead, privacy.OnlineRead} {
 		if _, err := NewAudience(a.String()); err != nil {
 			return err
 		}
@@ -291,8 +302,9 @@ func (u *User) PublicProfile() PublicProfile {
 }
 
 // PublicProfileFor is the page of u as viewerID (uuid.Nil: anonymous),
-// tied to u by t, sees it (see AccessFor).
-func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties) PublicProfile {
+// tied to u by t, sees it at now (see AccessFor), with when u was last
+// online (see lastSeenFor).
+func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties, now time.Time) PublicProfile {
 	access := u.AccessFor(viewerID, t)
 	if !access.Page {
 		return PublicProfile{
@@ -301,7 +313,12 @@ func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties) PublicProfile {
 		}
 	}
 
-	return u.publicProfile(access.Info)
+	p := u.publicProfile(access.Info)
+	if p.LastSeen = u.lastSeenFor(viewerID, t, now); !p.LastSeen.IsZero() {
+		p.Online = u.IsOnline(now)
+	}
+
+	return p
 }
 
 func (u *User) publicProfile(showInfo bool) PublicProfile {

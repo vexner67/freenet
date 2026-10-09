@@ -8,6 +8,7 @@ import (
 	"log/slog"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -72,7 +73,10 @@ type fakeUsers struct {
 	partner string
 	about   model.About
 	search  model.UserQuery
-	err     error
+	// onlineTokens are the tokens MarkOnline got.
+	onlineMu     sync.Mutex
+	onlineTokens []string
+	err          error
 }
 
 func (f *fakeUsers) user() model.User {
@@ -145,7 +149,10 @@ func (f *fakeUsers) profileOf(nickname string) (model.PublicProfile, error) {
 	case "ann":
 		return model.PublicProfile{ID: "u1", Profile: model.Profile{Name: "Ann", Nickname: "ann", Worldview: "buddhism"}}, nil
 	case "bob":
-		return model.PublicProfile{ID: "u2", Profile: model.Profile{Name: "Bob", Nickname: "bob"}}, nil
+		return model.PublicProfile{
+			ID: "u2", Profile: model.Profile{Name: "Bob", Nickname: "bob"},
+			LastSeen: time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC), Online: true,
+		}, nil
 	case "cat":
 		return model.PublicProfile{ID: "u3", Profile: model.Profile{Name: "Cat", Nickname: "cat"}, Deactivated: true}, nil
 	case "dina":
@@ -275,6 +282,25 @@ func (f *fakeUsers) ListFollowers(_ context.Context, userID, cursor string, _ in
 func (f *fakeUsers) ListFollowing(_ context.Context, userID, cursor string, _ int) (model.UserPage, error) {
 	f.listed = "following:" + userID + ":" + cursor
 	return model.UserPage{NextCursor: "c2", Total: 5}, nil
+}
+
+func (f *fakeUsers) ListOnlineFollowing(_ context.Context, userID, cursor string, _ int) (model.UserPage, error) {
+	f.listed = "online:" + userID + ":" + cursor
+	return model.UserPage{Users: []model.PublicProfile{{ID: "u2", Profile: model.Profile{Nickname: "bob"}}}, Total: 1}, nil
+}
+
+// MarkOnline counts the visits the event stream tells, from its goroutine.
+func (f *fakeUsers) MarkOnline(_ context.Context, token string) error {
+	f.onlineMu.Lock()
+	defer f.onlineMu.Unlock()
+	f.onlineTokens = append(f.onlineTokens, token)
+	return nil
+}
+
+func (f *fakeUsers) markedOnline() []string {
+	f.onlineMu.Lock()
+	defer f.onlineMu.Unlock()
+	return slices.Clone(f.onlineTokens)
 }
 
 type fakePosts struct {

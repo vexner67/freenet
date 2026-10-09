@@ -104,8 +104,8 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 		return model.User{}, errs.Wrap("enumValue", err)
 	}
 
-	var reads [4]userv1.Audience
-	for i, a := range []string{p.PageRead, p.InfoRead, p.PhotosRead, p.FriendsRead} {
+	var reads [5]userv1.Audience
+	for i, a := range []string{p.PageRead, p.InfoRead, p.PhotosRead, p.FriendsRead, p.OnlineRead} {
 		v, err := enumValue(a, audiencePrefix, "audience", userv1.Audience_value)
 		if err != nil {
 			return model.User{}, errs.Wrap("enumValue", err)
@@ -126,6 +126,7 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 			InfoRead:           reads[1],
 			PhotosRead:         reads[2],
 			FriendsRead:        reads[3],
+			OnlineRead:         reads[4],
 		},
 	})
 	if err != nil {
@@ -286,6 +287,28 @@ func (u *Users) ListFollowing(ctx context.Context, userID, cursor string, limit 
 	return toUserPage(resp), nil
 }
 
+// ListOnlineFollowing is openvk's "Друзья онлайн".
+func (u *Users) ListOnlineFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error) {
+	req := listFollowsRequest(userID, cursor, limit)
+	req.Online = true
+
+	resp, err := u.api.ListFollowing(ctx, req)
+	if err != nil {
+		return model.UserPage{}, errs.Wrap("u.api.ListFollowing", fromStatus(err))
+	}
+
+	return toUserPage(resp), nil
+}
+
+// MarkOnline tells that the caller is on the site now ("Онлайн").
+func (u *Users) MarkOnline(ctx context.Context, accessToken string) error {
+	if _, err := u.api.MarkOnline(withToken(ctx, accessToken), &userv1.MarkOnlineRequest{}); err != nil {
+		return errs.Wrap("u.api.MarkOnline", fromStatus(err))
+	}
+
+	return nil
+}
+
 func listFollowsRequest(userID, cursor string, limit int) *userv1.ListFollowsRequest {
 	return &userv1.ListFollowsRequest{
 		UserId: userID,
@@ -325,6 +348,8 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		BirthYearHidden: p.GetBirthYearHidden(),
 		PageHidden:      p.GetPageHidden(),
 		InfoHidden:      p.GetInfoHidden(),
+		LastSeen:        fromTimestamp(p.GetLastSeenAt()),
+		Online:          p.GetOnline(),
 		About:           toAbout(p),
 	}
 }

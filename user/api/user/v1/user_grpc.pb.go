@@ -37,6 +37,7 @@ const (
 	UserService_GetFollowStats_FullMethodName     = "/user.v1.UserService/GetFollowStats"
 	UserService_ListFollowers_FullMethodName      = "/user.v1.UserService/ListFollowers"
 	UserService_ListFollowing_FullMethodName      = "/user.v1.UserService/ListFollowing"
+	UserService_MarkOnline_FullMethodName         = "/user.v1.UserService/MarkOnline"
 	UserService_CanPostOnWall_FullMethodName      = "/user.v1.UserService/CanPostOnWall"
 	UserService_CanMessage_FullMethodName         = "/user.v1.UserService/CanMessage"
 	UserService_GetAccess_FullMethodName          = "/user.v1.UserService/GetAccess"
@@ -82,6 +83,8 @@ type UserServiceClient interface {
 	GetFollowStats(ctx context.Context, in *GetFollowStatsRequest, opts ...grpc.CallOption) (*GetFollowStatsResponse, error)
 	ListFollowers(ctx context.Context, in *ListFollowsRequest, opts ...grpc.CallOption) (*ListFollowsResponse, error)
 	ListFollowing(ctx context.Context, in *ListFollowsRequest, opts ...grpc.CallOption) (*ListFollowsResponse, error)
+	// Requires an access token: the caller is on the site now ("Онлайн").
+	MarkOnline(ctx context.Context, in *MarkOnlineRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token: whether the caller may write on the user's
 	// wall, as the user's privacy and blacklists allow.
 	CanPostOnWall(ctx context.Context, in *CanPostOnWallRequest, opts ...grpc.CallOption) (*CanPostOnWallResponse, error)
@@ -291,6 +294,16 @@ func (c *userServiceClient) ListFollowing(ctx context.Context, in *ListFollowsRe
 	return out, nil
 }
 
+func (c *userServiceClient) MarkOnline(ctx context.Context, in *MarkOnlineRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_MarkOnline_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) CanPostOnWall(ctx context.Context, in *CanPostOnWallRequest, opts ...grpc.CallOption) (*CanPostOnWallResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CanPostOnWallResponse)
@@ -424,6 +437,8 @@ type UserServiceServer interface {
 	GetFollowStats(context.Context, *GetFollowStatsRequest) (*GetFollowStatsResponse, error)
 	ListFollowers(context.Context, *ListFollowsRequest) (*ListFollowsResponse, error)
 	ListFollowing(context.Context, *ListFollowsRequest) (*ListFollowsResponse, error)
+	// Requires an access token: the caller is on the site now ("Онлайн").
+	MarkOnline(context.Context, *MarkOnlineRequest) (*emptypb.Empty, error)
 	// Requires an access token: whether the caller may write on the user's
 	// wall, as the user's privacy and blacklists allow.
 	CanPostOnWall(context.Context, *CanPostOnWallRequest) (*CanPostOnWallResponse, error)
@@ -513,6 +528,9 @@ func (UnimplementedUserServiceServer) ListFollowers(context.Context, *ListFollow
 }
 func (UnimplementedUserServiceServer) ListFollowing(context.Context, *ListFollowsRequest) (*ListFollowsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListFollowing not implemented")
+}
+func (UnimplementedUserServiceServer) MarkOnline(context.Context, *MarkOnlineRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method MarkOnline not implemented")
 }
 func (UnimplementedUserServiceServer) CanPostOnWall(context.Context, *CanPostOnWallRequest) (*CanPostOnWallResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CanPostOnWall not implemented")
@@ -871,6 +889,24 @@ func _UserService_ListFollowing_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_MarkOnline_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarkOnlineRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).MarkOnline(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_MarkOnline_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).MarkOnline(ctx, req.(*MarkOnlineRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_CanPostOnWall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CanPostOnWallRequest)
 	if err := dec(in); err != nil {
@@ -1125,6 +1161,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListFollowing",
 			Handler:    _UserService_ListFollowing_Handler,
+		},
+		{
+			MethodName: "MarkOnline",
+			Handler:    _UserService_MarkOnline_Handler,
 		},
 		{
 			MethodName: "CanPostOnWall",

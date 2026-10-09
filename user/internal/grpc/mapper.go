@@ -194,6 +194,7 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		InfoRead:           toProtoAudience(p.InfoRead),
 		PhotosRead:         toProtoAudience(p.PhotosRead),
 		FriendsRead:        toProtoAudience(p.FriendsRead),
+		OnlineRead:         toProtoAudience(p.OnlineRead),
 	}
 }
 
@@ -241,8 +242,8 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		return user.Privacy{}, err
 	}
 
-	var reads [3]user.Audience
-	for i, a := range []userv1.Audience{p.GetInfoRead(), p.GetPhotosRead(), p.GetFriendsRead()} {
+	var reads [4]user.Audience
+	for i, a := range []userv1.Audience{p.GetInfoRead(), p.GetPhotosRead(), p.GetFriendsRead(), p.GetOnlineRead()} {
 		if reads[i], err = user.NewAudience(fromProtoAudience(a)); err != nil {
 			return user.Privacy{}, err
 		}
@@ -260,6 +261,7 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		InfoRead:           reads[0],
 		PhotosRead:         reads[1],
 		FriendsRead:        reads[2],
+		OnlineRead:         reads[3],
 	}, nil
 }
 
@@ -370,6 +372,10 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 	}
 
 	// The date of registration is information too.
+	if !p.LastSeen.IsZero() {
+		pp.LastSeenAt, pp.Online = timestamppb.New(p.LastSeen), p.Online
+	}
+
 	if !p.InfoHidden {
 		pp.RegisteredAt = timestamppb.New(user.RegisteredAt(p.ID))
 	}

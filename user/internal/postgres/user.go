@@ -138,6 +138,7 @@ const updateUserQuery = `
 		info_read = $40,
 		photos_read = $41,
 		friends_read = $42,
+		online_read = $43,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -199,6 +200,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		pr.InfoRead.String(),
 		pr.PhotosRead.String(),
 		pr.FriendsRead.String(),
+		pr.OnlineRead.String(),
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -206,6 +208,22 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 
 	if tag.RowsAffected() == 0 {
 		return user.ErrNotFound
+	}
+
+	return nil
+}
+
+// markSeenQuery keeps the latest visit: requests may be told out of order.
+const markSeenQuery = `
+	UPDATE users
+	SET last_seen_at = $2
+	WHERE id = $1
+		AND (last_seen_at IS NULL OR last_seen_at < $2)
+`
+
+func (r *UserRepository) MarkSeen(ctx context.Context, id uuid.UUID, at time.Time) error {
+	if _, err := r.pool.Exec(ctx, markSeenQuery, id, at); err != nil {
+		return errs.Wrap("r.pool.Exec", err)
 	}
 
 	return nil
@@ -255,7 +273,9 @@ const userColumns = `
 		page_read,
 		info_read,
 		photos_read,
-		friends_read`
+		friends_read,
+		online_read,
+		last_seen_at`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -301,7 +321,9 @@ const qualifiedUserColumns = `
 		u.page_read,
 		u.info_read,
 		u.photos_read,
-		u.friends_read`
+		u.friends_read,
+		u.online_read,
+		u.last_seen_at`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -400,7 +422,8 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		interests                                  [8]string
 		extraFields                                []byte
 		hideBirthYear                              bool
-		reads                                      [4]string
+		reads                                      [5]string
+		lastSeen                                   *time.Time
 	)
 
 	err := row.Scan(
@@ -433,7 +456,8 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&interests[0], &interests[1], &interests[2], &interests[3],
 		&interests[4], &interests[5], &interests[6], &interests[7],
 		&extraFields,
-		&reads[0], &reads[1], &reads[2], &reads[3],
+		&reads[0], &reads[1], &reads[2], &reads[3], &reads[4],
+		&lastSeen,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -448,6 +472,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 	privacy.ClubsRead = user.ClubsRead(clubsRead)
 	privacy.PageRead, privacy.InfoRead = user.Audience(reads[0]), user.Audience(reads[1])
 	privacy.PhotosRead, privacy.FriendsRead = user.Audience(reads[2]), user.Audience(reads[3])
+	privacy.OnlineRead = user.Audience(reads[4])
 
 	fields, err := extraFieldsFromDB(extraFields)
 	if err != nil {
@@ -496,6 +521,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 			PurgeAt: timeFromDB(purgeAt),
 			Reason:  user.DeactivationReason(reason),
 		},
+		LastSeen: timeFromDB(lastSeen),
 	}), nil
 }
 
