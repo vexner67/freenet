@@ -51,6 +51,18 @@ function render(club, me) {
   $('club').hidden = false;
 }
 
+// showBackdrop is openvk's "Фон страницы": the two photos on the sides of
+// the page, behind it, fading into white towards the middle. The images
+// are set through the CSSOM, which the CSP allows, unlike style="".
+function showBackdrop(club) {
+  const { left, right } = club.backdrop ?? {};
+  if (!left && !right) return;
+
+  const backdrop = el('div', { className: 'backdrop' }, el('div', { className: 'backdrop-dripper' }));
+  backdrop.style.backgroundImage = [left, right].map((photo) => (photo ? `url("${photo.large}")` : 'none')).join(', ');
+  document.body.prepend(backdrop);
+}
+
 // renderOwner is openvk's "Создатель": a small photo and the name.
 function renderOwner(owner) {
   $('owner-block').hidden = !owner;
@@ -178,6 +190,7 @@ try {
   const club = await api.club(ref);
 
   render(club, me);
+  showBackdrop(club);
   showMembers(club);
   showSuggestions(club, me);
   showTopics(club);
