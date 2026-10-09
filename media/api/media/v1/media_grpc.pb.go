@@ -32,6 +32,7 @@ const (
 	MediaService_GetPhoto_FullMethodName              = "/media.v1.MediaService/GetPhoto"
 	MediaService_PublishPhotos_FullMethodName         = "/media.v1.MediaService/PublishPhotos"
 	MediaService_DeletePublishedPhotos_FullMethodName = "/media.v1.MediaService/DeletePublishedPhotos"
+	MediaService_CopyPhotos_FullMethodName            = "/media.v1.MediaService/CopyPhotos"
 	MediaService_PurgeUser_FullMethodName             = "/media.v1.MediaService/PurgeUser"
 )
 
@@ -71,6 +72,10 @@ type MediaServiceClient interface {
 	// (they go). Idempotent; missing photos are fine.
 	PublishPhotos(ctx context.Context, in *PublishPhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeletePublishedPhotos(ctx context.Context, in *DeletePublishedPhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for post: published photos of owner_id are kept once more
+	// under new IDs, as the photos of a post in "Фотографии со стены", so
+	// that the copy outlives the post. Idempotent; missing photos are fine.
+	CopyPhotos(ctx context.Context, in *CopyPhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time; all their avatars and photos go. Idempotent.
 	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -204,6 +209,16 @@ func (c *mediaServiceClient) DeletePublishedPhotos(ctx context.Context, in *Dele
 	return out, nil
 }
 
+func (c *mediaServiceClient) CopyPhotos(ctx context.Context, in *CopyPhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MediaService_CopyPhotos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *mediaServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -250,6 +265,10 @@ type MediaServiceServer interface {
 	// (they go). Idempotent; missing photos are fine.
 	PublishPhotos(context.Context, *PublishPhotosRequest) (*emptypb.Empty, error)
 	DeletePublishedPhotos(context.Context, *DeletePublishedPhotosRequest) (*emptypb.Empty, error)
+	// Internal, for post: published photos of owner_id are kept once more
+	// under new IDs, as the photos of a post in "Фотографии со стены", so
+	// that the copy outlives the post. Idempotent; missing photos are fine.
+	CopyPhotos(context.Context, *CopyPhotosRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time; all their avatars and photos go. Idempotent.
 	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
@@ -298,6 +317,9 @@ func (UnimplementedMediaServiceServer) PublishPhotos(context.Context, *PublishPh
 }
 func (UnimplementedMediaServiceServer) DeletePublishedPhotos(context.Context, *DeletePublishedPhotosRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeletePublishedPhotos not implemented")
+}
+func (UnimplementedMediaServiceServer) CopyPhotos(context.Context, *CopyPhotosRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method CopyPhotos not implemented")
 }
 func (UnimplementedMediaServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -539,6 +561,24 @@ func _MediaService_DeletePublishedPhotos_Handler(srv interface{}, ctx context.Co
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MediaService_CopyPhotos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CopyPhotosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).CopyPhotos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_CopyPhotos_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).CopyPhotos(ctx, req.(*CopyPhotosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MediaService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -611,6 +651,10 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeletePublishedPhotos",
 			Handler:    _MediaService_DeletePublishedPhotos_Handler,
+		},
+		{
+			MethodName: "CopyPhotos",
+			Handler:    _MediaService_CopyPhotos_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

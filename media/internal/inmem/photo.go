@@ -95,6 +95,24 @@ func (s *PhotoStore) Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []
 	return nil
 }
 
+func (s *PhotoStore) Copy(ctx context.Context, ownerID, from, to uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	p, ok := s.photos[ownerID][from]
+	if _, copied := s.photos[ownerID][to]; !ok || copied {
+		return nil
+	}
+
+	s.photos[ownerID][to] = storedPhoto{images: p.images, published: true}
+
+	return nil
+}
+
 func (s *PhotoStore) Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)

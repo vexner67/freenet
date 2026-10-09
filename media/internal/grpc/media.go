@@ -27,6 +27,7 @@ type PhotoService interface {
 	Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error)
 	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+	Copy(ctx context.Context, ownerID uuid.UUID, copies []service.PhotoCopy) error
 	UploadKept(ctx context.Context, ownerID uuid.UUID, data []byte) (uuid.UUID, error)
 	DeleteExcept(ctx context.Context, ownerID uuid.UUID, keep []uuid.UUID) error
 }
@@ -255,6 +256,36 @@ func (h *MediaHandler) DeletePublishedPhotos(ctx context.Context, req *mediav1.D
 	}
 
 	if err = h.photos.Delete(ctx, ownerID, ids); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+// CopyPhotos is internal, for post: the photos of a post, kept once more
+// for its author's "Фотографии со стены".
+func (h *MediaHandler) CopyPhotos(ctx context.Context, req *mediav1.CopyPhotosRequest) (*emptypb.Empty, error) {
+	ownerID, err := parseID(req.GetOwnerId(), "owner id")
+	if err != nil {
+		return nil, err
+	}
+
+	copies := make([]service.PhotoCopy, 0, len(req.GetCopies()))
+	for _, c := range req.GetCopies() {
+		from, err := parseID(c.GetFromId(), "photo id")
+		if err != nil {
+			return nil, err
+		}
+
+		to, err := parseID(c.GetToId(), "photo id")
+		if err != nil {
+			return nil, err
+		}
+
+		copies = append(copies, service.PhotoCopy{From: from, To: to})
+	}
+
+	if err = h.photos.Copy(ctx, ownerID, copies); err != nil {
 		return nil, err
 	}
 
