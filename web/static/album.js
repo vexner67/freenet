@@ -8,6 +8,8 @@ import { photosCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { openViewer } from './viewer.js';
+import { likeButton } from './posts.js';
+import { openShare } from './share.js';
 import { albumPath, albumsTitle, canChange, isKeptBySite, photoPath } from './albums.js';
 
 const albumID = decodeURIComponent(location.pathname.slice('/album/'.length));
@@ -23,6 +25,21 @@ function renderHead(album, owner, editable) {
       ' | ', el('a', { href: albumPath(album) + '/edit', textContent: 'Редактировать альбом' }),
     );
   }
+}
+
+// photoDetails is what the viewer shows under a photo of the album, as
+// openvk's: its description, the heart, "Поделиться" and its comments.
+function photoDetails(photo) {
+  const comments = photo.comments > 0 ? `Комментарии (${photo.comments})` : 'Комментировать';
+
+  return el('div', {},
+    photo.description ? el('p', { className: 'viewer-description', textContent: photo.description }) : null,
+    el('div', { className: 'viewer-actions' },
+      likeButton(photo, { canLike: Boolean(me), like: api.likePhoto, unlike: api.unlikePhoto, likers: api.photoLikers }),
+      el('a', { href: photoPath(photo), textContent: comments }),
+      me ? el('a', { textContent: 'Поделиться', onclick: () => openShare(photo, () => {}, { share: api.sharePhoto }) }) : null,
+    ),
+  );
 }
 
 function initPhotos(album, editable) {
@@ -66,12 +83,11 @@ function initPhotos(album, editable) {
 
     link.addEventListener('click', (event) => {
       event.preventDefault();
-      openViewer(shown, shown.indexOf(photo));
+      openViewer(shown, shown.indexOf(photo), { details: photoDetails });
     });
-    node.append(
-      editable && el('a', { className: 'album-photo-delete', title: 'Удалить фотографию', textContent: '×', onclick: () => remove(photo, node) }),
-      link,
-    );
+    // Node.append writes false as text: only nodes go in.
+    if (editable) node.append(el('a', { className: 'album-photo-delete', title: 'Удалить фотографию', textContent: '×', onclick: () => remove(photo, node) }));
+    node.append(link);
 
     return node;
   }
