@@ -401,7 +401,7 @@ func (a *api) setAdmin(w http.ResponseWriter, r *http.Request, admin bool) {
 		return
 	}
 
-	user, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	user, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -430,7 +430,7 @@ func (a *api) transferClub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	user, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -460,20 +460,9 @@ func (a *api) listUserClubs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	user, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	user, err := a.visiblePage(r, token, clubsPart)
 	if err != nil {
 		a.writeError(w, r, err)
-		return
-	}
-
-	allowed, err := a.users.CanSeeClubs(r.Context(), token, user.ID)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	if !allowed {
-		a.writeError(w, r, failure.New(failure.PermissionDenied, "this user's clubs are hidden"))
 		return
 	}
 

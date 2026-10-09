@@ -20,16 +20,16 @@ func TestSearchUsersQuery(t *testing.T) {
 
 	for _, want := range []string{
 		"AND id < $1", searchHaystack + " LIKE $3", searchHaystack + " LIKE $4",
-		"lower(city) = $5", "lower(fav_films) LIKE $6", "LIMIT $2",
+		"info_read = $5", "lower(city) = $6", "lower(fav_films) LIKE $7", "LIMIT $2",
 	} {
 		if !strings.Contains(sql, want) {
 			t.Fatalf("query lacks %q:\n%s", want, sql)
 		}
 	}
-	if strings.Contains(sql, "$7") || strings.Contains(sql, "LIKE ALL") {
+	if strings.Contains(sql, "$8") || strings.Contains(sql, "LIKE ALL") {
 		t.Fatalf("one condition per word and filter:\n%s", sql)
 	}
-	if conds[2].param != "москва" || conds[3].param != `%50\%%` {
+	if conds[2].param != "everyone" || conds[3].param != "москва" || conds[4].param != `%50\%%` {
 		t.Fatalf("params = %+v", conds)
 	}
 	// The migration indexes exactly this expression.

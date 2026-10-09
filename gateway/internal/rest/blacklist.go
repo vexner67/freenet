@@ -62,7 +62,7 @@ func (a *api) changeBlock(w http.ResponseWriter, r *http.Request, change func(ct
 		return
 	}
 
-	target, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	target, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
 		return

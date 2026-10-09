@@ -155,6 +155,7 @@ func TestPermissionService_CanMessage(t *testing.T) {
 
 	if _, err := w.users.UpdatePrivacy(w.ctx, w.ann, user.Privacy{
 		WallWrite: user.WallWriteFollowing, MessagesWrite: user.MessagesWriteFollowing, ClubsRead: user.ClubsReadEveryone,
+		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone,
 	}); err != nil {
 		t.Fatal(err)
 	}

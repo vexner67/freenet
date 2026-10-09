@@ -65,7 +65,7 @@ func TestPermissionService_CanPostOnWall(t *testing.T) {
 		t.Fatal("ann follows bob, so he may post on her wall")
 	}
 
-	if _, err = userSvc.UpdatePrivacy(ctx, ann, user.Privacy{WallWrite: user.WallWriteOnlyMe, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone}); err != nil {
+	if _, err = userSvc.UpdatePrivacy(ctx, ann, user.Privacy{WallWrite: user.WallWriteOnlyMe, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone}); err != nil {
 		t.Fatal(err)
 	}
 	if canPost(bob, ann) {
@@ -77,7 +77,7 @@ func TestPermissionService_CanPostOnWall(t *testing.T) {
 	}
 }
 
-func TestPermissionService_CanSeeClubs(t *testing.T) {
+func TestPermissionService_Access(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
@@ -102,19 +102,19 @@ func TestPermissionService_CanSeeClubs(t *testing.T) {
 	canSee := func(viewer uuid.UUID) bool {
 		t.Helper()
 
-		ok, err := svc.CanSeeClubs(ctx, viewer, ann)
+		access, err := svc.Access(ctx, viewer, ann)
 		if err != nil {
-			t.Fatalf("CanSeeClubs: %v", err)
+			t.Fatalf("Access: %v", err)
 		}
 
-		return ok
+		return access.Clubs
 	}
 
 	if !canSee(uuid.Nil) || !canSee(bob) {
 		t.Fatal("clubs are open to everyone by default")
 	}
 
-	if _, err = userSvc.UpdatePrivacy(ctx, ann, user.Privacy{WallWrite: user.WallWriteFollowing, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadFollowing}); err != nil {
+	if _, err = userSvc.UpdatePrivacy(ctx, ann, user.Privacy{WallWrite: user.WallWriteFollowing, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadFollowing, PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone}); err != nil {
 		t.Fatal(err)
 	}
 	if canSee(uuid.Nil) || canSee(bob) {
@@ -127,7 +127,28 @@ func TestPermissionService_CanSeeClubs(t *testing.T) {
 		t.Fatal("ann follows bob: he sees her clubs, and she sees them always")
 	}
 
-	if _, err = svc.CanSeeClubs(ctx, bob, uuid.New()); !errors.Is(err, user.ErrNotFound) {
+	if _, err = svc.Access(ctx, bob, uuid.New()); !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("unknown owner: %v, want ErrNotFound", err)
+	}
+
+	// The page as bob and an anonymous viewer see it, once ann shows it
+	// and its information to users only.
+	if _, err = userSvc.UpdateProfile(ctx, ann, user.Profile{Name: "Анна", Nickname: "ann", Hometown: "Тверь"}, ""); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = userSvc.UpdatePrivacy(ctx, ann, user.Privacy{
+		WallWrite: user.WallWriteFollowing, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
+		PageRead: user.AudienceUsers, InfoRead: user.AudienceFollowing, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if p, err := svc.ProfileFor(ctx, uuid.Nil, "ANN"); err != nil || !p.PageHidden || p.Hometown != "" {
+		t.Fatalf("anonymous = %+v, %v", p, err)
+	}
+	if p, err := svc.ProfileFor(ctx, bob, "ann"); err != nil || p.PageHidden || p.InfoHidden || p.Hometown != "Тверь" {
+		t.Fatalf("bob, whom ann follows = %+v, %v", p, err)
+	}
+	if _, err = svc.ProfileFor(ctx, bob, "nobody"); !errors.Is(err, user.ErrNotFound) {
+		t.Fatalf("nobody: %v", err)
 	}
 }

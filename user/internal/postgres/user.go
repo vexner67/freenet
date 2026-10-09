@@ -134,6 +134,10 @@ const updateUserQuery = `
 		fav_games = $36,
 		about = $37,
 		extra_fields = $38,
+		page_read = $39,
+		info_read = $40,
+		photos_read = $41,
+		friends_read = $42,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -191,6 +195,10 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		in.Games.String(),
 		in.About.String(),
 		fields,
+		pr.PageRead.String(),
+		pr.InfoRead.String(),
+		pr.PhotosRead.String(),
+		pr.FriendsRead.String(),
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -243,7 +251,11 @@ const userColumns = `
 		fav_quotes,
 		fav_games,
 		about,
-		extra_fields`
+		extra_fields,
+		page_read,
+		info_read,
+		photos_read,
+		friends_read`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -285,7 +297,11 @@ const qualifiedUserColumns = `
 		u.fav_quotes,
 		u.fav_games,
 		u.about,
-		u.extra_fields`
+		u.extra_fields,
+		u.page_read,
+		u.info_read,
+		u.photos_read,
+		u.friends_read`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -384,6 +400,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		interests                                  [8]string
 		extraFields                                []byte
 		hideBirthYear                              bool
+		reads                                      [4]string
 	)
 
 	err := row.Scan(
@@ -416,6 +433,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&interests[0], &interests[1], &interests[2], &interests[3],
 		&interests[4], &interests[5], &interests[6], &interests[7],
 		&extraFields,
+		&reads[0], &reads[1], &reads[2], &reads[3],
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -428,6 +446,8 @@ func scanUser(row pgx.Row) (*user.User, error) {
 	privacy.WallWrite = user.WallWrite(wallWrite)
 	privacy.MessagesWrite = user.MessagesWrite(messagesWrite)
 	privacy.ClubsRead = user.ClubsRead(clubsRead)
+	privacy.PageRead, privacy.InfoRead = user.Audience(reads[0]), user.Audience(reads[1])
+	privacy.PhotosRead, privacy.FriendsRead = user.Audience(reads[2]), user.Audience(reads[3])
 
 	fields, err := extraFieldsFromDB(extraFields)
 	if err != nil {
@@ -601,7 +621,13 @@ func searchConditions(q user.SearchQuery) []searchCondition {
 		conds = append(conds, searchCondition{searchHaystack + " LIKE $%d", "%" + escapeLike(w) + "%"})
 	}
 
+	// The filters look into the information, which only the pages open
+	// to everyone tell.
 	f := q.Filters()
+	if f != (user.SearchFilters{}) {
+		conds = append(conds, searchCondition{"info_read = $%d", user.AudienceEveryone.String()})
+	}
+
 	for _, c := range []searchCondition{
 		{"lower(hometown) = $%d", f.Hometown},
 		{"lower(city) = $%d", f.City},

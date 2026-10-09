@@ -29,11 +29,14 @@ type Users interface {
 	UpdateInterests(ctx context.Context, accessToken string, in model.Interests) (model.User, error)
 	UpdateExtraFields(ctx context.Context, accessToken string, fields []model.ExtraField) (model.User, error)
 	UpdatePrivacy(ctx context.Context, accessToken string, p model.Privacy) (model.User, error)
-	GetProfile(ctx context.Context, nickname string) (model.PublicProfile, error)
+	// GetProfile is the page of nickname as the caller, anonymous without
+	// accessToken, sees it.
+	GetProfile(ctx context.Context, accessToken, nickname string) (model.PublicProfile, error)
 	GetProfiles(ctx context.Context, ids []string) ([]model.PublicProfile, error)
 	CanPostOnWall(ctx context.Context, accessToken, userID string) (bool, error)
 	CanMessage(ctx context.Context, accessToken, userID string, wroteFirst bool) (bool, error)
-	CanSeeClubs(ctx context.Context, accessToken, userID string) (bool, error)
+	// Access is what of userID's page the caller may see.
+	Access(ctx context.Context, accessToken, userID string) (model.Access, error)
 
 	Block(ctx context.Context, accessToken, userID string) error
 	Unblock(ctx context.Context, accessToken, userID string) error

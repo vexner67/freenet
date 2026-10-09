@@ -22,6 +22,7 @@ const (
 	messagesWritePrefix  = "MESSAGES_WRITE_"
 	clubsReadPrefix      = "CLUBS_READ_"
 	fieldPlacePrefix     = "FIELD_PLACE_"
+	audiencePrefix       = "AUDIENCE_"
 	kindPrefix           = "KIND_"
 	changePrefix         = "CHANGE_"
 
@@ -191,6 +192,10 @@ func toUser(u *userv1.User) model.User {
 			WallWrite:          enumName(u.GetPrivacy().GetWallWrite().String(), wallWritePrefix),
 			MessagesWrite:      enumName(u.GetPrivacy().GetMessagesWrite().String(), messagesWritePrefix),
 			ClubsRead:          enumName(u.GetPrivacy().GetClubsRead().String(), clubsReadPrefix),
+			PageRead:           enumName(u.GetPrivacy().GetPageRead().String(), audiencePrefix),
+			InfoRead:           enumName(u.GetPrivacy().GetInfoRead().String(), audiencePrefix),
+			PhotosRead:         enumName(u.GetPrivacy().GetPhotosRead().String(), audiencePrefix),
+			FriendsRead:        enumName(u.GetPrivacy().GetFriendsRead().String(), audiencePrefix),
 		},
 	}
 }

@@ -183,6 +183,10 @@ type privacyJSON struct {
 	WallWrite          string `json:"wallWrite"`
 	MessagesWrite      string `json:"messagesWrite"`
 	ClubsRead          string `json:"clubsRead"`
+	PageRead           string `json:"pageRead"`
+	InfoRead           string `json:"infoRead"`
+	PhotosRead         string `json:"photosRead"`
+	FriendsRead        string `json:"friendsRead"`
 }
 
 func (p privacyJSON) toModel() model.Privacy {
@@ -194,6 +198,10 @@ func (p privacyJSON) toModel() model.Privacy {
 		WallWrite:          p.WallWrite,
 		MessagesWrite:      p.MessagesWrite,
 		ClubsRead:          p.ClubsRead,
+		PageRead:           p.PageRead,
+		InfoRead:           p.InfoRead,
+		PhotosRead:         p.PhotosRead,
+		FriendsRead:        p.FriendsRead,
 	}
 }
 
@@ -248,6 +256,10 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			WallWrite:          u.Privacy.WallWrite,
 			MessagesWrite:      u.Privacy.MessagesWrite,
 			ClubsRead:          u.Privacy.ClubsRead,
+			PageRead:           u.Privacy.PageRead,
+			InfoRead:           u.Privacy.InfoRead,
+			PhotosRead:         u.Privacy.PhotosRead,
+			FriendsRead:        u.Privacy.FriendsRead,
 		},
 		Deactivated: u.Deactivated,
 		PurgeAt:     timeString(u.PurgeAt),
@@ -270,6 +282,11 @@ type publicProfileResponse struct {
 	profileJSON
 	// Deactivated: the page is deleted; only names and the photo are left.
 	Deactivated bool `json:"deactivated"`
+	// PageHidden: the owner hides the page from the viewer ("Кому в
+	// интернете видно мою страницу"), only the names and the photo are
+	// told; InfoHidden: they hide its information, left empty.
+	PageHidden bool `json:"pageHidden"`
+	InfoHidden bool `json:"infoHidden"`
 }
 
 func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
@@ -287,5 +304,7 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 		Avatar:      toAvatarJSON(p.ID, p.AvatarID),
 		profileJSON: profile,
 		Deactivated: p.Deactivated,
+		PageHidden:  p.PageHidden,
+		InfoHidden:  p.InfoHidden,
 	}
 }

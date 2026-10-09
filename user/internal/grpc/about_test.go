@@ -83,4 +83,24 @@ func TestAboutTheUser(t *testing.T) {
 	if _, err = s.client.SearchUsers(context.Background(), &userv1.SearchUsersRequest{}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("an empty search: %v", err)
 	}
+
+	// Shown to users only, with the information to ann alone.
+	if _, err = s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{Privacy: &userv1.PrivacySettings{
+		WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE, MessagesWrite: userv1.MessagesWrite_MESSAGES_WRITE_EVERYONE, ClubsRead: userv1.ClubsRead_CLUBS_READ_USERS,
+		PageRead: userv1.Audience_AUDIENCE_USERS, InfoRead: userv1.Audience_AUDIENCE_ONLY_ME, PhotosRead: userv1.Audience_AUDIENCE_EVERYONE, FriendsRead: userv1.Audience_AUDIENCE_EVERYONE,
+	}}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = s.client.GetProfile(context.Background(), &userv1.GetProfileRequest{Nickname: "ann"}); err != nil || !got.GetProfile().GetPageHidden() {
+		t.Fatalf("anonymously = %v, %v", got, err)
+	}
+	bob := s.signIn(t, "bob@example.com")
+	got, err = s.client.GetProfile(bob, &userv1.GetProfileRequest{Nickname: "ann"})
+	if p := got.GetProfile(); err != nil || p.GetPageHidden() || !p.GetInfoHidden() || p.GetHometown() != "" || p.GetRegisteredAt() != nil {
+		t.Fatalf("by bob = %v, %v", p, err)
+	}
+	// Filters look into the information, which ann now hides.
+	if found, err = s.client.SearchUsers(context.Background(), &userv1.SearchUsersRequest{City: "москва"}); err != nil || len(found.GetUsers()) != 0 {
+		t.Fatalf("SearchUsers by a hidden city = %v, %v", found, err)
+	}
 }

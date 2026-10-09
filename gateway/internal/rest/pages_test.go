@@ -21,6 +21,7 @@ func webDir(t *testing.T) string {
 		"index.html":          "INDEX",
 		"edit.html":           "EDIT",
 		"blacklist.html":      "BLACKLIST",
+		"settings.html":       "SETTINGS",
 		"profile.html":        "PROFILE",
 		"post.html":           "POST",
 		"notifications.html":  "NOTIFICATIONS",
@@ -71,6 +72,7 @@ func TestPages(t *testing.T) {
 	}{
 		{"/", 200, "INDEX", true},
 		{"/edit", 200, "EDIT", true},
+		{"/settings", 200, "SETTINGS", true},
 		{"/settings/blacklist", 200, "BLACKLIST", true},
 		{"/ann", 200, "PROFILE", true},
 		{"/post/p1", 200, "POST", true},

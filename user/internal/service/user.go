@@ -86,17 +86,6 @@ func (s *UserService) GetByID(ctx context.Context, id uuid.UUID) (*user.User, er
 	return u, nil
 }
 
-// GetPublicProfile returns what other users may see about the owner
-// of the nickname.
-func (s *UserService) GetPublicProfile(ctx context.Context, nickname user.Nickname) (user.PublicProfile, error) {
-	u, err := s.userRepo.GetByNickname(ctx, nickname)
-	if err != nil {
-		return user.PublicProfile{}, errs.Wrap("s.userRepo.GetByNickname", err)
-	}
-
-	return u.PublicProfile(), nil
-}
-
 // UpdateProfile replaces "Основное"; partner is the nickname of whom the
 // relationship names, "" for nobody (user.ErrPartnerNotFound for no one).
 func (s *UserService) UpdateProfile(ctx context.Context, id uuid.UUID, profile user.Profile, partner user.Nickname) (*user.User, error) {

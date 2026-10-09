@@ -363,15 +363,11 @@ func (a *api) listPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	owner, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	// The wall of a deleted page is gone, as on openvk, until restored; that
+	// of a page hidden from the caller too.
+	owner, err := a.visiblePage(r, token, pagePart)
 	if err != nil {
 		a.writeError(w, r, err)
-		return
-	}
-
-	// The wall of a deleted page is gone, as on openvk, until restored.
-	if owner.Deactivated {
-		a.writeError(w, r, failure.New(failure.PermissionDenied, "this page is deleted"))
 		return
 	}
 
@@ -474,7 +470,7 @@ func (a *api) wallFor(r *http.Request, token, myID, nickname string) (model.Auth
 		return model.Author{}, nil
 	}
 
-	owner, err := a.users.GetProfile(r.Context(), nickname)
+	owner, err := a.users.GetProfile(r.Context(), "", nickname)
 	if err != nil {
 		return model.Author{}, err
 	}

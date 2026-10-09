@@ -212,29 +212,6 @@ func TestUserService_UpdateProfile(t *testing.T) {
 	})
 }
 
-func TestUserService_GetPublicProfile(t *testing.T) {
-	t.Parallel()
-
-	svc, id := registered(t, "ann@example.com")
-	ctx := context.Background()
-
-	if _, err := svc.UpdateProfile(ctx, id, profile(t, "ann"), ""); err != nil {
-		t.Fatal(err)
-	}
-
-	got, err := svc.GetPublicProfile(ctx, mustNickname(t, "Ann"))
-	if err != nil {
-		t.Fatalf("GetPublicProfile: %v", err)
-	}
-	if got.ID != id || got.Nickname != "ann" || got.Name != "Ann" {
-		t.Fatalf("got %+v", got)
-	}
-
-	if _, err = svc.GetPublicProfile(ctx, mustNickname(t, "nobody")); !errors.Is(err, user.ErrNotFound) {
-		t.Fatalf("got %v, want ErrNotFound", err)
-	}
-}
-
 // racingRepo simulates another request registering the email between
 // our lookup and our insert. Unused methods panic via the nil interface.
 type racingRepo struct {

@@ -13,6 +13,7 @@ type ClubsRead string
 
 const (
 	ClubsReadEveryone  ClubsRead = "everyone"
+	ClubsReadUsers     ClubsRead = "users"
 	ClubsReadFollowing ClubsRead = "following"
 	ClubsReadOnlyMe    ClubsRead = "only_me"
 )
@@ -24,7 +25,7 @@ var ErrInvalidClubsRead = errors.New("invalid clubs read setting")
 
 func NewClubsRead(s string) (ClubsRead, error) {
 	switch ClubsRead(s) {
-	case ClubsReadEveryone, ClubsReadFollowing, ClubsReadOnlyMe:
+	case ClubsReadEveryone, ClubsReadUsers, ClubsReadFollowing, ClubsReadOnlyMe:
 		return ClubsRead(s), nil
 	default:
 		return "", ErrInvalidClubsRead
@@ -36,24 +37,7 @@ func (r ClubsRead) String() string {
 }
 
 // ClubsVisibleTo tells whether viewerID (uuid.Nil: anonymous) may see
-// the communities u is in. The owner always may; nobody sees those of a
-// deleted page. A block closes contact, not what the page shows, so it
-// does not hide them.
+// the communities u is in (see AccessFor).
 func (u *User) ClubsVisibleTo(viewerID uuid.UUID, t Ties) bool {
-	if viewerID == u.id {
-		return true
-	}
-
-	if u.IsDeactivated() {
-		return false
-	}
-
-	switch u.privacy.ClubsRead {
-	case ClubsReadEveryone:
-		return true
-	case ClubsReadFollowing:
-		return t.Followed
-	default:
-		return false
-	}
+	return u.AccessFor(viewerID, t).Clubs
 }

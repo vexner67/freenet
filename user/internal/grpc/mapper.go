@@ -190,7 +190,33 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		WallWrite:          toProtoWallWrite(p.WallWrite),
 		MessagesWrite:      toProtoMessagesWrite(p.MessagesWrite),
 		ClubsRead:          toProtoClubsRead(p.ClubsRead),
+		PageRead:           toProtoAudience(p.PageRead),
+		InfoRead:           toProtoAudience(p.InfoRead),
+		PhotosRead:         toProtoAudience(p.PhotosRead),
+		FriendsRead:        toProtoAudience(p.FriendsRead),
 	}
+}
+
+var audiences = map[user.Audience]userv1.Audience{
+	user.AudienceEveryone:  userv1.Audience_AUDIENCE_EVERYONE,
+	user.AudienceUsers:     userv1.Audience_AUDIENCE_USERS,
+	user.AudienceFollowing: userv1.Audience_AUDIENCE_FOLLOWING,
+	user.AudienceOnlyMe:    userv1.Audience_AUDIENCE_ONLY_ME,
+}
+
+func toProtoAudience(a user.Audience) userv1.Audience {
+	return audiences[a]
+}
+
+// fromProtoAudience is "" for an unknown value, which the domain refuses.
+func fromProtoAudience(a userv1.Audience) string {
+	for domain, proto := range audiences {
+		if proto == a {
+			return domain.String()
+		}
+	}
+
+	return ""
 }
 
 // fromProtoPrivacy validates the settings; its errors are meant for the client.
@@ -210,6 +236,18 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		return user.Privacy{}, err
 	}
 
+	pageRead, err := user.NewPageRead(fromProtoAudience(p.GetPageRead()))
+	if err != nil {
+		return user.Privacy{}, err
+	}
+
+	var reads [3]user.Audience
+	for i, a := range []userv1.Audience{p.GetInfoRead(), p.GetPhotosRead(), p.GetFriendsRead()} {
+		if reads[i], err = user.NewAudience(fromProtoAudience(a)); err != nil {
+			return user.Privacy{}, err
+		}
+	}
+
 	return user.Privacy{
 		ShowBirthday:       p.GetShowBirthday(),
 		ShowRelationship:   p.GetShowRelationship(),
@@ -218,6 +256,10 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		WallWrite:          wallWrite,
 		MessagesWrite:      messagesWrite,
 		ClubsRead:          clubsRead,
+		PageRead:           pageRead,
+		InfoRead:           reads[0],
+		PhotosRead:         reads[1],
+		FriendsRead:        reads[2],
 	}, nil
 }
 
@@ -225,6 +267,8 @@ func toProtoClubsRead(r user.ClubsRead) userv1.ClubsRead {
 	switch r {
 	case user.ClubsReadEveryone:
 		return userv1.ClubsRead_CLUBS_READ_EVERYONE
+	case user.ClubsReadUsers:
+		return userv1.ClubsRead_CLUBS_READ_USERS
 	case user.ClubsReadFollowing:
 		return userv1.ClubsRead_CLUBS_READ_FOLLOWING
 	case user.ClubsReadOnlyMe:
@@ -238,6 +282,8 @@ func fromProtoClubsRead(r userv1.ClubsRead) string {
 	switch r {
 	case userv1.ClubsRead_CLUBS_READ_EVERYONE:
 		return "everyone"
+	case userv1.ClubsRead_CLUBS_READ_USERS:
+		return "users"
 	case userv1.ClubsRead_CLUBS_READ_FOLLOWING:
 		return "following"
 	case userv1.ClubsRead_CLUBS_READ_ONLY_ME:
@@ -300,7 +346,7 @@ func fromProtoWallWrite(w userv1.WallWrite) string {
 }
 
 func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
-	return &userv1.PublicProfile{
+	pp := &userv1.PublicProfile{
 		Id:                    p.ID.String(),
 		Name:                  p.Name.String(),
 		Surname:               p.Surname.String(),
@@ -319,8 +365,16 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 		Contacts:              toProtoContacts(p.Contacts),
 		Interests:             toProtoInterests(p.Interests),
 		ExtraFields:           toProtoExtraFields(p.ExtraFields),
-		RegisteredAt:          timestamppb.New(user.RegisteredAt(p.ID)),
+		PageHidden:            p.PageHidden,
+		InfoHidden:            p.InfoHidden,
 	}
+
+	// The date of registration is information too.
+	if !p.InfoHidden {
+		pp.RegisteredAt = timestamppb.New(user.RegisteredAt(p.ID))
+	}
+
+	return pp
 }
 
 // profileRequest is implemented by every request that carries a profile.

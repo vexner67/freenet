@@ -89,6 +89,23 @@ type Privacy struct {
 	WallWrite          string
 	MessagesWrite      string
 	ClubsRead          string
+	// PageRead ("everyone" or "users"), InfoRead, PhotosRead and
+	// FriendsRead are openvk's "Кому видно …": "everyone", "users",
+	// "following" or "only_me".
+	PageRead    string
+	InfoRead    string
+	PhotosRead  string
+	FriendsRead string
+}
+
+// Access is what of a page the viewer may see: the page, its information,
+// albums, follows and communities.
+type Access struct {
+	Page    bool
+	Info    bool
+	Photos  bool
+	Friends bool
+	Clubs   bool
 }
 
 // Relation is who of the viewer and a user blacklisted the other.
@@ -127,7 +144,11 @@ type PublicProfile struct {
 	Deactivated bool
 	// BirthYearHidden: Profile.Birthday has no real year.
 	BirthYearHidden bool
-	About           About
+	// PageHidden: the viewer may not see the page, only the names and the
+	// photo; InfoHidden: nor its information, left empty.
+	PageHidden bool
+	InfoHidden bool
+	About      About
 }
 
 // Author is who wrote a post or owns a wall, as shown next to a post: a

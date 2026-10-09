@@ -51,6 +51,14 @@ type Privacy struct {
 	WallWrite          WallWrite
 	MessagesWrite      MessagesWrite
 	ClubsRead          ClubsRead
+	// PageRead is "Кому в интернете видно мою страницу": everyone or users;
+	// InfoRead, PhotosRead and FriendsRead are "Кому видно основную
+	// информацию моей страницы", "… мои фотографии" and "… моих друзей"
+	// (the follows here).
+	PageRead    Audience
+	InfoRead    Audience
+	PhotosRead  Audience
+	FriendsRead Audience
 }
 
 // PublicProfile is the part of a profile other users may see. Hidden
@@ -80,6 +88,11 @@ type PublicProfile struct {
 	Contacts    Contacts
 	Interests   Interests
 	ExtraFields []ExtraField
+	// PageHidden: the viewer may not see the page (Access.Page), only the
+	// names and the photo are told; InfoHidden: nor its information
+	// (Access.Info), which is left empty.
+	PageHidden bool
+	InfoHidden bool
 }
 
 // birthYearMask is the year of a birthday told without one: a leap year,
@@ -115,9 +128,12 @@ func New(email Email) (*User, error) {
 	}
 
 	return &User{
-		id:      id,
-		email:   email,
-		privacy: Privacy{WallWrite: DefaultWallWrite, MessagesWrite: DefaultMessagesWrite, ClubsRead: DefaultClubsRead},
+		id:    id,
+		email: email,
+		privacy: Privacy{
+			WallWrite: DefaultWallWrite, MessagesWrite: DefaultMessagesWrite, ClubsRead: DefaultClubsRead,
+			PageRead: AudienceEveryone, InfoRead: AudienceEveryone, PhotosRead: AudienceEveryone, FriendsRead: AudienceEveryone,
+		},
 	}, nil
 }
 
@@ -190,8 +206,8 @@ func (u *User) UpdateExtraFields(fields []ExtraField) error {
 	return nil
 }
 
-// UpdatePrivacy replaces all privacy settings; WallWrite, MessagesWrite
-// and ClubsRead must be set.
+// UpdatePrivacy replaces all privacy settings; all but the Show ones must
+// be set.
 func (u *User) UpdatePrivacy(privacy Privacy) error {
 	if _, err := NewWallWrite(privacy.WallWrite.String()); err != nil {
 		return err
@@ -203,6 +219,16 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 
 	if _, err := NewClubsRead(privacy.ClubsRead.String()); err != nil {
 		return err
+	}
+
+	if _, err := NewPageRead(privacy.PageRead.String()); err != nil {
+		return err
+	}
+
+	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead} {
+		if _, err := NewAudience(a.String()); err != nil {
+			return err
+		}
 	}
 
 	u.privacy = privacy
@@ -258,7 +284,27 @@ func (u *User) Deactivation() Deactivation {
 	return u.deactivation
 }
 
+// PublicProfile is what anyone may see of u without knowing who looks, as
+// in lists: the information only when it is open to everyone.
 func (u *User) PublicProfile() PublicProfile {
+	return u.publicProfile(u.privacy.InfoRead == AudienceEveryone)
+}
+
+// PublicProfileFor is the page of u as viewerID (uuid.Nil: anonymous),
+// tied to u by t, sees it (see AccessFor).
+func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties) PublicProfile {
+	access := u.AccessFor(viewerID, t)
+	if !access.Page {
+		return PublicProfile{
+			ID: u.id, AvatarID: u.avatarID, Name: u.profile.Name, Surname: u.profile.Surname,
+			Nickname: u.profile.Nickname, Gender: u.profile.Gender, PageHidden: true, InfoHidden: true,
+		}
+	}
+
+	return u.publicProfile(access.Info)
+}
+
+func (u *User) publicProfile(showInfo bool) PublicProfile {
 	if u.IsDeactivated() {
 		return PublicProfile{
 			ID:          u.id,
@@ -271,18 +317,26 @@ func (u *User) PublicProfile() PublicProfile {
 	}
 
 	p := PublicProfile{
-		ID:          u.id,
-		AvatarID:    u.avatarID,
-		Name:        u.profile.Name,
-		Surname:     u.profile.Surname,
-		Nickname:    u.profile.Nickname,
-		Status:      u.profile.Status,
-		Gender:      u.profile.Gender,
-		Hometown:    u.profile.Hometown,
-		Contacts:    u.contacts,
-		Interests:   u.interests,
-		ExtraFields: u.extraFields,
+		ID:       u.id,
+		AvatarID: u.avatarID,
+		Name:     u.profile.Name,
+		Surname:  u.profile.Surname,
+		Nickname: u.profile.Nickname,
+		Status:   u.profile.Status,
+		// The pronouns speak of the person: as on openvk, they stay with
+		// the names.
+		Gender: u.profile.Gender,
 	}
+
+	if !showInfo {
+		p.InfoHidden = true
+		return p
+	}
+
+	p.Hometown = u.profile.Hometown
+	p.Contacts = u.contacts
+	p.Interests = u.interests
+	p.ExtraFields = u.extraFields
 
 	if u.privacy.ShowBirthday {
 		p.Birthday = u.profile.Birthday

@@ -48,9 +48,9 @@ service UserService {
   // Requires an access token: whether the caller may write private
   // messages to the user, as the user's privacy and blacklists allow.
   rpc CanMessage(CanMessageRequest) returns (CanMessageResponse);
-  // Public: whether the caller, anonymous without a token, may see which
-  // communities the user is in, as the user's privacy allows.
-  rpc CanSeeClubs(CanSeeClubsRequest) returns (CanSeeClubsResponse);
+  // Public: what of the user's page the caller, anonymous without a token,
+  // may see, as the user's privacy allows.
+  rpc GetAccess(GetAccessRequest) returns (GetAccessResponse);
 
   // Require an access token: the caller's blacklist ("Чёрный список"). A
   // block shuts messages, wall posts and follows between the two, both
@@ -155,6 +155,24 @@ message PrivacySettings {
   MessagesWrite messages_write = 6;
   // Required in UpdatePrivacy; CLUBS_READ_EVERYONE by default.
   ClubsRead clubs_read = 7;
+  // Required in UpdatePrivacy, everyone by default: who sees the page
+  // ("Кому в интернете видно мою страницу", everyone or users), its
+  // information, its albums and its follows.
+  Audience page_read = 8;
+  Audience info_read = 9;
+  Audience photos_read = 10;
+  Audience friends_read = 11;
+}
+
+// Who sees a part of a page.
+enum Audience {
+  AUDIENCE_UNSPECIFIED = 0;
+  AUDIENCE_EVERYONE = 1;
+  // Signed-in people.
+  AUDIENCE_USERS = 2;
+  // The people the user follows.
+  AUDIENCE_FOLLOWING = 3;
+  AUDIENCE_ONLY_ME = 4;
 }
 
 // Who sees which communities a user is in besides the user.
@@ -164,6 +182,8 @@ enum ClubsRead {
   // The people the user follows.
   CLUBS_READ_FOLLOWING = 2;
   CLUBS_READ_ONLY_ME = 3;
+  // Signed-in people.
+  CLUBS_READ_USERS = 4;
 }
 
 // Who may write private messages to a user. Whoever the user wrote to may
@@ -210,6 +230,12 @@ message PublicProfile {
   Interests interests = 17;
   repeated ExtraField extra_fields = 18;
   google.protobuf.Timestamp registered_at = 19;
+  // The caller may not see the page: only the names, the pronouns and the
+  // photo are told.
+  bool page_hidden = 20;
+  // The caller may not see its information, left empty (registered_at
+  // too).
+  bool info_hidden = 21;
 }
 
 enum Gender {
@@ -426,12 +452,23 @@ message CanPostOnWallResponse {
   bool allowed = 1;
 }
 
-message CanSeeClubsRequest {
+message GetAccessRequest {
   string user_id = 1;
 }
 
-message CanSeeClubsResponse {
-  bool allowed = 1;
+// What of a page the caller may see.
+message GetAccessResponse {
+  // The page itself: the names and the photo are told anyway.
+  bool page = 1;
+  // Its information: all but the names, the photo, the status and the
+  // pronouns.
+  bool info = 2;
+  // Its albums.
+  bool photos = 3;
+  // Whom the user follows and who follows the user.
+  bool friends = 4;
+  // The communities the user is in.
+  bool clubs = 5;
 }
 
 message CanMessageRequest {

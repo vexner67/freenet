@@ -104,6 +104,15 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 		return model.User{}, errs.Wrap("enumValue", err)
 	}
 
+	var reads [4]userv1.Audience
+	for i, a := range []string{p.PageRead, p.InfoRead, p.PhotosRead, p.FriendsRead} {
+		v, err := enumValue(a, audiencePrefix, "audience", userv1.Audience_value)
+		if err != nil {
+			return model.User{}, errs.Wrap("enumValue", err)
+		}
+		reads[i] = userv1.Audience(v)
+	}
+
 	resp, err := u.api.UpdatePrivacy(withToken(ctx, accessToken), &userv1.UpdatePrivacyRequest{
 		Privacy: &userv1.PrivacySettings{
 			ShowBirthday:       p.ShowBirthday,
@@ -113,6 +122,10 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 			WallWrite:          userv1.WallWrite(wallWrite),
 			MessagesWrite:      userv1.MessagesWrite(messagesWrite),
 			ClubsRead:          userv1.ClubsRead(clubsRead),
+			PageRead:           reads[0],
+			InfoRead:           reads[1],
+			PhotosRead:         reads[2],
+			FriendsRead:        reads[3],
 		},
 	})
 	if err != nil {
@@ -122,8 +135,10 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 	return toUser(resp.GetUser()), nil
 }
 
-func (u *Users) GetProfile(ctx context.Context, nickname string) (model.PublicProfile, error) {
-	resp, err := u.api.GetProfile(ctx, &userv1.GetProfileRequest{Nickname: nickname})
+// GetProfile is the page of nickname as the caller sees it, anonymous
+// without accessToken.
+func (u *Users) GetProfile(ctx context.Context, accessToken, nickname string) (model.PublicProfile, error) {
+	resp, err := u.api.GetProfile(withToken(ctx, accessToken), &userv1.GetProfileRequest{Nickname: nickname})
 	if err != nil {
 		return model.PublicProfile{}, errs.Wrap("u.api.GetProfile", fromStatus(err))
 	}
@@ -194,15 +209,17 @@ func (u *Users) CanPostOnWall(ctx context.Context, accessToken, userID string) (
 	return resp.GetAllowed(), nil
 }
 
-// CanSeeClubs tells whether the caller, anonymous without a token, may
-// see which clubs userID is in.
-func (u *Users) CanSeeClubs(ctx context.Context, accessToken, userID string) (bool, error) {
-	resp, err := u.api.CanSeeClubs(withToken(ctx, accessToken), &userv1.CanSeeClubsRequest{UserId: userID})
+// Access is what of userID's page the caller, anonymous without
+// accessToken, may see.
+func (u *Users) Access(ctx context.Context, accessToken, userID string) (model.Access, error) {
+	resp, err := u.api.GetAccess(withToken(ctx, accessToken), &userv1.GetAccessRequest{UserId: userID})
 	if err != nil {
-		return false, errs.Wrap("u.api.CanSeeClubs", fromStatus(err))
+		return model.Access{}, errs.Wrap("u.api.GetAccess", fromStatus(err))
 	}
 
-	return resp.GetAllowed(), nil
+	return model.Access{
+		Page: resp.GetPage(), Info: resp.GetInfo(), Photos: resp.GetPhotos(), Friends: resp.GetFriends(), Clubs: resp.GetClubs(),
+	}, nil
 }
 
 // CanMessage tells whether the caller may write to userID; wroteFirst is
@@ -306,6 +323,8 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		Deactivated: p.GetDeactivated(),
 
 		BirthYearHidden: p.GetBirthYearHidden(),
+		PageHidden:      p.GetPageHidden(),
+		InfoHidden:      p.GetInfoHidden(),
 		About:           toAbout(p),
 	}
 }
