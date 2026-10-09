@@ -44,14 +44,18 @@ const saveAlbumQuery = `
 		name,
 		description,
 		created_at,
-		updated_at
+		updated_at,
+		kind
 	)
-	VALUES ($1, $2, $3, $4, $5, $6)
+	VALUES ($1, $2, $3, $4, $5, $6, $7)
 `
 
 func (r *AlbumRepository) Save(ctx context.Context, a *post.Album) error {
 	_, err := r.conn(ctx).Exec(ctx, saveAlbumQuery, a.ID(), a.OwnerID(), a.Name().String(), a.Description().String(),
-		a.CreatedAt(), a.UpdatedAt())
+		a.CreatedAt(), a.UpdatedAt(), string(a.Kind()))
+	if constraintOf(err) == "albums_avatars_uidx" {
+		return post.ErrAvatarAlbumExists
+	}
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -67,13 +71,41 @@ const getAlbumQuery = `
 		description,
 		created_at,
 		updated_at,
-		photo_count
+		photo_count,
+		kind
 	FROM albums
 	WHERE id = $1
 `
 
 func (r *AlbumRepository) Get(ctx context.Context, id uuid.UUID) (*post.Album, error) {
 	a, err := scanAlbum(r.conn(ctx).QueryRow(ctx, getAlbumQuery, id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, post.ErrAlbumNotFound
+	}
+	if err != nil {
+		return nil, errs.Wrap("scanAlbum", err)
+	}
+
+	return a, nil
+}
+
+const avatarAlbumQuery = `
+	SELECT
+		id,
+		owner_id,
+		name,
+		description,
+		created_at,
+		updated_at,
+		photo_count,
+		kind
+	FROM albums
+	WHERE owner_id = $1
+		AND kind = 'avatars'
+`
+
+func (r *AlbumRepository) AvatarAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error) {
+	a, err := scanAlbum(r.conn(ctx).QueryRow(ctx, avatarAlbumQuery, ownerID))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, post.ErrAlbumNotFound
 	}
@@ -160,7 +192,8 @@ const listAlbumsQuery = `
 		description,
 		created_at,
 		updated_at,
-		photo_count
+		photo_count,
+		kind
 	FROM albums
 	WHERE owner_id = $1
 		AND id < $2
@@ -253,12 +286,13 @@ func scanAlbum(row pgx.Row) (*post.Album, error) {
 		name, description string
 	)
 
-	if err := row.Scan(&s.ID, &s.OwnerID, &name, &description, &s.CreatedAt, &s.UpdatedAt, &s.Photos); err != nil {
+	var kind string
+	if err := row.Scan(&s.ID, &s.OwnerID, &name, &description, &s.CreatedAt, &s.UpdatedAt, &s.Photos, &kind); err != nil {
 		return nil, err
 	}
 
 	// Data comes from our own table and was validated on write.
-	s.Name, s.Description = post.AlbumName(name), post.Description(description)
+	s.Name, s.Description, s.Kind = post.AlbumName(name), post.Description(description), post.AlbumKind(kind)
 	s.CreatedAt, s.UpdatedAt = s.CreatedAt.UTC(), s.UpdatedAt.UTC()
 
 	return post.RestoreAlbum(s), nil

@@ -42,9 +42,42 @@ func (r *AlbumRepository) Save(ctx context.Context, a *post.Album) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	// As the unique index: one "Фотографии со страницы" an owner.
+	if a.Kind() == post.AlbumAvatars {
+		if _, ok := r.avatarAlbum(a.OwnerID()); ok {
+			return post.ErrAvatarAlbumExists
+		}
+	}
+
 	r.albums[a.ID()] = a.Stored()
 
 	return nil
+}
+
+func (r *AlbumRepository) AvatarAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	s, ok := r.avatarAlbum(ownerID)
+	if !ok {
+		return nil, post.ErrAlbumNotFound
+	}
+
+	return post.RestoreAlbum(s), nil
+}
+
+func (r *AlbumRepository) avatarAlbum(ownerID uuid.UUID) (post.StoredAlbum, bool) {
+	for _, s := range r.albums {
+		if s.OwnerID == ownerID && s.Kind == post.AlbumAvatars {
+			return s, true
+		}
+	}
+
+	return post.StoredAlbum{}, false
 }
 
 func (r *AlbumRepository) Get(ctx context.Context, id uuid.UUID) (*post.Album, error) {

@@ -154,6 +154,34 @@ func (h *PostHandler) AddAlbumPhotos(ctx context.Context, req *postv1.AddAlbumPh
 	return resp, nil
 }
 
+// AddAvatarPhoto puts a new photo of a page in its "Фотографии со
+// страницы".
+func (h *PostHandler) AddAvatarPhoto(ctx context.Context, req *postv1.AddAvatarPhotoRequest) (*postv1.AddAvatarPhotoResponse, error) {
+	requesterID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ownerID := requesterID
+	if req.GetClubId() != "" {
+		if ownerID, err = uuid.Parse(req.GetClubId()); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid club id")
+		}
+	}
+
+	photoID, err := uuid.Parse(req.GetPhotoId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid photo id")
+	}
+
+	p, err := h.albumService.AddAvatar(ctx, requesterID, ownerID, photoID)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.AddAvatarPhotoResponse{Photo: toProtoAlbumPhoto(p, requesterID)}, nil
+}
+
 func (h *PostHandler) ListAlbumPhotos(ctx context.Context, req *postv1.ListAlbumPhotosRequest) (*postv1.ListAlbumPhotosResponse, error) {
 	albumID, err := parseAlbumID(req.GetAlbumId())
 	if err != nil {
@@ -288,6 +316,11 @@ func parsePhotoID(s string) (uuid.UUID, error) {
 }
 
 // toProtoAlbum: cover is its first photo, nil if none or not looked up.
+var albumKinds = map[post.AlbumKind]postv1.AlbumKind{
+	post.AlbumRegular: postv1.AlbumKind_ALBUM_KIND_NONE,
+	post.AlbumAvatars: postv1.AlbumKind_ALBUM_KIND_AVATARS,
+}
+
 func toProtoAlbum(a *post.Album, cover *post.AlbumPhoto, viewerID uuid.UUID) *postv1.Album {
 	pa := &postv1.Album{
 		Id:          a.ID().String(),
@@ -297,6 +330,7 @@ func toProtoAlbum(a *post.Album, cover *post.AlbumPhoto, viewerID uuid.UUID) *po
 		CreatedAt:   timestamppb.New(a.CreatedAt()),
 		UpdatedAt:   timestamppb.New(a.UpdatedAt()),
 		PhotoCount:  int32(a.Photos()), //nolint:gosec // a counter from an int4 column
+		Kind:        albumKinds[a.Kind()],
 	}
 	if cover != nil {
 		pa.Cover = toProtoAlbumPhoto(cover, viewerID)

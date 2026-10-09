@@ -265,3 +265,54 @@ func TestAlbumService_DescribeAndDeletePhoto(t *testing.T) {
 		t.Fatalf("album = %+v; uncounted", got)
 	}
 }
+
+func TestAlbumService_AddAvatar(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	club, admin, ann := uuid.New(), uuid.New(), uuid.New()
+	svc, photos := newAlbumService(t, fakeModerators{{club, admin}: true})
+
+	first, second := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
+	p1, err := svc.AddAvatar(ctx, ann, ann, first)
+	if err != nil {
+		t.Fatalf("AddAvatar: %v", err)
+	}
+	p2, err := svc.AddAvatar(ctx, ann, ann, second)
+	if err != nil || p2.AlbumID() != p1.AlbumID() {
+		t.Fatalf("a second photo goes to another album: %v", err)
+	}
+	if len(photos.published) != 2 || photos.outsideTx != 0 {
+		t.Fatalf("published %+v, outside a transaction %d", photos.published, photos.outsideTx)
+	}
+
+	// The album the site keeps: the first of the page's albums, by its name.
+	page, err := svc.List(ctx, ann, uuid.Nil, 0)
+	if err != nil || page.Total != 1 || page.Albums[0].Kind() != post.AlbumAvatars ||
+		page.Albums[0].Name() != "Фотографии со страницы" || page.Albums[0].Photos() != 2 {
+		t.Fatalf("List = %+v, %v", page, err)
+	}
+
+	album := p1.AlbumID()
+	if _, err = svc.Change(ctx, ann, album, "Другое", ""); !errors.Is(err, post.ErrSystemAlbum) {
+		t.Fatalf("rename: %v", err)
+	}
+	if err = svc.Delete(ctx, ann, album); !errors.Is(err, post.ErrSystemAlbum) {
+		t.Fatalf("delete: %v", err)
+	}
+	if _, err = svc.AddPhotos(ctx, ann, album, newPhotos(1)); !errors.Is(err, post.ErrSystemAlbum) {
+		t.Fatalf("add by hand: %v", err)
+	}
+	// Its photos go, as in any album.
+	if err = svc.DeletePhoto(ctx, ann, first); err != nil {
+		t.Fatalf("DeletePhoto: %v", err)
+	}
+
+	// A community's, by its admins only.
+	if p, err := svc.AddAvatar(ctx, admin, club, uuid.Must(uuid.NewV7())); err != nil || p.AuthorID() != admin {
+		t.Fatalf("the club's: %+v, %v", p, err)
+	}
+	if _, err = svc.AddAvatar(ctx, ann, club, uuid.Must(uuid.NewV7())); !errors.Is(err, post.ErrCannotChangeAlbum) {
+		t.Fatalf("ann for the club: %v", err)
+	}
+}

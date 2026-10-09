@@ -28,7 +28,25 @@ var (
 	ErrCannotDescribePhoto    = errors.New("only who uploaded the photo can describe it")
 	ErrCannotDeleteAlbumPhoto = errors.New("only who uploaded the photo or the owner of the album can delete it")
 	ErrNoAlbumPhotos          = errors.New("no photos to add")
+	// ErrSystemAlbum: the site keeps the album ("Фотографии со
+	// страницы"); nobody renames or deletes it or adds photos by hand.
+	ErrSystemAlbum = errors.New("this album is kept by the site")
+	// ErrAvatarAlbumExists: the owner has their "Фотографии со страницы".
+	ErrAvatarAlbumExists = errors.New("the avatar album exists")
 )
+
+// AlbumKind tells an album someone made ("") from one the site keeps.
+type AlbumKind string
+
+const (
+	AlbumRegular AlbumKind = ""
+	// AlbumAvatars is openvk's "Фотографии со страницы": every photo of
+	// the page, one album an owner.
+	AlbumAvatars AlbumKind = "avatars"
+)
+
+// avatarAlbumName is how openvk calls it.
+const avatarAlbumName AlbumName = "Фотографии со страницы"
 
 // AlbumName is what an album is called: one line, trimmed.
 type AlbumName string
@@ -80,6 +98,7 @@ type Album struct {
 	// deleted ("Обновлён" of openvk).
 	updatedAt time.Time
 	photos    int
+	kind      AlbumKind
 }
 
 // NewAlbum creates an album of ownerID. Whether the caller may create
@@ -96,6 +115,18 @@ func NewAlbum(ownerID uuid.UUID, name AlbumName, description Description, now ti
 	return &Album{id: id, ownerID: ownerID, name: name, description: description, createdAt: now, updatedAt: now}, nil
 }
 
+// NewAvatarAlbum creates "Фотографии со страницы" of ownerID.
+func NewAvatarAlbum(ownerID uuid.UUID, now time.Time) (*Album, error) {
+	a, err := NewAlbum(ownerID, avatarAlbumName, "", now)
+	if err != nil {
+		return nil, err
+	}
+
+	a.kind = AlbumAvatars
+
+	return a, nil
+}
+
 // StoredAlbum is an album as storage keeps it.
 type StoredAlbum struct {
 	ID          uuid.UUID
@@ -105,6 +136,7 @@ type StoredAlbum struct {
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
 	Photos      int
+	Kind        AlbumKind
 }
 
 // RestoreAlbum rebuilds an album from storage without validation or new
@@ -112,15 +144,29 @@ type StoredAlbum struct {
 func RestoreAlbum(s StoredAlbum) *Album {
 	return &Album{
 		id: s.ID, ownerID: s.OwnerID, name: s.Name, description: s.Description,
-		createdAt: s.CreatedAt, updatedAt: s.UpdatedAt, photos: s.Photos,
+		createdAt: s.CreatedAt, updatedAt: s.UpdatedAt, photos: s.Photos, kind: s.Kind,
 	}
 }
 
 func (a *Album) Stored() StoredAlbum {
 	return StoredAlbum{
 		ID: a.id, OwnerID: a.ownerID, Name: a.name, Description: a.description,
-		CreatedAt: a.createdAt, UpdatedAt: a.updatedAt, Photos: a.photos,
+		CreatedAt: a.createdAt, UpdatedAt: a.updatedAt, Photos: a.photos, Kind: a.kind,
 	}
+}
+
+func (a *Album) Kind() AlbumKind {
+	return a.kind
+}
+
+// CheckManual refuses to rename, delete or fill by hand an album the site
+// keeps, as openvk.
+func (a *Album) CheckManual() error {
+	if a.kind != AlbumRegular {
+		return ErrSystemAlbum
+	}
+
+	return nil
 }
 
 // CanBeChangedBy: its owner or, admin, whoever runs the community that

@@ -786,3 +786,38 @@ func TestAlbums(t *testing.T) {
 		t.Fatalf("a photo of a deleted album: %v", err)
 	}
 }
+
+func TestAvatarAlbum(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann := uuid.New()
+	photo := uuid.Must(uuid.NewV7())
+
+	added, err := s.client.AddAvatarPhoto(s.as(t, ann), &postv1.AddAvatarPhotoRequest{PhotoId: photo.String()})
+	if err != nil || added.GetPhoto().GetId() != photo.String() || added.GetPhoto().GetAuthorId() != ann.String() {
+		t.Fatalf("AddAvatarPhoto = %v, %v", added, err)
+	}
+
+	got, err := s.client.GetAlbum(context.Background(), &postv1.GetAlbumRequest{Id: added.GetPhoto().GetAlbumId()})
+	if a := got.GetAlbum(); err != nil || a.GetKind() != postv1.AlbumKind_ALBUM_KIND_AVATARS || a.GetName() != "Фотографии со страницы" || a.GetPhotoCount() != 1 {
+		t.Fatalf("GetAlbum = %v, %v", got, err)
+	}
+
+	_, err = s.client.EditAlbum(s.as(t, ann), &postv1.EditAlbumRequest{Id: added.GetPhoto().GetAlbumId(), Name: "Другое"})
+	if status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("renaming it: %v", err)
+	}
+
+	for name, req := range map[string]*postv1.AddAvatarPhotoRequest{
+		"a bad photo": {PhotoId: "x"},
+		"a bad club":  {ClubId: "x", PhotoId: photo.String()},
+	} {
+		if _, err = s.client.AddAvatarPhoto(s.as(t, ann), req); status.Code(err) != codes.InvalidArgument {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if _, err = s.client.AddAvatarPhoto(context.Background(), &postv1.AddAvatarPhotoRequest{PhotoId: photo.String()}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("without a token: %v", err)
+	}
+}

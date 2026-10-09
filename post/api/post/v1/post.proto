@@ -107,6 +107,11 @@ service PostService {
   // Up to 10 photos the caller uploaded, which the caller of
   // AddAlbumPhotos has checked with the media service; as EditAlbum.
   rpc AddAlbumPhotos(AddAlbumPhotosRequest) returns (AddAlbumPhotosResponse);
+  // A new photo of a page, which the caller uploaded and the caller of
+  // AddAvatarPhoto has checked with the media service, goes into its
+  // "Фотографии со страницы", made with the first one: the caller's page
+  // or of a community they run.
+  rpc AddAvatarPhoto(AddAvatarPhotoRequest) returns (AddAvatarPhotoResponse);
   // Public: oldest first.
   rpc ListAlbumPhotos(ListAlbumPhotosRequest) returns (ListAlbumPhotosResponse);
   // Public: a photo with its album.
@@ -575,6 +580,16 @@ message Album {
   int32 photo_count = 7;
   // The first photo, absent while it has none.
   AlbumPhoto cover = 8;
+  AlbumKind kind = 9;
+}
+
+// AlbumKind tells albums the site keeps; nobody renames, deletes or fills
+// them by hand (FailedPrecondition).
+enum AlbumKind {
+  // Made by people.
+  ALBUM_KIND_NONE = 0;
+  // openvk's "Фотографии со страницы": the photos of the page.
+  ALBUM_KIND_AVATARS = 1;
 }
 
 // AlbumPhoto is a photo of an album; its ID is that of the photo in the
@@ -649,6 +664,16 @@ message AddAlbumPhotosRequest {
 
 message AddAlbumPhotosResponse {
   repeated AlbumPhoto photos = 1;
+}
+
+message AddAvatarPhotoRequest {
+  // A community the caller runs; empty for the caller's own page.
+  string club_id = 1;
+  string photo_id = 2;
+}
+
+message AddAvatarPhotoResponse {
+  AlbumPhoto photo = 1;
 }
 
 message ListAlbumPhotosRequest {

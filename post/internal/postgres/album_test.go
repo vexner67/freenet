@@ -178,3 +178,44 @@ func TestAlbumRepository_DeleteByUser(t *testing.T) {
 		t.Fatalf("the club's album = %+v, %v; bob's photo only", got.Stored(), left)
 	}
 }
+
+func TestAlbumRepository_AvatarAlbum(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	albums := postgres.NewAlbumRepository(newPool(t))
+	ann := uuid.New()
+
+	if _, err := albums.AvatarAlbum(ctx, ann); !errors.Is(err, post.ErrAlbumNotFound) {
+		t.Fatalf("none yet: %v", err)
+	}
+
+	a, err := post.NewAvatarAlbum(ann, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = albums.Save(ctx, a); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+
+	got, err := albums.AvatarAlbum(ctx, ann)
+	if err != nil || got.ID() != a.ID() || got.Kind() != post.AlbumAvatars || got.Name() != a.Name() {
+		t.Fatalf("AvatarAlbum = %+v, %v", got, err)
+	}
+	if got, err = albums.Get(ctx, a.ID()); err != nil || got.Kind() != post.AlbumAvatars {
+		t.Fatalf("Get = %+v, %v", got, err)
+	}
+
+	second, _ := post.NewAvatarAlbum(ann, time.Now())
+	if err = albums.Save(ctx, second); !errors.Is(err, post.ErrAvatarAlbumExists) {
+		t.Fatalf("a second one: %v", err)
+	}
+
+	// Any number of albums people make.
+	for range 2 {
+		own, _ := post.NewAlbum(ann, "Лето", "", time.Now())
+		if err = albums.Save(ctx, own); err != nil {
+			t.Fatalf("an album of ann's own: %v", err)
+		}
+	}
+}
