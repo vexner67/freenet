@@ -462,7 +462,7 @@ const errorTexts = {
   'birthday is in the future': 'Дата рождения не может быть в будущем.',
   'user not found': 'Страница не найдена.',
   'post text is empty': 'Напишите что-нибудь.',
-  'post text is too long': 'Запись длиннее 1000 символов.',
+  'post text is too long': 'Запись длиннее 60 000 символов.',
   'post not found': 'Запись уже удалена.',
   'the post can no longer be edited': 'Запись можно редактировать только в течение недели после публикации.',
   'a repost has no photos of its own': 'К репосту нельзя прикрепить фотографии.',
@@ -496,7 +496,7 @@ const errorTexts = {
   'website is not a link': 'Укажите адрес сайта, например example.com.',
   'website is too long': 'Адрес сайта длиннее 256 символов.',
   'address is too long': 'Адрес длиннее 255 символов.',
-  'text is too long': 'Текст длиннее 1000 символов.',
+  'text is too long': 'Текст длиннее 60 000 символов.',
   'at most 7 additional fields': 'Можно добавить не больше 7 полей.',
   'field name is empty': 'Укажите название поля.',
   'field name is too long': 'Название поля длиннее 50 символов.',
@@ -504,7 +504,7 @@ const errorTexts = {
   'you cannot blacklist yourself': 'Нельзя внести в чёрный список самого себя.',
   'invalid post id': 'Запись не найдена.',
   'comment text is empty': 'Напишите что-нибудь.',
-  'comment text is too long': 'Комментарий длиннее 1000 символов.',
+  'comment text is too long': 'Комментарий длиннее 60 000 символов.',
   'comment not found': 'Комментарий уже удалён.',
   'fill in your profile before commenting': 'Сначала заполните свою страницу.',
   'notification not found': 'Уведомление уже удалено.',
@@ -561,4 +561,10 @@ const errorTexts = {
 
 export function errorText(e) {
   return errorTexts[e?.message] ?? 'Что-то пошло не так. Попробуйте позже.';
+}
+
+// isLongText is openvk's "bigText", shown cut short until "Показать
+// больше": more than 520 characters or 10 lines.
+export function isLongText(text) {
+  return text.length > 520 || text.split('\n').length > 10;
 }

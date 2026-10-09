@@ -3,7 +3,7 @@
 
 import { api } from './api.js';
 import { connectEvents, onEvent } from './events.js';
-import { errorText, unreadCountText } from './labels.js';
+import { errorText, isLongText, unreadCountText } from './labels.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -12,6 +12,45 @@ export function el(tag, props = {}, ...children) {
   Object.assign(node, props);
   node.append(...children.filter((c) => c !== null && c !== undefined && c !== false));
   return node;
+}
+
+// autosize makes a textarea as tall as what is written in it, as openvk's
+// do: never lower than its style sheet makes it, and back to that when
+// the text goes. It runs on every input; call it after setting the value
+// from a script.
+export function autosize(textarea) {
+  textarea.style.height = '';
+  textarea.style.overflowY = '';
+
+  if (textarea.scrollHeight > textarea.clientHeight) {
+    textarea.style.height = textarea.scrollHeight + 5 + 'px';
+    textarea.style.overflowY = 'hidden';
+  }
+}
+
+if (typeof document !== 'undefined') {
+  document.addEventListener('input', (event) => {
+    if (event.target instanceof HTMLTextAreaElement) autosize(event.target);
+  });
+}
+
+// textNode shows what a post or a comment says. Long text is cut short
+// with openvk's "Показать больше", unless whole.
+export function textNode(text, { whole = false } = {}) {
+  const node = el('div', { className: 'post-text', textContent: text });
+  if (whole || !isLongText(text)) return node;
+
+  node.classList.add('collapsed');
+
+  const more = el('a', { className: 'post-text-more', textContent: 'Показать больше' });
+  more.addEventListener('click', () => {
+    node.classList.remove('collapsed');
+    more.remove();
+  });
+
+  const wrap = el('div', {}, node, more);
+
+  return wrap;
 }
 
 export function profilePath(user) {

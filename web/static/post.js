@@ -5,11 +5,12 @@ import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { commentNode } from './comments.js';
 import { genitiveName } from './labels.js';
-import { $, clubRef, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
+import { $, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
 import { postNode } from './posts.js';
 
-const COUNTER_FROM = 900;
-const MAX_LENGTH = 1000;
+// openvk's limit of a post or a comment; the counter shows near the end.
+const MAX_LENGTH = 60000;
+const COUNTER_FROM = MAX_LENGTH - 100;
 
 const postID = decodeURIComponent(location.pathname.slice('/post/'.length));
 
@@ -85,6 +86,7 @@ function initComments(post, me, moderates) {
 
     replyTo = comment;
     text.value = comment.author.name + ', ' + rest;
+    autosize(text);
     $('comment-reply-to').hidden = false;
     text.focus();
     text.setSelectionRange(text.value.length, text.value.length);
@@ -157,6 +159,7 @@ function initComments(post, me, moderates) {
       sent.add(comment.id);
       list.append(node);
       $('comment-text').value = '';
+      autosize($('comment-text'));
       attachments.clear();
       cancelReply();
       total++;

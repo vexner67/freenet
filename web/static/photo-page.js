@@ -6,7 +6,7 @@
 
 import { api, currentUser } from './api.js';
 import { formatPostDate } from './labels.js';
-import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
+import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { albumPath, albumsTitle, canChange, isKeptBySite } from './albums.js';
 import { commentNode } from './comments.js';
@@ -171,6 +171,7 @@ function initComments(page) {
         const c = await api.commentPhoto(photo.id, $('comment-text').value);
         $('comments').append(node(c));
         $('comment-text').value = '';
+        autosize($('comment-text'));
         total++;
         updateTitle();
       } catch (e) {

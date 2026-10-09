@@ -5,7 +5,7 @@
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
 import { commentsLink, formatPostDate, genitiveName, shareLink, updatedPhoto, wrote } from './labels.js';
-import { avatarURL, el, fullName, pagePath } from './layout.js';
+import { avatarURL, el, fullName, pagePath, textNode } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
@@ -48,7 +48,8 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       post.commentsClosed ? ', комментарии закрыты' : '',
     );
     content.replaceChildren(
-      post.text ? el('div', { className: 'post-text', textContent: post.text }) : '',
+      // Whole on the page of the post, which has no link to open it.
+      post.text ? textNode(post.text, { whole: !withCommentsLink }) : '',
       photosNode(post.photos ?? []) ?? '',
       signatureNode(post.signer) ?? '',
     );
@@ -214,7 +215,7 @@ export function sharedNode(shared) {
         ...(shared.wall ? [' ', wallLink(shared.wall, null)] : []),
         el('div', { className: 'post-date' }, el('a', { href: postPath(shared), textContent: formatPostDate(shared.createdAt) })),
       ),
-      shared.text ? el('div', { className: 'post-text', textContent: shared.text }) : null,
+      shared.text ? textNode(shared.text) : null,
       photosNode(shared.photos ?? []),
       shared.repostOf ? el('a', { className: 'post-shared-link', href: postPath({ id: shared.repostOf }), textContent: 'Открыть запись' }) : null,
     ),
