@@ -144,6 +144,10 @@ export const api = {
   me: () => authorized('GET', '/api/v1/me'),
   updateProfile: (profile) => authorized('PUT', '/api/v1/me/profile', profile),
   updatePrivacy: (privacy) => authorized('PUT', '/api/v1/me/privacy', privacy),
+  // "Контакты", "Интересы" and "Дополнительно" of "Редактировать страницу".
+  updateContacts: (contacts) => authorized('PUT', '/api/v1/me/contacts', contacts),
+  updateInterests: (interests) => authorized('PUT', '/api/v1/me/interests', interests),
+  updateExtraFields: (fields) => authorized('PUT', '/api/v1/me/fields', { fields }),
   // Deleting and restoring the page change what its access tokens may do,
   // so the tokens are refreshed at once (under the lock, like any refresh).
   deactivate: (reason) => withNewTokens(authorized('POST', '/api/v1/me/deactivate', { reason })),
@@ -305,8 +309,10 @@ export const api = {
   describeAlbumPhoto: (id, description) => authorized('PATCH', `/api/v1/album-photos/${encodeURIComponent(id)}`, { description }),
   deleteAlbumPhoto: (id) => authorized('DELETE', `/api/v1/album-photos/${encodeURIComponent(id)}`),
 
-  search(query, cursor = '') {
-    const params = new URLSearchParams({ q: query });
+  // filters are those openvk's page links to: { hometown, city, film,
+  // show, book }; with one, query may be empty.
+  search(query, cursor = '', filters = {}) {
+    const params = new URLSearchParams({ q: query, ...filters });
     if (cursor) params.set('cursor', cursor);
     return request('GET', '/api/v1/users?' + params);
   },

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -215,4 +215,28 @@ test('albums are counted as openvk counts them', () => {
   assert.equal(photosCount(1), '1 фотография');
   assert.equal(photosCount(4), '4 фотографии');
   assert.equal(photosCount(25), '25 фотографий');
+});
+
+test('"они/их" speak in the plural, as openvk\'s neutral strings', () => {
+  assert.equal(wrote('neutral'), 'написали');
+  assert.equal(updatedPhoto({ gender: 'neutral' }), 'обновили фотографию на своей странице');
+  assert.equal(limitedAccess('neutral'), 'ограничили');
+  assert.equal(notificationVerb('like', { gender: 'neutral' }), 'оценили');
+  assert.equal(label(genders, 'neutral'), 'они/их');
+  assert.equal(label(relationships('neutral'), 'married'), 'в браке');
+});
+
+test('a relationship names whom it is with, after openvk\'s prefix', () => {
+  assert.equal(takesPartner('engaged'), true);
+  assert.equal(takesPartner('looking'), false);
+  assert.equal(takesPartner(''), false);
+  assert.equal(partnerPrefix('married', 'male'), 'на');
+  assert.equal(partnerPrefix('married', 'female'), 'за');
+  assert.equal(partnerPrefix('married', ''), 'с');
+  assert.equal(partnerPrefix('in_love', 'female'), 'в');
+  assert.equal(partnerPrefix('dating', 'male'), 'с');
+});
+
+test('a birthday without its year', () => {
+  assert.equal(formatBirthday('--05-17'), '17 мая');
 });

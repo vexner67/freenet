@@ -1,14 +1,22 @@
 // Search, as openvk's: people ("Люди") or communities ("Группы",
-// ?section=groups), by the words of ?q=, a page at a time.
+// ?section=groups), by the words of ?q=, a page at a time. People are also
+// found by the links of a page: ?hometown=, ?city=, ?film=, ?show=, ?book=.
 
 import { api, currentUser } from './api.js';
-import { $, renderChrome, showError, hideError } from './layout.js';
+import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { clubRow } from './clubs.js';
 import { personRow } from './people.js';
 
 const params = new URLSearchParams(location.search);
 const query = (params.get('q') ?? '').trim();
 const groups = params.get('section') === 'groups';
+
+// filterNames say what a filter of a page's link looks for.
+const filterNames = { hometown: 'Родной город', city: 'Город', film: 'Любимые фильмы', show: 'Любимые ТВ-шоу', book: 'Любимые книги' };
+const filters = groups ? {} : Object.fromEntries(Object.keys(filterNames)
+  .map((key) => [key, (params.get(key) ?? '').trim()])
+  .filter(([, value]) => value));
+const filtered = Object.keys(filters).length > 0;
 
 // What each section asks and shows.
 const section = groups
@@ -22,7 +30,7 @@ async function loadMore() {
   hideError($('error'));
 
   try {
-    const page = await section.search(query, cursor);
+    const page = await section.search(query, cursor, filters);
     const items = section.items(page);
 
     $('people').append(...items.map((item) => section.row(item)));
@@ -59,8 +67,16 @@ $('q').focus();
 $('intro').hidden = groups;
 $('intro-groups').hidden = !groups;
 
-if (query) {
-  document.title = `${query} — ${groups ? 'Группы' : 'Люди'} | Freenet`;
+if (filtered) {
+  const [key, value] = Object.entries(filters)[0];
+  const rest = new URLSearchParams(query ? { q: query } : {});
+  $('filter').replaceChildren(`${filterNames[key]}: `, el('b', { textContent: value }), ' ',
+    el('a', { href: '/search' + (rest.size ? '?' + rest : ''), textContent: '(сбросить)' }));
+  $('filter').hidden = false;
+}
+
+if (query || filtered) {
+  document.title = `${query || Object.values(filters)[0]} — ${groups ? 'Группы' : 'Люди'} | Freenet`;
   $('intro').hidden = true;
   $('intro-groups').hidden = true;
   $('more').addEventListener('click', loadMore);
