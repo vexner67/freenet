@@ -95,6 +95,25 @@ func (m *Media) DeleteClubPhotos(ctx context.Context, accessToken, clubID string
 	return nil
 }
 
+// PublishPhotos keeps photos of ownerID for good: a side of their
+// backdrop.
+func (m *Media) PublishPhotos(ctx context.Context, ownerID string, photoIDs []string) error {
+	if _, err := m.api.PublishPhotos(ctx, &mediav1.PublishPhotosRequest{OwnerId: ownerID, PhotoIds: photoIDs}); err != nil {
+		return errs.Wrap("m.api.PublishPhotos", fromStatus(err))
+	}
+
+	return nil
+}
+
+// DeletePublishedPhotos deletes photos of ownerID kept for good.
+func (m *Media) DeletePublishedPhotos(ctx context.Context, ownerID string, photoIDs []string) error {
+	if _, err := m.api.DeletePublishedPhotos(ctx, &mediav1.DeletePublishedPhotosRequest{OwnerId: ownerID, PhotoIds: photoIDs}); err != nil {
+		return errs.Wrap("m.api.DeletePublishedPhotos", fromStatus(err))
+	}
+
+	return nil
+}
+
 // Avatar returns the JPEG of an avatar, small (100px) or large (400px).
 func (m *Media) Avatar(ctx context.Context, userID, avatarID string, small bool) ([]byte, error) {
 	size := mediav1.AvatarSize_AVATAR_SIZE_LARGE

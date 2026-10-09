@@ -240,6 +240,8 @@ type userResponse struct {
 	Deactivated bool   `json:"deactivated"`
 	PurgeAt     string `json:"purgeAt,omitempty"`
 	aboutJSON
+	// Backdrop is "Фон страницы", null for none.
+	Backdrop *backdropJSON `json:"backdrop"`
 }
 
 // toUserResponse: partner is whom the relationship names, nil for nobody.
@@ -267,6 +269,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 		Deactivated: u.Deactivated,
 		PurgeAt:     timeString(u.PurgeAt),
 		aboutJSON:   toAboutJSON(u.About, partner),
+		Backdrop:    toBackdropJSON(u.ID, u.Backdrop),
 	}
 }
 
@@ -294,6 +297,8 @@ type publicProfileResponse struct {
 	// never, hidden or in a list; Online: just now ("Онлайн").
 	LastSeenAt *string `json:"lastSeenAt"`
 	Online     bool    `json:"online"`
+	// Backdrop is "Фон страницы", null for none.
+	Backdrop *backdropJSON `json:"backdrop"`
 }
 
 func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
@@ -315,5 +320,6 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 		InfoHidden:  p.InfoHidden,
 		LastSeenAt:  optionalTime(p.LastSeen),
 		Online:      p.Online,
+		Backdrop:    toBackdropJSON(p.ID, p.Backdrop),
 	}
 }

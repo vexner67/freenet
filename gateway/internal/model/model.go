@@ -135,6 +135,14 @@ type User struct {
 	Deactivated bool
 	PurgeAt     time.Time
 	About       About
+	Backdrop    Backdrop
+}
+
+// Backdrop is "Фон страницы" of a person: photos of the media service
+// under them, "" for a side without one.
+type Backdrop struct {
+	Left  string
+	Right string
 }
 
 // PublicProfile is what anyone may see; fields hidden by the owner are empty.
@@ -154,6 +162,7 @@ type PublicProfile struct {
 	// or hidden; Online: just now ("Онлайн").
 	LastSeen time.Time
 	Online   bool
+	Backdrop Backdrop
 	About    About
 }
 
@@ -577,6 +586,9 @@ type Album struct {
 	UpdatedAt   time.Time
 	Photos      int
 	Cover       *AlbumPhoto
+	// Kind is "" for an album people make, "avatars" for "Фотографии со
+	// страницы", which the site keeps.
+	Kind string
 }
 
 // AlbumPhoto is a photo of an album: media keeps the image under its ID

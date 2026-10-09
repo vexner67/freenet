@@ -2,6 +2,7 @@ package rest_test
 
 import (
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 
@@ -25,6 +26,10 @@ func TestUploadAvatar(t *testing.T) {
 		}
 		if !h.media.deleted || h.media.kept != "a2" {
 			t.Fatalf("old avatars must be deleted keeping the new one: kept %q", h.media.kept)
+		}
+		// A photo of its own goes into "Фотографии со страницы".
+		if !slices.Equal(h.albums.avatarPhotos, []string{"/ph9"}) {
+			t.Fatalf("avatar album got %v", h.albums.avatarPhotos)
 		}
 		avatar, _ := me["avatar"].(map[string]any)
 		if avatar["large"] != "/media/avatars/u1/a2/large.jpg" || avatar["small"] != "/media/avatars/u1/a2/small.jpg" {

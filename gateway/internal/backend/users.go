@@ -350,6 +350,7 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		InfoHidden:      p.GetInfoHidden(),
 		LastSeen:        fromTimestamp(p.GetLastSeenAt()),
 		Online:          p.GetOnline(),
+		Backdrop:        model.Backdrop{Left: p.GetBackdropLeft(), Right: p.GetBackdropRight()},
 		About:           toAbout(p),
 	}
 }
@@ -382,6 +383,25 @@ func (u *Users) SetAvatar(ctx context.Context, accessToken, avatarID string) (mo
 	}
 
 	return toUser(resp.GetUser()), nil
+}
+
+// SetBackdrop shows photoID ("" for none) on side ("left" or "right") of
+// the caller's page; previous is the photo the side showed before.
+func (u *Users) SetBackdrop(ctx context.Context, accessToken, side, photoID string) (user model.User, previous string, err error) {
+	resp, err := u.api.SetBackdrop(withToken(ctx, accessToken), &userv1.SetBackdropRequest{
+		Side:    userBackdropSides[side],
+		PhotoId: photoID,
+	})
+	if err != nil {
+		return model.User{}, "", errs.Wrap("u.api.SetBackdrop", fromStatus(err))
+	}
+
+	return toUser(resp.GetUser()), resp.GetPreviousPhotoId(), nil
+}
+
+var userBackdropSides = map[string]userv1.BackdropSide{
+	"left":  userv1.BackdropSide_BACKDROP_SIDE_LEFT,
+	"right": userv1.BackdropSide_BACKDROP_SIDE_RIGHT,
 }
 
 func (u *Users) Search(ctx context.Context, q model.UserQuery, cursor string, limit int) (model.UserPage, error) {

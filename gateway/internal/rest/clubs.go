@@ -126,12 +126,14 @@ func toClubJSON(c model.Club) clubJSON {
 
 		OpenTopics:      c.OpenTopics,
 		TopicsAboveWall: c.TopicsAboveWall,
-		Backdrop:        toBackdropJSON(c),
+		Backdrop:        toBackdropJSON(c.ID, model.Backdrop{Left: c.BackdropLeft, Right: c.BackdropRight}),
 	}
 }
 
-func toBackdropJSON(c model.Club) *backdropJSON {
-	if c.BackdropLeft == "" && c.BackdropRight == "" {
+// toBackdropJSON is b of the page of ownerID, a person or a club; nil
+// for none.
+func toBackdropJSON(ownerID string, b model.Backdrop) *backdropJSON {
+	if b.Left == "" && b.Right == "" {
 		return nil
 	}
 
@@ -139,11 +141,11 @@ func toBackdropJSON(c model.Club) *backdropJSON {
 		if id == "" {
 			return nil
 		}
-		p := toPhotoJSON(c.ID, id)
+		p := toPhotoJSON(ownerID, id)
 		return &p
 	}
 
-	return &backdropJSON{Left: side(c.BackdropLeft), Right: side(c.BackdropRight)}
+	return &backdropJSON{Left: side(b.Left), Right: side(b.Right)}
 }
 
 func toClubsJSON(clubs []model.Club) []clubJSON {
@@ -616,6 +618,7 @@ func (a *api) uploadClubAvatar(w http.ResponseWriter, r *http.Request) {
 	}
 
 	a.cleanUpClubAvatars(r, token, c.Club.ID, avatarID)
+	a.keepInAvatarAlbum(r, token, c.Club.ID, image)
 
 	if onWall != nil {
 		if err = onWall(model.NewPost{WallID: c.Club.ID, ClubWall: true, FromWall: true}); err != nil {

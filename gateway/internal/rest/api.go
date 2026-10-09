@@ -53,6 +53,9 @@ type Users interface {
 	ListOnlineFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
 	// MarkOnline: the caller is on the site now.
 	MarkOnline(ctx context.Context, accessToken string) error
+	// SetBackdrop shows photoID ("" for none) on a side of the caller's
+	// page, telling the photo it showed before.
+	SetBackdrop(ctx context.Context, accessToken, side, photoID string) (model.User, string, error)
 
 	SetAvatar(ctx context.Context, accessToken, avatarID string) (model.User, error)
 	Search(ctx context.Context, q model.UserQuery, cursor string, limit int) (model.UserPage, error)
@@ -72,6 +75,10 @@ type Media interface {
 	UploadPhoto(ctx context.Context, accessToken string, image []byte) (string, error)
 	OwnPhotos(ctx context.Context, accessToken string, photoIDs []string) ([]string, error)
 	Photo(ctx context.Context, userID, photoID string, small bool) ([]byte, error)
+	// PublishPhotos keeps uploaded photos of ownerID for good, as a side
+	// of the backdrop; DeletePublishedPhotos deletes such photos.
+	PublishPhotos(ctx context.Context, ownerID string, photoIDs []string) error
+	DeletePublishedPhotos(ctx context.Context, ownerID string, photoIDs []string) error
 }
 
 // Posts: methods that read take an optional access token ("" for
@@ -128,6 +135,9 @@ type Albums interface {
 	Edit(ctx context.Context, accessToken, id, name, description string) (model.Album, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	AddPhotos(ctx context.Context, accessToken, albumID string, photos []model.NewAlbumPhoto) ([]model.AlbumPhoto, error)
+	// AddAvatarPhoto puts a new photo of a page in its "Фотографии со
+	// страницы": the caller's, or of a club they run (clubID).
+	AddAvatarPhoto(ctx context.Context, accessToken, clubID, photoID string) error
 	Photos(ctx context.Context, accessToken, albumID, cursor string, limit int) (model.AlbumPhotoPage, error)
 	Photo(ctx context.Context, accessToken, id string) (model.AlbumPhoto, model.Album, error)
 	Describe(ctx context.Context, accessToken, id, description string) (model.AlbumPhoto, error)
@@ -285,6 +295,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/avatar", a.deleteClubAvatar)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/backdrop/{side}", a.uploadClubBackdrop)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/backdrop", a.deleteClubBackdrop)
+	mux.HandleFunc("PUT /api/v1/me/backdrop/{side}", a.uploadBackdrop)
+	mux.HandleFunc("DELETE /api/v1/me/backdrop", a.deleteBackdrop)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/pin", a.pinClub)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/pin", a.unpinClub)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/membership", a.joinClub)

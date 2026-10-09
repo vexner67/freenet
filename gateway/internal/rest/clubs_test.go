@@ -387,6 +387,9 @@ func TestClubAvatar(t *testing.T) {
 	if w.Code != http.StatusOK || got.Avatar["small"] != "/media/avatars/k1/ka1/small.jpg" || h.media.clubAvatarOf != "k1" || h.media.kept != "ka1" {
 		t.Fatalf("upload: %d %+v, media %+v", w.Code, got, h.media)
 	}
+	if len(h.albums.avatarPhotos) != 1 || h.albums.avatarPhotos[0] != "k1/ph9" {
+		t.Fatalf("the club's avatar album got %v", h.albums.avatarPhotos)
+	}
 
 	// The club's photo comes with its posts too.
 	w = h.do("GET", "/api/v1/clubs/cats/posts", "")

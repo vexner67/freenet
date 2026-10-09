@@ -93,3 +93,97 @@ func (a *api) cleanUpClubPhotos(r *http.Request, token string, c model.Club) {
 		a.logger.WarnContext(r.Context(), "old club photos left behind", "error", err)
 	}
 }
+
+// uploadBackdrop takes the raw image as the request body and shows it on
+// one side, left or right, of the caller's page, as openvk's "Фон
+// страницы" of a person: an uploaded photo, kept for good before the page
+// shows it. The photo the side showed before goes after.
+func (a *api) uploadBackdrop(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	side := r.PathValue("side")
+	if side != "left" && side != "right" {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "invalid backdrop side"))
+		return
+	}
+
+	me, err := a.users.GetMe(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	image, err := readImage(w, r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	photoID, err := a.media.UploadPhoto(r.Context(), token, image)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	// Unpublished, the photo would go after a day; failing here, it does.
+	if err = a.media.PublishPhotos(r.Context(), me.ID, []string{photoID}); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	u, previous, err := a.users.SetBackdrop(r.Context(), token, side, photoID)
+	if err != nil {
+		a.deleteBackdropPhotos(r, me.ID, photoID)
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.deleteBackdropPhotos(r, me.ID, previous)
+	a.writeUser(w, r, u)
+}
+
+// deleteBackdrop takes both sides away, as openvk's "Удалить фон".
+func (a *api) deleteBackdrop(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var (
+		u        model.User
+		previous [2]string
+	)
+	for i, side := range []string{"left", "right"} {
+		if u, previous[i], err = a.users.SetBackdrop(r.Context(), token, side, ""); err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+	}
+
+	a.deleteBackdropPhotos(r, u.ID, previous[:]...)
+	a.writeUser(w, r, u)
+}
+
+// deleteBackdropPhotos deletes the photos of ownerID a backdrop no longer
+// shows. A failure only leaves unused files behind, so it is logged.
+func (a *api) deleteBackdropPhotos(r *http.Request, ownerID string, photoIDs ...string) {
+	var gone []string
+	for _, id := range photoIDs {
+		if id != "" {
+			gone = append(gone, id)
+		}
+	}
+
+	if len(gone) == 0 {
+		return
+	}
+
+	if err := a.media.DeletePublishedPhotos(r.Context(), ownerID, gone); err != nil {
+		a.logger.WarnContext(r.Context(), "old backdrop photos left behind", "error", err)
+	}
+}
