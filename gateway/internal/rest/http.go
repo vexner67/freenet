@@ -12,8 +12,9 @@ import (
 	"github.com/vexner67/freenet/gateway/internal/failure"
 )
 
-// maxBodyBytes is far above any request of this API.
-const maxBodyBytes = 64 << 10
+// maxBodyBytes is above any request of this API: a post of 60000
+// characters, up to 12 bytes each when JSON escapes them (\ud83d\ude00).
+const maxBodyBytes = 1 << 20
 
 func decode(w http.ResponseWriter, r *http.Request, dst any) error {
 	r.Body = http.MaxBytesReader(w, r.Body, maxBodyBytes)
