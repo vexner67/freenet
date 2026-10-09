@@ -156,9 +156,12 @@ func (a *App) build(cfg config.Config) error {
 			Topics: service.NewTopicService(service.TopicDeps{
 				Topics: repos.topics, Messages: repos.topicMessages, Tx: repos.tx, Photos: photos, Moderators: moderators,
 			}),
+			Albums: service.NewAlbumService(service.AlbumDeps{
+				Albums: repos.albums, Photos: repos.albumPhotos, Tx: repos.tx, Media: photos, Moderators: moderators,
+			}),
 			Purge: service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
-				Topics: repos.topics, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Topics: repos.topics, Albums: repos.albums, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
 		}, a.logger),
 	)
@@ -205,6 +208,11 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// A topic is a post of the discussions, a message in it a comment.
 		postv1.PostService_CreateTopic_FullMethodName:        cfg.PostLimits,
 		postv1.PostService_CreateTopicMessage_FullMethodName: cfg.CommentLimits,
+		// An album and the photos added to it are posts of the albums.
+		postv1.PostService_CreateAlbum_FullMethodName:    cfg.PostLimits,
+		postv1.PostService_AddAlbumPhotos_FullMethodName: cfg.PostLimits,
+		postv1.PostService_EditAlbum_FullMethodName:      cfg.EditLimits,
+		postv1.PostService_EditAlbumPhoto_FullMethodName: cfg.EditLimits,
 	}
 }
 
@@ -350,7 +358,12 @@ type repositories struct {
 		service.TopicEraser
 	}
 	topicMessages service.TopicMessageRepository
-	tx            service.TxManager
+	albums        interface {
+		service.AlbumRepository
+		service.AlbumEraser
+	}
+	albumPhotos service.AlbumPhotoRepository
+	tx          service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }
@@ -359,6 +372,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
 		topics := inmem.NewTopicRepository()
+		albums := inmem.NewAlbumRepository()
 		return repositories{
 			posts:        store.Posts(),
 			likes:        store.Likes(),
@@ -369,6 +383,8 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			tx:           inmem.TxManager{},
 
 			topicMessages: topics.Messages(),
+			albums:        albums,
+			albumPhotos:   albums.Photos(),
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -398,6 +414,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	}
 
 	topics := postgres.NewTopicRepository(a.pool)
+	albums := postgres.NewAlbumRepository(a.pool)
 
 	return repositories{
 		posts:        postgres.NewPostRepository(a.pool),
@@ -409,6 +426,8 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		tx:           pgpool.NewTxManager(a.pool),
 
 		topicMessages: topics.Messages(),
+		albums:        albums,
+		albumPhotos:   albums.Photos(),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)

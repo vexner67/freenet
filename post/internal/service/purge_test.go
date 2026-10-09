@@ -25,7 +25,7 @@ func TestPurgeService(t *testing.T) {
 	suggestions := inmem.NewSuggestionRepository()
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: suggestions,
-		Topics: inmem.NewTopicRepository(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
+		Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
 	})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
@@ -151,7 +151,7 @@ func TestPurgeService_Topics(t *testing.T) {
 	topics := service.NewTopicService(service.TopicDeps{Topics: topicRepo, Messages: topicRepo.Messages(), Tx: fakeTx{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}})
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
-		Topics: topicRepo, Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
+		Topics: topicRepo, Albums: inmem.NewAlbumRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
 	})
 	club, ann, bob := uuid.New(), uuid.New(), uuid.New()
 
@@ -181,5 +181,55 @@ func TestPurgeService_Topics(t *testing.T) {
 	// Bob's photo in ann's topic goes with it; ann's own media erases.
 	if want := []photoCall{{bob, []uuid.UUID{bobsPhoto}}}; !reflect.DeepEqual(photos.deleted, want) {
 		t.Fatalf("photos deleted = %+v, want %+v", photos.deleted, want)
+	}
+}
+
+func TestPurgeService_Albums(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	albumRepo := inmem.NewAlbumRepository()
+	photos := &fakePhotos{}
+	club, ann, bob := uuid.New(), uuid.New(), uuid.New()
+	albums := service.NewAlbumService(service.AlbumDeps{
+		Albums: albumRepo, Photos: albumRepo.Photos(), Tx: fakeTx{}, Media: &fakePhotos{},
+		Moderators: fakeModerators{{club, ann}: true, {club, bob}: true},
+	})
+	purge := service.NewPurgeService(service.PurgeDeps{
+		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
+		Topics: inmem.NewTopicRepository(), Albums: albumRepo, Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
+	})
+
+	annsAlbum, err := albums.Create(ctx, service.CreateAlbumInput{OwnerID: ann, RequesterID: ann, Name: "Анна"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = albums.AddPhotos(ctx, ann, annsAlbum.ID(), []service.NewAlbumPhoto{{ID: uuid.Must(uuid.NewV7())}}); err != nil {
+		t.Fatal(err)
+	}
+	clubs, _ := albums.Create(ctx, service.CreateAlbumInput{OwnerID: club, RequesterID: bob, Name: "Кошки"})
+	bobsPhoto := uuid.Must(uuid.NewV7())
+	if _, err = albums.AddPhotos(ctx, ann, clubs.ID(), []service.NewAlbumPhoto{{ID: uuid.Must(uuid.NewV7())}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = albums.AddPhotos(ctx, bob, clubs.ID(), []service.NewAlbumPhoto{{ID: bobsPhoto}}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = purge.PurgeUser(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, _, err = albums.Get(ctx, annsAlbum.ID()); !errors.Is(err, post.ErrAlbumNotFound) {
+		t.Fatalf("ann's album: %v", err)
+	}
+	got, cover, err := albums.Get(ctx, clubs.ID())
+	if err != nil || got.Photos() != 1 || cover == nil || cover.ID() != bobsPhoto {
+		t.Fatalf("the club's album = %+v, %+v, %v; with bob's photo only", got, cover, err)
+	}
+	// All ann's photos are hers: media erases them itself.
+	if len(photos.deleted) != 0 {
+		t.Fatalf("photos deleted = %+v", photos.deleted)
 	}
 }

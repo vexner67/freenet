@@ -92,6 +92,30 @@ service PostService {
   // Its author or an admin.
   rpc DeleteTopicMessage(DeleteTopicMessageRequest) returns (google.protobuf.Empty);
 
+  // Photo albums of people and communities ("Альбомы" of openvk). An
+  // album of the caller, without club_id, or of a community its admins
+  // create, whom post asks the club service about.
+  rpc CreateAlbum(CreateAlbumRequest) returns (CreateAlbumResponse);
+  // Public.
+  rpc GetAlbum(GetAlbumRequest) returns (GetAlbumResponse);
+  // Public: the albums of a person or a community, newest first.
+  rpc ListAlbums(ListAlbumsRequest) returns (ListAlbumsResponse);
+  // Its owner or the admins of the community that owns it.
+  rpc EditAlbum(EditAlbumRequest) returns (EditAlbumResponse);
+  // With its photos; as EditAlbum.
+  rpc DeleteAlbum(DeleteAlbumRequest) returns (google.protobuf.Empty);
+  // Up to 10 photos the caller uploaded, which the caller of
+  // AddAlbumPhotos has checked with the media service; as EditAlbum.
+  rpc AddAlbumPhotos(AddAlbumPhotosRequest) returns (AddAlbumPhotosResponse);
+  // Public: oldest first.
+  rpc ListAlbumPhotos(ListAlbumPhotosRequest) returns (ListAlbumPhotosResponse);
+  // Public: a photo with its album.
+  rpc GetAlbumPhoto(GetAlbumPhotoRequest) returns (GetAlbumPhotoResponse);
+  // Who uploaded the photo only.
+  rpc EditAlbumPhoto(EditAlbumPhotoRequest) returns (EditAlbumPhotoResponse);
+  // Who uploaded it or whoever may edit its album.
+  rpc DeleteAlbumPhoto(DeleteAlbumPhotoRequest) returns (google.protobuf.Empty);
+
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
   // and comments, and their likes and comments on others' posts. Idempotent.
@@ -535,5 +559,129 @@ message ListTopicMessagesResponse {
 }
 
 message DeleteTopicMessageRequest {
+  string id = 1;
+}
+
+// Album is a photo album of a person or a community.
+message Album {
+  string id = 1;
+  // The person or the community it belongs to.
+  string owner_id = 2;
+  string name = 3;
+  string description = 4;
+  google.protobuf.Timestamp created_at = 5;
+  // The last change: renamed, photos added or deleted.
+  google.protobuf.Timestamp updated_at = 6;
+  int32 photo_count = 7;
+  // The first photo, absent while it has none.
+  AlbumPhoto cover = 8;
+}
+
+// AlbumPhoto is a photo of an album; its ID is that of the photo in the
+// media service.
+message AlbumPhoto {
+  string id = 1;
+  string album_id = 2;
+  // Who uploaded it: media keeps the image under them.
+  string author_id = 3;
+  string description = 4;
+  google.protobuf.Timestamp created_at = 5;
+  // The caller uploaded it.
+  bool mine = 6;
+}
+
+message CreateAlbumRequest {
+  // A community the caller runs; empty for the caller's own album.
+  string club_id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message CreateAlbumResponse {
+  Album album = 1;
+}
+
+message GetAlbumRequest {
+  string id = 1;
+}
+
+message GetAlbumResponse {
+  Album album = 1;
+}
+
+message ListAlbumsRequest {
+  string owner_id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListAlbumsResponse {
+  repeated Album albums = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // All the albums of the owner.
+  int32 total = 3;
+}
+
+message EditAlbumRequest {
+  string id = 1;
+  string name = 2;
+  string description = 3;
+}
+
+message EditAlbumResponse {
+  Album album = 1;
+}
+
+message DeleteAlbumRequest {
+  string id = 1;
+}
+
+message NewAlbumPhoto {
+  string photo_id = 1;
+  string description = 2;
+}
+
+message AddAlbumPhotosRequest {
+  string album_id = 1;
+  repeated NewAlbumPhoto photos = 2;
+}
+
+message AddAlbumPhotosResponse {
+  repeated AlbumPhoto photos = 1;
+}
+
+message ListAlbumPhotosRequest {
+  string album_id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListAlbumPhotosResponse {
+  repeated AlbumPhoto photos = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message GetAlbumPhotoRequest {
+  string id = 1;
+}
+
+message GetAlbumPhotoResponse {
+  AlbumPhoto photo = 1;
+  Album album = 2;
+}
+
+message EditAlbumPhotoRequest {
+  string id = 1;
+  string description = 2;
+}
+
+message EditAlbumPhotoResponse {
+  AlbumPhoto photo = 1;
+}
+
+message DeleteAlbumPhotoRequest {
   string id = 1;
 }

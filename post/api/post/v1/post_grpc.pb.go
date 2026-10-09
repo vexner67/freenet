@@ -50,6 +50,16 @@ const (
 	PostService_CreateTopicMessage_FullMethodName = "/post.v1.PostService/CreateTopicMessage"
 	PostService_ListTopicMessages_FullMethodName  = "/post.v1.PostService/ListTopicMessages"
 	PostService_DeleteTopicMessage_FullMethodName = "/post.v1.PostService/DeleteTopicMessage"
+	PostService_CreateAlbum_FullMethodName        = "/post.v1.PostService/CreateAlbum"
+	PostService_GetAlbum_FullMethodName           = "/post.v1.PostService/GetAlbum"
+	PostService_ListAlbums_FullMethodName         = "/post.v1.PostService/ListAlbums"
+	PostService_EditAlbum_FullMethodName          = "/post.v1.PostService/EditAlbum"
+	PostService_DeleteAlbum_FullMethodName        = "/post.v1.PostService/DeleteAlbum"
+	PostService_AddAlbumPhotos_FullMethodName     = "/post.v1.PostService/AddAlbumPhotos"
+	PostService_ListAlbumPhotos_FullMethodName    = "/post.v1.PostService/ListAlbumPhotos"
+	PostService_GetAlbumPhoto_FullMethodName      = "/post.v1.PostService/GetAlbumPhoto"
+	PostService_EditAlbumPhoto_FullMethodName     = "/post.v1.PostService/EditAlbumPhoto"
+	PostService_DeleteAlbumPhoto_FullMethodName   = "/post.v1.PostService/DeleteAlbumPhoto"
 	PostService_PurgeUser_FullMethodName          = "/post.v1.PostService/PurgeUser"
 )
 
@@ -135,6 +145,29 @@ type PostServiceClient interface {
 	ListTopicMessages(ctx context.Context, in *ListTopicMessagesRequest, opts ...grpc.CallOption) (*ListTopicMessagesResponse, error)
 	// Its author or an admin.
 	DeleteTopicMessage(ctx context.Context, in *DeleteTopicMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Photo albums of people and communities ("Альбомы" of openvk). An
+	// album of the caller, without club_id, or of a community its admins
+	// create, whom post asks the club service about.
+	CreateAlbum(ctx context.Context, in *CreateAlbumRequest, opts ...grpc.CallOption) (*CreateAlbumResponse, error)
+	// Public.
+	GetAlbum(ctx context.Context, in *GetAlbumRequest, opts ...grpc.CallOption) (*GetAlbumResponse, error)
+	// Public: the albums of a person or a community, newest first.
+	ListAlbums(ctx context.Context, in *ListAlbumsRequest, opts ...grpc.CallOption) (*ListAlbumsResponse, error)
+	// Its owner or the admins of the community that owns it.
+	EditAlbum(ctx context.Context, in *EditAlbumRequest, opts ...grpc.CallOption) (*EditAlbumResponse, error)
+	// With its photos; as EditAlbum.
+	DeleteAlbum(ctx context.Context, in *DeleteAlbumRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Up to 10 photos the caller uploaded, which the caller of
+	// AddAlbumPhotos has checked with the media service; as EditAlbum.
+	AddAlbumPhotos(ctx context.Context, in *AddAlbumPhotosRequest, opts ...grpc.CallOption) (*AddAlbumPhotosResponse, error)
+	// Public: oldest first.
+	ListAlbumPhotos(ctx context.Context, in *ListAlbumPhotosRequest, opts ...grpc.CallOption) (*ListAlbumPhotosResponse, error)
+	// Public: a photo with its album.
+	GetAlbumPhoto(ctx context.Context, in *GetAlbumPhotoRequest, opts ...grpc.CallOption) (*GetAlbumPhotoResponse, error)
+	// Who uploaded the photo only.
+	EditAlbumPhoto(ctx context.Context, in *EditAlbumPhotoRequest, opts ...grpc.CallOption) (*EditAlbumPhotoResponse, error)
+	// Who uploaded it or whoever may edit its album.
+	DeleteAlbumPhoto(ctx context.Context, in *DeleteAlbumPhotoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -449,6 +482,106 @@ func (c *postServiceClient) DeleteTopicMessage(ctx context.Context, in *DeleteTo
 	return out, nil
 }
 
+func (c *postServiceClient) CreateAlbum(ctx context.Context, in *CreateAlbumRequest, opts ...grpc.CallOption) (*CreateAlbumResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateAlbumResponse)
+	err := c.cc.Invoke(ctx, PostService_CreateAlbum_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetAlbum(ctx context.Context, in *GetAlbumRequest, opts ...grpc.CallOption) (*GetAlbumResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAlbumResponse)
+	err := c.cc.Invoke(ctx, PostService_GetAlbum_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListAlbums(ctx context.Context, in *ListAlbumsRequest, opts ...grpc.CallOption) (*ListAlbumsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAlbumsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListAlbums_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) EditAlbum(ctx context.Context, in *EditAlbumRequest, opts ...grpc.CallOption) (*EditAlbumResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditAlbumResponse)
+	err := c.cc.Invoke(ctx, PostService_EditAlbum_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteAlbum(ctx context.Context, in *DeleteAlbumRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeleteAlbum_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) AddAlbumPhotos(ctx context.Context, in *AddAlbumPhotosRequest, opts ...grpc.CallOption) (*AddAlbumPhotosResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddAlbumPhotosResponse)
+	err := c.cc.Invoke(ctx, PostService_AddAlbumPhotos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListAlbumPhotos(ctx context.Context, in *ListAlbumPhotosRequest, opts ...grpc.CallOption) (*ListAlbumPhotosResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAlbumPhotosResponse)
+	err := c.cc.Invoke(ctx, PostService_ListAlbumPhotos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetAlbumPhoto(ctx context.Context, in *GetAlbumPhotoRequest, opts ...grpc.CallOption) (*GetAlbumPhotoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetAlbumPhotoResponse)
+	err := c.cc.Invoke(ctx, PostService_GetAlbumPhoto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) EditAlbumPhoto(ctx context.Context, in *EditAlbumPhotoRequest, opts ...grpc.CallOption) (*EditAlbumPhotoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditAlbumPhotoResponse)
+	err := c.cc.Invoke(ctx, PostService_EditAlbumPhoto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteAlbumPhoto(ctx context.Context, in *DeleteAlbumPhotoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeleteAlbumPhoto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -541,6 +674,29 @@ type PostServiceServer interface {
 	ListTopicMessages(context.Context, *ListTopicMessagesRequest) (*ListTopicMessagesResponse, error)
 	// Its author or an admin.
 	DeleteTopicMessage(context.Context, *DeleteTopicMessageRequest) (*emptypb.Empty, error)
+	// Photo albums of people and communities ("Альбомы" of openvk). An
+	// album of the caller, without club_id, or of a community its admins
+	// create, whom post asks the club service about.
+	CreateAlbum(context.Context, *CreateAlbumRequest) (*CreateAlbumResponse, error)
+	// Public.
+	GetAlbum(context.Context, *GetAlbumRequest) (*GetAlbumResponse, error)
+	// Public: the albums of a person or a community, newest first.
+	ListAlbums(context.Context, *ListAlbumsRequest) (*ListAlbumsResponse, error)
+	// Its owner or the admins of the community that owns it.
+	EditAlbum(context.Context, *EditAlbumRequest) (*EditAlbumResponse, error)
+	// With its photos; as EditAlbum.
+	DeleteAlbum(context.Context, *DeleteAlbumRequest) (*emptypb.Empty, error)
+	// Up to 10 photos the caller uploaded, which the caller of
+	// AddAlbumPhotos has checked with the media service; as EditAlbum.
+	AddAlbumPhotos(context.Context, *AddAlbumPhotosRequest) (*AddAlbumPhotosResponse, error)
+	// Public: oldest first.
+	ListAlbumPhotos(context.Context, *ListAlbumPhotosRequest) (*ListAlbumPhotosResponse, error)
+	// Public: a photo with its album.
+	GetAlbumPhoto(context.Context, *GetAlbumPhotoRequest) (*GetAlbumPhotoResponse, error)
+	// Who uploaded the photo only.
+	EditAlbumPhoto(context.Context, *EditAlbumPhotoRequest) (*EditAlbumPhotoResponse, error)
+	// Who uploaded it or whoever may edit its album.
+	DeleteAlbumPhoto(context.Context, *DeleteAlbumPhotoRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -644,6 +800,36 @@ func (UnimplementedPostServiceServer) ListTopicMessages(context.Context, *ListTo
 }
 func (UnimplementedPostServiceServer) DeleteTopicMessage(context.Context, *DeleteTopicMessageRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteTopicMessage not implemented")
+}
+func (UnimplementedPostServiceServer) CreateAlbum(context.Context, *CreateAlbumRequest) (*CreateAlbumResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateAlbum not implemented")
+}
+func (UnimplementedPostServiceServer) GetAlbum(context.Context, *GetAlbumRequest) (*GetAlbumResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAlbum not implemented")
+}
+func (UnimplementedPostServiceServer) ListAlbums(context.Context, *ListAlbumsRequest) (*ListAlbumsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAlbums not implemented")
+}
+func (UnimplementedPostServiceServer) EditAlbum(context.Context, *EditAlbumRequest) (*EditAlbumResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditAlbum not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteAlbum(context.Context, *DeleteAlbumRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAlbum not implemented")
+}
+func (UnimplementedPostServiceServer) AddAlbumPhotos(context.Context, *AddAlbumPhotosRequest) (*AddAlbumPhotosResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddAlbumPhotos not implemented")
+}
+func (UnimplementedPostServiceServer) ListAlbumPhotos(context.Context, *ListAlbumPhotosRequest) (*ListAlbumPhotosResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAlbumPhotos not implemented")
+}
+func (UnimplementedPostServiceServer) GetAlbumPhoto(context.Context, *GetAlbumPhotoRequest) (*GetAlbumPhotoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetAlbumPhoto not implemented")
+}
+func (UnimplementedPostServiceServer) EditAlbumPhoto(context.Context, *EditAlbumPhotoRequest) (*EditAlbumPhotoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditAlbumPhoto not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteAlbumPhoto(context.Context, *DeleteAlbumPhotoRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteAlbumPhoto not implemented")
 }
 func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -1209,6 +1395,186 @@ func _PostService_DeleteTopicMessage_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_CreateAlbum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateAlbumRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CreateAlbum(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CreateAlbum_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CreateAlbum(ctx, req.(*CreateAlbumRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetAlbum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAlbumRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetAlbum(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetAlbum_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetAlbum(ctx, req.(*GetAlbumRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListAlbums_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAlbumsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListAlbums(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListAlbums_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListAlbums(ctx, req.(*ListAlbumsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_EditAlbum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditAlbumRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).EditAlbum(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_EditAlbum_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).EditAlbum(ctx, req.(*EditAlbumRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteAlbum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAlbumRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteAlbum(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteAlbum_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteAlbum(ctx, req.(*DeleteAlbumRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_AddAlbumPhotos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddAlbumPhotosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).AddAlbumPhotos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_AddAlbumPhotos_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).AddAlbumPhotos(ctx, req.(*AddAlbumPhotosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListAlbumPhotos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAlbumPhotosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListAlbumPhotos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListAlbumPhotos_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListAlbumPhotos(ctx, req.(*ListAlbumPhotosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetAlbumPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetAlbumPhotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetAlbumPhoto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetAlbumPhoto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetAlbumPhoto(ctx, req.(*GetAlbumPhotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_EditAlbumPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditAlbumPhotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).EditAlbumPhoto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_EditAlbumPhoto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).EditAlbumPhoto(ctx, req.(*EditAlbumPhotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteAlbumPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteAlbumPhotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteAlbumPhoto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteAlbumPhoto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteAlbumPhoto(ctx, req.(*DeleteAlbumPhotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -1353,6 +1719,46 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteTopicMessage",
 			Handler:    _PostService_DeleteTopicMessage_Handler,
+		},
+		{
+			MethodName: "CreateAlbum",
+			Handler:    _PostService_CreateAlbum_Handler,
+		},
+		{
+			MethodName: "GetAlbum",
+			Handler:    _PostService_GetAlbum_Handler,
+		},
+		{
+			MethodName: "ListAlbums",
+			Handler:    _PostService_ListAlbums_Handler,
+		},
+		{
+			MethodName: "EditAlbum",
+			Handler:    _PostService_EditAlbum_Handler,
+		},
+		{
+			MethodName: "DeleteAlbum",
+			Handler:    _PostService_DeleteAlbum_Handler,
+		},
+		{
+			MethodName: "AddAlbumPhotos",
+			Handler:    _PostService_AddAlbumPhotos_Handler,
+		},
+		{
+			MethodName: "ListAlbumPhotos",
+			Handler:    _PostService_ListAlbumPhotos_Handler,
+		},
+		{
+			MethodName: "GetAlbumPhoto",
+			Handler:    _PostService_GetAlbumPhoto_Handler,
+		},
+		{
+			MethodName: "EditAlbumPhoto",
+			Handler:    _PostService_EditAlbumPhoto_Handler,
+		},
+		{
+			MethodName: "DeleteAlbumPhoto",
+			Handler:    _PostService_DeleteAlbumPhoto_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

@@ -29,6 +29,10 @@ func PublicMethods() []string {
 		postv1.PostService_GetTopic_FullMethodName,
 		postv1.PostService_ListTopics_FullMethodName,
 		postv1.PostService_ListTopicMessages_FullMethodName,
+		postv1.PostService_GetAlbum_FullMethodName,
+		postv1.PostService_ListAlbums_FullMethodName,
+		postv1.PostService_ListAlbumPhotos_FullMethodName,
+		postv1.PostService_GetAlbumPhoto_FullMethodName,
 		postv1.PostService_PurgeUser_FullMethodName,
 	}
 }

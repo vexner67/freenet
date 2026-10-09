@@ -1,0 +1,180 @@
+package postgres_test
+
+import (
+	"context"
+	"errors"
+	"testing"
+	"time"
+
+	"github.com/google/uuid"
+	"github.com/vexner67/freenet/pkg/pgpool"
+	"github.com/vexner67/freenet/post/internal/post"
+	"github.com/vexner67/freenet/post/internal/postgres"
+)
+
+func newAlbumPhotos(t *testing.T, a *post.Album, author uuid.UUID, n int, now time.Time) []*post.AlbumPhoto {
+	t.Helper()
+
+	photos := make([]*post.AlbumPhoto, n)
+	for i := range photos {
+		p, err := post.NewAlbumPhoto(a, uuid.Must(uuid.NewV7()), author, "", now)
+		if err != nil {
+			t.Fatal(err)
+		}
+		photos[i] = p
+	}
+
+	return photos
+}
+
+func TestAlbumRepository(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	albums := postgres.NewAlbumRepository(newPool(t))
+	photos := albums.Photos()
+	ann := uuid.New()
+	start := time.Now().Add(-time.Hour)
+
+	summer, err := post.NewAlbum(ann, "Лето", "На даче", start)
+	if err != nil {
+		t.Fatal(err)
+	}
+	autumn, _ := post.NewAlbum(ann, "Осень", "", start)
+	for _, a := range []*post.Album{summer, autumn} {
+		if err = albums.Save(ctx, a); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+	}
+	if got, err := albums.Get(ctx, summer.ID()); err != nil || got.Stored() != summer.Stored() {
+		t.Fatalf("Get = %+v, %v; want %+v", got, err, summer.Stored())
+	}
+
+	// Photos count in their album and date it.
+	added := newAlbumPhotos(t, summer, ann, 3, start)
+	described, _ := added[1].Described(ann, "Море")
+	added[1] = described
+	later := start.Add(time.Minute)
+	if err = photos.Add(ctx, summer.ID(), added, later); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if got, _ := albums.Get(ctx, summer.ID()); got.Photos() != 3 || !got.UpdatedAt().Equal(later.UTC().Truncate(time.Microsecond)) {
+		t.Fatalf("after Add = %+v", got.Stored())
+	}
+	if got, err := photos.Get(ctx, added[1].ID()); err != nil || got.Description() != "Море" || got.AuthorID() != ann || got.AlbumID() != summer.ID() {
+		t.Fatalf("Get photo = %+v, %v", got, err)
+	}
+
+	// A photo is in one album at most; nothing of a failed Add is kept.
+	again := append(newAlbumPhotos(t, autumn, ann, 1, start), added[0])
+	if err = photos.Add(ctx, autumn.ID(), again, later); !errors.Is(err, post.ErrDuplicatePhoto) {
+		t.Fatalf("Add again: %v", err)
+	}
+	if got, _ := albums.Get(ctx, autumn.ID()); got.Photos() != 0 {
+		t.Fatalf("after a failed Add = %+v", got.Stored())
+	}
+	if err = photos.Add(ctx, uuid.New(), newAlbumPhotos(t, autumn, ann, 1, start), later); !errors.Is(err, post.ErrAlbumNotFound) {
+		t.Fatalf("Add to no album: %v", err)
+	}
+
+	list, err := albums.List(ctx, ann, uuid.Nil, 1)
+	if err != nil || len(list) != 1 || list[0].ID() != autumn.ID() {
+		t.Fatalf("List = %v, %v; newest first", list, err)
+	}
+	list, _ = albums.List(ctx, ann, autumn.ID(), 5)
+	if len(list) != 1 || list[0].ID() != summer.ID() {
+		t.Fatalf("List after = %v", list)
+	}
+	if n, err := albums.Count(ctx, ann); err != nil || n != 2 {
+		t.Fatalf("Count = %d, %v", n, err)
+	}
+
+	page, err := photos.List(ctx, summer.ID(), added[0].ID(), 5)
+	if err != nil || len(page) != 2 || page[0].ID() != added[1].ID() {
+		t.Fatalf("photos after the first = %v, %v", page, err)
+	}
+	covers, err := photos.Covers(ctx, []uuid.UUID{summer.ID(), autumn.ID()})
+	if err != nil || len(covers) != 1 || covers[0].ID() != added[0].ID() {
+		t.Fatalf("Covers = %v, %v; the first photo, none for the empty album", covers, err)
+	}
+
+	renamed := summer.Renamed("Лето 2026", "", later.Add(time.Minute))
+	if err = albums.Update(ctx, renamed); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := albums.Get(ctx, summer.ID()); got.Name() != "Лето 2026" || got.Description() != "" || got.Photos() != 3 {
+		t.Fatalf("after Update = %+v", got.Stored())
+	}
+
+	redescribed, _ := added[0].Described(ann, "Закат")
+	if err = photos.Describe(ctx, redescribed); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := photos.Get(ctx, added[0].ID()); got.Description() != "Закат" {
+		t.Fatalf("after Describe = %+v", got)
+	}
+
+	if err = photos.Delete(ctx, added[2].ID(), later); err != nil {
+		t.Fatal(err)
+	}
+	if err = photos.Delete(ctx, added[2].ID(), later); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("Delete twice: %v", err)
+	}
+	if got, _ := albums.Get(ctx, summer.ID()); got.Photos() != 2 {
+		t.Fatalf("after Delete = %+v", got.Stored())
+	}
+
+	// An album takes its photos.
+	gone, err := albums.Delete(ctx, summer.ID())
+	if err != nil || len(gone) != 2 {
+		t.Fatalf("Delete = %v, %v", gone, err)
+	}
+	if _, err = photos.Get(ctx, added[0].ID()); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("a photo of a deleted album: %v", err)
+	}
+	if _, err = albums.Delete(ctx, summer.ID()); !errors.Is(err, post.ErrAlbumNotFound) {
+		t.Fatalf("Delete twice: %v", err)
+	}
+}
+
+func TestAlbumRepository_DeleteByUser(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool := newPool(t)
+	albums := postgres.NewAlbumRepository(pool)
+	tx := pgpool.NewTxManager(pool)
+	club, ann, bob := uuid.New(), uuid.New(), uuid.New()
+	now := time.Now()
+
+	anns, _ := post.NewAlbum(ann, "Анна", "", now)
+	clubs, _ := post.NewAlbum(club, "Кошки", "", now)
+	for _, a := range []*post.Album{anns, clubs} {
+		if err := albums.Save(ctx, a); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := albums.Photos().Add(ctx, anns.ID(), newAlbumPhotos(t, anns, ann, 2, now), now); err != nil {
+		t.Fatal(err)
+	}
+	bobs := newAlbumPhotos(t, clubs, bob, 1, now)
+	if err := albums.Photos().Add(ctx, clubs.ID(), append(newAlbumPhotos(t, clubs, ann, 2, now), bobs...), now); err != nil {
+		t.Fatal(err)
+	}
+
+	err := tx.WithinTx(ctx, func(ctx context.Context) error {
+		return albums.DeleteByUser(ctx, ann)
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = albums.Get(ctx, anns.ID()); !errors.Is(err, post.ErrAlbumNotFound) {
+		t.Fatalf("ann's album: %v", err)
+	}
+	got, _ := albums.Get(ctx, clubs.ID())
+	left, _ := albums.Photos().List(ctx, clubs.ID(), uuid.Nil, 10)
+	if got.Photos() != 1 || len(left) != 1 || left[0].ID() != bobs[0].ID() {
+		t.Fatalf("the club's album = %+v, %v; bob's photo only", got.Stored(), left)
+	}
+}

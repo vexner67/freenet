@@ -60,7 +60,8 @@ func toStatus(err error) (*status.Status, bool) {
 	}
 }
 
-// topicStatus is toStatus for the discussions of communities.
+// topicStatus is toStatus for the discussions of communities and the
+// photo albums.
 func topicStatus(err error) (*status.Status, bool) {
 	for _, known := range []struct {
 		err  error
@@ -74,6 +75,15 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrTopicRestricted, codes.PermissionDenied},
 		{post.ErrRestrictOwnTopic, codes.InvalidArgument},
 		{post.ErrTopicClosed, codes.FailedPrecondition},
+		{post.ErrAlbumNotFound, codes.NotFound},
+		{post.ErrAlbumPhotoNotFound, codes.NotFound},
+		{post.ErrCannotChangeAlbum, codes.PermissionDenied},
+		{post.ErrCannotDescribePhoto, codes.PermissionDenied},
+		{post.ErrCannotDeleteAlbumPhoto, codes.PermissionDenied},
+		{post.ErrNoAlbumPhotos, codes.InvalidArgument},
+		{post.ErrDuplicatePhoto, codes.InvalidArgument},
+		{post.ErrInvalidPhoto, codes.InvalidArgument},
+		{service.ErrTooManyAlbumPhotos, codes.InvalidArgument},
 	} {
 		if errors.Is(err, known.err) {
 			return status.New(known.code, known.err.Error()), true
