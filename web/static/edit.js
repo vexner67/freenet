@@ -1,12 +1,11 @@
-// openvk's "Редактировать страницу": the tabs "Основное" (with the privacy
-// of the fields, until the settings have their own page), "Контакты",
-// "Интересы", "Дополнительно" and "Аватар", ?act= as on openvk.
+// openvk's "Редактировать страницу": the tabs "Основное", "Контакты",
+// "Интересы", "Дополнительно" and "Аватар", ?act= as on openvk; who sees
+// them is in "Мои Настройки".
 
 import { api, currentUser } from './api.js';
-import { genders, relationships, takesPartner, worldviews, politicalViews, months, wallWrites, messagesWrites, clubsReads } from './labels.js';
+import { genders, relationships, takesPartner, worldviews, politicalViews, months } from './labels.js';
 import { $, avatarURL, el, renderChrome, showError, hideError } from './layout.js';
 import { openAvatarDialog } from './avatar.js';
-import { openDeactivate } from './deactivate.js';
 
 const MAX_FIELDS = 7;
 
@@ -98,14 +97,6 @@ function initMain(me) {
   $('birth-year-shown').value = me.hideBirthYear ? 'hide' : '';
   updateRelationship();
 
-  $('show-birthday').checked = me.privacy.showBirthday;
-  $('show-relationship').checked = me.privacy.showRelationship;
-  $('show-worldview').checked = me.privacy.showWorldview;
-  $('show-political-views').checked = me.privacy.showPoliticalViews;
-  fill($('wall-write'), wallWrites, me.privacy.wallWrite);
-  fill($('messages-write'), messagesWrites, me.privacy.messagesWrite);
-  fill($('clubs-read'), clubsReads, me.privacy.clubsRead);
-
   $('cancel').href = me.profileCompleted ? '/' + me.nickname : '/';
   $('welcome').hidden = me.profileCompleted;
   updateURLPreview();
@@ -132,15 +123,6 @@ function initMain(me) {
     };
 
     const updated = await api.updateProfile(profile);
-    await api.updatePrivacy({
-      showBirthday: $('show-birthday').checked,
-      showRelationship: $('show-relationship').checked,
-      showWorldview: $('show-worldview').checked,
-      showPoliticalViews: $('show-political-views').checked,
-      wallWrite: $('wall-write').value,
-      messagesWrite: $('messages-write').value,
-      clubsRead: $('clubs-read').value,
-    });
     location.href = '/' + updated.nickname;
   });
 
@@ -253,10 +235,6 @@ if (!me) {
   $(tabs[tab]).hidden = false;
 
   ({ main: initMain, contacts: initContacts, interests: initInterests, additional: initAdditional, avatar: initAvatar })[tab](me);
-
-  // As openvk: under the settings, once there is a page to delete.
-  $('delete-page').hidden = !me.profileCompleted;
-  $('delete-link').addEventListener('click', () => openDeactivate(me));
 
   $('loading').hidden = true;
 }

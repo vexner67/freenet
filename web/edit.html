@@ -28,7 +28,6 @@
           <a id="tab-interests" href="/edit?act=interests">Интересы</a>
           <a id="tab-additional" href="/edit?act=additional">Дополнительно</a>
           <a id="tab-avatar" href="/edit?act=avatar">Аватар</a>
-          <a href="/settings/blacklist">Чёрный список</a>
         </div>
         <p id="loading">Загрузка…</p>
         <div class="error" id="error" hidden></div>
@@ -95,35 +94,6 @@
             <tr>
               <th><label for="political-views">Полит. взгляды</label></th>
               <td class="control"><select id="political-views"></select></td>
-            </tr>
-          </table>
-
-          <div class="section-title">Приватность</div>
-          <table class="form">
-            <tr>
-              <th>Показывать всем</th>
-              <td class="checks">
-                <label><input type="checkbox" id="show-birthday">дату рождения</label>
-                <label><input type="checkbox" id="show-relationship">семейное положение</label>
-                <label><input type="checkbox" id="show-worldview">мировоззрение</label>
-                <label><input type="checkbox" id="show-political-views">политические взгляды</label>
-                <p class="hint">Остальное видят все. Почту для входа не видит никто.</p>
-              </td>
-            </tr>
-            <tr>
-              <th><label for="wall-write">Кто может писать у меня на стене</label></th>
-              <td class="control"><select id="wall-write"></select></td>
-            </tr>
-            <tr>
-              <th><label for="messages-write">Кто может писать мне сообщения</label></th>
-              <td class="control">
-                <select id="messages-write"></select>
-                <p class="hint">Вам смогут ответить, если вы напишете первыми.</p>
-              </td>
-            </tr>
-            <tr>
-              <th><label for="clubs-read">Кому видно мои группы</label></th>
-              <td class="control"><select id="clubs-read"></select></td>
             </tr>
           </table>
 
@@ -222,7 +192,6 @@
           </table>
         </div>
 
-        <p class="hint settings-delete" id="delete-page" hidden>Вы также можете <a id="delete-link">удалить свою страницу</a>.</p>
       </div>
     </div>
   </div>
