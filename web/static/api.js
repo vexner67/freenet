@@ -252,6 +252,9 @@ export const api = {
   uploadClubAvatar: (ref, file, onWall = false) =>
     authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/avatar` + (onWall ? '?onWall=true' : ''), file),
   deleteClubAvatar: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/avatar`),
+  // "Фон страницы": side is left or right; deleting takes both away.
+  setClubBackdrop: (ref, side, file) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop/${side}`, file),
+  deleteClubBackdrop: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop`),
   clubWall: (ref, cursor = '') => optional('GET', page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0)),
   // fromClub: the post speaks for the club ("От имени сообщества"),
   // signed: naming you under it ("Подпись автора").

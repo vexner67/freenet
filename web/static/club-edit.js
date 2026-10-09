@@ -15,6 +15,7 @@ function fill(club) {
   document.title = 'Редактировать группу | Freenet';
   $('title').replaceChildren(el('a', { href: path, textContent: club.name }), ' » Редактировать группу');
   $('tab-main').href = path + '/edit';
+  $('tab-backdrop').href = path + '/backdrop';
   $('tab-members').href = path + '/members';
   $('name').value = club.name;
   $('description').value = club.description;

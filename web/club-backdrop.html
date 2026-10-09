@@ -1,0 +1,69 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Фон страницы | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/club-backdrop.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span></div>
+      <div class="page-body">
+        <div class="tabs" id="tabs" hidden>
+          <a id="tab-main">Основное</a>
+          <a class="active" id="tab-backdrop">Фон</a>
+          <a id="tab-members">Участники</a>
+        </div>
+        <div class="error" id="error" hidden></div>
+        <div class="notice" id="notice" hidden></div>
+
+        <form class="backdrop-form" id="form" hidden>
+          <h4>Фон страницы</h4>
+          <p>Вы можете установить два изображения в качестве фона вашей страницы. Они будут отображаться по бокам у тех, кто зайдёт на вашу страницу. С помощью этой возможности вы можете добавить своему профилю больше индивидуальности.</p>
+
+          <div class="backdrop-editor">
+            <div class="backdrop-side">
+              <img id="left-preview" alt="" hidden>
+              <button class="button secondary" type="button" id="left-browse">Обзор</button>
+              <input type="file" id="left-file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+            </div>
+            <div class="backdrop-page"></div>
+            <div class="backdrop-side">
+              <img id="right-preview" alt="" hidden>
+              <button class="button secondary" type="button" id="right-browse">Обзор</button>
+              <input type="file" id="right-file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
+            </div>
+          </div>
+
+          <p class="hint">Изображения будут расположены так, как на схеме выше. Их высота будет автоматически увеличена, чтобы они занимали 100% высоты экрана, посередине будет размытие. Заменить фон основного интерфейса Freenet нельзя. Фон будет виден только на широких мониторах.</p>
+          <p class="hint">Вы можете установить только 1 изображение (но будет некрасиво), а так же заменить только одно: если у вас уже стоит два, а вы хотите заменить второе — то загружайте только второе, первое сохранится, а чтобы удалить, надо нажать на соответствующую кнопку внизу, удалять по одной нельзя.</p>
+
+          <div class="center">
+            <button class="button" type="submit" id="save">Сохранить фон</button>
+            <button class="button" type="button" id="remove">Удалить фон</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>
