@@ -174,10 +174,11 @@ paths:
 
   /api/v1/me/privacy:
     put:
-      summary: Choose which sensitive fields others see and who writes on your wall
+      summary: Choose who sees your page and its parts, and who writes to you
       description: |
-        Sensitive fields are hidden by default; a new wall is open to the
-        people you follow. All settings are sent at once.
+        "Приватность" of openvk's settings. Sensitive fields are hidden by
+        default; a new wall is open to the people you follow; the page and
+        its parts are open to everyone. All settings are sent at once.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -251,6 +252,11 @@ paths:
         With a token, `isFollowing` tells whether you follow the user, and
         `blockedByMe` / `blockedMe` who of you blacklisted the other: the
         website then shows the limited page of openvk instead of the profile.
+        As the owner's privacy allows: a page hidden from you
+        (`pageHidden`, "Кому в интернете видно мою страницу") has only the
+        names and the photo, hidden information (`infoHidden`) leaves
+        everything but the names, the photo, the status and the pronouns
+        empty, and `access` says which blocks of the page you may see.
       parameters:
         - name: nickname
           in: path
@@ -267,6 +273,10 @@ paths:
                   - $ref: "#/components/schemas/About"
                   - $ref: "#/components/schemas/FollowStats"
                   - $ref: "#/components/schemas/Relation"
+                  - type: object
+                    required: [access]
+                    properties:
+                      access: { $ref: "#/components/schemas/Access" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "404": { $ref: "#/components/responses/NotFound" }
 
@@ -347,7 +357,7 @@ paths:
               schema: { $ref: "#/components/schemas/PostPage" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "403":
-          description: The owner deleted the page (`this page is deleted`)
+          description: The owner deleted the page (`this page is deleted`) or hid it from you (`this page is hidden`)
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1636,7 +1646,9 @@ paths:
         schema: { type: string }
     get:
       summary: A person's photo albums ("Альбомы"), newest first
-      description: Those of a deleted page are gone, as its wall (403).
+      description: |
+        Those of a deleted page are gone, as its wall (403), and so are
+        those the owner's `photosRead` hides from you.
       parameters:
         - name: cursor
           in: query
@@ -1648,7 +1660,7 @@ paths:
         "200": { $ref: "#/components/responses/AlbumList" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "403":
-          description: "`this page is deleted`"
+          description: "`this page is deleted`, `this page is hidden` or `this user's photos are hidden`"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -1715,7 +1727,9 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: An album with whom it belongs to, for its page
-      description: The albums of a deleted page are not found.
+      description: |
+        The albums of a deleted page are not found, nor those of a person
+        whose page or photos are hidden from you.
       responses:
         "200": { $ref: "#/components/responses/AlbumPage" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -2119,6 +2133,9 @@ paths:
   /api/v1/users/{nickname}/followers:
     get:
       summary: Who follows the user, newest follow first
+      description: |
+        No token needed; whether you may see the follows, either way, is
+        the user's `friendsRead`.
       parameters: &followListParams
         - name: nickname
           in: path
@@ -2137,6 +2154,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/UserPage" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
+        "403":
+          description: "`this page is deleted`, `this page is hidden` or `this user's follows are hidden`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/users/{nickname}/following:
@@ -2150,8 +2172,8 @@ paths:
       summary: The communities of a user, the newest joined first
       description: |
         The block "Группы" of a page. No token needed; whether you may see
-        them is the user's `clubsRead`, and those of a deleted page are
-        hidden.
+        them is the user's `clubsRead`, and those of a deleted page or of a
+        page hidden from you are hidden.
       parameters: *followListParams
       responses:
         "200":
@@ -2169,7 +2191,7 @@ paths:
                   total: { type: integer, description: "How many on all pages" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "403":
-          description: "`this user's clubs are hidden`"
+          description: "`this page is deleted`, `this page is hidden` or `this user's clubs are hidden`"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2491,8 +2513,24 @@ components:
           description: "Who may write private messages to you; whoever you wrote to may answer anyway"
         clubsRead:
           type: string
-          enum: [everyone, following, only_me]
+          enum: [everyone, users, following, only_me]
           description: "Who sees your communities on your page (\"Кому видно мои группы\"); the communities show their members anyway"
+        pageRead:
+          type: string
+          enum: [everyone, users]
+          description: "Who sees your page at all (\"Кому в интернете видно мою страницу\"): anyone or signed-in people; to the others it shows only the names and the photo"
+        infoRead:
+          type: string
+          enum: [everyone, users, following, only_me]
+          description: "Who sees the information of your page (\"Кому видно основную информацию моей страницы\"): all but the names, the photo, the status and the pronouns; the search filters by it find you only with everyone"
+        photosRead:
+          type: string
+          enum: [everyone, users, following, only_me]
+          description: "Who sees your photo albums (\"Кому видно мои фотографии\")"
+        friendsRead:
+          type: string
+          enum: [everyone, users, following, only_me]
+          description: "Who sees whom you follow and who follows you (\"Кому видно моих друзей\")"
 
     User:
       allOf:
@@ -2932,3 +2970,18 @@ components:
             deactivated:
               type: boolean
               description: "The owner deleted the page: only the names and the photo are left"
+            pageHidden:
+              type: boolean
+              description: "The owner hid the page from you (`pageRead`): only the names and the photo are left"
+            infoHidden:
+              type: boolean
+              description: "The owner hid the information of the page from you (`infoRead`): only the names, the photo, the status and the pronouns are left"
+
+    Access:
+      type: object
+      description: Which blocks of a page you may see, as its owner's privacy allows
+      required: [photos, friends, clubs]
+      properties:
+        photos: { type: boolean, description: "The albums (`photosRead`)" }
+        friends: { type: boolean, description: "The follows, either way (`friendsRead`)" }
+        clubs: { type: boolean, description: "The communities (`clubsRead`)" }

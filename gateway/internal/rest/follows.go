@@ -32,6 +32,15 @@ type profileWithStatsResponse struct {
 	aboutJSON
 	followStatsJSON
 	relationJSON
+	Access accessJSON `json:"access"`
+}
+
+// accessJSON is which blocks of a page the viewer may see: the albums, the
+// follows and the communities.
+type accessJSON struct {
+	Photos  bool `json:"photos"`
+	Friends bool `json:"friends"`
+	Clubs   bool `json:"clubs"`
 }
 
 type userPageResponse struct {
@@ -69,7 +78,7 @@ func (a *api) changeFollow(w http.ResponseWriter, r *http.Request, change func(c
 		return
 	}
 
-	target, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	target, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -102,13 +111,20 @@ func (a *api) listFollows(
 	r *http.Request,
 	list func(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error),
 ) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	limit, err := pageLimit(r)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	owner, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	// "Кому видно моих друзей": the follows, either way.
+	owner, err := a.visiblePage(r, token, friendsPart)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

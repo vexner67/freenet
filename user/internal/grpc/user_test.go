@@ -229,7 +229,10 @@ func TestPrivacyFlow(t *testing.T) {
 	}
 
 	updated, err := s.client.UpdatePrivacy(ann, &userv1.UpdatePrivacyRequest{
-		Privacy: &userv1.PrivacySettings{ShowWorldview: true, WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE, MessagesWrite: userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING, ClubsRead: userv1.ClubsRead_CLUBS_READ_FOLLOWING},
+		Privacy: &userv1.PrivacySettings{
+			ShowWorldview: true, WallWrite: userv1.WallWrite_WALL_WRITE_EVERYONE, MessagesWrite: userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING, ClubsRead: userv1.ClubsRead_CLUBS_READ_FOLLOWING,
+			PageRead: userv1.Audience_AUDIENCE_EVERYONE, InfoRead: userv1.Audience_AUDIENCE_EVERYONE, PhotosRead: userv1.Audience_AUDIENCE_USERS, FriendsRead: userv1.Audience_AUDIENCE_ONLY_ME,
+		},
 	})
 	if err != nil {
 		t.Fatalf("UpdatePrivacy: %v", err)
@@ -242,11 +245,11 @@ func TestPrivacyFlow(t *testing.T) {
 	// Public: an anonymous viewer is not among the people Ann follows; Ann
 	// herself sees her clubs.
 	annID := updated.GetUser().GetId()
-	if can, err := s.client.CanSeeClubs(context.Background(), &userv1.CanSeeClubsRequest{UserId: annID}); err != nil || can.GetAllowed() {
-		t.Fatalf("CanSeeClubs anonymously = %v, %v", can, err)
+	if can, err := s.client.GetAccess(context.Background(), &userv1.GetAccessRequest{UserId: annID}); err != nil || can.GetClubs() || !can.GetPage() {
+		t.Fatalf("GetAccess anonymously = %v, %v", can, err)
 	}
-	if can, err := s.client.CanSeeClubs(ann, &userv1.CanSeeClubsRequest{UserId: annID}); err != nil || !can.GetAllowed() {
-		t.Fatalf("CanSeeClubs by ann = %v, %v", can, err)
+	if can, err := s.client.GetAccess(ann, &userv1.GetAccessRequest{UserId: annID}); err != nil || !can.GetClubs() {
+		t.Fatalf("GetAccess by ann = %v, %v", can, err)
 	}
 
 	public, err = s.client.GetProfile(context.Background(), &userv1.GetProfileRequest{Nickname: "ann"})

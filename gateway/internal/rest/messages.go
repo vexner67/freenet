@@ -151,7 +151,7 @@ func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	peer, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	peer, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -225,7 +225,7 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	recipient, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	recipient, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -271,7 +271,7 @@ func (a *api) markDialogRead(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	peer, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	peer, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
 		return

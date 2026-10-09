@@ -205,7 +205,7 @@ func (a *api) getProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	profile, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	profile, err := a.users.GetProfile(r.Context(), token, r.PathValue("nickname"))
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -232,7 +232,14 @@ func (a *api) getProfile(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	access, err := a.users.Access(r.Context(), token, profile.ID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, profileWithStatsResponse{
+		Access:                accessJSON{Photos: access.Photos, Friends: access.Friends, Clubs: access.Clubs},
 		publicProfileResponse: toPublicProfileResponse(profile),
 		aboutJSON:             toAboutJSON(profile.About, partner),
 		followStatsJSON:       toFollowStatsJSON(stats),

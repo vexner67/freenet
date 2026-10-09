@@ -55,15 +55,32 @@ func (s *PermissionService) CanMessage(ctx context.Context, senderID, recipientI
 	return recipient.CanBeMessagedBy(senderID, ties), nil
 }
 
-// CanSeeClubs tells whether viewerID (uuid.Nil: anonymous) may see which
-// communities ownerID is in. user.ErrNotFound for an unknown owner.
-func (s *PermissionService) CanSeeClubs(ctx context.Context, viewerID, ownerID uuid.UUID) (bool, error) {
+// Access tells what of ownerID's page viewerID (uuid.Nil: anonymous) may
+// see: the page, its information, albums, follows and communities.
+// user.ErrNotFound for an unknown owner.
+func (s *PermissionService) Access(ctx context.Context, viewerID, ownerID uuid.UUID) (user.Access, error) {
 	owner, ties, err := s.ties(ctx, viewerID, ownerID)
 	if err != nil {
-		return false, errs.Wrap("s.ties", err)
+		return user.Access{}, errs.Wrap("s.ties", err)
 	}
 
-	return owner.ClubsVisibleTo(viewerID, ties), nil
+	return owner.AccessFor(viewerID, ties), nil
+}
+
+// ProfileFor is the page of nickname as viewerID (uuid.Nil: anonymous)
+// sees it. user.ErrNotFound for nobody.
+func (s *PermissionService) ProfileFor(ctx context.Context, viewerID uuid.UUID, nickname user.Nickname) (user.PublicProfile, error) {
+	owner, err := s.userRepo.GetByNickname(ctx, nickname)
+	if err != nil {
+		return user.PublicProfile{}, errs.Wrap("s.userRepo.GetByNickname", err)
+	}
+
+	ties, err := s.tiesOf(ctx, viewerID, owner.ID())
+	if err != nil {
+		return user.PublicProfile{}, errs.Wrap("s.tiesOf", err)
+	}
+
+	return owner.PublicProfileFor(viewerID, ties), nil
 }
 
 // ties loads ownerID and how it is tied to otherID.
@@ -73,15 +90,29 @@ func (s *PermissionService) ties(ctx context.Context, otherID, ownerID uuid.UUID
 		return nil, user.Ties{}, errs.Wrap("s.userRepo.GetByID", err)
 	}
 
+	ties, err := s.tiesOf(ctx, otherID, ownerID)
+	if err != nil {
+		return nil, user.Ties{}, errs.Wrap("s.tiesOf", err)
+	}
+
+	return owner, ties, nil
+}
+
+// tiesOf is how ownerID is tied to otherID; none to an anonymous other.
+func (s *PermissionService) tiesOf(ctx context.Context, otherID, ownerID uuid.UUID) (user.Ties, error) {
+	if otherID == uuid.Nil {
+		return user.Ties{}, nil
+	}
+
 	followed, err := s.followRepo.IsFollowing(ctx, ownerID, otherID)
 	if err != nil {
-		return nil, user.Ties{}, errs.Wrap("s.followRepo.IsFollowing", err)
+		return user.Ties{}, errs.Wrap("s.followRepo.IsFollowing", err)
 	}
 
 	byOwner, byOther, err := s.blockRepo.Blocks(ctx, ownerID, otherID)
 	if err != nil {
-		return nil, user.Ties{}, errs.Wrap("s.blockRepo.Blocks", err)
+		return user.Ties{}, errs.Wrap("s.blockRepo.Blocks", err)
 	}
 
-	return owner, user.Ties{Followed: followed, Blocked: byOwner || byOther}, nil
+	return user.Ties{Followed: followed, Blocked: byOwner || byOther}, nil
 }

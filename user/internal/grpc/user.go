@@ -16,7 +16,6 @@ import (
 type UserService interface {
 	GetOrCreateByEmail(ctx context.Context, email user.Email) (uuid.UUID, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*user.User, error)
-	GetPublicProfile(ctx context.Context, nickname user.Nickname) (user.PublicProfile, error)
 	UpdateProfile(ctx context.Context, id uuid.UUID, profile user.Profile, partner user.Nickname) (*user.User, error)
 	UpdateContacts(ctx context.Context, id uuid.UUID, contacts user.Contacts) (*user.User, error)
 	UpdateInterests(ctx context.Context, id uuid.UUID, interests user.Interests) (*user.User, error)
@@ -212,7 +211,7 @@ func (h *UserHandler) GetProfile(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	profile, err := h.userService.GetPublicProfile(ctx, nickname)
+	profile, err := h.permissionService.ProfileFor(ctx, viewerID(ctx), nickname)
 	if err != nil {
 		return nil, err
 	}

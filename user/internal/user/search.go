@@ -87,7 +87,13 @@ func (q SearchQuery) Matches(u *User) bool {
 		}
 	}
 
+	// The filters look into the information, which only the pages open to
+	// everyone tell.
 	f := q.filters
+	if f != (SearchFilters{}) && u.privacy.InfoRead != AudienceEveryone {
+		return false
+	}
+
 	same := func(want, got string) bool { return want == "" || want == strings.ToLower(got) }
 	names := func(want string, got About) bool {
 		return want == "" || strings.Contains(strings.ToLower(got.String()), want)

@@ -109,6 +109,18 @@ func (f *fakeUserAPI) UpdatePrivacy(_ context.Context, req *userv1.UpdatePrivacy
 	return &userv1.UpdatePrivacyResponse{User: &userv1.User{Id: "u1", Privacy: req.GetPrivacy()}}, nil
 }
 
+// GetAccess shows the photos only, and GetProfile hides the page; both
+// keep the caller's token.
+func (f *fakeUserAPI) GetAccess(ctx context.Context, req *userv1.GetAccessRequest, _ ...grpc.CallOption) (*userv1.GetAccessResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &userv1.GetAccessResponse{Page: req.GetUserId() == "u2", Photos: true}, nil
+}
+
+func (f *fakeUserAPI) GetProfile(ctx context.Context, req *userv1.GetProfileRequest, _ ...grpc.CallOption) (*userv1.GetProfileResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &userv1.GetProfileResponse{Profile: &userv1.PublicProfile{Id: "u2", Nickname: req.GetNickname(), PageHidden: true, InfoHidden: true}}, nil
+}
+
 func (f *fakeUserAPI) CanMessage(ctx context.Context, req *userv1.CanMessageRequest, _ ...grpc.CallOption) (*userv1.CanMessageResponse, error) {
 	f.md, _ = metadata.FromOutgoingContext(ctx)
 	return &userv1.CanMessageResponse{Allowed: req.GetWroteFirst()}, nil
@@ -182,7 +194,10 @@ func TestWallPrivacy(t *testing.T) {
 	api := &fakeUserAPI{}
 	users := NewUsers(api)
 
-	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{ShowWorldview: true, WallWrite: "everyone", MessagesWrite: "nobody", ClubsRead: "only_me"})
+	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{
+		ShowWorldview: true, WallWrite: "everyone", MessagesWrite: "nobody", ClubsRead: "only_me",
+		PageRead: "users", InfoRead: "following", PhotosRead: "only_me", FriendsRead: "everyone",
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -195,11 +210,28 @@ func TestWallPrivacy(t *testing.T) {
 	if api.privacy.GetClubsRead() != userv1.ClubsRead_CLUBS_READ_ONLY_ME || u.Privacy.ClubsRead != "only_me" {
 		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
 	}
+	if api.privacy.GetPageRead() != userv1.Audience_AUDIENCE_USERS || api.privacy.GetInfoRead() != userv1.Audience_AUDIENCE_FOLLOWING ||
+		api.privacy.GetPhotosRead() != userv1.Audience_AUDIENCE_ONLY_ME || api.privacy.GetFriendsRead() != userv1.Audience_AUDIENCE_EVERYONE ||
+		u.Privacy.PageRead != "users" || u.Privacy.InfoRead != "following" || u.Privacy.PhotosRead != "only_me" || u.Privacy.FriendsRead != "everyone" {
+		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
+	}
 
-	for _, bad := range []model.Privacy{{WallWrite: "friends", MessagesWrite: "everyone"}, {WallWrite: "everyone", MessagesWrite: "only_me"}, {WallWrite: "everyone", MessagesWrite: "everyone", ClubsRead: "nobody"}} {
+	for _, bad := range []model.Privacy{{WallWrite: "friends", MessagesWrite: "everyone"}, {WallWrite: "everyone", MessagesWrite: "only_me"}, {WallWrite: "everyone", MessagesWrite: "everyone", ClubsRead: "nobody"},
+		{WallWrite: "everyone", MessagesWrite: "everyone", PhotosRead: "friends"},
+	} {
 		if _, err = users.UpdatePrivacy(context.Background(), "tok", bad); failure.From(err).Kind != failure.InvalidArgument {
 			t.Fatalf("privacy %+v: %v", bad, err)
 		}
+	}
+
+	access, err := users.Access(context.Background(), "tok", "u2")
+	if err != nil || access != (model.Access{Page: true, Photos: true}) || api.md.Get("authorization")[0] != "Bearer tok" {
+		t.Fatalf("Access = %+v, %v", access, err)
+	}
+
+	profile, err := users.GetProfile(context.Background(), "tok", "bob")
+	if err != nil || !profile.PageHidden || !profile.InfoHidden || api.md.Get("authorization")[0] != "Bearer tok" {
+		t.Fatalf("GetProfile = %+v, %v", profile, err)
 	}
 
 	allowed, err := users.CanPostOnWall(context.Background(), "tok", "u2")

@@ -53,9 +53,11 @@ type fakeUsers struct {
 	profile                                         model.Profile
 	wallAsked                                       string
 	closedWall                                      bool
-	// hiddenClubs: nobody but their owner sees a user's clubs.
-	hiddenClubs bool
-	clubsAsked  string
+	// Privacy: the parts of every page hidden from the caller; accessAsked
+	// is whose page the gateway asked about, profileToken the token
+	// GetProfile got.
+	hiddenPage, hiddenInfo, hiddenPhotos, hiddenFriends, hiddenClubs bool
+	accessAsked, profileToken                                        string
 	// Messages: closed unless the peer wrote first; wroteFirst is what the
 	// gateway passed on.
 	closedMessages, wroteFirst bool
@@ -126,7 +128,19 @@ func (f *fakeUsers) UpdatePrivacy(_ context.Context, token string, p model.Priva
 	return u, f.err
 }
 
-func (f *fakeUsers) GetProfile(_ context.Context, nickname string) (model.PublicProfile, error) {
+func (f *fakeUsers) GetProfile(_ context.Context, token, nickname string) (model.PublicProfile, error) {
+	f.profileToken = token
+	p, err := f.profileOf(nickname)
+	if err == nil && f.hiddenPage {
+		return model.PublicProfile{ID: p.ID, Profile: model.Profile{Name: p.Profile.Name, Nickname: p.Profile.Nickname}, PageHidden: true}, nil
+	}
+	if err == nil && f.hiddenInfo {
+		p.InfoHidden, p.About = true, model.About{}
+	}
+	return p, err
+}
+
+func (f *fakeUsers) profileOf(nickname string) (model.PublicProfile, error) {
 	switch nickname {
 	case "ann":
 		return model.PublicProfile{ID: "u1", Profile: model.Profile{Name: "Ann", Nickname: "ann", Worldview: "buddhism"}}, nil
@@ -180,9 +194,14 @@ func (f *fakeUsers) CanPostOnWall(_ context.Context, token, userID string) (bool
 	return !f.closedWall, f.err
 }
 
-func (f *fakeUsers) CanSeeClubs(_ context.Context, token, userID string) (bool, error) {
-	f.token, f.clubsAsked = token, userID
-	return !f.hiddenClubs, f.err
+func (f *fakeUsers) Access(_ context.Context, token, userID string) (model.Access, error) {
+	f.token, f.accessAsked = token, userID
+	if f.hiddenPage {
+		return model.Access{}, f.err
+	}
+	return model.Access{
+		Page: !f.hiddenPage, Info: !f.hiddenInfo, Photos: !f.hiddenPhotos, Friends: !f.hiddenFriends, Clubs: !f.hiddenClubs,
+	}, f.err
 }
 
 func (f *fakeUsers) CanMessage(_ context.Context, token, _ string, wroteFirst bool) (bool, error) {

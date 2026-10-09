@@ -523,7 +523,7 @@ func TestUserClubs(t *testing.T) {
 		Total      int    `json:"total"`
 	}](t, w)
 	if w.Code != http.StatusOK || len(got.Clubs) != 1 || got.Clubs[0].Name != "Кошки" || got.Total != 4 || got.NextCursor != "k1" ||
-		h.clubs.clubsOf != "u2" || h.users.clubsAsked != "u2" {
+		h.clubs.clubsOf != "u2" || h.users.accessAsked != "u2" {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
 

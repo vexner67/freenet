@@ -70,7 +70,7 @@ func TestAccountService(t *testing.T) {
 	if err = followSvc.Follow(ctx, bob, ann); !errors.Is(err, user.ErrDeactivated) {
 		t.Fatalf("follow a deleted page: %v", err)
 	}
-	if p, err := userSvc.GetPublicProfile(ctx, "ann"); err != nil || !p.Deactivated || p.Name != "Анна" {
+	if p, err := service.NewPermissionService(users, follows, inmem.NewBlockRepository(follows)).ProfileFor(ctx, bob, "ann"); err != nil || !p.Deactivated || p.Name != "Анна" {
 		t.Fatalf("public profile = %+v, %v", p, err)
 	}
 

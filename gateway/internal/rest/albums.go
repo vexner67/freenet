@@ -119,8 +119,8 @@ func toAlbumsJSON(albums []model.Album) []albumJSON {
 	return out
 }
 
-// listUserAlbums is "Альбомы" of a person, public; those of a deleted page
-// are gone, as its wall.
+// listUserAlbums is "Альбомы" of a person, public, as "Кому видно мои
+// фотографии" allows; those of a deleted page are gone, as its wall.
 func (a *api) listUserAlbums(w http.ResponseWriter, r *http.Request) {
 	token, err := optionalBearerToken(r)
 	if err != nil {
@@ -134,14 +134,9 @@ func (a *api) listUserAlbums(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	owner, err := a.users.GetProfile(r.Context(), r.PathValue("nickname"))
+	owner, err := a.visiblePage(r, token, photosPart)
 	if err != nil {
 		a.writeError(w, r, err)
-		return
-	}
-
-	if owner.Deactivated {
-		a.writeError(w, r, failure.New(failure.PermissionDenied, "this page is deleted"))
 		return
 	}
 
@@ -253,6 +248,16 @@ func (a *api) albumOwner(r *http.Request, token, ownerID string) (albumOwnerJSON
 	}
 
 	if !owner.Club {
+		// "Кому видно мои фотографии": the albums of a person the caller
+		// may not see are not found.
+		access, err := a.users.Access(r.Context(), token, ownerID)
+		if err != nil {
+			return albumOwnerJSON{}, err
+		}
+		if !access.Page || !access.Photos {
+			return albumOwnerJSON{}, failure.New(failure.NotFound, "album not found")
+		}
+
 		return albumOwnerJSON{Owner: toAuthorJSON(owner)}, nil
 	}
 
