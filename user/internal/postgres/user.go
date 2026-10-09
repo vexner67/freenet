@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"strings"
@@ -18,6 +19,7 @@ import (
 
 const (
 	uniqueViolationCode = "23505"
+	partnerForeignKey   = "users_partner_fkey"
 
 	// Unique indexes from migrations; the name tells which field clashed.
 	emailIndex    = "users_email_uidx"
@@ -83,7 +85,7 @@ func (r *UserRepository) Save(ctx context.Context, u *user.User) error {
 		pr.ShowPoliticalViews,
 		pr.WallWrite.String(),
 		pr.MessagesWrite.String(),
-		avatarToDB(u.AvatarID()),
+		idToDB(u.AvatarID()),
 		pr.ClubsRead.String(),
 	); err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -115,6 +117,23 @@ const updateUserQuery = `
 		purge_at = $19,
 		deactivation_reason = $20,
 		clubs_read = $21,
+		hometown = $22,
+		relationship_partner_id = $23,
+		hide_birth_year = $24,
+		contact_email = $25,
+		telegram = $26,
+		website = $27,
+		city = $28,
+		address = $29,
+		interests = $30,
+		fav_music = $31,
+		fav_films = $32,
+		fav_shows = $33,
+		fav_books = $34,
+		fav_quotes = $35,
+		fav_games = $36,
+		about = $37,
+		extra_fields = $38,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -123,6 +142,13 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 	p := u.Profile()
 	pr := u.Privacy()
 	d := u.Deactivation()
+	c := u.Contacts()
+	in := u.Interests()
+
+	fields, err := extraFieldsToDB(u.ExtraFields())
+	if err != nil {
+		return errs.Wrap("extraFieldsToDB", err)
+	}
 
 	tag, err := r.pool.Exec(
 		ctx,
@@ -143,11 +169,28 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		pr.ShowPoliticalViews,
 		pr.WallWrite.String(),
 		pr.MessagesWrite.String(),
-		avatarToDB(u.AvatarID()),
+		idToDB(u.AvatarID()),
 		timeToDB(d.At),
 		timeToDB(d.PurgeAt),
 		d.Reason.String(),
 		pr.ClubsRead.String(),
+		p.Hometown.String(),
+		idToDB(p.Partner),
+		p.HideBirthYear,
+		c.Email.String(),
+		c.Telegram.String(),
+		c.Website.String(),
+		c.City.String(),
+		c.Address.String(),
+		in.Interests.String(),
+		in.Music.String(),
+		in.Films.String(),
+		in.Shows.String(),
+		in.Books.String(),
+		in.Quotes.String(),
+		in.Games.String(),
+		in.About.String(),
+		fields,
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -160,8 +203,8 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 	return nil
 }
 
-const getUserByIDQuery = `
-	SELECT
+// userColumns are what scanUser reads, in its order.
+const userColumns = `
 		id,
 		email,
 		name,
@@ -183,7 +226,69 @@ const getUserByIDQuery = `
 		avatar_id,
 		deactivated_at,
 		purge_at,
-		deactivation_reason
+		deactivation_reason,
+		hometown,
+		relationship_partner_id,
+		hide_birth_year,
+		contact_email,
+		telegram,
+		website,
+		city,
+		address,
+		interests,
+		fav_music,
+		fav_films,
+		fav_shows,
+		fav_books,
+		fav_quotes,
+		fav_games,
+		about,
+		extra_fields`
+
+// qualifiedUserColumns are userColumns of the users table joined as u.
+const qualifiedUserColumns = `
+		u.id,
+		u.email,
+		u.name,
+		u.surname,
+		u.nickname,
+		u.status,
+		u.gender,
+		u.relationship,
+		u.worldview,
+		u.political_views,
+		u.birthday,
+		u.show_birthday,
+		u.show_relationship,
+		u.show_worldview,
+		u.show_political_views,
+		u.wall_write,
+		u.messages_write,
+		u.clubs_read,
+		u.avatar_id,
+		u.deactivated_at,
+		u.purge_at,
+		u.deactivation_reason,
+		u.hometown,
+		u.relationship_partner_id,
+		u.hide_birth_year,
+		u.contact_email,
+		u.telegram,
+		u.website,
+		u.city,
+		u.address,
+		u.interests,
+		u.fav_music,
+		u.fav_films,
+		u.fav_shows,
+		u.fav_books,
+		u.fav_quotes,
+		u.fav_games,
+		u.about,
+		u.extra_fields`
+
+const getUserByIDQuery = `
+	SELECT` + userColumns + `
 	FROM users
 	WHERE id = $1
 `
@@ -198,29 +303,7 @@ func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User,
 }
 
 const getUserByNicknameQuery = `
-	SELECT
-		id,
-		email,
-		name,
-		surname,
-		nickname,
-		status,
-		gender,
-		relationship,
-		worldview,
-		political_views,
-		birthday,
-		show_birthday,
-		show_relationship,
-		show_worldview,
-		show_political_views,
-		wall_write,
-		messages_write,
-		clubs_read,
-		avatar_id,
-		deactivated_at,
-		purge_at,
-		deactivation_reason
+	SELECT` + userColumns + `
 	FROM users
 	WHERE lower(nickname) = lower($1)
 		AND nickname <> ''
@@ -236,29 +319,7 @@ func (r *UserRepository) GetByNickname(ctx context.Context, nickname user.Nickna
 }
 
 const getUsersByIDsQuery = `
-	SELECT
-		id,
-		email,
-		name,
-		surname,
-		nickname,
-		status,
-		gender,
-		relationship,
-		worldview,
-		political_views,
-		birthday,
-		show_birthday,
-		show_relationship,
-		show_worldview,
-		show_political_views,
-		wall_write,
-		messages_write,
-		clubs_read,
-		avatar_id,
-		deactivated_at,
-		purge_at,
-		deactivation_reason
+	SELECT` + userColumns + `
 	FROM users
 	WHERE id = ANY($1)
 `
@@ -317,6 +378,12 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		avatarID                                   *uuid.UUID
 		deactivatedAt, purgeAt                     *time.Time
 		reason                                     string
+		partner                                    *uuid.UUID
+		hometown                                   string
+		contacts                                   [5]string
+		interests                                  [8]string
+		extraFields                                []byte
+		hideBirthYear                              bool
 	)
 
 	err := row.Scan(
@@ -342,6 +409,13 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&deactivatedAt,
 		&purgeAt,
 		&reason,
+		&hometown,
+		&partner,
+		&hideBirthYear,
+		&contacts[0], &contacts[1], &contacts[2], &contacts[3], &contacts[4],
+		&interests[0], &interests[1], &interests[2], &interests[3],
+		&interests[4], &interests[5], &interests[6], &interests[7],
+		&extraFields,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -354,6 +428,11 @@ func scanUser(row pgx.Row) (*user.User, error) {
 	privacy.WallWrite = user.WallWrite(wallWrite)
 	privacy.MessagesWrite = user.MessagesWrite(messagesWrite)
 	privacy.ClubsRead = user.ClubsRead(clubsRead)
+
+	fields, err := extraFieldsFromDB(extraFields)
+	if err != nil {
+		return nil, errs.Wrap("extraFieldsFromDB", err)
+	}
 
 	return user.Restore(user.Stored{
 		ID:    id,
@@ -368,9 +447,30 @@ func scanUser(row pgx.Row) (*user.User, error) {
 			Worldview:      user.Worldview(worldview),
 			PoliticalViews: user.PoliticalViews(political),
 			Birthday:       birthdayFromDB(birthday),
+			HideBirthYear:  hideBirthYear,
+			Hometown:       user.Place(hometown),
+			Partner:        idFromDB(partner),
 		},
-		Privacy:  privacy,
-		AvatarID: avatarFromDB(avatarID),
+		Contacts: user.Contacts{
+			Email:    user.Email(contacts[0]),
+			Telegram: user.Telegram(contacts[1]),
+			Website:  user.Website(contacts[2]),
+			City:     user.Place(contacts[3]),
+			Address:  user.Address(contacts[4]),
+		},
+		Interests: user.Interests{
+			Interests: user.About(interests[0]),
+			Music:     user.About(interests[1]),
+			Films:     user.About(interests[2]),
+			Shows:     user.About(interests[3]),
+			Books:     user.About(interests[4]),
+			Quotes:    user.About(interests[5]),
+			Games:     user.About(interests[6]),
+			About:     user.About(interests[7]),
+		},
+		ExtraFields: fields,
+		Privacy:     privacy,
+		AvatarID:    idFromDB(avatarID),
 		Deactivation: user.Deactivation{
 			At:      timeFromDB(deactivatedAt),
 			PurgeAt: timeFromDB(purgeAt),
@@ -398,8 +498,48 @@ func birthdayFromDB(t *time.Time) user.Birthday {
 	return user.Birthday(*t)
 }
 
-// No photo is stored as NULL.
-func avatarToDB(id uuid.UUID) *uuid.UUID {
+// extraFieldRow is an additional field as the extra_fields array keeps it.
+type extraFieldRow struct {
+	Name  string `json:"name"`
+	Text  string `json:"text"`
+	Place string `json:"place"`
+}
+
+func extraFieldsToDB(fields []user.ExtraField) ([]byte, error) {
+	rows := make([]extraFieldRow, 0, len(fields))
+	for _, f := range fields {
+		rows = append(rows, extraFieldRow{Name: f.Name, Text: f.Text.String(), Place: f.Place.String()})
+	}
+
+	b, err := json.Marshal(rows)
+	if err != nil {
+		return nil, errs.Wrap("json.Marshal", err)
+	}
+
+	return b, nil
+}
+
+func extraFieldsFromDB(b []byte) ([]user.ExtraField, error) {
+	var rows []extraFieldRow
+	if err := json.Unmarshal(b, &rows); err != nil {
+		return nil, errs.Wrap("json.Unmarshal", err)
+	}
+
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	// Data comes from our own table and was validated on write.
+	fields := make([]user.ExtraField, 0, len(rows))
+	for _, r := range rows {
+		fields = append(fields, user.ExtraField{Name: r.Name, Text: user.About(r.Text), Place: user.FieldPlace(r.Place)})
+	}
+
+	return fields, nil
+}
+
+// No photo, or no partner, is stored as NULL.
+func idToDB(id uuid.UUID) *uuid.UUID {
 	if id == uuid.Nil {
 		return nil
 	}
@@ -407,7 +547,7 @@ func avatarToDB(id uuid.UUID) *uuid.UUID {
 	return &id
 }
 
-func avatarFromDB(id *uuid.UUID) uuid.UUID {
+func idFromDB(id *uuid.UUID) uuid.UUID {
 	if id == nil {
 		return uuid.Nil
 	}
@@ -434,29 +574,7 @@ func timeFromDB(t *time.Time) time.Time {
 
 // searchUsersSelect is completed by searchUsersQuery with one LIKE per word.
 const searchUsersSelect = `
-	SELECT
-		id,
-		email,
-		name,
-		surname,
-		nickname,
-		status,
-		gender,
-		relationship,
-		worldview,
-		political_views,
-		birthday,
-		show_birthday,
-		show_relationship,
-		show_worldview,
-		show_political_views,
-		wall_write,
-		messages_write,
-		clubs_read,
-		avatar_id,
-		deactivated_at,
-		purge_at,
-		deactivation_reason
+	SELECT` + userColumns + `
 	FROM users
 	WHERE nickname <> ''
 		AND deactivated_at IS NULL
@@ -466,15 +584,52 @@ const searchUsersSelect = `
 // or the trigram index is not used.
 const searchHaystack = `lower(nickname || ' ' || name || ' ' || surname)`
 
-// searchUsersQuery ANDs one "LIKE $n" per word: unlike LIKE ALL (array),
-// such conditions are served by the trigram index. Only placeholders are
-// added to the text; the words are passed as parameters.
-func searchUsersQuery(words int) string {
+// searchCondition is one condition of a search: an SQL expression with %d
+// for the placeholder of its parameter.
+type searchCondition struct {
+	sql   string
+	param string
+}
+
+// searchConditions are the words of q, one "LIKE $n" each: unlike LIKE ALL
+// (array), such conditions are served by the trigram index; then its
+// filters: a hometown or a city as typed, whatever the case, a favourite
+// anywhere in its field.
+func searchConditions(q user.SearchQuery) []searchCondition {
+	var conds []searchCondition
+	for _, w := range q.Words() {
+		conds = append(conds, searchCondition{searchHaystack + " LIKE $%d", "%" + escapeLike(w) + "%"})
+	}
+
+	f := q.Filters()
+	for _, c := range []searchCondition{
+		{"lower(hometown) = $%d", f.Hometown},
+		{"lower(city) = $%d", f.City},
+		{"lower(fav_films) LIKE $%d", f.Film},
+		{"lower(fav_shows) LIKE $%d", f.Show},
+		{"lower(fav_books) LIKE $%d", f.Book},
+	} {
+		if c.param == "" {
+			continue
+		}
+		if strings.Contains(c.sql, "LIKE") {
+			c.param = "%" + escapeLike(c.param) + "%"
+		}
+		conds = append(conds, c)
+	}
+
+	return conds
+}
+
+// searchUsersQuery ANDs the conditions. Only placeholders are added to the
+// text; the values are passed as parameters.
+func searchUsersQuery(conds []searchCondition) string {
 	var b strings.Builder
 
 	b.WriteString(searchUsersSelect)
-	for i := range words {
-		fmt.Fprintf(&b, "\n\t\tAND %s LIKE $%d", searchHaystack, i+3)
+	for i, c := range conds {
+		b.WriteString("\n\t\tAND ")
+		fmt.Fprintf(&b, c.sql, i+3)
 	}
 	b.WriteString("\n\tORDER BY id DESC\n\tLIMIT $2")
 
@@ -486,12 +641,13 @@ func (r *UserRepository) Search(ctx context.Context, q user.SearchQuery, before 
 		before = uuid.Max
 	}
 
+	conds := searchConditions(q)
 	args := []any{before, limit}
-	for _, w := range q.Words() {
-		args = append(args, "%"+escapeLike(w)+"%")
+	for _, c := range conds {
+		args = append(args, c.param)
 	}
 
-	rows, err := r.pool.Query(ctx, searchUsersQuery(len(q.Words())), args...)
+	rows, err := r.pool.Query(ctx, searchUsersQuery(conds), args...)
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
@@ -522,7 +678,16 @@ func escapeLike(s string) string {
 
 func translateError(err error) error {
 	var pgErr *pgconn.PgError
-	if !errors.As(err, &pgErr) || pgErr.Code != uniqueViolationCode {
+	if !errors.As(err, &pgErr) {
+		return err
+	}
+
+	// The partner was erased since the nickname was looked up.
+	if pgErr.Code == foreignKeyViolationCode && pgErr.ConstraintName == partnerForeignKey {
+		return user.ErrPartnerNotFound
+	}
+
+	if pgErr.Code != uniqueViolationCode {
 		return err
 	}
 

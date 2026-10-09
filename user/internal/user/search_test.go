@@ -11,7 +11,10 @@ import (
 func TestSearchQuery(t *testing.T) {
 	t.Parallel()
 
-	ann := user.Profile{Name: "Анна", Surname: "Ли", Nickname: "ann_lee"}
+	ann, _ := user.New("ann@example.com")
+	_ = ann.UpdateProfile(user.Profile{Name: "Анна", Surname: "Ли", Nickname: "ann_lee", Hometown: "Тверь"})
+	ann.UpdateContacts(user.Contacts{City: "Москва"})
+	ann.UpdateInterests(user.Interests{Films: "Брат, Брат 2", Books: "Мастер и Маргарита"})
 
 	tests := []struct {
 		query string
@@ -31,7 +34,7 @@ func TestSearchQuery(t *testing.T) {
 		t.Run(tt.query, func(t *testing.T) {
 			t.Parallel()
 
-			q, err := user.NewSearchQuery(tt.query)
+			q, err := user.NewSearchQuery(tt.query, user.SearchFilters{})
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -41,15 +44,50 @@ func TestSearchQuery(t *testing.T) {
 		})
 	}
 
-	if _, err := user.NewSearchQuery("   "); !errors.Is(err, user.ErrSearchQueryEmpty) {
+	if _, err := user.NewSearchQuery("   ", user.SearchFilters{}); !errors.Is(err, user.ErrSearchQueryEmpty) {
 		t.Fatalf("blank: %v", err)
 	}
-	if _, err := user.NewSearchQuery(strings.Repeat("я", 65)); !errors.Is(err, user.ErrSearchQueryTooLong) {
+	if _, err := user.NewSearchQuery(strings.Repeat("я", 65), user.SearchFilters{}); !errors.Is(err, user.ErrSearchQueryTooLong) {
 		t.Fatalf("long: %v", err)
 	}
 
-	q, err := user.NewSearchQuery("a b c d e f g")
+	q, err := user.NewSearchQuery("a b c d e f g", user.SearchFilters{})
 	if err != nil || len(q.Words()) != 5 {
 		t.Fatalf("words are capped at 5: %v, %v", q.Words(), err)
+	}
+}
+
+func TestSearchQuery_Filters(t *testing.T) {
+	t.Parallel()
+
+	ann, _ := user.New("ann@example.com")
+	_ = ann.UpdateProfile(user.Profile{Name: "Анна", Nickname: "ann", Hometown: "Тверь"})
+	ann.UpdateContacts(user.Contacts{City: "Нижний Новгород"})
+	ann.UpdateInterests(user.Interests{Films: "Брат, Брат 2", Shows: "Улицы разбитых фонарей", Books: "Мастер и Маргарита"})
+
+	for _, tt := range []struct {
+		query   string
+		filters user.SearchFilters
+		match   bool
+	}{
+		{"", user.SearchFilters{Hometown: "  ТВЕРЬ "}, true},
+		{"", user.SearchFilters{Hometown: "Твер"}, false},
+		{"", user.SearchFilters{City: "нижний  новгород"}, true},
+		{"анна", user.SearchFilters{Film: "брат 2"}, true},
+		{"боб", user.SearchFilters{Film: "брат 2"}, false},
+		{"", user.SearchFilters{Show: "фонарей", Book: "маргарита"}, true},
+		{"", user.SearchFilters{Book: "война и мир"}, false},
+	} {
+		q, err := user.NewSearchQuery(tt.query, tt.filters)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if q.Matches(ann) != tt.match {
+			t.Errorf("%q %+v: Matches = %v", tt.query, tt.filters, !tt.match)
+		}
+	}
+
+	if _, err := user.NewSearchQuery("", user.SearchFilters{City: strings.Repeat("я", 65)}); !errors.Is(err, user.ErrSearchQueryTooLong) {
+		t.Fatalf("long filter: %v", err)
 	}
 }

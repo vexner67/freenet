@@ -143,7 +143,7 @@ func (r *UserRepository) Search(ctx context.Context, q user.SearchQuery, before 
 
 	var found []*user.User
 	for id, u := range r.users {
-		if u.IsProfileCompleted() && !u.IsDeactivated() && q.Matches(u.Profile()) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
+		if u.IsProfileCompleted() && !u.IsDeactivated() && q.Matches(&u) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
 			found = append(found, &u)
 		}
 	}
@@ -240,6 +240,15 @@ func (r *UserRepository) DeleteDue(ctx context.Context, now time.Time, limit int
 		delete(r.byEmail, emailKey(u.Email()))
 		if nickname := u.Profile().Nickname; nickname != "" {
 			delete(r.byNickname, nicknameKey(nickname))
+		}
+	}
+
+	// The relationships naming them name nobody, as ON DELETE SET NULL.
+	for id, u := range r.users {
+		if p := u.Profile(); slices.Contains(due, p.Partner) {
+			p.Partner = uuid.Nil
+			_ = u.UpdateProfile(p) // the profile was valid before
+			r.users[id] = u
 		}
 	}
 

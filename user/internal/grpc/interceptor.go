@@ -36,6 +36,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, user.ErrNotDeactivated.Error()), true
 	case errors.Is(err, user.ErrRestoreExpired):
 		return status.New(codes.FailedPrecondition, user.ErrRestoreExpired.Error()), true
+	case errors.Is(err, user.ErrPartnerNotFound):
+		return status.New(codes.InvalidArgument, user.ErrPartnerNotFound.Error()), true
+	case errors.Is(err, user.ErrPartnerIsSelf):
+		return status.New(codes.InvalidArgument, user.ErrPartnerIsSelf.Error()), true
+	case errors.Is(err, user.ErrTooManyExtraFields):
+		return status.New(codes.InvalidArgument, user.ErrTooManyExtraFields.Error()), true
 	default:
 		return nil, false
 	}

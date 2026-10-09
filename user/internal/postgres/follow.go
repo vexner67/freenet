@@ -113,29 +113,7 @@ func (r *FollowRepository) Counts(ctx context.Context, userID uuid.UUID) (follow
 const (
 	listFollowersQuery = `
 	SELECT
-		f.id,
-		u.id,
-		u.email,
-		u.name,
-		u.surname,
-		u.nickname,
-		u.status,
-		u.gender,
-		u.relationship,
-		u.worldview,
-		u.political_views,
-		u.birthday,
-		u.show_birthday,
-		u.show_relationship,
-		u.show_worldview,
-		u.show_political_views,
-		u.wall_write,
-		u.messages_write,
-		u.clubs_read,
-		u.avatar_id,
-		u.deactivated_at,
-		u.purge_at,
-		u.deactivation_reason
+		f.id,` + qualifiedUserColumns + `
 	FROM follows f
 	JOIN users u ON u.id = f.follower_id
 	WHERE f.followee_id = $1
@@ -146,29 +124,7 @@ const (
 
 	listFollowingQuery = `
 	SELECT
-		f.id,
-		u.id,
-		u.email,
-		u.name,
-		u.surname,
-		u.nickname,
-		u.status,
-		u.gender,
-		u.relationship,
-		u.worldview,
-		u.political_views,
-		u.birthday,
-		u.show_birthday,
-		u.show_relationship,
-		u.show_worldview,
-		u.show_political_views,
-		u.wall_write,
-		u.messages_write,
-		u.clubs_read,
-		u.avatar_id,
-		u.deactivated_at,
-		u.purge_at,
-		u.deactivation_reason
+		f.id,` + qualifiedUserColumns + `
 	FROM follows f
 	JOIN users u ON u.id = f.followee_id
 	WHERE f.follower_id = $1

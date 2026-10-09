@@ -51,7 +51,7 @@ func TestPurgeService(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = userSvc.UpdateProfile(ctx, id, user.Profile{Name: "Имя", Nickname: mustNickname(t, nickname)}); err != nil {
+		if _, err = userSvc.UpdateProfile(ctx, id, user.Profile{Name: "Имя", Nickname: mustNickname(t, nickname)}, ""); err != nil {
 			t.Fatal(err)
 		}
 		return id

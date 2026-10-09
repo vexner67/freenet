@@ -2,6 +2,7 @@ package postgres_test
 
 import (
 	"context"
+	"github.com/google/uuid"
 	"testing"
 	"time"
 
@@ -44,6 +45,14 @@ func TestPurge(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Bob is married to ann: once she is erased, to nobody.
+	if err := bob.UpdateProfile(user.Profile{Name: "Bob", Nickname: user.Nickname(unique("pb")), Relationship: user.RelationshipMarried, Partner: ann.ID()}); err != nil {
+		t.Fatal(err)
+	}
+	if err := repo.Update(ctx, bob); err != nil {
+		t.Fatal(err)
+	}
+
 	if err := ann.Deactivate("", time.Now().Add(-time.Hour), time.Minute); err != nil {
 		t.Fatal(err)
 	}
@@ -67,8 +76,8 @@ func TestPurge(t *testing.T) {
 	if _, err = repo.GetByID(ctx, ann.ID()); err == nil {
 		t.Fatal("ann is still there")
 	}
-	if _, err = repo.GetByID(ctx, bob.ID()); err != nil {
-		t.Fatalf("bob: %v", err)
+	if got, err := repo.GetByID(ctx, bob.ID()); err != nil || got.Profile().Partner != uuid.Nil || got.Profile().Relationship != user.RelationshipMarried {
+		t.Fatalf("bob = %+v, %v; married to nobody", got.Profile(), err)
 	}
 	if followers, following, _ := follows.Counts(ctx, bob.ID()); followers != 0 || following != 0 {
 		t.Fatalf("bob's follows = %d, %d; want ann's gone", followers, following)

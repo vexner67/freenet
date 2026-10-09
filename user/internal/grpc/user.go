@@ -17,7 +17,10 @@ type UserService interface {
 	GetOrCreateByEmail(ctx context.Context, email user.Email) (uuid.UUID, error)
 	GetByID(ctx context.Context, id uuid.UUID) (*user.User, error)
 	GetPublicProfile(ctx context.Context, nickname user.Nickname) (user.PublicProfile, error)
-	UpdateProfile(ctx context.Context, id uuid.UUID, profile user.Profile) (*user.User, error)
+	UpdateProfile(ctx context.Context, id uuid.UUID, profile user.Profile, partner user.Nickname) (*user.User, error)
+	UpdateContacts(ctx context.Context, id uuid.UUID, contacts user.Contacts) (*user.User, error)
+	UpdateInterests(ctx context.Context, id uuid.UUID, interests user.Interests) (*user.User, error)
+	UpdateExtraFields(ctx context.Context, id uuid.UUID, fields []user.ExtraField) (*user.User, error)
 	UpdatePrivacy(ctx context.Context, id uuid.UUID, privacy user.Privacy) (*user.User, error)
 	GetPublicProfiles(ctx context.Context, ids []uuid.UUID) ([]user.PublicProfile, error)
 	SetAvatar(ctx context.Context, id, avatarID uuid.UUID) (*user.User, error)
@@ -105,12 +108,77 @@ func (h *UserHandler) UpdateProfile(
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	u, err := h.userService.UpdateProfile(ctx, userID, profile)
+	var partner user.Nickname
+	if req.GetRelationshipPartner() != "" {
+		// A nickname of a wrong form names nobody either.
+		if partner, err = user.NewNickname(req.GetRelationshipPartner()); err != nil {
+			return nil, user.ErrPartnerNotFound
+		}
+	}
+
+	u, err := h.userService.UpdateProfile(ctx, userID, profile, partner)
 	if err != nil {
 		return nil, err
 	}
 
 	return &userv1.UpdateProfileResponse{User: toProtoUser(u)}, nil
+}
+
+func (h *UserHandler) UpdateContacts(ctx context.Context, req *userv1.UpdateContactsRequest) (*userv1.UpdateContactsResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	contacts, err := fromProtoContacts(req.GetContacts())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	u, err := h.userService.UpdateContacts(ctx, userID, contacts)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.UpdateContactsResponse{User: toProtoUser(u)}, nil
+}
+
+func (h *UserHandler) UpdateInterests(ctx context.Context, req *userv1.UpdateInterestsRequest) (*userv1.UpdateInterestsResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	interests, err := fromProtoInterests(req.GetInterests())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	u, err := h.userService.UpdateInterests(ctx, userID, interests)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.UpdateInterestsResponse{User: toProtoUser(u)}, nil
+}
+
+func (h *UserHandler) UpdateExtraFields(ctx context.Context, req *userv1.UpdateExtraFieldsRequest) (*userv1.UpdateExtraFieldsResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	fields, err := fromProtoExtraFields(req.GetFields())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	u, err := h.userService.UpdateExtraFields(ctx, userID, fields)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.UpdateExtraFieldsResponse{User: toProtoUser(u)}, nil
 }
 
 func (h *UserHandler) UpdatePrivacy(
@@ -185,7 +253,9 @@ func (h *UserHandler) SetAvatar(ctx context.Context, req *userv1.SetAvatarReques
 }
 
 func (h *UserHandler) SearchUsers(ctx context.Context, req *userv1.SearchUsersRequest) (*userv1.SearchUsersResponse, error) {
-	q, err := user.NewSearchQuery(req.GetQuery())
+	q, err := user.NewSearchQuery(req.GetQuery(), user.SearchFilters{
+		Hometown: req.GetHometown(), City: req.GetCity(), Film: req.GetFilm(), Show: req.GetShow(), Book: req.GetBook(),
+	})
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

@@ -127,7 +127,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 		svc, id := registered(t, "ann@example.com")
 		ctx := context.Background()
 
-		if _, err := svc.UpdateProfile(ctx, id, profile(t, "ann")); err != nil {
+		if _, err := svc.UpdateProfile(ctx, id, profile(t, "ann"), ""); err != nil {
 			t.Fatalf("UpdateProfile: %v", err)
 		}
 
@@ -150,11 +150,11 @@ func TestUserService_UpdateProfile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = svc.UpdateProfile(ctx, ann, profile(t, "ann")); err != nil {
+		if _, err = svc.UpdateProfile(ctx, ann, profile(t, "ann"), ""); err != nil {
 			t.Fatal(err)
 		}
 
-		_, err = svc.UpdateProfile(ctx, bob, profile(t, "ANN"))
+		_, err = svc.UpdateProfile(ctx, bob, profile(t, "ANN"), "")
 		if !errors.Is(err, user.ErrNicknameTaken) {
 			t.Fatalf("got %v, want ErrNicknameTaken", err)
 		}
@@ -178,13 +178,13 @@ func TestUserService_UpdateProfile(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if _, err = svc.UpdateProfile(ctx, ann, profile(t, "ann")); err != nil {
+		if _, err = svc.UpdateProfile(ctx, ann, profile(t, "ann"), ""); err != nil {
 			t.Fatal(err)
 		}
-		if _, err = svc.UpdateProfile(ctx, ann, profile(t, "ann_new")); err != nil {
+		if _, err = svc.UpdateProfile(ctx, ann, profile(t, "ann_new"), ""); err != nil {
 			t.Fatal(err)
 		}
-		if _, err = svc.UpdateProfile(ctx, bob, profile(t, "ann")); err != nil {
+		if _, err = svc.UpdateProfile(ctx, bob, profile(t, "ann"), ""); err != nil {
 			t.Fatalf("released nickname must be free: %v", err)
 		}
 	})
@@ -194,7 +194,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 
 		svc, id := registered(t, "ann@example.com")
 
-		_, err := svc.UpdateProfile(context.Background(), id, user.Profile{Name: "Ann"})
+		_, err := svc.UpdateProfile(context.Background(), id, user.Profile{Name: "Ann"}, "")
 		if !errors.Is(err, user.ErrNicknameEmpty) {
 			t.Fatalf("got %v, want ErrNicknameEmpty", err)
 		}
@@ -205,7 +205,7 @@ func TestUserService_UpdateProfile(t *testing.T) {
 
 		svc := service.NewUserService(inmem.NewUserRepository())
 
-		_, err := svc.UpdateProfile(context.Background(), uuid.New(), profile(t, "ann"))
+		_, err := svc.UpdateProfile(context.Background(), uuid.New(), profile(t, "ann"), "")
 		if !errors.Is(err, user.ErrNotFound) {
 			t.Fatalf("got %v, want ErrNotFound", err)
 		}
@@ -218,7 +218,7 @@ func TestUserService_GetPublicProfile(t *testing.T) {
 	svc, id := registered(t, "ann@example.com")
 	ctx := context.Background()
 
-	if _, err := svc.UpdateProfile(ctx, id, profile(t, "ann")); err != nil {
+	if _, err := svc.UpdateProfile(ctx, id, profile(t, "ann"), ""); err != nil {
 		t.Fatal(err)
 	}
 
@@ -264,4 +264,70 @@ type failingRepo struct {
 
 func (r *failingRepo) GetIDByEmail(context.Context, user.Email) (uuid.UUID, error) {
 	return uuid.Nil, r.err
+}
+
+func TestUserService_Partner(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc, ann := registered(t, "ann@example.com")
+	bob, err := svc.GetOrCreateByEmail(ctx, mustEmail(t, "bob@example.com"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.UpdateProfile(ctx, bob, profile(t, "bob"), ""); err != nil {
+		t.Fatal(err)
+	}
+
+	married := profile(t, "ann")
+	married.Relationship = user.RelationshipMarried
+
+	u, err := svc.UpdateProfile(ctx, ann, married, "BOB")
+	if err != nil || u.Profile().Partner != bob {
+		t.Fatalf("partner = %v, %v; want bob", u.Profile().Partner, err)
+	}
+
+	if _, err = svc.UpdateProfile(ctx, ann, married, "nobody"); !errors.Is(err, user.ErrPartnerNotFound) {
+		t.Fatalf("no such partner: %v", err)
+	}
+	if _, err = svc.UpdateProfile(ctx, ann, married, "ann"); !errors.Is(err, user.ErrPartnerIsSelf) {
+		t.Fatalf("oneself: %v", err)
+	}
+
+	// A relationship without a partner looks nobody up.
+	single := profile(t, "ann")
+	single.Relationship = user.RelationshipSingle
+	if u, err = svc.UpdateProfile(ctx, ann, single, "nobody"); err != nil || u.Profile().Partner != uuid.Nil {
+		t.Fatalf("single = %v, %v", u.Profile().Partner, err)
+	}
+}
+
+func TestUserService_AboutTheUser(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc, id := registered(t, "ann@example.com")
+
+	if _, err := svc.UpdateContacts(ctx, id, user.Contacts{Telegram: "ann_tg", City: "Москва"}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.UpdateInterests(ctx, id, user.Interests{Books: "Мастер и Маргарита"}); err != nil {
+		t.Fatal(err)
+	}
+	field, _ := user.NewExtraField("Цвет", "синий", user.FieldPlaceContacts)
+	if _, err := svc.UpdateExtraFields(ctx, id, []user.ExtraField{field}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.UpdateExtraFields(ctx, id, make([]user.ExtraField, user.MaxExtraFields+1)); !errors.Is(err, user.ErrTooManyExtraFields) {
+		t.Fatalf("too many fields: %v", err)
+	}
+
+	u, err := svc.GetByID(ctx, id)
+	if err != nil || u.Contacts().Telegram != "ann_tg" || u.Interests().Books != "Мастер и Маргарита" || len(u.ExtraFields()) != 1 {
+		t.Fatalf("user = %+v, %+v, %+v, %v", u.Contacts(), u.Interests(), u.ExtraFields(), err)
+	}
+
+	if _, err = svc.UpdateContacts(ctx, uuid.New(), user.Contacts{}); !errors.Is(err, user.ErrNotFound) {
+		t.Fatalf("unknown user: %v", err)
+	}
 }

@@ -13,23 +13,154 @@ func toProtoUser(u *user.User) *userv1.User {
 	p := u.Profile()
 
 	return &userv1.User{
-		Id:               u.ID().String(),
-		Name:             p.Name.String(),
-		Surname:          p.Surname.String(),
-		Nickname:         p.Nickname.String(),
-		Status:           p.Status.String(),
-		Gender:           toProtoGender(p.Gender),
-		Relationship:     toProtoRelationship(p.Relationship),
-		Worldview:        toProtoWorldview(p.Worldview),
-		PoliticalViews:   toProtoPoliticalViews(p.PoliticalViews),
-		Birthday:         toProtoBirthday(p.Birthday),
-		Email:            u.Email().String(),
-		ProfileCompleted: u.IsProfileCompleted(),
-		Privacy:          toProtoPrivacy(u.Privacy()),
-		AvatarId:         avatarString(u.AvatarID()),
-		Deactivated:      u.IsDeactivated(),
-		PurgeAt:          toProtoTime(u.Deactivation().PurgeAt),
+		Id:                    u.ID().String(),
+		Name:                  p.Name.String(),
+		Surname:               p.Surname.String(),
+		Nickname:              p.Nickname.String(),
+		Status:                p.Status.String(),
+		Gender:                toProtoGender(p.Gender),
+		Relationship:          toProtoRelationship(p.Relationship),
+		Worldview:             toProtoWorldview(p.Worldview),
+		PoliticalViews:        toProtoPoliticalViews(p.PoliticalViews),
+		Birthday:              toProtoBirthday(p.Birthday),
+		Email:                 u.Email().String(),
+		ProfileCompleted:      u.IsProfileCompleted(),
+		Privacy:               toProtoPrivacy(u.Privacy()),
+		AvatarId:              avatarString(u.AvatarID()),
+		Deactivated:           u.IsDeactivated(),
+		PurgeAt:               toProtoTime(u.Deactivation().PurgeAt),
+		Hometown:              p.Hometown.String(),
+		RelationshipPartnerId: avatarString(p.Partner),
+		HideBirthYear:         p.HideBirthYear,
+		Contacts:              toProtoContacts(u.Contacts()),
+		Interests:             toProtoInterests(u.Interests()),
+		ExtraFields:           toProtoExtraFields(u.ExtraFields()),
+		RegisteredAt:          timestamppb.New(user.RegisteredAt(u.ID())),
 	}
+}
+
+func toProtoContacts(c user.Contacts) *userv1.Contacts {
+	return &userv1.Contacts{
+		Email:    c.Email.String(),
+		Telegram: c.Telegram.String(),
+		Website:  c.Website.String(),
+		City:     c.City.String(),
+		Address:  c.Address.String(),
+	}
+}
+
+// fromProtoContacts validates every field; its errors are meant for the client.
+func fromProtoContacts(c *userv1.Contacts) (user.Contacts, error) {
+	email, err := user.NewContactEmail(c.GetEmail())
+	if err != nil {
+		return user.Contacts{}, err
+	}
+
+	telegram, err := user.NewTelegram(c.GetTelegram())
+	if err != nil {
+		return user.Contacts{}, err
+	}
+
+	website, err := user.NewWebsite(c.GetWebsite())
+	if err != nil {
+		return user.Contacts{}, err
+	}
+
+	city, err := user.NewPlace(c.GetCity())
+	if err != nil {
+		return user.Contacts{}, err
+	}
+
+	address, err := user.NewAddress(c.GetAddress())
+	if err != nil {
+		return user.Contacts{}, err
+	}
+
+	return user.Contacts{Email: email, Telegram: telegram, Website: website, City: city, Address: address}, nil
+}
+
+func toProtoInterests(in user.Interests) *userv1.Interests {
+	return &userv1.Interests{
+		Interests: in.Interests.String(),
+		Music:     in.Music.String(),
+		Films:     in.Films.String(),
+		Shows:     in.Shows.String(),
+		Books:     in.Books.String(),
+		Quotes:    in.Quotes.String(),
+		Games:     in.Games.String(),
+		About:     in.About.String(),
+	}
+}
+
+// fromProtoInterests validates every field; its errors are meant for the client.
+func fromProtoInterests(in *userv1.Interests) (user.Interests, error) {
+	var out user.Interests
+
+	for _, f := range []struct {
+		to   *user.About
+		from string
+	}{
+		{&out.Interests, in.GetInterests()},
+		{&out.Music, in.GetMusic()},
+		{&out.Films, in.GetFilms()},
+		{&out.Shows, in.GetShows()},
+		{&out.Books, in.GetBooks()},
+		{&out.Quotes, in.GetQuotes()},
+		{&out.Games, in.GetGames()},
+		{&out.About, in.GetAbout()},
+	} {
+		about, err := user.NewAbout(f.from)
+		if err != nil {
+			return user.Interests{}, err
+		}
+		*f.to = about
+	}
+
+	return out, nil
+}
+
+func toProtoExtraFields(fields []user.ExtraField) []*userv1.ExtraField {
+	out := make([]*userv1.ExtraField, 0, len(fields))
+	for _, f := range fields {
+		place := userv1.FieldPlace_FIELD_PLACE_CONTACTS
+		if f.Place == user.FieldPlaceInterests {
+			place = userv1.FieldPlace_FIELD_PLACE_INTERESTS
+		}
+		out = append(out, &userv1.ExtraField{Name: f.Name, Text: f.Text.String(), Place: place})
+	}
+
+	return out
+}
+
+// fromProtoExtraFields validates every field; its errors are meant for the client.
+func fromProtoExtraFields(fields []*userv1.ExtraField) ([]user.ExtraField, error) {
+	if len(fields) > user.MaxExtraFields {
+		return nil, user.ErrTooManyExtraFields
+	}
+
+	out := make([]user.ExtraField, 0, len(fields))
+	for _, f := range fields {
+		var place string
+		switch f.GetPlace() {
+		case userv1.FieldPlace_FIELD_PLACE_CONTACTS:
+			place = user.FieldPlaceContacts.String()
+		case userv1.FieldPlace_FIELD_PLACE_INTERESTS:
+			place = user.FieldPlaceInterests.String()
+		}
+
+		fp, err := user.NewFieldPlace(place)
+		if err != nil {
+			return nil, err
+		}
+
+		field, err := user.NewExtraField(f.GetName(), f.GetText(), fp)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, field)
+	}
+
+	return out, nil
 }
 
 // toProtoTime leaves the zero time unset.
@@ -170,18 +301,25 @@ func fromProtoWallWrite(w userv1.WallWrite) string {
 
 func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 	return &userv1.PublicProfile{
-		Id:             p.ID.String(),
-		Name:           p.Name.String(),
-		Surname:        p.Surname.String(),
-		Nickname:       p.Nickname.String(),
-		Status:         p.Status.String(),
-		Gender:         toProtoGender(p.Gender),
-		Relationship:   toProtoRelationship(p.Relationship),
-		Worldview:      toProtoWorldview(p.Worldview),
-		PoliticalViews: toProtoPoliticalViews(p.PoliticalViews),
-		Birthday:       toProtoBirthday(p.Birthday),
-		AvatarId:       avatarString(p.AvatarID),
-		Deactivated:    p.Deactivated,
+		Id:                    p.ID.String(),
+		Name:                  p.Name.String(),
+		Surname:               p.Surname.String(),
+		Nickname:              p.Nickname.String(),
+		Status:                p.Status.String(),
+		Gender:                toProtoGender(p.Gender),
+		Relationship:          toProtoRelationship(p.Relationship),
+		Worldview:             toProtoWorldview(p.Worldview),
+		PoliticalViews:        toProtoPoliticalViews(p.PoliticalViews),
+		Birthday:              toProtoBirthday(p.Birthday),
+		AvatarId:              avatarString(p.AvatarID),
+		Deactivated:           p.Deactivated,
+		BirthYearHidden:       p.BirthYearHidden,
+		Hometown:              p.Hometown.String(),
+		RelationshipPartnerId: avatarString(p.Partner),
+		Contacts:              toProtoContacts(p.Contacts),
+		Interests:             toProtoInterests(p.Interests),
+		ExtraFields:           toProtoExtraFields(p.ExtraFields),
+		RegisteredAt:          timestamppb.New(user.RegisteredAt(p.ID)),
 	}
 }
 
@@ -196,6 +334,8 @@ type profileRequest interface {
 	GetWorldview() userv1.Worldview
 	GetPoliticalViews() userv1.PoliticalViews
 	GetBirthday() *timestamppb.Timestamp
+	GetHometown() string
+	GetHideBirthYear() bool
 }
 
 // fromProtoProfile validates every field; its errors are meant for the client.
@@ -245,6 +385,11 @@ func fromProtoProfile(req profileRequest) (user.Profile, error) {
 		return user.Profile{}, err
 	}
 
+	hometown, err := user.NewPlace(req.GetHometown())
+	if err != nil {
+		return user.Profile{}, err
+	}
+
 	return user.Profile{
 		Name:           name,
 		Surname:        surname,
@@ -255,6 +400,8 @@ func fromProtoProfile(req profileRequest) (user.Profile, error) {
 		Worldview:      worldview,
 		PoliticalViews: politicalViews,
 		Birthday:       birthday,
+		HideBirthYear:  req.GetHideBirthYear(),
+		Hometown:       hometown,
 	}, nil
 }
 
@@ -264,6 +411,8 @@ func toProtoGender(g user.Gender) userv1.Gender {
 		return userv1.Gender_GENDER_MALE
 	case user.GenderFemale:
 		return userv1.Gender_GENDER_FEMALE
+	case user.GenderNeutral:
+		return userv1.Gender_GENDER_NEUTRAL
 	default:
 		return userv1.Gender_GENDER_NONE
 	}
@@ -275,6 +424,8 @@ func fromProtoGender(g userv1.Gender) string {
 		return "male"
 	case userv1.Gender_GENDER_FEMALE:
 		return "female"
+	case userv1.Gender_GENDER_NEUTRAL:
+		return "neutral"
 	default:
 		return ""
 	}
@@ -292,6 +443,12 @@ func toProtoRelationship(r user.Relationship) userv1.Relationship {
 		return userv1.Relationship_RELATIONSHIP_IN_LOVE
 	case user.RelationshipLooking:
 		return userv1.Relationship_RELATIONSHIP_LOOKING
+	case user.RelationshipEngaged:
+		return userv1.Relationship_RELATIONSHIP_ENGAGED
+	case user.RelationshipCivilUnion:
+		return userv1.Relationship_RELATIONSHIP_CIVIL_UNION
+	case user.RelationshipComplicated:
+		return userv1.Relationship_RELATIONSHIP_COMPLICATED
 	default:
 		return userv1.Relationship_RELATIONSHIP_NONE
 	}
@@ -309,6 +466,12 @@ func fromProtoRelationship(r userv1.Relationship) string {
 		return "in_love"
 	case userv1.Relationship_RELATIONSHIP_LOOKING:
 		return "looking"
+	case userv1.Relationship_RELATIONSHIP_ENGAGED:
+		return "engaged"
+	case userv1.Relationship_RELATIONSHIP_CIVIL_UNION:
+		return "civil_union"
+	case userv1.Relationship_RELATIONSHIP_COMPLICATED:
+		return "complicated"
 	default:
 		return ""
 	}

@@ -14,6 +14,11 @@ service UserService {
   rpc GetMe(GetMeRequest) returns (GetMeResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
   rpc UpdatePrivacy(UpdatePrivacyRequest) returns (UpdatePrivacyResponse);
+  // openvk's "Контакты", "Интересы" and "Дополнительно" of the page; each
+  // replaces its part at once.
+  rpc UpdateContacts(UpdateContactsRequest) returns (UpdateContactsResponse);
+  rpc UpdateInterests(UpdateInterestsRequest) returns (UpdateInterestsResponse);
+  rpc UpdateExtraFields(UpdateExtraFieldsRequest) returns (UpdateExtraFieldsResponse);
   // Points the caller's profile to a photo uploaded to the media service;
   // an empty avatar_id removes the photo.
   rpc SetAvatar(SetAvatarRequest) returns (SetAvatarResponse);
@@ -90,6 +95,51 @@ message User {
   // The owner deleted the page; it can be restored until purge_at.
   bool deactivated = 15;
   google.protobuf.Timestamp purge_at = 16;
+  string hometown = 17;
+  // Whom the relationship names; empty for nobody.
+  string relationship_partner_id = 18;
+  // Show the birthday without its year ("Показывать только день и месяц").
+  bool hide_birth_year = 19;
+  Contacts contacts = 20;
+  Interests interests = 21;
+  repeated ExtraField extra_fields = 22;
+  google.protobuf.Timestamp registered_at = 23;
+}
+
+// openvk's "Контактная информация"; every field optional.
+message Contacts {
+  string email = 1;
+  // A Telegram username without "@".
+  string telegram = 2;
+  string website = 3;
+  string city = 4;
+  string address = 5;
+}
+
+// openvk's "Личная информация"; every field optional.
+message Interests {
+  string interests = 1;
+  string music = 2;
+  string films = 3;
+  string shows = 4;
+  string books = 5;
+  string quotes = 6;
+  string games = 7;
+  string about = 8;
+}
+
+// A field of the page its owner names ("Дополнительно").
+message ExtraField {
+  string name = 1;
+  string text = 2;
+  FieldPlace place = 3;
+}
+
+// Where an additional field shows.
+enum FieldPlace {
+  FIELD_PLACE_UNSPECIFIED = 0;
+  FIELD_PLACE_CONTACTS = 1;
+  FIELD_PLACE_INTERESTS = 2;
 }
 
 // Which sensitive fields other users see in PublicProfile, all false
@@ -151,12 +201,23 @@ message PublicProfile {
   string avatar_id = 11;
   // The owner deleted the page: only names and the photo are left.
   bool deactivated = 12;
+  // The birthday is told without its year, which is then 2000.
+  bool birth_year_hidden = 13;
+  string hometown = 14;
+  // Whom the relationship names; empty for nobody and when hidden.
+  string relationship_partner_id = 15;
+  Contacts contacts = 16;
+  Interests interests = 17;
+  repeated ExtraField extra_fields = 18;
+  google.protobuf.Timestamp registered_at = 19;
 }
 
 enum Gender {
   GENDER_NONE = 0;
   GENDER_MALE = 1;
   GENDER_FEMALE = 2;
+  // openvk's "они/их".
+  GENDER_NEUTRAL = 3;
 }
 
 enum Relationship {
@@ -166,6 +227,9 @@ enum Relationship {
   RELATIONSHIP_MARRIED = 3;
   RELATIONSHIP_IN_LOVE = 4;
   RELATIONSHIP_LOOKING = 5;
+  RELATIONSHIP_ENGAGED = 6;
+  RELATIONSHIP_CIVIL_UNION = 7;
+  RELATIONSHIP_COMPLICATED = 8;
 }
 
 enum Worldview {
@@ -221,9 +285,38 @@ message UpdateProfileRequest {
   Worldview worldview = 7;
   PoliticalViews political_views = 8;
   google.protobuf.Timestamp birthday = 9;
+  string hometown = 10;
+  // The nickname of whom the relationship names; empty for nobody.
+  string relationship_partner = 11;
+  bool hide_birth_year = 12;
 }
 
 message UpdateProfileResponse {
+  User user = 1;
+}
+
+message UpdateContactsRequest {
+  Contacts contacts = 1;
+}
+
+message UpdateContactsResponse {
+  User user = 1;
+}
+
+message UpdateInterestsRequest {
+  Interests interests = 1;
+}
+
+message UpdateInterestsResponse {
+  User user = 1;
+}
+
+message UpdateExtraFieldsRequest {
+  // At most 7.
+  repeated ExtraField fields = 1;
+}
+
+message UpdateExtraFieldsResponse {
   User user = 1;
 }
 
@@ -303,11 +396,19 @@ message SetAvatarResponse {
 }
 
 message SearchUsersRequest {
-  // Words in any order, each found in the name, surname or nickname.
+  // Words in any order, each found in the name, surname or nickname;
+  // may be empty with a filter.
   string query = 1;
   string cursor = 2;
   // 1-50; anything else means 20.
   int32 limit = 3;
+  // Filters, as openvk's page links: a hometown or a city, whatever the
+  // case; a film, a show or a book among the favourites.
+  string hometown = 4;
+  string city = 5;
+  string film = 6;
+  string show = 7;
+  string book = 8;
 }
 
 message SearchUsersResponse {
