@@ -22,6 +22,11 @@ service UserService {
   // Points the caller's profile to a photo uploaded to the media service;
   // an empty avatar_id removes the photo.
   rpc SetAvatar(SetAvatarRequest) returns (SetAvatarResponse);
+  // Shows a photo the media service keeps under the caller on one side of
+  // their page ("Фон страницы"), the other side as it is; an empty
+  // photo_id clears the side. Tells which photo the side showed before,
+  // for the caller to delete.
+  rpc SetBackdrop(SetBackdropRequest) returns (SetBackdropResponse);
 
   // Public: returns only what other users may see.
   rpc GetProfile(GetProfileRequest) returns (GetProfileResponse);
@@ -107,6 +112,10 @@ message User {
   Interests interests = 21;
   repeated ExtraField extra_fields = 22;
   google.protobuf.Timestamp registered_at = 23;
+  // "Фон страницы": photos of the media service under the user, empty for
+  // a side without one.
+  string backdrop_left = 24;
+  string backdrop_right = 25;
 }
 
 // openvk's "Контактная информация"; every field optional.
@@ -248,6 +257,9 @@ message PublicProfile {
   google.protobuf.Timestamp last_seen_at = 22;
   // The user visited within the last minutes ("Онлайн").
   bool online = 23;
+  // "Фон страницы", as in User; none on a deleted or hidden page.
+  string backdrop_left = 24;
+  string backdrop_right = 25;
 }
 
 enum Gender {
@@ -435,6 +447,23 @@ message SetAvatarRequest {
 
 message SetAvatarResponse {
   User user = 1;
+}
+
+enum BackdropSide {
+  BACKDROP_SIDE_UNSPECIFIED = 0;
+  BACKDROP_SIDE_LEFT = 1;
+  BACKDROP_SIDE_RIGHT = 2;
+}
+
+message SetBackdropRequest {
+  BackdropSide side = 1;
+  string photo_id = 2;
+}
+
+message SetBackdropResponse {
+  User user = 1;
+  // The photo the side showed before; empty if none.
+  string previous_photo_id = 2;
 }
 
 message SearchUsersRequest {

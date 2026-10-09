@@ -74,6 +74,28 @@ func TestPresence(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// A backdrop changes one side and tells what it replaced; Update keeps it.
+	photo := uuid.New()
+	if prev, err := repo.SetBackdrop(ctx, cat.ID(), user.BackdropLeft, photo); err != nil || prev != uuid.Nil {
+		t.Fatalf("SetBackdrop = %v, %v", prev, err)
+	}
+	if prev, err := repo.SetBackdrop(ctx, cat.ID(), user.BackdropRight, photo); err != nil || prev != uuid.Nil {
+		t.Fatalf("the right side = %v, %v", prev, err)
+	}
+	c, _ := repo.GetByID(ctx, cat.ID())
+	if prev, err := repo.SetBackdrop(ctx, cat.ID(), user.BackdropLeft, uuid.Nil); err != nil || prev != photo {
+		t.Fatalf("clearing = %v, %v", prev, err)
+	}
+	if err = repo.Update(ctx, c); err != nil {
+		t.Fatal(err)
+	}
+	if c, _ = repo.GetByID(ctx, cat.ID()); c.Backdrop() != (user.Backdrop{Right: photo}) {
+		t.Fatalf("backdrop %+v", c.Backdrop())
+	}
+	if _, err = repo.SetBackdrop(ctx, uuid.New(), user.BackdropLeft, photo); err != user.ErrNotFound {
+		t.Fatalf("nobody: %v", err)
+	}
+
 	since := now.Add(-user.OnlineFor)
 	online, err := follows.ListOnlineFollowing(ctx, ann.ID(), since, uuid.Nil, 10)
 	if err != nil || len(online) != 1 || online[0].User.ID() != bob.ID() {

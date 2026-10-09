@@ -34,6 +34,7 @@ type UserHandler struct {
 	blockService      BlockService
 	permissionService PermissionService
 	presenceService   PresenceService
+	backdropService   BackdropService
 	logger            *slog.Logger
 }
 
@@ -45,6 +46,7 @@ type Services struct {
 	Blocks      BlockService
 	Permissions PermissionService
 	Presence    PresenceService
+	Backdrops   BackdropService
 }
 
 func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
@@ -55,6 +57,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		blockService:      s.Blocks,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
+		backdropService:   s.Backdrops,
 		logger:            logger,
 	}
 }

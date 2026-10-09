@@ -100,6 +100,8 @@ type PublicProfile struct {
 	// time if never or hidden; Online: within OnlineFor ("Онлайн").
 	LastSeen time.Time
 	Online   bool
+	// Backdrop is shown on the sides of the page ("Фон страницы").
+	Backdrop Backdrop
 }
 
 // birthYearMask is the year of a birthday told without one: a leap year,
@@ -125,6 +127,7 @@ type User struct {
 	avatarID     uuid.UUID
 	deactivation Deactivation
 	lastSeen     time.Time
+	backdrop     Backdrop
 }
 
 // New creates a user with only an email set, as happens on the first
@@ -158,6 +161,7 @@ type Stored struct {
 	AvatarID     uuid.UUID
 	Deactivation Deactivation
 	LastSeen     time.Time
+	Backdrop     Backdrop
 }
 
 // Restore rebuilds a user from storage without validation or new IDs.
@@ -173,6 +177,7 @@ func Restore(s Stored) *User {
 		avatarID:     s.AvatarID,
 		deactivation: s.Deactivation,
 		lastSeen:     s.LastSeen,
+		backdrop:     s.Backdrop,
 	}
 }
 
@@ -342,7 +347,8 @@ func (u *User) publicProfile(showInfo bool) PublicProfile {
 		Status:   u.profile.Status,
 		// The pronouns speak of the person: as on openvk, they stay with
 		// the names.
-		Gender: u.profile.Gender,
+		Gender:   u.profile.Gender,
+		Backdrop: u.backdrop,
 	}
 
 	if !showInfo {
