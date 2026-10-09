@@ -232,8 +232,9 @@ func (h *MediaHandler) ListOwnPhotos(ctx context.Context, req *mediav1.ListOwnPh
 	return resp, nil
 }
 
-// PublishPhotos and DeletePublishedPhotos are internal, for post and
-// message: the owner comes in the request, not from a token.
+// PublishPhotos and DeletePublishedPhotos are internal, for post, message
+// and the gateway (the backdrop of a person): the owner comes in the
+// request, not from a token.
 func (h *MediaHandler) PublishPhotos(ctx context.Context, req *mediav1.PublishPhotosRequest) (*emptypb.Empty, error) {
 	ownerID, ids, err := parseOwnerPhotos(req.GetOwnerId(), req.GetPhotoIds())
 	if err != nil {
