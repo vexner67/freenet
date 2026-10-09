@@ -21,6 +21,9 @@ type fakeAlbums struct {
 	// avatarPhotos are "club/photo" of the new photos of pages.
 	avatarPhotos []string
 	err          error
+	// photoLiked is the photo liked last, commented the text of the last
+	// comment on a photo.
+	photoLiked, commented string
 }
 
 func (f *fakeAlbums) AddAvatarPhoto(_ context.Context, _, clubID, photoID string) error {
@@ -117,6 +120,39 @@ func (f *fakeAlbums) Photo(_ context.Context, _, id string) (model.AlbumPhoto, m
 	}
 	a, _ := f.album(p.AlbumID)
 	return p, a, nil
+}
+
+func (f *fakeAlbums) LikePhoto(_ context.Context, _, id string) (int, error) {
+	f.photoLiked = id
+	return 1, f.err
+}
+
+func (f *fakeAlbums) UnlikePhoto(_ context.Context, _, id string) (int, error) {
+	f.photoLiked = ""
+	return 0, f.err
+}
+
+func (f *fakeAlbums) PhotoLikers(_ context.Context, id, _ string, _ int) (model.LikerPage, error) {
+	return model.LikerPage{UserIDs: []string{"u2"}, Total: 1}, f.err
+}
+
+// CommentPhoto keeps text in commented; the comments of every photo are
+// bob's and a deleted page's.
+func (f *fakeAlbums) CommentPhoto(_ context.Context, _, id, text string) (model.PhotoComment, error) {
+	f.commented = text
+	return model.PhotoComment{ID: "pc9", PhotoID: id, AuthorID: "u1", Text: text, CreatedAt: albumTime, Mine: true}, f.err
+}
+
+func (f *fakeAlbums) DeletePhotoComment(_ context.Context, _, id string) error {
+	f.deleted = id
+	return f.err
+}
+
+func (f *fakeAlbums) PhotoComments(_ context.Context, _, id, _ string, _ int) (model.PhotoCommentPage, error) {
+	return model.PhotoCommentPage{Comments: []model.PhotoComment{
+		{ID: "pc1", PhotoID: id, AuthorID: "u2", Text: "красиво", CreatedAt: albumTime},
+		{ID: "pc2", PhotoID: id, AuthorID: "u3", Text: "удалённый", CreatedAt: albumTime},
+	}, Total: 2}, f.err
 }
 
 func (f *fakeAlbums) Describe(_ context.Context, _, id, description string) (model.AlbumPhoto, error) {
@@ -314,5 +350,59 @@ func TestAlbumPhotoPage(t *testing.T) {
 	}
 	if w = h.do("DELETE", "/api/v1/album-photos/ph6", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.albums.deleted != "ph6" {
 		t.Fatalf("delete: %d", w.Code)
+	}
+}
+
+func TestPhotoReactions(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+	auth := []string{"Authorization", "Bearer tok"}
+
+	w := h.do("PUT", "/api/v1/album-photos/ph6/like", "", auth...)
+	if got := decode[map[string]any](t, w); w.Code != http.StatusOK || got["likes"] != float64(1) || got["liked"] != true || h.albums.photoLiked != "ph6" {
+		t.Fatalf("like: %d %v", w.Code, got)
+	}
+	if w = h.do("PUT", "/api/v1/album-photos/ph5/like", "", auth...); w.Code != http.StatusNotFound {
+		t.Fatalf("a photo of a deleted page: %d", w.Code)
+	}
+	if w = h.do("GET", "/api/v1/album-photos/ph6/likes", ""); w.Code != http.StatusOK || decode[map[string]any](t, w)["total"] != float64(1) {
+		t.Fatalf("likers: %d", w.Code)
+	}
+
+	// Comments: the deleted page's left out, counted.
+	w = h.do("GET", "/api/v1/album-photos/ph6/comments", "")
+	got := decode[struct {
+		Comments []struct {
+			Text   string            `json:"text"`
+			Author map[string]string `json:"author"`
+		} `json:"comments"`
+		Total int `json:"total"`
+	}](t, w)
+	if w.Code != http.StatusOK || len(got.Comments) != 1 || got.Comments[0].Author["nickname"] != "bob" || got.Total != 2 {
+		t.Fatalf("comments: %d %+v", w.Code, got)
+	}
+
+	w = h.do("POST", "/api/v1/album-photos/ph6/comments", `{"text":"класс"}`, auth...)
+	if c := decode[map[string]any](t, w); w.Code != http.StatusCreated || c["text"] != "класс" || h.albums.commented != "класс" {
+		t.Fatalf("comment: %d %v", w.Code, c)
+	}
+
+	// No comments between blacklisted people.
+	h.users.relation = model.Relation{BlockedMe: true}
+	if w = h.do("POST", "/api/v1/album-photos/ph6/comments", `{"text":"x"}`, auth...); w.Code != http.StatusForbidden {
+		t.Fatalf("blacklisted: %d", w.Code)
+	}
+
+	if w = h.do("DELETE", "/api/v1/photo-comments/pc1", "", auth...); w.Code != http.StatusNoContent || h.albums.deleted != "pc1" {
+		t.Fatalf("delete: %d", w.Code)
+	}
+
+	// "Поделиться": a post sharing the photo.
+	h.users.relation = model.Relation{}
+	w = h.do("POST", "/api/v1/album-photos/ph6/reposts", `{"text":"смотрите"}`, auth...)
+	if w.Code != http.StatusCreated || h.posts.repost.PhotoID != "ph6" || h.posts.repost.Text != "смотрите" {
+		t.Fatalf("share: %d %s, asked %+v", w.Code, w.Body, h.posts.repost)
 	}
 }

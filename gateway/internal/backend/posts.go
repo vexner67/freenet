@@ -42,8 +42,10 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 }
 
 // Repost shares the post on the caller's wall and returns the repost.
-func (p *Posts) Repost(ctx context.Context, accessToken, postID, text string) (model.Post, error) {
-	resp, err := p.api.RepostPost(withToken(ctx, accessToken), &postv1.RepostPostRequest{PostId: postID, Text: text})
+func (p *Posts) Repost(ctx context.Context, accessToken, postID string, nr model.NewRepost) (model.Post, error) {
+	resp, err := p.api.RepostPost(withToken(ctx, accessToken), &postv1.RepostPostRequest{
+		PostId: postID, PhotoId: nr.PhotoID, Text: nr.Text, WallId: nr.WallID, FromWall: nr.FromWall, Signed: nr.Signed,
+	})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.RepostPost", fromStatus(err))
 	}
@@ -189,6 +191,26 @@ func (p *Posts) Unlike(ctx context.Context, accessToken, postID string) (int, er
 	}
 
 	return int(resp.GetLikeCount()), nil
+}
+
+// PostLikers is who like the post, newest first.
+func (p *Posts) PostLikers(ctx context.Context, postID, cursor string, limit int) (model.LikerPage, error) {
+	resp, err := p.api.ListPostLikers(ctx, &postv1.ListPostLikersRequest{PostId: postID, Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.LikerPage{}, errs.Wrap("p.api.ListPostLikers", fromStatus(err))
+	}
+
+	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
+}
+
+// CommentLikers is who like the comment, newest first.
+func (p *Posts) CommentLikers(ctx context.Context, commentID, cursor string, limit int) (model.LikerPage, error) {
+	resp, err := p.api.ListCommentLikers(ctx, &postv1.ListCommentLikersRequest{CommentId: commentID, Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.LikerPage{}, errs.Wrap("p.api.ListCommentLikers", fromStatus(err))
+	}
+
+	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
 }
 
 // CreateComment returns the comment without Author: the caller knows who it is.
@@ -348,6 +370,7 @@ func toPost(p *postv1.Post) model.Post {
 		FromWall:      p.GetFromWall(),
 		Signed:        p.GetSigned(),
 		AvatarUpdate:  p.GetAvatarUpdate(),
+		SharedPhotoID: p.GetSharedPhotoId(),
 		Mine:          p.GetMine(),
 	}
 }

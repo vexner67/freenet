@@ -12,6 +12,8 @@ type messageRequest struct {
 	Text string `json:"text"`
 	// Photos are IDs from POST /api/v1/me/photos.
 	Photos []string `json:"photos"`
+	// Post is a post shared into the dialog ("Поделиться" "в переписку").
+	Post string `json:"post"`
 }
 
 // messageJSON: Out is the caller's own message, Read means its recipient
@@ -25,6 +27,10 @@ type messageJSON struct {
 	Out            bool        `json:"out"`
 	Read           bool        `json:"read"`
 	DeletableUntil string      `json:"deletableUntil"`
+	// Post is a post shared in it, "" for none; Repost shows it, as inside
+	// a repost, except in the list of dialogs.
+	Post   string      `json:"post"`
+	Repost *repostJSON `json:"repost,omitempty"`
 }
 
 type dialogJSON struct {
@@ -57,6 +63,7 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 		CreatedAt: m.CreatedAt.UTC().Format(time.RFC3339),
 		Out:       m.SenderID != peerID,
 		Read:      m.Read,
+		Post:      m.PostID,
 	}
 
 	if j.Out {
@@ -176,6 +183,11 @@ func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 		resp.Messages = append(resp.Messages, toMessageJSON(m, peer.ID))
 	}
 
+	if err = a.showSharedPosts(r, resp.Messages); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	if query.Get("cursor") == "" && query.Get("after") == "" {
 		if resp.CanWrite, err = a.canMessage(r, token, peer.ID); err != nil {
 			a.writeError(w, r, err)
@@ -247,13 +259,61 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := a.messages.Send(r.Context(), token, recipient.ID, req.Text, req.Photos)
+	if err = a.checkSharedPost(r, token, req.Post); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	m, err := a.messages.Send(r.Context(), token, recipient.ID, req.Text, req.Photos, req.Post)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, toMessageJSON(m, recipient.ID))
+	j := []messageJSON{toMessageJSON(m, recipient.ID)}
+	if err = a.showSharedPosts(r, j); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, j[0])
+}
+
+// checkSharedPost refuses a post to share that is not there.
+func (a *api) checkSharedPost(r *http.Request, token, postID string) error {
+	if postID == "" {
+		return nil
+	}
+
+	_, err := a.posts.Get(r.Context(), token, postID)
+	if failure.From(err).Kind == failure.NotFound || failure.From(err).Kind == failure.InvalidArgument {
+		return failure.New(failure.InvalidArgument, "post not found")
+	}
+
+	return err
+}
+
+// showSharedPosts fills in the posts shared in messages.
+func (a *api) showSharedPosts(r *http.Request, messages []messageJSON) error {
+	var ids []string
+	for _, m := range messages {
+		if m.Post != "" {
+			ids = append(ids, m.Post)
+		}
+	}
+
+	shown, err := a.repostsByID(r, ids)
+	if err != nil {
+		return err
+	}
+
+	for i := range messages {
+		if messages[i].Post != "" {
+			messages[i].Repost = shown[messages[i].Post]
+		}
+	}
+
+	return nil
 }
 
 // markDialogRead reads the dialog up to upTo, the newest message from the

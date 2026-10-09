@@ -174,5 +174,80 @@ func toAlbumPhoto(pp *postv1.AlbumPhoto) model.AlbumPhoto {
 		Description: pp.GetDescription(),
 		CreatedAt:   fromTimestamp(pp.GetCreatedAt()),
 		Mine:        pp.GetMine(),
+		Likes:       int(pp.GetLikeCount()),
+		Comments:    int(pp.GetCommentCount()),
+		Liked:       pp.GetLiked(),
+	}
+}
+
+// LikePhoto and UnlikePhoto return how many like the photo now.
+func (a *Albums) LikePhoto(ctx context.Context, accessToken, id string) (int, error) {
+	resp, err := a.api.LikeAlbumPhoto(withToken(ctx, accessToken), &postv1.LikeAlbumPhotoRequest{PhotoId: id})
+	if err != nil {
+		return 0, errs.Wrap("a.api.LikeAlbumPhoto", fromStatus(err))
+	}
+
+	return int(resp.GetLikeCount()), nil
+}
+
+func (a *Albums) UnlikePhoto(ctx context.Context, accessToken, id string) (int, error) {
+	resp, err := a.api.UnlikeAlbumPhoto(withToken(ctx, accessToken), &postv1.UnlikeAlbumPhotoRequest{PhotoId: id})
+	if err != nil {
+		return 0, errs.Wrap("a.api.UnlikeAlbumPhoto", fromStatus(err))
+	}
+
+	return int(resp.GetLikeCount()), nil
+}
+
+// PhotoLikers is who like the photo, newest first.
+func (a *Albums) PhotoLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error) {
+	resp, err := a.api.ListAlbumPhotoLikers(ctx, &postv1.ListAlbumPhotoLikersRequest{PhotoId: id, Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.LikerPage{}, errs.Wrap("a.api.ListAlbumPhotoLikers", fromStatus(err))
+	}
+
+	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
+}
+
+func (a *Albums) CommentPhoto(ctx context.Context, accessToken, id, text string) (model.PhotoComment, error) {
+	resp, err := a.api.CreatePhotoComment(withToken(ctx, accessToken), &postv1.CreatePhotoCommentRequest{PhotoId: id, Text: text})
+	if err != nil {
+		return model.PhotoComment{}, errs.Wrap("a.api.CreatePhotoComment", fromStatus(err))
+	}
+
+	return toPhotoComment(resp.GetComment()), nil
+}
+
+func (a *Albums) DeletePhotoComment(ctx context.Context, accessToken, id string) error {
+	if _, err := a.api.DeletePhotoComment(withToken(ctx, accessToken), &postv1.DeletePhotoCommentRequest{Id: id}); err != nil {
+		return errs.Wrap("a.api.DeletePhotoComment", fromStatus(err))
+	}
+
+	return nil
+}
+
+// PhotoComments pages the comments of a photo, oldest first.
+func (a *Albums) PhotoComments(ctx context.Context, accessToken, id, cursor string, limit int) (model.PhotoCommentPage, error) {
+	resp, err := a.api.ListPhotoComments(withToken(ctx, accessToken), &postv1.ListPhotoCommentsRequest{PhotoId: id, Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.PhotoCommentPage{}, errs.Wrap("a.api.ListPhotoComments", fromStatus(err))
+	}
+
+	page := model.PhotoCommentPage{NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}
+	for _, c := range resp.GetComments() {
+		page.Comments = append(page.Comments, toPhotoComment(c))
+	}
+
+	return page, nil
+}
+
+func toPhotoComment(pc *postv1.PhotoComment) model.PhotoComment {
+	return model.PhotoComment{
+		ID:        pc.GetId(),
+		PhotoID:   pc.GetPhotoId(),
+		AuthorID:  pc.GetAuthorId(),
+		Text:      pc.GetText(),
+		CreatedAt: fromTimestamp(pc.GetCreatedAt()),
+		Mine:      pc.GetMine(),
 	}
 }

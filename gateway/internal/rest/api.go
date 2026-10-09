@@ -88,7 +88,7 @@ type Media interface {
 // anonymous viewers), with which posts tell whether the viewer likes them.
 type Posts interface {
 	Create(ctx context.Context, accessToken string, np model.NewPost) (model.Post, error)
-	Repost(ctx context.Context, accessToken, postID, text string) (model.Post, error)
+	Repost(ctx context.Context, accessToken, postID string, nr model.NewRepost) (model.Post, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	Edit(ctx context.Context, accessToken, id, text string, photoIDs []string) (model.Post, error)
 	Pin(ctx context.Context, accessToken, id string) error
@@ -105,6 +105,9 @@ type Posts interface {
 
 	CreateComment(ctx context.Context, accessToken, postID string, c model.NewComment) (model.Comment, error)
 	LikeComment(ctx context.Context, accessToken, id string) (int, error)
+	// PostLikers and CommentLikers are who like it, newest first.
+	PostLikers(ctx context.Context, postID, cursor string, limit int) (model.LikerPage, error)
+	CommentLikers(ctx context.Context, commentID, cursor string, limit int) (model.LikerPage, error)
 	UnlikeComment(ctx context.Context, accessToken, id string) (int, error)
 	DeleteComment(ctx context.Context, accessToken, id string) error
 	Comments(ctx context.Context, accessToken, postID, cursor string, limit int) (model.CommentPage, error)
@@ -147,6 +150,13 @@ type Albums interface {
 	Photo(ctx context.Context, accessToken, id string) (model.AlbumPhoto, model.Album, error)
 	Describe(ctx context.Context, accessToken, id, description string) (model.AlbumPhoto, error)
 	DeletePhoto(ctx context.Context, accessToken, id string) error
+	// The heart, the likers and the comments under a photo.
+	LikePhoto(ctx context.Context, accessToken, id string) (int, error)
+	UnlikePhoto(ctx context.Context, accessToken, id string) (int, error)
+	PhotoLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error)
+	CommentPhoto(ctx context.Context, accessToken, id, text string) (model.PhotoComment, error)
+	DeletePhotoComment(ctx context.Context, accessToken, id string) error
+	PhotoComments(ctx context.Context, accessToken, id, cursor string, limit int) (model.PhotoCommentPage, error)
 }
 
 type Notifications interface {
@@ -157,7 +167,7 @@ type Notifications interface {
 }
 
 type Messages interface {
-	Send(ctx context.Context, accessToken, recipientID, text string, photoIDs []string) (model.Message, error)
+	Send(ctx context.Context, accessToken, recipientID, text string, photoIDs []string, postID string) (model.Message, error)
 	Dialogs(ctx context.Context, accessToken, cursor string, limit int) (model.DialogPage, error)
 	CountUnread(ctx context.Context, accessToken string) (int, error)
 	History(ctx context.Context, accessToken, peerID, cursor, after string, limit int) (model.MessagePage, error)
@@ -261,12 +271,14 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/posts/{id}/reposts", a.repostPost)
 	mux.HandleFunc("PUT /api/v1/posts/{id}/like", a.likePost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}/like", a.unlikePost)
+	mux.HandleFunc("GET /api/v1/posts/{id}/likes", a.listPostLikers)
 
 	mux.HandleFunc("GET /api/v1/posts/{id}/comments", a.listComments)
 	mux.HandleFunc("POST /api/v1/posts/{id}/comments", a.createComment)
 	mux.HandleFunc("DELETE /api/v1/comments/{id}", a.deleteComment)
 	mux.HandleFunc("PUT /api/v1/comments/{id}/like", a.likeComment)
 	mux.HandleFunc("DELETE /api/v1/comments/{id}/like", a.unlikeComment)
+	mux.HandleFunc("GET /api/v1/comments/{id}/likes", a.listCommentLikers)
 
 	mux.HandleFunc("POST /api/v1/users/{nickname}/follow", a.follow)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/follow", a.unfollow)
@@ -338,6 +350,13 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/album-photos/{id}", a.getAlbumPhoto)
 	mux.HandleFunc("PATCH /api/v1/album-photos/{id}", a.editAlbumPhoto)
 	mux.HandleFunc("DELETE /api/v1/album-photos/{id}", a.deleteAlbumPhoto)
+	mux.HandleFunc("PUT /api/v1/album-photos/{id}/like", a.likeAlbumPhoto)
+	mux.HandleFunc("DELETE /api/v1/album-photos/{id}/like", a.unlikeAlbumPhoto)
+	mux.HandleFunc("GET /api/v1/album-photos/{id}/likes", a.listAlbumPhotoLikers)
+	mux.HandleFunc("GET /api/v1/album-photos/{id}/comments", a.listPhotoComments)
+	mux.HandleFunc("POST /api/v1/album-photos/{id}/comments", a.createPhotoComment)
+	mux.HandleFunc("DELETE /api/v1/photo-comments/{id}", a.deletePhotoComment)
+	mux.HandleFunc("POST /api/v1/album-photos/{id}/reposts", a.shareAlbumPhoto)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)
 	mux.HandleFunc("DELETE /api/v1/me/avatar", a.deleteAvatar)
