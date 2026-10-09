@@ -52,7 +52,7 @@ web-test:
 # passwords off). One connection is reused for 10 minutes: ufw lets in at
 # most 6 SSH connections in 30 seconds. There, `cd /opt/freenet` and
 # `docker compose ps|logs`; the sign-in codes are in `docker compose logs auth`.
-PROD_HOST ?= 31.59.104.78
+PROD_HOST ?= 31.57.28.32
 PROD_KEY ?= ~/.ssh/freenet-prod_ed25519
 
 ssh:
