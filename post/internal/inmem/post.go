@@ -191,8 +191,10 @@ func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 }
 
 // ListByWall leaves out the pinned post, which the wall shows first.
-func (r *PostRepository) ListByWall(ctx context.Context, wallID, before uuid.UUID, limit int) ([]*post.Post, error) {
-	return r.list(ctx, func(p *post.Post) bool { return p.WallID() == wallID && !p.Pinned() }, before, limit)
+func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter, before uuid.UUID, limit int) ([]*post.Post, error) {
+	return r.list(ctx, func(p *post.Post) bool {
+		return p.WallID() == wallID && filter.Matches(p) && (filter != post.WallAll || !p.Pinned())
+	}, before, limit)
 }
 
 func (r *PostRepository) Update(ctx context.Context, p *post.Post) error {
@@ -315,7 +317,7 @@ func (r *PostRepository) list(ctx context.Context, match func(*post.Post) bool, 
 	return found, nil
 }
 
-func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID) (int, error) {
+func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, errs.Wrap("ctx.Err", err)
 	}
@@ -325,7 +327,7 @@ func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID) (int
 
 	count := 0
 	for _, p := range r.s.posts {
-		if p.WallID() == wallID {
+		if p.WallID() == wallID && filter.Matches(p) {
 			count++
 		}
 	}

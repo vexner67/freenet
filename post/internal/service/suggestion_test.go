@@ -52,7 +52,7 @@ func TestSuggestionService(t *testing.T) {
 	notifier.notified = nil
 
 	// The wall shows none of them.
-	if wall, err := posts.ListWall(ctx, uuid.Nil, club, uuid.Nil, 10); err != nil || len(wall.Posts) != 0 || wall.Total != 0 {
+	if wall, err := posts.ListWall(ctx, uuid.Nil, club, post.WallAll, uuid.Nil, 10); err != nil || len(wall.Posts) != 0 || wall.Total != 0 {
 		t.Fatalf("the wall = %+v, %v", wall, err)
 	}
 
@@ -87,7 +87,7 @@ func TestSuggestionService(t *testing.T) {
 	if f := notifier.forgotten; len(f) != 1 || f[0] != first.ID() {
 		t.Fatalf("the admins' notifications about the suggestion stay: %v", f)
 	}
-	if wall, _ := posts.ListWall(ctx, uuid.Nil, club, uuid.Nil, 10); len(wall.Posts) != 1 || wall.Posts[0].ID() != published.ID() {
+	if wall, _ := posts.ListWall(ctx, uuid.Nil, club, post.WallAll, uuid.Nil, 10); len(wall.Posts) != 1 || wall.Posts[0].ID() != published.ID() {
 		t.Fatalf("the wall after publishing = %+v", wall)
 	}
 	if _, err = svc.Publish(ctx, admin, first.ID(), "ещё раз", false); !errors.Is(err, post.ErrSuggestionNotFound) {

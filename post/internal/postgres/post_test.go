@@ -88,7 +88,7 @@ func TestPostRepository(t *testing.T) {
 		t.Fatalf("GetMany = %v, %v", many, err)
 	}
 
-	page, err := repo.ListByWall(ctx, author, uuid.Nil, 2)
+	page, err := repo.ListByWall(ctx, author, post.WallAll, uuid.Nil, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -96,7 +96,7 @@ func TestPostRepository(t *testing.T) {
 		t.Fatalf("first page: %v", page)
 	}
 
-	rest, err := repo.ListByWall(ctx, author, page[1].ID(), 2)
+	rest, err := repo.ListByWall(ctx, author, post.WallAll, page[1].ID(), 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -128,13 +128,28 @@ func TestPostRepository(t *testing.T) {
 		t.Fatalf("Get(guest) = %+v, %v", visit, err)
 	}
 
-	wall, err := repo.ListByWall(ctx, author, uuid.Nil, 10)
+	wall, err := repo.ListByWall(ctx, author, post.WallAll, uuid.Nil, 10)
 	if err != nil || len(wall) != 4 || wall[0].ID() != guest.ID() || wall[3].Content().Text() != "раз" {
 		t.Fatalf("ListByWall with a guest post = %v, %v", wall, err)
 	}
 
-	if n, err := repo.CountByWall(ctx, author); err != nil || n != 4 {
+	if n, err := repo.CountByWall(ctx, author, post.WallAll); err != nil || n != 4 {
 		t.Fatalf("CountByWall = %d, %v", n, err)
+	}
+
+	// The tabs of the wall: the owner's posts and the others'.
+	own, err := repo.ListByWall(ctx, author, post.WallOwner, uuid.Nil, 10)
+	if err != nil || len(own) != 3 || own[0].Content().Text() != "три" {
+		t.Fatalf("the owner's = %v, %v", own, err)
+	}
+	others, err := repo.ListByWall(ctx, author, post.WallOthers, uuid.Nil, 10)
+	if err != nil || len(others) != 1 || others[0].ID() != guest.ID() {
+		t.Fatalf("the others' = %v, %v", others, err)
+	}
+	for filter, want := range map[post.WallFilter]int{post.WallOwner: 3, post.WallOthers: 1} {
+		if n, err := repo.CountByWall(ctx, author, filter); err != nil || n != want {
+			t.Fatalf("CountByWall(%q) = %d, %v", filter, n, err)
+		}
 	}
 
 	byOther, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{other}}, uuid.Nil, 10)

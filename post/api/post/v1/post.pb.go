@@ -23,6 +23,59 @@ const (
 	_ = protoimpl.EnforceVersion(protoimpl.MaxVersion - 20)
 )
 
+// WallFilter picks the posts of a wall: all ("Все записи"), the wall's
+// own — by its owner, or for the community whose wall it is ("Записи
+// Анны", "Записи сообщества") — or the others ("Чужие записи"). Only all
+// posts show the pinned one first.
+type WallFilter int32
+
+const (
+	WallFilter_WALL_FILTER_NONE   WallFilter = 0
+	WallFilter_WALL_FILTER_OWNER  WallFilter = 1
+	WallFilter_WALL_FILTER_OTHERS WallFilter = 2
+)
+
+// Enum value maps for WallFilter.
+var (
+	WallFilter_name = map[int32]string{
+		0: "WALL_FILTER_NONE",
+		1: "WALL_FILTER_OWNER",
+		2: "WALL_FILTER_OTHERS",
+	}
+	WallFilter_value = map[string]int32{
+		"WALL_FILTER_NONE":   0,
+		"WALL_FILTER_OWNER":  1,
+		"WALL_FILTER_OTHERS": 2,
+	}
+)
+
+func (x WallFilter) Enum() *WallFilter {
+	p := new(WallFilter)
+	*p = x
+	return p
+}
+
+func (x WallFilter) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (WallFilter) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_post_v1_post_proto_enumTypes[0].Descriptor()
+}
+
+func (WallFilter) Type() protoreflect.EnumType {
+	return &file_api_post_v1_post_proto_enumTypes[0]
+}
+
+func (x WallFilter) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use WallFilter.Descriptor instead.
+func (WallFilter) EnumDescriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{0}
+}
+
 // AlbumKind tells albums the site keeps; nobody renames, deletes or fills
 // them by hand (FailedPrecondition).
 type AlbumKind int32
@@ -57,11 +110,11 @@ func (x AlbumKind) String() string {
 }
 
 func (AlbumKind) Descriptor() protoreflect.EnumDescriptor {
-	return file_api_post_v1_post_proto_enumTypes[0].Descriptor()
+	return file_api_post_v1_post_proto_enumTypes[1].Descriptor()
 }
 
 func (AlbumKind) Type() protoreflect.EnumType {
-	return &file_api_post_v1_post_proto_enumTypes[0]
+	return &file_api_post_v1_post_proto_enumTypes[1]
 }
 
 func (x AlbumKind) Number() protoreflect.EnumNumber {
@@ -70,7 +123,7 @@ func (x AlbumKind) Number() protoreflect.EnumNumber {
 
 // Deprecated: Use AlbumKind.Descriptor instead.
 func (AlbumKind) EnumDescriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{0}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{1}
 }
 
 // Public methods that return posts fill liked when the caller sends an
@@ -1551,7 +1604,9 @@ type ListPostsRequest struct {
 	// Empty for the newest posts, else next_cursor of the previous page.
 	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	// 1-50; anything else means 20.
-	Limit         int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Which posts, as the tabs of openvk's wall; total counts them.
+	Filter        WallFilter `protobuf:"varint,4,opt,name=filter,proto3,enum=post.v1.WallFilter" json:"filter,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1605,6 +1660,13 @@ func (x *ListPostsRequest) GetLimit() int32 {
 		return x.Limit
 	}
 	return 0
+}
+
+func (x *ListPostsRequest) GetFilter() WallFilter {
+	if x != nil {
+		return x.Filter
+	}
+	return WallFilter_WALL_FILTER_NONE
 }
 
 type ListPostsResponse struct {
@@ -4984,11 +5046,12 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0fGetPostsRequest\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\"7\n" +
 	"\x10GetPostsResponse\x12#\n" +
-	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\"Y\n" +
+	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\"\x86\x01\n" +
 	"\x10ListPostsRequest\x12\x17\n" +
 	"\awall_id\x18\x01 \x01(\tR\x06wallId\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"o\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12+\n" +
+	"\x06filter\x18\x04 \x01(\x0e2\x13.post.v1.WallFilterR\x06filter\"o\n" +
 	"\x11ListPostsResponse\x12#\n" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
@@ -5214,7 +5277,12 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x16EditAlbumPhotoResponse\x12)\n" +
 	"\x05photo\x18\x01 \x01(\v2\x13.post.v1.AlbumPhotoR\x05photo\")\n" +
 	"\x17DeleteAlbumPhotoRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id*8\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id*Q\n" +
+	"\n" +
+	"WallFilter\x12\x14\n" +
+	"\x10WALL_FILTER_NONE\x10\x00\x12\x15\n" +
+	"\x11WALL_FILTER_OWNER\x10\x01\x12\x16\n" +
+	"\x12WALL_FILTER_OTHERS\x10\x02*8\n" +
 	"\tAlbumKind\x12\x13\n" +
 	"\x0fALBUM_KIND_NONE\x10\x00\x12\x16\n" +
 	"\x12ALBUM_KIND_AVATARS\x10\x012\xa7\x18\n" +
@@ -5280,229 +5348,231 @@ func file_api_post_v1_post_proto_rawDescGZIP() []byte {
 	return file_api_post_v1_post_proto_rawDescData
 }
 
-var file_api_post_v1_post_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
+var file_api_post_v1_post_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
 var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 82)
 var file_api_post_v1_post_proto_goTypes = []any{
-	(AlbumKind)(0),                     // 0: post.v1.AlbumKind
-	(*Post)(nil),                       // 1: post.v1.Post
-	(*Comment)(nil),                    // 2: post.v1.Comment
-	(*Suggestion)(nil),                 // 3: post.v1.Suggestion
-	(*SuggestPostRequest)(nil),         // 4: post.v1.SuggestPostRequest
-	(*SuggestPostResponse)(nil),        // 5: post.v1.SuggestPostResponse
-	(*ListSuggestionsRequest)(nil),     // 6: post.v1.ListSuggestionsRequest
-	(*ListSuggestionsResponse)(nil),    // 7: post.v1.ListSuggestionsResponse
-	(*PublishSuggestionRequest)(nil),   // 8: post.v1.PublishSuggestionRequest
-	(*PublishSuggestionResponse)(nil),  // 9: post.v1.PublishSuggestionResponse
-	(*DeleteSuggestionRequest)(nil),    // 10: post.v1.DeleteSuggestionRequest
-	(*CreatePostRequest)(nil),          // 11: post.v1.CreatePostRequest
-	(*CreatePostResponse)(nil),         // 12: post.v1.CreatePostResponse
-	(*RepostPostRequest)(nil),          // 13: post.v1.RepostPostRequest
-	(*RepostPostResponse)(nil),         // 14: post.v1.RepostPostResponse
-	(*DeletePostRequest)(nil),          // 15: post.v1.DeletePostRequest
-	(*EditPostRequest)(nil),            // 16: post.v1.EditPostRequest
-	(*EditPostResponse)(nil),           // 17: post.v1.EditPostResponse
-	(*PinPostRequest)(nil),             // 18: post.v1.PinPostRequest
-	(*UnpinPostRequest)(nil),           // 19: post.v1.UnpinPostRequest
-	(*GetPostRequest)(nil),             // 20: post.v1.GetPostRequest
-	(*GetPostResponse)(nil),            // 21: post.v1.GetPostResponse
-	(*GetPostsRequest)(nil),            // 22: post.v1.GetPostsRequest
-	(*GetPostsResponse)(nil),           // 23: post.v1.GetPostsResponse
-	(*ListPostsRequest)(nil),           // 24: post.v1.ListPostsRequest
-	(*ListPostsResponse)(nil),          // 25: post.v1.ListPostsResponse
-	(*ListFeedRequest)(nil),            // 26: post.v1.ListFeedRequest
-	(*ListFeedResponse)(nil),           // 27: post.v1.ListFeedResponse
-	(*LikePostRequest)(nil),            // 28: post.v1.LikePostRequest
-	(*LikePostResponse)(nil),           // 29: post.v1.LikePostResponse
-	(*UnlikePostRequest)(nil),          // 30: post.v1.UnlikePostRequest
-	(*UnlikePostResponse)(nil),         // 31: post.v1.UnlikePostResponse
-	(*CreateCommentRequest)(nil),       // 32: post.v1.CreateCommentRequest
-	(*CreateCommentResponse)(nil),      // 33: post.v1.CreateCommentResponse
-	(*DeleteCommentRequest)(nil),       // 34: post.v1.DeleteCommentRequest
-	(*LikeCommentRequest)(nil),         // 35: post.v1.LikeCommentRequest
-	(*LikeCommentResponse)(nil),        // 36: post.v1.LikeCommentResponse
-	(*UnlikeCommentRequest)(nil),       // 37: post.v1.UnlikeCommentRequest
-	(*UnlikeCommentResponse)(nil),      // 38: post.v1.UnlikeCommentResponse
-	(*ListCommentsRequest)(nil),        // 39: post.v1.ListCommentsRequest
-	(*ListCommentsResponse)(nil),       // 40: post.v1.ListCommentsResponse
-	(*GetCommentsRequest)(nil),         // 41: post.v1.GetCommentsRequest
-	(*GetCommentsResponse)(nil),        // 42: post.v1.GetCommentsResponse
-	(*PurgeUserRequest)(nil),           // 43: post.v1.PurgeUserRequest
-	(*Topic)(nil),                      // 44: post.v1.Topic
-	(*TopicMessage)(nil),               // 45: post.v1.TopicMessage
-	(*CreateTopicRequest)(nil),         // 46: post.v1.CreateTopicRequest
-	(*CreateTopicResponse)(nil),        // 47: post.v1.CreateTopicResponse
-	(*GetTopicRequest)(nil),            // 48: post.v1.GetTopicRequest
-	(*GetTopicResponse)(nil),           // 49: post.v1.GetTopicResponse
-	(*ListTopicsRequest)(nil),          // 50: post.v1.ListTopicsRequest
-	(*ListTopicsResponse)(nil),         // 51: post.v1.ListTopicsResponse
-	(*EditTopicRequest)(nil),           // 52: post.v1.EditTopicRequest
-	(*EditTopicResponse)(nil),          // 53: post.v1.EditTopicResponse
-	(*DeleteTopicRequest)(nil),         // 54: post.v1.DeleteTopicRequest
-	(*CreateTopicMessageRequest)(nil),  // 55: post.v1.CreateTopicMessageRequest
-	(*CreateTopicMessageResponse)(nil), // 56: post.v1.CreateTopicMessageResponse
-	(*ListTopicMessagesRequest)(nil),   // 57: post.v1.ListTopicMessagesRequest
-	(*ListTopicMessagesResponse)(nil),  // 58: post.v1.ListTopicMessagesResponse
-	(*DeleteTopicMessageRequest)(nil),  // 59: post.v1.DeleteTopicMessageRequest
-	(*Album)(nil),                      // 60: post.v1.Album
-	(*AlbumPhoto)(nil),                 // 61: post.v1.AlbumPhoto
-	(*CreateAlbumRequest)(nil),         // 62: post.v1.CreateAlbumRequest
-	(*CreateAlbumResponse)(nil),        // 63: post.v1.CreateAlbumResponse
-	(*GetAlbumRequest)(nil),            // 64: post.v1.GetAlbumRequest
-	(*GetAlbumResponse)(nil),           // 65: post.v1.GetAlbumResponse
-	(*ListAlbumsRequest)(nil),          // 66: post.v1.ListAlbumsRequest
-	(*ListAlbumsResponse)(nil),         // 67: post.v1.ListAlbumsResponse
-	(*EditAlbumRequest)(nil),           // 68: post.v1.EditAlbumRequest
-	(*EditAlbumResponse)(nil),          // 69: post.v1.EditAlbumResponse
-	(*DeleteAlbumRequest)(nil),         // 70: post.v1.DeleteAlbumRequest
-	(*NewAlbumPhoto)(nil),              // 71: post.v1.NewAlbumPhoto
-	(*AddAlbumPhotosRequest)(nil),      // 72: post.v1.AddAlbumPhotosRequest
-	(*AddAlbumPhotosResponse)(nil),     // 73: post.v1.AddAlbumPhotosResponse
-	(*AddAvatarPhotoRequest)(nil),      // 74: post.v1.AddAvatarPhotoRequest
-	(*AddAvatarPhotoResponse)(nil),     // 75: post.v1.AddAvatarPhotoResponse
-	(*ListAlbumPhotosRequest)(nil),     // 76: post.v1.ListAlbumPhotosRequest
-	(*ListAlbumPhotosResponse)(nil),    // 77: post.v1.ListAlbumPhotosResponse
-	(*GetAlbumPhotoRequest)(nil),       // 78: post.v1.GetAlbumPhotoRequest
-	(*GetAlbumPhotoResponse)(nil),      // 79: post.v1.GetAlbumPhotoResponse
-	(*EditAlbumPhotoRequest)(nil),      // 80: post.v1.EditAlbumPhotoRequest
-	(*EditAlbumPhotoResponse)(nil),     // 81: post.v1.EditAlbumPhotoResponse
-	(*DeleteAlbumPhotoRequest)(nil),    // 82: post.v1.DeleteAlbumPhotoRequest
-	(*timestamppb.Timestamp)(nil),      // 83: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 84: google.protobuf.Empty
+	(WallFilter)(0),                    // 0: post.v1.WallFilter
+	(AlbumKind)(0),                     // 1: post.v1.AlbumKind
+	(*Post)(nil),                       // 2: post.v1.Post
+	(*Comment)(nil),                    // 3: post.v1.Comment
+	(*Suggestion)(nil),                 // 4: post.v1.Suggestion
+	(*SuggestPostRequest)(nil),         // 5: post.v1.SuggestPostRequest
+	(*SuggestPostResponse)(nil),        // 6: post.v1.SuggestPostResponse
+	(*ListSuggestionsRequest)(nil),     // 7: post.v1.ListSuggestionsRequest
+	(*ListSuggestionsResponse)(nil),    // 8: post.v1.ListSuggestionsResponse
+	(*PublishSuggestionRequest)(nil),   // 9: post.v1.PublishSuggestionRequest
+	(*PublishSuggestionResponse)(nil),  // 10: post.v1.PublishSuggestionResponse
+	(*DeleteSuggestionRequest)(nil),    // 11: post.v1.DeleteSuggestionRequest
+	(*CreatePostRequest)(nil),          // 12: post.v1.CreatePostRequest
+	(*CreatePostResponse)(nil),         // 13: post.v1.CreatePostResponse
+	(*RepostPostRequest)(nil),          // 14: post.v1.RepostPostRequest
+	(*RepostPostResponse)(nil),         // 15: post.v1.RepostPostResponse
+	(*DeletePostRequest)(nil),          // 16: post.v1.DeletePostRequest
+	(*EditPostRequest)(nil),            // 17: post.v1.EditPostRequest
+	(*EditPostResponse)(nil),           // 18: post.v1.EditPostResponse
+	(*PinPostRequest)(nil),             // 19: post.v1.PinPostRequest
+	(*UnpinPostRequest)(nil),           // 20: post.v1.UnpinPostRequest
+	(*GetPostRequest)(nil),             // 21: post.v1.GetPostRequest
+	(*GetPostResponse)(nil),            // 22: post.v1.GetPostResponse
+	(*GetPostsRequest)(nil),            // 23: post.v1.GetPostsRequest
+	(*GetPostsResponse)(nil),           // 24: post.v1.GetPostsResponse
+	(*ListPostsRequest)(nil),           // 25: post.v1.ListPostsRequest
+	(*ListPostsResponse)(nil),          // 26: post.v1.ListPostsResponse
+	(*ListFeedRequest)(nil),            // 27: post.v1.ListFeedRequest
+	(*ListFeedResponse)(nil),           // 28: post.v1.ListFeedResponse
+	(*LikePostRequest)(nil),            // 29: post.v1.LikePostRequest
+	(*LikePostResponse)(nil),           // 30: post.v1.LikePostResponse
+	(*UnlikePostRequest)(nil),          // 31: post.v1.UnlikePostRequest
+	(*UnlikePostResponse)(nil),         // 32: post.v1.UnlikePostResponse
+	(*CreateCommentRequest)(nil),       // 33: post.v1.CreateCommentRequest
+	(*CreateCommentResponse)(nil),      // 34: post.v1.CreateCommentResponse
+	(*DeleteCommentRequest)(nil),       // 35: post.v1.DeleteCommentRequest
+	(*LikeCommentRequest)(nil),         // 36: post.v1.LikeCommentRequest
+	(*LikeCommentResponse)(nil),        // 37: post.v1.LikeCommentResponse
+	(*UnlikeCommentRequest)(nil),       // 38: post.v1.UnlikeCommentRequest
+	(*UnlikeCommentResponse)(nil),      // 39: post.v1.UnlikeCommentResponse
+	(*ListCommentsRequest)(nil),        // 40: post.v1.ListCommentsRequest
+	(*ListCommentsResponse)(nil),       // 41: post.v1.ListCommentsResponse
+	(*GetCommentsRequest)(nil),         // 42: post.v1.GetCommentsRequest
+	(*GetCommentsResponse)(nil),        // 43: post.v1.GetCommentsResponse
+	(*PurgeUserRequest)(nil),           // 44: post.v1.PurgeUserRequest
+	(*Topic)(nil),                      // 45: post.v1.Topic
+	(*TopicMessage)(nil),               // 46: post.v1.TopicMessage
+	(*CreateTopicRequest)(nil),         // 47: post.v1.CreateTopicRequest
+	(*CreateTopicResponse)(nil),        // 48: post.v1.CreateTopicResponse
+	(*GetTopicRequest)(nil),            // 49: post.v1.GetTopicRequest
+	(*GetTopicResponse)(nil),           // 50: post.v1.GetTopicResponse
+	(*ListTopicsRequest)(nil),          // 51: post.v1.ListTopicsRequest
+	(*ListTopicsResponse)(nil),         // 52: post.v1.ListTopicsResponse
+	(*EditTopicRequest)(nil),           // 53: post.v1.EditTopicRequest
+	(*EditTopicResponse)(nil),          // 54: post.v1.EditTopicResponse
+	(*DeleteTopicRequest)(nil),         // 55: post.v1.DeleteTopicRequest
+	(*CreateTopicMessageRequest)(nil),  // 56: post.v1.CreateTopicMessageRequest
+	(*CreateTopicMessageResponse)(nil), // 57: post.v1.CreateTopicMessageResponse
+	(*ListTopicMessagesRequest)(nil),   // 58: post.v1.ListTopicMessagesRequest
+	(*ListTopicMessagesResponse)(nil),  // 59: post.v1.ListTopicMessagesResponse
+	(*DeleteTopicMessageRequest)(nil),  // 60: post.v1.DeleteTopicMessageRequest
+	(*Album)(nil),                      // 61: post.v1.Album
+	(*AlbumPhoto)(nil),                 // 62: post.v1.AlbumPhoto
+	(*CreateAlbumRequest)(nil),         // 63: post.v1.CreateAlbumRequest
+	(*CreateAlbumResponse)(nil),        // 64: post.v1.CreateAlbumResponse
+	(*GetAlbumRequest)(nil),            // 65: post.v1.GetAlbumRequest
+	(*GetAlbumResponse)(nil),           // 66: post.v1.GetAlbumResponse
+	(*ListAlbumsRequest)(nil),          // 67: post.v1.ListAlbumsRequest
+	(*ListAlbumsResponse)(nil),         // 68: post.v1.ListAlbumsResponse
+	(*EditAlbumRequest)(nil),           // 69: post.v1.EditAlbumRequest
+	(*EditAlbumResponse)(nil),          // 70: post.v1.EditAlbumResponse
+	(*DeleteAlbumRequest)(nil),         // 71: post.v1.DeleteAlbumRequest
+	(*NewAlbumPhoto)(nil),              // 72: post.v1.NewAlbumPhoto
+	(*AddAlbumPhotosRequest)(nil),      // 73: post.v1.AddAlbumPhotosRequest
+	(*AddAlbumPhotosResponse)(nil),     // 74: post.v1.AddAlbumPhotosResponse
+	(*AddAvatarPhotoRequest)(nil),      // 75: post.v1.AddAvatarPhotoRequest
+	(*AddAvatarPhotoResponse)(nil),     // 76: post.v1.AddAvatarPhotoResponse
+	(*ListAlbumPhotosRequest)(nil),     // 77: post.v1.ListAlbumPhotosRequest
+	(*ListAlbumPhotosResponse)(nil),    // 78: post.v1.ListAlbumPhotosResponse
+	(*GetAlbumPhotoRequest)(nil),       // 79: post.v1.GetAlbumPhotoRequest
+	(*GetAlbumPhotoResponse)(nil),      // 80: post.v1.GetAlbumPhotoResponse
+	(*EditAlbumPhotoRequest)(nil),      // 81: post.v1.EditAlbumPhotoRequest
+	(*EditAlbumPhotoResponse)(nil),     // 82: post.v1.EditAlbumPhotoResponse
+	(*DeleteAlbumPhotoRequest)(nil),    // 83: post.v1.DeleteAlbumPhotoRequest
+	(*timestamppb.Timestamp)(nil),      // 84: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 85: google.protobuf.Empty
 }
 var file_api_post_v1_post_proto_depIdxs = []int32{
-	83, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
-	83, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
-	83, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
-	83, // 3: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
-	83, // 4: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
-	3,  // 5: post.v1.SuggestPostResponse.suggestion:type_name -> post.v1.Suggestion
-	3,  // 6: post.v1.ListSuggestionsResponse.suggestions:type_name -> post.v1.Suggestion
-	1,  // 7: post.v1.PublishSuggestionResponse.post:type_name -> post.v1.Post
-	1,  // 8: post.v1.CreatePostResponse.post:type_name -> post.v1.Post
-	1,  // 9: post.v1.RepostPostResponse.post:type_name -> post.v1.Post
-	1,  // 10: post.v1.EditPostResponse.post:type_name -> post.v1.Post
-	1,  // 11: post.v1.GetPostResponse.post:type_name -> post.v1.Post
-	1,  // 12: post.v1.GetPostsResponse.posts:type_name -> post.v1.Post
-	1,  // 13: post.v1.ListPostsResponse.posts:type_name -> post.v1.Post
-	1,  // 14: post.v1.ListFeedResponse.posts:type_name -> post.v1.Post
-	2,  // 15: post.v1.CreateCommentResponse.comment:type_name -> post.v1.Comment
-	2,  // 16: post.v1.ListCommentsResponse.comments:type_name -> post.v1.Comment
-	2,  // 17: post.v1.GetCommentsResponse.comments:type_name -> post.v1.Comment
-	83, // 18: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
-	83, // 19: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
-	45, // 20: post.v1.Topic.last_message:type_name -> post.v1.TopicMessage
-	83, // 21: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
-	44, // 22: post.v1.CreateTopicResponse.topic:type_name -> post.v1.Topic
-	44, // 23: post.v1.GetTopicResponse.topic:type_name -> post.v1.Topic
-	44, // 24: post.v1.ListTopicsResponse.topics:type_name -> post.v1.Topic
-	44, // 25: post.v1.EditTopicResponse.topic:type_name -> post.v1.Topic
-	45, // 26: post.v1.CreateTopicMessageResponse.message:type_name -> post.v1.TopicMessage
-	45, // 27: post.v1.ListTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
-	83, // 28: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
-	83, // 29: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
-	61, // 30: post.v1.Album.cover:type_name -> post.v1.AlbumPhoto
-	0,  // 31: post.v1.Album.kind:type_name -> post.v1.AlbumKind
-	83, // 32: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
-	60, // 33: post.v1.CreateAlbumResponse.album:type_name -> post.v1.Album
-	60, // 34: post.v1.GetAlbumResponse.album:type_name -> post.v1.Album
-	60, // 35: post.v1.ListAlbumsResponse.albums:type_name -> post.v1.Album
-	60, // 36: post.v1.EditAlbumResponse.album:type_name -> post.v1.Album
-	71, // 37: post.v1.AddAlbumPhotosRequest.photos:type_name -> post.v1.NewAlbumPhoto
-	61, // 38: post.v1.AddAlbumPhotosResponse.photos:type_name -> post.v1.AlbumPhoto
-	61, // 39: post.v1.AddAvatarPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
-	61, // 40: post.v1.ListAlbumPhotosResponse.photos:type_name -> post.v1.AlbumPhoto
-	61, // 41: post.v1.GetAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
-	60, // 42: post.v1.GetAlbumPhotoResponse.album:type_name -> post.v1.Album
-	61, // 43: post.v1.EditAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
-	11, // 44: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
-	15, // 45: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
-	13, // 46: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
-	16, // 47: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
-	18, // 48: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
-	19, // 49: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
-	20, // 50: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
-	22, // 51: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
-	24, // 52: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
-	26, // 53: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
-	28, // 54: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
-	30, // 55: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
-	32, // 56: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
-	34, // 57: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
-	35, // 58: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
-	37, // 59: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
-	39, // 60: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
-	41, // 61: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
-	4,  // 62: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
-	6,  // 63: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
-	8,  // 64: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
-	10, // 65: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
-	46, // 66: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
-	48, // 67: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
-	50, // 68: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
-	52, // 69: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
-	54, // 70: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
-	55, // 71: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
-	57, // 72: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
-	59, // 73: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
-	62, // 74: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
-	64, // 75: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
-	66, // 76: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
-	68, // 77: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
-	70, // 78: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
-	72, // 79: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
-	74, // 80: post.v1.PostService.AddAvatarPhoto:input_type -> post.v1.AddAvatarPhotoRequest
-	76, // 81: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
-	78, // 82: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
-	80, // 83: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
-	82, // 84: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
-	43, // 85: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
-	12, // 86: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
-	84, // 87: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
-	14, // 88: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
-	17, // 89: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
-	84, // 90: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
-	84, // 91: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
-	21, // 92: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
-	23, // 93: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
-	25, // 94: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
-	27, // 95: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
-	29, // 96: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
-	31, // 97: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
-	33, // 98: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
-	84, // 99: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
-	36, // 100: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
-	38, // 101: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
-	40, // 102: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
-	42, // 103: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
-	5,  // 104: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
-	7,  // 105: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
-	9,  // 106: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
-	84, // 107: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
-	47, // 108: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
-	49, // 109: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
-	51, // 110: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
-	53, // 111: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
-	84, // 112: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
-	56, // 113: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
-	58, // 114: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
-	84, // 115: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
-	63, // 116: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
-	65, // 117: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
-	67, // 118: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
-	69, // 119: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
-	84, // 120: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
-	73, // 121: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
-	75, // 122: post.v1.PostService.AddAvatarPhoto:output_type -> post.v1.AddAvatarPhotoResponse
-	77, // 123: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
-	79, // 124: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
-	81, // 125: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
-	84, // 126: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
-	84, // 127: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
-	86, // [86:128] is the sub-list for method output_type
-	44, // [44:86] is the sub-list for method input_type
-	44, // [44:44] is the sub-list for extension type_name
-	44, // [44:44] is the sub-list for extension extendee
-	0,  // [0:44] is the sub-list for field type_name
+	84, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
+	84, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
+	84, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
+	84, // 3: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
+	84, // 4: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
+	4,  // 5: post.v1.SuggestPostResponse.suggestion:type_name -> post.v1.Suggestion
+	4,  // 6: post.v1.ListSuggestionsResponse.suggestions:type_name -> post.v1.Suggestion
+	2,  // 7: post.v1.PublishSuggestionResponse.post:type_name -> post.v1.Post
+	2,  // 8: post.v1.CreatePostResponse.post:type_name -> post.v1.Post
+	2,  // 9: post.v1.RepostPostResponse.post:type_name -> post.v1.Post
+	2,  // 10: post.v1.EditPostResponse.post:type_name -> post.v1.Post
+	2,  // 11: post.v1.GetPostResponse.post:type_name -> post.v1.Post
+	2,  // 12: post.v1.GetPostsResponse.posts:type_name -> post.v1.Post
+	0,  // 13: post.v1.ListPostsRequest.filter:type_name -> post.v1.WallFilter
+	2,  // 14: post.v1.ListPostsResponse.posts:type_name -> post.v1.Post
+	2,  // 15: post.v1.ListFeedResponse.posts:type_name -> post.v1.Post
+	3,  // 16: post.v1.CreateCommentResponse.comment:type_name -> post.v1.Comment
+	3,  // 17: post.v1.ListCommentsResponse.comments:type_name -> post.v1.Comment
+	3,  // 18: post.v1.GetCommentsResponse.comments:type_name -> post.v1.Comment
+	84, // 19: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
+	84, // 20: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
+	46, // 21: post.v1.Topic.last_message:type_name -> post.v1.TopicMessage
+	84, // 22: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
+	45, // 23: post.v1.CreateTopicResponse.topic:type_name -> post.v1.Topic
+	45, // 24: post.v1.GetTopicResponse.topic:type_name -> post.v1.Topic
+	45, // 25: post.v1.ListTopicsResponse.topics:type_name -> post.v1.Topic
+	45, // 26: post.v1.EditTopicResponse.topic:type_name -> post.v1.Topic
+	46, // 27: post.v1.CreateTopicMessageResponse.message:type_name -> post.v1.TopicMessage
+	46, // 28: post.v1.ListTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
+	84, // 29: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
+	84, // 30: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
+	62, // 31: post.v1.Album.cover:type_name -> post.v1.AlbumPhoto
+	1,  // 32: post.v1.Album.kind:type_name -> post.v1.AlbumKind
+	84, // 33: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
+	61, // 34: post.v1.CreateAlbumResponse.album:type_name -> post.v1.Album
+	61, // 35: post.v1.GetAlbumResponse.album:type_name -> post.v1.Album
+	61, // 36: post.v1.ListAlbumsResponse.albums:type_name -> post.v1.Album
+	61, // 37: post.v1.EditAlbumResponse.album:type_name -> post.v1.Album
+	72, // 38: post.v1.AddAlbumPhotosRequest.photos:type_name -> post.v1.NewAlbumPhoto
+	62, // 39: post.v1.AddAlbumPhotosResponse.photos:type_name -> post.v1.AlbumPhoto
+	62, // 40: post.v1.AddAvatarPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
+	62, // 41: post.v1.ListAlbumPhotosResponse.photos:type_name -> post.v1.AlbumPhoto
+	62, // 42: post.v1.GetAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
+	61, // 43: post.v1.GetAlbumPhotoResponse.album:type_name -> post.v1.Album
+	62, // 44: post.v1.EditAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
+	12, // 45: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
+	16, // 46: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
+	14, // 47: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
+	17, // 48: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
+	19, // 49: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
+	20, // 50: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
+	21, // 51: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
+	23, // 52: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
+	25, // 53: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
+	27, // 54: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
+	29, // 55: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
+	31, // 56: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
+	33, // 57: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
+	35, // 58: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
+	36, // 59: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
+	38, // 60: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
+	40, // 61: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
+	42, // 62: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
+	5,  // 63: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
+	7,  // 64: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
+	9,  // 65: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
+	11, // 66: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
+	47, // 67: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
+	49, // 68: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
+	51, // 69: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
+	53, // 70: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
+	55, // 71: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
+	56, // 72: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
+	58, // 73: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
+	60, // 74: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
+	63, // 75: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
+	65, // 76: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
+	67, // 77: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
+	69, // 78: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
+	71, // 79: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
+	73, // 80: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
+	75, // 81: post.v1.PostService.AddAvatarPhoto:input_type -> post.v1.AddAvatarPhotoRequest
+	77, // 82: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
+	79, // 83: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
+	81, // 84: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
+	83, // 85: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
+	44, // 86: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
+	13, // 87: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
+	85, // 88: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
+	15, // 89: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
+	18, // 90: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
+	85, // 91: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
+	85, // 92: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
+	22, // 93: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
+	24, // 94: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
+	26, // 95: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
+	28, // 96: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
+	30, // 97: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
+	32, // 98: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
+	34, // 99: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
+	85, // 100: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
+	37, // 101: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
+	39, // 102: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
+	41, // 103: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
+	43, // 104: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
+	6,  // 105: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
+	8,  // 106: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
+	10, // 107: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
+	85, // 108: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
+	48, // 109: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
+	50, // 110: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
+	52, // 111: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
+	54, // 112: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
+	85, // 113: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
+	57, // 114: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
+	59, // 115: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
+	85, // 116: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
+	64, // 117: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
+	66, // 118: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
+	68, // 119: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
+	70, // 120: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
+	85, // 121: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
+	74, // 122: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
+	76, // 123: post.v1.PostService.AddAvatarPhoto:output_type -> post.v1.AddAvatarPhotoResponse
+	78, // 124: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
+	80, // 125: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
+	82, // 126: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
+	85, // 127: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
+	85, // 128: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
+	87, // [87:129] is the sub-list for method output_type
+	45, // [45:87] is the sub-list for method input_type
+	45, // [45:45] is the sub-list for extension type_name
+	45, // [45:45] is the sub-list for extension extendee
+	0,  // [0:45] is the sub-list for field type_name
 }
 
 func init() { file_api_post_v1_post_proto_init() }
@@ -5515,7 +5585,7 @@ func file_api_post_v1_post_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_post_v1_post_proto_rawDesc), len(file_api_post_v1_post_proto_rawDesc)),
-			NumEnums:      1,
+			NumEnums:      2,
 			NumMessages:   82,
 			NumExtensions: 0,
 			NumServices:   1,

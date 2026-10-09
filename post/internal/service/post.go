@@ -36,11 +36,11 @@ type PostRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 	// Update saves what an edited post says; post.ErrNotFound.
 	Update(ctx context.Context, p *post.Post) error
-	// ListByWall returns up to limit posts on a wall, whoever wrote them,
-	// newest first, with IDs below before (uuid.Nil: from the newest). The
-	// pinned post is left out: the wall shows it first.
-	ListByWall(ctx context.Context, wallID, before uuid.UUID, limit int) ([]*post.Post, error)
-	CountByWall(ctx context.Context, wallID uuid.UUID) (int, error)
+	// ListByWall returns up to limit posts on a wall that filter picks,
+	// newest first, with IDs below before (uuid.Nil: from the newest). Of
+	// all posts the pinned one is left out: the wall shows it first.
+	ListByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter, before uuid.UUID, limit int) ([]*post.Post, error)
+	CountByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter) (int, error)
 	// ListFeed is ListByWall for the posts written by several authors, on
 	// whichever walls, but for those that speak for a wall, together with
 	// all the posts on several walls.
@@ -510,28 +510,29 @@ func likeEvent(p *post.Post, userID uuid.UUID) (Event, bool) {
 	return Event{Kind: EventLike, RecipientID: recipient, ActorID: userID, PostID: p.ID()}, true
 }
 
-// ListWall pages a wall by keyset: cursor is the ID of the last post of
-// the previous page, so new posts never shift the pages. The pinned post
-// comes first on the first page, on top of size others.
-func (s *PostService) ListWall(ctx context.Context, viewerID, wallID, cursor uuid.UUID, size int) (Page, error) {
+// ListWall pages the posts of a wall filter picks by keyset: cursor is
+// the ID of the last post of the previous page, so new posts never shift
+// the pages. Of all posts the pinned one comes first on the first page,
+// on top of size others; the other tabs show it in its place.
+func (s *PostService) ListWall(ctx context.Context, viewerID, wallID uuid.UUID, filter post.WallFilter, cursor uuid.UUID, size int) (Page, error) {
 	if size <= 0 || size > MaxPageSize {
 		size = DefaultPageSize
 	}
 
 	// One extra post tells whether there is a next page.
-	posts, err := s.postRepo.ListByWall(ctx, wallID, cursor, size+1)
+	posts, err := s.postRepo.ListByWall(ctx, wallID, filter, cursor, size+1)
 	if err != nil {
 		return Page{}, errs.Wrap("s.postRepo.ListByWall", err)
 	}
 
 	var pinned *post.Post
-	if cursor == uuid.Nil {
+	if cursor == uuid.Nil && filter == post.WallAll {
 		if pinned, err = s.pinRepo.Pinned(ctx, wallID); err != nil && !errors.Is(err, post.ErrNotFound) {
 			return Page{}, errs.Wrap("s.pinRepo.Pinned", err)
 		}
 	}
 
-	total, err := s.postRepo.CountByWall(ctx, wallID)
+	total, err := s.postRepo.CountByWall(ctx, wallID, filter)
 	if err != nil {
 		return Page{}, errs.Wrap("s.postRepo.CountByWall", err)
 	}

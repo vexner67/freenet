@@ -316,23 +316,20 @@ const listPostsByWallQuery = `
 	FROM posts
 	WHERE wall_id = $1
 		AND id < $2
-		AND id IS DISTINCT FROM (SELECT post_id FROM pinned_posts WHERE wall_id = $1)
+		AND ($4 = '' OR ($4 = 'owner') = (author_id = wall_id OR from_wall))
+		AND ($4 <> '' OR id IS DISTINCT FROM (SELECT post_id FROM pinned_posts WHERE wall_id = $1))
 	ORDER BY id DESC
 	LIMIT $3
 `
 
-// ListByWall leaves out the pinned post, which the wall shows first.
-func (r *PostRepository) ListByWall(ctx context.Context, wallID, before uuid.UUID, limit int) ([]*post.Post, error) {
-	return r.list(ctx, listPostsByWallQuery, wallID, before, limit)
-}
-
-// list runs a newest-first keyset query of the posts of a wall.
-func (r *PostRepository) list(ctx context.Context, query string, owners any, before uuid.UUID, limit int) ([]*post.Post, error) {
+// ListByWall leaves out of all posts the pinned one, which the wall shows
+// first. The filter ($4) is post.WallFilter, its "owner" post.ByWallOwner.
+func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter, before uuid.UUID, limit int) ([]*post.Post, error) {
 	if before == uuid.Nil {
 		before = newestCursor
 	}
 
-	rows, err := r.conn(ctx).Query(ctx, query, owners, before, limit)
+	rows, err := r.conn(ctx).Query(ctx, listPostsByWallQuery, wallID, before, limit, string(filter))
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
@@ -390,16 +387,18 @@ func ids(s []uuid.UUID) []uuid.UUID {
 	return s
 }
 
+// The filter is post.WallFilter, its "owner" post.ByWallOwner, in SQL.
 const countPostsByWallQuery = `
 	SELECT count(*)
 	FROM posts
 	WHERE wall_id = $1
+		AND ($2 = '' OR ($2 = 'owner') = (author_id = wall_id OR from_wall))
 `
 
-func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID) (int, error) {
+func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter) (int, error) {
 	var count int
 
-	if err := r.conn(ctx).QueryRow(ctx, countPostsByWallQuery, wallID).Scan(&count); err != nil {
+	if err := r.conn(ctx).QueryRow(ctx, countPostsByWallQuery, wallID, string(filter)).Scan(&count); err != nil {
 		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 
