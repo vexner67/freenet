@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { genders, relationships, worldviews, politicalViews, label, clubsCount, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
+import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError } from './layout.js';
 import { albumsBlock } from './albums.js';
 import { initBlacklistLink } from './blacklist.js';
@@ -12,16 +12,89 @@ const CLUBS_SHOWN = 6;
 // openvk shows the first page of albums on a person's page.
 const ALBUMS_SHOWN = 10;
 
-// rows lists what to show; private marks rows others cannot see (only the
-// owner gets them at all, from /me).
+// rows lists the table under the name, in openvk's order; private marks
+// rows others cannot see (only the owner gets them at all, from /me).
 function rows(user, privacy) {
   return [
-    ['Пол:', label(genders, user.gender), false],
-    ['Семейное положение:', label(relationships(user.gender), user.relationship), privacy && !privacy.showRelationship],
-    ['Дата рождения:', user.birthday ? formatBirthday(user.birthday) : '', privacy && !privacy.showBirthday],
-    ['Мировоззрение:', label(worldviews, user.worldview), privacy && !privacy.showWorldview],
+    ['Местоимения:', label(genders, user.gender), false],
+    ['Семейное положение:', relationship(user), privacy && !privacy.showRelationship],
+    ['Дата регистрации:', user.registeredAt ? formatDateTime(user.registeredAt) : '', false],
+    ['Родной город:', user.hometown && searchLink('hometown', user.hometown), false],
     ['Полит. взгляды:', label(politicalViews, user.politicalViews), privacy && !privacy.showPoliticalViews],
+    ['Мировоззрение:', label(worldviews, user.worldview), privacy && !privacy.showWorldview],
+    ['Дата рождения:', user.birthday ? birthdayText(user) : '', privacy && !privacy.showBirthday],
   ].filter(([, value]) => value);
+}
+
+// relationship is "Замужем за Петром Петровым" as openvk says it: the
+// status, then whom it names, a link.
+function relationship(user) {
+  const status = label(relationships(user.gender), user.relationship);
+  if (!status || !user.partner || !takesPartner(user.relationship)) return status;
+
+  return el('span', {},
+    status + ' ' + partnerPrefix(user.relationship, user.gender) + ' ',
+    el('a', { href: pagePath(user.partner), textContent: fullName(user.partner) }));
+}
+
+// birthdayText is the date; the owner who shows only the day and the month
+// sees the year too, and that the others do not.
+function birthdayText(user) {
+  const text = formatBirthday(user.birthday);
+  return user.hideBirthYear ? text + ' (год видите только вы)' : text;
+}
+
+// searchLink finds the people sharing a value, as openvk links them.
+function searchLink(filter, value) {
+  return el('a', { href: '/search?' + new URLSearchParams({ [filter]: value }), textContent: value });
+}
+
+// linkedList splits a favourite field at commas into such links.
+function linkedList(filter, text) {
+  const items = text.split(',').map((s) => s.trim()).filter(Boolean);
+  return el('span', {}, ...items.flatMap((item, i) => [i > 0 ? ', ' : '', searchLink(filter, item)]));
+}
+
+function external(href, text) {
+  return el('a', { href, textContent: text, target: '_blank', rel: 'noopener nofollow ugc' });
+}
+
+// renderAbout fills "Контактная информация" and "Личная информация", with
+// "[ Редактировать ]" for the owner; the fields of "Дополнительно" go where
+// their owner put them.
+function renderAbout(user, isOwner) {
+  const c = user.contacts;
+  const i = user.interests;
+  const extra = (place) => (user.fields ?? []).filter((f) => f.place === place).map((f) => [f.name + ':', f.text]);
+
+  const contacts = [
+    ['Электронная почта:', c.email && external('mailto:' + c.email, c.email)],
+    ['Telegram:', c.telegram && external('https://t.me/' + c.telegram, '@' + c.telegram)],
+    ['Личный сайт:', c.website && external(c.website, c.website)],
+    ['Город:', c.city && searchLink('city', c.city)],
+    ['Адрес:', c.address],
+    ...extra('contacts'),
+  ];
+  const interests = [
+    ['Интересы:', i.interests],
+    ['Любимая музыка:', i.music],
+    ['Любимые фильмы:', i.films && linkedList('film', i.films)],
+    ['Любимые ТВ-шоу:', i.shows && linkedList('show', i.shows)],
+    ['Любимые книги:', i.books && linkedList('book', i.books)],
+    ['Любимые цитаты:', i.quotes],
+    ['Любимые игры:', i.games],
+    ...extra('interests'),
+    ['О себе:', i.about],
+  ];
+
+  for (const [id, list] of [['contacts', contacts], ['interests', interests]]) {
+    const filled = list.filter(([, value]) => value);
+    $(id).replaceChildren(...filled.map(([title, value]) => el('tr', {},
+      el('th', { textContent: title }),
+      el('td', { className: 'about-text' }, value))));
+    $(id + '-none').hidden = filled.length > 0;
+    $(id + '-edit').hidden = !isOwner;
+  }
 }
 
 function render(user, isOwner) {
@@ -45,7 +118,7 @@ function render(user, isOwner) {
     el('th', { textContent: title }),
     el('td', {}, value, isPrivate && el('span', { className: 'private-mark', textContent: ' · видно только вам' })),
   )));
-  $('no-info').hidden = info.length > 0;
+  renderAbout(user, isOwner);
 
   $('edit').hidden = !isOwner;
   $('profile').hidden = false;

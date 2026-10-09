@@ -1,22 +1,46 @@
 // Russian texts for API values and errors.
 
+// genders are openvk's "Местоимения"; neutral is its "они/их", which
+// speaks of the person in the plural.
 export const genders = [
-  ['', 'не указан'],
-  ['male', 'мужской'],
-  ['female', 'женский'],
+  ['', 'не указаны'],
+  ['male', 'он/его'],
+  ['female', 'она/её'],
+  ['neutral', 'они/их'],
 ];
 
-// Relationship labels agree with gender, as in Russian they must.
+// Relationship labels agree with gender, as in Russian they must; '' is
+// for a gender not set and for "они/их".
 const relationshipLabels = {
   single: { male: 'не женат', female: 'не замужем', '': 'не женат / не замужем' },
   dating: { male: 'встречается', female: 'встречается', '': 'встречается' },
-  married: { male: 'женат', female: 'замужем', '': 'женат / замужем' },
+  engaged: { male: 'помолвлен', female: 'помолвлена', '': 'помолвлен(а)' },
+  married: { male: 'женат', female: 'замужем', '': 'в браке' },
+  civil_union: { male: 'в гражданском браке', female: 'в гражданском браке', '': 'в гражданском браке' },
   in_love: { male: 'влюблён', female: 'влюблена', '': 'влюблён(а)' },
+  complicated: { male: 'всё сложно', female: 'всё сложно', '': 'всё сложно' },
   looking: { male: 'в активном поиске', female: 'в активном поиске', '': 'в активном поиске' },
 };
 
 export function relationships(gender) {
   return [['', 'не выбрано'], ...Object.entries(relationshipLabels).map(([value, byGender]) => [value, byGender[gender] ?? byGender['']])];
+}
+
+// partnerPrefixes are openvk's "relationship_N_prefix": the word before
+// whom a relationship names, "Женат на …", "Замужем за …".
+const partnerPrefixes = {
+  dating: 'с', engaged: 'с', civil_union: 'с', complicated: 'с', in_love: 'в',
+  married: { male: 'на', female: 'за', '': 'с' },
+};
+
+// takesPartner: the relationship names someone, as in the user service.
+export function takesPartner(relationship) {
+  return relationship in partnerPrefixes;
+}
+
+export function partnerPrefix(relationship, gender) {
+  const prefix = partnerPrefixes[relationship];
+  return typeof prefix === 'string' ? prefix : prefix[gender] ?? prefix[''];
 }
 
 export const worldviews = [
@@ -96,7 +120,14 @@ export function plural(n, [one, few, many]) {
 }
 
 // formatBirthday turns "1990-05-17" into "17 мая 1990 г., 35 лет".
+// A birthday shown without its year comes as "--05-17": "17 мая", as
+// openvk's "Показывать только день и месяц".
 export function formatBirthday(iso) {
+  if (iso.startsWith('--')) {
+    const [month, day] = iso.slice(2).split('-').map(Number);
+    return `${day} ${months[month - 1]}`;
+  }
+
   const [year, month, day] = iso.split('-').map(Number);
   const today = new Date();
 
@@ -143,8 +174,14 @@ export const deactivationReasons = [
   ['Другая причина', ''],
 ];
 
+// byGender picks the form of a verb for a person: "они/их" speak in the
+// plural, as openvk's "_neutral" strings.
+function byGender(gender, male, female, neutral) {
+  return { female, neutral }[gender] ?? male;
+}
+
 export function wrote(gender) {
-  return gender === 'female' ? 'написала' : 'написал';
+  return byGender(gender, 'написал', 'написала', 'написали');
 }
 
 // updatedPhoto is what openvk says of the post of a new photo (upd_m,
@@ -152,13 +189,13 @@ export function wrote(gender) {
 export function updatedPhoto(author) {
   if (author.club) return 'обновило фотографию группы';
 
-  return author.gender === 'female' ? 'обновила фотографию на своей странице' : 'обновил фотографию на своей странице';
+  return byGender(author.gender, 'обновил', 'обновила', 'обновили') + ' фотографию на своей странице';
 }
 
 // limitedAccess is openvk's "$1 ограничил доступ к своей странице." for
 // whoever blacklisted the viewer.
 export function limitedAccess(gender) {
-  return { male: 'ограничил', female: 'ограничила' }[gender] ?? 'ограничил(а)';
+  return { male: 'ограничил', female: 'ограничила', neutral: 'ограничили' }[gender] ?? 'ограничил(а)';
 }
 
 // blacklistCount is the head of the blacklist, as on openvk.
@@ -317,20 +354,21 @@ export function postsCount(n) {
 // so on; the verb agrees with the actor's gender, or is neuter for a
 // community: "Сообщество Кошки оставило комментарий".
 const notificationVerbs = {
-  like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
-  comment: ['оставил', 'оставила', 'оставил(а)', 'оставило'],
-  follow: ['подписался', 'подписалась', 'подписался(-ась)', 'подписалось'],
-  wall_post: ['написал', 'написала', 'написал(а)', 'написало'],
-  repost: ['поделился', 'поделилась', 'поделился(-лась)', 'поделилось'],
-  comment_reply: ['ответил', 'ответила', 'ответил(а)', 'ответило'],
-  comment_like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
+  like: ['оценил', 'оценила', 'оценил(а)', 'оценило', 'оценили'],
+  comment: ['оставил', 'оставила', 'оставил(а)', 'оставило', 'оставили'],
+  follow: ['подписался', 'подписалась', 'подписался(-ась)', 'подписалось', 'подписались'],
+  wall_post: ['написал', 'написала', 'написал(а)', 'написало', 'написали'],
+  repost: ['поделился', 'поделилась', 'поделился(-лась)', 'поделилось', 'поделились'],
+  comment_reply: ['ответил', 'ответила', 'ответил(а)', 'ответило', 'ответили'],
+  comment_like: ['оценил', 'оценила', 'оценил(а)', 'оценило', 'оценили'],
 };
 
-// notificationVerb agrees with actor: a person's gender, or a community.
+// notificationVerb agrees with actor: a person's gender (the plural for
+// "они/их"), or a community.
 export function notificationVerb(type, actor) {
-  const [male, female, unknown, neuter] = notificationVerbs[type];
+  const [male, female, unknown, neuter, neutral] = notificationVerbs[type];
   if (actor.club) return neuter;
-  return { male, female }[actor.gender] ?? unknown;
+  return { male, female, neutral }[actor.gender] ?? unknown;
 }
 
 // unreadCountText is the menu counter: nothing at 0, "99+" beyond 99.
@@ -400,6 +438,18 @@ const errorTexts = {
   'at most 10 photos are added at once': 'Вы можете загружать до 10 фотографий за один раз.',
   'fill in your profile before creating albums': 'Сначала заполните свою страницу.',
   'fill in your profile before uploading photos': 'Сначала заполните свою страницу.',
+  'partner not found': 'Пользователь с таким никнеймом не найден.',
+  'you cannot name yourself in your relationship': 'Нельзя указать в семейном положении себя.',
+  'place is too long': 'Название города длиннее 64 символов.',
+  'invalid telegram username': 'Неверное имя пользователя Telegram.',
+  'website is not a link': 'Укажите адрес сайта, например example.com.',
+  'website is too long': 'Адрес сайта длиннее 256 символов.',
+  'address is too long': 'Адрес длиннее 255 символов.',
+  'text is too long': 'Текст длиннее 1000 символов.',
+  'at most 7 additional fields': 'Можно добавить не больше 7 полей.',
+  'field name is empty': 'Укажите название поля.',
+  'field name is too long': 'Название поля длиннее 50 символов.',
+  'field text is empty': 'Заполните текст поля.',
   'you cannot blacklist yourself': 'Нельзя внести в чёрный список самого себя.',
   'invalid post id': 'Запись не найдена.',
   'comment text is empty': 'Напишите что-нибудь.',

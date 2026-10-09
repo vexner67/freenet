@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <title>Редактирование страницы | Freenet</title>
+  <title>Редактировать страницу | Freenet</title>
   <link rel="icon" href="data:,">
   <link rel="stylesheet" href="/static/style.css">
   <script type="module" src="/static/edit.js"></script>
@@ -20,22 +20,27 @@
     </div>
 
     <div class="page">
-      <div class="page-title">Редактирование страницы</div>
+      <div class="page-title">Редактировать страницу</div>
       <div class="page-body">
         <div class="tabs">
-          <a class="active" href="/edit">Основное</a>
+          <a id="tab-main" href="/edit">Основное</a>
+          <a id="tab-contacts" href="/edit?act=contacts">Контакты</a>
+          <a id="tab-interests" href="/edit?act=interests">Интересы</a>
+          <a id="tab-additional" href="/edit?act=additional">Дополнительно</a>
+          <a id="tab-avatar" href="/edit?act=avatar">Аватар</a>
           <a href="/settings/blacklist">Чёрный список</a>
         </div>
         <p id="loading">Загрузка…</p>
+        <div class="error" id="error" hidden></div>
+        <div class="notice" id="notice" hidden></div>
 
-        <form id="form" hidden>
+        <form id="main" hidden>
           <div class="notice" id="welcome" hidden>
             <b>Добро пожаловать в Freenet!</b> Расскажите немного о себе.
             Обязательны только имя и никнейм — по никнейму вас найдут друзья.
           </div>
-          <div class="error" id="error" hidden></div>
 
-          <div class="section-title">Основное</div>
+          <div class="section-title">Основная информация</div>
           <table class="form">
             <tr>
               <th><label class="required" for="name">Имя</label></th>
@@ -55,27 +60,34 @@
               <td class="control"><input type="text" id="status" maxlength="200"></td>
             </tr>
             <tr>
-              <th><label for="gender">Пол</label></th>
-              <td class="control"><select id="gender"></select></td>
+              <th><label for="hometown">Родной город</label></th>
+              <td class="control"><input type="text" id="hometown" maxlength="64"></td>
             </tr>
             <tr>
               <th><label for="relationship">Семейное положение</label></th>
-              <td class="control"><select id="relationship"></select></td>
+              <td class="control">
+                <select id="relationship"></select>
+                <input type="text" id="partner" maxlength="32" placeholder="Никнейм" spellcheck="false" aria-label="С кем" hidden>
+              </td>
             </tr>
             <tr>
-              <th><label for="birth-day">Дата рождения</label></th>
+              <th><label for="gender">Местоимения</label></th>
+              <td class="control"><select id="gender"></select></td>
+            </tr>
+            <tr>
+              <th><label for="birth-day">День рождения</label></th>
               <td class="control">
                 <div class="date">
                   <select id="birth-day" aria-label="День"></select>
                   <select id="birth-month" aria-label="Месяц"></select>
                   <select id="birth-year" aria-label="Год"></select>
                 </div>
+                <select id="birth-year-shown" aria-label="Как показывать дату рождения">
+                  <option value="">Показывать дату рождения</option>
+                  <option value="hide">Показывать только день и месяц</option>
+                </select>
               </td>
             </tr>
-          </table>
-
-          <div class="section-title">Взгляды</div>
-          <table class="form">
             <tr>
               <th><label for="worldview">Мировоззрение</label></th>
               <td class="control"><select id="worldview"></select></td>
@@ -95,7 +107,7 @@
                 <label><input type="checkbox" id="show-relationship">семейное положение</label>
                 <label><input type="checkbox" id="show-worldview">мировоззрение</label>
                 <label><input type="checkbox" id="show-political-views">политические взгляды</label>
-                <p class="hint">Остальное видят все. Почту не видит никто.</p>
+                <p class="hint">Остальное видят все. Почту для входа не видит никто.</p>
               </td>
             </tr>
             <tr>
@@ -120,6 +132,95 @@
             <a class="button secondary" id="cancel" href="/">Отмена</a>
           </div>
         </form>
+
+        <form id="contacts" hidden>
+          <div class="section-title">Контактная информация</div>
+          <table class="form">
+            <tr>
+              <th><label for="contact-email">Электронная почта</label></th>
+              <td class="control"><input type="email" id="contact-email" maxlength="254"></td>
+            </tr>
+            <tr>
+              <th><label for="telegram">Telegram</label></th>
+              <td class="control"><input type="text" id="telegram" maxlength="64" spellcheck="false"></td>
+            </tr>
+            <tr>
+              <th><label for="website">Личный сайт</label></th>
+              <td class="control"><input type="text" id="website" maxlength="256" spellcheck="false"></td>
+            </tr>
+            <tr>
+              <th><label for="city">Город</label></th>
+              <td class="control"><input type="text" id="city" maxlength="64"></td>
+            </tr>
+            <tr>
+              <th><label for="address">Адрес</label></th>
+              <td class="control"><input type="text" id="address" maxlength="255"></td>
+            </tr>
+          </table>
+          <div class="actions"><button class="button" type="submit">Сохранить</button></div>
+        </form>
+
+        <form id="interests" hidden>
+          <div class="section-title">Личная информация</div>
+          <table class="form">
+            <tr>
+              <th><label for="interests-text">Интересы</label></th>
+              <td class="control"><textarea id="interests-text" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="music">Любимая музыка</label></th>
+              <td class="control"><textarea id="music" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="films">Любимые фильмы</label></th>
+              <td class="control"><textarea id="films" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="shows">Любимые ТВ-шоу</label></th>
+              <td class="control"><textarea id="shows" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="books">Любимые книги</label></th>
+              <td class="control"><textarea id="books" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="quotes">Любимые цитаты</label></th>
+              <td class="control"><textarea id="quotes" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="games">Любимые игры</label></th>
+              <td class="control"><textarea id="games" maxlength="1000"></textarea></td>
+            </tr>
+            <tr>
+              <th><label for="about">О себе</label></th>
+              <td class="control"><textarea id="about" maxlength="1000"></textarea></td>
+            </tr>
+          </table>
+          <div class="actions"><button class="button" type="submit">Сохранить</button></div>
+        </form>
+
+        <form id="additional" hidden>
+          <div class="section-title">Дополнительная информация</div>
+          <p class="hint">Здесь вы можете указать дополнительную информацию о себе: другие интересы, ссылки на другие социальные сети. Максимум можно добавить до 7 таких полей.</p>
+          <div id="fields"></div>
+          <div class="actions">
+            <button class="button secondary" type="button" id="field-add">Добавить</button>
+            <button class="button" type="submit">Сохранить</button>
+          </div>
+        </form>
+
+        <div id="avatar-tab" hidden>
+          <div class="section-title">Изображение страницы</div>
+          <table class="form">
+            <tr>
+              <th>Изображение</th>
+              <td class="control">
+                <img class="edit-avatar" id="avatar" src="/static/avatar.svg" alt="">
+                <button class="button" type="button" id="avatar-upload">Обзор</button>
+              </td>
+            </tr>
+          </table>
+        </div>
 
         <p class="hint settings-delete" id="delete-page" hidden>Вы также можете <a id="delete-link">удалить свою страницу</a>.</p>
       </div>

@@ -46,7 +46,7 @@ try {
   tab('tab-following', 'following', `Подписки · ${owner.followingCount}`);
   $('tabs').hidden = false;
 
-  const subscribed = { male: 'подписан', female: 'подписана' }[owner.gender] ?? 'подписан(а)';
+  const subscribed = { male: 'подписан', female: 'подписана', neutral: 'подписаны' }[owner.gender] ?? 'подписан(а)';
   $('empty').textContent = type === 'followers' ? 'Пока никто не подписан.' : `Пока ни на кого не ${subscribed}.`;
   $('more').addEventListener('click', loadMore);
   await loadMore();
