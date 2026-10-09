@@ -4,7 +4,8 @@ import { personRow } from './people.js';
 
 const params = new URLSearchParams(location.search);
 const nickname = params.get('u') ?? '';
-const type = params.get('type') === 'following' ? 'following' : 'followers';
+const types = ['followers', 'following', 'online'];
+const type = types.includes(params.get('type')) ? params.get('type') : 'followers';
 
 let cursor = '';
 
@@ -37,17 +38,22 @@ try {
   const owner = await api.profile(nickname);
   const name = fullName(owner);
 
-  $('title').textContent = type === 'followers' ? `Подписчики: ${name}` : `Подписки: ${name}`;
+  $('title').textContent = { followers: 'Подписчики', following: 'Подписки', online: 'Подписки онлайн' }[type] + ': ' + name;
   document.title = $('title').textContent + ' | Freenet';
   $('back').textContent = '← к странице';
   $('back').href = '/' + owner.nickname;
 
   tab('tab-followers', 'followers', `Подписчики · ${owner.followersCount}`);
   tab('tab-following', 'following', `Подписки · ${owner.followingCount}`);
+  tab('tab-online', 'online', 'Онлайн');
   $('tabs').hidden = false;
 
   const subscribed = { male: 'подписан', female: 'подписана', neutral: 'подписаны' }[owner.gender] ?? 'подписан(а)';
-  $('empty').textContent = type === 'followers' ? 'Пока никто не подписан.' : `Пока ни на кого не ${subscribed}.`;
+  $('empty').textContent = {
+    followers: 'Пока никто не подписан.',
+    following: `Пока ни на кого не ${subscribed}.`,
+    online: 'Никого из подписок нет онлайн.',
+  }[type];
   $('more').addEventListener('click', loadMore);
   await loadMore();
 } catch (e) {

@@ -97,6 +97,14 @@ export const audiences = [
 // pageReads is "Кому в интернете видно мою страницу" of openvk.
 export const pageReads = audiences.slice(0, 2);
 
+// onlineReads is "Кто видит мою неактивность" of openvk, in its words.
+export const onlineReads = [
+  ['everyone', 'Все'],
+  ['users', 'Пользователи Freenet'],
+  ['following', 'Те, на кого я подписан(а)'],
+  ['only_me', 'Никто'],
+];
+
 // adminsDisplays is "Список админов" of a community's settings in openvk.
 export const adminsDisplays = [
   ['creator', 'Отображать только создателя группы'],
@@ -265,6 +273,20 @@ function replaceEnd(word, n, ending) {
 
 export function followersCount(n) {
   return `${n} ${plural(n, ['подписчик', 'подписчика', 'подписчиков'])}`;
+}
+
+// onlineCount is openvk's "3 человека онлайн".
+export function onlineCount(n) {
+  return `${n} ${plural(n, ['человек', 'человека', 'человек'])} онлайн`;
+}
+
+// presence is openvk's "Онлайн" or "была в сети сегодня в 12:00" of a
+// page, '' when it is not told.
+export function presence(user, now = new Date()) {
+  if (user.online) return 'Онлайн';
+  if (!user.lastSeenAt) return '';
+
+  return `${byGender(user.gender, 'был', 'была', 'были')} в сети ${formatPostDate(user.lastSeenAt, now)}`;
 }
 
 export function followingCount(n) {

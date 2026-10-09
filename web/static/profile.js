@@ -1,14 +1,16 @@
 import { api, currentUser } from './api.js';
-import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
+import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, onlineCount, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError } from './layout.js';
 import { albumsBlock } from './albums.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initFollow } from './follow.js';
 import { initPhoto } from './photo.js';
 import { initWall } from './wall.js';
+import { personCell } from './people.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
 const CLUBS_SHOWN = 6;
+const ONLINE_SHOWN = 6;
 // openvk shows the first page of albums on a person's page.
 const ALBUMS_SHOWN = 10;
 
@@ -97,12 +99,22 @@ function renderAbout(user, isOwner) {
   }
 }
 
-function render(user, isOwner) {
+// renderHeader is openvk's: the name, "(это вы)" to the owner, and on the
+// right "Онлайн" or when the person was last online. The owner, with this
+// page open, is online.
+function renderHeader(profile, isOwner) {
+  const name = fullName(profile);
+  const seen = isOwner ? 'Онлайн' : presence(profile);
+
+  document.title = `${name} | Freenet`;
+  $('title').replaceChildren(name, ...(isOwner ? [' ', el('b', { textContent: '(это вы)' })] : []));
+  $('title-aside').replaceChildren(seen === 'Онлайн' ? el('b', { textContent: seen }) : seen || '@' + profile.nickname);
+}
+
+function render(user, isOwner, profile) {
   const fullName = [user.name, user.surname].filter(Boolean).join(' ');
 
-  document.title = `${fullName} | Freenet`;
-  $('title').textContent = fullName;
-  $('title-aside').textContent = isOwner ? 'это вы' : '@' + user.nickname;
+  renderHeader(profile, isOwner);
   $('name').textContent = fullName;
 
   const status = $('status');
@@ -138,6 +150,21 @@ async function showAlbums(user) {
 
     $('albums-block').replaceChildren(...albumsBlock(page.owner, page, false));
     $('albums-block').hidden = page.total === 0;
+  } catch {
+    // Not to be had: the page works without it.
+  }
+}
+
+// showOnline is openvk's "Друзья онлайн", to the owner only: how many of
+// the people they follow are online now, "Все" and the first of them.
+async function showOnline(user) {
+  try {
+    const page = await api.online(user.nickname, '', ONLINE_SHOWN);
+
+    $('online-count').textContent = onlineCount(page.total);
+    $('online-all').href = `/follows?u=${encodeURIComponent(user.nickname)}&type=online`;
+    $('online-grid').replaceChildren(...page.users.map((u) => personCell(u)));
+    $('online-block').hidden = page.total === 0;
   } catch {
     // Not to be had: the page works without it.
   }
@@ -245,12 +272,13 @@ try {
     renderLimited(profile);
     initPhoto(profile, false);
   } else {
-    render(isOwner ? me : profile, isOwner);
+    render(isOwner ? me : profile, isOwner, profile);
     initPhoto(isOwner ? me : profile, isOwner);
     initFollow(profile, me, isOwner);
     // As openvk, the blocks the owner hides from the viewer are not there.
     if (profile.access.photos) showAlbums(profile);
     if (profile.access.clubs) showClubs(profile);
+    if (isOwner) showOnline(profile);
 
     // As on openvk: write to anyone but yourself.
     if (me && !isOwner) {

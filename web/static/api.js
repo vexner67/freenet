@@ -192,6 +192,11 @@ export const api = {
   blacklist: (cursor = '') => authorized('GET', page('/api/v1/me/blacklist', cursor, 0)),
   followers: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/followers`, cursor, limit)),
   following: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit)),
+  // online is openvk's "Друзья онлайн": whom the user follows who is online now.
+  online: (nickname, cursor = '', limit = 0) => {
+    const path = page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit);
+    return optional('GET', path + (path.includes('?') ? '&' : '?') + 'online=true');
+  },
   feed: (cursor = '') => authorized('GET', page('/api/v1/feed', cursor, 0)),
 
   // onWall: post the photo on your wall too ("Опубликовать запись на стене").
