@@ -726,6 +726,7 @@ type harness struct {
 	messages      *fakeMessages
 	clubs         *fakeClubs
 	topics        *fakeTopics
+	albums        *fakeAlbums
 }
 
 func newHarness(cfg rest.Config) harness {
@@ -742,6 +743,7 @@ func newHarness(cfg rest.Config) harness {
 		messages:      &fakeMessages{},
 		clubs:         &fakeClubs{},
 		topics:        &fakeTopics{},
+		albums:        &fakeAlbums{},
 	}
 	h.metrics = prometheus.NewRegistry()
 	h.handler = mustServer(cfg, rest.Backends{
@@ -753,6 +755,7 @@ func newHarness(cfg rest.Config) harness {
 		Messages:      h.messages,
 		Clubs:         h.clubs,
 		Topics:        h.topics,
+		Albums:        h.albums,
 	}, h.metrics).Handler()
 
 	return h

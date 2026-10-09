@@ -38,6 +38,13 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /club/{ref}/board/create", page(dir, "topic-create.html"))
 	mux.Handle("GET /topic/{id}", page(dir, "topic.html"))
 	mux.Handle("GET /topic/{id}/edit", page(dir, "topic-edit.html"))
+	mux.Handle("GET /albums", page(dir, "albums.html"))
+	mux.Handle("GET /albums/create", page(dir, "album-create.html"))
+	mux.Handle("GET /club/{ref}/albums", page(dir, "albums.html"))
+	mux.Handle("GET /album/{id}", page(dir, "album.html"))
+	mux.Handle("GET /album/{id}/edit", page(dir, "album-edit.html"))
+	mux.Handle("GET /album/{id}/upload", page(dir, "album-upload.html"))
+	mux.Handle("GET /photo/{id}", page(dir, "photo.html"))
 	mux.Handle("GET /{nickname}", page(dir, "profile.html"))
 }
 
