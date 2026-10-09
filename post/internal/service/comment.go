@@ -33,6 +33,8 @@ type CommentLikeRepository interface {
 	Unlike(ctx context.Context, commentID, userID uuid.UUID) (int, error)
 	// Liked returns which of commentIDs the user likes.
 	Liked(ctx context.Context, userID uuid.UUID, commentIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+	// Likers is LikeRepository.Likers for a comment.
+	Likers(ctx context.Context, commentID uuid.UUID, after *LikerCursor, limit int) ([]Liker, error)
 }
 
 // PostReader finds the post a comment belongs to.
@@ -207,6 +209,26 @@ func (s *CommentService) Delete(ctx context.Context, requesterID, commentID uuid
 
 // Like is idempotent, as for posts; the author of the comment hears of it.
 // It returns how many likes the comment has now.
+// Likers pages who like a comment, newest first; post.ErrCommentNotFound
+// for a missing comment.
+func (s *CommentService) Likers(ctx context.Context, commentID uuid.UUID, cursor *LikerCursor, size int) (LikerPage, error) {
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	c, err := s.commentRepo.Get(ctx, commentID)
+	if err != nil {
+		return LikerPage{}, errs.Wrap("s.commentRepo.Get", err)
+	}
+
+	found, err := s.likeRepo.Likers(ctx, commentID, cursor, size+1)
+	if err != nil {
+		return LikerPage{}, errs.Wrap("s.likeRepo.Likers", err)
+	}
+
+	return likerPage(found, size, c.Likes()), nil
+}
+
 func (s *CommentService) Like(ctx context.Context, userID, commentID uuid.UUID) (int, error) {
 	return s.setLike(ctx, userID, commentID, true)
 }

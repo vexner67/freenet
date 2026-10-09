@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -11,6 +12,7 @@ import (
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/post/internal/post"
+	"github.com/vexner67/freenet/post/internal/service"
 )
 
 const foreignKeyViolationCode = "23503"
@@ -158,4 +160,51 @@ func (r *LikeRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) err
 	}
 
 	return nil
+}
+
+// likersFrom is where a page of likers starts: after the cursor, or above
+// every like for the first page.
+func likersFrom(after *service.LikerCursor) (time.Time, uuid.UUID) {
+	if after == nil {
+		return time.Date(9999, 1, 1, 0, 0, 0, 0, time.UTC), uuid.Max
+	}
+
+	return after.LikedAt, after.UserID
+}
+
+// collectLikers reads rows of user_id and created_at, and closes them.
+func collectLikers(rows pgx.Rows) ([]service.Liker, error) {
+	likers, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (service.Liker, error) {
+		var l service.Liker
+		err := row.Scan(&l.UserID, &l.LikedAt)
+		l.LikedAt = l.LikedAt.UTC()
+		return l, err
+	})
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return likers, nil
+}
+
+const listPostLikersQuery = `
+	SELECT
+		user_id,
+		created_at
+	FROM post_likes
+	WHERE post_id = $1
+		AND (created_at, user_id) < ($2, $3)
+	ORDER BY created_at DESC, user_id DESC
+	LIMIT $4
+`
+
+func (r *LikeRepository) Likers(ctx context.Context, postID uuid.UUID, after *service.LikerCursor, limit int) ([]service.Liker, error) {
+	at, userID := likersFrom(after)
+
+	rows, err := r.conn(ctx).Query(ctx, listPostLikersQuery, postID, at, userID, limit)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	return collectLikers(rows)
 }

@@ -42,6 +42,10 @@ service PostService {
   // idempotent and return how many likes the post has now.
   rpc LikePost(LikePostRequest) returns (LikePostResponse);
   rpc UnlikePost(UnlikePostRequest) returns (UnlikePostResponse);
+  // Public: who like the post or the comment, newest first ("Понравилось
+  // N людям" of openvk); total is its like counter.
+  rpc ListPostLikers(ListPostLikersRequest) returns (ListPostLikersResponse);
+  rpc ListCommentLikers(ListCommentLikersRequest) returns (ListCommentLikersResponse);
 
   // Require an access token; the author is the caller. A comment is
   // deleted by its author, by the author of the post or by the owner of
@@ -120,6 +124,19 @@ service PostService {
   rpc EditAlbumPhoto(EditAlbumPhotoRequest) returns (EditAlbumPhotoResponse);
   // Who uploaded it or whoever may edit its album.
   rpc DeleteAlbumPhoto(DeleteAlbumPhotoRequest) returns (google.protobuf.Empty);
+  // Require an access token: the heart under a photo, as under a post.
+  rpc LikeAlbumPhoto(LikeAlbumPhotoRequest) returns (LikeAlbumPhotoResponse);
+  rpc UnlikeAlbumPhoto(UnlikeAlbumPhotoRequest) returns (UnlikeAlbumPhotoResponse);
+  // Public: who like the photo, newest first, as ListPostLikers.
+  rpc ListAlbumPhotoLikers(ListAlbumPhotoLikersRequest) returns (ListAlbumPhotoLikersResponse);
+  // Requires an access token: a comment under a photo, text only; the
+  // caller of CreatePhotoComment has checked the blacklists.
+  rpc CreatePhotoComment(CreatePhotoCommentRequest) returns (CreatePhotoCommentResponse);
+  // Requires an access token: its author, who uploaded the photo, the
+  // owner of the album or the admins of its community.
+  rpc DeletePhotoComment(DeletePhotoCommentRequest) returns (google.protobuf.Empty);
+  // Public: the comments of a photo, oldest first.
+  rpc ListPhotoComments(ListPhotoCommentsRequest) returns (ListPhotoCommentsResponse);
 
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
@@ -167,6 +184,9 @@ message Post {
   // The post shows the new photo of the wall's owner, a user or a
   // community ("обновил фотографию на своей странице"); never edited.
   bool avatar_update = 18;
+  // A photo of an album the post shares ("Поделиться" under a photo);
+  // empty for none. A deleted photo leaves the post.
+  string shared_photo_id = 19;
 }
 
 message Comment {
@@ -282,6 +302,14 @@ message RepostPostRequest {
   string post_id = 1;
   // What the caller says about it; may be empty.
   string text = 2;
+  // A community's wall to share it on ("в группу"), empty for the
+  // caller's own; the caller of RepostPost has checked the caller may
+  // write there, and for the community (from_wall, maybe signed).
+  string wall_id = 3;
+  bool from_wall = 4;
+  bool signed = 5;
+  // A photo of an album to share instead of a post; post_id is empty then.
+  string photo_id = 6;
 }
 
 message RepostPostResponse {
@@ -389,6 +417,33 @@ message UnlikePostRequest {
 
 message UnlikePostResponse {
   int32 like_count = 1;
+}
+
+message ListPostLikersRequest {
+  string post_id = 1;
+  // Empty for the newest likes, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message ListPostLikersResponse {
+  repeated string user_ids = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message ListCommentLikersRequest {
+  string comment_id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListCommentLikersResponse {
+  repeated string user_ids = 1;
+  string next_cursor = 2;
+  int32 total = 3;
 }
 
 message CreateCommentRequest {
@@ -615,6 +670,10 @@ message AlbumPhoto {
   google.protobuf.Timestamp created_at = 5;
   // The caller uploaded it.
   bool mine = 6;
+  int32 like_count = 7;
+  int32 comment_count = 8;
+  // The caller likes it.
+  bool liked = 9;
 }
 
 message CreateAlbumRequest {
@@ -721,4 +780,69 @@ message EditAlbumPhotoResponse {
 
 message DeleteAlbumPhotoRequest {
   string id = 1;
+}
+
+message LikeAlbumPhotoRequest {
+  string photo_id = 1;
+}
+
+message LikeAlbumPhotoResponse {
+  int32 like_count = 1;
+}
+
+message UnlikeAlbumPhotoRequest {
+  string photo_id = 1;
+}
+
+message UnlikeAlbumPhotoResponse {
+  int32 like_count = 1;
+}
+
+message ListAlbumPhotoLikersRequest {
+  string photo_id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListAlbumPhotoLikersResponse {
+  repeated string user_ids = 1;
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+// PhotoComment is a comment under a photo of an album.
+message PhotoComment {
+  string id = 1;
+  string photo_id = 2;
+  string author_id = 3;
+  string text = 4;
+  google.protobuf.Timestamp created_at = 5;
+  // The caller wrote it.
+  bool mine = 6;
+}
+
+message CreatePhotoCommentRequest {
+  string photo_id = 1;
+  string text = 2;
+}
+
+message CreatePhotoCommentResponse {
+  PhotoComment comment = 1;
+}
+
+message DeletePhotoCommentRequest {
+  string id = 1;
+}
+
+message ListPhotoCommentsRequest {
+  string photo_id = 1;
+  // Empty for the oldest, else next_cursor of the previous page.
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListPhotoCommentsResponse {
+  repeated PhotoComment comments = 1;
+  string next_cursor = 2;
+  int32 total = 3;
 }

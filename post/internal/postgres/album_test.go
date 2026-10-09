@@ -219,3 +219,75 @@ func TestAlbumRepository_AvatarAlbum(t *testing.T) {
 		}
 	}
 }
+
+func TestAlbumPhotoReactions(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool := newPool(t)
+	albums := postgres.NewAlbumRepository(pool)
+	likes, comments := albums.PhotoLikes(), albums.PhotoComments()
+	posts := postgres.NewPostRepository(pool)
+	ann, bob := uuid.New(), uuid.New()
+
+	a, _ := post.NewAlbum(ann, "Лето", "", time.Now())
+	if err := albums.Save(ctx, a); err != nil {
+		t.Fatal(err)
+	}
+	photo := newAlbumPhotos(t, a, ann, 1, time.Now())[0]
+	if err := albums.Photos().Add(ctx, a.ID(), []*post.AlbumPhoto{photo}, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+
+	if n, err := likes.Like(ctx, photo.ID(), bob); err != nil || n != 1 {
+		t.Fatalf("Like = %d, %v", n, err)
+	}
+	if n, err := likes.Like(ctx, photo.ID(), bob); err != nil || n != 1 {
+		t.Fatalf("a second Like = %d, %v", n, err)
+	}
+	if _, err := likes.Like(ctx, uuid.New(), bob); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("liking no photo: %v", err)
+	}
+	if liked, err := likes.Liked(ctx, bob, []uuid.UUID{photo.ID()}); err != nil || !liked[photo.ID()] {
+		t.Fatalf("Liked = %v, %v", liked, err)
+	}
+	if found, err := likes.Likers(ctx, photo.ID(), nil, 10); err != nil || len(found) != 1 || found[0].UserID != bob {
+		t.Fatalf("Likers = %+v, %v", found, err)
+	}
+
+	c, _ := post.NewPhotoComment(photo.ID(), bob, "красиво", time.Now())
+	if err := comments.Save(ctx, c); err != nil {
+		t.Fatalf("Save: %v", err)
+	}
+	missing, _ := post.NewPhotoComment(uuid.New(), bob, "x", time.Now())
+	if err := comments.Save(ctx, missing); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("a comment on no photo: %v", err)
+	}
+	if got, err := comments.Get(ctx, c.ID()); err != nil || got.Text() != "красиво" {
+		t.Fatalf("Get = %+v, %v", got, err)
+	}
+	if got, err := albums.Photos().Get(ctx, photo.ID()); err != nil || got.Likes() != 1 || got.Comments() != 1 {
+		t.Fatalf("counters = %+v, %v", got, err)
+	}
+
+	// A post sharing the photo keeps its ID.
+	content, _ := post.NewPhotoShare(photo.ID(), "смотрите")
+	share, _ := post.New(bob, bob, content, time.Now())
+	if err := posts.Save(ctx, share); err != nil {
+		t.Fatalf("Save a share: %v", err)
+	}
+	if got, err := posts.Get(ctx, share.ID()); err != nil || got.Content().SharedPhoto() != photo.ID() {
+		t.Fatalf("Get a share = %+v, %v", got, err)
+	}
+
+	// Erasing bob takes his like and comment, uncounted.
+	if err := albums.DeleteByUser(ctx, bob); err != nil {
+		t.Fatalf("DeleteByUser: %v", err)
+	}
+	if got, err := albums.Photos().Get(ctx, photo.ID()); err != nil || got.Likes() != 0 || got.Comments() != 0 {
+		t.Fatalf("after erasing bob = %+v, %v", got, err)
+	}
+	if _, err := comments.Get(ctx, c.ID()); !errors.Is(err, post.ErrCommentNotFound) {
+		t.Fatalf("bob's comment: %v", err)
+	}
+}

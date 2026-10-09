@@ -144,7 +144,7 @@ func (a *App) build(cfg config.Config) error {
 		postgrpc.NewPostHandler(postgrpc.Services{
 			Posts: service.NewPostService(service.PostDeps{
 				Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
-				Moderators: moderators,
+				Moderators: moderators, AlbumPhotos: repos.albumPhotos,
 			}),
 			Comments: service.NewCommentService(service.CommentDeps{
 				Posts: repos.posts, Comments: repos.comments, Likes: repos.commentLikes, Tx: repos.tx, Notifier: notifier, Photos: photos,
@@ -158,6 +158,7 @@ func (a *App) build(cfg config.Config) error {
 			}),
 			Albums: service.NewAlbumService(service.AlbumDeps{
 				Albums: repos.albums, Photos: repos.albumPhotos, Tx: repos.tx, Media: photos, Moderators: moderators,
+				Likes: repos.photoLikes, Comments: repos.photoComments,
 			}),
 			Purge: service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
@@ -193,14 +194,16 @@ func restrictInternal(cfg config.Config) grpc.UnaryServerInterceptor {
 // rateLimits are what each user may write how often.
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
-		postv1.PostService_CreatePost_FullMethodName:    cfg.PostLimits,
-		postv1.PostService_RepostPost_FullMethodName:    cfg.PostLimits,
-		postv1.PostService_CreateComment_FullMethodName: cfg.CommentLimits,
-		postv1.PostService_LikePost_FullMethodName:      cfg.LikeLimits,
-		postv1.PostService_UnlikePost_FullMethodName:    cfg.LikeLimits,
-		postv1.PostService_LikeComment_FullMethodName:   cfg.LikeLimits,
-		postv1.PostService_UnlikeComment_FullMethodName: cfg.LikeLimits,
-		postv1.PostService_EditPost_FullMethodName:      cfg.EditLimits,
+		postv1.PostService_CreatePost_FullMethodName:         cfg.PostLimits,
+		postv1.PostService_RepostPost_FullMethodName:         cfg.PostLimits,
+		postv1.PostService_CreateComment_FullMethodName:      cfg.CommentLimits,
+		postv1.PostService_LikePost_FullMethodName:           cfg.LikeLimits,
+		postv1.PostService_UnlikePost_FullMethodName:         cfg.LikeLimits,
+		postv1.PostService_LikeComment_FullMethodName:        cfg.LikeLimits,
+		postv1.PostService_LikeAlbumPhoto_FullMethodName:     cfg.LikeLimits,
+		postv1.PostService_CreatePhotoComment_FullMethodName: cfg.CommentLimits,
+		postv1.PostService_UnlikeComment_FullMethodName:      cfg.LikeLimits,
+		postv1.PostService_EditPost_FullMethodName:           cfg.EditLimits,
 		// A suggestion is content for the admins to read; publishing it is
 		// a post for everyone. Each has its own counter.
 		postv1.PostService_SuggestPost_FullMethodName:       cfg.PostLimits,
@@ -364,7 +367,10 @@ type repositories struct {
 		service.AlbumEraser
 	}
 	albumPhotos service.AlbumPhotoRepository
-	tx          service.TxManager
+	photoLikes  service.AlbumPhotoLikeRepository
+	// photoComments are the comments of photos of albums.
+	photoComments service.PhotoCommentRepository
+	tx            service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }
@@ -386,6 +392,8 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			topicMessages: topics.Messages(),
 			albums:        albums,
 			albumPhotos:   albums.Photos(),
+			photoLikes:    albums.PhotoLikes(),
+			photoComments: albums.PhotoComments(),
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -429,6 +437,8 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		topicMessages: topics.Messages(),
 		albums:        albums,
 		albumPhotos:   albums.Photos(),
+		photoLikes:    albums.PhotoLikes(),
+		photoComments: albums.PhotoComments(),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)

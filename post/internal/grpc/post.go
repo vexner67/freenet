@@ -16,7 +16,7 @@ import (
 
 type PostService interface {
 	Create(ctx context.Context, in service.CreateInput) (*post.Post, error)
-	Repost(ctx context.Context, authorID, postID uuid.UUID, text post.Text) (*post.Post, error)
+	Repost(ctx context.Context, in service.RepostInput) (*post.Post, error)
 	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
 	Edit(ctx context.Context, requesterID, postID uuid.UUID, text post.Text, photos post.Photos) (*post.Post, bool, error)
 	Pin(ctx context.Context, requesterID, postID uuid.UUID) error
@@ -27,12 +27,14 @@ type PostService interface {
 	Feed(ctx context.Context, viewerID uuid.UUID, sources service.FeedSources, cursor uuid.UUID, size int) (service.Page, error)
 	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
+	Likers(ctx context.Context, postID uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
 }
 
 type CommentService interface {
 	Create(ctx context.Context, in service.CommentInput) (*post.Comment, error)
 	Like(ctx context.Context, userID, commentID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, commentID uuid.UUID) (int, error)
+	Likers(ctx context.Context, commentID uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
 	Delete(ctx context.Context, requesterID, commentID uuid.UUID) error
 	List(ctx context.Context, viewerID, postID, cursor uuid.UUID, size int) (service.CommentPage, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error)
@@ -68,6 +70,13 @@ type AlbumService interface {
 	Photo(ctx context.Context, id uuid.UUID) (*post.AlbumPhoto, *post.Album, error)
 	Describe(ctx context.Context, requesterID, id uuid.UUID, description post.Description) (*post.AlbumPhoto, error)
 	DeletePhoto(ctx context.Context, requesterID, id uuid.UUID) error
+	LikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error)
+	UnlikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error)
+	LikedPhotos(ctx context.Context, userID uuid.UUID, photoIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+	PhotoLikers(ctx context.Context, photoID uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
+	CommentPhoto(ctx context.Context, authorID, photoID uuid.UUID, text post.CommentText) (*post.PhotoComment, error)
+	DeletePhotoComment(ctx context.Context, requesterID, id uuid.UUID) error
+	PhotoComments(ctx context.Context, photoID, after uuid.UUID, size int) (service.PhotoCommentPage, error)
 }
 
 // PurgeService erases a user's posts, likes and comments once the page is
@@ -157,10 +166,18 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 	return &postv1.CreatePostResponse{Post: toProtoPost(p, false, viewerID(ctx))}, nil
 }
 
+// RepostPost shares a post or, with photo_id, a photo of an album.
 func (h *PostHandler) RepostPost(ctx context.Context, req *postv1.RepostPostRequest) (*postv1.RepostPostResponse, error) {
-	authorID, postID, err := likeTarget(ctx, req.GetPostId())
+	authorID, err := currentUserID(ctx)
 	if err != nil {
 		return nil, err
+	}
+
+	var postID uuid.UUID
+	if req.GetPhotoId() == "" {
+		if _, postID, err = likeTarget(ctx, req.GetPostId()); err != nil {
+			return nil, err
+		}
 	}
 
 	text, err := post.NewText(req.GetText())
@@ -168,7 +185,19 @@ func (h *PostHandler) RepostPost(ctx context.Context, req *postv1.RepostPostRequ
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	p, err := h.postService.Repost(ctx, authorID, postID, text)
+	in := service.RepostInput{AuthorID: authorID, PostID: postID, Text: text, FromWall: req.GetFromWall(), Signed: req.GetSigned()}
+	if req.GetPhotoId() != "" {
+		if in.PhotoID, err = uuid.Parse(req.GetPhotoId()); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid photo id")
+		}
+	}
+	if req.GetWallId() != "" {
+		if in.WallID, err = uuid.Parse(req.GetWallId()); err != nil {
+			return nil, status.Error(codes.InvalidArgument, "invalid wall id")
+		}
+	}
+
+	p, err := h.postService.Repost(ctx, in)
 	if err != nil {
 		return nil, err
 	}

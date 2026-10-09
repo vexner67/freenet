@@ -45,9 +45,10 @@ const savePostQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update
+		avatar_update,
+		shared_photo_id
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -56,7 +57,7 @@ const saveRepostQuery = `
 	WITH shared AS (
 		UPDATE posts
 		SET repost_count = repost_count + 1
-		WHERE id = $11
+		WHERE id = $12
 		RETURNING id
 	)
 	INSERT INTO posts (
@@ -70,16 +71,20 @@ const saveRepostQuery = `
 		signed,
 		suggested,
 		avatar_update,
+		shared_photo_id,
 		repost_of
 	)
-	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, shared.id
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, shared.id
 	FROM shared
 `
 
 func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	content := p.Content()
 
-	args := []any{p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photoIDs(content.Photos()), p.CreatedAt(), p.FromWall(), p.Signed(), p.Suggested(), p.AvatarUpdate()}
+	args := []any{
+		p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photoIDs(content.Photos()), p.CreatedAt(),
+		p.FromWall(), p.Signed(), p.Suggested(), p.AvatarUpdate(), nullID(content.SharedPhoto()),
+	}
 
 	if content.RepostOf() == uuid.Nil {
 		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, args...); err != nil {
@@ -118,6 +123,7 @@ const getPostQuery = `
 		signed,
 		suggested,
 		avatar_update,
+		shared_photo_id,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = $1
@@ -152,6 +158,7 @@ const getPostsQuery = `
 		signed,
 		suggested,
 		avatar_update,
+		shared_photo_id,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = ANY($1)
@@ -278,6 +285,7 @@ const getPinnedPostQuery = `
 		signed,
 		suggested,
 		avatar_update,
+		shared_photo_id,
 		true AS pinned
 	FROM posts
 	WHERE id = (SELECT post_id FROM pinned_posts WHERE wall_id = $1)
@@ -312,6 +320,7 @@ const listPostsByWallQuery = `
 		signed,
 		suggested,
 		avatar_update,
+		shared_photo_id,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE wall_id = $1
@@ -356,6 +365,7 @@ const listFeedQuery = `
 		signed,
 		suggested,
 		avatar_update,
+		shared_photo_id,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE ((author_id = ANY($1) AND NOT from_wall) OR wall_id = ANY($2))
@@ -442,10 +452,12 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 		photos   []uuid.UUID
 		repostOf *uuid.UUID
 		editedAt *time.Time
+		photo    *uuid.UUID
 	)
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
-		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested, &s.AvatarUpdate, &s.Pinned)
+		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested, &s.AvatarUpdate,
+		&photo, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -461,6 +473,9 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	}
 
 	s.Content = post.RestoreContent(post.Text(text), post.Photos(photos), shared)
+	if photo != nil {
+		s.Content = s.Content.WithSharedPhoto(*photo)
+	}
 	s.CreatedAt = s.CreatedAt.UTC()
 	if editedAt != nil {
 		s.EditedAt = editedAt.UTC()
@@ -494,6 +509,7 @@ const deletePostsByUserQuery = `
 			signed,
 			suggested,
 			avatar_update,
+			shared_photo_id,
 			EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	), uncounted AS (
 		UPDATE posts p
@@ -524,6 +540,7 @@ const deletePostsByUserQuery = `
 		signed,
 		suggested,
 		avatar_update,
+		shared_photo_id,
 		pinned
 	FROM deleted
 `
@@ -535,4 +552,13 @@ func (r *PostRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]
 	}
 
 	return collectPosts(rows)
+}
+
+// nullID is NULL for uuid.Nil, as the nullable ID columns want.
+func nullID(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+
+	return &id
 }

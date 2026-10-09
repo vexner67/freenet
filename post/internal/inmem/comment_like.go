@@ -2,10 +2,12 @@ package inmem
 
 import (
 	"context"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/post/internal/post"
+	"github.com/vexner67/freenet/post/internal/service"
 )
 
 type CommentLikeRepository struct {
@@ -35,7 +37,7 @@ func (r *CommentLikeRepository) set(ctx context.Context, commentID, userID uuid.
 
 	users := r.s.commentLikes[commentID]
 	if users == nil {
-		users = make(map[uuid.UUID]struct{})
+		users = make(map[uuid.UUID]time.Time)
 		r.s.commentLikes[commentID] = users
 	}
 
@@ -43,7 +45,7 @@ func (r *CommentLikeRepository) set(ctx context.Context, commentID, userID uuid.
 
 	switch {
 	case like && !liked:
-		users[userID] = struct{}{}
+		users[userID] = time.Now().UTC().Truncate(time.Microsecond) // as PostgreSQL keeps it
 		r.s.restoreComment(commentID, func(sc *post.StoredComment) { sc.Likes++ })
 	case !like && liked:
 		delete(users, userID)
@@ -87,4 +89,15 @@ func (r *CommentLikeRepository) DeleteByUser(ctx context.Context, userID uuid.UU
 	}
 
 	return nil
+}
+
+func (r *CommentLikeRepository) Likers(ctx context.Context, commentID uuid.UUID, after *service.LikerCursor, limit int) ([]service.Liker, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	return likers(r.s.commentLikes[commentID], after, limit), nil
 }

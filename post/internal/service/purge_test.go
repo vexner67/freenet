@@ -48,7 +48,7 @@ func TestPurgeService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	annsRepost, err := posts.Repost(ctx, ann, bobsPost.ID(), "")
+	annsRepost, err := posts.Repost(ctx, service.RepostInput{AuthorID: ann, PostID: bobsPost.ID(), Text: ""})
 	if err != nil {
 		t.Fatal(err)
 	}

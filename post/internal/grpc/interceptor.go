@@ -80,6 +80,8 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrCannotChangeAlbum, codes.PermissionDenied},
 		{post.ErrCannotDescribePhoto, codes.PermissionDenied},
 		{post.ErrCannotDeleteAlbumPhoto, codes.PermissionDenied},
+		{post.ErrCannotDeletePhotoComment, codes.PermissionDenied},
+		{post.ErrCommentEmpty, codes.InvalidArgument},
 		{post.ErrNoAlbumPhotos, codes.InvalidArgument},
 		{post.ErrSystemAlbum, codes.FailedPrecondition},
 		{post.ErrDuplicatePhoto, codes.InvalidArgument},
