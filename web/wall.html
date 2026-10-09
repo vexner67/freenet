@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Стена | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/wall-page.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span><b class="aside" id="wall-count"></b></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+
+        <div id="wall" hidden>
+          <div class="tabs">
+            <a id="tab-all">Все записи</a>
+            <a id="tab-owner"></a>
+            <a id="tab-others">Чужие записи</a>
+          </div>
+
+          <form class="wall-form" id="post-form" hidden>
+            <textarea id="post-text" maxlength="1000" placeholder="Что у вас нового?" aria-label="Новая запись"></textarea>
+            <div class="attachments" id="post-photos" hidden></div>
+            <div class="row">
+              <span>
+                <a class="attach-link" id="post-attach">Прикрепить фотографию</a>
+                <span class="hint" id="post-counter"></span>
+              </span>
+              <button class="button" type="submit" id="post-submit">Отправить</button>
+            </div>
+            <div class="post-options">
+              <label id="post-from-club-label" hidden><input type="checkbox" id="post-from-club" checked> От имени сообщества</label>
+              <label id="post-signed-label" hidden><input type="checkbox" id="post-signed"> Подпись автора</label>
+            </div>
+            <input type="file" id="post-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+          </form>
+
+          <div class="error" id="wall-error" hidden></div>
+          <div id="posts"></div>
+          <p class="hint" id="wall-empty" hidden>На стене пока нет ни одной записи.</p>
+          <a class="wall-more" id="wall-more" hidden>Показать предыдущие записи</a>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

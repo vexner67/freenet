@@ -2,7 +2,7 @@
 // by others, the form for whoever may write there, paging.
 
 import { api } from './api.js';
-import { postsCount } from './labels.js';
+import { wallCount } from './labels.js';
 import { $, clubRef, el, showError, hideError } from './layout.js';
 import { postNode as renderPost } from './posts.js';
 import { initAttachments } from './attach.js';
@@ -17,12 +17,13 @@ const MAX_LENGTH = 1000;
 // or the community allows. An admin also speaks for the community, a box
 // on the form ("От имени сообщества"); on a "Предложка" others suggest
 // posts instead ("Предложить новость") and see their suggestions after,
-// as on openvk.
-export function initWall(owner, me, { moderates = me?.id === owner.id, speaksForClub = false } = {}) {
+// as on openvk. type is a tab of the wall page (wall-page.js): '' for all
+// posts, the only one with the form, 'owner' or 'others'.
+export function initWall(owner, me, { moderates = me?.id === owner.id, speaksForClub = false, type = '' } = {}) {
   const posts = $('posts');
   const error = $('wall-error');
   const isOwner = me?.id === owner.id;
-  const load = owner.club ? (c) => api.clubWall(clubRef(owner), c) : (c) => api.wall(owner.nickname, c);
+  const load = owner.club ? (c) => api.clubWall(clubRef(owner), c, type) : (c) => api.wall(owner.nickname, c, type);
   // On a wall that is not open its admins always speak for the club, as on
   // openvk.
   const fromClub = () => owner.wall !== 'open' || $('post-from-club').checked;
@@ -37,8 +38,9 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   let total = 0;
   let cursor = '';
 
+  // As openvk: "Стена  5 записей  Все".
   function updateCount() {
-    $('wall-count').textContent = total > 0 ? ' · ' + postsCount(total) : '';
+    $('wall-count').textContent = wallCount(total);
     $('wall-empty').hidden = total > 0 || canPost;
   }
 
@@ -82,7 +84,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       const page = await load(cursor);
 
       // Without a nickname of your own you have no name to sign a post.
-      if (firstPage && (page.canPost || page.canSuggest) && me?.profileCompleted) showForm(!page.canPost);
+      if (firstPage && !type && (page.canPost || page.canSuggest) && me?.profileCompleted) showForm(!page.canPost);
 
       total = page.total;
       cursor = page.nextCursor;
@@ -187,6 +189,15 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   }
 
   $('wall-more').addEventListener('click', loadMore);
+  if ($('wall-all')) $('wall-all').href = wallPath(owner);
 
   return loadMore();
+}
+
+// wallPath is the page of the wall of owner, a person or a community, as
+// openvk's /wall<id>.
+export function wallPath(owner) {
+  if (owner.club) return '/club/' + encodeURIComponent(clubRef(owner)) + '/wall';
+
+  return '/wall/' + encodeURIComponent(owner.nickname);
 }

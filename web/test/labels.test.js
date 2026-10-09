@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -259,4 +259,14 @@ test('presence is told as openvk tells it', () => {
 
 test('an album the site keeps refuses changes in words', () => {
   assert.equal(errorText(new Error('this album is kept by the site')), 'Этот альбом сайт ведёт сам: его нельзя изменить.');
+});
+
+test('a wall and the follows in common are counted as openvk counts them', () => {
+  assert.equal(wallCount(0), 'нет записей');
+  assert.equal(wallCount(1), '1 запись');
+  assert.equal(wallCount(25), '25 записей');
+  assert.equal(commonCount(1), '1 общая подписка');
+  assert.equal(commonCount(3), '3 общие подписки');
+  assert.equal(commonCount(11), '11 общих подписок');
+  assert.deepEqual(Object.keys(completenessHints), ['interests', 'email', 'telegram', 'status']);
 });

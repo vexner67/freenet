@@ -4,7 +4,7 @@ import { personRow } from './people.js';
 
 const params = new URLSearchParams(location.search);
 const nickname = params.get('u') ?? '';
-const types = ['followers', 'following', 'online'];
+const types = ['followers', 'following', 'online', 'common'];
 const type = types.includes(params.get('type')) ? params.get('type') : 'followers';
 
 let cursor = '';
@@ -38,7 +38,7 @@ try {
   const owner = await api.profile(nickname);
   const name = fullName(owner);
 
-  $('title').textContent = { followers: 'Подписчики', following: 'Подписки', online: 'Подписки онлайн' }[type] + ': ' + name;
+  $('title').textContent = { followers: 'Подписчики', following: 'Подписки', online: 'Подписки онлайн', common: 'Общие подписки' }[type] + ': ' + name;
   document.title = $('title').textContent + ' | Freenet';
   $('back').textContent = '← к странице';
   $('back').href = '/' + owner.nickname;
@@ -46,6 +46,9 @@ try {
   tab('tab-followers', 'followers', `Подписчики · ${owner.followersCount}`);
   tab('tab-following', 'following', `Подписки · ${owner.followingCount}`);
   tab('tab-online', 'online', 'Онлайн');
+  // As openvk's "Общие друзья", to someone else signed in.
+  $('tab-common').hidden = !me || me.id === owner.id;
+  tab('tab-common', 'common', 'Общие');
   $('tabs').hidden = false;
 
   const subscribed = { male: 'подписан', female: 'подписана', neutral: 'подписаны' }[owner.gender] ?? 'подписан(а)';
@@ -53,6 +56,7 @@ try {
     followers: 'Пока никто не подписан.',
     following: `Пока ни на кого не ${subscribed}.`,
     online: 'Никого из подписок нет онлайн.',
+    common: 'Общих подписок нет.',
   }[type];
   $('more').addEventListener('click', loadMore);
   await loadMore();
