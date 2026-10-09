@@ -1,6 +1,6 @@
 import { api, currentUser } from './api.js';
-import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, onlineCount, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
-import { $, el, fullName, pagePath, renderChrome, showError } from './layout.js';
+import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
+import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsBlock, isKeptBySite } from './albums.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initFollow } from './follow.js';
@@ -12,6 +12,7 @@ import { personCell } from './people.js';
 const nickname = decodeURIComponent(location.pathname.slice(1));
 const CLUBS_SHOWN = 6;
 const ONLINE_SHOWN = 6;
+const COMMON_SHOWN = 6;
 // openvk shows the first page of albums on a person's page.
 const ALBUMS_SHOWN = 10;
 
@@ -118,13 +119,7 @@ function render(user, isOwner, profile) {
   renderHeader(profile, isOwner);
   $('name').textContent = fullName;
 
-  const status = $('status');
-  if (user.status) {
-    status.textContent = user.status;
-  } else if (isOwner) {
-    status.replaceChildren(el('a', { href: '/edit', textContent: 'изменить статус' }));
-    status.classList.add('empty');
-  }
+  showStatus(user.status, isOwner);
 
   const info = rows(user, isOwner ? user.privacy : null);
   $('info').replaceChildren(...info.map(([title, value, isPrivate]) => el('tr', {},
@@ -142,6 +137,87 @@ function render(user, isOwner, profile) {
   $('profile').hidden = false;
 
   initWall(user, me);
+}
+
+// showStatus is the status under the name; to the owner it is openvk's
+// "[ изменить статус ]" when empty, and either opens the box to edit it.
+function showStatus(text, isOwner) {
+  const status = $('status');
+  status.classList.toggle('empty', !text);
+  status.classList.toggle('status-editable', isOwner);
+  status.replaceChildren(text || (isOwner ? '[ изменить статус ]' : ''));
+  status.onclick = isOwner ? () => editStatus(text) : null;
+}
+
+// editStatus is openvk's box under the name: the status in a field and
+// "Сохранить"; Escape leaves it as it was.
+function editStatus(text) {
+  const status = $('status');
+  const input = el('input', { type: 'text', maxLength: 200, value: text, ariaLabel: 'Статус' });
+  const save = el('button', { className: 'button', type: 'submit', textContent: 'Сохранить' });
+  const form = el('form', { className: 'status-edit' }, input, save);
+
+  form.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    hideError($('error'));
+    save.disabled = true;
+
+    try {
+      const updated = await api.updateStatus(input.value.trim());
+      Object.assign(me, updated);
+      showStatus(updated.status, true);
+      showCompleteness(updated, true);
+    } catch (e) {
+      save.disabled = false;
+      showError($('error'), e);
+    }
+  });
+  input.addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') showStatus(text, true);
+  });
+
+  status.onclick = null;
+  status.classList.remove('empty');
+  status.replaceChildren(form);
+  input.focus();
+}
+
+// showCompleteness is openvk's gauge of how full the page is, to whoever
+// is signed in, and to the owner the hints of what to fill in.
+function showCompleteness(user, isOwner) {
+  const percent = user.completeness ?? 0;
+  if (!me || !percent) return;
+
+  const bar = el('div');
+  bar.style.width = Math.min(percent, 100) + '%';
+
+  const hints = isOwner
+    ? (user.unfilled ?? []).filter((part) => completenessHints[part]).map((part) => {
+      const [href, text] = completenessHints[part];
+      return el('a', { href, textContent: text });
+    })
+    : [];
+
+  $('completeness').replaceChildren(
+    el('div', { className: 'completeness-gauge' + (percent >= 100 ? ' completeness-gauge-gold' : '') },
+      bar, el('span', { textContent: percent + '%' })),
+    ...(hints.length ? [el('div', { className: 'completeness-hints' }, ...hints)] : []),
+  );
+  $('completeness').hidden = false;
+}
+
+// showCommon is openvk's "Общие друзья": whom the viewer follows too.
+async function showCommon(user) {
+  try {
+    const page = await api.common(user.nickname, '', COMMON_SHOWN);
+
+    $('common-count').textContent = commonCount(page.total);
+    $('common-all').href = `/follows?u=${encodeURIComponent(user.nickname)}&type=common`;
+    $('common-grid').replaceChildren(...page.users.map((u) => personCell(u)));
+    $('common-block').hidden = page.total === 0;
+  } catch {
+    // Not to be had: the page works without it.
+  }
 }
 
 // showAlbums is openvk's block "Альбомы", when there are any.
@@ -295,6 +371,8 @@ try {
     if (profile.access.photos) showAlbums(profile);
     if (profile.access.clubs) showClubs(profile);
     if (isOwner) showOnline(profile);
+    if (me && !isOwner && profile.access.friends) showCommon(profile);
+    showCompleteness(isOwner ? me : profile, isOwner);
 
     // As on openvk: write to anyone but yourself.
     if (me && !isOwner) {

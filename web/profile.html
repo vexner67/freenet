@@ -39,6 +39,13 @@
             <a class="button" id="write" hidden>Отправить сообщение</a>
             <a class="profile-link" id="blacklist" hidden>Добавить в чёрный список</a>
             <div class="error" id="follow-error" hidden></div>
+            <div class="profile-hints" id="completeness" hidden></div>
+
+            <div class="side-block" id="common-block" hidden>
+              <div class="section-title">Общие подписки</div>
+              <div class="subtitle"><span id="common-count"></span><a id="common-all">Все</a></div>
+              <div class="people-grid" id="common-grid"></div>
+            </div>
 
             <div class="side-block" id="followers-block" hidden>
               <div class="section-title">Подписчики</div>
@@ -87,7 +94,7 @@
             </div>
             </div>
 
-            <div class="section-title">Стена<span class="count" id="wall-count"></span></div>
+            <div class="section-title">Стена<span class="count" id="wall-count"></span><a class="title-link" id="wall-all">Все</a></div>
 
             <form class="wall-form" id="post-form" hidden>
               <textarea id="post-text" maxlength="1000" placeholder="Что у вас нового?" aria-label="Новая запись"></textarea>

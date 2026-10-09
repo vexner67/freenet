@@ -797,3 +797,21 @@ a.like:hover svg { opacity: .7; }
 .field-remove:hover { color: #c00; text-decoration: none; }
 .edit-avatar { display: block; width: 200px; margin-bottom: 6px; }
 .search-filter { margin: 0 0 8px; }
+
+/* openvk's "Заполненность страницы": a grey gauge, gold when full, and
+   to the owner the hints of what to fill in. */
+.profile-hints { margin-top: 8px; }
+.completeness-gauge { position: relative; height: 16px; background: #e6e6e6; border-top: 1px solid #bbb; }
+.completeness-gauge > div { height: 100%; background: #d4d4d4; }
+.completeness-gauge > span { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%); }
+.completeness-gauge-gold { background: #f6ebbb; border-top-color: #b9b597; }
+.completeness-gauge-gold > div { background: #e1d7a2; }
+.completeness-hints a { display: block; margin-top: 4px; }
+
+/* The status edited on the page, as openvk's box under the name. */
+.status-editable { cursor: pointer; }
+.status-edit { display: flex; gap: 4px; }
+.status-edit input { flex: 1; }
+
+/* "Все" on the right of a block's title. */
+.section-title .title-link { float: right; font-weight: normal; }

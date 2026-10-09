@@ -143,6 +143,7 @@ export const api = {
 
   me: () => authorized('GET', '/api/v1/me'),
   updateProfile: (profile) => authorized('PUT', '/api/v1/me/profile', profile),
+  updateStatus: (status) => authorized('PUT', '/api/v1/me/status', { status }),
   updatePrivacy: (privacy) => authorized('PUT', '/api/v1/me/privacy', privacy),
   // "Контакты", "Интересы" and "Дополнительно" of "Редактировать страницу".
   updateContacts: (contacts) => authorized('PUT', '/api/v1/me/contacts', contacts),
@@ -159,7 +160,8 @@ export const api = {
   publicProfile: (nickname) => request('GET', '/api/v1/users/' + encodeURIComponent(nickname)),
 
   // With a session posts also say whether you like them.
-  wall: (nickname, cursor = '') => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0)),
+  // type is a tab of the wall: '' for all posts, 'owner', 'others'.
+  wall: (nickname, cursor = '', type = '') => optional('GET', withType(page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0), type)),
   post: (id) => optional('GET', '/api/v1/posts/' + encodeURIComponent(id)),
   // Writes on the wall of nickname: someone else's or your own.
   createPost: (nickname, text, photos = []) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos }),
@@ -196,6 +198,11 @@ export const api = {
   online: (nickname, cursor = '', limit = 0) => {
     const path = page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit);
     return optional('GET', path + (path.includes('?') ? '&' : '?') + 'online=true');
+  },
+  // common is openvk's "Общие друзья": whom the user and you both follow.
+  common: (nickname, cursor = '', limit = 0) => {
+    const path = page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit);
+    return authorized('GET', path + (path.includes('?') ? '&' : '?') + 'common=true');
   },
   feed: (cursor = '') => authorized('GET', page('/api/v1/feed', cursor, 0)),
 
@@ -267,7 +274,7 @@ export const api = {
   // "Фон страницы": side is left or right; deleting takes both away.
   setClubBackdrop: (ref, side, file) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop/${side}`, file),
   deleteClubBackdrop: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop`),
-  clubWall: (ref, cursor = '') => optional('GET', page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0)),
+  clubWall: (ref, cursor = '', type = '') => optional('GET', withType(page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0), type)),
   // fromClub: the post speaks for the club ("От имени сообщества"),
   // signed: naming you under it ("Подпись автора").
   createClubPost: (ref, text, photos = [], { fromClub = false, signed = false } = {}) =>
@@ -325,6 +332,12 @@ export const api = {
     return request('GET', '/api/v1/users?' + params);
   },
 };
+
+// withType adds the tab of a wall to its path.
+function withType(path, type) {
+  if (!type) return path;
+  return path + (path.includes('?') ? '&' : '?') + 'type=' + encodeURIComponent(type);
+}
 
 function page(path, cursor, limit) {
   const query = new URLSearchParams();

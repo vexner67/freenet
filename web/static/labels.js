@@ -377,6 +377,25 @@ export function postsCount(n) {
   return `${n} ${plural(n, ['запись', 'записи', 'записей'])}`;
 }
 
+// wallCount is openvk's counter of a wall: "нет записей", "5 записей".
+export function wallCount(n) {
+  return n === 0 ? 'нет записей' : postsCount(n);
+}
+
+// commonCount is openvk's "3 общих друга", of the people followed.
+export function commonCount(n) {
+  return `${n} ${plural(n, ['общая подписка', 'общие подписки', 'общих подписок'])}`;
+}
+
+// completenessHints are openvk's hints under the gauge of the owner's page:
+// what is missing, where to fill it in and what it adds.
+export const completenessHints = {
+  interests: ['/edit?act=interests', 'Интересы (+20%)'],
+  email: ['/edit?act=contacts', 'Email (+20%)'],
+  telegram: ['/edit?act=contacts', 'Telegram (+15%)'],
+  status: ['/edit', 'Статус (+15%)'],
+};
+
 // Notification phrases, as on openvk: "<name> оценил(а) вашу запись" and
 // so on; the verb agrees with the actor's gender, or is neuter for a
 // community: "Сообщество Кошки оставило комментарий".
