@@ -503,6 +503,7 @@ const errorTexts = {
   'the new owner must be an admin of the club': 'Владельцем можно назначить только администратора группы.',
   "this user's clubs are hidden": 'Пользователь скрыл список своих групп.',
   "this user's photos are hidden": 'Пользователь скрыл свои фотографии.',
+  'this album is kept by the site': 'Этот альбом сайт ведёт сам: его нельзя изменить.',
   "this user's follows are hidden": 'Пользователь скрыл список своих подписок.',
   'this page is hidden': 'Настройки приватности этого пользователя не разрешают вам смотреть на его страницу.',
   'you cannot suggest posts here': 'В эту группу нельзя предлагать записи.',

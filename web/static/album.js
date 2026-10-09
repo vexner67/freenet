@@ -8,7 +8,7 @@ import { photosCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { openViewer } from './viewer.js';
-import { albumPath, albumsTitle, canChange, photoPath } from './albums.js';
+import { albumPath, albumsTitle, canChange, isKeptBySite, photoPath } from './albums.js';
 
 const albumID = decodeURIComponent(location.pathname.slice('/album/'.length));
 
@@ -17,7 +17,7 @@ function renderHead(album, owner, editable) {
   $('title').replaceChildren(...albumsTitle(owner, album.name));
   $('count-link').href = albumPath(album);
 
-  if (editable) {
+  if (editable && !isKeptBySite(album)) {
     $('links').replaceChildren(
       ' | ', el('a', { href: albumPath(album) + '/upload', textContent: 'Загрузить фотографию' }),
       ' | ', el('a', { href: albumPath(album) + '/edit', textContent: 'Редактировать альбом' }),

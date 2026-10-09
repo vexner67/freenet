@@ -5,7 +5,7 @@
 
 import { api, ApiError, currentUser } from './api.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
-import { albumPath, albumsTitle, canChange } from './albums.js';
+import { albumPath, albumsTitle, canChange, isKeptBySite } from './albums.js';
 
 const MAX_PHOTOS = 10;
 const MAX_BYTES = 8 << 20;
@@ -133,6 +133,7 @@ if (!me) {
 
     renderHead(album, owner);
     if (!canChange(owner, role, me)) throw new Error('Недостаточно прав.');
+    if (isKeptBySite(album)) throw new Error('Этот альбом сайт ведёт сам: его нельзя изменить.');
 
     $('content').hidden = false;
     initUpload(album);

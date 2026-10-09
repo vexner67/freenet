@@ -256,3 +256,7 @@ test('presence is told as openvk tells it', () => {
   assert.equal(onlineCount(5), '5 человек онлайн');
   assert.deepEqual(onlineReads.map(([, text]) => text), ['Все', 'Пользователи Freenet', 'Те, на кого я подписан(а)', 'Никто']);
 });
+
+test('an album the site keeps refuses changes in words', () => {
+  assert.equal(errorText(new Error('this album is kept by the site')), 'Этот альбом сайт ведёт сам: его нельзя изменить.');
+});

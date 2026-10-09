@@ -202,6 +202,9 @@ export const api = {
   // onWall: post the photo on your wall too ("Опубликовать запись на стене").
   uploadAvatar: (file, onWall = false) => authorized('PUT', '/api/v1/me/avatar' + (onWall ? '?onWall=true' : ''), file),
   deleteAvatar: () => authorized('DELETE', '/api/v1/me/avatar'),
+  // setBackdrop is a side, "left" or "right", of "Фон страницы".
+  setBackdrop: (side, file) => authorized('PUT', `/api/v1/me/backdrop/${side}`, file),
+  deleteBackdrop: () => authorized('DELETE', '/api/v1/me/backdrop'),
 
   notifications(box, cursor = '') {
     const query = new URLSearchParams({ box });

@@ -1,11 +1,12 @@
 import { api, currentUser } from './api.js';
 import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, onlineCount, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError } from './layout.js';
-import { albumsBlock } from './albums.js';
+import { albumPath, albumsBlock, isKeptBySite } from './albums.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initFollow } from './follow.js';
 import { initPhoto } from './photo.js';
 import { initWall } from './wall.js';
+import { showBackdrop } from './backdrop.js';
 import { personCell } from './people.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
@@ -150,6 +151,7 @@ async function showAlbums(user) {
 
     $('albums-block').replaceChildren(...albumsBlock(page.owner, page, false));
     $('albums-block').hidden = page.total === 0;
+    linkAvatar(page.albums.find(isKeptBySite));
   } catch {
     // Not to be had: the page works without it.
   }
@@ -168,6 +170,19 @@ async function showOnline(user) {
   } catch {
     // Not to be had: the page works without it.
   }
+}
+
+// linkAvatar makes the photo of the page lead to "Фотографии со страницы",
+// as openvk opens the photo there.
+function linkAvatar(album) {
+  if (!album || album.photos === 0) return;
+
+  // The link takes the photo's place first: made around it, it would
+  // take the photo out of the page before.
+  const avatar = $('avatar');
+  const link = el('a', { href: albumPath(album) });
+  avatar.before(link);
+  link.append(avatar);
 }
 
 // showClubs is openvk's block "Группы": how many, "Все" and the names of
@@ -273,6 +288,7 @@ try {
     initPhoto(profile, false);
   } else {
     render(isOwner ? me : profile, isOwner, profile);
+    showBackdrop(profile.backdrop);
     initPhoto(isOwner ? me : profile, isOwner);
     initFollow(profile, me, isOwner);
     // As openvk, the blocks the owner hides from the viewer are not there.

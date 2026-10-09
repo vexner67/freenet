@@ -1,16 +1,19 @@
 // openvk's "Редактировать страницу": the tabs "Основное", "Контакты",
-// "Интересы", "Дополнительно" and "Аватар", ?act= as on openvk; who sees
-// them is in "Мои Настройки".
+// "Интересы", "Дополнительно", "Аватар" and "Фон", ?act= as on openvk;
+// who sees them is in "Мои Настройки".
 
 import { api, currentUser } from './api.js';
 import { genders, relationships, takesPartner, worldviews, politicalViews, months } from './labels.js';
 import { $, avatarURL, el, renderChrome, showError, hideError } from './layout.js';
 import { openAvatarDialog } from './avatar.js';
+import { initBackdropForm } from './backdrop.js';
 
 const MAX_FIELDS = 7;
 
 const error = $('error');
-const tabs = { main: 'main', contacts: 'contacts', interests: 'interests', additional: 'additional', avatar: 'avatar-tab' };
+const tabs = {
+  main: 'main', contacts: 'contacts', interests: 'interests', additional: 'additional', avatar: 'avatar-tab', backdrop: 'backdrop-tab',
+};
 const act = new URLSearchParams(location.search).get('act') ?? 'main';
 const current = act in tabs ? act : 'main';
 
@@ -223,6 +226,14 @@ function initAvatar(me) {
   }));
 }
 
+// initBackdrop is openvk's "Фон страницы" of the user (backdrop.js).
+function initBackdrop(me) {
+  initBackdropForm(me.backdrop, {
+    upload: async (side, file) => (await api.setBackdrop(side, file)).backdrop,
+    remove: async () => (await api.deleteBackdrop()).backdrop,
+  });
+}
+
 const me = await currentUser().catch(() => null);
 if (!me) {
   location.replace('/');
@@ -234,7 +245,7 @@ if (!me) {
   $('tab-' + tab).classList.add('active');
   $(tabs[tab]).hidden = false;
 
-  ({ main: initMain, contacts: initContacts, interests: initInterests, additional: initAdditional, avatar: initAvatar })[tab](me);
+  ({ main: initMain, contacts: initContacts, interests: initInterests, additional: initAdditional, avatar: initAvatar, backdrop: initBackdrop })[tab](me);
 
   $('loading').hidden = true;
 }
