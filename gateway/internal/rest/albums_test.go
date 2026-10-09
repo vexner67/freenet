@@ -18,7 +18,14 @@ type fakeAlbums struct {
 	created                     model.NewAlbum
 	edited                      [2]string
 	added                       []model.NewAlbumPhoto
-	err                         error
+	// avatarPhotos are "club/photo" of the new photos of pages.
+	avatarPhotos []string
+	err          error
+}
+
+func (f *fakeAlbums) AddAvatarPhoto(_ context.Context, _, clubID, photoID string) error {
+	f.avatarPhotos = append(f.avatarPhotos, clubID+"/"+photoID)
+	return f.err
 }
 
 var albumTime = time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)

@@ -35,6 +35,10 @@ type albumJSON struct {
 	UpdatedAt   string `json:"updatedAt"`
 	// Cover is the first photo, null while there is none.
 	Cover *photoJSON `json:"cover"`
+	// Kind is "" for an album people make, "avatars" for "Фотографии со
+	// страницы", which the site keeps: nobody renames, deletes or fills it
+	// by hand.
+	Kind string `json:"kind"`
 }
 
 // albumPhotoJSON is a photo with its URLs, as of a post, and what is
@@ -92,6 +96,7 @@ func toAlbumJSON(a model.Album) albumJSON {
 		Photos:      a.Photos,
 		CreatedAt:   a.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:   a.UpdatedAt.UTC().Format(time.RFC3339),
+		Kind:        a.Kind,
 	}
 	if a.Cover != nil {
 		cover := toPhotoJSON(a.Cover.AuthorID, a.Cover.ID)

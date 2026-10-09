@@ -73,6 +73,17 @@ func (a *Albums) Delete(ctx context.Context, accessToken, id string) error {
 	return nil
 }
 
+// AddAvatarPhoto puts a new photo of the caller's page, or of a club they
+// run (clubID), in its "Фотографии со страницы".
+func (a *Albums) AddAvatarPhoto(ctx context.Context, accessToken, clubID, photoID string) error {
+	_, err := a.api.AddAvatarPhoto(withToken(ctx, accessToken), &postv1.AddAvatarPhotoRequest{ClubId: clubID, PhotoId: photoID})
+	if err != nil {
+		return errs.Wrap("a.api.AddAvatarPhoto", fromStatus(err))
+	}
+
+	return nil
+}
+
 func (a *Albums) AddPhotos(ctx context.Context, accessToken, albumID string, photos []model.NewAlbumPhoto) ([]model.AlbumPhoto, error) {
 	req := &postv1.AddAlbumPhotosRequest{AlbumId: albumID}
 	for _, p := range photos {
@@ -143,6 +154,9 @@ func toAlbum(pa *postv1.Album) model.Album {
 		CreatedAt:   fromTimestamp(pa.GetCreatedAt()),
 		UpdatedAt:   fromTimestamp(pa.GetUpdatedAt()),
 		Photos:      int(pa.GetPhotoCount()),
+	}
+	if pa.GetKind() == postv1.AlbumKind_ALBUM_KIND_AVATARS {
+		a.Kind = "avatars"
 	}
 	if pa.GetCover() != nil {
 		cover := toAlbumPhoto(pa.GetCover())

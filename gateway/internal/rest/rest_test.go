@@ -70,9 +70,10 @@ type fakeUsers struct {
 	reason      string
 	// partner is the nickname UpdateProfile got; about the rest of the
 	// page, and search the last query.
-	partner string
-	about   model.About
-	search  model.UserQuery
+	partner  string
+	about    model.About
+	search   model.UserQuery
+	backdrop model.Backdrop
 	// onlineTokens are the tokens MarkOnline got.
 	onlineMu     sync.Mutex
 	onlineTokens []string
@@ -152,6 +153,7 @@ func (f *fakeUsers) profileOf(nickname string) (model.PublicProfile, error) {
 		return model.PublicProfile{
 			ID: "u2", Profile: model.Profile{Name: "Bob", Nickname: "bob"},
 			LastSeen: time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC), Online: true,
+			Backdrop: model.Backdrop{Right: "pb2"},
 		}, nil
 	case "cat":
 		return model.PublicProfile{ID: "u3", Profile: model.Profile{Name: "Cat", Nickname: "cat"}, Deactivated: true}, nil
@@ -282,6 +284,25 @@ func (f *fakeUsers) ListFollowers(_ context.Context, userID, cursor string, _ in
 func (f *fakeUsers) ListFollowing(_ context.Context, userID, cursor string, _ int) (model.UserPage, error) {
 	f.listed = "following:" + userID + ":" + cursor
 	return model.UserPage{NextCursor: "c2", Total: 5}, nil
+}
+
+// SetBackdrop keeps the caller's backdrop in backdrop.
+func (f *fakeUsers) SetBackdrop(_ context.Context, token, side, photoID string) (model.User, string, error) {
+	f.token = token
+	if f.err != nil {
+		return model.User{}, "", f.err
+	}
+
+	previous := &f.backdrop.Left
+	if side == "right" {
+		previous = &f.backdrop.Right
+	}
+	old := *previous
+	*previous = photoID
+
+	u := f.user()
+	u.Backdrop = f.backdrop
+	return u, old, nil
 }
 
 func (f *fakeUsers) ListOnlineFollowing(_ context.Context, userID, cursor string, _ int) (model.UserPage, error) {
@@ -582,7 +603,19 @@ type fakeMedia struct {
 	clubAvatarOf string
 	// keptPhotos are the club's photos kept by the last clean-up.
 	keptPhotos []string
-	err        error
+	// published and unpublished are the photos kept for good and deleted.
+	published, unpublished []string
+	err                    error
+}
+
+func (f *fakeMedia) PublishPhotos(_ context.Context, ownerID string, photoIDs []string) error {
+	f.published = append(f.published, ownerID+"/"+strings.Join(photoIDs, ","))
+	return nil
+}
+
+func (f *fakeMedia) DeletePublishedPhotos(_ context.Context, ownerID string, photoIDs []string) error {
+	f.unpublished = append(f.unpublished, ownerID+"/"+strings.Join(photoIDs, ","))
+	return nil
 }
 
 func (f *fakeMedia) UploadClubAvatar(_ context.Context, _, clubID string, image []byte) (string, error) {

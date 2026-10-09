@@ -172,6 +172,35 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
+  /api/v1/me/backdrop/{side}:
+    parameters:
+      - name: side
+        in: path
+        required: true
+        schema: { type: string, enum: [left, right] }
+    put:
+      summary: Set one side of your backdrop ("Фон страницы")
+      description: The body is the image itself, as for a photo; the other side stays, the photo this one replaces is deleted.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema: { type: string, format: binary }
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/backdrop:
+    delete:
+      summary: Take your backdrop away ("Удалить фон"), both sides
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
   /api/v1/me/privacy:
     put:
       summary: Choose who sees your page and its parts, and who writes to you
@@ -404,7 +433,9 @@ paths:
         at least 50x50), with its Content-Type. It is turned upright by its
         EXIF orientation, the middle square is kept and re-encoded, so EXIF
         data (location included) is dropped. The site crops the square you
-        choose before sending it, as openvk does.
+        choose before sending it, as openvk does. The image also goes, as a
+        photo of its own, into your "Фотографии со страницы" (an album of
+        `kind` "avatars"); failing that, the photo is changed all the same.
       security: [{ bearer: [] }]
       parameters:
         - $ref: "#/components/parameters/OnWall"
@@ -1037,7 +1068,7 @@ paths:
       - $ref: "#/components/parameters/ClubRef"
     put:
       summary: Set the community's photo
-      description: Its admins only. The body is the image itself, as for your own photo; the old photo is deleted.
+      description: Its admins only. The body is the image itself, as for your own photo; the old photo is deleted, the new one goes into the community's "Фотографии со страницы" too.
       security: [{ bearer: [] }]
       parameters:
         - $ref: "#/components/parameters/OnWall"
@@ -1748,6 +1779,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "The site keeps the album (`kind` \"avatars\"): `this album is kept by the site`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
     delete:
       summary: Delete an album with its photos ("удалить альбом")
@@ -1762,6 +1798,11 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "The site keeps the album (`kind` \"avatars\"): `this album is kept by the site`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/v1/albums/{id}/photos:
     parameters:
@@ -1837,6 +1878,11 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: Neither the owner of the album nor an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: "The site keeps the album (`kind` \"avatars\"): `this album is kept by the site`"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2566,6 +2612,7 @@ components:
             email: { type: string, format: email }
             profileCompleted: { type: boolean }
             privacy: { $ref: "#/components/schemas/Privacy" }
+            backdrop: { $ref: "#/components/schemas/Backdrop" }
             deactivated:
               type: boolean
               description: "You deleted the page; see POST /api/v1/me/deactivate"
@@ -2621,15 +2668,7 @@ components:
         avatar: { $ref: "#/components/schemas/Avatar" }
         openTopics: { type: boolean, description: "Anyone starts topics in its discussions, not only its admins (\"Все могут создавать темы\")" }
         topicsAboveWall: { type: boolean, description: "Its page lists the topics above the wall (\"Отображать список тем над стеной\")" }
-        backdrop:
-          description: '"Фон страницы": the photos on the left and on the right of its page; null for none'
-          oneOf:
-            - type: object
-              required: [left, right]
-              properties:
-                left: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
-                right: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
-            - type: "null"
+        backdrop: { $ref: "#/components/schemas/Backdrop" }
 
     Topic:
       type: object
@@ -2788,6 +2827,10 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/Photo" }
             - { type: "null" }
+        kind:
+          type: string
+          enum: ["", avatars]
+          description: '"" for an album people make; "avatars" is "Фотографии со страницы", which the site keeps with every new photo of the page: nobody renames, deletes or fills it by hand, its photos may be deleted'
 
     AlbumPhoto:
       allOf:
@@ -3006,6 +3049,7 @@ components:
             online:
               type: boolean
               description: "The user is on the site now (\"Онлайн\"); only on the page itself"
+            backdrop: { $ref: "#/components/schemas/Backdrop" }
 
     Access:
       type: object
@@ -3015,3 +3059,13 @@ components:
         photos: { type: boolean, description: "The albums (`photosRead`)" }
         friends: { type: boolean, description: "The follows, either way (`friendsRead`)" }
         clubs: { type: boolean, description: "The communities (`clubsRead`)" }
+
+    Backdrop:
+      description: '"Фон страницы": the photos on the left and on the right of a page, of a person or a community; null for none'
+      oneOf:
+        - type: object
+          required: [left, right]
+          properties:
+            left: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
+            right: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
+        - type: "null"
