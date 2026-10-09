@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -242,4 +242,17 @@ test('a relationship names whom it is with, after openvk\'s prefix', () => {
 
 test('a birthday without its year', () => {
   assert.equal(formatBirthday('--05-17'), '17 мая');
+});
+
+test('presence is told as openvk tells it', () => {
+  const now = new Date(2026, 9, 9, 18, 0);
+  assert.equal(presence({ online: true, lastSeenAt: now.toISOString(), gender: 'female' }, now), 'Онлайн');
+  assert.equal(presence({ lastSeenAt: new Date(2026, 9, 9, 12, 5).toISOString(), gender: 'female' }, now), 'была в сети сегодня в 12:05');
+  assert.equal(presence({ lastSeenAt: new Date(2026, 9, 8, 9, 30).toISOString(), gender: 'neutral' }, now), 'были в сети вчера в 9:30');
+  assert.equal(presence({ lastSeenAt: new Date(2026, 8, 1, 9, 30).toISOString() }, now), 'был в сети 1 сентября в 9:30');
+  assert.equal(presence({ lastSeenAt: null }, now), '');
+  assert.equal(onlineCount(1), '1 человек онлайн');
+  assert.equal(onlineCount(3), '3 человека онлайн');
+  assert.equal(onlineCount(5), '5 человек онлайн');
+  assert.deepEqual(onlineReads.map(([, text]) => text), ['Все', 'Пользователи Freenet', 'Те, на кого я подписан(а)', 'Никто']);
 });

@@ -4,7 +4,7 @@
 // is a page of its own.
 
 import { api, currentUser } from './api.js';
-import { audiences, pageReads, wallWrites, messagesWrites } from './labels.js';
+import { audiences, pageReads, onlineReads, wallWrites, messagesWrites } from './labels.js';
 import { $, el, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { openDeactivate } from './deactivate.js';
 
@@ -70,11 +70,15 @@ function initMain(me) {
   $('delete-link').addEventListener('click', () => openDeactivate(me));
 }
 
-const reads = { 'page-read': 'pageRead', 'info-read': 'infoRead', 'clubs-read': 'clubsRead', 'photos-read': 'photosRead', 'friends-read': 'friendsRead' };
+const reads = {
+  'page-read': 'pageRead', 'info-read': 'infoRead', 'online-read': 'onlineRead',
+  'clubs-read': 'clubsRead', 'photos-read': 'photosRead', 'friends-read': 'friendsRead',
+};
+const readOptions = { 'page-read': pageReads, 'online-read': onlineReads };
 const shows = { 'show-birthday': 'showBirthday', 'show-relationship': 'showRelationship', 'show-worldview': 'showWorldview', 'show-political-views': 'showPoliticalViews' };
 
 function initPrivacy(me) {
-  for (const [id, key] of Object.entries(reads)) fill($(id), id === 'page-read' ? pageReads : audiences, me.privacy[key]);
+  for (const [id, key] of Object.entries(reads)) fill($(id), readOptions[id] ?? audiences, me.privacy[key]);
   for (const [id, key] of Object.entries(shows)) $(id).checked = me.privacy[key];
   fill($('wall-write'), wallWrites, me.privacy.wallWrite);
   fill($('messages-write'), messagesWrites, me.privacy.messagesWrite);
