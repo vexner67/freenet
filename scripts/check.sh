@@ -139,6 +139,22 @@ done
 echo "==> web"
 node --test web/test/*.test.js >/dev/null || failed+=(web)
 
+# check_server_alertmanager renders the server's Alertmanager configuration
+# with a made-up Telegram chat and checks it as the server would.
+check_server_alertmanager() {
+	local dir
+	dir=$(mktemp -d)
+	printf 'TELEGRAM_BOT_TOKEN=123456:test-token_x\nTELEGRAM_CHAT_ID=-100123\n' > "$dir/env"
+
+	deploy/alertmanager.sh "$dir/env" "$dir/alertmanager.yml" >/dev/null &&
+		grep -q 'chat_id: -100123' "$dir/alertmanager.yml" &&
+		docker run --rm -v "$dir:/m:ro" --entrypoint amtool "$1" check-config /m/alertmanager.yml
+	local status=$?
+
+	rm -rf "$dir"
+	return $status
+}
+
 # check_monitoring checks the configs with the promtool and amtool of the
 # very images the stack runs, and runs the tests of the alert rules.
 check_monitoring() {
@@ -149,6 +165,7 @@ check_monitoring() {
 	docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool "$prometheus" check config prometheus.yml &&
 		docker run --rm -v "$PWD/monitoring:/m:ro" -w /m --entrypoint promtool "$prometheus" test rules alerts_test.yml &&
 		docker run --rm -v "$PWD/monitoring:/m:ro" --entrypoint amtool "$alertmanager" check-config /m/alertmanager.yml &&
+		check_server_alertmanager "$alertmanager" &&
 		node -e 'JSON.parse(require("fs").readFileSync(process.argv[1]))' monitoring/grafana/dashboards/freenet.json
 }
 
