@@ -56,6 +56,7 @@ const (
 	PostService_EditAlbum_FullMethodName          = "/post.v1.PostService/EditAlbum"
 	PostService_DeleteAlbum_FullMethodName        = "/post.v1.PostService/DeleteAlbum"
 	PostService_AddAlbumPhotos_FullMethodName     = "/post.v1.PostService/AddAlbumPhotos"
+	PostService_AddAvatarPhoto_FullMethodName     = "/post.v1.PostService/AddAvatarPhoto"
 	PostService_ListAlbumPhotos_FullMethodName    = "/post.v1.PostService/ListAlbumPhotos"
 	PostService_GetAlbumPhoto_FullMethodName      = "/post.v1.PostService/GetAlbumPhoto"
 	PostService_EditAlbumPhoto_FullMethodName     = "/post.v1.PostService/EditAlbumPhoto"
@@ -160,6 +161,11 @@ type PostServiceClient interface {
 	// Up to 10 photos the caller uploaded, which the caller of
 	// AddAlbumPhotos has checked with the media service; as EditAlbum.
 	AddAlbumPhotos(ctx context.Context, in *AddAlbumPhotosRequest, opts ...grpc.CallOption) (*AddAlbumPhotosResponse, error)
+	// A new photo of a page, which the caller uploaded and the caller of
+	// AddAvatarPhoto has checked with the media service, goes into its
+	// "Фотографии со страницы", made with the first one: the caller's page
+	// or of a community they run.
+	AddAvatarPhoto(ctx context.Context, in *AddAvatarPhotoRequest, opts ...grpc.CallOption) (*AddAvatarPhotoResponse, error)
 	// Public: oldest first.
 	ListAlbumPhotos(ctx context.Context, in *ListAlbumPhotosRequest, opts ...grpc.CallOption) (*ListAlbumPhotosResponse, error)
 	// Public: a photo with its album.
@@ -542,6 +548,16 @@ func (c *postServiceClient) AddAlbumPhotos(ctx context.Context, in *AddAlbumPhot
 	return out, nil
 }
 
+func (c *postServiceClient) AddAvatarPhoto(ctx context.Context, in *AddAvatarPhotoRequest, opts ...grpc.CallOption) (*AddAvatarPhotoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddAvatarPhotoResponse)
+	err := c.cc.Invoke(ctx, PostService_AddAvatarPhoto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) ListAlbumPhotos(ctx context.Context, in *ListAlbumPhotosRequest, opts ...grpc.CallOption) (*ListAlbumPhotosResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListAlbumPhotosResponse)
@@ -689,6 +705,11 @@ type PostServiceServer interface {
 	// Up to 10 photos the caller uploaded, which the caller of
 	// AddAlbumPhotos has checked with the media service; as EditAlbum.
 	AddAlbumPhotos(context.Context, *AddAlbumPhotosRequest) (*AddAlbumPhotosResponse, error)
+	// A new photo of a page, which the caller uploaded and the caller of
+	// AddAvatarPhoto has checked with the media service, goes into its
+	// "Фотографии со страницы", made with the first one: the caller's page
+	// or of a community they run.
+	AddAvatarPhoto(context.Context, *AddAvatarPhotoRequest) (*AddAvatarPhotoResponse, error)
 	// Public: oldest first.
 	ListAlbumPhotos(context.Context, *ListAlbumPhotosRequest) (*ListAlbumPhotosResponse, error)
 	// Public: a photo with its album.
@@ -818,6 +839,9 @@ func (UnimplementedPostServiceServer) DeleteAlbum(context.Context, *DeleteAlbumR
 }
 func (UnimplementedPostServiceServer) AddAlbumPhotos(context.Context, *AddAlbumPhotosRequest) (*AddAlbumPhotosResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddAlbumPhotos not implemented")
+}
+func (UnimplementedPostServiceServer) AddAvatarPhoto(context.Context, *AddAvatarPhotoRequest) (*AddAvatarPhotoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddAvatarPhoto not implemented")
 }
 func (UnimplementedPostServiceServer) ListAlbumPhotos(context.Context, *ListAlbumPhotosRequest) (*ListAlbumPhotosResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListAlbumPhotos not implemented")
@@ -1503,6 +1527,24 @@ func _PostService_AddAlbumPhotos_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_AddAvatarPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddAvatarPhotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).AddAvatarPhoto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_AddAvatarPhoto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).AddAvatarPhoto(ctx, req.(*AddAvatarPhotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_ListAlbumPhotos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListAlbumPhotosRequest)
 	if err := dec(in); err != nil {
@@ -1743,6 +1785,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "AddAlbumPhotos",
 			Handler:    _PostService_AddAlbumPhotos_Handler,
+		},
+		{
+			MethodName: "AddAvatarPhoto",
+			Handler:    _PostService_AddAvatarPhoto_Handler,
 		},
 		{
 			MethodName: "ListAlbumPhotos",

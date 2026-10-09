@@ -81,6 +81,7 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrCannotDescribePhoto, codes.PermissionDenied},
 		{post.ErrCannotDeleteAlbumPhoto, codes.PermissionDenied},
 		{post.ErrNoAlbumPhotos, codes.InvalidArgument},
+		{post.ErrSystemAlbum, codes.FailedPrecondition},
 		{post.ErrDuplicatePhoto, codes.InvalidArgument},
 		{post.ErrInvalidPhoto, codes.InvalidArgument},
 		{service.ErrTooManyAlbumPhotos, codes.InvalidArgument},

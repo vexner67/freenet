@@ -31,6 +31,10 @@ type AlbumRepository interface {
 	// below before (uuid.Nil: from the first); Count counts them all.
 	List(ctx context.Context, ownerID, before uuid.UUID, limit int) ([]*post.Album, error)
 	Count(ctx context.Context, ownerID uuid.UUID) (int, error)
+	// AvatarAlbum returns the "Фотографии со страницы" of an owner,
+	// post.ErrAlbumNotFound while there is none; Save of a second one
+	// returns post.ErrAvatarAlbumExists.
+	AvatarAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error)
 }
 
 // AlbumPhotoRepository keeps the photos of albums.
@@ -208,6 +212,10 @@ func (s *AlbumService) Change(ctx context.Context, requesterID, id uuid.UUID, na
 		return nil, err
 	}
 
+	if err = a.CheckManual(); err != nil {
+		return nil, errs.Wrap("a.CheckManual", err)
+	}
+
 	renamed := a.Renamed(name, description, s.now())
 	if err = s.albums.Update(ctx, renamed); err != nil {
 		return nil, errs.Wrap("s.albums.Update", err)
@@ -219,11 +227,16 @@ func (s *AlbumService) Change(ctx context.Context, requesterID, id uuid.UUID, na
 // Delete deletes an album with its photos ("удалить альбом"): its owner
 // or the admins of the community that owns it.
 func (s *AlbumService) Delete(ctx context.Context, requesterID, id uuid.UUID) error {
-	if _, err := s.changeable(ctx, requesterID, id); err != nil {
+	a, err := s.changeable(ctx, requesterID, id)
+	if err != nil {
 		return err
 	}
 
-	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+	if err = a.CheckManual(); err != nil {
+		return errs.Wrap("a.CheckManual", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		photos, err := s.albums.Delete(ctx, id)
 		if err != nil {
 			return errs.Wrap("s.albums.Delete", err)
@@ -253,6 +266,10 @@ func (s *AlbumService) AddPhotos(ctx context.Context, requesterID, albumID uuid.
 	a, err := s.changeable(ctx, requesterID, albumID)
 	if err != nil {
 		return nil, err
+	}
+
+	if err = a.CheckManual(); err != nil {
+		return nil, errs.Wrap("a.CheckManual", err)
 	}
 
 	now := s.now()
@@ -287,6 +304,70 @@ func (s *AlbumService) AddPhotos(ctx context.Context, requesterID, albumID uuid.
 	}
 
 	return photos, nil
+}
+
+// AddAvatar puts a new photo of a page, which requesterID uploaded, in
+// its "Фотографии со страницы" (made with the first one), as openvk does
+// with every new photo of a person or a community: ownerID is the
+// requester or a community they run. Media keeps it published.
+func (s *AlbumService) AddAvatar(ctx context.Context, requesterID, ownerID, photoID uuid.UUID) (*post.AlbumPhoto, error) {
+	ok, err := moderates(ctx, s.moderators, ownerID, requesterID, ownerID == requesterID)
+	if err != nil {
+		return nil, errs.Wrap("moderates", err)
+	}
+
+	if !ok {
+		return nil, post.ErrCannotChangeAlbum
+	}
+
+	a, err := s.avatarAlbum(ctx, ownerID)
+	if err != nil {
+		return nil, errs.Wrap("s.avatarAlbum", err)
+	}
+
+	now := s.now()
+
+	photo, err := post.NewAlbumPhoto(a, photoID, requesterID, "", now)
+	if err != nil {
+		return nil, errs.Wrap("post.NewAlbumPhoto", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.photos.Add(ctx, a.ID(), []*post.AlbumPhoto{photo}, now); err != nil {
+			return errs.Wrap("s.photos.Add", err)
+		}
+
+		return errs.Wrap("s.media.Publish", s.media.Publish(ctx, requesterID, []uuid.UUID{photoID}))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return photo, nil
+}
+
+// avatarAlbum gets or makes "Фотографии со страницы" of ownerID; two
+// first photos at once make one album, by the unique index.
+func (s *AlbumService) avatarAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error) {
+	a, err := s.albums.AvatarAlbum(ctx, ownerID)
+	if !errors.Is(err, post.ErrAlbumNotFound) {
+		return a, errs.Wrap("s.albums.AvatarAlbum", err)
+	}
+
+	if a, err = post.NewAvatarAlbum(ownerID, s.now()); err != nil {
+		return nil, errs.Wrap("post.NewAvatarAlbum", err)
+	}
+
+	err = s.albums.Save(ctx, a)
+	if errors.Is(err, post.ErrAvatarAlbumExists) {
+		a, err = s.albums.AvatarAlbum(ctx, ownerID)
+		return a, errs.Wrap("s.albums.AvatarAlbum", err)
+	}
+	if err != nil {
+		return nil, errs.Wrap("s.albums.Save", err)
+	}
+
+	return a, nil
 }
 
 // Photos pages the photos of an album, oldest first, as openvk shows

@@ -63,6 +63,7 @@ type AlbumService interface {
 	Change(ctx context.Context, requesterID, id uuid.UUID, name post.AlbumName, description post.Description) (*post.Album, error)
 	Delete(ctx context.Context, requesterID, id uuid.UUID) error
 	AddPhotos(ctx context.Context, requesterID, albumID uuid.UUID, in []service.NewAlbumPhoto) ([]*post.AlbumPhoto, error)
+	AddAvatar(ctx context.Context, requesterID, ownerID, photoID uuid.UUID) (*post.AlbumPhoto, error)
 	Photos(ctx context.Context, albumID, after uuid.UUID, size int) (service.AlbumPhotoPage, error)
 	Photo(ctx context.Context, id uuid.UUID) (*post.AlbumPhoto, *post.Album, error)
 	Describe(ctx context.Context, requesterID, id uuid.UUID, description post.Description) (*post.AlbumPhoto, error)

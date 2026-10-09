@@ -211,6 +211,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// An album and the photos added to it are posts of the albums.
 		postv1.PostService_CreateAlbum_FullMethodName:    cfg.PostLimits,
 		postv1.PostService_AddAlbumPhotos_FullMethodName: cfg.PostLimits,
+		postv1.PostService_AddAvatarPhoto_FullMethodName: cfg.PostLimits,
 		postv1.PostService_EditAlbum_FullMethodName:      cfg.EditLimits,
 		postv1.PostService_EditAlbumPhoto_FullMethodName: cfg.EditLimits,
 	}
