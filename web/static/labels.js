@@ -290,6 +290,22 @@ export function suggestedInClub(n, mine) {
   return mine ? `Вы предложили в эту группу ${posts}` : `В эту группу предложили ${posts}`;
 }
 
+// albumsCount is openvk's "albums": "Ни одного альбома", "3 альбома".
+export function albumsCount(n) {
+  return n === 0 ? 'Ни одного альбома' : `${n} ${plural(n, ['альбом', 'альбома', 'альбомов'])}`;
+}
+
+// myAlbumsCount is the head of your own albums, openvk's "albums_list".
+export function myAlbumsCount(n) {
+  return n === 0 ? 'У Вас нет ни одного альбома' : `У Вас ${albumsCount(n)}`;
+}
+
+// photosCount is under an album: openvk writes "N фотографий" whatever N
+// ("TODO: Добавить склонения"); we decline it.
+export function photosCount(n) {
+  return `${n} ${plural(n, ['фотография', 'фотографии', 'фотографий'])}`;
+}
+
 // clubRoles name what a member is in a community.
 export const clubRoles = { owner: 'Владелец', admin: 'Администратор', member: 'Участник' };
 
@@ -376,6 +392,14 @@ const errorTexts = {
   'you cannot write for this community': 'Писать от имени сообщества могут только его администраторы.',
   'the topic is closed': 'Тема закрыта.',
   'only a topic of the community can be restricted': 'Ограничить комментарии можно только в теме от имени сообщества.',
+  'album name is empty': 'Укажите название альбома.',
+  'album name is too long': 'Название альбома длиннее 36 символов.',
+  'description is too long': 'Описание слишком длинное.',
+  'album not found': 'Альбом не найден или удалён.',
+  'no photos to add': 'Загрузите хотя бы одну фотографию.',
+  'at most 10 photos are added at once': 'Вы можете загружать до 10 фотографий за один раз.',
+  'fill in your profile before creating albums': 'Сначала заполните свою страницу.',
+  'fill in your profile before uploading photos': 'Сначала заполните свою страницу.',
   'you cannot blacklist yourself': 'Нельзя внести в чёрный список самого себя.',
   'invalid post id': 'Запись не найдена.',
   'comment text is empty': 'Напишите что-нибудь.',

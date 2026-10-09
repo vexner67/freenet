@@ -1,6 +1,7 @@
 import { api, currentUser } from './api.js';
 import { genders, relationships, worldviews, politicalViews, label, clubsCount, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError } from './layout.js';
+import { albumsBlock } from './albums.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initFollow } from './follow.js';
 import { initPhoto } from './photo.js';
@@ -8,6 +9,8 @@ import { initWall } from './wall.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
 const CLUBS_SHOWN = 6;
+// openvk shows the first page of albums on a person's page.
+const ALBUMS_SHOWN = 10;
 
 // rows lists what to show; private marks rows others cannot see (only the
 // owner gets them at all, from /me).
@@ -48,6 +51,18 @@ function render(user, isOwner) {
   $('profile').hidden = false;
 
   initWall(user, me);
+}
+
+// showAlbums is openvk's block "Альбомы", when there are any.
+async function showAlbums(user) {
+  try {
+    const page = await api.albums({ nickname: user.nickname, limit: ALBUMS_SHOWN });
+
+    $('albums-block').replaceChildren(...albumsBlock(page.owner, page, false));
+    $('albums-block').hidden = page.total === 0;
+  } catch {
+    // Not to be had: the page works without it.
+  }
 }
 
 // showClubs is openvk's block "Группы": how many, "Все" and the names of
@@ -139,6 +154,7 @@ try {
     render(isOwner ? me : profile, isOwner);
     initPhoto(isOwner ? me : profile, isOwner);
     initFollow(profile, me, isOwner);
+    showAlbums(profile);
     showClubs(profile);
 
     // As on openvk: write to anyone but yourself.

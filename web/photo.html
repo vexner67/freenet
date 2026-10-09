@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Фотография | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/photo-page.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+        <div class="photo-page" id="content" hidden>
+          <div class="photo-page-image"><img id="image" alt=""></div>
+          <div class="photo-page-details">
+            <div class="photo-page-description">
+              <p class="photo-page-text" id="description" hidden></p>
+              <div class="hint">Дата загрузки: <span id="uploaded-at"></span></div>
+            </div>
+            <hr>
+            <div class="photo-page-columns">
+              <div class="photo-page-main"></div>
+              <div class="photo-page-actions">
+                <a class="photo-page-author" id="author"><img id="author-avatar" alt=""><b id="author-name"></b></a>
+                <a class="profile-link" id="edit" hidden>Редактировать</a>
+                <a class="profile-link" id="delete" hidden>Удалить</a>
+                <a class="profile-link" id="original" target="_blank" rel="noopener">Открыть оригинал</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

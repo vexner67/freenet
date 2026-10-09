@@ -1,0 +1,61 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Загрузить фотографию | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/album-upload.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span></div>
+      <div class="page-body">
+        <div id="content" hidden>
+          <div class="tabs">
+            <a id="tab-edit">Редактировать альбом</a>
+            <a class="active" id="tab-upload">Добавить фотографии</a>
+          </div>
+          <div class="error" id="error" hidden></div>
+          <input type="file" id="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+          <div class="gray-box upload-box">
+            <div class="upload-again" id="again"></div>
+            <div class="white-box" id="intro">
+              <h4>Загрузка фотографий с Вашего компьютера</h4>
+              <div class="upload-limits">
+                <b>Ограничения</b>
+                <ul>
+                  <li>Поддерживаемые форматы файлов: JPG, PNG, GIF и WebP.</li>
+                  <li>Вы можете загружать до 10 фотографий за один раз.</li>
+                </ul>
+                <div class="upload-button" id="button-place"><button class="button" type="button" id="pick">Загрузить фотографии</button></div>
+                <p class="upload-tip"><b>Подсказка</b>: для того, чтобы выбрать сразу несколько фотографий, удерживайте клавишу Ctrl при выборе файлов в ОС Windows или клавишу CMD в Mac OS.</p>
+              </div>
+            </div>
+            <div class="uploaded-photos" id="uploaded"></div>
+            <button class="button upload-finish" type="button" id="finish" hidden>Завершить загрузку</button>
+          </div>
+        </div>
+        <div class="error" id="load-error" hidden></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>
