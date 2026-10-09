@@ -859,6 +859,112 @@ func (x *DeletePublishedPhotosRequest) GetPhotoIds() []string {
 	return nil
 }
 
+type CopyPhotosRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	OwnerId string                 `protobuf:"bytes,1,opt,name=owner_id,json=ownerId,proto3" json:"owner_id,omitempty"`
+	// At most 10.
+	Copies        []*PhotoCopy `protobuf:"bytes,2,rep,name=copies,proto3" json:"copies,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CopyPhotosRequest) Reset() {
+	*x = CopyPhotosRequest{}
+	mi := &file_api_media_v1_media_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CopyPhotosRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CopyPhotosRequest) ProtoMessage() {}
+
+func (x *CopyPhotosRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_media_v1_media_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CopyPhotosRequest.ProtoReflect.Descriptor instead.
+func (*CopyPhotosRequest) Descriptor() ([]byte, []int) {
+	return file_api_media_v1_media_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *CopyPhotosRequest) GetOwnerId() string {
+	if x != nil {
+		return x.OwnerId
+	}
+	return ""
+}
+
+func (x *CopyPhotosRequest) GetCopies() []*PhotoCopy {
+	if x != nil {
+		return x.Copies
+	}
+	return nil
+}
+
+type PhotoCopy struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	FromId string                 `protobuf:"bytes,1,opt,name=from_id,json=fromId,proto3" json:"from_id,omitempty"`
+	// A new UUIDv7.
+	ToId          string `protobuf:"bytes,2,opt,name=to_id,json=toId,proto3" json:"to_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PhotoCopy) Reset() {
+	*x = PhotoCopy{}
+	mi := &file_api_media_v1_media_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PhotoCopy) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PhotoCopy) ProtoMessage() {}
+
+func (x *PhotoCopy) ProtoReflect() protoreflect.Message {
+	mi := &file_api_media_v1_media_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PhotoCopy.ProtoReflect.Descriptor instead.
+func (*PhotoCopy) Descriptor() ([]byte, []int) {
+	return file_api_media_v1_media_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *PhotoCopy) GetFromId() string {
+	if x != nil {
+		return x.FromId
+	}
+	return ""
+}
+
+func (x *PhotoCopy) GetToId() string {
+	if x != nil {
+		return x.ToId
+	}
+	return ""
+}
+
 type GetPhotoRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	UserId        string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
@@ -870,7 +976,7 @@ type GetPhotoRequest struct {
 
 func (x *GetPhotoRequest) Reset() {
 	*x = GetPhotoRequest{}
-	mi := &file_api_media_v1_media_proto_msgTypes[15]
+	mi := &file_api_media_v1_media_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -882,7 +988,7 @@ func (x *GetPhotoRequest) String() string {
 func (*GetPhotoRequest) ProtoMessage() {}
 
 func (x *GetPhotoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_media_v1_media_proto_msgTypes[15]
+	mi := &file_api_media_v1_media_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -895,7 +1001,7 @@ func (x *GetPhotoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPhotoRequest.ProtoReflect.Descriptor instead.
 func (*GetPhotoRequest) Descriptor() ([]byte, []int) {
-	return file_api_media_v1_media_proto_rawDescGZIP(), []int{15}
+	return file_api_media_v1_media_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *GetPhotoRequest) GetUserId() string {
@@ -928,7 +1034,7 @@ type GetPhotoResponse struct {
 
 func (x *GetPhotoResponse) Reset() {
 	*x = GetPhotoResponse{}
-	mi := &file_api_media_v1_media_proto_msgTypes[16]
+	mi := &file_api_media_v1_media_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -940,7 +1046,7 @@ func (x *GetPhotoResponse) String() string {
 func (*GetPhotoResponse) ProtoMessage() {}
 
 func (x *GetPhotoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_media_v1_media_proto_msgTypes[16]
+	mi := &file_api_media_v1_media_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -953,7 +1059,7 @@ func (x *GetPhotoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPhotoResponse.ProtoReflect.Descriptor instead.
 func (*GetPhotoResponse) Descriptor() ([]byte, []int) {
-	return file_api_media_v1_media_proto_rawDescGZIP(), []int{16}
+	return file_api_media_v1_media_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *GetPhotoResponse) GetImage() []byte {
@@ -972,7 +1078,7 @@ type PurgeUserRequest struct {
 
 func (x *PurgeUserRequest) Reset() {
 	*x = PurgeUserRequest{}
-	mi := &file_api_media_v1_media_proto_msgTypes[17]
+	mi := &file_api_media_v1_media_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -984,7 +1090,7 @@ func (x *PurgeUserRequest) String() string {
 func (*PurgeUserRequest) ProtoMessage() {}
 
 func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_media_v1_media_proto_msgTypes[17]
+	mi := &file_api_media_v1_media_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -997,7 +1103,7 @@ func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurgeUserRequest.ProtoReflect.Descriptor instead.
 func (*PurgeUserRequest) Descriptor() ([]byte, []int) {
-	return file_api_media_v1_media_proto_rawDescGZIP(), []int{17}
+	return file_api_media_v1_media_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *PurgeUserRequest) GetUserId() string {
@@ -1049,7 +1155,13 @@ const file_api_media_v1_media_proto_rawDesc = "" +
 	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\"V\n" +
 	"\x1cDeletePublishedPhotosRequest\x12\x19\n" +
 	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12\x1b\n" +
-	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\"n\n" +
+	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\"[\n" +
+	"\x11CopyPhotosRequest\x12\x19\n" +
+	"\bowner_id\x18\x01 \x01(\tR\aownerId\x12+\n" +
+	"\x06copies\x18\x02 \x03(\v2\x13.media.v1.PhotoCopyR\x06copies\"9\n" +
+	"\tPhotoCopy\x12\x17\n" +
+	"\afrom_id\x18\x01 \x01(\tR\x06fromId\x12\x13\n" +
+	"\x05to_id\x18\x02 \x01(\tR\x04toId\"n\n" +
 	"\x0fGetPhotoRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x19\n" +
 	"\bphoto_id\x18\x02 \x01(\tR\aphotoId\x12'\n" +
@@ -1066,7 +1178,7 @@ const file_api_media_v1_media_proto_rawDesc = "" +
 	"\tPhotoSize\x12\x1a\n" +
 	"\x16PHOTO_SIZE_UNSPECIFIED\x10\x00\x12\x14\n" +
 	"\x10PHOTO_SIZE_LARGE\x10\x01\x12\x14\n" +
-	"\x10PHOTO_SIZE_SMALL\x10\x022\xfb\a\n" +
+	"\x10PHOTO_SIZE_SMALL\x10\x022\xbe\b\n" +
 	"\fMediaService\x12M\n" +
 	"\fUploadAvatar\x12\x1d.media.v1.UploadAvatarRequest\x1a\x1e.media.v1.UploadAvatarResponse\x12G\n" +
 	"\rDeleteAvatars\x12\x1e.media.v1.DeleteAvatarsRequest\x1a\x16.google.protobuf.Empty\x12D\n" +
@@ -1079,7 +1191,9 @@ const file_api_media_v1_media_proto_rawDesc = "" +
 	"\rListOwnPhotos\x12\x1e.media.v1.ListOwnPhotosRequest\x1a\x1f.media.v1.ListOwnPhotosResponse\x12A\n" +
 	"\bGetPhoto\x12\x19.media.v1.GetPhotoRequest\x1a\x1a.media.v1.GetPhotoResponse\x12G\n" +
 	"\rPublishPhotos\x12\x1e.media.v1.PublishPhotosRequest\x1a\x16.google.protobuf.Empty\x12W\n" +
-	"\x15DeletePublishedPhotos\x12&.media.v1.DeletePublishedPhotosRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
+	"\x15DeletePublishedPhotos\x12&.media.v1.DeletePublishedPhotosRequest\x1a\x16.google.protobuf.Empty\x12A\n" +
+	"\n" +
+	"CopyPhotos\x12\x1b.media.v1.CopyPhotosRequest\x1a\x16.google.protobuf.Empty\x12?\n" +
 	"\tPurgeUser\x12\x1a.media.v1.PurgeUserRequest\x1a\x16.google.protobuf.EmptyB8Z6github.com/vexner67/freenet/media/api/media/v1;mediav1b\x06proto3"
 
 var (
@@ -1095,7 +1209,7 @@ func file_api_media_v1_media_proto_rawDescGZIP() []byte {
 }
 
 var file_api_media_v1_media_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_media_v1_media_proto_msgTypes = make([]protoimpl.MessageInfo, 18)
+var file_api_media_v1_media_proto_msgTypes = make([]protoimpl.MessageInfo, 20)
 var file_api_media_v1_media_proto_goTypes = []any{
 	(AvatarSize)(0),                      // 0: media.v1.AvatarSize
 	(PhotoSize)(0),                       // 1: media.v1.PhotoSize
@@ -1114,45 +1228,50 @@ var file_api_media_v1_media_proto_goTypes = []any{
 	(*ListOwnPhotosResponse)(nil),        // 14: media.v1.ListOwnPhotosResponse
 	(*PublishPhotosRequest)(nil),         // 15: media.v1.PublishPhotosRequest
 	(*DeletePublishedPhotosRequest)(nil), // 16: media.v1.DeletePublishedPhotosRequest
-	(*GetPhotoRequest)(nil),              // 17: media.v1.GetPhotoRequest
-	(*GetPhotoResponse)(nil),             // 18: media.v1.GetPhotoResponse
-	(*PurgeUserRequest)(nil),             // 19: media.v1.PurgeUserRequest
-	(*emptypb.Empty)(nil),                // 20: google.protobuf.Empty
+	(*CopyPhotosRequest)(nil),            // 17: media.v1.CopyPhotosRequest
+	(*PhotoCopy)(nil),                    // 18: media.v1.PhotoCopy
+	(*GetPhotoRequest)(nil),              // 19: media.v1.GetPhotoRequest
+	(*GetPhotoResponse)(nil),             // 20: media.v1.GetPhotoResponse
+	(*PurgeUserRequest)(nil),             // 21: media.v1.PurgeUserRequest
+	(*emptypb.Empty)(nil),                // 22: google.protobuf.Empty
 }
 var file_api_media_v1_media_proto_depIdxs = []int32{
 	0,  // 0: media.v1.GetAvatarRequest.size:type_name -> media.v1.AvatarSize
-	1,  // 1: media.v1.GetPhotoRequest.size:type_name -> media.v1.PhotoSize
-	2,  // 2: media.v1.MediaService.UploadAvatar:input_type -> media.v1.UploadAvatarRequest
-	8,  // 3: media.v1.MediaService.DeleteAvatars:input_type -> media.v1.DeleteAvatarsRequest
-	9,  // 4: media.v1.MediaService.GetAvatar:input_type -> media.v1.GetAvatarRequest
-	4,  // 5: media.v1.MediaService.UploadClubAvatar:input_type -> media.v1.UploadClubAvatarRequest
-	5,  // 6: media.v1.MediaService.DeleteClubAvatars:input_type -> media.v1.DeleteClubAvatarsRequest
-	6,  // 7: media.v1.MediaService.UploadClubPhoto:input_type -> media.v1.UploadClubPhotoRequest
-	7,  // 8: media.v1.MediaService.DeleteClubPhotos:input_type -> media.v1.DeleteClubPhotosRequest
-	11, // 9: media.v1.MediaService.UploadPhoto:input_type -> media.v1.UploadPhotoRequest
-	13, // 10: media.v1.MediaService.ListOwnPhotos:input_type -> media.v1.ListOwnPhotosRequest
-	17, // 11: media.v1.MediaService.GetPhoto:input_type -> media.v1.GetPhotoRequest
-	15, // 12: media.v1.MediaService.PublishPhotos:input_type -> media.v1.PublishPhotosRequest
-	16, // 13: media.v1.MediaService.DeletePublishedPhotos:input_type -> media.v1.DeletePublishedPhotosRequest
-	19, // 14: media.v1.MediaService.PurgeUser:input_type -> media.v1.PurgeUserRequest
-	3,  // 15: media.v1.MediaService.UploadAvatar:output_type -> media.v1.UploadAvatarResponse
-	20, // 16: media.v1.MediaService.DeleteAvatars:output_type -> google.protobuf.Empty
-	10, // 17: media.v1.MediaService.GetAvatar:output_type -> media.v1.GetAvatarResponse
-	3,  // 18: media.v1.MediaService.UploadClubAvatar:output_type -> media.v1.UploadAvatarResponse
-	20, // 19: media.v1.MediaService.DeleteClubAvatars:output_type -> google.protobuf.Empty
-	12, // 20: media.v1.MediaService.UploadClubPhoto:output_type -> media.v1.UploadPhotoResponse
-	20, // 21: media.v1.MediaService.DeleteClubPhotos:output_type -> google.protobuf.Empty
-	12, // 22: media.v1.MediaService.UploadPhoto:output_type -> media.v1.UploadPhotoResponse
-	14, // 23: media.v1.MediaService.ListOwnPhotos:output_type -> media.v1.ListOwnPhotosResponse
-	18, // 24: media.v1.MediaService.GetPhoto:output_type -> media.v1.GetPhotoResponse
-	20, // 25: media.v1.MediaService.PublishPhotos:output_type -> google.protobuf.Empty
-	20, // 26: media.v1.MediaService.DeletePublishedPhotos:output_type -> google.protobuf.Empty
-	20, // 27: media.v1.MediaService.PurgeUser:output_type -> google.protobuf.Empty
-	15, // [15:28] is the sub-list for method output_type
-	2,  // [2:15] is the sub-list for method input_type
-	2,  // [2:2] is the sub-list for extension type_name
-	2,  // [2:2] is the sub-list for extension extendee
-	0,  // [0:2] is the sub-list for field type_name
+	18, // 1: media.v1.CopyPhotosRequest.copies:type_name -> media.v1.PhotoCopy
+	1,  // 2: media.v1.GetPhotoRequest.size:type_name -> media.v1.PhotoSize
+	2,  // 3: media.v1.MediaService.UploadAvatar:input_type -> media.v1.UploadAvatarRequest
+	8,  // 4: media.v1.MediaService.DeleteAvatars:input_type -> media.v1.DeleteAvatarsRequest
+	9,  // 5: media.v1.MediaService.GetAvatar:input_type -> media.v1.GetAvatarRequest
+	4,  // 6: media.v1.MediaService.UploadClubAvatar:input_type -> media.v1.UploadClubAvatarRequest
+	5,  // 7: media.v1.MediaService.DeleteClubAvatars:input_type -> media.v1.DeleteClubAvatarsRequest
+	6,  // 8: media.v1.MediaService.UploadClubPhoto:input_type -> media.v1.UploadClubPhotoRequest
+	7,  // 9: media.v1.MediaService.DeleteClubPhotos:input_type -> media.v1.DeleteClubPhotosRequest
+	11, // 10: media.v1.MediaService.UploadPhoto:input_type -> media.v1.UploadPhotoRequest
+	13, // 11: media.v1.MediaService.ListOwnPhotos:input_type -> media.v1.ListOwnPhotosRequest
+	19, // 12: media.v1.MediaService.GetPhoto:input_type -> media.v1.GetPhotoRequest
+	15, // 13: media.v1.MediaService.PublishPhotos:input_type -> media.v1.PublishPhotosRequest
+	16, // 14: media.v1.MediaService.DeletePublishedPhotos:input_type -> media.v1.DeletePublishedPhotosRequest
+	17, // 15: media.v1.MediaService.CopyPhotos:input_type -> media.v1.CopyPhotosRequest
+	21, // 16: media.v1.MediaService.PurgeUser:input_type -> media.v1.PurgeUserRequest
+	3,  // 17: media.v1.MediaService.UploadAvatar:output_type -> media.v1.UploadAvatarResponse
+	22, // 18: media.v1.MediaService.DeleteAvatars:output_type -> google.protobuf.Empty
+	10, // 19: media.v1.MediaService.GetAvatar:output_type -> media.v1.GetAvatarResponse
+	3,  // 20: media.v1.MediaService.UploadClubAvatar:output_type -> media.v1.UploadAvatarResponse
+	22, // 21: media.v1.MediaService.DeleteClubAvatars:output_type -> google.protobuf.Empty
+	12, // 22: media.v1.MediaService.UploadClubPhoto:output_type -> media.v1.UploadPhotoResponse
+	22, // 23: media.v1.MediaService.DeleteClubPhotos:output_type -> google.protobuf.Empty
+	12, // 24: media.v1.MediaService.UploadPhoto:output_type -> media.v1.UploadPhotoResponse
+	14, // 25: media.v1.MediaService.ListOwnPhotos:output_type -> media.v1.ListOwnPhotosResponse
+	20, // 26: media.v1.MediaService.GetPhoto:output_type -> media.v1.GetPhotoResponse
+	22, // 27: media.v1.MediaService.PublishPhotos:output_type -> google.protobuf.Empty
+	22, // 28: media.v1.MediaService.DeletePublishedPhotos:output_type -> google.protobuf.Empty
+	22, // 29: media.v1.MediaService.CopyPhotos:output_type -> google.protobuf.Empty
+	22, // 30: media.v1.MediaService.PurgeUser:output_type -> google.protobuf.Empty
+	17, // [17:31] is the sub-list for method output_type
+	3,  // [3:17] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_api_media_v1_media_proto_init() }
@@ -1166,7 +1285,7 @@ func file_api_media_v1_media_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_media_v1_media_proto_rawDesc), len(file_api_media_v1_media_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   18,
+			NumMessages:   20,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

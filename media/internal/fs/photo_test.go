@@ -79,6 +79,67 @@ func TestPhotoStore(t *testing.T) {
 	}
 }
 
+func TestPhotoStore_Copy(t *testing.T) {
+	t.Parallel()
+
+	for name, store := range photoStores(t) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ann, bob := uuid.New(), uuid.New()
+			posted, upload, inAlbum, second := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+
+			for _, id := range []uuid.UUID{posted, upload} {
+				if err := store.Save(ctx, ann, id, photo.Images{Large: []byte("L-" + id.String()), Small: []byte("S")}); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := store.Publish(ctx, ann, []uuid.UUID{posted}); err != nil {
+				t.Fatal(err)
+			}
+
+			for range 2 { // a copy made already is fine
+				if err := store.Copy(ctx, ann, posted, inAlbum); err != nil {
+					t.Fatalf("Copy: %v", err)
+				}
+			}
+			// The relay may copy before it publishes; a missing photo and
+			// one of another owner are fine and copy nothing.
+			if err := store.Copy(ctx, ann, upload, second); err != nil {
+				t.Fatalf("Copy of an upload: %v", err)
+			}
+			if err := store.Copy(ctx, ann, uuid.New(), uuid.New()); err != nil {
+				t.Fatalf("Copy of a missing photo: %v", err)
+			}
+			stolen := uuid.New()
+			if err := store.Copy(ctx, bob, posted, stolen); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.Load(ctx, bob, stolen, photo.Small); !errors.Is(err, photo.ErrNotFound) {
+				t.Fatalf("bob copied ann's photo: %v", err)
+			}
+
+			// The copies outlive the post and the cleanup of uploads.
+			if err := store.Delete(ctx, ann, []uuid.UUID{posted, upload}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.DeleteUnpublished(ctx, time.Now().Add(time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+
+			for from, to := range map[uuid.UUID]uuid.UUID{posted: inAlbum, upload: second} {
+				if data, err := store.Load(ctx, ann, to, photo.Large); err != nil || string(data) != "L-"+from.String() {
+					t.Fatalf("the copy = %q, %v", data, err)
+				}
+				if data, err := store.Load(ctx, ann, to, photo.Small); err != nil || string(data) != "S" {
+					t.Fatalf("the small copy = %q, %v", data, err)
+				}
+			}
+		})
+	}
+}
+
 func TestPhotoStore_DeleteAll(t *testing.T) {
 	t.Parallel()
 

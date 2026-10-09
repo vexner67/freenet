@@ -25,6 +25,9 @@ type PhotoStore interface {
 	Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error)
 	// Publish keeps the owner's photos for good; missing ones are fine.
 	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+	// Copy keeps the owner's photo from once more, published, as to; a
+	// missing from and an existing to are fine.
+	Copy(ctx context.Context, ownerID, from, to uuid.UUID) error
 	// Delete removes the owner's photos; missing ones are fine.
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	// DeleteAll removes every photo of the owner.
@@ -104,6 +107,28 @@ func (s *PhotoService) Publish(ctx context.Context, ownerID uuid.UUID, photoIDs 
 
 	if err := s.store.Publish(ctx, ownerID, photoIDs); err != nil {
 		return errs.Wrap("s.store.Publish", err)
+	}
+
+	return nil
+}
+
+// PhotoCopy is a photo to keep once more under a new ID.
+type PhotoCopy struct {
+	From uuid.UUID
+	To   uuid.UUID
+}
+
+// Copy keeps photos of the owner once more: those of a post in an album,
+// which outlive the post.
+func (s *PhotoService) Copy(ctx context.Context, ownerID uuid.UUID, copies []PhotoCopy) error {
+	if len(copies) > MaxPhotoIDs {
+		return ErrTooManyPhotoIDs
+	}
+
+	for _, c := range copies {
+		if err := s.store.Copy(ctx, ownerID, c.From, c.To); err != nil {
+			return errs.Wrap("s.store.Copy", err)
+		}
 	}
 
 	return nil

@@ -123,6 +123,26 @@ func (s *PhotoStore) Publish(_ context.Context, ownerID uuid.UUID, photoIDs []uu
 	return nil
 }
 
+// Copy links the files of from into a new published photo: the images
+// never change, so both photos share them on disk until one is deleted.
+func (s *PhotoStore) Copy(_ context.Context, ownerID, from, to uuid.UUID) error {
+	final := s.dirs(ownerID, to)[0]
+	if ok, err := exists(final); err != nil || ok {
+		return err
+	}
+
+	for _, dir := range s.dirs(ownerID, from) {
+		err := linkDir(dir, final, string(photo.Large)+".jpg", string(photo.Small)+".jpg")
+		if errors.Is(err, fs.ErrNotExist) {
+			continue
+		}
+
+		return err
+	}
+
+	return nil
+}
+
 func (s *PhotoStore) Delete(_ context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error {
 	for _, id := range photoIDs {
 		for _, dir := range s.dirs(ownerID, id) {

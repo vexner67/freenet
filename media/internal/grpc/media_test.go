@@ -204,8 +204,21 @@ func TestPhotos(t *testing.T) {
 		t.Fatalf("ann's published photo after bob's delete: %v", err)
 	}
 
+	// post keeps a photo of a post once more, for "Фотографии со стены".
+	copied := uuid.NewString()
+	copies := &mediav1.CopyPhotosRequest{OwnerId: ann.String(), Copies: []*mediav1.PhotoCopy{{FromId: ids[0], ToId: copied}}}
+	if _, err = s.client.CopyPhotos(context.Background(), copies); err != nil {
+		t.Fatalf("CopyPhotos: %v", err)
+	}
+	if _, err = s.client.CopyPhotos(context.Background(), &mediav1.CopyPhotosRequest{OwnerId: ann.String(), Copies: []*mediav1.PhotoCopy{{FromId: ids[0], ToId: "x"}}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("CopyPhotos to a bad id: %v", err)
+	}
+
 	if _, err = s.client.DeletePublishedPhotos(context.Background(), &mediav1.DeletePublishedPhotosRequest{OwnerId: ann.String(), PhotoIds: ids[:1]}); err != nil {
 		t.Fatal(err)
+	}
+	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: copied}); err != nil {
+		t.Fatalf("the copy after the photo is deleted: %v", err)
 	}
 	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: ids[0]}); status.Code(err) != codes.NotFound {
 		t.Fatalf("deleted photo: %v", err)
