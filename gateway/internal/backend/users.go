@@ -38,8 +38,10 @@ func (u *Users) GetMe(ctx context.Context, accessToken string) (model.User, erro
 	return toUser(resp.GetUser()), nil
 }
 
-func (u *Users) UpdateProfile(ctx context.Context, accessToken string, p model.Profile) (model.User, error) {
-	req, err := toUpdateProfileRequest(p)
+// UpdateProfile: partner is the nickname of whom the relationship names,
+// "" for nobody.
+func (u *Users) UpdateProfile(ctx context.Context, accessToken string, p model.Profile, partner string) (model.User, error) {
+	req, err := toUpdateProfileRequest(p, partner)
 	if err != nil {
 		return model.User{}, errs.Wrap("toUpdateProfileRequest", err)
 	}
@@ -47,6 +49,38 @@ func (u *Users) UpdateProfile(ctx context.Context, accessToken string, p model.P
 	resp, err := u.api.UpdateProfile(withToken(ctx, accessToken), req)
 	if err != nil {
 		return model.User{}, errs.Wrap("u.api.UpdateProfile", fromStatus(err))
+	}
+
+	return toUser(resp.GetUser()), nil
+}
+
+func (u *Users) UpdateContacts(ctx context.Context, accessToken string, c model.Contacts) (model.User, error) {
+	resp, err := u.api.UpdateContacts(withToken(ctx, accessToken), &userv1.UpdateContactsRequest{Contacts: toProtoContacts(c)})
+	if err != nil {
+		return model.User{}, errs.Wrap("u.api.UpdateContacts", fromStatus(err))
+	}
+
+	return toUser(resp.GetUser()), nil
+}
+
+func (u *Users) UpdateInterests(ctx context.Context, accessToken string, in model.Interests) (model.User, error) {
+	resp, err := u.api.UpdateInterests(withToken(ctx, accessToken), &userv1.UpdateInterestsRequest{Interests: toProtoInterests(in)})
+	if err != nil {
+		return model.User{}, errs.Wrap("u.api.UpdateInterests", fromStatus(err))
+	}
+
+	return toUser(resp.GetUser()), nil
+}
+
+func (u *Users) UpdateExtraFields(ctx context.Context, accessToken string, fields []model.ExtraField) (model.User, error) {
+	req, err := toProtoExtraFields(fields)
+	if err != nil {
+		return model.User{}, errs.Wrap("toProtoExtraFields", err)
+	}
+
+	resp, err := u.api.UpdateExtraFields(withToken(ctx, accessToken), &userv1.UpdateExtraFieldsRequest{Fields: req})
+	if err != nil {
+		return model.User{}, errs.Wrap("u.api.UpdateExtraFields", fromStatus(err))
 	}
 
 	return toUser(resp.GetUser()), nil
@@ -270,6 +304,9 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		AvatarID:    p.GetAvatarId(),
 		Profile:     toProfile(p),
 		Deactivated: p.GetDeactivated(),
+
+		BirthYearHidden: p.GetBirthYearHidden(),
+		About:           toAbout(p),
 	}
 }
 
@@ -303,11 +340,16 @@ func (u *Users) SetAvatar(ctx context.Context, accessToken, avatarID string) (mo
 	return toUser(resp.GetUser()), nil
 }
 
-func (u *Users) Search(ctx context.Context, query, cursor string, limit int) (model.UserPage, error) {
+func (u *Users) Search(ctx context.Context, q model.UserQuery, cursor string, limit int) (model.UserPage, error) {
 	resp, err := u.api.SearchUsers(ctx, &userv1.SearchUsersRequest{
-		Query:  query,
-		Cursor: cursor,
-		Limit:  int32(min(max(limit, 0), 1<<10)), //nolint:gosec // clamped above
+		Query:    q.Text,
+		Hometown: q.Hometown,
+		City:     q.City,
+		Film:     q.Film,
+		Show:     q.Show,
+		Book:     q.Book,
+		Cursor:   cursor,
+		Limit:    int32(min(max(limit, 0), 1<<10)), //nolint:gosec // clamped above
 	})
 	if err != nil {
 		return model.UserPage{}, errs.Wrap("u.api.SearchUsers", fromStatus(err))

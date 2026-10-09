@@ -21,6 +21,7 @@ const (
 	wallWritePrefix      = "WALL_WRITE_"
 	messagesWritePrefix  = "MESSAGES_WRITE_"
 	clubsReadPrefix      = "CLUBS_READ_"
+	fieldPlacePrefix     = "FIELD_PLACE_"
 	kindPrefix           = "KIND_"
 	changePrefix         = "CHANGE_"
 
@@ -50,7 +51,9 @@ func enumValue(name, prefix, field string, values map[string]int32) (int32, erro
 	return v, nil
 }
 
-func toUpdateProfileRequest(p model.Profile) (*userv1.UpdateProfileRequest, error) {
+// toUpdateProfileRequest: partner is the nickname of whom the
+// relationship names, "" for nobody.
+func toUpdateProfileRequest(p model.Profile, partner string) (*userv1.UpdateProfileRequest, error) {
 	gender, err := enumValue(p.Gender, genderPrefix, "gender", userv1.Gender_value)
 	if err != nil {
 		return nil, err
@@ -81,6 +84,10 @@ func toUpdateProfileRequest(p model.Profile) (*userv1.UpdateProfileRequest, erro
 		Worldview:      userv1.Worldview(worldview),
 		PoliticalViews: userv1.PoliticalViews(politicalViews),
 		Birthday:       toTimestamp(p.Birthday),
+		Hometown:       p.Hometown,
+		HideBirthYear:  p.HideBirthYear,
+
+		RelationshipPartner: partner,
 	}, nil
 }
 
@@ -95,6 +102,12 @@ type profileMessage interface {
 	GetWorldview() userv1.Worldview
 	GetPoliticalViews() userv1.PoliticalViews
 	GetBirthday() *timestamppb.Timestamp
+	GetHometown() string
+	GetRelationshipPartnerId() string
+	GetContacts() *userv1.Contacts
+	GetInterests() *userv1.Interests
+	GetExtraFields() []*userv1.ExtraField
+	GetRegisteredAt() *timestamppb.Timestamp
 }
 
 func toProfile(m profileMessage) model.Profile {
@@ -108,7 +121,56 @@ func toProfile(m profileMessage) model.Profile {
 		Worldview:      enumName(m.GetWorldview().String(), worldviewPrefix),
 		PoliticalViews: enumName(m.GetPoliticalViews().String(), politicalViewsPrefix),
 		Birthday:       fromTimestamp(m.GetBirthday()),
+		Hometown:       m.GetHometown(),
+		PartnerID:      m.GetRelationshipPartnerId(),
 	}
+}
+
+func toAbout(m profileMessage) model.About {
+	c, in := m.GetContacts(), m.GetInterests()
+
+	about := model.About{
+		Contacts: model.Contacts{
+			Email: c.GetEmail(), Telegram: c.GetTelegram(), Website: c.GetWebsite(), City: c.GetCity(), Address: c.GetAddress(),
+		},
+		Interests: model.Interests{
+			Interests: in.GetInterests(), Music: in.GetMusic(), Films: in.GetFilms(), Shows: in.GetShows(),
+			Books: in.GetBooks(), Quotes: in.GetQuotes(), Games: in.GetGames(), About: in.GetAbout(),
+		},
+		RegisteredAt: fromTimestamp(m.GetRegisteredAt()),
+	}
+
+	for _, f := range m.GetExtraFields() {
+		about.ExtraFields = append(about.ExtraFields, model.ExtraField{
+			Name: f.GetName(), Text: f.GetText(), Place: enumName(f.GetPlace().String(), fieldPlacePrefix),
+		})
+	}
+
+	return about
+}
+
+func toProtoContacts(c model.Contacts) *userv1.Contacts {
+	return &userv1.Contacts{Email: c.Email, Telegram: c.Telegram, Website: c.Website, City: c.City, Address: c.Address}
+}
+
+func toProtoInterests(in model.Interests) *userv1.Interests {
+	return &userv1.Interests{
+		Interests: in.Interests, Music: in.Music, Films: in.Films, Shows: in.Shows,
+		Books: in.Books, Quotes: in.Quotes, Games: in.Games, About: in.About,
+	}
+}
+
+func toProtoExtraFields(fields []model.ExtraField) ([]*userv1.ExtraField, error) {
+	out := make([]*userv1.ExtraField, 0, len(fields))
+	for _, f := range fields {
+		place, err := enumValue(f.Place, fieldPlacePrefix, "field place", userv1.FieldPlace_value)
+		if err != nil {
+			return nil, err
+		}
+		out = append(out, &userv1.ExtraField{Name: f.Name, Text: f.Text, Place: userv1.FieldPlace(place)})
+	}
+
+	return out, nil
 }
 
 func toUser(u *userv1.User) model.User {
@@ -116,7 +178,8 @@ func toUser(u *userv1.User) model.User {
 		ID:               u.GetId(),
 		AvatarID:         u.GetAvatarId(),
 		Email:            u.GetEmail(),
-		Profile:          toProfile(u),
+		Profile:          withHiddenYear(toProfile(u), u.GetHideBirthYear()),
+		About:            toAbout(u),
 		ProfileCompleted: u.GetProfileCompleted(),
 		Deactivated:      u.GetDeactivated(),
 		PurgeAt:          fromTimestamp(u.GetPurgeAt()),
@@ -130,6 +193,11 @@ func toUser(u *userv1.User) model.User {
 			ClubsRead:          enumName(u.GetPrivacy().GetClubsRead().String(), clubsReadPrefix),
 		},
 	}
+}
+
+func withHiddenYear(p model.Profile, hide bool) model.Profile {
+	p.HideBirthYear = hide
+	return p
 }
 
 func toTimestamp(t time.Time) *timestamppb.Timestamp {
