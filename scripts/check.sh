@@ -144,6 +144,8 @@ node --test web/test/*.test.js >/dev/null || failed+=(web)
 check_server_alertmanager() {
 	local dir
 	dir=$(mktemp -d)
+	# amtool runs as nobody in its container; mktemp makes the directory 700.
+	chmod 755 "$dir"
 	printf 'TELEGRAM_BOT_TOKEN=123456:test-token_x\nTELEGRAM_CHAT_ID=-100123\n' > "$dir/env"
 
 	deploy/alertmanager.sh "$dir/env" "$dir/alertmanager.yml" >/dev/null &&
