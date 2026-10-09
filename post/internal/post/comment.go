@@ -7,7 +7,8 @@ import (
 	"github.com/google/uuid"
 )
 
-const maxCommentLen = 1000
+// maxCommentLen is openvk's, where a comment is as long as a post.
+const maxCommentLen = maxTextLen
 
 var (
 	// ErrCommentEmpty: neither text nor photos. The message keeps the
