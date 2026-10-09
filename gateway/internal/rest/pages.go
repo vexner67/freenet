@@ -42,6 +42,8 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /albums", page(dir, "albums.html"))
 	mux.Handle("GET /albums/create", page(dir, "album-create.html"))
 	mux.Handle("GET /club/{ref}/albums", page(dir, "albums.html"))
+	mux.Handle("GET /wall/{nickname}", page(dir, "wall.html"))
+	mux.Handle("GET /club/{ref}/wall", page(dir, "wall.html"))
 	mux.Handle("GET /album/{id}", page(dir, "album.html"))
 	mux.Handle("GET /album/{id}/edit", page(dir, "album-edit.html"))
 	mux.Handle("GET /album/{id}/upload", page(dir, "album-upload.html"))

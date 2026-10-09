@@ -362,11 +362,14 @@ func TestPosts(t *testing.T) {
 		t.Fatalf("post = %+v", p)
 	}
 
-	page, err := posts.List(context.Background(), "", "u1", "p9", 1<<20)
+	page, err := posts.List(context.Background(), "", "u1", "others", "p9", 1<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if api.req.GetWallId() != "u1" || api.req.GetCursor() != "p9" || api.req.GetLimit() != 1<<10 {
+	if _, err = posts.List(context.Background(), "", "u1", "mine", "", 0); failure.From(err).Kind != failure.InvalidArgument {
+		t.Fatalf("a bad wall type: %v", err)
+	}
+	if api.req.GetWallId() != "u1" || api.req.GetCursor() != "p9" || api.req.GetLimit() != 1<<10 || api.req.GetFilter() != postv1.WallFilter_WALL_FILTER_OTHERS {
 		t.Fatalf("request = %v", api.req)
 	}
 	if len(api.md.Get("authorization")) != 0 {
@@ -379,7 +382,7 @@ func TestPosts(t *testing.T) {
 		t.Fatalf("anonymous post = %+v", got)
 	}
 
-	page, err = posts.List(context.Background(), "tok", "u1", "", 0)
+	page, err = posts.List(context.Background(), "tok", "u1", "", "", 0)
 	if err != nil || !page.Posts[0].Liked {
 		t.Fatalf("signed-in wall = %+v, %v", page, err)
 	}

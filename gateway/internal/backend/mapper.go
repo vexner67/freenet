@@ -184,6 +184,8 @@ func toUser(u *userv1.User) model.User {
 		ProfileCompleted: u.GetProfileCompleted(),
 		Deactivated:      u.GetDeactivated(),
 		Backdrop:         model.Backdrop{Left: u.GetBackdropLeft(), Right: u.GetBackdropRight()},
+		Completeness:     int(u.GetCompleteness()),
+		Unfilled:         u.GetUnfilled(),
 		PurgeAt:          fromTimestamp(u.GetPurgeAt()),
 		Privacy: model.Privacy{
 			ShowBirthday:       u.GetPrivacy().GetShowBirthday(),

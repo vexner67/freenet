@@ -122,6 +122,24 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/me/status:
+    put:
+      summary: Change your status alone, as openvk edits it on your page
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status: { type: string, maxLength: 200 }
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
   /api/v1/me/contacts:
     put:
       summary: Replace "Контактная информация"
@@ -372,6 +390,10 @@ paths:
           in: path
           required: true
           schema: { type: string }
+        - name: type
+          in: query
+          description: 'The tab of openvk''s wall: none for all posts ("Все записи", the pinned one first), `owner` for the wall''s own — by its owner, or for the community whose wall it is ("Записи Анны", "Записи сообщества") — and `others` for the rest ("Чужие записи"); `total` counts the tab'
+          schema: { type: string, enum: [owner, others] }
         - name: cursor
           in: query
           schema: { type: string }
@@ -1945,6 +1967,10 @@ paths:
       summary: A community's wall, newest first
       description: As a user's wall; `canPost` says whether you may write there on your own behalf, `canSuggest` whether you may suggest a post instead.
       parameters:
+        - name: type
+          in: query
+          description: 'The tab of openvk''s wall: none for all posts ("Все записи", the pinned one first), `owner` for the wall''s own — by its owner, or for the community whose wall it is ("Записи Анны", "Записи сообщества") — and `others` for the rest ("Чужие записи"); `total` counts the tab'
+          schema: { type: string, enum: [owner, others] }
         - name: cursor
           in: query
           schema: { type: string }
@@ -2214,7 +2240,8 @@ paths:
       summary: Whom the user follows, newest follow first
       description: |
         With `online=true` only those online now, openvk's "Друзья онлайн";
-        `total` then counts them.
+        with `common=true` (a token required) only whom you follow too, its
+        "Общие друзья"; `total` then counts them.
       parameters:
         - name: nickname
           in: path
@@ -2227,6 +2254,9 @@ paths:
           in: query
           schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
         - name: online
+          in: query
+          schema: { type: boolean, default: false }
+        - name: common
           in: query
           schema: { type: boolean, default: false }
       responses: *followListResponses
@@ -2613,6 +2643,13 @@ components:
             profileCompleted: { type: boolean }
             privacy: { $ref: "#/components/schemas/Privacy" }
             backdrop: { $ref: "#/components/schemas/Backdrop" }
+            completeness:
+              type: integer
+              description: '"Заполненность страницы" in percent, as openvk weighs it without its rating: interests, the e-mail and the city of the contacts 20 each, Telegram and the status 15 each, 10 always'
+            unfilled:
+              type: array
+              items: { type: string, enum: [interests, email, telegram, status, city] }
+              description: What is missing, for openvk's hints under the gauge
             deactivated:
               type: boolean
               description: "You deleted the page; see POST /api/v1/me/deactivate"
@@ -3050,6 +3087,9 @@ components:
               type: boolean
               description: "The user is on the site now (\"Онлайн\"); only on the page itself"
             backdrop: { $ref: "#/components/schemas/Backdrop" }
+            completeness:
+              type: integer
+              description: '"Заполненность страницы" in percent; only on the page itself, absent on a deleted or hidden one'
 
     Access:
       type: object

@@ -136,6 +136,10 @@ type User struct {
 	PurgeAt     time.Time
 	About       About
 	Backdrop    Backdrop
+	// Completeness is "Заполненность страницы" in percent, Unfilled the
+	// parts missing ("interests", "email", "telegram", "status", "city").
+	Completeness int
+	Unfilled     []string
 }
 
 // Backdrop is "Фон страницы" of a person: photos of the media service
@@ -163,7 +167,10 @@ type PublicProfile struct {
 	LastSeen time.Time
 	Online   bool
 	Backdrop Backdrop
-	About    About
+	// Completeness is "Заполненность страницы" in percent; 0 on a deleted
+	// or hidden page.
+	Completeness int
+	About        About
 }
 
 // Author is who wrote a post or owns a wall, as shown next to a post: a

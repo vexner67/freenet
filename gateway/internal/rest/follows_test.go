@@ -93,6 +93,15 @@ func TestFollowLists(t *testing.T) {
 		t.Fatal("an empty list must be [], not null")
 	}
 
+	// openvk's "Общие друзья": whom the caller follows too.
+	if w = h.do("GET", "/api/v1/users/ann/following?common=true", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("common, anonymous: %d", w.Code)
+	}
+	w = h.do("GET", "/api/v1/users/ann/following?common=true", "", "Authorization", "Bearer tok")
+	if page = decode[map[string]any](t, w); h.users.listed != "common:u1:" || page["total"] != float64(1) || h.users.token != "tok" {
+		t.Fatalf("common: %v (%s)", page, h.users.listed)
+	}
+
 	// openvk's "Друзья онлайн".
 	w = h.do("GET", "/api/v1/users/ann/following?online=true", "")
 	if page = decode[map[string]any](t, w); h.users.listed != "online:u1:" || page["total"] != float64(1) {

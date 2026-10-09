@@ -286,6 +286,23 @@ func (f *fakeUsers) ListFollowing(_ context.Context, userID, cursor string, _ in
 	return model.UserPage{NextCursor: "c2", Total: 5}, nil
 }
 
+func (f *fakeUsers) ListCommonFollowing(_ context.Context, token, userID, cursor string, _ int) (model.UserPage, error) {
+	f.token, f.listed = token, "common:"+userID+":"+cursor
+	return model.UserPage{Users: []model.PublicProfile{{ID: "u3", Profile: model.Profile{Nickname: "cat"}}}, Total: 1}, nil
+}
+
+// UpdateStatus keeps the status in the caller's profile.
+func (f *fakeUsers) UpdateStatus(_ context.Context, token, status string) (model.User, error) {
+	f.token = token
+	if f.err != nil {
+		return model.User{}, f.err
+	}
+	f.profile.Status = status
+	u := f.user()
+	u.Completeness, u.Unfilled = 85, []string{"telegram"}
+	return u, nil
+}
+
 // SetBackdrop keeps the caller's backdrop in backdrop.
 func (f *fakeUsers) SetBackdrop(_ context.Context, token, side, photoID string) (model.User, string, error) {
 	f.token = token
@@ -343,6 +360,8 @@ type fakePosts struct {
 	published, withdrawn string
 	signed               bool
 	err                  error
+	// wallFilter is the tab of the wall List got.
+	wallFilter string
 }
 
 // Suggest keeps one suggestion by u1.
@@ -489,8 +508,8 @@ func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSour
 }
 
 // List is u1's wall: bob's post p4 on it and u1's own p2 and p1.
-func (f *fakePosts) List(_ context.Context, token, wallID, cursor string, limit int) (model.PostPage, error) {
-	f.token, f.cursor, f.limit = token, cursor, limit
+func (f *fakePosts) List(_ context.Context, token, wallID, filter, cursor string, limit int) (model.PostPage, error) {
+	f.token, f.cursor, f.limit, f.wallFilter = token, cursor, limit, filter
 	if wallID == "k1" {
 		ann, club := model.Author{ID: "u1"}, model.Author{ID: "k1"}
 		return model.PostPage{Posts: []model.Post{
