@@ -22,7 +22,7 @@ var invalid = []error{
 	club.ErrNameEmpty, club.ErrNameTooLong, club.ErrDescriptionTooLong,
 	club.ErrAddressTooLong, club.ErrAddressInvalid, club.ErrInvalidWall, club.ErrInvalidRole,
 	club.ErrSearchQueryEmpty, club.ErrSearchQueryTooLong, service.ErrTooManyIDs,
-	club.ErrWebsiteTooLong, club.ErrWebsiteInvalid, club.ErrInvalidAdminsDisplay,
+	club.ErrWebsiteTooLong, club.ErrWebsiteInvalid, club.ErrInvalidAdminsDisplay, club.ErrInvalidBackdropSide,
 }
 
 func toStatus(err error) (*status.Status, bool) {

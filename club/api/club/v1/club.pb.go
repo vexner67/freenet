@@ -185,6 +185,55 @@ func (Role) EnumDescriptor() ([]byte, []int) {
 	return file_api_club_v1_club_proto_rawDescGZIP(), []int{2}
 }
 
+type BackdropSide int32
+
+const (
+	BackdropSide_BACKDROP_SIDE_UNSPECIFIED BackdropSide = 0
+	BackdropSide_BACKDROP_SIDE_LEFT        BackdropSide = 1
+	BackdropSide_BACKDROP_SIDE_RIGHT       BackdropSide = 2
+)
+
+// Enum value maps for BackdropSide.
+var (
+	BackdropSide_name = map[int32]string{
+		0: "BACKDROP_SIDE_UNSPECIFIED",
+		1: "BACKDROP_SIDE_LEFT",
+		2: "BACKDROP_SIDE_RIGHT",
+	}
+	BackdropSide_value = map[string]int32{
+		"BACKDROP_SIDE_UNSPECIFIED": 0,
+		"BACKDROP_SIDE_LEFT":        1,
+		"BACKDROP_SIDE_RIGHT":       2,
+	}
+)
+
+func (x BackdropSide) Enum() *BackdropSide {
+	p := new(BackdropSide)
+	*p = x
+	return p
+}
+
+func (x BackdropSide) String() string {
+	return protoimpl.X.EnumStringOf(x.Descriptor(), protoreflect.EnumNumber(x))
+}
+
+func (BackdropSide) Descriptor() protoreflect.EnumDescriptor {
+	return file_api_club_v1_club_proto_enumTypes[3].Descriptor()
+}
+
+func (BackdropSide) Type() protoreflect.EnumType {
+	return &file_api_club_v1_club_proto_enumTypes[3]
+}
+
+func (x BackdropSide) Number() protoreflect.EnumNumber {
+	return protoreflect.EnumNumber(x)
+}
+
+// Deprecated: Use BackdropSide.Descriptor instead.
+func (BackdropSide) EnumDescriptor() ([]byte, []int) {
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{3}
+}
+
 type Club struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -206,8 +255,12 @@ type Club struct {
 	OpenTopics bool `protobuf:"varint,11,opt,name=open_topics,json=openTopics,proto3" json:"open_topics,omitempty"`
 	// Its page lists the topics above the wall.
 	TopicsAboveWall bool `protobuf:"varint,12,opt,name=topics_above_wall,json=topicsAboveWall,proto3" json:"topics_above_wall,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// "Фон страницы": photos of the club in the media service on the left
+	// and on the right of its page; empty for none.
+	BackdropLeft  string `protobuf:"bytes,13,opt,name=backdrop_left,json=backdropLeft,proto3" json:"backdrop_left,omitempty"`
+	BackdropRight string `protobuf:"bytes,14,opt,name=backdrop_right,json=backdropRight,proto3" json:"backdrop_right,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Club) Reset() {
@@ -322,6 +375,20 @@ func (x *Club) GetTopicsAboveWall() bool {
 		return x.TopicsAboveWall
 	}
 	return false
+}
+
+func (x *Club) GetBackdropLeft() string {
+	if x != nil {
+		return x.BackdropLeft
+	}
+	return ""
+}
+
+func (x *Club) GetBackdropRight() string {
+	if x != nil {
+		return x.BackdropRight
+	}
+	return ""
 }
 
 // ClubView is a club as the caller sees it.
@@ -1818,6 +1885,110 @@ func (x *SetClubAvatarResponse) GetClub() *ClubView {
 	return nil
 }
 
+type SetClubBackdropRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	ClubId        string                 `protobuf:"bytes,1,opt,name=club_id,json=clubId,proto3" json:"club_id,omitempty"`
+	Side          BackdropSide           `protobuf:"varint,2,opt,name=side,proto3,enum=club.v1.BackdropSide" json:"side,omitempty"`
+	PhotoId       string                 `protobuf:"bytes,3,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetClubBackdropRequest) Reset() {
+	*x = SetClubBackdropRequest{}
+	mi := &file_api_club_v1_club_proto_msgTypes[28]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetClubBackdropRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetClubBackdropRequest) ProtoMessage() {}
+
+func (x *SetClubBackdropRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_club_v1_club_proto_msgTypes[28]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetClubBackdropRequest.ProtoReflect.Descriptor instead.
+func (*SetClubBackdropRequest) Descriptor() ([]byte, []int) {
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{28}
+}
+
+func (x *SetClubBackdropRequest) GetClubId() string {
+	if x != nil {
+		return x.ClubId
+	}
+	return ""
+}
+
+func (x *SetClubBackdropRequest) GetSide() BackdropSide {
+	if x != nil {
+		return x.Side
+	}
+	return BackdropSide_BACKDROP_SIDE_UNSPECIFIED
+}
+
+func (x *SetClubBackdropRequest) GetPhotoId() string {
+	if x != nil {
+		return x.PhotoId
+	}
+	return ""
+}
+
+type SetClubBackdropResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Club          *ClubView              `protobuf:"bytes,1,opt,name=club,proto3" json:"club,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetClubBackdropResponse) Reset() {
+	*x = SetClubBackdropResponse{}
+	mi := &file_api_club_v1_club_proto_msgTypes[29]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetClubBackdropResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetClubBackdropResponse) ProtoMessage() {}
+
+func (x *SetClubBackdropResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_club_v1_club_proto_msgTypes[29]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetClubBackdropResponse.ProtoReflect.Descriptor instead.
+func (*SetClubBackdropResponse) Descriptor() ([]byte, []int) {
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{29}
+}
+
+func (x *SetClubBackdropResponse) GetClub() *ClubView {
+	if x != nil {
+		return x.Club
+	}
+	return nil
+}
+
 type PinClubRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	ClubId        string                 `protobuf:"bytes,1,opt,name=club_id,json=clubId,proto3" json:"club_id,omitempty"`
@@ -1828,7 +1999,7 @@ type PinClubRequest struct {
 
 func (x *PinClubRequest) Reset() {
 	*x = PinClubRequest{}
-	mi := &file_api_club_v1_club_proto_msgTypes[28]
+	mi := &file_api_club_v1_club_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1840,7 +2011,7 @@ func (x *PinClubRequest) String() string {
 func (*PinClubRequest) ProtoMessage() {}
 
 func (x *PinClubRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[28]
+	mi := &file_api_club_v1_club_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1853,7 +2024,7 @@ func (x *PinClubRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PinClubRequest.ProtoReflect.Descriptor instead.
 func (*PinClubRequest) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{28}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *PinClubRequest) GetClubId() string {
@@ -1878,7 +2049,7 @@ type ListPinnedClubsRequest struct {
 
 func (x *ListPinnedClubsRequest) Reset() {
 	*x = ListPinnedClubsRequest{}
-	mi := &file_api_club_v1_club_proto_msgTypes[29]
+	mi := &file_api_club_v1_club_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1890,7 +2061,7 @@ func (x *ListPinnedClubsRequest) String() string {
 func (*ListPinnedClubsRequest) ProtoMessage() {}
 
 func (x *ListPinnedClubsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[29]
+	mi := &file_api_club_v1_club_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1903,7 +2074,7 @@ func (x *ListPinnedClubsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPinnedClubsRequest.ProtoReflect.Descriptor instead.
 func (*ListPinnedClubsRequest) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{29}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{31}
 }
 
 type ListPinnedClubsResponse struct {
@@ -1915,7 +2086,7 @@ type ListPinnedClubsResponse struct {
 
 func (x *ListPinnedClubsResponse) Reset() {
 	*x = ListPinnedClubsResponse{}
-	mi := &file_api_club_v1_club_proto_msgTypes[30]
+	mi := &file_api_club_v1_club_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1927,7 +2098,7 @@ func (x *ListPinnedClubsResponse) String() string {
 func (*ListPinnedClubsResponse) ProtoMessage() {}
 
 func (x *ListPinnedClubsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[30]
+	mi := &file_api_club_v1_club_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1940,7 +2111,7 @@ func (x *ListPinnedClubsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPinnedClubsResponse.ProtoReflect.Descriptor instead.
 func (*ListPinnedClubsResponse) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{30}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *ListPinnedClubsResponse) GetClubs() []*Club {
@@ -1958,7 +2129,7 @@ type ListMyClubIDsRequest struct {
 
 func (x *ListMyClubIDsRequest) Reset() {
 	*x = ListMyClubIDsRequest{}
-	mi := &file_api_club_v1_club_proto_msgTypes[31]
+	mi := &file_api_club_v1_club_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1970,7 +2141,7 @@ func (x *ListMyClubIDsRequest) String() string {
 func (*ListMyClubIDsRequest) ProtoMessage() {}
 
 func (x *ListMyClubIDsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[31]
+	mi := &file_api_club_v1_club_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1983,7 +2154,7 @@ func (x *ListMyClubIDsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyClubIDsRequest.ProtoReflect.Descriptor instead.
 func (*ListMyClubIDsRequest) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{31}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{33}
 }
 
 type ListMyClubIDsResponse struct {
@@ -1995,7 +2166,7 @@ type ListMyClubIDsResponse struct {
 
 func (x *ListMyClubIDsResponse) Reset() {
 	*x = ListMyClubIDsResponse{}
-	mi := &file_api_club_v1_club_proto_msgTypes[32]
+	mi := &file_api_club_v1_club_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2007,7 +2178,7 @@ func (x *ListMyClubIDsResponse) String() string {
 func (*ListMyClubIDsResponse) ProtoMessage() {}
 
 func (x *ListMyClubIDsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[32]
+	mi := &file_api_club_v1_club_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2020,7 +2191,7 @@ func (x *ListMyClubIDsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListMyClubIDsResponse.ProtoReflect.Descriptor instead.
 func (*ListMyClubIDsResponse) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{32}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *ListMyClubIDsResponse) GetClubIds() []string {
@@ -2040,7 +2211,7 @@ type CanPostOnWallRequest struct {
 
 func (x *CanPostOnWallRequest) Reset() {
 	*x = CanPostOnWallRequest{}
-	mi := &file_api_club_v1_club_proto_msgTypes[33]
+	mi := &file_api_club_v1_club_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2052,7 +2223,7 @@ func (x *CanPostOnWallRequest) String() string {
 func (*CanPostOnWallRequest) ProtoMessage() {}
 
 func (x *CanPostOnWallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[33]
+	mi := &file_api_club_v1_club_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2065,7 +2236,7 @@ func (x *CanPostOnWallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CanPostOnWallRequest.ProtoReflect.Descriptor instead.
 func (*CanPostOnWallRequest) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{33}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *CanPostOnWallRequest) GetClubId() string {
@@ -2095,7 +2266,7 @@ type CanPostOnWallResponse struct {
 
 func (x *CanPostOnWallResponse) Reset() {
 	*x = CanPostOnWallResponse{}
-	mi := &file_api_club_v1_club_proto_msgTypes[34]
+	mi := &file_api_club_v1_club_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2107,7 +2278,7 @@ func (x *CanPostOnWallResponse) String() string {
 func (*CanPostOnWallResponse) ProtoMessage() {}
 
 func (x *CanPostOnWallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[34]
+	mi := &file_api_club_v1_club_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2120,7 +2291,7 @@ func (x *CanPostOnWallResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CanPostOnWallResponse.ProtoReflect.Descriptor instead.
 func (*CanPostOnWallResponse) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{34}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *CanPostOnWallResponse) GetAllowed() bool {
@@ -2147,7 +2318,7 @@ type CanModerateWallRequest struct {
 
 func (x *CanModerateWallRequest) Reset() {
 	*x = CanModerateWallRequest{}
-	mi := &file_api_club_v1_club_proto_msgTypes[35]
+	mi := &file_api_club_v1_club_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2159,7 +2330,7 @@ func (x *CanModerateWallRequest) String() string {
 func (*CanModerateWallRequest) ProtoMessage() {}
 
 func (x *CanModerateWallRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[35]
+	mi := &file_api_club_v1_club_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2172,7 +2343,7 @@ func (x *CanModerateWallRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CanModerateWallRequest.ProtoReflect.Descriptor instead.
 func (*CanModerateWallRequest) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{35}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *CanModerateWallRequest) GetWallId() string {
@@ -2198,7 +2369,7 @@ type CanModerateWallResponse struct {
 
 func (x *CanModerateWallResponse) Reset() {
 	*x = CanModerateWallResponse{}
-	mi := &file_api_club_v1_club_proto_msgTypes[36]
+	mi := &file_api_club_v1_club_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2210,7 +2381,7 @@ func (x *CanModerateWallResponse) String() string {
 func (*CanModerateWallResponse) ProtoMessage() {}
 
 func (x *CanModerateWallResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[36]
+	mi := &file_api_club_v1_club_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2223,7 +2394,7 @@ func (x *CanModerateWallResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CanModerateWallResponse.ProtoReflect.Descriptor instead.
 func (*CanModerateWallResponse) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{36}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *CanModerateWallResponse) GetAllowed() bool {
@@ -2242,7 +2413,7 @@ type ListWallModeratorsRequest struct {
 
 func (x *ListWallModeratorsRequest) Reset() {
 	*x = ListWallModeratorsRequest{}
-	mi := &file_api_club_v1_club_proto_msgTypes[37]
+	mi := &file_api_club_v1_club_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2254,7 +2425,7 @@ func (x *ListWallModeratorsRequest) String() string {
 func (*ListWallModeratorsRequest) ProtoMessage() {}
 
 func (x *ListWallModeratorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[37]
+	mi := &file_api_club_v1_club_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2267,7 +2438,7 @@ func (x *ListWallModeratorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWallModeratorsRequest.ProtoReflect.Descriptor instead.
 func (*ListWallModeratorsRequest) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{37}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *ListWallModeratorsRequest) GetWallId() string {
@@ -2286,7 +2457,7 @@ type ListWallModeratorsResponse struct {
 
 func (x *ListWallModeratorsResponse) Reset() {
 	*x = ListWallModeratorsResponse{}
-	mi := &file_api_club_v1_club_proto_msgTypes[38]
+	mi := &file_api_club_v1_club_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2298,7 +2469,7 @@ func (x *ListWallModeratorsResponse) String() string {
 func (*ListWallModeratorsResponse) ProtoMessage() {}
 
 func (x *ListWallModeratorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[38]
+	mi := &file_api_club_v1_club_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2311,7 +2482,7 @@ func (x *ListWallModeratorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListWallModeratorsResponse.ProtoReflect.Descriptor instead.
 func (*ListWallModeratorsResponse) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{38}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *ListWallModeratorsResponse) GetUserIds() []string {
@@ -2330,7 +2501,7 @@ type PurgeUserRequest struct {
 
 func (x *PurgeUserRequest) Reset() {
 	*x = PurgeUserRequest{}
-	mi := &file_api_club_v1_club_proto_msgTypes[39]
+	mi := &file_api_club_v1_club_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2342,7 +2513,7 @@ func (x *PurgeUserRequest) String() string {
 func (*PurgeUserRequest) ProtoMessage() {}
 
 func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_club_v1_club_proto_msgTypes[39]
+	mi := &file_api_club_v1_club_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2355,7 +2526,7 @@ func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurgeUserRequest.ProtoReflect.Descriptor instead.
 func (*PurgeUserRequest) Descriptor() ([]byte, []int) {
-	return file_api_club_v1_club_proto_rawDescGZIP(), []int{39}
+	return file_api_club_v1_club_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *PurgeUserRequest) GetUserId() string {
@@ -2369,7 +2540,7 @@ var File_api_club_v1_club_proto protoreflect.FileDescriptor
 
 const file_api_club_v1_club_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/club/v1/club.proto\x12\aclub.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xaa\x03\n" +
+	"\x16api/club/v1/club.proto\x12\aclub.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf6\x03\n" +
 	"\x04Club\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12 \n" +
@@ -2385,7 +2556,9 @@ const file_api_club_v1_club_proto_rawDesc = "" +
 	" \x01(\x0e2\x16.club.v1.AdminsDisplayR\radminsDisplay\x12\x1f\n" +
 	"\vopen_topics\x18\v \x01(\bR\n" +
 	"openTopics\x12*\n" +
-	"\x11topics_above_wall\x18\f \x01(\bR\x0ftopicsAboveWall\"\x93\x01\n" +
+	"\x11topics_above_wall\x18\f \x01(\bR\x0ftopicsAboveWall\x12#\n" +
+	"\rbackdrop_left\x18\r \x01(\tR\fbackdropLeft\x12%\n" +
+	"\x0ebackdrop_right\x18\x0e \x01(\tR\rbackdropRight\"\x93\x01\n" +
 	"\bClubView\x12!\n" +
 	"\x04club\x18\x01 \x01(\v2\r.club.v1.ClubR\x04club\x12!\n" +
 	"\x04role\x18\x02 \x01(\x0e2\r.club.v1.RoleR\x04role\x12\x19\n" +
@@ -2481,6 +2654,12 @@ const file_api_club_v1_club_proto_rawDesc = "" +
 	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x1b\n" +
 	"\tavatar_id\x18\x02 \x01(\tR\bavatarId\">\n" +
 	"\x15SetClubAvatarResponse\x12%\n" +
+	"\x04club\x18\x01 \x01(\v2\x11.club.v1.ClubViewR\x04club\"w\n" +
+	"\x16SetClubBackdropRequest\x12\x17\n" +
+	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12)\n" +
+	"\x04side\x18\x02 \x01(\x0e2\x15.club.v1.BackdropSideR\x04side\x12\x19\n" +
+	"\bphoto_id\x18\x03 \x01(\tR\aphotoId\"@\n" +
+	"\x17SetClubBackdropResponse\x12%\n" +
 	"\x04club\x18\x01 \x01(\v2\x11.club.v1.ClubViewR\x04club\"A\n" +
 	"\x0ePinClubRequest\x12\x17\n" +
 	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x16\n" +
@@ -2524,7 +2703,11 @@ const file_api_club_v1_club_proto_rawDesc = "" +
 	"\n" +
 	"ROLE_ADMIN\x10\x02\x12\x0e\n" +
 	"\n" +
-	"ROLE_OWNER\x10\x032\xd2\v\n" +
+	"ROLE_OWNER\x10\x03*^\n" +
+	"\fBackdropSide\x12\x1d\n" +
+	"\x19BACKDROP_SIDE_UNSPECIFIED\x10\x00\x12\x16\n" +
+	"\x12BACKDROP_SIDE_LEFT\x10\x01\x12\x17\n" +
+	"\x13BACKDROP_SIDE_RIGHT\x10\x022\xa8\f\n" +
 	"\vClubService\x12E\n" +
 	"\n" +
 	"CreateClub\x12\x1a.club.v1.CreateClubRequest\x1a\x1b.club.v1.CreateClubResponse\x12<\n" +
@@ -2540,7 +2723,8 @@ const file_api_club_v1_club_proto_rawDesc = "" +
 	"\vListMyClubs\x12\x1b.club.v1.ListMyClubsRequest\x1a\x1c.club.v1.ListMyClubsResponse\x12N\n" +
 	"\rListUserClubs\x12\x1d.club.v1.ListUserClubsRequest\x1a\x1e.club.v1.ListUserClubsResponse\x12H\n" +
 	"\vSearchClubs\x12\x1b.club.v1.SearchClubsRequest\x1a\x1c.club.v1.SearchClubsResponse\x12N\n" +
-	"\rSetClubAvatar\x12\x1d.club.v1.SetClubAvatarRequest\x1a\x1e.club.v1.SetClubAvatarResponse\x12:\n" +
+	"\rSetClubAvatar\x12\x1d.club.v1.SetClubAvatarRequest\x1a\x1e.club.v1.SetClubAvatarResponse\x12T\n" +
+	"\x0fSetClubBackdrop\x12\x1f.club.v1.SetClubBackdropRequest\x1a .club.v1.SetClubBackdropResponse\x12:\n" +
 	"\aPinClub\x12\x17.club.v1.PinClubRequest\x1a\x16.google.protobuf.Empty\x12T\n" +
 	"\x0fListPinnedClubs\x12\x1f.club.v1.ListPinnedClubsRequest\x1a .club.v1.ListPinnedClubsResponse\x12N\n" +
 	"\rListMyClubIDs\x12\x1d.club.v1.ListMyClubIDsRequest\x1a\x1e.club.v1.ListMyClubIDsResponse\x12N\n" +
@@ -2561,124 +2745,131 @@ func file_api_club_v1_club_proto_rawDescGZIP() []byte {
 	return file_api_club_v1_club_proto_rawDescData
 }
 
-var file_api_club_v1_club_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_api_club_v1_club_proto_msgTypes = make([]protoimpl.MessageInfo, 40)
+var file_api_club_v1_club_proto_enumTypes = make([]protoimpl.EnumInfo, 4)
+var file_api_club_v1_club_proto_msgTypes = make([]protoimpl.MessageInfo, 42)
 var file_api_club_v1_club_proto_goTypes = []any{
 	(Wall)(0),                          // 0: club.v1.Wall
 	(AdminsDisplay)(0),                 // 1: club.v1.AdminsDisplay
 	(Role)(0),                          // 2: club.v1.Role
-	(*Club)(nil),                       // 3: club.v1.Club
-	(*ClubView)(nil),                   // 4: club.v1.ClubView
-	(*CreateClubRequest)(nil),          // 5: club.v1.CreateClubRequest
-	(*CreateClubResponse)(nil),         // 6: club.v1.CreateClubResponse
-	(*GetClubRequest)(nil),             // 7: club.v1.GetClubRequest
-	(*GetClubResponse)(nil),            // 8: club.v1.GetClubResponse
-	(*GetClubsRequest)(nil),            // 9: club.v1.GetClubsRequest
-	(*GetClubsResponse)(nil),           // 10: club.v1.GetClubsResponse
-	(*UpdateClubRequest)(nil),          // 11: club.v1.UpdateClubRequest
-	(*UpdateClubResponse)(nil),         // 12: club.v1.UpdateClubResponse
-	(*JoinClubRequest)(nil),            // 13: club.v1.JoinClubRequest
-	(*JoinClubResponse)(nil),           // 14: club.v1.JoinClubResponse
-	(*LeaveClubRequest)(nil),           // 15: club.v1.LeaveClubRequest
-	(*LeaveClubResponse)(nil),          // 16: club.v1.LeaveClubResponse
-	(*ListMembersRequest)(nil),         // 17: club.v1.ListMembersRequest
-	(*Member)(nil),                     // 18: club.v1.Member
-	(*ListMembersResponse)(nil),        // 19: club.v1.ListMembersResponse
-	(*SetMemberRoleRequest)(nil),       // 20: club.v1.SetMemberRoleRequest
-	(*TransferClubRequest)(nil),        // 21: club.v1.TransferClubRequest
-	(*ListMyClubsRequest)(nil),         // 22: club.v1.ListMyClubsRequest
-	(*Membership)(nil),                 // 23: club.v1.Membership
-	(*ListMyClubsResponse)(nil),        // 24: club.v1.ListMyClubsResponse
-	(*ListUserClubsRequest)(nil),       // 25: club.v1.ListUserClubsRequest
-	(*ListUserClubsResponse)(nil),      // 26: club.v1.ListUserClubsResponse
-	(*SearchClubsRequest)(nil),         // 27: club.v1.SearchClubsRequest
-	(*SearchClubsResponse)(nil),        // 28: club.v1.SearchClubsResponse
-	(*SetClubAvatarRequest)(nil),       // 29: club.v1.SetClubAvatarRequest
-	(*SetClubAvatarResponse)(nil),      // 30: club.v1.SetClubAvatarResponse
-	(*PinClubRequest)(nil),             // 31: club.v1.PinClubRequest
-	(*ListPinnedClubsRequest)(nil),     // 32: club.v1.ListPinnedClubsRequest
-	(*ListPinnedClubsResponse)(nil),    // 33: club.v1.ListPinnedClubsResponse
-	(*ListMyClubIDsRequest)(nil),       // 34: club.v1.ListMyClubIDsRequest
-	(*ListMyClubIDsResponse)(nil),      // 35: club.v1.ListMyClubIDsResponse
-	(*CanPostOnWallRequest)(nil),       // 36: club.v1.CanPostOnWallRequest
-	(*CanPostOnWallResponse)(nil),      // 37: club.v1.CanPostOnWallResponse
-	(*CanModerateWallRequest)(nil),     // 38: club.v1.CanModerateWallRequest
-	(*CanModerateWallResponse)(nil),    // 39: club.v1.CanModerateWallResponse
-	(*ListWallModeratorsRequest)(nil),  // 40: club.v1.ListWallModeratorsRequest
-	(*ListWallModeratorsResponse)(nil), // 41: club.v1.ListWallModeratorsResponse
-	(*PurgeUserRequest)(nil),           // 42: club.v1.PurgeUserRequest
-	(*timestamppb.Timestamp)(nil),      // 43: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 44: google.protobuf.Empty
+	(BackdropSide)(0),                  // 3: club.v1.BackdropSide
+	(*Club)(nil),                       // 4: club.v1.Club
+	(*ClubView)(nil),                   // 5: club.v1.ClubView
+	(*CreateClubRequest)(nil),          // 6: club.v1.CreateClubRequest
+	(*CreateClubResponse)(nil),         // 7: club.v1.CreateClubResponse
+	(*GetClubRequest)(nil),             // 8: club.v1.GetClubRequest
+	(*GetClubResponse)(nil),            // 9: club.v1.GetClubResponse
+	(*GetClubsRequest)(nil),            // 10: club.v1.GetClubsRequest
+	(*GetClubsResponse)(nil),           // 11: club.v1.GetClubsResponse
+	(*UpdateClubRequest)(nil),          // 12: club.v1.UpdateClubRequest
+	(*UpdateClubResponse)(nil),         // 13: club.v1.UpdateClubResponse
+	(*JoinClubRequest)(nil),            // 14: club.v1.JoinClubRequest
+	(*JoinClubResponse)(nil),           // 15: club.v1.JoinClubResponse
+	(*LeaveClubRequest)(nil),           // 16: club.v1.LeaveClubRequest
+	(*LeaveClubResponse)(nil),          // 17: club.v1.LeaveClubResponse
+	(*ListMembersRequest)(nil),         // 18: club.v1.ListMembersRequest
+	(*Member)(nil),                     // 19: club.v1.Member
+	(*ListMembersResponse)(nil),        // 20: club.v1.ListMembersResponse
+	(*SetMemberRoleRequest)(nil),       // 21: club.v1.SetMemberRoleRequest
+	(*TransferClubRequest)(nil),        // 22: club.v1.TransferClubRequest
+	(*ListMyClubsRequest)(nil),         // 23: club.v1.ListMyClubsRequest
+	(*Membership)(nil),                 // 24: club.v1.Membership
+	(*ListMyClubsResponse)(nil),        // 25: club.v1.ListMyClubsResponse
+	(*ListUserClubsRequest)(nil),       // 26: club.v1.ListUserClubsRequest
+	(*ListUserClubsResponse)(nil),      // 27: club.v1.ListUserClubsResponse
+	(*SearchClubsRequest)(nil),         // 28: club.v1.SearchClubsRequest
+	(*SearchClubsResponse)(nil),        // 29: club.v1.SearchClubsResponse
+	(*SetClubAvatarRequest)(nil),       // 30: club.v1.SetClubAvatarRequest
+	(*SetClubAvatarResponse)(nil),      // 31: club.v1.SetClubAvatarResponse
+	(*SetClubBackdropRequest)(nil),     // 32: club.v1.SetClubBackdropRequest
+	(*SetClubBackdropResponse)(nil),    // 33: club.v1.SetClubBackdropResponse
+	(*PinClubRequest)(nil),             // 34: club.v1.PinClubRequest
+	(*ListPinnedClubsRequest)(nil),     // 35: club.v1.ListPinnedClubsRequest
+	(*ListPinnedClubsResponse)(nil),    // 36: club.v1.ListPinnedClubsResponse
+	(*ListMyClubIDsRequest)(nil),       // 37: club.v1.ListMyClubIDsRequest
+	(*ListMyClubIDsResponse)(nil),      // 38: club.v1.ListMyClubIDsResponse
+	(*CanPostOnWallRequest)(nil),       // 39: club.v1.CanPostOnWallRequest
+	(*CanPostOnWallResponse)(nil),      // 40: club.v1.CanPostOnWallResponse
+	(*CanModerateWallRequest)(nil),     // 41: club.v1.CanModerateWallRequest
+	(*CanModerateWallResponse)(nil),    // 42: club.v1.CanModerateWallResponse
+	(*ListWallModeratorsRequest)(nil),  // 43: club.v1.ListWallModeratorsRequest
+	(*ListWallModeratorsResponse)(nil), // 44: club.v1.ListWallModeratorsResponse
+	(*PurgeUserRequest)(nil),           // 45: club.v1.PurgeUserRequest
+	(*timestamppb.Timestamp)(nil),      // 46: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 47: google.protobuf.Empty
 }
 var file_api_club_v1_club_proto_depIdxs = []int32{
 	0,  // 0: club.v1.Club.wall:type_name -> club.v1.Wall
-	43, // 1: club.v1.Club.created_at:type_name -> google.protobuf.Timestamp
+	46, // 1: club.v1.Club.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 2: club.v1.Club.admins_display:type_name -> club.v1.AdminsDisplay
-	3,  // 3: club.v1.ClubView.club:type_name -> club.v1.Club
+	4,  // 3: club.v1.ClubView.club:type_name -> club.v1.Club
 	2,  // 4: club.v1.ClubView.role:type_name -> club.v1.Role
-	4,  // 5: club.v1.CreateClubResponse.club:type_name -> club.v1.ClubView
-	4,  // 6: club.v1.GetClubResponse.club:type_name -> club.v1.ClubView
-	3,  // 7: club.v1.GetClubsResponse.clubs:type_name -> club.v1.Club
+	5,  // 5: club.v1.CreateClubResponse.club:type_name -> club.v1.ClubView
+	5,  // 6: club.v1.GetClubResponse.club:type_name -> club.v1.ClubView
+	4,  // 7: club.v1.GetClubsResponse.clubs:type_name -> club.v1.Club
 	0,  // 8: club.v1.UpdateClubRequest.wall:type_name -> club.v1.Wall
 	1,  // 9: club.v1.UpdateClubRequest.admins_display:type_name -> club.v1.AdminsDisplay
-	4,  // 10: club.v1.UpdateClubResponse.club:type_name -> club.v1.ClubView
-	4,  // 11: club.v1.JoinClubResponse.club:type_name -> club.v1.ClubView
-	4,  // 12: club.v1.LeaveClubResponse.club:type_name -> club.v1.ClubView
+	5,  // 10: club.v1.UpdateClubResponse.club:type_name -> club.v1.ClubView
+	5,  // 11: club.v1.JoinClubResponse.club:type_name -> club.v1.ClubView
+	5,  // 12: club.v1.LeaveClubResponse.club:type_name -> club.v1.ClubView
 	2,  // 13: club.v1.Member.role:type_name -> club.v1.Role
-	18, // 14: club.v1.ListMembersResponse.members:type_name -> club.v1.Member
+	19, // 14: club.v1.ListMembersResponse.members:type_name -> club.v1.Member
 	2,  // 15: club.v1.SetMemberRoleRequest.role:type_name -> club.v1.Role
-	3,  // 16: club.v1.Membership.club:type_name -> club.v1.Club
+	4,  // 16: club.v1.Membership.club:type_name -> club.v1.Club
 	2,  // 17: club.v1.Membership.role:type_name -> club.v1.Role
-	23, // 18: club.v1.ListMyClubsResponse.clubs:type_name -> club.v1.Membership
-	3,  // 19: club.v1.ListUserClubsResponse.clubs:type_name -> club.v1.Club
-	3,  // 20: club.v1.SearchClubsResponse.clubs:type_name -> club.v1.Club
-	4,  // 21: club.v1.SetClubAvatarResponse.club:type_name -> club.v1.ClubView
-	3,  // 22: club.v1.ListPinnedClubsResponse.clubs:type_name -> club.v1.Club
-	5,  // 23: club.v1.ClubService.CreateClub:input_type -> club.v1.CreateClubRequest
-	7,  // 24: club.v1.ClubService.GetClub:input_type -> club.v1.GetClubRequest
-	9,  // 25: club.v1.ClubService.GetClubs:input_type -> club.v1.GetClubsRequest
-	11, // 26: club.v1.ClubService.UpdateClub:input_type -> club.v1.UpdateClubRequest
-	13, // 27: club.v1.ClubService.JoinClub:input_type -> club.v1.JoinClubRequest
-	15, // 28: club.v1.ClubService.LeaveClub:input_type -> club.v1.LeaveClubRequest
-	17, // 29: club.v1.ClubService.ListMembers:input_type -> club.v1.ListMembersRequest
-	20, // 30: club.v1.ClubService.SetMemberRole:input_type -> club.v1.SetMemberRoleRequest
-	21, // 31: club.v1.ClubService.TransferClub:input_type -> club.v1.TransferClubRequest
-	22, // 32: club.v1.ClubService.ListMyClubs:input_type -> club.v1.ListMyClubsRequest
-	25, // 33: club.v1.ClubService.ListUserClubs:input_type -> club.v1.ListUserClubsRequest
-	27, // 34: club.v1.ClubService.SearchClubs:input_type -> club.v1.SearchClubsRequest
-	29, // 35: club.v1.ClubService.SetClubAvatar:input_type -> club.v1.SetClubAvatarRequest
-	31, // 36: club.v1.ClubService.PinClub:input_type -> club.v1.PinClubRequest
-	32, // 37: club.v1.ClubService.ListPinnedClubs:input_type -> club.v1.ListPinnedClubsRequest
-	34, // 38: club.v1.ClubService.ListMyClubIDs:input_type -> club.v1.ListMyClubIDsRequest
-	36, // 39: club.v1.ClubService.CanPostOnWall:input_type -> club.v1.CanPostOnWallRequest
-	38, // 40: club.v1.ClubService.CanModerateWall:input_type -> club.v1.CanModerateWallRequest
-	40, // 41: club.v1.ClubService.ListWallModerators:input_type -> club.v1.ListWallModeratorsRequest
-	42, // 42: club.v1.ClubService.PurgeUser:input_type -> club.v1.PurgeUserRequest
-	6,  // 43: club.v1.ClubService.CreateClub:output_type -> club.v1.CreateClubResponse
-	8,  // 44: club.v1.ClubService.GetClub:output_type -> club.v1.GetClubResponse
-	10, // 45: club.v1.ClubService.GetClubs:output_type -> club.v1.GetClubsResponse
-	12, // 46: club.v1.ClubService.UpdateClub:output_type -> club.v1.UpdateClubResponse
-	14, // 47: club.v1.ClubService.JoinClub:output_type -> club.v1.JoinClubResponse
-	16, // 48: club.v1.ClubService.LeaveClub:output_type -> club.v1.LeaveClubResponse
-	19, // 49: club.v1.ClubService.ListMembers:output_type -> club.v1.ListMembersResponse
-	44, // 50: club.v1.ClubService.SetMemberRole:output_type -> google.protobuf.Empty
-	44, // 51: club.v1.ClubService.TransferClub:output_type -> google.protobuf.Empty
-	24, // 52: club.v1.ClubService.ListMyClubs:output_type -> club.v1.ListMyClubsResponse
-	26, // 53: club.v1.ClubService.ListUserClubs:output_type -> club.v1.ListUserClubsResponse
-	28, // 54: club.v1.ClubService.SearchClubs:output_type -> club.v1.SearchClubsResponse
-	30, // 55: club.v1.ClubService.SetClubAvatar:output_type -> club.v1.SetClubAvatarResponse
-	44, // 56: club.v1.ClubService.PinClub:output_type -> google.protobuf.Empty
-	33, // 57: club.v1.ClubService.ListPinnedClubs:output_type -> club.v1.ListPinnedClubsResponse
-	35, // 58: club.v1.ClubService.ListMyClubIDs:output_type -> club.v1.ListMyClubIDsResponse
-	37, // 59: club.v1.ClubService.CanPostOnWall:output_type -> club.v1.CanPostOnWallResponse
-	39, // 60: club.v1.ClubService.CanModerateWall:output_type -> club.v1.CanModerateWallResponse
-	41, // 61: club.v1.ClubService.ListWallModerators:output_type -> club.v1.ListWallModeratorsResponse
-	44, // 62: club.v1.ClubService.PurgeUser:output_type -> google.protobuf.Empty
-	43, // [43:63] is the sub-list for method output_type
-	23, // [23:43] is the sub-list for method input_type
-	23, // [23:23] is the sub-list for extension type_name
-	23, // [23:23] is the sub-list for extension extendee
-	0,  // [0:23] is the sub-list for field type_name
+	24, // 18: club.v1.ListMyClubsResponse.clubs:type_name -> club.v1.Membership
+	4,  // 19: club.v1.ListUserClubsResponse.clubs:type_name -> club.v1.Club
+	4,  // 20: club.v1.SearchClubsResponse.clubs:type_name -> club.v1.Club
+	5,  // 21: club.v1.SetClubAvatarResponse.club:type_name -> club.v1.ClubView
+	3,  // 22: club.v1.SetClubBackdropRequest.side:type_name -> club.v1.BackdropSide
+	5,  // 23: club.v1.SetClubBackdropResponse.club:type_name -> club.v1.ClubView
+	4,  // 24: club.v1.ListPinnedClubsResponse.clubs:type_name -> club.v1.Club
+	6,  // 25: club.v1.ClubService.CreateClub:input_type -> club.v1.CreateClubRequest
+	8,  // 26: club.v1.ClubService.GetClub:input_type -> club.v1.GetClubRequest
+	10, // 27: club.v1.ClubService.GetClubs:input_type -> club.v1.GetClubsRequest
+	12, // 28: club.v1.ClubService.UpdateClub:input_type -> club.v1.UpdateClubRequest
+	14, // 29: club.v1.ClubService.JoinClub:input_type -> club.v1.JoinClubRequest
+	16, // 30: club.v1.ClubService.LeaveClub:input_type -> club.v1.LeaveClubRequest
+	18, // 31: club.v1.ClubService.ListMembers:input_type -> club.v1.ListMembersRequest
+	21, // 32: club.v1.ClubService.SetMemberRole:input_type -> club.v1.SetMemberRoleRequest
+	22, // 33: club.v1.ClubService.TransferClub:input_type -> club.v1.TransferClubRequest
+	23, // 34: club.v1.ClubService.ListMyClubs:input_type -> club.v1.ListMyClubsRequest
+	26, // 35: club.v1.ClubService.ListUserClubs:input_type -> club.v1.ListUserClubsRequest
+	28, // 36: club.v1.ClubService.SearchClubs:input_type -> club.v1.SearchClubsRequest
+	30, // 37: club.v1.ClubService.SetClubAvatar:input_type -> club.v1.SetClubAvatarRequest
+	32, // 38: club.v1.ClubService.SetClubBackdrop:input_type -> club.v1.SetClubBackdropRequest
+	34, // 39: club.v1.ClubService.PinClub:input_type -> club.v1.PinClubRequest
+	35, // 40: club.v1.ClubService.ListPinnedClubs:input_type -> club.v1.ListPinnedClubsRequest
+	37, // 41: club.v1.ClubService.ListMyClubIDs:input_type -> club.v1.ListMyClubIDsRequest
+	39, // 42: club.v1.ClubService.CanPostOnWall:input_type -> club.v1.CanPostOnWallRequest
+	41, // 43: club.v1.ClubService.CanModerateWall:input_type -> club.v1.CanModerateWallRequest
+	43, // 44: club.v1.ClubService.ListWallModerators:input_type -> club.v1.ListWallModeratorsRequest
+	45, // 45: club.v1.ClubService.PurgeUser:input_type -> club.v1.PurgeUserRequest
+	7,  // 46: club.v1.ClubService.CreateClub:output_type -> club.v1.CreateClubResponse
+	9,  // 47: club.v1.ClubService.GetClub:output_type -> club.v1.GetClubResponse
+	11, // 48: club.v1.ClubService.GetClubs:output_type -> club.v1.GetClubsResponse
+	13, // 49: club.v1.ClubService.UpdateClub:output_type -> club.v1.UpdateClubResponse
+	15, // 50: club.v1.ClubService.JoinClub:output_type -> club.v1.JoinClubResponse
+	17, // 51: club.v1.ClubService.LeaveClub:output_type -> club.v1.LeaveClubResponse
+	20, // 52: club.v1.ClubService.ListMembers:output_type -> club.v1.ListMembersResponse
+	47, // 53: club.v1.ClubService.SetMemberRole:output_type -> google.protobuf.Empty
+	47, // 54: club.v1.ClubService.TransferClub:output_type -> google.protobuf.Empty
+	25, // 55: club.v1.ClubService.ListMyClubs:output_type -> club.v1.ListMyClubsResponse
+	27, // 56: club.v1.ClubService.ListUserClubs:output_type -> club.v1.ListUserClubsResponse
+	29, // 57: club.v1.ClubService.SearchClubs:output_type -> club.v1.SearchClubsResponse
+	31, // 58: club.v1.ClubService.SetClubAvatar:output_type -> club.v1.SetClubAvatarResponse
+	33, // 59: club.v1.ClubService.SetClubBackdrop:output_type -> club.v1.SetClubBackdropResponse
+	47, // 60: club.v1.ClubService.PinClub:output_type -> google.protobuf.Empty
+	36, // 61: club.v1.ClubService.ListPinnedClubs:output_type -> club.v1.ListPinnedClubsResponse
+	38, // 62: club.v1.ClubService.ListMyClubIDs:output_type -> club.v1.ListMyClubIDsResponse
+	40, // 63: club.v1.ClubService.CanPostOnWall:output_type -> club.v1.CanPostOnWallResponse
+	42, // 64: club.v1.ClubService.CanModerateWall:output_type -> club.v1.CanModerateWallResponse
+	44, // 65: club.v1.ClubService.ListWallModerators:output_type -> club.v1.ListWallModeratorsResponse
+	47, // 66: club.v1.ClubService.PurgeUser:output_type -> google.protobuf.Empty
+	46, // [46:67] is the sub-list for method output_type
+	25, // [25:46] is the sub-list for method input_type
+	25, // [25:25] is the sub-list for extension type_name
+	25, // [25:25] is the sub-list for extension extendee
+	0,  // [0:25] is the sub-list for field type_name
 }
 
 func init() { file_api_club_v1_club_proto_init() }
@@ -2691,8 +2882,8 @@ func file_api_club_v1_club_proto_init() {
 		File: protoimpl.DescBuilder{
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_club_v1_club_proto_rawDesc), len(file_api_club_v1_club_proto_rawDesc)),
-			NumEnums:      3,
-			NumMessages:   40,
+			NumEnums:      4,
+			NumMessages:   42,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

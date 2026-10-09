@@ -10,15 +10,16 @@ import (
 )
 
 var (
-	ErrNotFound         = errors.New("club not found")
-	ErrCannotEdit       = errors.New("only the admins can edit the club")
-	ErrOwnerCannotLeave = errors.New("the owner cannot leave the club")
-	ErrCannotAppoint    = errors.New("only the owner appoints the admins")
-	ErrNotMember        = errors.New("the user is not a member of the club")
-	ErrCannotPin        = errors.New("only the admins can add the club to their menu")
-	ErrTooManyPinned    = errors.New("at most 10 clubs in the menu")
-	ErrCannotTransfer   = errors.New("only the owner hands the club over")
-	ErrNotAdmin         = errors.New("the new owner must be an admin of the club")
+	ErrNotFound            = errors.New("club not found")
+	ErrCannotEdit          = errors.New("only the admins can edit the club")
+	ErrInvalidBackdropSide = errors.New("invalid backdrop side")
+	ErrOwnerCannotLeave    = errors.New("the owner cannot leave the club")
+	ErrCannotAppoint       = errors.New("only the owner appoints the admins")
+	ErrNotMember           = errors.New("the user is not a member of the club")
+	ErrCannotPin           = errors.New("only the admins can add the club to their menu")
+	ErrTooManyPinned       = errors.New("at most 10 clubs in the menu")
+	ErrCannotTransfer      = errors.New("only the owner hands the club over")
+	ErrNotAdmin            = errors.New("the new owner must be an admin of the club")
 )
 
 // MaxPinned is how many of the clubs they run a user keeps in the left
@@ -47,7 +48,24 @@ type Club struct {
 	// page lists them above the wall rather than in the right column.
 	openTopics      bool
 	topicsAboveWall bool
+	// backdrop is "Фон страницы" of openvk: photos in the media service
+	// shown on the left and on the right of the page; uuid.Nil for none.
+	backdrop Backdrop
 }
+
+// Backdrop is the two sides of a club's backdrop; either may be uuid.Nil.
+type Backdrop struct {
+	Left  uuid.UUID
+	Right uuid.UUID
+}
+
+// BackdropSide is which side of the page a backdrop photo is on.
+type BackdropSide string
+
+const (
+	BackdropLeft  BackdropSide = "left"
+	BackdropRight BackdropSide = "right"
+)
 
 // New creates a club, open to posts from everyone and showing its creator
 // as in openvk, with no address and no members yet: storing it makes its
@@ -84,6 +102,7 @@ type Stored struct {
 
 	OpenTopics      bool
 	TopicsAboveWall bool
+	Backdrop        Backdrop
 }
 
 // Restore rebuilds a club from storage without validation or new IDs.
@@ -102,6 +121,7 @@ func Restore(s Stored) *Club {
 
 		openTopics:      s.OpenTopics,
 		topicsAboveWall: s.TopicsAboveWall,
+		backdrop:        s.Backdrop,
 	}
 }
 
@@ -148,6 +168,28 @@ func (c *Club) WithAvatar(role Role, avatarID uuid.UUID) (*Club, error) {
 
 	changed := *c
 	changed.avatarID = avatarID
+
+	return &changed, nil
+}
+
+// WithBackdrop returns c showing photoID (uuid.Nil: none) on side of its
+// page, set by someone who is role in it: only the admins change it, as
+// openvk's "Фон страницы".
+func (c *Club) WithBackdrop(role Role, side BackdropSide, photoID uuid.UUID) (*Club, error) {
+	if !role.Manages() {
+		return nil, ErrCannotEdit
+	}
+
+	changed := *c
+
+	switch side {
+	case BackdropLeft:
+		changed.backdrop.Left = photoID
+	case BackdropRight:
+		changed.backdrop.Right = photoID
+	default:
+		return nil, ErrInvalidBackdropSide
+	}
 
 	return &changed, nil
 }
@@ -277,4 +319,8 @@ func (c *Club) OpenTopics() bool {
 
 func (c *Club) TopicsAboveWall() bool {
 	return c.topicsAboveWall
+}
+
+func (c *Club) Backdrop() Backdrop {
+	return c.backdrop
 }

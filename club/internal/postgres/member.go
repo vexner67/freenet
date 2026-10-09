@@ -271,7 +271,9 @@ const listUserClubsQuery = `
 		c.website,
 		c.admins_display,
 		c.open_topics,
-		c.topics_above_wall
+		c.topics_above_wall,
+		c.backdrop_left,
+		c.backdrop_right
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1
@@ -395,7 +397,9 @@ const pinnedClubsQuery = `
 		c.website,
 		c.admins_display,
 		c.open_topics,
-		c.topics_above_wall
+		c.topics_above_wall,
+		c.backdrop_left,
+		c.backdrop_right
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1

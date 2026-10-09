@@ -33,6 +33,7 @@ const (
 	ClubService_ListUserClubs_FullMethodName      = "/club.v1.ClubService/ListUserClubs"
 	ClubService_SearchClubs_FullMethodName        = "/club.v1.ClubService/SearchClubs"
 	ClubService_SetClubAvatar_FullMethodName      = "/club.v1.ClubService/SetClubAvatar"
+	ClubService_SetClubBackdrop_FullMethodName    = "/club.v1.ClubService/SetClubBackdrop"
 	ClubService_PinClub_FullMethodName            = "/club.v1.ClubService/PinClub"
 	ClubService_ListPinnedClubs_FullMethodName    = "/club.v1.ClubService/ListPinnedClubs"
 	ClubService_ListMyClubIDs_FullMethodName      = "/club.v1.ClubService/ListMyClubIDs"
@@ -84,6 +85,9 @@ type ClubServiceClient interface {
 	// Its admins show a photo as the club's, which the media service has
 	// stored; an empty avatar_id takes it away.
 	SetClubAvatar(ctx context.Context, in *SetClubAvatarRequest, opts ...grpc.CallOption) (*SetClubAvatarResponse, error)
+	// Its admins only: one side of "Фон страницы", a photo of the club in
+	// the media service; an empty photo_id takes it away.
+	SetClubBackdrop(ctx context.Context, in *SetClubBackdropRequest, opts ...grpc.CallOption) (*SetClubBackdropResponse, error)
 	// The caller puts a club they run in their left menu, at most 10, or
 	// takes it out ("Добавить в левое меню").
 	PinClub(ctx context.Context, in *PinClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -245,6 +249,16 @@ func (c *clubServiceClient) SetClubAvatar(ctx context.Context, in *SetClubAvatar
 	return out, nil
 }
 
+func (c *clubServiceClient) SetClubBackdrop(ctx context.Context, in *SetClubBackdropRequest, opts ...grpc.CallOption) (*SetClubBackdropResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SetClubBackdropResponse)
+	err := c.cc.Invoke(ctx, ClubService_SetClubBackdrop_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clubServiceClient) PinClub(ctx context.Context, in *PinClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -357,6 +371,9 @@ type ClubServiceServer interface {
 	// Its admins show a photo as the club's, which the media service has
 	// stored; an empty avatar_id takes it away.
 	SetClubAvatar(context.Context, *SetClubAvatarRequest) (*SetClubAvatarResponse, error)
+	// Its admins only: one side of "Фон страницы", a photo of the club in
+	// the media service; an empty photo_id takes it away.
+	SetClubBackdrop(context.Context, *SetClubBackdropRequest) (*SetClubBackdropResponse, error)
 	// The caller puts a club they run in their left menu, at most 10, or
 	// takes it out ("Добавить в левое меню").
 	PinClub(context.Context, *PinClubRequest) (*emptypb.Empty, error)
@@ -426,6 +443,9 @@ func (UnimplementedClubServiceServer) SearchClubs(context.Context, *SearchClubsR
 }
 func (UnimplementedClubServiceServer) SetClubAvatar(context.Context, *SetClubAvatarRequest) (*SetClubAvatarResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetClubAvatar not implemented")
+}
+func (UnimplementedClubServiceServer) SetClubBackdrop(context.Context, *SetClubBackdropRequest) (*SetClubBackdropResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetClubBackdrop not implemented")
 }
 func (UnimplementedClubServiceServer) PinClub(context.Context, *PinClubRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PinClub not implemented")
@@ -703,6 +723,24 @@ func _ClubService_SetClubAvatar_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClubService_SetClubBackdrop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetClubBackdropRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).SetClubBackdrop(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_SetClubBackdrop_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).SetClubBackdrop(ctx, req.(*SetClubBackdropRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClubService_PinClub_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PinClubRequest)
 	if err := dec(in); err != nil {
@@ -887,6 +925,10 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetClubAvatar",
 			Handler:    _ClubService_SetClubAvatar_Handler,
+		},
+		{
+			MethodName: "SetClubBackdrop",
+			Handler:    _ClubService_SetClubBackdrop_Handler,
 		},
 		{
 			MethodName: "PinClub",
