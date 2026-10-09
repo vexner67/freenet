@@ -1167,7 +1167,7 @@ func TestRequestValidation(t *testing.T) {
 		{"unknown field", "POST", "/api/v1/auth/code", `{"mail":"a@b.c"}`, 400},
 		{"wrong type", "POST", "/api/v1/auth/code", `{"email":5}`, 400},
 		{"trailing data", "POST", "/api/v1/auth/code", `{"email":"a@b.c"}{}`, 400},
-		{"too large", "POST", "/api/v1/auth/code", `{"email":"` + strings.Repeat("a", 70<<10) + `"}`, 400},
+		{"too large", "POST", "/api/v1/auth/code", `{"email":"` + strings.Repeat("a", 1100<<10) + `"}`, 400},
 		{"unknown endpoint", "GET", "/api/v1/nope", "", 404},
 		{"wrong method", "GET", "/api/v1/auth/code", "", 405},
 		{"wrong method on a path with a parameter", "DELETE", "/api/v1/users/ann", "", 405},

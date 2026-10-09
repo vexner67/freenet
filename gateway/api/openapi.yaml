@@ -818,7 +818,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                text: { type: string, maxLength: 1000 }
+                text: { type: string, maxLength: 60000 }
                 club: { type: string, description: "The address or ID of a community to share it in" }
                 fromClub: { type: boolean }
                 signed: { type: boolean }
@@ -930,7 +930,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                text: { type: string, maxLength: 1000 }
+                text: { type: string, maxLength: 60000 }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 replyTo: { type: string, format: uuid, description: "The comment of this post to answer" }
                 fromClub: { type: boolean, description: "For the community of the post's wall, its admins only" }
@@ -1537,7 +1537,7 @@ paths:
               required: [text]
               additionalProperties: false
               properties:
-                text: { type: string, maxLength: 1000, description: "What the post says, as you leave it; may be empty when it has photos" }
+                text: { type: string, maxLength: 60000, description: "What the post says, as you leave it; may be empty when it has photos" }
                 signed: { type: boolean, description: "Name the author under the post (\"Подпись автора\")" }
       responses:
         "201":
@@ -1671,7 +1671,7 @@ paths:
               required: [title]
               properties:
                 title: { type: string, maxLength: 127 }
-                text: { type: string, maxLength: 1000 }
+                text: { type: string, maxLength: 60000 }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 fromClub: { type: boolean }
       responses:
@@ -1789,7 +1789,7 @@ paths:
             schema:
               type: object
               properties:
-                text: { type: string, maxLength: 1000 }
+                text: { type: string, maxLength: 60000 }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 fromClub: { type: boolean }
       responses:
@@ -2143,7 +2143,7 @@ paths:
               type: object
               required: [text]
               properties:
-                text: { type: string, maxLength: 1000 }
+                text: { type: string, maxLength: 60000 }
       responses:
         "201":
           description: The comment
@@ -2198,7 +2198,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                text: { type: string, maxLength: 1000 }
+                text: { type: string, maxLength: 60000 }
                 club: { type: string }
                 fromClub: { type: boolean }
                 signed: { type: boolean }
@@ -2511,7 +2511,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                text: { type: string, maxLength: 4096 }
+                text: { type: string, maxLength: 60000 }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 post: { type: string, format: uuid }
       responses:
@@ -2950,7 +2950,7 @@ components:
       required: [name, text, place]
       properties:
         name: { type: string, maxLength: 50 }
-        text: { type: string, maxLength: 1000 }
+        text: { type: string, maxLength: 60000 }
         place: { type: string, enum: [contacts, interests], description: Where it shows }
 
     About:
@@ -3133,7 +3133,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        text: { type: string, maxLength: 1000 }
+        text: { type: string, maxLength: 60000 }
         photos: { $ref: "#/components/schemas/PhotoIDs" }
         fromClub: { type: boolean, description: "Speak for the community (admins only; always on a closed wall)" }
         signed: { type: boolean, description: "With fromClub: name yourself under the post (\"Подпись автора\")" }
@@ -3142,7 +3142,7 @@ components:
       type: object
       additionalProperties: false
       properties:
-        text: { type: string, maxLength: 1000 }
+        text: { type: string, maxLength: 60000 }
         photos: { $ref: "#/components/schemas/PhotoIDs" }
 
     PhotoIDs:
