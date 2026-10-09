@@ -146,6 +146,19 @@ func TestDialog(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// Ann shares a post: a message of it alone.
+	post := uuid.NewString()
+	shared, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PostId: post})
+	if err != nil || shared.GetMessage().GetPostId() != post || shared.GetMessage().GetText() != "" {
+		t.Fatalf("a shared post = %v, %v", shared, err)
+	}
+	if _, err = s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PostId: "x"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bad post id: %v", err)
+	}
+	if _, err = s.client.DeleteMessage(s.as(t, ann), &messagev1.DeleteMessageRequest{Id: shared.GetMessage().GetId()}); err != nil {
+		t.Fatal(err)
+	}
+
 	// Bob polls for what came after the last message he had.
 	newer, err := s.client.ListMessages(s.as(t, bob), &messagev1.ListMessagesRequest{PeerId: ann.String(), After: fromBob[1]})
 	if err != nil || len(newer.GetMessages()) != 1 || newer.GetMessages()[0].GetId() != reply.GetMessage().GetId() {

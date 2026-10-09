@@ -45,9 +45,10 @@ const saveMessageQuery = `
 			recipient_id,
 			text,
 			photo_ids,
+			post_id,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		RETURNING id, sender_id, recipient_id
 	)
 	INSERT INTO dialogs (
@@ -72,7 +73,7 @@ const saveMessageQuery = `
 `
 
 func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error {
-	_, err := r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), m.CreatedAt())
+	_, err := r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), m.CreatedAt())
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -87,6 +88,7 @@ const getMessageQuery = `
 		recipient_id,
 		text,
 		photo_ids,
+		post_id,
 		created_at
 	FROM messages
 	WHERE id = $1
@@ -113,6 +115,7 @@ const (
 			recipient_id,
 			text,
 			photo_ids,
+			post_id,
 			created_at
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
@@ -128,6 +131,7 @@ const (
 			recipient_id,
 			text,
 			photo_ids,
+			post_id,
 			created_at
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
@@ -184,26 +188,41 @@ func scanMessage(row pgx.Row) (*message.Message, error) {
 		s      message.Stored
 		text   string
 		photos []uuid.UUID
+		post   *uuid.UUID
 	)
 
-	if err := row.Scan(&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &s.CreatedAt); err != nil {
+	if err := row.Scan(&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &post, &s.CreatedAt); err != nil {
 		return nil, err
 	}
 
-	return restore(s, text, photos), nil
+	return restore(s, text, photos, post), nil
 }
 
 // restore finishes a scanned message. Data comes from our own table and
 // was validated on write.
-func restore(s message.Stored, text string, photos []uuid.UUID) *message.Message {
+func restore(s message.Stored, text string, photos []uuid.UUID, post *uuid.UUID) *message.Message {
 	if len(photos) == 0 {
 		photos = nil // no photos, as a new message has them
 	}
 
-	s.Content = message.RestoreContent(message.Text(text), message.Photos(photos))
+	var postID uuid.UUID
+	if post != nil {
+		postID = *post
+	}
+
+	s.Content = message.RestoreContent(message.Text(text), message.Photos(photos), postID)
 	s.CreatedAt = s.CreatedAt.UTC()
 
 	return message.Restore(s)
+}
+
+// postIDToDB is NULL for no post.
+func postIDToDB(id uuid.UUID) *uuid.UUID {
+	if id == uuid.Nil {
+		return nil
+	}
+
+	return &id
 }
 
 // photoIDs is photos for the photo_ids column: pgx writes a nil slice as
@@ -239,6 +258,7 @@ const listDialogsQuery = `
 		m.recipient_id,
 		m.text,
 		m.photo_ids,
+		m.post_id,
 		m.created_at
 	FROM dialogs d
 	JOIN messages m ON m.id = d.last_message_id
@@ -282,15 +302,16 @@ func scanDialog(row pgx.Row) (message.Dialog, error) {
 		s      message.Stored
 		text   string
 		photos []uuid.UUID
+		post   *uuid.UUID
 	)
 
 	err := row.Scan(&d.PeerID, &d.LastIncomingID, &d.Marks.Mine, &d.Marks.Theirs,
-		&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &s.CreatedAt)
+		&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &post, &s.CreatedAt)
 	if err != nil {
 		return message.Dialog{}, err
 	}
 
-	d.LastMessage = restore(s, text, photos)
+	d.LastMessage = restore(s, text, photos, post)
 
 	return d, nil
 }
@@ -456,6 +477,7 @@ const deleteUserDialogsQuery = `
 			m.recipient_id,
 			m.text,
 			m.photo_ids,
+			m.post_id,
 			m.created_at
 	), gone_dialogs AS (
 		DELETE FROM dialogs
@@ -472,6 +494,7 @@ const deleteUserDialogsQuery = `
 		recipient_id,
 		text,
 		photo_ids,
+		post_id,
 		created_at
 	FROM gone_messages
 	WHERE cardinality(photo_ids) > 0

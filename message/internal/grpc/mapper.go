@@ -20,7 +20,17 @@ func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 		Read:           read,
 		PhotoIds:       photoStrings(m.Photos()),
 		DeletableUntil: timestamppb.New(m.DeletableUntil()),
+		PostId:         postString(m.Post()),
 	}
+}
+
+// postString is "" for no post, as the proto field says.
+func postString(id uuid.UUID) string {
+	if id == uuid.Nil {
+		return ""
+	}
+
+	return id.String()
 }
 
 func photoStrings(photos message.Photos) []string {
@@ -53,7 +63,14 @@ func fromProtoContent(req *messagev1.SendMessageRequest) (message.Content, error
 		return message.Content{}, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	content, err := message.NewContent(text, photos)
+	var post uuid.UUID
+	if req.GetPostId() != "" {
+		if post, err = uuid.Parse(req.GetPostId()); err != nil {
+			return message.Content{}, status.Error(codes.InvalidArgument, "invalid post id")
+		}
+	}
+
+	content, err := message.NewContent(text, photos, post)
 	if err != nil {
 		return message.Content{}, status.Error(codes.InvalidArgument, err.Error())
 	}

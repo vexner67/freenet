@@ -15,11 +15,15 @@ func TestNewContent(t *testing.T) {
 
 	photo := uuid.New()
 
-	if _, err := message.NewContent("", nil); !errors.Is(err, message.ErrTextEmpty) {
+	if _, err := message.NewContent("", nil, uuid.Nil); !errors.Is(err, message.ErrTextEmpty) {
 		t.Fatalf("neither text nor photos: %v", err)
 	}
-	if c, err := message.NewContent("", message.Photos{photo}); err != nil || len(c.Photos()) != 1 {
+	if c, err := message.NewContent("", message.Photos{photo}, uuid.Nil); err != nil || len(c.Photos()) != 1 {
 		t.Fatalf("photos only = %+v, %v", c, err)
+	}
+	// A post shared into the dialog says something too.
+	if c, err := message.NewContent("", nil, photo); err != nil || c.Post() != photo {
+		t.Fatalf("a post only = %+v, %v", c, err)
 	}
 
 	for _, tt := range []struct {
@@ -82,7 +86,7 @@ func TestNew(t *testing.T) {
 	ann, bob := uuid.New(), uuid.New()
 	now := time.Date(2026, 10, 5, 18, 0, 0, 123456789, time.FixedZone("MSK", 3*3600))
 
-	m, err := message.New(ann, bob, message.RestoreContent("привет", nil), now)
+	m, err := message.New(ann, bob, message.RestoreContent("привет", nil, uuid.Nil), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -93,7 +97,7 @@ func TestNew(t *testing.T) {
 		t.Fatalf("createdAt = %v, want UTC with microseconds", m.CreatedAt())
 	}
 
-	later, err := message.New(bob, ann, message.RestoreContent("и тебе", nil), now)
+	later, err := message.New(bob, ann, message.RestoreContent("и тебе", nil, uuid.Nil), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +105,7 @@ func TestNew(t *testing.T) {
 		t.Fatal("IDs must grow, dialogs are ordered by them")
 	}
 
-	if _, err = message.New(ann, ann, message.RestoreContent("сам себе", nil), now); !errors.Is(err, message.ErrToYourself) {
+	if _, err = message.New(ann, ann, message.RestoreContent("сам себе", nil, uuid.Nil), now); !errors.Is(err, message.ErrToYourself) {
 		t.Fatalf("to yourself: %v", err)
 	}
 }
@@ -113,7 +117,7 @@ func TestReadMarks(t *testing.T) {
 	now := time.Now()
 
 	mustNew := func(sender, recipient uuid.UUID) *message.Message {
-		m, err := message.New(sender, recipient, message.RestoreContent("x", nil), now)
+		m, err := message.New(sender, recipient, message.RestoreContent("x", nil, uuid.Nil), now)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -158,7 +162,7 @@ func TestCheckDelete(t *testing.T) {
 	ann, bob := uuid.New(), uuid.New()
 	sent := time.Date(2026, 10, 5, 18, 0, 0, 0, time.UTC)
 
-	m, err := message.New(ann, bob, message.RestoreContent("ой", nil), sent)
+	m, err := message.New(ann, bob, message.RestoreContent("ой", nil, uuid.Nil), sent)
 	if err != nil {
 		t.Fatal(err)
 	}

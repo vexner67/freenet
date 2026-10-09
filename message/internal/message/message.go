@@ -84,23 +84,34 @@ func NewPhotos(ids []uuid.UUID) (Photos, error) {
 	return Photos(ids), nil
 }
 
-// Content is what a message shows: text, photos or both, never nothing.
+// Content is what a message shows: text, photos, a post shared into the
+// dialog (openvk's "Поделиться" "в переписку") or some of them, never
+// nothing. The post lives in the post service: the message keeps its ID,
+// and a deleted post stays "Запись удалена.".
 type Content struct {
 	text   Text
 	photos Photos
+	post   uuid.UUID
 }
 
-func NewContent(text Text, photos Photos) (Content, error) {
-	if text == "" && len(photos) == 0 {
+// NewContent: post is uuid.Nil for none; whether it exists the caller has
+// checked with the post service.
+func NewContent(text Text, photos Photos, post uuid.UUID) (Content, error) {
+	if text == "" && len(photos) == 0 && post == uuid.Nil {
 		return Content{}, ErrTextEmpty
 	}
 
-	return Content{text: text, photos: photos}, nil
+	return Content{text: text, photos: photos, post: post}, nil
 }
 
 // RestoreContent rebuilds content from storage without validation.
-func RestoreContent(text Text, photos Photos) Content {
-	return Content{text: text, photos: photos}
+func RestoreContent(text Text, photos Photos, post uuid.UUID) Content {
+	return Content{text: text, photos: photos, post: post}
+}
+
+// Post is the post shared into the dialog, uuid.Nil for none.
+func (c Content) Post() uuid.UUID {
+	return c.post
 }
 
 func (c Content) Text() Text {
@@ -179,6 +190,11 @@ func (m *Message) Text() Text {
 
 func (m *Message) Photos() Photos {
 	return m.content.photos
+}
+
+// Post is the post shared in the message, uuid.Nil for none.
+func (m *Message) Post() uuid.UUID {
+	return m.content.post
 }
 
 func (m *Message) CreatedAt() time.Time {

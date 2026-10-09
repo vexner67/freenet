@@ -54,6 +54,9 @@ message Message {
   repeated string photo_ids = 7;
   // Until when the sender may delete it.
   google.protobuf.Timestamp deletable_until = 8;
+  // A post of the post service shared into the dialog ("Поделиться" "в
+  // переписку"); empty for none.
+  string post_id = 9;
 }
 
 message Dialog {
@@ -65,10 +68,12 @@ message Dialog {
 
 message SendMessageRequest {
   string recipient_id = 1;
-  // Text, photos or both. The caller has checked with the media service
-  // that the photos are the sender's.
+  // Text, photos, a shared post or some of them. The caller has checked
+  // with the media service that the photos are the sender's, and with the
+  // post service that the post exists.
   string text = 2;
   repeated string photo_ids = 3;
+  string post_id = 4;
 }
 
 message SendMessageResponse {
