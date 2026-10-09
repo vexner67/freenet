@@ -102,6 +102,9 @@ type PublicProfile struct {
 	Online   bool
 	// Backdrop is shown on the sides of the page ("Фон страницы").
 	Backdrop Backdrop
+	// Completeness is how full the page is, in percent; 0 when the page is
+	// deleted or hidden. The parts it weighs may be hidden, the sum is not.
+	Completeness int
 }
 
 // birthYearMask is the year of a birthday told without one: a leap year,
@@ -321,6 +324,10 @@ func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties, now time.Time) Publi
 	p := u.publicProfile(access.Info)
 	if p.LastSeen = u.lastSeenFor(viewerID, t, now); !p.LastSeen.IsZero() {
 		p.Online = u.IsOnline(now)
+	}
+
+	if !u.IsDeactivated() {
+		p.Completeness, _ = u.Completeness()
 	}
 
 	return p

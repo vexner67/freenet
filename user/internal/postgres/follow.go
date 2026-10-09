@@ -244,6 +244,56 @@ func (r *FollowRepository) CountOnlineFollowing(ctx context.Context, userID uuid
 	return n, nil
 }
 
+// The common follows are read by the user's follows; the viewer's follow
+// of each is one lookup of the (follower, followee) key.
+const (
+	listCommonFollowingQuery = `
+	SELECT
+		f.id,` + qualifiedUserColumns + `
+	FROM follows f
+	JOIN users u ON u.id = f.followee_id
+	WHERE f.follower_id = $1
+		AND EXISTS (SELECT 1 FROM follows v WHERE v.follower_id = $2 AND v.followee_id = f.followee_id)
+		AND f.id < $3
+	ORDER BY f.id DESC
+	LIMIT $4
+`
+
+	countCommonFollowingQuery = `
+	SELECT count(*)
+	FROM follows f
+	WHERE f.follower_id = $1
+		AND EXISTS (SELECT 1 FROM follows v WHERE v.follower_id = $2 AND v.followee_id = f.followee_id)
+`
+)
+
+func (r *FollowRepository) ListCommonFollowing(ctx context.Context, userID, viewerID, before uuid.UUID, limit int) ([]service.Followed, error) {
+	if before == uuid.Nil {
+		before = uuid.Max
+	}
+
+	rows, err := r.conn(ctx).Query(ctx, listCommonFollowingQuery, userID, viewerID, before, limit)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	found, err := scanFollowed(rows)
+	if err != nil {
+		return nil, errs.Wrap("scanFollowed", err)
+	}
+
+	return found, nil
+}
+
+func (r *FollowRepository) CountCommonFollowing(ctx context.Context, userID, viewerID uuid.UUID) (int, error) {
+	var n int
+	if err := r.conn(ctx).QueryRow(ctx, countCommonFollowingQuery, userID, viewerID).Scan(&n); err != nil {
+		return 0, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return n, nil
+}
+
 const followingIDsQuery = `
 	SELECT followee_id
 	FROM follows
