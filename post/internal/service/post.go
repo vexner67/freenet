@@ -87,6 +87,9 @@ type LikeRepository interface {
 	Unlike(ctx context.Context, postID, userID uuid.UUID) (int, error)
 	// Liked returns which of postIDs the user likes.
 	Liked(ctx context.Context, userID uuid.UUID, postIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+	// Likers returns up to limit who like the post, newest first, after
+	// the cursor (nil: from the newest).
+	Likers(ctx context.Context, postID uuid.UUID, after *LikerCursor, limit int) ([]Liker, error)
 }
 
 // Page is one screen of a wall. NextCursor is uuid.Nil on the last page.
@@ -108,6 +111,7 @@ type PostService struct {
 	photos      PhotoKeeper
 	moderators  WallModerators
 	now         func() time.Time
+	albumPhotos AlbumPhotoGetter
 }
 
 // PostDeps are what PostService works with.
@@ -120,6 +124,13 @@ type PostDeps struct {
 	Notifier   Notifier
 	Photos     PhotoKeeper
 	Moderators WallModerators
+	// AlbumPhotos are the photos of albums a post may share; nil: none.
+	AlbumPhotos AlbumPhotoGetter
+}
+
+// AlbumPhotoGetter finds a photo of an album: post.ErrAlbumPhotoNotFound.
+type AlbumPhotoGetter interface {
+	Get(ctx context.Context, id uuid.UUID) (*post.AlbumPhoto, error)
 }
 
 func NewPostService(d PostDeps) *PostService {
@@ -132,6 +143,7 @@ func NewPostService(d PostDeps) *PostService {
 		notifier:    d.Notifier,
 		photos:      d.Photos,
 		moderators:  d.Moderators,
+		albumPhotos: d.AlbumPhotos,
 		now:         time.Now,
 	}
 }
@@ -200,28 +212,46 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 	return p, nil
 }
 
-// Repost shares postID on the author's own wall, with text that may be
-// empty, as openvk's "Поделиться" does. A repost that passes another post
-// on without a word is not shared itself: its original is (see
-// post.Shared). The author of the shared post hears about it.
-func (s *PostService) Repost(ctx context.Context, authorID, postID uuid.UUID, text post.Text) (*post.Post, error) {
-	shared, err := s.postRepo.Get(ctx, postID)
+// RepostInput is a post to share: on the author's own wall, or on a
+// community's (WallID), there for the community (FromWall) and then
+// maybe signed, as the caller has checked the author may.
+type RepostInput struct {
+	AuthorID uuid.UUID
+	PostID   uuid.UUID
+	// PhotoID shares a photo of an album instead of a post ("Поделиться"
+	// under a photo).
+	PhotoID  uuid.UUID
+	Text     post.Text
+	WallID   uuid.UUID
+	FromWall bool
+	Signed   bool
+}
+
+// Repost shares a post, with text that may be empty, as openvk's
+// "Поделиться" does: on the author's wall or a community's. A repost that
+// passes another post on without a word is not shared itself: its
+// original is (see post.Shared). The author of the shared post hears
+// about it, from the community when the repost speaks for it.
+func (s *PostService) Repost(ctx context.Context, in RepostInput) (*post.Post, error) {
+	authorID := in.AuthorID
+
+	content, recipient, err := s.repostContent(ctx, in)
 	if err != nil {
-		return nil, errs.Wrap("s.postRepo.Get", err)
+		return nil, err
 	}
 
-	if id := shared.Shared(); id != shared.ID() {
-		if shared, err = s.postRepo.Get(ctx, id); err != nil {
-			return nil, errs.Wrap("s.postRepo.Get", err)
-		}
+	wallID, actorID := authorID, authorID
+	if in.WallID != uuid.Nil {
+		wallID = in.WallID
 	}
 
-	content, err := post.NewRepost(shared.ID(), text)
-	if err != nil {
-		return nil, errs.Wrap("post.NewRepost", err)
+	var repost *post.Post
+	if in.FromWall {
+		repost, err = post.NewFromWall(wallID, authorID, content, in.Signed, s.now())
+		actorID = wallID
+	} else {
+		repost, err = post.New(wallID, authorID, content, s.now())
 	}
-
-	repost, err := post.New(authorID, authorID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("post.New", err)
 	}
@@ -232,18 +262,53 @@ func (s *PostService) Repost(ctx context.Context, authorID, postID uuid.UUID, te
 			return errs.Wrap("s.postRepo.Save", err)
 		}
 
-		recipient := shared.Notified()
-		if recipient == uuid.Nil || recipient == authorID {
+		if recipient == uuid.Nil || recipient == authorID || recipient == actorID {
 			return nil
 		}
 
-		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, Event{Kind: EventRepost, RecipientID: recipient, ActorID: authorID, PostID: repost.ID()}))
+		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, Event{Kind: EventRepost, RecipientID: recipient, ActorID: actorID, PostID: repost.ID()}))
 	})
 	if err != nil {
 		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return repost, nil
+}
+
+// repostContent is what a repost shows and whom to notify: the shared
+// post, or its original when it passes it on, and that post's author; or
+// a shared photo of an album, of which nobody hears.
+func (s *PostService) repostContent(ctx context.Context, in RepostInput) (post.Content, uuid.UUID, error) {
+	if in.PhotoID != uuid.Nil {
+		if s.albumPhotos == nil {
+			return post.Content{}, uuid.Nil, post.ErrAlbumPhotoNotFound
+		}
+
+		if _, err := s.albumPhotos.Get(ctx, in.PhotoID); err != nil {
+			return post.Content{}, uuid.Nil, errs.Wrap("s.albumPhotos.Get", err)
+		}
+
+		content, err := post.NewPhotoShare(in.PhotoID, in.Text)
+		return content, uuid.Nil, errs.Wrap("post.NewPhotoShare", err)
+	}
+
+	shared, err := s.postRepo.Get(ctx, in.PostID)
+	if err != nil {
+		return post.Content{}, uuid.Nil, errs.Wrap("s.postRepo.Get", err)
+	}
+
+	if id := shared.Shared(); id != shared.ID() {
+		if shared, err = s.postRepo.Get(ctx, id); err != nil {
+			return post.Content{}, uuid.Nil, errs.Wrap("s.postRepo.Get", err)
+		}
+	}
+
+	content, err := post.NewRepost(shared.ID(), in.Text)
+	if err != nil {
+		return post.Content{}, uuid.Nil, errs.Wrap("post.NewRepost", err)
+	}
+
+	return content, shared.Notified(), nil
 }
 
 // Delete removes a post with its comments and all their photos, whoever
@@ -442,6 +507,26 @@ func (s *PostService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Pos
 // Like is idempotent: liking twice counts once, and the notification
 // service notifies the author once. It returns how many likes the post
 // has now.
+// Likers pages who like a post, newest first, as openvk's "Понравилось N
+// людям"; post.ErrNotFound for a missing post.
+func (s *PostService) Likers(ctx context.Context, postID uuid.UUID, cursor *LikerCursor, size int) (LikerPage, error) {
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	p, err := s.postRepo.Get(ctx, postID)
+	if err != nil {
+		return LikerPage{}, errs.Wrap("s.postRepo.Get", err)
+	}
+
+	found, err := s.likeRepo.Likers(ctx, postID, cursor, size+1)
+	if err != nil {
+		return LikerPage{}, errs.Wrap("s.likeRepo.Likers", err)
+	}
+
+	return likerPage(found, size, p.Counters().Likes), nil
+}
+
 func (s *PostService) Like(ctx context.Context, userID, postID uuid.UUID) (int, error) {
 	p, err := s.postRepo.Get(ctx, postID)
 	if err != nil {

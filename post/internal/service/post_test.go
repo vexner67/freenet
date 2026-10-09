@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 
@@ -572,7 +573,7 @@ func TestPostService_Repost(t *testing.T) {
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	original := write(t, svc, ann, "оригинал")[0]
 
-	shared, err := svc.Repost(ctx, bob, original.ID(), "")
+	shared, err := svc.Repost(ctx, service.RepostInput{AuthorID: bob, PostID: original.ID(), Text: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -586,7 +587,7 @@ func TestPostService_Repost(t *testing.T) {
 	}
 
 	// Cat shares bob's repost without a word: the original is shared.
-	passed, err := svc.Repost(ctx, cat, shared.ID(), "")
+	passed, err := svc.Repost(ctx, service.RepostInput{AuthorID: cat, PostID: shared.ID(), Text: ""})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -595,11 +596,11 @@ func TestPostService_Repost(t *testing.T) {
 	}
 
 	// A repost with a word of its own is shared itself.
-	said, err := svc.Repost(ctx, cat, original.ID(), "согласна")
+	said, err := svc.Repost(ctx, service.RepostInput{AuthorID: cat, PostID: original.ID(), Text: "согласна"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	ownWord, err := svc.Repost(ctx, bob, said.ID(), "")
+	ownWord, err := svc.Repost(ctx, service.RepostInput{AuthorID: bob, PostID: said.ID(), Text: ""})
 	if err != nil || ownWord.Content().RepostOf() != said.ID() {
 		t.Fatalf("sharing a repost with a word: %v, %v", ownWord, err)
 	}
@@ -609,7 +610,7 @@ func TestPostService_Repost(t *testing.T) {
 		t.Fatalf("original reposts = %+v, %v; want 3", got.Counters(), err)
 	}
 
-	if _, err = svc.Repost(ctx, ann, original.ID(), "моё"); err != nil {
+	if _, err = svc.Repost(ctx, service.RepostInput{AuthorID: ann, PostID: original.ID(), Text: "моё"}); err != nil {
 		t.Fatal(err)
 	}
 	if n := len(notifier.notified); n != 4 {
@@ -626,8 +627,19 @@ func TestPostService_Repost(t *testing.T) {
 		t.Fatalf("forgotten = %v, want the repost (its notification goes)", f)
 	}
 
-	if _, err = svc.Repost(ctx, bob, uuid.New(), ""); !errors.Is(err, post.ErrNotFound) {
+	if _, err = svc.Repost(ctx, service.RepostInput{AuthorID: bob, PostID: uuid.New(), Text: ""}); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("sharing nothing: %v, want ErrNotFound", err)
+	}
+
+	// "в группу": for the community, signed; ann hears it from the club.
+	club := uuid.New()
+	inClub, err := svc.Repost(ctx, service.RepostInput{AuthorID: cat, PostID: original.ID(), WallID: club, FromWall: true, Signed: true})
+	if err != nil || inClub.WallID() != club || inClub.AuthorID() != cat || !inClub.FromWall() || !inClub.Signed() {
+		t.Fatalf("a repost in a club: %+v, %v", inClub, err)
+	}
+	last := notifier.notified[len(notifier.notified)-1]
+	if last.ActorID != club || last.RecipientID != ann || last.PostID != inClub.ID() {
+		t.Fatalf("notified %+v, want from the club", last)
 	}
 }
 
@@ -851,7 +863,7 @@ func TestPostService_ClubWalls(t *testing.T) {
 	if _, err = comments.Create(ctx, service.CommentInput{AuthorID: member, PostID: news.ID(), Content: post.RestoreCommentContent("ура", nil)}); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = posts.Repost(ctx, member, news.ID(), ""); err != nil {
+	if _, err = posts.Repost(ctx, service.RepostInput{AuthorID: member, PostID: news.ID(), Text: ""}); err != nil {
 		t.Fatal(err)
 	}
 	if len(notifier.notified) != 0 {
@@ -945,4 +957,51 @@ func ids(posts []*post.Post) []uuid.UUID {
 		out[i] = p.ID()
 	}
 	return out
+}
+
+func TestPostService_Likers(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newPostService()
+	ann := uuid.New()
+	p := write(t, svc, ann, "привет")[0]
+
+	var users []uuid.UUID
+	for range 5 {
+		u := uuid.New()
+		users = append(users, u)
+		if _, err := svc.Like(ctx, u, p.ID()); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	var (
+		got    []uuid.UUID
+		cursor *service.LikerCursor
+	)
+	for {
+		page, err := svc.Likers(ctx, p.ID(), cursor, 2)
+		if err != nil || page.Total != 5 {
+			t.Fatalf("Likers = %+v, %v", page, err)
+		}
+		for _, l := range page.Likers {
+			got = append(got, l.UserID)
+		}
+		if page.Next == nil {
+			break
+		}
+		cursor = page.Next
+	}
+
+	// Each once across the pages; likes of one microsecond go by user.
+	slices.SortFunc(got, func(a, b uuid.UUID) int { return strings.Compare(a.String(), b.String()) })
+	slices.SortFunc(users, func(a, b uuid.UUID) int { return strings.Compare(a.String(), b.String()) })
+	if !slices.Equal(got, users) {
+		t.Fatalf("likers %v, want %v", got, users)
+	}
+
+	if _, err := svc.Likers(ctx, uuid.New(), nil, 0); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("a missing post: %v", err)
+	}
 }

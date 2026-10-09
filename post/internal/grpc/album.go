@@ -204,8 +204,20 @@ func (h *PostHandler) ListAlbumPhotos(ctx context.Context, req *postv1.ListAlbum
 		NextCursor: cursorString(page.NextCursor),
 		Total:      int32(page.Total), //nolint:gosec // a counter from an int4 column
 	}
+	ids := make([]uuid.UUID, 0, len(page.Photos))
 	for _, p := range page.Photos {
-		resp.Photos = append(resp.Photos, toProtoAlbumPhoto(p, viewer))
+		ids = append(ids, p.ID())
+	}
+
+	liked, err := h.albumService.LikedPhotos(ctx, viewer, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, p := range page.Photos {
+		pp := toProtoAlbumPhoto(p, viewer)
+		pp.Liked = liked[p.ID()]
+		resp.Photos = append(resp.Photos, pp)
 	}
 
 	return resp, nil
@@ -224,7 +236,15 @@ func (h *PostHandler) GetAlbumPhoto(ctx context.Context, req *postv1.GetAlbumPho
 
 	viewer := viewerID(ctx)
 
-	return &postv1.GetAlbumPhotoResponse{Photo: toProtoAlbumPhoto(p, viewer), Album: toProtoAlbum(a, nil, viewer)}, nil
+	liked, err := h.albumService.LikedPhotos(ctx, viewer, []uuid.UUID{p.ID()})
+	if err != nil {
+		return nil, err
+	}
+
+	pp := toProtoAlbumPhoto(p, viewer)
+	pp.Liked = liked[p.ID()]
+
+	return &postv1.GetAlbumPhotoResponse{Photo: pp, Album: toProtoAlbum(a, nil, viewer)}, nil
 }
 
 func (h *PostHandler) EditAlbumPhoto(ctx context.Context, req *postv1.EditAlbumPhotoRequest) (*postv1.EditAlbumPhotoResponse, error) {
@@ -341,11 +361,13 @@ func toProtoAlbum(a *post.Album, cover *post.AlbumPhoto, viewerID uuid.UUID) *po
 
 func toProtoAlbumPhoto(p *post.AlbumPhoto, viewerID uuid.UUID) *postv1.AlbumPhoto {
 	return &postv1.AlbumPhoto{
-		Id:          p.ID().String(),
-		AlbumId:     p.AlbumID().String(),
-		AuthorId:    p.AuthorID().String(),
-		Description: p.Description().String(),
-		CreatedAt:   timestamppb.New(p.CreatedAt()),
-		Mine:        viewerID != uuid.Nil && viewerID == p.AuthorID(),
+		Id:           p.ID().String(),
+		AlbumId:      p.AlbumID().String(),
+		AuthorId:     p.AuthorID().String(),
+		Description:  p.Description().String(),
+		CreatedAt:    timestamppb.New(p.CreatedAt()),
+		Mine:         viewerID != uuid.Nil && viewerID == p.AuthorID(),
+		LikeCount:    int32(p.Likes()),    //nolint:gosec // a counter from an int4 column
+		CommentCount: int32(p.Comments()), //nolint:gosec // a counter from an int4 column
 	}
 }

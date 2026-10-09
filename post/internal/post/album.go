@@ -226,6 +226,9 @@ type AlbumPhoto struct {
 	authorID    uuid.UUID
 	description Description
 	createdAt   time.Time
+	// likes and comments count them, as a post counts its.
+	likes    int
+	comments int
 }
 
 // NewAlbumPhoto puts photoID, uploaded by authorID, in album a.
@@ -251,11 +254,25 @@ type StoredAlbumPhoto struct {
 	AuthorID    uuid.UUID
 	Description Description
 	CreatedAt   time.Time
+	Likes       int
+	Comments    int
 }
 
 // RestoreAlbumPhoto rebuilds a photo from storage without validation.
 func RestoreAlbumPhoto(s StoredAlbumPhoto) *AlbumPhoto {
-	return &AlbumPhoto{id: s.ID, albumID: s.AlbumID, authorID: s.AuthorID, description: s.Description, createdAt: s.CreatedAt}
+	return &AlbumPhoto{
+		id: s.ID, albumID: s.AlbumID, authorID: s.AuthorID, description: s.Description, createdAt: s.CreatedAt,
+		likes: s.Likes, comments: s.Comments,
+	}
+}
+
+// Likes and Comments count the likes and the comments of the photo.
+func (p *AlbumPhoto) Likes() int {
+	return p.likes
+}
+
+func (p *AlbumPhoto) Comments() int {
+	return p.comments
 }
 
 // Described returns p with a new description by requesterID: only who

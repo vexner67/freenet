@@ -160,7 +160,9 @@ const deleteAlbumQuery = `
 		album_id,
 		author_id,
 		description,
-		created_at
+		created_at,
+		like_count,
+		comment_count
 	FROM album_photos
 	WHERE album_id IN (SELECT id FROM gone)
 `
@@ -266,9 +268,16 @@ const deleteUserAlbumPhotosQuery = `
 	WHERE a.id = d.album_id
 `
 
-// DeleteByUser deletes the albums a user owns with their photos, and the
-// photos they put in others' albums. It runs in the transaction of ctx.
+// DeleteByUser deletes the albums a user owns with their photos, the
+// photos they put in others' albums and their likes and comments on
+// photos. It runs in the transaction of ctx.
 func (r *AlbumRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+	for _, query := range []string{deleteUserPhotoLikesQuery, deleteUserPhotoCommentsQuery} {
+		if _, err := r.conn(ctx).Exec(ctx, query, userID); err != nil {
+			return errs.Wrap("r.conn.Exec", err)
+		}
+	}
+
 	if _, err := r.conn(ctx).Exec(ctx, deleteUserAlbumsQuery, userID); err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -358,7 +367,9 @@ const getAlbumPhotoQuery = `
 		album_id,
 		author_id,
 		description,
-		created_at
+		created_at,
+		like_count,
+		comment_count
 	FROM album_photos
 	WHERE id = $1
 `
@@ -428,7 +439,9 @@ const listAlbumPhotosQuery = `
 		album_id,
 		author_id,
 		description,
-		created_at
+		created_at,
+		like_count,
+		comment_count
 	FROM album_photos
 	WHERE album_id = $1
 		AND id > $2
@@ -451,7 +464,9 @@ const albumCoversQuery = `
 		album_id,
 		author_id,
 		description,
-		created_at
+		created_at,
+		like_count,
+		comment_count
 	FROM album_photos
 	WHERE album_id = ANY($1)
 	ORDER BY album_id, id
@@ -492,7 +507,7 @@ func scanAlbumPhoto(row pgx.Row) (*post.AlbumPhoto, error) {
 		description string
 	)
 
-	if err := row.Scan(&s.ID, &s.AlbumID, &s.AuthorID, &description, &s.CreatedAt); err != nil {
+	if err := row.Scan(&s.ID, &s.AlbumID, &s.AuthorID, &description, &s.CreatedAt, &s.Likes, &s.Comments); err != nil {
 		return nil, err
 	}
 

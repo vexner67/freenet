@@ -5,6 +5,7 @@ import (
 	"context"
 	"slices"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -18,19 +19,19 @@ import (
 type Store struct {
 	mu       sync.RWMutex
 	posts    map[uuid.UUID]*post.Post
-	likes    map[uuid.UUID]map[uuid.UUID]struct{} // post → users
+	likes    map[uuid.UUID]map[uuid.UUID]time.Time // post → users → when
 	comments map[uuid.UUID]*post.Comment
-	// commentLikes are comment → users, counted in the comments.
-	commentLikes map[uuid.UUID]map[uuid.UUID]struct{}
+	// commentLikes are comment → users → when, counted in the comments.
+	commentLikes map[uuid.UUID]map[uuid.UUID]time.Time
 	pins         map[uuid.UUID]uuid.UUID // wall → its pinned post
 }
 
 func NewStore() *Store {
 	return &Store{
 		posts:        make(map[uuid.UUID]*post.Post),
-		likes:        make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		likes:        make(map[uuid.UUID]map[uuid.UUID]time.Time),
 		comments:     make(map[uuid.UUID]*post.Comment),
-		commentLikes: make(map[uuid.UUID]map[uuid.UUID]struct{}),
+		commentLikes: make(map[uuid.UUID]map[uuid.UUID]time.Time),
 		pins:         make(map[uuid.UUID]uuid.UUID),
 	}
 }

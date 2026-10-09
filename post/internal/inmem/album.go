@@ -20,12 +20,18 @@ type AlbumRepository struct {
 	mu     sync.RWMutex
 	albums map[uuid.UUID]post.StoredAlbum
 	photos map[uuid.UUID]*post.AlbumPhoto
+	// photoLikes are photo → users → when; photoComments by ID. A deleted
+	// photo takes both, as the foreign keys do.
+	photoLikes    map[uuid.UUID]map[uuid.UUID]time.Time
+	photoComments map[uuid.UUID]*post.PhotoComment
 }
 
 func NewAlbumRepository() *AlbumRepository {
 	return &AlbumRepository{
-		albums: make(map[uuid.UUID]post.StoredAlbum),
-		photos: make(map[uuid.UUID]*post.AlbumPhoto),
+		albums:        make(map[uuid.UUID]post.StoredAlbum),
+		photos:        make(map[uuid.UUID]*post.AlbumPhoto),
+		photoLikes:    make(map[uuid.UUID]map[uuid.UUID]time.Time),
+		photoComments: make(map[uuid.UUID]*post.PhotoComment),
 	}
 }
 
@@ -138,12 +144,38 @@ func (r *AlbumRepository) deleteAlbum(id uuid.UUID) []*post.AlbumPhoto {
 	var gone []*post.AlbumPhoto
 	for pid, p := range r.photos {
 		if p.AlbumID() == id {
-			delete(r.photos, pid)
+			r.deletePhoto(pid)
 			gone = append(gone, p)
 		}
 	}
 
 	return gone
+}
+
+// deletePhoto drops a photo with its likes and comments; the lock is held.
+func (r *AlbumRepository) deletePhoto(id uuid.UUID) {
+	delete(r.photos, id)
+	delete(r.photoLikes, id)
+
+	for cid, c := range r.photoComments {
+		if c.PhotoID() == id {
+			delete(r.photoComments, cid)
+		}
+	}
+}
+
+// recountPhoto adds likes and comments to the counters of a photo, which
+// is replaced: photos handed out never change. The lock is held.
+func (r *AlbumRepository) recountPhoto(id uuid.UUID, likes, comments int) {
+	p, ok := r.photos[id]
+	if !ok {
+		return
+	}
+
+	r.photos[id] = post.RestoreAlbumPhoto(post.StoredAlbumPhoto{
+		ID: p.ID(), AlbumID: p.AlbumID(), AuthorID: p.AuthorID(), Description: p.Description(), CreatedAt: p.CreatedAt(),
+		Likes: p.Likes() + likes, Comments: p.Comments() + comments,
+	})
 }
 
 func (r *AlbumRepository) List(ctx context.Context, ownerID, before uuid.UUID, limit int) ([]*post.Album, error) {
@@ -199,6 +231,20 @@ func (r *AlbumRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) er
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	for photoID, users := range r.photoLikes {
+		if _, ok := users[userID]; ok {
+			delete(users, userID)
+			r.recountPhoto(photoID, -1, 0)
+		}
+	}
+
+	for id, c := range r.photoComments {
+		if c.AuthorID() == userID {
+			delete(r.photoComments, id)
+			r.recountPhoto(c.PhotoID(), 0, -1)
+		}
+	}
+
 	for id, s := range r.albums {
 		if s.OwnerID == userID {
 			r.deleteAlbum(id)
@@ -207,7 +253,7 @@ func (r *AlbumRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) er
 
 	for id, p := range r.photos {
 		if p.AuthorID() == userID {
-			delete(r.photos, id)
+			r.deletePhoto(id)
 			r.recount(p.AlbumID(), -1, time.Time{})
 		}
 	}
@@ -308,7 +354,7 @@ func (p *AlbumPhotoRepository) Delete(ctx context.Context, id uuid.UUID, now tim
 		return post.ErrAlbumPhotoNotFound
 	}
 
-	delete(p.r.photos, id)
+	p.r.deletePhoto(id)
 	p.r.recount(photo.AlbumID(), -1, now)
 
 	return nil

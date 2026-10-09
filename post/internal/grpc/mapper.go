@@ -116,6 +116,7 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 		FromWall:      p.FromWall(),
 		Signed:        p.Signed(),
 		AvatarUpdate:  p.AvatarUpdate(),
+		SharedPhotoId: idString(p.Content().SharedPhoto()),
 		Mine:          viewerID != uuid.Nil && p.BelongsTo(viewerID),
 	}
 

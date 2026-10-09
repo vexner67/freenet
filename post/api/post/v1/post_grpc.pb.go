@@ -20,48 +20,56 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	PostService_CreatePost_FullMethodName         = "/post.v1.PostService/CreatePost"
-	PostService_DeletePost_FullMethodName         = "/post.v1.PostService/DeletePost"
-	PostService_RepostPost_FullMethodName         = "/post.v1.PostService/RepostPost"
-	PostService_EditPost_FullMethodName           = "/post.v1.PostService/EditPost"
-	PostService_PinPost_FullMethodName            = "/post.v1.PostService/PinPost"
-	PostService_UnpinPost_FullMethodName          = "/post.v1.PostService/UnpinPost"
-	PostService_GetPost_FullMethodName            = "/post.v1.PostService/GetPost"
-	PostService_GetPosts_FullMethodName           = "/post.v1.PostService/GetPosts"
-	PostService_ListPosts_FullMethodName          = "/post.v1.PostService/ListPosts"
-	PostService_ListFeed_FullMethodName           = "/post.v1.PostService/ListFeed"
-	PostService_LikePost_FullMethodName           = "/post.v1.PostService/LikePost"
-	PostService_UnlikePost_FullMethodName         = "/post.v1.PostService/UnlikePost"
-	PostService_CreateComment_FullMethodName      = "/post.v1.PostService/CreateComment"
-	PostService_DeleteComment_FullMethodName      = "/post.v1.PostService/DeleteComment"
-	PostService_LikeComment_FullMethodName        = "/post.v1.PostService/LikeComment"
-	PostService_UnlikeComment_FullMethodName      = "/post.v1.PostService/UnlikeComment"
-	PostService_ListComments_FullMethodName       = "/post.v1.PostService/ListComments"
-	PostService_GetComments_FullMethodName        = "/post.v1.PostService/GetComments"
-	PostService_SuggestPost_FullMethodName        = "/post.v1.PostService/SuggestPost"
-	PostService_ListSuggestions_FullMethodName    = "/post.v1.PostService/ListSuggestions"
-	PostService_PublishSuggestion_FullMethodName  = "/post.v1.PostService/PublishSuggestion"
-	PostService_DeleteSuggestion_FullMethodName   = "/post.v1.PostService/DeleteSuggestion"
-	PostService_CreateTopic_FullMethodName        = "/post.v1.PostService/CreateTopic"
-	PostService_GetTopic_FullMethodName           = "/post.v1.PostService/GetTopic"
-	PostService_ListTopics_FullMethodName         = "/post.v1.PostService/ListTopics"
-	PostService_EditTopic_FullMethodName          = "/post.v1.PostService/EditTopic"
-	PostService_DeleteTopic_FullMethodName        = "/post.v1.PostService/DeleteTopic"
-	PostService_CreateTopicMessage_FullMethodName = "/post.v1.PostService/CreateTopicMessage"
-	PostService_ListTopicMessages_FullMethodName  = "/post.v1.PostService/ListTopicMessages"
-	PostService_DeleteTopicMessage_FullMethodName = "/post.v1.PostService/DeleteTopicMessage"
-	PostService_CreateAlbum_FullMethodName        = "/post.v1.PostService/CreateAlbum"
-	PostService_GetAlbum_FullMethodName           = "/post.v1.PostService/GetAlbum"
-	PostService_ListAlbums_FullMethodName         = "/post.v1.PostService/ListAlbums"
-	PostService_EditAlbum_FullMethodName          = "/post.v1.PostService/EditAlbum"
-	PostService_DeleteAlbum_FullMethodName        = "/post.v1.PostService/DeleteAlbum"
-	PostService_AddAlbumPhotos_FullMethodName     = "/post.v1.PostService/AddAlbumPhotos"
-	PostService_AddAvatarPhoto_FullMethodName     = "/post.v1.PostService/AddAvatarPhoto"
-	PostService_ListAlbumPhotos_FullMethodName    = "/post.v1.PostService/ListAlbumPhotos"
-	PostService_GetAlbumPhoto_FullMethodName      = "/post.v1.PostService/GetAlbumPhoto"
-	PostService_EditAlbumPhoto_FullMethodName     = "/post.v1.PostService/EditAlbumPhoto"
-	PostService_DeleteAlbumPhoto_FullMethodName   = "/post.v1.PostService/DeleteAlbumPhoto"
-	PostService_PurgeUser_FullMethodName          = "/post.v1.PostService/PurgeUser"
+	PostService_CreatePost_FullMethodName           = "/post.v1.PostService/CreatePost"
+	PostService_DeletePost_FullMethodName           = "/post.v1.PostService/DeletePost"
+	PostService_RepostPost_FullMethodName           = "/post.v1.PostService/RepostPost"
+	PostService_EditPost_FullMethodName             = "/post.v1.PostService/EditPost"
+	PostService_PinPost_FullMethodName              = "/post.v1.PostService/PinPost"
+	PostService_UnpinPost_FullMethodName            = "/post.v1.PostService/UnpinPost"
+	PostService_GetPost_FullMethodName              = "/post.v1.PostService/GetPost"
+	PostService_GetPosts_FullMethodName             = "/post.v1.PostService/GetPosts"
+	PostService_ListPosts_FullMethodName            = "/post.v1.PostService/ListPosts"
+	PostService_ListFeed_FullMethodName             = "/post.v1.PostService/ListFeed"
+	PostService_LikePost_FullMethodName             = "/post.v1.PostService/LikePost"
+	PostService_UnlikePost_FullMethodName           = "/post.v1.PostService/UnlikePost"
+	PostService_ListPostLikers_FullMethodName       = "/post.v1.PostService/ListPostLikers"
+	PostService_ListCommentLikers_FullMethodName    = "/post.v1.PostService/ListCommentLikers"
+	PostService_CreateComment_FullMethodName        = "/post.v1.PostService/CreateComment"
+	PostService_DeleteComment_FullMethodName        = "/post.v1.PostService/DeleteComment"
+	PostService_LikeComment_FullMethodName          = "/post.v1.PostService/LikeComment"
+	PostService_UnlikeComment_FullMethodName        = "/post.v1.PostService/UnlikeComment"
+	PostService_ListComments_FullMethodName         = "/post.v1.PostService/ListComments"
+	PostService_GetComments_FullMethodName          = "/post.v1.PostService/GetComments"
+	PostService_SuggestPost_FullMethodName          = "/post.v1.PostService/SuggestPost"
+	PostService_ListSuggestions_FullMethodName      = "/post.v1.PostService/ListSuggestions"
+	PostService_PublishSuggestion_FullMethodName    = "/post.v1.PostService/PublishSuggestion"
+	PostService_DeleteSuggestion_FullMethodName     = "/post.v1.PostService/DeleteSuggestion"
+	PostService_CreateTopic_FullMethodName          = "/post.v1.PostService/CreateTopic"
+	PostService_GetTopic_FullMethodName             = "/post.v1.PostService/GetTopic"
+	PostService_ListTopics_FullMethodName           = "/post.v1.PostService/ListTopics"
+	PostService_EditTopic_FullMethodName            = "/post.v1.PostService/EditTopic"
+	PostService_DeleteTopic_FullMethodName          = "/post.v1.PostService/DeleteTopic"
+	PostService_CreateTopicMessage_FullMethodName   = "/post.v1.PostService/CreateTopicMessage"
+	PostService_ListTopicMessages_FullMethodName    = "/post.v1.PostService/ListTopicMessages"
+	PostService_DeleteTopicMessage_FullMethodName   = "/post.v1.PostService/DeleteTopicMessage"
+	PostService_CreateAlbum_FullMethodName          = "/post.v1.PostService/CreateAlbum"
+	PostService_GetAlbum_FullMethodName             = "/post.v1.PostService/GetAlbum"
+	PostService_ListAlbums_FullMethodName           = "/post.v1.PostService/ListAlbums"
+	PostService_EditAlbum_FullMethodName            = "/post.v1.PostService/EditAlbum"
+	PostService_DeleteAlbum_FullMethodName          = "/post.v1.PostService/DeleteAlbum"
+	PostService_AddAlbumPhotos_FullMethodName       = "/post.v1.PostService/AddAlbumPhotos"
+	PostService_AddAvatarPhoto_FullMethodName       = "/post.v1.PostService/AddAvatarPhoto"
+	PostService_ListAlbumPhotos_FullMethodName      = "/post.v1.PostService/ListAlbumPhotos"
+	PostService_GetAlbumPhoto_FullMethodName        = "/post.v1.PostService/GetAlbumPhoto"
+	PostService_EditAlbumPhoto_FullMethodName       = "/post.v1.PostService/EditAlbumPhoto"
+	PostService_DeleteAlbumPhoto_FullMethodName     = "/post.v1.PostService/DeleteAlbumPhoto"
+	PostService_LikeAlbumPhoto_FullMethodName       = "/post.v1.PostService/LikeAlbumPhoto"
+	PostService_UnlikeAlbumPhoto_FullMethodName     = "/post.v1.PostService/UnlikeAlbumPhoto"
+	PostService_ListAlbumPhotoLikers_FullMethodName = "/post.v1.PostService/ListAlbumPhotoLikers"
+	PostService_CreatePhotoComment_FullMethodName   = "/post.v1.PostService/CreatePhotoComment"
+	PostService_DeletePhotoComment_FullMethodName   = "/post.v1.PostService/DeletePhotoComment"
+	PostService_ListPhotoComments_FullMethodName    = "/post.v1.PostService/ListPhotoComments"
+	PostService_PurgeUser_FullMethodName            = "/post.v1.PostService/PurgeUser"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -100,6 +108,10 @@ type PostServiceClient interface {
 	// idempotent and return how many likes the post has now.
 	LikePost(ctx context.Context, in *LikePostRequest, opts ...grpc.CallOption) (*LikePostResponse, error)
 	UnlikePost(ctx context.Context, in *UnlikePostRequest, opts ...grpc.CallOption) (*UnlikePostResponse, error)
+	// Public: who like the post or the comment, newest first ("Понравилось
+	// N людям" of openvk); total is its like counter.
+	ListPostLikers(ctx context.Context, in *ListPostLikersRequest, opts ...grpc.CallOption) (*ListPostLikersResponse, error)
+	ListCommentLikers(ctx context.Context, in *ListCommentLikersRequest, opts ...grpc.CallOption) (*ListCommentLikersResponse, error)
 	// Require an access token; the author is the caller. A comment is
 	// deleted by its author, by the author of the post or by the owner of
 	// the wall, the admins of a community.
@@ -174,6 +186,19 @@ type PostServiceClient interface {
 	EditAlbumPhoto(ctx context.Context, in *EditAlbumPhotoRequest, opts ...grpc.CallOption) (*EditAlbumPhotoResponse, error)
 	// Who uploaded it or whoever may edit its album.
 	DeleteAlbumPhoto(ctx context.Context, in *DeleteAlbumPhotoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token: the heart under a photo, as under a post.
+	LikeAlbumPhoto(ctx context.Context, in *LikeAlbumPhotoRequest, opts ...grpc.CallOption) (*LikeAlbumPhotoResponse, error)
+	UnlikeAlbumPhoto(ctx context.Context, in *UnlikeAlbumPhotoRequest, opts ...grpc.CallOption) (*UnlikeAlbumPhotoResponse, error)
+	// Public: who like the photo, newest first, as ListPostLikers.
+	ListAlbumPhotoLikers(ctx context.Context, in *ListAlbumPhotoLikersRequest, opts ...grpc.CallOption) (*ListAlbumPhotoLikersResponse, error)
+	// Requires an access token: a comment under a photo, text only; the
+	// caller of CreatePhotoComment has checked the blacklists.
+	CreatePhotoComment(ctx context.Context, in *CreatePhotoCommentRequest, opts ...grpc.CallOption) (*CreatePhotoCommentResponse, error)
+	// Requires an access token: its author, who uploaded the photo, the
+	// owner of the album or the admins of its community.
+	DeletePhotoComment(ctx context.Context, in *DeletePhotoCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Public: the comments of a photo, oldest first.
+	ListPhotoComments(ctx context.Context, in *ListPhotoCommentsRequest, opts ...grpc.CallOption) (*ListPhotoCommentsResponse, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -302,6 +327,26 @@ func (c *postServiceClient) UnlikePost(ctx context.Context, in *UnlikePostReques
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UnlikePostResponse)
 	err := c.cc.Invoke(ctx, PostService_UnlikePost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListPostLikers(ctx context.Context, in *ListPostLikersRequest, opts ...grpc.CallOption) (*ListPostLikersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPostLikersResponse)
+	err := c.cc.Invoke(ctx, PostService_ListPostLikers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListCommentLikers(ctx context.Context, in *ListCommentLikersRequest, opts ...grpc.CallOption) (*ListCommentLikersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListCommentLikersResponse)
+	err := c.cc.Invoke(ctx, PostService_ListCommentLikers_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -598,6 +643,66 @@ func (c *postServiceClient) DeleteAlbumPhoto(ctx context.Context, in *DeleteAlbu
 	return out, nil
 }
 
+func (c *postServiceClient) LikeAlbumPhoto(ctx context.Context, in *LikeAlbumPhotoRequest, opts ...grpc.CallOption) (*LikeAlbumPhotoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LikeAlbumPhotoResponse)
+	err := c.cc.Invoke(ctx, PostService_LikeAlbumPhoto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) UnlikeAlbumPhoto(ctx context.Context, in *UnlikeAlbumPhotoRequest, opts ...grpc.CallOption) (*UnlikeAlbumPhotoResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnlikeAlbumPhotoResponse)
+	err := c.cc.Invoke(ctx, PostService_UnlikeAlbumPhoto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListAlbumPhotoLikers(ctx context.Context, in *ListAlbumPhotoLikersRequest, opts ...grpc.CallOption) (*ListAlbumPhotoLikersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListAlbumPhotoLikersResponse)
+	err := c.cc.Invoke(ctx, PostService_ListAlbumPhotoLikers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) CreatePhotoComment(ctx context.Context, in *CreatePhotoCommentRequest, opts ...grpc.CallOption) (*CreatePhotoCommentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreatePhotoCommentResponse)
+	err := c.cc.Invoke(ctx, PostService_CreatePhotoComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeletePhotoComment(ctx context.Context, in *DeletePhotoCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeletePhotoComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListPhotoComments(ctx context.Context, in *ListPhotoCommentsRequest, opts ...grpc.CallOption) (*ListPhotoCommentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPhotoCommentsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListPhotoComments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -644,6 +749,10 @@ type PostServiceServer interface {
 	// idempotent and return how many likes the post has now.
 	LikePost(context.Context, *LikePostRequest) (*LikePostResponse, error)
 	UnlikePost(context.Context, *UnlikePostRequest) (*UnlikePostResponse, error)
+	// Public: who like the post or the comment, newest first ("Понравилось
+	// N людям" of openvk); total is its like counter.
+	ListPostLikers(context.Context, *ListPostLikersRequest) (*ListPostLikersResponse, error)
+	ListCommentLikers(context.Context, *ListCommentLikersRequest) (*ListCommentLikersResponse, error)
 	// Require an access token; the author is the caller. A comment is
 	// deleted by its author, by the author of the post or by the owner of
 	// the wall, the admins of a community.
@@ -718,6 +827,19 @@ type PostServiceServer interface {
 	EditAlbumPhoto(context.Context, *EditAlbumPhotoRequest) (*EditAlbumPhotoResponse, error)
 	// Who uploaded it or whoever may edit its album.
 	DeleteAlbumPhoto(context.Context, *DeleteAlbumPhotoRequest) (*emptypb.Empty, error)
+	// Require an access token: the heart under a photo, as under a post.
+	LikeAlbumPhoto(context.Context, *LikeAlbumPhotoRequest) (*LikeAlbumPhotoResponse, error)
+	UnlikeAlbumPhoto(context.Context, *UnlikeAlbumPhotoRequest) (*UnlikeAlbumPhotoResponse, error)
+	// Public: who like the photo, newest first, as ListPostLikers.
+	ListAlbumPhotoLikers(context.Context, *ListAlbumPhotoLikersRequest) (*ListAlbumPhotoLikersResponse, error)
+	// Requires an access token: a comment under a photo, text only; the
+	// caller of CreatePhotoComment has checked the blacklists.
+	CreatePhotoComment(context.Context, *CreatePhotoCommentRequest) (*CreatePhotoCommentResponse, error)
+	// Requires an access token: its author, who uploaded the photo, the
+	// owner of the album or the admins of its community.
+	DeletePhotoComment(context.Context, *DeletePhotoCommentRequest) (*emptypb.Empty, error)
+	// Public: the comments of a photo, oldest first.
+	ListPhotoComments(context.Context, *ListPhotoCommentsRequest) (*ListPhotoCommentsResponse, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -767,6 +889,12 @@ func (UnimplementedPostServiceServer) LikePost(context.Context, *LikePostRequest
 }
 func (UnimplementedPostServiceServer) UnlikePost(context.Context, *UnlikePostRequest) (*UnlikePostResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UnlikePost not implemented")
+}
+func (UnimplementedPostServiceServer) ListPostLikers(context.Context, *ListPostLikersRequest) (*ListPostLikersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPostLikers not implemented")
+}
+func (UnimplementedPostServiceServer) ListCommentLikers(context.Context, *ListCommentLikersRequest) (*ListCommentLikersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListCommentLikers not implemented")
 }
 func (UnimplementedPostServiceServer) CreateComment(context.Context, *CreateCommentRequest) (*CreateCommentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateComment not implemented")
@@ -854,6 +982,24 @@ func (UnimplementedPostServiceServer) EditAlbumPhoto(context.Context, *EditAlbum
 }
 func (UnimplementedPostServiceServer) DeleteAlbumPhoto(context.Context, *DeleteAlbumPhotoRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteAlbumPhoto not implemented")
+}
+func (UnimplementedPostServiceServer) LikeAlbumPhoto(context.Context, *LikeAlbumPhotoRequest) (*LikeAlbumPhotoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LikeAlbumPhoto not implemented")
+}
+func (UnimplementedPostServiceServer) UnlikeAlbumPhoto(context.Context, *UnlikeAlbumPhotoRequest) (*UnlikeAlbumPhotoResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnlikeAlbumPhoto not implemented")
+}
+func (UnimplementedPostServiceServer) ListAlbumPhotoLikers(context.Context, *ListAlbumPhotoLikersRequest) (*ListAlbumPhotoLikersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListAlbumPhotoLikers not implemented")
+}
+func (UnimplementedPostServiceServer) CreatePhotoComment(context.Context, *CreatePhotoCommentRequest) (*CreatePhotoCommentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreatePhotoComment not implemented")
+}
+func (UnimplementedPostServiceServer) DeletePhotoComment(context.Context, *DeletePhotoCommentRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeletePhotoComment not implemented")
+}
+func (UnimplementedPostServiceServer) ListPhotoComments(context.Context, *ListPhotoCommentsRequest) (*ListPhotoCommentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPhotoComments not implemented")
 }
 func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -1091,6 +1237,42 @@ func _PostService_UnlikePost_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).UnlikePost(ctx, req.(*UnlikePostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListPostLikers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPostLikersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListPostLikers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListPostLikers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListPostLikers(ctx, req.(*ListPostLikersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListCommentLikers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListCommentLikersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListCommentLikers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListCommentLikers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListCommentLikers(ctx, req.(*ListCommentLikersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1617,6 +1799,114 @@ func _PostService_DeleteAlbumPhoto_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_LikeAlbumPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LikeAlbumPhotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).LikeAlbumPhoto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_LikeAlbumPhoto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).LikeAlbumPhoto(ctx, req.(*LikeAlbumPhotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_UnlikeAlbumPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnlikeAlbumPhotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).UnlikeAlbumPhoto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_UnlikeAlbumPhoto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).UnlikeAlbumPhoto(ctx, req.(*UnlikeAlbumPhotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListAlbumPhotoLikers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListAlbumPhotoLikersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListAlbumPhotoLikers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListAlbumPhotoLikers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListAlbumPhotoLikers(ctx, req.(*ListAlbumPhotoLikersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_CreatePhotoComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreatePhotoCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CreatePhotoComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CreatePhotoComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CreatePhotoComment(ctx, req.(*CreatePhotoCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeletePhotoComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeletePhotoCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeletePhotoComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeletePhotoComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeletePhotoComment(ctx, req.(*DeletePhotoCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListPhotoComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPhotoCommentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListPhotoComments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListPhotoComments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListPhotoComments(ctx, req.(*ListPhotoCommentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -1689,6 +1979,14 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnlikePost",
 			Handler:    _PostService_UnlikePost_Handler,
+		},
+		{
+			MethodName: "ListPostLikers",
+			Handler:    _PostService_ListPostLikers_Handler,
+		},
+		{
+			MethodName: "ListCommentLikers",
+			Handler:    _PostService_ListCommentLikers_Handler,
 		},
 		{
 			MethodName: "CreateComment",
@@ -1805,6 +2103,30 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAlbumPhoto",
 			Handler:    _PostService_DeleteAlbumPhoto_Handler,
+		},
+		{
+			MethodName: "LikeAlbumPhoto",
+			Handler:    _PostService_LikeAlbumPhoto_Handler,
+		},
+		{
+			MethodName: "UnlikeAlbumPhoto",
+			Handler:    _PostService_UnlikeAlbumPhoto_Handler,
+		},
+		{
+			MethodName: "ListAlbumPhotoLikers",
+			Handler:    _PostService_ListAlbumPhotoLikers_Handler,
+		},
+		{
+			MethodName: "CreatePhotoComment",
+			Handler:    _PostService_CreatePhotoComment_Handler,
+		},
+		{
+			MethodName: "DeletePhotoComment",
+			Handler:    _PostService_DeletePhotoComment_Handler,
+		},
+		{
+			MethodName: "ListPhotoComments",
+			Handler:    _PostService_ListPhotoComments_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

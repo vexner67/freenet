@@ -57,6 +57,36 @@ type AlbumPhotoRepository interface {
 	Covers(ctx context.Context, albumIDs []uuid.UUID) ([]*post.AlbumPhoto, error)
 }
 
+// AlbumPhotoLikeRepository keeps the likes of photos as LikeRepository
+// keeps those of posts; post.ErrAlbumPhotoNotFound for a missing photo.
+type AlbumPhotoLikeRepository interface {
+	Like(ctx context.Context, photoID, userID uuid.UUID) (int, error)
+	Unlike(ctx context.Context, photoID, userID uuid.UUID) (int, error)
+	Liked(ctx context.Context, userID uuid.UUID, photoIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+	Likers(ctx context.Context, photoID uuid.UUID, after *LikerCursor, limit int) ([]Liker, error)
+}
+
+// PhotoCommentRepository keeps the comments of photos, counted in the
+// photo by the statements that add and remove them.
+type PhotoCommentRepository interface {
+	// Save returns post.ErrAlbumPhotoNotFound when the photo is gone.
+	Save(ctx context.Context, c *post.PhotoComment) error
+	// Get and Delete return post.ErrCommentNotFound.
+	Get(ctx context.Context, id uuid.UUID) (*post.PhotoComment, error)
+	Delete(ctx context.Context, id uuid.UUID) error
+	// List returns up to limit comments of a photo, oldest first, with IDs
+	// above after (uuid.Nil: from the first).
+	List(ctx context.Context, photoID, after uuid.UUID, limit int) ([]*post.PhotoComment, error)
+}
+
+// PhotoCommentPage is one screen of the comments of a photo, oldest
+// first; Total counts them all.
+type PhotoCommentPage struct {
+	Comments   []*post.PhotoComment
+	NextCursor uuid.UUID
+	Total      int
+}
+
 // AlbumPage is one screen of albums with the cover of each, by album, if
 // it has photos; NextCursor is uuid.Nil on the last.
 type AlbumPage struct {
@@ -99,6 +129,8 @@ type AlbumService struct {
 	tx         TxManager
 	media      PhotoKeeper
 	moderators WallModerators
+	likes      AlbumPhotoLikeRepository
+	comments   PhotoCommentRepository
 	now        func() time.Time
 }
 
@@ -109,6 +141,8 @@ type AlbumDeps struct {
 	Tx         TxManager
 	Media      PhotoKeeper
 	Moderators WallModerators
+	Likes      AlbumPhotoLikeRepository
+	Comments   PhotoCommentRepository
 }
 
 func NewAlbumService(d AlbumDeps) *AlbumService {
@@ -118,6 +152,8 @@ func NewAlbumService(d AlbumDeps) *AlbumService {
 		tx:         d.Tx,
 		media:      d.Media,
 		moderators: d.Moderators,
+		likes:      d.Likes,
+		comments:   d.Comments,
 		now:        time.Now,
 	}
 }
@@ -503,4 +539,129 @@ func (s *AlbumService) deleteFiles(ctx context.Context, photos []*post.AlbumPhot
 	}
 
 	return nil
+}
+
+// LikePhoto and UnlikePhoto are the heart under a photo, as under a post:
+// idempotent, they return how many like it now.
+func (s *AlbumService) LikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error) {
+	likes, err := s.likes.Like(ctx, photoID, userID)
+	if err != nil {
+		return 0, errs.Wrap("s.likes.Like", err)
+	}
+
+	return likes, nil
+}
+
+func (s *AlbumService) UnlikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error) {
+	likes, err := s.likes.Unlike(ctx, photoID, userID)
+	if err != nil {
+		return 0, errs.Wrap("s.likes.Unlike", err)
+	}
+
+	return likes, nil
+}
+
+// LikedPhotos tells which of photoIDs userID likes; none for uuid.Nil.
+func (s *AlbumService) LikedPhotos(ctx context.Context, userID uuid.UUID, photoIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	if userID == uuid.Nil || len(photoIDs) == 0 {
+		return nil, nil
+	}
+
+	liked, err := s.likes.Liked(ctx, userID, photoIDs)
+	if err != nil {
+		return nil, errs.Wrap("s.likes.Liked", err)
+	}
+
+	return liked, nil
+}
+
+// PhotoLikers pages who like a photo, newest first ("Понравилось N
+// людям"); post.ErrAlbumPhotoNotFound for a missing photo.
+func (s *AlbumService) PhotoLikers(ctx context.Context, photoID uuid.UUID, cursor *LikerCursor, size int) (LikerPage, error) {
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	p, err := s.photos.Get(ctx, photoID)
+	if err != nil {
+		return LikerPage{}, errs.Wrap("s.photos.Get", err)
+	}
+
+	found, err := s.likes.Likers(ctx, photoID, cursor, size+1)
+	if err != nil {
+		return LikerPage{}, errs.Wrap("s.likes.Likers", err)
+	}
+
+	return likerPage(found, size, p.Likes()), nil
+}
+
+// CommentPhoto adds a comment under a photo. Who may (a blacklist) the
+// caller has checked; post.ErrAlbumPhotoNotFound for a missing photo.
+func (s *AlbumService) CommentPhoto(ctx context.Context, authorID, photoID uuid.UUID, text post.CommentText) (*post.PhotoComment, error) {
+	c, err := post.NewPhotoComment(photoID, authorID, text, s.now())
+	if err != nil {
+		return nil, errs.Wrap("post.NewPhotoComment", err)
+	}
+
+	if err = s.comments.Save(ctx, c); err != nil {
+		return nil, errs.Wrap("s.comments.Save", err)
+	}
+
+	return c, nil
+}
+
+// DeletePhotoComment deletes a comment: by its author, who uploaded the
+// photo, the owner of the album or the admins of its community.
+func (s *AlbumService) DeletePhotoComment(ctx context.Context, requesterID, id uuid.UUID) error {
+	c, err := s.comments.Get(ctx, id)
+	if err != nil {
+		return errs.Wrap("s.comments.Get", err)
+	}
+
+	photo, album, err := s.Photo(ctx, c.PhotoID())
+	if err != nil {
+		return errs.Wrap("s.Photo", err)
+	}
+
+	ok, err := moderates(ctx, s.moderators, album.OwnerID(), requesterID,
+		c.CanBeDeletedBy(requesterID, photo, album.CanBeChangedBy(requesterID, false)))
+	if err != nil {
+		return errs.Wrap("moderates", err)
+	}
+
+	if !ok {
+		return post.ErrCannotDeletePhotoComment
+	}
+
+	if err = s.comments.Delete(ctx, id); err != nil {
+		return errs.Wrap("s.comments.Delete", err)
+	}
+
+	return nil
+}
+
+// PhotoComments pages the comments of a photo, oldest first, as openvk
+// shows them; post.ErrAlbumPhotoNotFound for a missing photo.
+func (s *AlbumService) PhotoComments(ctx context.Context, photoID, after uuid.UUID, size int) (PhotoCommentPage, error) {
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	p, err := s.photos.Get(ctx, photoID)
+	if err != nil {
+		return PhotoCommentPage{}, errs.Wrap("s.photos.Get", err)
+	}
+
+	found, err := s.comments.List(ctx, photoID, after, size+1)
+	if err != nil {
+		return PhotoCommentPage{}, errs.Wrap("s.comments.List", err)
+	}
+
+	page := PhotoCommentPage{Comments: found, Total: p.Comments()}
+	if len(found) > size {
+		page.Comments = found[:size]
+		page.NextCursor = found[size-1].ID()
+	}
+
+	return page, nil
 }

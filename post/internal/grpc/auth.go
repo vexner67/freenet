@@ -25,6 +25,8 @@ func PublicMethods() []string {
 		postv1.PostService_ListPosts_FullMethodName,
 		postv1.PostService_ListFeed_FullMethodName,
 		postv1.PostService_ListComments_FullMethodName,
+		postv1.PostService_ListPostLikers_FullMethodName,
+		postv1.PostService_ListCommentLikers_FullMethodName,
 		postv1.PostService_GetComments_FullMethodName,
 		postv1.PostService_GetTopic_FullMethodName,
 		postv1.PostService_ListTopics_FullMethodName,
@@ -33,6 +35,8 @@ func PublicMethods() []string {
 		postv1.PostService_ListAlbums_FullMethodName,
 		postv1.PostService_ListAlbumPhotos_FullMethodName,
 		postv1.PostService_GetAlbumPhoto_FullMethodName,
+		postv1.PostService_ListAlbumPhotoLikers_FullMethodName,
+		postv1.PostService_ListPhotoComments_FullMethodName,
 		postv1.PostService_PurgeUser_FullMethodName,
 	}
 }

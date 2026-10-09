@@ -27,6 +27,18 @@ func TestLikes(t *testing.T) {
 		t.Fatalf("LikePost = %v, %v", liked, err)
 	}
 
+	// Anyone sees who likes it: "Понравилось N людям".
+	likers, err := s.client.ListPostLikers(context.Background(), &postv1.ListPostLikersRequest{PostId: id})
+	if err != nil || likers.GetTotal() != 1 || len(likers.GetUserIds()) != 1 || likers.GetUserIds()[0] != bob.String() || likers.GetNextCursor() != "" {
+		t.Fatalf("ListPostLikers = %v, %v", likers, err)
+	}
+	if _, err = s.client.ListPostLikers(context.Background(), &postv1.ListPostLikersRequest{PostId: id, Cursor: "x"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bad cursor: %v", err)
+	}
+	if _, err = s.client.ListPostLikers(context.Background(), &postv1.ListPostLikersRequest{PostId: uuid.NewString()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("a missing post: %v", err)
+	}
+
 	// Public methods tell the caller with a token whether they like the post.
 	tests := []struct {
 		name      string

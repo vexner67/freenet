@@ -236,12 +236,19 @@ func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.
 		err     error
 	)
 
-	if p.content.repostOf != uuid.Nil {
+	switch {
+	case p.content.repostOf != uuid.Nil:
 		if len(photos) > 0 {
 			return nil, ErrRepostPhotos
 		}
 		content, err = NewRepost(p.content.repostOf, text)
-	} else {
+	case p.content.sharedPhoto != uuid.Nil:
+		// It shares the photo still: the words are what changes.
+		if len(photos) > 0 {
+			return nil, ErrRepostPhotos
+		}
+		content, err = NewPhotoShare(p.content.sharedPhoto, text)
+	default:
 		content, err = NewContent(text, photos)
 	}
 	if err != nil {

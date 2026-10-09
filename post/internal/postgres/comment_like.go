@@ -10,6 +10,7 @@ import (
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/post/internal/post"
+	"github.com/vexner67/freenet/post/internal/service"
 )
 
 // CommentLikeRepository keeps the likes of comments as LikeRepository
@@ -140,4 +141,26 @@ func (r *CommentLikeRepository) DeleteByUser(ctx context.Context, userID uuid.UU
 	}
 
 	return nil
+}
+
+const listCommentLikersQuery = `
+	SELECT
+		user_id,
+		created_at
+	FROM comment_likes
+	WHERE comment_id = $1
+		AND (created_at, user_id) < ($2, $3)
+	ORDER BY created_at DESC, user_id DESC
+	LIMIT $4
+`
+
+func (r *CommentLikeRepository) Likers(ctx context.Context, commentID uuid.UUID, after *service.LikerCursor, limit int) ([]service.Liker, error) {
+	at, userID := likersFrom(after)
+
+	rows, err := r.conn(ctx).Query(ctx, listCommentLikersQuery, commentID, at, userID, limit)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	return collectLikers(rows)
 }

@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/post/internal/post"
 	"github.com/vexner67/freenet/post/internal/postgres"
+	"github.com/vexner67/freenet/post/internal/service"
 )
 
 func TestLikesAndComments(t *testing.T) {
@@ -50,6 +51,24 @@ func TestLikesAndComments(t *testing.T) {
 		}
 		if n, err := likes.Unlike(ctx, p.ID(), ann); err != nil || n != 0 {
 			t.Fatalf("second Unlike = %d, %v", n, err)
+		}
+
+		// Who likes it, newest first, a page at a time.
+		for _, u := range []uuid.UUID{ann, bob} {
+			if _, err := likes.Like(ctx, p.ID(), u); err != nil {
+				t.Fatal(err)
+			}
+		}
+		first, err := likes.Likers(ctx, p.ID(), nil, 1)
+		if err != nil || len(first) != 1 {
+			t.Fatalf("Likers = %+v, %v", first, err)
+		}
+		rest, err := likes.Likers(ctx, p.ID(), &service.LikerCursor{LikedAt: first[0].LikedAt, UserID: first[0].UserID}, 10)
+		if err != nil || len(rest) != 1 || rest[0].UserID == first[0].UserID || rest[0].LikedAt.After(first[0].LikedAt) {
+			t.Fatalf("Likers after %v = %+v, %v", first[0], rest, err)
+		}
+		for _, u := range []uuid.UUID{ann, bob} {
+			_, _ = likes.Unlike(ctx, p.ID(), u)
 		}
 
 		if _, err := likes.Like(ctx, uuid.New(), ann); !errors.Is(err, post.ErrNotFound) {
