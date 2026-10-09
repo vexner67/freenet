@@ -63,6 +63,16 @@ func (u *Users) UpdateContacts(ctx context.Context, accessToken string, c model.
 	return toUser(resp.GetUser()), nil
 }
 
+// UpdateStatus replaces the caller's status alone.
+func (u *Users) UpdateStatus(ctx context.Context, accessToken, status string) (model.User, error) {
+	resp, err := u.api.UpdateStatus(withToken(ctx, accessToken), &userv1.UpdateStatusRequest{Status: status})
+	if err != nil {
+		return model.User{}, errs.Wrap("u.api.UpdateStatus", fromStatus(err))
+	}
+
+	return toUser(resp.GetUser()), nil
+}
+
 func (u *Users) UpdateInterests(ctx context.Context, accessToken string, in model.Interests) (model.User, error) {
 	resp, err := u.api.UpdateInterests(withToken(ctx, accessToken), &userv1.UpdateInterestsRequest{Interests: toProtoInterests(in)})
 	if err != nil {
@@ -300,6 +310,20 @@ func (u *Users) ListOnlineFollowing(ctx context.Context, userID, cursor string, 
 	return toUserPage(resp), nil
 }
 
+// ListCommonFollowing is whom both userID and the caller follow, openvk's
+// "Общие друзья".
+func (u *Users) ListCommonFollowing(ctx context.Context, accessToken, userID, cursor string, limit int) (model.UserPage, error) {
+	req := listFollowsRequest(userID, cursor, limit)
+	req.Common = true
+
+	resp, err := u.api.ListFollowing(withToken(ctx, accessToken), req)
+	if err != nil {
+		return model.UserPage{}, errs.Wrap("u.api.ListFollowing", fromStatus(err))
+	}
+
+	return toUserPage(resp), nil
+}
+
 // MarkOnline tells that the caller is on the site now ("Онлайн").
 func (u *Users) MarkOnline(ctx context.Context, accessToken string) error {
 	if _, err := u.api.MarkOnline(withToken(ctx, accessToken), &userv1.MarkOnlineRequest{}); err != nil {
@@ -351,6 +375,7 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		LastSeen:        fromTimestamp(p.GetLastSeenAt()),
 		Online:          p.GetOnline(),
 		Backdrop:        model.Backdrop{Left: p.GetBackdropLeft(), Right: p.GetBackdropRight()},
+		Completeness:    int(p.GetCompleteness()),
 		About:           toAbout(p),
 	}
 }

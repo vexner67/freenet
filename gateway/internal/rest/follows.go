@@ -103,6 +103,21 @@ func (a *api) listFollowers(w http.ResponseWriter, r *http.Request) {
 }
 
 func (a *api) listFollowing(w http.ResponseWriter, r *http.Request) {
+	// "?common=true" is openvk's "Общие друзья": whom the caller follows
+	// too.
+	if r.URL.Query().Get("common") == "true" {
+		token, err := bearerToken(r)
+		if err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+
+		a.listFollows(w, r, func(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error) {
+			return a.users.ListCommonFollowing(ctx, token, userID, cursor, limit)
+		})
+		return
+	}
+
 	// "?online=true" is openvk's "Друзья онлайн".
 	if r.URL.Query().Get("online") == "true" {
 		a.listFollows(w, r, a.users.ListOnlineFollowing)

@@ -242,6 +242,10 @@ type userResponse struct {
 	aboutJSON
 	// Backdrop is "Фон страницы", null for none.
 	Backdrop *backdropJSON `json:"backdrop"`
+	// Completeness is "Заполненность страницы" in percent, Unfilled what
+	// is missing for openvk's hints.
+	Completeness int      `json:"completeness"`
+	Unfilled     []string `json:"unfilled"`
 }
 
 // toUserResponse: partner is whom the relationship names, nil for nobody.
@@ -270,6 +274,9 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 		PurgeAt:     timeString(u.PurgeAt),
 		aboutJSON:   toAboutJSON(u.About, partner),
 		Backdrop:    toBackdropJSON(u.ID, u.Backdrop),
+
+		Completeness: u.Completeness,
+		Unfilled:     append([]string{}, u.Unfilled...),
 	}
 }
 
@@ -299,6 +306,9 @@ type publicProfileResponse struct {
 	Online     bool    `json:"online"`
 	// Backdrop is "Фон страницы", null for none.
 	Backdrop *backdropJSON `json:"backdrop"`
+	// Completeness is "Заполненность страницы" in percent; only on the page
+	// itself, not in lists, and not on a deleted or hidden one.
+	Completeness int `json:"completeness,omitempty"`
 }
 
 func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
@@ -321,5 +331,7 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 		LastSeenAt:  optionalTime(p.LastSeen),
 		Online:      p.Online,
 		Backdrop:    toBackdropJSON(p.ID, p.Backdrop),
+
+		Completeness: p.Completeness,
 	}
 }

@@ -270,6 +270,31 @@ func (a *api) updateContacts(w http.ResponseWriter, r *http.Request) {
 	a.writeUser(w, r, u)
 }
 
+// updateStatus saves the status alone, as openvk edits it on the page.
+func (a *api) updateStatus(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Status string `json:"status"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	u, err := a.users.UpdateStatus(r.Context(), token, req.Status)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writeUser(w, r, u)
+}
+
 // updateInterests saves "Интересы" of "Редактировать страницу".
 func (a *api) updateInterests(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)

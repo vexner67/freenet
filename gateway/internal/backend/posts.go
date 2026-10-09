@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 
+	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/pkg/errs"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
@@ -96,12 +97,26 @@ func (p *Posts) Get(ctx context.Context, accessToken, id string) (model.Post, er
 	return toPost(resp.GetPost()), nil
 }
 
-// List is the wall of wallID, whoever wrote the posts.
-func (p *Posts) List(ctx context.Context, accessToken, wallID, cursor string, limit int) (model.PostPage, error) {
+// wallFilters are the tabs of openvk's wall.
+var wallFilters = map[string]postv1.WallFilter{
+	"":       postv1.WallFilter_WALL_FILTER_NONE,
+	"owner":  postv1.WallFilter_WALL_FILTER_OWNER,
+	"others": postv1.WallFilter_WALL_FILTER_OTHERS,
+}
+
+// List is the wall of wallID: filter is "" for all posts, "owner" for the
+// wall's own, "others" for the rest.
+func (p *Posts) List(ctx context.Context, accessToken, wallID, filter, cursor string, limit int) (model.PostPage, error) {
+	f, ok := wallFilters[filter]
+	if !ok {
+		return model.PostPage{}, failure.New(failure.InvalidArgument, "invalid wall type")
+	}
+
 	resp, err := p.api.ListPosts(withToken(ctx, accessToken), &postv1.ListPostsRequest{
 		WallId: wallID,
 		Cursor: cursor,
 		Limit:  toLimit(limit),
+		Filter: f,
 	})
 	if err != nil {
 		return model.PostPage{}, errs.Wrap("p.api.ListPosts", fromStatus(err))

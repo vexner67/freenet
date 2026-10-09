@@ -373,7 +373,7 @@ func (a *api) listPosts(w http.ResponseWriter, r *http.Request) {
 
 	cursor := r.URL.Query().Get("cursor")
 
-	page, err := a.posts.List(r.Context(), token, owner.ID, cursor, limit)
+	page, err := a.posts.List(r.Context(), token, owner.ID, r.URL.Query().Get("type"), cursor, limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

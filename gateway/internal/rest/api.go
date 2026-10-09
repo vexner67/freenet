@@ -51,6 +51,9 @@ type Users interface {
 	ListFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
 	// ListOnlineFollowing is whom userID follows who is online now.
 	ListOnlineFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
+	// ListCommonFollowing is whom both userID and the caller follow.
+	ListCommonFollowing(ctx context.Context, accessToken, userID, cursor string, limit int) (model.UserPage, error)
+	UpdateStatus(ctx context.Context, accessToken, status string) (model.User, error)
 	// MarkOnline: the caller is on the site now.
 	MarkOnline(ctx context.Context, accessToken string) error
 	// SetBackdrop shows photoID ("" for none) on a side of the caller's
@@ -92,7 +95,9 @@ type Posts interface {
 	Unpin(ctx context.Context, accessToken, id string) error
 	Get(ctx context.Context, accessToken, id string) (model.Post, error)
 	GetMany(ctx context.Context, ids []string) ([]model.Post, error)
-	List(ctx context.Context, accessToken, wallID, cursor string, limit int) (model.PostPage, error)
+	// List pages a wall: filter is "", "owner" or "others" (InvalidArgument
+	// otherwise), as the tabs of openvk's wall.
+	List(ctx context.Context, accessToken, wallID, filter, cursor string, limit int) (model.PostPage, error)
 	Feed(ctx context.Context, accessToken string, sources model.FeedSources, cursor string, limit int) (model.PostPage, error)
 
 	Like(ctx context.Context, accessToken, postID string) (int, error)
@@ -232,6 +237,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/me", a.getMe)
 	mux.HandleFunc("PUT /api/v1/me/profile", a.updateProfile)
 	mux.HandleFunc("PUT /api/v1/me/contacts", a.updateContacts)
+	mux.HandleFunc("PUT /api/v1/me/status", a.updateStatus)
 	mux.HandleFunc("PUT /api/v1/me/interests", a.updateInterests)
 	mux.HandleFunc("PUT /api/v1/me/fields", a.updateExtraFields)
 	mux.HandleFunc("PUT /api/v1/me/privacy", a.updatePrivacy)
