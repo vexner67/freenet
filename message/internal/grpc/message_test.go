@@ -200,7 +200,7 @@ func TestErrors(t *testing.T) {
 			return err
 		}, codes.InvalidArgument},
 		{"too long text", func() error {
-			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: bob, Text: strings.Repeat("я", 4097)})
+			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: bob, Text: strings.Repeat("я", 60001)})
 			return err
 		}, codes.InvalidArgument},
 		{"to yourself", func() error {
