@@ -11,6 +11,7 @@ import (
 
 func toProtoUser(u *user.User) *userv1.User {
 	p := u.Profile()
+	completeness, unfilled := u.Completeness()
 
 	return &userv1.User{
 		Id:                    u.ID().String(),
@@ -38,6 +39,8 @@ func toProtoUser(u *user.User) *userv1.User {
 		RegisteredAt:          timestamppb.New(user.RegisteredAt(u.ID())),
 		BackdropLeft:          avatarString(u.Backdrop().Left),
 		BackdropRight:         avatarString(u.Backdrop().Right),
+		Completeness:          int32(completeness), //nolint:gosec // a percent
+		Unfilled:              unfilled,
 	}
 }
 
@@ -379,6 +382,7 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 	}
 
 	pp.BackdropLeft, pp.BackdropRight = avatarString(p.Backdrop.Left), avatarString(p.Backdrop.Right)
+	pp.Completeness = int32(p.Completeness) //nolint:gosec // a percent
 
 	if !p.InfoHidden {
 		pp.RegisteredAt = timestamppb.New(user.RegisteredAt(p.ID))

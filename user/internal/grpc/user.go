@@ -19,6 +19,7 @@ type UserService interface {
 	UpdateProfile(ctx context.Context, id uuid.UUID, profile user.Profile, partner user.Nickname) (*user.User, error)
 	UpdateContacts(ctx context.Context, id uuid.UUID, contacts user.Contacts) (*user.User, error)
 	UpdateInterests(ctx context.Context, id uuid.UUID, interests user.Interests) (*user.User, error)
+	UpdateStatus(ctx context.Context, id uuid.UUID, status user.Status) (*user.User, error)
 	UpdateExtraFields(ctx context.Context, id uuid.UUID, fields []user.ExtraField) (*user.User, error)
 	UpdatePrivacy(ctx context.Context, id uuid.UUID, privacy user.Privacy) (*user.User, error)
 	GetPublicProfiles(ctx context.Context, ids []uuid.UUID) ([]user.PublicProfile, error)
@@ -146,6 +147,26 @@ func (h *UserHandler) UpdateContacts(ctx context.Context, req *userv1.UpdateCont
 	}
 
 	return &userv1.UpdateContactsResponse{User: toProtoUser(u)}, nil
+}
+
+// UpdateStatus is the status alone, as openvk edits it on the page.
+func (h *UserHandler) UpdateStatus(ctx context.Context, req *userv1.UpdateStatusRequest) (*userv1.UpdateStatusResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := user.NewStatus(req.GetStatus())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	u, err := h.userService.UpdateStatus(ctx, userID, s)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.UpdateStatusResponse{User: toProtoUser(u)}, nil
 }
 
 func (h *UserHandler) UpdateInterests(ctx context.Context, req *userv1.UpdateInterestsRequest) (*userv1.UpdateInterestsResponse, error) {

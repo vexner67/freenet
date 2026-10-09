@@ -145,6 +145,28 @@ func (r *FollowRepository) CountOnlineFollowing(ctx context.Context, userID uuid
 	return len(found), nil
 }
 
+func (r *FollowRepository) ListCommonFollowing(ctx context.Context, userID, viewerID, before uuid.UUID, limit int) ([]service.Followed, error) {
+	return r.list(ctx, before, limit, r.commonFollowing(userID, viewerID), nil)
+}
+
+func (r *FollowRepository) CountCommonFollowing(ctx context.Context, userID, viewerID uuid.UUID) (int, error) {
+	found, err := r.list(ctx, uuid.Nil, math.MaxInt, r.commonFollowing(userID, viewerID), nil)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(found), nil
+}
+
+// commonFollowing matches userID's follows of people viewerID follows
+// too; list calls it holding the lock.
+func (r *FollowRepository) commonFollowing(userID, viewerID uuid.UUID) func(edge) (uuid.UUID, bool) {
+	return func(e edge) (uuid.UUID, bool) {
+		_, viewerFollows := r.follows[edge{follower: viewerID, followee: e.followee}]
+		return e.followee, e.follower == userID && viewerFollows
+	}
+}
+
 func following(userID uuid.UUID) func(edge) (uuid.UUID, bool) {
 	return func(e edge) (uuid.UUID, bool) { return e.followee, e.follower == userID }
 }

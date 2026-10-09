@@ -96,6 +96,19 @@ func TestPresence(t *testing.T) {
 		t.Fatalf("nobody: %v", err)
 	}
 
+	// Whom ann and bob both follow: cat; bob also follows ann.
+	if err = follows.Follow(ctx, bob.ID(), cat.ID()); err != nil {
+		t.Fatal(err)
+	}
+	_ = follows.Follow(ctx, bob.ID(), ann.ID())
+	common, err := follows.ListCommonFollowing(ctx, ann.ID(), bob.ID(), uuid.Nil, 10)
+	if err != nil || len(common) != 1 || common[0].User.ID() != cat.ID() {
+		t.Fatalf("ListCommonFollowing = %d, %v", len(common), err)
+	}
+	if n, err := follows.CountCommonFollowing(ctx, ann.ID(), bob.ID()); err != nil || n != 1 {
+		t.Fatalf("CountCommonFollowing = %d, %v", n, err)
+	}
+
 	since := now.Add(-user.OnlineFor)
 	online, err := follows.ListOnlineFollowing(ctx, ann.ID(), since, uuid.Nil, 10)
 	if err != nil || len(online) != 1 || online[0].User.ID() != bob.ID() {

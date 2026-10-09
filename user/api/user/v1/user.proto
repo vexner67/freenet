@@ -13,6 +13,8 @@ service UserService {
   // Requires an access token; works on the caller's own account.
   rpc GetMe(GetMeRequest) returns (GetMeResponse);
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
+  // The status alone, as openvk edits it on the page.
+  rpc UpdateStatus(UpdateStatusRequest) returns (UpdateStatusResponse);
   rpc UpdatePrivacy(UpdatePrivacyRequest) returns (UpdatePrivacyResponse);
   // openvk's "Контакты", "Интересы" and "Дополнительно" of the page; each
   // replaces its part at once.
@@ -116,6 +118,10 @@ message User {
   // a side without one.
   string backdrop_left = 24;
   string backdrop_right = 25;
+  // "Заполненность страницы" of openvk, in percent, and the parts missing
+  // ("interests", "email", "telegram", "status", "city").
+  int32 completeness = 26;
+  repeated string unfilled = 27;
 }
 
 // openvk's "Контактная информация"; every field optional.
@@ -260,6 +266,9 @@ message PublicProfile {
   // "Фон страницы", as in User; none on a deleted or hidden page.
   string backdrop_left = 24;
   string backdrop_right = 25;
+  // "Заполненность страницы", in percent; 0 on a deleted or hidden page.
+  // Only GetProfile tells it.
+  int32 completeness = 26;
 }
 
 enum Gender {
@@ -430,6 +439,9 @@ message ListFollowsRequest {
   int32 limit = 3;
   // Only the people online now ("Друзья онлайн"); total counts them.
   bool online = 4;
+  // Only whom the caller follows too ("Общие друзья"); requires an
+  // access token.
+  bool common = 5;
 }
 
 message MarkOnlineRequest {}
@@ -443,6 +455,14 @@ message ListFollowsResponse {
 
 message SetAvatarRequest {
   string avatar_id = 1;
+}
+
+message UpdateStatusRequest {
+  string status = 1;
+}
+
+message UpdateStatusResponse {
+  User user = 1;
 }
 
 message SetAvatarResponse {

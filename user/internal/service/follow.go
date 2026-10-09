@@ -35,6 +35,10 @@ type FollowListRepository interface {
 	// who visited after since, but deleted pages.
 	ListOnlineFollowing(ctx context.Context, userID uuid.UUID, since time.Time, before uuid.UUID, limit int) ([]Followed, error)
 	CountOnlineFollowing(ctx context.Context, userID uuid.UUID, since time.Time) (int, error)
+	// ListCommonFollowing and CountCommonFollowing are whom both userID and
+	// viewerID follow, by userID's follows.
+	ListCommonFollowing(ctx context.Context, userID, viewerID, before uuid.UUID, limit int) ([]Followed, error)
+	CountCommonFollowing(ctx context.Context, userID, viewerID uuid.UUID) (int, error)
 }
 
 // Followed is a user in a follow list with the ID of that follow.
@@ -193,6 +197,19 @@ func (s *FollowService) ListOnlineFollowing(ctx context.Context, userID, cursor 
 	return s.page(ctx, userID, cursor, size, list, func(ctx context.Context) (int, error) {
 		online, err := s.listRepo.CountOnlineFollowing(ctx, userID, since)
 		return online, errs.Wrap("s.listRepo.CountOnlineFollowing", err)
+	})
+}
+
+// ListCommonFollowing is whom both userID and viewerID follow, openvk's
+// "Общие друзья".
+func (s *FollowService) ListCommonFollowing(ctx context.Context, userID, viewerID, cursor uuid.UUID, size int) (FollowPage, error) {
+	list := func(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error) {
+		return s.listRepo.ListCommonFollowing(ctx, userID, viewerID, before, limit)
+	}
+
+	return s.page(ctx, userID, cursor, size, list, func(ctx context.Context) (int, error) {
+		common, err := s.listRepo.CountCommonFollowing(ctx, userID, viewerID)
+		return common, errs.Wrap("s.listRepo.CountCommonFollowing", err)
 	})
 }
 

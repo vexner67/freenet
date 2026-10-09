@@ -21,6 +21,7 @@ type FollowService interface {
 	ListFollowers(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
 	ListFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
 	ListOnlineFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
+	ListCommonFollowing(ctx context.Context, userID, viewerID, cursor uuid.UUID, size int) (service.FollowPage, error)
 	FollowingIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
 
@@ -145,9 +146,19 @@ func (h *UserHandler) ListFollowers(ctx context.Context, req *userv1.ListFollows
 	})
 }
 
-// ListFollowing with online is openvk's "Друзья онлайн".
+// ListFollowing with online is openvk's "Друзья онлайн", with common its
+// "Общие друзья", whom the caller follows too.
 func (h *UserHandler) ListFollowing(ctx context.Context, req *userv1.ListFollowsRequest) (*userv1.ListFollowsResponse, error) {
 	return h.listFollows(req, func(userID, cursor uuid.UUID, size int) (service.FollowPage, error) {
+		if req.GetCommon() {
+			viewer, err := currentUserID(ctx)
+			if err != nil {
+				return service.FollowPage{}, err
+			}
+
+			return h.followService.ListCommonFollowing(ctx, userID, viewer, cursor, size)
+		}
+
 		if req.GetOnline() {
 			return h.followService.ListOnlineFollowing(ctx, userID, cursor, size)
 		}

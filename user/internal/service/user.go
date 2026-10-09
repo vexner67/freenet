@@ -125,6 +125,14 @@ func (s *UserService) UpdateContacts(ctx context.Context, id uuid.UUID, contacts
 	})
 }
 
+// UpdateStatus replaces the status alone.
+func (s *UserService) UpdateStatus(ctx context.Context, id uuid.UUID, status user.Status) (*user.User, error) {
+	return s.update(ctx, id, func(u *user.User) error {
+		u.UpdateStatus(status)
+		return nil
+	})
+}
+
 // UpdateInterests replaces "Личная информация".
 func (s *UserService) UpdateInterests(ctx context.Context, id uuid.UUID, interests user.Interests) (*user.User, error) {
 	return s.update(ctx, id, func(u *user.User) error {
