@@ -65,7 +65,8 @@ type MediaServiceClient interface {
 	ListOwnPhotos(ctx context.Context, in *ListOwnPhotosRequest, opts ...grpc.CallOption) (*ListOwnPhotosResponse, error)
 	// Public: a photo as JPEG.
 	GetPhoto(ctx context.Context, in *GetPhotoRequest, opts ...grpc.CallOption) (*GetPhotoResponse, error)
-	// Internal, for post and message: a post, comment or message with these
+	// Internal, for post and message, and for the gateway (the backdrop
+	// of a person, "Фон страницы"): a post, comment or message with these
 	// photos of owner_id was published (they are kept for good) or deleted
 	// (they go). Idempotent; missing photos are fine.
 	PublishPhotos(ctx context.Context, in *PublishPhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -243,7 +244,8 @@ type MediaServiceServer interface {
 	ListOwnPhotos(context.Context, *ListOwnPhotosRequest) (*ListOwnPhotosResponse, error)
 	// Public: a photo as JPEG.
 	GetPhoto(context.Context, *GetPhotoRequest) (*GetPhotoResponse, error)
-	// Internal, for post and message: a post, comment or message with these
+	// Internal, for post and message, and for the gateway (the backdrop
+	// of a person, "Фон страницы"): a post, comment or message with these
 	// photos of owner_id was published (they are kept for good) or deleted
 	// (they go). Idempotent; missing photos are fine.
 	PublishPhotos(context.Context, *PublishPhotosRequest) (*emptypb.Empty, error)
