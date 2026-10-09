@@ -338,7 +338,12 @@ func (s *eventSession) messageEvent(e model.MessageEvent) (any, error) {
 		return nil, err
 	}
 
-	return messageEventJSON{Type: "message", Peer: peer, Message: toMessageJSON(m, peerID)}, nil
+	j := []messageJSON{toMessageJSON(m, peerID)}
+	if err = s.api.showSharedPosts(s.r, j); err != nil {
+		return nil, err
+	}
+
+	return messageEventJSON{Type: "message", Peer: peer, Message: j[0]}, nil
 }
 
 // peer is the profile of the user with id; false when the account is gone.

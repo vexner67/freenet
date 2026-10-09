@@ -18,8 +18,11 @@ func NewMessages(api messagev1.MessageServiceClient) *Messages {
 	}
 }
 
-func (m *Messages) Send(ctx context.Context, accessToken, recipientID, text string, photoIDs []string) (model.Message, error) {
-	resp, err := m.api.SendMessage(withToken(ctx, accessToken), &messagev1.SendMessageRequest{RecipientId: recipientID, Text: text, PhotoIds: photoIDs})
+// Send writes text, photos and a shared post ("" for none) to recipientID.
+func (m *Messages) Send(ctx context.Context, accessToken, recipientID, text string, photoIDs []string, postID string) (model.Message, error) {
+	resp, err := m.api.SendMessage(withToken(ctx, accessToken), &messagev1.SendMessageRequest{
+		RecipientId: recipientID, Text: text, PhotoIds: photoIDs, PostId: postID,
+	})
 	if err != nil {
 		return model.Message{}, errs.Wrap("m.api.SendMessage", fromStatus(err))
 	}
@@ -150,5 +153,6 @@ func toMessage(pm *messagev1.Message) model.Message {
 		CreatedAt:      pm.GetCreatedAt().AsTime(),
 		Read:           pm.GetRead(),
 		DeletableUntil: fromTimestamp(pm.GetDeletableUntil()),
+		PostID:         pm.GetPostId(),
 	}
 }

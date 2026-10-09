@@ -115,6 +115,30 @@ func TestSendMessage(t *testing.T) {
 		}
 	})
 
+	t.Run("with a shared post", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"post":"p1"}`, "Authorization", "Bearer tok")
+		got := decode[struct {
+			Post   string `json:"post"`
+			Repost *struct {
+				ID     string            `json:"id"`
+				Text   string            `json:"text"`
+				Author map[string]string `json:"author"`
+			} `json:"repost"`
+		}](t, w)
+		if w.Code != http.StatusCreated || got.Post != "p1" || got.Repost == nil || got.Repost.Text != "первая" || got.Repost.Author["nickname"] != "ann" {
+			t.Fatalf("%d %s", w.Code, w.Body)
+		}
+
+		if w = h.do("POST", "/api/v1/dialogs/bob/messages", `{"post":"p404"}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
+			t.Fatalf("a missing post: %d", w.Code)
+		}
+	})
+
 	t.Run("with photos, the caller's only", func(t *testing.T) {
 		t.Parallel()
 

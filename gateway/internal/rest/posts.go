@@ -49,6 +49,9 @@ type postResponse struct {
 	Reposts   int         `json:"reposts"`
 	// Repost is the shared post of a repost, null for other posts.
 	Repost *repostJSON `json:"repost"`
+	// SharedPhoto is a photo of an album the post shares ("Поделиться"
+	// under a photo), null for other posts.
+	SharedPhoto *sharedPhotoJSON `json:"sharedPhoto"`
 	// EditedAt is null for a post never edited; its author may edit it
 	// until EditableUntil.
 	EditedAt      *string `json:"editedAt"`
@@ -72,6 +75,20 @@ type postResponse struct {
 type repostRequest struct {
 	// What the caller says about the shared post; may be empty.
 	Text string `json:"text"`
+	// Club is a community to share it in ("в группу"), "" for the caller's
+	// wall; FromClub speaks for it, Signed names the caller under it.
+	Club     string `json:"club"`
+	FromClub bool   `json:"fromClub"`
+	Signed   bool   `json:"signed"`
+}
+
+// sharedPhotoJSON is a photo of an album a post shares; deleted leaves
+// only its ID.
+type sharedPhotoJSON struct {
+	ID      string     `json:"id"`
+	Deleted bool       `json:"deleted"`
+	Photo   *photoJSON `json:"photo"`
+	AlbumID string     `json:"albumId"`
 }
 
 // repostJSON is the post a repost shares, shown inside it as openvk does:
@@ -285,6 +302,7 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 		}
 
 		resp := toPostResponse(p)
+		resp.SharedPhoto = a.sharedPhoto(r, p.SharedPhotoID)
 
 		if p.RepostOf != "" {
 			resp.Repost = &repostJSON{ID: p.RepostOf, Deleted: true}
@@ -297,6 +315,23 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 	}
 
 	return shown, nil
+}
+
+// sharedPhoto is the photo of an album a post shares, nil for none; one
+// gone, or failing to be read, is deleted.
+func (a *api) sharedPhoto(r *http.Request, id string) *sharedPhotoJSON {
+	if id == "" {
+		return nil
+	}
+
+	photo, _, err := a.albums.Photo(r.Context(), "", id)
+	if err != nil {
+		return &sharedPhotoJSON{ID: id, Deleted: true}
+	}
+
+	shown := toPhotoJSON(photo.AuthorID, photo.ID)
+
+	return &sharedPhotoJSON{ID: id, Photo: &shown, AlbumID: photo.AlbumID}
 }
 
 // sharedPosts are the posts that reposts among posts share, by ID; those
@@ -494,6 +529,13 @@ func (a *api) wallFor(r *http.Request, token, myID, nickname string) (model.Auth
 // repostPost shares a post on the caller's wall, as openvk's "Поделиться",
 // and returns the repost with the shared post inside.
 func (a *api) repostPost(w http.ResponseWriter, r *http.Request) {
+	a.share(w, r, func(string) (string, string, error) { return r.PathValue("id"), "", nil })
+}
+
+// share writes the repost of a post or a photo, which what tells (a
+// post's ID, or a photo's), as openvk's "Поделиться": on the caller's
+// wall or a community's.
+func (a *api) share(w http.ResponseWriter, r *http.Request, what func(token string) (postID, photoID string, err error)) {
 	token, err := bearerToken(r)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -517,7 +559,20 @@ func (a *api) repostPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := a.posts.Repost(r.Context(), token, r.PathValue("id"), req.Text)
+	postID, photoID, err := what(token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	nr, err := a.repostTarget(r, token, req)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+	nr.PhotoID = photoID
+
+	p, err := a.posts.Repost(r.Context(), token, postID, nr)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -537,6 +592,70 @@ func (a *api) repostPost(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusCreated, shown[0])
+}
+
+// repostTarget is where the caller shares a post: their wall, or a
+// community's they may write on, for it as on its wall (createClubPost).
+func (a *api) repostTarget(r *http.Request, token string, req repostRequest) (model.NewRepost, error) {
+	nr := model.NewRepost{Text: req.Text}
+	if req.Club == "" {
+		return nr, nil
+	}
+
+	c, err := a.clubs.Get(r.Context(), token, req.Club)
+	if err != nil {
+		return model.NewRepost{}, err
+	}
+
+	fromClub := req.FromClub || (c.Club.Wall != "open" && manages(c.Role))
+
+	access, err := a.clubs.CanPostOnWall(r.Context(), token, c.Club.ID, fromClub)
+	if err != nil {
+		return model.NewRepost{}, err
+	}
+
+	if !access.Post {
+		return model.NewRepost{}, failure.New(failure.PermissionDenied, "you cannot post on this wall")
+	}
+
+	nr.WallID, nr.FromWall, nr.Signed = c.Club.ID, fromClub, fromClub && req.Signed
+
+	return nr, nil
+}
+
+// repostsByID are the posts of ids as shown inside a repost or a message:
+// those that are gone, or whose author is, deleted.
+func (a *api) repostsByID(r *http.Request, ids []string) (map[string]*repostJSON, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	found, err := a.posts.GetMany(r.Context(), unique(ids))
+	if err != nil {
+		return nil, err
+	}
+
+	people := make([]string, 0, 2*len(found))
+	for _, p := range found {
+		people = append(people, p.Author.ID, p.Wall.ID)
+	}
+
+	authors, err := a.authors(r, people)
+	if err != nil {
+		return nil, err
+	}
+
+	shown := make(map[string]*repostJSON, len(ids))
+	for _, id := range ids {
+		shown[id] = &repostJSON{ID: id, Deleted: true}
+	}
+	for _, p := range found {
+		if withProfiles(&p, authors) {
+			shown[p.ID] = toRepostJSON(p)
+		}
+	}
+
+	return shown, nil
 }
 
 // deletePost deletes a post, by its author or the owner of its wall; the

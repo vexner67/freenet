@@ -387,11 +387,11 @@ func TestPosts(t *testing.T) {
 		t.Fatalf("signed-in wall = %+v, %v", page, err)
 	}
 
-	repost, err := posts.Repost(context.Background(), "tok", "p1", "смотрите")
+	repost, err := posts.Repost(context.Background(), "tok", "p1", model.NewRepost{Text: "смотрите"})
 	if err != nil || repost.RepostOf != "p1" || repost.Text != "смотрите" || repost.Wall.ID != "u2" {
 		t.Fatalf("Repost = %+v, %v", repost, err)
 	}
-	if _, err = posts.Repost(context.Background(), "tok", "p2", ""); failure.From(err).Kind != failure.NotFound {
+	if _, err = posts.Repost(context.Background(), "tok", "p2", model.NewRepost{}); failure.From(err).Kind != failure.NotFound {
 		t.Fatalf("Repost a missing post: %v", err)
 	}
 
@@ -578,7 +578,7 @@ func TestMessages(t *testing.T) {
 		t.Fatalf("dialogs = %+v, %v", dialogs, err)
 	}
 
-	_, err = messages.Send(context.Background(), "tok", "u1", "x", nil)
+	_, err = messages.Send(context.Background(), "tok", "u1", "x", nil, "")
 	if f := failure.From(err); f.Kind != failure.InvalidArgument || f.Message != "you cannot write to yourself" {
 		t.Fatalf("Send to yourself: %v", err)
 	}

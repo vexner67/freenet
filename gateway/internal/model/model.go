@@ -222,6 +222,8 @@ type Post struct {
 	AvatarUpdate bool
 	// Mine: the viewer wrote it; false for anonymous viewers.
 	Mine bool
+	// SharedPhotoID is a photo of an album the post shares, "" for none.
+	SharedPhotoID string
 }
 
 // NewPost is what a post to write says and where: on the wall of WallID
@@ -347,6 +349,8 @@ type Message struct {
 	Read      bool
 	// DeletableUntil: the sender may delete it from both sides until then.
 	DeletableUntil time.Time
+	// PostID is a post shared into the dialog, "" for none.
+	PostID string
 }
 
 // Dialog is the caller's conversation with PeerID; Unread means the peer
@@ -607,6 +611,28 @@ type AlbumPhoto struct {
 	Description string
 	CreatedAt   time.Time
 	Mine        bool
+	// Likes and Comments count them; Liked: the viewer likes it.
+	Likes    int
+	Comments int
+	Liked    bool
+}
+
+// PhotoComment is a comment under a photo of an album, text only; Mine:
+// the viewer wrote it.
+type PhotoComment struct {
+	ID        string
+	PhotoID   string
+	AuthorID  string
+	Text      string
+	CreatedAt time.Time
+	Mine      bool
+}
+
+// PhotoCommentPage is one screen of the comments of a photo, oldest first.
+type PhotoCommentPage struct {
+	Comments   []PhotoComment
+	NextCursor string
+	Total      int
 }
 
 // AlbumPage and AlbumPhotoPage are one screen of a list; NextCursor is
@@ -634,4 +660,23 @@ type NewAlbum struct {
 type NewAlbumPhoto struct {
 	PhotoID     string
 	Description string
+}
+
+// LikerPage is one screen of who like a post or a comment, newest first
+// ("Понравилось N людям"); Total is its like counter.
+type LikerPage struct {
+	UserIDs    []string
+	NextCursor string
+	Total      int
+}
+
+// NewRepost is where and how to share a post: on the caller's wall, or on
+// a community's (WallID) for it (FromWall), maybe signed.
+type NewRepost struct {
+	// PhotoID shares a photo of an album instead of a post.
+	PhotoID  string
+	Text     string
+	WallID   string
+	FromWall bool
+	Signed   bool
 }

@@ -48,6 +48,10 @@ type albumPhotoJSON struct {
 	Description string `json:"description"`
 	CreatedAt   string `json:"createdAt"`
 	Mine        bool   `json:"mine"`
+	// Likes and Comments count them, Liked: the viewer likes it.
+	Likes    int  `json:"likes"`
+	Comments int  `json:"comments"`
+	Liked    bool `json:"liked"`
 }
 
 // albumOwnerJSON is who albums belong to: a person or a community, with
@@ -112,6 +116,9 @@ func toAlbumPhotoJSON(p model.AlbumPhoto) albumPhotoJSON {
 		Description: p.Description,
 		CreatedAt:   p.CreatedAt.UTC().Format(time.RFC3339),
 		Mine:        p.Mine,
+		Likes:       p.Likes,
+		Comments:    p.Comments,
+		Liked:       p.Liked,
 	}
 }
 

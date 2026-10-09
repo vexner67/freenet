@@ -711,12 +711,17 @@ paths:
 
   /api/v1/posts/{id}/reposts:
     post:
-      summary: Share a post on your wall
+      summary: Share a post on your wall or a community's
       description: |
         As openvk's "Поделиться": a repost on your own wall shows the shared
         post inside, with what you say about it (may be empty). Sharing a
         repost that says nothing shares its original. The author of the
-        shared post is notified. Your profile must be filled in first.
+        shared post is notified (by the community, when the repost speaks
+        for it). Your profile must be filled in first. With `club` the
+        repost goes on that community's wall ("в группу"), as a post there
+        would: for the community (`fromClub`, admins only, and always on a
+        wall that is not open), maybe signed. To share a post in a dialog
+        ("в переписку"), send a message with `post`.
       security: [{ bearer: [] }]
       parameters:
         - name: id
@@ -732,6 +737,9 @@ paths:
               additionalProperties: false
               properties:
                 text: { type: string, maxLength: 1000 }
+                club: { type: string, description: "The address or ID of a community to share it in" }
+                fromClub: { type: boolean }
+                signed: { type: boolean }
       responses:
         "201":
           description: The repost
@@ -742,6 +750,32 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/posts/{id}/likes:
+    get:
+      summary: Who like the post, newest first ("Понравилось N людям")
+      description: |
+        No token needed. `total` is the like counter; people whose page is
+        deleted are left out of `users`, still counted.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of people
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/posts/{id}/like:
     parameters:
@@ -852,6 +886,32 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/comments/{id}/likes:
+    get:
+      summary: Who like the comment, newest first ("Понравилось N людям")
+      description: |
+        No token needed. `total` is the like counter; people whose page is
+        deleted are left out of `users`, still counted.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of people
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/comments/{id}/like:
@@ -1911,6 +1971,171 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/album-photos/{id}/like:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Like a photo of an album, as a post
+      description: Idempotent. The photo must be one you may see.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Like" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Take your like of a photo back
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Like" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/album-photos/{id}/likes:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: Who like a photo, newest first ("Понравилось N людям")
+      description: As the likers of a post.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of people
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/album-photos/{id}/comments:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: The comments under a photo, oldest first
+      description: Text only. Those of deleted pages are left out, still counted.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of comments
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comments, nextCursor, total]
+                properties:
+                  comments:
+                    type: array
+                    items: { $ref: "#/components/schemas/PhotoComment" }
+                  nextCursor: { type: string }
+                  total: { type: integer }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Comment a photo
+      description: Your profile must be filled in first; not between you and who uploaded the photo when one blacklisted the other.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 1000 }
+      responses:
+        "201":
+          description: The comment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PhotoComment" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "`you cannot comment on this photo`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/photo-comments/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Delete a comment under a photo
+      description: Its author, who uploaded the photo, the owner of the album or the admins of its community.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not yours to delete
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/album-photos/{id}/reposts:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Share a photo of an album ("Поделиться" under a photo)
+      description: As sharing a post, the same body; the post shows the photo (`sharedPhoto`).
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              properties:
+                text: { type: string, maxLength: 1000 }
+                club: { type: string }
+                fromClub: { type: boolean }
+                signed: { type: boolean }
+      responses:
+        "201":
+          description: The post sharing it
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You cannot post on that community's wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/album-photos/{id}:
     parameters:
       - name: id
@@ -2120,8 +2345,10 @@ paths:
         Your profile must be filled in first; you cannot write to yourself.
         The user's privacy (`messagesWrite`) and blacklists decide whether
         you may; whoever wrote to you may always be answered, unless one of
-        you blacklisted the other. Text, photos or both; photos are IDs from
-        `POST /api/v1/me/photos` and must be yours.
+        you blacklisted the other. Text, photos, a post shared into the
+        dialog ("Поделиться" "в переписку") or some of them; photos are IDs
+        from `POST /api/v1/me/photos` and must be yours, the post must be
+        there (`post not found` otherwise).
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -2133,6 +2360,7 @@ paths:
               properties:
                 text: { type: string, maxLength: 4096 }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
+                post: { type: string, format: uuid }
       responses:
         "201":
           description: The sent message
@@ -2791,6 +3019,17 @@ components:
         liked: { type: boolean, description: "You like the post; false without a token" }
         comments: { type: integer }
         reposts: { type: integer, description: "How many times the post was shared" }
+        sharedPhoto:
+          description: 'A photo of an album the post shares ("Поделиться" under a photo); null otherwise. A deleted photo leaves only its ID'
+          oneOf:
+            - type: object
+              required: [id, deleted, photo, albumId]
+              properties:
+                id: { type: string, format: uuid }
+                deleted: { type: boolean }
+                photo: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
+                albumId: { type: string }
+            - type: "null"
         repost:
           description: The shared post when this is a repost; null otherwise
           oneOf:
@@ -2878,6 +3117,9 @@ components:
             description: { type: string }
             createdAt: { type: string, format: date-time }
             mine: { type: boolean, description: You uploaded it }
+            likes: { type: integer }
+            comments: { type: integer }
+            liked: { type: boolean, description: You like it }
 
     AlbumOwner:
       type: object
@@ -2974,6 +3216,10 @@ components:
         deletableUntil:
           type: string
           description: "Until when you may delete your message (date-time); empty for the peer's"
+        post: { type: string, description: "A post shared in it; empty for none" }
+        repost:
+          description: The shared post, as inside a repost; absent in the list of dialogs and without one
+          $ref: "#/components/schemas/SharedPost"
 
     Dialog:
       type: object
@@ -3109,3 +3355,13 @@ components:
             left: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
             right: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
         - type: "null"
+
+    PhotoComment:
+      type: object
+      required: [id, author, text, createdAt, mine]
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/Author" }
+        text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
+        createdAt: { type: string, format: date-time }
+        mine: { type: boolean, description: You wrote it }

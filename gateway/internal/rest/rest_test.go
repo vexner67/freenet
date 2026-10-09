@@ -362,6 +362,10 @@ type fakePosts struct {
 	err                  error
 	// wallFilter is the tab of the wall List got.
 	wallFilter string
+	// likersOf is whose likers were asked for.
+	likersOf string
+	// repost is how Repost was asked to share.
+	repost model.NewRepost
 }
 
 // Suggest keeps one suggestion by u1.
@@ -433,13 +437,16 @@ func (f *fakePosts) Unpin(ctx context.Context, token, id string) error {
 }
 
 // Repost shares p1 only, as u1's repost p7.
-func (f *fakePosts) Repost(_ context.Context, token, postID, text string) (model.Post, error) {
-	f.token, f.shared, f.created = token, postID, text
-	if postID != "p1" {
+func (f *fakePosts) Repost(_ context.Context, token, postID string, nr model.NewRepost) (model.Post, error) {
+	f.token, f.shared, f.created, f.repost = token, postID, nr.Text, nr
+	if postID != "p1" && nr.PhotoID == "" {
 		return model.Post{}, failure.New(failure.NotFound, "post not found")
 	}
-	ann := model.Author{ID: "u1"}
-	return model.Post{ID: "p7", Author: ann, Wall: ann, Text: text, RepostOf: "p1", CreatedAt: time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)}, f.err
+	ann, wall := model.Author{ID: "u1"}, model.Author{ID: "u1"}
+	if nr.WallID != "" {
+		wall = model.Author{ID: nr.WallID}
+	}
+	return model.Post{ID: "p7", Author: ann, Wall: wall, Text: nr.Text, RepostOf: "p1", FromWall: nr.FromWall, CreatedAt: time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)}, f.err
 }
 
 // Delete knows the posts Get knows.
@@ -508,6 +515,18 @@ func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSour
 }
 
 // List is u1's wall: bob's post p4 on it and u1's own p2 and p1.
+// PostLikers: x1 and u3 (a deleted page) like every post, the newest
+// first.
+func (f *fakePosts) PostLikers(_ context.Context, postID, cursor string, limit int) (model.LikerPage, error) {
+	f.cursor, f.limit, f.likersOf = cursor, limit, postID
+	return model.LikerPage{UserIDs: []string{"x1", "u3", "u2"}, NextCursor: "l2", Total: 4}, f.err
+}
+
+func (f *fakePosts) CommentLikers(_ context.Context, commentID, cursor string, limit int) (model.LikerPage, error) {
+	f.cursor, f.limit, f.likersOf = cursor, limit, "comment:"+commentID
+	return model.LikerPage{UserIDs: []string{"u2"}, Total: 1}, f.err
+}
+
 func (f *fakePosts) List(_ context.Context, token, wallID, filter, cursor string, limit int) (model.PostPage, error) {
 	f.token, f.cursor, f.limit, f.wallFilter = token, cursor, limit, filter
 	if wallID == "k1" {
@@ -796,9 +815,9 @@ func (f *fakeMessages) HasMessagesFrom(_ context.Context, token, peerID string) 
 	return f.peerWrote, f.err
 }
 
-func (f *fakeMessages) Send(_ context.Context, token, recipientID, text string, photoIDs []string) (model.Message, error) {
+func (f *fakeMessages) Send(_ context.Context, token, recipientID, text string, photoIDs []string, postID string) (model.Message, error) {
 	f.token, f.peerID, f.sentText = token, recipientID, text
-	return model.Message{ID: "m9", SenderID: "u1", RecipientID: recipientID, Text: text, PhotoIDs: photoIDs, CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC)}, f.err
+	return model.Message{ID: "m9", SenderID: "u1", RecipientID: recipientID, Text: text, PhotoIDs: photoIDs, PostID: postID, CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC)}, f.err
 }
 
 func (f *fakeMessages) Dialogs(_ context.Context, token, cursor string, _ int) (model.DialogPage, error) {

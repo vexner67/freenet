@@ -467,3 +467,30 @@ func TestPinPost(t *testing.T) {
 		t.Fatalf("no token: status = %d", w.Code)
 	}
 }
+
+func TestRepostInClub(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+	// "в группу": anyone on an open wall, on their own behalf.
+	w := h.do("POST", "/api/v1/posts/p1/reposts", `{"text":"смотрите","club":"cats"}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusCreated || h.posts.repost != (model.NewRepost{Text: "смотрите", WallID: "k1"}) {
+		t.Fatalf("%d %s, asked %+v", w.Code, w.Body, h.posts.repost)
+	}
+
+	// For the club only its admins; on a closed wall always for it.
+	if w = h.do("POST", "/api/v1/posts/p1/reposts", `{"club":"cats","fromClub":true}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("a member for the club: %d", w.Code)
+	}
+	h.clubs.role, h.clubs.closedWall = "admin", true
+	w = h.do("POST", "/api/v1/posts/p1/reposts", `{"club":"cats","signed":true}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusCreated || h.posts.repost != (model.NewRepost{WallID: "k1", FromWall: true, Signed: true}) {
+		t.Fatalf("an admin on a closed wall: %d, asked %+v", w.Code, h.posts.repost)
+	}
+
+	if w = h.do("POST", "/api/v1/posts/p1/reposts", `{"club":"nobody"}`, "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		t.Fatalf("no such club: %d", w.Code)
+	}
+}
