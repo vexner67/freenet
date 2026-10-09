@@ -52,6 +52,7 @@ export function renderChrome(me) {
     );
     menu?.replaceChildren(
       el('a', { href: profilePath(me), textContent: 'Моя Страница' }),
+      el('a', { href: '/albums', textContent: 'Мои Фотографии' }),
       el('a', { href: '/im', textContent: 'Мои Сообщения' },
         el('span', { className: 'counter', id: 'messages-count', hidden: true })),
       el('a', { href: '/groups', textContent: 'Мои Группы' }),

@@ -287,6 +287,24 @@ export const api = {
     authorized('POST', `/api/v1/topics/${encodeURIComponent(id)}/messages`, { text, photos, fromClub }),
   deleteTopicMessage: (id) => authorized('DELETE', `/api/v1/topic-messages/${encodeURIComponent(id)}`),
 
+  // "Альбомы" of a person (nickname) or of a community (club: its ref).
+  albums({ nickname = '', club = '', cursor = '', limit = 0 } = {}) {
+    const owner = club ? `/api/v1/clubs/${encodeURIComponent(club)}` : `/api/v1/users/${encodeURIComponent(nickname)}`;
+    return optional('GET', page(owner + '/albums', cursor, limit));
+  },
+  // club: an album of the community, its admins only; yours without it.
+  createAlbum: (name, description, { club = '' } = {}) =>
+    authorized('POST', club ? `/api/v1/clubs/${encodeURIComponent(club)}/albums` : '/api/v1/me/albums', { name, description }),
+  album: (id) => optional('GET', `/api/v1/albums/${encodeURIComponent(id)}`),
+  editAlbum: (id, name, description) => authorized('PATCH', `/api/v1/albums/${encodeURIComponent(id)}`, { name, description }),
+  deleteAlbum: (id) => authorized('DELETE', `/api/v1/albums/${encodeURIComponent(id)}`),
+  albumPhotos: (id, cursor = '') => optional('GET', page(`/api/v1/albums/${encodeURIComponent(id)}/photos`, cursor, 0)),
+  // photos are [{ id, description }] uploaded with uploadPhoto, up to 10.
+  addAlbumPhotos: (id, photos) => authorized('POST', `/api/v1/albums/${encodeURIComponent(id)}/photos`, { photos }),
+  albumPhoto: (id) => optional('GET', `/api/v1/album-photos/${encodeURIComponent(id)}`),
+  describeAlbumPhoto: (id, description) => authorized('PATCH', `/api/v1/album-photos/${encodeURIComponent(id)}`, { description }),
+  deleteAlbumPhoto: (id) => authorized('DELETE', `/api/v1/album-photos/${encodeURIComponent(id)}`),
+
   search(query, cursor = '') {
     const params = new URLSearchParams({ q: query });
     if (cursor) params.set('cursor', cursor);

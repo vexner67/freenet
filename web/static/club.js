@@ -5,6 +5,7 @@
 // admins or nobody.
 
 import { api, currentUser } from './api.js';
+import { albumsBlock } from './albums.js';
 import { adminsCount, formatPostDate, membersCount, suggestedByEveryone, suggestedByYou, topicsCount } from './labels.js';
 import { $, avatarURL, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
 import { personCell } from './people.js';
@@ -16,6 +17,7 @@ const ref = decodeURIComponent(location.pathname.slice('/club/'.length));
 const MEMBERS_SHOWN = 6;
 const ADMINS_SHOWN = 5;
 const TOPICS_SHOWN = 3;
+const ALBUMS_SHOWN = 3;
 
 const manages = (club) => club.role === 'admin' || club.role === 'owner';
 
@@ -88,6 +90,19 @@ async function showAdmins(club) {
     $('admins-all').href = `/club/${encodeURIComponent(clubRef(club))}/members?admins=true`;
     $('admins').replaceChildren(...admins.map((m) => avatarItem(m.user)));
     $('admins-block').hidden = admins.length === 0;
+  } catch {
+    // The page works without it.
+  }
+}
+
+// showAlbums is openvk's block "Альбомы": there are albums, or the
+// viewer runs the community and may add the first.
+async function showAlbums(club) {
+  try {
+    const page = await api.albums({ club: ref, limit: ALBUMS_SHOWN });
+
+    $('albums-block').replaceChildren(...albumsBlock({ ...club, club: true }, page, manages(club)));
+    $('albums-block').hidden = page.total === 0 && !manages(club);
   } catch {
     // The page works without it.
   }
@@ -194,6 +209,7 @@ try {
   showMembers(club);
   showSuggestions(club, me);
   showTopics(club);
+  showAlbums(club);
   await initWall({ ...club, club: true }, me, { moderates: manages(club), speaksForClub: manages(club) });
 } catch (e) {
   $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';

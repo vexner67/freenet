@@ -1,0 +1,55 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Создание альбома | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/album-create.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+        <div class="gray-box" id="content" hidden>
+          <h4 class="gray-box-title">Создание альбома</h4>
+          <form id="form">
+            <table class="form album-form">
+              <tr>
+                <th><label for="name">Название:</label></th>
+                <td class="control"><input type="text" id="name" maxlength="36" required></td>
+              </tr>
+              <tr>
+                <th><label for="description">Описание:</label></th>
+                <td class="control"><textarea id="description" maxlength="255" rows="4"></textarea></td>
+              </tr>
+              <tr>
+                <th></th>
+                <td class="control"><button class="button" type="submit" id="submit">Создать</button></td>
+              </tr>
+            </table>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

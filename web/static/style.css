@@ -721,3 +721,62 @@ a.like:hover svg { opacity: .7; }
 .backdrop-side { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; }
 .backdrop-side img { max-width: 100%; max-height: 150px; object-fit: contain; }
 .backdrop-page { width: 220px; background: #fff; border: 1px solid #d0d0d0; }
+
+/* openvk's photo albums: the list (a grey box of white items with their
+   covers), the head and the photos of an album, the upload with its white
+   box of limits, the page of a photo and the block on a page. */
+.gray-box { padding: 12px; background: #f6f6f6; }
+.gray-box-title { margin: 0 0 10px; font-size: 11px; }
+.summary-bar .summary-links { font-weight: normal; }
+.album-list .hint { margin: 0; }
+.album-item { display: flex; gap: 10px; margin-bottom: 6px; padding: 4px; background: #fff; border: 1px solid #dedede; }
+.album-item:last-child { margin-bottom: 0; }
+.album-cover img { display: block; width: 170px; height: 130px; object-fit: cover; }
+.album-info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.album-form input, .album-form textarea { width: 100%; }
+.album-delete { text-align: center; }
+.album-head { margin-bottom: 12px; }
+.album-grid { display: flex; flex-wrap: wrap; }
+.album-photo { position: relative; width: 25%; margin-bottom: 8px; text-align: center; }
+.album-photo img { max-width: 83%; max-height: 120px; padding: 8px; border: 1px solid #ccc; background: #fff; vertical-align: top; }
+.album-photo-delete {
+  position: absolute;
+  top: 0;
+  right: 0;
+  margin: 4px;
+  padding: 1px 6px;
+  background: rgba(0, 0, 0, 0.3);
+  color: #fff;
+  opacity: 0;
+  transition: opacity 0.1s ease-out;
+}
+.album-photo-delete:hover { text-decoration: none; }
+.album-photo:hover .album-photo-delete { opacity: 1; }
+.upload-box { min-height: 344px; }
+.white-box { width: 421px; max-width: 100%; margin: 7% auto 0; background: #fff; border: 1px solid #e8e8e8; }
+.white-box h4 { margin: 24px 38px 0; font-size: 11px; }
+.upload-limits { margin: 17px 38px 24px; }
+.upload-limits > b { color: #45688e; }
+.upload-limits ul { margin: 6px 0 0; padding-left: 18px; }
+.upload-button { padding-top: 4px; text-align: center; }
+.upload-tip { margin: 19px 0 0; line-height: 15px; }
+.upload-again { text-align: center; }
+.uploaded-photo { display: flex; justify-content: space-between; gap: 10px; margin-top: 9px; padding-bottom: 9px; border-bottom: 1px solid #e8e8e8; }
+.uploaded-description { display: flex; flex: 1; gap: 6px; color: #464646; }
+.uploaded-description textarea { flex: 1; height: 86px; resize: none; }
+.uploaded-image { display: flex; flex-direction: column; width: 125px; }
+.uploaded-image img { width: 125px; }
+.upload-finish { display: block; margin: 12px auto 0; }
+.photo-page-image { margin-bottom: 8pt; text-align: center; }
+.photo-page-image img { max-width: 85%; max-height: 60vh; }
+.photo-page-description { padding: 5px 30px; }
+.photo-page-description .hint { font-size: 10px; }
+.photo-page-text { margin: 0; white-space: pre-wrap; overflow-wrap: anywhere; }
+.photo-page-columns { display: flex; justify-content: space-between; gap: 10px; min-height: 100px; }
+.photo-page-main { width: 68%; }
+.photo-page-actions { width: 30%; }
+.photo-page-author { display: flex; gap: 6px; align-items: center; margin-bottom: 6px; }
+.photo-page-author img { width: 30px; height: 30px; object-fit: cover; }
+.side-albums { padding: 5px 0; }
+.side-album { display: flex; gap: 6px; margin-bottom: 8px; overflow-wrap: anywhere; }
+.side-album img { width: 80px; max-height: 72px; object-fit: cover; }

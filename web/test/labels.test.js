@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, clubsReads, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -203,4 +203,16 @@ test('the counts of openvk\'s discussions', () => {
   assert.equal(topicMessagesCount(2), 'В теме 2 сообщения');
   assert.equal(resultsCount(0), 'Ни одного результата');
   assert.equal(resultsCount(5), '5 результатов');
+});
+
+test('albums are counted as openvk counts them', () => {
+  assert.equal(albumsCount(0), 'Ни одного альбома');
+  assert.equal(albumsCount(1), '1 альбом');
+  assert.equal(albumsCount(3), '3 альбома');
+  assert.equal(albumsCount(11), '11 альбомов');
+  assert.equal(myAlbumsCount(0), 'У Вас нет ни одного альбома');
+  assert.equal(myAlbumsCount(2), 'У Вас 2 альбома');
+  assert.equal(photosCount(1), '1 фотография');
+  assert.equal(photosCount(4), '4 фотографии');
+  assert.equal(photosCount(25), '25 фотографий');
 });
