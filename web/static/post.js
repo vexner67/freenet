@@ -169,6 +169,16 @@ function initComments(post, me, moderates) {
     }
   }
 
+  // closed shows that the owner of the wall lets nobody comment the post
+  // anymore, in place of the form.
+  function closed(isClosed) {
+    $('comments-closed').hidden = !isClosed;
+    if (me?.profileCompleted) $('comment-form').hidden = isClosed;
+    else $('comment-hint').hidden = isClosed;
+  }
+
+  $('post').addEventListener('commentsclosed', (event) => closed(event.detail), true);
+
   if (me?.profileCompleted) {
     const form = $('comment-form');
     const text = $('comment-text');
@@ -198,6 +208,7 @@ function initComments(post, me, moderates) {
     hint.hidden = false;
   }
 
+  closed(Boolean(post.commentsClosed));
   $('comments-more').addEventListener('click', loadMore);
 
   return loadMore();
@@ -226,6 +237,8 @@ try {
     viewer: me,
     moderates,
     onDelete: (moderates || post.mine) && removePost,
+    // The post stays on its page, which says where it is now.
+    onArchived: () => {},
     canLike: Boolean(me),
     onError: (e) => showError($('error'), e),
     withCommentsLink: false,

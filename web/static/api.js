@@ -163,8 +163,9 @@ export const api = {
   publicProfile: (nickname) => request('GET', '/api/v1/users/' + encodeURIComponent(nickname)),
 
   // With a session posts also say whether you like them.
-  // type is a tab of the wall: '' for all posts, 'owner', 'others'.
-  wall: (nickname, cursor = '', type = '') => optional('GET', withType(page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0), type)),
+  // type is a tab of the wall: '' for all posts, 'owner', 'others' and,
+  // for its owner, 'archive'; q is what the posts say ("Поиск").
+  wall: (nickname, cursor = '', type = '', q = '') => optional('GET', withType(page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0), type, q)),
   post: (id) => optional('GET', '/api/v1/posts/' + encodeURIComponent(id)),
   // Writes on the wall of nickname: someone else's or your own.
   createPost: (nickname, text, photos = []) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos }),
@@ -177,6 +178,12 @@ export const api = {
   editPost: (id, text, photos = []) => authorized('PATCH', '/api/v1/posts/' + encodeURIComponent(id), { text, photos }),
   pinPost: (id) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(id)}/pin`),
   unpinPost: (id) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(id)}/pin`),
+  // The owner of the wall puts a post away in "Архив записей" and back,
+  // and closes and opens its comments.
+  archivePost: (id) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(id)}/archive`),
+  unarchivePost: (id) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(id)}/archive`),
+  closeComments: (id) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(id)}/closed-comments`),
+  openComments: (id) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(id)}/closed-comments`),
   like: (postID) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
   unlike: (postID) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
 
@@ -279,7 +286,7 @@ export const api = {
   // "Фон страницы": side is left or right; deleting takes both away.
   setClubBackdrop: (ref, side, file) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop/${side}`, file),
   deleteClubBackdrop: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop`),
-  clubWall: (ref, cursor = '', type = '') => optional('GET', withType(page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0), type)),
+  clubWall: (ref, cursor = '', type = '', q = '') => optional('GET', withType(page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0), type, q)),
   // fromClub: the post speaks for the club ("От имени сообщества"),
   // signed: naming you under it ("Подпись автора").
   createClubPost: (ref, text, photos = [], { fromClub = false, signed = false } = {}) =>
@@ -328,6 +335,10 @@ export const api = {
   albumPhoto: (id) => optional('GET', `/api/v1/album-photos/${encodeURIComponent(id)}`),
   describeAlbumPhoto: (id, description) => authorized('PATCH', `/api/v1/album-photos/${encodeURIComponent(id)}`, { description }),
   deleteAlbumPhoto: (id) => authorized('DELETE', `/api/v1/album-photos/${encodeURIComponent(id)}`),
+  // The photo that shows an album instead of its first, and a photo put in
+  // another album of the same owner: whoever may edit the albums.
+  setAlbumCover: (id, photoId) => authorized('PUT', `/api/v1/albums/${encodeURIComponent(id)}/cover`, { photoId }),
+  moveAlbumPhoto: (id, albumId) => authorized('PUT', `/api/v1/album-photos/${encodeURIComponent(id)}/album`, { albumId }),
   // The heart, likers, comments and "Поделиться" of a photo, as of a post.
   likePhoto: (id) => authorized('PUT', `/api/v1/album-photos/${encodeURIComponent(id)}/like`),
   unlikePhoto: (id) => authorized('DELETE', `/api/v1/album-photos/${encodeURIComponent(id)}/like`),
@@ -347,9 +358,12 @@ export const api = {
 };
 
 // withType adds the tab of a wall to its path.
-function withType(path, type) {
-  if (!type) return path;
-  return path + (path.includes('?') ? '&' : '?') + 'type=' + encodeURIComponent(type);
+function withType(path, type, q = '') {
+  for (const [name, value] of [['type', type], ['q', q]]) {
+    if (value) path += (path.includes('?') ? '&' : '?') + name + '=' + encodeURIComponent(value);
+  }
+
+  return path;
 }
 
 function page(path, cursor, limit) {

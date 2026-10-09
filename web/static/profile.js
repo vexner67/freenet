@@ -1,7 +1,7 @@
 import { api, currentUser } from './api.js';
 import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
-import { albumPath, albumsBlock, isKeptBySite } from './albums.js';
+import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initFollow } from './follow.js';
 import { initPhoto } from './photo.js';
@@ -227,7 +227,7 @@ async function showAlbums(user) {
 
     $('albums-block').replaceChildren(...albumsBlock(page.owner, page, false));
     $('albums-block').hidden = page.total === 0;
-    linkAvatar(page.albums.find(isKeptBySite));
+    linkAvatar(page.albums.find(isAvatarAlbum));
   } catch {
     // Not to be had: the page works without it.
   }

@@ -24,13 +24,16 @@ export function postPath(post) {
 //     community do theirs: they pin any post too;
 //   onDelete(post, node) adds a "Удалить" link;
 //   onPinned(post) runs after the post is pinned or unpinned;
+//   onArchived(post, node) runs after the post is put away in "Архив
+//     записей" or returned from it, by whoever owns the wall, who also
+//     closes its comments;
 //   canLike makes the heart and "Поделиться" clickable (signed-in viewers);
 //   onError(e) shows a failed like, edit or pin;
 //   withCommentsLink: false on the page of the post, which shows the comments;
 //   onWallOf: the viewer (null for anonymous) when posts of several walls
 //     are mixed, as in the news feed: someone else's wall is then named,
 //     "написал на стене Петра Петрова", as openvk does there only.
-export function postNode(post, { viewer = null, moderates = false, onDelete, onPinned, canLike = false, onError, withCommentsLink = true, onWallOf } = {}) {
+export function postNode(post, { viewer = null, moderates = false, onDelete, onPinned, onArchived, canLike = false, onError, withCommentsLink = true, onWallOf } = {}) {
   const path = pagePath(post.author);
   const date = el('div', { className: 'post-date' });
   const content = el('div', { className: 'post-content' });
@@ -41,6 +44,8 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       el('a', { href: postPath(post), textContent: formatPostDate(post.createdAt) }),
       post.editedAt ? el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }) : '',
       post.pinned ? ', закреплено' : '',
+      post.archived ? ', в архиве' : '',
+      post.commentsClosed ? ', комментарии закрыты' : '',
     );
     content.replaceChildren(
       post.text ? el('div', { className: 'post-text', textContent: post.text }) : '',
@@ -58,7 +63,10 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     if (canEdit(post, viewer)) links.push(el('a', { textContent: 'Редактировать', onclick: edit }));
     if (onDelete) links.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(post, node) }));
     if (moderates || (viewer && wallOwnerID(post) === viewer.id)) {
-      links.push(el('a', { textContent: post.pinned ? 'Открепить' : 'Закрепить', onclick: togglePin }));
+      // An archived post is on no wall to be pinned on.
+      if (!post.archived) links.push(el('a', { textContent: post.pinned ? 'Открепить' : 'Закрепить', onclick: togglePin }));
+      links.push(el('a', { textContent: post.archived ? 'Разархивировать' : 'Архивировать', onclick: toggleArchived }));
+      links.push(el('a', { textContent: post.commentsClosed ? 'Открыть комментарии' : 'Закрыть комментарии', onclick: toggleComments }));
     }
     return links;
   }
@@ -86,6 +94,42 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       post.pinned = !post.pinned;
       render();
       onPinned?.(post);
+    } catch (e) {
+      onError?.(e);
+    } finally {
+      pinning = false;
+    }
+  }
+
+  // toggleArchived is openvk's "Архивировать" and "Разархивировать".
+  async function toggleArchived() {
+    if (pinning) return;
+    pinning = true;
+
+    try {
+      if (post.archived) await api.unarchivePost(post.id);
+      else await api.archivePost(post.id);
+      post.archived = !post.archived;
+      if (post.archived) post.pinned = false;
+      render();
+      onArchived?.(post, node);
+    } catch (e) {
+      onError?.(e);
+    } finally {
+      pinning = false;
+    }
+  }
+
+  async function toggleComments() {
+    if (pinning) return;
+    pinning = true;
+
+    try {
+      if (post.commentsClosed) await api.openComments(post.id);
+      else await api.closeComments(post.id);
+      post.commentsClosed = !post.commentsClosed;
+      render();
+      node.dispatchEvent(new CustomEvent('commentsclosed', { detail: post.commentsClosed }));
     } catch (e) {
       onError?.(e);
     } finally {
