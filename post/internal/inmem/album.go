@@ -48,10 +48,10 @@ func (r *AlbumRepository) Save(ctx context.Context, a *post.Album) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	// As the unique index: one "Фотографии со страницы" an owner.
-	if a.Kind() == post.AlbumAvatars {
-		if _, ok := r.avatarAlbum(a.OwnerID()); ok {
-			return post.ErrAvatarAlbumExists
+	// As the unique indexes: one album of a kind the site keeps an owner.
+	if a.Kind() != post.AlbumRegular {
+		if _, ok := r.systemAlbum(a.OwnerID(), a.Kind()); ok {
+			return post.ErrSystemAlbumExists
 		}
 	}
 
@@ -60,7 +60,7 @@ func (r *AlbumRepository) Save(ctx context.Context, a *post.Album) error {
 	return nil
 }
 
-func (r *AlbumRepository) AvatarAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error) {
+func (r *AlbumRepository) SystemAlbum(ctx context.Context, ownerID uuid.UUID, kind post.AlbumKind) (*post.Album, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
 	}
@@ -68,7 +68,7 @@ func (r *AlbumRepository) AvatarAlbum(ctx context.Context, ownerID uuid.UUID) (*
 	r.mu.RLock()
 	defer r.mu.RUnlock()
 
-	s, ok := r.avatarAlbum(ownerID)
+	s, ok := r.systemAlbum(ownerID, kind)
 	if !ok {
 		return nil, post.ErrAlbumNotFound
 	}
@@ -76,14 +76,33 @@ func (r *AlbumRepository) AvatarAlbum(ctx context.Context, ownerID uuid.UUID) (*
 	return post.RestoreAlbum(s), nil
 }
 
-func (r *AlbumRepository) avatarAlbum(ownerID uuid.UUID) (post.StoredAlbum, bool) {
+func (r *AlbumRepository) systemAlbum(ownerID uuid.UUID, kind post.AlbumKind) (post.StoredAlbum, bool) {
 	for _, s := range r.albums {
-		if s.OwnerID == ownerID && s.Kind == post.AlbumAvatars {
+		if s.OwnerID == ownerID && s.Kind == kind && kind != post.AlbumRegular {
 			return s, true
 		}
 	}
 
 	return post.StoredAlbum{}, false
+}
+
+func (r *AlbumRepository) SetCover(ctx context.Context, albumID, photoID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	s, ok := r.albums[albumID]
+	if p, in := r.photos[photoID]; !ok || !in || p.AlbumID() != albumID {
+		return post.ErrAlbumPhotoNotFound
+	}
+
+	s.Cover = photoID
+	r.albums[albumID] = s
+
+	return nil
 }
 
 func (r *AlbumRepository) Get(ctx context.Context, id uuid.UUID) (*post.Album, error) {
@@ -152,8 +171,13 @@ func (r *AlbumRepository) deleteAlbum(id uuid.UUID) []*post.AlbumPhoto {
 	return gone
 }
 
-// deletePhoto drops a photo with its likes and comments; the lock is held.
+// deletePhoto drops a photo with its likes and comments; it no longer
+// covers its album. The lock is held.
 func (r *AlbumRepository) deletePhoto(id uuid.UUID) {
+	if p, ok := r.photos[id]; ok {
+		r.uncover(p.AlbumID(), id)
+	}
+
 	delete(r.photos, id)
 	delete(r.photoLikes, id)
 
@@ -161,6 +185,14 @@ func (r *AlbumRepository) deletePhoto(id uuid.UUID) {
 		if c.PhotoID() == id {
 			delete(r.photoComments, cid)
 		}
+	}
+}
+
+// uncover stops a photo showing an album it leaves; the lock is held.
+func (r *AlbumRepository) uncover(albumID, photoID uuid.UUID) {
+	if s, ok := r.albums[albumID]; ok && s.Cover == photoID {
+		s.Cover = uuid.Nil
+		r.albums[albumID] = s
 	}
 }
 
@@ -360,6 +392,35 @@ func (p *AlbumPhotoRepository) Delete(ctx context.Context, id uuid.UUID, now tim
 	return nil
 }
 
+func (p *AlbumPhotoRepository) Move(ctx context.Context, id, albumID uuid.UUID, now time.Time) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	p.r.mu.Lock()
+	defer p.r.mu.Unlock()
+
+	photo, ok := p.r.photos[id]
+	if !ok || photo.AlbumID() == albumID {
+		return post.ErrAlbumPhotoNotFound
+	}
+
+	if _, ok = p.r.albums[albumID]; !ok {
+		return post.ErrAlbumNotFound
+	}
+
+	// Photos handed out never change: the moved one is a new value.
+	p.r.photos[id] = post.RestoreAlbumPhoto(post.StoredAlbumPhoto{
+		ID: photo.ID(), AlbumID: albumID, AuthorID: photo.AuthorID(), Description: photo.Description(),
+		CreatedAt: photo.CreatedAt(), Likes: photo.Likes(), Comments: photo.Comments(),
+	})
+	p.r.uncover(photo.AlbumID(), id)
+	p.r.recount(photo.AlbumID(), -1, now)
+	p.r.recount(albumID, 1, now)
+
+	return nil
+}
+
 func (p *AlbumPhotoRepository) List(ctx context.Context, albumID, after uuid.UUID, limit int) ([]*post.AlbumPhoto, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
@@ -389,13 +450,15 @@ func (p *AlbumPhotoRepository) Covers(ctx context.Context, albumIDs []uuid.UUID)
 	p.r.mu.RLock()
 	defer p.r.mu.RUnlock()
 
+	// The photo chosen to show the album, else its first.
 	first := make(map[uuid.UUID]*post.AlbumPhoto)
 	for _, photo := range p.r.photos {
 		if !slices.Contains(albumIDs, photo.AlbumID()) {
 			continue
 		}
 
-		if cur, ok := first[photo.AlbumID()]; !ok || compareAlbumPhotos(photo, cur) < 0 {
+		chosen := p.r.albums[photo.AlbumID()].Cover
+		if cur, ok := first[photo.AlbumID()]; !ok || photo.ID() == chosen || (cur.ID() != chosen && compareAlbumPhotos(photo, cur) < 0) {
 			first[photo.AlbumID()] = photo
 		}
 	}

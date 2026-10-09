@@ -67,6 +67,10 @@ func topicStatus(err error) (*status.Status, bool) {
 		err  error
 		code codes.Code
 	}{
+		{post.ErrCannotArchive, codes.PermissionDenied},
+		{post.ErrCannotCloseComments, codes.PermissionDenied},
+		{post.ErrCommentsClosed, codes.FailedPrecondition},
+		{post.ErrWallQueryTooLong, codes.InvalidArgument},
 		{post.ErrTopicNotFound, codes.NotFound},
 		{post.ErrMessageNotFound, codes.NotFound},
 		{post.ErrCannotChangeTopic, codes.PermissionDenied},
@@ -84,6 +88,7 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrCommentEmpty, codes.InvalidArgument},
 		{post.ErrNoAlbumPhotos, codes.InvalidArgument},
 		{post.ErrSystemAlbum, codes.FailedPrecondition},
+		{post.ErrCannotMovePhoto, codes.InvalidArgument},
 		{post.ErrDuplicatePhoto, codes.InvalidArgument},
 		{post.ErrInvalidPhoto, codes.InvalidArgument},
 		{service.ErrTooManyAlbumPhotos, codes.InvalidArgument},

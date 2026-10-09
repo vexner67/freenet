@@ -71,6 +71,7 @@ type fakePhotos struct {
 	mu        sync.Mutex
 	published []photoCall
 	deleted   []photoCall
+	copied    []service.PhotoCopy
 	outsideTx int
 	err       error
 }
@@ -97,6 +98,19 @@ func (f *fakePhotos) Publish(ctx context.Context, owner uuid.UUID, photos []uuid
 
 func (f *fakePhotos) Delete(ctx context.Context, owner uuid.UUID, photos []uuid.UUID) error {
 	return f.record(ctx, &f.deleted, photoCall{owner, photos})
+}
+
+func (f *fakePhotos) Copy(ctx context.Context, _ uuid.UUID, copies []service.PhotoCopy) error {
+	var call []photoCall
+	if err := f.record(ctx, &call, photoCall{}); err != nil {
+		return err
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.copied = append(f.copied, copies...)
+
+	return nil
 }
 
 // fakeModerators makes users admins of community walls, keyed by wall and
@@ -130,7 +144,7 @@ func (fakeTx) WithinTx(ctx context.Context, fn func(ctx context.Context) error) 
 
 func newPostService() *service.PostService {
 	store := inmem.NewStore()
-	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}})
+	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}, Switches: store.Posts()})
 }
 
 func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...string) []*post.Post {
@@ -210,7 +224,7 @@ func TestPostService_ListWall(t *testing.T) {
 	)
 
 	for {
-		page, err := svc.ListWall(ctx, uuid.Nil, ann, post.WallAll, cursor, 2)
+		page, err := svc.ListWall(ctx, uuid.Nil, ann, service.WallPick{Filter: post.WallAll}, cursor, 2)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -257,7 +271,7 @@ func TestPostService_ListWall(t *testing.T) {
 			{post.WallOwner, []string{"2", "1"}},           // pinned in its place
 			{post.WallOthers, []string{"в гостях"}},
 		} {
-			page, err := svc.ListWall(ctx, uuid.Nil, ann, tt.filter, uuid.Nil, 10)
+			page, err := svc.ListWall(ctx, uuid.Nil, ann, service.WallPick{Filter: tt.filter}, uuid.Nil, 10)
 			if err != nil || !slices.Equal(texts(page.Posts), tt.want) || page.Total != len(tt.want) {
 				t.Errorf("%q: %v (total %d), %v", tt.filter, texts(page.Posts), page.Total, err)
 			}
@@ -265,7 +279,7 @@ func TestPostService_ListWall(t *testing.T) {
 	})
 
 	t.Run("exact multiple of the page size ends without a cursor", func(t *testing.T) {
-		page, err := svc.ListWall(ctx, uuid.Nil, ann, post.WallAll, uuid.Nil, 5)
+		page, err := svc.ListWall(ctx, uuid.Nil, ann, service.WallPick{Filter: post.WallAll}, uuid.Nil, 5)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -275,7 +289,7 @@ func TestPostService_ListWall(t *testing.T) {
 	})
 
 	t.Run("bad size falls back to the default", func(t *testing.T) {
-		page, err := svc.ListWall(ctx, uuid.Nil, ann, post.WallAll, uuid.Nil, 1000)
+		page, err := svc.ListWall(ctx, uuid.Nil, ann, service.WallPick{Filter: post.WallAll}, uuid.Nil, 1000)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -285,7 +299,7 @@ func TestPostService_ListWall(t *testing.T) {
 	})
 
 	t.Run("empty wall", func(t *testing.T) {
-		page, err := svc.ListWall(ctx, uuid.Nil, uuid.New(), post.WallAll, uuid.Nil, 20)
+		page, err := svc.ListWall(ctx, uuid.Nil, uuid.New(), service.WallPick{Filter: post.WallAll}, uuid.Nil, 20)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -373,7 +387,7 @@ func TestPostService_Likes(t *testing.T) {
 		t.Fatal("an anonymous viewer likes nothing")
 	}
 
-	wall, err := svc.ListWall(ctx, ann, ann, post.WallAll, uuid.Nil, 20)
+	wall, err := svc.ListWall(ctx, ann, ann, service.WallPick{Filter: post.WallAll}, uuid.Nil, 20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -386,7 +400,7 @@ func TestPostService_Likes(t *testing.T) {
 		t.Fatalf("feed liked = %v, %v", feed.Liked, err)
 	}
 
-	anonymous, err := svc.ListWall(ctx, uuid.Nil, ann, post.WallAll, uuid.Nil, 20)
+	anonymous, err := svc.ListWall(ctx, uuid.Nil, ann, service.WallPick{Filter: post.WallAll}, uuid.Nil, 20)
 	if err != nil || len(anonymous.Liked) != 0 {
 		t.Fatalf("anonymous liked = %v, %v", anonymous.Liked, err)
 	}
@@ -533,7 +547,7 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 		t.Fatalf("notified = %+v, want only %+v (own posts notify nobody)", notifier.notified, want)
 	}
 
-	wall, err := svc.ListWall(ctx, uuid.Nil, ann, post.WallAll, uuid.Nil, 10)
+	wall, err := svc.ListWall(ctx, uuid.Nil, ann, service.WallPick{Filter: post.WallAll}, uuid.Nil, 10)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -541,7 +555,7 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 		t.Fatalf("ann's wall = %v (total %d), want bob's post on it", got, wall.Total)
 	}
 
-	bobs, err := svc.ListWall(ctx, uuid.Nil, bob, post.WallAll, uuid.Nil, 10)
+	bobs, err := svc.ListWall(ctx, uuid.Nil, bob, service.WallPick{Filter: post.WallAll}, uuid.Nil, 10)
 	if err != nil || bobs.Total != 0 {
 		t.Fatalf("bob's wall = %+v, %v; want empty", bobs, err)
 	}
@@ -764,7 +778,7 @@ func TestPostService_Pin(t *testing.T) {
 		}
 	}
 
-	page, err := svc.ListWall(ctx, uuid.Nil, owner, post.WallAll, uuid.Nil, 2)
+	page, err := svc.ListWall(ctx, uuid.Nil, owner, service.WallPick{Filter: post.WallAll}, uuid.Nil, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -775,7 +789,7 @@ func TestPostService_Pin(t *testing.T) {
 		t.Fatalf("total = %d, the pinned post counts", page.Total)
 	}
 
-	next, err := svc.ListWall(ctx, uuid.Nil, owner, post.WallAll, page.NextCursor, 2)
+	next, err := svc.ListWall(ctx, uuid.Nil, owner, service.WallPick{Filter: post.WallAll}, page.NextCursor, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -787,7 +801,7 @@ func TestPostService_Pin(t *testing.T) {
 	if err = svc.Pin(ctx, owner, third.ID()); err != nil {
 		t.Fatal(err)
 	}
-	if page, err = svc.ListWall(ctx, uuid.Nil, owner, post.WallAll, uuid.Nil, 10); err != nil {
+	if page, err = svc.ListWall(ctx, uuid.Nil, owner, service.WallPick{Filter: post.WallAll}, uuid.Nil, 10); err != nil {
 		t.Fatal(err)
 	}
 	if got := texts(page.Posts); !slices.Equal(got, []string{"третья", "четвёртая", "вторая", "первая"}) {
@@ -802,7 +816,7 @@ func TestPostService_Pin(t *testing.T) {
 			t.Fatalf("Unpin: %v", err)
 		}
 	}
-	if page, err = svc.ListWall(ctx, uuid.Nil, owner, post.WallAll, uuid.Nil, 10); err != nil {
+	if page, err = svc.ListWall(ctx, uuid.Nil, owner, service.WallPick{Filter: post.WallAll}, uuid.Nil, 10); err != nil {
 		t.Fatal(err)
 	}
 	if got := texts(page.Posts); !slices.Equal(got, []string{"четвёртая", "третья", "вторая", "первая"}) || page.Posts[1].Pinned() {
@@ -816,7 +830,7 @@ func TestPostService_Pin(t *testing.T) {
 	if err = svc.Delete(ctx, owner, first.ID()); err != nil {
 		t.Fatal(err)
 	}
-	if page, err = svc.ListWall(ctx, uuid.Nil, owner, post.WallAll, uuid.Nil, 10); err != nil || len(page.Posts) != 3 {
+	if page, err = svc.ListWall(ctx, uuid.Nil, owner, service.WallPick{Filter: post.WallAll}, uuid.Nil, 10); err != nil || len(page.Posts) != 3 {
 		t.Fatalf("after deleting the pinned post: %v, %v", texts(page.Posts), err)
 	}
 }

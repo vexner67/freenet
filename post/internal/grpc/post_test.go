@@ -55,8 +55,12 @@ func newServer(t *testing.T) testServer {
 	suggestions := inmem.NewSuggestionRepository()
 	topics := inmem.NewTopicRepository()
 	albums := inmem.NewAlbumRepository()
+	albumService := service.NewAlbumService(service.AlbumDeps{
+		Albums: albums, Photos: albums.Photos(), Tx: inmem.TxManager{}, Media: mediaclient.Nop{}, Moderators: clubclient.Nop{},
+		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(),
+	})
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(postgrpc.Services{
-		Posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}, AlbumPhotos: albums.Photos()}),
+		Posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}, AlbumPhotos: albums.Photos(), WallPhotos: albumService, Switches: store.Posts()}),
 		Comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
 		Suggestions: service.NewSuggestionService(service.SuggestionDeps{
 			Suggestions: suggestions, Posts: store.Posts(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
@@ -64,10 +68,7 @@ func newServer(t *testing.T) testServer {
 		Topics: service.NewTopicService(service.TopicDeps{
 			Topics: topics, Messages: topics.Messages(), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
 		}),
-		Albums: service.NewAlbumService(service.AlbumDeps{
-			Albums: albums, Photos: albums.Photos(), Tx: inmem.TxManager{}, Media: mediaclient.Nop{}, Moderators: clubclient.Nop{},
-			Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(),
-		}),
+		Albums: albumService,
 		Purge: service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: suggestions,
 			Topics: topics, Albums: albums, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
@@ -820,6 +821,175 @@ func TestAvatarAlbum(t *testing.T) {
 	}
 	if _, err = s.client.AddAvatarPhoto(context.Background(), &postv1.AddAvatarPhotoRequest{PhotoId: photo.String()}); status.Code(err) != codes.Unauthenticated {
 		t.Fatalf("without a token: %v", err)
+	}
+}
+
+func TestArchiveSearchAndClosedComments(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	write := func(text string) string {
+		t.Helper()
+
+		created, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: text})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return created.GetPost().GetId()
+	}
+	sea, mountains := write("Еду на море"), write("горы")
+
+	// "Поиск" of the wall.
+	found, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: ann.String(), Query: "МОРЕ"})
+	if err != nil || found.GetTotal() != 1 || found.GetPosts()[0].GetId() != sea {
+		t.Fatalf("search = %v, %v", found, err)
+	}
+	if _, err = s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: ann.String(), Query: strings.Repeat("я", 101)}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a long query: %v", err)
+	}
+
+	// "Архив записей": ann's only.
+	if _, err = s.client.ArchivePost(s.as(t, bob), &postv1.ArchivePostRequest{Id: sea}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("bob archives: %v", err)
+	}
+	if _, err = s.client.ArchivePost(context.Background(), &postv1.ArchivePostRequest{Id: sea}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("without a token: %v", err)
+	}
+	if _, err = s.client.ArchivePost(s.as(t, ann), &postv1.ArchivePostRequest{Id: sea}); err != nil {
+		t.Fatalf("ArchivePost: %v", err)
+	}
+
+	wall, err := s.client.ListPosts(s.as(t, bob), &postv1.ListPostsRequest{WallId: ann.String()})
+	if err != nil || wall.GetTotal() != 1 || wall.GetPosts()[0].GetId() != mountains {
+		t.Fatalf("the wall = %v, %v", wall, err)
+	}
+	if _, err = s.client.GetPost(s.as(t, bob), &postv1.GetPostRequest{Id: sea}); status.Code(err) != codes.NotFound {
+		t.Fatalf("bob gets the archived post: %v", err)
+	}
+	archive := &postv1.ListPostsRequest{WallId: ann.String(), Filter: postv1.WallFilter_WALL_FILTER_ARCHIVE}
+	if _, err = s.client.ListPosts(s.as(t, bob), archive); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("bob reads the archive: %v", err)
+	}
+	if _, err = s.client.ListPosts(context.Background(), archive); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("an anonymous viewer reads the archive: %v", err)
+	}
+	own, err := s.client.ListPosts(s.as(t, ann), archive)
+	if err != nil || own.GetTotal() != 1 || own.GetPosts()[0].GetId() != sea || !own.GetPosts()[0].GetArchived() {
+		t.Fatalf("the archive = %v, %v", own, err)
+	}
+	if _, err = s.client.UnarchivePost(s.as(t, ann), &postv1.UnarchivePostRequest{Id: sea}); err != nil {
+		t.Fatalf("UnarchivePost: %v", err)
+	}
+	if got, err := s.client.GetPost(s.as(t, bob), &postv1.GetPostRequest{Id: sea}); err != nil || got.GetPost().GetArchived() {
+		t.Fatalf("the returned post = %v, %v", got, err)
+	}
+
+	// Closed comments.
+	if _, err = s.client.CloseComments(s.as(t, bob), &postv1.CloseCommentsRequest{PostId: sea}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("bob closes the comments: %v", err)
+	}
+	if _, err = s.client.CloseComments(s.as(t, ann), &postv1.CloseCommentsRequest{PostId: sea}); err != nil {
+		t.Fatalf("CloseComments: %v", err)
+	}
+	if got, _ := s.client.GetPost(context.Background(), &postv1.GetPostRequest{Id: sea}); !got.GetPost().GetCommentsClosed() {
+		t.Fatal("the post does not say its comments are closed")
+	}
+	if _, err = s.client.CreateComment(s.as(t, bob), &postv1.CreateCommentRequest{PostId: sea, Text: "ау"}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("a comment on a closed post: %v", err)
+	}
+	if _, err = s.client.OpenComments(s.as(t, ann), &postv1.OpenCommentsRequest{PostId: sea}); err != nil {
+		t.Fatalf("OpenComments: %v", err)
+	}
+	if _, err = s.client.CreateComment(s.as(t, bob), &postv1.CreateCommentRequest{PostId: sea, Text: "ау"}); err != nil {
+		t.Fatalf("a comment after they are opened: %v", err)
+	}
+	if _, err = s.client.CloseComments(s.as(t, ann), &postv1.CloseCommentsRequest{PostId: "x"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bad id: %v", err)
+	}
+}
+
+func TestAlbumCoverMoveAndWall(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	album := func(name string) string {
+		t.Helper()
+
+		created, err := s.client.CreateAlbum(s.as(t, ann), &postv1.CreateAlbumRequest{Name: name})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return created.GetAlbum().GetId()
+	}
+	summer, winter := album("Лето"), album("Зима")
+
+	first, second := uuid.Must(uuid.NewV7()).String(), uuid.Must(uuid.NewV7()).String()
+	if _, err := s.client.AddAlbumPhotos(s.as(t, ann), &postv1.AddAlbumPhotosRequest{
+		AlbumId: summer, Photos: []*postv1.NewAlbumPhoto{{PhotoId: first}, {PhotoId: second}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	// "Обложка альбома": the chosen photo instead of the first.
+	if _, err := s.client.SetAlbumCover(s.as(t, ann), &postv1.SetAlbumCoverRequest{AlbumId: summer, PhotoId: second}); err != nil {
+		t.Fatalf("SetAlbumCover: %v", err)
+	}
+	if got, err := s.client.GetAlbum(context.Background(), &postv1.GetAlbumRequest{Id: summer}); err != nil || got.GetAlbum().GetCover().GetId() != second {
+		t.Fatalf("the cover = %v, %v", got.GetAlbum().GetCover(), err)
+	}
+	for name, tt := range map[string]struct {
+		ctx  context.Context
+		req  *postv1.SetAlbumCoverRequest
+		code codes.Code
+	}{
+		"without a token":          {context.Background(), &postv1.SetAlbumCoverRequest{AlbumId: summer, PhotoId: first}, codes.Unauthenticated},
+		"a stranger":               {s.as(t, bob), &postv1.SetAlbumCoverRequest{AlbumId: summer, PhotoId: first}, codes.PermissionDenied},
+		"a photo of another album": {s.as(t, ann), &postv1.SetAlbumCoverRequest{AlbumId: winter, PhotoId: first}, codes.NotFound},
+		"a bad photo":              {s.as(t, ann), &postv1.SetAlbumCoverRequest{AlbumId: summer, PhotoId: "x"}, codes.InvalidArgument},
+		"no album":                 {s.as(t, ann), &postv1.SetAlbumCoverRequest{AlbumId: uuid.NewString(), PhotoId: first}, codes.NotFound},
+	} {
+		if _, err := s.client.SetAlbumCover(tt.ctx, tt.req); status.Code(err) != tt.code {
+			t.Errorf("SetAlbumCover, %s: %v, want %v", name, err, tt.code)
+		}
+	}
+
+	// The photo moves to another album of ann's.
+	if _, err := s.client.MoveAlbumPhoto(s.as(t, bob), &postv1.MoveAlbumPhotoRequest{PhotoId: second, AlbumId: winter}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("a stranger moves it: %v", err)
+	}
+	if _, err := s.client.MoveAlbumPhoto(s.as(t, ann), &postv1.MoveAlbumPhotoRequest{PhotoId: second, AlbumId: summer}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("to the album it is in: %v", err)
+	}
+	if _, err := s.client.MoveAlbumPhoto(s.as(t, ann), &postv1.MoveAlbumPhotoRequest{PhotoId: second, AlbumId: winter}); err != nil {
+		t.Fatalf("MoveAlbumPhoto: %v", err)
+	}
+	if got, err := s.client.GetAlbumPhoto(context.Background(), &postv1.GetAlbumPhotoRequest{Id: second}); err != nil || got.GetPhoto().GetAlbumId() != winter {
+		t.Fatalf("the moved photo = %v, %v", got, err)
+	}
+	if got, _ := s.client.GetAlbum(context.Background(), &postv1.GetAlbumRequest{Id: summer}); got.GetAlbum().GetPhotoCount() != 1 || got.GetAlbum().GetCover().GetId() != first {
+		t.Fatalf("the album it left = %v", got.GetAlbum())
+	}
+
+	// "Фотографии со стены": the photos of a post on one's own wall.
+	if _, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: "море", PhotoIds: []string{uuid.NewString()}}); err != nil {
+		t.Fatal(err)
+	}
+	list, err := s.client.ListAlbums(context.Background(), &postv1.ListAlbumsRequest{OwnerId: ann.String()})
+	if err != nil || list.GetTotal() != 3 {
+		t.Fatalf("ListAlbums = %v, %v", list, err)
+	}
+	wall := list.GetAlbums()[0]
+	if wall.GetKind() != postv1.AlbumKind_ALBUM_KIND_WALL || wall.GetName() != "Фотографии со стены" || wall.GetPhotoCount() != 1 {
+		t.Fatalf("the wall album = %v", wall)
+	}
+	if _, err = s.client.MoveAlbumPhoto(s.as(t, ann), &postv1.MoveAlbumPhotoRequest{PhotoId: first, AlbumId: wall.GetId()}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("into the album the site keeps: %v", err)
 	}
 }
 

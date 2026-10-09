@@ -1,6 +1,8 @@
 package post_test
 
 import (
+	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -34,12 +36,45 @@ func TestWallFilter(t *testing.T) {
 		}
 	}
 
-	for _, s := range []string{"", "owner", "others"} {
+	// The archive shows the posts put away, the other tabs the rest.
+	away := post.Restore(post.Stored{ID: uuid.New(), WallID: ann, AuthorID: ann, Content: content, Archived: true})
+	if !post.WallArchive.Matches(away) || post.WallAll.Matches(away) || post.WallOwner.Matches(away) || post.WallArchive.Matches(own) {
+		t.Error("an archived post is in the archive only, and nothing else is")
+	}
+	if !away.Archived() || !away.OnWallOf(ann) || away.OnWallOf(bob) {
+		t.Error("ann's archived post is on ann's wall")
+	}
+
+	for _, s := range []string{"", "owner", "others", "archive"} {
 		if _, err := post.NewWallFilter(s); err != nil {
 			t.Errorf("%q: %v", s, err)
 		}
 	}
 	if _, err := post.NewWallFilter("mine"); err != post.ErrInvalidWallFilter {
 		t.Errorf("mine: %v", err)
+	}
+}
+
+func TestWallQuery(t *testing.T) {
+	t.Parallel()
+
+	ann := uuid.New()
+	p, _ := post.New(ann, ann, post.RestoreContent("Еду на МОРЕ, 100% отдых", nil, uuid.Nil), time.Now())
+
+	for in, want := range map[string]bool{"": true, "  море ": true, "100%": true, "горы": false, "м_ре": false} {
+		q, err := post.NewWallQuery(in)
+		if err != nil {
+			t.Fatalf("NewWallQuery(%q): %v", in, err)
+		}
+		if q.Matches(p) != want {
+			t.Errorf("%q matches = %v, want %v", in, q.Matches(p), want)
+		}
+	}
+
+	if _, err := post.NewWallQuery(strings.Repeat("я", 100)); err != nil {
+		t.Errorf("100 characters: %v", err)
+	}
+	if _, err := post.NewWallQuery(strings.Repeat("я", 101)); !errors.Is(err, post.ErrWallQueryTooLong) {
+		t.Errorf("101 characters: %v", err)
 	}
 }

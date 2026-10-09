@@ -32,6 +32,12 @@ var (
 	// ErrAvatarUpdate: the post of a new photo is that photo and nothing
 	// else.
 	ErrAvatarUpdate = errors.New("a new photo is posted alone")
+	// ErrCannotArchive and ErrCannotCloseComments: the owner of the wall,
+	// or the admins of the community it is, keep its archive and say
+	// which posts take comments.
+	ErrCannotArchive       = errors.New("only the owner of the wall keeps its archive")
+	ErrCannotCloseComments = errors.New("only the owner of the wall can close the comments")
+	ErrCommentsClosed      = errors.New("the comments are closed")
 )
 
 // Text is what a post says: trimmed, with "\n" line breaks. It may be
@@ -103,6 +109,11 @@ type Post struct {
 	// user or a community ("обновил фотографию на своей странице" of
 	// openvk); nobody edits it.
 	avatarUpdate bool
+	// archived: the owner of the wall put the post away ("Архив записей"
+	// of openvk); only they see it, and no wall or feed shows it.
+	archived bool
+	// commentsClosed: the owner of the wall lets nobody comment it anymore.
+	commentsClosed bool
 }
 
 // New creates a post by authorID on the wall of wallID. Its UUIDv7 ID
@@ -178,6 +189,9 @@ type Stored struct {
 	Signed       bool
 	Suggested    bool
 	AvatarUpdate bool
+	Archived     bool
+	// CommentsClosed: nobody comments the post anymore.
+	CommentsClosed bool
 }
 
 // Restore rebuilds a post from storage without validation or new IDs.
@@ -195,7 +209,9 @@ func Restore(s Stored) *Post {
 		signed:    s.Signed,
 		suggested: s.Suggested,
 
-		avatarUpdate: s.AvatarUpdate,
+		avatarUpdate:   s.AvatarUpdate,
+		archived:       s.Archived,
+		commentsClosed: s.CommentsClosed,
 	}
 }
 
@@ -214,7 +230,9 @@ func (p *Post) Stored() Stored {
 		Signed:    p.signed,
 		Suggested: p.suggested,
 
-		AvatarUpdate: p.avatarUpdate,
+		AvatarUpdate:   p.avatarUpdate,
+		Archived:       p.archived,
+		CommentsClosed: p.commentsClosed,
 	}
 }
 
@@ -281,6 +299,23 @@ func (p *Post) CanBePinnedBy(userID uuid.UUID) bool {
 	return userID == p.wallID
 }
 
+// OnWallOf tells whether userID owns the wall the post is on: they keep
+// its archive and close its comments, whoever wrote the post. For a
+// community the caller asks who runs it.
+func (p *Post) OnWallOf(userID uuid.UUID) bool {
+	return userID == p.wallID
+}
+
+// Archived: the post is put away in the archive of its wall.
+func (p *Post) Archived() bool {
+	return p.archived
+}
+
+// CommentsClosed: nobody comments the post anymore.
+func (p *Post) CommentsClosed() bool {
+	return p.commentsClosed
+}
+
 // Shared is what reposting p shares: p itself, or, when p only passes on
 // another post without a word, that post — a chain of empty reposts
 // would show nothing but the post at its end.
@@ -306,6 +341,13 @@ func (p *Post) Notified() uuid.UUID {
 // OnOwnWall tells whether the author wrote on their own wall.
 func (p *Post) OnOwnWall() bool {
 	return p.wallID == p.authorID
+}
+
+// InWallAlbum tells whether the photos of the post go to its author's
+// "Фотографии со стены", as openvk keeps what a person uploads writing on
+// their own wall. A new photo of the page is in "Фотографии со страницы".
+func (p *Post) InWallAlbum() bool {
+	return p.OnOwnWall() && !p.avatarUpdate
 }
 
 func (p *Post) ID() uuid.UUID {

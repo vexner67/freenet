@@ -10,6 +10,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/post/internal/post"
 	"github.com/vexner67/freenet/post/internal/postgres"
+	"github.com/vexner67/freenet/post/internal/service"
 )
 
 func TestPostRepository_Update(t *testing.T) {
@@ -101,7 +102,7 @@ func TestPostRepository_Pin(t *testing.T) {
 		t.Fatal("Get must tell the post is pinned")
 	}
 
-	wall, err := posts.ListByWall(ctx, owner, post.WallAll, uuid.Nil, 10)
+	wall, err := posts.ListByWall(ctx, owner, service.WallPick{Filter: post.WallAll}, uuid.Nil, 10)
 	if err != nil {
 		t.Fatal(err)
 	}

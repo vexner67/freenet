@@ -25,6 +25,15 @@ service PostService {
   // before, or stops. Both idempotent.
   rpc PinPost(PinPostRequest) returns (google.protobuf.Empty);
   rpc UnpinPost(UnpinPostRequest) returns (google.protobuf.Empty);
+  // Require an access token; the owner of the wall, or the admins of the
+  // community it is. An archived post ("Архив записей" of openvk) is shown
+  // to them only: no wall, feed or other post shows it, and it is no
+  // longer pinned. A post with closed comments takes no new ones
+  // (FailedPrecondition); those written before stay.
+  rpc ArchivePost(ArchivePostRequest) returns (google.protobuf.Empty);
+  rpc UnarchivePost(UnarchivePostRequest) returns (google.protobuf.Empty);
+  rpc CloseComments(CloseCommentsRequest) returns (google.protobuf.Empty);
+  rpc OpenComments(OpenCommentsRequest) returns (google.protobuf.Empty);
 
   // Public: one post.
   rpc GetPost(GetPostRequest) returns (GetPostResponse);
@@ -124,6 +133,12 @@ service PostService {
   rpc EditAlbumPhoto(EditAlbumPhotoRequest) returns (EditAlbumPhotoResponse);
   // Who uploaded it or whoever may edit its album.
   rpc DeleteAlbumPhoto(DeleteAlbumPhotoRequest) returns (google.protobuf.Empty);
+  // Require an access token; whoever may edit the album. SetAlbumCover
+  // makes a photo of the album show it ("Обложка альбома") instead of its
+  // first one. MoveAlbumPhoto puts a photo in another album of the same
+  // owner, one made by people (FailedPrecondition for one the site keeps).
+  rpc SetAlbumCover(SetAlbumCoverRequest) returns (google.protobuf.Empty);
+  rpc MoveAlbumPhoto(MoveAlbumPhotoRequest) returns (google.protobuf.Empty);
   // Require an access token: the heart under a photo, as under a post.
   rpc LikeAlbumPhoto(LikeAlbumPhotoRequest) returns (LikeAlbumPhotoResponse);
   rpc UnlikeAlbumPhoto(UnlikeAlbumPhotoRequest) returns (UnlikeAlbumPhotoResponse);
@@ -187,6 +202,10 @@ message Post {
   // A photo of an album the post shares ("Поделиться" under a photo);
   // empty for none. A deleted photo leaves the post.
   string shared_photo_id = 19;
+  // The post is in the archive of its wall.
+  bool archived = 20;
+  // Nobody comments the post anymore.
+  bool comments_closed = 21;
 }
 
 message Comment {
@@ -340,6 +359,22 @@ message UnpinPostRequest {
   string id = 1;
 }
 
+message ArchivePostRequest {
+  string id = 1;
+}
+
+message UnarchivePostRequest {
+  string id = 1;
+}
+
+message CloseCommentsRequest {
+  string post_id = 1;
+}
+
+message OpenCommentsRequest {
+  string post_id = 1;
+}
+
 message GetPostRequest {
   string id = 1;
 }
@@ -365,16 +400,23 @@ message ListPostsRequest {
   int32 limit = 3;
   // Which posts, as the tabs of openvk's wall; total counts them.
   WallFilter filter = 4;
+  // What the posts say, in any case, at most 100 characters ("Поиск" of
+  // openvk's wall); empty for all. Searched, the pinned post is in its
+  // place.
+  string query = 5;
 }
 
 // WallFilter picks the posts of a wall: all ("Все записи"), the wall's
 // own — by its owner, or for the community whose wall it is ("Записи
 // Анны", "Записи сообщества") — or the others ("Чужие записи"). Only all
-// posts show the pinned one first.
+// posts show the pinned one first. The archive ("Архив записей") are the
+// posts put away, which the others leave out: the owner of the wall or
+// the admins of its community only (PermissionDenied).
 enum WallFilter {
   WALL_FILTER_NONE = 0;
   WALL_FILTER_OWNER = 1;
   WALL_FILTER_OTHERS = 2;
+  WALL_FILTER_ARCHIVE = 3;
 }
 
 message ListPostsResponse {
@@ -645,7 +687,8 @@ message Album {
   // The last change: renamed, photos added or deleted.
   google.protobuf.Timestamp updated_at = 6;
   int32 photo_count = 7;
-  // The first photo, absent while it has none.
+  // The photo chosen to show it, else its first; absent while it has
+  // none.
   AlbumPhoto cover = 8;
   AlbumKind kind = 9;
 }
@@ -657,6 +700,9 @@ enum AlbumKind {
   ALBUM_KIND_NONE = 0;
   // openvk's "Фотографии со страницы": the photos of the page.
   ALBUM_KIND_AVATARS = 1;
+  // openvk's "Фотографии со стены": copies of the photos of the posts a
+  // person wrote on their wall.
+  ALBUM_KIND_WALL = 2;
 }
 
 // AlbumPhoto is a photo of an album; its ID is that of the photo in the
@@ -780,6 +826,17 @@ message EditAlbumPhotoResponse {
 
 message DeleteAlbumPhotoRequest {
   string id = 1;
+}
+
+message SetAlbumCoverRequest {
+  string album_id = 1;
+  string photo_id = 2;
+}
+
+message MoveAlbumPhotoRequest {
+  string photo_id = 1;
+  // The album it goes to.
+  string album_id = 2;
 }
 
 message LikeAlbumPhotoRequest {

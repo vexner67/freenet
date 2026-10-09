@@ -39,12 +39,36 @@ type PostRepository interface {
 	// ListByWall returns up to limit posts on a wall that filter picks,
 	// newest first, with IDs below before (uuid.Nil: from the newest). Of
 	// all posts the pinned one is left out: the wall shows it first.
-	ListByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter, before uuid.UUID, limit int) ([]*post.Post, error)
-	CountByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter) (int, error)
+	// Searched for a query, the posts are those that say it, the pinned
+	// one in its place.
+	ListByWall(ctx context.Context, wallID uuid.UUID, pick WallPick, before uuid.UUID, limit int) ([]*post.Post, error)
+	CountByWall(ctx context.Context, wallID uuid.UUID, pick WallPick) (int, error)
 	// ListFeed is ListByWall for the posts written by several authors, on
 	// whichever walls, but for those that speak for a wall, together with
-	// all the posts on several walls.
+	// all the posts on several walls; archived posts are left out.
 	ListFeed(ctx context.Context, sources FeedSources, before uuid.UUID, limit int) ([]*post.Post, error)
+}
+
+// WallPick is which posts of a wall to read: a tab of openvk's wall and,
+// for its "Поиск", what the posts say.
+type WallPick struct {
+	Filter post.WallFilter
+	Query  post.WallQuery
+}
+
+// showsPinnedFirst: all posts of a wall, not searched, start with the
+// pinned one.
+func (w WallPick) showsPinnedFirst() bool {
+	return w.Filter == post.WallAll && w.Query == ""
+}
+
+// PostSwitchRepository keeps what the owner of a wall switches on a post;
+// post.ErrNotFound for a missing post.
+type PostSwitchRepository interface {
+	// SetArchived puts a post away or back; an archived post is no longer
+	// pinned.
+	SetArchived(ctx context.Context, id uuid.UUID, archived bool) error
+	SetCommentsClosed(ctx context.Context, id uuid.UUID, closed bool) error
 }
 
 // FeedSources are what a news feed shows: the posts of Authors (those
@@ -112,6 +136,8 @@ type PostService struct {
 	moderators  WallModerators
 	now         func() time.Time
 	albumPhotos AlbumPhotoGetter
+	wallPhotos  WallPhotoKeeper
+	switches    PostSwitchRepository
 }
 
 // PostDeps are what PostService works with.
@@ -126,6 +152,19 @@ type PostDeps struct {
 	Moderators WallModerators
 	// AlbumPhotos are the photos of albums a post may share; nil: none.
 	AlbumPhotos AlbumPhotoGetter
+	// WallPhotos keeps the photos of posts in "Фотографии со стены"; nil:
+	// nowhere.
+	WallPhotos WallPhotoKeeper
+	// Switches archive posts and close their comments.
+	Switches PostSwitchRepository
+}
+
+// WallPhotoKeeper keeps the photos people post on their own walls in
+// their "Фотографии со стены" (AlbumService): WallAlbum outside the
+// transaction, KeepWallPhotos inside it.
+type WallPhotoKeeper interface {
+	WallAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error)
+	KeepWallPhotos(ctx context.Context, a *post.Album, photoIDs []uuid.UUID) error
 }
 
 // AlbumPhotoGetter finds a photo of an album: post.ErrAlbumPhotoNotFound.
@@ -144,6 +183,8 @@ func NewPostService(d PostDeps) *PostService {
 		photos:      d.Photos,
 		moderators:  d.Moderators,
 		albumPhotos: d.AlbumPhotos,
+		wallPhotos:  d.WallPhotos,
+		switches:    d.Switches,
 		now:         time.Now,
 	}
 }
@@ -188,15 +229,18 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 		return nil, errs.Wrap("post.New", err)
 	}
 
+	album, err := s.wallAlbum(ctx, p, content.Photos())
+	if err != nil {
+		return nil, errs.Wrap("s.wallAlbum", err)
+	}
+
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.postRepo.Save(ctx, p); err != nil {
 			return errs.Wrap("s.postRepo.Save", err)
 		}
 
-		if photos := content.Photos(); len(photos) > 0 {
-			if err := s.photos.Publish(ctx, authorID, photos); err != nil {
-				return errs.Wrap("s.photos.Publish", err)
-			}
+		if err := s.publishPhotos(ctx, p, album, content.Photos()); err != nil {
+			return errs.Wrap("s.publishPhotos", err)
 		}
 
 		if p.OnOwnWall() || in.ClubWall {
@@ -378,15 +422,18 @@ func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, t
 
 	added, removed := diffPhotos(p.Content().Photos(), photos)
 
+	album, err := s.wallAlbum(ctx, p, added)
+	if err != nil {
+		return nil, false, errs.Wrap("s.wallAlbum", err)
+	}
+
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.postRepo.Update(ctx, edited); err != nil {
 			return errs.Wrap("s.postRepo.Update", err)
 		}
 
-		if len(added) > 0 {
-			if err := s.photos.Publish(ctx, p.AuthorID(), added); err != nil {
-				return errs.Wrap("s.photos.Publish", err)
-			}
+		if err := s.publishPhotos(ctx, p, album, added); err != nil {
+			return errs.Wrap("s.publishPhotos", err)
 		}
 
 		if len(removed) > 0 {
@@ -405,6 +452,41 @@ func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, t
 	}
 
 	return edited, liked[edited.ID()], nil
+}
+
+// wallAlbum is the "Фотографии со стены" that keeps the new photos of p,
+// nil when none does (see post.InWallAlbum). It is found, or made, before
+// the transaction that saves the post.
+func (s *PostService) wallAlbum(ctx context.Context, p *post.Post, photos []uuid.UUID) (*post.Album, error) {
+	if s.wallPhotos == nil || len(photos) == 0 || !p.InWallAlbum() {
+		return nil, nil
+	}
+
+	a, err := s.wallPhotos.WallAlbum(ctx, p.AuthorID())
+	if err != nil {
+		return nil, errs.Wrap("s.wallPhotos.WallAlbum", err)
+	}
+
+	return a, nil
+}
+
+// publishPhotos tells media to keep the new photos of p for good and,
+// with an album, puts copies of them there; in the transaction of ctx.
+// Media publishes before it copies: the outbox keeps the order.
+func (s *PostService) publishPhotos(ctx context.Context, p *post.Post, album *post.Album, photos []uuid.UUID) error {
+	if len(photos) == 0 {
+		return nil
+	}
+
+	if err := s.photos.Publish(ctx, p.AuthorID(), photos); err != nil {
+		return errs.Wrap("s.photos.Publish", err)
+	}
+
+	if album == nil {
+		return nil
+	}
+
+	return errs.Wrap("s.wallPhotos.KeepWallPhotos", s.wallPhotos.KeepWallPhotos(ctx, album, photos))
 }
 
 // diffPhotos tells which photos an edit adds and which it takes away.
@@ -453,6 +535,79 @@ func (s *PostService) setPinned(ctx context.Context, requesterID, postID uuid.UU
 	return errs.Wrap("set", set(ctx, postID))
 }
 
+// Archive puts a post away in the archive of its wall ("Архивировать" of
+// openvk) and Unarchive returns it: the owner of the wall, or the admins
+// of the community it is. Only they see the archive.
+func (s *PostService) Archive(ctx context.Context, requesterID, postID uuid.UUID) error {
+	return s.setArchived(ctx, requesterID, postID, true)
+}
+
+func (s *PostService) Unarchive(ctx context.Context, requesterID, postID uuid.UUID) error {
+	return s.setArchived(ctx, requesterID, postID, false)
+}
+
+func (s *PostService) setArchived(ctx context.Context, requesterID, postID uuid.UUID, archived bool) error {
+	if err := s.checkWallOwner(ctx, requesterID, postID, post.ErrCannotArchive); err != nil {
+		return err
+	}
+
+	return errs.Wrap("s.switches.SetArchived", s.switches.SetArchived(ctx, postID, archived))
+}
+
+// CloseComments lets nobody comment a post anymore and OpenComments lets
+// them again: the owner of the wall, or the admins of the community it
+// is. The comments written before stay.
+func (s *PostService) CloseComments(ctx context.Context, requesterID, postID uuid.UUID) error {
+	return s.setCommentsClosed(ctx, requesterID, postID, true)
+}
+
+func (s *PostService) OpenComments(ctx context.Context, requesterID, postID uuid.UUID) error {
+	return s.setCommentsClosed(ctx, requesterID, postID, false)
+}
+
+func (s *PostService) setCommentsClosed(ctx context.Context, requesterID, postID uuid.UUID, closed bool) error {
+	if err := s.checkWallOwner(ctx, requesterID, postID, post.ErrCannotCloseComments); err != nil {
+		return err
+	}
+
+	return errs.Wrap("s.switches.SetCommentsClosed", s.switches.SetCommentsClosed(ctx, postID, closed))
+}
+
+// checkWallOwner returns denied unless requesterID owns the wall of the
+// post or runs the community it is.
+func (s *PostService) checkWallOwner(ctx context.Context, requesterID, postID uuid.UUID, denied error) error {
+	p, err := s.postRepo.Get(ctx, postID)
+	if err != nil {
+		return errs.Wrap("s.postRepo.Get", err)
+	}
+
+	ok, err := moderates(ctx, s.moderators, p.WallID(), requesterID, p.OnWallOf(requesterID))
+	if err != nil {
+		return errs.Wrap("moderates", err)
+	}
+
+	if !ok {
+		return denied
+	}
+
+	return nil
+}
+
+// hidden tells whether p is put away from viewerID: an archived post is
+// shown to the owner of its wall and the admins of its community only.
+func hidden(ctx context.Context, moderators WallModerators, p *post.Post, viewerID uuid.UUID) (bool, error) {
+	if !p.Archived() {
+		return false, nil
+	}
+
+	ok, err := moderates(ctx, moderators, p.WallID(), viewerID, p.OnWallOf(viewerID))
+	if err != nil {
+		return false, errs.Wrap("moderates", err)
+	}
+
+	return !ok, nil
+}
+
 // moderates tells whether userID may act on a wall: allowed by the rules
 // of post itself, or else as an admin of the community the wall is.
 // Asking the club service only then spares it every call by an owner.
@@ -470,11 +625,21 @@ func moderates(ctx context.Context, moderators WallModerators, wallID, userID uu
 }
 
 // Get returns a post and whether viewerID likes it; viewerID is uuid.Nil
-// for an anonymous viewer.
+// for an anonymous viewer. An archived post is not found by anyone but
+// the owner of its wall.
 func (s *PostService) Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error) {
 	p, err := s.postRepo.Get(ctx, postID)
 	if err != nil {
 		return nil, false, errs.Wrap("s.postRepo.Get", err)
+	}
+
+	away, err := hidden(ctx, s.moderators, p, viewerID)
+	if err != nil {
+		return nil, false, errs.Wrap("hidden", err)
+	}
+
+	if away {
+		return nil, false, post.ErrNotFound
 	}
 
 	liked, err := s.liked(ctx, viewerID, []*post.Post{p})
@@ -485,8 +650,9 @@ func (s *PostService) Get(ctx context.Context, viewerID, postID uuid.UUID) (*pos
 	return p, liked[p.ID()], nil
 }
 
-// GetMany returns the posts with these IDs that exist, at most
-// MaxPageSize, in no particular order.
+// GetMany returns the posts with these IDs that exist and are not put
+// away in an archive, at most MaxPageSize, in no particular order: they
+// are shown inside other posts and in notifications, to anyone.
 func (s *PostService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error) {
 	if len(ids) > MaxPageSize {
 		return nil, ErrTooManyIDs
@@ -501,7 +667,7 @@ func (s *PostService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Pos
 		return nil, errs.Wrap("s.postRepo.GetMany", err)
 	}
 
-	return posts, nil
+	return slices.DeleteFunc(posts, (*post.Post).Archived), nil
 }
 
 // Like is idempotent: liking twice counts once, and the notification
@@ -595,29 +761,42 @@ func likeEvent(p *post.Post, userID uuid.UUID) (Event, bool) {
 	return Event{Kind: EventLike, RecipientID: recipient, ActorID: userID, PostID: p.ID()}, true
 }
 
-// ListWall pages the posts of a wall filter picks by keyset: cursor is
+// ListWall pages the posts of a wall pick chooses by keyset: cursor is
 // the ID of the last post of the previous page, so new posts never shift
 // the pages. Of all posts the pinned one comes first on the first page,
-// on top of size others; the other tabs show it in its place.
-func (s *PostService) ListWall(ctx context.Context, viewerID, wallID uuid.UUID, filter post.WallFilter, cursor uuid.UUID, size int) (Page, error) {
+// on top of size others; the other tabs and a search show it in its
+// place. The archive is read by the owner of the wall only, or the admins
+// of the community it is (post.ErrCannotArchive).
+func (s *PostService) ListWall(ctx context.Context, viewerID, wallID uuid.UUID, pick WallPick, cursor uuid.UUID, size int) (Page, error) {
 	if size <= 0 || size > MaxPageSize {
 		size = DefaultPageSize
 	}
 
+	if pick.Filter == post.WallArchive {
+		ok, err := moderates(ctx, s.moderators, wallID, viewerID, viewerID == wallID)
+		if err != nil {
+			return Page{}, errs.Wrap("moderates", err)
+		}
+
+		if !ok {
+			return Page{}, post.ErrCannotArchive
+		}
+	}
+
 	// One extra post tells whether there is a next page.
-	posts, err := s.postRepo.ListByWall(ctx, wallID, filter, cursor, size+1)
+	posts, err := s.postRepo.ListByWall(ctx, wallID, pick, cursor, size+1)
 	if err != nil {
 		return Page{}, errs.Wrap("s.postRepo.ListByWall", err)
 	}
 
 	var pinned *post.Post
-	if cursor == uuid.Nil && filter == post.WallAll {
+	if cursor == uuid.Nil && pick.showsPinnedFirst() {
 		if pinned, err = s.pinRepo.Pinned(ctx, wallID); err != nil && !errors.Is(err, post.ErrNotFound) {
 			return Page{}, errs.Wrap("s.pinRepo.Pinned", err)
 		}
 	}
 
-	total, err := s.postRepo.CountByWall(ctx, wallID, filter)
+	total, err := s.postRepo.CountByWall(ctx, wallID, pick)
 	if err != nil {
 		return Page{}, errs.Wrap("s.postRepo.CountByWall", err)
 	}

@@ -113,3 +113,62 @@ func TestAlbumPhoto(t *testing.T) {
 		t.Fatal("CanBeDeletedBy: who uploaded it or the owner of the album")
 	}
 }
+
+func TestSystemAlbums(t *testing.T) {
+	t.Parallel()
+
+	ann := uuid.New()
+
+	for kind, name := range map[post.AlbumKind]string{
+		post.AlbumAvatars: "Фотографии со страницы",
+		post.AlbumWall:    "Фотографии со стены",
+	} {
+		a, err := post.NewSystemAlbum(ann, kind, time.Now())
+		if err != nil || a.Kind() != kind || a.Name().String() != name || a.OwnerID() != ann {
+			t.Fatalf("NewSystemAlbum(%q) = %+v, %v", kind, a, err)
+		}
+		if err = a.CheckManual(); !errors.Is(err, post.ErrSystemAlbum) {
+			t.Fatalf("%q is filled by hand: %v", kind, err)
+		}
+	}
+
+	if _, err := post.NewSystemAlbum(ann, post.AlbumRegular, time.Now()); !errors.Is(err, post.ErrSystemAlbum) {
+		t.Fatalf("an album of people as one of the site: %v", err)
+	}
+}
+
+func TestAlbum_CoverAndMove(t *testing.T) {
+	t.Parallel()
+
+	ann, bob := uuid.New(), uuid.New()
+	summer, _ := post.NewAlbum(ann, "Лето", "", time.Now())
+	winter, _ := post.NewAlbum(ann, "Зима", "", time.Now())
+	bobs, _ := post.NewAlbum(bob, "Лето", "", time.Now())
+	wall, _ := post.NewSystemAlbum(ann, post.AlbumWall, time.Now())
+
+	p, _ := post.NewAlbumPhoto(summer, uuid.Must(uuid.NewV7()), ann, "", time.Now())
+	if err := summer.CheckCover(p); err != nil {
+		t.Fatalf("a photo of the album covers it: %v", err)
+	}
+	if err := winter.CheckCover(p); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("a photo of another album: %v", err)
+	}
+	if summer.Cover() != uuid.Nil {
+		t.Fatal("a new album has a chosen cover")
+	}
+
+	for name, tt := range map[string]struct {
+		from, to *post.Album
+		err      error
+	}{
+		"to another album of the owner": {summer, winter, nil},
+		"out of the album of the site":  {wall, summer, nil},
+		"to the same album":             {summer, summer, post.ErrCannotMovePhoto},
+		"to an album of another owner":  {summer, bobs, post.ErrCannotMovePhoto},
+		"into the album the site keeps": {summer, wall, post.ErrSystemAlbum},
+	} {
+		if err := tt.from.CheckMove(tt.to); !errors.Is(err, tt.err) {
+			t.Errorf("%s: %v, want %v", name, err, tt.err)
+		}
+	}
+}
