@@ -213,6 +213,10 @@ type Post struct {
 	EditableUntil time.Time
 	// Pinned: the owner of the wall shows it first there.
 	Pinned bool
+	// Archived: the owner of the wall put it away, only they see it.
+	// CommentsClosed: nobody comments it anymore.
+	Archived       bool
+	CommentsClosed bool
 	// FromWall: the post speaks for its wall, a community; Author is
 	// still its writer, whom the API shows only when Signed.
 	FromWall bool
@@ -272,6 +276,13 @@ type WallAccess struct {
 type FeedSources struct {
 	Authors []string
 	Walls   []string
+}
+
+// WallPick is which posts of a wall to read: Filter is a tab of openvk's
+// wall ("", "owner", "others" or "archive"), Query what the posts say.
+type WallPick struct {
+	Filter string
+	Query  string
 }
 
 // PostPage is one screen of a wall; NextCursor is empty on the last one.
@@ -597,7 +608,8 @@ type Album struct {
 	UpdatedAt   time.Time
 	Photos      int
 	Cover       *AlbumPhoto
-	// Kind is "" for an album people make, "avatars" for "Фотографии со
+	// Kind is "" for an album people make, "wall" for "Фотографии со
+	// стены" and "avatars" for "Фотографии со
 	// страницы", which the site keeps.
 	Kind string
 }

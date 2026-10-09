@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"maps"
 	"net/http"
 	"slices"
@@ -58,6 +59,10 @@ type postResponse struct {
 	EditableUntil string  `json:"editableUntil"`
 	// Pinned: shown first on its wall.
 	Pinned bool `json:"pinned"`
+	// Archived: put away by the owner of the wall, who alone sees it.
+	// CommentsClosed: it takes no new comments.
+	Archived       bool `json:"archived"`
+	CommentsClosed bool `json:"commentsClosed"`
 	// FromWall: the post speaks for its wall, a community, shown as its
 	// author; who wrote it is not told.
 	FromWall bool `json:"fromWall"`
@@ -186,23 +191,25 @@ func wallJSON(p model.Post) *authorJSON {
 
 func toPostResponse(p model.Post) postResponse {
 	return postResponse{
-		ID:            p.ID,
-		Author:        shownAuthor(p),
-		Wall:          wallJSON(p),
-		Text:          p.Text,
-		Photos:        toPhotosJSON(p.Author.ID, p.PhotoIDs),
-		CreatedAt:     p.CreatedAt.UTC().Format(time.RFC3339),
-		Likes:         p.Likes,
-		Liked:         p.Liked,
-		Comments:      p.Comments,
-		Reposts:       p.Reposts,
-		EditedAt:      optionalTime(p.EditedAt),
-		EditableUntil: timeString(p.EditableUntil),
-		Pinned:        p.Pinned,
-		FromWall:      p.FromWall,
-		AvatarUpdate:  p.AvatarUpdate,
-		Mine:          p.Mine,
-		Signer:        signerJSON(p),
+		ID:             p.ID,
+		Author:         shownAuthor(p),
+		Wall:           wallJSON(p),
+		Text:           p.Text,
+		Photos:         toPhotosJSON(p.Author.ID, p.PhotoIDs),
+		CreatedAt:      p.CreatedAt.UTC().Format(time.RFC3339),
+		Likes:          p.Likes,
+		Liked:          p.Liked,
+		Comments:       p.Comments,
+		Reposts:        p.Reposts,
+		EditedAt:       optionalTime(p.EditedAt),
+		EditableUntil:  timeString(p.EditableUntil),
+		Pinned:         p.Pinned,
+		Archived:       p.Archived,
+		CommentsClosed: p.CommentsClosed,
+		FromWall:       p.FromWall,
+		AvatarUpdate:   p.AvatarUpdate,
+		Mine:           p.Mine,
+		Signer:         signerJSON(p),
 	}
 }
 
@@ -383,6 +390,12 @@ func withProfiles(p *model.Post, people map[string]model.Author) bool {
 	return hasAuthor && hasWall
 }
 
+// wallPick is which posts of a wall the request asks for: ?type= is the
+// tab of openvk's wall, ?q= its "Поиск".
+func wallPick(r *http.Request) model.WallPick {
+	return model.WallPick{Filter: r.URL.Query().Get("type"), Query: r.URL.Query().Get("q")}
+}
+
 // listPosts is the wall of a user, whoever wrote the posts. Its first page
 // tells a signed-in viewer whether they may write there.
 func (a *api) listPosts(w http.ResponseWriter, r *http.Request) {
@@ -408,7 +421,7 @@ func (a *api) listPosts(w http.ResponseWriter, r *http.Request) {
 
 	cursor := r.URL.Query().Get("cursor")
 
-	page, err := a.posts.List(r.Context(), token, owner.ID, r.URL.Query().Get("type"), cursor, limit)
+	page, err := a.posts.List(r.Context(), token, owner.ID, wallPick(r), cursor, limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -739,6 +752,41 @@ func (a *api) setPinned(w http.ResponseWriter, r *http.Request, pinned bool) {
 	}
 
 	if err = set(r.Context(), token, r.PathValue("id")); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// archivePost and unarchivePost are idempotent: the owner of the wall
+// puts the post away in "Архив записей", where only they see it, or back.
+func (a *api) archivePost(w http.ResponseWriter, r *http.Request) {
+	a.switchPost(w, r, a.posts.Archive, true)
+}
+
+func (a *api) unarchivePost(w http.ResponseWriter, r *http.Request) {
+	a.switchPost(w, r, a.posts.Archive, false)
+}
+
+// closeComments and openComments are idempotent: the owner of the wall
+// lets nobody comment the post anymore, or again.
+func (a *api) closeComments(w http.ResponseWriter, r *http.Request) {
+	a.switchPost(w, r, a.posts.CloseComments, true)
+}
+
+func (a *api) openComments(w http.ResponseWriter, r *http.Request) {
+	a.switchPost(w, r, a.posts.CloseComments, false)
+}
+
+func (a *api) switchPost(w http.ResponseWriter, r *http.Request, set func(ctx context.Context, token, id string, on bool) error, on bool) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = set(r.Context(), token, r.PathValue("id"), on); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

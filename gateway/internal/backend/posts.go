@@ -101,15 +101,46 @@ func (p *Posts) Get(ctx context.Context, accessToken, id string) (model.Post, er
 
 // wallFilters are the tabs of openvk's wall.
 var wallFilters = map[string]postv1.WallFilter{
-	"":       postv1.WallFilter_WALL_FILTER_NONE,
-	"owner":  postv1.WallFilter_WALL_FILTER_OWNER,
-	"others": postv1.WallFilter_WALL_FILTER_OTHERS,
+	"":        postv1.WallFilter_WALL_FILTER_NONE,
+	"owner":   postv1.WallFilter_WALL_FILTER_OWNER,
+	"others":  postv1.WallFilter_WALL_FILTER_OTHERS,
+	"archive": postv1.WallFilter_WALL_FILTER_ARCHIVE,
 }
 
-// List is the wall of wallID: filter is "" for all posts, "owner" for the
-// wall's own, "others" for the rest.
-func (p *Posts) List(ctx context.Context, accessToken, wallID, filter, cursor string, limit int) (model.PostPage, error) {
-	f, ok := wallFilters[filter]
+// Archive puts the post away in the archive of its wall, or back.
+func (p *Posts) Archive(ctx context.Context, accessToken, id string, archived bool) error {
+	var err error
+	if archived {
+		_, err = p.api.ArchivePost(withToken(ctx, accessToken), &postv1.ArchivePostRequest{Id: id})
+	} else {
+		_, err = p.api.UnarchivePost(withToken(ctx, accessToken), &postv1.UnarchivePostRequest{Id: id})
+	}
+	if err != nil {
+		return errs.Wrap("p.api.ArchivePost", fromStatus(err))
+	}
+
+	return nil
+}
+
+// CloseComments lets nobody comment the post anymore, or again.
+func (p *Posts) CloseComments(ctx context.Context, accessToken, id string, closed bool) error {
+	var err error
+	if closed {
+		_, err = p.api.CloseComments(withToken(ctx, accessToken), &postv1.CloseCommentsRequest{PostId: id})
+	} else {
+		_, err = p.api.OpenComments(withToken(ctx, accessToken), &postv1.OpenCommentsRequest{PostId: id})
+	}
+	if err != nil {
+		return errs.Wrap("p.api.CloseComments", fromStatus(err))
+	}
+
+	return nil
+}
+
+// List is the wall of wallID: pick.Filter is "" for all posts, "owner" for
+// the wall's own, "others" for the rest and "archive" for those put away.
+func (p *Posts) List(ctx context.Context, accessToken, wallID string, pick model.WallPick, cursor string, limit int) (model.PostPage, error) {
+	f, ok := wallFilters[pick.Filter]
 	if !ok {
 		return model.PostPage{}, failure.New(failure.InvalidArgument, "invalid wall type")
 	}
@@ -119,6 +150,7 @@ func (p *Posts) List(ctx context.Context, accessToken, wallID, filter, cursor st
 		Cursor: cursor,
 		Limit:  toLimit(limit),
 		Filter: f,
+		Query:  pick.Query,
 	})
 	if err != nil {
 		return model.PostPage{}, errs.Wrap("p.api.ListPosts", fromStatus(err))
@@ -364,14 +396,16 @@ func toPost(p *postv1.Post) model.Post {
 		Liked:     p.GetLiked(),
 		RepostOf:  p.GetRepostOf(),
 		// Unset timestamps are zero times, not the Unix epoch.
-		EditedAt:      fromTimestamp(p.GetEditedAt()),
-		EditableUntil: fromTimestamp(p.GetEditableUntil()),
-		Pinned:        p.GetPinned(),
-		FromWall:      p.GetFromWall(),
-		Signed:        p.GetSigned(),
-		AvatarUpdate:  p.GetAvatarUpdate(),
-		SharedPhotoID: p.GetSharedPhotoId(),
-		Mine:          p.GetMine(),
+		EditedAt:       fromTimestamp(p.GetEditedAt()),
+		EditableUntil:  fromTimestamp(p.GetEditableUntil()),
+		Pinned:         p.GetPinned(),
+		Archived:       p.GetArchived(),
+		CommentsClosed: p.GetCommentsClosed(),
+		FromWall:       p.GetFromWall(),
+		Signed:         p.GetSigned(),
+		AvatarUpdate:   p.GetAvatarUpdate(),
+		SharedPhotoID:  p.GetSharedPhotoId(),
+		Mine:           p.GetMine(),
 	}
 }
 

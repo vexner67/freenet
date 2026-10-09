@@ -702,7 +702,7 @@ func (a *api) listClubPosts(w http.ResponseWriter, r *http.Request) {
 
 	cursor := r.URL.Query().Get("cursor")
 
-	page, err := a.posts.List(r.Context(), token, c.Club.ID, r.URL.Query().Get("type"), cursor, limit)
+	page, err := a.posts.List(r.Context(), token, c.Club.ID, wallPick(r), cursor, limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

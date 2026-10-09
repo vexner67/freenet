@@ -24,6 +24,18 @@ type fakeAlbums struct {
 	// photoLiked is the photo liked last, commented the text of the last
 	// comment on a photo.
 	photoLiked, commented string
+	// cover and moved are "album/photo" of the last cover and move.
+	cover, moved string
+}
+
+func (f *fakeAlbums) SetCover(_ context.Context, _, albumID, photoID string) error {
+	f.cover = albumID + "/" + photoID
+	return f.err
+}
+
+func (f *fakeAlbums) MovePhoto(_ context.Context, _, photoID, albumID string) error {
+	f.moved = albumID + "/" + photoID
+	return f.err
 }
 
 func (f *fakeAlbums) AddAvatarPhoto(_ context.Context, _, clubID, photoID string) error {
@@ -350,6 +362,32 @@ func TestAlbumPhotoPage(t *testing.T) {
 	}
 	if w = h.do("DELETE", "/api/v1/album-photos/ph6", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.albums.deleted != "ph6" {
 		t.Fatalf("delete: %d", w.Code)
+	}
+}
+
+func TestAlbumCoverAndMove(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+
+	if w := h.do("PUT", "/api/v1/albums/a1/cover", `{"photoId":"ph1"}`); w.Code != http.StatusUnauthorized {
+		t.Fatalf("a cover without a token: %d", w.Code)
+	}
+	if w := h.do("PUT", "/api/v1/albums/a1/cover", `{"photoId":"ph1"}`, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.albums.cover != "a1/ph1" {
+		t.Fatalf("cover: %d %q", w.Code, h.albums.cover)
+	}
+
+	if w := h.do("PUT", "/api/v1/album-photos/ph6/album", `{"albumId":"a1"}`); w.Code != http.StatusUnauthorized {
+		t.Fatalf("a move without a token: %d", w.Code)
+	}
+	if w := h.do("PUT", "/api/v1/album-photos/ph6/album", `{"albumId":"a1"}`, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.albums.moved != "a1/ph6" {
+		t.Fatalf("move: %d %q", w.Code, h.albums.moved)
+	}
+
+	// The album the site keeps takes nothing by hand: 409.
+	h.albums.err = failure.New(failure.Conflict, "this album is kept by the site")
+	if w := h.do("PUT", "/api/v1/album-photos/ph6/album", `{"albumId":"a1"}`, "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
+		t.Fatalf("into a system album: %d", w.Code)
 	}
 }
 

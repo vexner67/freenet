@@ -35,7 +35,8 @@ type albumJSON struct {
 	UpdatedAt   string `json:"updatedAt"`
 	// Cover is the first photo, null while there is none.
 	Cover *photoJSON `json:"cover"`
-	// Kind is "" for an album people make, "avatars" for "Фотографии со
+	// Kind is "" for an album people make, "wall" for "Фотографии со
+	// стены" and "avatars" for "Фотографии со
 	// страницы", which the site keeps: nobody renames, deletes or fills it
 	// by hand.
 	Kind string `json:"kind"`
@@ -515,6 +516,56 @@ func (a *api) deleteAlbumPhoto(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.albums.DeletePhoto(r.Context(), token, r.PathValue("id")); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// setAlbumCover makes a photo of the album show it ("Обложка альбома"):
+// whoever may edit the album, which the post service checks.
+func (a *api) setAlbumCover(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		PhotoID string `json:"photoId"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.albums.SetCover(r.Context(), token, r.PathValue("id"), req.PhotoID); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// moveAlbumPhoto puts a photo in another album of the same owner:
+// whoever may edit the albums, which the post service checks.
+func (a *api) moveAlbumPhoto(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		AlbumID string `json:"albumId"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.albums.MovePhoto(r.Context(), token, r.PathValue("id"), req.AlbumID); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

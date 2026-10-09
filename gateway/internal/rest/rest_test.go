@@ -349,10 +349,13 @@ type fakePosts struct {
 	wallPosts              []model.Post
 	created, wall, shared  string
 	edited, pinned         string
-	replyTo, likedComment  string
-	photos                 []string
-	liked                  map[string]bool
-	newComment             model.NewComment
+	// archived and closed are the post switched last, "-" before its ID
+	// when switched back; wallQuery what the wall was searched for.
+	archived, closed, wallQuery string
+	replyTo, likedComment       string
+	photos                      []string
+	liked                       map[string]bool
+	newComment                  model.NewComment
 	// Suggestions: suggested is the last one, mine whether only the
 	// caller's were asked for; published and withdrawn are IDs.
 	suggested            model.Suggestion
@@ -527,8 +530,27 @@ func (f *fakePosts) CommentLikers(_ context.Context, commentID, cursor string, l
 	return model.LikerPage{UserIDs: []string{"u2"}, Total: 1}, f.err
 }
 
-func (f *fakePosts) List(_ context.Context, token, wallID, filter, cursor string, limit int) (model.PostPage, error) {
-	f.token, f.cursor, f.limit, f.wallFilter = token, cursor, limit, filter
+func (f *fakePosts) Archive(ctx context.Context, token, id string, archived bool) error {
+	if _, err := f.Get(ctx, token, id); err != nil {
+		return err
+	}
+
+	f.archived = map[bool]string{true: id, false: "-" + id}[archived]
+	return f.err
+}
+
+func (f *fakePosts) CloseComments(ctx context.Context, token, id string, closed bool) error {
+	if _, err := f.Get(ctx, token, id); err != nil {
+		return err
+	}
+
+	f.closed = map[bool]string{true: id, false: "-" + id}[closed]
+	return f.err
+}
+
+func (f *fakePosts) List(_ context.Context, token, wallID string, pick model.WallPick, cursor string, limit int) (model.PostPage, error) {
+	filter := pick.Filter
+	f.token, f.cursor, f.limit, f.wallFilter, f.wallQuery = token, cursor, limit, filter, pick.Query
 	if wallID == "k1" {
 		ann, club := model.Author{ID: "u1"}, model.Author{ID: "k1"}
 		return model.PostPage{Posts: []model.Post{

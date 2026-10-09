@@ -95,9 +95,15 @@ type Posts interface {
 	Unpin(ctx context.Context, accessToken, id string) error
 	Get(ctx context.Context, accessToken, id string) (model.Post, error)
 	GetMany(ctx context.Context, ids []string) ([]model.Post, error)
-	// List pages a wall: filter is "", "owner" or "others" (InvalidArgument
-	// otherwise), as the tabs of openvk's wall.
-	List(ctx context.Context, accessToken, wallID, filter, cursor string, limit int) (model.PostPage, error)
+	// Archive puts a post away in the archive of its wall, or back;
+	// CloseComments lets nobody comment it anymore, or again. The owner of
+	// the wall only.
+	Archive(ctx context.Context, accessToken, id string, archived bool) error
+	CloseComments(ctx context.Context, accessToken, id string, closed bool) error
+	// List pages a wall: Filter is "", "owner", "others" or "archive"
+	// (InvalidArgument otherwise), as the tabs of openvk's wall, Query
+	// what the posts say ("Поиск").
+	List(ctx context.Context, accessToken, wallID string, pick model.WallPick, cursor string, limit int) (model.PostPage, error)
 	Feed(ctx context.Context, accessToken string, sources model.FeedSources, cursor string, limit int) (model.PostPage, error)
 
 	Like(ctx context.Context, accessToken, postID string) (int, error)
@@ -150,6 +156,10 @@ type Albums interface {
 	Photo(ctx context.Context, accessToken, id string) (model.AlbumPhoto, model.Album, error)
 	Describe(ctx context.Context, accessToken, id, description string) (model.AlbumPhoto, error)
 	DeletePhoto(ctx context.Context, accessToken, id string) error
+	// SetCover makes a photo of the album show it; MovePhoto puts a photo
+	// in another album of the same owner.
+	SetCover(ctx context.Context, accessToken, albumID, photoID string) error
+	MovePhoto(ctx context.Context, accessToken, photoID, albumID string) error
 	// The heart, the likers and the comments under a photo.
 	LikePhoto(ctx context.Context, accessToken, id string) (int, error)
 	UnlikePhoto(ctx context.Context, accessToken, id string) (int, error)
@@ -268,6 +278,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PATCH /api/v1/posts/{id}", a.editPost)
 	mux.HandleFunc("PUT /api/v1/posts/{id}/pin", a.pinPost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}/pin", a.unpinPost)
+	mux.HandleFunc("PUT /api/v1/posts/{id}/archive", a.archivePost)
+	mux.HandleFunc("DELETE /api/v1/posts/{id}/archive", a.unarchivePost)
+	mux.HandleFunc("PUT /api/v1/posts/{id}/closed-comments", a.closeComments)
+	mux.HandleFunc("DELETE /api/v1/posts/{id}/closed-comments", a.openComments)
 	mux.HandleFunc("POST /api/v1/posts/{id}/reposts", a.repostPost)
 	mux.HandleFunc("PUT /api/v1/posts/{id}/like", a.likePost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}/like", a.unlikePost)
@@ -345,11 +359,13 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/albums/{id}", a.getAlbum)
 	mux.HandleFunc("PATCH /api/v1/albums/{id}", a.editAlbum)
 	mux.HandleFunc("DELETE /api/v1/albums/{id}", a.deleteAlbum)
+	mux.HandleFunc("PUT /api/v1/albums/{id}/cover", a.setAlbumCover)
 	mux.HandleFunc("GET /api/v1/albums/{id}/photos", a.listAlbumPhotos)
 	mux.HandleFunc("POST /api/v1/albums/{id}/photos", a.addAlbumPhotos)
 	mux.HandleFunc("GET /api/v1/album-photos/{id}", a.getAlbumPhoto)
 	mux.HandleFunc("PATCH /api/v1/album-photos/{id}", a.editAlbumPhoto)
 	mux.HandleFunc("DELETE /api/v1/album-photos/{id}", a.deleteAlbumPhoto)
+	mux.HandleFunc("PUT /api/v1/album-photos/{id}/album", a.moveAlbumPhoto)
 	mux.HandleFunc("PUT /api/v1/album-photos/{id}/like", a.likeAlbumPhoto)
 	mux.HandleFunc("DELETE /api/v1/album-photos/{id}/like", a.unlikeAlbumPhoto)
 	mux.HandleFunc("GET /api/v1/album-photos/{id}/likes", a.listAlbumPhotoLikers)
