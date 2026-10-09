@@ -40,6 +40,7 @@ type messageJSON struct {
 	RecipientID uuid.UUID   `json:"recipient_id"`
 	Text        string      `json:"text"`
 	Photos      []uuid.UUID `json:"photos,omitempty"`
+	Post        uuid.UUID   `json:"post"`
 	CreatedAt   time.Time   `json:"created_at"`
 }
 
@@ -61,6 +62,7 @@ func (EventCodec) Encode(userID uuid.UUID, e service.Event) ([]byte, error) {
 			RecipientID: m.RecipientID(),
 			Text:        m.Text().String(),
 			Photos:      m.Photos(),
+			Post:        m.Post(),
 			CreatedAt:   m.CreatedAt(),
 		}
 	case e.Read != nil:
@@ -100,7 +102,7 @@ func (EventCodec) Decode(data []byte) (uuid.UUID, service.Event, error) {
 			return uuid.Nil, service.Event{}, errs.Wrap("message.NewPhotos", err)
 		}
 
-		content, err := message.NewContent(text, photos)
+		content, err := message.NewContent(text, photos, m.Post)
 		if err != nil {
 			return uuid.Nil, service.Event{}, errs.Wrap("message.NewContent", err)
 		}

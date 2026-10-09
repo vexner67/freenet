@@ -37,8 +37,11 @@ type Message struct {
 	PhotoIds []string `protobuf:"bytes,7,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
 	// Until when the sender may delete it.
 	DeletableUntil *timestamppb.Timestamp `protobuf:"bytes,8,opt,name=deletable_until,json=deletableUntil,proto3" json:"deletable_until,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// A post of the post service shared into the dialog ("Поделиться" "в
+	// переписку"); empty for none.
+	PostId        string `protobuf:"bytes,9,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Message) Reset() {
@@ -127,6 +130,13 @@ func (x *Message) GetDeletableUntil() *timestamppb.Timestamp {
 	return nil
 }
 
+func (x *Message) GetPostId() string {
+	if x != nil {
+		return x.PostId
+	}
+	return ""
+}
+
 type Dialog struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	PeerId      string                 `protobuf:"bytes,1,opt,name=peer_id,json=peerId,proto3" json:"peer_id,omitempty"`
@@ -191,10 +201,12 @@ func (x *Dialog) GetUnread() bool {
 type SendMessageRequest struct {
 	state       protoimpl.MessageState `protogen:"open.v1"`
 	RecipientId string                 `protobuf:"bytes,1,opt,name=recipient_id,json=recipientId,proto3" json:"recipient_id,omitempty"`
-	// Text, photos or both. The caller has checked with the media service
-	// that the photos are the sender's.
+	// Text, photos, a shared post or some of them. The caller has checked
+	// with the media service that the photos are the sender's, and with the
+	// post service that the post exists.
 	Text          string   `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
 	PhotoIds      []string `protobuf:"bytes,3,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	PostId        string   `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -248,6 +260,13 @@ func (x *SendMessageRequest) GetPhotoIds() []string {
 		return x.PhotoIds
 	}
 	return nil
+}
+
+func (x *SendMessageRequest) GetPostId() string {
+	if x != nil {
+		return x.PostId
+	}
+	return ""
 }
 
 type SendMessageResponse struct {
@@ -1105,7 +1124,7 @@ var File_api_message_v1_message_proto protoreflect.FileDescriptor
 const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"\x1capi/message/v1/message.proto\x12\n" +
-	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x9e\x02\n" +
+	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xb7\x02\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12!\n" +
@@ -1115,15 +1134,17 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x12\n" +
 	"\x04read\x18\x06 \x01(\bR\x04read\x12\x1b\n" +
 	"\tphoto_ids\x18\a \x03(\tR\bphotoIds\x12C\n" +
-	"\x0fdeletable_until\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x0edeletableUntil\"q\n" +
+	"\x0fdeletable_until\x18\b \x01(\v2\x1a.google.protobuf.TimestampR\x0edeletableUntil\x12\x17\n" +
+	"\apost_id\x18\t \x01(\tR\x06postId\"q\n" +
 	"\x06Dialog\x12\x17\n" +
 	"\apeer_id\x18\x01 \x01(\tR\x06peerId\x126\n" +
 	"\flast_message\x18\x02 \x01(\v2\x13.message.v1.MessageR\vlastMessage\x12\x16\n" +
-	"\x06unread\x18\x03 \x01(\bR\x06unread\"h\n" +
+	"\x06unread\x18\x03 \x01(\bR\x06unread\"\x81\x01\n" +
 	"\x12SendMessageRequest\x12!\n" +
 	"\frecipient_id\x18\x01 \x01(\tR\vrecipientId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
-	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\"D\n" +
+	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x17\n" +
+	"\apost_id\x18\x04 \x01(\tR\x06postId\"D\n" +
 	"\x13SendMessageResponse\x12-\n" +
 	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageR\amessage\"B\n" +
 	"\x12ListDialogsRequest\x12\x16\n" +

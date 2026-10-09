@@ -21,7 +21,7 @@ func TestEventCodec(t *testing.T) {
 		t.Fatal(err)
 	}
 	sent := message.Restore(message.Stored{
-		ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: message.RestoreContent(text, message.Photos{uuid.New()}), CreatedAt: time.Date(2026, 10, 7, 12, 0, 0, 123000, time.UTC),
+		ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: message.RestoreContent(text, message.Photos{uuid.New()}, uuid.Nil), CreatedAt: time.Date(2026, 10, 7, 12, 0, 0, 123000, time.UTC),
 	})
 
 	data, err := codec.Encode(bob, service.Event{Message: sent})

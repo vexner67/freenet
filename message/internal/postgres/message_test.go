@@ -39,7 +39,7 @@ func TestRepositories(t *testing.T) {
 
 	save := func(from, to uuid.UUID, text string) *message.Message {
 		t.Helper()
-		m, err := message.New(from, to, message.RestoreContent(message.Text(text), nil), time.Now())
+		m, err := message.New(from, to, message.RestoreContent(message.Text(text), nil, uuid.Nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -152,7 +152,7 @@ func TestRepositories(t *testing.T) {
 				from, to = eve, dan
 			}
 			wg.Go(func() {
-				m, err := message.New(from, to, message.RestoreContent("x", nil), time.Now())
+				m, err := message.New(from, to, message.RestoreContent("x", nil, uuid.Nil), time.Now())
 				if err == nil {
 					err = messages.Save(ctx, m)
 				}
@@ -203,7 +203,7 @@ func TestMessageRepository_DeleteByUser(t *testing.T) {
 			photos = message.Photos{bobsPhoto}
 		}
 
-		m, err := message.New(pair[0], pair[1], message.RestoreContent("привет", photos), time.Now())
+		m, err := message.New(pair[0], pair[1], message.RestoreContent("привет", photos, uuid.Nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -234,6 +234,46 @@ func TestMessageRepository_DeleteByUser(t *testing.T) {
 	}
 }
 
+func TestMessageRepository_SharedPost(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	messages := postgres.NewMessageRepository(pool)
+	ann, bob, post := uuid.New(), uuid.New(), uuid.New()
+
+	m, err := message.New(ann, bob, message.RestoreContent("", nil, post), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = messages.Save(ctx, m); err != nil {
+		t.Fatalf("Save a post alone: %v", err)
+	}
+
+	got, err := messages.Get(ctx, m.ID())
+	if err != nil || got.Post() != post || got.Text() != "" {
+		t.Fatalf("Get = %+v, %v", got, err)
+	}
+
+	plain, _ := message.New(ann, bob, message.RestoreContent("привет", nil, uuid.Nil), time.Now())
+	if err = messages.Save(ctx, plain); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = messages.Get(ctx, plain.ID()); err != nil || got.Post() != uuid.Nil {
+		t.Fatalf("no post = %+v, %v", got, err)
+	}
+}
+
 func TestMessageRepository_Delete(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
@@ -254,7 +294,7 @@ func TestMessageRepository_Delete(t *testing.T) {
 
 	save := func(from, to uuid.UUID) *message.Message {
 		t.Helper()
-		m, err := message.New(from, to, message.RestoreContent("x", nil), time.Now())
+		m, err := message.New(from, to, message.RestoreContent("x", nil, uuid.Nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -347,7 +387,7 @@ func TestMessageRepository_Delete(t *testing.T) {
 				from, to = eve, dan
 			}
 			wg.Go(func() {
-				m, err := message.New(from, to, message.RestoreContent("x", nil), time.Now())
+				m, err := message.New(from, to, message.RestoreContent("x", nil, uuid.Nil), time.Now())
 				if err == nil {
 					err = messages.Save(ctx, m)
 				}

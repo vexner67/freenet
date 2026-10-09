@@ -26,7 +26,7 @@ func send(t *testing.T, svc *service.MessageService, from, to uuid.UUID, texts .
 
 	sent := make([]*message.Message, 0, len(texts))
 	for _, text := range texts {
-		m, err := svc.Send(context.Background(), from, to, message.RestoreContent(message.Text(text), nil))
+		m, err := svc.Send(context.Background(), from, to, message.RestoreContent(message.Text(text), nil, uuid.Nil))
 		if err != nil {
 			t.Fatalf("Send: %v", err)
 		}
@@ -238,7 +238,7 @@ func TestSend_ToYourself(t *testing.T) {
 	t.Parallel()
 
 	ann := uuid.New()
-	if _, err := newService().Send(context.Background(), ann, ann, message.RestoreContent("сам себе", nil)); !errors.Is(err, message.ErrToYourself) {
+	if _, err := newService().Send(context.Background(), ann, ann, message.RestoreContent("сам себе", nil, uuid.Nil)); !errors.Is(err, message.ErrToYourself) {
 		t.Fatalf("to yourself: %v", err)
 	}
 }
@@ -503,7 +503,7 @@ func TestMessageService_Photos(t *testing.T) {
 	send := func(from, to, photo uuid.UUID) {
 		t.Helper()
 
-		content, err := message.NewContent("", message.Photos{photo})
+		content, err := message.NewContent("", message.Photos{photo}, uuid.Nil)
 		if err != nil {
 			t.Fatal(err)
 		}
