@@ -29,7 +29,19 @@ docker compose run --rm --no-deps --entrypoint caddy caddy \
 	validate --config /etc/caddy/Caddyfile --adapter caddyfile >/dev/null 2>&1 ||
 	{ echo "deploy/Caddyfile does not work with this .env"; exit 1; }
 
+# Who Alertmanager notifies, from this server's .env; a configuration it
+# cannot read fails the deployment here, as the Caddyfile above.
+alerts=$(deploy/alertmanager.sh)
+docker compose run --rm --no-deps --entrypoint amtool alertmanager \
+	check-config /etc/alertmanager/alertmanager.yml >/dev/null 2>&1 ||
+	{ echo "alertmanager.yml does not work with this .env"; exit 1; }
+
 docker compose up --detach --wait --wait-timeout 300 --remove-orphans
+
+# A file mounted into a container changes there only on a restart.
+if [ "$alerts" = changed ]; then
+	docker compose restart alertmanager >/dev/null
+fi
 
 # Images of older commits, kept a few days for a quick rollback.
 docker image prune --all --force --filter "until=72h" >/dev/null
