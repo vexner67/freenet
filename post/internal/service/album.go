@@ -31,10 +31,13 @@ type AlbumRepository interface {
 	// below before (uuid.Nil: from the first); Count counts them all.
 	List(ctx context.Context, ownerID, before uuid.UUID, limit int) ([]*post.Album, error)
 	Count(ctx context.Context, ownerID uuid.UUID) (int, error)
-	// AvatarAlbum returns the "Фотографии со страницы" of an owner,
-	// post.ErrAlbumNotFound while there is none; Save of a second one
-	// returns post.ErrAvatarAlbumExists.
-	AvatarAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error)
+	// SystemAlbum returns the album of a kind the site keeps for an
+	// owner, post.ErrAlbumNotFound while there is none; Save of a second
+	// one returns post.ErrSystemAlbumExists.
+	SystemAlbum(ctx context.Context, ownerID uuid.UUID, kind post.AlbumKind) (*post.Album, error)
+	// SetCover makes a photo of the album show it;
+	// post.ErrAlbumPhotoNotFound when the photo is not in the album.
+	SetCover(ctx context.Context, albumID, photoID uuid.UUID) error
 }
 
 // AlbumPhotoRepository keeps the photos of albums.
@@ -49,6 +52,11 @@ type AlbumPhotoRepository interface {
 	Describe(ctx context.Context, p *post.AlbumPhoto) error
 	// Delete removes a photo, uncounting it and dating its album.
 	Delete(ctx context.Context, id uuid.UUID, now time.Time) error
+	// Move puts a photo in another album, counting it there and not in
+	// the one it leaves, which it no longer covers, in one statement:
+	// post.ErrAlbumPhotoNotFound, post.ErrAlbumNotFound when the album it
+	// goes to is gone.
+	Move(ctx context.Context, id, albumID uuid.UUID, now time.Time) error
 	// List returns up to limit photos of an album, oldest first, with IDs
 	// above after (uuid.Nil: from the first).
 	List(ctx context.Context, albumID, after uuid.UUID, limit int) ([]*post.AlbumPhoto, error)
@@ -356,9 +364,9 @@ func (s *AlbumService) AddAvatar(ctx context.Context, requesterID, ownerID, phot
 		return nil, post.ErrCannotChangeAlbum
 	}
 
-	a, err := s.avatarAlbum(ctx, ownerID)
+	a, err := s.systemAlbum(ctx, ownerID, post.AlbumAvatars)
 	if err != nil {
-		return nil, errs.Wrap("s.avatarAlbum", err)
+		return nil, errs.Wrap("s.systemAlbum", err)
 	}
 
 	now := s.now()
@@ -382,28 +390,122 @@ func (s *AlbumService) AddAvatar(ctx context.Context, requesterID, ownerID, phot
 	return photo, nil
 }
 
-// avatarAlbum gets or makes "Фотографии со страницы" of ownerID; two
-// first photos at once make one album, by the unique index.
-func (s *AlbumService) avatarAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error) {
-	a, err := s.albums.AvatarAlbum(ctx, ownerID)
+// systemAlbum gets or makes the album of a kind the site keeps for
+// ownerID; two first photos at once make one album, by the unique index.
+// It runs outside a transaction, which the refused second Save would
+// abort.
+func (s *AlbumService) systemAlbum(ctx context.Context, ownerID uuid.UUID, kind post.AlbumKind) (*post.Album, error) {
+	a, err := s.albums.SystemAlbum(ctx, ownerID, kind)
 	if !errors.Is(err, post.ErrAlbumNotFound) {
-		return a, errs.Wrap("s.albums.AvatarAlbum", err)
+		return a, errs.Wrap("s.albums.SystemAlbum", err)
 	}
 
-	if a, err = post.NewAvatarAlbum(ownerID, s.now()); err != nil {
-		return nil, errs.Wrap("post.NewAvatarAlbum", err)
+	if a, err = post.NewSystemAlbum(ownerID, kind, s.now()); err != nil {
+		return nil, errs.Wrap("post.NewSystemAlbum", err)
 	}
 
 	err = s.albums.Save(ctx, a)
-	if errors.Is(err, post.ErrAvatarAlbumExists) {
-		a, err = s.albums.AvatarAlbum(ctx, ownerID)
-		return a, errs.Wrap("s.albums.AvatarAlbum", err)
+	if errors.Is(err, post.ErrSystemAlbumExists) {
+		a, err = s.albums.SystemAlbum(ctx, ownerID, kind)
+		return a, errs.Wrap("s.albums.SystemAlbum", err)
 	}
 	if err != nil {
 		return nil, errs.Wrap("s.albums.Save", err)
 	}
 
 	return a, nil
+}
+
+// WallAlbum gets or makes "Фотографии со стены" of ownerID. Call it
+// before the transaction that keeps photos there (see systemAlbum).
+func (s *AlbumService) WallAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error) {
+	a, err := s.systemAlbum(ctx, ownerID, post.AlbumWall)
+	if err != nil {
+		return nil, errs.Wrap("s.systemAlbum", err)
+	}
+
+	return a, nil
+}
+
+// KeepWallPhotos puts the photos of a post its owner wrote in a, their
+// "Фотографии со стены", in the transaction of ctx: as copies under new
+// IDs, which media makes, so that the album keeps a photo when the post
+// is deleted and the post keeps it when the album loses it, as in openvk.
+func (s *AlbumService) KeepWallPhotos(ctx context.Context, a *post.Album, photoIDs []uuid.UUID) error {
+	now := s.now()
+	photos := make([]*post.AlbumPhoto, 0, len(photoIDs))
+	copies := make([]PhotoCopy, 0, len(photoIDs))
+
+	for _, from := range photoIDs {
+		// UUIDv7 of one process grow: the copies keep the order of the post.
+		to, err := uuid.NewV7()
+		if err != nil {
+			return errs.Wrap("uuid.NewV7", err)
+		}
+
+		photo, err := post.NewAlbumPhoto(a, to, a.OwnerID(), "", now)
+		if err != nil {
+			return errs.Wrap("post.NewAlbumPhoto", err)
+		}
+
+		photos = append(photos, photo)
+		copies = append(copies, PhotoCopy{From: from, To: to})
+	}
+
+	if err := s.photos.Add(ctx, a.ID(), photos, now); err != nil {
+		return errs.Wrap("s.photos.Add", err)
+	}
+
+	return errs.Wrap("s.media.Copy", s.media.Copy(ctx, a.OwnerID(), copies))
+}
+
+// SetCover makes a photo of an album show it ("Обложка альбома"): the
+// owner of the album or the admins of the community that owns it.
+func (s *AlbumService) SetCover(ctx context.Context, requesterID, albumID, photoID uuid.UUID) error {
+	a, err := s.changeable(ctx, requesterID, albumID)
+	if err != nil {
+		return err
+	}
+
+	p, err := s.photos.Get(ctx, photoID)
+	if err != nil {
+		return errs.Wrap("s.photos.Get", err)
+	}
+
+	if err = a.CheckCover(p); err != nil {
+		return errs.Wrap("a.CheckCover", err)
+	}
+
+	if err = s.albums.SetCover(ctx, albumID, photoID); err != nil {
+		return errs.Wrap("s.albums.SetCover", err)
+	}
+
+	return nil
+}
+
+// MovePhoto puts a photo in another album of the same owner: the owner
+// of both or the admins of the community that owns them.
+func (s *AlbumService) MovePhoto(ctx context.Context, requesterID, photoID, albumID uuid.UUID) error {
+	_, from, err := s.Photo(ctx, photoID)
+	if err != nil {
+		return errs.Wrap("s.Photo", err)
+	}
+
+	// Who may change the one may change the other: they have one owner.
+	to, err := s.changeable(ctx, requesterID, albumID)
+	if err != nil {
+		return err
+	}
+
+	if err = from.CheckMove(to); err != nil {
+		return errs.Wrap("from.CheckMove", err)
+	}
+
+	if err = s.photos.Move(ctx, photoID, albumID, s.now()); err != nil {
+		return errs.Wrap("s.photos.Move", err)
+	}
+
+	return nil
 }
 
 // Photos pages the photos of an album, oldest first, as openvk shows

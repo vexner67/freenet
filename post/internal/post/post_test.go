@@ -396,3 +396,28 @@ func mustRepost(t *testing.T, of uuid.UUID, text post.Text) post.Content {
 
 	return c
 }
+
+func TestPost_InWallAlbum(t *testing.T) {
+	t.Parallel()
+
+	ann, bob, club := uuid.New(), uuid.New(), uuid.New()
+	photos, _ := post.NewPhotos([]uuid.UUID{uuid.New()})
+	content, _ := post.NewContent("", photos)
+
+	own, _ := post.New(ann, ann, content, time.Now())
+	guest, _ := post.New(bob, ann, content, time.Now())
+	clubs, _ := post.NewFromWall(club, ann, content, false, time.Now())
+	avatar, err := post.NewAvatarUpdate(ann, ann, content, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if !own.InWallAlbum() {
+		t.Error("a post on one's own wall keeps its photos in the album")
+	}
+	for name, p := range map[string]*post.Post{"on another's wall": guest, "for a community": clubs, "a new photo of the page": avatar} {
+		if p.InWallAlbum() {
+			t.Errorf("a post %s keeps its photos in the album", name)
+		}
+	}
+}

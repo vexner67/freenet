@@ -23,7 +23,11 @@ type PostService interface {
 	Unpin(ctx context.Context, requesterID, postID uuid.UUID) error
 	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
-	ListWall(ctx context.Context, viewerID, wallID uuid.UUID, filter post.WallFilter, cursor uuid.UUID, size int) (service.Page, error)
+	Archive(ctx context.Context, requesterID, postID uuid.UUID) error
+	Unarchive(ctx context.Context, requesterID, postID uuid.UUID) error
+	CloseComments(ctx context.Context, requesterID, postID uuid.UUID) error
+	OpenComments(ctx context.Context, requesterID, postID uuid.UUID) error
+	ListWall(ctx context.Context, viewerID, wallID uuid.UUID, pick service.WallPick, cursor uuid.UUID, size int) (service.Page, error)
 	Feed(ctx context.Context, viewerID uuid.UUID, sources service.FeedSources, cursor uuid.UUID, size int) (service.Page, error)
 	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
@@ -70,6 +74,8 @@ type AlbumService interface {
 	Photo(ctx context.Context, id uuid.UUID) (*post.AlbumPhoto, *post.Album, error)
 	Describe(ctx context.Context, requesterID, id uuid.UUID, description post.Description) (*post.AlbumPhoto, error)
 	DeletePhoto(ctx context.Context, requesterID, id uuid.UUID) error
+	SetCover(ctx context.Context, requesterID, albumID, photoID uuid.UUID) error
+	MovePhoto(ctx context.Context, requesterID, photoID, albumID uuid.UUID) error
 	LikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error)
 	UnlikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error)
 	LikedPhotos(ctx context.Context, userID uuid.UUID, photoIDs []uuid.UUID) (map[uuid.UUID]bool, error)
@@ -237,6 +243,24 @@ func (h *PostHandler) UnpinPost(ctx context.Context, req *postv1.UnpinPostReques
 	return h.setPinned(ctx, req.GetId(), h.postService.Unpin)
 }
 
+func (h *PostHandler) ArchivePost(ctx context.Context, req *postv1.ArchivePostRequest) (*emptypb.Empty, error) {
+	return h.setPinned(ctx, req.GetId(), h.postService.Archive)
+}
+
+func (h *PostHandler) UnarchivePost(ctx context.Context, req *postv1.UnarchivePostRequest) (*emptypb.Empty, error) {
+	return h.setPinned(ctx, req.GetId(), h.postService.Unarchive)
+}
+
+func (h *PostHandler) CloseComments(ctx context.Context, req *postv1.CloseCommentsRequest) (*emptypb.Empty, error) {
+	return h.setPinned(ctx, req.GetPostId(), h.postService.CloseComments)
+}
+
+func (h *PostHandler) OpenComments(ctx context.Context, req *postv1.OpenCommentsRequest) (*emptypb.Empty, error) {
+	return h.setPinned(ctx, req.GetPostId(), h.postService.OpenComments)
+}
+
+// setPinned makes a switch of the post id by the caller: its pin, its
+// archive, its comments.
 func (h *PostHandler) setPinned(ctx context.Context, id string, set func(ctx context.Context, requesterID, postID uuid.UUID) error) (*emptypb.Empty, error) {
 	requesterID, err := currentUserID(ctx)
 	if err != nil {
@@ -308,9 +332,10 @@ func (h *PostHandler) GetPosts(ctx context.Context, req *postv1.GetPostsRequest)
 }
 
 var wallFilters = map[postv1.WallFilter]post.WallFilter{
-	postv1.WallFilter_WALL_FILTER_NONE:   post.WallAll,
-	postv1.WallFilter_WALL_FILTER_OWNER:  post.WallOwner,
-	postv1.WallFilter_WALL_FILTER_OTHERS: post.WallOthers,
+	postv1.WallFilter_WALL_FILTER_NONE:    post.WallAll,
+	postv1.WallFilter_WALL_FILTER_OWNER:   post.WallOwner,
+	postv1.WallFilter_WALL_FILTER_OTHERS:  post.WallOthers,
+	postv1.WallFilter_WALL_FILTER_ARCHIVE: post.WallArchive,
 }
 
 func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsRequest) (*postv1.ListPostsResponse, error) {
@@ -329,7 +354,12 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 		return nil, status.Error(codes.InvalidArgument, post.ErrInvalidWallFilter.Error())
 	}
 
-	page, err := h.postService.ListWall(ctx, viewerID(ctx), wallID, filter, cursor, int(req.GetLimit()))
+	query, err := post.NewWallQuery(req.GetQuery())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	page, err := h.postService.ListWall(ctx, viewerID(ctx), wallID, service.WallPick{Filter: filter, Query: query}, cursor, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}

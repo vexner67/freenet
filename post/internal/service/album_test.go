@@ -316,3 +316,163 @@ func TestAlbumService_AddAvatar(t *testing.T) {
 		t.Fatalf("ann for the club: %v", err)
 	}
 }
+
+func TestAlbumService_CoverAndMove(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	svc, photos := newAlbumService(t, fakeModerators{})
+
+	summer, _ := svc.Create(ctx, service.CreateAlbumInput{OwnerID: ann, RequesterID: ann, Name: "Лето"})
+	winter, _ := svc.Create(ctx, service.CreateAlbumInput{OwnerID: ann, RequesterID: ann, Name: "Зима"})
+	bobs, _ := svc.Create(ctx, service.CreateAlbumInput{OwnerID: bob, RequesterID: bob, Name: "Лето"})
+
+	in := newPhotos(3)
+	if _, err := svc.AddPhotos(ctx, ann, summer.ID(), in); err != nil {
+		t.Fatal(err)
+	}
+
+	// The first photo shows the album until another is chosen.
+	if _, cover, _ := svc.Get(ctx, summer.ID()); cover.ID() != in[0].ID {
+		t.Fatalf("cover = %v, want the first photo", cover.ID())
+	}
+	if err := svc.SetCover(ctx, bob, summer.ID(), in[2].ID); !errors.Is(err, post.ErrCannotChangeAlbum) {
+		t.Fatalf("bob chooses the cover of ann's album: %v", err)
+	}
+	if err := svc.SetCover(ctx, ann, winter.ID(), in[2].ID); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("a photo of another album: %v", err)
+	}
+	if err := svc.SetCover(ctx, ann, summer.ID(), in[2].ID); err != nil {
+		t.Fatalf("SetCover: %v", err)
+	}
+	if a, cover, _ := svc.Get(ctx, summer.ID()); cover.ID() != in[2].ID || a.Cover() != in[2].ID {
+		t.Fatalf("cover = %v, want the chosen photo", cover.ID())
+	}
+	if page, _ := svc.List(ctx, ann, uuid.Nil, 0); page.Covers[summer.ID()].ID() != in[2].ID {
+		t.Fatalf("the cover in the list = %v", page.Covers[summer.ID()].ID())
+	}
+
+	// A photo moves to another album of ann's, and stops covering the one
+	// it left.
+	if err := svc.MovePhoto(ctx, bob, in[2].ID, bobs.ID()); !errors.Is(err, post.ErrCannotMovePhoto) {
+		t.Fatalf("to bob's album: %v", err)
+	}
+	if err := svc.MovePhoto(ctx, bob, in[2].ID, winter.ID()); !errors.Is(err, post.ErrCannotChangeAlbum) {
+		t.Fatalf("bob moves ann's photo: %v", err)
+	}
+	if err := svc.MovePhoto(ctx, ann, in[2].ID, summer.ID()); !errors.Is(err, post.ErrCannotMovePhoto) {
+		t.Fatalf("to the album it is in: %v", err)
+	}
+	if err := svc.MovePhoto(ctx, ann, in[2].ID, winter.ID()); err != nil {
+		t.Fatalf("MovePhoto: %v", err)
+	}
+
+	from, cover, _ := svc.Get(ctx, summer.ID())
+	to, moved, _ := svc.Get(ctx, winter.ID())
+	if from.Photos() != 2 || to.Photos() != 1 || cover.ID() != in[0].ID || from.Cover() != uuid.Nil || moved.ID() != in[2].ID {
+		t.Fatalf("after the move: %d and %d photos, covers %v and %v", from.Photos(), to.Photos(), cover.ID(), moved.ID())
+	}
+	if p, a, err := svc.Photo(ctx, in[2].ID); err != nil || a.ID() != winter.ID() || p.AlbumID() != winter.ID() {
+		t.Fatalf("the moved photo is in %v, %v", a.ID(), err)
+	}
+	if len(photos.deleted) != 0 {
+		t.Fatalf("a move deleted images: %+v", photos.deleted)
+	}
+
+	// Into an album the site keeps nothing moves; out of it a photo does.
+	avatar, err := svc.AddAvatar(ctx, ann, ann, uuid.Must(uuid.NewV7()))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.MovePhoto(ctx, ann, in[0].ID, avatar.AlbumID()); !errors.Is(err, post.ErrSystemAlbum) {
+		t.Fatalf("into the avatars: %v", err)
+	}
+	if err = svc.MovePhoto(ctx, ann, avatar.ID(), summer.ID()); err != nil {
+		t.Fatalf("out of the avatars: %v", err)
+	}
+	if err = svc.MovePhoto(ctx, ann, uuid.New(), summer.ID()); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("no photo: %v", err)
+	}
+}
+
+func TestPostService_WallAlbum(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	albums, media := newAlbumService(t, fakeModerators{})
+	store := inmem.NewStore()
+	posts := service.NewPostService(service.PostDeps{
+		Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{},
+		Notifier: &fakeNotifier{}, Photos: media, Moderators: fakeModerators{}, WallPhotos: albums,
+	})
+
+	content := func(ids ...uuid.UUID) post.Content {
+		photos, _ := post.NewPhotos(ids)
+		c, err := post.NewContent("море", photos)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return c
+	}
+	first, second, third := uuid.New(), uuid.New(), uuid.New()
+
+	// Text alone makes no album.
+	if _, err := posts.Create(ctx, service.CreateInput{WallID: ann, AuthorID: ann, Content: content()}); err != nil {
+		t.Fatal(err)
+	}
+	if page, _ := albums.List(ctx, ann, uuid.Nil, 0); page.Total != 0 {
+		t.Fatalf("a post without photos made %d albums", page.Total)
+	}
+
+	p, err := posts.Create(ctx, service.CreateInput{WallID: ann, AuthorID: ann, Content: content(first, second)})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	page, _ := albums.List(ctx, ann, uuid.Nil, 0)
+	if page.Total != 1 || page.Albums[0].Kind() != post.AlbumWall || page.Albums[0].Name() != "Фотографии со стены" || page.Albums[0].Photos() != 2 {
+		t.Fatalf("the wall album = %+v", page.Albums)
+	}
+	wall := page.Albums[0].ID()
+
+	// The album keeps copies under new IDs, in the order of the post.
+	kept, _ := albums.Photos(ctx, wall, uuid.Nil, 0)
+	if len(media.copied) != 2 || media.copied[0].From != first || media.copied[1].From != second ||
+		kept.Photos[0].ID() != media.copied[0].To || kept.Photos[1].ID() != media.copied[1].To || kept.Photos[0].AuthorID() != ann {
+		t.Fatalf("copied %+v, kept %+v", media.copied, kept.Photos)
+	}
+	if media.outsideTx != 0 {
+		t.Fatalf("media was told outside the transaction %d times", media.outsideTx)
+	}
+
+	// An edit keeps the photos it adds; those it removes stay in the album.
+	edited, _ := post.NewPhotos([]uuid.UUID{second, third})
+	if _, _, err = posts.Edit(ctx, ann, p.ID(), "море", edited); err != nil {
+		t.Fatalf("Edit: %v", err)
+	}
+	if a, _, _ := albums.Get(ctx, wall); a.Photos() != 3 || len(media.copied) != 3 || media.copied[2].From != third {
+		t.Fatalf("after the edit: %d photos, copied %+v", a.Photos(), media.copied)
+	}
+
+	// A deleted post leaves its photos in the album, as in openvk.
+	if err = posts.Delete(ctx, ann, p.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if a, _, _ := albums.Get(ctx, wall); a.Photos() != 3 {
+		t.Fatalf("after the post is deleted: %d photos", a.Photos())
+	}
+
+	// Posts on another's wall are not kept.
+	if _, err = posts.Create(ctx, service.CreateInput{WallID: bob, AuthorID: ann, Content: content(uuid.New())}); err != nil {
+		t.Fatal(err)
+	}
+	if a, _, _ := albums.Get(ctx, wall); a.Photos() != 3 {
+		t.Fatalf("a post on bob's wall is kept: %d photos", a.Photos())
+	}
+	if page, _ = albums.List(ctx, bob, uuid.Nil, 0); page.Total != 0 {
+		t.Fatalf("bob got %d albums", page.Total)
+	}
+}

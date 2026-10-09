@@ -120,6 +120,10 @@ func (s *CommentService) Create(ctx context.Context, in CommentInput) (*post.Com
 		return nil, errs.Wrap("s.postRepo.Get", err)
 	}
 
+	if err = s.checkOpen(ctx, p, in.AuthorID); err != nil {
+		return nil, err
+	}
+
 	var c *post.Comment
 	if parent == nil {
 		c, err = post.NewComment(in.PostID, in.AuthorID, in.Content, s.now())
@@ -141,6 +145,26 @@ func (s *CommentService) Create(ctx context.Context, in CommentInput) (*post.Com
 	}
 
 	return c, nil
+}
+
+// checkOpen tells whether authorID may comment p at all: not a post put
+// away from them (post.ErrNotFound), nor one whose comments the owner of
+// its wall has closed (post.ErrCommentsClosed), for everyone alike.
+func (s *CommentService) checkOpen(ctx context.Context, p *post.Post, authorID uuid.UUID) error {
+	away, err := hidden(ctx, s.moderators, p, authorID)
+	if err != nil {
+		return errs.Wrap("hidden", err)
+	}
+
+	if away {
+		return post.ErrNotFound
+	}
+
+	if p.CommentsClosed() {
+		return post.ErrCommentsClosed
+	}
+
+	return nil
 }
 
 // save stores comment c on p, which answers parent (nil for none), with

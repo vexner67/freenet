@@ -179,18 +179,18 @@ func TestAlbumRepository_DeleteByUser(t *testing.T) {
 	}
 }
 
-func TestAlbumRepository_AvatarAlbum(t *testing.T) {
+func TestAlbumRepository_SystemAlbum(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 
 	albums := postgres.NewAlbumRepository(newPool(t))
 	ann := uuid.New()
 
-	if _, err := albums.AvatarAlbum(ctx, ann); !errors.Is(err, post.ErrAlbumNotFound) {
+	if _, err := albums.SystemAlbum(ctx, ann, post.AlbumAvatars); !errors.Is(err, post.ErrAlbumNotFound) {
 		t.Fatalf("none yet: %v", err)
 	}
 
-	a, err := post.NewAvatarAlbum(ann, time.Now())
+	a, err := post.NewSystemAlbum(ann, post.AlbumAvatars, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -198,17 +198,33 @@ func TestAlbumRepository_AvatarAlbum(t *testing.T) {
 		t.Fatalf("Save: %v", err)
 	}
 
-	got, err := albums.AvatarAlbum(ctx, ann)
+	got, err := albums.SystemAlbum(ctx, ann, post.AlbumAvatars)
 	if err != nil || got.ID() != a.ID() || got.Kind() != post.AlbumAvatars || got.Name() != a.Name() {
-		t.Fatalf("AvatarAlbum = %+v, %v", got, err)
+		t.Fatalf("SystemAlbum = %+v, %v", got, err)
 	}
 	if got, err = albums.Get(ctx, a.ID()); err != nil || got.Kind() != post.AlbumAvatars {
 		t.Fatalf("Get = %+v, %v", got, err)
 	}
 
-	second, _ := post.NewAvatarAlbum(ann, time.Now())
-	if err = albums.Save(ctx, second); !errors.Is(err, post.ErrAvatarAlbumExists) {
+	second, _ := post.NewSystemAlbum(ann, post.AlbumAvatars, time.Now())
+	if err = albums.Save(ctx, second); !errors.Is(err, post.ErrSystemAlbumExists) {
 		t.Fatalf("a second one: %v", err)
+	}
+
+	// "Фотографии со стены" is another album, one an owner too.
+	wall, _ := post.NewSystemAlbum(ann, post.AlbumWall, time.Now())
+	if err = albums.Save(ctx, wall); err != nil {
+		t.Fatalf("Save the wall album: %v", err)
+	}
+	if got, err = albums.SystemAlbum(ctx, ann, post.AlbumWall); err != nil || got.ID() != wall.ID() || got.Kind() != post.AlbumWall {
+		t.Fatalf("SystemAlbum of the wall = %+v, %v", got, err)
+	}
+	again, _ := post.NewSystemAlbum(ann, post.AlbumWall, time.Now())
+	if err = albums.Save(ctx, again); !errors.Is(err, post.ErrSystemAlbumExists) {
+		t.Fatalf("a second wall album: %v", err)
+	}
+	if _, err = albums.SystemAlbum(ctx, ann, post.AlbumRegular); !errors.Is(err, post.ErrAlbumNotFound) {
+		t.Fatalf("an album of people as one of the site: %v", err)
 	}
 
 	// Any number of albums people make.
@@ -217,6 +233,106 @@ func TestAlbumRepository_AvatarAlbum(t *testing.T) {
 		if err = albums.Save(ctx, own); err != nil {
 			t.Fatalf("an album of ann's own: %v", err)
 		}
+	}
+}
+
+func TestAlbumRepository_CoverAndMove(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	albums := postgres.NewAlbumRepository(newPool(t))
+	photos := albums.Photos()
+	ann := uuid.New()
+	created := time.Now().Add(-time.Hour)
+
+	summer, _ := post.NewAlbum(ann, "Лето", "", created)
+	winter, _ := post.NewAlbum(ann, "Зима", "", created)
+	for _, a := range []*post.Album{summer, winter} {
+		if err := albums.Save(ctx, a); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	in := newAlbumPhotos(t, summer, ann, 3, created)
+	if err := photos.Add(ctx, summer.ID(), in, created); err != nil {
+		t.Fatal(err)
+	}
+
+	cover := func(id uuid.UUID) uuid.UUID {
+		t.Helper()
+
+		covers, err := photos.Covers(ctx, []uuid.UUID{id})
+		if err != nil {
+			t.Fatalf("Covers: %v", err)
+		}
+		if len(covers) == 0 {
+			return uuid.Nil
+		}
+
+		return covers[0].ID()
+	}
+
+	if got := cover(summer.ID()); got != in[0].ID() {
+		t.Fatalf("cover = %v, want the first photo", got)
+	}
+	if err := albums.SetCover(ctx, winter.ID(), in[2].ID()); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("a photo of another album: %v", err)
+	}
+	if err := albums.SetCover(ctx, summer.ID(), in[2].ID()); err != nil {
+		t.Fatalf("SetCover: %v", err)
+	}
+	if a, err := albums.Get(ctx, summer.ID()); err != nil || a.Cover() != in[2].ID() || cover(summer.ID()) != in[2].ID() {
+		t.Fatalf("the chosen cover = %v, %v", a.Cover(), err)
+	}
+
+	// The moved photo counts in the album it goes to, dates both and no
+	// longer covers the one it left.
+	now := time.Now().UTC().Truncate(time.Microsecond)
+	if err := photos.Move(ctx, in[2].ID(), winter.ID(), now); err != nil {
+		t.Fatalf("Move: %v", err)
+	}
+
+	from, _ := albums.Get(ctx, summer.ID())
+	to, _ := albums.Get(ctx, winter.ID())
+	if from.Photos() != 2 || to.Photos() != 1 || from.Cover() != uuid.Nil || !from.UpdatedAt().Equal(now) || !to.UpdatedAt().Equal(now) {
+		t.Fatalf("after the move: %+v and %+v", from.Stored(), to.Stored())
+	}
+	if cover(summer.ID()) != in[0].ID() || cover(winter.ID()) != in[2].ID() {
+		t.Fatalf("covers after the move: %v and %v", cover(summer.ID()), cover(winter.ID()))
+	}
+	if p, err := photos.Get(ctx, in[2].ID()); err != nil || p.AlbumID() != winter.ID() {
+		t.Fatalf("the moved photo = %+v, %v", p, err)
+	}
+
+	if err := photos.Move(ctx, in[2].ID(), winter.ID(), now); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("to the album it is in: %v", err)
+	}
+	if err := photos.Move(ctx, uuid.New(), winter.ID(), now); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("no photo: %v", err)
+	}
+	if err := photos.Move(ctx, in[0].ID(), uuid.New(), now); !errors.Is(err, post.ErrAlbumNotFound) {
+		t.Fatalf("to no album: %v", err)
+	}
+	if a, _ := albums.Get(ctx, summer.ID()); a.Photos() != 2 {
+		t.Fatalf("a failed move uncounted the photo: %d", a.Photos())
+	}
+
+	// A deleted photo stops covering its album; an album with a chosen
+	// cover is deleted with it.
+	if err := albums.SetCover(ctx, summer.ID(), in[1].ID()); err != nil {
+		t.Fatal(err)
+	}
+	if err := photos.Delete(ctx, in[1].ID(), now); err != nil {
+		t.Fatal(err)
+	}
+	if a, _ := albums.Get(ctx, summer.ID()); a.Cover() != uuid.Nil || cover(summer.ID()) != in[0].ID() {
+		t.Fatalf("the cover after its photo is deleted = %v", a.Cover())
+	}
+	if err := albums.SetCover(ctx, winter.ID(), in[2].ID()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := albums.Delete(ctx, winter.ID()); err != nil {
+		t.Fatalf("Delete an album with a cover: %v", err)
 	}
 }
 

@@ -289,6 +289,42 @@ func (h *PostHandler) DeleteAlbumPhoto(ctx context.Context, req *postv1.DeleteAl
 	return &emptypb.Empty{}, nil
 }
 
+func (h *PostHandler) SetAlbumCover(ctx context.Context, req *postv1.SetAlbumCoverRequest) (*emptypb.Empty, error) {
+	requesterID, albumID, err := callerAndAlbum(ctx, req.GetAlbumId())
+	if err != nil {
+		return nil, err
+	}
+
+	photoID, err := parsePhotoID(req.GetPhotoId())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.albumService.SetCover(ctx, requesterID, albumID, photoID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *PostHandler) MoveAlbumPhoto(ctx context.Context, req *postv1.MoveAlbumPhotoRequest) (*emptypb.Empty, error) {
+	requesterID, albumID, err := callerAndAlbum(ctx, req.GetAlbumId())
+	if err != nil {
+		return nil, err
+	}
+
+	photoID, err := parsePhotoID(req.GetPhotoId())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.albumService.MovePhoto(ctx, requesterID, photoID, albumID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func albumNaming(rawName, rawDescription string) (post.AlbumName, post.Description, error) {
 	name, err := post.NewAlbumName(rawName)
 	if err != nil {
@@ -335,10 +371,11 @@ func parsePhotoID(s string) (uuid.UUID, error) {
 	return id, nil
 }
 
-// toProtoAlbum: cover is its first photo, nil if none or not looked up.
+// toProtoAlbum: cover shows the album, nil if none or not looked up.
 var albumKinds = map[post.AlbumKind]postv1.AlbumKind{
 	post.AlbumRegular: postv1.AlbumKind_ALBUM_KIND_NONE,
 	post.AlbumAvatars: postv1.AlbumKind_ALBUM_KIND_AVATARS,
+	post.AlbumWall:    postv1.AlbumKind_ALBUM_KIND_WALL,
 }
 
 func toProtoAlbum(a *post.Album, cover *post.AlbumPhoto, viewerID uuid.UUID) *postv1.Album {

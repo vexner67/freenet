@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
@@ -124,6 +125,8 @@ const getPostQuery = `
 		suggested,
 		avatar_update,
 		shared_photo_id,
+		archived,
+		comments_closed,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = $1
@@ -159,6 +162,8 @@ const getPostsQuery = `
 		suggested,
 		avatar_update,
 		shared_photo_id,
+		archived,
+		comments_closed,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = ANY($1)
@@ -286,6 +291,8 @@ const getPinnedPostQuery = `
 		suggested,
 		avatar_update,
 		shared_photo_id,
+		archived,
+		comments_closed,
 		true AS pinned
 	FROM posts
 	WHERE id = (SELECT post_id FROM pinned_posts WHERE wall_id = $1)
@@ -321,24 +328,29 @@ const listPostsByWallQuery = `
 		suggested,
 		avatar_update,
 		shared_photo_id,
+		archived,
+		comments_closed,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE wall_id = $1
 		AND id < $2
-		AND ($4 = '' OR ($4 = 'owner') = (author_id = wall_id OR from_wall))
-		AND ($4 <> '' OR id IS DISTINCT FROM (SELECT post_id FROM pinned_posts WHERE wall_id = $1))
+		AND archived = ($4 = 'archive')
+		AND ($4 IN ('', 'archive') OR ($4 = 'owner') = (author_id = wall_id OR from_wall))
+		AND ($5 = '' OR text ILIKE $5)
+		AND ($4 <> '' OR $5 <> '' OR id IS DISTINCT FROM (SELECT post_id FROM pinned_posts WHERE wall_id = $1))
 	ORDER BY id DESC
 	LIMIT $3
 `
 
-// ListByWall leaves out of all posts the pinned one, which the wall shows
-// first. The filter ($4) is post.WallFilter, its "owner" post.ByWallOwner.
-func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter, before uuid.UUID, limit int) ([]*post.Post, error) {
+// ListByWall leaves out of all posts, unless searched, the pinned one,
+// which the wall shows first. The filter ($4) is post.WallFilter, its
+// "owner" post.ByWallOwner; $5 is the pattern of post.WallQuery.
+func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, pick service.WallPick, before uuid.UUID, limit int) ([]*post.Post, error) {
 	if before == uuid.Nil {
 		before = newestCursor
 	}
 
-	rows, err := r.conn(ctx).Query(ctx, listPostsByWallQuery, wallID, before, limit, string(filter))
+	rows, err := r.conn(ctx).Query(ctx, listPostsByWallQuery, wallID, before, limit, string(pick.Filter), likePattern(pick.Query.String()))
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
@@ -366,10 +378,13 @@ const listFeedQuery = `
 		suggested,
 		avatar_update,
 		shared_photo_id,
+		archived,
+		comments_closed,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE ((author_id = ANY($1) AND NOT from_wall) OR wall_id = ANY($2))
 		AND id < $3
+		AND NOT archived
 	ORDER BY id DESC
 	LIMIT $4
 `
@@ -402,17 +417,93 @@ const countPostsByWallQuery = `
 	SELECT count(*)
 	FROM posts
 	WHERE wall_id = $1
-		AND ($2 = '' OR ($2 = 'owner') = (author_id = wall_id OR from_wall))
+		AND archived = ($2 = 'archive')
+		AND ($2 IN ('', 'archive') OR ($2 = 'owner') = (author_id = wall_id OR from_wall))
+		AND ($3 = '' OR text ILIKE $3)
 `
 
-func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter) (int, error) {
+func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, pick service.WallPick) (int, error) {
 	var count int
 
-	if err := r.conn(ctx).QueryRow(ctx, countPostsByWallQuery, wallID, string(filter)).Scan(&count); err != nil {
+	err := r.conn(ctx).QueryRow(ctx, countPostsByWallQuery, wallID, string(pick.Filter), likePattern(pick.Query.String())).Scan(&count)
+	if err != nil {
 		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 
 	return count, nil
+}
+
+// likePattern is "%q%" for ILIKE with the wildcards of q escaped, "" for
+// an empty q.
+func likePattern(q string) string {
+	if q == "" {
+		return ""
+	}
+
+	return "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(q) + "%"
+}
+
+// archivePostQuery puts a post away and, in the same statement, unpins
+// it: its wall no longer shows it at all.
+const archivePostQuery = `
+	WITH archived AS (
+		UPDATE posts
+		SET archived = true
+		WHERE id = $1
+		RETURNING id
+	), unpinned AS (
+		DELETE FROM pinned_posts
+		WHERE post_id IN (SELECT id FROM archived)
+	)
+	SELECT count(*)
+	FROM archived
+`
+
+const unarchivePostQuery = `
+	UPDATE posts
+	SET archived = false
+	WHERE id = $1
+`
+
+func (r *PostRepository) SetArchived(ctx context.Context, id uuid.UUID, archived bool) error {
+	if !archived {
+		return r.switchPost(ctx, unarchivePostQuery, id)
+	}
+
+	var n int
+	if err := r.conn(ctx).QueryRow(ctx, archivePostQuery, id).Scan(&n); err != nil {
+		return errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	if n == 0 {
+		return post.ErrNotFound
+	}
+
+	return nil
+}
+
+const setPostCommentsClosedQuery = `
+	UPDATE posts
+	SET comments_closed = $2
+	WHERE id = $1
+`
+
+func (r *PostRepository) SetCommentsClosed(ctx context.Context, id uuid.UUID, closed bool) error {
+	return r.switchPost(ctx, setPostCommentsClosedQuery, id, closed)
+}
+
+// switchPost runs an update of the post id; post.ErrNotFound.
+func (r *PostRepository) switchPost(ctx context.Context, query string, id uuid.UUID, args ...any) error {
+	tag, err := r.conn(ctx).Exec(ctx, query, append([]any{id}, args...)...)
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return post.ErrNotFound
+	}
+
+	return nil
 }
 
 // photoIDs is photos for the photo_ids column: pgx writes a nil slice as
@@ -457,7 +548,7 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
 		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested, &s.AvatarUpdate,
-		&photo, &s.Pinned)
+		&photo, &s.Archived, &s.CommentsClosed, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -510,6 +601,8 @@ const deletePostsByUserQuery = `
 			suggested,
 			avatar_update,
 			shared_photo_id,
+			archived,
+			comments_closed,
 			EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	), uncounted AS (
 		UPDATE posts p
@@ -541,6 +634,8 @@ const deletePostsByUserQuery = `
 		suggested,
 		avatar_update,
 		shared_photo_id,
+		archived,
+		comments_closed,
 		pinned
 	FROM deleted
 `

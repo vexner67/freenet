@@ -139,12 +139,17 @@ func (a *App) build(cfg config.Config) error {
 	if err != nil {
 		return errs.Wrap("grpcserver.New", err)
 	}
+	albums := service.NewAlbumService(service.AlbumDeps{
+		Albums: repos.albums, Photos: repos.albumPhotos, Tx: repos.tx, Media: photos, Moderators: moderators,
+		Likes: repos.photoLikes, Comments: repos.photoComments,
+	})
+
 	postv1.RegisterPostServiceServer(
 		a.server.Registrar(),
 		postgrpc.NewPostHandler(postgrpc.Services{
 			Posts: service.NewPostService(service.PostDeps{
 				Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
-				Moderators: moderators, AlbumPhotos: repos.albumPhotos,
+				Moderators: moderators, AlbumPhotos: repos.albumPhotos, WallPhotos: albums, Switches: repos.posts,
 			}),
 			Comments: service.NewCommentService(service.CommentDeps{
 				Posts: repos.posts, Comments: repos.comments, Likes: repos.commentLikes, Tx: repos.tx, Notifier: notifier, Photos: photos,
@@ -156,10 +161,7 @@ func (a *App) build(cfg config.Config) error {
 			Topics: service.NewTopicService(service.TopicDeps{
 				Topics: repos.topics, Messages: repos.topicMessages, Tx: repos.tx, Photos: photos, Moderators: moderators,
 			}),
-			Albums: service.NewAlbumService(service.AlbumDeps{
-				Albums: repos.albums, Photos: repos.albumPhotos, Tx: repos.tx, Media: photos, Moderators: moderators,
-				Likes: repos.photoLikes, Comments: repos.photoComments,
-			}),
+			Albums: albums,
 			Purge: service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
 				Topics: repos.topics, Albums: repos.albums, Tx: repos.tx, Notifier: notifier, Photos: photos,
@@ -204,6 +206,11 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_CreatePhotoComment_FullMethodName: cfg.CommentLimits,
 		postv1.PostService_UnlikeComment_FullMethodName:      cfg.LikeLimits,
 		postv1.PostService_EditPost_FullMethodName:           cfg.EditLimits,
+		// What the owner of a wall switches on a post is an edit of it.
+		postv1.PostService_ArchivePost_FullMethodName:   cfg.EditLimits,
+		postv1.PostService_UnarchivePost_FullMethodName: cfg.EditLimits,
+		postv1.PostService_CloseComments_FullMethodName: cfg.EditLimits,
+		postv1.PostService_OpenComments_FullMethodName:  cfg.EditLimits,
 		// A suggestion is content for the admins to read; publishing it is
 		// a post for everyone. Each has its own counter.
 		postv1.PostService_SuggestPost_FullMethodName:       cfg.PostLimits,
@@ -217,6 +224,8 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_AddAvatarPhoto_FullMethodName: cfg.PostLimits,
 		postv1.PostService_EditAlbum_FullMethodName:      cfg.EditLimits,
 		postv1.PostService_EditAlbumPhoto_FullMethodName: cfg.EditLimits,
+		postv1.PostService_SetAlbumCover_FullMethodName:  cfg.EditLimits,
+		postv1.PostService_MoveAlbumPhoto_FullMethodName: cfg.EditLimits,
 	}
 }
 
@@ -338,6 +347,7 @@ type repositories struct {
 	posts interface {
 		service.PostRepository
 		service.PinRepository
+		service.PostSwitchRepository
 		service.PostEraser
 	}
 	likes interface {

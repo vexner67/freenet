@@ -26,6 +26,10 @@ const (
 	PostService_EditPost_FullMethodName             = "/post.v1.PostService/EditPost"
 	PostService_PinPost_FullMethodName              = "/post.v1.PostService/PinPost"
 	PostService_UnpinPost_FullMethodName            = "/post.v1.PostService/UnpinPost"
+	PostService_ArchivePost_FullMethodName          = "/post.v1.PostService/ArchivePost"
+	PostService_UnarchivePost_FullMethodName        = "/post.v1.PostService/UnarchivePost"
+	PostService_CloseComments_FullMethodName        = "/post.v1.PostService/CloseComments"
+	PostService_OpenComments_FullMethodName         = "/post.v1.PostService/OpenComments"
 	PostService_GetPost_FullMethodName              = "/post.v1.PostService/GetPost"
 	PostService_GetPosts_FullMethodName             = "/post.v1.PostService/GetPosts"
 	PostService_ListPosts_FullMethodName            = "/post.v1.PostService/ListPosts"
@@ -63,6 +67,8 @@ const (
 	PostService_GetAlbumPhoto_FullMethodName        = "/post.v1.PostService/GetAlbumPhoto"
 	PostService_EditAlbumPhoto_FullMethodName       = "/post.v1.PostService/EditAlbumPhoto"
 	PostService_DeleteAlbumPhoto_FullMethodName     = "/post.v1.PostService/DeleteAlbumPhoto"
+	PostService_SetAlbumCover_FullMethodName        = "/post.v1.PostService/SetAlbumCover"
+	PostService_MoveAlbumPhoto_FullMethodName       = "/post.v1.PostService/MoveAlbumPhoto"
 	PostService_LikeAlbumPhoto_FullMethodName       = "/post.v1.PostService/LikeAlbumPhoto"
 	PostService_UnlikeAlbumPhoto_FullMethodName     = "/post.v1.PostService/UnlikeAlbumPhoto"
 	PostService_ListAlbumPhotoLikers_FullMethodName = "/post.v1.PostService/ListAlbumPhotoLikers"
@@ -93,6 +99,15 @@ type PostServiceClient interface {
 	// before, or stops. Both idempotent.
 	PinPost(ctx context.Context, in *PinPostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UnpinPost(ctx context.Context, in *UnpinPostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token; the owner of the wall, or the admins of the
+	// community it is. An archived post ("Архив записей" of openvk) is shown
+	// to them only: no wall, feed or other post shows it, and it is no
+	// longer pinned. A post with closed comments takes no new ones
+	// (FailedPrecondition); those written before stay.
+	ArchivePost(ctx context.Context, in *ArchivePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UnarchivePost(ctx context.Context, in *UnarchivePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	CloseComments(ctx context.Context, in *CloseCommentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	OpenComments(ctx context.Context, in *OpenCommentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: one post.
 	GetPost(ctx context.Context, in *GetPostRequest, opts ...grpc.CallOption) (*GetPostResponse, error)
 	// Public: at most 50 posts by ID, for the notifications page; posts that
@@ -186,6 +201,12 @@ type PostServiceClient interface {
 	EditAlbumPhoto(ctx context.Context, in *EditAlbumPhotoRequest, opts ...grpc.CallOption) (*EditAlbumPhotoResponse, error)
 	// Who uploaded it or whoever may edit its album.
 	DeleteAlbumPhoto(ctx context.Context, in *DeleteAlbumPhotoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token; whoever may edit the album. SetAlbumCover
+	// makes a photo of the album show it ("Обложка альбома") instead of its
+	// first one. MoveAlbumPhoto puts a photo in another album of the same
+	// owner, one made by people (FailedPrecondition for one the site keeps).
+	SetAlbumCover(ctx context.Context, in *SetAlbumCoverRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	MoveAlbumPhoto(ctx context.Context, in *MoveAlbumPhotoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token: the heart under a photo, as under a post.
 	LikeAlbumPhoto(ctx context.Context, in *LikeAlbumPhotoRequest, opts ...grpc.CallOption) (*LikeAlbumPhotoResponse, error)
 	UnlikeAlbumPhoto(ctx context.Context, in *UnlikeAlbumPhotoRequest, opts ...grpc.CallOption) (*UnlikeAlbumPhotoResponse, error)
@@ -267,6 +288,46 @@ func (c *postServiceClient) UnpinPost(ctx context.Context, in *UnpinPostRequest,
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, PostService_UnpinPost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ArchivePost(ctx context.Context, in *ArchivePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_ArchivePost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) UnarchivePost(ctx context.Context, in *UnarchivePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_UnarchivePost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) CloseComments(ctx context.Context, in *CloseCommentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_CloseComments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) OpenComments(ctx context.Context, in *OpenCommentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_OpenComments_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -643,6 +704,26 @@ func (c *postServiceClient) DeleteAlbumPhoto(ctx context.Context, in *DeleteAlbu
 	return out, nil
 }
 
+func (c *postServiceClient) SetAlbumCover(ctx context.Context, in *SetAlbumCoverRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_SetAlbumCover_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) MoveAlbumPhoto(ctx context.Context, in *MoveAlbumPhotoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_MoveAlbumPhoto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) LikeAlbumPhoto(ctx context.Context, in *LikeAlbumPhotoRequest, opts ...grpc.CallOption) (*LikeAlbumPhotoResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(LikeAlbumPhotoResponse)
@@ -734,6 +815,15 @@ type PostServiceServer interface {
 	// before, or stops. Both idempotent.
 	PinPost(context.Context, *PinPostRequest) (*emptypb.Empty, error)
 	UnpinPost(context.Context, *UnpinPostRequest) (*emptypb.Empty, error)
+	// Require an access token; the owner of the wall, or the admins of the
+	// community it is. An archived post ("Архив записей" of openvk) is shown
+	// to them only: no wall, feed or other post shows it, and it is no
+	// longer pinned. A post with closed comments takes no new ones
+	// (FailedPrecondition); those written before stay.
+	ArchivePost(context.Context, *ArchivePostRequest) (*emptypb.Empty, error)
+	UnarchivePost(context.Context, *UnarchivePostRequest) (*emptypb.Empty, error)
+	CloseComments(context.Context, *CloseCommentsRequest) (*emptypb.Empty, error)
+	OpenComments(context.Context, *OpenCommentsRequest) (*emptypb.Empty, error)
 	// Public: one post.
 	GetPost(context.Context, *GetPostRequest) (*GetPostResponse, error)
 	// Public: at most 50 posts by ID, for the notifications page; posts that
@@ -827,6 +917,12 @@ type PostServiceServer interface {
 	EditAlbumPhoto(context.Context, *EditAlbumPhotoRequest) (*EditAlbumPhotoResponse, error)
 	// Who uploaded it or whoever may edit its album.
 	DeleteAlbumPhoto(context.Context, *DeleteAlbumPhotoRequest) (*emptypb.Empty, error)
+	// Require an access token; whoever may edit the album. SetAlbumCover
+	// makes a photo of the album show it ("Обложка альбома") instead of its
+	// first one. MoveAlbumPhoto puts a photo in another album of the same
+	// owner, one made by people (FailedPrecondition for one the site keeps).
+	SetAlbumCover(context.Context, *SetAlbumCoverRequest) (*emptypb.Empty, error)
+	MoveAlbumPhoto(context.Context, *MoveAlbumPhotoRequest) (*emptypb.Empty, error)
 	// Require an access token: the heart under a photo, as under a post.
 	LikeAlbumPhoto(context.Context, *LikeAlbumPhotoRequest) (*LikeAlbumPhotoResponse, error)
 	UnlikeAlbumPhoto(context.Context, *UnlikeAlbumPhotoRequest) (*UnlikeAlbumPhotoResponse, error)
@@ -871,6 +967,18 @@ func (UnimplementedPostServiceServer) PinPost(context.Context, *PinPostRequest) 
 }
 func (UnimplementedPostServiceServer) UnpinPost(context.Context, *UnpinPostRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method UnpinPost not implemented")
+}
+func (UnimplementedPostServiceServer) ArchivePost(context.Context, *ArchivePostRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ArchivePost not implemented")
+}
+func (UnimplementedPostServiceServer) UnarchivePost(context.Context, *UnarchivePostRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnarchivePost not implemented")
+}
+func (UnimplementedPostServiceServer) CloseComments(context.Context, *CloseCommentsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method CloseComments not implemented")
+}
+func (UnimplementedPostServiceServer) OpenComments(context.Context, *OpenCommentsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method OpenComments not implemented")
 }
 func (UnimplementedPostServiceServer) GetPost(context.Context, *GetPostRequest) (*GetPostResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPost not implemented")
@@ -982,6 +1090,12 @@ func (UnimplementedPostServiceServer) EditAlbumPhoto(context.Context, *EditAlbum
 }
 func (UnimplementedPostServiceServer) DeleteAlbumPhoto(context.Context, *DeleteAlbumPhotoRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteAlbumPhoto not implemented")
+}
+func (UnimplementedPostServiceServer) SetAlbumCover(context.Context, *SetAlbumCoverRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetAlbumCover not implemented")
+}
+func (UnimplementedPostServiceServer) MoveAlbumPhoto(context.Context, *MoveAlbumPhotoRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method MoveAlbumPhoto not implemented")
 }
 func (UnimplementedPostServiceServer) LikeAlbumPhoto(context.Context, *LikeAlbumPhotoRequest) (*LikeAlbumPhotoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method LikeAlbumPhoto not implemented")
@@ -1129,6 +1243,78 @@ func _PostService_UnpinPost_Handler(srv interface{}, ctx context.Context, dec fu
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).UnpinPost(ctx, req.(*UnpinPostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ArchivePost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ArchivePostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ArchivePost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ArchivePost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ArchivePost(ctx, req.(*ArchivePostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_UnarchivePost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnarchivePostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).UnarchivePost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_UnarchivePost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).UnarchivePost(ctx, req.(*UnarchivePostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_CloseComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CloseCommentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CloseComments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CloseComments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CloseComments(ctx, req.(*CloseCommentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_OpenComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OpenCommentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).OpenComments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_OpenComments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).OpenComments(ctx, req.(*OpenCommentsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1799,6 +1985,42 @@ func _PostService_DeleteAlbumPhoto_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_SetAlbumCover_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetAlbumCoverRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).SetAlbumCover(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_SetAlbumCover_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).SetAlbumCover(ctx, req.(*SetAlbumCoverRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_MoveAlbumPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MoveAlbumPhotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).MoveAlbumPhoto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_MoveAlbumPhoto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).MoveAlbumPhoto(ctx, req.(*MoveAlbumPhotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_LikeAlbumPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(LikeAlbumPhotoRequest)
 	if err := dec(in); err != nil {
@@ -1957,6 +2179,22 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PostService_UnpinPost_Handler,
 		},
 		{
+			MethodName: "ArchivePost",
+			Handler:    _PostService_ArchivePost_Handler,
+		},
+		{
+			MethodName: "UnarchivePost",
+			Handler:    _PostService_UnarchivePost_Handler,
+		},
+		{
+			MethodName: "CloseComments",
+			Handler:    _PostService_CloseComments_Handler,
+		},
+		{
+			MethodName: "OpenComments",
+			Handler:    _PostService_OpenComments_Handler,
+		},
+		{
 			MethodName: "GetPost",
 			Handler:    _PostService_GetPost_Handler,
 		},
@@ -2103,6 +2341,14 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteAlbumPhoto",
 			Handler:    _PostService_DeleteAlbumPhoto_Handler,
+		},
+		{
+			MethodName: "SetAlbumCover",
+			Handler:    _PostService_SetAlbumCover_Handler,
+		},
+		{
+			MethodName: "MoveAlbumPhoto",
+			Handler:    _PostService_MoveAlbumPhoto_Handler,
 		},
 		{
 			MethodName: "LikeAlbumPhoto",

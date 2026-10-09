@@ -100,24 +100,26 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 	counters := p.Counters()
 
 	pp := &postv1.Post{
-		Id:            p.ID().String(),
-		WallId:        p.WallID().String(),
-		AuthorId:      p.AuthorID().String(),
-		Text:          p.Content().Text().String(),
-		PhotoIds:      photoStrings(p.Content().Photos()),
-		CreatedAt:     timestamppb.New(p.CreatedAt()),
-		LikeCount:     int32(counters.Likes),    //nolint:gosec // counters come from int4 columns
-		CommentCount:  int32(counters.Comments), //nolint:gosec // counters come from int4 columns
-		RepostCount:   int32(counters.Reposts),  //nolint:gosec // counters come from int4 columns
-		RepostOf:      idString(p.Content().RepostOf()),
-		Liked:         liked,
-		Pinned:        p.Pinned(),
-		EditableUntil: timestamppb.New(p.EditableUntil()),
-		FromWall:      p.FromWall(),
-		Signed:        p.Signed(),
-		AvatarUpdate:  p.AvatarUpdate(),
-		SharedPhotoId: idString(p.Content().SharedPhoto()),
-		Mine:          viewerID != uuid.Nil && p.BelongsTo(viewerID),
+		Id:             p.ID().String(),
+		WallId:         p.WallID().String(),
+		AuthorId:       p.AuthorID().String(),
+		Text:           p.Content().Text().String(),
+		PhotoIds:       photoStrings(p.Content().Photos()),
+		CreatedAt:      timestamppb.New(p.CreatedAt()),
+		LikeCount:      int32(counters.Likes),    //nolint:gosec // counters come from int4 columns
+		CommentCount:   int32(counters.Comments), //nolint:gosec // counters come from int4 columns
+		RepostCount:    int32(counters.Reposts),  //nolint:gosec // counters come from int4 columns
+		RepostOf:       idString(p.Content().RepostOf()),
+		Liked:          liked,
+		Pinned:         p.Pinned(),
+		EditableUntil:  timestamppb.New(p.EditableUntil()),
+		FromWall:       p.FromWall(),
+		Signed:         p.Signed(),
+		AvatarUpdate:   p.AvatarUpdate(),
+		SharedPhotoId:  idString(p.Content().SharedPhoto()),
+		Mine:           viewerID != uuid.Nil && p.BelongsTo(viewerID),
+		Archived:       p.Archived(),
+		CommentsClosed: p.CommentsClosed(),
 	}
 
 	if !p.EditedAt().IsZero() {

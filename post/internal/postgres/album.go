@@ -53,8 +53,8 @@ const saveAlbumQuery = `
 func (r *AlbumRepository) Save(ctx context.Context, a *post.Album) error {
 	_, err := r.conn(ctx).Exec(ctx, saveAlbumQuery, a.ID(), a.OwnerID(), a.Name().String(), a.Description().String(),
 		a.CreatedAt(), a.UpdatedAt(), string(a.Kind()))
-	if constraintOf(err) == "albums_avatars_uidx" {
-		return post.ErrAvatarAlbumExists
+	if c := constraintOf(err); c == "albums_avatars_uidx" || c == "albums_wall_uidx" {
+		return post.ErrSystemAlbumExists
 	}
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
@@ -72,7 +72,8 @@ const getAlbumQuery = `
 		created_at,
 		updated_at,
 		photo_count,
-		kind
+		kind,
+		cover_photo_id
 	FROM albums
 	WHERE id = $1
 `
@@ -89,7 +90,7 @@ func (r *AlbumRepository) Get(ctx context.Context, id uuid.UUID) (*post.Album, e
 	return a, nil
 }
 
-const avatarAlbumQuery = `
+const systemAlbumQuery = `
 	SELECT
 		id,
 		owner_id,
@@ -98,14 +99,16 @@ const avatarAlbumQuery = `
 		created_at,
 		updated_at,
 		photo_count,
-		kind
+		kind,
+		cover_photo_id
 	FROM albums
 	WHERE owner_id = $1
-		AND kind = 'avatars'
+		AND kind = $2
+		AND kind <> ''
 `
 
-func (r *AlbumRepository) AvatarAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error) {
-	a, err := scanAlbum(r.conn(ctx).QueryRow(ctx, avatarAlbumQuery, ownerID))
+func (r *AlbumRepository) SystemAlbum(ctx context.Context, ownerID uuid.UUID, kind post.AlbumKind) (*post.Album, error) {
+	a, err := scanAlbum(r.conn(ctx).QueryRow(ctx, systemAlbumQuery, ownerID, string(kind)))
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, post.ErrAlbumNotFound
 	}
@@ -132,6 +135,33 @@ func (r *AlbumRepository) Update(ctx context.Context, a *post.Album) error {
 
 	if tag.RowsAffected() == 0 {
 		return post.ErrAlbumNotFound
+	}
+
+	return nil
+}
+
+// setAlbumCoverQuery takes only a photo that is in the album now: one
+// moved away meanwhile does not cover it.
+const setAlbumCoverQuery = `
+	UPDATE albums
+	SET cover_photo_id = $2
+	WHERE id = $1
+		AND EXISTS (
+			SELECT 1
+			FROM album_photos
+			WHERE id = $2
+				AND album_id = $1
+		)
+`
+
+func (r *AlbumRepository) SetCover(ctx context.Context, albumID, photoID uuid.UUID) error {
+	tag, err := r.conn(ctx).Exec(ctx, setAlbumCoverQuery, albumID, photoID)
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return post.ErrAlbumPhotoNotFound
 	}
 
 	return nil
@@ -195,7 +225,8 @@ const listAlbumsQuery = `
 		created_at,
 		updated_at,
 		photo_count,
-		kind
+		kind,
+		cover_photo_id
 	FROM albums
 	WHERE owner_id = $1
 		AND id < $2
@@ -295,9 +326,16 @@ func scanAlbum(row pgx.Row) (*post.Album, error) {
 		name, description string
 	)
 
-	var kind string
-	if err := row.Scan(&s.ID, &s.OwnerID, &name, &description, &s.CreatedAt, &s.UpdatedAt, &s.Photos, &kind); err != nil {
+	var (
+		kind  string
+		cover *uuid.UUID
+	)
+	if err := row.Scan(&s.ID, &s.OwnerID, &name, &description, &s.CreatedAt, &s.UpdatedAt, &s.Photos, &kind, &cover); err != nil {
 		return nil, err
+	}
+
+	if cover != nil {
+		s.Cover = *cover
 	}
 
 	// Data comes from our own table and was validated on write.
@@ -433,6 +471,48 @@ func (p *AlbumPhotoRepository) Delete(ctx context.Context, id uuid.UUID, now tim
 	return nil
 }
 
+// moveAlbumPhotoQuery puts a photo in another album and, in the same
+// statement, counts it there and not in the album it leaves, which it no
+// longer covers, and dates both. The photo's row is locked first, so the
+// album it leaves is the one read.
+const moveAlbumPhotoQuery = `
+	WITH moved AS (
+		UPDATE album_photos p
+		SET album_id = $2
+		FROM (
+			SELECT id, album_id
+			FROM album_photos
+			WHERE id = $1
+			FOR UPDATE
+		) old
+		WHERE p.id = old.id
+			AND old.album_id <> $2
+		RETURNING old.album_id AS from_id
+	)
+	UPDATE albums a
+	SET photo_count = a.photo_count + CASE WHEN a.id = $2 THEN 1 ELSE -1 END,
+		updated_at = $3,
+		cover_photo_id = CASE WHEN a.id = $2 THEN a.cover_photo_id ELSE nullif(a.cover_photo_id, $1) END
+	FROM moved
+	WHERE a.id IN ($2, moved.from_id)
+`
+
+func (p *AlbumPhotoRepository) Move(ctx context.Context, id, albumID uuid.UUID, now time.Time) error {
+	tag, err := p.r.conn(ctx).Exec(ctx, moveAlbumPhotoQuery, id, albumID, now.UTC().Truncate(time.Microsecond))
+	if constraintOf(err) == "album_photos_album_id_fkey" {
+		return post.ErrAlbumNotFound
+	}
+	if err != nil {
+		return errs.Wrap("p.r.conn.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return post.ErrAlbumPhotoNotFound
+	}
+
+	return nil
+}
+
 const listAlbumPhotosQuery = `
 	SELECT
 		id,
@@ -458,18 +538,20 @@ func (p *AlbumPhotoRepository) List(ctx context.Context, albumID, after uuid.UUI
 	return collectAlbumPhotos(rows)
 }
 
+// albumCoversQuery: the photo chosen to show the album, else its first.
 const albumCoversQuery = `
-	SELECT DISTINCT ON (album_id)
-		id,
-		album_id,
-		author_id,
-		description,
-		created_at,
-		like_count,
-		comment_count
-	FROM album_photos
-	WHERE album_id = ANY($1)
-	ORDER BY album_id, id
+	SELECT DISTINCT ON (p.album_id)
+		p.id,
+		p.album_id,
+		p.author_id,
+		p.description,
+		p.created_at,
+		p.like_count,
+		p.comment_count
+	FROM album_photos p
+	JOIN albums a ON a.id = p.album_id
+	WHERE p.album_id = ANY($1)
+	ORDER BY p.album_id, (p.id IS NOT DISTINCT FROM a.cover_photo_id) DESC, p.id
 `
 
 func (p *AlbumPhotoRepository) Covers(ctx context.Context, albumIDs []uuid.UUID) ([]*post.AlbumPhoto, error) {

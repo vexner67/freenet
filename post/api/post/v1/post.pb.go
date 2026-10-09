@@ -26,13 +26,16 @@ const (
 // WallFilter picks the posts of a wall: all ("Все записи"), the wall's
 // own — by its owner, or for the community whose wall it is ("Записи
 // Анны", "Записи сообщества") — or the others ("Чужие записи"). Only all
-// posts show the pinned one first.
+// posts show the pinned one first. The archive ("Архив записей") are the
+// posts put away, which the others leave out: the owner of the wall or
+// the admins of its community only (PermissionDenied).
 type WallFilter int32
 
 const (
-	WallFilter_WALL_FILTER_NONE   WallFilter = 0
-	WallFilter_WALL_FILTER_OWNER  WallFilter = 1
-	WallFilter_WALL_FILTER_OTHERS WallFilter = 2
+	WallFilter_WALL_FILTER_NONE    WallFilter = 0
+	WallFilter_WALL_FILTER_OWNER   WallFilter = 1
+	WallFilter_WALL_FILTER_OTHERS  WallFilter = 2
+	WallFilter_WALL_FILTER_ARCHIVE WallFilter = 3
 )
 
 // Enum value maps for WallFilter.
@@ -41,11 +44,13 @@ var (
 		0: "WALL_FILTER_NONE",
 		1: "WALL_FILTER_OWNER",
 		2: "WALL_FILTER_OTHERS",
+		3: "WALL_FILTER_ARCHIVE",
 	}
 	WallFilter_value = map[string]int32{
-		"WALL_FILTER_NONE":   0,
-		"WALL_FILTER_OWNER":  1,
-		"WALL_FILTER_OTHERS": 2,
+		"WALL_FILTER_NONE":    0,
+		"WALL_FILTER_OWNER":   1,
+		"WALL_FILTER_OTHERS":  2,
+		"WALL_FILTER_ARCHIVE": 3,
 	}
 )
 
@@ -85,6 +90,9 @@ const (
 	AlbumKind_ALBUM_KIND_NONE AlbumKind = 0
 	// openvk's "Фотографии со страницы": the photos of the page.
 	AlbumKind_ALBUM_KIND_AVATARS AlbumKind = 1
+	// openvk's "Фотографии со стены": copies of the photos of the posts a
+	// person wrote on their wall.
+	AlbumKind_ALBUM_KIND_WALL AlbumKind = 2
 )
 
 // Enum value maps for AlbumKind.
@@ -92,10 +100,12 @@ var (
 	AlbumKind_name = map[int32]string{
 		0: "ALBUM_KIND_NONE",
 		1: "ALBUM_KIND_AVATARS",
+		2: "ALBUM_KIND_WALL",
 	}
 	AlbumKind_value = map[string]int32{
 		"ALBUM_KIND_NONE":    0,
 		"ALBUM_KIND_AVATARS": 1,
+		"ALBUM_KIND_WALL":    2,
 	}
 )
 
@@ -170,8 +180,12 @@ type Post struct {
 	// A photo of an album the post shares ("Поделиться" under a photo);
 	// empty for none. A deleted photo leaves the post.
 	SharedPhotoId string `protobuf:"bytes,19,opt,name=shared_photo_id,json=sharedPhotoId,proto3" json:"shared_photo_id,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	// The post is in the archive of its wall.
+	Archived bool `protobuf:"varint,20,opt,name=archived,proto3" json:"archived,omitempty"`
+	// Nobody comments the post anymore.
+	CommentsClosed bool `protobuf:"varint,21,opt,name=comments_closed,json=commentsClosed,proto3" json:"comments_closed,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *Post) Reset() {
@@ -335,6 +349,20 @@ func (x *Post) GetSharedPhotoId() string {
 		return x.SharedPhotoId
 	}
 	return ""
+}
+
+func (x *Post) GetArchived() bool {
+	if x != nil {
+		return x.Archived
+	}
+	return false
+}
+
+func (x *Post) GetCommentsClosed() bool {
+	if x != nil {
+		return x.CommentsClosed
+	}
+	return false
 }
 
 type Comment struct {
@@ -1467,6 +1495,182 @@ func (x *UnpinPostRequest) GetId() string {
 	return ""
 }
 
+type ArchivePostRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ArchivePostRequest) Reset() {
+	*x = ArchivePostRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[19]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ArchivePostRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ArchivePostRequest) ProtoMessage() {}
+
+func (x *ArchivePostRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[19]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ArchivePostRequest.ProtoReflect.Descriptor instead.
+func (*ArchivePostRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{19}
+}
+
+func (x *ArchivePostRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type UnarchivePostRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnarchivePostRequest) Reset() {
+	*x = UnarchivePostRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[20]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnarchivePostRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnarchivePostRequest) ProtoMessage() {}
+
+func (x *UnarchivePostRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[20]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnarchivePostRequest.ProtoReflect.Descriptor instead.
+func (*UnarchivePostRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{20}
+}
+
+func (x *UnarchivePostRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type CloseCommentsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PostId        string                 `protobuf:"bytes,1,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CloseCommentsRequest) Reset() {
+	*x = CloseCommentsRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[21]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CloseCommentsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CloseCommentsRequest) ProtoMessage() {}
+
+func (x *CloseCommentsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[21]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CloseCommentsRequest.ProtoReflect.Descriptor instead.
+func (*CloseCommentsRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *CloseCommentsRequest) GetPostId() string {
+	if x != nil {
+		return x.PostId
+	}
+	return ""
+}
+
+type OpenCommentsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	PostId        string                 `protobuf:"bytes,1,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *OpenCommentsRequest) Reset() {
+	*x = OpenCommentsRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[22]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *OpenCommentsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*OpenCommentsRequest) ProtoMessage() {}
+
+func (x *OpenCommentsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[22]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use OpenCommentsRequest.ProtoReflect.Descriptor instead.
+func (*OpenCommentsRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *OpenCommentsRequest) GetPostId() string {
+	if x != nil {
+		return x.PostId
+	}
+	return ""
+}
+
 type GetPostRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -1476,7 +1680,7 @@ type GetPostRequest struct {
 
 func (x *GetPostRequest) Reset() {
 	*x = GetPostRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[19]
+	mi := &file_api_post_v1_post_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1488,7 +1692,7 @@ func (x *GetPostRequest) String() string {
 func (*GetPostRequest) ProtoMessage() {}
 
 func (x *GetPostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[19]
+	mi := &file_api_post_v1_post_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1501,7 +1705,7 @@ func (x *GetPostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPostRequest.ProtoReflect.Descriptor instead.
 func (*GetPostRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{19}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *GetPostRequest) GetId() string {
@@ -1520,7 +1724,7 @@ type GetPostResponse struct {
 
 func (x *GetPostResponse) Reset() {
 	*x = GetPostResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[20]
+	mi := &file_api_post_v1_post_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1532,7 +1736,7 @@ func (x *GetPostResponse) String() string {
 func (*GetPostResponse) ProtoMessage() {}
 
 func (x *GetPostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[20]
+	mi := &file_api_post_v1_post_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1545,7 +1749,7 @@ func (x *GetPostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPostResponse.ProtoReflect.Descriptor instead.
 func (*GetPostResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{20}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *GetPostResponse) GetPost() *Post {
@@ -1564,7 +1768,7 @@ type GetPostsRequest struct {
 
 func (x *GetPostsRequest) Reset() {
 	*x = GetPostsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[21]
+	mi := &file_api_post_v1_post_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1576,7 +1780,7 @@ func (x *GetPostsRequest) String() string {
 func (*GetPostsRequest) ProtoMessage() {}
 
 func (x *GetPostsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[21]
+	mi := &file_api_post_v1_post_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1589,7 +1793,7 @@ func (x *GetPostsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPostsRequest.ProtoReflect.Descriptor instead.
 func (*GetPostsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{21}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *GetPostsRequest) GetIds() []string {
@@ -1608,7 +1812,7 @@ type GetPostsResponse struct {
 
 func (x *GetPostsResponse) Reset() {
 	*x = GetPostsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[22]
+	mi := &file_api_post_v1_post_proto_msgTypes[26]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1620,7 +1824,7 @@ func (x *GetPostsResponse) String() string {
 func (*GetPostsResponse) ProtoMessage() {}
 
 func (x *GetPostsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[22]
+	mi := &file_api_post_v1_post_proto_msgTypes[26]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1633,7 +1837,7 @@ func (x *GetPostsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetPostsResponse.ProtoReflect.Descriptor instead.
 func (*GetPostsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{22}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *GetPostsResponse) GetPosts() []*Post {
@@ -1652,14 +1856,18 @@ type ListPostsRequest struct {
 	// 1-50; anything else means 20.
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Which posts, as the tabs of openvk's wall; total counts them.
-	Filter        WallFilter `protobuf:"varint,4,opt,name=filter,proto3,enum=post.v1.WallFilter" json:"filter,omitempty"`
+	Filter WallFilter `protobuf:"varint,4,opt,name=filter,proto3,enum=post.v1.WallFilter" json:"filter,omitempty"`
+	// What the posts say, in any case, at most 100 characters ("Поиск" of
+	// openvk's wall); empty for all. Searched, the pinned post is in its
+	// place.
+	Query         string `protobuf:"bytes,5,opt,name=query,proto3" json:"query,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
 
 func (x *ListPostsRequest) Reset() {
 	*x = ListPostsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[23]
+	mi := &file_api_post_v1_post_proto_msgTypes[27]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1671,7 +1879,7 @@ func (x *ListPostsRequest) String() string {
 func (*ListPostsRequest) ProtoMessage() {}
 
 func (x *ListPostsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[23]
+	mi := &file_api_post_v1_post_proto_msgTypes[27]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1684,7 +1892,7 @@ func (x *ListPostsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPostsRequest.ProtoReflect.Descriptor instead.
 func (*ListPostsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{23}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *ListPostsRequest) GetWallId() string {
@@ -1715,6 +1923,13 @@ func (x *ListPostsRequest) GetFilter() WallFilter {
 	return WallFilter_WALL_FILTER_NONE
 }
 
+func (x *ListPostsRequest) GetQuery() string {
+	if x != nil {
+		return x.Query
+	}
+	return ""
+}
+
 type ListPostsResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Posts []*Post                `protobuf:"bytes,1,rep,name=posts,proto3" json:"posts,omitempty"`
@@ -1728,7 +1943,7 @@ type ListPostsResponse struct {
 
 func (x *ListPostsResponse) Reset() {
 	*x = ListPostsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[24]
+	mi := &file_api_post_v1_post_proto_msgTypes[28]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1740,7 +1955,7 @@ func (x *ListPostsResponse) String() string {
 func (*ListPostsResponse) ProtoMessage() {}
 
 func (x *ListPostsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[24]
+	mi := &file_api_post_v1_post_proto_msgTypes[28]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1753,7 +1968,7 @@ func (x *ListPostsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPostsResponse.ProtoReflect.Descriptor instead.
 func (*ListPostsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{24}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *ListPostsResponse) GetPosts() []*Post {
@@ -1794,7 +2009,7 @@ type ListFeedRequest struct {
 
 func (x *ListFeedRequest) Reset() {
 	*x = ListFeedRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[25]
+	mi := &file_api_post_v1_post_proto_msgTypes[29]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1806,7 +2021,7 @@ func (x *ListFeedRequest) String() string {
 func (*ListFeedRequest) ProtoMessage() {}
 
 func (x *ListFeedRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[25]
+	mi := &file_api_post_v1_post_proto_msgTypes[29]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1819,7 +2034,7 @@ func (x *ListFeedRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedRequest.ProtoReflect.Descriptor instead.
 func (*ListFeedRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{25}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *ListFeedRequest) GetAuthorIds() []string {
@@ -1861,7 +2076,7 @@ type ListFeedResponse struct {
 
 func (x *ListFeedResponse) Reset() {
 	*x = ListFeedResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[26]
+	mi := &file_api_post_v1_post_proto_msgTypes[30]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1873,7 +2088,7 @@ func (x *ListFeedResponse) String() string {
 func (*ListFeedResponse) ProtoMessage() {}
 
 func (x *ListFeedResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[26]
+	mi := &file_api_post_v1_post_proto_msgTypes[30]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1886,7 +2101,7 @@ func (x *ListFeedResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListFeedResponse.ProtoReflect.Descriptor instead.
 func (*ListFeedResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{26}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *ListFeedResponse) GetPosts() []*Post {
@@ -1912,7 +2127,7 @@ type LikePostRequest struct {
 
 func (x *LikePostRequest) Reset() {
 	*x = LikePostRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[27]
+	mi := &file_api_post_v1_post_proto_msgTypes[31]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1924,7 +2139,7 @@ func (x *LikePostRequest) String() string {
 func (*LikePostRequest) ProtoMessage() {}
 
 func (x *LikePostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[27]
+	mi := &file_api_post_v1_post_proto_msgTypes[31]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1937,7 +2152,7 @@ func (x *LikePostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikePostRequest.ProtoReflect.Descriptor instead.
 func (*LikePostRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{27}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *LikePostRequest) GetPostId() string {
@@ -1956,7 +2171,7 @@ type LikePostResponse struct {
 
 func (x *LikePostResponse) Reset() {
 	*x = LikePostResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[28]
+	mi := &file_api_post_v1_post_proto_msgTypes[32]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1968,7 +2183,7 @@ func (x *LikePostResponse) String() string {
 func (*LikePostResponse) ProtoMessage() {}
 
 func (x *LikePostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[28]
+	mi := &file_api_post_v1_post_proto_msgTypes[32]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1981,7 +2196,7 @@ func (x *LikePostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikePostResponse.ProtoReflect.Descriptor instead.
 func (*LikePostResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{28}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *LikePostResponse) GetLikeCount() int32 {
@@ -2000,7 +2215,7 @@ type UnlikePostRequest struct {
 
 func (x *UnlikePostRequest) Reset() {
 	*x = UnlikePostRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[29]
+	mi := &file_api_post_v1_post_proto_msgTypes[33]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2012,7 +2227,7 @@ func (x *UnlikePostRequest) String() string {
 func (*UnlikePostRequest) ProtoMessage() {}
 
 func (x *UnlikePostRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[29]
+	mi := &file_api_post_v1_post_proto_msgTypes[33]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2025,7 +2240,7 @@ func (x *UnlikePostRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlikePostRequest.ProtoReflect.Descriptor instead.
 func (*UnlikePostRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{29}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *UnlikePostRequest) GetPostId() string {
@@ -2044,7 +2259,7 @@ type UnlikePostResponse struct {
 
 func (x *UnlikePostResponse) Reset() {
 	*x = UnlikePostResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[30]
+	mi := &file_api_post_v1_post_proto_msgTypes[34]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2056,7 +2271,7 @@ func (x *UnlikePostResponse) String() string {
 func (*UnlikePostResponse) ProtoMessage() {}
 
 func (x *UnlikePostResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[30]
+	mi := &file_api_post_v1_post_proto_msgTypes[34]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2069,7 +2284,7 @@ func (x *UnlikePostResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlikePostResponse.ProtoReflect.Descriptor instead.
 func (*UnlikePostResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{30}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *UnlikePostResponse) GetLikeCount() int32 {
@@ -2092,7 +2307,7 @@ type ListPostLikersRequest struct {
 
 func (x *ListPostLikersRequest) Reset() {
 	*x = ListPostLikersRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[31]
+	mi := &file_api_post_v1_post_proto_msgTypes[35]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2104,7 +2319,7 @@ func (x *ListPostLikersRequest) String() string {
 func (*ListPostLikersRequest) ProtoMessage() {}
 
 func (x *ListPostLikersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[31]
+	mi := &file_api_post_v1_post_proto_msgTypes[35]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2117,7 +2332,7 @@ func (x *ListPostLikersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPostLikersRequest.ProtoReflect.Descriptor instead.
 func (*ListPostLikersRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{31}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ListPostLikersRequest) GetPostId() string {
@@ -2153,7 +2368,7 @@ type ListPostLikersResponse struct {
 
 func (x *ListPostLikersResponse) Reset() {
 	*x = ListPostLikersResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[32]
+	mi := &file_api_post_v1_post_proto_msgTypes[36]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2165,7 +2380,7 @@ func (x *ListPostLikersResponse) String() string {
 func (*ListPostLikersResponse) ProtoMessage() {}
 
 func (x *ListPostLikersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[32]
+	mi := &file_api_post_v1_post_proto_msgTypes[36]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2178,7 +2393,7 @@ func (x *ListPostLikersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPostLikersResponse.ProtoReflect.Descriptor instead.
 func (*ListPostLikersResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{32}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *ListPostLikersResponse) GetUserIds() []string {
@@ -2213,7 +2428,7 @@ type ListCommentLikersRequest struct {
 
 func (x *ListCommentLikersRequest) Reset() {
 	*x = ListCommentLikersRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[33]
+	mi := &file_api_post_v1_post_proto_msgTypes[37]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2225,7 +2440,7 @@ func (x *ListCommentLikersRequest) String() string {
 func (*ListCommentLikersRequest) ProtoMessage() {}
 
 func (x *ListCommentLikersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[33]
+	mi := &file_api_post_v1_post_proto_msgTypes[37]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2238,7 +2453,7 @@ func (x *ListCommentLikersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCommentLikersRequest.ProtoReflect.Descriptor instead.
 func (*ListCommentLikersRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{33}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *ListCommentLikersRequest) GetCommentId() string {
@@ -2273,7 +2488,7 @@ type ListCommentLikersResponse struct {
 
 func (x *ListCommentLikersResponse) Reset() {
 	*x = ListCommentLikersResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[34]
+	mi := &file_api_post_v1_post_proto_msgTypes[38]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2285,7 +2500,7 @@ func (x *ListCommentLikersResponse) String() string {
 func (*ListCommentLikersResponse) ProtoMessage() {}
 
 func (x *ListCommentLikersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[34]
+	mi := &file_api_post_v1_post_proto_msgTypes[38]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2298,7 +2513,7 @@ func (x *ListCommentLikersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCommentLikersResponse.ProtoReflect.Descriptor instead.
 func (*ListCommentLikersResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{34}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *ListCommentLikersResponse) GetUserIds() []string {
@@ -2340,7 +2555,7 @@ type CreateCommentRequest struct {
 
 func (x *CreateCommentRequest) Reset() {
 	*x = CreateCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[35]
+	mi := &file_api_post_v1_post_proto_msgTypes[39]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2352,7 +2567,7 @@ func (x *CreateCommentRequest) String() string {
 func (*CreateCommentRequest) ProtoMessage() {}
 
 func (x *CreateCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[35]
+	mi := &file_api_post_v1_post_proto_msgTypes[39]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2365,7 +2580,7 @@ func (x *CreateCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCommentRequest.ProtoReflect.Descriptor instead.
 func (*CreateCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{35}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *CreateCommentRequest) GetPostId() string {
@@ -2412,7 +2627,7 @@ type CreateCommentResponse struct {
 
 func (x *CreateCommentResponse) Reset() {
 	*x = CreateCommentResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[36]
+	mi := &file_api_post_v1_post_proto_msgTypes[40]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2424,7 +2639,7 @@ func (x *CreateCommentResponse) String() string {
 func (*CreateCommentResponse) ProtoMessage() {}
 
 func (x *CreateCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[36]
+	mi := &file_api_post_v1_post_proto_msgTypes[40]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2437,7 +2652,7 @@ func (x *CreateCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateCommentResponse.ProtoReflect.Descriptor instead.
 func (*CreateCommentResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{36}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{40}
 }
 
 func (x *CreateCommentResponse) GetComment() *Comment {
@@ -2456,7 +2671,7 @@ type DeleteCommentRequest struct {
 
 func (x *DeleteCommentRequest) Reset() {
 	*x = DeleteCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[37]
+	mi := &file_api_post_v1_post_proto_msgTypes[41]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2468,7 +2683,7 @@ func (x *DeleteCommentRequest) String() string {
 func (*DeleteCommentRequest) ProtoMessage() {}
 
 func (x *DeleteCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[37]
+	mi := &file_api_post_v1_post_proto_msgTypes[41]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2481,7 +2696,7 @@ func (x *DeleteCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteCommentRequest.ProtoReflect.Descriptor instead.
 func (*DeleteCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{37}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *DeleteCommentRequest) GetId() string {
@@ -2500,7 +2715,7 @@ type LikeCommentRequest struct {
 
 func (x *LikeCommentRequest) Reset() {
 	*x = LikeCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[38]
+	mi := &file_api_post_v1_post_proto_msgTypes[42]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2512,7 +2727,7 @@ func (x *LikeCommentRequest) String() string {
 func (*LikeCommentRequest) ProtoMessage() {}
 
 func (x *LikeCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[38]
+	mi := &file_api_post_v1_post_proto_msgTypes[42]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2525,7 +2740,7 @@ func (x *LikeCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeCommentRequest.ProtoReflect.Descriptor instead.
 func (*LikeCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{38}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *LikeCommentRequest) GetCommentId() string {
@@ -2544,7 +2759,7 @@ type LikeCommentResponse struct {
 
 func (x *LikeCommentResponse) Reset() {
 	*x = LikeCommentResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[39]
+	mi := &file_api_post_v1_post_proto_msgTypes[43]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2556,7 +2771,7 @@ func (x *LikeCommentResponse) String() string {
 func (*LikeCommentResponse) ProtoMessage() {}
 
 func (x *LikeCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[39]
+	mi := &file_api_post_v1_post_proto_msgTypes[43]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2569,7 +2784,7 @@ func (x *LikeCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeCommentResponse.ProtoReflect.Descriptor instead.
 func (*LikeCommentResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{39}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *LikeCommentResponse) GetLikeCount() int32 {
@@ -2588,7 +2803,7 @@ type UnlikeCommentRequest struct {
 
 func (x *UnlikeCommentRequest) Reset() {
 	*x = UnlikeCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[40]
+	mi := &file_api_post_v1_post_proto_msgTypes[44]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2600,7 +2815,7 @@ func (x *UnlikeCommentRequest) String() string {
 func (*UnlikeCommentRequest) ProtoMessage() {}
 
 func (x *UnlikeCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[40]
+	mi := &file_api_post_v1_post_proto_msgTypes[44]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2613,7 +2828,7 @@ func (x *UnlikeCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlikeCommentRequest.ProtoReflect.Descriptor instead.
 func (*UnlikeCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{40}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{44}
 }
 
 func (x *UnlikeCommentRequest) GetCommentId() string {
@@ -2632,7 +2847,7 @@ type UnlikeCommentResponse struct {
 
 func (x *UnlikeCommentResponse) Reset() {
 	*x = UnlikeCommentResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[41]
+	mi := &file_api_post_v1_post_proto_msgTypes[45]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2644,7 +2859,7 @@ func (x *UnlikeCommentResponse) String() string {
 func (*UnlikeCommentResponse) ProtoMessage() {}
 
 func (x *UnlikeCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[41]
+	mi := &file_api_post_v1_post_proto_msgTypes[45]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2657,7 +2872,7 @@ func (x *UnlikeCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlikeCommentResponse.ProtoReflect.Descriptor instead.
 func (*UnlikeCommentResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{41}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *UnlikeCommentResponse) GetLikeCount() int32 {
@@ -2680,7 +2895,7 @@ type ListCommentsRequest struct {
 
 func (x *ListCommentsRequest) Reset() {
 	*x = ListCommentsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[42]
+	mi := &file_api_post_v1_post_proto_msgTypes[46]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2692,7 +2907,7 @@ func (x *ListCommentsRequest) String() string {
 func (*ListCommentsRequest) ProtoMessage() {}
 
 func (x *ListCommentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[42]
+	mi := &file_api_post_v1_post_proto_msgTypes[46]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2705,7 +2920,7 @@ func (x *ListCommentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCommentsRequest.ProtoReflect.Descriptor instead.
 func (*ListCommentsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{42}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{46}
 }
 
 func (x *ListCommentsRequest) GetPostId() string {
@@ -2742,7 +2957,7 @@ type ListCommentsResponse struct {
 
 func (x *ListCommentsResponse) Reset() {
 	*x = ListCommentsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[43]
+	mi := &file_api_post_v1_post_proto_msgTypes[47]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2754,7 +2969,7 @@ func (x *ListCommentsResponse) String() string {
 func (*ListCommentsResponse) ProtoMessage() {}
 
 func (x *ListCommentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[43]
+	mi := &file_api_post_v1_post_proto_msgTypes[47]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2767,7 +2982,7 @@ func (x *ListCommentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListCommentsResponse.ProtoReflect.Descriptor instead.
 func (*ListCommentsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{43}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *ListCommentsResponse) GetComments() []*Comment {
@@ -2800,7 +3015,7 @@ type GetCommentsRequest struct {
 
 func (x *GetCommentsRequest) Reset() {
 	*x = GetCommentsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[44]
+	mi := &file_api_post_v1_post_proto_msgTypes[48]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2812,7 +3027,7 @@ func (x *GetCommentsRequest) String() string {
 func (*GetCommentsRequest) ProtoMessage() {}
 
 func (x *GetCommentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[44]
+	mi := &file_api_post_v1_post_proto_msgTypes[48]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2825,7 +3040,7 @@ func (x *GetCommentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCommentsRequest.ProtoReflect.Descriptor instead.
 func (*GetCommentsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{44}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{48}
 }
 
 func (x *GetCommentsRequest) GetIds() []string {
@@ -2844,7 +3059,7 @@ type GetCommentsResponse struct {
 
 func (x *GetCommentsResponse) Reset() {
 	*x = GetCommentsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[45]
+	mi := &file_api_post_v1_post_proto_msgTypes[49]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2856,7 +3071,7 @@ func (x *GetCommentsResponse) String() string {
 func (*GetCommentsResponse) ProtoMessage() {}
 
 func (x *GetCommentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[45]
+	mi := &file_api_post_v1_post_proto_msgTypes[49]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2869,7 +3084,7 @@ func (x *GetCommentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetCommentsResponse.ProtoReflect.Descriptor instead.
 func (*GetCommentsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{45}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *GetCommentsResponse) GetComments() []*Comment {
@@ -2888,7 +3103,7 @@ type PurgeUserRequest struct {
 
 func (x *PurgeUserRequest) Reset() {
 	*x = PurgeUserRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[46]
+	mi := &file_api_post_v1_post_proto_msgTypes[50]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2900,7 +3115,7 @@ func (x *PurgeUserRequest) String() string {
 func (*PurgeUserRequest) ProtoMessage() {}
 
 func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[46]
+	mi := &file_api_post_v1_post_proto_msgTypes[50]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2913,7 +3128,7 @@ func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurgeUserRequest.ProtoReflect.Descriptor instead.
 func (*PurgeUserRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{46}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{50}
 }
 
 func (x *PurgeUserRequest) GetUserId() string {
@@ -2954,7 +3169,7 @@ type Topic struct {
 
 func (x *Topic) Reset() {
 	*x = Topic{}
-	mi := &file_api_post_v1_post_proto_msgTypes[47]
+	mi := &file_api_post_v1_post_proto_msgTypes[51]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -2966,7 +3181,7 @@ func (x *Topic) String() string {
 func (*Topic) ProtoMessage() {}
 
 func (x *Topic) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[47]
+	mi := &file_api_post_v1_post_proto_msgTypes[51]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2979,7 +3194,7 @@ func (x *Topic) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Topic.ProtoReflect.Descriptor instead.
 func (*Topic) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{47}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *Topic) GetId() string {
@@ -3092,7 +3307,7 @@ type TopicMessage struct {
 
 func (x *TopicMessage) Reset() {
 	*x = TopicMessage{}
-	mi := &file_api_post_v1_post_proto_msgTypes[48]
+	mi := &file_api_post_v1_post_proto_msgTypes[52]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3104,7 +3319,7 @@ func (x *TopicMessage) String() string {
 func (*TopicMessage) ProtoMessage() {}
 
 func (x *TopicMessage) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[48]
+	mi := &file_api_post_v1_post_proto_msgTypes[52]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3117,7 +3332,7 @@ func (x *TopicMessage) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use TopicMessage.ProtoReflect.Descriptor instead.
 func (*TopicMessage) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{48}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *TopicMessage) GetId() string {
@@ -3190,7 +3405,7 @@ type CreateTopicRequest struct {
 
 func (x *CreateTopicRequest) Reset() {
 	*x = CreateTopicRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[49]
+	mi := &file_api_post_v1_post_proto_msgTypes[53]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3202,7 +3417,7 @@ func (x *CreateTopicRequest) String() string {
 func (*CreateTopicRequest) ProtoMessage() {}
 
 func (x *CreateTopicRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[49]
+	mi := &file_api_post_v1_post_proto_msgTypes[53]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3215,7 +3430,7 @@ func (x *CreateTopicRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTopicRequest.ProtoReflect.Descriptor instead.
 func (*CreateTopicRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{49}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{53}
 }
 
 func (x *CreateTopicRequest) GetClubId() string {
@@ -3262,7 +3477,7 @@ type CreateTopicResponse struct {
 
 func (x *CreateTopicResponse) Reset() {
 	*x = CreateTopicResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[50]
+	mi := &file_api_post_v1_post_proto_msgTypes[54]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3274,7 +3489,7 @@ func (x *CreateTopicResponse) String() string {
 func (*CreateTopicResponse) ProtoMessage() {}
 
 func (x *CreateTopicResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[50]
+	mi := &file_api_post_v1_post_proto_msgTypes[54]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3287,7 +3502,7 @@ func (x *CreateTopicResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTopicResponse.ProtoReflect.Descriptor instead.
 func (*CreateTopicResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{50}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *CreateTopicResponse) GetTopic() *Topic {
@@ -3306,7 +3521,7 @@ type GetTopicRequest struct {
 
 func (x *GetTopicRequest) Reset() {
 	*x = GetTopicRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[51]
+	mi := &file_api_post_v1_post_proto_msgTypes[55]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3318,7 +3533,7 @@ func (x *GetTopicRequest) String() string {
 func (*GetTopicRequest) ProtoMessage() {}
 
 func (x *GetTopicRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[51]
+	mi := &file_api_post_v1_post_proto_msgTypes[55]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3331,7 +3546,7 @@ func (x *GetTopicRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTopicRequest.ProtoReflect.Descriptor instead.
 func (*GetTopicRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{51}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *GetTopicRequest) GetId() string {
@@ -3350,7 +3565,7 @@ type GetTopicResponse struct {
 
 func (x *GetTopicResponse) Reset() {
 	*x = GetTopicResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[52]
+	mi := &file_api_post_v1_post_proto_msgTypes[56]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3362,7 +3577,7 @@ func (x *GetTopicResponse) String() string {
 func (*GetTopicResponse) ProtoMessage() {}
 
 func (x *GetTopicResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[52]
+	mi := &file_api_post_v1_post_proto_msgTypes[56]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3375,7 +3590,7 @@ func (x *GetTopicResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetTopicResponse.ProtoReflect.Descriptor instead.
 func (*GetTopicResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{52}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{56}
 }
 
 func (x *GetTopicResponse) GetTopic() *Topic {
@@ -3399,7 +3614,7 @@ type ListTopicsRequest struct {
 
 func (x *ListTopicsRequest) Reset() {
 	*x = ListTopicsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[53]
+	mi := &file_api_post_v1_post_proto_msgTypes[57]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3411,7 +3626,7 @@ func (x *ListTopicsRequest) String() string {
 func (*ListTopicsRequest) ProtoMessage() {}
 
 func (x *ListTopicsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[53]
+	mi := &file_api_post_v1_post_proto_msgTypes[57]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3424,7 +3639,7 @@ func (x *ListTopicsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTopicsRequest.ProtoReflect.Descriptor instead.
 func (*ListTopicsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{53}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *ListTopicsRequest) GetClubId() string {
@@ -3468,7 +3683,7 @@ type ListTopicsResponse struct {
 
 func (x *ListTopicsResponse) Reset() {
 	*x = ListTopicsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[54]
+	mi := &file_api_post_v1_post_proto_msgTypes[58]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3480,7 +3695,7 @@ func (x *ListTopicsResponse) String() string {
 func (*ListTopicsResponse) ProtoMessage() {}
 
 func (x *ListTopicsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[54]
+	mi := &file_api_post_v1_post_proto_msgTypes[58]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3493,7 +3708,7 @@ func (x *ListTopicsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTopicsResponse.ProtoReflect.Descriptor instead.
 func (*ListTopicsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{54}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *ListTopicsResponse) GetTopics() []*Topic {
@@ -3531,7 +3746,7 @@ type EditTopicRequest struct {
 
 func (x *EditTopicRequest) Reset() {
 	*x = EditTopicRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[55]
+	mi := &file_api_post_v1_post_proto_msgTypes[59]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3543,7 +3758,7 @@ func (x *EditTopicRequest) String() string {
 func (*EditTopicRequest) ProtoMessage() {}
 
 func (x *EditTopicRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[55]
+	mi := &file_api_post_v1_post_proto_msgTypes[59]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3556,7 +3771,7 @@ func (x *EditTopicRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditTopicRequest.ProtoReflect.Descriptor instead.
 func (*EditTopicRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{55}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{59}
 }
 
 func (x *EditTopicRequest) GetId() string {
@@ -3603,7 +3818,7 @@ type EditTopicResponse struct {
 
 func (x *EditTopicResponse) Reset() {
 	*x = EditTopicResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[56]
+	mi := &file_api_post_v1_post_proto_msgTypes[60]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3615,7 +3830,7 @@ func (x *EditTopicResponse) String() string {
 func (*EditTopicResponse) ProtoMessage() {}
 
 func (x *EditTopicResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[56]
+	mi := &file_api_post_v1_post_proto_msgTypes[60]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3628,7 +3843,7 @@ func (x *EditTopicResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditTopicResponse.ProtoReflect.Descriptor instead.
 func (*EditTopicResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{56}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *EditTopicResponse) GetTopic() *Topic {
@@ -3647,7 +3862,7 @@ type DeleteTopicRequest struct {
 
 func (x *DeleteTopicRequest) Reset() {
 	*x = DeleteTopicRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[57]
+	mi := &file_api_post_v1_post_proto_msgTypes[61]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3659,7 +3874,7 @@ func (x *DeleteTopicRequest) String() string {
 func (*DeleteTopicRequest) ProtoMessage() {}
 
 func (x *DeleteTopicRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[57]
+	mi := &file_api_post_v1_post_proto_msgTypes[61]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3672,7 +3887,7 @@ func (x *DeleteTopicRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTopicRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTopicRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{57}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *DeleteTopicRequest) GetId() string {
@@ -3694,7 +3909,7 @@ type CreateTopicMessageRequest struct {
 
 func (x *CreateTopicMessageRequest) Reset() {
 	*x = CreateTopicMessageRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[58]
+	mi := &file_api_post_v1_post_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3706,7 +3921,7 @@ func (x *CreateTopicMessageRequest) String() string {
 func (*CreateTopicMessageRequest) ProtoMessage() {}
 
 func (x *CreateTopicMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[58]
+	mi := &file_api_post_v1_post_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3719,7 +3934,7 @@ func (x *CreateTopicMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTopicMessageRequest.ProtoReflect.Descriptor instead.
 func (*CreateTopicMessageRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{58}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *CreateTopicMessageRequest) GetTopicId() string {
@@ -3759,7 +3974,7 @@ type CreateTopicMessageResponse struct {
 
 func (x *CreateTopicMessageResponse) Reset() {
 	*x = CreateTopicMessageResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[59]
+	mi := &file_api_post_v1_post_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3771,7 +3986,7 @@ func (x *CreateTopicMessageResponse) String() string {
 func (*CreateTopicMessageResponse) ProtoMessage() {}
 
 func (x *CreateTopicMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[59]
+	mi := &file_api_post_v1_post_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3784,7 +3999,7 @@ func (x *CreateTopicMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateTopicMessageResponse.ProtoReflect.Descriptor instead.
 func (*CreateTopicMessageResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{59}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *CreateTopicMessageResponse) GetMessage() *TopicMessage {
@@ -3805,7 +4020,7 @@ type ListTopicMessagesRequest struct {
 
 func (x *ListTopicMessagesRequest) Reset() {
 	*x = ListTopicMessagesRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[60]
+	mi := &file_api_post_v1_post_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3817,7 +4032,7 @@ func (x *ListTopicMessagesRequest) String() string {
 func (*ListTopicMessagesRequest) ProtoMessage() {}
 
 func (x *ListTopicMessagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[60]
+	mi := &file_api_post_v1_post_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3830,7 +4045,7 @@ func (x *ListTopicMessagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTopicMessagesRequest.ProtoReflect.Descriptor instead.
 func (*ListTopicMessagesRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{60}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *ListTopicMessagesRequest) GetTopicId() string {
@@ -3866,7 +4081,7 @@ type ListTopicMessagesResponse struct {
 
 func (x *ListTopicMessagesResponse) Reset() {
 	*x = ListTopicMessagesResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[61]
+	mi := &file_api_post_v1_post_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3878,7 +4093,7 @@ func (x *ListTopicMessagesResponse) String() string {
 func (*ListTopicMessagesResponse) ProtoMessage() {}
 
 func (x *ListTopicMessagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[61]
+	mi := &file_api_post_v1_post_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3891,7 +4106,7 @@ func (x *ListTopicMessagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListTopicMessagesResponse.ProtoReflect.Descriptor instead.
 func (*ListTopicMessagesResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{61}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *ListTopicMessagesResponse) GetMessages() []*TopicMessage {
@@ -3924,7 +4139,7 @@ type DeleteTopicMessageRequest struct {
 
 func (x *DeleteTopicMessageRequest) Reset() {
 	*x = DeleteTopicMessageRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[62]
+	mi := &file_api_post_v1_post_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3936,7 +4151,7 @@ func (x *DeleteTopicMessageRequest) String() string {
 func (*DeleteTopicMessageRequest) ProtoMessage() {}
 
 func (x *DeleteTopicMessageRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[62]
+	mi := &file_api_post_v1_post_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3949,7 +4164,7 @@ func (x *DeleteTopicMessageRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTopicMessageRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTopicMessageRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{62}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *DeleteTopicMessageRequest) GetId() string {
@@ -3971,7 +4186,8 @@ type Album struct {
 	// The last change: renamed, photos added or deleted.
 	UpdatedAt  *timestamppb.Timestamp `protobuf:"bytes,6,opt,name=updated_at,json=updatedAt,proto3" json:"updated_at,omitempty"`
 	PhotoCount int32                  `protobuf:"varint,7,opt,name=photo_count,json=photoCount,proto3" json:"photo_count,omitempty"`
-	// The first photo, absent while it has none.
+	// The photo chosen to show it, else its first; absent while it has
+	// none.
 	Cover         *AlbumPhoto `protobuf:"bytes,8,opt,name=cover,proto3" json:"cover,omitempty"`
 	Kind          AlbumKind   `protobuf:"varint,9,opt,name=kind,proto3,enum=post.v1.AlbumKind" json:"kind,omitempty"`
 	unknownFields protoimpl.UnknownFields
@@ -3980,7 +4196,7 @@ type Album struct {
 
 func (x *Album) Reset() {
 	*x = Album{}
-	mi := &file_api_post_v1_post_proto_msgTypes[63]
+	mi := &file_api_post_v1_post_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -3992,7 +4208,7 @@ func (x *Album) String() string {
 func (*Album) ProtoMessage() {}
 
 func (x *Album) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[63]
+	mi := &file_api_post_v1_post_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4005,7 +4221,7 @@ func (x *Album) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Album.ProtoReflect.Descriptor instead.
 func (*Album) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{63}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *Album) GetId() string {
@@ -4093,7 +4309,7 @@ type AlbumPhoto struct {
 
 func (x *AlbumPhoto) Reset() {
 	*x = AlbumPhoto{}
-	mi := &file_api_post_v1_post_proto_msgTypes[64]
+	mi := &file_api_post_v1_post_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4105,7 +4321,7 @@ func (x *AlbumPhoto) String() string {
 func (*AlbumPhoto) ProtoMessage() {}
 
 func (x *AlbumPhoto) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[64]
+	mi := &file_api_post_v1_post_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4118,7 +4334,7 @@ func (x *AlbumPhoto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AlbumPhoto.ProtoReflect.Descriptor instead.
 func (*AlbumPhoto) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{64}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *AlbumPhoto) GetId() string {
@@ -4196,7 +4412,7 @@ type CreateAlbumRequest struct {
 
 func (x *CreateAlbumRequest) Reset() {
 	*x = CreateAlbumRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[65]
+	mi := &file_api_post_v1_post_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4208,7 +4424,7 @@ func (x *CreateAlbumRequest) String() string {
 func (*CreateAlbumRequest) ProtoMessage() {}
 
 func (x *CreateAlbumRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[65]
+	mi := &file_api_post_v1_post_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4221,7 +4437,7 @@ func (x *CreateAlbumRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAlbumRequest.ProtoReflect.Descriptor instead.
 func (*CreateAlbumRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{65}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *CreateAlbumRequest) GetClubId() string {
@@ -4254,7 +4470,7 @@ type CreateAlbumResponse struct {
 
 func (x *CreateAlbumResponse) Reset() {
 	*x = CreateAlbumResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[66]
+	mi := &file_api_post_v1_post_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4266,7 +4482,7 @@ func (x *CreateAlbumResponse) String() string {
 func (*CreateAlbumResponse) ProtoMessage() {}
 
 func (x *CreateAlbumResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[66]
+	mi := &file_api_post_v1_post_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4279,7 +4495,7 @@ func (x *CreateAlbumResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreateAlbumResponse.ProtoReflect.Descriptor instead.
 func (*CreateAlbumResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{66}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{70}
 }
 
 func (x *CreateAlbumResponse) GetAlbum() *Album {
@@ -4298,7 +4514,7 @@ type GetAlbumRequest struct {
 
 func (x *GetAlbumRequest) Reset() {
 	*x = GetAlbumRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[67]
+	mi := &file_api_post_v1_post_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4310,7 +4526,7 @@ func (x *GetAlbumRequest) String() string {
 func (*GetAlbumRequest) ProtoMessage() {}
 
 func (x *GetAlbumRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[67]
+	mi := &file_api_post_v1_post_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4323,7 +4539,7 @@ func (x *GetAlbumRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAlbumRequest.ProtoReflect.Descriptor instead.
 func (*GetAlbumRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{67}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *GetAlbumRequest) GetId() string {
@@ -4342,7 +4558,7 @@ type GetAlbumResponse struct {
 
 func (x *GetAlbumResponse) Reset() {
 	*x = GetAlbumResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[68]
+	mi := &file_api_post_v1_post_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4354,7 +4570,7 @@ func (x *GetAlbumResponse) String() string {
 func (*GetAlbumResponse) ProtoMessage() {}
 
 func (x *GetAlbumResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[68]
+	mi := &file_api_post_v1_post_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4367,7 +4583,7 @@ func (x *GetAlbumResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAlbumResponse.ProtoReflect.Descriptor instead.
 func (*GetAlbumResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{68}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *GetAlbumResponse) GetAlbum() *Album {
@@ -4388,7 +4604,7 @@ type ListAlbumsRequest struct {
 
 func (x *ListAlbumsRequest) Reset() {
 	*x = ListAlbumsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[69]
+	mi := &file_api_post_v1_post_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4400,7 +4616,7 @@ func (x *ListAlbumsRequest) String() string {
 func (*ListAlbumsRequest) ProtoMessage() {}
 
 func (x *ListAlbumsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[69]
+	mi := &file_api_post_v1_post_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4413,7 +4629,7 @@ func (x *ListAlbumsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAlbumsRequest.ProtoReflect.Descriptor instead.
 func (*ListAlbumsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{69}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *ListAlbumsRequest) GetOwnerId() string {
@@ -4450,7 +4666,7 @@ type ListAlbumsResponse struct {
 
 func (x *ListAlbumsResponse) Reset() {
 	*x = ListAlbumsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[70]
+	mi := &file_api_post_v1_post_proto_msgTypes[74]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4462,7 +4678,7 @@ func (x *ListAlbumsResponse) String() string {
 func (*ListAlbumsResponse) ProtoMessage() {}
 
 func (x *ListAlbumsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[70]
+	mi := &file_api_post_v1_post_proto_msgTypes[74]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4475,7 +4691,7 @@ func (x *ListAlbumsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAlbumsResponse.ProtoReflect.Descriptor instead.
 func (*ListAlbumsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{70}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{74}
 }
 
 func (x *ListAlbumsResponse) GetAlbums() []*Album {
@@ -4510,7 +4726,7 @@ type EditAlbumRequest struct {
 
 func (x *EditAlbumRequest) Reset() {
 	*x = EditAlbumRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[71]
+	mi := &file_api_post_v1_post_proto_msgTypes[75]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4522,7 +4738,7 @@ func (x *EditAlbumRequest) String() string {
 func (*EditAlbumRequest) ProtoMessage() {}
 
 func (x *EditAlbumRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[71]
+	mi := &file_api_post_v1_post_proto_msgTypes[75]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4535,7 +4751,7 @@ func (x *EditAlbumRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditAlbumRequest.ProtoReflect.Descriptor instead.
 func (*EditAlbumRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{71}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{75}
 }
 
 func (x *EditAlbumRequest) GetId() string {
@@ -4568,7 +4784,7 @@ type EditAlbumResponse struct {
 
 func (x *EditAlbumResponse) Reset() {
 	*x = EditAlbumResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[72]
+	mi := &file_api_post_v1_post_proto_msgTypes[76]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4580,7 +4796,7 @@ func (x *EditAlbumResponse) String() string {
 func (*EditAlbumResponse) ProtoMessage() {}
 
 func (x *EditAlbumResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[72]
+	mi := &file_api_post_v1_post_proto_msgTypes[76]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4593,7 +4809,7 @@ func (x *EditAlbumResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditAlbumResponse.ProtoReflect.Descriptor instead.
 func (*EditAlbumResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{72}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{76}
 }
 
 func (x *EditAlbumResponse) GetAlbum() *Album {
@@ -4612,7 +4828,7 @@ type DeleteAlbumRequest struct {
 
 func (x *DeleteAlbumRequest) Reset() {
 	*x = DeleteAlbumRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[73]
+	mi := &file_api_post_v1_post_proto_msgTypes[77]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4624,7 +4840,7 @@ func (x *DeleteAlbumRequest) String() string {
 func (*DeleteAlbumRequest) ProtoMessage() {}
 
 func (x *DeleteAlbumRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[73]
+	mi := &file_api_post_v1_post_proto_msgTypes[77]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4637,7 +4853,7 @@ func (x *DeleteAlbumRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAlbumRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAlbumRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{73}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{77}
 }
 
 func (x *DeleteAlbumRequest) GetId() string {
@@ -4657,7 +4873,7 @@ type NewAlbumPhoto struct {
 
 func (x *NewAlbumPhoto) Reset() {
 	*x = NewAlbumPhoto{}
-	mi := &file_api_post_v1_post_proto_msgTypes[74]
+	mi := &file_api_post_v1_post_proto_msgTypes[78]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4669,7 +4885,7 @@ func (x *NewAlbumPhoto) String() string {
 func (*NewAlbumPhoto) ProtoMessage() {}
 
 func (x *NewAlbumPhoto) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[74]
+	mi := &file_api_post_v1_post_proto_msgTypes[78]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4682,7 +4898,7 @@ func (x *NewAlbumPhoto) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use NewAlbumPhoto.ProtoReflect.Descriptor instead.
 func (*NewAlbumPhoto) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{74}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{78}
 }
 
 func (x *NewAlbumPhoto) GetPhotoId() string {
@@ -4709,7 +4925,7 @@ type AddAlbumPhotosRequest struct {
 
 func (x *AddAlbumPhotosRequest) Reset() {
 	*x = AddAlbumPhotosRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[75]
+	mi := &file_api_post_v1_post_proto_msgTypes[79]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4721,7 +4937,7 @@ func (x *AddAlbumPhotosRequest) String() string {
 func (*AddAlbumPhotosRequest) ProtoMessage() {}
 
 func (x *AddAlbumPhotosRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[75]
+	mi := &file_api_post_v1_post_proto_msgTypes[79]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4734,7 +4950,7 @@ func (x *AddAlbumPhotosRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddAlbumPhotosRequest.ProtoReflect.Descriptor instead.
 func (*AddAlbumPhotosRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{75}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{79}
 }
 
 func (x *AddAlbumPhotosRequest) GetAlbumId() string {
@@ -4760,7 +4976,7 @@ type AddAlbumPhotosResponse struct {
 
 func (x *AddAlbumPhotosResponse) Reset() {
 	*x = AddAlbumPhotosResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[76]
+	mi := &file_api_post_v1_post_proto_msgTypes[80]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4772,7 +4988,7 @@ func (x *AddAlbumPhotosResponse) String() string {
 func (*AddAlbumPhotosResponse) ProtoMessage() {}
 
 func (x *AddAlbumPhotosResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[76]
+	mi := &file_api_post_v1_post_proto_msgTypes[80]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4785,7 +5001,7 @@ func (x *AddAlbumPhotosResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddAlbumPhotosResponse.ProtoReflect.Descriptor instead.
 func (*AddAlbumPhotosResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{76}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{80}
 }
 
 func (x *AddAlbumPhotosResponse) GetPhotos() []*AlbumPhoto {
@@ -4806,7 +5022,7 @@ type AddAvatarPhotoRequest struct {
 
 func (x *AddAvatarPhotoRequest) Reset() {
 	*x = AddAvatarPhotoRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[77]
+	mi := &file_api_post_v1_post_proto_msgTypes[81]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4818,7 +5034,7 @@ func (x *AddAvatarPhotoRequest) String() string {
 func (*AddAvatarPhotoRequest) ProtoMessage() {}
 
 func (x *AddAvatarPhotoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[77]
+	mi := &file_api_post_v1_post_proto_msgTypes[81]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4831,7 +5047,7 @@ func (x *AddAvatarPhotoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddAvatarPhotoRequest.ProtoReflect.Descriptor instead.
 func (*AddAvatarPhotoRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{77}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{81}
 }
 
 func (x *AddAvatarPhotoRequest) GetClubId() string {
@@ -4857,7 +5073,7 @@ type AddAvatarPhotoResponse struct {
 
 func (x *AddAvatarPhotoResponse) Reset() {
 	*x = AddAvatarPhotoResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[78]
+	mi := &file_api_post_v1_post_proto_msgTypes[82]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4869,7 +5085,7 @@ func (x *AddAvatarPhotoResponse) String() string {
 func (*AddAvatarPhotoResponse) ProtoMessage() {}
 
 func (x *AddAvatarPhotoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[78]
+	mi := &file_api_post_v1_post_proto_msgTypes[82]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4882,7 +5098,7 @@ func (x *AddAvatarPhotoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddAvatarPhotoResponse.ProtoReflect.Descriptor instead.
 func (*AddAvatarPhotoResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{78}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{82}
 }
 
 func (x *AddAvatarPhotoResponse) GetPhoto() *AlbumPhoto {
@@ -4903,7 +5119,7 @@ type ListAlbumPhotosRequest struct {
 
 func (x *ListAlbumPhotosRequest) Reset() {
 	*x = ListAlbumPhotosRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[79]
+	mi := &file_api_post_v1_post_proto_msgTypes[83]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4915,7 +5131,7 @@ func (x *ListAlbumPhotosRequest) String() string {
 func (*ListAlbumPhotosRequest) ProtoMessage() {}
 
 func (x *ListAlbumPhotosRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[79]
+	mi := &file_api_post_v1_post_proto_msgTypes[83]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4928,7 +5144,7 @@ func (x *ListAlbumPhotosRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAlbumPhotosRequest.ProtoReflect.Descriptor instead.
 func (*ListAlbumPhotosRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{79}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{83}
 }
 
 func (x *ListAlbumPhotosRequest) GetAlbumId() string {
@@ -4964,7 +5180,7 @@ type ListAlbumPhotosResponse struct {
 
 func (x *ListAlbumPhotosResponse) Reset() {
 	*x = ListAlbumPhotosResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[80]
+	mi := &file_api_post_v1_post_proto_msgTypes[84]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4976,7 +5192,7 @@ func (x *ListAlbumPhotosResponse) String() string {
 func (*ListAlbumPhotosResponse) ProtoMessage() {}
 
 func (x *ListAlbumPhotosResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[80]
+	mi := &file_api_post_v1_post_proto_msgTypes[84]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4989,7 +5205,7 @@ func (x *ListAlbumPhotosResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAlbumPhotosResponse.ProtoReflect.Descriptor instead.
 func (*ListAlbumPhotosResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{80}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{84}
 }
 
 func (x *ListAlbumPhotosResponse) GetPhotos() []*AlbumPhoto {
@@ -5022,7 +5238,7 @@ type GetAlbumPhotoRequest struct {
 
 func (x *GetAlbumPhotoRequest) Reset() {
 	*x = GetAlbumPhotoRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[81]
+	mi := &file_api_post_v1_post_proto_msgTypes[85]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5034,7 +5250,7 @@ func (x *GetAlbumPhotoRequest) String() string {
 func (*GetAlbumPhotoRequest) ProtoMessage() {}
 
 func (x *GetAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[81]
+	mi := &file_api_post_v1_post_proto_msgTypes[85]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5047,7 +5263,7 @@ func (x *GetAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAlbumPhotoRequest.ProtoReflect.Descriptor instead.
 func (*GetAlbumPhotoRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{81}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{85}
 }
 
 func (x *GetAlbumPhotoRequest) GetId() string {
@@ -5067,7 +5283,7 @@ type GetAlbumPhotoResponse struct {
 
 func (x *GetAlbumPhotoResponse) Reset() {
 	*x = GetAlbumPhotoResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[82]
+	mi := &file_api_post_v1_post_proto_msgTypes[86]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5079,7 +5295,7 @@ func (x *GetAlbumPhotoResponse) String() string {
 func (*GetAlbumPhotoResponse) ProtoMessage() {}
 
 func (x *GetAlbumPhotoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[82]
+	mi := &file_api_post_v1_post_proto_msgTypes[86]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5092,7 +5308,7 @@ func (x *GetAlbumPhotoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAlbumPhotoResponse.ProtoReflect.Descriptor instead.
 func (*GetAlbumPhotoResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{82}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{86}
 }
 
 func (x *GetAlbumPhotoResponse) GetPhoto() *AlbumPhoto {
@@ -5119,7 +5335,7 @@ type EditAlbumPhotoRequest struct {
 
 func (x *EditAlbumPhotoRequest) Reset() {
 	*x = EditAlbumPhotoRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[83]
+	mi := &file_api_post_v1_post_proto_msgTypes[87]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5131,7 +5347,7 @@ func (x *EditAlbumPhotoRequest) String() string {
 func (*EditAlbumPhotoRequest) ProtoMessage() {}
 
 func (x *EditAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[83]
+	mi := &file_api_post_v1_post_proto_msgTypes[87]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5144,7 +5360,7 @@ func (x *EditAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditAlbumPhotoRequest.ProtoReflect.Descriptor instead.
 func (*EditAlbumPhotoRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{83}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{87}
 }
 
 func (x *EditAlbumPhotoRequest) GetId() string {
@@ -5170,7 +5386,7 @@ type EditAlbumPhotoResponse struct {
 
 func (x *EditAlbumPhotoResponse) Reset() {
 	*x = EditAlbumPhotoResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[84]
+	mi := &file_api_post_v1_post_proto_msgTypes[88]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5182,7 +5398,7 @@ func (x *EditAlbumPhotoResponse) String() string {
 func (*EditAlbumPhotoResponse) ProtoMessage() {}
 
 func (x *EditAlbumPhotoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[84]
+	mi := &file_api_post_v1_post_proto_msgTypes[88]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5195,7 +5411,7 @@ func (x *EditAlbumPhotoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditAlbumPhotoResponse.ProtoReflect.Descriptor instead.
 func (*EditAlbumPhotoResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{84}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{88}
 }
 
 func (x *EditAlbumPhotoResponse) GetPhoto() *AlbumPhoto {
@@ -5214,7 +5430,7 @@ type DeleteAlbumPhotoRequest struct {
 
 func (x *DeleteAlbumPhotoRequest) Reset() {
 	*x = DeleteAlbumPhotoRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[85]
+	mi := &file_api_post_v1_post_proto_msgTypes[89]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5226,7 +5442,7 @@ func (x *DeleteAlbumPhotoRequest) String() string {
 func (*DeleteAlbumPhotoRequest) ProtoMessage() {}
 
 func (x *DeleteAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[85]
+	mi := &file_api_post_v1_post_proto_msgTypes[89]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5239,12 +5455,117 @@ func (x *DeleteAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteAlbumPhotoRequest.ProtoReflect.Descriptor instead.
 func (*DeleteAlbumPhotoRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{85}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{89}
 }
 
 func (x *DeleteAlbumPhotoRequest) GetId() string {
 	if x != nil {
 		return x.Id
+	}
+	return ""
+}
+
+type SetAlbumCoverRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	AlbumId       string                 `protobuf:"bytes,1,opt,name=album_id,json=albumId,proto3" json:"album_id,omitempty"`
+	PhotoId       string                 `protobuf:"bytes,2,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SetAlbumCoverRequest) Reset() {
+	*x = SetAlbumCoverRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[90]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SetAlbumCoverRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SetAlbumCoverRequest) ProtoMessage() {}
+
+func (x *SetAlbumCoverRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[90]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SetAlbumCoverRequest.ProtoReflect.Descriptor instead.
+func (*SetAlbumCoverRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{90}
+}
+
+func (x *SetAlbumCoverRequest) GetAlbumId() string {
+	if x != nil {
+		return x.AlbumId
+	}
+	return ""
+}
+
+func (x *SetAlbumCoverRequest) GetPhotoId() string {
+	if x != nil {
+		return x.PhotoId
+	}
+	return ""
+}
+
+type MoveAlbumPhotoRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	PhotoId string                 `protobuf:"bytes,1,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
+	// The album it goes to.
+	AlbumId       string `protobuf:"bytes,2,opt,name=album_id,json=albumId,proto3" json:"album_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *MoveAlbumPhotoRequest) Reset() {
+	*x = MoveAlbumPhotoRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[91]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *MoveAlbumPhotoRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*MoveAlbumPhotoRequest) ProtoMessage() {}
+
+func (x *MoveAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[91]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use MoveAlbumPhotoRequest.ProtoReflect.Descriptor instead.
+func (*MoveAlbumPhotoRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{91}
+}
+
+func (x *MoveAlbumPhotoRequest) GetPhotoId() string {
+	if x != nil {
+		return x.PhotoId
+	}
+	return ""
+}
+
+func (x *MoveAlbumPhotoRequest) GetAlbumId() string {
+	if x != nil {
+		return x.AlbumId
 	}
 	return ""
 }
@@ -5258,7 +5579,7 @@ type LikeAlbumPhotoRequest struct {
 
 func (x *LikeAlbumPhotoRequest) Reset() {
 	*x = LikeAlbumPhotoRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[86]
+	mi := &file_api_post_v1_post_proto_msgTypes[92]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5270,7 +5591,7 @@ func (x *LikeAlbumPhotoRequest) String() string {
 func (*LikeAlbumPhotoRequest) ProtoMessage() {}
 
 func (x *LikeAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[86]
+	mi := &file_api_post_v1_post_proto_msgTypes[92]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5283,7 +5604,7 @@ func (x *LikeAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeAlbumPhotoRequest.ProtoReflect.Descriptor instead.
 func (*LikeAlbumPhotoRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{86}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{92}
 }
 
 func (x *LikeAlbumPhotoRequest) GetPhotoId() string {
@@ -5302,7 +5623,7 @@ type LikeAlbumPhotoResponse struct {
 
 func (x *LikeAlbumPhotoResponse) Reset() {
 	*x = LikeAlbumPhotoResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[87]
+	mi := &file_api_post_v1_post_proto_msgTypes[93]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5314,7 +5635,7 @@ func (x *LikeAlbumPhotoResponse) String() string {
 func (*LikeAlbumPhotoResponse) ProtoMessage() {}
 
 func (x *LikeAlbumPhotoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[87]
+	mi := &file_api_post_v1_post_proto_msgTypes[93]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5327,7 +5648,7 @@ func (x *LikeAlbumPhotoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use LikeAlbumPhotoResponse.ProtoReflect.Descriptor instead.
 func (*LikeAlbumPhotoResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{87}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{93}
 }
 
 func (x *LikeAlbumPhotoResponse) GetLikeCount() int32 {
@@ -5346,7 +5667,7 @@ type UnlikeAlbumPhotoRequest struct {
 
 func (x *UnlikeAlbumPhotoRequest) Reset() {
 	*x = UnlikeAlbumPhotoRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[88]
+	mi := &file_api_post_v1_post_proto_msgTypes[94]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5358,7 +5679,7 @@ func (x *UnlikeAlbumPhotoRequest) String() string {
 func (*UnlikeAlbumPhotoRequest) ProtoMessage() {}
 
 func (x *UnlikeAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[88]
+	mi := &file_api_post_v1_post_proto_msgTypes[94]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5371,7 +5692,7 @@ func (x *UnlikeAlbumPhotoRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlikeAlbumPhotoRequest.ProtoReflect.Descriptor instead.
 func (*UnlikeAlbumPhotoRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{88}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{94}
 }
 
 func (x *UnlikeAlbumPhotoRequest) GetPhotoId() string {
@@ -5390,7 +5711,7 @@ type UnlikeAlbumPhotoResponse struct {
 
 func (x *UnlikeAlbumPhotoResponse) Reset() {
 	*x = UnlikeAlbumPhotoResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[89]
+	mi := &file_api_post_v1_post_proto_msgTypes[95]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5402,7 +5723,7 @@ func (x *UnlikeAlbumPhotoResponse) String() string {
 func (*UnlikeAlbumPhotoResponse) ProtoMessage() {}
 
 func (x *UnlikeAlbumPhotoResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[89]
+	mi := &file_api_post_v1_post_proto_msgTypes[95]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5415,7 +5736,7 @@ func (x *UnlikeAlbumPhotoResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use UnlikeAlbumPhotoResponse.ProtoReflect.Descriptor instead.
 func (*UnlikeAlbumPhotoResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{89}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{95}
 }
 
 func (x *UnlikeAlbumPhotoResponse) GetLikeCount() int32 {
@@ -5436,7 +5757,7 @@ type ListAlbumPhotoLikersRequest struct {
 
 func (x *ListAlbumPhotoLikersRequest) Reset() {
 	*x = ListAlbumPhotoLikersRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[90]
+	mi := &file_api_post_v1_post_proto_msgTypes[96]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5448,7 +5769,7 @@ func (x *ListAlbumPhotoLikersRequest) String() string {
 func (*ListAlbumPhotoLikersRequest) ProtoMessage() {}
 
 func (x *ListAlbumPhotoLikersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[90]
+	mi := &file_api_post_v1_post_proto_msgTypes[96]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5461,7 +5782,7 @@ func (x *ListAlbumPhotoLikersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAlbumPhotoLikersRequest.ProtoReflect.Descriptor instead.
 func (*ListAlbumPhotoLikersRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{90}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{96}
 }
 
 func (x *ListAlbumPhotoLikersRequest) GetPhotoId() string {
@@ -5496,7 +5817,7 @@ type ListAlbumPhotoLikersResponse struct {
 
 func (x *ListAlbumPhotoLikersResponse) Reset() {
 	*x = ListAlbumPhotoLikersResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[91]
+	mi := &file_api_post_v1_post_proto_msgTypes[97]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5508,7 +5829,7 @@ func (x *ListAlbumPhotoLikersResponse) String() string {
 func (*ListAlbumPhotoLikersResponse) ProtoMessage() {}
 
 func (x *ListAlbumPhotoLikersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[91]
+	mi := &file_api_post_v1_post_proto_msgTypes[97]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5521,7 +5842,7 @@ func (x *ListAlbumPhotoLikersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListAlbumPhotoLikersResponse.ProtoReflect.Descriptor instead.
 func (*ListAlbumPhotoLikersResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{91}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{97}
 }
 
 func (x *ListAlbumPhotoLikersResponse) GetUserIds() []string {
@@ -5561,7 +5882,7 @@ type PhotoComment struct {
 
 func (x *PhotoComment) Reset() {
 	*x = PhotoComment{}
-	mi := &file_api_post_v1_post_proto_msgTypes[92]
+	mi := &file_api_post_v1_post_proto_msgTypes[98]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5573,7 +5894,7 @@ func (x *PhotoComment) String() string {
 func (*PhotoComment) ProtoMessage() {}
 
 func (x *PhotoComment) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[92]
+	mi := &file_api_post_v1_post_proto_msgTypes[98]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5586,7 +5907,7 @@ func (x *PhotoComment) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PhotoComment.ProtoReflect.Descriptor instead.
 func (*PhotoComment) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{92}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{98}
 }
 
 func (x *PhotoComment) GetId() string {
@@ -5641,7 +5962,7 @@ type CreatePhotoCommentRequest struct {
 
 func (x *CreatePhotoCommentRequest) Reset() {
 	*x = CreatePhotoCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[93]
+	mi := &file_api_post_v1_post_proto_msgTypes[99]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5653,7 +5974,7 @@ func (x *CreatePhotoCommentRequest) String() string {
 func (*CreatePhotoCommentRequest) ProtoMessage() {}
 
 func (x *CreatePhotoCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[93]
+	mi := &file_api_post_v1_post_proto_msgTypes[99]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5666,7 +5987,7 @@ func (x *CreatePhotoCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePhotoCommentRequest.ProtoReflect.Descriptor instead.
 func (*CreatePhotoCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{93}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{99}
 }
 
 func (x *CreatePhotoCommentRequest) GetPhotoId() string {
@@ -5692,7 +6013,7 @@ type CreatePhotoCommentResponse struct {
 
 func (x *CreatePhotoCommentResponse) Reset() {
 	*x = CreatePhotoCommentResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[94]
+	mi := &file_api_post_v1_post_proto_msgTypes[100]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5704,7 +6025,7 @@ func (x *CreatePhotoCommentResponse) String() string {
 func (*CreatePhotoCommentResponse) ProtoMessage() {}
 
 func (x *CreatePhotoCommentResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[94]
+	mi := &file_api_post_v1_post_proto_msgTypes[100]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5717,7 +6038,7 @@ func (x *CreatePhotoCommentResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use CreatePhotoCommentResponse.ProtoReflect.Descriptor instead.
 func (*CreatePhotoCommentResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{94}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{100}
 }
 
 func (x *CreatePhotoCommentResponse) GetComment() *PhotoComment {
@@ -5736,7 +6057,7 @@ type DeletePhotoCommentRequest struct {
 
 func (x *DeletePhotoCommentRequest) Reset() {
 	*x = DeletePhotoCommentRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[95]
+	mi := &file_api_post_v1_post_proto_msgTypes[101]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5748,7 +6069,7 @@ func (x *DeletePhotoCommentRequest) String() string {
 func (*DeletePhotoCommentRequest) ProtoMessage() {}
 
 func (x *DeletePhotoCommentRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[95]
+	mi := &file_api_post_v1_post_proto_msgTypes[101]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5761,7 +6082,7 @@ func (x *DeletePhotoCommentRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeletePhotoCommentRequest.ProtoReflect.Descriptor instead.
 func (*DeletePhotoCommentRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{95}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{101}
 }
 
 func (x *DeletePhotoCommentRequest) GetId() string {
@@ -5783,7 +6104,7 @@ type ListPhotoCommentsRequest struct {
 
 func (x *ListPhotoCommentsRequest) Reset() {
 	*x = ListPhotoCommentsRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[96]
+	mi := &file_api_post_v1_post_proto_msgTypes[102]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5795,7 +6116,7 @@ func (x *ListPhotoCommentsRequest) String() string {
 func (*ListPhotoCommentsRequest) ProtoMessage() {}
 
 func (x *ListPhotoCommentsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[96]
+	mi := &file_api_post_v1_post_proto_msgTypes[102]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5808,7 +6129,7 @@ func (x *ListPhotoCommentsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPhotoCommentsRequest.ProtoReflect.Descriptor instead.
 func (*ListPhotoCommentsRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{96}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{102}
 }
 
 func (x *ListPhotoCommentsRequest) GetPhotoId() string {
@@ -5843,7 +6164,7 @@ type ListPhotoCommentsResponse struct {
 
 func (x *ListPhotoCommentsResponse) Reset() {
 	*x = ListPhotoCommentsResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[97]
+	mi := &file_api_post_v1_post_proto_msgTypes[103]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -5855,7 +6176,7 @@ func (x *ListPhotoCommentsResponse) String() string {
 func (*ListPhotoCommentsResponse) ProtoMessage() {}
 
 func (x *ListPhotoCommentsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[97]
+	mi := &file_api_post_v1_post_proto_msgTypes[103]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5868,7 +6189,7 @@ func (x *ListPhotoCommentsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListPhotoCommentsResponse.ProtoReflect.Descriptor instead.
 func (*ListPhotoCommentsResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{97}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{103}
 }
 
 func (x *ListPhotoCommentsResponse) GetComments() []*PhotoComment {
@@ -5896,7 +6217,7 @@ var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xfc\x04\n" +
+	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc1\x05\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x12\n" +
@@ -5919,7 +6240,9 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x04mine\x18\x10 \x01(\bR\x04mine\x12\x16\n" +
 	"\x06signed\x18\x11 \x01(\bR\x06signed\x12#\n" +
 	"\ravatar_update\x18\x12 \x01(\bR\favatarUpdate\x12&\n" +
-	"\x0fshared_photo_id\x18\x13 \x01(\tR\rsharedPhotoId\"\xc1\x02\n" +
+	"\x0fshared_photo_id\x18\x13 \x01(\tR\rsharedPhotoId\x12\x1a\n" +
+	"\barchived\x18\x14 \x01(\bR\barchived\x12'\n" +
+	"\x0fcomments_closed\x18\x15 \x01(\bR\x0ecommentsClosed\"\xc1\x02\n" +
 	"\aComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
@@ -6000,7 +6323,15 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0ePinPostRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"\"\n" +
 	"\x10UnpinPostRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\" \n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"$\n" +
+	"\x12ArchivePostRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"&\n" +
+	"\x14UnarchivePostRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"/\n" +
+	"\x14CloseCommentsRequest\x12\x17\n" +
+	"\apost_id\x18\x01 \x01(\tR\x06postId\".\n" +
+	"\x13OpenCommentsRequest\x12\x17\n" +
+	"\apost_id\x18\x01 \x01(\tR\x06postId\" \n" +
 	"\x0eGetPostRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"4\n" +
 	"\x0fGetPostResponse\x12!\n" +
@@ -6008,12 +6339,13 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0fGetPostsRequest\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\"7\n" +
 	"\x10GetPostsResponse\x12#\n" +
-	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\"\x86\x01\n" +
+	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\"\x9c\x01\n" +
 	"\x10ListPostsRequest\x12\x17\n" +
 	"\awall_id\x18\x01 \x01(\tR\x06wallId\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12+\n" +
-	"\x06filter\x18\x04 \x01(\x0e2\x13.post.v1.WallFilterR\x06filter\"o\n" +
+	"\x06filter\x18\x04 \x01(\x0e2\x13.post.v1.WallFilterR\x06filter\x12\x14\n" +
+	"\x05query\x18\x05 \x01(\tR\x05query\"o\n" +
 	"\x11ListPostsResponse\x12#\n" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
@@ -6262,7 +6594,13 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x16EditAlbumPhotoResponse\x12)\n" +
 	"\x05photo\x18\x01 \x01(\v2\x13.post.v1.AlbumPhotoR\x05photo\")\n" +
 	"\x17DeleteAlbumPhotoRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"2\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"L\n" +
+	"\x14SetAlbumCoverRequest\x12\x19\n" +
+	"\balbum_id\x18\x01 \x01(\tR\aalbumId\x12\x19\n" +
+	"\bphoto_id\x18\x02 \x01(\tR\aphotoId\"M\n" +
+	"\x15MoveAlbumPhotoRequest\x12\x19\n" +
+	"\bphoto_id\x18\x01 \x01(\tR\aphotoId\x12\x19\n" +
+	"\balbum_id\x18\x02 \x01(\tR\aalbumId\"2\n" +
 	"\x15LikeAlbumPhotoRequest\x12\x19\n" +
 	"\bphoto_id\x18\x01 \x01(\tR\aphotoId\"7\n" +
 	"\x16LikeAlbumPhotoResponse\x12\x1d\n" +
@@ -6305,15 +6643,17 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\bcomments\x18\x01 \x03(\v2\x15.post.v1.PhotoCommentR\bcomments\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total*Q\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total*j\n" +
 	"\n" +
 	"WallFilter\x12\x14\n" +
 	"\x10WALL_FILTER_NONE\x10\x00\x12\x15\n" +
 	"\x11WALL_FILTER_OWNER\x10\x01\x12\x16\n" +
-	"\x12WALL_FILTER_OTHERS\x10\x02*8\n" +
+	"\x12WALL_FILTER_OTHERS\x10\x02\x12\x17\n" +
+	"\x13WALL_FILTER_ARCHIVE\x10\x03*M\n" +
 	"\tAlbumKind\x12\x13\n" +
 	"\x0fALBUM_KIND_NONE\x10\x00\x12\x16\n" +
-	"\x12ALBUM_KIND_AVATARS\x10\x012\xf4\x1d\n" +
+	"\x12ALBUM_KIND_AVATARS\x10\x01\x12\x13\n" +
+	"\x0fALBUM_KIND_WALL\x10\x022\xa0!\n" +
 	"\vPostService\x12E\n" +
 	"\n" +
 	"CreatePost\x12\x1a.post.v1.CreatePostRequest\x1a\x1b.post.v1.CreatePostResponse\x12@\n" +
@@ -6323,7 +6663,11 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"RepostPost\x12\x1a.post.v1.RepostPostRequest\x1a\x1b.post.v1.RepostPostResponse\x12?\n" +
 	"\bEditPost\x12\x18.post.v1.EditPostRequest\x1a\x19.post.v1.EditPostResponse\x12:\n" +
 	"\aPinPost\x12\x17.post.v1.PinPostRequest\x1a\x16.google.protobuf.Empty\x12>\n" +
-	"\tUnpinPost\x12\x19.post.v1.UnpinPostRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
+	"\tUnpinPost\x12\x19.post.v1.UnpinPostRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
+	"\vArchivePost\x12\x1b.post.v1.ArchivePostRequest\x1a\x16.google.protobuf.Empty\x12F\n" +
+	"\rUnarchivePost\x12\x1d.post.v1.UnarchivePostRequest\x1a\x16.google.protobuf.Empty\x12F\n" +
+	"\rCloseComments\x12\x1d.post.v1.CloseCommentsRequest\x1a\x16.google.protobuf.Empty\x12D\n" +
+	"\fOpenComments\x12\x1c.post.v1.OpenCommentsRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
 	"\aGetPost\x12\x17.post.v1.GetPostRequest\x1a\x18.post.v1.GetPostResponse\x12?\n" +
 	"\bGetPosts\x12\x18.post.v1.GetPostsRequest\x1a\x19.post.v1.GetPostsResponse\x12B\n" +
 	"\tListPosts\x12\x19.post.v1.ListPostsRequest\x1a\x1a.post.v1.ListPostsResponse\x12?\n" +
@@ -6363,7 +6707,9 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0fListAlbumPhotos\x12\x1f.post.v1.ListAlbumPhotosRequest\x1a .post.v1.ListAlbumPhotosResponse\x12N\n" +
 	"\rGetAlbumPhoto\x12\x1d.post.v1.GetAlbumPhotoRequest\x1a\x1e.post.v1.GetAlbumPhotoResponse\x12Q\n" +
 	"\x0eEditAlbumPhoto\x12\x1e.post.v1.EditAlbumPhotoRequest\x1a\x1f.post.v1.EditAlbumPhotoResponse\x12L\n" +
-	"\x10DeleteAlbumPhoto\x12 .post.v1.DeleteAlbumPhotoRequest\x1a\x16.google.protobuf.Empty\x12Q\n" +
+	"\x10DeleteAlbumPhoto\x12 .post.v1.DeleteAlbumPhotoRequest\x1a\x16.google.protobuf.Empty\x12F\n" +
+	"\rSetAlbumCover\x12\x1d.post.v1.SetAlbumCoverRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
+	"\x0eMoveAlbumPhoto\x12\x1e.post.v1.MoveAlbumPhotoRequest\x1a\x16.google.protobuf.Empty\x12Q\n" +
 	"\x0eLikeAlbumPhoto\x12\x1e.post.v1.LikeAlbumPhotoRequest\x1a\x1f.post.v1.LikeAlbumPhotoResponse\x12W\n" +
 	"\x10UnlikeAlbumPhoto\x12 .post.v1.UnlikeAlbumPhotoRequest\x1a!.post.v1.UnlikeAlbumPhotoResponse\x12c\n" +
 	"\x14ListAlbumPhotoLikers\x12$.post.v1.ListAlbumPhotoLikersRequest\x1a%.post.v1.ListAlbumPhotoLikersResponse\x12]\n" +
@@ -6385,7 +6731,7 @@ func file_api_post_v1_post_proto_rawDescGZIP() []byte {
 }
 
 var file_api_post_v1_post_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 98)
+var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 104)
 var file_api_post_v1_post_proto_goTypes = []any{
 	(WallFilter)(0),                      // 0: post.v1.WallFilter
 	(AlbumKind)(0),                       // 1: post.v1.AlbumKind
@@ -6408,94 +6754,100 @@ var file_api_post_v1_post_proto_goTypes = []any{
 	(*EditPostResponse)(nil),             // 18: post.v1.EditPostResponse
 	(*PinPostRequest)(nil),               // 19: post.v1.PinPostRequest
 	(*UnpinPostRequest)(nil),             // 20: post.v1.UnpinPostRequest
-	(*GetPostRequest)(nil),               // 21: post.v1.GetPostRequest
-	(*GetPostResponse)(nil),              // 22: post.v1.GetPostResponse
-	(*GetPostsRequest)(nil),              // 23: post.v1.GetPostsRequest
-	(*GetPostsResponse)(nil),             // 24: post.v1.GetPostsResponse
-	(*ListPostsRequest)(nil),             // 25: post.v1.ListPostsRequest
-	(*ListPostsResponse)(nil),            // 26: post.v1.ListPostsResponse
-	(*ListFeedRequest)(nil),              // 27: post.v1.ListFeedRequest
-	(*ListFeedResponse)(nil),             // 28: post.v1.ListFeedResponse
-	(*LikePostRequest)(nil),              // 29: post.v1.LikePostRequest
-	(*LikePostResponse)(nil),             // 30: post.v1.LikePostResponse
-	(*UnlikePostRequest)(nil),            // 31: post.v1.UnlikePostRequest
-	(*UnlikePostResponse)(nil),           // 32: post.v1.UnlikePostResponse
-	(*ListPostLikersRequest)(nil),        // 33: post.v1.ListPostLikersRequest
-	(*ListPostLikersResponse)(nil),       // 34: post.v1.ListPostLikersResponse
-	(*ListCommentLikersRequest)(nil),     // 35: post.v1.ListCommentLikersRequest
-	(*ListCommentLikersResponse)(nil),    // 36: post.v1.ListCommentLikersResponse
-	(*CreateCommentRequest)(nil),         // 37: post.v1.CreateCommentRequest
-	(*CreateCommentResponse)(nil),        // 38: post.v1.CreateCommentResponse
-	(*DeleteCommentRequest)(nil),         // 39: post.v1.DeleteCommentRequest
-	(*LikeCommentRequest)(nil),           // 40: post.v1.LikeCommentRequest
-	(*LikeCommentResponse)(nil),          // 41: post.v1.LikeCommentResponse
-	(*UnlikeCommentRequest)(nil),         // 42: post.v1.UnlikeCommentRequest
-	(*UnlikeCommentResponse)(nil),        // 43: post.v1.UnlikeCommentResponse
-	(*ListCommentsRequest)(nil),          // 44: post.v1.ListCommentsRequest
-	(*ListCommentsResponse)(nil),         // 45: post.v1.ListCommentsResponse
-	(*GetCommentsRequest)(nil),           // 46: post.v1.GetCommentsRequest
-	(*GetCommentsResponse)(nil),          // 47: post.v1.GetCommentsResponse
-	(*PurgeUserRequest)(nil),             // 48: post.v1.PurgeUserRequest
-	(*Topic)(nil),                        // 49: post.v1.Topic
-	(*TopicMessage)(nil),                 // 50: post.v1.TopicMessage
-	(*CreateTopicRequest)(nil),           // 51: post.v1.CreateTopicRequest
-	(*CreateTopicResponse)(nil),          // 52: post.v1.CreateTopicResponse
-	(*GetTopicRequest)(nil),              // 53: post.v1.GetTopicRequest
-	(*GetTopicResponse)(nil),             // 54: post.v1.GetTopicResponse
-	(*ListTopicsRequest)(nil),            // 55: post.v1.ListTopicsRequest
-	(*ListTopicsResponse)(nil),           // 56: post.v1.ListTopicsResponse
-	(*EditTopicRequest)(nil),             // 57: post.v1.EditTopicRequest
-	(*EditTopicResponse)(nil),            // 58: post.v1.EditTopicResponse
-	(*DeleteTopicRequest)(nil),           // 59: post.v1.DeleteTopicRequest
-	(*CreateTopicMessageRequest)(nil),    // 60: post.v1.CreateTopicMessageRequest
-	(*CreateTopicMessageResponse)(nil),   // 61: post.v1.CreateTopicMessageResponse
-	(*ListTopicMessagesRequest)(nil),     // 62: post.v1.ListTopicMessagesRequest
-	(*ListTopicMessagesResponse)(nil),    // 63: post.v1.ListTopicMessagesResponse
-	(*DeleteTopicMessageRequest)(nil),    // 64: post.v1.DeleteTopicMessageRequest
-	(*Album)(nil),                        // 65: post.v1.Album
-	(*AlbumPhoto)(nil),                   // 66: post.v1.AlbumPhoto
-	(*CreateAlbumRequest)(nil),           // 67: post.v1.CreateAlbumRequest
-	(*CreateAlbumResponse)(nil),          // 68: post.v1.CreateAlbumResponse
-	(*GetAlbumRequest)(nil),              // 69: post.v1.GetAlbumRequest
-	(*GetAlbumResponse)(nil),             // 70: post.v1.GetAlbumResponse
-	(*ListAlbumsRequest)(nil),            // 71: post.v1.ListAlbumsRequest
-	(*ListAlbumsResponse)(nil),           // 72: post.v1.ListAlbumsResponse
-	(*EditAlbumRequest)(nil),             // 73: post.v1.EditAlbumRequest
-	(*EditAlbumResponse)(nil),            // 74: post.v1.EditAlbumResponse
-	(*DeleteAlbumRequest)(nil),           // 75: post.v1.DeleteAlbumRequest
-	(*NewAlbumPhoto)(nil),                // 76: post.v1.NewAlbumPhoto
-	(*AddAlbumPhotosRequest)(nil),        // 77: post.v1.AddAlbumPhotosRequest
-	(*AddAlbumPhotosResponse)(nil),       // 78: post.v1.AddAlbumPhotosResponse
-	(*AddAvatarPhotoRequest)(nil),        // 79: post.v1.AddAvatarPhotoRequest
-	(*AddAvatarPhotoResponse)(nil),       // 80: post.v1.AddAvatarPhotoResponse
-	(*ListAlbumPhotosRequest)(nil),       // 81: post.v1.ListAlbumPhotosRequest
-	(*ListAlbumPhotosResponse)(nil),      // 82: post.v1.ListAlbumPhotosResponse
-	(*GetAlbumPhotoRequest)(nil),         // 83: post.v1.GetAlbumPhotoRequest
-	(*GetAlbumPhotoResponse)(nil),        // 84: post.v1.GetAlbumPhotoResponse
-	(*EditAlbumPhotoRequest)(nil),        // 85: post.v1.EditAlbumPhotoRequest
-	(*EditAlbumPhotoResponse)(nil),       // 86: post.v1.EditAlbumPhotoResponse
-	(*DeleteAlbumPhotoRequest)(nil),      // 87: post.v1.DeleteAlbumPhotoRequest
-	(*LikeAlbumPhotoRequest)(nil),        // 88: post.v1.LikeAlbumPhotoRequest
-	(*LikeAlbumPhotoResponse)(nil),       // 89: post.v1.LikeAlbumPhotoResponse
-	(*UnlikeAlbumPhotoRequest)(nil),      // 90: post.v1.UnlikeAlbumPhotoRequest
-	(*UnlikeAlbumPhotoResponse)(nil),     // 91: post.v1.UnlikeAlbumPhotoResponse
-	(*ListAlbumPhotoLikersRequest)(nil),  // 92: post.v1.ListAlbumPhotoLikersRequest
-	(*ListAlbumPhotoLikersResponse)(nil), // 93: post.v1.ListAlbumPhotoLikersResponse
-	(*PhotoComment)(nil),                 // 94: post.v1.PhotoComment
-	(*CreatePhotoCommentRequest)(nil),    // 95: post.v1.CreatePhotoCommentRequest
-	(*CreatePhotoCommentResponse)(nil),   // 96: post.v1.CreatePhotoCommentResponse
-	(*DeletePhotoCommentRequest)(nil),    // 97: post.v1.DeletePhotoCommentRequest
-	(*ListPhotoCommentsRequest)(nil),     // 98: post.v1.ListPhotoCommentsRequest
-	(*ListPhotoCommentsResponse)(nil),    // 99: post.v1.ListPhotoCommentsResponse
-	(*timestamppb.Timestamp)(nil),        // 100: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                // 101: google.protobuf.Empty
+	(*ArchivePostRequest)(nil),           // 21: post.v1.ArchivePostRequest
+	(*UnarchivePostRequest)(nil),         // 22: post.v1.UnarchivePostRequest
+	(*CloseCommentsRequest)(nil),         // 23: post.v1.CloseCommentsRequest
+	(*OpenCommentsRequest)(nil),          // 24: post.v1.OpenCommentsRequest
+	(*GetPostRequest)(nil),               // 25: post.v1.GetPostRequest
+	(*GetPostResponse)(nil),              // 26: post.v1.GetPostResponse
+	(*GetPostsRequest)(nil),              // 27: post.v1.GetPostsRequest
+	(*GetPostsResponse)(nil),             // 28: post.v1.GetPostsResponse
+	(*ListPostsRequest)(nil),             // 29: post.v1.ListPostsRequest
+	(*ListPostsResponse)(nil),            // 30: post.v1.ListPostsResponse
+	(*ListFeedRequest)(nil),              // 31: post.v1.ListFeedRequest
+	(*ListFeedResponse)(nil),             // 32: post.v1.ListFeedResponse
+	(*LikePostRequest)(nil),              // 33: post.v1.LikePostRequest
+	(*LikePostResponse)(nil),             // 34: post.v1.LikePostResponse
+	(*UnlikePostRequest)(nil),            // 35: post.v1.UnlikePostRequest
+	(*UnlikePostResponse)(nil),           // 36: post.v1.UnlikePostResponse
+	(*ListPostLikersRequest)(nil),        // 37: post.v1.ListPostLikersRequest
+	(*ListPostLikersResponse)(nil),       // 38: post.v1.ListPostLikersResponse
+	(*ListCommentLikersRequest)(nil),     // 39: post.v1.ListCommentLikersRequest
+	(*ListCommentLikersResponse)(nil),    // 40: post.v1.ListCommentLikersResponse
+	(*CreateCommentRequest)(nil),         // 41: post.v1.CreateCommentRequest
+	(*CreateCommentResponse)(nil),        // 42: post.v1.CreateCommentResponse
+	(*DeleteCommentRequest)(nil),         // 43: post.v1.DeleteCommentRequest
+	(*LikeCommentRequest)(nil),           // 44: post.v1.LikeCommentRequest
+	(*LikeCommentResponse)(nil),          // 45: post.v1.LikeCommentResponse
+	(*UnlikeCommentRequest)(nil),         // 46: post.v1.UnlikeCommentRequest
+	(*UnlikeCommentResponse)(nil),        // 47: post.v1.UnlikeCommentResponse
+	(*ListCommentsRequest)(nil),          // 48: post.v1.ListCommentsRequest
+	(*ListCommentsResponse)(nil),         // 49: post.v1.ListCommentsResponse
+	(*GetCommentsRequest)(nil),           // 50: post.v1.GetCommentsRequest
+	(*GetCommentsResponse)(nil),          // 51: post.v1.GetCommentsResponse
+	(*PurgeUserRequest)(nil),             // 52: post.v1.PurgeUserRequest
+	(*Topic)(nil),                        // 53: post.v1.Topic
+	(*TopicMessage)(nil),                 // 54: post.v1.TopicMessage
+	(*CreateTopicRequest)(nil),           // 55: post.v1.CreateTopicRequest
+	(*CreateTopicResponse)(nil),          // 56: post.v1.CreateTopicResponse
+	(*GetTopicRequest)(nil),              // 57: post.v1.GetTopicRequest
+	(*GetTopicResponse)(nil),             // 58: post.v1.GetTopicResponse
+	(*ListTopicsRequest)(nil),            // 59: post.v1.ListTopicsRequest
+	(*ListTopicsResponse)(nil),           // 60: post.v1.ListTopicsResponse
+	(*EditTopicRequest)(nil),             // 61: post.v1.EditTopicRequest
+	(*EditTopicResponse)(nil),            // 62: post.v1.EditTopicResponse
+	(*DeleteTopicRequest)(nil),           // 63: post.v1.DeleteTopicRequest
+	(*CreateTopicMessageRequest)(nil),    // 64: post.v1.CreateTopicMessageRequest
+	(*CreateTopicMessageResponse)(nil),   // 65: post.v1.CreateTopicMessageResponse
+	(*ListTopicMessagesRequest)(nil),     // 66: post.v1.ListTopicMessagesRequest
+	(*ListTopicMessagesResponse)(nil),    // 67: post.v1.ListTopicMessagesResponse
+	(*DeleteTopicMessageRequest)(nil),    // 68: post.v1.DeleteTopicMessageRequest
+	(*Album)(nil),                        // 69: post.v1.Album
+	(*AlbumPhoto)(nil),                   // 70: post.v1.AlbumPhoto
+	(*CreateAlbumRequest)(nil),           // 71: post.v1.CreateAlbumRequest
+	(*CreateAlbumResponse)(nil),          // 72: post.v1.CreateAlbumResponse
+	(*GetAlbumRequest)(nil),              // 73: post.v1.GetAlbumRequest
+	(*GetAlbumResponse)(nil),             // 74: post.v1.GetAlbumResponse
+	(*ListAlbumsRequest)(nil),            // 75: post.v1.ListAlbumsRequest
+	(*ListAlbumsResponse)(nil),           // 76: post.v1.ListAlbumsResponse
+	(*EditAlbumRequest)(nil),             // 77: post.v1.EditAlbumRequest
+	(*EditAlbumResponse)(nil),            // 78: post.v1.EditAlbumResponse
+	(*DeleteAlbumRequest)(nil),           // 79: post.v1.DeleteAlbumRequest
+	(*NewAlbumPhoto)(nil),                // 80: post.v1.NewAlbumPhoto
+	(*AddAlbumPhotosRequest)(nil),        // 81: post.v1.AddAlbumPhotosRequest
+	(*AddAlbumPhotosResponse)(nil),       // 82: post.v1.AddAlbumPhotosResponse
+	(*AddAvatarPhotoRequest)(nil),        // 83: post.v1.AddAvatarPhotoRequest
+	(*AddAvatarPhotoResponse)(nil),       // 84: post.v1.AddAvatarPhotoResponse
+	(*ListAlbumPhotosRequest)(nil),       // 85: post.v1.ListAlbumPhotosRequest
+	(*ListAlbumPhotosResponse)(nil),      // 86: post.v1.ListAlbumPhotosResponse
+	(*GetAlbumPhotoRequest)(nil),         // 87: post.v1.GetAlbumPhotoRequest
+	(*GetAlbumPhotoResponse)(nil),        // 88: post.v1.GetAlbumPhotoResponse
+	(*EditAlbumPhotoRequest)(nil),        // 89: post.v1.EditAlbumPhotoRequest
+	(*EditAlbumPhotoResponse)(nil),       // 90: post.v1.EditAlbumPhotoResponse
+	(*DeleteAlbumPhotoRequest)(nil),      // 91: post.v1.DeleteAlbumPhotoRequest
+	(*SetAlbumCoverRequest)(nil),         // 92: post.v1.SetAlbumCoverRequest
+	(*MoveAlbumPhotoRequest)(nil),        // 93: post.v1.MoveAlbumPhotoRequest
+	(*LikeAlbumPhotoRequest)(nil),        // 94: post.v1.LikeAlbumPhotoRequest
+	(*LikeAlbumPhotoResponse)(nil),       // 95: post.v1.LikeAlbumPhotoResponse
+	(*UnlikeAlbumPhotoRequest)(nil),      // 96: post.v1.UnlikeAlbumPhotoRequest
+	(*UnlikeAlbumPhotoResponse)(nil),     // 97: post.v1.UnlikeAlbumPhotoResponse
+	(*ListAlbumPhotoLikersRequest)(nil),  // 98: post.v1.ListAlbumPhotoLikersRequest
+	(*ListAlbumPhotoLikersResponse)(nil), // 99: post.v1.ListAlbumPhotoLikersResponse
+	(*PhotoComment)(nil),                 // 100: post.v1.PhotoComment
+	(*CreatePhotoCommentRequest)(nil),    // 101: post.v1.CreatePhotoCommentRequest
+	(*CreatePhotoCommentResponse)(nil),   // 102: post.v1.CreatePhotoCommentResponse
+	(*DeletePhotoCommentRequest)(nil),    // 103: post.v1.DeletePhotoCommentRequest
+	(*ListPhotoCommentsRequest)(nil),     // 104: post.v1.ListPhotoCommentsRequest
+	(*ListPhotoCommentsResponse)(nil),    // 105: post.v1.ListPhotoCommentsResponse
+	(*timestamppb.Timestamp)(nil),        // 106: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                // 107: google.protobuf.Empty
 }
 var file_api_post_v1_post_proto_depIdxs = []int32{
-	100, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
-	100, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
-	100, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
-	100, // 3: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
-	100, // 4: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
+	106, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
+	106, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
+	106, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
+	106, // 3: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
+	106, // 4: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
 	4,   // 5: post.v1.SuggestPostResponse.suggestion:type_name -> post.v1.Suggestion
 	4,   // 6: post.v1.ListSuggestionsResponse.suggestions:type_name -> post.v1.Suggestion
 	2,   // 7: post.v1.PublishSuggestionResponse.post:type_name -> post.v1.Post
@@ -6510,137 +6862,149 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	3,   // 16: post.v1.CreateCommentResponse.comment:type_name -> post.v1.Comment
 	3,   // 17: post.v1.ListCommentsResponse.comments:type_name -> post.v1.Comment
 	3,   // 18: post.v1.GetCommentsResponse.comments:type_name -> post.v1.Comment
-	100, // 19: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
-	100, // 20: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
-	50,  // 21: post.v1.Topic.last_message:type_name -> post.v1.TopicMessage
-	100, // 22: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
-	49,  // 23: post.v1.CreateTopicResponse.topic:type_name -> post.v1.Topic
-	49,  // 24: post.v1.GetTopicResponse.topic:type_name -> post.v1.Topic
-	49,  // 25: post.v1.ListTopicsResponse.topics:type_name -> post.v1.Topic
-	49,  // 26: post.v1.EditTopicResponse.topic:type_name -> post.v1.Topic
-	50,  // 27: post.v1.CreateTopicMessageResponse.message:type_name -> post.v1.TopicMessage
-	50,  // 28: post.v1.ListTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
-	100, // 29: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
-	100, // 30: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
-	66,  // 31: post.v1.Album.cover:type_name -> post.v1.AlbumPhoto
+	106, // 19: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
+	106, // 20: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
+	54,  // 21: post.v1.Topic.last_message:type_name -> post.v1.TopicMessage
+	106, // 22: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
+	53,  // 23: post.v1.CreateTopicResponse.topic:type_name -> post.v1.Topic
+	53,  // 24: post.v1.GetTopicResponse.topic:type_name -> post.v1.Topic
+	53,  // 25: post.v1.ListTopicsResponse.topics:type_name -> post.v1.Topic
+	53,  // 26: post.v1.EditTopicResponse.topic:type_name -> post.v1.Topic
+	54,  // 27: post.v1.CreateTopicMessageResponse.message:type_name -> post.v1.TopicMessage
+	54,  // 28: post.v1.ListTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
+	106, // 29: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
+	106, // 30: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
+	70,  // 31: post.v1.Album.cover:type_name -> post.v1.AlbumPhoto
 	1,   // 32: post.v1.Album.kind:type_name -> post.v1.AlbumKind
-	100, // 33: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
-	65,  // 34: post.v1.CreateAlbumResponse.album:type_name -> post.v1.Album
-	65,  // 35: post.v1.GetAlbumResponse.album:type_name -> post.v1.Album
-	65,  // 36: post.v1.ListAlbumsResponse.albums:type_name -> post.v1.Album
-	65,  // 37: post.v1.EditAlbumResponse.album:type_name -> post.v1.Album
-	76,  // 38: post.v1.AddAlbumPhotosRequest.photos:type_name -> post.v1.NewAlbumPhoto
-	66,  // 39: post.v1.AddAlbumPhotosResponse.photos:type_name -> post.v1.AlbumPhoto
-	66,  // 40: post.v1.AddAvatarPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
-	66,  // 41: post.v1.ListAlbumPhotosResponse.photos:type_name -> post.v1.AlbumPhoto
-	66,  // 42: post.v1.GetAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
-	65,  // 43: post.v1.GetAlbumPhotoResponse.album:type_name -> post.v1.Album
-	66,  // 44: post.v1.EditAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
-	100, // 45: post.v1.PhotoComment.created_at:type_name -> google.protobuf.Timestamp
-	94,  // 46: post.v1.CreatePhotoCommentResponse.comment:type_name -> post.v1.PhotoComment
-	94,  // 47: post.v1.ListPhotoCommentsResponse.comments:type_name -> post.v1.PhotoComment
+	106, // 33: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
+	69,  // 34: post.v1.CreateAlbumResponse.album:type_name -> post.v1.Album
+	69,  // 35: post.v1.GetAlbumResponse.album:type_name -> post.v1.Album
+	69,  // 36: post.v1.ListAlbumsResponse.albums:type_name -> post.v1.Album
+	69,  // 37: post.v1.EditAlbumResponse.album:type_name -> post.v1.Album
+	80,  // 38: post.v1.AddAlbumPhotosRequest.photos:type_name -> post.v1.NewAlbumPhoto
+	70,  // 39: post.v1.AddAlbumPhotosResponse.photos:type_name -> post.v1.AlbumPhoto
+	70,  // 40: post.v1.AddAvatarPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
+	70,  // 41: post.v1.ListAlbumPhotosResponse.photos:type_name -> post.v1.AlbumPhoto
+	70,  // 42: post.v1.GetAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
+	69,  // 43: post.v1.GetAlbumPhotoResponse.album:type_name -> post.v1.Album
+	70,  // 44: post.v1.EditAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
+	106, // 45: post.v1.PhotoComment.created_at:type_name -> google.protobuf.Timestamp
+	100, // 46: post.v1.CreatePhotoCommentResponse.comment:type_name -> post.v1.PhotoComment
+	100, // 47: post.v1.ListPhotoCommentsResponse.comments:type_name -> post.v1.PhotoComment
 	12,  // 48: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
 	16,  // 49: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
 	14,  // 50: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
 	17,  // 51: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
 	19,  // 52: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
 	20,  // 53: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
-	21,  // 54: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
-	23,  // 55: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
-	25,  // 56: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
-	27,  // 57: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
-	29,  // 58: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
-	31,  // 59: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
-	33,  // 60: post.v1.PostService.ListPostLikers:input_type -> post.v1.ListPostLikersRequest
-	35,  // 61: post.v1.PostService.ListCommentLikers:input_type -> post.v1.ListCommentLikersRequest
-	37,  // 62: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
-	39,  // 63: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
-	40,  // 64: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
-	42,  // 65: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
-	44,  // 66: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
-	46,  // 67: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
-	5,   // 68: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
-	7,   // 69: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
-	9,   // 70: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
-	11,  // 71: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
-	51,  // 72: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
-	53,  // 73: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
-	55,  // 74: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
-	57,  // 75: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
-	59,  // 76: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
-	60,  // 77: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
-	62,  // 78: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
-	64,  // 79: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
-	67,  // 80: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
-	69,  // 81: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
-	71,  // 82: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
-	73,  // 83: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
-	75,  // 84: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
-	77,  // 85: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
-	79,  // 86: post.v1.PostService.AddAvatarPhoto:input_type -> post.v1.AddAvatarPhotoRequest
-	81,  // 87: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
-	83,  // 88: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
-	85,  // 89: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
-	87,  // 90: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
-	88,  // 91: post.v1.PostService.LikeAlbumPhoto:input_type -> post.v1.LikeAlbumPhotoRequest
-	90,  // 92: post.v1.PostService.UnlikeAlbumPhoto:input_type -> post.v1.UnlikeAlbumPhotoRequest
-	92,  // 93: post.v1.PostService.ListAlbumPhotoLikers:input_type -> post.v1.ListAlbumPhotoLikersRequest
-	95,  // 94: post.v1.PostService.CreatePhotoComment:input_type -> post.v1.CreatePhotoCommentRequest
-	97,  // 95: post.v1.PostService.DeletePhotoComment:input_type -> post.v1.DeletePhotoCommentRequest
-	98,  // 96: post.v1.PostService.ListPhotoComments:input_type -> post.v1.ListPhotoCommentsRequest
-	48,  // 97: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
-	13,  // 98: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
-	101, // 99: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
-	15,  // 100: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
-	18,  // 101: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
-	101, // 102: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
-	101, // 103: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
-	22,  // 104: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
-	24,  // 105: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
-	26,  // 106: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
-	28,  // 107: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
-	30,  // 108: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
-	32,  // 109: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
-	34,  // 110: post.v1.PostService.ListPostLikers:output_type -> post.v1.ListPostLikersResponse
-	36,  // 111: post.v1.PostService.ListCommentLikers:output_type -> post.v1.ListCommentLikersResponse
-	38,  // 112: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
-	101, // 113: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
-	41,  // 114: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
-	43,  // 115: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
-	45,  // 116: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
-	47,  // 117: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
-	6,   // 118: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
-	8,   // 119: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
-	10,  // 120: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
-	101, // 121: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
-	52,  // 122: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
-	54,  // 123: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
-	56,  // 124: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
-	58,  // 125: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
-	101, // 126: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
-	61,  // 127: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
-	63,  // 128: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
-	101, // 129: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
-	68,  // 130: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
-	70,  // 131: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
-	72,  // 132: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
-	74,  // 133: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
-	101, // 134: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
-	78,  // 135: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
-	80,  // 136: post.v1.PostService.AddAvatarPhoto:output_type -> post.v1.AddAvatarPhotoResponse
-	82,  // 137: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
-	84,  // 138: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
-	86,  // 139: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
-	101, // 140: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
-	89,  // 141: post.v1.PostService.LikeAlbumPhoto:output_type -> post.v1.LikeAlbumPhotoResponse
-	91,  // 142: post.v1.PostService.UnlikeAlbumPhoto:output_type -> post.v1.UnlikeAlbumPhotoResponse
-	93,  // 143: post.v1.PostService.ListAlbumPhotoLikers:output_type -> post.v1.ListAlbumPhotoLikersResponse
-	96,  // 144: post.v1.PostService.CreatePhotoComment:output_type -> post.v1.CreatePhotoCommentResponse
-	101, // 145: post.v1.PostService.DeletePhotoComment:output_type -> google.protobuf.Empty
-	99,  // 146: post.v1.PostService.ListPhotoComments:output_type -> post.v1.ListPhotoCommentsResponse
-	101, // 147: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
-	98,  // [98:148] is the sub-list for method output_type
-	48,  // [48:98] is the sub-list for method input_type
+	21,  // 54: post.v1.PostService.ArchivePost:input_type -> post.v1.ArchivePostRequest
+	22,  // 55: post.v1.PostService.UnarchivePost:input_type -> post.v1.UnarchivePostRequest
+	23,  // 56: post.v1.PostService.CloseComments:input_type -> post.v1.CloseCommentsRequest
+	24,  // 57: post.v1.PostService.OpenComments:input_type -> post.v1.OpenCommentsRequest
+	25,  // 58: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
+	27,  // 59: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
+	29,  // 60: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
+	31,  // 61: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
+	33,  // 62: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
+	35,  // 63: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
+	37,  // 64: post.v1.PostService.ListPostLikers:input_type -> post.v1.ListPostLikersRequest
+	39,  // 65: post.v1.PostService.ListCommentLikers:input_type -> post.v1.ListCommentLikersRequest
+	41,  // 66: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
+	43,  // 67: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
+	44,  // 68: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
+	46,  // 69: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
+	48,  // 70: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
+	50,  // 71: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
+	5,   // 72: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
+	7,   // 73: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
+	9,   // 74: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
+	11,  // 75: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
+	55,  // 76: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
+	57,  // 77: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
+	59,  // 78: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
+	61,  // 79: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
+	63,  // 80: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
+	64,  // 81: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
+	66,  // 82: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
+	68,  // 83: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
+	71,  // 84: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
+	73,  // 85: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
+	75,  // 86: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
+	77,  // 87: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
+	79,  // 88: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
+	81,  // 89: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
+	83,  // 90: post.v1.PostService.AddAvatarPhoto:input_type -> post.v1.AddAvatarPhotoRequest
+	85,  // 91: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
+	87,  // 92: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
+	89,  // 93: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
+	91,  // 94: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
+	92,  // 95: post.v1.PostService.SetAlbumCover:input_type -> post.v1.SetAlbumCoverRequest
+	93,  // 96: post.v1.PostService.MoveAlbumPhoto:input_type -> post.v1.MoveAlbumPhotoRequest
+	94,  // 97: post.v1.PostService.LikeAlbumPhoto:input_type -> post.v1.LikeAlbumPhotoRequest
+	96,  // 98: post.v1.PostService.UnlikeAlbumPhoto:input_type -> post.v1.UnlikeAlbumPhotoRequest
+	98,  // 99: post.v1.PostService.ListAlbumPhotoLikers:input_type -> post.v1.ListAlbumPhotoLikersRequest
+	101, // 100: post.v1.PostService.CreatePhotoComment:input_type -> post.v1.CreatePhotoCommentRequest
+	103, // 101: post.v1.PostService.DeletePhotoComment:input_type -> post.v1.DeletePhotoCommentRequest
+	104, // 102: post.v1.PostService.ListPhotoComments:input_type -> post.v1.ListPhotoCommentsRequest
+	52,  // 103: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
+	13,  // 104: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
+	107, // 105: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
+	15,  // 106: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
+	18,  // 107: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
+	107, // 108: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
+	107, // 109: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
+	107, // 110: post.v1.PostService.ArchivePost:output_type -> google.protobuf.Empty
+	107, // 111: post.v1.PostService.UnarchivePost:output_type -> google.protobuf.Empty
+	107, // 112: post.v1.PostService.CloseComments:output_type -> google.protobuf.Empty
+	107, // 113: post.v1.PostService.OpenComments:output_type -> google.protobuf.Empty
+	26,  // 114: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
+	28,  // 115: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
+	30,  // 116: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
+	32,  // 117: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
+	34,  // 118: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
+	36,  // 119: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
+	38,  // 120: post.v1.PostService.ListPostLikers:output_type -> post.v1.ListPostLikersResponse
+	40,  // 121: post.v1.PostService.ListCommentLikers:output_type -> post.v1.ListCommentLikersResponse
+	42,  // 122: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
+	107, // 123: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
+	45,  // 124: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
+	47,  // 125: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
+	49,  // 126: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
+	51,  // 127: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
+	6,   // 128: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
+	8,   // 129: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
+	10,  // 130: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
+	107, // 131: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
+	56,  // 132: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
+	58,  // 133: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
+	60,  // 134: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
+	62,  // 135: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
+	107, // 136: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
+	65,  // 137: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
+	67,  // 138: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
+	107, // 139: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
+	72,  // 140: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
+	74,  // 141: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
+	76,  // 142: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
+	78,  // 143: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
+	107, // 144: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
+	82,  // 145: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
+	84,  // 146: post.v1.PostService.AddAvatarPhoto:output_type -> post.v1.AddAvatarPhotoResponse
+	86,  // 147: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
+	88,  // 148: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
+	90,  // 149: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
+	107, // 150: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
+	107, // 151: post.v1.PostService.SetAlbumCover:output_type -> google.protobuf.Empty
+	107, // 152: post.v1.PostService.MoveAlbumPhoto:output_type -> google.protobuf.Empty
+	95,  // 153: post.v1.PostService.LikeAlbumPhoto:output_type -> post.v1.LikeAlbumPhotoResponse
+	97,  // 154: post.v1.PostService.UnlikeAlbumPhoto:output_type -> post.v1.UnlikeAlbumPhotoResponse
+	99,  // 155: post.v1.PostService.ListAlbumPhotoLikers:output_type -> post.v1.ListAlbumPhotoLikersResponse
+	102, // 156: post.v1.PostService.CreatePhotoComment:output_type -> post.v1.CreatePhotoCommentResponse
+	107, // 157: post.v1.PostService.DeletePhotoComment:output_type -> google.protobuf.Empty
+	105, // 158: post.v1.PostService.ListPhotoComments:output_type -> post.v1.ListPhotoCommentsResponse
+	107, // 159: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
+	104, // [104:160] is the sub-list for method output_type
+	48,  // [48:104] is the sub-list for method input_type
 	48,  // [48:48] is the sub-list for extension type_name
 	48,  // [48:48] is the sub-list for extension extendee
 	0,   // [0:48] is the sub-list for field type_name
@@ -6657,7 +7021,7 @@ func file_api_post_v1_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_post_v1_post_proto_rawDesc), len(file_api_post_v1_post_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   98,
+			NumMessages:   104,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

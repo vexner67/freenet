@@ -191,11 +191,52 @@ func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 	return nil
 }
 
-// ListByWall leaves out the pinned post, which the wall shows first.
-func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter, before uuid.UUID, limit int) ([]*post.Post, error) {
+// ListByWall leaves out of all posts, unless searched, the pinned one,
+// which the wall shows first.
+func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, pick service.WallPick, before uuid.UUID, limit int) ([]*post.Post, error) {
+	plain := pick.Filter == post.WallAll && pick.Query == ""
+
 	return r.list(ctx, func(p *post.Post) bool {
-		return p.WallID() == wallID && filter.Matches(p) && (filter != post.WallAll || !p.Pinned())
+		return p.WallID() == wallID && pick.Filter.Matches(p) && pick.Query.Matches(p) && (!plain || !p.Pinned())
 	}, before, limit)
+}
+
+// SetArchived unpins the post it puts away, as PostgreSQL does.
+func (r *PostRepository) SetArchived(ctx context.Context, id uuid.UUID, archived bool) error {
+	return r.switchPost(ctx, id, func(s *post.Stored) {
+		s.Archived = archived
+
+		if archived && r.s.pins[s.WallID] == id {
+			delete(r.s.pins, s.WallID)
+			s.Pinned = false
+		}
+	})
+}
+
+func (r *PostRepository) SetCommentsClosed(ctx context.Context, id uuid.UUID, closed bool) error {
+	return r.switchPost(ctx, id, func(s *post.Stored) { s.CommentsClosed = closed })
+}
+
+// switchPost replaces a post with a changed copy: posts handed out never
+// change.
+func (r *PostRepository) switchPost(ctx context.Context, id uuid.UUID, change func(*post.Stored)) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	p, ok := r.s.posts[id]
+	if !ok {
+		return post.ErrNotFound
+	}
+
+	stored := p.Stored()
+	change(&stored)
+	r.s.posts[id] = post.Restore(stored)
+
+	return nil
 }
 
 func (r *PostRepository) Update(ctx context.Context, p *post.Post) error {
@@ -281,6 +322,10 @@ func (r *PostRepository) Pinned(ctx context.Context, wallID uuid.UUID) (*post.Po
 // with its author, as in PostgreSQL.
 func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSources, before uuid.UUID, limit int) ([]*post.Post, error) {
 	match := func(p *post.Post) bool {
+		if p.Archived() {
+			return false
+		}
+
 		return (slices.Contains(sources.Authors, p.AuthorID()) && !p.FromWall()) || slices.Contains(sources.Walls, p.WallID())
 	}
 
@@ -318,7 +363,7 @@ func (r *PostRepository) list(ctx context.Context, match func(*post.Post) bool, 
 	return found, nil
 }
 
-func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, filter post.WallFilter) (int, error) {
+func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, pick service.WallPick) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, errs.Wrap("ctx.Err", err)
 	}
@@ -328,7 +373,7 @@ func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, filt
 
 	count := 0
 	for _, p := range r.s.posts {
-		if p.WallID() == wallID && filter.Matches(p) {
+		if p.WallID() == wallID && pick.Filter.Matches(p) && pick.Query.Matches(p) {
 			count++
 		}
 	}

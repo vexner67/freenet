@@ -31,8 +31,11 @@ var (
 	// ErrSystemAlbum: the site keeps the album ("Фотографии со
 	// страницы"); nobody renames or deletes it or adds photos by hand.
 	ErrSystemAlbum = errors.New("this album is kept by the site")
-	// ErrAvatarAlbumExists: the owner has their "Фотографии со страницы".
-	ErrAvatarAlbumExists = errors.New("the avatar album exists")
+	// ErrSystemAlbumExists: the owner has their album of this kind.
+	ErrSystemAlbumExists = errors.New("the album of this kind exists")
+	// ErrCannotMovePhoto: a photo moves to another album of the same
+	// owner, one made by people.
+	ErrCannotMovePhoto = errors.New("a photo moves between the albums of one owner")
 )
 
 // AlbumKind tells an album someone made ("") from one the site keeps.
@@ -43,10 +46,16 @@ const (
 	// AlbumAvatars is openvk's "Фотографии со страницы": every photo of
 	// the page, one album an owner.
 	AlbumAvatars AlbumKind = "avatars"
+	// AlbumWall is openvk's "Фотографии со стены": the photos of the posts
+	// a person wrote on their wall, one album an owner.
+	AlbumWall AlbumKind = "wall"
 )
 
-// avatarAlbumName is how openvk calls it.
-const avatarAlbumName AlbumName = "Фотографии со страницы"
+// systemAlbumNames are how openvk calls them.
+var systemAlbumNames = map[AlbumKind]AlbumName{
+	AlbumAvatars: "Фотографии со страницы",
+	AlbumWall:    "Фотографии со стены",
+}
 
 // AlbumName is what an album is called: one line, trimmed.
 type AlbumName string
@@ -99,6 +108,9 @@ type Album struct {
 	updatedAt time.Time
 	photos    int
 	kind      AlbumKind
+	// cover is the photo chosen to show the album ("Обложка альбома"),
+	// uuid.Nil while its first photo does.
+	cover uuid.UUID
 }
 
 // NewAlbum creates an album of ownerID. Whether the caller may create
@@ -115,14 +127,20 @@ func NewAlbum(ownerID uuid.UUID, name AlbumName, description Description, now ti
 	return &Album{id: id, ownerID: ownerID, name: name, description: description, createdAt: now, updatedAt: now}, nil
 }
 
-// NewAvatarAlbum creates "Фотографии со страницы" of ownerID.
-func NewAvatarAlbum(ownerID uuid.UUID, now time.Time) (*Album, error) {
-	a, err := NewAlbum(ownerID, avatarAlbumName, "", now)
+// NewSystemAlbum creates the album of ownerID the site keeps: "Фотографии
+// со страницы" or "Фотографии со стены".
+func NewSystemAlbum(ownerID uuid.UUID, kind AlbumKind, now time.Time) (*Album, error) {
+	name, ok := systemAlbumNames[kind]
+	if !ok {
+		return nil, ErrSystemAlbum
+	}
+
+	a, err := NewAlbum(ownerID, name, "", now)
 	if err != nil {
 		return nil, err
 	}
 
-	a.kind = AlbumAvatars
+	a.kind = kind
 
 	return a, nil
 }
@@ -137,6 +155,7 @@ type StoredAlbum struct {
 	UpdatedAt   time.Time
 	Photos      int
 	Kind        AlbumKind
+	Cover       uuid.UUID
 }
 
 // RestoreAlbum rebuilds an album from storage without validation or new
@@ -144,14 +163,14 @@ type StoredAlbum struct {
 func RestoreAlbum(s StoredAlbum) *Album {
 	return &Album{
 		id: s.ID, ownerID: s.OwnerID, name: s.Name, description: s.Description,
-		createdAt: s.CreatedAt, updatedAt: s.UpdatedAt, photos: s.Photos, kind: s.Kind,
+		createdAt: s.CreatedAt, updatedAt: s.UpdatedAt, photos: s.Photos, kind: s.Kind, cover: s.Cover,
 	}
 }
 
 func (a *Album) Stored() StoredAlbum {
 	return StoredAlbum{
 		ID: a.id, OwnerID: a.ownerID, Name: a.name, Description: a.description,
-		CreatedAt: a.createdAt, UpdatedAt: a.updatedAt, Photos: a.photos, Kind: a.kind,
+		CreatedAt: a.createdAt, UpdatedAt: a.updatedAt, Photos: a.photos, Kind: a.kind, Cover: a.cover,
 	}
 }
 
@@ -173,6 +192,32 @@ func (a *Album) CheckManual() error {
 // owns it renames it, deletes it and adds photos to it, as in openvk.
 func (a *Album) CanBeChangedBy(userID uuid.UUID, admin bool) bool {
 	return admin || userID == a.ownerID
+}
+
+// Cover is the photo chosen to show the album, uuid.Nil for its first.
+func (a *Album) Cover() uuid.UUID {
+	return a.cover
+}
+
+// CheckCover tells whether p may show the album ("Обложка альбома"): a
+// photo of the album itself.
+func (a *Album) CheckCover(p *AlbumPhoto) error {
+	if p.albumID != a.id {
+		return ErrAlbumPhotoNotFound
+	}
+
+	return nil
+}
+
+// CheckMove tells whether a photo of a may go to the album to: another
+// album of the same owner that people fill by hand. Out of an album the
+// site keeps a photo moves as out of any.
+func (a *Album) CheckMove(to *Album) error {
+	if to.id == a.id || to.ownerID != a.ownerID {
+		return ErrCannotMovePhoto
+	}
+
+	return to.CheckManual()
 }
 
 // Renamed returns a with a new name and description, as of now.

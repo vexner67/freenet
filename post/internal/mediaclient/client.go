@@ -13,6 +13,7 @@ import (
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/outbox"
+	"github.com/vexner67/freenet/post/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -28,6 +29,7 @@ const Stream = "media"
 const (
 	kindPublish = "publish_photos"
 	kindDelete  = "delete_photos"
+	kindCopy    = "copy_photos"
 )
 
 // Recorder adds a message to the outbox in the transaction of ctx.
@@ -52,6 +54,15 @@ func (o *Outbox) Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid
 
 func (o *Outbox) Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error {
 	return o.add(ctx, kindDelete, &mediav1.DeletePublishedPhotosRequest{OwnerId: ownerID.String(), PhotoIds: toStrings(photoIDs)})
+}
+
+func (o *Outbox) Copy(ctx context.Context, ownerID uuid.UUID, copies []service.PhotoCopy) error {
+	req := &mediav1.CopyPhotosRequest{OwnerId: ownerID.String(), Copies: make([]*mediav1.PhotoCopy, len(copies))}
+	for i, c := range copies {
+		req.Copies[i] = &mediav1.PhotoCopy{FromId: c.From.String(), ToId: c.To.String()}
+	}
+
+	return o.add(ctx, kindCopy, req)
 }
 
 func (o *Outbox) add(ctx context.Context, kind string, req proto.Message) error {
@@ -95,6 +106,8 @@ func (d *Deliverer) Deliver(ctx context.Context, m outbox.Message) error {
 		return call(ctx, m.Payload, &mediav1.PublishPhotosRequest{}, d.api.PublishPhotos)
 	case kindDelete:
 		return call(ctx, m.Payload, &mediav1.DeletePublishedPhotosRequest{}, d.api.DeletePublishedPhotos)
+	case kindCopy:
+		return call(ctx, m.Payload, &mediav1.CopyPhotosRequest{}, d.api.CopyPhotos)
 	default:
 		return outbox.Permanent(fmt.Errorf("unknown kind %q", m.Kind))
 	}
@@ -124,5 +137,6 @@ func call[Req proto.Message](ctx context.Context, payload []byte, req Req, fn rp
 // Nop is the PhotoKeeper when no media service is configured.
 type Nop struct{}
 
-func (Nop) Publish(context.Context, uuid.UUID, []uuid.UUID) error { return nil }
-func (Nop) Delete(context.Context, uuid.UUID, []uuid.UUID) error  { return nil }
+func (Nop) Publish(context.Context, uuid.UUID, []uuid.UUID) error      { return nil }
+func (Nop) Delete(context.Context, uuid.UUID, []uuid.UUID) error       { return nil }
+func (Nop) Copy(context.Context, uuid.UUID, []service.PhotoCopy) error { return nil }

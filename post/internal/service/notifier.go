@@ -61,10 +61,18 @@ type Notifier interface {
 // PhotoKeeper records what the media service has to do with the photos
 // of posts, inside the transaction of the change, as Notifier: media keeps
 // the photos of a published post for good and deletes those of a deleted
-// one. Unpublished photos it deletes after a while by itself.
+// one. Unpublished photos it deletes after a while by itself. Copy keeps
+// photos once more under new IDs: the copies outlive the post.
 type PhotoKeeper interface {
 	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+	Copy(ctx context.Context, ownerID uuid.UUID, copies []PhotoCopy) error
+}
+
+// PhotoCopy is a photo to keep once more as To.
+type PhotoCopy struct {
+	From uuid.UUID
+	To   uuid.UUID
 }
 
 // TxManager runs fn in one transaction: everything it saves is kept if it
