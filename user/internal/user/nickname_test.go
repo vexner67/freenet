@@ -30,6 +30,9 @@ func TestNewNickname(t *testing.T) {
 		{"Post", user.ErrNicknameReserved},
 		{"notifications", user.ErrNicknameReserved},
 		{"topic", user.ErrNicknameReserved},
+		{"Albums", user.ErrNicknameReserved},
+		{"album", user.ErrNicknameReserved},
+		{"photo", user.ErrNicknameReserved},
 		{"IM", user.ErrNicknameReserved},
 	}
 
