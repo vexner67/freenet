@@ -190,8 +190,8 @@ export const api = {
   block: (nickname) => authorized('PUT', `/api/v1/me/blacklist/${encodeURIComponent(nickname)}`),
   unblock: (nickname) => authorized('DELETE', `/api/v1/me/blacklist/${encodeURIComponent(nickname)}`),
   blacklist: (cursor = '') => authorized('GET', page('/api/v1/me/blacklist', cursor, 0)),
-  followers: (nickname, cursor = '', limit = 0) => request('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/followers`, cursor, limit)),
-  following: (nickname, cursor = '', limit = 0) => request('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit)),
+  followers: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/followers`, cursor, limit)),
+  following: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit)),
   feed: (cursor = '') => authorized('GET', page('/api/v1/feed', cursor, 0)),
 
   // onWall: post the photo on your wall too ("Опубликовать запись на стене").

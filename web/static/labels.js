@@ -84,13 +84,18 @@ export const messagesWrites = [
   ['nobody', 'Никто'],
 ];
 
-// clubsReads is "Кому видно мои группы" of openvk, with its "Друзьям" as
-// the people you follow.
-export const clubsReads = [
+// audiences are who sees a part of a page ("Кому видно мои группы",
+// "… мои фотографии", "… моих друзей", "… основную информацию моей
+// страницы" of openvk), with its "Друзьям" as the people you follow.
+export const audiences = [
   ['everyone', 'Всем желающим'],
+  ['users', 'Пользователям Freenet'],
   ['following', 'Тем, на кого я подписан(а)'],
   ['only_me', 'Только мне'],
 ];
+
+// pageReads is "Кому в интернете видно мою страницу" of openvk.
+export const pageReads = audiences.slice(0, 2);
 
 // adminsDisplays is "Список админов" of a community's settings in openvk.
 export const adminsDisplays = [
@@ -475,6 +480,9 @@ const errorTexts = {
   'club website is not a link': 'Укажите адрес сайта, например example.com.',
   'the new owner must be an admin of the club': 'Владельцем можно назначить только администратора группы.',
   "this user's clubs are hidden": 'Пользователь скрыл список своих групп.',
+  "this user's photos are hidden": 'Пользователь скрыл свои фотографии.',
+  "this user's follows are hidden": 'Пользователь скрыл список своих подписок.',
+  'this page is hidden': 'Настройки приватности этого пользователя не разрешают вам смотреть на его страницу.',
   'you cannot suggest posts here': 'В эту группу нельзя предлагать записи.',
   'suggestion not found': 'Запись уже опубликована или отклонена.',
   'fill in your profile before creating a club': 'Сначала заполните свою страницу.',

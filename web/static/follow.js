@@ -17,11 +17,14 @@ export function initFollow(profile, me, isOwner) {
     return `/follows?u=${encodeURIComponent(profile.nickname)}&type=${type}`;
   }
 
+  // "Кому видно моих друзей" hides both blocks, as openvk its "Друзья".
+  const hidden = profile.access && !profile.access.friends;
+
   async function renderBlock(type, total, label) {
     const block = $(`${type}-block`);
 
-    block.hidden = total === 0;
-    if (total === 0) return;
+    block.hidden = total === 0 || hidden;
+    if (block.hidden) return;
 
     $(`${type}-count`).textContent = label(total);
     $(`${type}-all`).href = listURL(type);

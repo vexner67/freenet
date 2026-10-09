@@ -1,0 +1,127 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Мои Настройки | Freenet</title>
+  <link rel="icon" href="data:,">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/settings.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title">Мои Настройки</div>
+      <div class="page-body">
+        <div class="tabs">
+          <a id="tab-main" href="/settings">Основное</a>
+          <a id="tab-privacy" href="/settings?act=privacy">Приватность</a>
+          <a href="/settings/blacklist">Чёрный список</a>
+        </div>
+        <p id="loading">Загрузка…</p>
+        <div class="error" id="error" hidden></div>
+        <div class="notice" id="notice" hidden><b>Изменения сохранены</b><br>Новые данные появятся на вашей странице.</div>
+
+        <div id="main" hidden>
+          <div class="section-title">Адрес Вашей электронной почты</div>
+          <table class="form">
+            <tr>
+              <th>Текущий адрес</th>
+              <td class="control" id="email"></td>
+            </tr>
+          </table>
+
+          <div class="section-title">Адрес Вашей страницы</div>
+          <form id="address">
+            <table class="form">
+              <tr>
+                <th>ID страницы</th>
+                <td class="control" id="page-id"></td>
+              </tr>
+              <tr>
+                <th><label for="nickname">Адрес страницы</label></th>
+                <td class="control"><input type="text" id="nickname" maxlength="32" autocomplete="username" spellcheck="false"></td>
+              </tr>
+            </table>
+            <div class="actions"><button class="button" type="submit">Сохранить</button></div>
+          </form>
+
+          <p class="hint settings-delete">Вы также можете <a id="delete-link">удалить свою страницу</a>.</p>
+        </div>
+
+        <form id="privacy" hidden>
+          <div class="section-title">Информация в профиле</div>
+          <table class="form">
+            <tr>
+              <th><label for="page-read">Кому в интернете видно мою страницу</label></th>
+              <td class="control"><select id="page-read"></select></td>
+            </tr>
+            <tr>
+              <th><label for="info-read">Кому видно основную информацию моей страницы</label></th>
+              <td class="control"><select id="info-read"></select></td>
+            </tr>
+            <tr>
+              <th>Показывать</th>
+              <td class="checks">
+                <label><input type="checkbox" id="show-birthday">дату рождения</label>
+                <label><input type="checkbox" id="show-relationship">семейное положение</label>
+                <label><input type="checkbox" id="show-worldview">мировоззрение</label>
+                <label><input type="checkbox" id="show-political-views">политические взгляды</label>
+                <p class="hint">Тем, кому видна основная информация. Почту для входа не видит никто.</p>
+              </td>
+            </tr>
+          </table>
+
+          <div class="section-title">Контент в профиле</div>
+          <table class="form">
+            <tr>
+              <th><label for="clubs-read">Кому видно мои группы</label></th>
+              <td class="control"><select id="clubs-read"></select></td>
+            </tr>
+            <tr>
+              <th><label for="photos-read">Кому видно мои фотографии</label></th>
+              <td class="control"><select id="photos-read"></select></td>
+            </tr>
+            <tr>
+              <th><label for="friends-read">Кому видно моих друзей</label></th>
+              <td class="control"><select id="friends-read"></select></td>
+            </tr>
+          </table>
+
+          <div class="section-title">Коммуникация</div>
+          <table class="form">
+            <tr>
+              <th><label for="wall-write">Кто может писать у меня на стене</label></th>
+              <td class="control"><select id="wall-write"></select></td>
+            </tr>
+            <tr>
+              <th><label for="messages-write">Кто может писать мне сообщения</label></th>
+              <td class="control">
+                <select id="messages-write"></select>
+                <p class="hint">Вам смогут ответить, если вы напишете первыми.</p>
+              </td>
+            </tr>
+          </table>
+
+          <div class="actions"><button class="button" type="submit">Сохранить</button></div>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/">о сайте</a><a href="/">правила</a><a href="/">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

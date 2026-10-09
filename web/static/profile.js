@@ -120,6 +120,11 @@ function render(user, isOwner) {
   )));
   renderAbout(user, isOwner);
 
+  // "Кому видно основную информацию моей страницы": openvk leaves the
+  // names, the photo and the status.
+  $('info').hidden = Boolean(user.infoHidden);
+  $('about-block').hidden = Boolean(user.infoHidden);
+
   $('edit').hidden = !isOwner;
   $('profile').hidden = false;
 
@@ -152,6 +157,20 @@ async function showClubs(user) {
   } catch {
     // Hidden by the user, or not to be had: the page works without it.
   }
+}
+
+// renderHidden is openvk's page whose owner hides it from the viewer
+// ("Кому в интернете видно мою страницу"): the name and why there is
+// nothing else.
+function renderHidden(profile) {
+  const name = fullName(profile);
+
+  document.title = `${name} | Freenet`;
+  $('title').textContent = name;
+  $('title-aside').textContent = '@' + profile.nickname;
+  $('error').replaceChildren(el('b', { textContent: 'Ошибка доступа' }), el('br'),
+    'Настройки приватности этого пользователя не разрешают вам смотреть на его страницу.');
+  $('error').hidden = false;
 }
 
 // renderLimited is openvk's page of someone blacklisted either way: the
@@ -220,6 +239,8 @@ try {
   if (profile.deactivated) {
     renderDeactivated(profile, isOwner);
     initPhoto(profile, false);
+  } else if (profile.pageHidden) {
+    renderHidden(profile);
   } else if (profile.blockedMe || profile.blockedByMe) {
     renderLimited(profile);
     initPhoto(profile, false);
@@ -227,8 +248,9 @@ try {
     render(isOwner ? me : profile, isOwner);
     initPhoto(isOwner ? me : profile, isOwner);
     initFollow(profile, me, isOwner);
-    showAlbums(profile);
-    showClubs(profile);
+    // As openvk, the blocks the owner hides from the viewer are not there.
+    if (profile.access.photos) showAlbums(profile);
+    if (profile.access.clubs) showClubs(profile);
 
     // As on openvk: write to anyone but yourself.
     if (me && !isOwner) {
@@ -238,7 +260,7 @@ try {
   }
 
   // As on openvk, also on the page of whoever blacklisted the viewer.
-  if (me && !isOwner && !profile.deactivated) {
+  if (me && !isOwner && !profile.deactivated && !profile.pageHidden) {
     initBlacklistLink(profile, () => location.reload());
   }
 } catch (e) {

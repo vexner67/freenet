@@ -59,8 +59,8 @@ export function renderChrome(me) {
       el('a', { href: '/feed', textContent: 'Мои Новости' }),
       el('a', { href: '/notifications', textContent: 'Мои Ответы' },
         el('span', { className: 'counter', id: 'notifications-count', hidden: true })),
+      el('a', { href: '/settings', textContent: 'Мои Настройки' }),
       el('a', { href: '/search', textContent: 'Люди' }),
-      el('a', { href: '/edit', textContent: 'Редактировать' }),
       el('a', { href: '/', textContent: 'Выйти', onclick: logout }),
     );
     showCounter('messages');
