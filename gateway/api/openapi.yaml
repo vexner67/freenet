@@ -2949,6 +2949,8 @@ paths:
       description: |
         Posts of the people you follow and your own, newest first, each with
         its author. Page with `cursor` = `nextCursor`; `total` is always 0.
+        Posts marked as adult are left out when your `interface.nsfw` is
+        `hide`.
       security: [{ bearer: [] }]
       parameters:
         - name: cursor
@@ -3351,6 +3353,13 @@ components:
           type: array
           description: The links taken out of the left menu; none by default
           items: { type: string, enum: [photos, messages, groups, events, feed, notifications] }
+        theme: { type: string, enum: [default, blue, dark], description: "The look of the whole site (\"Стиль\"); default when left out" }
+        hideRating: { type: boolean, description: "Takes \"Заполненность страницы\" off the pages its owner reads (\"Рейтинг\")" }
+        nsfw: { type: string, enum: [blur, hide, show], description: "Posts marked as adult: blurred until clicked (the default), blurred and left out of the news, or shown as any other" }
+        postView: { type: string, enum: [old, microblog], description: "How posts are laid out (\"Вид постов\"); old by default" }
+        timezone:
+          type: [integer, "null"]
+          description: The clock dates are shown by, minutes east of UTC (-720..840 in steps of 15); null for the browser's own
 
     AdminsDisplay:
       type: string
@@ -3430,6 +3439,7 @@ components:
         photos: { $ref: "#/components/schemas/PhotoIDs" }
         fromClub: { type: boolean, description: "Speak for the community (admins only; always on a closed wall)" }
         signed: { type: boolean, description: "With fromClub: name yourself under the post (\"Подпись автора\")" }
+        nsfw: { type: boolean, description: "Marks the post as adult (\"Содержит NSFW-контент\")" }
 
     NewPost:
       type: object
@@ -3437,6 +3447,7 @@ components:
       properties:
         text: { type: string, maxLength: 60000 }
         photos: { $ref: "#/components/schemas/PhotoIDs" }
+        nsfw: { type: boolean, description: "Marks the post as adult (\"Содержит NSFW-контент\"); an edit that leaves it out keeps the mark" }
 
     PhotoIDs:
       description: IDs from `POST /api/v1/me/photos`, yours, in the order shown
@@ -3490,6 +3501,7 @@ components:
         pinned: { type: boolean, description: "Shown first on its wall (\"закреплено\")" }
         archived: { type: boolean, description: "Put away in the archive of its wall (\"Архив записей\"): only the owner of the wall, or the admins of the community, see it" }
         commentsClosed: { type: boolean, description: "It takes no new comments: the owner of the wall closed them" }
+        nsfw: { type: boolean, description: "Its author marked it as adult (\"Содержит NSFW-контент\"): the site blurs it until clicked, as the reader's settings say" }
         fromWall:
           type: boolean
           description: "The post speaks for its wall, a community (\"От имени сообщества\"): `author` is the community, `wall` null, who wrote it is not told"
@@ -3512,6 +3524,7 @@ components:
         id: { type: string, format: uuid }
         deleted: { type: boolean }
         avatarUpdate: { type: boolean, description: "It shows a new photo, as Post's avatarUpdate" }
+        nsfw: { type: boolean, description: "Its author marked it as adult, as Post's nsfw" }
         author:
           oneOf:
             - $ref: "#/components/schemas/Author"

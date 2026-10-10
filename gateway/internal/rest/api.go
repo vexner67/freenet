@@ -93,7 +93,7 @@ type Posts interface {
 	Create(ctx context.Context, accessToken string, np model.NewPost) (model.Post, error)
 	Repost(ctx context.Context, accessToken, postID string, nr model.NewRepost) (model.Post, error)
 	Delete(ctx context.Context, accessToken, id string) error
-	Edit(ctx context.Context, accessToken, id, text string, photoIDs []string) (model.Post, error)
+	Edit(ctx context.Context, accessToken, id string, edit model.PostEdit) (model.Post, error)
 	Pin(ctx context.Context, accessToken, id string) error
 	Unpin(ctx context.Context, accessToken, id string) error
 	Get(ctx context.Context, accessToken, id string) (model.Post, error)

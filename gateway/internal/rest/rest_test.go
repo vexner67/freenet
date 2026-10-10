@@ -47,6 +47,8 @@ func (f *fakeAuth) RefreshToken(context.Context, string) (model.Tokens, error) {
 func (f *fakeAuth) Logout(context.Context, string) error { return f.err }
 
 type fakeUsers struct {
+	// ui is how the site looks to the caller, as GetMe tells.
+	ui                                              model.Interface
 	token, statsToken, followed, unfollowed, listed string
 	profileIDs                                      []string
 	profileCalls                                    int
@@ -81,7 +83,7 @@ type fakeUsers struct {
 }
 
 func (f *fakeUsers) user() model.User {
-	u := model.User{ID: "u1", Email: "ann@example.com", Profile: f.profile, ProfileCompleted: f.profile.Nickname != "", About: f.about}
+	u := model.User{ID: "u1", Email: "ann@example.com", Profile: f.profile, ProfileCompleted: f.profile.Nickname != "", About: f.about, Interface: f.ui}
 	if f.deactivated {
 		u.Deactivated, u.PurgeAt = true, time.Date(2027, 5, 7, 12, 0, 0, 0, time.UTC)
 	}
@@ -358,6 +360,7 @@ func (f *fakeUsers) markedOnline() []string {
 
 type fakePosts struct {
 	authors, walls         []string
+	hideNSFW               bool
 	newPost                model.NewPost
 	token, cursor, deleted string
 	limit                  int
@@ -419,11 +422,13 @@ func (f *fakePosts) DeleteSuggestion(_ context.Context, token, id string) error 
 
 func (f *fakePosts) Create(_ context.Context, token string, np model.NewPost) (model.Post, error) {
 	f.token, f.wall, f.created, f.photos, f.newPost = token, np.WallID, np.Text, np.PhotoIDs, np
-	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, Mine: true, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
+	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, NSFW: np.NSFW, Mine: true, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
 }
 
 // Edit edits the posts Get knows.
-func (f *fakePosts) Edit(ctx context.Context, token, id, text string, photoIDs []string) (model.Post, error) {
+func (f *fakePosts) Edit(ctx context.Context, token, id string, edit model.PostEdit) (model.Post, error) {
+	text, photoIDs := edit.Text, edit.PhotoIDs
+
 	p, err := f.Get(ctx, token, id)
 	if err != nil {
 		return model.Post{}, err
@@ -524,7 +529,7 @@ func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comme
 }
 
 func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSources, cursor string, _ int) (model.PostPage, error) {
-	f.token, f.authors, f.walls, f.cursor = token, sources.Authors, sources.Walls, cursor
+	f.token, f.authors, f.walls, f.cursor, f.hideNSFW = token, sources.Authors, sources.Walls, cursor, sources.HideNSFW
 	return model.PostPage{
 		Posts: []model.Post{
 			{ID: "p3", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},

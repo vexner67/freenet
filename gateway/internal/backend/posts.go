@@ -31,6 +31,7 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 		ClubWall: np.ClubWall,
 		FromWall: np.FromWall,
 		Signed:   np.Signed,
+		Nsfw:     np.NSFW,
 
 		AvatarUpdate: np.AvatarUpdate,
 	})
@@ -62,8 +63,8 @@ func (p *Posts) Delete(ctx context.Context, accessToken, id string) error {
 }
 
 // Edit changes the text and photos of the caller's post and returns it.
-func (p *Posts) Edit(ctx context.Context, accessToken, id, text string, photoIDs []string) (model.Post, error) {
-	resp, err := p.api.EditPost(withToken(ctx, accessToken), &postv1.EditPostRequest{Id: id, Text: text, PhotoIds: photoIDs})
+func (p *Posts) Edit(ctx context.Context, accessToken, id string, edit model.PostEdit) (model.Post, error) {
+	resp, err := p.api.EditPost(withToken(ctx, accessToken), &postv1.EditPostRequest{Id: id, Text: edit.Text, PhotoIds: edit.PhotoIDs, Nsfw: edit.NSFW})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.EditPost", fromStatus(err))
 	}
@@ -168,6 +169,7 @@ func (p *Posts) Feed(ctx context.Context, accessToken string, sources model.Feed
 	resp, err := p.api.ListFeed(withToken(ctx, accessToken), &postv1.ListFeedRequest{
 		AuthorIds: sources.Authors,
 		WallIds:   sources.Walls,
+		HideNsfw:  sources.HideNSFW,
 		Cursor:    cursor,
 		Limit:     toLimit(limit),
 	})
@@ -401,6 +403,7 @@ func toPost(p *postv1.Post) model.Post {
 		Pinned:         p.GetPinned(),
 		Archived:       p.GetArchived(),
 		CommentsClosed: p.GetCommentsClosed(),
+		NSFW:           p.GetNsfw(),
 		FromWall:       p.GetFromWall(),
 		Signed:         p.GetSigned(),
 		AvatarUpdate:   p.GetAvatarUpdate(),
