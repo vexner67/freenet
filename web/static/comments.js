@@ -13,11 +13,13 @@ export function commentAnchor(id) {
 }
 
 // commentHearts are how the heart of a comment is put, taken off and
-// counted; a message of a topic has its own (topicHearts).
+// counted; a message of a topic and a comment under a photo have their
+// own (topicHearts, photoCommentHearts).
 const commentHearts = { like: api.likeComment, unlike: api.unlikeComment, likers: api.commentLikers };
 
-// topicHearts: nobody lists who liked a message of a topic.
-export const topicHearts = { like: api.likeTopicMessage, unlike: api.unlikeTopicMessage, likers: null };
+export const topicHearts = { like: api.likeTopicMessage, unlike: api.unlikeTopicMessage, likers: api.topicMessageLikers };
+
+export const photoCommentHearts = { like: api.likePhotoComment, unlike: api.unlikePhotoComment, likers: api.photoCommentLikers };
 
 // commentNode renders a comment. Options:
 //   onDelete(comment, node) adds a "Удалить" link;
