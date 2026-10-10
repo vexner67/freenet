@@ -3,6 +3,8 @@ package postgres
 import (
 	"context"
 	"errors"
+	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -89,7 +91,10 @@ const getMessageQuery = `
 		text,
 		photo_ids,
 		post_id,
-		created_at
+		created_at,
+		edited_at,
+		hidden_from_sender,
+		hidden_from_recipient
 	FROM messages
 	WHERE id = $1
 `
@@ -106,7 +111,8 @@ func (r *MessageRepository) Get(ctx context.Context, id uuid.UUID) (*message.Mes
 	return m, nil
 }
 
-// The dialog queries take the pair as $1, $2 in any order.
+// The dialog queries take the reader as $1 and the peer as $2: messages
+// the reader deleted for themselves are left out.
 const (
 	listMessagesBeforeQuery = `
 		SELECT
@@ -116,11 +122,15 @@ const (
 			text,
 			photo_ids,
 			post_id,
-			created_at
+			created_at,
+			edited_at,
+			hidden_from_sender,
+			hidden_from_recipient
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
 			AND id < $3
+			AND NOT CASE WHEN sender_id = $1 THEN hidden_from_sender ELSE hidden_from_recipient END
 		ORDER BY id DESC
 		LIMIT $4
 	`
@@ -132,11 +142,15 @@ const (
 			text,
 			photo_ids,
 			post_id,
-			created_at
+			created_at,
+			edited_at,
+			hidden_from_sender,
+			hidden_from_recipient
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
 			AND id > $3
+			AND NOT CASE WHEN sender_id = $1 THEN hidden_from_sender ELSE hidden_from_recipient END
 		ORDER BY id
 		LIMIT $4
 	`
@@ -191,8 +205,16 @@ func scanMessage(row pgx.Row) (*message.Message, error) {
 		post   *uuid.UUID
 	)
 
-	if err := row.Scan(&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &post, &s.CreatedAt); err != nil {
+	var editedAt *time.Time
+
+	err := row.Scan(&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &post, &s.CreatedAt,
+		&editedAt, &s.HiddenFromSender, &s.HiddenFromRecipient)
+	if err != nil {
 		return nil, err
+	}
+
+	if editedAt != nil {
+		s.EditedAt = editedAt.UTC()
 	}
 
 	return restore(s, text, photos, post), nil
@@ -259,7 +281,10 @@ const listDialogsQuery = `
 		m.text,
 		m.photo_ids,
 		m.post_id,
-		m.created_at
+		m.created_at,
+		m.edited_at,
+		m.hidden_from_sender,
+		m.hidden_from_recipient
 	FROM dialogs d
 	JOIN messages m ON m.id = d.last_message_id
 	LEFT JOIN dialogs p ON p.user_id = d.peer_id AND p.peer_id = d.user_id
@@ -305,10 +330,17 @@ func scanDialog(row pgx.Row) (message.Dialog, error) {
 		post   *uuid.UUID
 	)
 
+	var editedAt *time.Time
+
 	err := row.Scan(&d.PeerID, &d.LastIncomingID, &d.Marks.Mine, &d.Marks.Theirs,
-		&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &post, &s.CreatedAt)
+		&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &post, &s.CreatedAt,
+		&editedAt, &s.HiddenFromSender, &s.HiddenFromRecipient)
 	if err != nil {
 		return message.Dialog{}, err
+	}
+
+	if editedAt != nil {
+		s.EditedAt = editedAt.UTC()
 	}
 
 	d.LastMessage = restore(s, text, photos, post)
@@ -400,7 +432,8 @@ func (r *DialogRepository) MarkRead(ctx context.Context, userID, peerID, upTo uu
 // mark stays). The sides are locked in user_id order first, as Save
 // writes them. A message sent meanwhile has moved the side on, and a side
 // pointing elsewhere is left alone: the CTEs see the messages as they
-// were, hence "id <> g.id".
+// were, hence "id <> g.id". A side comes back only to a message it has
+// not deleted for itself.
 const deleteMessageQuery = `
 	WITH gone AS (
 		DELETE FROM messages
@@ -422,6 +455,7 @@ const deleteMessageQuery = `
 					WHERE m.user_lo = g.user_lo
 						AND m.user_hi = g.user_hi
 						AND m.id <> g.id
+						AND NOT CASE WHEN m.sender_id = d.user_id THEN m.hidden_from_sender ELSE m.hidden_from_recipient END
 					ORDER BY m.id DESC
 					LIMIT 1
 				), '00000000-0000-0000-0000-000000000000')
@@ -435,6 +469,7 @@ const deleteMessageQuery = `
 						AND m.user_hi = g.user_hi
 						AND m.sender_id = d.peer_id
 						AND m.id <> g.id
+						AND NOT m.hidden_from_recipient
 					ORDER BY m.id DESC
 					LIMIT 1
 				), '00000000-0000-0000-0000-000000000000')
@@ -461,6 +496,130 @@ func (r *MessageRepository) Delete(ctx context.Context, m *message.Message) erro
 	return nil
 }
 
+const updateMessageQuery = `
+	UPDATE messages
+	SET text = $2,
+		edited_at = $3
+	WHERE id = $1
+`
+
+func (r *MessageRepository) Update(ctx context.Context, m *message.Message) error {
+	tag, err := r.conn(ctx).Exec(ctx, updateMessageQuery, m.ID(), m.Text().String(), m.EditedAt())
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return message.ErrNotFound
+	}
+
+	return nil
+}
+
+// hideMessageQuery deletes the message for one of its sides ($2) and, in
+// the same statement, brings that side of the dialog back to the newest
+// message it still has, if the hidden one was its last, as
+// deleteMessageQuery does for both. The CTEs see the messages as they
+// were, hence "id <> h.id".
+const hideMessageQuery = `
+	WITH hidden AS (
+		UPDATE messages
+		SET hidden_from_sender = hidden_from_sender OR sender_id = $2,
+			hidden_from_recipient = hidden_from_recipient OR recipient_id = $2
+		WHERE id = $1
+			AND $2 IN (sender_id, recipient_id)
+		RETURNING id, user_lo, user_hi
+	), moved AS (
+		UPDATE dialogs d
+		SET last_message_id = CASE
+				WHEN d.last_message_id <> h.id THEN d.last_message_id
+				ELSE COALESCE((
+					SELECT m.id
+					FROM messages m
+					WHERE m.user_lo = h.user_lo
+						AND m.user_hi = h.user_hi
+						AND m.id <> h.id
+						AND NOT CASE WHEN m.sender_id = d.user_id THEN m.hidden_from_sender ELSE m.hidden_from_recipient END
+					ORDER BY m.id DESC
+					LIMIT 1
+				), '00000000-0000-0000-0000-000000000000')
+			END,
+			last_incoming_id = CASE
+				WHEN d.last_incoming_id <> h.id THEN d.last_incoming_id
+				ELSE COALESCE((
+					SELECT m.id
+					FROM messages m
+					WHERE m.user_lo = h.user_lo
+						AND m.user_hi = h.user_hi
+						AND m.sender_id = d.peer_id
+						AND m.id <> h.id
+						AND NOT m.hidden_from_recipient
+					ORDER BY m.id DESC
+					LIMIT 1
+				), '00000000-0000-0000-0000-000000000000')
+			END
+		FROM hidden h
+		WHERE d.user_id = $2
+			AND d.peer_id IN (h.user_lo, h.user_hi)
+	)
+	SELECT count(*)
+	FROM hidden
+`
+
+func (r *MessageRepository) Hide(ctx context.Context, m *message.Message, userID uuid.UUID) error {
+	var hidden int
+
+	if err := r.conn(ctx).QueryRow(ctx, hideMessageQuery, m.ID(), userID).Scan(&hidden); err != nil {
+		return errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	if hidden == 0 {
+		return message.ErrNotFound
+	}
+
+	return nil
+}
+
+// searchMessagesQuery: $2 is the peer of one dialog, NULL for all the
+// dialogs of the user $1; $3 is the pattern of what the messages say.
+const searchMessagesQuery = `
+	SELECT
+		id,
+		sender_id,
+		recipient_id,
+		text,
+		photo_ids,
+		post_id,
+		created_at,
+		edited_at,
+		hidden_from_sender,
+		hidden_from_recipient
+	FROM messages
+	WHERE $1 IN (sender_id, recipient_id)
+		AND ($2::uuid IS NULL OR $2 IN (sender_id, recipient_id))
+		AND text ILIKE $3
+		AND id < $4
+		AND NOT CASE WHEN sender_id = $1 THEN hidden_from_sender ELSE hidden_from_recipient END
+	ORDER BY id DESC
+	LIMIT $5
+`
+
+func (r *MessageRepository) Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, before uuid.UUID, limit int) ([]*message.Message, error) {
+	if before == uuid.Nil {
+		before = newestCursor
+	}
+
+	// The wildcards of LIKE in the query are themselves.
+	pattern := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(q.String()) + "%"
+
+	rows, err := r.pool.Query(ctx, searchMessagesQuery, userID, postIDToDB(peerID), pattern, before, limit)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+
+	return collectMessages(rows)
+}
+
 // deleteUserDialogsQuery deletes the messages of every dialog of the user
 // and both sides of each dialog, and returns the deleted messages that had
 // photos; the CTEs see the dialogs as they were.
@@ -478,7 +637,10 @@ const deleteUserDialogsQuery = `
 			m.text,
 			m.photo_ids,
 			m.post_id,
-			m.created_at
+			m.created_at,
+			m.edited_at,
+			m.hidden_from_sender,
+			m.hidden_from_recipient
 	), gone_dialogs AS (
 		DELETE FROM dialogs
 		WHERE user_id = $1
@@ -495,7 +657,10 @@ const deleteUserDialogsQuery = `
 		text,
 		photo_ids,
 		post_id,
-		created_at
+		created_at,
+		edited_at,
+		hidden_from_sender,
+		hidden_from_recipient
 	FROM gone_messages
 	WHERE cardinality(photo_ids) > 0
 `

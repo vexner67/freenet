@@ -22,6 +22,9 @@ type MessageService interface {
 	Newer(ctx context.Context, userID, peerID, after uuid.UUID, size int) (service.HistoryPage, error)
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
 	Delete(ctx context.Context, userID, id uuid.UUID) error
+	Hide(ctx context.Context, userID, id uuid.UUID) error
+	Edit(ctx context.Context, userID, id uuid.UUID, text message.Text) (*message.Message, error)
+	Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, cursor uuid.UUID, size int) (service.SearchPage, error)
 	HasMessagesFrom(ctx context.Context, userID, peerID uuid.UUID) (bool, error)
 	Subscribe(userID uuid.UUID) (<-chan service.Event, func())
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
@@ -248,6 +251,85 @@ func (h *MessageHandler) DeleteMessage(ctx context.Context, req *messagev1.Delet
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) HideMessage(ctx context.Context, req *messagev1.HideMessageRequest) (*emptypb.Empty, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := parseID(req.GetId(), "invalid message id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.messageService.Hide(ctx, userID, id); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) EditMessage(ctx context.Context, req *messagev1.EditMessageRequest) (*messagev1.EditMessageResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := parseID(req.GetId(), "invalid message id")
+	if err != nil {
+		return nil, err
+	}
+
+	text, err := message.NewText(req.GetText())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	m, err := h.messageService.Edit(ctx, userID, id, text)
+	if err != nil {
+		return nil, err
+	}
+
+	return &messagev1.EditMessageResponse{Message: toProtoMessage(m, false)}, nil
+}
+
+func (h *MessageHandler) SearchMessages(ctx context.Context, req *messagev1.SearchMessagesRequest) (*messagev1.SearchMessagesResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	peerID, err := parseOptionalID(req.GetPeerId(), "invalid peer id")
+	if err != nil {
+		return nil, err
+	}
+
+	query, err := message.NewQuery(req.GetQuery())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	cursor, err := parseOptionalID(req.GetCursor(), "invalid cursor")
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.messageService.Search(ctx, userID, peerID, query, cursor, int(req.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &messagev1.SearchMessagesResponse{
+		Messages:   make([]*messagev1.Message, 0, len(page.Messages)),
+		NextCursor: optionalID(page.NextCursor),
+	}
+	for _, m := range page.Messages {
+		resp.Messages = append(resp.Messages, toProtoMessage(m, false))
+	}
+
+	return resp, nil
 }
 
 func parseID(s, invalid string) (uuid.UUID, error) {

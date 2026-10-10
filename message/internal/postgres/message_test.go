@@ -416,3 +416,139 @@ func TestMessageRepository_Delete(t *testing.T) {
 		}
 	})
 }
+
+func TestMessageRepository_EditHideSearch(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	messages := postgres.NewMessageRepository(pool)
+	dialogs := postgres.NewDialogRepository(pool)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	save := func(from, to uuid.UUID, text string) *message.Message {
+		t.Helper()
+		m, err := message.New(from, to, message.RestoreContent(message.Text(text), nil, uuid.Nil), time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = messages.Save(ctx, m); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+		return m
+	}
+	says := func(found []*message.Message) []string {
+		out := make([]string, len(found))
+		for i, m := range found {
+			out[i] = m.Text().String()
+		}
+		return out
+	}
+	side := func(user uuid.UUID) message.Dialog {
+		t.Helper()
+		list, err := dialogs.List(ctx, user, uuid.Nil, 10)
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, d := range list {
+			if d.PeerID == ann || d.PeerID == bob {
+				return d
+			}
+		}
+		return message.Dialog{}
+	}
+
+	first := save(ann, bob, "Еду на море")
+	second := save(ann, bob, "скидка 50%")
+	fromBob := save(bob, ann, "МОРЕ волнуется")
+	save(cat, ann, "на море хорошо")
+
+	// Edit: the text and when, read back.
+	edited, err := first.Edited(ann, "Еду на море!", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = messages.Update(ctx, edited); err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if got, err := messages.Get(ctx, first.ID()); err != nil || got.Text() != "Еду на море!" || !got.EditedAt().Equal(edited.EditedAt()) {
+		t.Fatalf("the edited message = %+v, %v", got, err)
+	}
+	if got, _ := messages.Get(ctx, second.ID()); !got.EditedAt().IsZero() {
+		t.Fatal("a message never edited says it was")
+	}
+	missing, _ := message.New(ann, bob, message.RestoreContent("x", nil, uuid.Nil), time.Now())
+	if err = messages.Update(ctx, missing); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("Update of no message: %v", err)
+	}
+
+	// Search: any case, the wildcards as themselves, one dialog or all.
+	sea, _ := message.NewQuery("море")
+	if found, err := messages.Search(ctx, ann, uuid.Nil, sea, uuid.Nil, 10); err != nil || !slices.Equal(says(found), []string{"на море хорошо", "МОРЕ волнуется", "Еду на море!"}) {
+		t.Fatalf("море = %v, %v", says(found), err)
+	}
+	if found, _ := messages.Search(ctx, ann, bob, sea, uuid.Nil, 10); !slices.Equal(says(found), []string{"МОРЕ волнуется", "Еду на море!"}) {
+		t.Fatalf("море with bob = %v", says(found))
+	}
+	if found, _ := messages.Search(ctx, ann, bob, sea, fromBob.ID(), 10); !slices.Equal(says(found), []string{"Еду на море!"}) {
+		t.Fatalf("море before the cursor = %v", says(found))
+	}
+	percent, _ := message.NewQuery("%")
+	if found, _ := messages.Search(ctx, ann, uuid.Nil, percent, uuid.Nil, 10); !slices.Equal(says(found), []string{"скидка 50%"}) {
+		t.Fatalf("%% = %v", says(found))
+	}
+	if found, _ := messages.Search(ctx, cat, bob, sea, uuid.Nil, 10); len(found) != 0 {
+		t.Fatalf("cat finds what ann and bob wrote: %v", says(found))
+	}
+
+	// Hide: ann deletes bob's message for herself, her side falls back.
+	if err = messages.Hide(ctx, fromBob, ann); err != nil {
+		t.Fatalf("Hide: %v", err)
+	}
+	if got, _ := messages.Get(ctx, fromBob.ID()); got.VisibleTo(ann) || !got.VisibleTo(bob) {
+		t.Fatalf("after Hide = %+v", got)
+	}
+	if d := side(ann); d.PeerID != bob || d.LastMessage.ID() != second.ID() || d.LastIncomingID != uuid.Nil || d.HasUnread() {
+		t.Fatalf("ann's side = %+v", d)
+	}
+	if d := side(bob); d.LastMessage.ID() != fromBob.ID() {
+		t.Fatalf("bob's side = %+v", d)
+	}
+	if anns, _ := messages.ListBefore(ctx, ann, bob, uuid.Nil, 10); len(anns) != 2 {
+		t.Fatalf("ann reads %v", says(anns))
+	}
+	if anns, _ := messages.ListAfter(ctx, ann, bob, first.ID(), 10); !slices.Equal(says(anns), []string{"скидка 50%"}) {
+		t.Fatalf("ann reads after the first %v", says(anns))
+	}
+	if bobs, _ := messages.ListBefore(ctx, bob, ann, uuid.Nil, 10); len(bobs) != 3 {
+		t.Fatalf("bob reads %v", says(bobs))
+	}
+	if found, _ := messages.Search(ctx, ann, bob, sea, uuid.Nil, 10); !slices.Equal(says(found), []string{"Еду на море!"}) {
+		t.Fatalf("ann finds a hidden message: %v", says(found))
+	}
+	if err = messages.Hide(ctx, fromBob, cat); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("a stranger hides: %v", err)
+	}
+
+	// Deleted for both, a message leaves each side to what that side has:
+	// ann's does not come back to the message she hid.
+	if err = messages.Delete(ctx, second); err != nil {
+		t.Fatal(err)
+	}
+	if d := side(ann); d.LastMessage.ID() != first.ID() {
+		t.Fatalf("ann's side after the delete = %+v", d.LastMessage)
+	}
+	if d := side(bob); d.LastMessage.ID() != fromBob.ID() {
+		t.Fatalf("bob's side after the delete = %+v", d.LastMessage)
+	}
+}

@@ -16,7 +16,7 @@ import (
 // Channel is the Redis channel of the events.
 const Channel = "message:events"
 
-var errNoEvent = errors.New("event is neither a message, a read mark nor a deletion")
+var errNoEvent = errors.New("event is neither a message, a read mark, a deletion nor an edit")
 
 // EventCodec is a pubsub.Codec for service.Event.
 type EventCodec struct{}
@@ -26,6 +26,7 @@ type eventJSON struct {
 	Message *messageJSON `json:"message,omitempty"`
 	Read    *readJSON    `json:"read,omitempty"`
 	Deleted *deletedJSON `json:"deleted,omitempty"`
+	Edited  *messageJSON `json:"edited,omitempty"`
 }
 
 type deletedJSON struct {
@@ -42,6 +43,44 @@ type messageJSON struct {
 	Photos      []uuid.UUID `json:"photos,omitempty"`
 	Post        uuid.UUID   `json:"post"`
 	CreatedAt   time.Time   `json:"created_at"`
+	// EditedAt is zero for a message never edited.
+	EditedAt time.Time `json:"edited_at"`
+}
+
+func toMessageJSON(m *message.Message) *messageJSON {
+	return &messageJSON{
+		ID:          m.ID(),
+		SenderID:    m.SenderID(),
+		RecipientID: m.RecipientID(),
+		Text:        m.Text().String(),
+		Photos:      m.Photos(),
+		Post:        m.Post(),
+		CreatedAt:   m.CreatedAt(),
+		EditedAt:    m.EditedAt(),
+	}
+}
+
+// message rebuilds the message of an event. It comes from Redis, so it
+// is checked as any input is.
+func (m *messageJSON) message() (*message.Message, error) {
+	text, err := message.NewText(m.Text)
+	if err != nil {
+		return nil, errs.Wrap("message.NewText", err)
+	}
+
+	photos, err := message.NewPhotos(m.Photos)
+	if err != nil {
+		return nil, errs.Wrap("message.NewPhotos", err)
+	}
+
+	content, err := message.NewContent(text, photos, m.Post)
+	if err != nil {
+		return nil, errs.Wrap("message.NewContent", err)
+	}
+
+	return message.Restore(message.Stored{
+		ID: m.ID, SenderID: m.SenderID, RecipientID: m.RecipientID, Content: content, CreatedAt: m.CreatedAt, EditedAt: m.EditedAt,
+	}), nil
 }
 
 type readJSON struct {
@@ -55,16 +94,9 @@ func (EventCodec) Encode(userID uuid.UUID, e service.Event) ([]byte, error) {
 
 	switch {
 	case e.Message != nil:
-		m := e.Message
-		ej.Message = &messageJSON{
-			ID:          m.ID(),
-			SenderID:    m.SenderID(),
-			RecipientID: m.RecipientID(),
-			Text:        m.Text().String(),
-			Photos:      m.Photos(),
-			Post:        m.Post(),
-			CreatedAt:   m.CreatedAt(),
-		}
+		ej.Message = toMessageJSON(e.Message)
+	case e.Edited != nil:
+		ej.Edited = toMessageJSON(e.Edited)
 	case e.Read != nil:
 		ej.Read = &readJSON{ReaderID: e.Read.ReaderID, PeerID: e.Read.PeerID, UpTo: e.Read.UpTo}
 	case e.Deleted != nil:
@@ -89,29 +121,19 @@ func (EventCodec) Decode(data []byte) (uuid.UUID, service.Event, error) {
 
 	switch {
 	case ej.Message != nil:
-		m := ej.Message
-
-		// From Redis, so checked as any input is.
-		text, err := message.NewText(m.Text)
+		m, err := ej.Message.message()
 		if err != nil {
-			return uuid.Nil, service.Event{}, errs.Wrap("message.NewText", err)
+			return uuid.Nil, service.Event{}, errs.Wrap("ej.Message.message", err)
 		}
 
-		photos, err := message.NewPhotos(m.Photos)
+		return ej.UserID, service.Event{Message: m}, nil
+	case ej.Edited != nil:
+		m, err := ej.Edited.message()
 		if err != nil {
-			return uuid.Nil, service.Event{}, errs.Wrap("message.NewPhotos", err)
+			return uuid.Nil, service.Event{}, errs.Wrap("ej.Edited.message", err)
 		}
 
-		content, err := message.NewContent(text, photos, m.Post)
-		if err != nil {
-			return uuid.Nil, service.Event{}, errs.Wrap("message.NewContent", err)
-		}
-
-		return ej.UserID, service.Event{
-			Message: message.Restore(message.Stored{
-				ID: m.ID, SenderID: m.SenderID, RecipientID: m.RecipientID, Content: content, CreatedAt: m.CreatedAt,
-			}),
-		}, nil
+		return ej.UserID, service.Event{Edited: m}, nil
 	case ej.Read != nil:
 		return ej.UserID, service.Event{
 			Read: &service.ReadMark{ReaderID: ej.Read.ReaderID, PeerID: ej.Read.PeerID, UpTo: ej.Read.UpTo},

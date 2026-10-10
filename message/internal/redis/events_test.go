@@ -55,6 +55,18 @@ func TestEventCodec(t *testing.T) {
 		t.Fatalf("deleted round trip = %v %+v %v", key, e.Deleted, err)
 	}
 
+	edit, err := sent.Edited(ann, "привет!", sent.CreatedAt().Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data, err = codec.Encode(bob, service.Event{Edited: edit}); err != nil {
+		t.Fatalf("Encode edited: %v", err)
+	}
+	if key, e, err = codec.Decode(data); err != nil || key != bob || e.Message != nil || e.Edited == nil ||
+		e.Edited.ID() != sent.ID() || e.Edited.Text() != "привет!" || !e.Edited.EditedAt().Equal(edit.EditedAt()) || len(e.Edited.Photos()) != 1 {
+		t.Fatalf("edited round trip = %v %+v %v", key, e.Edited, err)
+	}
+
 	if _, err = codec.Encode(ann, service.Event{}); err == nil {
 		t.Error("Encode of an empty event = nil, want an error")
 	}

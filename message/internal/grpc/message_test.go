@@ -363,3 +363,68 @@ func TestSubscribe(t *testing.T) {
 		t.Fatalf("without a token: code = %v", got)
 	}
 }
+
+func TestEditHideSearch(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	sent, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Text: "Еду на море"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := sent.GetMessage().GetId()
+	if sent.GetMessage().GetEditedAt() != nil || sent.GetMessage().GetEditableUntil() == nil {
+		t.Fatalf("a new message = %v", sent.GetMessage())
+	}
+
+	// Edit: the sender only.
+	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!"})
+	if err != nil || edited.GetMessage().GetText() != "Еду на море!" || edited.GetMessage().GetEditedAt() == nil {
+		t.Fatalf("EditMessage = %v, %v", edited, err)
+	}
+	for name, tt := range map[string]struct {
+		ctx  context.Context
+		req  *messagev1.EditMessageRequest
+		code codes.Code
+	}{
+		"without a token": {context.Background(), &messagev1.EditMessageRequest{Id: id, Text: "x"}, codes.Unauthenticated},
+		"the recipient":   {s.as(t, bob), &messagev1.EditMessageRequest{Id: id, Text: "x"}, codes.PermissionDenied},
+		"no text":         {s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: " "}, codes.InvalidArgument},
+		"a bad id":        {s.as(t, ann), &messagev1.EditMessageRequest{Id: "x", Text: "x"}, codes.InvalidArgument},
+		"no message":      {s.as(t, ann), &messagev1.EditMessageRequest{Id: uuid.NewString(), Text: "x"}, codes.NotFound},
+	} {
+		if _, err = s.client.EditMessage(tt.ctx, tt.req); status.Code(err) != tt.code {
+			t.Errorf("EditMessage, %s: %v, want %v", name, err, tt.code)
+		}
+	}
+
+	// Search: in the dialog and in all of them.
+	for _, peer := range []string{"", ann.String()} {
+		found, err := s.client.SearchMessages(s.as(t, bob), &messagev1.SearchMessagesRequest{PeerId: peer, Query: "МОРЕ"})
+		if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetId() != id {
+			t.Fatalf("SearchMessages(%q) = %v, %v", peer, found, err)
+		}
+	}
+	if _, err = s.client.SearchMessages(s.as(t, bob), &messagev1.SearchMessagesRequest{Query: " "}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("an empty query: %v", err)
+	}
+
+	// Hide: bob deletes it for himself, ann keeps it.
+	if _, err = s.client.HideMessage(s.as(t, bob), &messagev1.HideMessageRequest{Id: id}); err != nil {
+		t.Fatalf("HideMessage: %v", err)
+	}
+	if _, err = s.client.HideMessage(s.as(t, bob), &messagev1.HideMessageRequest{Id: id}); status.Code(err) != codes.NotFound {
+		t.Fatalf("hidden twice: %v", err)
+	}
+	if bobs, _ := s.client.ListMessages(s.as(t, bob), &messagev1.ListMessagesRequest{PeerId: ann.String()}); len(bobs.GetMessages()) != 0 {
+		t.Fatalf("bob still reads %v", bobs.GetMessages())
+	}
+	if anns, _ := s.client.ListMessages(s.as(t, ann), &messagev1.ListMessagesRequest{PeerId: bob.String()}); len(anns.GetMessages()) != 1 {
+		t.Fatalf("ann reads %v", anns.GetMessages())
+	}
+	if found, _ := s.client.SearchMessages(s.as(t, bob), &messagev1.SearchMessagesRequest{Query: "море"}); len(found.GetMessages()) != 0 {
+		t.Fatalf("bob finds a hidden message: %v", found)
+	}
+}

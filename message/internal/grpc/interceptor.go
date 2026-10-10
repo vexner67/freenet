@@ -26,6 +26,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.PermissionDenied, "only the sender can delete the message"), true
 	case errors.Is(err, message.ErrDeleteExpired):
 		return status.New(codes.FailedPrecondition, "the message can no longer be deleted"), true
+	case errors.Is(err, message.ErrCannotEdit):
+		return status.New(codes.PermissionDenied, "only the sender can edit the message"), true
+	case errors.Is(err, message.ErrEditExpired):
+		return status.New(codes.FailedPrecondition, "the message can no longer be edited"), true
+	case errors.Is(err, message.ErrTextEmpty):
+		return status.New(codes.InvalidArgument, "message text is empty"), true
 	default:
 		return nil, false
 	}

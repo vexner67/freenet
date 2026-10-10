@@ -73,7 +73,8 @@ type MessageRepository struct {
 	s *Store
 }
 
-// Messages are immutable, so sharing pointers with callers is safe.
+// Messages are immutable, so sharing pointers with callers is safe: an
+// edited or hidden one is a new value.
 func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
@@ -110,6 +111,95 @@ func (r *MessageRepository) Get(ctx context.Context, id uuid.UUID) (*message.Mes
 	return m, nil
 }
 
+func (r *MessageRepository) Update(ctx context.Context, m *message.Message) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	if _, ok := r.s.messages[m.ID()]; !ok {
+		return message.ErrNotFound
+	}
+
+	r.s.messages[m.ID()] = m
+
+	return nil
+}
+
+// Hide brings the side of userID back to the newest message it still
+// has, if the hidden one was its last, as the statement does in
+// PostgreSQL.
+func (r *MessageRepository) Hide(ctx context.Context, m *message.Message, userID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	stored, ok := r.s.messages[m.ID()]
+	if !ok {
+		return message.ErrNotFound
+	}
+
+	hidden, err := stored.HiddenFrom(userID)
+	if err != nil {
+		return errs.Wrap("stored.HiddenFrom", err)
+	}
+
+	r.s.messages[m.ID()] = hidden
+	r.s.settle(m, userID)
+
+	return nil
+}
+
+// settle brings the side of userID in the dialog of m back to the newest
+// messages it has, if m was its last; the caller holds the write lock.
+func (s *Store) settle(m *message.Message, userID uuid.UUID) {
+	key := side{userID, m.SenderID()}
+	if userID == m.SenderID() {
+		key.peerID = m.RecipientID()
+	}
+
+	d := s.dialogs[key]
+	if d == nil {
+		return
+	}
+
+	if d.lastMessageID == m.ID() {
+		d.lastMessageID = s.newest(key, func(*message.Message) bool { return true })
+	}
+	if d.lastIncomingID == m.ID() {
+		d.lastIncomingID = s.newest(key, func(m *message.Message) bool { return m.SenderID() == key.peerID })
+	}
+}
+
+func (r *MessageRepository) Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, before uuid.UUID, limit int) ([]*message.Message, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	var found []*message.Message
+	for id, m := range r.s.messages {
+		if m.VisibleTo(userID) && (peerID == uuid.Nil || m.Between(peerID)) && q.Matches(m) && below(id, before) {
+			found = append(found, m)
+		}
+	}
+
+	// Newest first: UUIDv7 bytes sort by time, as in PostgreSQL.
+	slices.SortFunc(found, func(x, y *message.Message) int {
+		xi, yi := x.ID(), y.ID()
+		return bytes.Compare(yi[:], xi[:])
+	})
+
+	return found[:min(limit, len(found))], nil
+}
+
 func (r *MessageRepository) ListBefore(ctx context.Context, a, b, before uuid.UUID, limit int) ([]*message.Message, error) {
 	found, err := r.between(ctx, a, b, func(id uuid.UUID) bool { return below(id, before) })
 	if err != nil {
@@ -130,7 +220,8 @@ func (r *MessageRepository) ListAfter(ctx context.Context, a, b, after uuid.UUID
 	return found[:min(limit, len(found))], nil
 }
 
-// between returns the messages of a and b that match, oldest first.
+// between returns the messages of a and b that a has and that match,
+// oldest first.
 func (r *MessageRepository) between(ctx context.Context, a, b uuid.UUID, match func(uuid.UUID) bool) ([]*message.Message, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
@@ -142,7 +233,7 @@ func (r *MessageRepository) between(ctx context.Context, a, b uuid.UUID, match f
 	var found []*message.Message
 	for id, m := range r.s.messages {
 		pair := (m.SenderID() == a && m.RecipientID() == b) || (m.SenderID() == b && m.RecipientID() == a)
-		if pair && match(id) {
+		if pair && m.VisibleTo(a) && match(id) {
 			found = append(found, m)
 		}
 	}
@@ -172,32 +263,20 @@ func (r *MessageRepository) Delete(ctx context.Context, m *message.Message) erro
 	}
 
 	delete(r.s.messages, m.ID())
-
-	for _, key := range []side{{m.SenderID(), m.RecipientID()}, {m.RecipientID(), m.SenderID()}} {
-		d := r.s.dialogs[key]
-		if d == nil {
-			continue
-		}
-
-		if d.lastMessageID == m.ID() {
-			d.lastMessageID = r.s.newest(key, func(*message.Message) bool { return true })
-		}
-		if d.lastIncomingID == m.ID() {
-			d.lastIncomingID = r.s.newest(key, func(m *message.Message) bool { return m.SenderID() == key.peerID })
-		}
-	}
+	r.s.settle(m, m.SenderID())
+	r.s.settle(m, m.RecipientID())
 
 	return nil
 }
 
-// newest is the ID of the newest message of a dialog that matches,
-// uuid.Nil if none; the caller holds a lock.
+// newest is the ID of the newest message of a dialog that its user has
+// and that matches, uuid.Nil if none; the caller holds a lock.
 func (s *Store) newest(key side, match func(*message.Message) bool) uuid.UUID {
 	var id uuid.UUID
 
 	for _, m := range s.messages {
 		pair := (m.SenderID() == key.userID && m.RecipientID() == key.peerID) || (m.SenderID() == key.peerID && m.RecipientID() == key.userID)
-		if pair && match(m) {
+		if pair && m.VisibleTo(key.userID) && match(m) {
 			id = later(id, m.ID())
 		}
 	}

@@ -23,6 +23,13 @@ const (
 	// a message sent in haste, short enough that the peer can rely on what
 	// was said before.
 	deleteWindow = 24 * time.Hour
+
+	// editWindow is how long the sender may change what a message says,
+	// as in VK: a day, as with taking it back.
+	editWindow = 24 * time.Hour
+
+	// maxQueryLen bounds what messages are searched for.
+	maxQueryLen = 100
 )
 
 var (
@@ -37,7 +44,37 @@ var (
 	ErrInvalidPhoto   = errors.New("invalid photo id")
 	ErrCannotDelete   = errors.New("only the sender can delete the message")
 	ErrDeleteExpired  = errors.New("the message can no longer be deleted")
+	ErrCannotEdit     = errors.New("only the sender can edit the message")
+	ErrEditExpired    = errors.New("the message can no longer be edited")
+	ErrQueryEmpty     = errors.New("search query is empty")
+	ErrQueryTooLong   = errors.New("search query is too long")
 )
+
+// Query is what messages are searched for: trimmed text they say, in any
+// case, never empty.
+type Query string
+
+func NewQuery(s string) (Query, error) {
+	s = strings.TrimSpace(s)
+	if s == "" {
+		return "", ErrQueryEmpty
+	}
+
+	if utf8.RuneCountInString(s) > maxQueryLen {
+		return "", ErrQueryTooLong
+	}
+
+	return Query(s), nil
+}
+
+func (q Query) String() string {
+	return string(q)
+}
+
+// Matches tells whether m says q.
+func (q Query) Matches(m *Message) bool {
+	return strings.Contains(strings.ToLower(m.content.text.String()), strings.ToLower(string(q)))
+}
 
 // Text is what a message says: trimmed, with "\n" line breaks. It may be
 // empty when the message has photos (see NewContent).
@@ -124,12 +161,20 @@ func (c Content) Photos() Photos {
 	return c.photos
 }
 
+// Message does not change once made: Edited and HiddenFrom return a new
+// one, so readers may keep the pointers they got.
 type Message struct {
 	id          uuid.UUID
 	senderID    uuid.UUID
 	recipientID uuid.UUID
 	content     Content
 	createdAt   time.Time
+	// editedAt is zero for a message never edited.
+	editedAt time.Time
+	// hiddenFromSender and hiddenFromRecipient: that side deleted the
+	// message for themselves ("Удалить у себя"); the other still has it.
+	hiddenFromSender    bool
+	hiddenFromRecipient bool
 }
 
 // New creates a message. Its UUIDv7 ID grows with time, so a dialog is
@@ -161,17 +206,99 @@ type Stored struct {
 	RecipientID uuid.UUID
 	Content     Content
 	CreatedAt   time.Time
+	// EditedAt is zero for a message never edited.
+	EditedAt            time.Time
+	HiddenFromSender    bool
+	HiddenFromRecipient bool
 }
 
 // Restore rebuilds a message from storage without validation or new IDs.
 func Restore(s Stored) *Message {
 	return &Message{
-		id:          s.ID,
-		senderID:    s.SenderID,
-		recipientID: s.RecipientID,
-		content:     s.Content,
-		createdAt:   s.CreatedAt,
+		id:                  s.ID,
+		senderID:            s.SenderID,
+		recipientID:         s.RecipientID,
+		content:             s.Content,
+		createdAt:           s.CreatedAt,
+		editedAt:            s.EditedAt,
+		hiddenFromSender:    s.HiddenFromSender,
+		hiddenFromRecipient: s.HiddenFromRecipient,
 	}
+}
+
+// Between tells whether userID is one side of the message.
+func (m *Message) Between(userID uuid.UUID) bool {
+	return userID == m.senderID || userID == m.recipientID
+}
+
+// VisibleTo tells whether userID still has the message in their dialog:
+// one of its sides who has not deleted it for themselves.
+func (m *Message) VisibleTo(userID uuid.UUID) bool {
+	switch userID {
+	case m.senderID:
+		return !m.hiddenFromSender
+	case m.recipientID:
+		return !m.hiddenFromRecipient
+	default:
+		return false
+	}
+}
+
+// HiddenFrom returns m deleted for userID alone ("Удалить у себя"): the
+// other side keeps it. ErrNotFound for whoever does not have it.
+func (m *Message) HiddenFrom(userID uuid.UUID) (*Message, error) {
+	if !m.VisibleTo(userID) {
+		return nil, ErrNotFound
+	}
+
+	hidden := *m
+	if userID == m.senderID {
+		hidden.hiddenFromSender = true
+	} else {
+		hidden.hiddenFromRecipient = true
+	}
+
+	return &hidden, nil
+}
+
+// Gone tells whether both sides have deleted the message for themselves:
+// nobody has it anymore.
+func (m *Message) Gone() bool {
+	return m.hiddenFromSender && m.hiddenFromRecipient
+}
+
+// EditedAt is zero for a message never edited.
+func (m *Message) EditedAt() time.Time {
+	return m.editedAt
+}
+
+// EditableUntil is when the sender can no longer edit the message.
+func (m *Message) EditableUntil() time.Time {
+	return m.createdAt.Add(editWindow)
+}
+
+// Edited returns m saying text instead, edited by requesterID at now:
+// only its sender, for editWindow after sending. Its photos and the post
+// it shares stay; without them the text may not be empty.
+func (m *Message) Edited(requesterID uuid.UUID, text Text, now time.Time) (*Message, error) {
+	if requesterID != m.senderID {
+		return nil, ErrCannotEdit
+	}
+
+	if now.After(m.EditableUntil()) {
+		return nil, ErrEditExpired
+	}
+
+	content, err := NewContent(text, m.content.photos, m.content.post)
+	if err != nil {
+		return nil, err
+	}
+
+	edited := *m
+	edited.content = content
+	edited.editedAt = now.UTC().Truncate(time.Microsecond)
+
+	return &edited, nil
 }
 
 func (m *Message) ID() uuid.UUID {
