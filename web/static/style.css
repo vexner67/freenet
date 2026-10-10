@@ -467,9 +467,16 @@ a.like:hover svg { opacity: .7; }
 .im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .im-message-date { width: 100px; color: #404036; font-size: 9px; text-align: right; }
 /* Shown on hover, as the message actions of VK; always on touch screens. */
-.im-message-delete { display: block; margin-top: 4px; font-size: 10px; visibility: hidden; }
-.im-message:hover .im-message-delete { visibility: visible; }
-@media (hover: none) { .im-message-delete { visibility: visible; } }
+.im-message-action { display: block; margin-top: 4px; font-size: 10px; visibility: hidden; cursor: pointer; }
+.im-message:hover .im-message-action { visibility: visible; }
+@media (hover: none) { .im-message-action { visibility: visible; } }
+/* A click selects a message, as on VK; the bar over the dialog acts on
+   the selected ones. */
+.im-message { cursor: default; }
+.im-message.selected, .im-message.selected.unread { background: #dae1e8; }
+.im-selection { display: flex; justify-content: space-between; padding: 6px 20px; background: #f7f7f7; border-bottom: 1px solid #d6d6d6; }
+.im-selection a { cursor: pointer; }
+.messenger-box .reply-to { margin: 0 0 6px; }
 
 .messenger-input {
   display: flex;
