@@ -10,6 +10,7 @@ import (
 	"github.com/vexner67/freenet/club/internal/club"
 	"github.com/vexner67/freenet/club/internal/service"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/pgpool"
 )
 
 type MemberRepository struct {
@@ -43,6 +44,36 @@ func (r *MemberRepository) Role(ctx context.Context, clubID, userID uuid.UUID) (
 	return club.Role(role), nil
 }
 
+const seatQuery = `
+	SELECT
+		role,
+		title,
+		hidden,
+		maybe
+	FROM club_members
+	WHERE club_id = $1
+		AND user_id = $2
+`
+
+func (r *MemberRepository) Seat(ctx context.Context, clubID, userID uuid.UUID) (club.Seat, error) {
+	var (
+		seat        club.Seat
+		role, title string
+	)
+
+	err := r.pool.QueryRow(ctx, seatQuery, clubID, userID).Scan(&role, &title, &seat.Hidden, &seat.Maybe)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return club.Seat{}, nil
+	}
+	if err != nil {
+		return club.Seat{}, errs.Wrap("r.pool.QueryRow", err)
+	}
+
+	seat.Role, seat.Title = club.Role(role), club.Title(title)
+
+	return seat, nil
+}
+
 const ownerQuery = `
 	SELECT user_id
 	FROM club_members
@@ -65,31 +96,34 @@ func (r *MemberRepository) Owner(ctx context.Context, clubID uuid.UUID) (uuid.UU
 }
 
 // joinQuery counts the member in the statement that adds them, so the
-// count never drifts; joining twice changes nothing.
+// counts never drift; joining twice changes nothing, not even whether the
+// member comes for sure.
 const joinQuery = `
 	WITH joined AS (
 		INSERT INTO club_members (
 			id,
 			club_id,
 			user_id,
-			role
+			role,
+			maybe
 		)
-		VALUES ($1, $2, $3, 'member')
+		VALUES ($1, $2, $3, 'member', $4)
 		ON CONFLICT (club_id, user_id) DO NOTHING
 		RETURNING club_id
 	)
 	UPDATE clubs
-	SET member_count = member_count + 1
+	SET member_count = member_count + 1,
+		maybe_count = maybe_count + $4::boolean::integer
 	WHERE id IN (SELECT club_id FROM joined)
 `
 
-func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID) error {
+func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID, maybe bool) error {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return errs.Wrap("uuid.NewV7", err)
 	}
 
-	_, err = r.pool.Exec(ctx, joinQuery, id, clubID, userID)
+	_, err = r.pool.Exec(ctx, joinQuery, id, clubID, userID, maybe)
 	if constraintOf(err) == "club_members_club_id_fkey" {
 		return club.ErrNotFound
 	}
@@ -107,11 +141,13 @@ const leaveQuery = `
 		WHERE club_id = $1
 			AND user_id = $2
 			AND role <> 'owner'
-		RETURNING club_id
+		RETURNING club_id, maybe
 	)
-	UPDATE clubs
-	SET member_count = member_count - 1
-	WHERE id IN (SELECT club_id FROM gone)
+	UPDATE clubs c
+	SET member_count = c.member_count - 1,
+		maybe_count = c.maybe_count - gone.maybe::integer
+	FROM gone
+	WHERE c.id = gone.club_id
 `
 
 func (r *MemberRepository) Leave(ctx context.Context, clubID, userID uuid.UUID) error {
@@ -122,16 +158,22 @@ func (r *MemberRepository) Leave(ctx context.Context, clubID, userID uuid.UUID) 
 	return nil
 }
 
+// setRoleQuery: a member has no title and is not hidden.
 const setRoleQuery = `
 	UPDATE club_members
-	SET role = $3
+	SET
+		role = $3,
+		title = CASE WHEN $3 = 'member' THEN '' ELSE title END,
+		hidden = hidden AND $3 <> 'member'
 	WHERE club_id = $1
 		AND user_id = $2
 		AND role <> 'owner'
 `
 
+// SetRole runs in the transaction of ctx, if any: an appointment is
+// recorded in the outbox with it.
 func (r *MemberRepository) SetRole(ctx context.Context, clubID, userID uuid.UUID, role club.Role) error {
-	tag, err := r.pool.Exec(ctx, setRoleQuery, clubID, userID, role.String())
+	tag, err := pgpool.Conn(ctx, r.pool).Exec(ctx, setRoleQuery, clubID, userID, role.String())
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
@@ -139,6 +181,30 @@ func (r *MemberRepository) SetRole(ctx context.Context, clubID, userID uuid.UUID
 	// Left between the check and the change.
 	if tag.RowsAffected() == 0 {
 		return club.ErrNotMember
+	}
+
+	return nil
+}
+
+const describeMemberQuery = `
+	UPDATE club_members
+	SET
+		title = $3,
+		hidden = $4
+	WHERE club_id = $1
+		AND user_id = $2
+		AND role IN ('admin', 'owner')
+`
+
+func (r *MemberRepository) Describe(ctx context.Context, clubID, userID uuid.UUID, title club.Title, hidden bool) error {
+	tag, err := r.pool.Exec(ctx, describeMemberQuery, clubID, userID, title.String(), hidden)
+	if err != nil {
+		return errs.Wrap("r.pool.Exec", err)
+	}
+
+	// Dismissed between the check and the change.
+	if tag.RowsAffected() == 0 {
+		return club.ErrNotManager
 	}
 
 	return nil
@@ -193,33 +259,51 @@ const countAdminsQuery = `
 	FROM club_members
 	WHERE club_id = $1
 		AND role IN ('admin', 'owner')
+		AND NOT ($2 AND hidden)
 `
 
-func (r *MemberRepository) CountAdmins(ctx context.Context, clubID uuid.UUID) (int, error) {
+func (r *MemberRepository) CountAdmins(ctx context.Context, clubID uuid.UUID, shownOnly bool) (int, error) {
 	var n int
 
-	if err := r.pool.QueryRow(ctx, countAdminsQuery, clubID).Scan(&n); err != nil {
+	if err := r.pool.QueryRow(ctx, countAdminsQuery, clubID, shownOnly).Scan(&n); err != nil {
 		return 0, errs.Wrap("r.pool.QueryRow", err)
 	}
 
 	return n, nil
 }
 
+// listMembersQuery: with $4, only those who run the club; with $5, not
+// those of them it hides; $6, if not NULL, picks those who only might
+// come to the event or those who are sure to.
 const listMembersQuery = `
 	SELECT
 		id,
 		user_id,
-		role
+		role,
+		title,
+		hidden,
+		maybe
 	FROM club_members
 	WHERE club_id = $1
 		AND id < $2
 		AND (NOT $4 OR role IN ('admin', 'owner'))
+		AND NOT ($5 AND hidden)
+		AND ($6::boolean IS NULL OR maybe = $6)
 	ORDER BY id DESC
 	LIMIT $3
 `
 
-func (r *MemberRepository) List(ctx context.Context, clubID, before uuid.UUID, limit int, adminsOnly bool) ([]service.Member, error) {
-	rows, err := r.pool.Query(ctx, listMembersQuery, clubID, cursor(before), limit, adminsOnly)
+func (r *MemberRepository) List(ctx context.Context, clubID, before uuid.UUID, limit int, filter service.MemberFilter) ([]service.Member, error) {
+	managers := filter == service.Managers || filter == service.ShownManagers
+
+	var maybe *bool
+	if filter == service.SureComers || filter == service.MaybeComers {
+		maybe = new(bool)
+		*maybe = filter == service.MaybeComers
+	}
+
+	rows, err := r.pool.Query(ctx, listMembersQuery, clubID, cursor(before), limit,
+		managers, filter == service.ShownManagers, maybe)
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
@@ -228,13 +312,13 @@ func (r *MemberRepository) List(ctx context.Context, clubID, before uuid.UUID, l
 	var found []service.Member
 	for rows.Next() {
 		var (
-			m    service.Member
-			role string
+			m           service.Member
+			role, title string
 		)
-		if err = rows.Scan(&m.ID, &m.UserID, &role); err != nil {
+		if err = rows.Scan(&m.ID, &m.UserID, &role, &title, &m.Hidden, &m.Maybe); err != nil {
 			return nil, errs.Wrap("rows.Scan", err)
 		}
-		m.Role = club.Role(role)
+		m.Role, m.Title = club.Role(role), club.Title(title)
 		found = append(found, m)
 	}
 
@@ -254,7 +338,8 @@ func cursor(before uuid.UUID) uuid.UUID {
 	return before
 }
 
-// listUserClubsQuery: with $4, only the clubs the user runs.
+// listUserClubsQuery: with $4, only the clubs the user runs; with $5,
+// only those of the kind.
 const listUserClubsQuery = `
 	SELECT
 		m.id,
@@ -273,18 +358,23 @@ const listUserClubsQuery = `
 		c.open_topics,
 		c.topics_above_wall,
 		c.backdrop_left,
-		c.backdrop_right
+		c.backdrop_right,
+		c.kind,
+		c.starts_at,
+		c.ends_at,
+		c.maybe_count
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1
 		AND m.id < $2
 		AND (NOT $4 OR m.role IN ('admin', 'owner'))
+		AND ($5 = '' OR c.kind = $5)
 	ORDER BY m.id DESC
 	LIMIT $3
 `
 
-func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, managed bool) ([]service.Membership, error) {
-	rows, err := r.pool.Query(ctx, listUserClubsQuery, userID, cursor(before), limit, managed)
+func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, filter service.ClubFilter) ([]service.Membership, error) {
+	rows, err := r.pool.Query(ctx, listUserClubsQuery, userID, cursor(before), limit, filter.Managed, filter.Kind.String())
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
@@ -325,15 +415,17 @@ func scanMembership(row pgx.Row) (service.Membership, error) {
 
 const countUserClubsQuery = `
 	SELECT count(*)
-	FROM club_members
-	WHERE user_id = $1
-		AND (NOT $2 OR role IN ('admin', 'owner'))
+	FROM club_members m
+	JOIN clubs c ON c.id = m.club_id
+	WHERE m.user_id = $1
+		AND (NOT $2 OR m.role IN ('admin', 'owner'))
+		AND ($3 = '' OR c.kind = $3)
 `
 
-func (r *MemberRepository) CountClubs(ctx context.Context, userID uuid.UUID, managed bool) (int, error) {
+func (r *MemberRepository) CountClubs(ctx context.Context, userID uuid.UUID, filter service.ClubFilter) (int, error) {
 	var n int
 
-	if err := r.pool.QueryRow(ctx, countUserClubsQuery, userID, managed).Scan(&n); err != nil {
+	if err := r.pool.QueryRow(ctx, countUserClubsQuery, userID, filter.Managed, filter.Kind.String()).Scan(&n); err != nil {
 		return 0, errs.Wrap("r.pool.QueryRow", err)
 	}
 
@@ -399,7 +491,11 @@ const pinnedClubsQuery = `
 		c.open_topics,
 		c.topics_above_wall,
 		c.backdrop_left,
-		c.backdrop_right
+		c.backdrop_right,
+		c.kind,
+		c.starts_at,
+		c.ends_at,
+		c.maybe_count
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1
@@ -445,10 +541,11 @@ const deleteUserMembershipsQuery = `
 	WITH gone AS (
 		DELETE FROM club_members
 		WHERE user_id = $1
-		RETURNING club_id
+		RETURNING club_id, maybe
 	)
 	UPDATE clubs c
-	SET member_count = c.member_count - 1
+	SET member_count = c.member_count - 1,
+		maybe_count = c.maybe_count - gone.maybe::integer
 	FROM gone
 	WHERE c.id = gone.club_id
 `

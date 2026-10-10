@@ -181,9 +181,11 @@ services:
       STORAGE: persistent
       DATABASE_URL: postgres://${CLUB_POSTGRES_USER}:${CLUB_POSTGRES_PASSWORD}@club-postgres:5432/${CLUB_POSTGRES_DB}?sslmode=disable
       REDIS_ADDR: redis:6379
+      NOTIFICATION_SERVICE_ADDR: notification:7055
     depends_on:
       club-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
+      notification: { condition: service_healthy }
 
   user:
     <<: *service

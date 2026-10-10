@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -47,9 +48,12 @@ const createClubQuery = `
 			wall,
 			admins_display,
 			member_count,
-			created_at
+			created_at,
+			kind,
+			starts_at,
+			ends_at
 		)
-		VALUES ($1, $2, $3, $4, $8, 1, $5)
+		VALUES ($1, $2, $3, $4, $8, 1, $5, $9, $10, $11)
 	)
 	INSERT INTO club_members (
 		id,
@@ -68,12 +72,22 @@ func (r *ClubRepository) Create(ctx context.Context, c *club.Club, ownerID uuid.
 
 	_, err = r.pool.Exec(ctx, createClubQuery,
 		c.ID(), c.Name().String(), c.Description().String(), c.Wall().String(), c.CreatedAt(), membershipID, ownerID,
-		c.AdminsDisplay().String())
+		c.AdminsDisplay().String(), c.Kind().String(), nullableTime(c.Schedule().Start), nullableTime(c.Schedule().End))
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
 
 	return nil
+}
+
+// nullableTime is NULL for the zero time: a group has no schedule, an
+// event may have no end.
+func nullableTime(t time.Time) *time.Time {
+	if t.IsZero() {
+		return nil
+	}
+
+	return &t
 }
 
 const (
@@ -92,7 +106,11 @@ const (
 			open_topics,
 			topics_above_wall,
 			backdrop_left,
-			backdrop_right
+			backdrop_right,
+			kind,
+			starts_at,
+			ends_at,
+			maybe_count
 		FROM clubs
 		WHERE id = $1
 	`
@@ -111,7 +129,11 @@ const (
 			open_topics,
 			topics_above_wall,
 			backdrop_left,
-			backdrop_right
+			backdrop_right,
+			kind,
+			starts_at,
+			ends_at,
+			maybe_count
 		FROM clubs
 		WHERE lower(address) = lower($1)
 	`
@@ -130,7 +152,11 @@ const (
 			open_topics,
 			topics_above_wall,
 			backdrop_left,
-			backdrop_right
+			backdrop_right,
+			kind,
+			starts_at,
+			ends_at,
+			maybe_count
 		FROM clubs
 		WHERE id = ANY($1)
 	`
@@ -195,10 +221,13 @@ func scanClub(row pgx.Row, before ...any) (*club.Club, error) {
 		website, adminsDisplay           string
 		avatarID                         *uuid.UUID
 		backdropLeft, backdropRight      *uuid.UUID
+		kind                             string
+		startsAt, endsAt                 *time.Time
 	)
 
 	dest := append(before, &s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID,
-		&website, &adminsDisplay, &s.OpenTopics, &s.TopicsAboveWall, &backdropLeft, &backdropRight)
+		&website, &adminsDisplay, &s.OpenTopics, &s.TopicsAboveWall, &backdropLeft, &backdropRight,
+		&kind, &startsAt, &endsAt, &s.Maybes)
 	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
@@ -220,6 +249,14 @@ func scanClub(row pgx.Row, before ...any) (*club.Club, error) {
 	s.Wall = club.Wall(wall)
 	s.AdminsDisplay = club.AdminsDisplay(adminsDisplay)
 	s.CreatedAt = s.CreatedAt.UTC()
+	s.Kind = club.Kind(kind)
+
+	if startsAt != nil {
+		s.Schedule.Start = startsAt.UTC()
+	}
+	if endsAt != nil {
+		s.Schedule.End = endsAt.UTC()
+	}
 
 	return club.Restore(s), nil
 }
@@ -233,14 +270,17 @@ const updateClubQuery = `
 		website = $6,
 		admins_display = $7,
 		open_topics = $8,
-		topics_above_wall = $9
+		topics_above_wall = $9,
+		starts_at = $10,
+		ends_at = $11
 	WHERE id = $1
 `
 
 func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 	tag, err := r.pool.Exec(ctx, updateClubQuery,
 		c.ID(), c.Name().String(), c.Description().String(), c.Address().String(), c.Wall().String(),
-		c.Website().String(), c.AdminsDisplay().String(), c.OpenTopics(), c.TopicsAboveWall())
+		c.Website().String(), c.AdminsDisplay().String(), c.OpenTopics(), c.TopicsAboveWall(),
+		nullableTime(c.Schedule().Start), nullableTime(c.Schedule().End))
 	if constraintOf(err) == "clubs_address_key" {
 		return club.ErrAddressTaken
 	}
@@ -333,7 +373,11 @@ const searchClubsSelect = `
 		open_topics,
 		topics_above_wall,
 		backdrop_left,
-		backdrop_right
+		backdrop_right,
+		kind,
+		starts_at,
+		ends_at,
+		maybe_count
 	FROM clubs
 	WHERE id < $1`
 

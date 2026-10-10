@@ -12,6 +12,9 @@ import "google/protobuf/timestamp.proto";
 service ClubService {
   // The caller creates a club and owns it.
   rpc CreateClub(CreateClubRequest) returns (CreateClubResponse);
+  // The caller creates an event ("Создать встречу"), owns it and comes to
+  // it for sure.
+  rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse);
   // Public: a club by its ID or address, as the caller, if any, sees it.
   rpc GetClub(GetClubRequest) returns (GetClubResponse);
   // Public: the clubs found among ids, at most 100, in no particular
@@ -20,22 +23,31 @@ service ClubService {
   // Its admins change a club, everything at once as the settings form
   // sends it.
   rpc UpdateClub(UpdateClubRequest) returns (UpdateClubResponse);
-  // Idempotent.
+  // Idempotent. With maybe the caller only might come to the event
+  // ("Возможно приду"); a group, and an event that has started, are
+  // joined for sure.
   rpc JoinClub(JoinClubRequest) returns (JoinClubResponse);
   // Idempotent; the owner cannot leave.
   rpc LeaveClub(LeaveClubRequest) returns (LeaveClubResponse);
-  // Public: the members of a club, the newest first; with admins_only,
-  // only the owner and the admins.
+  // Public: the members of a club as the caller, if any, sees them, the
+  // newest first; with admins_only, only the owner and the admins. Those
+  // the club hides are plain members to callers who do not run it.
   rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
   // The owner makes a member an admin, or an admin a member again.
   rpc SetMemberRole(SetMemberRoleRequest) returns (google.protobuf.Empty);
+  // Those who run a club give one of them a title, shown under the name
+  // ("Изменить комментарий"), and hide or show them ("Скрыт"): a hidden
+  // one is a plain member to everyone who does not run the club.
+  rpc DescribeMember(DescribeMemberRequest) returns (google.protobuf.Empty);
   // The owner hands the club over to one of its admins and stays an
   // admin ("Назначить владельцем").
   rpc TransferClub(TransferClubRequest) returns (google.protobuf.Empty);
-  // The caller's clubs ("Мои Группы"), the newest joined first; with
-  // managed only those they run ("Управление").
+  // The caller's clubs ("Мои Группы", "Мои Встречи"), the newest joined
+  // first; with managed only those they run ("Управление"), with kind
+  // only groups or only events.
   rpc ListMyClubs(ListMyClubsRequest) returns (ListMyClubsResponse);
-  // Public: the clubs of a user, the newest joined first. Whether the
+  // Public: the clubs of a user, the newest joined first, with kind only
+  // groups or only events. Whether the
   // viewer may see them is the user's privacy setting, which the caller
   // checks.
   rpc ListUserClubs(ListUserClubsRequest) returns (ListUserClubsResponse);
@@ -91,6 +103,24 @@ enum AdminsDisplay {
   ADMINS_DISPLAY_NONE = 3;
 }
 
+// What a club is: a group, or an event ("встреча") with the time it
+// starts and people who come to it.
+enum Kind {
+  KIND_UNSPECIFIED = 0;
+  KIND_GROUP = 1;
+  KIND_EVENT = 2;
+}
+
+// Which members of an event to list.
+enum Going {
+  // Everyone.
+  GOING_UNSPECIFIED = 0;
+  // "Точно придут".
+  GOING_SURE = 1;
+  // "Возможно придут".
+  GOING_MAYBE = 2;
+}
+
 enum Role {
   // Not a member.
   ROLE_NONE = 0;
@@ -123,6 +153,12 @@ message Club {
   // and on the right of its page; empty for none.
   string backdrop_left = 13;
   string backdrop_right = 14;
+  Kind kind = 15;
+  // When an event starts and, if set, ends; unset for a group.
+  google.protobuf.Timestamp starts_at = 16;
+  google.protobuf.Timestamp ends_at = 17;
+  // How many of member_count only might come to the event.
+  int32 maybe_count = 18;
 }
 
 // ClubView is a club as the caller sees it.
@@ -130,10 +166,27 @@ message ClubView {
   Club club = 1;
   // What the caller is in it; ROLE_NONE for an anonymous caller.
   Role role = 2;
-  // Empty when its owner's page was erased.
+  // Empty when its owner's page was erased, or when the club hides its
+  // owner from the caller.
   string owner_id = 3;
   // The caller may start a topic in its discussions.
   bool can_start_topic = 4;
+  // What the owner does in the club; empty for none.
+  string owner_title = 5;
+  // The caller only might come to the event.
+  bool maybe = 6;
+}
+
+message CreateEventRequest {
+  string name = 1;
+  string description = 2;
+  google.protobuf.Timestamp starts_at = 3;
+  // Unset for an event with no end; else later than starts_at.
+  google.protobuf.Timestamp ends_at = 4;
+}
+
+message CreateEventResponse {
+  ClubView club = 1;
 }
 
 message CreateClubRequest {
@@ -174,6 +227,9 @@ message UpdateClubRequest {
   AdminsDisplay admins_display = 7;
   bool open_topics = 8;
   bool topics_above_wall = 9;
+  // The schedule of an event, which must have a start; a group has none.
+  google.protobuf.Timestamp starts_at = 10;
+  google.protobuf.Timestamp ends_at = 11;
 }
 
 message UpdateClubResponse {
@@ -182,6 +238,7 @@ message UpdateClubResponse {
 
 message JoinClubRequest {
   string club_id = 1;
+  bool maybe = 2;
 }
 
 message JoinClubResponse {
@@ -203,11 +260,20 @@ message ListMembersRequest {
   // 1-50; anything else means 20.
   int32 limit = 3;
   bool admins_only = 4;
+  // Without admins_only: only those who come to the event for sure, or
+  // only those who might.
+  Going going = 5;
 }
 
 message Member {
   string user_id = 1;
   Role role = 2;
+  // What an admin does in the club; empty for none.
+  string title = 3;
+  // The club hides that they run it; only those who run it are told.
+  bool hidden = 4;
+  // They only might come to the event.
+  bool maybe = 5;
 }
 
 message ListMembersResponse {
@@ -225,6 +291,15 @@ message SetMemberRoleRequest {
   Role role = 3;
 }
 
+message DescribeMemberRequest {
+  string club_id = 1;
+  // The owner or one of the admins.
+  string user_id = 2;
+  // At most 36 characters in one line; empty for none.
+  string title = 3;
+  bool hidden = 4;
+}
+
 message TransferClubRequest {
   string club_id = 1;
   // The new owner, one of the admins.
@@ -238,6 +313,8 @@ message ListMyClubsRequest {
   int32 limit = 2;
   // Only the clubs the caller runs.
   bool managed = 3;
+  // Only groups or only events; unspecified for both.
+  Kind kind = 4;
 }
 
 message Membership {
@@ -261,6 +338,8 @@ message ListUserClubsRequest {
   string cursor = 2;
   // 1-50; anything else means 20.
   int32 limit = 3;
+  // Only groups or only events; unspecified for both.
+  Kind kind = 4;
 }
 
 message ListUserClubsResponse {

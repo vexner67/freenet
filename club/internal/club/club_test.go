@@ -389,3 +389,161 @@ func TestCheckTransfer(t *testing.T) {
 		}
 	}
 }
+
+func TestNewTitle(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name, in string
+		want     club.Title
+		err      error
+	}{
+		{"none", "  ", "", nil},
+		{"one line", " главный\nпо котам ", "главный по котам", nil},
+		{"the longest", strings.Repeat("я", 36), club.Title(strings.Repeat("я", 36)), nil},
+		{"too long", strings.Repeat("я", 37), "", club.ErrTitleTooLong},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := club.NewTitle(tt.in)
+			if !errors.Is(err, tt.err) || got != tt.want {
+				t.Fatalf("NewTitle(%q) = %q, %v; want %q, %v", tt.in, got, err, tt.want, tt.err)
+			}
+		})
+	}
+}
+
+func TestSeat(t *testing.T) {
+	t.Parallel()
+
+	hidden := club.Seat{Role: club.RoleAdmin, Title: "кормит котов", Hidden: true}
+	shown := club.Seat{Role: club.RoleOwner, Title: "главный"}
+
+	for _, viewer := range []club.Role{club.RoleNone, club.RoleMember} {
+		if got := hidden.Shown(viewer); got != (club.Seat{Role: club.RoleMember}) || hidden.Seen(viewer) {
+			t.Errorf("a hidden admin to %q = %+v, want a plain member", viewer, got)
+		}
+		if got := shown.Shown(viewer); got != shown || !shown.Seen(viewer) {
+			t.Errorf("the owner to %q = %+v", viewer, got)
+		}
+	}
+	for _, viewer := range []club.Role{club.RoleAdmin, club.RoleOwner} {
+		if got := hidden.Shown(viewer); got != hidden || !hidden.Seen(viewer) {
+			t.Errorf("a hidden admin to %q = %+v, want as it is", viewer, got)
+		}
+	}
+	if (club.Seat{Role: club.RoleMember}).Seen(club.RoleOwner) {
+		t.Error("a member runs nothing")
+	}
+}
+
+func TestCheckDescribe(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		requester, target club.Role
+		err               error
+	}{
+		{club.RoleOwner, club.RoleAdmin, nil},
+		{club.RoleAdmin, club.RoleOwner, nil},
+		{club.RoleAdmin, club.RoleAdmin, nil},
+		{club.RoleMember, club.RoleAdmin, club.ErrCannotEdit},
+		{club.RoleNone, club.RoleOwner, club.ErrCannotEdit},
+		{club.RoleOwner, club.RoleMember, club.ErrNotManager},
+		{club.RoleAdmin, club.RoleNone, club.ErrNotManager},
+	}
+	for _, tt := range tests {
+		if err := club.CheckDescribe(tt.requester, tt.target); !errors.Is(err, tt.err) {
+			t.Errorf("CheckDescribe(%q, %q) = %v, want %v", tt.requester, tt.target, err, tt.err)
+		}
+	}
+}
+
+func TestSchedule(t *testing.T) {
+	t.Parallel()
+
+	start := time.Date(2026, 12, 31, 20, 0, 0, 0, time.UTC)
+
+	tests := []struct {
+		name       string
+		start, end time.Time
+		err        error
+	}{
+		{"with no end", start, time.Time{}, nil},
+		{"with an end", start, start.Add(time.Hour), nil},
+		{"with no start", time.Time{}, start, club.ErrNoStart},
+		{"ending as it starts", start, start, club.ErrEndsBeforeStart},
+		{"ending before it starts", start, start.Add(-time.Minute), club.ErrEndsBeforeStart},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, err := club.NewSchedule(tt.start, tt.end)
+			if !errors.Is(err, tt.err) {
+				t.Fatalf("NewSchedule = %v, want %v", err, tt.err)
+			}
+			if err == nil && (!got.Start.Equal(tt.start) || !got.End.Equal(tt.end)) {
+				t.Fatalf("NewSchedule = %+v", got)
+			}
+		})
+	}
+}
+
+func TestEvent(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
+	start := now.Add(24 * time.Hour)
+	schedule, _ := club.NewSchedule(start, start.Add(time.Hour))
+
+	if _, err := club.NewEvent("Новый год", "", club.Schedule{}, now); !errors.Is(err, club.ErrNoStart) {
+		t.Fatalf("an event with no start: %v", err)
+	}
+
+	event, err := club.NewEvent("Новый год", "", schedule, now)
+	if err != nil || !event.IsEvent() || event.Kind() != club.KindEvent || event.Schedule() != schedule {
+		t.Fatalf("NewEvent = %+v, %v", event, err)
+	}
+
+	group, _ := club.New("Кошки", "", now)
+	if group.IsEvent() || group.Kind() != club.KindGroup || group.Started(start) {
+		t.Fatalf("a group = %+v", group)
+	}
+
+	// "Возможно приду" is for an event that has not started.
+	if !event.JoinsAsMaybe(true, now) || event.JoinsAsMaybe(false, now) {
+		t.Error("an event to come takes a maybe as asked")
+	}
+	if event.Started(now) || !event.Started(start) || event.JoinsAsMaybe(true, start) {
+		t.Error("an event that started takes no maybe")
+	}
+	if group.JoinsAsMaybe(true, now) {
+		t.Error("a group takes no maybe")
+	}
+
+	// An event keeps a schedule when edited; a group gets none.
+	later, _ := club.NewSchedule(start.Add(time.Hour), time.Time{})
+	changes := club.Changes{Name: "Новый год", Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator, Schedule: later}
+
+	if edited, err := event.Edited(club.RoleOwner, changes); err != nil || edited.Schedule() != later {
+		t.Fatalf("Edited = %+v, %v", edited, err)
+	}
+	changes.Schedule = club.Schedule{}
+	if _, err := event.Edited(club.RoleOwner, changes); !errors.Is(err, club.ErrNoStart) {
+		t.Fatalf("an event edited to no start: %v", err)
+	}
+	changes.Schedule = later
+	if edited, err := group.Edited(club.RoleOwner, changes); err != nil || edited.Schedule() != (club.Schedule{}) {
+		t.Fatalf("a group edited with a schedule = %+v, %v", edited, err)
+	}
+
+	if _, err := club.NewKind("party"); !errors.Is(err, club.ErrInvalidKind) {
+		t.Fatalf("NewKind: %v", err)
+	}
+	if k, err := club.NewKind("event"); err != nil || k != club.KindEvent {
+		t.Fatalf("NewKind = %q, %v", k, err)
+	}
+}

@@ -5,6 +5,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
@@ -35,6 +36,11 @@ type Config struct {
 	DatabaseURL string `env:"DATABASE_URL"`
 	// MigrateOnStart applies pending migrations before serving.
 	MigrateOnStart bool `env:"MIGRATE_ON_START" envDefault:"true"`
+
+	// NotificationServiceAddr is optional: without it an appointment
+	// notifies nobody. NotifyTimeout bounds one delivery.
+	NotificationServiceAddr string        `env:"NOTIFICATION_SERVICE_ADDR"`
+	NotifyTimeout           time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
 
 	// Spam protection, per user. REDIS_ADDR shares the counters between
 	// replicas; without it each counts on its own.

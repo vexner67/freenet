@@ -27,7 +27,30 @@ type Store struct {
 type member struct {
 	clubID, userID uuid.UUID
 	role           club.Role
+	title          club.Title
+	hidden         bool
+	maybe          bool
 	pinned         bool
+}
+
+func (m *member) seat() club.Seat {
+	return club.Seat{Role: m.role, Title: m.title, Hidden: m.hidden, Maybe: m.maybe}
+}
+
+// picked tells whether filter lists the member.
+func (m *member) picked(filter service.MemberFilter) bool {
+	switch filter {
+	case service.Managers:
+		return m.role.Manages()
+	case service.ShownManagers:
+		return m.role.Manages() && !m.hidden
+	case service.SureComers:
+		return !m.maybe
+	case service.MaybeComers:
+		return m.maybe
+	default:
+		return true
+	}
 }
 
 func NewStore() *Store {
@@ -53,8 +76,13 @@ func (s *Store) club(id uuid.UUID) (*club.Club, bool) {
 	}
 
 	for _, m := range s.members {
-		if m.clubID == id {
-			stored.Members++
+		if m.clubID != id {
+			continue
+		}
+
+		stored.Members++
+		if m.maybe {
+			stored.Maybes++
 		}
 	}
 
@@ -74,13 +102,13 @@ func (s *Store) membership(clubID, userID uuid.UUID) (uuid.UUID, *member) {
 }
 
 // join adds a membership; the caller holds the write lock.
-func (s *Store) join(clubID, userID uuid.UUID, role club.Role) error {
+func (s *Store) join(clubID, userID uuid.UUID, role club.Role, maybe bool) error {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return errs.Wrap("uuid.NewV7", err)
 	}
 
-	s.members[id] = &member{clubID: clubID, userID: userID, role: role}
+	s.members[id] = &member{clubID: clubID, userID: userID, role: role, maybe: maybe}
 
 	return nil
 }
@@ -99,7 +127,7 @@ func (r *ClubRepository) Create(ctx context.Context, c *club.Club, ownerID uuid.
 
 	r.s.clubs[c.ID()] = stored(c)
 
-	return r.s.join(c.ID(), ownerID, club.RoleOwner)
+	return r.s.join(c.ID(), ownerID, club.RoleOwner, false)
 }
 
 func stored(c *club.Club) club.Stored {
@@ -117,6 +145,9 @@ func stored(c *club.Club) club.Stored {
 		OpenTopics:      c.OpenTopics(),
 		TopicsAboveWall: c.TopicsAboveWall(),
 		Backdrop:        c.Backdrop(),
+
+		Kind:     c.Kind(),
+		Schedule: c.Schedule(),
 	}
 }
 
@@ -282,6 +313,21 @@ func (r *MemberRepository) Role(ctx context.Context, clubID, userID uuid.UUID) (
 	return club.RoleNone, nil
 }
 
+func (r *MemberRepository) Seat(ctx context.Context, clubID, userID uuid.UUID) (club.Seat, error) {
+	if err := ctx.Err(); err != nil {
+		return club.Seat{}, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	if _, m := r.s.membership(clubID, userID); m != nil {
+		return m.seat(), nil
+	}
+
+	return club.Seat{}, nil
+}
+
 func (r *MemberRepository) Owner(ctx context.Context, clubID uuid.UUID) (uuid.UUID, error) {
 	if err := ctx.Err(); err != nil {
 		return uuid.Nil, errs.Wrap("ctx.Err", err)
@@ -299,7 +345,7 @@ func (r *MemberRepository) Owner(ctx context.Context, clubID uuid.UUID) (uuid.UU
 	return uuid.Nil, nil
 }
 
-func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID) error {
+func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID, maybe bool) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -315,7 +361,7 @@ func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID) e
 		return nil
 	}
 
-	return r.s.join(clubID, userID, club.RoleMember)
+	return r.s.join(clubID, userID, club.RoleMember, maybe)
 }
 
 func (r *MemberRepository) Leave(ctx context.Context, clubID, userID uuid.UUID) error {
@@ -347,6 +393,27 @@ func (r *MemberRepository) SetRole(ctx context.Context, clubID, userID uuid.UUID
 	}
 
 	m.role = role
+	if role == club.RoleMember {
+		m.title, m.hidden = "", false
+	}
+
+	return nil
+}
+
+func (r *MemberRepository) Describe(ctx context.Context, clubID, userID uuid.UUID, title club.Title, hidden bool) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	_, m := r.s.membership(clubID, userID)
+	if m == nil || !m.role.Manages() {
+		return club.ErrNotManager
+	}
+
+	m.title, m.hidden = title, hidden
 
 	return nil
 }
@@ -392,7 +459,7 @@ func (s *Store) sorted(match func(*member) bool, before uuid.UUID, limit int) []
 	return ids[:min(limit, len(ids))]
 }
 
-func (r *MemberRepository) List(ctx context.Context, clubID, before uuid.UUID, limit int, adminsOnly bool) ([]service.Member, error) {
+func (r *MemberRepository) List(ctx context.Context, clubID, before uuid.UUID, limit int, filter service.MemberFilter) ([]service.Member, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
 	}
@@ -400,18 +467,18 @@ func (r *MemberRepository) List(ctx context.Context, clubID, before uuid.UUID, l
 	r.s.mu.RLock()
 	defer r.s.mu.RUnlock()
 
-	match := func(m *member) bool { return m.clubID == clubID && (!adminsOnly || m.role.Manages()) }
+	match := func(m *member) bool { return m.clubID == clubID && m.picked(filter) }
 
 	var found []service.Member
 	for _, id := range r.s.sorted(match, before, limit) {
 		m := r.s.members[id]
-		found = append(found, service.Member{ID: id, UserID: m.userID, Role: m.role})
+		found = append(found, service.Member{ID: id, UserID: m.userID, Seat: m.seat()})
 	}
 
 	return found, nil
 }
 
-func (r *MemberRepository) CountAdmins(ctx context.Context, clubID uuid.UUID) (int, error) {
+func (r *MemberRepository) CountAdmins(ctx context.Context, clubID uuid.UUID, shownOnly bool) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, errs.Wrap("ctx.Err", err)
 	}
@@ -421,7 +488,7 @@ func (r *MemberRepository) CountAdmins(ctx context.Context, clubID uuid.UUID) (i
 
 	count := 0
 	for _, m := range r.s.members {
-		if m.clubID == clubID && m.role.Manages() {
+		if m.clubID == clubID && m.role.Manages() && (!shownOnly || !m.hidden) {
 			count++
 		}
 	}
@@ -429,7 +496,7 @@ func (r *MemberRepository) CountAdmins(ctx context.Context, clubID uuid.UUID) (i
 	return count, nil
 }
 
-func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, managed bool) ([]service.Membership, error) {
+func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, filter service.ClubFilter) ([]service.Membership, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
 	}
@@ -438,7 +505,7 @@ func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UU
 	defer r.s.mu.RUnlock()
 
 	var found []service.Membership
-	for _, id := range r.s.sorted(clubsOf(userID, managed), before, limit) {
+	for _, id := range r.s.sorted(r.s.clubsOf(userID, filter), before, limit) {
 		m := r.s.members[id]
 		c, _ := r.s.club(m.clubID)
 		found = append(found, service.Membership{ID: id, Club: c, Role: m.role, Pinned: m.pinned})
@@ -449,11 +516,16 @@ func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UU
 
 // clubsOf matches the memberships of userID, those that run a club with
 // managed.
-func clubsOf(userID uuid.UUID, managed bool) func(*member) bool {
-	return func(m *member) bool { return m.userID == userID && (!managed || m.role.Manages()) }
+// clubsOf matches the memberships of userID that filter picks; the
+// caller holds a lock.
+func (s *Store) clubsOf(userID uuid.UUID, filter service.ClubFilter) func(*member) bool {
+	return func(m *member) bool {
+		return m.userID == userID && (!filter.Managed || m.role.Manages()) &&
+			(filter.Kind == "" || s.clubs[m.clubID].Kind == filter.Kind)
+	}
 }
 
-func (r *MemberRepository) CountClubs(ctx context.Context, userID uuid.UUID, managed bool) (int, error) {
+func (r *MemberRepository) CountClubs(ctx context.Context, userID uuid.UUID, filter service.ClubFilter) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, errs.Wrap("ctx.Err", err)
 	}
@@ -461,7 +533,7 @@ func (r *MemberRepository) CountClubs(ctx context.Context, userID uuid.UUID, man
 	r.s.mu.RLock()
 	defer r.s.mu.RUnlock()
 
-	return len(r.s.sorted(clubsOf(userID, managed), uuid.Nil, len(r.s.members))), nil
+	return len(r.s.sorted(r.s.clubsOf(userID, filter), uuid.Nil, len(r.s.members))), nil
 }
 
 // Pin keeps at most limit of the user's clubs that they run pinned, as the
@@ -513,7 +585,7 @@ func (r *MemberRepository) Pinned(ctx context.Context, userID uuid.UUID) ([]*clu
 }
 
 func (r *MemberRepository) ClubIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error) {
-	clubs, err := r.ListClubs(ctx, userID, uuid.Nil, limit, false)
+	clubs, err := r.ListClubs(ctx, userID, uuid.Nil, limit, service.ClubFilter{})
 	if err != nil {
 		return nil, err
 	}

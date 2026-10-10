@@ -13,6 +13,7 @@ import (
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/club/internal/club"
 	"github.com/vexner67/freenet/club/internal/postgres"
+	"github.com/vexner67/freenet/club/internal/service"
 	"github.com/vexner67/freenet/pkg/pgpool"
 )
 
@@ -108,27 +109,27 @@ func TestRepositories(t *testing.T) {
 	})
 
 	t.Run("members", func(t *testing.T) {
-		if err := members.Join(ctx, c.ID(), bob); err != nil {
+		if err := members.Join(ctx, c.ID(), bob, false); err != nil {
 			t.Fatal(err)
 		}
-		if err := members.Join(ctx, c.ID(), bob); err != nil {
+		if err := members.Join(ctx, c.ID(), bob, false); err != nil {
 			t.Fatalf("join twice: %v", err)
 		}
-		if err := members.Join(ctx, uuid.New(), bob); !errors.Is(err, club.ErrNotFound) {
+		if err := members.Join(ctx, uuid.New(), bob, false); !errors.Is(err, club.ErrNotFound) {
 			t.Fatalf("join a missing club: %v", err)
 		}
 		if got, _ := clubs.Get(ctx, c.ID()); got.Members() != 2 {
 			t.Fatalf("members = %d, want 2", got.Members())
 		}
 
-		list, err := members.List(ctx, c.ID(), uuid.Nil, 10, false)
+		list, err := members.List(ctx, c.ID(), uuid.Nil, 10, service.AllMembers)
 		if err != nil || len(list) != 2 || list[0].UserID != bob || list[1].UserID != ann || list[1].Role != club.RoleOwner {
 			t.Fatalf("List = %+v, %v; the newest first", list, err)
 		}
-		if older, err := members.List(ctx, c.ID(), list[0].ID, 10, false); err != nil || len(older) != 1 || older[0].UserID != ann {
+		if older, err := members.List(ctx, c.ID(), list[0].ID, 10, service.AllMembers); err != nil || len(older) != 1 || older[0].UserID != ann {
 			t.Fatalf("List after cursor = %+v, %v", older, err)
 		}
-		if admins, err := members.List(ctx, c.ID(), uuid.Nil, 10, true); err != nil || len(admins) != 1 || admins[0].UserID != ann {
+		if admins, err := members.List(ctx, c.ID(), uuid.Nil, 10, service.Managers); err != nil || len(admins) != 1 || admins[0].UserID != ann {
 			t.Fatalf("admins = %+v, %v", admins, err)
 		}
 
@@ -142,7 +143,7 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("demote the owner: %v", err)
 		}
 
-		mine, err := members.ListClubs(ctx, bob, uuid.Nil, 10, false)
+		mine, err := members.ListClubs(ctx, bob, uuid.Nil, 10, service.ClubFilter{})
 		if err != nil || len(mine) != 1 || mine[0].Club.ID() != c.ID() || mine[0].Role != club.RoleAdmin || mine[0].Club.Members() != 2 {
 			t.Fatalf("ListClubs = %+v, %v", mine, err)
 		}
@@ -176,10 +177,10 @@ func TestRepositories(t *testing.T) {
 		var wg sync.WaitGroup
 		for _, p := range people {
 			wg.Go(func() {
-				if err := members.Join(ctx, d.ID(), p); err != nil {
+				if err := members.Join(ctx, d.ID(), p, false); err != nil {
 					t.Error(err)
 				}
-				if err := members.Join(ctx, d.ID(), p); err != nil {
+				if err := members.Join(ctx, d.ID(), p, false); err != nil {
 					t.Error(err)
 				}
 			})
@@ -201,7 +202,7 @@ func TestRepositories(t *testing.T) {
 
 	t.Run("erasing a user", func(t *testing.T) {
 		e := create(ann)
-		if err := members.Join(ctx, e.ID(), bob); err != nil {
+		if err := members.Join(ctx, e.ID(), bob, false); err != nil {
 			t.Fatal(err)
 		}
 
@@ -254,7 +255,7 @@ func TestRepositories_AvatarSearchAndMenu(t *testing.T) {
 
 	cats := create(ann, "Любители "+word)
 	other := create(bob, "Собаки")
-	if err = members.Join(ctx, cats.ID(), bob); err != nil {
+	if err = members.Join(ctx, cats.ID(), bob, false); err != nil {
 		t.Fatal(err)
 	}
 
@@ -310,10 +311,10 @@ func TestRepositories_AvatarSearchAndMenu(t *testing.T) {
 		t.Fatalf("%% matches itself only: %v, %v", found, err)
 	}
 
-	if n, err := members.CountClubs(ctx, bob, false); err != nil || n != 2 {
+	if n, err := members.CountClubs(ctx, bob, service.ClubFilter{}); err != nil || n != 2 {
 		t.Fatalf("CountClubs = %d, %v", n, err)
 	}
-	if managed, err := members.ListClubs(ctx, bob, uuid.Nil, 10, true); err != nil || len(managed) != 1 || managed[0].Club.ID() != other.ID() {
+	if managed, err := members.ListClubs(ctx, bob, uuid.Nil, 10, service.ClubFilter{Managed: true}); err != nil || len(managed) != 1 || managed[0].Club.ID() != other.ID() {
 		t.Fatalf("managed = %+v, %v", managed, err)
 	}
 
@@ -388,17 +389,53 @@ func TestRepositories_SettingsAndTransfer(t *testing.T) {
 	}
 
 	for _, id := range []uuid.UUID{bob, cat} {
-		if err = members.Join(ctx, c.ID(), id); err != nil {
+		if err = members.Join(ctx, c.ID(), id, false); err != nil {
 			t.Fatal(err)
 		}
 	}
 	if err = members.SetRole(ctx, c.ID(), bob, club.RoleAdmin); err != nil {
 		t.Fatal(err)
 	}
-	if n, err := members.CountAdmins(ctx, c.ID()); err != nil || n != 2 {
+	if n, err := members.CountAdmins(ctx, c.ID(), false); err != nil || n != 2 {
 		t.Fatalf("CountAdmins = %d, %v", n, err)
 	}
-	if mine, err := members.ListClubs(ctx, bob, uuid.Nil, 10, false); err != nil || len(mine) != 1 || mine[0].Club.Website() != "https://cats.example" {
+
+	// Titles and hiding: only of those who run the club.
+	if err = members.Describe(ctx, c.ID(), cat, "кот", true); !errors.Is(err, club.ErrNotManager) {
+		t.Fatalf("Describe a member: %v", err)
+	}
+	if err = members.Describe(ctx, c.ID(), bob, "кормит котов", true); err != nil {
+		t.Fatal(err)
+	}
+	if err = members.Describe(ctx, c.ID(), ann, "главная", false); err != nil {
+		t.Fatal(err)
+	}
+	if seat, err := members.Seat(ctx, c.ID(), bob); err != nil || seat != (club.Seat{Role: club.RoleAdmin, Title: "кормит котов", Hidden: true}) {
+		t.Fatalf("Seat = %+v, %v", seat, err)
+	}
+	if seat, err := members.Seat(ctx, c.ID(), uuid.New()); err != nil || seat != (club.Seat{}) {
+		t.Fatalf("Seat of a stranger = %+v, %v", seat, err)
+	}
+	if n, err := members.CountAdmins(ctx, c.ID(), true); err != nil || n != 1 {
+		t.Fatalf("CountAdmins shown = %d, %v", n, err)
+	}
+	if shown, err := members.List(ctx, c.ID(), uuid.Nil, 10, service.ShownManagers); err != nil || len(shown) != 1 || shown[0].UserID != ann || shown[0].Title != "главная" {
+		t.Fatalf("List shown = %+v, %v", shown, err)
+	}
+	if all, err := members.List(ctx, c.ID(), uuid.Nil, 10, service.Managers); err != nil || len(all) != 2 || !all[0].Hidden {
+		t.Fatalf("List managers = %+v, %v", all, err)
+	}
+	// Dismissed and appointed again, an admin starts with neither.
+	if err = members.SetRole(ctx, c.ID(), bob, club.RoleMember); err != nil {
+		t.Fatal(err)
+	}
+	if err = members.SetRole(ctx, c.ID(), bob, club.RoleAdmin); err != nil {
+		t.Fatal(err)
+	}
+	if seat, err := members.Seat(ctx, c.ID(), bob); err != nil || seat != (club.Seat{Role: club.RoleAdmin}) {
+		t.Fatalf("Seat after a dismissal = %+v, %v", seat, err)
+	}
+	if mine, err := members.ListClubs(ctx, bob, uuid.Nil, 10, service.ClubFilter{}); err != nil || len(mine) != 1 || mine[0].Club.Website() != "https://cats.example" {
 		t.Fatalf("ListClubs = %+v, %v; with the settings", mine, err)
 	}
 
@@ -427,5 +464,119 @@ func TestRepositories_SettingsAndTransfer(t *testing.T) {
 	}
 	if role, _ := members.Role(ctx, c.ID(), ann); role != club.RoleAdmin {
 		t.Fatalf("the old owner = %q, want an admin", role)
+	}
+}
+
+func TestRepositories_Events(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	clubs := postgres.NewClubRepository(pool)
+	members := postgres.NewMemberRepository(pool)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	schedule, err := club.NewSchedule(time.Now().Add(time.Hour), time.Now().Add(2*time.Hour))
+	if err != nil {
+		t.Fatal(err)
+	}
+	event, err := club.NewEvent("Новый год", "ёлка", schedule, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = clubs.Create(ctx, event, ann); err != nil {
+		t.Fatal(err)
+	}
+	group, _ := club.New("Кошки", "", time.Now())
+	if err = clubs.Create(ctx, group, ann); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := clubs.Get(ctx, event.ID())
+	if err != nil || !got.IsEvent() || got.Schedule() != schedule || got.Maybes() != 0 {
+		t.Fatalf("Get = %+v, %v; want the event with %+v", got, err, schedule)
+	}
+	if got, err = clubs.Get(ctx, group.ID()); err != nil || got.IsEvent() || got.Schedule() != (club.Schedule{}) {
+		t.Fatalf("Get a group = %+v, %v", got, err)
+	}
+
+	// Bob might come, Cat is sure to; joining again changes nothing.
+	for range 2 {
+		if err = members.Join(ctx, event.ID(), bob, true); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err = members.Join(ctx, event.ID(), bob, false); err != nil {
+		t.Fatal(err)
+	}
+	if err = members.Join(ctx, event.ID(), cat, false); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = clubs.Get(ctx, event.ID()); err != nil || got.Members() != 3 || got.Maybes() != 1 {
+		t.Fatalf("counts = %d and %d, %v; want 3 with 1 maybe", got.Members(), got.Maybes(), err)
+	}
+	if seat, err := members.Seat(ctx, event.ID(), bob); err != nil || !seat.Maybe || seat.Role != club.RoleMember {
+		t.Fatalf("Seat = %+v, %v", seat, err)
+	}
+
+	if sure, err := members.List(ctx, event.ID(), uuid.Nil, 10, service.SureComers); err != nil || len(sure) != 2 || sure[0].UserID != cat || sure[1].UserID != ann {
+		t.Fatalf("sure = %+v, %v", sure, err)
+	}
+	if maybe, err := members.List(ctx, event.ID(), uuid.Nil, 10, service.MaybeComers); err != nil || len(maybe) != 1 || maybe[0].UserID != bob || !maybe[0].Maybe {
+		t.Fatalf("maybe = %+v, %v", maybe, err)
+	}
+
+	// The lists of a user tell groups from events.
+	if events, err := members.ListClubs(ctx, ann, uuid.Nil, 10, service.ClubFilter{Kind: club.KindEvent}); err != nil || len(events) != 1 || events[0].Club.ID() != event.ID() || events[0].Club.Maybes() != 1 {
+		t.Fatalf("events = %+v, %v", events, err)
+	}
+	if groups, err := members.ListClubs(ctx, ann, uuid.Nil, 10, service.ClubFilter{Kind: club.KindGroup, Managed: true}); err != nil || len(groups) != 1 || groups[0].Club.ID() != group.ID() {
+		t.Fatalf("groups = %+v, %v", groups, err)
+	}
+	if n, err := members.CountClubs(ctx, ann, service.ClubFilter{Kind: club.KindEvent}); err != nil || n != 1 {
+		t.Fatalf("CountClubs events = %d, %v", n, err)
+	}
+	if n, err := members.CountClubs(ctx, ann, service.ClubFilter{}); err != nil || n != 2 {
+		t.Fatalf("CountClubs = %d, %v", n, err)
+	}
+
+	// A new schedule is saved, an end taken away.
+	open, _ := club.NewSchedule(schedule.Start.Add(time.Hour), time.Time{})
+	edited, err := got.Edited(club.RoleOwner, club.Changes{Name: got.Name(), Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator, Schedule: open})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = clubs.Update(ctx, edited); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = clubs.Get(ctx, event.ID()); err != nil || got.Schedule() != open {
+		t.Fatalf("Get after Update = %+v, %v", got.Schedule(), err)
+	}
+
+	// Leaving and erasing a page take the maybes out of the count.
+	if err = members.Leave(ctx, event.ID(), bob); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = clubs.Get(ctx, event.ID()); err != nil || got.Members() != 2 || got.Maybes() != 0 {
+		t.Fatalf("after a maybe left: %d and %d, %v", got.Members(), got.Maybes(), err)
+	}
+	if err = members.Join(ctx, event.ID(), bob, true); err != nil {
+		t.Fatal(err)
+	}
+	if err = members.DeleteByUser(ctx, bob); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = clubs.Get(ctx, event.ID()); err != nil || got.Members() != 2 || got.Maybes() != 0 {
+		t.Fatalf("after a maybe was erased: %d and %d, %v", got.Members(), got.Maybes(), err)
 	}
 }

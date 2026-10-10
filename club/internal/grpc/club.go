@@ -19,12 +19,14 @@ type ClubService interface {
 	Find(ctx context.Context, viewerID uuid.UUID, ref service.Ref) (service.View, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*club.Club, error)
 	Update(ctx context.Context, userID, clubID uuid.UUID, changes club.Changes) (service.View, error)
-	Join(ctx context.Context, userID, clubID uuid.UUID) (service.View, error)
+	CreateEvent(ctx context.Context, ownerID uuid.UUID, name club.Name, description club.Description, schedule club.Schedule) (service.View, error)
+	Join(ctx context.Context, userID, clubID uuid.UUID, maybe bool) (service.View, error)
 	Leave(ctx context.Context, userID, clubID uuid.UUID) (service.View, error)
 	Appoint(ctx context.Context, requesterID, clubID, userID uuid.UUID, role club.Role) error
 	Transfer(ctx context.Context, requesterID, clubID, userID uuid.UUID) error
-	Members(ctx context.Context, clubID, cursor uuid.UUID, size int, adminsOnly bool) (service.MemberPage, error)
-	Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, managed bool) (service.ClubPage, error)
+	Describe(ctx context.Context, requesterID, clubID, userID uuid.UUID, title club.Title, hidden bool) error
+	Members(ctx context.Context, viewerID, clubID, cursor uuid.UUID, size int, pick service.MemberPick) (service.MemberPage, error)
+	Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, filter service.ClubFilter) (service.ClubPage, error)
 	Search(ctx context.Context, query club.SearchQuery, cursor uuid.UUID, size int) (service.SearchPage, error)
 	SetAvatar(ctx context.Context, userID, clubID, avatarID uuid.UUID) (service.View, error)
 	SetBackdrop(ctx context.Context, userID, clubID uuid.UUID, side club.BackdropSide, photoID uuid.UUID) (service.View, error)
@@ -70,6 +72,35 @@ func (h *ClubHandler) CreateClub(ctx context.Context, req *clubv1.CreateClubRequ
 	}
 
 	return &clubv1.CreateClubResponse{Club: toProtoView(v)}, nil
+}
+
+func (h *ClubHandler) CreateEvent(ctx context.Context, req *clubv1.CreateEventRequest) (*clubv1.CreateEventResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	name, err := club.NewName(req.GetName())
+	if err != nil {
+		return nil, err
+	}
+
+	description, err := club.NewDescription(req.GetDescription())
+	if err != nil {
+		return nil, err
+	}
+
+	schedule, err := fromProtoSchedule(req.GetStartsAt(), req.GetEndsAt())
+	if err != nil {
+		return nil, err
+	}
+
+	v, err := h.clubService.CreateEvent(ctx, userID, name, description, schedule)
+	if err != nil {
+		return nil, err
+	}
+
+	return &clubv1.CreateEventResponse{Club: toProtoView(v)}, nil
 }
 
 func (h *ClubHandler) GetClub(ctx context.Context, req *clubv1.GetClubRequest) (*clubv1.GetClubResponse, error) {
@@ -129,7 +160,9 @@ func (h *ClubHandler) UpdateClub(ctx context.Context, req *clubv1.UpdateClubRequ
 }
 
 func (h *ClubHandler) JoinClub(ctx context.Context, req *clubv1.JoinClubRequest) (*clubv1.JoinClubResponse, error) {
-	v, err := h.membership(ctx, req.GetClubId(), h.clubService.Join)
+	v, err := h.membership(ctx, req.GetClubId(), func(ctx context.Context, userID, clubID uuid.UUID) (service.View, error) {
+		return h.clubService.Join(ctx, userID, clubID, req.GetMaybe())
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -171,7 +204,12 @@ func (h *ClubHandler) ListMembers(ctx context.Context, req *clubv1.ListMembersRe
 		return nil, err
 	}
 
-	page, err := h.clubService.Members(ctx, clubID, cursor, int(req.GetLimit()), req.GetAdminsOnly())
+	pick := picks[req.GetGoing()]
+	if req.GetAdminsOnly() {
+		pick = service.PickAdmins
+	}
+
+	page, err := h.clubService.Members(ctx, viewerID(ctx), clubID, cursor, int(req.GetLimit()), pick)
 	if err != nil {
 		return nil, err
 	}
@@ -182,7 +220,9 @@ func (h *ClubHandler) ListMembers(ctx context.Context, req *clubv1.ListMembersRe
 		Total:      int32(page.Total), //nolint:gosec // a count of rows
 	}
 	for _, m := range page.Members {
-		resp.Members = append(resp.Members, &clubv1.Member{UserId: m.UserID.String(), Role: roles[m.Role]})
+		resp.Members = append(resp.Members, &clubv1.Member{
+			UserId: m.UserID.String(), Role: roles[m.Role], Title: m.Title.String(), Hidden: m.Hidden, Maybe: m.Maybe,
+		})
 	}
 
 	return resp, nil
@@ -210,6 +250,34 @@ func (h *ClubHandler) SetMemberRole(ctx context.Context, req *clubv1.SetMemberRo
 	}
 
 	if err = h.clubService.Appoint(ctx, requesterID, clubID, userID, role); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *ClubHandler) DescribeMember(ctx context.Context, req *clubv1.DescribeMemberRequest) (*emptypb.Empty, error) {
+	requesterID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clubID, err := parseID(req.GetClubId(), "invalid club id")
+	if err != nil {
+		return nil, err
+	}
+
+	userID, err := parseID(req.GetUserId(), "invalid user id")
+	if err != nil {
+		return nil, err
+	}
+
+	title, err := club.NewTitle(req.GetTitle())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.clubService.Describe(ctx, requesterID, clubID, userID, title, req.GetHidden()); err != nil {
 		return nil, err
 	}
 
@@ -250,7 +318,7 @@ func (h *ClubHandler) ListUserClubs(ctx context.Context, req *clubv1.ListUserClu
 		return nil, err
 	}
 
-	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), false)
+	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), service.ClubFilter{Kind: fromProtoKind(req.GetKind())})
 	if err != nil {
 		return nil, err
 	}
@@ -279,7 +347,9 @@ func (h *ClubHandler) ListMyClubs(ctx context.Context, req *clubv1.ListMyClubsRe
 		return nil, err
 	}
 
-	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), req.GetManaged())
+	filter := service.ClubFilter{Managed: req.GetManaged(), Kind: fromProtoKind(req.GetKind())}
+
+	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), filter)
 	if err != nil {
 		return nil, err
 	}
