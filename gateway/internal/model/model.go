@@ -265,6 +265,8 @@ type NewPost struct {
 	Signed   bool
 	// NSFW marks the post as adult ("Содержит NSFW-контент").
 	NSFW bool
+	// Mentions are the IDs of the people the text names, who hear of it.
+	Mentions []string
 	// AvatarUpdate: the post of the new photo of the wall's owner, the
 	// photo alone.
 	AvatarUpdate bool
@@ -355,6 +357,8 @@ type NewComment struct {
 	PhotoIDs []string
 	ReplyTo  string
 	FromWall bool
+	// Mentions are the IDs of the people the text names.
+	Mentions []string
 }
 
 // CommentPage is one screen of the comments of a post, oldest first;
@@ -687,12 +691,16 @@ type NewTopic struct {
 	Text     string
 	PhotoIDs []string
 	FromWall bool
+	// Mentions are the IDs of the people the first message names.
+	Mentions []string
 }
 
 type NewTopicMessage struct {
 	Text     string
 	PhotoIDs []string
 	FromWall bool
+	// Mentions are the IDs of the people the text names.
+	Mentions []string
 }
 
 // TopicChanges are the title and the settings, all at once.

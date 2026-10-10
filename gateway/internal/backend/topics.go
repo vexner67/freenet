@@ -23,6 +23,7 @@ func NewTopics(api postv1.PostServiceClient) *Topics {
 func (t *Topics) Create(ctx context.Context, accessToken string, nt model.NewTopic) (model.Topic, error) {
 	resp, err := t.api.CreateTopic(withToken(ctx, accessToken), &postv1.CreateTopicRequest{
 		ClubId: nt.ClubID, Title: nt.Title, Text: nt.Text, PhotoIds: nt.PhotoIDs, FromWall: nt.FromWall,
+		MentionedIds: nt.Mentions,
 	})
 	if err != nil {
 		return model.Topic{}, errs.Wrap("t.api.CreateTopic", fromStatus(err))
@@ -78,6 +79,7 @@ func (t *Topics) Delete(ctx context.Context, accessToken, id string) error {
 func (t *Topics) Write(ctx context.Context, accessToken, topicID string, nm model.NewTopicMessage) (model.TopicMessage, error) {
 	resp, err := t.api.CreateTopicMessage(withToken(ctx, accessToken), &postv1.CreateTopicMessageRequest{
 		TopicId: topicID, Text: nm.Text, PhotoIds: nm.PhotoIDs, FromWall: nm.FromWall,
+		MentionedIds: nm.Mentions,
 	})
 	if err != nil {
 		return model.TopicMessage{}, errs.Wrap("t.api.CreateTopicMessage", fromStatus(err))

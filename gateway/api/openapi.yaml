@@ -10,6 +10,13 @@ info:
     15 minutes. Exchange the refresh token for a new pair before that; each
     refresh token works once, and reusing an old one ends the session.
 
+    Texts are plain. A post, a comment or a message of a topic names
+    people as `@nickname` (at the start or after a space) or
+    `[nickname|Any name]`: the site draws both as links to `/nickname`, and
+    the first 10 people so named in a new text are notified (`post_mention`,
+    `comment_mention`, `topic_mention`), unless a blacklist stands between
+    them and the author.
+
     Errors always have the shape `{"error": {"code": "...", "message": "..."}}`;
     `message` is safe to show to the user.
 
@@ -3694,8 +3701,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted)"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -3716,7 +3723,7 @@ components:
             id: { type: string, format: uuid }
             text: { type: string }
         topic:
-          description: Only for topic_message; absent otherwise
+          description: Only for topic_message and topic_mention; absent otherwise
           type: object
           required: [id, title]
           properties:

@@ -33,6 +33,7 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 		Signed:   np.Signed,
 		Nsfw:     np.NSFW,
 
+		MentionedIds: np.Mentions,
 		AvatarUpdate: np.AvatarUpdate,
 	})
 	if err != nil {
@@ -271,6 +272,8 @@ func (p *Posts) CreateComment(ctx context.Context, accessToken, postID string, c
 		PhotoIds:  c.PhotoIDs,
 		ReplyToId: c.ReplyTo,
 		FromWall:  c.FromWall,
+
+		MentionedIds: c.Mentions,
 	})
 	if err != nil {
 		return model.Comment{}, errs.Wrap("p.api.CreateComment", fromStatus(err))

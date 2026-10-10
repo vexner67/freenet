@@ -241,8 +241,14 @@ func (a *api) createTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	t, err := a.topics.Create(r.Context(), token, model.NewTopic{
-		ClubID: c.Club.ID, Title: req.Title, Text: req.Text, PhotoIDs: req.Photos, FromWall: req.FromClub,
+		ClubID: c.Club.ID, Title: req.Title, Text: req.Text, PhotoIDs: req.Photos, FromWall: req.FromClub, Mentions: mentions,
 	})
 	if err != nil {
 		a.writeError(w, r, err)
@@ -439,7 +445,15 @@ func (a *api) createTopicMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := a.topics.Write(r.Context(), token, t.ID, model.NewTopicMessage{Text: req.Text, PhotoIDs: req.Photos, FromWall: req.FromClub})
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	m, err := a.topics.Write(r.Context(), token, t.ID, model.NewTopicMessage{
+		Text: req.Text, PhotoIDs: req.Photos, FromWall: req.FromClub, Mentions: mentions,
+	})
 	if err != nil {
 		a.writeError(w, r, err)
 		return

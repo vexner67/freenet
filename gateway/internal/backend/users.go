@@ -258,6 +258,15 @@ func (u *Users) CanMessage(ctx context.Context, accessToken, userID string, wrot
 	return resp.GetAllowed(), nil
 }
 
+func (u *Users) ResolveMentions(ctx context.Context, accessToken string, nicknames []string) ([]string, error) {
+	resp, err := u.api.ResolveMentions(withToken(ctx, accessToken), &userv1.ResolveMentionsRequest{Nicknames: nicknames})
+	if err != nil {
+		return nil, errs.Wrap("u.api.ResolveMentions", fromStatus(err))
+	}
+
+	return resp.GetUserIds(), nil
+}
+
 func (u *Users) Block(ctx context.Context, accessToken, userID string) error {
 	if _, err := u.api.Block(withToken(ctx, accessToken), &userv1.BlockRequest{UserId: userID}); err != nil {
 		return errs.Wrap("u.api.Block", fromStatus(err))

@@ -35,6 +35,9 @@ type Users interface {
 	GetProfiles(ctx context.Context, ids []string) ([]model.PublicProfile, error)
 	CanPostOnWall(ctx context.Context, accessToken, userID string) (bool, error)
 	CanMessage(ctx context.Context, accessToken, userID string, wroteFirst bool) (bool, error)
+	// ResolveMentions are the IDs of the people the caller names by these
+	// nicknames who hear of it: who exist and whom the caller may name.
+	ResolveMentions(ctx context.Context, accessToken string, nicknames []string) ([]string, error)
 	// Access is what of userID's page the caller may see.
 	Access(ctx context.Context, accessToken, userID string) (model.Access, error)
 
