@@ -29,9 +29,9 @@
         <div class="gray-bar" id="gray-bar" hidden>
           <form class="gray-bar-search" action="/search" method="get">
             <input type="hidden" name="section" value="groups">
-            <input type="text" name="q" maxlength="64" placeholder="Поиск по группам" aria-label="Поиск по группам">
+            <input type="text" name="q" id="search" maxlength="64" placeholder="Поиск по группам" aria-label="Поиск">
           </form>
-          <a class="button" href="/groups/create">Создать группу</a>
+          <a class="button" id="create" href="/groups/create">Создать группу</a>
         </div>
         <div class="summary-bar" id="summary"></div>
         <div class="error" id="error" hidden></div>

@@ -12,13 +12,20 @@ export function commentAnchor(id) {
   return 'comment-' + id;
 }
 
+// commentHearts are how the heart of a comment is put, taken off and
+// counted; a message of a topic has its own (topicHearts).
+const commentHearts = { like: api.likeComment, unlike: api.unlikeComment, likers: api.commentLikers };
+
+// topicHearts: nobody lists who liked a message of a topic.
+export const topicHearts = { like: api.likeTopicMessage, unlike: api.unlikeTopicMessage, likers: null };
+
 // commentNode renders a comment. Options:
 //   onDelete(comment, node) adds a "Удалить" link;
 //   onReply(comment) adds "Ответить";
 //   canLike makes the heart clickable (signed-in viewers), onError shows
 //   a failed like;
 //   withLike: false for what has no likes, the messages of a topic.
-export function commentNode(comment, { onDelete, onReply, canLike = false, onError, withLike = true } = {}) {
+export function commentNode(comment, { onDelete, onReply, canLike = false, onError, withLike = true, hearts = commentHearts } = {}) {
   // A comment for a community shows the community (fromWall).
   const path = pagePath(comment.author);
 
@@ -27,7 +34,7 @@ export function commentNode(comment, { onDelete, onReply, canLike = false, onErr
   if (onDelete) menu.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(comment, node) }));
   if (onReply) menu.push(el('a', { textContent: 'Ответить', onclick: () => onReply(comment) }));
 
-  const like = withLike ? likeButton(comment, { canLike, onError, like: api.likeComment, unlike: api.unlikeComment, likers: api.commentLikers }) : '';
+  const like = withLike ? likeButton(comment, { canLike, onError, ...hearts }) : '';
 
   const node = el('div', { className: 'post comment', id: commentAnchor(comment.id) },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(comment.author, 'small'), alt: '' })),

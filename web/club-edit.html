@@ -49,6 +49,23 @@
               <th><label for="website">Сайт</label></th>
               <td class="control"><input type="text" id="website" maxlength="256" spellcheck="false" placeholder="example.com"></td>
             </tr>
+            <tr id="start-row" hidden>
+              <th><label class="required" for="start-date">Начало</label></th>
+              <td class="control">
+                <input type="date" class="half" id="start-date" aria-label="Дата начала">
+                <input type="time" class="half" id="start-time" aria-label="Время начала">
+              </td>
+            </tr>
+            <tr id="end-row" hidden>
+              <th><label for="has-end">Окончание</label></th>
+              <td class="control">
+                <label><input type="checkbox" id="has-end"> Указать дату окончания</label>
+                <div id="end" hidden>
+                  <input type="date" class="half" id="end-date" aria-label="Дата окончания">
+                  <input type="time" class="half" id="end-time" aria-label="Время окончания">
+                </div>
+              </td>
+            </tr>
             <tr>
               <th><label for="wall">Стена</label></th>
               <td class="control">

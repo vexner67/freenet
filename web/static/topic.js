@@ -5,7 +5,7 @@
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
-import { commentNode } from './comments.js';
+import { commentNode, topicHearts } from './comments.js';
 import { formatPostDate, topicMessagesCount } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
 import { boardTitle, topicPath } from './topics.js';
@@ -62,7 +62,9 @@ function initMessages(topic, me, admin) {
   const messageNode = (m) => commentNode(m, {
     onDelete: canDelete(m) && remove,
     onReply: canWrite && reply,
-    withLike: false,
+    canLike: Boolean(me),
+    onError: (e) => showError($('error'), e),
+    hearts: topicHearts,
   });
 
   // reply starts an answer as openvk's "Ответить": the name of the author

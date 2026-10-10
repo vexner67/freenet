@@ -26,7 +26,8 @@ export function attachLikers(heart, item, load) {
   }
 
   async function show() {
-    if (item.likes === 0) return;
+    // Without load nobody tells who liked it.
+    if (item.likes === 0 || !load) return;
 
     let page;
     try {

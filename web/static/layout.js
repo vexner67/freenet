@@ -95,6 +95,7 @@ export function renderChrome(me) {
       el('a', { href: '/im', textContent: 'Мои Сообщения' },
         el('span', { className: 'counter', id: 'messages-count', hidden: true })),
       el('a', { href: '/groups', textContent: 'Мои Группы' }),
+      el('a', { href: '/events', textContent: 'Мои Встречи' }),
       el('a', { href: '/feed', textContent: 'Мои Новости' }),
       el('a', { href: '/notifications', textContent: 'Мои Ответы' },
         el('span', { className: 'counter', id: 'notifications-count', hidden: true })),

@@ -4,16 +4,19 @@
 // each with "Просмотр группы", "Добавить в левое меню" for those you run
 // and "Выйти из группы". With ?u=<nickname> it is someone else's list, as
 // "Все" of the block "Группы" on their page leads: "Имя » Группы", how
-// many and the clubs, as their "Кому видно мои группы" allows.
+// many and the clubs, as their "Кому видно мои группы" allows. At /events
+// it is "Мои Встречи": the same page for the events you come to, with
+// "Создать встречу".
 
 import { api, currentUser } from './api.js';
-import { clubsCount, myClubsCount } from './labels.js';
+import { clubsCount, eventsCount, myClubsCount, myEventsCount } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showPinnedClubs, showError, hideError } from './layout.js';
 import { clubRow } from './clubs.js';
 
 const params = new URLSearchParams(location.search);
 const managed = params.get('act') === 'managed';
 const other = params.get('u');
+const events = location.pathname === '/events';
 let cursor = '';
 
 function clubNode(club) {
@@ -86,14 +89,26 @@ async function load(list, node, summary) {
   }
 }
 
-// showMine is "Мои Группы".
+// showMine is "Мои Группы" or, at /events, "Мои Встречи".
 async function showMine() {
-  document.title = 'Мои Группы | Freenet';
+  if (events) {
+    document.title = 'Мои Встречи | Freenet';
+    $('title').textContent = 'Мои Встречи';
+    $('tab-all').textContent = 'Встречи';
+    $('tab-all').href = '/events';
+    $('tab-managed').href = '/events?act=managed';
+    $('create').textContent = 'Создать встречу';
+    $('create').href = '/events/create';
+    $('search').placeholder = 'Поиск встреч';
+  }
+
   $(managed ? 'tab-managed' : 'tab-all').classList.add('active');
   $('tabs').hidden = false;
   $('gray-bar').hidden = false;
 
-  const more = () => load((c) => api.myClubs(c, managed), clubNode, managed ? clubsCount : myClubsCount);
+  const list = events ? api.myEvents : api.myClubs;
+  const summary = events ? (managed ? eventsCount : myEventsCount) : (managed ? clubsCount : myClubsCount);
+  const more = () => load((c) => list(c, managed), clubNode, summary);
   $('more').addEventListener('click', more);
   await more();
 }

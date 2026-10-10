@@ -8,6 +8,7 @@ import { onEvent } from './events.js';
 import { formatPostDate, notificationVerb, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, pagePath, profilePath, renderChrome, setCounter, showError, hideError } from './layout.js';
 import { postPath } from './posts.js';
+import { topicPath } from './topics.js';
 
 const COMMENT_SNIPPET = 200;
 
@@ -73,6 +74,18 @@ function notificationText(n) {
   if (n.type === 'suggested_post') {
     return ['В сообществе ', el('a', { href: `${pagePath(n.actor)}/suggested` }, el('b', { textContent: fullName(n.actor) })),
       ' новые записи в предложке'];
+  }
+
+  // Made an admin by its owner; openvk names who did it, we the community.
+  if (n.type === 'club_admin') {
+    return ['Вас назначили руководителем сообщества ', el('a', { href: pagePath(n.actor) }, el('b', { textContent: fullName(n.actor) })), '.'];
+  }
+
+  // A message in the topic you started, openvk's "оставил комментарий
+  // под вашей темой".
+  if (n.type === 'topic_message') {
+    return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей темой `,
+      el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), '.'];
   }
 
   const verb = notificationVerb(n.type, n.actor);
