@@ -15,6 +15,7 @@ import (
 )
 
 type PostService interface {
+	Count(ctx context.Context) (int, error)
 	Create(ctx context.Context, in service.CreateInput) (*post.Post, error)
 	Repost(ctx context.Context, in service.RepostInput) (*post.Post, error)
 	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
@@ -314,6 +315,16 @@ func (h *PostHandler) GetPost(ctx context.Context, req *postv1.GetPostRequest) (
 }
 
 // GetPosts leaves liked unset: the posts are shown without their likes.
+// CountPosts counts the posts of the site, for its page "о сайте".
+func (h *PostHandler) CountPosts(ctx context.Context, _ *postv1.CountPostsRequest) (*postv1.CountPostsResponse, error) {
+	n, err := h.postService.Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.CountPostsResponse{Count: int32(n)}, nil //nolint:gosec // a count of rows
+}
+
 func (h *PostHandler) GetPosts(ctx context.Context, req *postv1.GetPostsRequest) (*postv1.GetPostsResponse, error) {
 	ids, err := parseIDs(req.GetIds())
 	if err != nil {

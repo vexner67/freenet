@@ -88,7 +88,11 @@ func TestPostRepository_ArchiveSearchAndComments(t *testing.T) {
 		t.Fatalf("the pinned post is not found: %d", len(posts))
 	}
 
-	// Archived, a post leaves the wall, the feed and its pin.
+	// Archived, a post leaves the wall, the feed and its pin, and the count
+	// of the site, which other tests change too: only the least is sure.
+	if n, err := repo.Count(ctx); err != nil || n < len(saved) {
+		t.Fatalf("Count = %d, %v; want these %d at least", n, err, len(saved))
+	}
 	for range 2 {
 		if err := repo.SetArchived(ctx, saved[0].ID(), true); err != nil {
 			t.Fatalf("SetArchived: %v", err)

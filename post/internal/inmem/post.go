@@ -363,6 +363,24 @@ func (r *PostRepository) list(ctx context.Context, match func(*post.Post) bool, 
 	return found, nil
 }
 
+func (r *PostRepository) Count(ctx context.Context) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	count := 0
+	for _, p := range r.s.posts {
+		if !p.Archived() {
+			count++
+		}
+	}
+
+	return count, nil
+}
+
 func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, pick service.WallPick) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, errs.Wrap("ctx.Err", err)

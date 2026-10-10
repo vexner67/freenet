@@ -43,6 +43,8 @@ type PostRepository interface {
 	// one in its place.
 	ListByWall(ctx context.Context, wallID uuid.UUID, pick WallPick, before uuid.UUID, limit int) ([]*post.Post, error)
 	CountByWall(ctx context.Context, wallID uuid.UUID, pick WallPick) (int, error)
+	// Count counts the posts on all walls that are not archived.
+	Count(ctx context.Context) (int, error)
 	// ListFeed is ListByWall for the posts written by several authors, on
 	// whichever walls, but for those that speak for a wall, together with
 	// all the posts on several walls; archived posts are left out.
@@ -872,4 +874,14 @@ func (s *PostService) liked(ctx context.Context, viewerID uuid.UUID, posts []*po
 	}
 
 	return liked, nil
+}
+
+// Count counts the posts of the site, for its page "о сайте".
+func (s *PostService) Count(ctx context.Context) (int, error) {
+	n, err := s.postRepo.Count(ctx)
+	if err != nil {
+		return 0, errs.Wrap("s.postRepo.Count", err)
+	}
+
+	return n, nil
 }
