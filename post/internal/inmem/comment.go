@@ -3,6 +3,7 @@ package inmem
 import (
 	"bytes"
 	"context"
+	"math"
 	"slices"
 
 	"github.com/google/uuid"
@@ -62,6 +63,30 @@ func (r *CommentRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*po
 		if c, ok := r.s.comments[id]; ok {
 			found = append(found, c)
 		}
+	}
+
+	return found, nil
+}
+
+func (r *CommentRepository) LastByPosts(ctx context.Context, postIDs []uuid.UUID, limit int) ([]*post.Comment, error) {
+	var found []*post.Comment
+
+	for _, postID := range postIDs {
+		r.s.mu.RLock()
+		p, ok := r.s.posts[postID]
+		r.s.mu.RUnlock()
+
+		if !ok || p.Archived() {
+			continue
+		}
+
+		// Oldest first: the last of them are the newest.
+		comments, err := r.ListByPost(ctx, postID, uuid.Nil, math.MaxInt)
+		if err != nil {
+			return nil, err
+		}
+
+		found = append(found, comments[max(0, len(comments)-limit):]...)
 	}
 
 	return found, nil

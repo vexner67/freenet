@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -23,7 +24,7 @@ func newCommentFixture() commentFixture {
 	notifier := &fakeNotifier{}
 
 	return commentFixture{
-		posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}, Moderators: fakeModerators{}}),
+		posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}, Moderators: fakeModerators{}, Switches: store.Posts()}),
 		comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: &fakePhotos{}, Moderators: fakeModerators{}}),
 		notifier: notifier,
 	}
@@ -345,6 +346,57 @@ func TestCommentService_GetMany(t *testing.T) {
 	}
 
 	if _, err = f.comments.GetMany(ctx, make([]uuid.UUID, service.MaxPageSize+1)); !errors.Is(err, service.ErrTooManyIDs) {
+		t.Fatalf("too many ids: %v", err)
+	}
+}
+
+func TestCommentService_Last(t *testing.T) {
+	t.Parallel()
+
+	f := newCommentFixture()
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	busy := write(t, f.posts, ann, "привет")[0]
+	quiet := write(t, f.posts, ann, "тихо")[0]
+	silent := write(t, f.posts, ann, "молчание")[0]
+	hidden := write(t, f.posts, ann, "в архив")[0]
+
+	talk := f.comment(t, bob, busy.ID(), "1", "2", "3", "4", "5")
+	f.comment(t, bob, quiet.ID(), "одно")
+	f.comment(t, bob, hidden.ID(), "не видно")
+	if err := f.posts.Archive(ctx, ann, hidden.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.comments.Like(ctx, ann, talk[4].ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	page, err := f.comments.Last(ctx, ann, []uuid.UUID{quiet.ID(), busy.ID(), silent.ID(), hidden.ID(), uuid.New()})
+	if err != nil {
+		t.Fatalf("Last: %v", err)
+	}
+
+	// The newest three of each post, oldest first; none of an archived one.
+	got := map[uuid.UUID][]string{}
+	for _, c := range page.Comments {
+		got[c.PostID()] = append(got[c.PostID()], c.Text().String())
+	}
+	want := map[uuid.UUID][]string{busy.ID(): {"3", "4", "5"}, quiet.ID(): {"одно"}}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("Last = %v, want %v", got, want)
+	}
+	if len(page.Liked) != 1 || !page.Liked[talk[4].ID()] {
+		t.Fatalf("liked = %v", page.Liked)
+	}
+
+	// An anonymous reader likes nothing; no posts, no comments.
+	if page, err = f.comments.Last(ctx, uuid.Nil, []uuid.UUID{busy.ID()}); err != nil || len(page.Comments) != service.LastComments || page.Liked != nil {
+		t.Fatalf("anonymous = %+v, %v", page, err)
+	}
+	if page, err = f.comments.Last(ctx, ann, nil); err != nil || len(page.Comments) != 0 {
+		t.Fatalf("of no posts = %+v, %v", page, err)
+	}
+	if _, err = f.comments.Last(ctx, ann, make([]uuid.UUID, service.MaxPageSize+1)); !errors.Is(err, service.ErrTooManyIDs) {
 		t.Fatalf("too many ids: %v", err)
 	}
 }

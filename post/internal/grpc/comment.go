@@ -118,6 +118,25 @@ func (h *PostHandler) GetComments(ctx context.Context, req *postv1.GetCommentsRe
 	return resp, nil
 }
 
+func (h *PostHandler) ListLastComments(ctx context.Context, req *postv1.ListLastCommentsRequest) (*postv1.ListLastCommentsResponse, error) {
+	ids, err := parseIDs(req.GetPostIds())
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.commentService.Last(ctx, viewerID(ctx), ids)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &postv1.ListLastCommentsResponse{Comments: make([]*postv1.Comment, 0, len(page.Comments))}
+	for _, c := range page.Comments {
+		resp.Comments = append(resp.Comments, toProtoComment(c, page.Liked[c.ID()], viewerID(ctx)))
+	}
+
+	return resp, nil
+}
+
 func (h *PostHandler) ListComments(ctx context.Context, req *postv1.ListCommentsRequest) (*postv1.ListCommentsResponse, error) {
 	postID, err := uuid.Parse(req.GetPostId())
 	if err != nil {

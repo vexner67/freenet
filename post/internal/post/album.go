@@ -274,6 +274,8 @@ type AlbumPhoto struct {
 	// likes and comments count them, as a post counts its.
 	likes    int
 	comments int
+	// nsfw: it came from a post marked as adult and is blurred like it.
+	nsfw bool
 }
 
 // NewAlbumPhoto puts photoID, uploaded by authorID, in album a.
@@ -301,13 +303,14 @@ type StoredAlbumPhoto struct {
 	CreatedAt   time.Time
 	Likes       int
 	Comments    int
+	NSFW        bool
 }
 
 // RestoreAlbumPhoto rebuilds a photo from storage without validation.
 func RestoreAlbumPhoto(s StoredAlbumPhoto) *AlbumPhoto {
 	return &AlbumPhoto{
 		id: s.ID, albumID: s.AlbumID, authorID: s.AuthorID, description: s.Description, createdAt: s.CreatedAt,
-		likes: s.Likes, comments: s.Comments,
+		likes: s.Likes, comments: s.Comments, nsfw: s.NSFW,
 	}
 }
 
@@ -318,6 +321,20 @@ func (p *AlbumPhoto) Likes() int {
 
 func (p *AlbumPhoto) Comments() int {
 	return p.comments
+}
+
+// NSFW: the photo is of a post marked as adult.
+func (p *AlbumPhoto) NSFW() bool {
+	return p.nsfw
+}
+
+// Marked returns p marked as adult or not: the copy "Фотографии со
+// стены" keeps of a photo wears the mark of its post.
+func (p *AlbumPhoto) Marked(nsfw bool) *AlbumPhoto {
+	marked := *p
+	marked.nsfw = nsfw
+
+	return &marked
 }
 
 // Described returns p with a new description by requesterID: only who

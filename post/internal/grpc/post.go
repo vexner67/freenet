@@ -43,6 +43,7 @@ type CommentService interface {
 	Delete(ctx context.Context, requesterID, commentID uuid.UUID) error
 	List(ctx context.Context, viewerID, postID, cursor uuid.UUID, size int) (service.CommentPage, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error)
+	Last(ctx context.Context, viewerID uuid.UUID, postIDs []uuid.UUID) (service.CommentPage, error)
 }
 
 type SuggestionService interface {

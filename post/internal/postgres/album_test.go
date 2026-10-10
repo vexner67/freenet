@@ -54,6 +54,7 @@ func TestAlbumRepository(t *testing.T) {
 	added := newAlbumPhotos(t, summer, ann, 3, start)
 	described, _ := added[1].Described(ann, "Море")
 	added[1] = described
+	added[2] = added[2].Marked(true)
 	later := start.Add(time.Minute)
 	if err = photos.Add(ctx, summer.ID(), added, later); err != nil {
 		t.Fatalf("Add: %v", err)
@@ -63,6 +64,12 @@ func TestAlbumRepository(t *testing.T) {
 	}
 	if got, err := photos.Get(ctx, added[1].ID()); err != nil || got.Description() != "Море" || got.AuthorID() != ann || got.AlbumID() != summer.ID() {
 		t.Fatalf("Get photo = %+v, %v", got, err)
+	}
+	if got, err := photos.Get(ctx, added[2].ID()); err != nil || !got.NSFW() {
+		t.Fatalf("the adult photo = %+v, %v", got, err)
+	}
+	if got, err := photos.Get(ctx, added[0].ID()); err != nil || got.NSFW() {
+		t.Fatalf("the plain photo = %+v, %v", got, err)
 	}
 
 	// A photo is in one album at most; nothing of a failed Add is kept.

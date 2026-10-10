@@ -406,5 +406,6 @@ func toProtoAlbumPhoto(p *post.AlbumPhoto, viewerID uuid.UUID) *postv1.AlbumPhot
 		Mine:         viewerID != uuid.Nil && viewerID == p.AuthorID(),
 		LikeCount:    int32(p.Likes()),    //nolint:gosec // a counter from an int4 column
 		CommentCount: int32(p.Comments()), //nolint:gosec // a counter from an int4 column
+		Nsfw:         p.NSFW(),
 	}
 }

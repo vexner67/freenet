@@ -170,6 +170,49 @@ func (r *CommentRepository) ListByPost(ctx context.Context, postID, after uuid.U
 	return collectComments(rows)
 }
 
+// lastCommentsQuery reads the newest $2 comments of each post of $1 by
+// the index on (post_id, id), one short scan a post.
+const lastCommentsQuery = `
+	SELECT
+		c.id,
+		c.post_id,
+		c.author_id,
+		c.text,
+		c.photo_ids,
+		c.reply_to,
+		c.like_count,
+		c.created_at,
+		c.from_wall
+	FROM posts p
+	CROSS JOIN LATERAL (
+		SELECT
+			id,
+			post_id,
+			author_id,
+			text,
+			photo_ids,
+			reply_to,
+			like_count,
+			created_at,
+			from_wall
+		FROM comments
+		WHERE post_id = p.id
+		ORDER BY id DESC
+		LIMIT $2
+	) c
+	WHERE p.id = ANY($1)
+		AND NOT p.archived
+`
+
+func (r *CommentRepository) LastByPosts(ctx context.Context, postIDs []uuid.UUID, limit int) ([]*post.Comment, error) {
+	rows, err := r.conn(ctx).Query(ctx, lastCommentsQuery, postIDs, limit)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	return collectComments(rows)
+}
+
 // collectComments reads the comments of rows and closes them.
 func collectComments(rows pgx.Rows) ([]*post.Comment, error) {
 	defer rows.Close()
