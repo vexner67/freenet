@@ -2,6 +2,8 @@ package service
 
 import (
 	"context"
+	"errors"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -84,6 +86,43 @@ func (s *PermissionService) ProfileFor(ctx context.Context, viewerID uuid.UUID, 
 	}
 
 	return owner.PublicProfileFor(viewerID, ties, s.now()), nil
+}
+
+// Mentioned are the people authorID named by nickname who hear of it, in
+// the order named: those who exist and may be named by the author
+// (user.CanBeMentionedBy). At most user.MaxMentions nicknames are looked
+// at; an unknown one names nobody.
+func (s *PermissionService) Mentioned(ctx context.Context, authorID uuid.UUID, nicknames []user.Nickname) ([]uuid.UUID, error) {
+	if len(nicknames) > user.MaxMentions {
+		nicknames = nicknames[:user.MaxMentions]
+	}
+
+	var mentioned []uuid.UUID
+
+	for _, nickname := range nicknames {
+		u, err := s.userRepo.GetByNickname(ctx, nickname)
+		if errors.Is(err, user.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, errs.Wrap("s.userRepo.GetByNickname", err)
+		}
+
+		if slices.Contains(mentioned, u.ID()) {
+			continue
+		}
+
+		ties, err := s.tiesOf(ctx, authorID, u.ID())
+		if err != nil {
+			return nil, errs.Wrap("s.tiesOf", err)
+		}
+
+		if u.CanBeMentionedBy(authorID, ties) {
+			mentioned = append(mentioned, u.ID())
+		}
+	}
+
+	return mentioned, nil
 }
 
 // ties loads ownerID and how it is tied to otherID.

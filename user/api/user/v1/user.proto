@@ -63,6 +63,10 @@ service UserService {
   // Requires an access token: whether the caller may write private
   // messages to the user, as the user's privacy and blacklists allow.
   rpc CanMessage(CanMessageRequest) returns (CanMessageResponse);
+  // Requires an access token: who of the people a text of the caller
+  // names by nickname hears of it ("Вас упомянул пользователь" of
+  // openvk): not the caller, not across a blacklist, not a deleted page.
+  rpc ResolveMentions(ResolveMentionsRequest) returns (ResolveMentionsResponse);
   // Public: what of the user's page the caller, anonymous without a token,
   // may see, as the user's privacy allows.
   rpc GetAccess(GetAccessRequest) returns (GetAccessResponse);
@@ -614,6 +618,16 @@ message ListBlockedResponse {
   // Empty on the last page.
   string next_cursor = 2;
   int32 total = 3;
+}
+
+message ResolveMentionsRequest {
+  // The first 10 are looked at; what is not a nickname names nobody.
+  repeated string nicknames = 1;
+}
+
+message ResolveMentionsResponse {
+  // In the order named, each once.
+  repeated string user_ids = 1;
 }
 
 message GetRelationRequest {

@@ -23,6 +23,7 @@ type PermissionService interface {
 	CanMessage(ctx context.Context, senderID, recipientID uuid.UUID, wroteFirst bool) (bool, error)
 	Access(ctx context.Context, viewerID, ownerID uuid.UUID) (user.Access, error)
 	ProfileFor(ctx context.Context, viewerID uuid.UUID, nickname user.Nickname) (user.PublicProfile, error)
+	Mentioned(ctx context.Context, authorID uuid.UUID, nicknames []user.Nickname) ([]uuid.UUID, error)
 }
 
 // callerAnd is the caller from the token and the user the request names.
@@ -95,6 +96,33 @@ func (h *UserHandler) CanMessage(ctx context.Context, req *userv1.CanMessageRequ
 	}
 
 	return &userv1.CanMessageResponse{Allowed: allowed}, nil
+}
+
+func (h *UserHandler) ResolveMentions(ctx context.Context, req *userv1.ResolveMentionsRequest) (*userv1.ResolveMentionsResponse, error) {
+	authorID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// A text may say "@anything": what is not a nickname names nobody.
+	var nicknames []user.Nickname
+	for _, s := range req.GetNicknames() {
+		if nickname, err := user.NewNickname(s); err == nil {
+			nicknames = append(nicknames, nickname)
+		}
+	}
+
+	mentioned, err := h.permissionService.Mentioned(ctx, authorID, nicknames)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &userv1.ResolveMentionsResponse{UserIds: make([]string, 0, len(mentioned))}
+	for _, id := range mentioned {
+		resp.UserIds = append(resp.UserIds, id.String())
+	}
+
+	return resp, nil
 }
 
 func (h *UserHandler) Block(ctx context.Context, req *userv1.BlockRequest) (*emptypb.Empty, error) {

@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -130,6 +131,51 @@ func TestBlockService_List(t *testing.T) {
 
 	if mine, _ := w.blocks.List(w.ctx, w.bob, uuid.Nil, 0); mine.Total != 0 {
 		t.Fatalf("bob's blacklist = %+v, want empty", mine)
+	}
+}
+
+func TestPermissionService_Mentioned(t *testing.T) {
+	t.Parallel()
+
+	w := newWorld(t)
+
+	nicknames := map[uuid.UUID]user.Nickname{w.ann: "ann", w.bob: "bob", w.cat: "cat"}
+	for id, nickname := range nicknames {
+		if _, err := w.users.UpdateProfile(w.ctx, id, user.Profile{Name: "Имя", Nickname: nickname}, ""); err != nil {
+			t.Fatalf("UpdateProfile: %v", err)
+		}
+	}
+
+	mentioned := func(author uuid.UUID, names ...user.Nickname) []uuid.UUID {
+		t.Helper()
+
+		got, err := w.permissions.Mentioned(w.ctx, author, names)
+		if err != nil {
+			t.Fatalf("Mentioned: %v", err)
+		}
+
+		return got
+	}
+
+	// Each once, in the order named; not the author, not a stranger.
+	if got := mentioned(w.ann, "cat", "ann", "nobody", "bob", "Cat"); !slices.Equal(got, []uuid.UUID{w.cat, w.bob}) {
+		t.Fatalf("mentioned = %v, want cat and bob", got)
+	}
+
+	// Only the first ten nicknames are looked at.
+	many := slices.Repeat([]user.Nickname{"nobody"}, user.MaxMentions)
+	if got := mentioned(w.ann, append(many, "bob")...); len(got) != 0 {
+		t.Fatalf("the eleventh nickname = %v", got)
+	}
+
+	if err := w.blocks.Block(w.ctx, w.bob, w.ann); err != nil {
+		t.Fatal(err)
+	}
+	if got := mentioned(w.ann, "bob", "cat"); !slices.Equal(got, []uuid.UUID{w.cat}) {
+		t.Fatalf("across a block = %v, want cat alone", got)
+	}
+	if got := mentioned(w.bob, "ann"); len(got) != 0 {
+		t.Fatalf("the blocker names the blocked = %v", got)
 	}
 }
 
