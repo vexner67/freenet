@@ -44,8 +44,11 @@ type postResponse struct {
 	Author authorJSON `json:"author"`
 	// Wall is the owner of the wall when someone else's: null on the
 	// author's own wall.
-	Wall      *authorJSON `json:"wall"`
-	Text      string      `json:"text"`
+	Wall *authorJSON `json:"wall"`
+	Text string      `json:"text"`
+	// TextCut: text is only the beginning of what the post says, as lists
+	// carry it; GET /posts/{id} tells it whole.
+	TextCut   bool        `json:"textCut,omitempty"`
 	Photos    []photoJSON `json:"photos"`
 	CreatedAt string      `json:"createdAt"`
 	Likes     int         `json:"likes"`
@@ -117,6 +120,7 @@ type repostJSON struct {
 	Author    *authorJSON `json:"author"`
 	Wall      *authorJSON `json:"wall"`
 	Text      string      `json:"text"`
+	TextCut   bool        `json:"textCut,omitempty"`
 	Photos    []photoJSON `json:"photos"`
 	CreatedAt string      `json:"createdAt"`
 	RepostOf  string      `json:"repostOf"`
@@ -210,6 +214,7 @@ func toPostResponse(p model.Post) postResponse {
 		Author:         shownAuthor(p),
 		Wall:           wallJSON(p),
 		Text:           p.Text,
+		TextCut:        p.TextCut,
 		Photos:         toPhotosJSON(p.Author.ID, p.PhotoIDs),
 		CreatedAt:      p.CreatedAt.UTC().Format(time.RFC3339),
 		Likes:          p.Likes,
@@ -261,6 +266,7 @@ func toRepostJSON(p model.Post) *repostJSON {
 		Author:    &author,
 		Wall:      wallJSON(p),
 		Text:      p.Text,
+		TextCut:   p.TextCut,
 		Photos:    toPhotosJSON(p.Author.ID, p.PhotoIDs),
 		CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
 		RepostOf:  p.RepostOf,

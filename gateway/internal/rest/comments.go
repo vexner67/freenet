@@ -20,10 +20,13 @@ type commentRequest struct {
 }
 
 type commentResponse struct {
-	ID        string      `json:"id"`
-	PostID    string      `json:"postId"`
-	Author    authorJSON  `json:"author"`
-	Text      string      `json:"text"`
+	ID     string     `json:"id"`
+	PostID string     `json:"postId"`
+	Author authorJSON `json:"author"`
+	Text   string     `json:"text"`
+	// TextCut: text is only the beginning of what the comment says, as
+	// lists carry it; GET /comments/{id}/text tells it whole.
+	TextCut   bool        `json:"textCut,omitempty"`
 	Photos    []photoJSON `json:"photos"`
 	CreatedAt string      `json:"createdAt"`
 	// ReplyTo is the comment this one answers: null for none, and once it
@@ -51,6 +54,7 @@ func toCommentResponse(c model.Comment, shown model.Author) commentResponse {
 		PostID:    c.PostID,
 		Author:    toAuthorJSON(shown),
 		Text:      c.Text,
+		TextCut:   c.TextCut,
 		Photos:    toPhotosJSON(c.Author.ID, c.PhotoIDs),
 		CreatedAt: c.CreatedAt.UTC().Format(time.RFC3339),
 		ReplyTo:   optionalString(c.ReplyTo),
@@ -68,6 +72,34 @@ func optionalString(s string) *string {
 	}
 
 	return &s
+}
+
+type textResponse struct {
+	Text string `json:"text"`
+}
+
+// commentText is what a comment says, whole: lists carry its beginning.
+// Public, as the comments of a post are; a comment of a post the caller is
+// not shown is not found.
+func (a *api) commentText(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.posts.Comment(r.Context(), r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if _, err = a.posts.Get(r.Context(), token, c.PostID); err != nil {
+		a.writeError(w, r, failure.New(failure.NotFound, "comment not found"))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, textResponse{Text: c.Text})
 }
 
 // listComments is public; with a token, liked says which the caller likes.

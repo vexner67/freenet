@@ -127,6 +127,8 @@ type Posts interface {
 	Comments(ctx context.Context, accessToken, postID, cursor string, limit int) (model.CommentPage, error)
 	LastComments(ctx context.Context, accessToken string, postIDs []string) ([]model.Comment, error)
 	CommentsByID(ctx context.Context, ids []string) ([]model.Comment, error)
+	// Comment is one comment, whole; the lists carry beginnings of texts.
+	Comment(ctx context.Context, id string) (model.Comment, error)
 
 	Suggest(ctx context.Context, accessToken, wallID, text string, photoIDs []string) (model.Suggestion, error)
 	Suggestions(ctx context.Context, accessToken, wallID string, mine bool, cursor string, limit int) (model.SuggestionPage, error)
@@ -311,6 +313,7 @@ func (a *api) routes() *http.ServeMux {
 
 	mux.HandleFunc("GET /api/v1/posts/{id}/comments", a.listComments)
 	mux.HandleFunc("POST /api/v1/posts/{id}/comments", a.createComment)
+	mux.HandleFunc("GET /api/v1/comments/{id}/text", a.commentText)
 	mux.HandleFunc("DELETE /api/v1/comments/{id}", a.deleteComment)
 	mux.HandleFunc("PUT /api/v1/comments/{id}/like", a.likeComment)
 	mux.HandleFunc("DELETE /api/v1/comments/{id}/like", a.unlikeComment)

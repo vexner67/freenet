@@ -305,7 +305,7 @@ func (f *fakePostAPI) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 	f.req = req
 	return &postv1.ListPostsResponse{
 		Posts: []*postv1.Post{{
-			Id: "p1", AuthorId: "u2", WallId: "u1", Text: "привет", CreatedAt: timestamppb.Now(),
+			Id: "p1", AuthorId: "u2", WallId: "u1", Text: "привет", TextCut: true, CreatedAt: timestamppb.Now(),
 			LikeCount: 4, CommentCount: 2, RepostCount: 5, Liked: len(f.md.Get("authorization")) == 1,
 		}},
 		NextCursor: "p1",
@@ -368,6 +368,9 @@ func TestPosts(t *testing.T) {
 	}
 	if _, err = posts.List(context.Background(), "", "u1", model.WallPick{Filter: "mine"}, "", 0); failure.From(err).Kind != failure.InvalidArgument {
 		t.Fatalf("a bad wall type: %v", err)
+	}
+	if api.req.GetTextLimit() != model.ExcerptLength || !page.Posts[0].TextCut {
+		t.Fatalf("a wall asks for the beginnings of texts: limit = %d, post = %+v", api.req.GetTextLimit(), page.Posts[0])
 	}
 	if api.req.GetWallId() != "u1" || api.req.GetCursor() != "p9" || api.req.GetLimit() != 1<<10 || api.req.GetFilter() != postv1.WallFilter_WALL_FILTER_OTHERS || api.req.GetQuery() != "море" {
 		t.Fatalf("request = %v", api.req)
@@ -525,9 +528,9 @@ func (f *fakeMessageAPI) ListMessages(ctx context.Context, req *messagev1.ListMe
 	}, nil
 }
 
-func (f *fakeMessageAPI) ListDialogs(_ context.Context, _ *messagev1.ListDialogsRequest, _ ...grpc.CallOption) (*messagev1.ListDialogsResponse, error) {
+func (f *fakeMessageAPI) ListDialogs(_ context.Context, req *messagev1.ListDialogsRequest, _ ...grpc.CallOption) (*messagev1.ListDialogsResponse, error) {
 	return &messagev1.ListDialogsResponse{Dialogs: []*messagev1.Dialog{
-		{PeerId: "u2", LastMessage: &messagev1.Message{Id: "m3", SenderId: "u2", Text: "ау"}, Unread: true},
+		{PeerId: "u2", LastMessage: &messagev1.Message{Id: "m3", SenderId: "u2", Text: "ау", TextCut: req.GetTextLimit() == model.PreviewLength}, Unread: true},
 	}}, nil
 }
 
@@ -592,7 +595,8 @@ func TestMessages(t *testing.T) {
 	}
 
 	dialogs, err := messages.Dialogs(context.Background(), "tok", "", 0)
-	if err != nil || len(dialogs.Dialogs) != 1 || !dialogs.Dialogs[0].Unread || dialogs.Dialogs[0].LastMessage.Text != "ау" {
+	if err != nil || len(dialogs.Dialogs) != 1 || !dialogs.Dialogs[0].Unread || dialogs.Dialogs[0].LastMessage.Text != "ау" ||
+		!dialogs.Dialogs[0].LastMessage.TextCut {
 		t.Fatalf("dialogs = %+v, %v", dialogs, err)
 	}
 

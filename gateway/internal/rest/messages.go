@@ -23,8 +23,11 @@ type messageRequest struct {
 // DeletableUntil and edit it until EditableUntil, "" for the peer's.
 // Deleted: its sender took it back, it says nothing ("Сообщение удалено").
 type messageJSON struct {
-	ID             string      `json:"id"`
-	Text           string      `json:"text"`
+	ID   string `json:"id"`
+	Text string `json:"text"`
+	// TextCut: text is only the beginning of what the message says, as
+	// the list of dialogs carries it.
+	TextCut        bool        `json:"textCut,omitempty"`
 	Photos         []photoJSON `json:"photos"`
 	CreatedAt      string      `json:"createdAt"`
 	Out            bool        `json:"out"`
@@ -85,6 +88,7 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 	j := messageJSON{
 		ID:        m.ID,
 		Text:      m.Text,
+		TextCut:   m.TextCut,
 		Photos:    toPhotosJSON(m.SenderID, m.PhotoIDs),
 		CreatedAt: m.CreatedAt.UTC().Format(time.RFC3339),
 		Out:       m.SenderID != peerID,

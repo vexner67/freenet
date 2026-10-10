@@ -248,6 +248,9 @@ type userResponse struct {
 	Unfilled     []string `json:"unfilled"`
 	// Interface is how the site looks to the owner ("Интерфейс").
 	Interface interfaceJSON `json:"interface"`
+	// PinnedClubs are the clubs in the left menu ("Добавить в левое
+	// меню"); GET /me alone tells them.
+	PinnedClubs []clubJSON `json:"pinnedClubs,omitempty"`
 }
 
 // nsfwHide is the setting that leaves posts marked as adult out of the

@@ -31,7 +31,7 @@ func (m *Messages) Send(ctx context.Context, accessToken, recipientID string, d 
 }
 
 func (m *Messages) Dialogs(ctx context.Context, accessToken, cursor string, limit int) (model.DialogPage, error) {
-	resp, err := m.api.ListDialogs(withToken(ctx, accessToken), &messagev1.ListDialogsRequest{Cursor: cursor, Limit: toLimit(limit)})
+	resp, err := m.api.ListDialogs(withToken(ctx, accessToken), &messagev1.ListDialogsRequest{Cursor: cursor, Limit: toLimit(limit), TextLimit: model.PreviewLength})
 	if err != nil {
 		return model.DialogPage{}, errs.Wrap("m.api.ListDialogs", fromStatus(err))
 	}
@@ -207,6 +207,7 @@ func toMessage(pm *messagev1.Message) model.Message {
 		SenderID:       pm.GetSenderId(),
 		RecipientID:    pm.GetRecipientId(),
 		Text:           pm.GetText(),
+		TextCut:        pm.GetTextCut(),
 		PhotoIDs:       pm.GetPhotoIds(),
 		CreatedAt:      pm.GetCreatedAt().AsTime(),
 		Read:           pm.GetRead(),

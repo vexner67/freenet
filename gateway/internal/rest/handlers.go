@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"context"
 	"net/http"
 	"strings"
 
@@ -103,13 +104,45 @@ func (a *api) getMe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Every page asks who is here and draws the left menu: the clubs kept
+	// in it come along, looked up meanwhile.
+	pinned := make(chan []model.Club, 1)
+	go func() { pinned <- a.pinnedClubs(r.Context(), token) }()
+
 	u, err := a.users.GetMe(r.Context(), token)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	a.writeUser(w, r, u)
+	partner, err := a.partner(r, u.Profile.PartnerID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	resp := toUserResponse(u, partner)
+	if !u.Deactivated {
+		resp.PinnedClubs = toClubsJSON(<-pinned)
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// pinnedClubs are the clubs in the caller's left menu; none when they
+// cannot be told: the menu is a nicety, the account is not.
+func (a *api) pinnedClubs(ctx context.Context, token string) []model.Club {
+	clubs, err := a.clubs.Pinned(ctx, token)
+	if err != nil {
+		// A deleted page and a token to refresh are refused as expected.
+		if kind := failure.From(err).Kind; kind != failure.PermissionDenied && kind != failure.Unauthenticated {
+			a.logger.WarnContext(ctx, "pinned clubs left out of the account", "error", err)
+		}
+
+		return nil
+	}
+
+	return clubs
 }
 
 // writeUser answers with the caller's own account and whom its

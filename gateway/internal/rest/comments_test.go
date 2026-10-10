@@ -175,3 +175,24 @@ func TestCommentRepliesAndLikes(t *testing.T) {
 		t.Fatalf("an anonymous viewer likes %v", c)
 	}
 }
+
+func TestCommentText(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	w := h.do("GET", "/api/v1/comments/c1/text", "")
+	if got := decode[struct{ Text string }](t, w); w.Code != http.StatusOK || got.Text != "согласен, и вот почему" {
+		t.Fatalf("%d %+v", w.Code, got)
+	}
+
+	// The post decides who is shown its comments.
+	if w = h.do("GET", "/api/v1/comments/c1/text", "", "Authorization", "Bearer token"); w.Code != http.StatusOK || h.posts.token != "token" {
+		t.Fatalf("with a token: %d, token = %q", w.Code, h.posts.token)
+	}
+
+	for _, id := range []string{"c9", "c404"} {
+		if w = h.do("GET", "/api/v1/comments/"+id+"/text", ""); w.Code != http.StatusNotFound {
+			t.Errorf("%s: status = %d, want 404", id, w.Code)
+		}
+	}
+}

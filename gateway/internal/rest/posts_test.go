@@ -574,3 +574,27 @@ func TestRepostInClub(t *testing.T) {
 		t.Fatalf("no such club: %d", w.Code)
 	}
 }
+
+// A list carries the beginning of a long text and says so.
+func TestListPosts_TextCut(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	ann := model.Author{ID: "u1"}
+	h.posts.wallPosts = []model.Post{
+		{ID: "p1", Author: ann, Wall: ann, Text: "начало", TextCut: true},
+		{ID: "p2", Author: ann, Wall: ann, Text: "короткая"},
+	}
+
+	w := h.do("GET", "/api/v1/users/ann/posts", "")
+	got := decode[struct {
+		Posts []struct {
+			Text    string `json:"text"`
+			TextCut bool   `json:"textCut"`
+		} `json:"posts"`
+	}](t, w)
+
+	if w.Code != http.StatusOK || len(got.Posts) != 2 || !got.Posts[0].TextCut || got.Posts[0].Text != "начало" || got.Posts[1].TextCut {
+		t.Fatalf("%d %+v", w.Code, got)
+	}
+}
