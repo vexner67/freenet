@@ -201,7 +201,8 @@ message SearchMessagesRequest {
   // 1-50; anything else means 20.
   int32 limit = 4;
   // The texts of the messages are cut to this many characters and say so
-  // (text_cut); 0 for whole texts.
+  // (text_cut): the text of a message to where it says the query, those
+  // it carries on to their beginnings; 0 for whole texts.
   int32 text_limit = 5;
 }
 

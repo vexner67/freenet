@@ -392,3 +392,35 @@ func TestText_Excerpt(t *testing.T) {
 		})
 	}
 }
+
+func TestText_ExcerptAround(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		text    string
+		query   string
+		limit   int
+		want    string
+		wantCut bool
+	}{
+		{name: "no limit", text: "раз два три", query: "три", limit: 0, want: "раз два три"},
+		{name: "shorter", text: "раз два три", query: "три", limit: 20, want: "раз два три"},
+		{name: "said at the beginning", text: "раз два три четыре", query: "ДВА", limit: 8, want: "раз два ", wantCut: true},
+		{name: "said further", text: "раз два три четыре пять", query: "Четыре", limit: 8, want: "и четыре", wantCut: true},
+		{name: "said at the end", text: "раз два три четыре пять", query: "пять", limit: 8, want: "ыре пять", wantCut: true},
+		{name: "not said", text: "раз два три четыре", query: "шесть", limit: 3, want: "раз", wantCut: true},
+		{name: "emoji stays whole", text: "👋👋👋👋да👋", query: "да", limit: 4, want: "👋да👋", wantCut: true},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, cut := message.Text(tt.text).ExcerptAround(tt.query, tt.limit)
+			if got != tt.want || cut != tt.wantCut {
+				t.Errorf("ExcerptAround(%q, %d) = %q, %v, want %q, %v", tt.query, tt.limit, got, cut, tt.want, tt.wantCut)
+			}
+		})
+	}
+}

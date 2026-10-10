@@ -136,6 +136,18 @@ func excerpted(pm *messagev1.Message, m *message.Message, limit int32) *messagev
 	return pm
 }
 
+// found cuts a found message as excerpted does, its own text to where it
+// says query.
+func found(pm *messagev1.Message, m *message.Message, query message.Query, limit int32) *messagev1.Message {
+	cut := excerpted(pm, m, limit)
+
+	var around bool
+	cut.Text, around = m.Text().ExcerptAround(query.String(), int(limit))
+	cut.TextCut = cut.TextCut || around
+
+	return cut
+}
+
 // toProtoDialog cuts the text of the last message to textLimit.
 func toProtoDialog(d message.Dialog, userID uuid.UUID, textLimit int32) *messagev1.Dialog {
 	return &messagev1.Dialog{

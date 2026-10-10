@@ -7,6 +7,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -120,6 +121,57 @@ func (t Text) Excerpt(limit int) (string, bool) {
 	}
 
 	return string(t), false
+}
+
+// ExcerptAround is the part of the text, at most limit characters, where
+// it first says query, whatever the case, and whether it was cut: a found
+// message shows why it was found. It is the beginning when the words are
+// there, or are not said at all.
+func (t Text) ExcerptAround(query string, limit int) (string, bool) {
+	runes := []rune(string(t))
+	if limit <= 0 || len(runes) <= limit {
+		return string(t), false
+	}
+
+	words := []rune(query)
+
+	at := indexFold(runes, words)
+	if at < 0 || at+len(words) <= limit {
+		return string(runes[:limit]), true
+	}
+
+	// A quarter of the excerpt leads to the words, less when they would
+	// not fit after it.
+	lead := max(min(limit/4, limit-len(words)), 0)
+	start := min(at-lead, len(runes)-limit)
+
+	return string(runes[start : start+limit]), true
+}
+
+// indexFold is where text first says words, whatever the case; -1 when
+// it does not.
+func indexFold(text, words []rune) int {
+	if len(words) == 0 {
+		return -1
+	}
+
+	for i := 0; i+len(words) <= len(text); i++ {
+		if equalFold(text[i:i+len(words)], words) {
+			return i
+		}
+	}
+
+	return -1
+}
+
+func equalFold(a, b []rune) bool {
+	for i := range a {
+		if unicode.ToLower(a[i]) != unicode.ToLower(b[i]) {
+			return false
+		}
+	}
+
+	return true
 }
 
 // Photos are the IDs of a message's photos in the media service, in the
