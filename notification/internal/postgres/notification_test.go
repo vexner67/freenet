@@ -327,6 +327,63 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("DeleteByPost(topic): %v, left %d", err, count())
 		}
 	})
+	t.Run("photos and topic likes", func(t *testing.T) {
+		ann, bob, photo, comment, topic, message := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
+		events := []notification.Event{
+			{Kind: notification.KindPhotoLike, RecipientID: ann, ActorID: bob, PostID: photo},
+			{Kind: notification.KindPhotoComment, RecipientID: ann, ActorID: bob, PostID: photo, CommentID: comment},
+			{Kind: notification.KindTopicMessageLike, RecipientID: ann, ActorID: bob, PostID: topic, CommentID: message},
+		}
+
+		count := func() int {
+			t.Helper()
+
+			got, err := repo.List(ctx, service.Query{RecipientID: ann, Unread: true, Limit: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return len(got)
+		}
+
+		save := func() {
+			t.Helper()
+
+			for _, e := range events {
+				n, err := notification.New(e, time.Now())
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err = repo.Save(ctx, n); err != nil {
+					t.Fatalf("Save(%s): %v", e.Kind, err)
+				}
+			}
+		}
+
+		save()
+		save() // one per like and comment
+		if got := count(); got != 3 {
+			t.Fatalf("notifications = %d, want 3", got)
+		}
+
+		for i, e := range events {
+			if err := repo.Delete(ctx, e); err != nil || count() != 2-i {
+				t.Fatalf("Delete(%s): %v, left %d", e.Kind, err, count())
+			}
+		}
+
+		// The deleted comment takes its notification, the photo its own.
+		save()
+		if err := repo.DeleteByComment(ctx, comment); err != nil || count() != 2 {
+			t.Fatalf("DeleteByComment: %v, left %d", err, count())
+		}
+		if err := repo.DeleteByPost(ctx, photo); err != nil || count() != 1 {
+			t.Fatalf("DeleteByPost: %v, left %d", err, count())
+		}
+		if err := repo.DeleteByPost(ctx, topic); err != nil || count() != 0 {
+			t.Fatalf("DeleteByPost(topic): %v, left %d", err, count())
+		}
+	})
 	t.Run("club admin", func(t *testing.T) {
 		club, admin := uuid.New(), uuid.New()
 		e := notification.Event{Kind: notification.KindClubAdmin, RecipientID: admin, ActorID: club}
