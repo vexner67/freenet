@@ -81,3 +81,53 @@ func TestUser_LastSeenFor(t *testing.T) {
 		t.Fatalf("deleted: %+v", p)
 	}
 }
+
+func TestUser_ListedProfile(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 10, 9, 12, 0, 0, 0, time.UTC)
+	privacy := user.Privacy{
+		WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
+		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone,
+		FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceOnlyMe,
+	}
+
+	ann, _ := user.New("ann@example.com")
+	_ = ann.UpdateProfile(user.Profile{Name: "Ann", Nickname: "ann"})
+	if err := ann.UpdatePrivacy(privacy); err != nil {
+		t.Fatal(err)
+	}
+
+	// Never seen, she is not online; in a list nobody learns when she was.
+	if p := ann.ListedProfile(now); p.Online || !p.LastSeen.IsZero() {
+		t.Fatalf("never seen: %+v", p)
+	}
+
+	// Online now: a list says so, whatever "Кто видит мою неактивность".
+	ann.MarkSeen(now.Add(-2 * time.Minute))
+	if p := ann.ListedProfile(now); !p.Online || !p.LastSeen.IsZero() || p.Name != "Ann" {
+		t.Fatalf("online: %+v", p)
+	}
+	if p := ann.ListedProfile(now.Add(user.OnlineFor)); p.Online {
+		t.Fatalf("five minutes later: %+v", p)
+	}
+
+	// A page hidden from strangers says nothing: a list does not know who looks.
+	privacy.PageRead = user.AudienceUsers
+	if err := ann.UpdatePrivacy(privacy); err != nil {
+		t.Fatal(err)
+	}
+	if p := ann.ListedProfile(now); p.Online {
+		t.Fatalf("a page for users only: %+v", p)
+	}
+
+	// Nor does a deleted one.
+	privacy.PageRead = user.AudienceEveryone
+	_ = ann.UpdatePrivacy(privacy)
+	if err := ann.Deactivate("", now, time.Hour); err != nil {
+		t.Fatal(err)
+	}
+	if p := ann.ListedProfile(now); p.Online || !p.Deactivated {
+		t.Fatalf("a deleted page: %+v", p)
+	}
+}

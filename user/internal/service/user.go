@@ -3,6 +3,7 @@ package service
 import (
 	"context"
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -35,11 +36,13 @@ type SearchPage struct {
 
 type UserService struct {
 	userRepo UserRepository
+	now      func() time.Time
 }
 
 func NewUserService(userRepo UserRepository) *UserService {
 	return &UserService{
 		userRepo: userRepo,
+		now:      time.Now,
 	}
 }
 
@@ -184,7 +187,8 @@ func (s *UserService) UpdatePrivacy(ctx context.Context, id uuid.UUID, privacy u
 }
 
 // GetPublicProfiles is what anyone may see about several users at once,
-// e.g. the authors of a news feed. Unknown IDs are skipped.
+// e.g. the authors of a news feed, with who of them is online. Unknown
+// IDs are skipped.
 func (s *UserService) GetPublicProfiles(ctx context.Context, ids []uuid.UUID) ([]user.PublicProfile, error) {
 	users, err := s.userRepo.GetByIDs(ctx, ids)
 	if err != nil {
@@ -193,7 +197,7 @@ func (s *UserService) GetPublicProfiles(ctx context.Context, ids []uuid.UUID) ([
 
 	profiles := make([]user.PublicProfile, 0, len(users))
 	for _, u := range users {
-		profiles = append(profiles, u.PublicProfile())
+		profiles = append(profiles, u.ListedProfile(s.now()))
 	}
 
 	return profiles, nil
@@ -234,7 +238,7 @@ func (s *UserService) Search(ctx context.Context, q user.SearchQuery, cursor uui
 
 	page.Users = make([]user.PublicProfile, 0, len(found))
 	for _, u := range found {
-		page.Users = append(page.Users, u.PublicProfile())
+		page.Users = append(page.Users, u.ListedProfile(s.now()))
 	}
 
 	return page, nil

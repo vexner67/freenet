@@ -376,9 +376,11 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 		InfoHidden:            p.InfoHidden,
 	}
 
-	// The date of registration is information too.
+	// The date of registration is information too. A list tells who is
+	// online, but not when the others last visited.
+	pp.Online = p.Online
 	if !p.LastSeen.IsZero() {
-		pp.LastSeenAt, pp.Online = timestamppb.New(p.LastSeen), p.Online
+		pp.LastSeenAt = timestamppb.New(p.LastSeen)
 	}
 
 	pp.BackdropLeft, pp.BackdropRight = avatarString(p.Backdrop.Left), avatarString(p.Backdrop.Right)
