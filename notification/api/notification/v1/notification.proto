@@ -69,6 +69,12 @@ enum Kind {
   // The actor named the recipient in the message comment_id of the topic
   // post_id.
   KIND_TOPIC_MENTION = 14;
+  // The actor liked the photo post_id of an album of the recipient.
+  KIND_PHOTO_LIKE = 15;
+  // The actor wrote comment_id under the recipient's photo post_id.
+  KIND_PHOTO_COMMENT = 16;
+  // The actor liked the recipient's message comment_id of topic post_id.
+  KIND_TOPIC_MESSAGE_LIKE = 17;
 }
 
 // Event: post_id is set for all but follows and appointments,

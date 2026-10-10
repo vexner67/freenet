@@ -82,16 +82,18 @@ func (r *NotificationRepository) Get(ctx context.Context, id uuid.UUID) (*notifi
 
 // The delete queries match the unique indexes of the migration.
 const (
+	// Of a post or of a photo of an album alike.
 	deleteLikeNotificationQuery = `
 		DELETE FROM notifications
-		WHERE kind = 'like'
-			AND actor_id = $1
-			AND post_id = $2
+		WHERE kind = $1
+			AND actor_id = $2
+			AND post_id = $3
 	`
+	// Under a post or under a photo alike.
 	deleteCommentNotificationQuery = `
 		DELETE FROM notifications
-		WHERE kind = 'comment'
-			AND comment_id = $1
+		WHERE kind = $1
+			AND comment_id = $2
 	`
 	deleteFollowNotificationQuery = `
 		DELETE FROM notifications
@@ -149,11 +151,12 @@ const (
 		WHERE kind = 'comment_reply'
 			AND comment_id = $1
 	`
+	// Of a comment or of a message of a topic alike.
 	deleteCommentLikeNotificationQuery = `
 		DELETE FROM notifications
-		WHERE kind = 'comment_like'
-			AND actor_id = $1
-			AND comment_id = $2
+		WHERE kind = $1
+			AND actor_id = $2
+			AND comment_id = $3
 	`
 )
 
@@ -161,10 +164,10 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 	var err error
 
 	switch e.Kind {
-	case notification.KindLike:
-		_, err = r.pool.Exec(ctx, deleteLikeNotificationQuery, e.ActorID, e.PostID)
-	case notification.KindComment:
-		_, err = r.pool.Exec(ctx, deleteCommentNotificationQuery, e.CommentID)
+	case notification.KindLike, notification.KindPhotoLike:
+		_, err = r.pool.Exec(ctx, deleteLikeNotificationQuery, string(e.Kind), e.ActorID, e.PostID)
+	case notification.KindComment, notification.KindPhotoComment:
+		_, err = r.pool.Exec(ctx, deleteCommentNotificationQuery, string(e.Kind), e.CommentID)
 	case notification.KindFollow:
 		_, err = r.pool.Exec(ctx, deleteFollowNotificationQuery, e.ActorID, e.RecipientID)
 	case notification.KindWallPost:
@@ -185,8 +188,8 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deleteCommentMentionNotificationQuery, string(e.Kind), e.RecipientID, e.CommentID)
 	case notification.KindCommentReply:
 		_, err = r.pool.Exec(ctx, deleteCommentReplyNotificationQuery, e.CommentID)
-	case notification.KindCommentLike:
-		_, err = r.pool.Exec(ctx, deleteCommentLikeNotificationQuery, e.ActorID, e.CommentID)
+	case notification.KindCommentLike, notification.KindTopicMessageLike:
+		_, err = r.pool.Exec(ctx, deleteCommentLikeNotificationQuery, string(e.Kind), e.ActorID, e.CommentID)
 	default:
 		return notification.ErrUnknownKind
 	}

@@ -34,11 +34,11 @@ func sameEvent(a, b notification.Event) bool {
 	}
 
 	switch a.Kind {
-	case notification.KindLike:
+	case notification.KindLike, notification.KindPhotoLike:
 		return a.ActorID == b.ActorID && a.PostID == b.PostID
-	case notification.KindComment, notification.KindCommentReply, notification.KindTopicMessage:
+	case notification.KindComment, notification.KindCommentReply, notification.KindTopicMessage, notification.KindPhotoComment:
 		return a.CommentID == b.CommentID
-	case notification.KindCommentLike:
+	case notification.KindCommentLike, notification.KindTopicMessageLike:
 		return a.ActorID == b.ActorID && a.CommentID == b.CommentID
 	case notification.KindWallPost, notification.KindRepost, notification.KindPostAccepted:
 		return a.PostID == b.PostID

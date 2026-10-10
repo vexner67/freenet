@@ -60,6 +60,12 @@ const (
 	// The actor named the recipient in the message comment_id of the topic
 	// post_id.
 	Kind_KIND_TOPIC_MENTION Kind = 14
+	// The actor liked the photo post_id of an album of the recipient.
+	Kind_KIND_PHOTO_LIKE Kind = 15
+	// The actor wrote comment_id under the recipient's photo post_id.
+	Kind_KIND_PHOTO_COMMENT Kind = 16
+	// The actor liked the recipient's message comment_id of topic post_id.
+	Kind_KIND_TOPIC_MESSAGE_LIKE Kind = 17
 )
 
 // Enum value maps for Kind.
@@ -80,23 +86,29 @@ var (
 		12: "KIND_POST_MENTION",
 		13: "KIND_COMMENT_MENTION",
 		14: "KIND_TOPIC_MENTION",
+		15: "KIND_PHOTO_LIKE",
+		16: "KIND_PHOTO_COMMENT",
+		17: "KIND_TOPIC_MESSAGE_LIKE",
 	}
 	Kind_value = map[string]int32{
-		"KIND_UNSPECIFIED":     0,
-		"KIND_LIKE":            1,
-		"KIND_COMMENT":         2,
-		"KIND_FOLLOW":          3,
-		"KIND_WALL_POST":       4,
-		"KIND_REPOST":          5,
-		"KIND_COMMENT_REPLY":   6,
-		"KIND_COMMENT_LIKE":    7,
-		"KIND_POST_ACCEPTED":   8,
-		"KIND_SUGGESTED_POST":  9,
-		"KIND_CLUB_ADMIN":      10,
-		"KIND_TOPIC_MESSAGE":   11,
-		"KIND_POST_MENTION":    12,
-		"KIND_COMMENT_MENTION": 13,
-		"KIND_TOPIC_MENTION":   14,
+		"KIND_UNSPECIFIED":        0,
+		"KIND_LIKE":               1,
+		"KIND_COMMENT":            2,
+		"KIND_FOLLOW":             3,
+		"KIND_WALL_POST":          4,
+		"KIND_REPOST":             5,
+		"KIND_COMMENT_REPLY":      6,
+		"KIND_COMMENT_LIKE":       7,
+		"KIND_POST_ACCEPTED":      8,
+		"KIND_SUGGESTED_POST":     9,
+		"KIND_CLUB_ADMIN":         10,
+		"KIND_TOPIC_MESSAGE":      11,
+		"KIND_POST_MENTION":       12,
+		"KIND_COMMENT_MENTION":    13,
+		"KIND_TOPIC_MENTION":      14,
+		"KIND_PHOTO_LIKE":         15,
+		"KIND_PHOTO_COMMENT":      16,
+		"KIND_TOPIC_MESSAGE_LIKE": 17,
 	}
 )
 
@@ -985,7 +997,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId\"\x12\n" +
 	"\x10SubscribeRequest\"D\n" +
 	"\x11SubscribeResponse\x12/\n" +
-	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xc9\x02\n" +
+	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\x93\x03\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -1002,7 +1014,10 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x12KIND_TOPIC_MESSAGE\x10\v\x12\x15\n" +
 	"\x11KIND_POST_MENTION\x10\f\x12\x18\n" +
 	"\x14KIND_COMMENT_MENTION\x10\r\x12\x16\n" +
-	"\x12KIND_TOPIC_MENTION\x10\x0e*;\n" +
+	"\x12KIND_TOPIC_MENTION\x10\x0e\x12\x13\n" +
+	"\x0fKIND_PHOTO_LIKE\x10\x0f\x12\x16\n" +
+	"\x12KIND_PHOTO_COMMENT\x10\x10\x12\x1b\n" +
+	"\x17KIND_TOPIC_MESSAGE_LIKE\x10\x11*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
