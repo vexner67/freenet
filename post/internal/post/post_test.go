@@ -421,3 +421,33 @@ func TestPost_InWallAlbum(t *testing.T) {
 		}
 	}
 }
+
+func TestText_Excerpt(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name    string
+		text    string
+		limit   int
+		want    string
+		wantCut bool
+	}{
+		{name: "no limit", text: "привет", limit: 0, want: "привет"},
+		{name: "shorter", text: "привет", limit: 10, want: "привет"},
+		{name: "exactly the limit", text: "привет", limit: 6, want: "привет"},
+		{name: "cut by characters, not bytes", text: "привет, мир", limit: 6, want: "привет", wantCut: true},
+		{name: "emoji stays whole", text: "да👋нет", limit: 3, want: "да👋", wantCut: true},
+		{name: "empty", text: "", limit: 3, want: ""},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			got, cut := post.Text(tt.text).Excerpt(tt.limit)
+			if got != tt.want || cut != tt.wantCut {
+				t.Errorf("Excerpt(%d) = %q, %v, want %q, %v", tt.limit, got, cut, tt.want, tt.wantCut)
+			}
+		})
+	}
+}

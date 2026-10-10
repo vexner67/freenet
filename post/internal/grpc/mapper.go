@@ -95,6 +95,21 @@ func photoStrings(photos post.Photos) []string {
 	return out
 }
 
+// excerpted cuts the text of a post to limit characters, as a list asks;
+// 0 leaves it whole.
+func excerpted(pp *postv1.Post, p *post.Post, limit int32) *postv1.Post {
+	pp.Text, pp.TextCut = p.Content().Text().Excerpt(int(limit))
+
+	return pp
+}
+
+// excerptedComment is excerpted for a comment.
+func excerptedComment(pc *postv1.Comment, c *post.Comment, limit int32) *postv1.Comment {
+	pc.Text, pc.TextCut = c.Text().Excerpt(int(limit))
+
+	return pc
+}
+
 // toProtoPost: viewerID is the caller, uuid.Nil if anonymous.
 func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 	counters := p.Counters()
@@ -130,10 +145,11 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 	return pp
 }
 
-func toProtoPosts(page service.Page, viewerID uuid.UUID) []*postv1.Post {
+// toProtoPosts are the posts of a page, their texts cut to textLimit.
+func toProtoPosts(page service.Page, viewerID uuid.UUID, textLimit int32) []*postv1.Post {
 	posts := make([]*postv1.Post, 0, len(page.Posts))
 	for _, p := range page.Posts {
-		posts = append(posts, toProtoPost(p, page.Liked[p.ID()], viewerID))
+		posts = append(posts, excerpted(toProtoPost(p, page.Liked[p.ID()], viewerID), p, textLimit))
 	}
 
 	return posts

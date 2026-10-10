@@ -37,6 +37,11 @@ func (t CommentText) String() string {
 	return string(t)
 }
 
+// Excerpt is the beginning of the comment, as Text.Excerpt.
+func (t CommentText) Excerpt(limit int) (string, bool) {
+	return Text(t).Excerpt(limit)
+}
+
 // CommentContent is what a comment shows: text, photos or both, never
 // nothing, as in openvk.
 type CommentContent struct {

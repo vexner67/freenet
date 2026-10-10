@@ -75,6 +75,25 @@ func (t Text) String() string {
 	return string(t)
 }
 
+// Excerpt is the beginning of the text, at most limit characters, and
+// whether it was cut: lists carry it instead of a text of thousands of
+// characters. Without a limit the text is whole.
+func (t Text) Excerpt(limit int) (string, bool) {
+	if limit <= 0 || len(t) <= limit {
+		return string(t), false
+	}
+
+	n := 0
+	for i := range string(t) {
+		if n == limit {
+			return string(t[:i]), true
+		}
+		n++
+	}
+
+	return string(t), false
+}
+
 // Counters are how many likes, comments and reposts a post has. Storage
 // keeps them with the post, so a wall is read without counting.
 type Counters struct {

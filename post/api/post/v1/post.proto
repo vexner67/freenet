@@ -218,6 +218,9 @@ message Post {
   bool comments_closed = 21;
   // The author marked the post as adult ("Содержит NSFW-контент").
   bool nsfw = 22;
+  // text is only its beginning: the request set text_limit, and the post
+  // says more.
+  bool text_cut = 23;
 }
 
 message Comment {
@@ -240,6 +243,9 @@ message Comment {
   // The caller wrote the comment; false without an access token. Tells
   // the author a comment that speaks for a community.
   bool mine = 11;
+  // text is only its beginning: the request set text_limit, and the
+  // comment says more.
+  bool text_cut = 12;
 }
 
 // Suggestion is a post suggested for a community's wall.
@@ -404,6 +410,10 @@ message GetPostResponse {
 
 message GetPostsRequest {
   repeated string ids = 1;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts. Lists ask for the beginning: a page of whole texts
+  // of 60 000 characters is megabytes.
+  int32 text_limit = 2;
 }
 
 message GetPostsResponse {
@@ -423,6 +433,10 @@ message ListPostsRequest {
   // openvk's wall); empty for all. Searched, the pinned post is in its
   // place.
   string query = 5;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts. Lists ask for the beginning: a page of whole texts
+  // of 60 000 characters is megabytes.
+  int32 text_limit = 6;
 }
 
 // WallFilter picks the posts of a wall: all ("Все записи"), the wall's
@@ -462,6 +476,10 @@ message ListFeedRequest {
   // their wall, a community in its name), whoever wrote it; author_ids
   // and wall_ids are not looked at.
   bool everyone = 6;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts. Lists ask for the beginning: a page of whole texts
+  // of 60 000 characters is megabytes.
+  int32 text_limit = 7;
 }
 
 message ListFeedResponse {
@@ -559,6 +577,10 @@ message ListCommentsRequest {
   string cursor = 2;
   // 1-50; anything else means 20.
   int32 limit = 3;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts. Lists ask for the beginning: a page of whole texts
+  // of 60 000 characters is megabytes.
+  int32 text_limit = 4;
 }
 
 message ListCommentsResponse {
@@ -571,6 +593,10 @@ message ListCommentsResponse {
 
 message GetCommentsRequest {
   repeated string ids = 1;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts. Lists ask for the beginning: a page of whole texts
+  // of 60 000 characters is megabytes.
+  int32 text_limit = 2;
 }
 
 message GetCommentsResponse {
@@ -579,6 +605,10 @@ message GetCommentsResponse {
 
 message ListLastCommentsRequest {
   repeated string post_ids = 1;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts. Lists ask for the beginning: a page of whole texts
+  // of 60 000 characters is megabytes.
+  int32 text_limit = 2;
 }
 
 message ListLastCommentsResponse {

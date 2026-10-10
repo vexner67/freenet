@@ -346,7 +346,7 @@ func (h *PostHandler) GetPosts(ctx context.Context, req *postv1.GetPostsRequest)
 
 	resp := &postv1.GetPostsResponse{Posts: make([]*postv1.Post, 0, len(posts))}
 	for _, p := range posts {
-		resp.Posts = append(resp.Posts, toProtoPost(p, false, viewerID(ctx)))
+		resp.Posts = append(resp.Posts, excerpted(toProtoPost(p, false, viewerID(ctx)), p, req.GetTextLimit()))
 	}
 
 	return resp, nil
@@ -386,7 +386,7 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 	}
 
 	return &postv1.ListPostsResponse{
-		Posts:      toProtoPosts(page, viewerID(ctx)),
+		Posts:      toProtoPosts(page, viewerID(ctx), req.GetTextLimit()),
 		NextCursor: cursorString(page.NextCursor),
 		Total:      int32(page.Total), //nolint:gosec // a wall will not hold 2^31 posts
 	}, nil
@@ -420,7 +420,7 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 	}
 
 	return &postv1.ListFeedResponse{
-		Posts:      toProtoPosts(page, viewerID(ctx)),
+		Posts:      toProtoPosts(page, viewerID(ctx), req.GetTextLimit()),
 		NextCursor: cursorString(page.NextCursor),
 	}, nil
 }

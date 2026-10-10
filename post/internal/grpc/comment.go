@@ -117,7 +117,7 @@ func (h *PostHandler) GetComments(ctx context.Context, req *postv1.GetCommentsRe
 
 	resp := &postv1.GetCommentsResponse{Comments: make([]*postv1.Comment, 0, len(comments))}
 	for _, c := range comments {
-		resp.Comments = append(resp.Comments, toProtoComment(c, false, uuid.Nil))
+		resp.Comments = append(resp.Comments, excerptedComment(toProtoComment(c, false, uuid.Nil), c, req.GetTextLimit()))
 	}
 
 	return resp, nil
@@ -136,7 +136,7 @@ func (h *PostHandler) ListLastComments(ctx context.Context, req *postv1.ListLast
 
 	resp := &postv1.ListLastCommentsResponse{Comments: make([]*postv1.Comment, 0, len(page.Comments))}
 	for _, c := range page.Comments {
-		resp.Comments = append(resp.Comments, toProtoComment(c, page.Liked[c.ID()], viewerID(ctx)))
+		resp.Comments = append(resp.Comments, excerptedComment(toProtoComment(c, page.Liked[c.ID()], viewerID(ctx)), c, req.GetTextLimit()))
 	}
 
 	return resp, nil
@@ -165,7 +165,7 @@ func (h *PostHandler) ListComments(ctx context.Context, req *postv1.ListComments
 	}
 
 	for _, c := range page.Comments {
-		resp.Comments = append(resp.Comments, toProtoComment(c, page.Liked[c.ID()], viewerID(ctx)))
+		resp.Comments = append(resp.Comments, excerptedComment(toProtoComment(c, page.Liked[c.ID()], viewerID(ctx)), c, req.GetTextLimit()))
 	}
 
 	return resp, nil

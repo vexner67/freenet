@@ -185,7 +185,10 @@ type Post struct {
 	// Nobody comments the post anymore.
 	CommentsClosed bool `protobuf:"varint,21,opt,name=comments_closed,json=commentsClosed,proto3" json:"comments_closed,omitempty"`
 	// The author marked the post as adult ("Содержит NSFW-контент").
-	Nsfw          bool `protobuf:"varint,22,opt,name=nsfw,proto3" json:"nsfw,omitempty"`
+	Nsfw bool `protobuf:"varint,22,opt,name=nsfw,proto3" json:"nsfw,omitempty"`
+	// text is only its beginning: the request set text_limit, and the post
+	// says more.
+	TextCut       bool `protobuf:"varint,23,opt,name=text_cut,json=textCut,proto3" json:"text_cut,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -374,6 +377,13 @@ func (x *Post) GetNsfw() bool {
 	return false
 }
 
+func (x *Post) GetTextCut() bool {
+	if x != nil {
+		return x.TextCut
+	}
+	return false
+}
+
 type Comment struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
 	Id       string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -394,7 +404,10 @@ type Comment struct {
 	FromWall bool `protobuf:"varint,10,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
 	// The caller wrote the comment; false without an access token. Tells
 	// the author a comment that speaks for a community.
-	Mine          bool `protobuf:"varint,11,opt,name=mine,proto3" json:"mine,omitempty"`
+	Mine bool `protobuf:"varint,11,opt,name=mine,proto3" json:"mine,omitempty"`
+	// text is only its beginning: the request set text_limit, and the
+	// comment says more.
+	TextCut       bool `protobuf:"varint,12,opt,name=text_cut,json=textCut,proto3" json:"text_cut,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -502,6 +515,13 @@ func (x *Comment) GetFromWall() bool {
 func (x *Comment) GetMine() bool {
 	if x != nil {
 		return x.Mine
+	}
+	return false
+}
+
+func (x *Comment) GetTextCut() bool {
+	if x != nil {
+		return x.TextCut
 	}
 	return false
 }
@@ -1797,8 +1817,12 @@ func (x *GetPostResponse) GetPost() *Post {
 }
 
 type GetPostsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ids           []string               `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Ids   []string               `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	// The texts are cut to this many characters and say so (text_cut);
+	// 0 for whole texts. Lists ask for the beginning: a page of whole texts
+	// of 60 000 characters is megabytes.
+	TextLimit     int32 `protobuf:"varint,2,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1838,6 +1862,13 @@ func (x *GetPostsRequest) GetIds() []string {
 		return x.Ids
 	}
 	return nil
+}
+
+func (x *GetPostsRequest) GetTextLimit() int32 {
+	if x != nil {
+		return x.TextLimit
+	}
+	return 0
 }
 
 type GetPostsResponse struct {
@@ -1897,7 +1928,11 @@ type ListPostsRequest struct {
 	// What the posts say, in any case, at most 100 characters ("Поиск" of
 	// openvk's wall); empty for all. Searched, the pinned post is in its
 	// place.
-	Query         string `protobuf:"bytes,5,opt,name=query,proto3" json:"query,omitempty"`
+	Query string `protobuf:"bytes,5,opt,name=query,proto3" json:"query,omitempty"`
+	// The texts are cut to this many characters and say so (text_cut);
+	// 0 for whole texts. Lists ask for the beginning: a page of whole texts
+	// of 60 000 characters is megabytes.
+	TextLimit     int32 `protobuf:"varint,6,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1965,6 +2000,13 @@ func (x *ListPostsRequest) GetQuery() string {
 		return x.Query
 	}
 	return ""
+}
+
+func (x *ListPostsRequest) GetTextLimit() int32 {
+	if x != nil {
+		return x.TextLimit
+	}
+	return 0
 }
 
 type ListPostsResponse struct {
@@ -2045,7 +2087,11 @@ type ListFeedRequest struct {
 	// "Все новости" of openvk: what every wall says itself (its owner on
 	// their wall, a community in its name), whoever wrote it; author_ids
 	// and wall_ids are not looked at.
-	Everyone      bool `protobuf:"varint,6,opt,name=everyone,proto3" json:"everyone,omitempty"`
+	Everyone bool `protobuf:"varint,6,opt,name=everyone,proto3" json:"everyone,omitempty"`
+	// The texts are cut to this many characters and say so (text_cut);
+	// 0 for whole texts. Lists ask for the beginning: a page of whole texts
+	// of 60 000 characters is megabytes.
+	TextLimit     int32 `protobuf:"varint,7,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2120,6 +2166,13 @@ func (x *ListFeedRequest) GetEveryone() bool {
 		return x.Everyone
 	}
 	return false
+}
+
+func (x *ListFeedRequest) GetTextLimit() int32 {
+	if x != nil {
+		return x.TextLimit
+	}
+	return 0
 }
 
 type ListFeedResponse struct {
@@ -2955,7 +3008,11 @@ type ListCommentsRequest struct {
 	// Empty for the first comments, else next_cursor of the previous page.
 	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	// 1-50; anything else means 20.
-	Limit         int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	// The texts are cut to this many characters and say so (text_cut);
+	// 0 for whole texts. Lists ask for the beginning: a page of whole texts
+	// of 60 000 characters is megabytes.
+	TextLimit     int32 `protobuf:"varint,4,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3007,6 +3064,13 @@ func (x *ListCommentsRequest) GetCursor() string {
 func (x *ListCommentsRequest) GetLimit() int32 {
 	if x != nil {
 		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListCommentsRequest) GetTextLimit() int32 {
+	if x != nil {
+		return x.TextLimit
 	}
 	return 0
 }
@@ -3074,8 +3138,12 @@ func (x *ListCommentsResponse) GetTotal() int32 {
 }
 
 type GetCommentsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	Ids           []string               `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Ids   []string               `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	// The texts are cut to this many characters and say so (text_cut);
+	// 0 for whole texts. Lists ask for the beginning: a page of whole texts
+	// of 60 000 characters is megabytes.
+	TextLimit     int32 `protobuf:"varint,2,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3115,6 +3183,13 @@ func (x *GetCommentsRequest) GetIds() []string {
 		return x.Ids
 	}
 	return nil
+}
+
+func (x *GetCommentsRequest) GetTextLimit() int32 {
+	if x != nil {
+		return x.TextLimit
+	}
+	return 0
 }
 
 type GetCommentsResponse struct {
@@ -3162,8 +3237,12 @@ func (x *GetCommentsResponse) GetComments() []*Comment {
 }
 
 type ListLastCommentsRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	PostIds       []string               `protobuf:"bytes,1,rep,name=post_ids,json=postIds,proto3" json:"post_ids,omitempty"`
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	PostIds []string               `protobuf:"bytes,1,rep,name=post_ids,json=postIds,proto3" json:"post_ids,omitempty"`
+	// The texts are cut to this many characters and say so (text_cut);
+	// 0 for whole texts. Lists ask for the beginning: a page of whole texts
+	// of 60 000 characters is megabytes.
+	TextLimit     int32 `protobuf:"varint,2,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3203,6 +3282,13 @@ func (x *ListLastCommentsRequest) GetPostIds() []string {
 		return x.PostIds
 	}
 	return nil
+}
+
+func (x *ListLastCommentsRequest) GetTextLimit() int32 {
+	if x != nil {
+		return x.TextLimit
+	}
+	return 0
 }
 
 type ListLastCommentsResponse struct {
@@ -6672,7 +6758,7 @@ var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd5\x05\n" +
+	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf0\x05\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x12\n" +
@@ -6698,7 +6784,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0fshared_photo_id\x18\x13 \x01(\tR\rsharedPhotoId\x12\x1a\n" +
 	"\barchived\x18\x14 \x01(\bR\barchived\x12'\n" +
 	"\x0fcomments_closed\x18\x15 \x01(\bR\x0ecommentsClosed\x12\x12\n" +
-	"\x04nsfw\x18\x16 \x01(\bR\x04nsfw\"\xc1\x02\n" +
+	"\x04nsfw\x18\x16 \x01(\bR\x04nsfw\x12\x19\n" +
+	"\btext_cut\x18\x17 \x01(\bR\atextCut\"\xdc\x02\n" +
 	"\aComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
@@ -6713,7 +6800,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x05liked\x18\t \x01(\bR\x05liked\x12\x1b\n" +
 	"\tfrom_wall\x18\n" +
 	" \x01(\bR\bfromWall\x12\x12\n" +
-	"\x04mine\x18\v \x01(\bR\x04mine\"\xbe\x01\n" +
+	"\x04mine\x18\v \x01(\bR\x04mine\x12\x19\n" +
+	"\btext_cut\x18\f \x01(\bR\atextCut\"\xbe\x01\n" +
 	"\n" +
 	"Suggestion\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
@@ -6795,22 +6883,26 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0eGetPostRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"4\n" +
 	"\x0fGetPostResponse\x12!\n" +
-	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"#\n" +
+	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"B\n" +
 	"\x0fGetPostsRequest\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\tR\x03ids\"7\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\x12\x1d\n" +
+	"\n" +
+	"text_limit\x18\x02 \x01(\x05R\ttextLimit\"7\n" +
 	"\x10GetPostsResponse\x12#\n" +
-	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\"\x9c\x01\n" +
+	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\"\xbb\x01\n" +
 	"\x10ListPostsRequest\x12\x17\n" +
 	"\awall_id\x18\x01 \x01(\tR\x06wallId\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12+\n" +
 	"\x06filter\x18\x04 \x01(\x0e2\x13.post.v1.WallFilterR\x06filter\x12\x14\n" +
-	"\x05query\x18\x05 \x01(\tR\x05query\"o\n" +
+	"\x05query\x18\x05 \x01(\tR\x05query\x12\x1d\n" +
+	"\n" +
+	"text_limit\x18\x06 \x01(\x05R\ttextLimit\"o\n" +
 	"\x11ListPostsResponse\x12#\n" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"\xb2\x01\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\xd1\x01\n" +
 	"\x0fListFeedRequest\x12\x1d\n" +
 	"\n" +
 	"author_ids\x18\x01 \x03(\tR\tauthorIds\x12\x19\n" +
@@ -6818,7 +6910,9 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x1b\n" +
 	"\thide_nsfw\x18\x05 \x01(\bR\bhideNsfw\x12\x1a\n" +
-	"\beveryone\x18\x06 \x01(\bR\beveryone\"X\n" +
+	"\beveryone\x18\x06 \x01(\bR\beveryone\x12\x1d\n" +
+	"\n" +
+	"text_limit\x18\a \x01(\x05R\ttextLimit\"X\n" +
 	"\x10ListFeedResponse\x12#\n" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
@@ -6874,22 +6968,28 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"comment_id\x18\x01 \x01(\tR\tcommentId\"6\n" +
 	"\x15UnlikeCommentResponse\x12\x1d\n" +
 	"\n" +
-	"like_count\x18\x01 \x01(\x05R\tlikeCount\"\\\n" +
+	"like_count\x18\x01 \x01(\x05R\tlikeCount\"{\n" +
 	"\x13ListCommentsRequest\x12\x17\n" +
 	"\apost_id\x18\x01 \x01(\tR\x06postId\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"{\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x1d\n" +
+	"\n" +
+	"text_limit\x18\x04 \x01(\x05R\ttextLimit\"{\n" +
 	"\x14ListCommentsResponse\x12,\n" +
 	"\bcomments\x18\x01 \x03(\v2\x10.post.v1.CommentR\bcomments\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"&\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"E\n" +
 	"\x12GetCommentsRequest\x12\x10\n" +
-	"\x03ids\x18\x01 \x03(\tR\x03ids\"C\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\x12\x1d\n" +
+	"\n" +
+	"text_limit\x18\x02 \x01(\x05R\ttextLimit\"C\n" +
 	"\x13GetCommentsResponse\x12,\n" +
-	"\bcomments\x18\x01 \x03(\v2\x10.post.v1.CommentR\bcomments\"4\n" +
+	"\bcomments\x18\x01 \x03(\v2\x10.post.v1.CommentR\bcomments\"S\n" +
 	"\x17ListLastCommentsRequest\x12\x19\n" +
-	"\bpost_ids\x18\x01 \x03(\tR\apostIds\"H\n" +
+	"\bpost_ids\x18\x01 \x03(\tR\apostIds\x12\x1d\n" +
+	"\n" +
+	"text_limit\x18\x02 \x01(\x05R\ttextLimit\"H\n" +
 	"\x18ListLastCommentsResponse\x12,\n" +
 	"\bcomments\x18\x01 \x03(\v2\x10.post.v1.CommentR\bcomments\"+\n" +
 	"\x10PurgeUserRequest\x12\x17\n" +

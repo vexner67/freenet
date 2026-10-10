@@ -1117,3 +1117,76 @@ func TestNSFW(t *testing.T) {
 		t.Fatalf("EditPost taking the mark off = %v, %v", edited, err)
 	}
 }
+
+// Lists ask for the beginnings of texts; a post alone is whole.
+func TestTextLimit(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann := uuid.New()
+
+	created, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: "длинная запись"})
+	if err != nil {
+		t.Fatalf("CreatePost: %v", err)
+	}
+	id := created.GetPost().GetId()
+
+	if _, err = s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: "да"}); err != nil {
+		t.Fatal(err)
+	}
+
+	comment, err := s.client.CreateComment(s.as(t, ann), &postv1.CreateCommentRequest{PostId: id, Text: "длинный ответ"})
+	if err != nil {
+		t.Fatalf("CreateComment: %v", err)
+	}
+
+	wall, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: ann.String(), TextLimit: 7})
+	if err != nil || len(wall.GetPosts()) != 2 {
+		t.Fatalf("ListPosts = %v, %v", wall, err)
+	}
+	if short, long := wall.GetPosts()[0], wall.GetPosts()[1]; short.GetText() != "да" || short.GetTextCut() ||
+		long.GetText() != "длинная" || !long.GetTextCut() {
+		t.Fatalf("wall with a limit = %v", wall.GetPosts())
+	}
+
+	whole, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: ann.String()})
+	if err != nil || whole.GetPosts()[1].GetText() != "длинная запись" || whole.GetPosts()[1].GetTextCut() {
+		t.Fatalf("wall without a limit = %v, %v", whole, err)
+	}
+
+	feed, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{ann.String()}, TextLimit: 7})
+	if err != nil || len(feed.GetPosts()) != 2 || feed.GetPosts()[1].GetText() != "длинная" || !feed.GetPosts()[1].GetTextCut() {
+		t.Fatalf("ListFeed = %v, %v", feed, err)
+	}
+
+	many, err := s.client.GetPosts(context.Background(), &postv1.GetPostsRequest{Ids: []string{id}, TextLimit: 7})
+	if err != nil || len(many.GetPosts()) != 1 || many.GetPosts()[0].GetText() != "длинная" || !many.GetPosts()[0].GetTextCut() {
+		t.Fatalf("GetPosts = %v, %v", many, err)
+	}
+
+	one, err := s.client.GetPost(context.Background(), &postv1.GetPostRequest{Id: id})
+	if err != nil || one.GetPost().GetText() != "длинная запись" || one.GetPost().GetTextCut() {
+		t.Fatalf("GetPost = %v, %v", one, err)
+	}
+
+	comments, err := s.client.ListComments(context.Background(), &postv1.ListCommentsRequest{PostId: id, TextLimit: 7})
+	if err != nil || len(comments.GetComments()) != 1 || comments.GetComments()[0].GetText() != "длинный" || !comments.GetComments()[0].GetTextCut() {
+		t.Fatalf("ListComments = %v, %v", comments, err)
+	}
+
+	last, err := s.client.ListLastComments(context.Background(), &postv1.ListLastCommentsRequest{PostIds: []string{id}, TextLimit: 7})
+	if err != nil || len(last.GetComments()) != 1 || last.GetComments()[0].GetText() != "длинный" || !last.GetComments()[0].GetTextCut() {
+		t.Fatalf("ListLastComments = %v, %v", last, err)
+	}
+
+	byID := &postv1.GetCommentsRequest{Ids: []string{comment.GetComment().GetId()}, TextLimit: 7}
+	if got, err := s.client.GetComments(context.Background(), byID); err != nil || len(got.GetComments()) != 1 ||
+		got.GetComments()[0].GetText() != "длинный" || !got.GetComments()[0].GetTextCut() {
+		t.Fatalf("GetComments = %v, %v", got, err)
+	}
+
+	byID.TextLimit = 0
+	if got, err := s.client.GetComments(context.Background(), byID); err != nil || got.GetComments()[0].GetText() != "длинный ответ" || got.GetComments()[0].GetTextCut() {
+		t.Fatalf("GetComments whole = %v, %v", got, err)
+	}
+}
