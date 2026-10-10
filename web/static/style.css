@@ -481,6 +481,7 @@ a.like:hover svg { opacity: .7; }
 .im-selection a { cursor: pointer; }
 .im-message.deleted .im-message-text { color: #777; font-style: italic; }
 .im-message.found, .im-message.found.unread { background: #f6f0d2; }
+.found-words { background: #ffe58a; }
 .im-forwarded { margin: 4px 0; padding-left: 8px; border-left: 2px solid #dae1e8; }
 .im-forwarded-message { margin-bottom: 6px; }
 .im-forwarded-message:last-child { margin-bottom: 0; }

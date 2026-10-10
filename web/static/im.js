@@ -8,7 +8,7 @@
 
 import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
-import { formatPostDate, messagePreview, snippet } from './labels.js';
+import { formatPostDate, foundParts, foundSnippet, messagePreview, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showError, hideError } from './layout.js';
 
 const PREVIEW = 120;
@@ -128,9 +128,12 @@ const searchPeer = params.get('peer') ?? '';
 
 // foundNode is a found message as a row of the list: who it was written
 // to or by, when, and what it says; it leads to where it was said in the
-// dialog.
+// dialog, the words found marked there too (&q=).
 function foundNode({ peer, message: m }) {
-  return el('a', { className: 'dialog', href: `/im/${encodeURIComponent(peer.nickname)}?msg=${encodeURIComponent(m.id)}` },
+  const href = `/im/${encodeURIComponent(peer.nickname)}?msg=${encodeURIComponent(m.id)}&q=${encodeURIComponent(query)}`;
+  const parts = foundParts(foundSnippet(m.text, query, PREVIEW), query);
+
+  return el('a', { className: 'dialog', href },
     el('img', { className: 'dialog-avatar', src: avatarURL(peer, 'small'), alt: '' }),
     el('div', { className: 'dialog-info' },
       el('b', { className: 'dialog-name', textContent: fullName(peer) }),
@@ -138,17 +141,10 @@ function foundNode({ peer, message: m }) {
     ),
     el('div', { className: 'dialog-message' },
       m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
-      el('div', { className: 'dialog-text', textContent: around(m.text, query) }),
+      el('div', { className: 'dialog-text' },
+        ...parts.map((p) => (p.found ? el('span', { className: 'found-words', textContent: p.text }) : p.text))),
     ),
   );
-}
-
-// around cuts a long text to the part that says the query.
-function around(text, q) {
-  const at = text.toLowerCase().indexOf(q.toLowerCase());
-  const from = Math.max(0, at - PREVIEW / 3);
-
-  return (from > 0 ? '…' : '') + snippet(text.slice(from), PREVIEW);
 }
 
 async function searchMore() {
