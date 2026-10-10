@@ -2,13 +2,17 @@ import { api, currentUser } from './api.js';
 import { $, el, isMicroblog, renderChrome, showError, hideError } from './layout.js';
 import { postNode, wallOwnerID } from './posts.js';
 
+// "Все новости" of openvk, /feed/all: what everyone wrote, not only those
+// I follow.
+const all = location.pathname.replace(/\/+$/, '') === '/feed/all';
+
 let cursor = '';
 
 async function loadMore(me) {
   hideError($('error'));
 
   try {
-    const page = await api.feed(cursor, isMicroblog());
+    const page = await api.feed(cursor, isMicroblog(), all);
 
     // As on a wall: I edit and delete what I wrote, and delete, pin and
     // put away what is on my wall.
@@ -22,7 +26,7 @@ async function loadMore(me) {
     })));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
-    $('empty').hidden = $('posts').children.length > 0;
+    $(all ? 'empty-all' : 'empty').hidden = $('posts').children.length > 0;
   } catch (e) {
     showError($('error'), e);
   }
@@ -55,6 +59,7 @@ if (!me) {
   location.replace('/');
 } else {
   renderChrome(me);
+  $(all ? 'tab-all' : 'tab-mine').classList.add('active');
   $('example-url').textContent = `${location.host}/никнейм`;
   $('more').addEventListener('click', () => loadMore(me));
   await loadMore(me);

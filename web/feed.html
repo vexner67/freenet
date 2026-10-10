@@ -22,10 +22,15 @@
     </div>
 
     <div class="page">
-      <div class="page-title"><span>Новости</span><span class="aside">записи ваших подписок</span></div>
+      <div class="page-title"><span>Новости</span></div>
       <div class="page-body">
+        <div class="tabs">
+          <a id="tab-mine" href="/feed">Мои новости</a>
+          <a id="tab-all" href="/feed/all">Все новости</a>
+        </div>
         <div class="error" id="error" hidden></div>
         <div id="posts"></div>
+        <p class="hint" id="empty-all" hidden>Тут ничего нет... Пока...</p>
         <div class="notice" id="empty" hidden>
           <b>Здесь пока пусто.</b> В новостях появляются записи тех, на кого вы подписаны, и ваши.
           Откройте страницу друга по адресу <b id="example-url"></b> и нажмите «Подписаться».
