@@ -605,6 +605,42 @@ export function snippet(text, n) {
   return chars.length <= n ? text : chars.slice(0, n).join('').trimEnd() + '…';
 }
 
+// foundParts splits a text into pieces, those that say the query,
+// whatever the case, marked found: a search shows them highlighted.
+export function foundParts(text, query) {
+  const q = query.trim().toLowerCase();
+  const lower = text.toLowerCase();
+  // A letter whose lower case is longer would shift the places.
+  if (!q || lower.length !== text.length) return [{ text, found: false }];
+
+  const parts = [];
+  let from = 0;
+
+  for (let at = lower.indexOf(q); at >= 0; at = lower.indexOf(q, from)) {
+    if (at > from) parts.push({ text: text.slice(from, at), found: false });
+    parts.push({ text: text.slice(at, at + q.length), found: true });
+    from = at + q.length;
+  }
+
+  if (from < text.length || parts.length === 0) parts.push({ text: text.slice(from), found: false });
+
+  return parts;
+}
+
+// foundSnippet is about n characters of a text from a little before the
+// place it first says the query, or its beginning when that is near.
+export function foundSnippet(text, query, n) {
+  const q = query.trim().toLowerCase();
+  const at = text.toLowerCase().indexOf(q);
+  if (at < 0 || at + q.length <= n) return snippet(text, n);
+
+  let from = at - Math.floor(n / 4);
+  // Not between the halves of an emoji.
+  if (text.charCodeAt(from) >= 0xdc00 && text.charCodeAt(from) <= 0xdfff) from++;
+
+  return '…' + snippet(text.slice(from), n);
+}
+
 // commentsLink is the link to the comments under a post, as on openvk.
 export function commentsLink(n) {
   return n > 0 ? `Комментарии (${n})` : 'Комментировать';

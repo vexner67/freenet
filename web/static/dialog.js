@@ -12,7 +12,7 @@
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
-import { errorText, formatPostDate, genitiveName, isLongText, messagePreview, selectedCount, snippet } from './labels.js';
+import { errorText, formatPostDate, foundParts, genitiveName, isLongText, messagePreview, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, sharedNode } from './posts.js';
@@ -25,6 +25,8 @@ const nickname = decodeURIComponent(location.pathname.slice('/im/'.length));
 const list = $('messages');
 // The message to open the dialog around, from a search.
 const foundID = new URLSearchParams(location.search).get('msg') ?? '';
+// What the search looked for: these words are marked in that message.
+const foundQuery = (new URLSearchParams(location.search).get('q') ?? '').trim();
 
 let me;
 let peer;
@@ -102,7 +104,11 @@ const CUT_LENGTH = 1000;
 // on: a long one cut short until "Показать больше", as posts are, which
 // first loads the message whole when the dialog carried its beginning.
 function textOf(text, node) {
-  const body = el('div', { className: 'im-message-text', textContent: text });
+  const marked = node.message?.id === foundID && foundQuery;
+  const body = marked
+    ? el('div', { className: 'im-message-text' },
+      ...foundParts(text, foundQuery).map((p) => (p.found ? el('span', { className: 'found-words', textContent: p.text }) : p.text)))
+    : el('div', { className: 'im-message-text', textContent: text });
   const cut = node.message?.textCut && [...text].length >= CUT_LENGTH;
   if (node.opened || !(cut || isLongText(text))) return body;
 
@@ -240,6 +246,7 @@ function openForward(messages) {
   const modal = openModal(forward.length > 1 ? 'Пересылка сообщений' : 'Пересылка сообщения', { tag: 'form' });
   const error = el('div', { className: 'error', hidden: true });
   const chats = el('select', { ariaLabel: 'Переписка' }, el('option', { value: nickname, textContent: fullName(peer) }));
+  const person = el('input', { type: 'search', maxLength: 64, placeholder: 'Найти человека: имя, фамилия или никнейм', ariaLabel: 'Найти человека' });
   const text = el('textarea', { maxLength: 60000, placeholder: '…', ariaLabel: 'Ваш комментарий' });
   const send = button('Отправить', null, { type: 'submit' });
 
@@ -248,18 +255,51 @@ function openForward(messages) {
     el('div', { className: 'forward-list' }, ...forward.map((m) => el('div', {},
       el('b', { textContent: fullName(m.out ? me : peer) + ': ' }), snippet(messagePreview(m), 80)))),
     el('b', { textContent: 'Кому' }),
+    person,
     chats,
     el('b', { textContent: 'Ваш комментарий' }),
     text,
   );
   modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
 
+  const option = (user) => el('option', { value: user.nickname, textContent: fullName(user) });
   // The latest dialogs, this one first.
+  let latest = [option(peer)];
+
   api.dialogs().then((page) => {
-    chats.append(...page.dialogs
-      .filter((d) => d.peer.nickname !== nickname)
-      .map((d) => el('option', { value: d.peer.nickname, textContent: fullName(d.peer) })));
+    latest = [option(peer), ...page.dialogs.filter((d) => d.peer.nickname !== nickname).map((d) => option(d.peer))];
+    if (!person.value.trim()) chats.replaceChildren(...latest);
   }).catch((e) => showError(error, e));
+
+  // Anyone else is found by name, as the search of people finds them;
+  // only the answer to what the field says now is shown.
+  let timer;
+
+  person.addEventListener('input', () => {
+    clearTimeout(timer);
+    timer = setTimeout(async () => {
+      const q = person.value.trim();
+
+      hideError(error);
+      if (!q) {
+        chats.replaceChildren(...latest);
+        send.disabled = false;
+        return;
+      }
+
+      try {
+        const page = await api.search(q);
+        if (person.value.trim() !== q) return;
+
+        const people = page.users.filter((u) => u.nickname !== me.nickname);
+
+        chats.replaceChildren(...(people.length > 0 ? people.map(option) : [el('option', { value: '', textContent: 'Никого не нашлось' })]));
+        send.disabled = people.length === 0;
+      } catch (e) {
+        showError(error, e);
+      }
+    }, 300);
+  });
 
   modal.box.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -470,8 +510,16 @@ async function fillNewer() {
 async function showFound() {
   const node = shown.get(foundID);
 
+  // The words may be said after what a collapsed text shows: it opens.
+  if (node && foundQuery && node.querySelector('.im-message-text.collapsed')) {
+    await whole(node.message).then(() => {
+      node.opened = true;
+      node.render();
+    }).catch(() => {});
+  }
+
   node?.classList.add('found');
-  node?.scrollIntoView({ block: 'center' });
+  (node?.querySelector('.found-words') ?? node)?.scrollIntoView({ block: 'center' });
   await fillNewer();
 }
 

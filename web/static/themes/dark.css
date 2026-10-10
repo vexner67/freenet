@@ -81,6 +81,7 @@ input:focus, select:focus, textarea:focus,
 .im-message.unread { background: #2a2a2a; }
 .im-message.selected, .im-message.selected.unread { background: #2c3642; }
 .im-message.found, .im-message.found.unread { background: #3a3522; }
+.found-words { background: #6b5a14; color: #fff; }
 .im-forwarded, .forward-list { border-color: #3a4654; }
 .im-message.deleted .im-message-text, .im-forwarded-date, .im-forwarded-hint, .forward-list { color: #999; }
 .im-selection, .messenger-input, .messenger-blocked { background: #222; border-color: #333; }

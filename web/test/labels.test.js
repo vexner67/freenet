@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone } from '../static/labels.js';
+import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -429,4 +429,23 @@ test('replyMention starts an answer with a link to the person', () => {
 test('notificationVerb says who mentioned', () => {
   assert.equal(notificationVerb('mention', { gender: 'female' }), 'упомянула');
   assert.equal(notificationVerb('mention', { club: true }), 'упомянуло');
+});
+
+test('foundParts marks every place a text says the query, whatever the case', () => {
+  assert.deepEqual(foundParts('Привет, привет!', 'ПРИВЕТ'), [
+    { text: 'Привет', found: true },
+    { text: ', ', found: false },
+    { text: 'привет', found: true },
+    { text: '!', found: false },
+  ]);
+  assert.deepEqual(foundParts('привет', 'пока'), [{ text: 'привет', found: false }]);
+  assert.deepEqual(foundParts('привет', '  '), [{ text: 'привет', found: false }]);
+  assert.deepEqual(foundParts('', 'а'), [{ text: '', found: false }]);
+});
+
+test('foundSnippet starts a little before the words found', () => {
+  assert.equal(foundSnippet('раз два три', 'два', 8), 'раз два…');
+  assert.equal(foundSnippet('раз два три четыре пять шесть', 'пять', 8), '…е пять ш…');
+  assert.equal(foundSnippet('раз два три', 'семь', 7), 'раз два…');
+  assert.equal(foundSnippet('👋👋👋👋👋👋да нет', 'да', 4).includes('да'), true);
 });
