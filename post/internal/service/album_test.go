@@ -475,4 +475,13 @@ func TestPostService_WallAlbum(t *testing.T) {
 	if page, _ = albums.List(ctx, bob, uuid.Nil, 0); page.Total != 0 {
 		t.Fatalf("bob got %d albums", page.Total)
 	}
+
+	// The copies of an adult post are blurred like it; the others are not.
+	if _, err = posts.Create(ctx, service.CreateInput{WallID: ann, AuthorID: ann, Content: content(uuid.New()), NSFW: true}); err != nil {
+		t.Fatal(err)
+	}
+	kept, _ = albums.Photos(ctx, wall, uuid.Nil, 0)
+	if len(kept.Photos) != 4 || kept.Photos[0].NSFW() || !kept.Photos[3].NSFW() {
+		t.Fatalf("the adult copy: %d photos, first %v, last %v", len(kept.Photos), kept.Photos[0].NSFW(), kept.Photos[3].NSFW())
+	}
 }

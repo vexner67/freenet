@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"slices"
 	"time"
 
 	"github.com/google/uuid"
@@ -22,6 +24,9 @@ type CommentRepository interface {
 	// ListByPost returns up to limit comments of a post, oldest first, with
 	// IDs above after (uuid.Nil: from the first).
 	ListByPost(ctx context.Context, postID, after uuid.UUID, limit int) ([]*post.Comment, error)
+	// LastByPosts returns the newest limit comments of each of the posts,
+	// in no particular order; those of archived posts are not told.
+	LastByPosts(ctx context.Context, postIDs []uuid.UUID, limit int) ([]*post.Comment, error)
 }
 
 // CommentLikeRepository keeps the likes of comments as LikeRepository
@@ -360,6 +365,51 @@ func (s *CommentService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.
 	}
 
 	return comments, nil
+}
+
+// LastComments is how many comments openvk's "Микроблог" shows under a
+// post of a wall.
+const LastComments = 3
+
+// Last returns the newest LastComments comments of each of the posts,
+// oldest first, as "Микроблог" shows them under the posts of a wall, and
+// which of them the viewer likes (viewerID is uuid.Nil for an anonymous
+// one). Archived posts tell none: only the owner of the wall reads them.
+func (s *CommentService) Last(ctx context.Context, viewerID uuid.UUID, postIDs []uuid.UUID) (CommentPage, error) {
+	if len(postIDs) > MaxPageSize {
+		return CommentPage{}, ErrTooManyIDs
+	}
+
+	if len(postIDs) == 0 {
+		return CommentPage{}, nil
+	}
+
+	comments, err := s.commentRepo.LastByPosts(ctx, postIDs, LastComments)
+	if err != nil {
+		return CommentPage{}, errs.Wrap("s.commentRepo.LastByPosts", err)
+	}
+
+	// UUIDv7 sort by time: the comments of a post read as a conversation.
+	slices.SortFunc(comments, func(a, b *post.Comment) int {
+		ai, bi := a.ID(), b.ID()
+		return bytes.Compare(ai[:], bi[:])
+	})
+
+	page := CommentPage{Comments: comments}
+	if viewerID == uuid.Nil || len(comments) == 0 {
+		return page, nil
+	}
+
+	ids := make([]uuid.UUID, len(comments))
+	for i, c := range comments {
+		ids[i] = c.ID()
+	}
+
+	if page.Liked, err = s.likeRepo.Liked(ctx, viewerID, ids); err != nil {
+		return CommentPage{}, errs.Wrap("s.likeRepo.Liked", err)
+	}
+
+	return page, nil
 }
 
 // List pages the comments of a post oldest first, as a conversation reads:

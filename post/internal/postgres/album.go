@@ -192,7 +192,8 @@ const deleteAlbumQuery = `
 		description,
 		created_at,
 		like_count,
-		comment_count
+		comment_count,
+		nsfw
 	FROM album_photos
 	WHERE album_id IN (SELECT id FROM gone)
 `
@@ -366,10 +367,11 @@ const addAlbumPhotosQuery = `
 		album_id,
 		author_id,
 		description,
-		created_at
+		created_at,
+		nsfw
 	)
-	SELECT p.id, album.id, p.author_id, p.description, p.created_at
-	FROM album, unnest($2::uuid[], $3::uuid[], $4::text[], $5::timestamptz[]) AS p (id, author_id, description, created_at)
+	SELECT p.id, album.id, p.author_id, p.description, p.created_at, p.nsfw
+	FROM album, unnest($2::uuid[], $3::uuid[], $4::text[], $5::timestamptz[], $7::bool[]) AS p (id, author_id, description, created_at, nsfw)
 `
 
 func (p *AlbumPhotoRepository) Add(ctx context.Context, albumID uuid.UUID, photos []*post.AlbumPhoto, now time.Time) error {
@@ -378,13 +380,15 @@ func (p *AlbumPhotoRepository) Add(ctx context.Context, albumID uuid.UUID, photo
 		authors      = make([]uuid.UUID, len(photos))
 		descriptions = make([]string, len(photos))
 		createdAt    = make([]time.Time, len(photos))
+		nsfw         = make([]bool, len(photos))
 	)
 	for i, photo := range photos {
 		ids[i], authors[i], descriptions[i], createdAt[i] = photo.ID(), photo.AuthorID(), photo.Description().String(), photo.CreatedAt()
+		nsfw[i] = photo.NSFW()
 	}
 
 	tag, err := p.r.conn(ctx).Exec(ctx, addAlbumPhotosQuery, albumID, ids, authors, descriptions, createdAt,
-		now.UTC().Truncate(time.Microsecond))
+		now.UTC().Truncate(time.Microsecond), nsfw)
 	if constraintOf(err) == "album_photos_pkey" {
 		return post.ErrDuplicatePhoto
 	}
@@ -407,7 +411,8 @@ const getAlbumPhotoQuery = `
 		description,
 		created_at,
 		like_count,
-		comment_count
+		comment_count,
+		nsfw
 	FROM album_photos
 	WHERE id = $1
 `
@@ -521,7 +526,8 @@ const listAlbumPhotosQuery = `
 		description,
 		created_at,
 		like_count,
-		comment_count
+		comment_count,
+		nsfw
 	FROM album_photos
 	WHERE album_id = $1
 		AND id > $2
@@ -547,7 +553,8 @@ const albumCoversQuery = `
 		p.description,
 		p.created_at,
 		p.like_count,
-		p.comment_count
+		p.comment_count,
+		p.nsfw
 	FROM album_photos p
 	JOIN albums a ON a.id = p.album_id
 	WHERE p.album_id = ANY($1)
@@ -589,7 +596,7 @@ func scanAlbumPhoto(row pgx.Row) (*post.AlbumPhoto, error) {
 		description string
 	)
 
-	if err := row.Scan(&s.ID, &s.AlbumID, &s.AuthorID, &description, &s.CreatedAt, &s.Likes, &s.Comments); err != nil {
+	if err := row.Scan(&s.ID, &s.AlbumID, &s.AuthorID, &description, &s.CreatedAt, &s.Likes, &s.Comments, &s.NSFW); err != nil {
 		return nil, err
 	}
 

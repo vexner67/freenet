@@ -169,7 +169,7 @@ type PostDeps struct {
 // transaction, KeepWallPhotos inside it.
 type WallPhotoKeeper interface {
 	WallAlbum(ctx context.Context, ownerID uuid.UUID) (*post.Album, error)
-	KeepWallPhotos(ctx context.Context, a *post.Album, photoIDs []uuid.UUID) error
+	KeepWallPhotos(ctx context.Context, a *post.Album, photoIDs []uuid.UUID, nsfw bool) error
 }
 
 // AlbumPhotoGetter finds a photo of an album: post.ErrAlbumPhotoNotFound.
@@ -511,7 +511,7 @@ func (s *PostService) publishPhotos(ctx context.Context, p *post.Post, album *po
 		return nil
 	}
 
-	return errs.Wrap("s.wallPhotos.KeepWallPhotos", s.wallPhotos.KeepWallPhotos(ctx, album, photos))
+	return errs.Wrap("s.wallPhotos.KeepWallPhotos", s.wallPhotos.KeepWallPhotos(ctx, album, photos, p.NSFW()))
 }
 
 // diffPhotos tells which photos an edit adds and which it takes away.

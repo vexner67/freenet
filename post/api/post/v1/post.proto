@@ -71,6 +71,10 @@ service PostService {
   rpc ListComments(ListCommentsRequest) returns (ListCommentsResponse);
   // Public: at most 50 comments by ID, like GetPosts.
   rpc GetComments(GetCommentsRequest) returns (GetCommentsResponse);
+  // Public: the three newest comments of each of at most 50 posts, oldest
+  // first, as "Микроблог" shows them under the posts of a wall. Archived
+  // posts tell none.
+  rpc ListLastComments(ListLastCommentsRequest) returns (ListLastCommentsResponse);
 
   // Require an access token: posts suggested for a community's wall
   // ("Предложка" of openvk), seen only by their authors and the
@@ -563,6 +567,14 @@ message GetCommentsResponse {
   repeated Comment comments = 1;
 }
 
+message ListLastCommentsRequest {
+  repeated string post_ids = 1;
+}
+
+message ListLastCommentsResponse {
+  repeated Comment comments = 1;
+}
+
 message PurgeUserRequest {
   string user_id = 1;
 }
@@ -753,6 +765,8 @@ message AlbumPhoto {
   int32 comment_count = 8;
   // The caller likes it.
   bool liked = 9;
+  // It came from a post marked as adult: blurred like it.
+  bool nsfw = 10;
 }
 
 message CreateAlbumRequest {

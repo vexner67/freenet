@@ -140,6 +140,26 @@ func TestLikesAndComments(t *testing.T) {
 			t.Fatalf("comment count = %d, want 3", counted.Counters().Comments)
 		}
 
+		// The newest of each post asked for; none of an archived one.
+		last, err := comments.LastByPosts(ctx, []uuid.UUID{p.ID(), uuid.New()}, 2)
+		if err != nil || len(last) != 2 {
+			t.Fatalf("LastByPosts = %v, %v", last, err)
+		}
+		for _, c := range last {
+			if c.Text() == "раз" || c.PostID() != p.ID() {
+				t.Fatalf("LastByPosts told %q of %s", c.Text(), c.PostID())
+			}
+		}
+		if err = posts.SetArchived(ctx, p.ID(), true); err != nil {
+			t.Fatal(err)
+		}
+		if last, err = comments.LastByPosts(ctx, []uuid.UUID{p.ID()}, 2); err != nil || len(last) != 0 {
+			t.Fatalf("LastByPosts of an archived post = %v, %v", last, err)
+		}
+		if err = posts.SetArchived(ctx, p.ID(), false); err != nil {
+			t.Fatal(err)
+		}
+
 		if err = comments.Delete(ctx, saved[0].ID()); err != nil {
 			t.Fatalf("Delete: %v", err)
 		}

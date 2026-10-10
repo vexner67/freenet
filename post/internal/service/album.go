@@ -431,7 +431,7 @@ func (s *AlbumService) WallAlbum(ctx context.Context, ownerID uuid.UUID) (*post.
 // "Фотографии со стены", in the transaction of ctx: as copies under new
 // IDs, which media makes, so that the album keeps a photo when the post
 // is deleted and the post keeps it when the album loses it, as in openvk.
-func (s *AlbumService) KeepWallPhotos(ctx context.Context, a *post.Album, photoIDs []uuid.UUID) error {
+func (s *AlbumService) KeepWallPhotos(ctx context.Context, a *post.Album, photoIDs []uuid.UUID, nsfw bool) error {
 	now := s.now()
 	photos := make([]*post.AlbumPhoto, 0, len(photoIDs))
 	copies := make([]PhotoCopy, 0, len(photoIDs))
@@ -448,7 +448,7 @@ func (s *AlbumService) KeepWallPhotos(ctx context.Context, a *post.Album, photoI
 			return errs.Wrap("post.NewAlbumPhoto", err)
 		}
 
-		photos = append(photos, photo)
+		photos = append(photos, photo.Marked(nsfw))
 		copies = append(copies, PhotoCopy{From: from, To: to})
 	}
 

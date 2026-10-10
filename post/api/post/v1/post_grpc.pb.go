@@ -45,6 +45,7 @@ const (
 	PostService_UnlikeComment_FullMethodName        = "/post.v1.PostService/UnlikeComment"
 	PostService_ListComments_FullMethodName         = "/post.v1.PostService/ListComments"
 	PostService_GetComments_FullMethodName          = "/post.v1.PostService/GetComments"
+	PostService_ListLastComments_FullMethodName     = "/post.v1.PostService/ListLastComments"
 	PostService_SuggestPost_FullMethodName          = "/post.v1.PostService/SuggestPost"
 	PostService_ListSuggestions_FullMethodName      = "/post.v1.PostService/ListSuggestions"
 	PostService_PublishSuggestion_FullMethodName    = "/post.v1.PostService/PublishSuggestion"
@@ -145,6 +146,10 @@ type PostServiceClient interface {
 	ListComments(ctx context.Context, in *ListCommentsRequest, opts ...grpc.CallOption) (*ListCommentsResponse, error)
 	// Public: at most 50 comments by ID, like GetPosts.
 	GetComments(ctx context.Context, in *GetCommentsRequest, opts ...grpc.CallOption) (*GetCommentsResponse, error)
+	// Public: the three newest comments of each of at most 50 posts, oldest
+	// first, as "Микроблог" shows them under the posts of a wall. Archived
+	// posts tell none.
+	ListLastComments(ctx context.Context, in *ListLastCommentsRequest, opts ...grpc.CallOption) (*ListLastCommentsResponse, error)
 	// Require an access token: posts suggested for a community's wall
 	// ("Предложка" of openvk), seen only by their authors and the
 	// community's admins, whom post asks the club service about. The caller
@@ -487,6 +492,16 @@ func (c *postServiceClient) GetComments(ctx context.Context, in *GetCommentsRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetCommentsResponse)
 	err := c.cc.Invoke(ctx, PostService_GetComments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListLastComments(ctx context.Context, in *ListLastCommentsRequest, opts ...grpc.CallOption) (*ListLastCommentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListLastCommentsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListLastComments_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -897,6 +912,10 @@ type PostServiceServer interface {
 	ListComments(context.Context, *ListCommentsRequest) (*ListCommentsResponse, error)
 	// Public: at most 50 comments by ID, like GetPosts.
 	GetComments(context.Context, *GetCommentsRequest) (*GetCommentsResponse, error)
+	// Public: the three newest comments of each of at most 50 posts, oldest
+	// first, as "Микроблог" shows them under the posts of a wall. Archived
+	// posts tell none.
+	ListLastComments(context.Context, *ListLastCommentsRequest) (*ListLastCommentsResponse, error)
 	// Require an access token: posts suggested for a community's wall
 	// ("Предложка" of openvk), seen only by their authors and the
 	// community's admins, whom post asks the club service about. The caller
@@ -1069,6 +1088,9 @@ func (UnimplementedPostServiceServer) ListComments(context.Context, *ListComment
 }
 func (UnimplementedPostServiceServer) GetComments(context.Context, *GetCommentsRequest) (*GetCommentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetComments not implemented")
+}
+func (UnimplementedPostServiceServer) ListLastComments(context.Context, *ListLastCommentsRequest) (*ListLastCommentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListLastComments not implemented")
 }
 func (UnimplementedPostServiceServer) SuggestPost(context.Context, *SuggestPostRequest) (*SuggestPostResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SuggestPost not implemented")
@@ -1639,6 +1661,24 @@ func _PostService_GetComments_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).GetComments(ctx, req.(*GetCommentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListLastComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListLastCommentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListLastComments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListLastComments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListLastComments(ctx, req.(*ListLastCommentsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2361,6 +2401,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetComments",
 			Handler:    _PostService_GetComments_Handler,
+		},
+		{
+			MethodName: "ListLastComments",
+			Handler:    _PostService_ListLastComments_Handler,
 		},
 		{
 			MethodName: "SuggestPost",

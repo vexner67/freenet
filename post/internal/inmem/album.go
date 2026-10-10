@@ -206,7 +206,7 @@ func (r *AlbumRepository) recountPhoto(id uuid.UUID, likes, comments int) {
 
 	r.photos[id] = post.RestoreAlbumPhoto(post.StoredAlbumPhoto{
 		ID: p.ID(), AlbumID: p.AlbumID(), AuthorID: p.AuthorID(), Description: p.Description(), CreatedAt: p.CreatedAt(),
-		Likes: p.Likes() + likes, Comments: p.Comments() + comments,
+		Likes: p.Likes() + likes, Comments: p.Comments() + comments, NSFW: p.NSFW(),
 	})
 }
 
@@ -412,7 +412,7 @@ func (p *AlbumPhotoRepository) Move(ctx context.Context, id, albumID uuid.UUID, 
 	// Photos handed out never change: the moved one is a new value.
 	p.r.photos[id] = post.RestoreAlbumPhoto(post.StoredAlbumPhoto{
 		ID: photo.ID(), AlbumID: albumID, AuthorID: photo.AuthorID(), Description: photo.Description(),
-		CreatedAt: photo.CreatedAt(), Likes: photo.Likes(), Comments: photo.Comments(),
+		CreatedAt: photo.CreatedAt(), Likes: photo.Likes(), Comments: photo.Comments(), NSFW: photo.NSFW(),
 	})
 	p.r.uncover(photo.AlbumID(), id)
 	p.r.recount(photo.AlbumID(), -1, now)
