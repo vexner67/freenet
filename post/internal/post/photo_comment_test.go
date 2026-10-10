@@ -42,6 +42,38 @@ func TestPhotoComment(t *testing.T) {
 	}
 }
 
+func TestPhotoReply(t *testing.T) {
+	t.Parallel()
+
+	photo, other, ann, bob := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+
+	parent, err := post.NewPhotoComment(photo, ann, "красиво", time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reply, err := post.NewPhotoReply(photo, parent, bob, "да", time.Now())
+	if err != nil || reply.ReplyTo() != parent.ID() || reply.PhotoID() != photo || reply.Likes() != 0 {
+		t.Fatalf("NewPhotoReply = %+v, %v", reply, err)
+	}
+
+	if _, err = post.NewPhotoReply(other, parent, bob, "да", time.Now()); !errors.Is(err, post.ErrReplyOtherPhoto) {
+		t.Fatalf("a reply under another photo: %v", err)
+	}
+	if _, err = post.NewPhotoReply(photo, parent, bob, "", time.Now()); !errors.Is(err, post.ErrCommentEmpty) {
+		t.Fatalf("an empty reply: %v", err)
+	}
+
+	// Counting hearts and losing the comment answered leave the reply as
+	// it was handed out.
+	if liked := reply.WithLikes(3); liked.Likes() != 3 || reply.Likes() != 0 || liked.ReplyTo() != parent.ID() {
+		t.Fatalf("WithLikes = %+v", liked)
+	}
+	if alone := reply.WithoutReply(); alone.ReplyTo() != uuid.Nil || reply.ReplyTo() != parent.ID() {
+		t.Fatalf("WithoutReply = %+v", alone)
+	}
+}
+
 func TestPhotoShare(t *testing.T) {
 	t.Parallel()
 

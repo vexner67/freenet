@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -21,15 +22,15 @@ type TopicRepository struct {
 	mu       sync.RWMutex
 	topics   map[uuid.UUID]post.StoredTopic
 	messages map[uuid.UUID]*post.TopicMessage
-	// likes are who put a heart on each message.
-	likes map[uuid.UUID]map[uuid.UUID]bool
+	// likes are who put a heart on each message, and when.
+	likes map[uuid.UUID]map[uuid.UUID]time.Time
 }
 
 func NewTopicRepository() *TopicRepository {
 	return &TopicRepository{
 		topics:   make(map[uuid.UUID]post.StoredTopic),
 		messages: make(map[uuid.UUID]*post.TopicMessage),
-		likes:    make(map[uuid.UUID]map[uuid.UUID]bool),
+		likes:    make(map[uuid.UUID]map[uuid.UUID]time.Time),
 	}
 }
 
@@ -312,16 +313,45 @@ func (m *TopicMessageRepository) setLike(ctx context.Context, messageID, userID 
 	}
 
 	if m.r.likes[messageID] == nil {
-		m.r.likes[messageID] = make(map[uuid.UUID]bool)
+		m.r.likes[messageID] = make(map[uuid.UUID]time.Time)
 	}
 
-	if like {
-		m.r.likes[messageID][userID] = true
-	} else {
+	if _, liked := m.r.likes[messageID][userID]; like && !liked {
+		m.r.likes[messageID][userID] = time.Now()
+	} else if !like {
 		delete(m.r.likes[messageID], userID)
 	}
 
 	return len(m.r.likes[messageID]), nil
+}
+
+func (m *TopicMessageRepository) Likers(ctx context.Context, messageID uuid.UUID, after *service.LikerCursor, limit int) ([]service.Liker, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	m.r.mu.RLock()
+	defer m.r.mu.RUnlock()
+
+	return likers(m.r.likes[messageID], after, limit), nil
+}
+
+func (m *TopicMessageRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.TopicMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	m.r.mu.RLock()
+	defer m.r.mu.RUnlock()
+
+	var found []*post.TopicMessage
+	for _, id := range ids {
+		if msg, ok := m.r.messages[id]; ok {
+			found = append(found, m.r.counted(msg))
+		}
+	}
+
+	return found, nil
 }
 
 func (m *TopicMessageRepository) Liked(ctx context.Context, userID uuid.UUID, messageIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
@@ -334,7 +364,7 @@ func (m *TopicMessageRepository) Liked(ctx context.Context, userID uuid.UUID, me
 
 	liked := make(map[uuid.UUID]bool)
 	for _, id := range messageIDs {
-		if m.r.likes[id][userID] {
+		if _, ok := m.r.likes[id][userID]; ok {
 			liked[id] = true
 		}
 	}

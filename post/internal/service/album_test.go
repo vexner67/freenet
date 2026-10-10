@@ -32,7 +32,7 @@ func newNotifiedAlbumService(t *testing.T, moderators fakeModerators) (*service.
 
 	return service.NewAlbumService(service.AlbumDeps{
 		Albums: albums, Photos: albums.Photos(), Tx: fakeTx{}, Media: photos, Moderators: moderators,
-		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(), Notifier: notifier,
+		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(), CommentLikes: albums.PhotoComments(), Notifier: notifier,
 	}), photos, notifier
 }
 
@@ -519,11 +519,11 @@ func TestAlbumService_Notifies(t *testing.T) {
 	if _, err := svc.LikePhoto(ctx, ann, photo); err != nil {
 		t.Fatal(err)
 	}
-	bobs, err := svc.CommentPhoto(ctx, bob, photo, "красиво")
+	bobs, err := svc.CommentPhoto(ctx, bob, photo, uuid.Nil, "красиво")
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = svc.CommentPhoto(ctx, ann, photo, "спасибо"); err != nil {
+	if _, err = svc.CommentPhoto(ctx, ann, photo, uuid.Nil, "спасибо"); err != nil {
 		t.Fatal(err)
 	}
 	like := service.Event{Kind: service.EventPhotoLike, RecipientID: ann, ActorID: bob, PostID: photo}
@@ -535,7 +535,7 @@ func TestAlbumService_Notifies(t *testing.T) {
 	if _, err = svc.LikePhoto(ctx, bob, uuid.New()); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
 		t.Fatalf("a heart on nothing: %v", err)
 	}
-	if _, err = svc.CommentPhoto(ctx, bob, uuid.New(), "x"); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+	if _, err = svc.CommentPhoto(ctx, bob, uuid.New(), uuid.Nil, "x"); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
 		t.Fatalf("a comment on nothing: %v", err)
 	}
 
@@ -552,5 +552,84 @@ func TestAlbumService_Notifies(t *testing.T) {
 	}
 	if err = svc.Delete(ctx, ann, album.ID()); err != nil || !slices.Equal(told.forgotten, []uuid.UUID{photo, added[1].ID}) || told.outsideTx != 0 {
 		t.Fatalf("Delete: %v, forgot %v", err, told.forgotten)
+	}
+}
+
+func TestAlbumService_PhotoCommentRepliesAndHearts(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	svc, _, _ := newNotifiedAlbumService(t, nil)
+	album, _ := svc.Create(ctx, service.CreateAlbumInput{OwnerID: ann, RequesterID: ann, Name: "Лето"})
+	added := newPhotos(2)
+	if _, err := svc.AddPhotos(ctx, ann, album.ID(), added); err != nil {
+		t.Fatal(err)
+	}
+	photo, other := added[0].ID, added[1].ID
+
+	first, err := svc.CommentPhoto(ctx, bob, photo, uuid.Nil, "красиво")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	reply, err := svc.CommentPhoto(ctx, ann, photo, first.ID(), "спасибо")
+	if err != nil || reply.ReplyTo() != first.ID() {
+		t.Fatalf("a reply = %+v, %v", reply, err)
+	}
+	if _, err = svc.CommentPhoto(ctx, ann, other, first.ID(), "не туда"); !errors.Is(err, post.ErrReplyOtherPhoto) {
+		t.Fatalf("a reply under another photo: %v", err)
+	}
+	if _, err = svc.CommentPhoto(ctx, ann, photo, uuid.New(), "никому"); !errors.Is(err, post.ErrCommentNotFound) {
+		t.Fatalf("a reply to nothing: %v", err)
+	}
+
+	// Hearts are idempotent and counted; the page tells whose they are.
+	for range 2 {
+		if likes, err := svc.LikePhotoComment(ctx, ann, first.ID()); err != nil || likes != 1 {
+			t.Fatalf("LikePhotoComment = %d, %v", likes, err)
+		}
+	}
+	if likes, err := svc.LikePhotoComment(ctx, bob, first.ID()); err != nil || likes != 2 {
+		t.Fatalf("a second heart = %d, %v", likes, err)
+	}
+	if _, err = svc.LikePhotoComment(ctx, bob, uuid.New()); !errors.Is(err, post.ErrCommentNotFound) {
+		t.Fatalf("a heart on nothing: %v", err)
+	}
+
+	page, err := svc.PhotoComments(ctx, ann, photo, uuid.Nil, 0)
+	if err != nil || len(page.Comments) != 2 || page.Comments[0].Likes() != 2 || !page.Liked[first.ID()] || page.Liked[reply.ID()] {
+		t.Fatalf("PhotoComments = %+v, %v", page, err)
+	}
+	if page, err = svc.PhotoComments(ctx, uuid.Nil, photo, uuid.Nil, 0); err != nil || len(page.Liked) != 0 {
+		t.Fatalf("PhotoComments for nobody = %+v, %v", page, err)
+	}
+
+	likers, err := svc.PhotoCommentLikers(ctx, first.ID(), nil, 1)
+	if err != nil || likers.Total != 2 || len(likers.Likers) != 1 || likers.Likers[0].UserID != bob || likers.Next == nil {
+		t.Fatalf("PhotoCommentLikers = %+v, %v", likers, err)
+	}
+	if likers, err = svc.PhotoCommentLikers(ctx, first.ID(), likers.Next, 1); err != nil || len(likers.Likers) != 1 || likers.Likers[0].UserID != ann || likers.Next != nil {
+		t.Fatalf("the second page of likers = %+v, %v", likers, err)
+	}
+
+	if likes, err := svc.UnlikePhotoComment(ctx, ann, first.ID()); err != nil || likes != 1 {
+		t.Fatalf("UnlikePhotoComment = %d, %v", likes, err)
+	}
+
+	found, err := svc.PhotoCommentsByID(ctx, []uuid.UUID{reply.ID(), uuid.New()})
+	if err != nil || len(found) != 1 || found[0].ID() != reply.ID() {
+		t.Fatalf("PhotoCommentsByID = %+v, %v", found, err)
+	}
+	if _, err = svc.PhotoCommentsByID(ctx, make([]uuid.UUID, service.MaxPageSize+1)); !errors.Is(err, service.ErrTooManyIDs) {
+		t.Fatalf("too many IDs: %v", err)
+	}
+
+	// The deleted comment leaves its reply, which answers nothing then.
+	if err = svc.DeletePhotoComment(ctx, bob, first.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if left, err := svc.PhotoComment(ctx, reply.ID()); err != nil || left.ReplyTo() != uuid.Nil {
+		t.Fatalf("the reply of a deleted comment = %+v, %v", left, err)
 	}
 }

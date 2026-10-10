@@ -118,6 +118,12 @@ service PostService {
   // is notified.
   rpc LikeTopicMessage(LikeTopicMessageRequest) returns (LikeTopicMessageResponse);
   rpc UnlikeTopicMessage(UnlikeTopicMessageRequest) returns (UnlikeTopicMessageResponse);
+  // Who put a heart on a message of a topic, newest first ("Понравилось N
+  // людям"). Public.
+  rpc ListTopicMessageLikers(ListTopicMessageLikersRequest) returns (ListTopicMessageLikersResponse);
+  // The messages of topics with these IDs that exist, in no order: a
+  // notification quotes them. Public.
+  rpc GetTopicMessages(GetTopicMessagesRequest) returns (GetTopicMessagesResponse);
 
   // Photo albums of people and communities ("Альбомы" of openvk). An
   // album of the caller, without club_id, or of a community its admins
@@ -168,6 +174,15 @@ service PostService {
   rpc ListPhotoComments(ListPhotoCommentsRequest) returns (ListPhotoCommentsResponse);
   // Public: one comment, whole.
   rpc GetPhotoComment(GetPhotoCommentRequest) returns (GetPhotoCommentResponse);
+  // The comments of photos with these IDs that exist, in no order: a
+  // notification quotes them. Public.
+  rpc GetPhotoComments(GetPhotoCommentsRequest) returns (GetPhotoCommentsResponse);
+  // A heart on a comment of a photo, as on a comment of a post:
+  // idempotent, the response counts them.
+  rpc LikePhotoComment(LikePhotoCommentRequest) returns (LikePhotoCommentResponse);
+  rpc UnlikePhotoComment(UnlikePhotoCommentRequest) returns (UnlikePhotoCommentResponse);
+  // Who put a heart on a comment of a photo, newest first. Public.
+  rpc ListPhotoCommentLikers(ListPhotoCommentLikersRequest) returns (ListPhotoCommentLikersResponse);
 
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
@@ -691,6 +706,30 @@ message UnlikeTopicMessageResponse {
   int32 like_count = 1;
 }
 
+message ListTopicMessageLikersRequest {
+  string id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListTopicMessageLikersResponse {
+  repeated string user_ids = 1;
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message GetTopicMessagesRequest {
+  // At most 100.
+  repeated string ids = 1;
+  // The texts are cut to this many characters and say so (text_cut); 0
+  // for whole texts.
+  int32 text_limit = 2;
+}
+
+message GetTopicMessagesResponse {
+  repeated TopicMessage messages = 1;
+}
+
 message CreateTopicRequest {
   string club_id = 1;
   string title = 2;
@@ -988,11 +1027,59 @@ message PhotoComment {
   bool mine = 6;
   // text is only its beginning: the request set text_limit.
   bool text_cut = 7;
+  // The comment of the same photo this one answers; empty for none, and
+  // once that one is deleted.
+  string reply_to_id = 8;
+  int32 like_count = 9;
+  // The caller likes it; false without a token.
+  bool liked = 10;
 }
 
 message CreatePhotoCommentRequest {
   string photo_id = 1;
   string text = 2;
+  // The comment under the same photo this one answers; empty for none.
+  string reply_to_id = 3;
+}
+
+message GetPhotoCommentsRequest {
+  // At most 100.
+  repeated string ids = 1;
+  // The texts are cut to this many characters and say so (text_cut); 0
+  // for whole texts.
+  int32 text_limit = 2;
+}
+
+message GetPhotoCommentsResponse {
+  repeated PhotoComment comments = 1;
+}
+
+message LikePhotoCommentRequest {
+  string id = 1;
+}
+
+message LikePhotoCommentResponse {
+  int32 like_count = 1;
+}
+
+message UnlikePhotoCommentRequest {
+  string id = 1;
+}
+
+message UnlikePhotoCommentResponse {
+  int32 like_count = 1;
+}
+
+message ListPhotoCommentLikersRequest {
+  string id = 1;
+  string cursor = 2;
+  int32 limit = 3;
+}
+
+message ListPhotoCommentLikersResponse {
+  repeated string user_ids = 1;
+  string next_cursor = 2;
+  int32 total = 3;
 }
 
 message CreatePhotoCommentResponse {

@@ -66,6 +66,8 @@ type TopicService interface {
 	DeleteMessage(ctx context.Context, requesterID, id uuid.UUID) error
 	LikeMessage(ctx context.Context, userID, id uuid.UUID) (int, error)
 	UnlikeMessage(ctx context.Context, userID, id uuid.UUID) (int, error)
+	MessageLikers(ctx context.Context, id uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
+	MessagesByID(ctx context.Context, ids []uuid.UUID) ([]*post.TopicMessage, error)
 }
 
 type AlbumService interface {
@@ -87,9 +89,13 @@ type AlbumService interface {
 	UnlikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error)
 	LikedPhotos(ctx context.Context, userID uuid.UUID, photoIDs []uuid.UUID) (map[uuid.UUID]bool, error)
 	PhotoLikers(ctx context.Context, photoID uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
-	CommentPhoto(ctx context.Context, authorID, photoID uuid.UUID, text post.CommentText) (*post.PhotoComment, error)
+	CommentPhoto(ctx context.Context, authorID, photoID, replyTo uuid.UUID, text post.CommentText) (*post.PhotoComment, error)
 	DeletePhotoComment(ctx context.Context, requesterID, id uuid.UUID) error
-	PhotoComments(ctx context.Context, photoID, after uuid.UUID, size int) (service.PhotoCommentPage, error)
+	PhotoComments(ctx context.Context, viewerID, photoID, after uuid.UUID, size int) (service.PhotoCommentPage, error)
+	PhotoCommentsByID(ctx context.Context, ids []uuid.UUID) ([]*post.PhotoComment, error)
+	LikePhotoComment(ctx context.Context, userID, id uuid.UUID) (int, error)
+	UnlikePhotoComment(ctx context.Context, userID, id uuid.UUID) (int, error)
+	PhotoCommentLikers(ctx context.Context, id uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
 }
 
 // PurgeService erases a user's posts, likes and comments once the page is

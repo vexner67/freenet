@@ -291,6 +291,21 @@ func TestTopicService_NotificationsAndLikes(t *testing.T) {
 		t.Fatalf("a heart on nothing: %v", err)
 	}
 
+	// Who put them, newest first, and the message by its ID for a quote.
+	likers, err := svc.MessageLikers(ctx, bobs.ID(), nil, 1)
+	if err != nil || likers.Total != 2 || len(likers.Likers) != 1 || likers.Likers[0].UserID != admin || likers.Next == nil {
+		t.Fatalf("MessageLikers = %+v, %v", likers, err)
+	}
+	if _, err = svc.MessageLikers(ctx, uuid.New(), nil, 1); !errors.Is(err, post.ErrMessageNotFound) {
+		t.Fatalf("likers of nothing: %v", err)
+	}
+	if found, err := svc.MessagesByID(ctx, []uuid.UUID{bobs.ID(), uuid.New()}); err != nil || len(found) != 1 || found[0].Likes() != 2 {
+		t.Fatalf("MessagesByID = %+v, %v", found, err)
+	}
+	if _, err = svc.MessagesByID(ctx, make([]uuid.UUID, service.MaxPageSize+1)); !errors.Is(err, service.ErrTooManyIDs) {
+		t.Fatalf("too many IDs: %v", err)
+	}
+
 	// Bob hears of the hearts on his message; a heart on one's own message
 	// and on a message of the community tells nobody, and a heart taken
 	// back takes its notification.

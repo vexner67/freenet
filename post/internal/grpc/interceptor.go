@@ -43,6 +43,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.PermissionDenied, "only the owner of the wall can pin the post"), true
 	case errors.Is(err, post.ErrReplyOtherPost):
 		return status.New(codes.InvalidArgument, "the comment to reply to is under another post"), true
+	case errors.Is(err, post.ErrReplyOtherPhoto):
+		return status.New(codes.InvalidArgument, "the comment to reply to is under another photo"), true
 	case errors.Is(err, post.ErrCommentNotFound):
 		return status.New(codes.NotFound, "comment not found"), true
 	case errors.Is(err, post.ErrSuggestionNotFound):

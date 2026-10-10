@@ -405,6 +405,29 @@ func (m *TopicMessageRepository) Get(ctx context.Context, id uuid.UUID) (*post.T
 	return msg, nil
 }
 
+const getTopicMessagesQuery = `
+	SELECT
+		id,
+		topic_id,
+		author_id,
+		text,
+		photo_ids,
+		from_wall,
+		created_at,
+		like_count
+	FROM topic_messages
+	WHERE id = ANY($1)
+`
+
+func (m *TopicMessageRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.TopicMessage, error) {
+	rows, err := m.r.conn(ctx).Query(ctx, getTopicMessagesQuery, ids)
+	if err != nil {
+		return nil, errs.Wrap("m.r.conn.Query", err)
+	}
+
+	return collectTopicMessages(rows)
+}
+
 // deleteTopicMessageQuery removes a message and uncounts it in one
 // statement.
 const deleteTopicMessageQuery = `
@@ -448,6 +471,28 @@ const listTopicMessagesQuery = `
 	ORDER BY id
 	LIMIT $3
 `
+
+const listTopicMessageLikersQuery = `
+	SELECT
+		user_id,
+		created_at
+	FROM topic_message_likes
+	WHERE message_id = $1
+		AND (created_at, user_id) < ($2, $3)
+	ORDER BY created_at DESC, user_id DESC
+	LIMIT $4
+`
+
+func (m *TopicMessageRepository) Likers(ctx context.Context, messageID uuid.UUID, after *service.LikerCursor, limit int) ([]service.Liker, error) {
+	at, userID := likersFrom(after)
+
+	rows, err := m.r.conn(ctx).Query(ctx, listTopicMessageLikersQuery, messageID, at, userID, limit)
+	if err != nil {
+		return nil, errs.Wrap("m.r.conn.Query", err)
+	}
+
+	return collectLikers(rows)
+}
 
 func (m *TopicMessageRepository) List(ctx context.Context, topicID, after uuid.UUID, limit int) ([]*post.TopicMessage, error) {
 	rows, err := m.r.conn(ctx).Query(ctx, listTopicMessagesQuery, topicID, after, limit)

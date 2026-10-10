@@ -141,7 +141,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 	albums := service.NewAlbumService(service.AlbumDeps{
 		Albums: repos.albums, Photos: repos.albumPhotos, Tx: repos.tx, Media: photos, Moderators: moderators,
-		Likes: repos.photoLikes, Comments: repos.photoComments, Notifier: notifier,
+		Likes: repos.photoLikes, Comments: repos.photoComments, CommentLikes: repos.photoCommentLikes, Notifier: notifier,
 	})
 
 	postv1.RegisterPostServiceServer(
@@ -206,6 +206,8 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_LikeTopicMessage_FullMethodName:   cfg.LikeLimits,
 		postv1.PostService_LikeAlbumPhoto_FullMethodName:     cfg.LikeLimits,
 		postv1.PostService_CreatePhotoComment_FullMethodName: cfg.CommentLimits,
+		postv1.PostService_LikePhotoComment_FullMethodName:   cfg.LikeLimits,
+		postv1.PostService_UnlikePhotoComment_FullMethodName: cfg.LikeLimits,
 		postv1.PostService_UnlikeComment_FullMethodName:      cfg.LikeLimits,
 		postv1.PostService_EditPost_FullMethodName:           cfg.EditLimits,
 		// What the owner of a wall switches on a post is an edit of it.
@@ -385,7 +387,9 @@ type repositories struct {
 	photoLikes  service.AlbumPhotoLikeRepository
 	// photoComments are the comments of photos of albums.
 	photoComments service.PhotoCommentRepository
-	tx            service.TxManager
+	// photoCommentLikes are the hearts of those comments.
+	photoCommentLikes service.PhotoCommentLikeRepository
+	tx                service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }
@@ -408,7 +412,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			albums:        albums,
 			albumPhotos:   albums.Photos(),
 			photoLikes:    albums.PhotoLikes(),
-			photoComments: albums.PhotoComments(),
+			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -453,7 +457,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		albums:        albums,
 		albumPhotos:   albums.Photos(),
 		photoLikes:    albums.PhotoLikes(),
-		photoComments: albums.PhotoComments(),
+		photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)

@@ -140,9 +140,10 @@ const savePhotoCommentQuery = `
 			photo_id,
 			author_id,
 			text,
+			reply_to,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5)
+		VALUES ($1, $2, $3, $4, $5, $6)
 		RETURNING photo_id
 	)
 	UPDATE album_photos p
@@ -152,8 +153,13 @@ const savePhotoCommentQuery = `
 `
 
 func (c *PhotoCommentRepository) Save(ctx context.Context, pc *post.PhotoComment) error {
-	_, err := c.r.conn(ctx).Exec(ctx, savePhotoCommentQuery, pc.ID(), pc.PhotoID(), pc.AuthorID(), pc.Text().String(), pc.CreatedAt())
+	_, err := c.r.conn(ctx).Exec(ctx, savePhotoCommentQuery, pc.ID(), pc.PhotoID(), pc.AuthorID(), pc.Text().String(), nullable(pc.ReplyTo()), pc.CreatedAt())
 	if isForeignKeyViolation(err) {
+		// The comment to answer was deleted meanwhile, or the photo was.
+		if constraintOf(err) == "photo_comments_reply_to_fkey" {
+			return post.ErrCommentNotFound
+		}
+
 		return post.ErrAlbumPhotoNotFound
 	}
 	if err != nil {
@@ -169,6 +175,8 @@ const getPhotoCommentQuery = `
 		photo_id,
 		author_id,
 		text,
+		reply_to,
+		like_count,
 		created_at
 	FROM photo_comments
 	WHERE id = $1
@@ -221,6 +229,8 @@ const listPhotoCommentsQuery = `
 		photo_id,
 		author_id,
 		text,
+		reply_to,
+		like_count,
 		created_at
 	FROM photo_comments
 	WHERE photo_id = $1
@@ -245,14 +255,156 @@ func (c *PhotoCommentRepository) List(ctx context.Context, photoID, after uuid.U
 	return comments, nil
 }
 
+const getPhotoCommentsQuery = `
+	SELECT
+		id,
+		photo_id,
+		author_id,
+		text,
+		reply_to,
+		like_count,
+		created_at
+	FROM photo_comments
+	WHERE id = ANY($1)
+`
+
+func (c *PhotoCommentRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.PhotoComment, error) {
+	rows, err := c.r.conn(ctx).Query(ctx, getPhotoCommentsQuery, ids)
+	if err != nil {
+		return nil, errs.Wrap("c.r.conn.Query", err)
+	}
+
+	comments, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (*post.PhotoComment, error) {
+		return scanPhotoComment(row)
+	})
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return comments, nil
+}
+
+// likePhotoCommentQuery adds the heart and counts it in one statement; a
+// repeated like inserts nothing and adds 0.
+const likePhotoCommentQuery = `
+	WITH liked AS (
+		INSERT INTO photo_comment_likes (
+			comment_id,
+			user_id,
+			created_at
+		)
+		VALUES ($1, $2, now())
+		ON CONFLICT DO NOTHING
+		RETURNING 1
+	)
+	UPDATE photo_comments
+	SET like_count = like_count + (SELECT count(*) FROM liked)
+	WHERE id = $1
+	RETURNING like_count
+`
+
+func (c *PhotoCommentRepository) Like(ctx context.Context, commentID, userID uuid.UUID) (int, error) {
+	var likes int
+
+	err := c.r.conn(ctx).QueryRow(ctx, likePhotoCommentQuery, commentID, userID).Scan(&likes)
+	if isForeignKeyViolation(err) {
+		return 0, post.ErrCommentNotFound
+	}
+	if err != nil {
+		return 0, errs.Wrap("c.r.conn.QueryRow", err)
+	}
+
+	return likes, nil
+}
+
+const unlikePhotoCommentQuery = `
+	WITH unliked AS (
+		DELETE FROM photo_comment_likes
+		WHERE comment_id = $1
+			AND user_id = $2
+		RETURNING 1
+	)
+	UPDATE photo_comments
+	SET like_count = like_count - (SELECT count(*) FROM unliked)
+	WHERE id = $1
+	RETURNING like_count
+`
+
+func (c *PhotoCommentRepository) Unlike(ctx context.Context, commentID, userID uuid.UUID) (int, error) {
+	var likes int
+
+	err := c.r.conn(ctx).QueryRow(ctx, unlikePhotoCommentQuery, commentID, userID).Scan(&likes)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, post.ErrCommentNotFound
+	}
+	if err != nil {
+		return 0, errs.Wrap("c.r.conn.QueryRow", err)
+	}
+
+	return likes, nil
+}
+
+const listLikedPhotoCommentsQuery = `
+	SELECT comment_id
+	FROM photo_comment_likes
+	WHERE user_id = $1
+		AND comment_id = ANY($2)
+`
+
+func (c *PhotoCommentRepository) Liked(ctx context.Context, userID uuid.UUID, commentIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	rows, err := c.r.conn(ctx).Query(ctx, listLikedPhotoCommentsQuery, userID, commentIDs)
+	if err != nil {
+		return nil, errs.Wrap("c.r.conn.Query", err)
+	}
+
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	liked := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		liked[id] = true
+	}
+
+	return liked, nil
+}
+
+const listPhotoCommentLikersQuery = `
+	SELECT
+		user_id,
+		created_at
+	FROM photo_comment_likes
+	WHERE comment_id = $1
+		AND (created_at, user_id) < ($2, $3)
+	ORDER BY created_at DESC, user_id DESC
+	LIMIT $4
+`
+
+func (c *PhotoCommentRepository) Likers(ctx context.Context, commentID uuid.UUID, after *service.LikerCursor, limit int) ([]service.Liker, error) {
+	at, userID := likersFrom(after)
+
+	rows, err := c.r.conn(ctx).Query(ctx, listPhotoCommentLikersQuery, commentID, at, userID, limit)
+	if err != nil {
+		return nil, errs.Wrap("c.r.conn.Query", err)
+	}
+
+	return collectLikers(rows)
+}
+
 func scanPhotoComment(row pgx.Row) (*post.PhotoComment, error) {
 	var (
-		s    post.StoredPhotoComment
-		text string
+		s       post.StoredPhotoComment
+		text    string
+		replyTo *uuid.UUID
 	)
 
-	if err := row.Scan(&s.ID, &s.PhotoID, &s.AuthorID, &text, &s.CreatedAt); err != nil {
+	if err := row.Scan(&s.ID, &s.PhotoID, &s.AuthorID, &text, &replyTo, &s.Likes, &s.CreatedAt); err != nil {
 		return nil, err
+	}
+
+	if replyTo != nil {
+		s.ReplyTo = *replyTo
 	}
 
 	// Data comes from our own table and was validated on write.
@@ -261,9 +413,22 @@ func scanPhotoComment(row pgx.Row) (*post.PhotoComment, error) {
 	return post.RestorePhotoComment(s), nil
 }
 
-// The likes and comments a user leaves on photos go when the user is
-// erased, uncounted in the photos by the same statements.
+// The likes and comments a user leaves on photos, and their hearts on
+// comments there, go when the user is erased, uncounted by the same
+// statements.
 const (
+	deleteUserPhotoCommentLikesQuery = `
+	WITH gone AS (
+		DELETE FROM photo_comment_likes
+		WHERE user_id = $1
+		RETURNING comment_id
+	)
+	UPDATE photo_comments c
+	SET like_count = c.like_count - g.n
+	FROM (SELECT comment_id, count(*) AS n FROM gone GROUP BY comment_id) g
+	WHERE c.id = g.comment_id
+`
+
 	deleteUserPhotoLikesQuery = `
 	WITH gone AS (
 		DELETE FROM album_photo_likes

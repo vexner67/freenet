@@ -304,7 +304,7 @@ const deleteUserAlbumPhotosQuery = `
 // photos they put in others' albums and their likes and comments on
 // photos. It runs in the transaction of ctx.
 func (r *AlbumRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
-	for _, query := range []string{deleteUserPhotoLikesQuery, deleteUserPhotoCommentsQuery} {
+	for _, query := range []string{deleteUserPhotoLikesQuery, deleteUserPhotoCommentLikesQuery, deleteUserPhotoCommentsQuery} {
 		if _, err := r.conn(ctx).Exec(ctx, query, userID); err != nil {
 			return errs.Wrap("r.conn.Exec", err)
 		}
