@@ -25,6 +25,9 @@ const (
 	// MailerConsole writes codes to the log; development only.
 	MailerConsole = "console"
 	MailerSMTP    = "smtp"
+	// MailerTelegram sends codes to a Telegram chat of the site's owner,
+	// who passes them on: while the users are the owner's friends.
+	MailerTelegram = "telegram"
 )
 
 type Config struct {
@@ -50,6 +53,8 @@ type Config struct {
 
 	Mailer string     `env:"MAILER" envDefault:"console"`
 	SMTP   SMTPConfig `envPrefix:"SMTP_"`
+	// Telegram is the bot and the chat of MAILER=telegram.
+	Telegram TelegramConfig `envPrefix:"TELEGRAM_"`
 
 	HashSecret        string `env:"HASH_SECRET,required,notEmpty"`
 	JWTPrivateKeyPath string `env:"JWT_PRIVATE_KEY_PATH,required,notEmpty"`
@@ -68,6 +73,13 @@ type SMTPConfig struct {
 	Username string `env:"USERNAME"`
 	Password string `env:"PASSWORD"`
 	From     string `env:"FROM"`
+}
+
+type TelegramConfig struct {
+	BotToken string `env:"BOT_TOKEN"`
+	ChatID   string `env:"CHAT_ID"`
+	// API is the Bot API; tests serve their own.
+	API string `env:"API" envDefault:"https://api.telegram.org"`
 }
 
 type CodeConfig struct {
@@ -99,8 +111,12 @@ func (c Config) Validate() error {
 		if c.SMTP.Host == "" || c.SMTP.Port == "" || c.SMTP.From == "" {
 			return errors.New("MAILER=smtp requires SMTP_HOST, SMTP_PORT and SMTP_FROM")
 		}
+	case MailerTelegram:
+		if c.Telegram.BotToken == "" || c.Telegram.ChatID == "" || c.Telegram.API == "" {
+			return errors.New("MAILER=telegram requires TELEGRAM_BOT_TOKEN and TELEGRAM_CHAT_ID")
+		}
 	default:
-		return fmt.Errorf("unknown MAILER %q, want %q or %q", c.Mailer, MailerConsole, MailerSMTP)
+		return fmt.Errorf("unknown MAILER %q, want %q, %q or %q", c.Mailer, MailerConsole, MailerSMTP, MailerTelegram)
 	}
 
 	if c.Code.TTL <= 0 || c.Code.ResendInterval <= 0 || c.Code.RequestsWindow <= 0 ||

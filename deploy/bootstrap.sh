@@ -151,7 +151,7 @@ if [ ! -f "$app_dir/.env" ]; then
 		echo "REDIS_PORT=6379"
 		echo "HASH_SECRET=$(secret 32)"
 		echo "GRAFANA_ADMIN_PASSWORD=$(secret 16)"
-		echo "# Sign-in codes: console (in \`docker compose logs auth\`) or smtp with SMTP_*."
+		echo "# Sign-in codes: console (in \`docker compose logs auth\`), telegram (the chat of TELEGRAM_* below) or smtp with SMTP_*."
 		echo "MAILER=console"
 		echo "SMTP_HOST="
 		echo "SMTP_PORT="
