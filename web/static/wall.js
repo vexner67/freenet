@@ -3,7 +3,7 @@
 
 import { api } from './api.js';
 import { wallCount } from './labels.js';
-import { $, clubRef, el, showError, hideError, autosize } from './layout.js';
+import { $, clubRef, el, isMicroblog, showError, hideError, autosize } from './layout.js';
 import { postNode as renderPost } from './posts.js';
 import { initAttachments } from './attach.js';
 
@@ -25,7 +25,11 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   const posts = $('posts');
   const error = $('wall-error');
   const isOwner = me?.id === owner.id;
-  const load = owner.club ? (c) => api.clubWall(clubRef(owner), c, type, query) : (c) => api.wall(owner.nickname, c, type, query);
+  // "Микроблог" shows the newest comments under each post.
+  const comments = isMicroblog();
+  const load = owner.club
+    ? (c) => api.clubWall(clubRef(owner), c, type, query, comments)
+    : (c) => api.wall(owner.nickname, c, type, query, comments);
   const plain = !type && !query;
   // On a wall that is not open its admins always speak for the club, as on
   // openvk.

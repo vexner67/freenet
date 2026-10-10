@@ -6,7 +6,7 @@
 
 import { api, currentUser } from './api.js';
 import { formatPostDate } from './labels.js';
-import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
+import { $, adult, avatarURL, clubRef, el, fullName, pagePath, renderChrome, revealAdult, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { albumPath, albumsTitle, canChange, isKeptBySite } from './albums.js';
 import { commentNode } from './comments.js';
@@ -26,6 +26,8 @@ function render({ photo, author, album, owner }) {
   $('title').replaceChildren(...albumsTitle(owner, el('a', { href: albumPath(album), textContent: album.name }), 'Фотография'));
 
   $('image').src = photo.large;
+  // A photo of an adult post is blurred until clicked, as the post is.
+  adult($('image'), photo.nsfw).addEventListener('click', () => revealAdult($('image')));
   showDescription(photo.description);
   $('uploaded-at').textContent = formatPostDate(photo.createdAt);
 

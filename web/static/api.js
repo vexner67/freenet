@@ -167,7 +167,9 @@ export const api = {
   // With a session posts also say whether you like them.
   // type is a tab of the wall: '' for all posts, 'owner', 'others' and,
   // for its owner, 'archive'; q is what the posts say ("Поиск").
-  wall: (nickname, cursor = '', type = '', q = '') => optional('GET', withType(page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0), type, q)),
+  // comments: each post comes with its newest comments ("Микроблог").
+  wall: (nickname, cursor = '', type = '', q = '', comments = false) => optional('GET',
+    withType(page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0), type, q, comments)),
   post: (id) => optional('GET', '/api/v1/posts/' + encodeURIComponent(id)),
   // Writes on the wall of nickname: someone else's or your own.
   // nsfw marks the post as adult ("Содержит NSFW-контент").
@@ -218,7 +220,7 @@ export const api = {
     const path = page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit);
     return authorized('GET', path + (path.includes('?') ? '&' : '?') + 'common=true');
   },
-  feed: (cursor = '') => authorized('GET', page('/api/v1/feed', cursor, 0)),
+  feed: (cursor = '', comments = false) => authorized('GET', withType(page('/api/v1/feed', cursor, 0), '', '', comments)),
 
   // onWall: post the photo on your wall too ("Опубликовать запись на стене").
   uploadAvatar: (file, onWall = false) => authorized('PUT', '/api/v1/me/avatar' + (onWall ? '?onWall=true' : ''), file),
@@ -298,11 +300,15 @@ export const api = {
     const path = page('/api/v1/me/clubs', cursor, 0);
     return authorized('GET', managed ? path + (path.includes('?') ? '&' : '?') + 'managed=true' : path);
   },
-  // "Мои Встречи": the same for the events you come to.
-  myEvents(cursor = '', managed = false) {
-    const path = page('/api/v1/me/events', cursor, 0);
-    return authorized('GET', managed ? path + (path.includes('?') ? '&' : '?') + 'managed=true' : path);
+  // "Мои Встречи": the same for the events you come to; time is
+  // 'upcoming' for those ahead, 'past' for those over, '' for all.
+  myEvents(cursor = '', managed = false, time = '') {
+    const path = withQuery(page('/api/v1/me/events', cursor, 0), time && 'time=' + time);
+    return authorized('GET', withQuery(path, managed && 'managed=true'));
   },
+  // The block "Встречи" of a page and its list, shown as the groups are.
+  userEvents: (nickname, time = '', cursor = '', limit = 0) => optional('GET',
+    withQuery(page(`/api/v1/users/${encodeURIComponent(nickname)}/events`, cursor, limit), time && 'time=' + time)),
   // The clubs you keep in the left menu ("Добавить в левое меню").
   pinnedClubs: () => authorized('GET', '/api/v1/me/clubs/pinned'),
   pinClub: (ref) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/pin`),
@@ -318,7 +324,8 @@ export const api = {
   // "Фон страницы": side is left or right; deleting takes both away.
   setClubBackdrop: (ref, side, file) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop/${side}`, file),
   deleteClubBackdrop: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop`),
-  clubWall: (ref, cursor = '', type = '', q = '') => optional('GET', withType(page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0), type, q)),
+  clubWall: (ref, cursor = '', type = '', q = '', comments = false) => optional('GET',
+    withType(page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0), type, q, comments)),
   // fromClub: the post speaks for the club ("От имени сообщества"),
   // signed: naming you under it ("Подпись автора").
   createClubPost: (ref, text, photos = [], { fromClub = false, signed = false, nsfw = false } = {}) =>
@@ -392,13 +399,19 @@ export const api = {
   },
 };
 
-// withType adds the tab of a wall to its path.
-function withType(path, type, q = '') {
-  for (const [name, value] of [['type', type], ['q', q]]) {
+// withType adds the tab of a wall to its path; comments: its posts come
+// with their newest comments, as "Микроблог" shows them.
+function withType(path, type, q = '', comments = false) {
+  for (const [name, value] of [['type', type], ['q', q], ['comments', comments ? 'last' : '']]) {
     if (value) path += (path.includes('?') ? '&' : '?') + name + '=' + encodeURIComponent(value);
   }
 
   return path;
+}
+
+// withQuery adds param ("name=value"), if any, to the query of path.
+function withQuery(path, param) {
+  return param ? path + (path.includes('?') ? '&' : '?') + param : path;
 }
 
 function page(path, cursor, limit) {

@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { $, renderChrome, showError, hideError } from './layout.js';
+import { $, isMicroblog, renderChrome, showError, hideError } from './layout.js';
 import { postNode } from './posts.js';
 
 let cursor = '';
@@ -8,7 +8,7 @@ async function loadMore(me) {
   hideError($('error'));
 
   try {
-    const page = await api.feed(cursor);
+    const page = await api.feed(cursor, isMicroblog());
 
     $('posts').append(...page.posts.map((post) => postNode(post, {
       canLike: true,

@@ -3,7 +3,7 @@
 // Esc closes, ← and → page. details(photo), if given, is shown under the
 // photo: for a photo of an album its description, heart and comments.
 
-import { el } from './layout.js';
+import { adult, el, revealAdult } from './layout.js';
 
 export function openViewer(photos, start, { details } = {}) {
   let index = start;
@@ -25,6 +25,7 @@ export function openViewer(photos, start, { details } = {}) {
   function show(i) {
     index = (i + photos.length) % photos.length;
     img.src = photos[index].large;
+    adult(img, photos[index].nsfw);
     counter.textContent = `Фотография ${index + 1} из ${photos.length}`;
     if (details) footer.replaceChildren(details(photos[index]));
   }
@@ -43,8 +44,14 @@ export function openViewer(photos, start, { details } = {}) {
   prev.hidden = next.hidden = photos.length < 2;
   prev.addEventListener('click', () => show(index - 1));
   next.addEventListener('click', () => show(index + 1));
-  // A click on the photo shows the next one, as on the old sites.
-  img.addEventListener('click', () => photos.length > 1 ? show(index + 1) : hide());
+  // A click on the photo shows the next one, as on the old sites; on a
+  // blurred one it shows the photo itself.
+  img.addEventListener('click', () => {
+    if (revealAdult(img)) return;
+
+    if (photos.length > 1) show(index + 1);
+    else hide();
+  });
   close.addEventListener('click', hide);
   overlay.addEventListener('click', (event) => {
     if (event.target === overlay) hide();

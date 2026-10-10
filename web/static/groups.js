@@ -6,17 +6,20 @@
 // "Все" of the block "Группы" on their page leads: "Имя » Группы", how
 // many and the clubs, as their "Кому видно мои группы" allows. At /events
 // it is "Мои Встречи": the same page for the events you come to, with
-// "Создать встречу".
+// "Создать встречу"; the events that are over stand apart, under
+// "Прошедшие".
 
 import { api, currentUser } from './api.js';
-import { clubsCount, eventsCount, myClubsCount, myEventsCount } from './labels.js';
+import { clubsCount, eventsCount, myClubsCount, myEventsCount, pastEventsCount } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showPinnedClubs, showError, hideError } from './layout.js';
 import { clubRow } from './clubs.js';
 
 const params = new URLSearchParams(location.search);
-const managed = params.get('act') === 'managed';
 const other = params.get('u');
 const events = location.pathname === '/events';
+const managed = params.get('act') === 'managed';
+// The events that are over: "Прошедшие".
+const past = events && params.get('act') === 'past';
 let cursor = '';
 
 function clubNode(club) {
@@ -97,39 +100,57 @@ async function showMine() {
     $('tab-all').textContent = 'Встречи';
     $('tab-all').href = '/events';
     $('tab-managed').href = '/events?act=managed';
+    $('tab-past').hidden = false;
     $('create').textContent = 'Создать встречу';
     $('create').href = '/events/create';
     $('search').placeholder = 'Поиск встреч';
   }
 
-  $(managed ? 'tab-managed' : 'tab-all').classList.add('active');
+  $(managed ? 'tab-managed' : past ? 'tab-past' : 'tab-all').classList.add('active');
   $('tabs').hidden = false;
   $('gray-bar').hidden = false;
 
-  const list = events ? api.myEvents : api.myClubs;
-  const summary = events ? (managed ? eventsCount : myEventsCount) : (managed ? clubsCount : myClubsCount);
-  const more = () => load((c) => list(c, managed), clubNode, summary);
+  // "Встречи" are those ahead, "Управляемые" all you run.
+  const list = events ? (c) => api.myEvents(c, managed, managed ? '' : past ? 'past' : 'upcoming') : (c) => api.myClubs(c, managed);
+  const summary = events ? (managed ? eventsCount : past ? pastEventsCount : myEventsCount) : (managed ? clubsCount : myClubsCount);
+  const more = () => load(list, clubNode, summary);
   $('more').addEventListener('click', more);
   await more();
 }
 
 // showTheirs is someone else's list: only "Просмотр группы" by each club.
+// Their events are those ahead and, under "Прошедшие", those over.
 async function showTheirs(nickname) {
+  const what = events ? 'Встречи' : 'Группы';
+
   try {
     const user = await api.profile(nickname);
     const name = fullName(user);
 
-    document.title = `Группы: ${name} | Freenet`;
-    $('title').replaceChildren(el('a', { href: '/' + user.nickname, textContent: name }), ' » Группы');
+    document.title = `${what}: ${name} | Freenet`;
+    $('title').replaceChildren(el('a', { href: '/' + user.nickname, textContent: name }), ' » ' + what);
   } catch (e) {
-    $('title').textContent = 'Группы';
+    $('title').textContent = what;
     showError($('error'), e);
     return;
   }
 
+  if (events) {
+    const path = '/events?u=' + encodeURIComponent(nickname);
+
+    $('tab-all').textContent = 'Встречи';
+    $('tab-all').href = path;
+    $('tab-past').href = path + '&act=past';
+    $('tab-past').hidden = false;
+    $('tab-managed').hidden = true;
+    $(past ? 'tab-past' : 'tab-all').classList.add('active');
+    $('tabs').hidden = false;
+  }
+
   const view = (club) => clubRow(club,
     el('a', { className: 'profile-link', href: pagePath({ ...club, club: true }), textContent: 'Просмотр группы' }));
-  const more = () => load((c) => api.userClubs(nickname, c), view, clubsCount);
+  const list = events ? (c) => api.userEvents(nickname, past ? 'past' : 'upcoming', c) : (c) => api.userClubs(nickname, c);
+  const more = () => load(list, view, events ? (past ? pastEventsCount : eventsCount) : clubsCount);
   $('more').addEventListener('click', more);
   await more();
 }
