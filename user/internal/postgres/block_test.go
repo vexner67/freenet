@@ -73,6 +73,12 @@ func TestBlockRepository(t *testing.T) {
 	if err != nil || len(rest) != 1 || rest[0].User.ID() != bob {
 		t.Fatalf("after cursor = %v, %v", rest, err)
 	}
+	if ids, err := blocks.BlockedIDs(ctx, ann, 10); err != nil || len(ids) != 2 || ids[0] != cat || ids[1] != bob {
+		t.Fatalf("BlockedIDs = %v, %v; want cat, bob", ids, err)
+	}
+	if ids, err := blocks.BlockedIDs(ctx, ann, 1); err != nil || len(ids) != 1 || ids[0] != cat {
+		t.Fatalf("BlockedIDs, one = %v, %v", ids, err)
+	}
 	if n, err := blocks.CountBlocked(ctx, ann); err != nil || n != 2 {
 		t.Fatalf("CountBlocked = %d, %v", n, err)
 	}

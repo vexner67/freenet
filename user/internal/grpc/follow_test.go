@@ -244,6 +244,17 @@ func TestBlacklist(t *testing.T) {
 		t.Fatalf("ann's blacklist = %v, %v", list, err)
 	}
 
+	hidden, err := s.client.ListBlockedIDs(ann, &userv1.ListBlockedIDsRequest{})
+	if err != nil || len(hidden.GetUserIds()) != 1 || hidden.GetUserIds()[0] != bobID {
+		t.Fatalf("whom ann blacklisted = %v, %v", hidden, err)
+	}
+	if hidden, err = s.client.ListBlockedIDs(bob, &userv1.ListBlockedIDsRequest{}); err != nil || len(hidden.GetUserIds()) != 0 {
+		t.Fatalf("whom bob blacklisted = %v, %v", hidden, err)
+	}
+	if _, err = s.client.ListBlockedIDs(context.Background(), &userv1.ListBlockedIDsRequest{}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("the blacklist of nobody: %v", err)
+	}
+
 	if _, err = s.client.Unblock(ann, &userv1.UnblockRequest{UserId: bobID}); err != nil {
 		t.Fatal(err)
 	}

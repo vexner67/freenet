@@ -112,6 +112,28 @@ func (r *BlockRepository) Blocks(ctx context.Context, a, b uuid.UUID) (aBlockedB
 	return aBlockedB, bBlockedA, nil
 }
 
+const blockedIDsQuery = `
+	SELECT blocked_id
+	FROM blocks
+	WHERE blocker_id = $1
+	ORDER BY id DESC
+	LIMIT $2
+`
+
+func (r *BlockRepository) BlockedIDs(ctx context.Context, blockerID uuid.UUID, limit int) ([]uuid.UUID, error) {
+	rows, err := r.conn(ctx).Query(ctx, blockedIDsQuery, blockerID, limit)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return ids, nil
+}
+
 const listBlockedQuery = `
 	SELECT
 		b.id,` + qualifiedUserColumns + `

@@ -49,6 +49,7 @@ const (
 	UserService_Block_FullMethodName              = "/user.v1.UserService/Block"
 	UserService_Unblock_FullMethodName            = "/user.v1.UserService/Unblock"
 	UserService_ListBlocked_FullMethodName        = "/user.v1.UserService/ListBlocked"
+	UserService_ListBlockedIDs_FullMethodName     = "/user.v1.UserService/ListBlockedIDs"
 	UserService_GetRelation_FullMethodName        = "/user.v1.UserService/GetRelation"
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
 	UserService_ReactivateAccount_FullMethodName  = "/user.v1.UserService/ReactivateAccount"
@@ -121,6 +122,9 @@ type UserServiceClient interface {
 	Block(ctx context.Context, in *BlockRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Unblock(ctx context.Context, in *UnblockRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ListBlocked(ctx context.Context, in *ListBlockedRequest, opts ...grpc.CallOption) (*ListBlockedResponse, error)
+	// Requires an access token: whom the caller blacklisted, for the news
+	// feed, which leaves their posts out.
+	ListBlockedIDs(ctx context.Context, in *ListBlockedIDsRequest, opts ...grpc.CallOption) (*ListBlockedIDsResponse, error)
 	// Requires an access token: who of the caller and the user blacklisted
 	// the other.
 	GetRelation(ctx context.Context, in *GetRelationRequest, opts ...grpc.CallOption) (*GetRelationResponse, error)
@@ -435,6 +439,16 @@ func (c *userServiceClient) ListBlocked(ctx context.Context, in *ListBlockedRequ
 	return out, nil
 }
 
+func (c *userServiceClient) ListBlockedIDs(ctx context.Context, in *ListBlockedIDsRequest, opts ...grpc.CallOption) (*ListBlockedIDsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListBlockedIDsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListBlockedIDs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetRelation(ctx context.Context, in *GetRelationRequest, opts ...grpc.CallOption) (*GetRelationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetRelationResponse)
@@ -541,6 +555,9 @@ type UserServiceServer interface {
 	Block(context.Context, *BlockRequest) (*emptypb.Empty, error)
 	Unblock(context.Context, *UnblockRequest) (*emptypb.Empty, error)
 	ListBlocked(context.Context, *ListBlockedRequest) (*ListBlockedResponse, error)
+	// Requires an access token: whom the caller blacklisted, for the news
+	// feed, which leaves their posts out.
+	ListBlockedIDs(context.Context, *ListBlockedIDsRequest) (*ListBlockedIDsResponse, error)
 	// Requires an access token: who of the caller and the user blacklisted
 	// the other.
 	GetRelation(context.Context, *GetRelationRequest) (*GetRelationResponse, error)
@@ -651,6 +668,9 @@ func (UnimplementedUserServiceServer) Unblock(context.Context, *UnblockRequest) 
 }
 func (UnimplementedUserServiceServer) ListBlocked(context.Context, *ListBlockedRequest) (*ListBlockedResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListBlocked not implemented")
+}
+func (UnimplementedUserServiceServer) ListBlockedIDs(context.Context, *ListBlockedIDsRequest) (*ListBlockedIDsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListBlockedIDs not implemented")
 }
 func (UnimplementedUserServiceServer) GetRelation(context.Context, *GetRelationRequest) (*GetRelationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRelation not implemented")
@@ -1207,6 +1227,24 @@ func _UserService_ListBlocked_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ListBlockedIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListBlockedIDsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListBlockedIDs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListBlockedIDs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListBlockedIDs(ctx, req.(*ListBlockedIDsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetRelation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRelationRequest)
 	if err := dec(in); err != nil {
@@ -1401,6 +1439,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListBlocked",
 			Handler:    _UserService_ListBlocked_Handler,
+		},
+		{
+			MethodName: "ListBlockedIDs",
+			Handler:    _UserService_ListBlockedIDs_Handler,
 		},
 		{
 			MethodName: "GetRelation",

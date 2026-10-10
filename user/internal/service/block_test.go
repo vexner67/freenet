@@ -129,6 +129,10 @@ func TestBlockService_List(t *testing.T) {
 		t.Fatalf("last page = %+v, %v", last, err)
 	}
 
+	if ids, err := w.blocks.BlockedIDs(w.ctx, w.ann); err != nil || len(ids) != 2 || ids[0] != w.cat || ids[1] != w.bob {
+		t.Fatalf("BlockedIDs = %v, %v; want cat, bob", ids, err)
+	}
+
 	if mine, _ := w.blocks.List(w.ctx, w.bob, uuid.Nil, 0); mine.Total != 0 {
 		t.Fatalf("bob's blacklist = %+v, want empty", mine)
 	}

@@ -77,6 +77,9 @@ service UserService {
   rpc Block(BlockRequest) returns (google.protobuf.Empty);
   rpc Unblock(UnblockRequest) returns (google.protobuf.Empty);
   rpc ListBlocked(ListBlockedRequest) returns (ListBlockedResponse);
+  // Requires an access token: whom the caller blacklisted, for the news
+  // feed, which leaves their posts out.
+  rpc ListBlockedIDs(ListBlockedIDsRequest) returns (ListBlockedIDsResponse);
   // Requires an access token: who of the caller and the user blacklisted
   // the other.
   rpc GetRelation(GetRelationRequest) returns (GetRelationResponse);
@@ -618,6 +621,13 @@ message ListBlockedResponse {
   // Empty on the last page.
   string next_cursor = 2;
   int32 total = 3;
+}
+
+message ListBlockedIDsRequest {}
+
+message ListBlockedIDsResponse {
+  // Newest blocks first, at most 1000.
+  repeated string user_ids = 1;
 }
 
 message ResolveMentionsRequest {

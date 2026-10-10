@@ -15,6 +15,7 @@ type BlockService interface {
 	Block(ctx context.Context, blockerID, blockedID uuid.UUID) error
 	Unblock(ctx context.Context, blockerID, blockedID uuid.UUID) error
 	List(ctx context.Context, blockerID, cursor uuid.UUID, size int) (service.BlockPage, error)
+	BlockedIDs(ctx context.Context, blockerID uuid.UUID) ([]uuid.UUID, error)
 	Relation(ctx context.Context, viewerID, userID uuid.UUID) (service.Relation, error)
 }
 
@@ -149,6 +150,28 @@ func (h *UserHandler) Unblock(ctx context.Context, req *userv1.UnblockRequest) (
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+func (h *UserHandler) ListBlockedIDs(
+	ctx context.Context,
+	_ *userv1.ListBlockedIDsRequest,
+) (*userv1.ListBlockedIDsResponse, error) {
+	blockerID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ids, err := h.blockService.BlockedIDs(ctx, blockerID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &userv1.ListBlockedIDsResponse{UserIds: make([]string, len(ids))}
+	for i, id := range ids {
+		resp.UserIds[i] = id.String()
+	}
+
+	return resp, nil
 }
 
 func (h *UserHandler) ListBlocked(ctx context.Context, req *userv1.ListBlockedRequest) (*userv1.ListBlockedResponse, error) {
