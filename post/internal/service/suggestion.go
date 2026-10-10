@@ -216,6 +216,26 @@ func (s *SuggestionService) Publish(ctx context.Context, requesterID, id uuid.UU
 	return published, nil
 }
 
+// Get is one suggestion, whole, for those who see it in the lists: its
+// author and the community's admins. Others are told there is none.
+func (s *SuggestionService) Get(ctx context.Context, viewerID, id uuid.UUID) (*post.Suggestion, error) {
+	suggestion, err := s.suggestions.Get(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.suggestions.Get", err)
+	}
+
+	ok, err := moderates(ctx, s.moderators, suggestion.WallID(), viewerID, suggestion.AuthorID() == viewerID)
+	if err != nil {
+		return nil, errs.Wrap("moderates", err)
+	}
+
+	if !ok {
+		return nil, post.ErrSuggestionNotFound
+	}
+
+	return suggestion, nil
+}
+
 // Withdraw deletes a suggestion with its photos: its author takes it
 // back, or an admin of the community declines it ("Отклонить"); the
 // admins' notifications about it go too.

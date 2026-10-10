@@ -121,10 +121,26 @@ func (h *PostHandler) ListPhotoComments(ctx context.Context, req *postv1.ListPho
 		Total:      int32(page.Total), //nolint:gosec // a counter from an int4 column
 	}
 	for _, c := range page.Comments {
-		resp.Comments = append(resp.Comments, toProtoPhotoComment(c, viewer))
+		pc := toProtoPhotoComment(c, viewer)
+		pc.Text, pc.TextCut = c.Text().Excerpt(int(req.GetTextLimit()))
+		resp.Comments = append(resp.Comments, pc)
 	}
 
 	return resp, nil
+}
+
+func (h *PostHandler) GetPhotoComment(ctx context.Context, req *postv1.GetPhotoCommentRequest) (*postv1.GetPhotoCommentResponse, error) {
+	id, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid comment id")
+	}
+
+	c, err := h.albumService.PhotoComment(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.GetPhotoCommentResponse{Comment: toProtoPhotoComment(c, viewerID(ctx))}, nil
 }
 
 // photoTarget is the caller and the photo of a request about it.

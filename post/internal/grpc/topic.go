@@ -94,7 +94,11 @@ func (h *PostHandler) ListTopics(ctx context.Context, req *postv1.ListTopicsRequ
 		Total:      int32(page.Total), //nolint:gosec // a count of rows
 	}
 	for _, t := range page.Topics {
-		resp.Topics = append(resp.Topics, toProtoTopic(t, page.Last[t.ID()], viewer))
+		pt := toProtoTopic(t, page.Last[t.ID()], viewer)
+		if last := page.Last[t.ID()]; last != nil {
+			pt.LastMessage.Text, pt.LastMessage.TextCut = last.Content().Text().Excerpt(int(req.GetTextLimit()))
+		}
+		resp.Topics = append(resp.Topics, pt)
 	}
 
 	return resp, nil
@@ -185,11 +189,26 @@ func (h *PostHandler) ListTopicMessages(ctx context.Context, req *postv1.ListTop
 	}
 	for _, m := range page.Messages {
 		pm := toProtoTopicMessage(m, viewer)
+		pm.Text, pm.TextCut = m.Content().Text().Excerpt(int(req.GetTextLimit()))
 		pm.Liked = page.Liked[m.ID()]
 		resp.Messages = append(resp.Messages, pm)
 	}
 
 	return resp, nil
+}
+
+func (h *PostHandler) GetTopicMessage(ctx context.Context, req *postv1.GetTopicMessageRequest) (*postv1.GetTopicMessageResponse, error) {
+	id, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid message id")
+	}
+
+	m, err := h.topicService.Message(ctx, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.GetTopicMessageResponse{Message: toProtoTopicMessage(m, viewerID(ctx))}, nil
 }
 
 func (h *PostHandler) LikeTopicMessage(ctx context.Context, req *postv1.LikeTopicMessageRequest) (*postv1.LikeTopicMessageResponse, error) {

@@ -49,6 +49,7 @@ type CommentService interface {
 type SuggestionService interface {
 	Suggest(ctx context.Context, wallID, authorID uuid.UUID, content post.Content) (*post.Suggestion, error)
 	List(ctx context.Context, viewerID, wallID uuid.UUID, mine bool, cursor uuid.UUID, size int) (service.SuggestionPage, error)
+	Get(ctx context.Context, viewerID, id uuid.UUID) (*post.Suggestion, error)
 	Publish(ctx context.Context, requesterID, id uuid.UUID, text post.Text, signed bool) (*post.Post, error)
 	Withdraw(ctx context.Context, requesterID, id uuid.UUID) error
 }
@@ -56,6 +57,7 @@ type SuggestionService interface {
 type TopicService interface {
 	Start(ctx context.Context, in service.StartTopicInput) (*post.Topic, error)
 	Get(ctx context.Context, id uuid.UUID) (*post.Topic, error)
+	Message(ctx context.Context, id uuid.UUID) (*post.TopicMessage, error)
 	List(ctx context.Context, clubID uuid.UUID, query string, after *service.TopicCursor, size int) (service.TopicPage, error)
 	Change(ctx context.Context, requesterID, id uuid.UUID, changes post.TopicChanges) (*post.Topic, error)
 	Delete(ctx context.Context, requesterID, id uuid.UUID) error
@@ -69,6 +71,7 @@ type TopicService interface {
 type AlbumService interface {
 	Create(ctx context.Context, in service.CreateAlbumInput) (*post.Album, error)
 	Get(ctx context.Context, id uuid.UUID) (*post.Album, *post.AlbumPhoto, error)
+	PhotoComment(ctx context.Context, id uuid.UUID) (*post.PhotoComment, error)
 	List(ctx context.Context, ownerID, before uuid.UUID, size int) (service.AlbumPage, error)
 	Change(ctx context.Context, requesterID, id uuid.UUID, name post.AlbumName, description post.Description) (*post.Album, error)
 	Delete(ctx context.Context, requesterID, id uuid.UUID) error

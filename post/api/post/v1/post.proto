@@ -84,6 +84,8 @@ service PostService {
   rpc SuggestPost(SuggestPostRequest) returns (SuggestPostResponse);
   // The caller's own suggestions with mine; all of them for the admins.
   rpc ListSuggestions(ListSuggestionsRequest) returns (ListSuggestionsResponse);
+  // One suggestion, whole: for its author and the admins.
+  rpc GetSuggestion(GetSuggestionRequest) returns (GetSuggestionResponse);
   // An admin publishes a suggestion as a new post for the community.
   rpc PublishSuggestion(PublishSuggestionRequest) returns (PublishSuggestionResponse);
   // The author withdraws a suggestion, or an admin declines it.
@@ -108,6 +110,8 @@ service PostService {
   rpc CreateTopicMessage(CreateTopicMessageRequest) returns (CreateTopicMessageResponse);
   // Public: oldest first.
   rpc ListTopicMessages(ListTopicMessagesRequest) returns (ListTopicMessagesResponse);
+  // Public: one message, whole; liked is not told.
+  rpc GetTopicMessage(GetTopicMessageRequest) returns (GetTopicMessageResponse);
   // Its author or an admin.
   rpc DeleteTopicMessage(DeleteTopicMessageRequest) returns (google.protobuf.Empty);
   // A heart on a message of a topic, as on a comment; idempotent, nobody
@@ -162,6 +166,8 @@ service PostService {
   rpc DeletePhotoComment(DeletePhotoCommentRequest) returns (google.protobuf.Empty);
   // Public: the comments of a photo, oldest first.
   rpc ListPhotoComments(ListPhotoCommentsRequest) returns (ListPhotoCommentsResponse);
+  // Public: one comment, whole.
+  rpc GetPhotoComment(GetPhotoCommentRequest) returns (GetPhotoCommentResponse);
 
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
@@ -257,6 +263,8 @@ message Suggestion {
   string text = 4;
   repeated string photo_ids = 5;
   google.protobuf.Timestamp created_at = 6;
+  // text is only its beginning: the request set text_limit.
+  bool text_cut = 7;
 }
 
 message SuggestPostRequest {
@@ -280,6 +288,9 @@ message ListSuggestionsRequest {
   string cursor = 3;
   // 1-50; anything else means 20.
   int32 limit = 4;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts.
+  int32 text_limit = 5;
 }
 
 message ListSuggestionsResponse {
@@ -660,6 +671,8 @@ message TopicMessage {
   int32 like_count = 9;
   // The caller likes it; set by ListTopicMessages only.
   bool liked = 10;
+  // text is only its beginning: the request set text_limit.
+  bool text_cut = 11;
 }
 
 message LikeTopicMessageRequest {
@@ -708,6 +721,9 @@ message ListTopicsRequest {
   string query = 2;
   string cursor = 3;
   int32 limit = 4;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts.
+  int32 text_limit = 5;
 }
 
 message ListTopicsResponse {
@@ -752,6 +768,9 @@ message ListTopicMessagesRequest {
   string topic_id = 1;
   string cursor = 2;
   int32 limit = 3;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts.
+  int32 text_limit = 4;
 }
 
 message ListTopicMessagesResponse {
@@ -967,6 +986,8 @@ message PhotoComment {
   google.protobuf.Timestamp created_at = 5;
   // The caller wrote it.
   bool mine = 6;
+  // text is only its beginning: the request set text_limit.
+  bool text_cut = 7;
 }
 
 message CreatePhotoCommentRequest {
@@ -987,12 +1008,39 @@ message ListPhotoCommentsRequest {
   // Empty for the oldest, else next_cursor of the previous page.
   string cursor = 2;
   int32 limit = 3;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts.
+  int32 text_limit = 4;
 }
 
 message ListPhotoCommentsResponse {
   repeated PhotoComment comments = 1;
   string next_cursor = 2;
   int32 total = 3;
+}
+
+message GetSuggestionRequest {
+  string id = 1;
+}
+
+message GetSuggestionResponse {
+  Suggestion suggestion = 1;
+}
+
+message GetTopicMessageRequest {
+  string id = 1;
+}
+
+message GetTopicMessageResponse {
+  TopicMessage message = 1;
+}
+
+message GetPhotoCommentRequest {
+  string id = 1;
+}
+
+message GetPhotoCommentResponse {
+  PhotoComment comment = 1;
 }
 
 message CountPostsRequest {}
