@@ -44,6 +44,7 @@ const (
 	UserService_GetStatistics_FullMethodName      = "/user.v1.UserService/GetStatistics"
 	UserService_CanPostOnWall_FullMethodName      = "/user.v1.UserService/CanPostOnWall"
 	UserService_CanMessage_FullMethodName         = "/user.v1.UserService/CanMessage"
+	UserService_ResolveMentions_FullMethodName    = "/user.v1.UserService/ResolveMentions"
 	UserService_GetAccess_FullMethodName          = "/user.v1.UserService/GetAccess"
 	UserService_Block_FullMethodName              = "/user.v1.UserService/Block"
 	UserService_Unblock_FullMethodName            = "/user.v1.UserService/Unblock"
@@ -107,6 +108,10 @@ type UserServiceClient interface {
 	// Requires an access token: whether the caller may write private
 	// messages to the user, as the user's privacy and blacklists allow.
 	CanMessage(ctx context.Context, in *CanMessageRequest, opts ...grpc.CallOption) (*CanMessageResponse, error)
+	// Requires an access token: who of the people a text of the caller
+	// names by nickname hears of it ("Вас упомянул пользователь" of
+	// openvk): not the caller, not across a blacklist, not a deleted page.
+	ResolveMentions(ctx context.Context, in *ResolveMentionsRequest, opts ...grpc.CallOption) (*ResolveMentionsResponse, error)
 	// Public: what of the user's page the caller, anonymous without a token,
 	// may see, as the user's privacy allows.
 	GetAccess(ctx context.Context, in *GetAccessRequest, opts ...grpc.CallOption) (*GetAccessResponse, error)
@@ -380,6 +385,16 @@ func (c *userServiceClient) CanMessage(ctx context.Context, in *CanMessageReques
 	return out, nil
 }
 
+func (c *userServiceClient) ResolveMentions(ctx context.Context, in *ResolveMentionsRequest, opts ...grpc.CallOption) (*ResolveMentionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ResolveMentionsResponse)
+	err := c.cc.Invoke(ctx, UserService_ResolveMentions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetAccess(ctx context.Context, in *GetAccessRequest, opts ...grpc.CallOption) (*GetAccessResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAccessResponse)
@@ -513,6 +528,10 @@ type UserServiceServer interface {
 	// Requires an access token: whether the caller may write private
 	// messages to the user, as the user's privacy and blacklists allow.
 	CanMessage(context.Context, *CanMessageRequest) (*CanMessageResponse, error)
+	// Requires an access token: who of the people a text of the caller
+	// names by nickname hears of it ("Вас упомянул пользователь" of
+	// openvk): not the caller, not across a blacklist, not a deleted page.
+	ResolveMentions(context.Context, *ResolveMentionsRequest) (*ResolveMentionsResponse, error)
 	// Public: what of the user's page the caller, anonymous without a token,
 	// may see, as the user's privacy allows.
 	GetAccess(context.Context, *GetAccessRequest) (*GetAccessResponse, error)
@@ -617,6 +636,9 @@ func (UnimplementedUserServiceServer) CanPostOnWall(context.Context, *CanPostOnW
 }
 func (UnimplementedUserServiceServer) CanMessage(context.Context, *CanMessageRequest) (*CanMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CanMessage not implemented")
+}
+func (UnimplementedUserServiceServer) ResolveMentions(context.Context, *ResolveMentionsRequest) (*ResolveMentionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ResolveMentions not implemented")
 }
 func (UnimplementedUserServiceServer) GetAccess(context.Context, *GetAccessRequest) (*GetAccessResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccess not implemented")
@@ -1095,6 +1117,24 @@ func _UserService_CanMessage_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ResolveMentions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ResolveMentionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ResolveMentions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ResolveMentions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ResolveMentions(ctx, req.(*ResolveMentionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAccessRequest)
 	if err := dec(in); err != nil {
@@ -1341,6 +1381,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CanMessage",
 			Handler:    _UserService_CanMessage_Handler,
+		},
+		{
+			MethodName: "ResolveMentions",
+			Handler:    _UserService_ResolveMentions_Handler,
 		},
 		{
 			MethodName: "GetAccess",

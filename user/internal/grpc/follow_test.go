@@ -227,6 +227,13 @@ func TestBlacklist(t *testing.T) {
 		t.Fatalf("bob's relation to ann = %v, %v", rel, err)
 	}
 
+	// "@ann" by bob names nobody across the block; what is not a nickname
+	// is passed over.
+	named, err := s.client.ResolveMentions(bob, &userv1.ResolveMentionsRequest{Nicknames: []string{"ann", "no such", "bob"}})
+	if err != nil || len(named.GetUserIds()) != 0 {
+		t.Fatalf("mentions across a block = %v, %v", named, err)
+	}
+
 	msg, err := s.client.CanMessage(bob, &userv1.CanMessageRequest{UserId: annID, WroteFirst: true})
 	if err != nil || msg.GetAllowed() {
 		t.Fatalf("bob may not write to ann: %v, %v", msg, err)
@@ -242,6 +249,9 @@ func TestBlacklist(t *testing.T) {
 	}
 	if msg, err = s.client.CanMessage(bob, &userv1.CanMessageRequest{UserId: annID}); err != nil || !msg.GetAllowed() {
 		t.Fatalf("after unblocking: %v, %v", msg, err)
+	}
+	if named, err = s.client.ResolveMentions(bob, &userv1.ResolveMentionsRequest{Nicknames: []string{"Ann"}}); err != nil || len(named.GetUserIds()) != 1 || named.GetUserIds()[0] != annID {
+		t.Fatalf("mentions after unblocking = %v, %v", named, err)
 	}
 
 	tests := []struct {
