@@ -5,10 +5,11 @@
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
 import { commentsLink, formatPostDate, genitiveName, shareLink, updatedPhoto, wrote } from './labels.js';
-import { avatarURL, el, fullName, isMicroblog, pagePath, textNode } from './layout.js';
+import { adult, avatarURL, el, fullName, isMicroblog, pagePath, textNode } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
+import { lastComments } from './postcomments.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -39,8 +40,21 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   const content = el('div', { className: 'post-content' });
   const menu = el('span', {});
   // openvk's "Микроблог": no "написал" after the name, the date down in
-  // the menu and "Поделиться" an arrow next to the heart.
+  // the menu, "Поделиться" an arrow next to the heart, marks by the name
+  // for what the words of the menu do, and under a post of a wall its
+  // newest comments.
   const microblog = isMicroblog();
+  const actions = el('span', { className: 'post-actions' });
+  const comments = microblog && withCommentsLink
+    ? lastComments(post, {
+      commenter: viewer ?? onWallOf ?? null,
+      moderates,
+      path: postPath(post),
+      canLike,
+      onError,
+      onChanged: () => render(),
+    })
+    : null;
 
   function render() {
     date.replaceChildren(
@@ -57,24 +71,58 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       signatureNode(post.signer) ?? '',
     );
     menu.replaceChildren(...separated(menuLinks()));
+    actions.replaceChildren(...(microblog ? actionMarks() : []));
+    comments?.render();
     node.classList.toggle('pinned', Boolean(post.pinned));
     // Marked or unmarked by an edit, it is blurred or shown again.
     node.classList.toggle('post-nsfw', Boolean(post.nsfw));
   }
 
+  // ownsWall: the viewer pins the post, puts it away and closes its
+  // comments.
+  const ownsWall = () => moderates || Boolean(viewer && wallOwnerID(post) === viewer.id);
+
+  // changes are what the viewer may do to the post, in the order of
+  // openvk: words in the menu or, in "Микроблог", marks by the name.
+  function changes() {
+    const found = [];
+    if (canEdit(post, viewer)) found.push({ text: 'Редактировать', mark: pencil, run: edit });
+    if (onDelete) found.push({ text: 'Удалить', mark: cross, run: () => onDelete(post, node) });
+    if (ownsWall()) {
+      // An archived post is on no wall to be pinned on.
+      if (!post.archived) found.push({ text: post.pinned ? 'Открепить' : 'Закрепить', mark: pin, on: post.pinned, run: togglePin });
+      found.push({ text: post.archived ? 'Разархивировать' : 'Архивировать', mark: box, on: post.archived, run: toggleArchived });
+    }
+    return found;
+  }
+
   function menuLinks() {
     const links = [];
-    if (withCommentsLink) links.push(el('a', { href: postPath(post), textContent: commentsLink(post.comments) }));
-    if (!microblog) links.push(shareButton(post, canLike));
-    if (canEdit(post, viewer)) links.push(el('a', { textContent: 'Редактировать', onclick: edit }));
-    if (onDelete) links.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(post, node) }));
-    if (moderates || (viewer && wallOwnerID(post) === viewer.id)) {
-      // An archived post is on no wall to be pinned on.
-      if (!post.archived) links.push(el('a', { textContent: post.pinned ? 'Открепить' : 'Закрепить', onclick: togglePin }));
-      links.push(el('a', { textContent: post.archived ? 'Разархивировать' : 'Архивировать', onclick: toggleArchived }));
+    if (comments) {
+      // The comments are under the post; with none, the field opens.
+      if (post.comments === 0 && comments.canOpen()) links.push(el('a', { textContent: 'Комментировать', onclick: openComments }));
+    } else if (withCommentsLink) {
+      links.push(el('a', { href: postPath(post), textContent: commentsLink(post.comments) }));
+    }
+    if (!microblog) {
+      links.push(shareButton(post, canLike));
+      links.push(...changes().map((c) => el('a', { textContent: c.text, onclick: c.run })));
+    }
+    if (ownsWall()) {
       links.push(el('a', { textContent: post.commentsClosed ? 'Открыть комментарии' : 'Закрыть комментарии', onclick: toggleComments }));
     }
     return links;
+  }
+
+  // actionMarks are openvk's marks of "Микроблог" by the name of the
+  // author: each says what it does when pointed at.
+  function actionMarks() {
+    return changes().map((c) => el('a', { className: 'post-action' + (c.on ? ' on' : ''), title: c.text, onclick: c.run }, c.mark()));
+  }
+
+  function openComments() {
+    comments.open();
+    render();
   }
 
   function edit() {
@@ -150,6 +198,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
         el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
         microblog && !post.avatarUpdate ? null : wroteBy(post),
         ...(onWallOf !== undefined && post.wall ? [' ', wallLink(post.wall, onWallOf)] : []),
+        microblog ? actions : null,
         microblog ? null : date,
       ),
       content,
@@ -162,6 +211,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
           likeButton(post, { canLike, onError }),
         ),
       ),
+      comments?.node ?? null,
     ),
   );
 
@@ -294,7 +344,7 @@ function sharedPhotoNode(shared) {
   }
 
   return el('div', { className: 'post-photos single' },
-    el('a', { href: '/photo/' + encodeURIComponent(shared.id) }, el('img', { src: shared.photo.small, alt: '', loading: 'lazy' })));
+    el('a', { href: '/photo/' + encodeURIComponent(shared.id) }, adult(el('img', { src: shared.photo.small, alt: '', loading: 'lazy' }), shared.nsfw)));
 }
 
 export function photosNode(photos) {
@@ -366,9 +416,28 @@ function arrow() {
   return icon('M6.5 0 11 4 6.5 8V5.5C3.5 5.5 1.5 6.6 0 9.5 0 5.5 2.5 2.7 6.5 2.5Z');
 }
 
+// The marks of "Микроблог": a pencil edits, a cross deletes, a pin pins
+// and a box puts away in the archive.
+function pencil() {
+  return icon('M0 10 .6 7.2 7.6.2a.7.7 0 0 1 1 0l1.2 1.2a.7.7 0 0 1 0 1L2.8 9.4Z');
+}
+
+function cross() {
+  return icon('M1.5 1 5.5 4 9.5 1 10.5 2 6.8 5 10.5 8 9.5 9 5.5 6 1.5 9 .5 8 4.2 5 .5 2Z');
+}
+
+function pin() {
+  return icon('M3.5 0h4L7 1.2V4l2 2v1H6l-.5 3L5 7H2V6l2-2V1.2Z');
+}
+
+function box() {
+  return icon('M.5 1h10v2.5H.5ZM1.3 4.2h8.4V10H1.3ZM4 5.5v1h3v-1Z');
+}
+
 function icon(d) {
   const path = document.createElementNS(SVG, 'path');
   path.setAttribute('d', d);
+  path.setAttribute('fill-rule', 'evenodd');
 
   const svg = document.createElementNS(SVG, 'svg');
   svg.setAttribute('viewBox', '0 0 11 10');

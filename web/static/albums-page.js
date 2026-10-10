@@ -8,7 +8,7 @@
 import { api, currentUser } from './api.js';
 import { albumsCount, formatPostDate, myAlbumsCount, photosCount } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
-import { albumPath, canChange, coverURL } from './albums.js';
+import { albumPath, canChange, coverNode } from './albums.js';
 
 const clubPage = location.pathname.startsWith('/club/');
 const ref = clubPage ? decodeURIComponent(location.pathname.slice('/club/'.length, -'/albums'.length)) : '';
@@ -20,7 +20,7 @@ function albumNode(album) {
   const path = albumPath(album);
 
   return el('div', { className: 'album-item' },
-    el('a', { className: 'album-cover', href: path }, el('img', { src: coverURL(album), alt: album.name, loading: 'lazy' })),
+    el('a', { className: 'album-cover', href: path }, coverNode(album, album.name)),
     el('div', { className: 'album-info' },
       el('a', { href: path }, el('b', { textContent: album.name })),
       el('div', { className: 'list-description', textContent: album.description || album.name }),

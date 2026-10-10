@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
+import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, eventsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { initBlacklistLink } from './blacklist.js';
@@ -261,17 +261,26 @@ function linkAvatar(album) {
   link.append(avatar);
 }
 
-// showClubs is openvk's block "Группы": how many, "Все" and the names of
-// the newest, as the user's "Кому видно мои группы" allows.
-async function showClubs(user) {
+// showClubs is openvk's blocks "Группы" and "Встречи": how many, "Все"
+// and the names of the newest, as the user's "Кому видно мои группы"
+// allows — openvk shows both by the one setting. The events are those
+// still ahead; "Все" has the ones that are over too.
+function showClubs(user) {
+  const u = encodeURIComponent(user.nickname);
+
+  showClubBlock('clubs', '/groups?u=' + u, clubsCount, () => api.userClubs(user.nickname, '', CLUBS_SHOWN));
+  showClubBlock('events', '/events?u=' + u, eventsCount, () => api.userEvents(user.nickname, 'upcoming', '', CLUBS_SHOWN));
+}
+
+async function showClubBlock(id, all, count, list) {
   try {
-    const page = await api.userClubs(user.nickname, '', CLUBS_SHOWN);
+    const page = await list();
     const links = page.clubs.map((club) => el('a', { href: pagePath({ ...club, club: true }), textContent: club.name }));
 
-    $('clubs-count').textContent = clubsCount(page.total);
-    $('clubs-all').href = '/groups?u=' + encodeURIComponent(user.nickname);
-    $('clubs-list').replaceChildren(...links.flatMap((link, i) => (i === 0 ? [link] : [' • ', link])));
-    $('clubs-block').hidden = page.total === 0;
+    $(id + '-count').textContent = count(page.total);
+    $(id + '-all').href = all;
+    $(id + '-list').replaceChildren(...links.flatMap((link, i) => (i === 0 ? [link] : [' • ', link])));
+    $(id + '-block').hidden = page.total === 0;
   } catch {
     // Hidden by the user, or not to be had: the page works without it.
   }

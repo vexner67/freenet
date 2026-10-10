@@ -452,6 +452,17 @@ export function eventsCount(n) {
   return n === 0 ? 'Ни одной встречи' : `${n} ${plural(n, ['встреча', 'встречи', 'встреч'])}`;
 }
 
+// otherComments is openvk's "view_other_comments" under a post of
+// "Микроблог": how many comments are on the page of the post only.
+export function otherComments(n) {
+  return `Показать остальные комментарии (${n})`;
+}
+
+// pastEventsCount heads "Прошедшие": the events that are over.
+export function pastEventsCount(n) {
+  return n === 0 ? 'Ни одной прошедшей встречи' : `${n} ${plural(n, ['прошедшая встреча', 'прошедшие встречи', 'прошедших встреч'])}`;
+}
+
 // aboutStatistics are the lines of "Статистика" on the page "о сайте",
 // openvk's "about_users" and so on: the number and the words after it.
 export function aboutStatistics({ users, online, clubs, posts }) {

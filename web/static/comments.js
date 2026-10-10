@@ -24,19 +24,22 @@ export const topicHearts = { like: api.likeTopicMessage, unlike: api.unlikeTopic
 //   onReply(comment) adds "Ответить";
 //   canLike makes the heart clickable (signed-in viewers), onError shows
 //   a failed like;
-//   withLike: false for what has no likes, the messages of a topic.
-export function commentNode(comment, { onDelete, onReply, canLike = false, onError, withLike = true, hearts = commentHearts } = {}) {
+//   withLike: false for what has no likes, the messages of a topic;
+//   href: the page the comment is on, when it is shown on another (under
+//   a post of a wall): its date leads there.
+export function commentNode(comment, { onDelete, onReply, canLike = false, onError, withLike = true, hearts = commentHearts, href = '' } = {}) {
   // A comment for a community shows the community (fromWall).
   const path = pagePath(comment.author);
 
-  const menu = [el('a', { className: 'post-date', href: '#' + commentAnchor(comment.id), textContent: formatPostDate(comment.createdAt) })];
-  if (comment.replyTo) menu.push(el('a', { href: '#' + commentAnchor(comment.replyTo), textContent: 'в ответ' }));
+  const menu = [el('a', { className: 'post-date', href: href + '#' + commentAnchor(comment.id), textContent: formatPostDate(comment.createdAt) })];
+  if (comment.replyTo) menu.push(el('a', { href: href + '#' + commentAnchor(comment.replyTo), textContent: 'в ответ' }));
   if (onDelete) menu.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(comment, node) }));
   if (onReply) menu.push(el('a', { textContent: 'Ответить', onclick: () => onReply(comment) }));
 
   const like = withLike ? likeButton(comment, { canLike, onError, ...hearts }) : '';
 
-  const node = el('div', { className: 'post comment', id: commentAnchor(comment.id) },
+  // Shown on another page, it is no target of links there.
+  const node = el('div', { className: 'post comment', id: href ? '' : commentAnchor(comment.id) },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(comment.author, 'small'), alt: '' })),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },

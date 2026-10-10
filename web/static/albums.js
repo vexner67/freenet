@@ -2,7 +2,7 @@
 // Альбомы » …" of openvk and who may change an album.
 
 import { albumsCount, formatPostDate } from './labels.js';
-import { clubRef, el, fullName, pagePath } from './layout.js';
+import { adult, clubRef, el, fullName, pagePath } from './layout.js';
 
 // albumsPath is the list of albums of owner, a person or a community (an
 // author).
@@ -58,6 +58,11 @@ export function coverURL(album) {
   return album.cover?.small ?? '/static/club.svg';
 }
 
+// coverNode is that photo, blurred when it came from an adult post.
+export function coverNode(album, alt = '') {
+  return adult(el('img', { src: coverURL(album), alt, loading: 'lazy' }), album.cover?.nsfw);
+}
+
 // albumsBlock is openvk's block "Альбомы" of a page: how many, "Все" and
 // the newest with their covers and when they changed. Empty, it says
 // "Загрузить" to whoever may add albums (canAdd), as on a community's page.
@@ -70,7 +75,7 @@ export function albumsBlock(owner, page, canAdd) {
     page.total === 0 && canAdd
       ? el('p', { className: 'side-text center' }, el('a', { href: albumsPath(owner), textContent: 'Загрузить' }))
       : el('div', { className: 'side-albums' }, ...page.albums.map((album) => el('div', { className: 'side-album' },
-        el('a', { href: albumPath(album) }, el('img', { src: coverURL(album), alt: '', loading: 'lazy' })),
+        el('a', { href: albumPath(album) }, coverNode(album)),
         el('div', {},
           el('a', { href: albumPath(album) }, el('b', { textContent: album.name })),
           el('div', { className: 'hint', textContent: 'Обновлено ' + formatPostDate(album.updatedAt) }),

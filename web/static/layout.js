@@ -169,6 +169,27 @@ export function isMicroblog() {
   return document.body.classList.contains('posts-microblog');
 }
 
+// adult marks node, a photo that came from a post marked as adult or
+// the frame of one: blurred, unless "NSFW-контент" of the settings shows
+// such.
+export function adult(node, nsfw) {
+  node.classList.toggle('photo-nsfw', Boolean(nsfw));
+
+  return node;
+}
+
+// revealAdult shows a blurred photo to whoever signed in and clicks it,
+// as a click shows a post marked as adult. It tells whether the click was
+// spent on that.
+export function revealAdult(node) {
+  const { classList } = document.body;
+  if (!node.classList.contains('photo-nsfw') || classList.contains('nsfw-shown')) return false;
+
+  if (!classList.contains('guest')) node.classList.remove('photo-nsfw');
+
+  return true;
+}
+
 // applyInterface draws what "Интерфейс" of the settings changes: the
 // look of the page and the left menu with its counters. renderChrome
 // calls it; the settings call it again when saved.

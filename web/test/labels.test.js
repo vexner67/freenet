@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone } from '../static/labels.js';
+import { isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -297,6 +297,10 @@ test('events are counted as openvk counts them', () => {
   assert.equal(myEventsCount(1), 'Вы участвуете в 1 встрече');
   assert.equal(myEventsCount(5), 'Вы участвуете в 5 встречах');
   assert.equal(eventsCount(0), 'Ни одной встречи');
+  assert.equal(pastEventsCount(0), 'Ни одной прошедшей встречи');
+  assert.equal(pastEventsCount(1), '1 прошедшая встреча');
+  assert.equal(pastEventsCount(3), '3 прошедшие встречи');
+  assert.equal(pastEventsCount(5), '5 прошедших встреч');
   assert.equal(eventsCount(1), '1 встреча');
   assert.equal(eventsCount(3), '3 встречи');
   assert.equal(eventsCount(11), '11 встреч');

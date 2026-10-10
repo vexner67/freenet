@@ -64,6 +64,8 @@ input:focus, select:focus, textarea:focus,
 .wall-more:hover { background: #2c2c2c; }
 .posts-microblog .post, .posts-microblog .comment { border-color: #333; }
 .posts-microblog .post-buttons a.like:hover { background: #2c2c2c; }
+.post-action svg { fill: #9cc0e6; }
+.post-comments-more { background: #242424; }
 
 .tabs { background: #242424; border-bottom-color: #444; }
 .tabs a.active { background: #1a1a1a; border-color: #444; border-bottom-color: #1a1a1a; color: #f0f0f0; }

@@ -5,7 +5,7 @@
 
 import { api, currentUser } from './api.js';
 import { photosCount } from './labels.js';
-import { $, el, renderChrome, showError, hideError } from './layout.js';
+import { $, adult, el, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { openViewer } from './viewer.js';
 import { likeButton } from './posts.js';
@@ -79,7 +79,8 @@ function initPhotos(album, editable) {
 
   function photoNode(photo) {
     const node = el('div', { className: 'album-photo' });
-    const link = el('a', { href: photoPath(photo) }, el('img', { src: photo.small, alt: photo.description, loading: 'lazy' }));
+    const link = el('a', { href: photoPath(photo) },
+      adult(el('img', { src: photo.small, alt: photo.description, loading: 'lazy' }), photo.nsfw));
 
     link.addEventListener('click', (event) => {
       event.preventDefault();
