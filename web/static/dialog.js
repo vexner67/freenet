@@ -12,7 +12,7 @@
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
-import { errorText, formatPostDate, genitiveName, messagePreview, selectedCount, snippet } from './labels.js';
+import { errorText, formatPostDate, genitiveName, isLongText, messagePreview, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, sharedNode } from './posts.js';
@@ -66,10 +66,10 @@ function messageNode(m) {
 
     node.classList.toggle('deleted', Boolean(shownMessage.deleted));
     content.replaceChildren(...[
-      text && el('div', { className: 'im-message-text', textContent: text }),
+      text && textOf(text, node),
       photosNode(shownMessage.photos ?? []),
       shownMessage.repost ? sharedNode(shownMessage.repost) : null,
-      forwardedNode(shownMessage),
+      forwardedNode(shownMessage, node),
     ].filter(Boolean));
     date.replaceChildren(...[
       formatPostDate(shownMessage.createdAt),
@@ -79,6 +79,7 @@ function messageNode(m) {
       el('a', { className: 'im-message-action', textContent: 'Удалить', onclick: () => confirmDelete([shownMessage]) }),
     ].filter(Boolean));
   };
+  node.message = m;
   node.render();
 
   // A click on the message itself, not on a link or a photo in it,
@@ -93,9 +94,49 @@ function messageNode(m) {
   return node;
 }
 
+// CUT_LENGTH is how much of a long text a dialog carries; the message
+// says only that some text of it is cut (textCut), not which.
+const CUT_LENGTH = 1000;
+
+// textOf shows a text of a message of node, its own or of one it carries
+// on: a long one cut short until "Показать больше", as posts are, which
+// first loads the message whole when the dialog carried its beginning.
+function textOf(text, node) {
+  const body = el('div', { className: 'im-message-text', textContent: text });
+  const cut = node.message?.textCut && [...text].length >= CUT_LENGTH;
+  if (node.opened || !(cut || isLongText(text))) return body;
+
+  body.classList.add('collapsed');
+
+  const more = el('a', {
+    className: 'post-text-more',
+    textContent: 'Показать больше',
+    onclick: async () => {
+      try {
+        await whole(node.message);
+      } catch {
+        // The link stays to try again.
+        return;
+      }
+
+      node.opened = true;
+      node.render();
+    },
+  });
+
+  return el('div', {}, body, more);
+}
+
+// whole loads all a message says, and those it carries on, into it.
+async function whole(m) {
+  if (m.textCut) Object.assign(m, { textCut: false }, await api.message(nickname, m.id), { read: m.read });
+
+  return m;
+}
+
 // forwardedNode shows the messages a message carries on, as on VK: under
 // its own words, each with who wrote it and when.
-function forwardedNode(m) {
+function forwardedNode(m, node) {
   const forwarded = m.forwarded ?? [];
   if (!m.forwardedCount) return null;
 
@@ -103,7 +144,7 @@ function forwardedNode(m) {
     ...forwarded.map((f) => el('div', { className: 'im-forwarded-message' },
       el('a', { className: 'post-name', href: '/' + f.author.nickname, textContent: fullName(f.author) }),
       el('span', { className: 'im-forwarded-date', textContent: formatPostDate(f.createdAt) }),
-      f.text ? el('div', { className: 'im-message-text', textContent: f.text }) : null,
+      f.text ? textOf(f.text, node) : null,
       photosNode(f.photos ?? []),
       f.repost ? sharedNode(f.repost) : null,
     )),
@@ -272,8 +313,15 @@ function drop(id) {
 
 // startEdit puts what the message says back in the form: sending saves
 // the edit, as on VK.
-function startEdit(m) {
+async function startEdit(m) {
   const text = $('text');
+
+  try {
+    await whole(m);
+  } catch (e) {
+    showError($('error'), e);
+    return;
+  }
 
   editing = m;
   text.value = m.text;
@@ -302,7 +350,7 @@ function edited(m) {
   const node = shown.get(m.id);
   if (!node) return;
 
-  node.message = { ...node.message, ...m, read: node.message.read };
+  node.message = { ...node.message, textCut: false, ...m, read: node.message.read };
   node.render();
   if (editing?.id === m.id && m.deleted) cancelEdit();
 }

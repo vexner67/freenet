@@ -5,7 +5,7 @@
 
 import { api, currentUser } from './api.js';
 import { formatPostDate, suggestedInClub, wrote } from './labels.js';
-import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize, mentionNodes } from './layout.js';
+import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize, textNode } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, postPath } from './posts.js';
 
@@ -40,7 +40,7 @@ function suggestionNode(s) {
         el('div', { className: 'post-date', textContent: formatPostDate(s.createdAt) }),
       ),
       el('div', { className: 'post-content' },
-        s.text ? el('div', { className: 'post-text' }, ...mentionNodes(s.text)) : '',
+        s.text ? textNode(s.text, { rest: s.textCut ? () => wholeText(s) : null }) : '',
         photosNode(s.photos) ?? '',
       ),
       mine
@@ -55,9 +55,29 @@ function suggestionNode(s) {
   return node;
 }
 
+// wholeText loads all a suggestion says into it: the list carried its
+// beginning.
+async function wholeText(s) {
+  if (s.textCut) {
+    s.text = (await api.suggestionText(s.id)).text;
+    s.textCut = false;
+  }
+
+  return s.text;
+}
+
 // openPublish is openvk's "Публикация предложенной записи": the text to
 // leave or change and "Подпись автора", on by default.
-function openPublish(s, node) {
+async function openPublish(s, node) {
+  hideError($('error'));
+
+  try {
+    await wholeText(s);
+  } catch (e) {
+    showError($('error'), e);
+    return;
+  }
+
   const modal = openModal('Публикация предложенной записи');
   const text = el('textarea', { className: 'publish-text', maxLength: 60000, value: s.text });
   const signed = el('input', { type: 'checkbox', checked: true });

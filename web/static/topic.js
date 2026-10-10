@@ -65,6 +65,7 @@ function initMessages(topic, me, admin) {
     canLike: Boolean(me),
     onError: (e) => showError($('error'), e),
     hearts: topicHearts,
+    whole: api.topicMessageText,
   });
 
   // reply starts an answer as openvk's "Ответить": the name of the author
