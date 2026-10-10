@@ -378,6 +378,7 @@ type fakePosts struct {
 	authors, walls         []string
 	lastAsked              []string
 	hideNSFW               bool
+	everyone               bool
 	newPost                model.NewPost
 	token, cursor, deleted string
 	limit                  int
@@ -547,6 +548,7 @@ func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comme
 
 func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSources, cursor string, _ int) (model.PostPage, error) {
 	f.token, f.authors, f.walls, f.cursor, f.hideNSFW = token, sources.Authors, sources.Walls, cursor, sources.HideNSFW
+	f.everyone = sources.Everyone
 	return model.PostPage{
 		Posts: []model.Post{
 			{ID: "p3", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},

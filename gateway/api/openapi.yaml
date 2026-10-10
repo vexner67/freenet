@@ -3014,8 +3014,16 @@ paths:
         newest first, each with its author. Page with `cursor` = `nextCursor`; `total` is always 0.
         Posts marked as adult are left out when your `interface.nsfw` is
         `hide`.
+
+        With `type=all` it is "Все новости" of openvk instead: what every
+        wall says itself (people on their own walls, communities in their
+        name), whomever you follow.
       security: [{ bearer: [] }]
       parameters:
+        - name: type
+          in: query
+          description: "`all` for the posts of everyone; anything else but nothing is 400 `invalid feed type`"
+          schema: { type: string, enum: [all] }
         - name: comments
           in: query
           description: "`last` brings each post with `lastComments`, its three newest comments (\"Микроблог\")"
