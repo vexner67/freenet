@@ -16,6 +16,8 @@ service UserService {
   // The status alone, as openvk edits it on the page.
   rpc UpdateStatus(UpdateStatusRequest) returns (UpdateStatusResponse);
   rpc UpdatePrivacy(UpdatePrivacyRequest) returns (UpdatePrivacyResponse);
+  // "Интерфейс" of the settings: how the site looks to the caller alone.
+  rpc UpdateInterface(UpdateInterfaceRequest) returns (UpdateInterfaceResponse);
   // openvk's "Контакты", "Интересы" and "Дополнительно" of the page; each
   // replaces its part at once.
   rpc UpdateContacts(UpdateContactsRequest) returns (UpdateContactsResponse);
@@ -125,6 +127,26 @@ message User {
   // ("interests", "email", "telegram", "status", "city").
   int32 completeness = 26;
   repeated string unfilled = 27;
+  InterfaceSettings interface = 28;
+}
+
+// InterfaceSettings are how the site looks to its owner ("Интерфейс").
+message InterfaceSettings {
+  // "square" (the default) or "round": how everyone's photos are shown.
+  string avatar_style = 1;
+  // "page" (the default) or "feed": where the site opens.
+  string main_page = 2;
+  // The links taken out of the left menu: "photos", "messages", "groups",
+  // "events", "feed", "notifications".
+  repeated string hidden_menu = 3;
+}
+
+message UpdateInterfaceRequest {
+  InterfaceSettings interface = 1;
+}
+
+message UpdateInterfaceResponse {
+  User user = 1;
 }
 
 // openvk's "Контактная информация"; every field optional.
