@@ -152,12 +152,18 @@ func TestPostgres(t *testing.T) {
 		t.Fatalf("the first stream sees %d messages, %v; want its own one", len(head), err)
 	}
 
-	// The lead passes on when the leader goes.
+	// The lead passes on when the leader goes: its lock ends with its
+	// session, which the server closes a moment after Close returns.
 	first.Close()
-	if err = second.Wait(ctx, time.Second); err != nil {
-		t.Fatalf("second Wait: %v", err)
+	for range 100 {
+		if err = second.Wait(ctx, 50*time.Millisecond); err != nil {
+			t.Fatalf("second Wait: %v", err)
+		}
+		if head, err = second.Head(ctx, 10); err != nil || len(head) > 0 {
+			break
+		}
 	}
-	if head, err = second.Head(ctx, 10); err != nil || len(head) != 1 {
+	if err != nil || len(head) != 1 {
 		t.Errorf("second Head after the first left = %d messages, %v; want 1", len(head), err)
 	}
 }
