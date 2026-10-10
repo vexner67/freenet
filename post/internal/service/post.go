@@ -16,8 +16,11 @@ const (
 	MaxPageSize     = 50
 
 	// MaxFeedAuthors bounds one news feed: the people a user follows plus
-	// the user, and as many clubs.
+	// the user.
 	MaxFeedAuthors = 1001
+	// MaxFeedWalls bounds its walls: those of the same people and of as
+	// many clubs.
+	MaxFeedWalls = 2001
 )
 
 var (
@@ -75,7 +78,8 @@ type PostSwitchRepository interface {
 
 // FeedSources are what a news feed shows: the posts of Authors (those
 // that speak for a community are the community's, not theirs) and every
-// post on Walls, the clubs the reader is in.
+// post on Walls: those of the people the reader follows, whoever wrote
+// there, and of the clubs the reader is in.
 type FeedSources struct {
 	Authors []uuid.UUID
 	Walls   []uuid.UUID
@@ -845,11 +849,11 @@ func (s *PostService) ListWall(ctx context.Context, viewerID, wallID uuid.UUID, 
 }
 
 // Feed pages the posts written by several authors together, on their own
-// walls and on others', with every post on the walls of the reader's
-// clubs, newest first. Total is not counted: a feed is read page by page,
+// walls and on others', with every post on the walls of the feed, newest
+// first. Total is not counted: a feed is read page by page,
 // not as a whole.
 func (s *PostService) Feed(ctx context.Context, viewerID uuid.UUID, sources FeedSources, cursor uuid.UUID, size int) (Page, error) {
-	if len(sources.Authors) > MaxFeedAuthors || len(sources.Walls) > MaxFeedAuthors {
+	if len(sources.Authors) > MaxFeedAuthors || len(sources.Walls) > MaxFeedWalls {
 		return Page{}, ErrTooManyAuthors
 	}
 

@@ -387,7 +387,7 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 }
 
 func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest) (*postv1.ListFeedResponse, error) {
-	if len(req.GetAuthorIds()) > service.MaxFeedAuthors || len(req.GetWallIds()) > service.MaxFeedAuthors {
+	if len(req.GetAuthorIds()) > service.MaxFeedAuthors || len(req.GetWallIds()) > service.MaxFeedWalls {
 		return nil, status.Error(codes.InvalidArgument, "too many authors")
 	}
 

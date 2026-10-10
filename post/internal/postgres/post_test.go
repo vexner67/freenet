@@ -162,6 +162,12 @@ func TestPostRepository(t *testing.T) {
 		t.Fatalf("ListFeed = %v, %v", feed, err)
 	}
 
+	// The walls of a feed bring what others wrote there, once.
+	walls, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{author}, Walls: []uuid.UUID{author}}, uuid.Nil, 10)
+	if err != nil || len(walls) != 4 || walls[0].ID() != guest.ID() {
+		t.Fatalf("ListFeed with the wall = %v, %v", walls, err)
+	}
+
 	if err = repo.Delete(ctx, saved[0].ID()); err != nil {
 		t.Fatalf("Delete: %v", err)
 	}

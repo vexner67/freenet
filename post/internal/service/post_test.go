@@ -565,6 +565,18 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 		t.Fatalf("bob's posts in a feed = %+v, %v", feed.Posts, err)
 	}
 
+	// Whoever follows ann alone reads what bob wrote on her wall, once
+	// even when following both.
+	for _, sources := range []service.FeedSources{
+		{Authors: []uuid.UUID{ann}, Walls: []uuid.UUID{ann}},
+		{Authors: []uuid.UUID{ann, bob}, Walls: []uuid.UUID{ann, bob}},
+	} {
+		feed, err = svc.Feed(ctx, uuid.Nil, sources, uuid.Nil, 10)
+		if got := texts(feed.Posts); err != nil || len(got) != 2 || got[0] != "привет, Аня" {
+			t.Fatalf("the feed of ann's wall = %v, %v", got, err)
+		}
+	}
+
 	if err = svc.Delete(ctx, cat, p.ID()); !errors.Is(err, post.ErrCannotDelete) {
 		t.Fatalf("stranger: got %v, want ErrCannotDelete", err)
 	}
@@ -960,7 +972,7 @@ func TestPostService_FeedOfClubs(t *testing.T) {
 		t.Fatalf("feed of the club = %v, %v", ids(page.Posts), err)
 	}
 
-	if _, err = svc.Feed(ctx, ann, service.FeedSources{Walls: make([]uuid.UUID, service.MaxFeedAuthors+1)}, uuid.Nil, 20); !errors.Is(err, service.ErrTooManyAuthors) {
+	if _, err = svc.Feed(ctx, ann, service.FeedSources{Walls: make([]uuid.UUID, service.MaxFeedWalls+1)}, uuid.Nil, 20); !errors.Is(err, service.ErrTooManyAuthors) {
 		t.Fatalf("too many clubs: %v", err)
 	}
 }

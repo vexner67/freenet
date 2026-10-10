@@ -2023,8 +2023,8 @@ type ListFeedRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// At most 1001: the people a user follows and the user.
 	AuthorIds []string `protobuf:"bytes,1,rep,name=author_ids,json=authorIds,proto3" json:"author_ids,omitempty"`
-	// At most 1001: the communities the user is in, every post on whose
-	// walls the feed shows.
+	// At most 2001: the people a user follows, the user and the
+	// communities the user is in, every post on whose walls the feed shows.
 	WallIds []string `protobuf:"bytes,4,rep,name=wall_ids,json=wallIds,proto3" json:"wall_ids,omitempty"`
 	// Empty for the newest posts, else next_cursor of the previous page.
 	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
