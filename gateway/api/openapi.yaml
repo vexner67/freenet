@@ -3912,7 +3912,7 @@ components:
         text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when photos only" }
         textCut:
           type: boolean
-          description: "`text`, or the text of a message it carries on, is only its beginning: 200 characters of the last message in GET /api/v1/dialogs, 1000 in a dialog. GET /api/v1/dialogs/{nickname}/messages/{id} tells it whole. Found messages carry 1000 characters too. Absent when the texts are whole; live events are whole"
+          description: "`text`, or the text of a message it carries on, is only its beginning: 200 characters of the last message in GET /api/v1/dialogs, 1000 in a dialog. GET /api/v1/dialogs/{nickname}/messages/{id} tells it whole. Found messages carry 1000 characters too, from a little before the place they say the query. Absent when the texts are whole; live events are whole"
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
