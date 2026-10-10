@@ -30,6 +30,12 @@ func TestPresence(t *testing.T) {
 		t.Fatalf("MarkOnline: %v", err)
 	}
 
+	// Anyone may ask how many people the site has.
+	stats, err := s.client.GetStatistics(context.Background(), &userv1.GetStatisticsRequest{})
+	if err != nil || stats.GetOnline() != 1 || stats.GetUsers() < 2 {
+		t.Fatalf("GetStatistics = %v, %v", stats, err)
+	}
+
 	got, err := s.client.GetProfile(context.Background(), &userv1.GetProfileRequest{Nickname: "bob"})
 	if p := got.GetProfile(); err != nil || !p.GetOnline() || p.GetLastSeenAt() == nil {
 		t.Fatalf("bob: %v, %v", p, err)

@@ -48,6 +48,18 @@ func TestPresence(t *testing.T) {
 		t.Fatal(err)
 	}
 	_ = repo.MarkSeen(ctx, cat.ID(), now.Add(-time.Hour))
+
+	// Counted with everyone else in the table: at least these, of whom Bob
+	// alone came in the last minutes.
+	recent, err := repo.Count(ctx, now.Add(-time.Minute))
+	if err != nil || recent.Users < 2 || recent.Online < 1 {
+		t.Fatalf("Count = %+v, %v", recent, err)
+	}
+	// The same people, fewer of them recent: other tests share the table,
+	// so only the order is sure.
+	if later, err := repo.Count(ctx, now.Add(time.Hour)); err != nil || later.Online > recent.Online || later.Users < 2 {
+		t.Fatalf("Count since later = %+v, %v", later, err)
+	}
 	_ = repo.MarkSeen(ctx, dan.ID(), now)
 
 	got, err := repo.GetByID(ctx, bob.ID())

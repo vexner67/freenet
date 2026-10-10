@@ -52,6 +52,11 @@ func TestPresenceService(t *testing.T) {
 		t.Fatalf("ListOnlineFollowing = %+v, %v", page, err)
 	}
 
+	// The site counts its people and who of them is on it.
+	if stats, err := presence.Statistics(ctx); err != nil || stats != (service.Statistics{Users: 3, Online: 1}) {
+		t.Fatalf("Statistics = %+v, %v", stats, err)
+	}
+
 	// The page of someone online says so; of someone never seen, nothing.
 	perms := service.NewPermissionService(users, follows, blocks)
 	if p, err := perms.ProfileFor(ctx, uuid.Nil, "bob"); err != nil || !p.Online || p.LastSeen.IsZero() {
