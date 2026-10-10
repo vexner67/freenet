@@ -18,10 +18,10 @@ func NewMessages(api messagev1.MessageServiceClient) *Messages {
 	}
 }
 
-// Send writes text, photos and a shared post ("" for none) to recipientID.
-func (m *Messages) Send(ctx context.Context, accessToken, recipientID, text string, photoIDs []string, postID string) (model.Message, error) {
+// Send writes d to recipientID.
+func (m *Messages) Send(ctx context.Context, accessToken, recipientID string, d model.MessageDraft) (model.Message, error) {
 	resp, err := m.api.SendMessage(withToken(ctx, accessToken), &messagev1.SendMessageRequest{
-		RecipientId: recipientID, Text: text, PhotoIds: photoIDs, PostId: postID,
+		RecipientId: recipientID, Text: d.Text, PhotoIds: d.PhotoIDs, PostId: d.PostID, ForwardIds: d.ForwardIDs,
 	})
 	if err != nil {
 		return model.Message{}, errs.Wrap("m.api.SendMessage", fromStatus(err))
@@ -61,12 +61,13 @@ func (m *Messages) CountUnread(ctx context.Context, accessToken string) (int, er
 	return int(resp.GetCount()), nil
 }
 
-// History pages back with cursor, or returns the messages after after.
-func (m *Messages) History(ctx context.Context, accessToken, peerID, cursor, after string, limit int) (model.MessagePage, error) {
+// History is the part of the dialog with peerID that at names.
+func (m *Messages) History(ctx context.Context, accessToken, peerID string, at model.MessagesAt, limit int) (model.MessagePage, error) {
 	resp, err := m.api.ListMessages(withToken(ctx, accessToken), &messagev1.ListMessagesRequest{
 		PeerId: peerID,
-		Cursor: cursor,
-		After:  after,
+		Cursor: at.Cursor,
+		After:  at.After,
+		Around: at.Around,
 		Limit:  toLimit(limit),
 	})
 	if err != nil {
@@ -188,7 +189,20 @@ func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.Mes
 }
 
 func toMessage(pm *messagev1.Message) model.Message {
+	forwarded := make([]model.ForwardedMessage, 0, len(pm.GetForwarded()))
+	for _, f := range pm.GetForwarded() {
+		forwarded = append(forwarded, model.ForwardedMessage{
+			SenderID:  f.GetSenderId(),
+			Text:      f.GetText(),
+			PhotoIDs:  f.GetPhotoIds(),
+			PostID:    f.GetPostId(),
+			CreatedAt: f.GetCreatedAt().AsTime(),
+		})
+	}
+
 	return model.Message{
+		Forwarded:      forwarded,
+		DeletedAt:      fromTimestamp(pm.GetDeletedAt()),
 		ID:             pm.GetId(),
 		SenderID:       pm.GetSenderId(),
 		RecipientID:    pm.GetRecipientId(),

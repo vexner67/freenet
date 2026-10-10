@@ -188,10 +188,10 @@ type Notifications interface {
 }
 
 type Messages interface {
-	Send(ctx context.Context, accessToken, recipientID, text string, photoIDs []string, postID string) (model.Message, error)
+	Send(ctx context.Context, accessToken, recipientID string, d model.MessageDraft) (model.Message, error)
 	Dialogs(ctx context.Context, accessToken, cursor string, limit int) (model.DialogPage, error)
 	CountUnread(ctx context.Context, accessToken string) (int, error)
-	History(ctx context.Context, accessToken, peerID, cursor, after string, limit int) (model.MessagePage, error)
+	History(ctx context.Context, accessToken, peerID string, at model.MessagesAt, limit int) (model.MessagePage, error)
 	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
 	Delete(ctx context.Context, accessToken, id string) error
 	// Hide deletes a message for the caller alone; Edit changes what

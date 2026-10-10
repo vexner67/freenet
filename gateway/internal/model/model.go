@@ -409,6 +409,39 @@ type Message struct {
 	// until EditableUntil.
 	EditedAt      time.Time
 	EditableUntil time.Time
+	// Forwarded are the messages it carries on from other dialogs.
+	Forwarded []ForwardedMessage
+	// DeletedAt is when the sender took it back from both sides, zero if
+	// never: it says nothing then.
+	DeletedAt time.Time
+}
+
+// ForwardedMessage is a message as another one carries it on: a copy of
+// what SenderID wrote at CreatedAt.
+type ForwardedMessage struct {
+	SenderID  string
+	Text      string
+	PhotoIDs  []string
+	PostID    string
+	CreatedAt time.Time
+}
+
+// MessageDraft is a message to send: text, photos, a shared post ("" for
+// none), messages of the caller's dialogs to forward, or some of them.
+type MessageDraft struct {
+	Text       string
+	PhotoIDs   []string
+	PostID     string
+	ForwardIDs []string
+}
+
+// MessagesAt names a part of a dialog: older messages with Cursor, those
+// after After, the messages around Around, or, with none of them, the
+// newest.
+type MessagesAt struct {
+	Cursor string
+	After  string
+	Around string
 }
 
 // FoundMessages is one screen of messages a search found, newest first.
@@ -432,8 +465,9 @@ type DialogPage struct {
 }
 
 // MessageEvent is what happened in the caller's dialogs: a new message,
-// sent or received, a read mark that moved, a message deleted or one
-// edited. One of the four is set.
+// sent or received, a read mark that moved, a message deleted by the
+// caller for themselves, or one edited or taken back by its sender. One
+// of the four is set.
 type MessageEvent struct {
 	Message *Message
 	Read    *ReadMark
@@ -442,7 +476,7 @@ type MessageEvent struct {
 }
 
 // DeletedMessage: message ID of SenderID to RecipientID is gone from the
-// caller's dialog, taken back from both sides or deleted for themselves.
+// caller's dialog: they deleted it for themselves.
 type DeletedMessage struct {
 	ID          string
 	SenderID    string

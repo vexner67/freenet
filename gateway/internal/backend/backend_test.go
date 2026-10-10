@@ -513,6 +513,12 @@ func (f *fakeMessageAPI) ListMessages(ctx context.Context, req *messagev1.ListMe
 		Messages: []*messagev1.Message{{
 			Id: "m1", SenderId: "u1", RecipientId: "u2", Text: "привет", CreatedAt: timestamppb.Now(), Read: true,
 			DeletableUntil: timestamppb.New(time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)),
+			Forwarded: []*messagev1.ForwardedMessage{{
+				SenderId: "u3", Text: "смотри", PhotoIds: []string{"ph1"}, PostId: "p1", CreatedAt: timestamppb.New(time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)),
+			}},
+		}, {
+			Id: "m2", SenderId: "u2", RecipientId: "u1", CreatedAt: timestamppb.Now(),
+			DeletedAt: timestamppb.New(time.Date(2026, 10, 6, 23, 0, 0, 0, time.UTC)),
 		}},
 		NextCursor:   "m1",
 		PeerReadUpTo: "m1",
@@ -546,7 +552,7 @@ func TestMessages(t *testing.T) {
 		t.Fatalf("HasMessagesFrom = %v, %v (metadata %v)", wrote, err, api.md)
 	}
 
-	page, err := messages.History(context.Background(), "tok", "u2", "", "m0", 1<<20)
+	page, err := messages.History(context.Background(), "tok", "u2", model.MessagesAt{After: "m0"}, 1<<20)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -559,6 +565,18 @@ func TestMessages(t *testing.T) {
 	if m := page.Messages[0]; m.ID != "m1" || m.SenderID != "u1" || !m.Read || page.PeerReadUpTo != "m1" || page.NextCursor != "m1" ||
 		!m.DeletableUntil.Equal(time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)) {
 		t.Fatalf("page = %+v", page)
+	}
+
+	if f := page.Messages[0].Forwarded; len(f) != 1 || f[0].SenderID != "u3" || f[0].Text != "смотри" || f[0].PhotoIDs[0] != "ph1" || f[0].PostID != "p1" ||
+		!f[0].CreatedAt.Equal(time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)) {
+		t.Fatalf("forwarded = %+v", f)
+	}
+	if gone := page.Messages[1]; !gone.DeletedAt.Equal(time.Date(2026, 10, 6, 23, 0, 0, 0, time.UTC)) || !page.Messages[0].DeletedAt.IsZero() {
+		t.Fatalf("messages = %+v; want the second taken back", page.Messages)
+	}
+
+	if _, err = messages.History(context.Background(), "tok", "u2", model.MessagesAt{Around: "m5"}, 0); err != nil || api.req.GetAround() != "m5" || api.req.GetAfter() != "" {
+		t.Fatalf("around: request = %v, %v", api.req, err)
 	}
 
 	dialogs0, err := messages.Dialogs(context.Background(), "tok", "", 0)
@@ -578,7 +596,7 @@ func TestMessages(t *testing.T) {
 		t.Fatalf("dialogs = %+v, %v", dialogs, err)
 	}
 
-	_, err = messages.Send(context.Background(), "tok", "u1", "x", nil, "")
+	_, err = messages.Send(context.Background(), "tok", "u1", model.MessageDraft{Text: "x"})
 	if f := failure.From(err); f.Kind != failure.InvalidArgument || f.Message != "you cannot write to yourself" {
 		t.Fatalf("Send to yourself: %v", err)
 	}

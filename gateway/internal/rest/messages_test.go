@@ -93,6 +93,27 @@ func TestListMessages(t *testing.T) {
 	if w = newHarness(rest.Config{}).do("GET", "/api/v1/dialogs/nobody/messages", "", "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
 		t.Fatalf("unknown user: %d", w.Code)
 	}
+
+	// Around a message: the dialog as a found message opens it, with
+	// whether the caller may write, and a message taken back in its place.
+	found := newHarness(rest.Config{})
+	w = found.do("GET", "/api/v1/dialogs/bob/messages?around=m2", "", "Authorization", "Bearer tok")
+	page := decode[struct {
+		Messages []struct {
+			ID             string `json:"id"`
+			Text           string `json:"text"`
+			Deleted        bool   `json:"deleted"`
+			DeletableUntil string `json:"deletableUntil"`
+			EditableUntil  string `json:"editableUntil"`
+		} `json:"messages"`
+		CanWrite bool `json:"canWrite"`
+	}](t, w)
+	if w.Code != http.StatusOK || found.messages.around != "m2" || !page.CanWrite || len(page.Messages) != 3 {
+		t.Fatalf("around: %d %s", w.Code, w.Body)
+	}
+	if gone := page.Messages[2]; !gone.Deleted || gone.Text != "" || gone.DeletableUntil != "" || gone.EditableUntil != "" || page.Messages[0].Deleted {
+		t.Fatalf("messages = %+v; want the last taken back and nothing to do with it", page.Messages)
+	}
 }
 
 func TestSendMessage(t *testing.T) {
@@ -112,6 +133,34 @@ func TestSendMessage(t *testing.T) {
 		}
 		if !got.Out || got.Read || got.CreatedAt != "2026-10-05T22:00:00Z" {
 			t.Fatalf("message = %+v", got)
+		}
+	})
+
+	t.Run("forwarding messages", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"text":"вот","forward":["m1","gone"]}`, "Authorization", "Bearer tok")
+		got := decode[struct {
+			Text           string `json:"text"`
+			ForwardedCount int    `json:"forwardedCount"`
+			Forwarded      []struct {
+				Author    map[string]string   `json:"author"`
+				Text      string              `json:"text"`
+				Photos    []map[string]string `json:"photos"`
+				CreatedAt string              `json:"createdAt"`
+			} `json:"forwarded"`
+		}](t, w)
+
+		// Both are counted; the one whose author's page is gone is not shown.
+		if w.Code != http.StatusCreated || got.Text != "вот" || got.ForwardedCount != 2 || len(got.Forwarded) != 1 {
+			t.Fatalf("%d %s", w.Code, w.Body)
+		}
+		if f := got.Forwarded[0]; f.Author["nickname"] != "bob" || f.Text != "из m1" || f.CreatedAt != "2026-10-09T12:00:00Z" ||
+			len(f.Photos) != 1 || f.Photos[0]["large"] != "/media/photos/u2/ph1/large.jpg" {
+			t.Fatalf("forwarded = %+v", f)
 		}
 	})
 
