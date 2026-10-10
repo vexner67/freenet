@@ -27,6 +27,13 @@ type notificationJSON struct {
 	Actor     authorJSON               `json:"actor"`
 	Post      *notificationPostJSON    `json:"post"`
 	Comment   *notificationCommentJSON `json:"comment"`
+	// Topic is the discussion a topic_message was written in.
+	Topic *notificationTopicJSON `json:"topic,omitempty"`
+}
+
+type notificationTopicJSON struct {
+	ID    string `json:"id"`
+	Title string `json:"title"`
 }
 
 type notificationPageResponse struct {
@@ -51,12 +58,28 @@ type markReadRequest struct {
 // notification goes when the suggestion does.
 const kindSuggestedPost = "suggested_post"
 
+// kindTopicMessage names a topic by PostID and a message of it by
+// CommentID, neither a post nor a comment: the notification shows the
+// topic and goes with the message or the topic.
+const kindTopicMessage = "topic_message"
+
+// namesPost tells whether PostID of a notification of kind is a post, and
+// namesComment whether its CommentID is a comment.
+func namesPost(kind string) bool {
+	return kind != kindSuggestedPost && kind != kindTopicMessage
+}
+
+func namesComment(kind string) bool {
+	return kind != kindTopicMessage
+}
+
 // targets are what a page of notifications refers to, by ID; what was
 // deleted meanwhile is missing.
 type targets struct {
 	actors   map[string]model.Author
 	posts    map[string]model.Post
 	comments map[string]model.Comment
+	topics   map[string]model.Topic
 }
 
 // listNotifications is one page of the caller's notifications with who
@@ -123,15 +146,18 @@ func notificationBox(r *http.Request) (bool, error) {
 }
 
 func (a *api) notificationTargets(r *http.Request, notifications []model.Notification) (targets, error) {
-	var actorIDs, postIDs, commentIDs []string
+	var actorIDs, postIDs, commentIDs, topicIDs []string
 
 	for _, n := range notifications {
 		actorIDs = append(actorIDs, n.ActorID)
-		if n.PostID != "" && n.Kind != kindSuggestedPost {
+		if n.PostID != "" && namesPost(n.Kind) {
 			postIDs = append(postIDs, n.PostID)
 		}
-		if n.CommentID != "" {
+		if n.CommentID != "" && namesComment(n.Kind) {
 			commentIDs = append(commentIDs, n.CommentID)
+		}
+		if n.Kind == kindTopicMessage {
+			topicIDs = append(topicIDs, n.PostID)
 		}
 	}
 
@@ -166,7 +192,31 @@ func (a *api) notificationTargets(r *http.Request, notifications []model.Notific
 		}
 	}
 
+	if t.topics, err = a.notificationTopics(r, unique(topicIDs)); err != nil {
+		return targets{}, err
+	}
+
 	return t, nil
+}
+
+// notificationTopics reads the topics a page of notifications names, one
+// request each: there are few. A deleted one is left out.
+func (a *api) notificationTopics(r *http.Request, ids []string) (map[string]model.Topic, error) {
+	topics := make(map[string]model.Topic, len(ids))
+
+	for _, id := range ids {
+		topic, err := a.topics.Get(r.Context(), "", id)
+		if failure.From(err).Kind == failure.NotFound {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		topics[id] = topic
+	}
+
+	return topics, nil
 }
 
 // toNotificationJSON is false when the actor, the post or the comment is
@@ -184,7 +234,17 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 		Actor:     toAuthorJSON(actor),
 	}
 
-	if n.PostID != "" && n.Kind != kindSuggestedPost {
+	if n.Kind == kindTopicMessage {
+		topic, ok := t.topics[n.PostID]
+		if !ok {
+			return notificationJSON{}, false
+		}
+		item.Topic = &notificationTopicJSON{ID: topic.ID, Title: topic.Title}
+
+		return item, true
+	}
+
+	if n.PostID != "" && namesPost(n.Kind) {
 		p, ok := t.posts[n.PostID]
 		if !ok {
 			return notificationJSON{}, false

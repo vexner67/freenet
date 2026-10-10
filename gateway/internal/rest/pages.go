@@ -30,6 +30,9 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /im/{nickname}", page(dir, "dialog.html"))
 	mux.Handle("GET /groups", page(dir, "groups.html"))
 	mux.Handle("GET /groups/create", page(dir, "club-create.html"))
+	// "Мои Встречи" is the page of "Мои Группы" listing events.
+	mux.Handle("GET /events", page(dir, "groups.html"))
+	mux.Handle("GET /events/create", page(dir, "event-create.html"))
 	mux.Handle("GET /club/{ref}", page(dir, "club.html"))
 	mux.Handle("GET /club/{ref}/edit", page(dir, "club-edit.html"))
 	mux.Handle("GET /club/{ref}/members", page(dir, "club-members.html"))

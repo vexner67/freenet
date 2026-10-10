@@ -14,6 +14,15 @@ type createClubRequest struct {
 	Description string `json:"description"`
 }
 
+// createEventRequest: StartsAt and EndsAt are RFC 3339 times; EndsAt is
+// "" for an event with no end.
+type createEventRequest struct {
+	Name        string `json:"name"`
+	Description string `json:"description"`
+	StartsAt    string `json:"startsAt"`
+	EndsAt      string `json:"endsAt"`
+}
+
 // clubSettingsRequest is the whole settings form: an empty address or
 // website takes it away.
 type clubSettingsRequest struct {
@@ -27,6 +36,9 @@ type clubSettingsRequest struct {
 	// listed above the wall ("Отображать список тем над стеной").
 	OpenTopics      bool `json:"openTopics"`
 	TopicsAboveWall bool `json:"topicsAboveWall"`
+	// The schedule of an event, RFC 3339; a group sends neither.
+	StartsAt string `json:"startsAt"`
+	EndsAt   string `json:"endsAt"`
 }
 
 type clubPostRequest struct {
@@ -54,6 +66,13 @@ type clubJSON struct {
 	TopicsAboveWall bool `json:"topicsAboveWall"`
 	// Backdrop is "Фон страницы", null for none.
 	Backdrop *backdropJSON `json:"backdrop"`
+
+	// Kind is "group" or "event"; an event has startsAt and, unless null,
+	// endsAt, and maybes of its members only might come.
+	Kind     string  `json:"kind"`
+	StartsAt *string `json:"startsAt"`
+	EndsAt   *string `json:"endsAt"`
+	Maybes   int     `json:"maybes"`
 }
 
 // backdropJSON is the photos on the left and on the right of a club's
@@ -65,18 +84,34 @@ type backdropJSON struct {
 
 // clubResponse is a club as the viewer sees it: role is "" (not a member,
 // or anonymous), "member", "admin" or "owner"; owner is null when the
-// owner's page is deleted or erased.
+// owner's page is deleted or erased, or the club hides its owner from the
+// viewer; ownerTitle is what the owner does in the club.
 type clubResponse struct {
 	clubJSON
-	Role  string      `json:"role"`
-	Owner *authorJSON `json:"owner"`
+	Role       string      `json:"role"`
+	Owner      *authorJSON `json:"owner"`
+	OwnerTitle string      `json:"ownerTitle"`
+	// Maybe: the viewer only might come to the event.
+	Maybe bool `json:"maybe"`
 	// CanStartTopic: "Создать тему" for the viewer.
 	CanStartTopic bool `json:"canStartTopic"`
 }
 
+// clubMemberJSON: title is what an admin does in the club; hidden: the
+// club shows them as a plain member to everyone who does not run it.
 type clubMemberJSON struct {
-	User authorJSON `json:"user"`
-	Role string     `json:"role"`
+	User   authorJSON `json:"user"`
+	Role   string     `json:"role"`
+	Title  string     `json:"title"`
+	Hidden bool       `json:"hidden"`
+	// Maybe: they only might come to the event.
+	Maybe bool `json:"maybe"`
+}
+
+// describeAdminRequest: title is at most 36 characters, "" for none.
+type describeAdminRequest struct {
+	Title  string `json:"title"`
+	Hidden bool   `json:"hidden"`
 }
 
 // clubMembersResponse: Total counts the members, or the admins, on all
@@ -127,7 +162,52 @@ func toClubJSON(c model.Club) clubJSON {
 		OpenTopics:      c.OpenTopics,
 		TopicsAboveWall: c.TopicsAboveWall,
 		Backdrop:        toBackdropJSON(c.ID, model.Backdrop{Left: c.BackdropLeft, Right: c.BackdropRight}),
+
+		Kind:     c.Kind,
+		StartsAt: optionalTimeJSON(c.StartsAt),
+		EndsAt:   optionalTimeJSON(c.EndsAt),
+		Maybes:   c.Maybes,
 	}
+}
+
+// optionalTimeJSON is null for the zero time.
+func optionalTimeJSON(t time.Time) *string {
+	if t.IsZero() {
+		return nil
+	}
+
+	s := t.UTC().Format(time.RFC3339)
+
+	return &s
+}
+
+// parseOptionalTime reads an RFC 3339 time; "" is the zero time.
+func parseOptionalTime(s, invalid string) (time.Time, error) {
+	if s == "" {
+		return time.Time{}, nil
+	}
+
+	t, err := time.Parse(time.RFC3339, s)
+	if err != nil {
+		return time.Time{}, failure.New(failure.InvalidArgument, invalid)
+	}
+
+	return t, nil
+}
+
+// parseSchedule reads the two times of an event.
+func parseSchedule(startsAt, endsAt string) (time.Time, time.Time, error) {
+	start, err := parseOptionalTime(startsAt, "invalid start time")
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	end, err := parseOptionalTime(endsAt, "invalid end time")
+	if err != nil {
+		return time.Time{}, time.Time{}, err
+	}
+
+	return start, end, nil
 }
 
 // toBackdropJSON is b of the page of ownerID, a person or a club; nil
@@ -160,7 +240,7 @@ func toClubsJSON(clubs []model.Club) []clubJSON {
 // clubResponseOf adds the owner's profile to a club, looked up unless the
 // caller knows it (owner, "" for none).
 func (a *api) clubResponseOf(r *http.Request, v model.ClubView) (clubResponse, error) {
-	resp := clubResponse{clubJSON: toClubJSON(v.Club), Role: v.Role, CanStartTopic: v.CanStartTopic}
+	resp := clubResponse{clubJSON: toClubJSON(v.Club), Role: v.Role, Maybe: v.Maybe, CanStartTopic: v.CanStartTopic}
 
 	if v.OwnerID == "" {
 		return resp, nil
@@ -174,6 +254,7 @@ func (a *api) clubResponseOf(r *http.Request, v model.ClubView) (clubResponse, e
 	if owner, ok := people[v.OwnerID]; ok && !owner.Club {
 		o := toAuthorJSON(owner)
 		resp.Owner = &o
+		resp.OwnerTitle = v.OwnerTitle
 	}
 
 	return resp, nil
@@ -258,6 +339,43 @@ func (a *api) club(r *http.Request, token string) (model.ClubView, error) {
 
 // updateClub saves the settings form of a club; the club service lets
 // only its admins.
+// createEvent is "Создать встречу" of openvk: a club with the time it
+// starts, to which its creator comes.
+func (a *api) createEvent(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req createEventRequest
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	start, end, err := parseSchedule(req.StartsAt, req.EndsAt)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if _, err = a.completedMe(r, token, "fill in your profile before creating a club"); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	v, err := a.clubs.CreateEvent(r.Context(), token, model.NewEvent{
+		Name: req.Name, Description: req.Description, StartsAt: start, EndsAt: end,
+	})
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writeClub(w, r, http.StatusCreated, v)
+}
+
 func (a *api) updateClub(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -271,13 +389,24 @@ func (a *api) updateClub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	start, end, err := parseSchedule(req.StartsAt, req.EndsAt)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	c, err := a.club(r, token)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	v, err := a.clubs.Update(r.Context(), token, c.Club.ID, model.ClubChanges(req))
+	v, err := a.clubs.Update(r.Context(), token, c.Club.ID, model.ClubChanges{
+		Name: req.Name, Description: req.Description, Address: req.Address, Website: req.Website,
+		Wall: req.Wall, AdminsDisplay: req.AdminsDisplay,
+		OpenTopics: req.OpenTopics, TopicsAboveWall: req.TopicsAboveWall,
+		StartsAt: start, EndsAt: end,
+	})
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -299,7 +428,12 @@ func (a *api) joinClub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.changeMembership(w, r, token, a.clubs.Join)
+	// "Возможно приду" of an event.
+	maybe := r.URL.Query().Get("maybe") == "true"
+
+	a.changeMembership(w, r, token, func(ctx context.Context, token, clubID string) (model.ClubView, error) {
+		return a.clubs.Join(ctx, token, clubID, maybe)
+	})
 }
 
 // leaveClub is "Выйти из группы": idempotent; the owner cannot.
@@ -353,7 +487,9 @@ func (a *api) listClubMembers(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	page, err := a.clubs.Members(r.Context(), c.Club.ID, query.Get("cursor"), limit, query.Get("admins") == "true")
+	filter := model.ClubMemberFilter{AdminsOnly: query.Get("admins") == "true", Going: query.Get("going")}
+
+	page, err := a.clubs.Members(r.Context(), token, c.Club.ID, query.Get("cursor"), limit, filter)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -373,7 +509,7 @@ func (a *api) listClubMembers(w http.ResponseWriter, r *http.Request) {
 	resp := clubMembersResponse{Members: make([]clubMemberJSON, 0, len(page.Members)), NextCursor: page.NextCursor, Total: page.Total}
 	for _, m := range page.Members {
 		if p, ok := people[m.UserID]; ok && !p.Club {
-			resp.Members = append(resp.Members, clubMemberJSON{User: toAuthorJSON(p), Role: m.Role})
+			resp.Members = append(resp.Members, clubMemberJSON{User: toAuthorJSON(p), Role: m.Role, Title: m.Title, Hidden: m.Hidden, Maybe: m.Maybe})
 		}
 	}
 
@@ -410,6 +546,41 @@ func (a *api) setAdmin(w http.ResponseWriter, r *http.Request, admin bool) {
 	}
 
 	if err = a.clubs.SetAdmin(r.Context(), token, c.Club.ID, user.ID, admin); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// describeAdmin is "Изменить комментарий" and "Скрыт" of openvk: those
+// who run a club give one of them a title and hide or show them.
+func (a *api) describeAdmin(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req describeAdminRequest
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.club(r, token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	user, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.clubs.Describe(r.Context(), token, c.Club.ID, user.ID, req.Title, req.Hidden); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
@@ -468,7 +639,7 @@ func (a *api) listUserClubs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := a.clubs.OfUser(r.Context(), user.ID, r.URL.Query().Get("cursor"), limit)
+	page, err := a.clubs.OfUser(r.Context(), user.ID, r.URL.Query().Get("cursor"), limit, model.ClubKindGroup)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -477,9 +648,18 @@ func (a *api) listUserClubs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, userClubsResponse{Clubs: toClubsJSON(page.Clubs), NextCursor: page.NextCursor, Total: page.Total})
 }
 
-// listMyClubs is "Мои Группы": the caller's clubs, the newest joined
-// first; with ?managed=true only those they run ("Управление").
+// listMyClubs is "Мои Группы" and listMyEvents "Мои Встречи": the clubs
+// of the caller of one kind, the newest joined first; with ?managed=true
+// only those they run ("Управление").
 func (a *api) listMyClubs(w http.ResponseWriter, r *http.Request) {
+	a.listMine(w, r, model.ClubKindGroup)
+}
+
+func (a *api) listMyEvents(w http.ResponseWriter, r *http.Request) {
+	a.listMine(w, r, model.ClubKindEvent)
+}
+
+func (a *api) listMine(w http.ResponseWriter, r *http.Request, kind string) {
 	token, err := bearerToken(r)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -494,7 +674,9 @@ func (a *api) listMyClubs(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	page, err := a.clubs.Mine(r.Context(), token, query.Get("cursor"), limit, query.Get("managed") == "true")
+	filter := model.ClubFilter{Managed: query.Get("managed") == "true", Kind: kind}
+
+	page, err := a.clubs.Mine(r.Context(), token, query.Get("cursor"), limit, filter)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

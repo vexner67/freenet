@@ -137,6 +137,8 @@ type Topics interface {
 	Write(ctx context.Context, accessToken, topicID string, nm model.NewTopicMessage) (model.TopicMessage, error)
 	Messages(ctx context.Context, accessToken, topicID, cursor string, limit int) (model.TopicMessagePage, error)
 	DeleteMessage(ctx context.Context, accessToken, id string) error
+	LikeMessage(ctx context.Context, accessToken, id string) (int, error)
+	UnlikeMessage(ctx context.Context, accessToken, id string) (int, error)
 }
 
 // Albums are the photo albums of people and communities; methods that
@@ -197,16 +199,18 @@ type Messages interface {
 // viewers); a club ref is its ID or its address.
 type Clubs interface {
 	Create(ctx context.Context, accessToken, name, description string) (model.ClubView, error)
+	CreateEvent(ctx context.Context, accessToken string, e model.NewEvent) (model.ClubView, error)
 	Get(ctx context.Context, accessToken, ref string) (model.ClubView, error)
 	GetMany(ctx context.Context, ids []string) ([]model.Club, error)
 	Update(ctx context.Context, accessToken, clubID string, changes model.ClubChanges) (model.ClubView, error)
-	Join(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
+	Join(ctx context.Context, accessToken, clubID string, maybe bool) (model.ClubView, error)
 	Leave(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
-	Members(ctx context.Context, clubID, cursor string, limit int, adminsOnly bool) (model.ClubMemberPage, error)
+	Members(ctx context.Context, accessToken, clubID, cursor string, limit int, filter model.ClubMemberFilter) (model.ClubMemberPage, error)
+	Describe(ctx context.Context, accessToken, clubID, userID, title string, hidden bool) error
 	SetAdmin(ctx context.Context, accessToken, clubID, userID string, admin bool) error
 	Transfer(ctx context.Context, accessToken, clubID, userID string) error
-	OfUser(ctx context.Context, userID, cursor string, limit int) (model.UserClubPage, error)
-	Mine(ctx context.Context, accessToken, cursor string, limit int, managed bool) (model.ClubPage, error)
+	OfUser(ctx context.Context, userID, cursor string, limit int, kind string) (model.UserClubPage, error)
+	Mine(ctx context.Context, accessToken, cursor string, limit int, filter model.ClubFilter) (model.ClubPage, error)
 	Search(ctx context.Context, query, cursor string, limit int) (model.ClubSearchPage, error)
 	SetAvatar(ctx context.Context, accessToken, clubID, avatarID string) (model.ClubView, error)
 	SetBackdrop(ctx context.Context, accessToken, clubID, side, photoID string) (model.ClubView, error)
@@ -326,7 +330,9 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/messages/{id}", a.deleteMessage)
 
 	mux.HandleFunc("POST /api/v1/clubs", a.createClub)
+	mux.HandleFunc("POST /api/v1/events", a.createEvent)
 	mux.HandleFunc("GET /api/v1/me/clubs", a.listMyClubs)
+	mux.HandleFunc("GET /api/v1/me/events", a.listMyEvents)
 	mux.HandleFunc("GET /api/v1/me/clubs/pinned", a.listPinnedClubs)
 	mux.HandleFunc("GET /api/v1/clubs", a.searchClubs)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}", a.getClub)
@@ -344,6 +350,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/members", a.listClubMembers)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/admins/{nickname}", a.appointAdmin)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/admins/{nickname}", a.dismissAdmin)
+	mux.HandleFunc("PATCH /api/v1/clubs/{ref}/admins/{nickname}", a.describeAdmin)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/owner/{nickname}", a.transferClub)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/posts", a.listClubPosts)
 	mux.HandleFunc("POST /api/v1/clubs/{ref}/posts", a.createClubPost)
@@ -359,6 +366,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/topics/{id}/messages", a.listTopicMessages)
 	mux.HandleFunc("POST /api/v1/topics/{id}/messages", a.createTopicMessage)
 	mux.HandleFunc("DELETE /api/v1/topic-messages/{id}", a.deleteTopicMessage)
+	mux.HandleFunc("PUT /api/v1/topic-messages/{id}/like", a.likeTopicMessage)
+	mux.HandleFunc("DELETE /api/v1/topic-messages/{id}/like", a.unlikeTopicMessage)
 
 	mux.HandleFunc("GET /api/v1/users/{nickname}/albums", a.listUserAlbums)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/albums", a.listClubAlbums)

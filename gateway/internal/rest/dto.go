@@ -301,7 +301,8 @@ type publicProfileResponse struct {
 	PageHidden bool `json:"pageHidden"`
 	InfoHidden bool `json:"infoHidden"`
 	// LastSeenAt is when the user last visited ("был в сети"), null if
-	// never, hidden or in a list; Online: just now ("Онлайн").
+	// never, hidden or in a list; Online: just now ("Онлайн"), which a
+	// list tells too if the page is open to everyone.
 	LastSeenAt *string `json:"lastSeenAt"`
 	Online     bool    `json:"online"`
 	// Backdrop is "Фон страницы", null for none.

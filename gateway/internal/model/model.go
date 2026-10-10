@@ -187,6 +187,9 @@ type Author struct {
 	Deactivated bool
 	Club        bool
 	Address     string
+	// Online: the person is on the site now ("Онлайн"), if their page
+	// tells everyone.
+	Online bool
 }
 
 type Post struct {
@@ -469,16 +472,33 @@ type Club struct {
 	// club, filed under its ID; "" for none.
 	BackdropLeft  string
 	BackdropRight string
+	// Kind is "group" or "event" ("встреча"): an event has the time it
+	// StartsAt and, unless zero, EndsAt, and Maybes of its Members only
+	// might come.
+	Kind     string
+	StartsAt time.Time
+	EndsAt   time.Time
+	Maybes   int
 }
+
+// ClubKinds are what a club may be.
+const (
+	ClubKindGroup = "group"
+	ClubKindEvent = "event"
+)
 
 // ClubView is a club as the caller sees it. Role is what the caller is in
 // it: "" (not a member, or anonymous), "member", "admin" or "owner";
-// OwnerID is "" when its owner's page was erased. CanStartTopic: the
-// caller may start a topic in its discussions.
+// OwnerID is "" when its owner's page was erased or the club hides its
+// owner from the caller; OwnerTitle is what the owner does in the club.
+// CanStartTopic: the caller may start a topic in its discussions. Maybe:
+// the caller only might come to the event.
 type ClubView struct {
 	Club          Club
 	Role          string
+	Maybe         bool
 	OwnerID       string
+	OwnerTitle    string
 	CanStartTopic bool
 }
 
@@ -492,12 +512,44 @@ type ClubChanges struct {
 	AdminsDisplay   string
 	OpenTopics      bool
 	TopicsAboveWall bool
+	// StartsAt and EndsAt are the schedule of an event; zero for none.
+	StartsAt time.Time
+	EndsAt   time.Time
 }
 
-// ClubMember is one member of a club, with their role.
+// ClubMember is one member of a club, with their role. Title is what an
+// admin does in the club; Hidden: the club shows them as a plain member
+// to everyone who does not run it, and only those who do are told.
 type ClubMember struct {
 	UserID string
 	Role   string
+	Title  string
+	Hidden bool
+	// Maybe: they only might come to the event.
+	Maybe bool
+}
+
+// NewEvent is an event to create; EndsAt is zero for one with no end.
+type NewEvent struct {
+	Name        string
+	Description string
+	StartsAt    time.Time
+	EndsAt      time.Time
+}
+
+// ClubMemberFilter picks the members of a club: only its owner and
+// admins, or those who come to the event for sure ("sure") or only might
+// ("maybe").
+type ClubMemberFilter struct {
+	AdminsOnly bool
+	Going      string
+}
+
+// ClubFilter picks the clubs of a user: only those they run, only those
+// of Kind unless it is "".
+type ClubFilter struct {
+	Managed bool
+	Kind    string
 }
 
 // ClubMemberPage is one screen of members, the newest first; Total counts
@@ -568,6 +620,9 @@ type TopicMessage struct {
 	FromWall  bool
 	CreatedAt time.Time
 	Mine      bool
+	// Likes are the hearts of the message; Liked: the caller put one.
+	Likes int
+	Liked bool
 }
 
 // TopicPage and TopicMessagePage are one screen of a list; NextCursor is
