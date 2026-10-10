@@ -295,6 +295,30 @@ func (a *api) updateStatus(w http.ResponseWriter, r *http.Request) {
 	a.writeUser(w, r, u)
 }
 
+// updateInterface saves "Интерфейс" of the settings: how the site looks
+// to the caller.
+func (a *api) updateInterface(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req interfaceJSON
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	u, err := a.users.UpdateInterface(r.Context(), token, model.Interface(req))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writeUser(w, r, u)
+}
+
 // updateInterests saves "Интересы" of "Редактировать страницу".
 func (a *api) updateInterests(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)

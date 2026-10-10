@@ -292,6 +292,17 @@ func (f *fakeUsers) ListCommonFollowing(_ context.Context, token, userID, cursor
 }
 
 // UpdateStatus keeps the status in the caller's profile.
+func (f *fakeUsers) UpdateInterface(_ context.Context, token string, ui model.Interface) (model.User, error) {
+	f.token = token
+	if f.err != nil {
+		return model.User{}, f.err
+	}
+	u := f.user()
+	u.Interface = ui
+
+	return u, nil
+}
+
 func (f *fakeUsers) UpdateStatus(_ context.Context, token, status string) (model.User, error) {
 	f.token = token
 	if f.err != nil {

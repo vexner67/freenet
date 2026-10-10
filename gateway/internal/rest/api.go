@@ -54,6 +54,7 @@ type Users interface {
 	// ListCommonFollowing is whom both userID and the caller follow.
 	ListCommonFollowing(ctx context.Context, accessToken, userID, cursor string, limit int) (model.UserPage, error)
 	UpdateStatus(ctx context.Context, accessToken, status string) (model.User, error)
+	UpdateInterface(ctx context.Context, accessToken string, ui model.Interface) (model.User, error)
 	// MarkOnline: the caller is on the site now.
 	MarkOnline(ctx context.Context, accessToken string) error
 	// Statistics counts the people of the site and those on it now.
@@ -277,6 +278,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/me/interests", a.updateInterests)
 	mux.HandleFunc("PUT /api/v1/me/fields", a.updateExtraFields)
 	mux.HandleFunc("PUT /api/v1/me/privacy", a.updatePrivacy)
+	mux.HandleFunc("PUT /api/v1/me/interface", a.updateInterface)
 	mux.HandleFunc("POST /api/v1/me/deactivate", a.deactivate)
 	mux.HandleFunc("POST /api/v1/me/reactivate", a.reactivate)
 

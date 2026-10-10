@@ -186,7 +186,12 @@ func toUser(u *userv1.User) model.User {
 		Backdrop:         model.Backdrop{Left: u.GetBackdropLeft(), Right: u.GetBackdropRight()},
 		Completeness:     int(u.GetCompleteness()),
 		Unfilled:         u.GetUnfilled(),
-		PurgeAt:          fromTimestamp(u.GetPurgeAt()),
+		Interface: model.Interface{
+			AvatarStyle: u.GetInterface().GetAvatarStyle(),
+			MainPage:    u.GetInterface().GetMainPage(),
+			HiddenMenu:  u.GetInterface().GetHiddenMenu(),
+		},
+		PurgeAt: fromTimestamp(u.GetPurgeAt()),
 		Privacy: model.Privacy{
 			ShowBirthday:       u.GetPrivacy().GetShowBirthday(),
 			ShowRelationship:   u.GetPrivacy().GetShowRelationship(),
