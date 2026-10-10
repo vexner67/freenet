@@ -230,3 +230,64 @@ func TestDeleteMessage(t *testing.T) {
 		}
 	}
 }
+
+func TestEditHideAndSearchMessages(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	auth := []string{"Authorization", "Bearer tok"}
+
+	// "Удалить у себя": for=me hides, nothing deletes for both.
+	if w := h.do("DELETE", "/api/v1/messages/m1?for=me", "", auth...); w.Code != http.StatusNoContent || h.messages.hidden != "m1" || h.messages.deleted != "" {
+		t.Fatalf("hide: %d, hidden %q, deleted %q", w.Code, h.messages.hidden, h.messages.deleted)
+	}
+	if w := h.do("DELETE", "/api/v1/messages/m1?for=all", "", auth...); w.Code != http.StatusBadRequest {
+		t.Fatalf("a bad for: %d", w.Code)
+	}
+	if w := h.do("DELETE", "/api/v1/messages/m1?for=me", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("hide without a token: %d", w.Code)
+	}
+
+	// Edit: the message as the caller's own, with when it was edited.
+	w := h.do("PATCH", "/api/v1/messages/m1", `{"text":"привет!"}`, auth...)
+	edited := decode[struct {
+		Text          string  `json:"text"`
+		Out           bool    `json:"out"`
+		EditedAt      *string `json:"editedAt"`
+		EditableUntil string  `json:"editableUntil"`
+	}](t, w)
+	if w.Code != http.StatusOK || h.messages.edited != "m1/привет!" || !edited.Out || edited.EditedAt == nil || edited.EditableUntil == "" {
+		t.Fatalf("edit: %d %+v, edited %q", w.Code, edited, h.messages.edited)
+	}
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x"}`); w.Code != http.StatusUnauthorized {
+		t.Fatalf("edit without a token: %d", w.Code)
+	}
+
+	// Search: all dialogs, each message with who is on the other side.
+	w = h.do("GET", "/api/v1/messages/search?q=%D0%BC%D0%BE%D1%80%D0%B5&cursor=m10", "", auth...)
+	found := decode[struct {
+		Messages []struct {
+			Peer    map[string]any `json:"peer"`
+			Message struct {
+				ID  string `json:"id"`
+				Out bool   `json:"out"`
+			} `json:"message"`
+		} `json:"messages"`
+		NextCursor string `json:"nextCursor"`
+	}](t, w)
+	if w.Code != http.StatusOK || h.messages.searched != "море" || h.messages.peerID != "" || h.messages.cursor != "m10" || found.NextCursor != "m8" ||
+		len(found.Messages) == 0 || found.Messages[0].Peer["nickname"] != "bob" || found.Messages[0].Message.ID != "m9" || found.Messages[0].Message.Out {
+		t.Fatalf("search: %d %+v, asked for %q with %q", w.Code, found, h.messages.searched, h.messages.peerID)
+	}
+
+	// In one dialog: the peer by nickname.
+	if w = h.do("GET", "/api/v1/messages/search?q=x&peer=bob", "", auth...); w.Code != http.StatusOK || h.messages.peerID != "u2" {
+		t.Fatalf("search with bob: %d, peer %q", w.Code, h.messages.peerID)
+	}
+	if w = h.do("GET", "/api/v1/messages/search?q=x&peer=nobody", "", auth...); w.Code != http.StatusNotFound {
+		t.Fatalf("search with nobody: %d", w.Code)
+	}
+	if w = h.do("GET", "/api/v1/messages/search?q=x", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("search without a token: %d", w.Code)
+	}
+}

@@ -807,6 +807,9 @@ func (f *fakeNotifications) MarkRead(_ context.Context, token, id string) error 
 // account that is gone.
 type fakeMessages struct {
 	token, peerID, cursor, after, sentText, markedUpTo, deleted string
+	// hidden is the message deleted for the caller alone, edited "id/text"
+	// of the last edit, searched the last query.
+	hidden, edited, searched string
 	// peerWrote: the peer has written to the caller.
 	peerWrote bool
 	// dialogs replace the default page when set.
@@ -878,6 +881,27 @@ func (f *fakeMessages) History(_ context.Context, token, peerID, cursor, after s
 func (f *fakeMessages) Delete(_ context.Context, token, id string) error {
 	f.token, f.deleted = token, id
 	return f.err
+}
+
+func (f *fakeMessages) Hide(_ context.Context, token, id string) error {
+	f.token, f.hidden = token, id
+	return f.err
+}
+
+func (f *fakeMessages) Edit(_ context.Context, token, id, text string) (model.Message, error) {
+	f.token, f.edited = token, id+"/"+text
+	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Text: text, EditedAt: albumTime, EditableUntil: albumTime}, f.err
+}
+
+// Search finds a message from bob (u2) and one to cat (u3), whose page
+// is deleted.
+func (f *fakeMessages) Search(_ context.Context, token, peerID, query, cursor string, _ int) (model.FoundMessages, error) {
+	f.token, f.peerID, f.searched, f.cursor = token, peerID, query, cursor
+
+	return model.FoundMessages{Messages: []model.Message{
+		{ID: "m9", SenderID: "u2", RecipientID: "u1", Text: "на море", CreatedAt: albumTime},
+		{ID: "m8", SenderID: "u1", RecipientID: "u3", Text: "море", CreatedAt: albumTime},
+	}, NextCursor: "m8"}, f.err
 }
 
 func (f *fakeMessages) MarkRead(_ context.Context, token, peerID, upTo string) error {

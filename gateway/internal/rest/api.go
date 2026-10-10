@@ -183,6 +183,12 @@ type Messages interface {
 	History(ctx context.Context, accessToken, peerID, cursor, after string, limit int) (model.MessagePage, error)
 	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
 	Delete(ctx context.Context, accessToken, id string) error
+	// Hide deletes a message for the caller alone; Edit changes what
+	// their own says; Search finds theirs that say query, in the dialog
+	// with peerID or, for "", in all.
+	Hide(ctx context.Context, accessToken, id string) error
+	Edit(ctx context.Context, accessToken, id, text string) (model.Message, error)
+	Search(ctx context.Context, accessToken, peerID, query, cursor string, limit int) (model.FoundMessages, error)
 	HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error)
 	Subscribe(ctx context.Context, accessToken string) (model.MessageEvents, error)
 }
@@ -315,6 +321,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/dialogs/{nickname}/messages", a.listMessages)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/messages", a.sendMessage)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/read", a.markDialogRead)
+	mux.HandleFunc("GET /api/v1/messages/search", a.searchMessages)
+	mux.HandleFunc("PATCH /api/v1/messages/{id}", a.editMessage)
 	mux.HandleFunc("DELETE /api/v1/messages/{id}", a.deleteMessage)
 
 	mux.HandleFunc("POST /api/v1/clubs", a.createClub)

@@ -1084,18 +1084,108 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/messages/search:
+    get:
+      summary: Find your messages by what they say
+      description: Newest first, each with who is on the other side; messages you deleted for yourself are not found.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: q
+          in: query
+          required: true
+          description: Text the messages say, in any case
+          schema: { type: string, minLength: 1, maxLength: 100 }
+        - name: peer
+          in: query
+          description: A nickname, to search the dialog with that user only
+          schema: { type: string }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of found messages
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [messages, nextCursor]
+                properties:
+                  messages:
+                    type: array
+                    items:
+                      type: object
+                      required: [peer, message]
+                      properties:
+                        peer: { $ref: "#/components/schemas/Author" }
+                        message: { $ref: "#/components/schemas/Message" }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/messages/{id}:
-    delete:
-      summary: Delete your message from both sides of the dialog
+    patch:
+      summary: Edit your message
       description: |
-        Within a day of sending (`deletableUntil`), as "delete for everyone"
-        in VK; its photos go too. Both sides get a `delete` event.
+        Within a day of sending (`editableUntil`), as in VK: what it says;
+        its photos and the post it shares stay, and without them the text
+        may not be empty. Both sides get an `edit` event.
       security: [{ bearer: [] }]
       parameters:
         - name: id
           in: path
           required: true
           schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 60000 }
+      responses:
+        "200":
+          description: The edited message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Message" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`the message can no longer be edited` after `editableUntil`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Delete a message, for both sides or for yourself
+      description: |
+        Without `for`, your own message from both sides, within a day of
+        sending (`deletableUntil`), as "delete for everyone" in VK; its
+        photos go too, and both sides get a `delete` event. With `for=me`,
+        any message of your dialog for you alone ("Удалить у себя"): the
+        peer keeps it, and your other pages get the `delete` event.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: for
+          in: query
+          schema: { type: string, enum: [me] }
       responses:
         "204": { description: Deleted }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -2408,8 +2498,11 @@ paths:
           `peer` (Author) and `message` (Message).
         - `read` — the dialog with `peer` was read up to `upTo`, by you on
           another page (`byMe`) or by the peer.
-        - `delete` — message `id` of the dialog with `peer` was deleted by
-          its sender, you or the peer.
+        - `delete` — message `id` of the dialog with `peer` is gone from it:
+          taken back from both sides by its sender, you or the peer, or
+          deleted by you for yourself on another page.
+        - `edit` — a message of the dialog with `peer` says something else
+          now: `peer` and `message` (Message; `read` is not told).
         - `notification` — `change` is `new`, `gone` or `read`.
 
         While it is open, you are on the site ("Онлайн" on your page).
@@ -3370,7 +3463,14 @@ components:
         read: { type: boolean, description: "Its recipient has read it" }
         deletableUntil:
           type: string
-          description: "Until when you may delete your message (date-time); empty for the peer's"
+          description: "Until when you may delete your message from both sides (date-time); empty for the peer's"
+        editableUntil:
+          type: string
+          description: "Until when you may edit your message (date-time); empty for the peer's"
+        editedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When its sender edited it; null if never
         post: { type: string, description: "A post shared in it; empty for none" }
         repost:
           description: The shared post, as inside a repost; absent in the list of dialogs and without one

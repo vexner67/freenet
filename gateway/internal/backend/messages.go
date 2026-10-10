@@ -105,6 +105,44 @@ func (m *Messages) Delete(ctx context.Context, accessToken, id string) error {
 	return nil
 }
 
+// Hide deletes a message of the caller's dialog for the caller alone.
+func (m *Messages) Hide(ctx context.Context, accessToken, id string) error {
+	_, err := m.api.HideMessage(withToken(ctx, accessToken), &messagev1.HideMessageRequest{Id: id})
+	if err != nil {
+		return errs.Wrap("m.api.HideMessage", fromStatus(err))
+	}
+
+	return nil
+}
+
+// Edit changes what the caller's message says.
+func (m *Messages) Edit(ctx context.Context, accessToken, id, text string) (model.Message, error) {
+	resp, err := m.api.EditMessage(withToken(ctx, accessToken), &messagev1.EditMessageRequest{Id: id, Text: text})
+	if err != nil {
+		return model.Message{}, errs.Wrap("m.api.EditMessage", fromStatus(err))
+	}
+
+	return toMessage(resp.GetMessage()), nil
+}
+
+// Search finds the caller's messages that say query, in the dialog with
+// peerID or, for "", in all of theirs.
+func (m *Messages) Search(ctx context.Context, accessToken, peerID, query, cursor string, limit int) (model.FoundMessages, error) {
+	resp, err := m.api.SearchMessages(withToken(ctx, accessToken), &messagev1.SearchMessagesRequest{
+		PeerId: peerID, Query: query, Cursor: cursor, Limit: toLimit(limit),
+	})
+	if err != nil {
+		return model.FoundMessages{}, errs.Wrap("m.api.SearchMessages", fromStatus(err))
+	}
+
+	found := model.FoundMessages{Messages: make([]model.Message, 0, len(resp.GetMessages())), NextCursor: resp.GetNextCursor()}
+	for _, pm := range resp.GetMessages() {
+		found.Messages = append(found.Messages, toMessage(pm))
+	}
+
+	return found, nil
+}
+
 // HasMessagesFrom tells whether peerID has ever written to the caller.
 func (m *Messages) HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error) {
 	resp, err := m.api.HasMessagesFrom(withToken(ctx, accessToken), &messagev1.HasMessagesFromRequest{PeerId: peerID})
@@ -137,6 +175,12 @@ func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.Mes
 			return model.MessageEvent{Deleted: &model.DeletedMessage{ID: d.GetId(), SenderID: d.GetSenderId(), RecipientID: d.GetRecipientId()}}, nil
 		}
 
+		if e := resp.GetEdited(); e != nil {
+			edited := toMessage(e)
+
+			return model.MessageEvent{Edited: &edited}, nil
+		}
+
 		msg := toMessage(resp.GetMessage())
 
 		return model.MessageEvent{Message: &msg}, nil
@@ -154,5 +198,7 @@ func toMessage(pm *messagev1.Message) model.Message {
 		Read:           pm.GetRead(),
 		DeletableUntil: fromTimestamp(pm.GetDeletableUntil()),
 		PostID:         pm.GetPostId(),
+		EditedAt:       fromTimestamp(pm.GetEditedAt()),
+		EditableUntil:  fromTimestamp(pm.GetEditableUntil()),
 	}
 }

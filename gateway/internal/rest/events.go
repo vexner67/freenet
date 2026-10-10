@@ -44,8 +44,10 @@ type (
 		Notifications *int   `json:"notifications,omitempty"`
 	}
 
+	// messageEventJSON: a new message of the dialog with Peer, or one its
+	// sender edited ("edit": it says something else now).
 	messageEventJSON struct {
-		Type    string      `json:"type"` // "message"
+		Type    string      `json:"type"` // "message" or "edit"
 		Peer    authorJSON  `json:"peer"`
 		Message messageJSON `json:"message"`
 	}
@@ -60,7 +62,7 @@ type (
 	}
 
 	// deleteEventJSON: message ID of the dialog with Peer is gone, taken
-	// back by its sender.
+	// back by its sender or deleted by the caller for themselves.
 	deleteEventJSON struct {
 		Type string     `json:"type"` // "delete"
 		Peer authorJSON `json:"peer"`
@@ -327,7 +329,17 @@ func (s *eventSession) messageEvent(e model.MessageEvent) (any, error) {
 		return deleteEventJSON{Type: "delete", Peer: peer, ID: d.ID}, nil
 	}
 
-	m := *e.Message
+	kind := "message"
+	m := e.Message
+	if e.Edited != nil {
+		kind, m = "edit", e.Edited
+	}
+
+	return s.shownMessage(kind, *m)
+}
+
+// shownMessage is a message of the caller's dialog as an event of kind.
+func (s *eventSession) shownMessage(kind string, m model.Message) (any, error) {
 	peerID := m.SenderID
 	if peerID == s.me {
 		peerID = m.RecipientID
@@ -343,7 +355,7 @@ func (s *eventSession) messageEvent(e model.MessageEvent) (any, error) {
 		return nil, err
 	}
 
-	return messageEventJSON{Type: "message", Peer: peer, Message: j[0]}, nil
+	return messageEventJSON{Type: kind, Peer: peer, Message: j[0]}, nil
 }
 
 // peer is the profile of the user with id; false when the account is gone.
