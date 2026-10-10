@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <title>Мои Настройки | Freenet</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="stylesheet" href="/static/style.css">
   <script type="module" src="/static/settings.js"></script>
 </head>
@@ -131,8 +133,36 @@
               <td class="control"><select id="avatar-style"></select></td>
             </tr>
             <tr>
+              <th><label for="theme-select">Стиль</label></th>
+              <td class="control"><select id="theme-select"></select></td>
+            </tr>
+            <tr>
+              <th><label for="rating">Рейтинг</label></th>
+              <td class="control"><select id="rating"></select></td>
+            </tr>
+            <tr>
+              <th><label for="nsfw">NSFW-контент</label></th>
+              <td class="control"><select id="nsfw"></select></td>
+            </tr>
+            <tr>
+              <th><label for="post-view">Вид постов</label></th>
+              <td class="control"><select id="post-view"></select></td>
+            </tr>
+            <tr>
               <th><label for="main-page">Главная страница</label></th>
               <td class="control"><select id="main-page"></select></td>
+            </tr>
+            <tr>
+              <th></th>
+              <td class="control checks"><label><input type="checkbox" id="theme-device"> Применить стиль только для этого устройства</label></td>
+            </tr>
+          </table>
+
+          <div class="section-title">Часовой пояс</div>
+          <table class="form">
+            <tr>
+              <th><label for="timezone">Часовой пояс</label></th>
+              <td class="control"><select id="timezone"></select></td>
             </tr>
           </table>
 

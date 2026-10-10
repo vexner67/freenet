@@ -17,6 +17,9 @@ export function editPost(post, node, { onSaved }) {
   const list = el('div', { className: 'attachments', hidden: true });
   const input = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/gif,image/webp', multiple: true, hidden: true });
   const attachLink = el('a', { className: 'attach-link', textContent: 'Прикрепить фотографию' });
+  // "Содержит NSFW-контент", as in openvk's form; a repost is not marked:
+  // the post it shares is.
+  const nsfw = el('input', { type: 'checkbox', checked: Boolean(post.nsfw) });
   const save = el('button', { className: 'button', type: 'submit', textContent: 'Сохранить' });
   const cancel = el('button', { className: 'button secondary', type: 'button', textContent: 'Отмена' });
 
@@ -31,6 +34,7 @@ export function editPost(post, node, { onSaved }) {
       el('span', {}, isRepost ? null : attachLink),
       el('span', { className: 'post-edit-buttons' }, save, cancel),
     ),
+    isRepost ? null : el('div', { className: 'post-options' }, el('label', {}, nsfw, ' Содержит NSFW-контент')),
     input,
     error,
   );
@@ -52,7 +56,7 @@ export function editPost(post, node, { onSaved }) {
     save.disabled = true;
 
     try {
-      const edited = await api.editPost(post.id, text.value, attachments?.ids() ?? []);
+      const edited = await api.editPost(post.id, text.value, attachments?.ids() ?? [], nsfw.checked);
       close();
       onSaved(edited);
     } catch (e) {

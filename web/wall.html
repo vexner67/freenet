@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <title>Стена | Freenet</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="stylesheet" href="/static/style.css">
   <script type="module" src="/static/wall-page.js"></script>
 </head>
@@ -57,6 +59,7 @@
             <div class="post-options">
               <label id="post-from-club-label" hidden><input type="checkbox" id="post-from-club" checked> От имени сообщества</label>
               <label id="post-signed-label" hidden><input type="checkbox" id="post-signed"> Подпись автора</label>
+              <label id="post-nsfw-label"><input type="checkbox" id="post-nsfw"> Содержит NSFW-контент</label>
             </div>
             <input type="file" id="post-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
           </form>

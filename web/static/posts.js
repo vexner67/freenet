@@ -5,7 +5,7 @@
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
 import { commentsLink, formatPostDate, genitiveName, shareLink, updatedPhoto, wrote } from './labels.js';
-import { avatarURL, el, fullName, pagePath, textNode } from './layout.js';
+import { avatarURL, el, fullName, isMicroblog, pagePath, textNode } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
@@ -38,6 +38,9 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   const date = el('div', { className: 'post-date' });
   const content = el('div', { className: 'post-content' });
   const menu = el('span', {});
+  // openvk's "Микроблог": no "написал" after the name, the date down in
+  // the menu and "Поделиться" an arrow next to the heart.
+  const microblog = isMicroblog();
 
   function render() {
     date.replaceChildren(
@@ -55,12 +58,14 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     );
     menu.replaceChildren(...separated(menuLinks()));
     node.classList.toggle('pinned', Boolean(post.pinned));
+    // Marked or unmarked by an edit, it is blurred or shown again.
+    node.classList.toggle('post-nsfw', Boolean(post.nsfw));
   }
 
   function menuLinks() {
     const links = [];
     if (withCommentsLink) links.push(el('a', { href: postPath(post), textContent: commentsLink(post.comments) }));
-    links.push(shareButton(post, canLike));
+    if (!microblog) links.push(shareButton(post, canLike));
     if (canEdit(post, viewer)) links.push(el('a', { textContent: 'Редактировать', onclick: edit }));
     if (onDelete) links.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(post, node) }));
     if (moderates || (viewer && wallOwnerID(post) === viewer.id)) {
@@ -143,23 +148,41 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
-        wroteBy(post),
+        microblog && !post.avatarUpdate ? null : wroteBy(post),
         ...(onWallOf !== undefined && post.wall ? [' ', wallLink(post.wall, onWallOf)] : []),
-        date,
+        microblog ? null : date,
       ),
       content,
       post.repost ? sharedNode(post.repost) : null,
       post.sharedPhoto ? sharedPhotoNode(post.sharedPhoto) : null,
       el('div', { className: 'post-menu' },
-        menu,
-        likeButton(post, { canLike, onError }),
+        el('span', {}, microblog ? date : null, menu),
+        el('span', { className: 'post-buttons' },
+          microblog ? shareButton(post, canLike, { icon: true }) : null,
+          likeButton(post, { canLike, onError }),
+        ),
       ),
     ),
   );
 
+  revealOnClick(content);
   render();
 
   return node;
+}
+
+// revealOnClick shows a post marked as adult to whoever clicks its blurred
+// content, as openvk does, and not to a guest. content is the blurred part
+// of the post or of the shared post.
+function revealOnClick(content) {
+  content.addEventListener('click', (event) => {
+    const marked = content.closest('.post-nsfw, .shared-nsfw');
+    if (!marked || document.body.classList.contains('nsfw-shown')) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    if (!document.body.classList.contains('guest')) marked.classList.remove('post-nsfw', 'shared-nsfw');
+  }, true);
 }
 
 // canEdit: the author edits a post until editableUntil, a week after
@@ -205,8 +228,13 @@ export function sharedNode(shared) {
   }
 
   const path = pagePath(shared.author);
+  const content = el('div', { className: 'shared-content' },
+    shared.text ? textNode(shared.text) : null,
+    photosNode(shared.photos ?? []),
+  );
+  revealOnClick(content);
 
-  return el('div', { className: 'post-shared' },
+  return el('div', { className: 'post-shared' + (shared.nsfw ? ' shared-nsfw' : '') },
     el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(shared.author, 'small'), alt: '' })),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
@@ -215,8 +243,7 @@ export function sharedNode(shared) {
         ...(shared.wall ? [' ', wallLink(shared.wall, null)] : []),
         el('div', { className: 'post-date' }, el('a', { href: postPath(shared), textContent: formatPostDate(shared.createdAt) })),
       ),
-      shared.text ? textNode(shared.text) : null,
-      photosNode(shared.photos ?? []),
+      content,
       shared.repostOf ? el('a', { className: 'post-shared-link', href: postPath({ id: shared.repostOf }), textContent: 'Открыть запись' }) : null,
     ),
   );
@@ -224,15 +251,25 @@ export function sharedNode(shared) {
 
 // shareButton is "Поделиться (N)"; it changes post.reposts, as likeButton
 // changes the likes.
-function shareButton(post, canShare) {
-  const button = el(canShare ? 'a' : 'span', { textContent: shareLink(post.reposts) });
+// With icon it is the arrow and the number of openvk's "Микроблог".
+function shareButton(post, canShare, { icon = false } = {}) {
+  const count = el('span', { className: 'like-count' });
+  const button = icon
+    ? el(canShare ? 'a' : 'span', { className: 'like share-icon', title: 'Поделиться' }, arrow(), count)
+    : el(canShare ? 'a' : 'span', {});
+
+  function render() {
+    if (icon) count.textContent = post.reposts > 0 ? String(post.reposts) : '';
+    else button.textContent = shareLink(post.reposts);
+  }
 
   if (canShare) {
     button.addEventListener('click', () => openShare(post, () => {
       post.reposts++;
-      button.textContent = shareLink(post.reposts);
+      render();
     }));
   }
+  render();
 
   return button;
 }
@@ -321,8 +358,17 @@ export function likeButton(item, { canLike = false, onError, like = api.like, un
 }
 
 function heart() {
+  return icon('M5.5 9.6 1.3 5.4C.1 4.2.1 2.2 1.3 1 2.5-.2 4.4-.1 5.5 1.3 6.6-.1 8.5-.2 9.7 1c1.2 1.2 1.2 3.2 0 4.4Z');
+}
+
+// arrow is the mark of a repost: an arrow turning to the right.
+function arrow() {
+  return icon('M6.5 0 11 4 6.5 8V5.5C3.5 5.5 1.5 6.6 0 9.5 0 5.5 2.5 2.7 6.5 2.5Z');
+}
+
+function icon(d) {
   const path = document.createElementNS(SVG, 'path');
-  path.setAttribute('d', 'M5.5 9.6 1.3 5.4C.1 4.2.1 2.2 1.3 1 2.5-.2 4.4-.1 5.5 1.3 6.6-.1 8.5-.2 9.7 1c1.2 1.2 1.2 3.2 0 4.4Z');
+  path.setAttribute('d', d);
 
   const svg = document.createElementNS(SVG, 'svg');
   svg.setAttribute('viewBox', '0 0 11 10');

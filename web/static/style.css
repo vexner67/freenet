@@ -870,3 +870,45 @@ a.like:hover svg { opacity: .7; }
    "Показать больше". */
 .post-text.collapsed { max-height: 115px; overflow: hidden; }
 .post-text-more { display: block; margin-top: 2px; cursor: pointer; }
+
+/* "Содержит NSFW-контент": the content of a post marked as adult is
+   blurred until clicked, as on openvk; whoever chose "Показывать" in the
+   settings sees it as any other. */
+body:not(.nsfw-shown) .post-nsfw > .post-main > .post-content,
+body:not(.nsfw-shown) .shared-nsfw .shared-content { position: relative; overflow: hidden; min-height: 40px; cursor: pointer; }
+body:not(.nsfw-shown) .post-nsfw > .post-main > .post-content > *,
+body:not(.nsfw-shown) .shared-nsfw .shared-content > * { filter: saturate(.8) blur(28px); pointer-events: none; }
+body:not(.nsfw-shown) .post-nsfw > .post-main > .post-content::after,
+body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
+  content: "Данный пост может содержать 18+ контент";
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: hsla(0, 0%, 0%, .7);
+  color: #fff;
+  text-align: center;
+}
+/* The box of the form shows with the form opened, as openvk's. */
+.wall-form:not(.expanded) #post-nsfw-label { display: none; }
+.post-edit .post-options { margin: 4px 0; }
+
+/* "Рейтинг" of the settings: no gauge on the pages its owner reads. */
+.rating-hidden .profile-hints { display: none; }
+
+/* openvk's "Микроблог" ("Вид постов"): no grey bar over a post, the date
+   down in its menu, and a line under each. */
+.post-buttons { display: inline-flex; align-items: center; gap: 4px; }
+.posts-microblog .post { margin-bottom: 0; padding: 5px 0; border-bottom: 1px solid #ddd; }
+.posts-microblog .post-shared { border-bottom: 0; }
+.posts-microblog .post-author { padding: 0 3px 3px; background: transparent; border: 0; }
+.posts-microblog .post-text,
+.posts-microblog .post-photos { padding-top: 0; border-bottom: 0; }
+.posts-microblog .post-menu { font-size: 10px; }
+.posts-microblog .post-menu .post-date { display: inline; margin-right: 8px; color: grey; font-size: 10px; }
+.posts-microblog .post-menu .post-date a { color: grey; }
+.posts-microblog .post-buttons .like { padding: 2px 4px; border-radius: 2px; transition: background-color .2s; }
+.posts-microblog .post-buttons a.like:hover { background: #f0f0f0; }
+.posts-microblog .comment { padding: 5px 0 0; border-top: 1px solid #ddd; border-bottom: 0; }

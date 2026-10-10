@@ -3,7 +3,9 @@
 <head>
   <meta charset="utf-8">
   <title>Freenet</title>
-  <link rel="icon" href="data:,">
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
   <link rel="stylesheet" href="/static/style.css">
   <script type="module" src="/static/profile.js"></script>
 </head>
@@ -105,6 +107,9 @@
                   <span class="hint" id="post-counter"></span>
                 </span>
                 <button class="button" type="submit" id="post-submit">Отправить</button>
+              </div>
+              <div class="post-options">
+                <label id="post-nsfw-label"><input type="checkbox" id="post-nsfw"> Содержит NSFW-контент</label>
               </div>
               <input type="file" id="post-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
             </form>
