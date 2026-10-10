@@ -66,7 +66,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     );
     content.replaceChildren(
       // Whole on the page of the post, which has no link to open it.
-      post.text ? textNode(post.text, { whole: !withCommentsLink }) : '',
+      post.text ? textNode(post.text, { whole: !withCommentsLink, rest: post.textCut ? () => wholeText(post) : null }) : '',
       photosNode(post.photos ?? []) ?? '',
       signatureNode(post.signer) ?? '',
     );
@@ -125,12 +125,20 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     render();
   }
 
-  function edit() {
+  // The form edits all the post says, not the beginning a list carried.
+  async function edit() {
+    if (node.classList.contains('editing')) return;
+
+    try {
+      await wholeText(post);
+    } catch {
+      return;
+    }
     if (node.classList.contains('editing')) return;
 
     editPost(post, node, {
       onSaved: (edited) => {
-        Object.assign(post, edited);
+        Object.assign(post, { textCut: false }, edited);
         render();
       },
     });
@@ -269,6 +277,17 @@ export function wallOwnerID(post) {
   return post.wall?.id ?? post.author.id;
 }
 
+// wholeText loads all a post says into it: a list carried its beginning.
+async function wholeText(post) {
+  if (post.textCut) {
+    const whole = await api.post(post.id);
+    post.text = whole.text;
+    post.textCut = false;
+  }
+
+  return post.text;
+}
+
 // sharedNode is the post a repost shares, compact as on openvk: a small
 // avatar, the name, the date, the text and photos, no menu. A post shared
 // by the shared post itself is a link, not one more box inside.
@@ -279,7 +298,7 @@ export function sharedNode(shared) {
 
   const path = pagePath(shared.author);
   const content = el('div', { className: 'shared-content' },
-    shared.text ? textNode(shared.text) : null,
+    shared.text ? textNode(shared.text, { rest: shared.textCut ? () => wholeText(shared) : null }) : null,
     photosNode(shared.photos ?? []),
   );
   revealOnClick(content);

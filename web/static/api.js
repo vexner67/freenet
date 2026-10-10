@@ -193,6 +193,8 @@ export const api = {
   unlike: (postID) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
 
   // With a session comments also say whether you like them.
+  // commentText is all a comment says: lists carry the beginning.
+  commentText: (id) => optional('GET', `/api/v1/comments/${encodeURIComponent(id)}/text`),
   comments: (postID, cursor = '') => optional('GET', page(`/api/v1/posts/${encodeURIComponent(postID)}/comments`, cursor, 0)),
   // replyTo answers a comment of the post, "" for none; fromClub speaks for
   // the community of its wall ("От имени сообщества").

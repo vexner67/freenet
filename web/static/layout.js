@@ -43,15 +43,26 @@ export function mentionNodes(text) {
 }
 
 // textNode shows what a post or a comment says. Long text is cut short
-// with openvk's "Показать больше", unless whole.
-export function textNode(text, { whole = false } = {}) {
+// with openvk's "Показать больше", unless whole. A list carries only the
+// beginning of a text of thousands of characters: rest, if given, loads
+// all of it when asked to show more.
+export function textNode(text, { whole = false, rest = null } = {}) {
   const node = el('div', { className: 'post-text' }, ...mentionNodes(text));
-  if (whole || !isLongText(text)) return node;
+  if (whole || !(rest || isLongText(text))) return node;
 
   node.classList.add('collapsed');
 
   const more = el('a', { className: 'post-text-more', textContent: 'Показать больше' });
-  more.addEventListener('click', () => {
+  more.addEventListener('click', async () => {
+    if (rest) {
+      try {
+        node.replaceChildren(...mentionNodes(await rest()));
+      } catch {
+        // The link stays to try again.
+        return;
+      }
+    }
+
     node.classList.remove('collapsed');
     more.remove();
   });
@@ -226,7 +237,11 @@ export function applyInterface(me) {
   ].filter(Boolean));
   showCounter('messages');
   showCounter('notifications');
-  showPinnedClubs(menu);
+
+  // /me tells the clubs kept in the menu; an answer that is not /me's
+  // (saved settings) leaves those the page already knows.
+  if (me.pinnedClubs) pinnedClubs = me.pinnedClubs;
+  drawPinnedClubs(menu);
 }
 
 // renderChrome fills the header and the sidebar for a signed-in user or a guest.
@@ -284,22 +299,30 @@ function renderDeactivatedChrome(me, links, menu) {
   if (decodeURIComponent(location.pathname) !== own) location.replace(own);
 }
 
-// showPinnedClubs adds the clubs you run and keep in the menu under it,
-// after a divider, as openvk does ("Добавить в левое меню"). A nicety: a
-// failure leaves the menu as it is.
-export async function showPinnedClubs(menu) {
+// The clubs you run and keep in the left menu ("Добавить в левое меню"),
+// as /me told them.
+let pinnedClubs = [];
+
+// drawPinnedClubs adds them under the menu, after a divider, as openvk
+// does.
+function drawPinnedClubs(menu) {
   if (!menu) return;
 
+  menu.querySelector('.menu-clubs')?.remove();
+  if (pinnedClubs.length === 0) return;
+
+  menu.append(el('div', { className: 'menu-clubs' },
+    el('div', { className: 'menu-divider' }),
+    ...pinnedClubs.map((c) => el('a', { href: pagePath({ ...c, club: true }), textContent: shortened(c.name, PINNED_NAME_LENGTH) })),
+  ));
+}
+
+// showPinnedClubs asks for them again, after one is added or removed. A
+// nicety: a failure leaves the menu as it is.
+export async function showPinnedClubs(menu) {
   try {
-    const { clubs } = await api.pinnedClubs();
-
-    menu.querySelector('.menu-clubs')?.remove();
-    if (clubs.length === 0) return;
-
-    menu.append(el('div', { className: 'menu-clubs' },
-      el('div', { className: 'menu-divider' }),
-      ...clubs.map((c) => el('a', { href: pagePath({ ...c, club: true }), textContent: shortened(c.name, PINNED_NAME_LENGTH) })),
-    ));
+    pinnedClubs = (await api.pinnedClubs()).clubs;
+    drawPinnedClubs(menu);
   } catch {
     // The page works without it.
   }
