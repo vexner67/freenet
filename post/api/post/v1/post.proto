@@ -212,6 +212,8 @@ message Post {
   bool archived = 20;
   // Nobody comments the post anymore.
   bool comments_closed = 21;
+  // The author marked the post as adult ("Содержит NSFW-контент").
+  bool nsfw = 22;
 }
 
 message Comment {
@@ -317,6 +319,8 @@ message CreatePostRequest {
   // or a community's they run, as the caller has checked; one photo and
   // nothing else. It speaks for the community on its wall.
   bool avatar_update = 7;
+  // The post is marked as adult.
+  bool nsfw = 8;
 }
 
 message CreatePostResponse {
@@ -351,6 +355,8 @@ message EditPostRequest {
   // that the photos are the author's.
   string text = 2;
   repeated string photo_ids = 3;
+  // Marks the post as adult or takes the mark off; unset leaves it.
+  optional bool nsfw = 4;
 }
 
 message EditPostResponse {
@@ -443,6 +449,8 @@ message ListFeedRequest {
   string cursor = 2;
   // 1-50; anything else means 20.
   int32 limit = 3;
+  // Leaves the posts marked as adult out, as the reader's settings say.
+  bool hide_nsfw = 5;
 }
 
 message ListFeedResponse {

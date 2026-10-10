@@ -19,7 +19,7 @@ type PostService interface {
 	Create(ctx context.Context, in service.CreateInput) (*post.Post, error)
 	Repost(ctx context.Context, in service.RepostInput) (*post.Post, error)
 	Delete(ctx context.Context, requesterID, postID uuid.UUID) error
-	Edit(ctx context.Context, requesterID, postID uuid.UUID, text post.Text, photos post.Photos) (*post.Post, bool, error)
+	Edit(ctx context.Context, requesterID, postID uuid.UUID, edit service.PostEdit) (*post.Post, bool, error)
 	Pin(ctx context.Context, requesterID, postID uuid.UUID) error
 	Unpin(ctx context.Context, requesterID, postID uuid.UUID) error
 	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
@@ -165,6 +165,7 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		ClubWall: req.GetClubWall(),
 		FromWall: req.GetFromWall(),
 		Signed:   req.GetSigned(),
+		NSFW:     req.GetNsfw(),
 
 		AvatarUpdate: req.GetAvatarUpdate(),
 	})
@@ -230,7 +231,7 @@ func (h *PostHandler) EditPost(ctx context.Context, req *postv1.EditPostRequest)
 		return nil, err
 	}
 
-	p, liked, err := h.postService.Edit(ctx, requesterID, postID, text, photos)
+	p, liked, err := h.postService.Edit(ctx, requesterID, postID, service.PostEdit{Text: text, Photos: photos, NSFW: req.Nsfw})
 	if err != nil {
 		return nil, err
 	}
@@ -404,7 +405,7 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 		return nil, err
 	}
 
-	sources := service.FeedSources{Authors: authorIDs, Walls: wallIDs}
+	sources := service.FeedSources{Authors: authorIDs, Walls: wallIDs, HideNSFW: req.GetHideNsfw()}
 
 	page, err := h.postService.Feed(ctx, viewerID(ctx), sources, cursor, int(req.GetLimit()))
 	if err != nil {

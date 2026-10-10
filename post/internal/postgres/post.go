@@ -47,9 +47,10 @@ const savePostQuery = `
 		signed,
 		suggested,
 		avatar_update,
-		shared_photo_id
+		shared_photo_id,
+		nsfw
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -88,13 +89,14 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	}
 
 	if content.RepostOf() == uuid.Nil {
-		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, args...); err != nil {
+		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, append(args, p.NSFW())...); err != nil {
 			return errs.Wrap("r.conn.Exec", err)
 		}
 
 		return nil
 	}
 
+	// A repost is never marked as adult: the post it shares is.
 	tag, err := r.conn(ctx).Exec(ctx, saveRepostQuery, append(args, content.RepostOf())...)
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
@@ -127,6 +129,7 @@ const getPostQuery = `
 		shared_photo_id,
 		archived,
 		comments_closed,
+		nsfw,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = $1
@@ -164,6 +167,7 @@ const getPostsQuery = `
 		shared_photo_id,
 		archived,
 		comments_closed,
+		nsfw,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = ANY($1)
@@ -213,7 +217,8 @@ const updatePostQuery = `
 	UPDATE posts
 	SET text = $2,
 		photo_ids = $3,
-		edited_at = $4
+		edited_at = $4,
+		nsfw = $5
 	WHERE id = $1
 `
 
@@ -221,7 +226,7 @@ const updatePostQuery = `
 func (r *PostRepository) Update(ctx context.Context, p *post.Post) error {
 	content := p.Content()
 
-	tag, err := r.conn(ctx).Exec(ctx, updatePostQuery, p.ID(), content.Text().String(), photoIDs(content.Photos()), p.EditedAt())
+	tag, err := r.conn(ctx).Exec(ctx, updatePostQuery, p.ID(), content.Text().String(), photoIDs(content.Photos()), p.EditedAt(), p.NSFW())
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -293,6 +298,7 @@ const getPinnedPostQuery = `
 		shared_photo_id,
 		archived,
 		comments_closed,
+		nsfw,
 		true AS pinned
 	FROM posts
 	WHERE id = (SELECT post_id FROM pinned_posts WHERE wall_id = $1)
@@ -330,6 +336,7 @@ const listPostsByWallQuery = `
 		shared_photo_id,
 		archived,
 		comments_closed,
+		nsfw,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE wall_id = $1
@@ -380,11 +387,13 @@ const listFeedQuery = `
 		shared_photo_id,
 		archived,
 		comments_closed,
+		nsfw,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE ((author_id = ANY($1) AND NOT from_wall) OR wall_id = ANY($2))
 		AND id < $3
 		AND NOT archived
+		AND NOT (nsfw AND $5)
 	ORDER BY id DESC
 	LIMIT $4
 `
@@ -394,7 +403,7 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 		before = newestCursor
 	}
 
-	rows, err := r.conn(ctx).Query(ctx, listFeedQuery, ids(sources.Authors), ids(sources.Walls), before, limit)
+	rows, err := r.conn(ctx).Query(ctx, listFeedQuery, ids(sources.Authors), ids(sources.Walls), before, limit, sources.HideNSFW)
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
@@ -566,7 +575,7 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
 		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested, &s.AvatarUpdate,
-		&photo, &s.Archived, &s.CommentsClosed, &s.Pinned)
+		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -621,6 +630,7 @@ const deletePostsByUserQuery = `
 			shared_photo_id,
 			archived,
 			comments_closed,
+			nsfw,
 			EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	), uncounted AS (
 		UPDATE posts p
@@ -654,6 +664,7 @@ const deletePostsByUserQuery = `
 		shared_photo_id,
 		archived,
 		comments_closed,
+		nsfw,
 		pinned
 	FROM deleted
 `

@@ -450,7 +450,7 @@ func TestPostService_WallAlbum(t *testing.T) {
 
 	// An edit keeps the photos it adds; those it removes stay in the album.
 	edited, _ := post.NewPhotos([]uuid.UUID{second, third})
-	if _, _, err = posts.Edit(ctx, ann, p.ID(), "море", edited); err != nil {
+	if _, _, err = posts.Edit(ctx, ann, p.ID(), service.PostEdit{Text: "море", Photos: edited}); err != nil {
 		t.Fatalf("Edit: %v", err)
 	}
 	if a, _, _ := albums.Get(ctx, wall); a.Photos() != 3 || len(media.copied) != 3 || media.copied[2].From != third {

@@ -116,6 +116,9 @@ type Post struct {
 	archived bool
 	// commentsClosed: the owner of the wall lets nobody comment it anymore.
 	commentsClosed bool
+	// nsfw: the author marked the post as adult ("Содержит NSFW-контент"
+	// of openvk); readers see it blurred until they ask.
+	nsfw bool
 }
 
 // New creates a post by authorID on the wall of wallID. Its UUIDv7 ID
@@ -194,6 +197,7 @@ type Stored struct {
 	Archived     bool
 	// CommentsClosed: nobody comments the post anymore.
 	CommentsClosed bool
+	NSFW           bool
 }
 
 // Restore rebuilds a post from storage without validation or new IDs.
@@ -214,6 +218,7 @@ func Restore(s Stored) *Post {
 		avatarUpdate:   s.AvatarUpdate,
 		archived:       s.Archived,
 		commentsClosed: s.CommentsClosed,
+		nsfw:           s.NSFW,
 	}
 }
 
@@ -235,6 +240,7 @@ func (p *Post) Stored() Stored {
 		AvatarUpdate:   p.avatarUpdate,
 		Archived:       p.archived,
 		CommentsClosed: p.commentsClosed,
+		NSFW:           p.nsfw,
 	}
 }
 
@@ -311,6 +317,20 @@ func (p *Post) OnWallOf(userID uuid.UUID) bool {
 // Archived: the post is put away in the archive of its wall.
 func (p *Post) Archived() bool {
 	return p.archived
+}
+
+// NSFW: the author marked the post as adult.
+func (p *Post) NSFW() bool {
+	return p.nsfw
+}
+
+// Marked is p marked as adult or not, as its author says when writing or
+// editing it. Like Edited, it returns a new post.
+func (p *Post) Marked(nsfw bool) *Post {
+	marked := *p
+	marked.nsfw = nsfw
+
+	return &marked
 }
 
 // CommentsClosed: nobody comments the post anymore.

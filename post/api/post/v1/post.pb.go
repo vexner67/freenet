@@ -184,8 +184,10 @@ type Post struct {
 	Archived bool `protobuf:"varint,20,opt,name=archived,proto3" json:"archived,omitempty"`
 	// Nobody comments the post anymore.
 	CommentsClosed bool `protobuf:"varint,21,opt,name=comments_closed,json=commentsClosed,proto3" json:"comments_closed,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The author marked the post as adult ("Содержит NSFW-контент").
+	Nsfw          bool `protobuf:"varint,22,opt,name=nsfw,proto3" json:"nsfw,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *Post) Reset() {
@@ -361,6 +363,13 @@ func (x *Post) GetArchived() bool {
 func (x *Post) GetCommentsClosed() bool {
 	if x != nil {
 		return x.CommentsClosed
+	}
+	return false
+}
+
+func (x *Post) GetNsfw() bool {
+	if x != nil {
+		return x.Nsfw
 	}
 	return false
 }
@@ -996,7 +1005,9 @@ type CreatePostRequest struct {
 	// The post of the new photo of the wall's owner: the caller's own wall,
 	// or a community's they run, as the caller has checked; one photo and
 	// nothing else. It speaks for the community on its wall.
-	AvatarUpdate  bool `protobuf:"varint,7,opt,name=avatar_update,json=avatarUpdate,proto3" json:"avatar_update,omitempty"`
+	AvatarUpdate bool `protobuf:"varint,7,opt,name=avatar_update,json=avatarUpdate,proto3" json:"avatar_update,omitempty"`
+	// The post is marked as adult.
+	Nsfw          bool `protobuf:"varint,8,opt,name=nsfw,proto3" json:"nsfw,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1076,6 +1087,13 @@ func (x *CreatePostRequest) GetSigned() bool {
 func (x *CreatePostRequest) GetAvatarUpdate() bool {
 	if x != nil {
 		return x.AvatarUpdate
+	}
+	return false
+}
+
+func (x *CreatePostRequest) GetNsfw() bool {
+	if x != nil {
+		return x.Nsfw
 	}
 	return false
 }
@@ -1306,8 +1324,10 @@ type EditPostRequest struct {
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// Text, photos or both, as in CreatePostRequest; the caller has checked
 	// that the photos are the author's.
-	Text          string   `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	PhotoIds      []string `protobuf:"bytes,3,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	Text     string   `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	PhotoIds []string `protobuf:"bytes,3,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	// Marks the post as adult or takes the mark off; unset leaves it.
+	Nsfw          *bool `protobuf:"varint,4,opt,name=nsfw,proto3,oneof" json:"nsfw,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1361,6 +1381,13 @@ func (x *EditPostRequest) GetPhotoIds() []string {
 		return x.PhotoIds
 	}
 	return nil
+}
+
+func (x *EditPostRequest) GetNsfw() bool {
+	if x != nil && x.Nsfw != nil {
+		return *x.Nsfw
+	}
+	return false
 }
 
 type EditPostResponse struct {
@@ -2002,7 +2029,9 @@ type ListFeedRequest struct {
 	// Empty for the newest posts, else next_cursor of the previous page.
 	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	// 1-50; anything else means 20.
-	Limit         int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	// Leaves the posts marked as adult out, as the reader's settings say.
+	HideNsfw      bool `protobuf:"varint,5,opt,name=hide_nsfw,json=hideNsfw,proto3" json:"hide_nsfw,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2063,6 +2092,13 @@ func (x *ListFeedRequest) GetLimit() int32 {
 		return x.Limit
 	}
 	return 0
+}
+
+func (x *ListFeedRequest) GetHideNsfw() bool {
+	if x != nil {
+		return x.HideNsfw
+	}
+	return false
 }
 
 type ListFeedResponse struct {
@@ -6490,7 +6526,7 @@ var File_api_post_v1_post_proto protoreflect.FileDescriptor
 
 const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc1\x05\n" +
+	"\x16api/post/v1/post.proto\x12\apost.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xd5\x05\n" +
 	"\x04Post\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x12\n" +
@@ -6515,7 +6551,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\ravatar_update\x18\x12 \x01(\bR\favatarUpdate\x12&\n" +
 	"\x0fshared_photo_id\x18\x13 \x01(\tR\rsharedPhotoId\x12\x1a\n" +
 	"\barchived\x18\x14 \x01(\bR\barchived\x12'\n" +
-	"\x0fcomments_closed\x18\x15 \x01(\bR\x0ecommentsClosed\"\xc1\x02\n" +
+	"\x0fcomments_closed\x18\x15 \x01(\bR\x0ecommentsClosed\x12\x12\n" +
+	"\x04nsfw\x18\x16 \x01(\bR\x04nsfw\"\xc1\x02\n" +
 	"\aComment\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\apost_id\x18\x02 \x01(\tR\x06postId\x12\x1b\n" +
@@ -6565,7 +6602,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x19PublishSuggestionResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\")\n" +
 	"\x17DeleteSuggestionRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xd4\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xe8\x01\n" +
 	"\x11CreatePostRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\x12\x17\n" +
@@ -6573,7 +6610,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\tclub_wall\x18\x04 \x01(\bR\bclubWall\x12\x1b\n" +
 	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\x12\x16\n" +
 	"\x06signed\x18\x06 \x01(\bR\x06signed\x12#\n" +
-	"\ravatar_update\x18\a \x01(\bR\favatarUpdate\"7\n" +
+	"\ravatar_update\x18\a \x01(\bR\favatarUpdate\x12\x12\n" +
+	"\x04nsfw\x18\b \x01(\bR\x04nsfw\"7\n" +
 	"\x12CreatePostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"\xa9\x01\n" +
 	"\x11RepostPostRequest\x12\x17\n" +
@@ -6586,11 +6624,13 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x12RepostPostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"#\n" +
 	"\x11DeletePostRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"R\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"t\n" +
 	"\x0fEditPostRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
-	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\"5\n" +
+	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x17\n" +
+	"\x04nsfw\x18\x04 \x01(\bH\x00R\x04nsfw\x88\x01\x01B\a\n" +
+	"\x05_nsfw\"5\n" +
 	"\x10EditPostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\" \n" +
 	"\x0ePinPostRequest\x12\x0e\n" +
@@ -6623,13 +6663,14 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"y\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\x96\x01\n" +
 	"\x0fListFeedRequest\x12\x1d\n" +
 	"\n" +
 	"author_ids\x18\x01 \x03(\tR\tauthorIds\x12\x19\n" +
 	"\bwall_ids\x18\x04 \x03(\tR\awallIds\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
-	"\x05limit\x18\x03 \x01(\x05R\x05limit\"X\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x1b\n" +
+	"\thide_nsfw\x18\x05 \x01(\bR\bhideNsfw\"X\n" +
 	"\x10ListFeedResponse\x12#\n" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
@@ -7321,6 +7362,7 @@ func file_api_post_v1_post_proto_init() {
 	if File_api_post_v1_post_proto != nil {
 		return
 	}
+	file_api_post_v1_post_proto_msgTypes[15].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

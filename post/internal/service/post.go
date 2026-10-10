@@ -79,6 +79,9 @@ type PostSwitchRepository interface {
 type FeedSources struct {
 	Authors []uuid.UUID
 	Walls   []uuid.UUID
+	// HideNSFW leaves the posts marked as adult out, as their reader
+	// asked ("Не показывать в ленте").
+	HideNSFW bool
 }
 
 // WallModerators tells who keeps a wall clean besides its owner: the
@@ -204,6 +207,8 @@ type CreateInput struct {
 	ClubWall bool
 	FromWall bool
 	Signed   bool
+	// NSFW marks the post as adult.
+	NSFW bool
 
 	AvatarUpdate bool
 }
@@ -229,6 +234,10 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 	}
 	if err != nil {
 		return nil, errs.Wrap("post.New", err)
+	}
+
+	if in.NSFW {
+		p = p.Marked(true)
 	}
 
 	album, err := s.wallAlbum(ctx, p, content.Photos())
@@ -408,10 +417,20 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 	return nil
 }
 
+// PostEdit is what an edit makes of a post: its text and photos, whole,
+// and, when said, whether it is marked as adult.
+type PostEdit struct {
+	Text   post.Text
+	Photos post.Photos
+	NSFW   *bool
+}
+
 // Edit changes what a post says, by its author within a week (see
 // post.Edited). Media keeps the photos added and deletes those taken away.
 // It returns the edited post and whether the author likes it.
-func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, text post.Text, photos post.Photos) (*post.Post, bool, error) {
+func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, edit PostEdit) (*post.Post, bool, error) {
+	text, photos := edit.Text, edit.Photos
+
 	p, err := s.postRepo.Get(ctx, postID)
 	if err != nil {
 		return nil, false, errs.Wrap("s.postRepo.Get", err)
@@ -420,6 +439,10 @@ func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, t
 	edited, err := p.Edited(requesterID, text, photos, s.now())
 	if err != nil {
 		return nil, false, errs.Wrap("p.Edited", err)
+	}
+
+	if edit.NSFW != nil {
+		edited = edited.Marked(*edit.NSFW)
 	}
 
 	added, removed := diffPhotos(p.Content().Photos(), photos)

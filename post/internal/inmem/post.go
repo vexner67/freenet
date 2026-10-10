@@ -254,7 +254,7 @@ func (r *PostRepository) Update(ctx context.Context, p *post.Post) error {
 
 	// Only what an edit changes: the counters and pin are the store's.
 	stored := old.Stored()
-	stored.Content, stored.EditedAt = p.Content(), p.EditedAt()
+	stored.Content, stored.EditedAt, stored.NSFW = p.Content(), p.EditedAt(), p.NSFW()
 	r.s.posts[p.ID()] = post.Restore(stored)
 
 	return nil
@@ -322,7 +322,7 @@ func (r *PostRepository) Pinned(ctx context.Context, wallID uuid.UUID) (*post.Po
 // with its author, as in PostgreSQL.
 func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSources, before uuid.UUID, limit int) ([]*post.Post, error) {
 	match := func(p *post.Post) bool {
-		if p.Archived() {
+		if p.Archived() || (p.NSFW() && sources.HideNSFW) {
 			return false
 		}
 

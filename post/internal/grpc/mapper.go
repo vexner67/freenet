@@ -120,6 +120,7 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 		Mine:           viewerID != uuid.Nil && p.BelongsTo(viewerID),
 		Archived:       p.Archived(),
 		CommentsClosed: p.CommentsClosed(),
+		Nsfw:           p.NSFW(),
 	}
 
 	if !p.EditedAt().IsZero() {
