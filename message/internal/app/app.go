@@ -223,6 +223,8 @@ func restrictInternal(cfg config.Config) grpc.UnaryServerInterceptor {
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		messagev1.MessageService_SendMessage_FullMethodName: cfg.MessageLimits,
+		// An edit is a message sent again; it has its own counter.
+		messagev1.MessageService_EditMessage_FullMethodName: cfg.MessageLimits,
 	}
 }
 

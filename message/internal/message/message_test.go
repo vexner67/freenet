@@ -193,3 +193,85 @@ func TestCheckDelete(t *testing.T) {
 		})
 	}
 }
+
+func TestMessage_Edited(t *testing.T) {
+	t.Parallel()
+
+	ann, bob := uuid.New(), uuid.New()
+	sent := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	m, _ := message.New(ann, bob, message.RestoreContent("привет", nil, uuid.Nil), sent)
+	photo, _ := message.New(ann, bob, message.RestoreContent("море", message.Photos{uuid.New()}, uuid.Nil), sent)
+
+	edited, err := m.Edited(ann, "привет!", sent.Add(time.Hour))
+	if err != nil || edited.Text() != "привет!" || !edited.EditedAt().Equal(sent.Add(time.Hour)) || edited.ID() != m.ID() {
+		t.Fatalf("Edited = %+v, %v", edited, err)
+	}
+	if m.Text() != "привет" || !m.EditedAt().IsZero() {
+		t.Fatal("the message itself changed")
+	}
+	if !m.EditableUntil().Equal(sent.Add(24 * time.Hour)) {
+		t.Fatalf("EditableUntil = %v", m.EditableUntil())
+	}
+
+	if _, err = m.Edited(bob, "x", sent); !errors.Is(err, message.ErrCannotEdit) {
+		t.Errorf("the recipient edits: %v", err)
+	}
+	if _, err = m.Edited(ann, "x", sent.Add(24*time.Hour+time.Second)); !errors.Is(err, message.ErrEditExpired) {
+		t.Errorf("a day later: %v", err)
+	}
+	if _, err = m.Edited(ann, "", sent); !errors.Is(err, message.ErrTextEmpty) {
+		t.Errorf("no text left: %v", err)
+	}
+	// With photos the words may go; the photos stay.
+	if edited, err = photo.Edited(ann, "", sent); err != nil || len(edited.Photos()) != 1 {
+		t.Errorf("a photo without words: %+v, %v", edited, err)
+	}
+}
+
+func TestMessage_HiddenFrom(t *testing.T) {
+	t.Parallel()
+
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	m, _ := message.New(ann, bob, message.RestoreContent("привет", nil, uuid.Nil), time.Now())
+
+	if !m.VisibleTo(ann) || !m.VisibleTo(bob) || m.VisibleTo(cat) || !m.Between(bob) || m.Between(cat) {
+		t.Fatal("a message is its two sides' only")
+	}
+	if _, err := m.HiddenFrom(cat); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("a stranger hides it: %v", err)
+	}
+
+	forBob, err := m.HiddenFrom(bob)
+	if err != nil || forBob.VisibleTo(bob) || !forBob.VisibleTo(ann) || forBob.Gone() || !m.VisibleTo(bob) {
+		t.Fatalf("hidden from bob = %+v, %v", forBob, err)
+	}
+	if _, err = forBob.HiddenFrom(bob); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("hidden twice: %v", err)
+	}
+
+	gone, err := forBob.HiddenFrom(ann)
+	if err != nil || !gone.Gone() {
+		t.Fatalf("hidden from both = %+v, %v", gone, err)
+	}
+}
+
+func TestNewQuery(t *testing.T) {
+	t.Parallel()
+
+	ann, bob := uuid.New(), uuid.New()
+	m, _ := message.New(ann, bob, message.RestoreContent("Еду на МОРЕ", nil, uuid.Nil), time.Now())
+
+	q, err := message.NewQuery("  море ")
+	if err != nil || q.String() != "море" || !q.Matches(m) {
+		t.Fatalf("NewQuery = %q, %v", q, err)
+	}
+	if other, _ := message.NewQuery("горы"); other.Matches(m) {
+		t.Error("горы matches")
+	}
+	if _, err = message.NewQuery(" \n "); !errors.Is(err, message.ErrQueryEmpty) {
+		t.Errorf("empty: %v", err)
+	}
+	if _, err = message.NewQuery(strings.Repeat("я", 101)); !errors.Is(err, message.ErrQueryTooLong) {
+		t.Errorf("101 characters: %v", err)
+	}
+}

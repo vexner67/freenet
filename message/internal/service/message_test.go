@@ -545,3 +545,222 @@ func TestMessageService_Photos(t *testing.T) {
 		t.Fatalf("%d photo calls outside the transaction", photos.outsideTx)
 	}
 }
+
+func TestMessageService_Hide(t *testing.T) {
+	t.Parallel()
+
+	svc := newService()
+	ctx := context.Background()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	fromAnn := send(t, svc, ann, bob, "привет", "как дела?")
+	fromBob := send(t, svc, bob, ann, "хорошо")[0]
+
+	annEvents, cancelAnn := svc.Subscribe(ann)
+	defer cancelAnn()
+	bobEvents, cancelBob := svc.Subscribe(bob)
+	defer cancelBob()
+
+	if err := svc.Hide(ctx, cat, fromBob.ID()); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("a stranger hides: %v", err)
+	}
+
+	// Ann deletes bob's message for herself: he keeps it and hears nothing.
+	if err := svc.Hide(ctx, ann, fromBob.ID()); err != nil {
+		t.Fatalf("Hide: %v", err)
+	}
+	if e := <-annEvents; e.Deleted == nil || e.Deleted.ID != fromBob.ID() {
+		t.Fatalf("ann's other pages got %+v", e)
+	}
+	select {
+	case e := <-bobEvents:
+		t.Fatalf("bob heard %+v", e)
+	default:
+	}
+
+	anns, _ := svc.History(ctx, ann, bob, uuid.Nil, 50)
+	bobs, _ := svc.History(ctx, bob, ann, uuid.Nil, 50)
+	if !slices.Equal(texts(anns.Messages), []string{"привет", "как дела?"}) || len(bobs.Messages) != 3 {
+		t.Fatalf("ann has %v, bob %v", texts(anns.Messages), texts(bobs.Messages))
+	}
+
+	// Her list of dialogs falls back to what she has left, with nothing
+	// unread; his is as it was.
+	if page, _ := svc.Dialogs(ctx, ann, uuid.Nil, 20); len(page.Dialogs) != 1 || page.Dialogs[0].LastMessage.ID() != fromAnn[1].ID() || page.Dialogs[0].HasUnread() {
+		t.Fatalf("ann's dialogs = %+v", page.Dialogs)
+	}
+	if n, _ := svc.CountUnread(ctx, ann); n != 0 {
+		t.Fatalf("ann's unread = %d", n)
+	}
+	if page, _ := svc.Dialogs(ctx, bob, uuid.Nil, 20); page.Dialogs[0].LastMessage.ID() != fromBob.ID() {
+		t.Fatalf("bob's dialogs = %+v", page.Dialogs)
+	}
+
+	// What she deleted she neither hides, deletes, edits, reads nor finds.
+	if err := svc.Hide(ctx, ann, fromBob.ID()); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("hidden twice: %v", err)
+	}
+	if err := svc.MarkRead(ctx, ann, bob, fromBob.ID()); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("reading up to a hidden message: %v", err)
+	}
+	q, _ := message.NewQuery("хорошо")
+	if page, _ := svc.Search(ctx, ann, uuid.Nil, q, uuid.Nil, 20); len(page.Messages) != 0 {
+		t.Fatalf("ann finds a hidden message: %v", texts(page.Messages))
+	}
+
+	// Her own message she hides from herself; he keeps it. Then she cannot
+	// take it back from both.
+	if err := svc.Hide(ctx, ann, fromAnn[1].ID()); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Delete(ctx, ann, fromAnn[1].ID()); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("deleting for all what she hid: %v", err)
+	}
+	if _, err := svc.Edit(ctx, ann, fromAnn[1].ID(), "x"); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("editing what she hid: %v", err)
+	}
+
+	// Hidden by both, a message is gone for good.
+	if err := svc.Hide(ctx, bob, fromAnn[1].ID()); err != nil {
+		t.Fatal(err)
+	}
+	if bobs, _ = svc.History(ctx, bob, ann, uuid.Nil, 50); !slices.Equal(texts(bobs.Messages), []string{"привет", "хорошо"}) {
+		t.Fatalf("bob has %v", texts(bobs.Messages))
+	}
+
+	// Everything hidden, the dialog leaves her list, not his.
+	if err := svc.Hide(ctx, ann, fromAnn[0].ID()); err != nil {
+		t.Fatal(err)
+	}
+	if page, _ := svc.Dialogs(ctx, ann, uuid.Nil, 20); len(page.Dialogs) != 0 {
+		t.Fatalf("ann's dialogs = %+v", page.Dialogs)
+	}
+	if page, _ := svc.Dialogs(ctx, bob, uuid.Nil, 20); len(page.Dialogs) != 1 {
+		t.Fatalf("bob's dialogs = %+v", page.Dialogs)
+	}
+}
+
+func TestMessageService_HidePhotos(t *testing.T) {
+	t.Parallel()
+
+	store := inmem.NewStore()
+	photos := &fakePhotos{}
+	svc := service.NewMessageService(service.Deps{
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+	})
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	photo := uuid.New()
+
+	m, err := svc.Send(ctx, ann, bob, message.RestoreContent("", message.Photos{photo}, uuid.Nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// The photo stays while one of them has the message.
+	if err = svc.Hide(ctx, bob, m.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(photos.deleted) != 0 {
+		t.Fatalf("deleted %+v while ann has the message", photos.deleted)
+	}
+	if err = svc.Hide(ctx, ann, m.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(photos.deleted) != 1 || photos.deleted[0].owner != ann || photos.deleted[0].photos[0] != photo {
+		t.Fatalf("deleted %+v, want ann's photo", photos.deleted)
+	}
+}
+
+func TestMessageService_Edit(t *testing.T) {
+	t.Parallel()
+
+	svc := newService()
+	ctx := context.Background()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	m := send(t, svc, ann, bob, "привет")[0]
+
+	annEvents, cancelAnn := svc.Subscribe(ann)
+	defer cancelAnn()
+	bobEvents, cancelBob := svc.Subscribe(bob)
+	defer cancelBob()
+
+	for name, tt := range map[string]struct {
+		requester uuid.UUID
+		text      message.Text
+		err       error
+	}{
+		"the recipient": {bob, "x", message.ErrCannotEdit},
+		"a stranger":    {cat, "x", message.ErrNotFound},
+		"no text":       {ann, "", message.ErrTextEmpty},
+	} {
+		if _, err := svc.Edit(ctx, tt.requester, m.ID(), tt.text); !errors.Is(err, tt.err) {
+			t.Fatalf("%s: %v, want %v", name, err, tt.err)
+		}
+	}
+	if _, err := svc.Edit(ctx, ann, uuid.New(), "x"); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("no message: %v", err)
+	}
+
+	edited, err := svc.Edit(ctx, ann, m.ID(), "привет!")
+	if err != nil || edited.Text() != "привет!" || edited.EditedAt().IsZero() {
+		t.Fatalf("Edit = %+v, %v", edited, err)
+	}
+	for name, events := range map[string]<-chan service.Event{"sender": annEvents, "recipient": bobEvents} {
+		if e := <-events; e.Edited == nil || e.Edited.ID() != m.ID() || e.Edited.Text() != "привет!" {
+			t.Fatalf("%s got %+v, want the edit", name, e)
+		}
+	}
+
+	page, _ := svc.History(ctx, bob, ann, uuid.Nil, 50)
+	if len(page.Messages) != 1 || page.Messages[0].Text() != "привет!" || page.Messages[0].EditedAt().IsZero() {
+		t.Fatalf("bob reads %+v", page.Messages)
+	}
+	if dialogs, _ := svc.Dialogs(ctx, bob, uuid.Nil, 20); dialogs.Dialogs[0].LastMessage.Text() != "привет!" {
+		t.Fatalf("bob's dialog says %q", dialogs.Dialogs[0].LastMessage.Text())
+	}
+
+	// Who deleted the message for themselves does not hear of its edits.
+	if err = svc.Hide(ctx, bob, m.ID()); err != nil {
+		t.Fatal(err)
+	}
+	<-bobEvents // his own deletion
+	if _, err = svc.Edit(ctx, ann, m.ID(), "пока"); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case e := <-bobEvents:
+		t.Fatalf("bob heard %+v", e)
+	default:
+	}
+}
+
+func TestMessageService_Search(t *testing.T) {
+	t.Parallel()
+
+	svc := newService()
+	ctx := context.Background()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	send(t, svc, ann, bob, "Еду на море", "горы")
+	send(t, svc, bob, ann, "МОРЕ волнуется")
+	send(t, svc, cat, ann, "на море хорошо")
+	send(t, svc, bob, cat, "море не для ann")
+
+	q, _ := message.NewQuery("море")
+
+	all, err := svc.Search(ctx, ann, uuid.Nil, q, uuid.Nil, 2)
+	if err != nil || !slices.Equal(texts(all.Messages), []string{"на море хорошо", "МОРЕ волнуется"}) || all.NextCursor == uuid.Nil {
+		t.Fatalf("the first page = %v, %v", texts(all.Messages), err)
+	}
+	rest, err := svc.Search(ctx, ann, uuid.Nil, q, all.NextCursor, 2)
+	if err != nil || !slices.Equal(texts(rest.Messages), []string{"Еду на море"}) || rest.NextCursor != uuid.Nil {
+		t.Fatalf("the second page = %v, %v", texts(rest.Messages), err)
+	}
+
+	withBob, err := svc.Search(ctx, ann, bob, q, uuid.Nil, 20)
+	if err != nil || !slices.Equal(texts(withBob.Messages), []string{"МОРЕ волнуется", "Еду на море"}) {
+		t.Fatalf("with bob = %v, %v", texts(withBob.Messages), err)
+	}
+}

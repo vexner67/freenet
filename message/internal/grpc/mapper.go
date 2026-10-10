@@ -11,7 +11,7 @@ import (
 )
 
 func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
-	return &messagev1.Message{
+	pm := &messagev1.Message{
 		Id:             m.ID().String(),
 		SenderId:       m.SenderID().String(),
 		RecipientId:    m.RecipientID().String(),
@@ -21,7 +21,14 @@ func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 		PhotoIds:       photoStrings(m.Photos()),
 		DeletableUntil: timestamppb.New(m.DeletableUntil()),
 		PostId:         postString(m.Post()),
+		EditableUntil:  timestamppb.New(m.EditableUntil()),
 	}
+
+	if !m.EditedAt().IsZero() {
+		pm.EditedAt = timestamppb.New(m.EditedAt())
+	}
+
+	return pm
 }
 
 // postString is "" for no post, as the proto field says.
@@ -117,6 +124,10 @@ func toProtoEvent(e service.Event) *messagev1.SubscribeResponse {
 			SenderId:    e.Deleted.SenderID.String(),
 			RecipientId: e.Deleted.RecipientID.String(),
 		}}}
+	}
+
+	if e.Edited != nil {
+		return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_Edited{Edited: toProtoMessage(e.Edited, false)}}
 	}
 
 	if e.Read != nil {

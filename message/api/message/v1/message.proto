@@ -23,13 +23,22 @@ service MessageService {
   // The caller takes their message back from both sides of the dialog,
   // within a day of sending (deletable_until); media deletes its photos.
   rpc DeleteMessage(DeleteMessageRequest) returns (google.protobuf.Empty);
+  // The caller deletes a message of their dialog for themselves alone
+  // ("Удалить у себя"), their own or the peer's: the other side keeps it.
+  rpc HideMessage(HideMessageRequest) returns (google.protobuf.Empty);
+  // The caller changes what their message says, within a day of sending
+  // (editable_until); its photos and the post it shares stay.
+  rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
+  // The caller's messages that say the query, in any case, newest first:
+  // in the dialog with peer_id or, without it, in all their dialogs.
+  rpc SearchMessages(SearchMessagesRequest) returns (SearchMessagesResponse);
   // Requires an access token: whether the peer has ever written to the
   // caller, who may then answer whatever the peer's privacy.
   rpc HasMessagesFrom(HasMessagesFromRequest) returns (HasMessagesFromResponse);
 
   // Requires an access token: the caller's events as they happen — new
-  // messages of their dialogs, sent or received, read marks that move and
-  // messages deleted.
+  // messages of their dialogs, sent or received, read marks that move,
+  // messages deleted and messages edited.
   // Best effort: the stream ends with Unauthenticated when the token
   // expires and with ResourceExhausted when the caller falls behind; then
   // subscribe again and catch up with ListMessages and ListDialogs.
@@ -57,6 +66,10 @@ message Message {
   // A post of the post service shared into the dialog ("Поделиться" "в
   // переписку"); empty for none.
   string post_id = 9;
+  // When the sender changed what it says; unset if never.
+  google.protobuf.Timestamp edited_at = 10;
+  // Until when the sender may edit it.
+  google.protobuf.Timestamp editable_until = 11;
 }
 
 message Dialog {
@@ -128,6 +141,38 @@ message DeleteMessageRequest {
   string id = 1;
 }
 
+message HideMessageRequest {
+  string id = 1;
+}
+
+message EditMessageRequest {
+  string id = 1;
+  // May be empty only when the message has photos or shares a post.
+  string text = 2;
+}
+
+message EditMessageResponse {
+  Message message = 1;
+}
+
+message SearchMessagesRequest {
+  // The dialog to search; empty for all the caller's dialogs.
+  string peer_id = 1;
+  // At most 100 characters, not empty.
+  string query = 2;
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 3;
+  // 1-50; anything else means 20.
+  int32 limit = 4;
+}
+
+message SearchMessagesResponse {
+  // read is not told here.
+  repeated Message messages = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+}
+
 message HasMessagesFromRequest {
   string peer_id = 1;
 }
@@ -143,10 +188,14 @@ message SubscribeResponse {
     Message message = 1;
     ReadMark read = 2;
     MessageDeleted deleted = 3;
+    // The message as it is after its sender edited it; read is not told.
+    Message edited = 4;
   }
 }
 
-// sender_id took message id back from the dialog with recipient_id.
+// Message id of sender_id to recipient_id is gone from the dialog of
+// whoever hears this: taken back from both sides, or deleted by the
+// listener for themselves.
 message MessageDeleted {
   string id = 1;
   string sender_id = 2;

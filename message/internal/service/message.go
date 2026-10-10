@@ -23,15 +23,26 @@ type MessageRepository interface {
 	Save(ctx context.Context, m *message.Message) error
 	// Get returns message.ErrNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*message.Message, error)
-	// ListBefore returns up to limit messages between a and b with IDs
-	// below before (uuid.Nil: from the newest), newest first.
+	// ListBefore returns up to limit messages between a and b that a has
+	// not deleted for themselves, with IDs below before (uuid.Nil: from
+	// the newest), newest first.
 	ListBefore(ctx context.Context, a, b, before uuid.UUID, limit int) ([]*message.Message, error)
-	// ListAfter returns up to limit messages between a and b with IDs
-	// above after, oldest first.
+	// ListAfter returns up to limit such messages with IDs above after,
+	// oldest first.
 	ListAfter(ctx context.Context, a, b, after uuid.UUID, limit int) ([]*message.Message, error)
 	// Delete removes the message and brings both sides' dialogs back to
-	// the messages left; message.ErrNotFound if it is gone already.
+	// the messages they have left; message.ErrNotFound if it is gone
+	// already.
 	Delete(ctx context.Context, m *message.Message) error
+	// Update saves what an edited message says; message.ErrNotFound.
+	Update(ctx context.Context, m *message.Message) error
+	// Hide deletes the message for userID alone and brings their side of
+	// the dialog back to the messages they have left; message.ErrNotFound.
+	Hide(ctx context.Context, m *message.Message, userID uuid.UUID) error
+	// Search returns up to limit messages userID has that say q, in the
+	// dialog with peerID or, for uuid.Nil, in all of theirs, newest first,
+	// with IDs below before (uuid.Nil: from the newest).
+	Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, before uuid.UUID, limit int) ([]*message.Message, error)
 	// DeleteByUser removes the dialogs of a user, both sides of each, with
 	// every message in them, and returns the deleted messages that had
 	// photos.
@@ -83,14 +94,24 @@ type HistoryPage struct {
 }
 
 // Event is what happened in a user's dialogs, for live updates: a new
-// message, sent or received, a read mark that moved or a message deleted.
+// message, sent or received, a read mark that moved, a message deleted or
+// one that says something else now.
 type Event struct {
 	Message *message.Message
 	Read    *ReadMark
 	Deleted *Deleted
+	Edited  *message.Message
 }
 
-// Deleted: the sender took message ID back from both sides.
+// SearchPage is one screen of found messages, newest first; NextCursor is
+// uuid.Nil on the last.
+type SearchPage struct {
+	Messages   []*message.Message
+	NextCursor uuid.UUID
+}
+
+// Deleted: message ID is gone from the dialog of whoever hears it — taken
+// back from both sides by its sender, or deleted by one for themselves.
 type Deleted struct {
 	ID          uuid.UUID
 	SenderID    uuid.UUID
@@ -182,8 +203,8 @@ func (s *MessageService) Delete(ctx context.Context, userID, id uuid.UUID) error
 	}
 
 	// Others' dialogs are none of the user's business, not even that a
-	// message exists.
-	if m.SenderID() != userID && m.RecipientID() != userID {
+	// message exists; nor is a message the user deleted for themselves.
+	if !m.VisibleTo(userID) {
 		return message.ErrNotFound
 	}
 
@@ -191,7 +212,96 @@ func (s *MessageService) Delete(ctx context.Context, userID, id uuid.UUID) error
 		return errs.Wrap("m.CheckDelete", err)
 	}
 
-	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+	if err = s.erase(ctx, m); err != nil {
+		return errs.Wrap("s.erase", err)
+	}
+
+	deleted := Event{Deleted: &Deleted{ID: m.ID(), SenderID: m.SenderID(), RecipientID: m.RecipientID()}}
+	s.events.Publish(ctx, m.SenderID(), deleted)
+	s.events.Publish(ctx, m.RecipientID(), deleted)
+
+	return nil
+}
+
+// Hide deletes a message for userID alone ("Удалить у себя"), their own
+// or the peer's: the other side keeps it. Once both have, the message
+// goes for good with its photos. The user's other pages hear of it.
+func (s *MessageService) Hide(ctx context.Context, userID, id uuid.UUID) error {
+	m, err := s.messageRepo.Get(ctx, id)
+	if err != nil {
+		return errs.Wrap("s.messageRepo.Get", err)
+	}
+
+	hidden, err := m.HiddenFrom(userID)
+	if err != nil {
+		return errs.Wrap("m.HiddenFrom", err)
+	}
+
+	if hidden.Gone() {
+		if err = s.erase(ctx, m); err != nil {
+			return errs.Wrap("s.erase", err)
+		}
+	} else if err = s.messageRepo.Hide(ctx, m, userID); err != nil {
+		return errs.Wrap("s.messageRepo.Hide", err)
+	}
+
+	s.events.Publish(ctx, userID, Event{Deleted: &Deleted{ID: m.ID(), SenderID: m.SenderID(), RecipientID: m.RecipientID()}})
+
+	return nil
+}
+
+// Edit changes what a message says: only its sender, for a day after
+// sending (message.Edited). Both sides that still have it hear of it.
+func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, text message.Text) (*message.Message, error) {
+	m, err := s.messageRepo.Get(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.messageRepo.Get", err)
+	}
+
+	if !m.VisibleTo(userID) {
+		return nil, message.ErrNotFound
+	}
+
+	edited, err := m.Edited(userID, text, s.now())
+	if err != nil {
+		return nil, errs.Wrap("m.Edited", err)
+	}
+
+	if err = s.messageRepo.Update(ctx, edited); err != nil {
+		return nil, errs.Wrap("s.messageRepo.Update", err)
+	}
+
+	for _, side := range []uuid.UUID{edited.SenderID(), edited.RecipientID()} {
+		if edited.VisibleTo(side) {
+			s.events.Publish(ctx, side, Event{Edited: edited})
+		}
+	}
+
+	return edited, nil
+}
+
+// Search pages the messages of userID that say q, newest first: in the
+// dialog with peerID, or in all of theirs for uuid.Nil.
+func (s *MessageService) Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, cursor uuid.UUID, size int) (SearchPage, error) {
+	size = pageSize(size)
+
+	found, err := s.messageRepo.Search(ctx, userID, peerID, q, cursor, size+1)
+	if err != nil {
+		return SearchPage{}, errs.Wrap("s.messageRepo.Search", err)
+	}
+
+	page := SearchPage{Messages: found}
+	if len(found) > size {
+		page.Messages = found[:size]
+		page.NextCursor = found[size-1].ID()
+	}
+
+	return page, nil
+}
+
+// erase removes a message from both sides, with its photos.
+func (s *MessageService) erase(ctx context.Context, m *message.Message) error {
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.messageRepo.Delete(ctx, m); err != nil {
 			return errs.Wrap("s.messageRepo.Delete", err)
 		}
@@ -205,10 +315,6 @@ func (s *MessageService) Delete(ctx context.Context, userID, id uuid.UUID) error
 	if err != nil {
 		return errs.Wrap("s.tx.WithinTx", err)
 	}
-
-	deleted := Event{Deleted: &Deleted{ID: m.ID(), SenderID: m.SenderID(), RecipientID: m.RecipientID()}}
-	s.events.Publish(ctx, m.SenderID(), deleted)
-	s.events.Publish(ctx, m.RecipientID(), deleted)
 
 	return nil
 }
@@ -309,7 +415,7 @@ func (s *MessageService) MarkRead(ctx context.Context, userID, peerID, upTo uuid
 		return errs.Wrap("s.messageRepo.Get", err)
 	}
 
-	if m.SenderID() != peerID || m.RecipientID() != userID {
+	if m.SenderID() != peerID || m.RecipientID() != userID || !m.VisibleTo(userID) {
 		return message.ErrNotFound
 	}
 
