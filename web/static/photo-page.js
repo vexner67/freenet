@@ -5,11 +5,11 @@
 // "Поделиться".
 
 import { api, currentUser } from './api.js';
-import { formatPostDate } from './labels.js';
+import { formatPostDate, replyMention } from './labels.js';
 import { $, adult, avatarURL, clubRef, el, fullName, pagePath, renderChrome, revealAdult, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { albumPath, albumsTitle, canChange, isKeptBySite } from './albums.js';
-import { commentNode } from './comments.js';
+import { commentNode, photoCommentHearts } from './comments.js';
 import { likeButton } from './posts.js';
 import { openShare } from './share.js';
 
@@ -137,8 +137,34 @@ function initComments(page) {
     $('comments-title').textContent = total > 0 ? `Комментарии (${total})` : 'Комментарии';
   }
 
+  // The comment the form answers, null for none.
+  let replyTo = null;
+
+  // reply starts an answer as under a post: the name of the author first,
+  // in place of the name of an earlier answer.
+  function reply(comment) {
+    const text = $('comment-text');
+    const mention = replyTo ? replyMention(replyTo.author) : null;
+    const rest = mention && text.value.startsWith(mention) ? text.value.slice(mention.length) : text.value;
+
+    replyTo = comment;
+    text.value = replyMention(comment.author) + rest;
+    autosize(text);
+    $('comment-reply-to').hidden = false;
+    text.focus();
+    text.setSelectionRange(text.value.length, text.value.length);
+  }
+
+  function cancelReply() {
+    replyTo = null;
+    $('comment-reply-to').hidden = true;
+  }
+
   const node = (c) => commentNode({ ...c, photos: [] }, {
-    withLike: false,
+    hearts: photoCommentHearts,
+    canLike: Boolean(me),
+    onError: (e) => showError($('comments-error'), e),
+    onReply: me?.profileCompleted && reply,
     whole: api.photoCommentText,
     onDelete: (c.mine || moderates) && (async (comment, shown) => {
       try {
@@ -166,14 +192,16 @@ function initComments(page) {
   $('comments-more').addEventListener('click', loadMore);
   if (me?.profileCompleted) {
     $('comment-form').hidden = false;
+    $('comment-reply-cancel').addEventListener('click', cancelReply);
     $('comment-form').addEventListener('submit', async (event) => {
       event.preventDefault();
       hideError($('comments-error'));
 
       try {
-        const c = await api.commentPhoto(photo.id, $('comment-text').value);
+        const c = await api.commentPhoto(photo.id, $('comment-text').value, replyTo?.id);
         $('comments').append(node(c));
         $('comment-text').value = '';
+        cancelReply();
         autosize($('comment-text'));
         total++;
         updateTitle();

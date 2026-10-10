@@ -372,6 +372,7 @@ export const api = {
   topicMessageText: (id) => optional('GET', `/api/v1/topic-messages/${encodeURIComponent(id)}/text`),
   likeTopicMessage: (id) => authorized('PUT', `/api/v1/topic-messages/${encodeURIComponent(id)}/like`),
   unlikeTopicMessage: (id) => authorized('DELETE', `/api/v1/topic-messages/${encodeURIComponent(id)}/like`),
+  topicMessageLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/topic-messages/${encodeURIComponent(id)}/likes`, cursor, limit)),
 
   // "Альбомы" of a person (nickname) or of a community (club: its ref).
   albums({ nickname = '', club = '', cursor = '', limit = 0 } = {}) {
@@ -400,7 +401,11 @@ export const api = {
   photoLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/album-photos/${encodeURIComponent(id)}/likes`, cursor, limit)),
   photoCommentText: (id) => optional('GET', `/api/v1/photo-comments/${encodeURIComponent(id)}/text`),
   photoComments: (id, cursor = '') => optional('GET', page(`/api/v1/album-photos/${encodeURIComponent(id)}/comments`, cursor, 0)),
-  commentPhoto: (id, text) => authorized('POST', `/api/v1/album-photos/${encodeURIComponent(id)}/comments`, { text }),
+  // replyTo: the comment under the same photo this one answers.
+  commentPhoto: (id, text, replyTo = '') => authorized('POST', `/api/v1/album-photos/${encodeURIComponent(id)}/comments`, { text, replyTo }),
+  likePhotoComment: (id) => authorized('PUT', `/api/v1/photo-comments/${encodeURIComponent(id)}/like`),
+  unlikePhotoComment: (id) => authorized('DELETE', `/api/v1/photo-comments/${encodeURIComponent(id)}/like`),
+  photoCommentLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/photo-comments/${encodeURIComponent(id)}/likes`, cursor, limit)),
   deletePhotoComment: (id) => authorized('DELETE', `/api/v1/photo-comments/${encodeURIComponent(id)}`),
   sharePhoto: (id, text, to = {}) => authorized('POST', `/api/v1/album-photos/${encodeURIComponent(id)}/reposts`, { text, ...to }),
 

@@ -69,6 +69,12 @@ function quote(text) {
   return snippet(plainMentions(text || 'Фотография'), COMMENT_SNIPPET);
 }
 
+// said ends a sentence with what the message or the comment it is about
+// says; with a full stop alone when it says nothing (photos only).
+function said(n) {
+  return n.comment?.text ? `: «${quote(n.comment.text)}».` : '.';
+}
+
 // notificationText is the sentence of openvk; null for a type this page
 // does not know yet.
 function notificationText(n) {
@@ -96,14 +102,14 @@ function notificationText(n) {
   // под вашей темой".
   if (n.type === 'topic_message') {
     return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей темой `,
-      el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), '.'];
+      el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), said(n)];
   }
 
   // Named in a message of a topic: openvk's "Вас упомянул пользователь ...
   // в обсуждении", said as our other answers are.
   if (n.type === 'topic_mention') {
     return [name, ` ${notificationVerb('mention', n.actor)} вас в обсуждении `,
-      el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), '.'];
+      el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), said(n)];
   }
 
   if (n.type === 'post_mention') {
@@ -119,7 +125,7 @@ function notificationText(n) {
   // A heart on your message of a topic, as on a comment.
   if (n.type === 'topic_message_like') {
     return [name, ` ${notificationVerb('like', n.actor)} ваше сообщение в обсуждении `,
-      el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), '.'];
+      el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), said(n)];
   }
 
   // A heart and a comment on a photo of your album; openvk's "оставил
@@ -129,7 +135,7 @@ function notificationText(n) {
   }
 
   if (n.type === 'photo_comment') {
-    return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей `, photoLink(n.photo, 'фотографией'), '.'];
+    return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей `, photoLink(n.photo, 'фотографией'), said(n)];
   }
 
   const verb = notificationVerb(n.type, n.actor);
