@@ -26,8 +26,8 @@ func NewNotificationRepository() *NotificationRepository {
 }
 
 // sameEvent tells whether two events are the same like, comment, follow,
-// wall post, repost, reply, comment like, accepted or suggested post, or
-// appointment.
+// wall post, repost, reply, comment like, accepted or suggested post,
+// appointment or mention.
 func sameEvent(a, b notification.Event) bool {
 	if a.Kind != b.Kind {
 		return false
@@ -42,8 +42,10 @@ func sameEvent(a, b notification.Event) bool {
 		return a.ActorID == b.ActorID && a.CommentID == b.CommentID
 	case notification.KindWallPost, notification.KindRepost, notification.KindPostAccepted:
 		return a.PostID == b.PostID
-	case notification.KindSuggestedPost:
+	case notification.KindSuggestedPost, notification.KindPostMention:
 		return a.RecipientID == b.RecipientID && a.PostID == b.PostID
+	case notification.KindCommentMention, notification.KindTopicMention:
+		return a.RecipientID == b.RecipientID && a.CommentID == b.CommentID
 	default:
 		return a.ActorID == b.ActorID && a.RecipientID == b.RecipientID
 	}

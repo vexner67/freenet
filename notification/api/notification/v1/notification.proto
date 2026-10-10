@@ -61,10 +61,19 @@ enum Kind {
   // The actor wrote in the topic the recipient started; post_id is the
   // topic and comment_id the message.
   KIND_TOPIC_MESSAGE = 11;
+  // The actor named the recipient in the post post_id.
+  KIND_POST_MENTION = 12;
+  // The actor named the recipient in the comment comment_id under the
+  // post post_id.
+  KIND_COMMENT_MENTION = 13;
+  // The actor named the recipient in the message comment_id of the topic
+  // post_id.
+  KIND_TOPIC_MENTION = 14;
 }
 
 // Event: post_id is set for all but follows and appointments,
-// comment_id for comments, replies and comment likes.
+// comment_id for comments, replies, comment likes, messages of topics
+// and mentions in comments and topics.
 message Event {
   Kind kind = 1;
   string recipient_id = 2;
