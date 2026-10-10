@@ -30,6 +30,10 @@ const (
 
 	// maxQueryLen bounds what messages are searched for.
 	maxQueryLen = 100
+
+	// MaxForwarded is how many messages one message may carry on, counting
+	// those the forwarded messages carried themselves.
+	MaxForwarded = 20
 )
 
 var (
@@ -48,6 +52,10 @@ var (
 	ErrEditExpired    = errors.New("the message can no longer be edited")
 	ErrQueryEmpty     = errors.New("search query is empty")
 	ErrQueryTooLong   = errors.New("search query is too long")
+	// ErrForwardNotFound: a message to forward is not in the dialogs of
+	// whoever forwards it, or was taken back.
+	ErrForwardNotFound  = errors.New("forwarded message not found")
+	ErrTooManyForwarded = errors.New("a message forwards at most 20 messages")
 )
 
 // Query is what messages are searched for: trimmed text they say, in any
@@ -123,29 +131,66 @@ func NewPhotos(ids []uuid.UUID) (Photos, error) {
 	return Photos(ids), nil
 }
 
+// Forwarded is a message carried on by another ("Переслать" of VK): who
+// wrote it, when, and what it showed then. It is a copy: the message it
+// was made of may change or go, and whoever reads it need not be a side
+// of that dialog. Its photos are copies of the sender's in the media
+// service.
+type Forwarded struct {
+	SenderID  uuid.UUID
+	Text      Text
+	Photos    Photos
+	Post      uuid.UUID
+	CreatedAt time.Time
+}
+
+// Forwards are the messages a message carries on, oldest first.
+type Forwards []Forwarded
+
+// NewForwards: none is nil.
+func NewForwards(carried []Forwarded) (Forwards, error) {
+	if len(carried) > MaxForwarded {
+		return nil, ErrTooManyForwarded
+	}
+
+	if len(carried) == 0 {
+		return nil, nil
+	}
+
+	return Forwards(carried), nil
+}
+
 // Content is what a message shows: text, photos, a post shared into the
-// dialog (openvk's "Поделиться" "в переписку") or some of them, never
-// nothing. The post lives in the post service: the message keeps its ID,
-// and a deleted post stays "Запись удалена.".
+// dialog (openvk's "Поделиться" "в переписку"), messages carried on from
+// other dialogs or some of them, never nothing. The post lives in the
+// post service: the message keeps its ID, and a deleted post stays
+// "Запись удалена.".
 type Content struct {
-	text   Text
-	photos Photos
-	post   uuid.UUID
+	text      Text
+	photos    Photos
+	post      uuid.UUID
+	forwarded Forwards
 }
 
 // NewContent: post is uuid.Nil for none; whether it exists the caller has
 // checked with the post service.
-func NewContent(text Text, photos Photos, post uuid.UUID) (Content, error) {
-	if text == "" && len(photos) == 0 && post == uuid.Nil {
+func NewContent(text Text, photos Photos, post uuid.UUID, forwarded Forwards) (Content, error) {
+	if text == "" && len(photos) == 0 && post == uuid.Nil && len(forwarded) == 0 {
 		return Content{}, ErrTextEmpty
 	}
 
-	return Content{text: text, photos: photos, post: post}, nil
+	return Content{text: text, photos: photos, post: post, forwarded: forwarded}, nil
 }
 
-// RestoreContent rebuilds content from storage without validation.
-func RestoreContent(text Text, photos Photos, post uuid.UUID) Content {
-	return Content{text: text, photos: photos, post: post}
+// RestoreContent rebuilds content from storage without validation; a
+// message taken back has none.
+func RestoreContent(text Text, photos Photos, post uuid.UUID, forwarded Forwards) Content {
+	return Content{text: text, photos: photos, post: post, forwarded: forwarded}
+}
+
+// Forwarded are the messages carried on, nil for none.
+func (c Content) Forwarded() Forwards {
+	return c.forwarded
 }
 
 // Post is the post shared into the dialog, uuid.Nil for none.
@@ -171,6 +216,10 @@ type Message struct {
 	createdAt   time.Time
 	// editedAt is zero for a message never edited.
 	editedAt time.Time
+	// deletedAt is when the sender took the message back from both sides
+	// ("Удалить для всех"), zero if never: it stays in the dialog saying
+	// nothing, "Сообщение удалено".
+	deletedAt time.Time
 	// hiddenFromSender and hiddenFromRecipient: that side deleted the
 	// message for themselves ("Удалить у себя"); the other still has it.
 	hiddenFromSender    bool
@@ -207,7 +256,9 @@ type Stored struct {
 	Content     Content
 	CreatedAt   time.Time
 	// EditedAt is zero for a message never edited.
-	EditedAt            time.Time
+	EditedAt time.Time
+	// DeletedAt is zero for a message never taken back.
+	DeletedAt           time.Time
 	HiddenFromSender    bool
 	HiddenFromRecipient bool
 }
@@ -221,6 +272,7 @@ func Restore(s Stored) *Message {
 		content:             s.Content,
 		createdAt:           s.CreatedAt,
 		editedAt:            s.EditedAt,
+		deletedAt:           s.DeletedAt,
 		hiddenFromSender:    s.HiddenFromSender,
 		hiddenFromRecipient: s.HiddenFromRecipient,
 	}
@@ -278,18 +330,23 @@ func (m *Message) EditableUntil() time.Time {
 }
 
 // Edited returns m saying text instead, edited by requesterID at now:
-// only its sender, for editWindow after sending. Its photos and the post
-// it shares stay; without them the text may not be empty.
+// only its sender, for editWindow after sending. Its photos, the post it
+// shares and the messages it carries on stay; without them the text may
+// not be empty.
 func (m *Message) Edited(requesterID uuid.UUID, text Text, now time.Time) (*Message, error) {
 	if requesterID != m.senderID {
 		return nil, ErrCannotEdit
+	}
+
+	if m.IsDeleted() {
+		return nil, ErrNotFound
 	}
 
 	if now.After(m.EditableUntil()) {
 		return nil, ErrEditExpired
 	}
 
-	content, err := NewContent(text, m.content.photos, m.content.post)
+	content, err := NewContent(text, m.content.photos, m.content.post, m.content.forwarded)
 	if err != nil {
 		return nil, err
 	}
@@ -347,6 +404,62 @@ func (m *Message) CheckDelete(requesterID uuid.UUID, now time.Time) error {
 	}
 
 	return nil
+}
+
+// TakenBack returns m taken back from both sides by requesterID at now
+// ("Удалить для всех"), if they may (CheckDelete): it stays where it was
+// in the dialog and says nothing anymore, so the peer sees that
+// something was there. ErrNotFound for one taken back already.
+func (m *Message) TakenBack(requesterID uuid.UUID, now time.Time) (*Message, error) {
+	if err := m.CheckDelete(requesterID, now); err != nil {
+		return nil, err
+	}
+
+	if m.IsDeleted() {
+		return nil, ErrNotFound
+	}
+
+	gone := *m
+	gone.content = Content{}
+	gone.editedAt = time.Time{}
+	gone.deletedAt = now.UTC().Truncate(time.Microsecond)
+
+	return &gone, nil
+}
+
+// IsDeleted tells whether the sender took the message back.
+func (m *Message) IsDeleted() bool {
+	return !m.deletedAt.IsZero()
+}
+
+// DeletedAt is zero for a message never taken back.
+func (m *Message) DeletedAt() time.Time {
+	return m.deletedAt
+}
+
+// Forwarded are the messages m carries on, nil for none.
+func (m *Message) Forwarded() Forwards {
+	return m.content.forwarded
+}
+
+// Carried is m as another message carries it on: what it says itself,
+// if anything, then the messages it carries on, so that forwarding a
+// forward does not nest. A message taken back carries nothing. The photos
+// are still those of m: whoever forwards copies them.
+func (m *Message) Carried() []Forwarded {
+	var carried []Forwarded
+
+	if m.content.text != "" || len(m.content.photos) > 0 || m.content.post != uuid.Nil {
+		carried = append(carried, Forwarded{
+			SenderID:  m.senderID,
+			Text:      m.content.text,
+			Photos:    m.content.photos,
+			Post:      m.content.post,
+			CreatedAt: m.createdAt,
+		})
+	}
+
+	return append(carried, m.content.forwarded...)
 }
 
 // ReadMarks are how far each side of a dialog has read: Mine is the newest

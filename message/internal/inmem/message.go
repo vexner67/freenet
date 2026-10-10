@@ -128,6 +128,24 @@ func (r *MessageRepository) Update(ctx context.Context, m *message.Message) erro
 	return nil
 }
 
+// Retract keeps the message where it was: the dialogs still point at it.
+func (r *MessageRepository) Retract(ctx context.Context, m *message.Message) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	if stored, ok := r.s.messages[m.ID()]; !ok || stored.IsDeleted() {
+		return message.ErrNotFound
+	}
+
+	r.s.messages[m.ID()] = m
+
+	return nil
+}
+
 // Hide brings the side of userID back to the newest message it still
 // has, if the hidden one was its last, as the statement does in
 // PostgreSQL.
@@ -296,7 +314,7 @@ func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) 
 	for id, m := range r.s.messages {
 		if m.SenderID() == userID || m.RecipientID() == userID {
 			delete(r.s.messages, id)
-			if len(m.Photos()) > 0 {
+			if len(m.Photos()) > 0 || len(m.Forwarded()) > 0 {
 				withPhotos = append(withPhotos, m)
 			}
 		}

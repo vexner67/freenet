@@ -44,9 +44,10 @@ service MediaService {
   // (they go). Idempotent; missing photos are fine.
   rpc PublishPhotos(PublishPhotosRequest) returns (google.protobuf.Empty);
   rpc DeletePublishedPhotos(DeletePublishedPhotosRequest) returns (google.protobuf.Empty);
-  // Internal, for post: published photos of owner_id are kept once more
-  // under new IDs, as the photos of a post in "Фотографии со стены", so
-  // that the copy outlives the post. Idempotent; missing photos are fine.
+  // Internal, for post and message: published photos of owner_id are kept
+  // once more under new IDs, as the photos of a post in "Фотографии со
+  // стены" or of a forwarded message, so that the copy outlives the post
+  // or the message. Idempotent; missing photos are fine.
   rpc CopyPhotos(CopyPhotosRequest) returns (google.protobuf.Empty);
 
   // Internal, for user: the user's page was deleted and not restored in

@@ -155,7 +155,10 @@ func TestDialog(t *testing.T) {
 	if _, err = s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PostId: "x"}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("a bad post id: %v", err)
 	}
-	if _, err = s.client.DeleteMessage(s.as(t, ann), &messagev1.DeleteMessageRequest{Id: shared.GetMessage().GetId()}); err != nil {
+	if _, err = s.client.HideMessage(s.as(t, ann), &messagev1.HideMessageRequest{Id: shared.GetMessage().GetId()}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.HideMessage(s.as(t, bob), &messagev1.HideMessageRequest{Id: shared.GetMessage().GetId()}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -165,12 +168,49 @@ func TestDialog(t *testing.T) {
 		t.Fatalf("newer = %v, %v", newer, err)
 	}
 
-	// Ann takes her answer back: bob can no longer see it.
+	// Bob forwards ann's answer to cat: it goes as a copy of what it said.
+	cat := uuid.New()
+	fwd, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: cat.String(), ForwardIds: []string{reply.GetMessage().GetId()}})
+	if err != nil {
+		t.Fatalf("forward: %v", err)
+	}
+	if got := fwd.GetMessage().GetForwarded(); len(got) != 1 || got[0].GetSenderId() != ann.String() || got[0].GetText() != "хорошо" ||
+		!got[0].GetCreatedAt().AsTime().Equal(reply.GetMessage().GetCreatedAt().AsTime()) {
+		t.Fatalf("forwarded = %v", got)
+	}
+	if _, err = s.client.SendMessage(s.as(t, cat), &messagev1.SendMessageRequest{RecipientId: bob.String(), ForwardIds: []string{reply.GetMessage().GetId()}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("forward a message of others: %v", err)
+	}
+	if _, err = s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: cat.String(), ForwardIds: []string{"x"}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bad forwarded id: %v", err)
+	}
+
+	// The dialog opens around a message, and only its own.
+	around, err := s.client.ListMessages(s.as(t, bob), &messagev1.ListMessagesRequest{PeerId: ann.String(), Around: fromBob[0], Limit: 2})
+	if err != nil || len(around.GetMessages()) != 2 || around.GetMessages()[0].GetId() != fromBob[0] || around.GetNextCursor() != "" {
+		t.Fatalf("around = %v, %v", around, err)
+	}
+	if _, err = s.client.ListMessages(s.as(t, bob), &messagev1.ListMessagesRequest{PeerId: ann.String(), Around: fwd.GetMessage().GetId()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("around a message of another dialog: %v", err)
+	}
+	if _, err = s.client.ListMessages(s.as(t, bob), &messagev1.ListMessagesRequest{PeerId: ann.String(), Around: fromBob[0], After: fromBob[0]}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("around with after: %v", err)
+	}
+
+	// Ann takes her answer back: bob still sees that there was one, and
+	// what he forwarded stays.
 	if _, err = s.client.DeleteMessage(s.as(t, ann), &messagev1.DeleteMessageRequest{Id: reply.GetMessage().GetId()}); err != nil {
 		t.Fatalf("DeleteMessage: %v", err)
 	}
-	if history, err = s.client.ListMessages(s.as(t, bob), &messagev1.ListMessagesRequest{PeerId: ann.String()}); err != nil || len(history.GetMessages()) != 2 {
+	history, err = s.client.ListMessages(s.as(t, bob), &messagev1.ListMessagesRequest{PeerId: ann.String()})
+	if err != nil || len(history.GetMessages()) != 3 {
 		t.Fatalf("bob's history after the deletion = %v, %v", history, err)
+	}
+	if gone := history.GetMessages()[2]; gone.GetId() != reply.GetMessage().GetId() || gone.GetDeletedAt() == nil || gone.GetText() != "" || gone.GetEditableUntil() != nil {
+		t.Fatalf("the message taken back = %v", gone)
+	}
+	if kept, err := s.client.ListMessages(s.as(t, cat), &messagev1.ListMessagesRequest{PeerId: bob.String()}); err != nil || len(kept.GetMessages()) != 1 || kept.GetMessages()[0].GetForwarded()[0].GetText() != "хорошо" {
+		t.Fatalf("cat's history = %v, %v", kept, err)
 	}
 }
 
@@ -348,6 +388,14 @@ func TestSubscribe(t *testing.T) {
 	}
 
 	if _, err = s.client.DeleteMessage(s.as(t, bob), &messagev1.DeleteMessageRequest{Id: sent.GetId()}); err != nil {
+		t.Fatal(err)
+	}
+	if resp, err := stream.Recv(); err != nil || resp.GetEdited().GetId() != sent.GetId() || resp.GetEdited().GetDeletedAt() == nil ||
+		resp.GetEdited().GetText() != "" || resp.GetEdited().GetDeletableUntil() != nil {
+		t.Fatalf("event = %v, %v; want the message taken back", resp, err)
+	}
+
+	if _, err = s.client.HideMessage(s.as(t, ann), &messagev1.HideMessageRequest{Id: sent.GetId()}); err != nil {
 		t.Fatal(err)
 	}
 	if resp, err := stream.Recv(); err != nil || resp.GetDeleted().GetId() != sent.GetId() ||

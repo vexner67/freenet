@@ -1,6 +1,6 @@
 // Package mediaclient tells the media service about the photos of
-// messages through the outbox: Outbox records it with the message sent or
-// erased, Deliverer hands it over afterwards. It is the only place in
+// messages through the outbox: Outbox records it with the message sent,
+// forwarded or erased, Deliverer hands it over afterwards. It is the only place in
 // message that knows the media proto contract. post has its own copy:
 // services share no code but pkg/*.
 package mediaclient
@@ -12,6 +12,7 @@ import (
 
 	"github.com/google/uuid"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
+	"github.com/vexner67/freenet/message/internal/service"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/outbox"
 	"google.golang.org/grpc"
@@ -29,6 +30,7 @@ const Stream = "media"
 const (
 	kindPublish = "publish_photos"
 	kindDelete  = "delete_photos"
+	kindCopy    = "copy_photos"
 )
 
 // Recorder adds a message to the outbox in the transaction of ctx.
@@ -53,6 +55,15 @@ func (o *Outbox) Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid
 
 func (o *Outbox) Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error {
 	return o.add(ctx, kindDelete, &mediav1.DeletePublishedPhotosRequest{OwnerId: ownerID.String(), PhotoIds: toStrings(photoIDs)})
+}
+
+func (o *Outbox) Copy(ctx context.Context, ownerID uuid.UUID, copies []service.PhotoCopy) error {
+	req := &mediav1.CopyPhotosRequest{OwnerId: ownerID.String(), Copies: make([]*mediav1.PhotoCopy, len(copies))}
+	for i, c := range copies {
+		req.Copies[i] = &mediav1.PhotoCopy{FromId: c.From.String(), ToId: c.To.String()}
+	}
+
+	return o.add(ctx, kindCopy, req)
 }
 
 func (o *Outbox) add(ctx context.Context, kind string, req proto.Message) error {
@@ -96,6 +107,8 @@ func (d *Deliverer) Deliver(ctx context.Context, m outbox.Message) error {
 		return call(ctx, m.Payload, &mediav1.PublishPhotosRequest{}, d.api.PublishPhotos)
 	case kindDelete:
 		return call(ctx, m.Payload, &mediav1.DeletePublishedPhotosRequest{}, d.api.DeletePublishedPhotos)
+	case kindCopy:
+		return call(ctx, m.Payload, &mediav1.CopyPhotosRequest{}, d.api.CopyPhotos)
 	default:
 		return outbox.Permanent(fmt.Errorf("unknown kind %q", m.Kind))
 	}
@@ -125,5 +138,6 @@ func call[Req proto.Message](ctx context.Context, payload []byte, req Req, fn rp
 // Nop is the PhotoKeeper when no media service is configured.
 type Nop struct{}
 
-func (Nop) Publish(context.Context, uuid.UUID, []uuid.UUID) error { return nil }
-func (Nop) Delete(context.Context, uuid.UUID, []uuid.UUID) error  { return nil }
+func (Nop) Publish(context.Context, uuid.UUID, []uuid.UUID) error      { return nil }
+func (Nop) Delete(context.Context, uuid.UUID, []uuid.UUID) error       { return nil }
+func (Nop) Copy(context.Context, uuid.UUID, []service.PhotoCopy) error { return nil }

@@ -72,9 +72,10 @@ type MediaServiceClient interface {
 	// (they go). Idempotent; missing photos are fine.
 	PublishPhotos(ctx context.Context, in *PublishPhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	DeletePublishedPhotos(ctx context.Context, in *DeletePublishedPhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Internal, for post: published photos of owner_id are kept once more
-	// under new IDs, as the photos of a post in "Фотографии со стены", so
-	// that the copy outlives the post. Idempotent; missing photos are fine.
+	// Internal, for post and message: published photos of owner_id are kept
+	// once more under new IDs, as the photos of a post in "Фотографии со
+	// стены" or of a forwarded message, so that the copy outlives the post
+	// or the message. Idempotent; missing photos are fine.
 	CopyPhotos(ctx context.Context, in *CopyPhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time; all their avatars and photos go. Idempotent.
@@ -265,9 +266,10 @@ type MediaServiceServer interface {
 	// (they go). Idempotent; missing photos are fine.
 	PublishPhotos(context.Context, *PublishPhotosRequest) (*emptypb.Empty, error)
 	DeletePublishedPhotos(context.Context, *DeletePublishedPhotosRequest) (*emptypb.Empty, error)
-	// Internal, for post: published photos of owner_id are kept once more
-	// under new IDs, as the photos of a post in "Фотографии со стены", so
-	// that the copy outlives the post. Idempotent; missing photos are fine.
+	// Internal, for post and message: published photos of owner_id are kept
+	// once more under new IDs, as the photos of a post in "Фотографии со
+	// стены" or of a forwarded message, so that the copy outlives the post
+	// or the message. Idempotent; missing photos are fine.
 	CopyPhotos(context.Context, *CopyPhotosRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time; all their avatars and photos go. Idempotent.

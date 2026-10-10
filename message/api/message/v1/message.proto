@@ -21,7 +21,9 @@ service MessageService {
   // The caller has read the dialog up to a message from the peer.
   rpc MarkDialogRead(MarkDialogReadRequest) returns (google.protobuf.Empty);
   // The caller takes their message back from both sides of the dialog,
-  // within a day of sending (deletable_until); media deletes its photos.
+  // within a day of sending (deletable_until): it stays there saying
+  // nothing (deleted_at) until each side deletes it for themselves; media
+  // deletes its photos.
   rpc DeleteMessage(DeleteMessageRequest) returns (google.protobuf.Empty);
   // The caller deletes a message of their dialog for themselves alone
   // ("Удалить у себя"), their own or the peer's: the other side keeps it.
@@ -70,6 +72,22 @@ message Message {
   google.protobuf.Timestamp edited_at = 10;
   // Until when the sender may edit it.
   google.protobuf.Timestamp editable_until = 11;
+  // Messages it carries on from other dialogs ("Переслать"), oldest first.
+  repeated ForwardedMessage forwarded = 12;
+  // When the sender took it back from both sides; unset if never. Such a
+  // message says nothing, and deletable_until and editable_until are unset.
+  google.protobuf.Timestamp deleted_at = 13;
+}
+
+// A message as another one carries it on: a copy of what it showed.
+message ForwardedMessage {
+  string sender_id = 1;
+  string text = 2;
+  // Photos of sender_id in the media service, kept for this copy.
+  repeated string photo_ids = 3;
+  // A post it shared; empty for none.
+  string post_id = 4;
+  google.protobuf.Timestamp created_at = 5;
 }
 
 message Dialog {
@@ -81,12 +99,16 @@ message Dialog {
 
 message SendMessageRequest {
   string recipient_id = 1;
-  // Text, photos, a shared post or some of them. The caller has checked
-  // with the media service that the photos are the sender's, and with the
-  // post service that the post exists.
+  // Text, photos, a shared post, forwarded messages or some of them. The
+  // caller has checked with the media service that the photos are the
+  // sender's, and with the post service that the post exists.
   string text = 2;
   repeated string photo_ids = 3;
   string post_id = 4;
+  // Messages of the caller's dialogs to carry on, at most 20 counting
+  // those they carry themselves; one that is not there or was taken back
+  // fails with InvalidArgument "forwarded message not found".
+  repeated string forward_ids = 5;
 }
 
 message SendMessageResponse {
@@ -121,6 +143,10 @@ message ListMessagesRequest {
   string after = 3;
   // 1-50; anything else means 20.
   int32 limit = 4;
+  // Instead of both: the part of the dialog around this message, about
+  // half of limit before it and half after; NotFound if the dialog does
+  // not have it.
+  string around = 5;
 }
 
 message ListMessagesResponse {
@@ -147,7 +173,8 @@ message HideMessageRequest {
 
 message EditMessageRequest {
   string id = 1;
-  // May be empty only when the message has photos or shares a post.
+  // May be empty only when the message has photos, shares a post or
+  // carries other messages on.
   string text = 2;
 }
 
@@ -188,14 +215,14 @@ message SubscribeResponse {
     Message message = 1;
     ReadMark read = 2;
     MessageDeleted deleted = 3;
-    // The message as it is after its sender edited it; read is not told.
+    // The message as it is after its sender edited it or took it back
+    // (deleted_at); read is not told.
     Message edited = 4;
   }
 }
 
 // Message id of sender_id to recipient_id is gone from the dialog of
-// whoever hears this: taken back from both sides, or deleted by the
-// listener for themselves.
+// whoever hears this, who deleted it for themselves.
 message MessageDeleted {
   string id = 1;
   string sender_id = 2;

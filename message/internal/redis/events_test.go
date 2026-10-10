@@ -21,7 +21,7 @@ func TestEventCodec(t *testing.T) {
 		t.Fatal(err)
 	}
 	sent := message.Restore(message.Stored{
-		ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: message.RestoreContent(text, message.Photos{uuid.New()}, uuid.Nil), CreatedAt: time.Date(2026, 10, 7, 12, 0, 0, 123000, time.UTC),
+		ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: message.RestoreContent(text, message.Photos{uuid.New()}, uuid.Nil, nil), CreatedAt: time.Date(2026, 10, 7, 12, 0, 0, 123000, time.UTC),
 	})
 
 	data, err := codec.Encode(bob, service.Event{Message: sent})
@@ -53,6 +53,33 @@ func TestEventCodec(t *testing.T) {
 	}
 	if key, e, err = codec.Decode(data); err != nil || key != bob || e.Message != nil || e.Read != nil || e.Deleted == nil || *e.Deleted != *deleted {
 		t.Fatalf("deleted round trip = %v %+v %v", key, e.Deleted, err)
+	}
+
+	carried := message.Forwarded{SenderID: uuid.New(), Text: "смотри", Photos: message.Photos{uuid.New()}, Post: uuid.New(), CreatedAt: sent.CreatedAt().Add(-time.Hour)}
+	forward := message.Restore(message.Stored{
+		ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: message.RestoreContent("", nil, uuid.Nil, message.Forwards{carried}), CreatedAt: sent.CreatedAt(),
+	})
+	if data, err = codec.Encode(bob, service.Event{Message: forward}); err != nil {
+		t.Fatalf("Encode forward: %v", err)
+	}
+	if _, e, err = codec.Decode(data); err != nil || e.Message == nil || len(e.Message.Forwarded()) != 1 {
+		t.Fatalf("forward round trip = %+v, %v", e.Message, err)
+	}
+	if got := e.Message.Forwarded()[0]; got.SenderID != carried.SenderID || got.Text != carried.Text || got.Photos[0] != carried.Photos[0] ||
+		got.Post != carried.Post || !got.CreatedAt.Equal(carried.CreatedAt) {
+		t.Fatalf("forwarded = %+v, want %+v", got, carried)
+	}
+
+	gone, err := sent.TakenBack(ann, sent.CreatedAt().Add(time.Minute))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if data, err = codec.Encode(bob, service.Event{Edited: gone}); err != nil {
+		t.Fatalf("Encode taken back: %v", err)
+	}
+	if _, e, err = codec.Decode(data); err != nil || e.Edited == nil || !e.Edited.IsDeleted() || e.Edited.Text() != "" ||
+		!e.Edited.DeletedAt().Equal(gone.DeletedAt()) {
+		t.Fatalf("taken back round trip = %+v, %v", e.Edited, err)
 	}
 
 	edit, err := sent.Edited(ann, "привет!", sent.CreatedAt().Add(time.Minute))

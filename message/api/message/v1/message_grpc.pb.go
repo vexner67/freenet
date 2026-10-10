@@ -52,7 +52,9 @@ type MessageServiceClient interface {
 	// The caller has read the dialog up to a message from the peer.
 	MarkDialogRead(ctx context.Context, in *MarkDialogReadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The caller takes their message back from both sides of the dialog,
-	// within a day of sending (deletable_until); media deletes its photos.
+	// within a day of sending (deletable_until): it stays there saying
+	// nothing (deleted_at) until each side deletes it for themselves; media
+	// deletes its photos.
 	DeleteMessage(ctx context.Context, in *DeleteMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The caller deletes a message of their dialog for themselves alone
 	// ("Удалить у себя"), their own or the peer's: the other side keeps it.
@@ -234,7 +236,9 @@ type MessageServiceServer interface {
 	// The caller has read the dialog up to a message from the peer.
 	MarkDialogRead(context.Context, *MarkDialogReadRequest) (*emptypb.Empty, error)
 	// The caller takes their message back from both sides of the dialog,
-	// within a day of sending (deletable_until); media deletes its photos.
+	// within a day of sending (deletable_until): it stays there saying
+	// nothing (deleted_at) until each side deletes it for themselves; media
+	// deletes its photos.
 	DeleteMessage(context.Context, *DeleteMessageRequest) (*emptypb.Empty, error)
 	// The caller deletes a message of their dialog for themselves alone
 	// ("Удалить у себя"), their own or the peer's: the other side keeps it.

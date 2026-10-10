@@ -12,23 +12,47 @@ import (
 
 func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 	pm := &messagev1.Message{
-		Id:             m.ID().String(),
-		SenderId:       m.SenderID().String(),
-		RecipientId:    m.RecipientID().String(),
-		Text:           m.Text().String(),
-		CreatedAt:      timestamppb.New(m.CreatedAt()),
-		Read:           read,
-		PhotoIds:       photoStrings(m.Photos()),
-		DeletableUntil: timestamppb.New(m.DeletableUntil()),
-		PostId:         postString(m.Post()),
-		EditableUntil:  timestamppb.New(m.EditableUntil()),
+		Id:          m.ID().String(),
+		SenderId:    m.SenderID().String(),
+		RecipientId: m.RecipientID().String(),
+		Text:        m.Text().String(),
+		CreatedAt:   timestamppb.New(m.CreatedAt()),
+		Read:        read,
+		PhotoIds:    photoStrings(m.Photos()),
+		PostId:      postString(m.Post()),
+		Forwarded:   toProtoForwarded(m.Forwarded()),
 	}
+
+	// A message taken back can be neither edited nor taken back again.
+	if m.IsDeleted() {
+		pm.DeletedAt = timestamppb.New(m.DeletedAt())
+
+		return pm
+	}
+
+	pm.DeletableUntil = timestamppb.New(m.DeletableUntil())
+	pm.EditableUntil = timestamppb.New(m.EditableUntil())
 
 	if !m.EditedAt().IsZero() {
 		pm.EditedAt = timestamppb.New(m.EditedAt())
 	}
 
 	return pm
+}
+
+func toProtoForwarded(forwarded message.Forwards) []*messagev1.ForwardedMessage {
+	out := make([]*messagev1.ForwardedMessage, len(forwarded))
+	for i, f := range forwarded {
+		out[i] = &messagev1.ForwardedMessage{
+			SenderId:  f.SenderID.String(),
+			Text:      f.Text.String(),
+			PhotoIds:  photoStrings(f.Photos),
+			PostId:    postString(f.Post),
+			CreatedAt: timestamppb.New(f.CreatedAt),
+		}
+	}
+
+	return out
 }
 
 // postString is "" for no post, as the proto field says.
@@ -49,40 +73,53 @@ func photoStrings(photos message.Photos) []string {
 	return out
 }
 
-// fromProtoContent reads what a message to send says.
-func fromProtoContent(req *messagev1.SendMessageRequest) (message.Content, error) {
+// fromProtoDraft reads the message to send.
+func fromProtoDraft(req *messagev1.SendMessageRequest) (service.Draft, error) {
 	text, err := message.NewText(req.GetText())
 	if err != nil {
-		return message.Content{}, status.Error(codes.InvalidArgument, err.Error())
+		return service.Draft{}, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	ids := make([]uuid.UUID, 0, len(req.GetPhotoIds()))
-	for _, s := range req.GetPhotoIds() {
-		id, err := uuid.Parse(s)
-		if err != nil {
-			return message.Content{}, status.Error(codes.InvalidArgument, message.ErrInvalidPhoto.Error())
-		}
-		ids = append(ids, id)
+	ids, err := parseIDs(req.GetPhotoIds(), message.ErrInvalidPhoto.Error())
+	if err != nil {
+		return service.Draft{}, err
 	}
 
 	photos, err := message.NewPhotos(ids)
 	if err != nil {
-		return message.Content{}, status.Error(codes.InvalidArgument, err.Error())
+		return service.Draft{}, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	var post uuid.UUID
 	if req.GetPostId() != "" {
 		if post, err = uuid.Parse(req.GetPostId()); err != nil {
-			return message.Content{}, status.Error(codes.InvalidArgument, "invalid post id")
+			return service.Draft{}, status.Error(codes.InvalidArgument, "invalid post id")
 		}
 	}
 
-	content, err := message.NewContent(text, photos, post)
-	if err != nil {
-		return message.Content{}, status.Error(codes.InvalidArgument, err.Error())
+	if len(req.GetForwardIds()) > message.MaxForwarded {
+		return service.Draft{}, status.Error(codes.InvalidArgument, message.ErrTooManyForwarded.Error())
 	}
 
-	return content, nil
+	forward, err := parseIDs(req.GetForwardIds(), "invalid forwarded message id")
+	if err != nil {
+		return service.Draft{}, err
+	}
+
+	return service.Draft{Text: text, Photos: photos, Post: post, Forward: forward}, nil
+}
+
+func parseIDs(raw []string, invalid string) ([]uuid.UUID, error) {
+	ids := make([]uuid.UUID, 0, len(raw))
+	for _, s := range raw {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, invalid)
+		}
+		ids = append(ids, id)
+	}
+
+	return ids, nil
 }
 
 func toProtoDialog(d message.Dialog, userID uuid.UUID) *messagev1.Dialog {
