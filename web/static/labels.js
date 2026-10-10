@@ -340,6 +340,17 @@ export function eventsCount(n) {
   return n === 0 ? 'Ни одной встречи' : `${n} ${plural(n, ['встреча', 'встречи', 'встреч'])}`;
 }
 
+// aboutStatistics are the lines of "Статистика" on the page "о сайте",
+// openvk's "about_users" and so on: the number and the words after it.
+export function aboutStatistics({ users, online, clubs, posts }) {
+  return [
+    [users, plural(users, ['пользователь', 'пользователя', 'пользователей'])],
+    [online, plural(online, ['пользователь в сети', 'пользователя в сети', 'пользователей в сети'])],
+    [clubs, plural(clubs, ['группа', 'группы', 'групп'])],
+    [posts, plural(posts, ['запись на стенах', 'записи на стенах', 'записей на стенах'])],
+  ];
+}
+
 // clubsCount is openvk's "groups": "1 группа", "5 групп".
 export function clubsCount(n) {
   return n === 0 ? 'Ни одной группы' : `${n} ${plural(n, ['группа', 'группы', 'групп'])}`;

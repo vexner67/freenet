@@ -265,6 +265,8 @@ export const api = {
   club: (ref) => optional('GET', '/api/v1/clubs/' + encodeURIComponent(ref)),
   updateClub: (ref, settings) => authorized('PUT', '/api/v1/clubs/' + encodeURIComponent(ref), settings),
   // An event ("встреча"): startsAt and endsAt are ISO times, endsAt '' for none.
+  // What the page "о сайте" counts: users, online, clubs, posts.
+  about: () => request('GET', '/api/v1/about'),
   createEvent: (event) => authorized('POST', '/api/v1/events', event),
   // maybe: "Возможно приду" of an event.
   joinClub: (ref, { maybe = false } = {}) =>
