@@ -535,6 +535,18 @@ func (f *fakePosts) GetMany(_ context.Context, ids []string) ([]model.Post, erro
 	return found, nil
 }
 
+// Comment knows c1, a comment of p1, and c9, of a post nobody is shown.
+func (f *fakePosts) Comment(_ context.Context, id string) (model.Comment, error) {
+	switch id {
+	case "c1":
+		return model.Comment{ID: "c1", PostID: "p1", Author: model.Author{ID: "u2"}, Text: "согласен, и вот почему"}, nil
+	case "c9":
+		return model.Comment{ID: "c9", PostID: "p404", Author: model.Author{ID: "u2"}, Text: "в архиве"}, nil
+	default:
+		return model.Comment{}, failure.New(failure.NotFound, "comment not found")
+	}
+}
+
 // CommentsByID knows c1 only.
 func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comment, error) {
 	var found []model.Comment
@@ -1206,8 +1218,26 @@ func TestUserEndpoints(t *testing.T) {
 		if w.Code != http.StatusOK || h.users.token != "tok" {
 			t.Fatalf("status = %d, token = %q", w.Code, h.users.token)
 		}
-		if u := decode[map[string]any](t, w); u["birthday"] != nil || u["profileCompleted"] != false {
+		u := decode[map[string]any](t, w)
+		if u["birthday"] != nil || u["profileCompleted"] != false {
 			t.Fatalf("fresh user: %v", u)
+		}
+
+		// The clubs of the left menu come with the account.
+		if pinned, _ := u["pinnedClubs"].([]any); len(pinned) != 1 || pinned[0].(map[string]any)["name"] != cats.Name {
+			t.Fatalf("pinned clubs = %v", u["pinnedClubs"])
+		}
+	})
+
+	t.Run("me without the clubs service", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.clubs.err = errors.New("club is down")
+
+		w := h.do("GET", "/api/v1/me", "", "Authorization", "Bearer tok")
+		if u := decode[map[string]any](t, w); w.Code != http.StatusOK || u["pinnedClubs"] != nil {
+			t.Fatalf("%d %v", w.Code, u)
 		}
 	})
 

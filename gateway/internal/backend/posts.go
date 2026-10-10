@@ -153,6 +153,8 @@ func (p *Posts) List(ctx context.Context, accessToken, wallID string, pick model
 		Limit:  toLimit(limit),
 		Filter: f,
 		Query:  pick.Query,
+
+		TextLimit: model.ExcerptLength,
 	})
 	if err != nil {
 		return model.PostPage{}, errs.Wrap("p.api.ListPosts", fromStatus(err))
@@ -174,6 +176,7 @@ func (p *Posts) Feed(ctx context.Context, accessToken string, sources model.Feed
 		Everyone:  sources.Everyone,
 		Cursor:    cursor,
 		Limit:     toLimit(limit),
+		TextLimit: model.ExcerptLength,
 	})
 	if err != nil {
 		return model.PostPage{}, errs.Wrap("p.api.ListFeed", fromStatus(err))
@@ -185,9 +188,10 @@ func (p *Posts) Feed(ctx context.Context, accessToken string, sources model.Feed
 	}, nil
 }
 
-// GetMany returns the posts that exist, in no order.
+// GetMany returns the posts that exist, in no order, with the beginnings
+// of their texts: they are shown inside something else.
 func (p *Posts) GetMany(ctx context.Context, ids []string) ([]model.Post, error) {
-	resp, err := p.api.GetPosts(ctx, &postv1.GetPostsRequest{Ids: ids})
+	resp, err := p.api.GetPosts(ctx, &postv1.GetPostsRequest{Ids: ids, TextLimit: model.ExcerptLength})
 	if err != nil {
 		return nil, errs.Wrap("p.api.GetPosts", fromStatus(err))
 	}
@@ -195,9 +199,24 @@ func (p *Posts) GetMany(ctx context.Context, ids []string) ([]model.Post, error)
 	return toPosts(resp.GetPosts()), nil
 }
 
-// CommentsByID returns the comments that exist, without Author, in no order.
+// Comment is one comment, whole, without Author.
+func (p *Posts) Comment(ctx context.Context, id string) (model.Comment, error) {
+	resp, err := p.api.GetComments(ctx, &postv1.GetCommentsRequest{Ids: []string{id}})
+	if err != nil {
+		return model.Comment{}, errs.Wrap("p.api.GetComments", fromStatus(err))
+	}
+
+	if len(resp.GetComments()) == 0 {
+		return model.Comment{}, failure.New(failure.NotFound, "comment not found")
+	}
+
+	return toComment(resp.GetComments()[0]), nil
+}
+
+// CommentsByID returns the comments that exist, without Author, in no
+// order, with the beginnings of their texts.
 func (p *Posts) CommentsByID(ctx context.Context, ids []string) ([]model.Comment, error) {
-	resp, err := p.api.GetComments(ctx, &postv1.GetCommentsRequest{Ids: ids})
+	resp, err := p.api.GetComments(ctx, &postv1.GetCommentsRequest{Ids: ids, TextLimit: model.ExcerptLength})
 	if err != nil {
 		return nil, errs.Wrap("p.api.GetComments", fromStatus(err))
 	}
@@ -213,7 +232,7 @@ func (p *Posts) CommentsByID(ctx context.Context, ids []string) ([]model.Comment
 // LastComments are the newest three comments of each of the posts, oldest
 // first, with liked for the caller of a token.
 func (p *Posts) LastComments(ctx context.Context, accessToken string, postIDs []string) ([]model.Comment, error) {
-	resp, err := p.api.ListLastComments(withToken(ctx, accessToken), &postv1.ListLastCommentsRequest{PostIds: postIDs})
+	resp, err := p.api.ListLastComments(withToken(ctx, accessToken), &postv1.ListLastCommentsRequest{PostIds: postIDs, TextLimit: model.ExcerptLength})
 	if err != nil {
 		return nil, errs.Wrap("p.api.ListLastComments", fromStatus(err))
 	}
@@ -318,6 +337,8 @@ func (p *Posts) Comments(ctx context.Context, accessToken, postID, cursor string
 		PostId: postID,
 		Cursor: cursor,
 		Limit:  toLimit(limit),
+
+		TextLimit: model.ExcerptLength,
 	})
 	if err != nil {
 		return model.CommentPage{}, errs.Wrap("p.api.ListComments", fromStatus(err))
@@ -410,6 +431,7 @@ func toPost(p *postv1.Post) model.Post {
 		Author:    model.Author{ID: p.GetAuthorId()},
 		Wall:      model.Author{ID: p.GetWallId()},
 		Text:      p.GetText(),
+		TextCut:   p.GetTextCut(),
 		PhotoIDs:  p.GetPhotoIds(),
 		CreatedAt: p.GetCreatedAt().AsTime(),
 		Likes:     int(p.GetLikeCount()),
@@ -447,6 +469,7 @@ func toComment(c *postv1.Comment) model.Comment {
 		PostID:    c.GetPostId(),
 		Author:    model.Author{ID: c.GetAuthorId()},
 		Text:      c.GetText(),
+		TextCut:   c.GetTextCut(),
 		PhotoIDs:  c.GetPhotoIds(),
 		CreatedAt: c.GetCreatedAt().AsTime(),
 		ReplyTo:   c.GetReplyToId(),

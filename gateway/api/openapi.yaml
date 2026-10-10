@@ -1001,6 +1001,30 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/comments/{id}/text:
+    get:
+      summary: What a comment says, whole
+      description: |
+        No token needed. Lists of comments carry the beginning of a long
+        text (`textCut`); this is all of it, for "Показать больше". A
+        comment of a post you are not shown is not found.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The text
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text]
+                properties:
+                  text: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/comments/{id}/likes:
     get:
       summary: Who like the comment, newest first ("Понравилось N людям")
@@ -3400,6 +3424,10 @@ components:
               items: { type: string, enum: [interests, email, telegram, status, city] }
               description: What is missing, for openvk's hints under the gauge
             interface: { $ref: "#/components/schemas/Interface" }
+            pinnedClubs:
+              type: array
+              items: { $ref: "#/components/schemas/Club" }
+              description: 'The clubs in your left menu ("Добавить в левое меню"), told by GET /api/v1/me alone; absent when there are none'
             deactivated:
               type: boolean
               description: "You deleted the page; see POST /api/v1/me/deactivate"
@@ -3561,6 +3589,9 @@ components:
             - $ref: "#/components/schemas/Author"
             - type: "null"
         text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when the post is photos only or a repost without a word" }
+        textCut:
+          type: boolean
+          description: "`text` is only its beginning (1000 characters): lists carry no more. GET /api/v1/posts/{id} tells the post whole. Absent when the text is whole"
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
@@ -3623,6 +3654,7 @@ components:
         deleted: { type: boolean }
         avatarUpdate: { type: boolean, description: "It shows a new photo, as Post's avatarUpdate" }
         nsfw: { type: boolean, description: "Its author marked it as adult, as Post's nsfw" }
+        textCut: { type: boolean, description: "`text` is only its beginning, as Post's textCut" }
         author:
           oneOf:
             - $ref: "#/components/schemas/Author"
@@ -3696,6 +3728,9 @@ components:
         postId: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
         text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when photos only" }
+        textCut:
+          type: boolean
+          description: "`text` is only its beginning (1000 characters): lists carry no more. GET /api/v1/comments/{id}/text tells it whole. Absent when the text is whole"
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
@@ -3777,6 +3812,9 @@ components:
       properties:
         id: { type: string, format: uuid }
         text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when photos only" }
+        textCut:
+          type: boolean
+          description: "`text` is only its beginning (200 characters): lists carry no more. Only the last message of a dialog in GET /api/v1/dialogs is cut; the dialog tells it whole. Absent when the text is whole"
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }

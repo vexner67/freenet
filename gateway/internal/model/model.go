@@ -217,6 +217,8 @@ type Post struct {
 	// on the author's own wall.
 	Wall Author
 	Text string
+	// TextCut: Text is only its beginning, as lists carry it.
+	TextCut bool
 	// PhotoIDs are the author's photos in the media service, in order.
 	PhotoIDs  []string
 	CreatedAt time.Time
@@ -252,6 +254,15 @@ type Post struct {
 	// SharedPhotoID is a photo of an album the post shares, "" for none.
 	SharedPhotoID string
 }
+
+// Lists carry the beginnings of texts, which say up to 60 000
+// characters: ExcerptLength of a post or a comment, more than the site
+// shows before "Показать больше", and PreviewLength of the last message of
+// a dialog, shown in one line.
+const (
+	ExcerptLength = 1000
+	PreviewLength = 200
+)
 
 // NewPost is what a post to write says and where: on the wall of WallID
 // ("" for the caller's own), a community's if ClubWall, speaking for it
@@ -338,6 +349,8 @@ type Comment struct {
 	PostID string
 	Author Author
 	Text   string
+	// TextCut: Text is only its beginning, as lists carry it.
+	TextCut bool
 	// PhotoIDs are the author's photos in the media service, in order.
 	PhotoIDs  []string
 	CreatedAt time.Time
@@ -397,6 +410,8 @@ type Message struct {
 	SenderID    string
 	RecipientID string
 	Text        string
+	// TextCut: Text is only its beginning, as lists carry it.
+	TextCut bool
 	// PhotoIDs are the sender's photos in the media service, in order.
 	PhotoIDs  []string
 	CreatedAt time.Time
