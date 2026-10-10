@@ -26,7 +26,7 @@ func send(t *testing.T, svc *service.MessageService, from, to uuid.UUID, texts .
 
 	sent := make([]*message.Message, 0, len(texts))
 	for _, text := range texts {
-		m, err := svc.Send(context.Background(), from, to, message.RestoreContent(message.Text(text), nil, uuid.Nil))
+		m, err := svc.Send(context.Background(), from, to, service.Draft{Text: message.Text(text)})
 		if err != nil {
 			t.Fatalf("Send: %v", err)
 		}
@@ -238,7 +238,7 @@ func TestSend_ToYourself(t *testing.T) {
 	t.Parallel()
 
 	ann := uuid.New()
-	if _, err := newService().Send(context.Background(), ann, ann, message.RestoreContent("сам себе", nil, uuid.Nil)); !errors.Is(err, message.ErrToYourself) {
+	if _, err := newService().Send(context.Background(), ann, ann, service.Draft{Text: "сам себе"}); !errors.Is(err, message.ErrToYourself) {
 		t.Fatalf("to yourself: %v", err)
 	}
 }
@@ -338,11 +338,25 @@ func TestMessageService_Events(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	gone := service.Deleted{ID: m.ID(), SenderID: bob, RecipientID: ann}
+	// Taken back, the message says nothing: both hear what it is now.
 	for name, events := range map[string]<-chan service.Event{"recipient": annEvents, "sender": bobEvents} {
-		if e := <-events; e.Deleted == nil || *e.Deleted != gone {
-			t.Fatalf("%s got %+v, want deletion %+v", name, e, gone)
+		if e := <-events; e.Edited == nil || e.Edited.ID() != m.ID() || !e.Edited.IsDeleted() || e.Edited.Text() != "" {
+			t.Fatalf("%s got %+v, want the message taken back", name, e)
 		}
+	}
+
+	// Deleted by ann for herself, it is gone from her pages only.
+	if err := svc.Hide(ctx, ann, m.ID()); err != nil {
+		t.Fatal(err)
+	}
+	gone := service.Deleted{ID: m.ID(), SenderID: bob, RecipientID: ann}
+	if e := <-annEvents; e.Deleted == nil || *e.Deleted != gone {
+		t.Fatalf("ann got %+v, want deletion %+v", e, gone)
+	}
+	select {
+	case e := <-bobEvents:
+		t.Fatalf("unexpected event %+v", e)
+	default:
 	}
 }
 
@@ -379,43 +393,218 @@ func TestMessageService_Delete(t *testing.T) {
 		t.Fatalf("delete twice: %v", err)
 	}
 
+	// Taken back, the message stays where it was for both and says
+	// nothing: the peer sees that something was there.
 	for who, peer := range map[uuid.UUID]uuid.UUID{ann: bob, bob: ann} {
 		page, err := svc.History(ctx, who, peer, uuid.Nil, 50)
-		if got := texts(page.Messages); err != nil || !slices.Equal(got, []string{"привет", "что?"}) {
-			t.Fatalf("history = %v, %v; the message is gone from both sides", got, err)
+		if got := texts(page.Messages); err != nil || !slices.Equal(got, []string{"привет", "", "что?"}) {
+			t.Fatalf("history = %v, %v; want the message empty in its place", got, err)
+		}
+		if gone := page.Messages[1]; !gone.IsDeleted() || gone.ID() != fromAnn[1].ID() {
+			t.Fatalf("message = %+v, want it taken back", gone)
 		}
 	}
 
-	// Bob takes his message back too: ann's first is the last of the
-	// dialog for both, ann has nothing unread, and bob is no longer
-	// someone who wrote to her first.
+	// It can be neither edited nor forwarded, and a search does not find it.
+	if _, err := svc.Edit(ctx, ann, fromAnn[1].ID(), "снова"); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("edit a message taken back: %v", err)
+	}
+	if _, err := svc.Send(ctx, ann, cat, service.Draft{Forward: []uuid.UUID{fromAnn[1].ID()}}); !errors.Is(err, message.ErrForwardNotFound) {
+		t.Fatalf("forward a message taken back: %v", err)
+	}
+	if found, err := svc.Search(ctx, bob, uuid.Nil, "не то", uuid.Nil, 20); err != nil || len(found.Messages) != 0 {
+		t.Fatalf("search = %v, %v; want nothing", texts(found.Messages), err)
+	}
+
+	// Bob takes his message back too: it is still the last of the dialog
+	// and still unread, and bob is still someone who wrote to ann.
 	if err := svc.Delete(ctx, bob, fromBob.ID()); err != nil {
 		t.Fatal(err)
 	}
 	for _, who := range []uuid.UUID{ann, bob} {
 		page, err := svc.Dialogs(ctx, who, uuid.Nil, 20)
-		if err != nil || len(page.Dialogs) != 1 || page.Dialogs[0].LastMessage.ID() != fromAnn[0].ID() {
-			t.Fatalf("dialogs = %+v, %v; want the first message last", page.Dialogs, err)
+		if err != nil || len(page.Dialogs) != 1 || page.Dialogs[0].LastMessage.ID() != fromBob.ID() || !page.Dialogs[0].LastMessage.IsDeleted() {
+			t.Fatalf("dialogs = %+v, %v; want the message taken back last", page.Dialogs, err)
 		}
 	}
-	if n, _ := svc.CountUnread(ctx, ann); n != 0 {
-		t.Fatalf("ann's unread = %d: bob took his message back", n)
+	if n, _ := svc.CountUnread(ctx, ann); n != 1 {
+		t.Fatalf("ann's unread = %d, want what bob took back", n)
 	}
-	if ok, _ := svc.HasMessagesFrom(ctx, ann, bob); ok {
-		t.Fatal("bob has no messages to ann left")
+	if ok, _ := svc.HasMessagesFrom(ctx, ann, bob); !ok {
+		t.Fatal("bob did write to ann")
+	}
+	if err := svc.MarkRead(ctx, ann, bob, fromBob.ID()); err != nil {
+		t.Fatalf("read a message taken back: %v", err)
 	}
 
-	// The last message gone, the dialog leaves both lists.
-	if err := svc.Delete(ctx, ann, fromAnn[0].ID()); err != nil {
+	// Each side deletes what was taken back for themselves; once both
+	// have, it is gone for good.
+	if err := svc.Hide(ctx, ann, fromBob.ID()); err != nil {
 		t.Fatal(err)
 	}
-	for _, who := range []uuid.UUID{ann, bob} {
-		if page, err := svc.Dialogs(ctx, who, uuid.Nil, 20); err != nil || len(page.Dialogs) != 0 {
-			t.Fatalf("dialogs = %+v, %v; want none", page.Dialogs, err)
+	if page, _ := svc.History(ctx, bob, ann, uuid.Nil, 50); len(page.Messages) != 3 {
+		t.Fatalf("bob has %d messages, want all three", len(page.Messages))
+	}
+	if err := svc.Hide(ctx, bob, fromBob.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Hide(ctx, bob, fromBob.ID()); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("hide a message gone for good: %v", err)
+	}
+}
+
+func TestMessageService_Forward(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	photos := &fakePhotos{}
+	svc := service.NewMessageService(service.Deps{
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+	})
+	ann, bob, cat, dan := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	photo, post := uuid.New(), uuid.New()
+
+	first, err := svc.Send(ctx, bob, ann, service.Draft{Text: "смотри", Photos: message.Photos{photo}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	second, err := svc.Send(ctx, ann, bob, service.Draft{Post: post})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Ann forwards both to cat, newest named first: they go oldest first,
+	// the same one once, and bob's photo is kept once more under a new ID.
+	fwd, err := svc.Send(ctx, ann, cat, service.Draft{Text: "вот", Forward: []uuid.UUID{second.ID(), first.ID(), second.ID()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	carried := fwd.Forwarded()
+	if len(carried) != 2 || carried[0].SenderID != bob || carried[0].Text != "смотри" || carried[1].SenderID != ann || carried[1].Post != post {
+		t.Fatalf("forwarded = %+v", carried)
+	}
+	if !carried[0].CreatedAt.Equal(first.CreatedAt()) {
+		t.Fatalf("forwarded at %v, want when it was written, %v", carried[0].CreatedAt, first.CreatedAt())
+	}
+	if len(carried[0].Photos) != 1 || carried[0].Photos[0] == photo {
+		t.Fatalf("photos = %v, want a copy of %v", carried[0].Photos, photo)
+	}
+	if len(photos.copied) != 1 || photos.copied[0].owner != bob || photos.copied[0].copies[0] != (service.PhotoCopy{From: photo, To: carried[0].Photos[0]}) {
+		t.Fatalf("copied = %+v, want bob's photo", photos.copied)
+	}
+
+	// Cat reads it as it was sent, and forwards it on with nothing of her
+	// own: what it said and what it carried, flat.
+	page, err := svc.History(ctx, cat, ann, uuid.Nil, 20)
+	if err != nil || len(page.Messages) != 1 || len(page.Messages[0].Forwarded()) != 2 {
+		t.Fatalf("cat's history = %+v, %v", page.Messages, err)
+	}
+
+	again, err := svc.Send(ctx, cat, dan, service.Draft{Forward: []uuid.UUID{fwd.ID()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := again.Forwarded(); len(got) != 3 || got[0].SenderID != ann || got[0].Text != "вот" || got[1].Text != "смотри" || got[1].Photos[0] == carried[0].Photos[0] {
+		t.Fatalf("forwarded again = %+v", got)
+	}
+
+	// Only what the sender has in their dialogs is forwarded.
+	tests := []struct {
+		name    string
+		sender  uuid.UUID
+		forward []uuid.UUID
+		err     error
+	}{
+		{"a message of others", dan, []uuid.UUID{first.ID()}, message.ErrForwardNotFound},
+		{"a made-up ID", ann, []uuid.UUID{uuid.Max}, message.ErrForwardNotFound},
+		{"too many", ann, make([]uuid.UUID, message.MaxForwarded+1), message.ErrTooManyForwarded},
+		{"nothing at all", ann, nil, message.ErrTextEmpty},
+	}
+	for _, tt := range tests {
+		if _, err := svc.Send(ctx, tt.sender, cat, service.Draft{Forward: tt.forward}); !errors.Is(err, tt.err) {
+			t.Fatalf("%s: Send = %v, want %v", tt.name, err, tt.err)
 		}
 	}
-	if n, _ := svc.CountUnread(ctx, bob); n != 0 {
-		t.Fatalf("bob's unread = %d", n)
+
+	// Deleted for herself, a message is no longer ann's to forward.
+	if err := svc.Hide(ctx, ann, first.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Send(ctx, ann, cat, service.Draft{Forward: []uuid.UUID{first.ID()}}); !errors.Is(err, message.ErrForwardNotFound) {
+		t.Fatalf("forward a hidden message: %v", err)
+	}
+
+	// Taken back, the forwarding message takes the copies along; the
+	// message it was made of keeps its photo.
+	photos.deleted = nil
+	if err := svc.Delete(ctx, ann, fwd.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(photos.deleted) != 1 || photos.deleted[0].owner != bob || !slices.Equal(photos.deleted[0].photos, []uuid.UUID(carried[0].Photos)) {
+		t.Fatalf("deleted = %+v, want the copy of bob's photo", photos.deleted)
+	}
+
+	// Bob's page is erased: the copy in the dialog of cat and dan is his
+	// and goes with him, nothing to tell media about it.
+	photos.deleted = nil
+	if err := svc.PurgeUser(ctx, dan); err != nil {
+		t.Fatal(err)
+	}
+	if len(photos.deleted) != 1 || photos.deleted[0].owner != bob {
+		t.Fatalf("deleted = %+v, want the copy of bob's photo in dan's dialog", photos.deleted)
+	}
+	if photos.outsideTx != 0 {
+		t.Fatalf("%d photo calls outside the transaction", photos.outsideTx)
+	}
+}
+
+func TestAround(t *testing.T) {
+	t.Parallel()
+
+	svc := newService()
+	ctx := context.Background()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	sent := send(t, svc, ann, bob, "1", "2", "3", "4", "5", "6", "7", "8", "9")
+	other := send(t, svc, ann, cat, "другой диалог")[0]
+
+	page, err := svc.Around(ctx, bob, ann, sent[4].ID(), 4)
+	if got := texts(page.Messages); err != nil || !slices.Equal(got, []string{"3", "4", "5", "6", "7"}) {
+		t.Fatalf("around = %v, %v", got, err)
+	}
+	if page.NextCursor != sent[2].ID() {
+		t.Fatalf("next cursor = %v, want the oldest shown", page.NextCursor)
+	}
+
+	// Near the start nothing older is left.
+	page, err = svc.Around(ctx, ann, bob, sent[1].ID(), 4)
+	if got := texts(page.Messages); err != nil || !slices.Equal(got, []string{"1", "2", "3", "4"}) || page.NextCursor != uuid.Nil {
+		t.Fatalf("around the second = %v, %v, cursor %v", got, err, page.NextCursor)
+	}
+
+	tests := []struct {
+		name       string
+		user, peer uuid.UUID
+		id         uuid.UUID
+	}{
+		{"a message of another dialog", ann, bob, other.ID()},
+		{"a stranger", cat, ann, sent[4].ID()},
+		{"a made-up ID", ann, bob, uuid.Max},
+	}
+	for _, tt := range tests {
+		if _, err := svc.Around(ctx, tt.user, tt.peer, tt.id, 4); !errors.Is(err, message.ErrNotFound) {
+			t.Fatalf("%s: Around = %v, want not found", tt.name, err)
+		}
+	}
+
+	// Deleted for herself, the message is not ann's to open.
+	if err := svc.Hide(ctx, ann, sent[4].ID()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Around(ctx, ann, bob, sent[4].ID(), 4); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("around a hidden message: %v", err)
 	}
 }
 
@@ -456,7 +645,21 @@ func TestPurgeUser(t *testing.T) {
 // fakePhotos records what media is told, and whether in a transaction.
 type fakePhotos struct {
 	published, deleted []photoCall
+	copied             []copyCall
 	outsideTx          int
+}
+
+type copyCall struct {
+	owner  uuid.UUID
+	copies []service.PhotoCopy
+}
+
+func (f *fakePhotos) Copy(ctx context.Context, owner uuid.UUID, copies []service.PhotoCopy) error {
+	if ctx.Value(inTx{}) == nil {
+		f.outsideTx++
+	}
+	f.copied = append(f.copied, copyCall{owner, copies})
+	return nil
 }
 
 type photoCall struct {
@@ -503,11 +706,7 @@ func TestMessageService_Photos(t *testing.T) {
 	send := func(from, to, photo uuid.UUID) {
 		t.Helper()
 
-		content, err := message.NewContent("", message.Photos{photo}, uuid.Nil)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if _, err = svc.Send(ctx, from, to, content); err != nil {
+		if _, err := svc.Send(ctx, from, to, service.Draft{Photos: message.Photos{photo}}); err != nil {
 			t.Fatalf("Send: %v", err)
 		}
 	}
@@ -652,7 +851,7 @@ func TestMessageService_HidePhotos(t *testing.T) {
 	ann, bob := uuid.New(), uuid.New()
 	photo := uuid.New()
 
-	m, err := svc.Send(ctx, ann, bob, message.RestoreContent("", message.Photos{photo}, uuid.Nil))
+	m, err := svc.Send(ctx, ann, bob, service.Draft{Photos: message.Photos{photo}})
 	if err != nil {
 		t.Fatal(err)
 	}

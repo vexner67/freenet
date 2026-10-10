@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
+	"github.com/vexner67/freenet/message/internal/service"
 	"github.com/vexner67/freenet/pkg/outbox"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -20,6 +21,7 @@ type fakeAPI struct {
 	mediav1.MediaServiceClient
 	published *mediav1.PublishPhotosRequest
 	deleted   *mediav1.DeletePublishedPhotosRequest
+	copied    *mediav1.CopyPhotosRequest
 	deadline  bool
 	err       error
 }
@@ -32,6 +34,11 @@ func (f *fakeAPI) PublishPhotos(ctx context.Context, req *mediav1.PublishPhotosR
 
 func (f *fakeAPI) DeletePublishedPhotos(_ context.Context, req *mediav1.DeletePublishedPhotosRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.deleted = req
+	return &emptypb.Empty{}, f.err
+}
+
+func (f *fakeAPI) CopyPhotos(_ context.Context, req *mediav1.CopyPhotosRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.copied = req
 	return &emptypb.Empty{}, f.err
 }
 
@@ -76,6 +83,14 @@ func TestOutboxAndDeliverer(t *testing.T) {
 	}
 	if r := api.deleted; r.GetOwnerId() != owner.String() || !slices.Equal(r.GetPhotoIds(), want) {
 		t.Fatalf("deleted %v", r)
+	}
+
+	copies := []service.PhotoCopy{{From: photos[0], To: photos[1]}}
+	if err := roundTrip(t, api, func(o *Outbox) error { return o.Copy(ctx, owner, copies) }); err != nil {
+		t.Fatalf("deliver copy: %v", err)
+	}
+	if r := api.copied; r.GetOwnerId() != owner.String() || len(r.GetCopies()) != 1 || r.GetCopies()[0].GetFromId() != want[0] || r.GetCopies()[0].GetToId() != want[1] {
+		t.Fatalf("copied %v", r)
 	}
 }
 

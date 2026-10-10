@@ -1,7 +1,9 @@
 package service
 
 import (
+	"bytes"
 	"context"
+	"errors"
 	"slices"
 	"time"
 
@@ -34,6 +36,9 @@ type MessageRepository interface {
 	// the messages they have left; message.ErrNotFound if it is gone
 	// already.
 	Delete(ctx context.Context, m *message.Message) error
+	// Retract saves a message taken back: it says nothing from now on;
+	// message.ErrNotFound if it is gone or was taken back already.
+	Retract(ctx context.Context, m *message.Message) error
 	// Update saves what an edited message says; message.ErrNotFound.
 	Update(ctx context.Context, m *message.Message) error
 	// Hide deletes the message for userID alone and brings their side of
@@ -45,17 +50,36 @@ type MessageRepository interface {
 	Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, before uuid.UUID, limit int) ([]*message.Message, error)
 	// DeleteByUser removes the dialogs of a user, both sides of each, with
 	// every message in them, and returns the deleted messages that had
-	// photos.
+	// photos, their own or of the messages they carried on.
 	DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*message.Message, error)
 }
 
 // PhotoKeeper records what the media service has to do with the photos of
 // messages, inside the transaction of the change: media keeps the photos
-// of a sent message for good and deletes those of an erased one. Photos
-// never sent it deletes after a while by itself.
+// of a sent message for good, keeps those of a forwarded one once more
+// and deletes those of an erased one. Photos never sent it deletes after
+// a while by itself.
 type PhotoKeeper interface {
 	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
+	// Copy keeps the owner's published photos once more under new IDs.
+	Copy(ctx context.Context, ownerID uuid.UUID, copies []PhotoCopy) error
+}
+
+// PhotoCopy: photo From is kept once more as To.
+type PhotoCopy struct {
+	From uuid.UUID
+	To   uuid.UUID
+}
+
+// Draft is a message to send. Forward are the messages of the sender's
+// dialogs it carries on ("Переслать"); the rest is what it says itself,
+// and one of them is there.
+type Draft struct {
+	Text    message.Text
+	Photos  message.Photos
+	Post    uuid.UUID
+	Forward []uuid.UUID
 }
 
 // TxManager runs fn in one transaction: everything it saves is kept if it
@@ -95,7 +119,8 @@ type HistoryPage struct {
 
 // Event is what happened in a user's dialogs, for live updates: a new
 // message, sent or received, a read mark that moved, a message deleted or
-// one that says something else now.
+// one that says something else now — edited, or taken back by its sender
+// and saying nothing.
 type Event struct {
 	Message *message.Message
 	Read    *ReadMark
@@ -110,8 +135,8 @@ type SearchPage struct {
 	NextCursor uuid.UUID
 }
 
-// Deleted: message ID is gone from the dialog of whoever hears it — taken
-// back from both sides by its sender, or deleted by one for themselves.
+// Deleted: message ID is gone from the dialog of whoever hears it, who
+// deleted it for themselves.
 type Deleted struct {
 	ID          uuid.UUID
 	SenderID    uuid.UUID
@@ -164,8 +189,19 @@ func NewMessageService(d Deps) *MessageService {
 
 // Send writes from senderID to recipientID; the caller has made sure the
 // recipient exists and the photos are the sender's. Media keeps the
-// photos. Both hear of it: the sender's other pages too.
-func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UUID, content message.Content) (*message.Message, error) {
+// photos, and those of the forwarded messages once more. Both hear of
+// it: the sender's other pages too.
+func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UUID, d Draft) (*message.Message, error) {
+	forwarded, copies, err := s.forwarded(ctx, senderID, d.Forward)
+	if err != nil {
+		return nil, errs.Wrap("s.forwarded", err)
+	}
+
+	content, err := message.NewContent(d.Text, d.Photos, d.Post, forwarded)
+	if err != nil {
+		return nil, errs.Wrap("message.NewContent", err)
+	}
+
 	m, err := message.New(senderID, recipientID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("message.New", err)
@@ -177,7 +213,15 @@ func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UU
 		}
 
 		if photos := m.Photos(); len(photos) > 0 {
-			return errs.Wrap("s.photos.Publish", s.photos.Publish(ctx, senderID, photos))
+			if err := s.photos.Publish(ctx, senderID, photos); err != nil {
+				return errs.Wrap("s.photos.Publish", err)
+			}
+		}
+
+		for _, c := range copies {
+			if err := s.photos.Copy(ctx, c.ownerID, c.photos); err != nil {
+				return errs.Wrap("s.photos.Copy", err)
+			}
 		}
 
 		return nil
@@ -192,10 +236,92 @@ func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UU
 	return m, nil
 }
 
+// photoCopies are the photos of one forwarded message to keep once more.
+type photoCopies struct {
+	ownerID uuid.UUID
+	photos  []PhotoCopy
+}
+
+// forwarded reads the messages userID forwards, oldest first, as a new
+// message carries them on: only what userID still has in their dialogs
+// and what was not taken back. The photos get new IDs: copies, so that
+// they outlive the messages they were sent in.
+func (s *MessageService) forwarded(ctx context.Context, userID uuid.UUID, ids []uuid.UUID) (message.Forwards, []photoCopies, error) {
+	if len(ids) > message.MaxForwarded {
+		return nil, nil, message.ErrTooManyForwarded
+	}
+
+	// UUIDv7 bytes sort by time; the same message twice is forwarded once.
+	ids = slices.Clone(ids)
+	slices.SortFunc(ids, func(a, b uuid.UUID) int { return bytes.Compare(a[:], b[:]) })
+	ids = slices.Compact(ids)
+
+	var (
+		carried []message.Forwarded
+		copies  []photoCopies
+	)
+
+	for _, id := range ids {
+		m, err := s.messageRepo.Get(ctx, id)
+		if errors.Is(err, message.ErrNotFound) {
+			return nil, nil, message.ErrForwardNotFound
+		}
+		if err != nil {
+			return nil, nil, errs.Wrap("s.messageRepo.Get", err)
+		}
+
+		if !m.VisibleTo(userID) || m.IsDeleted() {
+			return nil, nil, message.ErrForwardNotFound
+		}
+
+		for _, f := range m.Carried() {
+			c, err := copyPhotos(&f)
+			if err != nil {
+				return nil, nil, errs.Wrap("copyPhotos", err)
+			}
+
+			carried = append(carried, f)
+			if len(c.photos) > 0 {
+				copies = append(copies, c)
+			}
+		}
+	}
+
+	forwards, err := message.NewForwards(carried)
+	if err != nil {
+		return nil, nil, errs.Wrap("message.NewForwards", err)
+	}
+
+	return forwards, copies, nil
+}
+
+// copyPhotos gives the photos of f new IDs and tells what to copy.
+func copyPhotos(f *message.Forwarded) (photoCopies, error) {
+	c := photoCopies{ownerID: f.SenderID}
+	if len(f.Photos) == 0 {
+		return c, nil
+	}
+
+	fresh := make(message.Photos, len(f.Photos))
+	for i, from := range f.Photos {
+		to, err := uuid.NewV7()
+		if err != nil {
+			return photoCopies{}, errs.Wrap("uuid.NewV7", err)
+		}
+
+		fresh[i] = to
+		c.photos = append(c.photos, PhotoCopy{From: from, To: to})
+	}
+
+	f.Photos = fresh
+
+	return c, nil
+}
+
 // Delete takes a message back from both sides of the dialog: only its
-// sender may, for a day after sending (message.CheckDelete). Media deletes
-// its photos. Both hear of it: the peer's open dialog drops the message
-// and the counters follow.
+// sender may, for a day after sending (message.TakenBack). It stays in
+// the dialog saying nothing, "Сообщение удалено", until each side deletes
+// it for themselves; media deletes its photos. Both hear what it is now.
 func (s *MessageService) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	m, err := s.messageRepo.Get(ctx, id)
 	if err != nil {
@@ -208,17 +334,50 @@ func (s *MessageService) Delete(ctx context.Context, userID, id uuid.UUID) error
 		return message.ErrNotFound
 	}
 
-	if err = m.CheckDelete(userID, s.now()); err != nil {
-		return errs.Wrap("m.CheckDelete", err)
+	gone, err := m.TakenBack(userID, s.now())
+	if err != nil {
+		return errs.Wrap("m.TakenBack", err)
 	}
 
-	if err = s.erase(ctx, m); err != nil {
-		return errs.Wrap("s.erase", err)
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.messageRepo.Retract(ctx, gone); err != nil {
+			return errs.Wrap("s.messageRepo.Retract", err)
+		}
+
+		return errs.Wrap("s.dropPhotos", s.dropPhotos(ctx, m, uuid.Nil))
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
 	}
 
-	deleted := Event{Deleted: &Deleted{ID: m.ID(), SenderID: m.SenderID(), RecipientID: m.RecipientID()}}
-	s.events.Publish(ctx, m.SenderID(), deleted)
-	s.events.Publish(ctx, m.RecipientID(), deleted)
+	for _, side := range []uuid.UUID{gone.SenderID(), gone.RecipientID()} {
+		if gone.VisibleTo(side) {
+			s.events.Publish(ctx, side, Event{Edited: gone})
+		}
+	}
+
+	return nil
+}
+
+// dropPhotos has media delete the photos of m, its own and the copies it
+// carried on, except those of the user except: media erases everything of
+// a user whose page is gone by itself.
+func (s *MessageService) dropPhotos(ctx context.Context, m *message.Message, except uuid.UUID) error {
+	if photos := m.Photos(); len(photos) > 0 && m.SenderID() != except {
+		if err := s.photos.Delete(ctx, m.SenderID(), photos); err != nil {
+			return errs.Wrap("s.photos.Delete", err)
+		}
+	}
+
+	for _, f := range m.Forwarded() {
+		if len(f.Photos) == 0 || f.SenderID == except {
+			continue
+		}
+
+		if err := s.photos.Delete(ctx, f.SenderID, f.Photos); err != nil {
+			return errs.Wrap("s.photos.Delete", err)
+		}
+	}
 
 	return nil
 }
@@ -306,11 +465,7 @@ func (s *MessageService) erase(ctx context.Context, m *message.Message) error {
 			return errs.Wrap("s.messageRepo.Delete", err)
 		}
 
-		if photos := m.Photos(); len(photos) > 0 {
-			return errs.Wrap("s.photos.Delete", s.photos.Delete(ctx, m.SenderID(), photos))
-		}
-
-		return nil
+		return errs.Wrap("s.dropPhotos", s.dropPhotos(ctx, m, uuid.Nil))
 	})
 	if err != nil {
 		return errs.Wrap("s.tx.WithinTx", err)
@@ -368,6 +523,49 @@ func (s *MessageService) History(ctx context.Context, userID, peerID, cursor uui
 	}
 
 	slices.Reverse(page.Messages)
+
+	if page.Marks, err = s.dialogRepo.ReadMarks(ctx, userID, peerID); err != nil {
+		return HistoryPage{}, errs.Wrap("s.dialogRepo.ReadMarks", err)
+	}
+
+	return page, nil
+}
+
+// Around returns the part of the dialog of userID with peerID around
+// message id, which is in it: about half of size before it and half
+// after, oldest first, so that a found message opens where it was said.
+// NextCursor pages to older messages; newer ones come with Newer.
+func (s *MessageService) Around(ctx context.Context, userID, peerID, id uuid.UUID, size int) (HistoryPage, error) {
+	m, err := s.messageRepo.Get(ctx, id)
+	if err != nil {
+		return HistoryPage{}, errs.Wrap("s.messageRepo.Get", err)
+	}
+
+	if !m.VisibleTo(userID) || !m.Between(peerID) || userID == peerID {
+		return HistoryPage{}, message.ErrNotFound
+	}
+
+	half := max(pageSize(size)/2, 1)
+
+	older, err := s.messageRepo.ListBefore(ctx, userID, peerID, id, half+1)
+	if err != nil {
+		return HistoryPage{}, errs.Wrap("s.messageRepo.ListBefore", err)
+	}
+
+	newer, err := s.messageRepo.ListAfter(ctx, userID, peerID, id, half)
+	if err != nil {
+		return HistoryPage{}, errs.Wrap("s.messageRepo.ListAfter", err)
+	}
+
+	var page HistoryPage
+
+	if len(older) > half {
+		older = older[:half]
+		page.NextCursor = older[half-1].ID()
+	}
+
+	slices.Reverse(older)
+	page.Messages = append(append(older, m), newer...)
 
 	if page.Marks, err = s.dialogRepo.ReadMarks(ctx, userID, peerID); err != nil {
 		return HistoryPage{}, errs.Wrap("s.dialogRepo.ReadMarks", err)
@@ -447,8 +645,8 @@ func pageSize(size int) int {
 
 // PurgeUser erases the dialogs of a user whose page was deleted for good,
 // from both sides: the peers would only keep a dialog with nobody. The
-// photos the peers sent there go too; the user's own media erases with the
-// rest of the user.
+// photos the peers sent or forwarded there go too; the user's own media
+// erases with the rest of the user.
 func (s *MessageService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		withPhotos, err := s.messageRepo.DeleteByUser(ctx, userID)
@@ -457,12 +655,8 @@ func (s *MessageService) PurgeUser(ctx context.Context, userID uuid.UUID) error 
 		}
 
 		for _, m := range withPhotos {
-			if m.SenderID() == userID {
-				continue
-			}
-
-			if err = s.photos.Delete(ctx, m.SenderID(), m.Photos()); err != nil {
-				return errs.Wrap("s.photos.Delete", err)
+			if err = s.dropPhotos(ctx, m, userID); err != nil {
+				return errs.Wrap("s.dropPhotos", err)
 			}
 		}
 

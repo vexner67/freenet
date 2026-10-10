@@ -15,11 +15,12 @@ import (
 )
 
 type MessageService interface {
-	Send(ctx context.Context, senderID, recipientID uuid.UUID, content message.Content) (*message.Message, error)
+	Send(ctx context.Context, senderID, recipientID uuid.UUID, d service.Draft) (*message.Message, error)
 	Dialogs(ctx context.Context, userID, cursor uuid.UUID, size int) (service.DialogPage, error)
 	CountUnread(ctx context.Context, userID uuid.UUID) (int, error)
 	History(ctx context.Context, userID, peerID, cursor uuid.UUID, size int) (service.HistoryPage, error)
 	Newer(ctx context.Context, userID, peerID, after uuid.UUID, size int) (service.HistoryPage, error)
+	Around(ctx context.Context, userID, peerID, id uuid.UUID, size int) (service.HistoryPage, error)
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	Hide(ctx context.Context, userID, id uuid.UUID) error
@@ -54,12 +55,12 @@ func (h *MessageHandler) SendMessage(ctx context.Context, req *messagev1.SendMes
 		return nil, err
 	}
 
-	content, err := fromProtoContent(req)
+	draft, err := fromProtoDraft(req)
 	if err != nil {
 		return nil, err
 	}
 
-	m, err := h.messageService.Send(ctx, senderID, recipientID, content)
+	m, err := h.messageService.Send(ctx, senderID, recipientID, draft)
 	if err != nil {
 		return nil, err
 	}
@@ -128,8 +129,22 @@ func (h *MessageHandler) ListMessages(ctx context.Context, req *messagev1.ListMe
 	return toListMessagesResponse(page, userID), nil
 }
 
-// history pages back with cursor, or polls for newer messages with after.
+// history pages back with cursor, polls for newer messages with after, or
+// opens the dialog around a message.
 func (h *MessageHandler) history(ctx context.Context, userID, peerID uuid.UUID, req *messagev1.ListMessagesRequest) (service.HistoryPage, error) {
+	if req.GetAround() != "" {
+		if req.GetCursor() != "" || req.GetAfter() != "" {
+			return service.HistoryPage{}, status.Error(codes.InvalidArgument, "around cannot be used with cursor or after")
+		}
+
+		around, err := parseID(req.GetAround(), "invalid around")
+		if err != nil {
+			return service.HistoryPage{}, err
+		}
+
+		return h.messageService.Around(ctx, userID, peerID, around, int(req.GetLimit()))
+	}
+
 	if req.GetAfter() == "" {
 		cursor, err := parseOptionalID(req.GetCursor(), "invalid cursor")
 		if err != nil {

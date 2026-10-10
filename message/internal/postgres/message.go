@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -48,9 +49,10 @@ const saveMessageQuery = `
 			text,
 			photo_ids,
 			post_id,
+			forwarded,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
 		RETURNING id, sender_id, recipient_id
 	)
 	INSERT INTO dialogs (
@@ -75,7 +77,12 @@ const saveMessageQuery = `
 `
 
 func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error {
-	_, err := r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), m.CreatedAt())
+	forwarded, err := forwardedToDB(m.Forwarded())
+	if err != nil {
+		return errs.Wrap("forwardedToDB", err)
+	}
+
+	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), forwarded, m.CreatedAt())
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -94,7 +101,9 @@ const getMessageQuery = `
 		created_at,
 		edited_at,
 		hidden_from_sender,
-		hidden_from_recipient
+		hidden_from_recipient,
+		forwarded,
+		deleted_at
 	FROM messages
 	WHERE id = $1
 `
@@ -125,7 +134,9 @@ const (
 			created_at,
 			edited_at,
 			hidden_from_sender,
-			hidden_from_recipient
+			hidden_from_recipient,
+			forwarded,
+			deleted_at
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
@@ -145,7 +156,9 @@ const (
 			created_at,
 			edited_at,
 			hidden_from_sender,
-			hidden_from_recipient
+			hidden_from_recipient,
+			forwarded,
+			deleted_at
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
@@ -197,45 +210,123 @@ func collectMessages(rows pgx.Rows) ([]*message.Message, error) {
 	return messages, nil
 }
 
+// scanned is a row of messages as the queries select it.
+type scanned struct {
+	stored    message.Stored
+	text      string
+	photos    []uuid.UUID
+	post      *uuid.UUID
+	forwarded []byte
+	editedAt  *time.Time
+	deletedAt *time.Time
+}
+
+// dest are the columns of a message, in the order the queries list them.
+func (s *scanned) dest() []any {
+	return []any{
+		&s.stored.ID, &s.stored.SenderID, &s.stored.RecipientID, &s.text, &s.photos, &s.post, &s.stored.CreatedAt,
+		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt,
+	}
+}
+
 func scanMessage(row pgx.Row) (*message.Message, error) {
-	var (
-		s      message.Stored
-		text   string
-		photos []uuid.UUID
-		post   *uuid.UUID
-	)
+	var s scanned
 
-	var editedAt *time.Time
-
-	err := row.Scan(&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &post, &s.CreatedAt,
-		&editedAt, &s.HiddenFromSender, &s.HiddenFromRecipient)
-	if err != nil {
+	if err := row.Scan(s.dest()...); err != nil {
 		return nil, err
 	}
 
-	if editedAt != nil {
-		s.EditedAt = editedAt.UTC()
-	}
-
-	return restore(s, text, photos, post), nil
+	return s.message()
 }
 
-// restore finishes a scanned message. Data comes from our own table and
+// message finishes a scanned message. Data comes from our own table and
 // was validated on write.
-func restore(s message.Stored, text string, photos []uuid.UUID, post *uuid.UUID) *message.Message {
+func (s *scanned) message() (*message.Message, error) {
+	photos := message.Photos(s.photos)
 	if len(photos) == 0 {
 		photos = nil // no photos, as a new message has them
 	}
 
 	var postID uuid.UUID
-	if post != nil {
-		postID = *post
+	if s.post != nil {
+		postID = *s.post
 	}
 
-	s.Content = message.RestoreContent(message.Text(text), message.Photos(photos), postID)
-	s.CreatedAt = s.CreatedAt.UTC()
+	forwarded, err := forwardedFromDB(s.forwarded)
+	if err != nil {
+		return nil, errs.Wrap("forwardedFromDB", err)
+	}
 
-	return message.Restore(s)
+	stored := s.stored
+	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded)
+	stored.CreatedAt = stored.CreatedAt.UTC()
+
+	if s.editedAt != nil {
+		stored.EditedAt = s.editedAt.UTC()
+	}
+	if s.deletedAt != nil {
+		stored.DeletedAt = s.deletedAt.UTC()
+	}
+
+	return message.Restore(stored), nil
+}
+
+// forwardedJSON is a forwarded message in the forwarded column, a JSON
+// array of them.
+type forwardedJSON struct {
+	SenderID  uuid.UUID   `json:"sender_id"`
+	Text      string      `json:"text,omitempty"`
+	Photos    []uuid.UUID `json:"photos,omitempty"`
+	Post      *uuid.UUID  `json:"post,omitempty"`
+	CreatedAt time.Time   `json:"created_at"`
+}
+
+func forwardedToDB(forwarded message.Forwards) ([]byte, error) {
+	rows := make([]forwardedJSON, len(forwarded))
+	for i, f := range forwarded {
+		rows[i] = forwardedJSON{
+			SenderID:  f.SenderID,
+			Text:      f.Text.String(),
+			Photos:    f.Photos,
+			Post:      postIDToDB(f.Post),
+			CreatedAt: f.CreatedAt,
+		}
+	}
+
+	data, err := json.Marshal(rows)
+	if err != nil {
+		return nil, errs.Wrap("json.Marshal", err)
+	}
+
+	return data, nil
+}
+
+func forwardedFromDB(data []byte) (message.Forwards, error) {
+	var rows []forwardedJSON
+	if err := json.Unmarshal(data, &rows); err != nil {
+		return nil, errs.Wrap("json.Unmarshal", err)
+	}
+
+	if len(rows) == 0 {
+		return nil, nil
+	}
+
+	forwarded := make(message.Forwards, len(rows))
+	for i, row := range rows {
+		forwarded[i] = message.Forwarded{
+			SenderID:  row.SenderID,
+			Text:      message.Text(row.Text),
+			CreatedAt: row.CreatedAt.UTC(),
+		}
+		if len(row.Photos) > 0 {
+			forwarded[i].Photos = row.Photos
+		}
+		if row.Post != nil {
+			forwarded[i].Post = *row.Post
+		}
+	}
+
+	return forwarded, nil
 }
 
 // postIDToDB is NULL for no post.
@@ -284,7 +375,9 @@ const listDialogsQuery = `
 		m.created_at,
 		m.edited_at,
 		m.hidden_from_sender,
-		m.hidden_from_recipient
+		m.hidden_from_recipient,
+		m.forwarded,
+		m.deleted_at
 	FROM dialogs d
 	JOIN messages m ON m.id = d.last_message_id
 	LEFT JOIN dialogs p ON p.user_id = d.peer_id AND p.peer_id = d.user_id
@@ -323,27 +416,21 @@ func (r *DialogRepository) List(ctx context.Context, userID, before uuid.UUID, l
 
 func scanDialog(row pgx.Row) (message.Dialog, error) {
 	var (
-		d      message.Dialog
-		s      message.Stored
-		text   string
-		photos []uuid.UUID
-		post   *uuid.UUID
+		d message.Dialog
+		s scanned
 	)
 
-	var editedAt *time.Time
-
-	err := row.Scan(&d.PeerID, &d.LastIncomingID, &d.Marks.Mine, &d.Marks.Theirs,
-		&s.ID, &s.SenderID, &s.RecipientID, &text, &photos, &post, &s.CreatedAt,
-		&editedAt, &s.HiddenFromSender, &s.HiddenFromRecipient)
-	if err != nil {
+	dest := append([]any{&d.PeerID, &d.LastIncomingID, &d.Marks.Mine, &d.Marks.Theirs}, s.dest()...)
+	if err := row.Scan(dest...); err != nil {
 		return message.Dialog{}, err
 	}
 
-	if editedAt != nil {
-		s.EditedAt = editedAt.UTC()
+	last, err := s.message()
+	if err != nil {
+		return message.Dialog{}, errs.Wrap("s.message", err)
 	}
 
-	d.LastMessage = restore(s, text, photos, post)
+	d.LastMessage = last
 
 	return d, nil
 }
@@ -496,6 +583,33 @@ func (r *MessageRepository) Delete(ctx context.Context, m *message.Message) erro
 	return nil
 }
 
+// retractMessageQuery leaves the row where the dialogs point at it and
+// empties it: the message was taken back and says nothing anymore.
+const retractMessageQuery = `
+	UPDATE messages
+	SET text = '',
+		photo_ids = '{}',
+		post_id = NULL,
+		forwarded = '[]',
+		edited_at = NULL,
+		deleted_at = $2
+	WHERE id = $1
+		AND deleted_at IS NULL
+`
+
+func (r *MessageRepository) Retract(ctx context.Context, m *message.Message) error {
+	tag, err := r.conn(ctx).Exec(ctx, retractMessageQuery, m.ID(), m.DeletedAt())
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return message.ErrNotFound
+	}
+
+	return nil
+}
+
 const updateMessageQuery = `
 	UPDATE messages
 	SET text = $2,
@@ -593,7 +707,9 @@ const searchMessagesQuery = `
 		created_at,
 		edited_at,
 		hidden_from_sender,
-		hidden_from_recipient
+		hidden_from_recipient,
+		forwarded,
+		deleted_at
 	FROM messages
 	WHERE $1 IN (sender_id, recipient_id)
 		AND ($2::uuid IS NULL OR $2 IN (sender_id, recipient_id))
@@ -622,7 +738,7 @@ func (r *MessageRepository) Search(ctx context.Context, userID, peerID uuid.UUID
 
 // deleteUserDialogsQuery deletes the messages of every dialog of the user
 // and both sides of each dialog, and returns the deleted messages that had
-// photos; the CTEs see the dialogs as they were.
+// photos or carried other messages on; the CTEs see the dialogs as they were.
 const deleteUserDialogsQuery = `
 	WITH gone_messages AS (
 		DELETE FROM messages m
@@ -640,7 +756,9 @@ const deleteUserDialogsQuery = `
 			m.created_at,
 			m.edited_at,
 			m.hidden_from_sender,
-			m.hidden_from_recipient
+			m.hidden_from_recipient,
+			m.forwarded,
+			m.deleted_at
 	), gone_dialogs AS (
 		DELETE FROM dialogs
 		WHERE user_id = $1
@@ -660,9 +778,12 @@ const deleteUserDialogsQuery = `
 		created_at,
 		edited_at,
 		hidden_from_sender,
-		hidden_from_recipient
+		hidden_from_recipient,
+		forwarded,
+		deleted_at
 	FROM gone_messages
 	WHERE cardinality(photo_ids) > 0
+		OR forwarded <> '[]'
 `
 
 func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*message.Message, error) {

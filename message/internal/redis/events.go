@@ -44,11 +44,29 @@ type messageJSON struct {
 	Post        uuid.UUID   `json:"post"`
 	CreatedAt   time.Time   `json:"created_at"`
 	// EditedAt is zero for a message never edited.
-	EditedAt time.Time `json:"edited_at"`
+	EditedAt  time.Time       `json:"edited_at"`
+	Forwarded []forwardedJSON `json:"forwarded,omitempty"`
+	// DeletedAt is zero for a message never taken back.
+	DeletedAt time.Time `json:"deleted_at"`
+}
+
+type forwardedJSON struct {
+	SenderID  uuid.UUID   `json:"sender_id"`
+	Text      string      `json:"text"`
+	Photos    []uuid.UUID `json:"photos,omitempty"`
+	Post      uuid.UUID   `json:"post"`
+	CreatedAt time.Time   `json:"created_at"`
 }
 
 func toMessageJSON(m *message.Message) *messageJSON {
+	forwarded := make([]forwardedJSON, len(m.Forwarded()))
+	for i, f := range m.Forwarded() {
+		forwarded[i] = forwardedJSON{SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, CreatedAt: f.CreatedAt}
+	}
+
 	return &messageJSON{
+		Forwarded:   forwarded,
+		DeletedAt:   m.DeletedAt(),
 		ID:          m.ID(),
 		SenderID:    m.SenderID(),
 		RecipientID: m.RecipientID(),
@@ -63,6 +81,15 @@ func toMessageJSON(m *message.Message) *messageJSON {
 // message rebuilds the message of an event. It comes from Redis, so it
 // is checked as any input is.
 func (m *messageJSON) message() (*message.Message, error) {
+	stored := message.Stored{
+		ID: m.ID, SenderID: m.SenderID, RecipientID: m.RecipientID, CreatedAt: m.CreatedAt, EditedAt: m.EditedAt, DeletedAt: m.DeletedAt,
+	}
+
+	// A message taken back says nothing.
+	if !m.DeletedAt.IsZero() {
+		return message.Restore(stored), nil
+	}
+
 	text, err := message.NewText(m.Text)
 	if err != nil {
 		return nil, errs.Wrap("message.NewText", err)
@@ -73,14 +100,40 @@ func (m *messageJSON) message() (*message.Message, error) {
 		return nil, errs.Wrap("message.NewPhotos", err)
 	}
 
-	content, err := message.NewContent(text, photos, m.Post)
+	forwarded, err := m.forwarded()
 	if err != nil {
+		return nil, errs.Wrap("m.forwarded", err)
+	}
+
+	if stored.Content, err = message.NewContent(text, photos, m.Post, forwarded); err != nil {
 		return nil, errs.Wrap("message.NewContent", err)
 	}
 
-	return message.Restore(message.Stored{
-		ID: m.ID, SenderID: m.SenderID, RecipientID: m.RecipientID, Content: content, CreatedAt: m.CreatedAt, EditedAt: m.EditedAt,
-	}), nil
+	return message.Restore(stored), nil
+}
+
+func (m *messageJSON) forwarded() (message.Forwards, error) {
+	carried := make([]message.Forwarded, len(m.Forwarded))
+	for i, f := range m.Forwarded {
+		text, err := message.NewText(f.Text)
+		if err != nil {
+			return nil, errs.Wrap("message.NewText", err)
+		}
+
+		photos, err := message.NewPhotos(f.Photos)
+		if err != nil {
+			return nil, errs.Wrap("message.NewPhotos", err)
+		}
+
+		carried[i] = message.Forwarded{SenderID: f.SenderID, Text: text, Photos: photos, Post: f.Post, CreatedAt: f.CreatedAt}
+	}
+
+	forwards, err := message.NewForwards(carried)
+	if err != nil {
+		return nil, errs.Wrap("message.NewForwards", err)
+	}
+
+	return forwards, nil
 }
 
 type readJSON struct {
