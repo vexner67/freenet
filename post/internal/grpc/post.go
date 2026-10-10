@@ -412,7 +412,7 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 		return nil, err
 	}
 
-	sources := service.FeedSources{Authors: authorIDs, Walls: wallIDs, HideNSFW: req.GetHideNsfw()}
+	sources := service.FeedSources{Authors: authorIDs, Walls: wallIDs, HideNSFW: req.GetHideNsfw(), Everyone: req.GetEveryone()}
 
 	page, err := h.postService.Feed(ctx, viewerID(ctx), sources, cursor, int(req.GetLimit()))
 	if err != nil {

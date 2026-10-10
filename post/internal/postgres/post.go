@@ -398,9 +398,51 @@ const listFeedQuery = `
 	LIMIT $4
 `
 
+// listGlobalFeedQuery: what every wall says itself (post.ByWallOwner),
+// read down the primary key.
+const listGlobalFeedQuery = `
+	SELECT
+		id,
+		wall_id,
+		author_id,
+		text,
+		photo_ids,
+		created_at,
+		repost_of,
+		like_count,
+		comment_count,
+		repost_count,
+		edited_at,
+		from_wall,
+		signed,
+		suggested,
+		avatar_update,
+		shared_photo_id,
+		archived,
+		comments_closed,
+		nsfw,
+		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
+	FROM posts
+	WHERE (author_id = wall_id OR from_wall)
+		AND id < $1
+		AND NOT archived
+		AND NOT (nsfw AND $3)
+	ORDER BY id DESC
+	LIMIT $2
+`
+
 func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSources, before uuid.UUID, limit int) ([]*post.Post, error) {
 	if before == uuid.Nil {
 		before = newestCursor
+	}
+
+	if sources.Everyone {
+		rows, err := r.conn(ctx).Query(ctx, listGlobalFeedQuery, before, limit, sources.HideNSFW)
+		if err != nil {
+			return nil, errs.Wrap("r.conn.Query", err)
+		}
+
+		return collectPosts(rows)
 	}
 
 	rows, err := r.conn(ctx).Query(ctx, listFeedQuery, ids(sources.Authors), ids(sources.Walls), before, limit, sources.HideNSFW)

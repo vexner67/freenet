@@ -326,6 +326,10 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 			return false
 		}
 
+		if sources.Everyone {
+			return p.ByWallOwner()
+		}
+
 		return (slices.Contains(sources.Authors, p.AuthorID()) && !p.FromWall()) || slices.Contains(sources.Walls, p.WallID())
 	}
 

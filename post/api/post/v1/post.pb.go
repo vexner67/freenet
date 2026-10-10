@@ -2041,7 +2041,11 @@ type ListFeedRequest struct {
 	// 1-50; anything else means 20.
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Leaves the posts marked as adult out, as the reader's settings say.
-	HideNsfw      bool `protobuf:"varint,5,opt,name=hide_nsfw,json=hideNsfw,proto3" json:"hide_nsfw,omitempty"`
+	HideNsfw bool `protobuf:"varint,5,opt,name=hide_nsfw,json=hideNsfw,proto3" json:"hide_nsfw,omitempty"`
+	// "Все новости" of openvk: what every wall says itself (its owner on
+	// their wall, a community in its name), whoever wrote it; author_ids
+	// and wall_ids are not looked at.
+	Everyone      bool `protobuf:"varint,6,opt,name=everyone,proto3" json:"everyone,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2107,6 +2111,13 @@ func (x *ListFeedRequest) GetLimit() int32 {
 func (x *ListFeedRequest) GetHideNsfw() bool {
 	if x != nil {
 		return x.HideNsfw
+	}
+	return false
+}
+
+func (x *ListFeedRequest) GetEveryone() bool {
+	if x != nil {
+		return x.Everyone
 	}
 	return false
 }
@@ -6799,14 +6810,15 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"\x96\x01\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\xb2\x01\n" +
 	"\x0fListFeedRequest\x12\x1d\n" +
 	"\n" +
 	"author_ids\x18\x01 \x03(\tR\tauthorIds\x12\x19\n" +
 	"\bwall_ids\x18\x04 \x03(\tR\awallIds\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
 	"\x05limit\x18\x03 \x01(\x05R\x05limit\x12\x1b\n" +
-	"\thide_nsfw\x18\x05 \x01(\bR\bhideNsfw\"X\n" +
+	"\thide_nsfw\x18\x05 \x01(\bR\bhideNsfw\x12\x1a\n" +
+	"\beveryone\x18\x06 \x01(\bR\beveryone\"X\n" +
 	"\x10ListFeedResponse\x12#\n" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
