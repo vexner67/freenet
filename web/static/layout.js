@@ -67,10 +67,51 @@ export function pagePath(author) {
   return author.club ? '/club/' + encodeURIComponent(clubRef(author)) : '/' + author.nickname;
 }
 
+// homePath is where the site opens for me: my page, or the news if
+// "Главная страница" of the settings says so.
+export function homePath(me) {
+  return me.interface?.mainPage === 'feed' ? '/feed' : profilePath(me);
+}
+
+// menuLink is a link of the left menu, null when "Левое меню" of the
+// settings takes item out; counter is the id of its unread counter.
+function menuLink(me, item, href, text, counter) {
+  if (me.interface?.hiddenMenu?.includes(item)) return null;
+
+  return el('a', { href, textContent: text },
+    counter && el('span', { className: 'counter', id: counter, hidden: true }));
+}
+
 async function logout(event) {
   event.preventDefault();
   await api.logout();
   location.href = '/';
+}
+
+// applyInterface draws what "Интерфейс" of the settings changes: the
+// shape of the photos and the left menu with its counters. renderChrome
+// calls it; the settings call it again when saved.
+export function applyInterface(me) {
+  const menu = $('menu');
+
+  // "Отображение аватаров" of the settings: round photos for me alone.
+  document.body.classList.toggle('avatars-round', me.interface?.avatarStyle === 'round');
+
+  menu?.replaceChildren(...[
+    el('a', { href: profilePath(me), textContent: 'Моя Страница' }),
+    menuLink(me, 'photos', '/albums', 'Мои Фотографии'),
+    menuLink(me, 'messages', '/im', 'Мои Сообщения', 'messages-count'),
+    menuLink(me, 'groups', '/groups', 'Мои Группы'),
+    menuLink(me, 'events', '/events', 'Мои Встречи'),
+    menuLink(me, 'feed', '/feed', 'Мои Новости'),
+    menuLink(me, 'notifications', '/notifications', 'Мои Ответы', 'notifications-count'),
+    el('a', { href: '/settings', textContent: 'Мои Настройки' }),
+    el('a', { href: '/search', textContent: 'Люди' }),
+    el('a', { href: '/', textContent: 'Выйти', onclick: logout }),
+  ].filter(Boolean));
+  showCounter('messages');
+  showCounter('notifications');
+  showPinnedClubs(menu);
 }
 
 // renderChrome fills the header and the sidebar for a signed-in user or a guest.
@@ -89,23 +130,7 @@ export function renderChrome(me) {
       el('a', { href: '/feed', textContent: 'новости' }),
       el('a', { href: '/', textContent: 'выход', onclick: logout }),
     );
-    menu?.replaceChildren(
-      el('a', { href: profilePath(me), textContent: 'Моя Страница' }),
-      el('a', { href: '/albums', textContent: 'Мои Фотографии' }),
-      el('a', { href: '/im', textContent: 'Мои Сообщения' },
-        el('span', { className: 'counter', id: 'messages-count', hidden: true })),
-      el('a', { href: '/groups', textContent: 'Мои Группы' }),
-      el('a', { href: '/events', textContent: 'Мои Встречи' }),
-      el('a', { href: '/feed', textContent: 'Мои Новости' }),
-      el('a', { href: '/notifications', textContent: 'Мои Ответы' },
-        el('span', { className: 'counter', id: 'notifications-count', hidden: true })),
-      el('a', { href: '/settings', textContent: 'Мои Настройки' }),
-      el('a', { href: '/search', textContent: 'Люди' }),
-      el('a', { href: '/', textContent: 'Выйти', onclick: logout }),
-    );
-    showCounter('messages');
-    showCounter('notifications');
-    showPinnedClubs(menu);
+    applyInterface(me);
 
     // Live counters: the stream says them on connecting and on changes.
     onEvent('ready', applyCounters);

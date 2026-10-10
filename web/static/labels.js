@@ -201,6 +201,27 @@ export function inputTime(iso) {
   return `${two(d.getHours())}:${two(d.getMinutes())}`;
 }
 
+// avatarStyles, mainPages and menuItems are the choices of "Интерфейс" of
+// the settings, as on openvk; the photos here are square as they are.
+export const avatarStyles = [
+  ['square', 'Квадратные (по умолчанию)'],
+  ['round', 'Круглые'],
+];
+
+export const mainPages = [
+  ['page', 'Моя Страница'],
+  ['feed', 'Мои Новости'],
+];
+
+export const menuItems = [
+  ['photos', 'Мои Фотографии'],
+  ['messages', 'Мои Сообщения'],
+  ['groups', 'Мои Группы'],
+  ['events', 'Мои Встречи'],
+  ['feed', 'Мои Новости'],
+  ['notifications', 'Мои Ответы'],
+];
+
 // deactivationReasons are openvk's reasons to delete a page: a title and
 // the words it puts in the message; the last one leaves them to the user.
 export const deactivationReasons = [
@@ -566,6 +587,9 @@ const errorTexts = {
   'club address contains invalid characters': 'Адрес страницы может состоять из латинских букв, цифр и _ и начинаться с буквы.',
   'club address is already taken': 'Этот адрес уже занят.',
   'the owner cannot leave the club': 'Владелец не может выйти из своей группы.',
+  'invalid avatar style': 'Неизвестный вид аватаров.',
+  'invalid main page': 'Неизвестная главная страница.',
+  'invalid menu item': 'Неизвестный пункт меню.',
   'title is too long': 'Комментарий слишком длинный: не больше 36 символов.',
   'an event needs the time it starts': 'Вы не ввели название встречи и/или не указали дату начала встречи.',
   'an event ends after it starts': 'Встреча должна заканчиваться позже, чем начинается.',

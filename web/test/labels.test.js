@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, localTime, inputDate, inputTime, aboutStatistics } from '../static/labels.js';
+import { isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -321,4 +321,11 @@ test('the site counts itself as openvk does', () => {
     [5, 'групп'],
     [21, 'запись на стенах'],
   ]);
+});
+
+test('the choices of the interface are those the API knows', () => {
+  assert.deepEqual(avatarStyles.map(([v]) => v), ['square', 'round']);
+  assert.deepEqual(mainPages.map(([v]) => v), ['page', 'feed']);
+  assert.deepEqual(menuItems.map(([v]) => v), ['photos', 'messages', 'groups', 'events', 'feed', 'notifications']);
+  assert.equal(errorText({ message: 'invalid menu item' }), 'Неизвестный пункт меню.');
 });
