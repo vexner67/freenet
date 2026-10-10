@@ -122,10 +122,25 @@ func parseIDs(raw []string, invalid string) ([]uuid.UUID, error) {
 	return ids, nil
 }
 
-func toProtoDialog(d message.Dialog, userID uuid.UUID) *messagev1.Dialog {
+// excerpted cuts what a message says and carries on to limit characters,
+// as a list asks; 0 leaves it whole.
+func excerpted(pm *messagev1.Message, m *message.Message, limit int32) *messagev1.Message {
+	pm.Text, pm.TextCut = m.Text().Excerpt(int(limit))
+
+	for i, f := range m.Forwarded() {
+		text, cut := f.Text.Excerpt(int(limit))
+		pm.Forwarded[i].Text = text
+		pm.TextCut = pm.TextCut || cut
+	}
+
+	return pm
+}
+
+// toProtoDialog cuts the text of the last message to textLimit.
+func toProtoDialog(d message.Dialog, userID uuid.UUID, textLimit int32) *messagev1.Dialog {
 	return &messagev1.Dialog{
 		PeerId:      d.PeerID.String(),
-		LastMessage: toProtoMessage(d.LastMessage, d.Marks.IsRead(d.LastMessage, userID)),
+		LastMessage: excerpted(toProtoMessage(d.LastMessage, d.Marks.IsRead(d.LastMessage, userID)), d.LastMessage, textLimit),
 		Unread:      d.HasUnread(),
 	}
 }

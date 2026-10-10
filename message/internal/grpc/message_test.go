@@ -476,3 +476,46 @@ func TestEditHideSearch(t *testing.T) {
 		t.Fatalf("bob finds a hidden message: %v", found)
 	}
 }
+
+// The list of dialogs asks for the beginnings of the last messages.
+func TestDialogs_TextLimit(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	sent, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "длинное сообщение"})
+	if err != nil {
+		t.Fatalf("SendMessage: %v", err)
+	}
+
+	dialogs, err := s.client.ListDialogs(s.as(t, ann), &messagev1.ListDialogsRequest{TextLimit: 7})
+	if err != nil || len(dialogs.GetDialogs()) != 1 {
+		t.Fatalf("ListDialogs = %v, %v", dialogs, err)
+	}
+	if m := dialogs.GetDialogs()[0].GetLastMessage(); m.GetText() != "длинное" || !m.GetTextCut() {
+		t.Fatalf("last message = %v", m)
+	}
+
+	forward := &messagev1.SendMessageRequest{RecipientId: bob.String(), Text: "да", ForwardIds: []string{sent.GetMessage().GetId()}}
+	if _, err = s.client.SendMessage(s.as(t, ann), forward); err != nil {
+		t.Fatalf("forward: %v", err)
+	}
+
+	dialogs, err = s.client.ListDialogs(s.as(t, ann), &messagev1.ListDialogsRequest{TextLimit: 7})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := dialogs.GetDialogs()[0].GetLastMessage(); m.GetText() != "да" || !m.GetTextCut() ||
+		len(m.GetForwarded()) != 1 || m.GetForwarded()[0].GetText() != "длинное" {
+		t.Fatalf("last message with a forward = %v", m)
+	}
+
+	dialogs, err = s.client.ListDialogs(s.as(t, ann), &messagev1.ListDialogsRequest{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m := dialogs.GetDialogs()[0].GetLastMessage(); m.GetTextCut() || m.GetForwarded()[0].GetText() != "длинное сообщение" {
+		t.Fatalf("last message whole = %v", m)
+	}
+}

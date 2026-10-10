@@ -48,7 +48,10 @@ type Message struct {
 	Forwarded []*ForwardedMessage `protobuf:"bytes,12,rep,name=forwarded,proto3" json:"forwarded,omitempty"`
 	// When the sender took it back from both sides; unset if never. Such a
 	// message says nothing, and deletable_until and editable_until are unset.
-	DeletedAt     *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
+	DeletedAt *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
+	// text and the texts it carries on are only their beginnings: the
+	// request set text_limit, and they say more.
+	TextCut       bool `protobuf:"varint,14,opt,name=text_cut,json=textCut,proto3" json:"text_cut,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -172,6 +175,13 @@ func (x *Message) GetDeletedAt() *timestamppb.Timestamp {
 		return x.DeletedAt
 	}
 	return nil
+}
+
+func (x *Message) GetTextCut() bool {
+	if x != nil {
+		return x.TextCut
+	}
+	return false
 }
 
 // A message as another one carries it on: a copy of what it showed.
@@ -445,7 +455,10 @@ type ListDialogsRequest struct {
 	// Empty for the most recent, else next_cursor of the previous page.
 	Cursor string `protobuf:"bytes,1,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	// 1-50; anything else means 20.
-	Limit         int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	// The last messages are cut to this many characters and say so
+	// (text_cut); 0 for whole texts. A list shows one line of each.
+	TextLimit     int32 `protobuf:"varint,3,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -490,6 +503,13 @@ func (x *ListDialogsRequest) GetCursor() string {
 func (x *ListDialogsRequest) GetLimit() int32 {
 	if x != nil {
 		return x.Limit
+	}
+	return 0
+}
+
+func (x *ListDialogsRequest) GetTextLimit() int32 {
+	if x != nil {
+		return x.TextLimit
 	}
 	return 0
 }
@@ -1549,7 +1569,7 @@ var File_api_message_v1_message_proto protoreflect.FileDescriptor
 const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"\x1capi/message/v1/message.proto\x12\n" +
-	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xaa\x04\n" +
+	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x04\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12!\n" +
@@ -1566,7 +1586,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x0eeditable_until\x18\v \x01(\v2\x1a.google.protobuf.TimestampR\reditableUntil\x12:\n" +
 	"\tforwarded\x18\f \x03(\v2\x1c.message.v1.ForwardedMessageR\tforwarded\x129\n" +
 	"\n" +
-	"deleted_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\"\xb4\x01\n" +
+	"deleted_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x19\n" +
+	"\btext_cut\x18\x0e \x01(\bR\atextCut\"\xb4\x01\n" +
 	"\x10ForwardedMessage\x12\x1b\n" +
 	"\tsender_id\x18\x01 \x01(\tR\bsenderId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
@@ -1586,10 +1607,12 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\vforward_ids\x18\x05 \x03(\tR\n" +
 	"forwardIds\"D\n" +
 	"\x13SendMessageResponse\x12-\n" +
-	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageR\amessage\"B\n" +
+	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageR\amessage\"a\n" +
 	"\x12ListDialogsRequest\x12\x16\n" +
 	"\x06cursor\x18\x01 \x01(\tR\x06cursor\x12\x14\n" +
-	"\x05limit\x18\x02 \x01(\x05R\x05limit\"d\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\x12\x1d\n" +
+	"\n" +
+	"text_limit\x18\x03 \x01(\x05R\ttextLimit\"d\n" +
 	"\x13ListDialogsResponse\x12,\n" +
 	"\adialogs\x18\x01 \x03(\v2\x12.message.v1.DialogR\adialogs\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
