@@ -139,6 +139,18 @@ message InterfaceSettings {
   // The links taken out of the left menu: "photos", "messages", "groups",
   // "events", "feed", "notifications".
   repeated string hidden_menu = 3;
+  // "default", "blue" or "dark": the look of the whole site.
+  string theme = 4;
+  // Takes "Заполненность страницы" off the pages the owner reads.
+  bool hide_rating = 5;
+  // "blur" (the default), "hide" (blurred, and left out of the news) or
+  // "show": posts marked as adult.
+  string nsfw = 6;
+  // "old" (the default) or "microblog": how posts are laid out.
+  string post_view = 7;
+  // The clock dates are read by, minutes east of UTC; unset for the
+  // browser's own.
+  optional int32 timezone_offset = 8;
 }
 
 message UpdateInterfaceRequest {

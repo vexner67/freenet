@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"cmp"
 	"time"
 
 	"github.com/google/uuid"
@@ -666,9 +667,41 @@ func toProtoInterface(ui user.Interface) *userv1.InterfaceSettings {
 		hidden = append(hidden, item.String())
 	}
 
-	return &userv1.InterfaceSettings{
+	out := &userv1.InterfaceSettings{
 		AvatarStyle: ui.AvatarStyle.String(),
 		MainPage:    ui.MainPage.String(),
 		HiddenMenu:  hidden,
+		Theme:       ui.Theme.String(),
+		HideRating:  ui.HideRating,
+		Nsfw:        ui.NSFW.String(),
+		PostView:    ui.PostView.String(),
 	}
+	if minutes, fixed := ui.Timezone.Offset(); fixed {
+		offset := int32(minutes)
+		out.TimezoneOffset = &offset
+	}
+
+	return out
+}
+
+// fromProtoInterface is the settings form. A client older than a setting
+// says nothing of it and keeps the default.
+func fromProtoInterface(in *userv1.InterfaceSettings) user.InterfaceForm {
+	defaults := user.DefaultInterface()
+
+	form := user.InterfaceForm{
+		AvatarStyle: in.GetAvatarStyle(),
+		Theme:       cmp.Or(in.GetTheme(), defaults.Theme.String()),
+		HideRating:  in.GetHideRating(),
+		NSFW:        cmp.Or(in.GetNsfw(), defaults.NSFW.String()),
+		PostView:    cmp.Or(in.GetPostView(), defaults.PostView.String()),
+		MainPage:    in.GetMainPage(),
+		HiddenMenu:  in.GetHiddenMenu(),
+	}
+	if in != nil && in.TimezoneOffset != nil {
+		offset := int(in.GetTimezoneOffset())
+		form.Timezone = &offset
+	}
+
+	return form
 }

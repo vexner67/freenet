@@ -143,6 +143,11 @@ const updateUserQuery = `
 		avatar_style = $44,
 		main_page = $45,
 		hidden_menu = $46,
+		theme = $47,
+		hide_rating = $48,
+		nsfw = $49,
+		post_view = $50,
+		timezone_offset = $51,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -209,6 +214,11 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		ui.AvatarStyle.String(),
 		ui.MainPage.String(),
 		hiddenMenuToDB(ui.HiddenMenu),
+		ui.Theme.String(),
+		ui.HideRating,
+		ui.NSFW.String(),
+		ui.PostView.String(),
+		timezoneToDB(ui.Timezone),
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -343,7 +353,12 @@ const userColumns = `
 		backdrop_right,
 		avatar_style,
 		main_page,
-		hidden_menu`
+		hidden_menu,
+		theme,
+		hide_rating,
+		nsfw,
+		post_view,
+		timezone_offset`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -396,7 +411,12 @@ const qualifiedUserColumns = `
 		u.backdrop_right,
 		u.avatar_style,
 		u.main_page,
-		u.hidden_menu`
+		u.hidden_menu,
+		u.theme,
+		u.hide_rating,
+		u.nsfw,
+		u.post_view,
+		u.timezone_offset`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -500,6 +520,9 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		backdrop                                   [2]*uuid.UUID
 		avatarStyle, mainPage                      string
 		hiddenMenu                                 []string
+		theme, nsfw, postView                      string
+		hideRating                                 bool
+		timezone                                   *int16
 	)
 
 	err := row.Scan(
@@ -536,6 +559,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&lastSeen,
 		&backdrop[0], &backdrop[1],
 		&avatarStyle, &mainPage, &hiddenMenu,
+		&theme, &hideRating, &nsfw, &postView, &timezone,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -603,10 +627,38 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		Backdrop: user.Backdrop{Left: idFromDB(backdrop[0]), Right: idFromDB(backdrop[1])},
 		Interface: user.Interface{
 			AvatarStyle: user.AvatarStyle(avatarStyle),
+			Theme:       user.Theme(theme),
+			HideRating:  hideRating,
+			NSFW:        user.NSFW(nsfw),
+			PostView:    user.PostView(postView),
 			MainPage:    user.MainPage(mainPage),
+			Timezone:    timezoneFromDB(timezone),
 			HiddenMenu:  hiddenMenuFromDB(hiddenMenu),
 		},
 	}), nil
+}
+
+// timezoneToDB is NULL for the browser's clock.
+func timezoneToDB(zone user.Timezone) *int16 {
+	minutes, fixed := zone.Offset()
+	if !fixed {
+		return nil
+	}
+
+	offset := int16(minutes)
+
+	return &offset
+}
+
+func timezoneFromDB(offset *int16) user.Timezone {
+	if offset == nil {
+		return user.Timezone{}
+	}
+
+	// Checked on write, and by the table.
+	zone, _ := user.NewTimezone(int(*offset))
+
+	return zone
 }
 
 // hiddenMenuToDB is never NULL: an empty array for a whole menu.

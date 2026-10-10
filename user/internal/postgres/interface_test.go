@@ -2,7 +2,7 @@ package postgres_test
 
 import (
 	"context"
-	"slices"
+	"reflect"
 	"testing"
 	"time"
 
@@ -25,11 +25,15 @@ func TestInterface(t *testing.T) {
 
 	// A new user reads back with the site as it is by default.
 	got, err := repo.GetByID(ctx, u.ID())
-	if ui := got.Interface(); err != nil || ui.AvatarStyle != user.AvatarsSquare || ui.MainPage != user.MainPagePage || ui.HiddenMenu != nil {
+	if ui := got.Interface(); err != nil || !reflect.DeepEqual(ui, user.DefaultInterface()) {
 		t.Fatalf("a new user = %+v, %v", ui, err)
 	}
 
-	ui, err := user.NewInterface("round", "feed", []string{"events", "photos"})
+	offset := -210
+	ui, err := user.NewInterface(user.InterfaceForm{
+		AvatarStyle: "round", Theme: "dark", HideRating: true, NSFW: "hide", PostView: "microblog",
+		MainPage: "feed", Timezone: &offset, HiddenMenu: []string{"events", "photos"},
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -39,17 +43,16 @@ func TestInterface(t *testing.T) {
 	}
 
 	got, err = repo.GetByID(ctx, u.ID())
-	if saved := got.Interface(); err != nil || saved.AvatarStyle != user.AvatarsRound || saved.MainPage != user.MainPageFeed ||
-		!slices.Equal(saved.HiddenMenu, []user.MenuItem{user.MenuPhotos, user.MenuEvents}) {
-		t.Fatalf("after Update = %+v, %v", saved, err)
+	if saved := got.Interface(); err != nil || !reflect.DeepEqual(saved, ui) {
+		t.Fatalf("after Update = %+v, %v; want %+v", saved, err, ui)
 	}
 
-	// A whole menu again is an empty list, not NULL.
+	// A whole menu again is an empty list and the browser's clock a NULL.
 	got.UpdateInterface(user.DefaultInterface())
 	if err = repo.Update(ctx, got); err != nil {
 		t.Fatal(err)
 	}
-	if got, err = repo.GetByID(ctx, u.ID()); err != nil || got.Interface().HiddenMenu != nil || got.Interface().AvatarStyle != user.AvatarsSquare {
+	if got, err = repo.GetByID(ctx, u.ID()); err != nil || !reflect.DeepEqual(got.Interface(), user.DefaultInterface()) {
 		t.Fatalf("back to default = %+v, %v", got.Interface(), err)
 	}
 }
