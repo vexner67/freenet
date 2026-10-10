@@ -462,6 +462,13 @@ func (s *TopicService) Messages(ctx context.Context, viewerID, topicID, after uu
 	return page, nil
 }
 
+// Message is one message of a topic, whole.
+func (s *TopicService) Message(ctx context.Context, id uuid.UUID) (*post.TopicMessage, error) {
+	m, err := s.messages.Get(ctx, id)
+
+	return m, errs.Wrap("s.messages.Get", err)
+}
+
 // DeleteMessage deletes a message with its photos: its author or the
 // admins.
 func (s *TopicService) DeleteMessage(ctx context.Context, requesterID, id uuid.UUID) error {

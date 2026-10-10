@@ -48,6 +48,7 @@ const (
 	PostService_ListLastComments_FullMethodName     = "/post.v1.PostService/ListLastComments"
 	PostService_SuggestPost_FullMethodName          = "/post.v1.PostService/SuggestPost"
 	PostService_ListSuggestions_FullMethodName      = "/post.v1.PostService/ListSuggestions"
+	PostService_GetSuggestion_FullMethodName        = "/post.v1.PostService/GetSuggestion"
 	PostService_PublishSuggestion_FullMethodName    = "/post.v1.PostService/PublishSuggestion"
 	PostService_DeleteSuggestion_FullMethodName     = "/post.v1.PostService/DeleteSuggestion"
 	PostService_CreateTopic_FullMethodName          = "/post.v1.PostService/CreateTopic"
@@ -57,6 +58,7 @@ const (
 	PostService_DeleteTopic_FullMethodName          = "/post.v1.PostService/DeleteTopic"
 	PostService_CreateTopicMessage_FullMethodName   = "/post.v1.PostService/CreateTopicMessage"
 	PostService_ListTopicMessages_FullMethodName    = "/post.v1.PostService/ListTopicMessages"
+	PostService_GetTopicMessage_FullMethodName      = "/post.v1.PostService/GetTopicMessage"
 	PostService_DeleteTopicMessage_FullMethodName   = "/post.v1.PostService/DeleteTopicMessage"
 	PostService_LikeTopicMessage_FullMethodName     = "/post.v1.PostService/LikeTopicMessage"
 	PostService_UnlikeTopicMessage_FullMethodName   = "/post.v1.PostService/UnlikeTopicMessage"
@@ -79,6 +81,7 @@ const (
 	PostService_CreatePhotoComment_FullMethodName   = "/post.v1.PostService/CreatePhotoComment"
 	PostService_DeletePhotoComment_FullMethodName   = "/post.v1.PostService/DeletePhotoComment"
 	PostService_ListPhotoComments_FullMethodName    = "/post.v1.PostService/ListPhotoComments"
+	PostService_GetPhotoComment_FullMethodName      = "/post.v1.PostService/GetPhotoComment"
 	PostService_PurgeUser_FullMethodName            = "/post.v1.PostService/PurgeUser"
 )
 
@@ -158,6 +161,8 @@ type PostServiceClient interface {
 	SuggestPost(ctx context.Context, in *SuggestPostRequest, opts ...grpc.CallOption) (*SuggestPostResponse, error)
 	// The caller's own suggestions with mine; all of them for the admins.
 	ListSuggestions(ctx context.Context, in *ListSuggestionsRequest, opts ...grpc.CallOption) (*ListSuggestionsResponse, error)
+	// One suggestion, whole: for its author and the admins.
+	GetSuggestion(ctx context.Context, in *GetSuggestionRequest, opts ...grpc.CallOption) (*GetSuggestionResponse, error)
 	// An admin publishes a suggestion as a new post for the community.
 	PublishSuggestion(ctx context.Context, in *PublishSuggestionRequest, opts ...grpc.CallOption) (*PublishSuggestionResponse, error)
 	// The author withdraws a suggestion, or an admin declines it.
@@ -181,6 +186,8 @@ type PostServiceClient interface {
 	CreateTopicMessage(ctx context.Context, in *CreateTopicMessageRequest, opts ...grpc.CallOption) (*CreateTopicMessageResponse, error)
 	// Public: oldest first.
 	ListTopicMessages(ctx context.Context, in *ListTopicMessagesRequest, opts ...grpc.CallOption) (*ListTopicMessagesResponse, error)
+	// Public: one message, whole; liked is not told.
+	GetTopicMessage(ctx context.Context, in *GetTopicMessageRequest, opts ...grpc.CallOption) (*GetTopicMessageResponse, error)
 	// Its author or an admin.
 	DeleteTopicMessage(ctx context.Context, in *DeleteTopicMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// A heart on a message of a topic, as on a comment; idempotent, nobody
@@ -234,6 +241,8 @@ type PostServiceClient interface {
 	DeletePhotoComment(ctx context.Context, in *DeletePhotoCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: the comments of a photo, oldest first.
 	ListPhotoComments(ctx context.Context, in *ListPhotoCommentsRequest, opts ...grpc.CallOption) (*ListPhotoCommentsResponse, error)
+	// Public: one comment, whole.
+	GetPhotoComment(ctx context.Context, in *GetPhotoCommentRequest, opts ...grpc.CallOption) (*GetPhotoCommentResponse, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -528,6 +537,16 @@ func (c *postServiceClient) ListSuggestions(ctx context.Context, in *ListSuggest
 	return out, nil
 }
 
+func (c *postServiceClient) GetSuggestion(ctx context.Context, in *GetSuggestionRequest, opts ...grpc.CallOption) (*GetSuggestionResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetSuggestionResponse)
+	err := c.cc.Invoke(ctx, PostService_GetSuggestion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) PublishSuggestion(ctx context.Context, in *PublishSuggestionRequest, opts ...grpc.CallOption) (*PublishSuggestionResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(PublishSuggestionResponse)
@@ -612,6 +631,16 @@ func (c *postServiceClient) ListTopicMessages(ctx context.Context, in *ListTopic
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListTopicMessagesResponse)
 	err := c.cc.Invoke(ctx, PostService_ListTopicMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetTopicMessage(ctx context.Context, in *GetTopicMessageRequest, opts ...grpc.CallOption) (*GetTopicMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetTopicMessageResponse)
+	err := c.cc.Invoke(ctx, PostService_GetTopicMessage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -838,6 +867,16 @@ func (c *postServiceClient) ListPhotoComments(ctx context.Context, in *ListPhoto
 	return out, nil
 }
 
+func (c *postServiceClient) GetPhotoComment(ctx context.Context, in *GetPhotoCommentRequest, opts ...grpc.CallOption) (*GetPhotoCommentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPhotoCommentResponse)
+	err := c.cc.Invoke(ctx, PostService_GetPhotoComment_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -924,6 +963,8 @@ type PostServiceServer interface {
 	SuggestPost(context.Context, *SuggestPostRequest) (*SuggestPostResponse, error)
 	// The caller's own suggestions with mine; all of them for the admins.
 	ListSuggestions(context.Context, *ListSuggestionsRequest) (*ListSuggestionsResponse, error)
+	// One suggestion, whole: for its author and the admins.
+	GetSuggestion(context.Context, *GetSuggestionRequest) (*GetSuggestionResponse, error)
 	// An admin publishes a suggestion as a new post for the community.
 	PublishSuggestion(context.Context, *PublishSuggestionRequest) (*PublishSuggestionResponse, error)
 	// The author withdraws a suggestion, or an admin declines it.
@@ -947,6 +988,8 @@ type PostServiceServer interface {
 	CreateTopicMessage(context.Context, *CreateTopicMessageRequest) (*CreateTopicMessageResponse, error)
 	// Public: oldest first.
 	ListTopicMessages(context.Context, *ListTopicMessagesRequest) (*ListTopicMessagesResponse, error)
+	// Public: one message, whole; liked is not told.
+	GetTopicMessage(context.Context, *GetTopicMessageRequest) (*GetTopicMessageResponse, error)
 	// Its author or an admin.
 	DeleteTopicMessage(context.Context, *DeleteTopicMessageRequest) (*emptypb.Empty, error)
 	// A heart on a message of a topic, as on a comment; idempotent, nobody
@@ -1000,6 +1043,8 @@ type PostServiceServer interface {
 	DeletePhotoComment(context.Context, *DeletePhotoCommentRequest) (*emptypb.Empty, error)
 	// Public: the comments of a photo, oldest first.
 	ListPhotoComments(context.Context, *ListPhotoCommentsRequest) (*ListPhotoCommentsResponse, error)
+	// Public: one comment, whole.
+	GetPhotoComment(context.Context, *GetPhotoCommentRequest) (*GetPhotoCommentResponse, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -1098,6 +1143,9 @@ func (UnimplementedPostServiceServer) SuggestPost(context.Context, *SuggestPostR
 func (UnimplementedPostServiceServer) ListSuggestions(context.Context, *ListSuggestionsRequest) (*ListSuggestionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListSuggestions not implemented")
 }
+func (UnimplementedPostServiceServer) GetSuggestion(context.Context, *GetSuggestionRequest) (*GetSuggestionResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetSuggestion not implemented")
+}
 func (UnimplementedPostServiceServer) PublishSuggestion(context.Context, *PublishSuggestionRequest) (*PublishSuggestionResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method PublishSuggestion not implemented")
 }
@@ -1124,6 +1172,9 @@ func (UnimplementedPostServiceServer) CreateTopicMessage(context.Context, *Creat
 }
 func (UnimplementedPostServiceServer) ListTopicMessages(context.Context, *ListTopicMessagesRequest) (*ListTopicMessagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListTopicMessages not implemented")
+}
+func (UnimplementedPostServiceServer) GetTopicMessage(context.Context, *GetTopicMessageRequest) (*GetTopicMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetTopicMessage not implemented")
 }
 func (UnimplementedPostServiceServer) DeleteTopicMessage(context.Context, *DeleteTopicMessageRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteTopicMessage not implemented")
@@ -1190,6 +1241,9 @@ func (UnimplementedPostServiceServer) DeletePhotoComment(context.Context, *Delet
 }
 func (UnimplementedPostServiceServer) ListPhotoComments(context.Context, *ListPhotoCommentsRequest) (*ListPhotoCommentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPhotoComments not implemented")
+}
+func (UnimplementedPostServiceServer) GetPhotoComment(context.Context, *GetPhotoCommentRequest) (*GetPhotoCommentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPhotoComment not implemented")
 }
 func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -1719,6 +1773,24 @@ func _PostService_ListSuggestions_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetSuggestion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetSuggestionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetSuggestion(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetSuggestion_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetSuggestion(ctx, req.(*GetSuggestionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_PublishSuggestion_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PublishSuggestionRequest)
 	if err := dec(in); err != nil {
@@ -1877,6 +1949,24 @@ func _PostService_ListTopicMessages_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).ListTopicMessages(ctx, req.(*ListTopicMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetTopicMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetTopicMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetTopicMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetTopicMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetTopicMessage(ctx, req.(*GetTopicMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2277,6 +2367,24 @@ func _PostService_ListPhotoComments_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_GetPhotoComment_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPhotoCommentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetPhotoComment(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetPhotoComment_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetPhotoComment(ctx, req.(*GetPhotoCommentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -2415,6 +2523,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PostService_ListSuggestions_Handler,
 		},
 		{
+			MethodName: "GetSuggestion",
+			Handler:    _PostService_GetSuggestion_Handler,
+		},
+		{
 			MethodName: "PublishSuggestion",
 			Handler:    _PostService_PublishSuggestion_Handler,
 		},
@@ -2449,6 +2561,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListTopicMessages",
 			Handler:    _PostService_ListTopicMessages_Handler,
+		},
+		{
+			MethodName: "GetTopicMessage",
+			Handler:    _PostService_GetTopicMessage_Handler,
 		},
 		{
 			MethodName: "DeleteTopicMessage",
@@ -2537,6 +2653,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPhotoComments",
 			Handler:    _PostService_ListPhotoComments_Handler,
+		},
+		{
+			MethodName: "GetPhotoComment",
+			Handler:    _PostService_GetPhotoComment_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

@@ -1190,3 +1190,87 @@ func TestTextLimit(t *testing.T) {
 		t.Fatalf("GetComments whole = %v, %v", got, err)
 	}
 }
+
+// The lists of topics, their messages, suggestions and photo comments ask
+// for the beginnings of texts; one of them alone is whole.
+func TestTextLimit_OtherLists(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+	club := uuid.New()
+
+	topic, err := s.client.CreateTopic(s.as(t, ann), &postv1.CreateTopicRequest{ClubId: club.String(), Title: "Тема", Text: "длинное начало"})
+	if err != nil {
+		t.Fatalf("CreateTopic: %v", err)
+	}
+
+	messages, err := s.client.ListTopicMessages(context.Background(), &postv1.ListTopicMessagesRequest{TopicId: topic.GetTopic().GetId(), TextLimit: 7})
+	if err != nil || len(messages.GetMessages()) != 1 || messages.GetMessages()[0].GetText() != "длинное" || !messages.GetMessages()[0].GetTextCut() {
+		t.Fatalf("ListTopicMessages = %v, %v", messages, err)
+	}
+
+	topics, err := s.client.ListTopics(context.Background(), &postv1.ListTopicsRequest{ClubId: club.String(), TextLimit: 7})
+	if err != nil || len(topics.GetTopics()) != 1 || topics.GetTopics()[0].GetLastMessage().GetText() != "длинное" || !topics.GetTopics()[0].GetLastMessage().GetTextCut() {
+		t.Fatalf("ListTopics = %v, %v", topics, err)
+	}
+
+	message, err := s.client.GetTopicMessage(context.Background(), &postv1.GetTopicMessageRequest{Id: messages.GetMessages()[0].GetId()})
+	if err != nil || message.GetMessage().GetText() != "длинное начало" || message.GetMessage().GetTextCut() {
+		t.Fatalf("GetTopicMessage = %v, %v", message, err)
+	}
+	if _, err = s.client.GetTopicMessage(context.Background(), &postv1.GetTopicMessageRequest{Id: uuid.NewString()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("a missing message: %v", err)
+	}
+
+	suggested, err := s.client.SuggestPost(s.as(t, ann), &postv1.SuggestPostRequest{WallId: club.String(), Text: "длинная новость"})
+	if err != nil {
+		t.Fatalf("SuggestPost: %v", err)
+	}
+
+	mine, err := s.client.ListSuggestions(s.as(t, ann), &postv1.ListSuggestionsRequest{WallId: club.String(), Mine: true, TextLimit: 7})
+	if err != nil || len(mine.GetSuggestions()) != 1 || mine.GetSuggestions()[0].GetText() != "длинная" || !mine.GetSuggestions()[0].GetTextCut() {
+		t.Fatalf("ListSuggestions = %v, %v", mine, err)
+	}
+
+	id := suggested.GetSuggestion().GetId()
+	if got, err := s.client.GetSuggestion(s.as(t, ann), &postv1.GetSuggestionRequest{Id: id}); err != nil || got.GetSuggestion().GetText() != "длинная новость" {
+		t.Fatalf("GetSuggestion = %v, %v", got, err)
+	}
+	// Somebody else is not told it exists.
+	if _, err = s.client.GetSuggestion(s.as(t, bob), &postv1.GetSuggestionRequest{Id: id}); status.Code(err) != codes.NotFound {
+		t.Fatalf("a stranger's GetSuggestion: %v", err)
+	}
+	if _, err = s.client.GetSuggestion(context.Background(), &postv1.GetSuggestionRequest{Id: id}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("GetSuggestion without a token: %v", err)
+	}
+
+	album, err := s.client.CreateAlbum(s.as(t, ann), &postv1.CreateAlbumRequest{Name: "Лето"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	photo := uuid.Must(uuid.NewV7()).String()
+	if _, err = s.client.AddAlbumPhotos(s.as(t, ann), &postv1.AddAlbumPhotosRequest{
+		AlbumId: album.GetAlbum().GetId(), Photos: []*postv1.NewAlbumPhoto{{PhotoId: photo}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	comment, err := s.client.CreatePhotoComment(s.as(t, bob), &postv1.CreatePhotoCommentRequest{PhotoId: photo, Text: "длинный отзыв"})
+	if err != nil {
+		t.Fatalf("CreatePhotoComment: %v", err)
+	}
+
+	comments, err := s.client.ListPhotoComments(context.Background(), &postv1.ListPhotoCommentsRequest{PhotoId: photo, TextLimit: 7})
+	if err != nil || len(comments.GetComments()) != 1 || comments.GetComments()[0].GetText() != "длинный" || !comments.GetComments()[0].GetTextCut() {
+		t.Fatalf("ListPhotoComments = %v, %v", comments, err)
+	}
+
+	whole, err := s.client.GetPhotoComment(context.Background(), &postv1.GetPhotoCommentRequest{Id: comment.GetComment().GetId()})
+	if err != nil || whole.GetComment().GetText() != "длинный отзыв" || whole.GetComment().GetTextCut() {
+		t.Fatalf("GetPhotoComment = %v, %v", whole, err)
+	}
+	if _, err = s.client.GetPhotoComment(context.Background(), &postv1.GetPhotoCommentRequest{Id: uuid.NewString()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("a missing photo comment: %v", err)
+	}
+}

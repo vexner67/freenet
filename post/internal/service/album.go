@@ -814,6 +814,13 @@ func (s *AlbumService) DeletePhotoComment(ctx context.Context, requesterID, id u
 	return nil
 }
 
+// PhotoComment is one comment of a photo, whole.
+func (s *AlbumService) PhotoComment(ctx context.Context, id uuid.UUID) (*post.PhotoComment, error) {
+	c, err := s.comments.Get(ctx, id)
+
+	return c, errs.Wrap("s.comments.Get", err)
+}
+
 // PhotoComments pages the comments of a photo, oldest first, as openvk
 // shows them; post.ErrAlbumPhotoNotFound for a missing photo.
 func (s *AlbumService) PhotoComments(ctx context.Context, photoID, after uuid.UUID, size int) (PhotoCommentPage, error) {

@@ -70,10 +70,26 @@ func (h *PostHandler) ListSuggestions(ctx context.Context, req *postv1.ListSugge
 		resp.NextCursor = page.NextCursor.String()
 	}
 	for _, s := range page.Suggestions {
-		resp.Suggestions = append(resp.Suggestions, toProtoSuggestion(s))
+		ps := toProtoSuggestion(s)
+		ps.Text, ps.TextCut = s.Content().Text().Excerpt(int(req.GetTextLimit()))
+		resp.Suggestions = append(resp.Suggestions, ps)
 	}
 
 	return resp, nil
+}
+
+func (h *PostHandler) GetSuggestion(ctx context.Context, req *postv1.GetSuggestionRequest) (*postv1.GetSuggestionResponse, error) {
+	viewer, id, err := callerAndSuggestion(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	s, err := h.suggestionService.Get(ctx, viewer, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.GetSuggestionResponse{Suggestion: toProtoSuggestion(s)}, nil
 }
 
 func (h *PostHandler) PublishSuggestion(ctx context.Context, req *postv1.PublishSuggestionRequest) (*postv1.PublishSuggestionResponse, error) {
