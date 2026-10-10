@@ -54,6 +54,9 @@ service ClubService {
   // Public: clubs whose name or address has every word of the query, the
   // newest first.
   rpc SearchClubs(SearchClubsRequest) returns (SearchClubsResponse);
+  // Public: how many groups there are, events not counted, for the page
+  // "о сайте".
+  rpc CountClubs(CountClubsRequest) returns (CountClubsResponse);
   // Its admins show a photo as the club's, which the media service has
   // stored; an empty avatar_id takes it away.
   rpc SetClubAvatar(SetClubAvatarRequest) returns (SetClubAvatarResponse);
@@ -438,4 +441,10 @@ message ListWallModeratorsResponse {
 
 message PurgeUserRequest {
   string user_id = 1;
+}
+
+message CountClubsRequest {}
+
+message CountClubsResponse {
+  int32 count = 1;
 }

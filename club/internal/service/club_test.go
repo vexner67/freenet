@@ -626,6 +626,11 @@ func TestClubService_Events(t *testing.T) {
 		t.Fatalf("a maybe in a started event = %+v, %v", v, err)
 	}
 
+	// The site counts its groups; events are not groups.
+	if n, err := svc.Count(ctx); err != nil || n != 1 {
+		t.Fatalf("Count = %d, %v", n, err)
+	}
+
 	// The lists tell groups from events.
 	events, err := svc.Clubs(ctx, ann, uuid.Nil, 10, service.ClubFilter{Kind: club.KindEvent})
 	if err != nil || events.Total != 2 || len(events.Clubs) != 2 || events.Clubs[1].Club.ID() != event.ID() {

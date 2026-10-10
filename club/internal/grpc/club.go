@@ -28,6 +28,7 @@ type ClubService interface {
 	Members(ctx context.Context, viewerID, clubID, cursor uuid.UUID, size int, pick service.MemberPick) (service.MemberPage, error)
 	Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, filter service.ClubFilter) (service.ClubPage, error)
 	Search(ctx context.Context, query club.SearchQuery, cursor uuid.UUID, size int) (service.SearchPage, error)
+	Count(ctx context.Context) (int, error)
 	SetAvatar(ctx context.Context, userID, clubID, avatarID uuid.UUID) (service.View, error)
 	SetBackdrop(ctx context.Context, userID, clubID uuid.UUID, side club.BackdropSide, photoID uuid.UUID) (service.View, error)
 	Pin(ctx context.Context, userID, clubID uuid.UUID, pinned bool) error
@@ -383,6 +384,16 @@ func (h *ClubHandler) SearchClubs(ctx context.Context, req *clubv1.SearchClubsRe
 	}
 
 	return &clubv1.SearchClubsResponse{Clubs: toProtoClubs(page.Clubs), NextCursor: optionalID(page.NextCursor)}, nil
+}
+
+// CountClubs counts the groups of the site, for its page "о сайте".
+func (h *ClubHandler) CountClubs(ctx context.Context, _ *clubv1.CountClubsRequest) (*clubv1.CountClubsResponse, error) {
+	n, err := h.clubService.Count(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &clubv1.CountClubsResponse{Count: int32(n)}, nil //nolint:gosec // a count of rows
 }
 
 func (h *ClubHandler) SetClubAvatar(ctx context.Context, req *clubv1.SetClubAvatarRequest) (*clubv1.SetClubAvatarResponse, error) {

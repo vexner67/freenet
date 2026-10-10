@@ -269,6 +269,24 @@ func (r *ClubRepository) SetBackdrop(ctx context.Context, c *club.Club, side clu
 	return nil
 }
 
+func (r *ClubRepository) Count(ctx context.Context, kind club.Kind) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	n := 0
+	for _, c := range r.s.clubs {
+		if c.Kind == kind {
+			n++
+		}
+	}
+
+	return n, nil
+}
+
 func (r *ClubRepository) Search(ctx context.Context, q club.SearchQuery, before uuid.UUID, limit int) ([]*club.Club, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)

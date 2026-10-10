@@ -414,6 +414,24 @@ func (r *ClubRepository) Search(ctx context.Context, q club.SearchQuery, before 
 	return collectClubs(rows)
 }
 
+// countClubsQuery reads the whole table: the page "о сайте" is opened
+// seldom.
+const countClubsQuery = `
+	SELECT count(*)
+	FROM clubs
+	WHERE kind = $1
+`
+
+func (r *ClubRepository) Count(ctx context.Context, kind club.Kind) (int, error) {
+	var n int
+
+	if err := r.pool.QueryRow(ctx, countClubsQuery, kind.String()).Scan(&n); err != nil {
+		return 0, errs.Wrap("r.pool.QueryRow", err)
+	}
+
+	return n, nil
+}
+
 // escapeLike makes % and _ in a word match themselves.
 func escapeLike(s string) string {
 	return strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(s)

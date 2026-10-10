@@ -44,6 +44,8 @@ type ClubRepository interface {
 	// Search returns up to limit clubs that match q with IDs below before
 	// (uuid.Nil: from the newest), the newest first.
 	Search(ctx context.Context, q club.SearchQuery, before uuid.UUID, limit int) ([]*club.Club, error)
+	// Count counts the clubs of a kind.
+	Count(ctx context.Context, kind club.Kind) (int, error)
 }
 
 type MemberRepository interface {
@@ -567,6 +569,17 @@ func (s *ClubService) Search(ctx context.Context, query club.SearchQuery, cursor
 	}
 
 	return page, nil
+}
+
+// Count counts the groups of the site, for its page "о сайте"; events are
+// not groups.
+func (s *ClubService) Count(ctx context.Context) (int, error) {
+	n, err := s.clubs.Count(ctx, club.KindGroup)
+	if err != nil {
+		return 0, errs.Wrap("s.clubs.Count", err)
+	}
+
+	return n, nil
 }
 
 // SetAvatar shows a photo as the club's, uuid.Nil none: its admins'

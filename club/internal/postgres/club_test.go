@@ -510,6 +510,14 @@ func TestRepositories_Events(t *testing.T) {
 		t.Fatalf("Get a group = %+v, %v", got, err)
 	}
 
+	// Counted by kind with those of other tests: these at least.
+	if n, err := clubs.Count(ctx, club.KindEvent); err != nil || n < 1 {
+		t.Fatalf("Count events = %d, %v", n, err)
+	}
+	if n, err := clubs.Count(ctx, club.KindGroup); err != nil || n < 1 {
+		t.Fatalf("Count groups = %d, %v", n, err)
+	}
+
 	// Bob might come, Cat is sure to; joining again changes nothing.
 	for range 2 {
 		if err = members.Join(ctx, event.ID(), bob, true); err != nil {
