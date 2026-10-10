@@ -22,6 +22,8 @@ var (
 		notification.KindPostAccepted: notificationv1.Kind_KIND_POST_ACCEPTED,
 
 		notification.KindSuggestedPost: notificationv1.Kind_KIND_SUGGESTED_POST,
+		notification.KindClubAdmin:     notificationv1.Kind_KIND_CLUB_ADMIN,
+		notification.KindTopicMessage:  notificationv1.Kind_KIND_TOPIC_MESSAGE,
 	}
 	kindFromProto = map[notificationv1.Kind]notification.Kind{
 		notificationv1.Kind_KIND_LIKE:      notification.KindLike,
@@ -35,6 +37,8 @@ var (
 		notificationv1.Kind_KIND_POST_ACCEPTED: notification.KindPostAccepted,
 
 		notificationv1.Kind_KIND_SUGGESTED_POST: notification.KindSuggestedPost,
+		notificationv1.Kind_KIND_CLUB_ADMIN:     notification.KindClubAdmin,
+		notificationv1.Kind_KIND_TOPIC_MESSAGE:  notification.KindTopicMessage,
 	}
 )
 

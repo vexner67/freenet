@@ -24,8 +24,8 @@ func PublicMethods() []string {
 // (see mtls.RestrictMethods).
 func InternalMethods() map[string][]string {
 	return map[string][]string{
-		notificationv1.NotificationService_Notify_FullMethodName:        {mtls.Post, mtls.User},
-		notificationv1.NotificationService_Retract_FullMethodName:       {mtls.Post, mtls.User},
+		notificationv1.NotificationService_Notify_FullMethodName:        {mtls.Post, mtls.User, mtls.Club},
+		notificationv1.NotificationService_Retract_FullMethodName:       {mtls.Post, mtls.User, mtls.Club},
 		notificationv1.NotificationService_ForgetPost_FullMethodName:    {mtls.Post},
 		notificationv1.NotificationService_ForgetComment_FullMethodName: {mtls.Post},
 		notificationv1.NotificationService_PurgeUser_FullMethodName:     {mtls.User},
