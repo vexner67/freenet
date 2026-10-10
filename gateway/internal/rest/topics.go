@@ -78,6 +78,9 @@ type topicMessageJSON struct {
 	CreatedAt string      `json:"createdAt"`
 	FromWall  bool        `json:"fromWall"`
 	Mine      bool        `json:"mine"`
+	// Likes are its hearts; Liked: the viewer put one.
+	Likes int  `json:"likes"`
+	Liked bool `json:"liked"`
 }
 
 type topicMessagePageResponse struct {
@@ -124,6 +127,8 @@ func toTopicMessageJSON(m model.TopicMessage, shown model.Author) topicMessageJS
 		CreatedAt: m.CreatedAt.UTC().Format(time.RFC3339),
 		FromWall:  m.FromWall,
 		Mine:      m.Mine,
+		Likes:     m.Likes,
+		Liked:     m.Liked,
 	}
 }
 
@@ -461,4 +466,35 @@ func (a *api) deleteTopicMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// likeTopicMessage and unlikeTopicMessage are the heart of a message of
+// a topic, as of a comment.
+func (a *api) likeTopicMessage(w http.ResponseWriter, r *http.Request) {
+	a.setTopicMessageLike(w, r, true)
+}
+
+func (a *api) unlikeTopicMessage(w http.ResponseWriter, r *http.Request) {
+	a.setTopicMessageLike(w, r, false)
+}
+
+func (a *api) setTopicMessageLike(w http.ResponseWriter, r *http.Request, liked bool) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	set := a.topics.UnlikeMessage
+	if liked {
+		set = a.topics.LikeMessage
+	}
+
+	likes, err := set(r.Context(), token, r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, likeResponse{Likes: likes, Liked: liked})
 }

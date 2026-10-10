@@ -23,6 +23,10 @@ type notificationPage struct {
 			ID   string `json:"id"`
 			Text string `json:"text"`
 		} `json:"comment"`
+		Topic *struct {
+			ID    string `json:"id"`
+			Title string `json:"title"`
+		} `json:"topic"`
 	} `json:"notifications"`
 	NextCursor string `json:"nextCursor"`
 	NewestID   string `json:"newestId"`
@@ -42,9 +46,9 @@ func TestListNotifications(t *testing.T) {
 		t.Fatalf("request = %+v; unread is the default box", h.notifications)
 	}
 
-	// The follow by a vanished account and the like of a deleted post are
-	// left out.
-	if len(got.Notifications) != 6 {
+	// The follow by a vanished account, the like of a deleted post and
+	// the message in a deleted topic are left out.
+	if len(got.Notifications) != 8 {
 		t.Fatalf("notifications = %+v", got.Notifications)
 	}
 
@@ -68,6 +72,16 @@ func TestListNotifications(t *testing.T) {
 	// A suggestion is no post: the community is all there is to show.
 	if suggested := got.Notifications[5]; suggested.Type != "suggested_post" || suggested.Actor["name"] != "Кошки" || suggested.Post != nil {
 		t.Fatalf("suggested post = %+v", suggested)
+	}
+
+	// A message in a topic names the topic: neither a post nor a comment.
+	if written := got.Notifications[6]; written.Type != "topic_message" || written.Actor["nickname"] != "bob" || written.Topic == nil ||
+		written.Topic.ID != "t1" || written.Topic.Title != "Знакомство" || written.Post != nil || written.Comment != nil {
+		t.Fatalf("topic message = %+v", written)
+	}
+	// An appointment names only the community.
+	if appointed := got.Notifications[7]; appointed.Type != "club_admin" || appointed.Actor["name"] != "Кошки" || appointed.Post != nil || appointed.Topic != nil {
+		t.Fatalf("club admin = %+v", appointed)
 	}
 
 	archive := newHarness(rest.Config{})

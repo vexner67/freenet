@@ -33,6 +33,8 @@ type authorJSON struct {
 	// address, its page being /club/<address or id>.
 	Club    bool   `json:"club,omitempty"`
 	Address string `json:"address,omitempty"`
+	// Online: on the site now ("Онлайн"), if their page tells everyone.
+	Online bool `json:"online,omitempty"`
 }
 
 type postResponse struct {
@@ -144,6 +146,7 @@ func authorOf(id, avatarID string, p model.Profile) model.Author {
 func authorOfProfile(p model.PublicProfile) model.Author {
 	a := authorOf(p.ID, p.AvatarID, p.Profile)
 	a.Deactivated = p.Deactivated
+	a.Online = p.Online
 
 	return a
 }
@@ -164,6 +167,7 @@ func toAuthorJSON(a model.Author) authorJSON {
 		Deactivated: a.Deactivated,
 		Club:        a.Club,
 		Address:     a.Address,
+		Online:      a.Online,
 	}
 }
 

@@ -110,6 +110,26 @@ func (t *Topics) DeleteMessage(ctx context.Context, accessToken, id string) erro
 	return nil
 }
 
+// LikeMessage and UnlikeMessage put a heart on a message of a topic and
+// take it off; they return how many it has now.
+func (t *Topics) LikeMessage(ctx context.Context, accessToken, id string) (int, error) {
+	resp, err := t.api.LikeTopicMessage(withToken(ctx, accessToken), &postv1.LikeTopicMessageRequest{Id: id})
+	if err != nil {
+		return 0, errs.Wrap("t.api.LikeTopicMessage", fromStatus(err))
+	}
+
+	return int(resp.GetLikeCount()), nil
+}
+
+func (t *Topics) UnlikeMessage(ctx context.Context, accessToken, id string) (int, error) {
+	resp, err := t.api.UnlikeTopicMessage(withToken(ctx, accessToken), &postv1.UnlikeTopicMessageRequest{Id: id})
+	if err != nil {
+		return 0, errs.Wrap("t.api.UnlikeTopicMessage", fromStatus(err))
+	}
+
+	return int(resp.GetLikeCount()), nil
+}
+
 func toTopic(pt *postv1.Topic) model.Topic {
 	t := model.Topic{
 		ID:         pt.GetId(),
@@ -143,5 +163,7 @@ func toTopicMessage(pm *postv1.TopicMessage) model.TopicMessage {
 		FromWall:  pm.GetFromWall(),
 		CreatedAt: fromTimestamp(pm.GetCreatedAt()),
 		Mine:      pm.GetMine(),
+		Likes:     int(pm.GetLikeCount()),
+		Liked:     pm.GetLiked(),
 	}
 }

@@ -15,6 +15,7 @@ import (
 // club, and t3 by someone whose page is gone; it records what it is asked.
 type fakeTopics struct {
 	clubID, query, deleted string
+	liked                  string
 	created                model.NewTopic
 	changes                model.TopicChanges
 	written                model.NewTopicMessage
@@ -83,6 +84,16 @@ func (f *fakeTopics) Messages(_ context.Context, _, topicID, _ string, _ int) (m
 func (f *fakeTopics) DeleteMessage(_ context.Context, _, id string) error {
 	f.deleted = id
 	return f.err
+}
+
+func (f *fakeTopics) LikeMessage(_ context.Context, _, id string) (int, error) {
+	f.liked = id
+	return 3, f.err
+}
+
+func (f *fakeTopics) UnlikeMessage(_ context.Context, _, id string) (int, error) {
+	f.liked = ""
+	return 2, f.err
 }
 
 type topicJSON struct {
@@ -219,6 +230,23 @@ func TestTopicMessages(t *testing.T) {
 	if w.Code != http.StatusCreated || h.topics.written.Text != "И тебе" {
 		t.Fatalf("write: %d %+v", w.Code, h.topics.written)
 	}
+	// The heart of a message, as of a comment.
+	type likeJSON struct {
+		Likes int  `json:"likes"`
+		Liked bool `json:"liked"`
+	}
+	w = h.do("PUT", "/api/v1/topic-messages/m1/like", "", "Authorization", "Bearer tok")
+	if like := decode[likeJSON](t, w); w.Code != http.StatusOK || like != (likeJSON{Likes: 3, Liked: true}) || h.topics.liked != "m1" {
+		t.Fatalf("like: %d %s", w.Code, w.Body)
+	}
+	w = h.do("DELETE", "/api/v1/topic-messages/m1/like", "", "Authorization", "Bearer tok")
+	if like := decode[likeJSON](t, w); w.Code != http.StatusOK || like != (likeJSON{Likes: 2}) || h.topics.liked != "" {
+		t.Fatalf("unlike: %d %s", w.Code, w.Body)
+	}
+	if w = h.do("PUT", "/api/v1/topic-messages/m1/like", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("like without a token: %d", w.Code)
+	}
+
 	if w = h.do("DELETE", "/api/v1/topic-messages/m1", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.topics.deleted != "m1" {
 		t.Fatalf("delete: %d", w.Code)
 	}

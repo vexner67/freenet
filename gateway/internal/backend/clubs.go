@@ -2,11 +2,13 @@ package backend
 
 import (
 	"context"
+	"time"
 
 	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/pkg/errs"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Clubs talks to the club service. Methods that read a club take an
@@ -32,6 +34,15 @@ var (
 		clubv1.AdminsDisplay_ADMINS_DISPLAY_ALL:     "all",
 		clubv1.AdminsDisplay_ADMINS_DISPLAY_NONE:    "none",
 	}
+	kinds = map[clubv1.Kind]string{
+		clubv1.Kind_KIND_GROUP: model.ClubKindGroup,
+		clubv1.Kind_KIND_EVENT: model.ClubKindEvent,
+	}
+	goings = map[string]clubv1.Going{
+		"":      clubv1.Going_GOING_UNSPECIFIED,
+		"sure":  clubv1.Going_GOING_SURE,
+		"maybe": clubv1.Going_GOING_MAYBE,
+	}
 	roles = map[clubv1.Role]string{
 		clubv1.Role_ROLE_NONE:   "",
 		clubv1.Role_ROLE_MEMBER: "member",
@@ -47,6 +58,47 @@ func (c *Clubs) Create(ctx context.Context, accessToken, name, description strin
 	}
 
 	return toClubView(resp.GetClub()), nil
+}
+
+// CreateEvent makes an event ("Создать встречу").
+func (c *Clubs) CreateEvent(ctx context.Context, accessToken string, e model.NewEvent) (model.ClubView, error) {
+	resp, err := c.api.CreateEvent(withToken(ctx, accessToken), &clubv1.CreateEventRequest{
+		Name: e.Name, Description: e.Description, StartsAt: optionalTimestamp(e.StartsAt), EndsAt: optionalTimestamp(e.EndsAt),
+	})
+	if err != nil {
+		return model.ClubView{}, errs.Wrap("c.api.CreateEvent", fromStatus(err))
+	}
+
+	return toClubView(resp.GetClub()), nil
+}
+
+// optionalTimestamp is unset for the zero time.
+func optionalTimestamp(t time.Time) *timestamppb.Timestamp {
+	if t.IsZero() {
+		return nil
+	}
+
+	return timestamppb.New(t)
+}
+
+// optionalTime is the zero time for an unset one.
+func optionalTime(t *timestamppb.Timestamp) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+
+	return t.AsTime()
+}
+
+// kindOf is the proto of a kind of clubs; "" is both.
+func kindOf(kind string) clubv1.Kind {
+	for pk, k := range kinds {
+		if k == kind {
+			return pk
+		}
+	}
+
+	return clubv1.Kind_KIND_UNSPECIFIED
 }
 
 // Get is the club ref names: its ID or its address.
@@ -103,6 +155,8 @@ func (c *Clubs) Update(ctx context.Context, accessToken, clubID string, changes 
 
 		OpenTopics:      changes.OpenTopics,
 		TopicsAboveWall: changes.TopicsAboveWall,
+		StartsAt:        optionalTimestamp(changes.StartsAt),
+		EndsAt:          optionalTimestamp(changes.EndsAt),
 	})
 	if err != nil {
 		return model.ClubView{}, errs.Wrap("c.api.UpdateClub", fromStatus(err))
@@ -111,8 +165,10 @@ func (c *Clubs) Update(ctx context.Context, accessToken, clubID string, changes 
 	return toClubView(resp.GetClub()), nil
 }
 
-func (c *Clubs) Join(ctx context.Context, accessToken, clubID string) (model.ClubView, error) {
-	resp, err := c.api.JoinClub(withToken(ctx, accessToken), &clubv1.JoinClubRequest{ClubId: clubID})
+// Join makes the caller a member; with maybe, one who only might come to
+// the event.
+func (c *Clubs) Join(ctx context.Context, accessToken, clubID string, maybe bool) (model.ClubView, error) {
+	resp, err := c.api.JoinClub(withToken(ctx, accessToken), &clubv1.JoinClubRequest{ClubId: clubID, Maybe: maybe})
 	if err != nil {
 		return model.ClubView{}, errs.Wrap("c.api.JoinClub", fromStatus(err))
 	}
@@ -129,14 +185,20 @@ func (c *Clubs) Leave(ctx context.Context, accessToken, clubID string) (model.Cl
 	return toClubView(resp.GetClub()), nil
 }
 
-// Members pages the members of a club; only the owner and the admins with
-// adminsOnly.
-func (c *Clubs) Members(ctx context.Context, clubID, cursor string, limit int, adminsOnly bool) (model.ClubMemberPage, error) {
-	resp, err := c.api.ListMembers(ctx, &clubv1.ListMembersRequest{
+// Members pages the members of a club that filter picks, as the caller
+// sees them.
+func (c *Clubs) Members(ctx context.Context, accessToken, clubID, cursor string, limit int, filter model.ClubMemberFilter) (model.ClubMemberPage, error) {
+	going, ok := goings[filter.Going]
+	if !ok {
+		return model.ClubMemberPage{}, failure.New(failure.InvalidArgument, "going must be sure or maybe")
+	}
+
+	resp, err := c.api.ListMembers(withToken(ctx, accessToken), &clubv1.ListMembersRequest{
 		ClubId:     clubID,
 		Cursor:     cursor,
 		Limit:      toLimit(limit),
-		AdminsOnly: adminsOnly,
+		AdminsOnly: filter.AdminsOnly,
+		Going:      going,
 	})
 	if err != nil {
 		return model.ClubMemberPage{}, errs.Wrap("c.api.ListMembers", fromStatus(err))
@@ -148,7 +210,10 @@ func (c *Clubs) Members(ctx context.Context, clubID, cursor string, limit int, a
 		Total:      int(resp.GetTotal()),
 	}
 	for _, m := range resp.GetMembers() {
-		page.Members = append(page.Members, model.ClubMember{UserID: m.GetUserId(), Role: roles[m.GetRole()]})
+		page.Members = append(page.Members, model.ClubMember{
+			UserID: m.GetUserId(), Role: roles[m.GetRole()], Title: m.GetTitle(), Hidden: m.GetHidden(),
+			Maybe: m.GetMaybe(),
+		})
 	}
 
 	return page, nil
@@ -169,6 +234,19 @@ func (c *Clubs) SetAdmin(ctx context.Context, accessToken, clubID, userID string
 	return nil
 }
 
+// Describe gives one of those who run the club a title and hides or
+// shows them.
+func (c *Clubs) Describe(ctx context.Context, accessToken, clubID, userID, title string, hidden bool) error {
+	_, err := c.api.DescribeMember(withToken(ctx, accessToken), &clubv1.DescribeMemberRequest{
+		ClubId: clubID, UserId: userID, Title: title, Hidden: hidden,
+	})
+	if err != nil {
+		return errs.Wrap("c.api.DescribeMember", fromStatus(err))
+	}
+
+	return nil
+}
+
 // Transfer hands the club over to one of its admins.
 func (c *Clubs) Transfer(ctx context.Context, accessToken, clubID, userID string) error {
 	_, err := c.api.TransferClub(withToken(ctx, accessToken), &clubv1.TransferClubRequest{ClubId: clubID, UserId: userID})
@@ -181,8 +259,8 @@ func (c *Clubs) Transfer(ctx context.Context, accessToken, clubID, userID string
 
 // OfUser pages the clubs of a user; whether the viewer may see them is
 // for the caller to check.
-func (c *Clubs) OfUser(ctx context.Context, userID, cursor string, limit int) (model.UserClubPage, error) {
-	resp, err := c.api.ListUserClubs(ctx, &clubv1.ListUserClubsRequest{UserId: userID, Cursor: cursor, Limit: toLimit(limit)})
+func (c *Clubs) OfUser(ctx context.Context, userID, cursor string, limit int, kind string) (model.UserClubPage, error) {
+	resp, err := c.api.ListUserClubs(ctx, &clubv1.ListUserClubsRequest{UserId: userID, Cursor: cursor, Limit: toLimit(limit), Kind: kindOf(kind)})
 	if err != nil {
 		return model.UserClubPage{}, errs.Wrap("c.api.ListUserClubs", fromStatus(err))
 	}
@@ -191,8 +269,10 @@ func (c *Clubs) OfUser(ctx context.Context, userID, cursor string, limit int) (m
 }
 
 // Mine pages the caller's clubs; with managed only those they run.
-func (c *Clubs) Mine(ctx context.Context, accessToken, cursor string, limit int, managed bool) (model.ClubPage, error) {
-	resp, err := c.api.ListMyClubs(withToken(ctx, accessToken), &clubv1.ListMyClubsRequest{Cursor: cursor, Limit: toLimit(limit), Managed: managed})
+func (c *Clubs) Mine(ctx context.Context, accessToken, cursor string, limit int, filter model.ClubFilter) (model.ClubPage, error) {
+	resp, err := c.api.ListMyClubs(withToken(ctx, accessToken), &clubv1.ListMyClubsRequest{
+		Cursor: cursor, Limit: toLimit(limit), Managed: filter.Managed, Kind: kindOf(filter.Kind),
+	})
 	if err != nil {
 		return model.ClubPage{}, errs.Wrap("c.api.ListMyClubs", fromStatus(err))
 	}
@@ -316,6 +396,11 @@ func toClub(c *clubv1.Club) model.Club {
 		TopicsAboveWall: c.GetTopicsAboveWall(),
 		BackdropLeft:    c.GetBackdropLeft(),
 		BackdropRight:   c.GetBackdropRight(),
+
+		Kind:     kinds[c.GetKind()],
+		StartsAt: optionalTime(c.GetStartsAt()),
+		EndsAt:   optionalTime(c.GetEndsAt()),
+		Maybes:   int(c.GetMaybeCount()),
 	}
 }
 
@@ -324,6 +409,9 @@ func toClubView(v *clubv1.ClubView) model.ClubView {
 		Club:    toClub(v.GetClub()),
 		Role:    roles[v.GetRole()],
 		OwnerID: v.GetOwnerId(),
+
+		OwnerTitle: v.GetOwnerTitle(),
+		Maybe:      v.GetMaybe(),
 
 		CanStartTopic: v.GetCanStartTopic(),
 	}
