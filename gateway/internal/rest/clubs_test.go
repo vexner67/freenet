@@ -3,6 +3,7 @@ package rest_test
 import (
 	"context"
 	"net/http"
+	"slices"
 	"testing"
 	"time"
 
@@ -399,8 +400,8 @@ func TestFeed_Clubs(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(rest.Config{})
-	if w := h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || len(h.posts.walls) != 1 || h.posts.walls[0] != "k1" {
-		t.Fatalf("feed: %d, walls %v", w.Code, h.posts.walls)
+	if w := h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || !slices.Equal(h.posts.walls, []string{"k1", "u2", "gone", "u1"}) {
+		t.Fatalf("feed: %d, walls %v: the clubs, the followed and me", w.Code, h.posts.walls)
 	}
 }
 

@@ -171,8 +171,9 @@ func (a *api) listFollows(
 }
 
 // feed is the caller's news: posts of the people they follow and their own,
-// and every post on the walls of their clubs, newest first, each with its
-// author.
+// and every post on the walls of those people, their own and their clubs',
+// newest first, each with its author. openvk's feed is the walls; ours
+// also follows its people to the walls of others.
 func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -205,7 +206,8 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// "Не показывать в ленте" of the reader's settings.
-	sources := model.FeedSources{Authors: append(following, me.ID), Walls: clubs, HideNSFW: me.Interface.NSFW == nsfwHide}
+	people := append(following, me.ID)
+	sources := model.FeedSources{Authors: people, Walls: append(clubs, people...), HideNSFW: me.Interface.NSFW == nsfwHide}
 
 	page, err := a.posts.Feed(r.Context(), token, sources, r.URL.Query().Get("cursor"), limit)
 	if err != nil {
