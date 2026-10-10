@@ -131,6 +131,8 @@ type User struct {
 	deactivation Deactivation
 	lastSeen     time.Time
 	backdrop     Backdrop
+	// ui is how the site looks to the user ("Интерфейс").
+	ui Interface
 }
 
 // New creates a user with only an email set, as happens on the first
@@ -149,6 +151,7 @@ func New(email Email) (*User, error) {
 			PageRead: AudienceEveryone, InfoRead: AudienceEveryone, PhotosRead: AudienceEveryone, FriendsRead: AudienceEveryone,
 			OnlineRead: AudienceEveryone,
 		},
+		ui: DefaultInterface(),
 	}, nil
 }
 
@@ -165,6 +168,7 @@ type Stored struct {
 	Deactivation Deactivation
 	LastSeen     time.Time
 	Backdrop     Backdrop
+	Interface    Interface
 }
 
 // Restore rebuilds a user from storage without validation or new IDs.
@@ -181,6 +185,7 @@ func Restore(s Stored) *User {
 		deactivation: s.Deactivation,
 		lastSeen:     s.LastSeen,
 		backdrop:     s.Backdrop,
+		ui:           s.Interface,
 	}
 }
 

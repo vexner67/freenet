@@ -20,6 +20,7 @@ type UserService interface {
 	UpdateContacts(ctx context.Context, id uuid.UUID, contacts user.Contacts) (*user.User, error)
 	UpdateInterests(ctx context.Context, id uuid.UUID, interests user.Interests) (*user.User, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status user.Status) (*user.User, error)
+	UpdateInterface(ctx context.Context, id uuid.UUID, ui user.Interface) (*user.User, error)
 	UpdateExtraFields(ctx context.Context, id uuid.UUID, fields []user.ExtraField) (*user.User, error)
 	UpdatePrivacy(ctx context.Context, id uuid.UUID, privacy user.Privacy) (*user.User, error)
 	GetPublicProfiles(ctx context.Context, ids []uuid.UUID) ([]user.PublicProfile, error)
@@ -147,6 +148,28 @@ func (h *UserHandler) UpdateContacts(ctx context.Context, req *userv1.UpdateCont
 	}
 
 	return &userv1.UpdateContactsResponse{User: toProtoUser(u)}, nil
+}
+
+// UpdateInterface is "Интерфейс" of the settings.
+func (h *UserHandler) UpdateInterface(ctx context.Context, req *userv1.UpdateInterfaceRequest) (*userv1.UpdateInterfaceResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	in := req.GetInterface()
+
+	ui, err := user.NewInterface(in.GetAvatarStyle(), in.GetMainPage(), in.GetHiddenMenu())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	u, err := h.userService.UpdateInterface(ctx, userID, ui)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.UpdateInterfaceResponse{User: toProtoUser(u)}, nil
 }
 
 // UpdateStatus is the status alone, as openvk edits it on the page.

@@ -11,6 +11,43 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func TestInterface(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, _ := s.member(t, "ann")
+
+	me, err := s.client.GetMe(ann, &userv1.GetMeRequest{})
+	if ui := me.GetUser().GetInterface(); err != nil || ui.GetAvatarStyle() != "square" || ui.GetMainPage() != "page" || len(ui.GetHiddenMenu()) != 0 {
+		t.Fatalf("a new user = %v, %v", ui, err)
+	}
+
+	got, err := s.client.UpdateInterface(ann, &userv1.UpdateInterfaceRequest{Interface: &userv1.InterfaceSettings{
+		AvatarStyle: "round", MainPage: "feed", HiddenMenu: []string{"notifications", "groups"},
+	}})
+	if ui := got.GetUser().GetInterface(); err != nil || ui.GetAvatarStyle() != "round" || ui.GetMainPage() != "feed" ||
+		!slices.Equal(ui.GetHiddenMenu(), []string{"groups", "notifications"}) {
+		t.Fatalf("UpdateInterface = %v, %v", ui, err)
+	}
+	if me, err = s.client.GetMe(ann, &userv1.GetMeRequest{}); err != nil || me.GetUser().GetInterface().GetMainPage() != "feed" {
+		t.Fatalf("GetMe after the change = %v, %v", me, err)
+	}
+
+	for name, bad := range map[string]*userv1.InterfaceSettings{
+		"no settings":      nil,
+		"an unknown style": {AvatarStyle: "oval", MainPage: "page"},
+		"an unknown page":  {AvatarStyle: "square", MainPage: "search"},
+		"an unknown link":  {AvatarStyle: "square", MainPage: "page", HiddenMenu: []string{"settings"}},
+	} {
+		if _, err = s.client.UpdateInterface(ann, &userv1.UpdateInterfaceRequest{Interface: bad}); status.Code(err) != codes.InvalidArgument {
+			t.Errorf("%s: %v", name, err)
+		}
+	}
+	if _, err = s.client.UpdateInterface(context.Background(), &userv1.UpdateInterfaceRequest{}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("without a token: %v", err)
+	}
+}
+
 func TestStatusAndCompleteness(t *testing.T) {
 	t.Parallel()
 

@@ -140,6 +140,9 @@ const updateUserQuery = `
 		photos_read = $41,
 		friends_read = $42,
 		online_read = $43,
+		avatar_style = $44,
+		main_page = $45,
+		hidden_menu = $46,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -150,6 +153,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 	d := u.Deactivation()
 	c := u.Contacts()
 	in := u.Interests()
+	ui := u.Interface()
 
 	fields, err := extraFieldsToDB(u.ExtraFields())
 	if err != nil {
@@ -202,6 +206,9 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		pr.PhotosRead.String(),
 		pr.FriendsRead.String(),
 		pr.OnlineRead.String(),
+		ui.AvatarStyle.String(),
+		ui.MainPage.String(),
+		hiddenMenuToDB(ui.HiddenMenu),
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -333,7 +340,10 @@ const userColumns = `
 		online_read,
 		last_seen_at,
 		backdrop_left,
-		backdrop_right`
+		backdrop_right,
+		avatar_style,
+		main_page,
+		hidden_menu`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -383,7 +393,10 @@ const qualifiedUserColumns = `
 		u.online_read,
 		u.last_seen_at,
 		u.backdrop_left,
-		u.backdrop_right`
+		u.backdrop_right,
+		u.avatar_style,
+		u.main_page,
+		u.hidden_menu`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -485,6 +498,8 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		reads                                      [5]string
 		lastSeen                                   *time.Time
 		backdrop                                   [2]*uuid.UUID
+		avatarStyle, mainPage                      string
+		hiddenMenu                                 []string
 	)
 
 	err := row.Scan(
@@ -520,6 +535,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&reads[0], &reads[1], &reads[2], &reads[3], &reads[4],
 		&lastSeen,
 		&backdrop[0], &backdrop[1],
+		&avatarStyle, &mainPage, &hiddenMenu,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -585,7 +601,36 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		},
 		LastSeen: timeFromDB(lastSeen),
 		Backdrop: user.Backdrop{Left: idFromDB(backdrop[0]), Right: idFromDB(backdrop[1])},
+		Interface: user.Interface{
+			AvatarStyle: user.AvatarStyle(avatarStyle),
+			MainPage:    user.MainPage(mainPage),
+			HiddenMenu:  hiddenMenuFromDB(hiddenMenu),
+		},
 	}), nil
+}
+
+// hiddenMenuToDB is never NULL: an empty array for a whole menu.
+func hiddenMenuToDB(items []user.MenuItem) []string {
+	out := make([]string, 0, len(items))
+	for _, item := range items {
+		out = append(out, item.String())
+	}
+
+	return out
+}
+
+// hiddenMenuFromDB is nil for a whole menu, as a new user has it.
+func hiddenMenuFromDB(items []string) []user.MenuItem {
+	if len(items) == 0 {
+		return nil
+	}
+
+	out := make([]user.MenuItem, 0, len(items))
+	for _, item := range items {
+		out = append(out, user.MenuItem(item))
+	}
+
+	return out
 }
 
 // An unset birthday is stored as NULL rather than year 1.

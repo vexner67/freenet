@@ -39,6 +39,7 @@ func toProtoUser(u *user.User) *userv1.User {
 		RegisteredAt:          timestamppb.New(user.RegisteredAt(u.ID())),
 		BackdropLeft:          avatarString(u.Backdrop().Left),
 		BackdropRight:         avatarString(u.Backdrop().Right),
+		Interface:             toProtoInterface(u.Interface()),
 		Completeness:          int32(completeness), //nolint:gosec // a percent
 		Unfilled:              unfilled,
 	}
@@ -657,4 +658,17 @@ func fromProtoBirthday(t *timestamppb.Timestamp) time.Time {
 	}
 
 	return t.AsTime()
+}
+
+func toProtoInterface(ui user.Interface) *userv1.InterfaceSettings {
+	hidden := make([]string, 0, len(ui.HiddenMenu))
+	for _, item := range ui.HiddenMenu {
+		hidden = append(hidden, item.String())
+	}
+
+	return &userv1.InterfaceSettings{
+		AvatarStyle: ui.AvatarStyle.String(),
+		MainPage:    ui.MainPage.String(),
+		HiddenMenu:  hidden,
+	}
 }
