@@ -63,6 +63,18 @@ func (u *Users) UpdateContacts(ctx context.Context, accessToken string, c model.
 	return toUser(resp.GetUser()), nil
 }
 
+// UpdateInterface replaces the caller's settings of "Интерфейс".
+func (u *Users) UpdateInterface(ctx context.Context, accessToken string, ui model.Interface) (model.User, error) {
+	resp, err := u.api.UpdateInterface(withToken(ctx, accessToken), &userv1.UpdateInterfaceRequest{Interface: &userv1.InterfaceSettings{
+		AvatarStyle: ui.AvatarStyle, MainPage: ui.MainPage, HiddenMenu: ui.HiddenMenu,
+	}})
+	if err != nil {
+		return model.User{}, errs.Wrap("u.api.UpdateInterface", fromStatus(err))
+	}
+
+	return toUser(resp.GetUser()), nil
+}
+
 // UpdateStatus replaces the caller's status alone.
 func (u *Users) UpdateStatus(ctx context.Context, accessToken, status string) (model.User, error) {
 	resp, err := u.api.UpdateStatus(withToken(ctx, accessToken), &userv1.UpdateStatusRequest{Status: status})

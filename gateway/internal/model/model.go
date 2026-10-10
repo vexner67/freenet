@@ -140,6 +140,16 @@ type User struct {
 	// parts missing ("interests", "email", "telegram", "status", "city").
 	Completeness int
 	Unfilled     []string
+	Interface    Interface
+}
+
+// Interface is how the site looks to its owner ("Интерфейс" of the
+// settings): AvatarStyle is "square" or "round", MainPage "page" or
+// "feed", HiddenMenu the links taken out of the left menu.
+type Interface struct {
+	AvatarStyle string
+	MainPage    string
+	HiddenMenu  []string
 }
 
 // Backdrop is "Фон страницы" of a person: photos of the media service

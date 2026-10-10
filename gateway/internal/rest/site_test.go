@@ -25,3 +25,40 @@ func TestAbout(t *testing.T) {
 		t.Fatalf("a service down: %d", w.Code)
 	}
 }
+
+func TestUpdateInterface(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = ann
+
+	type meJSON struct {
+		Interface struct {
+			AvatarStyle string   `json:"avatarStyle"`
+			MainPage    string   `json:"mainPage"`
+			HiddenMenu  []string `json:"hiddenMenu"`
+		} `json:"interface"`
+	}
+
+	w := h.do("PUT", "/api/v1/me/interface", `{"avatarStyle":"round","mainPage":"feed","hiddenMenu":["events"]}`, "Authorization", "Bearer tok")
+	got := decode[meJSON](t, w)
+	if w.Code != http.StatusOK || got.Interface.AvatarStyle != "round" || got.Interface.MainPage != "feed" ||
+		len(got.Interface.HiddenMenu) != 1 || got.Interface.HiddenMenu[0] != "events" || h.users.token != "tok" {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+
+	// A whole menu is an empty list, never null.
+	w = h.do("PUT", "/api/v1/me/interface", `{"avatarStyle":"square","mainPage":"page"}`, "Authorization", "Bearer tok")
+	if got = decode[meJSON](t, w); w.Code != http.StatusOK || got.Interface.HiddenMenu == nil {
+		t.Fatalf("a whole menu: %d %s", w.Code, w.Body)
+	}
+
+	if w = h.do("PUT", "/api/v1/me/interface", `{"avatarStyle":"round"}`); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", w.Code)
+	}
+
+	h.users.err = failure.New(failure.InvalidArgument, "invalid avatar style")
+	if w = h.do("PUT", "/api/v1/me/interface", `{"avatarStyle":"oval","mainPage":"page"}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
+		t.Fatalf("an unknown style: %d", w.Code)
+	}
+}

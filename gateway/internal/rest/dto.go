@@ -246,6 +246,16 @@ type userResponse struct {
 	// is missing for openvk's hints.
 	Completeness int      `json:"completeness"`
 	Unfilled     []string `json:"unfilled"`
+	// Interface is how the site looks to the owner ("Интерфейс").
+	Interface interfaceJSON `json:"interface"`
+}
+
+// interfaceJSON: avatarStyle is "square" or "round", mainPage "page" or
+// "feed", hiddenMenu the links taken out of the left menu.
+type interfaceJSON struct {
+	AvatarStyle string   `json:"avatarStyle"`
+	MainPage    string   `json:"mainPage"`
+	HiddenMenu  []string `json:"hiddenMenu"`
 }
 
 // toUserResponse: partner is whom the relationship names, nil for nobody.
@@ -277,6 +287,11 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 
 		Completeness: u.Completeness,
 		Unfilled:     append([]string{}, u.Unfilled...),
+		Interface: interfaceJSON{
+			AvatarStyle: u.Interface.AvatarStyle,
+			MainPage:    u.Interface.MainPage,
+			HiddenMenu:  append([]string{}, u.Interface.HiddenMenu...),
+		},
 	}
 }
 

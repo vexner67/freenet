@@ -219,6 +219,26 @@ paths:
         "200": { $ref: "#/components/responses/User" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
+  /api/v1/me/interface:
+    put:
+      summary: Change how the site looks to you ("Интерфейс")
+      description: >-
+        The whole form of openvk's tab: how everyone's photos are shown
+        ("Отображение аватаров"), where the site opens ("Главная
+        страница") and which links the left menu leaves out ("Левое
+        меню"). Nobody else sees it; the site applies it, the API serves
+        the same either way.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/Interface" }
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
   /api/v1/me/privacy:
     put:
       summary: Choose who sees your page and its parts, and who writes to you
@@ -3284,6 +3304,7 @@ components:
               type: array
               items: { type: string, enum: [interests, email, telegram, status, city] }
               description: What is missing, for openvk's hints under the gauge
+            interface: { $ref: "#/components/schemas/Interface" }
             deactivated:
               type: boolean
               description: "You deleted the page; see POST /api/v1/me/deactivate"
@@ -3318,6 +3339,18 @@ components:
           description: "A community, as the owner of a wall or the voice of a post: only `id`, `name` and `address` are set, its page is /club/<address or id>"
         address: { type: string, description: "A community's address; empty for none" }
         online: { type: boolean, description: "The person is on the site now (\"Онлайн\"); told only of a page open to everyone, absent otherwise" }
+
+    Interface:
+      type: object
+      description: How the site looks to its owner ("Интерфейс" of the settings)
+      required: [avatarStyle, mainPage]
+      properties:
+        avatarStyle: { type: string, enum: [square, round], description: "How photos of people are shown; square by default" }
+        mainPage: { type: string, enum: [page, feed], description: "Where the site opens: your page (the default) or the news" }
+        hiddenMenu:
+          type: array
+          description: The links taken out of the left menu; none by default
+          items: { type: string, enum: [photos, messages, groups, events, feed, notifications] }
 
     AdminsDisplay:
       type: string
