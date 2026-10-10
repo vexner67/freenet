@@ -25,9 +25,11 @@ export const topicHearts = { like: api.likeTopicMessage, unlike: api.unlikeTopic
 //   canLike makes the heart clickable (signed-in viewers), onError shows
 //   a failed like;
 //   withLike: false for what has no likes, the messages of a topic;
+//   whole(id) loads all it says when a list carried the beginning: a
+//   comment's by default, a topic message's, a photo comment's;
 //   href: the page the comment is on, when it is shown on another (under
 //   a post of a wall): its date leads there.
-export function commentNode(comment, { onDelete, onReply, canLike = false, onError, withLike = true, hearts = commentHearts, href = '' } = {}) {
+export function commentNode(comment, { onDelete, onReply, canLike = false, onError, withLike = true, hearts = commentHearts, whole = api.commentText, href = '' } = {}) {
   // A comment for a community shows the community (fromWall).
   const path = pagePath(comment.author);
 
@@ -45,7 +47,7 @@ export function commentNode(comment, { onDelete, onReply, canLike = false, onErr
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(comment.author) }),
       ),
-      comment.text ? textNode(comment.text, { rest: comment.textCut ? () => api.commentText(comment.id).then((c) => c.text) : null }) : null,
+      comment.text ? textNode(comment.text, { rest: comment.textCut ? () => whole(comment.id).then((c) => c.text) : null }) : null,
       photosNode(comment.photos ?? []),
       el('div', { className: 'post-menu' }, el('span', {}, ...separated(menu)), like),
     ),

@@ -139,6 +139,7 @@ function initComments(page) {
 
   const node = (c) => commentNode({ ...c, photos: [] }, {
     withLike: false,
+    whole: api.photoCommentText,
     onDelete: (c.mine || moderates) && (async (comment, shown) => {
       try {
         await api.deletePhotoComment(comment.id);

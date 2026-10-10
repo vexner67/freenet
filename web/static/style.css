@@ -467,6 +467,7 @@ a.like:hover svg { opacity: .7; }
 .im-message img { display: block; width: 37px; height: 37px; object-fit: cover; border-radius: 3px; }
 .im-message-content { flex: 1; min-width: 0; line-height: 1.45; }
 .im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+.im-message-text.collapsed { max-height: 115px; overflow: hidden; }
 .im-message-date { width: 100px; color: #404036; font-size: 9px; text-align: right; }
 /* Shown on hover, as the message actions of VK; always on touch screens. */
 .im-message-action { display: block; margin-top: 4px; font-size: 10px; visibility: hidden; cursor: pointer; }

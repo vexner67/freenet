@@ -262,6 +262,9 @@ export const api = {
   // deletes any message of your dialog for you alone ("Удалить у себя").
   deleteMessage: (id, { forMe = false } = {}) => authorized('DELETE', `/api/v1/messages/${encodeURIComponent(id)}` + (forMe ? '?for=me' : '')),
   // What your own message says, within a day of sending.
+  // message is a message of a dialog whole: the dialog carries the
+  // beginnings of long texts.
+  message: (nickname, id) => authorized('GET', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages/${encodeURIComponent(id)}`),
   editMessage: (id, text) => authorized('PATCH', `/api/v1/messages/${encodeURIComponent(id)}`, { text }),
   // Your messages that say q, newest first: with peer, a nickname, in
   // that dialog only.
@@ -345,6 +348,7 @@ export const api = {
     const path = page(`/api/v1/clubs/${encodeURIComponent(ref)}/suggestions`, cursor, limit);
     return authorized('GET', mine ? path + (path.includes('?') ? '&' : '?') + 'mine=true' : path);
   },
+  suggestionText: (id) => authorized('GET', `/api/v1/suggestions/${encodeURIComponent(id)}/text`),
   publishSuggestion: (id, text, signed) => authorized('POST', `/api/v1/suggestions/${encodeURIComponent(id)}/publish`, { text, signed }),
   deleteSuggestion: (id) => authorized('DELETE', `/api/v1/suggestions/${encodeURIComponent(id)}`),
 
@@ -365,6 +369,7 @@ export const api = {
     authorized('POST', `/api/v1/topics/${encodeURIComponent(id)}/messages`, { text, photos, fromClub }),
   deleteTopicMessage: (id) => authorized('DELETE', `/api/v1/topic-messages/${encodeURIComponent(id)}`),
   // The heart of a message of a topic, as of a comment.
+  topicMessageText: (id) => optional('GET', `/api/v1/topic-messages/${encodeURIComponent(id)}/text`),
   likeTopicMessage: (id) => authorized('PUT', `/api/v1/topic-messages/${encodeURIComponent(id)}/like`),
   unlikeTopicMessage: (id) => authorized('DELETE', `/api/v1/topic-messages/${encodeURIComponent(id)}/like`),
 
@@ -393,6 +398,7 @@ export const api = {
   likePhoto: (id) => authorized('PUT', `/api/v1/album-photos/${encodeURIComponent(id)}/like`),
   unlikePhoto: (id) => authorized('DELETE', `/api/v1/album-photos/${encodeURIComponent(id)}/like`),
   photoLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/album-photos/${encodeURIComponent(id)}/likes`, cursor, limit)),
+  photoCommentText: (id) => optional('GET', `/api/v1/photo-comments/${encodeURIComponent(id)}/text`),
   photoComments: (id, cursor = '') => optional('GET', page(`/api/v1/album-photos/${encodeURIComponent(id)}/comments`, cursor, 0)),
   commentPhoto: (id, text) => authorized('POST', `/api/v1/album-photos/${encodeURIComponent(id)}/comments`, { text }),
   deletePhotoComment: (id) => authorized('DELETE', `/api/v1/photo-comments/${encodeURIComponent(id)}`),
