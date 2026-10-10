@@ -838,6 +838,10 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n-7", Kind: "post_mention", ActorID: "u2", PostID: "p1", CreatedAt: at},
 			{ID: "n-8", Kind: "comment_mention", ActorID: "u2", PostID: "p1", CommentID: "c1", CreatedAt: at},
 			{ID: "n-9", Kind: "topic_mention", ActorID: "u2", PostID: "t1", CommentID: "m1", CreatedAt: at},
+			{ID: "n-10", Kind: "topic_message_like", ActorID: "u2", PostID: "t1", CommentID: "m1", CreatedAt: at},
+			{ID: "n-11", Kind: "photo_like", ActorID: "u2", PostID: "ph6", CreatedAt: at},
+			{ID: "n-12", Kind: "photo_comment", ActorID: "u2", PostID: "ph6", CommentID: "pc1", CreatedAt: at},
+			{ID: "n-13", Kind: "photo_like", ActorID: "u2", PostID: "gone", CreatedAt: at},
 		},
 		NextCursor: "n-2",
 	}, f.err

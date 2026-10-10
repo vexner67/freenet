@@ -30,6 +30,9 @@ type notificationJSON struct {
 	// Topic is the discussion a topic_message or a topic_mention was
 	// written in.
 	Topic *notificationTopicJSON `json:"topic,omitempty"`
+	// Photo is the photo of an album a photo_like or a photo_comment is
+	// about.
+	Photo *photoJSON `json:"photo,omitempty"`
 }
 
 type notificationTopicJSON struct {
@@ -69,20 +72,38 @@ const kindTopicMessage = "topic_message"
 // обсуждении" of openvk).
 const kindTopicMention = "topic_mention"
 
+// kindTopicMessageLike names a topic and a message of it too: the actor
+// liked the recipient's message.
+const kindTopicMessageLike = "topic_message_like"
+
+// kindPhotoLike and kindPhotoComment name a photo of an album by PostID
+// (and a comment under it by CommentID), not a post: the notification
+// shows the photo and goes with it, the like or the comment.
+const (
+	kindPhotoLike    = "photo_like"
+	kindPhotoComment = "photo_comment"
+)
+
 // namesTopic tells whether PostID of a notification of kind is a topic
 // and its CommentID a message of it.
 func namesTopic(kind string) bool {
-	return kind == kindTopicMessage || kind == kindTopicMention
+	return kind == kindTopicMessage || kind == kindTopicMention || kind == kindTopicMessageLike
+}
+
+// namesPhoto tells whether PostID of a notification of kind is a photo of
+// an album.
+func namesPhoto(kind string) bool {
+	return kind == kindPhotoLike || kind == kindPhotoComment
 }
 
 // namesPost tells whether PostID of a notification of kind is a post, and
 // namesComment whether its CommentID is a comment.
 func namesPost(kind string) bool {
-	return kind != kindSuggestedPost && !namesTopic(kind)
+	return kind != kindSuggestedPost && !namesTopic(kind) && !namesPhoto(kind)
 }
 
 func namesComment(kind string) bool {
-	return !namesTopic(kind)
+	return !namesTopic(kind) && !namesPhoto(kind)
 }
 
 // targets are what a page of notifications refers to, by ID; what was
@@ -92,6 +113,7 @@ type targets struct {
 	posts    map[string]model.Post
 	comments map[string]model.Comment
 	topics   map[string]model.Topic
+	photos   map[string]model.AlbumPhoto
 }
 
 // listNotifications is one page of the caller's notifications with who
@@ -121,7 +143,7 @@ func (a *api) listNotifications(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	t, err := a.notificationTargets(r, page.Notifications)
+	t, err := a.notificationTargets(r, token, page.Notifications)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -157,8 +179,8 @@ func notificationBox(r *http.Request) (bool, error) {
 	}
 }
 
-func (a *api) notificationTargets(r *http.Request, notifications []model.Notification) (targets, error) {
-	var actorIDs, postIDs, commentIDs, topicIDs []string
+func (a *api) notificationTargets(r *http.Request, token string, notifications []model.Notification) (targets, error) {
+	var actorIDs, postIDs, commentIDs, topicIDs, photoIDs []string
 
 	for _, n := range notifications {
 		actorIDs = append(actorIDs, n.ActorID)
@@ -170,6 +192,9 @@ func (a *api) notificationTargets(r *http.Request, notifications []model.Notific
 		}
 		if namesTopic(n.Kind) {
 			topicIDs = append(topicIDs, n.PostID)
+		}
+		if namesPhoto(n.Kind) {
+			photoIDs = append(photoIDs, n.PostID)
 		}
 	}
 
@@ -208,7 +233,31 @@ func (a *api) notificationTargets(r *http.Request, notifications []model.Notific
 		return targets{}, err
 	}
 
+	if t.photos, err = a.notificationPhotos(r, token, unique(photoIDs)); err != nil {
+		return targets{}, err
+	}
+
 	return t, nil
+}
+
+// notificationPhotos reads the photos a page of notifications names, as
+// notificationTopics reads the topics. They are the reader's own.
+func (a *api) notificationPhotos(r *http.Request, token string, ids []string) (map[string]model.AlbumPhoto, error) {
+	photos := make(map[string]model.AlbumPhoto, len(ids))
+
+	for _, id := range ids {
+		photo, _, err := a.albums.Photo(r.Context(), token, id)
+		if failure.From(err).Kind == failure.NotFound {
+			continue
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		photos[id] = photo
+	}
+
+	return photos, nil
 }
 
 // notificationTopics reads the topics a page of notifications names, one
@@ -252,6 +301,19 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 			return notificationJSON{}, false
 		}
 		item.Topic = &notificationTopicJSON{ID: topic.ID, Title: topic.Title}
+
+		return item, true
+	}
+
+	// A comment under a photo is not quoted: the post service has no
+	// request for several of them.
+	if namesPhoto(n.Kind) {
+		photo, ok := t.photos[n.PostID]
+		if !ok {
+			return notificationJSON{}, false
+		}
+		shown := toPhotoJSON(photo.AuthorID, photo.ID)
+		item.Photo = &shown
 
 		return item, true
 	}
