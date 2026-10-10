@@ -153,6 +153,9 @@ message ListMessagesRequest {
   // half of limit before it and half after; NotFound if the dialog does
   // not have it.
   string around = 5;
+  // The texts of the messages and of those they carry on are cut to this
+  // many characters and say so (text_cut); 0 for whole texts.
+  int32 text_limit = 6;
 }
 
 message ListMessagesResponse {
@@ -197,6 +200,9 @@ message SearchMessagesRequest {
   string cursor = 3;
   // 1-50; anything else means 20.
   int32 limit = 4;
+  // The texts of the messages are cut to this many characters and say so
+  // (text_cut); 0 for whole texts.
+  int32 text_limit = 5;
 }
 
 message SearchMessagesResponse {

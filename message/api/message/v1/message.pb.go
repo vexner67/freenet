@@ -660,7 +660,10 @@ type ListMessagesRequest struct {
 	// Instead of both: the part of the dialog around this message, about
 	// half of limit before it and half after; NotFound if the dialog does
 	// not have it.
-	Around        string `protobuf:"bytes,5,opt,name=around,proto3" json:"around,omitempty"`
+	Around string `protobuf:"bytes,5,opt,name=around,proto3" json:"around,omitempty"`
+	// The texts of the messages and of those they carry on are cut to this
+	// many characters and say so (text_cut); 0 for whole texts.
+	TextLimit     int32 `protobuf:"varint,6,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -728,6 +731,13 @@ func (x *ListMessagesRequest) GetAround() string {
 		return x.Around
 	}
 	return ""
+}
+
+func (x *ListMessagesRequest) GetTextLimit() int32 {
+	if x != nil {
+		return x.TextLimit
+	}
+	return 0
 }
 
 type ListMessagesResponse struct {
@@ -1040,7 +1050,10 @@ type SearchMessagesRequest struct {
 	// Empty for the newest, else next_cursor of the previous page.
 	Cursor string `protobuf:"bytes,3,opt,name=cursor,proto3" json:"cursor,omitempty"`
 	// 1-50; anything else means 20.
-	Limit         int32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	Limit int32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
+	// The texts of the messages are cut to this many characters and say so
+	// (text_cut); 0 for whole texts.
+	TextLimit     int32 `protobuf:"varint,5,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1099,6 +1112,13 @@ func (x *SearchMessagesRequest) GetCursor() string {
 func (x *SearchMessagesRequest) GetLimit() int32 {
 	if x != nil {
 		return x.Limit
+	}
+	return 0
+}
+
+func (x *SearchMessagesRequest) GetTextLimit() int32 {
+	if x != nil {
+		return x.TextLimit
 	}
 	return 0
 }
@@ -1619,13 +1639,15 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"nextCursor\"\x1b\n" +
 	"\x19CountUnreadDialogsRequest\"2\n" +
 	"\x1aCountUnreadDialogsResponse\x12\x14\n" +
-	"\x05count\x18\x01 \x01(\x05R\x05count\"\x8a\x01\n" +
+	"\x05count\x18\x01 \x01(\x05R\x05count\"\xa9\x01\n" +
 	"\x13ListMessagesRequest\x12\x17\n" +
 	"\apeer_id\x18\x01 \x01(\tR\x06peerId\x12\x16\n" +
 	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
 	"\x05after\x18\x03 \x01(\tR\x05after\x12\x14\n" +
 	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x16\n" +
-	"\x06around\x18\x05 \x01(\tR\x06around\"\x8f\x01\n" +
+	"\x06around\x18\x05 \x01(\tR\x06around\x12\x1d\n" +
+	"\n" +
+	"text_limit\x18\x06 \x01(\x05R\ttextLimit\"\x8f\x01\n" +
 	"\x14ListMessagesResponse\x12/\n" +
 	"\bmessages\x18\x01 \x03(\v2\x13.message.v1.MessageR\bmessages\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
@@ -1642,12 +1664,14 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\"D\n" +
 	"\x13EditMessageResponse\x12-\n" +
-	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageR\amessage\"t\n" +
+	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageR\amessage\"\x93\x01\n" +
 	"\x15SearchMessagesRequest\x12\x17\n" +
 	"\apeer_id\x18\x01 \x01(\tR\x06peerId\x12\x14\n" +
 	"\x05query\x18\x02 \x01(\tR\x05query\x12\x16\n" +
 	"\x06cursor\x18\x03 \x01(\tR\x06cursor\x12\x14\n" +
-	"\x05limit\x18\x04 \x01(\x05R\x05limit\"j\n" +
+	"\x05limit\x18\x04 \x01(\x05R\x05limit\x12\x1d\n" +
+	"\n" +
+	"text_limit\x18\x05 \x01(\x05R\ttextLimit\"j\n" +
 	"\x16SearchMessagesResponse\x12/\n" +
 	"\bmessages\x18\x01 \x03(\v2\x13.message.v1.MessageR\bmessages\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +

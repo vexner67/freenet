@@ -126,7 +126,7 @@ func (h *MessageHandler) ListMessages(ctx context.Context, req *messagev1.ListMe
 		return nil, err
 	}
 
-	return toListMessagesResponse(page, userID), nil
+	return toListMessagesResponse(page, userID, req.GetTextLimit()), nil
 }
 
 // history pages back with cursor, polls for newer messages with after, or
@@ -341,7 +341,7 @@ func (h *MessageHandler) SearchMessages(ctx context.Context, req *messagev1.Sear
 		NextCursor: optionalID(page.NextCursor),
 	}
 	for _, m := range page.Messages {
-		resp.Messages = append(resp.Messages, toProtoMessage(m, false))
+		resp.Messages = append(resp.Messages, excerpted(toProtoMessage(m, false), m, req.GetTextLimit()))
 	}
 
 	return resp, nil
