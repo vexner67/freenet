@@ -17,8 +17,8 @@ type messageRequest struct {
 }
 
 // messageJSON: Out is the caller's own message, Read means its recipient
-// has read it. The caller may delete their message until DeletableUntil,
-// "" for the peer's.
+// has read it. The caller may delete their message from both sides until
+// DeletableUntil and edit it until EditableUntil, "" for the peer's.
 type messageJSON struct {
 	ID             string      `json:"id"`
 	Text           string      `json:"text"`
@@ -27,6 +27,9 @@ type messageJSON struct {
 	Out            bool        `json:"out"`
 	Read           bool        `json:"read"`
 	DeletableUntil string      `json:"deletableUntil"`
+	EditableUntil  string      `json:"editableUntil"`
+	// EditedAt is null for a message never edited.
+	EditedAt *string `json:"editedAt"`
 	// Post is a post shared in it, "" for none; Repost shows it, as inside
 	// a repost, except in the list of dialogs.
 	Post   string      `json:"post"`
@@ -64,10 +67,12 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 		Out:       m.SenderID != peerID,
 		Read:      m.Read,
 		Post:      m.PostID,
+		EditedAt:  optionalTime(m.EditedAt),
 	}
 
 	if j.Out {
 		j.DeletableUntil = timeString(m.DeletableUntil)
+		j.EditableUntil = timeString(m.EditableUntil)
 	}
 
 	return j
@@ -346,7 +351,8 @@ func (a *api) markDialogRead(w http.ResponseWriter, r *http.Request) {
 }
 
 // deleteMessage takes the caller's message back from both sides of the
-// dialog; the message service decides whether they may.
+// dialog or, with ?for=me, deletes any message of their dialog for them
+// alone ("Удалить у себя"); the message service decides whether they may.
 func (a *api) deleteMessage(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -354,10 +360,139 @@ func (a *api) deleteMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.messages.Delete(r.Context(), token, r.PathValue("id")); err != nil {
+	remove := a.messages.Delete
+
+	switch r.URL.Query().Get("for") {
+	case "":
+	case "me":
+		remove = a.messages.Hide
+	default:
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "for is \"me\" or nothing"))
+		return
+	}
+
+	if err = remove(r.Context(), token, r.PathValue("id")); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// editMessage changes what the caller's message says; the message
+// service decides whether they still may.
+func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Text string `json:"text"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	m, err := a.messages.Edit(r.Context(), token, r.PathValue("id"), req.Text)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	// The caller sent it: the peer is its recipient.
+	j := []messageJSON{toMessageJSON(m, m.RecipientID)}
+	if err = a.showSharedPosts(r, j); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, j[0])
+}
+
+type foundMessageJSON struct {
+	Peer    authorJSON  `json:"peer"`
+	Message messageJSON `json:"message"`
+}
+
+type foundMessagesResponse struct {
+	Messages   []foundMessageJSON `json:"messages"`
+	NextCursor string             `json:"nextCursor"`
+}
+
+// searchMessages finds the caller's messages that say ?q=, newest first,
+// each with whom it was written to or by: in the dialog with ?peer=, a
+// nickname, or in all their dialogs. Messages of peers whose pages are
+// gone are left out.
+func (a *api) searchMessages(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	limit, err := pageLimit(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	me, err := a.users.GetMe(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	query := r.URL.Query()
+
+	var peerID string
+	if nickname := query.Get("peer"); nickname != "" {
+		peer, err := a.users.GetProfile(r.Context(), "", nickname)
+		if err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+
+		peerID = peer.ID
+	}
+
+	found, err := a.messages.Search(r.Context(), token, peerID, query.Get("q"), query.Get("cursor"), limit)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	// Who is on the other side of each message.
+	other := func(m model.Message) string {
+		if m.SenderID == me.ID {
+			return m.RecipientID
+		}
+
+		return m.SenderID
+	}
+
+	ids := make([]string, 0, len(found.Messages))
+	for _, m := range found.Messages {
+		ids = append(ids, other(m))
+	}
+
+	peers, err := a.people(r, ids)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	resp := foundMessagesResponse{Messages: make([]foundMessageJSON, 0, len(found.Messages)), NextCursor: found.NextCursor}
+	for _, m := range found.Messages {
+		peer, ok := peers[other(m)]
+		if !ok {
+			continue
+		}
+
+		resp.Messages = append(resp.Messages, foundMessageJSON{Peer: toAuthorJSON(peer), Message: toMessageJSON(m, other(m))})
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }

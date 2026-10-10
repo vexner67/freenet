@@ -362,6 +362,16 @@ type Message struct {
 	DeletableUntil time.Time
 	// PostID is a post shared into the dialog, "" for none.
 	PostID string
+	// EditedAt is zero for a message never edited; the sender may edit it
+	// until EditableUntil.
+	EditedAt      time.Time
+	EditableUntil time.Time
+}
+
+// FoundMessages is one screen of messages a search found, newest first.
+type FoundMessages struct {
+	Messages   []Message
+	NextCursor string
 }
 
 // Dialog is the caller's conversation with PeerID; Unread means the peer
@@ -379,16 +389,17 @@ type DialogPage struct {
 }
 
 // MessageEvent is what happened in the caller's dialogs: a new message,
-// sent or received, a read mark that moved or a message deleted. One of
-// the three is set.
+// sent or received, a read mark that moved, a message deleted or one
+// edited. One of the four is set.
 type MessageEvent struct {
 	Message *Message
 	Read    *ReadMark
 	Deleted *DeletedMessage
+	Edited  *Message
 }
 
-// DeletedMessage: SenderID took message ID back from the dialog with
-// RecipientID.
+// DeletedMessage: message ID of SenderID to RecipientID is gone from the
+// caller's dialog, taken back from both sides or deleted for themselves.
 type DeletedMessage struct {
 	ID          string
 	SenderID    string
