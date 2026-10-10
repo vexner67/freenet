@@ -558,6 +558,31 @@ func TestRepositories_Events(t *testing.T) {
 		t.Fatalf("CountClubs = %d, %v", n, err)
 	}
 
+	// And the events ahead from those over: the event is ahead until its
+	// end, a group never is.
+	periods := []struct {
+		period club.Period
+		at     time.Time
+		want   int
+	}{
+		{club.PeriodUpcoming, time.Now(), 1},
+		{club.PeriodPast, time.Now(), 0},
+		{club.PeriodUpcoming, schedule.Start.Add(time.Minute), 1},
+		{club.PeriodUpcoming, schedule.End, 0},
+		{club.PeriodPast, schedule.End, 1},
+	}
+	for _, tt := range periods {
+		filter := service.ClubFilter{Period: tt.period, At: tt.at}
+
+		listed, err := members.ListClubs(ctx, ann, uuid.Nil, 10, filter)
+		if err != nil || len(listed) != tt.want || (tt.want == 1 && listed[0].Club.ID() != event.ID()) {
+			t.Fatalf("%s at %v = %+v, %v; want %d", tt.period, tt.at, listed, err, tt.want)
+		}
+		if n, err := members.CountClubs(ctx, ann, filter); err != nil || n != tt.want {
+			t.Fatalf("CountClubs %s at %v = %d, %v; want %d", tt.period, tt.at, n, err, tt.want)
+		}
+	}
+
 	// A new schedule is saved, an end taken away.
 	open, _ := club.NewSchedule(schedule.Start.Add(time.Hour), time.Time{})
 	edited, err := got.Edited(club.RoleOwner, club.Changes{Name: got.Name(), Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator, Schedule: open})

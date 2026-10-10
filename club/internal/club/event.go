@@ -90,6 +90,46 @@ func (c *Club) Schedule() Schedule {
 	return c.schedule
 }
 
+// Over: the event is behind — it has ended or, having no end, begun. A
+// group, which has no schedule, is never over.
+func (s Schedule) Over(now time.Time) bool {
+	switch {
+	case s.Start.IsZero():
+		return false
+	case s.End.IsZero():
+		return !now.Before(s.Start)
+	default:
+		return !now.Before(s.End)
+	}
+}
+
+// Period picks events by time: those still ahead or going on
+// (PeriodUpcoming), those over (PeriodPast), or all (PeriodAny). Groups
+// have no time and belong to no period but PeriodAny.
+type Period string
+
+const (
+	PeriodAny      Period = ""
+	PeriodUpcoming Period = "upcoming"
+	PeriodPast     Period = "past"
+)
+
+func (p Period) String() string {
+	return string(p)
+}
+
+// Takes tells whether a club with schedule s is of the period at now.
+func (p Period) Takes(s Schedule, now time.Time) bool {
+	switch p {
+	case PeriodUpcoming:
+		return !s.Start.IsZero() && !s.Over(now)
+	case PeriodPast:
+		return s.Over(now)
+	default:
+		return true
+	}
+}
+
 // Maybes counts the members who only might come to the event ("Возможно
 // придут"); the others of Members are sure to ("Точно придут").
 func (c *Club) Maybes() int {

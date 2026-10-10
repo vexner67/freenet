@@ -114,6 +114,14 @@ enum Kind {
   KIND_EVENT = 2;
 }
 
+// Which events to list by their time: an event is past when it has ended
+// or, having no end, begun.
+enum Period {
+  PERIOD_UNSPECIFIED = 0;
+  PERIOD_UPCOMING = 1;
+  PERIOD_PAST = 2;
+}
+
 // Which members of an event to list.
 enum Going {
   // Everyone.
@@ -318,6 +326,8 @@ message ListMyClubsRequest {
   bool managed = 3;
   // Only groups or only events; unspecified for both.
   Kind kind = 4;
+  // Only the events ahead or only those over; unspecified for all clubs.
+  Period period = 5;
 }
 
 message Membership {
@@ -343,6 +353,8 @@ message ListUserClubsRequest {
   int32 limit = 3;
   // Only groups or only events; unspecified for both.
   Kind kind = 4;
+  // Only the events ahead or only those over; unspecified for all clubs.
+  Period period = 5;
 }
 
 message ListUserClubsResponse {

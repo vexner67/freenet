@@ -647,6 +647,16 @@ func TestClubService_Events(t *testing.T) {
 		t.Fatalf("bob runs no events: %+v, %v", managed, err)
 	}
 
+	// And the events ahead from those over; a group is neither.
+	ahead, err := svc.Clubs(ctx, ann, uuid.Nil, 10, service.ClubFilter{Period: club.PeriodUpcoming})
+	if err != nil || ahead.Total != 1 || len(ahead.Clubs) != 1 || ahead.Clubs[0].Club.ID() != event.ID() {
+		t.Fatalf("upcoming = %+v, %v", ahead, err)
+	}
+	over, err := svc.Clubs(ctx, ann, uuid.Nil, 10, service.ClubFilter{Period: club.PeriodPast})
+	if err != nil || over.Total != 1 || len(over.Clubs) != 1 || over.Clubs[0].Club.ID() != started.Club.ID() {
+		t.Fatalf("past = %+v, %v", over, err)
+	}
+
 	// Its admins move the event; it never loses its start.
 	later, _ := club.NewSchedule(soon.Start.Add(time.Hour), soon.Start.Add(2*time.Hour))
 	changes := club.Changes{Name: "Новый год", Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator, Schedule: later}

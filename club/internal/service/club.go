@@ -123,10 +123,13 @@ const (
 )
 
 // ClubFilter picks the clubs of a user: only those they run with Managed,
-// only those of Kind unless it is empty.
+// only those of Kind unless it is empty, only the events of Period as of
+// At, which the service sets.
 type ClubFilter struct {
 	Managed bool
 	Kind    club.Kind
+	Period  club.Period
+	At      time.Time
 }
 
 // Member is one user in a club; ID is the membership, the cursor of lists.
@@ -530,9 +533,11 @@ func memberFilter(c *club.Club, pick MemberPick, viewer club.Role) (MemberFilter
 
 // Clubs pages the clubs of a user ("Мои Группы", "Мои Встречи"), the
 // newest joined first, as filter picks: only those they run
-// ("Управление"), only groups or only events. Total counts them all.
+// ("Управление"), only groups or only events, only the events ahead or
+// those over. Total counts them all.
 func (s *ClubService) Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, filter ClubFilter) (ClubPage, error) {
 	size = pageSize(size)
+	filter.At = s.now()
 
 	clubs, err := s.members.ListClubs(ctx, userID, cursor, size+1, filter)
 	if err != nil {
