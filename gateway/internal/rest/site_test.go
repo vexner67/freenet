@@ -2,6 +2,7 @@ package rest_test
 
 import (
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
@@ -96,5 +97,13 @@ func TestNSFW(t *testing.T) {
 	h.users.ui.NSFW = "hide"
 	if w = h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || !h.posts.hideNSFW {
 		t.Fatalf("the news of whoever hides adult posts: %d, hidden %v", w.Code, h.posts.hideNSFW)
+	}
+
+	// The news, of everyone too, leave out whom the reader blacklisted.
+	h.users.blockedIDs = []string{"u9"}
+	for _, path := range []string{"/api/v1/feed", "/api/v1/feed?type=all"} {
+		if w = h.do("GET", path, "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || !slices.Equal(h.posts.hidden, []string{"u9"}) {
+			t.Fatalf("%s with a blacklist: %d, hidden %v", path, w.Code, h.posts.hidden)
+		}
 	}
 }

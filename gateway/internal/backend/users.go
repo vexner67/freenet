@@ -210,6 +210,16 @@ func (u *Users) FollowingIDs(ctx context.Context, accessToken string) ([]string,
 	return resp.GetUserIds(), nil
 }
 
+// BlockedIDs are whom the owner of the token blacklisted.
+func (u *Users) BlockedIDs(ctx context.Context, accessToken string) ([]string, error) {
+	resp, err := u.api.ListBlockedIDs(withToken(ctx, accessToken), &userv1.ListBlockedIDsRequest{})
+	if err != nil {
+		return nil, errs.Wrap("u.api.ListBlockedIDs", fromStatus(err))
+	}
+
+	return resp.GetUserIds(), nil
+}
+
 // FollowStats: accessToken may be empty for an anonymous viewer.
 func (u *Users) FollowStats(ctx context.Context, accessToken, userID string) (model.FollowStats, error) {
 	resp, err := u.api.GetFollowStats(withToken(ctx, accessToken), &userv1.GetFollowStatsRequest{UserId: userID})

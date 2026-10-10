@@ -197,8 +197,15 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The news leave out what the people the reader blacklisted wrote.
+	blocked, err := a.users.BlockedIDs(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	// "Не показывать в ленте" of the reader's settings.
-	sources := model.FeedSources{HideNSFW: me.Interface.NSFW == nsfwHide}
+	sources := model.FeedSources{HideNSFW: me.Interface.NSFW == nsfwHide, Hidden: blocked}
 
 	switch r.URL.Query().Get("type") {
 	case "":

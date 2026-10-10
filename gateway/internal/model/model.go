@@ -330,6 +330,9 @@ type FeedSources struct {
 	Walls    []string
 	// HideNSFW leaves out the posts marked as adult.
 	HideNSFW bool
+	// Hidden are the people whose posts are left out: the reader's
+	// blacklist.
+	Hidden []string
 }
 
 // WallPick is which posts of a wall to read: Filter is a tab of openvk's

@@ -3230,7 +3230,9 @@ paths:
         post on their walls, on yours and on the walls of your clubs,
         newest first, each with its author. Page with `cursor` = `nextCursor`; `total` is always 0.
         Posts marked as adult are left out when your `interface.nsfw` is
-        `hide`.
+        `hide`. What the people in your blacklist wrote is left out
+        too, on any wall and with `type=all` as well, unless one wrote in
+        the name of a community.
 
         With `type=all` it is "Все новости" of openvk instead: what every
         wall says itself (people on their own walls, communities in their
