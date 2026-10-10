@@ -23,8 +23,14 @@
       <div class="page-title"><span>Мои Сообщения</span></div>
       <div class="page-body">
         <div class="tabs">
-          <a class="active" href="/im">Все сообщения</a>
+          <a class="active" id="tab-all" href="/im">Все сообщения</a>
+          <a id="tab-search" hidden>Поиск</a>
         </div>
+        <form class="search-form" id="search" method="get" action="/im">
+          <input type="hidden" name="peer" id="search-peer" disabled>
+          <input type="text" name="q" id="search-text" maxlength="100" autocomplete="off" placeholder="Поиск по сообщениям" aria-label="Поиск по сообщениям">
+          <button class="button" type="submit">Поиск</button>
+        </form>
         <div class="error" id="error" hidden></div>
         <div class="dialogs" id="dialogs"></div>
         <p class="hint center" id="empty" hidden>Никто Вам не писал, пока что.</p>

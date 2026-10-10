@@ -245,8 +245,19 @@ export const api = {
   // post shares a post into the dialog ("Поделиться" "в переписку").
   sendMessage: (nickname, text, photos = [], post = '') => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos, post }),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
-  // Your own message, from both sides, within a day of sending.
-  deleteMessage: (id) => authorized('DELETE', `/api/v1/messages/${encodeURIComponent(id)}`),
+  // Your own message, from both sides, within a day of sending; forMe
+  // deletes any message of your dialog for you alone ("Удалить у себя").
+  deleteMessage: (id, { forMe = false } = {}) => authorized('DELETE', `/api/v1/messages/${encodeURIComponent(id)}` + (forMe ? '?for=me' : '')),
+  // What your own message says, within a day of sending.
+  editMessage: (id, text) => authorized('PATCH', `/api/v1/messages/${encodeURIComponent(id)}`, { text }),
+  // Your messages that say q, newest first: with peer, a nickname, in
+  // that dialog only.
+  searchMessages(q, { peer = '', cursor = '' } = {}) {
+    const query = new URLSearchParams({ q });
+    if (peer) query.set('peer', peer);
+    if (cursor) query.set('cursor', cursor);
+    return authorized('GET', '/api/v1/messages/search?' + query);
+  },
 
   // Communities ("группы"); ref is a club's address or, without one, its ID.
   createClub: (name, description) => authorized('POST', '/api/v1/clubs', { name, description }),

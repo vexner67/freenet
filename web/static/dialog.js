@@ -2,13 +2,15 @@
 // ones load when scrolled to the top, new ones and read marks come live
 // (events.js) and are polled only while that is down. Enter sends,
 // Shift+Enter breaks the line. Unread messages are grey either way: the
-// peer's until you read them, yours until the peer does. Your own message
-// can be deleted for both for a day, as "delete for everyone" on VK.
+// peer's until you read them, yours until the peer does. As on VK: any
+// message can be deleted for yourself, your own for both for a day
+// ("Удалить для всех") and edited for a day; a click on a message selects
+// it, and several are deleted at once.
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
-import { errorText, formatPostDate, genitiveName } from './labels.js';
+import { errorText, formatPostDate, genitiveName, selectedCount } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, sharedNode } from './posts.js';
@@ -29,54 +31,116 @@ let attachments;
 // Message ID → node, so polling neither repeats a message nor misses a read.
 const shown = new Map();
 
+// The messages selected by a click, by ID, and the one being edited.
+const selected = new Set();
+let editing = null;
+
 function messageNode(m) {
   const author = m.out ? me : peer;
+  const text = el('div', { className: 'im-message-text' });
+  const date = el('div', { className: 'im-message-date' });
 
-  return el('div', { className: m.read ? 'im-message' : 'im-message unread' },
+  const node = el('div', { className: m.read ? 'im-message' : 'im-message unread' },
     el('a', { href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       el('a', { className: 'post-name', href: '/' + author.nickname, textContent: fullName(author) }),
-      m.text ? el('div', { className: 'im-message-text', textContent: m.text }) : null,
+      text,
       photosNode(m.photos ?? []),
       m.repost ? sharedNode(m.repost) : null,
     ),
-    el('div', { className: 'im-message-date' },
-      formatPostDate(m.createdAt),
-      canDelete(m) && el('a', { className: 'im-message-delete', textContent: 'Удалить', onclick: () => confirmDelete(m) }),
-    ),
+    date,
   );
+
+  // render shows what the message says now: an edit changes it.
+  node.render = () => {
+    const shownMessage = node.message ?? m;
+
+    text.textContent = shownMessage.text;
+    text.hidden = !shownMessage.text;
+    date.replaceChildren(
+      formatPostDate(shownMessage.createdAt),
+      shownMessage.editedAt ? el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }) : '',
+      canEdit(shownMessage) && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(shownMessage) }),
+      el('a', { className: 'im-message-action', textContent: 'Удалить', onclick: () => confirmDelete([shownMessage]) }),
+    );
+  };
+  node.render();
+
+  // A click on the message itself, not on a link or a photo in it,
+  // selects it, as on VK.
+  node.addEventListener('click', (event) => {
+    if (event.target.closest('a, img, button')) return;
+    if (window.getSelection()?.toString()) return;
+
+    toggleSelected(m.id);
+  });
+
+  return node;
 }
 
-// canDelete: your own message, until deletableUntil; the server says no
-// once it passes while the page is open.
-function canDelete(m) {
+// canDeleteForAll: your own message, until deletableUntil; the server
+// says no once it passes while the page is open.
+function canDeleteForAll(m) {
   return m.out && Boolean(m.deletableUntil) && Date.now() < new Date(m.deletableUntil);
 }
 
-function confirmDelete(m) {
-  const modal = openModal('Удаление сообщения');
+// canEdit: your own message, until editableUntil.
+function canEdit(m) {
+  return m.out && Boolean(m.editableUntil) && Date.now() < new Date(m.editableUntil);
+}
+
+function toggleSelected(id) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+
+  shown.get(id)?.classList.toggle('selected', selected.has(id));
+  showSelection();
+}
+
+function clearSelection() {
+  for (const id of selected) shown.get(id)?.classList.remove('selected');
+  selected.clear();
+  showSelection();
+}
+
+// showSelection is the bar over the dialog while messages are selected.
+function showSelection() {
+  $('selection').hidden = selected.size === 0;
+  $('selection-count').textContent = selectedCount(selected.size);
+}
+
+// confirmDelete deletes messages for me, or, with the box ticked, for
+// both: offered while every one of them is mine and still may be taken
+// back.
+function confirmDelete(messages) {
+  const modal = openModal(messages.length > 1 ? 'Удаление сообщений' : 'Удаление сообщения');
   const error = el('div', { className: 'error', hidden: true });
+  const forAll = el('input', { type: 'checkbox' });
   const remove = button('Удалить', async () => {
     hideError(error);
     remove.disabled = true;
 
     try {
-      await api.deleteMessage(m.id);
-      drop(m.id);
+      for (const m of messages) {
+        // Gone already: what the user wanted.
+        await api.deleteMessage(m.id, { forMe: !forAll.checked }).catch((e) => {
+          if (e.status !== 404) throw e;
+        });
+        drop(m.id);
+      }
       modal.close();
     } catch (e) {
-      // Gone already: what the user wanted.
-      if (e.status === 404) {
-        drop(m.id);
-        modal.close();
-        return;
-      }
       showError(error, e);
       remove.disabled = false;
     }
   });
 
-  modal.body.append(error, el('div', {}, `Сообщение будет удалено и у вас, и у ${genitiveName(peer)}.`));
+  modal.body.append(error, el('div', {}, messages.length > 1
+    ? `Вы действительно хотите удалить ${selectedCount(messages.length).replace('Выбрано ', '')}?`
+    : 'Вы действительно хотите удалить это сообщение?'));
+  if (messages.every(canDeleteForAll)) {
+    modal.body.append(el('label', { className: 'publish-signed' }, forAll, ` Удалить для всех (и у ${genitiveName(peer)})`));
+  }
   modal.actions.append(remove, button('Отмена', modal.close, { secondary: true }));
 }
 
@@ -84,7 +148,44 @@ function confirmDelete(m) {
 function drop(id) {
   shown.get(id)?.remove();
   shown.delete(id);
+  if (selected.delete(id)) showSelection();
+  if (editing?.id === id) cancelEdit();
   $('empty').hidden = shown.size > 0;
+}
+
+// startEdit puts what the message says back in the form: sending saves
+// the edit, as on VK.
+function startEdit(m) {
+  const text = $('text');
+
+  editing = m;
+  text.value = m.text;
+  autosize(text);
+  $('editing').hidden = false;
+  $('send').textContent = 'Сохранить';
+  $('attach').hidden = true;
+  text.focus();
+  text.setSelectionRange(text.value.length, text.value.length);
+}
+
+function cancelEdit() {
+  if (!editing) return;
+
+  editing = null;
+  $('text').value = '';
+  autosize($('text'));
+  $('editing').hidden = true;
+  $('send').textContent = 'Отправить';
+  $('attach').hidden = false;
+}
+
+// edited shows what a message says after an edit, mine or the peer's.
+function edited(m) {
+  const node = shown.get(m.id);
+  if (!node) return;
+
+  node.message = { ...node.message, text: m.text, editedAt: m.editedAt };
+  node.render();
 }
 
 // add puts messages at the end (newer) or the start (older), skipping
@@ -203,9 +304,12 @@ function listenToEvents() {
   onEvent('read', (e) => {
     if (e.peer.id === peer.id && !e.byMe) markTheirRead(e.upTo);
   });
-  // Taken back by the peer, or by me on another page.
+  // Taken back by the peer, or deleted by me on another page.
   onEvent('delete', (e) => {
     if (e.peer.id === peer.id) drop(e.id);
+  });
+  onEvent('edit', (e) => {
+    if (e.peer.id === peer.id) edited(e.message);
   });
   // Whatever happened while disconnected.
   onEvent('ready', catchUp);
@@ -217,6 +321,23 @@ async function send(event) {
 
   const text = $('text');
   const button = $('send');
+
+  if (editing) {
+    button.disabled = true;
+
+    try {
+      edited(await api.editMessage(editing.id, text.value));
+      cancelEdit();
+    } catch (e) {
+      showError($('error'), e);
+    } finally {
+      button.disabled = false;
+      text.focus();
+    }
+
+    return;
+  }
+
   if (!text.value.trim() && attachments.count() === 0) return;
 
   if (attachments.busy()) {
@@ -270,7 +391,9 @@ async function setUpInput(canWrite) {
   $('peer-avatar').src = avatarURL(peer, 'small');
   attachments = initAttachments({ link: $('attach'), input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
   $('form').addEventListener('submit', send);
+  $('editing-cancel').addEventListener('click', cancelEdit);
   $('text').addEventListener('keydown', (event) => {
+    if (event.key === 'Escape') cancelEdit();
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       $('form').requestSubmit();
@@ -310,6 +433,13 @@ if (!me) {
       ' » ',
       el('a', { href: '/' + peer.nickname, textContent: fullName(peer) }),
     );
+
+    $('search-link').href = '/im?peer=' + encodeURIComponent(peer.nickname);
+    $('search-link').hidden = false;
+    $('selection-delete').addEventListener('click', () => {
+      confirmDelete([...selected].map((id) => shown.get(id)?.message).filter(Boolean));
+    });
+    $('selection-cancel').addEventListener('click', clearSelection);
 
     $('messenger').hidden = false;
     add(page.messages, false);

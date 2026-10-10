@@ -2,7 +2,8 @@
 // A row shows who, when, and the last message, grey while unread. New
 // messages bring their dialog to the top live (events.js); a deleted last
 // message makes the list load afresh, since only the server knows what is
-// last now.
+// last now. The form above searches the messages (?q=): of all dialogs, or
+// of the one the dialog page sent here from (?peer=<nickname>).
 
 import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
@@ -111,12 +112,81 @@ async function loadMore() {
   }
 }
 
+const params = new URLSearchParams(location.search);
+const query = (params.get('q') ?? '').trim();
+const searchPeer = params.get('peer') ?? '';
+
+// foundNode is a found message as a row of the list: who it was written
+// to or by, when, and what it says; it leads to the dialog.
+function foundNode({ peer, message: m }) {
+  return el('a', { className: 'dialog', href: '/im/' + encodeURIComponent(peer.nickname) },
+    el('img', { className: 'dialog-avatar', src: avatarURL(peer, 'small'), alt: '' }),
+    el('div', { className: 'dialog-info' },
+      el('b', { className: 'dialog-name', textContent: fullName(peer) }),
+      el('div', { className: 'dialog-date', textContent: formatPostDate(m.createdAt) }),
+    ),
+    el('div', { className: 'dialog-message' },
+      m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
+      el('div', { className: 'dialog-text', textContent: around(m.text, query) }),
+    ),
+  );
+}
+
+// around cuts a long text to the part that says the query.
+function around(text, q) {
+  const at = text.toLowerCase().indexOf(q.toLowerCase());
+  const from = Math.max(0, at - PREVIEW / 3);
+
+  return (from > 0 ? '…' : '') + snippet(text.slice(from), PREVIEW);
+}
+
+async function searchMore() {
+  hideError($('error'));
+
+  try {
+    const page = await api.searchMessages(query, { peer: searchPeer, cursor });
+
+    $('dialogs').append(...page.messages.map(foundNode));
+    cursor = page.nextCursor;
+    $('more').hidden = !cursor;
+    $('empty').textContent = 'Ничего не найдено.';
+    $('empty').hidden = $('dialogs').children.length > 0;
+  } catch (e) {
+    showError($('error'), e);
+  }
+}
+
+// showSearch fills the form in and names the tab of the results.
+function showSearch() {
+  $('search-text').value = query;
+  if (searchPeer) {
+    $('search-peer').disabled = false;
+    $('search-peer').value = searchPeer;
+    $('search-text').placeholder = 'Поиск по переписке';
+  }
+
+  if (query || searchPeer) {
+    $('tab-all').classList.remove('active');
+    $('tab-search').classList.add('active');
+    $('tab-search').hidden = false;
+  }
+}
+
 me = await currentUser().catch(() => null);
 if (!me) {
   location.replace('/');
 } else {
   renderChrome(me);
-  $('more').addEventListener('click', loadMore);
-  await loadMore();
-  listenToEvents();
+  showSearch();
+
+  if (query) {
+    $('more').addEventListener('click', searchMore);
+    await searchMore();
+  } else if (searchPeer) {
+    $('search-text').focus();
+  } else {
+    $('more').addEventListener('click', loadMore);
+    await loadMore();
+    listenToEvents();
+  }
 }

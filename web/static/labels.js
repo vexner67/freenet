@@ -527,6 +527,9 @@ const errorTexts = {
   'the new owner must be an admin of the club': 'Владельцем можно назначить только администратора группы.',
   "this user's clubs are hidden": 'Пользователь скрыл список своих групп.',
   "this user's photos are hidden": 'Пользователь скрыл свои фотографии.',
+  'only the sender can edit the message': 'Редактировать можно только свои сообщения.',
+  'the message can no longer be edited': 'Сообщение можно редактировать только в течение суток после отправки.',
+  'search query is empty': 'Введите, что искать.',
   'the comments are closed': 'Комментарии к этой записи закрыты.',
   'search query is too long': 'Запрос длиннее 100 символов.',
   'this album is kept by the site': 'Этот альбом сайт ведёт сам: его нельзя изменить.',
@@ -567,4 +570,10 @@ export function errorText(e) {
 // больше": more than 520 characters or 10 lines.
 export function isLongText(text) {
   return text.length > 520 || text.split('\n').length > 10;
+}
+
+// selectedCount is over a dialog while messages are selected: "Выбрано 2
+// сообщения".
+export function selectedCount(n) {
+  return `Выбрано ${n} ${plural(n, ['сообщение', 'сообщения', 'сообщений'])}`;
 }
