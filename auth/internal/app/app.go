@@ -18,6 +18,7 @@ import (
 	"github.com/vexner67/freenet/auth/internal/redis"
 	"github.com/vexner67/freenet/auth/internal/service"
 	"github.com/vexner67/freenet/auth/internal/smtp"
+	"github.com/vexner67/freenet/auth/internal/telegram"
 	"github.com/vexner67/freenet/auth/internal/userclient"
 	"github.com/vexner67/freenet/auth/migrations"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -205,6 +206,12 @@ func (a *App) newMailer(cfg config.Config) service.Mailer {
 			cfg.SMTP.Password,
 			cfg.SMTP.From,
 		)
+	}
+
+	if cfg.Mailer == config.MailerTelegram {
+		a.logger.Warn("verification codes go to the owner's Telegram chat (MAILER=telegram), who sees every code")
+
+		return telegram.NewMailer(cfg.Telegram.API, cfg.Telegram.BotToken, cfg.Telegram.ChatID)
 	}
 
 	a.logger.Warn("verification codes are written to the log (MAILER=console), do not use in production")

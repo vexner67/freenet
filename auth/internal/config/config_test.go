@@ -83,6 +83,19 @@ func TestParse(t *testing.T) {
 		}
 	})
 
+	t.Run("codes to the owner's telegram chat", func(t *testing.T) {
+		t.Parallel()
+
+		cfg, err := envconfig.Parse[config.Config](env.Options{Environment: with(map[string]string{
+			"MAILER":             config.MailerTelegram,
+			"TELEGRAM_BOT_TOKEN": "1:token",
+			"TELEGRAM_CHAT_ID":   "-100",
+		})})
+		if err != nil || cfg.Telegram.API != "https://api.telegram.org" {
+			t.Fatalf("parse: %+v, %v", cfg.Telegram.API, err)
+		}
+	})
+
 	invalid := []struct {
 		name  string
 		extra map[string]string
@@ -92,6 +105,8 @@ func TestParse(t *testing.T) {
 		{"persistent without database", map[string]string{"STORAGE": config.StoragePersistent, "REDIS_ADDR": "x:6379"}},
 		{"unknown mailer", map[string]string{"MAILER": "pigeon"}},
 		{"smtp without host", map[string]string{"MAILER": config.MailerSMTP, "SMTP_PORT": "25", "SMTP_FROM": "a@b.c"}},
+		{"telegram without a chat", map[string]string{"MAILER": config.MailerTelegram, "TELEGRAM_BOT_TOKEN": "1:token"}},
+		{"telegram without a bot", map[string]string{"MAILER": config.MailerTelegram, "TELEGRAM_CHAT_ID": "-100"}},
 		{"partial mtls", map[string]string{"TLS_CERT_PATH": "cert.pem"}},
 		{"zero attempts", map[string]string{"CODE_MAX_ATTEMPTS": "0"}},
 		{"empty required", map[string]string{"ISSUER": ""}},
