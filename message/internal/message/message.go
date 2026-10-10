@@ -103,6 +103,25 @@ func (t Text) String() string {
 	return string(t)
 }
 
+// Excerpt is the beginning of the text, at most limit characters, and
+// whether it was cut: lists carry it instead of a text of thousands of
+// characters. Without a limit the text is whole.
+func (t Text) Excerpt(limit int) (string, bool) {
+	if limit <= 0 || len(t) <= limit {
+		return string(t), false
+	}
+
+	n := 0
+	for i := range string(t) {
+		if n == limit {
+			return string(t[:i]), true
+		}
+		n++
+	}
+
+	return string(t), false
+}
+
 // Photos are the IDs of a message's photos in the media service, in the
 // order they are shown. Whose photos they are the gateway checks with the
 // media service when the message is sent.

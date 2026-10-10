@@ -77,6 +77,9 @@ message Message {
   // When the sender took it back from both sides; unset if never. Such a
   // message says nothing, and deletable_until and editable_until are unset.
   google.protobuf.Timestamp deleted_at = 13;
+  // text and the texts it carries on are only their beginnings: the
+  // request set text_limit, and they say more.
+  bool text_cut = 14;
 }
 
 // A message as another one carries it on: a copy of what it showed.
@@ -120,6 +123,9 @@ message ListDialogsRequest {
   string cursor = 1;
   // 1-50; anything else means 20.
   int32 limit = 2;
+  // The last messages are cut to this many characters and say so
+  // (text_cut); 0 for whole texts. A list shows one line of each.
+  int32 text_limit = 3;
 }
 
 message ListDialogsResponse {

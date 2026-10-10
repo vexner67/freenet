@@ -90,7 +90,7 @@ func (h *MessageHandler) ListDialogs(ctx context.Context, req *messagev1.ListDia
 	}
 
 	for _, d := range page.Dialogs {
-		resp.Dialogs = append(resp.Dialogs, toProtoDialog(d, userID))
+		resp.Dialogs = append(resp.Dialogs, toProtoDialog(d, userID, req.GetTextLimit()))
 	}
 
 	return resp, nil
