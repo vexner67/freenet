@@ -1007,7 +1007,10 @@ type CreatePostRequest struct {
 	// nothing else. It speaks for the community on its wall.
 	AvatarUpdate bool `protobuf:"varint,7,opt,name=avatar_update,json=avatarUpdate,proto3" json:"avatar_update,omitempty"`
 	// The post is marked as adult.
-	Nsfw          bool `protobuf:"varint,8,opt,name=nsfw,proto3" json:"nsfw,omitempty"`
+	Nsfw bool `protobuf:"varint,8,opt,name=nsfw,proto3" json:"nsfw,omitempty"`
+	// The people the text names ("@nickname"), at most 10, who hear of it:
+	// the caller has asked the user service who they are.
+	MentionedIds  []string `protobuf:"bytes,9,rep,name=mentioned_ids,json=mentionedIds,proto3" json:"mentioned_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1096,6 +1099,13 @@ func (x *CreatePostRequest) GetNsfw() bool {
 		return x.Nsfw
 	}
 	return false
+}
+
+func (x *CreatePostRequest) GetMentionedIds() []string {
+	if x != nil {
+		return x.MentionedIds
+	}
+	return nil
 }
 
 type CreatePostResponse struct {
@@ -2584,7 +2594,10 @@ type CreateCommentRequest struct {
 	ReplyToId string `protobuf:"bytes,4,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
 	// The comment speaks for the community whose wall the post is on: the
 	// caller has checked with the club service that the author may.
-	FromWall      bool `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	FromWall bool `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	// The people the text names ("@nickname"), at most 10, who hear of it:
+	// the caller has asked the user service who they are.
+	MentionedIds  []string `protobuf:"bytes,6,rep,name=mentioned_ids,json=mentionedIds,proto3" json:"mentioned_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2652,6 +2665,13 @@ func (x *CreateCommentRequest) GetFromWall() bool {
 		return x.FromWall
 	}
 	return false
+}
+
+func (x *CreateCommentRequest) GetMentionedIds() []string {
+	if x != nil {
+		return x.MentionedIds
+	}
+	return nil
 }
 
 type CreateCommentResponse struct {
@@ -3713,9 +3733,11 @@ type CreateTopicRequest struct {
 	ClubId string                 `protobuf:"bytes,1,opt,name=club_id,json=clubId,proto3" json:"club_id,omitempty"`
 	Title  string                 `protobuf:"bytes,2,opt,name=title,proto3" json:"title,omitempty"`
 	// The first message, "Текст": text, photos, both or neither.
-	Text          string   `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
-	PhotoIds      []string `protobuf:"bytes,4,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
-	FromWall      bool     `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	Text     string   `protobuf:"bytes,3,opt,name=text,proto3" json:"text,omitempty"`
+	PhotoIds []string `protobuf:"bytes,4,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	FromWall bool     `protobuf:"varint,5,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	// The people the first message names, as in CreatePostRequest.
+	MentionedIds  []string `protobuf:"bytes,6,rep,name=mentioned_ids,json=mentionedIds,proto3" json:"mentioned_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3783,6 +3805,13 @@ func (x *CreateTopicRequest) GetFromWall() bool {
 		return x.FromWall
 	}
 	return false
+}
+
+func (x *CreateTopicRequest) GetMentionedIds() []string {
+	if x != nil {
+		return x.MentionedIds
+	}
+	return nil
 }
 
 type CreateTopicResponse struct {
@@ -4215,11 +4244,13 @@ func (x *DeleteTopicRequest) GetId() string {
 }
 
 type CreateTopicMessageRequest struct {
-	state         protoimpl.MessageState `protogen:"open.v1"`
-	TopicId       string                 `protobuf:"bytes,1,opt,name=topic_id,json=topicId,proto3" json:"topic_id,omitempty"`
-	Text          string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
-	PhotoIds      []string               `protobuf:"bytes,3,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
-	FromWall      bool                   `protobuf:"varint,4,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	TopicId  string                 `protobuf:"bytes,1,opt,name=topic_id,json=topicId,proto3" json:"topic_id,omitempty"`
+	Text     string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	PhotoIds []string               `protobuf:"bytes,3,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	FromWall bool                   `protobuf:"varint,4,opt,name=from_wall,json=fromWall,proto3" json:"from_wall,omitempty"`
+	// The people the text names, as in CreatePostRequest.
+	MentionedIds  []string `protobuf:"bytes,5,rep,name=mentioned_ids,json=mentionedIds,proto3" json:"mentioned_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4280,6 +4311,13 @@ func (x *CreateTopicMessageRequest) GetFromWall() bool {
 		return x.FromWall
 	}
 	return false
+}
+
+func (x *CreateTopicMessageRequest) GetMentionedIds() []string {
+	if x != nil {
+		return x.MentionedIds
+	}
+	return nil
 }
 
 type CreateTopicMessageResponse struct {
@@ -6699,7 +6737,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x19PublishSuggestionResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\")\n" +
 	"\x17DeleteSuggestionRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xe8\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x8d\x02\n" +
 	"\x11CreatePostRequest\x12\x12\n" +
 	"\x04text\x18\x01 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x02 \x03(\tR\bphotoIds\x12\x17\n" +
@@ -6708,7 +6746,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\x12\x16\n" +
 	"\x06signed\x18\x06 \x01(\bR\x06signed\x12#\n" +
 	"\ravatar_update\x18\a \x01(\bR\favatarUpdate\x12\x12\n" +
-	"\x04nsfw\x18\b \x01(\bR\x04nsfw\"7\n" +
+	"\x04nsfw\x18\b \x01(\bR\x04nsfw\x12#\n" +
+	"\rmentioned_ids\x18\t \x03(\tR\fmentionedIds\"7\n" +
 	"\x12CreatePostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"\xa9\x01\n" +
 	"\x11RepostPostRequest\x12\x17\n" +
@@ -6800,13 +6839,14 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\buser_ids\x18\x01 \x03(\tR\auserIds\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"\x9d\x01\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\xc2\x01\n" +
 	"\x14CreateCommentRequest\x12\x17\n" +
 	"\apost_id\x18\x01 \x01(\tR\x06postId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x1e\n" +
 	"\vreply_to_id\x18\x04 \x01(\tR\treplyToId\x12\x1b\n" +
-	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\"C\n" +
+	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\x12#\n" +
+	"\rmentioned_ids\x18\x06 \x03(\tR\fmentionedIds\"C\n" +
 	"\x15CreateCommentResponse\x12*\n" +
 	"\acomment\x18\x01 \x01(\v2\x10.post.v1.CommentR\acomment\"&\n" +
 	"\x14DeleteCommentRequest\x12\x0e\n" +
@@ -6884,13 +6924,14 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x02id\x18\x01 \x01(\tR\x02id\";\n" +
 	"\x1aUnlikeTopicMessageResponse\x12\x1d\n" +
 	"\n" +
-	"like_count\x18\x01 \x01(\x05R\tlikeCount\"\x91\x01\n" +
+	"like_count\x18\x01 \x01(\x05R\tlikeCount\"\xb6\x01\n" +
 	"\x12CreateTopicRequest\x12\x17\n" +
 	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x14\n" +
 	"\x05title\x18\x02 \x01(\tR\x05title\x12\x12\n" +
 	"\x04text\x18\x03 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x04 \x03(\tR\bphotoIds\x12\x1b\n" +
-	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\";\n" +
+	"\tfrom_wall\x18\x05 \x01(\bR\bfromWall\x12#\n" +
+	"\rmentioned_ids\x18\x06 \x03(\tR\fmentionedIds\";\n" +
 	"\x13CreateTopicResponse\x12$\n" +
 	"\x05topic\x18\x01 \x01(\v2\x0e.post.v1.TopicR\x05topic\"!\n" +
 	"\x0fGetTopicRequest\x12\x0e\n" +
@@ -6918,12 +6959,13 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x11EditTopicResponse\x12$\n" +
 	"\x05topic\x18\x01 \x01(\v2\x0e.post.v1.TopicR\x05topic\"$\n" +
 	"\x12DeleteTopicRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x84\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xa9\x01\n" +
 	"\x19CreateTopicMessageRequest\x12\x19\n" +
 	"\btopic_id\x18\x01 \x01(\tR\atopicId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x1b\n" +
-	"\tfrom_wall\x18\x04 \x01(\bR\bfromWall\"M\n" +
+	"\tfrom_wall\x18\x04 \x01(\bR\bfromWall\x12#\n" +
+	"\rmentioned_ids\x18\x05 \x03(\tR\fmentionedIds\"M\n" +
 	"\x1aCreateTopicMessageResponse\x12/\n" +
 	"\amessage\x18\x01 \x01(\v2\x15.post.v1.TopicMessageR\amessage\"c\n" +
 	"\x18ListTopicMessagesRequest\x12\x19\n" +

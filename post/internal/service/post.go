@@ -213,12 +213,14 @@ type CreateInput struct {
 	Signed   bool
 	// NSFW marks the post as adult.
 	NSFW bool
+	// Mentions are the people the text names, who hear of it.
+	Mentions post.Mentions
 
 	AvatarUpdate bool
 }
 
 // Create writes a post; the owner of a user's wall hears about posts by
-// others, and media keeps the photos. The caller has checked that the
+// others and the people it names of that, and media keeps the photos. The caller has checked that the
 // author may write there, on their own behalf or the community's, and
 // that the photos are the author's: post knows neither users nor clubs.
 func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, error) {
@@ -258,17 +260,44 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 			return errs.Wrap("s.publishPhotos", err)
 		}
 
-		if p.OnOwnWall() || in.ClubWall {
-			return nil
+		for _, e := range postEvents(p, in) {
+			if err := s.notifier.Notify(ctx, e); err != nil {
+				return errs.Wrap("s.notifier.Notify", err)
+			}
 		}
 
-		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, Event{Kind: EventWallPost, RecipientID: wallID, ActorID: authorID, PostID: p.ID()}))
+		return nil
 	})
 	if err != nil {
 		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return p, nil
+}
+
+// postEvents are the notifications of the new post p: the owner of a
+// user's wall hears of what others write there, and the people it names
+// of that, unless they heard as the owner. A post that speaks for a
+// community names them for the community.
+func postEvents(p *post.Post, in CreateInput) []Event {
+	var events []Event
+
+	owner := uuid.Nil
+	if !p.OnOwnWall() && !in.ClubWall {
+		owner = p.WallID()
+		events = append(events, Event{Kind: EventWallPost, RecipientID: owner, ActorID: p.AuthorID(), PostID: p.ID()})
+	}
+
+	actor := p.AuthorID()
+	if p.FromWall() {
+		actor = p.WallID()
+	}
+
+	for _, id := range in.Mentions.Heard(p.AuthorID(), owner) {
+		events = append(events, Event{Kind: EventPostMention, RecipientID: id, ActorID: actor, PostID: p.ID()})
+	}
+
+	return events
 }
 
 // RepostInput is a post to share: on the author's own wall, or on a

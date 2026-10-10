@@ -100,6 +100,22 @@ func TestComments(t *testing.T) {
 		ids = append(ids, c.GetComment().GetId())
 	}
 
+	// The people a text names come as IDs, at most ten.
+	eleven := make([]string, 11)
+	for i := range eleven {
+		eleven[i] = uuid.NewString()
+	}
+	for name, mentioned := range map[string][]string{"not an id": {"ann"}, "eleven": eleven} {
+		_, err = s.client.CreateComment(s.as(t, bob), &postv1.CreateCommentRequest{PostId: postID, Text: "@ann", MentionedIds: mentioned})
+		if status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("mentions, %s: %v", name, err)
+		}
+		_, err = s.client.CreatePost(s.as(t, bob), &postv1.CreatePostRequest{Text: "@ann", MentionedIds: mentioned})
+		if status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("mentions in a post, %s: %v", name, err)
+		}
+	}
+
 	page, err := s.client.ListComments(context.Background(), &postv1.ListCommentsRequest{PostId: postID, Limit: 2})
 	if err != nil {
 		t.Fatalf("ListComments without a token: %v", err)

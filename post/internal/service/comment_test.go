@@ -254,6 +254,25 @@ func TestCommentService_Reply(t *testing.T) {
 		t.Fatalf("notified = %+v, want cat's reply", f.notifier.notified)
 	}
 
+	// Bob answers cat and names her, ann, dan and himself: cat hears of
+	// the answer and ann of the comment, as before, dan alone of his name.
+	dan := uuid.New()
+	f.notifier.notified = nil
+	named, err := f.comments.Create(ctx, service.CommentInput{
+		AuthorID: bob, PostID: p.ID(), ParentID: reply.ID(), Content: content, Mentions: post.Mentions{cat, ann, dan, bob},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = []service.Event{
+		{Kind: service.EventCommentReply, RecipientID: cat, ActorID: bob, PostID: p.ID(), CommentID: named.ID()},
+		{Kind: service.EventComment, RecipientID: ann, ActorID: bob, PostID: p.ID(), CommentID: named.ID()},
+		{Kind: service.EventCommentMention, RecipientID: dan, ActorID: bob, PostID: p.ID(), CommentID: named.ID()},
+	}
+	if !slices.Equal(f.notifier.notified, want) {
+		t.Fatalf("notified = %+v, want %+v", f.notifier.notified, want)
+	}
+
 	// Cat answers her own comment: only ann hears, of a new comment.
 	f.notifier.notified = nil
 	if _, err = f.comments.Create(ctx, service.CommentInput{AuthorID: cat, PostID: p.ID(), ParentID: reply.ID(), Content: content}); err != nil {

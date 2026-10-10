@@ -34,8 +34,13 @@ func (h *PostHandler) CreateComment(ctx context.Context, req *postv1.CreateComme
 		}
 	}
 
+	mentions, err := parseMentions(req.GetMentionedIds())
+	if err != nil {
+		return nil, err
+	}
+
 	c, err := h.commentService.Create(ctx, service.CommentInput{
-		AuthorID: authorID, PostID: postID, ParentID: parentID, Content: content, FromWall: req.GetFromWall(),
+		AuthorID: authorID, PostID: postID, ParentID: parentID, Content: content, FromWall: req.GetFromWall(), Mentions: mentions,
 	})
 	if err != nil {
 		return nil, err

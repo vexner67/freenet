@@ -44,6 +44,10 @@ var kinds = map[service.EventKind]notificationv1.Kind{
 
 	service.EventSuggestedPost: notificationv1.Kind_KIND_SUGGESTED_POST,
 	service.EventTopicMessage:  notificationv1.Kind_KIND_TOPIC_MESSAGE,
+
+	service.EventPostMention:    notificationv1.Kind_KIND_POST_MENTION,
+	service.EventCommentMention: notificationv1.Kind_KIND_COMMENT_MENTION,
+	service.EventTopicMention:   notificationv1.Kind_KIND_TOPIC_MENTION,
 }
 
 // Recorder adds a message to the outbox in the transaction of ctx.
