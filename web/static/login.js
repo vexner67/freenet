@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { $, renderChrome, profilePath, showError, hideError } from './layout.js';
+import { $, renderChrome, homePath, showError, hideError } from './layout.js';
 
 const emailForm = $('email-form');
 const codeForm = $('code-form');
@@ -41,7 +41,7 @@ codeForm.addEventListener('submit', (event) => {
   withButton($('code-submit'), async () => {
     await api.verifyCode(email, $('code').value.trim());
     const me = await api.me();
-    location.href = me.profileCompleted ? profilePath(me) : '/edit?welcome=1';
+    location.href = me.profileCompleted ? homePath(me) : '/edit?welcome=1';
   });
 });
 
@@ -56,7 +56,7 @@ $('resend').addEventListener('click', () => withButton($('code-submit'), sendCod
 
 const me = await currentUser().catch(() => null);
 if (me) {
-  location.replace(profilePath(me));
+  location.replace(homePath(me));
 } else {
   renderChrome(null);
   $('email').focus();

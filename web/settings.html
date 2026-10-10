@@ -26,6 +26,7 @@
           <a id="tab-main" href="/settings">Основное</a>
           <a id="tab-privacy" href="/settings?act=privacy">Приватность</a>
           <a href="/settings/blacklist">Чёрный список</a>
+          <a id="tab-interface" href="/settings?act=interface">Внешний вид</a>
         </div>
         <p id="loading">Загрузка…</p>
         <div class="error" id="error" hidden></div>
@@ -116,6 +117,30 @@
                 <select id="messages-write"></select>
                 <p class="hint">Вам смогут ответить, если вы напишете первыми.</p>
               </td>
+            </tr>
+          </table>
+
+          <div class="actions"><button class="button" type="submit">Сохранить</button></div>
+        </form>
+
+        <form id="interface" hidden>
+          <div class="section-title">Интерфейс</div>
+          <table class="form">
+            <tr>
+              <th><label for="avatar-style">Отображение аватаров</label></th>
+              <td class="control"><select id="avatar-style"></select></td>
+            </tr>
+            <tr>
+              <th><label for="main-page">Главная страница</label></th>
+              <td class="control"><select id="main-page"></select></td>
+            </tr>
+          </table>
+
+          <div class="section-title">Левое меню</div>
+          <table class="form">
+            <tr>
+              <th>Показывать</th>
+              <td class="checks" id="menu-items"></td>
             </tr>
           </table>
 

@@ -148,6 +148,8 @@ export const api = {
   commentLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/comments/${encodeURIComponent(id)}/likes`, cursor, limit)),
   updateStatus: (status) => authorized('PUT', '/api/v1/me/status', { status }),
   updatePrivacy: (privacy) => authorized('PUT', '/api/v1/me/privacy', privacy),
+  // "Интерфейс" of the settings: avatarStyle, mainPage and hiddenMenu.
+  updateInterface: (ui) => authorized('PUT', '/api/v1/me/interface', ui),
   // "Контакты", "Интересы" and "Дополнительно" of "Редактировать страницу".
   updateContacts: (contacts) => authorized('PUT', '/api/v1/me/contacts', contacts),
   updateInterests: (interests) => authorized('PUT', '/api/v1/me/interests', interests),

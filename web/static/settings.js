@@ -1,15 +1,18 @@
 // openvk's "Мои Настройки" at /settings: "Основное" (the e-mail, the
 // page address and "удалить свою страницу") and "Приватность" (?act=privacy:
-// who sees the page and its parts and who writes to you); "Чёрный список"
-// is a page of its own.
+// who sees the page and its parts and who writes to you) and "Внешний вид"
+// (?act=interface: how the photos look, where the site opens and what the
+// left menu shows); "Чёрный список" is a page of its own.
 
 import { api, currentUser } from './api.js';
-import { audiences, pageReads, onlineReads, wallWrites, messagesWrites } from './labels.js';
-import { $, el, profilePath, renderChrome, showError, hideError } from './layout.js';
+import { audiences, avatarStyles, mainPages, menuItems, pageReads, onlineReads, wallWrites, messagesWrites } from './labels.js';
+import { $, applyInterface, el, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { openDeactivate } from './deactivate.js';
 
 const error = $('error');
-const act = new URLSearchParams(location.search).get('act') === 'privacy' ? 'privacy' : 'main';
+const tabs = { privacy: initPrivacy, interface: initInterface };
+const asked = new URLSearchParams(location.search).get('act');
+const act = Object.hasOwn(tabs, asked) ? asked : 'main';
 
 function fill(select, options, value) {
   select.replaceChildren(...options.map(([v, text]) => el('option', { value: v, textContent: text })));
@@ -91,6 +94,23 @@ function initPrivacy(me) {
   });
 }
 
+// initInterface is "Интерфейс" and "Левое меню" of openvk: saved, they
+// show at once, in the menu on the left too.
+function initInterface(me) {
+  fill($('avatar-style'), avatarStyles, me.interface.avatarStyle);
+  fill($('main-page'), mainPages, me.interface.mainPage);
+  $('menu-items').replaceChildren(...menuItems.map(([item, text]) => el('label', {},
+    el('input', { type: 'checkbox', value: item, checked: !me.interface.hiddenMenu.includes(item) }), text)));
+
+  onSubmit($('interface'), async () => {
+    const hiddenMenu = [...$('menu-items').querySelectorAll('input')].filter((box) => !box.checked).map((box) => box.value);
+    const updated = await api.updateInterface({ avatarStyle: $('avatar-style').value, mainPage: $('main-page').value, hiddenMenu });
+
+    Object.assign(me, updated);
+    applyInterface(me);
+  });
+}
+
 const me = await currentUser().catch(() => null);
 if (!me) {
   location.replace('/');
@@ -101,6 +121,6 @@ if (!me) {
   renderChrome(me);
   $('tab-' + act).classList.add('active');
   $(act).hidden = false;
-  (act === 'privacy' ? initPrivacy : initMain)(me);
+  (tabs[act] ?? initMain)(me);
   $('loading').hidden = true;
 }

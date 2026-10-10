@@ -653,6 +653,14 @@ a.like:hover svg { opacity: .7; }
 .post-options label { display: block; padding: 1px 0; color: #555; }
 .post-options input { vertical-align: middle; margin: 0 3px 0 0; }
 .club-role { color: #808080; }
+/* "Отображение аватаров": round small photos for whoever chose them. */
+.avatars-round .post-avatar img,
+.avatars-round .person img,
+.avatars-round .person-cell img,
+.avatars-round .avatar-item img,
+.avatars-round .dialog-avatar,
+.avatars-round .likers-tooltip-grid img,
+.avatars-round .likers-item img { border-radius: 50%; }
 /* The pages of text: "о сайте", "правила" and openvk's FAQ of "помощь". */
 .plain-list { margin: 6px 0; padding-left: 28px; }
 .plain-list li { margin: 3px 0; }
