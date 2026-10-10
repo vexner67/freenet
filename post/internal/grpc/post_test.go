@@ -123,6 +123,10 @@ func TestWall(t *testing.T) {
 		}
 	}
 
+	if n, err := s.client.CountPosts(context.Background(), &postv1.CountPostsRequest{}); err != nil || n.GetCount() < 1 {
+		t.Fatalf("CountPosts = %v, %v", n, err)
+	}
+
 	page, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: ann.String(), Limit: 2})
 	if err != nil {
 		t.Fatalf("ListPosts without a token: %v", err)

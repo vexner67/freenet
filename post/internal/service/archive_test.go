@@ -49,10 +49,17 @@ func TestPostService_Archive(t *testing.T) {
 	if err := svc.Archive(ctx, ann, uuid.New()); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("no post: %v", err)
 	}
+	if n, err := svc.Count(ctx); err != nil || n != 3 {
+		t.Fatalf("Count = %d, %v", n, err)
+	}
 	for range 2 { // archived already is fine
 		if err := svc.Archive(ctx, ann, old.ID()); err != nil {
 			t.Fatalf("Archive: %v", err)
 		}
+	}
+	// The site counts only what its walls show.
+	if n, err := svc.Count(ctx); err != nil || n != 2 {
+		t.Fatalf("Count after archiving = %d, %v", n, err)
 	}
 
 	// The wall and the feed no longer show it, pinned as it was.

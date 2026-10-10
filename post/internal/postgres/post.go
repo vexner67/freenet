@@ -433,6 +433,24 @@ func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, pick
 	return count, nil
 }
 
+// countPostsQuery reads the whole table: the page "о сайте" is opened
+// seldom.
+const countPostsQuery = `
+	SELECT count(*)
+	FROM posts
+	WHERE NOT archived
+`
+
+func (r *PostRepository) Count(ctx context.Context) (int, error) {
+	var count int
+
+	if err := r.conn(ctx).QueryRow(ctx, countPostsQuery).Scan(&count); err != nil {
+		return 0, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return count, nil
+}
+
 // likePattern is "%q%" for ILIKE with the wildcards of q escaped, "" for
 // an empty q.
 func likePattern(q string) string {

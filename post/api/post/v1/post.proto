@@ -40,6 +40,8 @@ service PostService {
   // Public: at most 50 posts by ID, for the notifications page; posts that
   // are gone are left out, the order is not kept.
   rpc GetPosts(GetPostsRequest) returns (GetPostsResponse);
+  // Public: how many posts there are on all walls, for the page "о сайте".
+  rpc CountPosts(CountPostsRequest) returns (CountPostsResponse);
   // Public: a user's wall, newest first, whoever wrote the posts.
   rpc ListPosts(ListPostsRequest) returns (ListPostsResponse);
   // Public: the posts written by several authors on any walls, but for
@@ -925,4 +927,10 @@ message ListPhotoCommentsResponse {
   repeated PhotoComment comments = 1;
   string next_cursor = 2;
   int32 total = 3;
+}
+
+message CountPostsRequest {}
+
+message CountPostsResponse {
+  int32 count = 1;
 }

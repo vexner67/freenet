@@ -32,6 +32,7 @@ const (
 	PostService_OpenComments_FullMethodName         = "/post.v1.PostService/OpenComments"
 	PostService_GetPost_FullMethodName              = "/post.v1.PostService/GetPost"
 	PostService_GetPosts_FullMethodName             = "/post.v1.PostService/GetPosts"
+	PostService_CountPosts_FullMethodName           = "/post.v1.PostService/CountPosts"
 	PostService_ListPosts_FullMethodName            = "/post.v1.PostService/ListPosts"
 	PostService_ListFeed_FullMethodName             = "/post.v1.PostService/ListFeed"
 	PostService_LikePost_FullMethodName             = "/post.v1.PostService/LikePost"
@@ -115,6 +116,8 @@ type PostServiceClient interface {
 	// Public: at most 50 posts by ID, for the notifications page; posts that
 	// are gone are left out, the order is not kept.
 	GetPosts(ctx context.Context, in *GetPostsRequest, opts ...grpc.CallOption) (*GetPostsResponse, error)
+	// Public: how many posts there are on all walls, for the page "о сайте".
+	CountPosts(ctx context.Context, in *CountPostsRequest, opts ...grpc.CallOption) (*CountPostsResponse, error)
 	// Public: a user's wall, newest first, whoever wrote the posts.
 	ListPosts(ctx context.Context, in *ListPostsRequest, opts ...grpc.CallOption) (*ListPostsResponse, error)
 	// Public: the posts written by several authors on any walls, but for
@@ -354,6 +357,16 @@ func (c *postServiceClient) GetPosts(ctx context.Context, in *GetPostsRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPostsResponse)
 	err := c.cc.Invoke(ctx, PostService_GetPosts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) CountPosts(ctx context.Context, in *CountPostsRequest, opts ...grpc.CallOption) (*CountPostsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CountPostsResponse)
+	err := c.cc.Invoke(ctx, PostService_CountPosts_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -855,6 +868,8 @@ type PostServiceServer interface {
 	// Public: at most 50 posts by ID, for the notifications page; posts that
 	// are gone are left out, the order is not kept.
 	GetPosts(context.Context, *GetPostsRequest) (*GetPostsResponse, error)
+	// Public: how many posts there are on all walls, for the page "о сайте".
+	CountPosts(context.Context, *CountPostsRequest) (*CountPostsResponse, error)
 	// Public: a user's wall, newest first, whoever wrote the posts.
 	ListPosts(context.Context, *ListPostsRequest) (*ListPostsResponse, error)
 	// Public: the posts written by several authors on any walls, but for
@@ -1015,6 +1030,9 @@ func (UnimplementedPostServiceServer) GetPost(context.Context, *GetPostRequest) 
 }
 func (UnimplementedPostServiceServer) GetPosts(context.Context, *GetPostsRequest) (*GetPostsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPosts not implemented")
+}
+func (UnimplementedPostServiceServer) CountPosts(context.Context, *CountPostsRequest) (*CountPostsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CountPosts not implemented")
 }
 func (UnimplementedPostServiceServer) ListPosts(context.Context, *ListPostsRequest) (*ListPostsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPosts not implemented")
@@ -1387,6 +1405,24 @@ func _PostService_GetPosts_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).GetPosts(ctx, req.(*GetPostsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_CountPosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CountPostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CountPosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CountPosts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CountPosts(ctx, req.(*CountPostsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2273,6 +2309,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetPosts",
 			Handler:    _PostService_GetPosts_Handler,
+		},
+		{
+			MethodName: "CountPosts",
+			Handler:    _PostService_CountPosts_Handler,
 		},
 		{
 			MethodName: "ListPosts",
