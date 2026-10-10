@@ -45,7 +45,7 @@ export function commentNode(comment, { onDelete, onReply, canLike = false, onErr
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(comment.author) }),
       ),
-      comment.text ? textNode(comment.text) : null,
+      comment.text ? textNode(comment.text, { rest: comment.textCut ? () => api.commentText(comment.id).then((c) => c.text) : null }) : null,
       photosNode(comment.photos ?? []),
       el('div', { className: 'post-menu' }, el('span', {}, ...separated(menu)), like),
     ),
