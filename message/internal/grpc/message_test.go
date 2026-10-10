@@ -543,7 +543,8 @@ func TestHistory_TextLimit(t *testing.T) {
 	}
 }
 
-// Found messages come with the beginnings of their texts when asked.
+// Found messages come with the parts of their texts that say the query
+// when asked.
 func TestSearch_TextLimit(t *testing.T) {
 	t.Parallel()
 
@@ -557,5 +558,11 @@ func TestSearch_TextLimit(t *testing.T) {
 	found, err := s.client.SearchMessages(s.as(t, ann), &messagev1.SearchMessagesRequest{Query: "длин", TextLimit: 7})
 	if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetText() != "длинное" || !found.GetMessages()[0].GetTextCut() {
 		t.Fatalf("SearchMessages = %v, %v", found, err)
+	}
+
+	// Said further than the beginning, the words are still in the excerpt.
+	found, err = s.client.SearchMessages(s.as(t, ann), &messagev1.SearchMessagesRequest{Query: "Сообщение", TextLimit: 10})
+	if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetText() != " сообщение" || !found.GetMessages()[0].GetTextCut() {
+		t.Fatalf("SearchMessages further = %v, %v", found, err)
 	}
 }

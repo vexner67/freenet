@@ -1052,7 +1052,8 @@ type SearchMessagesRequest struct {
 	// 1-50; anything else means 20.
 	Limit int32 `protobuf:"varint,4,opt,name=limit,proto3" json:"limit,omitempty"`
 	// The texts of the messages are cut to this many characters and say so
-	// (text_cut); 0 for whole texts.
+	// (text_cut): the text of a message to where it says the query, those
+	// it carries on to their beginnings; 0 for whole texts.
 	TextLimit     int32 `protobuf:"varint,5,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache

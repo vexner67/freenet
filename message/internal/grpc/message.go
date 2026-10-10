@@ -341,7 +341,7 @@ func (h *MessageHandler) SearchMessages(ctx context.Context, req *messagev1.Sear
 		NextCursor: optionalID(page.NextCursor),
 	}
 	for _, m := range page.Messages {
-		resp.Messages = append(resp.Messages, excerpted(toProtoMessage(m, false), m, req.GetTextLimit()))
+		resp.Messages = append(resp.Messages, found(toProtoMessage(m, false), m, query, req.GetTextLimit()))
 	}
 
 	return resp, nil
