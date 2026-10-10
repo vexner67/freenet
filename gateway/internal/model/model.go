@@ -305,7 +305,7 @@ type WallAccess struct {
 }
 
 // FeedSources are what a news feed shows: the posts of Authors and every
-// post on Walls, the clubs of the reader.
+// post on Walls: those of the same people and of the clubs of the reader.
 type FeedSources struct {
 	Authors []string
 	Walls   []string
