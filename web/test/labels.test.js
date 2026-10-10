@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone } from '../static/labels.js';
+import { mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -383,4 +383,37 @@ test('dates follow the clock of the settings', () => {
   assert.equal(formatPostDate(new Date(2026, 9, 4, 9, 5).toISOString(), new Date(2026, 9, 4, 12, 0)), 'сегодня в 9:05');
   assert.equal(localTime('2026-10-04', '09:05'), new Date(2026, 9, 4, 9, 5).toISOString());
   assert.equal(localTime('', '09:05'), '');
+});
+
+test('mentionParts finds the people a text names', () => {
+  assert.deepEqual(mentionParts('привет'), ['привет']);
+  assert.deepEqual(mentionParts(''), []);
+  assert.deepEqual(mentionParts('[ann|Анна], привет'), [{ nickname: 'ann', text: 'Анна' }, ', привет']);
+  assert.deepEqual(mentionParts('@ann привет, @bob_1!'),
+    [{ nickname: 'ann', text: '@ann' }, ' привет, ', { nickname: 'bob_1', text: '@bob_1' }, '!']);
+  assert.deepEqual(mentionParts('строка\n@ann'), ['строка\n', { nickname: 'ann', text: '@ann' }]);
+});
+
+test('mentionParts leaves what is not a mention', () => {
+  assert.deepEqual(mentionParts('почта ann@example.com'), ['почта ann@example.com']);
+  assert.deepEqual(mentionParts('@1ann и @'), ['@1ann и @']);
+  assert.deepEqual(mentionParts('[ann|]'), ['[ann|]']);
+  assert.deepEqual(mentionParts('[ann_|Анна]'), ['[ann_|Анна]']);
+  assert.deepEqual(mentionParts('@' + 'a'.repeat(33)), ['@' + 'a'.repeat(33)]);
+  // A nickname does not end with "_".
+  assert.deepEqual(mentionParts('@ann_'), [{ nickname: 'ann', text: '@ann' }, '_']);
+});
+
+test('plainMentions reads a mention as the name', () => {
+  assert.equal(plainMentions('[ann|Анна], привет @bob'), 'Анна, привет @bob');
+});
+
+test('replyMention starts an answer with a link to the person', () => {
+  assert.equal(replyMention({ nickname: 'ann', name: 'Анна' }), '[ann|Анна], ');
+  assert.equal(replyMention({ club: true, name: 'Кошки' }), 'Кошки, ');
+});
+
+test('notificationVerb says who mentioned', () => {
+  assert.equal(notificationVerb('mention', { gender: 'female' }), 'упомянула');
+  assert.equal(notificationVerb('mention', { club: true }), 'упомянуло');
 });

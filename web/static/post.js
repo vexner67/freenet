@@ -4,7 +4,7 @@
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { commentNode } from './comments.js';
-import { genitiveName } from './labels.js';
+import { genitiveName, replyMention } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
 import { postNode } from './posts.js';
 
@@ -81,11 +81,11 @@ function initComments(post, me, moderates) {
   // first, in place of the name of an earlier answer.
   function reply(comment) {
     const text = $('comment-text');
-    const mention = replyTo ? replyTo.author.name + ', ' : null;
+    const mention = replyTo ? replyMention(replyTo.author) : null;
     const rest = mention && text.value.startsWith(mention) ? text.value.slice(mention.length) : text.value;
 
     replyTo = comment;
-    text.value = comment.author.name + ', ' + rest;
+    text.value = replyMention(comment.author) + rest;
     autosize(text);
     $('comment-reply-to').hidden = false;
     text.focus();

@@ -6,7 +6,7 @@
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { commentNode, topicHearts } from './comments.js';
-import { formatPostDate, topicMessagesCount } from './labels.js';
+import { formatPostDate, replyMention, topicMessagesCount } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
 import { boardTitle, topicPath } from './topics.js';
 
@@ -71,7 +71,7 @@ function initMessages(topic, me, admin) {
   // first.
   function reply(m) {
     const text = $('message-text');
-    text.value = m.author.name + ', ' + text.value;
+    text.value = replyMention(m.author) + text.value;
     autosize(text);
     text.focus();
     text.setSelectionRange(text.value.length, text.value.length);

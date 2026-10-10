@@ -3,7 +3,7 @@
 
 import { api } from './api.js';
 import { connectEvents, onEvent } from './events.js';
-import { errorText, isLongText, setTimezone, unreadCountText } from './labels.js';
+import { errorText, isLongText, mentionParts, setTimezone, unreadCountText } from './labels.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -34,10 +34,18 @@ if (typeof document !== 'undefined') {
   });
 }
 
+// mentionNodes are text with the people it names as links to their pages,
+// openvk's "[id1|Анна]" and "@ann".
+export function mentionNodes(text) {
+  return mentionParts(text).map((p) => (typeof p === 'string'
+    ? p
+    : el('a', { href: '/' + encodeURIComponent(p.nickname), textContent: p.text })));
+}
+
 // textNode shows what a post or a comment says. Long text is cut short
 // with openvk's "Показать больше", unless whole.
 export function textNode(text, { whole = false } = {}) {
-  const node = el('div', { className: 'post-text', textContent: text });
+  const node = el('div', { className: 'post-text' }, ...mentionNodes(text));
   if (whole || !isLongText(text)) return node;
 
   node.classList.add('collapsed');
