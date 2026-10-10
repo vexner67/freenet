@@ -265,7 +265,7 @@ function signatureNode(signer) {
 
 // wallOwnerID is whose wall the post is on: its wall is null on the
 // author's own.
-function wallOwnerID(post) {
+export function wallOwnerID(post) {
   return post.wall?.id ?? post.author.id;
 }
 
