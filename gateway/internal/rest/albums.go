@@ -53,6 +53,8 @@ type albumPhotoJSON struct {
 	Likes    int  `json:"likes"`
 	Comments int  `json:"comments"`
 	Liked    bool `json:"liked"`
+	// NSFW: it came from a post marked as adult; the site blurs it.
+	NSFW bool `json:"nsfw"`
 }
 
 // albumOwnerJSON is who albums belong to: a person or a community, with
@@ -120,6 +122,7 @@ func toAlbumPhotoJSON(p model.AlbumPhoto) albumPhotoJSON {
 		Likes:       p.Likes,
 		Comments:    p.Comments,
 		Liked:       p.Liked,
+		NSFW:        p.NSFW,
 	}
 }
 

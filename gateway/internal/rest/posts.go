@@ -81,6 +81,9 @@ type postResponse struct {
 	// Signer is who wrote a post for a community that names its author
 	// ("Автор: ..."); null otherwise.
 	Signer *authorJSON `json:"signer"`
+	// LastComments are its newest comments, oldest first: only in a list
+	// asked for with ?comments=last.
+	LastComments []commentResponse `json:"lastComments,omitempty"`
 }
 
 type repostRequest struct {
@@ -100,6 +103,8 @@ type sharedPhotoJSON struct {
 	Deleted bool       `json:"deleted"`
 	Photo   *photoJSON `json:"photo"`
 	AlbumID string     `json:"albumId"`
+	// NSFW: the photo came from a post marked as adult.
+	NSFW bool `json:"nsfw"`
 }
 
 // repostJSON is the post a repost shares, shown inside it as openvk does:
@@ -333,7 +338,89 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 		shown = append(shown, resp)
 	}
 
+	if r.URL.Query().Get("comments") == lastComments {
+		if err = a.withLastComments(r, shown, posts); err != nil {
+			return nil, err
+		}
+	}
+
 	return shown, nil
+}
+
+// maxPostsPerRequest is how many posts post tells the comments of at once.
+const maxPostsPerRequest = 50
+
+// lastComments is ?comments=last of the lists of posts: each post comes
+// with its three newest comments, as openvk's "Микроблог" shows a wall.
+const lastComments = "last"
+
+// withLastComments gives each of shown its newest comments, read for all
+// of them in one request and their authors in another. A comment whose
+// author deleted the page is left out, as on the page of the post.
+func (a *api) withLastComments(r *http.Request, shown []postResponse, posts []model.Post) error {
+	if len(shown) == 0 {
+		return nil
+	}
+
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		return err
+	}
+
+	// Comments for a community show it: the owner of the post's wall.
+	walls := make(map[string]string, len(posts))
+	for _, p := range posts {
+		walls[p.ID] = p.Wall.ID
+	}
+
+	postIDs := make([]string, len(shown))
+	for i := range shown {
+		postIDs[i] = shown[i].ID
+	}
+
+	// A page with its pinned post is one more than post takes at once.
+	var comments []model.Comment
+	for chunk := range slices.Chunk(postIDs, maxPostsPerRequest) {
+		last, err := a.posts.LastComments(r.Context(), token, chunk)
+		if err != nil {
+			return err
+		}
+		comments = append(comments, last...)
+	}
+
+	ids := make([]string, 0, len(comments))
+	for _, c := range comments {
+		ids = append(ids, c.Author.ID)
+		if c.FromWall {
+			ids = append(ids, walls[c.PostID])
+		}
+	}
+
+	authors, err := a.authors(r, ids)
+	if err != nil {
+		return err
+	}
+
+	byPost := make(map[string][]commentResponse, len(shown))
+	for _, c := range comments {
+		by := c.Author.ID
+		if c.FromWall {
+			by = walls[c.PostID]
+		}
+
+		_, written := authors[c.Author.ID]
+		if author, ok := authors[by]; ok && written {
+			byPost[c.PostID] = append(byPost[c.PostID], toCommentResponse(c, author))
+		}
+	}
+
+	for i := range shown {
+		if last, ok := byPost[shown[i].ID]; ok {
+			shown[i].LastComments = last
+		}
+	}
+
+	return nil
 }
 
 // sharedPhoto is the photo of an album a post shares, nil for none; one
@@ -350,7 +437,7 @@ func (a *api) sharedPhoto(r *http.Request, id string) *sharedPhotoJSON {
 
 	shown := toPhotoJSON(photo.AuthorID, photo.ID)
 
-	return &sharedPhotoJSON{ID: id, Photo: &shown, AlbumID: photo.AlbumID}
+	return &sharedPhotoJSON{ID: id, Photo: &shown, AlbumID: photo.AlbumID, NSFW: photo.NSFW}
 }
 
 // sharedPosts are the posts that reposts among posts share, by ID; those

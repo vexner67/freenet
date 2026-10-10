@@ -578,11 +578,19 @@ type ClubMemberFilter struct {
 }
 
 // ClubFilter picks the clubs of a user: only those they run, only those
-// of Kind unless it is "".
+// of Kind unless it is "", only the events of Period ("upcoming" — ahead
+// or going on, "past" — over) unless it is "".
 type ClubFilter struct {
 	Managed bool
 	Kind    string
+	Period  string
 }
+
+// ClubPeriods are the times a list of events may be of.
+const (
+	ClubPeriodUpcoming = "upcoming"
+	ClubPeriodPast     = "past"
+)
 
 // ClubMemberPage is one screen of members, the newest first; Total counts
 // them, or the admins, on all pages.
@@ -725,6 +733,8 @@ type AlbumPhoto struct {
 	Likes    int
 	Comments int
 	Liked    bool
+	// NSFW: it came from a post marked as adult.
+	NSFW bool
 }
 
 // PhotoComment is a comment under a photo of an album, text only; Mine:

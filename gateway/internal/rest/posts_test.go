@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
@@ -378,6 +379,52 @@ func TestRepostPost(t *testing.T) {
 			t.Fatalf("plain post = %v", got)
 		}
 	})
+}
+
+// A list asked for with ?comments=last brings the newest comments of its
+// posts, as "Микроблог" shows them.
+func TestListPosts_LastComments(t *testing.T) {
+	t.Parallel()
+
+	type page struct {
+		Posts []struct {
+			ID           string `json:"id"`
+			LastComments []struct {
+				ID     string           `json:"id"`
+				Text   string           `json:"text"`
+				Liked  bool             `json:"liked"`
+				Author map[string]any   `json:"author"`
+				Photos []map[string]any `json:"photos"`
+			} `json:"lastComments"`
+		} `json:"posts"`
+	}
+
+	h := newHarness(rest.Config{})
+	w := h.do("GET", "/api/v1/users/ann/posts?comments=last", "", "Authorization", "Bearer tok")
+	got := decode[page](t, w)
+	if w.Code != http.StatusOK || len(got.Posts) != 3 || !slices.Equal(h.posts.lastAsked, []string{"p4", "p2", "p1"}) {
+		t.Fatalf("%d %+v, asked %v", w.Code, got, h.posts.lastAsked)
+	}
+	// The comment of a deleted page is left out.
+	if c := got.Posts[1].LastComments; len(c) != 1 || c[0].ID != "c8" || c[0].Author["nickname"] != "bob" || !c[0].Liked {
+		t.Fatalf("comments of p2 = %+v", c)
+	}
+	if len(got.Posts[0].LastComments) != 0 || len(got.Posts[2].LastComments) != 0 {
+		t.Fatalf("posts without comments: %+v", got.Posts)
+	}
+
+	// A comment for the community is shown as the community's.
+	w = h.do("GET", "/api/v1/clubs/cats/posts?comments=last", "", "Authorization", "Bearer tok")
+	club := decode[page](t, w)
+	if w.Code != http.StatusOK || len(club.Posts) == 0 || len(club.Posts[0].LastComments) != 1 || club.Posts[0].LastComments[0].Author["club"] != true {
+		t.Fatalf("club wall: %d %+v", w.Code, club)
+	}
+
+	// Without the parameter nobody is asked.
+	plain := newHarness(rest.Config{})
+	if w = plain.do("GET", "/api/v1/users/ann/posts", ""); w.Code != http.StatusOK || plain.posts.lastAsked != nil {
+		t.Fatalf("a plain list asked for %v", plain.posts.lastAsked)
+	}
 }
 
 func TestListPosts_ManyPeople(t *testing.T) {

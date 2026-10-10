@@ -38,6 +38,11 @@ var (
 		clubv1.Kind_KIND_GROUP: model.ClubKindGroup,
 		clubv1.Kind_KIND_EVENT: model.ClubKindEvent,
 	}
+	// Anything else is no period: all the clubs.
+	periods = map[string]clubv1.Period{
+		model.ClubPeriodUpcoming: clubv1.Period_PERIOD_UPCOMING,
+		model.ClubPeriodPast:     clubv1.Period_PERIOD_PAST,
+	}
 	goings = map[string]clubv1.Going{
 		"":      clubv1.Going_GOING_UNSPECIFIED,
 		"sure":  clubv1.Going_GOING_SURE,
@@ -269,8 +274,10 @@ func (c *Clubs) Transfer(ctx context.Context, accessToken, clubID, userID string
 
 // OfUser pages the clubs of a user; whether the viewer may see them is
 // for the caller to check.
-func (c *Clubs) OfUser(ctx context.Context, userID, cursor string, limit int, kind string) (model.UserClubPage, error) {
-	resp, err := c.api.ListUserClubs(ctx, &clubv1.ListUserClubsRequest{UserId: userID, Cursor: cursor, Limit: toLimit(limit), Kind: kindOf(kind)})
+func (c *Clubs) OfUser(ctx context.Context, userID, cursor string, limit int, filter model.ClubFilter) (model.UserClubPage, error) {
+	resp, err := c.api.ListUserClubs(ctx, &clubv1.ListUserClubsRequest{
+		UserId: userID, Cursor: cursor, Limit: toLimit(limit), Kind: kindOf(filter.Kind), Period: periods[filter.Period],
+	})
 	if err != nil {
 		return model.UserClubPage{}, errs.Wrap("c.api.ListUserClubs", fromStatus(err))
 	}
@@ -281,7 +288,7 @@ func (c *Clubs) OfUser(ctx context.Context, userID, cursor string, limit int, ki
 // Mine pages the caller's clubs; with managed only those they run.
 func (c *Clubs) Mine(ctx context.Context, accessToken, cursor string, limit int, filter model.ClubFilter) (model.ClubPage, error) {
 	resp, err := c.api.ListMyClubs(withToken(ctx, accessToken), &clubv1.ListMyClubsRequest{
-		Cursor: cursor, Limit: toLimit(limit), Managed: filter.Managed, Kind: kindOf(filter.Kind),
+		Cursor: cursor, Limit: toLimit(limit), Managed: filter.Managed, Kind: kindOf(filter.Kind), Period: periods[filter.Period],
 	})
 	if err != nil {
 		return model.ClubPage{}, errs.Wrap("c.api.ListMyClubs", fromStatus(err))

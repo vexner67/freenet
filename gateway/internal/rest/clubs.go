@@ -619,10 +619,30 @@ func (a *api) transferClub(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// listUserClubs is the block "Группы" of a user's page and its list, as
-// the user's "Кому видно мои группы" allows; the clubs of a deleted page
-// are hidden.
+// listUserClubs is the block "Группы" of a user's page and its list, and
+// listUserEvents the block "Встречи" (?time=upcoming|past for those ahead
+// or over), as the user's "Кому видно мои группы" allows — openvk shows
+// both by the one setting; the clubs of a deleted page are hidden.
 func (a *api) listUserClubs(w http.ResponseWriter, r *http.Request) {
+	a.listOfUser(w, r, model.ClubFilter{Kind: model.ClubKindGroup})
+}
+
+func (a *api) listUserEvents(w http.ResponseWriter, r *http.Request) {
+	a.listOfUser(w, r, model.ClubFilter{Kind: model.ClubKindEvent, Period: clubPeriod(r)})
+}
+
+// clubPeriod reads ?time=: the events ahead, those over or, with anything
+// else, all.
+func clubPeriod(r *http.Request) string {
+	switch period := r.URL.Query().Get("time"); period {
+	case model.ClubPeriodUpcoming, model.ClubPeriodPast:
+		return period
+	default:
+		return ""
+	}
+}
+
+func (a *api) listOfUser(w http.ResponseWriter, r *http.Request, filter model.ClubFilter) {
 	token, err := optionalBearerToken(r)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -641,7 +661,7 @@ func (a *api) listUserClubs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := a.clubs.OfUser(r.Context(), user.ID, r.URL.Query().Get("cursor"), limit, model.ClubKindGroup)
+	page, err := a.clubs.OfUser(r.Context(), user.ID, r.URL.Query().Get("cursor"), limit, filter)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -652,7 +672,8 @@ func (a *api) listUserClubs(w http.ResponseWriter, r *http.Request) {
 
 // listMyClubs is "Мои Группы" and listMyEvents "Мои Встречи": the clubs
 // of the caller of one kind, the newest joined first; with ?managed=true
-// only those they run ("Управление").
+// only those they run ("Управление"), and the events with
+// ?time=upcoming|past only those ahead or over.
 func (a *api) listMyClubs(w http.ResponseWriter, r *http.Request) {
 	a.listMine(w, r, model.ClubKindGroup)
 }
@@ -677,6 +698,9 @@ func (a *api) listMine(w http.ResponseWriter, r *http.Request, kind string) {
 	query := r.URL.Query()
 
 	filter := model.ClubFilter{Managed: query.Get("managed") == "true", Kind: kind}
+	if kind == model.ClubKindEvent {
+		filter.Period = clubPeriod(r)
+	}
 
 	page, err := a.clubs.Mine(r.Context(), token, query.Get("cursor"), limit, filter)
 	if err != nil {

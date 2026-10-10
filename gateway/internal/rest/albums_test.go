@@ -62,7 +62,7 @@ func (f *fakeAlbums) album(id string) (model.Album, error) {
 func (f *fakeAlbums) photo(id string) (model.AlbumPhoto, error) {
 	switch id {
 	case "ph6":
-		return model.AlbumPhoto{ID: "ph6", AlbumID: "a2", AuthorID: "u2", Description: "Барсик", CreatedAt: albumTime}, nil
+		return model.AlbumPhoto{ID: "ph6", AlbumID: "a2", AuthorID: "u2", Description: "Барсик", CreatedAt: albumTime, NSFW: true}, nil
 	case "ph5":
 		return model.AlbumPhoto{ID: "ph5", AlbumID: "a2", AuthorID: "u3", CreatedAt: albumTime}, nil
 	default:
@@ -345,11 +345,13 @@ func TestAlbumPhotoPage(t *testing.T) {
 		Photo struct {
 			Large       string `json:"large"`
 			Description string `json:"description"`
+			NSFW        bool   `json:"nsfw"`
 		} `json:"photo"`
 		Author map[string]any `json:"author"`
 		Album  albumJSON      `json:"album"`
 	}](t, w)
-	if w.Code != http.StatusOK || got.Author["nickname"] != "bob" || got.Album.ID != "a2" || got.Owner["club"] != true || got.Photo.Large != "/media/photos/u2/ph6/large.jpg" {
+	if w.Code != http.StatusOK || got.Author["nickname"] != "bob" || got.Album.ID != "a2" || got.Owner["club"] != true ||
+		got.Photo.Large != "/media/photos/u2/ph6/large.jpg" || !got.Photo.NSFW {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
 

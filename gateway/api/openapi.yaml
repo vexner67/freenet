@@ -418,6 +418,10 @@ paths:
           in: query
           description: '"Поиск" of the wall: the posts of the tab that say this, in any case; the pinned post is then in its place'
           schema: { type: string, maxLength: 100 }
+        - name: comments
+          in: query
+          description: "`last` brings each post with `lastComments`, its three newest comments (\"Микроблог\")"
+          schema: { type: string, enum: [last] }
         - name: cursor
           in: query
           schema: { type: string }
@@ -1317,6 +1321,10 @@ paths:
         - name: managed
           in: query
           schema: { type: boolean }
+        - name: time
+          in: query
+          description: "Only the events ahead or going on (`upcoming`) or those over (`past`: ended or, having no end, begun); all without it"
+          schema: { type: string, enum: [upcoming, past] }
         - name: cursor
           in: query
           schema: { type: string }
@@ -2617,6 +2625,10 @@ paths:
           in: query
           description: '"Поиск" of the wall: the posts of the tab that say this, in any case; the pinned post is then in its place'
           schema: { type: string, maxLength: 100 }
+        - name: comments
+          in: query
+          description: "`last` brings each post with `lastComments`, its three newest comments (\"Микроблог\")"
+          schema: { type: string, enum: [last] }
         - name: cursor
           in: query
           schema: { type: string }
@@ -2943,6 +2955,49 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/users/{nickname}/events:
+    get:
+      summary: The events of a user, the newest joined first
+      description: |
+        The block "Встречи" of a page: as `/api/v1/users/{nickname}/clubs`, for the events
+        the user comes or might come to, shown by the same `clubsRead`.
+      parameters:
+        - name: nickname
+          in: path
+          required: true
+          schema: { type: string }
+        - name: time
+          in: query
+          description: "Only the events ahead or going on (`upcoming`) or those over (`past`); all without it"
+          schema: { type: string, enum: [upcoming, past] }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page, as of `/api/v1/users/{nickname}/clubs`
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [clubs, nextCursor, total]
+                properties:
+                  clubs:
+                    type: array
+                    items: { $ref: "#/components/schemas/ClubInfo" }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer, description: "How many on all pages" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "403":
+          description: "`this page is deleted`, `this page is hidden` or `this user's clubs are hidden`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/feed:
     get:
       summary: Your news feed
@@ -2953,6 +3008,10 @@ paths:
         `hide`.
       security: [{ bearer: [] }]
       parameters:
+        - name: comments
+          in: query
+          description: "`last` brings each post with `lastComments`, its three newest comments (\"Микроблог\")"
+          schema: { type: string, enum: [last] }
         - name: cursor
           in: query
           schema: { type: string }
@@ -3486,6 +3545,7 @@ components:
                 deleted: { type: boolean }
                 photo: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
                 albumId: { type: string }
+                nsfw: { type: boolean, description: The photo came from a post marked as adult }
             - type: "null"
         repost:
           description: The shared post when this is a repost; null otherwise
@@ -3512,6 +3572,10 @@ components:
           oneOf:
             - { $ref: "#/components/schemas/Author" }
             - { type: "null" }
+        lastComments:
+          description: "Its three newest comments, oldest first; only in a list asked for with `comments=last`, and left out when there are none. Those of archived posts are not told"
+          type: array
+          items: { $ref: "#/components/schemas/Comment" }
 
     SharedPost:
       type: object
@@ -3581,6 +3645,7 @@ components:
             likes: { type: integer }
             comments: { type: integer }
             liked: { type: boolean, description: You like it }
+            nsfw: { type: boolean, description: "It came from a post marked as adult: blurred as the reader's settings say" }
 
     AlbumOwner:
       type: object

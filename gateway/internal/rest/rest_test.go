@@ -360,6 +360,7 @@ func (f *fakeUsers) markedOnline() []string {
 
 type fakePosts struct {
 	authors, walls         []string
+	lastAsked              []string
 	hideNSFW               bool
 	newPost                model.NewPost
 	token, cursor, deleted string
@@ -654,6 +655,26 @@ func (f *fakePosts) UnlikeComment(_ context.Context, token, id string) (int, err
 func (f *fakePosts) DeleteComment(_ context.Context, token, id string) error {
 	f.token, f.deleted = token, id
 	return f.err
+}
+
+// LastComments: p2 has two, one by an author who is gone; p8, a post of
+// the club k1, one that u1 wrote for it.
+func (f *fakePosts) LastComments(_ context.Context, token string, postIDs []string) ([]model.Comment, error) {
+	f.lastAsked = postIDs
+
+	var found []model.Comment
+	for _, id := range postIDs {
+		switch id {
+		case "p2":
+			found = append(found,
+				model.Comment{ID: "c7", PostID: "p2", Author: model.Author{ID: "gone"}, Text: "автор удалился"},
+				model.Comment{ID: "c8", PostID: "p2", Author: model.Author{ID: "u2"}, Text: "последний", Liked: token != ""})
+		case "p8":
+			found = append(found, model.Comment{ID: "c9", PostID: "p8", Author: model.Author{ID: "u1"}, Text: "от группы", FromWall: true})
+		}
+	}
+
+	return found, f.err
 }
 
 func (f *fakePosts) Comments(_ context.Context, token, postID, cursor string, limit int) (model.CommentPage, error) {
