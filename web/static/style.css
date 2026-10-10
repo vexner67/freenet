@@ -653,6 +653,11 @@ a.like:hover svg { opacity: .7; }
 .post-options label { display: block; padding: 1px 0; color: #555; }
 .post-options input { vertical-align: middle; margin: 0 3px 0 0; }
 .club-role { color: #808080; }
+/* The pages of text: "о сайте", "правила" and openvk's FAQ of "помощь". */
+.plain-list { margin: 6px 0; padding-left: 28px; }
+.plain-list li { margin: 3px 0; }
+.faq-head { margin: 0 5px; padding: 5px; background: #fbf3c3; border: 1px solid #d7cf9e; border-bottom: 0; font-weight: bold; }
+.faq-content { margin: 0 5px 10px; padding: 5px 5px 5px 10px; background: #fafafa; border: 1px solid #ddd; }
 /* "Онлайн" by a name in a list of people. */
 .person-online { margin-left: 8px; color: #808080; }
 .club-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #ececec; }
