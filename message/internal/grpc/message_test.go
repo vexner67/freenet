@@ -519,3 +519,43 @@ func TestDialogs_TextLimit(t *testing.T) {
 		t.Fatalf("last message whole = %v", m)
 	}
 }
+
+// A page of a dialog asks for the beginnings of its messages.
+func TestHistory_TextLimit(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	if _, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "длинное сообщение"}); err != nil {
+		t.Fatalf("SendMessage: %v", err)
+	}
+
+	page, err := s.client.ListMessages(s.as(t, ann), &messagev1.ListMessagesRequest{PeerId: bob.String(), TextLimit: 7})
+	if err != nil || len(page.GetMessages()) != 1 || page.GetMessages()[0].GetText() != "длинное" || !page.GetMessages()[0].GetTextCut() {
+		t.Fatalf("ListMessages = %v, %v", page, err)
+	}
+
+	around := &messagev1.ListMessagesRequest{PeerId: bob.String(), Around: page.GetMessages()[0].GetId(), Limit: 1}
+	if page, err = s.client.ListMessages(s.as(t, ann), around); err != nil || len(page.GetMessages()) != 1 ||
+		page.GetMessages()[0].GetText() != "длинное сообщение" || page.GetMessages()[0].GetTextCut() {
+		t.Fatalf("ListMessages around, whole = %v, %v", page, err)
+	}
+}
+
+// Found messages come with the beginnings of their texts when asked.
+func TestSearch_TextLimit(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	if _, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "длинное сообщение"}); err != nil {
+		t.Fatalf("SendMessage: %v", err)
+	}
+
+	found, err := s.client.SearchMessages(s.as(t, ann), &messagev1.SearchMessagesRequest{Query: "длин", TextLimit: 7})
+	if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetText() != "длинное" || !found.GetMessages()[0].GetTextCut() {
+		t.Fatalf("SearchMessages = %v, %v", found, err)
+	}
+}

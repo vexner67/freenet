@@ -145,7 +145,8 @@ func toProtoDialog(d message.Dialog, userID uuid.UUID, textLimit int32) *message
 	}
 }
 
-func toListMessagesResponse(page service.HistoryPage, userID uuid.UUID) *messagev1.ListMessagesResponse {
+// toListMessagesResponse cuts the texts of the page to textLimit.
+func toListMessagesResponse(page service.HistoryPage, userID uuid.UUID, textLimit int32) *messagev1.ListMessagesResponse {
 	resp := &messagev1.ListMessagesResponse{
 		Messages:     make([]*messagev1.Message, 0, len(page.Messages)),
 		NextCursor:   optionalID(page.NextCursor),
@@ -153,7 +154,7 @@ func toListMessagesResponse(page service.HistoryPage, userID uuid.UUID) *message
 	}
 
 	for _, m := range page.Messages {
-		resp.Messages = append(resp.Messages, toProtoMessage(m, page.Marks.IsRead(m, userID)))
+		resp.Messages = append(resp.Messages, excerpted(toProtoMessage(m, page.Marks.IsRead(m, userID)), m, textLimit))
 	}
 
 	return resp
