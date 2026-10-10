@@ -3,11 +3,12 @@
 // messages bring their dialog to the top live (events.js); a deleted last
 // message makes the list load afresh, since only the server knows what is
 // last now. The form above searches the messages (?q=): of all dialogs, or
-// of the one the dialog page sent here from (?peer=<nickname>).
+// of the one the dialog page sent here from (?peer=<nickname>); a found
+// message opens its dialog where it was said (?msg=<id>).
 
 import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
-import { formatPostDate, snippet } from './labels.js';
+import { formatPostDate, messagePreview, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showError, hideError } from './layout.js';
 
 const PREVIEW = 120;
@@ -31,8 +32,8 @@ function dialogNode(d) {
     ),
     el('div', { className: unread ? 'dialog-message unread' : 'dialog-message' },
       m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
-      // A message of photos only says so, as on VK.
-      el('div', { className: 'dialog-text', textContent: snippet(m.text || (m.photos?.length ? 'Фотография' : m.post ? 'Запись' : ''), PREVIEW) }),
+      // A message without words says what it shows, as on VK.
+      el('div', { className: 'dialog-text', textContent: snippet(messagePreview(m), PREVIEW) }),
     ),
   );
 }
@@ -77,6 +78,15 @@ function listenToEvents() {
   onEvent('delete', (e) => {
     if (shown.get(e.peer.id)?.dialog.lastMessage.id === e.id) reload();
   });
+
+  // The last message was edited or taken back: the row says so.
+  onEvent('edit', (e) => {
+    const entry = shown.get(e.peer.id);
+    if (entry?.dialog.lastMessage.id !== e.message.id) return;
+
+    entry.dialog.lastMessage = { ...e.message, read: entry.dialog.lastMessage.read };
+    show(entry.dialog, false);
+  });
 }
 
 // reload draws the list from its first page again, one reload after
@@ -117,9 +127,10 @@ const query = (params.get('q') ?? '').trim();
 const searchPeer = params.get('peer') ?? '';
 
 // foundNode is a found message as a row of the list: who it was written
-// to or by, when, and what it says; it leads to the dialog.
+// to or by, when, and what it says; it leads to where it was said in the
+// dialog.
 function foundNode({ peer, message: m }) {
-  return el('a', { className: 'dialog', href: '/im/' + encodeURIComponent(peer.nickname) },
+  return el('a', { className: 'dialog', href: `/im/${encodeURIComponent(peer.nickname)}?msg=${encodeURIComponent(m.id)}` },
     el('img', { className: 'dialog-avatar', src: avatarURL(peer, 'small'), alt: '' }),
     el('div', { className: 'dialog-info' },
       el('b', { className: 'dialog-name', textContent: fullName(peer) }),

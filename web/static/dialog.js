@@ -5,12 +5,14 @@
 // peer's until you read them, yours until the peer does. As on VK: any
 // message can be deleted for yourself, your own for both for a day
 // ("Удалить для всех") and edited for a day; a click on a message selects
-// it, and several are deleted at once.
+// it, and several are deleted or forwarded ("Переслать") at once. A
+// message taken back stays as "Сообщение удалено". With ?msg=<id> the
+// dialog opens around that message, as a search leads to it.
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
-import { errorText, formatPostDate, genitiveName, selectedCount } from './labels.js';
+import { errorText, formatPostDate, genitiveName, messagePreview, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, sharedNode } from './posts.js';
@@ -21,12 +23,19 @@ const LOAD_OLDER_AT = 40;
 
 const nickname = decodeURIComponent(location.pathname.slice('/im/'.length));
 const list = $('messages');
+// The message to open the dialog around, from a search.
+const foundID = new URLSearchParams(location.search).get('msg') ?? '';
 
 let me;
 let peer;
 let olderCursor = '';
 let newestID = '';
 let loadingOlder = false;
+// gap: the dialog was opened around an old message and the newer ones are
+// not all loaded yet; they load as the user scrolls down, and until then
+// live messages wait their turn.
+let gap = false;
+let loadingNewer = false;
 let attachments;
 // Message ID → node, so polling neither repeats a message nor misses a read.
 const shown = new Map();
@@ -37,32 +46,38 @@ let editing = null;
 
 function messageNode(m) {
   const author = m.out ? me : peer;
-  const text = el('div', { className: 'im-message-text' });
+  const content = el('div', { className: 'im-message-body' });
   const date = el('div', { className: 'im-message-date' });
 
   const node = el('div', { className: m.read ? 'im-message' : 'im-message unread' },
     el('a', { href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       el('a', { className: 'post-name', href: '/' + author.nickname, textContent: fullName(author) }),
-      text,
-      photosNode(m.photos ?? []),
-      m.repost ? sharedNode(m.repost) : null,
+      content,
     ),
     date,
   );
 
-  // render shows what the message says now: an edit changes it.
+  // render shows what the message is now: an edit changes what it says,
+  // and taken back it says nothing.
   node.render = () => {
     const shownMessage = node.message ?? m;
+    const text = shownMessage.deleted ? 'Сообщение удалено' : shownMessage.text;
 
-    text.textContent = shownMessage.text;
-    text.hidden = !shownMessage.text;
-    date.replaceChildren(
+    node.classList.toggle('deleted', Boolean(shownMessage.deleted));
+    content.replaceChildren(...[
+      text && el('div', { className: 'im-message-text', textContent: text }),
+      photosNode(shownMessage.photos ?? []),
+      shownMessage.repost ? sharedNode(shownMessage.repost) : null,
+      forwardedNode(shownMessage),
+    ].filter(Boolean));
+    date.replaceChildren(...[
       formatPostDate(shownMessage.createdAt),
-      shownMessage.editedAt ? el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }) : '',
+      shownMessage.editedAt && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
       canEdit(shownMessage) && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(shownMessage) }),
+      !shownMessage.deleted && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => openForward([shownMessage]) }),
       el('a', { className: 'im-message-action', textContent: 'Удалить', onclick: () => confirmDelete([shownMessage]) }),
-    );
+    ].filter(Boolean));
   };
   node.render();
 
@@ -78,15 +93,42 @@ function messageNode(m) {
   return node;
 }
 
+// forwardedNode shows the messages a message carries on, as on VK: under
+// its own words, each with who wrote it and when.
+function forwardedNode(m) {
+  const forwarded = m.forwarded ?? [];
+  if (!m.forwardedCount) return null;
+
+  return el('div', { className: 'im-forwarded' },
+    ...forwarded.map((f) => el('div', { className: 'im-forwarded-message' },
+      el('a', { className: 'post-name', href: '/' + f.author.nickname, textContent: fullName(f.author) }),
+      el('span', { className: 'im-forwarded-date', textContent: formatPostDate(f.createdAt) }),
+      f.text ? el('div', { className: 'im-message-text', textContent: f.text }) : null,
+      photosNode(f.photos ?? []),
+      f.repost ? sharedNode(f.repost) : null,
+    )),
+    // Those of people whose pages are gone are not shown.
+    forwarded.length < m.forwardedCount ? el('div', { className: 'im-forwarded-hint', textContent: 'Пересланное сообщение недоступно.' }) : null,
+  );
+}
+
 // canDeleteForAll: your own message, until deletableUntil; the server
 // says no once it passes while the page is open.
 function canDeleteForAll(m) {
-  return m.out && Boolean(m.deletableUntil) && Date.now() < new Date(m.deletableUntil);
+  return m.out && !m.deleted && Boolean(m.deletableUntil) && Date.now() < new Date(m.deletableUntil);
 }
 
 // canEdit: your own message, until editableUntil.
 function canEdit(m) {
-  return m.out && Boolean(m.editableUntil) && Date.now() < new Date(m.editableUntil);
+  return m.out && !m.deleted && Boolean(m.editableUntil) && Date.now() < new Date(m.editableUntil);
+}
+
+// takenBack is a message after "Удалить для всех": it says nothing.
+function takenBack(m) {
+  return {
+    ...m, text: '', photos: [], post: '', repost: undefined, forwarded: [], forwardedCount: 0,
+    editedAt: null, deletableUntil: '', editableUntil: '', deleted: true,
+  };
 }
 
 function toggleSelected(id) {
@@ -126,8 +168,11 @@ function confirmDelete(messages) {
         await api.deleteMessage(m.id, { forMe: !forAll.checked }).catch((e) => {
           if (e.status !== 404) throw e;
         });
-        drop(m.id);
+        // Taken back from both, it stays in its place saying so.
+        if (forAll.checked) edited(takenBack(m));
+        else drop(m.id);
       }
+      clearSelection();
       modal.close();
     } catch (e) {
       showError(error, e);
@@ -142,6 +187,78 @@ function confirmDelete(messages) {
     modal.body.append(el('label', { className: 'publish-signed' }, forAll, ` Удалить для всех (и у ${genitiveName(peer)})`));
   }
   modal.actions.append(remove, button('Отмена', modal.close, { secondary: true }));
+}
+
+// openForward carries messages on into a dialog, as VK's "Переслать":
+// which one, your words to go with them, "Отправить" and "Отмена".
+// Messages taken back have nothing to carry.
+function openForward(messages) {
+  const forward = messages.filter((m) => !m.deleted).sort((a, b) => (a.id < b.id ? -1 : 1));
+  if (forward.length === 0) return;
+
+  const modal = openModal(forward.length > 1 ? 'Пересылка сообщений' : 'Пересылка сообщения', { tag: 'form' });
+  const error = el('div', { className: 'error', hidden: true });
+  const chats = el('select', { ariaLabel: 'Переписка' }, el('option', { value: nickname, textContent: fullName(peer) }));
+  const text = el('textarea', { maxLength: 60000, placeholder: '…', ariaLabel: 'Ваш комментарий' });
+  const send = button('Отправить', null, { type: 'submit' });
+
+  modal.body.append(
+    error,
+    el('div', { className: 'forward-list' }, ...forward.map((m) => el('div', {},
+      el('b', { textContent: fullName(m.out ? me : peer) + ': ' }), snippet(messagePreview(m), 80)))),
+    el('b', { textContent: 'Кому' }),
+    chats,
+    el('b', { textContent: 'Ваш комментарий' }),
+    text,
+  );
+  modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
+
+  // The latest dialogs, this one first.
+  api.dialogs().then((page) => {
+    chats.append(...page.dialogs
+      .filter((d) => d.peer.nickname !== nickname)
+      .map((d) => el('option', { value: d.peer.nickname, textContent: fullName(d.peer) })));
+  }).catch((e) => showError(error, e));
+
+  modal.box.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    hideError(error);
+    send.disabled = true;
+
+    try {
+      const to = chats.value;
+      const sent = await api.sendMessage(to, text.value, [], '', forward.map((m) => m.id));
+
+      clearSelection();
+      if (to !== nickname) {
+        modal.body.replaceChildren(el('div', {},
+          forward.length > 1 ? 'Сообщения пересланы. ' : 'Сообщение переслано. ',
+          el('a', { href: '/im/' + encodeURIComponent(to), textContent: 'Перейти' })));
+        modal.actions.replaceChildren(button('Закрыть', modal.close));
+        return;
+      }
+
+      modal.close();
+      showSent(sent);
+    } catch (e) {
+      showError(error, e);
+      send.disabled = false;
+    }
+  });
+
+  text.focus();
+}
+
+// showSent puts a message just sent at the end of the dialog; opened
+// around an old message, the dialog goes to its end first.
+function showSent(m) {
+  if (gap) {
+    location.assign('/im/' + encodeURIComponent(nickname));
+    return;
+  }
+
+  add([m], false);
+  toBottom();
 }
 
 // drop takes a deleted message off the page.
@@ -179,13 +296,15 @@ function cancelEdit() {
   $('attach').hidden = false;
 }
 
-// edited shows what a message says after an edit, mine or the peer's.
+// edited shows what a message is after its sender, me or the peer,
+// edited it or took it back; whether it is read the event does not tell.
 function edited(m) {
   const node = shown.get(m.id);
   if (!node) return;
 
-  node.message = { ...node.message, text: m.text, editedAt: m.editedAt };
+  node.message = { ...node.message, ...m, read: node.message.read };
   node.render();
+  if (editing?.id === m.id && m.deleted) cancelEdit();
 }
 
 // add puts messages at the end (newer) or the start (older), skipping
@@ -268,6 +387,63 @@ async function loadOlder() {
   }
 }
 
+// loadNewer continues a dialog opened around an old message towards its
+// end; with nothing newer left the dialog is whole and live again.
+async function loadNewer() {
+  if (loadingNewer || !gap) return;
+  loadingNewer = true;
+
+  try {
+    const page = await api.messages(nickname, { after: newestID });
+
+    markTheirRead(page.peerReadUpTo);
+    if (page.messages.length === 0) gap = false;
+    await readIncoming(add(page.messages, false));
+  } catch (e) {
+    showError($('error'), e);
+  } finally {
+    loadingNewer = false;
+  }
+}
+
+// fillNewer loads on while the end of the list is in view: a scroll
+// that reached it, or a list too short to scroll at all.
+async function fillNewer() {
+  while (gap && nearBottom()) {
+    const before = newestID;
+
+    await loadNewer();
+    if (gap && newestID === before) break; // busy or failed: the next scroll tries again
+  }
+}
+
+// showFound brings the message the dialog was opened around into view
+// and marks it.
+async function showFound() {
+  const node = shown.get(foundID);
+
+  node?.classList.add('found');
+  node?.scrollIntoView({ block: 'center' });
+  await fillNewer();
+}
+
+// firstPage is the dialog around the found message, or its newest
+// messages: without one, or when it is not there anymore.
+async function firstPage() {
+  if (foundID) {
+    try {
+      const page = await api.messages(nickname, { around: foundID });
+
+      gap = true;
+      return page;
+    } catch (e) {
+      if (e.status !== 404 && e.status !== 400) throw e;
+    }
+  }
+
+  return api.messages(nickname);
+}
+
 // showNew adds new messages, keeping the view at the bottom if it was.
 async function showNew(messages) {
   const stick = nearBottom();
@@ -280,6 +456,9 @@ async function showNew(messages) {
 // catchUp asks for what came after the newest message shown: by polling
 // while events are down, and once after they come back.
 async function catchUp() {
+  // Opened around an old message, the dialog catches up by scrolling.
+  if (gap) return;
+
   try {
     // An empty dialog has nothing to ask after: ask for the newest.
     const page = await api.messages(nickname, newestID ? { after: newestID } : {});
@@ -299,7 +478,7 @@ async function poll() {
 
 function listenToEvents() {
   onEvent('message', (e) => {
-    if (e.peer.id === peer.id) showNew([e.message]);
+    if (e.peer.id === peer.id && !gap) showNew([e.message]);
   });
   onEvent('read', (e) => {
     if (e.peer.id === peer.id && !e.byMe) markTheirRead(e.upTo);
@@ -350,11 +529,10 @@ async function send(event) {
   try {
     const m = await api.sendMessage(nickname, text.value, attachments.ids());
 
-    add([m], false);
     text.value = '';
     autosize(text);
     attachments.clear();
-    toBottom();
+    showSent(m);
   } catch (e) {
     showError($('error'), e);
   } finally {
@@ -424,7 +602,7 @@ if (!me) {
   renderChrome(me);
 
   try {
-    const page = await api.messages(nickname);
+    const page = await firstPage();
     peer = page.peer;
 
     document.title = `${fullName(peer)} | Сообщения`;
@@ -436,9 +614,10 @@ if (!me) {
 
     $('search-link').href = '/im?peer=' + encodeURIComponent(peer.nickname);
     $('search-link').hidden = false;
-    $('selection-delete').addEventListener('click', () => {
-      confirmDelete([...selected].map((id) => shown.get(id)?.message).filter(Boolean));
-    });
+    const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
+
+    $('selection-forward').addEventListener('click', () => openForward(selectedMessages()));
+    $('selection-delete').addEventListener('click', () => confirmDelete(selectedMessages()));
     $('selection-cancel').addEventListener('click', clearSelection);
 
     $('messenger').hidden = false;
@@ -446,9 +625,11 @@ if (!me) {
     olderCursor = page.nextCursor;
     toBottom();
     await setUpInput(page.canWrite);
+    if (gap) await showFound();
 
     list.addEventListener('scroll', () => {
       if (list.scrollTop < LOAD_OLDER_AT) loadOlder();
+      fillNewer();
     });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) readIncoming([...shown.values()].map((node) => node.message));

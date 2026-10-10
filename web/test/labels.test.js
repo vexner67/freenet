@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone } from '../static/labels.js';
+import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -284,6 +284,19 @@ test('isLongText is openvk\'s bigText', () => {
   assert.equal(isLongText('я'.repeat(521)), true);
   assert.equal(isLongText(Array(10).fill('строка').join('\n')), false);
   assert.equal(isLongText(Array(11).fill('строка').join('\n')), true);
+});
+
+test('a message without words is named by what it shows', () => {
+  assert.equal(messagePreview({ text: 'привет', photos: [{}] }), 'привет');
+  assert.equal(messagePreview({ text: '', photos: [{}] }), 'Фотография');
+  assert.equal(messagePreview({ text: '', photos: [], post: 'p1' }), 'Запись');
+  assert.equal(messagePreview({ text: '', photos: [], post: '', forwardedCount: 1 }), 'Пересланное сообщение');
+  assert.equal(messagePreview({ text: '', forwardedCount: 3 }), '3 пересланных сообщения');
+  assert.equal(messagePreview({ text: '', deleted: true }), 'Сообщение удалено');
+  assert.equal(messagePreview({ text: '' }), '');
+  assert.equal(forwardedCount(5), '5 пересланных сообщений');
+  assert.equal(forwardedCount(21), '21 пересланное сообщение');
+  assert.equal(errorText({ message: 'forwarded message not found' }), 'Сообщение не удалось переслать: его уже нет.');
 });
 
 test('selectedCount counts the selected messages', () => {

@@ -713,6 +713,8 @@ const errorTexts = {
   "this user's photos are hidden": 'Пользователь скрыл свои фотографии.',
   'only the sender can edit the message': 'Редактировать можно только свои сообщения.',
   'the message can no longer be edited': 'Сообщение можно редактировать только в течение суток после отправки.',
+  'forwarded message not found': 'Сообщение не удалось переслать: его уже нет.',
+  'a message forwards at most 20 messages': 'За один раз можно переслать не больше 20 сообщений.',
   'search query is empty': 'Введите, что искать.',
   'the comments are closed': 'Комментарии к этой записи закрыты.',
   'search query is too long': 'Запрос длиннее 100 символов.',
@@ -807,6 +809,24 @@ export function replyMention(author) {
 // больше": more than 520 characters or 10 lines.
 export function isLongText(text) {
   return text.length > 520 || text.split('\n').length > 10;
+}
+
+// forwardedCount names the messages a message carries on: "2 пересланных
+// сообщения".
+export function forwardedCount(n) {
+  return n === 1 ? 'Пересланное сообщение' : `${n} ${plural(n, ['пересланное сообщение', 'пересланных сообщения', 'пересланных сообщений'])}`;
+}
+
+// messagePreview is a message in one line, for the list of dialogs: what
+// it says or, without words, what it shows, as on VK.
+export function messagePreview(m) {
+  if (m.deleted) return 'Сообщение удалено';
+  if (m.text) return m.text;
+  if (m.photos?.length) return 'Фотография';
+  if (m.post) return 'Запись';
+  if (m.forwardedCount) return forwardedCount(m.forwardedCount);
+
+  return '';
 }
 
 // selectedCount is over a dialog while messages are selected: "Выбрано 2
