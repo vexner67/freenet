@@ -103,12 +103,14 @@ type CommentInput struct {
 	ParentID uuid.UUID
 	Content  post.CommentContent
 	FromWall bool
+	// Mentions are the people the text names, who hear of it.
+	Mentions post.Mentions
 }
 
 // Create comments on a post with text, photos or both; media keeps the
 // photos, which the caller has checked are the author's. The author of
-// the post hears of it, and the author of the comment answered of the
-// answer.
+// the post hears of it, the author of the comment answered of the
+// answer, and the people it names of that.
 func (s *CommentService) Create(ctx context.Context, in CommentInput) (*post.Comment, error) {
 	var parent *post.Comment
 	if in.ParentID != uuid.Nil {
@@ -145,7 +147,7 @@ func (s *CommentService) Create(ctx context.Context, in CommentInput) (*post.Com
 		}
 	}
 
-	if err = s.save(ctx, p, c, parent); err != nil {
+	if err = s.save(ctx, p, c, commentEvents(p, c, parent, in.Mentions)); err != nil {
 		return nil, errs.Wrap("s.save", err)
 	}
 
@@ -172,9 +174,9 @@ func (s *CommentService) checkOpen(ctx context.Context, p *post.Post, authorID u
 	return nil
 }
 
-// save stores comment c on p, which answers parent (nil for none), with
-// its photos and notifications in one transaction.
-func (s *CommentService) save(ctx context.Context, p *post.Post, c, parent *post.Comment) error {
+// save stores comment c on p with its photos and notifications in one
+// transaction.
+func (s *CommentService) save(ctx context.Context, p *post.Post, c *post.Comment, events []Event) error {
 	return errs.Wrap("s.tx.WithinTx", s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.commentRepo.Save(ctx, c); err != nil {
 			return errs.Wrap("s.commentRepo.Save", err)
@@ -186,7 +188,7 @@ func (s *CommentService) save(ctx context.Context, p *post.Post, c, parent *post
 			}
 		}
 
-		for _, e := range commentEvents(p, c, parent) {
+		for _, e := range events {
 			if err := s.notifier.Notify(ctx, e); err != nil {
 				return errs.Wrap("s.notifier.Notify", err)
 			}
@@ -322,8 +324,9 @@ func deleteCommentPhotos(ctx context.Context, photos PhotoKeeper, comments []*po
 // author of the post of a new comment, unless they heard of the answer
 // already. Nobody hears of their own comments, and a post or a comment
 // that speaks for a community notifies nobody (Notified). A comment for
-// the community comes from the community, not from its author.
-func commentEvents(p *post.Post, c, parent *post.Comment) []Event {
+// the community comes from the community, not from its author. The
+// people it names hear of that, unless they heard of the comment already.
+func commentEvents(p *post.Post, c, parent *post.Comment, mentions post.Mentions) []Event {
 	var events []Event
 
 	actor := c.AuthorID()
@@ -343,6 +346,10 @@ func commentEvents(p *post.Post, c, parent *post.Comment) []Event {
 	author := p.Notified()
 	if author != uuid.Nil && author != c.AuthorID() && author != answered {
 		events = append(events, Event{Kind: EventComment, RecipientID: author, ActorID: actor, PostID: p.ID(), CommentID: c.ID()})
+	}
+
+	for _, id := range mentions.Heard(c.AuthorID(), answered, author) {
+		events = append(events, Event{Kind: EventCommentMention, RecipientID: id, ActorID: actor, PostID: p.ID(), CommentID: c.ID()})
 	}
 
 	return events

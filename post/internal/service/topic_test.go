@@ -251,6 +251,33 @@ func TestTopicService_NotificationsAndLikes(t *testing.T) {
 		t.Fatalf("told %+v outside a transaction %d times, want %+v", told.notified, told.outsideTx, want)
 	}
 
+	// Bob names ann, the admin and himself: ann hears of the message as
+	// the starter, the admin of the name. For the community, the admin
+	// names bob from it.
+	told.notified = nil
+	named, err := svc.Write(ctx, service.TopicMessageInput{
+		TopicID: topic.ID(), AuthorID: bob, Content: *words(t, "@ann, @admin"), Mentions: post.Mentions{ann, admin, bob},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	forClub, err := svc.Write(ctx, service.TopicMessageInput{
+		TopicID: topic.ID(), AuthorID: admin, Content: *words(t, "@bob"), FromWall: true, Mentions: post.Mentions{bob},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want = []service.Event{
+		{Kind: service.EventTopicMessage, RecipientID: ann, ActorID: bob, PostID: topic.ID(), CommentID: named.ID()},
+		{Kind: service.EventTopicMention, RecipientID: admin, ActorID: bob, PostID: topic.ID(), CommentID: named.ID()},
+		{Kind: service.EventTopicMessage, RecipientID: ann, ActorID: club, PostID: topic.ID(), CommentID: forClub.ID()},
+		{Kind: service.EventTopicMention, RecipientID: bob, ActorID: club, PostID: topic.ID(), CommentID: forClub.ID()},
+	}
+	if !slices.Equal(told.notified, want) {
+		t.Fatalf("told %+v, want %+v", told.notified, want)
+	}
+	told.notified = told.notified[:2]
+
 	// Hearts: counted once however often put, told to the one who put them.
 	for range 2 {
 		if likes, err := svc.LikeMessage(ctx, ann, bobs.ID()); err != nil || likes != 1 {

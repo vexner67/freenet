@@ -33,7 +33,12 @@ func (h *PostHandler) CreateTopic(ctx context.Context, req *postv1.CreateTopicRe
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	in := service.StartTopicInput{ClubID: clubID, AuthorID: authorID, Title: title, FromWall: req.GetFromWall()}
+	mentions, err := parseMentions(req.GetMentionedIds())
+	if err != nil {
+		return nil, err
+	}
+
+	in := service.StartTopicInput{ClubID: clubID, AuthorID: authorID, Title: title, FromWall: req.GetFromWall(), Mentions: mentions}
 
 	// The first message is optional, as "Текст" of openvk's new topic.
 	if strings.TrimSpace(req.GetText()) != "" || len(req.GetPhotoIds()) > 0 {
@@ -140,8 +145,13 @@ func (h *PostHandler) CreateTopicMessage(ctx context.Context, req *postv1.Create
 		return nil, err
 	}
 
+	mentions, err := parseMentions(req.GetMentionedIds())
+	if err != nil {
+		return nil, err
+	}
+
 	m, err := h.topicService.Write(ctx, service.TopicMessageInput{
-		TopicID: topicID, AuthorID: authorID, Content: content, FromWall: req.GetFromWall(),
+		TopicID: topicID, AuthorID: authorID, Content: content, FromWall: req.GetFromWall(), Mentions: mentions,
 	})
 	if err != nil {
 		return nil, err

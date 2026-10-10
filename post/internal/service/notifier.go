@@ -28,6 +28,14 @@ const (
 	// EventTopicMessage: a message in the topic the recipient started;
 	// PostID is the topic and CommentID the message.
 	EventTopicMessage
+	// EventPostMention: the post PostID names the recipient.
+	EventPostMention
+	// EventCommentMention: the comment CommentID under PostID names the
+	// recipient.
+	EventCommentMention
+	// EventTopicMention: the message CommentID of the topic PostID names
+	// the recipient.
+	EventTopicMention
 )
 
 // Event: RecipientID is the author of the post for likes, comments,

@@ -90,6 +90,8 @@ type StartTopicInput struct {
 	Title    post.TopicTitle
 	FromWall bool
 	Content  *post.CommentContent
+	// Mentions are the people the first message names.
+	Mentions post.Mentions
 }
 
 // TopicMessageInput is a message to write in TopicID, for the community
@@ -99,6 +101,8 @@ type TopicMessageInput struct {
 	AuthorID uuid.UUID
 	Content  post.CommentContent
 	FromWall bool
+	// Mentions are the people the text names, who hear of it.
+	Mentions post.Mentions
 }
 
 // TopicService keeps the discussions of communities ("Обсуждения" of
@@ -157,7 +161,9 @@ func (s *TopicService) Start(ctx context.Context, in StartTopicInput) (*post.Top
 			return nil
 		}
 
-		_, err := s.newMessage(ctx, t, in.AuthorID, *in.Content, in.FromWall)
+		_, err := s.newMessage(ctx, t, TopicMessageInput{
+			TopicID: t.ID(), AuthorID: in.AuthorID, Content: *in.Content, FromWall: in.FromWall, Mentions: in.Mentions,
+		})
 
 		return err
 	})
@@ -303,7 +309,7 @@ func (s *TopicService) Write(ctx context.Context, in TopicMessageInput) (*post.T
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		var err error
-		m, err = s.newMessage(ctx, t, in.AuthorID, in.Content, in.FromWall)
+		m, err = s.newMessage(ctx, t, in)
 
 		return err
 	})
@@ -315,9 +321,11 @@ func (s *TopicService) Write(ctx context.Context, in TopicMessageInput) (*post.T
 }
 
 // newMessage saves a message in t with its photos, in the transaction of
-// ctx.
-func (s *TopicService) newMessage(ctx context.Context, t *post.Topic, authorID uuid.UUID, content post.CommentContent, fromWall bool) (*post.TopicMessage, error) {
-	m, err := post.NewTopicMessage(t, authorID, content, fromWall, s.now())
+// ctx, and tells whoever started the topic and the people it names.
+func (s *TopicService) newMessage(ctx context.Context, t *post.Topic, in TopicMessageInput) (*post.TopicMessage, error) {
+	authorID, content := in.AuthorID, in.Content
+
+	m, err := post.NewTopicMessage(t, authorID, content, in.FromWall, s.now())
 	if err != nil {
 		return nil, errs.Wrap("post.NewTopicMessage", err)
 	}
@@ -332,14 +340,37 @@ func (s *TopicService) newMessage(ctx context.Context, t *post.Topic, authorID u
 		}
 	}
 
-	if recipient, actor := t.Hears(m); recipient != uuid.Nil {
-		e := Event{Kind: EventTopicMessage, RecipientID: recipient, ActorID: actor, PostID: t.ID(), CommentID: m.ID()}
+	for _, e := range topicEvents(t, m, in.Mentions) {
 		if err = s.notifier.Notify(ctx, e); err != nil {
 			return nil, errs.Wrap("s.notifier.Notify", err)
 		}
 	}
 
 	return m, nil
+}
+
+// topicEvents are the notifications of message m in t: whoever started
+// the topic hears of it (Topic.Hears), and the people it names of that,
+// unless they heard as the starter; from the community when the message
+// speaks for it.
+func topicEvents(t *post.Topic, m *post.TopicMessage, mentions post.Mentions) []Event {
+	var events []Event
+
+	starter, actor := t.Hears(m)
+	if starter != uuid.Nil {
+		events = append(events, Event{Kind: EventTopicMessage, RecipientID: starter, ActorID: actor, PostID: t.ID(), CommentID: m.ID()})
+	}
+
+	actor = m.AuthorID()
+	if m.FromWall() {
+		actor = t.ClubID()
+	}
+
+	for _, id := range mentions.Heard(m.AuthorID(), starter) {
+		events = append(events, Event{Kind: EventTopicMention, RecipientID: id, ActorID: actor, PostID: t.ID(), CommentID: m.ID()})
+	}
+
+	return events
 }
 
 // LikeMessage and UnlikeMessage put a heart on a message and take it

@@ -159,6 +159,11 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		}
 	}
 
+	mentions, err := parseMentions(req.GetMentionedIds())
+	if err != nil {
+		return nil, err
+	}
+
 	p, err := h.postService.Create(ctx, service.CreateInput{
 		WallID:   wallID,
 		AuthorID: authorID,
@@ -167,6 +172,7 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		FromWall: req.GetFromWall(),
 		Signed:   req.GetSigned(),
 		NSFW:     req.GetNsfw(),
+		Mentions: mentions,
 
 		AvatarUpdate: req.GetAvatarUpdate(),
 	})
@@ -513,6 +519,21 @@ func currentUserID(ctx context.Context) (uuid.UUID, error) {
 	}
 
 	return identity.UserID, nil
+}
+
+// parseMentions reads the people a text names, whom the caller found.
+func parseMentions(ss []string) (post.Mentions, error) {
+	ids, err := parseFeedIDs(ss, "invalid mentioned id")
+	if err != nil {
+		return nil, err
+	}
+
+	mentions, err := post.NewMentions(ids)
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	return mentions, nil
 }
 
 func parseFeedIDs(ss []string, invalid string) ([]uuid.UUID, error) {

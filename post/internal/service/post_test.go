@@ -547,6 +547,27 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 		t.Fatalf("notified = %+v, want only %+v (own posts notify nobody)", notifier.notified, want)
 	}
 
+	// Bob names ann, cat and himself on ann's wall: ann hears of the
+	// post, as its owner, and cat of her name.
+	notifier.notified = nil
+	named, err := svc.Create(ctx, service.CreateInput{
+		WallID: ann, AuthorID: bob, Content: post.RestoreContent("@ann и @cat", nil, uuid.Nil), Mentions: post.Mentions{ann, cat, bob},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantNamed := []service.Event{
+		{Kind: service.EventWallPost, RecipientID: ann, ActorID: bob, PostID: named.ID()},
+		{Kind: service.EventPostMention, RecipientID: cat, ActorID: bob, PostID: named.ID()},
+	}
+	if !slices.Equal(notifier.notified, wantNamed) {
+		t.Fatalf("notified = %+v, want %+v", notifier.notified, wantNamed)
+	}
+	if err = svc.Delete(ctx, bob, named.ID()); err != nil {
+		t.Fatal(err)
+	}
+	notifier.forgotten = nil
+
 	wall, err := svc.ListWall(ctx, uuid.Nil, ann, service.WallPick{Filter: post.WallAll}, uuid.Nil, 10)
 	if err != nil {
 		t.Fatal(err)

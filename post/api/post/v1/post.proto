@@ -325,6 +325,9 @@ message CreatePostRequest {
   bool avatar_update = 7;
   // The post is marked as adult.
   bool nsfw = 8;
+  // The people the text names ("@nickname"), at most 10, who hear of it:
+  // the caller has asked the user service who they are.
+  repeated string mentioned_ids = 9;
 }
 
 message CreatePostResponse {
@@ -517,6 +520,9 @@ message CreateCommentRequest {
   // The comment speaks for the community whose wall the post is on: the
   // caller has checked with the club service that the author may.
   bool from_wall = 5;
+  // The people the text names ("@nickname"), at most 10, who hear of it:
+  // the caller has asked the user service who they are.
+  repeated string mentioned_ids = 6;
 }
 
 message CreateCommentResponse {
@@ -645,6 +651,8 @@ message CreateTopicRequest {
   string text = 3;
   repeated string photo_ids = 4;
   bool from_wall = 5;
+  // The people the first message names, as in CreatePostRequest.
+  repeated string mentioned_ids = 6;
 }
 
 message CreateTopicResponse {
@@ -698,6 +706,8 @@ message CreateTopicMessageRequest {
   string text = 2;
   repeated string photo_ids = 3;
   bool from_wall = 4;
+  // The people the text names, as in CreatePostRequest.
+  repeated string mentioned_ids = 5;
 }
 
 message CreateTopicMessageResponse {
