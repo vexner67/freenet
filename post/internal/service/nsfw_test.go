@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"testing"
 
@@ -53,6 +54,25 @@ func TestPostService_NSFW(t *testing.T) {
 	if feed, err := svc.Feed(ctx, bob, everyone, uuid.Nil, 10); err != nil || !slices.Equal(texts(feed.Posts), []string{"для взрослых", "котики"}) {
 		t.Fatalf("the feed of everyone = %v, %v", texts(feed.Posts), err)
 	}
+	// Nor what the people the reader blacklisted wrote, on any wall.
+	guests := service.FeedSources{Walls: []uuid.UUID{ann}, HideNSFW: true}
+	if feed, err := svc.Feed(ctx, ann, guests, uuid.Nil, 10); err != nil || !slices.Equal(texts(feed.Posts), []string{"в гостях", "котики"}) {
+		t.Fatalf("the feed with a guest = %v, %v", texts(feed.Posts), err)
+	}
+	guests.Hidden = []uuid.UUID{bob}
+	if feed, err := svc.Feed(ctx, ann, guests, uuid.Nil, 10); err != nil || !slices.Equal(texts(feed.Posts), []string{"котики"}) {
+		t.Fatalf("the feed without the blacklisted = %v, %v", texts(feed.Posts), err)
+	}
+	everyone.Hidden = []uuid.UUID{ann}
+	if feed, err := svc.Feed(ctx, bob, everyone, uuid.Nil, 10); err != nil || len(feed.Posts) != 0 {
+		t.Fatalf("the feed of everyone without the blacklisted = %v, %v", texts(feed.Posts), err)
+	}
+	everyone.Hidden = nil
+	guests.Hidden = make([]uuid.UUID, service.MaxFeedHidden+1)
+	if _, err := svc.Feed(ctx, ann, guests, uuid.Nil, 10); !errors.Is(err, service.ErrTooManyAuthors) {
+		t.Fatalf("too many blacklisted: %v", err)
+	}
+
 	everyone.HideNSFW = true
 	if feed, err := svc.Feed(ctx, bob, everyone, uuid.Nil, 10); err != nil || !slices.Equal(texts(feed.Posts), []string{"котики"}) {
 		t.Fatalf("the feed of everyone without adult posts = %v, %v", texts(feed.Posts), err)

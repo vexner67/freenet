@@ -506,6 +506,10 @@ message ListFeedRequest {
   // 0 for whole texts. Lists ask for the beginning: a page of whole texts
   // of 60 000 characters is megabytes.
   int32 text_limit = 7;
+  // At most 1000: the people the reader blacklisted. What they wrote is
+  // left out, on any wall, except what one wrote in the name of a
+  // community.
+  repeated string hidden_author_ids = 8;
 }
 
 message ListFeedResponse {

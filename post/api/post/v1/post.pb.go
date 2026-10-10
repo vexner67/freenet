@@ -2110,9 +2110,13 @@ type ListFeedRequest struct {
 	// The texts are cut to this many characters and say so (text_cut);
 	// 0 for whole texts. Lists ask for the beginning: a page of whole texts
 	// of 60 000 characters is megabytes.
-	TextLimit     int32 `protobuf:"varint,7,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	TextLimit int32 `protobuf:"varint,7,opt,name=text_limit,json=textLimit,proto3" json:"text_limit,omitempty"`
+	// At most 1000: the people the reader blacklisted. What they wrote is
+	// left out, on any wall, except what one wrote in the name of a
+	// community.
+	HiddenAuthorIds []string `protobuf:"bytes,8,rep,name=hidden_author_ids,json=hiddenAuthorIds,proto3" json:"hidden_author_ids,omitempty"`
+	unknownFields   protoimpl.UnknownFields
+	sizeCache       protoimpl.SizeCache
 }
 
 func (x *ListFeedRequest) Reset() {
@@ -2192,6 +2196,13 @@ func (x *ListFeedRequest) GetTextLimit() int32 {
 		return x.TextLimit
 	}
 	return 0
+}
+
+func (x *ListFeedRequest) GetHiddenAuthorIds() []string {
+	if x != nil {
+		return x.HiddenAuthorIds
+	}
+	return nil
 }
 
 type ListFeedResponse struct {
@@ -7886,7 +7897,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"\xd1\x01\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\xfd\x01\n" +
 	"\x0fListFeedRequest\x12\x1d\n" +
 	"\n" +
 	"author_ids\x18\x01 \x03(\tR\tauthorIds\x12\x19\n" +
@@ -7896,7 +7907,8 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\thide_nsfw\x18\x05 \x01(\bR\bhideNsfw\x12\x1a\n" +
 	"\beveryone\x18\x06 \x01(\bR\beveryone\x12\x1d\n" +
 	"\n" +
-	"text_limit\x18\a \x01(\x05R\ttextLimit\"X\n" +
+	"text_limit\x18\a \x01(\x05R\ttextLimit\x12*\n" +
+	"\x11hidden_author_ids\x18\b \x03(\tR\x0fhiddenAuthorIds\"X\n" +
 	"\x10ListFeedResponse\x12#\n" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
