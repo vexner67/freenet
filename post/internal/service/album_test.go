@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"reflect"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -15,12 +16,24 @@ import (
 func newAlbumService(t *testing.T, moderators fakeModerators) (*service.AlbumService, *fakePhotos) {
 	t.Helper()
 
+	svc, photos, _ := newNotifiedAlbumService(t, moderators)
+
+	return svc, photos
+}
+
+// newNotifiedAlbumService also returns what the notification service was
+// told.
+func newNotifiedAlbumService(t *testing.T, moderators fakeModerators) (*service.AlbumService, *fakePhotos, *fakeNotifier) {
+	t.Helper()
+
 	albums := inmem.NewAlbumRepository()
 	photos := &fakePhotos{}
+	notifier := &fakeNotifier{}
 
 	return service.NewAlbumService(service.AlbumDeps{
 		Albums: albums, Photos: albums.Photos(), Tx: fakeTx{}, Media: photos, Moderators: moderators,
-	}), photos
+		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(), Notifier: notifier,
+	}), photos, notifier
 }
 
 // newPhotos is n photos to add, IDs growing as uploads do.
@@ -483,5 +496,61 @@ func TestPostService_WallAlbum(t *testing.T) {
 	kept, _ = albums.Photos(ctx, wall, uuid.Nil, 0)
 	if len(kept.Photos) != 4 || kept.Photos[0].NSFW() || !kept.Photos[3].NSFW() {
 		t.Fatalf("the adult copy: %d photos, first %v, last %v", len(kept.Photos), kept.Photos[0].NSFW(), kept.Photos[3].NSFW())
+	}
+}
+
+func TestAlbumService_Notifies(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	svc, _, told := newNotifiedAlbumService(t, nil)
+	album, _ := svc.Create(ctx, service.CreateAlbumInput{OwnerID: ann, RequesterID: ann, Name: "Лето"})
+	added := newPhotos(2)
+	if _, err := svc.AddPhotos(ctx, ann, album.ID(), added); err != nil {
+		t.Fatal(err)
+	}
+	photo := added[0].ID
+
+	// Ann hears of bob's heart and comment, not of her own.
+	if likes, err := svc.LikePhoto(ctx, bob, photo); err != nil || likes != 1 {
+		t.Fatalf("LikePhoto = %d, %v", likes, err)
+	}
+	if _, err := svc.LikePhoto(ctx, ann, photo); err != nil {
+		t.Fatal(err)
+	}
+	bobs, err := svc.CommentPhoto(ctx, bob, photo, "красиво")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.CommentPhoto(ctx, ann, photo, "спасибо"); err != nil {
+		t.Fatal(err)
+	}
+	like := service.Event{Kind: service.EventPhotoLike, RecipientID: ann, ActorID: bob, PostID: photo}
+	want := []service.Event{like, {Kind: service.EventPhotoComment, RecipientID: ann, ActorID: bob, PostID: photo, CommentID: bobs.ID()}}
+	if !slices.Equal(told.notified, want) || told.outsideTx != 0 {
+		t.Fatalf("told %+v outside a transaction %d times, want %+v", told.notified, told.outsideTx, want)
+	}
+
+	if _, err = svc.LikePhoto(ctx, bob, uuid.New()); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("a heart on nothing: %v", err)
+	}
+	if _, err = svc.CommentPhoto(ctx, bob, uuid.New(), "x"); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+		t.Fatalf("a comment on nothing: %v", err)
+	}
+
+	// The heart taken back takes its notification, the deleted comment
+	// its own, the deleted photo and album all of theirs.
+	if likes, err := svc.UnlikePhoto(ctx, bob, photo); err != nil || likes != 1 || !slices.Equal(told.retracted, []service.Event{like}) {
+		t.Fatalf("UnlikePhoto = %d, %v, retracted %+v", likes, err, told.retracted)
+	}
+	if err = svc.DeletePhotoComment(ctx, bob, bobs.ID()); err != nil || !slices.Equal(told.forgottenComments, []uuid.UUID{bobs.ID()}) {
+		t.Fatalf("DeletePhotoComment: %v, forgot %v", err, told.forgottenComments)
+	}
+	if err = svc.DeletePhoto(ctx, ann, photo); err != nil || !slices.Equal(told.forgotten, []uuid.UUID{photo}) {
+		t.Fatalf("DeletePhoto: %v, forgot %v", err, told.forgotten)
+	}
+	if err = svc.Delete(ctx, ann, album.ID()); err != nil || !slices.Equal(told.forgotten, []uuid.UUID{photo, added[1].ID}) || told.outsideTx != 0 {
+		t.Fatalf("Delete: %v, forgot %v", err, told.forgotten)
 	}
 }

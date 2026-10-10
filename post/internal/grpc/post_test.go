@@ -57,7 +57,7 @@ func newServer(t *testing.T) testServer {
 	albums := inmem.NewAlbumRepository()
 	albumService := service.NewAlbumService(service.AlbumDeps{
 		Albums: albums, Photos: albums.Photos(), Tx: inmem.TxManager{}, Media: mediaclient.Nop{}, Moderators: clubclient.Nop{},
-		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(),
+		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(), Notifier: notifyclient.Nop{},
 	})
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(postgrpc.Services{
 		Posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}, AlbumPhotos: albums.Photos(), WallPhotos: albumService, Switches: store.Posts()}),

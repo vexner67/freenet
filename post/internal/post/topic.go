@@ -305,6 +305,17 @@ func (m *TopicMessage) Content() CommentContent {
 }
 
 // FromWall: the message speaks for the community.
+// Notified is who hears about the likes of the message: its author, or
+// nobody for a message that speaks for the community, whose author
+// readers are not told.
+func (m *TopicMessage) Notified() uuid.UUID {
+	if m.fromWall {
+		return uuid.Nil
+	}
+
+	return m.authorID
+}
+
 func (m *TopicMessage) FromWall() bool {
 	return m.fromWall
 }
