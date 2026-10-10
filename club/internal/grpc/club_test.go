@@ -393,6 +393,10 @@ func TestEvents(t *testing.T) {
 		t.Fatalf("CreateClub = %v, %v", group, err)
 	}
 
+	if n, err := s.client.CountClubs(context.Background(), &clubv1.CountClubsRequest{}); err != nil || n.GetCount() != 1 {
+		t.Fatalf("CountClubs = %v, %v; the group, not the event", n, err)
+	}
+
 	events, err := s.client.ListMyClubs(s.as(t, ann), &clubv1.ListMyClubsRequest{Kind: clubv1.Kind_KIND_EVENT})
 	if err != nil || events.GetTotal() != 1 || events.GetClubs()[0].GetClub().GetId() != id {
 		t.Fatalf("my events = %v, %v", events, err)

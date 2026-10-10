@@ -34,6 +34,7 @@ const (
 	ClubService_ListMyClubs_FullMethodName        = "/club.v1.ClubService/ListMyClubs"
 	ClubService_ListUserClubs_FullMethodName      = "/club.v1.ClubService/ListUserClubs"
 	ClubService_SearchClubs_FullMethodName        = "/club.v1.ClubService/SearchClubs"
+	ClubService_CountClubs_FullMethodName         = "/club.v1.ClubService/CountClubs"
 	ClubService_SetClubAvatar_FullMethodName      = "/club.v1.ClubService/SetClubAvatar"
 	ClubService_SetClubBackdrop_FullMethodName    = "/club.v1.ClubService/SetClubBackdrop"
 	ClubService_PinClub_FullMethodName            = "/club.v1.ClubService/PinClub"
@@ -96,6 +97,9 @@ type ClubServiceClient interface {
 	// Public: clubs whose name or address has every word of the query, the
 	// newest first.
 	SearchClubs(ctx context.Context, in *SearchClubsRequest, opts ...grpc.CallOption) (*SearchClubsResponse, error)
+	// Public: how many groups there are, events not counted, for the page
+	// "о сайте".
+	CountClubs(ctx context.Context, in *CountClubsRequest, opts ...grpc.CallOption) (*CountClubsResponse, error)
 	// Its admins show a photo as the club's, which the media service has
 	// stored; an empty avatar_id takes it away.
 	SetClubAvatar(ctx context.Context, in *SetClubAvatarRequest, opts ...grpc.CallOption) (*SetClubAvatarResponse, error)
@@ -273,6 +277,16 @@ func (c *clubServiceClient) SearchClubs(ctx context.Context, in *SearchClubsRequ
 	return out, nil
 }
 
+func (c *clubServiceClient) CountClubs(ctx context.Context, in *CountClubsRequest, opts ...grpc.CallOption) (*CountClubsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CountClubsResponse)
+	err := c.cc.Invoke(ctx, ClubService_CountClubs_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clubServiceClient) SetClubAvatar(ctx context.Context, in *SetClubAvatarRequest, opts ...grpc.CallOption) (*SetClubAvatarResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SetClubAvatarResponse)
@@ -414,6 +428,9 @@ type ClubServiceServer interface {
 	// Public: clubs whose name or address has every word of the query, the
 	// newest first.
 	SearchClubs(context.Context, *SearchClubsRequest) (*SearchClubsResponse, error)
+	// Public: how many groups there are, events not counted, for the page
+	// "о сайте".
+	CountClubs(context.Context, *CountClubsRequest) (*CountClubsResponse, error)
 	// Its admins show a photo as the club's, which the media service has
 	// stored; an empty avatar_id takes it away.
 	SetClubAvatar(context.Context, *SetClubAvatarRequest) (*SetClubAvatarResponse, error)
@@ -492,6 +509,9 @@ func (UnimplementedClubServiceServer) ListUserClubs(context.Context, *ListUserCl
 }
 func (UnimplementedClubServiceServer) SearchClubs(context.Context, *SearchClubsRequest) (*SearchClubsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchClubs not implemented")
+}
+func (UnimplementedClubServiceServer) CountClubs(context.Context, *CountClubsRequest) (*CountClubsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CountClubs not implemented")
 }
 func (UnimplementedClubServiceServer) SetClubAvatar(context.Context, *SetClubAvatarRequest) (*SetClubAvatarResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetClubAvatar not implemented")
@@ -793,6 +813,24 @@ func _ClubService_SearchClubs_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClubService_CountClubs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CountClubsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).CountClubs(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_CountClubs_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).CountClubs(ctx, req.(*CountClubsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClubService_SetClubAvatar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetClubAvatarRequest)
 	if err := dec(in); err != nil {
@@ -1017,6 +1055,10 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SearchClubs",
 			Handler:    _ClubService_SearchClubs_Handler,
+		},
+		{
+			MethodName: "CountClubs",
+			Handler:    _ClubService_CountClubs_Handler,
 		},
 		{
 			MethodName: "SetClubAvatar",

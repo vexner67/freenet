@@ -19,6 +19,7 @@ func PublicMethods() []string {
 		clubv1.ClubService_ListMembers_FullMethodName,
 		clubv1.ClubService_ListUserClubs_FullMethodName,
 		clubv1.ClubService_SearchClubs_FullMethodName,
+		clubv1.ClubService_CountClubs_FullMethodName,
 		clubv1.ClubService_CanModerateWall_FullMethodName,
 		clubv1.ClubService_ListWallModerators_FullMethodName,
 		clubv1.ClubService_PurgeUser_FullMethodName,
