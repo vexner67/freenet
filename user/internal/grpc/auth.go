@@ -13,6 +13,7 @@ func PublicMethods() []string {
 		grpc_health_v1.Health_Check_FullMethodName,
 		userv1.UserService_GetProfile_FullMethodName,
 		userv1.UserService_GetProfiles_FullMethodName,
+		userv1.UserService_GetStatistics_FullMethodName,
 		userv1.UserService_SearchUsers_FullMethodName,
 		userv1.UserService_GetFollowStats_FullMethodName,
 		userv1.UserService_ListFollowers_FullMethodName,

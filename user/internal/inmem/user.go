@@ -11,6 +11,7 @@ import (
 	"github.com/google/uuid"
 
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
@@ -101,6 +102,29 @@ func (r *UserRepository) MarkSeen(ctx context.Context, id uuid.UUID, at time.Tim
 	}
 
 	return nil
+}
+
+func (r *UserRepository) Count(ctx context.Context, since time.Time) (service.Statistics, error) {
+	if err := ctx.Err(); err != nil {
+		return service.Statistics{}, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var stats service.Statistics
+	for _, u := range r.users {
+		if u.IsDeactivated() {
+			continue
+		}
+
+		stats.Users++
+		if u.LastSeen().After(since) {
+			stats.Online++
+		}
+	}
+
+	return stats, nil
 }
 
 func (r *UserRepository) GetByID(ctx context.Context, id uuid.UUID) (*user.User, error) {

@@ -51,6 +51,9 @@ service UserService {
 
   // Requires an access token: the caller is on the site now ("Онлайн").
   rpc MarkOnline(MarkOnlineRequest) returns (google.protobuf.Empty);
+  // Public: how many people the site has and how many are on it now, for
+  // its page "о сайте".
+  rpc GetStatistics(GetStatisticsRequest) returns (GetStatisticsResponse);
 
   // Requires an access token: whether the caller may write on the user's
   // wall, as the user's privacy and blacklists allow.
@@ -445,6 +448,15 @@ message ListFollowsRequest {
 }
 
 message MarkOnlineRequest {}
+
+message GetStatisticsRequest {}
+
+message GetStatisticsResponse {
+  // Pages that are not deleted.
+  int32 users = 1;
+  // Those of them whose owners are on the site now.
+  int32 online = 2;
+}
 
 message ListFollowsResponse {
   repeated PublicProfile users = 1;

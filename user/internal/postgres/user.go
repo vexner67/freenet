@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/pgpool"
+	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 )
 
@@ -227,6 +228,26 @@ func (r *UserRepository) MarkSeen(ctx context.Context, id uuid.UUID, at time.Tim
 	}
 
 	return nil
+}
+
+// countUsersQuery reads the whole table: the page "о сайте" is opened
+// seldom and the table is small.
+const countUsersQuery = `
+	SELECT
+		count(*),
+		count(*) FILTER (WHERE last_seen_at > $1)
+	FROM users
+	WHERE deactivated_at IS NULL
+`
+
+func (r *UserRepository) Count(ctx context.Context, since time.Time) (service.Statistics, error) {
+	var stats service.Statistics
+
+	if err := r.pool.QueryRow(ctx, countUsersQuery, since).Scan(&stats.Users, &stats.Online); err != nil {
+		return service.Statistics{}, errs.Wrap("r.pool.QueryRow", err)
+	}
+
+	return stats, nil
 }
 
 // setBackdropQueries change one side of a page each, so that two changes
