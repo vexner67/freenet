@@ -139,6 +139,7 @@ type AlbumService struct {
 	moderators WallModerators
 	likes      AlbumPhotoLikeRepository
 	comments   PhotoCommentRepository
+	notifier   Notifier
 	now        func() time.Time
 }
 
@@ -151,6 +152,7 @@ type AlbumDeps struct {
 	Moderators WallModerators
 	Likes      AlbumPhotoLikeRepository
 	Comments   PhotoCommentRepository
+	Notifier   Notifier
 }
 
 func NewAlbumService(d AlbumDeps) *AlbumService {
@@ -162,6 +164,7 @@ func NewAlbumService(d AlbumDeps) *AlbumService {
 		moderators: d.Moderators,
 		likes:      d.Likes,
 		comments:   d.Comments,
+		notifier:   d.Notifier,
 		now:        time.Now,
 	}
 }
@@ -286,7 +289,7 @@ func (s *AlbumService) Delete(ctx context.Context, requesterID, id uuid.UUID) er
 			return errs.Wrap("s.albums.Delete", err)
 		}
 
-		return errs.Wrap("s.deleteFiles", s.deleteFiles(ctx, photos))
+		return errs.Wrap("s.forget", s.forget(ctx, photos))
 	})
 	if err != nil {
 		return errs.Wrap("s.tx.WithinTx", err)
@@ -592,7 +595,7 @@ func (s *AlbumService) DeletePhoto(ctx context.Context, requesterID, id uuid.UUI
 			return errs.Wrap("s.photos.Delete", err)
 		}
 
-		return errs.Wrap("s.deleteFiles", s.deleteFiles(ctx, []*post.AlbumPhoto{p}))
+		return errs.Wrap("s.forget", s.forget(ctx, []*post.AlbumPhoto{p}))
 	})
 	if err != nil {
 		return errs.Wrap("s.tx.WithinTx", err)
@@ -618,6 +621,22 @@ func (s *AlbumService) changeable(ctx context.Context, requesterID, id uuid.UUID
 	}
 
 	return a, nil
+}
+
+// forget is what deleted photos take along, in the transaction of ctx:
+// their images and the notifications about their likes and comments.
+func (s *AlbumService) forget(ctx context.Context, photos []*post.AlbumPhoto) error {
+	if err := s.deleteFiles(ctx, photos); err != nil {
+		return errs.Wrap("s.deleteFiles", err)
+	}
+
+	for _, p := range photos {
+		if err := s.notifier.ForgetPost(ctx, p.ID()); err != nil {
+			return errs.Wrap("s.notifier.ForgetPost", err)
+		}
+	}
+
+	return nil
 }
 
 // deleteFiles tells media to delete the images of photos, each under who
@@ -646,18 +665,44 @@ func (s *AlbumService) deleteFiles(ctx context.Context, photos []*post.AlbumPhot
 // LikePhoto and UnlikePhoto are the heart under a photo, as under a post:
 // idempotent, they return how many like it now.
 func (s *AlbumService) LikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error) {
-	likes, err := s.likes.Like(ctx, photoID, userID)
-	if err != nil {
-		return 0, errs.Wrap("s.likes.Like", err)
-	}
-
-	return likes, nil
+	return s.setPhotoLike(ctx, userID, photoID, true)
 }
 
 func (s *AlbumService) UnlikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error) {
-	likes, err := s.likes.Unlike(ctx, photoID, userID)
+	return s.setPhotoLike(ctx, userID, photoID, false)
+}
+
+// setPhotoLike tells who uploaded the photo about the like, as the author
+// of a post hears about its own, and takes that back with it.
+func (s *AlbumService) setPhotoLike(ctx context.Context, userID, photoID uuid.UUID, like bool) (int, error) {
+	p, err := s.photos.Get(ctx, photoID)
 	if err != nil {
-		return 0, errs.Wrap("s.likes.Unlike", err)
+		return 0, errs.Wrap("s.photos.Get", err)
+	}
+
+	set, tell := s.likes.Unlike, s.notifier.Retract
+	if like {
+		set, tell = s.likes.Like, s.notifier.Notify
+	}
+
+	var likes int
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		var err error
+		if likes, err = set(ctx, photoID, userID); err != nil {
+			return errs.Wrap("set", err)
+		}
+
+		if p.AuthorID() == userID {
+			return nil
+		}
+
+		e := Event{Kind: EventPhotoLike, RecipientID: p.AuthorID(), ActorID: userID, PostID: photoID}
+
+		return errs.Wrap("tell", tell(ctx, e))
+	})
+	if err != nil {
+		return 0, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return likes, nil
@@ -705,8 +750,28 @@ func (s *AlbumService) CommentPhoto(ctx context.Context, authorID, photoID uuid.
 		return nil, errs.Wrap("post.NewPhotoComment", err)
 	}
 
-	if err = s.comments.Save(ctx, c); err != nil {
-		return nil, errs.Wrap("s.comments.Save", err)
+	p, err := s.photos.Get(ctx, photoID)
+	if err != nil {
+		return nil, errs.Wrap("s.photos.Get", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.comments.Save(ctx, c); err != nil {
+			return errs.Wrap("s.comments.Save", err)
+		}
+
+		// Who uploaded the photo hears about it ("оставил комментарий
+		// под вашей фотографией" of openvk), but not about their own.
+		if p.AuthorID() == authorID {
+			return nil
+		}
+
+		e := Event{Kind: EventPhotoComment, RecipientID: p.AuthorID(), ActorID: authorID, PostID: photoID, CommentID: c.ID()}
+
+		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, e))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return c, nil
@@ -735,8 +800,15 @@ func (s *AlbumService) DeletePhotoComment(ctx context.Context, requesterID, id u
 		return post.ErrCannotDeletePhotoComment
 	}
 
-	if err = s.comments.Delete(ctx, id); err != nil {
-		return errs.Wrap("s.comments.Delete", err)
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.comments.Delete(ctx, id); err != nil {
+			return errs.Wrap("s.comments.Delete", err)
+		}
+
+		return errs.Wrap("s.notifier.ForgetComment", s.notifier.ForgetComment(ctx, id))
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return nil

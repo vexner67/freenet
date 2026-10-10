@@ -141,7 +141,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 	albums := service.NewAlbumService(service.AlbumDeps{
 		Albums: repos.albums, Photos: repos.albumPhotos, Tx: repos.tx, Media: photos, Moderators: moderators,
-		Likes: repos.photoLikes, Comments: repos.photoComments,
+		Likes: repos.photoLikes, Comments: repos.photoComments, Notifier: notifier,
 	})
 
 	postv1.RegisterPostServiceServer(

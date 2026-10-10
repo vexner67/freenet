@@ -196,7 +196,7 @@ func TestPurgeService_Albums(t *testing.T) {
 	photos := &fakePhotos{}
 	club, ann, bob := uuid.New(), uuid.New(), uuid.New()
 	albums := service.NewAlbumService(service.AlbumDeps{
-		Albums: albumRepo, Photos: albumRepo.Photos(), Tx: fakeTx{}, Media: &fakePhotos{},
+		Albums: albumRepo, Photos: albumRepo.Photos(), Tx: fakeTx{}, Media: &fakePhotos{}, Notifier: &fakeNotifier{},
 		Moderators: fakeModerators{{club, ann}: true, {club, bob}: true},
 	})
 	purge := service.NewPurgeService(service.PurgeDeps{

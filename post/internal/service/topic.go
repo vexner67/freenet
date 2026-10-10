@@ -377,18 +377,47 @@ func topicEvents(t *post.Topic, m *post.TopicMessage, mentions post.Mentions) []
 // off, as on a comment; they return how many it has now. Nobody is
 // notified.
 func (s *TopicService) LikeMessage(ctx context.Context, userID, id uuid.UUID) (int, error) {
-	likes, err := s.likes.Like(ctx, id, userID)
-	if err != nil {
-		return 0, errs.Wrap("s.likes.Like", err)
-	}
-
-	return likes, nil
+	return s.setMessageLike(ctx, userID, id, true)
 }
 
 func (s *TopicService) UnlikeMessage(ctx context.Context, userID, id uuid.UUID) (int, error) {
-	likes, err := s.likes.Unlike(ctx, id, userID)
+	return s.setMessageLike(ctx, userID, id, false)
+}
+
+// setMessageLike tells the author of the message about the like, as the
+// author of a comment hears about its own, and takes that back with it.
+func (s *TopicService) setMessageLike(ctx context.Context, userID, id uuid.UUID, like bool) (int, error) {
+	m, err := s.messages.Get(ctx, id)
 	if err != nil {
-		return 0, errs.Wrap("s.likes.Unlike", err)
+		return 0, errs.Wrap("s.messages.Get", err)
+	}
+
+	set, tell := s.likes.Unlike, s.notifier.Retract
+	if like {
+		set, tell = s.likes.Like, s.notifier.Notify
+	}
+
+	var likes int
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		var err error
+		if likes, err = set(ctx, id, userID); err != nil {
+			return errs.Wrap("set", err)
+		}
+
+		// Nobody is notified about liking their own message, nor about a
+		// message that speaks for a community (post.TopicMessage.Notified).
+		recipient := m.Notified()
+		if recipient == uuid.Nil || recipient == userID {
+			return nil
+		}
+
+		e := Event{Kind: EventTopicMessageLike, RecipientID: recipient, ActorID: userID, PostID: m.TopicID(), CommentID: id}
+
+		return errs.Wrap("tell", tell(ctx, e))
+	})
+	if err != nil {
+		return 0, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return likes, nil

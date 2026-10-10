@@ -291,6 +291,28 @@ func TestTopicService_NotificationsAndLikes(t *testing.T) {
 		t.Fatalf("a heart on nothing: %v", err)
 	}
 
+	// Bob hears of the hearts on his message; a heart on one's own message
+	// and on a message of the community tells nobody, and a heart taken
+	// back takes its notification.
+	if _, err = svc.LikeMessage(ctx, bob, bobs.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.LikeMessage(ctx, ann, clubs.ID()); err != nil {
+		t.Fatal(err)
+	}
+	annLikes := service.Event{Kind: service.EventTopicMessageLike, RecipientID: bob, ActorID: ann, PostID: topic.ID(), CommentID: bobs.ID()}
+	adminLikes := service.Event{Kind: service.EventTopicMessageLike, RecipientID: bob, ActorID: admin, PostID: topic.ID(), CommentID: bobs.ID()}
+	if got := told.notified[2:]; !slices.Equal(got, []service.Event{annLikes, annLikes, adminLikes}) || told.outsideTx != 0 {
+		t.Fatalf("told of hearts %+v", got)
+	}
+	if _, err = svc.UnlikeMessage(ctx, bob, bobs.ID()); err != nil || len(told.retracted) != 0 {
+		t.Fatalf("one's own heart taken back: %v, %+v", err, told.retracted)
+	}
+	if _, err = svc.UnlikeMessage(ctx, ann, clubs.ID()); err != nil || len(told.retracted) != 0 {
+		t.Fatalf("a heart taken back from the community: %v, %+v", err, told.retracted)
+	}
+	told.notified = told.notified[:2]
+
 	page, err := svc.Messages(ctx, ann, topic.ID(), uuid.Nil, 10)
 	if err != nil || page.Messages[1].Likes() != 2 || !page.Liked[bobs.ID()] || len(page.Liked) != 1 {
 		t.Fatalf("Messages to ann = %+v, liked %v, %v", page.Messages[1], page.Liked, err)
