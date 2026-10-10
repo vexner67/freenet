@@ -402,7 +402,8 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 }
 
 func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest) (*postv1.ListFeedResponse, error) {
-	if len(req.GetAuthorIds()) > service.MaxFeedAuthors || len(req.GetWallIds()) > service.MaxFeedWalls {
+	if len(req.GetAuthorIds()) > service.MaxFeedAuthors || len(req.GetWallIds()) > service.MaxFeedWalls ||
+		len(req.GetHiddenAuthorIds()) > service.MaxFeedHidden {
 		return nil, status.Error(codes.InvalidArgument, "too many authors")
 	}
 
@@ -416,12 +417,19 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 		return nil, err
 	}
 
+	hidden, err := parseFeedIDs(req.GetHiddenAuthorIds(), "invalid author id")
+	if err != nil {
+		return nil, err
+	}
+
 	cursor, err := parseCursor(req.GetCursor())
 	if err != nil {
 		return nil, err
 	}
 
-	sources := service.FeedSources{Authors: authorIDs, Walls: wallIDs, HideNSFW: req.GetHideNsfw(), Everyone: req.GetEveryone()}
+	sources := service.FeedSources{
+		Authors: authorIDs, Walls: wallIDs, HideNSFW: req.GetHideNsfw(), Everyone: req.GetEveryone(), Hidden: hidden,
+	}
 
 	page, err := h.postService.Feed(ctx, viewerID(ctx), sources, cursor, int(req.GetLimit()))
 	if err != nil {

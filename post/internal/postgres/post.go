@@ -366,7 +366,8 @@ func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, pick 
 }
 
 // listFeedQuery: a post that speaks for a community is the community's,
-// so it comes with the walls, never with its author.
+// so it comes with the walls, never with its author; nor is it left out
+// with the posts of the people the reader blacklisted ($6).
 const listFeedQuery = `
 	SELECT
 		id,
@@ -394,6 +395,7 @@ const listFeedQuery = `
 		AND id < $3
 		AND NOT archived
 		AND NOT (nsfw AND $5)
+		AND NOT (author_id = ANY($6) AND NOT from_wall)
 	ORDER BY id DESC
 	LIMIT $4
 `
@@ -427,6 +429,7 @@ const listGlobalFeedQuery = `
 		AND id < $1
 		AND NOT archived
 		AND NOT (nsfw AND $3)
+		AND NOT (author_id = ANY($4) AND NOT from_wall)
 	ORDER BY id DESC
 	LIMIT $2
 `
@@ -437,7 +440,7 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 	}
 
 	if sources.Everyone {
-		rows, err := r.conn(ctx).Query(ctx, listGlobalFeedQuery, before, limit, sources.HideNSFW)
+		rows, err := r.conn(ctx).Query(ctx, listGlobalFeedQuery, before, limit, sources.HideNSFW, ids(sources.Hidden))
 		if err != nil {
 			return nil, errs.Wrap("r.conn.Query", err)
 		}
@@ -445,7 +448,7 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 		return collectPosts(rows)
 	}
 
-	rows, err := r.conn(ctx).Query(ctx, listFeedQuery, ids(sources.Authors), ids(sources.Walls), before, limit, sources.HideNSFW)
+	rows, err := r.conn(ctx).Query(ctx, listFeedQuery, ids(sources.Authors), ids(sources.Walls), before, limit, sources.HideNSFW, ids(sources.Hidden))
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}

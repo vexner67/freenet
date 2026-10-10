@@ -21,6 +21,9 @@ const (
 	// MaxFeedWalls bounds its walls: those of the same people and of as
 	// many clubs.
 	MaxFeedWalls = 2001
+	// MaxFeedHidden bounds whose posts a feed leaves out: the newest of
+	// the reader's blacklist.
+	MaxFeedHidden = 1000
 )
 
 var (
@@ -90,6 +93,10 @@ type FeedSources struct {
 	// (post.ByWallOwner), whoever the reader follows; Authors and Walls
 	// are not looked at.
 	Everyone bool
+	// Hidden are the people whose posts the feed leaves out wherever they
+	// wrote them: the reader's blacklist. What one of them wrote for a
+	// community stays: leaving it out would tell who wrote it.
+	Hidden []uuid.UUID
 }
 
 // WallModerators tells who keeps a wall clean besides its owner: the
@@ -886,7 +893,7 @@ func (s *PostService) ListWall(ctx context.Context, viewerID, wallID uuid.UUID, 
 // first. Total is not counted: a feed is read page by page,
 // not as a whole.
 func (s *PostService) Feed(ctx context.Context, viewerID uuid.UUID, sources FeedSources, cursor uuid.UUID, size int) (Page, error) {
-	if len(sources.Authors) > MaxFeedAuthors || len(sources.Walls) > MaxFeedWalls {
+	if len(sources.Authors) > MaxFeedAuthors || len(sources.Walls) > MaxFeedWalls || len(sources.Hidden) > MaxFeedHidden {
 		return Page{}, ErrTooManyAuthors
 	}
 

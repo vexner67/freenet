@@ -3,6 +3,7 @@ package postgres_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -188,6 +189,17 @@ func TestPostRepository_NSFW(t *testing.T) {
 	sources.HideNSFW = true
 	if feed, err := repo.ListFeed(ctx, sources, uuid.Nil, 10); err != nil || len(feed) != 1 || feed[0].ID() != plain.ID() {
 		t.Fatalf("the feed without adult posts shows %d, %v", len(feed), err)
+	}
+
+	// What the people the reader blacklisted wrote is left out, of the
+	// news of everyone too.
+	sources.Hidden = []uuid.UUID{ann}
+	if feed, err := repo.ListFeed(ctx, sources, uuid.Nil, 10); err != nil || len(feed) != 0 {
+		t.Fatalf("the feed without the blacklisted shows %d, %v", len(feed), err)
+	}
+	if feed, err := repo.ListFeed(ctx, service.FeedSources{Everyone: true, Hidden: []uuid.UUID{ann}}, uuid.Nil, 1000); err != nil ||
+		slices.ContainsFunc(feed, func(p *post.Post) bool { return p.AuthorID() == ann }) {
+		t.Fatalf("the feed of everyone shows the blacklisted, %v", err)
 	}
 
 	// An edit saves the mark with the text.
