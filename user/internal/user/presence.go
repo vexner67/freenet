@@ -35,6 +35,18 @@ func (u *User) IsOnline(now time.Time) bool {
 	return !u.lastSeen.IsZero() && now.Sub(u.lastSeen) < OnlineFor
 }
 
+// ListedProfile is the person in a list of people at now: what anyone
+// may see (PublicProfile) and whether they are online ("Онлайн" by a
+// name, as on openvk). A list does not know its viewer, so only a page
+// open to everyone says it; when the person last visited, a list never
+// tells.
+func (u *User) ListedProfile(now time.Time) PublicProfile {
+	p := u.PublicProfile()
+	p.Online = !u.IsDeactivated() && u.privacy.PageRead == AudienceEveryone && u.IsOnline(now)
+
+	return p
+}
+
 // lastSeenFor is when viewerID (uuid.Nil: anonymous), tied to u by t,
 // may see u last visited, the zero time if not: the owner and the
 // audience of "Кто видит мою неактивность" always, the others while the

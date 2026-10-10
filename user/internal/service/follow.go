@@ -256,7 +256,7 @@ func (s *FollowService) page(
 
 	page.Users = make([]user.PublicProfile, 0, len(found))
 	for _, f := range found {
-		page.Users = append(page.Users, f.User.PublicProfile())
+		page.Users = append(page.Users, f.User.ListedProfile(s.now()))
 	}
 
 	return page, nil
