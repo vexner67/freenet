@@ -56,6 +56,8 @@ type Users interface {
 	UpdateStatus(ctx context.Context, accessToken, status string) (model.User, error)
 	// MarkOnline: the caller is on the site now.
 	MarkOnline(ctx context.Context, accessToken string) error
+	// Statistics counts the people of the site and those on it now.
+	Statistics(ctx context.Context) (users, online int, err error)
 	// SetBackdrop shows photoID ("" for none) on a side of the caller's
 	// page, telling the photo it showed before.
 	SetBackdrop(ctx context.Context, accessToken, side, photoID string) (model.User, string, error)
@@ -95,6 +97,8 @@ type Posts interface {
 	Unpin(ctx context.Context, accessToken, id string) error
 	Get(ctx context.Context, accessToken, id string) (model.Post, error)
 	GetMany(ctx context.Context, ids []string) ([]model.Post, error)
+	// Count counts the posts on all walls.
+	Count(ctx context.Context) (int, error)
 	// Archive puts a post away in the archive of its wall, or back;
 	// CloseComments lets nobody comment it anymore, or again. The owner of
 	// the wall only.
@@ -202,6 +206,8 @@ type Clubs interface {
 	CreateEvent(ctx context.Context, accessToken string, e model.NewEvent) (model.ClubView, error)
 	Get(ctx context.Context, accessToken, ref string) (model.ClubView, error)
 	GetMany(ctx context.Context, ids []string) ([]model.Club, error)
+	// Count counts the groups, events not among them.
+	Count(ctx context.Context) (int, error)
 	Update(ctx context.Context, accessToken, clubID string, changes model.ClubChanges) (model.ClubView, error)
 	Join(ctx context.Context, accessToken, clubID string, maybe bool) (model.ClubView, error)
 	Leave(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
@@ -331,6 +337,7 @@ func (a *api) routes() *http.ServeMux {
 
 	mux.HandleFunc("POST /api/v1/clubs", a.createClub)
 	mux.HandleFunc("POST /api/v1/events", a.createEvent)
+	mux.HandleFunc("GET /api/v1/about", a.about)
 	mux.HandleFunc("GET /api/v1/me/clubs", a.listMyClubs)
 	mux.HandleFunc("GET /api/v1/me/events", a.listMyEvents)
 	mux.HandleFunc("GET /api/v1/me/clubs/pinned", a.listPinnedClubs)

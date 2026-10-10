@@ -111,6 +111,16 @@ func (c *Clubs) Get(ctx context.Context, accessToken, ref string) (model.ClubVie
 	return toClubView(resp.GetClub()), nil
 }
 
+// Count counts the groups of the site.
+func (c *Clubs) Count(ctx context.Context) (int, error) {
+	resp, err := c.api.CountClubs(ctx, &clubv1.CountClubsRequest{})
+	if err != nil {
+		return 0, errs.Wrap("c.api.CountClubs", fromStatus(err))
+	}
+
+	return int(resp.GetCount()), nil
+}
+
 // GetMany returns the clubs found among ids, at most 100, in no order.
 func (c *Clubs) GetMany(ctx context.Context, ids []string) ([]model.Club, error) {
 	resp, err := c.api.GetClubs(ctx, &clubv1.GetClubsRequest{Ids: ids})

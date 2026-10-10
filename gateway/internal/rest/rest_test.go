@@ -327,6 +327,10 @@ func (f *fakeUsers) ListOnlineFollowing(_ context.Context, userID, cursor string
 	return model.UserPage{Users: []model.PublicProfile{{ID: "u2", Profile: model.Profile{Nickname: "bob"}}}, Total: 1}, nil
 }
 
+func (f *fakeUsers) Statistics(context.Context) (int, int, error) {
+	return 12, 3, f.err
+}
+
 // MarkOnline counts the visits the event stream tells, from its goroutine.
 func (f *fakeUsers) MarkOnline(_ context.Context, token string) error {
 	f.onlineMu.Lock()
@@ -483,6 +487,10 @@ func (f *fakePosts) Get(_ context.Context, token, id string) (model.Post, error)
 }
 
 // GetMany knows p1 only.
+func (f *fakePosts) Count(context.Context) (int, error) {
+	return 40, f.err
+}
+
 func (f *fakePosts) GetMany(_ context.Context, ids []string) ([]model.Post, error) {
 	var found []model.Post
 	for _, id := range ids {

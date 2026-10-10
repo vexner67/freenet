@@ -139,6 +139,10 @@ func (f *fakeClubs) Mine(_ context.Context, token, cursor string, limit int, fil
 	return model.ClubPage{Clubs: []model.Membership{{Club: cats, Role: "admin", Pinned: true}}, Total: 3}, f.err
 }
 
+func (f *fakeClubs) Count(context.Context) (int, error) {
+	return 5, f.err
+}
+
 func (f *fakeClubs) Search(_ context.Context, query, cursor string, limit int) (model.ClubSearchPage, error) {
 	f.query = query
 	if query == "" {

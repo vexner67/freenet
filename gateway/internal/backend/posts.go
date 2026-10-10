@@ -433,3 +433,13 @@ func toComment(c *postv1.Comment) model.Comment {
 		Mine:      c.GetMine(),
 	}
 }
+
+// Count counts the posts on all walls.
+func (p *Posts) Count(ctx context.Context) (int, error) {
+	resp, err := p.api.CountPosts(ctx, &postv1.CountPostsRequest{})
+	if err != nil {
+		return 0, errs.Wrap("p.api.CountPosts", fromStatus(err))
+	}
+
+	return int(resp.GetCount()), nil
+}

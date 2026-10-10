@@ -1240,6 +1240,28 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
+  /api/v1/about:
+    get:
+      summary: What the site counts ("о сайте")
+      description: >-
+        As openvk's "Об этой инстанции": the pages that are not deleted,
+        those of them whose owners are on the site now, the groups (events
+        are not groups) and the posts on all walls, archived ones left out.
+        No token needed.
+      responses:
+        "200":
+          description: The counts
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [users, online, clubs, posts]
+                properties:
+                  users: { type: integer }
+                  online: { type: integer }
+                  clubs: { type: integer }
+                  posts: { type: integer }
+
   /api/v1/events:
     post:
       summary: Create an event ("Создать встречу")
