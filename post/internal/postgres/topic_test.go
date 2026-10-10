@@ -92,6 +92,40 @@ func TestTopicRepository(t *testing.T) {
 		t.Fatalf("Last = %v, %v", last, err)
 	}
 
+	// Hearts: one per user, counted in the message.
+	for range 2 {
+		if likes, err := messages.Like(ctx, second.ID(), bob); err != nil || likes != 1 {
+			t.Fatalf("Like = %d, %v", likes, err)
+		}
+	}
+	if likes, err := messages.Like(ctx, second.ID(), ann); err != nil || likes != 2 {
+		t.Fatalf("a second Like = %d, %v", likes, err)
+	}
+	if _, err = messages.Like(ctx, uuid.New(), bob); !errors.Is(err, post.ErrMessageNotFound) {
+		t.Fatalf("Like of nothing: %v", err)
+	}
+	if _, err = messages.Unlike(ctx, uuid.New(), bob); !errors.Is(err, post.ErrMessageNotFound) {
+		t.Fatalf("Unlike of nothing: %v", err)
+	}
+	if liked, err := messages.Liked(ctx, bob, []uuid.UUID{hi.ID(), second.ID()}); err != nil || len(liked) != 1 || !liked[second.ID()] {
+		t.Fatalf("Liked = %v, %v", liked, err)
+	}
+	if got, err := messages.Get(ctx, second.ID()); err != nil || got.Likes() != 2 {
+		t.Fatalf("Get = %d likes, %v", got.Likes(), err)
+	}
+	for range 2 {
+		if likes, err := messages.Unlike(ctx, second.ID(), ann); err != nil || likes != 1 {
+			t.Fatalf("Unlike = %d, %v", likes, err)
+		}
+	}
+	// An erased user takes their hearts out of the count.
+	if _, err = topics.DeleteByUser(ctx, uuid.New()); err != nil {
+		t.Fatal(err)
+	}
+	if page, err := messages.List(ctx, hello.ID(), hi.ID(), 10); err != nil || page[0].Likes() != 1 {
+		t.Fatalf("likes after erasing a stranger = %+v, %v", page, err)
+	}
+
 	if err = messages.Delete(ctx, second.ID()); err != nil {
 		t.Fatal(err)
 	}

@@ -25,6 +25,9 @@ const (
 	// EventSuggestedPost: someone suggested a post for the wall of the
 	// actor, a community the recipient runs; PostID is the suggestion.
 	EventSuggestedPost
+	// EventTopicMessage: a message in the topic the recipient started;
+	// PostID is the topic and CommentID the message.
+	EventTopicMessage
 )
 
 // Event: RecipientID is the author of the post for likes, comments,

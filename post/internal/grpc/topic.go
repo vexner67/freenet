@@ -161,22 +161,62 @@ func (h *PostHandler) ListTopicMessages(ctx context.Context, req *postv1.ListTop
 		return nil, err
 	}
 
-	page, err := h.topicService.Messages(ctx, topicID, after, int(req.GetLimit()))
+	viewer := viewerID(ctx)
+
+	page, err := h.topicService.Messages(ctx, viewer, topicID, after, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}
 
-	viewer := viewerID(ctx)
 	resp := &postv1.ListTopicMessagesResponse{
 		Messages:   make([]*postv1.TopicMessage, 0, len(page.Messages)),
 		NextCursor: cursorString(page.NextCursor),
 		Total:      int32(page.Total), //nolint:gosec // a counter from an int4 column
 	}
 	for _, m := range page.Messages {
-		resp.Messages = append(resp.Messages, toProtoTopicMessage(m, viewer))
+		pm := toProtoTopicMessage(m, viewer)
+		pm.Liked = page.Liked[m.ID()]
+		resp.Messages = append(resp.Messages, pm)
 	}
 
 	return resp, nil
+}
+
+func (h *PostHandler) LikeTopicMessage(ctx context.Context, req *postv1.LikeTopicMessageRequest) (*postv1.LikeTopicMessageResponse, error) {
+	likes, err := h.likeTopicMessage(ctx, req.GetId(), h.topicService.LikeMessage)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.LikeTopicMessageResponse{LikeCount: likes}, nil
+}
+
+func (h *PostHandler) UnlikeTopicMessage(ctx context.Context, req *postv1.UnlikeTopicMessageRequest) (*postv1.UnlikeTopicMessageResponse, error) {
+	likes, err := h.likeTopicMessage(ctx, req.GetId(), h.topicService.UnlikeMessage)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.UnlikeTopicMessageResponse{LikeCount: likes}, nil
+}
+
+func (h *PostHandler) likeTopicMessage(ctx context.Context, rawID string, set func(ctx context.Context, userID, id uuid.UUID) (int, error)) (int32, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return 0, err
+	}
+
+	id, err := uuid.Parse(rawID)
+	if err != nil {
+		return 0, status.Error(codes.InvalidArgument, "invalid message id")
+	}
+
+	likes, err := set(ctx, userID, id)
+	if err != nil {
+		return 0, err
+	}
+
+	return int32(likes), nil //nolint:gosec // a counter from an int4 column
 }
 
 func (h *PostHandler) DeleteTopicMessage(ctx context.Context, req *postv1.DeleteTopicMessageRequest) (*emptypb.Empty, error) {
@@ -285,5 +325,6 @@ func toProtoTopicMessage(m *post.TopicMessage, viewerID uuid.UUID) *postv1.Topic
 		FromWall:  m.FromWall(),
 		CreatedAt: timestamppb.New(m.CreatedAt()),
 		Mine:      viewerID != uuid.Nil && m.BelongsTo(viewerID),
+		LikeCount: int32(m.Likes()), //nolint:gosec // a counter from an int4 column
 	}
 }

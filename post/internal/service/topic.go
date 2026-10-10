@@ -51,6 +51,17 @@ type TopicMessageRepository interface {
 	Last(ctx context.Context, topicIDs []uuid.UUID) ([]*post.TopicMessage, error)
 }
 
+// TopicMessageLikeRepository keeps the hearts of messages as
+// CommentLikeRepository keeps those of comments.
+type TopicMessageLikeRepository interface {
+	// Like and Unlike are idempotent and return how many likes the
+	// message has now; post.ErrMessageNotFound for a missing message.
+	Like(ctx context.Context, messageID, userID uuid.UUID) (int, error)
+	Unlike(ctx context.Context, messageID, userID uuid.UUID) (int, error)
+	// Liked returns which of messageIDs the user likes.
+	Liked(ctx context.Context, userID uuid.UUID, messageIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+}
+
 // TopicPage is one screen of topics with the newest message of each, by
 // topic, for "ответил"; NextCursor is nil on the last.
 type TopicPage struct {
@@ -61,9 +72,11 @@ type TopicPage struct {
 }
 
 // TopicMessagePage is one screen of a topic, oldest first; NextCursor is
-// uuid.Nil on the last, Total counts the messages of the topic.
+// uuid.Nil on the last, Total counts the messages of the topic. Liked
+// are those of them the viewer likes.
 type TopicMessagePage struct {
 	Messages   []*post.TopicMessage
+	Liked      map[uuid.UUID]bool
 	NextCursor uuid.UUID
 	Total      int
 }
@@ -95,7 +108,9 @@ type TopicMessageInput struct {
 type TopicService struct {
 	topics     TopicRepository
 	messages   TopicMessageRepository
+	likes      TopicMessageLikeRepository
 	tx         TxManager
+	notifier   Notifier
 	photos     PhotoKeeper
 	moderators WallModerators
 	now        func() time.Time
@@ -105,7 +120,9 @@ type TopicService struct {
 type TopicDeps struct {
 	Topics     TopicRepository
 	Messages   TopicMessageRepository
+	Likes      TopicMessageLikeRepository
 	Tx         TxManager
+	Notifier   Notifier
 	Photos     PhotoKeeper
 	Moderators WallModerators
 }
@@ -114,7 +131,9 @@ func NewTopicService(d TopicDeps) *TopicService {
 	return &TopicService{
 		topics:     d.Topics,
 		messages:   d.Messages,
+		likes:      d.Likes,
 		tx:         d.Tx,
+		notifier:   d.Notifier,
 		photos:     d.Photos,
 		moderators: d.Moderators,
 		now:        time.Now,
@@ -248,6 +267,11 @@ func (s *TopicService) Delete(ctx context.Context, requesterID, id uuid.UUID) er
 			return errs.Wrap("s.topics.Delete", err)
 		}
 
+		// The notifications about its messages name the topic.
+		if err = s.notifier.ForgetPost(ctx, id); err != nil {
+			return errs.Wrap("s.notifier.ForgetPost", err)
+		}
+
 		return errs.Wrap("deleteMessagePhotos", deleteMessagePhotos(ctx, s.photos, messages))
 	})
 	if err != nil {
@@ -308,12 +332,40 @@ func (s *TopicService) newMessage(ctx context.Context, t *post.Topic, authorID u
 		}
 	}
 
+	if recipient, actor := t.Hears(m); recipient != uuid.Nil {
+		e := Event{Kind: EventTopicMessage, RecipientID: recipient, ActorID: actor, PostID: t.ID(), CommentID: m.ID()}
+		if err = s.notifier.Notify(ctx, e); err != nil {
+			return nil, errs.Wrap("s.notifier.Notify", err)
+		}
+	}
+
 	return m, nil
+}
+
+// LikeMessage and UnlikeMessage put a heart on a message and take it
+// off, as on a comment; they return how many it has now. Nobody is
+// notified.
+func (s *TopicService) LikeMessage(ctx context.Context, userID, id uuid.UUID) (int, error) {
+	likes, err := s.likes.Like(ctx, id, userID)
+	if err != nil {
+		return 0, errs.Wrap("s.likes.Like", err)
+	}
+
+	return likes, nil
+}
+
+func (s *TopicService) UnlikeMessage(ctx context.Context, userID, id uuid.UUID) (int, error) {
+	likes, err := s.likes.Unlike(ctx, id, userID)
+	if err != nil {
+		return 0, errs.Wrap("s.likes.Unlike", err)
+	}
+
+	return likes, nil
 }
 
 // Messages pages what is written in a topic, oldest first, as openvk
 // shows it.
-func (s *TopicService) Messages(ctx context.Context, topicID, after uuid.UUID, size int) (TopicMessagePage, error) {
+func (s *TopicService) Messages(ctx context.Context, viewerID, topicID, after uuid.UUID, size int) (TopicMessagePage, error) {
 	t, err := s.topics.Get(ctx, topicID)
 	if err != nil {
 		return TopicMessagePage{}, errs.Wrap("s.topics.Get", err)
@@ -332,6 +384,19 @@ func (s *TopicService) Messages(ctx context.Context, topicID, after uuid.UUID, s
 	if len(found) > size {
 		page.Messages = found[:size]
 		page.NextCursor = found[size-1].ID()
+	}
+
+	if viewerID == uuid.Nil || len(page.Messages) == 0 {
+		return page, nil
+	}
+
+	ids := make([]uuid.UUID, 0, len(page.Messages))
+	for _, m := range page.Messages {
+		ids = append(ids, m.ID())
+	}
+
+	if page.Liked, err = s.likes.Liked(ctx, viewerID, ids); err != nil {
+		return TopicMessagePage{}, errs.Wrap("s.likes.Liked", err)
 	}
 
 	return page, nil
@@ -362,6 +427,10 @@ func (s *TopicService) DeleteMessage(ctx context.Context, requesterID, id uuid.U
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.messages.Delete(ctx, id); err != nil {
 			return errs.Wrap("s.messages.Delete", err)
+		}
+
+		if err := s.notifier.ForgetComment(ctx, id); err != nil {
+			return errs.Wrap("s.notifier.ForgetComment", err)
 		}
 
 		return errs.Wrap("deleteMessagePhotos", deleteMessagePhotos(ctx, s.photos, []*post.TopicMessage{m}))

@@ -66,7 +66,8 @@ func newServer(t *testing.T) testServer {
 			Suggestions: suggestions, Posts: store.Posts(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
 		}),
 		Topics: service.NewTopicService(service.TopicDeps{
-			Topics: topics, Messages: topics.Messages(), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
+			Topics: topics, Messages: topics.Messages(), Likes: topics.Messages(), Tx: inmem.TxManager{},
+			Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
 		}),
 		Albums: albumService,
 		Purge: service.NewPurgeService(service.PurgeDeps{
@@ -662,6 +663,25 @@ func TestTopics(t *testing.T) {
 	if err != nil || len(messages.GetMessages()) != 2 || messages.GetTotal() != 2 || messages.GetMessages()[1].GetId() != msg.GetMessage().GetId() {
 		t.Fatalf("ListTopicMessages = %v, %v", messages, err)
 	}
+	// A heart on the message, told to whoever put it.
+	liked, err := s.client.LikeTopicMessage(s.as(t, ann), &postv1.LikeTopicMessageRequest{Id: msg.GetMessage().GetId()})
+	if err != nil || liked.GetLikeCount() != 1 {
+		t.Fatalf("LikeTopicMessage = %v, %v", liked, err)
+	}
+	if _, err = s.client.LikeTopicMessage(context.Background(), &postv1.LikeTopicMessageRequest{Id: msg.GetMessage().GetId()}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("LikeTopicMessage without a token: %v", err)
+	}
+	if _, err = s.client.LikeTopicMessage(s.as(t, ann), &postv1.LikeTopicMessageRequest{Id: uuid.NewString()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("LikeTopicMessage of nothing: %v", err)
+	}
+	if messages, err = s.client.ListTopicMessages(s.as(t, ann), &postv1.ListTopicMessagesRequest{TopicId: id}); err != nil ||
+		!messages.GetMessages()[1].GetLiked() || messages.GetMessages()[1].GetLikeCount() != 1 || messages.GetMessages()[0].GetLiked() {
+		t.Fatalf("ListTopicMessages to ann = %v, %v", messages, err)
+	}
+	if unliked, err := s.client.UnlikeTopicMessage(s.as(t, ann), &postv1.UnlikeTopicMessageRequest{Id: msg.GetMessage().GetId()}); err != nil || unliked.GetLikeCount() != 0 {
+		t.Fatalf("UnlikeTopicMessage = %v, %v", unliked, err)
+	}
+
 	if _, err = s.client.DeleteTopicMessage(s.as(t, ann), &postv1.DeleteTopicMessageRequest{Id: msg.GetMessage().GetId()}); status.Code(err) != codes.PermissionDenied {
 		t.Fatalf("ann deletes bob's message: %v", err)
 	}

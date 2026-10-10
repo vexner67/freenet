@@ -3,6 +3,7 @@ package service_test
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -14,12 +15,23 @@ import (
 func newTopicService(t *testing.T, moderators fakeModerators) (*service.TopicService, *fakePhotos) {
 	t.Helper()
 
+	svc, photos, _ := newNotifiedTopicService(t, moderators)
+
+	return svc, photos
+}
+
+// newNotifiedTopicService also gives what the service told of.
+func newNotifiedTopicService(t *testing.T, moderators fakeModerators) (*service.TopicService, *fakePhotos, *fakeNotifier) {
+	t.Helper()
+
 	topics := inmem.NewTopicRepository()
 	photos := &fakePhotos{}
+	notifier := &fakeNotifier{}
 
 	return service.NewTopicService(service.TopicDeps{
-		Topics: topics, Messages: topics.Messages(), Tx: fakeTx{}, Photos: photos, Moderators: moderators,
-	}), photos
+		Topics: topics, Messages: topics.Messages(), Likes: topics.Messages(), Tx: fakeTx{},
+		Notifier: notifier, Photos: photos, Moderators: moderators,
+	}), photos, notifier
 }
 
 func words(t *testing.T, text string, photos ...uuid.UUID) *post.CommentContent {
@@ -168,11 +180,11 @@ func TestTopicService_Messages(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	first, err := svc.Messages(ctx, topic.ID(), uuid.Nil, 2)
+	first, err := svc.Messages(ctx, uuid.Nil, topic.ID(), uuid.Nil, 2)
 	if err != nil || len(first.Messages) != 2 || first.Total != 3 || first.Messages[1].ID() != bobs.ID() || first.NextCursor != bobs.ID() {
 		t.Fatalf("first page = %+v, %v; oldest first", first, err)
 	}
-	rest, err := svc.Messages(ctx, topic.ID(), first.NextCursor, 2)
+	rest, err := svc.Messages(ctx, uuid.Nil, topic.ID(), first.NextCursor, 2)
 	if err != nil || len(rest.Messages) != 1 || rest.NextCursor != uuid.Nil {
 		t.Fatalf("rest = %+v, %v", rest, err)
 	}
@@ -201,5 +213,82 @@ func TestTopicService_Messages(t *testing.T) {
 	}
 	if len(photos.deleted) != 2 || photos.deleted[1].owner != bob || photos.deleted[1].photos[0] != last.Content().Photos()[0] {
 		t.Fatalf("deleted with the topic: %+v", photos.deleted)
+	}
+}
+
+func TestTopicService_NotificationsAndLikes(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	club, admin, ann, bob := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	svc, _, told := newNotifiedTopicService(t, fakeModerators{{club, admin}: true})
+
+	// Ann starts a topic with a first message: she hears of nothing yet.
+	topic, err := svc.Start(ctx, service.StartTopicInput{ClubID: club, AuthorID: ann, Title: "Знакомство", Content: words(t, "Привет!")})
+	if err != nil || len(told.notified) != 0 {
+		t.Fatalf("Start: %v, told %+v", err, told.notified)
+	}
+
+	// Bob answers: Ann hears from Bob. The admin answers for the
+	// community: Ann hears from the community. Her own answer tells nobody.
+	bobs, err := svc.Write(ctx, service.TopicMessageInput{TopicID: topic.ID(), AuthorID: bob, Content: *words(t, "Привет, Аня")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	clubs, err := svc.Write(ctx, service.TopicMessageInput{TopicID: topic.ID(), AuthorID: admin, Content: *words(t, "Добро пожаловать"), FromWall: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.Write(ctx, service.TopicMessageInput{TopicID: topic.ID(), AuthorID: ann, Content: *words(t, "Спасибо")}); err != nil {
+		t.Fatal(err)
+	}
+
+	want := []service.Event{
+		{Kind: service.EventTopicMessage, RecipientID: ann, ActorID: bob, PostID: topic.ID(), CommentID: bobs.ID()},
+		{Kind: service.EventTopicMessage, RecipientID: ann, ActorID: club, PostID: topic.ID(), CommentID: clubs.ID()},
+	}
+	if !slices.Equal(told.notified, want) || told.outsideTx != 0 {
+		t.Fatalf("told %+v outside a transaction %d times, want %+v", told.notified, told.outsideTx, want)
+	}
+
+	// Hearts: counted once however often put, told to the one who put them.
+	for range 2 {
+		if likes, err := svc.LikeMessage(ctx, ann, bobs.ID()); err != nil || likes != 1 {
+			t.Fatalf("LikeMessage = %d, %v", likes, err)
+		}
+	}
+	if likes, err := svc.LikeMessage(ctx, admin, bobs.ID()); err != nil || likes != 2 {
+		t.Fatalf("a second heart = %d, %v", likes, err)
+	}
+	if _, err = svc.LikeMessage(ctx, ann, uuid.New()); !errors.Is(err, post.ErrMessageNotFound) {
+		t.Fatalf("a heart on nothing: %v", err)
+	}
+
+	page, err := svc.Messages(ctx, ann, topic.ID(), uuid.Nil, 10)
+	if err != nil || page.Messages[1].Likes() != 2 || !page.Liked[bobs.ID()] || len(page.Liked) != 1 {
+		t.Fatalf("Messages to ann = %+v, liked %v, %v", page.Messages[1], page.Liked, err)
+	}
+	if anon, err := svc.Messages(ctx, uuid.Nil, topic.ID(), uuid.Nil, 10); err != nil || anon.Liked != nil || anon.Messages[1].Likes() != 2 {
+		t.Fatalf("Messages to anyone = %+v, %v", anon, err)
+	}
+	if likes, err := svc.UnlikeMessage(ctx, ann, bobs.ID()); err != nil || likes != 1 {
+		t.Fatalf("UnlikeMessage = %d, %v", likes, err)
+	}
+
+	// A deleted message takes its notification, a deleted topic the rest.
+	if err = svc.DeleteMessage(ctx, bob, bobs.ID()); err != nil || !slices.Equal(told.forgottenComments, []uuid.UUID{bobs.ID()}) {
+		t.Fatalf("DeleteMessage: %v, forgot %v", err, told.forgottenComments)
+	}
+	if err = svc.Delete(ctx, ann, topic.ID()); err != nil || !slices.Equal(told.forgotten, []uuid.UUID{topic.ID()}) {
+		t.Fatalf("Delete: %v, forgot %v", err, told.forgotten)
+	}
+
+	// A topic started for the community tells nobody: its author is not told.
+	official, err := svc.Start(ctx, service.StartTopicInput{ClubID: club, AuthorID: admin, Title: "Правила", FromWall: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.Write(ctx, service.TopicMessageInput{TopicID: official.ID(), AuthorID: bob, Content: *words(t, "Понятно")}); err != nil || len(told.notified) != 2 {
+		t.Fatalf("a message in the community's topic: %v, told %+v", err, told.notified)
 	}
 }

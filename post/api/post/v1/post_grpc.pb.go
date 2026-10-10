@@ -56,6 +56,8 @@ const (
 	PostService_CreateTopicMessage_FullMethodName   = "/post.v1.PostService/CreateTopicMessage"
 	PostService_ListTopicMessages_FullMethodName    = "/post.v1.PostService/ListTopicMessages"
 	PostService_DeleteTopicMessage_FullMethodName   = "/post.v1.PostService/DeleteTopicMessage"
+	PostService_LikeTopicMessage_FullMethodName     = "/post.v1.PostService/LikeTopicMessage"
+	PostService_UnlikeTopicMessage_FullMethodName   = "/post.v1.PostService/UnlikeTopicMessage"
 	PostService_CreateAlbum_FullMethodName          = "/post.v1.PostService/CreateAlbum"
 	PostService_GetAlbum_FullMethodName             = "/post.v1.PostService/GetAlbum"
 	PostService_ListAlbums_FullMethodName           = "/post.v1.PostService/ListAlbums"
@@ -173,6 +175,10 @@ type PostServiceClient interface {
 	ListTopicMessages(ctx context.Context, in *ListTopicMessagesRequest, opts ...grpc.CallOption) (*ListTopicMessagesResponse, error)
 	// Its author or an admin.
 	DeleteTopicMessage(ctx context.Context, in *DeleteTopicMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// A heart on a message of a topic, as on a comment; idempotent, nobody
+	// is notified.
+	LikeTopicMessage(ctx context.Context, in *LikeTopicMessageRequest, opts ...grpc.CallOption) (*LikeTopicMessageResponse, error)
+	UnlikeTopicMessage(ctx context.Context, in *UnlikeTopicMessageRequest, opts ...grpc.CallOption) (*UnlikeTopicMessageResponse, error)
 	// Photo albums of people and communities ("Альбомы" of openvk). An
 	// album of the caller, without club_id, or of a community its admins
 	// create, whom post asks the club service about.
@@ -594,6 +600,26 @@ func (c *postServiceClient) DeleteTopicMessage(ctx context.Context, in *DeleteTo
 	return out, nil
 }
 
+func (c *postServiceClient) LikeTopicMessage(ctx context.Context, in *LikeTopicMessageRequest, opts ...grpc.CallOption) (*LikeTopicMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(LikeTopicMessageResponse)
+	err := c.cc.Invoke(ctx, PostService_LikeTopicMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) UnlikeTopicMessage(ctx context.Context, in *UnlikeTopicMessageRequest, opts ...grpc.CallOption) (*UnlikeTopicMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UnlikeTopicMessageResponse)
+	err := c.cc.Invoke(ctx, PostService_UnlikeTopicMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) CreateAlbum(ctx context.Context, in *CreateAlbumRequest, opts ...grpc.CallOption) (*CreateAlbumResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateAlbumResponse)
@@ -889,6 +915,10 @@ type PostServiceServer interface {
 	ListTopicMessages(context.Context, *ListTopicMessagesRequest) (*ListTopicMessagesResponse, error)
 	// Its author or an admin.
 	DeleteTopicMessage(context.Context, *DeleteTopicMessageRequest) (*emptypb.Empty, error)
+	// A heart on a message of a topic, as on a comment; idempotent, nobody
+	// is notified.
+	LikeTopicMessage(context.Context, *LikeTopicMessageRequest) (*LikeTopicMessageResponse, error)
+	UnlikeTopicMessage(context.Context, *UnlikeTopicMessageRequest) (*UnlikeTopicMessageResponse, error)
 	// Photo albums of people and communities ("Альбомы" of openvk). An
 	// album of the caller, without club_id, or of a community its admins
 	// create, whom post asks the club service about.
@@ -1057,6 +1087,12 @@ func (UnimplementedPostServiceServer) ListTopicMessages(context.Context, *ListTo
 }
 func (UnimplementedPostServiceServer) DeleteTopicMessage(context.Context, *DeleteTopicMessageRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteTopicMessage not implemented")
+}
+func (UnimplementedPostServiceServer) LikeTopicMessage(context.Context, *LikeTopicMessageRequest) (*LikeTopicMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method LikeTopicMessage not implemented")
+}
+func (UnimplementedPostServiceServer) UnlikeTopicMessage(context.Context, *UnlikeTopicMessageRequest) (*UnlikeTopicMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnlikeTopicMessage not implemented")
 }
 func (UnimplementedPostServiceServer) CreateAlbum(context.Context, *CreateAlbumRequest) (*CreateAlbumResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateAlbum not implemented")
@@ -1787,6 +1823,42 @@ func _PostService_DeleteTopicMessage_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_LikeTopicMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LikeTopicMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).LikeTopicMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_LikeTopicMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).LikeTopicMessage(ctx, req.(*LikeTopicMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_UnlikeTopicMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnlikeTopicMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).UnlikeTopicMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_UnlikeTopicMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).UnlikeTopicMessage(ctx, req.(*UnlikeTopicMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_CreateAlbum_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CreateAlbumRequest)
 	if err := dec(in); err != nil {
@@ -2297,6 +2369,14 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteTopicMessage",
 			Handler:    _PostService_DeleteTopicMessage_Handler,
+		},
+		{
+			MethodName: "LikeTopicMessage",
+			Handler:    _PostService_LikeTopicMessage_Handler,
+		},
+		{
+			MethodName: "UnlikeTopicMessage",
+			Handler:    _PostService_UnlikeTopicMessage_Handler,
 		},
 		{
 			MethodName: "CreateAlbum",

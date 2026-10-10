@@ -97,4 +97,45 @@ func TestTopicMessage(t *testing.T) {
 	if !m.CanBeDeletedBy(bob, false) || m.CanBeDeletedBy(ann, false) || !m.CanBeDeletedBy(ann, true) {
 		t.Fatal("its author or the admins delete it, the topic's author does not")
 	}
+
+	if liked := m.WithLikes(3); liked.Likes() != 3 || m.Likes() != 0 || liked.ID() != m.ID() {
+		t.Fatalf("WithLikes = %d, the message itself %d", liked.Likes(), m.Likes())
+	}
+}
+
+func TestTopicHears(t *testing.T) {
+	t.Parallel()
+
+	club, ann, bob := uuid.New(), uuid.New(), uuid.New()
+	content, _ := post.NewCommentContent("Привет", nil)
+	topic, _ := post.NewTopic(club, ann, "Знакомство", false, time.Now())
+	official, _ := post.NewTopic(club, ann, "Правила", true, time.Now())
+
+	tests := []struct {
+		name             string
+		topic            *post.Topic
+		author           uuid.UUID
+		fromWall         bool
+		recipient, actor uuid.UUID
+	}{
+		{"another's message", topic, bob, false, ann, bob},
+		{"a message for the community", topic, bob, true, ann, club},
+		{"her own message", topic, ann, false, uuid.Nil, uuid.Nil},
+		{"her own message for the community", topic, ann, true, uuid.Nil, uuid.Nil},
+		{"in a topic of the community", official, bob, false, uuid.Nil, uuid.Nil},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			m, err := post.NewTopicMessage(tt.topic, tt.author, content, tt.fromWall, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			if recipient, actor := tt.topic.Hears(m); recipient != tt.recipient || actor != tt.actor {
+				t.Fatalf("Hears = %v from %v, want %v from %v", recipient, actor, tt.recipient, tt.actor)
+			}
+		})
+	}
 }
