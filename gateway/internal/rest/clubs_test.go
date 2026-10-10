@@ -30,7 +30,7 @@ type fakeClubs struct {
 	transferredTo        string
 	described            model.ClubMember
 	event                model.NewEvent
-	going, kind          string
+	going, kind, period  string
 	clubsOf              string
 	err                  error
 }
@@ -115,8 +115,8 @@ func (f *fakeClubs) Transfer(_ context.Context, token, clubID, userID string) er
 	return f.err
 }
 
-func (f *fakeClubs) OfUser(_ context.Context, userID, cursor string, limit int, kind string) (model.UserClubPage, error) {
-	f.clubsOf, f.kind = userID, kind
+func (f *fakeClubs) OfUser(_ context.Context, userID, cursor string, limit int, filter model.ClubFilter) (model.UserClubPage, error) {
+	f.clubsOf, f.kind, f.period = userID, filter.Kind, filter.Period
 	return model.UserClubPage{Clubs: []model.Club{cats}, NextCursor: "k1", Total: 4}, f.err
 }
 
@@ -135,7 +135,7 @@ func (f *fakeClubs) SetAdmin(_ context.Context, token, clubID, userID string, ad
 }
 
 func (f *fakeClubs) Mine(_ context.Context, token, cursor string, limit int, filter model.ClubFilter) (model.ClubPage, error) {
-	f.token, f.managed, f.kind = token, filter.Managed, filter.Kind
+	f.token, f.managed, f.kind, f.period = token, filter.Managed, filter.Kind, filter.Period
 	return model.ClubPage{Clubs: []model.Membership{{Club: cats, Role: "admin", Pinned: true}}, Total: 3}, f.err
 }
 
@@ -750,6 +750,23 @@ func TestClubEvents(t *testing.T) {
 	}
 	if w = h.do("GET", "/api/v1/me/clubs", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.clubs.kind != "group" || h.clubs.managed {
 		t.Fatalf("my groups: %d, kind %q", w.Code, h.clubs.kind)
+	}
+
+	// Those ahead and those over are told apart; groups have no time.
+	if w = h.do("GET", "/api/v1/me/events?time=past", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.clubs.period != "past" {
+		t.Fatalf("my past events: %d, period %q", w.Code, h.clubs.period)
+	}
+	if w = h.do("GET", "/api/v1/me/clubs?time=past", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.clubs.period != "" {
+		t.Fatalf("my groups by time: %d, period %q", w.Code, h.clubs.period)
+	}
+
+	// The events of a person are shown as their groups are.
+	w = h.do("GET", "/api/v1/users/bob/events?time=upcoming", "")
+	if w.Code != http.StatusOK || h.clubs.kind != "event" || h.clubs.period != "upcoming" || h.clubs.clubsOf != "u2" {
+		t.Fatalf("bob's events: %d, kind %q, period %q, of %q", w.Code, h.clubs.kind, h.clubs.period, h.clubs.clubsOf)
+	}
+	if w = h.do("GET", "/api/v1/users/bob/events?time=never", ""); w.Code != http.StatusOK || h.clubs.period != "" {
+		t.Fatalf("bob's events of no time: %d, period %q", w.Code, h.clubs.period)
 	}
 
 	// An event moves with its settings.

@@ -199,6 +199,7 @@ func toAlbumPhoto(pp *postv1.AlbumPhoto) model.AlbumPhoto {
 		Likes:       int(pp.GetLikeCount()),
 		Comments:    int(pp.GetCommentCount()),
 		Liked:       pp.GetLiked(),
+		NSFW:        pp.GetNsfw(),
 	}
 }
 

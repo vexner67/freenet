@@ -122,6 +122,7 @@ type Posts interface {
 	UnlikeComment(ctx context.Context, accessToken, id string) (int, error)
 	DeleteComment(ctx context.Context, accessToken, id string) error
 	Comments(ctx context.Context, accessToken, postID, cursor string, limit int) (model.CommentPage, error)
+	LastComments(ctx context.Context, accessToken string, postIDs []string) ([]model.Comment, error)
 	CommentsByID(ctx context.Context, ids []string) ([]model.Comment, error)
 
 	Suggest(ctx context.Context, accessToken, wallID, text string, photoIDs []string) (model.Suggestion, error)
@@ -216,7 +217,7 @@ type Clubs interface {
 	Describe(ctx context.Context, accessToken, clubID, userID, title string, hidden bool) error
 	SetAdmin(ctx context.Context, accessToken, clubID, userID string, admin bool) error
 	Transfer(ctx context.Context, accessToken, clubID, userID string) error
-	OfUser(ctx context.Context, userID, cursor string, limit int, kind string) (model.UserClubPage, error)
+	OfUser(ctx context.Context, userID, cursor string, limit int, filter model.ClubFilter) (model.UserClubPage, error)
 	Mine(ctx context.Context, accessToken, cursor string, limit int, filter model.ClubFilter) (model.ClubPage, error)
 	Search(ctx context.Context, query, cursor string, limit int) (model.ClubSearchPage, error)
 	SetAvatar(ctx context.Context, accessToken, clubID, avatarID string) (model.ClubView, error)
@@ -317,6 +318,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/users/{nickname}/followers", a.listFollowers)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/following", a.listFollowing)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/clubs", a.listUserClubs)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/events", a.listUserEvents)
 
 	mux.HandleFunc("GET /api/v1/feed", a.feed)
 

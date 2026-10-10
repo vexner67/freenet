@@ -208,6 +208,22 @@ func (p *Posts) CommentsByID(ctx context.Context, ids []string) ([]model.Comment
 	return comments, nil
 }
 
+// LastComments are the newest three comments of each of the posts, oldest
+// first, with liked for the caller of a token.
+func (p *Posts) LastComments(ctx context.Context, accessToken string, postIDs []string) ([]model.Comment, error) {
+	resp, err := p.api.ListLastComments(withToken(ctx, accessToken), &postv1.ListLastCommentsRequest{PostIds: postIDs})
+	if err != nil {
+		return nil, errs.Wrap("p.api.ListLastComments", fromStatus(err))
+	}
+
+	comments := make([]model.Comment, 0, len(resp.GetComments()))
+	for _, c := range resp.GetComments() {
+		comments = append(comments, toComment(c))
+	}
+
+	return comments, nil
+}
+
 // Like returns how many likes the post has now.
 func (p *Posts) Like(ctx context.Context, accessToken, postID string) (int, error) {
 	resp, err := p.api.LikePost(withToken(ctx, accessToken), &postv1.LikePostRequest{PostId: postID})
