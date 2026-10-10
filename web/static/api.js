@@ -264,15 +264,26 @@ export const api = {
   // With a session the club also says what you are in it.
   club: (ref) => optional('GET', '/api/v1/clubs/' + encodeURIComponent(ref)),
   updateClub: (ref, settings) => authorized('PUT', '/api/v1/clubs/' + encodeURIComponent(ref), settings),
-  joinClub: (ref) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/membership`),
+  // An event ("встреча"): startsAt and endsAt are ISO times, endsAt '' for none.
+  createEvent: (event) => authorized('POST', '/api/v1/events', event),
+  // maybe: "Возможно приду" of an event.
+  joinClub: (ref, { maybe = false } = {}) =>
+    authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/membership${maybe ? '?maybe=true' : ''}`),
   leaveClub: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/membership`),
-  // admins: only the owner and the admins ("Руководство").
-  clubMembers(ref, { cursor = '', limit = 0, admins = false } = {}) {
+  // admins: only the owner and the admins ("Руководство"); going: 'sure'
+  // or 'maybe', those who come to the event or only might.
+  clubMembers(ref, { cursor = '', limit = 0, admins = false, going = '' } = {}) {
     const path = page(`/api/v1/clubs/${encodeURIComponent(ref)}/members`, cursor, limit);
-    return request('GET', admins ? path + (path.includes('?') ? '&' : '?') + 'admins=true' : path);
+    const filter = admins ? 'admins=true' : going && 'going=' + going;
+    // With the token: the club tells those who run it whom it hides.
+    return optional('GET', filter ? path + (path.includes('?') ? '&' : '?') + filter : path);
   },
   appointAdmin: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
   dismissAdmin: (ref, nickname) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
+  // Those who run a club give one of them a title and hide or show them
+  // ("Изменить комментарий", "Скрыт").
+  describeAdmin: (ref, nickname, { title, hidden }) =>
+    authorized('PATCH', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`, { title, hidden }),
   // The owner hands the club over to one of its admins ("Назначить владельцем").
   transferClub: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/owner/${encodeURIComponent(nickname)}`),
   // The clubs of a user, as their "Кому видно мои группы" allows: 403 if hidden.
@@ -280,6 +291,11 @@ export const api = {
   // managed: only the clubs you run ("Управляемые").
   myClubs(cursor = '', managed = false) {
     const path = page('/api/v1/me/clubs', cursor, 0);
+    return authorized('GET', managed ? path + (path.includes('?') ? '&' : '?') + 'managed=true' : path);
+  },
+  // "Мои Встречи": the same for the events you come to.
+  myEvents(cursor = '', managed = false) {
+    const path = page('/api/v1/me/events', cursor, 0);
     return authorized('GET', managed ? path + (path.includes('?') ? '&' : '?') + 'managed=true' : path);
   },
   // The clubs you keep in the left menu ("Добавить в левое меню").
@@ -328,6 +344,9 @@ export const api = {
   writeTopicMessage: (id, text, photos = [], { fromClub = false } = {}) =>
     authorized('POST', `/api/v1/topics/${encodeURIComponent(id)}/messages`, { text, photos, fromClub }),
   deleteTopicMessage: (id) => authorized('DELETE', `/api/v1/topic-messages/${encodeURIComponent(id)}`),
+  // The heart of a message of a topic, as of a comment.
+  likeTopicMessage: (id) => authorized('PUT', `/api/v1/topic-messages/${encodeURIComponent(id)}/like`),
+  unlikeTopicMessage: (id) => authorized('DELETE', `/api/v1/topic-messages/${encodeURIComponent(id)}/like`),
 
   // "Альбомы" of a person (nickname) or of a community (club: its ref).
   albums({ nickname = '', club = '', cursor = '', limit = 0 } = {}) {

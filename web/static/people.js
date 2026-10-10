@@ -1,5 +1,5 @@
 // People in follow lists: a small cell for the profile's side blocks and
-// a row for the full list page.
+// a row for the full list page, which says who is on the site now.
 
 import { avatarURL, el, fullName } from './layout.js';
 
@@ -22,6 +22,7 @@ export function personRow(user, ...extra) {
     el('a', { href: path }, el('img', { src: avatarURL(user, 'small'), alt: '' })),
     el('div', {},
       el('a', { className: 'post-name', href: path, textContent: fullName(user) }),
+      user.online && el('span', { className: 'person-online', textContent: 'Онлайн' }),
       user.status && el('div', { className: 'person-status', textContent: user.status }),
       ...extra,
     ),

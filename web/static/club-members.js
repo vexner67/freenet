@@ -1,6 +1,9 @@
 // The members of a club ("Участники") and its admins ("Руководство"), as
 // on openvk, the newest first. Its owner makes members admins and back,
-// and hands the club over to an admin ("Назначить владельцем").
+// and hands the club over to an admin ("Назначить владельцем"); those who
+// run it give each other a title ("Изменить комментарий") and hide each
+// other from the rest ("Скрыт"). An event ("встреча") lists those who
+// come ("Точно придут") and those who might ("Возможно придут") apart.
 
 import { api, currentUser } from './api.js';
 import { clubRoles, membersCount } from './labels.js';
@@ -10,23 +13,29 @@ import { personRow } from './people.js';
 import { separated } from './posts.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/members'.length));
-const admins = new URLSearchParams(location.search).get('admins') === 'true';
+const params = new URLSearchParams(location.search);
+const admins = params.get('admins') === 'true';
+// going is the list of an event: 'sure' unless asked for those who might.
+let going = '';
 
 let club;
 let cursor = '';
 
 function memberNode(member) {
   const role = el('span', { className: 'club-role' });
+  const title = el('div', { className: 'hint' });
   const links = el('span', {});
 
   function render() {
     role.textContent = clubRoles[member.role];
-    links.replaceChildren(...separated(actions().filter(Boolean)));
+    title.textContent = member.title ? `Комментарий: ${member.title}` : '';
+    title.hidden = !member.title;
+    links.replaceChildren(...separated([...appointments(), ...descriptions()].filter(Boolean)));
   }
 
   // The owner appoints and dismisses the admins and hands the club over to
   // one of them; nobody touches the owner.
-  function actions() {
+  function appointments() {
     if (club.role !== 'owner' || member.role === 'owner') return [];
 
     const appoint = member.role === 'member';
@@ -39,6 +48,31 @@ function memberNode(member) {
     ];
   }
 
+  // Those who run the club describe each other, the owner too.
+  function descriptions() {
+    if (!manages(club.role) || !manages(member.role)) return [];
+
+    return [
+      el('a', { textContent: 'Изменить комментарий', onclick: () => editTitle(member, render) }),
+      el('a', { textContent: member.hidden ? 'Скрыт: Да' : 'Скрыт: Нет', onclick: toggleHidden }),
+    ];
+  }
+
+  async function toggleHidden() {
+    hideError($('error'));
+
+    try {
+      await api.describeAdmin(clubRef(club), member.user.nickname, { title: member.title, hidden: !member.hidden });
+      member.hidden = !member.hidden;
+      render();
+      notice(member.hidden
+        ? `Теперь ${fullName(member.user)} будет показываться как обычный подписчик всем, кроме других администраторов`
+        : `Теперь все будут знать, что ${fullName(member.user)} — администратор.`);
+    } catch (e) {
+      showError($('error'), e);
+    }
+  }
+
   async function setAdmin(appoint) {
     hideError($('error'));
 
@@ -46,6 +80,8 @@ function memberNode(member) {
       if (appoint) await api.appointAdmin(clubRef(club), member.user.nickname);
       else await api.dismissAdmin(clubRef(club), member.user.nickname);
       member.role = appoint ? 'admin' : 'member';
+      // A dismissed admin keeps neither the title nor the hiding.
+      if (!appoint) Object.assign(member, { title: '', hidden: false });
       render();
     } catch (e) {
       showError($('error'), e);
@@ -54,7 +90,45 @@ function memberNode(member) {
 
   render();
 
-  return personRow(member.user, el('div', { className: 'hint' }, role), el('div', {}, links));
+  return personRow(member.user, el('div', { className: 'hint' }, role), title, el('div', {}, links));
+}
+
+const manages = (role) => role === 'admin' || role === 'owner';
+
+function notice(text) {
+  $('notice').textContent = text;
+  $('notice').hidden = false;
+}
+
+// editTitle is openvk's "Изменить комментарий к администратору": the few
+// words under the admin's name; empty takes them away.
+function editTitle(member, done) {
+  const modal = openModal('Изменить комментарий к администратору', { tag: 'form' });
+  const error = el('div', { className: 'error', hidden: true });
+  const input = el('input', { type: 'text', className: 'modal-input', maxLength: 36, value: member.title });
+
+  modal.body.append(input, error);
+  modal.actions.append(
+    button('Изменить', null, { type: 'submit' }),
+    button('Отмена', modal.close, { secondary: true }),
+  );
+  modal.box.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    hideError(error);
+
+    try {
+      const title = input.value.trim();
+
+      await api.describeAdmin(clubRef(club), member.user.nickname, { title, hidden: member.hidden });
+      member.title = title;
+      modal.close();
+      done();
+      notice(title ? 'Комментарий к администратору изменён' : 'Комментарий к администратору удален');
+    } catch (e) {
+      showError(error, e);
+    }
+  });
+  input.focus();
 }
 
 // confirmTransfer is openvk's "Передача прав владельца". openvk also asks
@@ -90,9 +164,8 @@ function confirmTransfer(user) {
 // as they now are.
 function transferred(user) {
   club.role = 'admin';
-  $('notice').textContent = `Новый владелец (${fullName(user)}) успешно назначен в сообщество ${club.name}. ` +
-    'Вам выданы права администратора в сообществе.';
-  $('notice').hidden = false;
+  notice(`Новый владелец (${fullName(user)}) успешно назначен в сообщество ${club.name}. ` +
+    'Вам выданы права администратора в сообществе.');
   $('people').replaceChildren();
   cursor = '';
   loadMore();
@@ -102,7 +175,7 @@ async function loadMore() {
   hideError($('error'));
 
   try {
-    const page = await api.clubMembers(ref, { cursor, admins });
+    const page = await api.clubMembers(ref, { cursor, admins, going });
 
     $('people').append(...page.members.map(memberNode));
     cursor = page.nextCursor;
@@ -113,11 +186,28 @@ async function loadMore() {
   }
 }
 
-function tab(id, admin, text) {
+// tab is one list of the page: query picks it, active tells whether it
+// is the one shown.
+function tab(id, query, text, active) {
   const link = $(id);
   link.textContent = text;
-  link.href = `/club/${encodeURIComponent(clubRef(club))}/members${admin ? '?admins=true' : ''}`;
-  link.classList.toggle('active', admin === admins);
+  link.href = `/club/${encodeURIComponent(clubRef(club))}/members${query}`;
+  link.classList.toggle('active', active);
+  link.hidden = false;
+}
+
+// tabs are "Участники" and "Руководство" or, of an event, "Точно придут",
+// "Возможно придут" and "Руководство".
+function tabs() {
+  if (club.kind !== 'event') {
+    tab('tab-all', '', `Участники · ${membersCount(club.members)}`, !admins);
+  } else {
+    tab('tab-all', '', `Точно придут · ${club.members - club.maybes}`, !admins && going === 'sure');
+    tab('tab-maybe', '?going=maybe', `Возможно придут · ${club.maybes}`, !admins && going === 'maybe');
+  }
+
+  tab('tab-admins', '?admins=true', 'Руководство', admins);
+  $('tabs').hidden = false;
 }
 
 const me = await currentUser().catch(() => null);
@@ -129,12 +219,11 @@ try {
 
   document.title = `Участники: ${club.name} | Freenet`;
   $('title').textContent = admins ? `Руководство: ${club.name}` : `Участники: ${club.name}`;
-  $('back').textContent = '← к группе';
   $('back').href = path;
 
-  tab('tab-all', false, `Участники · ${membersCount(club.members)}`);
-  tab('tab-admins', true, 'Руководство');
-  $('tabs').hidden = false;
+  if (club.kind === 'event' && !admins) going = params.get('going') === 'maybe' ? 'maybe' : 'sure';
+  $('back').textContent = club.kind === 'event' ? '← к встрече' : '← к группе';
+  tabs();
 
   $('more').addEventListener('click', loadMore);
   await loadMore();

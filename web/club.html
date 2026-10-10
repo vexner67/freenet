@@ -30,9 +30,15 @@
             <table class="info" id="info"></table>
 
             <div id="members-block" hidden>
-              <div class="section-title">Участники</div>
+              <div class="section-title" id="members-title">Участники</div>
               <div class="subtitle"><span id="members-count"></span><a id="members-all">Все</a></div>
               <div class="people-grid wide" id="members-grid"></div>
+            </div>
+
+            <div id="maybe-block" hidden>
+              <div class="section-title">Возможно придут</div>
+              <div class="subtitle"><span id="maybe-count"></span><a id="maybe-all">Все</a></div>
+              <div class="people-grid wide" id="maybe-grid"></div>
             </div>
 
             <div class="sugglist" id="suggestions" hidden><a id="suggestions-link"></a></div>
@@ -72,15 +78,16 @@
 
             <div class="profile-links">
               <button class="button" type="button" id="join" hidden>Вступить в группу</button>
+              <button class="button secondary" type="button" id="join-maybe" hidden>Возможно приду</button>
               <a class="profile-link" id="edit" hidden>Редактировать группу</a>
             </div>
             <div class="error" id="join-error" hidden></div>
 
-            <div class="section-title">Тип группы</div>
-            <p class="side-text">Это открытая группа. В неё может вступить любой желающий.</p>
+            <div class="section-title" id="type-title">Тип группы</div>
+            <p class="side-text" id="type-text">Это открытая группа. В неё может вступить любой желающий.</p>
 
             <div id="owner-block" hidden>
-              <div class="section-title">Создатель</div>
+              <div class="section-title" id="owner-title">Создатель</div>
               <div id="owner"></div>
             </div>
 

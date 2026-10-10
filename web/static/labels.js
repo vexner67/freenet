@@ -176,6 +176,31 @@ export function formatDateTime(iso) {
   return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} в ${time}`;
 }
 
+// localTime turns the values of a date and a time input, taken in the
+// visitor's time zone, into an ISO time; '' unless both are filled in.
+export function localTime(date, time) {
+  if (!date || !time) return '';
+
+  const at = new Date(`${date}T${time}`);
+  return Number.isNaN(at.getTime()) ? '' : at.toISOString();
+}
+
+// inputDate and inputTime are an ISO time as the values of a date and a
+// time input, in the visitor's time zone.
+export function inputDate(iso) {
+  const d = new Date(iso);
+  const two = (n) => String(n).padStart(2, '0');
+
+  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
+}
+
+export function inputTime(iso) {
+  const d = new Date(iso);
+  const two = (n) => String(n).padStart(2, '0');
+
+  return `${two(d.getHours())}:${two(d.getMinutes())}`;
+}
+
 // deactivationReasons are openvk's reasons to delete a page: a title and
 // the words it puts in the message; the last one leaves them to the user.
 export const deactivationReasons = [
@@ -302,6 +327,17 @@ export function membersCount(n) {
 export function myClubsCount(n) {
   if (n === 0) return 'Вы не состоите ни в одной группе';
   return `Вы состоите в ${n} ${plural(n, ['группе', 'группах', 'группах'])}`;
+}
+
+// myEventsCount is the head of "Мои Встречи", openvk's "events_list".
+export function myEventsCount(n) {
+  if (n === 0) return 'Вы не участвуете ни в одной встрече';
+  return `Вы участвуете в ${n} ${plural(n, ['встрече', 'встречах', 'встречах'])}`;
+}
+
+// eventsCount is openvk's "meetings": "1 встреча", "5 встреч".
+export function eventsCount(n) {
+  return n === 0 ? 'Ни одной встречи' : `${n} ${plural(n, ['встреча', 'встречи', 'встреч'])}`;
 }
 
 // clubsCount is openvk's "groups": "1 группа", "5 групп".
@@ -519,6 +555,12 @@ const errorTexts = {
   'club address contains invalid characters': 'Адрес страницы может состоять из латинских букв, цифр и _ и начинаться с буквы.',
   'club address is already taken': 'Этот адрес уже занят.',
   'the owner cannot leave the club': 'Владелец не может выйти из своей группы.',
+  'title is too long': 'Комментарий слишком длинный: не больше 36 символов.',
+  'an event needs the time it starts': 'Вы не ввели название встречи и/или не указали дату начала встречи.',
+  'an event ends after it starts': 'Встреча должна заканчиваться позже, чем начинается.',
+  'invalid start time': 'Неверная дата начала встречи.',
+  'invalid end time': 'Неверная дата окончания встречи.',
+  'the user does not run the club': 'Этот человек не руководит группой.',
   'only the admins can add the club to their menu': 'Добавить группу в левое меню могут только её администраторы.',
   'at most 10 clubs in the menu': 'В левом меню может быть не больше 10 групп.',
   'only the admins can edit the club': 'Изменять группу могут только её администраторы.',

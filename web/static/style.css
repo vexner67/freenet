@@ -206,6 +206,8 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
 .form td { padding: 3px 0; }
 .form td.control { width: 260px; }
 .form td.note { padding-left: 10px; }
+/* A date and a time side by side, as openvk's "Начало" of an event. */
+.form input.half { width: 49%; box-sizing: border-box; }
 .form textarea {
   width: 100%;
   padding: 3px 4px;
@@ -611,6 +613,7 @@ a.like:hover svg { opacity: .7; }
 .modal-body { display: flex; flex-direction: column; gap: 5px; padding: 14px 12px; }
 .modal-body textarea { height: 60px; }
 .modal-body .error { margin-bottom: 0; }
+.modal-input { width: 100%; box-sizing: border-box; }
 .modal-option input { margin: 0 4px 0 0; vertical-align: middle; }
 /* openvk's "Загрузка новой фотографии" (avatar.js). */
 .modal-box.avatar-dialog { width: 487px; }
@@ -650,6 +653,8 @@ a.like:hover svg { opacity: .7; }
 .post-options label { display: block; padding: 1px 0; color: #555; }
 .post-options input { vertical-align: middle; margin: 0 3px 0 0; }
 .club-role { color: #808080; }
+/* "Онлайн" by a name in a list of people. */
+.person-online { margin-left: 8px; color: #808080; }
 .club-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #ececec; }
 .club-row img { width: 50px; height: 50px; object-fit: cover; }
 

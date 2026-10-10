@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons } from '../static/labels.js';
+import { isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, localTime, inputDate, inputTime } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -290,4 +290,26 @@ test('selectedCount counts the selected messages', () => {
   assert.equal(selectedCount(1), 'Выбрано 1 сообщение');
   assert.equal(selectedCount(3), 'Выбрано 3 сообщения');
   assert.equal(selectedCount(11), 'Выбрано 11 сообщений');
+});
+
+test('events are counted as openvk counts them', () => {
+  assert.equal(myEventsCount(0), 'Вы не участвуете ни в одной встрече');
+  assert.equal(myEventsCount(1), 'Вы участвуете в 1 встрече');
+  assert.equal(myEventsCount(5), 'Вы участвуете в 5 встречах');
+  assert.equal(eventsCount(0), 'Ни одной встречи');
+  assert.equal(eventsCount(1), '1 встреча');
+  assert.equal(eventsCount(3), '3 встречи');
+  assert.equal(eventsCount(11), '11 встреч');
+});
+
+test('the time of an event goes through the inputs and back', () => {
+  assert.equal(localTime('', '20:00'), '');
+  assert.equal(localTime('2026-12-31', ''), '');
+  assert.equal(localTime('когда-нибудь', '20:00'), '');
+
+  const iso = localTime('2026-12-31', '20:05');
+  assert.equal(new Date(iso).getTime(), new Date(2026, 11, 31, 20, 5).getTime());
+  assert.equal(inputDate(iso), '2026-12-31');
+  assert.equal(inputTime(iso), '20:05');
+  assert.equal(inputTime(localTime('2027-01-02', '03:04')), '03:04');
 });
