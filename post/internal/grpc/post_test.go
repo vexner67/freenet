@@ -57,7 +57,7 @@ func newServer(t *testing.T) testServer {
 	albums := inmem.NewAlbumRepository()
 	albumService := service.NewAlbumService(service.AlbumDeps{
 		Albums: albums, Photos: albums.Photos(), Tx: inmem.TxManager{}, Media: mediaclient.Nop{}, Moderators: clubclient.Nop{},
-		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(), Notifier: notifyclient.Nop{},
+		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(), CommentLikes: albums.PhotoComments(), Notifier: notifyclient.Nop{},
 	})
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(postgrpc.Services{
 		Posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}, AlbumPhotos: albums.Photos(), WallPhotos: albumService, Switches: store.Posts()}),
@@ -1272,5 +1272,125 @@ func TestTextLimit_OtherLists(t *testing.T) {
 	}
 	if _, err = s.client.GetPhotoComment(context.Background(), &postv1.GetPhotoCommentRequest{Id: uuid.NewString()}); status.Code(err) != codes.NotFound {
 		t.Fatalf("a missing photo comment: %v", err)
+	}
+}
+
+func TestPhotoCommentRepliesAndHearts(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	album, err := s.client.CreateAlbum(s.as(t, ann), &postv1.CreateAlbumRequest{Name: "Лето"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	photo := uuid.Must(uuid.NewV7()).String()
+	if _, err = s.client.AddAlbumPhotos(s.as(t, ann), &postv1.AddAlbumPhotosRequest{
+		AlbumId: album.GetAlbum().GetId(), Photos: []*postv1.NewAlbumPhoto{{PhotoId: photo}},
+	}); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := s.client.CreatePhotoComment(s.as(t, bob), &postv1.CreatePhotoCommentRequest{PhotoId: photo, Text: "красивый снимок"})
+	if err != nil {
+		t.Fatalf("CreatePhotoComment: %v", err)
+	}
+	firstID := first.GetComment().GetId()
+
+	reply, err := s.client.CreatePhotoComment(s.as(t, ann), &postv1.CreatePhotoCommentRequest{PhotoId: photo, Text: "спасибо", ReplyToId: firstID})
+	if err != nil || reply.GetComment().GetReplyToId() != firstID {
+		t.Fatalf("a reply = %v, %v", reply, err)
+	}
+
+	for _, tt := range []struct {
+		name    string
+		replyTo string
+		want    codes.Code
+	}{
+		{"not an ID", "x", codes.InvalidArgument},
+		{"no such comment", uuid.NewString(), codes.NotFound},
+	} {
+		_, err = s.client.CreatePhotoComment(s.as(t, ann), &postv1.CreatePhotoCommentRequest{PhotoId: photo, Text: "x", ReplyToId: tt.replyTo})
+		if status.Code(err) != tt.want {
+			t.Errorf("a reply to %s: %v, want %v", tt.name, err, tt.want)
+		}
+	}
+
+	if _, err = s.client.LikePhotoComment(context.Background(), &postv1.LikePhotoCommentRequest{Id: firstID}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("a heart without a token: %v", err)
+	}
+	if _, err = s.client.LikePhotoComment(s.as(t, ann), &postv1.LikePhotoCommentRequest{Id: "x"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a heart on a bad ID: %v", err)
+	}
+	if _, err = s.client.LikePhotoComment(s.as(t, ann), &postv1.LikePhotoCommentRequest{Id: uuid.NewString()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("a heart on nothing: %v", err)
+	}
+
+	liked, err := s.client.LikePhotoComment(s.as(t, ann), &postv1.LikePhotoCommentRequest{Id: firstID})
+	if err != nil || liked.GetLikeCount() != 1 {
+		t.Fatalf("LikePhotoComment = %v, %v", liked, err)
+	}
+
+	page, err := s.client.ListPhotoComments(s.as(t, ann), &postv1.ListPhotoCommentsRequest{PhotoId: photo})
+	if err != nil || len(page.GetComments()) != 2 || !page.GetComments()[0].GetLiked() || page.GetComments()[0].GetLikeCount() != 1 || page.GetComments()[1].GetLiked() {
+		t.Fatalf("ListPhotoComments = %v, %v", page, err)
+	}
+	if page, err = s.client.ListPhotoComments(context.Background(), &postv1.ListPhotoCommentsRequest{PhotoId: photo}); err != nil || page.GetComments()[0].GetLiked() {
+		t.Fatalf("ListPhotoComments for nobody = %v, %v", page, err)
+	}
+
+	likers, err := s.client.ListPhotoCommentLikers(context.Background(), &postv1.ListPhotoCommentLikersRequest{Id: firstID})
+	if err != nil || likers.GetTotal() != 1 || len(likers.GetUserIds()) != 1 || likers.GetUserIds()[0] != ann.String() {
+		t.Fatalf("ListPhotoCommentLikers = %v, %v", likers, err)
+	}
+
+	quoted, err := s.client.GetPhotoComments(context.Background(), &postv1.GetPhotoCommentsRequest{Ids: []string{firstID, uuid.NewString()}, TextLimit: 8})
+	if err != nil || len(quoted.GetComments()) != 1 || quoted.GetComments()[0].GetText() != "красивый" || !quoted.GetComments()[0].GetTextCut() {
+		t.Fatalf("GetPhotoComments = %v, %v", quoted, err)
+	}
+
+	unliked, err := s.client.UnlikePhotoComment(s.as(t, ann), &postv1.UnlikePhotoCommentRequest{Id: firstID})
+	if err != nil || unliked.GetLikeCount() != 0 {
+		t.Fatalf("UnlikePhotoComment = %v, %v", unliked, err)
+	}
+}
+
+func TestTopicMessageLikersAndQuotes(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+	club := uuid.New()
+
+	topic, err := s.client.CreateTopic(s.as(t, ann), &postv1.CreateTopicRequest{ClubId: club.String(), Title: "Тема", Text: "длинное начало"})
+	if err != nil {
+		t.Fatalf("CreateTopic: %v", err)
+	}
+
+	messages, err := s.client.ListTopicMessages(context.Background(), &postv1.ListTopicMessagesRequest{TopicId: topic.GetTopic().GetId()})
+	if err != nil || len(messages.GetMessages()) != 1 {
+		t.Fatalf("ListTopicMessages = %v, %v", messages, err)
+	}
+	id := messages.GetMessages()[0].GetId()
+
+	if _, err = s.client.LikeTopicMessage(s.as(t, bob), &postv1.LikeTopicMessageRequest{Id: id}); err != nil {
+		t.Fatalf("LikeTopicMessage: %v", err)
+	}
+
+	likers, err := s.client.ListTopicMessageLikers(context.Background(), &postv1.ListTopicMessageLikersRequest{Id: id})
+	if err != nil || likers.GetTotal() != 1 || len(likers.GetUserIds()) != 1 || likers.GetUserIds()[0] != bob.String() {
+		t.Fatalf("ListTopicMessageLikers = %v, %v", likers, err)
+	}
+	if _, err = s.client.ListTopicMessageLikers(context.Background(), &postv1.ListTopicMessageLikersRequest{Id: uuid.NewString()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("likers of nothing: %v", err)
+	}
+	if _, err = s.client.ListTopicMessageLikers(context.Background(), &postv1.ListTopicMessageLikersRequest{Id: id, Cursor: "x"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bad cursor: %v", err)
+	}
+
+	quoted, err := s.client.GetTopicMessages(context.Background(), &postv1.GetTopicMessagesRequest{Ids: []string{id, uuid.NewString()}, TextLimit: 7})
+	if err != nil || len(quoted.GetMessages()) != 1 || quoted.GetMessages()[0].GetText() != "длинное" || !quoted.GetMessages()[0].GetTextCut() {
+		t.Fatalf("GetTopicMessages = %v, %v", quoted, err)
 	}
 }

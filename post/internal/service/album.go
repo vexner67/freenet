@@ -85,12 +85,27 @@ type PhotoCommentRepository interface {
 	// List returns up to limit comments of a photo, oldest first, with IDs
 	// above after (uuid.Nil: from the first).
 	List(ctx context.Context, photoID, after uuid.UUID, limit int) ([]*post.PhotoComment, error)
+	// GetMany returns the comments that exist, in no particular order.
+	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.PhotoComment, error)
+}
+
+// PhotoCommentLikeRepository keeps the hearts of comments of photos as
+// CommentLikeRepository keeps those of comments of posts.
+type PhotoCommentLikeRepository interface {
+	// Like and Unlike are idempotent and return how many likes the
+	// comment has now; post.ErrCommentNotFound for a missing comment.
+	Like(ctx context.Context, commentID, userID uuid.UUID) (int, error)
+	Unlike(ctx context.Context, commentID, userID uuid.UUID) (int, error)
+	// Liked returns which of commentIDs the user likes.
+	Liked(ctx context.Context, userID uuid.UUID, commentIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+	Likers(ctx context.Context, commentID uuid.UUID, after *LikerCursor, limit int) ([]Liker, error)
 }
 
 // PhotoCommentPage is one screen of the comments of a photo, oldest
-// first; Total counts them all.
+// first; Total counts them all. Liked are those of them the viewer likes.
 type PhotoCommentPage struct {
 	Comments   []*post.PhotoComment
+	Liked      map[uuid.UUID]bool
 	NextCursor uuid.UUID
 	Total      int
 }
@@ -139,6 +154,7 @@ type AlbumService struct {
 	moderators WallModerators
 	likes      AlbumPhotoLikeRepository
 	comments   PhotoCommentRepository
+	hearts     PhotoCommentLikeRepository
 	notifier   Notifier
 	now        func() time.Time
 }
@@ -152,7 +168,9 @@ type AlbumDeps struct {
 	Moderators WallModerators
 	Likes      AlbumPhotoLikeRepository
 	Comments   PhotoCommentRepository
-	Notifier   Notifier
+	// CommentLikes are the hearts of the comments of photos.
+	CommentLikes PhotoCommentLikeRepository
+	Notifier     Notifier
 }
 
 func NewAlbumService(d AlbumDeps) *AlbumService {
@@ -164,6 +182,7 @@ func NewAlbumService(d AlbumDeps) *AlbumService {
 		moderators: d.Moderators,
 		likes:      d.Likes,
 		comments:   d.Comments,
+		hearts:     d.CommentLikes,
 		notifier:   d.Notifier,
 		now:        time.Now,
 	}
@@ -742,17 +761,19 @@ func (s *AlbumService) PhotoLikers(ctx context.Context, photoID uuid.UUID, curso
 	return likerPage(found, size, p.Likes()), nil
 }
 
-// CommentPhoto adds a comment under a photo. Who may (a blacklist) the
-// caller has checked; post.ErrAlbumPhotoNotFound for a missing photo.
-func (s *AlbumService) CommentPhoto(ctx context.Context, authorID, photoID uuid.UUID, text post.CommentText) (*post.PhotoComment, error) {
-	c, err := post.NewPhotoComment(photoID, authorID, text, s.now())
-	if err != nil {
-		return nil, errs.Wrap("post.NewPhotoComment", err)
-	}
-
+// CommentPhoto adds a comment under a photo, in answer to comment replyTo
+// of the same photo unless it is uuid.Nil. Who may (a blacklist) the
+// caller has checked; post.ErrAlbumPhotoNotFound for a missing photo,
+// post.ErrCommentNotFound for a missing comment to answer.
+func (s *AlbumService) CommentPhoto(ctx context.Context, authorID, photoID, replyTo uuid.UUID, text post.CommentText) (*post.PhotoComment, error) {
 	p, err := s.photos.Get(ctx, photoID)
 	if err != nil {
 		return nil, errs.Wrap("s.photos.Get", err)
+	}
+
+	c, err := s.newPhotoComment(ctx, authorID, photoID, replyTo, text)
+	if err != nil {
+		return nil, errs.Wrap("s.newPhotoComment", err)
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
@@ -775,6 +796,74 @@ func (s *AlbumService) CommentPhoto(ctx context.Context, authorID, photoID uuid.
 	}
 
 	return c, nil
+}
+
+func (s *AlbumService) newPhotoComment(ctx context.Context, authorID, photoID, replyTo uuid.UUID, text post.CommentText) (*post.PhotoComment, error) {
+	if replyTo == uuid.Nil {
+		c, err := post.NewPhotoComment(photoID, authorID, text, s.now())
+
+		return c, errs.Wrap("post.NewPhotoComment", err)
+	}
+
+	parent, err := s.comments.Get(ctx, replyTo)
+	if err != nil {
+		return nil, errs.Wrap("s.comments.Get", err)
+	}
+
+	c, err := post.NewPhotoReply(photoID, parent, authorID, text, s.now())
+
+	return c, errs.Wrap("post.NewPhotoReply", err)
+}
+
+// LikePhotoComment and UnlikePhotoComment put a heart on a comment of a
+// photo and take it off; they are idempotent and return how many it has
+// now. post.ErrCommentNotFound for a missing comment.
+func (s *AlbumService) LikePhotoComment(ctx context.Context, userID, id uuid.UUID) (int, error) {
+	likes, err := s.hearts.Like(ctx, id, userID)
+
+	return likes, errs.Wrap("s.hearts.Like", err)
+}
+
+func (s *AlbumService) UnlikePhotoComment(ctx context.Context, userID, id uuid.UUID) (int, error) {
+	likes, err := s.hearts.Unlike(ctx, id, userID)
+
+	return likes, errs.Wrap("s.hearts.Unlike", err)
+}
+
+// PhotoCommentLikers pages who put a heart on a comment of a photo,
+// newest first ("Понравилось N людям").
+func (s *AlbumService) PhotoCommentLikers(ctx context.Context, id uuid.UUID, cursor *LikerCursor, size int) (LikerPage, error) {
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	c, err := s.comments.Get(ctx, id)
+	if err != nil {
+		return LikerPage{}, errs.Wrap("s.comments.Get", err)
+	}
+
+	found, err := s.hearts.Likers(ctx, id, cursor, size+1)
+	if err != nil {
+		return LikerPage{}, errs.Wrap("s.hearts.Likers", err)
+	}
+
+	return likerPage(found, size, c.Likes()), nil
+}
+
+// PhotoCommentsByID returns the comments of photos with these IDs that
+// exist, at most MaxPageSize, in no particular order.
+func (s *AlbumService) PhotoCommentsByID(ctx context.Context, ids []uuid.UUID) ([]*post.PhotoComment, error) {
+	if len(ids) > MaxPageSize {
+		return nil, ErrTooManyIDs
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	found, err := s.comments.GetMany(ctx, ids)
+
+	return found, errs.Wrap("s.comments.GetMany", err)
 }
 
 // DeletePhotoComment deletes a comment: by its author, who uploaded the
@@ -822,8 +911,9 @@ func (s *AlbumService) PhotoComment(ctx context.Context, id uuid.UUID) (*post.Ph
 }
 
 // PhotoComments pages the comments of a photo, oldest first, as openvk
-// shows them; post.ErrAlbumPhotoNotFound for a missing photo.
-func (s *AlbumService) PhotoComments(ctx context.Context, photoID, after uuid.UUID, size int) (PhotoCommentPage, error) {
+// shows them, telling which of them viewerID likes (uuid.Nil: nobody
+// asks); post.ErrAlbumPhotoNotFound for a missing photo.
+func (s *AlbumService) PhotoComments(ctx context.Context, viewerID, photoID, after uuid.UUID, size int) (PhotoCommentPage, error) {
 	if size <= 0 || size > MaxPageSize {
 		size = DefaultPageSize
 	}
@@ -842,6 +932,19 @@ func (s *AlbumService) PhotoComments(ctx context.Context, photoID, after uuid.UU
 	if len(found) > size {
 		page.Comments = found[:size]
 		page.NextCursor = found[size-1].ID()
+	}
+
+	if viewerID == uuid.Nil || len(page.Comments) == 0 {
+		return page, nil
+	}
+
+	ids := make([]uuid.UUID, 0, len(page.Comments))
+	for _, c := range page.Comments {
+		ids = append(ids, c.ID())
+	}
+
+	if page.Liked, err = s.hearts.Liked(ctx, viewerID, ids); err != nil {
+		return PhotoCommentPage{}, errs.Wrap("s.hearts.Liked", err)
 	}
 
 	return page, nil

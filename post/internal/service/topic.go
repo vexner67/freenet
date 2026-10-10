@@ -49,6 +49,8 @@ type TopicMessageRepository interface {
 	List(ctx context.Context, topicID, after uuid.UUID, limit int) ([]*post.TopicMessage, error)
 	// Last returns the newest message of each topic that has any.
 	Last(ctx context.Context, topicIDs []uuid.UUID) ([]*post.TopicMessage, error)
+	// GetMany returns the messages that exist, in no particular order.
+	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.TopicMessage, error)
 }
 
 // TopicMessageLikeRepository keeps the hearts of messages as
@@ -60,6 +62,9 @@ type TopicMessageLikeRepository interface {
 	Unlike(ctx context.Context, messageID, userID uuid.UUID) (int, error)
 	// Liked returns which of messageIDs the user likes.
 	Liked(ctx context.Context, userID uuid.UUID, messageIDs []uuid.UUID) (map[uuid.UUID]bool, error)
+	// Likers returns up to limit users who like the message, newest
+	// first, after the cursor (nil: from the newest).
+	Likers(ctx context.Context, messageID uuid.UUID, after *LikerCursor, limit int) ([]Liker, error)
 }
 
 // TopicPage is one screen of topics with the newest message of each, by
@@ -460,6 +465,42 @@ func (s *TopicService) Messages(ctx context.Context, viewerID, topicID, after uu
 	}
 
 	return page, nil
+}
+
+// MessageLikers pages who put a heart on a message, newest first
+// ("Понравилось N людям"); post.ErrMessageNotFound for a missing message.
+func (s *TopicService) MessageLikers(ctx context.Context, id uuid.UUID, cursor *LikerCursor, size int) (LikerPage, error) {
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	m, err := s.messages.Get(ctx, id)
+	if err != nil {
+		return LikerPage{}, errs.Wrap("s.messages.Get", err)
+	}
+
+	found, err := s.likes.Likers(ctx, id, cursor, size+1)
+	if err != nil {
+		return LikerPage{}, errs.Wrap("s.likes.Likers", err)
+	}
+
+	return likerPage(found, size, m.Likes()), nil
+}
+
+// MessagesByID returns the messages with these IDs that exist, at most
+// MaxPageSize, in no particular order.
+func (s *TopicService) MessagesByID(ctx context.Context, ids []uuid.UUID) ([]*post.TopicMessage, error) {
+	if len(ids) > MaxPageSize {
+		return nil, ErrTooManyIDs
+	}
+
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	found, err := s.messages.GetMany(ctx, ids)
+
+	return found, errs.Wrap("s.messages.GetMany", err)
 }
 
 // Message is one message of a topic, whole.

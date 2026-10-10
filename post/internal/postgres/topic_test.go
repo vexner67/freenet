@@ -113,6 +113,12 @@ func TestTopicRepository(t *testing.T) {
 	if got, err := messages.Get(ctx, second.ID()); err != nil || got.Likes() != 2 {
 		t.Fatalf("Get = %d likes, %v", got.Likes(), err)
 	}
+	if found, err := messages.Likers(ctx, second.ID(), nil, 10); err != nil || len(found) != 2 || found[0].UserID != ann || found[1].UserID != bob {
+		t.Fatalf("Likers = %+v, %v", found, err)
+	}
+	if found, err := messages.GetMany(ctx, []uuid.UUID{second.ID(), uuid.New()}); err != nil || len(found) != 1 || found[0].Likes() != 2 {
+		t.Fatalf("GetMany = %+v, %v", found, err)
+	}
 	for range 2 {
 		if likes, err := messages.Unlike(ctx, second.ID(), ann); err != nil || likes != 1 {
 			t.Fatalf("Unlike = %d, %v", likes, err)

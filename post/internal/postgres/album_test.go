@@ -393,6 +393,47 @@ func TestAlbumPhotoReactions(t *testing.T) {
 		t.Fatalf("counters = %+v, %v", got, err)
 	}
 
+	// A reply answers a comment of the same photo; hearts are one per
+	// user, counted in the comment.
+	reply, _ := post.NewPhotoReply(photo.ID(), c, ann, "спасибо", time.Now())
+	if err := comments.Save(ctx, reply); err != nil {
+		t.Fatalf("Save a reply: %v", err)
+	}
+	gone, _ := post.NewPhotoComment(photo.ID(), bob, "x", time.Now())
+	orphan, _ := post.NewPhotoReply(photo.ID(), gone, ann, "кому?", time.Now())
+	if err := comments.Save(ctx, orphan); !errors.Is(err, post.ErrCommentNotFound) {
+		t.Fatalf("a reply to no comment: %v", err)
+	}
+	for range 2 {
+		if n, err := comments.Like(ctx, reply.ID(), bob); err != nil || n != 1 {
+			t.Fatalf("Like a comment = %d, %v", n, err)
+		}
+	}
+	if n, err := comments.Like(ctx, reply.ID(), ann); err != nil || n != 2 {
+		t.Fatalf("a second heart = %d, %v", n, err)
+	}
+	if _, err := comments.Like(ctx, uuid.New(), bob); !errors.Is(err, post.ErrCommentNotFound) {
+		t.Fatalf("a heart on no comment: %v", err)
+	}
+	if _, err := comments.Unlike(ctx, uuid.New(), bob); !errors.Is(err, post.ErrCommentNotFound) {
+		t.Fatalf("no heart off no comment: %v", err)
+	}
+	if liked, err := comments.Liked(ctx, bob, []uuid.UUID{c.ID(), reply.ID()}); err != nil || len(liked) != 1 || !liked[reply.ID()] {
+		t.Fatalf("Liked comments = %v, %v", liked, err)
+	}
+	if found, err := comments.Likers(ctx, reply.ID(), nil, 10); err != nil || len(found) != 2 || found[0].UserID != ann {
+		t.Fatalf("Likers of a comment = %+v, %v", found, err)
+	}
+	if n, err := comments.Unlike(ctx, reply.ID(), ann); err != nil || n != 1 {
+		t.Fatalf("Unlike a comment = %d, %v", n, err)
+	}
+	if page, err := comments.List(ctx, photo.ID(), uuid.Nil, 10); err != nil || len(page) != 2 || page[1].ReplyTo() != c.ID() || page[1].Likes() != 1 {
+		t.Fatalf("List = %+v, %v", page, err)
+	}
+	if found, err := comments.GetMany(ctx, []uuid.UUID{reply.ID(), uuid.New()}); err != nil || len(found) != 1 || found[0].ReplyTo() != c.ID() {
+		t.Fatalf("GetMany = %+v, %v", found, err)
+	}
+
 	// A post sharing the photo keeps its ID.
 	content, _ := post.NewPhotoShare(photo.ID(), "смотрите")
 	share, _ := post.New(bob, bob, content, time.Now())
@@ -407,8 +448,12 @@ func TestAlbumPhotoReactions(t *testing.T) {
 	if err := albums.DeleteByUser(ctx, bob); err != nil {
 		t.Fatalf("DeleteByUser: %v", err)
 	}
-	if got, err := albums.Photos().Get(ctx, photo.ID()); err != nil || got.Likes() != 0 || got.Comments() != 0 {
+	if got, err := albums.Photos().Get(ctx, photo.ID()); err != nil || got.Likes() != 0 || got.Comments() != 1 {
 		t.Fatalf("after erasing bob = %+v, %v", got, err)
+	}
+	// Ann's reply stays, answering nothing and without bob's heart.
+	if got, err := comments.Get(ctx, reply.ID()); err != nil || got.ReplyTo() != uuid.Nil || got.Likes() != 0 {
+		t.Fatalf("ann's reply after erasing bob = %+v, %v", got, err)
 	}
 	if _, err := comments.Get(ctx, c.ID()); !errors.Is(err, post.ErrCommentNotFound) {
 		t.Fatalf("bob's comment: %v", err)

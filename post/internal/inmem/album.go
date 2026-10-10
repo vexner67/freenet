@@ -24,6 +24,8 @@ type AlbumRepository struct {
 	// photo takes both, as the foreign keys do.
 	photoLikes    map[uuid.UUID]map[uuid.UUID]time.Time
 	photoComments map[uuid.UUID]*post.PhotoComment
+	// commentLikes are comment → users → when.
+	commentLikes map[uuid.UUID]map[uuid.UUID]time.Time
 }
 
 func NewAlbumRepository() *AlbumRepository {
@@ -32,6 +34,7 @@ func NewAlbumRepository() *AlbumRepository {
 		photos:        make(map[uuid.UUID]*post.AlbumPhoto),
 		photoLikes:    make(map[uuid.UUID]map[uuid.UUID]time.Time),
 		photoComments: make(map[uuid.UUID]*post.PhotoComment),
+		commentLikes:  make(map[uuid.UUID]map[uuid.UUID]time.Time),
 	}
 }
 
@@ -184,8 +187,27 @@ func (r *AlbumRepository) deletePhoto(id uuid.UUID) {
 	for cid, c := range r.photoComments {
 		if c.PhotoID() == id {
 			delete(r.photoComments, cid)
+			delete(r.commentLikes, cid)
 		}
 	}
+}
+
+// deleteComment drops a comment with its hearts; its replies answer
+// nothing then. The lock is held.
+func (r *AlbumRepository) deleteComment(id uuid.UUID) {
+	delete(r.photoComments, id)
+	delete(r.commentLikes, id)
+
+	for cid, c := range r.photoComments {
+		if c.ReplyTo() == id {
+			r.photoComments[cid] = c.WithoutReply()
+		}
+	}
+}
+
+// counted is a comment with its hearts as they are now; the lock is held.
+func (r *AlbumRepository) counted(c *post.PhotoComment) *post.PhotoComment {
+	return c.WithLikes(len(r.commentLikes[c.ID()]))
 }
 
 // uncover stops a photo showing an album it leaves; the lock is held.
@@ -270,9 +292,13 @@ func (r *AlbumRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) er
 		}
 	}
 
+	for _, users := range r.commentLikes {
+		delete(users, userID)
+	}
+
 	for id, c := range r.photoComments {
 		if c.AuthorID() == userID {
-			delete(r.photoComments, id)
+			r.deleteComment(id)
 			r.recountPhoto(c.PhotoID(), 0, -1)
 		}
 	}

@@ -211,6 +211,52 @@ func (h *PostHandler) GetTopicMessage(ctx context.Context, req *postv1.GetTopicM
 	return &postv1.GetTopicMessageResponse{Message: toProtoTopicMessage(m, viewerID(ctx))}, nil
 }
 
+// GetTopicMessages tells nobody whether they like the messages: a
+// notification quotes them.
+func (h *PostHandler) GetTopicMessages(ctx context.Context, req *postv1.GetTopicMessagesRequest) (*postv1.GetTopicMessagesResponse, error) {
+	ids, err := parseIDs(req.GetIds())
+	if err != nil {
+		return nil, err
+	}
+
+	found, err := h.topicService.MessagesByID(ctx, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	viewer := viewerID(ctx)
+	resp := &postv1.GetTopicMessagesResponse{Messages: make([]*postv1.TopicMessage, 0, len(found))}
+
+	for _, m := range found {
+		pm := toProtoTopicMessage(m, viewer)
+		pm.Text, pm.TextCut = m.Content().Text().Excerpt(int(req.GetTextLimit()))
+		resp.Messages = append(resp.Messages, pm)
+	}
+
+	return resp, nil
+}
+
+func (h *PostHandler) ListTopicMessageLikers(ctx context.Context, req *postv1.ListTopicMessageLikersRequest) (*postv1.ListTopicMessageLikersResponse, error) {
+	id, err := uuid.Parse(req.GetId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid message id")
+	}
+
+	cursor, err := parseLikerCursor(req.GetCursor())
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.topicService.MessageLikers(ctx, id, cursor, int(req.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+
+	ids, next, total := toProtoLikers(page)
+
+	return &postv1.ListTopicMessageLikersResponse{UserIds: ids, NextCursor: next, Total: total}, nil
+}
+
 func (h *PostHandler) LikeTopicMessage(ctx context.Context, req *postv1.LikeTopicMessageRequest) (*postv1.LikeTopicMessageResponse, error) {
 	likes, err := h.likeTopicMessage(ctx, req.GetId(), h.topicService.LikeMessage)
 	if err != nil {
