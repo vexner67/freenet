@@ -220,7 +220,8 @@ export const api = {
     const path = page(`/api/v1/users/${encodeURIComponent(nickname)}/following`, cursor, limit);
     return authorized('GET', path + (path.includes('?') ? '&' : '?') + 'common=true');
   },
-  feed: (cursor = '', comments = false) => authorized('GET', withType(page('/api/v1/feed', cursor, 0), '', '', comments)),
+  // feed: your news, or with all those of everyone ("Все новости").
+  feed: (cursor = '', comments = false, all = false) => authorized('GET', withType(page('/api/v1/feed', cursor, 0), all ? 'all' : '', '', comments)),
 
   // onWall: post the photo on your wall too ("Опубликовать запись на стене").
   uploadAvatar: (file, onWall = false) => authorized('PUT', '/api/v1/me/avatar' + (onWall ? '?onWall=true' : ''), file),
