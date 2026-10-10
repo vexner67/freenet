@@ -24,6 +24,9 @@ type fakeAlbums struct {
 	// photoLiked is the photo liked last, commented the text of the last
 	// comment on a photo.
 	photoLiked, commented string
+	// repliedTo is the comment the last one answered, commentLiked the
+	// comment that got a heart last.
+	repliedTo, commentLiked string
 	// cover and moved are "album/photo" of the last cover and move.
 	cover, moved string
 }
@@ -150,9 +153,35 @@ func (f *fakeAlbums) PhotoLikers(_ context.Context, id, _ string, _ int) (model.
 
 // CommentPhoto keeps text in commented; the comments of every photo are
 // bob's and a deleted page's.
-func (f *fakeAlbums) CommentPhoto(_ context.Context, _, id, text string) (model.PhotoComment, error) {
-	f.commented = text
-	return model.PhotoComment{ID: "pc9", PhotoID: id, AuthorID: "u1", Text: text, CreatedAt: albumTime, Mine: true}, f.err
+func (f *fakeAlbums) CommentPhoto(_ context.Context, _, id, text, replyTo string) (model.PhotoComment, error) {
+	f.commented, f.repliedTo = text, replyTo
+	return model.PhotoComment{ID: "pc9", PhotoID: id, AuthorID: "u1", Text: text, ReplyTo: replyTo, CreatedAt: albumTime, Mine: true}, f.err
+}
+
+// PhotoCommentsByID knows pc1.
+func (f *fakeAlbums) PhotoCommentsByID(_ context.Context, ids []string) ([]model.PhotoComment, error) {
+	var found []model.PhotoComment
+	for _, id := range ids {
+		if id == "pc1" {
+			found = append(found, model.PhotoComment{ID: id, PhotoID: "ph6", AuthorID: "u2", Text: "красиво"})
+		}
+	}
+
+	return found, f.err
+}
+
+func (f *fakeAlbums) LikePhotoComment(_ context.Context, _, id string) (int, error) {
+	f.commentLiked = id
+	return 1, f.err
+}
+
+func (f *fakeAlbums) UnlikePhotoComment(_ context.Context, _, _ string) (int, error) {
+	f.commentLiked = ""
+	return 0, f.err
+}
+
+func (f *fakeAlbums) PhotoCommentLikers(_ context.Context, _, _ string, _ int) (model.LikerPage, error) {
+	return model.LikerPage{UserIDs: []string{"u2"}, Total: 1}, f.err
 }
 
 func (f *fakeAlbums) DeletePhotoComment(_ context.Context, _, id string) error {
@@ -162,7 +191,7 @@ func (f *fakeAlbums) DeletePhotoComment(_ context.Context, _, id string) error {
 
 func (f *fakeAlbums) PhotoComments(_ context.Context, _, id, _ string, _ int) (model.PhotoCommentPage, error) {
 	return model.PhotoCommentPage{Comments: []model.PhotoComment{
-		{ID: "pc1", PhotoID: id, AuthorID: "u2", Text: "красиво", CreatedAt: albumTime},
+		{ID: "pc1", PhotoID: id, AuthorID: "u2", Text: "красиво", CreatedAt: albumTime, Likes: 2, Liked: true},
 		{ID: "pc2", PhotoID: id, AuthorID: "u3", Text: "удалённый", CreatedAt: albumTime},
 	}, Total: 2}, f.err
 }
@@ -453,5 +482,61 @@ func TestPhotoReactions(t *testing.T) {
 	w = h.do("POST", "/api/v1/album-photos/ph6/reposts", `{"text":"смотрите"}`, auth...)
 	if w.Code != http.StatusCreated || h.posts.repost.PhotoID != "ph6" || h.posts.repost.Text != "смотрите" {
 		t.Fatalf("share: %d %s, asked %+v", w.Code, w.Body, h.posts.repost)
+	}
+}
+
+func TestPhotoCommentRepliesAndHearts(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+	auth := []string{"Authorization", "Bearer token"}
+
+	w := h.do("POST", "/api/v1/album-photos/ph6/comments", `{"text":"спасибо","replyTo":"pc1"}`, auth...)
+	if got := decode[map[string]any](t, w); w.Code != http.StatusCreated || got["replyTo"] != "pc1" || h.albums.repliedTo != "pc1" {
+		t.Fatalf("a reply: %d %+v, replied to %q", w.Code, got, h.albums.repliedTo)
+	}
+
+	w = h.do("GET", "/api/v1/album-photos/ph6/comments", "")
+	page := decode[struct{ Comments []map[string]any }](t, w)
+	if w.Code != http.StatusOK || len(page.Comments) == 0 || page.Comments[0]["likes"] != float64(2) || page.Comments[0]["liked"] != true || page.Comments[0]["replyTo"] != nil {
+		t.Fatalf("comments: %d %+v", w.Code, page)
+	}
+
+	tests := []struct {
+		name, method, path string
+		auth               bool
+		want               int
+	}{
+		{"a heart", "PUT", "/api/v1/photo-comments/pc1/like", true, http.StatusOK},
+		{"a heart, anonymous", "PUT", "/api/v1/photo-comments/pc1/like", false, http.StatusUnauthorized},
+		{"a heart on nothing", "PUT", "/api/v1/photo-comments/pc404/like", true, http.StatusNotFound},
+		{"a heart taken back", "DELETE", "/api/v1/photo-comments/pc1/like", true, http.StatusOK},
+		{"likers", "GET", "/api/v1/photo-comments/pc1/likes", false, http.StatusOK},
+		{"likers of nothing", "GET", "/api/v1/photo-comments/pc404/likes", false, http.StatusNotFound},
+		{"likers of a topic message", "GET", "/api/v1/topic-messages/m1/likes", false, http.StatusOK},
+	}
+
+	for _, tt := range tests {
+		var headers []string
+		if tt.auth {
+			headers = auth
+		}
+
+		if w = h.do(tt.method, tt.path, "", headers...); w.Code != tt.want {
+			t.Errorf("%s: status = %d, want %d: %s", tt.name, w.Code, tt.want, w.Body)
+		}
+	}
+
+	if w = h.do("PUT", "/api/v1/photo-comments/pc1/like", "", auth...); h.albums.commentLiked != "pc1" {
+		t.Fatalf("the heart went to %q: %s", h.albums.commentLiked, w.Body)
+	}
+
+	likers := decode[struct {
+		Users []map[string]any
+		Total int
+	}](t, h.do("GET", "/api/v1/topic-messages/m1/likes", ""))
+	if likers.Total != 1 || len(likers.Users) != 1 || likers.Users[0]["nickname"] != "bob" {
+		t.Fatalf("likers of a topic message = %+v", likers)
 	}
 }

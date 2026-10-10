@@ -810,7 +810,12 @@ type PhotoComment struct {
 	AuthorID string
 	Text     string
 	// TextCut: Text is only its beginning, as lists carry it.
-	TextCut   bool
+	TextCut bool
+	// ReplyTo is the comment of the same photo it answers; "" for none.
+	ReplyTo string
+	// Likes are its hearts; Liked: the caller put one.
+	Likes     int
+	Liked     bool
 	CreatedAt time.Time
 	Mine      bool
 }

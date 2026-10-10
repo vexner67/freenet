@@ -151,6 +151,10 @@ type Topics interface {
 	Messages(ctx context.Context, accessToken, topicID, cursor string, limit int) (model.TopicMessagePage, error)
 	// Message is a message of a topic with its whole text.
 	Message(ctx context.Context, id string) (model.TopicMessage, error)
+	// MessagesByID are the messages that exist, with the beginnings of
+	// their texts; MessageLikers are who put a heart on one.
+	MessagesByID(ctx context.Context, ids []string) ([]model.TopicMessage, error)
+	MessageLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error)
 	DeleteMessage(ctx context.Context, accessToken, id string) error
 	LikeMessage(ctx context.Context, accessToken, id string) (int, error)
 	UnlikeMessage(ctx context.Context, accessToken, id string) (int, error)
@@ -181,11 +185,17 @@ type Albums interface {
 	LikePhoto(ctx context.Context, accessToken, id string) (int, error)
 	UnlikePhoto(ctx context.Context, accessToken, id string) (int, error)
 	PhotoLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error)
-	CommentPhoto(ctx context.Context, accessToken, id, text string) (model.PhotoComment, error)
+	CommentPhoto(ctx context.Context, accessToken, id, text, replyTo string) (model.PhotoComment, error)
 	DeletePhotoComment(ctx context.Context, accessToken, id string) error
 	PhotoComments(ctx context.Context, accessToken, id, cursor string, limit int) (model.PhotoCommentPage, error)
 	// PhotoComment is a comment under a photo with its whole text.
 	PhotoComment(ctx context.Context, id string) (model.PhotoComment, error)
+	// PhotoCommentsByID are the comments that exist, with the beginnings
+	// of their texts.
+	PhotoCommentsByID(ctx context.Context, ids []string) ([]model.PhotoComment, error)
+	LikePhotoComment(ctx context.Context, accessToken, id string) (int, error)
+	UnlikePhotoComment(ctx context.Context, accessToken, id string) (int, error)
+	PhotoCommentLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error)
 }
 
 type Notifications interface {
@@ -394,6 +404,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/topics/{id}/messages", a.createTopicMessage)
 	mux.HandleFunc("DELETE /api/v1/topic-messages/{id}", a.deleteTopicMessage)
 	mux.HandleFunc("GET /api/v1/topic-messages/{id}/text", a.topicMessageText)
+	mux.HandleFunc("GET /api/v1/topic-messages/{id}/likes", a.listTopicMessageLikers)
 	mux.HandleFunc("PUT /api/v1/topic-messages/{id}/like", a.likeTopicMessage)
 	mux.HandleFunc("DELETE /api/v1/topic-messages/{id}/like", a.unlikeTopicMessage)
 
@@ -418,6 +429,9 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/album-photos/{id}/comments", a.createPhotoComment)
 	mux.HandleFunc("DELETE /api/v1/photo-comments/{id}", a.deletePhotoComment)
 	mux.HandleFunc("GET /api/v1/photo-comments/{id}/text", a.photoCommentText)
+	mux.HandleFunc("PUT /api/v1/photo-comments/{id}/like", a.likePhotoComment)
+	mux.HandleFunc("DELETE /api/v1/photo-comments/{id}/like", a.unlikePhotoComment)
+	mux.HandleFunc("GET /api/v1/photo-comments/{id}/likes", a.listPhotoCommentLikers)
 	mux.HandleFunc("POST /api/v1/album-photos/{id}/reposts", a.shareAlbumPhoto)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)

@@ -232,8 +232,10 @@ func (a *Albums) PhotoLikers(ctx context.Context, id, cursor string, limit int) 
 	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
 }
 
-func (a *Albums) CommentPhoto(ctx context.Context, accessToken, id, text string) (model.PhotoComment, error) {
-	resp, err := a.api.CreatePhotoComment(withToken(ctx, accessToken), &postv1.CreatePhotoCommentRequest{PhotoId: id, Text: text})
+// CommentPhoto comments a photo, in answer to comment replyTo of it
+// unless that is "".
+func (a *Albums) CommentPhoto(ctx context.Context, accessToken, id, text, replyTo string) (model.PhotoComment, error) {
+	resp, err := a.api.CreatePhotoComment(withToken(ctx, accessToken), &postv1.CreatePhotoCommentRequest{PhotoId: id, Text: text, ReplyToId: replyTo})
 	if err != nil {
 		return model.PhotoComment{}, errs.Wrap("a.api.CreatePhotoComment", fromStatus(err))
 	}
@@ -276,6 +278,52 @@ func (a *Albums) PhotoComment(ctx context.Context, id string) (model.PhotoCommen
 	return toPhotoComment(resp.GetComment()), nil
 }
 
+// PhotoCommentsByID returns the comments of photos that exist, in no
+// order, with the beginnings of their texts.
+func (a *Albums) PhotoCommentsByID(ctx context.Context, ids []string) ([]model.PhotoComment, error) {
+	resp, err := a.api.GetPhotoComments(ctx, &postv1.GetPhotoCommentsRequest{Ids: ids, TextLimit: model.ExcerptLength})
+	if err != nil {
+		return nil, errs.Wrap("a.api.GetPhotoComments", fromStatus(err))
+	}
+
+	comments := make([]model.PhotoComment, 0, len(resp.GetComments()))
+	for _, c := range resp.GetComments() {
+		comments = append(comments, toPhotoComment(c))
+	}
+
+	return comments, nil
+}
+
+// LikePhotoComment and UnlikePhotoComment return how many hearts the
+// comment has now.
+func (a *Albums) LikePhotoComment(ctx context.Context, accessToken, id string) (int, error) {
+	resp, err := a.api.LikePhotoComment(withToken(ctx, accessToken), &postv1.LikePhotoCommentRequest{Id: id})
+	if err != nil {
+		return 0, errs.Wrap("a.api.LikePhotoComment", fromStatus(err))
+	}
+
+	return int(resp.GetLikeCount()), nil
+}
+
+func (a *Albums) UnlikePhotoComment(ctx context.Context, accessToken, id string) (int, error) {
+	resp, err := a.api.UnlikePhotoComment(withToken(ctx, accessToken), &postv1.UnlikePhotoCommentRequest{Id: id})
+	if err != nil {
+		return 0, errs.Wrap("a.api.UnlikePhotoComment", fromStatus(err))
+	}
+
+	return int(resp.GetLikeCount()), nil
+}
+
+// PhotoCommentLikers is who put a heart on the comment, newest first.
+func (a *Albums) PhotoCommentLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error) {
+	resp, err := a.api.ListPhotoCommentLikers(ctx, &postv1.ListPhotoCommentLikersRequest{Id: id, Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.LikerPage{}, errs.Wrap("a.api.ListPhotoCommentLikers", fromStatus(err))
+	}
+
+	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
+}
+
 func toPhotoComment(pc *postv1.PhotoComment) model.PhotoComment {
 	return model.PhotoComment{
 		ID:        pc.GetId(),
@@ -283,6 +331,9 @@ func toPhotoComment(pc *postv1.PhotoComment) model.PhotoComment {
 		AuthorID:  pc.GetAuthorId(),
 		Text:      pc.GetText(),
 		TextCut:   pc.GetTextCut(),
+		ReplyTo:   pc.GetReplyToId(),
+		Likes:     int(pc.GetLikeCount()),
+		Liked:     pc.GetLiked(),
 		CreatedAt: fromTimestamp(pc.GetCreatedAt()),
 		Mine:      pc.GetMine(),
 	}

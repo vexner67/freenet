@@ -17,7 +17,12 @@ type photoCommentJSON struct {
 	// whole is at /photo-comments/{id}/text.
 	TextCut   bool   `json:"textCut,omitempty"`
 	CreatedAt string `json:"createdAt"`
-	Mine      bool   `json:"mine"`
+	// ReplyTo is the comment it answers ("в ответ"); null for none.
+	ReplyTo *string `json:"replyTo"`
+	// Likes are its hearts; Liked: the viewer put one.
+	Likes int  `json:"likes"`
+	Liked bool `json:"liked"`
+	Mine  bool `json:"mine"`
 }
 
 type photoCommentPageResponse struct {
@@ -28,6 +33,8 @@ type photoCommentPageResponse struct {
 
 type photoCommentRequest struct {
 	Text string `json:"text"`
+	// ReplyTo is the comment of the same photo this one answers.
+	ReplyTo string `json:"replyTo"`
 }
 
 // visiblePhoto is the photo of the path, as getAlbumPhoto finds it: not
@@ -200,7 +207,7 @@ func (a *api) createPhotoComment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	c, err := a.albums.CommentPhoto(r.Context(), token, photo.ID, req.Text)
+	c, err := a.albums.CommentPhoto(r.Context(), token, photo.ID, req.Text, req.ReplyTo)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -238,6 +245,9 @@ func toPhotoCommentJSON(c model.PhotoComment, author model.Author) photoCommentJ
 		Author:    toAuthorJSON(author),
 		Text:      c.Text,
 		TextCut:   c.TextCut,
+		ReplyTo:   optionalString(c.ReplyTo),
+		Likes:     c.Likes,
+		Liked:     c.Liked,
 		CreatedAt: c.CreatedAt.UTC().Format(time.RFC3339),
 		Mine:      c.Mine,
 	}
@@ -253,16 +263,80 @@ func (a *api) photoCommentText(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := a.albums.PhotoComment(r.Context(), r.PathValue("id"))
+	c, err := a.shownPhotoComment(r, token)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
+	writeJSON(w, http.StatusOK, textResponse{Text: c.Text})
+}
+
+// shownPhotoComment is the comment of the path when the caller is shown
+// its photo; not found otherwise.
+func (a *api) shownPhotoComment(r *http.Request, token string) (model.PhotoComment, error) {
+	c, err := a.albums.PhotoComment(r.Context(), r.PathValue("id"))
+	if err != nil {
+		return model.PhotoComment{}, err
+	}
+
 	if _, err = a.visiblePhotoByID(r, token, c.PhotoID); err != nil {
-		a.writeError(w, r, failure.New(failure.NotFound, "comment not found"))
+		return model.PhotoComment{}, failure.New(failure.NotFound, "comment not found")
+	}
+
+	return c, nil
+}
+
+// likePhotoComment and unlikePhotoComment are the heart of a comment
+// under a photo, as of a comment of a post: for those shown the photo.
+func (a *api) likePhotoComment(w http.ResponseWriter, r *http.Request) {
+	a.setPhotoCommentLike(w, r, true)
+}
+
+func (a *api) unlikePhotoComment(w http.ResponseWriter, r *http.Request) {
+	a.setPhotoCommentLike(w, r, false)
+}
+
+func (a *api) setPhotoCommentLike(w http.ResponseWriter, r *http.Request, liked bool) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, textResponse{Text: c.Text})
+	c, err := a.shownPhotoComment(r, token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	set := a.albums.UnlikePhotoComment
+	if liked {
+		set = a.albums.LikePhotoComment
+	}
+
+	likes, err := set(r.Context(), token, c.ID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, likeResponse{Likes: likes, Liked: liked})
+}
+
+// listPhotoCommentLikers is "Понравилось N людям" of a comment under a
+// photo, for those shown the photo.
+func (a *api) listPhotoCommentLikers(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if _, err = a.shownPhotoComment(r, token); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.listLikers(w, r, a.albums.PhotoCommentLikers)
 }

@@ -2165,6 +2165,32 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/topic-messages/{id}/likes:
+    get:
+      summary: Who like the message of a topic, newest first ("Понравилось N людям")
+      description: |
+        No token needed. `total` is the like counter; people whose page is
+        deleted are left out of `users`, still counted.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of people
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/topic-messages/{id}/like:
     parameters:
       - name: id
@@ -2173,7 +2199,7 @@ paths:
         schema: { type: string, format: uuid }
     put:
       summary: Like a message of a topic
-      description: Idempotent, as the heart of a comment. Nobody is notified.
+      description: Idempotent, as the heart of a comment; its author is notified (topic_message_like), unless it was written on behalf of the community.
       security: [{ bearer: [] }]
       responses:
         "200": { $ref: "#/components/responses/Like" }
@@ -2464,7 +2490,7 @@ paths:
         schema: { type: string, format: uuid }
     get:
       summary: The comments under a photo, oldest first
-      description: Text only. Those of deleted pages are left out, still counted.
+      description: Text only. Those of deleted pages are left out, still counted. With a token each tells whether you like it.
       parameters:
         - name: cursor
           in: query
@@ -2500,6 +2526,9 @@ paths:
               required: [text]
               properties:
                 text: { type: string, maxLength: 60000 }
+                replyTo:
+                  type: string
+                  description: "The comment under the same photo this one answers (\"Ответить\"); empty for none. `comment not found` when it is gone, 400 when it is under another photo"
       responses:
         "201":
           description: The comment
@@ -2538,6 +2567,57 @@ paths:
                 properties:
                   text: { type: string }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/photo-comments/{id}/likes:
+    get:
+      summary: Who like the comment under a photo, newest first ("Понравилось N людям")
+      description: |
+        No token needed. `total` is the like counter; people whose page is
+        deleted are left out of `users`, still counted.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of people
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/photo-comments/{id}/like:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Like a comment under a photo
+      description: Idempotent, as the heart of a comment under a post. Only who may see the photo; nobody is notified.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Like" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Take the like back
+      description: Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/Like" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/photo-comments/{id}:
     parameters:
@@ -3861,7 +3941,7 @@ components:
         type:
           type: string
           enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo` (the comment is not quoted)"
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -3874,7 +3954,7 @@ components:
             createdAt: { type: string, format: date-time }
             text: { type: string, description: "What the post says; empty when photos only" }
         comment:
-          description: Only for comments
+          description: "The comment, for the notifications about one: what it says, 1000 characters at most. Also the message of a topic (topic_message, topic_mention, topic_message_like) and the comment under a photo (photo_comment); null for the others and for a message of photos only"
           nullable: true
           type: object
           required: [id, text]
@@ -4096,7 +4176,7 @@ components:
 
     PhotoComment:
       type: object
-      required: [id, author, text, createdAt, mine]
+      required: [id, author, text, createdAt, mine, replyTo, likes, liked]
       properties:
         id: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
@@ -4106,3 +4186,9 @@ components:
           description: "`text` is only its beginning (1000 characters): lists carry no more. GET /api/v1/photo-comments/{id}/text tells it whole. Absent when the text is whole"
         createdAt: { type: string, format: date-time }
         mine: { type: boolean, description: You wrote it }
+        replyTo:
+          type: [string, "null"]
+          format: uuid
+          description: The comment under the same photo it answers; null for none or when that comment is deleted
+        likes: { type: integer }
+        liked: { type: boolean, description: "You like it; false without a token" }

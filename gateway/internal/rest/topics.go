@@ -528,3 +528,9 @@ func (a *api) topicMessageText(w http.ResponseWriter, r *http.Request) {
 
 	writeJSON(w, http.StatusOK, textResponse{Text: m.Text})
 }
+
+// listTopicMessageLikers is "Понравилось N людям" of a message of a
+// topic, public as discussions are.
+func (a *api) listTopicMessageLikers(w http.ResponseWriter, r *http.Request) {
+	a.listLikers(w, r, a.topics.MessageLikers)
+}
