@@ -22,9 +22,12 @@ type publishRequest struct {
 
 // suggestionJSON is a suggested post: its author and what it says.
 type suggestionJSON struct {
-	ID        string      `json:"id"`
-	Author    authorJSON  `json:"author"`
-	Text      string      `json:"text"`
+	ID     string     `json:"id"`
+	Author authorJSON `json:"author"`
+	Text   string     `json:"text"`
+	// TextCut: text is only its beginning, as lists carry it; the whole
+	// is at /suggestions/{id}/text.
+	TextCut   bool        `json:"textCut,omitempty"`
 	Photos    []photoJSON `json:"photos"`
 	CreatedAt string      `json:"createdAt"`
 }
@@ -40,6 +43,7 @@ func toSuggestionJSON(s model.Suggestion, author model.Author) suggestionJSON {
 		ID:        s.ID,
 		Author:    toAuthorJSON(author),
 		Text:      s.Text,
+		TextCut:   s.TextCut,
 		Photos:    toPhotosJSON(s.AuthorID, s.PhotoIDs),
 		CreatedAt: s.CreatedAt.UTC().Format(time.RFC3339),
 	}
@@ -198,4 +202,22 @@ func (a *api) deleteSuggestion(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.WriteHeader(http.StatusNoContent)
+}
+
+// suggestionText is what a suggestion says, whole: the list carries its
+// beginning. For its author and the admins of the club, as the list is.
+func (a *api) suggestionText(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	s, err := a.posts.Suggestion(r.Context(), token, r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, textResponse{Text: s.Text})
 }

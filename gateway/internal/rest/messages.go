@@ -237,6 +237,36 @@ func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// getMessage is a message of the dialog with a user, whole: the dialog
+// carries the beginnings of long texts.
+func (a *api) getMessage(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	peer, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	m, err := a.messages.Whole(r.Context(), token, peer.ID, r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	shown := []messageJSON{toMessageJSON(m, peer.ID)}
+	if err = a.showAttached(r, shown); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, shown[0])
+}
+
 // canMessage asks the user service, which keeps privacy and blacklists,
 // whether the caller may write to peerID, telling it what only the message
 // service knows: whether the peer wrote first, so may be answered.

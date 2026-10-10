@@ -81,6 +81,15 @@ func (f *fakeTopics) Messages(_ context.Context, _, topicID, _ string, _ int) (m
 	}, Total: 3}, f.err
 }
 
+// Message knows m1, whose text lists cut.
+func (f *fakeTopics) Message(_ context.Context, id string) (model.TopicMessage, error) {
+	if id != "m1" {
+		return model.TopicMessage{}, failure.New(failure.NotFound, "message not found")
+	}
+
+	return model.TopicMessage{ID: id, TopicID: "t1", AuthorID: "u2", Text: "Привет, целиком", CreatedAt: topicTime}, nil
+}
+
 func (f *fakeTopics) DeleteMessage(_ context.Context, _, id string) error {
 	f.deleted = id
 	return f.err

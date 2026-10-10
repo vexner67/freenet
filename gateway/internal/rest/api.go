@@ -132,6 +132,8 @@ type Posts interface {
 
 	Suggest(ctx context.Context, accessToken, wallID, text string, photoIDs []string) (model.Suggestion, error)
 	Suggestions(ctx context.Context, accessToken, wallID string, mine bool, cursor string, limit int) (model.SuggestionPage, error)
+	// Suggestion is a suggestion with its whole text.
+	Suggestion(ctx context.Context, accessToken, id string) (model.Suggestion, error)
 	PublishSuggestion(ctx context.Context, accessToken, id, text string, signed bool) (model.Post, error)
 	DeleteSuggestion(ctx context.Context, accessToken, id string) error
 }
@@ -147,6 +149,8 @@ type Topics interface {
 	Delete(ctx context.Context, accessToken, id string) error
 	Write(ctx context.Context, accessToken, topicID string, nm model.NewTopicMessage) (model.TopicMessage, error)
 	Messages(ctx context.Context, accessToken, topicID, cursor string, limit int) (model.TopicMessagePage, error)
+	// Message is a message of a topic with its whole text.
+	Message(ctx context.Context, id string) (model.TopicMessage, error)
 	DeleteMessage(ctx context.Context, accessToken, id string) error
 	LikeMessage(ctx context.Context, accessToken, id string) (int, error)
 	UnlikeMessage(ctx context.Context, accessToken, id string) (int, error)
@@ -180,6 +184,8 @@ type Albums interface {
 	CommentPhoto(ctx context.Context, accessToken, id, text string) (model.PhotoComment, error)
 	DeletePhotoComment(ctx context.Context, accessToken, id string) error
 	PhotoComments(ctx context.Context, accessToken, id, cursor string, limit int) (model.PhotoCommentPage, error)
+	// PhotoComment is a comment under a photo with its whole text.
+	PhotoComment(ctx context.Context, id string) (model.PhotoComment, error)
 }
 
 type Notifications interface {
@@ -194,6 +200,8 @@ type Messages interface {
 	Dialogs(ctx context.Context, accessToken, cursor string, limit int) (model.DialogPage, error)
 	CountUnread(ctx context.Context, accessToken string) (int, error)
 	History(ctx context.Context, accessToken, peerID string, at model.MessagesAt, limit int) (model.MessagePage, error)
+	// Whole is a message of the dialog with peerID with its whole text.
+	Whole(ctx context.Context, accessToken, peerID, id string) (model.Message, error)
 	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
 	Delete(ctx context.Context, accessToken, id string) error
 	// Hide deletes a message for the caller alone; Edit changes what
@@ -340,6 +348,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/dialogs/unread-count", a.countUnreadDialogs)
 	mux.HandleFunc("GET /api/v1/dialogs/{nickname}/messages", a.listMessages)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/messages", a.sendMessage)
+	mux.HandleFunc("GET /api/v1/dialogs/{nickname}/messages/{id}", a.getMessage)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/read", a.markDialogRead)
 	mux.HandleFunc("GET /api/v1/messages/search", a.searchMessages)
 	mux.HandleFunc("PATCH /api/v1/messages/{id}", a.editMessage)
@@ -375,6 +384,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/clubs/{ref}/suggestions", a.suggestClubPost)
 	mux.HandleFunc("POST /api/v1/suggestions/{id}/publish", a.publishSuggestion)
 	mux.HandleFunc("DELETE /api/v1/suggestions/{id}", a.deleteSuggestion)
+	mux.HandleFunc("GET /api/v1/suggestions/{id}/text", a.suggestionText)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/topics", a.listTopics)
 	mux.HandleFunc("POST /api/v1/clubs/{ref}/topics", a.createTopic)
 	mux.HandleFunc("GET /api/v1/topics/{id}", a.getTopic)
@@ -383,6 +393,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/topics/{id}/messages", a.listTopicMessages)
 	mux.HandleFunc("POST /api/v1/topics/{id}/messages", a.createTopicMessage)
 	mux.HandleFunc("DELETE /api/v1/topic-messages/{id}", a.deleteTopicMessage)
+	mux.HandleFunc("GET /api/v1/topic-messages/{id}/text", a.topicMessageText)
 	mux.HandleFunc("PUT /api/v1/topic-messages/{id}/like", a.likeTopicMessage)
 	mux.HandleFunc("DELETE /api/v1/topic-messages/{id}/like", a.unlikeTopicMessage)
 
@@ -406,6 +417,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/album-photos/{id}/comments", a.listPhotoComments)
 	mux.HandleFunc("POST /api/v1/album-photos/{id}/comments", a.createPhotoComment)
 	mux.HandleFunc("DELETE /api/v1/photo-comments/{id}", a.deletePhotoComment)
+	mux.HandleFunc("GET /api/v1/photo-comments/{id}/text", a.photoCommentText)
 	mux.HandleFunc("POST /api/v1/album-photos/{id}/reposts", a.shareAlbumPhoto)
 
 	mux.HandleFunc("PUT /api/v1/me/avatar", a.uploadAvatar)

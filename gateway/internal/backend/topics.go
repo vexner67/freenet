@@ -44,6 +44,7 @@ func (t *Topics) Get(ctx context.Context, accessToken, id string) (model.Topic, 
 func (t *Topics) List(ctx context.Context, accessToken, clubID, query, cursor string, limit int) (model.TopicPage, error) {
 	resp, err := t.api.ListTopics(withToken(ctx, accessToken), &postv1.ListTopicsRequest{
 		ClubId: clubID, Query: query, Cursor: cursor, Limit: int32(limit), //nolint:gosec // limit is validated by the caller
+		TextLimit: model.PreviewLength,
 	})
 	if err != nil {
 		return model.TopicPage{}, errs.Wrap("t.api.ListTopics", fromStatus(err))
@@ -91,6 +92,7 @@ func (t *Topics) Write(ctx context.Context, accessToken, topicID string, nm mode
 func (t *Topics) Messages(ctx context.Context, accessToken, topicID, cursor string, limit int) (model.TopicMessagePage, error) {
 	resp, err := t.api.ListTopicMessages(withToken(ctx, accessToken), &postv1.ListTopicMessagesRequest{
 		TopicId: topicID, Cursor: cursor, Limit: int32(limit), //nolint:gosec // limit is validated by the caller
+		TextLimit: model.ExcerptLength,
 	})
 	if err != nil {
 		return model.TopicMessagePage{}, errs.Wrap("t.api.ListTopicMessages", fromStatus(err))
@@ -102,6 +104,16 @@ func (t *Topics) Messages(ctx context.Context, accessToken, topicID, cursor stri
 	}
 
 	return page, nil
+}
+
+// Message is a message of a topic with its whole text.
+func (t *Topics) Message(ctx context.Context, id string) (model.TopicMessage, error) {
+	resp, err := t.api.GetTopicMessage(ctx, &postv1.GetTopicMessageRequest{Id: id})
+	if err != nil {
+		return model.TopicMessage{}, errs.Wrap("t.api.GetTopicMessage", fromStatus(err))
+	}
+
+	return toTopicMessage(resp.GetMessage()), nil
 }
 
 func (t *Topics) DeleteMessage(ctx context.Context, accessToken, id string) error {
@@ -161,6 +173,7 @@ func toTopicMessage(pm *postv1.TopicMessage) model.TopicMessage {
 		TopicID:   pm.GetTopicId(),
 		AuthorID:  pm.GetAuthorId(),
 		Text:      pm.GetText(),
+		TextCut:   pm.GetTextCut(),
 		PhotoIDs:  pm.GetPhotoIds(),
 		FromWall:  pm.GetFromWall(),
 		CreatedAt: fromTimestamp(pm.GetCreatedAt()),

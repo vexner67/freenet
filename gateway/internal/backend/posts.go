@@ -372,11 +372,22 @@ func (p *Posts) Suggest(ctx context.Context, accessToken, wallID, text string, p
 	return toSuggestion(resp.GetSuggestion()), nil
 }
 
+// Suggestion is a suggestion with its whole text, for its author and the
+// admins of the club.
+func (p *Posts) Suggestion(ctx context.Context, accessToken, id string) (model.Suggestion, error) {
+	resp, err := p.api.GetSuggestion(withToken(ctx, accessToken), &postv1.GetSuggestionRequest{Id: id})
+	if err != nil {
+		return model.Suggestion{}, errs.Wrap("p.api.GetSuggestion", fromStatus(err))
+	}
+
+	return toSuggestion(resp.GetSuggestion()), nil
+}
+
 // Suggestions pages the suggestions for a club's wall: the caller's own
 // with mine, all of them for its admins.
 func (p *Posts) Suggestions(ctx context.Context, accessToken, wallID string, mine bool, cursor string, limit int) (model.SuggestionPage, error) {
 	resp, err := p.api.ListSuggestions(withToken(ctx, accessToken), &postv1.ListSuggestionsRequest{
-		WallId: wallID, Mine: mine, Cursor: cursor, Limit: toLimit(limit),
+		WallId: wallID, Mine: mine, Cursor: cursor, Limit: toLimit(limit), TextLimit: model.ExcerptLength,
 	})
 	if err != nil {
 		return model.SuggestionPage{}, errs.Wrap("p.api.ListSuggestions", fromStatus(err))
@@ -420,6 +431,7 @@ func toSuggestion(s *postv1.Suggestion) model.Suggestion {
 		WallID:    s.GetWallId(),
 		AuthorID:  s.GetAuthorId(),
 		Text:      s.GetText(),
+		TextCut:   s.GetTextCut(),
 		PhotoIDs:  s.GetPhotoIds(),
 		CreatedAt: s.GetCreatedAt().AsTime(),
 	}
