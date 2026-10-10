@@ -49,31 +49,38 @@ type ClubRepository interface {
 type MemberRepository interface {
 	// Role is club.RoleNone for a user who is not a member.
 	Role(ctx context.Context, clubID, userID uuid.UUID) (club.Role, error)
+	// Seat is the role with the title and whether the club hides it; the
+	// zero seat for a user who is not a member.
+	Seat(ctx context.Context, clubID, userID uuid.UUID) (club.Seat, error)
 	// Owner is uuid.Nil when the club has none (its owner was erased).
 	Owner(ctx context.Context, clubID uuid.UUID) (uuid.UUID, error)
-	// Join is idempotent; club.ErrNotFound when the club is gone.
-	Join(ctx context.Context, clubID, userID uuid.UUID) error
+	// Join is idempotent; club.ErrNotFound when the club is gone. maybe:
+	// the member only might come to the event.
+	Join(ctx context.Context, clubID, userID uuid.UUID, maybe bool) error
 	Leave(ctx context.Context, clubID, userID uuid.UUID) error
 	// SetRole changes the role of a member who is not the owner;
-	// club.ErrNotMember when there is no such member.
+	// club.ErrNotMember when there is no such member. An admin made a
+	// member again loses the title and is hidden no more.
 	SetRole(ctx context.Context, clubID, userID uuid.UUID, role club.Role) error
-	// List returns up to limit members (only the admins and the owner
-	// with adminsOnly) who joined before the membership before (uuid.Nil:
-	// from the newest), the newest first.
-	List(ctx context.Context, clubID, before uuid.UUID, limit int, adminsOnly bool) ([]Member, error)
-	// CountAdmins counts the admins and the owner of a club.
-	CountAdmins(ctx context.Context, clubID uuid.UUID) (int, error)
+	// Describe gives one of those who run the club a title and hides or
+	// shows them; club.ErrNotManager when the user does not run it.
+	Describe(ctx context.Context, clubID, userID uuid.UUID, title club.Title, hidden bool) error
+	// List returns up to limit members that filter picks who joined
+	// before the membership before (uuid.Nil: from the newest), the
+	// newest first.
+	List(ctx context.Context, clubID, before uuid.UUID, limit int, filter MemberFilter) ([]Member, error)
+	// CountAdmins counts the admins and the owner of a club, with
+	// shownOnly those of them it does not hide.
+	CountAdmins(ctx context.Context, clubID uuid.UUID, shownOnly bool) (int, error)
 	// Transfer makes newOwnerID, an admin, the owner of the club and
 	// ownerID, its owner, an admin, both at once; club.ErrCannotTransfer
 	// when ownerID no longer owns it, club.ErrNotAdmin when newOwnerID is
 	// no longer an admin.
 	Transfer(ctx context.Context, clubID, ownerID, newOwnerID uuid.UUID) error
-	// ListClubs is the same for the clubs of a user, only those they run
-	// with managed.
-	ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, managed bool) ([]Membership, error)
-	// CountClubs counts the clubs of a user, only those they run with
-	// managed.
-	CountClubs(ctx context.Context, userID uuid.UUID, managed bool) (int, error)
+	// ListClubs is the same for the clubs of a user that filter picks.
+	ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, filter ClubFilter) ([]Membership, error)
+	// CountClubs counts the clubs of a user that filter picks.
+	CountClubs(ctx context.Context, userID uuid.UUID, filter ClubFilter) (int, error)
 	// Pin puts a club the user runs in their menu, or takes it out; false
 	// when limit clubs are there already.
 	Pin(ctx context.Context, clubID, userID uuid.UUID, pinned bool, limit int) (bool, error)
@@ -86,11 +93,45 @@ type MemberRepository interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 }
 
+// MemberFilter picks the members a list shows.
+type MemberFilter int
+
+const (
+	// AllMembers are everyone in the club.
+	AllMembers MemberFilter = iota
+	// Managers are its owner and admins.
+	Managers
+	// ShownManagers are those of them the club does not hide.
+	ShownManagers
+	// SureComers and MaybeComers are the members of an event who come for
+	// sure ("Точно придут") and who only might ("Возможно придут").
+	SureComers
+	MaybeComers
+)
+
+// MemberPick is the list of members a caller asks for.
+type MemberPick int
+
+const (
+	PickAll MemberPick = iota
+	// PickAdmins are the owner and the admins, as the caller sees them.
+	PickAdmins
+	PickSure
+	PickMaybe
+)
+
+// ClubFilter picks the clubs of a user: only those they run with Managed,
+// only those of Kind unless it is empty.
+type ClubFilter struct {
+	Managed bool
+	Kind    club.Kind
+}
+
 // Member is one user in a club; ID is the membership, the cursor of lists.
 type Member struct {
 	ID     uuid.UUID
 	UserID uuid.UUID
-	Role   club.Role
+	club.Seat
 }
 
 // Membership is one club of a user and what the user is in it; Pinned:
@@ -103,11 +144,14 @@ type Membership struct {
 }
 
 // View is a club as a viewer sees it: what they are in it and who owns it
-// (uuid.Nil if nobody).
+// (uuid.Nil if nobody, or if the owner is hidden from the viewer), with
+// the owner's title. Maybe: the viewer only might come to the event.
 type View struct {
-	Club    *club.Club
-	Role    club.Role
-	OwnerID uuid.UUID
+	Club       *club.Club
+	Role       club.Role
+	Maybe      bool
+	OwnerID    uuid.UUID
+	OwnerTitle club.Title
 }
 
 // MemberPage and ClubPage are one screen of a list; NextCursor is
@@ -137,17 +181,29 @@ type Ref struct {
 	Address club.Address
 }
 
-type ClubService struct {
-	clubs   ClubRepository
-	members MemberRepository
-	now     func() time.Time
+// ClubDeps are what a ClubService is made of.
+type ClubDeps struct {
+	Clubs    ClubRepository
+	Members  MemberRepository
+	Tx       TxManager
+	Notifier Notifier
 }
 
-func NewClubService(clubs ClubRepository, members MemberRepository) *ClubService {
+type ClubService struct {
+	clubs    ClubRepository
+	members  MemberRepository
+	tx       TxManager
+	notifier Notifier
+	now      func() time.Time
+}
+
+func NewClubService(deps ClubDeps) *ClubService {
 	return &ClubService{
-		clubs:   clubs,
-		members: members,
-		now:     time.Now,
+		clubs:    deps.Clubs,
+		members:  deps.Members,
+		tx:       deps.Tx,
+		notifier: deps.Notifier,
+		now:      time.Now,
 	}
 }
 
@@ -157,6 +213,21 @@ func (s *ClubService) Create(ctx context.Context, ownerID uuid.UUID, name club.N
 	c, err := club.New(name, description, s.now())
 	if err != nil {
 		return View{}, errs.Wrap("club.New", err)
+	}
+
+	if err = s.clubs.Create(ctx, c, ownerID); err != nil {
+		return View{}, errs.Wrap("s.clubs.Create", err)
+	}
+
+	return s.view(ctx, ownerID, c.ID())
+}
+
+// CreateEvent makes an event with ownerID as its owner, who comes for
+// sure: "Создать встречу" of openvk.
+func (s *ClubService) CreateEvent(ctx context.Context, ownerID uuid.UUID, name club.Name, description club.Description, schedule club.Schedule) (View, error) {
+	c, err := club.NewEvent(name, description, schedule, s.now())
+	if err != nil {
+		return View{}, errs.Wrap("club.NewEvent", err)
 	}
 
 	if err = s.clubs.Create(ctx, c, ownerID); err != nil {
@@ -194,10 +265,29 @@ func (s *ClubService) view(ctx context.Context, viewerID, clubID uuid.UUID) (Vie
 	}
 
 	if viewerID != uuid.Nil {
-		if v.Role, err = s.members.Role(ctx, clubID, viewerID); err != nil {
-			return View{}, errs.Wrap("s.members.Role", err)
+		viewer, err := s.members.Seat(ctx, clubID, viewerID)
+		if err != nil {
+			return View{}, errs.Wrap("s.members.Seat", err)
 		}
+
+		v.Role, v.Maybe = viewer.Role, viewer.Maybe
 	}
+
+	if v.OwnerID == uuid.Nil {
+		return v, nil
+	}
+
+	owner, err := s.members.Seat(ctx, clubID, v.OwnerID)
+	if err != nil {
+		return View{}, errs.Wrap("s.members.Seat", err)
+	}
+
+	if !owner.Seen(v.Role) {
+		v.OwnerID = uuid.Nil
+		return v, nil
+	}
+
+	v.OwnerTitle = owner.Title
 
 	return v, nil
 }
@@ -244,10 +334,16 @@ func (s *ClubService) Update(ctx context.Context, userID, clubID uuid.UUID, chan
 	return s.view(ctx, userID, clubID)
 }
 
-// Join makes userID a member ("Вступить в группу"); joining twice is
-// fine.
-func (s *ClubService) Join(ctx context.Context, userID, clubID uuid.UUID) (View, error) {
-	if err := s.members.Join(ctx, clubID, userID); err != nil {
+// Join makes userID a member ("Вступить в группу", "Я приду"); joining
+// twice is fine. With maybe they only might come ("Возможно приду"),
+// which only an event that has not started takes.
+func (s *ClubService) Join(ctx context.Context, userID, clubID uuid.UUID, maybe bool) (View, error) {
+	c, err := s.clubs.Get(ctx, clubID)
+	if err != nil {
+		return View{}, errs.Wrap("s.clubs.Get", err)
+	}
+
+	if err = s.members.Join(ctx, clubID, userID, c.JoinsAsMaybe(maybe, s.now())); err != nil {
 		return View{}, errs.Wrap("s.members.Join", err)
 	}
 
@@ -274,7 +370,8 @@ func (s *ClubService) Leave(ctx context.Context, userID, clubID uuid.UUID) (View
 }
 
 // Appoint makes a member of the club an admin, or an admin a member
-// again: the owner's call.
+// again: the owner's call. The new admin hears about it, as in openvk;
+// the dismissal takes the notification back.
 func (s *ClubService) Appoint(ctx context.Context, requesterID, clubID, userID uuid.UUID, role club.Role) error {
 	if _, err := s.clubs.Get(ctx, clubID); err != nil {
 		return errs.Wrap("s.clubs.Get", err)
@@ -294,7 +391,23 @@ func (s *ClubService) Appoint(ctx context.Context, requesterID, clubID, userID u
 		return errs.Wrap("club.CheckAppoint", err)
 	}
 
-	return errs.Wrap("s.members.SetRole", s.members.SetRole(ctx, clubID, userID, role))
+	if role == target {
+		return nil
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.members.SetRole(ctx, clubID, userID, role); err != nil {
+			return errs.Wrap("s.members.SetRole", err)
+		}
+
+		if role == club.RoleAdmin {
+			return errs.Wrap("s.notifier.Appointed", s.notifier.Appointed(ctx, clubID, userID))
+		}
+
+		return errs.Wrap("s.notifier.Dismissed", s.notifier.Dismissed(ctx, clubID, userID))
+	})
+
+	return errs.Wrap("s.tx.WithinTx", err)
 }
 
 // Transfer hands the club over to one of its admins, openvk's "Назначить
@@ -322,30 +435,70 @@ func (s *ClubService) Transfer(ctx context.Context, requesterID, clubID, userID 
 	return errs.Wrap("s.members.Transfer", s.members.Transfer(ctx, clubID, requesterID, userID))
 }
 
-// Members pages the members of a club, the newest first; cursor is the
-// last membership of the previous page.
-func (s *ClubService) Members(ctx context.Context, clubID, cursor uuid.UUID, size int, adminsOnly bool) (MemberPage, error) {
+// Describe gives userID, one of those who run the club, a title and hides
+// or shows them ("Изменить комментарий" and "Скрыт" of openvk): those who
+// run the club do it for each other.
+func (s *ClubService) Describe(ctx context.Context, requesterID, clubID, userID uuid.UUID, title club.Title, hidden bool) error {
+	if _, err := s.clubs.Get(ctx, clubID); err != nil {
+		return errs.Wrap("s.clubs.Get", err)
+	}
+
+	requester, err := s.members.Role(ctx, clubID, requesterID)
+	if err != nil {
+		return errs.Wrap("s.members.Role", err)
+	}
+
+	target, err := s.members.Role(ctx, clubID, userID)
+	if err != nil {
+		return errs.Wrap("s.members.Role", err)
+	}
+
+	if err = club.CheckDescribe(requester, target); err != nil {
+		return errs.Wrap("club.CheckDescribe", err)
+	}
+
+	return errs.Wrap("s.members.Describe", s.members.Describe(ctx, clubID, userID, title, hidden))
+}
+
+// Members pages the members of a club as viewerID (uuid.Nil: anonymous)
+// sees them, the newest first: those the club hides are plain members to
+// everyone who does not run it. cursor is the last membership of the
+// previous page.
+func (s *ClubService) Members(ctx context.Context, viewerID, clubID, cursor uuid.UUID, size int, pick MemberPick) (MemberPage, error) {
 	c, err := s.clubs.Get(ctx, clubID)
 	if err != nil {
 		return MemberPage{}, errs.Wrap("s.clubs.Get", err)
 	}
 
+	viewer := club.RoleNone
+	if viewerID != uuid.Nil {
+		if viewer, err = s.members.Role(ctx, clubID, viewerID); err != nil {
+			return MemberPage{}, errs.Wrap("s.members.Role", err)
+		}
+	}
+
+	filter, total := memberFilter(c, pick, viewer)
+
 	size = pageSize(size)
 
 	// One extra tells whether there is a next page.
-	members, err := s.members.List(ctx, clubID, cursor, size+1, adminsOnly)
+	members, err := s.members.List(ctx, clubID, cursor, size+1, filter)
 	if err != nil {
 		return MemberPage{}, errs.Wrap("s.members.List", err)
 	}
 
-	page := MemberPage{Members: members, Total: c.Members()}
+	page := MemberPage{Members: members, Total: total}
 	if len(members) > size {
 		page.Members = members[:size]
 		page.NextCursor = members[size-1].ID
 	}
 
-	if adminsOnly {
-		if page.Total, err = s.members.CountAdmins(ctx, clubID); err != nil {
+	for i := range page.Members {
+		page.Members[i].Seat = page.Members[i].Shown(viewer)
+	}
+
+	if pick == PickAdmins {
+		if page.Total, err = s.members.CountAdmins(ctx, clubID, filter == ShownManagers); err != nil {
 			return MemberPage{}, errs.Wrap("s.members.CountAdmins", err)
 		}
 	}
@@ -353,13 +506,33 @@ func (s *ClubService) Members(ctx context.Context, clubID, cursor uuid.UUID, siz
 	return page, nil
 }
 
-// Clubs pages the clubs of a user ("Мои Группы"), the newest joined
-// first; with managed only those they run ("Управление"). Total counts
-// them all.
-func (s *ClubService) Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, managed bool) (ClubPage, error) {
+// memberFilter is how pick lists the members of c for someone who is
+// viewer in it, and how many the club counts of them; the admins are
+// counted apart.
+func memberFilter(c *club.Club, pick MemberPick, viewer club.Role) (MemberFilter, int) {
+	switch pick {
+	case PickAdmins:
+		if viewer.Manages() {
+			return Managers, 0
+		}
+
+		return ShownManagers, 0
+	case PickSure:
+		return SureComers, c.Members() - c.Maybes()
+	case PickMaybe:
+		return MaybeComers, c.Maybes()
+	default:
+		return AllMembers, c.Members()
+	}
+}
+
+// Clubs pages the clubs of a user ("Мои Группы", "Мои Встречи"), the
+// newest joined first, as filter picks: only those they run
+// ("Управление"), only groups or only events. Total counts them all.
+func (s *ClubService) Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, filter ClubFilter) (ClubPage, error) {
 	size = pageSize(size)
 
-	clubs, err := s.members.ListClubs(ctx, userID, cursor, size+1, managed)
+	clubs, err := s.members.ListClubs(ctx, userID, cursor, size+1, filter)
 	if err != nil {
 		return ClubPage{}, errs.Wrap("s.members.ListClubs", err)
 	}
@@ -370,7 +543,7 @@ func (s *ClubService) Clubs(ctx context.Context, userID, cursor uuid.UUID, size 
 		page.NextCursor = clubs[size-1].ID
 	}
 
-	if page.Total, err = s.members.CountClubs(ctx, userID, managed); err != nil {
+	if page.Total, err = s.members.CountClubs(ctx, userID, filter); err != nil {
 		return ClubPage{}, errs.Wrap("s.members.CountClubs", err)
 	}
 
@@ -531,7 +704,7 @@ func (s *ClubService) CanModerateWall(ctx context.Context, wallID, userID uuid.U
 // appointed first, up to MaxWallModerators: they hear about the posts
 // suggested for its wall. Any other wall, a user's, has none.
 func (s *ClubService) WallModerators(ctx context.Context, wallID uuid.UUID) ([]uuid.UUID, error) {
-	admins, err := s.members.List(ctx, wallID, uuid.Nil, MaxWallModerators, true)
+	admins, err := s.members.List(ctx, wallID, uuid.Nil, MaxWallModerators, Managers)
 	if err != nil {
 		return nil, errs.Wrap("s.members.List", err)
 	}

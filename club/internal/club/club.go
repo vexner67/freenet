@@ -30,7 +30,12 @@ const MaxPinned = 10
 // creates it is its owner. A club does not change once made: Edited
 // returns a new one.
 type Club struct {
-	id          uuid.UUID
+	id uuid.UUID
+	// kind and schedule: a group, or an event with the time it starts.
+	kind     Kind
+	schedule Schedule
+	// maybes counts the members of an event who only might come.
+	maybes      int
 	name        Name
 	description Description
 	address     Address
@@ -78,6 +83,7 @@ func New(name Name, description Description, now time.Time) (*Club, error) {
 
 	return &Club{
 		id:            id,
+		kind:          KindGroup,
 		name:          name,
 		description:   description,
 		wall:          WallOpen,
@@ -103,6 +109,10 @@ type Stored struct {
 	OpenTopics      bool
 	TopicsAboveWall bool
 	Backdrop        Backdrop
+
+	Kind     Kind
+	Schedule Schedule
+	Maybes   int
 }
 
 // Restore rebuilds a club from storage without validation or new IDs.
@@ -122,6 +132,10 @@ func Restore(s Stored) *Club {
 		openTopics:      s.OpenTopics,
 		topicsAboveWall: s.TopicsAboveWall,
 		backdrop:        s.Backdrop,
+
+		kind:     s.Kind,
+		schedule: s.Schedule,
+		maybes:   s.Maybes,
 	}
 }
 
@@ -137,16 +151,26 @@ type Changes struct {
 	// "Обсуждения": who starts topics and where the page lists them.
 	OpenTopics      bool
 	TopicsAboveWall bool
+	// Schedule is when an event starts and ends; a group has none.
+	Schedule Schedule
 }
 
 // Edited returns c with changes made by someone who is role in it: only
-// the admins edit a club.
+// the admins edit a club. An event keeps a schedule, a group has none.
 func (c *Club) Edited(role Role, changes Changes) (*Club, error) {
 	if !role.Manages() {
 		return nil, ErrCannotEdit
 	}
 
 	edited := *c
+
+	if c.IsEvent() {
+		if changes.Schedule.Start.IsZero() {
+			return nil, ErrNoStart
+		}
+		edited.schedule = changes.Schedule
+	}
+
 	edited.name = changes.Name
 	edited.description = changes.Description
 	edited.address = changes.Address

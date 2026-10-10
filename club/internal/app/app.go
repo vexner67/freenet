@@ -8,21 +8,26 @@ import (
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/prometheus/client_golang/prometheus"
 	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	"github.com/vexner67/freenet/club/internal/config"
 	clubgrpc "github.com/vexner67/freenet/club/internal/grpc"
 	"github.com/vexner67/freenet/club/internal/inmem"
+	"github.com/vexner67/freenet/club/internal/notifyclient"
 	"github.com/vexner67/freenet/club/internal/postgres"
 	"github.com/vexner67/freenet/club/internal/service"
 	"github.com/vexner67/freenet/club/migrations"
+	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/metrics"
 	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/outbox"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/ratelimit"
+	"github.com/vexner67/freenet/pkg/reqid"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
@@ -38,9 +43,13 @@ type App struct {
 	logger  *slog.Logger
 	pool    *pgxpool.Pool
 	limiter ratelimit.Store
-	server  *grpcserver.Server
-	metrics *metrics.Server
-	addr    string
+	// notifyConn, queue and relay tell notification about appointments.
+	notifyConn *grpc.ClientConn
+	queue      *outbox.Postgres
+	relay      *outbox.Relay
+	server     *grpcserver.Server
+	metrics    *metrics.Server
+	addr       string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -69,9 +78,14 @@ func New(cfg config.Config) (*App, error) {
 func (a *App) build(cfg config.Config) error {
 	reg := metrics.NewRegistry()
 
-	clubs, members, err := a.newRepositories(cfg)
+	store, err := a.newStorage(cfg)
 	if err != nil {
-		return errs.Wrap("a.newRepositories", err)
+		return errs.Wrap("a.newStorage", err)
+	}
+
+	notifier, err := a.newNotifier(cfg, store.outbox, reg)
+	if err != nil {
+		return errs.Wrap("a.newNotifier", err)
 	}
 
 	limiter, err := a.newLimiter(cfg)
@@ -110,7 +124,9 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("grpcserver.New", err)
 	}
 
-	clubv1.RegisterClubServiceServer(a.server.Registrar(), clubgrpc.NewClubHandler(service.NewClubService(clubs, members)))
+	clubv1.RegisterClubServiceServer(a.server.Registrar(), clubgrpc.NewClubHandler(service.NewClubService(service.ClubDeps{
+		Clubs: store.clubs, Members: store.members, Tx: store.tx, Notifier: notifier,
+	})))
 
 	if cfg.MetricsPort == 0 {
 		a.logger.Info("METRICS_PORT is not set: metrics are not served")
@@ -118,7 +134,7 @@ func (a *App) build(cfg config.Config) error {
 		a.metrics = metrics.NewServer(fmt.Sprintf(":%d", cfg.MetricsPort), reg, a.logger)
 	}
 
-	a.logger.Info("club configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
+	a.logger.Info("club configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(), "notifications", cfg.NotificationServiceAddr != "")
 
 	return nil
 }
@@ -140,9 +156,12 @@ func restrictInternal(cfg config.Config) grpc.UnaryServerInterceptor {
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		clubv1.ClubService_CreateClub_FullMethodName: cfg.ClubLimits,
-		clubv1.ClubService_UpdateClub_FullMethodName: cfg.EditLimits,
+		// An event is a club, under the same limit with a counter of its own.
+		clubv1.ClubService_CreateEvent_FullMethodName: cfg.ClubLimits,
+		clubv1.ClubService_UpdateClub_FullMethodName:  cfg.EditLimits,
 		// Handing a club over is rare; it counts as a change of settings.
-		clubv1.ClubService_TransferClub_FullMethodName: cfg.EditLimits,
+		clubv1.ClubService_TransferClub_FullMethodName:   cfg.EditLimits,
+		clubv1.ClubService_DescribeMember_FullMethodName: cfg.EditLimits,
 		// A photo is uploaded to media first, under its own limit; this
 		// counts as one more change of the settings.
 		clubv1.ClubService_SetClubAvatar_FullMethodName:   cfg.EditLimits,
@@ -171,10 +190,56 @@ func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
 	return a.limiter, nil
 }
 
-func (a *App) newRepositories(cfg config.Config) (service.ClubRepository, service.MemberRepository, error) {
+// newNotifier records appointments in the outbox and sets up the relay
+// that tells the notification service. The connection is lazy, so the
+// services may start in any order; until notification is up, the relay
+// retries.
+func (a *App) newNotifier(cfg config.Config, queue outboxQueue, reg prometheus.Registerer) (service.Notifier, error) {
+	if cfg.NotificationServiceAddr == "" {
+		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: appointments notify nobody")
+		return notifyclient.Nop{}, nil
+	}
+
+	creds, err := mtls.ClientCredentials(cfg.TLS)
+	if err != nil {
+		return nil, errs.Wrap("mtls.ClientCredentials", err)
+	}
+
+	a.notifyConn, err = grpc.NewClient(cfg.NotificationServiceAddr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
+	if err != nil {
+		return nil, errs.Wrap("grpc.NewClient", err)
+	}
+
+	deliverer := notifyclient.NewDeliverer(notificationv1.NewNotificationServiceClient(a.notifyConn), cfg.NotifyTimeout)
+
+	// As in post and user, whose streams share the metrics, told apart by
+	// a label.
+	a.relay, err = outbox.NewRelay(queue, deliverer.Deliver, prometheus.WrapRegistererWith(prometheus.Labels{"stream": notifyclient.Stream}, reg), a.logger)
+	if err != nil {
+		return nil, errs.Wrap("outbox.NewRelay", err)
+	}
+
+	return notifyclient.NewOutbox(queue), nil
+}
+
+// outboxQueue is the outbox of the storage in use.
+type outboxQueue interface {
+	outbox.Queue
+	notifyclient.Recorder
+}
+
+// storage is the set of repositories chosen by STORAGE.
+type storage struct {
+	clubs   service.ClubRepository
+	members service.MemberRepository
+	tx      service.TxManager
+	outbox  outboxQueue
+}
+
+func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
-		return store.Clubs(), store.Members(), nil
+		return storage{clubs: store.Clubs(), members: store.Members(), tx: inmem.TxManager{}, outbox: outbox.NewMemory()}, nil
 	}
 
 	if cfg.MigrateOnStart {
@@ -183,7 +248,7 @@ func (a *App) newRepositories(cfg config.Config) (service.ClubRepository, servic
 
 		applied, err := pgpool.Migrate(ctx, cfg.DatabaseURL, migrations.FS)
 		if err != nil {
-			return nil, nil, errs.Wrap("pgpool.Migrate", err)
+			return storage{}, errs.Wrap("pgpool.Migrate", err)
 		}
 
 		a.logger.Info("migrations applied", "count", applied)
@@ -196,14 +261,21 @@ func (a *App) newRepositories(cfg config.Config) (service.ClubRepository, servic
 
 	a.pool, err = pgpool.New(ctx, cfg.DatabaseURL)
 	if err != nil {
-		return nil, nil, errs.Wrap("pgpool.New", err)
+		return storage{}, errs.Wrap("pgpool.New", err)
 	}
 
-	return postgres.NewClubRepository(a.pool), postgres.NewMemberRepository(a.pool), nil
+	a.queue = outbox.NewPostgres(a.pool, notifyclient.Stream)
+
+	return storage{
+		clubs:   postgres.NewClubRepository(a.pool),
+		members: postgres.NewMemberRepository(a.pool),
+		tx:      pgpool.NewTxManager(a.pool),
+		outbox:  a.queue,
+	}, nil
 }
 
-// Run serves until ctx is cancelled or the gRPC or metrics server fails,
-// which stops the other too.
+// Run serves and delivers the outbox until ctx is cancelled or the gRPC
+// or metrics server fails, which stops the rest too.
 func (a *App) Run(ctx context.Context) error {
 	g, ctx := errgroup.WithContext(ctx)
 
@@ -214,6 +286,12 @@ func (a *App) Run(ctx context.Context) error {
 	if a.metrics != nil {
 		g.Go(func() error {
 			return errs.Wrap("a.metrics.Run", a.metrics.Run(ctx))
+		})
+	}
+
+	if a.relay != nil {
+		g.Go(func() error {
+			return errs.Wrap("a.relay.Run", a.relay.Run(ctx))
 		})
 	}
 
@@ -239,6 +317,17 @@ func (a *App) Close() {
 	if a.limiter != nil {
 		if err := a.limiter.Close(); err != nil {
 			a.logger.Error("rate limiter close", "error", err)
+		}
+	}
+
+	// After Run: the relay owns the outbox connection while it runs.
+	if a.queue != nil {
+		a.queue.Close()
+	}
+
+	if a.notifyConn != nil {
+		if err := a.notifyConn.Close(); err != nil {
+			a.logger.Error("notification connection close", "error", err)
 		}
 	}
 

@@ -1,6 +1,8 @@
 package grpc
 
 import (
+	"time"
+
 	"github.com/google/uuid"
 	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	"github.com/vexner67/freenet/club/internal/club"
@@ -18,6 +20,15 @@ var (
 		club.AdminsDisplayCreator: clubv1.AdminsDisplay_ADMINS_DISPLAY_CREATOR,
 		club.AdminsDisplayAll:     clubv1.AdminsDisplay_ADMINS_DISPLAY_ALL,
 		club.AdminsDisplayNone:    clubv1.AdminsDisplay_ADMINS_DISPLAY_NONE,
+	}
+	kinds = map[club.Kind]clubv1.Kind{
+		club.KindGroup: clubv1.Kind_KIND_GROUP,
+		club.KindEvent: clubv1.Kind_KIND_EVENT,
+	}
+	picks = map[clubv1.Going]service.MemberPick{
+		clubv1.Going_GOING_UNSPECIFIED: service.PickAll,
+		clubv1.Going_GOING_SURE:        service.PickSure,
+		clubv1.Going_GOING_MAYBE:       service.PickMaybe,
 	}
 	roles = map[club.Role]clubv1.Role{
 		club.RoleNone:   clubv1.Role_ROLE_NONE,
@@ -44,7 +55,47 @@ func toProtoClub(c *club.Club) *clubv1.Club {
 		TopicsAboveWall: c.TopicsAboveWall(),
 		BackdropLeft:    optionalID(c.Backdrop().Left),
 		BackdropRight:   optionalID(c.Backdrop().Right),
+
+		Kind:       kinds[c.Kind()],
+		StartsAt:   optionalTime(c.Schedule().Start),
+		EndsAt:     optionalTime(c.Schedule().End),
+		MaybeCount: int32(c.Maybes()), //nolint:gosec // counters come from int4 columns
 	}
+}
+
+// optionalTime is unset for the zero time.
+func optionalTime(t time.Time) *timestamppb.Timestamp {
+	if t.IsZero() {
+		return nil
+	}
+
+	return timestamppb.New(t)
+}
+
+// fromProtoTime is the zero time for an unset one.
+func fromProtoTime(t *timestamppb.Timestamp) time.Time {
+	if t == nil {
+		return time.Time{}
+	}
+
+	return t.AsTime()
+}
+
+// fromProtoSchedule reads the schedule of an event.
+func fromProtoSchedule(start, end *timestamppb.Timestamp) (club.Schedule, error) {
+	return club.NewSchedule(fromProtoTime(start), fromProtoTime(end))
+}
+
+// fromProtoKind reads which clubs to list: KIND_UNSPECIFIED is "" for
+// both groups and events.
+func fromProtoKind(k clubv1.Kind) club.Kind {
+	for kind, pk := range kinds {
+		if pk == k {
+			return kind
+		}
+	}
+
+	return ""
 }
 
 func toProtoClubs(clubs []*club.Club) []*clubv1.Club {
@@ -61,6 +112,9 @@ func toProtoView(v service.View) *clubv1.ClubView {
 		Club:    toProtoClub(v.Club),
 		Role:    roles[v.Role],
 		OwnerId: optionalID(v.OwnerID),
+
+		OwnerTitle: v.OwnerTitle.String(),
+		Maybe:      v.Maybe,
 
 		CanStartTopic: v.Club.CanStartTopic(v.Role),
 	}
@@ -132,10 +186,19 @@ func fromProtoChanges(req *clubv1.UpdateClubRequest) (club.Changes, error) {
 		return club.Changes{}, err
 	}
 
+	// A group sends no schedule; whether an event has one is its own rule.
+	var schedule club.Schedule
+	if req.GetStartsAt() != nil {
+		if schedule, err = fromProtoSchedule(req.GetStartsAt(), req.GetEndsAt()); err != nil {
+			return club.Changes{}, err
+		}
+	}
+
 	return club.Changes{
 		Name: name, Description: description, Address: address, Website: website,
 		Wall: wall, AdminsDisplay: adminsDisplay,
 		OpenTopics: req.GetOpenTopics(), TopicsAboveWall: req.GetTopicsAboveWall(),
+		Schedule: schedule,
 	}, nil
 }
 
