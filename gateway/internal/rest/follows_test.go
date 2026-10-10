@@ -142,3 +142,25 @@ func TestFeed(t *testing.T) {
 		t.Fatalf("without token: %d", w.Code)
 	}
 }
+
+// "Все новости" ask the post service for everyone, with no follows.
+func TestFeed_All(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+	w := h.do("GET", "/api/v1/feed?type=all", "", "Authorization", "Bearer tok")
+	got := decode[wall](t, w)
+
+	if w.Code != http.StatusOK || len(got.Posts) != 2 {
+		t.Fatalf("status = %d, posts %+v", w.Code, got.Posts)
+	}
+	if !h.posts.everyone || len(h.posts.authors) != 0 || len(h.posts.walls) != 0 {
+		t.Fatalf("sources: everyone %v, authors %v, walls %v", h.posts.everyone, h.posts.authors, h.posts.walls)
+	}
+
+	if w = h.do("GET", "/api/v1/feed?type=mine", "", "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
+		t.Fatalf("an unknown type: %d", w.Code)
+	}
+}

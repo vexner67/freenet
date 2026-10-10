@@ -26,6 +26,7 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /settings", page(dir, "settings.html"))
 	mux.Handle("GET /settings/blacklist", page(dir, "blacklist.html"))
 	mux.Handle("GET /feed", page(dir, "feed.html"))
+	mux.Handle("GET /feed/all", page(dir, "feed.html"))
 	mux.Handle("GET /follows", page(dir, "follows.html"))
 	mux.Handle("GET /search", page(dir, "search.html"))
 	mux.Handle("GET /post/{id}", page(dir, "post.html"))

@@ -170,6 +170,10 @@ func (a *api) listFollows(
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// feedAll is "Все новости" of openvk: what every wall says itself, whoever
+// the reader follows.
+const feedAll = "all"
+
 // feed is the caller's news: posts of the people they follow and their own,
 // and every post on the walls of those people, their own and their clubs',
 // newest first, each with its author. openvk's feed is the walls; ours
@@ -193,21 +197,31 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	following, err := a.users.FollowingIDs(r.Context(), token)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	clubs, err := a.clubs.MineIDs(r.Context(), token)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
 	// "Не показывать в ленте" of the reader's settings.
-	people := append(following, me.ID)
-	sources := model.FeedSources{Authors: people, Walls: append(clubs, people...), HideNSFW: me.Interface.NSFW == nsfwHide}
+	sources := model.FeedSources{HideNSFW: me.Interface.NSFW == nsfwHide}
+
+	switch r.URL.Query().Get("type") {
+	case "":
+		following, err := a.users.FollowingIDs(r.Context(), token)
+		if err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+
+		clubs, err := a.clubs.MineIDs(r.Context(), token)
+		if err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+
+		people := append(following, me.ID)
+		sources.Authors, sources.Walls = people, append(clubs, people...)
+	case feedAll:
+		sources.Everyone = true
+	default:
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "invalid feed type"))
+		return
+	}
 
 	page, err := a.posts.Feed(r.Context(), token, sources, r.URL.Query().Get("cursor"), limit)
 	if err != nil {

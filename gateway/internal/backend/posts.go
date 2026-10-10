@@ -171,6 +171,7 @@ func (p *Posts) Feed(ctx context.Context, accessToken string, sources model.Feed
 		AuthorIds: sources.Authors,
 		WallIds:   sources.Walls,
 		HideNsfw:  sources.HideNSFW,
+		Everyone:  sources.Everyone,
 		Cursor:    cursor,
 		Limit:     toLimit(limit),
 	})
