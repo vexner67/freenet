@@ -159,7 +159,8 @@ func (a *App) build(cfg config.Config) error {
 				Suggestions: repos.suggestions, Posts: repos.posts, Tx: repos.tx, Notifier: notifier, Photos: photos, Moderators: moderators,
 			}),
 			Topics: service.NewTopicService(service.TopicDeps{
-				Topics: repos.topics, Messages: repos.topicMessages, Tx: repos.tx, Photos: photos, Moderators: moderators,
+				Topics: repos.topics, Messages: repos.topicMessages, Likes: repos.topicMessages, Tx: repos.tx,
+				Notifier: notifier, Photos: photos, Moderators: moderators,
 			}),
 			Albums: albums,
 			Purge: service.NewPurgeService(service.PurgeDeps{
@@ -202,6 +203,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_LikePost_FullMethodName:           cfg.LikeLimits,
 		postv1.PostService_UnlikePost_FullMethodName:         cfg.LikeLimits,
 		postv1.PostService_LikeComment_FullMethodName:        cfg.LikeLimits,
+		postv1.PostService_LikeTopicMessage_FullMethodName:   cfg.LikeLimits,
 		postv1.PostService_LikeAlbumPhoto_FullMethodName:     cfg.LikeLimits,
 		postv1.PostService_CreatePhotoComment_FullMethodName: cfg.CommentLimits,
 		postv1.PostService_UnlikeComment_FullMethodName:      cfg.LikeLimits,
@@ -371,8 +373,11 @@ type repositories struct {
 		service.TopicRepository
 		service.TopicEraser
 	}
-	topicMessages service.TopicMessageRepository
-	albums        interface {
+	topicMessages interface {
+		service.TopicMessageRepository
+		service.TopicMessageLikeRepository
+	}
+	albums interface {
 		service.AlbumRepository
 		service.AlbumEraser
 	}

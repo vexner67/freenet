@@ -58,8 +58,10 @@ type TopicService interface {
 	Change(ctx context.Context, requesterID, id uuid.UUID, changes post.TopicChanges) (*post.Topic, error)
 	Delete(ctx context.Context, requesterID, id uuid.UUID) error
 	Write(ctx context.Context, in service.TopicMessageInput) (*post.TopicMessage, error)
-	Messages(ctx context.Context, topicID, after uuid.UUID, size int) (service.TopicMessagePage, error)
+	Messages(ctx context.Context, viewerID, topicID, after uuid.UUID, size int) (service.TopicMessagePage, error)
 	DeleteMessage(ctx context.Context, requesterID, id uuid.UUID) error
+	LikeMessage(ctx context.Context, userID, id uuid.UUID) (int, error)
+	UnlikeMessage(ctx context.Context, userID, id uuid.UUID) (int, error)
 }
 
 type AlbumService interface {

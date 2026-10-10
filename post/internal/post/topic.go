@@ -234,6 +234,8 @@ type TopicMessage struct {
 	content   CommentContent
 	fromWall  bool
 	createdAt time.Time
+	// likes counts the hearts of the message, as of a comment.
+	likes int
 }
 
 // NewTopicMessage writes content in topic t. Its UUIDv7 ID grows with
@@ -265,11 +267,15 @@ type StoredTopicMessage struct {
 	Content   CommentContent
 	FromWall  bool
 	CreatedAt time.Time
+	Likes     int
 }
 
 // RestoreTopicMessage rebuilds a message from storage without validation.
 func RestoreTopicMessage(s StoredTopicMessage) *TopicMessage {
-	return &TopicMessage{id: s.ID, topicID: s.TopicID, authorID: s.AuthorID, content: s.Content, fromWall: s.FromWall, createdAt: s.CreatedAt}
+	return &TopicMessage{
+		id: s.ID, topicID: s.TopicID, authorID: s.AuthorID, content: s.Content, fromWall: s.FromWall, createdAt: s.CreatedAt,
+		likes: s.Likes,
+	}
 }
 
 // CanBeDeletedBy: its author or, admin, whoever runs the community.
@@ -305,4 +311,34 @@ func (m *TopicMessage) FromWall() bool {
 
 func (m *TopicMessage) CreatedAt() time.Time {
 	return m.createdAt
+}
+
+func (m *TopicMessage) Likes() int {
+	return m.likes
+}
+
+// WithLikes returns m with its hearts counted anew; m does not change.
+func (m *TopicMessage) WithLikes(n int) *TopicMessage {
+	counted := *m
+	counted.likes = n
+
+	return &counted
+}
+
+// Hears tells who is notified about m written in the topic and on whose
+// behalf: whoever started the topic hears of what others write in it, as
+// openvk tells the owner of a topic of its comments, from the writer or,
+// for a message that speaks for the community, from the community. Nobody
+// (uuid.Nil) hears of their own message, nor of one in a topic started
+// for the community, whose author readers are not told.
+func (t *Topic) Hears(m *TopicMessage) (recipient, actor uuid.UUID) {
+	if t.fromWall || m.authorID == t.authorID {
+		return uuid.Nil, uuid.Nil
+	}
+
+	if m.fromWall {
+		return t.authorID, t.clubID
+	}
+
+	return t.authorID, m.authorID
 }

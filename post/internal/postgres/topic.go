@@ -140,7 +140,8 @@ const deleteTopicQuery = `
 		text,
 		photo_ids,
 		from_wall,
-		created_at
+		created_at,
+		like_count
 	FROM topic_messages
 	WHERE topic_id IN (SELECT id FROM gone)
 `
@@ -236,6 +237,24 @@ func (r *TopicRepository) Count(ctx context.Context, clubID uuid.UUID, query str
 	return n, nil
 }
 
+// deleteUserTopicMessageLikesQuery deletes a user's hearts on messages and
+// uncounts them in one statement.
+const deleteUserTopicMessageLikesQuery = `
+	WITH deleted AS (
+		DELETE FROM topic_message_likes
+		WHERE user_id = $1
+		RETURNING message_id
+	)
+	UPDATE topic_messages m
+	SET like_count = m.like_count - d.n
+	FROM (
+		SELECT message_id, count(*) AS n
+		FROM deleted
+		GROUP BY message_id
+	) d
+	WHERE m.id = d.message_id
+`
+
 // deleteUserTopicMessagesQuery deletes a user's messages and uncounts
 // them in their topics in one statement.
 const deleteUserTopicMessagesQuery = `
@@ -269,16 +288,21 @@ const deleteUserTopicsQuery = `
 		text,
 		photo_ids,
 		from_wall,
-		created_at
+		created_at,
+		like_count
 	FROM topic_messages
 	WHERE topic_id IN (SELECT id FROM gone)
 		AND author_id <> $1
 `
 
-// DeleteByUser deletes the messages a user wrote and the topics they
-// started, returning the messages of others the topics took with them.
-// It runs in the transaction of ctx.
+// DeleteByUser deletes the hearts a user put on messages, the messages
+// they wrote and the topics they started, returning the messages of
+// others the topics took with them. It runs in the transaction of ctx.
 func (r *TopicRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*post.TopicMessage, error) {
+	if _, err := r.conn(ctx).Exec(ctx, deleteUserTopicMessageLikesQuery, userID); err != nil {
+		return nil, errs.Wrap("r.conn.Exec", err)
+	}
+
 	if _, err := r.conn(ctx).Exec(ctx, deleteUserTopicMessagesQuery, userID); err != nil {
 		return nil, errs.Wrap("r.conn.Exec", err)
 	}
@@ -363,7 +387,8 @@ const getTopicMessageQuery = `
 		text,
 		photo_ids,
 		from_wall,
-		created_at
+		created_at,
+		like_count
 	FROM topic_messages
 	WHERE id = $1
 `
@@ -415,7 +440,8 @@ const listTopicMessagesQuery = `
 		text,
 		photo_ids,
 		from_wall,
-		created_at
+		created_at,
+		like_count
 	FROM topic_messages
 	WHERE topic_id = $1
 		AND id > $2
@@ -440,7 +466,8 @@ const lastTopicMessagesQuery = `
 		text,
 		photo_ids,
 		from_wall,
-		created_at
+		created_at,
+		like_count
 	FROM topic_messages
 	WHERE topic_id = ANY($1)
 	ORDER BY topic_id, id DESC
@@ -453,6 +480,92 @@ func (m *TopicMessageRepository) Last(ctx context.Context, topicIDs []uuid.UUID)
 	}
 
 	return collectTopicMessages(rows)
+}
+
+// likeTopicMessageQuery adds the heart and counts it in one statement; a
+// repeated like inserts nothing and adds 0.
+const likeTopicMessageQuery = `
+	WITH liked AS (
+		INSERT INTO topic_message_likes (
+			message_id,
+			user_id,
+			created_at
+		)
+		VALUES ($1, $2, now())
+		ON CONFLICT DO NOTHING
+		RETURNING 1
+	)
+	UPDATE topic_messages
+	SET like_count = like_count + (SELECT count(*) FROM liked)
+	WHERE id = $1
+	RETURNING like_count
+`
+
+func (m *TopicMessageRepository) Like(ctx context.Context, messageID, userID uuid.UUID) (int, error) {
+	var likes int
+
+	err := m.r.conn(ctx).QueryRow(ctx, likeTopicMessageQuery, messageID, userID).Scan(&likes)
+	if isForeignKeyViolation(err) {
+		return 0, post.ErrMessageNotFound
+	}
+	if err != nil {
+		return 0, errs.Wrap("m.r.conn.QueryRow", err)
+	}
+
+	return likes, nil
+}
+
+const unlikeTopicMessageQuery = `
+	WITH unliked AS (
+		DELETE FROM topic_message_likes
+		WHERE message_id = $1
+			AND user_id = $2
+		RETURNING 1
+	)
+	UPDATE topic_messages
+	SET like_count = like_count - (SELECT count(*) FROM unliked)
+	WHERE id = $1
+	RETURNING like_count
+`
+
+func (m *TopicMessageRepository) Unlike(ctx context.Context, messageID, userID uuid.UUID) (int, error) {
+	var likes int
+
+	err := m.r.conn(ctx).QueryRow(ctx, unlikeTopicMessageQuery, messageID, userID).Scan(&likes)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return 0, post.ErrMessageNotFound
+	}
+	if err != nil {
+		return 0, errs.Wrap("m.r.conn.QueryRow", err)
+	}
+
+	return likes, nil
+}
+
+const listLikedTopicMessagesQuery = `
+	SELECT message_id
+	FROM topic_message_likes
+	WHERE user_id = $1
+		AND message_id = ANY($2)
+`
+
+func (m *TopicMessageRepository) Liked(ctx context.Context, userID uuid.UUID, messageIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	rows, err := m.r.conn(ctx).Query(ctx, listLikedTopicMessagesQuery, userID, messageIDs)
+	if err != nil {
+		return nil, errs.Wrap("m.r.conn.Query", err)
+	}
+
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	liked := make(map[uuid.UUID]bool, len(ids))
+	for _, id := range ids {
+		liked[id] = true
+	}
+
+	return liked, nil
 }
 
 // collectTopicMessages reads the messages of rows and closes them.
@@ -482,7 +595,7 @@ func scanTopicMessage(row pgx.Row) (*post.TopicMessage, error) {
 		photos []uuid.UUID
 	)
 
-	if err := row.Scan(&s.ID, &s.TopicID, &s.AuthorID, &text, &photos, &s.FromWall, &s.CreatedAt); err != nil {
+	if err := row.Scan(&s.ID, &s.TopicID, &s.AuthorID, &text, &photos, &s.FromWall, &s.CreatedAt, &s.Likes); err != nil {
 		return nil, err
 	}
 

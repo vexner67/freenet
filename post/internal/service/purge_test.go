@@ -148,7 +148,10 @@ func TestPurgeService_Topics(t *testing.T) {
 	store := inmem.NewStore()
 	topicRepo := inmem.NewTopicRepository()
 	photos := &fakePhotos{}
-	topics := service.NewTopicService(service.TopicDeps{Topics: topicRepo, Messages: topicRepo.Messages(), Tx: fakeTx{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}})
+	topics := service.NewTopicService(service.TopicDeps{
+		Topics: topicRepo, Messages: topicRepo.Messages(), Likes: topicRepo.Messages(), Tx: fakeTx{},
+		Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{},
+	})
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
 		Topics: topicRepo, Albums: inmem.NewAlbumRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,

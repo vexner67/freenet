@@ -21,12 +21,15 @@ type TopicRepository struct {
 	mu       sync.RWMutex
 	topics   map[uuid.UUID]post.StoredTopic
 	messages map[uuid.UUID]*post.TopicMessage
+	// likes are who put a heart on each message.
+	likes map[uuid.UUID]map[uuid.UUID]bool
 }
 
 func NewTopicRepository() *TopicRepository {
 	return &TopicRepository{
 		topics:   make(map[uuid.UUID]post.StoredTopic),
 		messages: make(map[uuid.UUID]*post.TopicMessage),
+		likes:    make(map[uuid.UUID]map[uuid.UUID]bool),
 	}
 }
 
@@ -108,6 +111,7 @@ func (r *TopicRepository) deleteTopic(id, keepOut uuid.UUID) []*post.TopicMessag
 	for mid, m := range r.messages {
 		if m.TopicID() == id {
 			delete(r.messages, mid)
+			delete(r.likes, mid)
 			if m.AuthorID() != keepOut {
 				gone = append(gone, m)
 			}
@@ -189,9 +193,14 @@ func (r *TopicRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	for _, users := range r.likes {
+		delete(users, userID)
+	}
+
 	for id, m := range r.messages {
 		if m.AuthorID() == userID {
 			delete(r.messages, id)
+			delete(r.likes, id)
 			r.recount(m.TopicID(), -1)
 		}
 	}
@@ -254,7 +263,7 @@ func (m *TopicMessageRepository) Get(ctx context.Context, id uuid.UUID) (*post.T
 		return nil, post.ErrMessageNotFound
 	}
 
-	return msg, nil
+	return m.r.counted(msg), nil
 }
 
 func (m *TopicMessageRepository) Delete(ctx context.Context, id uuid.UUID) error {
@@ -271,9 +280,66 @@ func (m *TopicMessageRepository) Delete(ctx context.Context, id uuid.UUID) error
 	}
 
 	delete(m.r.messages, id)
+	delete(m.r.likes, id)
 	m.r.recount(msg.TopicID(), -1)
 
 	return nil
+}
+
+// counted is msg with its hearts as they are now; the lock is held.
+func (r *TopicRepository) counted(msg *post.TopicMessage) *post.TopicMessage {
+	return msg.WithLikes(len(r.likes[msg.ID()]))
+}
+
+func (m *TopicMessageRepository) Like(ctx context.Context, messageID, userID uuid.UUID) (int, error) {
+	return m.setLike(ctx, messageID, userID, true)
+}
+
+func (m *TopicMessageRepository) Unlike(ctx context.Context, messageID, userID uuid.UUID) (int, error) {
+	return m.setLike(ctx, messageID, userID, false)
+}
+
+func (m *TopicMessageRepository) setLike(ctx context.Context, messageID, userID uuid.UUID, like bool) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	m.r.mu.Lock()
+	defer m.r.mu.Unlock()
+
+	if _, ok := m.r.messages[messageID]; !ok {
+		return 0, post.ErrMessageNotFound
+	}
+
+	if m.r.likes[messageID] == nil {
+		m.r.likes[messageID] = make(map[uuid.UUID]bool)
+	}
+
+	if like {
+		m.r.likes[messageID][userID] = true
+	} else {
+		delete(m.r.likes[messageID], userID)
+	}
+
+	return len(m.r.likes[messageID]), nil
+}
+
+func (m *TopicMessageRepository) Liked(ctx context.Context, userID uuid.UUID, messageIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	m.r.mu.RLock()
+	defer m.r.mu.RUnlock()
+
+	liked := make(map[uuid.UUID]bool)
+	for _, id := range messageIDs {
+		if m.r.likes[id][userID] {
+			liked[id] = true
+		}
+	}
+
+	return liked, nil
 }
 
 func (m *TopicMessageRepository) List(ctx context.Context, topicID, after uuid.UUID, limit int) ([]*post.TopicMessage, error) {
@@ -287,7 +353,7 @@ func (m *TopicMessageRepository) List(ctx context.Context, topicID, after uuid.U
 	var found []*post.TopicMessage
 	for _, msg := range m.r.messages {
 		if msg.TopicID() == topicID && compareIDs(msg.ID(), after) > 0 {
-			found = append(found, msg)
+			found = append(found, m.r.counted(msg))
 		}
 	}
 
