@@ -28,6 +28,21 @@
           <a id="tab-mine" href="/feed">Мои новости</a>
           <a id="tab-all" href="/feed/all">Все новости</a>
         </div>
+        <form class="wall-form" id="post-form" hidden>
+          <textarea id="post-text" maxlength="60000" placeholder="Что у вас нового?" aria-label="Новая запись"></textarea>
+          <div class="attachments" id="post-photos" hidden></div>
+          <div class="row">
+            <span>
+              <a class="attach-link" id="post-attach">Прикрепить фотографию</a>
+              <span class="hint" id="post-counter"></span>
+            </span>
+            <button class="button" type="submit" id="post-submit">Отправить</button>
+          </div>
+          <div class="post-options">
+            <label id="post-nsfw-label"><input type="checkbox" id="post-nsfw"> Содержит NSFW-контент</label>
+          </div>
+          <input type="file" id="post-file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+        </form>
         <div class="error" id="error" hidden></div>
         <div id="posts"></div>
         <p class="hint" id="empty-all" hidden>Тут ничего нет... Пока...</p>
