@@ -240,18 +240,23 @@ export const api = {
 
   dialogs: (cursor = '') => authorized('GET', page('/api/v1/dialogs', cursor, 0)),
   unreadDialogs: () => authorized('GET', '/api/v1/dialogs/unread-count'),
-  // Older messages with cursor, or newer ones with after (polling).
-  messages(nickname, { cursor = '', after = '' } = {}) {
+  // Older messages with cursor, newer ones with after (polling), or the
+  // part of the dialog around a message, as a found one opens.
+  messages(nickname, { cursor = '', after = '', around = '' } = {}) {
     const query = new URLSearchParams();
     if (cursor) query.set('cursor', cursor);
     if (after) query.set('after', after);
+    if (around) query.set('around', around);
     const path = `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`;
     return authorized('GET', query.size ? `${path}?${query}` : path);
   },
-  // post shares a post into the dialog ("Поделиться" "в переписку").
-  sendMessage: (nickname, text, photos = [], post = '') => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos, post }),
+  // post shares a post into the dialog ("Поделиться" "в переписку");
+  // forward carries messages of your dialogs on ("Переслать").
+  sendMessage: (nickname, text, photos = [], post = '', forward = []) =>
+    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos, post, forward }),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
-  // Your own message, from both sides, within a day of sending; forMe
+  // Your own message, from both sides, within a day of sending: it stays
+  // in the dialog as "Сообщение удалено"; forMe
   // deletes any message of your dialog for you alone ("Удалить у себя").
   deleteMessage: (id, { forMe = false } = {}) => authorized('DELETE', `/api/v1/messages/${encodeURIComponent(id)}` + (forMe ? '?for=me' : '')),
   // What your own message says, within a day of sending.
