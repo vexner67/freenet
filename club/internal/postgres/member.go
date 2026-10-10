@@ -339,7 +339,9 @@ func cursor(before uuid.UUID) uuid.UUID {
 }
 
 // listUserClubsQuery: with $4, only the clubs the user runs; with $5,
-// only those of the kind.
+// only those of the kind; with $6, only the events over ('past') or not
+// ('upcoming') at $7 — an event is over when it has ended or, having no
+// end, begun (club.Schedule.Over).
 const listUserClubsQuery = `
 	SELECT
 		m.id,
@@ -369,12 +371,14 @@ const listUserClubsQuery = `
 		AND m.id < $2
 		AND (NOT $4 OR m.role IN ('admin', 'owner'))
 		AND ($5 = '' OR c.kind = $5)
+		AND ($6 = '' OR (c.starts_at IS NOT NULL AND (COALESCE(c.ends_at, c.starts_at) <= $7) = ($6 = 'past')))
 	ORDER BY m.id DESC
 	LIMIT $3
 `
 
 func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, filter service.ClubFilter) ([]service.Membership, error) {
-	rows, err := r.pool.Query(ctx, listUserClubsQuery, userID, cursor(before), limit, filter.Managed, filter.Kind.String())
+	rows, err := r.pool.Query(ctx, listUserClubsQuery, userID, cursor(before), limit, filter.Managed, filter.Kind.String(),
+		filter.Period.String(), filter.At)
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
@@ -420,12 +424,14 @@ const countUserClubsQuery = `
 	WHERE m.user_id = $1
 		AND (NOT $2 OR m.role IN ('admin', 'owner'))
 		AND ($3 = '' OR c.kind = $3)
+		AND ($4 = '' OR (c.starts_at IS NOT NULL AND (COALESCE(c.ends_at, c.starts_at) <= $5) = ($4 = 'past')))
 `
 
 func (r *MemberRepository) CountClubs(ctx context.Context, userID uuid.UUID, filter service.ClubFilter) (int, error) {
 	var n int
 
-	if err := r.pool.QueryRow(ctx, countUserClubsQuery, userID, filter.Managed, filter.Kind.String()).Scan(&n); err != nil {
+	if err := r.pool.QueryRow(ctx, countUserClubsQuery, userID, filter.Managed, filter.Kind.String(),
+		filter.Period.String(), filter.At).Scan(&n); err != nil {
 		return 0, errs.Wrap("r.pool.QueryRow", err)
 	}
 

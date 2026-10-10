@@ -98,6 +98,18 @@ func fromProtoKind(k clubv1.Kind) club.Kind {
 	return ""
 }
 
+// fromProtoPeriod: anything but the two periods picks all clubs.
+func fromProtoPeriod(p clubv1.Period) club.Period {
+	switch p {
+	case clubv1.Period_PERIOD_UPCOMING:
+		return club.PeriodUpcoming
+	case clubv1.Period_PERIOD_PAST:
+		return club.PeriodPast
+	default:
+		return club.PeriodAny
+	}
+}
+
 func toProtoClubs(clubs []*club.Club) []*clubv1.Club {
 	out := make([]*clubv1.Club, 0, len(clubs))
 	for _, c := range clubs {

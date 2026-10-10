@@ -532,14 +532,14 @@ func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UU
 	return found, nil
 }
 
-// clubsOf matches the memberships of userID, those that run a club with
-// managed.
 // clubsOf matches the memberships of userID that filter picks; the
 // caller holds a lock.
 func (s *Store) clubsOf(userID uuid.UUID, filter service.ClubFilter) func(*member) bool {
 	return func(m *member) bool {
+		c := s.clubs[m.clubID]
+
 		return m.userID == userID && (!filter.Managed || m.role.Manages()) &&
-			(filter.Kind == "" || s.clubs[m.clubID].Kind == filter.Kind)
+			(filter.Kind == "" || c.Kind == filter.Kind) && filter.Period.Takes(c.Schedule, filter.At)
 	}
 }
 

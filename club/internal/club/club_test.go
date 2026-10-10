@@ -492,6 +492,52 @@ func TestSchedule(t *testing.T) {
 	}
 }
 
+func TestPeriod(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 12, 31, 20, 0, 0, 0, time.UTC)
+	schedule := func(start, end time.Duration) club.Schedule {
+		s := club.Schedule{Start: now.Add(start)}
+		if end != 0 {
+			s.End = now.Add(end)
+		}
+
+		return s
+	}
+
+	tests := []struct {
+		name     string
+		schedule club.Schedule
+		past     bool
+	}{
+		{"ahead", schedule(time.Hour, 0), false},
+		{"begun without an end", schedule(-time.Hour, 0), true},
+		{"begins now", schedule(0, 0), true},
+		{"going on", schedule(-time.Hour, time.Hour), false},
+		{"ended", schedule(-2*time.Hour, -time.Hour), true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := club.PeriodPast.Takes(tt.schedule, now); got != tt.past {
+				t.Errorf("past = %v, want %v", got, tt.past)
+			}
+			if got := club.PeriodUpcoming.Takes(tt.schedule, now); got == tt.past {
+				t.Errorf("upcoming = %v, want %v", got, !tt.past)
+			}
+			if !club.PeriodAny.Takes(tt.schedule, now) {
+				t.Error("any period takes every event")
+			}
+		})
+	}
+
+	// A group has no time: it is of no period but any.
+	if club.PeriodPast.Takes(club.Schedule{}, now) || club.PeriodUpcoming.Takes(club.Schedule{}, now) || !club.PeriodAny.Takes(club.Schedule{}, now) {
+		t.Error("a group is of a period")
+	}
+}
+
 func TestEvent(t *testing.T) {
 	t.Parallel()
 

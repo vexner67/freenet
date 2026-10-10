@@ -319,7 +319,9 @@ func (h *ClubHandler) ListUserClubs(ctx context.Context, req *clubv1.ListUserClu
 		return nil, err
 	}
 
-	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), service.ClubFilter{Kind: fromProtoKind(req.GetKind())})
+	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), service.ClubFilter{
+		Kind: fromProtoKind(req.GetKind()), Period: fromProtoPeriod(req.GetPeriod()),
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -348,7 +350,9 @@ func (h *ClubHandler) ListMyClubs(ctx context.Context, req *clubv1.ListMyClubsRe
 		return nil, err
 	}
 
-	filter := service.ClubFilter{Managed: req.GetManaged(), Kind: fromProtoKind(req.GetKind())}
+	filter := service.ClubFilter{
+		Managed: req.GetManaged(), Kind: fromProtoKind(req.GetKind()), Period: fromProtoPeriod(req.GetPeriod()),
+	}
 
 	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), filter)
 	if err != nil {
