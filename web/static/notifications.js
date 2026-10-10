@@ -3,6 +3,7 @@
 // it: the notifications move to the archive and the menu counter clears.
 // While it is open, new ones appear at the top live (events.js).
 
+import { photoPath } from './albums.js';
 import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
 import { formatPostDate, notificationVerb, plainMentions, snippet } from './labels.js';
@@ -58,6 +59,10 @@ function postLink(post, text) {
   return el('a', { href: postPath(post) }, el('b', { textContent: text }));
 }
 
+function photoLink(photo, text) {
+  return el('a', { href: photoPath(photo) }, el('b', { textContent: text }));
+}
+
 // quote is what a comment or a post says, cut short, with the people it
 // names in plain words.
 function quote(text) {
@@ -109,6 +114,22 @@ function notificationText(n) {
   if (n.type === 'comment_mention') {
     return [name, ` ${notificationVerb('mention', n.actor)} вас в комментарии под `, postLink(n.post, 'записью'),
       ` от ${formatPostDate(n.post.createdAt)}: «${quote(n.comment.text)}».`];
+  }
+
+  // A heart on your message of a topic, as on a comment.
+  if (n.type === 'topic_message_like') {
+    return [name, ` ${notificationVerb('like', n.actor)} ваше сообщение в обсуждении `,
+      el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), '.'];
+  }
+
+  // A heart and a comment on a photo of your album; openvk's "оставил
+  // комментарий под вашей фотографией".
+  if (n.type === 'photo_like') {
+    return [name, ` ${notificationVerb('like', n.actor)} вашу `, photoLink(n.photo, 'фотографию'), '.'];
+  }
+
+  if (n.type === 'photo_comment') {
+    return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей `, photoLink(n.photo, 'фотографией'), '.'];
   }
 
   const verb = notificationVerb(n.type, n.actor);
