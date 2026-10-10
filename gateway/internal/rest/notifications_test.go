@@ -60,7 +60,8 @@ func TestListNotifications(t *testing.T) {
 	// A heart on a message names the topic, a heart and a comment on a
 	// photo the photo.
 	heart, photoLike, photoComment := got.Notifications[11], got.Notifications[12], got.Notifications[13]
-	if heart.Type != "topic_message_like" || heart.Topic == nil || heart.Topic.ID != "t1" || heart.Post != nil || heart.Comment != nil {
+	if heart.Type != "topic_message_like" || heart.Topic == nil || heart.Topic.ID != "t1" || heart.Post != nil ||
+		heart.Comment == nil || heart.Comment.ID != "m1" || heart.Comment.Text != "Привет" {
 		t.Fatalf("heart on a topic message = %+v", heart)
 	}
 	for _, n := range got.Notifications[12:] {
@@ -68,7 +69,8 @@ func TestListNotifications(t *testing.T) {
 			t.Fatalf("%s names the photo %+v", n.Type, n.Photo)
 		}
 	}
-	if photoLike.Type != "photo_like" || photoComment.Type != "photo_comment" || photoComment.Post != nil || photoComment.Comment != nil {
+	if photoLike.Type != "photo_like" || photoLike.Comment != nil || photoComment.Type != "photo_comment" || photoComment.Post != nil ||
+		photoComment.Comment == nil || photoComment.Comment.ID != "pc1" || photoComment.Comment.Text != "красиво" {
 		t.Fatalf("photo notifications = %+v, %+v", photoLike, photoComment)
 	}
 
@@ -80,7 +82,7 @@ func TestListNotifications(t *testing.T) {
 	if inComment.Type != "comment_mention" || inComment.Post == nil || inComment.Comment == nil || inComment.Comment.Text != "согласен" {
 		t.Fatalf("mention in a comment = %+v", inComment)
 	}
-	if inTopic.Type != "topic_mention" || inTopic.Topic == nil || inTopic.Topic.Title != "Знакомство" || inTopic.Post != nil || inTopic.Comment != nil {
+	if inTopic.Type != "topic_mention" || inTopic.Topic == nil || inTopic.Topic.Title != "Знакомство" || inTopic.Post != nil || inTopic.Comment == nil {
 		t.Fatalf("mention in a topic = %+v", inTopic)
 	}
 
@@ -108,7 +110,8 @@ func TestListNotifications(t *testing.T) {
 
 	// A message in a topic names the topic: neither a post nor a comment.
 	if written := got.Notifications[6]; written.Type != "topic_message" || written.Actor["nickname"] != "bob" || written.Topic == nil ||
-		written.Topic.ID != "t1" || written.Topic.Title != "Знакомство" || written.Post != nil || written.Comment != nil {
+		written.Topic.ID != "t1" || written.Topic.Title != "Знакомство" || written.Post != nil ||
+		written.Comment == nil || written.Comment.Text != "Привет" {
 		t.Fatalf("topic message = %+v", written)
 	}
 	// An appointment names only the community.

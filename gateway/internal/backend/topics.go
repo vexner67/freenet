@@ -116,6 +116,32 @@ func (t *Topics) Message(ctx context.Context, id string) (model.TopicMessage, er
 	return toTopicMessage(resp.GetMessage()), nil
 }
 
+// MessagesByID returns the messages of topics that exist, in no order,
+// with the beginnings of their texts.
+func (t *Topics) MessagesByID(ctx context.Context, ids []string) ([]model.TopicMessage, error) {
+	resp, err := t.api.GetTopicMessages(ctx, &postv1.GetTopicMessagesRequest{Ids: ids, TextLimit: model.ExcerptLength})
+	if err != nil {
+		return nil, errs.Wrap("t.api.GetTopicMessages", fromStatus(err))
+	}
+
+	messages := make([]model.TopicMessage, 0, len(resp.GetMessages()))
+	for _, pm := range resp.GetMessages() {
+		messages = append(messages, toTopicMessage(pm))
+	}
+
+	return messages, nil
+}
+
+// MessageLikers is who put a heart on the message, newest first.
+func (t *Topics) MessageLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error) {
+	resp, err := t.api.ListTopicMessageLikers(ctx, &postv1.ListTopicMessageLikersRequest{Id: id, Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.LikerPage{}, errs.Wrap("t.api.ListTopicMessageLikers", fromStatus(err))
+	}
+
+	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
+}
+
 func (t *Topics) DeleteMessage(ctx context.Context, accessToken, id string) error {
 	if _, err := t.api.DeleteTopicMessage(withToken(ctx, accessToken), &postv1.DeleteTopicMessageRequest{Id: id}); err != nil {
 		return errs.Wrap("t.api.DeleteTopicMessage", fromStatus(err))

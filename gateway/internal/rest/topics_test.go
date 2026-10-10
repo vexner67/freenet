@@ -90,6 +90,22 @@ func (f *fakeTopics) Message(_ context.Context, id string) (model.TopicMessage, 
 	return model.TopicMessage{ID: id, TopicID: "t1", AuthorID: "u2", Text: "Привет, целиком", CreatedAt: topicTime}, nil
 }
 
+// MessagesByID knows m1.
+func (f *fakeTopics) MessagesByID(_ context.Context, ids []string) ([]model.TopicMessage, error) {
+	var found []model.TopicMessage
+	for _, id := range ids {
+		if id == "m1" {
+			found = append(found, model.TopicMessage{ID: id, TopicID: "t1", AuthorID: "u2", Text: "Привет"})
+		}
+	}
+
+	return found, f.err
+}
+
+func (f *fakeTopics) MessageLikers(_ context.Context, _, _ string, _ int) (model.LikerPage, error) {
+	return model.LikerPage{UserIDs: []string{"u2"}, Total: 1}, f.err
+}
+
 func (f *fakeTopics) DeleteMessage(_ context.Context, _, id string) error {
 	f.deleted = id
 	return f.err
