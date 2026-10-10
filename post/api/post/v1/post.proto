@@ -446,8 +446,8 @@ message ListPostsResponse {
 message ListFeedRequest {
   // At most 1001: the people a user follows and the user.
   repeated string author_ids = 1;
-  // At most 1001: the communities the user is in, every post on whose
-  // walls the feed shows.
+  // At most 2001: the people a user follows, the user and the
+  // communities the user is in, every post on whose walls the feed shows.
   repeated string wall_ids = 4;
   // Empty for the newest posts, else next_cursor of the previous page.
   string cursor = 2;
