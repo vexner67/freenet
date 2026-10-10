@@ -32,6 +32,8 @@ type BlockRepository interface {
 	// first, with block IDs (UUIDv7) below before (uuid.Nil: the newest).
 	ListBlocked(ctx context.Context, blockerID, before uuid.UUID, limit int) ([]Blocked, error)
 	CountBlocked(ctx context.Context, blockerID uuid.UUID) (int, error)
+	// BlockedIDs returns up to limit blacklisted users, newest block first.
+	BlockedIDs(ctx context.Context, blockerID uuid.UUID, limit int) ([]uuid.UUID, error)
 }
 
 // Blocked is a user in a blacklist with the ID of that block.
@@ -109,6 +111,17 @@ func (s *BlockService) Unblock(ctx context.Context, blockerID, blockedID uuid.UU
 	}
 
 	return nil
+}
+
+// BlockedIDs are the users whose posts blockerID's news feed leaves out:
+// the newest of the blacklist.
+func (s *BlockService) BlockedIDs(ctx context.Context, blockerID uuid.UUID) ([]uuid.UUID, error) {
+	ids, err := s.blockRepo.BlockedIDs(ctx, blockerID, MaxFeedSources)
+	if err != nil {
+		return nil, errs.Wrap("s.blockRepo.BlockedIDs", err)
+	}
+
+	return ids, nil
 }
 
 // List pages a blacklist, newest block first.

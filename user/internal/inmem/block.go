@@ -97,6 +97,37 @@ func (r *BlockRepository) Blocks(ctx context.Context, a, b uuid.UUID) (aBlockedB
 	return aBlockedB, bBlockedA, nil
 }
 
+// BlockedIDs keeps the users whose page is gone too, as PostgreSQL does
+// until the purge.
+func (r *BlockRepository) BlockedIDs(ctx context.Context, blockerID uuid.UUID, limit int) ([]uuid.UUID, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.follows.mu.RLock()
+	defer r.follows.mu.RUnlock()
+
+	type hit struct {
+		blockID, blocked uuid.UUID
+	}
+
+	var hits []hit
+	for e, id := range r.blocks {
+		if e.follower == blockerID {
+			hits = append(hits, hit{id, e.followee})
+		}
+	}
+
+	slices.SortFunc(hits, func(a, b hit) int { return bytes.Compare(b.blockID[:], a.blockID[:]) })
+
+	ids := make([]uuid.UUID, 0, min(len(hits), limit))
+	for _, h := range hits[:min(len(hits), limit)] {
+		ids = append(ids, h.blocked)
+	}
+
+	return ids, nil
+}
+
 func (r *BlockRepository) ListBlocked(ctx context.Context, blockerID, before uuid.UUID, limit int) ([]service.Blocked, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
