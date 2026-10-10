@@ -251,7 +251,9 @@ func (a *Albums) DeletePhotoComment(ctx context.Context, accessToken, id string)
 
 // PhotoComments pages the comments of a photo, oldest first.
 func (a *Albums) PhotoComments(ctx context.Context, accessToken, id, cursor string, limit int) (model.PhotoCommentPage, error) {
-	resp, err := a.api.ListPhotoComments(withToken(ctx, accessToken), &postv1.ListPhotoCommentsRequest{PhotoId: id, Cursor: cursor, Limit: toLimit(limit)})
+	resp, err := a.api.ListPhotoComments(withToken(ctx, accessToken), &postv1.ListPhotoCommentsRequest{
+		PhotoId: id, Cursor: cursor, Limit: toLimit(limit), TextLimit: model.ExcerptLength,
+	})
 	if err != nil {
 		return model.PhotoCommentPage{}, errs.Wrap("a.api.ListPhotoComments", fromStatus(err))
 	}
@@ -264,12 +266,23 @@ func (a *Albums) PhotoComments(ctx context.Context, accessToken, id, cursor stri
 	return page, nil
 }
 
+// PhotoComment is a comment under a photo with its whole text.
+func (a *Albums) PhotoComment(ctx context.Context, id string) (model.PhotoComment, error) {
+	resp, err := a.api.GetPhotoComment(ctx, &postv1.GetPhotoCommentRequest{Id: id})
+	if err != nil {
+		return model.PhotoComment{}, errs.Wrap("a.api.GetPhotoComment", fromStatus(err))
+	}
+
+	return toPhotoComment(resp.GetComment()), nil
+}
+
 func toPhotoComment(pc *postv1.PhotoComment) model.PhotoComment {
 	return model.PhotoComment{
 		ID:        pc.GetId(),
 		PhotoID:   pc.GetPhotoId(),
 		AuthorID:  pc.GetAuthorId(),
 		Text:      pc.GetText(),
+		TextCut:   pc.GetTextCut(),
 		CreatedAt: fromTimestamp(pc.GetCreatedAt()),
 		Mine:      pc.GetMine(),
 	}

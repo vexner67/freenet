@@ -294,10 +294,12 @@ type PostEdit struct {
 // Suggestion is a post suggested for a community's wall ("Предложка"),
 // seen by its author and the community's admins until published.
 type Suggestion struct {
-	ID        string
-	WallID    string
-	AuthorID  string
-	Text      string
+	ID       string
+	WallID   string
+	AuthorID string
+	Text     string
+	// TextCut: Text is only its beginning, as lists carry it.
+	TextCut   bool
 	PhotoIDs  []string
 	CreatedAt time.Time
 }
@@ -709,10 +711,12 @@ type Topic struct {
 // TopicMessage is what someone wrote in a topic: text, photos or both,
 // for the community if FromWall; Mine: the viewer wrote it.
 type TopicMessage struct {
-	ID        string
-	TopicID   string
-	AuthorID  string
-	Text      string
+	ID       string
+	TopicID  string
+	AuthorID string
+	Text     string
+	// TextCut: Text is only its beginning, as lists carry it.
+	TextCut   bool
 	PhotoIDs  []string
 	FromWall  bool
 	CreatedAt time.Time
@@ -801,10 +805,12 @@ type AlbumPhoto struct {
 // PhotoComment is a comment under a photo of an album, text only; Mine:
 // the viewer wrote it.
 type PhotoComment struct {
-	ID        string
-	PhotoID   string
-	AuthorID  string
-	Text      string
+	ID       string
+	PhotoID  string
+	AuthorID string
+	Text     string
+	// TextCut: Text is only its beginning, as lists carry it.
+	TextCut   bool
 	CreatedAt time.Time
 	Mine      bool
 }

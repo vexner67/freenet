@@ -71,9 +71,12 @@ type topicResponse struct {
 
 // topicMessageJSON is shaped as a comment, which the site draws alike.
 type topicMessageJSON struct {
-	ID        string      `json:"id"`
-	Author    authorJSON  `json:"author"`
-	Text      string      `json:"text"`
+	ID     string     `json:"id"`
+	Author authorJSON `json:"author"`
+	Text   string     `json:"text"`
+	// TextCut: text is only its beginning, as lists carry it; the whole
+	// is at /topic-messages/{id}/text.
+	TextCut   bool        `json:"textCut,omitempty"`
 	Photos    []photoJSON `json:"photos"`
 	CreatedAt string      `json:"createdAt"`
 	FromWall  bool        `json:"fromWall"`
@@ -123,6 +126,7 @@ func toTopicMessageJSON(m model.TopicMessage, shown model.Author) topicMessageJS
 		ID:        m.ID,
 		Author:    toAuthorJSON(shown),
 		Text:      m.Text,
+		TextCut:   m.TextCut,
 		Photos:    toPhotosJSON(m.AuthorID, m.PhotoIDs),
 		CreatedAt: m.CreatedAt.UTC().Format(time.RFC3339),
 		FromWall:  m.FromWall,
@@ -511,4 +515,16 @@ func (a *api) setTopicMessageLike(w http.ResponseWriter, r *http.Request, liked 
 	}
 
 	writeJSON(w, http.StatusOK, likeResponse{Likes: likes, Liked: liked})
+}
+
+// topicMessageText is what a message of a topic says, whole: the topic
+// carries its beginning. Public, as discussions are.
+func (a *api) topicMessageText(w http.ResponseWriter, r *http.Request) {
+	m, err := a.topics.Message(r.Context(), r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, textResponse{Text: m.Text})
 }

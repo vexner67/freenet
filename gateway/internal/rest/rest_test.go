@@ -1397,3 +1397,65 @@ func TestHealthz(t *testing.T) {
 		t.Fatalf("status = %d", w.Code)
 	}
 }
+
+// Suggestion knows s2, whose text lists cut.
+func (f *fakePosts) Suggestion(_ context.Context, token, id string) (model.Suggestion, error) {
+	f.token = token
+	if id != "s2" {
+		return model.Suggestion{}, failure.New(failure.NotFound, "suggestion not found")
+	}
+
+	return model.Suggestion{ID: id, WallID: "k1", AuthorID: "u2", Text: "от Петра, целиком"}, f.err
+}
+
+// Whole knows m1 of every dialog.
+func (f *fakeMessages) Whole(_ context.Context, token, peerID, id string) (model.Message, error) {
+	f.token, f.peerID = token, peerID
+	if id != "m1" {
+		return model.Message{}, failure.New(failure.NotFound, "message not found")
+	}
+
+	return model.Message{ID: id, SenderID: "u1", RecipientID: peerID, Text: "привет, целиком"}, nil
+}
+
+func TestWholeTexts(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name, path, token, want string
+		status                  int
+	}{
+		{"topic message", "/api/v1/topic-messages/m1/text", "", "Привет, целиком", http.StatusOK},
+		{"unknown topic message", "/api/v1/topic-messages/m404/text", "", "", http.StatusNotFound},
+		{"photo comment", "/api/v1/photo-comments/pc1/text", "", "красиво, целиком", http.StatusOK},
+		{"unknown photo comment", "/api/v1/photo-comments/pc404/text", "", "", http.StatusNotFound},
+		{"suggestion", "/api/v1/suggestions/s2/text", "token", "от Петра, целиком", http.StatusOK},
+		{"suggestion, anonymous", "/api/v1/suggestions/s2/text", "", "", http.StatusUnauthorized},
+		{"unknown suggestion", "/api/v1/suggestions/s404/text", "token", "", http.StatusNotFound},
+		{"message", "/api/v1/dialogs/bob/messages/m1", "token", "привет, целиком", http.StatusOK},
+		{"message, anonymous", "/api/v1/dialogs/bob/messages/m1", "", "", http.StatusUnauthorized},
+		{"unknown message", "/api/v1/dialogs/bob/messages/m404", "token", "", http.StatusNotFound},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			h := newHarness(rest.Config{})
+
+			headers := []string{}
+			if tt.token != "" {
+				headers = []string{"Authorization", "Bearer " + tt.token}
+			}
+
+			w := h.do("GET", tt.path, "", headers...)
+			if w.Code != tt.status {
+				t.Fatalf("status = %d, want %d: %s", w.Code, tt.status, w.Body)
+			}
+
+			if got := decode[struct{ Text string }](t, w); tt.status == http.StatusOK && got.Text != tt.want {
+				t.Errorf("text = %q, want %q", got.Text, tt.want)
+			}
+		})
+	}
+}

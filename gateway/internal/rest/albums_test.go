@@ -167,6 +167,15 @@ func (f *fakeAlbums) PhotoComments(_ context.Context, _, id, _ string, _ int) (m
 	}, Total: 2}, f.err
 }
 
+// PhotoComment knows pc1, whose text lists cut.
+func (f *fakeAlbums) PhotoComment(_ context.Context, id string) (model.PhotoComment, error) {
+	if id != "pc1" {
+		return model.PhotoComment{}, failure.New(failure.NotFound, "comment not found")
+	}
+
+	return model.PhotoComment{ID: id, PhotoID: "ph6", AuthorID: "u2", Text: "красиво, целиком", CreatedAt: albumTime}, nil
+}
+
 func (f *fakeAlbums) Describe(_ context.Context, _, id, description string) (model.AlbumPhoto, error) {
 	f.described = description
 	return f.photo(id)

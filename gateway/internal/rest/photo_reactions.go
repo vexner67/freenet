@@ -10,11 +10,14 @@ import (
 
 // photoCommentJSON is a comment under a photo; mine: the viewer wrote it.
 type photoCommentJSON struct {
-	ID        string     `json:"id"`
-	Author    authorJSON `json:"author"`
-	Text      string     `json:"text"`
-	CreatedAt string     `json:"createdAt"`
-	Mine      bool       `json:"mine"`
+	ID     string     `json:"id"`
+	Author authorJSON `json:"author"`
+	Text   string     `json:"text"`
+	// TextCut: text is only its beginning, as the list carries it; the
+	// whole is at /photo-comments/{id}/text.
+	TextCut   bool   `json:"textCut,omitempty"`
+	CreatedAt string `json:"createdAt"`
+	Mine      bool   `json:"mine"`
 }
 
 type photoCommentPageResponse struct {
@@ -31,7 +34,11 @@ type photoCommentRequest struct {
 // found when its uploader's page is deleted or its album hidden from the
 // caller.
 func (a *api) visiblePhoto(r *http.Request, token string) (model.AlbumPhoto, error) {
-	photo, album, err := a.albums.Photo(r.Context(), token, r.PathValue("id"))
+	return a.visiblePhotoByID(r, token, r.PathValue("id"))
+}
+
+func (a *api) visiblePhotoByID(r *http.Request, token, id string) (model.AlbumPhoto, error) {
+	photo, album, err := a.albums.Photo(r.Context(), token, id)
 	if err != nil {
 		return model.AlbumPhoto{}, err
 	}
@@ -230,7 +237,32 @@ func toPhotoCommentJSON(c model.PhotoComment, author model.Author) photoCommentJ
 		ID:        c.ID,
 		Author:    toAuthorJSON(author),
 		Text:      c.Text,
+		TextCut:   c.TextCut,
 		CreatedAt: c.CreatedAt.UTC().Format(time.RFC3339),
 		Mine:      c.Mine,
 	}
+}
+
+// photoCommentText is what a comment under a photo says, whole: the list
+// carries its beginning. A comment of a photo the caller is not shown is
+// not found.
+func (a *api) photoCommentText(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.albums.PhotoComment(r.Context(), r.PathValue("id"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if _, err = a.visiblePhotoByID(r, token, c.PhotoID); err != nil {
+		a.writeError(w, r, failure.New(failure.NotFound, "comment not found"))
+		return
+	}
+
+	writeJSON(w, http.StatusOK, textResponse{Text: c.Text})
 }

@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 
+	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -61,7 +62,25 @@ func (m *Messages) CountUnread(ctx context.Context, accessToken string) (int, er
 	return int(resp.GetCount()), nil
 }
 
-// History is the part of the dialog with peerID that at names.
+// Whole is message id of the dialog with peerID with its whole text and
+// the whole texts of those it carries on.
+func (m *Messages) Whole(ctx context.Context, accessToken, peerID, id string) (model.Message, error) {
+	resp, err := m.api.ListMessages(withToken(ctx, accessToken), &messagev1.ListMessagesRequest{PeerId: peerID, Around: id, Limit: 1})
+	if err != nil {
+		return model.Message{}, errs.Wrap("m.api.ListMessages", fromStatus(err))
+	}
+
+	for _, pm := range resp.GetMessages() {
+		if pm.GetId() == id {
+			return toMessage(pm), nil
+		}
+	}
+
+	return model.Message{}, failure.New(failure.NotFound, "message not found")
+}
+
+// History is the part of the dialog with peerID that at names, with the
+// beginnings of long texts.
 func (m *Messages) History(ctx context.Context, accessToken, peerID string, at model.MessagesAt, limit int) (model.MessagePage, error) {
 	resp, err := m.api.ListMessages(withToken(ctx, accessToken), &messagev1.ListMessagesRequest{
 		PeerId: peerID,
@@ -69,6 +88,8 @@ func (m *Messages) History(ctx context.Context, accessToken, peerID string, at m
 		After:  at.After,
 		Around: at.Around,
 		Limit:  toLimit(limit),
+
+		TextLimit: model.ExcerptLength,
 	})
 	if err != nil {
 		return model.MessagePage{}, errs.Wrap("m.api.ListMessages", fromStatus(err))
@@ -130,7 +151,7 @@ func (m *Messages) Edit(ctx context.Context, accessToken, id, text string) (mode
 // peerID or, for "", in all of theirs.
 func (m *Messages) Search(ctx context.Context, accessToken, peerID, query, cursor string, limit int) (model.FoundMessages, error) {
 	resp, err := m.api.SearchMessages(withToken(ctx, accessToken), &messagev1.SearchMessagesRequest{
-		PeerId: peerID, Query: query, Cursor: cursor, Limit: toLimit(limit),
+		PeerId: peerID, Query: query, Cursor: cursor, Limit: toLimit(limit), TextLimit: model.ExcerptLength,
 	})
 	if err != nil {
 		return model.FoundMessages{}, errs.Wrap("m.api.SearchMessages", fromStatus(err))
