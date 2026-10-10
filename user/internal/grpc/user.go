@@ -157,9 +157,7 @@ func (h *UserHandler) UpdateInterface(ctx context.Context, req *userv1.UpdateInt
 		return nil, err
 	}
 
-	in := req.GetInterface()
-
-	ui, err := user.NewInterface(in.GetAvatarStyle(), in.GetMainPage(), in.GetHiddenMenu())
+	ui, err := user.NewInterface(fromProtoInterface(req.GetInterface()))
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}

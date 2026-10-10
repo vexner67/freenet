@@ -882,9 +882,21 @@ type InterfaceSettings struct {
 	MainPage string `protobuf:"bytes,2,opt,name=main_page,json=mainPage,proto3" json:"main_page,omitempty"`
 	// The links taken out of the left menu: "photos", "messages", "groups",
 	// "events", "feed", "notifications".
-	HiddenMenu    []string `protobuf:"bytes,3,rep,name=hidden_menu,json=hiddenMenu,proto3" json:"hidden_menu,omitempty"`
-	unknownFields protoimpl.UnknownFields
-	sizeCache     protoimpl.SizeCache
+	HiddenMenu []string `protobuf:"bytes,3,rep,name=hidden_menu,json=hiddenMenu,proto3" json:"hidden_menu,omitempty"`
+	// "default", "blue" or "dark": the look of the whole site.
+	Theme string `protobuf:"bytes,4,opt,name=theme,proto3" json:"theme,omitempty"`
+	// Takes "Заполненность страницы" off the pages the owner reads.
+	HideRating bool `protobuf:"varint,5,opt,name=hide_rating,json=hideRating,proto3" json:"hide_rating,omitempty"`
+	// "blur" (the default), "hide" (blurred, and left out of the news) or
+	// "show": posts marked as adult.
+	Nsfw string `protobuf:"bytes,6,opt,name=nsfw,proto3" json:"nsfw,omitempty"`
+	// "old" (the default) or "microblog": how posts are laid out.
+	PostView string `protobuf:"bytes,7,opt,name=post_view,json=postView,proto3" json:"post_view,omitempty"`
+	// The clock dates are read by, minutes east of UTC; unset for the
+	// browser's own.
+	TimezoneOffset *int32 `protobuf:"varint,8,opt,name=timezone_offset,json=timezoneOffset,proto3,oneof" json:"timezone_offset,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *InterfaceSettings) Reset() {
@@ -936,6 +948,41 @@ func (x *InterfaceSettings) GetHiddenMenu() []string {
 		return x.HiddenMenu
 	}
 	return nil
+}
+
+func (x *InterfaceSettings) GetTheme() string {
+	if x != nil {
+		return x.Theme
+	}
+	return ""
+}
+
+func (x *InterfaceSettings) GetHideRating() bool {
+	if x != nil {
+		return x.HideRating
+	}
+	return false
+}
+
+func (x *InterfaceSettings) GetNsfw() string {
+	if x != nil {
+		return x.Nsfw
+	}
+	return ""
+}
+
+func (x *InterfaceSettings) GetPostView() string {
+	if x != nil {
+		return x.PostView
+	}
+	return ""
+}
+
+func (x *InterfaceSettings) GetTimezoneOffset() int32 {
+	if x != nil && x.TimezoneOffset != nil {
+		return *x.TimezoneOffset
+	}
+	return 0
 }
 
 type UpdateInterfaceRequest struct {
@@ -4443,12 +4490,19 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x0ebackdrop_right\x18\x19 \x01(\tR\rbackdropRight\x12\"\n" +
 	"\fcompleteness\x18\x1a \x01(\x05R\fcompleteness\x12\x1a\n" +
 	"\bunfilled\x18\x1b \x03(\tR\bunfilled\x128\n" +
-	"\tinterface\x18\x1c \x01(\v2\x1a.user.v1.InterfaceSettingsR\tinterface\"t\n" +
+	"\tinterface\x18\x1c \x01(\v2\x1a.user.v1.InterfaceSettingsR\tinterface\"\x9e\x02\n" +
 	"\x11InterfaceSettings\x12!\n" +
 	"\favatar_style\x18\x01 \x01(\tR\vavatarStyle\x12\x1b\n" +
 	"\tmain_page\x18\x02 \x01(\tR\bmainPage\x12\x1f\n" +
 	"\vhidden_menu\x18\x03 \x03(\tR\n" +
-	"hiddenMenu\"R\n" +
+	"hiddenMenu\x12\x14\n" +
+	"\x05theme\x18\x04 \x01(\tR\x05theme\x12\x1f\n" +
+	"\vhide_rating\x18\x05 \x01(\bR\n" +
+	"hideRating\x12\x12\n" +
+	"\x04nsfw\x18\x06 \x01(\tR\x04nsfw\x12\x1b\n" +
+	"\tpost_view\x18\a \x01(\tR\bpostView\x12,\n" +
+	"\x0ftimezone_offset\x18\b \x01(\x05H\x00R\x0etimezoneOffset\x88\x01\x01B\x12\n" +
+	"\x10_timezone_offset\"R\n" +
 	"\x16UpdateInterfaceRequest\x128\n" +
 	"\tinterface\x18\x01 \x01(\v2\x1a.user.v1.InterfaceSettingsR\tinterface\"<\n" +
 	"\x17UpdateInterfaceResponse\x12!\n" +
@@ -5005,6 +5059,7 @@ func file_api_user_v1_user_proto_init() {
 	if File_api_user_v1_user_proto != nil {
 		return
 	}
+	file_api_user_v1_user_proto_msgTypes[1].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{
