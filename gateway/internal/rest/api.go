@@ -49,6 +49,7 @@ type Users interface {
 	Follow(ctx context.Context, accessToken, userID string) error
 	Unfollow(ctx context.Context, accessToken, userID string) error
 	FollowingIDs(ctx context.Context, accessToken string) ([]string, error)
+	BlockedIDs(ctx context.Context, accessToken string) ([]string, error)
 	FollowStats(ctx context.Context, accessToken, userID string) (model.FollowStats, error)
 	ListFollowers(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
 	ListFollowing(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)

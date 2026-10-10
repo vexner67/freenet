@@ -49,6 +49,8 @@ func (f *fakeAuth) Logout(context.Context, string) error { return f.err }
 type fakeUsers struct {
 	// named are the nicknames the gateway asked ResolveMentions about.
 	named []string
+	// blockedIDs are whom the caller blacklisted, as BlockedIDs tells.
+	blockedIDs []string
 	// ui is how the site looks to the caller, as GetMe tells.
 	ui                                              model.Interface
 	token, statsToken, followed, unfollowed, listed string
@@ -284,6 +286,11 @@ func (f *fakeUsers) Search(_ context.Context, q model.UserQuery, cursor string, 
 	}, nil
 }
 
+// BlockedIDs is the blacklist the news leave out, set by a test.
+func (f *fakeUsers) BlockedIDs(context.Context, string) ([]string, error) {
+	return f.blockedIDs, f.err
+}
+
 func (f *fakeUsers) FollowingIDs(_ context.Context, token string) ([]string, error) {
 	f.token = token
 	return []string{"u2", "gone"}, nil
@@ -375,9 +382,11 @@ func (f *fakeUsers) markedOnline() []string {
 }
 
 type fakePosts struct {
-	authors, walls         []string
-	lastAsked              []string
-	hideNSFW               bool
+	authors, walls []string
+	lastAsked      []string
+	hideNSFW       bool
+	// hidden are the authors the last feed was asked to leave out.
+	hidden                 []string
 	everyone               bool
 	newPost                model.NewPost
 	token, cursor, deleted string
@@ -560,7 +569,7 @@ func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comme
 
 func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSources, cursor string, _ int) (model.PostPage, error) {
 	f.token, f.authors, f.walls, f.cursor, f.hideNSFW = token, sources.Authors, sources.Walls, cursor, sources.HideNSFW
-	f.everyone = sources.Everyone
+	f.everyone, f.hidden = sources.Everyone, sources.Hidden
 	return model.PostPage{
 		Posts: []model.Post{
 			{ID: "p3", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},
