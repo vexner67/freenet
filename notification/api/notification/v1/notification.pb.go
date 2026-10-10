@@ -47,21 +47,28 @@ const (
 	// Someone suggested a post for the wall of the actor, a community the
 	// recipient runs; post_id is the suggestion, not a post.
 	Kind_KIND_SUGGESTED_POST Kind = 9
+	// The recipient was made an admin of the actor, a community.
+	Kind_KIND_CLUB_ADMIN Kind = 10
+	// The actor wrote in the topic the recipient started; post_id is the
+	// topic and comment_id the message.
+	Kind_KIND_TOPIC_MESSAGE Kind = 11
 )
 
 // Enum value maps for Kind.
 var (
 	Kind_name = map[int32]string{
-		0: "KIND_UNSPECIFIED",
-		1: "KIND_LIKE",
-		2: "KIND_COMMENT",
-		3: "KIND_FOLLOW",
-		4: "KIND_WALL_POST",
-		5: "KIND_REPOST",
-		6: "KIND_COMMENT_REPLY",
-		7: "KIND_COMMENT_LIKE",
-		8: "KIND_POST_ACCEPTED",
-		9: "KIND_SUGGESTED_POST",
+		0:  "KIND_UNSPECIFIED",
+		1:  "KIND_LIKE",
+		2:  "KIND_COMMENT",
+		3:  "KIND_FOLLOW",
+		4:  "KIND_WALL_POST",
+		5:  "KIND_REPOST",
+		6:  "KIND_COMMENT_REPLY",
+		7:  "KIND_COMMENT_LIKE",
+		8:  "KIND_POST_ACCEPTED",
+		9:  "KIND_SUGGESTED_POST",
+		10: "KIND_CLUB_ADMIN",
+		11: "KIND_TOPIC_MESSAGE",
 	}
 	Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":    0,
@@ -74,6 +81,8 @@ var (
 		"KIND_COMMENT_LIKE":   7,
 		"KIND_POST_ACCEPTED":  8,
 		"KIND_SUGGESTED_POST": 9,
+		"KIND_CLUB_ADMIN":     10,
+		"KIND_TOPIC_MESSAGE":  11,
 	}
 )
 
@@ -210,7 +219,7 @@ func (Change) EnumDescriptor() ([]byte, []int) {
 	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{2}
 }
 
-// Event: post_id is set for all but follows,
+// Event: post_id is set for all but follows and appointments,
 // comment_id for comments, replies and comment likes.
 type Event struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
@@ -961,7 +970,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId\"\x12\n" +
 	"\x10SubscribeRequest\"D\n" +
 	"\x11SubscribeResponse\x12/\n" +
-	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xd3\x01\n" +
+	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\x80\x02\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -972,7 +981,10 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x12KIND_COMMENT_REPLY\x10\x06\x12\x15\n" +
 	"\x11KIND_COMMENT_LIKE\x10\a\x12\x16\n" +
 	"\x12KIND_POST_ACCEPTED\x10\b\x12\x17\n" +
-	"\x13KIND_SUGGESTED_POST\x10\t*;\n" +
+	"\x13KIND_SUGGESTED_POST\x10\t\x12\x13\n" +
+	"\x0fKIND_CLUB_ADMIN\x10\n" +
+	"\x12\x16\n" +
+	"\x12KIND_TOPIC_MESSAGE\x10\v*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

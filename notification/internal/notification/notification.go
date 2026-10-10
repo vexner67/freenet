@@ -37,6 +37,12 @@ const (
 	// actor, a community the recipient runs ("новые записи в предложке" of
 	// openvk); PostID is the suggestion, not a post.
 	KindSuggestedPost Kind = "suggested_post"
+	// KindClubAdmin: the recipient was made an admin of the actor, a
+	// community ("назначил вас руководителем сообщества" of openvk).
+	KindClubAdmin Kind = "club_admin"
+	// KindTopicMessage: the actor wrote in the topic the recipient
+	// started; PostID is the topic and CommentID the message.
+	KindTopicMessage Kind = "topic_message"
 )
 
 var (
@@ -49,7 +55,7 @@ var (
 )
 
 // Event is what happened, to whom and by whom. PostID is set for all but
-// follows, CommentID for comments, replies and comment likes; unused IDs
+// follows and appointments, CommentID for comments, replies and comment likes; unused IDs
 // are uuid.Nil.
 type Event struct {
 	Kind        Kind
@@ -80,9 +86,9 @@ func (e Event) Validate() error {
 	switch e.Kind {
 	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost:
 		ok = hasPost && !hasComment
-	case KindComment, KindCommentReply, KindCommentLike:
+	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage:
 		ok = hasPost && hasComment
-	case KindFollow:
+	case KindFollow, KindClubAdmin:
 		ok = !hasPost && !hasComment
 	default:
 		return ErrUnknownKind

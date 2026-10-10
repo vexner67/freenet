@@ -56,9 +56,14 @@ enum Kind {
   // Someone suggested a post for the wall of the actor, a community the
   // recipient runs; post_id is the suggestion, not a post.
   KIND_SUGGESTED_POST = 9;
+  // The recipient was made an admin of the actor, a community.
+  KIND_CLUB_ADMIN = 10;
+  // The actor wrote in the topic the recipient started; post_id is the
+  // topic and comment_id the message.
+  KIND_TOPIC_MESSAGE = 11;
 }
 
-// Event: post_id is set for all but follows,
+// Event: post_id is set for all but follows and appointments,
 // comment_id for comments, replies and comment likes.
 message Event {
   Kind kind = 1;

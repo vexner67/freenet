@@ -231,6 +231,77 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("Delete: %v, left %d", err, count())
 		}
 	})
+	t.Run("topic message", func(t *testing.T) {
+		topic, first, second, starter := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+
+		count := func() int {
+			t.Helper()
+
+			got, err := repo.List(ctx, service.Query{RecipientID: starter, Unread: true, Limit: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return len(got)
+		}
+
+		for range 2 { // one notification per message
+			for _, message := range []uuid.UUID{first, second} {
+				n, err := notification.New(notification.Event{
+					Kind: notification.KindTopicMessage, RecipientID: starter, ActorID: bob, PostID: topic, CommentID: message,
+				}, time.Now())
+				if err != nil {
+					t.Fatal(err)
+				}
+				if err = repo.Save(ctx, n); err != nil {
+					t.Fatalf("Save: %v", err)
+				}
+			}
+		}
+		if got := count(); got != 2 {
+			t.Fatalf("notifications about two messages = %d, want 2", got)
+		}
+
+		// A deleted message takes its own, a deleted topic the rest.
+		if err := repo.DeleteByComment(ctx, first); err != nil || count() != 1 {
+			t.Fatalf("DeleteByComment: %v, left %d", err, count())
+		}
+		if err := repo.DeleteByPost(ctx, topic); err != nil || count() != 0 {
+			t.Fatalf("DeleteByPost: %v, left %d", err, count())
+		}
+	})
+	t.Run("club admin", func(t *testing.T) {
+		club, admin := uuid.New(), uuid.New()
+		e := notification.Event{Kind: notification.KindClubAdmin, RecipientID: admin, ActorID: club}
+
+		count := func() int {
+			t.Helper()
+
+			got, err := repo.List(ctx, service.Query{RecipientID: admin, Unread: true, Limit: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return len(got)
+		}
+
+		for range 2 { // one notification per community and admin
+			n, err := notification.New(e, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = repo.Save(ctx, n); err != nil {
+				t.Fatalf("Save: %v", err)
+			}
+		}
+		if got := count(); got != 1 {
+			t.Fatalf("notifications about one appointment = %d, want 1", got)
+		}
+
+		if err := repo.Delete(ctx, e); err != nil || count() != 0 {
+			t.Fatalf("Delete: %v, left %d", err, count())
+		}
+	})
 	t.Run("suggested post", func(t *testing.T) {
 		suggestion, club, admin := uuid.New(), uuid.New(), uuid.New()
 
