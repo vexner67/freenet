@@ -86,6 +86,10 @@ type FeedSources struct {
 	// HideNSFW leaves the posts marked as adult out, as their reader
 	// asked ("Не показывать в ленте").
 	HideNSFW bool
+	// Everyone is "Все новости" of openvk: what every wall says itself
+	// (post.ByWallOwner), whoever the reader follows; Authors and Walls
+	// are not looked at.
+	Everyone bool
 }
 
 // WallModerators tells who keeps a wall clean besides its owner: the
@@ -886,7 +890,7 @@ func (s *PostService) Feed(ctx context.Context, viewerID uuid.UUID, sources Feed
 		return Page{}, ErrTooManyAuthors
 	}
 
-	if len(sources.Authors) == 0 && len(sources.Walls) == 0 {
+	if !sources.Everyone && len(sources.Authors) == 0 && len(sources.Walls) == 0 {
 		return Page{}, nil
 	}
 

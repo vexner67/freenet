@@ -5,6 +5,7 @@ import (
 	"errors"
 	"os"
 	"reflect"
+	"slices"
 	"testing"
 	"time"
 
@@ -225,6 +226,21 @@ func TestPostRepository_ClubWalls(t *testing.T) {
 
 	if older, err := repo.ListFeed(ctx, service.FeedSources{Walls: []uuid.UUID{club}}, byMember.ID(), 10); err != nil || len(older) != 1 || older[0].ID() != news.ID() {
 		t.Fatalf("feed after a cursor = %v, %v", older, err)
+	}
+
+	// "Все новости": what the walls say themselves, not what guests wrote.
+	everyone, err := repo.ListFeed(ctx, service.FeedSources{Everyone: true}, uuid.Nil, 50)
+	if err != nil {
+		t.Fatalf("the feed of everyone: %v", err)
+	}
+	var own []uuid.UUID
+	for _, p := range everyone {
+		if p.WallID() == club || p.WallID() == admin {
+			own = append(own, p.ID())
+		}
+	}
+	if !slices.Equal(own, []uuid.UUID{adminsOwn.ID(), news.ID()}) {
+		t.Fatalf("the feed of everyone = %v; want the admin's own post and the club's", own)
 	}
 
 	photo, err := post.NewContent("", post.Photos{uuid.New()})

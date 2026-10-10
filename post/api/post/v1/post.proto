@@ -458,6 +458,10 @@ message ListFeedRequest {
   int32 limit = 3;
   // Leaves the posts marked as adult out, as the reader's settings say.
   bool hide_nsfw = 5;
+  // "Все новости" of openvk: what every wall says itself (its owner on
+  // their wall, a community in its name), whoever wrote it; author_ids
+  // and wall_ids are not looked at.
+  bool everyone = 6;
 }
 
 message ListFeedResponse {
