@@ -145,11 +145,19 @@ type User struct {
 
 // Interface is how the site looks to its owner ("Интерфейс" of the
 // settings): AvatarStyle is "square" or "round", MainPage "page" or
-// "feed", HiddenMenu the links taken out of the left menu.
+// "feed", HiddenMenu the links taken out of the left menu, Theme
+// "default", "blue" or "dark", NSFW "blur", "hide" or "show", PostView
+// "old" or "microblog"; HideRating takes "Заполненность страницы" away,
+// and Timezone is minutes east of UTC, nil for the browser's clock.
 type Interface struct {
 	AvatarStyle string
 	MainPage    string
 	HiddenMenu  []string
+	Theme       string
+	HideRating  bool
+	NSFW        string
+	PostView    string
+	Timezone    *int
 }
 
 // Backdrop is "Фон страницы" of a person: photos of the media service
@@ -230,6 +238,8 @@ type Post struct {
 	// CommentsClosed: nobody comments it anymore.
 	Archived       bool
 	CommentsClosed bool
+	// NSFW: its author marked it as adult.
+	NSFW bool
 	// FromWall: the post speaks for its wall, a community; Author is
 	// still its writer, whom the API shows only when Signed.
 	FromWall bool
@@ -253,9 +263,19 @@ type NewPost struct {
 	ClubWall bool
 	FromWall bool
 	Signed   bool
+	// NSFW marks the post as adult ("Содержит NSFW-контент").
+	NSFW bool
 	// AvatarUpdate: the post of the new photo of the wall's owner, the
 	// photo alone.
 	AvatarUpdate bool
+}
+
+// PostEdit is what an edit makes of a post: its text and photos, whole,
+// and, unless nil, whether it is marked as adult.
+type PostEdit struct {
+	Text     string
+	PhotoIDs []string
+	NSFW     *bool
 }
 
 // Suggestion is a post suggested for a community's wall ("Предложка"),
@@ -289,6 +309,8 @@ type WallAccess struct {
 type FeedSources struct {
 	Authors []string
 	Walls   []string
+	// HideNSFW leaves out the posts marked as adult.
+	HideNSFW bool
 }
 
 // WallPick is which posts of a wall to read: Filter is a tab of openvk's

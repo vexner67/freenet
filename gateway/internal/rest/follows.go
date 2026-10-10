@@ -204,7 +204,8 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	sources := model.FeedSources{Authors: append(following, me.ID), Walls: clubs}
+	// "Не показывать в ленте" of the reader's settings.
+	sources := model.FeedSources{Authors: append(following, me.ID), Walls: clubs, HideNSFW: me.Interface.NSFW == nsfwHide}
 
 	page, err := a.posts.Feed(r.Context(), token, sources, r.URL.Query().Get("cursor"), limit)
 	if err != nil {

@@ -2,6 +2,7 @@ package backend
 
 import (
 	"fmt"
+	"math"
 	"strings"
 	"time"
 
@@ -190,6 +191,11 @@ func toUser(u *userv1.User) model.User {
 			AvatarStyle: u.GetInterface().GetAvatarStyle(),
 			MainPage:    u.GetInterface().GetMainPage(),
 			HiddenMenu:  u.GetInterface().GetHiddenMenu(),
+			Theme:       u.GetInterface().GetTheme(),
+			HideRating:  u.GetInterface().GetHideRating(),
+			NSFW:        u.GetInterface().GetNsfw(),
+			PostView:    u.GetInterface().GetPostView(),
+			Timezone:    fromTimezoneOffset(u.GetInterface()),
 		},
 		PurgeAt: fromTimestamp(u.GetPurgeAt()),
 		Privacy: model.Privacy{
@@ -228,4 +234,26 @@ func fromTimestamp(ts *timestamppb.Timestamp) time.Time {
 	}
 
 	return ts.AsTime()
+}
+
+// toTimezoneOffset and fromTimezoneOffset: nil is the browser's clock.
+func toTimezoneOffset(minutes *int) *int32 {
+	if minutes == nil {
+		return nil
+	}
+
+	// The user service checks the range; clamp what int32 cannot hold.
+	offset := int32(max(min(*minutes, math.MaxInt16), math.MinInt16))
+
+	return &offset
+}
+
+func fromTimezoneOffset(ui *userv1.InterfaceSettings) *int {
+	if ui == nil || ui.TimezoneOffset == nil {
+		return nil
+	}
+
+	minutes := int(ui.GetTimezoneOffset())
+
+	return &minutes
 }

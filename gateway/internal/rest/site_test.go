@@ -37,19 +37,26 @@ func TestUpdateInterface(t *testing.T) {
 			AvatarStyle string   `json:"avatarStyle"`
 			MainPage    string   `json:"mainPage"`
 			HiddenMenu  []string `json:"hiddenMenu"`
+			Theme       string   `json:"theme"`
+			HideRating  bool     `json:"hideRating"`
+			NSFW        string   `json:"nsfw"`
+			PostView    string   `json:"postView"`
+			Timezone    *int     `json:"timezone"`
 		} `json:"interface"`
 	}
 
-	w := h.do("PUT", "/api/v1/me/interface", `{"avatarStyle":"round","mainPage":"feed","hiddenMenu":["events"]}`, "Authorization", "Bearer tok")
-	got := decode[meJSON](t, w)
-	if w.Code != http.StatusOK || got.Interface.AvatarStyle != "round" || got.Interface.MainPage != "feed" ||
-		len(got.Interface.HiddenMenu) != 1 || got.Interface.HiddenMenu[0] != "events" || h.users.token != "tok" {
+	body := `{"avatarStyle":"round","mainPage":"feed","hiddenMenu":["events"],"theme":"dark","hideRating":true,"nsfw":"show","postView":"microblog","timezone":180}`
+	w := h.do("PUT", "/api/v1/me/interface", body, "Authorization", "Bearer tok")
+	got := decode[meJSON](t, w).Interface
+	if w.Code != http.StatusOK || got.AvatarStyle != "round" || got.MainPage != "feed" ||
+		len(got.HiddenMenu) != 1 || got.HiddenMenu[0] != "events" || h.users.token != "tok" ||
+		got.Theme != "dark" || !got.HideRating || got.NSFW != "show" || got.PostView != "microblog" || got.Timezone == nil || *got.Timezone != 180 {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 
-	// A whole menu is an empty list, never null.
-	w = h.do("PUT", "/api/v1/me/interface", `{"avatarStyle":"square","mainPage":"page"}`, "Authorization", "Bearer tok")
-	if got = decode[meJSON](t, w); w.Code != http.StatusOK || got.Interface.HiddenMenu == nil {
+	// A whole menu is an empty list, never null; the browser's clock is.
+	w = h.do("PUT", "/api/v1/me/interface", `{"avatarStyle":"square","mainPage":"page","timezone":null}`, "Authorization", "Bearer tok")
+	if got = decode[meJSON](t, w).Interface; w.Code != http.StatusOK || got.HiddenMenu == nil || got.Timezone != nil {
 		t.Fatalf("a whole menu: %d %s", w.Code, w.Body)
 	}
 
@@ -60,5 +67,34 @@ func TestUpdateInterface(t *testing.T) {
 	h.users.err = failure.New(failure.InvalidArgument, "invalid avatar style")
 	if w = h.do("PUT", "/api/v1/me/interface", `{"avatarStyle":"oval","mainPage":"page"}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
 		t.Fatalf("an unknown style: %d", w.Code)
+	}
+}
+
+// The mark of an adult post goes to the post service and comes back; the
+// news leave such posts out for whoever asked.
+func TestNSFW(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile = ann
+
+	w := h.do("POST", "/api/v1/me/posts", `{"text":"для взрослых","nsfw":true}`, "Authorization", "Bearer tok")
+	if got := decode[struct {
+		NSFW bool `json:"nsfw"`
+	}](t, w); w.Code != http.StatusCreated || !got.NSFW || !h.posts.newPost.NSFW {
+		t.Fatalf("a marked post: %d %s", w.Code, w.Body)
+	}
+
+	if w = h.do("POST", "/api/v1/me/posts", `{"text":"котики"}`, "Authorization", "Bearer tok"); w.Code != http.StatusCreated || h.posts.newPost.NSFW {
+		t.Fatalf("a plain post: %d %s", w.Code, w.Body)
+	}
+
+	if w = h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.posts.hideNSFW {
+		t.Fatalf("the news by default: %d, hidden %v", w.Code, h.posts.hideNSFW)
+	}
+
+	h.users.ui.NSFW = "hide"
+	if w = h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || !h.posts.hideNSFW {
+		t.Fatalf("the news of whoever hides adult posts: %d, hidden %v", w.Code, h.posts.hideNSFW)
 	}
 }

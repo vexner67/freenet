@@ -39,6 +39,7 @@ func webDir(t *testing.T) string {
 		"club-members.html":   "CLUB_MEMBERS",
 		"club-suggested.html": "CLUB_SUGGESTED",
 		"static/style.css":    "body{}",
+		"static/favicon.png":  "ICON",
 	}
 
 	for name, content := range files {
@@ -99,6 +100,7 @@ func TestPages(t *testing.T) {
 		{"/club/cats/suggested", 200, "CLUB_SUGGESTED", true},
 		{"/static/style.css", 200, "body{}", false},
 		{"/static/", 404, "", false},
+		{"/favicon.ico", 200, "ICON", false},
 		{"/api/v1/users/ann", 200, `"nickname":"ann"`, false},
 		{"/api/v1/nope", 404, `"not_found"`, false},
 		{"/healthz", 200, "ok", false},

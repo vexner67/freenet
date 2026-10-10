@@ -250,12 +250,24 @@ type userResponse struct {
 	Interface interfaceJSON `json:"interface"`
 }
 
+// nsfwHide is the setting that leaves posts marked as adult out of the
+// news.
+const nsfwHide = "hide"
+
 // interfaceJSON: avatarStyle is "square" or "round", mainPage "page" or
-// "feed", hiddenMenu the links taken out of the left menu.
+// "feed", hiddenMenu the links taken out of the left menu, theme
+// "default", "blue" or "dark", nsfw "blur", "hide" or "show", postView
+// "old" or "microblog", timezone minutes east of UTC or null for the
+// browser's clock.
 type interfaceJSON struct {
 	AvatarStyle string   `json:"avatarStyle"`
 	MainPage    string   `json:"mainPage"`
 	HiddenMenu  []string `json:"hiddenMenu"`
+	Theme       string   `json:"theme"`
+	HideRating  bool     `json:"hideRating"`
+	NSFW        string   `json:"nsfw"`
+	PostView    string   `json:"postView"`
+	Timezone    *int     `json:"timezone"`
 }
 
 // toUserResponse: partner is whom the relationship names, nil for nobody.
@@ -291,6 +303,11 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			AvatarStyle: u.Interface.AvatarStyle,
 			MainPage:    u.Interface.MainPage,
 			HiddenMenu:  append([]string{}, u.Interface.HiddenMenu...),
+			Theme:       u.Interface.Theme,
+			HideRating:  u.Interface.HideRating,
+			NSFW:        u.Interface.NSFW,
+			PostView:    u.Interface.PostView,
+			Timezone:    u.Interface.Timezone,
 		},
 	}
 }

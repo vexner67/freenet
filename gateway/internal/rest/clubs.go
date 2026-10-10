@@ -48,6 +48,8 @@ type clubPostRequest struct {
 	// naming its author with Signed ("Подпись автора").
 	FromClub bool `json:"fromClub"`
 	Signed   bool `json:"signed"`
+	// NSFW marks the post as adult.
+	NSFW bool `json:"nsfw"`
 }
 
 type clubJSON struct {
@@ -963,6 +965,7 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		ClubWall: true,
 		FromWall: fromClub,
 		Signed:   fromClub && req.Signed,
+		NSFW:     req.NSFW,
 	})
 	if err != nil {
 		a.writeError(w, r, err)

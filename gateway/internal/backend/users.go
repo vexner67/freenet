@@ -67,6 +67,8 @@ func (u *Users) UpdateContacts(ctx context.Context, accessToken string, c model.
 func (u *Users) UpdateInterface(ctx context.Context, accessToken string, ui model.Interface) (model.User, error) {
 	resp, err := u.api.UpdateInterface(withToken(ctx, accessToken), &userv1.UpdateInterfaceRequest{Interface: &userv1.InterfaceSettings{
 		AvatarStyle: ui.AvatarStyle, MainPage: ui.MainPage, HiddenMenu: ui.HiddenMenu,
+		Theme: ui.Theme, HideRating: ui.HideRating, Nsfw: ui.NSFW, PostView: ui.PostView,
+		TimezoneOffset: toTimezoneOffset(ui.Timezone),
 	}})
 	if err != nil {
 		return model.User{}, errs.Wrap("u.api.UpdateInterface", fromStatus(err))

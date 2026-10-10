@@ -17,6 +17,8 @@ type postRequest struct {
 	Text string `json:"text"`
 	// Photos are IDs from POST /api/v1/me/photos.
 	Photos []string `json:"photos"`
+	// NSFW marks the post as adult; an edit without it keeps the mark.
+	NSFW *bool `json:"nsfw"`
 }
 
 type authorJSON struct {
@@ -65,6 +67,8 @@ type postResponse struct {
 	// CommentsClosed: it takes no new comments.
 	Archived       bool `json:"archived"`
 	CommentsClosed bool `json:"commentsClosed"`
+	// NSFW: its author marked it as adult.
+	NSFW bool `json:"nsfw"`
 	// FromWall: the post speaks for its wall, a community, shown as its
 	// author; who wrote it is not told.
 	FromWall bool `json:"fromWall"`
@@ -113,6 +117,8 @@ type repostJSON struct {
 	RepostOf  string      `json:"repostOf"`
 	// AvatarUpdate: the shared post shows a new photo, as Post's.
 	AvatarUpdate bool `json:"avatarUpdate"`
+	// NSFW: the author of the shared post marked it as adult.
+	NSFW bool `json:"nsfw"`
 }
 
 type likeResponse struct {
@@ -210,6 +216,7 @@ func toPostResponse(p model.Post) postResponse {
 		Pinned:         p.Pinned,
 		Archived:       p.Archived,
 		CommentsClosed: p.CommentsClosed,
+		NSFW:           p.NSFW,
 		FromWall:       p.FromWall,
 		AvatarUpdate:   p.AvatarUpdate,
 		Mine:           p.Mine,
@@ -254,6 +261,7 @@ func toRepostJSON(p model.Post) *repostJSON {
 		RepostOf:  p.RepostOf,
 
 		AvatarUpdate: p.AvatarUpdate,
+		NSFW:         p.NSFW,
 	}
 }
 
@@ -500,7 +508,7 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 		return
 	}
 
-	p, err := a.posts.Create(r.Context(), token, model.NewPost{WallID: wall.ID, Text: req.Text, PhotoIDs: req.Photos})
+	p, err := a.posts.Create(r.Context(), token, model.NewPost{WallID: wall.ID, Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW != nil && *req.NSFW})
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -712,7 +720,7 @@ func (a *api) editPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := a.posts.Edit(r.Context(), token, r.PathValue("id"), req.Text, req.Photos)
+	p, err := a.posts.Edit(r.Context(), token, r.PathValue("id"), model.PostEdit{Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW})
 	if err != nil {
 		a.writeError(w, r, err)
 		return
