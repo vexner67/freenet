@@ -48,8 +48,20 @@ func TestListNotifications(t *testing.T) {
 
 	// The follow by a vanished account, the like of a deleted post and
 	// the message in a deleted topic are left out.
-	if len(got.Notifications) != 8 {
+	if len(got.Notifications) != 11 {
 		t.Fatalf("notifications = %+v", got.Notifications)
+	}
+
+	// A mention names the post, the post and the comment, or the topic.
+	inPost, inComment, inTopic := got.Notifications[8], got.Notifications[9], got.Notifications[10]
+	if inPost.Type != "post_mention" || inPost.Actor["nickname"] != "bob" || inPost.Post == nil || inPost.Post.Text != "первая" || inPost.Comment != nil {
+		t.Fatalf("mention in a post = %+v", inPost)
+	}
+	if inComment.Type != "comment_mention" || inComment.Post == nil || inComment.Comment == nil || inComment.Comment.Text != "согласен" {
+		t.Fatalf("mention in a comment = %+v", inComment)
+	}
+	if inTopic.Type != "topic_mention" || inTopic.Topic == nil || inTopic.Topic.Title != "Знакомство" || inTopic.Post != nil || inTopic.Comment != nil {
+		t.Fatalf("mention in a topic = %+v", inTopic)
 	}
 
 	comment, like, follow, wallPost := got.Notifications[0], got.Notifications[1], got.Notifications[2], got.Notifications[3]

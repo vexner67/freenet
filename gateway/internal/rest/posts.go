@@ -595,7 +595,15 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 		return
 	}
 
-	p, err := a.posts.Create(r.Context(), token, model.NewPost{WallID: wall.ID, Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW != nil && *req.NSFW})
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	p, err := a.posts.Create(r.Context(), token, model.NewPost{
+		WallID: wall.ID, Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW != nil && *req.NSFW, Mentions: mentions,
+	})
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -608,6 +616,19 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 	p.Author, p.Wall = author, wall
 
 	writeJSON(w, http.StatusCreated, toPostResponse(p))
+}
+
+// mentioned are the people text names ("@nickname", "[nickname|Имя]")
+// who are to hear of it, by ID: the post service reads no nicknames, and
+// who may be named the user service decides. A text that names nobody
+// asks nothing.
+func (a *api) mentioned(r *http.Request, token, text string) ([]string, error) {
+	nicknames := model.MentionedNicknames(text)
+	if len(nicknames) == 0 {
+		return nil, nil
+	}
+
+	return a.users.ResolveMentions(r.Context(), token, nicknames)
 }
 
 // wallFor is the owner of the wall of nickname that the caller (myID) may

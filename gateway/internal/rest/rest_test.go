@@ -47,6 +47,8 @@ func (f *fakeAuth) RefreshToken(context.Context, string) (model.Tokens, error) {
 func (f *fakeAuth) Logout(context.Context, string) error { return f.err }
 
 type fakeUsers struct {
+	// named are the nicknames the gateway asked ResolveMentions about.
+	named []string
 	// ui is how the site looks to the caller, as GetMe tells.
 	ui                                              model.Interface
 	token, statsToken, followed, unfollowed, listed string
@@ -218,6 +220,20 @@ func (f *fakeUsers) Access(_ context.Context, token, userID string) (model.Acces
 func (f *fakeUsers) CanMessage(_ context.Context, token, _ string, wroteFirst bool) (bool, error) {
 	f.token, f.wroteFirst = token, wroteFirst
 	return !f.relation.Blocked() && (!f.closedMessages || wroteFirst), f.err
+}
+
+// ResolveMentions knows ann (u1) and bob (u2), unless they are blocked.
+func (f *fakeUsers) ResolveMentions(_ context.Context, _ string, nicknames []string) ([]string, error) {
+	f.named = nicknames
+
+	var ids []string
+	for _, n := range nicknames {
+		if id, ok := map[string]string{"ann": "u1", "bob": "u2"}[n]; ok && !f.relation.Blocked() {
+			ids = append(ids, id)
+		}
+	}
+
+	return ids, f.err
 }
 
 func (f *fakeUsers) Block(_ context.Context, token, userID string) error {
@@ -817,6 +833,9 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n-4", Kind: "topic_message", ActorID: "u2", PostID: "t1", CommentID: "m1", CreatedAt: at},
 			{ID: "n-5", Kind: "topic_message", ActorID: "u2", PostID: "t-deleted", CommentID: "m2", CreatedAt: at},
 			{ID: "n-6", Kind: "club_admin", ActorID: "k1", CreatedAt: at},
+			{ID: "n-7", Kind: "post_mention", ActorID: "u2", PostID: "p1", CreatedAt: at},
+			{ID: "n-8", Kind: "comment_mention", ActorID: "u2", PostID: "p1", CommentID: "c1", CreatedAt: at},
+			{ID: "n-9", Kind: "topic_mention", ActorID: "u2", PostID: "t1", CommentID: "m1", CreatedAt: at},
 		},
 		NextCursor: "n-2",
 	}, f.err

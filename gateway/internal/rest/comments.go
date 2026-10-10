@@ -191,8 +191,14 @@ func (a *api) createComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	c, err := a.posts.CreateComment(r.Context(), token, p.ID, model.NewComment{
-		Text: req.Text, PhotoIDs: req.Photos, ReplyTo: req.ReplyTo, FromWall: req.FromClub,
+		Text: req.Text, PhotoIDs: req.Photos, ReplyTo: req.ReplyTo, FromWall: req.FromClub, Mentions: mentions,
 	})
 	if err != nil {
 		a.writeError(w, r, err)

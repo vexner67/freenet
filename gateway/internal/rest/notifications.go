@@ -27,7 +27,8 @@ type notificationJSON struct {
 	Actor     authorJSON               `json:"actor"`
 	Post      *notificationPostJSON    `json:"post"`
 	Comment   *notificationCommentJSON `json:"comment"`
-	// Topic is the discussion a topic_message was written in.
+	// Topic is the discussion a topic_message or a topic_mention was
+	// written in.
 	Topic *notificationTopicJSON `json:"topic,omitempty"`
 }
 
@@ -63,14 +64,25 @@ const kindSuggestedPost = "suggested_post"
 // topic and goes with the message or the topic.
 const kindTopicMessage = "topic_message"
 
+// kindTopicMention names a topic and a message of it as kindTopicMessage
+// does: the message names the recipient ("Вас упомянул пользователь … в
+// обсуждении" of openvk).
+const kindTopicMention = "topic_mention"
+
+// namesTopic tells whether PostID of a notification of kind is a topic
+// and its CommentID a message of it.
+func namesTopic(kind string) bool {
+	return kind == kindTopicMessage || kind == kindTopicMention
+}
+
 // namesPost tells whether PostID of a notification of kind is a post, and
 // namesComment whether its CommentID is a comment.
 func namesPost(kind string) bool {
-	return kind != kindSuggestedPost && kind != kindTopicMessage
+	return kind != kindSuggestedPost && !namesTopic(kind)
 }
 
 func namesComment(kind string) bool {
-	return kind != kindTopicMessage
+	return !namesTopic(kind)
 }
 
 // targets are what a page of notifications refers to, by ID; what was
@@ -156,7 +168,7 @@ func (a *api) notificationTargets(r *http.Request, notifications []model.Notific
 		if n.CommentID != "" && namesComment(n.Kind) {
 			commentIDs = append(commentIDs, n.CommentID)
 		}
-		if n.Kind == kindTopicMessage {
+		if namesTopic(n.Kind) {
 			topicIDs = append(topicIDs, n.PostID)
 		}
 	}
@@ -234,7 +246,7 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 		Actor:     toAuthorJSON(actor),
 	}
 
-	if n.Kind == kindTopicMessage {
+	if namesTopic(n.Kind) {
 		topic, ok := t.topics[n.PostID]
 		if !ok {
 			return notificationJSON{}, false

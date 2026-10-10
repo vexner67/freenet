@@ -982,6 +982,12 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	p, err := a.posts.Create(r.Context(), token, model.NewPost{
 		WallID:   c.Club.ID,
 		Text:     req.Text,
@@ -990,6 +996,7 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		FromWall: fromClub,
 		Signed:   fromClub && req.Signed,
 		NSFW:     req.NSFW,
+		Mentions: mentions,
 	})
 	if err != nil {
 		a.writeError(w, r, err)
