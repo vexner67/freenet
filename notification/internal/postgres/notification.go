@@ -131,6 +131,19 @@ const (
 		WHERE kind = 'topic_message'
 			AND comment_id = $1
 	`
+	deletePostMentionNotificationQuery = `
+		DELETE FROM notifications
+		WHERE kind = 'post_mention'
+			AND recipient_id = $1
+			AND post_id = $2
+	`
+	// Of a comment or of a message of a topic alike.
+	deleteCommentMentionNotificationQuery = `
+		DELETE FROM notifications
+		WHERE kind = $1
+			AND recipient_id = $2
+			AND comment_id = $3
+	`
 	deleteCommentReplyNotificationQuery = `
 		DELETE FROM notifications
 		WHERE kind = 'comment_reply'
@@ -166,6 +179,10 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deleteClubAdminNotificationQuery, e.ActorID, e.RecipientID)
 	case notification.KindTopicMessage:
 		_, err = r.pool.Exec(ctx, deleteTopicMessageNotificationQuery, e.CommentID)
+	case notification.KindPostMention:
+		_, err = r.pool.Exec(ctx, deletePostMentionNotificationQuery, e.RecipientID, e.PostID)
+	case notification.KindCommentMention, notification.KindTopicMention:
+		_, err = r.pool.Exec(ctx, deleteCommentMentionNotificationQuery, string(e.Kind), e.RecipientID, e.CommentID)
 	case notification.KindCommentReply:
 		_, err = r.pool.Exec(ctx, deleteCommentReplyNotificationQuery, e.CommentID)
 	case notification.KindCommentLike:

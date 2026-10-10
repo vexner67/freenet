@@ -24,6 +24,10 @@ var (
 		notification.KindSuggestedPost: notificationv1.Kind_KIND_SUGGESTED_POST,
 		notification.KindClubAdmin:     notificationv1.Kind_KIND_CLUB_ADMIN,
 		notification.KindTopicMessage:  notificationv1.Kind_KIND_TOPIC_MESSAGE,
+
+		notification.KindPostMention:    notificationv1.Kind_KIND_POST_MENTION,
+		notification.KindCommentMention: notificationv1.Kind_KIND_COMMENT_MENTION,
+		notification.KindTopicMention:   notificationv1.Kind_KIND_TOPIC_MENTION,
 	}
 	kindFromProto = map[notificationv1.Kind]notification.Kind{
 		notificationv1.Kind_KIND_LIKE:      notification.KindLike,
@@ -39,6 +43,10 @@ var (
 		notificationv1.Kind_KIND_SUGGESTED_POST: notification.KindSuggestedPost,
 		notificationv1.Kind_KIND_CLUB_ADMIN:     notification.KindClubAdmin,
 		notificationv1.Kind_KIND_TOPIC_MESSAGE:  notification.KindTopicMessage,
+
+		notificationv1.Kind_KIND_POST_MENTION:    notification.KindPostMention,
+		notificationv1.Kind_KIND_COMMENT_MENTION: notification.KindCommentMention,
+		notificationv1.Kind_KIND_TOPIC_MENTION:   notification.KindTopicMention,
 	}
 )
 

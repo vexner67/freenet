@@ -43,6 +43,15 @@ const (
 	// KindTopicMessage: the actor wrote in the topic the recipient
 	// started; PostID is the topic and CommentID the message.
 	KindTopicMessage Kind = "topic_message"
+	// KindPostMention: the actor named the recipient in the post PostID
+	// ("Вас упомянул пользователь" of openvk).
+	KindPostMention Kind = "post_mention"
+	// KindCommentMention: the actor named the recipient in the comment
+	// CommentID under the post PostID.
+	KindCommentMention Kind = "comment_mention"
+	// KindTopicMention: the actor named the recipient in the message
+	// CommentID of the topic PostID.
+	KindTopicMention Kind = "topic_mention"
 )
 
 var (
@@ -55,7 +64,8 @@ var (
 )
 
 // Event is what happened, to whom and by whom. PostID is set for all but
-// follows and appointments, CommentID for comments, replies and comment likes; unused IDs
+// follows and appointments, CommentID for comments, replies, comment
+// likes, messages of topics and mentions in comments and topics; unused IDs
 // are uuid.Nil.
 type Event struct {
 	Kind        Kind
@@ -84,9 +94,9 @@ func (e Event) Validate() error {
 	var ok bool
 
 	switch e.Kind {
-	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost:
+	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention:
 		ok = hasPost && !hasComment
-	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage:
+	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention:
 		ok = hasPost && hasComment
 	case KindFollow, KindClubAdmin:
 		ok = !hasPost && !hasComment
