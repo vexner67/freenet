@@ -324,6 +324,16 @@ func (u *Users) ListCommonFollowing(ctx context.Context, accessToken, userID, cu
 	return toUserPage(resp), nil
 }
 
+// Statistics counts the people of the site and those on it now.
+func (u *Users) Statistics(ctx context.Context) (int, int, error) {
+	resp, err := u.api.GetStatistics(ctx, &userv1.GetStatisticsRequest{})
+	if err != nil {
+		return 0, 0, errs.Wrap("u.api.GetStatistics", fromStatus(err))
+	}
+
+	return int(resp.GetUsers()), int(resp.GetOnline()), nil
+}
+
 // MarkOnline tells that the caller is on the site now ("Онлайн").
 func (u *Users) MarkOnline(ctx context.Context, accessToken string) error {
 	if _, err := u.api.MarkOnline(withToken(ctx, accessToken), &userv1.MarkOnlineRequest{}); err != nil {
