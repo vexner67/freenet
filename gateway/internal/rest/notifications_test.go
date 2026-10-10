@@ -27,6 +27,10 @@ type notificationPage struct {
 			ID    string `json:"id"`
 			Title string `json:"title"`
 		} `json:"topic"`
+		Photo *struct {
+			ID    string `json:"id"`
+			Small string `json:"small"`
+		} `json:"photo"`
 	} `json:"notifications"`
 	NextCursor string `json:"nextCursor"`
 	NewestID   string `json:"newestId"`
@@ -46,10 +50,26 @@ func TestListNotifications(t *testing.T) {
 		t.Fatalf("request = %+v; unread is the default box", h.notifications)
 	}
 
-	// The follow by a vanished account, the like of a deleted post and
-	// the message in a deleted topic are left out.
-	if len(got.Notifications) != 11 {
+	// The follow by a vanished account, the like of a deleted post, the
+	// message in a deleted topic and the like of a deleted photo are left
+	// out.
+	if len(got.Notifications) != 14 {
 		t.Fatalf("notifications = %+v", got.Notifications)
+	}
+
+	// A heart on a message names the topic, a heart and a comment on a
+	// photo the photo.
+	heart, photoLike, photoComment := got.Notifications[11], got.Notifications[12], got.Notifications[13]
+	if heart.Type != "topic_message_like" || heart.Topic == nil || heart.Topic.ID != "t1" || heart.Post != nil || heart.Comment != nil {
+		t.Fatalf("heart on a topic message = %+v", heart)
+	}
+	for _, n := range got.Notifications[12:] {
+		if n.Photo == nil || n.Photo.ID != "ph6" || n.Photo.Small != "/media/photos/u2/ph6/small.jpg" {
+			t.Fatalf("%s names the photo %+v", n.Type, n.Photo)
+		}
+	}
+	if photoLike.Type != "photo_like" || photoComment.Type != "photo_comment" || photoComment.Post != nil || photoComment.Comment != nil {
+		t.Fatalf("photo notifications = %+v, %+v", photoLike, photoComment)
 	}
 
 	// A mention names the post, the post and the comment, or the topic.
