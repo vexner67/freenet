@@ -351,7 +351,7 @@ func (s *eventSession) shownMessage(kind string, m model.Message) (any, error) {
 	}
 
 	j := []messageJSON{toMessageJSON(m, peerID)}
-	if err = s.api.showSharedPosts(s.r, j); err != nil {
+	if err = s.api.showAttached(s.r, j); err != nil {
 		return nil, err
 	}
 

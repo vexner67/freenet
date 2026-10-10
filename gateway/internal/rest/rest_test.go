@@ -883,6 +883,7 @@ type fakeMessages struct {
 	// hidden is the message deleted for the caller alone, edited "id/text"
 	// of the last edit, searched the last query.
 	hidden, edited, searched string
+	around                   string
 	// peerWrote: the peer has written to the caller.
 	peerWrote bool
 	// dialogs replace the default page when set.
@@ -913,9 +914,24 @@ func (f *fakeMessages) HasMessagesFrom(_ context.Context, token, peerID string) 
 	return f.peerWrote, f.err
 }
 
-func (f *fakeMessages) Send(_ context.Context, token, recipientID, text string, photoIDs []string, postID string) (model.Message, error) {
-	f.token, f.peerID, f.sentText = token, recipientID, text
-	return model.Message{ID: "m9", SenderID: "u1", RecipientID: recipientID, Text: text, PhotoIDs: photoIDs, PostID: postID, CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC)}, f.err
+// Send carries each forwarded message on as one bob (u2) wrote, and
+// "gone" as one of somebody whose page is no more.
+func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d model.MessageDraft) (model.Message, error) {
+	f.token, f.peerID, f.sentText = token, recipientID, d.Text
+
+	var forwarded []model.ForwardedMessage
+	for _, id := range d.ForwardIDs {
+		sender := "u2"
+		if id == "gone" {
+			sender = "gone"
+		}
+		forwarded = append(forwarded, model.ForwardedMessage{SenderID: sender, Text: "из " + id, PhotoIDs: []string{"ph1"}, CreatedAt: albumTime})
+	}
+
+	return model.Message{
+		ID: "m9", SenderID: "u1", RecipientID: recipientID, Text: d.Text, PhotoIDs: d.PhotoIDs, PostID: d.PostID, Forwarded: forwarded,
+		CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC),
+	}, f.err
 }
 
 func (f *fakeMessages) Dialogs(_ context.Context, token, cursor string, _ int) (model.DialogPage, error) {
@@ -939,13 +955,20 @@ func (f *fakeMessages) CountUnread(_ context.Context, token string) (int, error)
 	return 2, f.err
 }
 
-func (f *fakeMessages) History(_ context.Context, token, peerID, cursor, after string, _ int) (model.MessagePage, error) {
-	f.token, f.peerID, f.cursor, f.after = token, peerID, cursor, after
+// History around a message ends with one the caller took back.
+func (f *fakeMessages) History(_ context.Context, token, peerID string, at model.MessagesAt, _ int) (model.MessagePage, error) {
+	f.token, f.peerID, f.cursor, f.after, f.around = token, peerID, at.Cursor, at.After, at.Around
+
+	messages := []model.Message{
+		{ID: "m1", SenderID: "u1", RecipientID: peerID, Text: "привет", Read: true, DeletableUntil: time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)},
+		{ID: "m2", SenderID: peerID, RecipientID: "u1", Text: "как дела?"},
+	}
+	if at.Around != "" {
+		messages = append(messages, model.Message{ID: "m3", SenderID: "u1", RecipientID: peerID, DeletedAt: albumTime, DeletableUntil: albumTime})
+	}
+
 	return model.MessagePage{
-		Messages: []model.Message{
-			{ID: "m1", SenderID: "u1", RecipientID: peerID, Text: "привет", Read: true, DeletableUntil: time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)},
-			{ID: "m2", SenderID: peerID, RecipientID: "u1", Text: "как дела?"},
-		},
+		Messages:     messages,
 		NextCursor:   "m1",
 		PeerReadUpTo: "m1",
 	}, f.err

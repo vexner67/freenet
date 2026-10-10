@@ -14,11 +14,14 @@ type messageRequest struct {
 	Photos []string `json:"photos"`
 	// Post is a post shared into the dialog ("Поделиться" "в переписку").
 	Post string `json:"post"`
+	// Forward are messages of the caller's dialogs to carry on ("Переслать").
+	Forward []string `json:"forward"`
 }
 
 // messageJSON: Out is the caller's own message, Read means its recipient
 // has read it. The caller may delete their message from both sides until
 // DeletableUntil and edit it until EditableUntil, "" for the peer's.
+// Deleted: its sender took it back, it says nothing ("Сообщение удалено").
 type messageJSON struct {
 	ID             string      `json:"id"`
 	Text           string      `json:"text"`
@@ -34,6 +37,26 @@ type messageJSON struct {
 	// a repost, except in the list of dialogs.
 	Post   string      `json:"post"`
 	Repost *repostJSON `json:"repost,omitempty"`
+	// ForwardedCount is how many messages it carries on; Forwarded shows
+	// them, except in the list of dialogs and in a search, without those
+	// whose authors' pages are gone.
+	ForwardedCount int             `json:"forwardedCount"`
+	Forwarded      []forwardedJSON `json:"forwarded,omitempty"`
+	Deleted        bool            `json:"deleted"`
+
+	// carried is what Forwarded is made of (showAttached).
+	carried []model.ForwardedMessage
+}
+
+// forwardedJSON is a message carried on from another dialog, as its
+// author wrote it then.
+type forwardedJSON struct {
+	Author    authorJSON  `json:"author"`
+	Text      string      `json:"text"`
+	Photos    []photoJSON `json:"photos"`
+	CreatedAt string      `json:"createdAt"`
+	Post      string      `json:"post"`
+	Repost    *repostJSON `json:"repost,omitempty"`
 }
 
 type dialogJSON struct {
@@ -68,9 +91,13 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 		Read:      m.Read,
 		Post:      m.PostID,
 		EditedAt:  optionalTime(m.EditedAt),
+
+		ForwardedCount: len(m.Forwarded),
+		Deleted:        !m.DeletedAt.IsZero(),
+		carried:        m.Forwarded,
 	}
 
-	if j.Out {
+	if j.Out && !j.Deleted {
 		j.DeletableUntil = timeString(m.DeletableUntil)
 		j.EditableUntil = timeString(m.EditableUntil)
 	}
@@ -148,8 +175,9 @@ func (a *api) countUnreadDialogs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, unreadCountResponse{Count: count})
 }
 
-// listMessages is the dialog with a user: back in time with ?cursor=, or
-// what came after a message with ?after= for polling.
+// listMessages is the dialog with a user: back in time with ?cursor=,
+// what came after a message with ?after= for polling, or the part around
+// a message with ?around=, as a found message opens.
 func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -171,7 +199,9 @@ func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	page, err := a.messages.History(r.Context(), token, peer.ID, query.Get("cursor"), query.Get("after"), limit)
+	at := model.MessagesAt{Cursor: query.Get("cursor"), After: query.Get("after"), Around: query.Get("around")}
+
+	page, err := a.messages.History(r.Context(), token, peer.ID, at, limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -188,12 +218,12 @@ func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 		resp.Messages = append(resp.Messages, toMessageJSON(m, peer.ID))
 	}
 
-	if err = a.showSharedPosts(r, resp.Messages); err != nil {
+	if err = a.showAttached(r, resp.Messages); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	if query.Get("cursor") == "" && query.Get("after") == "" {
+	if at.Cursor == "" && at.After == "" {
 		if resp.CanWrite, err = a.canMessage(r, token, peer.ID); err != nil {
 			a.writeError(w, r, err)
 			return
@@ -269,14 +299,16 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	m, err := a.messages.Send(r.Context(), token, recipient.ID, req.Text, req.Photos, req.Post)
+	draft := model.MessageDraft{Text: req.Text, PhotoIDs: req.Photos, PostID: req.Post, ForwardIDs: req.Forward}
+
+	m, err := a.messages.Send(r.Context(), token, recipient.ID, draft)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
 	j := []messageJSON{toMessageJSON(m, recipient.ID)}
-	if err = a.showSharedPosts(r, j); err != nil {
+	if err = a.showAttached(r, j); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
@@ -298,23 +330,59 @@ func (a *api) checkSharedPost(r *http.Request, token, postID string) error {
 	return err
 }
 
-// showSharedPosts fills in the posts shared in messages.
-func (a *api) showSharedPosts(r *http.Request, messages []messageJSON) error {
-	var ids []string
+// showAttached fills in what messages show besides their own words: the
+// posts shared in them and the messages they carry on, with their authors
+// and the posts shared in those. A forwarded message whose author's page
+// is gone is left out, as what they wrote is everywhere.
+func (a *api) showAttached(r *http.Request, messages []messageJSON) error {
+	var posts, people []string
 	for _, m := range messages {
 		if m.Post != "" {
-			ids = append(ids, m.Post)
+			posts = append(posts, m.Post)
+		}
+
+		for _, f := range m.carried {
+			people = append(people, f.SenderID)
+			if f.PostID != "" {
+				posts = append(posts, f.PostID)
+			}
 		}
 	}
 
-	shown, err := a.repostsByID(r, ids)
+	shown, err := a.repostsByID(r, posts)
+	if err != nil {
+		return err
+	}
+
+	authors, err := a.people(r, people)
 	if err != nil {
 		return err
 	}
 
 	for i := range messages {
-		if messages[i].Post != "" {
-			messages[i].Repost = shown[messages[i].Post]
+		m := &messages[i]
+		if m.Post != "" {
+			m.Repost = shown[m.Post]
+		}
+
+		for _, f := range m.carried {
+			author, ok := authors[f.SenderID]
+			if !ok {
+				continue
+			}
+
+			fj := forwardedJSON{
+				Author:    toAuthorJSON(author),
+				Text:      f.Text,
+				Photos:    toPhotosJSON(f.SenderID, f.PhotoIDs),
+				CreatedAt: f.CreatedAt.UTC().Format(time.RFC3339),
+				Post:      f.PostID,
+			}
+			if f.PostID != "" {
+				fj.Repost = shown[f.PostID]
+			}
+
+			m.Forwarded = append(m.Forwarded, fj)
 		}
 	}
 
@@ -351,7 +419,7 @@ func (a *api) markDialogRead(w http.ResponseWriter, r *http.Request) {
 }
 
 // deleteMessage takes the caller's message back from both sides of the
-// dialog or, with ?for=me, deletes any message of their dialog for them
+// dialog, where it stays saying nothing, or, with ?for=me, deletes any message of their dialog for them
 // alone ("Удалить у себя"); the message service decides whether they may.
 func (a *api) deleteMessage(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
@@ -404,7 +472,7 @@ func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
 
 	// The caller sent it: the peer is its recipient.
 	j := []messageJSON{toMessageJSON(m, m.RecipientID)}
-	if err = a.showSharedPosts(r, j); err != nil {
+	if err = a.showAttached(r, j); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

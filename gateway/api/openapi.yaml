@@ -1204,10 +1204,12 @@ paths:
       summary: Delete a message, for both sides or for yourself
       description: |
         Without `for`, your own message from both sides, within a day of
-        sending (`deletableUntil`), as "delete for everyone" in VK; its
-        photos go too, and both sides get a `delete` event. With `for=me`,
-        any message of your dialog for you alone ("Удалить у себя"): the
-        peer keeps it, and your other pages get the `delete` event.
+        sending (`deletableUntil`), as "delete for everyone" in VK: it
+        stays in the dialog `deleted`, saying nothing ("Сообщение
+        удалено"), its photos go, and both sides get an `edit` event with
+        what it is now. With `for=me`, any message of your dialog for you
+        alone ("Удалить у себя"), one taken back too: the peer keeps it,
+        and your other pages get the `delete` event.
       security: [{ bearer: [] }]
       parameters:
         - name: id
@@ -2696,10 +2698,11 @@ paths:
         - `read` — the dialog with `peer` was read up to `upTo`, by you on
           another page (`byMe`) or by the peer.
         - `delete` — message `id` of the dialog with `peer` is gone from it:
-          taken back from both sides by its sender, you or the peer, or
           deleted by you for yourself on another page.
         - `edit` — a message of the dialog with `peer` says something else
-          now: `peer` and `message` (Message; `read` is not told).
+          now, or nothing: its sender, you or the peer, edited it or took
+          it back from both sides (`deleted`): `peer` and `message`
+          (Message; `read` is not told).
         - `notification` — `change` is `new`, `gone` or `read`.
 
         While it is open, you are on the site ("Онлайн" on your page).
@@ -2761,13 +2764,19 @@ paths:
       description: |
         Without parameters, the newest messages. `cursor` = `nextCursor`
         pages back in time; `after` = the newest message you have returns
-        what came since, for polling. Not both.
+        what came since, for polling; `around` = a message of the dialog
+        returns the part around it, about half of `limit` before and half
+        after, as a found message opens (404 if the dialog does not have
+        it): page back with `nextCursor` and on with `after`. One of them.
       security: [{ bearer: [] }]
       parameters:
         - name: cursor
           in: query
           schema: { type: string }
         - name: after
+          in: query
+          schema: { type: string, format: uuid }
+        - name: around
           in: query
           schema: { type: string, format: uuid }
         - name: limit
@@ -2789,9 +2798,14 @@ paths:
         The user's privacy (`messagesWrite`) and blacklists decide whether
         you may; whoever wrote to you may always be answered, unless one of
         you blacklisted the other. Text, photos, a post shared into the
-        dialog ("Поделиться" "в переписку") or some of them; photos are IDs
-        from `POST /api/v1/me/photos` and must be yours, the post must be
-        there (`post not found` otherwise).
+        dialog ("Поделиться" "в переписку"), messages of your dialogs to
+        carry on ("Переслать") or some of them; photos are IDs from
+        `POST /api/v1/me/photos` and must be yours, the post must be there
+        (`post not found` otherwise). `forward`: at most 20 messages,
+        counting those they carry themselves; they go oldest first, as
+        copies of what they say now, with their photos; one that you do
+        not have or that was taken back fails with `forwarded message not
+        found`.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -2804,6 +2818,10 @@ paths:
                 text: { type: string, maxLength: 60000 }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 post: { type: string, format: uuid }
+                forward:
+                  type: array
+                  maxItems: 20
+                  items: { type: string, format: uuid }
       responses:
         "201":
           description: The sent message
@@ -3755,7 +3773,7 @@ components:
 
     Message:
       type: object
-      required: [id, text, photos, createdAt, out, read, deletableUntil]
+      required: [id, text, photos, createdAt, out, read, deletableUntil, forwardedCount, deleted]
       properties:
         id: { type: string, format: uuid }
         text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when photos only" }
@@ -3779,6 +3797,28 @@ components:
         repost:
           description: The shared post, as inside a repost; absent in the list of dialogs and without one
           $ref: "#/components/schemas/SharedPost"
+        forwardedCount: { type: integer, description: "How many messages it carries on from other dialogs" }
+        forwarded:
+          type: array
+          description: The messages it carries on, oldest first, without those whose authors' pages are gone; absent in the list of dialogs, in a search and without any
+          items: { $ref: "#/components/schemas/ForwardedMessage" }
+        deleted:
+          type: boolean
+          description: "Its sender took it back from both sides: it says nothing (\"Сообщение удалено\") and can be neither edited nor taken back again, only deleted for yourself"
+
+    ForwardedMessage:
+      type: object
+      description: A message carried on from another dialog, a copy of what its author wrote then
+      required: [author, text, photos, createdAt, post]
+      properties:
+        author: { $ref: "#/components/schemas/Author" }
+        text: { type: string }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
+        createdAt: { type: string, format: date-time, description: "When it was written" }
+        post: { type: string, description: "A post shared in it; empty for none" }
+        repost: { $ref: "#/components/schemas/SharedPost" }
 
     Dialog:
       type: object
