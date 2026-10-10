@@ -722,11 +722,11 @@ func TestPostService_Edit(t *testing.T) {
 	}
 	photos.published = nil
 
-	if _, _, err = svc.Edit(ctx, stranger, p.ID(), "чужое", nil); !errors.Is(err, post.ErrCannotEdit) {
+	if _, _, err = svc.Edit(ctx, stranger, p.ID(), service.PostEdit{Text: "чужое", Photos: nil}); !errors.Is(err, post.ErrCannotEdit) {
 		t.Fatalf("a stranger edits: %v", err)
 	}
 
-	edited, liked, err := svc.Edit(ctx, author, p.ID(), "стало", post.Photos{added, kept})
+	edited, liked, err := svc.Edit(ctx, author, p.ID(), service.PostEdit{Text: "стало", Photos: post.Photos{added, kept}})
 	if err != nil {
 		t.Fatalf("Edit: %v", err)
 	}
@@ -751,7 +751,7 @@ func TestPostService_Edit(t *testing.T) {
 		t.Errorf("%d photo calls outside the transaction", photos.outsideTx)
 	}
 
-	if _, _, err = svc.Edit(ctx, author, uuid.New(), "нет", nil); !errors.Is(err, post.ErrNotFound) {
+	if _, _, err = svc.Edit(ctx, author, uuid.New(), service.PostEdit{Text: "нет", Photos: nil}); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("a missing post: %v", err)
 	}
 }

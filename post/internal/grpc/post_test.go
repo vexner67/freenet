@@ -1080,3 +1080,40 @@ func TestPhotoReactions(t *testing.T) {
 		t.Fatalf("sharing no photo: %v", err)
 	}
 }
+
+func TestNSFW(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann := uuid.New()
+
+	created, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: "для взрослых", Nsfw: true})
+	if err != nil || !created.GetPost().GetNsfw() {
+		t.Fatalf("CreatePost = %v, %v", created, err)
+	}
+	id := created.GetPost().GetId()
+
+	if _, err = s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: "котики"}); err != nil {
+		t.Fatal(err)
+	}
+
+	feed, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{ann.String()}})
+	if err != nil || len(feed.GetPosts()) != 2 || !feed.GetPosts()[1].GetNsfw() {
+		t.Fatalf("ListFeed = %v, %v", feed, err)
+	}
+	feed, err = s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{ann.String()}, HideNsfw: true})
+	if err != nil || len(feed.GetPosts()) != 1 || feed.GetPosts()[0].GetText() != "котики" {
+		t.Fatalf("ListFeed without adult posts = %v, %v", feed, err)
+	}
+
+	// An edit keeps the mark unless it names it.
+	edited, err := s.client.EditPost(s.as(t, ann), &postv1.EditPostRequest{Id: id, Text: "всё ещё"})
+	if err != nil || !edited.GetPost().GetNsfw() {
+		t.Fatalf("EditPost = %v, %v", edited, err)
+	}
+
+	off := false
+	if edited, err = s.client.EditPost(s.as(t, ann), &postv1.EditPostRequest{Id: id, Text: "для всех", Nsfw: &off}); err != nil || edited.GetPost().GetNsfw() {
+		t.Fatalf("EditPost taking the mark off = %v, %v", edited, err)
+	}
+}

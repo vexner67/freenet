@@ -150,3 +150,55 @@ func TestPostRepository_ArchiveSearchAndComments(t *testing.T) {
 		t.Fatalf("closing the comments of no post: %v", err)
 	}
 }
+
+func TestPostRepository_NSFW(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	repo := postgres.NewPostRepository(newPool(t))
+	ann := uuid.New()
+
+	plain, err := post.New(ann, ann, post.RestoreContent("котики", nil, uuid.Nil), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	adult, err := post.New(ann, ann, post.RestoreContent("для взрослых", nil, uuid.Nil), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	adult = adult.Marked(true)
+
+	for _, p := range []*post.Post{plain, adult} {
+		if err = repo.Save(ctx, p); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if got, err := repo.Get(ctx, adult.ID()); err != nil || !got.NSFW() {
+		t.Fatalf("the adult post = %+v, %v", got, err)
+	}
+	if got, err := repo.Get(ctx, plain.ID()); err != nil || got.NSFW() {
+		t.Fatalf("the plain post = %+v, %v", got, err)
+	}
+
+	sources := service.FeedSources{Authors: []uuid.UUID{ann}}
+	if feed, err := repo.ListFeed(ctx, sources, uuid.Nil, 10); err != nil || len(feed) != 2 {
+		t.Fatalf("the feed shows %d posts, %v", len(feed), err)
+	}
+	sources.HideNSFW = true
+	if feed, err := repo.ListFeed(ctx, sources, uuid.Nil, 10); err != nil || len(feed) != 1 || feed[0].ID() != plain.ID() {
+		t.Fatalf("the feed without adult posts shows %d, %v", len(feed), err)
+	}
+
+	// An edit saves the mark with the text.
+	edited, err := adult.Edited(ann, "для всех", nil, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = repo.Update(ctx, edited.Marked(false)); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := repo.Get(ctx, adult.ID()); err != nil || got.NSFW() || got.Content().Text() != "для всех" {
+		t.Fatalf("the edited post = %+v, %v", got, err)
+	}
+}
