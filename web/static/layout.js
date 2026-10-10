@@ -3,7 +3,7 @@
 
 import { api } from './api.js';
 import { connectEvents, onEvent } from './events.js';
-import { errorText, isLongText, unreadCountText } from './labels.js';
+import { errorText, isLongText, setTimezone, unreadCountText } from './labels.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -85,17 +85,103 @@ function menuLink(me, item, href, text, counter) {
 async function logout(event) {
   event.preventDefault();
   await api.logout();
+  forgetLook();
   location.href = '/';
 }
 
+// The look of the site is kept in the browser too, so that a page wears
+// it before the server has said whose it is; THEME_KEY is a theme chosen
+// for this device alone ("Применить стиль только для этого устройства").
+const LOOK_KEY = 'freenet.interface';
+const THEME_KEY = 'freenet.theme';
+const THEMES = ['blue', 'dark'];
+
+function stored(key) {
+  try {
+    return localStorage.getItem(key);
+  } catch {
+    return null;
+  }
+}
+
+function storedLook() {
+  try {
+    return JSON.parse(stored(LOOK_KEY)) ?? {};
+  } catch {
+    return {};
+  }
+}
+
+function forgetLook() {
+  try {
+    localStorage.removeItem(LOOK_KEY);
+  } catch {
+    // The look is a nicety.
+  }
+}
+
+// deviceTheme is the theme of this device alone, null when it wears the
+// one of the settings.
+export function deviceTheme() {
+  return stored(THEME_KEY);
+}
+
+export function setDeviceTheme(theme) {
+  try {
+    if (theme) localStorage.setItem(THEME_KEY, theme);
+    else localStorage.removeItem(THEME_KEY);
+  } catch {
+    // Without storage the device wears the theme of the settings.
+  }
+}
+
+// applyLook dresses the page as "Интерфейс" of the settings says: the
+// theme, the shape of the photos, the view of the posts, whether adult
+// posts are blurred and the gauge of a page shown, and the clock.
+function applyLook(ui) {
+  const theme = deviceTheme() ?? ui.theme;
+  let link = $('theme');
+
+  if (THEMES.includes(theme)) {
+    const href = `/static/themes/${theme}.css`;
+    if (!link) {
+      link = el('link', { id: 'theme', rel: 'stylesheet' });
+      document.head.append(link);
+    }
+    if (link.getAttribute('href') !== href) link.href = href;
+  } else {
+    link?.remove();
+  }
+
+  const { classList } = document.body;
+  classList.toggle('avatars-round', ui.avatarStyle === 'round');
+  classList.toggle('posts-microblog', ui.postView === 'microblog');
+  classList.toggle('nsfw-shown', ui.nsfw === 'show');
+  classList.toggle('rating-hidden', Boolean(ui.hideRating));
+
+  setTimezone(ui.timezone);
+}
+
+if (typeof document !== 'undefined') applyLook(storedLook());
+
+// isMicroblog: posts are laid out as openvk's "Микроблог".
+export function isMicroblog() {
+  return document.body.classList.contains('posts-microblog');
+}
+
 // applyInterface draws what "Интерфейс" of the settings changes: the
-// shape of the photos and the left menu with its counters. renderChrome
+// look of the page and the left menu with its counters. renderChrome
 // calls it; the settings call it again when saved.
 export function applyInterface(me) {
   const menu = $('menu');
+  const ui = me.interface ?? {};
 
-  // "Отображение аватаров" of the settings: round photos for me alone.
-  document.body.classList.toggle('avatars-round', me.interface?.avatarStyle === 'round');
+  try {
+    localStorage.setItem(LOOK_KEY, JSON.stringify(ui));
+  } catch {
+    // The next page asks the server again.
+  }
+  applyLook(ui);
 
   menu?.replaceChildren(...[
     el('a', { href: profilePath(me), textContent: 'Моя Страница' }),
@@ -119,6 +205,9 @@ export function renderChrome(me) {
   const links = $('header-links');
   const menu = $('menu');
 
+  // A guest is not shown what is blurred as adult (posts.js).
+  document.body.classList.toggle('guest', !me);
+
   if (me?.deactivated) {
     renderDeactivatedChrome(me, links, menu);
     return;
@@ -137,6 +226,10 @@ export function renderChrome(me) {
     onEvent('counters', applyCounters);
     connectEvents();
   } else {
+    // A guest sees the site as it is, whoever was here before.
+    forgetLook();
+    applyLook({});
+
     links.replaceChildren(
       el('a', { href: '/', textContent: 'вход' }),
       el('a', { href: '/', textContent: 'регистрация' }),

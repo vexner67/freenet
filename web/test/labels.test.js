@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems } from '../static/labels.js';
+import { isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -328,4 +328,55 @@ test('the choices of the interface are those the API knows', () => {
   assert.deepEqual(mainPages.map(([v]) => v), ['page', 'feed']);
   assert.deepEqual(menuItems.map(([v]) => v), ['photos', 'messages', 'groups', 'events', 'feed', 'notifications']);
   assert.equal(errorText({ message: 'invalid menu item' }), 'Неизвестный пункт меню.');
+});
+
+test('the rest of "Интерфейс" names what the server knows', () => {
+  assert.deepEqual(themes.map(([v]) => v), ['default', 'blue', 'dark']);
+  assert.deepEqual(ratings.map(([v]) => v), ['show', 'hide']);
+  assert.deepEqual(nsfwContents.map(([v]) => v), ['hide', 'blur', 'show']);
+  assert.deepEqual(postViews.map(([v]) => v), ['old', 'microblog']);
+
+  // The browser's clock first, then every clock of openvk, west to east.
+  const offsets = timezones.map(([v]) => v);
+  assert.equal(offsets[0], '');
+  assert.equal(offsets.length, 39);
+  for (const offset of offsets.slice(1)) {
+    const minutes = Number(offset);
+    assert.ok(minutes >= -720 && minutes <= 840 && minutes % 15 === 0, offset);
+  }
+  assert.deepEqual(offsets.slice(1), [...offsets.slice(1)].sort((a, b) => a - b));
+  assert.equal(label(timezones, '180'), '(GMT+3): Москва, Стамбул, Минск');
+});
+
+test('dates follow the clock of the settings', () => {
+  const at = '2026-10-04T22:30:00Z';
+  const now = new Date('2026-10-05T01:00:00Z');
+
+  try {
+    setTimezone(0);
+    assert.equal(formatPostDate(at, now), 'вчера в 22:30');
+    assert.equal(formatDateTime(at), '4 октября 2026 в 22:30');
+    assert.equal(inputDate(at), '2026-10-04');
+    assert.equal(inputTime(at), '22:30');
+    assert.equal(localTime('2026-10-04', '22:30'), '2026-10-04T22:30:00.000Z');
+
+    // Moscow is three hours ahead: the same moment is already tomorrow.
+    setTimezone(180);
+    assert.equal(formatPostDate(at, now), 'сегодня в 1:30');
+    assert.equal(formatDateTime(at), '5 октября 2026 в 1:30');
+    assert.equal(inputDate(at), '2026-10-05');
+    assert.equal(inputTime(at), '01:30');
+    assert.equal(localTime('2026-10-05', '01:30'), '2026-10-04T22:30:00.000Z');
+
+    setTimezone(-210);
+    assert.equal(formatPostDate(at, now), 'сегодня в 19:00');
+    assert.equal(formatPostDate('2025-12-31T23:00:00Z', now), '31 декабря 2025 в 19:30');
+  } finally {
+    // The browser's own clock again, as the other tests expect.
+    setTimezone(null);
+  }
+
+  assert.equal(formatPostDate(new Date(2026, 9, 4, 9, 5).toISOString(), new Date(2026, 9, 4, 12, 0)), 'сегодня в 9:05');
+  assert.equal(localTime('2026-10-04', '09:05'), new Date(2026, 9, 4, 9, 5).toISOString());
+  assert.equal(localTime('', '09:05'), '');
 });

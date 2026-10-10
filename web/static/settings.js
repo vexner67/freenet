@@ -1,12 +1,12 @@
 // openvk's "Мои Настройки" at /settings: "Основное" (the e-mail, the
 // page address and "удалить свою страницу") and "Приватность" (?act=privacy:
 // who sees the page and its parts and who writes to you) and "Внешний вид"
-// (?act=interface: how the photos look, where the site opens and what the
-// left menu shows); "Чёрный список" is a page of its own.
+// (?act=interface: the style, the photos and the posts, the clock, where
+// the site opens and what the left menu shows); "Чёрный список" is a page of its own.
 
 import { api, currentUser } from './api.js';
-import { audiences, avatarStyles, mainPages, menuItems, pageReads, onlineReads, wallWrites, messagesWrites } from './labels.js';
-import { $, applyInterface, el, profilePath, renderChrome, showError, hideError } from './layout.js';
+import { audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites } from './labels.js';
+import { $, applyInterface, deviceTheme, el, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { openDeactivate } from './deactivate.js';
 
 const error = $('error');
@@ -94,18 +94,41 @@ function initPrivacy(me) {
   });
 }
 
-// initInterface is "Интерфейс" and "Левое меню" of openvk: saved, they
-// show at once, in the menu on the left too.
+// initInterface is "Интерфейс", "Часовой пояс" and "Левое меню" of
+// openvk: saved, they show at once, in the menu on the left too.
 function initInterface(me) {
-  fill($('avatar-style'), avatarStyles, me.interface.avatarStyle);
-  fill($('main-page'), mainPages, me.interface.mainPage);
+  const ui = me.interface;
+  const device = deviceTheme();
+
+  fill($('avatar-style'), avatarStyles, ui.avatarStyle);
+  fill($('theme-select'), themes, device ?? ui.theme);
+  fill($('rating'), ratings, ui.hideRating ? 'hide' : 'show');
+  fill($('nsfw'), nsfwContents, ui.nsfw);
+  fill($('post-view'), postViews, ui.postView);
+  fill($('main-page'), mainPages, ui.mainPage);
+  fill($('timezone'), timezones, ui.timezone === null ? '' : String(ui.timezone));
+  $('theme-device').checked = device !== null;
   $('menu-items').replaceChildren(...menuItems.map(([item, text]) => el('label', {},
-    el('input', { type: 'checkbox', value: item, checked: !me.interface.hiddenMenu.includes(item) }), text)));
+    el('input', { type: 'checkbox', value: item, checked: !ui.hiddenMenu.includes(item) }), text)));
 
   onSubmit($('interface'), async () => {
     const hiddenMenu = [...$('menu-items').querySelectorAll('input')].filter((box) => !box.checked).map((box) => box.value);
-    const updated = await api.updateInterface({ avatarStyle: $('avatar-style').value, mainPage: $('main-page').value, hiddenMenu });
+    // A style for this device alone stays in the browser: the settings
+    // keep the one they had.
+    const onDevice = $('theme-device').checked;
 
+    const updated = await api.updateInterface({
+      avatarStyle: $('avatar-style').value,
+      theme: onDevice ? me.interface.theme : $('theme-select').value,
+      hideRating: $('rating').value === 'hide',
+      nsfw: $('nsfw').value,
+      postView: $('post-view').value,
+      mainPage: $('main-page').value,
+      timezone: $('timezone').value === '' ? null : Number($('timezone').value),
+      hiddenMenu,
+    });
+
+    setDeviceTheme(onDevice ? $('theme-select').value : null);
     Object.assign(me, updated);
     applyInterface(me);
   });

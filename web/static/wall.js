@@ -31,8 +31,8 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   // openvk.
   const fromClub = () => owner.wall !== 'open' || $('post-from-club').checked;
   const create = owner.club
-    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked })
-    : (text, photos) => api.createPost(owner.nickname, text, photos);
+    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked, nsfw: $('post-nsfw').checked })
+    : (text, photos) => api.createPost(owner.nickname, text, photos, $('post-nsfw').checked);
   let attachments;
   let canPost = false;
   // suggesting: the form suggests a post for the admins of the club.
@@ -142,6 +142,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       if (pinned) pinned.after(postNode(post));
       else posts.prepend(postNode(post));
       $('post-text').value = '';
+      $('post-nsfw').checked = false;
       autosize($('post-text'));
       $('post-text').blur();
       attachments.clear();
@@ -167,6 +168,8 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     // новость" on a "Предложка".
     if (!isOwner && !owner.club) text.placeholder = 'Написать';
     if (suggest) text.placeholder = 'Предложить новость';
+    // A suggested post is marked by the admins, if at all.
+    $('post-nsfw-label').hidden = suggest;
     if (speaksForClub) {
       // "От имени сообщества" only where there is a choice; "Подпись
       // автора" while the post speaks for the club.

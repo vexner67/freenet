@@ -1,0 +1,124 @@
+/* "Тёмный" of "Стиль": the page as it is, in the dark. Loaded after
+   style.css by layout.js, so every rule here answers one there. */
+
+body { background: #1a1a1a; color: #d4d4d4; }
+a { color: #7fa9d4; }
+
+.header { background: linear-gradient(#333, #222); border-color: #111; }
+.logo-mark { background: #d4d4d4; color: #222; }
+.header-links a { border-left-color: #111; box-shadow: inset 1px 0 #3d3d3d; }
+
+.page-title { background: #2e2c22; border-color: #454130; color: #e6dfb6; }
+.page-title .aside { color: #8f8a68; }
+.page-body { border-color: #333; }
+
+.menu a:hover { background: #2a2f35; }
+.menu .counter { background: #333; color: #9cc0e6; }
+.menu-divider { border-top-color: #3a3a3a; }
+
+.section-title { background: #2a2a2a; border-top-color: #555; color: #b5b5b5; }
+.section-title::before { border-top-color: #777; }
+.section-title .count { color: #888; }
+.subtitle { background: #242424; border-top-color: #444; border-bottom-color: #2e2e2e; color: #999; }
+
+.notice { background: #2e2b1c; border-color: #5c5430; }
+.error { background: #3a2320; border-color: #7d4034; }
+.archive-banner { background: #2b2a1e; border-color: #4d5236; }
+.hint, .info th, .follow-state, .search-count, .club-role, .person-online,
+.post-signature span, .about-none, .private-mark, .footer { color: #8c8c8c; }
+.form th, .post-options label, .person-status, .uploaded-description { color: #a6a6a6; }
+
+.button { background: #4a4a4a; border-color: #5c5c5c; color: #f0f0f0; }
+.button:hover { background: #5a5a5a; }
+.button.secondary { background: #2c2c2c; border-color: #555; color: #d4d4d4; }
+.button.secondary:hover { background: #383838; }
+
+input[type="text"], input[type="email"], input[type="date"], input[type="time"], select, textarea,
+.form textarea, .wall-form textarea, .modal-body textarea, .messenger-box textarea, .board-search input {
+  background: #242424;
+  border-color: #444;
+  color: #e0e0e0;
+  color-scheme: dark;
+}
+input:focus, select:focus, textarea:focus,
+.form textarea:focus, .wall-form textarea:focus, .modal-body textarea:focus { outline-color: #5b7fa6; }
+
+.avatar { border-color: #333; }
+.name, .summary-bar, .suggested-count, .upload-limits > b, .viewer-header { color: #9cc0e6; }
+.status.empty { color: #777; }
+.deleted-info { color: #666; }
+
+.post-author { background: #242424; border-top-color: #555; border-bottom-color: #2e2e2e; }
+.post-date, .post-date a, .reply-to, .wall-more { color: #8c8c8c; }
+.post-text, .post-photos, .person, .notification, .club-row, .list-row, .extra-field, .uploaded-photo { border-bottom-color: #2e2e2e; }
+.post-menu a { color: #808080; }
+.separator { color: #444; }
+.like { color: #9cc0e6; }
+.like svg { fill: #9cc0e6; }
+.like.liked svg { fill: #e06060; }
+.like-count { color: #d4d4d4; }
+.post-deleted { background: #242424; color: #8c8c8c; }
+.post-shared { border-left-color: #3a4450; }
+.post-shared.deleted { color: #8c8c8c; }
+.wall-more { background: #242424; border-top-color: #444; }
+.wall-more:hover { background: #2c2c2c; }
+.posts-microblog .post, .posts-microblog .comment { border-color: #333; }
+.posts-microblog .post-buttons a.like:hover { background: #2c2c2c; }
+
+.tabs { background: #242424; border-bottom-color: #444; }
+.tabs a.active { background: #1a1a1a; border-color: #444; border-bottom-color: #1a1a1a; color: #f0f0f0; }
+
+.dialogs, .dialog { border-color: #333; }
+.dialog { color: #d4d4d4; }
+.dialog:hover { background: #222; }
+.dialog-name { color: #7fa9d4; }
+.dialog-date { color: #8c8c8c; }
+.dialog-message.unread { background: #303030; }
+.dialog-text, .im-message-date { color: #b0b0b0; }
+.messenger { border-bottom-color: #333; }
+.im-message.unread { background: #2a2a2a; }
+.im-message.selected, .im-message.selected.unread { background: #2c3642; }
+.im-selection, .messenger-input, .messenger-blocked { background: #222; border-color: #333; }
+
+.attachment img, .attachment-loading { border-color: #444; }
+.attachment-loading { background: #242424; color: #8c8c8c; }
+
+.viewer-box, .modal-box { background: #1f1f1f; border-color: #000; }
+.viewer-header { background: #2a2a2a; }
+.viewer-details { background: #1f1f1f; }
+.modal-header { background: linear-gradient(#333, #222); }
+.modal-actions { background: #262626; border-top-color: #3a3a3a; }
+
+.profile-link { background: #262626; color: #7fa9d4; }
+.profile-link:hover { background: #303030; }
+
+.faq-head { background: #2e2c22; border-color: #454130; }
+.faq-content { background: #202020; border-color: #333; }
+
+.gray-bar, .gray-box, .topic-head { background: #222; }
+.summary-bar { border-bottom-color: #333; }
+.sugglist { background: #2a2a2a; border-top-color: #555; }
+.sugglist a { color: #b5b5b5; }
+.suggested-count { border-bottom-color: #2e2e2e; }
+.topic-item { border-color: #333; }
+.board-search input { border-color: #444; }
+
+.backdrop-dripper {
+  background: #1a1a1a;
+  box-shadow: -30px 0 20px 20px #1a1a1a, -70px 0 20px 20px rgb(26 26 26 / 43%), -110px 0 20px 20px rgb(26 26 26 / 28%),
+    30px 0 20px 20px #1a1a1a, 70px 0 20px 20px rgb(26 26 26 / 43%), 110px 0 20px 20px rgb(26 26 26 / 28%);
+}
+.backdrop-editor { background: #222; border-color: #444; }
+.backdrop-page { background: #1a1a1a; border-color: #444; }
+
+.album-item, .white-box { background: #1a1a1a; border-color: #333; }
+.album-photo img { background: #242424; border-color: #444; }
+
+.about-title .edit-link, .field-remove { color: #8c8c8c; }
+.completeness-gauge { background: #2a2a2a; border-top-color: #555; }
+.completeness-gauge > div { background: #444; }
+.completeness-gauge-gold { background: #3a3520; border-top-color: #6b6338; }
+.completeness-gauge-gold > div { background: #6b6338; }
+
+.likers-tooltip { background: #1f1f1f; border-color: #3a4450; }
+.likers-tooltip-head { background: #262b31; border-bottom-color: #3a4450; }

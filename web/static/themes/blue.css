@@ -1,0 +1,32 @@
+/* "Синий" of "Стиль": the blue of the old social networks over the page
+   as it is. Loaded after style.css by layout.js. */
+
+a { color: #2b587a; }
+
+.header { background: linear-gradient(#5d80a8, #45688e); border-color: #3a5a7d; }
+.logo-mark { color: #45688e; }
+.header-links a { border-left-color: #3a5a7d; box-shadow: inset 1px 0 #7393b8; }
+
+.page-title { background: #dae1e8; border-color: #c3cbd4; color: #45688e; }
+.page-title .aside { color: #7f93aa; }
+
+.section-title { background: #dee5eb; border-top-color: #b1bdd6; color: #45688e; }
+.section-title::before { border-top-color: #7f93aa; }
+.section-title .count { color: #7f93aa; }
+
+.menu a:hover { background: #dae1e8; }
+.menu .counter { background: #dae1e8; }
+
+.button { background: #6383a8; border-color: #45688e; }
+.button:hover { background: #7191b5; }
+.button.secondary { background: #f2f2f2; border-color: #c4c4c4; }
+.button.secondary:hover { background: #e6e6e6; }
+
+.post-author { background: #f1f4f7; border-top-color: #b1bdd6; border-bottom-color: #e3e8ee; }
+.modal-header { background: linear-gradient(#5d80a8, #45688e); }
+.viewer-header { background: #dae1e8; }
+.sugglist { background: #dee5eb; border-top-color: #b1bdd6; }
+.sugglist a { color: #45688e; }
+.faq-head { background: #dae1e8; border-color: #c3cbd4; }
+.completeness-gauge { background: #dee5eb; border-top-color: #b1bdd6; }
+.completeness-gauge > div { background: #c3cfdc; }

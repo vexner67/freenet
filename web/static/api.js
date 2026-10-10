@@ -170,14 +170,15 @@ export const api = {
   wall: (nickname, cursor = '', type = '', q = '') => optional('GET', withType(page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0), type, q)),
   post: (id) => optional('GET', '/api/v1/posts/' + encodeURIComponent(id)),
   // Writes on the wall of nickname: someone else's or your own.
-  createPost: (nickname, text, photos = []) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos }),
+  // nsfw marks the post as adult ("Содержит NSFW-контент").
+  createPost: (nickname, text, photos = [], nsfw = false) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos, nsfw }),
   // Uploads a photo for a post; the post refers to it by ID.
   uploadPhoto: (file) => authorized('POST', '/api/v1/me/photos', file),
   // Shares a post on your wall, with a comment that may be empty.
   // to is { club, fromClub, signed } to share it in a community ("в группу").
   repost: (postID, text, to = {}) => authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/reposts`, { text, ...to }),
   deletePost: (id) => authorized('DELETE', '/api/v1/posts/' + encodeURIComponent(id)),
-  editPost: (id, text, photos = []) => authorized('PATCH', '/api/v1/posts/' + encodeURIComponent(id), { text, photos }),
+  editPost: (id, text, photos = [], nsfw = false) => authorized('PATCH', '/api/v1/posts/' + encodeURIComponent(id), { text, photos, nsfw }),
   pinPost: (id) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(id)}/pin`),
   unpinPost: (id) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(id)}/pin`),
   // The owner of the wall puts a post away in "Архив записей" and back,
@@ -320,8 +321,8 @@ export const api = {
   clubWall: (ref, cursor = '', type = '', q = '') => optional('GET', withType(page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0), type, q)),
   // fromClub: the post speaks for the club ("От имени сообщества"),
   // signed: naming you under it ("Подпись автора").
-  createClubPost: (ref, text, photos = [], { fromClub = false, signed = false } = {}) =>
-    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub, signed }),
+  createClubPost: (ref, text, photos = [], { fromClub = false, signed = false, nsfw = false } = {}) =>
+    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub, signed, nsfw }),
   // "Предложка": a post suggested for the admins of a club to publish.
   suggestClubPost: (ref, text, photos = []) => authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/suggestions`, { text, photos }),
   // mine: only yours ("Предложенные вами записи"); all of them for the admins.

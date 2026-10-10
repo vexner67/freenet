@@ -150,55 +150,78 @@ export function formatBirthday(iso) {
   return `${day} ${months[month - 1]} ${year} г., ${age} ${plural(age, ['год', 'года', 'лет'])}`;
 }
 
+// The clock dates are read by: null for the browser's own, or minutes
+// east of UTC ("Часовой пояс" of the settings).
+let timezone = null;
+
+export function setTimezone(minutes) {
+  timezone = Number.isInteger(minutes) ? minutes : null;
+}
+
+// zoneOffset is how far the clock is ahead of UTC at date, in minutes.
+function zoneOffset(date) {
+  return timezone ?? -date.getTimezoneOffset();
+}
+
+// onClock moves date so that its UTC fields read what the clock shows.
+function onClock(date) {
+  return new Date(date.getTime() + zoneOffset(date) * 60_000);
+}
+
+const two = (n) => String(n).padStart(2, '0');
+
 // formatPostDate turns an ISO time into "сегодня в 9:05", "вчера в 18:30",
 // "17 мая в 10:00" or, for other years, "17 мая 2025 в 10:00".
 export function formatPostDate(iso, now = new Date()) {
-  const date = new Date(iso);
-  const time = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+  const date = onClock(new Date(iso));
+  const today = onClock(now);
+  const time = `${date.getUTCHours()}:${two(date.getUTCMinutes())}`;
 
-  const midnight = (d) => new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  // Rounded, so a daylight-saving shift does not turn a day into 0.96.
-  const daysAgo = Math.round((midnight(now) - midnight(date)) / 86_400_000);
+  const midnight = (d) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
+  const daysAgo = Math.round((midnight(today) - midnight(date)) / 86_400_000);
 
   if (daysAgo === 0) return `сегодня в ${time}`;
   if (daysAgo === 1) return `вчера в ${time}`;
 
-  const day = `${date.getDate()} ${months[date.getMonth()]}`;
+  const day = `${date.getUTCDate()} ${months[date.getUTCMonth()]}`;
 
-  return date.getFullYear() === now.getFullYear() ? `${day} в ${time}` : `${day} ${date.getFullYear()} в ${time}`;
+  return date.getUTCFullYear() === today.getUTCFullYear() ? `${day} в ${time}` : `${day} ${date.getUTCFullYear()} в ${time}`;
 }
 
 // formatDateTime turns an ISO time into openvk's "7 мая 2027 в 12:00".
 export function formatDateTime(iso) {
-  const date = new Date(iso);
-  const time = `${date.getHours()}:${String(date.getMinutes()).padStart(2, '0')}`;
+  const date = onClock(new Date(iso));
+  const time = `${date.getUTCHours()}:${two(date.getUTCMinutes())}`;
 
-  return `${date.getDate()} ${months[date.getMonth()]} ${date.getFullYear()} в ${time}`;
+  return `${date.getUTCDate()} ${months[date.getUTCMonth()]} ${date.getUTCFullYear()} в ${time}`;
 }
 
-// localTime turns the values of a date and a time input, taken in the
-// visitor's time zone, into an ISO time; '' unless both are filled in.
+// localTime turns the values of a date and a time input, taken on the
+// visitor's clock, into an ISO time; '' unless both are filled in.
 export function localTime(date, time) {
   if (!date || !time) return '';
 
-  const at = new Date(`${date}T${time}`);
-  return Number.isNaN(at.getTime()) ? '' : at.toISOString();
+  if (timezone === null) {
+    const at = new Date(`${date}T${time}`);
+    return Number.isNaN(at.getTime()) ? '' : at.toISOString();
+  }
+
+  const at = new Date(`${date}T${time}Z`);
+  return Number.isNaN(at.getTime()) ? '' : new Date(at.getTime() - timezone * 60_000).toISOString();
 }
 
 // inputDate and inputTime are an ISO time as the values of a date and a
-// time input, in the visitor's time zone.
+// time input, on the visitor's clock.
 export function inputDate(iso) {
-  const d = new Date(iso);
-  const two = (n) => String(n).padStart(2, '0');
+  const d = onClock(new Date(iso));
 
-  return `${d.getFullYear()}-${two(d.getMonth() + 1)}-${two(d.getDate())}`;
+  return `${d.getUTCFullYear()}-${two(d.getUTCMonth() + 1)}-${two(d.getUTCDate())}`;
 }
 
 export function inputTime(iso) {
-  const d = new Date(iso);
-  const two = (n) => String(n).padStart(2, '0');
+  const d = onClock(new Date(iso));
 
-  return `${two(d.getHours())}:${two(d.getMinutes())}`;
+  return `${two(d.getUTCHours())}:${two(d.getUTCMinutes())}`;
 }
 
 // avatarStyles, mainPages and menuItems are the choices of "Интерфейс" of
@@ -206,6 +229,74 @@ export function inputTime(iso) {
 export const avatarStyles = [
   ['square', 'Квадратные (по умолчанию)'],
   ['round', 'Круглые'],
+];
+
+// themes, ratings, nsfwContents and postViews are the rest of openvk's
+// "Интерфейс"; the themes are ours.
+export const themes = [
+  ['default', 'Обычный (по умолчанию)'],
+  ['blue', 'Синий'],
+  ['dark', 'Тёмный'],
+];
+
+export const ratings = [
+  ['show', 'Показывать'],
+  ['hide', 'Скрывать'],
+];
+
+export const nsfwContents = [
+  ['hide', 'Не показывать в ленте'],
+  ['blur', 'Только замазывать'],
+  ['show', 'Показывать'],
+];
+
+export const postViews = [
+  ['old', 'Старый'],
+  ['microblog', 'Микроблог'],
+];
+
+// timezones are openvk's clocks ("Часовой пояс"), by minutes east of
+// UTC; the first is the browser's own.
+export const timezones = [
+  ['', 'Как в браузере (по умолчанию)'],
+  ['-720', '(GMT-12): Остров Бейкер, Хауленд'],
+  ['-660', '(GMT-11): Паго-Паго, Ниуэ, Мидуэй'],
+  ['-600', '(GMT-10): Гонолулу, Папеэте, Адак'],
+  ['-540', '(GMT-09): Анкоридж, Фэрбанкс, Джуно'],
+  ['-480', '(GMT-08): Лос-Анджелес, Ванкувер, Тихуана'],
+  ['-420', '(GMT-07): Денвер, Эдмонтон, Финикс'],
+  ['-360', '(GMT-06): Мехико, Чикаго, Гватемала'],
+  ['-300', '(GMT-05): Нью-Йорк, Торонто, Гавана'],
+  ['-270', '(GMT-04:30): Каракас, Маракайбо'],
+  ['-240', '(GMT-04): Сантьяго, Ла-Пас, Галифакс'],
+  ['-210', '(GMT-03:30): Сент-Джонс (Ньюфаундленд)'],
+  ['-180', '(GMT-03): Буэнос-Айрес, Сан-Паулу, Монтевидео'],
+  ['-120', '(GMT-02): Южная Георгия'],
+  ['-60', '(GMT-01): Азорские острова, Прая'],
+  ['0', '(GMT): Лондон, Лиссабон, Касабланка'],
+  ['60', '(GMT+1): Берлин, Париж, Рим'],
+  ['120', '(GMT+2): Калининград (МСК-1), Киев, Каир'],
+  ['180', '(GMT+3): Москва, Стамбул, Минск'],
+  ['210', '(GMT+3:30): Тегеран, Исфахан'],
+  ['240', '(GMT+4): Самара (МСК+1), Дубай, Баку'],
+  ['270', '(GMT+4:30): Кабул, Кандагар'],
+  ['300', '(GMT+5): Екатеринбург (МСК+2), Ташкент, Карачи'],
+  ['330', '(GMT+5:30): Нью-Дели, Мумбаи, Коломбо'],
+  ['345', '(GMT+5:45): Катманду, Покхара'],
+  ['360', '(GMT+6): Омск (МСК+3), Алматы, Дакка'],
+  ['390', '(GMT+6:30): Янгон (Рангун), Нейпьидо'],
+  ['420', '(GMT+7): Новосибирск (МСК+4), Красноярск, Бангкок'],
+  ['480', '(GMT+8): Иркутск (МСК+5), Пекин, Сингапур'],
+  ['510', '(GMT+8:30): Пхеньян'],
+  ['540', '(GMT+9): Якутск (МСК+6), Токио, Сеул'],
+  ['570', '(GMT+9:30): Аделаида, Дарвин'],
+  ['600', '(GMT+10): Владивосток (МСК+7), Сидней, Мельбурн'],
+  ['630', '(GMT+10:30): Лорд-Хау'],
+  ['660', '(GMT+11): Магадан (МСК+8), Сахалин, Чокурдах'],
+  ['720', '(GMT+12): Камчатка (МСК+9), Анадырь, Окленд'],
+  ['765', '(GMT+12:45): Острова Чатем'],
+  ['780', '(GMT+13): Нукуалофа, Апиа'],
+  ['840', '(GMT+14): Киритимати (о-ва Лайн)'],
 ];
 
 export const mainPages = [
@@ -590,6 +681,10 @@ const errorTexts = {
   'invalid avatar style': 'Неизвестный вид аватаров.',
   'invalid main page': 'Неизвестная главная страница.',
   'invalid menu item': 'Неизвестный пункт меню.',
+  'invalid theme': 'Неизвестный стиль.',
+  'invalid nsfw setting': 'Неизвестная настройка NSFW-контента.',
+  'invalid view of posts': 'Неизвестный вид постов.',
+  'invalid timezone': 'Неизвестный часовой пояс.',
   'title is too long': 'Комментарий слишком длинный: не больше 36 символов.',
   'an event needs the time it starts': 'Вы не ввели название встречи и/или не указали дату начала встречи.',
   'an event ends after it starts': 'Встреча должна заканчиваться позже, чем начинается.',
