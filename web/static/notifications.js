@@ -5,7 +5,7 @@
 
 import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
-import { formatPostDate, notificationVerb, snippet } from './labels.js';
+import { formatPostDate, notificationVerb, plainMentions, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, pagePath, profilePath, renderChrome, setCounter, showError, hideError } from './layout.js';
 import { postPath } from './posts.js';
 import { topicPath } from './topics.js';
@@ -58,6 +58,12 @@ function postLink(post, text) {
   return el('a', { href: postPath(post) }, el('b', { textContent: text }));
 }
 
+// quote is what a comment or a post says, cut short, with the people it
+// names in plain words.
+function quote(text) {
+  return snippet(plainMentions(text || 'Фотография'), COMMENT_SNIPPET);
+}
+
 // notificationText is the sentence of openvk; null for a type this page
 // does not know yet.
 function notificationText(n) {
@@ -88,6 +94,23 @@ function notificationText(n) {
       el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), '.'];
   }
 
+  // Named in a message of a topic: openvk's "Вас упомянул пользователь ...
+  // в обсуждении", said as our other answers are.
+  if (n.type === 'topic_mention') {
+    return [name, ` ${notificationVerb('mention', n.actor)} вас в обсуждении `,
+      el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), '.'];
+  }
+
+  if (n.type === 'post_mention') {
+    return [name, ` ${notificationVerb('mention', n.actor)} вас в `, postLink(n.post, 'записи'),
+      ...(n.post.text ? [`: «${quote(n.post.text)}».`] : ['.'])];
+  }
+
+  if (n.type === 'comment_mention') {
+    return [name, ` ${notificationVerb('mention', n.actor)} вас в комментарии под `, postLink(n.post, 'записью'),
+      ` от ${formatPostDate(n.post.createdAt)}: «${quote(n.comment.text)}».`];
+  }
+
   const verb = notificationVerb(n.type, n.actor);
 
   switch (n.type) {
@@ -95,21 +118,21 @@ function notificationText(n) {
       return [name, ` ${verb} вашу `, postLink(n.post, 'запись'), ` от ${formatPostDate(n.post.createdAt)}.`];
     case 'comment':
       return [name, ` ${verb} комментарий под вашей `, postLink(n.post, 'записью'),
-        ` от ${formatPostDate(n.post.createdAt)}: «${snippet(n.comment.text || 'Фотография', COMMENT_SNIPPET)}».`];
+        ` от ${formatPostDate(n.post.createdAt)}: «${quote(n.comment.text)}».`];
     case 'comment_reply':
       return [name, ` ${verb} на ваш комментарий под `, postLink(n.post, 'записью'),
-        ` от ${formatPostDate(n.post.createdAt)}: «${snippet(n.comment.text || 'Фотография', COMMENT_SNIPPET)}».`];
+        ` от ${formatPostDate(n.post.createdAt)}: «${quote(n.comment.text)}».`];
     case 'comment_like':
       return [name, ` ${verb} ваш комментарий под `, postLink(n.post, 'записью'),
-        ` от ${formatPostDate(n.post.createdAt)}: «${snippet(n.comment.text || 'Фотография', COMMENT_SNIPPET)}».`];
+        ` от ${formatPostDate(n.post.createdAt)}: «${quote(n.comment.text)}».`];
     case 'follow':
       return [name, ` ${verb} на вас.`];
     case 'repost':
       return [name, ` ${verb} вашей `, postLink(n.post, 'записью'),
-        ...(n.post.text ? [`: «${snippet(n.post.text, COMMENT_SNIPPET)}».`] : ['.'])];
+        ...(n.post.text ? [`: «${quote(n.post.text)}».`] : ['.'])];
     case 'wall_post':
       return [name, ` ${verb} на вашей стене `, postLink(n.post, 'запись'),
-        ...(n.post.text ? [`: «${snippet(n.post.text, COMMENT_SNIPPET)}».`] : ['.'])];
+        ...(n.post.text ? [`: «${quote(n.post.text)}».`] : ['.'])];
     default:
       return null;
   }

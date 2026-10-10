@@ -582,6 +582,7 @@ const notificationVerbs = {
   repost: ['поделился', 'поделилась', 'поделился(-лась)', 'поделилось', 'поделились'],
   comment_reply: ['ответил', 'ответила', 'ответил(а)', 'ответило', 'ответили'],
   comment_like: ['оценил', 'оценила', 'оценил(а)', 'оценило', 'оценили'],
+  mention: ['упомянул', 'упомянула', 'упомянул(а)', 'упомянуло', 'упомянули'],
 };
 
 // notificationVerb agrees with actor: a person's gender (the plural for
@@ -747,6 +748,59 @@ const errorTexts = {
 
 export function errorText(e) {
   return errorTexts[e?.message] ?? 'Что-то пошло не так. Попробуйте позже.';
+}
+
+// mentionPattern finds the two ways a text names a person, as the gateway
+// does (model.MentionedNicknames): "[nickname|Имя]", which "Ответить"
+// writes, and "@nickname" at the start or after a space.
+const mentionPattern = /\[([A-Za-z][A-Za-z0-9_]*)\|([^\[\]|\n]{1,100})\]|(^|\s)@([A-Za-z][A-Za-z0-9_]*)/g;
+
+const MAX_NICKNAME = 32;
+
+// mentionParts cuts text into what it shows: strings and, for the people it
+// names, { nickname, text } to draw as links to their pages. Whether anyone
+// has the nickname only the server knows; a link to nobody opens "not
+// found".
+export function mentionParts(text) {
+  const parts = [];
+  let from = 0;
+
+  const push = (s) => {
+    if (!s) return;
+    if (typeof parts.at(-1) === 'string') parts[parts.length - 1] += s;
+    else parts.push(s);
+  };
+
+  for (const m of text.matchAll(mentionPattern)) {
+    const named = m[1] !== undefined;
+    // A nickname does not end with "_": "@ann_" names ann.
+    const nickname = named ? m[1] : m[4].replace(/_+$/, '');
+    if (nickname.length > MAX_NICKNAME || nickname.endsWith('_')) continue;
+
+    const start = m.index + (named ? 0 : m[3].length);
+    const length = named ? m[0].length : 1 + nickname.length;
+
+    push(text.slice(from, start));
+    parts.push({ nickname, text: named ? m[2] : '@' + nickname });
+    from = start + length;
+  }
+
+  push(text.slice(from));
+
+  return parts;
+}
+
+// plainMentions is text as a quote shows it, without links: "[ann|Анна]"
+// reads "Анна".
+export function plainMentions(text) {
+  return mentionParts(text).map((p) => (typeof p === 'string' ? p : p.text)).join('');
+}
+
+// replyMention starts an answer to author, openvk's "[id1|Анна], ": a
+// link to the person, who hears about the answer. A community is named in
+// plain words.
+export function replyMention(author) {
+  return author.club || !author.nickname ? author.name + ', ' : `[${author.nickname}|${author.name}], `;
 }
 
 // isLongText is openvk's "bigText", shown cut short until "Показать

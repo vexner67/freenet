@@ -5,7 +5,7 @@
 
 import { api, currentUser } from './api.js';
 import { formatPostDate, suggestedInClub, wrote } from './labels.js';
-import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
+import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize, mentionNodes } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, postPath } from './posts.js';
 
@@ -40,7 +40,7 @@ function suggestionNode(s) {
         el('div', { className: 'post-date', textContent: formatPostDate(s.createdAt) }),
       ),
       el('div', { className: 'post-content' },
-        s.text ? el('div', { className: 'post-text', textContent: s.text }) : '',
+        s.text ? el('div', { className: 'post-text' }, ...mentionNodes(s.text)) : '',
         photosNode(s.photos) ?? '',
       ),
       mine
