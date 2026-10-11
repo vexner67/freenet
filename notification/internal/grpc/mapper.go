@@ -32,6 +32,7 @@ var (
 
 		notification.KindPhotoLike:        notificationv1.Kind_KIND_PHOTO_LIKE,
 		notification.KindPhotoComment:     notificationv1.Kind_KIND_PHOTO_COMMENT,
+		notification.KindNoteComment:      notificationv1.Kind_KIND_NOTE_COMMENT,
 		notification.KindTopicMessageLike: notificationv1.Kind_KIND_TOPIC_MESSAGE_LIKE,
 
 		notification.KindEventReminder: notificationv1.Kind_KIND_EVENT_REMINDER,
@@ -58,6 +59,7 @@ var (
 
 		notificationv1.Kind_KIND_PHOTO_LIKE:         notification.KindPhotoLike,
 		notificationv1.Kind_KIND_PHOTO_COMMENT:      notification.KindPhotoComment,
+		notificationv1.Kind_KIND_NOTE_COMMENT:       notification.KindNoteComment,
 		notificationv1.Kind_KIND_TOPIC_MESSAGE_LIKE: notification.KindTopicMessageLike,
 
 		notificationv1.Kind_KIND_EVENT_REMINDER: notification.KindEventReminder,

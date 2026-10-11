@@ -65,6 +65,9 @@ const (
 	// KindPhotoMention: the actor named the recipient in the comment
 	// CommentID under the photo PostID.
 	KindPhotoMention Kind = "photo_mention"
+	// KindNoteComment: the actor wrote the comment CommentID under the
+	// recipient's note PostID.
+	KindNoteComment Kind = "note_comment"
 	// KindEventReminder: the actor, an event the recipient comes to,
 	// starts soon ("В ближайшее время состоится событие" of openvk).
 	KindEventReminder Kind = "event_reminder"
@@ -114,7 +117,7 @@ func (e Event) Validate() error {
 	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention, KindPhotoLike:
 		ok = hasPost && !hasComment
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
-		KindPhotoComment, KindTopicMessageLike, KindPhotoMention:
+		KindPhotoComment, KindTopicMessageLike, KindPhotoMention, KindNoteComment:
 		ok = hasPost && hasComment
 	case KindFollow, KindClubAdmin, KindEventReminder:
 		ok = !hasPost && !hasComment
