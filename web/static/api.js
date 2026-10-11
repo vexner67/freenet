@@ -274,7 +274,14 @@ export const api = {
   // message is a message of a dialog whole: the dialog carries the
   // beginnings of long texts.
   message: (nickname, id) => authorized('GET', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages/${encodeURIComponent(id)}`),
-  editMessage: (id, text) => authorized('PATCH', `/api/v1/messages/${encodeURIComponent(id)}`, { text }),
+  // photos, when given, replace the message's; without them they stay.
+  editMessage: (id, text, photos) => authorized('PATCH', `/api/v1/messages/${encodeURIComponent(id)}`, { text, photos }),
+  // Several messages at once, all or none (up to 100).
+  deleteMessages(ids, { forMe = false } = {}) {
+    const query = new URLSearchParams(ids.map((id) => ['id', id]));
+    if (forMe) query.set('for', 'me');
+    return authorized('DELETE', '/api/v1/messages?' + query);
+  },
   // Your messages that say q, newest first: with peer, a nickname, in
   // that dialog only.
   searchMessages(q, { peer = '', cursor = '' } = {}) {

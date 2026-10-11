@@ -18,6 +18,8 @@ import { button, openModal } from './modal.js';
 import { photosNode, sharedNode, sharedPhotoNode } from './posts.js';
 
 const POLL_MS = 5000;
+// How many messages one request deletes.
+const DELETED_AT_ONCE = 100;
 // How close to the top, in pixels, loads older messages.
 const LOAD_OLDER_AT = 40;
 
@@ -212,11 +214,23 @@ function confirmDelete(messages) {
     remove.disabled = true;
 
     try {
+      const forMe = !forAll.checked;
+      // One request deletes them all or none: when one of them is gone
+      // already, the rest go one by one.
+      const gone = (e) => {
+        if (e.status !== 404) throw e;
+      };
+      const oneByOne = async () => {
+        for (const m of messages) await api.deleteMessage(m.id, { forMe }).catch(gone);
+      };
+
+      for (let i = 0; i < messages.length; i += DELETED_AT_ONCE) {
+        const ids = messages.slice(i, i + DELETED_AT_ONCE).map((m) => m.id);
+        if (ids.length === 1) await api.deleteMessage(ids[0], { forMe }).catch(gone);
+        else await api.deleteMessages(ids, { forMe }).catch((e) => (e.status === 404 ? oneByOne() : Promise.reject(e)));
+      }
+
       for (const m of messages) {
-        // Gone already: what the user wanted.
-        await api.deleteMessage(m.id, { forMe: !forAll.checked }).catch((e) => {
-          if (e.status !== 404) throw e;
-        });
         // Taken back from both, it stays in its place saying so.
         if (forAll.checked) edited(takenBack(m));
         else drop(m.id);
@@ -353,8 +367,9 @@ function drop(id) {
   $('empty').hidden = shown.size > 0;
 }
 
-// startEdit puts what the message says back in the form: sending saves
-// the edit, as on VK.
+// startEdit puts what the message says and its photos back in the form:
+// sending saves the edit, as on VK. A message that shares a photo of an
+// album takes no photos of its own.
 async function startEdit(m) {
   const text = $('text');
 
@@ -368,9 +383,10 @@ async function startEdit(m) {
   editing = m;
   text.value = m.text;
   autosize(text);
+  attachments.set(m.photos ?? []);
   $('editing').hidden = false;
   $('send').textContent = 'Сохранить';
-  $('attach').hidden = true;
+  if (m.sharedPhoto) $('attach').hidden = true;
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
 }
@@ -381,9 +397,9 @@ function cancelEdit() {
   editing = null;
   $('text').value = '';
   autosize($('text'));
+  attachments.clear();
   $('editing').hidden = true;
   $('send').textContent = 'Отправить';
-  $('attach').hidden = false;
 }
 
 // edited shows what a message is after its sender, me or the peer,
@@ -600,10 +616,15 @@ async function send(event) {
   const button = $('send');
 
   if (editing) {
+    if (attachments.busy()) {
+      showError($('error'), 'Дождитесь, пока загрузятся фотографии.');
+      return;
+    }
+
     button.disabled = true;
 
     try {
-      edited(await api.editMessage(editing.id, text.value));
+      edited(await api.editMessage(editing.id, text.value, editing.sharedPhoto ? undefined : attachments.ids()));
       cancelEdit();
     } catch (e) {
       showError($('error'), e);
