@@ -50,7 +50,11 @@ type Privacy struct {
 	ShowPoliticalViews bool
 	WallWrite          WallWrite
 	MessagesWrite      MessagesWrite
-	ClubsRead          ClubsRead
+	// ChatsInvite is "Кто может добавлять меня в чаты"; empty in
+	// UpdatePrivacy, as from a client that does not know it, means the
+	// default.
+	ChatsInvite MessagesWrite
+	ClubsRead   ClubsRead
 	// PageRead is "Кому в интернете видно мою страницу": everyone or users;
 	// InfoRead, PhotosRead and FriendsRead are "Кому видно основную
 	// информацию моей страницы", "… мои фотографии" and "… моих друзей"
@@ -153,6 +157,7 @@ func New(email Email) (*User, error) {
 			WallWrite: DefaultWallWrite, MessagesWrite: DefaultMessagesWrite, ClubsRead: DefaultClubsRead,
 			PageRead: AudienceEveryone, InfoRead: AudienceEveryone, PhotosRead: AudienceEveryone, FriendsRead: AudienceEveryone,
 			OnlineRead: AudienceEveryone, NotesRead: AudienceEveryone,
+			ChatsInvite: DefaultChatsInvite,
 		},
 		ui: DefaultInterface(),
 	}, nil
@@ -254,6 +259,14 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 
 	if privacy.NotesRead == "" {
 		privacy.NotesRead = AudienceEveryone
+	}
+
+	if privacy.ChatsInvite == "" {
+		privacy.ChatsInvite = DefaultChatsInvite
+	}
+
+	if _, err := NewMessagesWrite(privacy.ChatsInvite.String()); err != nil {
+		return err
 	}
 
 	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead, privacy.OnlineRead, privacy.NotesRead} {

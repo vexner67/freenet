@@ -235,6 +235,15 @@ func TestBlacklist(t *testing.T) {
 		t.Fatalf("mentions across a block = %v, %v", named, err)
 	}
 
+	// Nor does bob add ann to a group chat, though he may name her.
+	invited, err := s.client.ResolveInvites(bob, &userv1.ResolveInvitesRequest{Nicknames: []string{"ANN", "no such", "ghost", "ann"}})
+	if got := invited.GetInvitees(); err != nil || len(got) != 1 || got[0].GetNickname() != "ann" || got[0].GetUserId() != annID || got[0].GetAllowed() {
+		t.Fatalf("invitees across a block = %v, %v", got, err)
+	}
+	if _, err = s.client.ResolveInvites(context.Background(), &userv1.ResolveInvitesRequest{Nicknames: []string{"ann"}}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("invitees of nobody: %v", err)
+	}
+
 	// Which of the words after "@" are pages anyone may ask, a block or
 	// not: the page is there for all to see.
 	for name, ctx := range map[string]context.Context{"bob": bob, "nobody": context.Background()} {

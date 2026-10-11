@@ -67,6 +67,10 @@ service UserService {
   // names by nickname hears of it ("Вас упомянул пользователь" of
   // openvk): not the caller, not across a blacklist, not a deleted page.
   rpc ResolveMentions(ResolveMentionsRequest) returns (ResolveMentionsResponse);
+  // Requires an access token: the people the caller names by nickname to
+  // add to a group chat, and whether each lets the caller do it, as their
+  // privacy and blacklists allow.
+  rpc ResolveInvites(ResolveInvitesRequest) returns (ResolveInvitesResponse);
   // Public: which of the nicknames are someone's, so that a text saying
   // "@word" links to a page only when there is one.
   rpc FindNicknames(FindNicknamesRequest) returns (FindNicknamesResponse);
@@ -241,6 +245,10 @@ message PrivacySettings {
   // Who sees the notes ("Кому видно мои заметки"); unspecified, as from
   // a client that does not know it, is everyone.
   Audience notes_read = 13;
+  // Who may add the owner to group chats ("Кто может добавлять меня в
+  // чаты"); unspecified, as from a client that does not know it, is the
+  // people the owner follows.
+  MessagesWrite chats_invite = 14;
 }
 
 // Who sees a part of a page.
@@ -671,6 +679,24 @@ message ResolveMentionsRequest {
 message ResolveMentionsResponse {
   // In the order named, each once.
   repeated string user_ids = 1;
+}
+
+message ResolveInvitesRequest {
+  // The first 49 are looked at; what is not a nickname names nobody.
+  repeated string nicknames = 1;
+}
+
+message ResolveInvitesResponse {
+  // In the order named, each once; nobody for an unknown nickname.
+  repeated Invitee invitees = 1;
+}
+
+message Invitee {
+  // As its owner writes it.
+  string nickname = 1;
+  string user_id = 2;
+  // The caller may add them to a group chat.
+  bool allowed = 3;
 }
 
 message FindNicknamesRequest {
