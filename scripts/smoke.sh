@@ -2,9 +2,9 @@
 # Smoke test of the Docker stack (`make stack`): signs a new user up
 # through the gateway and goes over the services, each behind mTLS and on
 # its database: auth (code from its log), user (profile), media (a photo,
-# written to its volume and served back), post (a post with it and a
-# repost), notification (unread count), message (dialogs), club (a club
-# and a post for it) and the website itself; then observability: every
+# written to its volume and served back), post (a post with it, a repost,
+# a poll and a note), notification (unread count), message (dialogs), club
+# (a club and a post for it) and the website itself; then observability: every
 # container healthy, a request ID from the gateway in the auth log, every
 # service's metrics in Prometheus, its alert rules loaded and sent to
 # Alertmanager, the Grafana dashboard.
@@ -117,6 +117,12 @@ call PUT "/api/v1/posts/$poll/poll/vote" '{"options":[1]}' | jq -e '.voted == [1
 call GET "/api/v1/posts/$poll" | jq -e '.poll.options[1].votes == 1 and .poll.voted == [1]' >/dev/null
 token='' call GET "/api/v1/posts/$poll/poll/voters?option=1" | jq -e '.total == 1' >/dev/null
 step "post: a poll, a vote in it and who voted"
+
+note=$(expect=201 call POST /api/v1/me/notes '{"title":"Smoke","text":"a note"}' | jq -r .id)
+expect=201 call POST "/api/v1/notes/$note/comments" '{"text":"a comment"}' >/dev/null
+token='' call GET "/api/v1/users/$nickname/notes" | jq -e '.total == 1 and .notes[0].comments == 1' >/dev/null
+token='' call GET "/api/v1/notes/$note/comments" | jq -e '.total == 1 and .comments[0].text == "a comment"' >/dev/null
+step "post: a note, a comment under it and the list of notes"
 
 # refresh replaces the tokens, as the website does after deleting and
 # restoring the page.
