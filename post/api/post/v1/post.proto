@@ -56,6 +56,9 @@ service PostService {
   // Public: who like the post or the comment, newest first ("Понравилось
   // N людям" of openvk); total is its like counter.
   rpc ListPostLikers(ListPostLikersRequest) returns (ListPostLikersResponse);
+  // Public: the posts that share a post (who shared it), newest first,
+  // without the archived ones; NotFound for a missing or an archived post.
+  rpc ListReposts(ListRepostsRequest) returns (ListRepostsResponse);
   rpc ListCommentLikers(ListCommentLikersRequest) returns (ListCommentLikersResponse);
 
   // Require an access token; the author is the caller. A comment is
@@ -378,6 +381,10 @@ message RepostPostRequest {
   bool signed = 5;
   // A photo of an album to share instead of a post; post_id is empty then.
   string photo_id = 6;
+  // Photos the caller adds to their words about a shared post, at most
+  // 10 and the caller's own, as the caller of RepostPost has checked;
+  // none with photo_id.
+  repeated string photo_ids = 7;
 }
 
 message RepostPostResponse {
@@ -546,6 +553,24 @@ message ListPostLikersResponse {
   repeated string user_ids = 1;
   // Empty on the last page.
   string next_cursor = 2;
+  int32 total = 3;
+}
+
+message ListRepostsRequest {
+  string post_id = 1;
+  // Empty for the newest reposts, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+  // As in ListFeedRequest.
+  int32 text_limit = 4;
+}
+
+message ListRepostsResponse {
+  repeated Post posts = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // How many posts share it, the archived ones too.
   int32 total = 3;
 }
 

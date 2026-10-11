@@ -28,7 +28,7 @@ var (
 	ErrCannotDelete = errors.New("only the author or the owner of the wall can delete the post")
 	ErrCannotEdit   = errors.New("only the author can edit the post")
 	ErrEditExpired  = errors.New("the post can no longer be edited")
-	ErrRepostPhotos = errors.New("a repost has no photos of its own")
+	ErrRepostPhotos = errors.New("a post sharing a photo has no photos of its own")
 	ErrCannotPin    = errors.New("only the owner of the wall can pin the post")
 	ErrFromOwnWall  = errors.New("a post on your own wall speaks for you")
 	// ErrAvatarUpdate: the post of a new photo is that photo and nothing
@@ -265,8 +265,9 @@ func (p *Post) Stored() Stored {
 
 // Edited returns p saying text with photos instead, edited by requesterID
 // at now. Only the author edits, and for editWindow after posting, as in
-// openvk. A repost keeps the post it shares and, as when it was made, has
-// no photos of its own. The post of a new photo is not edited at all.
+// openvk. A repost keeps the post it shares; a post that shares a photo of
+// an album keeps it and has no photos of its own. The post of a new photo
+// is not edited at all.
 func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.Time) (*Post, error) {
 	if !p.BelongsTo(requesterID) || p.avatarUpdate {
 		return nil, ErrCannotEdit
@@ -283,10 +284,7 @@ func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.
 
 	switch {
 	case p.content.repostOf != uuid.Nil:
-		if len(photos) > 0 {
-			return nil, ErrRepostPhotos
-		}
-		content, err = NewRepost(p.content.repostOf, text)
+		content, err = NewRepost(p.content.repostOf, text, photos)
 	case p.content.sharedPhoto != uuid.Nil:
 		// It shares the photo still: the words are what changes.
 		if len(photos) > 0 {

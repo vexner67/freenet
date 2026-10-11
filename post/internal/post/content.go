@@ -59,13 +59,13 @@ func NewContent(text Text, photos Photos) (Content, error) {
 }
 
 // NewRepost is the content of a repost: the shared post repostOf, with
-// what the reposter says about it, if anything.
-func NewRepost(repostOf uuid.UUID, text Text) (Content, error) {
+// what the reposter says about it and the photos they add, if any.
+func NewRepost(repostOf uuid.UUID, text Text, photos Photos) (Content, error) {
 	if repostOf == uuid.Nil {
 		return Content{}, ErrInvalidRepost
 	}
 
-	return Content{text: text, repostOf: repostOf}, nil
+	return Content{text: text, photos: photos, repostOf: repostOf}, nil
 }
 
 // NewPhotoShare is the content of a post sharing a photo of an album, with

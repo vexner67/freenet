@@ -456,6 +456,50 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 	return collectPosts(rows)
 }
 
+// listRepostsQuery reads posts_repost_of_idx.
+const listRepostsQuery = `
+	SELECT
+		id,
+		wall_id,
+		author_id,
+		text,
+		photo_ids,
+		created_at,
+		repost_of,
+		like_count,
+		comment_count,
+		repost_count,
+		edited_at,
+		from_wall,
+		signed,
+		suggested,
+		avatar_update,
+		shared_photo_id,
+		archived,
+		comments_closed,
+		nsfw,
+		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
+	FROM posts
+	WHERE repost_of = $1
+		AND id < $2
+		AND ($4 OR NOT archived)
+	ORDER BY id DESC
+	LIMIT $3
+`
+
+func (r *PostRepository) ListReposts(ctx context.Context, postID, before uuid.UUID, limit int, archived bool) ([]*post.Post, error) {
+	if before == uuid.Nil {
+		before = newestCursor
+	}
+
+	rows, err := r.conn(ctx).Query(ctx, listRepostsQuery, postID, before, limit, archived)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	return collectPosts(rows)
+}
+
 // ids is a slice for ANY($n): pgx writes a nil slice as NULL, which
 // matches nothing either, but an empty array says so.
 func ids(s []uuid.UUID) []uuid.UUID {

@@ -24,7 +24,7 @@ func TestSuggestion(t *testing.T) {
 		t.Fatalf("NewSuggestion = %+v, %v", s, err)
 	}
 
-	repost, _ := post.NewRepost(uuid.New(), "")
+	repost, _ := post.NewRepost(uuid.New(), "", nil)
 	if _, err = post.NewSuggestion(club, ann, repost, time.Now()); !errors.Is(err, post.ErrInvalidRepost) {
 		t.Fatalf("a suggested repost: %v", err)
 	}

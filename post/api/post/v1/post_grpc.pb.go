@@ -38,6 +38,7 @@ const (
 	PostService_LikePost_FullMethodName               = "/post.v1.PostService/LikePost"
 	PostService_UnlikePost_FullMethodName             = "/post.v1.PostService/UnlikePost"
 	PostService_ListPostLikers_FullMethodName         = "/post.v1.PostService/ListPostLikers"
+	PostService_ListReposts_FullMethodName            = "/post.v1.PostService/ListReposts"
 	PostService_ListCommentLikers_FullMethodName      = "/post.v1.PostService/ListCommentLikers"
 	PostService_CreateComment_FullMethodName          = "/post.v1.PostService/CreateComment"
 	PostService_DeleteComment_FullMethodName          = "/post.v1.PostService/DeleteComment"
@@ -141,6 +142,9 @@ type PostServiceClient interface {
 	// Public: who like the post or the comment, newest first ("Понравилось
 	// N людям" of openvk); total is its like counter.
 	ListPostLikers(ctx context.Context, in *ListPostLikersRequest, opts ...grpc.CallOption) (*ListPostLikersResponse, error)
+	// Public: the posts that share a post (who shared it), newest first,
+	// without the archived ones; NotFound for a missing or an archived post.
+	ListReposts(ctx context.Context, in *ListRepostsRequest, opts ...grpc.CallOption) (*ListRepostsResponse, error)
 	ListCommentLikers(ctx context.Context, in *ListCommentLikersRequest, opts ...grpc.CallOption) (*ListCommentLikersResponse, error)
 	// Require an access token; the author is the caller. A comment is
 	// deleted by its author, by the author of the post or by the owner of
@@ -452,6 +456,16 @@ func (c *postServiceClient) ListPostLikers(ctx context.Context, in *ListPostLike
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListPostLikersResponse)
 	err := c.cc.Invoke(ctx, PostService_ListPostLikers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListReposts(ctx context.Context, in *ListRepostsRequest, opts ...grpc.CallOption) (*ListRepostsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListRepostsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListReposts_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1018,6 +1032,9 @@ type PostServiceServer interface {
 	// Public: who like the post or the comment, newest first ("Понравилось
 	// N людям" of openvk); total is its like counter.
 	ListPostLikers(context.Context, *ListPostLikersRequest) (*ListPostLikersResponse, error)
+	// Public: the posts that share a post (who shared it), newest first,
+	// without the archived ones; NotFound for a missing or an archived post.
+	ListReposts(context.Context, *ListRepostsRequest) (*ListRepostsResponse, error)
 	ListCommentLikers(context.Context, *ListCommentLikersRequest) (*ListCommentLikersResponse, error)
 	// Require an access token; the author is the caller. A comment is
 	// deleted by its author, by the author of the post or by the owner of
@@ -1208,6 +1225,9 @@ func (UnimplementedPostServiceServer) UnlikePost(context.Context, *UnlikePostReq
 }
 func (UnimplementedPostServiceServer) ListPostLikers(context.Context, *ListPostLikersRequest) (*ListPostLikersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPostLikers not implemented")
+}
+func (UnimplementedPostServiceServer) ListReposts(context.Context, *ListRepostsRequest) (*ListRepostsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListReposts not implemented")
 }
 func (UnimplementedPostServiceServer) ListCommentLikers(context.Context, *ListCommentLikersRequest) (*ListCommentLikersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListCommentLikers not implemented")
@@ -1703,6 +1723,24 @@ func _PostService_ListPostLikers_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).ListPostLikers(ctx, req.(*ListPostLikersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListReposts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListRepostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListReposts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListReposts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListReposts(ctx, req.(*ListRepostsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2703,6 +2741,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPostLikers",
 			Handler:    _PostService_ListPostLikers_Handler,
+		},
+		{
+			MethodName: "ListReposts",
+			Handler:    _PostService_ListReposts_Handler,
 		},
 		{
 			MethodName: "ListCommentLikers",
