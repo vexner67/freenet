@@ -27,6 +27,10 @@ type fakeAuth struct {
 	clientIP  string
 	requestID string
 	err       error
+	// client is where the last sign-in or refresh came from.
+	client model.Client
+	// ended are the sessions EndSession was asked to end.
+	ended []string
 }
 
 func (f *fakeAuth) RequestCode(ctx context.Context, _, clientIP string) error {
@@ -35,15 +39,40 @@ func (f *fakeAuth) RequestCode(ctx context.Context, _, clientIP string) error {
 	return f.err
 }
 
-func (f *fakeAuth) VerifyCode(_ context.Context, email, code string) (model.Tokens, error) {
+func (f *fakeAuth) VerifyCode(_ context.Context, email, code string, client model.Client) (model.Tokens, error) {
+	f.client = client
 	if code != "123456" {
 		return model.Tokens{}, failure.New(failure.Unauthenticated, "invalid or expired code")
 	}
 	return model.Tokens{AccessToken: "access-" + email, RefreshToken: "refresh"}, nil
 }
 
-func (f *fakeAuth) RefreshToken(context.Context, string) (model.Tokens, error) {
+func (f *fakeAuth) RefreshToken(_ context.Context, _ string, client model.Client) (model.Tokens, error) {
+	f.client = client
 	return model.Tokens{AccessToken: "a2", RefreshToken: "r2"}, f.err
+}
+
+// ListSessions: ann is signed in on a laptop, which asks, and on a phone.
+func (f *fakeAuth) ListSessions(context.Context, string) ([]model.Session, error) {
+	signedIn := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+
+	return []model.Session{
+		{ID: "s-laptop", CreatedAt: signedIn, LastUsedAt: signedIn.Add(time.Hour), IP: "203.0.113.9", UserAgent: "Mozilla/5.0 (laptop)", Current: true},
+		{ID: "s-phone", CreatedAt: signedIn.Add(-time.Hour), LastUsedAt: signedIn},
+	}, f.err
+}
+
+func (f *fakeAuth) EndSession(_ context.Context, _, sessionID string) error {
+	if sessionID != "s-laptop" && sessionID != "s-phone" {
+		return failure.New(failure.NotFound, "session not found")
+	}
+
+	f.ended = append(f.ended, sessionID)
+	return nil
+}
+
+func (f *fakeAuth) EndOtherSessions(context.Context, string) (int, error) {
+	return 1, f.err
 }
 
 func (f *fakeAuth) Logout(context.Context, string) error { return f.err }

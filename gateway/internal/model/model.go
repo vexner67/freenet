@@ -9,6 +9,27 @@ type Tokens struct {
 	RefreshToken string
 }
 
+// Client is where a request comes from, as far as the gateway can tell:
+// the session it signs in or refreshes remembers it for its owner.
+type Client struct {
+	IP string
+	// UserAgent is what the browser calls itself.
+	UserAgent string
+}
+
+// Session is one place the user is signed in at.
+type Session struct {
+	ID        string
+	CreatedAt time.Time
+	// LastUsedAt is when its tokens were last issued.
+	LastUsedAt time.Time
+	// IP and UserAgent are where from, "" when unknown.
+	IP        string
+	UserAgent string
+	// Current: the session of the access token that asks.
+	Current bool
+}
+
 // Profile fields hold the values of the user service: enums are lowercase
 // names ("male", "in_love"), "" means not set.
 type Profile struct {

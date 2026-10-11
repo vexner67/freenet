@@ -102,6 +102,66 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/me/sessions:
+    get:
+      summary: Where you are signed in ("Сессии" of the settings)
+      description: >-
+        The sessions that can still be continued, the latest used first, at
+        most 100. A session is a sign-in: it remembers where from it was
+        made and where from and when its tokens were last refreshed. The
+        address and the browser's name are what the client said; either is
+        "" when unknown. Nobody else sees them.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The sessions
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sessions]
+                properties:
+                  sessions:
+                    type: array
+                    items: { $ref: "#/components/schemas/Session" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    delete:
+      summary: Sign out everywhere but here ("Сбросить все сессии")
+      description: >-
+        Ends every session of yours but the one of the access token. Their
+        refresh tokens stop working at once; an access token issued already
+        lives out its minutes.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: How many sessions ended
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ended]
+                properties:
+                  ended: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/sessions/{id}:
+    delete:
+      summary: Sign out of one of your sessions
+      description: >-
+        The session of the access token can be ended too; that is signing
+        out. An access token issued already lives out its minutes.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: The session is ended }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/me/profile:
     put:
       summary: Replace the profile ("Основное" of "Редактировать страницу")
@@ -3706,6 +3766,19 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
+    Session:
+      type: object
+      required: [id, createdAt, lastUsedAt, ip, userAgent, current]
+      properties:
+        id: { type: string, format: uuid }
+        createdAt: { type: string, format: date-time, description: The sign-in }
+        lastUsedAt:
+          type: string
+          format: date-time
+          description: When its tokens were last issued, at the sign-in or a refresh
+        ip: { type: string, description: 'Where from, "" when unknown' }
+        userAgent: { type: string, description: 'What the browser called itself, "" when unknown' }
+        current: { type: boolean, description: The session of the access token that asks }
     Error:
       type: object
       required: [error]

@@ -3,6 +3,7 @@ package backend
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -91,6 +92,32 @@ func TestEnums(t *testing.T) {
 type fakeAuthAPI struct {
 	authv1.AuthServiceClient
 	md metadata.MD
+}
+
+func (f *fakeAuthAPI) VerifyCode(ctx context.Context, _ *authv1.VerifyCodeRequest, _ ...grpc.CallOption) (*authv1.TokenPair, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &authv1.TokenPair{AccessToken: "a", RefreshToken: "r"}, nil
+}
+
+func (f *fakeAuthAPI) ListSessions(ctx context.Context, _ *authv1.ListSessionsRequest, _ ...grpc.CallOption) (*authv1.ListSessionsResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	used := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+
+	return &authv1.ListSessionsResponse{Sessions: []*authv1.Session{{
+		Id: "s1", CreatedAt: timestamppb.New(used.Add(-time.Hour)), LastUsedAt: timestamppb.New(used),
+		Ip: "203.0.113.7", UserAgent: "Mozilla/5.0", Current: true,
+	}}}, nil
+}
+
+func (f *fakeAuthAPI) EndSession(_ context.Context, req *authv1.EndSessionRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	if req.GetSessionId() != "s1" {
+		return nil, status.Error(codes.NotFound, "session not found")
+	}
+	return &emptypb.Empty{}, nil
+}
+
+func (f *fakeAuthAPI) EndOtherSessions(context.Context, *authv1.EndOtherSessionsRequest, ...grpc.CallOption) (*authv1.EndOtherSessionsResponse, error) {
+	return &authv1.EndOtherSessionsResponse{Ended: 3}, nil
 }
 
 func (f *fakeAuthAPI) RequestCode(ctx context.Context, _ *authv1.RequestCodeRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -765,5 +792,58 @@ func TestNotifications_Subscribe(t *testing.T) {
 
 	if _, err = next(); failure.From(err).Kind != failure.TooManyRequests {
 		t.Fatalf("the end of the stream: %v, want TooManyRequests", err)
+	}
+}
+
+func TestAuthSessions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	api := &fakeAuthAPI{}
+	auth := NewAuth(api)
+
+	// What the browser calls itself is the client's word: gRPC metadata
+	// takes only printable ASCII of it, and auth keeps 255 bytes.
+	agent := "Mozilla/5.0 (тест)\r\n " + strings.Repeat("x", 300)
+	if _, err := auth.VerifyCode(ctx, "ann@example.com", "123456", model.Client{IP: "198.51.100.7", UserAgent: agent}); err != nil {
+		t.Fatal(err)
+	}
+	if got := api.md.Get(authv1.ClientIPMetadata); len(got) != 1 || got[0] != "198.51.100.7" {
+		t.Fatalf("client ip metadata = %v", got)
+	}
+	got := api.md.Get(authv1.UserAgentMetadata)
+	if len(got) != 1 || len(got[0]) != 255 || !strings.HasPrefix(got[0], "Mozilla/5.0 () xxx") {
+		t.Fatalf("user agent metadata = %q", got)
+	}
+
+	if _, err := auth.VerifyCode(ctx, "ann@example.com", "123456", model.Client{}); err != nil {
+		t.Fatal(err)
+	}
+	if len(api.md.Get(authv1.ClientIPMetadata))+len(api.md.Get(authv1.UserAgentMetadata)) != 0 {
+		t.Fatalf("an unknown client is stated: %v", api.md)
+	}
+
+	sessions, err := auth.ListSessions(ctx, "tok")
+	if err != nil || len(sessions) != 1 {
+		t.Fatalf("ListSessions = %v, %v", sessions, err)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
+		t.Fatalf("authorization metadata = %v", got)
+	}
+	used := time.Date(2026, 10, 1, 12, 0, 0, 0, time.UTC)
+	want := model.Session{ID: "s1", CreatedAt: used.Add(-time.Hour), LastUsedAt: used, IP: "203.0.113.7", UserAgent: "Mozilla/5.0", Current: true}
+	if sessions[0] != want {
+		t.Fatalf("session = %+v", sessions[0])
+	}
+
+	if err = auth.EndSession(ctx, "tok", "s1"); err != nil {
+		t.Fatalf("EndSession: %v", err)
+	}
+	if err = auth.EndSession(ctx, "tok", "s2"); failure.From(err).Kind != failure.NotFound {
+		t.Fatalf("EndSession of someone else's: %v", err)
+	}
+
+	if n, err := auth.EndOtherSessions(ctx, "tok"); err != nil || n != 3 {
+		t.Fatalf("EndOtherSessions = %d, %v", n, err)
 	}
 }
