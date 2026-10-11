@@ -288,6 +288,29 @@ export const api = {
   // albumPhoto shares a photo of an album the same way.
   sendMessage: (nickname, text, photos = [], post = '', forward = [], albumPhoto = '') =>
     authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos, post, forward, albumPhoto }),
+  // Chats of several people ("беседы"): members are nicknames.
+  createChat: (title, members) => authorized('POST', '/api/v1/chats', { title, members }),
+  chat: (id) => authorized('GET', `/api/v1/chats/${encodeURIComponent(id)}`),
+  renameChat: (id, title) => authorized('PATCH', `/api/v1/chats/${encodeURIComponent(id)}`, { title }),
+  addChatMembers: (id, members) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/members`, { members }),
+  removeChatMember: (id, nickname) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}/members/${encodeURIComponent(nickname)}`),
+  leaveChat: (id) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}/membership`),
+  returnToChat: (id) => authorized('PUT', `/api/v1/chats/${encodeURIComponent(id)}/membership`),
+  // Older messages with cursor, newer ones with after (polling).
+  chatMessages(id, { cursor = '', after = '' } = {}) {
+    const query = new URLSearchParams();
+    if (cursor) query.set('cursor', cursor);
+    if (after) query.set('after', after);
+    const path = `/api/v1/chats/${encodeURIComponent(id)}/messages`;
+    return authorized('GET', query.size ? `${path}?${query}` : path);
+  },
+  sendChatMessage: (id, text, photos = []) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos }),
+  markChatRead: (id, upTo) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/read`, { upTo }),
+  // A message of a chat whole; your own is edited and taken back within
+  // a day.
+  chatMessage: (id) => authorized('GET', `/api/v1/chat-messages/${encodeURIComponent(id)}`),
+  editChatMessage: (id, text) => authorized('PATCH', `/api/v1/chat-messages/${encodeURIComponent(id)}`, { text }),
+  deleteChatMessage: (id) => authorized('DELETE', `/api/v1/chat-messages/${encodeURIComponent(id)}`),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
   // Your own message, from both sides, within a day of sending: it stays
   // in the dialog as "Сообщение удалено"; forMe

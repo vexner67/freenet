@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel } from '../static/labels.js';
+import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -598,4 +598,52 @@ test('ignoreLabel names the link of a page as openvk does', () => {
 test('errorText knows what ignoring refuses', () => {
   assert.equal(errorText(new Error('too many ignored sources')), 'Превышен лимит игнорируемых источников.');
   assert.equal(errorText(new Error('you cannot ignore yourself')), 'Нельзя игнорировать самого себя.');
+});
+
+test('chats are named, counted and told of', () => {
+  const ann = { name: 'Анна', surname: 'Иванова', gender: 'female' };
+  const petr = { name: 'Пётр', surname: 'Петров', gender: 'male' };
+
+  assert.equal(chatTitle({ title: 'Поход' }), 'Поход');
+  assert.equal(chatTitle({ title: '' }), 'Беседа');
+
+  assert.equal(defaultChatTitle([ann, petr]), 'Анна, Пётр');
+  assert.equal(defaultChatTitle([]), '');
+  // As many names as 64 characters hold, never half a name.
+  const many = Array.from({ length: 20 }, () => ({ name: 'Александр' }));
+  const title = defaultChatTitle(many);
+  assert.ok([...title].length <= 64 && title.endsWith('Александр') && title.split(', ').length === 6);
+
+  assert.equal(chatMembers(1), '1 участник');
+  assert.equal(chatMembers(3), '3 участника');
+  assert.equal(chatMembers(50), '50 участников');
+
+  assert.equal(accusativeName(petr), 'Петра Петрова');
+  assert.equal(accusativeName(ann), 'Анну Иванову');
+  assert.equal(accusativeName({ name: 'Мария', surname: 'Белая', gender: 'female' }), 'Марию Белую');
+  assert.equal(accusativeName({ name: 'Ann', surname: 'Lee', gender: 'female' }), 'Ann Lee');
+
+  assert.equal(chatAction({ action: 'create', text: 'Поход', author: ann }), 'создала беседу «Поход»');
+  assert.equal(chatAction({ action: 'create', text: '', author: petr }), 'создал беседу');
+  assert.equal(chatAction({ action: 'title', text: 'Горы', author: petr }), 'изменил название беседы на «Горы»');
+  assert.equal(chatAction({ action: 'title', text: '', author: ann }), 'убрала название беседы');
+  assert.equal(chatAction({ action: 'invite', author: ann, target: petr }), 'пригласила Петра Петрова');
+  assert.deepEqual(chatActionParts({ action: 'kick', author: petr, target: ann }), ['исключил ', 'Анну Иванову', ' из беседы']);
+  assert.equal(chatAction({ action: 'leave', author: { gender: 'neutral' } }), 'покинули беседу');
+  assert.equal(chatAction({ action: 'return', author: ann }), 'вернулась в беседу');
+  assert.equal(chatAction({ action: '', author: ann }), '');
+
+  assert.equal(chatPreview(null), '');
+  assert.equal(chatPreview({ action: 'leave', author: petr }), 'Пётр покинул беседу');
+  assert.equal(chatPreview({ action: '', text: 'иду', author: petr, out: false }), 'Пётр: иду');
+  assert.equal(chatPreview({ action: '', text: 'иду', author: ann, out: true }), 'иду');
+  assert.equal(chatPreview({ action: '', text: '', photos: [{}], author: petr }), 'Пётр: Фотография');
+  assert.equal(chatPreview({ action: '', deleted: true, text: '', author: petr }), 'Пётр: Сообщение удалено');
+
+  assert.equal(chatStateText('kicked'), 'Вас исключили из беседы.');
+  assert.equal(chatStateText('left'), 'Вы покинули беседу.');
+
+  assert.deepEqual(chatsInvites.map(([value]) => value), ['everyone', 'following', 'nobody']);
+  assert.equal(errorText({ message: 'you cannot add this user to a chat' }), 'Пользователь запретил добавлять себя в беседы.');
+  assert.equal(errorText({ message: 'a chat needs at least two other people' }), 'В беседе должно быть как минимум два других пользователя.');
 });

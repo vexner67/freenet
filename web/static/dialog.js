@@ -283,7 +283,7 @@ function openForward(messages) {
   let latest = [option(peer)];
 
   api.dialogs().then((page) => {
-    latest = [option(peer), ...page.dialogs.filter((d) => d.peer.nickname !== nickname).map((d) => option(d.peer))];
+    latest = [option(peer), ...page.dialogs.filter((d) => d.peer && d.peer.nickname !== nickname).map((d) => option(d.peer))];
     if (!person.value.trim()) chats.replaceChildren(...latest);
   }).catch((e) => showError(error, e));
 

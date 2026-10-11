@@ -78,6 +78,13 @@ export const wallWrites = [
 
 // messagesWrites is "Кто может писать мне сообщения" of openvk, with its
 // "Друзья" as the people you follow; whoever you wrote to may answer.
+// chatsInvites are "Кто может добавлять меня в чаты" of openvk.
+export const chatsInvites = [
+  ['everyone', 'Все желающие'],
+  ['following', 'Те, на кого я подписан(а)'],
+  ['nobody', 'Никто'],
+];
+
 export const messagesWrites = [
   ['everyone', 'Все желающие'],
   ['following', 'Те, на кого я подписан(а)'],
@@ -819,6 +826,15 @@ const errorTexts = {
   'the same photo is attached twice': 'Эта фотография уже прикреплена.',
   'fill in your profile before posting': 'Сначала заполните свою страницу.',
   'you cannot post on this wall': 'Хозяин страницы не разрешает вам писать у него на стене.',
+  'you cannot add this user to a chat': 'Пользователь запретил добавлять себя в беседы.',
+  'a chat needs at least two other people': 'В беседе должно быть как минимум два других пользователя.',
+  'the chat is full': 'В беседе не может быть больше 50 человек.',
+  'you are not in this chat': 'Вы не состоите в этой беседе.',
+  'the user has left the chat': 'Пользователь сам покинул беседу и может вернуться только сам.',
+  'you were removed from this chat': 'Вас исключили из беседы: вернуться можно, только если вас снова пригласят.',
+  'you cannot remove yourself, leave the chat instead': 'Себя нельзя исключить — покиньте чат.',
+  'chat not found': 'Такой беседы нет.',
+  'member not found': 'Этого человека нет в беседе.',
   'you cannot write to this user': 'Вы не можете отправить сообщение этому пользователю, поскольку он ограничил круг лиц, которые могут присылать ему сообщения.',
   'you cannot comment on this post': 'Вы не можете комментировать эту запись.',
   'topic title is empty': 'Заголовок не указан.',
@@ -1013,6 +1029,93 @@ export function messagePreview(m) {
   if (m.forwardedCount) return forwardedCount(m.forwardedCount);
 
   return '';
+}
+
+// Chats of several people ("беседы"). A chat without a title of its own
+// is "Беседа"; a new one left untitled is named by who is in it, as VK
+// names them: "Анна, Пётр, Иван", at most 64 characters.
+export const CHAT_TITLE_MAX = 64;
+
+export function chatTitle(chat) {
+  return chat.title || 'Беседа';
+}
+
+export function defaultChatTitle(people) {
+  let title = '';
+
+  for (const p of people) {
+    const next = title ? `${title}, ${p.name}` : p.name;
+    if ([...next].length > CHAT_TITLE_MAX) break;
+    title = next;
+  }
+
+  return title;
+}
+
+// chatMembers is under the title of a chat: "3 участника".
+export function chatMembers(n) {
+  return `${n} ${plural(n, ['участник', 'участника', 'участников'])}`;
+}
+
+// accusativeName is "Петра Петрова", "Анну Иванову": whom someone added
+// to a chat or removed from it. A man's is his genitive; a woman's is
+// declined by its endings, and what the rules do not know stays as it is.
+export function accusativeName(person) {
+  if (person.gender !== 'female') return genitiveName(person);
+
+  const name = (person.name ?? '').replace(/а$/, 'у').replace(/я$/, 'ю');
+  const surname = (person.surname ?? '').replace(/ая$/, 'ую').replace(/([вн])а$/, '$1у');
+
+  return [name, surname].filter(Boolean).join(' ');
+}
+
+// chatActionParts is what a message of a chat tells of instead of saying
+// something, after the name of who did it: "создала беседу «Поход»",
+// "пригласил Петра Петрова", "исключил Петра Петрова из беседы" — as what
+// stands before the name of whom it is about, that name, and what follows.
+export function chatActionParts(m) {
+  const g = m.author?.gender;
+  const whom = m.target ? accusativeName(m.target) : '';
+
+  switch (m.action) {
+    case 'create':
+      return [`${byGender(g, 'создал', 'создала', 'создали')} беседу` + (m.text ? ` «${m.text}»` : ''), '', ''];
+    case 'title':
+      return [m.text
+        ? `${byGender(g, 'изменил', 'изменила', 'изменили')} название беседы на «${m.text}»`
+        : `${byGender(g, 'убрал', 'убрала', 'убрали')} название беседы`, '', ''];
+    case 'invite':
+      return [`${byGender(g, 'пригласил', 'пригласила', 'пригласили')} `, whom, ''];
+    case 'kick':
+      return [`${byGender(g, 'исключил', 'исключила', 'исключили')} `, whom, ' из беседы'];
+    case 'leave':
+      return [`${byGender(g, 'покинул', 'покинула', 'покинули')} беседу`, '', ''];
+    case 'return':
+      return [`${byGender(g, 'вернулся', 'вернулась', 'вернулись')} в беседу`, '', ''];
+    default:
+      return ['', '', ''];
+  }
+}
+
+export function chatAction(m) {
+  return chatActionParts(m).join('');
+}
+
+// chatPreview is the last message of a chat in one line, for the list of
+// dialogs: who and what, "Пётр: иду" or "Анна создала беседу «Поход»".
+export function chatPreview(m) {
+  if (!m) return '';
+  if (m.action) return `${m.author.name} ${chatAction(m)}`;
+
+  const said = messagePreview(m);
+
+  return m.out ? said : `${m.author.name}: ${said}`;
+}
+
+// chatStateText is why someone who is not in a chat anymore cannot write
+// there.
+export function chatStateText(state) {
+  return state === 'kicked' ? 'Вас исключили из беседы.' : 'Вы покинули беседу.';
 }
 
 // selectedCount is over a dialog while messages are selected: "Выбрано 2

@@ -4,21 +4,45 @@
 // message makes the list load afresh, since only the server knows what is
 // last now. The form above searches the messages (?q=): of all dialogs, or
 // of the one the dialog page sent here from (?peer=<nickname>); a found
-// message opens its dialog where it was said (?msg=<id>).
+// message opens its dialog where it was said (?msg=<id>). Chats of several
+// people ("беседы") stand in the same list, and "Новая беседа" starts one.
 
 import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
-import { formatPostDate, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
+import { openNewChat, chatPath } from './chats.js';
+import { chatPreview, chatTitle, formatPostDate, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showError, hideError } from './layout.js';
 
 const PREVIEW = 120;
 
 let me;
 let cursor = '';
-// Peer ID → { dialog, node }, to move and redraw a dialog live.
+// Peer ID, or "chat:<id>" → { dialog, node }, to move and redraw a row live.
 const shown = new Map();
 
+const keyOf = (d) => (d.chat ? 'chat:' + d.chat.id : d.peer.id);
+
+// chatNode is a chat of several people as a row: its name, when it was
+// last written to, and who said what.
+function chatNode(d) {
+  const m = d.chat.lastMessage;
+
+  return el('a', { className: 'dialog', href: chatPath(d.chat.id) },
+    el('img', { className: 'dialog-avatar', src: '/static/chat.svg', alt: '' }),
+    el('div', { className: 'dialog-info' },
+      el('b', { className: 'dialog-name', textContent: chatTitle(d.chat) }),
+      el('div', { className: 'dialog-date', textContent: formatPostDate(m?.createdAt ?? d.chat.createdAt) }),
+    ),
+    el('div', { className: d.unread ? 'dialog-message unread' : 'dialog-message' },
+      m && el('img', { src: avatarURL(m.author, 'small'), alt: '' }),
+      el('div', { className: 'dialog-text', textContent: snippet(chatPreview(m), PREVIEW) }),
+    ),
+  );
+}
+
 function dialogNode(d) {
+  if (d.chat) return chatNode(d);
+
   const m = d.lastMessage;
   // Unread either way, as on openvk: the peer's message I have not read,
   // or mine the peer has not read yet.
@@ -40,9 +64,9 @@ function dialogNode(d) {
 
 // show draws a dialog in place of its old row, or at the top.
 function show(d, atTop) {
-  const old = shown.get(d.peer.id);
+  const old = shown.get(keyOf(d));
   const node = dialogNode(d);
-  shown.set(d.peer.id, { dialog: d, node });
+  shown.set(keyOf(d), { dialog: d, node });
 
   if (old && !atTop) {
     old.node.replaceWith(node);
@@ -87,6 +111,38 @@ function listenToEvents() {
     entry.dialog.lastMessage = { ...e.message, read: entry.dialog.lastMessage.read };
     show(entry.dialog, false);
   });
+
+  // A chat written to comes to the top; one not shown yet, as a new one I
+  // was added to, is known only to the server.
+  onEvent('chat_message', (e) => {
+    const entry = shown.get('chat:' + e.chat);
+    if (!entry) {
+      reload();
+      return;
+    }
+
+    const { dialog } = entry;
+    dialog.chat.lastMessage = e.message;
+    if (e.message.action === 'title') dialog.chat.title = e.message.text;
+    dialog.unread = !e.message.out;
+    show(dialog, true);
+  });
+
+  onEvent('chat_edit', (e) => {
+    const entry = shown.get('chat:' + e.chat);
+    if (entry?.dialog.chat.lastMessage?.id !== e.message.id) return;
+
+    entry.dialog.chat.lastMessage = e.message;
+    show(entry.dialog, false);
+  });
+
+  onEvent('chat_read', (e) => {
+    const entry = shown.get('chat:' + e.chat);
+    if (!entry || (entry.dialog.chat.lastMessage?.id ?? '') > e.upTo) return;
+
+    entry.dialog.unread = false;
+    show(entry.dialog, false);
+  });
 }
 
 // reload draws the list from its first page again, one reload after
@@ -107,11 +163,11 @@ async function loadMore() {
 
   try {
     const page = await api.dialogs(cursor);
-    const fresh = page.dialogs.filter((d) => !shown.has(d.peer.id));
+    const fresh = page.dialogs.filter((d) => !shown.has(keyOf(d)));
 
     $('dialogs').append(...fresh.map((d) => {
       const node = dialogNode(d);
-      shown.set(d.peer.id, { dialog: d, node });
+      shown.set(keyOf(d), { dialog: d, node });
       return node;
     }));
     cursor = page.nextCursor;
@@ -187,6 +243,7 @@ if (!me) {
 } else {
   renderChrome(me);
   showSearch();
+  $('new-chat').addEventListener('click', () => openNewChat(me));
 
   if (query) {
     $('more').addEventListener('click', searchMore);

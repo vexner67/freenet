@@ -516,6 +516,21 @@ a.like:hover svg { opacity: .7; }
 }
 .messenger-buttons { display: flex; align-items: center; gap: 10px; }
 .messenger-box .attachments { margin: 0 0 6px; }
+/* Chats of several people: the line of what happened between the
+   messages, and the people to tick in "Новая беседа". */
+.chat-bar a, .messenger-blocked a, .page-title .aside { cursor: pointer; }
+.chat-action { margin: 6px 0; color: #777; text-align: center; }
+.chat-action-date { margin-left: 8px; font-size: 9px; }
+.modal-box.chat-dialog { width: 440px; }
+.modal-body input[type="text"], .modal-body input[type="search"] { padding: 3px 4px; border: 1px solid #c0cad5; font: 11px tahoma, verdana, arial, sans-serif; }
+.chat-people { max-height: 200px; overflow-y: auto; border: 1px solid #dae1e8; }
+.chat-people.tall { max-height: 300px; }
+.chat-people .hint { margin: 10px; text-align: center; }
+.chat-person { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid #eef1f4; cursor: default; }
+label.chat-person { cursor: pointer; }
+.chat-person:last-child { border-bottom: 0; }
+.chat-person img { width: 30px; height: 30px; object-fit: cover; border-radius: 3px; }
+.chat-kick { display: block; font-size: 10px; cursor: pointer; }
 .messenger-blocked { padding: 20px; background: #f9f9f9; border-top: 1px solid #d6d6d6; font-weight: bold; text-align: center; }
 
 /* Photos of a post, as on openvk: one at its own proportions, more as tiles. */
