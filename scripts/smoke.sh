@@ -168,9 +168,9 @@ for svc in "${services[@]}"; do
 done
 step "healthcheck: every service is healthy"
 
-# Prometheus scrapes every 10s: the first round may be on its way.
+# Prometheus scrapes every 30s: the first round may be on its way.
 up=
-for _ in $(seq 1 30); do
+for _ in $(seq 1 60); do
 	up=$(curl -sf "$prometheus/api/v1/query?query=up%7Bjob%3D%22freenet%22%7D" | jq -r '[.data.result[] | select(.value[1] == "1") | .metric.service] | sort | join(" ")' || true)
 	[ "$up" = "$(printf '%s\n' "${services[@]}" | sort | xargs)" ] && break
 	sleep 1
@@ -178,8 +178,7 @@ done
 [ "$up" = "$(printf '%s\n' "${services[@]}" | sort | xargs)" ] || die "Prometheus at $prometheus sees up: ${up:-nothing}"
 step "metrics: Prometheus scrapes every service"
 
-# The exporters are scraped every 30s. Every database with a service of
-# its own, and Redis.
+# Every database with a service of its own, and Redis.
 watched="auth club message notification post redis user"
 stores=
 for _ in $(seq 1 60); do

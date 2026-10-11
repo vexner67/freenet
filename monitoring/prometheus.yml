@@ -1,8 +1,10 @@
 # Prometheus of the Docker stack (`make stack`): every service serves its
 # metrics on METRICS_PORT inside the compose network. alerts.yml says when
 # something is wrong; Alertmanager takes it from there.
+# Scraped twice a minute: the alerts look at five minutes and more, and a
+# small server feels every round of scrapes.
 global:
-  scrape_interval: 10s
+  scrape_interval: 30s
   evaluation_interval: 30s
 
 rule_files:
@@ -33,10 +35,8 @@ scrape_configs:
       - targets: ["club:9057"]
         labels: { service: club }
 
-  # The databases and Redis, through their exporters (compose.yaml): they
-  # change slowly, and every scrape is a round of queries.
+  # The databases and Redis, through their exporters (compose.yaml).
   - job_name: postgres
-    scrape_interval: 30s
     static_configs:
       - targets: ["auth-postgres-exporter:9187"]
         labels: { db: auth }
@@ -52,6 +52,5 @@ scrape_configs:
         labels: { db: club }
 
   - job_name: redis
-    scrape_interval: 30s
     static_configs:
       - targets: ["redis-exporter:9121"]
