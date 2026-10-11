@@ -354,6 +354,46 @@ export function blacklistCount(n) {
   return `В вашем чёрном списке ${n} ${plural(n, ['пользователь', 'пользователя', 'пользователей'])}.`;
 }
 
+// sessionsCount heads the list of sessions in the settings.
+export function sessionsCount(n) {
+  return `Вы вошли на сайт с ${n} ${plural(n, ['устройства', 'устройств', 'устройств'])}.`;
+}
+
+const browsers = [
+  [/YaBrowser\//, 'Яндекс Браузер'],
+  [/Edg(e|A|iOS)?\//, 'Edge'],
+  [/OPR\/|Opera/, 'Opera'],
+  [/Firefox\/|FxiOS\//, 'Firefox'],
+  [/Chrome\/|CriOS\//, 'Chrome'],
+  [/Version\/.*Safari\//, 'Safari'],
+];
+
+const systems = [
+  [/Android/, 'Android'],
+  [/iPhone/, 'iPhone'],
+  [/iPad/, 'iPad'],
+  [/Windows/, 'Windows'],
+  [/CrOS/, 'ChromeOS'],
+  [/Mac OS X|Macintosh/, 'macOS'],
+  [/Linux/, 'Linux'],
+];
+
+// deviceName says what a session is used from by what its browser called
+// itself: "Chrome, Windows". The order of the lists matters: Edge and
+// Opera call themselves Chrome too, and Android calls itself Linux. A name
+// that says nothing we know is shown as it is, cut short.
+export function deviceName(userAgent) {
+  const agent = (userAgent ?? '').trim();
+  if (!agent) return 'Неизвестное устройство';
+
+  const known = [browsers, systems]
+    .map((list) => list.find(([pattern]) => pattern.test(agent))?.[1])
+    .filter(Boolean);
+  if (known.length) return known.join(', ');
+
+  return agent.length > 60 ? agent.slice(0, 60) + '…' : agent;
+}
+
 // genitiveName is "Петра Петрова" for "на стене Петра Петрова", as openvk
 // says it. Russian names are declined by their endings; whatever the
 // rules do not know (Latin letters, Шевченко, Кармен) stays as it is.
@@ -698,6 +738,7 @@ const errorTexts = {
   'status is too long': 'Статус длиннее 200 символов.',
   'birthday is in the future': 'Дата рождения не может быть в будущем.',
   'user not found': 'Страница не найдена.',
+  'session not found': 'Эта сессия уже завершена.',
   'post text is empty': 'Напишите что-нибудь.',
   'post text is too long': 'Запись длиннее 60 000 символов.',
   'post not found': 'Запись уже удалена.',

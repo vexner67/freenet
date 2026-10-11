@@ -641,6 +641,11 @@ a.like:hover svg { opacity: .7; }
 .blacklist-row { display: flex; justify-content: space-between; align-items: center; }
 .blacklist-row .person { flex: 1; }
 
+/* "Безопасность" of the settings: the sessions with "Завершить". */
+.session-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #ececec; }
+.session-device { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+#end-sessions-block { margin-top: 14px; }
+
 /* The page of a community, as openvk's: the information, members and
    wall on the left, the photo and links in a narrow column on the right
    (a person's page is the other way round). */

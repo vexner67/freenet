@@ -26,6 +26,7 @@
       <div class="page-body">
         <div class="tabs">
           <a id="tab-main" href="/settings">Основное</a>
+          <a id="tab-security" href="/settings?act=security">Безопасность</a>
           <a id="tab-privacy" href="/settings?act=privacy">Приватность</a>
           <a href="/settings/blacklist">Чёрный список</a>
           <a id="tab-interface" href="/settings?act=interface">Внешний вид</a>
@@ -59,6 +60,17 @@
           </form>
 
           <p class="hint settings-delete">Вы также можете <a id="delete-link">удалить свою страницу</a>.</p>
+        </div>
+
+        <div id="security" hidden>
+          <div class="section-title">Сессии</div>
+          <p class="hint" id="sessions-count"></p>
+          <div id="sessions"></div>
+
+          <div id="end-sessions-block" hidden>
+            <p>Если вы хотите выйти из Freenet на всех остальных устройствах, нажмите на кнопку ниже.</p>
+            <div class="actions"><button class="button" type="button" id="end-sessions">Сбросить все сессии</button></div>
+          </div>
         </div>
 
         <form id="privacy" hidden>

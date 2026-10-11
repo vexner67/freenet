@@ -142,6 +142,9 @@ export const api = {
   },
 
   me: () => authorized('GET', '/api/v1/me'),
+  sessions: () => authorized('GET', '/api/v1/me/sessions'),
+  endSession: (id) => authorized('DELETE', `/api/v1/me/sessions/${encodeURIComponent(id)}`),
+  endOtherSessions: () => authorized('DELETE', '/api/v1/me/sessions'),
   updateProfile: (profile) => authorized('PUT', '/api/v1/me/profile', profile),
   // postLikers and commentLikers are openvk's "Понравилось N людям".
   postLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/posts/${encodeURIComponent(id)}/likes`, cursor, limit)),
