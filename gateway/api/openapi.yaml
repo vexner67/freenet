@@ -410,9 +410,10 @@ paths:
                   - $ref: "#/components/schemas/FollowStats"
                   - $ref: "#/components/schemas/Relation"
                   - type: object
-                    required: [access]
+                    required: [access, ignoredByMe]
                     properties:
                       access: { $ref: "#/components/schemas/Access" }
+                      ignoredByMe: { type: boolean, description: "Your news leave this wall out (\"Игнорируемые источники\"); false without a token" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "404": { $ref: "#/components/responses/NotFound" }
 
@@ -460,6 +461,99 @@ paths:
       security: [{ bearer: [] }]
       responses:
         "204": { description: Taken off }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/feed/ignored:
+    get:
+      summary: The sources your news leave out, newest first
+      description: |
+        "Игнорируемые источники" of openvk's feed settings: the people and
+        the communities whose walls your feeds leave out, at most 50. A
+        community comes with `club`, a deleted page with `deactivated`;
+        an erased page stops being ignored by itself.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The ignored sources
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [sources]
+                properties:
+                  sources:
+                    type: array
+                    items: { $ref: "#/components/schemas/Author" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    delete:
+      summary: Stop ignoring several sources ("Не игнорировать")
+      description: Idempotent.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: The IDs of 1–10 people or communities, repeated
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 10
+            items: { type: string, format: uuid }
+      responses:
+        "204": { description: Not ignored any more }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/feed/ignored/users/{nickname}:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Leave the wall of the user out of your news ("Игнорировать пользователя")
+      description: |
+        Idempotent. 400 `you cannot ignore yourself`; 409 `too many ignored
+        sources` once 50 are ignored.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Ignored }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      summary: Stop ignoring the user ("Не игнорировать пользователя")
+      description: Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Not ignored any more }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/feed/ignored/clubs/{ref}:
+    parameters:
+      - name: ref
+        in: path
+        required: true
+        description: The address of the community or its ID
+        schema: { type: string }
+    put:
+      summary: Leave the wall of the community out of your news ("Игнорировать группу")
+      description: Idempotent. 409 `too many ignored sources` once 50 are ignored.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Ignored }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { $ref: "#/components/responses/Conflict" }
+    delete:
+      summary: Stop ignoring the community ("Не игнорировать группу")
+      description: Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Not ignored any more }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
@@ -3972,15 +4066,30 @@ paths:
         the name of a community. A post on the wall of a community you run
         comes with `moderated`: you may delete, pin and put it away.
 
-        With `type=all` it is "Все новости" of openvk instead: what every
-        wall says itself (people on their own walls, communities in their
-        name), whomever you follow.
+        With `type=all` it is "Все новости" of openvk instead: the posts of
+        every wall, whomever you follow.
+
+        "Настройки ленты" of openvk come with the request and are not
+        kept by the server. The walls you ignore
+        (`/api/v1/me/feed/ignored`) are left out of both feeds, whoever
+        wrote there, and an ignored person is not followed to the walls of
+        others either; `ignored=true` brings them back. `alien=false`
+        leaves only what a wall says itself: people on their own walls,
+        communities in their name.
       security: [{ bearer: [] }]
       parameters:
         - name: type
           in: query
           description: "`all` for the posts of everyone; anything else but nothing is 400 `invalid feed type`"
           schema: { type: string, enum: [all] }
+        - name: alien
+          in: query
+          description: "`false` leaves out what people wrote on the walls of others (\"Показывать посты на чужих стенах\" taken off)"
+          schema: { type: boolean, default: true }
+        - name: ignored
+          in: query
+          description: "`true` shows the walls you ignore too (\"Показывать игнорируемые источники\")"
+          schema: { type: boolean, default: false }
         - name: comments
           in: query
           description: "`last` brings each post with `lastComments`, its three newest comments (\"Микроблог\")"
@@ -4081,6 +4190,7 @@ components:
                 properties:
                   role: { type: string, enum: ["", member, admin, owner], description: "What you are in it; empty without a token or membership" }
                   canStartTopic: { type: boolean, description: "You may start a topic in its discussions (\"Создать тему\")" }
+                  ignoredByMe: { type: boolean, description: "Your news leave this wall out; told by `GET /api/v1/clubs/{ref}` alone, with a token" }
                   owner:
                     description: Its creator; null when the page is deleted or erased, or when the community hides its owner from you
                     oneOf:

@@ -398,6 +398,12 @@ type FeedSources struct {
 	// Hidden are the people whose posts are left out: the reader's
 	// blacklist.
 	Hidden []string
+	// OwnOnly leaves only what a wall says itself: its owner on their
+	// wall, a community in its name.
+	OwnOnly bool
+	// Ignored are the walls whose posts are left out: the reader's
+	// "Игнорируемые источники".
+	Ignored []string
 }
 
 // WallPick is which posts of a wall to read: Filter is a tab of openvk's

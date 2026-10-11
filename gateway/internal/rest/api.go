@@ -55,6 +55,12 @@ type Users interface {
 	Blacklist(ctx context.Context, accessToken, cursor string, limit int) (model.UserPage, error)
 	Relation(ctx context.Context, accessToken, userID string) (model.Relation, error)
 
+	// Ignore leaves the wall of a user or a community out of the caller's
+	// news ("Игнорируемые источники"); IgnoredIDs are those walls.
+	Ignore(ctx context.Context, accessToken, sourceID string) error
+	Unignore(ctx context.Context, accessToken string, sourceIDs []string) error
+	IgnoredIDs(ctx context.Context, accessToken string) ([]string, error)
+
 	Follow(ctx context.Context, accessToken, userID string) error
 	Unfollow(ctx context.Context, accessToken, userID string) error
 	FollowingIDs(ctx context.Context, accessToken string) ([]string, error)
@@ -416,6 +422,12 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/users/{nickname}/events", a.listUserEvents)
 
 	mux.HandleFunc("GET /api/v1/feed", a.feed)
+	mux.HandleFunc("GET /api/v1/me/feed/ignored", a.listIgnored)
+	mux.HandleFunc("DELETE /api/v1/me/feed/ignored", a.unignoreMany)
+	mux.HandleFunc("PUT /api/v1/me/feed/ignored/users/{nickname}", a.ignoreUser)
+	mux.HandleFunc("DELETE /api/v1/me/feed/ignored/users/{nickname}", a.unignoreUser)
+	mux.HandleFunc("PUT /api/v1/me/feed/ignored/clubs/{ref}", a.ignoreClub)
+	mux.HandleFunc("DELETE /api/v1/me/feed/ignored/clubs/{ref}", a.unignoreClub)
 
 	mux.HandleFunc("GET /api/v1/users", a.searchUsers)
 

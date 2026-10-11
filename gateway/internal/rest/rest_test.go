@@ -82,6 +82,11 @@ type fakeUsers struct {
 	named []string
 	// blockedIDs are whom the caller blacklisted, as BlockedIDs tells.
 	blockedIDs []string
+	// ignoredIDs are the walls the caller's news leave out, as IgnoredIDs
+	// tells; ignored and unignored are what the gateway asked to change.
+	ignoredIDs []string
+	ignored    string
+	unignored  [][]string
 	// ui is how the site looks to the caller, as GetMe tells.
 	ui                                              model.Interface
 	token, statsToken, followed, unfollowed, listed string
@@ -334,6 +339,20 @@ func (f *fakeUsers) BlockedIDs(context.Context, string) ([]string, error) {
 	return f.blockedIDs, f.err
 }
 
+func (f *fakeUsers) IgnoredIDs(context.Context, string) ([]string, error) {
+	return f.ignoredIDs, f.err
+}
+
+func (f *fakeUsers) Ignore(_ context.Context, token, sourceID string) error {
+	f.token, f.ignored = token, sourceID
+	return f.err
+}
+
+func (f *fakeUsers) Unignore(_ context.Context, token string, sourceIDs []string) error {
+	f.token, f.unignored = token, append(f.unignored, sourceIDs)
+	return f.err
+}
+
 func (f *fakeUsers) FollowingIDs(_ context.Context, token string) ([]string, error) {
 	f.token = token
 	return []string{"u2", "gone"}, nil
@@ -430,8 +449,11 @@ type fakePosts struct {
 	feedMore       []model.Post
 	hideNSFW       bool
 	// hidden are the authors the last feed was asked to leave out.
-	hidden                 []string
-	everyone               bool
+	hidden   []string
+	everyone bool
+	// ownOnly and ignored: the feed settings the gateway passed on.
+	ownOnly                bool
+	ignored                []string
 	newPost                model.NewPost
 	token, cursor, deleted string
 	limit                  int
@@ -693,6 +715,7 @@ func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comme
 func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSources, cursor string, _ int) (model.PostPage, error) {
 	f.token, f.authors, f.walls, f.cursor, f.hideNSFW = token, sources.Authors, sources.Walls, cursor, sources.HideNSFW
 	f.everyone, f.hidden = sources.Everyone, sources.Hidden
+	f.ownOnly, f.ignored = sources.OwnOnly, sources.Ignored
 	return model.PostPage{
 		Posts: append([]model.Post{
 			{ID: "p3", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},

@@ -220,6 +220,8 @@ func (p *Posts) Feed(ctx context.Context, accessToken string, sources model.Feed
 		HideNsfw:        sources.HideNSFW,
 		Everyone:        sources.Everyone,
 		HiddenAuthorIds: sources.Hidden,
+		OwnOnly:         sources.OwnOnly,
+		IgnoredWallIds:  sources.Ignored,
 		Cursor:          cursor,
 		Limit:           toLimit(limit),
 		TextLimit:       model.ExcerptLength,

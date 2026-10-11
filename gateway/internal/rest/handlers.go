@@ -259,6 +259,12 @@ func (a *api) getProfile(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	ignored, err := a.ignores(r, token, profile.ID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	partner, err := a.partner(r, profile.Profile.PartnerID)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -277,6 +283,7 @@ func (a *api) getProfile(w http.ResponseWriter, r *http.Request) {
 		aboutJSON:             toAboutJSON(profile.About, partner),
 		followStatsJSON:       toFollowStatsJSON(stats),
 		relationJSON:          relationJSON{BlockedByMe: rel.BlockedByMe, BlockedMe: rel.BlockedMe},
+		IgnoredByMe:           ignored,
 	})
 }
 

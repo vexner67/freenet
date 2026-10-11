@@ -33,6 +33,8 @@ type profileWithStatsResponse struct {
 	followStatsJSON
 	relationJSON
 	Access accessJSON `json:"access"`
+	// IgnoredByMe: the viewer's news leave this wall out.
+	IgnoredByMe bool `json:"ignoredByMe"`
 }
 
 // accessJSON is which blocks of a page the viewer may see: the albums, the
@@ -171,14 +173,17 @@ func (a *api) listFollows(
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// feedAll is "Все новости" of openvk: what every wall says itself, whoever
-// the reader follows.
+// feedAll is "Все новости" of openvk: the posts of every wall, whoever the
+// reader follows.
 const feedAll = "all"
 
 // feed is the caller's news: posts of the people they follow and their own,
 // and every post on the walls of those people, their own and their clubs',
 // newest first, each with its author. openvk's feed is the walls; ours
-// also follows its people to the walls of others.
+// also follows its people to the walls of others. "Настройки ленты" of
+// openvk come with the request: alien=false takes away what people wrote
+// on the walls of others, ignored=true brings back the walls the reader
+// ignores.
 func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -191,6 +196,8 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		a.writeError(w, r, err)
 		return
 	}
+
+	alien, withIgnored := r.URL.Query().Get("alien") != "false", r.URL.Query().Get("ignored") == "true"
 
 	me, err := a.users.GetMe(r.Context(), token)
 	if err != nil {
@@ -206,7 +213,14 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// "Не показывать в ленте" of the reader's settings.
-	sources := model.FeedSources{HideNSFW: me.Interface.NSFW == nsfwHide, Hidden: blocked}
+	sources := model.FeedSources{HideNSFW: me.Interface.NSFW == nsfwHide, Hidden: blocked, OwnOnly: !alien}
+
+	if !withIgnored {
+		if sources.Ignored, err = a.users.IgnoredIDs(r.Context(), token); err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+	}
 
 	switch r.URL.Query().Get("type") {
 	case "":
@@ -222,8 +236,9 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		people := append(following, me.ID)
-		sources.Authors, sources.Walls = people, append(clubs, people...)
+		// Who is ignored is not followed to the walls of others either.
+		people := without(append(following, me.ID), sources.Ignored)
+		sources.Authors, sources.Walls = people, append(without(clubs, sources.Ignored), people...)
 	case feedAll:
 		sources.Everyone = true
 	default:
