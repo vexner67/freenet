@@ -122,11 +122,12 @@ const (
 			AND recipient_id = $1
 			AND post_id = $2
 	`
-	deleteClubAdminNotificationQuery = `
+	// What a community tells one person once: an appointment, a reminder.
+	deleteClubNotificationQuery = `
 		DELETE FROM notifications
-		WHERE kind = 'club_admin'
-			AND actor_id = $1
-			AND recipient_id = $2
+		WHERE kind = $1
+			AND actor_id = $2
+			AND recipient_id = $3
 	`
 	deleteTopicMessageNotificationQuery = `
 		DELETE FROM notifications
@@ -178,8 +179,8 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deletePostAcceptedNotificationQuery, e.PostID)
 	case notification.KindSuggestedPost:
 		_, err = r.pool.Exec(ctx, deleteSuggestedPostNotificationQuery, e.RecipientID, e.PostID)
-	case notification.KindClubAdmin:
-		_, err = r.pool.Exec(ctx, deleteClubAdminNotificationQuery, e.ActorID, e.RecipientID)
+	case notification.KindClubAdmin, notification.KindEventReminder:
+		_, err = r.pool.Exec(ctx, deleteClubNotificationQuery, string(e.Kind), e.ActorID, e.RecipientID)
 	case notification.KindTopicMessage:
 		_, err = r.pool.Exec(ctx, deleteTopicMessageNotificationQuery, e.CommentID)
 	case notification.KindPostMention:

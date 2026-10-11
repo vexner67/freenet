@@ -62,6 +62,9 @@ const (
 	// KindTopicMessageLike: the actor liked the recipient's message
 	// CommentID of the topic PostID.
 	KindTopicMessageLike Kind = "topic_message_like"
+	// KindEventReminder: the actor, an event the recipient comes to,
+	// starts soon ("В ближайшее время состоится событие" of openvk).
+	KindEventReminder Kind = "event_reminder"
 )
 
 var (
@@ -110,7 +113,7 @@ func (e Event) Validate() error {
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
 		KindPhotoComment, KindTopicMessageLike:
 		ok = hasPost && hasComment
-	case KindFollow, KindClubAdmin:
+	case KindFollow, KindClubAdmin, KindEventReminder:
 		ok = !hasPost && !hasComment
 	default:
 		return ErrUnknownKind
