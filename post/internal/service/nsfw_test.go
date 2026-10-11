@@ -44,13 +44,13 @@ func TestPostService_NSFW(t *testing.T) {
 	if wall, err := svc.ListWall(ctx, uuid.Nil, ann, service.WallPick{}, uuid.Nil, 10); err != nil || wall.Total != 2 {
 		t.Fatalf("the wall = %d, %v", wall.Total, err)
 	}
-	// "Все новости" follow nobody: they show what the walls say themselves,
-	// not what a guest wrote there.
+	// "Все новости" follow nobody; asked for what the walls say themselves,
+	// they leave out what a guest wrote there.
 	bob := uuid.New()
 	if _, err := svc.Create(ctx, service.CreateInput{WallID: ann, AuthorID: bob, Content: textContent(t, "в гостях")}); err != nil {
 		t.Fatal(err)
 	}
-	everyone := service.FeedSources{Everyone: true}
+	everyone := service.FeedSources{Everyone: true, OwnOnly: true}
 	if feed, err := svc.Feed(ctx, bob, everyone, uuid.Nil, 10); err != nil || !slices.Equal(texts(feed.Posts), []string{"для взрослых", "котики"}) {
 		t.Fatalf("the feed of everyone = %v, %v", texts(feed.Posts), err)
 	}
