@@ -115,8 +115,10 @@ groups:
           summary: "{{ $labels.service }} has not delivered to {{ $labels.stream }} for {{ $value | humanizeDuration }}"
           description: "The oldest undelivered message of the {{ $labels.stream }} stream of {{ $labels.service }} is older than 5 minutes. Is {{ $labels.stream }} up? Look for retries in the log of {{ $labels.service }}."
 
-      # media deletes photos unpublished after UNPUBLISHED_PHOTO_TTL (a day
-      # by default): a media stream stuck that long loses published photos.
+      # media sets aside photos unpublished after UNPUBLISHED_PHOTO_TTL (a
+      # day by default): a media stream stuck that long shows broken
+      # pictures until it delivers, and one stuck for RETIRED_PHOTO_TTL (30
+      # days) loses the photos for good.
       - alert: OutboxStuck
         expr: outbox_lag_seconds > 3600
         for: 5m
@@ -124,7 +126,7 @@ groups:
           severity: critical
         annotations:
           summary: "{{ $labels.service }} has not delivered to {{ $labels.stream }} for {{ $value | humanizeDuration }}"
-          description: "The {{ $labels.stream }} stream of {{ $labels.service }} has been stuck for over an hour. Photos of new posts, comments and messages are deleted as unpublished once the media stream is a day late."
+          description: "The {{ $labels.stream }} stream of {{ $labels.service }} has been stuck for over an hour. Photos of new posts, comments and messages are broken pictures once the media stream is a day late, until it delivers, and are lost for good after 30 days."
 
       - alert: OutboxDropped
         expr: increase(outbox_messages_total{result="dropped"}[15m]) > 0
