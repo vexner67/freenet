@@ -13,9 +13,15 @@ import (
 
 type Auth interface {
 	RequestCode(ctx context.Context, email, clientIP string) error
-	VerifyCode(ctx context.Context, email, code string) (model.Tokens, error)
-	RefreshToken(ctx context.Context, refreshToken string) (model.Tokens, error)
+	// VerifyCode and RefreshToken say where the user is, for the list of
+	// their sessions.
+	VerifyCode(ctx context.Context, email, code string, client model.Client) (model.Tokens, error)
+	RefreshToken(ctx context.Context, refreshToken string, client model.Client) (model.Tokens, error)
 	Logout(ctx context.Context, refreshToken string) error
+	ListSessions(ctx context.Context, accessToken string) ([]model.Session, error)
+	EndSession(ctx context.Context, accessToken, sessionID string) error
+	// EndOtherSessions returns how many sessions ended.
+	EndOtherSessions(ctx context.Context, accessToken string) (int, error)
 }
 
 type Users interface {
@@ -321,6 +327,9 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/me/fields", a.updateExtraFields)
 	mux.HandleFunc("PUT /api/v1/me/privacy", a.updatePrivacy)
 	mux.HandleFunc("PUT /api/v1/me/interface", a.updateInterface)
+	mux.HandleFunc("GET /api/v1/me/sessions", a.listSessions)
+	mux.HandleFunc("DELETE /api/v1/me/sessions", a.endOtherSessions)
+	mux.HandleFunc("DELETE /api/v1/me/sessions/{id}", a.endSession)
 	mux.HandleFunc("POST /api/v1/me/deactivate", a.deactivate)
 	mux.HandleFunc("POST /api/v1/me/reactivate", a.reactivate)
 

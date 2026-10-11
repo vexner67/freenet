@@ -57,7 +57,7 @@ func (a *api) verifyCode(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, err := a.auth.VerifyCode(r.Context(), req.Email, req.Code)
+	tokens, err := a.auth.VerifyCode(r.Context(), req.Email, req.Code, a.client(r))
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -73,7 +73,7 @@ func (a *api) refreshToken(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	tokens, err := a.auth.RefreshToken(r.Context(), req.RefreshToken)
+	tokens, err := a.auth.RefreshToken(r.Context(), req.RefreshToken, a.client(r))
 	if err != nil {
 		a.writeError(w, r, err)
 		return
