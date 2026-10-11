@@ -2,6 +2,7 @@ package message_test
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -30,11 +31,11 @@ func TestNewPhotoShare(t *testing.T) {
 	}
 
 	// Edited, it shares the photo still, with words or without.
-	edited, err := m.Edited(ann, "смотри", sent.Add(time.Minute))
+	edited, err := m.Edited(ann, message.Revision{Text: "смотри"}, sent.Add(time.Minute))
 	if err != nil || edited.SharedPhoto() != photo || edited.Text() != "смотри" {
 		t.Fatalf("Edited = %+v, %v", edited, err)
 	}
-	if edited, err = edited.Edited(ann, "", sent.Add(time.Minute)); err != nil || edited.SharedPhoto() != photo {
+	if edited, err = edited.Edited(ann, message.Revision{Text: ""}, sent.Add(time.Minute)); err != nil || edited.SharedPhoto() != photo {
 		t.Fatalf("Edited to nothing = %+v, %v", edited, err)
 	}
 
@@ -241,7 +242,7 @@ func TestMessage_Edited(t *testing.T) {
 	m, _ := message.New(ann, bob, message.RestoreContent("привет", nil, uuid.Nil, nil), sent)
 	photo, _ := message.New(ann, bob, message.RestoreContent("море", message.Photos{uuid.New()}, uuid.Nil, nil), sent)
 
-	edited, err := m.Edited(ann, "привет!", sent.Add(time.Hour))
+	edited, err := m.Edited(ann, message.Revision{Text: "привет!"}, sent.Add(time.Hour))
 	if err != nil || edited.Text() != "привет!" || !edited.EditedAt().Equal(sent.Add(time.Hour)) || edited.ID() != m.ID() {
 		t.Fatalf("Edited = %+v, %v", edited, err)
 	}
@@ -252,17 +253,17 @@ func TestMessage_Edited(t *testing.T) {
 		t.Fatalf("EditableUntil = %v", m.EditableUntil())
 	}
 
-	if _, err = m.Edited(bob, "x", sent); !errors.Is(err, message.ErrCannotEdit) {
+	if _, err = m.Edited(bob, message.Revision{Text: "x"}, sent); !errors.Is(err, message.ErrCannotEdit) {
 		t.Errorf("the recipient edits: %v", err)
 	}
-	if _, err = m.Edited(ann, "x", sent.Add(24*time.Hour+time.Second)); !errors.Is(err, message.ErrEditExpired) {
+	if _, err = m.Edited(ann, message.Revision{Text: "x"}, sent.Add(24*time.Hour+time.Second)); !errors.Is(err, message.ErrEditExpired) {
 		t.Errorf("a day later: %v", err)
 	}
-	if _, err = m.Edited(ann, "", sent); !errors.Is(err, message.ErrTextEmpty) {
+	if _, err = m.Edited(ann, message.Revision{Text: ""}, sent); !errors.Is(err, message.ErrTextEmpty) {
 		t.Errorf("no text left: %v", err)
 	}
 	// With photos the words may go; the photos stay.
-	if edited, err = photo.Edited(ann, "", sent); err != nil || len(edited.Photos()) != 1 {
+	if edited, err = photo.Edited(ann, message.Revision{Text: ""}, sent); err != nil || len(edited.Photos()) != 1 {
 		t.Errorf("a photo without words: %+v, %v", edited, err)
 	}
 }
@@ -347,7 +348,7 @@ func TestMessage_TakenBack(t *testing.T) {
 	if _, err = gone.TakenBack(ann, sent.Add(2*time.Hour)); !errors.Is(err, message.ErrNotFound) {
 		t.Fatalf("taken back twice: %v", err)
 	}
-	if _, err = gone.Edited(ann, "снова", sent.Add(2*time.Hour)); !errors.Is(err, message.ErrNotFound) {
+	if _, err = gone.Edited(ann, message.Revision{Text: "снова"}, sent.Add(2*time.Hour)); !errors.Is(err, message.ErrNotFound) {
 		t.Fatalf("edit: %v", err)
 	}
 	if got := gone.Carried(); len(got) != 0 {
@@ -396,7 +397,7 @@ func TestMessage_Carried(t *testing.T) {
 	}
 
 	// Edited, a forward keeps what it carries and may lose its words.
-	edited, err := withWords.Edited(bob, "", now.Add(time.Minute))
+	edited, err := withWords.Edited(bob, message.Revision{Text: ""}, now.Add(time.Minute))
 	if err != nil || len(edited.Forwarded()) != 1 || edited.Text() != "" {
 		t.Fatalf("edited = %+v, %v", edited, err)
 	}
@@ -461,5 +462,98 @@ func TestText_ExcerptAround(t *testing.T) {
 				t.Errorf("ExcerptAround(%q, %d) = %q, %v, want %q, %v", tt.query, tt.limit, got, cut, tt.want, tt.wantCut)
 			}
 		})
+	}
+}
+
+func TestMessage_EditedPhotos(t *testing.T) {
+	t.Parallel()
+
+	ann, bob := uuid.New(), uuid.New()
+	sent := time.Date(2026, 10, 10, 12, 0, 0, 0, time.UTC)
+	old, fresh := uuid.New(), uuid.New()
+	m, _ := message.New(ann, bob, message.RestoreContent("", message.Photos{old}, uuid.Nil, nil), sent)
+
+	// Photos named without ReplacePhotos change nothing.
+	kept, err := m.Edited(ann, message.Revision{Text: "море", Photos: message.Photos{fresh}}, sent)
+	if err != nil || !slices.Equal(kept.Photos(), message.Photos{old}) {
+		t.Fatalf("the photos kept = %v, %v", kept.Photos(), err)
+	}
+
+	replaced, err := m.Edited(ann, message.Revision{Photos: message.Photos{fresh, old}, ReplacePhotos: true}, sent)
+	if err != nil || !slices.Equal(replaced.Photos(), message.Photos{fresh, old}) || replaced.Text() != "" {
+		t.Fatalf("the photos replaced = %v, %v", replaced.Photos(), err)
+	}
+	if !slices.Equal(m.Photos(), message.Photos{old}) {
+		t.Fatal("the message itself changed")
+	}
+
+	if _, err = m.Edited(ann, message.Revision{ReplacePhotos: true}, sent); !errors.Is(err, message.ErrTextEmpty) {
+		t.Errorf("neither words nor photos: %v", err)
+	}
+	if bare, err := m.Edited(ann, message.Revision{Text: "слова", ReplacePhotos: true}, sent); err != nil || len(bare.Photos()) != 0 {
+		t.Errorf("the photos taken away = %v, %v", bare.Photos(), err)
+	}
+
+	// What a message carries on is enough for it to lose words and photos.
+	carrying, _ := message.New(ann, bob, message.RestoreContent("", message.Photos{old}, uuid.Nil, message.Forwards{{SenderID: bob, Text: "x", CreatedAt: sent}}), sent)
+	if bare, err := carrying.Edited(ann, message.Revision{ReplacePhotos: true}, sent); err != nil || len(bare.Photos()) != 0 || len(bare.Forwarded()) != 1 {
+		t.Errorf("a forward without photos = %+v, %v", bare, err)
+	}
+
+	share, _ := message.NewPhotoShare("фото", uuid.New())
+	shared, _ := message.New(ann, bob, share, sent)
+	if _, err = shared.Edited(ann, message.Revision{Text: "фото", Photos: message.Photos{fresh}, ReplacePhotos: true}, sent); !errors.Is(err, message.ErrSharedPhotoAlone) {
+		t.Errorf("photos next to a shared photo: %v", err)
+	}
+	if again, err := shared.Edited(ann, message.Revision{ReplacePhotos: true}, sent); err != nil || again.SharedPhoto() == uuid.Nil {
+		t.Errorf("a shared photo without words = %+v, %v", again, err)
+	}
+}
+
+func TestQuery_MatchesForwarded(t *testing.T) {
+	t.Parallel()
+
+	ann, bob := uuid.New(), uuid.New()
+	now := time.Now()
+	q, _ := message.NewQuery("Море")
+
+	carried := message.Forwards{{SenderID: bob, Text: "горы", CreatedAt: now}, {SenderID: bob, Text: "еду на МОРЕ", CreatedAt: now}}
+	for name, c := range map[string]struct {
+		content message.Content
+		want    bool
+	}{
+		"its own words":       {message.RestoreContent("море", nil, uuid.Nil, nil), true},
+		"a forwarded one's":   {message.RestoreContent("смотри", nil, uuid.Nil, carried), true},
+		"forwards alone":      {message.RestoreContent("", nil, uuid.Nil, carried), true},
+		"nobody's":            {message.RestoreContent("смотри", nil, uuid.Nil, carried[:1]), false},
+		"a message of photos": {message.RestoreContent("", message.Photos{uuid.New()}, uuid.Nil, nil), false},
+	} {
+		m, _ := message.New(ann, bob, c.content, now)
+		if q.Matches(m) != c.want {
+			t.Errorf("%s: Matches = %v", name, !c.want)
+		}
+	}
+}
+
+func TestBatch(t *testing.T) {
+	t.Parallel()
+
+	a, b := uuid.New(), uuid.New()
+	if got, err := message.Batch([]uuid.UUID{a, b, a}); err != nil || !slices.Equal(got, []uuid.UUID{a, b}) {
+		t.Fatalf("Batch = %v, %v", got, err)
+	}
+	if _, err := message.Batch(nil); !errors.Is(err, message.ErrNoMessages) {
+		t.Errorf("none: %v", err)
+	}
+
+	many := make([]uuid.UUID, message.MaxBatch+1)
+	for i := range many {
+		many[i] = uuid.New()
+	}
+	if _, err := message.Batch(many); !errors.Is(err, message.ErrTooManyMessages) {
+		t.Errorf("too many: %v", err)
+	}
+	if got, err := message.Batch(many[1:]); err != nil || len(got) != message.MaxBatch {
+		t.Errorf("as many as may be: %d, %v", len(got), err)
 	}
 }

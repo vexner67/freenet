@@ -28,8 +28,13 @@ service MessageService {
   // The caller deletes a message of their dialog for themselves alone
   // ("Удалить у себя"), their own or the peer's: the other side keeps it.
   rpc HideMessage(HideMessageRequest) returns (google.protobuf.Empty);
-  // The caller changes what their message says, within a day of sending
-  // (editable_until); its photos and the post it shares stay.
+  // The caller deletes several messages of their dialogs at once, all or
+  // none of them: for everyone, as DeleteMessage does, or for themselves,
+  // as HideMessage does.
+  rpc DeleteMessages(DeleteMessagesRequest) returns (google.protobuf.Empty);
+  // The caller changes what their message says and, with replace_photos,
+  // the photos it shows, within a day of sending (editable_until); the
+  // post it shares and the messages it carries on stay.
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
   // The caller's messages that say the query, in any case, newest first:
   // in the dialog with peer_id or, without it, in all their dialogs.
@@ -194,6 +199,21 @@ message EditMessageRequest {
   // May be empty only when the message has photos, shares a post or
   // carries other messages on.
   string text = 2;
+  // With replace_photos: the photos the message shows from now on, at most
+  // 10, the caller's uploads and the photos it had; none takes them all
+  // away. A message that shares a photo of an album takes none.
+  repeated string photo_ids = 3;
+  // false keeps the photos of the message, whatever photo_ids say: an
+  // edit that knows of no photos does not take them away.
+  bool replace_photos = 4;
+}
+
+message DeleteMessagesRequest {
+  // 1 to 100 messages the caller has in their dialogs.
+  repeated string ids = 1;
+  // true takes them back from both sides: the caller's own, within a day
+  // of sending. false deletes them for the caller alone.
+  bool for_everyone = 2;
 }
 
 message EditMessageResponse {

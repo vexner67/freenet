@@ -118,6 +118,30 @@ func fromProtoDraft(req *messagev1.SendMessageRequest) (service.Draft, error) {
 	return service.Draft{Text: text, Photos: photos, Post: post, SharedPhoto: sharedPhoto, Forward: forward}, nil
 }
 
+// fromProtoRevision reads what an edit makes of a message.
+func fromProtoRevision(req *messagev1.EditMessageRequest) (message.Revision, error) {
+	text, err := message.NewText(req.GetText())
+	if err != nil {
+		return message.Revision{}, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	rev := message.Revision{Text: text, ReplacePhotos: req.GetReplacePhotos()}
+	if !rev.ReplacePhotos {
+		return rev, nil
+	}
+
+	ids, err := parseIDs(req.GetPhotoIds(), message.ErrInvalidPhoto.Error())
+	if err != nil {
+		return message.Revision{}, err
+	}
+
+	if rev.Photos, err = message.NewPhotos(ids); err != nil {
+		return message.Revision{}, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	return rev, nil
+}
+
 func parseIDs(raw []string, invalid string) ([]uuid.UUID, error) {
 	ids := make([]uuid.UUID, 0, len(raw))
 	for _, s := range raw {
@@ -145,16 +169,18 @@ func excerpted(pm *messagev1.Message, m *message.Message, limit int32) *messagev
 	return pm
 }
 
-// found cuts a found message as excerpted does, its own text to where it
-// says query.
+// found cuts a found message as excerpted does, each text that says query
+// to where it says it: its own and those of the messages it carries on.
 func found(pm *messagev1.Message, m *message.Message, query message.Query, limit int32) *messagev1.Message {
-	cut := excerpted(pm, m, limit)
+	pm.Text, pm.TextCut = m.Text().ExcerptAround(query.String(), int(limit))
 
-	var around bool
-	cut.Text, around = m.Text().ExcerptAround(query.String(), int(limit))
-	cut.TextCut = cut.TextCut || around
+	for i, f := range m.Forwarded() {
+		text, cut := f.Text.ExcerptAround(query.String(), int(limit))
+		pm.Forwarded[i].Text = text
+		pm.TextCut = pm.TextCut || cut
+	}
 
-	return cut
+	return pm
 }
 
 // toProtoDialog cuts the text of the last message to textLimit.

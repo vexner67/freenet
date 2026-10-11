@@ -59,7 +59,38 @@ var (
 	// whoever forwards it, or was taken back.
 	ErrForwardNotFound  = errors.New("forwarded message not found")
 	ErrTooManyForwarded = errors.New("a message forwards at most 20 messages")
+	// ErrNoMessages and ErrTooManyMessages: how many messages are deleted
+	// at once.
+	ErrNoMessages      = errors.New("no messages to delete")
+	ErrTooManyMessages = errors.New("at most 100 messages are deleted at once")
 )
+
+// MaxBatch is how many messages are deleted at once.
+const MaxBatch = 100
+
+// Batch are the messages to delete at once: some, MaxBatch at most, each
+// one once.
+func Batch(ids []uuid.UUID) ([]uuid.UUID, error) {
+	seen := make(map[uuid.UUID]bool, len(ids))
+	batch := make([]uuid.UUID, 0, len(ids))
+
+	for _, id := range ids {
+		if !seen[id] {
+			seen[id] = true
+			batch = append(batch, id)
+		}
+	}
+
+	if len(batch) == 0 {
+		return nil, ErrNoMessages
+	}
+
+	if len(batch) > MaxBatch {
+		return nil, ErrTooManyMessages
+	}
+
+	return batch, nil
+}
 
 // Query is what messages are searched for: trimmed text they say, in any
 // case, never empty.
@@ -82,9 +113,23 @@ func (q Query) String() string {
 	return string(q)
 }
 
-// Matches tells whether m says q.
+// Matches tells whether m says q, itself or in a message it carries on.
 func (q Query) Matches(m *Message) bool {
-	return strings.Contains(strings.ToLower(m.content.text.String()), strings.ToLower(string(q)))
+	if q.saidIn(m.content.text) {
+		return true
+	}
+
+	for _, f := range m.content.forwarded {
+		if q.saidIn(f.Text) {
+			return true
+		}
+	}
+
+	return false
+}
+
+func (q Query) saidIn(text Text) bool {
+	return strings.Contains(strings.ToLower(text.String()), strings.ToLower(string(q)))
 }
 
 // Text is what a message says: trimmed, with "\n" line breaks. It may be
@@ -431,11 +476,30 @@ func (m *Message) EditableUntil() time.Time {
 	return m.createdAt.Add(editWindow)
 }
 
-// Edited returns m saying text instead, edited by requesterID at now:
-// only its sender, for editWindow after sending. Its photos, the post or
-// the photo of an album it shares and the messages it carries on stay; without them the text may
-// not be empty.
-func (m *Message) Edited(requesterID uuid.UUID, text Text, now time.Time) (*Message, error) {
+// Revision is what an edit makes of a message: what it says and, with
+// ReplacePhotos, the photos it shows instead of those it had. An edit
+// that does not speak of photos keeps them.
+type Revision struct {
+	Text          Text
+	Photos        Photos
+	ReplacePhotos bool
+}
+
+// photos are those of a message that showed old before the edit.
+func (r Revision) photos(old Photos) Photos {
+	if r.ReplacePhotos {
+		return r.Photos
+	}
+
+	return old
+}
+
+// Edited returns m as rev makes it, edited by requesterID at now: only
+// its sender, for editWindow after sending. The post or the photo of an
+// album it shares and the messages it carries on stay; without them and
+// without photos the text may not be empty. A message sharing a photo of
+// an album takes no photos of its own.
+func (m *Message) Edited(requesterID uuid.UUID, rev Revision, now time.Time) (*Message, error) {
 	if requesterID != m.senderID {
 		return nil, ErrCannotEdit
 	}
@@ -452,11 +516,16 @@ func (m *Message) Edited(requesterID uuid.UUID, text Text, now time.Time) (*Mess
 		content Content
 		err     error
 	)
-	if m.content.sharedPhoto != uuid.Nil {
+	photos := rev.photos(m.content.photos)
+
+	switch {
+	case m.content.sharedPhoto == uuid.Nil:
+		content, err = NewContent(rev.Text, photos, m.content.post, m.content.forwarded)
+	case len(photos) > 0:
+		err = ErrSharedPhotoAlone
+	default:
 		// It shares the photo still: the words are what changes.
-		content, err = NewPhotoShare(text, m.content.sharedPhoto)
-	} else {
-		content, err = NewContent(text, m.content.photos, m.content.post, m.content.forwarded)
+		content, err = NewPhotoShare(rev.Text, m.content.sharedPhoto)
 	}
 	if err != nil {
 		return nil, err

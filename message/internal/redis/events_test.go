@@ -97,7 +97,7 @@ func TestEventCodec(t *testing.T) {
 		t.Fatalf("taken back round trip = %+v, %v", e.Edited, err)
 	}
 
-	edit, err := sent.Edited(ann, "привет!", sent.CreatedAt().Add(time.Minute))
+	edit, err := sent.Edited(ann, message.Revision{Text: "привет!"}, sent.CreatedAt().Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}

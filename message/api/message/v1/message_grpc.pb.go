@@ -27,6 +27,7 @@ const (
 	MessageService_MarkDialogRead_FullMethodName     = "/message.v1.MessageService/MarkDialogRead"
 	MessageService_DeleteMessage_FullMethodName      = "/message.v1.MessageService/DeleteMessage"
 	MessageService_HideMessage_FullMethodName        = "/message.v1.MessageService/HideMessage"
+	MessageService_DeleteMessages_FullMethodName     = "/message.v1.MessageService/DeleteMessages"
 	MessageService_EditMessage_FullMethodName        = "/message.v1.MessageService/EditMessage"
 	MessageService_SearchMessages_FullMethodName     = "/message.v1.MessageService/SearchMessages"
 	MessageService_HasMessagesFrom_FullMethodName    = "/message.v1.MessageService/HasMessagesFrom"
@@ -59,8 +60,13 @@ type MessageServiceClient interface {
 	// The caller deletes a message of their dialog for themselves alone
 	// ("Удалить у себя"), their own or the peer's: the other side keeps it.
 	HideMessage(ctx context.Context, in *HideMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// The caller changes what their message says, within a day of sending
-	// (editable_until); its photos and the post it shares stay.
+	// The caller deletes several messages of their dialogs at once, all or
+	// none of them: for everyone, as DeleteMessage does, or for themselves,
+	// as HideMessage does.
+	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller changes what their message says and, with replace_photos,
+	// the photos it shows, within a day of sending (editable_until); the
+	// post it shares and the messages it carries on stay.
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error)
 	// The caller's messages that say the query, in any case, newest first:
 	// in the dialog with peer_id or, without it, in all their dialogs.
@@ -159,6 +165,16 @@ func (c *messageServiceClient) HideMessage(ctx context.Context, in *HideMessageR
 	return out, nil
 }
 
+func (c *messageServiceClient) DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_DeleteMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EditMessageResponse)
@@ -243,8 +259,13 @@ type MessageServiceServer interface {
 	// The caller deletes a message of their dialog for themselves alone
 	// ("Удалить у себя"), their own or the peer's: the other side keeps it.
 	HideMessage(context.Context, *HideMessageRequest) (*emptypb.Empty, error)
-	// The caller changes what their message says, within a day of sending
-	// (editable_until); its photos and the post it shares stay.
+	// The caller deletes several messages of their dialogs at once, all or
+	// none of them: for everyone, as DeleteMessage does, or for themselves,
+	// as HideMessage does.
+	DeleteMessages(context.Context, *DeleteMessagesRequest) (*emptypb.Empty, error)
+	// The caller changes what their message says and, with replace_photos,
+	// the photos it shows, within a day of sending (editable_until); the
+	// post it shares and the messages it carries on stay.
 	EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error)
 	// The caller's messages that say the query, in any case, newest first:
 	// in the dialog with peer_id or, without it, in all their dialogs.
@@ -293,6 +314,9 @@ func (UnimplementedMessageServiceServer) DeleteMessage(context.Context, *DeleteM
 }
 func (UnimplementedMessageServiceServer) HideMessage(context.Context, *HideMessageRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method HideMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) DeleteMessages(context.Context, *DeleteMessagesRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteMessages not implemented")
 }
 func (UnimplementedMessageServiceServer) EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EditMessage not implemented")
@@ -456,6 +480,24 @@ func _MessageService_HideMessage_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_DeleteMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).DeleteMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_DeleteMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).DeleteMessages(ctx, req.(*DeleteMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_EditMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EditMessageRequest)
 	if err := dec(in); err != nil {
@@ -573,6 +615,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HideMessage",
 			Handler:    _MessageService_HideMessage_Handler,
+		},
+		{
+			MethodName: "DeleteMessages",
+			Handler:    _MessageService_DeleteMessages_Handler,
 		},
 		{
 			MethodName: "EditMessage",
