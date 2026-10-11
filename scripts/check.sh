@@ -11,9 +11,12 @@
 #                                    an empty one; and the monitoring of the
 #                                    stack: Prometheus and Alertmanager
 #                                    configs and the alert rule tests, with
-#                                    the tools of their compose.yaml images
+#                                    the tools of their compose.yaml images;
+#                                    and that the generated protobuf code is
+#                                    what the .proto give (check-proto.sh)
 #
-# Needs Go, golangci-lint and Node.js; --integration also Docker.
+# Needs Go, golangci-lint and Node.js; --integration also Docker, protoc
+# and its Go plugins.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -178,6 +181,11 @@ if $integration; then
 		echo "$out"
 		failed+=(monitoring)
 	fi
+fi
+
+if $integration; then
+	echo "==> proto"
+	scripts/check-proto.sh >/dev/null || failed+=(proto)
 fi
 
 if [ ${#failed[@]} -gt 0 ]; then
