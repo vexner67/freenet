@@ -42,6 +42,7 @@ type messageJSON struct {
 	Text        string      `json:"text"`
 	Photos      []uuid.UUID `json:"photos,omitempty"`
 	Post        uuid.UUID   `json:"post"`
+	SharedPhoto uuid.UUID   `json:"shared_photo"`
 	CreatedAt   time.Time   `json:"created_at"`
 	// EditedAt is zero for a message never edited.
 	EditedAt  time.Time       `json:"edited_at"`
@@ -55,13 +56,16 @@ type forwardedJSON struct {
 	Text      string      `json:"text"`
 	Photos    []uuid.UUID `json:"photos,omitempty"`
 	Post      uuid.UUID   `json:"post"`
+	Photo     uuid.UUID   `json:"shared_photo"`
 	CreatedAt time.Time   `json:"created_at"`
 }
 
 func toMessageJSON(m *message.Message) *messageJSON {
 	forwarded := make([]forwardedJSON, len(m.Forwarded()))
 	for i, f := range m.Forwarded() {
-		forwarded[i] = forwardedJSON{SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, CreatedAt: f.CreatedAt}
+		forwarded[i] = forwardedJSON{
+			SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, Photo: f.SharedPhoto, CreatedAt: f.CreatedAt,
+		}
 	}
 
 	return &messageJSON{
@@ -73,6 +77,7 @@ func toMessageJSON(m *message.Message) *messageJSON {
 		Text:        m.Text().String(),
 		Photos:      m.Photos(),
 		Post:        m.Post(),
+		SharedPhoto: m.SharedPhoto(),
 		CreatedAt:   m.CreatedAt(),
 		EditedAt:    m.EditedAt(),
 	}
@@ -105,6 +110,14 @@ func (m *messageJSON) message() (*message.Message, error) {
 		return nil, errs.Wrap("m.forwarded", err)
 	}
 
+	if m.SharedPhoto != uuid.Nil {
+		if stored.Content, err = message.NewPhotoShare(text, m.SharedPhoto); err != nil {
+			return nil, errs.Wrap("message.NewPhotoShare", err)
+		}
+
+		return message.Restore(stored), nil
+	}
+
 	if stored.Content, err = message.NewContent(text, photos, m.Post, forwarded); err != nil {
 		return nil, errs.Wrap("message.NewContent", err)
 	}
@@ -125,7 +138,9 @@ func (m *messageJSON) forwarded() (message.Forwards, error) {
 			return nil, errs.Wrap("message.NewPhotos", err)
 		}
 
-		carried[i] = message.Forwarded{SenderID: f.SenderID, Text: text, Photos: photos, Post: f.Post, CreatedAt: f.CreatedAt}
+		carried[i] = message.Forwarded{
+			SenderID: f.SenderID, Text: text, Photos: photos, Post: f.Post, SharedPhoto: f.Photo, CreatedAt: f.CreatedAt,
+		}
 	}
 
 	forwards, err := message.NewForwards(carried)

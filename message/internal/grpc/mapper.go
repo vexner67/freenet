@@ -20,6 +20,7 @@ func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 		Read:        read,
 		PhotoIds:    photoStrings(m.Photos()),
 		PostId:      postString(m.Post()),
+		PhotoId:     postString(m.SharedPhoto()),
 		Forwarded:   toProtoForwarded(m.Forwarded()),
 	}
 
@@ -48,6 +49,7 @@ func toProtoForwarded(forwarded message.Forwards) []*messagev1.ForwardedMessage 
 			Text:      f.Text.String(),
 			PhotoIds:  photoStrings(f.Photos),
 			PostId:    postString(f.Post),
+			PhotoId:   postString(f.SharedPhoto),
 			CreatedAt: timestamppb.New(f.CreatedAt),
 		}
 	}
@@ -55,7 +57,7 @@ func toProtoForwarded(forwarded message.Forwards) []*messagev1.ForwardedMessage 
 	return out
 }
 
-// postString is "" for no post, as the proto field says.
+// postString is "" for no post or no shared photo, as the proto fields say.
 func postString(id uuid.UUID) string {
 	if id == uuid.Nil {
 		return ""
@@ -97,6 +99,13 @@ func fromProtoDraft(req *messagev1.SendMessageRequest) (service.Draft, error) {
 		}
 	}
 
+	var sharedPhoto uuid.UUID
+	if req.GetPhotoId() != "" {
+		if sharedPhoto, err = uuid.Parse(req.GetPhotoId()); err != nil {
+			return service.Draft{}, status.Error(codes.InvalidArgument, message.ErrInvalidPhoto.Error())
+		}
+	}
+
 	if len(req.GetForwardIds()) > message.MaxForwarded {
 		return service.Draft{}, status.Error(codes.InvalidArgument, message.ErrTooManyForwarded.Error())
 	}
@@ -106,7 +115,7 @@ func fromProtoDraft(req *messagev1.SendMessageRequest) (service.Draft, error) {
 		return service.Draft{}, err
 	}
 
-	return service.Draft{Text: text, Photos: photos, Post: post, Forward: forward}, nil
+	return service.Draft{Text: text, Photos: photos, Post: post, SharedPhoto: sharedPhoto, Forward: forward}, nil
 }
 
 func parseIDs(raw []string, invalid string) ([]uuid.UUID, error) {

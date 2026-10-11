@@ -74,12 +74,30 @@ type PhotoCopy struct {
 
 // Draft is a message to send. Forward are the messages of the sender's
 // dialogs it carries on ("Переслать"); the rest is what it says itself,
-// and one of them is there.
+// and one of them is there. SharedPhoto, a photo of an album to share,
+// goes with text alone.
 type Draft struct {
-	Text    message.Text
-	Photos  message.Photos
-	Post    uuid.UUID
-	Forward []uuid.UUID
+	Text        message.Text
+	Photos      message.Photos
+	Post        uuid.UUID
+	SharedPhoto uuid.UUID
+	Forward     []uuid.UUID
+}
+
+// content is what the draft says itself, with the messages it carries on.
+func (d Draft) content(forwarded message.Forwards) (message.Content, error) {
+	if d.SharedPhoto == uuid.Nil {
+		content, err := message.NewContent(d.Text, d.Photos, d.Post, forwarded)
+		return content, errs.Wrap("message.NewContent", err)
+	}
+
+	if len(d.Photos) > 0 || d.Post != uuid.Nil || len(forwarded) > 0 {
+		return message.Content{}, message.ErrSharedPhotoAlone
+	}
+
+	content, err := message.NewPhotoShare(d.Text, d.SharedPhoto)
+
+	return content, errs.Wrap("message.NewPhotoShare", err)
 }
 
 // TxManager runs fn in one transaction: everything it saves is kept if it
@@ -197,9 +215,9 @@ func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UU
 		return nil, errs.Wrap("s.forwarded", err)
 	}
 
-	content, err := message.NewContent(d.Text, d.Photos, d.Post, forwarded)
+	content, err := d.content(forwarded)
 	if err != nil {
-		return nil, errs.Wrap("message.NewContent", err)
+		return nil, errs.Wrap("d.content", err)
 	}
 
 	m, err := message.New(senderID, recipientID, content, s.now())

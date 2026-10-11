@@ -51,7 +51,10 @@ type Message struct {
 	DeletedAt *timestamppb.Timestamp `protobuf:"bytes,13,opt,name=deleted_at,json=deletedAt,proto3" json:"deleted_at,omitempty"`
 	// text and the texts it carries on are only their beginnings: the
 	// request set text_limit, and they say more.
-	TextCut       bool `protobuf:"varint,14,opt,name=text_cut,json=textCut,proto3" json:"text_cut,omitempty"`
+	TextCut bool `protobuf:"varint,14,opt,name=text_cut,json=textCut,proto3" json:"text_cut,omitempty"`
+	// A photo of an album of the post service shared into the dialog
+	// ("Поделиться" under a photo, "в переписку"); empty for none.
+	PhotoId       string `protobuf:"bytes,15,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -184,6 +187,13 @@ func (x *Message) GetTextCut() bool {
 	return false
 }
 
+func (x *Message) GetPhotoId() string {
+	if x != nil {
+		return x.PhotoId
+	}
+	return ""
+}
+
 // A message as another one carries it on: a copy of what it showed.
 type ForwardedMessage struct {
 	state    protoimpl.MessageState `protogen:"open.v1"`
@@ -192,8 +202,10 @@ type ForwardedMessage struct {
 	// Photos of sender_id in the media service, kept for this copy.
 	PhotoIds []string `protobuf:"bytes,3,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
 	// A post it shared; empty for none.
-	PostId        string                 `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
-	CreatedAt     *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	PostId    string                 `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// A photo of an album it shared; empty for none.
+	PhotoId       string `protobuf:"bytes,6,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -261,6 +273,13 @@ func (x *ForwardedMessage) GetCreatedAt() *timestamppb.Timestamp {
 		return x.CreatedAt
 	}
 	return nil
+}
+
+func (x *ForwardedMessage) GetPhotoId() string {
+	if x != nil {
+		return x.PhotoId
+	}
+	return ""
 }
 
 type Dialog struct {
@@ -336,7 +355,11 @@ type SendMessageRequest struct {
 	// Messages of the caller's dialogs to carry on, at most 20 counting
 	// those they carry themselves; one that is not there or was taken back
 	// fails with InvalidArgument "forwarded message not found".
-	ForwardIds    []string `protobuf:"bytes,5,rep,name=forward_ids,json=forwardIds,proto3" json:"forward_ids,omitempty"`
+	ForwardIds []string `protobuf:"bytes,5,rep,name=forward_ids,json=forwardIds,proto3" json:"forward_ids,omitempty"`
+	// A photo of an album to share, which the caller has checked the
+	// sender may see; with text alone, anything else with it fails with
+	// InvalidArgument.
+	PhotoId       string `protobuf:"bytes,6,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -404,6 +427,13 @@ func (x *SendMessageRequest) GetForwardIds() []string {
 		return x.ForwardIds
 	}
 	return nil
+}
+
+func (x *SendMessageRequest) GetPhotoId() string {
+	if x != nil {
+		return x.PhotoId
+	}
+	return ""
 }
 
 type SendMessageResponse struct {
@@ -1590,7 +1620,7 @@ var File_api_message_v1_message_proto protoreflect.FileDescriptor
 const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"\x1capi/message/v1/message.proto\x12\n" +
-	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xc5\x04\n" +
+	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xe0\x04\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12!\n" +
@@ -1608,25 +1638,28 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\tforwarded\x18\f \x03(\v2\x1c.message.v1.ForwardedMessageR\tforwarded\x129\n" +
 	"\n" +
 	"deleted_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x19\n" +
-	"\btext_cut\x18\x0e \x01(\bR\atextCut\"\xb4\x01\n" +
+	"\btext_cut\x18\x0e \x01(\bR\atextCut\x12\x19\n" +
+	"\bphoto_id\x18\x0f \x01(\tR\aphotoId\"\xcf\x01\n" +
 	"\x10ForwardedMessage\x12\x1b\n" +
 	"\tsender_id\x18\x01 \x01(\tR\bsenderId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x17\n" +
 	"\apost_id\x18\x04 \x01(\tR\x06postId\x129\n" +
 	"\n" +
-	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\"q\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x19\n" +
+	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\"q\n" +
 	"\x06Dialog\x12\x17\n" +
 	"\apeer_id\x18\x01 \x01(\tR\x06peerId\x126\n" +
 	"\flast_message\x18\x02 \x01(\v2\x13.message.v1.MessageR\vlastMessage\x12\x16\n" +
-	"\x06unread\x18\x03 \x01(\bR\x06unread\"\xa2\x01\n" +
+	"\x06unread\x18\x03 \x01(\bR\x06unread\"\xbd\x01\n" +
 	"\x12SendMessageRequest\x12!\n" +
 	"\frecipient_id\x18\x01 \x01(\tR\vrecipientId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x17\n" +
 	"\apost_id\x18\x04 \x01(\tR\x06postId\x12\x1f\n" +
 	"\vforward_ids\x18\x05 \x03(\tR\n" +
-	"forwardIds\"D\n" +
+	"forwardIds\x12\x19\n" +
+	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\"D\n" +
 	"\x13SendMessageResponse\x12-\n" +
 	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageR\amessage\"a\n" +
 	"\x12ListDialogsRequest\x12\x16\n" +

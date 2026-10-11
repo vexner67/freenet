@@ -47,12 +47,14 @@ var (
 	ErrTooManyPhotos  = errors.New("a message has at most 10 photos")
 	ErrDuplicatePhoto = errors.New("the same photo is attached twice")
 	ErrInvalidPhoto   = errors.New("invalid photo id")
-	ErrCannotDelete   = errors.New("only the sender can delete the message")
-	ErrDeleteExpired  = errors.New("the message can no longer be deleted")
-	ErrCannotEdit     = errors.New("only the sender can edit the message")
-	ErrEditExpired    = errors.New("the message can no longer be edited")
-	ErrQueryEmpty     = errors.New("search query is empty")
-	ErrQueryTooLong   = errors.New("search query is too long")
+	// ErrSharedPhotoAlone: a photo of an album is shared with words only.
+	ErrSharedPhotoAlone = errors.New("a shared photo goes with text alone")
+	ErrCannotDelete     = errors.New("only the sender can delete the message")
+	ErrDeleteExpired    = errors.New("the message can no longer be deleted")
+	ErrCannotEdit       = errors.New("only the sender can edit the message")
+	ErrEditExpired      = errors.New("the message can no longer be edited")
+	ErrQueryEmpty       = errors.New("search query is empty")
+	ErrQueryTooLong     = errors.New("search query is too long")
 	// ErrForwardNotFound: a message to forward is not in the dialogs of
 	// whoever forwards it, or was taken back.
 	ErrForwardNotFound  = errors.New("forwarded message not found")
@@ -208,11 +210,13 @@ func NewPhotos(ids []uuid.UUID) (Photos, error) {
 // of that dialog. Its photos are copies of the sender's in the media
 // service.
 type Forwarded struct {
-	SenderID  uuid.UUID
-	Text      Text
-	Photos    Photos
-	Post      uuid.UUID
-	CreatedAt time.Time
+	SenderID uuid.UUID
+	Text     Text
+	Photos   Photos
+	Post     uuid.UUID
+	// SharedPhoto is a photo of an album it shared, uuid.Nil for none.
+	SharedPhoto uuid.UUID
+	CreatedAt   time.Time
 }
 
 // Forwards are the messages a message carries on, oldest first.
@@ -233,14 +237,18 @@ func NewForwards(carried []Forwarded) (Forwards, error) {
 
 // Content is what a message shows: text, photos, a post shared into the
 // dialog (openvk's "Поделиться" "в переписку"), messages carried on from
-// other dialogs or some of them, never nothing. The post lives in the
-// post service: the message keeps its ID, and a deleted post stays
-// "Запись удалена.".
+// other dialogs or some of them, or a photo of an album shared into the
+// dialog with text, never nothing. The post and the photo of an album
+// live in the post service: the message keeps the ID, and a deleted one
+// stays "Запись удалена." or "Фотография удалена.".
 type Content struct {
 	text      Text
 	photos    Photos
 	post      uuid.UUID
 	forwarded Forwards
+	// sharedPhoto is a photo of an album shared ("Поделиться" under a
+	// photo), uuid.Nil for none; only with text.
+	sharedPhoto uuid.UUID
 }
 
 // NewContent: post is uuid.Nil for none; whether it exists the caller has
@@ -251,6 +259,29 @@ func NewContent(text Text, photos Photos, post uuid.UUID, forwarded Forwards) (C
 	}
 
 	return Content{text: text, photos: photos, post: post, forwarded: forwarded}, nil
+}
+
+// NewPhotoShare is the content of a message sharing a photo of an album,
+// with what the sender says about it, if anything; whether the photo
+// exists the caller has checked with the post service.
+func NewPhotoShare(text Text, photoID uuid.UUID) (Content, error) {
+	if photoID == uuid.Nil {
+		return Content{}, ErrInvalidPhoto
+	}
+
+	return Content{text: text, sharedPhoto: photoID}, nil
+}
+
+// WithSharedPhoto is c sharing photoID, restored from storage.
+func (c Content) WithSharedPhoto(photoID uuid.UUID) Content {
+	c.sharedPhoto = photoID
+	return c
+}
+
+// SharedPhoto is the photo of an album the message shares, uuid.Nil for
+// none.
+func (c Content) SharedPhoto() uuid.UUID {
+	return c.sharedPhoto
 }
 
 // RestoreContent rebuilds content from storage without validation; a
@@ -401,8 +432,8 @@ func (m *Message) EditableUntil() time.Time {
 }
 
 // Edited returns m saying text instead, edited by requesterID at now:
-// only its sender, for editWindow after sending. Its photos, the post it
-// shares and the messages it carries on stay; without them the text may
+// only its sender, for editWindow after sending. Its photos, the post or
+// the photo of an album it shares and the messages it carries on stay; without them the text may
 // not be empty.
 func (m *Message) Edited(requesterID uuid.UUID, text Text, now time.Time) (*Message, error) {
 	if requesterID != m.senderID {
@@ -417,7 +448,16 @@ func (m *Message) Edited(requesterID uuid.UUID, text Text, now time.Time) (*Mess
 		return nil, ErrEditExpired
 	}
 
-	content, err := NewContent(text, m.content.photos, m.content.post, m.content.forwarded)
+	var (
+		content Content
+		err     error
+	)
+	if m.content.sharedPhoto != uuid.Nil {
+		// It shares the photo still: the words are what changes.
+		content, err = NewPhotoShare(text, m.content.sharedPhoto)
+	} else {
+		content, err = NewContent(text, m.content.photos, m.content.post, m.content.forwarded)
+	}
 	if err != nil {
 		return nil, err
 	}
@@ -452,6 +492,12 @@ func (m *Message) Photos() Photos {
 // Post is the post shared in the message, uuid.Nil for none.
 func (m *Message) Post() uuid.UUID {
 	return m.content.post
+}
+
+// SharedPhoto is the photo of an album shared in the message, uuid.Nil
+// for none.
+func (m *Message) SharedPhoto() uuid.UUID {
+	return m.content.sharedPhoto
 }
 
 func (m *Message) CreatedAt() time.Time {
@@ -520,13 +566,14 @@ func (m *Message) Forwarded() Forwards {
 func (m *Message) Carried() []Forwarded {
 	var carried []Forwarded
 
-	if m.content.text != "" || len(m.content.photos) > 0 || m.content.post != uuid.Nil {
+	if m.content.text != "" || len(m.content.photos) > 0 || m.content.post != uuid.Nil || m.content.sharedPhoto != uuid.Nil {
 		carried = append(carried, Forwarded{
-			SenderID:  m.senderID,
-			Text:      m.content.text,
-			Photos:    m.content.photos,
-			Post:      m.content.post,
-			CreatedAt: m.createdAt,
+			SenderID:    m.senderID,
+			Text:        m.content.text,
+			Photos:      m.content.photos,
+			Post:        m.content.post,
+			SharedPhoto: m.content.sharedPhoto,
+			CreatedAt:   m.createdAt,
 		})
 	}
 

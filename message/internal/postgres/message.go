@@ -49,10 +49,11 @@ const saveMessageQuery = `
 			text,
 			photo_ids,
 			post_id,
+			shared_photo_id,
 			forwarded,
 			created_at
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 		RETURNING id, sender_id, recipient_id
 	)
 	INSERT INTO dialogs (
@@ -82,7 +83,7 @@ func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error 
 		return errs.Wrap("forwardedToDB", err)
 	}
 
-	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), forwarded, m.CreatedAt())
+	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt())
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -98,6 +99,7 @@ const getMessageQuery = `
 		text,
 		photo_ids,
 		post_id,
+		shared_photo_id,
 		created_at,
 		edited_at,
 		hidden_from_sender,
@@ -131,6 +133,7 @@ const (
 			text,
 			photo_ids,
 			post_id,
+			shared_photo_id,
 			created_at,
 			edited_at,
 			hidden_from_sender,
@@ -153,6 +156,7 @@ const (
 			text,
 			photo_ids,
 			post_id,
+			shared_photo_id,
 			created_at,
 			edited_at,
 			hidden_from_sender,
@@ -217,14 +221,16 @@ type scanned struct {
 	photos    []uuid.UUID
 	post      *uuid.UUID
 	forwarded []byte
-	editedAt  *time.Time
-	deletedAt *time.Time
+	// sharedPhoto is NULL for no photo of an album.
+	sharedPhoto *uuid.UUID
+	editedAt    *time.Time
+	deletedAt   *time.Time
 }
 
 // dest are the columns of a message, in the order the queries list them.
 func (s *scanned) dest() []any {
 	return []any{
-		&s.stored.ID, &s.stored.SenderID, &s.stored.RecipientID, &s.text, &s.photos, &s.post, &s.stored.CreatedAt,
+		&s.stored.ID, &s.stored.SenderID, &s.stored.RecipientID, &s.text, &s.photos, &s.post, &s.sharedPhoto, &s.stored.CreatedAt,
 		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt,
 	}
 }
@@ -259,6 +265,9 @@ func (s *scanned) message() (*message.Message, error) {
 
 	stored := s.stored
 	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded)
+	if s.sharedPhoto != nil {
+		stored.Content = stored.Content.WithSharedPhoto(*s.sharedPhoto)
+	}
 	stored.CreatedAt = stored.CreatedAt.UTC()
 
 	if s.editedAt != nil {
@@ -278,6 +287,7 @@ type forwardedJSON struct {
 	Text      string      `json:"text,omitempty"`
 	Photos    []uuid.UUID `json:"photos,omitempty"`
 	Post      *uuid.UUID  `json:"post,omitempty"`
+	Photo     *uuid.UUID  `json:"photo,omitempty"`
 	CreatedAt time.Time   `json:"created_at"`
 }
 
@@ -289,6 +299,7 @@ func forwardedToDB(forwarded message.Forwards) ([]byte, error) {
 			Text:      f.Text.String(),
 			Photos:    f.Photos,
 			Post:      postIDToDB(f.Post),
+			Photo:     postIDToDB(f.SharedPhoto),
 			CreatedAt: f.CreatedAt,
 		}
 	}
@@ -324,12 +335,15 @@ func forwardedFromDB(data []byte) (message.Forwards, error) {
 		if row.Post != nil {
 			forwarded[i].Post = *row.Post
 		}
+		if row.Photo != nil {
+			forwarded[i].SharedPhoto = *row.Photo
+		}
 	}
 
 	return forwarded, nil
 }
 
-// postIDToDB is NULL for no post.
+// postIDToDB is NULL for no post, and for no shared photo.
 func postIDToDB(id uuid.UUID) *uuid.UUID {
 	if id == uuid.Nil {
 		return nil
@@ -372,6 +386,7 @@ const listDialogsQuery = `
 		m.text,
 		m.photo_ids,
 		m.post_id,
+		m.shared_photo_id,
 		m.created_at,
 		m.edited_at,
 		m.hidden_from_sender,
@@ -590,6 +605,7 @@ const retractMessageQuery = `
 	SET text = '',
 		photo_ids = '{}',
 		post_id = NULL,
+		shared_photo_id = NULL,
 		forwarded = '[]',
 		edited_at = NULL,
 		deleted_at = $2
@@ -704,6 +720,7 @@ const searchMessagesQuery = `
 		text,
 		photo_ids,
 		post_id,
+		shared_photo_id,
 		created_at,
 		edited_at,
 		hidden_from_sender,
@@ -753,6 +770,7 @@ const deleteUserDialogsQuery = `
 			m.text,
 			m.photo_ids,
 			m.post_id,
+			m.shared_photo_id,
 			m.created_at,
 			m.edited_at,
 			m.hidden_from_sender,
@@ -775,6 +793,7 @@ const deleteUserDialogsQuery = `
 		text,
 		photo_ids,
 		post_id,
+		shared_photo_id,
 		created_at,
 		edited_at,
 		hidden_from_sender,
