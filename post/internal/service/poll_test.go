@@ -36,7 +36,7 @@ func newPollFixture(moderators fakeModerators) *pollFixture {
 	})
 	f.purge = service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(),
-		Suggestions: inmem.NewSuggestionRepository(), Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(),
+		Suggestions: inmem.NewSuggestionRepository(), Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(), Notes: inmem.NewNoteRepository(),
 		Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{},
 	})
 

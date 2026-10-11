@@ -213,6 +213,29 @@ service PostService {
   // Who put a heart on a comment of a photo, newest first. Public.
   rpc ListPhotoCommentLikers(ListPhotoCommentLikersRequest) returns (ListPhotoCommentLikersResponse);
 
+  // Notes ("Заметки" of openvk): a person's titled texts, kept apart from
+  // the wall. Reading is public: who sees the notes of a person is the
+  // person's (the user service), which the caller asks. Only the author
+  // changes and deletes a note; a deleted note takes its comments.
+  rpc CreateNote(CreateNoteRequest) returns (CreateNoteResponse);
+  rpc GetNote(GetNoteRequest) returns (GetNoteResponse);
+  // Public: the notes of a person, newest first.
+  rpc ListNotes(ListNotesRequest) returns (ListNotesResponse);
+  rpc EditNote(EditNoteRequest) returns (EditNoteResponse);
+  rpc DeleteNote(DeleteNoteRequest) returns (google.protobuf.Empty);
+  // A comment under a note, text only; the author of the note hears
+  // about it. The caller has checked who may comment.
+  rpc CreateNoteComment(CreateNoteCommentRequest) returns (CreateNoteCommentResponse);
+  // By its author or the author of the note.
+  rpc DeleteNoteComment(DeleteNoteCommentRequest) returns (google.protobuf.Empty);
+  // Public: the comments of a note, oldest first.
+  rpc ListNoteComments(ListNoteCommentsRequest) returns (ListNoteCommentsResponse);
+  // Public: one comment, whole.
+  rpc GetNoteComment(GetNoteCommentRequest) returns (GetNoteCommentResponse);
+  // Public: the comments with these IDs that exist, in no particular
+  // order, for notifications.
+  rpc GetNoteComments(GetNoteCommentsRequest) returns (GetNoteCommentsResponse);
+
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
   // and comments, and their likes and comments on others' posts. Idempotent.
@@ -1312,4 +1335,133 @@ message CountPostsRequest {}
 
 message CountPostsResponse {
   int32 count = 1;
+}
+
+// A note of a person: a title and a text.
+message Note {
+  string id = 1;
+  string author_id = 2;
+  string title = 3;
+  string text = 4;
+  int32 comment_count = 5;
+  google.protobuf.Timestamp created_at = 6;
+  // Unset for a note never changed.
+  google.protobuf.Timestamp edited_at = 7;
+  // The caller wrote it.
+  bool mine = 8;
+  // The text was cut to text_limit of the request.
+  bool text_cut = 9;
+}
+
+// A comment under a note.
+message NoteComment {
+  string id = 1;
+  string note_id = 2;
+  string author_id = 3;
+  string text = 4;
+  google.protobuf.Timestamp created_at = 5;
+  // The caller wrote it.
+  bool mine = 6;
+  // The text was cut to text_limit of the request.
+  bool text_cut = 7;
+}
+
+message CreateNoteRequest {
+  // One line, up to 256 characters.
+  string title = 1;
+  // Up to 60000 characters, never empty.
+  string text = 2;
+}
+
+message CreateNoteResponse {
+  Note note = 1;
+}
+
+message GetNoteRequest {
+  string id = 1;
+}
+
+message GetNoteResponse {
+  Note note = 1;
+}
+
+message ListNotesRequest {
+  string author_id = 1;
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 2;
+  int32 limit = 3;
+  // The texts are cut to this many characters and say so (text_cut); 0
+  // for whole texts.
+  int32 text_limit = 4;
+}
+
+message ListNotesResponse {
+  repeated Note notes = 1;
+  string next_cursor = 2;
+  // The notes of the author on all pages.
+  int32 total = 3;
+}
+
+message EditNoteRequest {
+  string id = 1;
+  string title = 2;
+  string text = 3;
+}
+
+message EditNoteResponse {
+  Note note = 1;
+}
+
+message DeleteNoteRequest {
+  string id = 1;
+}
+
+message CreateNoteCommentRequest {
+  string note_id = 1;
+  string text = 2;
+}
+
+message CreateNoteCommentResponse {
+  NoteComment comment = 1;
+}
+
+message DeleteNoteCommentRequest {
+  string id = 1;
+}
+
+message ListNoteCommentsRequest {
+  string note_id = 1;
+  // Empty for the oldest, else next_cursor of the previous page.
+  string cursor = 2;
+  int32 limit = 3;
+  // The texts are cut to this many characters and say so (text_cut); 0
+  // for whole texts.
+  int32 text_limit = 4;
+}
+
+message ListNoteCommentsResponse {
+  repeated NoteComment comments = 1;
+  string next_cursor = 2;
+  // The comments of the note on all pages.
+  int32 total = 3;
+}
+
+message GetNoteCommentRequest {
+  string id = 1;
+}
+
+message GetNoteCommentResponse {
+  NoteComment comment = 1;
+}
+
+message GetNoteCommentsRequest {
+  // At most 50.
+  repeated string ids = 1;
+  // The texts are cut to this many characters and say so (text_cut); 0
+  // for whole texts.
+  int32 text_limit = 2;
+}
+
+message GetNoteCommentsResponse {
+  repeated NoteComment comments = 1;
 }

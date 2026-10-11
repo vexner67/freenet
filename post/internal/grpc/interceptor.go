@@ -103,6 +103,9 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrPollNotVoted, codes.FailedPrecondition},
 		{post.ErrPollLocked, codes.FailedPrecondition},
 		{post.ErrPollAnonymous, codes.FailedPrecondition},
+		{post.ErrNoteNotFound, codes.NotFound},
+		{post.ErrCannotChangeNote, codes.PermissionDenied},
+		{post.ErrCannotDeleteNoteComment, codes.PermissionDenied},
 	} {
 		if errors.Is(err, known.err) {
 			return status.New(known.code, known.err.Error()), true

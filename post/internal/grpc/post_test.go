@@ -56,6 +56,7 @@ func newServer(t *testing.T) testServer {
 	suggestions := inmem.NewSuggestionRepository()
 	topics := inmem.NewTopicRepository()
 	albums := inmem.NewAlbumRepository()
+	notes := inmem.NewNoteRepository()
 	albumService := service.NewAlbumService(service.AlbumDeps{
 		Albums: albums, Photos: albums.Photos(), Tx: inmem.TxManager{}, Media: mediaclient.Nop{}, Moderators: clubclient.Nop{},
 		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(), CommentLikes: albums.PhotoComments(), Notifier: notifyclient.Nop{},
@@ -72,9 +73,10 @@ func newServer(t *testing.T) testServer {
 		}),
 		Albums: albumService,
 		Polls:  service.NewPollService(service.PollDeps{Polls: store.Polls(), Posts: store.Posts(), Moderators: clubclient.Nop{}, Tx: inmem.TxManager{}}),
+		Notes:  service.NewNoteService(service.NoteDeps{Notes: notes, Comments: notes.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}}),
 		Purge: service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
-			Topics: topics, Albums: albums, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
+			Topics: topics, Albums: albums, Notes: notes, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
 		}),
 	}, log))
 
