@@ -71,6 +71,22 @@ service PostService {
   rpc ListReposts(ListRepostsRequest) returns (ListRepostsResponse);
   rpc ListCommentLikers(ListCommentLikersRequest) returns (ListCommentLikersResponse);
 
+  // Public: the polls of the posts that ask one ("Опрос" of openvk), at
+  // most 100 posts, in no particular order; with an access token each
+  // says what the caller chose. The poll of an archived post is given to
+  // those who keep the archive only.
+  rpc GetPolls(GetPollsRequest) returns (GetPollsResponse);
+  // Require an access token: the caller's vote in the poll of a post,
+  // cast once and changed by taking it back first. NotFound for a post
+  // without a poll or archived away from the caller; FailedPrecondition
+  // when the poll has ended, the caller has voted already (VotePoll), has
+  // not, or the poll does not let a vote be taken back (RetractPollVote).
+  rpc VotePoll(VotePollRequest) returns (VotePollResponse);
+  rpc RetractPollVote(RetractPollVoteRequest) returns (RetractPollVoteResponse);
+  // Public: who chose an option of a poll, newest first ("Список
+  // проголосовавших" of openvk); FailedPrecondition for an anonymous poll.
+  rpc ListPollVoters(ListPollVotersRequest) returns (ListPollVotersResponse);
+
   // Require an access token; the author is the caller. A comment is
   // deleted by its author, by the author of the post or by the owner of
   // the wall, the admins of a community.
@@ -255,6 +271,8 @@ message Post {
   // text is only its beginning: the request set text_limit, and the post
   // says more.
   bool text_cut = 23;
+  // The post asks a poll: GetPolls gives it.
+  bool polled = 24;
 }
 
 message Comment {
@@ -373,6 +391,94 @@ message CreatePostRequest {
   // The people the text names ("@nickname"), at most 10, who hear of it:
   // the caller has asked the user service who they are.
   repeated string mentioned_ids = 9;
+  // The poll the post asks, if any: with it the text and the photos may
+  // be none.
+  PollDraft poll = 10;
+}
+
+// PollDraft is a poll as its author asks it.
+message PollDraft {
+  // One line, up to 128 characters.
+  string title = 1;
+  // 1 to 10, each one line of up to 128 characters.
+  repeated string options = 2;
+  // Nobody is shown who chose what.
+  bool anonymous = 3;
+  // Several options may be chosen at once.
+  bool multiple = 4;
+  // A vote cannot be taken back.
+  bool locked = 5;
+  // For how long the poll is open, 1 to 31 days; 0 for good.
+  int32 days = 6;
+}
+
+// Poll is the poll of a post as the caller sees it.
+message Poll {
+  string post_id = 1;
+  string title = 2;
+  repeated PollOption options = 3;
+  // How many people voted: with several choices fewer than the votes.
+  int32 voter_count = 4;
+  bool anonymous = 5;
+  bool multiple = 6;
+  bool locked = 7;
+  // Unset for a poll open for good.
+  google.protobuf.Timestamp ends_at = 8;
+  // The poll takes no votes anymore.
+  bool ended = 9;
+  // The places of the options the caller chose, from 0; empty for one
+  // who has not voted.
+  repeated int32 chosen = 10;
+}
+
+message PollOption {
+  string name = 1;
+  int32 vote_count = 2;
+}
+
+message GetPollsRequest {
+  repeated string post_ids = 1;
+}
+
+message GetPollsResponse {
+  repeated Poll polls = 1;
+}
+
+message VotePollRequest {
+  string post_id = 1;
+  // The places of the options chosen, from 0: one, or several where the
+  // poll lets.
+  repeated int32 options = 2;
+}
+
+message VotePollResponse {
+  Poll poll = 1;
+}
+
+message RetractPollVoteRequest {
+  string post_id = 1;
+}
+
+message RetractPollVoteResponse {
+  Poll poll = 1;
+}
+
+message ListPollVotersRequest {
+  string post_id = 1;
+  // The place of the option, from 0.
+  int32 option = 2;
+  // Empty for the newest votes, else next_cursor of the previous page.
+  string cursor = 3;
+  // 1-50; anything else means 20.
+  int32 limit = 4;
+}
+
+message ListPollVotersResponse {
+  repeated string user_ids = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // How many chose the option.
+  int32 total = 3;
 }
 
 message CreatePostResponse {

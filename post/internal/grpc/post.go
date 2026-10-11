@@ -114,6 +114,7 @@ type Services struct {
 	Suggestions SuggestionService
 	Topics      TopicService
 	Albums      AlbumService
+	Polls       PollService
 	Purge       PurgeService
 }
 
@@ -124,6 +125,7 @@ type PostHandler struct {
 	suggestionService SuggestionService
 	topicService      TopicService
 	albumService      AlbumService
+	pollService       PollService
 	purgeService      PurgeService
 	logger            *slog.Logger
 }
@@ -135,6 +137,7 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		suggestionService: s.Suggestions,
 		topicService:      s.Topics,
 		albumService:      s.Albums,
+		pollService:       s.Polls,
 		purgeService:      s.Purge,
 		logger:            logger,
 	}
@@ -159,7 +162,7 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		return nil, err
 	}
 
-	content, err := fromProtoContent(req)
+	content, poll, err := fromProtoContent(req)
 	if err != nil {
 		return nil, err
 	}
@@ -177,6 +180,7 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 	}
 
 	p, err := h.postService.Create(ctx, service.CreateInput{
+		Poll:     poll,
 		WallID:   wallID,
 		AuthorID: authorID,
 		Content:  content,

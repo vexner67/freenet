@@ -184,7 +184,7 @@ func NewFromWall(wallID, authorID uuid.UUID, content Content, signed bool, now t
 // content is that one photo. On a user's own wall it is theirs; for a
 // community, which the caller has checked authorID runs, it speaks for it.
 func NewAvatarUpdate(wallID, authorID uuid.UUID, content Content, now time.Time) (*Post, error) {
-	if content.text != "" || len(content.photos) != 1 || content.repostOf != uuid.Nil {
+	if content.text != "" || len(content.photos) != 1 || content.repostOf != uuid.Nil || content.polled {
 		return nil, ErrAvatarUpdate
 	}
 
@@ -266,8 +266,8 @@ func (p *Post) Stored() Stored {
 // Edited returns p saying text with photos instead, edited by requesterID
 // at now. Only the author edits, and for editWindow after posting, as in
 // openvk. A repost keeps the post it shares; a post that shares a photo of
-// an album keeps it and has no photos of its own. The post of a new photo
-// is not edited at all.
+// an album keeps it and has no photos of its own; a post that asks a poll
+// asks it still. The post of a new photo is not edited at all.
 func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.Time) (*Post, error) {
 	if !p.BelongsTo(requesterID) || p.avatarUpdate {
 		return nil, ErrCannotEdit
@@ -291,6 +291,8 @@ func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.
 			return nil, ErrRepostPhotos
 		}
 		content, err = NewPhotoShare(p.content.sharedPhoto, text)
+	case p.content.polled:
+		content = NewPolled(text, photos)
 	default:
 		content, err = NewContent(text, photos)
 	}

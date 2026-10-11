@@ -95,6 +95,14 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrDuplicatePhoto, codes.InvalidArgument},
 		{post.ErrInvalidPhoto, codes.InvalidArgument},
 		{service.ErrTooManyAlbumPhotos, codes.InvalidArgument},
+		{post.ErrPollNotFound, codes.NotFound},
+		{post.ErrPollDays, codes.InvalidArgument},
+		{post.ErrPollChoice, codes.InvalidArgument},
+		{post.ErrPollEnded, codes.FailedPrecondition},
+		{post.ErrPollVoted, codes.FailedPrecondition},
+		{post.ErrPollNotVoted, codes.FailedPrecondition},
+		{post.ErrPollLocked, codes.FailedPrecondition},
+		{post.ErrPollAnonymous, codes.FailedPrecondition},
 	} {
 		if errors.Is(err, known.err) {
 			return status.New(known.code, known.err.Error()), true
