@@ -4,9 +4,11 @@
 // each with "Просмотр группы", "Добавить в левое меню" for those you run
 // and "Выйти из группы". With ?u=<nickname> it is someone else's list, as
 // "Все" of the block "Группы" on their page leads: "Имя » Группы", how
-// many and the clubs, as their "Кому видно мои группы" allows. At /events
+// many and the clubs, as their "Кому видно мои группы" allows, each with
+// "Вступить в группу" or "Выйти из группы" for you. At /events
 // it is "Мои Встречи": the same page for the events you come to, with
-// "Создать встречу"; the events that are over stand apart, under
+// "Создать встречу" and the links named for an event ("Просмотр встречи",
+// "Я приду", "Я не приду"); the events that are over stand apart, under
 // "Прошедшие".
 
 import { api, currentUser } from './api.js';
@@ -22,10 +24,24 @@ const managed = params.get('act') === 'managed';
 const past = events && params.get('act') === 'past';
 let cursor = '';
 
+// viewLink is "Просмотр группы", of an event "Просмотр встречи".
+function viewLink(club) {
+  return el('a', { className: 'profile-link', href: pagePath({ ...club, club: true }), textContent: events ? 'Просмотр встречи' : 'Просмотр группы' });
+}
+
+// The links of a membership, as the buttons of the club's page name them.
+function joinText(club) {
+  if (!events) return 'Вступить в группу';
+
+  return new Date(club.startsAt) <= Date.now() ? 'Добавить в список' : 'Я приду';
+}
+
+const leaveText = () => (events ? 'Я не приду' : 'Выйти из группы');
+
 function clubNode(club) {
   const ref = clubRef(club);
   const node = clubRow(club,
-    el('a', { className: 'profile-link', href: pagePath({ ...club, club: true }), textContent: 'Просмотр группы' }),
+    viewLink(club),
     (club.role === 'admin' || club.role === 'owner') && pinLink(club, ref),
     club.role !== 'owner' && leaveLink(club, ref, () => node),
   );
@@ -56,17 +72,18 @@ function pinLink(club, ref) {
   return link;
 }
 
-// leaveLink is "Выйти из группы"; the club then goes from the list.
+// leaveLink is "Выйти из группы", of an event "Я не приду"; the club then
+// goes from the list.
 function leaveLink(club, ref, node) {
   return el('a', {
     className: 'profile-link',
-    textContent: 'Выйти из группы',
+    textContent: leaveText(),
     onclick: async () => {
       hideError($('error'));
 
       try {
         await api.leaveClub(ref);
-        node().replaceWith(el('div', { className: 'post-deleted', textContent: `Вы вышли из группы «${club.name}».` }));
+        node().replaceWith(el('div', { className: 'post-deleted', textContent: events ? `Вы не придёте на встречу «${club.name}».` : `Вы вышли из группы «${club.name}».` }));
         if (club.pinned) showPinnedClubs($('menu'));
       } catch (e) {
         showError($('error'), e);
@@ -118,9 +135,33 @@ async function showMine() {
   await more();
 }
 
-// showTheirs is someone else's list: only "Просмотр группы" by each club.
+// membershipLink joins a club of someone else's list or leaves it, in
+// place: club.role says which. The owner cannot leave and has none.
+function membershipLink(club) {
+  const ref = clubRef(club);
+  const link = el('a', { className: 'profile-link' });
+  const render = () => { link.textContent = club.role ? leaveText() : joinText(club); };
+
+  link.addEventListener('click', async () => {
+    hideError($('error'));
+
+    try {
+      const changed = await (club.role ? api.leaveClub(ref) : api.joinClub(ref));
+      club.role = changed.role;
+      render();
+    } catch (e) {
+      showError($('error'), e);
+    }
+  });
+  render();
+
+  return link;
+}
+
+// showTheirs is someone else's list: "Просмотр группы" by each club and,
+// for a viewer with a page, "Вступить в группу" or "Выйти из группы".
 // Their events are those ahead and, under "Прошедшие", those over.
-async function showTheirs(nickname) {
+async function showTheirs(nickname, me) {
   const what = events ? 'Встречи' : 'Группы';
 
   try {
@@ -148,7 +189,8 @@ async function showTheirs(nickname) {
   }
 
   const view = (club) => clubRow(club,
-    el('a', { className: 'profile-link', href: pagePath({ ...club, club: true }), textContent: 'Просмотр группы' }));
+    viewLink(club),
+    me?.profileCompleted && club.role !== 'owner' && membershipLink(club));
   const list = events ? (c) => api.userEvents(nickname, past ? 'past' : 'upcoming', c) : (c) => api.userClubs(nickname, c);
   const more = () => load(list, view, events ? (past ? pastEventsCount : eventsCount) : clubsCount);
   $('more').addEventListener('click', more);
@@ -158,7 +200,7 @@ async function showTheirs(nickname) {
 const me = await currentUser().catch(() => null);
 if (other && other !== me?.nickname) {
   renderChrome(me);
-  await showTheirs(other);
+  await showTheirs(other, me);
 } else if (!me) {
   location.replace('/');
 } else {
