@@ -144,7 +144,7 @@ func (f *fakeUserAPI) UpdatePrivacy(_ context.Context, req *userv1.UpdatePrivacy
 // keep the caller's token.
 func (f *fakeUserAPI) GetAccess(ctx context.Context, req *userv1.GetAccessRequest, _ ...grpc.CallOption) (*userv1.GetAccessResponse, error) {
 	f.md, _ = metadata.FromOutgoingContext(ctx)
-	return &userv1.GetAccessResponse{Page: req.GetUserId() == "u2", Photos: true}, nil
+	return &userv1.GetAccessResponse{Page: req.GetUserId() == "u2", Photos: true, Notes: true}, nil
 }
 
 func (f *fakeUserAPI) GetProfile(ctx context.Context, req *userv1.GetProfileRequest, _ ...grpc.CallOption) (*userv1.GetProfileResponse, error) {
@@ -240,7 +240,7 @@ func TestWallPrivacy(t *testing.T) {
 
 	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{
 		ShowWorldview: true, WallWrite: "everyone", MessagesWrite: "nobody", ClubsRead: "only_me",
-		PageRead: "users", InfoRead: "following", PhotosRead: "only_me", FriendsRead: "everyone", OnlineRead: "following",
+		PageRead: "users", InfoRead: "following", PhotosRead: "only_me", FriendsRead: "everyone", OnlineRead: "following", NotesRead: "only_me",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -257,7 +257,8 @@ func TestWallPrivacy(t *testing.T) {
 	if api.privacy.GetPageRead() != userv1.Audience_AUDIENCE_USERS || api.privacy.GetInfoRead() != userv1.Audience_AUDIENCE_FOLLOWING ||
 		api.privacy.GetPhotosRead() != userv1.Audience_AUDIENCE_ONLY_ME || api.privacy.GetFriendsRead() != userv1.Audience_AUDIENCE_EVERYONE ||
 		u.Privacy.PageRead != "users" || u.Privacy.InfoRead != "following" || u.Privacy.PhotosRead != "only_me" || u.Privacy.FriendsRead != "everyone" ||
-		api.privacy.GetOnlineRead() != userv1.Audience_AUDIENCE_FOLLOWING || u.Privacy.OnlineRead != "following" {
+		api.privacy.GetOnlineRead() != userv1.Audience_AUDIENCE_FOLLOWING || u.Privacy.OnlineRead != "following" ||
+		api.privacy.GetNotesRead() != userv1.Audience_AUDIENCE_ONLY_ME || u.Privacy.NotesRead != "only_me" {
 		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
 	}
 
@@ -270,7 +271,7 @@ func TestWallPrivacy(t *testing.T) {
 	}
 
 	access, err := users.Access(context.Background(), "tok", "u2")
-	if err != nil || access != (model.Access{Page: true, Photos: true}) || api.md.Get("authorization")[0] != "Bearer tok" {
+	if err != nil || access != (model.Access{Page: true, Photos: true, Notes: true}) || api.md.Get("authorization")[0] != "Bearer tok" {
 		t.Fatalf("Access = %+v, %v", access, err)
 	}
 
@@ -946,5 +947,56 @@ func TestAuthSessions(t *testing.T) {
 
 	if n, err := auth.EndOtherSessions(ctx, "tok"); err != nil || n != 3 {
 		t.Fatalf("EndOtherSessions = %d, %v", n, err)
+	}
+}
+
+// fakeNoteAPI is the notes side of the post service.
+type fakeNoteAPI struct {
+	postv1.PostServiceClient
+	md        metadata.MD
+	textLimit int32
+}
+
+func (f *fakeNoteAPI) ListNotes(ctx context.Context, req *postv1.ListNotesRequest, _ ...grpc.CallOption) (*postv1.ListNotesResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	f.textLimit = req.GetTextLimit()
+
+	at := timestamppb.New(time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC))
+
+	return &postv1.ListNotesResponse{
+		Notes: []*postv1.Note{
+			{Id: "n1", AuthorId: req.GetAuthorId(), Title: "Про котов", Text: "Коты", TextCut: true, CommentCount: 2, CreatedAt: at, EditedAt: at, Mine: true},
+			{Id: "n0", AuthorId: req.GetAuthorId(), Title: "Старая", Text: "Текст", CreatedAt: at},
+		},
+		NextCursor: "n0", Total: 5,
+	}, nil
+}
+
+func (f *fakeNoteAPI) GetNote(context.Context, *postv1.GetNoteRequest, ...grpc.CallOption) (*postv1.GetNoteResponse, error) {
+	return nil, status.Error(codes.NotFound, "note not found")
+}
+
+func TestNotes(t *testing.T) {
+	t.Parallel()
+
+	api := &fakeNoteAPI{}
+	notes := NewNotes(api)
+
+	page, err := notes.List(context.Background(), "tok", "u1", "", 2)
+	if err != nil || len(page.Notes) != 2 || page.NextCursor != "n0" || page.Total != 5 {
+		t.Fatalf("List = %+v, %v", page, err)
+	}
+	if api.md.Get("authorization")[0] != "Bearer tok" || api.textLimit != model.ExcerptLength {
+		t.Fatalf("token %v, text limit %d", api.md, api.textLimit)
+	}
+	if n := page.Notes[0]; n.Title != "Про котов" || !n.TextCut || n.Comments != 2 || !n.Mine || n.EditedAt.IsZero() || n.AuthorID != "u1" {
+		t.Fatalf("note = %+v", n)
+	}
+	if !page.Notes[1].EditedAt.IsZero() {
+		t.Fatalf("a note never changed is edited at %v", page.Notes[1].EditedAt)
+	}
+
+	if _, err = notes.Get(context.Background(), "", "nope"); failure.From(err).Kind != failure.NotFound {
+		t.Fatalf("Get of no note: %v", err)
 	}
 }

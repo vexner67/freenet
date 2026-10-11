@@ -59,6 +59,10 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /album/{id}/edit", page(dir, "album-edit.html"))
 	mux.Handle("GET /album/{id}/upload", page(dir, "album-upload.html"))
 	mux.Handle("GET /photo/{id}", page(dir, "photo.html"))
+	mux.Handle("GET /notes", page(dir, "notes.html"))
+	mux.Handle("GET /notes/create", page(dir, "note-edit.html"))
+	mux.Handle("GET /note/{id}", page(dir, "note.html"))
+	mux.Handle("GET /note/{id}/edit", page(dir, "note-edit.html"))
 	mux.Handle("GET /{nickname}", page(dir, "profile.html"))
 }
 

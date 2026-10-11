@@ -25,7 +25,7 @@ func TestPagePrivacy(t *testing.T) {
 		t.Fatalf("%d %+v, token %q", w.Code, got, h.users.profileToken)
 	}
 
-	for _, path := range []string{"posts", "followers", "following", "clubs", "albums"} {
+	for _, path := range []string{"posts", "followers", "following", "clubs", "albums", "notes"} {
 		if w = h.do("GET", "/api/v1/users/bob/"+path, ""); w.Code != http.StatusForbidden || decode[errorBody](t, w).Error.Message != "this page is hidden" {
 			t.Fatalf("%s of a hidden page: %d %s", path, w.Code, w.Body)
 		}
@@ -48,6 +48,7 @@ func TestPagePartsPrivacy(t *testing.T) {
 		{"followers", func(h *harness) { h.users.hiddenFriends = true }, "followers", "this user's follows are hidden"},
 		{"following", func(h *harness) { h.users.hiddenFriends = true }, "following", "this user's follows are hidden"},
 		{"clubs", func(h *harness) { h.users.hiddenClubs = true }, "clubs", "this user's clubs are hidden"},
+		{"notes", func(h *harness) { h.users.hiddenNotes = true }, "notes", "this user's notes are hidden"},
 	}
 
 	for _, tt := range tests {

@@ -2970,6 +2970,233 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/users/{nickname}/notes:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: The notes of a user ("Заметки"), the newest first
+      description: |
+        No token needed; whether you may see them is the user's `notesRead`,
+        and those of a deleted page or of a page hidden from you are hidden.
+        Each note carries the beginning of its text (`textCut`).
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [author, notes, nextCursor, total]
+                properties:
+                  author: { $ref: "#/components/schemas/Author" }
+                  notes:
+                    type: array
+                    items: { $ref: "#/components/schemas/Note" }
+                  nextCursor: { type: string, description: Empty on the last page }
+                  total: { type: integer, description: The notes on all pages }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "403":
+          description: "`this page is deleted`, `this page is hidden` or `this user's notes are hidden`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/notes:
+    post:
+      summary: Write a note ("Добавить запись")
+      description: Needs a filled-in profile, as posting does. Limited as posts are.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NoteDraft" }
+      responses:
+        "201":
+          description: The note
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/notes/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: A note with its whole text and who wrote it
+      description: No token needed. A note of a deleted page, or of notes hidden from you, is not found.
+      responses:
+        "200":
+          description: The note
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [author, note]
+                properties:
+                  author: { $ref: "#/components/schemas/Author" }
+                  note: { $ref: "#/components/schemas/Note" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Change a note ("Редактировать заметку")
+      description: Only its author, whenever they like; the title and the text are replaced. Limited as edits of posts are.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NoteDraft" }
+      responses:
+        "200":
+          description: The note as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Note" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not yours to change
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Delete a note with its comments
+      description: Only its author.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not yours to delete
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/notes/{id}/comments:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: The comments under a note, the oldest first
+      description: For those shown the note. Comments of deleted pages are left out, still counted in `total`.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comments, nextCursor, total]
+                properties:
+                  comments:
+                    type: array
+                    items: { $ref: "#/components/schemas/NoteComment" }
+                  nextCursor: { type: string }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Comment a note
+      description: |
+        Text only. Needs a filled-in profile and no blacklist between you
+        and the author of the note (`you cannot comment on this note`). The
+        author hears about it (`note_comment`). Limited as comments are.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 60000 }
+      responses:
+        "201":
+          description: The comment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/NoteComment" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: A blacklist stands between you and the author
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/note-comments/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Delete a comment under a note
+      description: Its author or the author of the note.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not yours to delete
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/note-comments/{id}/text:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: What a comment under a note says, whole
+      description: The list carries its beginning (`textCut`). For those shown the note.
+      responses:
+        "200":
+          description: The text
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [text]
+                properties:
+                  text: { type: string }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/album-photos/{id}/reposts:
     parameters:
       - name: id
@@ -4007,6 +4234,10 @@ components:
           type: string
           enum: [everyone, users, following, only_me]
           description: "Who sees when you were last online after a long absence (\"Кто видит мою неактивность\"); a shorter one anyone sees, as on openvk"
+        notesRead:
+          type: string
+          enum: [everyone, users, following, only_me]
+          description: "Who sees your notes (\"Кому видно мои заметки\"); everyone when left out"
 
     User:
       allOf:
@@ -4078,7 +4309,7 @@ components:
         hiddenMenu:
           type: array
           description: The links taken out of the left menu; none by default
-          items: { type: string, enum: [photos, messages, groups, events, feed, notifications] }
+          items: { type: string, enum: [photos, messages, notes, groups, events, feed, notifications] }
         theme: { type: string, enum: [default, blue, dark], description: "The look of the whole site (\"Стиль\"); default when left out" }
         hideRating: { type: boolean, description: "Takes \"Заполненность страницы\" off the pages its owner reads (\"Рейтинг\")" }
         nsfw: { type: string, enum: [blur, hide, show], description: "Posts marked as adult: blurred until clicked (the default), blurred and left out of the news, or shown as any other" }
@@ -4426,8 +4657,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, event_reminder]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; event_reminder: the actor, an event you are going to (surely or maybe), starts within a day — told once, and again if the event is moved"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, event_reminder, note_comment]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; event_reminder: the actor, an event you are going to (surely or maybe), starts within a day — told once, and again if the event is moved; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted)"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -4440,7 +4671,7 @@ components:
             createdAt: { type: string, format: date-time }
             text: { type: string, description: "What the post says; empty when photos only" }
         comment:
-          description: "The comment, for the notifications about one: what it says, 1000 characters at most. Also the message of a topic (topic_message, topic_mention, topic_message_like) and the comment under a photo (photo_comment, photo_mention); null for the others and for a message of photos only"
+          description: "The comment, for the notifications about one: what it says, 1000 characters at most. Also the message of a topic (topic_message, topic_mention, topic_message_like) the comment under a photo (photo_comment, photo_mention) and under a note (note_comment); null for the others and for a message of photos only"
           nullable: true
           type: object
           required: [id, text]
@@ -4457,6 +4688,13 @@ components:
         photo:
           description: Only for photo_like, photo_comment and photo_mention; absent otherwise
           allOf: [{ $ref: "#/components/schemas/Photo" }]
+        note:
+          description: Only for note_comment; absent otherwise
+          type: object
+          required: [id, title]
+          properties:
+            id: { type: string, format: uuid }
+            title: { type: string }
 
     NotificationPage:
       type: object
@@ -4671,11 +4909,52 @@ components:
     Access:
       type: object
       description: Which blocks of a page you may see, as its owner's privacy allows
-      required: [photos, friends, clubs]
+      required: [photos, friends, clubs, notes]
       properties:
         photos: { type: boolean, description: "The albums (`photosRead`)" }
         friends: { type: boolean, description: "The follows, either way (`friendsRead`)" }
         clubs: { type: boolean, description: "The communities (`clubsRead`)" }
+        notes: { type: boolean, description: "The notes (`notesRead`)" }
+
+    NoteDraft:
+      type: object
+      additionalProperties: false
+      required: [title, text]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 256, description: "One line (\"Название\")" }
+        text: { type: string, minLength: 1, maxLength: 60000, description: "Plain text (\"Содержание\")" }
+
+    Note:
+      type: object
+      description: 'A note of a person ("Заметки"): a title and a text kept apart from the wall'
+      required: [id, title, text, comments, createdAt, editedAt, mine]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string }
+        text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
+        textCut:
+          type: boolean
+          description: "`text` is only its beginning (1000 characters): the list carries no more. GET /api/v1/notes/{id} tells it whole. Absent when the text is whole"
+        comments: { type: integer }
+        createdAt: { type: string, format: date-time }
+        editedAt:
+          type: [string, "null"]
+          format: date-time
+          description: When it was last changed; null if never
+        mine: { type: boolean, description: You wrote it }
+
+    NoteComment:
+      type: object
+      required: [id, author, text, createdAt, mine]
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/Author" }
+        text: { type: string, description: "Plain text with \\n line breaks; never HTML" }
+        textCut:
+          type: boolean
+          description: "`text` is only its beginning (1000 characters). GET /api/v1/note-comments/{id}/text tells it whole. Absent when the text is whole"
+        createdAt: { type: string, format: date-time }
+        mine: { type: boolean, description: You wrote it }
 
     Backdrop:
       description: '"Фон страницы": the photos on the left and on the right of a page, of a person or a community; null for none'

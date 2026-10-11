@@ -94,8 +94,8 @@ type fakeUsers struct {
 	// Privacy: the parts of every page hidden from the caller; accessAsked
 	// is whose page the gateway asked about, profileToken the token
 	// GetProfile got.
-	hiddenPage, hiddenInfo, hiddenPhotos, hiddenFriends, hiddenClubs bool
-	accessAsked, profileToken                                        string
+	hiddenPage, hiddenInfo, hiddenPhotos, hiddenFriends, hiddenClubs, hiddenNotes bool
+	accessAsked, profileToken                                                     string
 	// Messages: closed unless the peer wrote first; wroteFirst is what the
 	// gateway passed on.
 	closedMessages, wroteFirst bool
@@ -246,7 +246,7 @@ func (f *fakeUsers) Access(_ context.Context, token, userID string) (model.Acces
 		return model.Access{}, f.err
 	}
 	return model.Access{
-		Page: !f.hiddenPage, Info: !f.hiddenInfo, Photos: !f.hiddenPhotos, Friends: !f.hiddenFriends, Clubs: !f.hiddenClubs,
+		Page: !f.hiddenPage, Info: !f.hiddenInfo, Photos: !f.hiddenPhotos, Friends: !f.hiddenFriends, Clubs: !f.hiddenClubs, Notes: !f.hiddenNotes,
 	}, f.err
 }
 
@@ -1001,6 +1001,9 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n-13", Kind: "photo_like", ActorID: "u2", PostID: "gone", CreatedAt: at},
 			{ID: "n-14", Kind: "event_reminder", ActorID: "k1", CreatedAt: at},
 			{ID: "n-15", Kind: "photo_mention", ActorID: "u2", PostID: "ph6", CommentID: "pc1", CreatedAt: at},
+			{ID: "n-16", Kind: "note_comment", ActorID: "u2", PostID: "note1", CommentID: "nc1", CreatedAt: at},
+			{ID: "n-17", Kind: "note_comment", ActorID: "u2", PostID: "note-deleted", CommentID: "nc1", CreatedAt: at},
+			{ID: "n-18", Kind: "note_comment", ActorID: "u2", PostID: "note1", CommentID: "nc-deleted", CreatedAt: at},
 		},
 		NextCursor: "n-2",
 	}, f.err
@@ -1194,6 +1197,7 @@ type harness struct {
 	clubs         *fakeClubs
 	topics        *fakeTopics
 	albums        *fakeAlbums
+	notes         *fakeNotes
 }
 
 func newHarness(cfg rest.Config) harness {
@@ -1211,6 +1215,7 @@ func newHarness(cfg rest.Config) harness {
 		clubs:         &fakeClubs{},
 		topics:        &fakeTopics{},
 		albums:        &fakeAlbums{},
+		notes:         &fakeNotes{},
 	}
 	h.metrics = prometheus.NewRegistry()
 	h.handler = mustServer(cfg, rest.Backends{
@@ -1223,6 +1228,7 @@ func newHarness(cfg rest.Config) harness {
 		Clubs:         h.clubs,
 		Topics:        h.topics,
 		Albums:        h.albums,
+		Notes:         h.notes,
 	}, h.metrics).Handler()
 
 	return h

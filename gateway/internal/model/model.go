@@ -113,22 +113,24 @@ type Privacy struct {
 	// PageRead ("everyone" or "users"), InfoRead, PhotosRead and
 	// FriendsRead are openvk's "Кому видно …": "everyone", "users",
 	// "following" or "only_me"; OnlineRead is "Кто видит мою
-	// неактивность", the same.
+	// неактивность", NotesRead "Кому видно мои заметки", the same.
 	PageRead    string
 	InfoRead    string
 	PhotosRead  string
 	FriendsRead string
 	OnlineRead  string
+	NotesRead   string
 }
 
 // Access is what of a page the viewer may see: the page, its information,
-// albums, follows and communities.
+// albums, follows, communities and notes.
 type Access struct {
 	Page    bool
 	Info    bool
 	Photos  bool
 	Friends bool
 	Clubs   bool
+	Notes   bool
 }
 
 // Relation is who of the viewer and a user blacklisted the other.
@@ -966,4 +968,48 @@ type NewPhotoComment struct {
 	ReplyTo string
 	// Mentions are the IDs of the people the text names.
 	Mentions []string
+}
+
+// Note is a note of a person ("Заметки"): a title and a text; Mine: the
+// viewer wrote it.
+type Note struct {
+	ID       string
+	AuthorID string
+	Title    string
+	Text     string
+	// TextCut: Text is only its beginning, as the list carries it.
+	TextCut   bool
+	Comments  int
+	CreatedAt time.Time
+	// EditedAt is zero for a note never changed.
+	EditedAt time.Time
+	Mine     bool
+}
+
+// NotePage is one screen of the notes of a person, newest first;
+// NextCursor is empty on the last, Total counts them on all pages.
+type NotePage struct {
+	Notes      []Note
+	NextCursor string
+	Total      int
+}
+
+// NoteComment is a comment under a note, text only; Mine: the viewer
+// wrote it.
+type NoteComment struct {
+	ID       string
+	NoteID   string
+	AuthorID string
+	Text     string
+	// TextCut: Text is only its beginning, as lists carry it.
+	TextCut   bool
+	CreatedAt time.Time
+	Mine      bool
+}
+
+// NoteCommentPage is one screen of the comments of a note, oldest first.
+type NoteCommentPage struct {
+	Comments   []NoteComment
+	NextCursor string
+	Total      int
 }
