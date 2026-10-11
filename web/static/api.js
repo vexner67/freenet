@@ -411,6 +411,11 @@ export const api = {
 
   // "Заметки" of a person, the comments under a note; the list carries
   // the beginnings of the texts, note(id) the whole.
+  // "Закладки": what you like — section is 'posts', 'comments' or
+  // 'photos' — newest like first, and ownPosts: what you wrote.
+  faves: (section, cursor = '') => authorized('GET', page(`/api/v1/me/faves/${section}`, cursor, 0)),
+  ownPosts: (cursor = '') => authorized('GET', page('/api/v1/me/posts', cursor, 0)),
+
   notes: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/notes`, cursor, limit)),
   createNote: (title, text) => authorized('POST', '/api/v1/me/notes', { title, text }),
   note: (id) => optional('GET', `/api/v1/notes/${encodeURIComponent(id)}`),
