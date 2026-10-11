@@ -449,6 +449,37 @@ func (r *UserRepository) GetByNickname(ctx context.Context, nickname user.Nickna
 	return u, nil
 }
 
+const getNicknamesQuery = `
+	SELECT nickname
+	FROM users
+	WHERE lower(nickname) = ANY($1)
+		AND nickname <> ''
+`
+
+func (r *UserRepository) Nicknames(ctx context.Context, nicknames []user.Nickname) ([]user.Nickname, error) {
+	lowered := make([]string, len(nicknames))
+	for i, nickname := range nicknames {
+		lowered[i] = strings.ToLower(nickname.String())
+	}
+
+	rows, err := r.pool.Query(ctx, getNicknamesQuery, lowered)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+	defer rows.Close()
+
+	known := make([]user.Nickname, 0, len(nicknames))
+	for rows.Next() {
+		var nickname string
+		if err := rows.Scan(&nickname); err != nil {
+			return nil, errs.Wrap("rows.Scan", err)
+		}
+		known = append(known, user.Nickname(nickname))
+	}
+
+	return known, errs.Wrap("rows.Err", rows.Err())
+}
+
 const getUsersByIDsQuery = `
 	SELECT` + userColumns + `
 	FROM users

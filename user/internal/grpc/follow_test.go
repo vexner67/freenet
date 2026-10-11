@@ -2,6 +2,7 @@ package grpc_test
 
 import (
 	"context"
+	"slices"
 	"testing"
 
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
@@ -232,6 +233,15 @@ func TestBlacklist(t *testing.T) {
 	named, err := s.client.ResolveMentions(bob, &userv1.ResolveMentionsRequest{Nicknames: []string{"ann", "no such", "bob"}})
 	if err != nil || len(named.GetUserIds()) != 0 {
 		t.Fatalf("mentions across a block = %v, %v", named, err)
+	}
+
+	// Which of the words after "@" are pages anyone may ask, a block or
+	// not: the page is there for all to see.
+	for name, ctx := range map[string]context.Context{"bob": bob, "nobody": context.Background()} {
+		found, err := s.client.FindNicknames(ctx, &userv1.FindNicknamesRequest{Nicknames: []string{"ANN", "no such", "ghost", "bob", "ann"}})
+		if got := found.GetNicknames(); err != nil || !slices.Equal(got, []string{"ann", "bob"}) {
+			t.Fatalf("nicknames found by %s = %v, %v", name, got, err)
+		}
 	}
 
 	msg, err := s.client.CanMessage(bob, &userv1.CanMessageRequest{UserId: annID, WroteFirst: true})

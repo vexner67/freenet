@@ -161,6 +161,30 @@ func (r *UserRepository) GetByNickname(ctx context.Context, nickname user.Nickna
 	return &u, nil
 }
 
+func (r *UserRepository) Nicknames(ctx context.Context, nicknames []user.Nickname) ([]user.Nickname, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var known []user.Nickname
+	for _, nickname := range nicknames {
+		id, ok := r.byNickname[nicknameKey(nickname)]
+		if !ok {
+			continue
+		}
+
+		u := r.users[id]
+		if owned := u.Profile().Nickname; !slices.Contains(known, owned) {
+			known = append(known, owned)
+		}
+	}
+
+	return known, nil
+}
+
 func (r *UserRepository) GetByIDs(ctx context.Context, ids []uuid.UUID) ([]*user.User, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)
