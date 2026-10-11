@@ -6,7 +6,7 @@
 // the site opens and what the left menu shows); "Чёрный список" is a page of its own.
 
 import { api, currentUser } from './api.js';
-import { deviceName, formatDateTime, sessionsCount, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites } from './labels.js';
+import { deviceName, formatDateTime, sessionsCount, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites } from './labels.js';
 import { $, applyInterface, deviceTheme, el, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { openDeactivate } from './deactivate.js';
 
@@ -87,9 +87,10 @@ function initPrivacy(me) {
   for (const [id, key] of Object.entries(shows)) $(id).checked = me.privacy[key];
   fill($('wall-write'), wallWrites, me.privacy.wallWrite);
   fill($('messages-write'), messagesWrites, me.privacy.messagesWrite);
+  fill($('chats-invite'), chatsInvites, me.privacy.chatsInvite);
 
   onSubmit($('privacy'), async () => {
-    const privacy = { wallWrite: $('wall-write').value, messagesWrite: $('messages-write').value };
+    const privacy = { wallWrite: $('wall-write').value, messagesWrite: $('messages-write').value, chatsInvite: $('chats-invite').value };
     for (const [id, key] of Object.entries(reads)) privacy[key] = $(id).value;
     for (const [id, key] of Object.entries(shows)) privacy[key] = $(id).checked;
     await api.updatePrivacy(privacy);

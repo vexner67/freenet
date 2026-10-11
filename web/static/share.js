@@ -129,8 +129,10 @@ async function fillChats(select, error) {
 
   try {
     const page = await api.dialogs();
-    select.replaceChildren(...page.dialogs.map((d) => el('option', { value: d.peer.nickname, textContent: fullName(d.peer) })));
-    if (page.dialogs.length === 0) select.replaceChildren(el('option', { value: '', textContent: 'У вас ещё нет переписок' }));
+    // Chats of several people are in the list too: a post goes to a person.
+    const dialogs = page.dialogs.filter((d) => d.peer);
+    select.replaceChildren(...dialogs.map((d) => el('option', { value: d.peer.nickname, textContent: fullName(d.peer) })));
+    if (dialogs.length === 0) select.replaceChildren(el('option', { value: '', textContent: 'У вас ещё нет переписок' }));
   } catch (e) {
     showError(error, e);
   }

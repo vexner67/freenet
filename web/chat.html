@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Сообщения | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/chat.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Мои Сообщения</span><a class="aside" id="about" hidden>О чате</a></div>
+      <div class="page-body">
+        <div class="error" id="error" hidden></div>
+
+        <div class="messenger" id="messenger" hidden>
+          <div class="im-selection chat-bar">
+            <b id="members"></b>
+            <span id="actions"></span>
+          </div>
+          <div class="messenger-messages" id="messages">
+            <p class="hint center" id="empty" hidden>Здесь пока нет сообщений.</p>
+          </div>
+          <form class="messenger-input" id="form">
+            <img class="messenger-avatar" id="my-avatar" src="/static/avatar.svg" alt="">
+            <div class="messenger-box">
+              <textarea id="text" maxlength="60000" placeholder="Введите сообщение" aria-label="Сообщение"></textarea>
+              <div class="reply-to" id="editing" hidden>Редактирование сообщения <a class="reply-cancel" id="editing-cancel" title="Не редактировать">×</a></div>
+              <div class="attachments" id="photos" hidden></div>
+              <div class="messenger-buttons">
+                <button class="button" type="submit" id="send">Отправить</button>
+                <a class="attach-link" id="attach">Прикрепить фотографию</a>
+              </div>
+              <input type="file" id="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+            </div>
+            <img class="messenger-avatar" src="/static/chat.svg" alt="">
+          </form>
+          <p class="messenger-blocked" id="blocked" hidden></p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

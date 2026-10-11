@@ -95,6 +95,10 @@ input:focus, select:focus, textarea:focus,
 .found-words { background: #6b5a14; color: #fff; }
 .im-forwarded, .forward-list { border-color: #3a4654; }
 .im-message.deleted .im-message-text, .im-forwarded-date, .im-forwarded-hint, .forward-list { color: #999; }
+.chat-action { color: #999; }
+.chat-people { border-color: #333; }
+.chat-person { border-bottom-color: #2a2a2a; }
+.modal-body input[type="text"], .modal-body input[type="search"] { background: #1c1c1c; border-color: #444; color: #ddd; }
 .im-selection, .messenger-input, .messenger-blocked { background: #222; border-color: #333; }
 
 .attachment img, .attachment-loading { border-color: #444; }
