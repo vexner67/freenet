@@ -517,7 +517,7 @@ func TestMessageRepository_EditHideSearch(t *testing.T) {
 	save(cat, ann, "на море хорошо")
 
 	// Edit: the text and when, read back.
-	edited, err := first.Edited(ann, "Еду на море!", time.Now())
+	edited, err := first.Edited(ann, message.Revision{Text: "Еду на море!"}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -529,6 +529,21 @@ func TestMessageRepository_EditHideSearch(t *testing.T) {
 	}
 	if got, _ := messages.Get(ctx, second.ID()); !got.EditedAt().IsZero() {
 		t.Fatal("a message never edited says it was")
+	}
+	// An edit that replaces the photos writes them.
+	photo := uuid.New()
+	withPhoto, err := second.Edited(ann, message.Revision{Text: second.Text(), Photos: message.Photos{photo}, ReplacePhotos: true}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = messages.Update(ctx, withPhoto); err != nil {
+		t.Fatalf("Update with a photo: %v", err)
+	}
+	if got, err := messages.Get(ctx, second.ID()); err != nil || !slices.Equal(got.Photos(), message.Photos{photo}) || got.Text() != second.Text() {
+		t.Fatalf("the message with a photo = %+v, %v", got, err)
+	}
+	if got, _ := messages.Get(ctx, first.ID()); len(got.Photos()) != 0 {
+		t.Fatal("an edit of the words gave the message photos")
 	}
 	missing, _ := message.New(ann, bob, message.RestoreContent("x", nil, uuid.Nil, nil), time.Now())
 	if err = messages.Update(ctx, missing); !errors.Is(err, message.ErrNotFound) {
@@ -545,6 +560,25 @@ func TestMessageRepository_EditHideSearch(t *testing.T) {
 	}
 	if found, _ := messages.Search(ctx, ann, bob, sea, fromBob.ID(), 10); !slices.Equal(says(found), []string{"Еду на море!"}) {
 		t.Fatalf("море before the cursor = %v", says(found))
+	}
+	// What a message carries on is searched as its own words are.
+	dan := uuid.New()
+	carrying, err := message.New(dan, cat, message.RestoreContent("смотри", nil, uuid.Nil, message.Forwards{
+		{SenderID: ann, Text: "горы", CreatedAt: time.Now()},
+		{SenderID: ann, Text: "Еду на МОРЕ", CreatedAt: time.Now()},
+	}), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = messages.Save(ctx, carrying); err != nil {
+		t.Fatal(err)
+	}
+	if found, err := messages.Search(ctx, dan, uuid.Nil, sea, uuid.Nil, 10); err != nil || !slices.Equal(says(found), []string{"смотри"}) {
+		t.Fatalf("море among the forwarded = %v, %v", says(found), err)
+	}
+	peaks, _ := message.NewQuery("гор_")
+	if found, _ := messages.Search(ctx, dan, cat, peaks, uuid.Nil, 10); len(found) != 0 {
+		t.Fatalf("a wildcard among the forwarded = %v", says(found))
 	}
 	percent, _ := message.NewQuery("%")
 	if found, _ := messages.Search(ctx, ann, uuid.Nil, percent, uuid.Nil, 10); !slices.Equal(says(found), []string{"скидка 50%"}) {

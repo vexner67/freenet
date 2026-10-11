@@ -24,7 +24,8 @@ type MessageService interface {
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	Hide(ctx context.Context, userID, id uuid.UUID) error
-	Edit(ctx context.Context, userID, id uuid.UUID, text message.Text) (*message.Message, error)
+	DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID, forEveryone bool) error
+	Edit(ctx context.Context, userID, id uuid.UUID, rev message.Revision) (*message.Message, error)
 	Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, cursor uuid.UUID, size int) (service.SearchPage, error)
 	HasMessagesFrom(ctx context.Context, userID, peerID uuid.UUID) (bool, error)
 	Subscribe(userID uuid.UUID) (<-chan service.Event, func())
@@ -286,6 +287,29 @@ func (h *MessageHandler) HideMessage(ctx context.Context, req *messagev1.HideMes
 	return &emptypb.Empty{}, nil
 }
 
+func (h *MessageHandler) DeleteMessages(ctx context.Context, req *messagev1.DeleteMessagesRequest) (*emptypb.Empty, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// Before any of them is parsed: a request may name no more.
+	if len(req.GetIds()) > message.MaxBatch {
+		return nil, status.Error(codes.InvalidArgument, message.ErrTooManyMessages.Error())
+	}
+
+	ids, err := parseIDs(req.GetIds(), "invalid message id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.messageService.DeleteMany(ctx, userID, ids, req.GetForEveryone()); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (h *MessageHandler) EditMessage(ctx context.Context, req *messagev1.EditMessageRequest) (*messagev1.EditMessageResponse, error) {
 	userID, err := currentUserID(ctx)
 	if err != nil {
@@ -297,12 +321,12 @@ func (h *MessageHandler) EditMessage(ctx context.Context, req *messagev1.EditMes
 		return nil, err
 	}
 
-	text, err := message.NewText(req.GetText())
+	rev, err := fromProtoRevision(req)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
-	m, err := h.messageService.Edit(ctx, userID, id, text)
+	m, err := h.messageService.Edit(ctx, userID, id, rev)
 	if err != nil {
 		return nil, err
 	}

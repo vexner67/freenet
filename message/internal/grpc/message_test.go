@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -594,5 +595,94 @@ func TestSearch_TextLimit(t *testing.T) {
 	found, err = s.client.SearchMessages(s.as(t, ann), &messagev1.SearchMessagesRequest{Query: "Сообщение", TextLimit: 10})
 	if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetText() != " сообщение" || !found.GetMessages()[0].GetTextCut() {
 		t.Fatalf("SearchMessages further = %v, %v", found, err)
+	}
+}
+
+func TestEditPhotosSearchForwardedDeleteMany(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	old, fresh := uuid.NewString(), uuid.NewString()
+
+	sent, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Text: "Еду на море", PhotoIds: []string{old}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := sent.GetMessage().GetId()
+
+	// An edit keeps the photos unless it replaces them.
+	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!", PhotoIds: []string{fresh}})
+	if err != nil || !slices.Equal(edited.GetMessage().GetPhotoIds(), []string{old}) {
+		t.Fatalf("an edit of the words = %v, %v", edited, err)
+	}
+	edited, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!", PhotoIds: []string{fresh, old}, ReplacePhotos: true})
+	if err != nil || !slices.Equal(edited.GetMessage().GetPhotoIds(), []string{fresh, old}) {
+		t.Fatalf("the photos replaced = %v, %v", edited, err)
+	}
+	for name, req := range map[string]*messagev1.EditMessageRequest{
+		"a bad photo":     {Id: id, Text: "x", PhotoIds: []string{"x"}, ReplacePhotos: true},
+		"a photo twice":   {Id: id, Text: "x", PhotoIds: []string{fresh, fresh}, ReplacePhotos: true},
+		"too many photos": {Id: id, Text: "x", PhotoIds: slices.Repeat([]string{fresh}, 11), ReplacePhotos: true},
+		"nothing left":    {Id: id, ReplacePhotos: true},
+	} {
+		if _, err = s.client.EditMessage(s.as(t, ann), req); status.Code(err) != codes.InvalidArgument {
+			t.Errorf("EditMessage, %s: %v", name, err)
+		}
+	}
+
+	// Cat finds the message by what it carries on, cut to where it says so.
+	long := strings.Repeat("а", 50) + " море " + strings.Repeat("я", 50)
+	carried, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: long})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: cat.String(), Text: "смотри", ForwardIds: []string{carried.GetMessage().GetId()}}); err != nil {
+		t.Fatal(err)
+	}
+	found, err := s.client.SearchMessages(s.as(t, cat), &messagev1.SearchMessagesRequest{Query: "МОРЕ", TextLimit: 20})
+	if err != nil || len(found.GetMessages()) != 1 {
+		t.Fatalf("SearchMessages = %v, %v", found, err)
+	}
+	if m := found.GetMessages()[0]; m.GetText() != "смотри" || !m.GetTextCut() || !strings.Contains(m.GetForwarded()[0].GetText(), "море") || len([]rune(m.GetForwarded()[0].GetText())) != 20 {
+		t.Fatalf("the found message = %v", m)
+	}
+
+	// Several messages at once.
+	second, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Text: "два"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	both := []string{id, second.GetMessage().GetId()}
+	for name, tt := range map[string]struct {
+		ctx  context.Context
+		req  *messagev1.DeleteMessagesRequest
+		code codes.Code
+	}{
+		"without a token": {context.Background(), &messagev1.DeleteMessagesRequest{Ids: both}, codes.Unauthenticated},
+		"none":            {s.as(t, ann), &messagev1.DeleteMessagesRequest{}, codes.InvalidArgument},
+		"a bad id":        {s.as(t, ann), &messagev1.DeleteMessagesRequest{Ids: []string{id, "x"}}, codes.InvalidArgument},
+		"too many":        {s.as(t, ann), &messagev1.DeleteMessagesRequest{Ids: slices.Repeat([]string{id}, 101)}, codes.InvalidArgument},
+		"the recipient's": {s.as(t, bob), &messagev1.DeleteMessagesRequest{Ids: both, ForEveryone: true}, codes.PermissionDenied},
+		"no message":      {s.as(t, ann), &messagev1.DeleteMessagesRequest{Ids: []string{id, uuid.NewString()}, ForEveryone: true}, codes.NotFound},
+		"another dialog":  {s.as(t, cat), &messagev1.DeleteMessagesRequest{Ids: both}, codes.NotFound},
+	} {
+		if _, err = s.client.DeleteMessages(tt.ctx, tt.req); status.Code(err) != tt.code {
+			t.Errorf("DeleteMessages, %s: %v, want %v", name, err, tt.code)
+		}
+	}
+
+	if _, err = s.client.DeleteMessages(s.as(t, bob), &messagev1.DeleteMessagesRequest{Ids: both}); err != nil {
+		t.Fatalf("DeleteMessages for himself: %v", err)
+	}
+	if bobs, _ := s.client.ListMessages(s.as(t, bob), &messagev1.ListMessagesRequest{PeerId: ann.String()}); len(bobs.GetMessages()) != 1 {
+		t.Fatalf("bob reads %v", bobs.GetMessages())
+	}
+	if _, err = s.client.DeleteMessages(s.as(t, ann), &messagev1.DeleteMessagesRequest{Ids: both, ForEveryone: true}); err != nil {
+		t.Fatalf("DeleteMessages for everyone: %v", err)
+	}
+	anns, err := s.client.ListMessages(s.as(t, ann), &messagev1.ListMessagesRequest{PeerId: bob.String()})
+	if err != nil || len(anns.GetMessages()) != 3 || anns.GetMessages()[0].GetDeletedAt() == nil || anns.GetMessages()[2].GetDeletedAt() == nil || anns.GetMessages()[1].GetDeletedAt() != nil {
+		t.Fatalf("ann reads %v, %v", anns.GetMessages(), err)
 	}
 }

@@ -39,7 +39,8 @@ type MessageRepository interface {
 	// Retract saves a message taken back: it says nothing from now on;
 	// message.ErrNotFound if it is gone or was taken back already.
 	Retract(ctx context.Context, m *message.Message) error
-	// Update saves what an edited message says; message.ErrNotFound.
+	// Update saves what an edited message says and shows;
+	// message.ErrNotFound.
 	Update(ctx context.Context, m *message.Message) error
 	// Hide deletes the message for userID alone and brings their side of
 	// the dialog back to the messages they have left; message.ErrNotFound.
@@ -341,40 +342,121 @@ func copyPhotos(f *message.Forwarded) (photoCopies, error) {
 // the dialog saying nothing, "Сообщение удалено", until each side deletes
 // it for themselves; media deletes its photos. Both hear what it is now.
 func (s *MessageService) Delete(ctx context.Context, userID, id uuid.UUID) error {
-	m, err := s.messageRepo.Get(ctx, id)
+	return s.DeleteMany(ctx, userID, []uuid.UUID{id}, true)
+}
+
+// Hide deletes a message for userID alone ("Удалить у себя"), their own
+// or the peer's: the other side keeps it. Once both have, the message
+// goes for good with its photos. The user's other pages hear of it.
+func (s *MessageService) Hide(ctx context.Context, userID, id uuid.UUID) error {
+	return s.DeleteMany(ctx, userID, []uuid.UUID{id}, false)
+}
+
+// removal is one message on its way out: what it was and what it is to
+// be, taken back or hidden from whoever deletes it.
+type removal struct {
+	was *message.Message
+	now *message.Message
+}
+
+// DeleteMany deletes the messages userID selected in their dialogs, all
+// or none of them: for everyone, as Delete does, or for themselves, as
+// Hide does. One the user does not have, or may not take back, fails
+// them all.
+func (s *MessageService) DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID, forEveryone bool) error {
+	ids, err := message.Batch(ids)
 	if err != nil {
-		return errs.Wrap("s.messageRepo.Get", err)
+		return errs.Wrap("message.Batch", err)
 	}
 
-	// Others' dialogs are none of the user's business, not even that a
-	// message exists; nor is a message the user deleted for themselves.
-	if !m.VisibleTo(userID) {
-		return message.ErrNotFound
-	}
+	removals := make([]removal, 0, len(ids))
 
-	gone, err := m.TakenBack(userID, s.now())
-	if err != nil {
-		return errs.Wrap("m.TakenBack", err)
+	for _, id := range ids {
+		r, err := s.removal(ctx, userID, id, forEveryone)
+		if err != nil {
+			return errs.Wrap("s.removal", err)
+		}
+
+		removals = append(removals, r)
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if err := s.messageRepo.Retract(ctx, gone); err != nil {
-			return errs.Wrap("s.messageRepo.Retract", err)
+		for _, r := range removals {
+			if err := s.remove(ctx, userID, r); err != nil {
+				return errs.Wrap("s.remove", err)
+			}
 		}
 
-		return errs.Wrap("s.dropPhotos", s.dropPhotos(ctx, m, uuid.Nil))
+		return nil
 	})
 	if err != nil {
 		return errs.Wrap("s.tx.WithinTx", err)
 	}
 
-	for _, side := range []uuid.UUID{gone.SenderID(), gone.RecipientID()} {
-		if gone.VisibleTo(side) {
-			s.events.Publish(ctx, side, Event{Edited: gone})
-		}
+	for _, r := range removals {
+		s.announce(ctx, userID, r)
 	}
 
 	return nil
+}
+
+// removal reads message id and tells what deleting it makes of it.
+func (s *MessageService) removal(ctx context.Context, userID, id uuid.UUID, forEveryone bool) (removal, error) {
+	m, err := s.messageRepo.Get(ctx, id)
+	if err != nil {
+		return removal{}, errs.Wrap("s.messageRepo.Get", err)
+	}
+
+	// Others' dialogs are none of the user's business, not even that a
+	// message exists; nor is a message the user deleted for themselves.
+	if !m.VisibleTo(userID) {
+		return removal{}, message.ErrNotFound
+	}
+
+	if forEveryone {
+		gone, err := m.TakenBack(userID, s.now())
+
+		return removal{was: m, now: gone}, errs.Wrap("m.TakenBack", err)
+	}
+
+	hidden, err := m.HiddenFrom(userID)
+
+	return removal{was: m, now: hidden}, errs.Wrap("m.HiddenFrom", err)
+}
+
+// remove saves r: a message taken back says nothing and loses its photos,
+// one hidden by both sides goes for good with them, one hidden by userID
+// alone stays for the other side.
+func (s *MessageService) remove(ctx context.Context, userID uuid.UUID, r removal) error {
+	switch {
+	case r.now.IsDeleted() && !r.was.IsDeleted():
+		if err := s.messageRepo.Retract(ctx, r.now); err != nil {
+			return errs.Wrap("s.messageRepo.Retract", err)
+		}
+	case r.now.Gone():
+		if err := s.messageRepo.Delete(ctx, r.was); err != nil {
+			return errs.Wrap("s.messageRepo.Delete", err)
+		}
+	default:
+		return errs.Wrap("s.messageRepo.Hide", s.messageRepo.Hide(ctx, r.was, userID))
+	}
+
+	return errs.Wrap("s.dropPhotos", s.dropPhotos(ctx, r.was, uuid.Nil))
+}
+
+// announce tells of r: both sides hear what a message taken back is now,
+// the pages of userID that a message they hid is gone.
+func (s *MessageService) announce(ctx context.Context, userID uuid.UUID, r removal) {
+	if !r.now.IsDeleted() || r.was.IsDeleted() {
+		s.events.Publish(ctx, userID, Event{Deleted: &Deleted{ID: r.was.ID(), SenderID: r.was.SenderID(), RecipientID: r.was.RecipientID()}})
+		return
+	}
+
+	for _, side := range []uuid.UUID{r.now.SenderID(), r.now.RecipientID()} {
+		if r.now.VisibleTo(side) {
+			s.events.Publish(ctx, side, Event{Edited: r.now})
+		}
+	}
 }
 
 // dropPhotos has media delete the photos of m, its own and the copies it
@@ -400,36 +482,12 @@ func (s *MessageService) dropPhotos(ctx context.Context, m *message.Message, exc
 	return nil
 }
 
-// Hide deletes a message for userID alone ("Удалить у себя"), their own
-// or the peer's: the other side keeps it. Once both have, the message
-// goes for good with its photos. The user's other pages hear of it.
-func (s *MessageService) Hide(ctx context.Context, userID, id uuid.UUID) error {
-	m, err := s.messageRepo.Get(ctx, id)
-	if err != nil {
-		return errs.Wrap("s.messageRepo.Get", err)
-	}
-
-	hidden, err := m.HiddenFrom(userID)
-	if err != nil {
-		return errs.Wrap("m.HiddenFrom", err)
-	}
-
-	if hidden.Gone() {
-		if err = s.erase(ctx, m); err != nil {
-			return errs.Wrap("s.erase", err)
-		}
-	} else if err = s.messageRepo.Hide(ctx, m, userID); err != nil {
-		return errs.Wrap("s.messageRepo.Hide", err)
-	}
-
-	s.events.Publish(ctx, userID, Event{Deleted: &Deleted{ID: m.ID(), SenderID: m.SenderID(), RecipientID: m.RecipientID()}})
-
-	return nil
-}
-
-// Edit changes what a message says: only its sender, for a day after
-// sending (message.Edited). Both sides that still have it hear of it.
-func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, text message.Text) (*message.Message, error) {
+// Edit changes what a message says and, if rev says so, the photos it
+// shows: only its sender, for a day after sending (message.Edited). The
+// caller has made sure new photos are the sender's; media keeps them and
+// deletes those the edit took away. Both sides that still have the
+// message hear of it.
+func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, rev message.Revision) (*message.Message, error) {
 	m, err := s.messageRepo.Get(ctx, id)
 	if err != nil {
 		return nil, errs.Wrap("s.messageRepo.Get", err)
@@ -439,13 +497,34 @@ func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, text me
 		return nil, message.ErrNotFound
 	}
 
-	edited, err := m.Edited(userID, text, s.now())
+	edited, err := m.Edited(userID, rev, s.now())
 	if err != nil {
 		return nil, errs.Wrap("m.Edited", err)
 	}
 
-	if err = s.messageRepo.Update(ctx, edited); err != nil {
-		return nil, errs.Wrap("s.messageRepo.Update", err)
+	added, removed := without(edited.Photos(), m.Photos()), without(m.Photos(), edited.Photos())
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.messageRepo.Update(ctx, edited); err != nil {
+			return errs.Wrap("s.messageRepo.Update", err)
+		}
+
+		if len(added) > 0 {
+			if err := s.photos.Publish(ctx, userID, added); err != nil {
+				return errs.Wrap("s.photos.Publish", err)
+			}
+		}
+
+		if len(removed) > 0 {
+			if err := s.photos.Delete(ctx, userID, removed); err != nil {
+				return errs.Wrap("s.photos.Delete", err)
+			}
+		}
+
+		return nil
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	for _, side := range []uuid.UUID{edited.SenderID(), edited.RecipientID()} {
@@ -455,6 +534,19 @@ func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, text me
 	}
 
 	return edited, nil
+}
+
+// without are the photos of a that b does not have.
+func without(a, b message.Photos) []uuid.UUID {
+	var out []uuid.UUID
+
+	for _, id := range a {
+		if !slices.Contains(b, id) {
+			out = append(out, id)
+		}
+	}
+
+	return out
 }
 
 // Search pages the messages of userID that say q, newest first: in the
@@ -474,22 +566,6 @@ func (s *MessageService) Search(ctx context.Context, userID, peerID uuid.UUID, q
 	}
 
 	return page, nil
-}
-
-// erase removes a message from both sides, with its photos.
-func (s *MessageService) erase(ctx context.Context, m *message.Message) error {
-	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if err := s.messageRepo.Delete(ctx, m); err != nil {
-			return errs.Wrap("s.messageRepo.Delete", err)
-		}
-
-		return errs.Wrap("s.dropPhotos", s.dropPhotos(ctx, m, uuid.Nil))
-	})
-	if err != nil {
-		return errs.Wrap("s.tx.WithinTx", err)
-	}
-
-	return nil
 }
 
 // Dialogs pages a user's dialogs, the most recently written first; cursor

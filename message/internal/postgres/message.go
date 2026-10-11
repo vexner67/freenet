@@ -629,12 +629,13 @@ func (r *MessageRepository) Retract(ctx context.Context, m *message.Message) err
 const updateMessageQuery = `
 	UPDATE messages
 	SET text = $2,
-		edited_at = $3
+		edited_at = $3,
+		photo_ids = $4
 	WHERE id = $1
 `
 
 func (r *MessageRepository) Update(ctx context.Context, m *message.Message) error {
-	tag, err := r.conn(ctx).Exec(ctx, updateMessageQuery, m.ID(), m.Text().String(), m.EditedAt())
+	tag, err := r.conn(ctx).Exec(ctx, updateMessageQuery, m.ID(), m.Text().String(), m.EditedAt(), photoIDs(m.Photos()))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -711,7 +712,8 @@ func (r *MessageRepository) Hide(ctx context.Context, m *message.Message, userID
 }
 
 // searchMessagesQuery: $2 is the peer of one dialog, NULL for all the
-// dialogs of the user $1; $3 is the pattern of what the messages say.
+// dialogs of the user $1; $3 is the pattern of what the messages say,
+// themselves or in the messages they carry on.
 const searchMessagesQuery = `
 	SELECT
 		id,
@@ -730,7 +732,14 @@ const searchMessagesQuery = `
 	FROM messages
 	WHERE $1 IN (sender_id, recipient_id)
 		AND ($2::uuid IS NULL OR $2 IN (sender_id, recipient_id))
-		AND text ILIKE $3
+		AND (
+			text ILIKE $3
+			OR EXISTS (
+				SELECT 1
+				FROM jsonb_array_elements(forwarded) AS f
+				WHERE f->>'text' ILIKE $3
+			)
+		)
 		AND id < $4
 		AND NOT CASE WHEN sender_id = $1 THEN hidden_from_sender ELSE hidden_from_recipient END
 	ORDER BY id DESC

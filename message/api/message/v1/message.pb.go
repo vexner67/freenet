@@ -978,7 +978,14 @@ type EditMessageRequest struct {
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// May be empty only when the message has photos, shares a post or
 	// carries other messages on.
-	Text          string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	Text string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	// With replace_photos: the photos the message shows from now on, at most
+	// 10, the caller's uploads and the photos it had; none takes them all
+	// away. A message that shares a photo of an album takes none.
+	PhotoIds []string `protobuf:"bytes,3,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	// false keeps the photos of the message, whatever photo_ids say: an
+	// edit that knows of no photos does not take them away.
+	ReplacePhotos bool `protobuf:"varint,4,opt,name=replace_photos,json=replacePhotos,proto3" json:"replace_photos,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1027,6 +1034,75 @@ func (x *EditMessageRequest) GetText() string {
 	return ""
 }
 
+func (x *EditMessageRequest) GetPhotoIds() []string {
+	if x != nil {
+		return x.PhotoIds
+	}
+	return nil
+}
+
+func (x *EditMessageRequest) GetReplacePhotos() bool {
+	if x != nil {
+		return x.ReplacePhotos
+	}
+	return false
+}
+
+type DeleteMessagesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 1 to 100 messages the caller has in their dialogs.
+	Ids []string `protobuf:"bytes,1,rep,name=ids,proto3" json:"ids,omitempty"`
+	// true takes them back from both sides: the caller's own, within a day
+	// of sending. false deletes them for the caller alone.
+	ForEveryone   bool `protobuf:"varint,2,opt,name=for_everyone,json=forEveryone,proto3" json:"for_everyone,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteMessagesRequest) Reset() {
+	*x = DeleteMessagesRequest{}
+	mi := &file_api_message_v1_message_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteMessagesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteMessagesRequest) ProtoMessage() {}
+
+func (x *DeleteMessagesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_message_v1_message_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteMessagesRequest.ProtoReflect.Descriptor instead.
+func (*DeleteMessagesRequest) Descriptor() ([]byte, []int) {
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *DeleteMessagesRequest) GetIds() []string {
+	if x != nil {
+		return x.Ids
+	}
+	return nil
+}
+
+func (x *DeleteMessagesRequest) GetForEveryone() bool {
+	if x != nil {
+		return x.ForEveryone
+	}
+	return false
+}
+
 type EditMessageResponse struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Message       *Message               `protobuf:"bytes,1,opt,name=message,proto3" json:"message,omitempty"`
@@ -1036,7 +1112,7 @@ type EditMessageResponse struct {
 
 func (x *EditMessageResponse) Reset() {
 	*x = EditMessageResponse{}
-	mi := &file_api_message_v1_message_proto_msgTypes[15]
+	mi := &file_api_message_v1_message_proto_msgTypes[16]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1048,7 +1124,7 @@ func (x *EditMessageResponse) String() string {
 func (*EditMessageResponse) ProtoMessage() {}
 
 func (x *EditMessageResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_message_v1_message_proto_msgTypes[15]
+	mi := &file_api_message_v1_message_proto_msgTypes[16]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1061,7 +1137,7 @@ func (x *EditMessageResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EditMessageResponse.ProtoReflect.Descriptor instead.
 func (*EditMessageResponse) Descriptor() ([]byte, []int) {
-	return file_api_message_v1_message_proto_rawDescGZIP(), []int{15}
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{16}
 }
 
 func (x *EditMessageResponse) GetMessage() *Message {
@@ -1091,7 +1167,7 @@ type SearchMessagesRequest struct {
 
 func (x *SearchMessagesRequest) Reset() {
 	*x = SearchMessagesRequest{}
-	mi := &file_api_message_v1_message_proto_msgTypes[16]
+	mi := &file_api_message_v1_message_proto_msgTypes[17]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1103,7 +1179,7 @@ func (x *SearchMessagesRequest) String() string {
 func (*SearchMessagesRequest) ProtoMessage() {}
 
 func (x *SearchMessagesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_message_v1_message_proto_msgTypes[16]
+	mi := &file_api_message_v1_message_proto_msgTypes[17]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1116,7 +1192,7 @@ func (x *SearchMessagesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchMessagesRequest.ProtoReflect.Descriptor instead.
 func (*SearchMessagesRequest) Descriptor() ([]byte, []int) {
-	return file_api_message_v1_message_proto_rawDescGZIP(), []int{16}
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{17}
 }
 
 func (x *SearchMessagesRequest) GetPeerId() string {
@@ -1166,7 +1242,7 @@ type SearchMessagesResponse struct {
 
 func (x *SearchMessagesResponse) Reset() {
 	*x = SearchMessagesResponse{}
-	mi := &file_api_message_v1_message_proto_msgTypes[17]
+	mi := &file_api_message_v1_message_proto_msgTypes[18]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1178,7 +1254,7 @@ func (x *SearchMessagesResponse) String() string {
 func (*SearchMessagesResponse) ProtoMessage() {}
 
 func (x *SearchMessagesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_message_v1_message_proto_msgTypes[17]
+	mi := &file_api_message_v1_message_proto_msgTypes[18]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1191,7 +1267,7 @@ func (x *SearchMessagesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SearchMessagesResponse.ProtoReflect.Descriptor instead.
 func (*SearchMessagesResponse) Descriptor() ([]byte, []int) {
-	return file_api_message_v1_message_proto_rawDescGZIP(), []int{17}
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{18}
 }
 
 func (x *SearchMessagesResponse) GetMessages() []*Message {
@@ -1217,7 +1293,7 @@ type HasMessagesFromRequest struct {
 
 func (x *HasMessagesFromRequest) Reset() {
 	*x = HasMessagesFromRequest{}
-	mi := &file_api_message_v1_message_proto_msgTypes[18]
+	mi := &file_api_message_v1_message_proto_msgTypes[19]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1229,7 +1305,7 @@ func (x *HasMessagesFromRequest) String() string {
 func (*HasMessagesFromRequest) ProtoMessage() {}
 
 func (x *HasMessagesFromRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_message_v1_message_proto_msgTypes[18]
+	mi := &file_api_message_v1_message_proto_msgTypes[19]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1242,7 +1318,7 @@ func (x *HasMessagesFromRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HasMessagesFromRequest.ProtoReflect.Descriptor instead.
 func (*HasMessagesFromRequest) Descriptor() ([]byte, []int) {
-	return file_api_message_v1_message_proto_rawDescGZIP(), []int{18}
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{19}
 }
 
 func (x *HasMessagesFromRequest) GetPeerId() string {
@@ -1261,7 +1337,7 @@ type HasMessagesFromResponse struct {
 
 func (x *HasMessagesFromResponse) Reset() {
 	*x = HasMessagesFromResponse{}
-	mi := &file_api_message_v1_message_proto_msgTypes[19]
+	mi := &file_api_message_v1_message_proto_msgTypes[20]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1273,7 +1349,7 @@ func (x *HasMessagesFromResponse) String() string {
 func (*HasMessagesFromResponse) ProtoMessage() {}
 
 func (x *HasMessagesFromResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_message_v1_message_proto_msgTypes[19]
+	mi := &file_api_message_v1_message_proto_msgTypes[20]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1286,7 +1362,7 @@ func (x *HasMessagesFromResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HasMessagesFromResponse.ProtoReflect.Descriptor instead.
 func (*HasMessagesFromResponse) Descriptor() ([]byte, []int) {
-	return file_api_message_v1_message_proto_rawDescGZIP(), []int{19}
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{20}
 }
 
 func (x *HasMessagesFromResponse) GetHasMessages() bool {
@@ -1304,7 +1380,7 @@ type SubscribeRequest struct {
 
 func (x *SubscribeRequest) Reset() {
 	*x = SubscribeRequest{}
-	mi := &file_api_message_v1_message_proto_msgTypes[20]
+	mi := &file_api_message_v1_message_proto_msgTypes[21]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1316,7 +1392,7 @@ func (x *SubscribeRequest) String() string {
 func (*SubscribeRequest) ProtoMessage() {}
 
 func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_message_v1_message_proto_msgTypes[20]
+	mi := &file_api_message_v1_message_proto_msgTypes[21]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1329,7 +1405,7 @@ func (x *SubscribeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeRequest.ProtoReflect.Descriptor instead.
 func (*SubscribeRequest) Descriptor() ([]byte, []int) {
-	return file_api_message_v1_message_proto_rawDescGZIP(), []int{20}
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{21}
 }
 
 type SubscribeResponse struct {
@@ -1347,7 +1423,7 @@ type SubscribeResponse struct {
 
 func (x *SubscribeResponse) Reset() {
 	*x = SubscribeResponse{}
-	mi := &file_api_message_v1_message_proto_msgTypes[21]
+	mi := &file_api_message_v1_message_proto_msgTypes[22]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1359,7 +1435,7 @@ func (x *SubscribeResponse) String() string {
 func (*SubscribeResponse) ProtoMessage() {}
 
 func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_message_v1_message_proto_msgTypes[21]
+	mi := &file_api_message_v1_message_proto_msgTypes[22]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1372,7 +1448,7 @@ func (x *SubscribeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SubscribeResponse.ProtoReflect.Descriptor instead.
 func (*SubscribeResponse) Descriptor() ([]byte, []int) {
-	return file_api_message_v1_message_proto_rawDescGZIP(), []int{21}
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{22}
 }
 
 func (x *SubscribeResponse) GetEvent() isSubscribeResponse_Event {
@@ -1461,7 +1537,7 @@ type MessageDeleted struct {
 
 func (x *MessageDeleted) Reset() {
 	*x = MessageDeleted{}
-	mi := &file_api_message_v1_message_proto_msgTypes[22]
+	mi := &file_api_message_v1_message_proto_msgTypes[23]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1473,7 +1549,7 @@ func (x *MessageDeleted) String() string {
 func (*MessageDeleted) ProtoMessage() {}
 
 func (x *MessageDeleted) ProtoReflect() protoreflect.Message {
-	mi := &file_api_message_v1_message_proto_msgTypes[22]
+	mi := &file_api_message_v1_message_proto_msgTypes[23]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1486,7 +1562,7 @@ func (x *MessageDeleted) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use MessageDeleted.ProtoReflect.Descriptor instead.
 func (*MessageDeleted) Descriptor() ([]byte, []int) {
-	return file_api_message_v1_message_proto_rawDescGZIP(), []int{22}
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *MessageDeleted) GetId() string {
@@ -1522,7 +1598,7 @@ type ReadMark struct {
 
 func (x *ReadMark) Reset() {
 	*x = ReadMark{}
-	mi := &file_api_message_v1_message_proto_msgTypes[23]
+	mi := &file_api_message_v1_message_proto_msgTypes[24]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1534,7 +1610,7 @@ func (x *ReadMark) String() string {
 func (*ReadMark) ProtoMessage() {}
 
 func (x *ReadMark) ProtoReflect() protoreflect.Message {
-	mi := &file_api_message_v1_message_proto_msgTypes[23]
+	mi := &file_api_message_v1_message_proto_msgTypes[24]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1547,7 +1623,7 @@ func (x *ReadMark) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReadMark.ProtoReflect.Descriptor instead.
 func (*ReadMark) Descriptor() ([]byte, []int) {
-	return file_api_message_v1_message_proto_rawDescGZIP(), []int{23}
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ReadMark) GetReaderId() string {
@@ -1580,7 +1656,7 @@ type PurgeUserRequest struct {
 
 func (x *PurgeUserRequest) Reset() {
 	*x = PurgeUserRequest{}
-	mi := &file_api_message_v1_message_proto_msgTypes[24]
+	mi := &file_api_message_v1_message_proto_msgTypes[25]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -1592,7 +1668,7 @@ func (x *PurgeUserRequest) String() string {
 func (*PurgeUserRequest) ProtoMessage() {}
 
 func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_message_v1_message_proto_msgTypes[24]
+	mi := &file_api_message_v1_message_proto_msgTypes[25]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -1605,7 +1681,7 @@ func (x *PurgeUserRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use PurgeUserRequest.ProtoReflect.Descriptor instead.
 func (*PurgeUserRequest) Descriptor() ([]byte, []int) {
-	return file_api_message_v1_message_proto_rawDescGZIP(), []int{24}
+	return file_api_message_v1_message_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *PurgeUserRequest) GetUserId() string {
@@ -1693,10 +1769,15 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x14DeleteMessageRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"$\n" +
 	"\x12HideMessageRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"8\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"|\n" +
 	"\x12EditMessageRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
-	"\x04text\x18\x02 \x01(\tR\x04text\"D\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
+	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12%\n" +
+	"\x0ereplace_photos\x18\x04 \x01(\bR\rreplacePhotos\"L\n" +
+	"\x15DeleteMessagesRequest\x12\x10\n" +
+	"\x03ids\x18\x01 \x03(\tR\x03ids\x12!\n" +
+	"\ffor_everyone\x18\x02 \x01(\bR\vforEveryone\"D\n" +
 	"\x13EditMessageResponse\x12-\n" +
 	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageR\amessage\"\x93\x01\n" +
 	"\x15SearchMessagesRequest\x12\x17\n" +
@@ -1730,7 +1811,7 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\apeer_id\x18\x02 \x01(\tR\x06peerId\x12\x18\n" +
 	"\bup_to_id\x18\x03 \x01(\tR\x06upToId\"+\n" +
 	"\x10PurgeUserRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId2\xdb\a\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId2\xa8\b\n" +
 	"\x0eMessageService\x12N\n" +
 	"\vSendMessage\x12\x1e.message.v1.SendMessageRequest\x1a\x1f.message.v1.SendMessageResponse\x12N\n" +
 	"\vListDialogs\x12\x1e.message.v1.ListDialogsRequest\x1a\x1f.message.v1.ListDialogsResponse\x12c\n" +
@@ -1738,7 +1819,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\fListMessages\x12\x1f.message.v1.ListMessagesRequest\x1a .message.v1.ListMessagesResponse\x12K\n" +
 	"\x0eMarkDialogRead\x12!.message.v1.MarkDialogReadRequest\x1a\x16.google.protobuf.Empty\x12I\n" +
 	"\rDeleteMessage\x12 .message.v1.DeleteMessageRequest\x1a\x16.google.protobuf.Empty\x12E\n" +
-	"\vHideMessage\x12\x1e.message.v1.HideMessageRequest\x1a\x16.google.protobuf.Empty\x12N\n" +
+	"\vHideMessage\x12\x1e.message.v1.HideMessageRequest\x1a\x16.google.protobuf.Empty\x12K\n" +
+	"\x0eDeleteMessages\x12!.message.v1.DeleteMessagesRequest\x1a\x16.google.protobuf.Empty\x12N\n" +
 	"\vEditMessage\x12\x1e.message.v1.EditMessageRequest\x1a\x1f.message.v1.EditMessageResponse\x12W\n" +
 	"\x0eSearchMessages\x12!.message.v1.SearchMessagesRequest\x1a\".message.v1.SearchMessagesResponse\x12Z\n" +
 	"\x0fHasMessagesFrom\x12\".message.v1.HasMessagesFromRequest\x1a#.message.v1.HasMessagesFromResponse\x12J\n" +
@@ -1757,7 +1839,7 @@ func file_api_message_v1_message_proto_rawDescGZIP() []byte {
 	return file_api_message_v1_message_proto_rawDescData
 }
 
-var file_api_message_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
+var file_api_message_v1_message_proto_msgTypes = make([]protoimpl.MessageInfo, 26)
 var file_api_message_v1_message_proto_goTypes = []any{
 	(*Message)(nil),                    // 0: message.v1.Message
 	(*ForwardedMessage)(nil),           // 1: message.v1.ForwardedMessage
@@ -1774,27 +1856,28 @@ var file_api_message_v1_message_proto_goTypes = []any{
 	(*DeleteMessageRequest)(nil),       // 12: message.v1.DeleteMessageRequest
 	(*HideMessageRequest)(nil),         // 13: message.v1.HideMessageRequest
 	(*EditMessageRequest)(nil),         // 14: message.v1.EditMessageRequest
-	(*EditMessageResponse)(nil),        // 15: message.v1.EditMessageResponse
-	(*SearchMessagesRequest)(nil),      // 16: message.v1.SearchMessagesRequest
-	(*SearchMessagesResponse)(nil),     // 17: message.v1.SearchMessagesResponse
-	(*HasMessagesFromRequest)(nil),     // 18: message.v1.HasMessagesFromRequest
-	(*HasMessagesFromResponse)(nil),    // 19: message.v1.HasMessagesFromResponse
-	(*SubscribeRequest)(nil),           // 20: message.v1.SubscribeRequest
-	(*SubscribeResponse)(nil),          // 21: message.v1.SubscribeResponse
-	(*MessageDeleted)(nil),             // 22: message.v1.MessageDeleted
-	(*ReadMark)(nil),                   // 23: message.v1.ReadMark
-	(*PurgeUserRequest)(nil),           // 24: message.v1.PurgeUserRequest
-	(*timestamppb.Timestamp)(nil),      // 25: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 26: google.protobuf.Empty
+	(*DeleteMessagesRequest)(nil),      // 15: message.v1.DeleteMessagesRequest
+	(*EditMessageResponse)(nil),        // 16: message.v1.EditMessageResponse
+	(*SearchMessagesRequest)(nil),      // 17: message.v1.SearchMessagesRequest
+	(*SearchMessagesResponse)(nil),     // 18: message.v1.SearchMessagesResponse
+	(*HasMessagesFromRequest)(nil),     // 19: message.v1.HasMessagesFromRequest
+	(*HasMessagesFromResponse)(nil),    // 20: message.v1.HasMessagesFromResponse
+	(*SubscribeRequest)(nil),           // 21: message.v1.SubscribeRequest
+	(*SubscribeResponse)(nil),          // 22: message.v1.SubscribeResponse
+	(*MessageDeleted)(nil),             // 23: message.v1.MessageDeleted
+	(*ReadMark)(nil),                   // 24: message.v1.ReadMark
+	(*PurgeUserRequest)(nil),           // 25: message.v1.PurgeUserRequest
+	(*timestamppb.Timestamp)(nil),      // 26: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 27: google.protobuf.Empty
 }
 var file_api_message_v1_message_proto_depIdxs = []int32{
-	25, // 0: message.v1.Message.created_at:type_name -> google.protobuf.Timestamp
-	25, // 1: message.v1.Message.deletable_until:type_name -> google.protobuf.Timestamp
-	25, // 2: message.v1.Message.edited_at:type_name -> google.protobuf.Timestamp
-	25, // 3: message.v1.Message.editable_until:type_name -> google.protobuf.Timestamp
+	26, // 0: message.v1.Message.created_at:type_name -> google.protobuf.Timestamp
+	26, // 1: message.v1.Message.deletable_until:type_name -> google.protobuf.Timestamp
+	26, // 2: message.v1.Message.edited_at:type_name -> google.protobuf.Timestamp
+	26, // 3: message.v1.Message.editable_until:type_name -> google.protobuf.Timestamp
 	1,  // 4: message.v1.Message.forwarded:type_name -> message.v1.ForwardedMessage
-	25, // 5: message.v1.Message.deleted_at:type_name -> google.protobuf.Timestamp
-	25, // 6: message.v1.ForwardedMessage.created_at:type_name -> google.protobuf.Timestamp
+	26, // 5: message.v1.Message.deleted_at:type_name -> google.protobuf.Timestamp
+	26, // 6: message.v1.ForwardedMessage.created_at:type_name -> google.protobuf.Timestamp
 	0,  // 7: message.v1.Dialog.last_message:type_name -> message.v1.Message
 	0,  // 8: message.v1.SendMessageResponse.message:type_name -> message.v1.Message
 	2,  // 9: message.v1.ListDialogsResponse.dialogs:type_name -> message.v1.Dialog
@@ -1802,8 +1885,8 @@ var file_api_message_v1_message_proto_depIdxs = []int32{
 	0,  // 11: message.v1.EditMessageResponse.message:type_name -> message.v1.Message
 	0,  // 12: message.v1.SearchMessagesResponse.messages:type_name -> message.v1.Message
 	0,  // 13: message.v1.SubscribeResponse.message:type_name -> message.v1.Message
-	23, // 14: message.v1.SubscribeResponse.read:type_name -> message.v1.ReadMark
-	22, // 15: message.v1.SubscribeResponse.deleted:type_name -> message.v1.MessageDeleted
+	24, // 14: message.v1.SubscribeResponse.read:type_name -> message.v1.ReadMark
+	23, // 15: message.v1.SubscribeResponse.deleted:type_name -> message.v1.MessageDeleted
 	0,  // 16: message.v1.SubscribeResponse.edited:type_name -> message.v1.Message
 	3,  // 17: message.v1.MessageService.SendMessage:input_type -> message.v1.SendMessageRequest
 	5,  // 18: message.v1.MessageService.ListDialogs:input_type -> message.v1.ListDialogsRequest
@@ -1812,25 +1895,27 @@ var file_api_message_v1_message_proto_depIdxs = []int32{
 	11, // 21: message.v1.MessageService.MarkDialogRead:input_type -> message.v1.MarkDialogReadRequest
 	12, // 22: message.v1.MessageService.DeleteMessage:input_type -> message.v1.DeleteMessageRequest
 	13, // 23: message.v1.MessageService.HideMessage:input_type -> message.v1.HideMessageRequest
-	14, // 24: message.v1.MessageService.EditMessage:input_type -> message.v1.EditMessageRequest
-	16, // 25: message.v1.MessageService.SearchMessages:input_type -> message.v1.SearchMessagesRequest
-	18, // 26: message.v1.MessageService.HasMessagesFrom:input_type -> message.v1.HasMessagesFromRequest
-	20, // 27: message.v1.MessageService.Subscribe:input_type -> message.v1.SubscribeRequest
-	24, // 28: message.v1.MessageService.PurgeUser:input_type -> message.v1.PurgeUserRequest
-	4,  // 29: message.v1.MessageService.SendMessage:output_type -> message.v1.SendMessageResponse
-	6,  // 30: message.v1.MessageService.ListDialogs:output_type -> message.v1.ListDialogsResponse
-	8,  // 31: message.v1.MessageService.CountUnreadDialogs:output_type -> message.v1.CountUnreadDialogsResponse
-	10, // 32: message.v1.MessageService.ListMessages:output_type -> message.v1.ListMessagesResponse
-	26, // 33: message.v1.MessageService.MarkDialogRead:output_type -> google.protobuf.Empty
-	26, // 34: message.v1.MessageService.DeleteMessage:output_type -> google.protobuf.Empty
-	26, // 35: message.v1.MessageService.HideMessage:output_type -> google.protobuf.Empty
-	15, // 36: message.v1.MessageService.EditMessage:output_type -> message.v1.EditMessageResponse
-	17, // 37: message.v1.MessageService.SearchMessages:output_type -> message.v1.SearchMessagesResponse
-	19, // 38: message.v1.MessageService.HasMessagesFrom:output_type -> message.v1.HasMessagesFromResponse
-	21, // 39: message.v1.MessageService.Subscribe:output_type -> message.v1.SubscribeResponse
-	26, // 40: message.v1.MessageService.PurgeUser:output_type -> google.protobuf.Empty
-	29, // [29:41] is the sub-list for method output_type
-	17, // [17:29] is the sub-list for method input_type
+	15, // 24: message.v1.MessageService.DeleteMessages:input_type -> message.v1.DeleteMessagesRequest
+	14, // 25: message.v1.MessageService.EditMessage:input_type -> message.v1.EditMessageRequest
+	17, // 26: message.v1.MessageService.SearchMessages:input_type -> message.v1.SearchMessagesRequest
+	19, // 27: message.v1.MessageService.HasMessagesFrom:input_type -> message.v1.HasMessagesFromRequest
+	21, // 28: message.v1.MessageService.Subscribe:input_type -> message.v1.SubscribeRequest
+	25, // 29: message.v1.MessageService.PurgeUser:input_type -> message.v1.PurgeUserRequest
+	4,  // 30: message.v1.MessageService.SendMessage:output_type -> message.v1.SendMessageResponse
+	6,  // 31: message.v1.MessageService.ListDialogs:output_type -> message.v1.ListDialogsResponse
+	8,  // 32: message.v1.MessageService.CountUnreadDialogs:output_type -> message.v1.CountUnreadDialogsResponse
+	10, // 33: message.v1.MessageService.ListMessages:output_type -> message.v1.ListMessagesResponse
+	27, // 34: message.v1.MessageService.MarkDialogRead:output_type -> google.protobuf.Empty
+	27, // 35: message.v1.MessageService.DeleteMessage:output_type -> google.protobuf.Empty
+	27, // 36: message.v1.MessageService.HideMessage:output_type -> google.protobuf.Empty
+	27, // 37: message.v1.MessageService.DeleteMessages:output_type -> google.protobuf.Empty
+	16, // 38: message.v1.MessageService.EditMessage:output_type -> message.v1.EditMessageResponse
+	18, // 39: message.v1.MessageService.SearchMessages:output_type -> message.v1.SearchMessagesResponse
+	20, // 40: message.v1.MessageService.HasMessagesFrom:output_type -> message.v1.HasMessagesFromResponse
+	22, // 41: message.v1.MessageService.Subscribe:output_type -> message.v1.SubscribeResponse
+	27, // 42: message.v1.MessageService.PurgeUser:output_type -> google.protobuf.Empty
+	30, // [30:43] is the sub-list for method output_type
+	17, // [17:30] is the sub-list for method input_type
 	17, // [17:17] is the sub-list for extension type_name
 	17, // [17:17] is the sub-list for extension extendee
 	0,  // [0:17] is the sub-list for field type_name
@@ -1841,7 +1926,7 @@ func file_api_message_v1_message_proto_init() {
 	if File_api_message_v1_message_proto != nil {
 		return
 	}
-	file_api_message_v1_message_proto_msgTypes[21].OneofWrappers = []any{
+	file_api_message_v1_message_proto_msgTypes[22].OneofWrappers = []any{
 		(*SubscribeResponse_Message)(nil),
 		(*SubscribeResponse_Read)(nil),
 		(*SubscribeResponse_Deleted)(nil),
@@ -1853,7 +1938,7 @@ func file_api_message_v1_message_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_message_v1_message_proto_rawDesc), len(file_api_message_v1_message_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   25,
+			NumMessages:   26,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
