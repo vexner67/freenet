@@ -1,0 +1,48 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Закладки | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/style.css">
+  <script type="module" src="/static/fave.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Понравившиеся записи</span></div>
+      <div class="page-body">
+        <div class="tabs" id="tabs" hidden>
+          <a id="tab-posts" href="/fave">Записи</a>
+          <a id="tab-comments" href="/fave?section=comments">Комментарии</a>
+          <a id="tab-photos" href="/fave?section=photos">Фотографии</a>
+        </div>
+        <div class="summary-bar" id="summary" hidden><span id="summary-count"></span></div>
+        <div class="error" id="error" hidden></div>
+        <p class="hint" id="empty" hidden></p>
+        <div id="posts"></div>
+        <div class="gray-box album-grid" id="photos" hidden></div>
+        <a class="wall-more" id="more" hidden>Показать ещё</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

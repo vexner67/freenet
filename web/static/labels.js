@@ -581,6 +581,11 @@ export function notesCount(n) {
   return n === 0 ? 'Ни одной заметки' : `${n} ${plural(n, ['заметка', 'заметки', 'заметок'])}`;
 }
 
+// favesCount is openvk's "N закладок" above what you like.
+export function favesCount(n) {
+  return n === 0 ? 'Ни одной закладки' : `${n} ${plural(n, ['закладка', 'закладки', 'закладок'])}`;
+}
+
 export function foundNotes(n) {
   return n === 0 ? 'Ни одной заметки' : `${plural(n, ['Найдена', 'Найдено', 'Найдено'])} ${notesCount(n)}`;
 }
