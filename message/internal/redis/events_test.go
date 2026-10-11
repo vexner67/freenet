@@ -55,7 +55,22 @@ func TestEventCodec(t *testing.T) {
 		t.Fatalf("deleted round trip = %v %+v %v", key, e.Deleted, err)
 	}
 
-	carried := message.Forwarded{SenderID: uuid.New(), Text: "смотри", Photos: message.Photos{uuid.New()}, Post: uuid.New(), CreatedAt: sent.CreatedAt().Add(-time.Hour)}
+	share, err := message.NewPhotoShare("", uuid.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+	shared := message.Restore(message.Stored{ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: share, CreatedAt: sent.CreatedAt()})
+	if data, err = codec.Encode(bob, service.Event{Message: shared}); err != nil {
+		t.Fatalf("Encode a shared photo: %v", err)
+	}
+	if _, e, err = codec.Decode(data); err != nil || e.Message == nil || e.Message.SharedPhoto() != shared.SharedPhoto() || e.Message.Text() != "" {
+		t.Fatalf("a shared photo round trip = %+v, %v", e.Message, err)
+	}
+
+	carried := message.Forwarded{
+		SenderID: uuid.New(), Text: "смотри", Photos: message.Photos{uuid.New()}, Post: uuid.New(), SharedPhoto: uuid.New(),
+		CreatedAt: sent.CreatedAt().Add(-time.Hour),
+	}
 	forward := message.Restore(message.Stored{
 		ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: message.RestoreContent("", nil, uuid.Nil, message.Forwards{carried}), CreatedAt: sent.CreatedAt(),
 	})

@@ -80,6 +80,9 @@ message Message {
   // text and the texts it carries on are only their beginnings: the
   // request set text_limit, and they say more.
   bool text_cut = 14;
+  // A photo of an album of the post service shared into the dialog
+  // ("Поделиться" under a photo, "в переписку"); empty for none.
+  string photo_id = 15;
 }
 
 // A message as another one carries it on: a copy of what it showed.
@@ -91,6 +94,8 @@ message ForwardedMessage {
   // A post it shared; empty for none.
   string post_id = 4;
   google.protobuf.Timestamp created_at = 5;
+  // A photo of an album it shared; empty for none.
+  string photo_id = 6;
 }
 
 message Dialog {
@@ -112,6 +117,10 @@ message SendMessageRequest {
   // those they carry themselves; one that is not there or was taken back
   // fails with InvalidArgument "forwarded message not found".
   repeated string forward_ids = 5;
+  // A photo of an album to share, which the caller has checked the
+  // sender may see; with text alone, anything else with it fails with
+  // InvalidArgument.
+  string photo_id = 6;
 }
 
 message SendMessageResponse {

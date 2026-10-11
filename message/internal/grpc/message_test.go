@@ -155,6 +155,36 @@ func TestDialog(t *testing.T) {
 	if _, err = s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PostId: "x"}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("a bad post id: %v", err)
 	}
+
+	// And a photo of an album, with words or without, but nothing else.
+	photo := uuid.NewString()
+	pictured, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PhotoId: photo, Text: "смотри"})
+	if err != nil || pictured.GetMessage().GetPhotoId() != photo || pictured.GetMessage().GetText() != "смотри" || pictured.GetMessage().GetPostId() != "" {
+		t.Fatalf("a shared photo = %v, %v", pictured, err)
+	}
+	if _, err = s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PhotoId: "x"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bad photo id: %v", err)
+	}
+	if _, err = s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PhotoId: photo, PostId: post}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a shared photo with a post: %v", err)
+	}
+	// Edited, it shares the photo still and may say nothing.
+	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: pictured.GetMessage().GetId(), Text: ""})
+	if err != nil || edited.GetMessage().GetPhotoId() != photo || edited.GetMessage().GetText() != "" {
+		t.Fatalf("an edited shared photo = %v, %v", edited, err)
+	}
+	// Forwarded, it is carried on.
+	onward, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), ForwardIds: []string{pictured.GetMessage().GetId()}})
+	if err != nil || len(onward.GetMessage().GetForwarded()) != 1 || onward.GetMessage().GetForwarded()[0].GetPhotoId() != photo {
+		t.Fatalf("a forwarded shared photo = %v, %v", onward, err)
+	}
+	for _, id := range []string{pictured.GetMessage().GetId(), onward.GetMessage().GetId()} {
+		for _, who := range []uuid.UUID{ann, bob} {
+			if _, err = s.client.HideMessage(s.as(t, who), &messagev1.HideMessageRequest{Id: id}); err != nil {
+				t.Fatal(err)
+			}
+		}
+	}
 	if _, err = s.client.HideMessage(s.as(t, ann), &messagev1.HideMessageRequest{Id: shared.GetMessage().GetId()}); err != nil {
 		t.Fatal(err)
 	}

@@ -269,8 +269,51 @@ func TestMessageRepository_SharedPost(t *testing.T) {
 	if err = messages.Save(ctx, plain); err != nil {
 		t.Fatal(err)
 	}
-	if got, err = messages.Get(ctx, plain.ID()); err != nil || got.Post() != uuid.Nil {
+	if got, err = messages.Get(ctx, plain.ID()); err != nil || got.Post() != uuid.Nil || got.SharedPhoto() != uuid.Nil {
 		t.Fatalf("no post = %+v, %v", got, err)
+	}
+
+	// A photo of an album alone, and carried on by another message.
+	photo := uuid.New()
+	share, err := message.NewPhotoShare("", photo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shared, err := message.New(ann, bob, share, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = messages.Save(ctx, shared); err != nil {
+		t.Fatalf("Save a shared photo alone: %v", err)
+	}
+	if got, err = messages.Get(ctx, shared.ID()); err != nil || got.SharedPhoto() != photo || got.Post() != uuid.Nil || got.Text() != "" {
+		t.Fatalf("a shared photo = %+v, %v", got, err)
+	}
+	if page, err := messages.ListBefore(ctx, ann, bob, uuid.Nil, 1); err != nil || len(page) != 1 || page[0].SharedPhoto() != photo {
+		t.Fatalf("the dialog shows %+v, %v", page, err)
+	}
+
+	forward, err := message.New(bob, ann, message.RestoreContent("", nil, uuid.Nil, shared.Carried()), time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = messages.Save(ctx, forward); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = messages.Get(ctx, forward.ID()); err != nil || len(got.Forwarded()) != 1 || got.Forwarded()[0].SharedPhoto != photo {
+		t.Fatalf("a forwarded shared photo = %+v, %v", got, err)
+	}
+
+	// Taken back, it shares nothing.
+	gone, err := shared.TakenBack(ann, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = messages.Retract(ctx, gone); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = messages.Get(ctx, shared.ID()); err != nil || got.SharedPhoto() != uuid.Nil || !got.IsDeleted() {
+		t.Fatalf("taken back = %+v, %v", got, err)
 	}
 }
 

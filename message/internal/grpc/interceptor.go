@@ -34,6 +34,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "forwarded message not found"), true
 	case errors.Is(err, message.ErrTooManyForwarded):
 		return status.New(codes.InvalidArgument, "a message forwards at most 20 messages"), true
+	case errors.Is(err, message.ErrSharedPhotoAlone):
+		return status.New(codes.InvalidArgument, "a shared photo goes with text alone"), true
 	case errors.Is(err, message.ErrTextEmpty):
 		return status.New(codes.InvalidArgument, "message text is empty"), true
 	default:
