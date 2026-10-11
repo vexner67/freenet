@@ -228,19 +228,46 @@ func TestPostRepository_ClubWalls(t *testing.T) {
 		t.Fatalf("feed after a cursor = %v, %v", older, err)
 	}
 
-	// "Все новости": what the walls say themselves, not what guests wrote.
-	everyone, err := repo.ListFeed(ctx, service.FeedSources{Everyone: true}, uuid.Nil, 50)
-	if err != nil {
-		t.Fatalf("the feed of everyone: %v", err)
-	}
-	var own []uuid.UUID
-	for _, p := range everyone {
-		if p.WallID() == club || p.WallID() == admin {
-			own = append(own, p.ID())
+	// The posts of these walls in a feed, among those of other tests.
+	here := func(sources service.FeedSources) []uuid.UUID {
+		t.Helper()
+
+		feed, err := repo.ListFeed(ctx, sources, uuid.Nil, 1000)
+		if err != nil {
+			t.Fatalf("ListFeed(%+v): %v", sources, err)
 		}
+
+		var found []uuid.UUID
+		for _, p := range feed {
+			if p.WallID() == club || p.WallID() == admin {
+				found = append(found, p.ID())
+			}
+		}
+
+		return found
 	}
-	if !slices.Equal(own, []uuid.UUID{adminsOwn.ID(), news.ID()}) {
-		t.Fatalf("the feed of everyone = %v; want the admin's own post and the club's", own)
+
+	// "Все новости": the posts of every wall; without "Показывать посты на
+	// чужих стенах" only what the walls say themselves, not what guests
+	// wrote; and never the walls the reader ignores.
+	if got := here(service.FeedSources{Everyone: true}); !slices.Equal(got, []uuid.UUID{adminsOwn.ID(), byMember.ID(), news.ID()}) {
+		t.Fatalf("the feed of everyone = %v; want all three", got)
+	}
+	if got := here(service.FeedSources{Everyone: true, OwnOnly: true}); !slices.Equal(got, []uuid.UUID{adminsOwn.ID(), news.ID()}) {
+		t.Fatalf("the feed of everyone, own only = %v; want the admin's own post and the club's", got)
+	}
+	if got := here(service.FeedSources{Everyone: true, Ignored: []uuid.UUID{club}}); !slices.Equal(got, []uuid.UUID{adminsOwn.ID()}) {
+		t.Fatalf("the feed of everyone without the club = %v", got)
+	}
+
+	mine := service.FeedSources{Authors: []uuid.UUID{admin, member}, Walls: []uuid.UUID{club, admin}}
+	mine.OwnOnly = true
+	if got := here(mine); !slices.Equal(got, []uuid.UUID{adminsOwn.ID(), news.ID()}) {
+		t.Fatalf("the feed, own only = %v", got)
+	}
+	mine.OwnOnly, mine.Ignored = false, []uuid.UUID{club}
+	if got := here(mine); !slices.Equal(got, []uuid.UUID{adminsOwn.ID()}) {
+		t.Fatalf("the feed without the club = %v; the member's post there goes too", got)
 	}
 
 	photo, err := post.NewContent("", post.Photos{uuid.New()})

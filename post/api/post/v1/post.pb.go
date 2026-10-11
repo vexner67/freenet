@@ -3031,9 +3031,8 @@ type ListFeedRequest struct {
 	Limit int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
 	// Leaves the posts marked as adult out, as the reader's settings say.
 	HideNsfw bool `protobuf:"varint,5,opt,name=hide_nsfw,json=hideNsfw,proto3" json:"hide_nsfw,omitempty"`
-	// "Все новости" of openvk: what every wall says itself (its owner on
-	// their wall, a community in its name), whoever wrote it; author_ids
-	// and wall_ids are not looked at.
+	// "Все новости" of openvk: the posts of every wall; author_ids and
+	// wall_ids are not looked at.
 	Everyone bool `protobuf:"varint,6,opt,name=everyone,proto3" json:"everyone,omitempty"`
 	// The texts are cut to this many characters and say so (text_cut);
 	// 0 for whole texts. Lists ask for the beginning: a page of whole texts
@@ -3043,8 +3042,15 @@ type ListFeedRequest struct {
 	// left out, on any wall, except what one wrote in the name of a
 	// community.
 	HiddenAuthorIds []string `protobuf:"bytes,8,rep,name=hidden_author_ids,json=hiddenAuthorIds,proto3" json:"hidden_author_ids,omitempty"`
-	unknownFields   protoimpl.UnknownFields
-	sizeCache       protoimpl.SizeCache
+	// Leaves only what a wall says itself: its owner on their wall, a
+	// community in its name. openvk's "Показывать посты на чужих стенах"
+	// taken off.
+	OwnOnly bool `protobuf:"varint,9,opt,name=own_only,json=ownOnly,proto3" json:"own_only,omitempty"`
+	// At most 50: the walls the reader ignores ("Игнорируемые источники"
+	// of openvk). Their posts are left out, whoever wrote them.
+	IgnoredWallIds []string `protobuf:"bytes,10,rep,name=ignored_wall_ids,json=ignoredWallIds,proto3" json:"ignored_wall_ids,omitempty"`
+	unknownFields  protoimpl.UnknownFields
+	sizeCache      protoimpl.SizeCache
 }
 
 func (x *ListFeedRequest) Reset() {
@@ -3129,6 +3135,20 @@ func (x *ListFeedRequest) GetTextLimit() int32 {
 func (x *ListFeedRequest) GetHiddenAuthorIds() []string {
 	if x != nil {
 		return x.HiddenAuthorIds
+	}
+	return nil
+}
+
+func (x *ListFeedRequest) GetOwnOnly() bool {
+	if x != nil {
+		return x.OwnOnly
+	}
+	return false
+}
+
+func (x *ListFeedRequest) GetIgnoredWallIds() []string {
+	if x != nil {
+		return x.IgnoredWallIds
 	}
 	return nil
 }
@@ -10658,7 +10678,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +
 	"nextCursor\x12\x14\n" +
-	"\x05total\x18\x03 \x01(\x05R\x05total\"\xfd\x01\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"\xc2\x02\n" +
 	"\x0fListFeedRequest\x12\x1d\n" +
 	"\n" +
 	"author_ids\x18\x01 \x03(\tR\tauthorIds\x12\x19\n" +
@@ -10669,7 +10689,10 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\beveryone\x18\x06 \x01(\bR\beveryone\x12\x1d\n" +
 	"\n" +
 	"text_limit\x18\a \x01(\x05R\ttextLimit\x12*\n" +
-	"\x11hidden_author_ids\x18\b \x03(\tR\x0fhiddenAuthorIds\"X\n" +
+	"\x11hidden_author_ids\x18\b \x03(\tR\x0fhiddenAuthorIds\x12\x19\n" +
+	"\bown_only\x18\t \x01(\bR\aownOnly\x12(\n" +
+	"\x10ignored_wall_ids\x18\n" +
+	" \x03(\tR\x0eignoredWallIds\"X\n" +
 	"\x10ListFeedResponse\x12#\n" +
 	"\x05posts\x18\x01 \x03(\v2\r.post.v1.PostR\x05posts\x12\x1f\n" +
 	"\vnext_cursor\x18\x02 \x01(\tR\n" +

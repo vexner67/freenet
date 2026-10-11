@@ -251,6 +251,18 @@ func TestErrors(t *testing.T) {
 			_, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: ids})
 			return err
 		}, codes.InvalidArgument},
+		{"too many ignored walls", func() error {
+			ids := make([]string, 51)
+			for i := range ids {
+				ids[i] = uuid.NewString()
+			}
+			_, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{Everyone: true, IgnoredWallIds: ids})
+			return err
+		}, codes.InvalidArgument},
+		{"a bad ignored wall", func() error {
+			_, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{Everyone: true, IgnoredWallIds: []string{"x"}})
+			return err
+		}, codes.InvalidArgument},
 		{"bad post id", func() error {
 			_, err := s.client.DeletePost(ann, &postv1.DeletePostRequest{Id: "x"})
 			return err

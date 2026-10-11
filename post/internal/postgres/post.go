@@ -414,7 +414,9 @@ func (r *PostRepository) YearsByWall(ctx context.Context, wallID uuid.UUID) ([]p
 
 // listFeedQuery: a post that speaks for a community is the community's,
 // so it comes with the walls, never with its author; nor is it left out
-// with the posts of the people the reader blacklisted ($6).
+// with the posts of the people the reader blacklisted ($6). $7 leaves
+// only what a wall says itself (post.ByWallOwner), $8 are the walls the
+// reader ignores.
 const listFeedQuery = `
 	SELECT
 		id,
@@ -444,12 +446,15 @@ const listFeedQuery = `
 		AND NOT archived
 		AND NOT (nsfw AND $5)
 		AND NOT (author_id = ANY($6) AND NOT from_wall)
+		AND (NOT $7 OR author_id = wall_id OR from_wall)
+		AND NOT (wall_id = ANY($8))
 	ORDER BY id DESC
 	LIMIT $4
 `
 
-// listGlobalFeedQuery: what every wall says itself (post.ByWallOwner),
-// read down the primary key.
+// listGlobalFeedQuery: the posts of every wall, read down the primary
+// key; $5 leaves only what a wall says itself (post.ByWallOwner), $6 are
+// the walls the reader ignores.
 const listGlobalFeedQuery = `
 	SELECT
 		id,
@@ -474,11 +479,12 @@ const listGlobalFeedQuery = `
 		polled,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
-	WHERE (author_id = wall_id OR from_wall)
-		AND id < $1
+	WHERE id < $1
 		AND NOT archived
 		AND NOT (nsfw AND $3)
 		AND NOT (author_id = ANY($4) AND NOT from_wall)
+		AND (NOT $5 OR author_id = wall_id OR from_wall)
+		AND NOT (wall_id = ANY($6))
 	ORDER BY id DESC
 	LIMIT $2
 `
@@ -489,7 +495,9 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 	}
 
 	if sources.Everyone {
-		rows, err := r.conn(ctx).Query(ctx, listGlobalFeedQuery, before, limit, sources.HideNSFW, ids(sources.Hidden))
+		rows, err := r.conn(ctx).Query(ctx, listGlobalFeedQuery,
+			before, limit, sources.HideNSFW, ids(sources.Hidden), sources.OwnOnly, ids(sources.Ignored),
+		)
 		if err != nil {
 			return nil, errs.Wrap("r.conn.Query", err)
 		}
@@ -497,7 +505,10 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 		return collectPosts(rows)
 	}
 
-	rows, err := r.conn(ctx).Query(ctx, listFeedQuery, ids(sources.Authors), ids(sources.Walls), before, limit, sources.HideNSFW, ids(sources.Hidden))
+	rows, err := r.conn(ctx).Query(ctx, listFeedQuery,
+		ids(sources.Authors), ids(sources.Walls), before, limit, sources.HideNSFW, ids(sources.Hidden),
+		sources.OwnOnly, ids(sources.Ignored),
+	)
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}

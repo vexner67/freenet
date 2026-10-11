@@ -24,6 +24,9 @@ const (
 	// MaxFeedHidden bounds whose posts a feed leaves out: the newest of
 	// the reader's blacklist.
 	MaxFeedHidden = 1000
+	// MaxFeedIgnored bounds the walls a feed leaves out: as many as one
+	// may ignore.
+	MaxFeedIgnored = 50
 	// MaxForgottenReposts bounds how many notifications about its reposts
 	// a deleted post takes with it: those of the newest.
 	MaxForgottenReposts = 1000
@@ -114,10 +117,16 @@ type FeedSources struct {
 	// HideNSFW leaves the posts marked as adult out, as their reader
 	// asked ("Не показывать в ленте").
 	HideNSFW bool
-	// Everyone is "Все новости" of openvk: what every wall says itself
-	// (post.ByWallOwner), whoever the reader follows; Authors and Walls
-	// are not looked at.
+	// Everyone is "Все новости" of openvk: the posts of every wall,
+	// whoever the reader follows; Authors and Walls are not looked at.
 	Everyone bool
+	// OwnOnly leaves only what a wall says itself (post.ByWallOwner): its
+	// owner on their wall, a community in its name. It is openvk's
+	// "Показывать посты на чужих стенах" taken off.
+	OwnOnly bool
+	// Ignored are the walls whose posts the feed leaves out, whoever
+	// wrote them: openvk's "Игнорируемые источники".
+	Ignored []uuid.UUID
 	// Hidden are the people whose posts the feed leaves out wherever they
 	// wrote them: the reader's blacklist. What one of them wrote for a
 	// community stays: leaving it out would tell who wrote it.
@@ -1177,7 +1186,8 @@ func (s *PostService) ListWall(ctx context.Context, viewerID, wallID uuid.UUID, 
 // first. Total is not counted: a feed is read page by page,
 // not as a whole.
 func (s *PostService) Feed(ctx context.Context, viewerID uuid.UUID, sources FeedSources, cursor uuid.UUID, size int) (Page, error) {
-	if len(sources.Authors) > MaxFeedAuthors || len(sources.Walls) > MaxFeedWalls || len(sources.Hidden) > MaxFeedHidden {
+	if len(sources.Authors) > MaxFeedAuthors || len(sources.Walls) > MaxFeedWalls || len(sources.Hidden) > MaxFeedHidden ||
+		len(sources.Ignored) > MaxFeedIgnored {
 		return Page{}, ErrTooManyAuthors
 	}
 
