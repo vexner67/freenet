@@ -43,6 +43,15 @@ if [ "$alerts" = changed ]; then
 	docker compose restart alertmanager >/dev/null
 fi
 
+# So does Prometheus read its files only as it starts: restart it when
+# what it runs is not what was deployed.
+for file in prometheus.yml alerts.yml; do
+	if ! docker compose exec -T prometheus cat "/etc/prometheus/$file" | cmp -s - "monitoring/$file"; then
+		docker compose restart prometheus >/dev/null
+		break
+	fi
+done
+
 # Images of older commits, kept a few days for a quick rollback.
 docker image prune --all --force --filter "until=72h" >/dev/null
 

@@ -137,17 +137,30 @@ step "healthcheck: every service is healthy"
 # Prometheus scrapes every 10s: the first round may be on its way.
 up=
 for _ in $(seq 1 30); do
-	up=$(curl -sf "$prometheus/api/v1/query?query=up" | jq -r '[.data.result[] | select(.value[1] == "1") | .metric.service] | sort | join(" ")' || true)
+	up=$(curl -sf "$prometheus/api/v1/query?query=up%7Bjob%3D%22freenet%22%7D" | jq -r '[.data.result[] | select(.value[1] == "1") | .metric.service] | sort | join(" ")' || true)
 	[ "$up" = "$(printf '%s\n' "${services[@]}" | sort | xargs)" ] && break
 	sleep 1
 done
 [ "$up" = "$(printf '%s\n' "${services[@]}" | sort | xargs)" ] || die "Prometheus at $prometheus sees up: ${up:-nothing}"
 step "metrics: Prometheus scrapes every service"
 
+# The exporters are scraped every 30s. Every database with a service of
+# its own, and Redis.
+watched="auth club message notification post redis user"
+stores=
+for _ in $(seq 1 60); do
+	stores=$(curl -sf "$prometheus/api/v1/query?query=pg_up%20or%20redis_up" |
+		jq -r '[.data.result[] | select(.value[1] == "1") | .metric.db // "redis"] | sort | join(" ")' || true)
+	[ "$stores" = "$watched" ] && break
+	sleep 1
+done
+[ "$stores" = "$watched" ] || die "Prometheus at $prometheus sees the databases and Redis up: ${stores:-none}"
+step "metrics: Prometheus watches every database and Redis"
+
 # Rules that fail to evaluate (a typo in a metric name does not) say so in
 # their health.
 rules=$(curl -sf "$prometheus/api/v1/rules?type=alert") || die "no rules from Prometheus at $prometheus"
-echo "$rules" | jq -e '[.data.groups[].rules[]] | length >= 8 and all(.health == "ok" or .health == "unknown")' >/dev/null \
+echo "$rules" | jq -e '[.data.groups[].rules[]] | length >= 11 and all(.health == "ok" or .health == "unknown")' >/dev/null \
 	|| die "Prometheus alert rules are missing or broken: $(echo "$rules" | jq -c '[.data.groups[].rules[] | {name, health, lastError}]')"
 curl -sf "$prometheus/api/v1/alertmanagers" | jq -e '.data.activeAlertmanagers | length == 1' >/dev/null \
 	|| die "Prometheus has no Alertmanager"
