@@ -150,3 +150,5 @@ input:focus, select:focus, textarea:focus,
 .poll-meta { color: #b0b0b0; }
 .poll-kind { color: #8c8c8c; }
 .poll-remove:hover { color: #ccc; }
+
+.ignored-row { border-bottom-color: #333; }

@@ -245,7 +245,16 @@ export const api = {
     return authorized('GET', path + (path.includes('?') ? '&' : '?') + 'common=true');
   },
   // feed: your news, or with all those of everyone ("Все новости").
-  feed: (cursor = '', comments = false, all = false) => authorized('GET', withType(page('/api/v1/feed', cursor, 0), all ? 'all' : '', '', comments)),
+  // settings are "Настройки ленты": limit posts a page, alien (posts on
+  // the walls of others) and ignored (the ignored sources too).
+  feed: (cursor = '', comments = false, all = false, settings = {}) => authorized('GET', feedPath(cursor, comments, all, settings)),
+  // "Игнорируемые источники": the walls the news leave out.
+  ignored: () => authorized('GET', '/api/v1/me/feed/ignored'),
+  unignore: (ids) => authorized('DELETE', '/api/v1/me/feed/ignored?' + ids.map((id) => 'id=' + encodeURIComponent(id)).join('&')),
+  ignoreUser: (nickname) => authorized('PUT', `/api/v1/me/feed/ignored/users/${encodeURIComponent(nickname)}`),
+  unignoreUser: (nickname) => authorized('DELETE', `/api/v1/me/feed/ignored/users/${encodeURIComponent(nickname)}`),
+  ignoreClub: (ref) => authorized('PUT', `/api/v1/me/feed/ignored/clubs/${encodeURIComponent(ref)}`),
+  unignoreClub: (ref) => authorized('DELETE', `/api/v1/me/feed/ignored/clubs/${encodeURIComponent(ref)}`),
 
   // onWall: post the photo on your wall too ("Опубликовать запись на стене").
   uploadAvatar: (file, onWall = false) => authorized('PUT', '/api/v1/me/avatar' + (onWall ? '?onWall=true' : ''), file),
@@ -476,6 +485,16 @@ function withType(path, type, q = '', comments = false, year = 0) {
   for (const [name, value] of [['type', type], ['q', q], ['comments', comments ? 'last' : ''], ['year', year || '']]) {
     if (value) path += (path.includes('?') ? '&' : '?') + name + '=' + encodeURIComponent(value);
   }
+
+  return path;
+}
+
+// feedPath is the request of a page of the news with its settings; what
+// is as the server has it by default is not said.
+function feedPath(cursor, comments, all, { limit = 0, alien = true, ignored = false }) {
+  let path = withType(page('/api/v1/feed', cursor, limit), all ? 'all' : '', '', comments);
+  if (!alien) path = withQuery(path, 'alien=false');
+  if (ignored) path = withQuery(path, 'ignored=true');
 
   return path;
 }

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount } from '../static/labels.js';
+import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -576,4 +576,26 @@ test('daysCount declines the days of a poll', () => {
 test('errorText knows what a poll refuses', () => {
   assert.equal(errorText(new Error('you have voted in the poll already')), 'Вы уже проголосовали в этом опросе.');
   assert.equal(errorText(new Error('the poll has ended')), 'Голосование окончено.');
+});
+
+test('feedSettings takes what the browser kept and the defaults for the rest', () => {
+  assert.deepEqual(feedSettings(null), { posts: 20, alien: true });
+  assert.deepEqual(feedSettings('{"posts":5,"alien":false}'), { posts: 5, alien: false });
+  assert.deepEqual(feedSettings('{"posts":7,"alien":"no"}'), { posts: 20, alien: true });
+  assert.deepEqual(feedSettings('not json'), { posts: 20, alien: true });
+  assert.deepEqual(feedSettings('[]'), { posts: 20, alien: true });
+  assert.ok(feedPageSizes.every((n) => n >= 1 && n <= 50));
+});
+
+test('ignoreLabel names the link of a page as openvk does', () => {
+  assert.equal(ignoreLabel('user', false), 'Игнорировать пользователя');
+  assert.equal(ignoreLabel('user', true), 'Не игнорировать пользователя');
+  assert.equal(ignoreLabel('club', false), 'Игнорировать группу');
+  assert.equal(ignoreLabel('club', true), 'Не игнорировать группу');
+  assert.equal(ignoreLabel('event', true), 'Не игнорировать встречу');
+});
+
+test('errorText knows what ignoring refuses', () => {
+  assert.equal(errorText(new Error('too many ignored sources')), 'Превышен лимит игнорируемых источников.');
+  assert.equal(errorText(new Error('you cannot ignore yourself')), 'Нельзя игнорировать самого себя.');
 });
