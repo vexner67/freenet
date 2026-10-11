@@ -148,6 +148,7 @@ const updateUserQuery = `
 		nsfw = $49,
 		post_view = $50,
 		timezone_offset = $51,
+		notes_read = $52,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -219,6 +220,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		ui.NSFW.String(),
 		ui.PostView.String(),
 		timezoneToDB(ui.Timezone),
+		pr.NotesRead.String(),
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -358,7 +360,8 @@ const userColumns = `
 		hide_rating,
 		nsfw,
 		post_view,
-		timezone_offset`
+		timezone_offset,
+		notes_read`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -416,7 +419,8 @@ const qualifiedUserColumns = `
 		u.hide_rating,
 		u.nsfw,
 		u.post_view,
-		u.timezone_offset`
+		u.timezone_offset,
+		u.notes_read`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -547,6 +551,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		extraFields                                []byte
 		hideBirthYear                              bool
 		reads                                      [5]string
+		notesRead                                  string
 		lastSeen                                   *time.Time
 		backdrop                                   [2]*uuid.UUID
 		avatarStyle, mainPage                      string
@@ -591,6 +596,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&backdrop[0], &backdrop[1],
 		&avatarStyle, &mainPage, &hiddenMenu,
 		&theme, &hideRating, &nsfw, &postView, &timezone,
+		&notesRead,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -606,6 +612,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 	privacy.PageRead, privacy.InfoRead = user.Audience(reads[0]), user.Audience(reads[1])
 	privacy.PhotosRead, privacy.FriendsRead = user.Audience(reads[2]), user.Audience(reads[3])
 	privacy.OnlineRead = user.Audience(reads[4])
+	privacy.NotesRead = user.Audience(notesRead)
 
 	fields, err := extraFieldsFromDB(extraFields)
 	if err != nil {

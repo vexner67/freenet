@@ -231,6 +231,9 @@ message PrivacySettings {
   // owner was last online after a long absence ("Кто видит мою
   // неактивность"); anyone sees a short one, as on openvk.
   Audience online_read = 12;
+  // Who sees the notes ("Кому видно мои заметки"); unspecified, as from
+  // a client that does not know it, is everyone.
+  Audience notes_read = 13;
 }
 
 // Who sees a part of a page.
@@ -590,6 +593,8 @@ message GetAccessResponse {
   bool friends = 4;
   // The communities the user is in.
   bool clubs = 5;
+  // The notes.
+  bool notes = 6;
 }
 
 message CanMessageRequest {

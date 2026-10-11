@@ -202,6 +202,7 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		PhotosRead:         toProtoAudience(p.PhotosRead),
 		FriendsRead:        toProtoAudience(p.FriendsRead),
 		OnlineRead:         toProtoAudience(p.OnlineRead),
+		NotesRead:          toProtoAudience(p.NotesRead),
 	}
 }
 
@@ -256,6 +257,14 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		}
 	}
 
+	// A client that does not know the notes leaves them to everyone.
+	notesRead := user.AudienceEveryone
+	if p.GetNotesRead() != userv1.Audience_AUDIENCE_UNSPECIFIED {
+		if notesRead, err = user.NewAudience(fromProtoAudience(p.GetNotesRead())); err != nil {
+			return user.Privacy{}, err
+		}
+	}
+
 	return user.Privacy{
 		ShowBirthday:       p.GetShowBirthday(),
 		ShowRelationship:   p.GetShowRelationship(),
@@ -269,6 +278,7 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		PhotosRead:         reads[1],
 		FriendsRead:        reads[2],
 		OnlineRead:         reads[3],
+		NotesRead:          notesRead,
 	}, nil
 }
 
