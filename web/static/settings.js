@@ -77,6 +77,7 @@ function initMain(me) {
 const reads = {
   'page-read': 'pageRead', 'info-read': 'infoRead', 'online-read': 'onlineRead',
   'clubs-read': 'clubsRead', 'photos-read': 'photosRead', 'friends-read': 'friendsRead',
+  'notes-read': 'notesRead',
 };
 const readOptions = { 'page-read': pageReads, 'online-read': onlineReads };
 const shows = { 'show-birthday': 'showBirthday', 'show-relationship': 'showRelationship', 'show-worldview': 'showWorldview', 'show-political-views': 'showPoliticalViews' };

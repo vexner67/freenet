@@ -1049,3 +1049,19 @@ a.poll-result-name { cursor: pointer; }
 .poll-editor-adder { color: #808080; }
 .poll-editor label input { margin: 0 3px 0 0; vertical-align: middle; }
 .poll-editor .poll-editor-expires select { display: inline-block; width: auto; margin: 0; }
+
+/* "Заметки": a note is laid out as a post — the photo of its author, the
+   title, who wrote it and when, the text and the links below. */
+.note-list { padding-top: 10px; }
+.note-item { margin-bottom: 14px; }
+.note-title { padding: 2px 4px 0; font-size: 12px; overflow-wrap: anywhere; }
+.note-byline { padding: 2px 4px 6px; }
+.note-item .post-text { padding-top: 0; }
+.note { padding-top: 10px; }
+.note-form .form th { width: 90px; }
+.note-form .form td.control { width: 480px; }
+.note-form input[type="text"], .note-form textarea { width: 100%; }
+.note-form textarea { height: 260px; }
+.note-form .button.secondary { margin-left: 6px; }
+.side-note { margin-bottom: 6px; overflow-wrap: anywhere; }
+.side-note .hint { margin: 0; }

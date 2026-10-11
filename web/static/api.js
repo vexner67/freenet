@@ -409,6 +409,18 @@ export const api = {
   unlikeTopicMessage: (id) => authorized('DELETE', `/api/v1/topic-messages/${encodeURIComponent(id)}/like`),
   topicMessageLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/topic-messages/${encodeURIComponent(id)}/likes`, cursor, limit)),
 
+  // "Заметки" of a person, the comments under a note; the list carries
+  // the beginnings of the texts, note(id) the whole.
+  notes: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/notes`, cursor, limit)),
+  createNote: (title, text) => authorized('POST', '/api/v1/me/notes', { title, text }),
+  note: (id) => optional('GET', `/api/v1/notes/${encodeURIComponent(id)}`),
+  editNote: (id, title, text) => authorized('PATCH', `/api/v1/notes/${encodeURIComponent(id)}`, { title, text }),
+  deleteNote: (id) => authorized('DELETE', `/api/v1/notes/${encodeURIComponent(id)}`),
+  noteComments: (id, cursor = '') => optional('GET', page(`/api/v1/notes/${encodeURIComponent(id)}/comments`, cursor, 0)),
+  commentNote: (id, text) => authorized('POST', `/api/v1/notes/${encodeURIComponent(id)}/comments`, { text }),
+  deleteNoteComment: (id) => authorized('DELETE', `/api/v1/note-comments/${encodeURIComponent(id)}`),
+  noteCommentText: (id) => optional('GET', `/api/v1/note-comments/${encodeURIComponent(id)}/text`),
+
   // "Альбомы" of a person (nickname) or of a community (club: its ref).
   albums({ nickname = '', club = '', cursor = '', limit = 0 } = {}) {
     const owner = club ? `/api/v1/clubs/${encodeURIComponent(club)}` : `/api/v1/users/${encodeURIComponent(nickname)}`;
