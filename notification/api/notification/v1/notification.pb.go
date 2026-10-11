@@ -70,6 +70,8 @@ const (
 	Kind_KIND_EVENT_REMINDER Kind = 18
 	// The actor named the recipient in comment_id under the photo post_id.
 	Kind_KIND_PHOTO_MENTION Kind = 19
+	// The actor wrote comment_id under the recipient's note post_id.
+	Kind_KIND_NOTE_COMMENT Kind = 20
 )
 
 // Enum value maps for Kind.
@@ -95,6 +97,7 @@ var (
 		17: "KIND_TOPIC_MESSAGE_LIKE",
 		18: "KIND_EVENT_REMINDER",
 		19: "KIND_PHOTO_MENTION",
+		20: "KIND_NOTE_COMMENT",
 	}
 	Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":        0,
@@ -117,6 +120,7 @@ var (
 		"KIND_TOPIC_MESSAGE_LIKE": 17,
 		"KIND_EVENT_REMINDER":     18,
 		"KIND_PHOTO_MENTION":      19,
+		"KIND_NOTE_COMMENT":       20,
 	}
 )
 
@@ -1005,7 +1009,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId\"\x12\n" +
 	"\x10SubscribeRequest\"D\n" +
 	"\x11SubscribeResponse\x12/\n" +
-	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xc4\x03\n" +
+	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xdb\x03\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -1027,7 +1031,8 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x12KIND_PHOTO_COMMENT\x10\x10\x12\x1b\n" +
 	"\x17KIND_TOPIC_MESSAGE_LIKE\x10\x11\x12\x17\n" +
 	"\x13KIND_EVENT_REMINDER\x10\x12\x12\x16\n" +
-	"\x12KIND_PHOTO_MENTION\x10\x13*;\n" +
+	"\x12KIND_PHOTO_MENTION\x10\x13\x12\x15\n" +
+	"\x11KIND_NOTE_COMMENT\x10\x14*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
