@@ -19,6 +19,8 @@ type PhotoStore struct {
 type storedPhoto struct {
 	images    photo.Images
 	published bool
+	// retired: set aside as unpublished too long; only Publish finds it.
+	retired bool
 }
 
 func NewPhotoStore() *PhotoStore {
@@ -52,7 +54,7 @@ func (s *PhotoStore) Load(ctx context.Context, ownerID, photoID uuid.UUID, size 
 	defer s.mu.RUnlock()
 
 	p, ok := s.photos[ownerID][photoID]
-	if !ok || (size != photo.Large && size != photo.Small) {
+	if !ok || p.retired || (size != photo.Large && size != photo.Small) {
 		return nil, photo.ErrNotFound
 	}
 
@@ -69,7 +71,7 @@ func (s *PhotoStore) Existing(ctx context.Context, ownerID uuid.UUID, photoIDs [
 
 	var found []uuid.UUID
 	for _, id := range photoIDs {
-		if _, ok := s.photos[ownerID][id]; ok {
+		if p, ok := s.photos[ownerID][id]; ok && !p.retired {
 			found = append(found, id)
 		}
 	}
@@ -87,7 +89,7 @@ func (s *PhotoStore) Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []
 
 	for _, id := range photoIDs {
 		if p, ok := s.photos[ownerID][id]; ok {
-			p.published = true
+			p.published, p.retired = true, false
 			s.photos[ownerID][id] = p
 		}
 	}
@@ -104,7 +106,7 @@ func (s *PhotoStore) Copy(ctx context.Context, ownerID, from, to uuid.UUID) erro
 	defer s.mu.Unlock()
 
 	p, ok := s.photos[ownerID][from]
-	if _, copied := s.photos[ownerID][to]; !ok || copied {
+	if _, copied := s.photos[ownerID][to]; !ok || p.retired || copied {
 		return nil
 	}
 
@@ -158,8 +160,30 @@ func (s *PhotoStore) DeleteAll(ctx context.Context, ownerID uuid.UUID) error {
 	return nil
 }
 
-// DeleteUnpublished goes by the time in the UUIDv7 of a photo, as fs does.
-func (s *PhotoStore) DeleteUnpublished(ctx context.Context, before time.Time) (int, error) {
+// Retire goes by the time in the UUIDv7 of a photo, as fs does.
+func (s *PhotoStore) Retire(ctx context.Context, before time.Time) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	retired := 0
+	for _, photos := range s.photos {
+		for id, p := range photos {
+			if !p.published && !p.retired && time.Unix(id.Time().UnixTime()).Before(before) {
+				p.retired = true
+				photos[id] = p
+				retired++
+			}
+		}
+	}
+
+	return retired, nil
+}
+
+func (s *PhotoStore) DeleteRetired(ctx context.Context, before time.Time) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, errs.Wrap("ctx.Err", err)
 	}
@@ -170,7 +194,7 @@ func (s *PhotoStore) DeleteUnpublished(ctx context.Context, before time.Time) (i
 	deleted := 0
 	for ownerID, photos := range s.photos {
 		for id, p := range photos {
-			if !p.published && time.Unix(id.Time().UnixTime()).Before(before) {
+			if p.retired && time.Unix(id.Time().UnixTime()).Before(before) {
 				delete(photos, id)
 				deleted++
 			}

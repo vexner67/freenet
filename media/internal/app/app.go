@@ -111,7 +111,7 @@ func (a *App) build(cfg config.Config) error {
 	if err != nil {
 		return errs.Wrap("grpcserver.New", err)
 	}
-	a.photos = service.NewPhotoService(stores.photos, cfg.UnpublishedPhotoTTL)
+	a.photos = service.NewPhotoService(stores.photos, cfg.UnpublishedPhotoTTL, cfg.RetiredPhotoTTL)
 
 	mediav1.RegisterMediaServiceServer(
 		a.server.Registrar(),
@@ -130,7 +130,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 
 	a.logger.Info("media configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(),
-		"unpublished_photo_ttl", cfg.UnpublishedPhotoTTL)
+		"unpublished_photo_ttl", cfg.UnpublishedPhotoTTL, "retired_photo_ttl", cfg.RetiredPhotoTTL)
 
 	return nil
 }
