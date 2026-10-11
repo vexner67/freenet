@@ -230,7 +230,7 @@ func (s *ChatService) CountUnread(ctx context.Context, userID uuid.UUID) (int, e
 // before says whether the chat hears of it before it is done: who goes
 // still hears that they went.
 type change struct {
-	check  func(chat *message.Chat, me message.Member) ([]*message.ChatMessage, error)
+	check  func(ctx context.Context, chat *message.Chat, me message.Member) ([]*message.ChatMessage, error)
 	apply  func(ctx context.Context, chat *message.Chat) error
 	before bool
 }
@@ -245,7 +245,7 @@ func (s *ChatService) act(ctx context.Context, userID, chatID uuid.UUID, c chang
 			return errs.Wrap("s.locked", err)
 		}
 
-		if told, err = c.check(chat, me); err != nil {
+		if told, err = c.check(ctx, chat, me); err != nil {
 			return errs.Wrap("c.check", err)
 		}
 
@@ -348,7 +348,7 @@ func (s *ChatService) Rename(ctx context.Context, userID, chatID uuid.UUID, titl
 	now := s.now()
 
 	return s.act(ctx, userID, chatID, change{
-		check: func(chat *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
+		check: func(_ context.Context, chat *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
 			if err := me.CheckActive(); err != nil {
 				return nil, errs.Wrap("me.CheckActive", err)
 			}
@@ -377,7 +377,7 @@ func (s *ChatService) Invite(ctx context.Context, userID, chatID uuid.UUID, ids 
 	var admitted []uuid.UUID
 
 	return s.act(ctx, userID, chatID, change{
-		check: func(_ *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
+		check: func(ctx context.Context, _ *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
 			if err := me.CheckActive(); err != nil {
 				return nil, errs.Wrap("me.CheckActive", err)
 			}
@@ -455,7 +455,7 @@ func (s *ChatService) Kick(ctx context.Context, userID, chatID, targetID uuid.UU
 
 	return s.act(ctx, userID, chatID, change{
 		before: true,
-		check: func(chat *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
+		check: func(ctx context.Context, chat *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
 			if err := me.CheckActive(); err != nil {
 				return nil, errs.Wrap("me.CheckActive", err)
 			}
@@ -490,7 +490,7 @@ func (s *ChatService) Leave(ctx context.Context, userID, chatID uuid.UUID) error
 
 	return s.act(ctx, userID, chatID, change{
 		before: true,
-		check: func(_ *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
+		check: func(_ context.Context, _ *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
 			if err := me.CheckActive(); err != nil {
 				return nil, errs.Wrap("me.CheckActive", err)
 			}
@@ -513,7 +513,7 @@ func (s *ChatService) Return(ctx context.Context, userID, chatID uuid.UUID) erro
 	back := false
 
 	return s.act(ctx, userID, chatID, change{
-		check: func(_ *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
+		check: func(ctx context.Context, _ *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
 			switch me.State {
 			case message.MemberActive:
 				return nil, nil
