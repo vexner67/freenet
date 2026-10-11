@@ -287,6 +287,9 @@ export const api = {
   // An event ("встреча"): startsAt and endsAt are ISO times, endsAt '' for none.
   // What the page "о сайте" counts: users, online, clubs, posts.
   about: () => request('GET', '/api/v1/about'),
+  // Which of the nicknames (100 at most) are someone's: { nicknames }.
+  knownNicknames: (nicknames) =>
+    request('GET', '/api/v1/nicknames?' + nicknames.map((n) => 'nickname=' + encodeURIComponent(n)).join('&')),
   createEvent: (event) => authorized('POST', '/api/v1/events', event),
   // maybe: "Возможно приду" of an event.
   joinClub: (ref, { maybe = false } = {}) =>

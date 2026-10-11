@@ -4,6 +4,7 @@
 import { api } from './api.js';
 import { connectEvents, onEvent } from './events.js';
 import { errorText, isLongText, mentionParts, setTimezone, unreadCountText } from './labels.js';
+import { nicknameLookup } from './nicknames.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -34,12 +35,23 @@ if (typeof document !== 'undefined') {
   });
 }
 
+const knownNickname = nicknameLookup((nicknames) => api.knownNicknames(nicknames).then((r) => r.nicknames));
+
 // mentionNodes are text with the people it names as links to their pages,
-// openvk's "[id1|Анна]" and "@ann".
+// openvk's "[id1|Анна]" and "@ann". A text says "@word" of anything: the
+// link of a word that is nobody's nickname becomes plain text again once
+// the server says so, and stays if it cannot be asked.
 export function mentionNodes(text) {
-  return mentionParts(text).map((p) => (typeof p === 'string'
-    ? p
-    : el('a', { href: '/' + encodeURIComponent(p.nickname), textContent: p.text })));
+  return mentionParts(text).map((p) => {
+    if (typeof p === 'string') return p;
+
+    const link = el('a', { href: '/' + encodeURIComponent(p.nickname), textContent: p.text });
+    knownNickname(p.nickname).then((known) => {
+      if (!known) link.replaceWith(p.text);
+    }, () => {});
+
+    return link;
+  });
 }
 
 // textNode shows what a post or a comment says. Long text is cut short
