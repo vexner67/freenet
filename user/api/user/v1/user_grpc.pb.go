@@ -45,6 +45,7 @@ const (
 	UserService_CanPostOnWall_FullMethodName      = "/user.v1.UserService/CanPostOnWall"
 	UserService_CanMessage_FullMethodName         = "/user.v1.UserService/CanMessage"
 	UserService_ResolveMentions_FullMethodName    = "/user.v1.UserService/ResolveMentions"
+	UserService_FindNicknames_FullMethodName      = "/user.v1.UserService/FindNicknames"
 	UserService_GetAccess_FullMethodName          = "/user.v1.UserService/GetAccess"
 	UserService_Block_FullMethodName              = "/user.v1.UserService/Block"
 	UserService_Unblock_FullMethodName            = "/user.v1.UserService/Unblock"
@@ -113,6 +114,9 @@ type UserServiceClient interface {
 	// names by nickname hears of it ("Вас упомянул пользователь" of
 	// openvk): not the caller, not across a blacklist, not a deleted page.
 	ResolveMentions(ctx context.Context, in *ResolveMentionsRequest, opts ...grpc.CallOption) (*ResolveMentionsResponse, error)
+	// Public: which of the nicknames are someone's, so that a text saying
+	// "@word" links to a page only when there is one.
+	FindNicknames(ctx context.Context, in *FindNicknamesRequest, opts ...grpc.CallOption) (*FindNicknamesResponse, error)
 	// Public: what of the user's page the caller, anonymous without a token,
 	// may see, as the user's privacy allows.
 	GetAccess(ctx context.Context, in *GetAccessRequest, opts ...grpc.CallOption) (*GetAccessResponse, error)
@@ -399,6 +403,16 @@ func (c *userServiceClient) ResolveMentions(ctx context.Context, in *ResolveMent
 	return out, nil
 }
 
+func (c *userServiceClient) FindNicknames(ctx context.Context, in *FindNicknamesRequest, opts ...grpc.CallOption) (*FindNicknamesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(FindNicknamesResponse)
+	err := c.cc.Invoke(ctx, UserService_FindNicknames_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetAccess(ctx context.Context, in *GetAccessRequest, opts ...grpc.CallOption) (*GetAccessResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetAccessResponse)
@@ -546,6 +560,9 @@ type UserServiceServer interface {
 	// names by nickname hears of it ("Вас упомянул пользователь" of
 	// openvk): not the caller, not across a blacklist, not a deleted page.
 	ResolveMentions(context.Context, *ResolveMentionsRequest) (*ResolveMentionsResponse, error)
+	// Public: which of the nicknames are someone's, so that a text saying
+	// "@word" links to a page only when there is one.
+	FindNicknames(context.Context, *FindNicknamesRequest) (*FindNicknamesResponse, error)
 	// Public: what of the user's page the caller, anonymous without a token,
 	// may see, as the user's privacy allows.
 	GetAccess(context.Context, *GetAccessRequest) (*GetAccessResponse, error)
@@ -656,6 +673,9 @@ func (UnimplementedUserServiceServer) CanMessage(context.Context, *CanMessageReq
 }
 func (UnimplementedUserServiceServer) ResolveMentions(context.Context, *ResolveMentionsRequest) (*ResolveMentionsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ResolveMentions not implemented")
+}
+func (UnimplementedUserServiceServer) FindNicknames(context.Context, *FindNicknamesRequest) (*FindNicknamesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method FindNicknames not implemented")
 }
 func (UnimplementedUserServiceServer) GetAccess(context.Context, *GetAccessRequest) (*GetAccessResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetAccess not implemented")
@@ -1155,6 +1175,24 @@ func _UserService_ResolveMentions_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_FindNicknames_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FindNicknamesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).FindNicknames(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_FindNicknames_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).FindNicknames(ctx, req.(*FindNicknamesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetAccess_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetAccessRequest)
 	if err := dec(in); err != nil {
@@ -1423,6 +1461,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ResolveMentions",
 			Handler:    _UserService_ResolveMentions_Handler,
+		},
+		{
+			MethodName: "FindNicknames",
+			Handler:    _UserService_FindNicknames_Handler,
 		},
 		{
 			MethodName: "GetAccess",

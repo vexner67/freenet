@@ -67,6 +67,9 @@ service UserService {
   // names by nickname hears of it ("Вас упомянул пользователь" of
   // openvk): not the caller, not across a blacklist, not a deleted page.
   rpc ResolveMentions(ResolveMentionsRequest) returns (ResolveMentionsResponse);
+  // Public: which of the nicknames are someone's, so that a text saying
+  // "@word" links to a page only when there is one.
+  rpc FindNicknames(FindNicknamesRequest) returns (FindNicknamesResponse);
   // Public: what of the user's page the caller, anonymous without a token,
   // may see, as the user's privacy allows.
   rpc GetAccess(GetAccessRequest) returns (GetAccessResponse);
@@ -638,6 +641,16 @@ message ResolveMentionsRequest {
 message ResolveMentionsResponse {
   // In the order named, each once.
   repeated string user_ids = 1;
+}
+
+message FindNicknamesRequest {
+  // The first 100 are looked at; what is not a nickname is nobody's.
+  repeated string nicknames = 1;
+}
+
+message FindNicknamesResponse {
+  // As their owners write them, each once, in no particular order.
+  repeated string nicknames = 1;
 }
 
 message GetRelationRequest {

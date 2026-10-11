@@ -126,6 +126,28 @@ func (h *UserHandler) ResolveMentions(ctx context.Context, req *userv1.ResolveMe
 	return resp, nil
 }
 
+// FindNicknames tells which of the nicknames a text says are someone's.
+func (h *UserHandler) FindNicknames(ctx context.Context, req *userv1.FindNicknamesRequest) (*userv1.FindNicknamesResponse, error) {
+	var nicknames []user.Nickname
+	for _, s := range req.GetNicknames() {
+		if nickname, err := user.NewNickname(s); err == nil {
+			nicknames = append(nicknames, nickname)
+		}
+	}
+
+	known, err := h.userService.KnownNicknames(ctx, nicknames)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &userv1.FindNicknamesResponse{Nicknames: make([]string, 0, len(known))}
+	for _, nickname := range known {
+		resp.Nicknames = append(resp.Nicknames, nickname.String())
+	}
+
+	return resp, nil
+}
+
 func (h *UserHandler) Block(ctx context.Context, req *userv1.BlockRequest) (*emptypb.Empty, error) {
 	blockerID, blockedID, err := callerAnd(ctx, req.GetUserId())
 	if err != nil {

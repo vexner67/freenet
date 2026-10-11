@@ -6,6 +6,10 @@ import "github.com/google/uuid"
 // the rest are links and no more.
 const MaxMentions = 10
 
+// MaxKnownNicknames is how many nicknames are looked up at once to tell
+// which of them are someone's.
+const MaxKnownNicknames = 100
+
 // CanBeMentionedBy tells whether u hears of being named by authorID in a
 // post or a comment ("Вас упомянул пользователь" of openvk): not of their
 // own words, not across a block either way, and not on a deleted page.

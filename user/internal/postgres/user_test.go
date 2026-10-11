@@ -114,6 +114,13 @@ func TestUserRepository(t *testing.T) {
 		if got.Profile() != u.Profile() {
 			t.Fatalf("got %+v\nwant %+v", got.Profile(), u.Profile())
 		}
+
+		// Which nicknames are someone's, whatever the case, as written.
+		asked := []user.Nickname{user.Nickname(strings.ToUpper(nickname.String())), "nobody_here", nickname}
+		known, err := repo.Nicknames(ctx, asked)
+		if err != nil || len(known) != 1 || known[0] != nickname {
+			t.Fatalf("Nicknames = %v, %v; want only %v", known, err, nickname)
+		}
 	})
 
 	t.Run("privacy settings round-trip", func(t *testing.T) {

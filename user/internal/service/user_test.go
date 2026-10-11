@@ -308,3 +308,33 @@ func TestUserService_AboutTheUser(t *testing.T) {
 		t.Fatalf("unknown user: %v", err)
 	}
 }
+
+func TestUserService_KnownNicknames(t *testing.T) {
+	t.Parallel()
+
+	svc, id := registered(t, "ann@example.com")
+	ctx := context.Background()
+
+	if _, err := svc.UpdateProfile(ctx, id, profile(t, "Ann"), ""); err != nil {
+		t.Fatalf("UpdateProfile: %v", err)
+	}
+
+	// As the owner writes it, whatever the case asked, and once.
+	known, err := svc.KnownNicknames(ctx, []user.Nickname{"ann", "nobody_here", "ANN"})
+	if err != nil || len(known) != 1 || known[0] != "Ann" {
+		t.Fatalf("KnownNicknames = %v, %v; want only Ann", known, err)
+	}
+
+	// Only the first user.MaxKnownNicknames are looked at.
+	many := make([]user.Nickname, user.MaxKnownNicknames, user.MaxKnownNicknames+1)
+	for i := range many {
+		many[i] = "nobody_here"
+	}
+	if known, err = svc.KnownNicknames(ctx, append(many, "ann")); err != nil || len(known) != 0 {
+		t.Fatalf("beyond the limit: %v, %v", known, err)
+	}
+
+	if known, err = svc.KnownNicknames(ctx, nil); err != nil || known != nil {
+		t.Fatalf("no nicknames: %v, %v", known, err)
+	}
+}
