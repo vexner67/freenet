@@ -15,6 +15,14 @@ x-service: &service
   volumes:
     - ./certs:/certs:ro
 
+# Metrics of a database for Prometheus (monitoring/prometheus.yml): one
+# small exporter a database, since each has its own user and password.
+# Their ports are not published.
+x-postgres-exporter: &postgres-exporter
+  profiles: [app]
+  image: prometheuscommunity/postgres-exporter:v0.20.1
+  restart: unless-stopped
+
 x-env: &env
   LOG_LEVEL: info
   LOG_FORMAT: json
@@ -309,9 +317,72 @@ services:
       message: { condition: service_healthy }
       club: { condition: service_healthy }
 
-  # Metrics of every service and the alerts on them (monitoring/alerts.yml):
-  # http://localhost:9090 (PROMETHEUS_PORT). The services' metrics ports
-  # are not published.
+  auth-postgres-exporter:
+    <<: *postgres-exporter
+    environment:
+      DATA_SOURCE_URI: auth-postgres:5432/${AUTH_POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${AUTH_POSTGRES_USER}
+      DATA_SOURCE_PASS: ${AUTH_POSTGRES_PASSWORD}
+    depends_on:
+      auth-postgres: { condition: service_healthy }
+
+  user-postgres-exporter:
+    <<: *postgres-exporter
+    environment:
+      DATA_SOURCE_URI: user-postgres:5432/${USER_POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${USER_POSTGRES_USER}
+      DATA_SOURCE_PASS: ${USER_POSTGRES_PASSWORD}
+    depends_on:
+      user-postgres: { condition: service_healthy }
+
+  post-postgres-exporter:
+    <<: *postgres-exporter
+    environment:
+      DATA_SOURCE_URI: post-postgres:5432/${POST_POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${POST_POSTGRES_USER}
+      DATA_SOURCE_PASS: ${POST_POSTGRES_PASSWORD}
+    depends_on:
+      post-postgres: { condition: service_healthy }
+
+  notification-postgres-exporter:
+    <<: *postgres-exporter
+    environment:
+      DATA_SOURCE_URI: notification-postgres:5432/${NOTIFICATION_POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${NOTIFICATION_POSTGRES_USER}
+      DATA_SOURCE_PASS: ${NOTIFICATION_POSTGRES_PASSWORD}
+    depends_on:
+      notification-postgres: { condition: service_healthy }
+
+  message-postgres-exporter:
+    <<: *postgres-exporter
+    environment:
+      DATA_SOURCE_URI: message-postgres:5432/${MESSAGE_POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${MESSAGE_POSTGRES_USER}
+      DATA_SOURCE_PASS: ${MESSAGE_POSTGRES_PASSWORD}
+    depends_on:
+      message-postgres: { condition: service_healthy }
+
+  club-postgres-exporter:
+    <<: *postgres-exporter
+    environment:
+      DATA_SOURCE_URI: club-postgres:5432/${CLUB_POSTGRES_DB}?sslmode=disable
+      DATA_SOURCE_USER: ${CLUB_POSTGRES_USER}
+      DATA_SOURCE_PASS: ${CLUB_POSTGRES_PASSWORD}
+    depends_on:
+      club-postgres: { condition: service_healthy }
+
+  redis-exporter:
+    profiles: [app]
+    image: oliver006/redis_exporter:v1.93.0
+    restart: unless-stopped
+    environment:
+      REDIS_ADDR: redis://redis:6379
+    depends_on:
+      redis: { condition: service_healthy }
+
+  # Metrics of every service, database and Redis and the alerts on them
+  # (monitoring/alerts.yml): http://localhost:9090 (PROMETHEUS_PORT). The
+  # metrics ports are not published.
   prometheus:
     profiles: [app]
     image: prom/prometheus:v3.13.4

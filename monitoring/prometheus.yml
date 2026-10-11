@@ -32,3 +32,26 @@ scrape_configs:
         labels: { service: message }
       - targets: ["club:9057"]
         labels: { service: club }
+
+  # The databases and Redis, through their exporters (compose.yaml): they
+  # change slowly, and every scrape is a round of queries.
+  - job_name: postgres
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["auth-postgres-exporter:9187"]
+        labels: { db: auth }
+      - targets: ["user-postgres-exporter:9187"]
+        labels: { db: user }
+      - targets: ["post-postgres-exporter:9187"]
+        labels: { db: post }
+      - targets: ["notification-postgres-exporter:9187"]
+        labels: { db: notification }
+      - targets: ["message-postgres-exporter:9187"]
+        labels: { db: message }
+      - targets: ["club-postgres-exporter:9187"]
+        labels: { db: club }
+
+  - job_name: redis
+    scrape_interval: 30s
+    static_configs:
+      - targets: ["redis-exporter:9121"]

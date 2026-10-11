@@ -26,6 +26,89 @@ tests:
               summary: "post is down"
               description: "Prometheus has not reached post for a minute: the service, or its metrics port, is not answering."
 
+  - name: a database that stops answering, and an exporter that does
+    interval: 1m
+    input_series:
+      # post: the exporter answers, the database does not.
+      - series: 'up{job="postgres", db="post", instance="post-postgres-exporter:9187"}'
+        values: "1 1 1 1 1"
+      - series: 'pg_up{job="postgres", db="post", instance="post-postgres-exporter:9187"}'
+        values: "1 1 0 0 0"
+      # user: the exporter is gone, and what it said last with it.
+      - series: 'up{job="postgres", db="user", instance="user-postgres-exporter:9187"}'
+        values: "1 1 0 0 0"
+      - series: 'pg_up{job="postgres", db="user", instance="user-postgres-exporter:9187"}'
+        values: "1 1 _ _ _"
+      - series: 'up{job="postgres", db="auth", instance="auth-postgres-exporter:9187"}'
+        values: "1 1 1 1 1"
+      - series: 'pg_up{job="postgres", db="auth", instance="auth-postgres-exporter:9187"}'
+        values: "1 1 1 1 1"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: PostgresDown
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: PostgresDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: postgres, db: post, instance: "post-postgres-exporter:9187" }
+            exp_annotations:
+              summary: "The post database is down"
+              description: "The exporter of the post database has not reached it, or Prometheus the exporter, for a minute. The post service cannot work without it."
+          - exp_labels: { severity: critical, job: postgres, db: user, instance: "user-postgres-exporter:9187" }
+            exp_annotations:
+              summary: "The user database is down"
+              description: "The exporter of the user database has not reached it, or Prometheus the exporter, for a minute. The user service cannot work without it."
+      # A database down is not a service down.
+      - eval_time: 4m
+        alertname: ServiceDown
+        exp_alerts: []
+
+  - name: a database nearly out of connections
+    interval: 1m
+    input_series:
+      # post: 20 active and 6 idle of 30.
+      - series: 'pg_stat_activity_count{db="post", datname="post", state="active"}'
+        values: "20x10"
+      - series: 'pg_stat_activity_count{db="post", datname="post", state="idle"}'
+        values: "6x10"
+      - series: 'pg_settings_max_connections{db="post"}'
+        values: "30x10"
+      # user: 10 of 30.
+      - series: 'pg_stat_activity_count{db="user", datname="user", state="idle"}'
+        values: "10x10"
+      - series: 'pg_settings_max_connections{db="user"}'
+        values: "30x10"
+    alert_rule_test:
+      - eval_time: 3m
+        alertname: PostgresConnectionsHigh
+        exp_alerts: []
+      - eval_time: 6m
+        alertname: PostgresConnectionsHigh
+        exp_alerts:
+          - exp_labels: { severity: warning, db: post }
+            exp_annotations:
+              summary: "The post database uses 86.67% of its connections"
+              description: "More than 80% of max_connections of the post database have been taken for 5 minutes: look for a leak in the service or raise the limit (deploy/compose.prod.yaml)."
+
+  - name: Redis that stops answering
+    interval: 1m
+    input_series:
+      - series: 'up{job="redis", instance="redis-exporter:9121"}'
+        values: "1 1 1 1 1"
+      - series: 'redis_up{job="redis", instance="redis-exporter:9121"}'
+        values: "1 1 0 0 0"
+    alert_rule_test:
+      - eval_time: 2m
+        alertname: RedisDown
+        exp_alerts: []
+      - eval_time: 4m
+        alertname: RedisDown
+        exp_alerts:
+          - exp_labels: { severity: critical, job: redis, instance: "redis-exporter:9121" }
+            exp_annotations:
+              summary: "Redis is down"
+              description: "The Redis exporter has not reached Redis, or Prometheus the exporter, for a minute: login codes, rate limits and live events depend on it."
+
   - name: gRPC errors above 5% of calls
     interval: 1m
     input_series:

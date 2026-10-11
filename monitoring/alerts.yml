@@ -14,6 +14,42 @@ groups:
           summary: "{{ $labels.service }} is down"
           description: "Prometheus has not reached {{ $labels.service }} for a minute: the service, or its metrics port, is not answering."
 
+      # The exporter answers and says the database does not (pg_up), or the
+      # exporter itself is gone: either way nobody is watching it.
+      - alert: PostgresDown
+        expr: pg_up == 0 or up{job="postgres"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The {{ $labels.db }} database is down"
+          description: "The exporter of the {{ $labels.db }} database has not reached it, or Prometheus the exporter, for a minute. The {{ $labels.db }} service cannot work without it."
+
+      # Every service pools a few connections; a database out of them
+      # refuses the next one.
+      - alert: PostgresConnectionsHigh
+        expr: |
+          sum by (db) (pg_stat_activity_count)
+            / max by (db) (pg_settings_max_connections)
+            > 0.8
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The {{ $labels.db }} database uses {{ $value | humanizePercentage }} of its connections"
+          description: "More than 80% of max_connections of the {{ $labels.db }} database have been taken for 5 minutes: look for a leak in the service or raise the limit (deploy/compose.prod.yaml)."
+
+      # Without Redis there are no login codes, the rate limits count in
+      # no shared place and live events stop.
+      - alert: RedisDown
+        expr: redis_up == 0 or up{job="redis"} == 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Redis is down"
+          description: "The Redis exporter has not reached Redis, or Prometheus the exporter, for a minute: login codes, rate limits and live events depend on it."
+
   - name: errors
     rules:
       # Codes that mean the service failed, not the caller: Internal hides
