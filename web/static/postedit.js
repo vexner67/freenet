@@ -1,6 +1,7 @@
 // Editing a post in place, as on openvk's "Редактировать": the text and
 // photos give way to a form with "Сохранить" and "Отмена". A repost edits
-// only its own words: the shared post stays as it is.
+// its own words and photos: the shared post stays as it is. A post
+// sharing a photo of an album edits only its words.
 
 import { api } from './api.js';
 import { initAttachments } from './attach.js';
@@ -11,6 +12,7 @@ const MAX_LENGTH = 60000;
 // editPost opens the form in node, the post's; onSaved gets the edited post.
 export function editPost(post, node, { onSaved }) {
   const isRepost = Boolean(post.repost);
+  const withPhotos = !post.sharedPhoto;
 
   const text = el('textarea', { value: post.text, maxLength: MAX_LENGTH, placeholder: 'Текст записи' });
   const error = el('div', { className: 'error', hidden: true });
@@ -23,18 +25,18 @@ export function editPost(post, node, { onSaved }) {
   const save = el('button', { className: 'button', type: 'submit', textContent: 'Сохранить' });
   const cancel = el('button', { className: 'button secondary', type: 'button', textContent: 'Отмена' });
 
-  const attachments = isRepost
+  const attachments = !withPhotos
     ? null
     : initAttachments({ link: attachLink, input, list, error, onChange: () => {}, photos: post.photos ?? [] });
 
   const form = el('form', { className: 'wall-form expanded post-edit' },
     text,
-    isRepost ? null : list,
+    withPhotos ? list : null,
     el('div', { className: 'row' },
-      el('span', {}, isRepost ? null : attachLink),
+      el('span', {}, withPhotos ? attachLink : null),
       el('span', { className: 'post-edit-buttons' }, save, cancel),
     ),
-    isRepost ? null : el('div', { className: 'post-options' }, el('label', {}, nsfw, ' Содержит NSFW-контент')),
+    isRepost || post.sharedPhoto ? null : el('div', { className: 'post-options' }, el('label', {}, nsfw, ' Содержит NSFW-контент')),
     input,
     error,
   );

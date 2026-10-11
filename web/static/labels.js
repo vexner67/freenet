@@ -552,6 +552,13 @@ export function likedBy(n) {
   return n === 0 ? 'Никому не понравилось' : `Понравилось ${n} ${plural(n, ['человеку', 'людям', 'людям'])}`;
 }
 
+// sharedBy heads the list of who shared a post: "Поделились 3 человека".
+export function sharedBy(n) {
+  if (n === 0) return 'Никто не поделился';
+
+  return `${plural(n, ['Поделился', 'Поделились', 'Поделились'])} ${n} ${plural(n, ['человек', 'человека', 'человек'])}`;
+}
+
 // wallCount is openvk's counter of a wall: "нет записей", "5 записей".
 export function wallCount(n) {
   return n === 0 ? 'нет записей' : postsCount(n);
@@ -672,7 +679,8 @@ const errorTexts = {
   'post text is too long': 'Запись длиннее 60 000 символов.',
   'post not found': 'Запись уже удалена.',
   'the post can no longer be edited': 'Запись можно редактировать только в течение недели после публикации.',
-  'a repost has no photos of its own': 'К репосту нельзя прикрепить фотографии.',
+  'a post sharing a photo has no photos of its own': 'К записи с фотографией из альбома нельзя прикрепить другие фотографии.',
+  'a shared photo goes with text alone': 'Фотографию из альбома можно отправить только с текстом.',
   'photo not found': 'Фотография не найдена, прикрепите её снова.',
   'a post has at most 10 photos': 'К записи можно прикрепить не больше 10 фотографий.',
   'the same photo is attached twice': 'Эта фотография уже прикреплена.',
@@ -858,7 +866,7 @@ export function forwardedCount(n) {
 export function messagePreview(m) {
   if (m.deleted) return 'Сообщение удалено';
   if (m.text) return m.text;
-  if (m.photos?.length) return 'Фотография';
+  if (m.photos?.length || m.albumPhoto) return 'Фотография';
   if (m.post) return 'Запись';
   if (m.forwardedCount) return forwardedCount(m.forwardedCount);
 

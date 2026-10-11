@@ -15,7 +15,7 @@ import { isLive, onEvent } from './events.js';
 import { errorText, formatPostDate, foundParts, genitiveName, isLongText, messagePreview, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
-import { photosNode, sharedNode } from './posts.js';
+import { photosNode, sharedNode, sharedPhotoNode } from './posts.js';
 
 const POLL_MS = 5000;
 // How close to the top, in pixels, loads older messages.
@@ -71,6 +71,7 @@ function messageNode(m) {
       text && textOf(text, node),
       photosNode(shownMessage.photos ?? []),
       shownMessage.repost ? sharedNode(shownMessage.repost) : null,
+      shownMessage.sharedPhoto ? sharedPhotoNode(shownMessage.sharedPhoto) : null,
       forwardedNode(shownMessage, node),
     ].filter(Boolean));
     date.replaceChildren(...[
@@ -153,6 +154,7 @@ function forwardedNode(m, node) {
       f.text ? textOf(f.text, node) : null,
       photosNode(f.photos ?? []),
       f.repost ? sharedNode(f.repost) : null,
+      f.sharedPhoto ? sharedPhotoNode(f.sharedPhoto) : null,
     )),
     // Those of people whose pages are gone are not shown.
     forwarded.length < m.forwardedCount ? el('div', { className: 'im-forwarded-hint', textContent: 'Пересланное сообщение недоступно.' }) : null,

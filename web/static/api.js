@@ -145,6 +145,8 @@ export const api = {
   updateProfile: (profile) => authorized('PUT', '/api/v1/me/profile', profile),
   // postLikers and commentLikers are openvk's "Понравилось N людям".
   postLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/posts/${encodeURIComponent(id)}/likes`, cursor, limit)),
+  // reposts are the posts sharing a post, newest first: who shared it.
+  reposts: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/posts/${encodeURIComponent(id)}/reposts`, cursor, limit)),
   commentLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/comments/${encodeURIComponent(id)}/likes`, cursor, limit)),
   updateStatus: (status) => authorized('PUT', '/api/v1/me/status', { status }),
   updatePrivacy: (privacy) => authorized('PUT', '/api/v1/me/privacy', privacy),
@@ -178,6 +180,7 @@ export const api = {
   uploadPhoto: (file) => authorized('POST', '/api/v1/me/photos', file),
   // Shares a post on your wall, with a comment that may be empty.
   // to is { club, fromClub, signed } to share it in a community ("в группу").
+  // to: the community and how to sign, and the photos added to the words.
   repost: (postID, text, to = {}) => authorized('POST', `/api/v1/posts/${encodeURIComponent(postID)}/reposts`, { text, ...to }),
   deletePost: (id) => authorized('DELETE', '/api/v1/posts/' + encodeURIComponent(id)),
   editPost: (id, text, photos = [], nsfw = false) => authorized('PATCH', '/api/v1/posts/' + encodeURIComponent(id), { text, photos, nsfw }),
@@ -254,8 +257,9 @@ export const api = {
   },
   // post shares a post into the dialog ("Поделиться" "в переписку");
   // forward carries messages of your dialogs on ("Переслать").
-  sendMessage: (nickname, text, photos = [], post = '', forward = []) =>
-    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos, post, forward }),
+  // albumPhoto shares a photo of an album the same way.
+  sendMessage: (nickname, text, photos = [], post = '', forward = [], albumPhoto = '') =>
+    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos, post, forward, albumPhoto }),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
   // Your own message, from both sides, within a day of sending: it stays
   // in the dialog as "Сообщение удалено"; forMe

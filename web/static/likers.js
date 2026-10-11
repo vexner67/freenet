@@ -13,9 +13,18 @@ const BOX_PAGE = 24;
 const SHOW_DELAY = 400;
 const HIDE_DELAY = 300;
 
+// likes is what a heart lists; another list of people over a link (who
+// shared a post) tells its own count, head and people of a page, each
+// with the page a click leads to.
+const likes = {
+  count: (item) => item.likes,
+  head: likedBy,
+  people: (page) => page.users.map((user) => ({ user, href: pagePath(user) })),
+};
+
 // attachLikers shows the tooltip of item (its id and likes) over heart;
 // load(id, cursor, limit) is the API call of its likers.
-export function attachLikers(heart, item, load) {
+export function attachLikers(heart, item, load, list = likes) {
   let tooltip = null;
   let showTimer = 0;
   let hideTimer = 0;
@@ -27,7 +36,7 @@ export function attachLikers(heart, item, load) {
 
   async function show() {
     // Without load nobody tells who liked it.
-    if (item.likes === 0 || !load) return;
+    if (!list.count(item) || !load) return;
 
     let page;
     try {
@@ -40,13 +49,13 @@ export function attachLikers(heart, item, load) {
     tooltip = el('div', { className: 'likers-tooltip' },
       el('a', {
         className: 'likers-tooltip-head',
-        textContent: likedBy(page.total),
+        textContent: list.head(page.total),
         onclick: () => {
           hide();
-          openLikers(page.total, item.id, load);
+          openLikers(page.total, item.id, load, list);
         },
       }),
-      el('div', { className: 'likers-tooltip-grid' }, ...page.users.map((user) => el('a', { href: pagePath(user), title: fullName(user) },
+      el('div', { className: 'likers-tooltip-grid' }, ...list.people(page).map(({ user, href }) => el('a', { href, title: fullName(user) },
         el('img', { src: avatarURL(user, 'small'), alt: '' })))),
     );
     tooltip.addEventListener('mouseenter', () => clearTimeout(hideTimer));
@@ -74,8 +83,8 @@ export function attachLikers(heart, item, load) {
 }
 
 // openLikers is openvk's box of everyone who likes it, a page at a time.
-export function openLikers(total, id, load) {
-  const modal = openModal(likedBy(total));
+export function openLikers(total, id, load, list = likes) {
+  const modal = openModal(list.head(total));
   const grid = el('div', { className: 'likers-grid' });
   const error = el('div', { className: 'error', hidden: true });
   const more = el('a', { className: 'wall-more', textContent: 'Показать ещё', hidden: true });
@@ -86,9 +95,9 @@ export function openLikers(total, id, load) {
 
     try {
       const page = await load(id, cursor, BOX_PAGE);
-      grid.append(...page.users.map((user) => el('div', { className: 'likers-item' },
-        el('a', { href: pagePath(user) }, el('img', { src: avatarURL(user, 'small'), alt: '' })),
-        el('a', { href: pagePath(user), textContent: fullName(user) }))));
+      grid.append(...list.people(page).map(({ user, href }) => el('div', { className: 'likers-item' },
+        el('a', { href }, el('img', { src: avatarURL(user, 'small'), alt: '' })),
+        el('a', { href, textContent: fullName(user) }))));
       cursor = page.nextCursor;
       more.hidden = !cursor;
     } catch (e) {
