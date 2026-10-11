@@ -6,6 +6,7 @@ import { wallCount } from './labels.js';
 import { $, clubRef, el, isMicroblog, showError, hideError, autosize } from './layout.js';
 import { postNode as renderPost } from './posts.js';
 import { initAttachments } from './attach.js';
+import { initPollDraft } from './poll.js';
 
 // openvk's limit of a post or a comment; the counter shows near the end.
 const MAX_LENGTH = 60000;
@@ -37,9 +38,11 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   // openvk.
   const fromClub = () => owner.wall !== 'open' || $('post-from-club').checked;
   const create = owner.club
-    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked, nsfw: $('post-nsfw').checked })
-    : (text, photos) => api.createPost(owner.nickname, text, photos, $('post-nsfw').checked);
+    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked, nsfw: $('post-nsfw').checked, poll: poll.value() })
+    : (text, photos) => api.createPost(owner.nickname, text, photos, $('post-nsfw').checked, poll.value());
   let attachments;
+  // poll is the poll attached to the post being written ("Опрос").
+  let poll;
   let canPost = false;
   // suggesting: the form suggests a post for the admins of the club.
   let suggesting = false;
@@ -156,6 +159,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       autosize($('post-text'));
       $('post-text').blur();
       attachments.clear();
+      poll.clear();
       $('post-form').classList.remove('expanded');
       total++;
       updateCount();
@@ -189,9 +193,9 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       showSigned();
     }
 
-    // The form stays open while it holds text or photos.
+    // The form stays open while it holds text, photos or a poll.
     const collapseIfEmpty = () => {
-      if (!text.value.trim() && attachments.count() === 0 && document.activeElement !== text) {
+      if (!text.value.trim() && attachments.count() === 0 && !poll.value() && document.activeElement !== text) {
         form.classList.remove('expanded');
       }
     };
@@ -205,6 +209,16 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
         if (attachments?.count()) form.classList.add('expanded');
       },
     });
+
+    poll = initPollDraft({
+      link: $('post-poll'),
+      marker: $('post-poll-marker'),
+      onChange: () => {
+        if (poll?.value()) form.classList.add('expanded');
+      },
+    });
+    // A suggested post asks no poll.
+    if (suggest) $('post-poll').hidden = true;
 
     form.hidden = false;
     form.addEventListener('submit', submit);

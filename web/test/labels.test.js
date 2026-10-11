@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears } from '../static/labels.js';
+import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -505,4 +505,53 @@ test('a session is named by its browser and system', () => {
   ];
 
   for (const [agent, name] of names) assert.equal(deviceName(agent), name, agent);
+});
+
+test('pollVoters tells how many voted, as openvk does', () => {
+  assert.equal(pollVoters(0), 'Будьте первым, кто проголосует!');
+  assert.equal(pollVoters(1), 'В опросе проголосовал 1 человек.');
+  assert.equal(pollVoters(3), 'В опросе проголосовало 3 человека.');
+  assert.equal(pollVoters(11), 'В опросе проголосовало 11 человек.');
+  assert.equal(pollVoters(21), 'В опросе проголосовал 21 человек.');
+});
+
+test('pollMeta tells how a poll is held', () => {
+  const now = new Date('2026-10-11T12:00:00Z');
+
+  assert.equal(pollMeta({ anonymous: false, multiple: false, locked: false, endsAt: null }, now), 'Публичное голосование');
+  assert.equal(pollMeta({ anonymous: true, multiple: true, locked: true, endsAt: null }, now),
+    'Анонимное голосование • много вариантов • нельзя переголосовать');
+
+  setTimezone(0);
+  try {
+    assert.equal(pollMeta({ anonymous: false, multiple: false, locked: true, endsAt: '2026-10-14T15:30:00Z' }, now),
+      'Публичное голосование • нельзя переголосовать • до 14 октября в 15:30');
+  } finally {
+    setTimezone(null);
+  }
+});
+
+test('pollPercent rounds the share of the voters down', () => {
+  assert.equal(pollPercent(0, 0), 0);
+  assert.equal(pollPercent(1, 3), 33);
+  assert.equal(pollPercent(2, 3), 66);
+  assert.equal(pollPercent(3, 3), 100);
+});
+
+test('pollAsksVote shows the options until the reader votes or the poll ends', () => {
+  assert.equal(pollAsksVote({ ended: false, voted: [] }), true);
+  assert.equal(pollAsksVote({ ended: false, voted: [1] }), false);
+  assert.equal(pollAsksVote({ ended: true, voted: [] }), false);
+});
+
+test('daysCount declines the days of a poll', () => {
+  assert.equal(daysCount(1), '1 день');
+  assert.equal(daysCount(3), '3 дня');
+  assert.equal(daysCount(11), '11 дней');
+  assert.equal(daysCount(31), '31 день');
+});
+
+test('errorText knows what a poll refuses', () => {
+  assert.equal(errorText(new Error('you have voted in the poll already')), 'Вы уже проголосовали в этом опросе.');
+  assert.equal(errorText(new Error('the poll has ended')), 'Голосование окончено.');
 });

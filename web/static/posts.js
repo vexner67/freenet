@@ -10,6 +10,7 @@ import { editPost } from './postedit.js';
 import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
 import { lastComments } from './postcomments.js';
+import { pollNode } from './poll.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -68,6 +69,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       // Whole on the page of the post, which has no link to open it.
       post.text ? textNode(post.text, { whole: !withCommentsLink, rest: post.textCut ? () => wholeText(post) : null, found }) : '',
       photosNode(post.photos ?? []) ?? '',
+      post.poll ? pollNode(post, { canVote: canLike, onError }) : '',
       signatureNode(post.signer) ?? '',
     );
     menu.replaceChildren(...separated(menuLinks()));
@@ -210,7 +212,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
         microblog ? null : date,
       ),
       content,
-      post.repost ? sharedNode(post.repost) : null,
+      post.repost ? sharedNode(post.repost, { canVote: canLike, onError }) : null,
       post.sharedPhoto ? sharedPhotoNode(post.sharedPhoto) : null,
       el('div', { className: 'post-menu' },
         el('span', {}, microblog ? date : null, menu),
@@ -290,8 +292,9 @@ async function wholeText(post) {
 
 // sharedNode is the post a repost shares, compact as on openvk: a small
 // avatar, the name, the date, the text and photos, no menu. A post shared
-// by the shared post itself is a link, not one more box inside.
-export function sharedNode(shared) {
+// by the shared post itself is a link, not one more box inside. Its poll
+// takes votes there too, of a signed-in reader (canVote).
+export function sharedNode(shared, { canVote = false, onError } = {}) {
   if (shared.deleted) {
     return el('div', { className: 'post-shared deleted', textContent: 'Запись удалена.' });
   }
@@ -300,6 +303,7 @@ export function sharedNode(shared) {
   const content = el('div', { className: 'shared-content' },
     shared.text ? textNode(shared.text, { rest: shared.textCut ? () => wholeText(shared) : null }) : null,
     photosNode(shared.photos ?? []),
+    shared.poll ? pollNode(shared, { canVote, onError }) : null,
   );
   revealOnClick(content);
 

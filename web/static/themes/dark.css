@@ -139,3 +139,14 @@ input:focus, select:focus, textarea:focus,
 
 .likers-tooltip { background: #1f1f1f; border-color: #3a4450; }
 .likers-tooltip-head { background: #262b31; border-bottom-color: #3a4450; }
+
+/* Polls. */
+.poll, .post-has-poll { border-color: #3a3a3a; }
+.post-has-poll { background: #262626; }
+.poll h4 { color: #9cc0e6; }
+.poll-result-bar { background: #2a2a2a; }
+.poll-result-fill { background: #3a4a5c; }
+.poll-result-count { color: #a9c1da; }
+.poll-meta { color: #b0b0b0; }
+.poll-kind { color: #8c8c8c; }
+.poll-remove:hover { color: #ccc; }
