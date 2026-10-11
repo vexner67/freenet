@@ -60,7 +60,7 @@ input:focus, select:focus, textarea:focus,
 
 .post-author { background: #242424; border-top-color: #555; border-bottom-color: #2e2e2e; }
 .post-date, .post-date a, .reply-to, .wall-more { color: #8c8c8c; }
-.post-text, .post-photos, .person, .notification, .club-row, .list-row, .extra-field, .uploaded-photo { border-bottom-color: #2e2e2e; }
+.post-text, .post-photos, .person, .notification, .club-row, .list-row, .session-row, .extra-field, .uploaded-photo { border-bottom-color: #2e2e2e; }
 .post-menu a { color: #808080; }
 .separator { color: #444; }
 .like { color: #9cc0e6; }

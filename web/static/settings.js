@@ -1,16 +1,17 @@
 // openvk's "Мои Настройки" at /settings: "Основное" (the e-mail, the
-// page address and "удалить свою страницу") and "Приватность" (?act=privacy:
+// page address and "удалить свою страницу"), "Безопасность" (?act=security:
+// where you are signed in) and "Приватность" (?act=privacy:
 // who sees the page and its parts and who writes to you) and "Внешний вид"
 // (?act=interface: the style, the photos and the posts, the clock, where
 // the site opens and what the left menu shows); "Чёрный список" is a page of its own.
 
 import { api, currentUser } from './api.js';
-import { audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites } from './labels.js';
+import { deviceName, formatDateTime, sessionsCount, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites } from './labels.js';
 import { $, applyInterface, deviceTheme, el, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { openDeactivate } from './deactivate.js';
 
 const error = $('error');
-const tabs = { privacy: initPrivacy, interface: initInterface };
+const tabs = { security: initSecurity, privacy: initPrivacy, interface: initInterface };
 const asked = new URLSearchParams(location.search).get('act');
 const act = Object.hasOwn(tabs, asked) ? asked : 'main';
 
@@ -132,6 +133,59 @@ function initInterface(me) {
     Object.assign(me, updated);
     applyInterface(me);
   });
+}
+
+// sessionRow is one place the person is signed in at: what from, the
+// address, when; "Завершить" signs that place out. The session this page
+// is open in is ended by "выход" in the header.
+function sessionRow(session, onEnd) {
+  const facts = [
+    session.ip && `IP-адрес: ${session.ip}`,
+    `вход: ${formatDateTime(session.createdAt)}`,
+    `последняя активность: ${formatDateTime(session.lastUsedAt)}`,
+  ].filter(Boolean);
+
+  return el('div', { className: 'session-row' },
+    el('div', { className: 'session-device' },
+      el('b', { textContent: deviceName(session.userAgent), title: session.userAgent }),
+      session.current && el('span', { className: 'hint', textContent: ' — текущая сессия' }),
+      el('div', { className: 'hint', textContent: facts.join(' | ') }),
+    ),
+    !session.current && el('a', { textContent: 'Завершить', onclick: () => onEnd(session) }),
+  );
+}
+
+// initSecurity: openvk's "Безопасность" has "Сессии" with "Сбросить все
+// сессии"; ours also lists them, each with "Завершить".
+function initSecurity() {
+  // run does what a link or the button asks and draws the list anew.
+  async function run(action) {
+    hideError(error);
+    $('notice').hidden = true;
+
+    try {
+      await action();
+      await show();
+    } catch (e) {
+      showError(error, e);
+    }
+  }
+
+  async function show() {
+    const { sessions } = await api.sessions();
+
+    $('sessions-count').textContent = sessionsCount(sessions.length);
+    $('sessions').replaceChildren(...sessions.map((s) => sessionRow(s, (ended) => run(() => api.endSession(ended.id)))));
+    $('end-sessions-block').hidden = sessions.every((s) => s.current);
+  }
+
+  $('end-sessions').addEventListener('click', () => run(async () => {
+    await api.endOtherSessions();
+    $('notice').replaceChildren(el('b', { textContent: 'Все остальные сессии сброшены' }));
+    $('notice').hidden = false;
+  }));
+
+  show().catch((e) => showError(error, e));
 }
 
 const me = await currentUser().catch(() => null);
