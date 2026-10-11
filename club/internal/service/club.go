@@ -14,7 +14,8 @@ const (
 	DefaultPageSize = 20
 	MaxPageSize     = 50
 
-	// MaxClubs bounds GetMany: the gateway asks for the clubs of one page.
+	// MaxClubs bounds GetMany and Roles: the gateway asks for the clubs of
+	// one page.
 	MaxClubs = 100
 	// MaxClubIDs is how many of a user's clubs the feed reads posts from.
 	MaxClubIDs = 1000
@@ -56,8 +57,11 @@ type MemberRepository interface {
 	Seat(ctx context.Context, clubID, userID uuid.UUID) (club.Seat, error)
 	// Owner is uuid.Nil when the club has none (its owner was erased).
 	Owner(ctx context.Context, clubID uuid.UUID) (uuid.UUID, error)
+	// Roles are what the user is in those of the clubs they are in.
+	Roles(ctx context.Context, userID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID]club.Role, error)
 	// Join is idempotent; club.ErrNotFound when the club is gone. maybe:
-	// the member only might come to the event.
+	// the member only might come to the event. A member who joins again
+	// changes that answer, unless they own the club.
 	Join(ctx context.Context, clubID, userID uuid.UUID, maybe bool) error
 	Leave(ctx context.Context, clubID, userID uuid.UUID) error
 	// SetRole changes the role of a member who is not the owner;
@@ -681,6 +685,25 @@ func (s *ClubService) ClubIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUI
 	}
 
 	return ids, nil
+}
+
+// Roles tells what userID is in those of the clubs they are in: a page
+// that lists clubs or the posts on their walls shows what they may do.
+func (s *ClubService) Roles(ctx context.Context, userID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID]club.Role, error) {
+	if len(clubIDs) > MaxClubs {
+		return nil, ErrTooManyIDs
+	}
+
+	if len(clubIDs) == 0 {
+		return nil, nil
+	}
+
+	roles, err := s.members.Roles(ctx, userID, clubIDs)
+	if err != nil {
+		return nil, errs.Wrap("s.members.Roles", err)
+	}
+
+	return roles, nil
 }
 
 // WallAccess is what a user may do on a club's wall: Post, or else

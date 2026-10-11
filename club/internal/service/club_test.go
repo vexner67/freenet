@@ -161,6 +161,22 @@ func TestClubService_Membership(t *testing.T) {
 	if ids, err := svc.ClubIDs(ctx, bob); err != nil || len(ids) != 1 || ids[0] != c.ID() {
 		t.Fatalf("bob's club IDs = %v, %v", ids, err)
 	}
+
+	// What one is in the clubs of a page: those one is not in are left out.
+	other := create(t, svc, cat)
+	asked := []uuid.UUID{c.ID(), other.ID(), uuid.New()}
+	if roles, err := svc.Roles(ctx, bob, asked); err != nil || len(roles) != 1 || roles[c.ID()] != club.RoleMember {
+		t.Fatalf("bob's roles = %v, %v", roles, err)
+	}
+	if roles, err := svc.Roles(ctx, ann, asked); err != nil || len(roles) != 1 || roles[c.ID()] != club.RoleOwner {
+		t.Fatalf("ann's roles = %v, %v", roles, err)
+	}
+	if roles, err := svc.Roles(ctx, bob, nil); err != nil || len(roles) != 0 {
+		t.Fatalf("roles in no clubs = %v, %v", roles, err)
+	}
+	if _, err := svc.Roles(ctx, bob, make([]uuid.UUID, service.MaxClubs+1)); !errors.Is(err, service.ErrTooManyIDs) {
+		t.Fatalf("roles in too many clubs: %v", err)
+	}
 }
 
 func TestClubService_Appoint(t *testing.T) {
@@ -592,8 +608,18 @@ func TestClubService_Events(t *testing.T) {
 	if v, err = svc.Join(ctx, bob, event.ID(), true); err != nil || !v.Maybe || v.Club.Members() != 2 || v.Club.Maybes() != 1 {
 		t.Fatalf("a maybe = %+v, %v", v, err)
 	}
-	if v, err = svc.Join(ctx, bob, event.ID(), false); err != nil || !v.Maybe || v.Club.Maybes() != 1 {
-		t.Fatalf("a maybe asking to be sure = %+v, %v; want no change", v, err)
+	if v, err = svc.Join(ctx, bob, event.ID(), true); err != nil || !v.Maybe || v.Club.Members() != 2 || v.Club.Maybes() != 1 {
+		t.Fatalf("a maybe asking again = %+v, %v; want no change", v, err)
+	}
+	// A member changes the answer by joining again; the owner is sure.
+	if v, err = svc.Join(ctx, bob, event.ID(), false); err != nil || v.Maybe || v.Club.Members() != 2 || v.Club.Maybes() != 0 {
+		t.Fatalf("a maybe now sure = %+v, %v", v, err)
+	}
+	if v, err = svc.Join(ctx, bob, event.ID(), true); err != nil || !v.Maybe || v.Club.Members() != 2 || v.Club.Maybes() != 1 {
+		t.Fatalf("a sure one now a maybe = %+v, %v", v, err)
+	}
+	if v, err = svc.Join(ctx, ann, event.ID(), true); err != nil || v.Maybe || v.Role != club.RoleOwner || v.Club.Maybes() != 1 {
+		t.Fatalf("the owner asking to be a maybe = %+v, %v", v, err)
 	}
 	if v, err = svc.Join(ctx, cat, event.ID(), false); err != nil || v.Maybe || v.Club.Members() != 3 {
 		t.Fatalf("a sure one = %+v, %v", v, err)

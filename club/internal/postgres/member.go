@@ -44,6 +44,40 @@ func (r *MemberRepository) Role(ctx context.Context, clubID, userID uuid.UUID) (
 	return club.Role(role), nil
 }
 
+const rolesQuery = `
+	SELECT
+		club_id,
+		role
+	FROM club_members
+	WHERE user_id = $1
+		AND club_id = ANY($2)
+`
+
+func (r *MemberRepository) Roles(ctx context.Context, userID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID]club.Role, error) {
+	rows, err := r.pool.Query(ctx, rolesQuery, userID, clubIDs)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+	defer rows.Close()
+
+	roles := make(map[uuid.UUID]club.Role, len(clubIDs))
+	for rows.Next() {
+		var (
+			id   uuid.UUID
+			role string
+		)
+		if err = rows.Scan(&id, &role); err != nil {
+			return nil, errs.Wrap("rows.Scan", err)
+		}
+		roles[id] = club.Role(role)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, errs.Wrap("rows.Err", err)
+	}
+
+	return roles, nil
+}
+
 const seatQuery = `
 	SELECT
 		role,
@@ -96,8 +130,9 @@ func (r *MemberRepository) Owner(ctx context.Context, clubID uuid.UUID) (uuid.UU
 }
 
 // joinQuery counts the member in the statement that adds them, so the
-// counts never drift; joining twice changes nothing, not even whether the
-// member comes for sure.
+// counts never drift. A member who joins again changes only whether they
+// come for sure, and the owner not even that; xmax tells the new row from
+// the changed one.
 const joinQuery = `
 	WITH joined AS (
 		INSERT INTO club_members (
@@ -108,13 +143,21 @@ const joinQuery = `
 			maybe
 		)
 		VALUES ($1, $2, $3, 'member', $4)
-		ON CONFLICT (club_id, user_id) DO NOTHING
-		RETURNING club_id
+		ON CONFLICT (club_id, user_id) DO UPDATE
+		SET maybe = EXCLUDED.maybe
+		WHERE club_members.role <> 'owner'
+			AND club_members.maybe <> EXCLUDED.maybe
+		RETURNING club_id, (xmax = 0) AS added
 	)
-	UPDATE clubs
-	SET member_count = member_count + 1,
-		maybe_count = maybe_count + $4::boolean::integer
-	WHERE id IN (SELECT club_id FROM joined)
+	UPDATE clubs c
+	SET member_count = c.member_count + joined.added::integer,
+		maybe_count = c.maybe_count + CASE
+			WHEN joined.added THEN $4::boolean::integer
+			WHEN $4 THEN 1
+			ELSE -1
+		END
+	FROM joined
+	WHERE c.id = joined.club_id
 `
 
 func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID, maybe bool) error {

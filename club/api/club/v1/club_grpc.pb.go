@@ -39,6 +39,7 @@ const (
 	ClubService_SetClubBackdrop_FullMethodName    = "/club.v1.ClubService/SetClubBackdrop"
 	ClubService_PinClub_FullMethodName            = "/club.v1.ClubService/PinClub"
 	ClubService_ListPinnedClubs_FullMethodName    = "/club.v1.ClubService/ListPinnedClubs"
+	ClubService_ListMyRoles_FullMethodName        = "/club.v1.ClubService/ListMyRoles"
 	ClubService_ListMyClubIDs_FullMethodName      = "/club.v1.ClubService/ListMyClubIDs"
 	ClubService_CanPostOnWall_FullMethodName      = "/club.v1.ClubService/CanPostOnWall"
 	ClubService_CanModerateWall_FullMethodName    = "/club.v1.ClubService/CanModerateWall"
@@ -111,6 +112,9 @@ type ClubServiceClient interface {
 	PinClub(ctx context.Context, in *PinClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The clubs in the caller's left menu that they still run.
 	ListPinnedClubs(ctx context.Context, in *ListPinnedClubsRequest, opts ...grpc.CallOption) (*ListPinnedClubsResponse, error)
+	// What the caller is in each of up to 100 clubs; those they are not in
+	// are left out.
+	ListMyRoles(ctx context.Context, in *ListMyRolesRequest, opts ...grpc.CallOption) (*ListMyRolesResponse, error)
 	// The caller's newest 1000 clubs, whose walls their feed shows.
 	ListMyClubIDs(ctx context.Context, in *ListMyClubIDsRequest, opts ...grpc.CallOption) (*ListMyClubIDsResponse, error)
 	// Whether the caller may write on the club's wall, on their own behalf
@@ -327,6 +331,16 @@ func (c *clubServiceClient) ListPinnedClubs(ctx context.Context, in *ListPinnedC
 	return out, nil
 }
 
+func (c *clubServiceClient) ListMyRoles(ctx context.Context, in *ListMyRolesRequest, opts ...grpc.CallOption) (*ListMyRolesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMyRolesResponse)
+	err := c.cc.Invoke(ctx, ClubService_ListMyRoles_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clubServiceClient) ListMyClubIDs(ctx context.Context, in *ListMyClubIDsRequest, opts ...grpc.CallOption) (*ListMyClubIDsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListMyClubIDsResponse)
@@ -442,6 +456,9 @@ type ClubServiceServer interface {
 	PinClub(context.Context, *PinClubRequest) (*emptypb.Empty, error)
 	// The clubs in the caller's left menu that they still run.
 	ListPinnedClubs(context.Context, *ListPinnedClubsRequest) (*ListPinnedClubsResponse, error)
+	// What the caller is in each of up to 100 clubs; those they are not in
+	// are left out.
+	ListMyRoles(context.Context, *ListMyRolesRequest) (*ListMyRolesResponse, error)
 	// The caller's newest 1000 clubs, whose walls their feed shows.
 	ListMyClubIDs(context.Context, *ListMyClubIDsRequest) (*ListMyClubIDsResponse, error)
 	// Whether the caller may write on the club's wall, on their own behalf
@@ -524,6 +541,9 @@ func (UnimplementedClubServiceServer) PinClub(context.Context, *PinClubRequest) 
 }
 func (UnimplementedClubServiceServer) ListPinnedClubs(context.Context, *ListPinnedClubsRequest) (*ListPinnedClubsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListPinnedClubs not implemented")
+}
+func (UnimplementedClubServiceServer) ListMyRoles(context.Context, *ListMyRolesRequest) (*ListMyRolesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMyRoles not implemented")
 }
 func (UnimplementedClubServiceServer) ListMyClubIDs(context.Context, *ListMyClubIDsRequest) (*ListMyClubIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMyClubIDs not implemented")
@@ -903,6 +923,24 @@ func _ClubService_ListPinnedClubs_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClubService_ListMyRoles_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMyRolesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).ListMyRoles(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_ListMyRoles_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).ListMyRoles(ctx, req.(*ListMyRolesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClubService_ListMyClubIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ListMyClubIDsRequest)
 	if err := dec(in); err != nil {
@@ -1075,6 +1113,10 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListPinnedClubs",
 			Handler:    _ClubService_ListPinnedClubs_Handler,
+		},
+		{
+			MethodName: "ListMyRoles",
+			Handler:    _ClubService_ListMyRoles_Handler,
 		},
 		{
 			MethodName: "ListMyClubIDs",
