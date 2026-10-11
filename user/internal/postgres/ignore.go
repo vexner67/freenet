@@ -24,21 +24,26 @@ func (r *IgnoreRepository) conn(ctx context.Context) pgpool.Querier {
 	return pgpool.Conn(ctx, r.pool)
 }
 
+// lockIgnoringUserQuery makes those who ignore sources for one user take
+// turns: the count below has to see what the others have added, and a
+// statement that waited for a lock still counts what was there when it
+// began.
+const lockIgnoringUserQuery = `
+	SELECT id
+	FROM users
+	WHERE id = $1
+	FOR UPDATE
+`
+
 // ignoreQuery counts and adds in one statement, under the lock of the
-// user's row: two sources ignored at once cannot both take the last
-// place. It tells whether the source is ignored now.
+// user's row. It tells whether the source is ignored now.
 const ignoreQuery = `
-	WITH me AS (
-		SELECT id
-		FROM users
-		WHERE id = $2
-		FOR UPDATE
-	), had AS (
+	WITH had AS (
 		SELECT
 			count(*) AS total,
 			coalesce(bool_or(source_id = $3), false) AS already
 		FROM feed_ignores
-		WHERE user_id = (SELECT id FROM me)
+		WHERE user_id = $2
 	), added AS (
 		INSERT INTO feed_ignores (
 			id,
@@ -47,15 +52,15 @@ const ignoreQuery = `
 		)
 		SELECT
 			$1,
-			me.id,
+			$2,
 			$3
-		FROM me, had
+		FROM had
 		WHERE NOT had.already
 			AND had.total < $4
 		ON CONFLICT (user_id, source_id) DO NOTHING
 	)
 	SELECT had.already OR had.total < $4
-	FROM me, had
+	FROM had
 `
 
 func (r *IgnoreRepository) Ignore(ctx context.Context, userID, sourceID uuid.UUID, limit int) (bool, error) {
@@ -66,12 +71,19 @@ func (r *IgnoreRepository) Ignore(ctx context.Context, userID, sourceID uuid.UUI
 
 	var ignored bool
 
-	err = r.conn(ctx).QueryRow(ctx, ignoreQuery, id, userID, sourceID, limit).Scan(&ignored)
+	err = pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
+		var locked uuid.UUID
+		if err := tx.QueryRow(ctx, lockIgnoringUserQuery, userID).Scan(&locked); err != nil {
+			return errs.Wrap("tx.QueryRow", err)
+		}
+
+		return errs.Wrap("tx.QueryRow", tx.QueryRow(ctx, ignoreQuery, id, userID, sourceID, limit).Scan(&ignored))
+	})
 	if errors.Is(err, pgx.ErrNoRows) {
 		return false, user.ErrNotFound
 	}
 	if err != nil {
-		return false, errs.Wrap("r.conn.QueryRow", err)
+		return false, errs.Wrap("pgx.BeginFunc", err)
 	}
 
 	return ignored, nil
