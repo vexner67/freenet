@@ -307,6 +307,7 @@ export const mainPages = [
 export const menuItems = [
   ['photos', 'Мои Фотографии'],
   ['messages', 'Мои Сообщения'],
+  ['notes', 'Мои Заметки'],
   ['groups', 'Мои Группы'],
   ['events', 'Мои Встречи'],
   ['feed', 'Мои Новости'],
@@ -572,6 +573,16 @@ export function albumsCount(n) {
 // myAlbumsCount is the head of your own albums, openvk's "albums_list".
 export function myAlbumsCount(n) {
   return n === 0 ? 'У Вас нет ни одного альбома' : `У Вас ${albumsCount(n)}`;
+}
+
+// notesCount is openvk's "notes" of the block on a page: "3 заметки";
+// foundNotes heads the list of notes, "Найдено 3 заметки".
+export function notesCount(n) {
+  return n === 0 ? 'Ни одной заметки' : `${n} ${plural(n, ['заметка', 'заметки', 'заметок'])}`;
+}
+
+export function foundNotes(n) {
+  return n === 0 ? 'Ни одной заметки' : `${plural(n, ['Найдена', 'Найдено', 'Найдено'])} ${notesCount(n)}`;
 }
 
 // photosCount is under an album: openvk writes "N фотографий" whatever N
@@ -872,6 +883,14 @@ const errorTexts = {
   'the new owner must be an admin of the club': 'Владельцем можно назначить только администратора группы.',
   "this user's clubs are hidden": 'Пользователь скрыл список своих групп.',
   "this user's photos are hidden": 'Пользователь скрыл свои фотографии.',
+  "this user's notes are hidden": 'Пользователь скрыл свои заметки.',
+  'note not found': 'Заметка не найдена или удалена.',
+  'note title is empty': 'Введите название заметки.',
+  'note title is too long': 'Название заметки слишком длинное: не больше 256 символов.',
+  'note text is empty': 'Заметка не может быть пустой.',
+  'note text is too long': 'Заметка слишком длинная: не больше 60 000 символов.',
+  'fill in your profile before writing notes': 'Сначала заполните свою страницу.',
+  'you cannot comment on this note': 'Вы не можете комментировать эту заметку.',
   'only the sender can edit the message': 'Редактировать можно только свои сообщения.',
   'the message can no longer be edited': 'Сообщение можно редактировать только в течение суток после отправки.',
   'forwarded message not found': 'Сообщение не удалось переслать: его уже нет.',

@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount } from '../static/labels.js';
+import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -220,6 +220,20 @@ test('albums are counted as openvk counts them', () => {
   assert.equal(photosCount(25), '25 фотографий');
 });
 
+test('notes are counted and found as openvk says', () => {
+  assert.equal(notesCount(0), 'Ни одной заметки');
+  assert.equal(notesCount(1), '1 заметка');
+  assert.equal(notesCount(3), '3 заметки');
+  assert.equal(notesCount(12), '12 заметок');
+  assert.equal(foundNotes(0), 'Ни одной заметки');
+  assert.equal(foundNotes(1), 'Найдена 1 заметка');
+  assert.equal(foundNotes(21), 'Найдена 21 заметка');
+  assert.equal(foundNotes(4), 'Найдено 4 заметки');
+  assert.equal(foundNotes(7), 'Найдено 7 заметок');
+  assert.equal(errorText({ message: "this user's notes are hidden" }), 'Пользователь скрыл свои заметки.');
+  assert.ok(menuItems.some(([item, text]) => item === 'notes' && text === 'Мои Заметки'));
+});
+
 test('"они/их" speak in the plural, as openvk\'s neutral strings', () => {
   assert.equal(wrote('neutral'), 'написали');
   assert.equal(updatedPhoto({ gender: 'neutral' }), 'обновили фотографию на своей странице');
@@ -349,7 +363,7 @@ test('the site counts itself as openvk does', () => {
 test('the choices of the interface are those the API knows', () => {
   assert.deepEqual(avatarStyles.map(([v]) => v), ['square', 'round']);
   assert.deepEqual(mainPages.map(([v]) => v), ['page', 'feed']);
-  assert.deepEqual(menuItems.map(([v]) => v), ['photos', 'messages', 'groups', 'events', 'feed', 'notifications']);
+  assert.deepEqual(menuItems.map(([v]) => v), ['photos', 'messages', 'notes', 'groups', 'events', 'feed', 'notifications']);
   assert.equal(errorText({ message: 'invalid menu item' }), 'Неизвестный пункт меню.');
 });
 

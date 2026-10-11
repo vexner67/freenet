@@ -2,6 +2,7 @@ import { api, currentUser } from './api.js';
 import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, eventsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
+import { notesBlock } from './notes.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initFollow } from './follow.js';
 import { initPhoto } from './photo.js';
@@ -15,6 +16,8 @@ const ONLINE_SHOWN = 6;
 const COMMON_SHOWN = 6;
 // openvk shows the first page of albums on a person's page.
 const ALBUMS_SHOWN = 10;
+// The newest notes of the block "Заметки".
+const NOTES_SHOWN = 4;
 
 // rows lists the table under the name, in openvk's order; private marks
 // rows others cannot see (only the owner gets them at all, from /me).
@@ -286,6 +289,19 @@ async function showClubBlock(id, all, count, list) {
   }
 }
 
+// showNotes is openvk's block "Заметки": how many, "Все" and the newest,
+// as the user's "Кому видно мои заметки" allows.
+async function showNotes(user) {
+  try {
+    const page = await api.notes(user.nickname, '', NOTES_SHOWN);
+
+    $('notes-block').replaceChildren(...notesBlock(page));
+    $('notes-block').hidden = page.total === 0;
+  } catch {
+    // Hidden by the user, or not to be had: the page works without it.
+  }
+}
+
 // renderHidden is openvk's page whose owner hides it from the viewer
 // ("Кому в интернете видно мою страницу"): the name and why there is
 // nothing else.
@@ -379,6 +395,7 @@ try {
     // As openvk, the blocks the owner hides from the viewer are not there.
     if (profile.access.photos) showAlbums(profile);
     if (profile.access.clubs) showClubs(profile);
+    if (profile.access.notes) showNotes(profile);
     if (isOwner) showOnline(profile);
     if (me && !isOwner && profile.access.friends) showCommon(profile);
     showCompleteness(isOwner ? me : profile, isOwner);
