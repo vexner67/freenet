@@ -5,12 +5,21 @@ package auth.v1;
 option go_package = "github.com/vexner67/freenet/auth/api/auth/v1;authv1";
 
 import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
 
 service AuthService {
   rpc RequestCode(RequestCodeRequest) returns (google.protobuf.Empty);
   rpc VerifyCode(VerifyCodeRequest) returns (TokenPair);
   rpc RefreshToken(RefreshTokenRequest) returns (TokenPair);
   rpc Logout(LogoutRequest) returns (google.protobuf.Empty);
+
+  // The caller's sessions, by the access token: where they are signed in.
+  rpc ListSessions(ListSessionsRequest) returns (ListSessionsResponse);
+  // EndSession signs the caller out of one of their sessions.
+  rpc EndSession(EndSessionRequest) returns (google.protobuf.Empty);
+  // EndOtherSessions signs the caller out everywhere but in the session
+  // of the access token.
+  rpc EndOtherSessions(EndOtherSessionsRequest) returns (EndOtherSessionsResponse);
 }
 
 message RequestCodeRequest {
@@ -33,4 +42,33 @@ message RefreshTokenRequest {
 
 message LogoutRequest {
   string refresh_token = 1;
+}
+
+message Session {
+  string id = 1;
+  google.protobuf.Timestamp created_at = 2;
+  // When its tokens were last issued: at the sign-in or the last refresh.
+  google.protobuf.Timestamp last_used_at = 3;
+  // Where from they were issued then, as the client said; "" is unknown.
+  string ip = 4;
+  string user_agent = 5;
+  // The session of the access token of the call.
+  bool current = 6;
+}
+
+message ListSessionsRequest {}
+
+message ListSessionsResponse {
+  // The latest used first, at most 100.
+  repeated Session sessions = 1;
+}
+
+message EndSessionRequest {
+  string session_id = 1;
+}
+
+message EndOtherSessionsRequest {}
+
+message EndOtherSessionsResponse {
+  int32 ended = 1;
 }

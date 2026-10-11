@@ -27,6 +27,8 @@ func toStatus(err error) (*status.Status, bool) {
 	case errors.Is(err, service.ErrInvalidRefreshToken),
 		errors.Is(err, service.ErrSessionNotFound):
 		return status.New(codes.Unauthenticated, "invalid refresh token"), true
+	case errors.Is(err, service.ErrNoSuchSession):
+		return status.New(codes.NotFound, "session not found"), true
 	case errors.Is(err, service.ErrTooManyAttempts):
 		return status.New(codes.ResourceExhausted, "too many attempts, request a new code"), true
 	case errors.Is(err, service.ErrTooManyRequests):
