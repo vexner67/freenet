@@ -9,6 +9,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -412,10 +413,14 @@ type fakePosts struct {
 	// archived and closed are the post switched last, "-" before its ID
 	// when switched back; wallQuery what the wall was searched for.
 	archived, closed, wallQuery string
-	replyTo, likedComment       string
-	photos                      []string
-	liked                       map[string]bool
-	newComment                  model.NewComment
+	// archivedWall is the wall, the year and the way of the last
+	// ArchiveWall; yearsOf the wall whose years were asked for.
+	archivedWall, yearsOf string
+	wallYear              int
+	replyTo, likedComment string
+	photos                []string
+	liked                 map[string]bool
+	newComment            model.NewComment
 	// Suggestions: suggested is the last one, mine whether only the
 	// caller's were asked for; published and withdrawn are IDs.
 	suggested            model.Suggestion
@@ -639,6 +644,19 @@ func (f *fakePosts) Archive(ctx context.Context, token, id string, archived bool
 	return f.err
 }
 
+func (f *fakePosts) ArchiveWall(_ context.Context, token, wallID string, year int, archived bool) (int, error) {
+	f.token = token
+	f.archivedWall = wallID + " " + strconv.Itoa(year) + " " + strconv.FormatBool(archived)
+
+	return 3, f.err
+}
+
+func (f *fakePosts) WallYears(_ context.Context, _, wallID string) ([]int, error) {
+	f.yearsOf = wallID
+
+	return []int{2026, 2024}, f.err
+}
+
 func (f *fakePosts) CloseComments(ctx context.Context, token, id string, closed bool) error {
 	if _, err := f.Get(ctx, token, id); err != nil {
 		return err
@@ -650,7 +668,7 @@ func (f *fakePosts) CloseComments(ctx context.Context, token, id string, closed 
 
 func (f *fakePosts) List(_ context.Context, token, wallID string, pick model.WallPick, cursor string, limit int) (model.PostPage, error) {
 	filter := pick.Filter
-	f.token, f.cursor, f.limit, f.wallFilter, f.wallQuery = token, cursor, limit, filter, pick.Query
+	f.token, f.cursor, f.limit, f.wallFilter, f.wallQuery, f.wallYear = token, cursor, limit, filter, pick.Query, pick.Year
 	if wallID == "k1" {
 		ann, club := model.Author{ID: "u1"}, model.Author{ID: "k1"}
 		return model.PostPage{Posts: []model.Post{

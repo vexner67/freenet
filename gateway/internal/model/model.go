@@ -338,10 +338,12 @@ type FeedSources struct {
 }
 
 // WallPick is which posts of a wall to read: Filter is a tab of openvk's
-// wall ("", "owner", "others" or "archive"), Query what the posts say.
+// wall ("", "owner", "others" or "archive"), Query what the posts say,
+// Year the year they were written in, 0 for any.
 type WallPick struct {
 	Filter string
 	Query  string
+	Year   int
 }
 
 // PostPage is one screen of a wall; NextCursor is empty on the last one.

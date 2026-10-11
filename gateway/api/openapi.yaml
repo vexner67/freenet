@@ -427,6 +427,10 @@ paths:
           in: query
           description: '"Поиск" of the wall: the posts of the tab that say this, in any case; the pinned post is then in its place'
           schema: { type: string, maxLength: 100 }
+        - name: year
+          in: query
+          description: 'The posts written in this year (UTC) only, as the years of openvk''s "Архив записей"; the pinned post is then in its place. The first page of the archive tells in `years` which there are'
+          schema: { type: integer, minimum: 1970, maximum: 9999 }
         - name: comments
           in: query
           description: "`last` brings each post with `lastComments`, its three newest comments (\"Микроблог\")"
@@ -478,6 +482,61 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: The owner does not let you write on the wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/users/{nickname}/posts/archive:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Put the posts of your wall away in its archive
+      description: |
+        "Архивировать все записи за 2025" of openvk with `year`, without it
+        "Архивировать все записи целиком": every post of the wall written
+        in the year (UTC), whoever wrote it, goes to the archive, the
+        pinned one too. The owner of the wall only. Idempotent.
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ArchiveYear"
+      responses:
+        "200":
+          description: How many posts went to the archive
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArchivedWall" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Return the posts of your wall from its archive
+      description: |
+        "Разархивировать все записи за 2025" of openvk with `year`; without
+        it every archived post of the wall returns. Idempotent.
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ArchiveYear"
+      responses:
+        "200":
+          description: How many posts came back
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArchivedWall" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your wall
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -724,7 +783,8 @@ paths:
         the community it is, whoever wrote the post. No wall, feed or other
         post shows it then, others do not find it by its address either,
         and it is no longer pinned; it is read with `?type=archive`.
-        Idempotent.
+        Others can neither like nor share it then (404), though a like
+        given before can be taken back. Idempotent.
       security: [{ bearer: [] }]
       responses:
         "204": { description: Archived }
@@ -2871,6 +2931,10 @@ paths:
           in: query
           description: '"Поиск" of the wall: the posts of the tab that say this, in any case; the pinned post is then in its place'
           schema: { type: string, maxLength: 100 }
+        - name: year
+          in: query
+          description: 'The posts written in this year (UTC) only, as the years of openvk''s "Архив записей"; the pinned post is then in its place. The first page of the archive tells in `years` which there are'
+          schema: { type: integer, minimum: 1970, maximum: 9999 }
         - name: comments
           in: query
           description: "`last` brings each post with `lastComments`, its three newest comments (\"Микроблог\")"
@@ -2912,6 +2976,58 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403":
           description: "`you cannot post on this wall`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/clubs/{ref}/posts/archive:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    put:
+      summary: Put the posts of a community's wall away in its archive
+      description: |
+        "Архивировать все записи за 2025" of openvk with `year`, without it
+        "Архивировать все записи целиком": every post of the wall written
+        in the year (UTC), whoever wrote it, goes to the archive, the
+        pinned one too. The admins of the community only. Idempotent.
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ArchiveYear"
+      responses:
+        "200":
+          description: How many posts went to the archive
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArchivedWall" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your wall
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Return the posts of a community's wall from its archive
+      description: |
+        "Разархивировать все записи за 2025" of openvk with `year`; without
+        it every archived post of the wall returns. Idempotent.
+      security: [{ bearer: [] }]
+      parameters:
+        - $ref: "#/components/parameters/ArchiveYear"
+      responses:
+        "200":
+          description: How many posts came back
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ArchivedWall" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not your wall
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -3383,6 +3499,11 @@ components:
               refreshToken: { type: string }
 
   parameters:
+    ArchiveYear:
+      name: year
+      in: query
+      description: The year (UTC) whose posts to move; none for the posts of every year
+      schema: { type: integer, minimum: 1970, maximum: 9999 }
     OnWall:
       name: onWall
       in: query
@@ -4193,6 +4314,12 @@ components:
         nextCursor: { type: string, description: "Empty on the last page" }
         total: { type: integer }
 
+    ArchivedWall:
+      type: object
+      required: [changed]
+      properties:
+        changed: { type: integer, description: "How many posts went to the archive or came back" }
+
     PostPage:
       type: object
       required: [posts, nextCursor, total]
@@ -4208,6 +4335,10 @@ components:
         canSuggest:
           type: boolean
           description: "On a community's wall, as canPost: you may suggest a post for it instead"
+        years:
+          type: array
+          items: { type: integer }
+          description: "On the first page of the archive (`type=archive`): the years (UTC) the posts of the wall were written in, archived or not, the latest first"
 
     Suggestion:
       type: object

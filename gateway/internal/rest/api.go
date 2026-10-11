@@ -114,6 +114,12 @@ type Posts interface {
 	// the wall only.
 	Archive(ctx context.Context, accessToken, id string, archived bool) error
 	CloseComments(ctx context.Context, accessToken, id string, closed bool) error
+	// ArchiveWall puts away every post of a wall written in year (0: in
+	// any), or brings them back, and tells how many; WallYears are the
+	// years its posts were written in, the latest first. Those who keep
+	// the archive of the wall only.
+	ArchiveWall(ctx context.Context, accessToken, wallID string, year int, archived bool) (int, error)
+	WallYears(ctx context.Context, accessToken, wallID string) ([]int, error)
 	// List pages a wall: Filter is "", "owner", "others" or "archive"
 	// (InvalidArgument otherwise), as the tabs of openvk's wall, Query
 	// what the posts say ("Поиск").
@@ -323,6 +329,8 @@ func (a *api) routes() *http.ServeMux {
 
 	mux.HandleFunc("GET /api/v1/users/{nickname}/posts", a.listPosts)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/posts", a.createWallPost)
+	mux.HandleFunc("PUT /api/v1/users/{nickname}/posts/archive", a.archiveWall)
+	mux.HandleFunc("DELETE /api/v1/users/{nickname}/posts/archive", a.unarchiveWall)
 	mux.HandleFunc("POST /api/v1/me/posts", a.createPost)
 	mux.HandleFunc("GET /api/v1/posts/{id}", a.getPost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}", a.deletePost)
@@ -401,6 +409,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/owner/{nickname}", a.transferClub)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/posts", a.listClubPosts)
 	mux.HandleFunc("POST /api/v1/clubs/{ref}/posts", a.createClubPost)
+	mux.HandleFunc("PUT /api/v1/clubs/{ref}/posts/archive", a.archiveClubWall)
+	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/posts/archive", a.unarchiveClubWall)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/suggestions", a.listClubSuggestions)
 	mux.HandleFunc("POST /api/v1/clubs/{ref}/suggestions", a.suggestClubPost)
 	mux.HandleFunc("POST /api/v1/suggestions/{id}/publish", a.publishSuggestion)
