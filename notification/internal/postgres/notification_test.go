@@ -412,6 +412,24 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("notifications about one appointment = %d, want 1", got)
 		}
 
+		// A reminder of an event is another notification of the same two.
+		reminder := notification.Event{Kind: notification.KindEventReminder, RecipientID: admin, ActorID: club}
+		for range 2 {
+			n, err := notification.New(reminder, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = repo.Save(ctx, n); err != nil {
+				t.Fatalf("Save: %v", err)
+			}
+		}
+		if got := count(); got != 2 {
+			t.Fatalf("with a reminder = %d, want 2", got)
+		}
+		if err := repo.Delete(ctx, reminder); err != nil || count() != 1 {
+			t.Fatalf("Delete(reminder): %v, left %d", err, count())
+		}
+
 		if err := repo.Delete(ctx, e); err != nil || count() != 0 {
 			t.Fatalf("Delete: %v, left %d", err, count())
 		}
