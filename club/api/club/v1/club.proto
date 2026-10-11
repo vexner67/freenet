@@ -68,6 +68,9 @@ service ClubService {
   rpc PinClub(PinClubRequest) returns (google.protobuf.Empty);
   // The clubs in the caller's left menu that they still run.
   rpc ListPinnedClubs(ListPinnedClubsRequest) returns (ListPinnedClubsResponse);
+  // What the caller is in each of up to 100 clubs; those they are not in
+  // are left out.
+  rpc ListMyRoles(ListMyRolesRequest) returns (ListMyRolesResponse);
   // The caller's newest 1000 clubs, whose walls their feed shows.
   rpc ListMyClubIDs(ListMyClubIDsRequest) returns (ListMyClubIDsResponse);
   // Whether the caller may write on the club's wall, on their own behalf
@@ -413,6 +416,19 @@ message ListPinnedClubsRequest {}
 
 message ListPinnedClubsResponse {
   repeated Club clubs = 1;
+}
+
+message ListMyRolesRequest {
+  repeated string club_ids = 1;
+}
+
+message ListMyRolesResponse {
+  repeated ClubRole roles = 1;
+}
+
+message ClubRole {
+  string club_id = 1;
+  Role role = 2;
 }
 
 message ListMyClubIDsRequest {}

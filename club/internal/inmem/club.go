@@ -389,10 +389,31 @@ func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID, m
 	}
 
 	if _, m := r.s.membership(clubID, userID); m != nil {
+		if m.role != club.RoleOwner {
+			m.maybe = maybe
+		}
 		return nil
 	}
 
 	return r.s.join(clubID, userID, club.RoleMember, maybe)
+}
+
+func (r *MemberRepository) Roles(ctx context.Context, userID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID]club.Role, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	roles := make(map[uuid.UUID]club.Role, len(clubIDs))
+	for _, id := range clubIDs {
+		if _, m := r.s.membership(id, userID); m != nil {
+			roles[id] = m.role
+		}
+	}
+
+	return roles, nil
 }
 
 func (r *MemberRepository) Leave(ctx context.Context, clubID, userID uuid.UUID) error {

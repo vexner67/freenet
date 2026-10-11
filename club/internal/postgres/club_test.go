@@ -524,11 +524,31 @@ func TestRepositories_Events(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
+	// Joining again with another answer changes it, and the count with it;
+	// the owner stays sure.
 	if err = members.Join(ctx, event.ID(), bob, false); err != nil {
 		t.Fatal(err)
 	}
+	if got, err = clubs.Get(ctx, event.ID()); err != nil || got.Members() != 2 || got.Maybes() != 0 {
+		t.Fatalf("a maybe now sure: %d and %d, %v", got.Members(), got.Maybes(), err)
+	}
+	if err = members.Join(ctx, event.ID(), bob, true); err != nil {
+		t.Fatal(err)
+	}
+	if err = members.Join(ctx, event.ID(), ann, true); err != nil {
+		t.Fatal(err)
+	}
+	if seat, err := members.Seat(ctx, event.ID(), ann); err != nil || seat.Maybe || seat.Role != club.RoleOwner {
+		t.Fatalf("the owner's seat = %+v, %v", seat, err)
+	}
 	if err = members.Join(ctx, event.ID(), cat, false); err != nil {
 		t.Fatal(err)
+	}
+	if roles, err := members.Roles(ctx, bob, []uuid.UUID{event.ID(), group.ID(), uuid.New()}); err != nil || len(roles) != 1 || roles[event.ID()] != club.RoleMember {
+		t.Fatalf("bob's roles = %v, %v", roles, err)
+	}
+	if roles, err := members.Roles(ctx, ann, []uuid.UUID{event.ID(), group.ID()}); err != nil || len(roles) != 2 || roles[event.ID()] != club.RoleOwner {
+		t.Fatalf("ann's roles = %v, %v", roles, err)
 	}
 	if got, err = clubs.Get(ctx, event.ID()); err != nil || got.Members() != 3 || got.Maybes() != 1 {
 		t.Fatalf("counts = %d and %d, %v; want 3 with 1 maybe", got.Members(), got.Maybes(), err)

@@ -204,6 +204,13 @@ func TestClub(t *testing.T) {
 	if err != nil || len(ids.GetClubIds()) != 1 || ids.GetClubIds()[0] != id {
 		t.Fatalf("ListMyClubIDs = %v, %v", ids, err)
 	}
+	roles, err := s.client.ListMyRoles(s.as(t, bob), &clubv1.ListMyRolesRequest{ClubIds: []string{uuid.NewString(), id}})
+	if err != nil || len(roles.GetRoles()) != 1 || roles.GetRoles()[0].GetClubId() != id || roles.GetRoles()[0].GetRole() != clubv1.Role_ROLE_ADMIN {
+		t.Fatalf("ListMyRoles = %v, %v", roles, err)
+	}
+	if _, err = s.client.ListMyRoles(context.Background(), &clubv1.ListMyRolesRequest{ClubIds: []string{id}}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("ListMyRoles without a token: %v", err)
+	}
 	many, err := s.client.GetClubs(context.Background(), &clubv1.GetClubsRequest{Ids: []string{id, uuid.NewString()}})
 	if err != nil || len(many.GetClubs()) != 1 {
 		t.Fatalf("GetClubs = %v, %v", many, err)
@@ -377,6 +384,13 @@ func TestEvents(t *testing.T) {
 	joined, err := s.client.JoinClub(s.as(t, bob), &clubv1.JoinClubRequest{ClubId: id, Maybe: true})
 	if err != nil || !joined.GetClub().GetMaybe() || joined.GetClub().GetClub().GetMemberCount() != 2 || joined.GetClub().GetClub().GetMaybeCount() != 1 {
 		t.Fatalf("JoinClub as a maybe = %v, %v", joined, err)
+	}
+	// Joining again changes the answer.
+	if joined, err = s.client.JoinClub(s.as(t, bob), &clubv1.JoinClubRequest{ClubId: id}); err != nil || joined.GetClub().GetMaybe() || joined.GetClub().GetClub().GetMaybeCount() != 0 {
+		t.Fatalf("a maybe now sure = %v, %v", joined, err)
+	}
+	if joined, err = s.client.JoinClub(s.as(t, bob), &clubv1.JoinClubRequest{ClubId: id, Maybe: true}); err != nil || !joined.GetClub().GetMaybe() || joined.GetClub().GetClub().GetMaybeCount() != 1 {
+		t.Fatalf("a sure one now a maybe = %v, %v", joined, err)
 	}
 
 	sure, err := s.client.ListMembers(context.Background(), &clubv1.ListMembersRequest{ClubId: id, Going: clubv1.Going_GOING_SURE})

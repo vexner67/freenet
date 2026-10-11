@@ -34,6 +34,7 @@ type ClubService interface {
 	Pin(ctx context.Context, userID, clubID uuid.UUID, pinned bool) error
 	Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error)
 	ClubIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
+	Roles(ctx context.Context, userID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID]club.Role, error)
 	CanPostOnWall(ctx context.Context, userID, clubID uuid.UUID, fromClub bool) (service.WallAccess, error)
 	CanModerateWall(ctx context.Context, wallID, userID uuid.UUID) (bool, error)
 	WallModerators(ctx context.Context, wallID uuid.UUID) ([]uuid.UUID, error)
@@ -488,6 +489,36 @@ func (h *ClubHandler) ListPinnedClubs(ctx context.Context, _ *clubv1.ListPinnedC
 	}
 
 	return &clubv1.ListPinnedClubsResponse{Clubs: toProtoClubs(clubs)}, nil
+}
+
+func (h *ClubHandler) ListMyRoles(ctx context.Context, req *clubv1.ListMyRolesRequest) (*clubv1.ListMyRolesResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.GetClubIds()))
+	for _, s := range req.GetClubIds() {
+		id, err := parseID(s, "invalid club id")
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	mine, err := h.clubService.Roles(ctx, userID, ids)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &clubv1.ListMyRolesResponse{Roles: make([]*clubv1.ClubRole, 0, len(mine))}
+	for _, id := range ids {
+		if role, ok := mine[id]; ok {
+			resp.Roles = append(resp.Roles, &clubv1.ClubRole{ClubId: id.String(), Role: roles[role]})
+		}
+	}
+
+	return resp, nil
 }
 
 func (h *ClubHandler) ListMyClubIDs(ctx context.Context, _ *clubv1.ListMyClubIDsRequest) (*clubv1.ListMyClubIDsResponse, error) {
