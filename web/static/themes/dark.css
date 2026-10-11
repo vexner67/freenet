@@ -85,6 +85,7 @@ input:focus, select:focus, textarea:focus,
 .dialog:hover { background: #222; }
 .dialog-name { color: #7fa9d4; }
 .dialog-date { color: #8c8c8c; }
+.dialog-forwarded { color: #8c8c8c; }
 .dialog-message.unread { background: #303030; }
 .dialog-text, .im-message-date { color: #b0b0b0; }
 .messenger { border-bottom-color: #333; }

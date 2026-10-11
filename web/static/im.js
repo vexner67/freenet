@@ -8,7 +8,7 @@
 
 import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
-import { formatPostDate, foundParts, foundSnippet, messagePreview, snippet } from './labels.js';
+import { formatPostDate, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showError, hideError } from './layout.js';
 
 const PREVIEW = 120;
@@ -131,7 +131,8 @@ const searchPeer = params.get('peer') ?? '';
 // dialog, the words found marked there too (&q=).
 function foundNode({ peer, message: m }) {
   const href = `/im/${encodeURIComponent(peer.nickname)}?msg=${encodeURIComponent(m.id)}&q=${encodeURIComponent(query)}`;
-  const parts = foundParts(foundSnippet(m.text, query, PREVIEW), query);
+  const said = foundText(m, query);
+  const parts = foundParts(foundSnippet(said.text, query, PREVIEW), query);
 
   return el('a', { className: 'dialog', href },
     el('img', { className: 'dialog-avatar', src: avatarURL(peer, 'small'), alt: '' }),
@@ -142,6 +143,7 @@ function foundNode({ peer, message: m }) {
     el('div', { className: 'dialog-message' },
       m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
       el('div', { className: 'dialog-text' },
+        said.forwarded && el('span', { className: 'dialog-forwarded', textContent: 'Пересланное сообщение: ' }),
         ...parts.map((p) => (p.found ? el('span', { className: 'found-words', textContent: p.text }) : p.text))),
     ),
   );

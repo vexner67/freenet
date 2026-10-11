@@ -455,6 +455,7 @@ a.like:hover svg { opacity: .7; }
 .dialog-info { width: 130px; margin-top: 4px; }
 .dialog-name { color: #2b587a; }
 .dialog-date { margin-top: 2px; color: grey; }
+.dialog-forwarded { color: grey; }
 .dialog-message { display: flex; gap: 8px; flex: 1; min-width: 0; padding: 3px; border-radius: 3px; }
 .dialog-message.unread { background: #e6e6e6; }
 .dialog-message img { width: 32px; height: 32px; object-fit: cover; border-radius: 3px; }

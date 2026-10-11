@@ -80,5 +80,11 @@ export function initAttachments({ link, input, list, error, onChange, photos = [
       entries = [];
       render();
     },
+    // set puts photos attached already in place of what is there, as
+    // when a message is edited.
+    set(photos) {
+      entries = photos.map((photo) => ({ photo }));
+      render();
+    },
   };
 }

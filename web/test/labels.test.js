@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears } from '../static/labels.js';
+import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -466,4 +466,15 @@ test('archiveYears lays out the years of the archive', () => {
   assert.deepEqual(archiveYears([2026, 2024], 2025), { shown: [2026, 2025, 2024], more: [], action: 2025 });
   // An empty wall has nothing to choose.
   assert.deepEqual(archiveYears([]), { shown: [], more: [], action: 0 });
+});
+
+test('foundText is the text of a found message that says the query', () => {
+  const carried = [{ text: 'горы' }, { text: 'Еду на МОРЕ' }, { text: 'море рядом' }];
+
+  assert.deepEqual(foundText({ text: 'На море', forwarded: carried }, 'море'), { text: 'На море', forwarded: false });
+  assert.deepEqual(foundText({ text: 'смотри', forwarded: carried, forwardedCount: 3 }, ' море '), { text: 'Еду на МОРЕ', forwarded: true });
+  assert.deepEqual(foundText({ text: '', forwarded: carried, forwardedCount: 3 }, 'горы'), { text: 'горы', forwarded: true });
+  // The text was cut before what was found, or its author's page is gone.
+  assert.deepEqual(foundText({ text: 'смотри', forwarded: [{ text: 'горы' }], forwardedCount: 2 }, 'море'), { text: 'смотри', forwarded: false });
+  assert.deepEqual(foundText({ text: '', forwardedCount: 2 }, 'море'), { text: '2 пересланных сообщения', forwarded: false });
 });

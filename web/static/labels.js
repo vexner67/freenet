@@ -658,6 +658,19 @@ export function foundSnippet(text, query, n) {
   return '…' + snippet(text.slice(from), n);
 }
 
+// foundText is the text of a found message that says the query: its own
+// or, when a search found the message by what it carries on, that of the
+// first forwarded message that does (forwarded tells which).
+export function foundText(m, query) {
+  const q = query.trim().toLowerCase();
+  const says = (text) => Boolean(q) && (text ?? '').toLowerCase().includes(q);
+  if (says(m.text)) return { text: m.text, forwarded: false };
+
+  const carried = (m.forwarded ?? []).find((f) => says(f.text));
+
+  return carried ? { text: carried.text, forwarded: true } : { text: messagePreview(m), forwarded: false };
+}
+
 // commentsLink is the link to the comments under a post, as on openvk.
 export function commentsLink(n) {
   return n > 0 ? `Комментарии (${n})` : 'Комментировать';
