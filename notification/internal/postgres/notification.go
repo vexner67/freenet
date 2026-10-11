@@ -185,7 +185,7 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deleteTopicMessageNotificationQuery, e.CommentID)
 	case notification.KindPostMention:
 		_, err = r.pool.Exec(ctx, deletePostMentionNotificationQuery, e.RecipientID, e.PostID)
-	case notification.KindCommentMention, notification.KindTopicMention:
+	case notification.KindCommentMention, notification.KindTopicMention, notification.KindPhotoMention:
 		_, err = r.pool.Exec(ctx, deleteCommentMentionNotificationQuery, string(e.Kind), e.RecipientID, e.CommentID)
 	case notification.KindCommentReply:
 		_, err = r.pool.Exec(ctx, deleteCommentReplyNotificationQuery, e.CommentID)

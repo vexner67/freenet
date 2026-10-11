@@ -28,6 +28,7 @@ var (
 		notification.KindPostMention:    notificationv1.Kind_KIND_POST_MENTION,
 		notification.KindCommentMention: notificationv1.Kind_KIND_COMMENT_MENTION,
 		notification.KindTopicMention:   notificationv1.Kind_KIND_TOPIC_MENTION,
+		notification.KindPhotoMention:   notificationv1.Kind_KIND_PHOTO_MENTION,
 
 		notification.KindPhotoLike:        notificationv1.Kind_KIND_PHOTO_LIKE,
 		notification.KindPhotoComment:     notificationv1.Kind_KIND_PHOTO_COMMENT,
@@ -53,6 +54,7 @@ var (
 		notificationv1.Kind_KIND_POST_MENTION:    notification.KindPostMention,
 		notificationv1.Kind_KIND_COMMENT_MENTION: notification.KindCommentMention,
 		notificationv1.Kind_KIND_TOPIC_MENTION:   notification.KindTopicMention,
+		notificationv1.Kind_KIND_PHOTO_MENTION:   notification.KindPhotoMention,
 
 		notificationv1.Kind_KIND_PHOTO_LIKE:         notification.KindPhotoLike,
 		notificationv1.Kind_KIND_PHOTO_COMMENT:      notification.KindPhotoComment,

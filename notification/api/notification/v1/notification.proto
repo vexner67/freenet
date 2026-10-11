@@ -77,6 +77,8 @@ enum Kind {
   KIND_TOPIC_MESSAGE_LIKE = 17;
   // The actor, an event the recipient comes to, starts soon.
   KIND_EVENT_REMINDER = 18;
+  // The actor named the recipient in comment_id under the photo post_id.
+  KIND_PHOTO_MENTION = 19;
 }
 
 // Event: post_id is set for all but follows, appointments and reminders,
