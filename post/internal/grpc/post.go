@@ -33,6 +33,7 @@ type PostService interface {
 	ListWall(ctx context.Context, viewerID, wallID uuid.UUID, pick service.WallPick, cursor uuid.UUID, size int) (service.Page, error)
 	Feed(ctx context.Context, viewerID uuid.UUID, sources service.FeedSources, cursor uuid.UUID, size int) (service.Page, error)
 	Reposts(ctx context.Context, viewerID, postID, cursor uuid.UUID, size int) (service.Page, error)
+	Own(ctx context.Context, userID, cursor uuid.UUID, size int) (service.Page, error)
 	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Likers(ctx context.Context, postID uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
@@ -116,6 +117,7 @@ type Services struct {
 	Albums      AlbumService
 	Polls       PollService
 	Notes       NoteService
+	Faves       FaveService
 	Purge       PurgeService
 }
 
@@ -128,6 +130,7 @@ type PostHandler struct {
 	albumService      AlbumService
 	pollService       PollService
 	noteService       NoteService
+	faveService       FaveService
 	purgeService      PurgeService
 	logger            *slog.Logger
 }
@@ -141,6 +144,7 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		albumService:      s.Albums,
 		pollService:       s.Polls,
 		noteService:       s.Notes,
+		faveService:       s.Faves,
 		purgeService:      s.Purge,
 		logger:            logger,
 	}

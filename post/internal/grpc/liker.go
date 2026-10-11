@@ -64,7 +64,7 @@ func toProtoLikers(page service.LikerPage) (ids []string, next string, total int
 	}
 
 	if page.Next != nil {
-		next = strconv.FormatInt(page.Next.LikedAt.UnixMicro(), 10) + "_" + page.Next.UserID.String()
+		next = timedCursor(page.Next.LikedAt, page.Next.UserID)
 	}
 
 	return ids, next, int32(page.Total) //nolint:gosec // a counter from an int4 column
@@ -72,26 +72,39 @@ func toProtoLikers(page service.LikerPage) (ids []string, next string, total int
 
 // parseLikerCursor reads "<microseconds>_<user ID>", nil for none.
 func parseLikerCursor(s string) (*service.LikerCursor, error) {
+	at, id, ok, err := parseTimedCursor(s)
+	if err != nil || !ok {
+		return nil, err
+	}
+
+	return &service.LikerCursor{LikedAt: at, UserID: id}, nil
+}
+
+// parseTimedCursor reads "<microseconds>_<ID>"; ok is false for none.
+func parseTimedCursor(s string) (at time.Time, id uuid.UUID, ok bool, err error) {
 	if s == "" {
-		return nil, nil //nolint:nilnil // no cursor: the first page
+		return time.Time{}, uuid.Nil, false, nil
 	}
 
 	invalid := status.Error(codes.InvalidArgument, "invalid cursor")
 
-	micros, rawID, ok := strings.Cut(s, "_")
-	if !ok {
-		return nil, invalid
+	micros, rawID, cut := strings.Cut(s, "_")
+	if !cut {
+		return time.Time{}, uuid.Nil, false, invalid
 	}
 
-	at, err := strconv.ParseInt(micros, 10, 64)
+	m, err := strconv.ParseInt(micros, 10, 64)
 	if err != nil {
-		return nil, invalid
+		return time.Time{}, uuid.Nil, false, invalid
 	}
 
-	id, err := uuid.Parse(rawID)
-	if err != nil {
-		return nil, invalid
+	if id, err = uuid.Parse(rawID); err != nil {
+		return time.Time{}, uuid.Nil, false, invalid
 	}
 
-	return &service.LikerCursor{LikedAt: time.UnixMicro(at).UTC(), UserID: id}, nil
+	return time.UnixMicro(m).UTC(), id, true, nil
+}
+
+func timedCursor(at time.Time, id uuid.UUID) string {
+	return strconv.FormatInt(at.UnixMicro(), 10) + "_" + id.String()
 }

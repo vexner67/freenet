@@ -168,6 +168,10 @@ func (a *App) build(cfg config.Config) error {
 			Notes: service.NewNoteService(service.NoteDeps{
 				Notes: repos.notes, Comments: repos.noteComments, Tx: repos.tx, Notifier: notifier,
 			}),
+			Faves: service.NewFaveService(service.FaveDeps{
+				PostLikes: repos.likes, CommentLikes: repos.commentLikes, PhotoLikes: repos.photoLikes,
+				Posts: repos.posts, Comments: repos.comments, Photos: repos.albumPhotos, Albums: repos.albums,
+			}),
 			Purge: service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
 				Votes:  repos.polls,
@@ -370,6 +374,7 @@ type repositories struct {
 	likes interface {
 		service.LikeRepository
 		service.ReactionEraser
+		service.FaveRepository
 	}
 	comments interface {
 		service.CommentRepository
@@ -379,6 +384,7 @@ type repositories struct {
 	commentLikes interface {
 		service.CommentLikeRepository
 		service.ReactionEraser
+		service.FaveRepository
 	}
 	suggestions interface {
 		service.SuggestionRepository
@@ -405,8 +411,14 @@ type repositories struct {
 		service.NoteEraser
 	}
 	noteComments service.NoteCommentRepository
-	albumPhotos  service.AlbumPhotoRepository
-	photoLikes   service.AlbumPhotoLikeRepository
+	albumPhotos  interface {
+		service.AlbumPhotoRepository
+		service.FavePhotos
+	}
+	photoLikes interface {
+		service.AlbumPhotoLikeRepository
+		service.FaveRepository
+	}
 	// photoComments are the comments of photos of albums.
 	photoComments service.PhotoCommentRepository
 	// photoCommentLikes are the hearts of those comments.

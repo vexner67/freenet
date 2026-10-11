@@ -61,6 +61,10 @@ type PostRepository interface {
 	// whichever walls, but for those that speak for a wall, together with
 	// all the posts on several walls; archived posts are left out.
 	ListFeed(ctx context.Context, sources FeedSources, before uuid.UUID, limit int) ([]*post.Post, error)
+	// ListByAuthor is ListByWall for what authorID wrote, on whichever
+	// wall (post.ListedFor), and CountByAuthor counts it.
+	ListByAuthor(ctx context.Context, authorID, before uuid.UUID, limit int) ([]*post.Post, error)
+	CountByAuthor(ctx context.Context, authorID uuid.UUID) (int, error)
 	// ListReposts is ListByWall for the reposts of a post, on whichever
 	// walls; the archived ones only when asked for.
 	ListReposts(ctx context.Context, postID, before uuid.UUID, limit int, archived bool) ([]*post.Post, error)
@@ -601,6 +605,37 @@ func (s *PostService) forgetReposts(ctx context.Context, p *post.Post) error {
 	}
 
 	return nil
+}
+
+// Own pages what userID wrote, on their wall and on others', newest first
+// (openvk's "Написанные мной записи"); Total counts it all.
+func (s *PostService) Own(ctx context.Context, userID, cursor uuid.UUID, size int) (Page, error) {
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	posts, err := s.postRepo.ListByAuthor(ctx, userID, cursor, size+1)
+	if err != nil {
+		return Page{}, errs.Wrap("s.postRepo.ListByAuthor", err)
+	}
+
+	total, err := s.postRepo.CountByAuthor(ctx, userID)
+	if err != nil {
+		return Page{}, errs.Wrap("s.postRepo.CountByAuthor", err)
+	}
+
+	page := Page{Posts: posts, Total: total}
+
+	if len(posts) > size {
+		page.Posts = posts[:size]
+		page.NextCursor = posts[size-1].ID()
+	}
+
+	if page.Liked, err = s.liked(ctx, userID, page.Posts); err != nil {
+		return Page{}, errs.Wrap("s.liked", err)
+	}
+
+	return page, nil
 }
 
 // Reposts pages the posts that share a post, newest first, for "who

@@ -431,6 +431,43 @@ func TestPost_InWallAlbum(t *testing.T) {
 	}
 }
 
+func TestPost_ListedFor(t *testing.T) {
+	t.Parallel()
+
+	ann, bob := uuid.New(), uuid.New()
+	now := time.Now()
+	stored := func(wall uuid.UUID, change func(*post.Stored)) *post.Post {
+		s := post.Stored{ID: uuid.New(), WallID: wall, AuthorID: ann, Content: post.RestoreContent("текст", nil, uuid.Nil), CreatedAt: now}
+		change(&s)
+
+		return post.Restore(s)
+	}
+
+	tests := []struct {
+		name string
+		p    *post.Post
+		user uuid.UUID
+		want bool
+	}{
+		{"on her wall", stored(ann, func(*post.Stored) {}), ann, true},
+		{"on another's wall", stored(bob, func(*post.Stored) {}), ann, true},
+		{"somebody else's", stored(bob, func(*post.Stored) {}), bob, false},
+		{"archived on her wall", stored(ann, func(s *post.Stored) { s.Archived = true }), ann, true},
+		{"archived on another's wall", stored(bob, func(s *post.Stored) { s.Archived = true }), ann, false},
+		{"suggested and published for a community", stored(bob, func(s *post.Stored) { s.Suggested = true }), ann, false},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			if got := tt.p.ListedFor(tt.user); got != tt.want {
+				t.Fatalf("ListedFor = %v, want %v", got, tt.want)
+			}
+		})
+	}
+}
+
 func TestText_Excerpt(t *testing.T) {
 	t.Parallel()
 

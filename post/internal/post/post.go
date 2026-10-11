@@ -320,6 +320,13 @@ func (p *Post) BelongsTo(userID uuid.UUID) bool {
 	return userID == p.authorID && !p.suggested
 }
 
+// ListedFor tells whether the post is among those userID wrote ("Написанные
+// мной записи"): theirs, on whichever wall, but for what was archived on
+// the wall of another — only its owner reads that.
+func (p *Post) ListedFor(userID uuid.UUID) bool {
+	return p.BelongsTo(userID) && (!p.archived || p.wallID == userID)
+}
+
 // CanBePinnedBy: the owner of the wall chooses what it shows first,
 // whoever wrote it.
 func (p *Post) CanBePinnedBy(userID uuid.UUID) bool {
