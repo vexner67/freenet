@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/message/internal/mediaclient"
 	"github.com/vexner67/freenet/message/internal/message"
 	"github.com/vexner67/freenet/message/internal/postgres"
@@ -21,6 +22,15 @@ import (
 func chatService(t *testing.T) (*service.ChatService, context.Context) {
 	t.Helper()
 
+	return chatServiceOn(t, 0)
+}
+
+// chatServiceOn is chatService over a pool of at most conns connections
+// (0 — as many as pgx gives): a small pool is what a small machine has,
+// and there a transaction that reads outside itself waits forever.
+func chatServiceOn(t *testing.T, conns int32) (*service.ChatService, context.Context) {
+	t.Helper()
+
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL is not set")
@@ -29,7 +39,16 @@ func chatService(t *testing.T) (*service.ChatService, context.Context) {
 	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
 	t.Cleanup(cancel)
 
-	pool, err := pgpool.New(ctx, dsn)
+	cfg, err := pgxpool.ParseConfig(dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if conns > 0 {
+		cfg.MaxConns = conns
+	}
+
+	pool, err := pgxpool.NewWithConfig(ctx, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -274,7 +293,7 @@ func TestChats_ConcurrentSend(t *testing.T) {
 
 // Adding people at once never fills a chat past its room.
 func TestChats_ConcurrentInvite(t *testing.T) {
-	svc, ctx := chatService(t)
+	svc, ctx := chatServiceOn(t, 4)
 	owner := uuid.New()
 
 	others := make([]uuid.UUID, message.MaxChatMembers-4)
