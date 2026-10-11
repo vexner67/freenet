@@ -138,9 +138,23 @@ func (m *Messages) Hide(ctx context.Context, accessToken, id string) error {
 	return nil
 }
 
-// Edit changes what the caller's message says.
-func (m *Messages) Edit(ctx context.Context, accessToken, id, text string) (model.Message, error) {
-	resp, err := m.api.EditMessage(withToken(ctx, accessToken), &messagev1.EditMessageRequest{Id: id, Text: text})
+// DeleteMany deletes several messages at once, all or none: for both
+// sides or for the caller alone.
+func (m *Messages) DeleteMany(ctx context.Context, accessToken string, ids []string, forEveryone bool) error {
+	_, err := m.api.DeleteMessages(withToken(ctx, accessToken), &messagev1.DeleteMessagesRequest{Ids: ids, ForEveryone: forEveryone})
+	if err != nil {
+		return errs.Wrap("m.api.DeleteMessages", fromStatus(err))
+	}
+
+	return nil
+}
+
+// Edit changes what the caller's message says and, when the edit
+// replaces them, its photos.
+func (m *Messages) Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.Message, error) {
+	resp, err := m.api.EditMessage(withToken(ctx, accessToken), &messagev1.EditMessageRequest{
+		Id: id, Text: e.Text, PhotoIds: e.PhotoIDs, ReplacePhotos: e.ReplacePhotos,
+	})
 	if err != nil {
 		return model.Message{}, errs.Wrap("m.api.EditMessage", fromStatus(err))
 	}

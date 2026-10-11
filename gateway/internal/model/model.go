@@ -465,6 +465,14 @@ type MessageDraft struct {
 	ForwardIDs    []string
 }
 
+// MessageEdit is what an edit makes of a message: its words and, with
+// ReplacePhotos, its photos; without, the photos stay.
+type MessageEdit struct {
+	Text          string
+	PhotoIDs      []string
+	ReplacePhotos bool
+}
+
 // MessagesAt names a part of a dialog: older messages with Cursor, those
 // after After, the messages around Around, or, with none of them, the
 // newest.
