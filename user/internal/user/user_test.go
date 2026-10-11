@@ -296,13 +296,14 @@ func TestUser_AccessFor(t *testing.T) {
 		if err := ann.UpdatePrivacy(user.Privacy{
 			WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: clubs,
 			PageRead: page, InfoRead: info, PhotosRead: photos, FriendsRead: friends, OnlineRead: user.AudienceEveryone,
+			NotesRead: photos,
 		}); err != nil {
 			t.Fatal(err)
 		}
 	}
 
 	// By default everything is open, as on openvk.
-	everything := user.Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true}
+	everything := user.Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true, Notes: true}
 	if got := ann.AccessFor(uuid.Nil, user.Ties{}); got != everything {
 		t.Fatalf("default = %+v", got)
 	}
@@ -316,7 +317,7 @@ func TestUser_AccessFor(t *testing.T) {
 	}{
 		{"anonymous", uuid.Nil, user.Ties{}, user.Access{}},
 		{"a user", bob, user.Ties{}, user.Access{Page: true, Info: true, Clubs: true}},
-		{"whom ann follows", bob, friend, user.Access{Page: true, Info: true, Photos: true, Clubs: true}},
+		{"whom ann follows", bob, friend, user.Access{Page: true, Info: true, Photos: true, Clubs: true, Notes: true}},
 		{"ann", ann.ID(), user.Ties{}, everything},
 	} {
 		if got := ann.AccessFor(tt.viewer, tt.ties); got != tt.want {
@@ -353,5 +354,21 @@ func TestUser_AccessFor(t *testing.T) {
 		PageRead: user.AudienceEveryone, InfoRead: "friends", PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
 	}); !errors.Is(err, user.ErrInvalidAudience) {
 		t.Fatalf("an unknown audience: %v", err)
+	}
+	if err := ann.UpdatePrivacy(user.Privacy{
+		WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
+		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
+		NotesRead: "friends",
+	}); !errors.Is(err, user.ErrInvalidAudience) {
+		t.Fatalf("an unknown audience of the notes: %v", err)
+	}
+
+	// A client that does not know the notes leaves them to everyone.
+	set(user.AudienceEveryone, user.AudienceEveryone, user.AudienceEveryone, user.AudienceEveryone, user.ClubsReadEveryone)
+	if err := ann.UpdatePrivacy(user.Privacy{
+		WallWrite: user.WallWriteEveryone, MessagesWrite: user.MessagesWriteEveryone, ClubsRead: user.ClubsReadEveryone,
+		PageRead: user.AudienceEveryone, InfoRead: user.AudienceEveryone, PhotosRead: user.AudienceEveryone, FriendsRead: user.AudienceEveryone, OnlineRead: user.AudienceEveryone,
+	}); err != nil || ann.Privacy().NotesRead != user.AudienceEveryone {
+		t.Fatalf("notes left out: %v, %q", err, ann.Privacy().NotesRead)
 	}
 }

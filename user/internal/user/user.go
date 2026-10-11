@@ -62,6 +62,9 @@ type Privacy struct {
 	// OnlineRead is "Кто видит мою неактивность": who sees when the owner
 	// was last online after a long absence (see LastSeen).
 	OnlineRead Audience
+	// NotesRead is "Кому видно мои заметки"; empty in UpdatePrivacy, as
+	// from a client that does not know it, means everyone.
+	NotesRead Audience
 }
 
 // PublicProfile is the part of a profile other users may see. Hidden
@@ -149,7 +152,7 @@ func New(email Email) (*User, error) {
 		privacy: Privacy{
 			WallWrite: DefaultWallWrite, MessagesWrite: DefaultMessagesWrite, ClubsRead: DefaultClubsRead,
 			PageRead: AudienceEveryone, InfoRead: AudienceEveryone, PhotosRead: AudienceEveryone, FriendsRead: AudienceEveryone,
-			OnlineRead: AudienceEveryone,
+			OnlineRead: AudienceEveryone, NotesRead: AudienceEveryone,
 		},
 		ui: DefaultInterface(),
 	}, nil
@@ -249,7 +252,11 @@ func (u *User) UpdatePrivacy(privacy Privacy) error {
 		return err
 	}
 
-	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead, privacy.OnlineRead} {
+	if privacy.NotesRead == "" {
+		privacy.NotesRead = AudienceEveryone
+	}
+
+	for _, a := range []Audience{privacy.InfoRead, privacy.PhotosRead, privacy.FriendsRead, privacy.OnlineRead, privacy.NotesRead} {
 		if _, err := NewAudience(a.String()); err != nil {
 			return err
 		}

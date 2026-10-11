@@ -1337,7 +1337,10 @@ type PrivacySettings struct {
 	// Required in UpdatePrivacy, everyone by default: who sees when the
 	// owner was last online after a long absence ("Кто видит мою
 	// неактивность"); anyone sees a short one, as on openvk.
-	OnlineRead    Audience `protobuf:"varint,12,opt,name=online_read,json=onlineRead,proto3,enum=user.v1.Audience" json:"online_read,omitempty"`
+	OnlineRead Audience `protobuf:"varint,12,opt,name=online_read,json=onlineRead,proto3,enum=user.v1.Audience" json:"online_read,omitempty"`
+	// Who sees the notes ("Кому видно мои заметки"); unspecified, as from
+	// a client that does not know it, is everyone.
+	NotesRead     Audience `protobuf:"varint,13,opt,name=notes_read,json=notesRead,proto3,enum=user.v1.Audience" json:"notes_read,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1452,6 +1455,13 @@ func (x *PrivacySettings) GetFriendsRead() Audience {
 func (x *PrivacySettings) GetOnlineRead() Audience {
 	if x != nil {
 		return x.OnlineRead
+	}
+	return Audience_AUDIENCE_UNSPECIFIED
+}
+
+func (x *PrivacySettings) GetNotesRead() Audience {
+	if x != nil {
+		return x.NotesRead
 	}
 	return Audience_AUDIENCE_UNSPECIFIED
 }
@@ -3729,7 +3739,9 @@ type GetAccessResponse struct {
 	// Whom the user follows and who follows the user.
 	Friends bool `protobuf:"varint,4,opt,name=friends,proto3" json:"friends,omitempty"`
 	// The communities the user is in.
-	Clubs         bool `protobuf:"varint,5,opt,name=clubs,proto3" json:"clubs,omitempty"`
+	Clubs bool `protobuf:"varint,5,opt,name=clubs,proto3" json:"clubs,omitempty"`
+	// The notes.
+	Notes         bool `protobuf:"varint,6,opt,name=notes,proto3" json:"notes,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3795,6 +3807,13 @@ func (x *GetAccessResponse) GetFriends() bool {
 func (x *GetAccessResponse) GetClubs() bool {
 	if x != nil {
 		return x.Clubs
+	}
+	return false
+}
+
+func (x *GetAccessResponse) GetNotes() bool {
+	if x != nil {
+		return x.Notes
 	}
 	return false
 }
@@ -4787,7 +4806,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"ExtraField\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12)\n" +
-	"\x05place\x18\x03 \x01(\x0e2\x13.user.v1.FieldPlaceR\x05place\"\xdf\x04\n" +
+	"\x05place\x18\x03 \x01(\x0e2\x13.user.v1.FieldPlaceR\x05place\"\x91\x05\n" +
 	"\x0fPrivacySettings\x12#\n" +
 	"\rshow_birthday\x18\x01 \x01(\bR\fshowBirthday\x12+\n" +
 	"\x11show_relationship\x18\x02 \x01(\bR\x10showRelationship\x12%\n" +
@@ -4805,7 +4824,9 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"photosRead\x124\n" +
 	"\ffriends_read\x18\v \x01(\x0e2\x11.user.v1.AudienceR\vfriendsRead\x122\n" +
 	"\vonline_read\x18\f \x01(\x0e2\x11.user.v1.AudienceR\n" +
-	"onlineRead\"\xb2\b\n" +
+	"onlineRead\x120\n" +
+	"\n" +
+	"notes_read\x18\r \x01(\x0e2\x11.user.v1.AudienceR\tnotesRead\"\xb2\b\n" +
 	"\rPublicProfile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -4946,13 +4967,14 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x15CanPostOnWallResponse\x12\x18\n" +
 	"\aallowed\x18\x01 \x01(\bR\aallowed\"+\n" +
 	"\x10GetAccessRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x83\x01\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x99\x01\n" +
 	"\x11GetAccessResponse\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\bR\x04page\x12\x12\n" +
 	"\x04info\x18\x02 \x01(\bR\x04info\x12\x16\n" +
 	"\x06photos\x18\x03 \x01(\bR\x06photos\x12\x18\n" +
 	"\afriends\x18\x04 \x01(\bR\afriends\x12\x14\n" +
-	"\x05clubs\x18\x05 \x01(\bR\x05clubs\"M\n" +
+	"\x05clubs\x18\x05 \x01(\bR\x05clubs\x12\x14\n" +
+	"\x05notes\x18\x06 \x01(\bR\x05notes\"M\n" +
 	"\x11CanMessageRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1f\n" +
 	"\vwrote_first\x18\x02 \x01(\bR\n" +
@@ -5228,117 +5250,118 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	1,  // 20: user.v1.PrivacySettings.photos_read:type_name -> user.v1.Audience
 	1,  // 21: user.v1.PrivacySettings.friends_read:type_name -> user.v1.Audience
 	1,  // 22: user.v1.PrivacySettings.online_read:type_name -> user.v1.Audience
-	5,  // 23: user.v1.PublicProfile.gender:type_name -> user.v1.Gender
-	6,  // 24: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
-	7,  // 25: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
-	8,  // 26: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
-	80, // 27: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
-	14, // 28: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
-	15, // 29: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
-	16, // 30: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
-	80, // 31: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
-	80, // 32: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
-	10, // 33: user.v1.GetMeResponse.user:type_name -> user.v1.User
-	5,  // 34: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
-	6,  // 35: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
-	7,  // 36: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
-	8,  // 37: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
-	80, // 38: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
-	10, // 39: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
-	14, // 40: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
-	10, // 41: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
-	15, // 42: user.v1.UpdateInterestsRequest.interests:type_name -> user.v1.Interests
-	10, // 43: user.v1.UpdateInterestsResponse.user:type_name -> user.v1.User
-	16, // 44: user.v1.UpdateExtraFieldsRequest.fields:type_name -> user.v1.ExtraField
-	10, // 45: user.v1.UpdateExtraFieldsResponse.user:type_name -> user.v1.User
-	18, // 46: user.v1.GetProfileResponse.profile:type_name -> user.v1.PublicProfile
-	17, // 47: user.v1.UpdatePrivacyRequest.privacy:type_name -> user.v1.PrivacySettings
-	10, // 48: user.v1.UpdatePrivacyResponse.user:type_name -> user.v1.User
-	18, // 49: user.v1.GetProfilesResponse.profiles:type_name -> user.v1.PublicProfile
-	18, // 50: user.v1.ListFollowsResponse.users:type_name -> user.v1.PublicProfile
-	10, // 51: user.v1.UpdateStatusResponse.user:type_name -> user.v1.User
-	10, // 52: user.v1.SetAvatarResponse.user:type_name -> user.v1.User
-	9,  // 53: user.v1.SetBackdropRequest.side:type_name -> user.v1.BackdropSide
-	10, // 54: user.v1.SetBackdropResponse.user:type_name -> user.v1.User
-	18, // 55: user.v1.SearchUsersResponse.users:type_name -> user.v1.PublicProfile
-	18, // 56: user.v1.ListBlockedResponse.users:type_name -> user.v1.PublicProfile
-	10, // 57: user.v1.DeactivateAccountResponse.user:type_name -> user.v1.User
-	10, // 58: user.v1.ReactivateAccountResponse.user:type_name -> user.v1.User
-	19, // 59: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
-	21, // 60: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
-	23, // 61: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	49, // 62: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
-	33, // 63: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
-	12, // 64: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
-	25, // 65: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
-	27, // 66: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
-	29, // 67: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
-	48, // 68: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
-	52, // 69: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
-	31, // 70: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	35, // 71: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
-	54, // 72: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
-	37, // 73: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
-	38, // 74: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
-	39, // 75: user.v1.UserService.ListFollowingIDs:input_type -> user.v1.ListFollowingIDsRequest
-	41, // 76: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
-	43, // 77: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
-	43, // 78: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
-	44, // 79: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
-	45, // 80: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
-	56, // 81: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
-	60, // 82: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
-	68, // 83: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
-	70, // 84: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
-	58, // 85: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
-	62, // 86: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
-	63, // 87: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
-	64, // 88: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
-	66, // 89: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
-	72, // 90: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
-	74, // 91: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
-	76, // 92: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
-	78, // 93: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
-	20, // 94: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	22, // 95: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	24, // 96: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	50, // 97: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
-	34, // 98: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	13, // 99: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
-	26, // 100: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
-	28, // 101: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
-	30, // 102: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
-	51, // 103: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	53, // 104: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
-	32, // 105: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	36, // 106: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	55, // 107: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	81, // 108: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	81, // 109: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	40, // 110: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
-	42, // 111: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	47, // 112: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	47, // 113: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	81, // 114: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
-	46, // 115: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
-	57, // 116: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	61, // 117: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
-	69, // 118: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
-	71, // 119: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
-	59, // 120: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
-	81, // 121: user.v1.UserService.Block:output_type -> google.protobuf.Empty
-	81, // 122: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
-	65, // 123: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
-	67, // 124: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
-	73, // 125: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
-	75, // 126: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
-	77, // 127: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
-	79, // 128: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
-	94, // [94:129] is the sub-list for method output_type
-	59, // [59:94] is the sub-list for method input_type
-	59, // [59:59] is the sub-list for extension type_name
-	59, // [59:59] is the sub-list for extension extendee
-	0,  // [0:59] is the sub-list for field type_name
+	1,  // 23: user.v1.PrivacySettings.notes_read:type_name -> user.v1.Audience
+	5,  // 24: user.v1.PublicProfile.gender:type_name -> user.v1.Gender
+	6,  // 25: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
+	7,  // 26: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
+	8,  // 27: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
+	80, // 28: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	14, // 29: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
+	15, // 30: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
+	16, // 31: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
+	80, // 32: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
+	80, // 33: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
+	10, // 34: user.v1.GetMeResponse.user:type_name -> user.v1.User
+	5,  // 35: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
+	6,  // 36: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
+	7,  // 37: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
+	8,  // 38: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
+	80, // 39: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	10, // 40: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
+	14, // 41: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
+	10, // 42: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
+	15, // 43: user.v1.UpdateInterestsRequest.interests:type_name -> user.v1.Interests
+	10, // 44: user.v1.UpdateInterestsResponse.user:type_name -> user.v1.User
+	16, // 45: user.v1.UpdateExtraFieldsRequest.fields:type_name -> user.v1.ExtraField
+	10, // 46: user.v1.UpdateExtraFieldsResponse.user:type_name -> user.v1.User
+	18, // 47: user.v1.GetProfileResponse.profile:type_name -> user.v1.PublicProfile
+	17, // 48: user.v1.UpdatePrivacyRequest.privacy:type_name -> user.v1.PrivacySettings
+	10, // 49: user.v1.UpdatePrivacyResponse.user:type_name -> user.v1.User
+	18, // 50: user.v1.GetProfilesResponse.profiles:type_name -> user.v1.PublicProfile
+	18, // 51: user.v1.ListFollowsResponse.users:type_name -> user.v1.PublicProfile
+	10, // 52: user.v1.UpdateStatusResponse.user:type_name -> user.v1.User
+	10, // 53: user.v1.SetAvatarResponse.user:type_name -> user.v1.User
+	9,  // 54: user.v1.SetBackdropRequest.side:type_name -> user.v1.BackdropSide
+	10, // 55: user.v1.SetBackdropResponse.user:type_name -> user.v1.User
+	18, // 56: user.v1.SearchUsersResponse.users:type_name -> user.v1.PublicProfile
+	18, // 57: user.v1.ListBlockedResponse.users:type_name -> user.v1.PublicProfile
+	10, // 58: user.v1.DeactivateAccountResponse.user:type_name -> user.v1.User
+	10, // 59: user.v1.ReactivateAccountResponse.user:type_name -> user.v1.User
+	19, // 60: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	21, // 61: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	23, // 62: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	49, // 63: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
+	33, // 64: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	12, // 65: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
+	25, // 66: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
+	27, // 67: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
+	29, // 68: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
+	48, // 69: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	52, // 70: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
+	31, // 71: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	35, // 72: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	54, // 73: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	37, // 74: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	38, // 75: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	39, // 76: user.v1.UserService.ListFollowingIDs:input_type -> user.v1.ListFollowingIDsRequest
+	41, // 77: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	43, // 78: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	43, // 79: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	44, // 80: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
+	45, // 81: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
+	56, // 82: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
+	60, // 83: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
+	68, // 84: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
+	70, // 85: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
+	58, // 86: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
+	62, // 87: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
+	63, // 88: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
+	64, // 89: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
+	66, // 90: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
+	72, // 91: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	74, // 92: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
+	76, // 93: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
+	78, // 94: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
+	20, // 95: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	22, // 96: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	24, // 97: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	50, // 98: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
+	34, // 99: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	13, // 100: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
+	26, // 101: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
+	28, // 102: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
+	30, // 103: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
+	51, // 104: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	53, // 105: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
+	32, // 106: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	36, // 107: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	55, // 108: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	81, // 109: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	81, // 110: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	40, // 111: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
+	42, // 112: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	47, // 113: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	47, // 114: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	81, // 115: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
+	46, // 116: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
+	57, // 117: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	61, // 118: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	69, // 119: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
+	71, // 120: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
+	59, // 121: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
+	81, // 122: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	81, // 123: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	65, // 124: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	67, // 125: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
+	73, // 126: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	75, // 127: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
+	77, // 128: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
+	79, // 129: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
+	95, // [95:130] is the sub-list for method output_type
+	60, // [60:95] is the sub-list for method input_type
+	60, // [60:60] is the sub-list for extension type_name
+	60, // [60:60] is the sub-list for extension extendee
+	0,  // [0:60] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }
