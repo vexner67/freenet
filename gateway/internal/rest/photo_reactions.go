@@ -207,7 +207,13 @@ func (a *api) createPhotoComment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	c, err := a.albums.CommentPhoto(r.Context(), token, photo.ID, req.Text, req.ReplyTo)
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.albums.CommentPhoto(r.Context(), token, photo.ID, model.NewPhotoComment{Text: req.Text, ReplyTo: req.ReplyTo, Mentions: mentions})
 	if err != nil {
 		a.writeError(w, r, err)
 		return

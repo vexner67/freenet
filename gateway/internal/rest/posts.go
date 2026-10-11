@@ -723,6 +723,11 @@ func (a *api) share(w http.ResponseWriter, r *http.Request, what func(token stri
 	}
 	nr.PhotoID, nr.PhotoIDs = photoID, req.Photos
 
+	if nr.Mentions, err = a.mentioned(r, token, req.Text); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	p, err := a.posts.Repost(r.Context(), token, postID, nr)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -877,7 +882,15 @@ func (a *api) editPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p, err := a.posts.Edit(r.Context(), token, r.PathValue("id"), model.PostEdit{Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW})
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	edit := model.PostEdit{Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW, Mentions: mentions}
+
+	p, err := a.posts.Edit(r.Context(), token, r.PathValue("id"), edit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

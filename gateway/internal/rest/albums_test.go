@@ -24,6 +24,8 @@ type fakeAlbums struct {
 	// photoLiked is the photo liked last, commented the text of the last
 	// comment on a photo.
 	photoLiked, commented string
+	// mentioned are the people the last comment on a photo named.
+	mentioned []string
 	// repliedTo is the comment the last one answered, commentLiked the
 	// comment that got a heart last.
 	repliedTo, commentLiked string
@@ -153,8 +155,9 @@ func (f *fakeAlbums) PhotoLikers(_ context.Context, id, _ string, _ int) (model.
 
 // CommentPhoto keeps text in commented; the comments of every photo are
 // bob's and a deleted page's.
-func (f *fakeAlbums) CommentPhoto(_ context.Context, _, id, text, replyTo string) (model.PhotoComment, error) {
-	f.commented, f.repliedTo = text, replyTo
+func (f *fakeAlbums) CommentPhoto(_ context.Context, _, id string, c model.NewPhotoComment) (model.PhotoComment, error) {
+	text, replyTo := c.Text, c.ReplyTo
+	f.commented, f.repliedTo, f.mentioned = text, replyTo, c.Mentions
 	return model.PhotoComment{ID: "pc9", PhotoID: id, AuthorID: "u1", Text: text, ReplyTo: replyTo, CreatedAt: albumTime, Mine: true}, f.err
 }
 

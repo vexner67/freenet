@@ -38,6 +38,9 @@ type Users interface {
 	// ResolveMentions are the IDs of the people the caller names by these
 	// nicknames who hear of it: who exist and whom the caller may name.
 	ResolveMentions(ctx context.Context, accessToken string, nicknames []string) ([]string, error)
+	// KnownNicknames are those of nicknames that are someone's, as their
+	// owners write them.
+	KnownNicknames(ctx context.Context, nicknames []string) ([]string, error)
 	// Access is what of userID's page the caller may see.
 	Access(ctx context.Context, accessToken, userID string) (model.Access, error)
 
@@ -188,7 +191,7 @@ type Albums interface {
 	LikePhoto(ctx context.Context, accessToken, id string) (int, error)
 	UnlikePhoto(ctx context.Context, accessToken, id string) (int, error)
 	PhotoLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error)
-	CommentPhoto(ctx context.Context, accessToken, id, text, replyTo string) (model.PhotoComment, error)
+	CommentPhoto(ctx context.Context, accessToken, id string, c model.NewPhotoComment) (model.PhotoComment, error)
 	DeletePhotoComment(ctx context.Context, accessToken, id string) error
 	PhotoComments(ctx context.Context, accessToken, id, cursor string, limit int) (model.PhotoCommentPage, error)
 	// PhotoComment is a comment under a photo with its whole text.
@@ -374,6 +377,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/clubs", a.createClub)
 	mux.HandleFunc("POST /api/v1/events", a.createEvent)
 	mux.HandleFunc("GET /api/v1/about", a.about)
+	mux.HandleFunc("GET /api/v1/nicknames", a.knownNicknames)
 	mux.HandleFunc("GET /api/v1/me/clubs", a.listMyClubs)
 	mux.HandleFunc("GET /api/v1/me/events", a.listMyEvents)
 	mux.HandleFunc("GET /api/v1/me/clubs/pinned", a.listPinnedClubs)

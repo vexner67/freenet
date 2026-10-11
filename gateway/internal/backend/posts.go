@@ -47,7 +47,7 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 func (p *Posts) Repost(ctx context.Context, accessToken, postID string, nr model.NewRepost) (model.Post, error) {
 	resp, err := p.api.RepostPost(withToken(ctx, accessToken), &postv1.RepostPostRequest{
 		PostId: postID, PhotoId: nr.PhotoID, Text: nr.Text, WallId: nr.WallID, FromWall: nr.FromWall, Signed: nr.Signed,
-		PhotoIds: nr.PhotoIDs,
+		PhotoIds: nr.PhotoIDs, MentionedIds: nr.Mentions,
 	})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.RepostPost", fromStatus(err))
@@ -66,7 +66,9 @@ func (p *Posts) Delete(ctx context.Context, accessToken, id string) error {
 
 // Edit changes the text and photos of the caller's post and returns it.
 func (p *Posts) Edit(ctx context.Context, accessToken, id string, edit model.PostEdit) (model.Post, error) {
-	resp, err := p.api.EditPost(withToken(ctx, accessToken), &postv1.EditPostRequest{Id: id, Text: edit.Text, PhotoIds: edit.PhotoIDs, Nsfw: edit.NSFW})
+	resp, err := p.api.EditPost(withToken(ctx, accessToken), &postv1.EditPostRequest{
+		Id: id, Text: edit.Text, PhotoIds: edit.PhotoIDs, Nsfw: edit.NSFW, MentionedIds: edit.Mentions,
+	})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.EditPost", fromStatus(err))
 	}

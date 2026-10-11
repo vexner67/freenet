@@ -3,6 +3,7 @@ package rest_test
 import (
 	"net/http"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/vexner67/freenet/gateway/internal/model"
@@ -60,6 +61,47 @@ func TestMentions(t *testing.T) {
 		}
 	})
 
+	t.Run("in an edited post", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+
+		if w := h.do("PATCH", "/api/v1/posts/p1", text, "Authorization", "Bearer tok"); w.Code != http.StatusOK {
+			t.Fatalf("edit: %d %s", w.Code, w.Body)
+		}
+		if !slices.Equal(h.users.named, asked) || !slices.Equal(h.posts.mentioned, want) {
+			t.Fatalf("asked about %v, passed %v", h.users.named, h.posts.mentioned)
+		}
+	})
+
+	t.Run("in a repost", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+		if w := h.do("POST", "/api/v1/posts/p1/reposts", text, "Authorization", "Bearer tok"); w.Code != http.StatusCreated {
+			t.Fatalf("repost: %d %s", w.Code, w.Body)
+		}
+		if !slices.Equal(h.users.named, asked) || !slices.Equal(h.posts.repost.Mentions, want) {
+			t.Fatalf("asked about %v, passed %v", h.users.named, h.posts.repost.Mentions)
+		}
+	})
+
+	t.Run("in a comment under a photo", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+		if w := h.do("POST", "/api/v1/album-photos/ph6/comments", text, "Authorization", "Bearer tok"); w.Code != http.StatusCreated {
+			t.Fatalf("comment: %d %s", w.Code, w.Body)
+		}
+		if !slices.Equal(h.users.named, asked) || !slices.Equal(h.albums.mentioned, want) {
+			t.Fatalf("asked about %v, passed %v", h.users.named, h.albums.mentioned)
+		}
+	})
+
 	t.Run("a text that names nobody asks nothing", func(t *testing.T) {
 		t.Parallel()
 
@@ -73,4 +115,27 @@ func TestMentions(t *testing.T) {
 			t.Fatalf("asked about %v, passed %v", h.users.named, h.posts.newPost.Mentions)
 		}
 	})
+}
+
+// Which of the words after "@" are pages anyone may ask.
+func TestKnownNicknames(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+
+	w := h.do("GET", "/api/v1/nicknames?nickname=Ann&nickname=nobody&nickname=bob", "")
+	got := decode[struct {
+		Nicknames []string `json:"nicknames"`
+	}](t, w)
+	if w.Code != http.StatusOK || !slices.Equal(got.Nicknames, []string{"ann", "bob"}) {
+		t.Fatalf("%d %s", w.Code, w.Body)
+	}
+
+	if w = h.do("GET", "/api/v1/nicknames", ""); w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) != `{"nicknames":[]}` {
+		t.Fatalf("no nicknames: %d %s", w.Code, w.Body)
+	}
+
+	if w = h.do("GET", "/api/v1/nicknames?"+strings.Repeat("nickname=a&", 101), ""); w.Code != http.StatusBadRequest {
+		t.Fatalf("too many: %d %s", w.Code, w.Body)
+	}
 }
