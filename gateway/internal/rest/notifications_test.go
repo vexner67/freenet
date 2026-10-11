@@ -53,7 +53,7 @@ func TestListNotifications(t *testing.T) {
 	// The follow by a vanished account, the like of a deleted post, the
 	// message in a deleted topic and the like of a deleted photo are left
 	// out.
-	if len(got.Notifications) != 15 {
+	if len(got.Notifications) != 16 {
 		t.Fatalf("notifications = %+v", got.Notifications)
 	}
 
@@ -72,6 +72,12 @@ func TestListNotifications(t *testing.T) {
 	if photoLike.Type != "photo_like" || photoLike.Comment != nil || photoComment.Type != "photo_comment" || photoComment.Post != nil ||
 		photoComment.Comment == nil || photoComment.Comment.ID != "pc1" || photoComment.Comment.Text != "красиво" {
 		t.Fatalf("photo notifications = %+v, %+v", photoLike, photoComment)
+	}
+
+	// A mention under a photo names the photo and quotes the comment.
+	if m := got.Notifications[15]; m.Type != "photo_mention" || m.Photo == nil || m.Photo.ID != "ph6" || m.Post != nil ||
+		m.Comment == nil || m.Comment.ID != "pc1" || m.Comment.Text != "красиво" {
+		t.Fatalf("mention under a photo = %+v", m)
 	}
 
 	// A mention names the post, the post and the comment, or the topic.

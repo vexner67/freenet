@@ -232,10 +232,11 @@ func (a *Albums) PhotoLikers(ctx context.Context, id, cursor string, limit int) 
 	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
 }
 
-// CommentPhoto comments a photo, in answer to comment replyTo of it
-// unless that is "".
-func (a *Albums) CommentPhoto(ctx context.Context, accessToken, id, text, replyTo string) (model.PhotoComment, error) {
-	resp, err := a.api.CreatePhotoComment(withToken(ctx, accessToken), &postv1.CreatePhotoCommentRequest{PhotoId: id, Text: text, ReplyToId: replyTo})
+// CommentPhoto comments a photo.
+func (a *Albums) CommentPhoto(ctx context.Context, accessToken, id string, c model.NewPhotoComment) (model.PhotoComment, error) {
+	resp, err := a.api.CreatePhotoComment(withToken(ctx, accessToken), &postv1.CreatePhotoCommentRequest{
+		PhotoId: id, Text: c.Text, ReplyToId: c.ReplyTo, MentionedIds: c.Mentions,
+	})
 	if err != nil {
 		return model.PhotoComment{}, errs.Wrap("a.api.CreatePhotoComment", fromStatus(err))
 	}

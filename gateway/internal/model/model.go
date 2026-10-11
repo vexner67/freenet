@@ -289,6 +289,8 @@ type PostEdit struct {
 	Text     string
 	PhotoIDs []string
 	NSFW     *bool
+	// Mentions are the IDs of the people the new text names.
+	Mentions []string
 }
 
 // Suggestion is a post suggested for a community's wall ("Предложка"),
@@ -882,4 +884,15 @@ type NewRepost struct {
 	WallID   string
 	FromWall bool
 	Signed   bool
+	// Mentions are the IDs of the people the text names.
+	Mentions []string
+}
+
+// NewPhotoComment is a comment to put under a photo of an album.
+type NewPhotoComment struct {
+	Text string
+	// ReplyTo is the comment of the same photo it answers, "" for none.
+	ReplyTo string
+	// Mentions are the IDs of the people the text names.
+	Mentions []string
 }

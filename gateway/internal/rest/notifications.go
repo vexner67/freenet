@@ -76,12 +76,14 @@ const kindTopicMention = "topic_mention"
 // liked the recipient's message.
 const kindTopicMessageLike = "topic_message_like"
 
-// kindPhotoLike and kindPhotoComment name a photo of an album by PostID
-// (and a comment under it by CommentID), not a post: the notification
-// shows the photo and goes with it, the like or the comment.
+// kindPhotoLike, kindPhotoComment and kindPhotoMention name a photo of an
+// album by PostID (and a comment under it by CommentID), not a post: the
+// notification shows the photo and goes with it, the like or the comment.
+// The comment of kindPhotoMention names the recipient.
 const (
 	kindPhotoLike    = "photo_like"
 	kindPhotoComment = "photo_comment"
+	kindPhotoMention = "photo_mention"
 )
 
 // namesTopic tells whether PostID of a notification of kind is a topic
@@ -93,7 +95,7 @@ func namesTopic(kind string) bool {
 // namesPhoto tells whether PostID of a notification of kind is a photo of
 // an album.
 func namesPhoto(kind string) bool {
-	return kind == kindPhotoLike || kind == kindPhotoComment
+	return kind == kindPhotoLike || kind == kindPhotoComment || kind == kindPhotoMention
 }
 
 // namesPost tells whether PostID of a notification of kind is a post, and

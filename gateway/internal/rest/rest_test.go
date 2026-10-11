@@ -224,6 +224,18 @@ func (f *fakeUsers) CanMessage(_ context.Context, token, _ string, wroteFirst bo
 	return !f.relation.Blocked() && (!f.closedMessages || wroteFirst), f.err
 }
 
+// KnownNicknames knows ann and bob.
+func (f *fakeUsers) KnownNicknames(_ context.Context, nicknames []string) ([]string, error) {
+	var known []string
+	for _, n := range nicknames {
+		if l := strings.ToLower(n); l == "ann" || l == "bob" {
+			known = append(known, l)
+		}
+	}
+
+	return known, f.err
+}
+
 // ResolveMentions knows ann (u1) and bob (u2), unless they are blocked.
 func (f *fakeUsers) ResolveMentions(_ context.Context, _ string, nicknames []string) ([]string, error) {
 	f.named = nicknames
@@ -394,7 +406,9 @@ type fakePosts struct {
 	limit                  int
 	wallPosts              []model.Post
 	created, wall, shared  string
-	edited, pinned         string
+	// mentioned are the people the last edit named.
+	mentioned      []string
+	edited, pinned string
 	// archived and closed are the post switched last, "-" before its ID
 	// when switched back; wallQuery what the wall was searched for.
 	archived, closed, wallQuery string
@@ -462,7 +476,7 @@ func (f *fakePosts) Edit(ctx context.Context, token, id string, edit model.PostE
 		return model.Post{}, err
 	}
 
-	f.edited, f.photos = text, photoIDs
+	f.edited, f.photos, f.mentioned = text, photoIDs, edit.Mentions
 	p.Text, p.PhotoIDs, p.EditedAt = text, photoIDs, time.Date(2026, 10, 5, 9, 0, 0, 0, time.UTC)
 
 	return p, f.err
@@ -886,6 +900,7 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n-12", Kind: "photo_comment", ActorID: "u2", PostID: "ph6", CommentID: "pc1", CreatedAt: at},
 			{ID: "n-13", Kind: "photo_like", ActorID: "u2", PostID: "gone", CreatedAt: at},
 			{ID: "n-14", Kind: "event_reminder", ActorID: "k1", CreatedAt: at},
+			{ID: "n-15", Kind: "photo_mention", ActorID: "u2", PostID: "ph6", CommentID: "pc1", CreatedAt: at},
 		},
 		NextCursor: "n-2",
 	}, f.err
