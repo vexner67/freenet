@@ -21,6 +21,8 @@ type Store struct {
 	mu      sync.RWMutex
 	clubs   map[uuid.UUID]club.Stored
 	members map[uuid.UUID]*member
+	// reminded are the events whose members were told they start soon.
+	reminded map[uuid.UUID]bool
 }
 
 // member is one membership, keyed by its ID.
@@ -55,8 +57,9 @@ func (m *member) picked(filter service.MemberFilter) bool {
 
 func NewStore() *Store {
 	return &Store{
-		clubs:   make(map[uuid.UUID]club.Stored),
-		members: make(map[uuid.UUID]*member),
+		clubs:    make(map[uuid.UUID]club.Stored),
+		members:  make(map[uuid.UUID]*member),
+		reminded: make(map[uuid.UUID]bool),
 	}
 }
 
@@ -66,6 +69,10 @@ func (s *Store) Clubs() *ClubRepository {
 
 func (s *Store) Members() *MemberRepository {
 	return &MemberRepository{s: s}
+}
+
+func (s *Store) Reminders() *ReminderRepository {
+	return &ReminderRepository{s: s}
 }
 
 // club restores a stored club with its count; the caller holds a lock.
@@ -211,7 +218,8 @@ func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 	r.s.mu.Lock()
 	defer r.s.mu.Unlock()
 
-	if _, ok := r.s.clubs[c.ID()]; !ok {
+	old, ok := r.s.clubs[c.ID()]
+	if !ok {
 		return club.ErrNotFound
 	}
 
@@ -219,6 +227,11 @@ func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 		if id != c.ID() && c.Address() != "" && strings.EqualFold(other.Address.String(), c.Address().String()) {
 			return club.ErrAddressTaken
 		}
+	}
+
+	// An event moved to another time is reminded of again.
+	if !old.Schedule.Start.Equal(c.Schedule().Start) {
+		delete(r.s.reminded, c.ID())
 	}
 
 	r.s.clubs[c.ID()] = stored(c)

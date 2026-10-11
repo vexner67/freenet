@@ -18,16 +18,20 @@ type fakeAPI struct {
 	notificationv1.NotificationServiceClient
 	notified  *notificationv1.Event
 	retracted *notificationv1.Event
-	err       error
+	// calls are the RPCs made, in order.
+	calls []string
+	err   error
 }
 
 func (f *fakeAPI) Notify(_ context.Context, req *notificationv1.NotifyRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.notified = req.GetEvent()
+	f.calls = append(f.calls, "notify")
 	return &emptypb.Empty{}, f.err
 }
 
 func (f *fakeAPI) Retract(_ context.Context, req *notificationv1.RetractRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.retracted = req.GetEvent()
+	f.calls = append(f.calls, "retract")
 	return &emptypb.Empty{}, f.err
 }
 
@@ -99,5 +103,36 @@ func TestDeliverer_Errors(t *testing.T) {
 	unknown := NewDeliverer(&fakeAPI{}, time.Second).Deliver(context.Background(), outbox.Message{Kind: "forget_post"})
 	if !outbox.IsPermanent(unknown) {
 		t.Errorf("unknown kind = %v, want a permanent error", unknown)
+	}
+}
+
+func TestOutbox_Reminded(t *testing.T) {
+	t.Parallel()
+
+	queue := outbox.NewMemory()
+	event, member := uuid.New(), uuid.New()
+
+	if err := NewOutbox(queue).Reminded(context.Background(), event, member); err != nil {
+		t.Fatal(err)
+	}
+
+	// An earlier reminder is taken back, then the new one is told.
+	api := &fakeAPI{}
+	if errs := deliverAll(t, queue, NewDeliverer(api, time.Second)); len(errs) != 2 || errs[0] != nil || errs[1] != nil {
+		t.Fatalf("deliver = %v", errs)
+	}
+	if len(api.calls) != 2 || api.calls[0] != "retract" || api.calls[1] != "notify" {
+		t.Fatalf("calls = %v, want retract, notify", api.calls)
+	}
+
+	for _, e := range []*notificationv1.Event{api.retracted, api.notified} {
+		if e.GetKind() != notificationv1.Kind_KIND_EVENT_REMINDER || e.GetActorId() != event.String() ||
+			e.GetRecipientId() != member.String() || e.GetPostId() != "" {
+			t.Fatalf("reminder event = %v", e)
+		}
+	}
+
+	if err := (Nop{}).Reminded(context.Background(), event, member); err != nil {
+		t.Fatal(err)
 	}
 }

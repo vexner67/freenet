@@ -53,6 +53,17 @@ func (o *Outbox) Dismissed(ctx context.Context, clubID, userID uuid.UUID) error 
 	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: adminEvent(clubID, userID)})
 }
 
+// Reminded takes an earlier reminder of the event back first: an event
+// moved to another day reminds again, and the notification service keeps
+// one reminder per event and member.
+func (o *Outbox) Reminded(ctx context.Context, clubID, userID uuid.UUID) error {
+	if err := o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: reminderEvent(clubID, userID)}); err != nil {
+		return err
+	}
+
+	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: reminderEvent(clubID, userID)})
+}
+
 func (o *Outbox) add(ctx context.Context, kind string, req proto.Message) error {
 	payload, err := proto.Marshal(req)
 	if err != nil {
@@ -122,8 +133,18 @@ func adminEvent(clubID, userID uuid.UUID) *notificationv1.Event {
 	}
 }
 
+// reminderEvent: the event itself tells its member that it starts soon.
+func reminderEvent(clubID, userID uuid.UUID) *notificationv1.Event {
+	return &notificationv1.Event{
+		Kind:        notificationv1.Kind_KIND_EVENT_REMINDER,
+		RecipientId: userID.String(),
+		ActorId:     clubID.String(),
+	}
+}
+
 // Nop is the Notifier when no notification service is configured.
 type Nop struct{}
 
 func (Nop) Appointed(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 func (Nop) Dismissed(context.Context, uuid.UUID, uuid.UUID) error { return nil }
+func (Nop) Reminded(context.Context, uuid.UUID, uuid.UUID) error  { return nil }

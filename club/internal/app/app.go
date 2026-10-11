@@ -50,6 +50,9 @@ type App struct {
 	server     *grpcserver.Server
 	metrics    *metrics.Server
 	addr       string
+	// reminder tells the members of events that they start soon.
+	reminder    *service.ReminderService
+	remindEvery time.Duration
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -128,6 +131,9 @@ func (a *App) build(cfg config.Config) error {
 		Clubs: store.clubs, Members: store.members, Tx: store.tx, Notifier: notifier,
 	})))
 
+	a.reminder = service.NewReminderService(store.reminders, store.tx, notifier, cfg.EventReminderAhead, time.Now)
+	a.remindEvery = cfg.EventReminderInterval
+
 	if cfg.MetricsPort == 0 {
 		a.logger.Info("METRICS_PORT is not set: metrics are not served")
 	} else {
@@ -194,9 +200,9 @@ func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
 // that tells the notification service. The connection is lazy, so the
 // services may start in any order; until notification is up, the relay
 // retries.
-func (a *App) newNotifier(cfg config.Config, queue outboxQueue, reg prometheus.Registerer) (service.Notifier, error) {
+func (a *App) newNotifier(cfg config.Config, queue outboxQueue, reg prometheus.Registerer) (notifier, error) {
 	if cfg.NotificationServiceAddr == "" {
-		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: appointments notify nobody")
+		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: appointments and events that start soon notify nobody")
 		return notifyclient.Nop{}, nil
 	}
 
@@ -222,6 +228,12 @@ func (a *App) newNotifier(cfg config.Config, queue outboxQueue, reg prometheus.R
 	return notifyclient.NewOutbox(queue), nil
 }
 
+// notifier is what the notification service hears from club.
+type notifier interface {
+	service.Notifier
+	service.Reminder
+}
+
 // outboxQueue is the outbox of the storage in use.
 type outboxQueue interface {
 	outbox.Queue
@@ -230,16 +242,19 @@ type outboxQueue interface {
 
 // storage is the set of repositories chosen by STORAGE.
 type storage struct {
-	clubs   service.ClubRepository
-	members service.MemberRepository
-	tx      service.TxManager
-	outbox  outboxQueue
+	clubs     service.ClubRepository
+	members   service.MemberRepository
+	reminders service.DueEvents
+	tx        service.TxManager
+	outbox    outboxQueue
 }
 
 func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
-		return storage{clubs: store.Clubs(), members: store.Members(), tx: inmem.TxManager{}, outbox: outbox.NewMemory()}, nil
+		return storage{
+			clubs: store.Clubs(), members: store.Members(), reminders: store.Reminders(), tx: inmem.TxManager{}, outbox: outbox.NewMemory(),
+		}, nil
 	}
 
 	if cfg.MigrateOnStart {
@@ -267,10 +282,11 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	a.queue = outbox.NewPostgres(a.pool, notifyclient.Stream)
 
 	return storage{
-		clubs:   postgres.NewClubRepository(a.pool),
-		members: postgres.NewMemberRepository(a.pool),
-		tx:      pgpool.NewTxManager(a.pool),
-		outbox:  a.queue,
+		clubs:     postgres.NewClubRepository(a.pool),
+		members:   postgres.NewMemberRepository(a.pool),
+		reminders: postgres.NewReminderRepository(a.pool),
+		tx:        pgpool.NewTxManager(a.pool),
+		outbox:    a.queue,
 	}, nil
 }
 
@@ -295,7 +311,38 @@ func (a *App) Run(ctx context.Context) error {
 		})
 	}
 
+	g.Go(func() error {
+		return errs.Wrap("a.runReminder", a.runReminder(ctx))
+	})
+
 	return g.Wait()
+}
+
+// runReminder reminds of the events that start soon until ctx is
+// cancelled. A failed round is logged and tried again next time: the
+// events stay due.
+func (a *App) runReminder(ctx context.Context) error {
+	ticker := time.NewTicker(a.remindEvery)
+	defer ticker.Stop()
+
+	for {
+		reminded, err := a.reminder.RemindDue(ctx)
+
+		switch {
+		case ctx.Err() != nil:
+			return nil
+		case err != nil:
+			a.logger.ErrorContext(ctx, "remind of events", "error", err)
+		case reminded > 0:
+			a.logger.InfoContext(ctx, "events reminded of", "count", reminded)
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+		}
+	}
 }
 
 // Healthcheck asks the service running with cfg on this host whether it
