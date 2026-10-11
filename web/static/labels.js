@@ -564,6 +564,16 @@ export function wallCount(n) {
   return n === 0 ? 'нет записей' : postsCount(n);
 }
 
+// archiveYears lays out the years of openvk's "Архив записей", the
+// latest first: the first six are links, the rest go under "Ещё". chosen
+// is the year the archive shows, 0 for "Все годы"; the year "Действия"
+// are about is the chosen one or, without it, the latest.
+export function archiveYears(years, chosen = 0, shown = 6) {
+  const all = years.includes(chosen) || !chosen ? years : [...years, chosen].sort((a, b) => b - a);
+
+  return { shown: all.slice(0, shown), more: all.slice(shown), action: chosen || all[0] || 0 };
+}
+
 // commonCount is openvk's "3 общих друга", of the people followed.
 export function commonCount(n) {
   return `${n} ${plural(n, ['общая подписка', 'общие подписки', 'общих подписок'])}`;

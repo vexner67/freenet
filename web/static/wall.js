@@ -20,16 +20,18 @@ const COUNTER_FROM = MAX_LENGTH - 100;
 // posts instead ("Предложить новость") and see their suggestions after,
 // as on openvk. type is a tab of the wall page (wall-page.js): '' for all
 // posts, the only one with the form, 'owner', 'others' or 'archive', the
-// posts put away; query is what the posts say ("Поиск"), without a form.
-export function initWall(owner, me, { moderates = me?.id === owner.id, speaksForClub = false, type = '', query = '' } = {}) {
+// posts put away; query is what the posts say ("Поиск"), without a form;
+// year is the year of the archive to show, 0 for every one, and onYears
+// is told the years of the wall, which the archive's first page carries.
+export function initWall(owner, me, { moderates = me?.id === owner.id, speaksForClub = false, type = '', query = '', year = 0, onYears } = {}) {
   const posts = $('posts');
   const error = $('wall-error');
   const isOwner = me?.id === owner.id;
   // "Микроблог" shows the newest comments under each post.
   const comments = isMicroblog();
   const load = owner.club
-    ? (c) => api.clubWall(clubRef(owner), c, type, query, comments)
-    : (c) => api.wall(owner.nickname, c, type, query, comments);
+    ? (c) => api.clubWall(clubRef(owner), c, type, query, comments, year)
+    : (c) => api.wall(owner.nickname, c, type, query, comments, year);
   const plain = !type && !query;
   // On a wall that is not open its admins always speak for the club, as on
   // openvk.
@@ -50,7 +52,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     $('wall-count').textContent = wallCount(total);
     $('wall-empty').hidden = total > 0 || canPost;
     if (query) $('wall-empty').textContent = 'Ничего не найдено.';
-    else if (type === 'archive') $('wall-empty').textContent = 'В архиве пока нет ни одной записи.';
+    else if (type === 'archive') $('wall-empty').textContent = year ? `В архиве нет записей за ${year} год.` : 'В архиве пока нет ни одной записи.';
   }
 
   const postNode = (post) => renderPost(post, {
@@ -62,6 +64,8 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     onArchived: archived,
     canLike: Boolean(me),
     onError: (e) => showError(error, e),
+    // "Поиск" highlights what it found.
+    found: query,
   });
 
   function reload() {
@@ -104,6 +108,8 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
 
       // Without a nickname of your own you have no name to sign a post.
       if (firstPage && plain && (page.canPost || page.canSuggest) && me?.profileCompleted) showForm(!page.canPost);
+
+      if (firstPage && page.years) onYears?.(page.years);
 
       total = page.total;
       cursor = page.nextCursor;

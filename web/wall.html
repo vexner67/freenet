@@ -46,6 +46,14 @@
             <span class="hint">Здесь Вы можете сохранять свои любимые записи со стены в архив для истории и прочих воспоминаний. Архив записей видите только Вы.</span>
           </div>
 
+          <div class="archive-manager" id="archive-manager" hidden>
+            <div class="archive-years" id="archive-years"></div>
+            <details class="archive-actions" id="archive-actions">
+              <summary>Действия</summary>
+              <div class="archive-menu" id="archive-actions-menu"></div>
+            </details>
+          </div>
+
           <form class="wall-form" id="post-form" hidden>
             <textarea id="post-text" maxlength="60000" placeholder="Что у вас нового?" aria-label="Новая запись"></textarea>
             <div class="attachments" id="post-photos" hidden></div>

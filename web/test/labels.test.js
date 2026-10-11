@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone } from '../static/labels.js';
+import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, genitiveName, wallWrites, shareLink, blacklistCount, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -454,4 +454,16 @@ test('foundSnippet starts a little before the words found', () => {
   assert.equal(foundSnippet('раз два три четыре пять шесть', 'пять', 8), '…е пять ш…');
   assert.equal(foundSnippet('раз два три', 'семь', 7), 'раз два…');
   assert.equal(foundSnippet('👋👋👋👋👋👋да нет', 'да', 4).includes('да'), true);
+});
+
+test('archiveYears lays out the years of the archive', () => {
+  const years = [2026, 2025, 2024, 2023, 2022, 2021, 2020, 2019];
+
+  assert.deepEqual(archiveYears(years), { shown: [2026, 2025, 2024, 2023, 2022, 2021], more: [2020, 2019], action: 2026 });
+  assert.deepEqual(archiveYears(years, 2019).action, 2019);
+  assert.deepEqual(archiveYears([2025, 2024], 2024), { shown: [2025, 2024], more: [], action: 2024 });
+  // A year the wall has no posts of is shown all the same, in its place.
+  assert.deepEqual(archiveYears([2026, 2024], 2025), { shown: [2026, 2025, 2024], more: [], action: 2025 });
+  // An empty wall has nothing to choose.
+  assert.deepEqual(archiveYears([]), { shown: [], more: [], action: 0 });
 });

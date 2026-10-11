@@ -170,8 +170,13 @@ export const api = {
   // type is a tab of the wall: '' for all posts, 'owner', 'others' and,
   // for its owner, 'archive'; q is what the posts say ("Поиск").
   // comments: each post comes with its newest comments ("Микроблог").
-  wall: (nickname, cursor = '', type = '', q = '', comments = false) => optional('GET',
-    withType(page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0), type, q, comments)),
+  // year: only the posts of that year, as the years of the archive.
+  wall: (nickname, cursor = '', type = '', q = '', comments = false, year = 0) => optional('GET',
+    withType(page(`/api/v1/users/${encodeURIComponent(nickname)}/posts`, cursor, 0), type, q, comments, year)),
+  // Puts every post of the wall written in year (0: in any) away in its
+  // archive, or with archived = false brings them back.
+  archiveWall: (nickname, year, archived = true) => authorized(archived ? 'PUT' : 'DELETE',
+    withQuery(`/api/v1/users/${encodeURIComponent(nickname)}/posts/archive`, year ? 'year=' + year : '')),
   post: (id) => optional('GET', '/api/v1/posts/' + encodeURIComponent(id)),
   // Writes on the wall of nickname: someone else's or your own.
   // nsfw marks the post as adult ("Содержит NSFW-контент").
@@ -342,8 +347,10 @@ export const api = {
   // "Фон страницы": side is left or right; deleting takes both away.
   setClubBackdrop: (ref, side, file) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop/${side}`, file),
   deleteClubBackdrop: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop`),
-  clubWall: (ref, cursor = '', type = '', q = '', comments = false) => optional('GET',
-    withType(page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0), type, q, comments)),
+  clubWall: (ref, cursor = '', type = '', q = '', comments = false, year = 0) => optional('GET',
+    withType(page(`/api/v1/clubs/${encodeURIComponent(ref)}/posts`, cursor, 0), type, q, comments, year)),
+  archiveClubWall: (ref, year, archived = true) => authorized(archived ? 'PUT' : 'DELETE',
+    withQuery(`/api/v1/clubs/${encodeURIComponent(ref)}/posts/archive`, year ? 'year=' + year : '')),
   // fromClub: the post speaks for the club ("От имени сообщества"),
   // signed: naming you under it ("Подпись автора").
   createClubPost: (ref, text, photos = [], { fromClub = false, signed = false, nsfw = false } = {}) =>
@@ -427,8 +434,8 @@ export const api = {
 
 // withType adds the tab of a wall to its path; comments: its posts come
 // with their newest comments, as "Микроблог" shows them.
-function withType(path, type, q = '', comments = false) {
-  for (const [name, value] of [['type', type], ['q', q], ['comments', comments ? 'last' : '']]) {
+function withType(path, type, q = '', comments = false, year = 0) {
+  for (const [name, value] of [['type', type], ['q', q], ['comments', comments ? 'last' : ''], ['year', year || '']]) {
     if (value) path += (path.includes('?') ? '&' : '?') + name + '=' + encodeURIComponent(value);
   }
 
