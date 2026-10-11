@@ -2970,6 +2970,107 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/me/faves/posts:
+    get:
+      summary: The posts you like, newest like first ("Закладки")
+      description: |
+        openvk's "Понравившиеся записи": yours alone, nobody else reads
+        them. Each post is shown as a wall shows it, with the beginning of
+        its text; `total` counts the posts you like. Posts in an archive
+        are neither listed nor counted; those of deleted pages are left out
+        of `posts`, still counted. `canPost` and `canSuggest` are not told.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: A page of liked posts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/faves/comments:
+    get:
+      summary: The comments under posts you like, newest like first
+      description: |
+        Each comment tells its post (`postId`) and carries the beginning of
+        its text. Comments under posts in an archive are neither listed nor
+        counted; a comment whose author, or whose post's author or wall
+        owner, deleted the page is left out of `comments`, still counted.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: A page of liked comments
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/CommentPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/faves/photos:
+    get:
+      summary: The photos of albums you like, newest like first
+      description: |
+        A photo whose uploader deleted the page, or whose album's owner no
+        longer shows you their photos, is left out of `photos`, still
+        counted in `total`.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: A page of liked photos
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/AlbumPhotoPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/posts:
+    get:
+      summary: The posts you wrote, newest first ("Написанные мной записи")
+      description: |
+        What you wrote on your wall and on the walls of others, people and
+        communities, with the beginnings of the texts; `total` counts it.
+        Not what was archived on the wall of another, nor what you
+        suggested for a community and its admins published. A post on the
+        wall of a deleted page is left out of `posts`, still counted.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: A page of your posts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
   /api/v1/users/{nickname}/notes:
     parameters:
       - name: nickname

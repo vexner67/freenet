@@ -1000,3 +1000,89 @@ func TestNotes(t *testing.T) {
 		t.Fatalf("Get of no note: %v", err)
 	}
 }
+
+// fakeFaveAPI is the faves side of the post service.
+type fakeFaveAPI struct {
+	postv1.PostServiceClient
+	md        metadata.MD
+	cursor    string
+	limit     int32
+	textLimit int32
+}
+
+func (f *fakeFaveAPI) ask(ctx context.Context, cursor string, limit, textLimit int32) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	f.cursor, f.limit, f.textLimit = cursor, limit, textLimit
+}
+
+func (f *fakeFaveAPI) ListLikedPosts(ctx context.Context, req *postv1.ListLikedPostsRequest, _ ...grpc.CallOption) (*postv1.ListLikedPostsResponse, error) {
+	f.ask(ctx, req.GetCursor(), req.GetLimit(), req.GetTextLimit())
+
+	return &postv1.ListLikedPostsResponse{Posts: []*postv1.Post{{Id: "p1", AuthorId: "u2", WallId: "u2", Text: "раз", Liked: true}}, NextCursor: "1_p1", Total: 4}, nil
+}
+
+func (f *fakeFaveAPI) ListOwnPosts(ctx context.Context, req *postv1.ListOwnPostsRequest, _ ...grpc.CallOption) (*postv1.ListOwnPostsResponse, error) {
+	f.ask(ctx, req.GetCursor(), req.GetLimit(), req.GetTextLimit())
+
+	return &postv1.ListOwnPostsResponse{Posts: []*postv1.Post{{Id: "p2", AuthorId: "u1", WallId: "u2", Mine: true}}, Total: 1}, nil
+}
+
+func (f *fakeFaveAPI) ListLikedComments(ctx context.Context, req *postv1.ListLikedCommentsRequest, _ ...grpc.CallOption) (*postv1.ListLikedCommentsResponse, error) {
+	f.ask(ctx, req.GetCursor(), req.GetLimit(), req.GetTextLimit())
+
+	return &postv1.ListLikedCommentsResponse{Comments: []*postv1.Comment{{Id: "c1", PostId: "p1", AuthorId: "u2", Text: "да", TextCut: true, Liked: true}}, Total: 1}, nil
+}
+
+func (f *fakeFaveAPI) ListLikedAlbumPhotos(ctx context.Context, req *postv1.ListLikedAlbumPhotosRequest, _ ...grpc.CallOption) (*postv1.ListLikedAlbumPhotosResponse, error) {
+	if req.GetCursor() == "bad" {
+		return nil, status.Error(codes.InvalidArgument, "invalid cursor")
+	}
+
+	f.ask(ctx, req.GetCursor(), req.GetLimit(), 0)
+
+	return &postv1.ListLikedAlbumPhotosResponse{
+		Photos:   []*postv1.AlbumPhoto{{Id: "f1", AlbumId: "a1", AuthorId: "u2", Liked: true}, {Id: "f2", AlbumId: "a2", AuthorId: "u3", Liked: true}},
+		OwnerIds: []string{"u2", "club1"}, NextCursor: "1_f2", Total: 9,
+	}, nil
+}
+
+func TestFaves(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	api := &fakeFaveAPI{}
+	faves := NewFaves(api)
+
+	posts, err := faves.Posts(ctx, "tok", "1_p9", 5)
+	if err != nil || len(posts.Posts) != 1 || posts.NextCursor != "1_p1" || posts.Total != 4 || !posts.Posts[0].Liked {
+		t.Fatalf("Posts = %+v, %v", posts, err)
+	}
+	if api.md.Get("authorization")[0] != "Bearer tok" || api.cursor != "1_p9" || api.limit != 5 || api.textLimit != model.ExcerptLength {
+		t.Fatalf("request = %+v", api)
+	}
+
+	own, err := faves.OwnPosts(ctx, "tok", "", 0)
+	if err != nil || len(own.Posts) != 1 || own.Total != 1 || !own.Posts[0].Mine || own.Posts[0].Wall.ID != "u2" || api.textLimit != model.ExcerptLength {
+		t.Fatalf("OwnPosts = %+v, %v", own, err)
+	}
+
+	comments, err := faves.Comments(ctx, "tok", "", 0)
+	if err != nil || len(comments.Comments) != 1 || comments.Total != 1 || api.textLimit != model.ExcerptLength {
+		t.Fatalf("Comments = %+v, %v", comments, err)
+	}
+	if c := comments.Comments[0]; c.ID != "c1" || c.PostID != "p1" || !c.TextCut || !c.Liked {
+		t.Fatalf("comment = %+v", c)
+	}
+
+	photos, err := faves.Photos(ctx, "tok", "", 0)
+	if err != nil || len(photos.Photos) != 2 || photos.NextCursor != "1_f2" || photos.Total != 9 {
+		t.Fatalf("Photos = %+v, %v", photos, err)
+	}
+	if p := photos.Photos[1]; p.ID != "f2" || p.AuthorID != "u3" || p.OwnerID != "club1" || !p.Liked {
+		t.Fatalf("photo = %+v", p)
+	}
+
+	if _, err = faves.Photos(ctx, "tok", "bad", 0); failure.From(err).Kind != failure.InvalidArgument {
+		t.Fatalf("a bad cursor: %v", err)
+	}
+}

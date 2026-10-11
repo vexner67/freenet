@@ -925,6 +925,20 @@ type AlbumPhotoPage struct {
 	Total      int
 }
 
+// FavePhoto is a photo of an album the viewer likes, with whom its album
+// belongs to, a person or a community.
+type FavePhoto struct {
+	AlbumPhoto
+	OwnerID string
+}
+
+// FavePhotoPage is one screen of them, newest like first.
+type FavePhotoPage struct {
+	Photos     []FavePhoto
+	NextCursor string
+	Total      int
+}
+
 // NewAlbum is an album to create: the caller's own, or of ClubID.
 type NewAlbum struct {
 	ClubID      string

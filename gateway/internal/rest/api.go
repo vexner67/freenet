@@ -223,6 +223,16 @@ type Albums interface {
 	PhotoCommentLikers(ctx context.Context, id, cursor string, limit int) (model.LikerPage, error)
 }
 
+// Faves are the lists of the caller alone: what they like ("Закладки" of
+// openvk), newest like first, and what they wrote ("Написанные мной
+// записи"), newest first.
+type Faves interface {
+	Posts(ctx context.Context, accessToken, cursor string, limit int) (model.PostPage, error)
+	Comments(ctx context.Context, accessToken, cursor string, limit int) (model.CommentPage, error)
+	Photos(ctx context.Context, accessToken, cursor string, limit int) (model.FavePhotoPage, error)
+	OwnPosts(ctx context.Context, accessToken, cursor string, limit int) (model.PostPage, error)
+}
+
 // Notes are the notes of people ("Заметки") and the comments under them.
 type Notes interface {
 	Create(ctx context.Context, accessToken, title, text string) (model.Note, error)
@@ -311,6 +321,7 @@ type Backends struct {
 	Topics        Topics
 	Albums        Albums
 	Notes         Notes
+	Faves         Faves
 }
 
 type api struct {
@@ -324,6 +335,7 @@ type api struct {
 	topics            Topics
 	albums            Albums
 	notes             Notes
+	faves             Faves
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -496,6 +508,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/photo-comments/{id}/like", a.unlikePhotoComment)
 	mux.HandleFunc("GET /api/v1/photo-comments/{id}/likes", a.listPhotoCommentLikers)
 	mux.HandleFunc("POST /api/v1/album-photos/{id}/reposts", a.shareAlbumPhoto)
+	mux.HandleFunc("GET /api/v1/me/faves/posts", a.listFavePosts)
+	mux.HandleFunc("GET /api/v1/me/faves/comments", a.listFaveComments)
+	mux.HandleFunc("GET /api/v1/me/faves/photos", a.listFavePhotos)
+	mux.HandleFunc("GET /api/v1/me/posts", a.listOwnPosts)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/notes", a.listUserNotes)
 	mux.HandleFunc("POST /api/v1/me/notes", a.createNote)
 	mux.HandleFunc("GET /api/v1/notes/{id}", a.getNote)
