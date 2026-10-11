@@ -18,6 +18,11 @@ type Store struct {
 	mu       sync.RWMutex
 	messages map[uuid.UUID]*message.Message
 	dialogs  map[side]*dialogState
+
+	// Chats of several people: see chat.go.
+	chats        map[uuid.UUID]*message.Chat
+	chatMembers  map[uuid.UUID][]*message.Member
+	chatMessages map[uuid.UUID]*message.ChatMessage
 }
 
 // side is one user's view of a dialog.
@@ -35,6 +40,10 @@ func NewStore() *Store {
 	return &Store{
 		messages: make(map[uuid.UUID]*message.Message),
 		dialogs:  make(map[side]*dialogState),
+
+		chats:        make(map[uuid.UUID]*message.Chat),
+		chatMembers:  make(map[uuid.UUID][]*message.Member),
+		chatMessages: make(map[uuid.UUID]*message.ChatMessage),
 	}
 }
 

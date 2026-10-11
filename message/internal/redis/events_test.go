@@ -118,3 +118,58 @@ func TestEventCodec(t *testing.T) {
 		}
 	}
 }
+
+func TestEventCodec_Chat(t *testing.T) {
+	t.Parallel()
+
+	var codec redis.EventCodec
+	ann, bob, chat := uuid.New(), uuid.New(), uuid.New()
+	at := time.Date(2026, 10, 11, 12, 0, 0, 123000, time.UTC)
+
+	written := message.RestoreChatMessage(message.StoredChatMessage{
+		ID: uuid.New(), ChatID: chat, SenderID: ann, Text: "привет 👋", Photos: message.Photos{uuid.New()}, CreatedAt: at, EditedAt: at.Add(time.Minute),
+	})
+
+	data, err := codec.Encode(bob, service.Event{Chat: &service.ChatEvent{Message: written}})
+	if err != nil {
+		t.Fatalf("Encode a message: %v", err)
+	}
+
+	key, e, err := codec.Decode(data)
+	if err != nil || key != bob || e.Message != nil || e.Chat == nil || e.Chat.Message == nil {
+		t.Fatalf("Decode a message = %v, %+v, %v", key, e, err)
+	}
+	if got := e.Chat.Message; got.ID() != written.ID() || got.ChatID() != chat || got.SenderID() != ann || got.Text() != written.Text() ||
+		len(got.Photos()) != 1 || !got.CreatedAt().Equal(at) || !got.EditedAt().Equal(written.EditedAt()) || got.IsAction() {
+		t.Fatalf("message round trip = %+v", got)
+	}
+
+	kicked := message.RestoreChatMessage(message.StoredChatMessage{
+		ID: uuid.New(), ChatID: chat, SenderID: ann, Action: message.ActionKick, TargetID: bob, CreatedAt: at, DeletedAt: at,
+	})
+	if data, err = codec.Encode(bob, service.Event{Chat: &service.ChatEvent{Edited: kicked}}); err != nil {
+		t.Fatalf("Encode an action: %v", err)
+	}
+	if _, e, err = codec.Decode(data); err != nil || e.Chat == nil || e.Chat.Edited == nil || e.Chat.Edited.Action() != message.ActionKick ||
+		e.Chat.Edited.TargetID() != bob || !e.Chat.Edited.IsDeleted() {
+		t.Fatalf("action round trip = %+v, %v", e.Chat, err)
+	}
+
+	read := &service.ChatRead{ChatID: chat, UpTo: written.ID()}
+	if data, err = codec.Encode(ann, service.Event{Chat: &service.ChatEvent{Read: read}}); err != nil {
+		t.Fatalf("Encode read: %v", err)
+	}
+	if key, e, err = codec.Decode(data); err != nil || key != ann || e.Chat == nil || e.Chat.Read == nil || *e.Chat.Read != *read {
+		t.Fatalf("read round trip = %v, %+v, %v", key, e.Chat, err)
+	}
+
+	// What comes from Redis is checked as any input is.
+	for name, bad := range map[string]string{
+		"an unknown action": `{"user_id":"` + ann.String() + `","chat":{"message":{"action":"explode"}}}`,
+		"nothing":           `{"user_id":"` + ann.String() + `","chat":{}}`,
+	} {
+		if _, _, err = codec.Decode([]byte(bad)); err == nil {
+			t.Errorf("%s was decoded", name)
+		}
+	}
+}

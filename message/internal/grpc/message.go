@@ -35,12 +35,14 @@ type MessageService interface {
 type MessageHandler struct {
 	messagev1.UnimplementedMessageServiceServer
 	messageService MessageService
+	chatService    ChatService
 	logger         *slog.Logger
 }
 
-func NewMessageHandler(messageService MessageService, logger *slog.Logger) *MessageHandler {
+func NewMessageHandler(messageService MessageService, chatService ChatService, logger *slog.Logger) *MessageHandler {
 	return &MessageHandler{
 		messageService: messageService,
+		chatService:    chatService,
 		logger:         logger,
 	}
 }
@@ -108,6 +110,14 @@ func (h *MessageHandler) CountUnreadDialogs(ctx context.Context, _ *messagev1.Co
 		return nil, err
 	}
 
+	// The counter of the menu is one for dialogs and chats.
+	chats, err := h.chatService.CountUnread(ctx, userID)
+	if err != nil {
+		return nil, err
+	}
+
+	count = min(count+chats, service.MaxUnreadCount)
+
 	return &messagev1.CountUnreadDialogsResponse{Count: int32(count)}, nil //nolint:gosec // at most service.MaxUnreadCount
 }
 
@@ -174,6 +184,10 @@ func (h *MessageHandler) PurgeUser(ctx context.Context, req *messagev1.PurgeUser
 	}
 
 	if err = h.messageService.PurgeUser(ctx, userID); err != nil {
+		return nil, err
+	}
+
+	if err = h.chatService.PurgeUser(ctx, userID); err != nil {
 		return nil, err
 	}
 

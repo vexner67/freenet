@@ -40,6 +40,24 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "no messages to delete"), true
 	case errors.Is(err, message.ErrTooManyMessages):
 		return status.New(codes.InvalidArgument, "at most 100 messages are deleted at once"), true
+	case errors.Is(err, message.ErrChatNotFound):
+		return status.New(codes.NotFound, "chat not found"), true
+	case errors.Is(err, message.ErrMemberNotFound):
+		return status.New(codes.NotFound, "member not found"), true
+	case errors.Is(err, message.ErrTooFewMembers):
+		return status.New(codes.InvalidArgument, "a chat needs at least two other people"), true
+	case errors.Is(err, message.ErrKickYourself):
+		return status.New(codes.InvalidArgument, "you cannot remove yourself, leave the chat instead"), true
+	case errors.Is(err, message.ErrCannotKick):
+		return status.New(codes.PermissionDenied, "only the creator can remove members"), true
+	case errors.Is(err, message.ErrChatFull):
+		return status.New(codes.FailedPrecondition, "the chat is full"), true
+	case errors.Is(err, message.ErrNotInChat):
+		return status.New(codes.FailedPrecondition, "you are not in this chat"), true
+	case errors.Is(err, message.ErrMemberLeft):
+		return status.New(codes.FailedPrecondition, "the user has left the chat"), true
+	case errors.Is(err, message.ErrKicked):
+		return status.New(codes.FailedPrecondition, "you were removed from this chat"), true
 	case errors.Is(err, message.ErrTextEmpty):
 		return status.New(codes.InvalidArgument, "message text is empty"), true
 	default:

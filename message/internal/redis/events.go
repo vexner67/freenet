@@ -16,7 +16,7 @@ import (
 // Channel is the Redis channel of the events.
 const Channel = "message:events"
 
-var errNoEvent = errors.New("event is neither a message, a read mark, a deletion nor an edit")
+var errNoEvent = errors.New("event is neither a message, a read mark, a deletion, an edit nor of a chat")
 
 // EventCodec is a pubsub.Codec for service.Event.
 type EventCodec struct{}
@@ -27,6 +27,107 @@ type eventJSON struct {
 	Read    *readJSON    `json:"read,omitempty"`
 	Deleted *deletedJSON `json:"deleted,omitempty"`
 	Edited  *messageJSON `json:"edited,omitempty"`
+	Chat    *chatJSON    `json:"chat,omitempty"`
+}
+
+// chatJSON is what happened in a chat: one of the three.
+type chatJSON struct {
+	Message *chatMessageJSON `json:"message,omitempty"`
+	Edited  *chatMessageJSON `json:"edited,omitempty"`
+	Read    *chatReadJSON    `json:"read,omitempty"`
+}
+
+type chatReadJSON struct {
+	ChatID uuid.UUID `json:"chat_id"`
+	UpTo   uuid.UUID `json:"up_to"`
+}
+
+type chatMessageJSON struct {
+	ID        uuid.UUID   `json:"id"`
+	ChatID    uuid.UUID   `json:"chat_id"`
+	SenderID  uuid.UUID   `json:"sender_id"`
+	Text      string      `json:"text"`
+	Photos    []uuid.UUID `json:"photos,omitempty"`
+	Action    string      `json:"action,omitempty"`
+	TargetID  uuid.UUID   `json:"target_id"`
+	CreatedAt time.Time   `json:"created_at"`
+	// EditedAt and DeletedAt are zero for never.
+	EditedAt  time.Time `json:"edited_at"`
+	DeletedAt time.Time `json:"deleted_at"`
+}
+
+func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
+	if m == nil {
+		return nil
+	}
+
+	return &chatMessageJSON{
+		ID:        m.ID(),
+		ChatID:    m.ChatID(),
+		SenderID:  m.SenderID(),
+		Text:      m.Text().String(),
+		Photos:    m.Photos(),
+		Action:    string(m.Action()),
+		TargetID:  m.TargetID(),
+		CreatedAt: m.CreatedAt(),
+		EditedAt:  m.EditedAt(),
+		DeletedAt: m.DeletedAt(),
+	}
+}
+
+var errUnknownAction = errors.New("unknown chat action")
+
+// message rebuilds the message of a chat event. It comes from Redis, so
+// it is checked as any input is.
+func (m *chatMessageJSON) message() (*message.ChatMessage, error) {
+	switch message.Action(m.Action) {
+	case message.ActionNone, message.ActionCreate, message.ActionTitle, message.ActionInvite,
+		message.ActionKick, message.ActionLeave, message.ActionReturn:
+	default:
+		return nil, errUnknownAction
+	}
+
+	text, err := message.NewText(m.Text)
+	if err != nil {
+		return nil, errs.Wrap("message.NewText", err)
+	}
+
+	photos, err := message.NewPhotos(m.Photos)
+	if err != nil {
+		return nil, errs.Wrap("message.NewPhotos", err)
+	}
+
+	return message.RestoreChatMessage(message.StoredChatMessage{
+		ID: m.ID, ChatID: m.ChatID, SenderID: m.SenderID, Text: text, Photos: photos, Action: message.Action(m.Action),
+		TargetID: m.TargetID, CreatedAt: m.CreatedAt, EditedAt: m.EditedAt, DeletedAt: m.DeletedAt,
+	}), nil
+}
+
+func toChatJSON(e *service.ChatEvent) *chatJSON {
+	cj := &chatJSON{Message: toChatMessageJSON(e.Message), Edited: toChatMessageJSON(e.Edited)}
+	if e.Read != nil {
+		cj.Read = &chatReadJSON{ChatID: e.Read.ChatID, UpTo: e.Read.UpTo}
+	}
+
+	return cj
+}
+
+// event rebuilds what happened in a chat.
+func (c *chatJSON) event() (*service.ChatEvent, error) {
+	switch {
+	case c.Message != nil:
+		m, err := c.Message.message()
+
+		return &service.ChatEvent{Message: m}, errs.Wrap("c.Message.message", err)
+	case c.Edited != nil:
+		m, err := c.Edited.message()
+
+		return &service.ChatEvent{Edited: m}, errs.Wrap("c.Edited.message", err)
+	case c.Read != nil:
+		return &service.ChatEvent{Read: &service.ChatRead{ChatID: c.Read.ChatID, UpTo: c.Read.UpTo}}, nil
+	default:
+		return nil, errNoEvent
+	}
 }
 
 type deletedJSON struct {
@@ -161,6 +262,8 @@ func (EventCodec) Encode(userID uuid.UUID, e service.Event) ([]byte, error) {
 	ej := eventJSON{UserID: userID}
 
 	switch {
+	case e.Chat != nil:
+		ej.Chat = toChatJSON(e.Chat)
 	case e.Message != nil:
 		ej.Message = toMessageJSON(e.Message)
 	case e.Edited != nil:
@@ -188,6 +291,13 @@ func (EventCodec) Decode(data []byte) (uuid.UUID, service.Event, error) {
 	}
 
 	switch {
+	case ej.Chat != nil:
+		chat, err := ej.Chat.event()
+		if err != nil {
+			return uuid.Nil, service.Event{}, errs.Wrap("ej.Chat.event", err)
+		}
+
+		return ej.UserID, service.Event{Chat: chat}, nil
 	case ej.Message != nil:
 		m, err := ej.Message.message()
 		if err != nil {

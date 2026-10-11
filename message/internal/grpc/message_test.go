@@ -57,7 +57,13 @@ func newServer(t *testing.T) testServer {
 	)
 	store := inmem.NewStore()
 	events := pubsub.New[uuid.UUID, service.Event](64)
-	messagev1.RegisterMessageServiceServer(srv, messagegrpc.NewMessageHandler(service.NewMessageService(service.Deps{Messages: store.Messages(), Dialogs: store.Dialogs(), Events: events, Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}}), log))
+	messagev1.RegisterMessageServiceServer(srv, messagegrpc.NewMessageHandler(
+		service.NewMessageService(service.Deps{Messages: store.Messages(), Dialogs: store.Dialogs(), Events: events, Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}}),
+		service.NewChatService(service.ChatDeps{
+			Chats: store.Chats(), Members: store.ChatMembers(), Messages: store.ChatMessages(), Events: events, Tx: inmem.TxManager{}, Photos: mediaclient.Nop{},
+		}),
+		log,
+	))
 
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)

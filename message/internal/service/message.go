@@ -139,12 +139,13 @@ type HistoryPage struct {
 // Event is what happened in a user's dialogs, for live updates: a new
 // message, sent or received, a read mark that moved, a message deleted or
 // one that says something else now — edited, or taken back by its sender
-// and saying nothing.
+// and saying nothing. Or what happened in a chat of theirs (Chat).
 type Event struct {
 	Message *message.Message
 	Read    *ReadMark
 	Deleted *Deleted
 	Edited  *message.Message
+	Chat    *ChatEvent
 }
 
 // SearchPage is one screen of found messages, newest first; NextCursor is

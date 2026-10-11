@@ -46,6 +46,9 @@ type Config struct {
 	MediaServiceAddr string          `env:"MEDIA_SERVICE_ADDR"`
 	MediaTimeout     time.Duration   `env:"MEDIA_TIMEOUT" envDefault:"2s"`
 	MessageLimits    ratelimit.Rules `env:"RATE_LIMIT_MESSAGES" envDefault:"30/1m,1000/24h"`
+	// ChatLimits is how often a user creates chats, renames them and adds
+	// people to them.
+	ChatLimits ratelimit.Rules `env:"RATE_LIMIT_CHATS" envDefault:"10/1m,100/24h"`
 
 	// Access tokens are issued by the auth service; message only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
