@@ -25,6 +25,7 @@ type PermissionService interface {
 	Access(ctx context.Context, viewerID, ownerID uuid.UUID) (user.Access, error)
 	ProfileFor(ctx context.Context, viewerID uuid.UUID, nickname user.Nickname) (user.PublicProfile, error)
 	Mentioned(ctx context.Context, authorID uuid.UUID, nicknames []user.Nickname) ([]uuid.UUID, error)
+	Invitees(ctx context.Context, inviterID uuid.UUID, nicknames []user.Nickname) ([]service.Invitee, error)
 }
 
 // callerAnd is the caller from the token and the user the request names.
@@ -122,6 +123,39 @@ func (h *UserHandler) ResolveMentions(ctx context.Context, req *userv1.ResolveMe
 	resp := &userv1.ResolveMentionsResponse{UserIds: make([]string, 0, len(mentioned))}
 	for _, id := range mentioned {
 		resp.UserIds = append(resp.UserIds, id.String())
+	}
+
+	return resp, nil
+}
+
+// ResolveInvites tells who the caller names to add to a group chat and
+// whether each may be added.
+func (h *UserHandler) ResolveInvites(ctx context.Context, req *userv1.ResolveInvitesRequest) (*userv1.ResolveInvitesResponse, error) {
+	inviterID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	// What is not a nickname is nobody's, as an unknown one.
+	var nicknames []user.Nickname
+	for _, s := range req.GetNicknames() {
+		if nickname, err := user.NewNickname(s); err == nil {
+			nicknames = append(nicknames, nickname)
+		}
+	}
+
+	invitees, err := h.permissionService.Invitees(ctx, inviterID, nicknames)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &userv1.ResolveInvitesResponse{Invitees: make([]*userv1.Invitee, 0, len(invitees))}
+	for _, i := range invitees {
+		resp.Invitees = append(resp.Invitees, &userv1.Invitee{
+			Nickname: i.Nickname.String(),
+			UserId:   i.UserID.String(),
+			Allowed:  i.Allowed,
+		})
 	}
 
 	return resp, nil

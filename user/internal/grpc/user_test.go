@@ -241,6 +241,10 @@ func TestPrivacyFlow(t *testing.T) {
 	if err != nil {
 		t.Fatalf("UpdatePrivacy: %v", err)
 	}
+	// A client that does not know the group chats leaves the default.
+	if got := updated.GetUser().GetPrivacy().GetChatsInvite(); got != userv1.MessagesWrite_MESSAGES_WRITE_FOLLOWING {
+		t.Fatalf("chats_invite left out = %v", got)
+	}
 	if pr := updated.GetUser().GetPrivacy(); !pr.GetShowWorldview() || pr.GetWallWrite() != userv1.WallWrite_WALL_WRITE_EVERYONE ||
 		pr.GetClubsRead() != userv1.ClubsRead_CLUBS_READ_FOLLOWING || pr.GetNotesRead() != userv1.Audience_AUDIENCE_ONLY_ME {
 		t.Fatalf("settings not returned: %+v", pr)

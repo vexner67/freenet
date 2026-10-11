@@ -125,6 +125,52 @@ func (s *PermissionService) Mentioned(ctx context.Context, authorID uuid.UUID, n
 	return mentioned, nil
 }
 
+// Invitee is someone named to be added to a group chat.
+type Invitee struct {
+	Nickname user.Nickname
+	UserID   uuid.UUID
+	// Allowed: the inviter may add them (user.CanBeInvitedBy).
+	Allowed bool
+}
+
+// Invitees are the people inviterID named by nickname to add to a group
+// chat, in the order named, each once, and whether each may be added. At
+// most user.MaxInvited nicknames are looked at; an unknown one is left out.
+func (s *PermissionService) Invitees(ctx context.Context, inviterID uuid.UUID, nicknames []user.Nickname) ([]Invitee, error) {
+	if len(nicknames) > user.MaxInvited {
+		nicknames = nicknames[:user.MaxInvited]
+	}
+
+	var invitees []Invitee
+
+	for _, nickname := range nicknames {
+		u, err := s.userRepo.GetByNickname(ctx, nickname)
+		if errors.Is(err, user.ErrNotFound) {
+			continue
+		}
+		if err != nil {
+			return nil, errs.Wrap("s.userRepo.GetByNickname", err)
+		}
+
+		if slices.ContainsFunc(invitees, func(i Invitee) bool { return i.UserID == u.ID() }) {
+			continue
+		}
+
+		ties, err := s.tiesOf(ctx, inviterID, u.ID())
+		if err != nil {
+			return nil, errs.Wrap("s.tiesOf", err)
+		}
+
+		invitees = append(invitees, Invitee{
+			Nickname: u.Profile().Nickname,
+			UserID:   u.ID(),
+			Allowed:  u.CanBeInvitedBy(inviterID, ties),
+		})
+	}
+
+	return invitees, nil
+}
+
 // ties loads ownerID and how it is tied to otherID.
 func (s *PermissionService) ties(ctx context.Context, otherID, ownerID uuid.UUID) (*user.User, user.Ties, error) {
 	owner, err := s.userRepo.GetByID(ctx, ownerID)

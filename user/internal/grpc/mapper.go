@@ -203,6 +203,7 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		FriendsRead:        toProtoAudience(p.FriendsRead),
 		OnlineRead:         toProtoAudience(p.OnlineRead),
 		NotesRead:          toProtoAudience(p.NotesRead),
+		ChatsInvite:        toProtoMessagesWrite(p.ChatsInvite),
 	}
 }
 
@@ -265,6 +266,14 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		}
 	}
 
+	// A client that does not know the group chats leaves the default.
+	chatsInvite := user.DefaultChatsInvite
+	if p.GetChatsInvite() != userv1.MessagesWrite_MESSAGES_WRITE_UNSPECIFIED {
+		if chatsInvite, err = user.NewMessagesWrite(fromProtoMessagesWrite(p.GetChatsInvite())); err != nil {
+			return user.Privacy{}, err
+		}
+	}
+
 	return user.Privacy{
 		ShowBirthday:       p.GetShowBirthday(),
 		ShowRelationship:   p.GetShowRelationship(),
@@ -279,6 +288,7 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		FriendsRead:        reads[2],
 		OnlineRead:         reads[3],
 		NotesRead:          notesRead,
+		ChatsInvite:        chatsInvite,
 	}, nil
 }
 
