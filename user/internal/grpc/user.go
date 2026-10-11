@@ -35,6 +35,7 @@ type UserHandler struct {
 	accountService    AccountService
 	followService     FollowService
 	blockService      BlockService
+	ignoreService     IgnoreService
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
@@ -47,6 +48,7 @@ type Services struct {
 	Accounts    AccountService
 	Follows     FollowService
 	Blocks      BlockService
+	Ignores     IgnoreService
 	Permissions PermissionService
 	Presence    PresenceService
 	Backdrops   BackdropService
@@ -58,6 +60,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		accountService:    s.Accounts,
 		followService:     s.Follows,
 		blockService:      s.Blocks,
+		ignoreService:     s.Ignores,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,

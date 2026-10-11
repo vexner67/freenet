@@ -62,6 +62,7 @@ func newServer(t *testing.T) testServer {
 			Users: users, Follows: follows, Lists: follows, Blocks: blocks, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
 		}),
 		Blocks:      service.NewBlockService(users, blocks, inmem.TxManager{}, notifyclient.Nop{}),
+		Ignores:     service.NewIgnoreService(inmem.NewIgnoreRepository(users)),
 		Permissions: service.NewPermissionService(users, follows, blocks),
 		Presence:    service.NewPresenceService(users),
 		Backdrops:   service.NewBackdropService(users, users),

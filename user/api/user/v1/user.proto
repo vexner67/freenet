@@ -83,6 +83,13 @@ service UserService {
   // Requires an access token: whom the caller blacklisted, for the news
   // feed, which leaves their posts out.
   rpc ListBlockedIDs(ListBlockedIDsRequest) returns (ListBlockedIDsResponse);
+  // Requires an access token. "Игнорируемые источники" of openvk: the
+  // walls whose posts the caller's news feeds leave out. A source is a
+  // user or a community — the caller checks that it is there. Both are
+  // idempotent.
+  rpc IgnoreSource(IgnoreSourceRequest) returns (google.protobuf.Empty);
+  rpc UnignoreSources(UnignoreSourcesRequest) returns (google.protobuf.Empty);
+  rpc ListIgnoredSources(ListIgnoredSourcesRequest) returns (ListIgnoredSourcesResponse);
   // Requires an access token: who of the caller and the user blacklisted
   // the other.
   rpc GetRelation(GetRelationRequest) returns (GetRelationResponse);
@@ -636,6 +643,24 @@ message ListBlockedIDsRequest {}
 message ListBlockedIDsResponse {
   // Newest blocks first, at most 1000.
   repeated string user_ids = 1;
+}
+
+message IgnoreSourceRequest {
+  // The ID of a user or of a community; not the caller. FailedPrecondition
+  // "too many ignored sources" once 50 are ignored.
+  string source_id = 1;
+}
+
+message UnignoreSourcesRequest {
+  // 1-10 sources.
+  repeated string source_ids = 1;
+}
+
+message ListIgnoredSourcesRequest {}
+
+message ListIgnoredSourcesResponse {
+  // Newest first, at most 50.
+  repeated string source_ids = 1;
 }
 
 message ResolveMentionsRequest {

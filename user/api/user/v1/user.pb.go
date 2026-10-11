@@ -4201,6 +4201,178 @@ func (x *ListBlockedIDsResponse) GetUserIds() []string {
 	return nil
 }
 
+type IgnoreSourceRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The ID of a user or of a community; not the caller. FailedPrecondition
+	// "too many ignored sources" once 50 are ignored.
+	SourceId      string `protobuf:"bytes,1,opt,name=source_id,json=sourceId,proto3" json:"source_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *IgnoreSourceRequest) Reset() {
+	*x = IgnoreSourceRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[58]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *IgnoreSourceRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*IgnoreSourceRequest) ProtoMessage() {}
+
+func (x *IgnoreSourceRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[58]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use IgnoreSourceRequest.ProtoReflect.Descriptor instead.
+func (*IgnoreSourceRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{58}
+}
+
+func (x *IgnoreSourceRequest) GetSourceId() string {
+	if x != nil {
+		return x.SourceId
+	}
+	return ""
+}
+
+type UnignoreSourcesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// 1-10 sources.
+	SourceIds     []string `protobuf:"bytes,1,rep,name=source_ids,json=sourceIds,proto3" json:"source_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnignoreSourcesRequest) Reset() {
+	*x = UnignoreSourcesRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[59]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnignoreSourcesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnignoreSourcesRequest) ProtoMessage() {}
+
+func (x *UnignoreSourcesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[59]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnignoreSourcesRequest.ProtoReflect.Descriptor instead.
+func (*UnignoreSourcesRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{59}
+}
+
+func (x *UnignoreSourcesRequest) GetSourceIds() []string {
+	if x != nil {
+		return x.SourceIds
+	}
+	return nil
+}
+
+type ListIgnoredSourcesRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListIgnoredSourcesRequest) Reset() {
+	*x = ListIgnoredSourcesRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[60]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListIgnoredSourcesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListIgnoredSourcesRequest) ProtoMessage() {}
+
+func (x *ListIgnoredSourcesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[60]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListIgnoredSourcesRequest.ProtoReflect.Descriptor instead.
+func (*ListIgnoredSourcesRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{60}
+}
+
+type ListIgnoredSourcesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Newest first, at most 50.
+	SourceIds     []string `protobuf:"bytes,1,rep,name=source_ids,json=sourceIds,proto3" json:"source_ids,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListIgnoredSourcesResponse) Reset() {
+	*x = ListIgnoredSourcesResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[61]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListIgnoredSourcesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListIgnoredSourcesResponse) ProtoMessage() {}
+
+func (x *ListIgnoredSourcesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[61]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListIgnoredSourcesResponse.ProtoReflect.Descriptor instead.
+func (*ListIgnoredSourcesResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{61}
+}
+
+func (x *ListIgnoredSourcesResponse) GetSourceIds() []string {
+	if x != nil {
+		return x.SourceIds
+	}
+	return nil
+}
+
 type ResolveMentionsRequest struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// The first 10 are looked at; what is not a nickname names nobody.
@@ -4211,7 +4383,7 @@ type ResolveMentionsRequest struct {
 
 func (x *ResolveMentionsRequest) Reset() {
 	*x = ResolveMentionsRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[58]
+	mi := &file_api_user_v1_user_proto_msgTypes[62]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4223,7 +4395,7 @@ func (x *ResolveMentionsRequest) String() string {
 func (*ResolveMentionsRequest) ProtoMessage() {}
 
 func (x *ResolveMentionsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[58]
+	mi := &file_api_user_v1_user_proto_msgTypes[62]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4236,7 +4408,7 @@ func (x *ResolveMentionsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveMentionsRequest.ProtoReflect.Descriptor instead.
 func (*ResolveMentionsRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{58}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *ResolveMentionsRequest) GetNicknames() []string {
@@ -4256,7 +4428,7 @@ type ResolveMentionsResponse struct {
 
 func (x *ResolveMentionsResponse) Reset() {
 	*x = ResolveMentionsResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[59]
+	mi := &file_api_user_v1_user_proto_msgTypes[63]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4268,7 +4440,7 @@ func (x *ResolveMentionsResponse) String() string {
 func (*ResolveMentionsResponse) ProtoMessage() {}
 
 func (x *ResolveMentionsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[59]
+	mi := &file_api_user_v1_user_proto_msgTypes[63]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4281,7 +4453,7 @@ func (x *ResolveMentionsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ResolveMentionsResponse.ProtoReflect.Descriptor instead.
 func (*ResolveMentionsResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{59}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *ResolveMentionsResponse) GetUserIds() []string {
@@ -4301,7 +4473,7 @@ type FindNicknamesRequest struct {
 
 func (x *FindNicknamesRequest) Reset() {
 	*x = FindNicknamesRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[60]
+	mi := &file_api_user_v1_user_proto_msgTypes[64]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4313,7 +4485,7 @@ func (x *FindNicknamesRequest) String() string {
 func (*FindNicknamesRequest) ProtoMessage() {}
 
 func (x *FindNicknamesRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[60]
+	mi := &file_api_user_v1_user_proto_msgTypes[64]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4326,7 +4498,7 @@ func (x *FindNicknamesRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FindNicknamesRequest.ProtoReflect.Descriptor instead.
 func (*FindNicknamesRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{60}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *FindNicknamesRequest) GetNicknames() []string {
@@ -4346,7 +4518,7 @@ type FindNicknamesResponse struct {
 
 func (x *FindNicknamesResponse) Reset() {
 	*x = FindNicknamesResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[61]
+	mi := &file_api_user_v1_user_proto_msgTypes[65]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4358,7 +4530,7 @@ func (x *FindNicknamesResponse) String() string {
 func (*FindNicknamesResponse) ProtoMessage() {}
 
 func (x *FindNicknamesResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[61]
+	mi := &file_api_user_v1_user_proto_msgTypes[65]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4371,7 +4543,7 @@ func (x *FindNicknamesResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use FindNicknamesResponse.ProtoReflect.Descriptor instead.
 func (*FindNicknamesResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{61}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *FindNicknamesResponse) GetNicknames() []string {
@@ -4390,7 +4562,7 @@ type GetRelationRequest struct {
 
 func (x *GetRelationRequest) Reset() {
 	*x = GetRelationRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[62]
+	mi := &file_api_user_v1_user_proto_msgTypes[66]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4402,7 +4574,7 @@ func (x *GetRelationRequest) String() string {
 func (*GetRelationRequest) ProtoMessage() {}
 
 func (x *GetRelationRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[62]
+	mi := &file_api_user_v1_user_proto_msgTypes[66]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4415,7 +4587,7 @@ func (x *GetRelationRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRelationRequest.ProtoReflect.Descriptor instead.
 func (*GetRelationRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{62}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *GetRelationRequest) GetUserId() string {
@@ -4437,7 +4609,7 @@ type GetRelationResponse struct {
 
 func (x *GetRelationResponse) Reset() {
 	*x = GetRelationResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[63]
+	mi := &file_api_user_v1_user_proto_msgTypes[67]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4449,7 +4621,7 @@ func (x *GetRelationResponse) String() string {
 func (*GetRelationResponse) ProtoMessage() {}
 
 func (x *GetRelationResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[63]
+	mi := &file_api_user_v1_user_proto_msgTypes[67]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4462,7 +4634,7 @@ func (x *GetRelationResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetRelationResponse.ProtoReflect.Descriptor instead.
 func (*GetRelationResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{63}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *GetRelationResponse) GetBlockedByMe() bool {
@@ -4489,7 +4661,7 @@ type DeactivateAccountRequest struct {
 
 func (x *DeactivateAccountRequest) Reset() {
 	*x = DeactivateAccountRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[64]
+	mi := &file_api_user_v1_user_proto_msgTypes[68]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4501,7 +4673,7 @@ func (x *DeactivateAccountRequest) String() string {
 func (*DeactivateAccountRequest) ProtoMessage() {}
 
 func (x *DeactivateAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[64]
+	mi := &file_api_user_v1_user_proto_msgTypes[68]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4514,7 +4686,7 @@ func (x *DeactivateAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeactivateAccountRequest.ProtoReflect.Descriptor instead.
 func (*DeactivateAccountRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{64}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{68}
 }
 
 func (x *DeactivateAccountRequest) GetReason() string {
@@ -4533,7 +4705,7 @@ type DeactivateAccountResponse struct {
 
 func (x *DeactivateAccountResponse) Reset() {
 	*x = DeactivateAccountResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[65]
+	mi := &file_api_user_v1_user_proto_msgTypes[69]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4545,7 +4717,7 @@ func (x *DeactivateAccountResponse) String() string {
 func (*DeactivateAccountResponse) ProtoMessage() {}
 
 func (x *DeactivateAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[65]
+	mi := &file_api_user_v1_user_proto_msgTypes[69]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4558,7 +4730,7 @@ func (x *DeactivateAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeactivateAccountResponse.ProtoReflect.Descriptor instead.
 func (*DeactivateAccountResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{65}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *DeactivateAccountResponse) GetUser() *User {
@@ -4576,7 +4748,7 @@ type ReactivateAccountRequest struct {
 
 func (x *ReactivateAccountRequest) Reset() {
 	*x = ReactivateAccountRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[66]
+	mi := &file_api_user_v1_user_proto_msgTypes[70]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4588,7 +4760,7 @@ func (x *ReactivateAccountRequest) String() string {
 func (*ReactivateAccountRequest) ProtoMessage() {}
 
 func (x *ReactivateAccountRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[66]
+	mi := &file_api_user_v1_user_proto_msgTypes[70]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4601,7 +4773,7 @@ func (x *ReactivateAccountRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReactivateAccountRequest.ProtoReflect.Descriptor instead.
 func (*ReactivateAccountRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{66}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{70}
 }
 
 type ReactivateAccountResponse struct {
@@ -4613,7 +4785,7 @@ type ReactivateAccountResponse struct {
 
 func (x *ReactivateAccountResponse) Reset() {
 	*x = ReactivateAccountResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[67]
+	mi := &file_api_user_v1_user_proto_msgTypes[71]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4625,7 +4797,7 @@ func (x *ReactivateAccountResponse) String() string {
 func (*ReactivateAccountResponse) ProtoMessage() {}
 
 func (x *ReactivateAccountResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[67]
+	mi := &file_api_user_v1_user_proto_msgTypes[71]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4638,7 +4810,7 @@ func (x *ReactivateAccountResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ReactivateAccountResponse.ProtoReflect.Descriptor instead.
 func (*ReactivateAccountResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{67}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{71}
 }
 
 func (x *ReactivateAccountResponse) GetUser() *User {
@@ -4657,7 +4829,7 @@ type GetAccountStateRequest struct {
 
 func (x *GetAccountStateRequest) Reset() {
 	*x = GetAccountStateRequest{}
-	mi := &file_api_user_v1_user_proto_msgTypes[68]
+	mi := &file_api_user_v1_user_proto_msgTypes[72]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4669,7 +4841,7 @@ func (x *GetAccountStateRequest) String() string {
 func (*GetAccountStateRequest) ProtoMessage() {}
 
 func (x *GetAccountStateRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[68]
+	mi := &file_api_user_v1_user_proto_msgTypes[72]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4682,7 +4854,7 @@ func (x *GetAccountStateRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountStateRequest.ProtoReflect.Descriptor instead.
 func (*GetAccountStateRequest) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{68}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{72}
 }
 
 func (x *GetAccountStateRequest) GetUserId() string {
@@ -4701,7 +4873,7 @@ type GetAccountStateResponse struct {
 
 func (x *GetAccountStateResponse) Reset() {
 	*x = GetAccountStateResponse{}
-	mi := &file_api_user_v1_user_proto_msgTypes[69]
+	mi := &file_api_user_v1_user_proto_msgTypes[73]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -4713,7 +4885,7 @@ func (x *GetAccountStateResponse) String() string {
 func (*GetAccountStateResponse) ProtoMessage() {}
 
 func (x *GetAccountStateResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_user_v1_user_proto_msgTypes[69]
+	mi := &file_api_user_v1_user_proto_msgTypes[73]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4726,7 +4898,7 @@ func (x *GetAccountStateResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetAccountStateResponse.ProtoReflect.Descriptor instead.
 func (*GetAccountStateResponse) Descriptor() ([]byte, []int) {
-	return file_api_user_v1_user_proto_rawDescGZIP(), []int{69}
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{73}
 }
 
 func (x *GetAccountStateResponse) GetDeactivated() bool {
@@ -4995,7 +5167,16 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x05total\x18\x03 \x01(\x05R\x05total\"\x17\n" +
 	"\x15ListBlockedIDsRequest\"3\n" +
 	"\x16ListBlockedIDsResponse\x12\x19\n" +
-	"\buser_ids\x18\x01 \x03(\tR\auserIds\"6\n" +
+	"\buser_ids\x18\x01 \x03(\tR\auserIds\"2\n" +
+	"\x13IgnoreSourceRequest\x12\x1b\n" +
+	"\tsource_id\x18\x01 \x01(\tR\bsourceId\"7\n" +
+	"\x16UnignoreSourcesRequest\x12\x1d\n" +
+	"\n" +
+	"source_ids\x18\x01 \x03(\tR\tsourceIds\"\x1b\n" +
+	"\x19ListIgnoredSourcesRequest\";\n" +
+	"\x1aListIgnoredSourcesResponse\x12\x1d\n" +
+	"\n" +
+	"source_ids\x18\x01 \x03(\tR\tsourceIds\"6\n" +
 	"\x16ResolveMentionsRequest\x12\x1c\n" +
 	"\tnicknames\x18\x01 \x03(\tR\tnicknames\"4\n" +
 	"\x17ResolveMentionsResponse\x12\x19\n" +
@@ -5087,7 +5268,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\fBackdropSide\x12\x1d\n" +
 	"\x19BACKDROP_SIDE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12BACKDROP_SIDE_LEFT\x10\x01\x12\x17\n" +
-	"\x13BACKDROP_SIDE_RIGHT\x10\x022\x8d\x15\n" +
+	"\x13BACKDROP_SIDE_RIGHT\x10\x022\xfe\x16\n" +
 	"\vUserService\x12]\n" +
 	"\x12GetOrCreateByEmail\x12\".user.v1.GetOrCreateByEmailRequest\x1a#.user.v1.GetOrCreateByEmailResponse\x126\n" +
 	"\x05GetMe\x12\x15.user.v1.GetMeRequest\x1a\x16.user.v1.GetMeResponse\x12N\n" +
@@ -5122,7 +5303,10 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x05Block\x12\x15.user.v1.BlockRequest\x1a\x16.google.protobuf.Empty\x12:\n" +
 	"\aUnblock\x12\x17.user.v1.UnblockRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
 	"\vListBlocked\x12\x1b.user.v1.ListBlockedRequest\x1a\x1c.user.v1.ListBlockedResponse\x12Q\n" +
-	"\x0eListBlockedIDs\x12\x1e.user.v1.ListBlockedIDsRequest\x1a\x1f.user.v1.ListBlockedIDsResponse\x12H\n" +
+	"\x0eListBlockedIDs\x12\x1e.user.v1.ListBlockedIDsRequest\x1a\x1f.user.v1.ListBlockedIDsResponse\x12D\n" +
+	"\fIgnoreSource\x12\x1c.user.v1.IgnoreSourceRequest\x1a\x16.google.protobuf.Empty\x12J\n" +
+	"\x0fUnignoreSources\x12\x1f.user.v1.UnignoreSourcesRequest\x1a\x16.google.protobuf.Empty\x12]\n" +
+	"\x12ListIgnoredSources\x12\".user.v1.ListIgnoredSourcesRequest\x1a#.user.v1.ListIgnoredSourcesResponse\x12H\n" +
 	"\vGetRelation\x12\x1b.user.v1.GetRelationRequest\x1a\x1c.user.v1.GetRelationResponse\x12Z\n" +
 	"\x11DeactivateAccount\x12!.user.v1.DeactivateAccountRequest\x1a\".user.v1.DeactivateAccountResponse\x12Z\n" +
 	"\x11ReactivateAccount\x12!.user.v1.ReactivateAccountRequest\x1a\".user.v1.ReactivateAccountResponse\x12T\n" +
@@ -5141,7 +5325,7 @@ func file_api_user_v1_user_proto_rawDescGZIP() []byte {
 }
 
 var file_api_user_v1_user_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
-var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 70)
+var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 74)
 var file_api_user_v1_user_proto_goTypes = []any{
 	(FieldPlace)(0),                    // 0: user.v1.FieldPlace
 	(Audience)(0),                      // 1: user.v1.Audience
@@ -5211,33 +5395,37 @@ var file_api_user_v1_user_proto_goTypes = []any{
 	(*ListBlockedResponse)(nil),        // 65: user.v1.ListBlockedResponse
 	(*ListBlockedIDsRequest)(nil),      // 66: user.v1.ListBlockedIDsRequest
 	(*ListBlockedIDsResponse)(nil),     // 67: user.v1.ListBlockedIDsResponse
-	(*ResolveMentionsRequest)(nil),     // 68: user.v1.ResolveMentionsRequest
-	(*ResolveMentionsResponse)(nil),    // 69: user.v1.ResolveMentionsResponse
-	(*FindNicknamesRequest)(nil),       // 70: user.v1.FindNicknamesRequest
-	(*FindNicknamesResponse)(nil),      // 71: user.v1.FindNicknamesResponse
-	(*GetRelationRequest)(nil),         // 72: user.v1.GetRelationRequest
-	(*GetRelationResponse)(nil),        // 73: user.v1.GetRelationResponse
-	(*DeactivateAccountRequest)(nil),   // 74: user.v1.DeactivateAccountRequest
-	(*DeactivateAccountResponse)(nil),  // 75: user.v1.DeactivateAccountResponse
-	(*ReactivateAccountRequest)(nil),   // 76: user.v1.ReactivateAccountRequest
-	(*ReactivateAccountResponse)(nil),  // 77: user.v1.ReactivateAccountResponse
-	(*GetAccountStateRequest)(nil),     // 78: user.v1.GetAccountStateRequest
-	(*GetAccountStateResponse)(nil),    // 79: user.v1.GetAccountStateResponse
-	(*timestamppb.Timestamp)(nil),      // 80: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 81: google.protobuf.Empty
+	(*IgnoreSourceRequest)(nil),        // 68: user.v1.IgnoreSourceRequest
+	(*UnignoreSourcesRequest)(nil),     // 69: user.v1.UnignoreSourcesRequest
+	(*ListIgnoredSourcesRequest)(nil),  // 70: user.v1.ListIgnoredSourcesRequest
+	(*ListIgnoredSourcesResponse)(nil), // 71: user.v1.ListIgnoredSourcesResponse
+	(*ResolveMentionsRequest)(nil),     // 72: user.v1.ResolveMentionsRequest
+	(*ResolveMentionsResponse)(nil),    // 73: user.v1.ResolveMentionsResponse
+	(*FindNicknamesRequest)(nil),       // 74: user.v1.FindNicknamesRequest
+	(*FindNicknamesResponse)(nil),      // 75: user.v1.FindNicknamesResponse
+	(*GetRelationRequest)(nil),         // 76: user.v1.GetRelationRequest
+	(*GetRelationResponse)(nil),        // 77: user.v1.GetRelationResponse
+	(*DeactivateAccountRequest)(nil),   // 78: user.v1.DeactivateAccountRequest
+	(*DeactivateAccountResponse)(nil),  // 79: user.v1.DeactivateAccountResponse
+	(*ReactivateAccountRequest)(nil),   // 80: user.v1.ReactivateAccountRequest
+	(*ReactivateAccountResponse)(nil),  // 81: user.v1.ReactivateAccountResponse
+	(*GetAccountStateRequest)(nil),     // 82: user.v1.GetAccountStateRequest
+	(*GetAccountStateResponse)(nil),    // 83: user.v1.GetAccountStateResponse
+	(*timestamppb.Timestamp)(nil),      // 84: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 85: google.protobuf.Empty
 }
 var file_api_user_v1_user_proto_depIdxs = []int32{
 	5,  // 0: user.v1.User.gender:type_name -> user.v1.Gender
 	6,  // 1: user.v1.User.relationship:type_name -> user.v1.Relationship
 	7,  // 2: user.v1.User.worldview:type_name -> user.v1.Worldview
 	8,  // 3: user.v1.User.political_views:type_name -> user.v1.PoliticalViews
-	80, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
+	84, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
 	17, // 5: user.v1.User.privacy:type_name -> user.v1.PrivacySettings
-	80, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
+	84, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
 	14, // 7: user.v1.User.contacts:type_name -> user.v1.Contacts
 	15, // 8: user.v1.User.interests:type_name -> user.v1.Interests
 	16, // 9: user.v1.User.extra_fields:type_name -> user.v1.ExtraField
-	80, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
+	84, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
 	11, // 11: user.v1.User.interface:type_name -> user.v1.InterfaceSettings
 	11, // 12: user.v1.UpdateInterfaceRequest.interface:type_name -> user.v1.InterfaceSettings
 	10, // 13: user.v1.UpdateInterfaceResponse.user:type_name -> user.v1.User
@@ -5255,18 +5443,18 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	6,  // 25: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
 	7,  // 26: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
 	8,  // 27: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
-	80, // 28: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	84, // 28: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
 	14, // 29: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
 	15, // 30: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
 	16, // 31: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
-	80, // 32: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
-	80, // 33: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
+	84, // 32: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
+	84, // 33: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
 	10, // 34: user.v1.GetMeResponse.user:type_name -> user.v1.User
 	5,  // 35: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
 	6,  // 36: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
 	7,  // 37: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
 	8,  // 38: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
-	80, // 39: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	84, // 39: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
 	10, // 40: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
 	14, // 41: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
 	10, // 42: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
@@ -5311,54 +5499,60 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	45, // 81: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
 	56, // 82: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
 	60, // 83: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
-	68, // 84: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
-	70, // 85: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
+	72, // 84: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
+	74, // 85: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
 	58, // 86: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
 	62, // 87: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
 	63, // 88: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
 	64, // 89: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
 	66, // 90: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
-	72, // 91: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
-	74, // 92: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
-	76, // 93: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
-	78, // 94: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
-	20, // 95: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	22, // 96: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	24, // 97: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	50, // 98: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
-	34, // 99: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	13, // 100: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
-	26, // 101: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
-	28, // 102: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
-	30, // 103: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
-	51, // 104: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	53, // 105: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
-	32, // 106: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	36, // 107: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	55, // 108: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	81, // 109: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	81, // 110: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	40, // 111: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
-	42, // 112: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	47, // 113: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	47, // 114: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	81, // 115: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
-	46, // 116: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
-	57, // 117: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	61, // 118: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
-	69, // 119: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
-	71, // 120: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
-	59, // 121: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
-	81, // 122: user.v1.UserService.Block:output_type -> google.protobuf.Empty
-	81, // 123: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
-	65, // 124: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
-	67, // 125: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
-	73, // 126: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
-	75, // 127: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
-	77, // 128: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
-	79, // 129: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
-	95, // [95:130] is the sub-list for method output_type
-	60, // [60:95] is the sub-list for method input_type
+	68, // 91: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
+	69, // 92: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
+	70, // 93: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
+	76, // 94: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	78, // 95: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
+	80, // 96: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
+	82, // 97: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
+	20, // 98: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	22, // 99: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	24, // 100: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	50, // 101: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
+	34, // 102: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	13, // 103: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
+	26, // 104: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
+	28, // 105: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
+	30, // 106: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
+	51, // 107: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	53, // 108: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
+	32, // 109: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	36, // 110: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	55, // 111: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	85, // 112: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	85, // 113: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	40, // 114: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
+	42, // 115: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	47, // 116: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	47, // 117: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	85, // 118: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
+	46, // 119: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
+	57, // 120: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	61, // 121: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	73, // 122: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
+	75, // 123: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
+	59, // 124: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
+	85, // 125: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	85, // 126: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	65, // 127: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	67, // 128: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
+	85, // 129: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
+	85, // 130: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
+	71, // 131: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
+	77, // 132: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	79, // 133: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
+	81, // 134: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
+	83, // 135: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
+	98, // [98:136] is the sub-list for method output_type
+	60, // [60:98] is the sub-list for method input_type
 	60, // [60:60] is the sub-list for extension type_name
 	60, // [60:60] is the sub-list for extension extendee
 	0,  // [0:60] is the sub-list for field type_name
@@ -5376,7 +5570,7 @@ func file_api_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_user_v1_user_proto_rawDesc), len(file_api_user_v1_user_proto_rawDesc)),
 			NumEnums:      10,
-			NumMessages:   70,
+			NumMessages:   74,
 			NumExtensions: 0,
 			NumServices:   1,
 		},
