@@ -850,6 +850,8 @@ const errorTexts = {
   'field name is too long': 'Название поля длиннее 50 символов.',
   'field text is empty': 'Заполните текст поля.',
   'you cannot blacklist yourself': 'Нельзя внести в чёрный список самого себя.',
+  'you cannot ignore yourself': 'Нельзя игнорировать самого себя.',
+  'too many ignored sources': 'Превышен лимит игнорируемых источников.',
   'invalid post id': 'Запись не найдена.',
   'comment text is empty': 'Напишите что-нибудь.',
   'comment text is too long': 'Комментарий длиннее 60 000 символов.',
@@ -1017,4 +1019,35 @@ export function messagePreview(m) {
 // сообщения".
 export function selectedCount(n) {
   return `Выбрано ${n} ${plural(n, ['сообщение', 'сообщения', 'сообщений'])}`;
+}
+
+// "Настройки ленты" of openvk: how many posts a page of the news holds
+// (its choices) and whether what people wrote on the walls of others is
+// there. They are kept by the browser, as openvk keeps them in a cookie.
+export const feedPageSizes = [1, 5, 10, 20, 30, 40, 50];
+
+export const defaultFeedSettings = Object.freeze({ posts: 20, alien: true });
+
+// feedSettings reads what the browser kept; anything else is the default.
+export function feedSettings(raw) {
+  let kept = null;
+
+  try {
+    kept = JSON.parse(raw ?? 'null');
+  } catch {
+    kept = null;
+  }
+
+  return {
+    posts: feedPageSizes.includes(kept?.posts) ? kept.posts : defaultFeedSettings.posts,
+    alien: typeof kept?.alien === 'boolean' ? kept.alien : defaultFeedSettings.alien,
+  };
+}
+
+// ignoreLabels are the link of a page: openvk's "Игнорировать
+// пользователя" and "Игнорировать группу" (ours for an event).
+export function ignoreLabel(kind, ignored) {
+  const whom = { user: 'пользователя', club: 'группу', event: 'встречу' }[kind];
+
+  return (ignored ? 'Не игнорировать ' : 'Игнорировать ') + whom;
 }

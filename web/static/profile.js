@@ -4,6 +4,7 @@ import { $, el, fullName, pagePath, renderChrome, showError, hideError } from '.
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { notesBlock } from './notes.js';
 import { initBlacklistLink } from './blacklist.js';
+import { initIgnoreLink } from './feedsettings.js';
 import { initFollow } from './follow.js';
 import { initPhoto } from './photo.js';
 import { initWall } from './wall.js';
@@ -410,6 +411,12 @@ try {
   // As on openvk, also on the page of whoever blacklisted the viewer.
   if (me && !isOwner && !profile.deactivated && !profile.pageHidden) {
     initBlacklistLink(profile, () => location.reload());
+    initIgnoreLink($('ignore'), {
+      kind: 'user',
+      ignored: profile.ignoredByMe,
+      change: (ignore) => (ignore ? api.ignoreUser(profile.nickname) : api.unignoreUser(profile.nickname)),
+      error: $('follow-error'),
+    });
   }
 } catch (e) {
   $('title').textContent = e.status === 404 || e.status === 400 ? 'Страница не найдена' : 'Ошибка';

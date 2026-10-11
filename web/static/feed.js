@@ -3,6 +3,7 @@ import { $, el, isMicroblog, renderChrome, showError, hideError, autosize } from
 import { postNode, wallOwnerID } from './posts.js';
 import { initAttachments } from './attach.js';
 import { initPollDraft } from './poll.js';
+import { openFeedSettings, readFeedSettings } from './feedsettings.js';
 
 // openvk's limit of a post; the counter shows near the end.
 const MAX_LENGTH = 60000;
@@ -12,21 +13,65 @@ const COUNTER_FROM = MAX_LENGTH - 100;
 // I follow.
 const all = location.pathname.replace(/\/+$/, '') === '/feed/all';
 
+// "Настройки ленты": how many posts a page holds and whether the posts
+// on the walls of others are there are the browser's; the ignored sources
+// are shown only while the address says so, as on openvk.
+const SHOW_IGNORED = 'ignored';
+
+let settings = readFeedSettings();
+const showIgnored = new URLSearchParams(location.search).get(SHOW_IGNORED) === '1';
+
 let cursor = '';
 
 async function loadMore(me) {
   hideError($('error'));
 
   try {
-    const page = await api.feed(cursor, isMicroblog(), all);
+    const page = await api.feed(cursor, isMicroblog(), all, { limit: settings.posts, alien: settings.alien, ignored: showIgnored });
 
     $('posts').append(...page.posts.map((post) => feedNode(post, me)));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
-    $(all ? 'empty-all' : 'empty').hidden = $('posts').children.length > 0;
+    showEmpty();
   } catch (e) {
     showError($('error'), e);
   }
+}
+
+// showEmpty says why there are no news: nobody is followed yet, or the
+// settings of the feed leave everything out.
+function showEmpty() {
+  const empty = $('posts').children.length === 0;
+  const narrowed = !settings.alien;
+
+  $('empty-settings').hidden = !(empty && narrowed);
+  $(all ? 'empty-all' : 'empty').hidden = !(empty && !narrowed);
+}
+
+// applySettings reads the news again as the box of settings said.
+function applySettings(me, chosen, withIgnored) {
+  if (withIgnored !== showIgnored) {
+    const url = new URL(location.href);
+
+    if (withIgnored) {
+      url.searchParams.set(SHOW_IGNORED, '1');
+    } else {
+      url.searchParams.delete(SHOW_IGNORED);
+    }
+
+    location.assign(url);
+    return;
+  }
+
+  settings = chosen;
+  reload(me);
+}
+
+function reload(me) {
+  cursor = '';
+  $('posts').replaceChildren();
+  $('more').hidden = true;
+  loadMore(me);
 }
 
 // feedNode is a post as on a wall: I edit and delete what I wrote, and
@@ -97,8 +142,7 @@ function initForm(me) {
       const post = await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked, poll.value());
 
       $('posts').prepend(feedNode(post, me));
-      $('empty').hidden = true;
-      $('empty-all').hidden = true;
+      showEmpty();
       text.value = '';
       $('post-nsfw').checked = false;
       autosize(text);
@@ -157,5 +201,10 @@ if (!me) {
   // Without a nickname of your own you have no name to sign a post.
   if (me.profileCompleted) initForm(me);
   $('more').addEventListener('click', () => loadMore(me));
+  $('feed-settings').addEventListener('click', () => openFeedSettings({
+    showIgnored,
+    onApply: (chosen, withIgnored) => applySettings(me, chosen, withIgnored),
+    onUnignored: () => reload(me),
+  }));
   await loadMore(me);
 }

@@ -422,6 +422,8 @@ a.like:hover svg { opacity: .7; }
   font-weight: bold;
 }
 .tabs a.active:hover { text-decoration: none; }
+/* A link at the right end of the tabs, as openvk's "Настройки ленты". */
+.tabs .tabs-side { margin-left: auto; cursor: pointer; }
 
 /* Photo */
 
@@ -1065,3 +1067,17 @@ a.poll-result-name { cursor: pointer; }
 .note-form .button.secondary { margin-left: 6px; }
 .side-note { margin-bottom: 6px; overflow-wrap: anywhere; }
 .side-note .hint { margin: 0; }
+
+/* "Настройки ленты": the box with its two tabs and the ignored sources. */
+.feed-settings-box { width: 440px; }
+.modal-tabs { margin: -14px -12px 8px; padding-top: 6px; }
+.modal-tabs a { cursor: pointer; }
+.feed-settings { display: flex; flex-direction: column; gap: 8px; min-height: 120px; }
+.feed-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
+.feed-settings-row select { display: inline-block; width: 70px; margin: 0; }
+.ignored-list { max-height: 260px; overflow-y: auto; }
+.ignored-row { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-bottom: 1px solid #eee; cursor: pointer; }
+.ignored-row:last-child { border-bottom: 0; }
+.ignored-row img { width: 30px; height: 30px; object-fit: cover; }
+.ignored-row a { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: bold; }
+.avatars-round .ignored-row img { border-radius: 50%; }

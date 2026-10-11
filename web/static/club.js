@@ -14,6 +14,7 @@ import { $, avatarURL, clubRef, el, fullName, renderChrome, showError, hideError
 import { personCell } from './people.js';
 import { initPhoto } from './photo.js';
 import { boardPath, topicPath } from './topics.js';
+import { initIgnoreLink } from './feedsettings.js';
 import { initWall } from './wall.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length));
@@ -48,6 +49,14 @@ function render(club, me) {
 
   $('edit').hidden = !manages(club);
   $('edit').href = path + '/edit';
+  if (me) {
+    initIgnoreLink($('ignore'), {
+      kind: isEvent(club) ? 'event' : 'club',
+      ignored: Boolean(club.ignoredByMe),
+      change: (ignore) => (ignore ? api.ignoreClub(ref) : api.unignoreClub(ref)),
+      error: $('join-error'),
+    });
+  }
 
   initPhoto(club, manages(club), {
     upload: (file, onWall) => api.uploadClubAvatar(ref, file, onWall),

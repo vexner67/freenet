@@ -27,6 +27,7 @@
         <div class="tabs">
           <a id="tab-mine" href="/feed">Мои новости</a>
           <a id="tab-all" href="/feed/all">Все новости</a>
+          <a class="tabs-side" id="feed-settings">Настройки ленты</a>
         </div>
         <form class="wall-form" id="post-form" hidden>
           <textarea id="post-text" maxlength="60000" placeholder="Что у вас нового?" aria-label="Новая запись"></textarea>
@@ -52,6 +53,7 @@
           <b>Здесь пока пусто.</b> В новостях появляются записи тех, на кого вы подписаны, и ваши.
           Откройте страницу друга по адресу <b id="example-url"></b> и нажмите «Подписаться».
         </div>
+        <p class="hint" id="empty-settings" hidden>С такими настройками ленты записей нет.</p>
         <a class="wall-more" id="more" hidden>Показать предыдущие записи</a>
       </div>
     </div>
