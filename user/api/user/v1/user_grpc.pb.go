@@ -51,6 +51,9 @@ const (
 	UserService_Unblock_FullMethodName            = "/user.v1.UserService/Unblock"
 	UserService_ListBlocked_FullMethodName        = "/user.v1.UserService/ListBlocked"
 	UserService_ListBlockedIDs_FullMethodName     = "/user.v1.UserService/ListBlockedIDs"
+	UserService_IgnoreSource_FullMethodName       = "/user.v1.UserService/IgnoreSource"
+	UserService_UnignoreSources_FullMethodName    = "/user.v1.UserService/UnignoreSources"
+	UserService_ListIgnoredSources_FullMethodName = "/user.v1.UserService/ListIgnoredSources"
 	UserService_GetRelation_FullMethodName        = "/user.v1.UserService/GetRelation"
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
 	UserService_ReactivateAccount_FullMethodName  = "/user.v1.UserService/ReactivateAccount"
@@ -129,6 +132,13 @@ type UserServiceClient interface {
 	// Requires an access token: whom the caller blacklisted, for the news
 	// feed, which leaves their posts out.
 	ListBlockedIDs(ctx context.Context, in *ListBlockedIDsRequest, opts ...grpc.CallOption) (*ListBlockedIDsResponse, error)
+	// Requires an access token. "Игнорируемые источники" of openvk: the
+	// walls whose posts the caller's news feeds leave out. A source is a
+	// user or a community — the caller checks that it is there. Both are
+	// idempotent.
+	IgnoreSource(ctx context.Context, in *IgnoreSourceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UnignoreSources(ctx context.Context, in *UnignoreSourcesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ListIgnoredSources(ctx context.Context, in *ListIgnoredSourcesRequest, opts ...grpc.CallOption) (*ListIgnoredSourcesResponse, error)
 	// Requires an access token: who of the caller and the user blacklisted
 	// the other.
 	GetRelation(ctx context.Context, in *GetRelationRequest, opts ...grpc.CallOption) (*GetRelationResponse, error)
@@ -463,6 +473,36 @@ func (c *userServiceClient) ListBlockedIDs(ctx context.Context, in *ListBlockedI
 	return out, nil
 }
 
+func (c *userServiceClient) IgnoreSource(ctx context.Context, in *IgnoreSourceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_IgnoreSource_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UnignoreSources(ctx context.Context, in *UnignoreSourcesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_UnignoreSources_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListIgnoredSources(ctx context.Context, in *ListIgnoredSourcesRequest, opts ...grpc.CallOption) (*ListIgnoredSourcesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListIgnoredSourcesResponse)
+	err := c.cc.Invoke(ctx, UserService_ListIgnoredSources_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) GetRelation(ctx context.Context, in *GetRelationRequest, opts ...grpc.CallOption) (*GetRelationResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetRelationResponse)
@@ -575,6 +615,13 @@ type UserServiceServer interface {
 	// Requires an access token: whom the caller blacklisted, for the news
 	// feed, which leaves their posts out.
 	ListBlockedIDs(context.Context, *ListBlockedIDsRequest) (*ListBlockedIDsResponse, error)
+	// Requires an access token. "Игнорируемые источники" of openvk: the
+	// walls whose posts the caller's news feeds leave out. A source is a
+	// user or a community — the caller checks that it is there. Both are
+	// idempotent.
+	IgnoreSource(context.Context, *IgnoreSourceRequest) (*emptypb.Empty, error)
+	UnignoreSources(context.Context, *UnignoreSourcesRequest) (*emptypb.Empty, error)
+	ListIgnoredSources(context.Context, *ListIgnoredSourcesRequest) (*ListIgnoredSourcesResponse, error)
 	// Requires an access token: who of the caller and the user blacklisted
 	// the other.
 	GetRelation(context.Context, *GetRelationRequest) (*GetRelationResponse, error)
@@ -691,6 +738,15 @@ func (UnimplementedUserServiceServer) ListBlocked(context.Context, *ListBlockedR
 }
 func (UnimplementedUserServiceServer) ListBlockedIDs(context.Context, *ListBlockedIDsRequest) (*ListBlockedIDsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListBlockedIDs not implemented")
+}
+func (UnimplementedUserServiceServer) IgnoreSource(context.Context, *IgnoreSourceRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method IgnoreSource not implemented")
+}
+func (UnimplementedUserServiceServer) UnignoreSources(context.Context, *UnignoreSourcesRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnignoreSources not implemented")
+}
+func (UnimplementedUserServiceServer) ListIgnoredSources(context.Context, *ListIgnoredSourcesRequest) (*ListIgnoredSourcesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListIgnoredSources not implemented")
 }
 func (UnimplementedUserServiceServer) GetRelation(context.Context, *GetRelationRequest) (*GetRelationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRelation not implemented")
@@ -1283,6 +1339,60 @@ func _UserService_ListBlockedIDs_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_IgnoreSource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(IgnoreSourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).IgnoreSource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_IgnoreSource_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).IgnoreSource(ctx, req.(*IgnoreSourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UnignoreSources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnignoreSourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UnignoreSources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UnignoreSources_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UnignoreSources(ctx, req.(*UnignoreSourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListIgnoredSources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListIgnoredSourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListIgnoredSources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListIgnoredSources_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListIgnoredSources(ctx, req.(*ListIgnoredSourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_GetRelation_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetRelationRequest)
 	if err := dec(in); err != nil {
@@ -1485,6 +1595,18 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListBlockedIDs",
 			Handler:    _UserService_ListBlockedIDs_Handler,
+		},
+		{
+			MethodName: "IgnoreSource",
+			Handler:    _UserService_IgnoreSource_Handler,
+		},
+		{
+			MethodName: "UnignoreSources",
+			Handler:    _UserService_UnignoreSources_Handler,
+		},
+		{
+			MethodName: "ListIgnoredSources",
+			Handler:    _UserService_ListIgnoredSources_Handler,
 		},
 		{
 			MethodName: "GetRelation",

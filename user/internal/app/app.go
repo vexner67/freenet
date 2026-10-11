@@ -137,6 +137,7 @@ func (a *App) build(cfg config.Config) error {
 				Notifier: notifier,
 			}),
 			Blocks:      service.NewBlockService(store.users, store.blocks, store.tx, notifier),
+			Ignores:     service.NewIgnoreService(store.ignores),
 			Permissions: service.NewPermissionService(store.users, store.follows, store.blocks),
 			Presence:    service.NewPresenceService(store.users),
 			Backdrops:   service.NewBackdropService(store.users, store.users),
@@ -194,8 +195,9 @@ type storage struct {
 		service.FollowRepository
 		service.FollowListRepository
 	}
-	blocks service.BlockRepository
-	tx     service.TxManager
+	blocks  service.BlockRepository
+	ignores service.IgnoreRepository
+	tx      service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }
@@ -208,6 +210,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			users:   users,
 			follows: follows,
 			blocks:  inmem.NewBlockRepository(follows),
+			ignores: inmem.NewIgnoreRepository(users),
 			tx:      inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
@@ -241,6 +244,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		users:   postgres.NewUserRepository(a.pool),
 		follows: postgres.NewFollowRepository(a.pool),
 		blocks:  postgres.NewBlockRepository(a.pool),
+		ignores: postgres.NewIgnoreRepository(a.pool),
 		tx:      pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)

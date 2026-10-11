@@ -30,6 +30,10 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.PermissionDenied, "you cannot follow this user"), true
 	case errors.Is(err, user.ErrBlockSelf):
 		return status.New(codes.InvalidArgument, "you cannot blacklist yourself"), true
+	case errors.Is(err, user.ErrIgnoreSelf):
+		return status.New(codes.InvalidArgument, user.ErrIgnoreSelf.Error()), true
+	case errors.Is(err, user.ErrTooManyIgnored):
+		return status.New(codes.FailedPrecondition, user.ErrTooManyIgnored.Error()), true
 	case errors.Is(err, user.ErrDeactivated):
 		return status.New(codes.PermissionDenied, user.ErrDeactivated.Error()), true
 	case errors.Is(err, user.ErrNotDeactivated):
