@@ -42,6 +42,12 @@ type Config struct {
 	NotificationServiceAddr string        `env:"NOTIFICATION_SERVICE_ADDR"`
 	NotifyTimeout           time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
 
+	// EventReminderAhead is how long before an event starts its members
+	// are reminded of it; EventReminderInterval how often the events that
+	// are due are looked for.
+	EventReminderAhead    time.Duration `env:"EVENT_REMINDER_AHEAD" envDefault:"24h"`
+	EventReminderInterval time.Duration `env:"EVENT_REMINDER_INTERVAL" envDefault:"5m"`
+
 	// Spam protection, per user. REDIS_ADDR shares the counters between
 	// replicas; without it each counts on its own.
 	RedisAddr  string          `env:"REDIS_ADDR"`
@@ -67,6 +73,10 @@ func (c Config) Validate() error {
 		}
 	default:
 		return fmt.Errorf("unknown STORAGE %q, want %q or %q", c.Storage, StorageInmem, StoragePersistent)
+	}
+
+	if c.EventReminderAhead <= 0 || c.EventReminderInterval <= 0 {
+		return errors.New("EVENT_REMINDER_AHEAD and EVENT_REMINDER_INTERVAL must be positive")
 	}
 
 	return c.TLS.Validate()

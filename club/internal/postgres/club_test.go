@@ -613,3 +613,117 @@ func TestRepositories_Events(t *testing.T) {
 		t.Fatalf("after a maybe was erased: %d and %d, %v", got.Members(), got.Maybes(), err)
 	}
 }
+
+func TestReminderRepository(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	clubs := postgres.NewClubRepository(pool)
+	members := postgres.NewMemberRepository(pool)
+	reminders := postgres.NewReminderRepository(pool)
+	ann, bob := uuid.New(), uuid.New()
+
+	// A day of its own far ahead: the database is shared with other runs,
+	// whose events must not fall into the window.
+	day := time.Date(2200+int(uuid.New()[0]), 1, 1, 0, 0, 0, 0, time.UTC).Add(time.Duration(uuid.New()[1]) * 24 * time.Hour)
+
+	event := func(start time.Time) *club.Club {
+		t.Helper()
+
+		schedule, err := club.NewSchedule(start, time.Time{})
+		if err != nil {
+			t.Fatal(err)
+		}
+		e, err := club.NewEvent("Встреча", "", schedule, time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = clubs.Create(ctx, e, ann); err != nil {
+			t.Fatal(err)
+		}
+
+		return e
+	}
+
+	second := event(day.Add(2 * time.Hour))
+	first := event(day.Add(time.Hour))
+	started := event(day.Add(-time.Hour))
+	far := event(day.Add(48 * time.Hour))
+
+	if err = members.Join(ctx, first.ID(), bob, true); err != nil {
+		t.Fatal(err)
+	}
+
+	// The events that start within the window, the nearest first, a batch
+	// at a time, each once.
+	ids, err := reminders.TakeDue(ctx, day, day.Add(24*time.Hour), 1)
+	if err != nil || len(ids) != 1 || ids[0] != first.ID() {
+		t.Fatalf("TakeDue = %v, %v; want the nearest", ids, err)
+	}
+	if ids, err = reminders.TakeDue(ctx, day, day.Add(24*time.Hour), 10); err != nil || len(ids) != 1 || ids[0] != second.ID() {
+		t.Fatalf("TakeDue, the rest = %v, %v", ids, err)
+	}
+	if ids, err = reminders.TakeDue(ctx, day, day.Add(24*time.Hour), 10); err != nil || len(ids) != 0 {
+		t.Fatalf("TakeDue again = %v, %v; want none (not %v or %v either)", ids, err, started.ID(), far.ID())
+	}
+
+	if comers, err := reminders.ComerIDs(ctx, first.ID(), 10); err != nil || len(comers) != 2 || comers[0] != bob || comers[1] != ann {
+		t.Fatalf("ComerIDs = %v, %v; want bob, ann", comers, err)
+	}
+	if comers, err := reminders.ComerIDs(ctx, first.ID(), 1); err != nil || len(comers) != 1 {
+		t.Fatalf("ComerIDs, one = %v, %v", comers, err)
+	}
+
+	// An edit that keeps the start keeps the mark; one that moves the
+	// event has it reminded of again.
+	same, err := first.Edited(club.RoleOwner, club.Changes{Name: "Встреча друзей", Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator, Schedule: first.Schedule()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = clubs.Update(ctx, same); err != nil {
+		t.Fatal(err)
+	}
+	if ids, err = reminders.TakeDue(ctx, day, day.Add(24*time.Hour), 10); err != nil || len(ids) != 0 {
+		t.Fatalf("after an edit of the name = %v, %v", ids, err)
+	}
+
+	moved, _ := club.NewSchedule(day.Add(3*time.Hour), time.Time{})
+	later, err := first.Edited(club.RoleOwner, club.Changes{Name: "Встреча", Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator, Schedule: moved})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = clubs.Update(ctx, later); err != nil {
+		t.Fatal(err)
+	}
+	if ids, err = reminders.TakeDue(ctx, day, day.Add(24*time.Hour), 10); err != nil || len(ids) != 1 || ids[0] != first.ID() {
+		t.Fatalf("after a move = %v, %v; want the event again", ids, err)
+	}
+
+	// The mark is undone with its transaction.
+	fresh := event(day.Add(4 * time.Hour))
+	failed := errors.New("no reminders")
+	err = pgpool.NewTxManager(pool).WithinTx(ctx, func(ctx context.Context) error {
+		if ids, err := reminders.TakeDue(ctx, day, day.Add(24*time.Hour), 10); err != nil || len(ids) != 1 {
+			t.Errorf("TakeDue in a transaction = %v, %v", ids, err)
+		}
+
+		return failed
+	})
+	if !errors.Is(err, failed) {
+		t.Fatalf("WithinTx = %v", err)
+	}
+	if ids, err = reminders.TakeDue(ctx, day, day.Add(24*time.Hour), 10); err != nil || len(ids) != 1 || ids[0] != fresh.ID() {
+		t.Fatalf("after a rollback = %v, %v; want the event still due", ids, err)
+	}
+}

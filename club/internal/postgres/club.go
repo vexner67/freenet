@@ -261,6 +261,7 @@ func scanClub(row pgx.Row, before ...any) (*club.Club, error) {
 	return club.Restore(s), nil
 }
 
+// updateClubQuery: an event moved to another time is reminded of again.
 const updateClubQuery = `
 	UPDATE clubs
 	SET name = $2,
@@ -271,6 +272,7 @@ const updateClubQuery = `
 		admins_display = $7,
 		open_topics = $8,
 		topics_above_wall = $9,
+		reminded_at = CASE WHEN starts_at IS DISTINCT FROM $10 THEN NULL ELSE reminded_at END,
 		starts_at = $10,
 		ends_at = $11
 	WHERE id = $1
