@@ -3,6 +3,8 @@ package backend
 import (
 	"context"
 	"errors"
+	"math"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -443,6 +445,105 @@ func TestPosts(t *testing.T) {
 	}
 	if c := comments.Comments[0]; c.ID != "c1" || c.PostID != "p1" || c.Author.ID != "u2" || c.Text != "согласен" || c.CreatedAt.Hour() != 12 {
 		t.Fatalf("comment = %+v", c)
+	}
+}
+
+func (f *fakePostAPI) GetPolls(ctx context.Context, req *postv1.GetPollsRequest, _ ...grpc.CallOption) (*postv1.GetPollsResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+
+	polls := make([]*postv1.Poll, 0, len(req.GetPostIds()))
+	for _, id := range req.GetPostIds() {
+		polls = append(polls, &postv1.Poll{
+			PostId: id, Title: "Да?", VoterCount: 3, Multiple: true, Locked: true,
+			Options: []*postv1.PollOption{{Name: "да", VoteCount: 3}, {Name: "нет", VoteCount: 1}},
+			EndsAt:  timestamppb.New(time.Date(2026, 10, 6, 15, 30, 0, 0, time.UTC)),
+			Chosen:  []int32{0, 1},
+		})
+	}
+
+	return &postv1.GetPollsResponse{Polls: polls}, nil
+}
+
+func (f *fakePostAPI) VotePoll(ctx context.Context, req *postv1.VotePollRequest, _ ...grpc.CallOption) (*postv1.VotePollResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	if req.GetPostId() != "p1" {
+		return nil, status.Error(codes.FailedPrecondition, "the poll has ended")
+	}
+
+	return &postv1.VotePollResponse{Poll: &postv1.Poll{PostId: "p1", Chosen: req.GetOptions()}}, nil
+}
+
+func (f *fakePostAPI) RetractPollVote(_ context.Context, req *postv1.RetractPollVoteRequest, _ ...grpc.CallOption) (*postv1.RetractPollVoteResponse, error) {
+	return &postv1.RetractPollVoteResponse{Poll: &postv1.Poll{PostId: req.GetPostId(), Anonymous: true}}, nil
+}
+
+func (f *fakePostAPI) ListPollVoters(ctx context.Context, req *postv1.ListPollVotersRequest, _ ...grpc.CallOption) (*postv1.ListPollVotersResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	if req.GetOption() != 1 || req.GetCursor() != "v1" || req.GetLimit() != 6 {
+		return nil, status.Error(codes.InvalidArgument, "unexpected request")
+	}
+
+	return &postv1.ListPollVotersResponse{UserIds: []string{"u2"}, NextCursor: "v2", Total: 4}, nil
+}
+
+func TestPolls(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	api := &fakePostAPI{}
+	posts := NewPosts(api)
+
+	polls, err := posts.Polls(ctx, "tok", []string{"p1", "p2"})
+	if err != nil || len(polls) != 2 {
+		t.Fatalf("Polls = %+v, %v", polls, err)
+	}
+
+	want := model.Poll{
+		PostID: "p2", Title: "Да?", Voters: 3, Multiple: true, Locked: true,
+		Options: []model.PollOption{{Name: "да", Votes: 3}, {Name: "нет", Votes: 1}},
+		EndsAt:  time.Date(2026, 10, 6, 15, 30, 0, 0, time.UTC),
+		Chosen:  []int{0, 1},
+	}
+	if !reflect.DeepEqual(polls[1], want) {
+		t.Fatalf("poll = %+v, want %+v", polls[1], want)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
+		t.Fatalf("Polls metadata = %v", got)
+	}
+
+	voted, err := posts.Vote(ctx, "tok", "p1", []int{1})
+	if err != nil || !reflect.DeepEqual(voted.Chosen, []int{1}) {
+		t.Fatalf("Vote = %+v, %v", voted, err)
+	}
+
+	// What the poll refuses is told to the client as a conflict, in words.
+	if _, err = posts.Vote(ctx, "tok", "p2", []int{1}); failure.From(err).Kind != failure.Conflict || failure.From(err).Message != "the poll has ended" {
+		t.Fatalf("Vote in an ended poll: %v", err)
+	}
+	if _, err = posts.Vote(ctx, "tok", "p1", []int{-1}); failure.From(err).Kind != failure.InvalidArgument {
+		t.Fatalf("Vote for a negative option: %v", err)
+	}
+
+	back, err := posts.RetractVote(ctx, "tok", "p1")
+	if err != nil || back.PostID != "p1" || !back.Anonymous || !back.EndsAt.IsZero() || len(back.Chosen) != 0 {
+		t.Fatalf("RetractVote = %+v, %v", back, err)
+	}
+
+	voters, err := posts.PollVoters(ctx, "p1", 1, "v1", 6)
+	if err != nil || len(voters.UserIDs) != 1 || voters.NextCursor != "v2" || voters.Total != 4 {
+		t.Fatalf("PollVoters = %+v, %v", voters, err)
+	}
+	if len(api.md.Get("authorization")) != 0 {
+		t.Fatalf("voters are public, a token was sent: %v", api.md)
+	}
+
+	// A new post carries its poll.
+	if got := toProtoPollDraft(&model.NewPoll{Title: "Да?", Options: []string{"да"}, Locked: true, Days: 1 << 40}); got.GetTitle() != "Да?" ||
+		len(got.GetOptions()) != 1 || !got.GetLocked() || got.GetDays() != math.MaxInt32 {
+		t.Fatalf("draft = %v", got)
+	}
+	if toProtoPollDraft(nil) != nil {
+		t.Fatal("a post without a poll sent one")
 	}
 }
 

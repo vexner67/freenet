@@ -141,6 +141,13 @@ type Posts interface {
 	PostLikers(ctx context.Context, postID, cursor string, limit int) (model.LikerPage, error)
 	CommentLikers(ctx context.Context, commentID, cursor string, limit int) (model.LikerPage, error)
 	UnlikeComment(ctx context.Context, accessToken, id string) (int, error)
+	// Polls are the polls of those of the posts (at most 100) that ask
+	// one, as the viewer sees them; Vote and RetractVote return the poll
+	// as it became; PollVoters are who chose an option, newest first.
+	Polls(ctx context.Context, accessToken string, postIDs []string) ([]model.Poll, error)
+	Vote(ctx context.Context, accessToken, postID string, options []int) (model.Poll, error)
+	RetractVote(ctx context.Context, accessToken, postID string) (model.Poll, error)
+	PollVoters(ctx context.Context, postID string, option int, cursor string, limit int) (model.LikerPage, error)
 	DeleteComment(ctx context.Context, accessToken, id string) error
 	Comments(ctx context.Context, accessToken, postID, cursor string, limit int) (model.CommentPage, error)
 	LastComments(ctx context.Context, accessToken string, postIDs []string) ([]model.Comment, error)
@@ -358,6 +365,9 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/posts/{id}/like", a.likePost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}/like", a.unlikePost)
 	mux.HandleFunc("GET /api/v1/posts/{id}/likes", a.listPostLikers)
+	mux.HandleFunc("PUT /api/v1/posts/{id}/poll/vote", a.votePoll)
+	mux.HandleFunc("DELETE /api/v1/posts/{id}/poll/vote", a.retractPollVote)
+	mux.HandleFunc("GET /api/v1/posts/{id}/poll/voters", a.listPollVoters)
 
 	mux.HandleFunc("GET /api/v1/posts/{id}/comments", a.listComments)
 	mux.HandleFunc("POST /api/v1/posts/{id}/comments", a.createComment)

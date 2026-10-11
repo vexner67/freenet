@@ -50,6 +50,8 @@ type clubPostRequest struct {
 	Signed   bool `json:"signed"`
 	// NSFW marks the post as adult.
 	NSFW bool `json:"nsfw"`
+	// Poll is the poll the post asks, as on a person's wall.
+	Poll *pollRequest `json:"poll"`
 }
 
 type clubJSON struct {
@@ -1043,6 +1045,7 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		Signed:   fromClub && req.Signed,
 		NSFW:     req.NSFW,
 		Mentions: mentions,
+		Poll:     toNewPoll(req.Poll),
 	})
 	if err != nil {
 		a.writeError(w, r, err)
@@ -1051,5 +1054,11 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 
 	p.Author, p.Wall = authorOf(me.ID, me.AvatarID, me.Profile), clubAuthor(c.Club)
 
-	writeJSON(w, http.StatusCreated, toPostResponse(p))
+	resp, err := a.asked(r, p)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, resp)
 }

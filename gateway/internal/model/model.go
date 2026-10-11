@@ -274,6 +274,43 @@ type Post struct {
 	Mine bool
 	// SharedPhotoID is a photo of an album the post shares, "" for none.
 	SharedPhotoID string
+	// Polled: the post asks a poll, which Posts.Polls tells.
+	Polled bool
+}
+
+// NewPoll is the poll a new post asks ("Новый опрос"): a title and up to
+// ten options. Days is how long it takes votes, 0 for ever.
+type NewPoll struct {
+	Title     string
+	Options   []string
+	Anonymous bool
+	Multiple  bool
+	Locked    bool
+	Days      int
+}
+
+// PollOption is an answer of a poll with how many chose it.
+type PollOption struct {
+	Name  string
+	Votes int
+}
+
+// Poll is the poll of the post PostID as its viewer sees it: Voters is
+// how many people voted, Chosen the places of the options the viewer
+// chose (none for one who has not voted, and for anonymous viewers).
+// Anonymous: who voted is not told; Multiple: several options may be
+// chosen; Locked: a vote cannot be taken back; Ended: EndsAt has passed.
+type Poll struct {
+	PostID    string
+	Title     string
+	Options   []PollOption
+	Voters    int
+	Anonymous bool
+	Multiple  bool
+	Locked    bool
+	EndsAt    time.Time
+	Ended     bool
+	Chosen    []int
 }
 
 // Lists carry the beginnings of texts, which say up to 60 000
@@ -302,6 +339,9 @@ type NewPost struct {
 	// AvatarUpdate: the post of the new photo of the wall's owner, the
 	// photo alone.
 	AvatarUpdate bool
+	// Poll is the poll the post asks, nil for none; with it the text and
+	// the photos may be none.
+	Poll *NewPoll
 }
 
 // PostEdit is what an edit makes of a post: its text and photos, whole,

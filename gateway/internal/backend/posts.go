@@ -36,6 +36,7 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 
 		MentionedIds: np.Mentions,
 		AvatarUpdate: np.AvatarUpdate,
+		Poll:         toProtoPollDraft(np.Poll),
 	})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.CreatePost", fromStatus(err))
@@ -332,6 +333,69 @@ func (p *Posts) PostLikers(ctx context.Context, postID, cursor string, limit int
 	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
 }
 
+// Polls are the polls of those of the posts that ask one and that the
+// viewer may see, at most 100 posts at once.
+func (p *Posts) Polls(ctx context.Context, accessToken string, postIDs []string) ([]model.Poll, error) {
+	resp, err := p.api.GetPolls(withToken(ctx, accessToken), &postv1.GetPollsRequest{PostIds: postIDs})
+	if err != nil {
+		return nil, errs.Wrap("p.api.GetPolls", fromStatus(err))
+	}
+
+	polls := make([]model.Poll, 0, len(resp.GetPolls()))
+	for _, poll := range resp.GetPolls() {
+		polls = append(polls, toPoll(poll))
+	}
+
+	return polls, nil
+}
+
+// Vote chooses options of the poll of a post, by their places, and
+// returns the poll as it is now.
+func (p *Posts) Vote(ctx context.Context, accessToken, postID string, options []int) (model.Poll, error) {
+	places := make([]int32, len(options))
+	for i, o := range options {
+		// A place out of range is no option of any poll.
+		if o < 0 || o > math.MaxInt32 {
+			return model.Poll{}, failure.New(failure.InvalidArgument, "invalid choice of poll options")
+		}
+		places[i] = int32(o)
+	}
+
+	resp, err := p.api.VotePoll(withToken(ctx, accessToken), &postv1.VotePollRequest{PostId: postID, Options: places})
+	if err != nil {
+		return model.Poll{}, errs.Wrap("p.api.VotePoll", fromStatus(err))
+	}
+
+	return toPoll(resp.GetPoll()), nil
+}
+
+// RetractVote takes the caller's vote back ("Отменить голос").
+func (p *Posts) RetractVote(ctx context.Context, accessToken, postID string) (model.Poll, error) {
+	resp, err := p.api.RetractPollVote(withToken(ctx, accessToken), &postv1.RetractPollVoteRequest{PostId: postID})
+	if err != nil {
+		return model.Poll{}, errs.Wrap("p.api.RetractPollVote", fromStatus(err))
+	}
+
+	return toPoll(resp.GetPoll()), nil
+}
+
+// PollVoters is who chose the option of the poll of a post, newest first;
+// Total is the counter of the option.
+func (p *Posts) PollVoters(ctx context.Context, postID string, option int, cursor string, limit int) (model.LikerPage, error) {
+	if option < 0 || option > math.MaxInt32 {
+		return model.LikerPage{}, failure.New(failure.InvalidArgument, "invalid choice of poll options")
+	}
+
+	resp, err := p.api.ListPollVoters(ctx, &postv1.ListPollVotersRequest{
+		PostId: postID, Option: int32(option), Cursor: cursor, Limit: toLimit(limit),
+	})
+	if err != nil {
+		return model.LikerPage{}, errs.Wrap("p.api.ListPollVoters", fromStatus(err))
+	}
+
+	return model.LikerPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
+}
+
 // CommentLikers is who like the comment, newest first.
 func (p *Posts) CommentLikers(ctx context.Context, commentID, cursor string, limit int) (model.LikerPage, error) {
 	resp, err := p.api.ListCommentLikers(ctx, &postv1.ListCommentLikersRequest{CommentId: commentID, Cursor: cursor, Limit: toLimit(limit)})
@@ -521,6 +585,48 @@ func toPost(p *postv1.Post) model.Post {
 		AvatarUpdate:   p.GetAvatarUpdate(),
 		SharedPhotoID:  p.GetSharedPhotoId(),
 		Mine:           p.GetMine(),
+		Polled:         p.GetPolled(),
+	}
+}
+
+func toProtoPollDraft(p *model.NewPoll) *postv1.PollDraft {
+	if p == nil {
+		return nil
+	}
+
+	return &postv1.PollDraft{
+		Title:     p.Title,
+		Options:   p.Options,
+		Anonymous: p.Anonymous,
+		Multiple:  p.Multiple,
+		Locked:    p.Locked,
+		// More days than a poll may last, whatever the number.
+		Days: int32(min(max(p.Days, -1), math.MaxInt32)), //nolint:gosec // clamped to int32
+	}
+}
+
+func toPoll(p *postv1.Poll) model.Poll {
+	options := make([]model.PollOption, 0, len(p.GetOptions()))
+	for _, o := range p.GetOptions() {
+		options = append(options, model.PollOption{Name: o.GetName(), Votes: int(o.GetVoteCount())})
+	}
+
+	chosen := make([]int, 0, len(p.GetChosen()))
+	for _, place := range p.GetChosen() {
+		chosen = append(chosen, int(place))
+	}
+
+	return model.Poll{
+		PostID:    p.GetPostId(),
+		Title:     p.GetTitle(),
+		Options:   options,
+		Voters:    int(p.GetVoterCount()),
+		Anonymous: p.GetAnonymous(),
+		Multiple:  p.GetMultiple(),
+		Locked:    p.GetLocked(),
+		EndsAt:    fromTimestamp(p.GetEndsAt()),
+		Ended:     p.GetEnded(),
+		Chosen:    chosen,
 	}
 }
 

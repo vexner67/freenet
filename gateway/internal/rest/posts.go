@@ -20,6 +20,9 @@ type postRequest struct {
 	Photos []string `json:"photos"`
 	// NSFW marks the post as adult; an edit without it keeps the mark.
 	NSFW *bool `json:"nsfw"`
+	// Poll is the poll a new post asks, with which the text and the
+	// photos may be none; an edit takes none, the poll stays as asked.
+	Poll *pollRequest `json:"poll"`
 }
 
 type authorJSON struct {
@@ -61,6 +64,8 @@ type postResponse struct {
 	// SharedPhoto is a photo of an album the post shares ("Поделиться"
 	// under a photo), null for other posts.
 	SharedPhoto *sharedPhotoJSON `json:"sharedPhoto"`
+	// Poll is the poll the post asks, null for other posts.
+	Poll *pollJSON `json:"poll"`
 	// EditedAt is null for a post never edited; its author may edit it
 	// until EditableUntil.
 	EditedAt      *string `json:"editedAt"`
@@ -136,6 +141,8 @@ type repostJSON struct {
 	AvatarUpdate bool `json:"avatarUpdate"`
 	// NSFW: the author of the shared post marked it as adult.
 	NSFW bool `json:"nsfw"`
+	// Poll is the poll the shared post asks, null for none.
+	Poll *pollJSON `json:"poll"`
 }
 
 type likeResponse struct {
@@ -341,6 +348,11 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 		return nil, err
 	}
 
+	polls, err := a.pollsOf(r, slices.Concat(posts, slices.Collect(maps.Values(shared)))...)
+	if err != nil {
+		return nil, err
+	}
+
 	shown := make([]postResponse, 0, len(posts))
 	for _, p := range posts {
 		if !withProfiles(&p, people) {
@@ -349,11 +361,13 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 
 		resp := toPostResponse(p)
 		resp.SharedPhoto = a.sharedPhoto(r, p.SharedPhotoID)
+		resp.Poll = polls[p.ID]
 
 		if p.RepostOf != "" {
 			resp.Repost = &repostJSON{ID: p.RepostOf, Deleted: true}
 			if s, ok := shared[p.RepostOf]; ok && withProfiles(&s, people) {
 				resp.Repost = toRepostJSON(s)
+				resp.Repost.Poll = polls[s.ID]
 			}
 		}
 
@@ -670,6 +684,7 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 
 	p, err := a.posts.Create(r.Context(), token, model.NewPost{
 		WallID: wall.ID, Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW != nil && *req.NSFW, Mentions: mentions,
+		Poll: toNewPoll(req.Poll),
 	})
 	if err != nil {
 		a.writeError(w, r, err)
@@ -682,7 +697,13 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 
 	p.Author, p.Wall = author, wall
 
-	writeJSON(w, http.StatusCreated, toPostResponse(p))
+	resp, err := a.asked(r, p)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, resp)
 }
 
 // mentioned are the people text names ("@nickname", "[nickname|Имя]")
@@ -886,6 +907,11 @@ func (a *api) repostsByID(r *http.Request, ids []string) (map[string]*repostJSON
 		return nil, err
 	}
 
+	polls, err := a.pollsOf(r, found...)
+	if err != nil {
+		return nil, err
+	}
+
 	shown := make(map[string]*repostJSON, len(ids))
 	for _, id := range ids {
 		shown[id] = &repostJSON{ID: id, Deleted: true}
@@ -893,6 +919,7 @@ func (a *api) repostsByID(r *http.Request, ids []string) (map[string]*repostJSON
 	for _, p := range found {
 		if withProfiles(&p, authors) {
 			shown[p.ID] = toRepostJSON(p)
+			shown[p.ID].Poll = polls[p.ID]
 		}
 	}
 
@@ -928,6 +955,11 @@ func (a *api) editPost(w http.ResponseWriter, r *http.Request) {
 	var req postRequest
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
+		return
+	}
+
+	if req.Poll != nil {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "the poll of a post cannot be changed"))
 		return
 	}
 
