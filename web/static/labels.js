@@ -599,6 +599,44 @@ export function sharedBy(n) {
   return `${plural(n, ['Поделился', 'Поделились', 'Поделились'])} ${n} ${plural(n, ['человек', 'человека', 'человек'])}`;
 }
 
+// pollVoters is openvk's line under a poll: how many people voted.
+export function pollVoters(n) {
+  if (n === 0) return 'Будьте первым, кто проголосует!';
+
+  return `В опросе ${plural(n, ['проголосовал', 'проголосовало', 'проголосовало'])} ${n} ${plural(n, ['человек', 'человека', 'человек'])}.`;
+}
+
+// pollMeta is openvk's second line: how the poll is held, its parts
+// joined with " • ": "Публичное голосование • много вариантов • нельзя
+// переголосовать • до 12 октября в 15:30".
+export function pollMeta(poll, now = new Date()) {
+  const parts = [poll.anonymous ? 'Анонимное голосование' : 'Публичное голосование'];
+  if (poll.multiple) parts.push('много вариантов');
+  if (poll.locked) parts.push('нельзя переголосовать');
+  if (poll.endsAt) parts.push('до ' + formatPostDate(poll.endsAt, now));
+
+  return parts.join(' • ');
+}
+
+// pollPercent is the share of the voters who chose an option, rounded
+// down as openvk does; with several options to choose the shares add up
+// to more than 100.
+export function pollPercent(votes, voters) {
+  return voters > 0 ? Math.min(100, Math.floor((votes / voters) * 100)) : 0;
+}
+
+// pollAsksVote: the poll shows its options to choose from, not the
+// results: to whoever has not voted, a guest too, while it takes votes.
+export function pollAsksVote(poll) {
+  return !poll.ended && poll.voted.length === 0;
+}
+
+// daysCount is "1 день", "3 дня", "10 дней" of "Голосование истекает
+// через".
+export function daysCount(n) {
+  return `${n} ${plural(n, ['день', 'дня', 'дней'])}`;
+}
+
 // wallCount is openvk's counter of a wall: "нет записей", "5 записей".
 export function wallCount(n) {
   return n === 0 ? 'нет записей' : postsCount(n);
@@ -726,6 +764,21 @@ const errorTexts = {
   'invalid email': 'Похоже, в адресе почты опечатка.',
   'invalid or expired code': 'Неверный или устаревший код.',
   'too many requests, try again later': 'Слишком часто. Подождите немного и попробуйте снова.',
+  'poll not found': 'Опрос не найден.',
+  'poll title is empty': 'Укажите тему опроса.',
+  'poll title is too long': 'Тема опроса длиннее 128 символов.',
+  'poll option is empty': 'Вариант ответа не может быть пустым.',
+  'poll option is too long': 'Вариант ответа длиннее 128 символов.',
+  'a poll has at least one option': 'Добавьте хотя бы один вариант ответа.',
+  'a poll has at most 10 options': 'Слишком много вариантов в опросе.',
+  'a poll is open for 1 to 31 days, or for good': 'Опрос может длиться от 1 до 31 дня.',
+  'invalid choice of poll options': 'Выберите вариант ответа.',
+  'the poll has ended': 'Голосование окончено.',
+  'you have voted in the poll already': 'Вы уже проголосовали в этом опросе.',
+  'you have not voted in the poll': 'Вы не голосовали в этом опросе.',
+  'the poll does not let a vote be taken back': 'В этом опросе нельзя отменить голос.',
+  'the poll is anonymous': 'Невозможно просмотреть список проголосовавших в анонимном голосовании.',
+  'the poll of a post cannot be changed': 'Опрос записи изменить нельзя.',
   'too many attempts, request a new code': 'Слишком много неверных попыток. Запросите новый код.',
   'name is empty': 'Укажите имя.',
   'name is too long': 'Имя слишком длинное.',

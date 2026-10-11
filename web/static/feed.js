@@ -2,6 +2,7 @@ import { api, currentUser } from './api.js';
 import { $, el, isMicroblog, renderChrome, showError, hideError, autosize } from './layout.js';
 import { postNode, wallOwnerID } from './posts.js';
 import { initAttachments } from './attach.js';
+import { initPollDraft } from './poll.js';
 
 // openvk's limit of a post; the counter shows near the end.
 const MAX_LENGTH = 60000;
@@ -65,6 +66,16 @@ function initForm(me) {
     },
   });
 
+  let poll = null;
+
+  poll = initPollDraft({
+    link: $('post-poll'),
+    marker: $('post-poll-marker'),
+    onChange: () => {
+      if (poll?.value()) form.classList.add('expanded');
+    },
+  });
+
   function updateCounter() {
     const left = MAX_LENGTH - text.value.length;
     $('post-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? `осталось ${left}` : '';
@@ -83,7 +94,7 @@ function initForm(me) {
     $('post-submit').disabled = true;
 
     try {
-      const post = await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked);
+      const post = await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked, poll.value());
 
       $('posts').prepend(feedNode(post, me));
       $('empty').hidden = true;
@@ -93,6 +104,7 @@ function initForm(me) {
       autosize(text);
       text.blur();
       attachments.clear();
+      poll.clear();
       form.classList.remove('expanded');
       updateCounter();
     } catch (e) {
@@ -102,9 +114,9 @@ function initForm(me) {
     }
   });
   text.addEventListener('focus', () => form.classList.add('expanded'));
-  // The form stays open while it holds text or photos.
+  // The form stays open while it holds text, photos or a poll.
   text.addEventListener('blur', () => {
-    if (!text.value.trim() && attachments.count() === 0) form.classList.remove('expanded');
+    if (!text.value.trim() && attachments.count() === 0 && !poll.value()) form.classList.remove('expanded');
   });
   text.addEventListener('input', updateCounter);
   // Ctrl+Enter (Cmd+Enter on a Mac) sends, as on a wall.

@@ -50,9 +50,11 @@
             <form class="wall-form" id="post-form" hidden>
               <textarea id="post-text" maxlength="60000" placeholder="Что у вас нового?" aria-label="Новая запись"></textarea>
               <div class="attachments" id="post-photos" hidden></div>
+              <div class="post-has-poll" id="post-poll-marker" hidden></div>
               <div class="row">
                 <span>
                   <a class="attach-link" id="post-attach">Прикрепить фотографию</a>
+                  <a class="attach-link" id="post-poll">Прикрепить опрос</a>
                   <span class="hint" id="post-counter"></span>
                 </span>
                 <button class="button" type="submit" id="post-submit">Отправить</button>

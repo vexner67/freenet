@@ -1017,3 +1017,35 @@ body:not(.nsfw-shown) img.photo-nsfw { filter: saturate(.8) blur(24px); clip-pat
 .post-comments .comment:first-child { border-top: 0; }
 .post-comment-form { display: flex; align-items: flex-start; gap: 5px; padding: 5px 0 0; }
 .post-comment-text { flex: 1; min-height: 22px; height: 22px; padding: 3px 4px; resize: none; box-sizing: border-box; font: inherit; }
+
+/* openvk's polls (poll.js): the block under the words of a post, with the
+   options to choose from or the results as bars. */
+.poll { margin: 6px 4px; padding: 8px; border: 1px solid #e3e3e3; }
+.poll h4 { margin: 0 0 6px; font-size: 11px; color: #45688e; overflow-wrap: anywhere; }
+.poll-option { padding: 2px 0; }
+.poll-option label { cursor: pointer; overflow-wrap: anywhere; }
+.poll-option input { margin: 0 3px 0 0; vertical-align: middle; }
+.poll-option input:disabled + * , .poll-option input:disabled { cursor: default; }
+.poll-cast { margin-top: 8px; }
+.poll-retract { float: right; margin-left: 8px; }
+.poll-result { margin-bottom: 5px; }
+.poll-result-name { overflow-wrap: anywhere; }
+.poll-result-name.chosen { font-weight: bold; }
+a.poll-result-name { cursor: pointer; }
+.poll-result-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
+.poll-result-bar { position: relative; flex: 1; height: 13pt; background: #f7f7f7; }
+.poll-result-fill { height: 100%; background: #d9e1ea; }
+.poll-result-count { position: absolute; inset: 0; line-height: 13pt; text-align: center; color: #7d96af; }
+.poll-result-percent { width: 32px; text-align: right; }
+.poll-meta { margin-top: 8px; color: #555; }
+.poll-kind { color: #808080; font-style: oblique; }
+
+/* "Опрос" attached to a post being written, and the box "Новый опрос". */
+.post-has-poll { margin-top: 6px; padding: 4px 6px; border: 1px solid #e3e3e3; background: #f7f7f7; overflow-wrap: anywhere; }
+.poll-remove { margin-left: 4px; color: #999; font-weight: bold; cursor: pointer; }
+.poll-remove:hover { color: #555; text-decoration: none; }
+.poll-editor input[type="text"] { display: block; width: 100%; box-sizing: border-box; }
+.poll-editor-options { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
+.poll-editor-adder { color: #808080; }
+.poll-editor label input { margin: 0 3px 0 0; vertical-align: middle; }
+.poll-editor .poll-editor-expires select { display: inline-block; width: auto; margin: 0; }

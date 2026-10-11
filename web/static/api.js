@@ -183,7 +183,10 @@ export const api = {
   post: (id) => optional('GET', '/api/v1/posts/' + encodeURIComponent(id)),
   // Writes on the wall of nickname: someone else's or your own.
   // nsfw marks the post as adult ("Содержит NSFW-контент").
-  createPost: (nickname, text, photos = [], nsfw = false) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos, nsfw }),
+  // poll: the poll the post asks ({ title, options, anonymous, multiple,
+  // locked, days }), null for none.
+  createPost: (nickname, text, photos = [], nsfw = false, poll = null) =>
+    authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos, nsfw, ...(poll && { poll }) }),
   // Uploads a photo for a post; the post refers to it by ID.
   uploadPhoto: (file) => authorized('POST', '/api/v1/me/photos', file),
   // Shares a post on your wall, with a comment that may be empty.
@@ -200,6 +203,14 @@ export const api = {
   unarchivePost: (id) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(id)}/archive`),
   closeComments: (id) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(id)}/closed-comments`),
   openComments: (id) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(id)}/closed-comments`),
+  // The poll of a post: options are the places of those chosen; both
+  // answer with the poll as it became. pollVoters: who chose an option.
+  votePoll: (postID, options) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(postID)}/poll/vote`, { options }),
+  retractVote: (postID) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(postID)}/poll/vote`),
+  pollVoters(postID, option, cursor = '', limit = 0) {
+    const path = page(`/api/v1/posts/${encodeURIComponent(postID)}/poll/voters`, cursor, limit);
+    return optional('GET', path + (path.includes('?') ? '&' : '?') + 'option=' + option);
+  },
   like: (postID) => authorized('PUT', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
   unlike: (postID) => authorized('DELETE', `/api/v1/posts/${encodeURIComponent(postID)}/like`),
 
@@ -363,8 +374,8 @@ export const api = {
     withQuery(`/api/v1/clubs/${encodeURIComponent(ref)}/posts/archive`, year ? 'year=' + year : '')),
   // fromClub: the post speaks for the club ("От имени сообщества"),
   // signed: naming you under it ("Подпись автора").
-  createClubPost: (ref, text, photos = [], { fromClub = false, signed = false, nsfw = false } = {}) =>
-    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub, signed, nsfw }),
+  createClubPost: (ref, text, photos = [], { fromClub = false, signed = false, nsfw = false, poll = null } = {}) =>
+    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub, signed, nsfw, ...(poll && { poll }) }),
   // "Предложка": a post suggested for the admins of a club to publish.
   suggestClubPost: (ref, text, photos = []) => authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/suggestions`, { text, photos }),
   // mine: only yours ("Предложенные вами записи"); all of them for the admins.

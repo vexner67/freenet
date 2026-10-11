@@ -72,7 +72,7 @@ function messageNode(m) {
     content.replaceChildren(...[
       text && textOf(text, node),
       photosNode(shownMessage.photos ?? []),
-      shownMessage.repost ? sharedNode(shownMessage.repost) : null,
+      shownMessage.repost ? sharedNode(shownMessage.repost, { canVote: true }) : null,
       shownMessage.sharedPhoto ? sharedPhotoNode(shownMessage.sharedPhoto) : null,
       forwardedNode(shownMessage, node),
     ].filter(Boolean));
@@ -155,7 +155,7 @@ function forwardedNode(m, node) {
       el('span', { className: 'im-forwarded-date', textContent: formatPostDate(f.createdAt) }),
       f.text ? textOf(f.text, node) : null,
       photosNode(f.photos ?? []),
-      f.repost ? sharedNode(f.repost) : null,
+      f.repost ? sharedNode(f.repost, { canVote: true }) : null,
       f.sharedPhoto ? sharedPhotoNode(f.sharedPhoto) : null,
     )),
     // Those of people whose pages are gone are not shown.
