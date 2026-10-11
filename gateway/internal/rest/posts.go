@@ -81,6 +81,10 @@ type postResponse struct {
 	// Mine: the viewer wrote it, and may edit it; false for anonymous
 	// viewers.
 	Mine bool `json:"mine"`
+	// Moderated: the viewer runs the community whose wall it is on, and
+	// may delete, pin and put it away; told in the news only, where a
+	// page knows no other way.
+	Moderated bool `json:"moderated,omitempty"`
 	// Signer is who wrote a post for a community that names its author
 	// ("Автор: ..."); null otherwise.
 	Signer *authorJSON `json:"signer"`

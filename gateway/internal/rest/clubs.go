@@ -142,10 +142,17 @@ type clubListResponse struct {
 	NextCursor string     `json:"nextCursor"`
 }
 
+// userClubJSON is a club in someone's list: Role is what the viewer is in
+// it, "" for none and without a token.
+type userClubJSON struct {
+	clubJSON
+	Role string `json:"role"`
+}
+
 type userClubsResponse struct {
-	Clubs      []clubJSON `json:"clubs"`
-	NextCursor string     `json:"nextCursor"`
-	Total      int        `json:"total"`
+	Clubs      []userClubJSON `json:"clubs"`
+	NextCursor string         `json:"nextCursor"`
+	Total      int            `json:"total"`
 }
 
 func toClubJSON(c model.Club) clubJSON {
@@ -667,7 +674,35 @@ func (a *api) listOfUser(w http.ResponseWriter, r *http.Request, filter model.Cl
 		return
 	}
 
-	writeJSON(w, http.StatusOK, userClubsResponse{Clubs: toClubsJSON(page.Clubs), NextCursor: page.NextCursor, Total: page.Total})
+	// What the viewer is in each, for "Вступить в группу" and "Выйти из
+	// группы" by it.
+	mine, err := a.myRoles(r, token, page.Clubs)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	resp := userClubsResponse{Clubs: make([]userClubJSON, 0, len(page.Clubs)), NextCursor: page.NextCursor, Total: page.Total}
+	for _, c := range page.Clubs {
+		resp.Clubs = append(resp.Clubs, userClubJSON{clubJSON: toClubJSON(c), Role: mine[c.ID]})
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// myRoles tells what the viewer is in the clubs of a page; nothing for an
+// anonymous viewer.
+func (a *api) myRoles(r *http.Request, token string, clubs []model.Club) (map[string]string, error) {
+	if token == "" || len(clubs) == 0 {
+		return nil, nil
+	}
+
+	ids := make([]string, len(clubs))
+	for i, c := range clubs {
+		ids[i] = c.ID
+	}
+
+	return a.clubs.MyRoles(r.Context(), token, ids)
 }
 
 // listMyClubs is "Мои Группы" and listMyEvents "Мои Встречи": the clubs

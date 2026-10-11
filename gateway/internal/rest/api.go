@@ -251,6 +251,9 @@ type Clubs interface {
 	Pin(ctx context.Context, accessToken, clubID string, pinned bool) error
 	Pinned(ctx context.Context, accessToken string) ([]model.Club, error)
 	MineIDs(ctx context.Context, accessToken string) ([]string, error)
+	// MyRoles tells what the caller is in those of up to 100 clubs they
+	// are in, by the ID of the club.
+	MyRoles(ctx context.Context, accessToken string, clubIDs []string) (map[string]string, error)
 	CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (model.WallAccess, error)
 }
 

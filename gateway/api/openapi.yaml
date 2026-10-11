@@ -1598,7 +1598,8 @@ paths:
         Idempotent. Your profile must be filled in first. With
         `maybe=true` you only might come to the event ("Возможно приду"):
         a group, and an event that has started, are joined for sure all
-        the same, and a member stays as they joined.
+        the same. A member who joins again changes that answer ("Я приду"
+        or "Возможно приду") without leaving; the owner always comes.
       security: [{ bearer: [] }]
       parameters:
         - name: maybe
@@ -3187,7 +3188,8 @@ paths:
       description: |
         The block "Группы" of a page: groups only, not events. No token needed; whether you may see
         them is the user's `clubsRead`, and those of a deleted page or of a
-        page hidden from you are hidden.
+        page hidden from you are hidden. With a token each comes with your
+        `role` in it, to join or leave it from the list.
       parameters: *followListParams
       responses:
         "200":
@@ -3200,7 +3202,16 @@ paths:
                 properties:
                   clubs:
                     type: array
-                    items: { $ref: "#/components/schemas/ClubInfo" }
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/ClubInfo"
+                        - type: object
+                          required: [role]
+                          properties:
+                            role:
+                              type: string
+                              enum: ["", member, admin, owner]
+                              description: What you are in it; empty for none and without a token
                   nextCursor: { type: string, description: "Empty on the last page" }
                   total: { type: integer, description: "How many on all pages" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -3243,7 +3254,16 @@ paths:
                 properties:
                   clubs:
                     type: array
-                    items: { $ref: "#/components/schemas/ClubInfo" }
+                    items:
+                      allOf:
+                        - $ref: "#/components/schemas/ClubInfo"
+                        - type: object
+                          required: [role]
+                          properties:
+                            role:
+                              type: string
+                              enum: ["", member, admin, owner]
+                              description: What you are in it; empty for none and without a token
                   nextCursor: { type: string, description: "Empty on the last page" }
                   total: { type: integer, description: "How many on all pages" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -3264,7 +3284,8 @@ paths:
         Posts marked as adult are left out when your `interface.nsfw` is
         `hide`. What the people in your blacklist wrote is left out
         too, on any wall and with `type=all` as well, unless one wrote in
-        the name of a community.
+        the name of a community. A post on the wall of a community you run
+        comes with `moderated`: you may delete, pin and put it away.
 
         With `type=all` it is "Все новости" of openvk instead: what every
         wall says itself (people on their own walls, communities in their
@@ -3837,6 +3858,7 @@ components:
           description: "The post speaks for its wall, a community (\"От имени сообщества\"): `author` is the community, `wall` null, who wrote it is not told"
         avatarUpdate: { type: boolean, description: "The post shows the new photo of its wall's owner, its one photo (\"обновил фотографию на своей странице\", \"обновило фотографию группы\"); never edited" }
         mine: { type: boolean, description: "You wrote it and may edit it; false without a token, and for a post you suggested that a community published, which is the community's" }
+        moderated: { type: boolean, description: "Only in the feed: the post is on the wall of a community you run" }
         signer:
           description: "Who wrote a post for a community that names its author (\"Автор: ...\"); null otherwise"
           oneOf:
