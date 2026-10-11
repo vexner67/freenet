@@ -29,11 +29,15 @@ async function loadMore(me) {
 }
 
 // feedNode is a post as on a wall: I edit and delete what I wrote, and
-// delete, pin and put away what is on my wall.
+// delete, pin and put away what is on my wall and on the walls of the
+// communities I run (post.moderated).
 function feedNode(post, me) {
+  const moderates = Boolean(post.moderated);
+
   return postNode(post, {
     viewer: me,
-    onDelete: (post.mine || wallOwnerID(post) === me.id) && remove,
+    moderates,
+    onDelete: (post.mine || moderates || wallOwnerID(post) === me.id) && remove,
     onArchived: archived,
     canLike: true,
     onError: (e) => showError($('error'), e),

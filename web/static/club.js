@@ -176,7 +176,9 @@ function joinLabels(club) {
 
 // renderJoin is the one button openvk has: "Вступить в группу", or a grey
 // "Выйти из группы" for a member; the owner cannot leave and has neither.
-// An event that has not started has a second one, "Возможно приду".
+// An event that has not started has a second one, "Возможно приду"; who
+// answered changes the answer with it, without leaving: "Я приду" for
+// who only might come.
 function renderJoin(club, me) {
   const button = $('join');
   const maybe = $('join-maybe');
@@ -187,7 +189,8 @@ function renderJoin(club, me) {
   button.hidden = !shown;
   button.textContent = club.role ? labels.leave : labels.join;
   button.classList.toggle('secondary', Boolean(club.role));
-  maybe.hidden = !shown || Boolean(club.role) || !isEvent(club) || started(club);
+  maybe.hidden = !shown || !isEvent(club) || started(club);
+  maybe.textContent = club.role && club.maybe ? 'Я приду' : 'Возможно приду';
 
   async function change(act) {
     hideError(error);
@@ -207,7 +210,7 @@ function renderJoin(club, me) {
   }
 
   button.onclick = () => change(() => (club.role ? api.leaveClub(ref) : api.joinClub(ref)));
-  maybe.onclick = () => change(() => api.joinClub(ref, { maybe: true }));
+  maybe.onclick = () => change(() => api.joinClub(ref, { maybe: !(club.role && club.maybe) }));
 }
 
 // showMembers is the block "Участники": how many, "Все" and a row of
