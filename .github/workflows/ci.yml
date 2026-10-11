@@ -20,6 +20,11 @@ concurrency:
 
 env:
   GOLANGCI_LINT_VERSION: v2.13.2
+  # The generators of scripts/check-proto.sh: the same versions there.
+  PROTOC_VERSION: "34.1"
+  PROTOC_SHA256: af27ea66cd26938fe48587804ca7d4817457a08350021a1c6e23a27ccc8c6904
+  PROTOC_GEN_GO_VERSION: v1.36.12
+  PROTOC_GEN_GO_GRPC_VERSION: v1.6.2
 
 jobs:
   check:
@@ -41,8 +46,19 @@ jobs:
       - name: Install golangci-lint
         run: curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b "$(go env GOPATH)/bin" "$GOLANGCI_LINT_VERSION"
 
+      - name: Install protoc and its Go plugins
+        run: |
+          zip="protoc-$PROTOC_VERSION-linux-x86_64.zip"
+          curl -sSfLO "https://github.com/protocolbuffers/protobuf/releases/download/v$PROTOC_VERSION/$zip"
+          echo "$PROTOC_SHA256  $zip" | sha256sum -c -
+          unzip -q "$zip" -d "$HOME/protoc"
+          echo "$HOME/protoc/bin" >> "$GITHUB_PATH"
+          go install "google.golang.org/protobuf/cmd/protoc-gen-go@$PROTOC_GEN_GO_VERSION"
+          go install "google.golang.org/grpc/cmd/protoc-gen-go-grpc@$PROTOC_GEN_GO_GRPC_VERSION"
+
       # gofmt, vet, golangci-lint and go test -race in every module, with
-      # the PostgreSQL and Redis tests against throwaway containers.
+      # the PostgreSQL and Redis tests against throwaway containers; the
+      # monitoring configs; the generated protobuf code against the .proto.
       - run: make check-integration
 
   stack:

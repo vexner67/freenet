@@ -1,4 +1,4 @@
-.PHONY: dev dev-persistent up ps down certs web-test check check-integration stack smoke ssh
+.PHONY: dev dev-persistent up ps down certs web-test check check-integration check-proto stack smoke ssh
 
 # The whole backend and the website in one terminal; Ctrl+C stops it.
 dev:
@@ -39,6 +39,11 @@ check:
 
 check-integration:
 	./scripts/check.sh --integration
+
+# The generated protobuf code is what the .proto give (part of
+# check-integration).
+check-proto:
+	./scripts/check-proto.sh
 
 # Development CA, mTLS certificates for every service and the JWT keys.
 certs:
