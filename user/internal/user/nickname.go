@@ -20,7 +20,7 @@ var (
 	// Profiles live at /<nickname> on the website, so a nickname must not
 	// take the path of a page or of the API.
 	reservedNicknames = map[string]struct{}{
-		"about": {}, "admin": {}, "album": {}, "albums": {}, "api": {}, "club": {}, "edit": {}, "events": {}, "feed": {},
+		"about": {}, "admin": {}, "album": {}, "albums": {}, "api": {}, "club": {}, "edit": {}, "events": {}, "fave": {}, "feed": {},
 		"follows": {}, "freenet": {}, "groups": {}, "healthz": {}, "help": {}, "id": {}, "im": {},
 		"login": {}, "logout": {}, "me": {}, "media": {}, "news": {}, "note": {}, "notes": {},
 		"notifications": {}, "people": {}, "photo": {}, "post": {}, "search": {},
