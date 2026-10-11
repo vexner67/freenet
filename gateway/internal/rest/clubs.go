@@ -99,6 +99,9 @@ type clubResponse struct {
 	Maybe bool `json:"maybe"`
 	// CanStartTopic: "Создать тему" for the viewer.
 	CanStartTopic bool `json:"canStartTopic"`
+	// IgnoredByMe: the viewer's news leave this wall out; told only by
+	// the page of the club.
+	IgnoredByMe bool `json:"ignoredByMe,omitempty"`
 }
 
 // clubMemberJSON: title is what an admin does in the club; hidden: the
@@ -340,7 +343,18 @@ func (a *api) getClub(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	a.writeClub(w, r, http.StatusOK, v)
+	resp, err := a.clubResponseOf(r, v)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if resp.IgnoredByMe, err = a.ignores(r, token, v.Club.ID); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, resp)
 }
 
 // club is the club of the path for a caller with a token.

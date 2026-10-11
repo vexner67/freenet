@@ -306,6 +306,35 @@ func (u *Users) Unblock(ctx context.Context, accessToken, userID string) error {
 	return nil
 }
 
+// Ignore leaves the wall of a user or a community out of the caller's
+// news; Unignore brings walls back.
+func (u *Users) Ignore(ctx context.Context, accessToken, sourceID string) error {
+	if _, err := u.api.IgnoreSource(withToken(ctx, accessToken), &userv1.IgnoreSourceRequest{SourceId: sourceID}); err != nil {
+		return errs.Wrap("u.api.IgnoreSource", fromStatus(err))
+	}
+
+	return nil
+}
+
+func (u *Users) Unignore(ctx context.Context, accessToken string, sourceIDs []string) error {
+	_, err := u.api.UnignoreSources(withToken(ctx, accessToken), &userv1.UnignoreSourcesRequest{SourceIds: sourceIDs})
+	if err != nil {
+		return errs.Wrap("u.api.UnignoreSources", fromStatus(err))
+	}
+
+	return nil
+}
+
+// IgnoredIDs are the walls the owner of the token ignores, newest first.
+func (u *Users) IgnoredIDs(ctx context.Context, accessToken string) ([]string, error) {
+	resp, err := u.api.ListIgnoredSources(withToken(ctx, accessToken), &userv1.ListIgnoredSourcesRequest{})
+	if err != nil {
+		return nil, errs.Wrap("u.api.ListIgnoredSources", fromStatus(err))
+	}
+
+	return resp.GetSourceIds(), nil
+}
+
 // Blacklist is the caller's blacklist, newest block first.
 func (u *Users) Blacklist(ctx context.Context, accessToken, cursor string, limit int) (model.UserPage, error) {
 	resp, err := u.api.ListBlocked(withToken(ctx, accessToken), &userv1.ListBlockedRequest{Cursor: cursor, Limit: toLimit(limit)})
