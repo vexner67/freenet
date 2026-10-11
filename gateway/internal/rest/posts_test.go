@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"reflect"
 	"slices"
 	"testing"
 
@@ -332,6 +333,60 @@ func TestRepostPost(t *testing.T) {
 		}
 	})
 
+	t.Run("with photos of the caller's", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+		w := h.do("POST", "/api/v1/posts/p1/reposts", `{"photos":["ph1","ph2"]}`, "Authorization", "Bearer tok")
+		got := decode[map[string]any](t, w)
+		photos, _ := got["photos"].([]any)
+		if w.Code != http.StatusCreated || len(h.posts.repost.PhotoIDs) != 2 || len(photos) != 2 {
+			t.Fatalf("%d %v", w.Code, got)
+		}
+
+		// Someone else's photo is refused before anything is shared.
+		h = newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+		if w = h.do("POST", "/api/v1/posts/p1/reposts", `{"photos":["ph9"]}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest || h.posts.shared != "" {
+			t.Fatalf("a photo of another's: %d, shared %q", w.Code, h.posts.shared)
+		}
+	})
+
+	t.Run("who shared a post", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+
+		w := h.do("GET", "/api/v1/posts/p1/reposts?cursor=r9", "")
+		got := decode[struct {
+			Posts []struct {
+				ID     string         `json:"id"`
+				Author map[string]any `json:"author"`
+				Text   string         `json:"text"`
+			} `json:"posts"`
+			NextCursor string `json:"nextCursor"`
+			Total      int    `json:"total"`
+		}](t, w)
+
+		// The repost of a vanished page is left out, but counted; the one
+		// for the club is the club's.
+		if w.Code != http.StatusOK || got.Total != 3 || got.NextCursor != "r1" || len(got.Posts) != 2 || h.posts.cursor != "r9" {
+			t.Fatalf("%d %s", w.Code, w.Body)
+		}
+		if got.Posts[0].ID != "r3" || got.Posts[0].Author["club"] != true || got.Posts[0].Author["name"] != "Кошки" {
+			t.Fatalf("the club's repost = %+v", got.Posts[0])
+		}
+		if got.Posts[1].ID != "r1" || got.Posts[1].Author["nickname"] != "bob" || got.Posts[1].Text != "смотрите" {
+			t.Fatalf("bob's repost = %+v", got.Posts[1])
+		}
+
+		if w = h.do("GET", "/api/v1/posts/p404/reposts", ""); w.Code != http.StatusNotFound {
+			t.Fatalf("reposts of no post: %d", w.Code)
+		}
+	})
+
 	t.Run("a missing post", func(t *testing.T) {
 		t.Parallel()
 
@@ -556,7 +611,7 @@ func TestRepostInClub(t *testing.T) {
 
 	// "в группу": anyone on an open wall, on their own behalf.
 	w := h.do("POST", "/api/v1/posts/p1/reposts", `{"text":"смотрите","club":"cats"}`, "Authorization", "Bearer tok")
-	if w.Code != http.StatusCreated || h.posts.repost != (model.NewRepost{Text: "смотрите", WallID: "k1"}) {
+	if w.Code != http.StatusCreated || !reflect.DeepEqual(h.posts.repost, model.NewRepost{Text: "смотрите", WallID: "k1"}) {
 		t.Fatalf("%d %s, asked %+v", w.Code, w.Body, h.posts.repost)
 	}
 
@@ -566,7 +621,7 @@ func TestRepostInClub(t *testing.T) {
 	}
 	h.clubs.role, h.clubs.closedWall = "admin", true
 	w = h.do("POST", "/api/v1/posts/p1/reposts", `{"club":"cats","signed":true}`, "Authorization", "Bearer tok")
-	if w.Code != http.StatusCreated || h.posts.repost != (model.NewRepost{WallID: "k1", FromWall: true, Signed: true}) {
+	if w.Code != http.StatusCreated || !reflect.DeepEqual(h.posts.repost, model.NewRepost{WallID: "k1", FromWall: true, Signed: true}) {
 		t.Fatalf("an admin on a closed wall: %d, asked %+v", w.Code, h.posts.repost)
 	}
 

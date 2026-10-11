@@ -164,6 +164,40 @@ func TestSendMessage(t *testing.T) {
 		}
 	})
 
+	t.Run("with a shared photo of an album", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"text":"смотри","albumPhoto":"ph6"}`, "Authorization", "Bearer tok")
+		got := decode[struct {
+			Text        string `json:"text"`
+			AlbumPhoto  string `json:"albumPhoto"`
+			SharedPhoto struct {
+				ID      string            `json:"id"`
+				Deleted bool              `json:"deleted"`
+				Photo   map[string]string `json:"photo"`
+				AlbumID string            `json:"albumId"`
+				NSFW    bool              `json:"nsfw"`
+			} `json:"sharedPhoto"`
+		}](t, w)
+
+		if w.Code != http.StatusCreated || got.Text != "смотри" || got.AlbumPhoto != "ph6" {
+			t.Fatalf("%d %s", w.Code, w.Body)
+		}
+		if p := got.SharedPhoto; p.ID != "ph6" || p.Deleted || p.AlbumID != "a2" || !p.NSFW || p.Photo["small"] != "/media/photos/u2/ph6/small.jpg" {
+			t.Fatalf("shared photo = %+v", p)
+		}
+
+		// A photo that is not there is not sent.
+		h = newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+		if w = h.do("POST", "/api/v1/dialogs/bob/messages", `{"text":"вот","albumPhoto":"ph404"}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest || h.messages.sentText != "" {
+			t.Fatalf("a missing photo: %d %s", w.Code, w.Body)
+		}
+	})
+
 	t.Run("with a shared post", func(t *testing.T) {
 		t.Parallel()
 

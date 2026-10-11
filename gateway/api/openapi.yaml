@@ -833,8 +833,9 @@ paths:
         for it). Your profile must be filled in first. With `club` the
         repost goes on that community's wall ("в группу"), as a post there
         would: for the community (`fromClub`, admins only, and always on a
-        wall that is not open), maybe signed. To share a post in a dialog
-        ("в переписку"), send a message with `post`.
+        wall that is not open), maybe signed. `photos` are yours to add to
+        your words, IDs from `POST /api/v1/me/photos`. To share a post in a
+        dialog ("в переписку"), send a message with `post`.
       security: [{ bearer: [] }]
       parameters:
         - name: id
@@ -850,6 +851,7 @@ paths:
               additionalProperties: false
               properties:
                 text: { type: string, maxLength: 60000 }
+                photos: { $ref: "#/components/schemas/PhotoIDs" }
                 club: { type: string, description: "The address or ID of a community to share it in" }
                 fromClub: { type: boolean }
                 signed: { type: boolean }
@@ -863,6 +865,33 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+    get:
+      summary: Who shared the post, newest first
+      description: |
+        No token needed. The posts that share it, each with its author, a
+        person or the community it speaks for, and the beginning of its
+        text. `total` is the repost counter; reposts in an archive and
+        those of deleted pages are left out of `posts`, still counted.
+        `canPost` and `canSuggest` are not told.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: A page of reposts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/posts/{id}/likes:
     get:
@@ -3000,7 +3029,9 @@ paths:
         dialog ("Поделиться" "в переписку"), messages of your dialogs to
         carry on ("Переслать") or some of them; photos are IDs from
         `POST /api/v1/me/photos` and must be yours, the post must be there
-        (`post not found` otherwise). `forward`: at most 20 messages,
+        (`post not found` otherwise). `albumPhoto` shares a photo of an
+        album you can see ("Поделиться" under a photo; `photo not found`
+        otherwise), with text alone. `forward`: at most 20 messages,
         counting those they carry themselves; they go oldest first, as
         copies of what they say now, with their photos; one that you do
         not have or that was taken back fails with `forwarded message not
@@ -3017,6 +3048,7 @@ paths:
                 text: { type: string, maxLength: 60000 }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 post: { type: string, format: uuid }
+                albumPhoto: { type: string, format: uuid }
                 forward:
                   type: array
                   maxItems: 20
@@ -3783,14 +3815,7 @@ components:
         sharedPhoto:
           description: 'A photo of an album the post shares ("Поделиться" under a photo); null otherwise. A deleted photo leaves only its ID'
           oneOf:
-            - type: object
-              required: [id, deleted, photo, albumId]
-              properties:
-                id: { type: string, format: uuid }
-                deleted: { type: boolean }
-                photo: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
-                albumId: { type: string }
-                nsfw: { type: boolean, description: The photo came from a post marked as adult }
+            - $ref: "#/components/schemas/SharedPhoto"
             - type: "null"
         repost:
           description: The shared post when this is a repost; null otherwise
@@ -4015,6 +4040,10 @@ components:
         repost:
           description: The shared post, as inside a repost; absent in the list of dialogs and without one
           $ref: "#/components/schemas/SharedPost"
+        albumPhoto: { type: string, description: "A photo of an album shared in it; empty for none" }
+        sharedPhoto:
+          description: The shared photo, as in a post that shares one; absent in the list of dialogs and without one
+          $ref: "#/components/schemas/SharedPhoto"
         forwardedCount: { type: integer, description: "How many messages it carries on from other dialogs" }
         forwarded:
           type: array
@@ -4037,6 +4066,19 @@ components:
         createdAt: { type: string, format: date-time, description: "When it was written" }
         post: { type: string, description: "A post shared in it; empty for none" }
         repost: { $ref: "#/components/schemas/SharedPost" }
+        albumPhoto: { type: string, description: "A photo of an album shared in it; empty for none" }
+        sharedPhoto: { $ref: "#/components/schemas/SharedPhoto" }
+
+    SharedPhoto:
+      type: object
+      description: A photo of an album shared in a post or a message; a deleted photo leaves only its ID
+      required: [id, deleted, photo, albumId]
+      properties:
+        id: { type: string, format: uuid }
+        deleted: { type: boolean }
+        photo: { oneOf: [{ $ref: "#/components/schemas/Photo" }, { type: "null" }] }
+        albumId: { type: string }
+        nsfw: { type: boolean, description: The photo came from a post marked as adult }
 
     Dialog:
       type: object

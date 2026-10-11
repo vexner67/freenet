@@ -496,7 +496,28 @@ func (f *fakePosts) Repost(_ context.Context, token, postID string, nr model.New
 	if nr.WallID != "" {
 		wall = model.Author{ID: nr.WallID}
 	}
-	return model.Post{ID: "p7", Author: ann, Wall: wall, Text: nr.Text, RepostOf: "p1", FromWall: nr.FromWall, CreatedAt: time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC)}, f.err
+	return model.Post{
+		ID: "p7", Author: ann, Wall: wall, Text: nr.Text, PhotoIDs: nr.PhotoIDs, RepostOf: "p1", FromWall: nr.FromWall,
+		CreatedAt: time.Date(2026, 10, 6, 12, 0, 0, 0, time.UTC),
+	}, f.err
+}
+
+// Reposts of p1: bob's, one of a vanished page and one for the club k1.
+func (f *fakePosts) Reposts(_ context.Context, token, postID, cursor string, _ int) (model.PostPage, error) {
+	f.token, f.cursor = token, cursor
+	if postID != "p1" {
+		return model.PostPage{}, failure.New(failure.NotFound, "post not found")
+	}
+
+	return model.PostPage{
+		Posts: []model.Post{
+			{ID: "r3", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "k1"}, RepostOf: "p1", FromWall: true},
+			{ID: "r2", Author: model.Author{ID: "gone"}, Wall: model.Author{ID: "gone"}, RepostOf: "p1"},
+			{ID: "r1", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "смотрите", RepostOf: "p1"},
+		},
+		NextCursor: "r1",
+		Total:      3,
+	}, f.err
 }
 
 // Delete knows the posts Get knows.
@@ -952,7 +973,8 @@ func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d mode
 
 	return model.Message{
 		ID: "m9", SenderID: "u1", RecipientID: recipientID, Text: d.Text, PhotoIDs: d.PhotoIDs, PostID: d.PostID, Forwarded: forwarded,
-		CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC),
+		SharedPhotoID: d.SharedPhotoID,
+		CreatedAt:     time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC),
 	}, f.err
 }
 

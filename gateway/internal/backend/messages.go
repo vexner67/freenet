@@ -22,7 +22,8 @@ func NewMessages(api messagev1.MessageServiceClient) *Messages {
 // Send writes d to recipientID.
 func (m *Messages) Send(ctx context.Context, accessToken, recipientID string, d model.MessageDraft) (model.Message, error) {
 	resp, err := m.api.SendMessage(withToken(ctx, accessToken), &messagev1.SendMessageRequest{
-		RecipientId: recipientID, Text: d.Text, PhotoIds: d.PhotoIDs, PostId: d.PostID, ForwardIds: d.ForwardIDs,
+		RecipientId: recipientID, Text: d.Text, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID,
+		ForwardIds: d.ForwardIDs,
 	})
 	if err != nil {
 		return model.Message{}, errs.Wrap("m.api.SendMessage", fromStatus(err))
@@ -218,6 +219,8 @@ func toMessage(pm *messagev1.Message) model.Message {
 			PhotoIDs:  f.GetPhotoIds(),
 			PostID:    f.GetPostId(),
 			CreatedAt: f.GetCreatedAt().AsTime(),
+
+			SharedPhotoID: f.GetPhotoId(),
 		})
 	}
 
@@ -234,6 +237,7 @@ func toMessage(pm *messagev1.Message) model.Message {
 		Read:           pm.GetRead(),
 		DeletableUntil: fromTimestamp(pm.GetDeletableUntil()),
 		PostID:         pm.GetPostId(),
+		SharedPhotoID:  pm.GetPhotoId(),
 		EditedAt:       fromTimestamp(pm.GetEditedAt()),
 		EditableUntil:  fromTimestamp(pm.GetEditableUntil()),
 	}
