@@ -71,6 +71,17 @@ service PostService {
   rpc ListReposts(ListRepostsRequest) returns (ListRepostsResponse);
   rpc ListCommentLikers(ListCommentLikersRequest) returns (ListCommentLikersResponse);
 
+  // openvk's "Закладки": what the caller likes, newest like first, for
+  // them alone — posts, comments under posts and photos of albums. What
+  // sits on an archived post is left out and not counted.
+  rpc ListLikedPosts(ListLikedPostsRequest) returns (ListLikedPostsResponse);
+  rpc ListLikedComments(ListLikedCommentsRequest) returns (ListLikedCommentsResponse);
+  rpc ListLikedAlbumPhotos(ListLikedAlbumPhotosRequest) returns (ListLikedAlbumPhotosResponse);
+  // What the caller wrote, on their wall and on others', newest first
+  // ("Написанные мной записи" of openvk): not what was archived on the
+  // wall of another, nor what they suggested for a community.
+  rpc ListOwnPosts(ListOwnPostsRequest) returns (ListOwnPostsResponse);
+
   // Public: the polls of the posts that ask one ("Опрос" of openvk), at
   // most 100 posts, in no particular order; with an access token each
   // says what the caller chose. The poll of an archived post is given to
@@ -722,6 +733,68 @@ message ListPostLikersRequest {
 message ListPostLikersResponse {
   repeated string user_ids = 1;
   // Empty on the last page.
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message ListLikedPostsRequest {
+  // Empty for the newest likes, else next_cursor of the previous page.
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+  // As in ListFeedRequest.
+  int32 text_limit = 3;
+}
+
+message ListLikedPostsResponse {
+  // Every one with liked.
+  repeated Post posts = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // How many posts the caller likes.
+  int32 total = 3;
+}
+
+message ListLikedCommentsRequest {
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+  // As in ListCommentsRequest.
+  int32 text_limit = 3;
+}
+
+message ListLikedCommentsResponse {
+  repeated Comment comments = 1;
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message ListLikedAlbumPhotosRequest {
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+}
+
+message ListLikedAlbumPhotosResponse {
+  repeated AlbumPhoto photos = 1;
+  // Whose album each photo is in, a person or a community, in the order
+  // of photos: who may see a photo is theirs to say.
+  repeated string owner_ids = 2;
+  string next_cursor = 3;
+  int32 total = 4;
+}
+
+message ListOwnPostsRequest {
+  // Empty for the newest posts, else next_cursor of the previous page.
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+  // As in ListFeedRequest.
+  int32 text_limit = 3;
+}
+
+message ListOwnPostsResponse {
+  repeated Post posts = 1;
   string next_cursor = 2;
   int32 total = 3;
 }

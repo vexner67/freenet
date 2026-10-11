@@ -73,7 +73,11 @@ func newServer(t *testing.T) testServer {
 		}),
 		Albums: albumService,
 		Polls:  service.NewPollService(service.PollDeps{Polls: store.Polls(), Posts: store.Posts(), Moderators: clubclient.Nop{}, Tx: inmem.TxManager{}}),
-		Notes:  service.NewNoteService(service.NoteDeps{Notes: notes, Comments: notes.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}}),
+		Faves: service.NewFaveService(service.FaveDeps{
+			PostLikes: store.Likes(), CommentLikes: store.CommentLikes(), PhotoLikes: albums.PhotoLikes(),
+			Posts: store.Posts(), Comments: store.Comments(), Photos: albums.Photos(), Albums: albums,
+		}),
+		Notes: service.NewNoteService(service.NoteDeps{Notes: notes, Comments: notes.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}}),
 		Purge: service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
 			Topics: topics, Albums: albums, Notes: notes, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},

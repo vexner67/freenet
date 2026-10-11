@@ -399,6 +399,28 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 	return r.list(ctx, match, before, limit)
 }
 
+func (r *PostRepository) ListByAuthor(ctx context.Context, authorID, before uuid.UUID, limit int) ([]*post.Post, error) {
+	return r.list(ctx, func(p *post.Post) bool { return p.ListedFor(authorID) }, before, limit)
+}
+
+func (r *PostRepository) CountByAuthor(ctx context.Context, authorID uuid.UUID) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	n := 0
+	for _, p := range r.s.posts {
+		if p.ListedFor(authorID) {
+			n++
+		}
+	}
+
+	return n, nil
+}
+
 func (r *PostRepository) ListReposts(ctx context.Context, postID, before uuid.UUID, limit int, archived bool) ([]*post.Post, error) {
 	match := func(p *post.Post) bool {
 		return p.Content().RepostOf() == postID && (archived || !p.Archived())

@@ -42,6 +42,10 @@ const (
 	PostService_ListPostLikers_FullMethodName         = "/post.v1.PostService/ListPostLikers"
 	PostService_ListReposts_FullMethodName            = "/post.v1.PostService/ListReposts"
 	PostService_ListCommentLikers_FullMethodName      = "/post.v1.PostService/ListCommentLikers"
+	PostService_ListLikedPosts_FullMethodName         = "/post.v1.PostService/ListLikedPosts"
+	PostService_ListLikedComments_FullMethodName      = "/post.v1.PostService/ListLikedComments"
+	PostService_ListLikedAlbumPhotos_FullMethodName   = "/post.v1.PostService/ListLikedAlbumPhotos"
+	PostService_ListOwnPosts_FullMethodName           = "/post.v1.PostService/ListOwnPosts"
 	PostService_GetPolls_FullMethodName               = "/post.v1.PostService/GetPolls"
 	PostService_VotePoll_FullMethodName               = "/post.v1.PostService/VotePoll"
 	PostService_RetractPollVote_FullMethodName        = "/post.v1.PostService/RetractPollVote"
@@ -172,6 +176,16 @@ type PostServiceClient interface {
 	// without the archived ones; NotFound for a missing or an archived post.
 	ListReposts(ctx context.Context, in *ListRepostsRequest, opts ...grpc.CallOption) (*ListRepostsResponse, error)
 	ListCommentLikers(ctx context.Context, in *ListCommentLikersRequest, opts ...grpc.CallOption) (*ListCommentLikersResponse, error)
+	// openvk's "Закладки": what the caller likes, newest like first, for
+	// them alone — posts, comments under posts and photos of albums. What
+	// sits on an archived post is left out and not counted.
+	ListLikedPosts(ctx context.Context, in *ListLikedPostsRequest, opts ...grpc.CallOption) (*ListLikedPostsResponse, error)
+	ListLikedComments(ctx context.Context, in *ListLikedCommentsRequest, opts ...grpc.CallOption) (*ListLikedCommentsResponse, error)
+	ListLikedAlbumPhotos(ctx context.Context, in *ListLikedAlbumPhotosRequest, opts ...grpc.CallOption) (*ListLikedAlbumPhotosResponse, error)
+	// What the caller wrote, on their wall and on others', newest first
+	// ("Написанные мной записи" of openvk): not what was archived on the
+	// wall of another, nor what they suggested for a community.
+	ListOwnPosts(ctx context.Context, in *ListOwnPostsRequest, opts ...grpc.CallOption) (*ListOwnPostsResponse, error)
 	// Public: the polls of the posts that ask one ("Опрос" of openvk), at
 	// most 100 posts, in no particular order; with an access token each
 	// says what the caller chose. The poll of an archived post is given to
@@ -559,6 +573,46 @@ func (c *postServiceClient) ListCommentLikers(ctx context.Context, in *ListComme
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListCommentLikersResponse)
 	err := c.cc.Invoke(ctx, PostService_ListCommentLikers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListLikedPosts(ctx context.Context, in *ListLikedPostsRequest, opts ...grpc.CallOption) (*ListLikedPostsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListLikedPostsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListLikedPosts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListLikedComments(ctx context.Context, in *ListLikedCommentsRequest, opts ...grpc.CallOption) (*ListLikedCommentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListLikedCommentsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListLikedComments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListLikedAlbumPhotos(ctx context.Context, in *ListLikedAlbumPhotosRequest, opts ...grpc.CallOption) (*ListLikedAlbumPhotosResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListLikedAlbumPhotosResponse)
+	err := c.cc.Invoke(ctx, PostService_ListLikedAlbumPhotos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListOwnPosts(ctx context.Context, in *ListOwnPostsRequest, opts ...grpc.CallOption) (*ListOwnPostsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListOwnPostsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListOwnPosts_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1269,6 +1323,16 @@ type PostServiceServer interface {
 	// without the archived ones; NotFound for a missing or an archived post.
 	ListReposts(context.Context, *ListRepostsRequest) (*ListRepostsResponse, error)
 	ListCommentLikers(context.Context, *ListCommentLikersRequest) (*ListCommentLikersResponse, error)
+	// openvk's "Закладки": what the caller likes, newest like first, for
+	// them alone — posts, comments under posts and photos of albums. What
+	// sits on an archived post is left out and not counted.
+	ListLikedPosts(context.Context, *ListLikedPostsRequest) (*ListLikedPostsResponse, error)
+	ListLikedComments(context.Context, *ListLikedCommentsRequest) (*ListLikedCommentsResponse, error)
+	ListLikedAlbumPhotos(context.Context, *ListLikedAlbumPhotosRequest) (*ListLikedAlbumPhotosResponse, error)
+	// What the caller wrote, on their wall and on others', newest first
+	// ("Написанные мной записи" of openvk): not what was archived on the
+	// wall of another, nor what they suggested for a community.
+	ListOwnPosts(context.Context, *ListOwnPostsRequest) (*ListOwnPostsResponse, error)
 	// Public: the polls of the posts that ask one ("Опрос" of openvk), at
 	// most 100 posts, in no particular order; with an access token each
 	// says what the caller chose. The poll of an archived post is given to
@@ -1507,6 +1571,18 @@ func (UnimplementedPostServiceServer) ListReposts(context.Context, *ListRepostsR
 }
 func (UnimplementedPostServiceServer) ListCommentLikers(context.Context, *ListCommentLikersRequest) (*ListCommentLikersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListCommentLikers not implemented")
+}
+func (UnimplementedPostServiceServer) ListLikedPosts(context.Context, *ListLikedPostsRequest) (*ListLikedPostsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListLikedPosts not implemented")
+}
+func (UnimplementedPostServiceServer) ListLikedComments(context.Context, *ListLikedCommentsRequest) (*ListLikedCommentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListLikedComments not implemented")
+}
+func (UnimplementedPostServiceServer) ListLikedAlbumPhotos(context.Context, *ListLikedAlbumPhotosRequest) (*ListLikedAlbumPhotosResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListLikedAlbumPhotos not implemented")
+}
+func (UnimplementedPostServiceServer) ListOwnPosts(context.Context, *ListOwnPostsRequest) (*ListOwnPostsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListOwnPosts not implemented")
 }
 func (UnimplementedPostServiceServer) GetPolls(context.Context, *GetPollsRequest) (*GetPollsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPolls not implemented")
@@ -2113,6 +2189,78 @@ func _PostService_ListCommentLikers_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).ListCommentLikers(ctx, req.(*ListCommentLikersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListLikedPosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListLikedPostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListLikedPosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListLikedPosts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListLikedPosts(ctx, req.(*ListLikedPostsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListLikedComments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListLikedCommentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListLikedComments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListLikedComments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListLikedComments(ctx, req.(*ListLikedCommentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListLikedAlbumPhotos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListLikedAlbumPhotosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListLikedAlbumPhotos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListLikedAlbumPhotos_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListLikedAlbumPhotos(ctx, req.(*ListLikedAlbumPhotosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListOwnPosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListOwnPostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListOwnPosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListOwnPosts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListOwnPosts(ctx, req.(*ListOwnPostsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3363,6 +3511,22 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListCommentLikers",
 			Handler:    _PostService_ListCommentLikers_Handler,
+		},
+		{
+			MethodName: "ListLikedPosts",
+			Handler:    _PostService_ListLikedPosts_Handler,
+		},
+		{
+			MethodName: "ListLikedComments",
+			Handler:    _PostService_ListLikedComments_Handler,
+		},
+		{
+			MethodName: "ListLikedAlbumPhotos",
+			Handler:    _PostService_ListLikedAlbumPhotos_Handler,
+		},
+		{
+			MethodName: "ListOwnPosts",
+			Handler:    _PostService_ListOwnPosts_Handler,
 		},
 		{
 			MethodName: "GetPolls",
