@@ -18,7 +18,7 @@ func webDir(t *testing.T) string {
 
 	dir := t.TempDir()
 	files := map[string]string{
-		"index.html":          "INDEX",
+		"index.html":          `INDEX <link rel="stylesheet" href="/static/style.css">`,
 		"edit.html":           "EDIT",
 		"blacklist.html":      "BLACKLIST",
 		"settings.html":       "SETTINGS",
@@ -131,6 +131,64 @@ func TestPages(t *testing.T) {
 			}
 		})
 	}
+
+	// The site may be cached, the API never: a page is checked with the
+	// server each time and names the version of its assets, which are
+	// then kept for good.
+	t.Run("pages name the version of their assets", func(t *testing.T) {
+		t.Parallel()
+
+		w := get("/")
+
+		_, rest, found := strings.Cut(w.Body.String(), `href="/static/v/`)
+		version, _, _ := strings.Cut(rest, "/style.css")
+
+		if !found || version == "" || w.Header().Get("Cache-Control") != "no-cache" {
+			t.Fatalf("page: %q, Cache-Control %q", w.Body.String(), w.Header().Get("Cache-Control"))
+		}
+
+		asset := get("/static/v/" + version + "/style.css")
+		if cc := asset.Header().Get("Cache-Control"); asset.Code != 200 || asset.Body.String() != "body{}" || !strings.Contains(cc, "immutable") {
+			t.Fatalf("asset of the version: %d %q, Cache-Control %q", asset.Code, asset.Body.String(), cc)
+		}
+
+		// A page of another build gets the file, but not for good.
+		other := get("/static/v/000000000000/style.css")
+		if other.Code != 200 || other.Header().Get("Cache-Control") != "no-cache" {
+			t.Fatalf("asset of another version: %d, Cache-Control %q", other.Code, other.Header().Get("Cache-Control"))
+		}
+
+		if plain := get("/static/style.css"); plain.Header().Get("Cache-Control") != "no-cache" {
+			t.Fatalf("asset at its plain path: Cache-Control %q", plain.Header().Get("Cache-Control"))
+		}
+
+		if api := get("/api/v1/users/ann"); api.Header().Get("Cache-Control") != "no-store" {
+			t.Fatalf("API: Cache-Control %q", api.Header().Get("Cache-Control"))
+		}
+
+		if dir := get("/static/v/" + version + "/"); dir.Code != http.StatusNotFound {
+			t.Fatalf("listing: %d", dir.Code)
+		}
+	})
+
+	t.Run("an unchanged page is not sent again", func(t *testing.T) {
+		t.Parallel()
+
+		etag := get("/").Header().Get("ETag")
+		if etag == "" {
+			t.Fatal("a page has no ETag")
+		}
+
+		r := httptest.NewRequest("GET", "/", nil)
+		r.Header.Set("If-None-Match", etag)
+
+		w := httptest.NewRecorder()
+		handler.ServeHTTP(w, r)
+
+		if w.Code != http.StatusNotModified || w.Body.Len() != 0 {
+			t.Fatalf("status = %d, body %q", w.Code, w.Body.String())
+		}
+	})
 
 	t.Run("without WEB_DIR only the API is served", func(t *testing.T) {
 		t.Parallel()
