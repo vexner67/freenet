@@ -53,7 +53,7 @@ func TestListNotifications(t *testing.T) {
 	// The follow by a vanished account, the like of a deleted post, the
 	// message in a deleted topic and the like of a deleted photo are left
 	// out.
-	if len(got.Notifications) != 14 {
+	if len(got.Notifications) != 15 {
 		t.Fatalf("notifications = %+v", got.Notifications)
 	}
 
@@ -64,7 +64,7 @@ func TestListNotifications(t *testing.T) {
 		heart.Comment == nil || heart.Comment.ID != "m1" || heart.Comment.Text != "Привет" {
 		t.Fatalf("heart on a topic message = %+v", heart)
 	}
-	for _, n := range got.Notifications[12:] {
+	for _, n := range got.Notifications[12:14] {
 		if n.Photo == nil || n.Photo.ID != "ph6" || n.Photo.Small != "/media/photos/u2/ph6/small.jpg" {
 			t.Fatalf("%s names the photo %+v", n.Type, n.Photo)
 		}
@@ -117,6 +117,11 @@ func TestListNotifications(t *testing.T) {
 	// An appointment names only the community.
 	if appointed := got.Notifications[7]; appointed.Type != "club_admin" || appointed.Actor["name"] != "Кошки" || appointed.Post != nil || appointed.Topic != nil {
 		t.Fatalf("club admin = %+v", appointed)
+	}
+
+	// So does a reminder of an event: the event is the actor.
+	if reminder := got.Notifications[14]; reminder.Type != "event_reminder" || reminder.Actor["name"] != "Кошки" || reminder.Post != nil {
+		t.Fatalf("event reminder = %+v", reminder)
 	}
 
 	archive := newHarness(rest.Config{})
