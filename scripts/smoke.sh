@@ -3,7 +3,7 @@
 # through the gateway and goes over the services, each behind mTLS and on
 # its database: auth (code from its log), user (profile), media (a photo,
 # written to its volume and served back), post (a post with it, a repost,
-# a poll, a note and the faves), notification (unread count), message (dialogs), club
+# a poll, a note and the faves), notification (unread count), message (dialogs and chats), club
 # (a club and a post for it), the feed with an ignored source and the website
 # itself; then observability: every
 # container healthy, a request ID from the gateway in the auth log, every
@@ -106,6 +106,14 @@ step "notification: unread count"
 
 call GET /api/v1/dialogs | jq -e '.dialogs | length == 0' >/dev/null
 step "message: dialogs"
+
+# A chat takes two other people, and the smoke test has one user: it goes
+# as far as the services that would make the chat, the user service naming
+# the people and the message service keeping the chats.
+call GET /api/v1/me | jq -e '.privacy.chatsInvite == "following"' >/dev/null
+expect=404 call POST /api/v1/chats '{"title":"Smoke chat","members":["nobody1","nobody2"]}' | jq -e '.error.message == "user not found"' >/dev/null
+expect=404 call GET /api/v1/chats/01900000-0000-7000-8000-000000000000 | jq -e '.error.message == "chat not found"' >/dev/null
+step "message: chats of several people"
 
 club=$(expect=201 call POST /api/v1/clubs '{"name":"Smoke club","description":"smoke test"}' | jq -r .id)
 expect=201 call POST "/api/v1/clubs/$club/posts" '{"text":"club news","fromClub":true}' | jq -e '.fromWall and .author.club' >/dev/null
