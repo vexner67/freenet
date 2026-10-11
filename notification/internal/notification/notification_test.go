@@ -36,6 +36,8 @@ func TestEvent_Validate(t *testing.T) {
 		{"mention in a comment", notification.Event{Kind: notification.KindCommentMention, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, nil},
 		{"mention in a comment without the comment", notification.Event{Kind: notification.KindCommentMention, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},
 		{"mention in a topic", notification.Event{Kind: notification.KindTopicMention, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, nil},
+		{"mention under a photo", notification.Event{Kind: notification.KindPhotoMention, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, nil},
+		{"mention under a photo without the comment", notification.Event{Kind: notification.KindPhotoMention, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},
 		{"mention in a topic without the message", notification.Event{Kind: notification.KindTopicMention, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},
 		{"like of a photo", notification.Event{Kind: notification.KindPhotoLike, RecipientID: ann, ActorID: bob, PostID: post}, nil},
 		{"like of a photo with a comment", notification.Event{Kind: notification.KindPhotoLike, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, notification.ErrTargetMismatch},
