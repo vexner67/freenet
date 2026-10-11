@@ -25,7 +25,7 @@ func TestPurgeService(t *testing.T) {
 	suggestions := inmem.NewSuggestionRepository()
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
-		Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
+		Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(), Notes: inmem.NewNoteRepository(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
 	})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
@@ -154,7 +154,7 @@ func TestPurgeService_Topics(t *testing.T) {
 	})
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
-		Topics: topicRepo, Albums: inmem.NewAlbumRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
+		Topics: topicRepo, Albums: inmem.NewAlbumRepository(), Notes: inmem.NewNoteRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
 	})
 	club, ann, bob := uuid.New(), uuid.New(), uuid.New()
 
@@ -201,7 +201,7 @@ func TestPurgeService_Albums(t *testing.T) {
 	})
 	purge := service.NewPurgeService(service.PurgeDeps{
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
-		Topics: inmem.NewTopicRepository(), Albums: albumRepo, Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
+		Topics: inmem.NewTopicRepository(), Albums: albumRepo, Notes: inmem.NewNoteRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
 	})
 
 	annsAlbum, err := albums.Create(ctx, service.CreateAlbumInput{OwnerID: ann, RequesterID: ann, Name: "Анна"})

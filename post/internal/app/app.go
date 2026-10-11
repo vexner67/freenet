@@ -165,10 +165,13 @@ func (a *App) build(cfg config.Config) error {
 			}),
 			Albums: albums,
 			Polls:  service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Tx: repos.tx}),
+			Notes: service.NewNoteService(service.NoteDeps{
+				Notes: repos.notes, Comments: repos.noteComments, Tx: repos.tx, Notifier: notifier,
+			}),
 			Purge: service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
 				Votes:  repos.polls,
-				Topics: repos.topics, Albums: repos.albums, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Topics: repos.topics, Albums: repos.albums, Notes: repos.notes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
 		}, a.logger),
 	)
@@ -236,6 +239,10 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_EditAlbumPhoto_FullMethodName: cfg.EditLimits,
 		postv1.PostService_SetAlbumCover_FullMethodName:  cfg.EditLimits,
 		postv1.PostService_MoveAlbumPhoto_FullMethodName: cfg.EditLimits,
+		// A note is a post of the notes, a comment under it a comment.
+		postv1.PostService_CreateNote_FullMethodName:        cfg.PostLimits,
+		postv1.PostService_EditNote_FullMethodName:          cfg.EditLimits,
+		postv1.PostService_CreateNoteComment_FullMethodName: cfg.CommentLimits,
 	}
 }
 
@@ -393,8 +400,13 @@ type repositories struct {
 		service.PollRepository
 		service.ReactionEraser
 	}
-	albumPhotos service.AlbumPhotoRepository
-	photoLikes  service.AlbumPhotoLikeRepository
+	notes interface {
+		service.NoteRepository
+		service.NoteEraser
+	}
+	noteComments service.NoteCommentRepository
+	albumPhotos  service.AlbumPhotoRepository
+	photoLikes   service.AlbumPhotoLikeRepository
 	// photoComments are the comments of photos of albums.
 	photoComments service.PhotoCommentRepository
 	// photoCommentLikes are the hearts of those comments.
@@ -409,6 +421,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		store := inmem.NewStore()
 		topics := inmem.NewTopicRepository()
 		albums := inmem.NewAlbumRepository()
+		notes := inmem.NewNoteRepository()
 		return repositories{
 			posts:        store.Posts(),
 			likes:        store.Likes(),
@@ -424,6 +437,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			albumPhotos:   albums.Photos(),
 			photoLikes:    albums.PhotoLikes(),
 			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
+			notes: notes, noteComments: notes.Comments(),
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -454,6 +468,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 
 	topics := postgres.NewTopicRepository(a.pool)
 	albums := postgres.NewAlbumRepository(a.pool)
+	notes := postgres.NewNoteRepository(a.pool)
 
 	return repositories{
 		posts:        postgres.NewPostRepository(a.pool),
@@ -470,6 +485,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		albumPhotos:   albums.Photos(),
 		photoLikes:    albums.PhotoLikes(),
 		photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
+		notes: notes, noteComments: notes.Comments(),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)

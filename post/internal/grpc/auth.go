@@ -48,6 +48,11 @@ func PublicMethods() []string {
 		postv1.PostService_GetPhotoComment_FullMethodName,
 		postv1.PostService_GetPhotoComments_FullMethodName,
 		postv1.PostService_ListPhotoCommentLikers_FullMethodName,
+		postv1.PostService_GetNote_FullMethodName,
+		postv1.PostService_ListNotes_FullMethodName,
+		postv1.PostService_ListNoteComments_FullMethodName,
+		postv1.PostService_GetNoteComment_FullMethodName,
+		postv1.PostService_GetNoteComments_FullMethodName,
 		postv1.PostService_PurgeUser_FullMethodName,
 	}
 }

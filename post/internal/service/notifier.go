@@ -48,6 +48,9 @@ const (
 	// EventPhotoMention: the comment CommentID under the photo PostID
 	// names the recipient.
 	EventPhotoMention
+	// EventNoteComment: the comment CommentID under the recipient's
+	// note PostID.
+	EventNoteComment
 )
 
 // Event: RecipientID is the author of the post for likes, comments,
