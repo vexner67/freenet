@@ -3,7 +3,7 @@
 
 import { api } from './api.js';
 import { connectEvents, onEvent } from './events.js';
-import { errorText, isLongText, mentionParts, setTimezone, unreadCountText } from './labels.js';
+import { errorText, foundParts, isLongText, mentionParts, setTimezone, unreadCountText } from './labels.js';
 import { nicknameLookup } from './nicknames.js';
 
 export const $ = (id) => document.getElementById(id);
@@ -40,10 +40,11 @@ const knownNickname = nicknameLookup((nicknames) => api.knownNicknames(nicknames
 // mentionNodes are text with the people it names as links to their pages,
 // openvk's "[id1|Анна]" and "@ann". A text says "@word" of anything: the
 // link of a word that is nobody's nickname becomes plain text again once
-// the server says so, and stays if it cannot be asked.
-export function mentionNodes(text) {
-  return mentionParts(text).map((p) => {
-    if (typeof p === 'string') return p;
+// the server says so, and stays if it cannot be asked. found is what a
+// search looked for: the words that say it are highlighted, as on openvk.
+export function mentionNodes(text, found = '') {
+  return mentionParts(text).flatMap((p) => {
+    if (typeof p === 'string') return foundNodes(p, found);
 
     const link = el('a', { href: '/' + encodeURIComponent(p.nickname), textContent: p.text });
     knownNickname(p.nickname).then((known) => {
@@ -54,12 +55,20 @@ export function mentionNodes(text) {
   });
 }
 
+// foundNodes are text with what says query highlighted.
+function foundNodes(text, query) {
+  if (!query) return [text];
+
+  return foundParts(text, query).map((p) => (p.found ? el('span', { className: 'found-words', textContent: p.text }) : p.text));
+}
+
 // textNode shows what a post or a comment says. Long text is cut short
 // with openvk's "Показать больше", unless whole. A list carries only the
 // beginning of a text of thousands of characters: rest, if given, loads
-// all of it when asked to show more.
-export function textNode(text, { whole = false, rest = null } = {}) {
-  const node = el('div', { className: 'post-text' }, ...mentionNodes(text));
+// all of it when asked to show more. found: the words of a search to
+// highlight.
+export function textNode(text, { whole = false, rest = null, found = '' } = {}) {
+  const node = el('div', { className: 'post-text' }, ...mentionNodes(text, found));
   if (whole || !(rest || isLongText(text))) return node;
 
   node.classList.add('collapsed');
@@ -68,7 +77,7 @@ export function textNode(text, { whole = false, rest = null } = {}) {
   more.addEventListener('click', async () => {
     if (rest) {
       try {
-        node.replaceChildren(...mentionNodes(await rest()));
+        node.replaceChildren(...mentionNodes(await rest(), found));
       } catch {
         // The link stays to try again.
         return;

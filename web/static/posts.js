@@ -34,7 +34,7 @@ export function postPath(post) {
 //   onWallOf: the viewer (null for anonymous) when posts of several walls
 //     are mixed, as in the news feed: someone else's wall is then named,
 //     "написал на стене Петра Петрова", as openvk does there only.
-export function postNode(post, { viewer = null, moderates = false, onDelete, onPinned, onArchived, canLike = false, onError, withCommentsLink = true, onWallOf } = {}) {
+export function postNode(post, { viewer = null, moderates = false, onDelete, onPinned, onArchived, canLike = false, onError, withCommentsLink = true, onWallOf, found = '' } = {}) {
   const path = pagePath(post.author);
   const date = el('div', { className: 'post-date' });
   const content = el('div', { className: 'post-content' });
@@ -66,7 +66,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     );
     content.replaceChildren(
       // Whole on the page of the post, which has no link to open it.
-      post.text ? textNode(post.text, { whole: !withCommentsLink, rest: post.textCut ? () => wholeText(post) : null }) : '',
+      post.text ? textNode(post.text, { whole: !withCommentsLink, rest: post.textCut ? () => wholeText(post) : null, found }) : '',
       photosNode(post.photos ?? []) ?? '',
       signatureNode(post.signer) ?? '',
     );
