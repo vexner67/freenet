@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"crypto/rsa"
 	"fmt"
 	"log/slog"
 	"time"
@@ -53,9 +54,15 @@ type App struct {
 	addr     string
 }
 
+// sessionRepository serves both the sign-in and the owner's list.
+type sessionRepository interface {
+	service.SessionRepository
+	service.OwnedSessionRepository
+}
+
 // storage is the set of repositories chosen by STORAGE.
 type storage struct {
-	sessions service.SessionRepository
+	sessions sessionRepository
 	codes    service.CodeRepository
 	limiter  service.RateLimiter
 }
@@ -99,7 +106,12 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("grpc.NewClient", err)
 	}
 
-	tokenProvider, err := newTokenProvider(cfg)
+	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
+	if err != nil {
+		return errs.Wrap("jwtauth.LoadPublicKey", err)
+	}
+
+	tokenProvider, err := newTokenProvider(cfg, publicKey)
 	if err != nil {
 		return errs.Wrap("newTokenProvider", err)
 	}
@@ -136,12 +148,23 @@ func (a *App) build(cfg config.Config) error {
 		a.logger,
 		reg,
 		grpc.Creds(serverCreds),
-		grpc.ChainUnaryInterceptor(authgrpc.ErrorInterceptor(a.logger)),
+		grpc.ChainUnaryInterceptor(
+			authgrpc.ErrorInterceptor(a.logger),
+			// Signing in needs no access token; a user's sessions do.
+			jwtauth.UnaryServerInterceptor(
+				jwtauth.NewVerifier(publicKey, cfg.Issuer),
+				jwtauth.Access{Public: authgrpc.PublicMethods()},
+			),
+		),
 	)
 	if err != nil {
 		return errs.Wrap("grpcserver.New", err)
 	}
-	authv1.RegisterAuthServiceServer(a.server.Registrar(), authgrpc.NewAuthHandler(authService, a.logger))
+	authv1.RegisterAuthServiceServer(a.server.Registrar(), authgrpc.NewAuthHandler(
+		authService,
+		service.NewSessionService(store.sessions, cfg.RefreshTokenTTL),
+		a.logger,
+	))
 
 	if cfg.MetricsPort == 0 {
 		a.logger.Info("METRICS_PORT is not set: metrics are not served")
@@ -219,15 +242,10 @@ func (a *App) newMailer(cfg config.Config) service.Mailer {
 	return console.NewMailer(a.logger)
 }
 
-func newTokenProvider(cfg config.Config) (*jwt.JWT, error) {
+func newTokenProvider(cfg config.Config, publicKey *rsa.PublicKey) (*jwt.JWT, error) {
 	privateKey, err := config.LoadPrivateKey(cfg.JWTPrivateKeyPath)
 	if err != nil {
 		return nil, errs.Wrap("config.LoadPrivateKey", err)
-	}
-
-	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
-	if err != nil {
-		return nil, errs.Wrap("jwtauth.LoadPublicKey", err)
 	}
 
 	return jwt.New(jwt.Config{

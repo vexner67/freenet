@@ -46,10 +46,11 @@ type SessionRepository interface {
 	Save(ctx context.Context, s *session.Session) error
 	// Get returns ErrSessionNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*session.Session, error)
-	// Rotate replaces the refresh token hash only if it still equals
-	// oldHash, otherwise returns ErrSessionNotFound. This makes two
-	// concurrent refreshes with the same token unable to both succeed.
-	Rotate(ctx context.Context, id uuid.UUID, oldHash, newHash string) error
+	// Rotate saves the session as it is after a refresh (its token hash,
+	// device and time of use) only if its hash still equals oldHash,
+	// otherwise returns ErrSessionNotFound. This makes two concurrent
+	// refreshes with the same token unable to both succeed.
+	Rotate(ctx context.Context, rotated *session.Session, oldHash string) error
 	// Delete returns ErrSessionNotFound.
 	Delete(ctx context.Context, id uuid.UUID) error
 }
@@ -119,6 +120,7 @@ type AuthService struct {
 	mailer        Mailer
 	tokenProvider TokenProvider
 	policy        Policy
+	now           func() time.Time
 }
 
 func NewAuthService(
@@ -140,6 +142,7 @@ func NewAuthService(
 		mailer:        mailer,
 		tokenProvider: tokenProvider,
 		policy:        policy,
+		now:           time.Now,
 	}
 }
 
@@ -190,7 +193,9 @@ type TokenPair struct {
 	Refresh string
 }
 
-func (s *AuthService) VerifyCode(ctx context.Context, email account.Email, code string) (TokenPair, error) {
+// VerifyCode signs in: device is where from, for the owner's list of
+// sessions.
+func (s *AuthService) VerifyCode(ctx context.Context, email account.Email, code string, device session.Device) (TokenPair, error) {
 	if err := s.verifyCode(ctx, email, code); err != nil {
 		return TokenPair{}, errs.Wrap("s.verifyCode", err)
 	}
@@ -200,13 +205,14 @@ func (s *AuthService) VerifyCode(ctx context.Context, email account.Email, code 
 		return TokenPair{}, errs.Wrap("s.getOrCreateUser", err)
 	}
 
-	return s.createSession(ctx, acc)
+	return s.createSession(ctx, acc, device)
 }
 
 // RefreshToken exchanges a refresh token for a new pair and rotates it:
 // the presented token stops working. The new access token says anew
-// whether the page is deleted; the session of an erased user ends.
-func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (TokenPair, error) {
+// whether the page is deleted; the session of an erased user ends. The
+// session remembers when and where from it was refreshed.
+func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string, device session.Device) (TokenPair, error) {
 	sess, err := s.currentSession(ctx, refreshToken)
 	if err != nil {
 		return TokenPair{}, errs.Wrap("s.currentSession", err)
@@ -229,12 +235,8 @@ func (s *AuthService) RefreshToken(ctx context.Context, refreshToken string) (To
 		return TokenPair{}, errs.Wrap("s.issueTokens", err)
 	}
 
-	if err = s.sessionRepo.Rotate(
-		ctx,
-		sess.ID(),
-		sess.RefreshTokenHash(),
-		s.hasher.Hash(pair.Refresh),
-	); err != nil {
+	rotated := sess.Rotated(s.hasher.Hash(pair.Refresh), device, s.now())
+	if err = s.sessionRepo.Rotate(ctx, rotated, sess.RefreshTokenHash()); err != nil {
 		return TokenPair{}, errs.Wrap("s.sessionRepo.Rotate", err)
 	}
 
@@ -335,6 +337,7 @@ func (s *AuthService) getOrCreateUser(
 func (s *AuthService) createSession(
 	ctx context.Context,
 	acc Account,
+	device session.Device,
 ) (TokenPair, error) {
 	sessionID, err := uuid.NewV7()
 	if err != nil {
@@ -350,6 +353,8 @@ func (s *AuthService) createSession(
 		sessionID,
 		acc.UserID,
 		s.hasher.Hash(pair.Refresh),
+		device,
+		s.now(),
 	)
 	if err != nil {
 		return TokenPair{}, errs.Wrap("session.New", err)

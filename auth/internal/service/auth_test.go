@@ -87,6 +87,9 @@ type fixture struct {
 }
 
 // testPolicy does not get in the way unless a test tightens it.
+// testDevice is where the tests sign in from.
+var testDevice = session.NewDevice(testIP, "Mozilla/5.0 (test)")
+
 func testPolicy() service.Policy {
 	return service.Policy{
 		CodeTTL:            time.Minute,
@@ -150,7 +153,7 @@ func (f fixture) requestCode(t *testing.T, email account.Email) string {
 func (f fixture) signIn(t *testing.T) service.TokenPair {
 	t.Helper()
 
-	pair, err := f.svc.VerifyCode(context.Background(), testEmail, f.requestCode(t, testEmail))
+	pair, err := f.svc.VerifyCode(context.Background(), testEmail, f.requestCode(t, testEmail), testDevice)
 	if err != nil {
 		t.Fatalf("VerifyCode: %v", err)
 	}
@@ -182,11 +185,11 @@ func TestAuthService_VerifyCode(t *testing.T) {
 		ctx := context.Background()
 		code := f.requestCode(t, testEmail)
 
-		if _, err := f.svc.VerifyCode(ctx, testEmail, code); err != nil {
+		if _, err := f.svc.VerifyCode(ctx, testEmail, code, testDevice); err != nil {
 			t.Fatalf("first use: %v", err)
 		}
 
-		_, err := f.svc.VerifyCode(ctx, testEmail, code)
+		_, err := f.svc.VerifyCode(ctx, testEmail, code, testDevice)
 		if !errors.Is(err, service.ErrCodeNotFound) {
 			t.Fatalf("second use: got %v, want ErrCodeNotFound", err)
 		}
@@ -216,10 +219,10 @@ func TestAuthService_VerifyCode(t *testing.T) {
 			t.Skip("random codes collided")
 		}
 
-		if _, err := f.svc.VerifyCode(ctx, testEmail, first); !errors.Is(err, service.ErrInvalidCode) {
+		if _, err := f.svc.VerifyCode(ctx, testEmail, first, testDevice); !errors.Is(err, service.ErrInvalidCode) {
 			t.Fatalf("old code: got %v, want ErrInvalidCode", err)
 		}
-		if _, err := f.svc.VerifyCode(ctx, testEmail, second); err != nil {
+		if _, err := f.svc.VerifyCode(ctx, testEmail, second, testDevice); err != nil {
 			t.Fatalf("new code: %v", err)
 		}
 	})
@@ -236,13 +239,13 @@ func TestAuthService_VerifyCode(t *testing.T) {
 			wrong = "111111"
 		}
 
-		if _, err := f.svc.VerifyCode(ctx, testEmail, wrong); !errors.Is(err, service.ErrInvalidCode) {
+		if _, err := f.svc.VerifyCode(ctx, testEmail, wrong, testDevice); !errors.Is(err, service.ErrInvalidCode) {
 			t.Fatalf("got %v, want ErrInvalidCode", err)
 		}
 		if f.users.calls != 0 {
 			t.Fatalf("user service called %d times", f.users.calls)
 		}
-		if _, err := f.svc.VerifyCode(ctx, testEmail, code); err != nil {
+		if _, err := f.svc.VerifyCode(ctx, testEmail, code, testDevice); err != nil {
 			t.Fatalf("right code after a typo: %v", err)
 		}
 	})
@@ -252,7 +255,7 @@ func TestAuthService_VerifyCode(t *testing.T) {
 
 		f := newFixture(t, nil)
 
-		_, err := f.svc.VerifyCode(context.Background(), testEmail, "123456")
+		_, err := f.svc.VerifyCode(context.Background(), testEmail, "123456", testDevice)
 		if !errors.Is(err, service.ErrCodeNotFound) {
 			t.Fatalf("got %v, want ErrCodeNotFound", err)
 		}
@@ -263,7 +266,7 @@ func TestAuthService_VerifyCode(t *testing.T) {
 
 		f := newFixture(t, service.ErrUserServiceUnavailable)
 
-		_, err := f.svc.VerifyCode(context.Background(), testEmail, f.requestCode(t, testEmail))
+		_, err := f.svc.VerifyCode(context.Background(), testEmail, f.requestCode(t, testEmail), testDevice)
 		if !errors.Is(err, service.ErrUserServiceUnavailable) {
 			t.Fatalf("got %v, want ErrUserServiceUnavailable", err)
 		}
@@ -355,15 +358,15 @@ func TestAuthService_CodeAttempts(t *testing.T) {
 		code := f.requestCode(t, testEmail)
 
 		for i := 0; i < 3; i++ {
-			if _, err := f.svc.VerifyCode(ctx, testEmail, wrongCode(code)); !errors.Is(err, service.ErrInvalidCode) {
+			if _, err := f.svc.VerifyCode(ctx, testEmail, wrongCode(code), testDevice); !errors.Is(err, service.ErrInvalidCode) {
 				t.Fatalf("attempt %d: got %v, want ErrInvalidCode", i+1, err)
 			}
 		}
 
-		if _, err := f.svc.VerifyCode(ctx, testEmail, code); !errors.Is(err, service.ErrTooManyAttempts) {
+		if _, err := f.svc.VerifyCode(ctx, testEmail, code, testDevice); !errors.Is(err, service.ErrTooManyAttempts) {
 			t.Fatalf("over the limit: got %v, want ErrTooManyAttempts", err)
 		}
-		if _, err := f.svc.VerifyCode(ctx, testEmail, code); !errors.Is(err, service.ErrCodeNotFound) {
+		if _, err := f.svc.VerifyCode(ctx, testEmail, code, testDevice); !errors.Is(err, service.ErrCodeNotFound) {
 			t.Fatalf("burned code: got %v, want ErrCodeNotFound", err)
 		}
 		if f.users.calls != 0 {
@@ -379,12 +382,12 @@ func TestAuthService_CodeAttempts(t *testing.T) {
 		code := f.requestCode(t, testEmail)
 
 		for i := 0; i < 2; i++ {
-			if _, err := f.svc.VerifyCode(ctx, testEmail, wrongCode(code)); !errors.Is(err, service.ErrInvalidCode) {
+			if _, err := f.svc.VerifyCode(ctx, testEmail, wrongCode(code), testDevice); !errors.Is(err, service.ErrInvalidCode) {
 				t.Fatal(err)
 			}
 		}
 
-		if _, err := f.svc.VerifyCode(ctx, testEmail, code); err != nil {
+		if _, err := f.svc.VerifyCode(ctx, testEmail, code, testDevice); err != nil {
 			t.Fatalf("third attempt with the right code: %v", err)
 		}
 	})
@@ -397,11 +400,11 @@ func TestAuthService_CodeAttempts(t *testing.T) {
 		old := f.requestCode(t, testEmail)
 
 		for i := 0; i < 3; i++ {
-			_, _ = f.svc.VerifyCode(ctx, testEmail, wrongCode(old))
+			_, _ = f.svc.VerifyCode(ctx, testEmail, wrongCode(old), testDevice)
 		}
 
 		code := f.requestCode(t, testEmail)
-		if _, err := f.svc.VerifyCode(ctx, testEmail, code); err != nil {
+		if _, err := f.svc.VerifyCode(ctx, testEmail, code, testDevice); err != nil {
 			t.Fatalf("new code: %v", err)
 		}
 	})
@@ -417,7 +420,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 		ctx := context.Background()
 		first := f.signIn(t)
 
-		second, err := f.svc.RefreshToken(ctx, first.Refresh)
+		second, err := f.svc.RefreshToken(ctx, first.Refresh, testDevice)
 		if err != nil {
 			t.Fatalf("RefreshToken: %v", err)
 		}
@@ -425,7 +428,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			t.Fatal("tokens were not renewed")
 		}
 
-		if _, err = f.svc.RefreshToken(ctx, second.Refresh); err != nil {
+		if _, err = f.svc.RefreshToken(ctx, second.Refresh, testDevice); err != nil {
 			t.Fatalf("new refresh token must work: %v", err)
 		}
 	})
@@ -437,15 +440,15 @@ func TestAuthService_RefreshToken(t *testing.T) {
 		ctx := context.Background()
 		stolen := f.signIn(t)
 
-		current, err := f.svc.RefreshToken(ctx, stolen.Refresh)
+		current, err := f.svc.RefreshToken(ctx, stolen.Refresh, testDevice)
 		if err != nil {
 			t.Fatal(err)
 		}
 
-		if _, err = f.svc.RefreshToken(ctx, stolen.Refresh); !errors.Is(err, service.ErrInvalidRefreshToken) {
+		if _, err = f.svc.RefreshToken(ctx, stolen.Refresh, testDevice); !errors.Is(err, service.ErrInvalidRefreshToken) {
 			t.Fatalf("reuse: got %v, want ErrInvalidRefreshToken", err)
 		}
-		if _, err = f.svc.RefreshToken(ctx, current.Refresh); !errors.Is(err, service.ErrSessionNotFound) {
+		if _, err = f.svc.RefreshToken(ctx, current.Refresh, testDevice); !errors.Is(err, service.ErrSessionNotFound) {
 			t.Fatalf("after reuse the session must be gone, got %v", err)
 		}
 	})
@@ -456,7 +459,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 		f := newFixture(t, nil)
 		pair := f.signIn(t)
 
-		_, err := f.svc.RefreshToken(context.Background(), pair.Access)
+		_, err := f.svc.RefreshToken(context.Background(), pair.Access, testDevice)
 		if !errors.Is(err, service.ErrInvalidRefreshToken) {
 			t.Fatalf("got %v, want ErrInvalidRefreshToken", err)
 		}
@@ -467,7 +470,7 @@ func TestAuthService_RefreshToken(t *testing.T) {
 
 		f := newFixture(t, nil)
 
-		_, err := f.svc.RefreshToken(context.Background(), "garbage")
+		_, err := f.svc.RefreshToken(context.Background(), "garbage", testDevice)
 		if !errors.Is(err, service.ErrInvalidRefreshToken) {
 			t.Fatalf("got %v, want ErrInvalidRefreshToken", err)
 		}
@@ -487,7 +490,7 @@ func TestAuthService_Logout(t *testing.T) {
 		if err := f.svc.Logout(ctx, pair.Refresh); err != nil {
 			t.Fatalf("Logout: %v", err)
 		}
-		if _, err := f.svc.RefreshToken(ctx, pair.Refresh); !errors.Is(err, service.ErrSessionNotFound) {
+		if _, err := f.svc.RefreshToken(ctx, pair.Refresh, testDevice); !errors.Is(err, service.ErrSessionNotFound) {
 			t.Fatalf("refresh after logout: got %v, want ErrSessionNotFound", err)
 		}
 	})
@@ -518,7 +521,7 @@ func TestAuthService_Logout(t *testing.T) {
 		if err := f.svc.Logout(ctx, phone.Refresh); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := f.svc.RefreshToken(ctx, laptop.Refresh); err != nil {
+		if _, err := f.svc.RefreshToken(ctx, laptop.Refresh, testDevice); err != nil {
 			t.Fatalf("other session must survive: %v", err)
 		}
 	})
@@ -560,7 +563,7 @@ func TestAuthService_DeactivatedAccount(t *testing.T) {
 	}
 
 	f.users.deactivated = true
-	pair, err := f.svc.RefreshToken(ctx, pair.Refresh)
+	pair, err := f.svc.RefreshToken(ctx, pair.Refresh, testDevice)
 	if err != nil {
 		t.Fatalf("RefreshToken: %v", err)
 	}
@@ -573,16 +576,16 @@ func TestAuthService_DeactivatedAccount(t *testing.T) {
 	}
 
 	f.users.deactivated = false
-	if pair, err = f.svc.RefreshToken(ctx, pair.Refresh); err != nil || deactivated(pair.Access) {
+	if pair, err = f.svc.RefreshToken(ctx, pair.Refresh, testDevice); err != nil || deactivated(pair.Access) {
 		t.Fatalf("refresh after restoring: %v, deactivated %v", err, err == nil && deactivated(pair.Access))
 	}
 
 	f.users.gone = true
-	if _, err = f.svc.RefreshToken(ctx, pair.Refresh); !errors.Is(err, service.ErrInvalidRefreshToken) {
+	if _, err = f.svc.RefreshToken(ctx, pair.Refresh, testDevice); !errors.Is(err, service.ErrInvalidRefreshToken) {
 		t.Fatalf("refresh of an erased user: %v, want ErrInvalidRefreshToken", err)
 	}
 	f.users.gone = false
-	if _, err = f.svc.RefreshToken(ctx, pair.Refresh); !errors.Is(err, service.ErrSessionNotFound) {
+	if _, err = f.svc.RefreshToken(ctx, pair.Refresh, testDevice); !errors.Is(err, service.ErrSessionNotFound) {
 		t.Fatalf("the session of an erased user is still there: %v", err)
 	}
 }

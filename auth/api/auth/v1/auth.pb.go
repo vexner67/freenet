@@ -10,6 +10,7 @@ import (
 	protoreflect "google.golang.org/protobuf/reflect/protoreflect"
 	protoimpl "google.golang.org/protobuf/runtime/protoimpl"
 	emptypb "google.golang.org/protobuf/types/known/emptypb"
+	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 	reflect "reflect"
 	sync "sync"
 	unsafe "unsafe"
@@ -258,11 +259,303 @@ func (x *LogoutRequest) GetRefreshToken() string {
 	return ""
 }
 
+type Session struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,2,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// When its tokens were last issued: at the sign-in or the last refresh.
+	LastUsedAt *timestamppb.Timestamp `protobuf:"bytes,3,opt,name=last_used_at,json=lastUsedAt,proto3" json:"last_used_at,omitempty"`
+	// Where from they were issued then, as the client said; "" is unknown.
+	Ip        string `protobuf:"bytes,4,opt,name=ip,proto3" json:"ip,omitempty"`
+	UserAgent string `protobuf:"bytes,5,opt,name=user_agent,json=userAgent,proto3" json:"user_agent,omitempty"`
+	// The session of the access token of the call.
+	Current       bool `protobuf:"varint,6,opt,name=current,proto3" json:"current,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Session) Reset() {
+	*x = Session{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[5]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Session) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Session) ProtoMessage() {}
+
+func (x *Session) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[5]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Session.ProtoReflect.Descriptor instead.
+func (*Session) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{5}
+}
+
+func (x *Session) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Session) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *Session) GetLastUsedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.LastUsedAt
+	}
+	return nil
+}
+
+func (x *Session) GetIp() string {
+	if x != nil {
+		return x.Ip
+	}
+	return ""
+}
+
+func (x *Session) GetUserAgent() string {
+	if x != nil {
+		return x.UserAgent
+	}
+	return ""
+}
+
+func (x *Session) GetCurrent() bool {
+	if x != nil {
+		return x.Current
+	}
+	return false
+}
+
+type ListSessionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSessionsRequest) Reset() {
+	*x = ListSessionsRequest{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[6]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSessionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSessionsRequest) ProtoMessage() {}
+
+func (x *ListSessionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[6]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSessionsRequest.ProtoReflect.Descriptor instead.
+func (*ListSessionsRequest) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{6}
+}
+
+type ListSessionsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The latest used first, at most 100.
+	Sessions      []*Session `protobuf:"bytes,1,rep,name=sessions,proto3" json:"sessions,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListSessionsResponse) Reset() {
+	*x = ListSessionsResponse{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[7]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListSessionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListSessionsResponse) ProtoMessage() {}
+
+func (x *ListSessionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[7]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListSessionsResponse.ProtoReflect.Descriptor instead.
+func (*ListSessionsResponse) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{7}
+}
+
+func (x *ListSessionsResponse) GetSessions() []*Session {
+	if x != nil {
+		return x.Sessions
+	}
+	return nil
+}
+
+type EndSessionRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	SessionId     string                 `protobuf:"bytes,1,opt,name=session_id,json=sessionId,proto3" json:"session_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndSessionRequest) Reset() {
+	*x = EndSessionRequest{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[8]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndSessionRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndSessionRequest) ProtoMessage() {}
+
+func (x *EndSessionRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[8]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndSessionRequest.ProtoReflect.Descriptor instead.
+func (*EndSessionRequest) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{8}
+}
+
+func (x *EndSessionRequest) GetSessionId() string {
+	if x != nil {
+		return x.SessionId
+	}
+	return ""
+}
+
+type EndOtherSessionsRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndOtherSessionsRequest) Reset() {
+	*x = EndOtherSessionsRequest{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[9]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndOtherSessionsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndOtherSessionsRequest) ProtoMessage() {}
+
+func (x *EndOtherSessionsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[9]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndOtherSessionsRequest.ProtoReflect.Descriptor instead.
+func (*EndOtherSessionsRequest) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{9}
+}
+
+type EndOtherSessionsResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Ended         int32                  `protobuf:"varint,1,opt,name=ended,proto3" json:"ended,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *EndOtherSessionsResponse) Reset() {
+	*x = EndOtherSessionsResponse{}
+	mi := &file_api_auth_v1_auth_proto_msgTypes[10]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *EndOtherSessionsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*EndOtherSessionsResponse) ProtoMessage() {}
+
+func (x *EndOtherSessionsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_auth_v1_auth_proto_msgTypes[10]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use EndOtherSessionsResponse.ProtoReflect.Descriptor instead.
+func (*EndOtherSessionsResponse) Descriptor() ([]byte, []int) {
+	return file_api_auth_v1_auth_proto_rawDescGZIP(), []int{10}
+}
+
+func (x *EndOtherSessionsResponse) GetEnded() int32 {
+	if x != nil {
+		return x.Ended
+	}
+	return 0
+}
+
 var File_api_auth_v1_auth_proto protoreflect.FileDescriptor
 
 const file_api_auth_v1_auth_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/auth/v1/auth.proto\x12\aauth.v1\x1a\x1bgoogle/protobuf/empty.proto\"*\n" +
+	"\x16api/auth/v1/auth.proto\x12\aauth.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"*\n" +
 	"\x12RequestCodeRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\"=\n" +
 	"\x11VerifyCodeRequest\x12\x14\n" +
@@ -274,13 +567,36 @@ const file_api_auth_v1_auth_proto_rawDesc = "" +
 	"\x13RefreshTokenRequest\x12#\n" +
 	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"4\n" +
 	"\rLogoutRequest\x12#\n" +
-	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken2\x8b\x02\n" +
+	"\rrefresh_token\x18\x01 \x01(\tR\frefreshToken\"\xdb\x01\n" +
+	"\aSession\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x129\n" +
+	"\n" +
+	"created_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12<\n" +
+	"\flast_used_at\x18\x03 \x01(\v2\x1a.google.protobuf.TimestampR\n" +
+	"lastUsedAt\x12\x0e\n" +
+	"\x02ip\x18\x04 \x01(\tR\x02ip\x12\x1d\n" +
+	"\n" +
+	"user_agent\x18\x05 \x01(\tR\tuserAgent\x12\x18\n" +
+	"\acurrent\x18\x06 \x01(\bR\acurrent\"\x15\n" +
+	"\x13ListSessionsRequest\"D\n" +
+	"\x14ListSessionsResponse\x12,\n" +
+	"\bsessions\x18\x01 \x03(\v2\x10.auth.v1.SessionR\bsessions\"2\n" +
+	"\x11EndSessionRequest\x12\x1d\n" +
+	"\n" +
+	"session_id\x18\x01 \x01(\tR\tsessionId\"\x19\n" +
+	"\x17EndOtherSessionsRequest\"0\n" +
+	"\x18EndOtherSessionsResponse\x12\x14\n" +
+	"\x05ended\x18\x01 \x01(\x05R\x05ended2\xf3\x03\n" +
 	"\vAuthService\x12B\n" +
 	"\vRequestCode\x12\x1b.auth.v1.RequestCodeRequest\x1a\x16.google.protobuf.Empty\x12<\n" +
 	"\n" +
 	"VerifyCode\x12\x1a.auth.v1.VerifyCodeRequest\x1a\x12.auth.v1.TokenPair\x12@\n" +
 	"\fRefreshToken\x12\x1c.auth.v1.RefreshTokenRequest\x1a\x12.auth.v1.TokenPair\x128\n" +
-	"\x06Logout\x12\x16.auth.v1.LogoutRequest\x1a\x16.google.protobuf.EmptyB5Z3github.com/vexner67/freenet/auth/api/auth/v1;authv1b\x06proto3"
+	"\x06Logout\x12\x16.auth.v1.LogoutRequest\x1a\x16.google.protobuf.Empty\x12K\n" +
+	"\fListSessions\x12\x1c.auth.v1.ListSessionsRequest\x1a\x1d.auth.v1.ListSessionsResponse\x12@\n" +
+	"\n" +
+	"EndSession\x12\x1a.auth.v1.EndSessionRequest\x1a\x16.google.protobuf.Empty\x12W\n" +
+	"\x10EndOtherSessions\x12 .auth.v1.EndOtherSessionsRequest\x1a!.auth.v1.EndOtherSessionsResponseB5Z3github.com/vexner67/freenet/auth/api/auth/v1;authv1b\x06proto3"
 
 var (
 	file_api_auth_v1_auth_proto_rawDescOnce sync.Once
@@ -294,29 +610,45 @@ func file_api_auth_v1_auth_proto_rawDescGZIP() []byte {
 	return file_api_auth_v1_auth_proto_rawDescData
 }
 
-var file_api_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 5)
+var file_api_auth_v1_auth_proto_msgTypes = make([]protoimpl.MessageInfo, 11)
 var file_api_auth_v1_auth_proto_goTypes = []any{
-	(*RequestCodeRequest)(nil),  // 0: auth.v1.RequestCodeRequest
-	(*VerifyCodeRequest)(nil),   // 1: auth.v1.VerifyCodeRequest
-	(*TokenPair)(nil),           // 2: auth.v1.TokenPair
-	(*RefreshTokenRequest)(nil), // 3: auth.v1.RefreshTokenRequest
-	(*LogoutRequest)(nil),       // 4: auth.v1.LogoutRequest
-	(*emptypb.Empty)(nil),       // 5: google.protobuf.Empty
+	(*RequestCodeRequest)(nil),       // 0: auth.v1.RequestCodeRequest
+	(*VerifyCodeRequest)(nil),        // 1: auth.v1.VerifyCodeRequest
+	(*TokenPair)(nil),                // 2: auth.v1.TokenPair
+	(*RefreshTokenRequest)(nil),      // 3: auth.v1.RefreshTokenRequest
+	(*LogoutRequest)(nil),            // 4: auth.v1.LogoutRequest
+	(*Session)(nil),                  // 5: auth.v1.Session
+	(*ListSessionsRequest)(nil),      // 6: auth.v1.ListSessionsRequest
+	(*ListSessionsResponse)(nil),     // 7: auth.v1.ListSessionsResponse
+	(*EndSessionRequest)(nil),        // 8: auth.v1.EndSessionRequest
+	(*EndOtherSessionsRequest)(nil),  // 9: auth.v1.EndOtherSessionsRequest
+	(*EndOtherSessionsResponse)(nil), // 10: auth.v1.EndOtherSessionsResponse
+	(*timestamppb.Timestamp)(nil),    // 11: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),            // 12: google.protobuf.Empty
 }
 var file_api_auth_v1_auth_proto_depIdxs = []int32{
-	0, // 0: auth.v1.AuthService.RequestCode:input_type -> auth.v1.RequestCodeRequest
-	1, // 1: auth.v1.AuthService.VerifyCode:input_type -> auth.v1.VerifyCodeRequest
-	3, // 2: auth.v1.AuthService.RefreshToken:input_type -> auth.v1.RefreshTokenRequest
-	4, // 3: auth.v1.AuthService.Logout:input_type -> auth.v1.LogoutRequest
-	5, // 4: auth.v1.AuthService.RequestCode:output_type -> google.protobuf.Empty
-	2, // 5: auth.v1.AuthService.VerifyCode:output_type -> auth.v1.TokenPair
-	2, // 6: auth.v1.AuthService.RefreshToken:output_type -> auth.v1.TokenPair
-	5, // 7: auth.v1.AuthService.Logout:output_type -> google.protobuf.Empty
-	4, // [4:8] is the sub-list for method output_type
-	0, // [0:4] is the sub-list for method input_type
-	0, // [0:0] is the sub-list for extension type_name
-	0, // [0:0] is the sub-list for extension extendee
-	0, // [0:0] is the sub-list for field type_name
+	11, // 0: auth.v1.Session.created_at:type_name -> google.protobuf.Timestamp
+	11, // 1: auth.v1.Session.last_used_at:type_name -> google.protobuf.Timestamp
+	5,  // 2: auth.v1.ListSessionsResponse.sessions:type_name -> auth.v1.Session
+	0,  // 3: auth.v1.AuthService.RequestCode:input_type -> auth.v1.RequestCodeRequest
+	1,  // 4: auth.v1.AuthService.VerifyCode:input_type -> auth.v1.VerifyCodeRequest
+	3,  // 5: auth.v1.AuthService.RefreshToken:input_type -> auth.v1.RefreshTokenRequest
+	4,  // 6: auth.v1.AuthService.Logout:input_type -> auth.v1.LogoutRequest
+	6,  // 7: auth.v1.AuthService.ListSessions:input_type -> auth.v1.ListSessionsRequest
+	8,  // 8: auth.v1.AuthService.EndSession:input_type -> auth.v1.EndSessionRequest
+	9,  // 9: auth.v1.AuthService.EndOtherSessions:input_type -> auth.v1.EndOtherSessionsRequest
+	12, // 10: auth.v1.AuthService.RequestCode:output_type -> google.protobuf.Empty
+	2,  // 11: auth.v1.AuthService.VerifyCode:output_type -> auth.v1.TokenPair
+	2,  // 12: auth.v1.AuthService.RefreshToken:output_type -> auth.v1.TokenPair
+	12, // 13: auth.v1.AuthService.Logout:output_type -> google.protobuf.Empty
+	7,  // 14: auth.v1.AuthService.ListSessions:output_type -> auth.v1.ListSessionsResponse
+	12, // 15: auth.v1.AuthService.EndSession:output_type -> google.protobuf.Empty
+	10, // 16: auth.v1.AuthService.EndOtherSessions:output_type -> auth.v1.EndOtherSessionsResponse
+	10, // [10:17] is the sub-list for method output_type
+	3,  // [3:10] is the sub-list for method input_type
+	3,  // [3:3] is the sub-list for extension type_name
+	3,  // [3:3] is the sub-list for extension extendee
+	0,  // [0:3] is the sub-list for field type_name
 }
 
 func init() { file_api_auth_v1_auth_proto_init() }
@@ -330,7 +662,7 @@ func file_api_auth_v1_auth_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_auth_v1_auth_proto_rawDesc), len(file_api_auth_v1_auth_proto_rawDesc)),
 			NumEnums:      0,
-			NumMessages:   5,
+			NumMessages:   11,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

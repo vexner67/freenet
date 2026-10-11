@@ -20,10 +20,13 @@ import (
 const _ = grpc.SupportPackageIsVersion9
 
 const (
-	AuthService_RequestCode_FullMethodName  = "/auth.v1.AuthService/RequestCode"
-	AuthService_VerifyCode_FullMethodName   = "/auth.v1.AuthService/VerifyCode"
-	AuthService_RefreshToken_FullMethodName = "/auth.v1.AuthService/RefreshToken"
-	AuthService_Logout_FullMethodName       = "/auth.v1.AuthService/Logout"
+	AuthService_RequestCode_FullMethodName      = "/auth.v1.AuthService/RequestCode"
+	AuthService_VerifyCode_FullMethodName       = "/auth.v1.AuthService/VerifyCode"
+	AuthService_RefreshToken_FullMethodName     = "/auth.v1.AuthService/RefreshToken"
+	AuthService_Logout_FullMethodName           = "/auth.v1.AuthService/Logout"
+	AuthService_ListSessions_FullMethodName     = "/auth.v1.AuthService/ListSessions"
+	AuthService_EndSession_FullMethodName       = "/auth.v1.AuthService/EndSession"
+	AuthService_EndOtherSessions_FullMethodName = "/auth.v1.AuthService/EndOtherSessions"
 )
 
 // AuthServiceClient is the client API for AuthService service.
@@ -34,6 +37,13 @@ type AuthServiceClient interface {
 	VerifyCode(ctx context.Context, in *VerifyCodeRequest, opts ...grpc.CallOption) (*TokenPair, error)
 	RefreshToken(ctx context.Context, in *RefreshTokenRequest, opts ...grpc.CallOption) (*TokenPair, error)
 	Logout(ctx context.Context, in *LogoutRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller's sessions, by the access token: where they are signed in.
+	ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error)
+	// EndSession signs the caller out of one of their sessions.
+	EndSession(ctx context.Context, in *EndSessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// EndOtherSessions signs the caller out everywhere but in the session
+	// of the access token.
+	EndOtherSessions(ctx context.Context, in *EndOtherSessionsRequest, opts ...grpc.CallOption) (*EndOtherSessionsResponse, error)
 }
 
 type authServiceClient struct {
@@ -84,6 +94,36 @@ func (c *authServiceClient) Logout(ctx context.Context, in *LogoutRequest, opts 
 	return out, nil
 }
 
+func (c *authServiceClient) ListSessions(ctx context.Context, in *ListSessionsRequest, opts ...grpc.CallOption) (*ListSessionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListSessionsResponse)
+	err := c.cc.Invoke(ctx, AuthService_ListSessions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) EndSession(ctx context.Context, in *EndSessionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, AuthService_EndSession_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *authServiceClient) EndOtherSessions(ctx context.Context, in *EndOtherSessionsRequest, opts ...grpc.CallOption) (*EndOtherSessionsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EndOtherSessionsResponse)
+	err := c.cc.Invoke(ctx, AuthService_EndOtherSessions_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // AuthServiceServer is the server API for AuthService service.
 // All implementations must embed UnimplementedAuthServiceServer
 // for forward compatibility.
@@ -92,6 +132,13 @@ type AuthServiceServer interface {
 	VerifyCode(context.Context, *VerifyCodeRequest) (*TokenPair, error)
 	RefreshToken(context.Context, *RefreshTokenRequest) (*TokenPair, error)
 	Logout(context.Context, *LogoutRequest) (*emptypb.Empty, error)
+	// The caller's sessions, by the access token: where they are signed in.
+	ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error)
+	// EndSession signs the caller out of one of their sessions.
+	EndSession(context.Context, *EndSessionRequest) (*emptypb.Empty, error)
+	// EndOtherSessions signs the caller out everywhere but in the session
+	// of the access token.
+	EndOtherSessions(context.Context, *EndOtherSessionsRequest) (*EndOtherSessionsResponse, error)
 	mustEmbedUnimplementedAuthServiceServer()
 }
 
@@ -113,6 +160,15 @@ func (UnimplementedAuthServiceServer) RefreshToken(context.Context, *RefreshToke
 }
 func (UnimplementedAuthServiceServer) Logout(context.Context, *LogoutRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Logout not implemented")
+}
+func (UnimplementedAuthServiceServer) ListSessions(context.Context, *ListSessionsRequest) (*ListSessionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListSessions not implemented")
+}
+func (UnimplementedAuthServiceServer) EndSession(context.Context, *EndSessionRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method EndSession not implemented")
+}
+func (UnimplementedAuthServiceServer) EndOtherSessions(context.Context, *EndOtherSessionsRequest) (*EndOtherSessionsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EndOtherSessions not implemented")
 }
 func (UnimplementedAuthServiceServer) mustEmbedUnimplementedAuthServiceServer() {}
 func (UnimplementedAuthServiceServer) testEmbeddedByValue()                     {}
@@ -207,6 +263,60 @@ func _AuthService_Logout_Handler(srv interface{}, ctx context.Context, dec func(
 	return interceptor(ctx, in, info, handler)
 }
 
+func _AuthService_ListSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListSessionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).ListSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_ListSessions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).ListSessions(ctx, req.(*ListSessionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_EndSession_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EndSessionRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).EndSession(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_EndSession_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).EndSession(ctx, req.(*EndSessionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _AuthService_EndOtherSessions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EndOtherSessionsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(AuthServiceServer).EndOtherSessions(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: AuthService_EndOtherSessions_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(AuthServiceServer).EndOtherSessions(ctx, req.(*EndOtherSessionsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // AuthService_ServiceDesc is the grpc.ServiceDesc for AuthService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -229,6 +339,18 @@ var AuthService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Logout",
 			Handler:    _AuthService_Logout_Handler,
+		},
+		{
+			MethodName: "ListSessions",
+			Handler:    _AuthService_ListSessions_Handler,
+		},
+		{
+			MethodName: "EndSession",
+			Handler:    _AuthService_EndSession_Handler,
+		},
+		{
+			MethodName: "EndOtherSessions",
+			Handler:    _AuthService_EndOtherSessions_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
