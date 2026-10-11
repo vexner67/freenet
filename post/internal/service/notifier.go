@@ -45,6 +45,9 @@ const (
 	// EventTopicMessageLike: a like of the recipient's message CommentID
 	// of the topic PostID.
 	EventTopicMessageLike
+	// EventPhotoMention: the comment CommentID under the photo PostID
+	// names the recipient.
+	EventPhotoMention
 )
 
 // Event: RecipientID is the author of the post for likes, comments,

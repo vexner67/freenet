@@ -761,17 +761,29 @@ func (s *AlbumService) PhotoLikers(ctx context.Context, photoID uuid.UUID, curso
 	return likerPage(found, size, p.Likes()), nil
 }
 
-// CommentPhoto adds a comment under a photo, in answer to comment replyTo
-// of the same photo unless it is uuid.Nil. Who may (a blacklist) the
+// PhotoCommentInput is a comment to put under a photo: in answer to the
+// comment ReplyTo of the same photo unless it is uuid.Nil, naming the
+// people of Mentions, whom the caller found.
+type PhotoCommentInput struct {
+	AuthorID uuid.UUID
+	PhotoID  uuid.UUID
+	ReplyTo  uuid.UUID
+	Text     post.CommentText
+	Mentions post.Mentions
+}
+
+// CommentPhoto adds a comment under a photo. Who may (a blacklist) the
 // caller has checked; post.ErrAlbumPhotoNotFound for a missing photo,
 // post.ErrCommentNotFound for a missing comment to answer.
-func (s *AlbumService) CommentPhoto(ctx context.Context, authorID, photoID, replyTo uuid.UUID, text post.CommentText) (*post.PhotoComment, error) {
+func (s *AlbumService) CommentPhoto(ctx context.Context, in PhotoCommentInput) (*post.PhotoComment, error) {
+	authorID, photoID := in.AuthorID, in.PhotoID
+
 	p, err := s.photos.Get(ctx, photoID)
 	if err != nil {
 		return nil, errs.Wrap("s.photos.Get", err)
 	}
 
-	c, err := s.newPhotoComment(ctx, authorID, photoID, replyTo, text)
+	c, err := s.newPhotoComment(ctx, authorID, photoID, in.ReplyTo, in.Text)
 	if err != nil {
 		return nil, errs.Wrap("s.newPhotoComment", err)
 	}
@@ -781,21 +793,37 @@ func (s *AlbumService) CommentPhoto(ctx context.Context, authorID, photoID, repl
 			return errs.Wrap("s.comments.Save", err)
 		}
 
-		// Who uploaded the photo hears about it ("оставил комментарий
-		// под вашей фотографией" of openvk), but not about their own.
-		if p.AuthorID() == authorID {
-			return nil
+		for _, e := range photoCommentEvents(p, c, in.Mentions) {
+			if err := s.notifier.Notify(ctx, e); err != nil {
+				return errs.Wrap("s.notifier.Notify", err)
+			}
 		}
 
-		e := Event{Kind: EventPhotoComment, RecipientID: p.AuthorID(), ActorID: authorID, PostID: photoID, CommentID: c.ID()}
-
-		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, e))
+		return nil
 	})
 	if err != nil {
 		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return c, nil
+}
+
+// photoCommentEvents are the notifications of the new comment c under
+// the photo p: who uploaded the photo hears about it ("оставил комментарий
+// под вашей фотографией" of openvk), but not about their own, and the
+// people it names of that, unless they heard as the uploader.
+func photoCommentEvents(p *post.AlbumPhoto, c *post.PhotoComment, mentions post.Mentions) []Event {
+	var events []Event
+
+	if p.AuthorID() != c.AuthorID() {
+		events = append(events, Event{Kind: EventPhotoComment, RecipientID: p.AuthorID(), ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()})
+	}
+
+	for _, id := range mentions.Heard(c.AuthorID(), p.AuthorID()) {
+		events = append(events, Event{Kind: EventPhotoMention, RecipientID: id, ActorID: c.AuthorID(), PostID: p.ID(), CommentID: c.ID()})
+	}
+
+	return events
 }
 
 func (s *AlbumService) newPhotoComment(ctx context.Context, authorID, photoID, replyTo uuid.UUID, text post.CommentText) (*post.PhotoComment, error) {

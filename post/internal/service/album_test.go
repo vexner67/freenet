@@ -519,11 +519,11 @@ func TestAlbumService_Notifies(t *testing.T) {
 	if _, err := svc.LikePhoto(ctx, ann, photo); err != nil {
 		t.Fatal(err)
 	}
-	bobs, err := svc.CommentPhoto(ctx, bob, photo, uuid.Nil, "красиво")
+	bobs, err := svc.CommentPhoto(ctx, service.PhotoCommentInput{AuthorID: bob, PhotoID: photo, ReplyTo: uuid.Nil, Text: "красиво"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = svc.CommentPhoto(ctx, ann, photo, uuid.Nil, "спасибо"); err != nil {
+	if _, err = svc.CommentPhoto(ctx, service.PhotoCommentInput{AuthorID: ann, PhotoID: photo, ReplyTo: uuid.Nil, Text: "спасибо"}); err != nil {
 		t.Fatal(err)
 	}
 	like := service.Event{Kind: service.EventPhotoLike, RecipientID: ann, ActorID: bob, PostID: photo}
@@ -532,10 +532,32 @@ func TestAlbumService_Notifies(t *testing.T) {
 		t.Fatalf("told %+v outside a transaction %d times, want %+v", told.notified, told.outsideTx, want)
 	}
 
+	// Bob names ann, cat and himself under ann's photo: ann hears of the
+	// comment, as who uploaded the photo, and cat of her name. Ann's own
+	// comment tells only whom it names.
+	cat := uuid.New()
+	told.notified = nil
+	named, err := svc.CommentPhoto(ctx, service.PhotoCommentInput{AuthorID: bob, PhotoID: photo, Text: "@ann, @cat", Mentions: post.Mentions{ann, cat, bob}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	anns, err := svc.CommentPhoto(ctx, service.PhotoCommentInput{AuthorID: ann, PhotoID: photo, Text: "@cat", Mentions: post.Mentions{cat}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantNamed := []service.Event{
+		{Kind: service.EventPhotoComment, RecipientID: ann, ActorID: bob, PostID: photo, CommentID: named.ID()},
+		{Kind: service.EventPhotoMention, RecipientID: cat, ActorID: bob, PostID: photo, CommentID: named.ID()},
+		{Kind: service.EventPhotoMention, RecipientID: cat, ActorID: ann, PostID: photo, CommentID: anns.ID()},
+	}
+	if !slices.Equal(told.notified, wantNamed) || told.outsideTx != 0 {
+		t.Fatalf("told %+v, want %+v", told.notified, wantNamed)
+	}
+
 	if _, err = svc.LikePhoto(ctx, bob, uuid.New()); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
 		t.Fatalf("a heart on nothing: %v", err)
 	}
-	if _, err = svc.CommentPhoto(ctx, bob, uuid.New(), uuid.Nil, "x"); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
+	if _, err = svc.CommentPhoto(ctx, service.PhotoCommentInput{AuthorID: bob, PhotoID: uuid.New(), ReplyTo: uuid.Nil, Text: "x"}); !errors.Is(err, post.ErrAlbumPhotoNotFound) {
 		t.Fatalf("a comment on nothing: %v", err)
 	}
 
@@ -568,19 +590,19 @@ func TestAlbumService_PhotoCommentRepliesAndHearts(t *testing.T) {
 	}
 	photo, other := added[0].ID, added[1].ID
 
-	first, err := svc.CommentPhoto(ctx, bob, photo, uuid.Nil, "красиво")
+	first, err := svc.CommentPhoto(ctx, service.PhotoCommentInput{AuthorID: bob, PhotoID: photo, ReplyTo: uuid.Nil, Text: "красиво"})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	reply, err := svc.CommentPhoto(ctx, ann, photo, first.ID(), "спасибо")
+	reply, err := svc.CommentPhoto(ctx, service.PhotoCommentInput{AuthorID: ann, PhotoID: photo, ReplyTo: first.ID(), Text: "спасибо"})
 	if err != nil || reply.ReplyTo() != first.ID() {
 		t.Fatalf("a reply = %+v, %v", reply, err)
 	}
-	if _, err = svc.CommentPhoto(ctx, ann, other, first.ID(), "не туда"); !errors.Is(err, post.ErrReplyOtherPhoto) {
+	if _, err = svc.CommentPhoto(ctx, service.PhotoCommentInput{AuthorID: ann, PhotoID: other, ReplyTo: first.ID(), Text: "не туда"}); !errors.Is(err, post.ErrReplyOtherPhoto) {
 		t.Fatalf("a reply under another photo: %v", err)
 	}
-	if _, err = svc.CommentPhoto(ctx, ann, photo, uuid.New(), "никому"); !errors.Is(err, post.ErrCommentNotFound) {
+	if _, err = svc.CommentPhoto(ctx, service.PhotoCommentInput{AuthorID: ann, PhotoID: photo, ReplyTo: uuid.New(), Text: "никому"}); !errors.Is(err, post.ErrCommentNotFound) {
 		t.Fatalf("a reply to nothing: %v", err)
 	}
 

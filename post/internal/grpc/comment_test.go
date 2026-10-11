@@ -114,6 +114,18 @@ func TestComments(t *testing.T) {
 		if status.Code(err) != codes.InvalidArgument {
 			t.Fatalf("mentions in a post, %s: %v", name, err)
 		}
+		_, err = s.client.EditPost(s.as(t, ann), &postv1.EditPostRequest{Id: postID, Text: "@ann", MentionedIds: mentioned})
+		if status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("mentions in an edit, %s: %v", name, err)
+		}
+		_, err = s.client.RepostPost(s.as(t, bob), &postv1.RepostPostRequest{PostId: postID, Text: "@ann", MentionedIds: mentioned})
+		if status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("mentions in a repost, %s: %v", name, err)
+		}
+		_, err = s.client.CreatePhotoComment(s.as(t, bob), &postv1.CreatePhotoCommentRequest{PhotoId: uuid.NewString(), Text: "@ann", MentionedIds: mentioned})
+		if status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("mentions under a photo, %s: %v", name, err)
+		}
 	}
 
 	page, err := s.client.ListComments(context.Background(), &postv1.ListCommentsRequest{PostId: postID, Limit: 2})

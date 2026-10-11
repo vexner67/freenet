@@ -48,6 +48,7 @@ var kinds = map[service.EventKind]notificationv1.Kind{
 	service.EventPostMention:    notificationv1.Kind_KIND_POST_MENTION,
 	service.EventCommentMention: notificationv1.Kind_KIND_COMMENT_MENTION,
 	service.EventTopicMention:   notificationv1.Kind_KIND_TOPIC_MENTION,
+	service.EventPhotoMention:   notificationv1.Kind_KIND_PHOTO_MENTION,
 
 	service.EventPhotoLike:        notificationv1.Kind_KIND_PHOTO_LIKE,
 	service.EventPhotoComment:     notificationv1.Kind_KIND_PHOTO_COMMENT,
