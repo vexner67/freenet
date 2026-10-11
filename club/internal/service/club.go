@@ -95,7 +95,9 @@ type MemberRepository interface {
 	Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error)
 	// ClubIDs are the newest limit clubs of a user.
 	ClubIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error)
-	// DeleteByUser takes a user out of every club.
+	// DeleteByUser takes a user out of every club. A club they owned goes
+	// to who has been in it longest: of its admins or, when it has none,
+	// of all its members; a club nobody else is in is left without an owner.
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -759,7 +761,8 @@ func (s *ClubService) WallModerators(ctx context.Context, wallID uuid.UUID) ([]u
 }
 
 // PurgeUser takes a user whose page was erased out of every club. A club
-// they owned stays, with its admins but no owner.
+// they owned goes to its oldest admin or, without admins, its oldest
+// member: nobody else could name the next owner.
 func (s *ClubService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 	return errs.Wrap("s.members.DeleteByUser", s.members.DeleteByUser(ctx, userID))
 }

@@ -210,12 +210,62 @@ func TestRepositories(t *testing.T) {
 			t.Fatal(err)
 		}
 
+		// The only one left inherits the club.
 		got, err := clubs.Get(ctx, e.ID())
 		if err != nil || got.Members() != 1 {
 			t.Fatalf("club after its owner is erased = %+v, %v", got, err)
 		}
+		if owner, err := members.Owner(ctx, e.ID()); err != nil || owner != bob {
+			t.Fatalf("Owner = %v, %v; want bob", owner, err)
+		}
+
+		// Erased too, he leaves it to nobody.
+		if err = members.DeleteByUser(ctx, bob); err != nil {
+			t.Fatal(err)
+		}
 		if owner, err := members.Owner(ctx, e.ID()); err != nil || owner != uuid.Nil {
-			t.Fatalf("Owner = %v, %v; want none", owner, err)
+			t.Fatalf("Owner of an empty club = %v, %v; want none", owner, err)
+		}
+	})
+
+	t.Run("an erased owner's club goes to its oldest admin", func(t *testing.T) {
+		cat, dan, eve := uuid.New(), uuid.New(), uuid.New()
+		e, other := create(ann), create(ann)
+
+		// Bob is in it longest, cat and dan run it, cat longer.
+		for _, user := range []uuid.UUID{bob, cat, dan, eve} {
+			if err := members.Join(ctx, e.ID(), user, false); err != nil {
+				t.Fatal(err)
+			}
+		}
+		for _, user := range []uuid.UUID{dan, cat} {
+			if err := members.SetRole(ctx, e.ID(), user, club.RoleAdmin); err != nil {
+				t.Fatal(err)
+			}
+		}
+
+		if err := members.DeleteByUser(ctx, ann); err != nil {
+			t.Fatal(err)
+		}
+		if owner, err := members.Owner(ctx, e.ID()); err != nil || owner != cat {
+			t.Fatalf("Owner = %v, %v; want cat, the oldest admin", owner, err)
+		}
+		if n, err := members.CountAdmins(ctx, e.ID(), false); err != nil || n != 2 {
+			t.Fatalf("CountAdmins = %d, %v; want cat and dan", n, err)
+		}
+		if got, err := clubs.Get(ctx, e.ID()); err != nil || got.Members() != 4 {
+			t.Fatalf("members = %d, %v; want 4", got.Members(), err)
+		}
+		if owner, err := members.Owner(ctx, other.ID()); err != nil || owner != uuid.Nil {
+			t.Fatalf("Owner of a club nobody else is in = %v, %v", owner, err)
+		}
+
+		// Erasing one who owns nothing gives nothing away.
+		if err := members.DeleteByUser(ctx, eve); err != nil {
+			t.Fatal(err)
+		}
+		if owner, _ := members.Owner(ctx, e.ID()); owner != cat {
+			t.Fatalf("Owner after a member was erased = %v", owner)
 		}
 	})
 }
@@ -631,6 +681,24 @@ func TestRepositories_Events(t *testing.T) {
 	}
 	if got, err = clubs.Get(ctx, event.ID()); err != nil || got.Members() != 2 || got.Maybes() != 0 {
 		t.Fatalf("after a maybe was erased: %d and %d, %v", got.Members(), got.Maybes(), err)
+	}
+
+	// Who inherits an event is sure to come, as its owner is.
+	party, _ := club.NewEvent("Пикник", "", schedule, time.Now())
+	if err = clubs.Create(ctx, party, ann); err != nil {
+		t.Fatal(err)
+	}
+	if err = members.Join(ctx, party.ID(), bob, true); err != nil {
+		t.Fatal(err)
+	}
+	if err = members.DeleteByUser(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+	if owner, err := members.Owner(ctx, party.ID()); err != nil || owner != bob {
+		t.Fatalf("Owner of the event = %v, %v; want bob", owner, err)
+	}
+	if got, err = clubs.Get(ctx, party.ID()); err != nil || got.Members() != 1 || got.Maybes() != 0 {
+		t.Fatalf("the inherited event: %d and %d, %v; want 1 sure", got.Members(), got.Maybes(), err)
 	}
 }
 

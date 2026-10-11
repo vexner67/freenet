@@ -584,25 +584,80 @@ func (r *MemberRepository) ClubIDs(ctx context.Context, userID uuid.UUID, limit 
 	return ids, nil
 }
 
-// deleteUserMembershipsQuery takes the user out of every club, the owned
-// ones too, with the counts in the same statement.
-const deleteUserMembershipsQuery = `
-	WITH gone AS (
-		DELETE FROM club_members
-		WHERE user_id = $1
-		RETURNING club_id, maybe
-	)
-	UPDATE clubs c
-	SET member_count = c.member_count - 1,
-		maybe_count = c.maybe_count - gone.maybe::integer
-	FROM gone
-	WHERE c.id = gone.club_id
-`
+const (
+	// deleteUserMembershipsQuery takes the user out of every club, the
+	// owned ones too, with the counts in the same statement, and tells
+	// which clubs they owned.
+	deleteUserMembershipsQuery = `
+		WITH gone AS (
+			DELETE FROM club_members
+			WHERE user_id = $1
+			RETURNING club_id, maybe, role
+		), counted AS (
+			UPDATE clubs c
+			SET member_count = c.member_count - 1,
+				maybe_count = c.maybe_count - gone.maybe::integer
+			FROM gone
+			WHERE c.id = gone.club_id
+		)
+		SELECT club_id
+		FROM gone
+		WHERE role = 'owner'
+	`
+	// inheritClubsQuery gives each club left without an owner to who has
+	// been in it longest: of its admins or, when it has none, of all its
+	// members. An owner is sure to come to an event.
+	inheritClubsQuery = `
+		WITH heirs AS (
+			SELECT DISTINCT ON (club_id)
+				id,
+				club_id,
+				maybe
+			FROM club_members
+			WHERE club_id = ANY($1)
+			ORDER BY club_id, (role = 'admin') DESC, id
+		), promoted AS (
+			UPDATE club_members m
+			SET role = 'owner',
+				maybe = false
+			FROM heirs
+			WHERE m.id = heirs.id
+			RETURNING m.id
+		)
+		UPDATE clubs c
+		SET maybe_count = c.maybe_count - 1
+		FROM heirs
+		JOIN promoted ON promoted.id = heirs.id
+		WHERE c.id = heirs.club_id
+			AND heirs.maybe
+	`
+)
 
+// DeleteByUser runs in a transaction: one statement would not see the
+// owner gone when it names the next one, and the unique index allows a
+// club one owner.
 func (r *MemberRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
-	if _, err := r.pool.Exec(ctx, deleteUserMembershipsQuery, userID); err != nil {
-		return errs.Wrap("r.pool.Exec", err)
-	}
+	err := pgx.BeginFunc(ctx, r.pool, func(tx pgx.Tx) error {
+		rows, err := tx.Query(ctx, deleteUserMembershipsQuery, userID)
+		if err != nil {
+			return errs.Wrap("tx.Query", err)
+		}
 
-	return nil
+		orphaned, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+		if err != nil {
+			return errs.Wrap("pgx.CollectRows", err)
+		}
+
+		if len(orphaned) == 0 {
+			return nil
+		}
+
+		if _, err = tx.Exec(ctx, inheritClubsQuery, orphaned); err != nil {
+			return errs.Wrap("tx.Exec", err)
+		}
+
+		return nil
+	})
+
+	return errs.Wrap("pgx.BeginFunc", err)
 }

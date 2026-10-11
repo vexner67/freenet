@@ -658,11 +658,50 @@ func (r *MemberRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) e
 	r.s.mu.Lock()
 	defer r.s.mu.Unlock()
 
+	var orphaned []uuid.UUID
+
 	for id, m := range r.s.members {
-		if m.userID == userID {
-			delete(r.s.members, id)
+		if m.userID != userID {
+			continue
+		}
+
+		if m.role == club.RoleOwner {
+			orphaned = append(orphaned, m.clubID)
+		}
+
+		delete(r.s.members, id)
+	}
+
+	for _, clubID := range orphaned {
+		if heir := r.s.heir(clubID); heir != nil {
+			heir.role, heir.maybe = club.RoleOwner, false
 		}
 	}
 
 	return nil
+}
+
+// heir is who gets a club left without an owner, as in PostgreSQL: who
+// has been in it longest of its admins or, without any, of its members;
+// the caller holds a lock.
+func (s *Store) heir(clubID uuid.UUID) *member {
+	var (
+		heir   *member
+		heirID uuid.UUID
+	)
+
+	for id, m := range s.members {
+		if m.clubID != clubID {
+			continue
+		}
+
+		better := heir == nil ||
+			(m.role == club.RoleAdmin && heir.role != club.RoleAdmin) ||
+			(m.role == heir.role && bytes.Compare(id[:], heirID[:]) < 0)
+		if better {
+			heir, heirID = m, id
+		}
+	}
+
+	return heir
 }

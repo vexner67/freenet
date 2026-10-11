@@ -403,9 +403,51 @@ func TestClubService_PurgeUser(t *testing.T) {
 		t.Fatalf("purge twice: %v", err)
 	}
 
+	// The only one left inherits the club.
 	v, err := svc.Find(ctx, bob, service.Ref{ID: c.ID()})
-	if err != nil || v.OwnerID != uuid.Nil || v.Club.Members() != 1 || v.Role != club.RoleMember {
-		t.Fatalf("after the owner is erased = %+v, %v; the club stays with bob", v, err)
+	if err != nil || v.OwnerID != bob || v.Club.Members() != 1 || v.Role != club.RoleOwner {
+		t.Fatalf("after the owner is erased = %+v, %v; the club goes to bob", v, err)
+	}
+}
+
+func TestClubService_PurgeUser_Heir(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newService()
+	ann, bob, cat, dan := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	c, empty := create(t, svc, ann), create(t, svc, ann)
+
+	// Bob is in the club longest, cat and dan run it, cat longer.
+	for _, user := range []uuid.UUID{bob, cat, dan} {
+		if _, err := svc.Join(ctx, user, c.ID(), false); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, user := range []uuid.UUID{dan, cat} {
+		if err := svc.Appoint(ctx, ann, c.ID(), user, club.RoleAdmin); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	if err := svc.PurgeUser(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+
+	v, err := svc.Find(ctx, cat, service.Ref{ID: c.ID()})
+	if err != nil || v.OwnerID != cat || v.Role != club.RoleOwner || v.Club.Members() != 3 {
+		t.Fatalf("the club of an erased owner = %+v, %v; want cat's, the oldest admin", v, err)
+	}
+	// The new owner runs it as the old one did.
+	if err = svc.Appoint(ctx, cat, c.ID(), bob, club.RoleAdmin); err != nil {
+		t.Fatalf("the heir appoints: %v", err)
+	}
+	if v, err = svc.Find(ctx, dan, service.Ref{ID: c.ID()}); err != nil || v.Role != club.RoleAdmin {
+		t.Fatalf("dan = %+v, %v; still an admin", v.Role, err)
+	}
+
+	if v, err = svc.Find(ctx, uuid.Nil, service.Ref{ID: empty.ID()}); err != nil || v.OwnerID != uuid.Nil || v.Club.Members() != 0 {
+		t.Fatalf("a club nobody else is in = %+v, %v; want no owner", v, err)
 	}
 }
 
