@@ -805,8 +805,7 @@ const MAX_NICKNAME = 32;
 
 // mentionParts cuts text into what it shows: strings and, for the people it
 // names, { nickname, text } to draw as links to their pages. Whether anyone
-// has the nickname only the server knows; a link to nobody opens "not
-// found".
+// has the nickname only the server knows (see nicknames.js).
 export function mentionParts(text) {
   const parts = [];
   let from = 0;

@@ -139,6 +139,11 @@ function notificationText(n) {
     return [name, ` ${notificationVerb('like', n.actor)} вашу `, photoLink(n.photo, 'фотографию'), '.'];
   }
 
+  // Named in a comment under a photo, whoever uploaded it.
+  if (n.type === 'photo_mention') {
+    return [name, ` ${notificationVerb('mention', n.actor)} вас в комментарии под `, photoLink(n.photo, 'фотографией'), said(n)];
+  }
+
   if (n.type === 'photo_comment') {
     return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей `, photoLink(n.photo, 'фотографией'), said(n)];
   }
