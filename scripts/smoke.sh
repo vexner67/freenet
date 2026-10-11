@@ -3,7 +3,7 @@
 # through the gateway and goes over the services, each behind mTLS and on
 # its database: auth (code from its log), user (profile), media (a photo,
 # written to its volume and served back), post (a post with it, a repost,
-# a poll and a note), notification (unread count), message (dialogs), club
+# a poll, a note and the faves), notification (unread count), message (dialogs), club
 # (a club and a post for it) and the website itself; then observability: every
 # container healthy, a request ID from the gateway in the auth log, every
 # service's metrics in Prometheus, its alert rules loaded and sent to
@@ -123,6 +123,11 @@ expect=201 call POST "/api/v1/notes/$note/comments" '{"text":"a comment"}' >/dev
 token='' call GET "/api/v1/users/$nickname/notes" | jq -e '.total == 1 and .notes[0].comments == 1' >/dev/null
 token='' call GET "/api/v1/notes/$note/comments" | jq -e '.total == 1 and .comments[0].text == "a comment"' >/dev/null
 step "post: a note, a comment under it and the list of notes"
+
+call PUT "/api/v1/posts/$poll/like" >/dev/null
+call GET /api/v1/me/faves/posts | jq -e --arg id "$poll" '.total == 1 and .posts[0].id == $id and .posts[0].liked' >/dev/null
+call GET /api/v1/me/posts | jq -e --arg id "$poll" '.total >= 1 and ([.posts[] | select(.id == $id and .mine)] | length == 1)' >/dev/null
+step "post: a liked post among the faves and the posts one wrote"
 
 # refresh replaces the tokens, as the website does after deleting and
 # restoring the page.
