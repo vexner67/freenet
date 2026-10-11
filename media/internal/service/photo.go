@@ -23,7 +23,8 @@ type PhotoStore interface {
 	Load(ctx context.Context, ownerID, photoID uuid.UUID, size photo.Size) ([]byte, error)
 	// Existing returns which of photoIDs the owner has, published or not.
 	Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error)
-	// Publish keeps the owner's photos for good; missing ones are fine.
+	// Publish keeps the owner's photos for good, those set aside too;
+	// missing ones are fine.
 	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	// Copy keeps the owner's photo from once more, published, as to; a
 	// missing from and an existing to are fine.
@@ -34,22 +35,29 @@ type PhotoStore interface {
 	DeleteAll(ctx context.Context, ownerID uuid.UUID) error
 	// DeleteExcept removes the owner's published photos but keep.
 	DeleteExcept(ctx context.Context, ownerID uuid.UUID, keep []uuid.UUID) error
-	// DeleteUnpublished removes the photos uploaded before the time and
-	// never published, returning how many.
-	DeleteUnpublished(ctx context.Context, before time.Time) (int, error)
+	// Retire sets aside the photos uploaded before the time and never
+	// published, returning how many: the owner has them no more (Load,
+	// Existing, Copy), and only Publish brings them back.
+	Retire(ctx context.Context, before time.Time) (int, error)
+	// DeleteRetired removes the photos set aside that were uploaded
+	// before the time, returning how many.
+	DeleteRetired(ctx context.Context, before time.Time) (int, error)
 }
 
 type PhotoService struct {
 	store PhotoStore
-	// keepUnpublished is how long a photo may wait for its post.
+	// keepUnpublished is how long a photo may wait for its post, and
+	// keepRetired how long after its upload a late Publish still finds it.
 	keepUnpublished time.Duration
+	keepRetired     time.Duration
 	now             func() time.Time
 }
 
-func NewPhotoService(store PhotoStore, keepUnpublished time.Duration) *PhotoService {
+func NewPhotoService(store PhotoStore, keepUnpublished, keepRetired time.Duration) *PhotoService {
 	return &PhotoService{
 		store:           store,
 		keepUnpublished: keepUnpublished,
+		keepRetired:     keepRetired,
 		now:             time.Now,
 	}
 }
@@ -134,15 +142,24 @@ func (s *PhotoService) Copy(ctx context.Context, ownerID uuid.UUID, copies []Pho
 	return nil
 }
 
-// DeleteUnpublished deletes the photos that waited for their post longer
-// than they may, returning how many.
+// DeleteUnpublished takes away the photos that waited for their post
+// longer than they may, returning how many. They are set aside first, not
+// deleted: the post may be published already and the word of it late (the
+// outbox of its service is stuck), and Publish must still find the photo.
+// Those set aside long enough for any word to arrive are deleted.
 func (s *PhotoService) DeleteUnpublished(ctx context.Context) (int, error) {
-	deleted, err := s.store.DeleteUnpublished(ctx, s.now().Add(-s.keepUnpublished))
+	now := s.now()
+
+	retired, err := s.store.Retire(ctx, now.Add(-s.keepUnpublished))
 	if err != nil {
-		return deleted, errs.Wrap("s.store.DeleteUnpublished", err)
+		return retired, errs.Wrap("s.store.Retire", err)
 	}
 
-	return deleted, nil
+	if _, err = s.store.DeleteRetired(ctx, now.Add(-s.keepRetired)); err != nil {
+		return retired, errs.Wrap("s.store.DeleteRetired", err)
+	}
+
+	return retired, nil
 }
 
 // Delete removes photos of the owner, as when their post is deleted.

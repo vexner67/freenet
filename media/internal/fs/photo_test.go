@@ -124,7 +124,10 @@ func TestPhotoStore_Copy(t *testing.T) {
 			if err := store.Delete(ctx, ann, []uuid.UUID{posted, upload}); err != nil {
 				t.Fatal(err)
 			}
-			if _, err := store.DeleteUnpublished(ctx, time.Now().Add(time.Hour)); err != nil {
+			if _, err := store.Retire(ctx, time.Now().Add(time.Hour)); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.DeleteRetired(ctx, time.Now().Add(time.Hour)); err != nil {
 				t.Fatal(err)
 			}
 
@@ -215,23 +218,72 @@ func TestPhotoStore_Unpublished(t *testing.T) {
 				t.Fatalf("Existing, published or not = %v, %v", found, err)
 			}
 
-			if n, err := store.DeleteUnpublished(ctx, time.Now().Add(-time.Hour)); err != nil || n != 0 {
-				t.Fatalf("fresh uploads wait for their post: DeleteUnpublished = %d, %v", n, err)
+			if n, err := store.Retire(ctx, time.Now().Add(-time.Hour)); err != nil || n != 0 {
+				t.Fatalf("fresh uploads wait for their post: Retire = %d, %v", n, err)
 			}
 			if _, err := store.Load(ctx, ann, upload, photo.Small); err != nil {
 				t.Fatalf("a fresh upload is shown, as in the post being written: %v", err)
 			}
 
-			if n, err := store.DeleteUnpublished(ctx, time.Now().Add(time.Second)); err != nil || n != 2 {
-				t.Fatalf("DeleteUnpublished = %d, %v; want ann's and bob's uploads", n, err)
+			late := mustV7(t)
+			if err := store.Save(ctx, ann, late, images); err != nil {
+				t.Fatal(err)
 			}
-			for _, p := range []struct{ owner, id uuid.UUID }{{ann, upload}, {bob, bobsUpload}} {
+
+			if n, err := store.Retire(ctx, time.Now().Add(time.Second)); err != nil || n != 3 {
+				t.Fatalf("Retire = %d, %v; want ann's two and bob's uploads", n, err)
+			}
+			if n, err := store.Retire(ctx, time.Now().Add(time.Second)); err != nil || n != 0 {
+				t.Fatalf("Retire again = %d, %v; nothing is left to set aside", n, err)
+			}
+			for _, p := range []struct{ owner, id uuid.UUID }{{ann, upload}, {ann, late}, {bob, bobsUpload}} {
 				if _, err := store.Load(ctx, p.owner, p.id, photo.Small); !errors.Is(err, photo.ErrNotFound) {
 					t.Fatalf("an old upload stays: %v", err)
+				}
+				if found, err := store.Existing(ctx, p.owner, []uuid.UUID{p.id}); err != nil || len(found) != 0 {
+					t.Fatalf("an old upload still exists for its owner: %v, %v", found, err)
 				}
 			}
 			if _, err := store.Load(ctx, ann, published, photo.Small); err != nil {
 				t.Fatalf("the published photo goes with the uploads: %v", err)
+			}
+
+			// A photo set aside is not copied: its owner has it no more.
+			copied := mustV7(t)
+			if err := store.Copy(ctx, ann, late, copied); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.Load(ctx, ann, copied, photo.Small); !errors.Is(err, photo.ErrNotFound) {
+				t.Fatalf("a copy of a photo set aside: %v", err)
+			}
+
+			// The word of a post published long ago arrives late: its photo
+			// comes back, and stays whatever is deleted afterwards.
+			if n, err := store.DeleteRetired(ctx, time.Now().Add(-time.Hour)); err != nil || n != 0 {
+				t.Fatalf("DeleteRetired of the fresh = %d, %v", n, err)
+			}
+			if err := store.Publish(ctx, ann, []uuid.UUID{late}); err != nil {
+				t.Fatalf("late Publish: %v", err)
+			}
+			if data, err := store.Load(ctx, ann, late, photo.Large); err != nil || string(data) != "L" {
+				t.Fatalf("a photo published late = %q, %v", data, err)
+			}
+
+			// A deleted post takes its photo set aside with it.
+			if err := store.Delete(ctx, bob, []uuid.UUID{bobsUpload}); err != nil {
+				t.Fatal(err)
+			}
+			if n, err := store.DeleteRetired(ctx, time.Now().Add(time.Second)); err != nil || n != 1 {
+				t.Fatalf("DeleteRetired = %d, %v; want ann's upload alone", n, err)
+			}
+			if err := store.Publish(ctx, ann, []uuid.UUID{upload}); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := store.Load(ctx, ann, upload, photo.Small); !errors.Is(err, photo.ErrNotFound) {
+				t.Fatalf("a photo deleted for good came back: %v", err)
+			}
+			if _, err := store.Load(ctx, ann, late, photo.Small); err != nil {
+				t.Fatalf("the photo published late went with those set aside: %v", err)
 			}
 
 			if err := store.Delete(ctx, ann, []uuid.UUID{published}); err != nil {
@@ -265,11 +317,14 @@ func TestPhotoStore_Leftovers(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if n, err := store.DeleteUnpublished(context.Background(), time.Now().Add(-24*time.Hour)); err != nil || n != 0 {
-		t.Fatalf("DeleteUnpublished = %d, %v; a leftover is not a photo", n, err)
+	if n, err := store.Retire(context.Background(), time.Now().Add(-24*time.Hour)); err != nil || n != 0 {
+		t.Fatalf("Retire = %d, %v; a leftover is not a photo", n, err)
 	}
 	if _, err = os.Stat(owner); !errors.Is(err, iofs.ErrNotExist) {
 		t.Fatalf("the leftover and the emptied owner's directory must go: %v", err)
+	}
+	if left, err := os.ReadDir(filepath.Join(root, "retired")); err != nil || len(left) != 0 {
+		t.Fatalf("a leftover is deleted, not set aside: %v, %v", left, err)
 	}
 }
 

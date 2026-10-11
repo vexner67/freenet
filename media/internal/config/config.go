@@ -36,7 +36,11 @@ type Config struct {
 	// A photo uploaded for a post that is never published is deleted
 	// after UnpublishedPhotoTTL; the uploads are looked through every
 	// PhotoCleanupInterval.
-	UnpublishedPhotoTTL  time.Duration `env:"UNPUBLISHED_PHOTO_TTL" envDefault:"24h"`
+	UnpublishedPhotoTTL time.Duration `env:"UNPUBLISHED_PHOTO_TTL" envDefault:"24h"`
+	// It is set aside, not gone, until RetiredPhotoTTL after its upload:
+	// a post published while the outbox of its service was stuck still
+	// gets its photo when the word arrives.
+	RetiredPhotoTTL      time.Duration `env:"RETIRED_PHOTO_TTL" envDefault:"720h"`
 	PhotoCleanupInterval time.Duration `env:"PHOTO_CLEANUP_INTERVAL" envDefault:"1h"`
 
 	// Spam protection, per user. REDIS_ADDR shares the counters between
@@ -67,6 +71,10 @@ func (c Config) Validate() error {
 
 	if c.UnpublishedPhotoTTL <= 0 || c.PhotoCleanupInterval <= 0 {
 		return errors.New("UNPUBLISHED_PHOTO_TTL and PHOTO_CLEANUP_INTERVAL must be positive")
+	}
+
+	if c.RetiredPhotoTTL < c.UnpublishedPhotoTTL {
+		return errors.New("RETIRED_PHOTO_TTL must not be shorter than UNPUBLISHED_PHOTO_TTL")
 	}
 
 	return c.TLS.Validate()

@@ -16,20 +16,24 @@ import (
 
 // PhotoStore lays files out as <root>/photos/<owner>/<photo>/<size>.jpg,
 // and photos not published yet the same way under <root>/uploads, so that
-// finding the unpublished ones does not walk every photo. Paths are built
-// from UUIDs and fixed names only, never from user input.
+// finding the unpublished ones does not walk every photo. Uploads that
+// waited too long are set aside under <root>/retired, where only a late
+// Publish finds them. Paths are built from UUIDs and fixed names only,
+// never from user input.
 type PhotoStore struct {
 	published string
 	uploads   string
+	retired   string
 }
 
 func NewPhotoStore(root string) (*PhotoStore, error) {
 	s := &PhotoStore{
 		published: filepath.Join(root, "photos"),
 		uploads:   filepath.Join(root, "uploads"),
+		retired:   filepath.Join(root, "retired"),
 	}
 
-	for _, dir := range []string{s.published, s.uploads} {
+	for _, dir := range []string{s.published, s.uploads, s.retired} {
 		if err := os.MkdirAll(dir, 0o750); err != nil {
 			return nil, errs.Wrap("os.MkdirAll", err)
 		}
@@ -105,8 +109,14 @@ func exists(path string) (bool, error) {
 	return true, nil
 }
 
-// Publish moves the photos out of the uploads; a rename, so a reader finds
-// a photo in one place or the other.
+// set is where a photo set aside is.
+func (s *PhotoStore) set(ownerID, photoID uuid.UUID) string {
+	return filepath.Join(s.retired, ownerID.String(), photoID.String())
+}
+
+// Publish moves the photos out of the uploads, or back from where they
+// were set aside; a rename, so a reader finds a photo in one place or the
+// other.
 func (s *PhotoStore) Publish(_ context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error {
 	if err := os.MkdirAll(filepath.Join(s.published, ownerID.String()), 0o750); err != nil {
 		return errs.Wrap("os.MkdirAll", err)
@@ -114,9 +124,16 @@ func (s *PhotoStore) Publish(_ context.Context, ownerID uuid.UUID, photoIDs []uu
 
 	for _, id := range photoIDs {
 		dirs := s.dirs(ownerID, id)
-		// Missing: published already, or deleted.
-		if err := os.Rename(dirs[1], dirs[0]); err != nil && !errors.Is(err, fs.ErrNotExist) {
-			return errs.Wrap("os.Rename", err)
+
+		for _, from := range []string{dirs[1], s.set(ownerID, id)} {
+			err := os.Rename(from, dirs[0])
+			if err == nil {
+				break
+			}
+			// Missing everywhere: published already, or deleted.
+			if !errors.Is(err, fs.ErrNotExist) {
+				return errs.Wrap("os.Rename", err)
+			}
 		}
 	}
 
@@ -145,7 +162,9 @@ func (s *PhotoStore) Copy(_ context.Context, ownerID, from, to uuid.UUID) error 
 
 func (s *PhotoStore) Delete(_ context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error {
 	for _, id := range photoIDs {
-		for _, dir := range s.dirs(ownerID, id) {
+		dirs := s.dirs(ownerID, id)
+
+		for _, dir := range []string{dirs[0], dirs[1], s.set(ownerID, id)} {
 			if err := os.RemoveAll(dir); err != nil {
 				return errs.Wrap("os.RemoveAll", err)
 			}
@@ -156,7 +175,7 @@ func (s *PhotoStore) Delete(_ context.Context, ownerID uuid.UUID, photoIDs []uui
 }
 
 func (s *PhotoStore) DeleteAll(_ context.Context, ownerID uuid.UUID) error {
-	for _, root := range []string{s.published, s.uploads} {
+	for _, root := range []string{s.published, s.uploads, s.retired} {
 		if err := os.RemoveAll(filepath.Join(root, ownerID.String())); err != nil {
 			return errs.Wrap("os.RemoveAll", err)
 		}
@@ -189,33 +208,55 @@ func (s *PhotoStore) DeleteExcept(_ context.Context, ownerID uuid.UUID, keep []u
 	return nil
 }
 
-// DeleteUnpublished deletes the uploads older than before: by the time in
-// their UUIDv7, or by the modification time for leftovers of failed saves.
-// An owner's directory left empty goes too.
-func (s *PhotoStore) DeleteUnpublished(ctx context.Context, before time.Time) (int, error) {
-	owners, err := os.ReadDir(s.uploads)
+// Retire sets aside the uploads older than before: by the time in their
+// UUIDv7. Leftovers of failed saves, older by their modification time,
+// are deleted. An owner's directory left empty goes too.
+func (s *PhotoStore) Retire(ctx context.Context, before time.Time) (int, error) {
+	return s.sweep(ctx, s.uploads, before, func(owner, name string) error {
+		if err := os.MkdirAll(filepath.Join(s.retired, owner), 0o750); err != nil {
+			return errs.Wrap("os.MkdirAll", err)
+		}
+
+		return errs.Wrap("os.Rename", os.Rename(filepath.Join(s.uploads, owner, name), filepath.Join(s.retired, owner, name)))
+	})
+}
+
+// DeleteRetired deletes the photos set aside that were uploaded before
+// the time.
+func (s *PhotoStore) DeleteRetired(ctx context.Context, before time.Time) (int, error) {
+	return s.sweep(ctx, s.retired, before, func(owner, name string) error {
+		return errs.Wrap("os.RemoveAll", os.RemoveAll(filepath.Join(s.retired, owner, name)))
+	})
+}
+
+// sweep takes the photos under root older than before away with take,
+// returning how many.
+func (s *PhotoStore) sweep(ctx context.Context, root string, before time.Time, take func(owner, name string) error) (int, error) {
+	owners, err := os.ReadDir(root)
 	if err != nil {
 		return 0, errs.Wrap("os.ReadDir", err)
 	}
 
-	deleted := 0
+	taken := 0
 
 	for _, owner := range owners {
 		if err = ctx.Err(); err != nil {
-			return deleted, errs.Wrap("ctx.Err", err)
+			return taken, errs.Wrap("ctx.Err", err)
 		}
 
-		n, err := deleteOlder(filepath.Join(s.uploads, owner.Name()), before)
-		deleted += n
+		n, err := sweepOlder(filepath.Join(root, owner.Name()), before, func(name string) error {
+			return take(owner.Name(), name)
+		})
+		taken += n
 		if err != nil {
-			return deleted, err
+			return taken, err
 		}
 	}
 
-	return deleted, nil
+	return taken, nil
 }
 
-func deleteOlder(dir string, before time.Time) (int, error) {
+func sweepOlder(dir string, before time.Time, take func(name string) error) (int, error) {
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		return 0, errs.Wrap("os.ReadDir", err)
@@ -232,13 +273,21 @@ func deleteOlder(dir string, before time.Time) (int, error) {
 			continue
 		}
 
-		if err = os.RemoveAll(filepath.Join(dir, e.Name())); err != nil {
-			return deleted, errs.Wrap("os.RemoveAll", err)
+		// What is not a photo is a leftover: nothing will ask for it.
+		if _, err = uuid.Parse(e.Name()); err != nil {
+			if err = os.RemoveAll(filepath.Join(dir, e.Name())); err != nil {
+				return deleted, errs.Wrap("os.RemoveAll", err)
+			}
+			removed++
+
+			continue
+		}
+
+		if err = take(e.Name()); err != nil {
+			return deleted, err
 		}
 		removed++
-		if _, err = uuid.Parse(e.Name()); err == nil {
-			deleted++
-		}
+		deleted++
 	}
 
 	// Fails while something is in it, a photo saved meanwhile included.

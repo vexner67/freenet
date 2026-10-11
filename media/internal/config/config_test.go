@@ -39,6 +39,9 @@ func TestParse(t *testing.T) {
 		{"empty issuer", map[string]string{"JWT_ISSUER": ""}, false},
 		{"photos kept for a week", map[string]string{"UNPUBLISHED_PHOTO_TTL": "168h"}, true},
 		{"unpublished photos never kept", map[string]string{"UNPUBLISHED_PHOTO_TTL": "0s"}, false},
+		{"photos set aside for a week", map[string]string{"RETIRED_PHOTO_TTL": "168h"}, true},
+		{"photos set aside no longer than they wait", map[string]string{"UNPUBLISHED_PHOTO_TTL": "48h", "RETIRED_PHOTO_TTL": "48h"}, true},
+		{"photos set aside for less than they wait", map[string]string{"RETIRED_PHOTO_TTL": "1h"}, false},
 		{"no cleanup interval", map[string]string{"PHOTO_CLEANUP_INTERVAL": "0s"}, false},
 	}
 
