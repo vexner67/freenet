@@ -340,6 +340,14 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 	return r.list(ctx, match, before, limit)
 }
 
+func (r *PostRepository) ListReposts(ctx context.Context, postID, before uuid.UUID, limit int, archived bool) ([]*post.Post, error) {
+	match := func(p *post.Post) bool {
+		return p.Content().RepostOf() == postID && (archived || !p.Archived())
+	}
+
+	return r.list(ctx, match, before, limit)
+}
+
 // list returns up to limit matching posts, newest first, with IDs below
 // before (uuid.Nil: from the newest).
 func (r *PostRepository) list(ctx context.Context, match func(*post.Post) bool, before uuid.UUID, limit int) ([]*post.Post, error) {

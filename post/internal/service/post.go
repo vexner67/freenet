@@ -24,6 +24,9 @@ const (
 	// MaxFeedHidden bounds whose posts a feed leaves out: the newest of
 	// the reader's blacklist.
 	MaxFeedHidden = 1000
+	// MaxForgottenReposts bounds how many notifications about its reposts
+	// a deleted post takes with it: those of the newest.
+	MaxForgottenReposts = 1000
 )
 
 var (
@@ -55,6 +58,9 @@ type PostRepository interface {
 	// whichever walls, but for those that speak for a wall, together with
 	// all the posts on several walls; archived posts are left out.
 	ListFeed(ctx context.Context, sources FeedSources, before uuid.UUID, limit int) ([]*post.Post, error)
+	// ListReposts is ListByWall for the reposts of a post, on whichever
+	// walls; the archived ones only when asked for.
+	ListReposts(ctx context.Context, postID, before uuid.UUID, limit int, archived bool) ([]*post.Post, error)
 }
 
 // WallPick is which posts of a wall to read: a tab of openvk's wall and,
@@ -319,8 +325,11 @@ type RepostInput struct {
 	PostID   uuid.UUID
 	// PhotoID shares a photo of an album instead of a post ("Поделиться"
 	// under a photo).
-	PhotoID  uuid.UUID
-	Text     post.Text
+	PhotoID uuid.UUID
+	Text    post.Text
+	// Photos are added to what the author says of a shared post; the
+	// caller has checked they are the author's.
+	Photos   post.Photos
 	WallID   uuid.UUID
 	FromWall bool
 	Signed   bool
@@ -355,10 +364,21 @@ func (s *PostService) Repost(ctx context.Context, in RepostInput) (*post.Post, e
 		return nil, errs.Wrap("post.New", err)
 	}
 
+	photos := content.Photos()
+
+	album, err := s.wallAlbum(ctx, repost, photos)
+	if err != nil {
+		return nil, errs.Wrap("s.wallAlbum", err)
+	}
+
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		// Save still reports a shared post deleted in between.
 		if err := s.postRepo.Save(ctx, repost); err != nil {
 			return errs.Wrap("s.postRepo.Save", err)
+		}
+
+		if err := s.publishPhotos(ctx, repost, album, photos); err != nil {
+			return errs.Wrap("s.publishPhotos", err)
 		}
 
 		if recipient == uuid.Nil || recipient == authorID || recipient == actorID {
@@ -387,6 +407,10 @@ func (s *PostService) repostContent(ctx context.Context, in RepostInput) (post.C
 			return post.Content{}, uuid.Nil, errs.Wrap("s.albumPhotos.Get", err)
 		}
 
+		if len(in.Photos) > 0 {
+			return post.Content{}, uuid.Nil, post.ErrRepostPhotos
+		}
+
 		content, err := post.NewPhotoShare(in.PhotoID, in.Text)
 		return content, uuid.Nil, errs.Wrap("post.NewPhotoShare", err)
 	}
@@ -402,7 +426,7 @@ func (s *PostService) repostContent(ctx context.Context, in RepostInput) (post.C
 		}
 	}
 
-	content, err := post.NewRepost(shared.ID(), in.Text)
+	content, err := post.NewRepost(shared.ID(), in.Text, in.Photos)
 	if err != nil {
 		return post.Content{}, uuid.Nil, errs.Wrap("post.NewRepost", err)
 	}
@@ -448,6 +472,10 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 			return errs.Wrap("s.notifier.ForgetPost", err)
 		}
 
+		if err := s.forgetReposts(ctx, p); err != nil {
+			return errs.Wrap("s.forgetReposts", err)
+		}
+
 		if photos := p.Content().Photos(); len(photos) > 0 {
 			return errs.Wrap("s.photos.Delete", s.photos.Delete(ctx, p.AuthorID(), photos))
 		}
@@ -459,6 +487,76 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 	}
 
 	return nil
+}
+
+// forgetReposts takes back what the author of the deleted post p heard of
+// its reposts: they stay, sharing nothing, and "поделился вашей записью"
+// would lead to none of the author's. In the transaction of ctx.
+func (s *PostService) forgetReposts(ctx context.Context, p *post.Post) error {
+	recipient := p.Notified()
+	if recipient == uuid.Nil || p.Counters().Reposts == 0 {
+		return nil
+	}
+
+	reposts, err := s.postRepo.ListReposts(ctx, p.ID(), uuid.Nil, MaxForgottenReposts, true)
+	if err != nil {
+		return errs.Wrap("s.postRepo.ListReposts", err)
+	}
+
+	for _, r := range reposts {
+		actor := r.AuthorID()
+		if r.FromWall() {
+			actor = r.WallID()
+		}
+
+		// Nobody was told of sharing their own post.
+		if r.AuthorID() == recipient {
+			continue
+		}
+
+		e := Event{Kind: EventRepost, RecipientID: recipient, ActorID: actor, PostID: r.ID()}
+		if err := s.notifier.Retract(ctx, e); err != nil {
+			return errs.Wrap("s.notifier.Retract", err)
+		}
+	}
+
+	return nil
+}
+
+// Reposts pages the posts that share a post, newest first, for "who
+// shared it"; Total is how many share it, the archived ones too.
+// post.ErrNotFound for a missing post or an archived one.
+func (s *PostService) Reposts(ctx context.Context, viewerID, postID, cursor uuid.UUID, size int) (Page, error) {
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	p, err := s.postRepo.Get(ctx, postID)
+	if err != nil {
+		return Page{}, errs.Wrap("s.postRepo.Get", err)
+	}
+
+	if p.Archived() {
+		return Page{}, post.ErrNotFound
+	}
+
+	posts, err := s.postRepo.ListReposts(ctx, postID, cursor, size+1, false)
+	if err != nil {
+		return Page{}, errs.Wrap("s.postRepo.ListReposts", err)
+	}
+
+	page := Page{Posts: posts, Total: p.Counters().Reposts}
+
+	if len(posts) > size {
+		page.Posts = posts[:size]
+		page.NextCursor = posts[size-1].ID()
+	}
+
+	if page.Liked, err = s.liked(ctx, viewerID, page.Posts); err != nil {
+		return Page{}, errs.Wrap("s.liked", err)
+	}
+
+	return page, nil
 }
 
 // PostEdit is what an edit makes of a post: its text and photos, whole,

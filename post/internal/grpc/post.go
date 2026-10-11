@@ -30,6 +30,7 @@ type PostService interface {
 	OpenComments(ctx context.Context, requesterID, postID uuid.UUID) error
 	ListWall(ctx context.Context, viewerID, wallID uuid.UUID, pick service.WallPick, cursor uuid.UUID, size int) (service.Page, error)
 	Feed(ctx context.Context, viewerID uuid.UUID, sources service.FeedSources, cursor uuid.UUID, size int) (service.Page, error)
+	Reposts(ctx context.Context, viewerID, postID, cursor uuid.UUID, size int) (service.Page, error)
 	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Likers(ctx context.Context, postID uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
@@ -206,12 +207,14 @@ func (h *PostHandler) RepostPost(ctx context.Context, req *postv1.RepostPostRequ
 		}
 	}
 
-	text, err := post.NewText(req.GetText())
+	text, photos, err := fromProtoTextPhotos(req.GetText(), req.GetPhotoIds())
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
-	in := service.RepostInput{AuthorID: authorID, PostID: postID, Text: text, FromWall: req.GetFromWall(), Signed: req.GetSigned()}
+	in := service.RepostInput{
+		AuthorID: authorID, PostID: postID, Text: text, Photos: photos, FromWall: req.GetFromWall(), Signed: req.GetSigned(),
+	}
 	if req.GetPhotoId() != "" {
 		if in.PhotoID, err = uuid.Parse(req.GetPhotoId()); err != nil {
 			return nil, status.Error(codes.InvalidArgument, "invalid photo id")
@@ -439,6 +442,30 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 	return &postv1.ListFeedResponse{
 		Posts:      toProtoPosts(page, viewerID(ctx), req.GetTextLimit()),
 		NextCursor: cursorString(page.NextCursor),
+	}, nil
+}
+
+// ListReposts is who shared a post: the posts that share it.
+func (h *PostHandler) ListReposts(ctx context.Context, req *postv1.ListRepostsRequest) (*postv1.ListRepostsResponse, error) {
+	postID, err := uuid.Parse(req.GetPostId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid post id")
+	}
+
+	cursor, err := parseCursor(req.GetCursor())
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.postService.Reposts(ctx, viewerID(ctx), postID, cursor, int(req.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.ListRepostsResponse{
+		Posts:      toProtoPosts(page, viewerID(ctx), req.GetTextLimit()),
+		NextCursor: cursorString(page.NextCursor),
+		Total:      int32(page.Total), //nolint:gosec // a post will not be shared 2^31 times
 	}, nil
 }
 

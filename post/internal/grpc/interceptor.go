@@ -38,7 +38,7 @@ func toStatus(err error) (*status.Status, bool) {
 	case errors.Is(err, post.ErrAvatarUpdate):
 		return status.New(codes.InvalidArgument, "a new photo is posted alone"), true
 	case errors.Is(err, post.ErrRepostPhotos):
-		return status.New(codes.InvalidArgument, "a repost has no photos of its own"), true
+		return status.New(codes.InvalidArgument, "a post sharing a photo has no photos of its own"), true
 	case errors.Is(err, post.ErrCannotPin):
 		return status.New(codes.PermissionDenied, "only the owner of the wall can pin the post"), true
 	case errors.Is(err, post.ErrReplyOtherPost):

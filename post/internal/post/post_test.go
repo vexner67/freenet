@@ -158,7 +158,7 @@ func TestNewAvatarUpdate(t *testing.T) {
 
 	withText, _ := post.NewContent("новое фото", post.Photos{photo})
 	twoPhotos, _ := post.NewContent("", post.Photos{photo, uuid.New()})
-	repost, _ := post.NewRepost(uuid.New(), "")
+	repost, _ := post.NewRepost(uuid.New(), "", nil)
 	for _, c := range []post.Content{withText, twoPhotos, repost} {
 		if _, err = post.NewAvatarUpdate(ann, ann, c, now); !errors.Is(err, post.ErrAvatarUpdate) {
 			t.Errorf("NewAvatarUpdate(%+v) = %v", c, err)
@@ -255,12 +255,12 @@ func TestNewRepost(t *testing.T) {
 
 	original := uuid.New()
 
-	c, err := post.NewRepost(original, "")
+	c, err := post.NewRepost(original, "", nil)
 	if err != nil || c.RepostOf() != original || c.Text() != "" {
 		t.Fatalf("a repost without a word = %+v, %v", c, err)
 	}
 
-	if _, err = post.NewRepost(uuid.Nil, "смотрите"); !errors.Is(err, post.ErrInvalidRepost) {
+	if _, err = post.NewRepost(uuid.Nil, "смотрите", nil); !errors.Is(err, post.ErrInvalidRepost) {
 		t.Fatalf("a repost of nothing: %v, want ErrInvalidRepost", err)
 	}
 
@@ -283,7 +283,7 @@ func TestPost_Shared(t *testing.T) {
 		t.Fatal("reposting a post shares the post itself")
 	}
 
-	silent, err := post.NewRepost(original, "")
+	silent, err := post.NewRepost(original, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +295,16 @@ func TestPost_Shared(t *testing.T) {
 		t.Fatal("reposting a repost without a word shares its original")
 	}
 
-	said, err := post.NewRepost(original, "согласен")
+	// Photos are words of its own too.
+	pictured, err := post.NewRepost(original, "", post.Photos{uuid.New()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if p, err := post.New(uuid.New(), uuid.New(), pictured, time.Now()); err != nil || p.Shared() != p.ID() {
+		t.Fatalf("a repost with photos shares %v, %v; want itself", p.Shared(), err)
+	}
+
+	said, err := post.NewRepost(original, "согласен", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -341,7 +350,7 @@ func TestPost_Edited(t *testing.T) {
 		{"nothing left", p, author, "", nil, posted.Add(time.Hour), post.ErrTextEmpty},
 		{"a repost changes its words", repost, author, "лучше так", nil, posted.Add(time.Hour), nil},
 		{"a repost may say nothing", repost, author, "", nil, posted.Add(time.Hour), nil},
-		{"a repost takes no photos", repost, author, "", post.Photos{photo}, posted.Add(time.Hour), post.ErrRepostPhotos},
+		{"a repost takes photos", repost, author, "", post.Photos{photo}, posted.Add(time.Hour), nil},
 	}
 
 	for _, tt := range tests {
@@ -389,7 +398,7 @@ func TestPost_Pinning(t *testing.T) {
 func mustRepost(t *testing.T, of uuid.UUID, text post.Text) post.Content {
 	t.Helper()
 
-	c, err := post.NewRepost(of, text)
+	c, err := post.NewRepost(of, text, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

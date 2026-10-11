@@ -690,6 +690,109 @@ func TestPostService_Repost(t *testing.T) {
 	}
 }
 
+func TestPostService_RepostsOfAPost(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	store := inmem.NewStore()
+	notifier := &fakeNotifier{}
+	photos := &fakePhotos{}
+	svc := service.NewPostService(service.PostDeps{
+		Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Switches: store.Posts(),
+		Tx: fakeTx{}, Notifier: notifier, Photos: photos, Moderators: fakeModerators{},
+	})
+
+	ann, bob, cat, club := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	original := write(t, svc, ann, "оригинал")[0]
+
+	// A repost says its own words with photos of its own, which media
+	// keeps as those of any post.
+	added := post.Photos{uuid.New(), uuid.New()}
+	withPhotos, err := svc.Repost(ctx, service.RepostInput{AuthorID: bob, PostID: original.ID(), Photos: added})
+	if err != nil || !slices.Equal(withPhotos.Content().Photos(), added) || withPhotos.Content().RepostOf() != original.ID() {
+		t.Fatalf("a repost with photos = %+v, %v", withPhotos, err)
+	}
+	if len(photos.published) != 1 || photos.published[0].owner != bob || !slices.Equal(photos.published[0].photos, added) || photos.outsideTx != 0 {
+		t.Fatalf("published = %+v, outside a transaction %d", photos.published, photos.outsideTx)
+	}
+	// Photos are words enough: shared, it is shared itself.
+	if again, err := svc.Repost(ctx, service.RepostInput{AuthorID: cat, PostID: withPhotos.ID()}); err != nil || again.Content().RepostOf() != withPhotos.ID() {
+		t.Fatalf("sharing a repost with photos: %+v, %v", again, err)
+	}
+	// An edit takes one away.
+	if _, _, err = svc.Edit(ctx, bob, withPhotos.ID(), service.PostEdit{Photos: added[:1]}); err != nil {
+		t.Fatal(err)
+	}
+	if len(photos.deleted) != 1 || !slices.Equal(photos.deleted[0].photos, []uuid.UUID{added[1]}) {
+		t.Fatalf("deleted = %+v, want the photo taken away", photos.deleted)
+	}
+
+	inClub, err := svc.Repost(ctx, service.RepostInput{AuthorID: cat, PostID: original.ID(), WallID: club, FromWall: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	own, err := svc.Repost(ctx, service.RepostInput{AuthorID: ann, PostID: original.ID(), Text: "моё"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	hidden, err := svc.Repost(ctx, service.RepostInput{AuthorID: cat, PostID: original.ID(), Text: "в архив"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Archive(ctx, cat, hidden.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Who shared it: newest first, a page at a time, without the archived
+	// repost, which is counted still.
+	page, err := svc.Reposts(ctx, uuid.Nil, original.ID(), uuid.Nil, 2)
+	if err != nil || page.Total != 4 || len(page.Posts) != 2 || page.Posts[0].ID() != own.ID() || page.Posts[1].ID() != inClub.ID() ||
+		page.NextCursor != inClub.ID() {
+		t.Fatalf("Reposts = %+v, %v", page, err)
+	}
+	if page, err = svc.Reposts(ctx, uuid.Nil, original.ID(), page.NextCursor, 2); err != nil || len(page.Posts) != 1 ||
+		page.Posts[0].ID() != withPhotos.ID() || page.NextCursor != uuid.Nil {
+		t.Fatalf("Reposts, the rest = %+v, %v", page, err)
+	}
+	if _, err = svc.Reposts(ctx, uuid.Nil, uuid.New(), uuid.Nil, 2); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("reposts of no post: %v", err)
+	}
+	if _, err = svc.Reposts(ctx, uuid.Nil, hidden.ID(), uuid.Nil, 2); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("reposts of an archived post: %v", err)
+	}
+
+	// Deleted, the post takes back what its author heard of the reposts,
+	// the archived one too; nobody heard of ann's own.
+	if err = svc.Delete(ctx, ann, original.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	want := []service.Event{
+		{Kind: service.EventRepost, RecipientID: ann, ActorID: cat, PostID: hidden.ID()},
+		{Kind: service.EventRepost, RecipientID: ann, ActorID: club, PostID: inClub.ID()},
+		{Kind: service.EventRepost, RecipientID: ann, ActorID: bob, PostID: withPhotos.ID()},
+	}
+	if !slices.Equal(notifier.retracted, want) {
+		t.Fatalf("retracted = %+v, want %+v", notifier.retracted, want)
+	}
+	if notifier.outsideTx != 0 {
+		t.Fatalf("%d notifier calls outside a transaction", notifier.outsideTx)
+	}
+
+	// A post that speaks for a community has nobody to take anything from.
+	notifier.retracted = nil
+	forClub, err := svc.Create(ctx, service.CreateInput{WallID: club, AuthorID: ann, Content: textContent(t, "от группы"), ClubWall: true, FromWall: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.Repost(ctx, service.RepostInput{AuthorID: bob, PostID: forClub.ID()}); err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Delete(ctx, ann, forClub.ID()); err != nil || len(notifier.retracted) != 0 {
+		t.Fatalf("deleting a community's post: %v, retracted %+v", err, notifier.retracted)
+	}
+}
+
 func TestPostService_Photos(t *testing.T) {
 	t.Parallel()
 
