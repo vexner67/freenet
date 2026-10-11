@@ -10,7 +10,7 @@ datasources:
     isDefault: true
     editable: false
     jsonData:
-      timeInterval: 10s
+      timeInterval: 30s
 
   - name: Alertmanager
     uid: alertmanager

@@ -37,8 +37,10 @@ COPY --from=build --chown=nonroot:nonroot /out/data /data
 WORKDIR /
 ENTRYPOINT ["/service"]
 # The binary asks the running service itself: no shell or curl here. Often
-# while starting, so that dependants start soon.
-HEALTHCHECK --interval=10s --timeout=5s --start-period=30s --start-interval=1s \
+# while starting, so that dependants start soon; then twice a minute —
+# every check starts the binary and makes an mTLS handshake, which a
+# small server feels.
+HEALTHCHECK --interval=30s --timeout=5s --start-period=30s --start-interval=1s \
     CMD ["/service", "-healthcheck"]
 
 # The gateway also serves the website on the same origin.
