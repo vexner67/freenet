@@ -96,6 +96,8 @@ type Media interface {
 type Posts interface {
 	Create(ctx context.Context, accessToken string, np model.NewPost) (model.Post, error)
 	Repost(ctx context.Context, accessToken, postID string, nr model.NewRepost) (model.Post, error)
+	// Reposts are the posts that share a post, newest first.
+	Reposts(ctx context.Context, accessToken, postID, cursor string, limit int) (model.PostPage, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	Edit(ctx context.Context, accessToken, id string, edit model.PostEdit) (model.Post, error)
 	Pin(ctx context.Context, accessToken, id string) error
@@ -326,6 +328,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/posts/{id}/closed-comments", a.closeComments)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}/closed-comments", a.openComments)
 	mux.HandleFunc("POST /api/v1/posts/{id}/reposts", a.repostPost)
+	mux.HandleFunc("GET /api/v1/posts/{id}/reposts", a.listReposts)
 	mux.HandleFunc("PUT /api/v1/posts/{id}/like", a.likePost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}/like", a.unlikePost)
 	mux.HandleFunc("GET /api/v1/posts/{id}/likes", a.listPostLikers)

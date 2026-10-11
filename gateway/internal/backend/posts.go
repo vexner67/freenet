@@ -47,6 +47,7 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 func (p *Posts) Repost(ctx context.Context, accessToken, postID string, nr model.NewRepost) (model.Post, error) {
 	resp, err := p.api.RepostPost(withToken(ctx, accessToken), &postv1.RepostPostRequest{
 		PostId: postID, PhotoId: nr.PhotoID, Text: nr.Text, WallId: nr.WallID, FromWall: nr.FromWall, Signed: nr.Signed,
+		PhotoIds: nr.PhotoIDs,
 	})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.RepostPost", fromStatus(err))
@@ -187,6 +188,19 @@ func (p *Posts) Feed(ctx context.Context, accessToken string, sources model.Feed
 		Posts:      toPosts(resp.GetPosts()),
 		NextCursor: resp.GetNextCursor(),
 	}, nil
+}
+
+// Reposts are the posts that share the post, newest first, with the
+// beginnings of their texts; Total counts them all.
+func (p *Posts) Reposts(ctx context.Context, accessToken, postID, cursor string, limit int) (model.PostPage, error) {
+	resp, err := p.api.ListReposts(withToken(ctx, accessToken), &postv1.ListRepostsRequest{
+		PostId: postID, Cursor: cursor, Limit: toLimit(limit), TextLimit: model.ExcerptLength,
+	})
+	if err != nil {
+		return model.PostPage{}, errs.Wrap("p.api.ListReposts", fromStatus(err))
+	}
+
+	return model.PostPage{Posts: toPosts(resp.GetPosts()), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
 }
 
 // GetMany returns the posts that exist, in no order, with the beginnings

@@ -92,6 +92,9 @@ type postResponse struct {
 type repostRequest struct {
 	// What the caller says about the shared post; may be empty.
 	Text string `json:"text"`
+	// Photos are IDs from POST /api/v1/me/photos added to the words about
+	// a post, at most 10; a shared photo of an album takes none.
+	Photos []string `json:"photos"`
 	// Club is a community to share it in ("в группу"), "" for the caller's
 	// wall; FromClub speaks for it, Signed names the caller under it.
 	Club     string `json:"club"`
@@ -704,12 +707,17 @@ func (a *api) share(w http.ResponseWriter, r *http.Request, what func(token stri
 		return
 	}
 
+	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	nr, err := a.repostTarget(r, token, req)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
-	nr.PhotoID = photoID
+	nr.PhotoID, nr.PhotoIDs = photoID, req.Photos
 
 	p, err := a.posts.Repost(r.Context(), token, postID, nr)
 	if err != nil {
@@ -731,6 +739,37 @@ func (a *api) share(w http.ResponseWriter, r *http.Request, what func(token stri
 	}
 
 	writeJSON(w, http.StatusCreated, shown[0])
+}
+
+// listReposts is who shared a post: the posts that share it, newest
+// first, public as the post, with their authors, people and communities.
+// Those of deleted pages are left out, but counted.
+func (a *api) listReposts(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	limit, err := pageLimit(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	page, err := a.posts.Reposts(r.Context(), token, r.PathValue("id"), r.URL.Query().Get("cursor"), limit)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	shown, err := a.withPeople(r, page.Posts)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, postPageResponse{Posts: shown, NextCursor: page.NextCursor, Total: page.Total})
 }
 
 // repostTarget is where the caller shares a post: their wall, or a

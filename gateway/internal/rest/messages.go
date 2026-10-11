@@ -16,6 +16,9 @@ type messageRequest struct {
 	Post string `json:"post"`
 	// Forward are messages of the caller's dialogs to carry on ("Переслать").
 	Forward []string `json:"forward"`
+	// AlbumPhoto is a photo of an album shared into the dialog
+	// ("Поделиться" under a photo, "в переписку"), with text alone.
+	AlbumPhoto string `json:"albumPhoto"`
 }
 
 // messageJSON: Out is the caller's own message, Read means its recipient
@@ -40,6 +43,11 @@ type messageJSON struct {
 	// a repost, except in the list of dialogs.
 	Post   string      `json:"post"`
 	Repost *repostJSON `json:"repost,omitempty"`
+	// AlbumPhoto is a photo of an album shared in it, "" for none;
+	// SharedPhoto shows it, as inside a post that shares it, except in the
+	// list of dialogs.
+	AlbumPhoto  string           `json:"albumPhoto"`
+	SharedPhoto *sharedPhotoJSON `json:"sharedPhoto,omitempty"`
 	// ForwardedCount is how many messages it carries on; Forwarded shows
 	// them, except in the list of dialogs and in a search, without those
 	// whose authors' pages are gone.
@@ -60,6 +68,9 @@ type forwardedJSON struct {
 	CreatedAt string      `json:"createdAt"`
 	Post      string      `json:"post"`
 	Repost    *repostJSON `json:"repost,omitempty"`
+
+	AlbumPhoto  string           `json:"albumPhoto"`
+	SharedPhoto *sharedPhotoJSON `json:"sharedPhoto,omitempty"`
 }
 
 type dialogJSON struct {
@@ -95,6 +106,8 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 		Read:      m.Read,
 		Post:      m.PostID,
 		EditedAt:  optionalTime(m.EditedAt),
+
+		AlbumPhoto: m.SharedPhotoID,
 
 		ForwardedCount: len(m.Forwarded),
 		Deleted:        !m.DeletedAt.IsZero(),
@@ -333,7 +346,21 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	draft := model.MessageDraft{Text: req.Text, PhotoIDs: req.Photos, PostID: req.Post, ForwardIDs: req.Forward}
+	// A photo the caller is not shown is not theirs to pass on.
+	if req.AlbumPhoto != "" {
+		if _, err = a.visiblePhotoByID(r, token, req.AlbumPhoto); err != nil {
+			if kind := failure.From(err).Kind; kind == failure.NotFound || kind == failure.InvalidArgument || kind == failure.PermissionDenied {
+				err = failure.New(failure.InvalidArgument, "photo not found")
+			}
+
+			a.writeError(w, r, err)
+			return
+		}
+	}
+
+	draft := model.MessageDraft{
+		Text: req.Text, PhotoIDs: req.Photos, PostID: req.Post, SharedPhotoID: req.AlbumPhoto, ForwardIDs: req.Forward,
+	}
 
 	m, err := a.messages.Send(r.Context(), token, recipient.ID, draft)
 	if err != nil {
@@ -393,11 +420,26 @@ func (a *api) showAttached(r *http.Request, messages []messageJSON) error {
 		return err
 	}
 
+	// A photo shared more than once on the page is read once.
+	photos := make(map[string]*sharedPhotoJSON)
+	sharedPhoto := func(id string) *sharedPhotoJSON {
+		if id == "" {
+			return nil
+		}
+
+		if _, ok := photos[id]; !ok {
+			photos[id] = a.sharedPhoto(r, id)
+		}
+
+		return photos[id]
+	}
+
 	for i := range messages {
 		m := &messages[i]
 		if m.Post != "" {
 			m.Repost = shown[m.Post]
 		}
+		m.SharedPhoto = sharedPhoto(m.AlbumPhoto)
 
 		for _, f := range m.carried {
 			author, ok := authors[f.SenderID]
@@ -411,6 +453,9 @@ func (a *api) showAttached(r *http.Request, messages []messageJSON) error {
 				Photos:    toPhotosJSON(f.SenderID, f.PhotoIDs),
 				CreatedAt: f.CreatedAt.UTC().Format(time.RFC3339),
 				Post:      f.PostID,
+
+				AlbumPhoto:  f.SharedPhotoID,
+				SharedPhoto: sharedPhoto(f.SharedPhotoID),
 			}
 			if f.PostID != "" {
 				fj.Repost = shown[f.PostID]

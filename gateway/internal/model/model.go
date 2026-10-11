@@ -425,6 +425,8 @@ type Message struct {
 	DeletableUntil time.Time
 	// PostID is a post shared into the dialog, "" for none.
 	PostID string
+	// SharedPhotoID is a photo of an album shared into it, "" for none.
+	SharedPhotoID string
 	// EditedAt is zero for a message never edited; the sender may edit it
 	// until EditableUntil.
 	EditedAt      time.Time
@@ -439,20 +441,24 @@ type Message struct {
 // ForwardedMessage is a message as another one carries it on: a copy of
 // what SenderID wrote at CreatedAt.
 type ForwardedMessage struct {
-	SenderID  string
-	Text      string
-	PhotoIDs  []string
-	PostID    string
-	CreatedAt time.Time
+	SenderID string
+	Text     string
+	PhotoIDs []string
+	PostID   string
+	// SharedPhotoID is a photo of an album it shared, "" for none.
+	SharedPhotoID string
+	CreatedAt     time.Time
 }
 
 // MessageDraft is a message to send: text, photos, a shared post ("" for
-// none), messages of the caller's dialogs to forward, or some of them.
+// none), messages of the caller's dialogs to forward, or some of them;
+// or a photo of an album to share (SharedPhotoID), with text alone.
 type MessageDraft struct {
-	Text       string
-	PhotoIDs   []string
-	PostID     string
-	ForwardIDs []string
+	Text          string
+	PhotoIDs      []string
+	PostID        string
+	SharedPhotoID string
+	ForwardIDs    []string
 }
 
 // MessagesAt names a part of a dialog: older messages with Cursor, those
@@ -869,8 +875,10 @@ type LikerPage struct {
 // a community's (WallID) for it (FromWall), maybe signed.
 type NewRepost struct {
 	// PhotoID shares a photo of an album instead of a post.
-	PhotoID  string
-	Text     string
+	PhotoID string
+	Text    string
+	// PhotoIDs are the caller's photos added to the words about a post.
+	PhotoIDs []string
 	WallID   string
 	FromWall bool
 	Signed   bool
