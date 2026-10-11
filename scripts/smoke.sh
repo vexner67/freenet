@@ -4,7 +4,8 @@
 # its database: auth (code from its log), user (profile), media (a photo,
 # written to its volume and served back), post (a post with it, a repost,
 # a poll, a note and the faves), notification (unread count), message (dialogs), club
-# (a club and a post for it) and the website itself; then observability: every
+# (a club and a post for it), the feed with an ignored source and the website
+# itself; then observability: every
 # container healthy, a request ID from the gateway in the auth log, every
 # service's metrics in Prometheus, its alert rules loaded and sent to
 # Alertmanager, the Grafana dashboard.
@@ -128,6 +129,14 @@ call PUT "/api/v1/posts/$poll/like" >/dev/null
 call GET /api/v1/me/faves/posts | jq -e --arg id "$poll" '.total == 1 and .posts[0].id == $id and .posts[0].liked' >/dev/null
 call GET /api/v1/me/posts | jq -e --arg id "$poll" '.total >= 1 and ([.posts[] | select(.id == $id and .mine)] | length == 1)' >/dev/null
 step "post: a liked post among the faves and the posts one wrote"
+
+expect=204 call PUT "/api/v1/me/feed/ignored/clubs/$club" >/dev/null
+call GET /api/v1/me/feed/ignored | jq -e --arg id "$club" '.sources | length == 1 and .[0].id == $id and .[0].club' >/dev/null
+call GET /api/v1/feed | jq -e '[.posts[] | select(.fromWall)] | length == 0' >/dev/null
+call GET "/api/v1/feed?ignored=true" | jq -e '[.posts[] | select(.fromWall)] | length == 1' >/dev/null
+expect=204 call DELETE "/api/v1/me/feed/ignored?id=$club" >/dev/null
+call GET /api/v1/feed | jq -e '[.posts[] | select(.fromWall)] | length == 1' >/dev/null
+step "user: an ignored source left out of the feed and brought back"
 
 # refresh replaces the tokens, as the website does after deleting and
 # restoring the page.
