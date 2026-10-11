@@ -1,8 +1,10 @@
 // openvk's "Поделиться" box: the audience — your wall, a community you
 // run ("в группу", with "От имени сообщества" and "Подпись автора") or a
-// dialog ("в переписку") — your comment, "Отправить" and "Отмена".
+// dialog ("в переписку") — your comment, with photos if you share a post,
+// "Отправить" and "Отмена".
 
 import { api } from './api.js';
+import { initAttachments } from './attach.js';
 import { clubRef, el, fullName, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { postPath } from './posts.js';
@@ -10,13 +12,18 @@ import { postPath } from './posts.js';
 const MAX_LENGTH = 60000;
 
 // openShare shares post, or with share a photo of an album (api.sharePhoto,
-// which a dialog does not take); onShared(repost) runs once it is on a wall.
+// which takes no photos of yours); onShared(repost) runs once it is on a
+// wall.
 export function openShare(post, onShared, { share = api.repost } = {}) {
-  const toChats = share === api.repost;
+  const ofPhoto = share !== api.repost;
   const modal = openModal('Поделиться', { tag: 'form' });
   const text = el('textarea', { maxLength: MAX_LENGTH, placeholder: '…', ariaLabel: 'Ваш комментарий' });
   const error = el('div', { className: 'error', hidden: true });
   const send = button('Отправить', null, { type: 'submit' });
+  const list = el('div', { className: 'attachments', hidden: true });
+  const input = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/gif,image/webp', multiple: true, hidden: true });
+  const attachLink = el('a', { className: 'attach-link', textContent: 'Прикрепить фотографию' });
+  const attachments = ofPhoto ? null : initAttachments({ link: attachLink, input, list, error, onChange: () => {} });
 
   const audience = (value, label, checked = false) => el('label', { className: 'modal-option' },
     el('input', { type: 'radio', name: 'share-to', value, checked }), label);
@@ -34,9 +41,11 @@ export function openShare(post, onShared, { share = api.repost } = {}) {
     audience('wall', 'на стену', true),
     audience('club', 'в группу'),
     clubs,
-    ...(toChats ? [audience('chat', 'в переписку'), chats] : []),
+    audience('chat', 'в переписку'),
+    chats,
     el('b', { textContent: 'Ваш комментарий' }),
     text,
+    ...(ofPhoto ? [] : [list, el('div', {}, attachLink), input]),
     signs,
   );
   modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
@@ -66,20 +75,30 @@ export function openShare(post, onShared, { share = api.repost } = {}) {
   modal.box.addEventListener('submit', async (event) => {
     event.preventDefault();
     hideError(error);
+    if (attachments?.busy()) {
+      showError(error, 'Дождитесь, пока загрузятся фотографии.');
+      return;
+    }
     send.disabled = true;
+
+    const photos = attachments?.ids() ?? [];
 
     try {
       if (target() === 'chat') {
         if (!chats.value) throw 'Выберите переписку.';
-        await api.sendMessage(chats.value, text.value, [], post.id);
-        done('Запись отправлена в переписку.', '/im/' + encodeURIComponent(chats.value));
+        if (ofPhoto) await api.sendMessage(chats.value, text.value, [], '', [], post.id);
+        else await api.sendMessage(chats.value, text.value, photos, post.id);
+        done(ofPhoto ? 'Фотография отправлена в переписку.' : 'Запись отправлена в переписку.', '/im/' + encodeURIComponent(chats.value));
         return;
       }
 
       const where = target() === 'club' ? clubs.value : '';
       if (target() === 'club' && !where) throw 'Выберите группу.';
 
-      const repost = await share(post.id, text.value, where && { club: where, fromClub: fromClub.checked, signed: signed.checked });
+      const repost = await share(post.id, text.value, {
+        ...(where && { club: where, fromClub: fromClub.checked, signed: signed.checked }),
+        ...(ofPhoto ? {} : { photos }),
+      });
       onShared(repost);
       done(where ? 'Запись опубликована в группе.' : 'Запись опубликована на вашей стене.', postPath(repost));
     } catch (e) {

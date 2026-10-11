@@ -4,7 +4,7 @@
 
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
-import { commentsLink, formatPostDate, genitiveName, shareLink, updatedPhoto, wrote } from './labels.js';
+import { commentsLink, formatPostDate, genitiveName, sharedBy, shareLink, updatedPhoto, wrote } from './labels.js';
 import { adult, avatarURL, el, fullName, isMicroblog, pagePath, textNode } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
@@ -338,10 +338,19 @@ function shareButton(post, canShare, { icon = false } = {}) {
       render();
     }));
   }
+  // Who shared it, as who likes it over the heart: each leads to the
+  // repost.
+  attachLikers(button, post, api.reposts, sharers);
   render();
 
   return button;
 }
+
+const sharers = {
+  count: (post) => post.reposts,
+  head: sharedBy,
+  people: (page) => page.posts.map((repost) => ({ user: repost.author, href: postPath(repost) })),
+};
 
 // wallLink names the wall a post is on: "на вашей стене" for the viewer's,
 // "в Любители котов" for a community's: openvk's "в $1", the name as is.
@@ -357,7 +366,7 @@ function wallLink(wall, viewer) {
 // own proportions, more as a grid of tiles. A click opens the viewer.
 // sharedPhotoNode is the photo of an album a post shares, leading to its
 // page, as openvk attaches a photo; a deleted one says so.
-function sharedPhotoNode(shared) {
+export function sharedPhotoNode(shared) {
   if (shared.deleted) {
     return el('div', { className: 'post-shared deleted', textContent: 'Фотография удалена.' });
   }
