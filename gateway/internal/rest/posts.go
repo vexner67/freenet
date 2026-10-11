@@ -5,6 +5,7 @@ import (
 	"maps"
 	"net/http"
 	"slices"
+	"strconv"
 	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
@@ -152,6 +153,14 @@ type postPageResponse struct {
 	// CanSuggest: the viewer may suggest a post for this community's wall
 	// instead ("Предложка"); told as CanPost.
 	CanSuggest bool `json:"canSuggest"`
+	// Years: the years the posts of the wall were written in, the latest
+	// first; told on the first page of the archive, to choose one.
+	Years []int `json:"years,omitempty"`
+}
+
+type archivedWallResponse struct {
+	// Changed: how many posts went to the archive or came back.
+	Changed int `json:"changed"`
 }
 
 func authorOf(id, avatarID string, p model.Profile) model.Author {
@@ -503,10 +512,64 @@ func withProfiles(p *model.Post, people map[string]model.Author) bool {
 }
 
 // wallPick is which posts of a wall the request asks for: ?type= is the
-// tab of openvk's wall, ?q= its "Поиск".
-func wallPick(r *http.Request) model.WallPick {
-	return model.WallPick{Filter: r.URL.Query().Get("type"), Query: r.URL.Query().Get("q")}
+// tab of openvk's wall, ?q= its "Поиск", ?year= the year of its archive.
+func wallPick(r *http.Request) (model.WallPick, error) {
+	year, err := wallYear(r)
+	if err != nil {
+		return model.WallPick{}, err
+	}
+
+	return model.WallPick{Filter: r.URL.Query().Get("type"), Query: r.URL.Query().Get("q"), Year: year}, nil
 }
+
+// wallYear reads ?year=: none is every year. Which years there are the
+// post service knows.
+func wallYear(r *http.Request) (int, error) {
+	s := r.URL.Query().Get("year")
+	if s == "" {
+		return 0, nil
+	}
+
+	year, err := strconv.Atoi(s)
+	if err != nil || year < 1 {
+		return 0, failure.New(failure.InvalidArgument, "invalid year")
+	}
+
+	return year, nil
+}
+
+// wallPage reads a page of the wall of wallID as the request picks it.
+// The first page of the archive carries the years of the wall.
+func (a *api) wallPage(r *http.Request, token, wallID string, limit int) (postPageResponse, error) {
+	pick, err := wallPick(r)
+	if err != nil {
+		return postPageResponse{}, err
+	}
+
+	cursor := r.URL.Query().Get("cursor")
+
+	page, err := a.posts.List(r.Context(), token, wallID, pick, cursor, limit)
+	if err != nil {
+		return postPageResponse{}, err
+	}
+
+	resp := postPageResponse{NextCursor: page.NextCursor, Total: page.Total}
+
+	if resp.Posts, err = a.withPeople(r, page.Posts); err != nil {
+		return postPageResponse{}, err
+	}
+
+	if pick.Filter == wallArchive && cursor == "" {
+		if resp.Years, err = a.posts.WallYears(r.Context(), token, wallID); err != nil {
+			return postPageResponse{}, err
+		}
+	}
+
+	return resp, nil
+}
+
+// wallArchive is ?type= of "Архив записей".
+const wallArchive = "archive"
 
 // listPosts is the wall of a user, whoever wrote the posts. Its first page
 // tells a signed-in viewer whether they may write there.
@@ -531,22 +594,13 @@ func (a *api) listPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cursor := r.URL.Query().Get("cursor")
-
-	page, err := a.posts.List(r.Context(), token, owner.ID, wallPick(r), cursor, limit)
+	resp, err := a.wallPage(r, token, owner.ID, limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	resp := postPageResponse{NextCursor: page.NextCursor, Total: page.Total}
-
-	if resp.Posts, err = a.withPeople(r, page.Posts); err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	if token != "" && cursor == "" {
+	if token != "" && r.URL.Query().Get("cursor") == "" {
 		if resp.CanPost, err = a.users.CanPostOnWall(r.Context(), token, owner.ID); err != nil {
 			a.writeError(w, r, err)
 			return
@@ -949,6 +1003,57 @@ func (a *api) archivePost(w http.ResponseWriter, r *http.Request) {
 
 func (a *api) unarchivePost(w http.ResponseWriter, r *http.Request) {
 	a.switchPost(w, r, a.posts.Archive, false)
+}
+
+// archiveWall and unarchiveWall are openvk's "Архивировать все записи
+// за 2025", "Разархивировать все записи за 2025" and, without ?year=,
+// "Архивировать все записи целиком" of a person's wall: its owner's.
+func (a *api) archiveWall(w http.ResponseWriter, r *http.Request) {
+	a.switchWall(w, r, a.wallOfUser, true)
+}
+
+func (a *api) unarchiveWall(w http.ResponseWriter, r *http.Request) {
+	a.switchWall(w, r, a.wallOfUser, false)
+}
+
+// wallOfUser is the ID of the wall of the person the path names.
+func (a *api) wallOfUser(r *http.Request, token string) (string, error) {
+	owner, err := a.visiblePage(r, token, pagePart)
+	if err != nil {
+		return "", err
+	}
+
+	return owner.ID, nil
+}
+
+// switchWall archives the posts of a year of the wall or returns them.
+// Who may, the post service decides.
+func (a *api) switchWall(w http.ResponseWriter, r *http.Request, wall func(r *http.Request, token string) (string, error), archived bool) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	year, err := wallYear(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	wallID, err := wall(r, token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	changed, err := a.posts.ArchiveWall(r.Context(), token, wallID, year, archived)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, archivedWallResponse{Changed: changed})
 }
 
 // closeComments and openComments are idempotent: the owner of the wall

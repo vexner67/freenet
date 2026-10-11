@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"math"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
@@ -127,6 +128,45 @@ func (p *Posts) Archive(ctx context.Context, accessToken, id string, archived bo
 	return nil
 }
 
+// ArchiveWall puts away every post of the wall written in year, 0 for
+// all of them, or brings them back; it tells how many it moved.
+func (p *Posts) ArchiveWall(ctx context.Context, accessToken, wallID string, year int, archived bool) (int, error) {
+	resp, err := p.api.ArchiveWall(withToken(ctx, accessToken), &postv1.ArchiveWallRequest{
+		WallId: wallID, Year: toYear(year), Archived: archived,
+	})
+	if err != nil {
+		return 0, errs.Wrap("p.api.ArchiveWall", fromStatus(err))
+	}
+
+	return int(resp.GetChanged()), nil
+}
+
+// WallYears are the years the posts of the wall were written in, the
+// latest first; told to those who keep its archive.
+func (p *Posts) WallYears(ctx context.Context, accessToken, wallID string) ([]int, error) {
+	resp, err := p.api.ListWallYears(withToken(ctx, accessToken), &postv1.ListWallYearsRequest{WallId: wallID})
+	if err != nil {
+		return nil, errs.Wrap("p.api.ListWallYears", fromStatus(err))
+	}
+
+	years := make([]int, len(resp.GetYears()))
+	for i, y := range resp.GetYears() {
+		years[i] = int(y)
+	}
+
+	return years, nil
+}
+
+// toYear is a year as the post service takes it; one no calendar has
+// is left for the service to refuse.
+func toYear(year int) int32 {
+	if year < 0 || year > math.MaxInt32 {
+		return -1
+	}
+
+	return int32(year)
+}
+
 // CloseComments lets nobody comment the post anymore, or again.
 func (p *Posts) CloseComments(ctx context.Context, accessToken, id string, closed bool) error {
 	var err error
@@ -156,6 +196,7 @@ func (p *Posts) List(ctx context.Context, accessToken, wallID string, pick model
 		Limit:  toLimit(limit),
 		Filter: f,
 		Query:  pick.Query,
+		Year:   toYear(pick.Year),
 
 		TextLimit: model.ExcerptLength,
 	})

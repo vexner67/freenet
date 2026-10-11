@@ -943,22 +943,13 @@ func (a *api) listClubPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	cursor := r.URL.Query().Get("cursor")
-
-	page, err := a.posts.List(r.Context(), token, c.Club.ID, wallPick(r), cursor, limit)
+	resp, err := a.wallPage(r, token, c.Club.ID, limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	resp := postPageResponse{NextCursor: page.NextCursor, Total: page.Total}
-
-	if resp.Posts, err = a.withPeople(r, page.Posts); err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	if token != "" && cursor == "" {
+	if token != "" && r.URL.Query().Get("cursor") == "" {
 		access, err := a.clubs.CanPostOnWall(r.Context(), token, c.Club.ID, false)
 		if err != nil {
 			a.writeError(w, r, err)
@@ -969,6 +960,26 @@ func (a *api) listClubPosts(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// archiveClubWall and unarchiveClubWall put the posts of a year of a
+// club's wall away, or all of them, and bring them back: its admins'.
+func (a *api) archiveClubWall(w http.ResponseWriter, r *http.Request) {
+	a.switchWall(w, r, a.wallOfClub, true)
+}
+
+func (a *api) unarchiveClubWall(w http.ResponseWriter, r *http.Request) {
+	a.switchWall(w, r, a.wallOfClub, false)
+}
+
+// wallOfClub is the ID of the wall of the club the path names.
+func (a *api) wallOfClub(r *http.Request, token string) (string, error) {
+	c, err := a.club(r, token)
+	if err != nil {
+		return "", err
+	}
+
+	return c.Club.ID, nil
 }
 
 // createClubPost writes on the wall of a club, on the author's behalf or,
