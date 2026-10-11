@@ -31,6 +31,20 @@ const (
 	MessageService_EditMessage_FullMethodName        = "/message.v1.MessageService/EditMessage"
 	MessageService_SearchMessages_FullMethodName     = "/message.v1.MessageService/SearchMessages"
 	MessageService_HasMessagesFrom_FullMethodName    = "/message.v1.MessageService/HasMessagesFrom"
+	MessageService_CreateChat_FullMethodName         = "/message.v1.MessageService/CreateChat"
+	MessageService_GetChat_FullMethodName            = "/message.v1.MessageService/GetChat"
+	MessageService_ListChats_FullMethodName          = "/message.v1.MessageService/ListChats"
+	MessageService_RenameChat_FullMethodName         = "/message.v1.MessageService/RenameChat"
+	MessageService_AddChatMembers_FullMethodName     = "/message.v1.MessageService/AddChatMembers"
+	MessageService_RemoveChatMember_FullMethodName   = "/message.v1.MessageService/RemoveChatMember"
+	MessageService_LeaveChat_FullMethodName          = "/message.v1.MessageService/LeaveChat"
+	MessageService_ReturnToChat_FullMethodName       = "/message.v1.MessageService/ReturnToChat"
+	MessageService_SendChatMessage_FullMethodName    = "/message.v1.MessageService/SendChatMessage"
+	MessageService_ListChatMessages_FullMethodName   = "/message.v1.MessageService/ListChatMessages"
+	MessageService_GetChatMessage_FullMethodName     = "/message.v1.MessageService/GetChatMessage"
+	MessageService_EditChatMessage_FullMethodName    = "/message.v1.MessageService/EditChatMessage"
+	MessageService_DeleteChatMessage_FullMethodName  = "/message.v1.MessageService/DeleteChatMessage"
+	MessageService_MarkChatRead_FullMethodName       = "/message.v1.MessageService/MarkChatRead"
 	MessageService_Subscribe_FullMethodName          = "/message.v1.MessageService/Subscribe"
 	MessageService_PurgeUser_FullMethodName          = "/message.v1.MessageService/PurgeUser"
 )
@@ -46,7 +60,7 @@ type MessageServiceClient interface {
 	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	// The caller's dialogs, the most recently written first.
 	ListDialogs(ctx context.Context, in *ListDialogsRequest, opts ...grpc.CallOption) (*ListDialogsResponse, error)
-	// How many dialogs have unread messages, at most 100.
+	// How many dialogs and chats have unread messages, at most 100.
 	CountUnreadDialogs(ctx context.Context, in *CountUnreadDialogsRequest, opts ...grpc.CallOption) (*CountUnreadDialogsResponse, error)
 	// Messages of the dialog with peer_id, oldest first.
 	ListMessages(ctx context.Context, in *ListMessagesRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error)
@@ -74,16 +88,54 @@ type MessageServiceClient interface {
 	// Requires an access token: whether the peer has ever written to the
 	// caller, who may then answer whatever the peer's privacy.
 	HasMessagesFrom(ctx context.Context, in *HasMessagesFromRequest, opts ...grpc.CallOption) (*HasMessagesFromResponse, error)
+	// Chats of several people ("беседы"). The caller starts one with
+	// member_ids, two others at least and 49 at most; the gateway has checked
+	// that they exist and may be added. Everyone in it writes, adds people
+	// and renames it; only who created it removes others.
+	CreateChat(ctx context.Context, in *CreateChatRequest, opts ...grpc.CallOption) (*CreateChatResponse, error)
+	// A chat of the caller with who is in it now; NotFound for someone who
+	// was never in it. Who has left or was removed still reads what was said
+	// before, and is told of no members.
+	GetChat(ctx context.Context, in *GetChatRequest, opts ...grpc.CallOption) (*GetChatResponse, error)
+	// The caller's chats, the most recently written first: the cursors are
+	// those of ListDialogs, so the two lists merge into one.
+	ListChats(ctx context.Context, in *ListChatsRequest, opts ...grpc.CallOption) (*ListChatsResponse, error)
+	RenameChat(ctx context.Context, in *RenameChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Adds people while there is room (50 with the caller); who is in the
+	// chat already stays, who left on their own fails with
+	// FailedPrecondition "the user has left the chat".
+	AddChatMembers(ctx context.Context, in *AddChatMembersRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The creator removes someone else ("Исключить из беседы").
+	RemoveChatMember(ctx context.Context, in *RemoveChatMemberRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller leaves ("Покинуть чат") and comes back ("Вернуться в
+	// чат"); who was removed fails with FailedPrecondition.
+	LeaveChat(ctx context.Context, in *LeaveChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ReturnToChat(ctx context.Context, in *ReturnToChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Text, photos or both; the gateway has checked the photos are the
+	// sender's. Who is not in the chat anymore fails with FailedPrecondition
+	// "you are not in this chat".
+	SendChatMessage(ctx context.Context, in *SendChatMessageRequest, opts ...grpc.CallOption) (*SendChatMessageResponse, error)
+	// Messages of a chat, oldest first.
+	ListChatMessages(ctx context.Context, in *ListChatMessagesRequest, opts ...grpc.CallOption) (*ListChatMessagesResponse, error)
+	// A message of a chat of the caller, whole.
+	GetChatMessage(ctx context.Context, in *GetChatMessageRequest, opts ...grpc.CallOption) (*GetChatMessageResponse, error)
+	// The sender changes what their message says, within a day of sending.
+	EditChatMessage(ctx context.Context, in *EditChatMessageRequest, opts ...grpc.CallOption) (*EditChatMessageResponse, error)
+	// The sender takes their message back, within a day of sending: it
+	// stays in the chat saying nothing (deleted_at).
+	DeleteChatMessage(ctx context.Context, in *DeleteChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller has read the chat up to a message of it.
+	MarkChatRead(ctx context.Context, in *MarkChatReadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token: the caller's events as they happen — new
 	// messages of their dialogs, sent or received, read marks that move,
-	// messages deleted and messages edited.
+	// messages deleted and messages edited, and the same of their chats.
 	// Best effort: the stream ends with Unauthenticated when the token
 	// expires and with ResourceExhausted when the caller falls behind; then
 	// subscribe again and catch up with ListMessages and ListDialogs.
 	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeResponse], error)
 	// Internal, for user: the user's page was deleted and not restored in
-	// time; their dialogs go, with every message in them, from both sides.
-	// Idempotent.
+	// time; their dialogs go, with every message in them, from both sides,
+	// and they leave every chat with what they wrote there. Idempotent.
 	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -205,6 +257,146 @@ func (c *messageServiceClient) HasMessagesFrom(ctx context.Context, in *HasMessa
 	return out, nil
 }
 
+func (c *messageServiceClient) CreateChat(ctx context.Context, in *CreateChatRequest, opts ...grpc.CallOption) (*CreateChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateChatResponse)
+	err := c.cc.Invoke(ctx, MessageService_CreateChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) GetChat(ctx context.Context, in *GetChatRequest, opts ...grpc.CallOption) (*GetChatResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetChatResponse)
+	err := c.cc.Invoke(ctx, MessageService_GetChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) ListChats(ctx context.Context, in *ListChatsRequest, opts ...grpc.CallOption) (*ListChatsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListChatsResponse)
+	err := c.cc.Invoke(ctx, MessageService_ListChats_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) RenameChat(ctx context.Context, in *RenameChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_RenameChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) AddChatMembers(ctx context.Context, in *AddChatMembersRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_AddChatMembers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) RemoveChatMember(ctx context.Context, in *RemoveChatMemberRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_RemoveChatMember_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) LeaveChat(ctx context.Context, in *LeaveChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_LeaveChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) ReturnToChat(ctx context.Context, in *ReturnToChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_ReturnToChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) SendChatMessage(ctx context.Context, in *SendChatMessageRequest, opts ...grpc.CallOption) (*SendChatMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendChatMessageResponse)
+	err := c.cc.Invoke(ctx, MessageService_SendChatMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) ListChatMessages(ctx context.Context, in *ListChatMessagesRequest, opts ...grpc.CallOption) (*ListChatMessagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListChatMessagesResponse)
+	err := c.cc.Invoke(ctx, MessageService_ListChatMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) GetChatMessage(ctx context.Context, in *GetChatMessageRequest, opts ...grpc.CallOption) (*GetChatMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetChatMessageResponse)
+	err := c.cc.Invoke(ctx, MessageService_GetChatMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) EditChatMessage(ctx context.Context, in *EditChatMessageRequest, opts ...grpc.CallOption) (*EditChatMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditChatMessageResponse)
+	err := c.cc.Invoke(ctx, MessageService_EditChatMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) DeleteChatMessage(ctx context.Context, in *DeleteChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_DeleteChatMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) MarkChatRead(ctx context.Context, in *MarkChatReadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_MarkChatRead_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &MessageService_ServiceDesc.Streams[0], MessageService_Subscribe_FullMethodName, cOpts...)
@@ -245,7 +437,7 @@ type MessageServiceServer interface {
 	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
 	// The caller's dialogs, the most recently written first.
 	ListDialogs(context.Context, *ListDialogsRequest) (*ListDialogsResponse, error)
-	// How many dialogs have unread messages, at most 100.
+	// How many dialogs and chats have unread messages, at most 100.
 	CountUnreadDialogs(context.Context, *CountUnreadDialogsRequest) (*CountUnreadDialogsResponse, error)
 	// Messages of the dialog with peer_id, oldest first.
 	ListMessages(context.Context, *ListMessagesRequest) (*ListMessagesResponse, error)
@@ -273,16 +465,54 @@ type MessageServiceServer interface {
 	// Requires an access token: whether the peer has ever written to the
 	// caller, who may then answer whatever the peer's privacy.
 	HasMessagesFrom(context.Context, *HasMessagesFromRequest) (*HasMessagesFromResponse, error)
+	// Chats of several people ("беседы"). The caller starts one with
+	// member_ids, two others at least and 49 at most; the gateway has checked
+	// that they exist and may be added. Everyone in it writes, adds people
+	// and renames it; only who created it removes others.
+	CreateChat(context.Context, *CreateChatRequest) (*CreateChatResponse, error)
+	// A chat of the caller with who is in it now; NotFound for someone who
+	// was never in it. Who has left or was removed still reads what was said
+	// before, and is told of no members.
+	GetChat(context.Context, *GetChatRequest) (*GetChatResponse, error)
+	// The caller's chats, the most recently written first: the cursors are
+	// those of ListDialogs, so the two lists merge into one.
+	ListChats(context.Context, *ListChatsRequest) (*ListChatsResponse, error)
+	RenameChat(context.Context, *RenameChatRequest) (*emptypb.Empty, error)
+	// Adds people while there is room (50 with the caller); who is in the
+	// chat already stays, who left on their own fails with
+	// FailedPrecondition "the user has left the chat".
+	AddChatMembers(context.Context, *AddChatMembersRequest) (*emptypb.Empty, error)
+	// The creator removes someone else ("Исключить из беседы").
+	RemoveChatMember(context.Context, *RemoveChatMemberRequest) (*emptypb.Empty, error)
+	// The caller leaves ("Покинуть чат") and comes back ("Вернуться в
+	// чат"); who was removed fails with FailedPrecondition.
+	LeaveChat(context.Context, *LeaveChatRequest) (*emptypb.Empty, error)
+	ReturnToChat(context.Context, *ReturnToChatRequest) (*emptypb.Empty, error)
+	// Text, photos or both; the gateway has checked the photos are the
+	// sender's. Who is not in the chat anymore fails with FailedPrecondition
+	// "you are not in this chat".
+	SendChatMessage(context.Context, *SendChatMessageRequest) (*SendChatMessageResponse, error)
+	// Messages of a chat, oldest first.
+	ListChatMessages(context.Context, *ListChatMessagesRequest) (*ListChatMessagesResponse, error)
+	// A message of a chat of the caller, whole.
+	GetChatMessage(context.Context, *GetChatMessageRequest) (*GetChatMessageResponse, error)
+	// The sender changes what their message says, within a day of sending.
+	EditChatMessage(context.Context, *EditChatMessageRequest) (*EditChatMessageResponse, error)
+	// The sender takes their message back, within a day of sending: it
+	// stays in the chat saying nothing (deleted_at).
+	DeleteChatMessage(context.Context, *DeleteChatMessageRequest) (*emptypb.Empty, error)
+	// The caller has read the chat up to a message of it.
+	MarkChatRead(context.Context, *MarkChatReadRequest) (*emptypb.Empty, error)
 	// Requires an access token: the caller's events as they happen — new
 	// messages of their dialogs, sent or received, read marks that move,
-	// messages deleted and messages edited.
+	// messages deleted and messages edited, and the same of their chats.
 	// Best effort: the stream ends with Unauthenticated when the token
 	// expires and with ResourceExhausted when the caller falls behind; then
 	// subscribe again and catch up with ListMessages and ListDialogs.
 	Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error
 	// Internal, for user: the user's page was deleted and not restored in
-	// time; their dialogs go, with every message in them, from both sides.
-	// Idempotent.
+	// time; their dialogs go, with every message in them, from both sides,
+	// and they leave every chat with what they wrote there. Idempotent.
 	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMessageServiceServer()
 }
@@ -326,6 +556,48 @@ func (UnimplementedMessageServiceServer) SearchMessages(context.Context, *Search
 }
 func (UnimplementedMessageServiceServer) HasMessagesFrom(context.Context, *HasMessagesFromRequest) (*HasMessagesFromResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method HasMessagesFrom not implemented")
+}
+func (UnimplementedMessageServiceServer) CreateChat(context.Context, *CreateChatRequest) (*CreateChatResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateChat not implemented")
+}
+func (UnimplementedMessageServiceServer) GetChat(context.Context, *GetChatRequest) (*GetChatResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetChat not implemented")
+}
+func (UnimplementedMessageServiceServer) ListChats(context.Context, *ListChatsRequest) (*ListChatsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListChats not implemented")
+}
+func (UnimplementedMessageServiceServer) RenameChat(context.Context, *RenameChatRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RenameChat not implemented")
+}
+func (UnimplementedMessageServiceServer) AddChatMembers(context.Context, *AddChatMembersRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddChatMembers not implemented")
+}
+func (UnimplementedMessageServiceServer) RemoveChatMember(context.Context, *RemoveChatMemberRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RemoveChatMember not implemented")
+}
+func (UnimplementedMessageServiceServer) LeaveChat(context.Context, *LeaveChatRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method LeaveChat not implemented")
+}
+func (UnimplementedMessageServiceServer) ReturnToChat(context.Context, *ReturnToChatRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReturnToChat not implemented")
+}
+func (UnimplementedMessageServiceServer) SendChatMessage(context.Context, *SendChatMessageRequest) (*SendChatMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendChatMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) ListChatMessages(context.Context, *ListChatMessagesRequest) (*ListChatMessagesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListChatMessages not implemented")
+}
+func (UnimplementedMessageServiceServer) GetChatMessage(context.Context, *GetChatMessageRequest) (*GetChatMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetChatMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) EditChatMessage(context.Context, *EditChatMessageRequest) (*EditChatMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditChatMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) DeleteChatMessage(context.Context, *DeleteChatMessageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteChatMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) MarkChatRead(context.Context, *MarkChatReadRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method MarkChatRead not implemented")
 }
 func (UnimplementedMessageServiceServer) Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error {
 	return status.Error(codes.Unimplemented, "method Subscribe not implemented")
@@ -552,6 +824,258 @@ func _MessageService_HasMessagesFrom_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_CreateChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).CreateChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_CreateChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).CreateChat(ctx, req.(*CreateChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_GetChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).GetChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_GetChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).GetChat(ctx, req.(*GetChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_ListChats_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListChatsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).ListChats(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_ListChats_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).ListChats(ctx, req.(*ListChatsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_RenameChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).RenameChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_RenameChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).RenameChat(ctx, req.(*RenameChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_AddChatMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddChatMembersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).AddChatMembers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_AddChatMembers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).AddChatMembers(ctx, req.(*AddChatMembersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_RemoveChatMember_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RemoveChatMemberRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).RemoveChatMember(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_RemoveChatMember_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).RemoveChatMember(ctx, req.(*RemoveChatMemberRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_LeaveChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(LeaveChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).LeaveChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_LeaveChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).LeaveChat(ctx, req.(*LeaveChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_ReturnToChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReturnToChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).ReturnToChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_ReturnToChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).ReturnToChat(ctx, req.(*ReturnToChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_SendChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendChatMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).SendChatMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_SendChatMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).SendChatMessage(ctx, req.(*SendChatMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_ListChatMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListChatMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).ListChatMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_ListChatMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).ListChatMessages(ctx, req.(*ListChatMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_GetChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetChatMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).GetChatMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_GetChatMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).GetChatMessage(ctx, req.(*GetChatMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_EditChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditChatMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).EditChatMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_EditChatMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).EditChatMessage(ctx, req.(*EditChatMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_DeleteChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteChatMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).DeleteChatMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_DeleteChatMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).DeleteChatMessage(ctx, req.(*DeleteChatMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_MarkChatRead_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(MarkChatReadRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).MarkChatRead(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_MarkChatRead_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).MarkChatRead(ctx, req.(*MarkChatReadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(SubscribeRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -631,6 +1155,62 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "HasMessagesFrom",
 			Handler:    _MessageService_HasMessagesFrom_Handler,
+		},
+		{
+			MethodName: "CreateChat",
+			Handler:    _MessageService_CreateChat_Handler,
+		},
+		{
+			MethodName: "GetChat",
+			Handler:    _MessageService_GetChat_Handler,
+		},
+		{
+			MethodName: "ListChats",
+			Handler:    _MessageService_ListChats_Handler,
+		},
+		{
+			MethodName: "RenameChat",
+			Handler:    _MessageService_RenameChat_Handler,
+		},
+		{
+			MethodName: "AddChatMembers",
+			Handler:    _MessageService_AddChatMembers_Handler,
+		},
+		{
+			MethodName: "RemoveChatMember",
+			Handler:    _MessageService_RemoveChatMember_Handler,
+		},
+		{
+			MethodName: "LeaveChat",
+			Handler:    _MessageService_LeaveChat_Handler,
+		},
+		{
+			MethodName: "ReturnToChat",
+			Handler:    _MessageService_ReturnToChat_Handler,
+		},
+		{
+			MethodName: "SendChatMessage",
+			Handler:    _MessageService_SendChatMessage_Handler,
+		},
+		{
+			MethodName: "ListChatMessages",
+			Handler:    _MessageService_ListChatMessages_Handler,
+		},
+		{
+			MethodName: "GetChatMessage",
+			Handler:    _MessageService_GetChatMessage_Handler,
+		},
+		{
+			MethodName: "EditChatMessage",
+			Handler:    _MessageService_EditChatMessage_Handler,
+		},
+		{
+			MethodName: "DeleteChatMessage",
+			Handler:    _MessageService_DeleteChatMessage_Handler,
+		},
+		{
+			MethodName: "MarkChatRead",
+			Handler:    _MessageService_MarkChatRead_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

@@ -14,7 +14,7 @@ service MessageService {
   rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
   // The caller's dialogs, the most recently written first.
   rpc ListDialogs(ListDialogsRequest) returns (ListDialogsResponse);
-  // How many dialogs have unread messages, at most 100.
+  // How many dialogs and chats have unread messages, at most 100.
   rpc CountUnreadDialogs(CountUnreadDialogsRequest) returns (CountUnreadDialogsResponse);
   // Messages of the dialog with peer_id, oldest first.
   rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
@@ -43,17 +43,56 @@ service MessageService {
   // caller, who may then answer whatever the peer's privacy.
   rpc HasMessagesFrom(HasMessagesFromRequest) returns (HasMessagesFromResponse);
 
+  // Chats of several people ("беседы"). The caller starts one with
+  // member_ids, two others at least and 49 at most; the gateway has checked
+  // that they exist and may be added. Everyone in it writes, adds people
+  // and renames it; only who created it removes others.
+  rpc CreateChat(CreateChatRequest) returns (CreateChatResponse);
+  // A chat of the caller with who is in it now; NotFound for someone who
+  // was never in it. Who has left or was removed still reads what was said
+  // before, and is told of no members.
+  rpc GetChat(GetChatRequest) returns (GetChatResponse);
+  // The caller's chats, the most recently written first: the cursors are
+  // those of ListDialogs, so the two lists merge into one.
+  rpc ListChats(ListChatsRequest) returns (ListChatsResponse);
+  rpc RenameChat(RenameChatRequest) returns (google.protobuf.Empty);
+  // Adds people while there is room (50 with the caller); who is in the
+  // chat already stays, who left on their own fails with
+  // FailedPrecondition "the user has left the chat".
+  rpc AddChatMembers(AddChatMembersRequest) returns (google.protobuf.Empty);
+  // The creator removes someone else ("Исключить из беседы").
+  rpc RemoveChatMember(RemoveChatMemberRequest) returns (google.protobuf.Empty);
+  // The caller leaves ("Покинуть чат") and comes back ("Вернуться в
+  // чат"); who was removed fails with FailedPrecondition.
+  rpc LeaveChat(LeaveChatRequest) returns (google.protobuf.Empty);
+  rpc ReturnToChat(ReturnToChatRequest) returns (google.protobuf.Empty);
+  // Text, photos or both; the gateway has checked the photos are the
+  // sender's. Who is not in the chat anymore fails with FailedPrecondition
+  // "you are not in this chat".
+  rpc SendChatMessage(SendChatMessageRequest) returns (SendChatMessageResponse);
+  // Messages of a chat, oldest first.
+  rpc ListChatMessages(ListChatMessagesRequest) returns (ListChatMessagesResponse);
+  // A message of a chat of the caller, whole.
+  rpc GetChatMessage(GetChatMessageRequest) returns (GetChatMessageResponse);
+  // The sender changes what their message says, within a day of sending.
+  rpc EditChatMessage(EditChatMessageRequest) returns (EditChatMessageResponse);
+  // The sender takes their message back, within a day of sending: it
+  // stays in the chat saying nothing (deleted_at).
+  rpc DeleteChatMessage(DeleteChatMessageRequest) returns (google.protobuf.Empty);
+  // The caller has read the chat up to a message of it.
+  rpc MarkChatRead(MarkChatReadRequest) returns (google.protobuf.Empty);
+
   // Requires an access token: the caller's events as they happen — new
   // messages of their dialogs, sent or received, read marks that move,
-  // messages deleted and messages edited.
+  // messages deleted and messages edited, and the same of their chats.
   // Best effort: the stream ends with Unauthenticated when the token
   // expires and with ResourceExhausted when the caller falls behind; then
   // subscribe again and catch up with ListMessages and ListDialogs.
   rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
 
   // Internal, for user: the user's page was deleted and not restored in
-  // time; their dialogs go, with every message in them, from both sides.
-  // Idempotent.
+  // time; their dialogs go, with every message in them, from both sides,
+  // and they leave every chat with what they wrote there. Idempotent.
   rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
 }
 
@@ -260,7 +299,21 @@ message SubscribeResponse {
     // The message as it is after its sender edited it or took it back
     // (deleted_at); read is not told.
     Message edited = 4;
+    // A new message of a chat of the caller: written by someone in it, or
+    // telling of what happened there (action).
+    ChatMessage chat_message = 5;
+    // A message of a chat as it is after its sender edited it or took it
+    // back.
+    ChatMessage chat_edited = 6;
+    // The caller has read a chat, on another page.
+    ChatRead chat_read = 7;
   }
+}
+
+// The caller has read chat_id up to up_to_id.
+message ChatRead {
+  string chat_id = 1;
+  string up_to_id = 2;
 }
 
 // Message id of sender_id to recipient_id is gone from the dialog of
@@ -280,4 +333,196 @@ message ReadMark {
 
 message PurgeUserRequest {
   string user_id = 1;
+}
+
+// How the caller stands in a chat.
+enum ChatMemberState {
+  CHAT_MEMBER_STATE_UNSPECIFIED = 0;
+  CHAT_MEMBER_STATE_ACTIVE = 1;
+  // Left on their own: may come back.
+  CHAT_MEMBER_STATE_LEFT = 2;
+  // Removed by the creator.
+  CHAT_MEMBER_STATE_KICKED = 3;
+}
+
+// What a message of a chat tells of instead of saying something.
+enum ChatAction {
+  CHAT_ACTION_NONE = 0;
+  // The sender created the chat; text is its title, if it has one.
+  CHAT_ACTION_CREATE = 1;
+  // The sender renamed the chat; text is the new title.
+  CHAT_ACTION_TITLE = 2;
+  // The sender added target_id.
+  CHAT_ACTION_INVITE = 3;
+  // The sender removed target_id.
+  CHAT_ACTION_KICK = 4;
+  CHAT_ACTION_LEAVE = 5;
+  CHAT_ACTION_RETURN = 6;
+}
+
+// A chat as the caller has it.
+message Chat {
+  string id = 1;
+  // Empty: the chat is called by who is in it.
+  string title = 2;
+  // Who created it.
+  string owner_id = 3;
+  google.protobuf.Timestamp created_at = 4;
+  // How many people are in it now.
+  int32 member_count = 5;
+  ChatMemberState state = 6;
+  // The last message the caller is shown; unset if none is left.
+  ChatMessage last_message = 7;
+  // Others wrote something the caller has not read.
+  bool unread = 8;
+}
+
+message ChatMember {
+  string user_id = 1;
+  google.protobuf.Timestamp joined_at = 2;
+}
+
+message ChatMessage {
+  string id = 1;
+  string chat_id = 2;
+  string sender_id = 3;
+  // Empty when the message has photos only; of an action, the title it
+  // tells of.
+  string text = 4;
+  // Photos of the sender in the media service, in the order shown.
+  repeated string photo_ids = 5;
+  ChatAction action = 6;
+  // Whom the action is about; empty for none.
+  string target_id = 7;
+  google.protobuf.Timestamp created_at = 8;
+  // When the sender changed what it says; unset if never.
+  google.protobuf.Timestamp edited_at = 9;
+  // When the sender took it back; unset if never.
+  google.protobuf.Timestamp deleted_at = 10;
+  // Until when the sender may take it back and edit it; unset for an
+  // action and for a message taken back.
+  google.protobuf.Timestamp deletable_until = 11;
+  google.protobuf.Timestamp editable_until = 12;
+  // text is only its beginning: the request set text_limit.
+  bool text_cut = 13;
+  // Someone else's message the caller has not read; not told in events.
+  bool unread = 14;
+}
+
+message CreateChatRequest {
+  // At most 64 characters in one line; may be empty.
+  string title = 1;
+  repeated string member_ids = 2;
+}
+
+message CreateChatResponse {
+  Chat chat = 1;
+}
+
+message GetChatRequest {
+  string chat_id = 1;
+}
+
+message GetChatResponse {
+  Chat chat = 1;
+  // Who is in the chat, who joined first first; none for a caller who is
+  // not in it anymore.
+  repeated ChatMember members = 2;
+}
+
+message ListChatsRequest {
+  // Empty for the most recent, else next_cursor of the previous page.
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+  // The last messages are cut to this many characters and say so
+  // (text_cut); 0 for whole texts.
+  int32 text_limit = 3;
+}
+
+message ListChatsResponse {
+  repeated Chat chats = 1;
+  // The last message of the last chat; empty on the last page.
+  string next_cursor = 2;
+}
+
+message RenameChatRequest {
+  string chat_id = 1;
+  string title = 2;
+}
+
+message AddChatMembersRequest {
+  string chat_id = 1;
+  // At most 49.
+  repeated string user_ids = 2;
+}
+
+message RemoveChatMemberRequest {
+  string chat_id = 1;
+  string user_id = 2;
+}
+
+message LeaveChatRequest {
+  string chat_id = 1;
+}
+
+message ReturnToChatRequest {
+  string chat_id = 1;
+}
+
+message SendChatMessageRequest {
+  string chat_id = 1;
+  string text = 2;
+  repeated string photo_ids = 3;
+}
+
+message SendChatMessageResponse {
+  ChatMessage message = 1;
+}
+
+message ListChatMessagesRequest {
+  string chat_id = 1;
+  // Older messages: empty for the newest, else next_cursor of the
+  // previous page.
+  string cursor = 2;
+  // Newer messages instead: those after this one, for polling.
+  string after = 3;
+  // 1-50; anything else means 20.
+  int32 limit = 4;
+  // The texts are cut to this many characters and say so (text_cut); 0
+  // for whole texts.
+  int32 text_limit = 5;
+}
+
+message ListChatMessagesResponse {
+  repeated ChatMessage messages = 1;
+  // Older messages remain; empty when there are none, and always with after.
+  string next_cursor = 2;
+}
+
+message GetChatMessageRequest {
+  string id = 1;
+}
+
+message GetChatMessageResponse {
+  ChatMessage message = 1;
+}
+
+message EditChatMessageRequest {
+  string id = 1;
+  // May be empty only when the message has photos.
+  string text = 2;
+}
+
+message EditChatMessageResponse {
+  ChatMessage message = 1;
+}
+
+message DeleteChatMessageRequest {
+  string id = 1;
+}
+
+message MarkChatReadRequest {
+  string chat_id = 1;
+  string up_to_id = 2;
 }

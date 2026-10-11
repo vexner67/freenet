@@ -134,11 +134,16 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("grpcserver.New", err)
 	}
 
+	events := a.newEvents(cfg)
+
 	messagev1.RegisterMessageServiceServer(
 		a.server.Registrar(),
 		messagegrpc.NewMessageHandler(
 			service.NewMessageService(service.Deps{
-				Messages: repos.messages, Dialogs: repos.dialogs, Events: a.newEvents(cfg), Tx: repos.tx, Photos: photos,
+				Messages: repos.messages, Dialogs: repos.dialogs, Events: events, Tx: repos.tx, Photos: photos,
+			}),
+			service.NewChatService(service.ChatDeps{
+				Chats: repos.chats, Members: repos.chatMembers, Messages: repos.chatMessages, Events: events, Tx: repos.tx, Photos: photos,
 			}),
 			a.logger,
 		),
@@ -225,6 +230,12 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		messagev1.MessageService_SendMessage_FullMethodName: cfg.MessageLimits,
 		// An edit is a message sent again; it has its own counter.
 		messagev1.MessageService_EditMessage_FullMethodName: cfg.MessageLimits,
+		// A message of a chat is a message; each has its own counter.
+		messagev1.MessageService_SendChatMessage_FullMethodName: cfg.MessageLimits,
+		messagev1.MessageService_EditChatMessage_FullMethodName: cfg.MessageLimits,
+		messagev1.MessageService_CreateChat_FullMethodName:      cfg.ChatLimits,
+		messagev1.MessageService_AddChatMembers_FullMethodName:  cfg.ChatLimits,
+		messagev1.MessageService_RenameChat_FullMethodName:      cfg.ChatLimits,
 	}
 }
 
@@ -253,6 +264,10 @@ type repositories struct {
 	dialogs  service.DialogRepository
 	tx       service.TxManager
 	outbox   outboxQueue
+
+	chats        service.ChatRepository
+	chatMembers  service.ChatMemberRepository
+	chatMessages service.ChatMessageRepository
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
@@ -263,6 +278,10 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			dialogs:  store.Dialogs(),
 			tx:       inmem.TxManager{},
 			outbox:   outbox.NewMemory(),
+
+			chats:        store.Chats(),
+			chatMembers:  store.ChatMembers(),
+			chatMessages: store.ChatMessages(),
 		}, nil
 	}
 
@@ -295,6 +314,10 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		dialogs:  postgres.NewDialogRepository(a.pool),
 		tx:       pgpool.NewTxManager(a.pool),
 		outbox:   a.queue,
+
+		chats:        postgres.NewChatRepository(a.pool),
+		chatMembers:  postgres.NewChatMemberRepository(a.pool),
+		chatMessages: postgres.NewChatMessageRepository(a.pool),
 	}, nil
 }
 

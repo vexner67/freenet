@@ -218,6 +218,10 @@ func optionalID(id uuid.UUID) string {
 
 // toProtoEvent: a new message is sent unread, as it was just written.
 func toProtoEvent(e service.Event) *messagev1.SubscribeResponse {
+	if e.Chat != nil {
+		return toProtoChatEvent(e.Chat)
+	}
+
 	if e.Deleted != nil {
 		return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_Deleted{Deleted: &messagev1.MessageDeleted{
 			Id:          e.Deleted.ID.String(),
