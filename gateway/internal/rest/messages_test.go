@@ -2,6 +2,8 @@ package rest_test
 
 import (
 	"net/http"
+	"slices"
+	"strings"
 	"testing"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
@@ -342,18 +344,84 @@ func TestEditHideAndSearchMessages(t *testing.T) {
 	if w.Code != http.StatusOK || h.messages.edited != "m1/привет!" || !edited.Out || edited.EditedAt == nil || edited.EditableUntil == "" {
 		t.Fatalf("edit: %d %+v, edited %q", w.Code, edited, h.messages.edited)
 	}
+	if h.messages.editedPhotos != nil {
+		t.Fatalf("an edit of the words replaced the photos with %v", h.messages.editedPhotos)
+	}
 	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x"}`); w.Code != http.StatusUnauthorized {
 		t.Fatalf("edit without a token: %d", w.Code)
 	}
 
+	// Photos named replace the message's, the caller's own alone.
+	w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"","photos":["ph2","ph1"]}`, auth...)
+	if w.Code != http.StatusOK || !slices.Equal(h.messages.editedPhotos, []string{"ph2", "ph1"}) || !strings.Contains(w.Body.String(), "/media/photos/u1/ph2/") {
+		t.Fatalf("edit of the photos: %d %s, photos %v", w.Code, w.Body, h.messages.editedPhotos)
+	}
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","photos":[]}`, auth...); w.Code != http.StatusOK || h.messages.editedPhotos == nil || len(h.messages.editedPhotos) != 0 {
+		t.Fatalf("the photos taken away: %d, photos %v", w.Code, h.messages.editedPhotos)
+	}
+	h.messages.edited = ""
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","photos":["ph1","someone-elses"]}`, auth...); w.Code != http.StatusBadRequest || h.messages.edited != "" || !strings.Contains(w.Body.String(), "photo not found") {
+		t.Fatalf("a photo of another: %d %s", w.Code, w.Body)
+	}
+}
+
+func TestDeleteMessages(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	auth := []string{"Authorization", "Bearer tok"}
+
+	if w := h.do("DELETE", "/api/v1/messages?id=m1&id=m2", "", auth...); w.Code != http.StatusNoContent || h.messages.deletedMany != "m1,m2 true" || h.messages.token != "tok" {
+		t.Fatalf("for everyone: %d, deleted %q", w.Code, h.messages.deletedMany)
+	}
+	if w := h.do("DELETE", "/api/v1/messages?id=m1&id=m2&for=me", "", auth...); w.Code != http.StatusNoContent || h.messages.deletedMany != "m1,m2 false" {
+		t.Fatalf("for the caller: %d, deleted %q", w.Code, h.messages.deletedMany)
+	}
+
+	h.messages.deletedMany = ""
+	for name, query := range map[string]string{
+		"none":      "",
+		"a bad for": "?id=m1&for=all",
+		"too many":  "?id=m" + strings.Repeat("&id=m", 100),
+	} {
+		if w := h.do("DELETE", "/api/v1/messages"+query, "", auth...); w.Code != http.StatusBadRequest || h.messages.deletedMany != "" {
+			t.Errorf("%s: %d, deleted %q", name, w.Code, h.messages.deletedMany)
+		}
+	}
+	if w := h.do("DELETE", "/api/v1/messages?id=m1", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", w.Code)
+	}
+
+	for kind, want := range map[failure.Kind]int{
+		failure.PermissionDenied: http.StatusForbidden,
+		failure.Conflict:         http.StatusConflict,
+		failure.NotFound:         http.StatusNotFound,
+	} {
+		h.messages.err = failure.New(kind, "no")
+		if w := h.do("DELETE", "/api/v1/messages?id=m1&id=m2", "", auth...); w.Code != want {
+			t.Errorf("%v: %d, want %d", kind, w.Code, want)
+		}
+	}
+}
+
+func TestSearchMessages(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	auth := []string{"Authorization", "Bearer tok"}
+
 	// Search: all dialogs, each message with who is on the other side.
-	w = h.do("GET", "/api/v1/messages/search?q=%D0%BC%D0%BE%D1%80%D0%B5&cursor=m10", "", auth...)
+	w := h.do("GET", "/api/v1/messages/search?q=%D0%BC%D0%BE%D1%80%D0%B5&cursor=m10", "", auth...)
 	found := decode[struct {
 		Messages []struct {
 			Peer    map[string]any `json:"peer"`
 			Message struct {
-				ID  string `json:"id"`
-				Out bool   `json:"out"`
+				ID        string `json:"id"`
+				Out       bool   `json:"out"`
+				Forwarded []struct {
+					Text   string         `json:"text"`
+					Author map[string]any `json:"author"`
+				} `json:"forwarded"`
 			} `json:"message"`
 		} `json:"messages"`
 		NextCursor string `json:"nextCursor"`
@@ -361,6 +429,10 @@ func TestEditHideAndSearchMessages(t *testing.T) {
 	if w.Code != http.StatusOK || h.messages.searched != "море" || h.messages.peerID != "" || h.messages.cursor != "m10" || found.NextCursor != "m8" ||
 		len(found.Messages) == 0 || found.Messages[0].Peer["nickname"] != "bob" || found.Messages[0].Message.ID != "m9" || found.Messages[0].Message.Out {
 		t.Fatalf("search: %d %+v, asked for %q with %q", w.Code, found, h.messages.searched, h.messages.peerID)
+	}
+	// What the message carries on, by which it may have been found.
+	if carried := found.Messages[0].Message.Forwarded; len(carried) != 1 || carried[0].Text != "еду на море" || carried[0].Author["nickname"] != "ann" {
+		t.Fatalf("the forwarded of a found message = %+v", carried)
 	}
 
 	// In one dialog: the peer by nickname.

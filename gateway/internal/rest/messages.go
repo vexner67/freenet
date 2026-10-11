@@ -526,8 +526,53 @@ func (a *api) deleteMessage(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// editMessage changes what the caller's message says; the message
-// service decides whether they still may.
+// maxDeletedMessages is how many messages one request deletes, as the
+// message service takes.
+const maxDeletedMessages = 100
+
+// deleteMessages deletes the messages named by ?id=, all or none: taken
+// back from both sides or, with ?for=me, for the caller alone.
+func (a *api) deleteMessages(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	query := r.URL.Query()
+	forEveryone := true
+
+	switch query.Get("for") {
+	case "":
+	case "me":
+		forEveryone = false
+	default:
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "for is \"me\" or nothing"))
+		return
+	}
+
+	ids := query["id"]
+	if len(ids) == 0 {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "no messages to delete"))
+		return
+	}
+
+	if len(ids) > maxDeletedMessages {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "too many messages"))
+		return
+	}
+
+	if err = a.messages.DeleteMany(r.Context(), token, ids, forEveryone); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// editMessage changes what the caller's message says and, when the
+// request names photos, its photos; the message service decides whether
+// they still may.
 func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -535,15 +580,28 @@ func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Photos left out stay as they are; named, even as none, they
+	// replace the message's.
 	var req struct {
-		Text string `json:"text"`
+		Text   string    `json:"text"`
+		Photos *[]string `json:"photos"`
 	}
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	m, err := a.messages.Edit(r.Context(), token, r.PathValue("id"), req.Text)
+	edit := model.MessageEdit{Text: req.Text}
+	if req.Photos != nil {
+		edit.PhotoIDs, edit.ReplacePhotos = *req.Photos, true
+
+		if err = a.checkOwnPhotos(r, token, edit.PhotoIDs); err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+	}
+
+	m, err := a.messages.Edit(r.Context(), token, r.PathValue("id"), edit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -631,14 +689,29 @@ func (a *api) searchMessages(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := foundMessagesResponse{Messages: make([]foundMessageJSON, 0, len(found.Messages)), NextCursor: found.NextCursor}
+	shown := make([]messageJSON, 0, len(found.Messages))
+	with := make([]authorJSON, 0, len(found.Messages))
+
 	for _, m := range found.Messages {
 		peer, ok := peers[other(m)]
 		if !ok {
 			continue
 		}
 
-		resp.Messages = append(resp.Messages, foundMessageJSON{Peer: toAuthorJSON(peer), Message: toMessageJSON(m, other(m))})
+		shown = append(shown, toMessageJSON(m, other(m)))
+		with = append(with, toAuthorJSON(peer))
+	}
+
+	// A message may be found by what it carries on: the forwarded
+	// messages come with it.
+	if err = a.showAttached(r, shown); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	resp := foundMessagesResponse{Messages: make([]foundMessageJSON, 0, len(shown)), NextCursor: found.NextCursor}
+	for i, m := range shown {
+		resp.Messages = append(resp.Messages, foundMessageJSON{Peer: with[i], Message: m})
 	}
 
 	writeJSON(w, http.StatusOK, resp)

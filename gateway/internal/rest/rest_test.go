@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log/slog"
 	"net/http"
@@ -960,7 +961,11 @@ type fakeMessages struct {
 	// hidden is the message deleted for the caller alone, edited "id/text"
 	// of the last edit, searched the last query.
 	hidden, edited, searched string
-	around                   string
+	// editedPhotos are the photos the last edit put in place of the
+	// message's, nil when it left them; deletedMany "ids forEveryone".
+	editedPhotos []string
+	deletedMany  string
+	around       string
 	// peerWrote: the peer has written to the caller.
 	peerWrote bool
 	// dialogs replace the default page when set.
@@ -1062,9 +1067,19 @@ func (f *fakeMessages) Hide(_ context.Context, token, id string) error {
 	return f.err
 }
 
-func (f *fakeMessages) Edit(_ context.Context, token, id, text string) (model.Message, error) {
-	f.token, f.edited = token, id+"/"+text
-	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Text: text, EditedAt: albumTime, EditableUntil: albumTime}, f.err
+func (f *fakeMessages) DeleteMany(_ context.Context, token string, ids []string, forEveryone bool) error {
+	f.token, f.deletedMany = token, fmt.Sprintf("%s %t", strings.Join(ids, ","), forEveryone)
+	return f.err
+}
+
+func (f *fakeMessages) Edit(_ context.Context, token, id string, e model.MessageEdit) (model.Message, error) {
+	f.token, f.edited = token, id+"/"+e.Text
+	f.editedPhotos = nil
+	if e.ReplacePhotos {
+		f.editedPhotos = append([]string{}, e.PhotoIDs...)
+	}
+
+	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Text: e.Text, PhotoIDs: e.PhotoIDs, EditedAt: albumTime, EditableUntil: albumTime}, f.err
 }
 
 // Search finds a message from bob (u2) and one to cat (u3), whose page
@@ -1073,7 +1088,10 @@ func (f *fakeMessages) Search(_ context.Context, token, peerID, query, cursor st
 	f.token, f.peerID, f.searched, f.cursor = token, peerID, query, cursor
 
 	return model.FoundMessages{Messages: []model.Message{
-		{ID: "m9", SenderID: "u2", RecipientID: "u1", Text: "на море", CreatedAt: albumTime},
+		{
+			ID: "m9", SenderID: "u2", RecipientID: "u1", Text: "на море", CreatedAt: albumTime,
+			Forwarded: []model.ForwardedMessage{{SenderID: "u1", Text: "еду на море", CreatedAt: albumTime}},
+		},
 		{ID: "m8", SenderID: "u1", RecipientID: "u3", Text: "море", CreatedAt: albumTime},
 	}, NextCursor: "m8"}, f.err
 }

@@ -1233,7 +1233,11 @@ paths:
   /api/v1/messages/search:
     get:
       summary: Find your messages by what they say
-      description: Newest first, each with who is on the other side; messages you deleted for yourself are not found.
+      description: |
+        Newest first, each with who is on the other side; messages you
+        deleted for yourself are not found. A message is found by its own
+        words and by the words of the messages it forwards; a long text,
+        its own or forwarded, comes as the part around what was found.
       security: [{ bearer: [] }]
       parameters:
         - name: q
@@ -1273,13 +1277,57 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/messages:
+    delete:
+      summary: Delete several messages at once
+      description: |
+        As `DELETE /api/v1/messages/{id}` for each `id`, but all or none:
+        if one of them may not be deleted, none is. Without `for`, your
+        own messages from both sides; with `for=me`, any messages of your
+        dialogs for you alone.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: From 1 to 100 messages; one named twice counts once.
+          schema:
+            type: array
+            minItems: 1
+            maxItems: 100
+            items: { type: string, format: uuid }
+          style: form
+          explode: true
+        - name: for
+          in: query
+          schema: { type: string, enum: [me] }
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: One of the messages is not yours
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`the message can no longer be deleted`: one of them is past its `deletableUntil`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/messages/{id}:
     patch:
       summary: Edit your message
       description: |
-        Within a day of sending (`editableUntil`), as in VK: what it says;
-        its photos and the post it shares stay, and without them the text
-        may not be empty. Both sides get an `edit` event.
+        Within a day of sending (`editableUntil`), as in VK: what it says
+        and, with `photos`, its photos — the list replaces the message's
+        (photos it had and photos uploaded with `POST /api/v1/me/photos`,
+        your own alone; those left out are deleted), `[]` takes them all
+        away, and without the field they stay. The post it shares and the
+        messages it forwards stay; without them and photos the text may
+        not be empty. Both sides get an `edit` event.
       security: [{ bearer: [] }]
       parameters:
         - name: id
@@ -1295,6 +1343,10 @@ paths:
               required: [text]
               properties:
                 text: { type: string, maxLength: 60000 }
+                photos:
+                  type: array
+                  maxItems: 10
+                  items: { type: string, format: uuid }
       responses:
         "200":
           description: The edited message

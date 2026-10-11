@@ -502,6 +502,23 @@ type fakeMessageAPI struct {
 	messagev1.MessageServiceClient
 	md  metadata.MD
 	req *messagev1.ListMessagesRequest
+	// edit and removal are the last EditMessage and DeleteMessages.
+	edit    *messagev1.EditMessageRequest
+	removal *messagev1.DeleteMessagesRequest
+}
+
+func (f *fakeMessageAPI) EditMessage(_ context.Context, req *messagev1.EditMessageRequest, _ ...grpc.CallOption) (*messagev1.EditMessageResponse, error) {
+	f.edit = req
+	return &messagev1.EditMessageResponse{Message: &messagev1.Message{Id: req.GetId(), Text: req.GetText(), PhotoIds: req.GetPhotoIds()}}, nil
+}
+
+func (f *fakeMessageAPI) DeleteMessages(_ context.Context, req *messagev1.DeleteMessagesRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.removal = req
+	if len(req.GetIds()) == 0 {
+		return nil, status.Error(codes.InvalidArgument, "no messages")
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (f *fakeMessageAPI) HasMessagesFrom(ctx context.Context, req *messagev1.HasMessagesFromRequest, _ ...grpc.CallOption) (*messagev1.HasMessagesFromResponse, error) {
@@ -592,6 +609,22 @@ func TestMessages(t *testing.T) {
 	}
 	if f := failure.From(messages.Delete(context.Background(), "tok", "m2")); f.Kind != failure.PermissionDenied {
 		t.Fatalf("Delete of someone else's: %+v", f)
+	}
+
+	if err = messages.DeleteMany(context.Background(), "tok", []string{"m1", "m2"}, true); err != nil || !api.removal.GetForEveryone() || len(api.removal.GetIds()) != 2 {
+		t.Fatalf("DeleteMany = %v, asked %v", err, api.removal)
+	}
+	if f := failure.From(messages.DeleteMany(context.Background(), "tok", nil, false)); f.Kind != failure.InvalidArgument || api.removal.GetForEveryone() {
+		t.Fatalf("DeleteMany of none: %+v", f)
+	}
+
+	// An edit replaces the photos only when it says so.
+	if _, err = messages.Edit(context.Background(), "tok", "m1", model.MessageEdit{Text: "x"}); err != nil || api.edit.GetReplacePhotos() || api.edit.GetText() != "x" {
+		t.Fatalf("Edit of the words = %v, asked %v", err, api.edit)
+	}
+	edited, err := messages.Edit(context.Background(), "tok", "m1", model.MessageEdit{PhotoIDs: []string{"ph1"}, ReplacePhotos: true})
+	if err != nil || !api.edit.GetReplacePhotos() || len(edited.PhotoIDs) != 1 || edited.PhotoIDs[0] != "ph1" {
+		t.Fatalf("Edit of the photos = %+v, %v", edited, err)
 	}
 
 	dialogs, err := messages.Dialogs(context.Background(), "tok", "", 0)
