@@ -69,6 +69,22 @@ type (
 		ID   string     `json:"id"`
 	}
 
+	// chatMessageEventJSON: a new message of a chat of the caller, or one
+	// its sender edited or took back ("chat_edit").
+	chatMessageEventJSON struct {
+		Type    string          `json:"type"` // "chat_message" or "chat_edit"
+		Chat    string          `json:"chat"`
+		Message chatMessageJSON `json:"message"`
+	}
+
+	// chatReadEventJSON: the caller has read the chat up to UpTo, on
+	// another page.
+	chatReadEventJSON struct {
+		Type string `json:"type"` // "chat_read"
+		Chat string `json:"chat"`
+		UpTo string `json:"upTo"`
+	}
+
 	notificationEventJSON struct {
 		Type   string `json:"type"`   // "notification"
 		Change string `json:"change"` // "new", "gone" or "read"
@@ -329,6 +345,18 @@ func (s *eventSession) messageEvent(e model.MessageEvent) (any, error) {
 		return deleteEventJSON{Type: "delete", Peer: peer, ID: d.ID}, nil
 	}
 
+	if e.ChatRead != nil {
+		return chatReadEventJSON{Type: "chat_read", Chat: e.ChatRead.ChatID, UpTo: e.ChatRead.UpTo}, nil
+	}
+
+	if e.ChatMessage != nil {
+		return s.shownChatMessage("chat_message", *e.ChatMessage)
+	}
+
+	if e.ChatEdited != nil {
+		return s.shownChatMessage("chat_edit", *e.ChatEdited)
+	}
+
 	kind := "message"
 	m := e.Message
 	if e.Edited != nil {
@@ -356,6 +384,17 @@ func (s *eventSession) shownMessage(kind string, m model.Message) (any, error) {
 	}
 
 	return messageEventJSON{Type: kind, Peer: peer, Message: j[0]}, nil
+}
+
+// shownChatMessage is a message of a chat of the caller as an event of
+// kind; nil when the page of someone it names is gone.
+func (s *eventSession) shownChatMessage(kind string, m model.ChatMessage) (any, error) {
+	shown, err := s.api.shownChatMessages(s.r, s.me, []model.ChatMessage{m})
+	if err != nil || len(shown) == 0 {
+		return nil, err
+	}
+
+	return chatMessageEventJSON{Type: kind, Chat: m.ChatID, Message: shown[0]}, nil
 }
 
 // peer is the profile of the user with id; false when the account is gone.

@@ -2,6 +2,8 @@ package rest
 
 import (
 	"net/http"
+	"slices"
+	"strings"
 	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
@@ -73,10 +75,13 @@ type forwardedJSON struct {
 	SharedPhoto *sharedPhotoJSON `json:"sharedPhoto,omitempty"`
 }
 
+// dialogJSON is a row of "Мои Сообщения": the dialog with Peer or, with
+// Chat, a chat of several people, which carries its own last message.
 type dialogJSON struct {
-	Peer        authorJSON  `json:"peer"`
-	LastMessage messageJSON `json:"lastMessage"`
-	Unread      bool        `json:"unread"`
+	Peer        *authorJSON  `json:"peer,omitempty"`
+	LastMessage *messageJSON `json:"lastMessage,omitempty"`
+	Chat        *chatJSON    `json:"chat,omitempty"`
+	Unread      bool         `json:"unread"`
 }
 
 type dialogPageResponse struct {
@@ -122,10 +127,63 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 	return j
 }
 
-// listDialogs is the caller's dialogs with who is on the other side,
-// looked up in one request; a peer who deleted the account is left out.
+// conversation is a row of "Мои Сообщения": a dialog or a chat, placed
+// by the ID of its last message.
+type conversation struct {
+	last   string
+	dialog *model.Dialog
+	chat   *model.Chat
+}
+
+// conversations are a page of the caller's dialogs and chats in one
+// list, the most recent first. Both are read by the ID of the last
+// message, which grows with time in both, so a page of each merges into a
+// page of the two; the cursor is the last message of the last row.
+func (a *api) conversations(r *http.Request, token, cursor string, limit int) ([]conversation, string, error) {
+	if limit == 0 {
+		limit = defaultPageSize
+	}
+
+	dialogs, err := a.messages.Dialogs(r.Context(), token, cursor, limit)
+	if err != nil {
+		return nil, "", err
+	}
+
+	chats, err := a.chats.List(r.Context(), token, cursor, limit)
+	if err != nil {
+		return nil, "", err
+	}
+
+	rows := make([]conversation, 0, len(dialogs.Dialogs)+len(chats.Chats))
+	for i := range dialogs.Dialogs {
+		rows = append(rows, conversation{last: dialogs.Dialogs[i].LastMessage.ID, dialog: &dialogs.Dialogs[i]})
+	}
+
+	for i := range chats.Chats {
+		if last := chats.Chats[i].LastMessage; last != nil {
+			rows = append(rows, conversation{last: last.ID, chat: &chats.Chats[i]})
+		}
+	}
+
+	slices.SortFunc(rows, func(x, y conversation) int { return strings.Compare(y.last, x.last) })
+
+	more := dialogs.NextCursor != "" || chats.NextCursor != "" || len(rows) > limit
+	if len(rows) > limit {
+		rows = rows[:limit]
+	}
+
+	if !more || len(rows) == 0 {
+		return rows, "", nil
+	}
+
+	return rows, rows[len(rows)-1].last, nil
+}
+
+// listDialogs is the caller's dialogs and chats with who is on the other
+// side, looked up in one request; a peer who deleted the account is left
+// out.
 func (a *api) listDialogs(w http.ResponseWriter, r *http.Request) {
-	token, err := bearerToken(r)
+	token, me, err := a.chatCaller(r)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -137,39 +195,49 @@ func (a *api) listDialogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	page, err := a.messages.Dialogs(r.Context(), token, r.URL.Query().Get("cursor"), limit)
+	rows, next, err := a.conversations(r, token, r.URL.Query().Get("cursor"), limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	ids := make([]string, len(page.Dialogs))
-	for i, d := range page.Dialogs {
-		ids[i] = d.PeerID
+	ids := make([]string, 0, len(rows))
+	for _, c := range rows {
+		if c.dialog != nil {
+			ids = append(ids, c.dialog.PeerID)
+			continue
+		}
+
+		ids = append(ids, chatPeople([]model.ChatMessage{*c.chat.LastMessage})...)
 	}
 
-	peers, err := a.people(r, ids)
+	people, err := a.people(r, ids)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
 	resp := dialogPageResponse{
-		Dialogs:    make([]dialogJSON, 0, len(page.Dialogs)),
-		NextCursor: page.NextCursor,
+		Dialogs:    make([]dialogJSON, 0, len(rows)),
+		NextCursor: next,
 	}
 
-	for _, d := range page.Dialogs {
-		peer, ok := peers[d.PeerID]
+	for _, c := range rows {
+		if c.chat != nil {
+			chat := toChatJSON(*c.chat, me, people)
+			resp.Dialogs = append(resp.Dialogs, dialogJSON{Chat: &chat, Unread: c.chat.Unread})
+
+			continue
+		}
+
+		peer, ok := people[c.dialog.PeerID]
 		if !ok {
 			continue
 		}
 
-		resp.Dialogs = append(resp.Dialogs, dialogJSON{
-			Peer:        toAuthorJSON(peer),
-			LastMessage: toMessageJSON(d.LastMessage, d.PeerID),
-			Unread:      d.Unread,
-		})
+		shown, last := toAuthorJSON(peer), toMessageJSON(c.dialog.LastMessage, c.dialog.PeerID)
+
+		resp.Dialogs = append(resp.Dialogs, dialogJSON{Peer: &shown, LastMessage: &last, Unread: c.dialog.Unread})
 	}
 
 	writeJSON(w, http.StatusOK, resp)

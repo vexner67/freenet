@@ -30,6 +30,7 @@ type eventJSON struct {
 	UpTo          string         `json:"upTo"`
 	ID            string         `json:"id"`
 	Change        string         `json:"change"`
+	Chat          string         `json:"chat"`
 }
 
 // connect opens the event stream of h and sends the token.
@@ -117,6 +118,33 @@ func TestEvents(t *testing.T) {
 	if e := next(t, conn); e.Type != "counters" || e.Messages == nil {
 		t.Fatalf("after a deletion = %+v, want the messages counter", e)
 	}
+
+	// Bob writes in a chat of the caller; the caller reads it elsewhere.
+	h.messages.events <- model.MessageEvent{ChatMessage: &model.ChatMessage{
+		ID: "m4", ChatID: "c1", SenderID: "u2", Text: "иду", CreatedAt: time.Now(),
+	}}
+
+	if e := next(t, conn); e.Type != "chat_message" || e.Chat != "c1" || e.Message["text"] != "иду" || e.Message["out"] != false ||
+		e.Message["author"].(map[string]any)["nickname"] != "bob" {
+		t.Fatalf("chat message event = %+v", e)
+	}
+	next(t, conn) // counters
+
+	h.messages.events <- model.MessageEvent{ChatEdited: &model.ChatMessage{
+		ID: "m4", ChatID: "c1", SenderID: "u1", Action: "kick", TargetID: "u2", CreatedAt: time.Now(),
+	}}
+
+	if e := next(t, conn); e.Type != "chat_edit" || e.Message["out"] != true || e.Message["target"].(map[string]any)["nickname"] != "bob" {
+		t.Fatalf("chat edit event = %+v", e)
+	}
+	next(t, conn) // counters
+
+	h.messages.events <- model.MessageEvent{ChatRead: &model.ChatRead{ChatID: "c1", UpTo: "m4"}}
+
+	if e := next(t, conn); e.Type != "chat_read" || e.Chat != "c1" || e.UpTo != "m4" {
+		t.Fatalf("chat read event = %+v", e)
+	}
+	next(t, conn) // counters
 
 	h.notifications.changes <- "new"
 

@@ -55,6 +55,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 		notifications:     backends.Notifications,
 		messages:          backends.Messages,
 		clubs:             backends.Clubs,
+		chats:             backends.Chats,
 		logger:            logger,
 		trustForwardedFor: cfg.TrustForwardedFor,
 		webDir:            cfg.WebDir,

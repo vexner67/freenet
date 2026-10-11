@@ -29,21 +29,50 @@ func TestListDialogs(t *testing.T) {
 		Dialogs []struct {
 			Peer        map[string]string `json:"peer"`
 			LastMessage messageJSON       `json:"lastMessage"`
+			Chat        *chatJSON         `json:"chat"`
 			Unread      bool              `json:"unread"`
 		} `json:"dialogs"`
 		NextCursor string `json:"nextCursor"`
 	}](t, w)
 
-	if w.Code != http.StatusOK || got.NextCursor != "m1" || h.messages.token != "tok" || h.messages.cursor != "m5" {
+	if w.Code != http.StatusOK || got.NextCursor != "m1" || h.messages.token != "tok" || h.messages.cursor != "m5" || !slices.Equal(h.chats.calls, []string{"list m5"}) {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
 
-	// The dialog with a vanished account is left out.
-	if len(got.Dialogs) != 1 {
+	// The dialog with a vanished account is left out; the chat, whose last
+	// message is newer, comes first.
+	if len(got.Dialogs) != 2 {
 		t.Fatalf("dialogs = %+v", got.Dialogs)
 	}
-	if d := got.Dialogs[0]; d.Peer["nickname"] != "bob" || !d.Unread || d.LastMessage.Out || d.LastMessage.Text != "как дела?" {
+	if d := got.Dialogs[0]; d.Chat == nil || d.Peer != nil || d.Chat.ID != "c1" || d.Chat.Title != "Поход" || !d.Unread || d.Chat.Members != nil ||
+		d.Chat.LastMessage == nil || d.Chat.LastMessage.Text != "иду" || d.Chat.LastMessage.Author["nickname"] != "bob" || d.Chat.LastMessage.Out {
+		t.Fatalf("chat = %+v", d)
+	}
+	if d := got.Dialogs[1]; d.Chat != nil || d.Peer["nickname"] != "bob" || !d.Unread || d.LastMessage.Out || d.LastMessage.Text != "как дела?" {
 		t.Fatalf("dialog = %+v", d)
+	}
+
+	// A page is as long as asked: what did not fit comes with the next.
+	h = newHarness(rest.Config{})
+	w = h.do("GET", "/api/v1/dialogs?limit=1", "", "Authorization", "Bearer tok")
+	if got = decode[struct {
+		Dialogs []struct {
+			Peer        map[string]string `json:"peer"`
+			LastMessage messageJSON       `json:"lastMessage"`
+			Chat        *chatJSON         `json:"chat"`
+			Unread      bool              `json:"unread"`
+		} `json:"dialogs"`
+		NextCursor string `json:"nextCursor"`
+	}](t, w); len(got.Dialogs) != 1 || got.Dialogs[0].Chat == nil || got.NextCursor != "m3" {
+		t.Fatalf("a page of one = %+v", got)
+	}
+
+	h = newHarness(rest.Config{})
+	h.chats.none = true
+	h.messages.dialogs = []model.Dialog{{PeerID: "u2", LastMessage: model.Message{ID: "m2", SenderID: "u2", RecipientID: "u1", Text: "как дела?"}}}
+	w = h.do("GET", "/api/v1/dialogs", "", "Authorization", "Bearer tok")
+	if !strings.Contains(w.Body.String(), `"nextCursor":""`) || strings.Contains(w.Body.String(), `"chat"`) {
+		t.Fatalf("the last page = %s", w.Body.String())
 	}
 
 	if w = newHarness(rest.Config{}).do("GET", "/api/v1/dialogs", ""); w.Code != http.StatusUnauthorized {

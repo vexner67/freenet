@@ -3686,6 +3686,13 @@ paths:
           now, or nothing: its sender, you or the peer, edited it or took
           it back from both sides (`deleted`): `peer` and `message`
           (Message; `read` is not told).
+        - `chat_message` — a new message of a chat you are in, yours or
+          someone's, or what happened there: `chat` (its ID) and `message`
+          (ChatMessage; `unread` is not told).
+        - `chat_edit` — a message of chat `chat` says something else now,
+          or nothing: its sender edited it or took it back (`deleted`).
+        - `chat_read` — you have read chat `chat` up to `upTo` on another
+          page.
         - `notification` — `change` is `new`, `gone` or `read`.
 
         While it is open, you are on the site ("Онлайн" on your page).
@@ -3701,8 +3708,11 @@ paths:
 
   /api/v1/dialogs:
     get:
-      summary: Your dialogs, the most recently written first
-      description: Dialogs with accounts that are gone are left out.
+      summary: Your dialogs and chats, the most recently written first
+      description: >-
+        One list of both: a row is the dialog with `peer` or, with `chat`,
+        a chat of several people. Dialogs with accounts that are gone are
+        left out, so a page may be shorter than asked.
       security: [{ bearer: [] }]
       parameters:
         - name: cursor
@@ -3720,9 +3730,310 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
+  /api/v1/chats:
+    post:
+      summary: Start a chat of several people ("Создать беседу")
+      description: >-
+        You and at least two others, at most 50 in all. Each of them must
+        let you add them (`chatsInvite` of their privacy, no blacklist
+        either way). Your profile must be filled in first.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [members]
+              properties:
+                title: { type: string, maxLength: 64 }
+                members:
+                  type: array
+                  minItems: 2
+                  maxItems: 49
+                  items: { type: string, description: A nickname }
+      responses:
+        "201":
+          description: The chat with who is in it
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "`you cannot add this user to a chat`" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`the chat is full`" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/chats/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: A chat you are or were in, with who is in it
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The chat
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Rename a chat ("Обновить название"); anyone in it may
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [title]
+              properties:
+                title: { type: string, maxLength: 64 }
+      responses:
+        "200":
+          description: The chat as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`you are not in this chat`" }
+
+  /api/v1/chats/{id}/members:
+    post:
+      summary: Add people to a chat ("Добавить участников"); anyone in it may
+      description: >-
+        Who was removed comes back this way; who left on their own does
+        not (`the user has left the chat`) and returns themselves.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [members]
+              properties:
+                members:
+                  type: array
+                  items: { type: string, description: A nickname }
+      responses:
+        "200":
+          description: The chat as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "`you cannot add this user to a chat`" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`the chat is full`, `the user has left the chat`, `you are not in this chat`" }
+
+  /api/v1/chats/{id}/members/{nickname}:
+    delete:
+      summary: Remove someone from a chat ("Исключить из беседы"); only its creator may
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: nickname
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The chat as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not yours to do: `permission denied`" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/chats/{id}/membership:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Come back to a chat you left ("Вернуться в чат")
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The chat as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`you were removed from this chat`, `the chat is full`" }
+    delete:
+      summary: Leave a chat ("Покинуть чат")
+      description: The chat stays in your list as it was when you left.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The chat as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`you are not in this chat`" }
+
+  /api/v1/chats/{id}/messages:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: The messages of a chat, oldest first
+      description: >-
+        The newest page, older ones with `cursor`, or what came after a
+        message with `after`. Long texts come cut (`textCut`). Who is not
+        in the chat anymore reads it up to the moment they went.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: after
+          in: query
+          schema: { type: string, format: uuid }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of messages
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessagePage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Write to a chat
+      description: Text, photos (yours, from POST /me/photos, up to 10) or both.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                text: { type: string, maxLength: 60000 }
+                photos:
+                  type: array
+                  maxItems: 10
+                  items: { type: string, format: uuid }
+      responses:
+        "201":
+          description: The message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`you are not in this chat`" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/chats/{id}/read:
+    post:
+      summary: Read a chat up to one of its messages
+      description: The mark never moves back.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [upTo]
+              properties:
+                upTo: { type: string, format: uuid }
+      responses:
+        "204": { description: Read }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/chat-messages/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: A message of a chat with its whole text
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The message
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessage" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Edit the text of your message, within a day
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text]
+              properties:
+                text: { type: string, maxLength: 60000, description: May be empty only when the message has photos }
+      responses:
+        "200":
+          description: The message as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/ChatMessage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not yours to do: `permission denied`" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "The day in which it could be done has passed" }
+    delete:
+      summary: Take your message back from everyone, within a day
+      description: It stays in its place saying nothing ("Сообщение удалено").
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken back }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not yours to do: `permission denied`" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "The day in which it could be done has passed" }
+
   /api/v1/dialogs/unread-count:
     get:
-      summary: How many dialogs have unread messages, at most 100
+      summary: How many dialogs and chats have unread messages, at most 100
       security: [{ bearer: [] }]
       responses:
         "200":
@@ -4449,6 +4760,10 @@ components:
           type: string
           enum: [everyone, users, following, only_me]
           description: "Who sees your notes (\"Кому видно мои заметки\"); everyone when left out"
+        chatsInvite:
+          type: string
+          enum: [everyone, following, nobody]
+          description: "Who may add you to chats (\"Кто может добавлять меня в чаты\"): `following` are the people you follow, the default, also when left out"
 
     User:
       allOf:
@@ -4990,11 +5305,75 @@ components:
 
     Dialog:
       type: object
-      required: [peer, lastMessage, unread]
+      description: A dialog (`peer` and `lastMessage`) or a chat of several people (`chat`).
+      required: [unread]
       properties:
         peer: { $ref: "#/components/schemas/Author" }
         lastMessage: { $ref: "#/components/schemas/Message" }
-        unread: { type: boolean, description: "The peer wrote something you have not read" }
+        chat: { $ref: "#/components/schemas/Chat" }
+        unread: { type: boolean, description: "Someone wrote something you have not read" }
+
+    Chat:
+      type: object
+      description: A chat of several people ("беседа") as you have it.
+      required: [id, title, ownerId, createdAt, memberCount, state, unread, lastMessage]
+      properties:
+        id: { type: string, format: uuid }
+        title: { type: string, maxLength: 64, description: "May be empty: the chat has no name of its own" }
+        ownerId: { type: string, format: uuid, description: "Who created it (\"создатель\"): only they remove people" }
+        createdAt: { type: string, format: date-time }
+        memberCount: { type: integer, description: How many people are in it now }
+        state:
+          type: string
+          enum: [active, left, kicked]
+          description: >-
+            `left`: you left and may come back; `kicked`: the creator
+            removed you. Either way the chat stays as it was at that moment.
+        unread: { type: boolean }
+        lastMessage:
+          oneOf: [{ $ref: "#/components/schemas/ChatMessage" }, { type: "null" }]
+          description: The last message you are shown; null when the page of who wrote it is gone
+        members:
+          type: array
+          description: Who is in it, who joined first first; told by the chat itself, not by lists, and only to those in it
+          items: { $ref: "#/components/schemas/Author" }
+
+    ChatMessage:
+      type: object
+      required: [id, chatId, author, out, text, photos, action, createdAt, editedAt, deleted, deletableUntil, editableUntil, unread]
+      properties:
+        id: { type: string, format: uuid }
+        chatId: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/Author" }
+        out: { type: boolean, description: Your own }
+        text: { type: string, maxLength: 60000, description: "Of an action, the title it tells of" }
+        textCut: { type: boolean, description: "`text` is only the beginning; GET /chat-messages/{id} has it whole" }
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
+        action:
+          type: string
+          enum: ["", create, title, invite, kick, leave, return]
+          description: >-
+            Not empty: the message tells what `author` did instead of
+            saying something — created the chat, renamed it (`text`),
+            added or removed `target`, left, came back.
+        target: { $ref: "#/components/schemas/Author" }
+        createdAt: { type: string, format: date-time }
+        editedAt: { type: [string, "null"], format: date-time }
+        deleted: { type: boolean, description: "Its sender took it back: it says nothing (\"Сообщение удалено\")" }
+        deletableUntil: { type: string, description: "Until when you may take your message back, a day; \"\" for others' and for actions" }
+        editableUntil: { type: string, description: "Until when you may edit your message, a day" }
+        unread: { type: boolean, description: "Someone else's, which you have not read" }
+
+    ChatMessagePage:
+      type: object
+      required: [messages, nextCursor]
+      properties:
+        messages:
+          type: array
+          items: { $ref: "#/components/schemas/ChatMessage" }
+        nextCursor: { type: string, description: "Older messages remain; empty when there are none, and always with `after`" }
 
     DialogPage:
       type: object

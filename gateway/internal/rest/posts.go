@@ -14,6 +14,9 @@ import (
 
 const maxPageSize = 50
 
+// defaultPageSize is what the services take a page without a limit to be.
+const defaultPageSize = 20
+
 type postRequest struct {
 	Text string `json:"text"`
 	// Photos are IDs from POST /api/v1/me/photos.
