@@ -26,6 +26,8 @@ type PostService interface {
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
 	Archive(ctx context.Context, requesterID, postID uuid.UUID) error
 	Unarchive(ctx context.Context, requesterID, postID uuid.UUID) error
+	ArchiveWall(ctx context.Context, requesterID, wallID uuid.UUID, year post.WallYear, archived bool) (int, error)
+	WallYears(ctx context.Context, requesterID, wallID uuid.UUID) ([]post.WallYear, error)
 	CloseComments(ctx context.Context, requesterID, postID uuid.UUID) error
 	OpenComments(ctx context.Context, requesterID, postID uuid.UUID) error
 	ListWall(ctx context.Context, viewerID, wallID uuid.UUID, pick service.WallPick, cursor uuid.UUID, size int) (service.Page, error)
@@ -287,6 +289,59 @@ func (h *PostHandler) UnarchivePost(ctx context.Context, req *postv1.UnarchivePo
 	return h.setPinned(ctx, req.GetId(), h.postService.Unarchive)
 }
 
+func (h *PostHandler) ArchiveWall(ctx context.Context, req *postv1.ArchiveWallRequest) (*postv1.ArchiveWallResponse, error) {
+	requesterID, wallID, err := callerAndWall(ctx, req.GetWallId())
+	if err != nil {
+		return nil, err
+	}
+
+	year, err := post.NewWallYear(int(req.GetYear()))
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	changed, err := h.postService.ArchiveWall(ctx, requesterID, wallID, year, req.GetArchived())
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.ArchiveWallResponse{Changed: int32(changed)}, nil //nolint:gosec // a wall will not hold 2^31 posts
+}
+
+func (h *PostHandler) ListWallYears(ctx context.Context, req *postv1.ListWallYearsRequest) (*postv1.ListWallYearsResponse, error) {
+	requesterID, wallID, err := callerAndWall(ctx, req.GetWallId())
+	if err != nil {
+		return nil, err
+	}
+
+	years, err := h.postService.WallYears(ctx, requesterID, wallID)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &postv1.ListWallYearsResponse{Years: make([]int32, 0, len(years))}
+	for _, year := range years {
+		resp.Years = append(resp.Years, int32(year)) //nolint:gosec // a year is below 10000
+	}
+
+	return resp, nil
+}
+
+// callerAndWall are who calls and the wall the call is about.
+func callerAndWall(ctx context.Context, wall string) (uuid.UUID, uuid.UUID, error) {
+	requesterID, err := currentUserID(ctx)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, err
+	}
+
+	wallID, err := uuid.Parse(wall)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "invalid wall id")
+	}
+
+	return requesterID, wallID, nil
+}
+
 func (h *PostHandler) CloseComments(ctx context.Context, req *postv1.CloseCommentsRequest) (*emptypb.Empty, error) {
 	return h.setPinned(ctx, req.GetPostId(), h.postService.CloseComments)
 }
@@ -405,7 +460,14 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	page, err := h.postService.ListWall(ctx, viewerID(ctx), wallID, service.WallPick{Filter: filter, Query: query}, cursor, int(req.GetLimit()))
+	year, err := post.NewWallYear(int(req.GetYear()))
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	pick := service.WallPick{Filter: filter, Query: query, Year: year}
+
+	page, err := h.postService.ListWall(ctx, viewerID(ctx), wallID, pick, cursor, int(req.GetLimit()))
 	if err != nil {
 		return nil, err
 	}

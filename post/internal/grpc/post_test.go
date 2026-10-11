@@ -7,6 +7,7 @@ import (
 	"io"
 	"log/slog"
 	"net"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -903,6 +904,54 @@ func TestArchiveSearchAndClosedComments(t *testing.T) {
 	own, err := s.client.ListPosts(s.as(t, ann), archive)
 	if err != nil || own.GetTotal() != 1 || own.GetPosts()[0].GetId() != sea || !own.GetPosts()[0].GetArchived() {
 		t.Fatalf("the archive = %v, %v", own, err)
+	}
+
+	// What bob does not see he neither likes nor shares.
+	if _, err = s.client.LikePost(s.as(t, bob), &postv1.LikePostRequest{PostId: sea}); status.Code(err) != codes.NotFound {
+		t.Fatalf("bob likes the archived post: %v", err)
+	}
+	if _, err = s.client.RepostPost(s.as(t, bob), &postv1.RepostPostRequest{PostId: sea}); status.Code(err) != codes.NotFound {
+		t.Fatalf("bob shares the archived post: %v", err)
+	}
+
+	// The years of the archive and the whole wall put away at once.
+	year := int32(time.Now().UTC().Year())
+	years, err := s.client.ListWallYears(s.as(t, ann), &postv1.ListWallYearsRequest{WallId: ann.String()})
+	if err != nil || !slices.Equal(years.GetYears(), []int32{year}) {
+		t.Fatalf("ListWallYears = %v, %v", years, err)
+	}
+	if _, err = s.client.ListWallYears(s.as(t, bob), &postv1.ListWallYearsRequest{WallId: ann.String()}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("bob reads the years: %v", err)
+	}
+	if _, err = s.client.ListWallYears(context.Background(), &postv1.ListWallYearsRequest{WallId: ann.String()}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("the years without a token: %v", err)
+	}
+
+	archive.Year = year - 1
+	if none, err := s.client.ListPosts(s.as(t, ann), archive); err != nil || none.GetTotal() != 0 {
+		t.Fatalf("the archive of last year = %v, %v", none, err)
+	}
+	archive.Year = 1
+	if _, err = s.client.ListPosts(s.as(t, ann), archive); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("the archive of year 1: %v", err)
+	}
+
+	all := &postv1.ArchiveWallRequest{WallId: ann.String(), Year: year, Archived: true}
+	if _, err = s.client.ArchiveWall(s.as(t, bob), all); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("bob archives the wall: %v", err)
+	}
+	if _, err = s.client.ArchiveWall(context.Background(), all); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("archiving without a token: %v", err)
+	}
+	if _, err = s.client.ArchiveWall(s.as(t, ann), &postv1.ArchiveWallRequest{WallId: ann.String(), Year: 1, Archived: true}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("archiving year 1: %v", err)
+	}
+	if done, err := s.client.ArchiveWall(s.as(t, ann), all); err != nil || done.GetChanged() != 1 {
+		t.Fatalf("ArchiveWall = %v, %v", done, err)
+	}
+	all.Archived, all.Year = false, 0
+	if done, err := s.client.ArchiveWall(s.as(t, ann), all); err != nil || done.GetChanged() != 2 {
+		t.Fatalf("restoring the wall = %v, %v", done, err)
 	}
 	if _, err = s.client.UnarchivePost(s.as(t, ann), &postv1.UnarchivePostRequest{Id: sea}); err != nil {
 		t.Fatalf("UnarchivePost: %v", err)

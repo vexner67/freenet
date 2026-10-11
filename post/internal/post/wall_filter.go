@@ -3,6 +3,7 @@ package post
 import (
 	"errors"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -24,6 +25,7 @@ const maxWallQueryLen = 100
 var (
 	ErrInvalidWallFilter = errors.New("invalid wall filter")
 	ErrWallQueryTooLong  = errors.New("search query is too long")
+	ErrInvalidWallYear   = errors.New("invalid year")
 )
 
 func NewWallFilter(s string) (WallFilter, error) {
@@ -78,4 +80,45 @@ func (q WallQuery) String() string {
 // Matches tells whether p says q; every post matches the empty query.
 func (q WallQuery) Matches(p *Post) bool {
 	return q == "" || strings.Contains(strings.ToLower(p.content.text.String()), strings.ToLower(string(q)))
+}
+
+// minWallYear and maxWallYear bound the years a wall is asked about: no
+// post is older than the site, and a timestamp holds no year above 9999.
+const (
+	minWallYear = 1970
+	maxWallYear = 9999
+)
+
+// WallYear picks the posts of a wall written in one year, by the clock of
+// UTC, as the years of openvk's archive do; 0 picks every year.
+type WallYear int
+
+func NewWallYear(year int) (WallYear, error) {
+	if year != 0 && (year < minWallYear || year > maxWallYear) {
+		return 0, ErrInvalidWallYear
+	}
+
+	return WallYear(year), nil
+}
+
+// YearOf is the year at was written in.
+func YearOf(at time.Time) WallYear {
+	return WallYear(at.UTC().Year())
+}
+
+// Span is the time the year takes: from its start to the start of the
+// next; ok is false for every year.
+func (y WallYear) Span() (from, to time.Time, ok bool) {
+	if y == 0 {
+		return time.Time{}, time.Time{}, false
+	}
+
+	from = time.Date(int(y), time.January, 1, 0, 0, 0, 0, time.UTC)
+
+	return from, from.AddDate(1, 0, 0), true
+}
+
+// Matches tells whether p was written in the year.
+func (y WallYear) Matches(p *Post) bool {
+	return y == 0 || YearOf(p.createdAt) == y
 }

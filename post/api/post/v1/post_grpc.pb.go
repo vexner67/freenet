@@ -28,6 +28,8 @@ const (
 	PostService_UnpinPost_FullMethodName              = "/post.v1.PostService/UnpinPost"
 	PostService_ArchivePost_FullMethodName            = "/post.v1.PostService/ArchivePost"
 	PostService_UnarchivePost_FullMethodName          = "/post.v1.PostService/UnarchivePost"
+	PostService_ArchiveWall_FullMethodName            = "/post.v1.PostService/ArchiveWall"
+	PostService_ListWallYears_FullMethodName          = "/post.v1.PostService/ListWallYears"
 	PostService_CloseComments_FullMethodName          = "/post.v1.PostService/CloseComments"
 	PostService_OpenComments_FullMethodName           = "/post.v1.PostService/OpenComments"
 	PostService_GetPost_FullMethodName                = "/post.v1.PostService/GetPost"
@@ -120,6 +122,16 @@ type PostServiceClient interface {
 	// (FailedPrecondition); those written before stay.
 	ArchivePost(ctx context.Context, in *ArchivePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	UnarchivePost(ctx context.Context, in *UnarchivePostRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Requires an access token: puts away every post of a wall written in a
+	// year, or puts them back ("Архивировать все записи за 2025" and
+	// "Разархивировать все записи за 2025" of openvk); every year without
+	// one ("Архивировать все записи целиком"). The owner of the wall or the
+	// admins of its community only (PermissionDenied).
+	ArchiveWall(ctx context.Context, in *ArchiveWallRequest, opts ...grpc.CallOption) (*ArchiveWallResponse, error)
+	// Requires an access token: the years the posts of a wall were written
+	// in, archived or not, the latest first — the years of openvk's
+	// archive. For those who keep the archive only (PermissionDenied).
+	ListWallYears(ctx context.Context, in *ListWallYearsRequest, opts ...grpc.CallOption) (*ListWallYearsResponse, error)
 	CloseComments(ctx context.Context, in *CloseCommentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	OpenComments(ctx context.Context, in *OpenCommentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: one post.
@@ -356,6 +368,26 @@ func (c *postServiceClient) UnarchivePost(ctx context.Context, in *UnarchivePost
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, PostService_UnarchivePost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ArchiveWall(ctx context.Context, in *ArchiveWallRequest, opts ...grpc.CallOption) (*ArchiveWallResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ArchiveWallResponse)
+	err := c.cc.Invoke(ctx, PostService_ArchiveWall_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListWallYears(ctx context.Context, in *ListWallYearsRequest, opts ...grpc.CallOption) (*ListWallYearsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListWallYearsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListWallYears_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1010,6 +1042,16 @@ type PostServiceServer interface {
 	// (FailedPrecondition); those written before stay.
 	ArchivePost(context.Context, *ArchivePostRequest) (*emptypb.Empty, error)
 	UnarchivePost(context.Context, *UnarchivePostRequest) (*emptypb.Empty, error)
+	// Requires an access token: puts away every post of a wall written in a
+	// year, or puts them back ("Архивировать все записи за 2025" and
+	// "Разархивировать все записи за 2025" of openvk); every year without
+	// one ("Архивировать все записи целиком"). The owner of the wall or the
+	// admins of its community only (PermissionDenied).
+	ArchiveWall(context.Context, *ArchiveWallRequest) (*ArchiveWallResponse, error)
+	// Requires an access token: the years the posts of a wall were written
+	// in, archived or not, the latest first — the years of openvk's
+	// archive. For those who keep the archive only (PermissionDenied).
+	ListWallYears(context.Context, *ListWallYearsRequest) (*ListWallYearsResponse, error)
 	CloseComments(context.Context, *CloseCommentsRequest) (*emptypb.Empty, error)
 	OpenComments(context.Context, *OpenCommentsRequest) (*emptypb.Empty, error)
 	// Public: one post.
@@ -1195,6 +1237,12 @@ func (UnimplementedPostServiceServer) ArchivePost(context.Context, *ArchivePostR
 }
 func (UnimplementedPostServiceServer) UnarchivePost(context.Context, *UnarchivePostRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method UnarchivePost not implemented")
+}
+func (UnimplementedPostServiceServer) ArchiveWall(context.Context, *ArchiveWallRequest) (*ArchiveWallResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ArchiveWall not implemented")
+}
+func (UnimplementedPostServiceServer) ListWallYears(context.Context, *ListWallYearsRequest) (*ListWallYearsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListWallYears not implemented")
 }
 func (UnimplementedPostServiceServer) CloseComments(context.Context, *CloseCommentsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method CloseComments not implemented")
@@ -1543,6 +1591,42 @@ func _PostService_UnarchivePost_Handler(srv interface{}, ctx context.Context, de
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).UnarchivePost(ctx, req.(*UnarchivePostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ArchiveWall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ArchiveWallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ArchiveWall(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ArchiveWall_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ArchiveWall(ctx, req.(*ArchiveWallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListWallYears_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListWallYearsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListWallYears(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListWallYears_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListWallYears(ctx, req.(*ListWallYearsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2701,6 +2785,14 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnarchivePost",
 			Handler:    _PostService_UnarchivePost_Handler,
+		},
+		{
+			MethodName: "ArchiveWall",
+			Handler:    _PostService_ArchiveWall_Handler,
+		},
+		{
+			MethodName: "ListWallYears",
+			Handler:    _PostService_ListWallYears_Handler,
 		},
 		{
 			MethodName: "CloseComments",

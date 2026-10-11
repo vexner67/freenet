@@ -5,6 +5,7 @@ import (
 	"errors"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/post/internal/inmem"
@@ -236,5 +237,167 @@ func TestPostService_CloseComments(t *testing.T) {
 	}
 	if _, err = comments.Create(ctx, service.CommentInput{AuthorID: bob, PostID: p.ID(), Content: text}); err != nil {
 		t.Fatalf("a comment after they are opened: %v", err)
+	}
+}
+
+func TestPostService_ArchiveWall(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	club, admin, ann, bob := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	store := inmem.NewStore()
+	svc := service.NewPostService(service.PostDeps{
+		Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{},
+		Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{{club, admin}: true}, Switches: store.Posts(),
+	})
+
+	written := func(wall uuid.UUID, text string, year int) *post.Post {
+		t.Helper()
+
+		p, err := post.New(wall, wall, post.RestoreContent(post.Text(text), nil, uuid.Nil), time.Date(year, time.June, 1, 12, 0, 0, 0, time.UTC))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = store.Posts().Save(ctx, p); err != nil {
+			t.Fatal(err)
+		}
+
+		return p
+	}
+	old, pinned := written(ann, "давно", 2024), written(ann, "зима", 2025)
+	written(ann, "лето", 2025)
+	written(ann, "сейчас", 2026)
+	written(club, "группа", 2025)
+	if err := svc.Pin(ctx, ann, pinned.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	list := func(pick service.WallPick) []string {
+		t.Helper()
+
+		page, err := svc.ListWall(ctx, ann, ann, pick, uuid.Nil, 10)
+		if err != nil {
+			t.Fatalf("ListWall(%+v): %v", pick, err)
+		}
+		if page.Total != len(page.Posts) {
+			t.Fatalf("ListWall(%+v) counts %d of %d", pick, page.Total, len(page.Posts))
+		}
+
+		return texts(page.Posts)
+	}
+
+	// The years of the wall, whatever is archived; the keeper's only.
+	if years, err := svc.WallYears(ctx, ann, ann); err != nil || !slices.Equal(years, []post.WallYear{2026, 2025, 2024}) {
+		t.Fatalf("WallYears = %v, %v", years, err)
+	}
+	for _, viewer := range []uuid.UUID{bob, uuid.Nil} {
+		if _, err := svc.WallYears(ctx, viewer, ann); !errors.Is(err, post.ErrCannotArchive) {
+			t.Fatalf("%v reads the years: %v", viewer, err)
+		}
+		if _, err := svc.ArchiveWall(ctx, viewer, ann, 2025, true); !errors.Is(err, post.ErrCannotArchive) {
+			t.Fatalf("%v archives the wall: %v", viewer, err)
+		}
+	}
+
+	// A year of the wall: the pinned post in its place.
+	if got := list(service.WallPick{Year: 2025}); !slices.Equal(got, []string{"лето", "зима"}) {
+		t.Fatalf("2025 = %v", got)
+	}
+
+	// "Архивировать все записи за 2025": the pinned one too, unpinned.
+	if n, err := svc.ArchiveWall(ctx, ann, ann, 2025, true); err != nil || n != 2 {
+		t.Fatalf("ArchiveWall(2025) = %d, %v", n, err)
+	}
+	if n, err := svc.ArchiveWall(ctx, ann, ann, 2025, true); err != nil || n != 0 {
+		t.Fatalf("ArchiveWall(2025) again = %d, %v", n, err)
+	}
+	if got := list(service.WallPick{}); !slices.Equal(got, []string{"сейчас", "давно"}) {
+		t.Fatalf("the wall = %v", got)
+	}
+	if got := list(service.WallPick{Filter: post.WallArchive}); !slices.Equal(got, []string{"лето", "зима"}) {
+		t.Fatalf("the archive = %v", got)
+	}
+	if p, _, err := svc.Get(ctx, ann, pinned.ID()); err != nil || !p.Archived() || p.Pinned() {
+		t.Fatalf("the pinned post archived: %+v, %v", p, err)
+	}
+	if page, _ := svc.ListWall(ctx, admin, club, service.WallPick{}, uuid.Nil, 10); page.Total != 1 {
+		t.Fatalf("another wall lost its posts: %d", page.Total)
+	}
+
+	// The archive by years.
+	if err := svc.Archive(ctx, ann, old.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if got := list(service.WallPick{Filter: post.WallArchive, Year: 2024}); !slices.Equal(got, []string{"давно"}) {
+		t.Fatalf("the archive of 2024 = %v", got)
+	}
+	if got := list(service.WallPick{Filter: post.WallArchive, Year: 2026}); len(got) != 0 {
+		t.Fatalf("the archive of 2026 = %v", got)
+	}
+
+	// "Разархивировать все записи за 2025", then everything away.
+	if n, err := svc.ArchiveWall(ctx, ann, ann, 2025, false); err != nil || n != 2 {
+		t.Fatalf("restoring 2025 = %d, %v", n, err)
+	}
+	if got := list(service.WallPick{}); !slices.Equal(got, []string{"сейчас", "лето", "зима"}) {
+		t.Fatalf("the wall after the return = %v", got)
+	}
+	if n, err := svc.ArchiveWall(ctx, ann, ann, 0, true); err != nil || n != 3 {
+		t.Fatalf("archiving all = %d, %v", n, err)
+	}
+	if got := list(service.WallPick{}); len(got) != 0 {
+		t.Fatalf("the wall archived whole = %v", got)
+	}
+
+	// The admins of a community keep its archive.
+	if n, err := svc.ArchiveWall(ctx, admin, club, 0, true); err != nil || n != 1 {
+		t.Fatalf("an admin archives the wall: %d, %v", n, err)
+	}
+	if years, err := svc.WallYears(ctx, admin, club); err != nil || !slices.Equal(years, []post.WallYear{2025}) {
+		t.Fatalf("the years of the club = %v, %v", years, err)
+	}
+}
+
+// What is put away is neither liked nor shared by those who do not see
+// it.
+func TestPostService_ArchivedIsNotLikedOrShared(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ann, bob := uuid.New(), uuid.New()
+	svc, _ := newWallServices(uuid.New(), uuid.New())
+
+	p := write(t, svc, ann, "тайное")[0]
+	passed, err := svc.Repost(ctx, service.RepostInput{AuthorID: bob, PostID: p.ID()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err = svc.Like(ctx, bob, p.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Archive(ctx, ann, p.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	if _, err = svc.Like(ctx, bob, p.ID()); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("bob likes an archived post: %v", err)
+	}
+	if _, err = svc.Repost(ctx, service.RepostInput{AuthorID: bob, PostID: p.ID(), Text: "смотрите"}); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("bob shares an archived post: %v", err)
+	}
+	// Nor through a repost that passes it on.
+	if _, err = svc.Repost(ctx, service.RepostInput{AuthorID: uuid.New(), PostID: passed.ID()}); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("sharing a repost of an archived post: %v", err)
+	}
+
+	// Bob takes his like back; ann does as she pleases with her post.
+	if likes, err := svc.Unlike(ctx, bob, p.ID()); err != nil || likes != 0 {
+		t.Fatalf("Unlike = %d, %v", likes, err)
+	}
+	if likes, err := svc.Like(ctx, ann, p.ID()); err != nil || likes != 1 {
+		t.Fatalf("ann likes her archived post: %d, %v", likes, err)
+	}
+	if _, err = svc.Repost(ctx, service.RepostInput{AuthorID: ann, PostID: p.ID()}); err != nil {
+		t.Fatalf("ann shares her archived post: %v", err)
 	}
 }

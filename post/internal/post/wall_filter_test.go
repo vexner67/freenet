@@ -78,3 +78,45 @@ func TestWallQuery(t *testing.T) {
 		t.Errorf("101 characters: %v", err)
 	}
 }
+
+func TestWallYear(t *testing.T) {
+	t.Parallel()
+
+	ann := uuid.New()
+	// The last second of 2024 in UTC is 2025 already in Moscow: the year
+	// is that of UTC.
+	at := time.Date(2024, time.December, 31, 23, 59, 59, 0, time.UTC).In(time.FixedZone("MSK", 3*60*60))
+	p, _ := post.New(ann, ann, post.RestoreContent("с наступающим", nil, uuid.Nil), at)
+
+	for year, want := range map[int]bool{0: true, 2024: true, 2025: false, 2023: false} {
+		y, err := post.NewWallYear(year)
+		if err != nil {
+			t.Fatalf("NewWallYear(%d): %v", year, err)
+		}
+		if y.Matches(p) != want {
+			t.Errorf("%d matches = %v, want %v", year, y.Matches(p), want)
+		}
+	}
+	if post.YearOf(at) != 2024 {
+		t.Errorf("YearOf = %d", post.YearOf(at))
+	}
+
+	from, to, ok := post.WallYear(2024).Span()
+	if !ok || !from.Equal(time.Date(2024, 1, 1, 0, 0, 0, 0, time.UTC)) || !to.Equal(time.Date(2025, 1, 1, 0, 0, 0, 0, time.UTC)) {
+		t.Errorf("Span = %v, %v, %v", from, to, ok)
+	}
+	if _, _, ok = post.WallYear(0).Span(); ok {
+		t.Error("every year has a span")
+	}
+
+	for _, year := range []int{-1, 1969, 10000} {
+		if _, err := post.NewWallYear(year); !errors.Is(err, post.ErrInvalidWallYear) {
+			t.Errorf("NewWallYear(%d): %v", year, err)
+		}
+	}
+	for _, year := range []int{1970, 9999} {
+		if _, err := post.NewWallYear(year); err != nil {
+			t.Errorf("NewWallYear(%d): %v", year, err)
+		}
+	}
+}

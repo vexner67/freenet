@@ -344,7 +344,8 @@ const listPostsByWallQuery = `
 		AND archived = ($4 = 'archive')
 		AND ($4 IN ('', 'archive') OR ($4 = 'owner') = (author_id = wall_id OR from_wall))
 		AND ($5 = '' OR text ILIKE $5)
-		AND ($4 <> '' OR $5 <> '' OR id IS DISTINCT FROM (SELECT post_id FROM pinned_posts WHERE wall_id = $1))
+		AND ($6::timestamptz IS NULL OR (created_at >= $6 AND created_at < $7))
+		AND (NOT $8 OR id IS DISTINCT FROM (SELECT post_id FROM pinned_posts WHERE wall_id = $1))
 	ORDER BY id DESC
 	LIMIT $3
 `
@@ -357,12 +358,53 @@ func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, pick 
 		before = newestCursor
 	}
 
-	rows, err := r.conn(ctx).Query(ctx, listPostsByWallQuery, wallID, before, limit, string(pick.Filter), likePattern(pick.Query.String()))
+	from, to := yearSpan(pick.Year)
+
+	rows, err := r.conn(ctx).Query(ctx, listPostsByWallQuery,
+		wallID, before, limit, string(pick.Filter), likePattern(pick.Query.String()), from, to, pick.ShowsPinnedFirst())
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
 
 	return collectPosts(rows)
+}
+
+// yearSpan is the time a year takes for a query, nils for every year.
+func yearSpan(year post.WallYear) (from, to *time.Time) {
+	f, t, ok := year.Span()
+	if !ok {
+		return nil, nil
+	}
+
+	return &f, &t
+}
+
+// listWallYearsQuery reads the dates of all the posts of a wall: the
+// archive is opened seldom, and by its keeper alone.
+const listWallYearsQuery = `
+	SELECT DISTINCT date_part('year', created_at AT TIME ZONE 'UTC')::int AS year
+	FROM posts
+	WHERE wall_id = $1
+	ORDER BY year DESC
+`
+
+func (r *PostRepository) YearsByWall(ctx context.Context, wallID uuid.UUID) ([]post.WallYear, error) {
+	rows, err := r.conn(ctx).Query(ctx, listWallYearsQuery, wallID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+	defer rows.Close()
+
+	var years []post.WallYear
+	for rows.Next() {
+		var year int
+		if err := rows.Scan(&year); err != nil {
+			return nil, errs.Wrap("rows.Scan", err)
+		}
+		years = append(years, post.WallYear(year))
+	}
+
+	return years, errs.Wrap("rows.Err", rows.Err())
 }
 
 // listFeedQuery: a post that speaks for a community is the community's,
@@ -518,12 +560,15 @@ const countPostsByWallQuery = `
 		AND archived = ($2 = 'archive')
 		AND ($2 IN ('', 'archive') OR ($2 = 'owner') = (author_id = wall_id OR from_wall))
 		AND ($3 = '' OR text ILIKE $3)
+		AND ($4::timestamptz IS NULL OR (created_at >= $4 AND created_at < $5))
 `
 
 func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, pick service.WallPick) (int, error) {
 	var count int
 
-	err := r.conn(ctx).QueryRow(ctx, countPostsByWallQuery, wallID, string(pick.Filter), likePattern(pick.Query.String())).Scan(&count)
+	from, to := yearSpan(pick.Year)
+
+	err := r.conn(ctx).QueryRow(ctx, countPostsByWallQuery, wallID, string(pick.Filter), likePattern(pick.Query.String()), from, to).Scan(&count)
 	if err != nil {
 		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}
@@ -596,6 +641,36 @@ func (r *PostRepository) SetArchived(ctx context.Context, id uuid.UUID, archived
 	}
 
 	return nil
+}
+
+// setWallArchivedQuery puts the posts of a wall away or back and, in the
+// same statement, unpins the post it archives.
+const setWallArchivedQuery = `
+	WITH changed AS (
+		UPDATE posts
+		SET archived = $2
+		WHERE wall_id = $1
+			AND archived <> $2
+			AND ($3::timestamptz IS NULL OR (created_at >= $3 AND created_at < $4))
+		RETURNING id
+	), unpinned AS (
+		DELETE FROM pinned_posts
+		WHERE $2
+			AND post_id IN (SELECT id FROM changed)
+	)
+	SELECT count(*)
+	FROM changed
+`
+
+func (r *PostRepository) SetWallArchived(ctx context.Context, wallID uuid.UUID, year post.WallYear, archived bool) (int, error) {
+	from, to := yearSpan(year)
+
+	var changed int
+	if err := r.conn(ctx).QueryRow(ctx, setWallArchivedQuery, wallID, archived, from, to).Scan(&changed); err != nil {
+		return 0, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return changed, nil
 }
 
 const setPostCommentsClosedQuery = `

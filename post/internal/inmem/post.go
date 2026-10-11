@@ -194,11 +194,62 @@ func (r *PostRepository) Delete(ctx context.Context, id uuid.UUID) error {
 // ListByWall leaves out of all posts, unless searched, the pinned one,
 // which the wall shows first.
 func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, pick service.WallPick, before uuid.UUID, limit int) ([]*post.Post, error) {
-	plain := pick.Filter == post.WallAll && pick.Query == ""
+	plain := pick.ShowsPinnedFirst()
 
 	return r.list(ctx, func(p *post.Post) bool {
-		return p.WallID() == wallID && pick.Filter.Matches(p) && pick.Query.Matches(p) && (!plain || !p.Pinned())
+		return p.WallID() == wallID && pick.Matches(p) && (!plain || !p.Pinned())
 	}, before, limit)
+}
+
+func (r *PostRepository) YearsByWall(ctx context.Context, wallID uuid.UUID) ([]post.WallYear, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	var years []post.WallYear
+	for _, p := range r.s.posts {
+		if year := post.YearOf(p.CreatedAt()); p.WallID() == wallID && !slices.Contains(years, year) {
+			years = append(years, year)
+		}
+	}
+
+	slices.Sort(years)
+	slices.Reverse(years)
+
+	return years, nil
+}
+
+// SetWallArchived unpins the post it puts away, as PostgreSQL does.
+func (r *PostRepository) SetWallArchived(ctx context.Context, wallID uuid.UUID, year post.WallYear, archived bool) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	changed := 0
+	for id, p := range r.s.posts {
+		if p.WallID() != wallID || p.Archived() == archived || !year.Matches(p) {
+			continue
+		}
+
+		stored := p.Stored()
+		stored.Archived = archived
+
+		if archived && r.s.pins[wallID] == id {
+			delete(r.s.pins, wallID)
+			stored.Pinned = false
+		}
+
+		r.s.posts[id] = post.Restore(stored)
+		changed++
+	}
+
+	return changed, nil
 }
 
 // SetArchived unpins the post it puts away, as PostgreSQL does.
@@ -407,7 +458,7 @@ func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, pick
 
 	count := 0
 	for _, p := range r.s.posts {
-		if p.WallID() == wallID && pick.Filter.Matches(p) && pick.Query.Matches(p) {
+		if p.WallID() == wallID && pick.Matches(p) {
 			count++
 		}
 	}

@@ -214,3 +214,110 @@ func TestPostRepository_NSFW(t *testing.T) {
 		t.Fatalf("the edited post = %+v, %v", got, err)
 	}
 }
+
+func TestPostRepository_ArchiveByYears(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	repo := postgres.NewPostRepository(newPool(t))
+	ann, bob := uuid.New(), uuid.New()
+
+	written := func(wall uuid.UUID, text string, at time.Time) *post.Post {
+		t.Helper()
+
+		p, err := post.New(wall, wall, post.RestoreContent(post.Text(text), nil, uuid.Nil), at)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = repo.Save(ctx, p); err != nil {
+			t.Fatal(err)
+		}
+
+		return p
+	}
+	// The last second of a year and the first of the next, in UTC.
+	written(ann, "давно", time.Date(2024, time.December, 31, 23, 59, 59, 0, time.UTC))
+	pinned := written(ann, "зима", time.Date(2025, time.January, 1, 0, 0, 0, 0, time.UTC))
+	written(ann, "лето", time.Date(2025, time.June, 1, 12, 0, 0, 0, time.UTC))
+	written(ann, "сейчас", time.Date(2026, time.March, 1, 12, 0, 0, 0, time.UTC))
+	other := written(bob, "чужое", time.Date(2025, time.June, 1, 12, 0, 0, 0, time.UTC))
+	if err := repo.Pin(ctx, pinned.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	list := func(pick service.WallPick) []string {
+		t.Helper()
+
+		posts, err := repo.ListByWall(ctx, ann, pick, uuid.Nil, 10)
+		if err != nil {
+			t.Fatalf("ListByWall(%+v): %v", pick, err)
+		}
+		if n, err := repo.CountByWall(ctx, ann, pick); err != nil || n != len(posts) {
+			t.Fatalf("CountByWall(%+v) = %d, %v; listed %d", pick, n, err, len(posts))
+		}
+
+		out := make([]string, len(posts))
+		for i, p := range posts {
+			out[i] = p.Content().Text().String()
+		}
+
+		return out
+	}
+
+	if years, err := repo.YearsByWall(ctx, ann); err != nil || !slices.Equal(years, []post.WallYear{2026, 2025, 2024}) {
+		t.Fatalf("YearsByWall = %v, %v", years, err)
+	}
+	if years, err := repo.YearsByWall(ctx, uuid.New()); err != nil || len(years) != 0 {
+		t.Fatalf("the years of an empty wall = %v, %v", years, err)
+	}
+
+	// A year shows its pinned post in its place.
+	if got := list(service.WallPick{Year: 2025}); !slices.Equal(got, []string{"лето", "зима"}) {
+		t.Fatalf("2025 = %v", got)
+	}
+	if got := list(service.WallPick{Year: 2024}); !slices.Equal(got, []string{"давно"}) {
+		t.Fatalf("2024 = %v", got)
+	}
+
+	if n, err := repo.SetWallArchived(ctx, ann, 2025, true); err != nil || n != 2 {
+		t.Fatalf("SetWallArchived(2025) = %d, %v", n, err)
+	}
+	if n, err := repo.SetWallArchived(ctx, ann, 2025, true); err != nil || n != 0 {
+		t.Fatalf("SetWallArchived(2025) again = %d, %v", n, err)
+	}
+	if _, err := repo.Pinned(ctx, ann); !errors.Is(err, post.ErrNotFound) {
+		t.Fatalf("the wall still pins an archived post: %v", err)
+	}
+	if got := list(service.WallPick{}); !slices.Equal(got, []string{"сейчас", "давно"}) {
+		t.Fatalf("the wall = %v", got)
+	}
+	if got := list(service.WallPick{Filter: post.WallArchive}); !slices.Equal(got, []string{"лето", "зима"}) {
+		t.Fatalf("the archive = %v", got)
+	}
+	if got := list(service.WallPick{Filter: post.WallArchive, Year: 2025}); !slices.Equal(got, []string{"лето", "зима"}) {
+		t.Fatalf("the archive of 2025 = %v", got)
+	}
+	if got := list(service.WallPick{Filter: post.WallArchive, Year: 2026}); len(got) != 0 {
+		t.Fatalf("the archive of 2026 = %v", got)
+	}
+	if got, err := repo.Get(ctx, other.ID()); err != nil || got.Archived() {
+		t.Fatalf("another wall = %+v, %v", got, err)
+	}
+	// The years are those of every post, archived or not.
+	if years, _ := repo.YearsByWall(ctx, ann); len(years) != 3 {
+		t.Fatalf("the years after archiving = %v", years)
+	}
+
+	if n, err := repo.SetWallArchived(ctx, ann, 0, true); err != nil || n != 2 {
+		t.Fatalf("archiving the rest = %d, %v", n, err)
+	}
+	if n, err := repo.SetWallArchived(ctx, ann, 2025, false); err != nil || n != 2 {
+		t.Fatalf("restoring 2025 = %d, %v", n, err)
+	}
+	if got := list(service.WallPick{}); !slices.Equal(got, []string{"лето", "зима"}) {
+		t.Fatalf("the wall after the return = %v", got)
+	}
+	if n, err := repo.SetWallArchived(ctx, ann, 0, false); err != nil || n != 2 {
+		t.Fatalf("restoring all = %d, %v", n, err)
+	}
+}
