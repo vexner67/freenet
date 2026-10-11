@@ -213,6 +213,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// What the owner of a wall switches on a post is an edit of it.
 		postv1.PostService_ArchivePost_FullMethodName:   cfg.EditLimits,
 		postv1.PostService_UnarchivePost_FullMethodName: cfg.EditLimits,
+		postv1.PostService_ArchiveWall_FullMethodName:   cfg.EditLimits,
 		postv1.PostService_CloseComments_FullMethodName: cfg.EditLimits,
 		postv1.PostService_OpenComments_FullMethodName:  cfg.EditLimits,
 		// A suggestion is content for the admins to read; publishing it is

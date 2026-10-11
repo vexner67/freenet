@@ -32,6 +32,16 @@ service PostService {
   // (FailedPrecondition); those written before stay.
   rpc ArchivePost(ArchivePostRequest) returns (google.protobuf.Empty);
   rpc UnarchivePost(UnarchivePostRequest) returns (google.protobuf.Empty);
+  // Requires an access token: puts away every post of a wall written in a
+  // year, or puts them back ("Архивировать все записи за 2025" and
+  // "Разархивировать все записи за 2025" of openvk); every year without
+  // one ("Архивировать все записи целиком"). The owner of the wall or the
+  // admins of its community only (PermissionDenied).
+  rpc ArchiveWall(ArchiveWallRequest) returns (ArchiveWallResponse);
+  // Requires an access token: the years the posts of a wall were written
+  // in, archived or not, the latest first — the years of openvk's
+  // archive. For those who keep the archive only (PermissionDenied).
+  rpc ListWallYears(ListWallYearsRequest) returns (ListWallYearsResponse);
   rpc CloseComments(CloseCommentsRequest) returns (google.protobuf.Empty);
   rpc OpenComments(OpenCommentsRequest) returns (google.protobuf.Empty);
 
@@ -426,6 +436,28 @@ message ArchivePostRequest {
   string id = 1;
 }
 
+message ArchiveWallRequest {
+  string wall_id = 1;
+  // The year the posts were written in, by the clock of UTC; 0 for every
+  // year.
+  int32 year = 2;
+  // Puts the posts away, or back.
+  bool archived = 3;
+}
+
+message ArchiveWallResponse {
+  // How many posts it changed.
+  int32 changed = 1;
+}
+
+message ListWallYearsRequest {
+  string wall_id = 1;
+}
+
+message ListWallYearsResponse {
+  repeated int32 years = 1;
+}
+
 message UnarchivePostRequest {
   string id = 1;
 }
@@ -475,6 +507,10 @@ message ListPostsRequest {
   // 0 for whole texts. Lists ask for the beginning: a page of whole texts
   // of 60 000 characters is megabytes.
   int32 text_limit = 6;
+  // The year the posts were written in, by the clock of UTC, as the years
+  // of openvk's archive; 0 for every year. Of one year, the pinned post
+  // is in its place.
+  int32 year = 7;
 }
 
 // WallFilter picks the posts of a wall: all ("Все записи"), the wall's

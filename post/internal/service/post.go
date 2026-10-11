@@ -52,6 +52,9 @@ type PostRepository interface {
 	// one in its place.
 	ListByWall(ctx context.Context, wallID uuid.UUID, pick WallPick, before uuid.UUID, limit int) ([]*post.Post, error)
 	CountByWall(ctx context.Context, wallID uuid.UUID, pick WallPick) (int, error)
+	// YearsByWall are the years the posts of a wall were written in,
+	// archived or not, the latest first.
+	YearsByWall(ctx context.Context, wallID uuid.UUID) ([]post.WallYear, error)
 	// Count counts the posts on all walls that are not archived.
 	Count(ctx context.Context) (int, error)
 	// ListFeed is ListByWall for the posts written by several authors, on
@@ -63,17 +66,25 @@ type PostRepository interface {
 	ListReposts(ctx context.Context, postID, before uuid.UUID, limit int, archived bool) ([]*post.Post, error)
 }
 
-// WallPick is which posts of a wall to read: a tab of openvk's wall and,
-// for its "Поиск", what the posts say.
+// WallPick is which posts of a wall to read: a tab of openvk's wall, for
+// its "Поиск" what the posts say and, for the years of its archive, when
+// they were written.
 type WallPick struct {
 	Filter post.WallFilter
 	Query  post.WallQuery
+	Year   post.WallYear
 }
 
-// showsPinnedFirst: all posts of a wall, not searched, start with the
-// pinned one.
-func (w WallPick) showsPinnedFirst() bool {
-	return w.Filter == post.WallAll && w.Query == ""
+// ShowsPinnedFirst: all posts of a wall, not searched and of every year,
+// start with the pinned one.
+func (w WallPick) ShowsPinnedFirst() bool {
+	return w.Filter == post.WallAll && w.Query == "" && w.Year == 0
+}
+
+// Matches tells whether p is among the posts picked, wherever it is
+// pinned.
+func (w WallPick) Matches(p *post.Post) bool {
+	return w.Filter.Matches(p) && w.Query.Matches(p) && w.Year.Matches(p)
 }
 
 // PostSwitchRepository keeps what the owner of a wall switches on a post;
@@ -82,6 +93,10 @@ type PostSwitchRepository interface {
 	// SetArchived puts a post away or back; an archived post is no longer
 	// pinned.
 	SetArchived(ctx context.Context, id uuid.UUID, archived bool) error
+	// SetWallArchived puts away, or back, every post of a wall written in
+	// a year (every year for 0) and returns how many it changed; the
+	// posts it archives are no longer pinned.
+	SetWallArchived(ctx context.Context, wallID uuid.UUID, year post.WallYear, archived bool) (int, error)
 	SetCommentsClosed(ctx context.Context, id uuid.UUID, closed bool) error
 }
 
@@ -442,14 +457,14 @@ func (s *PostService) repostContent(ctx context.Context, in RepostInput) (post.C
 		return content, uuid.Nil, errs.Wrap("post.NewPhotoShare", err)
 	}
 
-	shared, err := s.postRepo.Get(ctx, in.PostID)
+	shared, err := s.seen(ctx, in.AuthorID, in.PostID)
 	if err != nil {
-		return post.Content{}, uuid.Nil, errs.Wrap("s.postRepo.Get", err)
+		return post.Content{}, uuid.Nil, err
 	}
 
 	if id := shared.Shared(); id != shared.ID() {
-		if shared, err = s.postRepo.Get(ctx, id); err != nil {
-			return post.Content{}, uuid.Nil, errs.Wrap("s.postRepo.Get", err)
+		if shared, err = s.seen(ctx, in.AuthorID, id); err != nil {
+			return post.Content{}, uuid.Nil, err
 		}
 	}
 
@@ -762,6 +777,56 @@ func (s *PostService) setArchived(ctx context.Context, requesterID, postID uuid.
 	return errs.Wrap("s.switches.SetArchived", s.switches.SetArchived(ctx, postID, archived))
 }
 
+// ArchiveWall puts away every post of a wall written in a year, or puts
+// them back, as openvk's "Архивировать все записи за 2025" and
+// "Разархивировать все записи за 2025"; year 0 is every year
+// ("Архивировать все записи целиком"). The owner of the wall, or the
+// admins of the community it is (post.ErrCannotArchive). It returns how
+// many posts it changed.
+func (s *PostService) ArchiveWall(ctx context.Context, requesterID, wallID uuid.UUID, year post.WallYear, archived bool) (int, error) {
+	if err := s.checkArchiveKeeper(ctx, requesterID, wallID); err != nil {
+		return 0, err
+	}
+
+	changed, err := s.switches.SetWallArchived(ctx, wallID, year, archived)
+	if err != nil {
+		return 0, errs.Wrap("s.switches.SetWallArchived", err)
+	}
+
+	return changed, nil
+}
+
+// WallYears are the years the posts of a wall were written in, archived
+// or not, the latest first: the years of openvk's archive. For those who
+// keep the archive only (post.ErrCannotArchive).
+func (s *PostService) WallYears(ctx context.Context, requesterID, wallID uuid.UUID) ([]post.WallYear, error) {
+	if err := s.checkArchiveKeeper(ctx, requesterID, wallID); err != nil {
+		return nil, err
+	}
+
+	years, err := s.postRepo.YearsByWall(ctx, wallID)
+	if err != nil {
+		return nil, errs.Wrap("s.postRepo.YearsByWall", err)
+	}
+
+	return years, nil
+}
+
+// checkArchiveKeeper returns post.ErrCannotArchive unless requesterID
+// owns the wall or runs the community it is.
+func (s *PostService) checkArchiveKeeper(ctx context.Context, requesterID, wallID uuid.UUID) error {
+	ok, err := moderates(ctx, s.moderators, wallID, requesterID, requesterID == wallID)
+	if err != nil {
+		return errs.Wrap("moderates", err)
+	}
+
+	if !ok {
+		return post.ErrCannotArchive
+	}
+
+	return nil
+}
+
 // CloseComments lets nobody comment a post anymore and OpenComments lets
 // them again: the owner of the wall, or the admins of the community it
 // is. The comments written before stay.
@@ -832,22 +897,34 @@ func moderates(ctx context.Context, moderators WallModerators, wallID, userID uu
 	return ok, nil
 }
 
-// Get returns a post and whether viewerID likes it; viewerID is uuid.Nil
-// for an anonymous viewer. An archived post is not found by anyone but
-// the owner of its wall.
-func (s *PostService) Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error) {
+// seen returns the post as viewerID sees it: post.ErrNotFound for a
+// missing post and for one put away in an archive viewerID does not
+// keep. What nobody is shown is neither liked nor shared.
+func (s *PostService) seen(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, error) {
 	p, err := s.postRepo.Get(ctx, postID)
 	if err != nil {
-		return nil, false, errs.Wrap("s.postRepo.Get", err)
+		return nil, errs.Wrap("s.postRepo.Get", err)
 	}
 
 	away, err := hidden(ctx, s.moderators, p, viewerID)
 	if err != nil {
-		return nil, false, errs.Wrap("hidden", err)
+		return nil, errs.Wrap("hidden", err)
 	}
 
 	if away {
-		return nil, false, post.ErrNotFound
+		return nil, post.ErrNotFound
+	}
+
+	return p, nil
+}
+
+// Get returns a post and whether viewerID likes it; viewerID is uuid.Nil
+// for an anonymous viewer. An archived post is not found by anyone but
+// the owner of its wall.
+func (s *PostService) Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error) {
+	p, err := s.seen(ctx, viewerID, postID)
+	if err != nil {
+		return nil, false, err
 	}
 
 	liked, err := s.liked(ctx, viewerID, []*post.Post{p})
@@ -902,9 +979,9 @@ func (s *PostService) Likers(ctx context.Context, postID uuid.UUID, cursor *Like
 }
 
 func (s *PostService) Like(ctx context.Context, userID, postID uuid.UUID) (int, error) {
-	p, err := s.postRepo.Get(ctx, postID)
+	p, err := s.seen(ctx, userID, postID)
 	if err != nil {
-		return 0, errs.Wrap("s.postRepo.Get", err)
+		return 0, err
 	}
 
 	var likes int
@@ -981,13 +1058,8 @@ func (s *PostService) ListWall(ctx context.Context, viewerID, wallID uuid.UUID, 
 	}
 
 	if pick.Filter == post.WallArchive {
-		ok, err := moderates(ctx, s.moderators, wallID, viewerID, viewerID == wallID)
-		if err != nil {
-			return Page{}, errs.Wrap("moderates", err)
-		}
-
-		if !ok {
-			return Page{}, post.ErrCannotArchive
+		if err := s.checkArchiveKeeper(ctx, viewerID, wallID); err != nil {
+			return Page{}, err
 		}
 	}
 
@@ -998,7 +1070,7 @@ func (s *PostService) ListWall(ctx context.Context, viewerID, wallID uuid.UUID, 
 	}
 
 	var pinned *post.Post
-	if cursor == uuid.Nil && pick.showsPinnedFirst() {
+	if cursor == uuid.Nil && pick.ShowsPinnedFirst() {
 		if pinned, err = s.pinRepo.Pinned(ctx, wallID); err != nil && !errors.Is(err, post.ErrNotFound) {
 			return Page{}, errs.Wrap("s.pinRepo.Pinned", err)
 		}

@@ -73,6 +73,7 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrCannotCloseComments, codes.PermissionDenied},
 		{post.ErrCommentsClosed, codes.FailedPrecondition},
 		{post.ErrWallQueryTooLong, codes.InvalidArgument},
+		{post.ErrInvalidWallYear, codes.InvalidArgument},
 		{post.ErrTopicNotFound, codes.NotFound},
 		{post.ErrMessageNotFound, codes.NotFound},
 		{post.ErrCannotChangeTopic, codes.PermissionDenied},
