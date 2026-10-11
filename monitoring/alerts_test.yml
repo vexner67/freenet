@@ -207,7 +207,7 @@ tests:
           - exp_labels: { severity: critical, service: post, stream: media }
             exp_annotations:
               summary: "post has not delivered to media for 1h 10m 0s"
-              description: "The media stream of post has been stuck for over an hour. Photos of new posts, comments and messages are deleted as unpublished once the media stream is a day late."
+              description: "The media stream of post has been stuck for over an hour. Photos of new posts, comments and messages are broken pictures once the media stream is a day late, until it delivers, and are lost for good after 30 days."
 
   - name: dropped outbox messages
     interval: 1m

@@ -257,6 +257,7 @@ services:
       MEDIA_DIR: /data/media
       REDIS_ADDR: redis:6379
       UNPUBLISHED_PHOTO_TTL: ${UNPUBLISHED_PHOTO_TTL:-24h}
+      RETIRED_PHOTO_TTL: ${RETIRED_PHOTO_TTL:-720h}
     volumes:
       - ./certs:/certs:ro
       - ./.data/media:/data/media
