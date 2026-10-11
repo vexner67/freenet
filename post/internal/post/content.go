@@ -39,8 +39,9 @@ func NewPhotos(ids []uuid.UUID) (Photos, error) {
 	return Photos(ids), nil
 }
 
-// Content is what a post shows: text, photos, a shared post (a repost)
-// or some of them, or a shared photo of an album with text, never nothing.
+// Content is what a post shows: text, photos, a poll, a shared post (a
+// repost) or some of them, or a shared photo of an album with text, never
+// nothing.
 type Content struct {
 	text     Text
 	photos   Photos
@@ -48,6 +49,8 @@ type Content struct {
 	// sharedPhoto is a photo of an album shared ("Поделиться" of a photo),
 	// uuid.Nil for none; only with text, never with photos or a repost.
 	sharedPhoto uuid.UUID
+	// polled: the post asks a poll (see Poll), which is content enough.
+	polled bool
 }
 
 func NewContent(text Text, photos Photos) (Content, error) {
@@ -56,6 +59,23 @@ func NewContent(text Text, photos Photos) (Content, error) {
 	}
 
 	return Content{text: text, photos: photos}, nil
+}
+
+// NewPolled is the content of a post that asks a poll: with it the text
+// and the photos may be none.
+func NewPolled(text Text, photos Photos) Content {
+	return Content{text: text, photos: photos, polled: true}
+}
+
+// WithPoll is c of a post that asks a poll, restored from storage.
+func (c Content) WithPoll() Content {
+	c.polled = true
+	return c
+}
+
+// Polled tells whether the post asks a poll.
+func (c Content) Polled() bool {
+	return c.polled
 }
 
 // NewRepost is the content of a repost: the shared post repostOf, with

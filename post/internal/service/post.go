@@ -179,6 +179,13 @@ type PostService struct {
 	albumPhotos AlbumPhotoGetter
 	wallPhotos  WallPhotoKeeper
 	switches    PostSwitchRepository
+	polls       PollSaver
+}
+
+// PollSaver keeps the poll a new post asks, in the transaction that saves
+// the post.
+type PollSaver interface {
+	Save(ctx context.Context, p *post.Poll) error
 }
 
 // PostDeps are what PostService works with.
@@ -198,6 +205,8 @@ type PostDeps struct {
 	WallPhotos WallPhotoKeeper
 	// Switches archive posts and close their comments.
 	Switches PostSwitchRepository
+	// Polls keeps the polls posts ask.
+	Polls PollSaver
 }
 
 // WallPhotoKeeper keeps the photos people post on their own walls in
@@ -226,6 +235,7 @@ func NewPostService(d PostDeps) *PostService {
 		albumPhotos: d.AlbumPhotos,
 		wallPhotos:  d.WallPhotos,
 		switches:    d.Switches,
+		polls:       d.Polls,
 		now:         time.Now,
 	}
 }
@@ -247,6 +257,9 @@ type CreateInput struct {
 	NSFW bool
 	// Mentions are the people the text names, who hear of it.
 	Mentions post.Mentions
+	// Poll is the poll the post asks, nil for none; with it Content is
+	// post.NewPolled.
+	Poll *post.PollDraft
 
 	AvatarUpdate bool
 }
@@ -278,6 +291,11 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 		p = p.Marked(true)
 	}
 
+	poll, err := newPoll(p, in.Poll, s.now())
+	if err != nil {
+		return nil, errs.Wrap("newPoll", err)
+	}
+
 	album, err := s.wallAlbum(ctx, p, content.Photos())
 	if err != nil {
 		return nil, errs.Wrap("s.wallAlbum", err)
@@ -286,6 +304,12 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.postRepo.Save(ctx, p); err != nil {
 			return errs.Wrap("s.postRepo.Save", err)
+		}
+
+		if poll != nil {
+			if err := s.polls.Save(ctx, poll); err != nil {
+				return errs.Wrap("s.polls.Save", err)
+			}
 		}
 
 		if err := s.publishPhotos(ctx, p, album, content.Photos()); err != nil {
@@ -305,6 +329,20 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 	}
 
 	return p, nil
+}
+
+// newPoll is the poll the new post p asks, nil when it asks none: a post
+// asks a poll exactly when its content says so.
+func newPoll(p *post.Post, draft *post.PollDraft, now time.Time) (*post.Poll, error) {
+	if (draft != nil) != p.Content().Polled() {
+		return nil, post.ErrPollNotFound
+	}
+
+	if draft == nil {
+		return nil, nil
+	}
+
+	return post.NewPoll(p.ID(), *draft, now)
 }
 
 // postEvents are the notifications of the new post p: the owner of a

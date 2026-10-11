@@ -10,18 +10,86 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-func fromProtoContent(req *postv1.CreatePostRequest) (post.Content, error) {
+// fromProtoContent reads what a new post says and the poll it asks, nil
+// for none.
+func fromProtoContent(req *postv1.CreatePostRequest) (post.Content, *post.PollDraft, error) {
 	text, photos, err := fromProtoTextPhotos(req.GetText(), req.GetPhotoIds())
 	if err != nil {
-		return post.Content{}, err
+		return post.Content{}, nil, err
+	}
+
+	if req.GetPoll() != nil {
+		poll, err := fromProtoPollDraft(req.GetPoll())
+		if err != nil {
+			return post.Content{}, nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		return post.NewPolled(text, photos), &poll, nil
 	}
 
 	content, err := post.NewContent(text, photos)
 	if err != nil {
-		return post.Content{}, status.Error(codes.InvalidArgument, err.Error())
+		return post.Content{}, nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	return content, nil
+	return content, nil, nil
+}
+
+func fromProtoPollDraft(d *postv1.PollDraft) (post.PollDraft, error) {
+	title, err := post.NewPollTitle(d.GetTitle())
+	if err != nil {
+		return post.PollDraft{}, err
+	}
+
+	options, err := post.NewPollOptions(d.GetOptions())
+	if err != nil {
+		return post.PollDraft{}, err
+	}
+
+	return post.PollDraft{
+		Title:     title,
+		Options:   options,
+		Anonymous: d.GetAnonymous(),
+		Multiple:  d.GetMultiple(),
+		Locked:    d.GetLocked(),
+		Days:      int(d.GetDays()),
+	}, nil
+}
+
+func toProtoPoll(v service.PollView) *postv1.Poll {
+	p := v.Poll
+	tally := p.Tally()
+
+	options := make([]*postv1.PollOption, len(p.Options()))
+	for i, name := range p.Options() {
+		options[i] = &postv1.PollOption{
+			Name:      name.String(),
+			VoteCount: int32(tally.Votes[i]), //nolint:gosec // counters come from int4 columns
+		}
+	}
+
+	chosen := make([]int32, len(v.Chosen))
+	for i, place := range v.Chosen {
+		chosen[i] = int32(place) //nolint:gosec // a place is below post.MaxPollOptions
+	}
+
+	pp := &postv1.Poll{
+		PostId:     p.PostID().String(),
+		Title:      p.Title().String(),
+		Options:    options,
+		VoterCount: int32(tally.Voters), //nolint:gosec // counters come from int4 columns
+		Anonymous:  p.Anonymous(),
+		Multiple:   p.Multiple(),
+		Locked:     p.Locked(),
+		Ended:      v.Ended,
+		Chosen:     chosen,
+	}
+
+	if !p.EndsAt().IsZero() {
+		pp.EndsAt = timestamppb.New(p.EndsAt())
+	}
+
+	return pp
 }
 
 // fromProtoTextPhotos reads what a post says, for a new post or an edit.
@@ -136,6 +204,7 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 		Archived:       p.Archived(),
 		CommentsClosed: p.CommentsClosed(),
 		Nsfw:           p.NSFW(),
+		Polled:         p.Content().Polled(),
 	}
 
 	if !p.EditedAt().IsZero() {

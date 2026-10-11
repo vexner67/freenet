@@ -61,7 +61,7 @@ func newServer(t *testing.T) testServer {
 		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(), CommentLikes: albums.PhotoComments(), Notifier: notifyclient.Nop{},
 	})
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(postgrpc.Services{
-		Posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}, AlbumPhotos: albums.Photos(), WallPhotos: albumService, Switches: store.Posts()}),
+		Posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}, AlbumPhotos: albums.Photos(), WallPhotos: albumService, Switches: store.Posts(), Polls: store.Polls()}),
 		Comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}}),
 		Suggestions: service.NewSuggestionService(service.SuggestionDeps{
 			Suggestions: suggestions, Posts: store.Posts(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
@@ -71,8 +71,9 @@ func newServer(t *testing.T) testServer {
 			Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
 		}),
 		Albums: albumService,
+		Polls:  service.NewPollService(service.PollDeps{Polls: store.Polls(), Posts: store.Posts(), Moderators: clubclient.Nop{}, Tx: inmem.TxManager{}}),
 		Purge: service.NewPurgeService(service.PurgeDeps{
-			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Comments: store.Comments(), Suggestions: suggestions,
+			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
 			Topics: topics, Albums: albums, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
 		}),
 	}, log))
@@ -1441,5 +1442,140 @@ func TestTopicMessageLikersAndQuotes(t *testing.T) {
 	quoted, err := s.client.GetTopicMessages(context.Background(), &postv1.GetTopicMessagesRequest{Ids: []string{id, uuid.NewString()}, TextLimit: 7})
 	if err != nil || len(quoted.GetMessages()) != 1 || quoted.GetMessages()[0].GetText() != "длинное" || !quoted.GetMessages()[0].GetTextCut() {
 		t.Fatalf("GetTopicMessages = %v, %v", quoted, err)
+	}
+}
+
+func TestPolls(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+	anyone := context.Background()
+
+	created, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{
+		Poll: &postv1.PollDraft{Title: " Кошки или  собаки? ", Options: []string{"кошки", "собаки"}, Days: 2},
+	})
+	if err != nil {
+		t.Fatalf("CreatePost with a poll and no words: %v", err)
+	}
+
+	id := created.GetPost().GetId()
+	if !created.GetPost().GetPolled() {
+		t.Fatal("the post does not say it asks a poll")
+	}
+
+	got, err := s.client.GetPolls(anyone, &postv1.GetPollsRequest{PostIds: []string{id, uuid.NewString()}})
+	if err != nil || len(got.GetPolls()) != 1 {
+		t.Fatalf("GetPolls without a token = %v, %v", got, err)
+	}
+
+	poll := got.GetPolls()[0]
+	if poll.GetPostId() != id || poll.GetTitle() != "Кошки или собаки?" || len(poll.GetOptions()) != 2 ||
+		poll.GetOptions()[1].GetName() != "собаки" || poll.GetEndsAt() == nil || poll.GetEnded() || len(poll.GetChosen()) != 0 {
+		t.Fatalf("poll = %v", poll)
+	}
+
+	if _, err = s.client.VotePoll(anyone, &postv1.VotePollRequest{PostId: id, Options: []int32{0}}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("a vote without a token: got %v", err)
+	}
+
+	voted, err := s.client.VotePoll(s.as(t, bob), &postv1.VotePollRequest{PostId: id, Options: []int32{1}})
+	if err != nil {
+		t.Fatalf("VotePoll: %v", err)
+	}
+	if p := voted.GetPoll(); p.GetVoterCount() != 1 || p.GetOptions()[1].GetVoteCount() != 1 || len(p.GetChosen()) != 1 || p.GetChosen()[0] != 1 {
+		t.Fatalf("after the vote: %v", p)
+	}
+
+	for name, tt := range map[string]struct {
+		req  *postv1.VotePollRequest
+		code codes.Code
+	}{
+		"twice":           {&postv1.VotePollRequest{PostId: id, Options: []int32{0}}, codes.FailedPrecondition},
+		"no post":         {&postv1.VotePollRequest{PostId: uuid.NewString(), Options: []int32{0}}, codes.NotFound},
+		"a malformed id":  {&postv1.VotePollRequest{PostId: "x", Options: []int32{0}}, codes.InvalidArgument},
+		"nothing chosen":  {&postv1.VotePollRequest{PostId: id}, codes.InvalidArgument},
+		"no such option":  {&postv1.VotePollRequest{PostId: id, Options: []int32{5}}, codes.InvalidArgument},
+		"several options": {&postv1.VotePollRequest{PostId: id, Options: []int32{0, 1}}, codes.InvalidArgument},
+	} {
+		// Ann has not voted, so only "twice" is Bob's.
+		ctx := s.as(t, ann)
+		if name == "twice" {
+			ctx = s.as(t, bob)
+		}
+
+		if _, err = s.client.VotePoll(ctx, tt.req); status.Code(err) != tt.code {
+			t.Fatalf("%s: got %v, want %v", name, err, tt.code)
+		}
+	}
+
+	// Bob sees his choice in the poll of the page.
+	got, err = s.client.GetPolls(s.as(t, bob), &postv1.GetPollsRequest{PostIds: []string{id}})
+	if err != nil || len(got.GetPolls()) != 1 || len(got.GetPolls()[0].GetChosen()) != 1 {
+		t.Fatalf("GetPolls for a voter = %v, %v", got, err)
+	}
+
+	voters, err := s.client.ListPollVoters(anyone, &postv1.ListPollVotersRequest{PostId: id, Option: 1})
+	if err != nil || voters.GetTotal() != 1 || len(voters.GetUserIds()) != 1 || voters.GetUserIds()[0] != bob.String() {
+		t.Fatalf("ListPollVoters = %v, %v", voters, err)
+	}
+	if _, err = s.client.ListPollVoters(anyone, &postv1.ListPollVotersRequest{PostId: id, Option: 9}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("voters of no option: got %v", err)
+	}
+
+	back, err := s.client.RetractPollVote(s.as(t, bob), &postv1.RetractPollVoteRequest{PostId: id})
+	if err != nil || back.GetPoll().GetVoterCount() != 0 || len(back.GetPoll().GetChosen()) != 0 {
+		t.Fatalf("RetractPollVote = %v, %v", back, err)
+	}
+	if _, err = s.client.RetractPollVote(s.as(t, bob), &postv1.RetractPollVoteRequest{PostId: id}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("retract twice: got %v", err)
+	}
+
+	// The poll stays through an edit, and says what an edit cannot change.
+	edited, err := s.client.EditPost(s.as(t, ann), &postv1.EditPostRequest{Id: id, Text: "А вы как думаете?"})
+	if err != nil || !edited.GetPost().GetPolled() {
+		t.Fatalf("EditPost = %v, %v", edited, err)
+	}
+
+	locked, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{
+		Text: "тайно",
+		Poll: &postv1.PollDraft{Title: "Да?", Options: []string{"да"}, Anonymous: true, Locked: true},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	lockedID := locked.GetPost().GetId()
+	if _, err = s.client.VotePoll(s.as(t, bob), &postv1.VotePollRequest{PostId: lockedID, Options: []int32{0}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err = s.client.RetractPollVote(s.as(t, bob), &postv1.RetractPollVoteRequest{PostId: lockedID}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("retract in a locked poll: got %v", err)
+	}
+	if _, err = s.client.ListPollVoters(anyone, &postv1.ListPollVotersRequest{PostId: lockedID}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("voters of an anonymous poll: got %v", err)
+	}
+
+	for name, d := range map[string]*postv1.PollDraft{
+		"no title":         {Options: []string{"да"}},
+		"no options":       {Title: "Да?"},
+		"an empty option":  {Title: "Да?", Options: []string{"да", " "}},
+		"eleven options":   {Title: "Да?", Options: make([]string, 11)},
+		"forty days":       {Title: "Да?", Options: []string{"да"}, Days: 40},
+		"a negative term":  {Title: "Да?", Options: []string{"да"}, Days: -1},
+		"a very long line": {Title: strings.Repeat("я", 129), Options: []string{"да"}},
+	} {
+		if _, err = s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: "слова", Poll: d}); status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("%s: got %v, want InvalidArgument", name, err)
+		}
+	}
+
+	// A post without a poll still needs something to say.
+	if _, err = s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("an empty post: got %v", err)
+	}
+
+	if _, err = s.client.GetPolls(anyone, &postv1.GetPollsRequest{PostIds: make([]string, 1)}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("GetPolls of a malformed id: got %v", err)
 	}
 }

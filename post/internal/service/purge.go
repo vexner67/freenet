@@ -51,6 +51,7 @@ type PurgeService struct {
 	posts        PostEraser
 	likes        ReactionEraser
 	commentLikes ReactionEraser
+	votes        ReactionEraser
 	comments     CommentEraser
 	suggestions  SuggestionEraser
 	topics       TopicEraser
@@ -65,13 +66,15 @@ type PurgeDeps struct {
 	Posts        PostEraser
 	Likes        ReactionEraser
 	CommentLikes ReactionEraser
-	Comments     CommentEraser
-	Suggestions  SuggestionEraser
-	Topics       TopicEraser
-	Albums       AlbumEraser
-	Tx           TxManager
-	Notifier     Notifier
-	Photos       PhotoKeeper
+	// Votes are the user's votes in polls.
+	Votes       ReactionEraser
+	Comments    CommentEraser
+	Suggestions SuggestionEraser
+	Topics      TopicEraser
+	Albums      AlbumEraser
+	Tx          TxManager
+	Notifier    Notifier
+	Photos      PhotoKeeper
 }
 
 func NewPurgeService(d PurgeDeps) *PurgeService {
@@ -79,6 +82,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		posts:        d.Posts,
 		likes:        d.Likes,
 		commentLikes: d.CommentLikes,
+		votes:        d.Votes,
 		comments:     d.Comments,
 		suggestions:  d.Suggestions,
 		topics:       d.Topics,
@@ -90,7 +94,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 }
 
 // PurgeUser deletes, in one transaction, the user's likes and comments on
-// others' posts, what they suggested, their topics and the messages they
+// others' posts, their votes in polls, what they suggested, their topics and the messages they
 // wrote in topics, their albums and the photos they put in others', the
 // posts they wrote and those on their wall (others' on it included, as a
 // deleted post takes its comments). The notifications
@@ -104,6 +108,10 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 
 		if err := s.commentLikes.DeleteByUser(ctx, userID); err != nil {
 			return errs.Wrap("s.commentLikes.DeleteByUser", err)
+		}
+
+		if err := s.votes.DeleteByUser(ctx, userID); err != nil {
+			return errs.Wrap("s.votes.DeleteByUser", err)
 		}
 
 		if err := s.comments.DeleteByUser(ctx, userID); err != nil {

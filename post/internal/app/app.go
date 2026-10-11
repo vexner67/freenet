@@ -150,6 +150,7 @@ func (a *App) build(cfg config.Config) error {
 			Posts: service.NewPostService(service.PostDeps{
 				Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Moderators: moderators, AlbumPhotos: repos.albumPhotos, WallPhotos: albums, Switches: repos.posts,
+				Polls: repos.polls,
 			}),
 			Comments: service.NewCommentService(service.CommentDeps{
 				Posts: repos.posts, Comments: repos.comments, Likes: repos.commentLikes, Tx: repos.tx, Notifier: notifier, Photos: photos,
@@ -163,8 +164,10 @@ func (a *App) build(cfg config.Config) error {
 				Notifier: notifier, Photos: photos, Moderators: moderators,
 			}),
 			Albums: albums,
+			Polls:  service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Tx: repos.tx}),
 			Purge: service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
+				Votes:  repos.polls,
 				Topics: repos.topics, Albums: repos.albums, Tx: repos.tx, Notifier: notifier, Photos: photos,
 			}),
 		}, a.logger),
@@ -202,6 +205,8 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_CreateComment_FullMethodName:      cfg.CommentLimits,
 		postv1.PostService_LikePost_FullMethodName:           cfg.LikeLimits,
 		postv1.PostService_UnlikePost_FullMethodName:         cfg.LikeLimits,
+		postv1.PostService_VotePoll_FullMethodName:           cfg.LikeLimits,
+		postv1.PostService_RetractPollVote_FullMethodName:    cfg.LikeLimits,
 		postv1.PostService_LikeComment_FullMethodName:        cfg.LikeLimits,
 		postv1.PostService_LikeTopicMessage_FullMethodName:   cfg.LikeLimits,
 		postv1.PostService_LikeAlbumPhoto_FullMethodName:     cfg.LikeLimits,
@@ -384,6 +389,10 @@ type repositories struct {
 		service.AlbumRepository
 		service.AlbumEraser
 	}
+	polls interface {
+		service.PollRepository
+		service.ReactionEraser
+	}
 	albumPhotos service.AlbumPhotoRepository
 	photoLikes  service.AlbumPhotoLikeRepository
 	// photoComments are the comments of photos of albums.
@@ -403,6 +412,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		return repositories{
 			posts:        store.Posts(),
 			likes:        store.Likes(),
+			polls:        store.Polls(),
 			comments:     store.Comments(),
 			commentLikes: store.CommentLikes(),
 			suggestions:  inmem.NewSuggestionRepository(),
@@ -448,6 +458,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	return repositories{
 		posts:        postgres.NewPostRepository(a.pool),
 		likes:        postgres.NewLikeRepository(a.pool),
+		polls:        postgres.NewPollRepository(a.pool),
 		comments:     postgres.NewCommentRepository(a.pool),
 		commentLikes: postgres.NewCommentLikeRepository(a.pool),
 		suggestions:  postgres.NewSuggestionRepository(a.pool),

@@ -42,6 +42,10 @@ const (
 	PostService_ListPostLikers_FullMethodName         = "/post.v1.PostService/ListPostLikers"
 	PostService_ListReposts_FullMethodName            = "/post.v1.PostService/ListReposts"
 	PostService_ListCommentLikers_FullMethodName      = "/post.v1.PostService/ListCommentLikers"
+	PostService_GetPolls_FullMethodName               = "/post.v1.PostService/GetPolls"
+	PostService_VotePoll_FullMethodName               = "/post.v1.PostService/VotePoll"
+	PostService_RetractPollVote_FullMethodName        = "/post.v1.PostService/RetractPollVote"
+	PostService_ListPollVoters_FullMethodName         = "/post.v1.PostService/ListPollVoters"
 	PostService_CreateComment_FullMethodName          = "/post.v1.PostService/CreateComment"
 	PostService_DeleteComment_FullMethodName          = "/post.v1.PostService/DeleteComment"
 	PostService_LikeComment_FullMethodName            = "/post.v1.PostService/LikeComment"
@@ -158,6 +162,21 @@ type PostServiceClient interface {
 	// without the archived ones; NotFound for a missing or an archived post.
 	ListReposts(ctx context.Context, in *ListRepostsRequest, opts ...grpc.CallOption) (*ListRepostsResponse, error)
 	ListCommentLikers(ctx context.Context, in *ListCommentLikersRequest, opts ...grpc.CallOption) (*ListCommentLikersResponse, error)
+	// Public: the polls of the posts that ask one ("Опрос" of openvk), at
+	// most 100 posts, in no particular order; with an access token each
+	// says what the caller chose. The poll of an archived post is given to
+	// those who keep the archive only.
+	GetPolls(ctx context.Context, in *GetPollsRequest, opts ...grpc.CallOption) (*GetPollsResponse, error)
+	// Require an access token: the caller's vote in the poll of a post,
+	// cast once and changed by taking it back first. NotFound for a post
+	// without a poll or archived away from the caller; FailedPrecondition
+	// when the poll has ended, the caller has voted already (VotePoll), has
+	// not, or the poll does not let a vote be taken back (RetractPollVote).
+	VotePoll(ctx context.Context, in *VotePollRequest, opts ...grpc.CallOption) (*VotePollResponse, error)
+	RetractPollVote(ctx context.Context, in *RetractPollVoteRequest, opts ...grpc.CallOption) (*RetractPollVoteResponse, error)
+	// Public: who chose an option of a poll, newest first ("Список
+	// проголосовавших" of openvk); FailedPrecondition for an anonymous poll.
+	ListPollVoters(ctx context.Context, in *ListPollVotersRequest, opts ...grpc.CallOption) (*ListPollVotersResponse, error)
 	// Require an access token; the author is the caller. A comment is
 	// deleted by its author, by the author of the post or by the owner of
 	// the wall, the admins of a community.
@@ -508,6 +527,46 @@ func (c *postServiceClient) ListCommentLikers(ctx context.Context, in *ListComme
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListCommentLikersResponse)
 	err := c.cc.Invoke(ctx, PostService_ListCommentLikers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetPolls(ctx context.Context, in *GetPollsRequest, opts ...grpc.CallOption) (*GetPollsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPollsResponse)
+	err := c.cc.Invoke(ctx, PostService_GetPolls_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) VotePoll(ctx context.Context, in *VotePollRequest, opts ...grpc.CallOption) (*VotePollResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(VotePollResponse)
+	err := c.cc.Invoke(ctx, PostService_VotePoll_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) RetractPollVote(ctx context.Context, in *RetractPollVoteRequest, opts ...grpc.CallOption) (*RetractPollVoteResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RetractPollVoteResponse)
+	err := c.cc.Invoke(ctx, PostService_RetractPollVote_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListPollVoters(ctx context.Context, in *ListPollVotersRequest, opts ...grpc.CallOption) (*ListPollVotersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPollVotersResponse)
+	err := c.cc.Invoke(ctx, PostService_ListPollVoters_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1078,6 +1137,21 @@ type PostServiceServer interface {
 	// without the archived ones; NotFound for a missing or an archived post.
 	ListReposts(context.Context, *ListRepostsRequest) (*ListRepostsResponse, error)
 	ListCommentLikers(context.Context, *ListCommentLikersRequest) (*ListCommentLikersResponse, error)
+	// Public: the polls of the posts that ask one ("Опрос" of openvk), at
+	// most 100 posts, in no particular order; with an access token each
+	// says what the caller chose. The poll of an archived post is given to
+	// those who keep the archive only.
+	GetPolls(context.Context, *GetPollsRequest) (*GetPollsResponse, error)
+	// Require an access token: the caller's vote in the poll of a post,
+	// cast once and changed by taking it back first. NotFound for a post
+	// without a poll or archived away from the caller; FailedPrecondition
+	// when the poll has ended, the caller has voted already (VotePoll), has
+	// not, or the poll does not let a vote be taken back (RetractPollVote).
+	VotePoll(context.Context, *VotePollRequest) (*VotePollResponse, error)
+	RetractPollVote(context.Context, *RetractPollVoteRequest) (*RetractPollVoteResponse, error)
+	// Public: who chose an option of a poll, newest first ("Список
+	// проголосовавших" of openvk); FailedPrecondition for an anonymous poll.
+	ListPollVoters(context.Context, *ListPollVotersRequest) (*ListPollVotersResponse, error)
 	// Require an access token; the author is the caller. A comment is
 	// deleted by its author, by the author of the post or by the owner of
 	// the wall, the admins of a community.
@@ -1279,6 +1353,18 @@ func (UnimplementedPostServiceServer) ListReposts(context.Context, *ListRepostsR
 }
 func (UnimplementedPostServiceServer) ListCommentLikers(context.Context, *ListCommentLikersRequest) (*ListCommentLikersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListCommentLikers not implemented")
+}
+func (UnimplementedPostServiceServer) GetPolls(context.Context, *GetPollsRequest) (*GetPollsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPolls not implemented")
+}
+func (UnimplementedPostServiceServer) VotePoll(context.Context, *VotePollRequest) (*VotePollResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method VotePoll not implemented")
+}
+func (UnimplementedPostServiceServer) RetractPollVote(context.Context, *RetractPollVoteRequest) (*RetractPollVoteResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RetractPollVote not implemented")
+}
+func (UnimplementedPostServiceServer) ListPollVoters(context.Context, *ListPollVotersRequest) (*ListPollVotersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPollVoters not implemented")
 }
 func (UnimplementedPostServiceServer) CreateComment(context.Context, *CreateCommentRequest) (*CreateCommentResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateComment not implemented")
@@ -1843,6 +1929,78 @@ func _PostService_ListCommentLikers_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).ListCommentLikers(ctx, req.(*ListCommentLikersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetPolls_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPollsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetPolls(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetPolls_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetPolls(ctx, req.(*GetPollsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_VotePoll_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VotePollRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).VotePoll(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_VotePoll_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).VotePoll(ctx, req.(*VotePollRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_RetractPollVote_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RetractPollVoteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).RetractPollVote(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_RetractPollVote_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).RetractPollVote(ctx, req.(*RetractPollVoteRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListPollVoters_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPollVotersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListPollVoters(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListPollVoters_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListPollVoters(ctx, req.(*ListPollVotersRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2841,6 +2999,22 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListCommentLikers",
 			Handler:    _PostService_ListCommentLikers_Handler,
+		},
+		{
+			MethodName: "GetPolls",
+			Handler:    _PostService_GetPolls_Handler,
+		},
+		{
+			MethodName: "VotePoll",
+			Handler:    _PostService_VotePoll_Handler,
+		},
+		{
+			MethodName: "RetractPollVote",
+			Handler:    _PostService_RetractPollVote_Handler,
+		},
+		{
+			MethodName: "ListPollVoters",
+			Handler:    _PostService_ListPollVoters_Handler,
 		},
 		{
 			MethodName: "CreateComment",

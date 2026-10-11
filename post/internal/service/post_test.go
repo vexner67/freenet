@@ -144,7 +144,7 @@ func (fakeTx) WithinTx(ctx context.Context, fn func(ctx context.Context) error) 
 
 func newPostService() *service.PostService {
 	store := inmem.NewStore()
-	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}, Switches: store.Posts()})
+	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}, Switches: store.Posts(), Polls: store.Polls()})
 }
 
 func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...string) []*post.Post {

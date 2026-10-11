@@ -24,6 +24,10 @@ type Store struct {
 	// commentLikes are comment → users → when, counted in the comments.
 	commentLikes map[uuid.UUID]map[uuid.UUID]time.Time
 	pins         map[uuid.UUID]uuid.UUID // wall → its pinned post
+	// polls are post → the poll it asks, and pollVotes post → users →
+	// their choice, counted in the poll.
+	polls     map[uuid.UUID]*post.Poll
+	pollVotes map[uuid.UUID]map[uuid.UUID]pollVote
 }
 
 func NewStore() *Store {
@@ -33,6 +37,8 @@ func NewStore() *Store {
 		comments:     make(map[uuid.UUID]*post.Comment),
 		commentLikes: make(map[uuid.UUID]map[uuid.UUID]time.Time),
 		pins:         make(map[uuid.UUID]uuid.UUID),
+		polls:        make(map[uuid.UUID]*post.Poll),
+		pollVotes:    make(map[uuid.UUID]map[uuid.UUID]pollVote),
 	}
 }
 
@@ -97,6 +103,8 @@ func (s *Store) setPinned(id uuid.UUID, pinned bool) {
 // deletes.
 func (s *Store) remove(p *post.Post) {
 	delete(s.posts, p.ID())
+	delete(s.polls, p.ID())
+	delete(s.pollVotes, p.ID())
 	delete(s.likes, p.ID())
 
 	if s.pins[p.WallID()] == p.ID() {
