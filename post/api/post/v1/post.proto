@@ -385,6 +385,8 @@ message RepostPostRequest {
   // 10 and the caller's own, as the caller of RepostPost has checked;
   // none with photo_id.
   repeated string photo_ids = 7;
+  // The people the text names, as in CreatePostRequest.
+  repeated string mentioned_ids = 8;
 }
 
 message RepostPostResponse {
@@ -403,6 +405,9 @@ message EditPostRequest {
   repeated string photo_ids = 3;
   // Marks the post as adult or takes the mark off; unset leaves it.
   optional bool nsfw = 4;
+  // The people the new text names, as in CreatePostRequest; those the
+  // post named before are not told twice.
+  repeated string mentioned_ids = 5;
 }
 
 message EditPostResponse {
@@ -1069,6 +1074,8 @@ message CreatePhotoCommentRequest {
   string text = 2;
   // The comment under the same photo this one answers; empty for none.
   string reply_to_id = 3;
+  // The people the text names, as in CreatePostRequest.
+  repeated string mentioned_ids = 4;
 }
 
 message GetPhotoCommentsRequest {

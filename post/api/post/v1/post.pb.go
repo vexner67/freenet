@@ -1207,7 +1207,9 @@ type RepostPostRequest struct {
 	// Photos the caller adds to their words about a shared post, at most
 	// 10 and the caller's own, as the caller of RepostPost has checked;
 	// none with photo_id.
-	PhotoIds      []string `protobuf:"bytes,7,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	PhotoIds []string `protobuf:"bytes,7,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
+	// The people the text names, as in CreatePostRequest.
+	MentionedIds  []string `protobuf:"bytes,8,rep,name=mentioned_ids,json=mentionedIds,proto3" json:"mentioned_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1287,6 +1289,13 @@ func (x *RepostPostRequest) GetPhotoId() string {
 func (x *RepostPostRequest) GetPhotoIds() []string {
 	if x != nil {
 		return x.PhotoIds
+	}
+	return nil
+}
+
+func (x *RepostPostRequest) GetMentionedIds() []string {
+	if x != nil {
+		return x.MentionedIds
 	}
 	return nil
 }
@@ -1387,7 +1396,10 @@ type EditPostRequest struct {
 	Text     string   `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
 	PhotoIds []string `protobuf:"bytes,3,rep,name=photo_ids,json=photoIds,proto3" json:"photo_ids,omitempty"`
 	// Marks the post as adult or takes the mark off; unset leaves it.
-	Nsfw          *bool `protobuf:"varint,4,opt,name=nsfw,proto3,oneof" json:"nsfw,omitempty"`
+	Nsfw *bool `protobuf:"varint,4,opt,name=nsfw,proto3,oneof" json:"nsfw,omitempty"`
+	// The people the new text names, as in CreatePostRequest; those the
+	// post named before are not told twice.
+	MentionedIds  []string `protobuf:"bytes,5,rep,name=mentioned_ids,json=mentionedIds,proto3" json:"mentioned_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1448,6 +1460,13 @@ func (x *EditPostRequest) GetNsfw() bool {
 		return *x.Nsfw
 	}
 	return false
+}
+
+func (x *EditPostRequest) GetMentionedIds() []string {
+	if x != nil {
+		return x.MentionedIds
+	}
+	return nil
 }
 
 type EditPostResponse struct {
@@ -6876,7 +6895,9 @@ type CreatePhotoCommentRequest struct {
 	PhotoId string                 `protobuf:"bytes,1,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	Text    string                 `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
 	// The comment under the same photo this one answers; empty for none.
-	ReplyToId     string `protobuf:"bytes,3,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
+	ReplyToId string `protobuf:"bytes,3,opt,name=reply_to_id,json=replyToId,proto3" json:"reply_to_id,omitempty"`
+	// The people the text names, as in CreatePostRequest.
+	MentionedIds  []string `protobuf:"bytes,4,rep,name=mentioned_ids,json=mentionedIds,proto3" json:"mentioned_ids,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -6930,6 +6951,13 @@ func (x *CreatePhotoCommentRequest) GetReplyToId() string {
 		return x.ReplyToId
 	}
 	return ""
+}
+
+func (x *CreatePhotoCommentRequest) GetMentionedIds() []string {
+	if x != nil {
+		return x.MentionedIds
+	}
+	return nil
 }
 
 type GetPhotoCommentsRequest struct {
@@ -7987,7 +8015,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x04nsfw\x18\b \x01(\bR\x04nsfw\x12#\n" +
 	"\rmentioned_ids\x18\t \x03(\tR\fmentionedIds\"7\n" +
 	"\x12CreatePostResponse\x12!\n" +
-	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"\xc6\x01\n" +
+	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"\xeb\x01\n" +
 	"\x11RepostPostRequest\x12\x17\n" +
 	"\apost_id\x18\x01 \x01(\tR\x06postId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x17\n" +
@@ -7995,16 +8023,18 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\tfrom_wall\x18\x04 \x01(\bR\bfromWall\x12\x16\n" +
 	"\x06signed\x18\x05 \x01(\bR\x06signed\x12\x19\n" +
 	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\x12\x1b\n" +
-	"\tphoto_ids\x18\a \x03(\tR\bphotoIds\"7\n" +
+	"\tphoto_ids\x18\a \x03(\tR\bphotoIds\x12#\n" +
+	"\rmentioned_ids\x18\b \x03(\tR\fmentionedIds\"7\n" +
 	"\x12RepostPostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\"#\n" +
 	"\x11DeletePostRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"t\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\x99\x01\n" +
 	"\x0fEditPostRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
 	"\tphoto_ids\x18\x03 \x03(\tR\bphotoIds\x12\x17\n" +
-	"\x04nsfw\x18\x04 \x01(\bH\x00R\x04nsfw\x88\x01\x01B\a\n" +
+	"\x04nsfw\x18\x04 \x01(\bH\x00R\x04nsfw\x88\x01\x01\x12#\n" +
+	"\rmentioned_ids\x18\x05 \x03(\tR\fmentionedIdsB\a\n" +
 	"\x05_nsfw\"5\n" +
 	"\x10EditPostResponse\x12!\n" +
 	"\x04post\x18\x01 \x01(\v2\r.post.v1.PostR\x04post\" \n" +
@@ -8390,11 +8420,12 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\n" +
 	"like_count\x18\t \x01(\x05R\tlikeCount\x12\x14\n" +
 	"\x05liked\x18\n" +
-	" \x01(\bR\x05liked\"j\n" +
+	" \x01(\bR\x05liked\"\x8f\x01\n" +
 	"\x19CreatePhotoCommentRequest\x12\x19\n" +
 	"\bphoto_id\x18\x01 \x01(\tR\aphotoId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1e\n" +
-	"\vreply_to_id\x18\x03 \x01(\tR\treplyToId\"J\n" +
+	"\vreply_to_id\x18\x03 \x01(\tR\treplyToId\x12#\n" +
+	"\rmentioned_ids\x18\x04 \x03(\tR\fmentionedIds\"J\n" +
 	"\x17GetPhotoCommentsRequest\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\x12\x1d\n" +
 	"\n" +

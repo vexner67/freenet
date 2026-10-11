@@ -90,7 +90,7 @@ type AlbumService interface {
 	UnlikePhoto(ctx context.Context, userID, photoID uuid.UUID) (int, error)
 	LikedPhotos(ctx context.Context, userID uuid.UUID, photoIDs []uuid.UUID) (map[uuid.UUID]bool, error)
 	PhotoLikers(ctx context.Context, photoID uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
-	CommentPhoto(ctx context.Context, authorID, photoID, replyTo uuid.UUID, text post.CommentText) (*post.PhotoComment, error)
+	CommentPhoto(ctx context.Context, in service.PhotoCommentInput) (*post.PhotoComment, error)
 	DeletePhotoComment(ctx context.Context, requesterID, id uuid.UUID) error
 	PhotoComments(ctx context.Context, viewerID, photoID, after uuid.UUID, size int) (service.PhotoCommentPage, error)
 	PhotoCommentsByID(ctx context.Context, ids []uuid.UUID) ([]*post.PhotoComment, error)
@@ -212,8 +212,14 @@ func (h *PostHandler) RepostPost(ctx context.Context, req *postv1.RepostPostRequ
 		return nil, err
 	}
 
+	mentions, err := parseMentions(req.GetMentionedIds())
+	if err != nil {
+		return nil, err
+	}
+
 	in := service.RepostInput{
 		AuthorID: authorID, PostID: postID, Text: text, Photos: photos, FromWall: req.GetFromWall(), Signed: req.GetSigned(),
+		Mentions: mentions,
 	}
 	if req.GetPhotoId() != "" {
 		if in.PhotoID, err = uuid.Parse(req.GetPhotoId()); err != nil {
@@ -250,7 +256,14 @@ func (h *PostHandler) EditPost(ctx context.Context, req *postv1.EditPostRequest)
 		return nil, err
 	}
 
-	p, liked, err := h.postService.Edit(ctx, requesterID, postID, service.PostEdit{Text: text, Photos: photos, NSFW: req.Nsfw})
+	mentions, err := parseMentions(req.GetMentionedIds())
+	if err != nil {
+		return nil, err
+	}
+
+	edit := service.PostEdit{Text: text, Photos: photos, NSFW: req.Nsfw, Mentions: mentions}
+
+	p, liked, err := h.postService.Edit(ctx, requesterID, postID, edit)
 	if err != nil {
 		return nil, err
 	}

@@ -305,13 +305,8 @@ func postEvents(p *post.Post, in CreateInput) []Event {
 		events = append(events, Event{Kind: EventWallPost, RecipientID: owner, ActorID: p.AuthorID(), PostID: p.ID()})
 	}
 
-	actor := p.AuthorID()
-	if p.FromWall() {
-		actor = p.WallID()
-	}
-
 	for _, id := range in.Mentions.Heard(p.AuthorID(), owner) {
-		events = append(events, Event{Kind: EventPostMention, RecipientID: id, ActorID: actor, PostID: p.ID()})
+		events = append(events, Event{Kind: EventPostMention, RecipientID: id, ActorID: speaker(p), PostID: p.ID()})
 	}
 
 	return events
@@ -333,13 +328,16 @@ type RepostInput struct {
 	WallID   uuid.UUID
 	FromWall bool
 	Signed   bool
+	// Mentions are the people the text names, whom the caller found.
+	Mentions post.Mentions
 }
 
 // Repost shares a post, with text that may be empty, as openvk's
 // "Поделиться" does: on the author's wall or a community's. A repost that
 // passes another post on without a word is not shared itself: its
 // original is (see post.Shared). The author of the shared post hears
-// about it, from the community when the repost speaks for it.
+// about it, and the people its text names of that, from the community
+// when the repost speaks for it.
 func (s *PostService) Repost(ctx context.Context, in RepostInput) (*post.Post, error) {
 	authorID := in.AuthorID
 
@@ -348,7 +346,7 @@ func (s *PostService) Repost(ctx context.Context, in RepostInput) (*post.Post, e
 		return nil, err
 	}
 
-	wallID, actorID := authorID, authorID
+	wallID := authorID
 	if in.WallID != uuid.Nil {
 		wallID = in.WallID
 	}
@@ -356,7 +354,6 @@ func (s *PostService) Repost(ctx context.Context, in RepostInput) (*post.Post, e
 	var repost *post.Post
 	if in.FromWall {
 		repost, err = post.NewFromWall(wallID, authorID, content, in.Signed, s.now())
-		actorID = wallID
 	} else {
 		repost, err = post.New(wallID, authorID, content, s.now())
 	}
@@ -381,17 +378,47 @@ func (s *PostService) Repost(ctx context.Context, in RepostInput) (*post.Post, e
 			return errs.Wrap("s.publishPhotos", err)
 		}
 
-		if recipient == uuid.Nil || recipient == authorID || recipient == actorID {
-			return nil
+		for _, e := range repostEvents(repost, recipient, in.Mentions) {
+			if err := s.notifier.Notify(ctx, e); err != nil {
+				return errs.Wrap("s.notifier.Notify", err)
+			}
 		}
 
-		return errs.Wrap("s.notifier.Notify", s.notifier.Notify(ctx, Event{Kind: EventRepost, RecipientID: recipient, ActorID: actorID, PostID: repost.ID()}))
+		return nil
 	})
 	if err != nil {
 		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return repost, nil
+}
+
+// repostEvents are the notifications of the new repost: shared, the
+// author of the post it shares, hears of it (uuid.Nil for nobody), and the
+// people its text names of that, unless they heard as that author.
+func repostEvents(repost *post.Post, shared uuid.UUID, mentions post.Mentions) []Event {
+	var events []Event
+
+	actor := speaker(repost)
+	if shared != uuid.Nil && shared != repost.AuthorID() && shared != actor {
+		events = append(events, Event{Kind: EventRepost, RecipientID: shared, ActorID: actor, PostID: repost.ID()})
+	}
+
+	for _, id := range mentions.Heard(repost.AuthorID(), shared) {
+		events = append(events, Event{Kind: EventPostMention, RecipientID: id, ActorID: actor, PostID: repost.ID()})
+	}
+
+	return events
+}
+
+// speaker is in whose name p names people: its author, or the community
+// it speaks for.
+func speaker(p *post.Post) uuid.UUID {
+	if p.FromWall() {
+		return p.WallID()
+	}
+
+	return p.AuthorID()
 }
 
 // repostContent is what a repost shows and whom to notify: the shared
@@ -565,10 +592,14 @@ type PostEdit struct {
 	Text   post.Text
 	Photos post.Photos
 	NSFW   *bool
+	// Mentions are the people the new text names, whom the caller found.
+	Mentions post.Mentions
 }
 
 // Edit changes what a post says, by its author within a week (see
 // post.Edited). Media keeps the photos added and deletes those taken away.
+// The people the new text names hear of it: those the post named before
+// have their notification already, and it is not sent twice.
 // It returns the edited post and whether the author likes it.
 func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, edit PostEdit) (*post.Post, bool, error) {
 	text, photos := edit.Text, edit.Photos
@@ -604,7 +635,17 @@ func (s *PostService) Edit(ctx context.Context, requesterID, postID uuid.UUID, e
 		}
 
 		if len(removed) > 0 {
-			return errs.Wrap("s.photos.Delete", s.photos.Delete(ctx, p.AuthorID(), removed))
+			if err := s.photos.Delete(ctx, p.AuthorID(), removed); err != nil {
+				return errs.Wrap("s.photos.Delete", err)
+			}
+		}
+
+		// The owner of the wall heard of the post when it was written.
+		for _, id := range edit.Mentions.Heard(p.AuthorID(), p.WallID()) {
+			e := Event{Kind: EventPostMention, RecipientID: id, ActorID: speaker(p), PostID: p.ID()}
+			if err := s.notifier.Notify(ctx, e); err != nil {
+				return errs.Wrap("s.notifier.Notify", err)
+			}
 		}
 
 		return nil

@@ -688,6 +688,39 @@ func TestPostService_Repost(t *testing.T) {
 	if last.ActorID != club || last.RecipientID != ann || last.PostID != inClub.ID() {
 		t.Fatalf("notified %+v, want from the club", last)
 	}
+
+	// The words of a repost name ann, bob and cat herself: ann hears of
+	// the repost, as the author of what is shared, and bob of his name.
+	notifier.notified = nil
+	named, err := svc.Repost(ctx, service.RepostInput{
+		AuthorID: cat, PostID: original.ID(), Text: "@ann, @bob", Mentions: post.Mentions{ann, bob, cat},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantNamed := []service.Event{
+		{Kind: service.EventRepost, RecipientID: ann, ActorID: cat, PostID: named.ID()},
+		{Kind: service.EventPostMention, RecipientID: bob, ActorID: cat, PostID: named.ID()},
+	}
+	if !slices.Equal(notifier.notified, wantNamed) {
+		t.Fatalf("notified = %+v, want %+v", notifier.notified, wantNamed)
+	}
+
+	// For a community the name is said by the community.
+	notifier.notified = nil
+	forClub, err := svc.Repost(ctx, service.RepostInput{
+		AuthorID: cat, PostID: original.ID(), Text: "@bob", WallID: club, FromWall: true, Mentions: post.Mentions{bob},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantNamed = []service.Event{
+		{Kind: service.EventRepost, RecipientID: ann, ActorID: club, PostID: forClub.ID()},
+		{Kind: service.EventPostMention, RecipientID: bob, ActorID: club, PostID: forClub.ID()},
+	}
+	if !slices.Equal(notifier.notified, wantNamed) {
+		t.Fatalf("notified for the club = %+v, want %+v", notifier.notified, wantNamed)
+	}
 }
 
 func TestPostService_RepostsOfAPost(t *testing.T) {
@@ -841,7 +874,8 @@ func TestPostService_Edit(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
-	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos, Moderators: fakeModerators{}})
+	notifier := &fakeNotifier{}
+	svc := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos, Moderators: fakeModerators{}})
 	author, stranger := uuid.New(), uuid.New()
 	kept, dropped, added := uuid.New(), uuid.New(), uuid.New()
 
@@ -889,6 +923,35 @@ func TestPostService_Edit(t *testing.T) {
 
 	if _, _, err = svc.Edit(ctx, author, uuid.New(), service.PostEdit{Text: "нет", Photos: nil}); !errors.Is(err, post.ErrNotFound) {
 		t.Fatalf("a missing post: %v", err)
+	}
+	if len(notifier.notified) != 0 {
+		t.Fatalf("notified = %+v, want nobody: the edits name no one", notifier.notified)
+	}
+
+	// The edited text names a stranger and the author: the stranger hears.
+	named := service.PostEdit{Text: "@stranger", Photos: post.Photos{kept}, Mentions: post.Mentions{stranger, author}}
+	if _, _, err = svc.Edit(ctx, author, p.ID(), named); err != nil {
+		t.Fatal(err)
+	}
+	want := []service.Event{{Kind: service.EventPostMention, RecipientID: stranger, ActorID: author, PostID: p.ID()}}
+	if !slices.Equal(notifier.notified, want) {
+		t.Fatalf("notified = %+v, want %+v", notifier.notified, want)
+	}
+
+	// On another's wall its owner heard of the post already.
+	owner := uuid.New()
+	guest, err := svc.Create(ctx, service.CreateInput{WallID: owner, AuthorID: author, Content: content})
+	if err != nil {
+		t.Fatal(err)
+	}
+	notifier.notified = nil
+	named = service.PostEdit{Text: "@owner, @stranger", Mentions: post.Mentions{owner, stranger}}
+	if _, _, err = svc.Edit(ctx, author, guest.ID(), named); err != nil {
+		t.Fatal(err)
+	}
+	want = []service.Event{{Kind: service.EventPostMention, RecipientID: stranger, ActorID: author, PostID: guest.ID()}}
+	if !slices.Equal(notifier.notified, want) {
+		t.Fatalf("notified on another's wall = %+v, want %+v", notifier.notified, want)
 	}
 }
 
