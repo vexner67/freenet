@@ -112,6 +112,12 @@ call GET "/api/v1/clubs/$club/posts" | jq -e '.total == 1 and .canPost' >/dev/nu
 call GET /api/v1/feed | jq -e '[.posts[] | select(.fromWall)] | length == 1' >/dev/null
 step "club: a club, a post for it on its wall and in the feed"
 
+poll=$(expect=201 call POST /api/v1/me/posts '{"poll":{"title":"Smoke?","options":["yes","no"]}}' | jq -r 'select(.poll.options | length == 2) | .id')
+call PUT "/api/v1/posts/$poll/poll/vote" '{"options":[1]}' | jq -e '.voted == [1] and .voters == 1' >/dev/null
+call GET "/api/v1/posts/$poll" | jq -e '.poll.options[1].votes == 1 and .poll.voted == [1]' >/dev/null
+token='' call GET "/api/v1/posts/$poll/poll/voters?option=1" | jq -e '.total == 1' >/dev/null
+step "post: a poll, a vote in it and who voted"
+
 # refresh replaces the tokens, as the website does after deleting and
 # restoring the page.
 refresh() {
