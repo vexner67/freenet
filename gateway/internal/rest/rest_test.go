@@ -384,6 +384,7 @@ func (f *fakeUsers) markedOnline() []string {
 type fakePosts struct {
 	authors, walls []string
 	lastAsked      []string
+	feedMore       []model.Post
 	hideNSFW       bool
 	// hidden are the authors the last feed was asked to leave out.
 	hidden                 []string
@@ -592,12 +593,12 @@ func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSour
 	f.token, f.authors, f.walls, f.cursor, f.hideNSFW = token, sources.Authors, sources.Walls, cursor, sources.HideNSFW
 	f.everyone, f.hidden = sources.Everyone, sources.Hidden
 	return model.PostPage{
-		Posts: []model.Post{
+		Posts: append([]model.Post{
 			{ID: "p3", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "от боба", Likes: 1, Liked: true},
 			{ID: "p2", Author: model.Author{ID: "gone"}, Wall: model.Author{ID: "gone"}, Text: "автор удалился"},
 			{ID: "p5", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "gone"}, Text: "на исчезнувшей стене"},
 			{ID: "p1", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "моя"},
-		},
+		}, f.feedMore...),
 		NextCursor: "p1",
 	}, nil
 }

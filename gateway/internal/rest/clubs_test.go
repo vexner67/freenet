@@ -33,6 +33,7 @@ type fakeClubs struct {
 	event                model.NewEvent
 	going, kind, period  string
 	clubsOf              string
+	rolesAsked           []string
 	err                  error
 }
 
@@ -187,6 +188,15 @@ func (f *fakeClubs) Pinned(_ context.Context, token string) ([]model.Club, error
 
 func (f *fakeClubs) MineIDs(_ context.Context, token string) ([]string, error) {
 	return []string{"k1"}, f.err
+}
+
+// MyRoles: the caller is what the test says in the club of cats alone.
+func (f *fakeClubs) MyRoles(_ context.Context, token string, clubIDs []string) (map[string]string, error) {
+	f.rolesAsked = clubIDs
+	if f.role == "" || !slices.Contains(clubIDs, "k1") {
+		return nil, f.err
+	}
+	return map[string]string{"k1": f.role}, f.err
 }
 
 // CanPostOnWall lets the admins only for the club or on a wall that is
@@ -403,6 +413,41 @@ func TestFeed_Clubs(t *testing.T) {
 	if w := h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || !slices.Equal(h.posts.walls, []string{"k1", "u2", "gone", "u1"}) {
 		t.Fatalf("feed: %d, walls %v: the clubs, the followed and me", w.Code, h.posts.walls)
 	}
+
+	// Whoever runs a community moderates its wall from the news: the
+	// posts of others there and those in its name, not the walls of people.
+	feed := func(role string) map[string]bool {
+		t.Helper()
+
+		h := newHarness(rest.Config{})
+		h.clubs.role = role
+		h.posts.feedMore = []model.Post{
+			{ID: "p6", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "k1"}, Text: "в группе"},
+			{ID: "p7", Author: model.Author{ID: "k1"}, Wall: model.Author{ID: "k1"}, Text: "от группы", FromWall: true},
+		}
+		w := h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok")
+		got := decode[struct {
+			Posts []struct {
+				ID        string `json:"id"`
+				Moderated bool   `json:"moderated"`
+			} `json:"posts"`
+		}](t, w)
+		if w.Code != http.StatusOK || !slices.Equal(h.clubs.rolesAsked, []string{"k1"}) {
+			t.Fatalf("feed as %q: %d, roles asked in %v", role, w.Code, h.clubs.rolesAsked)
+		}
+
+		moderated := map[string]bool{}
+		for _, p := range got.Posts {
+			moderated[p.ID] = p.Moderated
+		}
+		return moderated
+	}
+	if got := feed("admin"); !got["p6"] || !got["p7"] || got["p3"] || got["p1"] {
+		t.Fatalf("an admin moderates %v", got)
+	}
+	if got := feed("member"); got["p6"] || got["p7"] {
+		t.Fatalf("a member moderates %v", got)
+	}
 }
 
 func TestClubAvatar(t *testing.T) {
@@ -555,14 +600,31 @@ func TestUserClubs(t *testing.T) {
 		Clubs []struct {
 			Name   string            `json:"name"`
 			Avatar map[string]string `json:"avatar"`
+			Role   string            `json:"role"`
 		} `json:"clubs"`
 		NextCursor string `json:"nextCursor"`
 		Total      int    `json:"total"`
 	}](t, w)
 	if w.Code != http.StatusOK || len(got.Clubs) != 1 || got.Clubs[0].Name != "Кошки" || got.Total != 4 || got.NextCursor != "k1" ||
-		h.clubs.clubsOf != "u2" || h.users.accessAsked != "u2" {
+		h.clubs.clubsOf != "u2" || h.users.accessAsked != "u2" || got.Clubs[0].Role != "" || h.clubs.rolesAsked != nil {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
+
+	// A viewer who is in the club is told so, to leave it from the list.
+	h.clubs.role = "member"
+	w = h.do("GET", "/api/v1/users/bob/clubs", "", "Authorization", "Bearer tok")
+	if got = decode[struct {
+		Clubs []struct {
+			Name   string            `json:"name"`
+			Avatar map[string]string `json:"avatar"`
+			Role   string            `json:"role"`
+		} `json:"clubs"`
+		NextCursor string `json:"nextCursor"`
+		Total      int    `json:"total"`
+	}](t, w); w.Code != http.StatusOK || got.Clubs[0].Role != "member" {
+		t.Fatalf("as a member: %d %+v", w.Code, got)
+	}
+	h.clubs.role = ""
 
 	h.users.hiddenClubs = true
 	h.clubs.clubsOf = ""

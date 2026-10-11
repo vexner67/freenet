@@ -243,7 +243,52 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = a.markModerated(r, token, resp.Posts); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	writeJSON(w, http.StatusOK, resp)
+}
+
+// markModerated marks the posts on the walls of the communities the reader
+// runs: in the news they delete, pin and put those away as on the wall.
+func (a *api) markModerated(r *http.Request, token string, posts []postResponse) error {
+	var clubs []string
+	for _, p := range posts {
+		if id := clubWall(p); id != "" {
+			clubs = append(clubs, id)
+		}
+	}
+
+	if len(clubs) == 0 {
+		return nil
+	}
+
+	// A page of the news is at most 50 posts, fewer than one request takes.
+	mine, err := a.clubs.MyRoles(r.Context(), token, unique(clubs))
+	if err != nil {
+		return err
+	}
+
+	for i, p := range posts {
+		posts[i].Moderated = manages(mine[clubWall(p)])
+	}
+
+	return nil
+}
+
+// clubWall is the community whose wall the post is on, "" for a person's:
+// a post in its name has it as the author.
+func clubWall(p postResponse) string {
+	switch {
+	case p.Wall != nil && p.Wall.Club:
+		return p.Wall.ID
+	case p.Wall == nil && p.Author.Club:
+		return p.Author.ID
+	default:
+		return ""
+	}
 }
 
 // maxProfilesPerRequest is what one GetProfiles of the user service takes,

@@ -385,6 +385,21 @@ func (c *Clubs) MineIDs(ctx context.Context, accessToken string) ([]string, erro
 	return resp.GetClubIds(), nil
 }
 
+// MyRoles tells what the caller is in those of clubIDs they are in.
+func (c *Clubs) MyRoles(ctx context.Context, accessToken string, clubIDs []string) (map[string]string, error) {
+	resp, err := c.api.ListMyRoles(withToken(ctx, accessToken), &clubv1.ListMyRolesRequest{ClubIds: clubIDs})
+	if err != nil {
+		return nil, errs.Wrap("c.api.ListMyRoles", fromStatus(err))
+	}
+
+	mine := make(map[string]string, len(resp.GetRoles()))
+	for _, r := range resp.GetRoles() {
+		mine[r.GetClubId()] = roles[r.GetRole()]
+	}
+
+	return mine, nil
+}
+
 // CanPostOnWall tells whether the caller may write on the club's wall, on
 // their own behalf or, fromClub, on the club's, or else suggest a post.
 func (c *Clubs) CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (model.WallAccess, error) {
