@@ -80,6 +80,8 @@ func (f *fakeAuth) Logout(context.Context, string) error { return f.err }
 type fakeUsers struct {
 	// named are the nicknames the gateway asked ResolveMentions about.
 	named []string
+	// uninvitable is the nickname of who lets nobody add them to chats.
+	uninvitable string
 	// blockedIDs are whom the caller blacklisted, as BlockedIDs tells.
 	blockedIDs []string
 	// ignoredIDs are the walls the caller's news leave out, as IgnoredIDs
@@ -270,6 +272,20 @@ func (f *fakeUsers) KnownNicknames(_ context.Context, nicknames []string) ([]str
 	}
 
 	return known, f.err
+}
+
+// ResolveInvites knows bob (u2) and cat (u3), who let the caller add them
+// unless uninvitable.
+func (f *fakeUsers) ResolveInvites(_ context.Context, _ string, nicknames []string) ([]model.Invitee, error) {
+	var invitees []model.Invitee
+	for _, n := range nicknames {
+		n = strings.ToLower(n)
+		if id, ok := map[string]string{"bob": "u2", "cat": "u3"}[n]; ok {
+			invitees = append(invitees, model.Invitee{Nickname: n, UserID: id, Allowed: n != f.uninvitable})
+		}
+	}
+
+	return invitees, f.err
 }
 
 // ResolveMentions knows ann (u1) and bob (u2), unless they are blocked.
@@ -1217,6 +1233,7 @@ type harness struct {
 	media         *fakeMedia
 	notifications *fakeNotifications
 	messages      *fakeMessages
+	chats         *fakeChats
 	clubs         *fakeClubs
 	topics        *fakeTopics
 	albums        *fakeAlbums
@@ -1236,6 +1253,7 @@ func newHarness(cfg rest.Config) harness {
 		media:         &fakeMedia{},
 		notifications: &fakeNotifications{},
 		messages:      &fakeMessages{},
+		chats:         &fakeChats{},
 		clubs:         &fakeClubs{},
 		topics:        &fakeTopics{},
 		albums:        &fakeAlbums{},
@@ -1250,6 +1268,7 @@ func newHarness(cfg rest.Config) harness {
 		Media:         h.media,
 		Notifications: h.notifications,
 		Messages:      h.messages,
+		Chats:         h.chats,
 		Clubs:         h.clubs,
 		Topics:        h.topics,
 		Albums:        h.albums,

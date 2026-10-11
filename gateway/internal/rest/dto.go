@@ -189,6 +189,8 @@ type privacyJSON struct {
 	FriendsRead        string `json:"friendsRead"`
 	OnlineRead         string `json:"onlineRead"`
 	NotesRead          string `json:"notesRead"`
+	// ChatsInvite: who may add the user to chats; "" leaves the default.
+	ChatsInvite string `json:"chatsInvite"`
 }
 
 func (p privacyJSON) toModel() model.Privacy {
@@ -206,6 +208,7 @@ func (p privacyJSON) toModel() model.Privacy {
 		FriendsRead:        p.FriendsRead,
 		OnlineRead:         p.OnlineRead,
 		NotesRead:          p.NotesRead,
+		ChatsInvite:        p.ChatsInvite,
 	}
 }
 
@@ -297,6 +300,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			FriendsRead:        u.Privacy.FriendsRead,
 			OnlineRead:         u.Privacy.OnlineRead,
 			NotesRead:          u.Privacy.NotesRead,
+			ChatsInvite:        u.Privacy.ChatsInvite,
 		},
 		Deactivated: u.Deactivated,
 		PurgeAt:     timeString(u.PurgeAt),

@@ -128,6 +128,13 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 		return model.User{}, errs.Wrap("enumValue", err)
 	}
 
+	// An empty ChatsInvite, from a client that does not know it, leaves
+	// the default.
+	chatsInvite, err := enumValue(p.ChatsInvite, messagesWritePrefix, "chats invite", userv1.MessagesWrite_value)
+	if err != nil {
+		return model.User{}, errs.Wrap("enumValue", err)
+	}
+
 	// An empty NotesRead, from a client that does not know it, is everyone.
 	var reads [6]userv1.Audience
 	for i, a := range []string{p.PageRead, p.InfoRead, p.PhotosRead, p.FriendsRead, p.OnlineRead, p.NotesRead} {
@@ -153,6 +160,7 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 			FriendsRead:        reads[3],
 			OnlineRead:         reads[4],
 			NotesRead:          reads[5],
+			ChatsInvite:        userv1.MessagesWrite(chatsInvite),
 		},
 	})
 	if err != nil {
@@ -278,6 +286,22 @@ func (u *Users) ResolveMentions(ctx context.Context, accessToken string, nicknam
 	}
 
 	return resp.GetUserIds(), nil
+}
+
+// ResolveInvites are the people the caller names by nickname to add to a
+// chat, and whether each lets them; nobody for an unknown nickname.
+func (u *Users) ResolveInvites(ctx context.Context, accessToken string, nicknames []string) ([]model.Invitee, error) {
+	resp, err := u.api.ResolveInvites(withToken(ctx, accessToken), &userv1.ResolveInvitesRequest{Nicknames: nicknames})
+	if err != nil {
+		return nil, errs.Wrap("u.api.ResolveInvites", fromStatus(err))
+	}
+
+	invitees := make([]model.Invitee, 0, len(resp.GetInvitees()))
+	for _, i := range resp.GetInvitees() {
+		invitees = append(invitees, model.Invitee{Nickname: i.GetNickname(), UserID: i.GetUserId(), Allowed: i.GetAllowed()})
+	}
+
+	return invitees, nil
 }
 
 // KnownNicknames are those of nicknames that are someone's.

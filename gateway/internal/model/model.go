@@ -120,6 +120,9 @@ type Privacy struct {
 	FriendsRead string
 	OnlineRead  string
 	NotesRead   string
+	// ChatsInvite is "Кто может добавлять меня в чаты": "everyone",
+	// "following" or "nobody"; "" leaves the default.
+	ChatsInvite string
 }
 
 // Access is what of a page the viewer may see: the page, its information,
@@ -574,12 +577,23 @@ type DialogPage struct {
 // MessageEvent is what happened in the caller's dialogs: a new message,
 // sent or received, a read mark that moved, a message deleted by the
 // caller for themselves, or one edited or taken back by its sender. One
-// of the four is set.
+// of the four is set, or one of those of the caller's chats: a new
+// message, one edited or taken back, the caller's own read mark.
 type MessageEvent struct {
 	Message *Message
 	Read    *ReadMark
 	Deleted *DeletedMessage
 	Edited  *Message
+
+	ChatMessage *ChatMessage
+	ChatEdited  *ChatMessage
+	ChatRead    *ChatRead
+}
+
+// ChatRead: the caller has read chat ChatID up to UpTo.
+type ChatRead struct {
+	ChatID string
+	UpTo   string
 }
 
 // DeletedMessage: message ID of SenderID to RecipientID is gone from the

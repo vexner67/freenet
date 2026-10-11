@@ -218,6 +218,22 @@ func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.Mes
 			return model.MessageEvent{Edited: &edited}, nil
 		}
 
+		if cm := resp.GetChatMessage(); cm != nil {
+			msg := toChatMessage(cm)
+
+			return model.MessageEvent{ChatMessage: &msg}, nil
+		}
+
+		if ce := resp.GetChatEdited(); ce != nil {
+			edited := toChatMessage(ce)
+
+			return model.MessageEvent{ChatEdited: &edited}, nil
+		}
+
+		if cr := resp.GetChatRead(); cr != nil {
+			return model.MessageEvent{ChatRead: &model.ChatRead{ChatID: cr.GetChatId(), UpTo: cr.GetUpToId()}}, nil
+		}
+
 		msg := toMessage(resp.GetMessage())
 
 		return model.MessageEvent{Message: &msg}, nil

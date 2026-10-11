@@ -44,6 +44,9 @@ type Users interface {
 	// ResolveMentions are the IDs of the people the caller names by these
 	// nicknames who hear of it: who exist and whom the caller may name.
 	ResolveMentions(ctx context.Context, accessToken string, nicknames []string) ([]string, error)
+	// ResolveInvites are the people the caller names by nickname to add
+	// to a chat, and whether each lets them; nobody for an unknown one.
+	ResolveInvites(ctx context.Context, accessToken string, nicknames []string) ([]model.Invitee, error)
 	// KnownNicknames are those of nicknames that are someone's, as their
 	// owners write them.
 	KnownNicknames(ctx context.Context, nicknames []string) ([]string, error)
@@ -285,6 +288,27 @@ type Messages interface {
 	Subscribe(ctx context.Context, accessToken string) (model.MessageEvents, error)
 }
 
+// Chats are the chats of several people ("беседы"); all take the access
+// token of someone in the chat. History reads older than cursor or, with
+// after, newer than it.
+type Chats interface {
+	Create(ctx context.Context, accessToken, title string, memberIDs []string) (model.Chat, error)
+	Get(ctx context.Context, accessToken, id string) (model.ChatView, error)
+	List(ctx context.Context, accessToken, cursor string, limit int) (model.ChatPage, error)
+	Rename(ctx context.Context, accessToken, id, title string) error
+	Invite(ctx context.Context, accessToken, id string, userIDs []string) error
+	Kick(ctx context.Context, accessToken, id, userID string) error
+	Leave(ctx context.Context, accessToken, id string) error
+	Return(ctx context.Context, accessToken, id string) error
+	Send(ctx context.Context, accessToken, id, text string, photoIDs []string) (model.ChatMessage, error)
+	History(ctx context.Context, accessToken, id, cursor, after string, limit int) (model.ChatMessagePage, error)
+	// Message is a message with its whole text.
+	Message(ctx context.Context, accessToken, id string) (model.ChatMessage, error)
+	Edit(ctx context.Context, accessToken, id, text string) (model.ChatMessage, error)
+	Delete(ctx context.Context, accessToken, id string) error
+	MarkRead(ctx context.Context, accessToken, id, upTo string) error
+}
+
 // Clubs: Get and Members take an optional access token ("" for anonymous
 // viewers); a club ref is its ID or its address.
 type Clubs interface {
@@ -324,6 +348,7 @@ type Backends struct {
 	Notifications Notifications
 	Messages      Messages
 	Clubs         Clubs
+	Chats         Chats
 	Topics        Topics
 	Albums        Albums
 	Notes         Notes
@@ -337,6 +362,7 @@ type api struct {
 	media             Media
 	notifications     Notifications
 	messages          Messages
+	chats             Chats
 	clubs             Clubs
 	topics            Topics
 	albums            Albums
@@ -447,6 +473,20 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PATCH /api/v1/messages/{id}", a.editMessage)
 	mux.HandleFunc("DELETE /api/v1/messages/{id}", a.deleteMessage)
 	mux.HandleFunc("DELETE /api/v1/messages", a.deleteMessages)
+
+	mux.HandleFunc("POST /api/v1/chats", a.createChat)
+	mux.HandleFunc("GET /api/v1/chats/{id}", a.getChat)
+	mux.HandleFunc("PATCH /api/v1/chats/{id}", a.renameChat)
+	mux.HandleFunc("POST /api/v1/chats/{id}/members", a.addChatMembers)
+	mux.HandleFunc("DELETE /api/v1/chats/{id}/members/{nickname}", a.removeChatMember)
+	mux.HandleFunc("PUT /api/v1/chats/{id}/membership", a.returnToChat)
+	mux.HandleFunc("DELETE /api/v1/chats/{id}/membership", a.leaveChat)
+	mux.HandleFunc("GET /api/v1/chats/{id}/messages", a.listChatMessages)
+	mux.HandleFunc("POST /api/v1/chats/{id}/messages", a.sendChatMessage)
+	mux.HandleFunc("POST /api/v1/chats/{id}/read", a.markChatRead)
+	mux.HandleFunc("GET /api/v1/chat-messages/{id}", a.getChatMessage)
+	mux.HandleFunc("PATCH /api/v1/chat-messages/{id}", a.editChatMessage)
+	mux.HandleFunc("DELETE /api/v1/chat-messages/{id}", a.deleteChatMessage)
 
 	mux.HandleFunc("POST /api/v1/clubs", a.createClub)
 	mux.HandleFunc("POST /api/v1/events", a.createEvent)

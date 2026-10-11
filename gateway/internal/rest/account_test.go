@@ -54,6 +54,7 @@ func TestDeactivatedPage(t *testing.T) {
 		t.Fatalf("wall of a deleted page: %d %s", w.Code, w.Body)
 	}
 
+	h.chats.none = true
 	h.messages.dialogs = []model.Dialog{{PeerID: "u3", LastMessage: model.Message{ID: "m3", SenderID: "u3", RecipientID: "u1", Text: "пока"}}}
 	w = h.do(http.MethodGet, "/api/v1/dialogs", "", "Authorization", "Bearer tok")
 	page := decode[struct {
