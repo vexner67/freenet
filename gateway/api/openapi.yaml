@@ -1041,6 +1041,102 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/posts/{id}/poll/vote:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Vote in the poll of the post
+      description: |
+        Chooses one option, or several of a poll with `multiple`, once: a
+        second vote is refused until the first is taken back. The post must
+        be one you can see. Limited as likes.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [options]
+              properties:
+                options:
+                  description: The places of the chosen options, from 0
+                  type: array
+                  minItems: 1
+                  items: { type: integer, minimum: 0 }
+      responses:
+        "200":
+          description: The poll as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Poll" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: 'You have voted already ("you have voted in the poll already"), or the poll has ended ("the poll has ended")'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Take your vote back ("Отменить голос")
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The poll as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Poll" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: 'You have not voted ("you have not voted in the poll"), the poll does not let votes be taken back ("the poll does not let a vote be taken back") or has ended ("the poll has ended")'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/posts/{id}/poll/voters:
+    get:
+      summary: Who chose an option of the poll, newest first ("Список проголосовавших")
+      description: |
+        No token needed. `total` is the counter of the option; people whose
+        page is deleted are left out of `users`, still counted.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+        - name: option
+          in: query
+          required: true
+          description: The place of the option, from 0
+          schema: { type: integer, minimum: 0 }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of people
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: 'The poll is anonymous ("the poll is anonymous")'
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/posts/{id}/like:
     parameters:
       - name: id
@@ -4073,6 +4169,7 @@ components:
         fromClub: { type: boolean, description: "Speak for the community (admins only; always on a closed wall)" }
         signed: { type: boolean, description: "With fromClub: name yourself under the post (\"Подпись автора\")" }
         nsfw: { type: boolean, description: "Marks the post as adult (\"Содержит NSFW-контент\")" }
+        poll: { $ref: "#/components/schemas/NewPoll" }
 
     NewPost:
       type: object
@@ -4081,6 +4178,57 @@ components:
         text: { type: string, maxLength: 60000 }
         photos: { $ref: "#/components/schemas/PhotoIDs" }
         nsfw: { type: boolean, description: "Marks the post as adult (\"Содержит NSFW-контент\"); an edit that leaves it out keeps the mark" }
+        poll:
+          description: "The poll a new post asks; with it `text` and `photos` may be empty. Only when writing: the poll of a post stays as asked, and an edit that carries one is refused (400)"
+          allOf:
+            - { $ref: "#/components/schemas/NewPoll" }
+
+    NewPoll:
+      type: object
+      description: 'A poll for a new post ("Новый опрос")'
+      additionalProperties: false
+      required: [title, options]
+      properties:
+        title: { type: string, minLength: 1, maxLength: 128, description: "What is asked (\"Тема опроса\"), one line" }
+        options:
+          description: The answers, in the order shown, each one line
+          type: array
+          minItems: 1
+          maxItems: 10
+          items: { type: string, minLength: 1, maxLength: 128 }
+        anonymous: { type: boolean, description: "Who voted is not told (\"Анонимный опрос\")" }
+        multiple: { type: boolean, description: "Several options may be chosen (\"Множественный выбор\")" }
+        locked: { type: boolean, description: "A vote cannot be taken back (\"Запретить отменять свой голос\")" }
+        days: { type: integer, minimum: 0, maximum: 31, description: "How many days the poll takes votes (\"Голосование истекает через\"); 0 or absent: for ever" }
+
+    Poll:
+      type: object
+      description: The poll of a post, as you see it
+      required: [title, options, voters, anonymous, multiple, locked, endsAt, ended, voted]
+      properties:
+        title: { type: string }
+        options:
+          type: array
+          items:
+            type: object
+            required: [name, votes]
+            properties:
+              name: { type: string }
+              votes: { type: integer, description: How many people chose it }
+        voters: { type: integer, description: "How many people voted; with `multiple` less than the sum of `votes`" }
+        anonymous: { type: boolean, description: "Who voted is not told: no list of voters" }
+        multiple: { type: boolean, description: Several options may be chosen }
+        locked: { type: boolean, description: A vote cannot be taken back }
+        endsAt:
+          description: Until when it takes votes; null for a poll that never ends
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
+        ended: { type: boolean, description: "`endsAt` has passed: no votes are cast or taken back" }
+        voted:
+          description: The places (from 0) of the options you chose; empty when you have not voted, and without a token
+          type: array
+          items: { type: integer }
 
     PhotoIDs:
       description: IDs from `POST /api/v1/me/photos`, yours, in the order shown
@@ -4121,6 +4269,11 @@ components:
           description: The shared post when this is a repost; null otherwise
           oneOf:
             - $ref: "#/components/schemas/SharedPost"
+            - type: "null"
+        poll:
+          description: The poll the post asks; null for a post without one
+          oneOf:
+            - $ref: "#/components/schemas/Poll"
             - type: "null"
         editedAt:
           description: When the author last edited the post; null if never ("ред.")
@@ -4176,6 +4329,11 @@ components:
           items: { $ref: "#/components/schemas/Photo" }
         createdAt: { type: string }
         repostOf: { type: string, description: "Empty unless the shared post is itself a repost" }
+        poll:
+          description: "The poll the shared post asks, as Post's poll; in a message and in live events without `voted`"
+          oneOf:
+            - $ref: "#/components/schemas/Poll"
+            - type: "null"
 
     Photo:
       type: object

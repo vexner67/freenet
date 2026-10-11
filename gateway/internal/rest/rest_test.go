@@ -464,6 +464,58 @@ type fakePosts struct {
 	likersOf string
 	// repost is how Repost was asked to share.
 	repost model.NewRepost
+	// polled: p1 asks a poll; pollsAsked are the posts whose polls were
+	// asked for, a request after another; voted what Vote chose of
+	// votedIn ("-" before the post of a vote taken back).
+	polled     bool
+	pollsAsked [][]string
+	voted      []int
+	votedIn    string
+}
+
+// Polls: every post asked about has a poll, in which the caller chose the
+// second option.
+func (f *fakePosts) Polls(_ context.Context, token string, postIDs []string) ([]model.Poll, error) {
+	f.pollsAsked = append(f.pollsAsked, postIDs)
+
+	polls := make([]model.Poll, 0, len(postIDs))
+	for _, id := range postIDs {
+		polls = append(polls, fakePoll(id, token != ""))
+	}
+
+	return polls, f.err
+}
+
+func fakePoll(postID string, voted bool) model.Poll {
+	p := model.Poll{
+		PostID:  postID,
+		Title:   "Кошки или собаки?",
+		Options: []model.PollOption{{Name: "кошки", Votes: 2}, {Name: "собаки", Votes: 1}},
+		Voters:  3,
+		Locked:  true,
+		EndsAt:  time.Date(2026, 10, 6, 15, 30, 0, 0, time.UTC),
+	}
+	if voted {
+		p.Chosen = []int{1}
+	}
+
+	return p
+}
+
+func (f *fakePosts) Vote(_ context.Context, token, postID string, options []int) (model.Poll, error) {
+	f.token, f.votedIn, f.voted = token, postID, options
+	return fakePoll(postID, true), f.err
+}
+
+func (f *fakePosts) RetractVote(_ context.Context, token, postID string) (model.Poll, error) {
+	f.token, f.votedIn = token, "-"+postID
+	return fakePoll(postID, false), f.err
+}
+
+// PollVoters: u2 and u3 (a deleted page) chose every option.
+func (f *fakePosts) PollVoters(_ context.Context, postID string, option int, cursor string, limit int) (model.LikerPage, error) {
+	f.cursor, f.limit, f.likersOf = cursor, limit, "poll:"+postID+":"+strconv.Itoa(option)
+	return model.LikerPage{UserIDs: []string{"u3", "u2"}, NextCursor: "v2", Total: 2}, f.err
 }
 
 // Suggest keeps one suggestion by u1.
@@ -499,7 +551,7 @@ func (f *fakePosts) DeleteSuggestion(_ context.Context, token, id string) error 
 
 func (f *fakePosts) Create(_ context.Context, token string, np model.NewPost) (model.Post, error) {
 	f.token, f.wall, f.created, f.photos, f.newPost = token, np.WallID, np.Text, np.PhotoIDs, np
-	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, NSFW: np.NSFW, Mine: true, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
+	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, NSFW: np.NSFW, Mine: true, Polled: np.Poll != nil, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
 }
 
 // Edit edits the posts Get knows.
@@ -586,7 +638,7 @@ func (f *fakePosts) Get(_ context.Context, token, id string) (model.Post, error)
 	f.token = token
 	switch id {
 	case "p1":
-		return model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "первая", PhotoIDs: []string{"ph1"}, Likes: 3, Comments: 2, Liked: token != ""}, nil
+		return model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "первая", PhotoIDs: []string{"ph1"}, Likes: 3, Comments: 2, Liked: token != "", Polled: f.polled}, nil
 	case "p2":
 		return model.Post{ID: "p2", Author: model.Author{ID: "gone"}, Wall: model.Author{ID: "gone"}, Text: "сирота"}, nil
 	case "p4":
@@ -609,7 +661,7 @@ func (f *fakePosts) GetMany(_ context.Context, ids []string) ([]model.Post, erro
 	var found []model.Post
 	for _, id := range ids {
 		if id == "p1" {
-			found = append(found, model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "первая", PhotoIDs: []string{"ph1"}, Reposts: 1, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)})
+			found = append(found, model.Post{ID: "p1", Author: model.Author{ID: "u1"}, Wall: model.Author{ID: "u1"}, Text: "первая", PhotoIDs: []string{"ph1"}, Reposts: 1, Polled: f.polled, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)})
 		}
 	}
 	return found, nil
