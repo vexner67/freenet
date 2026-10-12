@@ -40,6 +40,14 @@ const (
 	UnfollowKind = "unfollow_source"
 )
 
+// Kinds of the post stream about a page closed and opened ("Тип
+// профиля"): post stops showing its wall to strangers. The payload is the
+// user's ID.
+const (
+	CloseWallKind = "close_wall"
+	OpenWallKind  = "open_wall"
+)
+
 // Streams of the services that keep data of users, besides notification,
 // whose stream it shares with the notifications, so that a follow never
 // arrives after its follower is erased.
@@ -98,6 +106,26 @@ func (r *Reactions) UserReactivated(ctx context.Context, userID uuid.UUID) error
 	return errs.Wrap("r.post.Add", r.post.Add(ctx, ReleaseKind, userID[:]))
 }
 
+// Walls is the service.Walls: it records a closed and an opened page in
+// the post stream, in order with the follows that decide who is let in.
+type Walls struct {
+	post Recorder
+}
+
+func NewWalls(post Recorder) *Walls {
+	return &Walls{
+		post: post,
+	}
+}
+
+func (w *Walls) PageClosed(ctx context.Context, userID uuid.UUID) error {
+	return errs.Wrap("w.post.Add", w.post.Add(ctx, CloseWallKind, userID[:]))
+}
+
+func (w *Walls) PageOpened(ctx context.Context, userID uuid.UUID) error {
+	return errs.Wrap("w.post.Add", w.post.Add(ctx, OpenWallKind, userID[:]))
+}
+
 // NoReactions is the service.Reactions when no post service is configured.
 type NoReactions struct{}
 
@@ -145,6 +173,14 @@ func Post(api postv1.PostServiceClient, timeout time.Duration) outbox.Deliver {
 		},
 		ReleaseKind: func(ctx context.Context, id string) error {
 			_, err := api.ReleaseUserReactions(ctx, &postv1.ReleaseUserReactionsRequest{UserId: id})
+			return err
+		},
+		CloseWallKind: func(ctx context.Context, id string) error {
+			_, err := api.CloseWall(ctx, &postv1.CloseWallRequest{WallId: id})
+			return err
+		},
+		OpenWallKind: func(ctx context.Context, id string) error {
+			_, err := api.OpenWall(ctx, &postv1.OpenWallRequest{WallId: id})
 			return err
 		},
 	})

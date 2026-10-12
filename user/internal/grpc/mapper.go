@@ -203,6 +203,7 @@ func toProtoPrivacy(p user.Privacy) *userv1.PrivacySettings {
 		FriendsRead:        toProtoAudience(p.FriendsRead),
 		OnlineRead:         toProtoAudience(p.OnlineRead),
 		NotesRead:          toProtoAudience(p.NotesRead),
+		Closed:             p.Closed,
 		ChatsInvite:        toProtoMessagesWrite(p.ChatsInvite),
 	}
 }
@@ -289,6 +290,7 @@ func fromProtoPrivacy(p *userv1.PrivacySettings) (user.Privacy, error) {
 		OnlineRead:         reads[3],
 		NotesRead:          notesRead,
 		ChatsInvite:        chatsInvite,
+		Closed:             p.GetClosed(),
 	}, nil
 }
 
@@ -395,6 +397,7 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 		Interests:             toProtoInterests(p.Interests),
 		ExtraFields:           toProtoExtraFields(p.ExtraFields),
 		PageHidden:            p.PageHidden,
+		Closed:                p.Closed,
 		InfoHidden:            p.InfoHidden,
 	}
 

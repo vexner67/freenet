@@ -252,6 +252,9 @@ message PrivacySettings {
   // чаты"); unspecified, as from a client that does not know it, is the
   // people the owner follows.
   MessagesWrite chats_invite = 14;
+  // "Тип профиля: закрытый": only the owner and the people the owner
+  // follows see the page.
+  bool closed = 15;
 }
 
 // Who sees a part of a page.
@@ -337,6 +340,9 @@ message PublicProfile {
   // "Заполненность страницы", in percent; 0 on a deleted or hidden page.
   // Only GetProfile tells it.
   int32 completeness = 26;
+  // The page is a closed one ("Закрытая страница"): those its owner
+  // does not follow get it with page_hidden.
+  bool closed = 27;
 }
 
 enum Gender {

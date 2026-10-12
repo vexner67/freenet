@@ -56,6 +56,19 @@ func (f *fakePost) UnfollowSource(_ context.Context, req *postv1.UnfollowSourceR
 	return &emptypb.Empty{}, f.err
 }
 
+func (f *fakePost) CloseWall(_ context.Context, req *postv1.CloseWallRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.sources = append(f.sources, "closed "+req.GetWallId())
+	if req.GetClub() {
+		f.sources = append(f.sources, "a club")
+	}
+	return &emptypb.Empty{}, f.err
+}
+
+func (f *fakePost) OpenWall(_ context.Context, req *postv1.OpenWallRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.sources = append(f.sources, "opened "+req.GetWallId())
+	return &emptypb.Empty{}, f.err
+}
+
 type fakeNotification struct {
 	notificationv1.NotificationServiceClient
 	purged string
@@ -168,6 +181,41 @@ func TestFollows(t *testing.T) {
 	}
 }
 
+// A closed and an opened page go to post in the order they happened.
+func TestWalls(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	q := outbox.NewMemory()
+	ann := uuid.New()
+	walls := NewWalls(q)
+
+	if err := walls.PageClosed(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+	if err := walls.PageOpened(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+
+	head, _ := q.Head(ctx, 10)
+	if len(head) != 2 || head[0].Kind != CloseWallKind || head[1].Kind != OpenWallKind {
+		t.Fatalf("recorded %+v, want a closed and an opened wall", head)
+	}
+
+	api := &fakePost{}
+	deliver := Post(api, time.Second)
+	for _, m := range head {
+		if err := deliver(ctx, m); err != nil {
+			t.Fatalf("deliver %s: %v", m.Kind, err)
+		}
+	}
+
+	want := []string{"closed " + ann.String(), "opened " + ann.String()}
+	if len(api.sources) != 2 || api.sources[0] != want[0] || api.sources[1] != want[1] {
+		t.Fatalf("post heard %v, want %v", api.sources, want)
+	}
+}
+
 func TestDeliver_Errors(t *testing.T) {
 	t.Parallel()
 
@@ -187,6 +235,7 @@ func TestDeliver_Errors(t *testing.T) {
 		// An older post, still running while the site is rolled out, does
 		// not know the call yet: the record waits for the new one.
 		{name: "unimplemented is retried", message: erase, apiErr: status.Error(codes.Unimplemented, "old")},
+		{name: "closing unimplemented is retried", message: outbox.Message{Kind: CloseWallKind, Payload: ann[:]}, apiErr: status.Error(codes.Unimplemented, "old")},
 		{name: "follow unimplemented is retried", message: follow, apiErr: status.Error(codes.Unimplemented, "old")},
 		{name: "follow down is retried", message: follow, apiErr: status.Error(codes.Unavailable, "down")},
 		{name: "follow rejected is dropped", message: follow, apiErr: status.Error(codes.InvalidArgument, "bad"), permanent: true},

@@ -79,7 +79,8 @@ type Access struct {
 // AccessFor is what viewerID (uuid.Nil: anonymous), tied to u by t, may
 // see of u's page. The owner sees everything; of a deleted page there is
 // nothing but the page saying so. A block closes contact, not what the
-// page shows, so it does not hide any of it.
+// page shows, so it does not hide any of it. A closed page ("Тип
+// профиля: закрытый") shows itself only to those its owner follows.
 func (u *User) AccessFor(viewerID uuid.UUID, t Ties) Access {
 	if viewerID == u.id {
 		return Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true, Notes: true}
@@ -89,7 +90,8 @@ func (u *User) AccessFor(viewerID uuid.UUID, t Ties) Access {
 		return Access{Page: true}
 	}
 
-	if !u.privacy.PageRead.admits(viewerID, t) {
+	// A closed page is for the people its owner follows, openvk's friends.
+	if !u.privacy.PageRead.admits(viewerID, t) || (u.privacy.Closed && !t.Followed) {
 		return Access{}
 	}
 

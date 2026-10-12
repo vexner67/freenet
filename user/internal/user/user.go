@@ -69,6 +69,9 @@ type Privacy struct {
 	// NotesRead is "Кому видно мои заметки"; empty in UpdatePrivacy, as
 	// from a client that does not know it, means everyone.
 	NotesRead Audience
+	// Closed is openvk's "Тип профиля: закрытый": only the owner and the
+	// people the owner follows see the page (see AccessFor).
+	Closed bool
 }
 
 // PublicProfile is the part of a profile other users may see. Hidden
@@ -103,6 +106,9 @@ type PublicProfile struct {
 	// (Access.Info), which is left empty.
 	PageHidden bool
 	InfoHidden bool
+	// Closed: the page is a closed one ("Закрытая страница"), told on the
+	// hidden page too.
+	Closed bool
 	// LastSeen is when the person last visited ("был в сети"), the zero
 	// time if never or hidden; Online: within OnlineFor ("Онлайн").
 	LastSeen time.Time
@@ -331,7 +337,7 @@ func (u *User) Deactivation() Deactivation {
 // PublicProfile is what anyone may see of u without knowing who looks, as
 // in lists: the information only when it is open to everyone.
 func (u *User) PublicProfile() PublicProfile {
-	return u.publicProfile(u.privacy.InfoRead == AudienceEveryone)
+	return u.publicProfile(u.privacy.InfoRead == AudienceEveryone && !u.privacy.Closed)
 }
 
 // PublicProfileFor is the page of u as viewerID (uuid.Nil: anonymous),
@@ -343,6 +349,7 @@ func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties, now time.Time) Publi
 		return PublicProfile{
 			ID: u.id, AvatarID: u.avatarID, Name: u.profile.Name, Surname: u.profile.Surname,
 			Nickname: u.profile.Nickname, Gender: u.profile.Gender, PageHidden: true, InfoHidden: true,
+			Closed: u.privacy.Closed,
 		}
 	}
 
@@ -381,6 +388,7 @@ func (u *User) publicProfile(showInfo bool) PublicProfile {
 		// the names.
 		Gender:   u.profile.Gender,
 		Backdrop: u.backdrop,
+		Closed:   u.privacy.Closed,
 	}
 
 	if !showInfo {

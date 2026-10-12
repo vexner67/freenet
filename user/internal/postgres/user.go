@@ -150,6 +150,7 @@ const updateUserQuery = `
 		timezone_offset = $51,
 		notes_read = $52,
 		chats_invite = $53,
+		closed = $54,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -223,6 +224,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		timezoneToDB(ui.Timezone),
 		pr.NotesRead.String(),
 		pr.ChatsInvite.String(),
+		pr.Closed,
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -394,7 +396,8 @@ const userColumns = `
 		post_view,
 		timezone_offset,
 		notes_read,
-		chats_invite`
+		chats_invite,
+		closed`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -454,7 +457,8 @@ const qualifiedUserColumns = `
 		u.post_view,
 		u.timezone_offset,
 		u.notes_read,
-		u.chats_invite`
+		u.chats_invite,
+		u.closed`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -632,6 +636,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&theme, &hideRating, &nsfw, &postView, &timezone,
 		&notesRead,
 		&chatsInvite,
+		&privacy.Closed,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -885,7 +890,7 @@ func searchConditions(q user.SearchQuery) []searchCondition {
 	// to everyone tell.
 	f := q.Filters()
 	if f != (user.SearchFilters{}) {
-		conds = append(conds, searchCondition{"info_read = $%d", user.AudienceEveryone.String()})
+		conds = append(conds, searchCondition{"NOT closed AND info_read = $%d", user.AudienceEveryone.String()})
 	}
 
 	for _, c := range []searchCondition{

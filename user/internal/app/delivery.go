@@ -36,6 +36,9 @@ type delivery struct {
 	notifier  service.Notifier
 	eraser    service.Eraser
 	reactions service.Reactions
+	// walls is nil without a post service: closed pages keep their walls
+	// open there.
+	walls service.Walls
 }
 
 // notifiers tells each of them, in order, about a follow and its end.
@@ -141,6 +144,7 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 
 		if s.name == purgeclient.PostStream {
 			d.reactions = purgeclient.NewReactions(q)
+			d.walls = purgeclient.NewWalls(q)
 			d.notifier = notifiers{d.notifier, purgeclient.NewFollows(q)}
 		}
 	}
