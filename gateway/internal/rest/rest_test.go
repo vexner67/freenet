@@ -1130,7 +1130,14 @@ func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d mode
 		if id == "gone" {
 			sender = "gone"
 		}
-		forwarded = append(forwarded, model.ForwardedMessage{SenderID: sender, Text: "из " + id, PhotoIDs: []string{"ph1"}, CreatedAt: albumTime})
+		// "under:m2" is a message carried on by the one before it.
+		depth := 0
+		if strings.HasPrefix(id, "under:") {
+			depth = 1
+		}
+		forwarded = append(forwarded, model.ForwardedMessage{
+			SenderID: sender, Text: "из " + id, PhotoIDs: []string{"ph1"}, CreatedAt: albumTime, Depth: depth,
+		})
 	}
 
 	return model.Message{

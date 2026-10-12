@@ -524,6 +524,9 @@ type ForwardedMessage struct {
 	// SharedPhotoID is a photo of an album it shared, "" for none.
 	SharedPhotoID string
 	CreatedAt     time.Time
+	// Depth is how deep it is carried: 0 for a message forwarded itself,
+	// 1 for one that message carried on.
+	Depth int
 }
 
 // MessageDraft is a message to send: text, photos, a shared post ("" for
