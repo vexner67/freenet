@@ -19,6 +19,8 @@ import (
 type fakePost struct {
 	postv1.PostServiceClient
 	purged   string
+	held     string
+	released string
 	deadline bool
 	err      error
 }
@@ -26,6 +28,16 @@ type fakePost struct {
 func (f *fakePost) PurgeUser(ctx context.Context, req *postv1.PurgeUserRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.purged = req.GetUserId()
 	_, f.deadline = ctx.Deadline()
+	return &emptypb.Empty{}, f.err
+}
+
+func (f *fakePost) HoldUserReactions(_ context.Context, req *postv1.HoldUserReactionsRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.held = req.GetUserId()
+	return &emptypb.Empty{}, f.err
+}
+
+func (f *fakePost) ReleaseUserReactions(_ context.Context, req *postv1.ReleaseUserReactionsRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.released = req.GetUserId()
 	return &emptypb.Empty{}, f.err
 }
 
@@ -65,6 +77,46 @@ func TestOutboxAndDelivery(t *testing.T) {
 	}
 }
 
+// A deleted and a restored page go to post in the order they happened.
+func TestReactions(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	q := outbox.NewMemory()
+	ann := uuid.New()
+	reactions := NewReactions(q)
+
+	if err := reactions.UserDeactivated(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+	if err := reactions.UserReactivated(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+
+	head, _ := q.Head(ctx, 10)
+	if len(head) != 2 || head[0].Kind != HoldKind || head[1].Kind != ReleaseKind {
+		t.Fatalf("recorded %+v, want a hold and a release", head)
+	}
+
+	api := &fakePost{}
+	deliver := Post(api, time.Second)
+	if err := deliver(ctx, head[0]); err != nil || api.held != ann.String() || api.released != "" {
+		t.Fatalf("hold: %v, held %q, released %q", err, api.held, api.released)
+	}
+	if err := deliver(ctx, head[1]); err != nil || api.released != ann.String() || api.purged != "" {
+		t.Fatalf("release: %v, released %q, purged %q", err, api.released, api.purged)
+	}
+
+	// Only post keeps reactions: another stream drops the kind.
+	if err := Media(nil, time.Second)(ctx, head[0]); !outbox.IsPermanent(err) {
+		t.Fatalf("media delivers a hold: %v", err)
+	}
+
+	if err := (NoReactions{}).UserDeactivated(ctx, ann); err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestDeliver_Errors(t *testing.T) {
 	t.Parallel()
 
@@ -79,6 +131,7 @@ func TestDeliver_Errors(t *testing.T) {
 	}{
 		{name: "down is retried", message: erase, apiErr: status.Error(codes.Unavailable, "down")},
 		{name: "plain error is retried", message: erase, apiErr: errors.New("broken")},
+		{name: "hold down is retried", message: outbox.Message{Kind: HoldKind, Payload: ann[:]}, apiErr: status.Error(codes.Unavailable, "down")},
 		{name: "rejected is dropped", message: erase, apiErr: status.Error(codes.InvalidArgument, "bad"), permanent: true},
 		{name: "unknown kind is dropped", message: outbox.Message{Kind: "notify"}, permanent: true},
 		{name: "bad payload is dropped", message: outbox.Message{Kind: Kind, Payload: []byte{1, 2}}, permanent: true},

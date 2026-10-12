@@ -17,6 +17,7 @@ import (
 	usergrpc "github.com/vexner67/freenet/user/internal/grpc"
 	"github.com/vexner67/freenet/user/internal/inmem"
 	"github.com/vexner67/freenet/user/internal/notifyclient"
+	"github.com/vexner67/freenet/user/internal/purgeclient"
 	"github.com/vexner67/freenet/user/internal/service"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -57,7 +58,7 @@ func newServer(t *testing.T) testServer {
 	blocks := inmem.NewBlockRepository(follows)
 	userv1.RegisterUserServiceServer(srv, usergrpc.NewUserHandler(usergrpc.Services{
 		Users:    service.NewUserService(users),
-		Accounts: service.NewAccountService(users, time.Hour),
+		Accounts: service.NewAccountService(users, inmem.TxManager{}, purgeclient.NoReactions{}, time.Hour),
 		Follows: service.NewFollowService(service.FollowDeps{
 			Users: users, Follows: follows, Lists: follows, Blocks: blocks, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
 		}),

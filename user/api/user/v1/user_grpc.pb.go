@@ -24,6 +24,7 @@ const (
 	UserService_GetMe_FullMethodName              = "/user.v1.UserService/GetMe"
 	UserService_UpdateProfile_FullMethodName      = "/user.v1.UserService/UpdateProfile"
 	UserService_UpdateStatus_FullMethodName       = "/user.v1.UserService/UpdateStatus"
+	UserService_UpdateNickname_FullMethodName     = "/user.v1.UserService/UpdateNickname"
 	UserService_UpdatePrivacy_FullMethodName      = "/user.v1.UserService/UpdatePrivacy"
 	UserService_UpdateInterface_FullMethodName    = "/user.v1.UserService/UpdateInterface"
 	UserService_UpdateContacts_FullMethodName     = "/user.v1.UserService/UpdateContacts"
@@ -71,6 +72,9 @@ type UserServiceClient interface {
 	UpdateProfile(ctx context.Context, in *UpdateProfileRequest, opts ...grpc.CallOption) (*UpdateProfileResponse, error)
 	// The status alone, as openvk edits it on the page.
 	UpdateStatus(ctx context.Context, in *UpdateStatusRequest, opts ...grpc.CallOption) (*UpdateStatusResponse, error)
+	// The address of the page alone ("Адрес страницы" of the settings); the
+	// profile has to be filled first.
+	UpdateNickname(ctx context.Context, in *UpdateNicknameRequest, opts ...grpc.CallOption) (*UpdateNicknameResponse, error)
 	UpdatePrivacy(ctx context.Context, in *UpdatePrivacyRequest, opts ...grpc.CallOption) (*UpdatePrivacyResponse, error)
 	// "Интерфейс" of the settings: how the site looks to the caller alone.
 	UpdateInterface(ctx context.Context, in *UpdateInterfaceRequest, opts ...grpc.CallOption) (*UpdateInterfaceResponse, error)
@@ -202,6 +206,16 @@ func (c *userServiceClient) UpdateStatus(ctx context.Context, in *UpdateStatusRe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(UpdateStatusResponse)
 	err := c.cc.Invoke(ctx, UserService_UpdateStatus_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UpdateNickname(ctx context.Context, in *UpdateNicknameRequest, opts ...grpc.CallOption) (*UpdateNicknameResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UpdateNicknameResponse)
+	err := c.cc.Invoke(ctx, UserService_UpdateNickname_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -568,6 +582,9 @@ type UserServiceServer interface {
 	UpdateProfile(context.Context, *UpdateProfileRequest) (*UpdateProfileResponse, error)
 	// The status alone, as openvk edits it on the page.
 	UpdateStatus(context.Context, *UpdateStatusRequest) (*UpdateStatusResponse, error)
+	// The address of the page alone ("Адрес страницы" of the settings); the
+	// profile has to be filled first.
+	UpdateNickname(context.Context, *UpdateNicknameRequest) (*UpdateNicknameResponse, error)
 	UpdatePrivacy(context.Context, *UpdatePrivacyRequest) (*UpdatePrivacyResponse, error)
 	// "Интерфейс" of the settings: how the site looks to the caller alone.
 	UpdateInterface(context.Context, *UpdateInterfaceRequest) (*UpdateInterfaceResponse, error)
@@ -676,6 +693,9 @@ func (UnimplementedUserServiceServer) UpdateProfile(context.Context, *UpdateProf
 }
 func (UnimplementedUserServiceServer) UpdateStatus(context.Context, *UpdateStatusRequest) (*UpdateStatusResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdateStatus not implemented")
+}
+func (UnimplementedUserServiceServer) UpdateNickname(context.Context, *UpdateNicknameRequest) (*UpdateNicknameResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UpdateNickname not implemented")
 }
 func (UnimplementedUserServiceServer) UpdatePrivacy(context.Context, *UpdatePrivacyRequest) (*UpdatePrivacyResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UpdatePrivacy not implemented")
@@ -871,6 +891,24 @@ func _UserService_UpdateStatus_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).UpdateStatus(ctx, req.(*UpdateStatusRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UpdateNickname_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UpdateNicknameRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UpdateNickname(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UpdateNickname_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UpdateNickname(ctx, req.(*UpdateNicknameRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1527,6 +1565,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UpdateStatus",
 			Handler:    _UserService_UpdateStatus_Handler,
+		},
+		{
+			MethodName: "UpdateNickname",
+			Handler:    _UserService_UpdateNickname_Handler,
 		},
 		{
 			MethodName: "UpdatePrivacy",

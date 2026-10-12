@@ -36,7 +36,7 @@ func TestPurgeService(t *testing.T) {
 	userSvc := service.NewUserService(users)
 	// A page deleted now is due at once. Not a nanosecond: the clock may
 	// not have moved by the purge.
-	accounts := service.NewAccountService(users, 0)
+	accounts := service.NewAccountService(users, inmem.TxManager{}, &fakeReactions{}, 0)
 	followSvc := service.NewFollowService(service.FollowDeps{
 		Users: users, Follows: follows, Lists: follows, Blocks: inmem.NewBlockRepository(follows),
 		Tx: inmem.TxManager{}, Notifier: &fakeNotifier{},

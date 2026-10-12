@@ -131,6 +131,14 @@ func (s *UserService) UpdateContacts(ctx context.Context, id uuid.UUID, contacts
 	})
 }
 
+// UpdateNickname replaces the address of the page alone; user.ErrNicknameTaken
+// from the repository if another page has it.
+func (s *UserService) UpdateNickname(ctx context.Context, id uuid.UUID, nickname user.Nickname) (*user.User, error) {
+	return s.update(ctx, id, func(u *user.User) error {
+		return errs.Wrap("u.UpdateNickname", u.UpdateNickname(nickname))
+	})
+}
+
 // UpdateStatus replaces the status alone.
 func (s *UserService) UpdateStatus(ctx context.Context, id uuid.UUID, status user.Status) (*user.User, error) {
 	return s.update(ctx, id, func(u *user.User) error {

@@ -24,6 +24,9 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.AlreadyExists, "user already exists"), true
 	case errors.Is(err, user.ErrNicknameTaken):
 		return status.New(codes.AlreadyExists, "nickname is already taken"), true
+	case errors.Is(err, user.ErrNameEmpty):
+		// An address for a page that is not filled in yet.
+		return status.New(codes.InvalidArgument, user.ErrNameEmpty.Error()), true
 	case errors.Is(err, user.ErrFollowSelf):
 		return status.New(codes.InvalidArgument, "you cannot follow yourself"), true
 	case errors.Is(err, user.ErrFollowBlocked):
