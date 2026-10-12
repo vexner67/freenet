@@ -66,16 +66,22 @@ service MessageService {
   // чат"); who was removed fails with FailedPrecondition.
   rpc LeaveChat(LeaveChatRequest) returns (google.protobuf.Empty);
   rpc ReturnToChat(ReturnToChatRequest) returns (google.protobuf.Empty);
-  // Text, photos or both; the gateway has checked the photos are the
-  // sender's. Who is not in the chat anymore fails with FailedPrecondition
-  // "you are not in this chat".
+  // What a message of a dialog may be: text, photos, a shared post or
+  // photo of an album, forwarded messages; the gateway has checked the
+  // photos are the sender's and what is shared exists. Who is not in the
+  // chat anymore fails with FailedPrecondition "you are not in this chat".
   rpc SendChatMessage(SendChatMessageRequest) returns (SendChatMessageResponse);
   // Messages of a chat, oldest first.
   rpc ListChatMessages(ListChatMessagesRequest) returns (ListChatMessagesResponse);
   // A message of a chat of the caller, whole.
   rpc GetChatMessage(GetChatMessageRequest) returns (GetChatMessageResponse);
-  // The sender changes what their message says, within a day of sending.
+  // The sender changes what their message says and the photos it shows,
+  // within a day of sending.
   rpc EditChatMessage(EditChatMessageRequest) returns (EditChatMessageResponse);
+  // Messages people wrote in the caller's chats, in all of them or in
+  // one, that say the query, themselves or in the messages they carry on,
+  // newest first: a substring, whatever the case.
+  rpc SearchChatMessages(SearchChatMessagesRequest) returns (SearchChatMessagesResponse);
   // The sender takes their message back, within a day of sending: it
   // stays in the chat saying nothing (deleted_at).
   rpc DeleteChatMessage(DeleteChatMessageRequest) returns (google.protobuf.Empty);
@@ -160,7 +166,7 @@ message SendMessageRequest {
   string text = 2;
   repeated string photo_ids = 3;
   string post_id = 4;
-  // Messages of the caller's dialogs to carry on, at most 20 counting
+  // Messages of the caller's dialogs and chats to carry on, at most 20 counting
   // those they carry themselves; one that is not there or was taken back
   // fails with InvalidArgument "forwarded message not found".
   repeated string forward_ids = 5;
@@ -414,6 +420,13 @@ message ChatMessage {
   bool text_cut = 13;
   // Someone else's message the caller has not read; not told in events.
   bool unread = 14;
+  // A post shared into the chat; empty for none.
+  string post_id = 15;
+  // A photo of an album shared into the chat; empty for none.
+  string photo_id = 16;
+  // Messages it carries on from dialogs and chats, oldest first; their
+  // texts are cut with text.
+  repeated ForwardedMessage forwarded = 17;
 }
 
 message CreateChatRequest {
@@ -479,8 +492,13 @@ message ReturnToChatRequest {
 
 message SendChatMessageRequest {
   string chat_id = 1;
+  // As in SendMessageRequest.
   string text = 2;
   repeated string photo_ids = 3;
+  string post_id = 4;
+  // Messages of the caller's dialogs and chats to carry on.
+  repeated string forward_ids = 5;
+  string photo_id = 6;
 }
 
 message SendChatMessageResponse {
@@ -499,6 +517,10 @@ message ListChatMessagesRequest {
   // The texts are cut to this many characters and say so (text_cut); 0
   // for whole texts.
   int32 text_limit = 5;
+  // Instead of both: the messages around this one of the chat, about
+  // half of limit before it and half after; NotFound if the caller is not
+  // shown it there. Older ones follow by cursor, newer by after.
+  string around = 6;
 }
 
 message ListChatMessagesResponse {
@@ -517,12 +539,37 @@ message GetChatMessageResponse {
 
 message EditChatMessageRequest {
   string id = 1;
-  // May be empty only when the message has photos.
+  // May be empty only when the message has photos, shares a post or
+  // carries other messages on.
   string text = 2;
+  // As in EditMessageRequest: the photos it shows no more and the
+  // caller's uploads it shows from now on.
+  repeated string remove_photo_ids = 3;
+  repeated string add_photo_ids = 4;
 }
 
 message EditChatMessageResponse {
   ChatMessage message = 1;
+}
+
+message SearchChatMessagesRequest {
+  // The chat to search; empty for all the caller's chats.
+  string chat_id = 1;
+  // At most 100 characters, not empty.
+  string query = 2;
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 3;
+  // 1-50; anything else means 20.
+  int32 limit = 4;
+  // As in SearchMessagesRequest.
+  int32 text_limit = 5;
+}
+
+message SearchChatMessagesResponse {
+  // unread is not told here.
+  repeated ChatMessage messages = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
 }
 
 message DeleteChatMessageRequest {

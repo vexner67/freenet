@@ -778,15 +778,18 @@ func (r *MessageRepository) Search(ctx context.Context, userID, peerID uuid.UUID
 		before = newestCursor
 	}
 
-	// The wildcards of LIKE in the query are themselves.
-	pattern := "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(q.String()) + "%"
-
-	rows, err := r.pool.Query(ctx, searchMessagesQuery, userID, postIDToDB(peerID), pattern, before, limit)
+	rows, err := r.pool.Query(ctx, searchMessagesQuery, userID, postIDToDB(peerID), likePattern(q), before, limit)
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
 
 	return collectMessages(rows)
+}
+
+// likePattern finds q as a substring: the wildcards of LIKE in it are
+// themselves.
+func likePattern(q message.Query) string {
+	return "%" + strings.NewReplacer(`\`, `\\`, "%", `\%`, "_", `\_`).Replace(q.String()) + "%"
 }
 
 // deleteUserDialogsQuery deletes the messages of every dialog of the user

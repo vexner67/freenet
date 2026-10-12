@@ -119,11 +119,21 @@ func (q Query) String() string {
 
 // Matches tells whether m says q, itself or in a message it carries on.
 func (q Query) Matches(m *Message) bool {
-	if q.saidIn(m.content.text) {
+	return q.said(m.content)
+}
+
+// MatchesChat tells the same of a message a person wrote in a chat: what
+// happened there and a message taken back say nothing to search.
+func (q Query) MatchesChat(m *ChatMessage) bool {
+	return !m.IsAction() && !m.IsDeleted() && q.said(m.content)
+}
+
+func (q Query) said(c Content) bool {
+	if q.saidIn(c.text) {
 		return true
 	}
 
-	for _, f := range m.content.forwarded {
+	for _, f := range c.forwarded {
 		if q.saidIn(f.Text) {
 			return true
 		}
@@ -475,6 +485,46 @@ func (c Content) Photos() Photos {
 	return c.photos
 }
 
+// revised is c as rev makes it: the words and the photos change, what it
+// shares and carries on stays.
+func (c Content) revised(rev Revision) (Content, error) {
+	photos, err := rev.photos(c.photos)
+	if err != nil {
+		return Content{}, err
+	}
+
+	switch {
+	case c.sharedPhoto == uuid.Nil:
+		return NewContent(rev.Text, photos, c.post, c.forwarded)
+	case len(photos) > 0:
+		return Content{}, ErrSharedPhotoAlone
+	default:
+		// It shares the photo still: the words are what changes.
+		return NewPhotoShare(rev.Text, c.sharedPhoto)
+	}
+}
+
+// carried is c as another message carries it on: what senderID said at
+// createdAt, then the messages it carried on, one level deeper.
+func (c Content) carried(senderID uuid.UUID, createdAt time.Time) []Forwarded {
+	carried := make([]Forwarded, 0, 1+len(c.forwarded))
+	carried = append(carried, Forwarded{
+		SenderID:    senderID,
+		Text:        c.text,
+		Photos:      c.photos,
+		Post:        c.post,
+		SharedPhoto: c.sharedPhoto,
+		CreatedAt:   createdAt,
+	})
+
+	for _, f := range c.forwarded {
+		f.Depth++
+		carried = append(carried, f)
+	}
+
+	return carried
+}
+
 // Message does not change once made: Edited and HiddenFrom return a new
 // one, so readers may keep the pointers they got.
 type Message struct {
@@ -647,22 +697,7 @@ func (m *Message) Edited(requesterID uuid.UUID, rev Revision, now time.Time) (*M
 		return nil, ErrEditExpired
 	}
 
-	photos, err := rev.photos(m.content.photos)
-	if err != nil {
-		return nil, err
-	}
-
-	var content Content
-
-	switch {
-	case m.content.sharedPhoto == uuid.Nil:
-		content, err = NewContent(rev.Text, photos, m.content.post, m.content.forwarded)
-	case len(photos) > 0:
-		err = ErrSharedPhotoAlone
-	default:
-		// It shares the photo still: the words are what changes.
-		content, err = NewPhotoShare(rev.Text, m.content.sharedPhoto)
-	}
+	content, err := m.content.revised(rev)
 	if err != nil {
 		return nil, err
 	}
@@ -774,22 +809,7 @@ func (m *Message) Carried() []Forwarded {
 		return nil
 	}
 
-	carried := make([]Forwarded, 0, 1+len(m.content.forwarded))
-	carried = append(carried, Forwarded{
-		SenderID:    m.senderID,
-		Text:        m.content.text,
-		Photos:      m.content.photos,
-		Post:        m.content.post,
-		SharedPhoto: m.content.sharedPhoto,
-		CreatedAt:   m.createdAt,
-	})
-
-	for _, f := range m.content.forwarded {
-		f.Depth++
-		carried = append(carried, f)
-	}
-
-	return carried
+	return m.content.carried(m.senderID, m.createdAt)
 }
 
 // ReadMarks are how far each side of a dialog has read: Mine is the newest

@@ -123,7 +123,10 @@ const chatViewColumns = `
 		msg.target_id,
 		msg.created_at,
 		msg.edited_at,
-		msg.deleted_at`
+		msg.deleted_at,
+		msg.post_id,
+		msg.shared_photo_id,
+		msg.forwarded`
 
 const chatViewQuery = `
 	SELECT` + chatViewColumns + `
@@ -204,6 +207,9 @@ func scanChatView(row pgx.Row) (message.ChatView, error) {
 			createdAt  *time.Time
 			editedAt   *time.Time
 			deletedAt  *time.Time
+			post       *uuid.UUID
+			shared     *uuid.UUID
+			forwarded  []byte
 		}
 	)
 
@@ -211,6 +217,7 @@ func scanChatView(row pgx.Row) (message.ChatView, error) {
 		&id, &title, &owner, &createdAt, &view.Members,
 		&view.Me.UserID, &state, &view.Me.JoinedAt, &view.Me.SeenUpTo, &view.Me.LastIncomingID, &view.Me.ReadUpTo,
 		&last.id, &last.sender, &last.text, &last.photos, &last.action, &last.target, &last.createdAt, &last.editedAt, &last.deletedAt,
+		&last.post, &last.shared, &last.forwarded,
 	)
 	if err != nil {
 		return message.ChatView{}, err
@@ -224,8 +231,12 @@ func scanChatView(row pgx.Row) (message.ChatView, error) {
 		s := scannedChatMessage{
 			stored: message.StoredChatMessage{ID: *last.id, ChatID: id, SenderID: *last.sender, CreatedAt: *last.createdAt},
 			text:   *last.text, photos: last.photos, action: *last.action, target: last.target, editedAt: last.editedAt, deletedAt: last.deletedAt,
+			post: last.post, sharedPhoto: last.shared, forwarded: last.forwarded,
 		}
-		view.LastMessage = s.message()
+
+		if view.LastMessage, err = s.message(); err != nil {
+			return message.ChatView{}, errs.Wrap("s.message", err)
+		}
 	}
 
 	return view, nil
@@ -264,10 +275,18 @@ const (
 		RETURNING chat_id
 	`
 
+	// The deleted messages that carried other messages on are returned:
+	// the copies of the photos those showed go with them.
 	deleteUserChatMessagesQuery = `
-		DELETE FROM chat_messages
-		WHERE sender_id = $1
-			OR target_id = $1
+		WITH gone AS (
+			DELETE FROM chat_messages
+			WHERE sender_id = $1
+				OR target_id = $1
+			RETURNING` + chatMessageColumns + `
+		)
+		SELECT` + chatMessageColumns + `
+		FROM gone
+		WHERE forwarded <> '[]'
 	`
 
 	settleChatMembersQuery = `
@@ -309,36 +328,42 @@ const (
 	`
 )
 
-func (r *ChatRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+func (r *ChatRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*message.ChatMessage, error) {
 	conn := r.conn(ctx)
 
 	rows, err := conn.Query(ctx, deleteUserChatMembersQuery, userID)
 	if err != nil {
-		return errs.Wrap("conn.Query", err)
+		return nil, errs.Wrap("conn.Query", err)
 	}
 
 	chatIDs, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
 	if err != nil {
-		return errs.Wrap("pgx.CollectRows", err)
+		return nil, errs.Wrap("pgx.CollectRows", err)
 	}
 
 	if len(chatIDs) == 0 {
-		return nil
+		return nil, nil
 	}
 
-	if _, err = conn.Exec(ctx, deleteUserChatMessagesQuery, userID); err != nil {
-		return errs.Wrap("conn.Exec", err)
+	rows, err = conn.Query(ctx, deleteUserChatMessagesQuery, userID)
+	if err != nil {
+		return nil, errs.Wrap("conn.Query", err)
+	}
+
+	carrying, err := collectChatMessages(rows)
+	if err != nil {
+		return nil, errs.Wrap("collectChatMessages", err)
 	}
 
 	if _, err = conn.Exec(ctx, settleChatMembersQuery, chatIDs); err != nil {
-		return errs.Wrap("conn.Exec", err)
+		return nil, errs.Wrap("conn.Exec", err)
 	}
 
 	if _, err = conn.Exec(ctx, inheritChatsQuery, chatIDs, userID); err != nil {
-		return errs.Wrap("conn.Exec", err)
+		return nil, errs.Wrap("conn.Exec", err)
 	}
 
-	return nil
+	return carrying, nil
 }
 
 type ChatMemberRepository struct {
@@ -495,9 +520,12 @@ const saveChatMessageQuery = `
 			photo_ids,
 			action,
 			target_id,
-			created_at
+			created_at,
+			post_id,
+			shared_photo_id,
+			forwarded
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, chat_id, sender_id
 	)
 	UPDATE chat_members m
@@ -512,8 +540,14 @@ const saveChatMessageQuery = `
 `
 
 func (r *ChatMessageRepository) Save(ctx context.Context, m *message.ChatMessage) error {
-	_, err := r.conn(ctx).Exec(ctx, saveChatMessageQuery,
-		m.ID(), m.ChatID(), m.SenderID(), m.Text().String(), photoIDs(m.Photos()), string(m.Action()), postIDToDB(m.TargetID()), m.CreatedAt())
+	forwarded, err := forwardedToDB(m.Forwarded())
+	if err != nil {
+		return errs.Wrap("forwardedToDB", err)
+	}
+
+	_, err = r.conn(ctx).Exec(ctx, saveChatMessageQuery,
+		m.ID(), m.ChatID(), m.SenderID(), m.Text().String(), photoIDs(m.Photos()), string(m.Action()), postIDToDB(m.TargetID()), m.CreatedAt(),
+		postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded)
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -531,7 +565,10 @@ const chatMessageColumns = `
 		target_id,
 		created_at,
 		edited_at,
-		deleted_at`
+		deleted_at,
+		post_id,
+		shared_photo_id,
+		forwarded`
 
 const getChatMessageQuery = `
 	SELECT` + chatMessageColumns + `
@@ -590,6 +627,11 @@ func (r *ChatMessageRepository) list(ctx context.Context, query string, chatID, 
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
 	}
+
+	return collectChatMessages(rows)
+}
+
+func collectChatMessages(rows pgx.Rows) ([]*message.ChatMessage, error) {
 	defer rows.Close()
 
 	var messages []*message.ChatMessage
@@ -601,46 +643,124 @@ func (r *ChatMessageRepository) list(ctx context.Context, query string, chatID, 
 		messages = append(messages, m)
 	}
 
-	if err = rows.Err(); err != nil {
+	if err := rows.Err(); err != nil {
 		return nil, errs.Wrap("rows.Err", err)
 	}
 
 	return messages, nil
 }
 
+// chatMessageWords is all a message of a chat says, as
+// chat_messages_search_idx has it (see messageWords).
+const chatMessageWords = `message_words(msg.text, msg.forwarded)`
+
+// searchChatMessagesQuery: $2 is one chat, NULL for all the chats of the
+// user $1; $3 is the pattern, as in searchMessagesQuery. Only what people
+// wrote and did not take back is found, and only what the user is shown:
+// who is out of a chat keeps it as it was.
+const searchChatMessagesQuery = `
+	SELECT
+		msg.id,
+		msg.chat_id,
+		msg.sender_id,
+		msg.text,
+		msg.photo_ids,
+		msg.action,
+		msg.target_id,
+		msg.created_at,
+		msg.edited_at,
+		msg.deleted_at,
+		msg.post_id,
+		msg.shared_photo_id,
+		msg.forwarded
+	FROM chat_members m
+	JOIN chat_messages msg ON msg.chat_id = m.chat_id
+	WHERE m.user_id = $1
+		AND ($2::uuid IS NULL OR m.chat_id = $2)
+		AND ` + chatMessageWords + ` ILIKE $3
+		AND (
+			msg.text ILIKE $3
+			OR EXISTS (
+				SELECT 1
+				FROM jsonb_array_elements(msg.forwarded) AS f
+				WHERE f->>'text' ILIKE $3
+			)
+		)
+		AND msg.action = ''
+		AND msg.deleted_at IS NULL
+		AND msg.id < $4
+		AND (m.state = 'active' OR msg.id <= m.last_message_id)
+	ORDER BY msg.id DESC
+	LIMIT $5
+`
+
+func (r *ChatMessageRepository) Search(ctx context.Context, userID, chatID uuid.UUID, q message.Query, before uuid.UUID, limit int) ([]*message.ChatMessage, error) {
+	if before == uuid.Nil {
+		before = newestCursor
+	}
+
+	rows, err := r.pool.Query(ctx, searchChatMessagesQuery, userID, postIDToDB(chatID), likePattern(q), before, limit)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+
+	return collectChatMessages(rows)
+}
+
 // scannedChatMessage is a row of chat_messages as the queries select it.
 type scannedChatMessage struct {
-	stored    message.StoredChatMessage
-	text      string
-	photos    []uuid.UUID
-	action    string
-	target    *uuid.UUID
-	editedAt  *time.Time
-	deletedAt *time.Time
+	stored      message.StoredChatMessage
+	text        string
+	photos      []uuid.UUID
+	action      string
+	target      *uuid.UUID
+	editedAt    *time.Time
+	deletedAt   *time.Time
+	post        *uuid.UUID
+	sharedPhoto *uuid.UUID
+	forwarded   []byte
 }
 
 func scanChatMessage(row pgx.Row) (*message.ChatMessage, error) {
 	var s scannedChatMessage
 
-	err := row.Scan(&s.stored.ID, &s.stored.ChatID, &s.stored.SenderID, &s.text, &s.photos, &s.action, &s.target, &s.stored.CreatedAt, &s.editedAt, &s.deletedAt)
+	err := row.Scan(
+		&s.stored.ID, &s.stored.ChatID, &s.stored.SenderID, &s.text, &s.photos, &s.action, &s.target, &s.stored.CreatedAt, &s.editedAt, &s.deletedAt,
+		&s.post, &s.sharedPhoto, &s.forwarded,
+	)
 	if err != nil {
 		return nil, err
 	}
 
-	return s.message(), nil
+	return s.message()
 }
 
 // message finishes a scanned message. Data comes from our own table and
 // was validated on write.
-func (s *scannedChatMessage) message() *message.ChatMessage {
+func (s *scannedChatMessage) message() (*message.ChatMessage, error) {
+	photos := message.Photos(s.photos)
+	if len(photos) == 0 {
+		photos = nil // no photos, as a new message has them
+	}
+
+	var postID uuid.UUID
+	if s.post != nil {
+		postID = *s.post
+	}
+
+	forwarded, err := forwardedFromDB(s.forwarded)
+	if err != nil {
+		return nil, errs.Wrap("forwardedFromDB", err)
+	}
+
 	stored := s.stored
-	stored.Text = message.Text(s.text)
+	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded)
+	if s.sharedPhoto != nil {
+		stored.Content = stored.Content.WithSharedPhoto(*s.sharedPhoto)
+	}
+
 	stored.Action = message.Action(s.action)
 	stored.CreatedAt = stored.CreatedAt.UTC()
-
-	if len(s.photos) > 0 {
-		stored.Photos = message.Photos(s.photos)
-	}
 
 	if s.target != nil {
 		stored.TargetID = *s.target
@@ -654,19 +774,20 @@ func (s *scannedChatMessage) message() *message.ChatMessage {
 		stored.DeletedAt = s.deletedAt.UTC()
 	}
 
-	return message.RestoreChatMessage(stored)
+	return message.RestoreChatMessage(stored), nil
 }
 
 const updateChatMessageQuery = `
 	UPDATE chat_messages
 	SET text = $2,
-		edited_at = $3
+		photo_ids = $3,
+		edited_at = $4
 	WHERE id = $1
 		AND deleted_at IS NULL
 `
 
 func (r *ChatMessageRepository) Update(ctx context.Context, m *message.ChatMessage) error {
-	tag, err := r.conn(ctx).Exec(ctx, updateChatMessageQuery, m.ID(), m.Text().String(), m.EditedAt())
+	tag, err := r.conn(ctx).Exec(ctx, updateChatMessageQuery, m.ID(), m.Text().String(), photoIDs(m.Photos()), m.EditedAt())
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -682,6 +803,9 @@ const retractChatMessageQuery = `
 	UPDATE chat_messages
 	SET text = '',
 		photo_ids = '{}',
+		post_id = NULL,
+		shared_photo_id = NULL,
+		forwarded = '[]',
 		edited_at = NULL,
 		deleted_at = $2
 	WHERE id = $1

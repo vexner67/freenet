@@ -25,12 +25,14 @@ type ChatService interface {
 	Kick(ctx context.Context, userID, chatID, targetID uuid.UUID) error
 	Leave(ctx context.Context, userID, chatID uuid.UUID) error
 	Return(ctx context.Context, userID, chatID uuid.UUID) error
-	Send(ctx context.Context, senderID, chatID uuid.UUID, text message.Text, photos message.Photos) (*message.ChatMessage, error)
+	Send(ctx context.Context, senderID, chatID uuid.UUID, d service.Draft) (*message.ChatMessage, error)
 	Message(ctx context.Context, userID, id uuid.UUID) (*message.ChatMessage, message.Member, error)
-	Edit(ctx context.Context, userID, id uuid.UUID, text message.Text) (*message.ChatMessage, error)
+	Edit(ctx context.Context, userID, id uuid.UUID, rev message.Revision) (*message.ChatMessage, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	History(ctx context.Context, userID, chatID, cursor uuid.UUID, size int) (service.ChatHistoryPage, error)
 	Newer(ctx context.Context, userID, chatID, after uuid.UUID, size int) (service.ChatHistoryPage, error)
+	Around(ctx context.Context, userID, chatID, id uuid.UUID, size int) (service.ChatHistoryPage, error)
+	Search(ctx context.Context, userID, chatID uuid.UUID, q message.Query, cursor uuid.UUID, size int) (service.ChatSearchPage, error)
 	MarkRead(ctx context.Context, userID, chatID, upTo uuid.UUID) error
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
 }
@@ -224,22 +226,12 @@ func (h *MessageHandler) SendChatMessage(ctx context.Context, req *messagev1.Sen
 		return nil, err
 	}
 
-	text, err := message.NewText(req.GetText())
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	ids, err := parseIDs(req.GetPhotoIds(), message.ErrInvalidPhoto.Error())
+	draft, err := fromProtoDraft(req)
 	if err != nil {
 		return nil, err
 	}
 
-	photos, err := message.NewPhotos(ids)
-	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
-	}
-
-	m, err := h.chatService.Send(ctx, userID, chatID, text, photos)
+	m, err := h.chatService.Send(ctx, userID, chatID, draft)
 	if err != nil {
 		return nil, err
 	}
@@ -270,9 +262,22 @@ func (h *MessageHandler) ListChatMessages(ctx context.Context, req *messagev1.Li
 	return resp, nil
 }
 
-// chatHistory pages back with cursor or polls for newer messages with
-// after.
+// chatHistory pages back with cursor, polls for newer messages with after
+// or opens the chat around a message.
 func (h *MessageHandler) chatHistory(ctx context.Context, userID, chatID uuid.UUID, req *messagev1.ListChatMessagesRequest) (service.ChatHistoryPage, error) {
+	if req.GetAround() != "" {
+		if req.GetCursor() != "" || req.GetAfter() != "" {
+			return service.ChatHistoryPage{}, status.Error(codes.InvalidArgument, "around cannot be used with cursor or after")
+		}
+
+		around, err := parseID(req.GetAround(), "invalid around")
+		if err != nil {
+			return service.ChatHistoryPage{}, err
+		}
+
+		return h.chatService.Around(ctx, userID, chatID, around, int(req.GetLimit()))
+	}
+
 	if req.GetAfter() == "" {
 		cursor, err := parseOptionalID(req.GetCursor(), "invalid cursor")
 		if err != nil {
@@ -324,17 +329,64 @@ func (h *MessageHandler) EditChatMessage(ctx context.Context, req *messagev1.Edi
 		return nil, err
 	}
 
-	text, err := message.NewText(req.GetText())
+	rev, err := fromProtoRevision(req)
 	if err != nil {
-		return nil, status.Error(codes.InvalidArgument, err.Error())
+		return nil, err
 	}
 
-	m, err := h.chatService.Edit(ctx, userID, id, text)
+	m, err := h.chatService.Edit(ctx, userID, id, rev)
 	if err != nil {
 		return nil, err
 	}
 
 	return &messagev1.EditChatMessageResponse{Message: toProtoChatMessage(m)}, nil
+}
+
+func (h *MessageHandler) SearchChatMessages(ctx context.Context, req *messagev1.SearchChatMessagesRequest) (*messagev1.SearchChatMessagesResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	chatID, err := parseOptionalID(req.GetChatId(), "invalid chat id")
+	if err != nil {
+		return nil, err
+	}
+
+	query, err := message.NewQuery(req.GetQuery())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	cursor, err := parseOptionalID(req.GetCursor(), "invalid cursor")
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.chatService.Search(ctx, userID, chatID, query, cursor, int(req.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &messagev1.SearchChatMessagesResponse{
+		Messages:   make([]*messagev1.ChatMessage, 0, len(page.Messages)),
+		NextCursor: optionalID(page.NextCursor),
+	}
+
+	for _, m := range page.Messages {
+		pm := toProtoChatMessage(m)
+		pm.Text, pm.TextCut = m.Text().ExcerptAround(query.String(), int(req.GetTextLimit()))
+
+		for i, f := range m.Forwarded() {
+			text, cut := f.Text.ExcerptAround(query.String(), int(req.GetTextLimit()))
+			pm.Forwarded[i].Text = text
+			pm.TextCut = pm.TextCut || cut
+		}
+
+		resp.Messages = append(resp.Messages, pm)
+	}
+
+	return resp, nil
 }
 
 func (h *MessageHandler) DeleteChatMessage(ctx context.Context, req *messagev1.DeleteChatMessageRequest) (*emptypb.Empty, error) {
@@ -434,6 +486,9 @@ func toProtoChatMessage(m *message.ChatMessage) *messagev1.ChatMessage {
 		Action:    toProtoChatAction(m.Action()),
 		TargetId:  optionalID(m.TargetID()),
 		CreatedAt: timestamppb.New(m.CreatedAt()),
+		PostId:    postString(m.Post()),
+		PhotoId:   postString(m.SharedPhoto()),
+		Forwarded: toProtoForwarded(m.Forwarded()),
 	}
 
 	if m.IsDeleted() {
@@ -458,11 +513,17 @@ func toProtoChatMessage(m *message.ChatMessage) *messagev1.ChatMessage {
 }
 
 // shownChatMessage is a message as me has it: unread while it is someone
-// else's and above their mark, its text cut to textLimit. The title an
-// action tells of is short and stays whole.
+// else's and above their mark, its text and those it carries on cut to
+// textLimit. The title an action tells of is short and stays whole.
 func shownChatMessage(m *message.ChatMessage, me message.Member, textLimit int32) *messagev1.ChatMessage {
 	pm := toProtoChatMessage(m)
 	pm.Text, pm.TextCut = m.Text().Excerpt(int(textLimit))
+
+	for i, f := range m.Forwarded() {
+		text, cut := f.Text.Excerpt(int(textLimit))
+		pm.Forwarded[i].Text = text
+		pm.TextCut = pm.TextCut || cut
+	}
 
 	id := m.ID()
 	pm.Unread = m.SenderID() != me.UserID && bytes.Compare(id[:], me.ReadUpTo[:]) > 0

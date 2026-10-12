@@ -43,6 +43,7 @@ const (
 	MessageService_ListChatMessages_FullMethodName   = "/message.v1.MessageService/ListChatMessages"
 	MessageService_GetChatMessage_FullMethodName     = "/message.v1.MessageService/GetChatMessage"
 	MessageService_EditChatMessage_FullMethodName    = "/message.v1.MessageService/EditChatMessage"
+	MessageService_SearchChatMessages_FullMethodName = "/message.v1.MessageService/SearchChatMessages"
 	MessageService_DeleteChatMessage_FullMethodName  = "/message.v1.MessageService/DeleteChatMessage"
 	MessageService_MarkChatRead_FullMethodName       = "/message.v1.MessageService/MarkChatRead"
 	MessageService_Subscribe_FullMethodName          = "/message.v1.MessageService/Subscribe"
@@ -111,16 +112,22 @@ type MessageServiceClient interface {
 	// чат"); who was removed fails with FailedPrecondition.
 	LeaveChat(ctx context.Context, in *LeaveChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ReturnToChat(ctx context.Context, in *ReturnToChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Text, photos or both; the gateway has checked the photos are the
-	// sender's. Who is not in the chat anymore fails with FailedPrecondition
-	// "you are not in this chat".
+	// What a message of a dialog may be: text, photos, a shared post or
+	// photo of an album, forwarded messages; the gateway has checked the
+	// photos are the sender's and what is shared exists. Who is not in the
+	// chat anymore fails with FailedPrecondition "you are not in this chat".
 	SendChatMessage(ctx context.Context, in *SendChatMessageRequest, opts ...grpc.CallOption) (*SendChatMessageResponse, error)
 	// Messages of a chat, oldest first.
 	ListChatMessages(ctx context.Context, in *ListChatMessagesRequest, opts ...grpc.CallOption) (*ListChatMessagesResponse, error)
 	// A message of a chat of the caller, whole.
 	GetChatMessage(ctx context.Context, in *GetChatMessageRequest, opts ...grpc.CallOption) (*GetChatMessageResponse, error)
-	// The sender changes what their message says, within a day of sending.
+	// The sender changes what their message says and the photos it shows,
+	// within a day of sending.
 	EditChatMessage(ctx context.Context, in *EditChatMessageRequest, opts ...grpc.CallOption) (*EditChatMessageResponse, error)
+	// Messages people wrote in the caller's chats, in all of them or in
+	// one, that say the query, themselves or in the messages they carry on,
+	// newest first: a substring, whatever the case.
+	SearchChatMessages(ctx context.Context, in *SearchChatMessagesRequest, opts ...grpc.CallOption) (*SearchChatMessagesResponse, error)
 	// The sender takes their message back, within a day of sending: it
 	// stays in the chat saying nothing (deleted_at).
 	DeleteChatMessage(ctx context.Context, in *DeleteChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
@@ -377,6 +384,16 @@ func (c *messageServiceClient) EditChatMessage(ctx context.Context, in *EditChat
 	return out, nil
 }
 
+func (c *messageServiceClient) SearchChatMessages(ctx context.Context, in *SearchChatMessagesRequest, opts ...grpc.CallOption) (*SearchChatMessagesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchChatMessagesResponse)
+	err := c.cc.Invoke(ctx, MessageService_SearchChatMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) DeleteChatMessage(ctx context.Context, in *DeleteChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -488,16 +505,22 @@ type MessageServiceServer interface {
 	// чат"); who was removed fails with FailedPrecondition.
 	LeaveChat(context.Context, *LeaveChatRequest) (*emptypb.Empty, error)
 	ReturnToChat(context.Context, *ReturnToChatRequest) (*emptypb.Empty, error)
-	// Text, photos or both; the gateway has checked the photos are the
-	// sender's. Who is not in the chat anymore fails with FailedPrecondition
-	// "you are not in this chat".
+	// What a message of a dialog may be: text, photos, a shared post or
+	// photo of an album, forwarded messages; the gateway has checked the
+	// photos are the sender's and what is shared exists. Who is not in the
+	// chat anymore fails with FailedPrecondition "you are not in this chat".
 	SendChatMessage(context.Context, *SendChatMessageRequest) (*SendChatMessageResponse, error)
 	// Messages of a chat, oldest first.
 	ListChatMessages(context.Context, *ListChatMessagesRequest) (*ListChatMessagesResponse, error)
 	// A message of a chat of the caller, whole.
 	GetChatMessage(context.Context, *GetChatMessageRequest) (*GetChatMessageResponse, error)
-	// The sender changes what their message says, within a day of sending.
+	// The sender changes what their message says and the photos it shows,
+	// within a day of sending.
 	EditChatMessage(context.Context, *EditChatMessageRequest) (*EditChatMessageResponse, error)
+	// Messages people wrote in the caller's chats, in all of them or in
+	// one, that say the query, themselves or in the messages they carry on,
+	// newest first: a substring, whatever the case.
+	SearchChatMessages(context.Context, *SearchChatMessagesRequest) (*SearchChatMessagesResponse, error)
 	// The sender takes their message back, within a day of sending: it
 	// stays in the chat saying nothing (deleted_at).
 	DeleteChatMessage(context.Context, *DeleteChatMessageRequest) (*emptypb.Empty, error)
@@ -592,6 +615,9 @@ func (UnimplementedMessageServiceServer) GetChatMessage(context.Context, *GetCha
 }
 func (UnimplementedMessageServiceServer) EditChatMessage(context.Context, *EditChatMessageRequest) (*EditChatMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EditChatMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) SearchChatMessages(context.Context, *SearchChatMessagesRequest) (*SearchChatMessagesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchChatMessages not implemented")
 }
 func (UnimplementedMessageServiceServer) DeleteChatMessage(context.Context, *DeleteChatMessageRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteChatMessage not implemented")
@@ -1040,6 +1066,24 @@ func _MessageService_EditChatMessage_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_SearchChatMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchChatMessagesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).SearchChatMessages(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_SearchChatMessages_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).SearchChatMessages(ctx, req.(*SearchChatMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_DeleteChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeleteChatMessageRequest)
 	if err := dec(in); err != nil {
@@ -1203,6 +1247,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EditChatMessage",
 			Handler:    _MessageService_EditChatMessage_Handler,
+		},
+		{
+			MethodName: "SearchChatMessages",
+			Handler:    _MessageService_SearchChatMessages_Handler,
 		},
 		{
 			MethodName: "DeleteChatMessage",

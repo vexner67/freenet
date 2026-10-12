@@ -267,9 +267,10 @@ const (
 	ActionReturn Action = "return"
 )
 
-// ChatMessage is a message of a chat: what a member wrote there, text,
-// photos or both, or what happened there (Action). As Message, it does
-// not change once made.
+// ChatMessage is a message of a chat: what a member wrote there — text,
+// photos, a shared post or photo of an album, messages carried on, as a
+// message of a dialog (Content) — or what happened there (Action). As
+// Message, it does not change once made.
 type ChatMessage struct {
 	id       uuid.UUID
 	chatID   uuid.UUID
@@ -283,13 +284,8 @@ type ChatMessage struct {
 	deletedAt time.Time
 }
 
-// NewChatMessage is what senderID writes in a chat: text, photos or both.
-func NewChatMessage(chatID, senderID uuid.UUID, text Text, photos Photos, now time.Time) (*ChatMessage, error) {
-	content, err := NewContent(text, photos, uuid.Nil, nil)
-	if err != nil {
-		return nil, err
-	}
-
+// NewChatMessage is what senderID writes in a chat.
+func NewChatMessage(chatID, senderID uuid.UUID, content Content, now time.Time) (*ChatMessage, error) {
 	return newChatMessage(chatID, senderID, content, ActionNone, uuid.Nil, now)
 }
 
@@ -318,11 +314,11 @@ func newChatMessage(chatID, senderID uuid.UUID, content Content, action Action, 
 
 // StoredChatMessage is a message of a chat as storage keeps it.
 type StoredChatMessage struct {
-	ID        uuid.UUID
-	ChatID    uuid.UUID
-	SenderID  uuid.UUID
-	Text      Text
-	Photos    Photos
+	ID       uuid.UUID
+	ChatID   uuid.UUID
+	SenderID uuid.UUID
+	// Content of an action is the title it tells of, as text.
+	Content   Content
 	Action    Action
 	TargetID  uuid.UUID
 	CreatedAt time.Time
@@ -337,7 +333,7 @@ func RestoreChatMessage(s StoredChatMessage) *ChatMessage {
 		id:        s.ID,
 		chatID:    s.ChatID,
 		senderID:  s.SenderID,
-		content:   Content{text: s.Text, photos: s.Photos},
+		content:   s.Content,
 		action:    s.Action,
 		targetID:  s.TargetID,
 		createdAt: s.CreatedAt,
@@ -365,6 +361,32 @@ func (m *ChatMessage) Text() Text {
 
 func (m *ChatMessage) Photos() Photos {
 	return m.content.photos
+}
+
+// Post is the post shared in the message, uuid.Nil for none.
+func (m *ChatMessage) Post() uuid.UUID {
+	return m.content.post
+}
+
+// SharedPhoto is the photo of an album shared in the message, uuid.Nil
+// for none.
+func (m *ChatMessage) SharedPhoto() uuid.UUID {
+	return m.content.sharedPhoto
+}
+
+// Forwarded are the messages m carries on, nil for none.
+func (m *ChatMessage) Forwarded() Forwards {
+	return m.content.forwarded
+}
+
+// Carried is m as another message carries it on, as Message.Carried: what
+// happened in the chat and a message taken back carry nothing.
+func (m *ChatMessage) Carried() []Forwarded {
+	if m.IsDeleted() || m.IsAction() {
+		return nil
+	}
+
+	return m.content.carried(m.senderID, m.createdAt)
 }
 
 // Action is ActionNone for a message a person wrote.
@@ -411,10 +433,11 @@ func (m *ChatMessage) DeletableUntil() time.Time {
 	return m.createdAt.Add(deleteWindow)
 }
 
-// Edited returns m saying text, edited by requesterID at now: only its
+// Edited returns m as rev makes it, edited by requesterID at now: only its
 // sender, for editWindow after sending, and never what happened in the
-// chat. The photos stay; without them the text may not be empty.
-func (m *ChatMessage) Edited(requesterID uuid.UUID, text Text, now time.Time) (*ChatMessage, error) {
+// chat. What it shares and carries on stays, as in a dialog
+// (Message.Edited).
+func (m *ChatMessage) Edited(requesterID uuid.UUID, rev Revision, now time.Time) (*ChatMessage, error) {
 	if requesterID != m.senderID || m.IsAction() {
 		return nil, ErrCannotEdit
 	}
@@ -427,7 +450,7 @@ func (m *ChatMessage) Edited(requesterID uuid.UUID, text Text, now time.Time) (*
 		return nil, ErrEditExpired
 	}
 
-	content, err := NewContent(text, m.content.photos, uuid.Nil, nil)
+	content, err := m.content.revised(rev)
 	if err != nil {
 		return nil, err
 	}

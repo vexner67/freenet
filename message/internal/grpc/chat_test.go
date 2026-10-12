@@ -279,3 +279,134 @@ func TestSubscribe_Chat(t *testing.T) {
 		}
 	}
 }
+
+func TestChat_ForwardShareAndSearch(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	created, err := s.client.CreateChat(s.as(t, ann), &messagev1.CreateChatRequest{Title: "Поход", MemberIds: []string{bob.String(), cat.String()}})
+	if err != nil {
+		t.Fatalf("CreateChat: %v", err)
+	}
+	chatID := created.GetChat().GetId()
+
+	post, albumPhoto, photo := uuid.New().String(), uuid.New().String(), uuid.New().String()
+
+	private, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: strings.Repeat("я", 30) + " поход", PhotoIds: []string{photo}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	sent, err := s.client.SendChatMessage(s.as(t, ann), &messagev1.SendChatMessageRequest{
+		ChatId: chatID, Text: "гляньте", PostId: post, ForwardIds: []string{private.GetMessage().GetId()},
+	})
+	if err != nil {
+		t.Fatalf("SendChatMessage: %v", err)
+	}
+
+	m := sent.GetMessage()
+	if m.GetPostId() != post || len(m.GetForwarded()) != 1 || m.GetForwarded()[0].GetSenderId() != bob.String() ||
+		len(m.GetForwarded()[0].GetPhotoIds()) != 1 || m.GetForwarded()[0].GetPhotoIds()[0] == photo {
+		t.Fatalf("sent = %v", m)
+	}
+
+	shared, err := s.client.SendChatMessage(s.as(t, bob), &messagev1.SendChatMessageRequest{ChatId: chatID, PhotoId: albumPhoto})
+	if err != nil || shared.GetMessage().GetPhotoId() != albumPhoto {
+		t.Fatalf("a photo of an album = %v, %v", shared, err)
+	}
+
+	t.Run("a chat message goes on into a dialog", func(t *testing.T) {
+		on, err := s.client.SendMessage(s.as(t, cat), &messagev1.SendMessageRequest{RecipientId: uuid.NewString(), ForwardIds: []string{m.GetId()}})
+		if err != nil || len(on.GetMessage().GetForwarded()) != 2 || on.GetMessage().GetForwarded()[1].GetDepth() != 1 {
+			t.Fatalf("SendMessage = %v, %v", on, err)
+		}
+	})
+
+	t.Run("lists cut what is carried on", func(t *testing.T) {
+		history, err := s.client.ListChatMessages(s.as(t, cat), &messagev1.ListChatMessagesRequest{ChatId: chatID, TextLimit: 10})
+		if err != nil || len(history.GetMessages()) != 3 {
+			t.Fatalf("ListChatMessages = %v, %v", history, err)
+		}
+		if got := history.GetMessages()[1]; !got.GetTextCut() || got.GetText() != "гляньте" || got.GetForwarded()[0].GetText() != strings.Repeat("я", 10) {
+			t.Fatalf("the message = %v", got)
+		}
+
+		around, err := s.client.ListChatMessages(s.as(t, cat), &messagev1.ListChatMessagesRequest{ChatId: chatID, Around: m.GetId(), Limit: 2})
+		if err != nil || len(around.GetMessages()) != 3 || around.GetMessages()[1].GetId() != m.GetId() || around.GetNextCursor() != "" {
+			t.Fatalf("around = %v, %v", around, err)
+		}
+	})
+
+	t.Run("search", func(t *testing.T) {
+		found, err := s.client.SearchChatMessages(s.as(t, cat), &messagev1.SearchChatMessagesRequest{Query: "ПОХОД", TextLimit: 10})
+		if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetId() != m.GetId() || found.GetNextCursor() != "" {
+			t.Fatalf("SearchChatMessages = %v, %v", found, err)
+		}
+		// The text carried on is cut to where it says the query.
+		if got := found.GetMessages()[0]; !got.GetTextCut() || !strings.Contains(got.GetForwarded()[0].GetText(), "поход") {
+			t.Fatalf("found = %v", got)
+		}
+
+		if found, err = s.client.SearchChatMessages(s.as(t, cat), &messagev1.SearchChatMessagesRequest{Query: "поход", ChatId: chatID}); err != nil || len(found.GetMessages()) != 1 {
+			t.Fatalf("one chat = %v, %v", found, err)
+		}
+		if found, err = s.client.SearchChatMessages(s.as(t, uuid.New()), &messagev1.SearchChatMessagesRequest{Query: "поход"}); err != nil || len(found.GetMessages()) != 0 {
+			t.Fatalf("a stranger finds %v, %v", found, err)
+		}
+	})
+
+	t.Run("edit photos", func(t *testing.T) {
+		withPhoto, err := s.client.SendChatMessage(s.as(t, ann), &messagev1.SendChatMessageRequest{ChatId: chatID, PhotoIds: []string{photo}})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		added := uuid.NewString()
+
+		edited, err := s.client.EditChatMessage(s.as(t, ann), &messagev1.EditChatMessageRequest{
+			Id: withPhoto.GetMessage().GetId(), RemovePhotoIds: []string{photo}, AddPhotoIds: []string{added},
+		})
+		if err != nil || len(edited.GetMessage().GetPhotoIds()) != 1 || edited.GetMessage().GetPhotoIds()[0] != added {
+			t.Fatalf("EditChatMessage = %v, %v", edited, err)
+		}
+	})
+
+	t.Run("statuses", func(t *testing.T) {
+		for _, tt := range []struct {
+			name string
+			call func() error
+			want codes.Code
+		}{
+			{"a message one does not have is carried on", func() error {
+				_, err := s.client.SendChatMessage(s.as(t, cat), &messagev1.SendChatMessageRequest{ChatId: chatID, ForwardIds: []string{private.GetMessage().GetId()}})
+				return err
+			}, codes.InvalidArgument},
+			{"a photo of an album with a post", func() error {
+				_, err := s.client.SendChatMessage(s.as(t, ann), &messagev1.SendChatMessageRequest{ChatId: chatID, PhotoId: albumPhoto, PostId: post})
+				return err
+			}, codes.InvalidArgument},
+			{"an empty query", func() error {
+				_, err := s.client.SearchChatMessages(s.as(t, ann), &messagev1.SearchChatMessagesRequest{Query: " "})
+				return err
+			}, codes.InvalidArgument},
+			{"a search of a chat one is not in", func() error {
+				_, err := s.client.SearchChatMessages(s.as(t, uuid.New()), &messagev1.SearchChatMessagesRequest{Query: "поход", ChatId: chatID})
+				return err
+			}, codes.NotFound},
+			{"around with a cursor", func() error {
+				_, err := s.client.ListChatMessages(s.as(t, ann), &messagev1.ListChatMessagesRequest{ChatId: chatID, Around: m.GetId(), Cursor: m.GetId()})
+				return err
+			}, codes.InvalidArgument},
+			{"around a message that is not there", func() error {
+				_, err := s.client.ListChatMessages(s.as(t, ann), &messagev1.ListChatMessagesRequest{ChatId: chatID, Around: uuid.NewString()})
+				return err
+			}, codes.NotFound},
+		} {
+			if got := status.Code(tt.call()); got != tt.want {
+				t.Errorf("%s: %v, want %v", tt.name, got, tt.want)
+			}
+		}
+	})
+}

@@ -17,7 +17,7 @@ import (
 func newService() *service.MessageService {
 	store := inmem.NewStore()
 	return service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{},
+		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{},
 	})
 }
 
@@ -460,7 +460,7 @@ func TestMessageService_Forward(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ann, bob, cat, dan := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	photo, post := uuid.New(), uuid.New()
@@ -699,7 +699,7 @@ func TestMessageService_Photos(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ann, bob := uuid.New(), uuid.New()
 	annsPhoto, bobsPhoto := uuid.New(), uuid.New()
@@ -846,7 +846,7 @@ func TestMessageService_HidePhotos(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
@@ -1003,7 +1003,7 @@ func TestMessageService_EditPhotos(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ann, bob := uuid.New(), uuid.New()
 	kept, dropped, added := uuid.New(), uuid.New(), uuid.New()
@@ -1081,7 +1081,7 @@ func TestMessageService_DeleteMany(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	photo := uuid.New()

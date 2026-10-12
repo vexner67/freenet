@@ -140,10 +140,12 @@ func (a *App) build(cfg config.Config) error {
 		a.server.Registrar(),
 		messagegrpc.NewMessageHandler(
 			service.NewMessageService(service.Deps{
-				Messages: repos.messages, Dialogs: repos.dialogs, Events: events, Tx: repos.tx, Photos: photos,
+				Messages: repos.messages, Dialogs: repos.dialogs, ChatMessages: repos.chatMessages, ChatMembers: repos.chatMembers,
+				Events: events, Tx: repos.tx, Photos: photos,
 			}),
 			service.NewChatService(service.ChatDeps{
-				Chats: repos.chats, Members: repos.chatMembers, Messages: repos.chatMessages, Events: events, Tx: repos.tx, Photos: photos,
+				Chats: repos.chats, Members: repos.chatMembers, Messages: repos.chatMessages, DialogMessages: repos.messages,
+				Events: events, Tx: repos.tx, Photos: photos,
 			}),
 			a.logger,
 		),
