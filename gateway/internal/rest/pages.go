@@ -4,13 +4,10 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
-	"io/fs"
 	"net/http"
 	"os"
 	"path/filepath"
-	"strconv"
 	"strings"
-	"sync"
 	"time"
 )
 
@@ -22,64 +19,17 @@ const pageCSP = "default-src 'self'; script-src 'self'; style-src 'self'; img-sr
 // The website holds nothing of a person, so, unlike the API, it may be
 // cached. A page and an asset at its plain path are checked with the
 // server every time (a 304 when nothing changed); an asset at the path
-// that names the version of the site never changes and is kept for good.
+// that names its version never changes and is kept for good.
 const (
 	cacheRevalidate = "no-cache"
 	cacheForever    = "public, max-age=31536000, immutable"
 
-	staticPrefix    = "/static/"
-	versionedPrefix = "/static/v/"
-
-	// assetsCheckInterval is how long a version of the site is believed
-	// before its files are looked at again.
-	assetsCheckInterval = time.Second
+	staticPrefix = "/static/"
+	// buildPrefix is where the pages of the builds before named the
+	// version of the whole site: such a page, still open, gets the files
+	// as they are, to be checked again.
+	buildPrefix = "/static/v/"
 )
-
-// assets knows the version of the files under /static/: a digest of their
-// names, sizes and times, so a new build of the site (and a file saved
-// while developing) is a new version. Pages name it in the paths of
-// their assets, which lets a browser keep those for good and still get
-// the new ones with the next page.
-type assets struct {
-	dir string
-
-	mu      sync.Mutex
-	version string
-	checked time.Time
-}
-
-func (a *assets) current() string {
-	a.mu.Lock()
-	defer a.mu.Unlock()
-
-	if a.version != "" && time.Since(a.checked) < assetsCheckInterval {
-		return a.version
-	}
-
-	digest := sha256.New()
-
-	// A file that cannot be read leaves the version as the others make
-	// it: the request for it answers for itself.
-	_ = filepath.WalkDir(a.dir, func(path string, d fs.DirEntry, err error) error {
-		if err != nil || d.IsDir() {
-			return nil //nolint:nilerr // see above
-		}
-
-		info, err := d.Info()
-		if err != nil {
-			return nil //nolint:nilerr // see above
-		}
-
-		digest.Write([]byte(path + " " + strconv.FormatInt(info.Size(), 10) + " " + strconv.FormatInt(info.ModTime().UnixNano(), 10) + "\n"))
-
-		return nil
-	})
-
-	a.version = hex.EncodeToString(digest.Sum(nil))[:12]
-	a.checked = time.Now()
-
-	return a.version
-}
 
 // registerPages serves the website from dir: pages at fixed paths and
 // assets under /static/. Profiles live at /<nickname>; the user service
@@ -89,7 +39,8 @@ func registerPages(mux *http.ServeMux, dir string) {
 	files := noListing(http.FileServer(http.Dir(site.dir)))
 
 	mux.Handle("GET /static/", cached(cacheRevalidate, http.StripPrefix(staticPrefix, files)))
-	mux.Handle("GET /static/v/{version}/{path...}", site.versioned(files))
+	mux.Handle("GET /static/c/{version}/{path...}", site.content())
+	mux.Handle("GET /static/v/{version}/{path...}", cached(cacheRevalidate, earlier(files)))
 
 	// Browsers ask for it whatever the pages say; without it the request
 	// would open the page of a person named so.
@@ -152,8 +103,7 @@ func asset(dir, name string) http.Handler {
 	})
 }
 
-// page serves a page with the paths of its assets naming the version of
-// the site.
+// page serves a page with the paths of its assets naming their versions.
 func (a *assets) page(dir, name string) http.Handler {
 	path := filepath.Join(dir, name)
 
@@ -164,37 +114,28 @@ func (a *assets) page(dir, name string) http.Handler {
 			return
 		}
 
-		version := a.current()
-		html = bytes.ReplaceAll(html, []byte(`"`+staticPrefix), []byte(`"`+versionedPrefix+version+"/"))
+		html = a.current().versioned(html)
 
 		w.Header().Set("Content-Security-Policy", pageCSP)
 		w.Header().Set("Referrer-Policy", "same-origin")
 		w.Header().Set("Content-Type", "text/html; charset=utf-8")
 		w.Header().Set("Cache-Control", cacheRevalidate)
-		w.Header().Set("ETag", `"`+version+"-"+digestOf(html)+`"`)
+		w.Header().Set("ETag", `"`+digestOf(html)+`"`)
 		http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(html))
 	})
 }
 
-// versioned serves an asset at the path naming a version of the site:
-// for good when that is the version served, and to be checked again when
-// it is not — a page of the build before asked a server of the new one.
-func (a *assets) versioned(files http.Handler) http.Handler {
+// earlier serves a file to a page of a build before this one.
+func earlier(files http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		policy := cacheRevalidate
-		if r.PathValue("version") == a.current() {
-			policy = cacheForever
-		}
-
-		w.Header().Set("Cache-Control", policy)
-		http.StripPrefix(versionedPrefix+r.PathValue("version")+"/", files).ServeHTTP(w, r)
+		http.StripPrefix(buildPrefix+r.PathValue("version")+"/", files).ServeHTTP(w, r)
 	})
 }
 
 func digestOf(content []byte) string {
 	sum := sha256.Sum256(content)
 
-	return hex.EncodeToString(sum[:6])
+	return hex.EncodeToString(sum[:versionLength/2])
 }
 
 // cached serves next under a caching policy instead of the API's "never".

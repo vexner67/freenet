@@ -2,7 +2,7 @@
 // Альбомы » …" of openvk and who may change an album.
 
 import { albumsCount, formatPostDate } from './labels.js';
-import { adult, asset, clubRef, el, fullName, pagePath } from './layout.js';
+import { adult, clubRef, el, fullName, pagePath } from './layout.js';
 
 // albumsPath is the list of albums of owner, a person or a community (an
 // author).
@@ -55,7 +55,7 @@ export function isAvatarAlbum(album) {
 // coverURL is the photo that shows an album — the one chosen, else its
 // first — or the camera of openvk.
 export function coverURL(album) {
-  return album.cover?.small ?? asset('club.svg');
+  return album.cover?.small ?? '/static/club.svg';
 }
 
 // coverNode is that photo, blurred when it came from an adult post.

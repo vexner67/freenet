@@ -133,29 +133,32 @@ func TestPages(t *testing.T) {
 	}
 
 	// The site may be cached, the API never: a page is checked with the
-	// server each time and names the version of its assets, which are
+	// server each time and names the versions of its assets, which are
 	// then kept for good.
-	t.Run("pages name the version of their assets", func(t *testing.T) {
+	t.Run("pages name the versions of their assets", func(t *testing.T) {
 		t.Parallel()
 
 		w := get("/")
 
-		_, rest, found := strings.Cut(w.Body.String(), `href="/static/v/`)
+		_, rest, found := strings.Cut(w.Body.String(), `href="/static/c/`)
 		version, _, _ := strings.Cut(rest, "/style.css")
 
 		if !found || version == "" || w.Header().Get("Cache-Control") != "no-cache" {
 			t.Fatalf("page: %q, Cache-Control %q", w.Body.String(), w.Header().Get("Cache-Control"))
 		}
 
-		asset := get("/static/v/" + version + "/style.css")
+		asset := get("/static/c/" + version + "/style.css")
 		if cc := asset.Header().Get("Cache-Control"); asset.Code != 200 || asset.Body.String() != "body{}" || !strings.Contains(cc, "immutable") {
 			t.Fatalf("asset of the version: %d %q, Cache-Control %q", asset.Code, asset.Body.String(), cc)
 		}
 
-		// A page of another build gets the file, but not for good.
-		other := get("/static/v/000000000000/style.css")
-		if other.Code != 200 || other.Header().Get("Cache-Control") != "no-cache" {
-			t.Fatalf("asset of another version: %d, Cache-Control %q", other.Code, other.Header().Get("Cache-Control"))
+		// A page of another build gets the file, but not for good: by the
+		// version of the file it knew and by that of its whole site.
+		for _, path := range []string{"/static/c/000000000000/style.css", "/static/v/000000000000/style.css"} {
+			other := get(path)
+			if other.Code != 200 || other.Body.String() != "body{}" || other.Header().Get("Cache-Control") != "no-cache" {
+				t.Fatalf("%s: %d, Cache-Control %q", path, other.Code, other.Header().Get("Cache-Control"))
+			}
 		}
 
 		if plain := get("/static/style.css"); plain.Header().Get("Cache-Control") != "no-cache" {
@@ -166,8 +169,10 @@ func TestPages(t *testing.T) {
 			t.Fatalf("API: Cache-Control %q", api.Header().Get("Cache-Control"))
 		}
 
-		if dir := get("/static/v/" + version + "/"); dir.Code != http.StatusNotFound {
-			t.Fatalf("listing: %d", dir.Code)
+		for _, path := range []string{"/static/c/" + version + "/", "/static/v/" + version + "/", "/static/c/" + version + "/none.css"} {
+			if none := get(path); none.Code != http.StatusNotFound {
+				t.Fatalf("%s: %d", path, none.Code)
+			}
 		}
 	})
 
