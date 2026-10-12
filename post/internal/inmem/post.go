@@ -19,10 +19,12 @@ import (
 type Store struct {
 	mu sync.RWMutex
 	// sources are reader → whom they read → is it a club.
-	sources  map[uuid.UUID]map[uuid.UUID]bool
-	posts    map[uuid.UUID]*post.Post
-	likes    map[uuid.UUID]map[uuid.UUID]time.Time // post → users → when
-	comments map[uuid.UUID]*post.Comment
+	sources map[uuid.UUID]map[uuid.UUID]bool
+	// closedWalls are the walls not everyone reads → is it a club's.
+	closedWalls map[uuid.UUID]bool
+	posts       map[uuid.UUID]*post.Post
+	likes       map[uuid.UUID]map[uuid.UUID]time.Time // post → users → when
+	comments    map[uuid.UUID]*post.Comment
 	// commentLikes are comment → users → when, counted in the comments.
 	commentLikes map[uuid.UUID]map[uuid.UUID]time.Time
 	pins         map[uuid.UUID]uuid.UUID // wall → its pinned post
@@ -394,7 +396,7 @@ func (r *PostRepository) Pinned(ctx context.Context, wallID uuid.UUID) (*post.Po
 // with its author, as in PostgreSQL.
 func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSources, before uuid.UUID, limit int) ([]*post.Post, error) {
 	match := func(p *post.Post) bool {
-		if p.Archived() || (p.NSFW() && sources.HideNSFW) || r.s.postHidden(p) {
+		if p.Archived() || (p.NSFW() && sources.HideNSFW) || r.s.postHidden(p) || r.s.wallClosedTo(p.WallID(), sources.Reader) {
 			return false
 		}
 

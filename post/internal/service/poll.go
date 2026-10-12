@@ -55,6 +55,7 @@ type PollService struct {
 	polls      PollRepository
 	posts      PollPostGetter
 	moderators WallModerators
+	walls      Walls
 	tx         TxManager
 	now        func() time.Time
 }
@@ -64,7 +65,9 @@ type PollDeps struct {
 	Polls      PollRepository
 	Posts      PollPostGetter
 	Moderators WallModerators
-	Tx         TxManager
+	// Walls tells the walls closed to a viewer; nil: none is.
+	Walls Walls
+	Tx    TxManager
 	// Now is the clock; nil: time.Now.
 	Now func() time.Time
 }
@@ -79,6 +82,7 @@ func NewPollService(d PollDeps) *PollService {
 		polls:      d.Polls,
 		posts:      d.Posts,
 		moderators: d.Moderators,
+		walls:      d.Walls,
 		tx:         d.Tx,
 		now:        now,
 	}
@@ -108,7 +112,7 @@ func (s *PollService) Of(ctx context.Context, viewerID uuid.UUID, postIDs []uuid
 			continue
 		}
 
-		away, err := hidden(ctx, s.moderators, p, viewerID)
+		away, err := hidden(ctx, s.moderators, s.walls, p, viewerID)
 		if err != nil {
 			return nil, errs.Wrap("hidden", err)
 		}
@@ -245,7 +249,7 @@ func (s *PollService) checkSeen(ctx context.Context, userID, postID uuid.UUID) e
 		return errs.Wrap("s.posts.Get", err)
 	}
 
-	away, err := hidden(ctx, s.moderators, p, userID)
+	away, err := hidden(ctx, s.moderators, s.walls, p, userID)
 	if err != nil {
 		return errs.Wrap("hidden", err)
 	}

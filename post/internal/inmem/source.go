@@ -63,12 +63,86 @@ func (r *SourceRepository) Forget(ctx context.Context, userID uuid.UUID) error {
 	defer r.s.mu.Unlock()
 
 	delete(r.s.sources, userID)
+	delete(r.s.closedWalls, userID)
 
 	for _, read := range r.s.sources {
 		delete(read, userID)
 	}
 
 	return nil
+}
+
+func (r *SourceRepository) Close(ctx context.Context, wallID uuid.UUID, club bool) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	if r.s.closedWalls == nil {
+		r.s.closedWalls = make(map[uuid.UUID]bool)
+	}
+
+	r.s.closedWalls[wallID] = club
+
+	return nil
+}
+
+func (r *SourceRepository) Open(ctx context.Context, wallID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	delete(r.s.closedWalls, wallID)
+
+	return nil
+}
+
+func (r *SourceRepository) ClosedTo(ctx context.Context, viewerID uuid.UUID, wallIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	closed := make(map[uuid.UUID]bool)
+
+	for _, id := range wallIDs {
+		if r.s.wallClosedTo(id, viewerID) {
+			closed[id] = true
+		}
+	}
+
+	return closed, nil
+}
+
+// wallClosedTo is wall_closed_to of the migrations: a closed page is read
+// by its owner and those the owner follows, a closed community by its
+// members. The caller holds the lock.
+func (s *Store) wallClosedTo(wallID, viewerID uuid.UUID) bool {
+	club, closed := s.closedWalls[wallID]
+	if !closed || wallID == viewerID {
+		return false
+	}
+
+	if viewerID == uuid.Nil {
+		return true
+	}
+
+	if club {
+		_, member := s.sources[viewerID][wallID]
+
+		return !member
+	}
+
+	followedClub, followed := s.sources[wallID][viewerID]
+
+	return !followed || followedClub
 }
 
 // reads tells whether p is in the news of the reader of sources, as

@@ -188,6 +188,7 @@ type PostService struct {
 	wallPhotos  WallPhotoKeeper
 	switches    PostSwitchRepository
 	polls       PollSaver
+	walls       Walls
 }
 
 // PollSaver keeps the poll a new post asks, in the transaction that saves
@@ -215,6 +216,8 @@ type PostDeps struct {
 	Switches PostSwitchRepository
 	// Polls keeps the polls posts ask.
 	Polls PollSaver
+	// Walls tells the walls closed to a viewer; nil: none is.
+	Walls Walls
 }
 
 // WallPhotoKeeper keeps the photos people post on their own walls in
@@ -244,6 +247,7 @@ func NewPostService(d PostDeps) *PostService {
 		wallPhotos:  d.WallPhotos,
 		switches:    d.Switches,
 		polls:       d.Polls,
+		walls:       d.Walls,
 		now:         time.Now,
 	}
 }
@@ -656,7 +660,12 @@ func (s *PostService) Reposts(ctx context.Context, viewerID, postID, cursor uuid
 		return Page{}, errs.Wrap("s.postRepo.Get", err)
 	}
 
-	if p.Archived() {
+	away, err := hidden(ctx, s.moderators, s.walls, p, viewerID)
+	if err != nil {
+		return Page{}, errs.Wrap("hidden", err)
+	}
+
+	if away || p.Archived() {
 		return Page{}, post.ErrNotFound
 	}
 
@@ -670,6 +679,11 @@ func (s *PostService) Reposts(ctx context.Context, viewerID, postID, cursor uuid
 	if len(posts) > size {
 		page.Posts = posts[:size]
 		page.NextCursor = posts[size-1].ID()
+	}
+
+	// The reposts on walls closed to the viewer are counted and not shown.
+	if page.Posts, err = readable(ctx, s.walls, viewerID, page.Posts); err != nil {
+		return Page{}, errs.Wrap("readable", err)
 	}
 
 	if page.Liked, err = s.liked(ctx, viewerID, page.Posts); err != nil {
@@ -944,9 +958,19 @@ func (s *PostService) checkWallOwner(ctx context.Context, requesterID, postID uu
 	return nil
 }
 
-// hidden tells whether p is put away from viewerID: an archived post is
-// shown to the owner of its wall and the admins of its community only.
-func hidden(ctx context.Context, moderators WallModerators, p *post.Post, viewerID uuid.UUID) (bool, error) {
+// hidden tells whether p is put away from viewerID: a post on a wall
+// closed to them, and an archived post, shown to the owner of its wall
+// and the admins of its community only.
+func hidden(ctx context.Context, moderators WallModerators, walls Walls, p *post.Post, viewerID uuid.UUID) (bool, error) {
+	closed, err := closedTo(ctx, walls, viewerID, p.WallID())
+	if err != nil {
+		return false, errs.Wrap("closedTo", err)
+	}
+
+	if closed {
+		return true, nil
+	}
+
 	if !p.Archived() {
 		return false, nil
 	}
@@ -984,7 +1008,7 @@ func (s *PostService) seen(ctx context.Context, viewerID, postID uuid.UUID) (*po
 		return nil, errs.Wrap("s.postRepo.Get", err)
 	}
 
-	away, err := hidden(ctx, s.moderators, p, viewerID)
+	away, err := hidden(ctx, s.moderators, s.walls, p, viewerID)
 	if err != nil {
 		return nil, errs.Wrap("hidden", err)
 	}
@@ -1015,8 +1039,9 @@ func (s *PostService) Get(ctx context.Context, viewerID, postID uuid.UUID) (*pos
 
 // GetMany returns the posts with these IDs that exist and are not put
 // away in an archive, at most MaxPageSize, in no particular order: they
-// are shown inside other posts and in notifications, to anyone.
-func (s *PostService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error) {
+// are shown inside other posts and in notifications, to anyone who reads
+// their walls (viewerID; uuid.Nil: nobody signed in).
+func (s *PostService) GetMany(ctx context.Context, viewerID uuid.UUID, ids []uuid.UUID) ([]*post.Post, error) {
 	if len(ids) > MaxPageSize {
 		return nil, ErrTooManyIDs
 	}
@@ -1030,7 +1055,12 @@ func (s *PostService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Pos
 		return nil, errs.Wrap("s.postRepo.GetMany", err)
 	}
 
-	return slices.DeleteFunc(posts, (*post.Post).Archived), nil
+	shown, err := readable(ctx, s.walls, viewerID, slices.DeleteFunc(posts, (*post.Post).Archived))
+	if err != nil {
+		return nil, errs.Wrap("readable", err)
+	}
+
+	return shown, nil
 }
 
 // Like is idempotent: liking twice counts once, and the notification
@@ -1133,6 +1163,15 @@ func likeEvent(p *post.Post, userID uuid.UUID) (Event, bool) {
 func (s *PostService) ListWall(ctx context.Context, viewerID, wallID uuid.UUID, pick WallPick, cursor uuid.UUID, size int) (Page, error) {
 	if size <= 0 || size > MaxPageSize {
 		size = DefaultPageSize
+	}
+
+	closed, err := closedTo(ctx, s.walls, viewerID, wallID)
+	if err != nil {
+		return Page{}, errs.Wrap("closedTo", err)
+	}
+
+	if closed {
+		return Page{}, post.ErrWallClosed
 	}
 
 	if pick.Filter == post.WallArchive {
