@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Подарки | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/gifts-page.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Загрузка…</span></div>
+      <div class="page-body">
+        <div class="tabs" id="tabs" hidden>
+          <a id="tab-list"></a>
+          <a id="tab-send" hidden>Отправить подарок</a>
+          <a class="tabs-side" id="tab-page"></a>
+        </div>
+        <div class="error" id="error" hidden></div>
+        <div class="notice" id="sent" hidden><b>Подарок отправлен</b><br>Ваш подарок отправлен.</div>
+        <div id="gifts"></div>
+        <p class="hint" id="empty" hidden>Тут ничего нет... Пока...</p>
+        <div id="catalog" hidden></div>
+        <a class="wall-more" id="more" hidden>Показать ещё</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

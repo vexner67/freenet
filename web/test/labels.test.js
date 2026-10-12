@@ -1,8 +1,9 @@
 // Run: make web-test (node --test web/test/*.test.js)
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
+import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -779,4 +780,30 @@ test('closed profiles and groups speak as openvk does', () => {
   assert.equal(requestsLink(2), '2 заявки на вступление');
   assert.equal(closedFollows('female'), 'подписана сама');
   assert.equal(errorText({ message: 'this club is closed' }), clubTypeHints.closed);
+});
+
+test('gifts are counted, named and pictured as the catalogue of the user service has them', () => {
+  assert.equal(giftsCount(0), 'Нет подарков');
+  assert.equal(giftsCount(1), '1 подарок');
+  assert.equal(giftsCount(3), '3 подарка');
+  assert.equal(giftsCount(15), '15 подарков');
+  assert.equal(notificationVerb('gift', { gender: 'female' }), 'отправила');
+  assert.equal(errorText({ message: "this user's gifts are hidden" }), 'Пользователь скрыл свои подарки.');
+  assert.equal(errorText({ message: 'you cannot send a gift to this user' }), 'Вы не можете отправить подарок этому пользователю.');
+
+  // The catalogue is the domain's: every collection and gift it has is
+  // named here and has its picture among the files of the site.
+  const source = readFileSync(new URL('../../user/internal/user/gift.go', import.meta.url), 'utf8');
+  const catalog = /var giftCatalog = [^{]*\{([\s\S]*?)\n\}/.exec(source)[1];
+  const collections = [...catalog.matchAll(/ID:\s*"(\w+)"/g)].map((m) => m[1]);
+  const gifts = [...catalog.matchAll(/Gifts:[^{]*\{([^}]*)\}/g)].flatMap((m) => [...m[1].matchAll(/"(\w+)"/g)].map((g) => g[1]));
+
+  assert.deepEqual(Object.keys(giftCollections), collections);
+  assert.equal(gifts.length, 15);
+  assert.deepEqual(Object.keys(giftNames), gifts);
+  for (const gift of gifts) {
+    assert.equal(giftImage(gift), `/static/gifts/${gift}.svg`);
+    assert.ok(existsSync(new URL(`../static/gifts/${gift}.svg`, import.meta.url)), gift);
+  }
+  assert.equal(giftImage('unknown'), '/static/gifts/present.svg');
 });

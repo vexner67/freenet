@@ -156,6 +156,11 @@ function notificationText(n) {
       el('a', { href: notePath(n.note) }, el('b', { textContent: `«${n.note.title}»` })), said(n)];
   }
 
+  // openvk's "отправил вам подарок"; the gifts are on your page.
+  if (n.type === 'gift') {
+    return [name, ` ${notificationVerb('gift', n.actor)} вам `, el('a', { href: '/gifts' }, el('b', { textContent: 'подарок' })), '.'];
+  }
+
   const verb = notificationVerb(n.type, n.actor);
 
   switch (n.type) {

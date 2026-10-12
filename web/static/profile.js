@@ -2,6 +2,7 @@ import { api, currentUser } from './api.js';
 import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, eventsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
+import { giftsBlock, pickPath } from './gifts.js';
 import { notesBlock } from './notes.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initIgnoreLink } from './feedsettings.js';
@@ -289,6 +290,33 @@ async function showClubBlock(id, all, count, list) {
   }
 }
 
+// The newest gifts of the block "Подарки".
+const GIFTS_SHOWN = 4;
+
+// showGifts is openvk's block "Подарки" over the wall: how many, "Отправить
+// подарок", "Все" and the newest, as "Кому видны мои подарки" allows. A
+// page without gifts to show offers "Отправить подарок" under the photo.
+async function showGifts(user, me, isOwner) {
+  let shown = false;
+
+  try {
+    if (user.access.gifts) {
+      const page = await api.gifts(user.nickname, '', GIFTS_SHOWN);
+
+      shown = page.total > 0;
+      $('gifts-block').replaceChildren(...giftsBlock(user, page, Boolean(me)));
+      $('gifts-block').hidden = !shown;
+    }
+  } catch {
+    // Not to be had: the page works without it.
+  }
+
+  if (me && !isOwner && !shown) {
+    $('gift').href = pickPath(user);
+    $('gift').hidden = false;
+  }
+}
+
 // showNotes is openvk's block "Заметки": how many, "Все" and the newest,
 // as the user's "Кому видно мои заметки" allows.
 async function showNotes(user) {
@@ -427,6 +455,7 @@ try {
     if (profile.access.photos) showAlbums(profile);
     if (profile.access.clubs) showClubs(profile);
     if (profile.access.notes) showNotes(profile);
+    showGifts(profile, me, isOwner);
     if (isOwner) showOnline(profile);
     if (me && !isOwner && profile.access.friends) showCommon(profile);
     showCompleteness(isOwner ? me : profile, isOwner);

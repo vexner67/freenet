@@ -705,6 +705,47 @@ export function myAlbumsCount(n) {
   return n === 0 ? 'У Вас нет ни одного альбома' : `У Вас ${albumsCount(n)}`;
 }
 
+// Gifts ("Подарки" of openvk): the collections there are to choose from,
+// what each gift is called and its picture. The gifts themselves are the
+// catalogue of the user service; a picture is a file of the site, named
+// by its whole path so that it is served with its version.
+export const giftCollections = { flowers: 'Цветы', sweets: 'Сладости', holidays: 'Праздники' };
+
+export const giftNames = {
+  rose: 'Роза', tulip: 'Тюльпан', bouquet: 'Букет', sunflower: 'Подсолнух', cactus: 'Кактус',
+  cake: 'Торт', candy: 'Конфета', chocolate: 'Шоколад', icecream: 'Мороженое', cupcake: 'Пирожное',
+  present: 'Подарок', balloons: 'Шарики', heart: 'Сердце', bear: 'Мишка', star: 'Звезда',
+};
+
+const giftImages = {
+  rose: '/static/gifts/rose.svg',
+  tulip: '/static/gifts/tulip.svg',
+  bouquet: '/static/gifts/bouquet.svg',
+  sunflower: '/static/gifts/sunflower.svg',
+  cactus: '/static/gifts/cactus.svg',
+  cake: '/static/gifts/cake.svg',
+  candy: '/static/gifts/candy.svg',
+  chocolate: '/static/gifts/chocolate.svg',
+  icecream: '/static/gifts/icecream.svg',
+  cupcake: '/static/gifts/cupcake.svg',
+  present: '/static/gifts/present.svg',
+  balloons: '/static/gifts/balloons.svg',
+  heart: '/static/gifts/heart.svg',
+  bear: '/static/gifts/bear.svg',
+  star: '/static/gifts/star.svg',
+};
+
+// giftImage is the picture of a gift; a gift this site does not know yet
+// (a newer catalogue) is shown as a present.
+export function giftImage(gift) {
+  return giftImages[gift] ?? giftImages.present;
+}
+
+// giftsCount is openvk's "gifts": "3 подарка", "Нет подарков".
+export function giftsCount(n) {
+  return n === 0 ? 'Нет подарков' : `${n} ${plural(n, ['подарок', 'подарка', 'подарков'])}`;
+}
+
 // notesCount is openvk's "notes" of the block on a page: "3 заметки";
 // foundNotes heads the list of notes, "Найдено 3 заметки".
 export function notesCount(n) {
@@ -824,6 +865,7 @@ const notificationVerbs = {
   comment_reply: ['ответил', 'ответила', 'ответил(а)', 'ответило'],
   comment_like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
   mention: ['упомянул', 'упомянула', 'упомянул(а)', 'упомянуло'],
+  gift: ['отправил', 'отправила', 'отправил(а)', 'отправило'],
 };
 
 // notificationVerb agrees with actor: a person's gender, or a community.
@@ -1033,6 +1075,12 @@ const errorTexts = {
   "this user's clubs are hidden": 'Пользователь скрыл список своих групп.',
   "this user's photos are hidden": 'Пользователь скрыл свои фотографии.',
   "this user's notes are hidden": 'Пользователь скрыл свои заметки.',
+  "this user's gifts are hidden": 'Пользователь скрыл свои подарки.',
+  'you cannot send a gift to this user': 'Вы не можете отправить подарок этому пользователю.',
+  'fill in your profile before sending gifts': 'Сначала заполните свою страницу.',
+  'unknown gift': 'Такого подарка нет.',
+  'gift caption is too long': 'Сообщение слишком длинное: не больше 250 символов.',
+  'gift not found': 'Подарок не найден.',
   'note not found': 'Заметка не найдена или удалена.',
   'note title is empty': 'Введите название заметки.',
   'note title is too long': 'Название заметки слишком длинное: не больше 256 символов.',
