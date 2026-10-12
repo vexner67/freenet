@@ -370,19 +370,45 @@ func TestMessage_Carried(t *testing.T) {
 		t.Fatalf("carried = %+v", carried)
 	}
 
-	// A forward with words of its own carries them first; one without
-	// carries only what it forwards.
+	// A forward is carried on itself, with or without words of its own,
+	// and what it forwarded goes one level deeper, as VK nests them.
 	forwards, err := message.NewForwards(carried)
 	if err != nil {
 		t.Fatal(err)
 	}
 	withWords, _ := message.New(bob, cat, message.RestoreContent("вот", nil, uuid.Nil, forwards), now)
-	if got := withWords.Carried(); len(got) != 2 || got[0].SenderID != bob || got[0].Text != "вот" || got[1].SenderID != ann {
+	if got := withWords.Carried(); len(got) != 2 || got[0].SenderID != bob || got[0].Text != "вот" || got[0].Depth != 0 ||
+		got[1].SenderID != ann || got[1].Depth != 1 {
 		t.Fatalf("carried = %+v", got)
 	}
 	bare, _ := message.New(bob, cat, message.RestoreContent("", nil, uuid.Nil, forwards), now)
-	if got := bare.Carried(); len(got) != 1 || got[0].SenderID != ann {
+	got := bare.Carried()
+	if len(got) != 2 || got[0].SenderID != bob || got[0].Text != "" || got[0].Depth != 0 || got[1].SenderID != ann || got[1].Depth != 1 {
 		t.Fatalf("carried = %+v", got)
+	}
+
+	// Carried on once more, it is two levels deep; the first message carried.
+	twice, err := message.NewForwards(got)
+	if err != nil {
+		t.Fatal(err)
+	}
+	deep, _ := message.New(cat, ann, message.RestoreContent("", nil, uuid.Nil, twice), now)
+	if got := deep.Carried(); len(got) != 3 || got[0].SenderID != cat || got[1].Depth != 1 || got[2].SenderID != ann || got[2].Depth != 2 {
+		t.Fatalf("carried twice = %+v", got)
+	}
+
+	// The depths make a tree: the first is at the top, none skips a level.
+	for name, depths := range map[string][]int{"starts deep": {1}, "skips a level": {0, 2}, "negative": {0, -1}} {
+		carried := make([]message.Forwarded, len(depths))
+		for i, d := range depths {
+			carried[i].Depth = d
+		}
+		if _, err := message.NewForwards(carried); !errors.Is(err, message.ErrForwardsMisplaced) {
+			t.Fatalf("%s: %v", name, err)
+		}
+	}
+	if _, err := message.NewForwards([]message.Forwarded{{}, {Depth: 1}, {Depth: 2}, {Depth: 1}, {}}); err != nil {
+		t.Fatalf("a tree: %v", err)
 	}
 
 	// Forwards alone are something to send; too many are not.

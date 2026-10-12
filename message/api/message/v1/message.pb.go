@@ -326,7 +326,10 @@ type ForwardedMessage struct {
 	PostId    string                 `protobuf:"bytes,4,opt,name=post_id,json=postId,proto3" json:"post_id,omitempty"`
 	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
 	// A photo of an album it shared; empty for none.
-	PhotoId       string `protobuf:"bytes,6,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
+	PhotoId string `protobuf:"bytes,6,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
+	// How deep it is carried: 0 for a message forwarded itself, 1 for one
+	// that message carried on. The list is a tree written parent first.
+	Depth         int32 `protobuf:"varint,7,opt,name=depth,proto3" json:"depth,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -401,6 +404,13 @@ func (x *ForwardedMessage) GetPhotoId() string {
 		return x.PhotoId
 	}
 	return ""
+}
+
+func (x *ForwardedMessage) GetDepth() int32 {
+	if x != nil {
+		return x.Depth
+	}
+	return 0
 }
 
 type Dialog struct {
@@ -3335,7 +3345,7 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"deleted_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x19\n" +
 	"\btext_cut\x18\x0e \x01(\bR\atextCut\x12\x19\n" +
-	"\bphoto_id\x18\x0f \x01(\tR\aphotoId\"\xcf\x01\n" +
+	"\bphoto_id\x18\x0f \x01(\tR\aphotoId\"\xe5\x01\n" +
 	"\x10ForwardedMessage\x12\x1b\n" +
 	"\tsender_id\x18\x01 \x01(\tR\bsenderId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
@@ -3343,7 +3353,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\apost_id\x18\x04 \x01(\tR\x06postId\x129\n" +
 	"\n" +
 	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x19\n" +
-	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\"q\n" +
+	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\x12\x14\n" +
+	"\x05depth\x18\a \x01(\x05R\x05depth\"q\n" +
 	"\x06Dialog\x12\x17\n" +
 	"\apeer_id\x18\x01 \x01(\tR\x06peerId\x126\n" +
 	"\flast_message\x18\x02 \x01(\v2\x13.message.v1.MessageR\vlastMessage\x12\x16\n" +

@@ -51,6 +51,7 @@ func toProtoForwarded(forwarded message.Forwards) []*messagev1.ForwardedMessage 
 			PostId:    postString(f.Post),
 			PhotoId:   postString(f.SharedPhoto),
 			CreatedAt: timestamppb.New(f.CreatedAt),
+			Depth:     int32(f.Depth), //nolint:gosec // at most MaxForwarded
 		}
 	}
 

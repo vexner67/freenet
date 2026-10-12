@@ -59,6 +59,9 @@ var (
 	// whoever forwards it, or was taken back.
 	ErrForwardNotFound  = errors.New("forwarded message not found")
 	ErrTooManyForwarded = errors.New("a message forwards at most 20 messages")
+	// ErrForwardsMisplaced: the depths of forwarded messages do not make
+	// a tree.
+	ErrForwardsMisplaced = errors.New("forwarded messages are out of place")
 	// ErrNoMessages and ErrTooManyMessages: how many messages are deleted
 	// at once.
 	ErrNoMessages      = errors.New("no messages to delete")
@@ -262,12 +265,18 @@ type Forwarded struct {
 	// SharedPhoto is a photo of an album it shared, uuid.Nil for none.
 	SharedPhoto uuid.UUID
 	CreatedAt   time.Time
+	// Depth is how deep it is carried: 0 for a message forwarded itself,
+	// 1 for one that message carried on, and so on, as VK nests them.
+	Depth int
 }
 
-// Forwards are the messages a message carries on, oldest first.
+// Forwards are the messages a message carries on, oldest first, as a tree
+// written parent first: what a forwarded message carried on itself
+// follows it, one level deeper.
 type Forwards []Forwarded
 
-// NewForwards: none is nil.
+// NewForwards: none is nil. No message is deeper than one level under
+// the one before it, and the first is at the top.
 func NewForwards(carried []Forwarded) (Forwards, error) {
 	if len(carried) > MaxForwarded {
 		return nil, ErrTooManyForwarded
@@ -275,6 +284,15 @@ func NewForwards(carried []Forwarded) (Forwards, error) {
 
 	if len(carried) == 0 {
 		return nil, nil
+	}
+
+	above := -1
+	for _, f := range carried {
+		if f.Depth < 0 || f.Depth > above+1 {
+			return nil, ErrForwardsMisplaced
+		}
+
+		above = f.Depth
 	}
 
 	return Forwards(carried), nil
@@ -628,25 +646,32 @@ func (m *Message) Forwarded() Forwards {
 	return m.content.forwarded
 }
 
-// Carried is m as another message carries it on: what it says itself,
-// if anything, then the messages it carries on, so that forwarding a
-// forward does not nest. A message taken back carries nothing. The photos
-// are still those of m: whoever forwards copies them.
+// Carried is m as another message carries it on: m itself, with what it
+// says, if anything, then the messages it carried on, one level deeper —
+// forwarding a forward nests, as on VK, and tells who forwarded what. A
+// message taken back carries nothing. The photos are still those of m:
+// whoever forwards copies them.
 func (m *Message) Carried() []Forwarded {
-	var carried []Forwarded
-
-	if m.content.text != "" || len(m.content.photos) > 0 || m.content.post != uuid.Nil || m.content.sharedPhoto != uuid.Nil {
-		carried = append(carried, Forwarded{
-			SenderID:    m.senderID,
-			Text:        m.content.text,
-			Photos:      m.content.photos,
-			Post:        m.content.post,
-			SharedPhoto: m.content.sharedPhoto,
-			CreatedAt:   m.createdAt,
-		})
+	if m.IsDeleted() {
+		return nil
 	}
 
-	return append(carried, m.content.forwarded...)
+	carried := make([]Forwarded, 0, 1+len(m.content.forwarded))
+	carried = append(carried, Forwarded{
+		SenderID:    m.senderID,
+		Text:        m.content.text,
+		Photos:      m.content.photos,
+		Post:        m.content.post,
+		SharedPhoto: m.content.sharedPhoto,
+		CreatedAt:   m.createdAt,
+	})
+
+	for _, f := range m.content.forwarded {
+		f.Depth++
+		carried = append(carried, f)
+	}
+
+	return carried
 }
 
 // ReadMarks are how far each side of a dialog has read: Mine is the newest

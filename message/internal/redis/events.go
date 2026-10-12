@@ -159,13 +159,14 @@ type forwardedJSON struct {
 	Post      uuid.UUID   `json:"post"`
 	Photo     uuid.UUID   `json:"shared_photo"`
 	CreatedAt time.Time   `json:"created_at"`
+	Depth     int         `json:"depth,omitempty"`
 }
 
 func toMessageJSON(m *message.Message) *messageJSON {
 	forwarded := make([]forwardedJSON, len(m.Forwarded()))
 	for i, f := range m.Forwarded() {
 		forwarded[i] = forwardedJSON{
-			SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, Photo: f.SharedPhoto, CreatedAt: f.CreatedAt,
+			SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, Photo: f.SharedPhoto, CreatedAt: f.CreatedAt, Depth: f.Depth,
 		}
 	}
 
@@ -240,7 +241,7 @@ func (m *messageJSON) forwarded() (message.Forwards, error) {
 		}
 
 		carried[i] = message.Forwarded{
-			SenderID: f.SenderID, Text: text, Photos: photos, Post: f.Post, SharedPhoto: f.Photo, CreatedAt: f.CreatedAt,
+			SenderID: f.SenderID, Text: text, Photos: photos, Post: f.Post, SharedPhoto: f.Photo, CreatedAt: f.CreatedAt, Depth: f.Depth,
 		}
 	}
 

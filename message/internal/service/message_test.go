@@ -496,7 +496,7 @@ func TestMessageService_Forward(t *testing.T) {
 	}
 
 	// Cat reads it as it was sent, and forwards it on with nothing of her
-	// own: what it said and what it carried, flat.
+	// own: ann's message, and under it what that carried.
 	page, err := svc.History(ctx, cat, ann, uuid.Nil, 20)
 	if err != nil || len(page.Messages) != 1 || len(page.Messages[0].Forwarded()) != 2 {
 		t.Fatalf("cat's history = %+v, %v", page.Messages, err)
@@ -506,7 +506,8 @@ func TestMessageService_Forward(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := again.Forwarded(); len(got) != 3 || got[0].SenderID != ann || got[0].Text != "вот" || got[1].Text != "смотри" || got[1].Photos[0] == carried[0].Photos[0] {
+	if got := again.Forwarded(); len(got) != 3 || got[0].SenderID != ann || got[0].Text != "вот" || got[1].Text != "смотри" || got[1].Photos[0] == carried[0].Photos[0] ||
+		got[0].Depth != 0 || got[1].Depth != 1 || got[2].Depth != 1 {
 		t.Fatalf("forwarded again = %+v", got)
 	}
 

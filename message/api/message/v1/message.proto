@@ -140,6 +140,9 @@ message ForwardedMessage {
   google.protobuf.Timestamp created_at = 5;
   // A photo of an album it shared; empty for none.
   string photo_id = 6;
+  // How deep it is carried: 0 for a message forwarded itself, 1 for one
+  // that message carried on. The list is a tree written parent first.
+  int32 depth = 7;
 }
 
 message Dialog {

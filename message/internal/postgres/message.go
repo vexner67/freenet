@@ -289,6 +289,9 @@ type forwardedJSON struct {
 	Post      *uuid.UUID  `json:"post,omitempty"`
 	Photo     *uuid.UUID  `json:"photo,omitempty"`
 	CreatedAt time.Time   `json:"created_at"`
+	// Depth is absent for a message forwarded itself, as all were before
+	// forwards nested.
+	Depth int `json:"depth,omitempty"`
 }
 
 func forwardedToDB(forwarded message.Forwards) ([]byte, error) {
@@ -301,6 +304,7 @@ func forwardedToDB(forwarded message.Forwards) ([]byte, error) {
 			Post:      postIDToDB(f.Post),
 			Photo:     postIDToDB(f.SharedPhoto),
 			CreatedAt: f.CreatedAt,
+			Depth:     f.Depth,
 		}
 	}
 
@@ -328,6 +332,7 @@ func forwardedFromDB(data []byte) (message.Forwards, error) {
 			SenderID:  row.SenderID,
 			Text:      message.Text(row.Text),
 			CreatedAt: row.CreatedAt.UTC(),
+			Depth:     row.Depth,
 		}
 		if len(row.Photos) > 0 {
 			forwarded[i].Photos = row.Photos
