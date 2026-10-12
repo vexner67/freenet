@@ -70,7 +70,7 @@ type MemberRepository interface {
 	SetRole(ctx context.Context, clubID, userID uuid.UUID, role club.Role) error
 	// Describe gives one of those who run the club a title and hides or
 	// shows them; club.ErrNotManager when the user does not run it.
-	Describe(ctx context.Context, clubID, userID uuid.UUID, title club.Title, hidden bool) error
+	Describe(ctx context.Context, clubID, userID uuid.UUID, d club.SeatChange) error
 	// List returns up to limit members that filter picks who joined
 	// before the membership before (uuid.Nil: from the newest), the
 	// newest first.
@@ -446,10 +446,10 @@ func (s *ClubService) Transfer(ctx context.Context, requesterID, clubID, userID 
 	return errs.Wrap("s.members.Transfer", s.members.Transfer(ctx, clubID, requesterID, userID))
 }
 
-// Describe gives userID, one of those who run the club, a title and hides
-// or shows them ("Изменить комментарий" and "Скрыт" of openvk): those who
-// run the club do it for each other.
-func (s *ClubService) Describe(ctx context.Context, requesterID, clubID, userID uuid.UUID, title club.Title, hidden bool) error {
+// Describe gives userID, one of those who run the club, a title, hides
+// or shows them, or both ("Изменить комментарий" and "Скрыт" of openvk):
+// those who run the club do it for each other.
+func (s *ClubService) Describe(ctx context.Context, requesterID, clubID, userID uuid.UUID, d club.SeatChange) error {
 	if _, err := s.clubs.Get(ctx, clubID); err != nil {
 		return errs.Wrap("s.clubs.Get", err)
 	}
@@ -468,7 +468,7 @@ func (s *ClubService) Describe(ctx context.Context, requesterID, clubID, userID 
 		return errs.Wrap("club.CheckDescribe", err)
 	}
 
-	return errs.Wrap("s.members.Describe", s.members.Describe(ctx, clubID, userID, title, hidden))
+	return errs.Wrap("s.members.Describe", s.members.Describe(ctx, clubID, userID, d))
 }
 
 // Members pages the members of a club as viewerID (uuid.Nil: anonymous)

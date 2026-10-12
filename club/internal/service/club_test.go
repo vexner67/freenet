@@ -563,19 +563,24 @@ func TestClubService_Describe(t *testing.T) {
 		{"a stranger", bob, uuid.New(), club.ErrNotManager},
 	}
 	for _, tt := range tests {
-		if err := svc.Describe(ctx, tt.requester, c.ID(), tt.target, "кот", true); !errors.Is(err, tt.err) {
+		if err := svc.Describe(ctx, tt.requester, c.ID(), tt.target, described("кот", true)); !errors.Is(err, tt.err) {
 			t.Errorf("%s: %v, want %v", tt.name, err, tt.err)
 		}
 	}
-	if err := svc.Describe(ctx, ann, uuid.New(), bob, "", false); !errors.Is(err, club.ErrNotFound) {
+	if err := svc.Describe(ctx, ann, uuid.New(), bob, described("", false)); !errors.Is(err, club.ErrNotFound) {
 		t.Fatalf("an unknown club: %v", err)
 	}
 
 	// The admins describe each other: Bob the owner, Ann Bob, whom she hides.
-	if err := svc.Describe(ctx, bob, c.ID(), ann, "главная", false); err != nil {
+	if err := svc.Describe(ctx, bob, c.ID(), ann, described("главная", false)); err != nil {
 		t.Fatal(err)
 	}
-	if err := svc.Describe(ctx, ann, c.ID(), bob, "кормит котов", true); err != nil {
+	// The title and the hiding change apart: neither undoes the other.
+	title, hidden := club.Title("кормит котов"), true
+	if err := svc.Describe(ctx, ann, c.ID(), bob, club.SeatChange{Hidden: &hidden}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Describe(ctx, bob, c.ID(), bob, club.SeatChange{Title: &title}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -605,7 +610,7 @@ func TestClubService_Describe(t *testing.T) {
 	}
 
 	// A hidden owner is nobody to those who do not run the club.
-	if err := svc.Describe(ctx, ann, c.ID(), ann, "главная", true); err != nil {
+	if err := svc.Describe(ctx, ann, c.ID(), ann, described("главная", true)); err != nil {
 		t.Fatal(err)
 	}
 	if v, err := svc.Find(ctx, cat, service.Ref{ID: c.ID()}); err != nil || v.OwnerID != uuid.Nil || v.OwnerTitle != "" {
@@ -735,4 +740,9 @@ func TestClubService_Events(t *testing.T) {
 	if _, err = svc.Update(ctx, ann, event.ID(), changes); !errors.Is(err, club.ErrNoStart) {
 		t.Fatalf("Update to no start: %v", err)
 	}
+}
+
+// described is a change of both things of a seat.
+func described(title club.Title, hidden bool) club.SeatChange {
+	return club.SeatChange{Title: &title, Hidden: &hidden}
 }

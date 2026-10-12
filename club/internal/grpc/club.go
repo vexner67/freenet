@@ -24,7 +24,7 @@ type ClubService interface {
 	Leave(ctx context.Context, userID, clubID uuid.UUID) (service.View, error)
 	Appoint(ctx context.Context, requesterID, clubID, userID uuid.UUID, role club.Role) error
 	Transfer(ctx context.Context, requesterID, clubID, userID uuid.UUID) error
-	Describe(ctx context.Context, requesterID, clubID, userID uuid.UUID, title club.Title, hidden bool) error
+	Describe(ctx context.Context, requesterID, clubID, userID uuid.UUID, d club.SeatChange) error
 	Members(ctx context.Context, viewerID, clubID, cursor uuid.UUID, size int, pick service.MemberPick) (service.MemberPage, error)
 	Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, filter service.ClubFilter) (service.ClubPage, error)
 	Search(ctx context.Context, query club.SearchQuery, cursor uuid.UUID, size int) (service.SearchPage, error)
@@ -274,12 +274,18 @@ func (h *ClubHandler) DescribeMember(ctx context.Context, req *clubv1.DescribeMe
 		return nil, err
 	}
 
-	title, err := club.NewTitle(req.GetTitle())
-	if err != nil {
-		return nil, err
+	d := club.SeatChange{Hidden: req.Hidden}
+
+	if req.Title != nil {
+		title, err := club.NewTitle(req.GetTitle())
+		if err != nil {
+			return nil, err
+		}
+
+		d.Title = &title
 	}
 
-	if err = h.clubService.Describe(ctx, requesterID, clubID, userID, title, req.GetHidden()); err != nil {
+	if err = h.clubService.Describe(ctx, requesterID, clubID, userID, d); err != nil {
 		return nil, err
 	}
 

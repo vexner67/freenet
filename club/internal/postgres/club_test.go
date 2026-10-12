@@ -451,13 +451,21 @@ func TestRepositories_SettingsAndTransfer(t *testing.T) {
 	}
 
 	// Titles and hiding: only of those who run the club.
-	if err = members.Describe(ctx, c.ID(), cat, "кот", true); !errors.Is(err, club.ErrNotManager) {
+	if err = members.Describe(ctx, c.ID(), cat, described("кот", true)); !errors.Is(err, club.ErrNotManager) {
 		t.Fatalf("Describe a member: %v", err)
 	}
-	if err = members.Describe(ctx, c.ID(), bob, "кормит котов", true); err != nil {
+	// The title and the hiding change apart: neither undoes the other.
+	title, hidden := club.Title("кормит котов"), true
+	if err = members.Describe(ctx, c.ID(), bob, club.SeatChange{Title: &title}); err != nil {
 		t.Fatal(err)
 	}
-	if err = members.Describe(ctx, c.ID(), ann, "главная", false); err != nil {
+	if err = members.Describe(ctx, c.ID(), bob, club.SeatChange{Hidden: &hidden}); err != nil {
+		t.Fatal(err)
+	}
+	if err = members.Describe(ctx, c.ID(), bob, club.SeatChange{}); err != nil {
+		t.Fatal(err)
+	}
+	if err = members.Describe(ctx, c.ID(), ann, described("главная", false)); err != nil {
 		t.Fatal(err)
 	}
 	if seat, err := members.Seat(ctx, c.ID(), bob); err != nil || seat != (club.Seat{Role: club.RoleAdmin, Title: "кормит котов", Hidden: true}) {
@@ -814,4 +822,9 @@ func TestReminderRepository(t *testing.T) {
 	if ids, err = reminders.TakeDue(ctx, day, day.Add(24*time.Hour), 10); err != nil || len(ids) != 1 || ids[0] != fresh.ID() {
 		t.Fatalf("after a rollback = %v, %v; want the event still due", ids, err)
 	}
+}
+
+// described is a change of both things of a seat.
+func described(title club.Title, hidden bool) club.SeatChange {
+	return club.SeatChange{Title: &title, Hidden: &hidden}
 }

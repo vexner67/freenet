@@ -309,9 +309,10 @@ message DescribeMemberRequest {
   string club_id = 1;
   // The owner or one of the admins.
   string user_id = 2;
-  // At most 36 characters in one line; empty for none.
-  string title = 3;
-  bool hidden = 4;
+  // At most 36 characters in one line; empty for none. What is not set
+  // stays as it is, here and below.
+  optional string title = 3;
+  optional bool hidden = 4;
 }
 
 message TransferClubRequest {
