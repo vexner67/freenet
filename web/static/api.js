@@ -320,8 +320,10 @@ export const api = {
   // message is a message of a dialog whole: the dialog carries the
   // beginnings of long texts.
   message: (nickname, id) => authorized('GET', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages/${encodeURIComponent(id)}`),
-  // photos, when given, replace the message's; without them they stay.
-  editMessage: (id, text, photos) => authorized('PATCH', `/api/v1/messages/${encodeURIComponent(id)}`, { text, photos }),
+  // The edit names the photos it adds and takes away, not those left:
+  // an edit from another window is not undone.
+  editMessage: (id, text, { add = [], remove = [] } = {}) =>
+    authorized('PATCH', `/api/v1/messages/${encodeURIComponent(id)}`, { text, addPhotos: add, removePhotos: remove }),
   // Several messages at once, all or none (up to 100).
   deleteMessages(ids, { forMe = false } = {}) {
     const query = new URLSearchParams(ids.map((id) => ['id', id]));

@@ -1025,6 +1025,15 @@ export function forwardedCount(n) {
 // forwardTree nests the messages a message carries on: the list names a
 // message before those it carried on itself, each one level deeper
 // (depth). The trees are { message, carried }, oldest first.
+// photoChanges is what an edit does to the photos of a message: the
+// IDs it adds to those the message showed when the edit began and the
+// IDs it takes away.
+export function photoChanges(before, ids) {
+  const had = (before ?? []).map((p) => p.id);
+
+  return { add: ids.filter((id) => !had.includes(id)), remove: had.filter((id) => !ids.includes(id)) };
+}
+
 export function forwardTree(forwarded) {
   const top = [];
   // path[d] is where a message of depth d goes.

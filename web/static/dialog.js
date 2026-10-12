@@ -12,7 +12,7 @@
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
-import { errorText, formatPostDate, forwardTree, genitiveName, isLongText, messagePreview, selectedCount, snippet } from './labels.js';
+import { errorText, formatPostDate, forwardTree, genitiveName, isLongText, messagePreview, photoChanges, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, sharedNode, sharedPhotoNode } from './posts.js';
@@ -628,7 +628,7 @@ async function send(event) {
     button.disabled = true;
 
     try {
-      edited(await api.editMessage(editing.id, text.value, editing.sharedPhoto ? undefined : attachments.ids()));
+      edited(await api.editMessage(editing.id, text.value, photoChanges(editing.photos, attachments.ids())));
       cancelEdit();
     } catch (e) {
       showError($('error'), e);
