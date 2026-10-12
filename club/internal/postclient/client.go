@@ -27,6 +27,13 @@ const (
 	LeaveKind = "leave_club"
 )
 
+// Kinds about a club closed and opened ("Тип группы"): the payload is the
+// club's ID.
+const (
+	CloseKind = "close_wall"
+	OpenKind  = "open_wall"
+)
+
 // Recorder adds a message to the outbox in the transaction of ctx.
 type Recorder interface {
 	Add(ctx context.Context, kind string, payload []byte) error
@@ -51,6 +58,14 @@ func (o *Outbox) Left(ctx context.Context, clubID, userID uuid.UUID) error {
 	return errs.Wrap("o.recorder.Add", o.recorder.Add(ctx, LeaveKind, pair(clubID, userID)))
 }
 
+func (o *Outbox) Closed(ctx context.Context, clubID uuid.UUID) error {
+	return errs.Wrap("o.recorder.Add", o.recorder.Add(ctx, CloseKind, clubID[:]))
+}
+
+func (o *Outbox) Opened(ctx context.Context, clubID uuid.UUID) error {
+	return errs.Wrap("o.recorder.Add", o.recorder.Add(ctx, OpenKind, clubID[:]))
+}
+
 func pair(clubID, userID uuid.UUID) []byte {
 	return append(clubID[:], userID[:]...)
 }
@@ -60,28 +75,42 @@ type Nop struct{}
 
 func (Nop) Joined(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 func (Nop) Left(context.Context, uuid.UUID, uuid.UUID) error   { return nil }
+func (Nop) Closed(context.Context, uuid.UUID) error            { return nil }
+func (Nop) Opened(context.Context, uuid.UUID) error            { return nil }
 
 // Deliver makes the recorded calls to the post service.
 func Deliver(api postv1.PostServiceClient, timeout time.Duration) outbox.Deliver {
 	return func(ctx context.Context, m outbox.Message) error {
-		if m.Kind != JoinKind && m.Kind != LeaveKind {
+		want := 2 * len(uuid.UUID{})
+
+		switch m.Kind {
+		case JoinKind, LeaveKind:
+		case CloseKind, OpenKind:
+			want = len(uuid.UUID{})
+		default:
 			return outbox.Permanent(fmt.Errorf("unknown kind %q", m.Kind))
 		}
 
-		if len(m.Payload) != 2*len(uuid.UUID{}) {
-			return outbox.Permanent(fmt.Errorf("a membership of %d bytes", len(m.Payload)))
+		if len(m.Payload) != want {
+			return outbox.Permanent(fmt.Errorf("%s of %d bytes", m.Kind, len(m.Payload)))
 		}
 
-		clubID, userID := uuid.UUID(m.Payload[:16]).String(), uuid.UUID(m.Payload[16:]).String()
+		clubID := uuid.UUID(m.Payload[:16]).String()
 
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 
 		var err error
-		if m.Kind == JoinKind {
-			_, err = api.FollowSource(ctx, &postv1.FollowSourceRequest{ReaderId: userID, SourceId: clubID, Club: true})
-		} else {
-			_, err = api.UnfollowSource(ctx, &postv1.UnfollowSourceRequest{ReaderId: userID, SourceId: clubID})
+
+		switch m.Kind {
+		case JoinKind:
+			_, err = api.FollowSource(ctx, &postv1.FollowSourceRequest{ReaderId: uuid.UUID(m.Payload[16:]).String(), SourceId: clubID, Club: true})
+		case LeaveKind:
+			_, err = api.UnfollowSource(ctx, &postv1.UnfollowSourceRequest{ReaderId: uuid.UUID(m.Payload[16:]).String(), SourceId: clubID})
+		case CloseKind:
+			_, err = api.CloseWall(ctx, &postv1.CloseWallRequest{WallId: clubID, Club: true})
+		default:
+			_, err = api.OpenWall(ctx, &postv1.OpenWallRequest{WallId: clubID})
 		}
 
 		// A request post rejects stays rejected; anything else is tried

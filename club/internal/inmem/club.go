@@ -23,6 +23,14 @@ type Store struct {
 	members map[uuid.UUID]*member
 	// reminded are the events whose members were told they start soon.
 	reminded map[uuid.UUID]bool
+	// requests are who asked to join which closed club, keyed by the ID
+	// of the request.
+	requests map[uuid.UUID]request
+}
+
+// request is one request to join a club.
+type request struct {
+	clubID, userID uuid.UUID
 }
 
 // member is one membership, keyed by its ID.
@@ -60,6 +68,7 @@ func NewStore() *Store {
 		clubs:    make(map[uuid.UUID]club.Stored),
 		members:  make(map[uuid.UUID]*member),
 		reminded: make(map[uuid.UUID]bool),
+		requests: make(map[uuid.UUID]request),
 	}
 }
 
@@ -69,6 +78,10 @@ func (s *Store) Clubs() *ClubRepository {
 
 func (s *Store) Members() *MemberRepository {
 	return &MemberRepository{s: s}
+}
+
+func (s *Store) Requests() *RequestRepository {
+	return &RequestRepository{s: s}
 }
 
 func (s *Store) Reminders() *ReminderRepository {
@@ -155,6 +168,8 @@ func stored(c *club.Club) club.Stored {
 
 		Kind:     c.Kind(),
 		Schedule: c.Schedule(),
+
+		Closed: c.Closed(),
 	}
 }
 

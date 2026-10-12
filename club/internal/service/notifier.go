@@ -21,10 +21,14 @@ type Notifier interface {
 // Readers records what the post service has to hear about memberships:
 // its news show a member the wall of the club. Like Notifier, it is called
 // inside the transaction of the change and delivered afterwards. Joined
-// and Left may be told twice.
+// and Left may be told twice. Closed and Opened tell it of a club that
+// became closed ("Закрытая группа") or open again: the wall of a closed
+// club is for its members.
 type Readers interface {
 	Joined(ctx context.Context, clubID, userID uuid.UUID) error
 	Left(ctx context.Context, clubID, userID uuid.UUID) error
+	Closed(ctx context.Context, clubID uuid.UUID) error
+	Opened(ctx context.Context, clubID uuid.UUID) error
 }
 
 // TxManager runs fn in one transaction: everything it saves is kept if it

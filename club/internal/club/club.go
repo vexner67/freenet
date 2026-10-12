@@ -20,6 +20,9 @@ var (
 	ErrTooManyPinned       = errors.New("at most 10 clubs in the menu")
 	ErrCannotTransfer      = errors.New("only the owner hands the club over")
 	ErrNotAdmin            = errors.New("the new owner must be an admin of the club")
+	ErrClosed              = errors.New("this club is closed")
+	ErrCannotDecide        = errors.New("only the admins decide on join requests")
+	ErrNoRequest           = errors.New("join request not found")
 )
 
 // MaxPinned is how many of the clubs they run a user keeps in the left
@@ -56,6 +59,9 @@ type Club struct {
 	// backdrop is "Фон страницы" of openvk: photos in the media service
 	// shown on the left and on the right of the page; uuid.Nil for none.
 	backdrop Backdrop
+	// closed: one joins by a request the admins accept, and only the
+	// members see what is in the club ("Закрытая группа" of openvk).
+	closed bool
 }
 
 // Backdrop is the two sides of a club's backdrop; either may be uuid.Nil.
@@ -113,6 +119,8 @@ type Stored struct {
 	Kind     Kind
 	Schedule Schedule
 	Maybes   int
+
+	Closed bool
 }
 
 // Restore rebuilds a club from storage without validation or new IDs.
@@ -136,6 +144,8 @@ func Restore(s Stored) *Club {
 		kind:     s.Kind,
 		schedule: s.Schedule,
 		maybes:   s.Maybes,
+
+		closed: s.Closed,
 	}
 }
 
@@ -153,6 +163,8 @@ type Changes struct {
 	TopicsAboveWall bool
 	// Schedule is when an event starts and ends; a group has none.
 	Schedule Schedule
+	// Closed is "Тип группы: закрытая"; an event is never closed.
+	Closed bool
 }
 
 // Edited returns c with changes made by someone who is role in it: only
@@ -179,6 +191,7 @@ func (c *Club) Edited(role Role, changes Changes) (*Club, error) {
 	edited.adminsDisplay = changes.AdminsDisplay
 	edited.openTopics = changes.OpenTopics
 	edited.topicsAboveWall = changes.TopicsAboveWall
+	edited.closed = changes.Closed && !c.IsEvent()
 
 	return &edited, nil
 }
@@ -233,6 +246,10 @@ func CheckPin(role Role) error {
 // admins speak for the club and write on a wall that is not open; an
 // open one takes posts from anyone, members or not, as in openvk.
 func (c *Club) CanPostOnWall(role Role, fromClub bool) bool {
+	if !c.Admits(role) {
+		return false
+	}
+
 	if fromClub || c.wall != WallOpen {
 		return role.Manages()
 	}
@@ -244,14 +261,43 @@ func (c *Club) CanPostOnWall(role Role, fromClub bool) bool {
 // topic in its discussions: the admins, or anyone when the club lets
 // everyone ("Все могут создавать темы"), members or not, as in openvk.
 func (c *Club) CanStartTopic(role Role) bool {
-	return c.openTopics || role.Manages()
+	return (c.openTopics && c.Admits(role)) || role.Manages()
 }
 
 // CanSuggest tells whether someone who is role in the club may suggest a
 // post for its wall, "Предложить новость" of openvk: anyone but the admins,
 // who post themselves, when the wall is "Предложка".
 func (c *Club) CanSuggest(role Role) bool {
-	return c.wall == WallSuggest && !role.Manages()
+	return c.wall == WallSuggest && !role.Manages() && c.Admits(role)
+}
+
+// Closed: one joins by a request, and only the members see what is in
+// the club.
+func (c *Club) Closed() bool {
+	return c.closed
+}
+
+// Admits tells whether someone who is role in the club sees what is in
+// it — its wall, members, discussions and albums: anyone in an open club,
+// only the members of a closed one.
+func (c *Club) Admits(role Role) bool {
+	return !c.closed || role != RoleNone
+}
+
+// JoinsByRequest tells whether someone who is role in the club has to
+// ask its admins to be let in ("Подать заявку") rather than join.
+func (c *Club) JoinsByRequest(role Role) bool {
+	return c.closed && role == RoleNone
+}
+
+// CheckDecide: only those who run a club accept and reject the requests
+// to join it.
+func CheckDecide(role Role) error {
+	if !role.Manages() {
+		return ErrCannotDecide
+	}
+
+	return nil
 }
 
 // CheckLeave: anyone may leave a club but its owner, who would leave it

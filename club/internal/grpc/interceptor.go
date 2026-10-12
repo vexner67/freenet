@@ -40,6 +40,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.NotFound, "the user is not a member of the club"), true
 	case errors.Is(err, club.ErrAddressTaken):
 		return status.New(codes.AlreadyExists, "club address is already taken"), true
+	case errors.Is(err, club.ErrNoRequest):
+		return status.New(codes.NotFound, "join request not found"), true
+	case errors.Is(err, club.ErrClosed):
+		return status.New(codes.PermissionDenied, "this club is closed"), true
+	case errors.Is(err, club.ErrCannotDecide):
+		return status.New(codes.PermissionDenied, "only the admins decide on join requests"), true
 	case errors.Is(err, club.ErrCannotEdit):
 		return status.New(codes.PermissionDenied, "only the admins can edit the club"), true
 	case errors.Is(err, club.ErrCannotAppoint):

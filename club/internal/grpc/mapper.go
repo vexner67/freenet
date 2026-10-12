@@ -60,6 +60,8 @@ func toProtoClub(c *club.Club) *clubv1.Club {
 		StartsAt:   optionalTime(c.Schedule().Start),
 		EndsAt:     optionalTime(c.Schedule().End),
 		MaybeCount: int32(c.Maybes()), //nolint:gosec // counters come from int4 columns
+
+		Closed: c.Closed(),
 	}
 }
 
@@ -129,6 +131,9 @@ func toProtoView(v service.View) *clubv1.ClubView {
 		Maybe:      v.Maybe,
 
 		CanStartTopic: v.Club.CanStartTopic(v.Role),
+
+		Requested:    v.Requested,
+		RequestCount: int32(v.Requests), //nolint:gosec // a count of rows
 	}
 }
 
@@ -211,6 +216,7 @@ func fromProtoChanges(req *clubv1.UpdateClubRequest) (club.Changes, error) {
 		Wall: wall, AdminsDisplay: adminsDisplay,
 		OpenTopics: req.GetOpenTopics(), TopicsAboveWall: req.GetTopicsAboveWall(),
 		Schedule: schedule,
+		Closed:   req.GetClosed(),
 	}, nil
 }
 

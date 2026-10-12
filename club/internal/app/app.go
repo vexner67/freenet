@@ -137,7 +137,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 
 	clubv1.RegisterClubServiceServer(a.server.Registrar(), clubgrpc.NewClubHandler(service.NewClubService(service.ClubDeps{
-		Clubs: store.clubs, Members: store.members, Tx: store.tx, Notifier: notifier, Readers: readers,
+		Clubs: store.clubs, Members: store.members, Requests: store.requests, Tx: store.tx, Notifier: notifier, Readers: readers,
 	})))
 
 	a.reminder = service.NewReminderService(store.reminders, store.tx, notifier, cfg.EventReminderAhead, time.Now)
@@ -289,6 +289,7 @@ type outboxQueue interface {
 type storage struct {
 	clubs     service.ClubRepository
 	members   service.MemberRepository
+	requests  service.RequestRepository
 	reminders service.DueEvents
 	tx        service.TxManager
 	// newQueue opens a stream of the outbox.
@@ -299,7 +300,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
 		return storage{
-			clubs: store.Clubs(), members: store.Members(), reminders: store.Reminders(), tx: inmem.TxManager{},
+			clubs: store.Clubs(), members: store.Members(), requests: store.Requests(), reminders: store.Reminders(), tx: inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -331,6 +332,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	return storage{
 		clubs:     postgres.NewClubRepository(a.pool),
 		members:   postgres.NewMemberRepository(a.pool),
+		requests:  postgres.NewRequestRepository(a.pool),
 		reminders: postgres.NewReminderRepository(a.pool),
 		tx:        pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {

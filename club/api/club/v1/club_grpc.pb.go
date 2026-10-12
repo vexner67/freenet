@@ -28,6 +28,9 @@ const (
 	ClubService_JoinClub_FullMethodName           = "/club.v1.ClubService/JoinClub"
 	ClubService_LeaveClub_FullMethodName          = "/club.v1.ClubService/LeaveClub"
 	ClubService_ListMembers_FullMethodName        = "/club.v1.ClubService/ListMembers"
+	ClubService_ListJoinRequests_FullMethodName   = "/club.v1.ClubService/ListJoinRequests"
+	ClubService_AcceptJoinRequest_FullMethodName  = "/club.v1.ClubService/AcceptJoinRequest"
+	ClubService_RejectJoinRequest_FullMethodName  = "/club.v1.ClubService/RejectJoinRequest"
 	ClubService_SetMemberRole_FullMethodName      = "/club.v1.ClubService/SetMemberRole"
 	ClubService_DescribeMember_FullMethodName     = "/club.v1.ClubService/DescribeMember"
 	ClubService_TransferClub_FullMethodName       = "/club.v1.ClubService/TransferClub"
@@ -77,6 +80,14 @@ type ClubServiceClient interface {
 	// newest first; with admins_only, only the owner and the admins. Those
 	// the club hides are plain members to callers who do not run it.
 	ListMembers(ctx context.Context, in *ListMembersRequest, opts ...grpc.CallOption) (*ListMembersResponse, error)
+	// ListJoinRequests pages those who ask to join a closed club ("Заявки"),
+	// the newest first, for those who run it.
+	ListJoinRequests(ctx context.Context, in *ListJoinRequestsRequest, opts ...grpc.CallOption) (*ListJoinRequestsResponse, error)
+	// AcceptJoinRequest lets someone who asked into the club, and
+	// RejectJoinRequest turns them down: the call of those who run it.
+	// NOT_FOUND "join request not found" when there is none.
+	AcceptJoinRequest(ctx context.Context, in *AcceptJoinRequestRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	RejectJoinRequest(ctx context.Context, in *RejectJoinRequestRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The owner makes a member an admin, or an admin a member again.
 	SetMemberRole(ctx context.Context, in *SetMemberRoleRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Those who run a club give one of them a title, shown under the name
@@ -215,6 +226,36 @@ func (c *clubServiceClient) ListMembers(ctx context.Context, in *ListMembersRequ
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(ListMembersResponse)
 	err := c.cc.Invoke(ctx, ClubService_ListMembers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clubServiceClient) ListJoinRequests(ctx context.Context, in *ListJoinRequestsRequest, opts ...grpc.CallOption) (*ListJoinRequestsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListJoinRequestsResponse)
+	err := c.cc.Invoke(ctx, ClubService_ListJoinRequests_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clubServiceClient) AcceptJoinRequest(ctx context.Context, in *AcceptJoinRequestRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ClubService_AcceptJoinRequest_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clubServiceClient) RejectJoinRequest(ctx context.Context, in *RejectJoinRequestRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ClubService_RejectJoinRequest_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -421,6 +462,14 @@ type ClubServiceServer interface {
 	// newest first; with admins_only, only the owner and the admins. Those
 	// the club hides are plain members to callers who do not run it.
 	ListMembers(context.Context, *ListMembersRequest) (*ListMembersResponse, error)
+	// ListJoinRequests pages those who ask to join a closed club ("Заявки"),
+	// the newest first, for those who run it.
+	ListJoinRequests(context.Context, *ListJoinRequestsRequest) (*ListJoinRequestsResponse, error)
+	// AcceptJoinRequest lets someone who asked into the club, and
+	// RejectJoinRequest turns them down: the call of those who run it.
+	// NOT_FOUND "join request not found" when there is none.
+	AcceptJoinRequest(context.Context, *AcceptJoinRequestRequest) (*emptypb.Empty, error)
+	RejectJoinRequest(context.Context, *RejectJoinRequestRequest) (*emptypb.Empty, error)
 	// The owner makes a member an admin, or an admin a member again.
 	SetMemberRole(context.Context, *SetMemberRoleRequest) (*emptypb.Empty, error)
 	// Those who run a club give one of them a title, shown under the name
@@ -508,6 +557,15 @@ func (UnimplementedClubServiceServer) LeaveClub(context.Context, *LeaveClubReque
 }
 func (UnimplementedClubServiceServer) ListMembers(context.Context, *ListMembersRequest) (*ListMembersResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMembers not implemented")
+}
+func (UnimplementedClubServiceServer) ListJoinRequests(context.Context, *ListJoinRequestsRequest) (*ListJoinRequestsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListJoinRequests not implemented")
+}
+func (UnimplementedClubServiceServer) AcceptJoinRequest(context.Context, *AcceptJoinRequestRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method AcceptJoinRequest not implemented")
+}
+func (UnimplementedClubServiceServer) RejectJoinRequest(context.Context, *RejectJoinRequestRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method RejectJoinRequest not implemented")
 }
 func (UnimplementedClubServiceServer) SetMemberRole(context.Context, *SetMemberRoleRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetMemberRole not implemented")
@@ -721,6 +779,60 @@ func _ClubService_ListMembers_Handler(srv interface{}, ctx context.Context, dec 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ClubServiceServer).ListMembers(ctx, req.(*ListMembersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClubService_ListJoinRequests_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListJoinRequestsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).ListJoinRequests(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_ListJoinRequests_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).ListJoinRequests(ctx, req.(*ListJoinRequestsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClubService_AcceptJoinRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AcceptJoinRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).AcceptJoinRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_AcceptJoinRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).AcceptJoinRequest(ctx, req.(*AcceptJoinRequestRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClubService_RejectJoinRequest_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RejectJoinRequestRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).RejectJoinRequest(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_RejectJoinRequest_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).RejectJoinRequest(ctx, req.(*RejectJoinRequestRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1069,6 +1181,18 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListMembers",
 			Handler:    _ClubService_ListMembers_Handler,
+		},
+		{
+			MethodName: "ListJoinRequests",
+			Handler:    _ClubService_ListJoinRequests_Handler,
+		},
+		{
+			MethodName: "AcceptJoinRequest",
+			Handler:    _ClubService_AcceptJoinRequest_Handler,
+		},
+		{
+			MethodName: "RejectJoinRequest",
+			Handler:    _ClubService_RejectJoinRequest_Handler,
 		},
 		{
 			MethodName: "SetMemberRole",

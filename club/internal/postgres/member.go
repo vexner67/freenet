@@ -414,7 +414,8 @@ const listUserClubsQuery = `
 		c.kind,
 		c.starts_at,
 		c.ends_at,
-		c.maybe_count
+		c.maybe_count,
+		c.closed
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1
@@ -551,7 +552,8 @@ const pinnedClubsQuery = `
 		c.kind,
 		c.starts_at,
 		c.ends_at,
-		c.maybe_count
+		c.maybe_count,
+		c.closed
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1
