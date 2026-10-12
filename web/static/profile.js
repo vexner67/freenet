@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, eventsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, eventsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { notesBlock } from './notes.js';
@@ -41,7 +41,7 @@ function relationship(user) {
 
   return el('span', {},
     status + ' ' + partnerPrefix(user.relationship, user.gender) + ' ',
-    el('a', { href: pagePath(user.partner), textContent: fullName(user.partner) }));
+    el('a', { href: pagePath(user.partner), textContent: partnerName(user.relationship, user.gender, user.partner) }));
 }
 
 // birthdayText is the date; the owner who shows only the day and the month
