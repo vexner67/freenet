@@ -730,9 +730,16 @@ func (r *MessageRepository) Hide(ctx context.Context, m *message.Message, userID
 	return nil
 }
 
+// messageWords is all a message says, itself and in the messages it
+// carries on, as messages_search_idx has it: the expression here and in
+// the migration must be the same for the index to serve the search.
+const messageWords = `message_words(text, forwarded)`
+
 // searchMessagesQuery: $2 is the peer of one dialog, NULL for all the
 // dialogs of the user $1; $3 is the pattern of what the messages say,
-// themselves or in the messages they carry on.
+// themselves or in the messages they carry on. The index finds the
+// messages whose words, put together, match the pattern; which of them
+// says it in one text is checked after.
 const searchMessagesQuery = `
 	SELECT
 		id,
@@ -751,6 +758,7 @@ const searchMessagesQuery = `
 	FROM messages
 	WHERE $1 IN (sender_id, recipient_id)
 		AND ($2::uuid IS NULL OR $2 IN (sender_id, recipient_id))
+		AND ` + messageWords + ` ILIKE $3
 		AND (
 			text ILIKE $3
 			OR EXISTS (
