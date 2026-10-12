@@ -68,6 +68,7 @@ func newGiftWorld() giftWorld {
 			Gifts:       inmem.NewGiftRepository(users),
 			Permissions: service.NewPermissionService(users, follows, blocks),
 			Tx:          inmem.TxManager{},
+			Wallets:     users,
 			Notifier:    notifier,
 		}),
 		notifier: notifier,
@@ -79,6 +80,12 @@ func (w giftWorld) person(t *testing.T, name string) uuid.UUID {
 
 	id, err := w.userSvc.GetOrCreateByEmail(context.Background(), mustEmail(t, name+"@example.com"))
 	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Enough votes for any gift: what gifts cost is tested with the
+	// wallets.
+	if _, err = w.users.Credit(context.Background(), id, 100, 0); err != nil {
 		t.Fatal(err)
 	}
 

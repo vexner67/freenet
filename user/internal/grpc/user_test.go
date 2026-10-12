@@ -19,6 +19,7 @@ import (
 	"github.com/vexner67/freenet/user/internal/notifyclient"
 	"github.com/vexner67/freenet/user/internal/purgeclient"
 	"github.com/vexner67/freenet/user/internal/service"
+	"github.com/vexner67/freenet/user/internal/user"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
@@ -27,7 +28,11 @@ import (
 	"google.golang.org/grpc/test/bufconn"
 )
 
-const issuer = "freenet-test"
+const (
+	issuer = "freenet-test"
+	// adminEmail is the one who makes the vouchers.
+	adminEmail = "admin@example.com"
+)
 
 type testServer struct {
 	client userv1.UserServiceClient
@@ -61,6 +66,10 @@ func newServer(t *testing.T) testServer {
 	blocks := inmem.NewBlockRepository(follows)
 	presence := service.NewPresenceService(users)
 	permissions := service.NewPermissionService(users, follows, blocks)
+	admins, err := user.NewAdmins([]string{adminEmail})
+	if err != nil {
+		t.Fatalf("user.NewAdmins: %v", err)
+	}
 	userv1.RegisterUserServiceServer(srv, usergrpc.NewUserHandler(usergrpc.Services{
 		Users:    service.NewUserService(users),
 		Accounts: service.NewAccountService(users, inmem.TxManager{}, purgeclient.NoReactions{}, time.Hour),
@@ -71,6 +80,11 @@ func newServer(t *testing.T) testServer {
 		Ignores: service.NewIgnoreService(inmem.NewIgnoreRepository(users)),
 		Gifts: service.NewGiftService(service.GiftDeps{
 			Users: users, Gifts: inmem.NewGiftRepository(users), Permissions: permissions, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
+			Wallets: users,
+		}),
+		Wallets: service.NewWalletService(service.WalletDeps{
+			Users: users, Wallets: users, Vouchers: inmem.NewVoucherRepository(users), Permissions: permissions,
+			Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
 		}),
 		Permissions: permissions,
 		Presence:    presence,

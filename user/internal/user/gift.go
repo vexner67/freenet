@@ -32,25 +32,29 @@ type GiftKind string
 
 // GiftCollection is a shelf of the catalogue, openvk's "Коллекции".
 type GiftCollection struct {
-	ID    string
+	ID string
+	// Price is what each of its gifts costs the sender, in votes; 0 for
+	// a free one ("Бесплатно").
+	Price int64
 	Gifts []GiftKind
 }
 
 // giftCatalog is all there is to send. openvk's gifts are drawn and priced
-// by its administrators; there are no administrators and no currency
-// here, so the catalogue is fixed and every gift is free. The pictures
-// are the site's: it knows a gift by this name.
+// by its administrators; here the catalogue and its prices are fixed: the
+// flowers are free, so that anyone can send a gift, and the rest costs
+// votes, which vouchers give. The pictures are the site's: it knows a
+// gift by this name.
 var giftCatalog = []GiftCollection{
 	{ID: "flowers", Gifts: []GiftKind{"rose", "tulip", "bouquet", "sunflower", "cactus"}},
-	{ID: "sweets", Gifts: []GiftKind{"cake", "candy", "chocolate", "icecream", "cupcake"}},
-	{ID: "holidays", Gifts: []GiftKind{"present", "balloons", "heart", "bear", "star"}},
+	{ID: "sweets", Price: 1, Gifts: []GiftKind{"cake", "candy", "chocolate", "icecream", "cupcake"}},
+	{ID: "holidays", Price: 3, Gifts: []GiftKind{"present", "balloons", "heart", "bear", "star"}},
 }
 
 // GiftCatalog are the collections of gifts, in the order they are shown.
 func GiftCatalog() []GiftCollection {
 	catalog := make([]GiftCollection, len(giftCatalog))
 	for i, c := range giftCatalog {
-		catalog[i] = GiftCollection{ID: c.ID, Gifts: slices.Clone(c.Gifts)}
+		catalog[i] = GiftCollection{ID: c.ID, Price: c.Price, Gifts: slices.Clone(c.Gifts)}
 	}
 
 	return catalog
@@ -69,6 +73,17 @@ func NewGiftKind(s string) (GiftKind, error) {
 
 func (k GiftKind) String() string {
 	return string(k)
+}
+
+// Price is what sending the gift costs, in votes; 0 for a free one.
+func (k GiftKind) Price() int64 {
+	for _, c := range giftCatalog {
+		if slices.Contains(c.Gifts, k) {
+			return c.Price
+		}
+	}
+
+	return 0
 }
 
 // GiftCaption is what the sender says with a gift ("Ваше сообщение"); it

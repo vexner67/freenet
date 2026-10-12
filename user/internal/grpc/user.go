@@ -38,6 +38,7 @@ type UserHandler struct {
 	blockService      BlockService
 	ignoreService     IgnoreService
 	giftService       GiftService
+	walletService     WalletService
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
@@ -52,6 +53,7 @@ type Services struct {
 	Blocks      BlockService
 	Ignores     IgnoreService
 	Gifts       GiftService
+	Wallets     WalletService
 	Permissions PermissionService
 	Presence    PresenceService
 	Backdrops   BackdropService
@@ -65,6 +67,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		blockService:      s.Blocks,
 		ignoreService:     s.Ignores,
 		giftService:       s.Gifts,
+		walletService:     s.Wallets,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,
@@ -106,7 +109,10 @@ func (h *UserHandler) GetMe(ctx context.Context, _ *userv1.GetMeRequest) (*userv
 		return nil, err
 	}
 
-	return &userv1.GetMeResponse{User: toProtoUser(u)}, nil
+	me := toProtoUser(u)
+	me.Admin = h.walletService.IsAdmin(u)
+
+	return &userv1.GetMeResponse{User: me}, nil
 }
 
 func (h *UserHandler) UpdateProfile(

@@ -235,6 +235,8 @@ services:
       CLUB_SERVICE_ADDR: club:7057
       # Shorter in tests: how long a deleted page can be restored.
       ACCOUNT_RETENTION: ${ACCOUNT_RETENTION:-5040h}
+      # Who makes the vouchers ("Ваучеры"): emails, comma-separated.
+      ADMIN_EMAILS: ${ADMIN_EMAILS:-}
     depends_on:
       user-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }

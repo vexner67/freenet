@@ -29,7 +29,7 @@ func (h *UserHandler) GetGiftCatalog(context.Context, *userv1.GetGiftCatalogRequ
 			gifts = append(gifts, kind.String())
 		}
 
-		resp.Collections = append(resp.Collections, &userv1.GiftCollection{Id: c.ID, Gifts: gifts})
+		resp.Collections = append(resp.Collections, &userv1.GiftCollection{Id: c.ID, Gifts: gifts, Price: c.Price})
 	}
 
 	return resp, nil

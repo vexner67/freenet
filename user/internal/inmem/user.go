@@ -77,9 +77,10 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		delete(r.byNickname, nicknameKey(nickname))
 	}
 
-	// As in PostgreSQL, Update stores neither visits nor backdrops, which
-	// change on their own: a user read before keeps the newer ones.
-	stored := *u
+	// As in PostgreSQL, Update stores neither visits, backdrops nor the
+	// wallet, which change on their own: a user read before keeps the
+	// newer ones.
+	stored := *u.WithWallet(old.Wallet())
 	stored.MarkSeen(old.LastSeen())
 	stored.SetBackdrop(user.BackdropLeft, old.Backdrop().Left)
 	stored.SetBackdrop(user.BackdropRight, old.Backdrop().Right)

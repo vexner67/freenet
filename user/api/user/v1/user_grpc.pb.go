@@ -61,6 +61,11 @@ const (
 	UserService_SendGift_FullMethodName           = "/user.v1.UserService/SendGift"
 	UserService_ListGifts_FullMethodName          = "/user.v1.UserService/ListGifts"
 	UserService_DeleteGift_FullMethodName         = "/user.v1.UserService/DeleteGift"
+	UserService_TransferVotes_FullMethodName      = "/user.v1.UserService/TransferVotes"
+	UserService_RedeemVoucher_FullMethodName      = "/user.v1.UserService/RedeemVoucher"
+	UserService_CreateVoucher_FullMethodName      = "/user.v1.UserService/CreateVoucher"
+	UserService_ListVouchers_FullMethodName       = "/user.v1.UserService/ListVouchers"
+	UserService_DeleteVoucher_FullMethodName      = "/user.v1.UserService/DeleteVoucher"
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
 	UserService_ReactivateAccount_FullMethodName  = "/user.v1.UserService/ReactivateAccount"
 	UserService_GetAccountState_FullMethodName    = "/user.v1.UserService/GetAccountState"
@@ -166,6 +171,19 @@ type UserServiceClient interface {
 	SendGift(ctx context.Context, in *SendGiftRequest, opts ...grpc.CallOption) (*SendGiftResponse, error)
 	ListGifts(ctx context.Context, in *ListGiftsRequest, opts ...grpc.CallOption) (*ListGiftsResponse, error)
 	DeleteGift(ctx context.Context, in *DeleteGiftRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Votes ("голоса" on openvk) pay for the gifts that have a price.
+	// TransferVotes hands some of the caller's to a user ("Перевод
+	// голосов"): PermissionDenied to a deleted page and across a blacklist,
+	// FailedPrecondition when the caller has fewer. RedeemVoucher gives the
+	// caller what a voucher carries, once: FailedPrecondition whatever is
+	// wrong with the voucher.
+	TransferVotes(ctx context.Context, in *TransferVotesRequest, opts ...grpc.CallOption) (*TransferVotesResponse, error)
+	RedeemVoucher(ctx context.Context, in *RedeemVoucherRequest, opts ...grpc.CallOption) (*RedeemVoucherResponse, error)
+	// Vouchers are made by the administrators of the site (ADMIN_EMAILS):
+	// PermissionDenied to anyone else.
+	CreateVoucher(ctx context.Context, in *CreateVoucherRequest, opts ...grpc.CallOption) (*CreateVoucherResponse, error)
+	ListVouchers(ctx context.Context, in *ListVouchersRequest, opts ...grpc.CallOption) (*ListVouchersResponse, error)
+	DeleteVoucher(ctx context.Context, in *DeleteVoucherRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token: deleting the caller's page ("Удаление
 	// страницы" on openvk) and restoring it. A deleted page is hidden: others
 	// see only its name and photo, nobody may follow it, write on its wall
@@ -597,6 +615,56 @@ func (c *userServiceClient) DeleteGift(ctx context.Context, in *DeleteGiftReques
 	return out, nil
 }
 
+func (c *userServiceClient) TransferVotes(ctx context.Context, in *TransferVotesRequest, opts ...grpc.CallOption) (*TransferVotesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(TransferVotesResponse)
+	err := c.cc.Invoke(ctx, UserService_TransferVotes_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) RedeemVoucher(ctx context.Context, in *RedeemVoucherRequest, opts ...grpc.CallOption) (*RedeemVoucherResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RedeemVoucherResponse)
+	err := c.cc.Invoke(ctx, UserService_RedeemVoucher_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CreateVoucher(ctx context.Context, in *CreateVoucherRequest, opts ...grpc.CallOption) (*CreateVoucherResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateVoucherResponse)
+	err := c.cc.Invoke(ctx, UserService_CreateVoucher_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListVouchers(ctx context.Context, in *ListVouchersRequest, opts ...grpc.CallOption) (*ListVouchersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListVouchersResponse)
+	err := c.cc.Invoke(ctx, UserService_ListVouchers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DeleteVoucher(ctx context.Context, in *DeleteVoucherRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_DeleteVoucher_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) DeactivateAccount(ctx context.Context, in *DeactivateAccountRequest, opts ...grpc.CallOption) (*DeactivateAccountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeactivateAccountResponse)
@@ -727,6 +795,19 @@ type UserServiceServer interface {
 	SendGift(context.Context, *SendGiftRequest) (*SendGiftResponse, error)
 	ListGifts(context.Context, *ListGiftsRequest) (*ListGiftsResponse, error)
 	DeleteGift(context.Context, *DeleteGiftRequest) (*emptypb.Empty, error)
+	// Votes ("голоса" on openvk) pay for the gifts that have a price.
+	// TransferVotes hands some of the caller's to a user ("Перевод
+	// голосов"): PermissionDenied to a deleted page and across a blacklist,
+	// FailedPrecondition when the caller has fewer. RedeemVoucher gives the
+	// caller what a voucher carries, once: FailedPrecondition whatever is
+	// wrong with the voucher.
+	TransferVotes(context.Context, *TransferVotesRequest) (*TransferVotesResponse, error)
+	RedeemVoucher(context.Context, *RedeemVoucherRequest) (*RedeemVoucherResponse, error)
+	// Vouchers are made by the administrators of the site (ADMIN_EMAILS):
+	// PermissionDenied to anyone else.
+	CreateVoucher(context.Context, *CreateVoucherRequest) (*CreateVoucherResponse, error)
+	ListVouchers(context.Context, *ListVouchersRequest) (*ListVouchersResponse, error)
+	DeleteVoucher(context.Context, *DeleteVoucherRequest) (*emptypb.Empty, error)
 	// Require an access token: deleting the caller's page ("Удаление
 	// страницы" on openvk) and restoring it. A deleted page is hidden: others
 	// see only its name and photo, nobody may follow it, write on its wall
@@ -870,6 +951,21 @@ func (UnimplementedUserServiceServer) ListGifts(context.Context, *ListGiftsReque
 }
 func (UnimplementedUserServiceServer) DeleteGift(context.Context, *DeleteGiftRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteGift not implemented")
+}
+func (UnimplementedUserServiceServer) TransferVotes(context.Context, *TransferVotesRequest) (*TransferVotesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method TransferVotes not implemented")
+}
+func (UnimplementedUserServiceServer) RedeemVoucher(context.Context, *RedeemVoucherRequest) (*RedeemVoucherResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RedeemVoucher not implemented")
+}
+func (UnimplementedUserServiceServer) CreateVoucher(context.Context, *CreateVoucherRequest) (*CreateVoucherResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateVoucher not implemented")
+}
+func (UnimplementedUserServiceServer) ListVouchers(context.Context, *ListVouchersRequest) (*ListVouchersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListVouchers not implemented")
+}
+func (UnimplementedUserServiceServer) DeleteVoucher(context.Context, *DeleteVoucherRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteVoucher not implemented")
 }
 func (UnimplementedUserServiceServer) DeactivateAccount(context.Context, *DeactivateAccountRequest) (*DeactivateAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeactivateAccount not implemented")
@@ -1639,6 +1735,96 @@ func _UserService_DeleteGift_Handler(srv interface{}, ctx context.Context, dec f
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_TransferVotes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(TransferVotesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).TransferVotes(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_TransferVotes_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).TransferVotes(ctx, req.(*TransferVotesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_RedeemVoucher_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RedeemVoucherRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).RedeemVoucher(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_RedeemVoucher_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).RedeemVoucher(ctx, req.(*RedeemVoucherRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CreateVoucher_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateVoucherRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CreateVoucher(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CreateVoucher_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CreateVoucher(ctx, req.(*CreateVoucherRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListVouchers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListVouchersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListVouchers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListVouchers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListVouchers(ctx, req.(*ListVouchersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DeleteVoucher_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteVoucherRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeleteVoucher(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeleteVoucher_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeleteVoucher(ctx, req.(*DeleteVoucherRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_DeactivateAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeactivateAccountRequest)
 	if err := dec(in); err != nil {
@@ -1863,6 +2049,26 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteGift",
 			Handler:    _UserService_DeleteGift_Handler,
+		},
+		{
+			MethodName: "TransferVotes",
+			Handler:    _UserService_TransferVotes_Handler,
+		},
+		{
+			MethodName: "RedeemVoucher",
+			Handler:    _UserService_RedeemVoucher_Handler,
+		},
+		{
+			MethodName: "CreateVoucher",
+			Handler:    _UserService_CreateVoucher_Handler,
+		},
+		{
+			MethodName: "ListVouchers",
+			Handler:    _UserService_ListVouchers_Handler,
+		},
+		{
+			MethodName: "DeleteVoucher",
+			Handler:    _UserService_DeleteVoucher_Handler,
 		},
 		{
 			MethodName: "DeactivateAccount",

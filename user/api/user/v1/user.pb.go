@@ -642,10 +642,15 @@ type User struct {
 	BackdropLeft  string `protobuf:"bytes,24,opt,name=backdrop_left,json=backdropLeft,proto3" json:"backdrop_left,omitempty"`
 	BackdropRight string `protobuf:"bytes,25,opt,name=backdrop_right,json=backdropRight,proto3" json:"backdrop_right,omitempty"`
 	// "Заполненность страницы" of openvk, in percent, and the parts missing
-	// ("interests", "email", "telegram", "status", "city").
-	Completeness  int32              `protobuf:"varint,26,opt,name=completeness,proto3" json:"completeness,omitempty"`
-	Unfilled      []string           `protobuf:"bytes,27,rep,name=unfilled,proto3" json:"unfilled,omitempty"`
-	Interface     *InterfaceSettings `protobuf:"bytes,28,opt,name=interface,proto3" json:"interface,omitempty"`
+	// ("interests", "email", "telegram", "status", "city"). The percent
+	// counts the rating vouchers gave and may pass 100.
+	Completeness int32              `protobuf:"varint,26,opt,name=completeness,proto3" json:"completeness,omitempty"`
+	Unfilled     []string           `protobuf:"bytes,27,rep,name=unfilled,proto3" json:"unfilled,omitempty"`
+	Interface    *InterfaceSettings `protobuf:"bytes,28,opt,name=interface,proto3" json:"interface,omitempty"`
+	// "Баланс": the votes the user has.
+	Votes int64 `protobuf:"varint,29,opt,name=votes,proto3" json:"votes,omitempty"`
+	// The user makes the vouchers.
+	Admin         bool `protobuf:"varint,30,opt,name=admin,proto3" json:"admin,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -874,6 +879,20 @@ func (x *User) GetInterface() *InterfaceSettings {
 		return x.Interface
 	}
 	return nil
+}
+
+func (x *User) GetVotes() int64 {
+	if x != nil {
+		return x.Votes
+	}
+	return 0
+}
+
+func (x *User) GetAdmin() bool {
+	if x != nil {
+		return x.Admin
+	}
+	return false
 }
 
 // InterfaceSettings are how the site looks to its owner ("Интерфейс").
@@ -5286,7 +5305,9 @@ type GiftCollection struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
 	// The names of its gifts, in the order they are shown.
-	Gifts         []string `protobuf:"bytes,2,rep,name=gifts,proto3" json:"gifts,omitempty"`
+	Gifts []string `protobuf:"bytes,2,rep,name=gifts,proto3" json:"gifts,omitempty"`
+	// What each of them costs the sender, in votes; 0 for a free one.
+	Price         int64 `protobuf:"varint,3,opt,name=price,proto3" json:"price,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -5333,6 +5354,13 @@ func (x *GiftCollection) GetGifts() []string {
 		return x.Gifts
 	}
 	return nil
+}
+
+func (x *GiftCollection) GetPrice() int64 {
+	if x != nil {
+		return x.Price
+	}
+	return 0
 }
 
 type SendGiftRequest struct {
@@ -5709,11 +5737,571 @@ func (x *DeleteGiftRequest) GetGiftId() string {
 	return ""
 }
 
+type TransferVotesRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The recipient.
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// 1-1000000.
+	Votes         int64 `protobuf:"varint,2,opt,name=votes,proto3" json:"votes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TransferVotesRequest) Reset() {
+	*x = TransferVotesRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[88]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TransferVotesRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TransferVotesRequest) ProtoMessage() {}
+
+func (x *TransferVotesRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[88]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TransferVotesRequest.ProtoReflect.Descriptor instead.
+func (*TransferVotesRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{88}
+}
+
+func (x *TransferVotesRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *TransferVotesRequest) GetVotes() int64 {
+	if x != nil {
+		return x.Votes
+	}
+	return 0
+}
+
+type TransferVotesResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the caller has left.
+	Votes         int64 `protobuf:"varint,1,opt,name=votes,proto3" json:"votes,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *TransferVotesResponse) Reset() {
+	*x = TransferVotesResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[89]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *TransferVotesResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*TransferVotesResponse) ProtoMessage() {}
+
+func (x *TransferVotesResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[89]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use TransferVotesResponse.ProtoReflect.Descriptor instead.
+func (*TransferVotesResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{89}
+}
+
+func (x *TransferVotesResponse) GetVotes() int64 {
+	if x != nil {
+		return x.Votes
+	}
+	return 0
+}
+
+type RedeemVoucherRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The serial number, in any case, with or without dashes.
+	Token         string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RedeemVoucherRequest) Reset() {
+	*x = RedeemVoucherRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[90]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RedeemVoucherRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RedeemVoucherRequest) ProtoMessage() {}
+
+func (x *RedeemVoucherRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[90]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RedeemVoucherRequest.ProtoReflect.Descriptor instead.
+func (*RedeemVoucherRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{90}
+}
+
+func (x *RedeemVoucherRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+type RedeemVoucherResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// What the voucher gave.
+	Votes  int64 `protobuf:"varint,1,opt,name=votes,proto3" json:"votes,omitempty"`
+	Rating int32 `protobuf:"varint,2,opt,name=rating,proto3" json:"rating,omitempty"`
+	// What the caller has now.
+	Balance       int64 `protobuf:"varint,3,opt,name=balance,proto3" json:"balance,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *RedeemVoucherResponse) Reset() {
+	*x = RedeemVoucherResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[91]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *RedeemVoucherResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*RedeemVoucherResponse) ProtoMessage() {}
+
+func (x *RedeemVoucherResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[91]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use RedeemVoucherResponse.ProtoReflect.Descriptor instead.
+func (*RedeemVoucherResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{91}
+}
+
+func (x *RedeemVoucherResponse) GetVotes() int64 {
+	if x != nil {
+		return x.Votes
+	}
+	return 0
+}
+
+func (x *RedeemVoucherResponse) GetRating() int32 {
+	if x != nil {
+		return x.Rating
+	}
+	return 0
+}
+
+func (x *RedeemVoucherResponse) GetBalance() int64 {
+	if x != nil {
+		return x.Balance
+	}
+	return 0
+}
+
+// A voucher, as its makers see it.
+type Voucher struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// 24 letters and digits.
+	Token  string `protobuf:"bytes,2,opt,name=token,proto3" json:"token,omitempty"`
+	Votes  int64  `protobuf:"varint,3,opt,name=votes,proto3" json:"votes,omitempty"`
+	Rating int32  `protobuf:"varint,4,opt,name=rating,proto3" json:"rating,omitempty"`
+	// How many more accounts may use it; -1 for any number.
+	UsagesLeft int32 `protobuf:"varint,5,opt,name=usages_left,json=usagesLeft,proto3" json:"usages_left,omitempty"`
+	// How many accounts have used it.
+	Activations   int32 `protobuf:"varint,6,opt,name=activations,proto3" json:"activations,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Voucher) Reset() {
+	*x = Voucher{}
+	mi := &file_api_user_v1_user_proto_msgTypes[92]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Voucher) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Voucher) ProtoMessage() {}
+
+func (x *Voucher) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[92]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Voucher.ProtoReflect.Descriptor instead.
+func (*Voucher) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{92}
+}
+
+func (x *Voucher) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Voucher) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *Voucher) GetVotes() int64 {
+	if x != nil {
+		return x.Votes
+	}
+	return 0
+}
+
+func (x *Voucher) GetRating() int32 {
+	if x != nil {
+		return x.Rating
+	}
+	return 0
+}
+
+func (x *Voucher) GetUsagesLeft() int32 {
+	if x != nil {
+		return x.UsagesLeft
+	}
+	return 0
+}
+
+func (x *Voucher) GetActivations() int32 {
+	if x != nil {
+		return x.Activations
+	}
+	return 0
+}
+
+type CreateVoucherRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty for a generated serial number.
+	Token string `protobuf:"bytes,1,opt,name=token,proto3" json:"token,omitempty"`
+	// 0-1000000 votes and 0-1000 of rating, not both zero.
+	Votes  int64 `protobuf:"varint,2,opt,name=votes,proto3" json:"votes,omitempty"`
+	Rating int32 `protobuf:"varint,3,opt,name=rating,proto3" json:"rating,omitempty"`
+	// How many accounts may use it: 1-1000000, or -1 for any number.
+	Usages        int32 `protobuf:"varint,4,opt,name=usages,proto3" json:"usages,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateVoucherRequest) Reset() {
+	*x = CreateVoucherRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[93]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateVoucherRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateVoucherRequest) ProtoMessage() {}
+
+func (x *CreateVoucherRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[93]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateVoucherRequest.ProtoReflect.Descriptor instead.
+func (*CreateVoucherRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{93}
+}
+
+func (x *CreateVoucherRequest) GetToken() string {
+	if x != nil {
+		return x.Token
+	}
+	return ""
+}
+
+func (x *CreateVoucherRequest) GetVotes() int64 {
+	if x != nil {
+		return x.Votes
+	}
+	return 0
+}
+
+func (x *CreateVoucherRequest) GetRating() int32 {
+	if x != nil {
+		return x.Rating
+	}
+	return 0
+}
+
+func (x *CreateVoucherRequest) GetUsages() int32 {
+	if x != nil {
+		return x.Usages
+	}
+	return 0
+}
+
+type CreateVoucherResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Voucher       *Voucher               `protobuf:"bytes,1,opt,name=voucher,proto3" json:"voucher,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateVoucherResponse) Reset() {
+	*x = CreateVoucherResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[94]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateVoucherResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateVoucherResponse) ProtoMessage() {}
+
+func (x *CreateVoucherResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[94]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateVoucherResponse.ProtoReflect.Descriptor instead.
+func (*CreateVoucherResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{94}
+}
+
+func (x *CreateVoucherResponse) GetVoucher() *Voucher {
+	if x != nil {
+		return x.Voucher
+	}
+	return nil
+}
+
+type ListVouchersRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// Empty for the newest vouchers, else next_cursor of the previous page.
+	Cursor string `protobuf:"bytes,1,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	// 1-50; anything else means 20.
+	Limit         int32 `protobuf:"varint,2,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListVouchersRequest) Reset() {
+	*x = ListVouchersRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[95]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListVouchersRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListVouchersRequest) ProtoMessage() {}
+
+func (x *ListVouchersRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[95]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListVouchersRequest.ProtoReflect.Descriptor instead.
+func (*ListVouchersRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{95}
+}
+
+func (x *ListVouchersRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListVouchersRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListVouchersResponse struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Vouchers []*Voucher             `protobuf:"bytes,1,rep,name=vouchers,proto3" json:"vouchers,omitempty"`
+	// Empty on the last page.
+	NextCursor    string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListVouchersResponse) Reset() {
+	*x = ListVouchersResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[96]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListVouchersResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListVouchersResponse) ProtoMessage() {}
+
+func (x *ListVouchersResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[96]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListVouchersResponse.ProtoReflect.Descriptor instead.
+func (*ListVouchersResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{96}
+}
+
+func (x *ListVouchersResponse) GetVouchers() []*Voucher {
+	if x != nil {
+		return x.Vouchers
+	}
+	return nil
+}
+
+func (x *ListVouchersResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+type DeleteVoucherRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	VoucherId     string                 `protobuf:"bytes,1,opt,name=voucher_id,json=voucherId,proto3" json:"voucher_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteVoucherRequest) Reset() {
+	*x = DeleteVoucherRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[97]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteVoucherRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteVoucherRequest) ProtoMessage() {}
+
+func (x *DeleteVoucherRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[97]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteVoucherRequest.ProtoReflect.Descriptor instead.
+func (*DeleteVoucherRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{97}
+}
+
+func (x *DeleteVoucherRequest) GetVoucherId() string {
+	if x != nil {
+		return x.VoucherId
+	}
+	return ""
+}
+
 var File_api_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_api_user_v1_user_proto_rawDesc = "" +
 	"\n" +
-	"\x16api/user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x91\t\n" +
+	"\x16api/user/v1/user.proto\x12\auser.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xbd\t\n" +
 	"\x04User\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -5743,7 +6331,9 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x0ebackdrop_right\x18\x19 \x01(\tR\rbackdropRight\x12\"\n" +
 	"\fcompleteness\x18\x1a \x01(\x05R\fcompleteness\x12\x1a\n" +
 	"\bunfilled\x18\x1b \x03(\tR\bunfilled\x128\n" +
-	"\tinterface\x18\x1c \x01(\v2\x1a.user.v1.InterfaceSettingsR\tinterface\"\x9e\x02\n" +
+	"\tinterface\x18\x1c \x01(\v2\x1a.user.v1.InterfaceSettingsR\tinterface\x12\x14\n" +
+	"\x05votes\x18\x1d \x01(\x03R\x05votes\x12\x14\n" +
+	"\x05admin\x18\x1e \x01(\bR\x05admin\"\x9e\x02\n" +
 	"\x11InterfaceSettings\x12!\n" +
 	"\favatar_style\x18\x01 \x01(\tR\vavatarStyle\x12\x1b\n" +
 	"\tmain_page\x18\x02 \x01(\tR\bmainPage\x12\x1f\n" +
@@ -6023,10 +6613,11 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\vdeactivated\x18\x01 \x01(\bR\vdeactivated\"\x17\n" +
 	"\x15GetGiftCatalogRequest\"S\n" +
 	"\x16GetGiftCatalogResponse\x129\n" +
-	"\vcollections\x18\x01 \x03(\v2\x17.user.v1.GiftCollectionR\vcollections\"6\n" +
+	"\vcollections\x18\x01 \x03(\v2\x17.user.v1.GiftCollectionR\vcollections\"L\n" +
 	"\x0eGiftCollection\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
-	"\x05gifts\x18\x02 \x03(\tR\x05gifts\"v\n" +
+	"\x05gifts\x18\x02 \x03(\tR\x05gifts\x12\x14\n" +
+	"\x05price\x18\x03 \x01(\x03R\x05price\"v\n" +
 	"\x0fSendGiftRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
 	"\x04gift\x18\x02 \x01(\tR\x04gift\x12\x18\n" +
@@ -6051,7 +6642,43 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"nextCursor\x12\x14\n" +
 	"\x05total\x18\x03 \x01(\x05R\x05total\",\n" +
 	"\x11DeleteGiftRequest\x12\x17\n" +
-	"\agift_id\x18\x01 \x01(\tR\x06giftId*^\n" +
+	"\agift_id\x18\x01 \x01(\tR\x06giftId\"E\n" +
+	"\x14TransferVotesRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x14\n" +
+	"\x05votes\x18\x02 \x01(\x03R\x05votes\"-\n" +
+	"\x15TransferVotesResponse\x12\x14\n" +
+	"\x05votes\x18\x01 \x01(\x03R\x05votes\",\n" +
+	"\x14RedeemVoucherRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\"_\n" +
+	"\x15RedeemVoucherResponse\x12\x14\n" +
+	"\x05votes\x18\x01 \x01(\x03R\x05votes\x12\x16\n" +
+	"\x06rating\x18\x02 \x01(\x05R\x06rating\x12\x18\n" +
+	"\abalance\x18\x03 \x01(\x03R\abalance\"\xa0\x01\n" +
+	"\aVoucher\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05token\x18\x02 \x01(\tR\x05token\x12\x14\n" +
+	"\x05votes\x18\x03 \x01(\x03R\x05votes\x12\x16\n" +
+	"\x06rating\x18\x04 \x01(\x05R\x06rating\x12\x1f\n" +
+	"\vusages_left\x18\x05 \x01(\x05R\n" +
+	"usagesLeft\x12 \n" +
+	"\vactivations\x18\x06 \x01(\x05R\vactivations\"r\n" +
+	"\x14CreateVoucherRequest\x12\x14\n" +
+	"\x05token\x18\x01 \x01(\tR\x05token\x12\x14\n" +
+	"\x05votes\x18\x02 \x01(\x03R\x05votes\x12\x16\n" +
+	"\x06rating\x18\x03 \x01(\x05R\x06rating\x12\x16\n" +
+	"\x06usages\x18\x04 \x01(\x05R\x06usages\"C\n" +
+	"\x15CreateVoucherResponse\x12*\n" +
+	"\avoucher\x18\x01 \x01(\v2\x10.user.v1.VoucherR\avoucher\"C\n" +
+	"\x13ListVouchersRequest\x12\x16\n" +
+	"\x06cursor\x18\x01 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x02 \x01(\x05R\x05limit\"e\n" +
+	"\x14ListVouchersResponse\x12,\n" +
+	"\bvouchers\x18\x01 \x03(\v2\x10.user.v1.VoucherR\bvouchers\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\"5\n" +
+	"\x14DeleteVoucherRequest\x12\x1d\n" +
+	"\n" +
+	"voucher_id\x18\x01 \x01(\tR\tvoucherId*^\n" +
 	"\n" +
 	"FieldPlace\x12\x1b\n" +
 	"\x17FIELD_PLACE_UNSPECIFIED\x10\x00\x12\x18\n" +
@@ -6120,7 +6747,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\fBackdropSide\x12\x1d\n" +
 	"\x19BACKDROP_SIDE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12BACKDROP_SIDE_LEFT\x10\x01\x12\x17\n" +
-	"\x13BACKDROP_SIDE_RIGHT\x10\x022\xbe\x1a\n" +
+	"\x13BACKDROP_SIDE_RIGHT\x10\x022\xc3\x1d\n" +
 	"\vUserService\x12]\n" +
 	"\x12GetOrCreateByEmail\x12\".user.v1.GetOrCreateByEmailRequest\x1a#.user.v1.GetOrCreateByEmailResponse\x126\n" +
 	"\x05GetMe\x12\x15.user.v1.GetMeRequest\x1a\x16.user.v1.GetMeResponse\x12N\n" +
@@ -6166,7 +6793,12 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\bSendGift\x12\x18.user.v1.SendGiftRequest\x1a\x19.user.v1.SendGiftResponse\x12B\n" +
 	"\tListGifts\x12\x19.user.v1.ListGiftsRequest\x1a\x1a.user.v1.ListGiftsResponse\x12@\n" +
 	"\n" +
-	"DeleteGift\x12\x1a.user.v1.DeleteGiftRequest\x1a\x16.google.protobuf.Empty\x12Z\n" +
+	"DeleteGift\x12\x1a.user.v1.DeleteGiftRequest\x1a\x16.google.protobuf.Empty\x12N\n" +
+	"\rTransferVotes\x12\x1d.user.v1.TransferVotesRequest\x1a\x1e.user.v1.TransferVotesResponse\x12N\n" +
+	"\rRedeemVoucher\x12\x1d.user.v1.RedeemVoucherRequest\x1a\x1e.user.v1.RedeemVoucherResponse\x12N\n" +
+	"\rCreateVoucher\x12\x1d.user.v1.CreateVoucherRequest\x1a\x1e.user.v1.CreateVoucherResponse\x12K\n" +
+	"\fListVouchers\x12\x1c.user.v1.ListVouchersRequest\x1a\x1d.user.v1.ListVouchersResponse\x12F\n" +
+	"\rDeleteVoucher\x12\x1d.user.v1.DeleteVoucherRequest\x1a\x16.google.protobuf.Empty\x12Z\n" +
 	"\x11DeactivateAccount\x12!.user.v1.DeactivateAccountRequest\x1a\".user.v1.DeactivateAccountResponse\x12Z\n" +
 	"\x11ReactivateAccount\x12!.user.v1.ReactivateAccountRequest\x1a\".user.v1.ReactivateAccountResponse\x12T\n" +
 	"\x0fGetAccountState\x12\x1f.user.v1.GetAccountStateRequest\x1a .user.v1.GetAccountStateResponseB5Z3github.com/vexner67/freenet/user/api/user/v1;userv1b\x06proto3"
@@ -6184,7 +6816,7 @@ func file_api_user_v1_user_proto_rawDescGZIP() []byte {
 }
 
 var file_api_user_v1_user_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
-var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
+var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 98)
 var file_api_user_v1_user_proto_goTypes = []any{
 	(FieldPlace)(0),                    // 0: user.v1.FieldPlace
 	(Audience)(0),                      // 1: user.v1.Audience
@@ -6284,21 +6916,31 @@ var file_api_user_v1_user_proto_goTypes = []any{
 	(*ListGiftsRequest)(nil),           // 95: user.v1.ListGiftsRequest
 	(*ListGiftsResponse)(nil),          // 96: user.v1.ListGiftsResponse
 	(*DeleteGiftRequest)(nil),          // 97: user.v1.DeleteGiftRequest
-	(*timestamppb.Timestamp)(nil),      // 98: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 99: google.protobuf.Empty
+	(*TransferVotesRequest)(nil),       // 98: user.v1.TransferVotesRequest
+	(*TransferVotesResponse)(nil),      // 99: user.v1.TransferVotesResponse
+	(*RedeemVoucherRequest)(nil),       // 100: user.v1.RedeemVoucherRequest
+	(*RedeemVoucherResponse)(nil),      // 101: user.v1.RedeemVoucherResponse
+	(*Voucher)(nil),                    // 102: user.v1.Voucher
+	(*CreateVoucherRequest)(nil),       // 103: user.v1.CreateVoucherRequest
+	(*CreateVoucherResponse)(nil),      // 104: user.v1.CreateVoucherResponse
+	(*ListVouchersRequest)(nil),        // 105: user.v1.ListVouchersRequest
+	(*ListVouchersResponse)(nil),       // 106: user.v1.ListVouchersResponse
+	(*DeleteVoucherRequest)(nil),       // 107: user.v1.DeleteVoucherRequest
+	(*timestamppb.Timestamp)(nil),      // 108: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 109: google.protobuf.Empty
 }
 var file_api_user_v1_user_proto_depIdxs = []int32{
 	5,   // 0: user.v1.User.gender:type_name -> user.v1.Gender
 	6,   // 1: user.v1.User.relationship:type_name -> user.v1.Relationship
 	7,   // 2: user.v1.User.worldview:type_name -> user.v1.Worldview
 	8,   // 3: user.v1.User.political_views:type_name -> user.v1.PoliticalViews
-	98,  // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
+	108, // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
 	17,  // 5: user.v1.User.privacy:type_name -> user.v1.PrivacySettings
-	98,  // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
+	108, // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
 	14,  // 7: user.v1.User.contacts:type_name -> user.v1.Contacts
 	15,  // 8: user.v1.User.interests:type_name -> user.v1.Interests
 	16,  // 9: user.v1.User.extra_fields:type_name -> user.v1.ExtraField
-	98,  // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
+	108, // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
 	11,  // 11: user.v1.User.interface:type_name -> user.v1.InterfaceSettings
 	11,  // 12: user.v1.UpdateInterfaceRequest.interface:type_name -> user.v1.InterfaceSettings
 	10,  // 13: user.v1.UpdateInterfaceResponse.user:type_name -> user.v1.User
@@ -6318,18 +6960,18 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	6,   // 27: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
 	7,   // 28: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
 	8,   // 29: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
-	98,  // 30: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	108, // 30: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
 	14,  // 31: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
 	15,  // 32: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
 	16,  // 33: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
-	98,  // 34: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
-	98,  // 35: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
+	108, // 34: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
+	108, // 35: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
 	10,  // 36: user.v1.GetMeResponse.user:type_name -> user.v1.User
 	5,   // 37: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
 	6,   // 38: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
 	7,   // 39: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
 	8,   // 40: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
-	98,  // 41: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	108, // 41: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
 	10,  // 42: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
 	14,  // 43: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
 	10,  // 44: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
@@ -6354,102 +6996,114 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	10,  // 63: user.v1.ReactivateAccountResponse.user:type_name -> user.v1.User
 	91,  // 64: user.v1.GetGiftCatalogResponse.collections:type_name -> user.v1.GiftCollection
 	94,  // 65: user.v1.SendGiftResponse.gift:type_name -> user.v1.Gift
-	98,  // 66: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
+	108, // 66: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
 	18,  // 67: user.v1.Gift.sender:type_name -> user.v1.PublicProfile
 	94,  // 68: user.v1.ListGiftsResponse.gifts:type_name -> user.v1.Gift
-	19,  // 69: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
-	21,  // 70: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
-	23,  // 71: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	49,  // 72: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
-	51,  // 73: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
-	33,  // 74: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
-	12,  // 75: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
-	25,  // 76: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
-	27,  // 77: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
-	29,  // 78: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
-	48,  // 79: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
-	54,  // 80: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
-	31,  // 81: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	35,  // 82: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
-	56,  // 83: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
-	37,  // 84: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
-	38,  // 85: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
-	39,  // 86: user.v1.UserService.ListFollowingIDs:input_type -> user.v1.ListFollowingIDsRequest
-	41,  // 87: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
-	43,  // 88: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
-	43,  // 89: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
-	44,  // 90: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
-	45,  // 91: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
-	58,  // 92: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
-	62,  // 93: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
-	74,  // 94: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
-	76,  // 95: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
-	79,  // 96: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
-	60,  // 97: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
-	64,  // 98: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
-	65,  // 99: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
-	66,  // 100: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
-	68,  // 101: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
-	70,  // 102: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
-	71,  // 103: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
-	72,  // 104: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
-	81,  // 105: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
-	89,  // 106: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
-	92,  // 107: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
-	95,  // 108: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
-	97,  // 109: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
-	83,  // 110: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
-	85,  // 111: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
-	87,  // 112: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
-	20,  // 113: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	22,  // 114: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	24,  // 115: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	50,  // 116: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
-	52,  // 117: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
-	34,  // 118: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	13,  // 119: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
-	26,  // 120: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
-	28,  // 121: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
-	30,  // 122: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
-	53,  // 123: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	55,  // 124: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
-	32,  // 125: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	36,  // 126: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	57,  // 127: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	99,  // 128: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	99,  // 129: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	40,  // 130: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
-	42,  // 131: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	47,  // 132: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	47,  // 133: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	99,  // 134: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
-	46,  // 135: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
-	59,  // 136: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	63,  // 137: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
-	75,  // 138: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
-	77,  // 139: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
-	80,  // 140: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
-	61,  // 141: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
-	99,  // 142: user.v1.UserService.Block:output_type -> google.protobuf.Empty
-	99,  // 143: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
-	67,  // 144: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
-	69,  // 145: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
-	99,  // 146: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
-	99,  // 147: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
-	73,  // 148: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
-	82,  // 149: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
-	90,  // 150: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
-	93,  // 151: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
-	96,  // 152: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
-	99,  // 153: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
-	84,  // 154: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
-	86,  // 155: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
-	88,  // 156: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
-	113, // [113:157] is the sub-list for method output_type
-	69,  // [69:113] is the sub-list for method input_type
-	69,  // [69:69] is the sub-list for extension type_name
-	69,  // [69:69] is the sub-list for extension extendee
-	0,   // [0:69] is the sub-list for field type_name
+	102, // 69: user.v1.CreateVoucherResponse.voucher:type_name -> user.v1.Voucher
+	102, // 70: user.v1.ListVouchersResponse.vouchers:type_name -> user.v1.Voucher
+	19,  // 71: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	21,  // 72: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	23,  // 73: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	49,  // 74: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
+	51,  // 75: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
+	33,  // 76: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	12,  // 77: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
+	25,  // 78: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
+	27,  // 79: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
+	29,  // 80: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
+	48,  // 81: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	54,  // 82: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
+	31,  // 83: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	35,  // 84: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	56,  // 85: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	37,  // 86: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	38,  // 87: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	39,  // 88: user.v1.UserService.ListFollowingIDs:input_type -> user.v1.ListFollowingIDsRequest
+	41,  // 89: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	43,  // 90: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	43,  // 91: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	44,  // 92: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
+	45,  // 93: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
+	58,  // 94: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
+	62,  // 95: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
+	74,  // 96: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
+	76,  // 97: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
+	79,  // 98: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
+	60,  // 99: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
+	64,  // 100: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
+	65,  // 101: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
+	66,  // 102: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
+	68,  // 103: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
+	70,  // 104: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
+	71,  // 105: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
+	72,  // 106: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
+	81,  // 107: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	89,  // 108: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
+	92,  // 109: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
+	95,  // 110: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
+	97,  // 111: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
+	98,  // 112: user.v1.UserService.TransferVotes:input_type -> user.v1.TransferVotesRequest
+	100, // 113: user.v1.UserService.RedeemVoucher:input_type -> user.v1.RedeemVoucherRequest
+	103, // 114: user.v1.UserService.CreateVoucher:input_type -> user.v1.CreateVoucherRequest
+	105, // 115: user.v1.UserService.ListVouchers:input_type -> user.v1.ListVouchersRequest
+	107, // 116: user.v1.UserService.DeleteVoucher:input_type -> user.v1.DeleteVoucherRequest
+	83,  // 117: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
+	85,  // 118: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
+	87,  // 119: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
+	20,  // 120: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	22,  // 121: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	24,  // 122: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	50,  // 123: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
+	52,  // 124: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
+	34,  // 125: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	13,  // 126: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
+	26,  // 127: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
+	28,  // 128: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
+	30,  // 129: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
+	53,  // 130: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	55,  // 131: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
+	32,  // 132: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	36,  // 133: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	57,  // 134: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	109, // 135: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	109, // 136: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	40,  // 137: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
+	42,  // 138: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	47,  // 139: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	47,  // 140: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	109, // 141: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
+	46,  // 142: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
+	59,  // 143: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	63,  // 144: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	75,  // 145: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
+	77,  // 146: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
+	80,  // 147: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
+	61,  // 148: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
+	109, // 149: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	109, // 150: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	67,  // 151: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	69,  // 152: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
+	109, // 153: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
+	109, // 154: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
+	73,  // 155: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
+	82,  // 156: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	90,  // 157: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
+	93,  // 158: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
+	96,  // 159: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
+	109, // 160: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
+	99,  // 161: user.v1.UserService.TransferVotes:output_type -> user.v1.TransferVotesResponse
+	101, // 162: user.v1.UserService.RedeemVoucher:output_type -> user.v1.RedeemVoucherResponse
+	104, // 163: user.v1.UserService.CreateVoucher:output_type -> user.v1.CreateVoucherResponse
+	106, // 164: user.v1.UserService.ListVouchers:output_type -> user.v1.ListVouchersResponse
+	109, // 165: user.v1.UserService.DeleteVoucher:output_type -> google.protobuf.Empty
+	84,  // 166: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
+	86,  // 167: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
+	88,  // 168: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
+	120, // [120:169] is the sub-list for method output_type
+	71,  // [71:120] is the sub-list for method input_type
+	71,  // [71:71] is the sub-list for extension type_name
+	71,  // [71:71] is the sub-list for extension extendee
+	0,   // [0:71] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }
@@ -6464,7 +7118,7 @@ func file_api_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_user_v1_user_proto_rawDesc), len(file_api_user_v1_user_proto_rawDesc)),
 			NumEnums:      10,
-			NumMessages:   88,
+			NumMessages:   98,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

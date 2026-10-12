@@ -400,7 +400,9 @@ const userColumns = `
 		notes_read,
 		chats_invite,
 		closed,
-		gifts_read`
+		gifts_read,
+		votes,
+		rating`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -462,7 +464,9 @@ const qualifiedUserColumns = `
 		u.notes_read,
 		u.chats_invite,
 		u.closed,
-		u.gifts_read`
+		u.gifts_read,
+		u.votes,
+		u.rating`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -601,6 +605,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		theme, nsfw, postView                      string
 		hideRating                                 bool
 		timezone                                   *int16
+		wallet                                     user.Wallet
 	)
 
 	err := row.Scan(
@@ -642,6 +647,8 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&chatsInvite,
 		&privacy.Closed,
 		&giftsRead,
+		&wallet.Votes,
+		&wallet.Rating,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -720,6 +727,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 			Timezone:    timezoneFromDB(timezone),
 			HiddenMenu:  hiddenMenuFromDB(hiddenMenu),
 		},
+		Wallet: wallet,
 	}), nil
 }
 
