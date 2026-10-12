@@ -369,11 +369,6 @@ func (f *fakeUsers) Unignore(_ context.Context, token string, sourceIDs []string
 	return f.err
 }
 
-func (f *fakeUsers) FollowingIDs(_ context.Context, token string) ([]string, error) {
-	f.token = token
-	return []string{"u2", "gone"}, nil
-}
-
 func (f *fakeUsers) FollowStats(_ context.Context, token, _ string) (model.FollowStats, error) {
 	f.statsToken = token
 	return model.FollowStats{Followers: 3, Following: 1, IsFollowing: token != ""}, nil
@@ -470,10 +465,9 @@ func (f *fakeUsers) markedOnline() []string {
 }
 
 type fakePosts struct {
-	authors, walls []string
-	lastAsked      []string
-	feedMore       []model.Post
-	hideNSFW       bool
+	lastAsked []string
+	feedMore  []model.Post
+	hideNSFW  bool
 	// hidden are the authors the last feed was asked to leave out.
 	hidden   []string
 	everyone bool
@@ -739,7 +733,7 @@ func (f *fakePosts) CommentsByID(_ context.Context, ids []string) ([]model.Comme
 }
 
 func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSources, cursor string, _ int) (model.PostPage, error) {
-	f.token, f.authors, f.walls, f.cursor, f.hideNSFW = token, sources.Authors, sources.Walls, cursor, sources.HideNSFW
+	f.token, f.cursor, f.hideNSFW = token, cursor, sources.HideNSFW
 	f.everyone, f.hidden = sources.Everyone, sources.Hidden
 	f.ownOnly, f.ignored = sources.OwnOnly, sources.Ignored
 	return model.PostPage{

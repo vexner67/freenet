@@ -39,6 +39,31 @@ func newPool(t *testing.T) *pgxpool.Pool {
 	return pool
 }
 
+// reader is someone new who reads people and, after them, clubs in the
+// news.
+func reader(t *testing.T, people []uuid.UUID, clubs ...uuid.UUID) service.FeedSources {
+	t.Helper()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	repo := postgres.NewSourceRepository(newPool(t))
+	id := uuid.New()
+
+	for _, source := range people {
+		if err := repo.Add(ctx, id, source, false); err != nil {
+			t.Fatalf("Add: %v", err)
+		}
+	}
+	for _, source := range clubs {
+		if err := repo.Add(ctx, id, source, true); err != nil {
+			t.Fatalf("Add: %v", err)
+		}
+	}
+
+	return service.FeedSources{Reader: id}
+}
+
 func TestPostRepository(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
@@ -153,18 +178,18 @@ func TestPostRepository(t *testing.T) {
 		}
 	}
 
-	byOther, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{other}}, uuid.Nil, 10)
+	byOther, err := repo.ListFeed(ctx, reader(t, []uuid.UUID{other}), uuid.Nil, 10)
 	if err != nil || len(byOther) != 2 || byOther[0].ID() != guest.ID() || byOther[1].ID() != theirs.ID() {
 		t.Fatalf("ListFeed(other) = %v, %v", byOther, err)
 	}
 
-	feed, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{author, other}}, uuid.Nil, 10)
+	feed, err := repo.ListFeed(ctx, reader(t, []uuid.UUID{author, other}), uuid.Nil, 10)
 	if err != nil || len(feed) != 5 || feed[0].ID() != guest.ID() || feed[4].Content().Text() != "раз" {
 		t.Fatalf("ListFeed = %v, %v", feed, err)
 	}
 
 	// The walls of a feed bring what others wrote there, once.
-	walls, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{author}, Walls: []uuid.UUID{author}}, uuid.Nil, 10)
+	walls, err := repo.ListFeed(ctx, reader(t, []uuid.UUID{author}), uuid.Nil, 10)
 	if err != nil || len(walls) != 4 || walls[0].ID() != guest.ID() {
 		t.Fatalf("ListFeed with the wall = %v, %v", walls, err)
 	}
@@ -214,17 +239,17 @@ func TestPostRepository_ClubWalls(t *testing.T) {
 		t.Fatal("the member's post speaks for the member")
 	}
 
-	byAuthor, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{admin}}, uuid.Nil, 10)
+	byAuthor, err := repo.ListFeed(ctx, reader(t, []uuid.UUID{admin}), uuid.Nil, 10)
 	if err != nil || len(byAuthor) != 1 || byAuthor[0].ID() != adminsOwn.ID() {
 		t.Fatalf("feed of the admin = %v, %v; not the club's post", byAuthor, err)
 	}
 
-	both, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{admin}, Walls: []uuid.UUID{club}}, uuid.Nil, 10)
+	both, err := repo.ListFeed(ctx, reader(t, []uuid.UUID{admin}, club), uuid.Nil, 10)
 	if err != nil || len(both) != 3 || both[0].ID() != adminsOwn.ID() || both[1].ID() != byMember.ID() || both[2].ID() != news.ID() {
 		t.Fatalf("feed of the admin and the club = %v, %v", both, err)
 	}
 
-	if older, err := repo.ListFeed(ctx, service.FeedSources{Walls: []uuid.UUID{club}}, byMember.ID(), 10); err != nil || len(older) != 1 || older[0].ID() != news.ID() {
+	if older, err := repo.ListFeed(ctx, reader(t, nil, club), byMember.ID(), 10); err != nil || len(older) != 1 || older[0].ID() != news.ID() {
 		t.Fatalf("feed after a cursor = %v, %v", older, err)
 	}
 
@@ -260,7 +285,7 @@ func TestPostRepository_ClubWalls(t *testing.T) {
 		t.Fatalf("the feed of everyone without the club = %v", got)
 	}
 
-	mine := service.FeedSources{Authors: []uuid.UUID{admin, member}, Walls: []uuid.UUID{club, admin}}
+	mine := reader(t, []uuid.UUID{admin, member}, club)
 	mine.OwnOnly = true
 	if got := here(mine); !slices.Equal(got, []uuid.UUID{adminsOwn.ID(), news.ID()}) {
 		t.Fatalf("the feed, own only = %v", got)
@@ -283,5 +308,81 @@ func TestPostRepository_ClubWalls(t *testing.T) {
 	}
 	if got, err := repo.Get(ctx, newPhoto.ID()); err != nil || !got.AvatarUpdate() || !got.FromWall() {
 		t.Fatalf("the club's new photo = %+v, %v", got, err)
+	}
+}
+
+func TestSourceRepository(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	pool := newPool(t)
+	posts, sources := postgres.NewPostRepository(pool), postgres.NewSourceRepository(pool)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	for _, author := range []uuid.UUID{ann, bob} {
+		p, err := post.New(author, author, post.RestoreContent("x", nil, uuid.Nil), time.Now())
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = posts.Save(ctx, p); err != nil {
+			t.Fatalf("Save: %v", err)
+		}
+	}
+
+	feed := func(reader uuid.UUID) int {
+		t.Helper()
+
+		page, err := posts.ListFeed(ctx, service.FeedSources{Reader: reader}, uuid.Nil, 10)
+		if err != nil {
+			t.Fatalf("ListFeed: %v", err)
+		}
+
+		return len(page)
+	}
+
+	// Nobody followed: only one's own posts; nobody at all reads nothing.
+	if got := feed(cat); got != 0 {
+		t.Fatalf("cat reads %d posts before following", got)
+	}
+	if got := feed(ann); got != 1 {
+		t.Fatalf("ann reads %d posts, want her own", got)
+	}
+	if got := feed(uuid.Nil); got != 0 {
+		t.Fatalf("nobody reads %d posts", got)
+	}
+
+	// Told twice, a follow is one follow.
+	for range 2 {
+		for _, source := range []uuid.UUID{ann, bob} {
+			if err := sources.Add(ctx, cat, source, false); err != nil {
+				t.Fatalf("Add: %v", err)
+			}
+		}
+	}
+	if err := sources.Add(ctx, ann, bob, false); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if got := feed(cat); got != 2 {
+		t.Fatalf("cat reads %d posts, want ann's and bob's", got)
+	}
+
+	for range 2 {
+		if err := sources.Remove(ctx, cat, bob); err != nil {
+			t.Fatalf("Remove: %v", err)
+		}
+	}
+	if got := feed(cat); got != 1 {
+		t.Fatalf("cat reads %d posts after unfollowing bob", got)
+	}
+
+	// Erased, ann is read by nobody and reads nobody.
+	if err := sources.Forget(ctx, ann); err != nil {
+		t.Fatalf("Forget: %v", err)
+	}
+	if got := feed(cat); got != 0 {
+		t.Fatalf("cat reads %d posts of the erased", got)
+	}
+	if got := feed(ann); got != 1 {
+		t.Fatalf("the erased reads %d posts, want only her own", got)
 	}
 }

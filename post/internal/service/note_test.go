@@ -25,7 +25,7 @@ func newNoteFixture() *noteFixture {
 
 	f.notes = service.NewNoteService(service.NoteDeps{Notes: repo, Comments: repo.Comments(), Tx: fakeTx{}, Notifier: f.notifier})
 	f.purge = service.NewPurgeService(service.PurgeDeps{
-		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(),
+		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Sources: store.Sources(), Comments: store.Comments(),
 		Suggestions: inmem.NewSuggestionRepository(), Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(), Notes: repo,
 		Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{},
 	})

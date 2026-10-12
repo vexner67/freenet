@@ -212,11 +212,10 @@ func (p *Posts) List(ctx context.Context, accessToken, wallID string, pick model
 	}, nil
 }
 
-// Feed is the posts of several authors on any walls and of several walls.
+// Feed is the news of the owner of the token: the posts of whom they
+// follow and of the walls they read.
 func (p *Posts) Feed(ctx context.Context, accessToken string, sources model.FeedSources, cursor string, limit int) (model.PostPage, error) {
 	resp, err := p.api.ListFeed(withToken(ctx, accessToken), &postv1.ListFeedRequest{
-		AuthorIds:       sources.Authors,
-		WallIds:         sources.Walls,
 		HideNsfw:        sources.HideNSFW,
 		Everyone:        sources.Everyone,
 		HiddenAuthorIds: sources.Hidden,

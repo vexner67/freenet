@@ -188,10 +188,6 @@ func (f *fakeClubs) Pinned(_ context.Context, token string) ([]model.Club, error
 	return []model.Club{cats}, f.err
 }
 
-func (f *fakeClubs) MineIDs(_ context.Context, token string) ([]string, error) {
-	return []string{"k1"}, f.err
-}
-
 // MyRoles: the caller is what the test says in the club of cats alone.
 func (f *fakeClubs) MyRoles(_ context.Context, token string, clubIDs []string) (map[string]string, error) {
 	f.rolesAsked = clubIDs
@@ -425,8 +421,8 @@ func TestFeed_Clubs(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(rest.Config{})
-	if w := h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || !slices.Equal(h.posts.walls, []string{"k1", "u2", "gone", "u1"}) {
-		t.Fatalf("feed: %d, walls %v: the clubs, the followed and me", w.Code, h.posts.walls)
+	if w := h.do("GET", "/api/v1/feed", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.posts.everyone {
+		t.Fatalf("feed: %d, everyone %v", w.Code, h.posts.everyone)
 	}
 
 	// Whoever runs a community moderates its wall from the news: the

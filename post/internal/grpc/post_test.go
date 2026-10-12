@@ -81,9 +81,10 @@ func newServer(t *testing.T) testServer {
 		Purge: service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
 			Topics: topics, Albums: albums, Notes: notes, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
-			Held: []service.ReactionHolder{store.Holds(), topics, albums},
+			Held: []service.ReactionHolder{store.Holds(), topics, albums}, Sources: store.Sources(),
 		}),
-		Holds: service.NewHoldService(inmem.TxManager{}, store.Holds(), topics, albums),
+		Holds:   service.NewHoldService(inmem.TxManager{}, store.Holds(), topics, albums),
+		Sources: service.NewSourceService(store.Sources()),
 	}, log))
 
 	go func() { _ = srv.Serve(lis) }()
@@ -119,6 +120,92 @@ func (s testServer) as(t *testing.T, userID uuid.UUID) context.Context {
 	}
 
 	return metadata.AppendToOutgoingContext(context.Background(), "authorization", "Bearer "+token)
+}
+
+// reads tells the server, as the user and club services do, that the
+// reader reads people and, after them, clubs.
+func (s testServer) reads(t *testing.T, reader uuid.UUID, people []uuid.UUID, clubs ...uuid.UUID) context.Context {
+	t.Helper()
+
+	for i, source := range append(people, clubs...) {
+		req := &postv1.FollowSourceRequest{ReaderId: reader.String(), SourceId: source.String(), Club: i >= len(people)}
+		if _, err := s.client.FollowSource(context.Background(), req); err != nil {
+			t.Fatalf("FollowSource: %v", err)
+		}
+	}
+
+	return s.as(t, reader)
+}
+
+func TestFeedSources(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	if _, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: "анна"}); err != nil {
+		t.Fatal(err)
+	}
+
+	feed := func(ctx context.Context) int {
+		t.Helper()
+
+		page, err := s.client.ListFeed(ctx, &postv1.ListFeedRequest{})
+		if err != nil {
+			t.Fatalf("ListFeed: %v", err)
+		}
+
+		return len(page.GetPosts())
+	}
+
+	// Without a token there is no reader and no news.
+	if got := feed(context.Background()); got != 0 {
+		t.Fatalf("the feed of nobody shows %d posts", got)
+	}
+	if got := feed(s.as(t, bob)); got != 0 {
+		t.Fatalf("bob reads %d posts before following", got)
+	}
+	if got := feed(s.reads(t, bob, []uuid.UUID{ann})); got != 1 {
+		t.Fatalf("bob reads %d posts, want ann's", got)
+	}
+
+	unfollow := &postv1.UnfollowSourceRequest{ReaderId: bob.String(), SourceId: ann.String()}
+	for range 2 {
+		if _, err := s.client.UnfollowSource(context.Background(), unfollow); err != nil {
+			t.Fatalf("UnfollowSource: %v", err)
+		}
+	}
+	if got := feed(s.as(t, bob)); got != 0 {
+		t.Fatalf("bob reads %d posts after unfollowing", got)
+	}
+
+	tests := []struct {
+		name string
+		call func() error
+	}{
+		{"a bad reader", func() error {
+			_, err := s.client.FollowSource(context.Background(), &postv1.FollowSourceRequest{ReaderId: "x", SourceId: ann.String()})
+			return err
+		}},
+		{"a bad source", func() error {
+			_, err := s.client.FollowSource(context.Background(), &postv1.FollowSourceRequest{ReaderId: bob.String(), SourceId: "x"})
+			return err
+		}},
+		{"oneself", func() error {
+			_, err := s.client.FollowSource(context.Background(), &postv1.FollowSourceRequest{ReaderId: bob.String(), SourceId: bob.String()})
+			return err
+		}},
+		{"unfollowing a bad source", func() error {
+			_, err := s.client.UnfollowSource(context.Background(), &postv1.UnfollowSourceRequest{ReaderId: bob.String(), SourceId: "x"})
+			return err
+		}},
+	}
+
+	for _, tt := range tests {
+		if err := tt.call(); status.Code(err) != codes.InvalidArgument {
+			t.Errorf("%s: %v, want InvalidArgument", tt.name, err)
+		}
+	}
 }
 
 func TestWall(t *testing.T) {
@@ -160,7 +247,7 @@ func TestWall(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	feed, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{ann.String(), bob.String()}, Limit: 2})
+	feed, err := s.client.ListFeed(s.reads(t, uuid.New(), []uuid.UUID{ann, bob}), &postv1.ListFeedRequest{Limit: 2})
 	if err != nil {
 		t.Fatalf("ListFeed: %v", err)
 	}
@@ -229,28 +316,12 @@ func TestErrors(t *testing.T) {
 			_, err := s.client.CreatePost(ann, &postv1.CreatePostRequest{Text: "я", FromWall: true})
 			return err
 		}, codes.InvalidArgument},
-		{"a bad wall in the feed", func() error {
-			_, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{WallIds: []string{"x"}})
-			return err
-		}, codes.InvalidArgument},
 		{"bad author id", func() error {
 			_, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: "ann"})
 			return err
 		}, codes.InvalidArgument},
 		{"bad cursor", func() error {
 			_, err := s.client.ListPosts(context.Background(), &postv1.ListPostsRequest{WallId: uuid.NewString(), Cursor: "x"})
-			return err
-		}, codes.InvalidArgument},
-		{"bad feed author", func() error {
-			_, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{"ann"}})
-			return err
-		}, codes.InvalidArgument},
-		{"too many feed authors", func() error {
-			ids := make([]string, 1002)
-			for i := range ids {
-				ids[i] = uuid.NewString()
-			}
-			_, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: ids})
 			return err
 		}, codes.InvalidArgument},
 		{"too many ignored walls", func() error {
@@ -548,12 +619,12 @@ func TestClubWall(t *testing.T) {
 		}
 	}
 
-	feed, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{WallIds: []string{club.String()}})
+	feed, err := s.client.ListFeed(s.reads(t, uuid.New(), nil, club), &postv1.ListFeedRequest{})
 	if err != nil || len(feed.GetPosts()) != 1 || !feed.GetPosts()[0].GetFromWall() {
 		t.Fatalf("ListFeed of the club = %v, %v", feed, err)
 	}
 
-	byAuthor, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{admin.String()}})
+	byAuthor, err := s.client.ListFeed(s.reads(t, uuid.New(), []uuid.UUID{admin}), &postv1.ListFeedRequest{})
 	if err != nil || len(byAuthor.GetPosts()) != 0 {
 		t.Fatalf("ListFeed of the admin = %v, %v; the post is the club's", byAuthor, err)
 	}
@@ -1167,11 +1238,11 @@ func TestNSFW(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	feed, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{ann.String()}})
+	feed, err := s.client.ListFeed(s.as(t, ann), &postv1.ListFeedRequest{})
 	if err != nil || len(feed.GetPosts()) != 2 || !feed.GetPosts()[1].GetNsfw() {
 		t.Fatalf("ListFeed = %v, %v", feed, err)
 	}
-	feed, err = s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{ann.String()}, HideNsfw: true})
+	feed, err = s.client.ListFeed(s.as(t, ann), &postv1.ListFeedRequest{HideNsfw: true})
 	if err != nil || len(feed.GetPosts()) != 1 || feed.GetPosts()[0].GetText() != "котики" {
 		t.Fatalf("ListFeed without adult posts = %v, %v", feed, err)
 	}
@@ -1224,7 +1295,7 @@ func TestTextLimit(t *testing.T) {
 		t.Fatalf("wall without a limit = %v, %v", whole, err)
 	}
 
-	feed, err := s.client.ListFeed(context.Background(), &postv1.ListFeedRequest{AuthorIds: []string{ann.String()}, TextLimit: 7})
+	feed, err := s.client.ListFeed(s.as(t, ann), &postv1.ListFeedRequest{TextLimit: 7})
 	if err != nil || len(feed.GetPosts()) != 2 || feed.GetPosts()[1].GetText() != "длинная" || !feed.GetPosts()[1].GetTextCut() {
 		t.Fatalf("ListFeed = %v, %v", feed, err)
 	}

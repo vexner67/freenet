@@ -375,16 +375,6 @@ func toClubs(clubs []*clubv1.Club) []model.Club {
 	return out
 }
 
-// MineIDs are the caller's newest 1000 clubs, for the feed.
-func (c *Clubs) MineIDs(ctx context.Context, accessToken string) ([]string, error) {
-	resp, err := c.api.ListMyClubIDs(withToken(ctx, accessToken), &clubv1.ListMyClubIDsRequest{})
-	if err != nil {
-		return nil, errs.Wrap("c.api.ListMyClubIDs", fromStatus(err))
-	}
-
-	return resp.GetClubIds(), nil
-}
-
 // MyRoles tells what the caller is in those of clubIDs they are in.
 func (c *Clubs) MyRoles(ctx context.Context, accessToken string, clubIDs []string) (map[string]string, error) {
 	resp, err := c.api.ListMyRoles(withToken(ctx, accessToken), &clubv1.ListMyRolesRequest{ClubIds: clubIDs})

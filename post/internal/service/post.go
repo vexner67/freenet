@@ -15,12 +15,6 @@ const (
 	DefaultPageSize = 20
 	MaxPageSize     = 50
 
-	// MaxFeedAuthors bounds one news feed: the people a user follows plus
-	// the user.
-	MaxFeedAuthors = 1001
-	// MaxFeedWalls bounds its walls: those of the same people and of as
-	// many clubs.
-	MaxFeedWalls = 2001
 	// MaxFeedHidden bounds whose posts a feed leaves out: the newest of
 	// the reader's blacklist.
 	MaxFeedHidden = 1000
@@ -107,25 +101,26 @@ type PostSwitchRepository interface {
 	SetCommentsClosed(ctx context.Context, id uuid.UUID, closed bool) error
 }
 
-// FeedSources are what a news feed shows: the posts of Authors (those
-// that speak for a community are the community's, not theirs) and every
-// post on Walls: those of the people the reader follows, whoever wrote
-// there, and of the clubs the reader is in.
+// FeedSources are what a news feed shows: what Reader and the people
+// Reader follows wrote anywhere (a post that speaks for a community is
+// the community's, not theirs) and every post on their walls and on the
+// walls of the clubs Reader is in, whoever wrote there. Whom Reader
+// reads, the SourceRepository knows.
 type FeedSources struct {
-	Authors []uuid.UUID
-	Walls   []uuid.UUID
+	Reader uuid.UUID
 	// HideNSFW leaves the posts marked as adult out, as their reader
 	// asked ("Не показывать в ленте").
 	HideNSFW bool
 	// Everyone is "Все новости" of openvk: the posts of every wall,
-	// whoever the reader follows; Authors and Walls are not looked at.
+	// whoever the reader follows.
 	Everyone bool
 	// OwnOnly leaves only what a wall says itself (post.ByWallOwner): its
 	// owner on their wall, a community in its name. It is openvk's
 	// "Показывать посты на чужих стенах" taken off.
 	OwnOnly bool
 	// Ignored are the walls whose posts the feed leaves out, whoever
-	// wrote them: openvk's "Игнорируемые источники".
+	// wrote them: openvk's "Игнорируемые источники". A person ignored is
+	// not followed to the walls of others either.
 	Ignored []uuid.UUID
 	// Hidden are the people whose posts the feed leaves out wherever they
 	// wrote them: the reader's blacklist. What one of them wrote for a
@@ -1181,19 +1176,21 @@ func (s *PostService) ListWall(ctx context.Context, viewerID, wallID uuid.UUID, 
 	return page, nil
 }
 
-// Feed pages the posts written by several authors together, on their own
-// walls and on others', with every post on the walls of the feed, newest
-// first. Total is not counted: a feed is read page by page,
-// not as a whole.
+// Feed pages the news of viewerID, newest first: what the people they
+// follow and they themselves wrote, with every post on the walls of the
+// feed; with sources.Everyone, the posts of every wall. Total is not
+// counted: a feed is read page by page, not as a whole.
 func (s *PostService) Feed(ctx context.Context, viewerID uuid.UUID, sources FeedSources, cursor uuid.UUID, size int) (Page, error) {
-	if len(sources.Authors) > MaxFeedAuthors || len(sources.Walls) > MaxFeedWalls || len(sources.Hidden) > MaxFeedHidden ||
-		len(sources.Ignored) > MaxFeedIgnored {
+	if len(sources.Hidden) > MaxFeedHidden || len(sources.Ignored) > MaxFeedIgnored {
 		return Page{}, ErrTooManyAuthors
 	}
 
-	if !sources.Everyone && len(sources.Authors) == 0 && len(sources.Walls) == 0 {
+	// Nobody's news are empty.
+	if !sources.Everyone && viewerID == uuid.Nil {
 		return Page{}, nil
 	}
+
+	sources.Reader = viewerID
 
 	if size <= 0 || size > MaxPageSize {
 		size = DefaultPageSize

@@ -112,6 +112,8 @@ const (
 	PostService_PurgeUser_FullMethodName              = "/post.v1.PostService/PurgeUser"
 	PostService_HoldUserReactions_FullMethodName      = "/post.v1.PostService/HoldUserReactions"
 	PostService_ReleaseUserReactions_FullMethodName   = "/post.v1.PostService/ReleaseUserReactions"
+	PostService_FollowSource_FullMethodName           = "/post.v1.PostService/FollowSource"
+	PostService_UnfollowSource_FullMethodName         = "/post.v1.PostService/UnfollowSource"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -359,6 +361,13 @@ type PostServiceClient interface {
 	// aside is counted again, but for what was deleted meanwhile.
 	// Idempotent.
 	ReleaseUserReactions(ctx context.Context, in *ReleaseUserReactionsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for user and club: the reader follows a person or joined a
+	// community, whose posts are in the reader's news (ListFeed) from now
+	// on. Idempotent.
+	FollowSource(ctx context.Context, in *FollowSourceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for user and club: the reader no longer follows the person
+	// or left the community. Idempotent.
+	UnfollowSource(ctx context.Context, in *UnfollowSourceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type postServiceClient struct {
@@ -1289,6 +1298,26 @@ func (c *postServiceClient) ReleaseUserReactions(ctx context.Context, in *Releas
 	return out, nil
 }
 
+func (c *postServiceClient) FollowSource(ctx context.Context, in *FollowSourceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_FollowSource_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) UnfollowSource(ctx context.Context, in *UnfollowSourceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_UnfollowSource_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -1534,6 +1563,13 @@ type PostServiceServer interface {
 	// aside is counted again, but for what was deleted meanwhile.
 	// Idempotent.
 	ReleaseUserReactions(context.Context, *ReleaseUserReactionsRequest) (*emptypb.Empty, error)
+	// Internal, for user and club: the reader follows a person or joined a
+	// community, whose posts are in the reader's news (ListFeed) from now
+	// on. Idempotent.
+	FollowSource(context.Context, *FollowSourceRequest) (*emptypb.Empty, error)
+	// Internal, for user and club: the reader no longer follows the person
+	// or left the community. Idempotent.
+	UnfollowSource(context.Context, *UnfollowSourceRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -1819,6 +1855,12 @@ func (UnimplementedPostServiceServer) HoldUserReactions(context.Context, *HoldUs
 }
 func (UnimplementedPostServiceServer) ReleaseUserReactions(context.Context, *ReleaseUserReactionsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReleaseUserReactions not implemented")
+}
+func (UnimplementedPostServiceServer) FollowSource(context.Context, *FollowSourceRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method FollowSource not implemented")
+}
+func (UnimplementedPostServiceServer) UnfollowSource(context.Context, *UnfollowSourceRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnfollowSource not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -3497,6 +3539,42 @@ func _PostService_ReleaseUserReactions_Handler(srv interface{}, ctx context.Cont
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_FollowSource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FollowSourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).FollowSource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_FollowSource_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).FollowSource(ctx, req.(*FollowSourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_UnfollowSource_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnfollowSourceRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).UnfollowSource(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_UnfollowSource_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).UnfollowSource(ctx, req.(*UnfollowSourceRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3871,6 +3949,14 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReleaseUserReactions",
 			Handler:    _PostService_ReleaseUserReactions_Handler,
+		},
+		{
+			MethodName: "FollowSource",
+			Handler:    _PostService_FollowSource_Handler,
+		},
+		{
+			MethodName: "UnfollowSource",
+			Handler:    _PostService_UnfollowSource_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

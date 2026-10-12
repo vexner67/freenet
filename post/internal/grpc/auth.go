@@ -13,6 +13,8 @@ func InternalMethods() map[string][]string {
 		postv1.PostService_PurgeUser_FullMethodName:            {mtls.User},
 		postv1.PostService_HoldUserReactions_FullMethodName:    {mtls.User},
 		postv1.PostService_ReleaseUserReactions_FullMethodName: {mtls.User},
+		postv1.PostService_FollowSource_FullMethodName:         {mtls.User, mtls.Club},
+		postv1.PostService_UnfollowSource_FullMethodName:       {mtls.User, mtls.Club},
 	}
 }
 
@@ -58,5 +60,7 @@ func PublicMethods() []string {
 		postv1.PostService_PurgeUser_FullMethodName,
 		postv1.PostService_HoldUserReactions_FullMethodName,
 		postv1.PostService_ReleaseUserReactions_FullMethodName,
+		postv1.PostService_FollowSource_FullMethodName,
+		postv1.PostService_UnfollowSource_FullMethodName,
 	}
 }

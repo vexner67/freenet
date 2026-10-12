@@ -2,7 +2,6 @@ package rest_test
 
 import (
 	"net/http"
-	"slices"
 	"testing"
 
 	"github.com/vexner67/freenet/gateway/internal/model"
@@ -125,8 +124,9 @@ func TestFeed(t *testing.T) {
 	if w.Code != http.StatusOK {
 		t.Fatalf("status = %d", w.Code)
 	}
-	if !slices.Equal(h.posts.authors, []string{"u2", "gone", "u1"}) || h.posts.cursor != "p9" {
-		t.Fatalf("feed sources = %v, cursor %q: followed users and me", h.posts.authors, h.posts.cursor)
+	// Whom the reader follows the post service knows by the token.
+	if h.posts.everyone || h.posts.cursor != "p9" {
+		t.Fatalf("everyone %v, cursor %q", h.posts.everyone, h.posts.cursor)
 	}
 	if len(got.Posts) != 2 || got.Posts[0].Author["nickname"] != "bob" || got.Posts[1].Author["nickname"] != "ann" {
 		t.Fatalf("posts with authors, without the vanished one: %+v", got.Posts)
@@ -156,8 +156,8 @@ func TestFeed_All(t *testing.T) {
 	if w.Code != http.StatusOK || len(got.Posts) != 2 {
 		t.Fatalf("status = %d, posts %+v", w.Code, got.Posts)
 	}
-	if !h.posts.everyone || len(h.posts.authors) != 0 || len(h.posts.walls) != 0 {
-		t.Fatalf("sources: everyone %v, authors %v, walls %v", h.posts.everyone, h.posts.authors, h.posts.walls)
+	if !h.posts.everyone {
+		t.Fatalf("sources: everyone %v", h.posts.everyone)
 	}
 
 	if w = h.do("GET", "/api/v1/feed?type=mine", "", "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {

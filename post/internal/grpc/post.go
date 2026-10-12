@@ -115,6 +115,13 @@ type HoldService interface {
 	ReleaseUser(ctx context.Context, userID uuid.UUID) error
 }
 
+// SourceService keeps whom each reader reads in the news, as the user and
+// club services tell.
+type SourceService interface {
+	Follow(ctx context.Context, readerID, sourceID uuid.UUID, club bool) error
+	Unfollow(ctx context.Context, readerID, sourceID uuid.UUID) error
+}
+
 // Services are the use cases behind the handler.
 type Services struct {
 	Posts       PostService
@@ -127,6 +134,7 @@ type Services struct {
 	Faves       FaveService
 	Purge       PurgeService
 	Holds       HoldService
+	Sources     SourceService
 }
 
 type PostHandler struct {
@@ -141,6 +149,7 @@ type PostHandler struct {
 	faveService       FaveService
 	purgeService      PurgeService
 	holdService       HoldService
+	sourceService     SourceService
 	logger            *slog.Logger
 }
 
@@ -156,8 +165,51 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		faveService:       s.Faves,
 		purgeService:      s.Purge,
 		holdService:       s.Holds,
+		sourceService:     s.Sources,
 		logger:            logger,
 	}
+}
+
+func (h *PostHandler) FollowSource(ctx context.Context, req *postv1.FollowSourceRequest) (*emptypb.Empty, error) {
+	readerID, sourceID, err := parseSource(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.sourceService.Follow(ctx, readerID, sourceID, req.GetClub()); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *PostHandler) UnfollowSource(ctx context.Context, req *postv1.UnfollowSourceRequest) (*emptypb.Empty, error) {
+	readerID, sourceID, err := parseSource(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.sourceService.Unfollow(ctx, readerID, sourceID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+// parseSource reads who reads whom from a request about a feed source.
+func parseSource(req interface {
+	GetReaderId() string
+	GetSourceId() string
+}) (readerID, sourceID uuid.UUID, err error) {
+	if readerID, err = uuid.Parse(req.GetReaderId()); err != nil {
+		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "invalid reader id")
+	}
+
+	if sourceID, err = uuid.Parse(req.GetSourceId()); err != nil {
+		return uuid.Nil, uuid.Nil, status.Error(codes.InvalidArgument, "invalid source id")
+	}
+
+	return readerID, sourceID, nil
 }
 
 func (h *PostHandler) HoldUserReactions(ctx context.Context, req *postv1.HoldUserReactionsRequest) (*emptypb.Empty, error) {
@@ -527,19 +579,8 @@ func (h *PostHandler) ListPosts(ctx context.Context, req *postv1.ListPostsReques
 }
 
 func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest) (*postv1.ListFeedResponse, error) {
-	if len(req.GetAuthorIds()) > service.MaxFeedAuthors || len(req.GetWallIds()) > service.MaxFeedWalls ||
-		len(req.GetHiddenAuthorIds()) > service.MaxFeedHidden || len(req.GetIgnoredWallIds()) > service.MaxFeedIgnored {
+	if len(req.GetHiddenAuthorIds()) > service.MaxFeedHidden || len(req.GetIgnoredWallIds()) > service.MaxFeedIgnored {
 		return nil, status.Error(codes.InvalidArgument, "too many authors")
-	}
-
-	authorIDs, err := parseFeedIDs(req.GetAuthorIds(), "invalid author id")
-	if err != nil {
-		return nil, err
-	}
-
-	wallIDs, err := parseFeedIDs(req.GetWallIds(), "invalid wall id")
-	if err != nil {
-		return nil, err
 	}
 
 	hidden, err := parseFeedIDs(req.GetHiddenAuthorIds(), "invalid author id")
@@ -558,8 +599,7 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 	}
 
 	sources := service.FeedSources{
-		Authors: authorIDs, Walls: wallIDs, HideNSFW: req.GetHideNsfw(), Everyone: req.GetEveryone(), Hidden: hidden,
-		OwnOnly: req.GetOwnOnly(), Ignored: ignored,
+		HideNSFW: req.GetHideNsfw(), Everyone: req.GetEveryone(), Hidden: hidden, OwnOnly: req.GetOwnOnly(), Ignored: ignored,
 	}
 
 	page, err := h.postService.Feed(ctx, viewerID(ctx), sources, cursor, int(req.GetLimit()))

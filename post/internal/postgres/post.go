@@ -320,7 +320,7 @@ func (r *PostRepository) Pinned(ctx context.Context, wallID uuid.UUID) (*post.Po
 	return p, nil
 }
 
-const listPostsByWallQuery = `
+const postsByWallSelect = `
 	SELECT
 		id,
 		wall_id,
@@ -348,12 +348,22 @@ const listPostsByWallQuery = `
 		AND id < $2
 		AND archived = ($4 = 'archive')
 		AND ($4 IN ('', 'archive') OR ($4 = 'owner') = (author_id = wall_id OR from_wall))
-		AND ($5 = '' OR text ILIKE $5)
 		AND ($6::timestamptz IS NULL OR (created_at >= $6 AND created_at < $7))
 		AND (NOT $8 OR id IS DISTINCT FROM (SELECT post_id FROM pinned_posts WHERE wall_id = $1))
+`
+
+const postsByWallOrder = `
 	ORDER BY id DESC
 	LIMIT $3
 `
+
+// A search is a statement of its own: "$5 = ” OR text ILIKE $5" in one
+// statement for both would, once the plan of the statement is no longer
+// made for each pattern, never use posts_wall_search_idx.
+const (
+	listPostsByWallQuery   = postsByWallSelect + `AND $5 = ''` + postsByWallOrder
+	searchPostsByWallQuery = postsByWallSelect + `AND text ILIKE $5` + postsByWallOrder
+)
 
 // ListByWall leaves out of all posts, unless searched, the pinned one,
 // which the wall shows first. The filter ($4) is post.WallFilter, its
@@ -365,7 +375,12 @@ func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, pick 
 
 	from, to := yearSpan(pick.Year)
 
-	rows, err := r.conn(ctx).Query(ctx, listPostsByWallQuery,
+	query := listPostsByWallQuery
+	if pick.Query != "" {
+		query = searchPostsByWallQuery
+	}
+
+	rows, err := r.conn(ctx).Query(ctx, query,
 		wallID, before, limit, string(pick.Filter), likePattern(pick.Query.String()), from, to, pick.ShowsPinnedFirst())
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
@@ -412,11 +427,14 @@ func (r *PostRepository) YearsByWall(ctx context.Context, wallID uuid.UUID) ([]p
 	return years, errs.Wrap("rows.Err", rows.Err())
 }
 
-// listFeedQuery: a post that speaks for a community is the community's,
-// so it comes with the walls, never with its author; nor is it left out
-// with the posts of the people the reader blacklisted ($6). $7 leaves
-// only what a wall says itself (post.ByWallOwner), $8 are the walls the
-// reader ignores.
+// listFeedQuery are the news of the reader $1: what they and the people
+// they read wrote anywhere, and every post on those people's walls, the
+// reader's own and the walls of the reader's clubs (feed_sources). A post
+// that speaks for a community is the community's, so it comes with the
+// walls, never with its author; nor is it left out with the posts of the
+// people the reader blacklisted ($5). $6 leaves only what a wall says
+// itself (post.ByWallOwner), $7 are the walls the reader ignores: a
+// person among them is not followed to the walls of others either.
 const listFeedQuery = `
 	SELECT
 		id,
@@ -441,15 +459,26 @@ const listFeedQuery = `
 		polled,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
-	WHERE ((author_id = ANY($1) AND NOT from_wall) OR wall_id = ANY($2))
-		AND id < $3
+	WHERE (
+			(
+				NOT from_wall
+				AND NOT (author_id = ANY($7))
+				AND (
+					author_id = $1
+					OR author_id IN (SELECT fs.source_id FROM feed_sources fs WHERE fs.reader_id = $1 AND NOT fs.club)
+				)
+			)
+			OR wall_id = $1
+			OR wall_id IN (SELECT fs.source_id FROM feed_sources fs WHERE fs.reader_id = $1)
+		)
+		AND id < $2
 		AND NOT archived
-		AND NOT (nsfw AND $5)
-		AND NOT (author_id = ANY($6) AND NOT from_wall)
-		AND (NOT $7 OR author_id = wall_id OR from_wall)
-		AND NOT (wall_id = ANY($8))
+		AND NOT (nsfw AND $4)
+		AND NOT (author_id = ANY($5) AND NOT from_wall)
+		AND (NOT $6 OR author_id = wall_id OR from_wall)
+		AND NOT (wall_id = ANY($7))
 	ORDER BY id DESC
-	LIMIT $4
+	LIMIT $3
 `
 
 // listGlobalFeedQuery: the posts of every wall, read down the primary
@@ -506,8 +535,7 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 	}
 
 	rows, err := r.conn(ctx).Query(ctx, listFeedQuery,
-		ids(sources.Authors), ids(sources.Walls), before, limit, sources.HideNSFW, ids(sources.Hidden),
-		sources.OwnOnly, ids(sources.Ignored),
+		sources.Reader, before, limit, sources.HideNSFW, ids(sources.Hidden), sources.OwnOnly, ids(sources.Ignored),
 	)
 	if err != nil {
 		return nil, errs.Wrap("r.conn.Query", err)
@@ -572,22 +600,32 @@ func ids(s []uuid.UUID) []uuid.UUID {
 }
 
 // The filter is post.WallFilter, its "owner" post.ByWallOwner, in SQL.
-const countPostsByWallQuery = `
+const postsByWallCount = `
 	SELECT count(*)
 	FROM posts
 	WHERE wall_id = $1
 		AND archived = ($2 = 'archive')
 		AND ($2 IN ('', 'archive') OR ($2 = 'owner') = (author_id = wall_id OR from_wall))
-		AND ($3 = '' OR text ILIKE $3)
 		AND ($4::timestamptz IS NULL OR (created_at >= $4 AND created_at < $5))
 `
+
+// Counting what a search found is a statement of its own, as the search.
+const (
+	countPostsByWallQuery = postsByWallCount + `AND $3 = ''`
+	countFoundByWallQuery = postsByWallCount + `AND text ILIKE $3`
+)
 
 func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, pick service.WallPick) (int, error) {
 	var count int
 
 	from, to := yearSpan(pick.Year)
 
-	err := r.conn(ctx).QueryRow(ctx, countPostsByWallQuery, wallID, string(pick.Filter), likePattern(pick.Query.String()), from, to).Scan(&count)
+	query := countPostsByWallQuery
+	if pick.Query != "" {
+		query = countFoundByWallQuery
+	}
+
+	err := r.conn(ctx).QueryRow(ctx, query, wallID, string(pick.Filter), likePattern(pick.Query.String()), from, to).Scan(&count)
 	if err != nil {
 		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}

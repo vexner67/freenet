@@ -66,7 +66,6 @@ type Users interface {
 
 	Follow(ctx context.Context, accessToken, userID string) error
 	Unfollow(ctx context.Context, accessToken, userID string) error
-	FollowingIDs(ctx context.Context, accessToken string) ([]string, error)
 	BlockedIDs(ctx context.Context, accessToken string) ([]string, error)
 	FollowStats(ctx context.Context, accessToken, userID string) (model.FollowStats, error)
 	ListFollowers(ctx context.Context, userID, cursor string, limit int) (model.UserPage, error)
@@ -337,7 +336,6 @@ type Clubs interface {
 	SetBackdrop(ctx context.Context, accessToken, clubID, side, photoID string) (model.ClubView, error)
 	Pin(ctx context.Context, accessToken, clubID string, pinned bool) error
 	Pinned(ctx context.Context, accessToken string) ([]model.Club, error)
-	MineIDs(ctx context.Context, accessToken string) ([]string, error)
 	// MyRoles tells what the caller is in those of up to 100 clubs they
 	// are in, by the ID of the club.
 	MyRoles(ctx context.Context, accessToken string, clubIDs []string) (map[string]string, error)

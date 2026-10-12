@@ -221,15 +221,6 @@ func (u *Users) Unfollow(ctx context.Context, accessToken, userID string) error 
 	return nil
 }
 
-func (u *Users) FollowingIDs(ctx context.Context, accessToken string) ([]string, error) {
-	resp, err := u.api.ListFollowingIDs(withToken(ctx, accessToken), &userv1.ListFollowingIDsRequest{})
-	if err != nil {
-		return nil, errs.Wrap("u.api.ListFollowingIDs", fromStatus(err))
-	}
-
-	return resp.GetUserIds(), nil
-}
-
 // BlockedIDs are whom the owner of the token blacklisted.
 func (u *Users) BlockedIDs(ctx context.Context, accessToken string) ([]string, error) {
 	resp, err := u.api.ListBlockedIDs(withToken(ctx, accessToken), &userv1.ListBlockedIDsRequest{})
