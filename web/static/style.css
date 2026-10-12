@@ -1225,3 +1225,20 @@ a.poll-result-name { cursor: pointer; }
 .gift-send .modal-body label { align-self: flex-start; }
 .gift-row { display: flex; gap: 10px; padding: 8px 5px; }
 .gift-row .gift-pic { width: 72px; height: 72px; }
+
+/* "Голоса" of the settings, as openvk's: what votes are on the left, the
+   account on the right; the serial number of a voucher in four fields. */
+.finance { display: flex; gap: 20px; align-items: flex-start; }
+.finance-about { flex: 1; }
+.finance-about p { margin: 0 0 8px; }
+.finance-transfer { text-align: center; }
+.finance-balance { width: 140px; font-weight: bold; text-align: center; }
+.finance-votes { height: 60px; overflow: hidden; font-size: 48px; font-weight: normal; line-height: 60px; white-space: nowrap; }
+.voucher-keys { margin: 10px 0; }
+.voucher-keys input.voucher-key { width: 60px; text-align: center; text-transform: uppercase; }
+.voucher-code { font-family: "Courier New", monospace; white-space: nowrap; }
+.votes-transfer .modal-body p { margin: 0; }
+.votes-transfer .modal-body label { display: flex; flex-direction: column; gap: 3px; }
+.list-table { width: 100%; margin-bottom: 10px; border-collapse: collapse; }
+.list-table th { padding: 4px 6px; background: var(--back-e6e6e6); color: var(--text-555); font-weight: normal; text-align: left; vertical-align: bottom; }
+.list-table td { padding: 5px 6px; border-bottom: 1px solid var(--line-ececec); }

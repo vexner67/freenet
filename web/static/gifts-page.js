@@ -4,7 +4,7 @@
 // ?act=pick chooses a gift for them.
 
 import { api, currentUser } from './api.js';
-import { formatPostDate, genitiveName, giftCollections } from './labels.js';
+import { formatPostDate, genitiveName, giftCollections, giftPrice, unusedVotes } from './labels.js';
 import { giftPicture, giftsPath, pickPath } from './gifts.js';
 import { $, avatarURL, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -91,9 +91,19 @@ async function loadMore(owner, mine) {
   }
 }
 
-// confirm is openvk's "Подтверждение": the gift, "Ваше сообщение",
-// "Анонимно" and "Отправить".
-function confirm(owner, gift) {
+// showBalance is openvk's "У Вас N неиспользованных голосов." over the
+// collections: what there is to pay for the gifts that have a price.
+function showBalance(me) {
+  const [before, votes, after] = unusedVotes(me.votes ?? 0);
+
+  $('balance').replaceChildren(before, el('b', { textContent: votes }), after, ' ',
+    el('a', { href: '/settings?act=finance.top-up', textContent: 'Есть ваучер?' }));
+  $('balance').hidden = false;
+}
+
+// confirm is openvk's "Подтверждение": the gift, what it costs, "Ваше
+// сообщение", "Анонимно" and "Отправить".
+function confirm(owner, me, gift, price) {
   const modal = openModal('Отправить подарок', { tag: 'form' });
   const caption = el('textarea', { maxLength: 250, placeholder: 'Ваше сообщение' });
   const anonymous = el('input', { type: 'checkbox' });
@@ -101,7 +111,8 @@ function confirm(owner, gift) {
   const send = button('Отправить', null, { type: 'submit' });
 
   modal.box.classList.add('gift-send');
-  modal.body.append(giftPicture(gift), caption, el('label', {}, anonymous, ' Анонимно'), error);
+  modal.body.append(giftPicture(gift), el('div', { className: 'hint', textContent: `Стоимость: ${giftPrice(price).toLowerCase()}` }),
+    caption, el('label', {}, anonymous, ' Анонимно'), error);
   modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
 
   modal.box.addEventListener('submit', async (event) => {
@@ -112,6 +123,9 @@ function confirm(owner, gift) {
     try {
       await api.sendGift(owner.nickname, gift, caption.value.trim(), anonymous.checked);
       modal.close();
+      // The gift is paid for: the balance over the collections follows.
+      me.votes = Math.max((me.votes ?? 0) - price, 0);
+      showBalance(me);
       $('sent').hidden = false;
       scrollTo(0, 0);
     } catch (e) {
@@ -123,15 +137,17 @@ function confirm(owner, gift) {
 }
 
 // showCatalog is "Выбрать подарок": the collections, each with its gifts.
-async function showCatalog(owner) {
+async function showCatalog(owner, me) {
   try {
     const { collections } = await api.giftCatalog();
 
+    showBalance(me);
+
     $('catalog').replaceChildren(...collections.map((collection) => el('div', { className: 'gift-collection' },
       el('h4', { className: 'gift-collection-title', textContent: giftCollections[collection.id] ?? 'Подарки' }),
-      el('div', { className: 'gift-grid' }, ...collection.gifts.map((gift) => el('a', { className: 'gift-sel', onclick: () => confirm(owner, gift) },
+      el('div', { className: 'gift-grid' }, ...collection.gifts.map((gift) => el('a', { className: 'gift-sel', onclick: () => confirm(owner, me, gift, collection.price ?? 0) },
         giftPicture(gift),
-        el('strong', { className: 'gift-price', textContent: 'Бесплатно' }),
+        el('strong', { className: 'gift-price', textContent: giftPrice(collection.price ?? 0) }),
       ))),
     )));
     $('catalog').hidden = false;
@@ -148,7 +164,7 @@ async function show(me) {
     renderHead(owner, me);
 
     if (picking) {
-      await showCatalog(owner);
+      await showCatalog(owner, me);
       return;
     }
 
