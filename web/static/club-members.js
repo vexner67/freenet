@@ -62,7 +62,7 @@ function memberNode(member) {
     hideError($('error'));
 
     try {
-      await api.describeAdmin(clubRef(club), member.user.nickname, { title: member.title, hidden: !member.hidden });
+      await api.describeAdmin(clubRef(club), member.user.nickname, { hidden: !member.hidden });
       member.hidden = !member.hidden;
       render();
       notice(member.hidden
@@ -119,7 +119,7 @@ function editTitle(member, done) {
     try {
       const title = input.value.trim();
 
-      await api.describeAdmin(clubRef(club), member.user.nickname, { title, hidden: member.hidden });
+      await api.describeAdmin(clubRef(club), member.user.nickname, { title });
       member.title = title;
       modal.close();
       done();
