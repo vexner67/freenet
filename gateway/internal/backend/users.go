@@ -77,6 +77,16 @@ func (u *Users) UpdateInterface(ctx context.Context, accessToken string, ui mode
 	return toUser(resp.GetUser()), nil
 }
 
+// UpdateNickname replaces the address of the caller's page alone.
+func (u *Users) UpdateNickname(ctx context.Context, accessToken, nickname string) (model.User, error) {
+	resp, err := u.api.UpdateNickname(withToken(ctx, accessToken), &userv1.UpdateNicknameRequest{Nickname: nickname})
+	if err != nil {
+		return model.User{}, errs.Wrap("u.api.UpdateNickname", fromStatus(err))
+	}
+
+	return toUser(resp.GetUser()), nil
+}
+
 // UpdateStatus replaces the caller's status alone.
 func (u *Users) UpdateStatus(ctx context.Context, accessToken, status string) (model.User, error) {
 	resp, err := u.api.UpdateStatus(withToken(ctx, accessToken), &userv1.UpdateStatusRequest{Status: status})

@@ -31,6 +31,33 @@ func TestUpdateStatus(t *testing.T) {
 	}
 }
 
+// "Адрес страницы" is saved alone, without the rest of the profile.
+func TestUpdateNickname(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.profile.Nickname = "ann"
+	h.users.profile.Status = "Привет"
+
+	w := h.do("PUT", "/api/v1/me/nickname", `{"nickname":"anna"}`, "Authorization", "Bearer tok")
+	got := decode[struct {
+		Nickname string `json:"nickname"`
+		Status   string `json:"status"`
+	}](t, w)
+	if w.Code != http.StatusOK || got.Nickname != "anna" || got.Status != "Привет" || h.users.token != "tok" {
+		t.Fatalf("%d %+v", w.Code, got)
+	}
+
+	h.users.err = failure.New(failure.Conflict, "nickname is already taken")
+	if w = h.do("PUT", "/api/v1/me/nickname", `{"nickname":"bob"}`, "Authorization", "Bearer tok"); w.Code != http.StatusConflict {
+		t.Fatalf("taken: %d", w.Code)
+	}
+
+	if w = h.do("PUT", "/api/v1/me/nickname", `{"nickname":"x"}`); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", w.Code)
+	}
+}
+
 func TestWallTabs(t *testing.T) {
 	t.Parallel()
 

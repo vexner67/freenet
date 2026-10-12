@@ -335,6 +335,32 @@ func (a *api) updateStatus(w http.ResponseWriter, r *http.Request) {
 	a.writeUser(w, r, u)
 }
 
+// updateNickname saves "Адрес страницы" of the settings alone, so a form
+// opened before the profile was edited elsewhere does not undo the edit.
+func (a *api) updateNickname(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req struct {
+		Nickname string `json:"nickname"`
+	}
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	u, err := a.users.UpdateNickname(r.Context(), token, req.Nickname)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.writeUser(w, r, u)
+}
+
 // updateInterface saves "Интерфейс" of the settings: how the site looks
 // to the caller.
 func (a *api) updateInterface(w http.ResponseWriter, r *http.Request) {

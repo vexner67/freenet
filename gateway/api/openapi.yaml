@@ -209,6 +209,30 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
+  /api/v1/me/nickname:
+    put:
+      summary: Change the address of your page alone ("Адрес страницы" of the settings)
+      description: The rest of the profile stays as it is. The profile has to be filled in first.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [nickname]
+              properties:
+                nickname: { type: string }
+      responses:
+        "200": { $ref: "#/components/responses/User" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409":
+          description: Another page has this address
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/me/contacts:
     put:
       summary: Replace "Контактная информация"
