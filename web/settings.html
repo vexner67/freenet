@@ -30,7 +30,9 @@
           <a id="tab-security" href="/settings?act=security">Безопасность</a>
           <a id="tab-privacy" href="/settings?act=privacy">Приватность</a>
           <a href="/settings/blacklist">Чёрный список</a>
+          <a id="tab-finance" href="/settings?act=finance">Голоса</a>
           <a id="tab-interface" href="/settings?act=interface">Внешний вид</a>
+          <a id="tab-vouchers" href="/settings?act=vouchers" hidden>Ваучеры</a>
         </div>
         <p id="loading">Загрузка…</p>
         <div class="error" id="error" hidden></div>
@@ -73,6 +75,84 @@
             <p>Если вы хотите выйти из Freenet на всех остальных устройствах, нажмите на кнопку ниже.</p>
             <div class="actions"><button class="button" type="button" id="end-sessions">Сбросить все сессии</button></div>
           </div>
+        </div>
+
+        <div id="finance" hidden>
+          <div class="finance">
+            <div class="finance-about">
+              <p>Голоса — валюта Freenet: ими оплачиваются платные подарки. Получить их можно, активировав ваучер, или от другого человека.</p>
+              <p>Ваучер может повысить и рейтинг: он прибавляется к заполненности страницы.</p>
+              <p class="finance-transfer">Также вы можете <a id="transfer-link">передать голоса</a> другому человеку.</p>
+            </div>
+            <div class="finance-balance">
+              на вашем счету
+              <div class="finance-votes" id="votes"></div>
+              <span id="votes-word"></span><br>
+              <small><a href="/settings?act=finance.top-up">[Есть ваучер?]</a></small>
+            </div>
+          </div>
+        </div>
+
+        <div id="finance-top-up" hidden>
+          <p>Введите серийный номер ваучера. Обычно он указан в чеке или в сообщении. Обратите внимание, что ваучеры могут истекать и воспользоваться ими можно только один раз.</p>
+          <form id="voucher-form">
+            <div class="voucher-keys">
+              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="123456" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 1"> -
+              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="789012" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 2"> -
+              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="345678" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 3"> -
+              <input type="text" class="voucher-key" maxlength="6" size="6" placeholder="90ABCD" autocomplete="off" spellcheck="false" required aria-label="Код ваучера, часть 4">
+            </div>
+            <div class="actions"><button class="button" type="submit">Активировать ваучер</button></div>
+          </form>
+        </div>
+
+        <div id="vouchers" hidden>
+          <div class="section-title">Ваучеры</div>
+          <table class="list-table" id="voucher-table" hidden>
+            <thead>
+              <tr>
+                <th>Серийный номер</th>
+                <th>Голоса</th>
+                <th>Рейтинг</th>
+                <th>Осталось использований</th>
+                <th>Воспользовавшиеся</th>
+                <th>Состояние</th>
+                <th>Действия</th>
+              </tr>
+            </thead>
+            <tbody id="voucher-rows"></tbody>
+          </table>
+          <p class="hint" id="no-vouchers" hidden>Ваучеров пока нет.</p>
+          <a class="wall-more" id="more-vouchers" hidden>Показать ещё</a>
+
+          <div class="section-title">Создать</div>
+          <form id="voucher-create">
+            <table class="form">
+              <tr>
+                <th><label for="voucher-code">Серийный номер</label></th>
+                <td class="control">
+                  <input type="text" id="voucher-code" maxlength="27" autocomplete="off" spellcheck="false">
+                  <div class="hint">Номер состоит из 24 символов. Если поле не заполнено, будет назначен автоматически.</div>
+                </td>
+              </tr>
+              <tr>
+                <th><label for="voucher-votes">Количество голосов</label></th>
+                <td class="control"><input type="text" id="voucher-votes" inputmode="numeric" pattern="[0-9]{1,7}" maxlength="7" value="0" autocomplete="off" required></td>
+              </tr>
+              <tr>
+                <th><label for="voucher-rating">Количество рейтинга</label></th>
+                <td class="control"><input type="text" id="voucher-rating" inputmode="numeric" pattern="[0-9]{1,4}" maxlength="4" value="0" autocomplete="off" required></td>
+              </tr>
+              <tr>
+                <th><label for="voucher-usages">Количество использований</label></th>
+                <td class="control">
+                  <input type="text" id="voucher-usages" inputmode="numeric" pattern="-1|[0-9]{1,7}" maxlength="7" value="1" autocomplete="off" required>
+                  <div class="hint">Количество аккаунтов, которые могут использовать ваучер. Если написать -1, будет бесконечность.</div>
+                </td>
+              </tr>
+            </table>
+            <div class="actions"><button class="button" type="submit">Создать</button></div>
+          </form>
         </div>
 
         <form id="privacy" hidden>

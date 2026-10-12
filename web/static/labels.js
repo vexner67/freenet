@@ -741,6 +741,49 @@ export function giftImage(gift) {
   return giftImages[gift] ?? giftImages.present;
 }
 
+// votesCount is openvk's "points_amount": "1 голос", "3 голоса", "0
+// голосов"; giftPrice is what stands under a gift to choose, "Бесплатно"
+// for a free one.
+export function votesCount(n) {
+  return `${n} ${plural(n, ['голос', 'голоса', 'голосов'])}`;
+}
+
+export function giftPrice(price) {
+  return price > 0 ? votesCount(price) : 'Бесплатно';
+}
+
+// unusedVotes is openvk's "У Вас N неиспользованных голосов.", in parts:
+// the number is bold.
+export function unusedVotes(n) {
+  return ['У Вас ', String(n), ` ${plural(n, ['неиспользованный голос', 'неиспользованных голоса', 'неиспользованных голосов'])}.`];
+}
+
+// voucherCode is a serial number as openvk shows it: four groups of six,
+// "ABCDEF-GH1234-5678JK-LMNPQR"; voucherParts are the groups.
+export function voucherParts(code) {
+  return code.match(/.{1,6}/g) ?? [];
+}
+
+export function voucherCode(code) {
+  return voucherParts(code).join('-');
+}
+
+// voucherUsages is "Осталось использований": "∞" for a voucher any number
+// of accounts may use; voucherStatus is its "Состояние".
+export function voucherUsages(left) {
+  return left < 0 ? '∞' : String(left);
+}
+
+export function voucherStatus(voucher) {
+  return voucher.usagesLeft === 0 ? 'закончился' : 'активен';
+}
+
+// voucherGave is what an activated voucher gave: "10 голосов и 5%
+// рейтинга".
+export function voucherGave({ votes, rating }) {
+  return [votes > 0 && votesCount(votes), rating > 0 && `${rating}% рейтинга`].filter(Boolean).join(' и ');
+}
+
 // giftsCount is openvk's "gifts": "3 подарка", "Нет подарков".
 export function giftsCount(n) {
   return n === 0 ? 'Нет подарков' : `${n} ${plural(n, ['подарок', 'подарка', 'подарков'])}`;
@@ -866,6 +909,7 @@ const notificationVerbs = {
   comment_like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
   mention: ['упомянул', 'упомянула', 'упомянул(а)', 'упомянуло'],
   gift: ['отправил', 'отправила', 'отправил(а)', 'отправило'],
+  votes: ['передал', 'передала', 'передал(а)', 'передало'],
 };
 
 // notificationVerb agrees with actor: a person's gender, or a community.
@@ -1081,6 +1125,16 @@ const errorTexts = {
   'unknown gift': 'Такого подарка нет.',
   'gift caption is too long': 'Сообщение слишком длинное: не больше 250 символов.',
   'gift not found': 'Подарок не найден.',
+  'not enough votes': 'У вас недостаточно голосов.',
+  'voucher is not valid': 'Ваучер недействительный. Возможно, вы ввели неверный серийный номер, уже использовали данный ваучер или же он просто истёк.',
+  'you cannot transfer votes to yourself': 'Нельзя передать голоса самому себе.',
+  'you cannot transfer votes to this user': 'Вы не можете передать голоса этому пользователю.',
+  'the number of votes must be between 1 and 1000000': 'Количество голосов — от 1 до 1 000 000.',
+  'voucher serial number must be 24 letters and digits': 'Серийный номер — 24 латинские буквы и цифры.',
+  'voucher must give votes or rating': 'Ваучер должен давать голоса или рейтинг.',
+  'voucher gives up to 1000000 votes and up to 1000 of rating': 'Ваучер даёт не больше 1 000 000 голосов и 1000 рейтинга.',
+  'voucher usages must be -1 or between 1 and 1000000': 'Количество использований — от 1 до 1 000 000 или -1.',
+  'voucher with this serial number already exists': 'Ваучер с таким серийным номером уже есть.',
   'note not found': 'Заметка не найдена или удалена.',
   'note title is empty': 'Введите название заметки.',
   'note title is too long': 'Название заметки слишком длинное: не больше 256 символов.',

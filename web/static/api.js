@@ -480,6 +480,13 @@ export const api = {
   gifts: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/gifts`, cursor, limit)),
   sendGift: (nickname, gift, caption, anonymous) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/gifts`, { gift, caption, anonymous }),
   deleteGift: (id) => authorized('DELETE', `/api/v1/gifts/${encodeURIComponent(id)}`),
+  // Votes ("голоса"): a voucher gives them, a transfer hands them over;
+  // the vouchers themselves are the administrators'.
+  redeemVoucher: (code) => authorized('POST', '/api/v1/me/vouchers', { code }),
+  transferVotes: (nickname, votes) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/votes`, { votes }),
+  vouchers: (cursor = '') => authorized('GET', page('/api/v1/vouchers', cursor, 0)),
+  createVoucher: (voucher) => authorized('POST', '/api/v1/vouchers', voucher),
+  deleteVoucher: (id) => authorized('DELETE', `/api/v1/vouchers/${encodeURIComponent(id)}`),
 
   notes: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/notes`, cursor, limit)),
   createNote: (title, text) => authorized('POST', '/api/v1/me/notes', { title, text }),

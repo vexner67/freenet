@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -806,4 +806,42 @@ test('gifts are counted, named and pictured as the catalogue of the user service
     assert.ok(existsSync(new URL(`../static/gifts/${gift}.svg`, import.meta.url)), gift);
   }
   assert.equal(giftImage('unknown'), '/static/gifts/present.svg');
+});
+
+test('votes are counted and vouchers shown as openvk shows them', () => {
+  assert.equal(votesCount(0), '0 голосов');
+  assert.equal(votesCount(1), '1 голос');
+  assert.equal(votesCount(3), '3 голоса');
+  assert.equal(votesCount(11), '11 голосов');
+  assert.equal(giftPrice(0), 'Бесплатно');
+  assert.equal(giftPrice(3), '3 голоса');
+  assert.deepEqual(unusedVotes(1), ['У Вас ', '1', ' неиспользованный голос.']);
+  assert.deepEqual(unusedVotes(5), ['У Вас ', '5', ' неиспользованных голосов.']);
+
+  assert.deepEqual(voucherParts('ABCDEFGH12345678JKLMNPQR'), ['ABCDEF', 'GH1234', '5678JK', 'LMNPQR']);
+  assert.equal(voucherCode('ABCDEFGH12345678JKLMNPQR'), 'ABCDEF-GH1234-5678JK-LMNPQR');
+  assert.equal(voucherCode(''), '');
+  assert.equal(voucherUsages(-1), '∞');
+  assert.equal(voucherUsages(0), '0');
+  assert.equal(voucherUsages(12), '12');
+  assert.equal(voucherStatus({ usagesLeft: 0 }), 'закончился');
+  assert.equal(voucherStatus({ usagesLeft: -1 }), 'активен');
+  assert.equal(voucherStatus({ usagesLeft: 2 }), 'активен');
+  assert.equal(voucherGave({ votes: 10, rating: 5 }), '10 голосов и 5% рейтинга');
+  assert.equal(voucherGave({ votes: 1, rating: 0 }), '1 голос');
+  assert.equal(voucherGave({ votes: 0, rating: 30 }), '30% рейтинга');
+
+  assert.equal(notificationVerb('votes', { gender: 'female' }), 'передала');
+  assert.equal(errorText({ message: 'not enough votes' }), 'У вас недостаточно голосов.');
+  assert.match(errorText({ message: 'voucher is not valid' }), /^Ваучер недействительный/);
+
+  // What the user service refuses about votes and vouchers is said in
+  // Russian: every message of its domain has a text.
+  for (const file of ['wallet.go', 'voucher.go']) {
+    const source = readFileSync(new URL('../../user/internal/user/' + file, import.meta.url), 'utf8');
+    for (const [, message] of source.matchAll(/errors\.New\("([^"]+)"\)/g)) {
+      if (message === 'only administrators can do this') continue; // the gateway says "permission denied"
+      assert.notEqual(errorText({ message }), errorText({ message: 'no such message' }), message);
+    }
+  }
 });
