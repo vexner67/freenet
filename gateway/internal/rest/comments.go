@@ -154,17 +154,14 @@ func (a *api) listComments(w http.ResponseWriter, r *http.Request) {
 	}
 
 	for _, c := range page.Comments {
-		// An author who deleted the account meanwhile is left out.
-		author, ok := authors[c.Author.ID]
+		// An author who deleted the page meanwhile is left out; a comment
+		// for a community is the community's, whoever wrote it.
+		shown, ok := authors[c.Author.ID]
+		if c.FromWall {
+			shown, ok = authors[wallID]
+		}
 		if !ok {
 			continue
-		}
-
-		shown := author
-		if c.FromWall {
-			if shown, ok = authors[wallID]; !ok {
-				continue
-			}
 		}
 
 		resp.Comments = append(resp.Comments, toCommentResponse(c, shown))
