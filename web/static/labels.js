@@ -97,6 +97,35 @@ export const chatsInvites = [
   ['nobody', 'никто'],
 ];
 
+// profileTypes is "Тип профиля" of openvk.
+export const profileTypes = [
+  ['open', 'открытый'],
+  ['closed', 'закрытый'],
+];
+
+// clubTypes is "Тип группы" of openvk; clubTypeHints is what the page of
+// a group says under it.
+export const clubTypes = [
+  ['open', 'открытая'],
+  ['closed', 'закрытая'],
+];
+
+export const clubTypeHints = {
+  open: 'Это открытая группа. В неё может вступить любой желающий.',
+  closed: 'Это закрытая группа. Для вступления необходимо подавать заявку.',
+};
+
+// requestsCount is the head of "Заявки" of a closed group, as on openvk.
+export function requestsCount(n) {
+  if (n <= 0) return 'Не найдено ни одной заявки...';
+  return `${plural(n, ['Найдена', 'Найдено', 'Найдено'])} ${n} ${plural(n, ['заявка', 'заявки', 'заявок'])}`;
+}
+
+// requestsLink is the link to them on the page of the group.
+export function requestsLink(n) {
+  return `${n} ${plural(n, ['заявка', 'заявки', 'заявок'])} на вступление`;
+}
+
 export const messagesWrites = [
   ['everyone', 'все желающие'],
   ['following', 'те, на кого я подписан(а)'],
@@ -366,6 +395,11 @@ export function updatedPhoto(author) {
 // whoever blacklisted the viewer.
 export function limitedAccess(gender) {
   return { male: 'ограничил', female: 'ограничила' }[gender] ?? 'ограничил(а)';
+}
+
+// closedFollows says whom the owner of a closed profile lets in.
+export function closedFollows(gender) {
+  return { male: 'подписан сам', female: 'подписана сама' }[gender] ?? 'подписан(а)';
 }
 
 // blacklistCount is the head of the blacklist, as on openvk.
@@ -915,6 +949,8 @@ const errorTexts = {
   'a post has at most 10 photos': 'К записи можно прикрепить не больше 10 фотографий.',
   'the same photo is attached twice': 'Эта фотография уже прикреплена.',
   'fill in your profile before posting': 'Сначала заполните свою страницу.',
+  'this club is closed': 'Это закрытая группа. Для вступления необходимо подавать заявку.',
+  'join request not found': 'Заявка не найдена.',
   'you cannot post on this wall': 'Хозяин страницы не разрешает вам писать у него на стене.',
   'you cannot add this user to a chat': 'Пользователь запретил добавлять себя в беседы.',
   'a chat needs at least two other people': 'В беседе должно быть как минимум два других пользователя.',

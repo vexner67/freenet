@@ -381,6 +381,12 @@ export const api = {
     // With the token: the club tells those who run it whom it hides.
     return optional('GET', filter ? path + (path.includes('?') ? '&' : '?') + filter : path);
   },
+  // Those who asked to join a closed group ("Заявки"), for those who run
+  // it: { people, nextCursor, total }.
+  clubRequests: (ref, { cursor = '', limit = 0 } = {}) =>
+    authorized('GET', page(`/api/v1/clubs/${encodeURIComponent(ref)}/requests`, cursor, limit)),
+  acceptClubRequest: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/requests/${encodeURIComponent(nickname)}`),
+  rejectClubRequest: (ref, nickname) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/requests/${encodeURIComponent(nickname)}`),
   appointAdmin: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
   dismissAdmin: (ref, nickname) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
   // Those who run a club give one of them a title and hide or show them

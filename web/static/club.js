@@ -9,7 +9,7 @@
 import { api, currentUser } from './api.js';
 import { albumsBlock } from './albums.js';
 import { showBackdrop } from './backdrop.js';
-import { adminsCount, formatDateTime, formatPostDate, membersCount, suggestedByEveryone, suggestedByYou, topicsCount } from './labels.js';
+import { adminsCount, clubTypeHints, requestsLink, formatDateTime, formatPostDate, membersCount, suggestedByEveryone, suggestedByYou, topicsCount } from './labels.js';
 import { $, avatarURL, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
 import { personCell } from './people.js';
 import { initPhoto } from './photo.js';
@@ -25,6 +25,9 @@ const ALBUMS_SHOWN = 3;
 
 const manages = (club) => club.role === 'admin' || club.role === 'owner';
 const isEvent = (club) => club.kind === 'event';
+// admitted: a closed group ("Закрытая группа") shows its wall, members,
+// topics and albums to its members alone.
+const admitted = (club) => !club.closed || Boolean(club.role);
 // started: openvk takes an event that has begun for over.
 const started = (club) => new Date(club.startsAt) <= new Date();
 
@@ -64,6 +67,9 @@ function render(club, me) {
     error: $('join-error'),
     club: true,
   });
+  $('type-text').textContent = clubTypeHints[club.closed ? 'closed' : 'open'];
+  $('wall-block').hidden = !admitted(club);
+  showRequests(club);
   // An event always names who holds it, as openvk does.
   if (isEvent(club)) {
     $('type-title').textContent = 'Тип встречи';
@@ -75,6 +81,14 @@ function render(club, me) {
   if (club.adminsDisplay === 'all') showAdmins(club);
   renderJoin(club, me);
   $('club').hidden = false;
+}
+
+// showRequests is the link to "Заявки" for those who run a closed group
+// while anyone waits.
+function showRequests(club) {
+  $('requests').hidden = !manages(club) || !club.requests;
+  $('requests-link').textContent = requestsLink(club.requests ?? 0);
+  $('requests-link').href = `/club/${encodeURIComponent(clubRef(club))}/members?requests=true`;
 }
 
 // renderOwner is openvk's "Создатель": a small photo, the name and what
@@ -178,6 +192,8 @@ async function showTopics(club) {
 // joinLabels are the buttons of openvk: what a visitor presses to join,
 // and what a member presses to leave.
 function joinLabels(club) {
+  // A closed group: a visitor asks to join and may take the request back.
+  if (club.closed && !club.role) return { join: 'Подать заявку', leave: 'Отменить заявку' };
   if (!isEvent(club)) return { join: 'Вступить в группу', leave: 'Выйти из группы' };
 
   return { join: started(club) ? 'Добавить в список' : 'Я приду', leave: 'Я не приду' };
@@ -196,8 +212,11 @@ function renderJoin(club, me) {
   const shown = Boolean(me?.profileCompleted) && club.role !== 'owner';
 
   button.hidden = !shown;
-  button.textContent = club.role ? labels.leave : labels.join;
-  button.classList.toggle('secondary', Boolean(club.role));
+  // inside: a member, or someone whose request waits.
+  const inside = Boolean(club.role) || Boolean(club.requested);
+
+  button.textContent = inside ? labels.leave : labels.join;
+  button.classList.toggle('secondary', inside);
   maybe.hidden = !shown || !isEvent(club) || started(club);
   maybe.textContent = club.role && club.maybe ? 'Я приду' : 'Возможно приду';
 
@@ -207,9 +226,16 @@ function renderJoin(club, me) {
     maybe.disabled = true;
 
     try {
+      const was = admitted(club);
+
       Object.assign(club, await act());
+      // Who came into or left a closed group sees another page.
+      if (was !== admitted(club)) {
+        location.reload();
+        return;
+      }
       renderJoin(club, me);
-      showMembers(club);
+      if (admitted(club)) showMembers(club);
     } catch (e) {
       showError(error, e);
     } finally {
@@ -218,7 +244,7 @@ function renderJoin(club, me) {
     }
   }
 
-  button.onclick = () => change(() => (club.role ? api.leaveClub(ref) : api.joinClub(ref)));
+  button.onclick = () => change(() => (inside ? api.leaveClub(ref) : api.joinClub(ref)));
   maybe.onclick = () => change(() => api.joinClub(ref, { maybe: !(club.role && club.maybe) }));
 }
 
@@ -265,11 +291,13 @@ try {
 
   render(club, me);
   showBackdrop(club.backdrop);
-  showMembers(club);
-  showSuggestions(club, me);
-  showTopics(club);
-  showAlbums(club);
-  await initWall({ ...club, club: true }, me, { moderates: manages(club), speaksForClub: manages(club) });
+  if (admitted(club)) {
+    showMembers(club);
+    showSuggestions(club, me);
+    showTopics(club);
+    showAlbums(club);
+    await initWall({ ...club, club: true }, me, { moderates: manages(club), speaksForClub: manages(club) });
+  }
 } catch (e) {
   $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';
   showError($('error'), e);
