@@ -443,8 +443,17 @@ func TestText_Excerpt(t *testing.T) {
 		{name: "shorter", text: "привет", limit: 10, want: "привет"},
 		{name: "exactly the limit", text: "привет", limit: 6, want: "привет"},
 		{name: "cut by characters, not bytes", text: "привет, мир", limit: 6, want: "привет", wantCut: true},
-		{name: "emoji stays whole", text: "да👋нет", limit: 3, want: "да👋", wantCut: true},
+		{name: "a long word is cut where it is", text: "да👋нет", limit: 3, want: "да👋", wantCut: true},
 		{name: "empty", text: "", limit: 3, want: ""},
+		{name: "ends before the word it would cut", text: "раз два три", limit: 6, want: "раз", wantCut: true},
+		{name: "ends after a word that fits", text: "раз два три", limit: 7, want: "раз два", wantCut: true},
+		{name: "ends at a line break", text: "раз\nдва три", limit: 5, want: "раз", wantCut: true},
+		{name: "ends before the address it would cut", text: "привет, [ann|Анна Петрова], как дела", limit: 20, want: "привет,", wantCut: true},
+		{name: "keeps a whole address", text: "привет, [ann|Анна Петрова], как дела", limit: 27, want: "привет, [ann|Анна Петрова],", wantCut: true},
+		{name: "a bracket never closed is no address", text: "раз [два три четыре", limit: 13, want: "раз [два три", wantCut: true},
+		{name: "a bracket closed on another line is no address", text: "раз [два три\nчетыре] пять", limit: 9, want: "раз [два", wantCut: true},
+		{name: "nothing but an address is cut where it is", text: "[ann|Анна Петрова] привет", limit: 10, want: "[ann|Анна ", wantCut: true},
+		{name: "a word longer than the slack is cut", text: strings.Repeat("а", 150) + " б", limit: 120, want: strings.Repeat("а", 120), wantCut: true},
 	}
 
 	for _, tt := range tests {
@@ -472,11 +481,15 @@ func TestText_ExcerptAround(t *testing.T) {
 	}{
 		{name: "no limit", text: "раз два три", query: "три", limit: 0, want: "раз два три"},
 		{name: "shorter", text: "раз два три", query: "три", limit: 20, want: "раз два три"},
-		{name: "said at the beginning", text: "раз два три четыре", query: "ДВА", limit: 8, want: "раз два ", wantCut: true},
-		{name: "said further", text: "раз два три четыре пять", query: "Четыре", limit: 8, want: "и четыре", wantCut: true},
-		{name: "said at the end", text: "раз два три четыре пять", query: "пять", limit: 8, want: "ыре пять", wantCut: true},
+		{name: "said at the beginning", text: "раз два три четыре", query: "ДВА", limit: 8, want: "раз два", wantCut: true},
+		{name: "said further", text: "раз два три четыре пять", query: "Четыре", limit: 8, want: "четыре", wantCut: true},
+		{name: "said at the end", text: "раз два три четыре пять", query: "пять", limit: 8, want: "пять", wantCut: true},
 		{name: "not said", text: "раз два три четыре", query: "шесть", limit: 3, want: "раз", wantCut: true},
+		{name: "not said, ends with a whole word", text: "раз два три четыре", query: "шесть", limit: 6, want: "раз", wantCut: true},
 		{name: "emoji stays whole", text: "👋👋👋👋да👋", query: "да", limit: 4, want: "👋да👋", wantCut: true},
+		{name: "said inside the word at the end of the beginning", text: "раз двадцать три", query: "два", limit: 7, want: "раз два", wantCut: true},
+		{name: "said inside a word further", text: "раз два тридцать четыре пять шесть", query: "дцат", limit: 8, want: "ридцать", wantCut: true},
+		{name: "begins and ends with whole words", text: "один два три четыре пять шесть семь", query: "четыре", limit: 16, want: "три четыре пять", wantCut: true},
 	}
 
 	for _, tt := range tests {
