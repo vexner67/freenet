@@ -47,7 +47,8 @@ func (u *User) CanPostOnWall(authorID uuid.UUID, t Ties) bool {
 		return true
 	}
 
-	if t.Blocked {
+	// Nobody writes on a wall they may not read.
+	if t.Blocked || (u.privacy.Closed && !t.Followed) {
 		return false
 	}
 

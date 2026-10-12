@@ -1347,7 +1347,10 @@ type PrivacySettings struct {
 	// Who may add the owner to group chats ("Кто может добавлять меня в
 	// чаты"); unspecified, as from a client that does not know it, is the
 	// people the owner follows.
-	ChatsInvite   MessagesWrite `protobuf:"varint,14,opt,name=chats_invite,json=chatsInvite,proto3,enum=user.v1.MessagesWrite" json:"chats_invite,omitempty"`
+	ChatsInvite MessagesWrite `protobuf:"varint,14,opt,name=chats_invite,json=chatsInvite,proto3,enum=user.v1.MessagesWrite" json:"chats_invite,omitempty"`
+	// "Тип профиля: закрытый": only the owner and the people the owner
+	// follows see the page.
+	Closed        bool `protobuf:"varint,15,opt,name=closed,proto3" json:"closed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1480,6 +1483,13 @@ func (x *PrivacySettings) GetChatsInvite() MessagesWrite {
 	return MessagesWrite_MESSAGES_WRITE_UNSPECIFIED
 }
 
+func (x *PrivacySettings) GetClosed() bool {
+	if x != nil {
+		return x.Closed
+	}
+	return false
+}
+
 // Fields 7-10 are empty both when not set and when hidden by the owner.
 type PublicProfile struct {
 	state          protoimpl.MessageState `protogen:"open.v1"`
@@ -1522,7 +1532,10 @@ type PublicProfile struct {
 	BackdropRight string `protobuf:"bytes,25,opt,name=backdrop_right,json=backdropRight,proto3" json:"backdrop_right,omitempty"`
 	// "Заполненность страницы", in percent; 0 on a deleted or hidden page.
 	// Only GetProfile tells it.
-	Completeness  int32 `protobuf:"varint,26,opt,name=completeness,proto3" json:"completeness,omitempty"`
+	Completeness int32 `protobuf:"varint,26,opt,name=completeness,proto3" json:"completeness,omitempty"`
+	// The page is a closed one ("Закрытая страница"): those its owner
+	// does not follow get it with page_hidden.
+	Closed        bool `protobuf:"varint,27,opt,name=closed,proto3" json:"closed,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1737,6 +1750,13 @@ func (x *PublicProfile) GetCompleteness() int32 {
 		return x.Completeness
 	}
 	return 0
+}
+
+func (x *PublicProfile) GetClosed() bool {
+	if x != nil {
+		return x.Closed
+	}
+	return false
 }
 
 type GetOrCreateByEmailRequest struct {
@@ -5232,7 +5252,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"ExtraField\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12)\n" +
-	"\x05place\x18\x03 \x01(\x0e2\x13.user.v1.FieldPlaceR\x05place\"\xcc\x05\n" +
+	"\x05place\x18\x03 \x01(\x0e2\x13.user.v1.FieldPlaceR\x05place\"\xe4\x05\n" +
 	"\x0fPrivacySettings\x12#\n" +
 	"\rshow_birthday\x18\x01 \x01(\bR\fshowBirthday\x12+\n" +
 	"\x11show_relationship\x18\x02 \x01(\bR\x10showRelationship\x12%\n" +
@@ -5253,7 +5273,8 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"onlineRead\x120\n" +
 	"\n" +
 	"notes_read\x18\r \x01(\x0e2\x11.user.v1.AudienceR\tnotesRead\x129\n" +
-	"\fchats_invite\x18\x0e \x01(\x0e2\x16.user.v1.MessagesWriteR\vchatsInvite\"\xb2\b\n" +
+	"\fchats_invite\x18\x0e \x01(\x0e2\x16.user.v1.MessagesWriteR\vchatsInvite\x12\x16\n" +
+	"\x06closed\x18\x0f \x01(\bR\x06closed\"\xca\b\n" +
 	"\rPublicProfile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -5284,7 +5305,8 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x06online\x18\x17 \x01(\bR\x06online\x12#\n" +
 	"\rbackdrop_left\x18\x18 \x01(\tR\fbackdropLeft\x12%\n" +
 	"\x0ebackdrop_right\x18\x19 \x01(\tR\rbackdropRight\x12\"\n" +
-	"\fcompleteness\x18\x1a \x01(\x05R\fcompleteness\"1\n" +
+	"\fcompleteness\x18\x1a \x01(\x05R\fcompleteness\x12\x16\n" +
+	"\x06closed\x18\x1b \x01(\bR\x06closed\"1\n" +
 	"\x19GetOrCreateByEmailRequest\x12\x14\n" +
 	"\x05email\x18\x01 \x01(\tR\x05email\"W\n" +
 	"\x1aGetOrCreateByEmailResponse\x12\x17\n" +

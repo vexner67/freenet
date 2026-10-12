@@ -42,7 +42,7 @@ func (u *User) IsOnline(now time.Time) bool {
 // tells.
 func (u *User) ListedProfile(now time.Time) PublicProfile {
 	p := u.PublicProfile()
-	p.Online = !u.IsDeactivated() && u.privacy.PageRead == AudienceEveryone && u.IsOnline(now)
+	p.Online = !u.IsDeactivated() && u.privacy.PageRead == AudienceEveryone && !u.privacy.Closed && u.IsOnline(now)
 
 	return p
 }

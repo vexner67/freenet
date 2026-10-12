@@ -39,7 +39,25 @@ type SearchPage struct {
 
 type UserService struct {
 	userRepo UserRepository
+	tx       TxManager
+	walls    Walls
 	now      func() time.Time
+}
+
+// Walls records, in the transaction that closes or opens a page ("Тип
+// профиля"), that its wall is closed or open again: the service that
+// keeps the posts stops showing them to strangers afterwards (outbox).
+type Walls interface {
+	PageClosed(ctx context.Context, userID uuid.UUID) error
+	PageOpened(ctx context.Context, userID uuid.UUID) error
+}
+
+// TellingWalls makes the service record closed and opened pages in walls,
+// in a transaction of tx with the change.
+func (s *UserService) TellingWalls(tx TxManager, walls Walls) *UserService {
+	s.tx, s.walls = tx, walls
+
+	return s
 }
 
 func NewUserService(userRepo UserRepository) *UserService {
@@ -194,12 +212,36 @@ func (s *UserService) UpdatePrivacy(ctx context.Context, id uuid.UUID, privacy u
 		return nil, errs.Wrap("s.userRepo.GetByID", err)
 	}
 
+	wasClosed := u.Privacy().Closed
+
 	if err = u.UpdatePrivacy(privacy); err != nil {
 		return nil, errs.Wrap("u.UpdatePrivacy", err)
 	}
 
-	if err = s.userRepo.Update(ctx, u); err != nil {
-		return nil, errs.Wrap("s.userRepo.Update", err)
+	if s.walls == nil || u.Privacy().Closed == wasClosed {
+		if err = s.userRepo.Update(ctx, u); err != nil {
+			return nil, errs.Wrap("s.userRepo.Update", err)
+		}
+
+		return u, nil
+	}
+
+	record := s.walls.PageOpened
+	if u.Privacy().Closed {
+		record = s.walls.PageClosed
+	}
+
+	// The page and the word about its wall are stored together or not at
+	// all.
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.userRepo.Update(ctx, u); err != nil {
+			return errs.Wrap("s.userRepo.Update", err)
+		}
+
+		return errs.Wrap("record", record(ctx, id))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return u, nil

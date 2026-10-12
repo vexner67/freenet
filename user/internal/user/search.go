@@ -90,7 +90,7 @@ func (q SearchQuery) Matches(u *User) bool {
 	// The filters look into the information, which only the pages open to
 	// everyone tell.
 	f := q.filters
-	if f != (SearchFilters{}) && u.privacy.InfoRead != AudienceEveryone {
+	if f != (SearchFilters{}) && (u.privacy.InfoRead != AudienceEveryone || u.privacy.Closed) {
 		return false
 	}
 
