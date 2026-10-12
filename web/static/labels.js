@@ -44,6 +44,16 @@ export function partnerPrefix(relationship, gender) {
   return typeof prefix === 'string' ? prefix : prefix[gender] ?? prefix[''];
 }
 
+// The case each of the prefixes asks of the name after it.
+const prefixCases = { с: 'ins', за: 'ins', на: 'pre', в: 'acc' };
+
+// partnerName is the partner after the prefix: "замужем за Петром
+// Петровым", "женат на Анне Ивановой", "влюблена в Петра Петрова". openvk
+// leaves the name as it is.
+export function partnerName(relationship, gender, partner) {
+  return declinedName(partner, prefixCases[partnerPrefix(relationship, gender)]);
+}
+
 export const worldviews = [
   ['', 'не выбрано'],
   ['orthodox', 'православие'],
@@ -404,58 +414,135 @@ export function deviceName(userAgent) {
   return agent.length > 60 ? agent.slice(0, 60) + '…' : agent;
 }
 
-// genitiveName is "Петра Петрова" for "на стене Петра Петрова", as openvk
-// says it. Russian names are declined by their endings; whatever the
-// rules do not know (Latin letters, Шевченко, Кармен) stays as it is.
-export function genitiveName({ name = '', surname = '', gender = '' }) {
-  return [genitiveFirstName(name, gender), genitiveSurname(surname, gender)].filter(Boolean).join(' ');
+// declinedName is the name of a person in a case of Russian: 'gen' —
+// "на стене Петра Петрова", as openvk says it, 'acc' — "пригласила Анну
+// Иванову", 'ins' — "замужем за Петром Петровым", 'pre' — "женат на Анне
+// Ивановой". Names are declined by their endings; whatever the rules do
+// not know (Latin letters, Шевченко, Кармен) stays as it is.
+export function declinedName({ name = '', surname = '', gender = '' }, grammaticalCase) {
+  const at = CASES.indexOf(grammaticalCase);
+
+  return [
+    decline(name, firstNameParadigm(name, gender), at),
+    decline(surname, surnameParadigm(surname, gender), at),
+  ].filter(Boolean).join(' ');
 }
+
+export function genitiveName(person) {
+  return declinedName(person, 'gen');
+}
+
+// The order of the endings in a paradigm.
+const CASES = ['gen', 'acc', 'ins', 'pre'];
 
 const CYRILLIC = /^[а-яё-]+$/i;
+const VOWELS = /[аеёиоуыэюя]/gi;
 // After these letters Russian writes и, not ы: Ольга → Ольги.
 const SOFT_BEFORE_A = /[гкхжчшщ]а$/i;
-// Names that lose a vowel or a dot: Павел → Павла.
-const irregularNames = { павел: 'Павла', лев: 'Льва', пётр: 'Петра', петр: 'Петра' };
+// Names that lose a vowel: Павел → Павла.
+const fleetingNames = { павел: 'Павл', лев: 'Льв', пётр: 'Петр', петр: 'Петр' };
+// Women's names that end with ь like men's: Любовь → Любови, but Игорь →
+// Игоря. They tell themselves apart when gender is not set.
+const softFemaleNames = new Set(['любовь', 'нинель', 'адель', 'эсфирь', 'юдифь', 'руфь', 'рахиль', 'гузель', 'айгуль']);
+// Илья is stressed at the end: Ильёй, not Ильей.
+const stressedNames = new Set(['илья']);
+// Surnames that look like those losing a vowel and keep it: Игрока.
+const steadySurnames = new Set(['игрок', 'знаток', 'ездок', 'седок', 'едок', 'ходок', 'пророк', 'восток', 'поток', 'чеснок', 'урок', 'порок', 'зарок', 'брелок']);
+const fleetingSurnames = { заяц: 'Зайц' };
 
-function genitiveFirstName(name, gender) {
-  const lower = name.toLowerCase();
-  if (!CYRILLIC.test(name)) return name;
-  if (irregularNames[lower]) return irregularNames[lower];
+const MALE_NOUN = ['а', 'а', 'ом', 'е'];
 
-  return declineEnding(name, gender);
+// decline puts a word in the case at; a paradigm is how many letters the
+// word loses, what it gets instead of them and its endings, and none
+// leaves the word as it is. A word written in capitals stays so.
+function decline(word, paradigm, at) {
+  if (!paradigm || at < 0) return word;
+
+  const [lost, stem, endings] = paradigm;
+  const declined = (lost > 0 ? word.slice(0, -lost) : word) + stem + endings[at];
+
+  return word === word.toUpperCase() ? declined.toUpperCase() : declined;
 }
 
-function genitiveSurname(surname, gender) {
-  if (!CYRILLIC.test(surname)) return surname;
+function firstNameParadigm(name, gender) {
+  const lower = name.toLowerCase();
+  if (!CYRILLIC.test(name)) return null;
+  if (softFemaleNames.has(lower)) gender = 'female';
+
+  if (gender !== 'female') {
+    const fleeting = fleetingNames[lower];
+    if (fleeting) return [name.length, sameCase(name, fleeting), MALE_NOUN];
+    // Витёк → Витька.
+    if (/[^аеёиоуыэюя]ёк$/i.test(name)) return [2, 'ьк', MALE_NOUN];
+  }
+
+  return nounParadigm(name, gender);
+}
+
+function surnameParadigm(surname, gender) {
+  const lower = surname.toLowerCase();
+  if (!CYRILLIC.test(surname)) return null;
 
   // Female forms tell themselves apart even when gender is not set.
-  if (/(ов|ев|ёв|ин|ын)а$/i.test(surname)) return replaceEnd(surname, 1, 'ой');
-  if (/ая$/i.test(surname)) return replaceEnd(surname, 2, 'ой');
-  if (gender === 'female') return surname;
+  if (/(ов|ев|ёв|ин|ын)а$/i.test(surname)) return [1, '', ['ой', 'у', 'ой', 'ой']];
+  if (/[жчшщ]ая$/i.test(surname)) return [2, '', ['ей', 'ую', 'ей', 'ей']];
+  if (/ая$/i.test(surname)) return [2, '', ['ой', 'ую', 'ой', 'ой']];
+  if (/яя$/i.test(surname)) return [2, '', ['ей', 'юю', 'ей', 'ей']];
+  // A woman's surname is declined only when it ends like a noun of hers:
+  // Сковорода → Сковороды, but Шевчук stays.
+  if (gender === 'female') return /[ая]$/i.test(surname) ? nounParadigm(surname, gender) : null;
 
-  if (/(ий|ый|ой)$/i.test(surname)) return replaceEnd(surname, 2, 'ого');
-  if (/(ых|их)$/i.test(surname)) return surname;
+  if (/(ых|их)$/i.test(surname)) return null;
+  // Цой → Цоя: a short surname is a noun, not an adjective.
+  const adjective = (surname.match(VOWELS) ?? []).length > 1;
+  if (adjective && /[гкх]ий$/i.test(surname)) return [2, '', ['ого', 'ого', 'им', 'ом']];
+  if (adjective && /[жчшщн]ий$/i.test(surname)) return [2, '', ['его', 'его', 'им', 'ем']];
+  if (adjective && /[гкхжчшщ]ой$/i.test(surname)) return [2, '', ['ого', 'ого', 'им', 'ом']];
+  if (adjective && /(ый|ой)$/i.test(surname)) return [2, '', ['ого', 'ого', 'ым', 'ом']];
+  if (/(ов|ев|ёв|ин|ын)$/i.test(surname)) return [0, '', ['а', 'а', 'ым', 'е']];
 
-  return declineEnding(surname, gender);
+  return fleetingSurnameParadigm(surname, lower) ?? nounParadigm(surname, gender);
 }
 
-// declineEnding declines a noun-like name or surname by its last letters.
-function declineEnding(word, gender) {
-  if (/ия$/i.test(word)) return replaceEnd(word, 1, 'и');
-  if (/я$/i.test(word)) return replaceEnd(word, 1, 'и');
-  if (/а$/i.test(word)) return replaceEnd(word, 1, SOFT_BEFORE_A.test(word) ? 'и' : 'ы');
-  if (/[оеиуюэы]$/i.test(word)) return word;
-  if (gender === 'female') return /ь$/i.test(word) ? replaceEnd(word, 1, 'и') : word;
-  if (/[йь]$/i.test(word)) return replaceEnd(word, 1, 'я');
+// fleetingSurnameParadigm is of the surnames that lose their last vowel:
+// Кравец → Кравца, Стрелец → Стрельца, Коломиец → Коломийца, Волчок →
+// Волчка, Королёк → Королька. After two consonants the vowel stays
+// (Кузнец → Кузнеца), as it does in a word of one syllable (Швец, Блок).
+function fleetingSurnameParadigm(surname, lower) {
+  const syllables = (surname.match(VOWELS) ?? []).length;
+  if (fleetingSurnames[lower]) return [surname.length, sameCase(surname, fleetingSurnames[lower]), ['а', 'а', 'ем', 'е']];
+  if (syllables < 2 || steadySurnames.has(lower)) return null;
 
-  return replaceEnd(word, 0, 'а');
+  // The ending is stressed in the short ones: Кравцом, but Гриневцем.
+  const afterTs = ['а', 'а', syllables > 2 ? 'ем' : 'ом', 'е'];
+  if (/[аеёиоуыэюя]ец$/i.test(surname)) return [2, 'йц', afterTs];
+  if (/[аеёиоуыэюя]лец$/i.test(surname)) return [2, 'ьц', afterTs];
+  if (/[аеёиоуыэюя][бвгджзкмнпрстфхчшщ]ец$/i.test(surname)) return [2, 'ц', afterTs];
+  if (/[аеёиоуыэюя]ёк$/i.test(surname)) return [2, 'йк', MALE_NOUN];
+  if (/ёк$/i.test(surname)) return [2, 'ьк', MALE_NOUN];
+  if (/[^аеёиоуыэюя]ок$/i.test(surname)) return [2, 'к', MALE_NOUN];
+
+  return null;
 }
 
-// replaceEnd swaps the last n letters, keeping capitals of a word written
-// in capitals (ИВАНОВ → ИВАНОВА).
-function replaceEnd(word, n, ending) {
-  const base = n > 0 ? word.slice(0, -n) : word;
-  return base + (word === word.toUpperCase() ? ending.toUpperCase() : ending);
+// nounParadigm declines a noun-like name or surname by its last letters.
+function nounParadigm(word, gender) {
+  if (/ия$/i.test(word)) return [1, '', ['и', 'ю', 'ей', 'и']];
+  if (/я$/i.test(word)) return [1, '', ['и', 'ю', stressedNames.has(word.toLowerCase()) ? 'ёй' : 'ей', 'е']];
+  // Моруа, Галуа.
+  if (/[аеёиоуыэюя]а$/i.test(word)) return null;
+  if (/а$/i.test(word)) return [1, '', [SOFT_BEFORE_A.test(word) ? 'и' : 'ы', 'у', /[жчшщц]а$/i.test(word) ? 'ей' : 'ой', 'е']];
+  if (/[оеёиуюэы]$/i.test(word)) return null;
+  if (gender === 'female') return /ь$/i.test(word) ? [1, '', ['и', 'ь', 'ью', 'и']] : null;
+  if (/ий$/i.test(word)) return [1, '', ['я', 'я', 'ем', 'и']];
+  if (/[йь]$/i.test(word)) return [1, '', ['я', 'я', 'ем', 'е']];
+
+  return [0, '', ['а', 'а', /[жчшщ]$/i.test(word) ? 'ем' : 'ом', 'е']];
+}
+
+// sameCase writes a stem in capitals when the word it is of is.
+function sameCase(word, stem) {
+  return word === word.toUpperCase() ? stem.toUpperCase() : stem;
 }
 
 export function followersCount(n) {
@@ -1090,15 +1177,9 @@ export function chatMembers(n) {
 }
 
 // accusativeName is "Петра Петрова", "Анну Иванову": whom someone added
-// to a chat or removed from it. A man's is his genitive; a woman's is
-// declined by its endings, and what the rules do not know stays as it is.
+// to a chat or removed from it.
 export function accusativeName(person) {
-  if (person.gender !== 'female') return genitiveName(person);
-
-  const name = (person.name ?? '').replace(/а$/, 'у').replace(/я$/, 'ю');
-  const surname = (person.surname ?? '').replace(/ая$/, 'ую').replace(/([вн])а$/, '$1у');
-
-  return [name, surname].filter(Boolean).join(' ');
+  return declinedName(person, 'acc');
 }
 
 // chatActionParts is what a message of a chat tells of instead of saying

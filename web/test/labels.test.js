@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -114,6 +114,70 @@ test('names in the genitive, for "на стене Петра Петрова"', (
   for (const [person, want] of cases) {
     assert.equal(genitiveName(person), want, JSON.stringify(person));
   }
+});
+
+test('names that lose a vowel or are declined like adjectives', () => {
+  const cases = [
+    [{ name: 'Витёк', surname: 'Кравец', gender: 'male' }, 'Витька Кравца'],
+    [{ name: 'Иван', surname: 'Стрелец', gender: 'male' }, 'Ивана Стрельца'],
+    [{ name: 'Иван', surname: 'Коломиец', gender: 'male' }, 'Ивана Коломийца'],
+    [{ name: 'Иван', surname: 'Кузнец', gender: 'male' }, 'Ивана Кузнеца'],
+    [{ name: 'Иван', surname: 'Швец', gender: 'male' }, 'Ивана Швеца'],
+    [{ name: 'Иван', surname: 'Заяц', gender: 'male' }, 'Ивана Зайца'],
+    [{ name: 'Иван', surname: 'Волчок', gender: 'male' }, 'Ивана Волчка'],
+    [{ name: 'Иван', surname: 'Королёк', gender: 'male' }, 'Ивана Королька'],
+    [{ name: 'Александр', surname: 'Блок', gender: 'male' }, 'Александра Блока'],
+    [{ name: 'Иван', surname: 'Игрок', gender: 'male' }, 'Ивана Игрока'],
+    [{ name: 'Анна', surname: 'Кравец', gender: 'female' }, 'Анны Кравец'],
+    [{ name: 'Виктор', surname: 'Цой', gender: 'male' }, 'Виктора Цоя'],
+    [{ name: 'Иван', surname: 'Палий', gender: 'male' }, 'Ивана Палия'],
+    [{ name: 'Иван', surname: 'Горячий', gender: 'male' }, 'Ивана Горячего'],
+    [{ name: 'Анна', surname: 'Горячая', gender: 'female' }, 'Анны Горячей'],
+    [{ name: 'Анна', surname: 'Сковорода', gender: 'female' }, 'Анны Сковороды'],
+    [{ name: 'Андре', surname: 'Моруа', gender: 'male' }, 'Андре Моруа'],
+    [{ name: 'Любовь', surname: 'Орлова' }, 'Любови Орловой'],
+    [{ name: 'ПАВЕЛ', surname: 'ЗАЯЦ', gender: 'male' }, 'ПАВЛА ЗАЙЦА'],
+  ];
+
+  for (const [person, want] of cases) {
+    assert.equal(genitiveName(person), want, JSON.stringify(person));
+  }
+});
+
+test('names in the other cases', () => {
+  const cases = [
+    [{ name: 'Пётр', surname: 'Петров', gender: 'male' }, 'Петра Петрова', 'Петром Петровым', 'Петре Петрове'],
+    [{ name: 'Анна', surname: 'Иванова', gender: 'female' }, 'Анну Иванову', 'Анной Ивановой', 'Анне Ивановой'],
+    [{ name: 'Мария', surname: 'Белая', gender: 'female' }, 'Марию Белую', 'Марией Белой', 'Марии Белой'],
+    [{ name: 'Лев', surname: 'Толстой', gender: 'male' }, 'Льва Толстого', 'Львом Толстым', 'Льве Толстом'],
+    [{ name: 'Андрей', surname: 'Достоевский', gender: 'male' }, 'Андрея Достоевского', 'Андреем Достоевским', 'Андрее Достоевском'],
+    [{ name: 'Дмитрий', surname: 'Гоголь', gender: 'male' }, 'Дмитрия Гоголя', 'Дмитрием Гоголем', 'Дмитрии Гоголе'],
+    [{ name: 'Илья', surname: 'Кравец', gender: 'male' }, 'Илью Кравца', 'Ильёй Кравцом', 'Илье Кравце'],
+    [{ name: 'Саша', surname: 'Шевченко', gender: 'male' }, 'Сашу Шевченко', 'Сашей Шевченко', 'Саше Шевченко'],
+    [{ name: 'Ольга', surname: 'Шевчук', gender: 'female' }, 'Ольгу Шевчук', 'Ольгой Шевчук', 'Ольге Шевчук'],
+    [{ name: 'Любовь', surname: 'Чайковская', gender: 'female' }, 'Любовь Чайковскую', 'Любовью Чайковской', 'Любови Чайковской'],
+    [{ name: 'Павел', surname: 'Бабич', gender: 'male' }, 'Павла Бабича', 'Павлом Бабичем', 'Павле Бабиче'],
+    [{ name: 'Ann', surname: 'Lee', gender: 'female' }, 'Ann Lee', 'Ann Lee', 'Ann Lee'],
+  ];
+
+  for (const [person, accusative, instrumental, prepositional] of cases) {
+    assert.equal(declinedName(person, 'acc'), accusative, JSON.stringify(person));
+    assert.equal(declinedName(person, 'ins'), instrumental, JSON.stringify(person));
+    assert.equal(declinedName(person, 'pre'), prepositional, JSON.stringify(person));
+  }
+
+  assert.equal(declinedName({ name: 'Пётр', surname: 'Петров' }, 'nom'), 'Пётр Петров');
+});
+
+test('the partner of a relationship is in the case its prefix asks for', () => {
+  const petr = { name: 'Пётр', surname: 'Петров', gender: 'male' };
+  const ann = { name: 'Анна', surname: 'Иванова', gender: 'female' };
+
+  assert.equal(partnerName('married', 'female', petr), 'Петром Петровым');
+  assert.equal(partnerName('married', 'male', ann), 'Анне Ивановой');
+  assert.equal(partnerName('married', '', ann), 'Анной Ивановой');
+  assert.equal(partnerName('in_love', 'female', petr), 'Петра Петрова');
+  assert.equal(partnerName('dating', 'male', ann), 'Анной Ивановой');
 });
 
 test('a wall post notification and its error read like openvk', () => {
