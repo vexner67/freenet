@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"time"
 
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
@@ -37,6 +38,11 @@ type Config struct {
 	// gets only the events of its replica.
 	RedisAddr string `env:"REDIS_ADDR"`
 
+	// Retention is how long a notification is kept: older ones are
+	// deleted, read or not. CleanupInterval is how often.
+	Retention       time.Duration `env:"NOTIFICATION_RETENTION" envDefault:"4320h"`
+	CleanupInterval time.Duration `env:"NOTIFICATION_CLEANUP_INTERVAL" envDefault:"1h"`
+
 	// Access tokens are issued by the auth service; notification only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
 	JWTIssuer        string `env:"JWT_ISSUER,required,notEmpty"`
@@ -55,6 +61,10 @@ func (c Config) Validate() error {
 		}
 	default:
 		return fmt.Errorf("unknown STORAGE %q, want %q or %q", c.Storage, StorageInmem, StoragePersistent)
+	}
+
+	if c.Retention <= 0 || c.CleanupInterval <= 0 {
+		return errors.New("NOTIFICATION_RETENTION and NOTIFICATION_CLEANUP_INTERVAL must be positive")
 	}
 
 	return c.TLS.Validate()

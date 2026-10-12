@@ -228,6 +228,27 @@ func (r *NotificationRepository) DeleteByComment(ctx context.Context, commentID 
 	return nil
 }
 
+// The primary key finds the oldest: IDs grow with time.
+const deleteOlderNotificationsQuery = `
+	DELETE FROM notifications
+	WHERE id IN (
+		SELECT id
+		FROM notifications
+		WHERE id < $1
+		ORDER BY id
+		LIMIT $2
+	)
+`
+
+func (r *NotificationRepository) DeleteOlder(ctx context.Context, before uuid.UUID, limit int) (int, error) {
+	tag, err := r.pool.Exec(ctx, deleteOlderNotificationsQuery, before, limit)
+	if err != nil {
+		return 0, errs.Wrap("r.pool.Exec", err)
+	}
+
+	return int(tag.RowsAffected()), nil
+}
+
 const deleteNotificationsByUserQuery = `
 	DELETE FROM notifications
 	WHERE recipient_id = $1

@@ -48,6 +48,9 @@ type App struct {
 	server  *grpcserver.Server
 	metrics *metrics.Server
 	addr    string
+	// cleanup forgets the notifications older than the retention.
+	cleanup      *service.CleanupService
+	cleanupEvery time.Duration
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -121,6 +124,9 @@ func (a *App) build(cfg config.Config) error {
 		),
 	)
 
+	a.cleanup = service.NewCleanupService(repos.old, cfg.Retention)
+	a.cleanupEvery = cfg.CleanupInterval
+
 	if cfg.MetricsPort == 0 {
 		a.logger.Info("METRICS_PORT is not set: metrics are not served")
 	} else {
@@ -135,13 +141,17 @@ func (a *App) build(cfg config.Config) error {
 type repositories struct {
 	notifications service.NotificationRepository
 	readMarks     service.ReadMarkRepository
+	old           service.OldNotificationDeleter
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	if cfg.Storage == config.StorageInmem {
+		notifications := inmem.NewNotificationRepository()
+
 		return repositories{
-			notifications: inmem.NewNotificationRepository(),
+			notifications: notifications,
 			readMarks:     inmem.NewReadMarkRepository(),
+			old:           notifications,
 		}, nil
 	}
 
@@ -167,9 +177,12 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		return repositories{}, errs.Wrap("pgpool.New", err)
 	}
 
+	notifications := postgres.NewNotificationRepository(a.pool)
+
 	return repositories{
-		notifications: postgres.NewNotificationRepository(a.pool),
+		notifications: notifications,
 		readMarks:     postgres.NewReadMarkRepository(a.pool),
+		old:           notifications,
 	}, nil
 }
 
@@ -194,7 +207,35 @@ func (a *App) Run(ctx context.Context) error {
 		})
 	}
 
+	g.Go(func() error {
+		a.runCleanup(ctx)
+		return nil
+	})
+
 	return g.Wait()
+}
+
+// runCleanup deletes the old notifications at the start and then every
+// interval until ctx ends; a failure is logged and tried again next time.
+func (a *App) runCleanup(ctx context.Context) {
+	t := time.NewTicker(a.cleanupEvery)
+	defer t.Stop()
+
+	for {
+		deleted, err := a.cleanup.DeleteOld(ctx)
+		if err != nil && ctx.Err() == nil {
+			a.logger.ErrorContext(ctx, "cleanup of old notifications", "error", err)
+		}
+		if deleted > 0 {
+			a.logger.InfoContext(ctx, "old notifications deleted", "count", deleted)
+		}
+
+		select {
+		case <-ctx.Done():
+			return
+		case <-t.C:
+		}
+	}
 }
 
 // Healthcheck asks the service running with cfg on this host whether it

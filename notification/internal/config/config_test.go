@@ -34,6 +34,8 @@ func TestParse(t *testing.T) {
 		{"persistent with a database", map[string]string{"STORAGE": config.StoragePersistent, "DATABASE_URL": "postgres://x"}, true},
 		{"persistent without a database", map[string]string{"STORAGE": config.StoragePersistent}, false},
 		{"unknown storage", map[string]string{"STORAGE": "files"}, false},
+		{"no retention", map[string]string{"NOTIFICATION_RETENTION": "0"}, false},
+		{"no cleanup interval", map[string]string{"NOTIFICATION_CLEANUP_INTERVAL": "-1s"}, false},
 		{"full mtls", map[string]string{"TLS_CA_PATH": "ca.pem", "TLS_CERT_PATH": "c.pem", "TLS_KEY_PATH": "k.pem"}, true},
 		{"partial mtls", map[string]string{"TLS_KEY_PATH": "key.pem"}, false},
 		{"empty issuer", map[string]string{"JWT_ISSUER": ""}, false},

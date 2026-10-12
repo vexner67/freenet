@@ -107,6 +107,32 @@ func (r *NotificationRepository) DeleteByUser(ctx context.Context, userID uuid.U
 	})
 }
 
+// DeleteOlder deletes the oldest notifications with IDs below before.
+func (r *NotificationRepository) DeleteOlder(ctx context.Context, before uuid.UUID, limit int) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var old []uuid.UUID
+	for id := range r.notifications {
+		if bytes.Compare(id[:], before[:]) < 0 {
+			old = append(old, id)
+		}
+	}
+
+	slices.SortFunc(old, func(a, b uuid.UUID) int { return bytes.Compare(a[:], b[:]) })
+	old = old[:min(len(old), limit)]
+
+	for _, id := range old {
+		delete(r.notifications, id)
+	}
+
+	return len(old), nil
+}
+
 func (r *NotificationRepository) deleteWhere(ctx context.Context, match func(*notification.Notification) bool) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
