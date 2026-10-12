@@ -109,10 +109,14 @@ func namesPhoto(kind string) bool {
 	return kind == kindPhotoLike || kind == kindPhotoComment || kind == kindPhotoMention
 }
 
+// kindGift names a sent gift by PostID, which the user service keeps: the
+// notification says only who sent one.
+const kindGift = "gift"
+
 // namesPost tells whether PostID of a notification of kind is a post, and
 // namesComment whether its CommentID is a comment.
 func namesPost(kind string) bool {
-	return kind != kindSuggestedPost && kind != kindNoteComment && !namesTopic(kind) && !namesPhoto(kind)
+	return kind != kindSuggestedPost && kind != kindNoteComment && kind != kindGift && !namesTopic(kind) && !namesPhoto(kind)
 }
 
 func namesComment(kind string) bool {

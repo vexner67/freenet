@@ -348,6 +348,18 @@ type Clubs interface {
 	CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (model.WallAccess, error)
 }
 
+// Gifts are the gifts people send each other ("Подарки"), which the user
+// service keeps.
+type Gifts interface {
+	// Catalog is what there is to send.
+	Catalog(ctx context.Context) ([]model.GiftCollection, error)
+	Send(ctx context.Context, accessToken, userID string, d model.GiftDraft) (model.Gift, error)
+	// List pages the gifts sent to userID as the caller, anonymous without
+	// accessToken, sees them, newest first.
+	List(ctx context.Context, accessToken, userID, cursor string, limit int) (model.GiftPage, error)
+	Delete(ctx context.Context, accessToken, giftID string) error
+}
+
 // Backends are the services the API is made of.
 type Backends struct {
 	Auth          Auth
@@ -362,6 +374,7 @@ type Backends struct {
 	Albums        Albums
 	Notes         Notes
 	Faves         Faves
+	Gifts         Gifts
 }
 
 type api struct {
@@ -377,6 +390,7 @@ type api struct {
 	albums            Albums
 	notes             Notes
 	faves             Faves
+	gifts             Gifts
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -579,6 +593,11 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/me/faves/comments", a.listFaveComments)
 	mux.HandleFunc("GET /api/v1/me/faves/photos", a.listFavePhotos)
 	mux.HandleFunc("GET /api/v1/me/posts", a.listOwnPosts)
+	mux.HandleFunc("GET /api/v1/gifts", a.giftCatalog)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/gifts", a.listGifts)
+	mux.HandleFunc("POST /api/v1/users/{nickname}/gifts", a.sendGift)
+	mux.HandleFunc("DELETE /api/v1/gifts/{id}", a.deleteGift)
+
 	mux.HandleFunc("GET /api/v1/users/{nickname}/notes", a.listUserNotes)
 	mux.HandleFunc("POST /api/v1/me/notes", a.createNote)
 	mux.HandleFunc("GET /api/v1/notes/{id}", a.getNote)

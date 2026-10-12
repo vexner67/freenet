@@ -113,13 +113,15 @@ type Privacy struct {
 	// PageRead ("everyone" or "users"), InfoRead, PhotosRead and
 	// FriendsRead are openvk's "Кому видно …": "everyone", "users",
 	// "following" or "only_me"; OnlineRead is "Кто видит мою
-	// неактивность", NotesRead "Кому видно мои заметки", the same.
+	// неактивность", NotesRead "Кому видно мои заметки" and GiftsRead
+	// "Кому видны мои подарки", the same.
 	PageRead    string
 	InfoRead    string
 	PhotosRead  string
 	FriendsRead string
 	OnlineRead  string
 	NotesRead   string
+	GiftsRead   string
 	// ChatsInvite is "Кто может добавлять меня в чаты": "everyone",
 	// "following" or "nobody"; "" leaves the default.
 	ChatsInvite string
@@ -129,7 +131,7 @@ type Privacy struct {
 }
 
 // Access is what of a page the viewer may see: the page, its information,
-// albums, follows, communities and notes.
+// albums, follows, communities, notes and gifts.
 type Access struct {
 	Page    bool
 	Info    bool
@@ -137,6 +139,7 @@ type Access struct {
 	Friends bool
 	Clubs   bool
 	Notes   bool
+	Gifts   bool
 }
 
 // Relation is who of the viewer and a user blacklisted the other.
@@ -1085,6 +1088,41 @@ type NoteComment struct {
 // NoteCommentPage is one screen of the comments of a note, oldest first.
 type NoteCommentPage struct {
 	Comments   []NoteComment
+	NextCursor string
+	Total      int
+}
+
+// GiftCollection is a shelf of the catalogue of gifts ("Коллекции"): the
+// names of its gifts, in the order they are shown.
+type GiftCollection struct {
+	ID    string
+	Gifts []string
+}
+
+// GiftDraft is a gift to send: its name in the catalogue, the words with
+// it and whether only the recipient is told who sent it ("Анонимно").
+type GiftDraft struct {
+	Gift      string
+	Caption   string
+	Anonymous bool
+}
+
+// Gift is a gift sent to a page, as the caller sees it. Sender is nil when
+// the caller is not told who sent it: it is anonymous, or the page of the
+// sender is deleted; the words of an anonymous gift are not told either.
+type Gift struct {
+	ID        string
+	Gift      string
+	Caption   string
+	Anonymous bool
+	SentAt    time.Time
+	Sender    *PublicProfile
+}
+
+// GiftPage is one screen of the gifts of a page, newest first; NextCursor
+// is empty on the last.
+type GiftPage struct {
+	Gifts      []Gift
 	NextCursor string
 	Total      int
 }

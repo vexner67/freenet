@@ -144,7 +144,7 @@ func (f *fakeUserAPI) UpdatePrivacy(_ context.Context, req *userv1.UpdatePrivacy
 // keep the caller's token.
 func (f *fakeUserAPI) GetAccess(ctx context.Context, req *userv1.GetAccessRequest, _ ...grpc.CallOption) (*userv1.GetAccessResponse, error) {
 	f.md, _ = metadata.FromOutgoingContext(ctx)
-	return &userv1.GetAccessResponse{Page: req.GetUserId() == "u2", Photos: true, Notes: true}, nil
+	return &userv1.GetAccessResponse{Page: req.GetUserId() == "u2", Photos: true, Notes: true, Gifts: true}, nil
 }
 
 func (f *fakeUserAPI) GetProfile(ctx context.Context, req *userv1.GetProfileRequest, _ ...grpc.CallOption) (*userv1.GetProfileResponse, error) {
@@ -240,7 +240,7 @@ func TestWallPrivacy(t *testing.T) {
 
 	u, err := users.UpdatePrivacy(context.Background(), "tok", model.Privacy{
 		ShowWorldview: true, WallWrite: "everyone", MessagesWrite: "nobody", ClubsRead: "only_me",
-		PageRead: "users", InfoRead: "following", PhotosRead: "only_me", FriendsRead: "everyone", OnlineRead: "following", NotesRead: "only_me",
+		PageRead: "users", InfoRead: "following", PhotosRead: "only_me", FriendsRead: "everyone", OnlineRead: "following", NotesRead: "only_me", GiftsRead: "users",
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -258,7 +258,8 @@ func TestWallPrivacy(t *testing.T) {
 		api.privacy.GetPhotosRead() != userv1.Audience_AUDIENCE_ONLY_ME || api.privacy.GetFriendsRead() != userv1.Audience_AUDIENCE_EVERYONE ||
 		u.Privacy.PageRead != "users" || u.Privacy.InfoRead != "following" || u.Privacy.PhotosRead != "only_me" || u.Privacy.FriendsRead != "everyone" ||
 		api.privacy.GetOnlineRead() != userv1.Audience_AUDIENCE_FOLLOWING || u.Privacy.OnlineRead != "following" ||
-		api.privacy.GetNotesRead() != userv1.Audience_AUDIENCE_ONLY_ME || u.Privacy.NotesRead != "only_me" {
+		api.privacy.GetNotesRead() != userv1.Audience_AUDIENCE_ONLY_ME || u.Privacy.NotesRead != "only_me" ||
+		api.privacy.GetGiftsRead() != userv1.Audience_AUDIENCE_USERS || u.Privacy.GiftsRead != "users" {
 		t.Fatalf("sent %v, got %+v", api.privacy, u.Privacy)
 	}
 
@@ -271,7 +272,7 @@ func TestWallPrivacy(t *testing.T) {
 	}
 
 	access, err := users.Access(context.Background(), "tok", "u2")
-	if err != nil || access != (model.Access{Page: true, Photos: true, Notes: true}) || api.md.Get("authorization")[0] != "Bearer tok" {
+	if err != nil || access != (model.Access{Page: true, Photos: true, Notes: true, Gifts: true}) || api.md.Get("authorization")[0] != "Bearer tok" {
 		t.Fatalf("Access = %+v, %v", access, err)
 	}
 
