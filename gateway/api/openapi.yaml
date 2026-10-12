@@ -1730,7 +1730,8 @@ paths:
         As openvk's "Об этой инстанции": the pages that are not deleted,
         those of them whose owners are on the site now, the groups (events
         are not groups) and the posts on all walls, archived ones left out.
-        No token needed.
+        No token needed. The numbers are counted again no more often than
+        once a minute (`STATISTICS_TTL` of the gateway).
       responses:
         "200":
           description: The counts
@@ -3105,8 +3106,7 @@ paths:
         openvk's "Понравившиеся записи": yours alone, nobody else reads
         them. Each post is shown as a wall shows it, with the beginning of
         its text; `total` counts the posts you like. Posts in an archive
-        are neither listed nor counted; those of deleted pages are left out
-        of `posts`, still counted. `canPost` and `canSuggest` are not told.
+        and those of deleted pages are left out of `posts`, still counted. `canPost` and `canSuggest` are not told.
       security: [{ bearer: [] }]
       parameters:
         - name: cursor
@@ -3129,7 +3129,7 @@ paths:
       summary: The comments under posts you like, newest like first
       description: |
         Each comment tells its post (`postId`) and carries the beginning of
-        its text. Comments under posts in an archive are neither listed nor
+        its text. Comments under posts in an archive are not listed, still
         counted; a comment whose author, or whose post's author or wall
         owner, deleted the page is left out of `comments`, still counted.
       security: [{ bearer: [] }]

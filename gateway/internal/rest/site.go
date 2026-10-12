@@ -1,7 +1,11 @@
 package rest
 
 import (
+	"context"
+	"fmt"
 	"net/http"
+	"sync"
+	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
 )
@@ -15,29 +19,68 @@ type aboutResponse struct {
 	Posts  int `json:"posts"`
 }
 
+// statistics keeps what the site counted last for ttl: every count reads
+// a whole table of its service, and the page needs no number of this very
+// second. A zero ttl counts every time.
+type statistics struct {
+	ttl time.Duration
+
+	mu      sync.Mutex
+	kept    aboutResponse
+	counted time.Time
+}
+
+// get answers with the numbers kept or, once they are old, with those of
+// count. Whoever asks meanwhile waits for the one count instead of
+// starting another; a failed count keeps nothing.
+func (s *statistics) get(count func() (aboutResponse, error)) (aboutResponse, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if !s.counted.IsZero() && time.Since(s.counted) < s.ttl {
+		return s.kept, nil
+	}
+
+	fresh, err := count()
+	if err != nil {
+		return aboutResponse{}, err
+	}
+
+	s.kept, s.counted = fresh, time.Now()
+
+	return fresh, nil
+}
+
 // about counts the site for its page "о сайте"; anyone may ask.
 func (a *api) about(w http.ResponseWriter, r *http.Request) {
-	var (
-		resp aboutResponse
-		err  error
-	)
-
-	if resp.Users, resp.Online, err = a.users.Statistics(r.Context()); err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	if resp.Clubs, err = a.clubs.Count(r.Context()); err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	if resp.Posts, err = a.posts.Count(r.Context()); err != nil {
+	resp, err := a.statistics.get(func() (aboutResponse, error) { return a.count(r.Context()) })
+	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
 	writeJSON(w, http.StatusOK, resp)
+}
+
+func (a *api) count(ctx context.Context) (aboutResponse, error) {
+	var (
+		resp aboutResponse
+		err  error
+	)
+
+	if resp.Users, resp.Online, err = a.users.Statistics(ctx); err != nil {
+		return aboutResponse{}, fmt.Errorf("a.users.Statistics: %w", err)
+	}
+
+	if resp.Clubs, err = a.clubs.Count(ctx); err != nil {
+		return aboutResponse{}, fmt.Errorf("a.clubs.Count: %w", err)
+	}
+
+	if resp.Posts, err = a.posts.Count(ctx); err != nil {
+		return aboutResponse{}, fmt.Errorf("a.posts.Count: %w", err)
+	}
+
+	return resp, nil
 }
 
 // maxKnownNicknames is how many nicknames one request asks about.

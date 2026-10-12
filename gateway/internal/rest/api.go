@@ -376,6 +376,8 @@ type api struct {
 	webDir            string
 	eventOrigins      []string
 	eventStreams      prometheus.Gauge
+	// statistics are the numbers of "о сайте", kept for a while.
+	statistics *statistics
 	// stopping ends when the server stops, closing the event streams,
 	// whose connections Shutdown leaves alone; streams counts them.
 	stopping context.Context

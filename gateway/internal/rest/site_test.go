@@ -4,6 +4,7 @@ import (
 	"net/http"
 	"slices"
 	"testing"
+	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/rest"
@@ -24,6 +25,33 @@ func TestAbout(t *testing.T) {
 	h.clubs.err = failure.New(failure.Unavailable, "service unavailable")
 	if w = h.do("GET", "/api/v1/about", ""); w.Code != http.StatusServiceUnavailable {
 		t.Fatalf("a service down: %d", w.Code)
+	}
+}
+
+// The numbers are kept for a while: the services are not asked to count
+// their tables for every visitor of the page.
+func TestAbout_Kept(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{StatisticsTTL: time.Hour})
+
+	// A count that failed keeps nothing.
+	h.clubs.err = failure.New(failure.Unavailable, "service unavailable")
+	if w := h.do("GET", "/api/v1/about", ""); w.Code != http.StatusServiceUnavailable {
+		t.Fatalf("a service down: %d", w.Code)
+	}
+
+	h.clubs.err = nil
+	if w := h.do("GET", "/api/v1/about", ""); w.Code != http.StatusOK {
+		t.Fatalf("counted: %d %s", w.Code, w.Body)
+	}
+
+	// The second answer is the first: a service that is down by now is
+	// not asked.
+	h.clubs.err = failure.New(failure.Unavailable, "service unavailable")
+	w := h.do("GET", "/api/v1/about", "")
+	if got := decode[map[string]int](t, w); w.Code != http.StatusOK || got["clubs"] != 5 || got["posts"] != 40 {
+		t.Fatalf("kept: %d %s", w.Code, w.Body)
 	}
 }
 
