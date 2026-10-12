@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { worldviews, politicalViews, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites } from '../static/labels.js';
+import { worldviews, politicalViews, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -324,6 +324,18 @@ test('isLongText is openvk\'s bigText', () => {
   assert.equal(isLongText('я'.repeat(521)), true);
   assert.equal(isLongText(Array(10).fill('строка').join('\n')), false);
   assert.equal(isLongText(Array(11).fill('строка').join('\n')), true);
+});
+
+test('forwarded messages nest under those that carried them on', () => {
+  const names = (trees) => trees.map((t) => (t.carried.length ? [t.message.text, names(t.carried)] : t.message.text));
+
+  assert.deepEqual(names(forwardTree([])), []);
+  assert.deepEqual(names(forwardTree([{ text: 'a' }, { text: 'b' }])), ['a', 'b']);
+  assert.deepEqual(names(forwardTree([
+    { text: 'a', depth: 0 }, { text: 'b', depth: 1 }, { text: 'c', depth: 2 }, { text: 'd', depth: 1 }, { text: 'e', depth: 0 },
+  ])), [['a', [['b', ['c']], 'd']], 'e']);
+  // A level no message leads to is the deepest there is.
+  assert.deepEqual(names(forwardTree([{ text: 'a', depth: 2 }, { text: 'b', depth: 3 }])), [['a', ['b']]]);
 });
 
 test('a preview of a message reads whom it names by name', () => {

@@ -1022,6 +1022,25 @@ export function forwardedCount(n) {
   return n === 1 ? 'Пересланное сообщение' : `${n} ${plural(n, ['пересланное сообщение', 'пересланных сообщения', 'пересланных сообщений'])}`;
 }
 
+// forwardTree nests the messages a message carries on: the list names a
+// message before those it carried on itself, each one level deeper
+// (depth). The trees are { message, carried }, oldest first.
+export function forwardTree(forwarded) {
+  const top = [];
+  // path[d] is where a message of depth d goes.
+  const path = [top];
+
+  for (const f of forwarded) {
+    const depth = Math.min(Math.max(f.depth ?? 0, 0), path.length - 1);
+    const tree = { message: f, carried: [] };
+    path[depth].push(tree);
+    path.length = depth + 1;
+    path.push(tree.carried);
+  }
+
+  return top;
+}
+
 // messagePreview is a message in one line, for the list of dialogs: what
 // it says or, without words, what it shows, as on VK. Whom the text
 // names is read by name: "[ann|Анна]" is "Анна".
