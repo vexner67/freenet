@@ -123,7 +123,7 @@ func (a *api) uploadBackdrop(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	photoID, err := a.media.UploadPhoto(r.Context(), token, image)
+	photoID, err := a.uploadClaimed(r, token, image)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

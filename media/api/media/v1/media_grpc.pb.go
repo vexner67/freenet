@@ -28,7 +28,8 @@ const (
 	MediaService_UploadClubPhoto_FullMethodName       = "/media.v1.MediaService/UploadClubPhoto"
 	MediaService_DeleteClubPhotos_FullMethodName      = "/media.v1.MediaService/DeleteClubPhotos"
 	MediaService_UploadPhoto_FullMethodName           = "/media.v1.MediaService/UploadPhoto"
-	MediaService_ListOwnPhotos_FullMethodName         = "/media.v1.MediaService/ListOwnPhotos"
+	MediaService_ClaimPhotos_FullMethodName           = "/media.v1.MediaService/ClaimPhotos"
+	MediaService_ReleasePhotos_FullMethodName         = "/media.v1.MediaService/ReleasePhotos"
 	MediaService_GetPhoto_FullMethodName              = "/media.v1.MediaService/GetPhoto"
 	MediaService_PublishPhotos_FullMethodName         = "/media.v1.MediaService/PublishPhotos"
 	MediaService_DeletePublishedPhotos_FullMethodName = "/media.v1.MediaService/DeletePublishedPhotos"
@@ -59,11 +60,17 @@ type MediaServiceClient interface {
 	UploadClubPhoto(ctx context.Context, in *UploadClubPhotoRequest, opts ...grpc.CallOption) (*UploadPhotoResponse, error)
 	DeleteClubPhotos(ctx context.Context, in *DeleteClubPhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token; the photos belong to the caller. A photo is
-	// uploaded before the post that shows it; ListOwnPhotos tells which of
-	// the given ones the caller has. A photo that no post publishes is
-	// deleted after a while.
+	// uploaded before the post that shows it, and a photo that no post
+	// publishes is deleted after a while.
 	UploadPhoto(ctx context.Context, in *UploadPhotoRequest, opts ...grpc.CallOption) (*UploadPhotoResponse, error)
-	ListOwnPhotos(ctx context.Context, in *ListOwnPhotosRequest, opts ...grpc.CallOption) (*ListOwnPhotosResponse, error)
+	// ClaimPhotos takes uploads of the caller for the one post, comment or
+	// message that is about to show them, all or none: a photo that is not
+	// the caller's, is published or was claimed already refuses them all,
+	// so that two posts never share a file that either deletes. Whoever
+	// asks first gets a photo. ReleasePhotos gives claimed uploads back
+	// when the post was refused; published and missing ones are fine.
+	ClaimPhotos(ctx context.Context, in *ClaimPhotosRequest, opts ...grpc.CallOption) (*ClaimPhotosResponse, error)
+	ReleasePhotos(ctx context.Context, in *ReleasePhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public: a photo as JPEG.
 	GetPhoto(ctx context.Context, in *GetPhotoRequest, opts ...grpc.CallOption) (*GetPhotoResponse, error)
 	// Internal, for post and message, and for the gateway (the backdrop
@@ -170,10 +177,20 @@ func (c *mediaServiceClient) UploadPhoto(ctx context.Context, in *UploadPhotoReq
 	return out, nil
 }
 
-func (c *mediaServiceClient) ListOwnPhotos(ctx context.Context, in *ListOwnPhotosRequest, opts ...grpc.CallOption) (*ListOwnPhotosResponse, error) {
+func (c *mediaServiceClient) ClaimPhotos(ctx context.Context, in *ClaimPhotosRequest, opts ...grpc.CallOption) (*ClaimPhotosResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListOwnPhotosResponse)
-	err := c.cc.Invoke(ctx, MediaService_ListOwnPhotos_FullMethodName, in, out, cOpts...)
+	out := new(ClaimPhotosResponse)
+	err := c.cc.Invoke(ctx, MediaService_ClaimPhotos_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) ReleasePhotos(ctx context.Context, in *ReleasePhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MediaService_ReleasePhotos_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -253,11 +270,17 @@ type MediaServiceServer interface {
 	UploadClubPhoto(context.Context, *UploadClubPhotoRequest) (*UploadPhotoResponse, error)
 	DeleteClubPhotos(context.Context, *DeleteClubPhotosRequest) (*emptypb.Empty, error)
 	// Require an access token; the photos belong to the caller. A photo is
-	// uploaded before the post that shows it; ListOwnPhotos tells which of
-	// the given ones the caller has. A photo that no post publishes is
-	// deleted after a while.
+	// uploaded before the post that shows it, and a photo that no post
+	// publishes is deleted after a while.
 	UploadPhoto(context.Context, *UploadPhotoRequest) (*UploadPhotoResponse, error)
-	ListOwnPhotos(context.Context, *ListOwnPhotosRequest) (*ListOwnPhotosResponse, error)
+	// ClaimPhotos takes uploads of the caller for the one post, comment or
+	// message that is about to show them, all or none: a photo that is not
+	// the caller's, is published or was claimed already refuses them all,
+	// so that two posts never share a file that either deletes. Whoever
+	// asks first gets a photo. ReleasePhotos gives claimed uploads back
+	// when the post was refused; published and missing ones are fine.
+	ClaimPhotos(context.Context, *ClaimPhotosRequest) (*ClaimPhotosResponse, error)
+	ReleasePhotos(context.Context, *ReleasePhotosRequest) (*emptypb.Empty, error)
 	// Public: a photo as JPEG.
 	GetPhoto(context.Context, *GetPhotoRequest) (*GetPhotoResponse, error)
 	// Internal, for post and message, and for the gateway (the backdrop
@@ -308,8 +331,11 @@ func (UnimplementedMediaServiceServer) DeleteClubPhotos(context.Context, *Delete
 func (UnimplementedMediaServiceServer) UploadPhoto(context.Context, *UploadPhotoRequest) (*UploadPhotoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UploadPhoto not implemented")
 }
-func (UnimplementedMediaServiceServer) ListOwnPhotos(context.Context, *ListOwnPhotosRequest) (*ListOwnPhotosResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListOwnPhotos not implemented")
+func (UnimplementedMediaServiceServer) ClaimPhotos(context.Context, *ClaimPhotosRequest) (*ClaimPhotosResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ClaimPhotos not implemented")
+}
+func (UnimplementedMediaServiceServer) ReleasePhotos(context.Context, *ReleasePhotosRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReleasePhotos not implemented")
 }
 func (UnimplementedMediaServiceServer) GetPhoto(context.Context, *GetPhotoRequest) (*GetPhotoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPhoto not implemented")
@@ -491,20 +517,38 @@ func _MediaService_UploadPhoto_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MediaService_ListOwnPhotos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListOwnPhotosRequest)
+func _MediaService_ClaimPhotos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ClaimPhotosRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MediaServiceServer).ListOwnPhotos(ctx, in)
+		return srv.(MediaServiceServer).ClaimPhotos(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MediaService_ListOwnPhotos_FullMethodName,
+		FullMethod: MediaService_ClaimPhotos_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MediaServiceServer).ListOwnPhotos(ctx, req.(*ListOwnPhotosRequest))
+		return srv.(MediaServiceServer).ClaimPhotos(ctx, req.(*ClaimPhotosRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_ReleasePhotos_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReleasePhotosRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).ReleasePhotos(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_ReleasePhotos_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).ReleasePhotos(ctx, req.(*ReleasePhotosRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -639,8 +683,12 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MediaService_UploadPhoto_Handler,
 		},
 		{
-			MethodName: "ListOwnPhotos",
-			Handler:    _MediaService_ListOwnPhotos_Handler,
+			MethodName: "ClaimPhotos",
+			Handler:    _MediaService_ClaimPhotos_Handler,
+		},
+		{
+			MethodName: "ReleasePhotos",
+			Handler:    _MediaService_ReleasePhotos_Handler,
 		},
 		{
 			MethodName: "GetPhoto",

@@ -525,6 +525,17 @@ func TestEditPost(t *testing.T) {
 		t.Fatalf("edited post = %+v", p)
 	}
 
+	// The photo the post has (ph1) is its own; only one new to it is
+	// claimed, and not one another post shows.
+	if w = h.do("PATCH", "/api/v1/posts/p1", `{"text":"x","photos":["ph1"]}`, "Authorization", "Bearer tok"); w.Code != http.StatusOK || !slices.Equal(h.media.claimed, []string{"ph2"}) {
+		t.Fatalf("the photo it had kept: %d, claimed %v", w.Code, h.media.claimed)
+	}
+	h.media.taken = []string{"ph2"}
+	if w = h.do("PATCH", "/api/v1/posts/p1", `{"text":"x","photos":["ph1","ph2"]}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
+		t.Fatalf("a photo another post shows: %d %s", w.Code, w.Body)
+	}
+	h.media.taken = nil
+
 	for _, tt := range []struct {
 		name, path, body string
 		headers          []string

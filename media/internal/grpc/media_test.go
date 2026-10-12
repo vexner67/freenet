@@ -184,12 +184,28 @@ func TestPhotos(t *testing.T) {
 
 	// The same IDs under bob are not his.
 	stranger := uuid.NewString()
-	own, err := s.client.ListOwnPhotos(s.as(t, ann), &mediav1.ListOwnPhotosRequest{PhotoIds: append([]string{stranger}, ids...)})
-	if err != nil || len(own.GetPhotoIds()) != 2 {
-		t.Fatalf("ann's photos = %v, %v", own, err)
+	if got, err := s.client.ClaimPhotos(s.as(t, ann), &mediav1.ClaimPhotosRequest{PhotoIds: append(ids[:2:2], stranger)}); err != nil || got.GetClaimed() {
+		t.Fatalf("a claim with a photo that is not there = %v, %v", got, err)
 	}
-	if bobs, err := s.client.ListOwnPhotos(s.as(t, bob), &mediav1.ListOwnPhotosRequest{PhotoIds: ids}); err != nil || len(bobs.GetPhotoIds()) != 0 {
-		t.Fatalf("bob has none of ann's photos: %v, %v", bobs, err)
+	if bobs, err := s.client.ClaimPhotos(s.as(t, bob), &mediav1.ClaimPhotosRequest{PhotoIds: ids}); err != nil || bobs.GetClaimed() {
+		t.Fatalf("bob claimed ann's photos: %v, %v", bobs, err)
+	}
+	if _, err = s.client.ClaimPhotos(context.Background(), &mediav1.ClaimPhotosRequest{PhotoIds: ids}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("a claim without a token: %v", err)
+	}
+
+	// A photo goes to one post: the second claim is refused, until the
+	// first post was and gave it back.
+	for _, want := range []bool{true, false} {
+		if got, err := s.client.ClaimPhotos(s.as(t, ann), &mediav1.ClaimPhotosRequest{PhotoIds: ids}); err != nil || got.GetClaimed() != want {
+			t.Fatalf("ann's claim = %v, %v; want %v", got, err, want)
+		}
+	}
+	if _, err = s.client.ReleasePhotos(s.as(t, ann), &mediav1.ReleasePhotosRequest{PhotoIds: ids}); err != nil {
+		t.Fatalf("ReleasePhotos: %v", err)
+	}
+	if got, err := s.client.ClaimPhotos(s.as(t, ann), &mediav1.ClaimPhotosRequest{PhotoIds: ids}); err != nil || !got.GetClaimed() {
+		t.Fatalf("a claim after a release = %v, %v", got, err)
 	}
 
 	// post publishes and deletes the photos of posts, with no user token,
@@ -227,8 +243,16 @@ func TestPhotos(t *testing.T) {
 		t.Fatalf("PublishPhotos of a bad owner: %v", err)
 	}
 
-	if _, err = s.client.ListOwnPhotos(s.as(t, ann), &mediav1.ListOwnPhotosRequest{PhotoIds: make([]string, 11)}); status.Code(err) != codes.InvalidArgument {
+	// Published, a photo is its post's for good.
+	if got, err := s.client.ClaimPhotos(s.as(t, ann), &mediav1.ClaimPhotosRequest{PhotoIds: ids[1:]}); err != nil || got.GetClaimed() {
+		t.Fatalf("a claim of a published photo = %v, %v", got, err)
+	}
+
+	if _, err = s.client.ClaimPhotos(s.as(t, ann), &mediav1.ClaimPhotosRequest{PhotoIds: make([]string, 11)}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("too many ids: %v", err)
+	}
+	if _, err = s.client.ReleasePhotos(s.as(t, ann), &mediav1.ReleasePhotosRequest{PhotoIds: []string{"x"}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a release of a bad id: %v", err)
 	}
 }
 

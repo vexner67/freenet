@@ -454,13 +454,14 @@ func (a *api) sendChatMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
 	m, err := a.chats.Send(r.Context(), token, r.PathValue("id"), req.Text, req.Photos)
 	if err != nil {
+		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
 		return
 	}

@@ -19,6 +19,8 @@ type PhotoStore struct {
 type storedPhoto struct {
 	images    photo.Images
 	published bool
+	// claimed: taken for a post that is being published.
+	claimed bool
 	// retired: set aside as unpublished too long; only Publish finds it.
 	retired bool
 }
@@ -61,22 +63,39 @@ func (s *PhotoStore) Load(ctx context.Context, ownerID, photoID uuid.UUID, size 
 	return p.images.Of(size), nil
 }
 
-func (s *PhotoStore) Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error) {
+func (s *PhotoStore) Claim(ctx context.Context, ownerID, photoID uuid.UUID) (bool, error) {
 	if err := ctx.Err(); err != nil {
-		return nil, errs.Wrap("ctx.Err", err)
+		return false, errs.Wrap("ctx.Err", err)
 	}
 
-	s.mu.RLock()
-	defer s.mu.RUnlock()
+	s.mu.Lock()
+	defer s.mu.Unlock()
 
-	var found []uuid.UUID
-	for _, id := range photoIDs {
-		if p, ok := s.photos[ownerID][id]; ok && !p.retired {
-			found = append(found, id)
-		}
+	p, ok := s.photos[ownerID][photoID]
+	if !ok || p.published || p.retired || p.claimed {
+		return false, nil
 	}
 
-	return found, nil
+	p.claimed = true
+	s.photos[ownerID][photoID] = p
+
+	return true, nil
+}
+
+func (s *PhotoStore) Release(ctx context.Context, ownerID, photoID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	if p, ok := s.photos[ownerID][photoID]; ok && !p.published {
+		p.claimed = false
+		s.photos[ownerID][photoID] = p
+	}
+
+	return nil
 }
 
 func (s *PhotoStore) Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error {

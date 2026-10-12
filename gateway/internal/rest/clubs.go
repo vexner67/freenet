@@ -1039,13 +1039,13 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	mentions, err := a.mentioned(r, token, req.Text)
-	if err != nil {
+	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
@@ -1062,6 +1062,7 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		Poll:     toNewPoll(req.Poll),
 	})
 	if err != nil {
+		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
 		return
 	}

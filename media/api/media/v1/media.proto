@@ -29,11 +29,17 @@ service MediaService {
   rpc DeleteClubPhotos(DeleteClubPhotosRequest) returns (google.protobuf.Empty);
 
   // Require an access token; the photos belong to the caller. A photo is
-  // uploaded before the post that shows it; ListOwnPhotos tells which of
-  // the given ones the caller has. A photo that no post publishes is
-  // deleted after a while.
+  // uploaded before the post that shows it, and a photo that no post
+  // publishes is deleted after a while.
   rpc UploadPhoto(UploadPhotoRequest) returns (UploadPhotoResponse);
-  rpc ListOwnPhotos(ListOwnPhotosRequest) returns (ListOwnPhotosResponse);
+  // ClaimPhotos takes uploads of the caller for the one post, comment or
+  // message that is about to show them, all or none: a photo that is not
+  // the caller's, is published or was claimed already refuses them all,
+  // so that two posts never share a file that either deletes. Whoever
+  // asks first gets a photo. ReleasePhotos gives claimed uploads back
+  // when the post was refused; published and missing ones are fine.
+  rpc ClaimPhotos(ClaimPhotosRequest) returns (ClaimPhotosResponse);
+  rpc ReleasePhotos(ReleasePhotosRequest) returns (google.protobuf.Empty);
 
   // Public: a photo as JPEG.
   rpc GetPhoto(GetPhotoRequest) returns (GetPhotoResponse);
@@ -120,13 +126,18 @@ message UploadPhotoResponse {
   string photo_id = 1;
 }
 
-message ListOwnPhotosRequest {
+message ClaimPhotosRequest {
   // At most 10.
   repeated string photo_ids = 1;
 }
 
-message ListOwnPhotosResponse {
-  // Those of photo_ids the caller has.
+message ClaimPhotosResponse {
+  // Whether the photos are the post's now: all of them or none.
+  bool claimed = 1;
+}
+
+message ReleasePhotosRequest {
+  // At most 10.
   repeated string photo_ids = 1;
 }
 

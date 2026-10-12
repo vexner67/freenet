@@ -21,8 +21,13 @@ type PhotoStore interface {
 	Save(ctx context.Context, ownerID, photoID uuid.UUID, images photo.Images) error
 	// Load returns photo.ErrNotFound.
 	Load(ctx context.Context, ownerID, photoID uuid.UUID, size photo.Size) ([]byte, error)
-	// Existing returns which of photoIDs the owner has, published or not.
-	Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error)
+	// Claim takes the owner's photo for the one post that will show it,
+	// telling whether it did: a photo that is missing, published or
+	// claimed already is not taken. Whoever asks first gets it.
+	Claim(ctx context.Context, ownerID, photoID uuid.UUID) (bool, error)
+	// Release lets a claimed photo be claimed again; a missing or
+	// published one is fine.
+	Release(ctx context.Context, ownerID, photoID uuid.UUID) error
 	// Publish keeps the owner's photos for good, those set aside too;
 	// missing ones are fine.
 	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
@@ -37,7 +42,7 @@ type PhotoStore interface {
 	DeleteExcept(ctx context.Context, ownerID uuid.UUID, keep []uuid.UUID) error
 	// Retire sets aside the photos uploaded before the time and never
 	// published, returning how many: the owner has them no more (Load,
-	// Existing, Copy), and only Publish brings them back.
+	// Claim, Copy), and only Publish brings them back.
 	Retire(ctx context.Context, before time.Time) (int, error)
 	// DeleteRetired removes the photos set aside that were uploaded
 	// before the time, returning how many.
@@ -92,19 +97,49 @@ func (s *PhotoService) Get(ctx context.Context, ownerID, photoID uuid.UUID, size
 	return data, nil
 }
 
-// Existing tells which of the photos are the owner's: a post may only
-// show photos its author uploaded.
-func (s *PhotoService) Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error) {
+// Claim takes the owner's photos for a post they are publishing, all or
+// none, telling whether it did. A post may only show photos its author
+// uploaded, and a photo belongs to one post: deleting the post deletes
+// the file, which another post must not be left showing.
+func (s *PhotoService) Claim(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) (bool, error) {
 	if len(photoIDs) > MaxPhotoIDs {
-		return nil, ErrTooManyPhotoIDs
+		return false, ErrTooManyPhotoIDs
 	}
 
-	found, err := s.store.Existing(ctx, ownerID, photoIDs)
-	if err != nil {
-		return nil, errs.Wrap("s.store.Existing", err)
+	for i, id := range photoIDs {
+		taken, err := s.store.Claim(ctx, ownerID, id)
+		if err != nil {
+			return false, errs.Wrap("s.store.Claim", err)
+		}
+		if taken {
+			continue
+		}
+
+		// Those taken before this one go back.
+		if err = s.Release(ctx, ownerID, photoIDs[:i]); err != nil {
+			return false, errs.Wrap("s.Release", err)
+		}
+
+		return false, nil
 	}
 
-	return found, nil
+	return true, nil
+}
+
+// Release gives claimed photos back: the post they were claimed for was
+// refused, and the next attempt claims them again.
+func (s *PhotoService) Release(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error {
+	if len(photoIDs) > MaxPhotoIDs {
+		return ErrTooManyPhotoIDs
+	}
+
+	for _, id := range photoIDs {
+		if err := s.store.Release(ctx, ownerID, id); err != nil {
+			return errs.Wrap("s.store.Release", err)
+		}
+	}
+
+	return nil
 }
 
 // Publish keeps the photos of a published post for good.

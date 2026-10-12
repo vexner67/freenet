@@ -24,7 +24,8 @@ type AvatarService interface {
 type PhotoService interface {
 	Upload(ctx context.Context, ownerID uuid.UUID, data []byte) (uuid.UUID, error)
 	Get(ctx context.Context, ownerID, photoID uuid.UUID, size photo.Size) ([]byte, error)
-	Existing(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error)
+	Claim(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) (bool, error)
+	Release(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	Publish(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) error
 	Copy(ctx context.Context, ownerID uuid.UUID, copies []service.PhotoCopy) error
@@ -209,7 +210,7 @@ func (h *MediaHandler) UploadPhoto(ctx context.Context, req *mediav1.UploadPhoto
 	return &mediav1.UploadPhotoResponse{PhotoId: id.String()}, nil
 }
 
-func (h *MediaHandler) ListOwnPhotos(ctx context.Context, req *mediav1.ListOwnPhotosRequest) (*mediav1.ListOwnPhotosResponse, error) {
+func (h *MediaHandler) ClaimPhotos(ctx context.Context, req *mediav1.ClaimPhotosRequest) (*mediav1.ClaimPhotosResponse, error) {
 	ownerID, err := currentUserID(ctx)
 	if err != nil {
 		return nil, err
@@ -220,17 +221,30 @@ func (h *MediaHandler) ListOwnPhotos(ctx context.Context, req *mediav1.ListOwnPh
 		return nil, err
 	}
 
-	found, err := h.photos.Existing(ctx, ownerID, ids)
+	claimed, err := h.photos.Claim(ctx, ownerID, ids)
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &mediav1.ListOwnPhotosResponse{PhotoIds: make([]string, 0, len(found))}
-	for _, id := range found {
-		resp.PhotoIds = append(resp.PhotoIds, id.String())
+	return &mediav1.ClaimPhotosResponse{Claimed: claimed}, nil
+}
+
+func (h *MediaHandler) ReleasePhotos(ctx context.Context, req *mediav1.ReleasePhotosRequest) (*emptypb.Empty, error) {
+	ownerID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
 	}
 
-	return resp, nil
+	ids, err := parsePhotoIDs(req.GetPhotoIds())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.photos.Release(ctx, ownerID, ids); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 // PublishPhotos and DeletePublishedPhotos are internal, for post, message

@@ -101,7 +101,11 @@ type Media interface {
 	DeleteClubPhotos(ctx context.Context, accessToken, clubID string, keep []string) error
 
 	UploadPhoto(ctx context.Context, accessToken string, image []byte) (string, error)
-	OwnPhotos(ctx context.Context, accessToken string, photoIDs []string) ([]string, error)
+	// ClaimPhotos takes the caller's uploads for the one post that is
+	// about to show them, all or none, telling whether it did;
+	// ReleasePhotos gives them back when the post was refused.
+	ClaimPhotos(ctx context.Context, accessToken string, photoIDs []string) (bool, error)
+	ReleasePhotos(ctx context.Context, accessToken string, photoIDs []string) error
 	Photo(ctx context.Context, userID, photoID string, small bool) ([]byte, error)
 	// PublishPhotos keeps uploaded photos of ownerID for good, as a side
 	// of the backdrop; DeletePublishedPhotos deletes such photos.
@@ -283,6 +287,8 @@ type Messages interface {
 	// sides, as Delete, or for the caller alone, as Hide.
 	DeleteMany(ctx context.Context, accessToken string, ids []string, forEveryone bool) error
 	Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.Message, error)
+	// Message is a message the caller has in their dialogs, by its ID.
+	Message(ctx context.Context, accessToken, id string) (model.Message, error)
 	Search(ctx context.Context, accessToken, peerID, query, cursor string, limit int) (model.FoundMessages, error)
 	HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error)
 	Subscribe(ctx context.Context, accessToken string) (model.MessageEvents, error)

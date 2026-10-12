@@ -98,7 +98,7 @@ func (a *api) newAvatarPost(r *http.Request, token string, image []byte) (func(n
 		return nil, nil
 	}
 
-	photoID, err := a.media.UploadPhoto(r.Context(), token, image)
+	photoID, err := a.uploadClaimed(r, token, image)
 	if err != nil {
 		return nil, err
 	}
@@ -117,7 +117,7 @@ func (a *api) newAvatarPost(r *http.Request, token string, image []byte) (func(n
 // post about it alone. The photo is changed already, so a failure is
 // only logged.
 func (a *api) keepInAvatarAlbum(r *http.Request, token, clubID string, image []byte) {
-	photoID, err := a.media.UploadPhoto(r.Context(), token, image)
+	photoID, err := a.uploadClaimed(r, token, image)
 	if err == nil {
 		err = a.albums.AddAvatarPhoto(r.Context(), token, clubID, photoID)
 	}

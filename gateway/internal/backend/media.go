@@ -143,14 +143,23 @@ func (m *Media) UploadPhoto(ctx context.Context, accessToken string, image []byt
 	return resp.GetPhotoId(), nil
 }
 
-// OwnPhotos returns which of photoIDs the caller has.
-func (m *Media) OwnPhotos(ctx context.Context, accessToken string, photoIDs []string) ([]string, error) {
-	resp, err := m.api.ListOwnPhotos(withToken(ctx, accessToken), &mediav1.ListOwnPhotosRequest{PhotoIds: photoIDs})
+// ClaimPhotos takes the caller's uploads for one post, all or none.
+func (m *Media) ClaimPhotos(ctx context.Context, accessToken string, photoIDs []string) (bool, error) {
+	resp, err := m.api.ClaimPhotos(withToken(ctx, accessToken), &mediav1.ClaimPhotosRequest{PhotoIds: photoIDs})
 	if err != nil {
-		return nil, errs.Wrap("m.api.ListOwnPhotos", fromStatus(err))
+		return false, errs.Wrap("m.api.ClaimPhotos", fromStatus(err))
 	}
 
-	return resp.GetPhotoIds(), nil
+	return resp.GetClaimed(), nil
+}
+
+// ReleasePhotos gives claimed uploads of the caller back.
+func (m *Media) ReleasePhotos(ctx context.Context, accessToken string, photoIDs []string) error {
+	if _, err := m.api.ReleasePhotos(withToken(ctx, accessToken), &mediav1.ReleasePhotosRequest{PhotoIds: photoIDs}); err != nil {
+		return errs.Wrap("m.api.ReleasePhotos", fromStatus(err))
+	}
+
+	return nil
 }
 
 // Photo returns the JPEG of a photo, small (up to 640px) or large (1280px).

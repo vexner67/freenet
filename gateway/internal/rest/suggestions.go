@@ -87,13 +87,14 @@ func (a *api) suggestClubPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
 	s, err := a.posts.Suggest(r.Context(), token, c.Club.ID, req.Text, req.Photos)
 	if err != nil {
+		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
 		return
 	}

@@ -240,13 +240,13 @@ func (a *api) createTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	mentions, err := a.mentioned(r, token, req.Text)
-	if err != nil {
+	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
@@ -255,6 +255,7 @@ func (a *api) createTopic(w http.ResponseWriter, r *http.Request) {
 		ClubID: c.Club.ID, Title: req.Title, Text: req.Text, PhotoIDs: req.Photos, FromWall: req.FromClub, Mentions: mentions,
 	})
 	if err != nil {
+		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
 		return
 	}
@@ -444,13 +445,13 @@ func (a *api) createTopicMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	mentions, err := a.mentioned(r, token, req.Text)
-	if err != nil {
+	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
@@ -459,6 +460,7 @@ func (a *api) createTopicMessage(w http.ResponseWriter, r *http.Request) {
 		Text: req.Text, PhotoIDs: req.Photos, FromWall: req.FromClub, Mentions: mentions,
 	})
 	if err != nil {
+		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
 		return
 	}

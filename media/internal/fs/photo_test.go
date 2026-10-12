@@ -6,7 +6,8 @@ import (
 	iofs "io/fs"
 	"os"
 	"path/filepath"
-	"slices"
+	"sync"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -54,12 +55,8 @@ func TestPhotoStore(t *testing.T) {
 				t.Fatalf("Load small = %q, %v", data, err)
 			}
 
-			found, err := store.Existing(ctx, ann, []uuid.UUID{first, uuid.New(), second})
-			if err != nil || len(found) != 2 {
-				t.Fatalf("Existing = %v, %v", found, err)
-			}
-			if found, _ = store.Existing(ctx, bob, []uuid.UUID{first}); len(found) != 0 {
-				t.Fatalf("bob has ann's photo: %v", found)
+			if _, err = store.Load(ctx, bob, first, photo.Large); !errors.Is(err, photo.ErrNotFound) {
+				t.Fatalf("bob has ann's photo: %v", err)
 			}
 
 			if err = store.Delete(ctx, ann, []uuid.UUID{first, uuid.New()}); err != nil {
@@ -74,6 +71,124 @@ func TestPhotoStore(t *testing.T) {
 
 			if _, err = store.Load(ctx, ann, second, "../../etc/passwd"); !errors.Is(err, photo.ErrNotFound) {
 				t.Fatalf("a made-up size must not reach the disk: %v", err)
+			}
+		})
+	}
+}
+
+// TestPhotoStore_Claim: an upload goes to one post, the first to ask.
+func TestPhotoStore_Claim(t *testing.T) {
+	t.Parallel()
+
+	for name, store := range photoStores(t) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ann, bob := uuid.New(), uuid.New()
+			images := photo.Images{Large: []byte("L"), Small: []byte("S")}
+			upload, posted := mustV7(t), mustV7(t)
+
+			for _, id := range []uuid.UUID{upload, posted} {
+				if err := store.Save(ctx, ann, id, images); err != nil {
+					t.Fatal(err)
+				}
+			}
+			if err := store.Publish(ctx, ann, []uuid.UUID{posted}); err != nil {
+				t.Fatal(err)
+			}
+
+			claim := func(owner, id uuid.UUID) bool {
+				t.Helper()
+
+				taken, err := store.Claim(ctx, owner, id)
+				if err != nil {
+					t.Fatalf("Claim: %v", err)
+				}
+
+				return taken
+			}
+
+			if claim(bob, upload) {
+				t.Fatal("bob claimed ann's upload")
+			}
+			if claim(ann, uuid.New()) {
+				t.Fatal("a photo that is not there was claimed")
+			}
+			if claim(ann, posted) {
+				t.Fatal("a published photo, which a post shows already, was claimed")
+			}
+			if !claim(ann, upload) {
+				t.Fatal("ann's upload is hers to post")
+			}
+			if claim(ann, upload) {
+				t.Fatal("a photo was claimed twice")
+			}
+			if _, err := store.Load(ctx, ann, upload, photo.Small); err != nil {
+				t.Fatalf("a claimed photo is shown: %v", err)
+			}
+
+			// The post was refused: the photo waits for the next attempt.
+			for range 2 { // released already is fine
+				if err := store.Release(ctx, ann, upload); err != nil {
+					t.Fatalf("Release: %v", err)
+				}
+			}
+			if err := store.Release(ctx, ann, uuid.New()); err != nil {
+				t.Fatalf("Release of a missing photo: %v", err)
+			}
+			if !claim(ann, upload) {
+				t.Fatal("a released photo is claimed again")
+			}
+
+			// Published, it is claimed for good, released or not.
+			if err := store.Publish(ctx, ann, []uuid.UUID{upload}); err != nil {
+				t.Fatal(err)
+			}
+			if err := store.Release(ctx, ann, upload); err != nil {
+				t.Fatal(err)
+			}
+			if claim(ann, upload) {
+				t.Fatal("a published photo was claimed after a release")
+			}
+			if data, err := store.Load(ctx, ann, upload, photo.Large); err != nil || string(data) != "L" {
+				t.Fatalf("the published photo = %q, %v", data, err)
+			}
+		})
+	}
+}
+
+// TestPhotoStore_ClaimOnce: of claims made at once one wins.
+func TestPhotoStore_ClaimOnce(t *testing.T) {
+	t.Parallel()
+
+	for name, store := range photoStores(t) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ann, upload := uuid.New(), mustV7(t)
+			if err := store.Save(ctx, ann, upload, photo.Images{Large: []byte("L"), Small: []byte("S")}); err != nil {
+				t.Fatal(err)
+			}
+
+			var (
+				wg    sync.WaitGroup
+				taken atomic.Int32
+			)
+			for range 8 {
+				wg.Go(func() {
+					if ok, err := store.Claim(ctx, ann, upload); err != nil {
+						t.Errorf("Claim: %v", err)
+					} else if ok {
+						taken.Add(1)
+					}
+				})
+			}
+			wg.Wait()
+
+			if n := taken.Load(); n != 1 {
+				t.Fatalf("%d claims took the photo, want one", n)
 			}
 		})
 	}
@@ -173,8 +288,10 @@ func TestPhotoStore_DeleteAll(t *testing.T) {
 				}
 			}
 
-			if found, err := store.Existing(ctx, ann, []uuid.UUID{annsPhoto, annsUpload}); err != nil || len(found) != 0 {
-				t.Fatalf("ann's photos after DeleteAll, published or not: %v, %v", found, err)
+			for _, id := range []uuid.UUID{annsPhoto, annsUpload} {
+				if _, err := store.Load(ctx, ann, id, photo.Small); !errors.Is(err, photo.ErrNotFound) {
+					t.Fatalf("ann's photo after DeleteAll, published or not: %v", err)
+				}
 			}
 			if _, err := store.Load(ctx, bob, bobsPhoto, photo.Small); err != nil {
 				t.Fatalf("bob's photo after ann's DeleteAll: %v", err)
@@ -214,8 +331,8 @@ func TestPhotoStore_Unpublished(t *testing.T) {
 			if data, err := store.Load(ctx, ann, published, photo.Large); err != nil || string(data) != "L" {
 				t.Fatalf("published photo = %q, %v", data, err)
 			}
-			if found, err := store.Existing(ctx, ann, []uuid.UUID{published, upload}); err != nil || len(found) != 2 {
-				t.Fatalf("Existing, published or not = %v, %v", found, err)
+			if _, err := store.Load(ctx, ann, upload, photo.Large); err != nil {
+				t.Fatalf("bob published ann's upload away: %v", err)
 			}
 
 			if n, err := store.Retire(ctx, time.Now().Add(-time.Hour)); err != nil || n != 0 {
@@ -240,8 +357,8 @@ func TestPhotoStore_Unpublished(t *testing.T) {
 				if _, err := store.Load(ctx, p.owner, p.id, photo.Small); !errors.Is(err, photo.ErrNotFound) {
 					t.Fatalf("an old upload stays: %v", err)
 				}
-				if found, err := store.Existing(ctx, p.owner, []uuid.UUID{p.id}); err != nil || len(found) != 0 {
-					t.Fatalf("an old upload still exists for its owner: %v, %v", found, err)
+				if taken, err := store.Claim(ctx, p.owner, p.id); err != nil || taken {
+					t.Fatalf("an old upload is still its owner's to post: %v, %v", taken, err)
 				}
 			}
 			if _, err := store.Load(ctx, ann, published, photo.Small); err != nil {
@@ -363,12 +480,16 @@ func TestPhotoStore_DeleteExcept(t *testing.T) {
 			if err := store.DeleteExcept(ctx, club, []uuid.UUID{left, right}); err != nil {
 				t.Fatalf("DeleteExcept: %v", err)
 			}
-			found, err := store.Existing(ctx, club, []uuid.UUID{left, right, old, upload})
-			if err != nil || len(found) != 3 || slices.Contains(found, old) {
-				t.Fatalf("after DeleteExcept = %v, %v; the kept two and the upload", found, err)
+			for _, id := range []uuid.UUID{left, right, upload} {
+				if _, err := store.Load(ctx, club, id, photo.Small); err != nil {
+					t.Fatalf("the kept two and the upload stay: %v", err)
+				}
+			}
+			if _, err := store.Load(ctx, club, old, photo.Small); !errors.Is(err, photo.ErrNotFound) {
+				t.Fatalf("the photo not kept: %v", err)
 			}
 
-			if err = store.DeleteExcept(ctx, uuid.New(), nil); err != nil {
+			if err := store.DeleteExcept(ctx, uuid.New(), nil); err != nil {
 				t.Fatalf("an owner without photos: %v", err)
 			}
 		})
