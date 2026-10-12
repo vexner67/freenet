@@ -251,6 +251,7 @@ func toMessage(pm *messagev1.Message) model.Message {
 			CreatedAt: f.GetCreatedAt().AsTime(),
 
 			SharedPhotoID: f.GetPhotoId(),
+			Depth:         int(f.GetDepth()),
 		})
 	}
 

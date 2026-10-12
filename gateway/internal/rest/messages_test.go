@@ -195,6 +195,36 @@ func TestSendMessage(t *testing.T) {
 		}
 	})
 
+	t.Run("forwarding a forward", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"forward":["m1","under:m2","gone","under:m3","m4"]}`, "Authorization", "Bearer tok")
+		got := decode[struct {
+			ForwardedCount int `json:"forwardedCount"`
+			Forwarded      []struct {
+				Depth int    `json:"depth"`
+				Text  string `json:"text"`
+			} `json:"forwarded"`
+		}](t, w)
+
+		// What a message carried on follows it one level deeper, and goes
+		// with it when its author's page is gone.
+		if w.Code != http.StatusCreated || got.ForwardedCount != 5 || len(got.Forwarded) != 3 {
+			t.Fatalf("%d %s", w.Code, w.Body)
+		}
+		for i, want := range []struct {
+			depth int
+			text  string
+		}{{0, "из m1"}, {1, "из under:m2"}, {0, "из m4"}} {
+			if f := got.Forwarded[i]; f.Depth != want.depth || f.Text != want.text {
+				t.Fatalf("forwarded[%d] = %+v, want %+v", i, f, want)
+			}
+		}
+	})
+
 	t.Run("with a shared photo of an album", func(t *testing.T) {
 		t.Parallel()
 

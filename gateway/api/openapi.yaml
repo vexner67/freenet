@@ -5271,7 +5271,7 @@ components:
         forwardedCount: { type: integer, description: "How many messages it carries on from other dialogs" }
         forwarded:
           type: array
-          description: The messages it carries on, oldest first, without those whose authors' pages are gone; absent in the list of dialogs, in a search and without any
+          description: The messages it carries on, oldest first, as a tree written parent first (depth), without those whose authors' pages are gone and what they carried on; absent in the list of dialogs, in a search and without any
           items: { $ref: "#/components/schemas/ForwardedMessage" }
         deleted:
           type: boolean
@@ -5279,9 +5279,10 @@ components:
 
     ForwardedMessage:
       type: object
-      description: A message carried on from another dialog, a copy of what its author wrote then
-      required: [author, text, photos, createdAt, post]
+      description: A message carried on from another dialog, a copy of what its author wrote then; one that carried on others itself is followed by them, one level deeper, and may say nothing of its own
+      required: [depth, author, text, photos, createdAt, post]
       properties:
+        depth: { type: integer, description: "How deep it is carried: 0 for a message forwarded itself, 1 for one that message carried on, and so on" }
         author: { $ref: "#/components/schemas/Author" }
         text: { type: string }
         photos:

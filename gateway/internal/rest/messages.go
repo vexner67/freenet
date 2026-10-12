@@ -62,8 +62,10 @@ type messageJSON struct {
 }
 
 // forwardedJSON is a message carried on from another dialog, as its
-// author wrote it then.
+// author wrote it then. Depth nests them: a message follows the one that
+// carried it on, one level deeper.
 type forwardedJSON struct {
+	Depth     int         `json:"depth"`
 	Author    authorJSON  `json:"author"`
 	Text      string      `json:"text"`
 	Photos    []photoJSON `json:"photos"`
@@ -462,7 +464,8 @@ func (a *api) checkSharedPost(r *http.Request, token, postID string) error {
 // showAttached fills in what messages show besides their own words: the
 // posts shared in them and the messages they carry on, with their authors
 // and the posts shared in those. A forwarded message whose author's page
-// is gone is left out, as what they wrote is everywhere.
+// is gone is left out, as what they wrote is everywhere, with what it
+// carried on.
 func (a *api) showAttached(r *http.Request, messages []messageJSON) error {
 	var posts, people []string
 	for _, m := range messages {
@@ -509,13 +512,23 @@ func (a *api) showAttached(r *http.Request, messages []messageJSON) error {
 		}
 		m.SharedPhoto = sharedPhoto(m.AlbumPhoto)
 
+		// gone is the depth of a message left out: those under it go too.
+		gone := -1
 		for _, f := range m.carried {
-			author, ok := authors[f.SenderID]
-			if !ok {
+			if gone >= 0 && f.Depth > gone {
 				continue
 			}
 
+			author, ok := authors[f.SenderID]
+			if !ok {
+				gone = f.Depth
+				continue
+			}
+
+			gone = -1
+
 			fj := forwardedJSON{
+				Depth:     f.Depth,
 				Author:    toAuthorJSON(author),
 				Text:      f.Text,
 				Photos:    toPhotosJSON(f.SenderID, f.PhotoIDs),
