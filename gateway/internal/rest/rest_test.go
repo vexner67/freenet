@@ -406,6 +406,16 @@ func (f *fakeUsers) UpdateInterface(_ context.Context, token string, ui model.In
 	return u, nil
 }
 
+func (f *fakeUsers) UpdateNickname(_ context.Context, token, nickname string) (model.User, error) {
+	f.token = token
+	if f.err != nil {
+		return model.User{}, f.err
+	}
+	f.profile.Nickname = nickname
+
+	return f.user(), nil
+}
+
 func (f *fakeUsers) UpdateStatus(_ context.Context, token, status string) (model.User, error) {
 	f.token = token
 	if f.err != nil {
