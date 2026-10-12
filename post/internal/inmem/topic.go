@@ -26,6 +26,8 @@ type TopicRepository struct {
 	likes map[uuid.UUID]map[uuid.UUID]time.Time
 	// heldLikes are the hearts of deleted pages.
 	heldLikes heldLikes
+	// hidden are the deleted pages themselves.
+	hidden hiddenUsers
 }
 
 func NewTopicRepository() *TopicRepository {
@@ -34,6 +36,7 @@ func NewTopicRepository() *TopicRepository {
 		messages:  make(map[uuid.UUID]*post.TopicMessage),
 		likes:     make(map[uuid.UUID]map[uuid.UUID]time.Time),
 		heldLikes: make(heldLikes),
+		hidden:    make(hiddenUsers),
 	}
 }
 
@@ -68,7 +71,7 @@ func (r *TopicRepository) Get(ctx context.Context, id uuid.UUID) (*post.Topic, e
 		return nil, post.ErrTopicNotFound
 	}
 
-	return post.RestoreTopic(s), nil
+	return r.seenTopic(s), nil
 }
 
 func (r *TopicRepository) Update(ctx context.Context, t *post.Topic) error {
@@ -144,7 +147,7 @@ func (r *TopicRepository) List(ctx context.Context, clubID uuid.UUID, query stri
 		if len(out) == limit {
 			break
 		}
-		out = append(out, post.RestoreTopic(s))
+		out = append(out, r.seenTopic(s))
 	}
 
 	return out, nil
@@ -166,7 +169,7 @@ func (r *TopicRepository) Count(ctx context.Context, clubID uuid.UUID, query str
 func (r *TopicRepository) matching(clubID uuid.UUID, query string) []post.StoredTopic {
 	var found []post.StoredTopic
 	for _, s := range r.topics {
-		if s.ClubID == clubID && strings.Contains(strings.ToLower(s.Title.String()), strings.ToLower(query)) {
+		if s.ClubID == clubID && strings.Contains(strings.ToLower(s.Title.String()), strings.ToLower(query)) && !r.hidden.writes(s.AuthorID, s.FromWall) {
 			found = append(found, s)
 		}
 	}
@@ -385,7 +388,7 @@ func (m *TopicMessageRepository) List(ctx context.Context, topicID, after uuid.U
 
 	var found []*post.TopicMessage
 	for _, msg := range m.r.messages {
-		if msg.TopicID() == topicID && compareIDs(msg.ID(), after) > 0 {
+		if msg.TopicID() == topicID && compareIDs(msg.ID(), after) > 0 && !m.r.hidden.writes(msg.AuthorID(), msg.FromWall()) {
 			found = append(found, m.r.counted(msg))
 		}
 	}

@@ -120,8 +120,8 @@ const getPostQuery = `
 		created_at,
 		repost_of,
 		like_count,
-		comment_count,
-		repost_count,
+		comment_count - hidden_comments(id) AS comment_count,
+		repost_count - unseen_reposts(id) AS repost_count,
 		edited_at,
 		from_wall,
 		signed,
@@ -159,8 +159,8 @@ const getPostsQuery = `
 		created_at,
 		repost_of,
 		like_count,
-		comment_count,
-		repost_count,
+		comment_count - hidden_comments(id) AS comment_count,
+		repost_count - unseen_reposts(id) AS repost_count,
 		edited_at,
 		from_wall,
 		signed,
@@ -291,8 +291,8 @@ const getPinnedPostQuery = `
 		created_at,
 		repost_of,
 		like_count,
-		comment_count,
-		repost_count,
+		comment_count - hidden_comments(id) AS comment_count,
+		repost_count - unseen_reposts(id) AS repost_count,
 		edited_at,
 		from_wall,
 		signed,
@@ -330,8 +330,8 @@ const postsByWallSelect = `
 		created_at,
 		repost_of,
 		like_count,
-		comment_count,
-		repost_count,
+		comment_count - hidden_comments(id) AS comment_count,
+		repost_count - unseen_reposts(id) AS repost_count,
 		edited_at,
 		from_wall,
 		signed,
@@ -350,6 +350,7 @@ const postsByWallSelect = `
 		AND ($4 IN ('', 'archive') OR ($4 = 'owner') = (author_id = wall_id OR from_wall))
 		AND ($6::timestamptz IS NULL OR (created_at >= $6 AND created_at < $7))
 		AND (NOT $8 OR id IS DISTINCT FROM (SELECT post_id FROM pinned_posts WHERE wall_id = $1))
+		AND NOT post_hidden(wall_id, author_id, from_wall)
 `
 
 const postsByWallOrder = `
@@ -445,8 +446,8 @@ const listFeedQuery = `
 		created_at,
 		repost_of,
 		like_count,
-		comment_count,
-		repost_count,
+		comment_count - hidden_comments(id) AS comment_count,
+		repost_count - unseen_reposts(id) AS repost_count,
 		edited_at,
 		from_wall,
 		signed,
@@ -477,6 +478,7 @@ const listFeedQuery = `
 		AND NOT (author_id = ANY($5) AND NOT from_wall)
 		AND (NOT $6 OR author_id = wall_id OR from_wall)
 		AND NOT (wall_id = ANY($7))
+		AND NOT post_hidden(wall_id, author_id, from_wall)
 	ORDER BY id DESC
 	LIMIT $3
 `
@@ -494,8 +496,8 @@ const listGlobalFeedQuery = `
 		created_at,
 		repost_of,
 		like_count,
-		comment_count,
-		repost_count,
+		comment_count - hidden_comments(id) AS comment_count,
+		repost_count - unseen_reposts(id) AS repost_count,
 		edited_at,
 		from_wall,
 		signed,
@@ -514,6 +516,7 @@ const listGlobalFeedQuery = `
 		AND NOT (author_id = ANY($4) AND NOT from_wall)
 		AND (NOT $5 OR author_id = wall_id OR from_wall)
 		AND NOT (wall_id = ANY($6))
+		AND NOT post_hidden(wall_id, author_id, from_wall)
 	ORDER BY id DESC
 	LIMIT $2
 `
@@ -555,8 +558,8 @@ const listRepostsQuery = `
 		created_at,
 		repost_of,
 		like_count,
-		comment_count,
-		repost_count,
+		comment_count - hidden_comments(id) AS comment_count,
+		repost_count - unseen_reposts(id) AS repost_count,
 		edited_at,
 		from_wall,
 		signed,
@@ -572,6 +575,7 @@ const listRepostsQuery = `
 	WHERE repost_of = $1
 		AND id < $2
 		AND ($4 OR NOT archived)
+		AND ($4 OR NOT post_hidden(wall_id, author_id, from_wall))
 	ORDER BY id DESC
 	LIMIT $3
 `
@@ -607,6 +611,7 @@ const postsByWallCount = `
 		AND archived = ($2 = 'archive')
 		AND ($2 IN ('', 'archive') OR ($2 = 'owner') = (author_id = wall_id OR from_wall))
 		AND ($4::timestamptz IS NULL OR (created_at >= $4 AND created_at < $5))
+		AND NOT post_hidden(wall_id, author_id, from_wall)
 `
 
 // Counting what a search found is a statement of its own, as the search.

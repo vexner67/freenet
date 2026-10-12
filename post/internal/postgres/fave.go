@@ -55,6 +55,7 @@ const listFavePostsQuery = `
 	WHERE l.user_id = $1
 		AND (l.created_at, l.post_id) < ($2, $3)
 		AND NOT p.archived
+		AND NOT post_hidden(p.wall_id, p.author_id, p.from_wall)
 	ORDER BY l.created_at DESC, l.post_id DESC
 	LIMIT $4
 `
@@ -65,13 +66,29 @@ func (r *LikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *s
 
 // The likes of a person are counted as they come and go, by the triggers
 // of the tables of likes: fave_counts has no row for who never liked.
-// Unlike the lists, the numbers count what is in the archive too.
+// Unlike the lists, the numbers count what is in the archive too, but
+// not what the pages deleted since wrote: that is taken off as the number
+// is read, starting from the few deleted pages.
 const countFavePostsQuery = `
 	SELECT COALESCE((
 		SELECT posts
 		FROM fave_counts
 		WHERE user_id = $1
-	), 0)
+	), 0) - (
+		SELECT count(*)
+		FROM post_likes l
+		WHERE l.user_id = $1
+			AND l.post_id IN (
+				SELECT p.id
+				FROM hidden_users h
+				JOIN posts p ON p.author_id = h.user_id
+				WHERE NOT p.from_wall
+				UNION
+				SELECT p.id
+				FROM hidden_users h
+				JOIN posts p ON p.wall_id = h.user_id
+			)
+	)
 `
 
 func (r *LikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
@@ -95,6 +112,8 @@ const listFaveCommentsQuery = `
 	WHERE l.user_id = $1
 		AND (l.created_at, l.comment_id) < ($2, $3)
 		AND NOT p.archived
+		AND NOT post_hidden(p.wall_id, p.author_id, p.from_wall)
+		AND NOT (user_hidden(c.author_id) AND NOT c.from_wall)
 	ORDER BY l.created_at DESC, l.comment_id DESC
 	LIMIT $4
 `
@@ -108,7 +127,28 @@ const countFaveCommentsQuery = `
 		SELECT comments
 		FROM fave_counts
 		WHERE user_id = $1
-	), 0)
+	), 0) - (
+		SELECT count(*)
+		FROM comment_likes l
+		WHERE l.user_id = $1
+			AND l.comment_id IN (
+				SELECT c.id
+				FROM hidden_users h
+				JOIN comments c ON c.author_id = h.user_id
+				WHERE NOT c.from_wall
+				UNION
+				SELECT c.id
+				FROM hidden_users h
+				JOIN posts p ON p.author_id = h.user_id
+				JOIN comments c ON c.post_id = p.id
+				WHERE NOT p.from_wall
+				UNION
+				SELECT c.id
+				FROM hidden_users h
+				JOIN posts p ON p.wall_id = h.user_id
+				JOIN comments c ON c.post_id = p.id
+			)
+	)
 `
 
 func (r *CommentLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
@@ -123,12 +163,16 @@ func (r *CommentLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UU
 // listFavePhotosQuery reads album_photo_likes_faves_idx.
 const listFavePhotosQuery = `
 	SELECT
-		photo_id,
-		created_at
-	FROM album_photo_likes
-	WHERE user_id = $1
-		AND (created_at, photo_id) < ($2, $3)
-	ORDER BY created_at DESC, photo_id DESC
+		l.photo_id,
+		l.created_at
+	FROM album_photo_likes l
+	JOIN album_photos p ON p.id = l.photo_id
+	JOIN albums a ON a.id = p.album_id
+	WHERE l.user_id = $1
+		AND (l.created_at, l.photo_id) < ($2, $3)
+		AND NOT user_hidden(p.author_id)
+		AND NOT user_hidden(a.owner_id)
+	ORDER BY l.created_at DESC, l.photo_id DESC
 	LIMIT $4
 `
 
@@ -141,7 +185,21 @@ const countFavePhotosQuery = `
 		SELECT photos
 		FROM fave_counts
 		WHERE user_id = $1
-	), 0)
+	), 0) - (
+		SELECT count(*)
+		FROM album_photo_likes l
+		WHERE l.user_id = $1
+			AND l.photo_id IN (
+				SELECT p.id
+				FROM hidden_users h
+				JOIN album_photos p ON p.author_id = h.user_id
+				UNION
+				SELECT p.id
+				FROM hidden_users h
+				JOIN albums a ON a.owner_id = h.user_id
+				JOIN album_photos p ON p.album_id = a.id
+			)
+	)
 `
 
 func (l *AlbumPhotoLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
@@ -161,7 +219,7 @@ const getAlbumPhotosQuery = `
 		description,
 		created_at,
 		like_count,
-		comment_count,
+		comment_count - hidden_photo_comments(id) AS comment_count,
 		nsfw
 	FROM album_photos
 	WHERE id = ANY($1)
@@ -189,8 +247,8 @@ const listPostsByAuthorQuery = `
 		created_at,
 		repost_of,
 		like_count,
-		comment_count,
-		repost_count,
+		comment_count - hidden_comments(id) AS comment_count,
+		repost_count - unseen_reposts(id) AS repost_count,
 		edited_at,
 		from_wall,
 		signed,
@@ -207,6 +265,7 @@ const listPostsByAuthorQuery = `
 		AND id < $2
 		AND (NOT archived OR wall_id = $1)
 		AND NOT suggested
+		AND NOT user_hidden(wall_id)
 	ORDER BY id DESC
 	LIMIT $3
 `
@@ -230,6 +289,7 @@ const countPostsByAuthorQuery = `
 	WHERE author_id = $1
 		AND (NOT archived OR wall_id = $1)
 		AND NOT suggested
+		AND NOT user_hidden(wall_id)
 `
 
 func (r *PostRepository) CountByAuthor(ctx context.Context, authorID uuid.UUID) (int, error) {

@@ -76,7 +76,7 @@ const getTopicQuery = `
 		restricted,
 		created_at,
 		updated_at,
-		message_count
+		message_count - hidden_topic_messages(id) AS message_count
 	FROM topics
 	WHERE id = $1
 `
@@ -180,10 +180,11 @@ const listTopicsQuery = `
 		restricted,
 		created_at,
 		updated_at,
-		message_count
+		message_count - hidden_topic_messages(id) AS message_count
 	FROM topics
 	WHERE club_id = $1
 		AND ($2 = '' OR strpos(lower(title), lower($2)) > 0)
+		AND NOT (user_hidden(author_id) AND NOT from_wall)
 		AND ($3::boolean IS NULL OR (pinned, updated_at, id) < ($3::boolean, $4::timestamptz, $5::uuid))
 	ORDER BY pinned DESC, updated_at DESC, id DESC
 	LIMIT $6
@@ -226,6 +227,7 @@ const countTopicsQuery = `
 	FROM topics
 	WHERE club_id = $1
 		AND ($2 = '' OR strpos(lower(title), lower($2)) > 0)
+		AND NOT (user_hidden(author_id) AND NOT from_wall)
 `
 
 func (r *TopicRepository) Count(ctx context.Context, clubID uuid.UUID, query string) (int, error) {
@@ -468,6 +470,7 @@ const listTopicMessagesQuery = `
 	FROM topic_messages
 	WHERE topic_id = $1
 		AND id > $2
+		AND NOT (user_hidden(author_id) AND NOT from_wall)
 	ORDER BY id
 	LIMIT $3
 `

@@ -459,7 +459,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			photoLikes:    albums.PhotoLikes(),
 			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 			notes: notes, noteComments: notes.Comments(),
-			held:    []service.ReactionHolder{store.Holds(), topics, albums},
+			held:    []service.ReactionHolder{store.Holds(), topics, albums, notes},
 			sources: store.Sources(),
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()

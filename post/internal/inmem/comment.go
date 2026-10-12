@@ -122,7 +122,7 @@ func (r *CommentRepository) ListByPost(ctx context.Context, postID, after uuid.U
 	var found []*post.Comment
 	for _, c := range r.s.comments {
 		id := c.ID()
-		if c.PostID() == postID && bytes.Compare(id[:], after[:]) > 0 {
+		if c.PostID() == postID && bytes.Compare(id[:], after[:]) > 0 && !r.s.commentHidden(c) {
 			found = append(found, c)
 		}
 	}

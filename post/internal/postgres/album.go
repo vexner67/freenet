@@ -71,7 +71,7 @@ const getAlbumQuery = `
 		description,
 		created_at,
 		updated_at,
-		photo_count,
+		photo_count - hidden_album_photos(id) AS photo_count,
 		kind,
 		cover_photo_id
 	FROM albums
@@ -98,7 +98,7 @@ const systemAlbumQuery = `
 		description,
 		created_at,
 		updated_at,
-		photo_count,
+		photo_count - hidden_album_photos(id) AS photo_count,
 		kind,
 		cover_photo_id
 	FROM albums
@@ -192,7 +192,7 @@ const deleteAlbumQuery = `
 		description,
 		created_at,
 		like_count,
-		comment_count,
+		comment_count - hidden_photo_comments(id) AS comment_count,
 		nsfw
 	FROM album_photos
 	WHERE album_id IN (SELECT id FROM gone)
@@ -225,7 +225,7 @@ const listAlbumsQuery = `
 		description,
 		created_at,
 		updated_at,
-		photo_count,
+		photo_count - hidden_album_photos(id) AS photo_count,
 		kind,
 		cover_photo_id
 	FROM albums
@@ -411,7 +411,7 @@ const getAlbumPhotoQuery = `
 		description,
 		created_at,
 		like_count,
-		comment_count,
+		comment_count - hidden_photo_comments(id) AS comment_count,
 		nsfw
 	FROM album_photos
 	WHERE id = $1
@@ -526,11 +526,12 @@ const listAlbumPhotosQuery = `
 		description,
 		created_at,
 		like_count,
-		comment_count,
+		comment_count - hidden_photo_comments(id) AS comment_count,
 		nsfw
 	FROM album_photos
 	WHERE album_id = $1
 		AND id > $2
+		AND NOT user_hidden(author_id)
 	ORDER BY id
 	LIMIT $3
 `
@@ -553,11 +554,12 @@ const albumCoversQuery = `
 		p.description,
 		p.created_at,
 		p.like_count,
-		p.comment_count,
+		p.comment_count - hidden_photo_comments(p.id) AS comment_count,
 		p.nsfw
 	FROM album_photos p
 	JOIN albums a ON a.id = p.album_id
 	WHERE p.album_id = ANY($1)
+		AND NOT user_hidden(p.author_id)
 	ORDER BY p.album_id, (p.id IS NOT DISTINCT FROM a.cover_photo_id) DESC, p.id
 `
 
