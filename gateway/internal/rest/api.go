@@ -360,6 +360,21 @@ type Gifts interface {
 	Delete(ctx context.Context, accessToken, giftID string) error
 }
 
+// Votes are openvk's "голоса", which the user service keeps: vouchers give
+// them, gifts cost them and people hand them to each other.
+type Votes interface {
+	// Transfer hands votes of the caller to userID and returns what the
+	// caller has left.
+	Transfer(ctx context.Context, accessToken, userID string, votes int64) (int64, error)
+	// Redeem gives the caller what the voucher carries.
+	Redeem(ctx context.Context, accessToken, token string) (model.Redeemed, error)
+	// CreateVoucher, ListVouchers and DeleteVoucher are the
+	// administrators'.
+	CreateVoucher(ctx context.Context, accessToken string, d model.VoucherDraft) (model.Voucher, error)
+	ListVouchers(ctx context.Context, accessToken, cursor string, limit int) (model.VoucherPage, error)
+	DeleteVoucher(ctx context.Context, accessToken, voucherID string) error
+}
+
 // Backends are the services the API is made of.
 type Backends struct {
 	Auth          Auth
@@ -375,6 +390,7 @@ type Backends struct {
 	Notes         Notes
 	Faves         Faves
 	Gifts         Gifts
+	Votes         Votes
 }
 
 type api struct {
@@ -391,6 +407,7 @@ type api struct {
 	notes             Notes
 	faves             Faves
 	gifts             Gifts
+	votes             Votes
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -597,6 +614,11 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/users/{nickname}/gifts", a.listGifts)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/gifts", a.sendGift)
 	mux.HandleFunc("DELETE /api/v1/gifts/{id}", a.deleteGift)
+	mux.HandleFunc("POST /api/v1/me/vouchers", a.redeemVoucher)
+	mux.HandleFunc("POST /api/v1/users/{nickname}/votes", a.transferVotes)
+	mux.HandleFunc("GET /api/v1/vouchers", a.listVouchers)
+	mux.HandleFunc("POST /api/v1/vouchers", a.createVoucher)
+	mux.HandleFunc("DELETE /api/v1/vouchers/{id}", a.deleteVoucher)
 
 	mux.HandleFunc("GET /api/v1/users/{nickname}/notes", a.listUserNotes)
 	mux.HandleFunc("POST /api/v1/me/notes", a.createNote)

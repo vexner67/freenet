@@ -10,6 +10,8 @@ import (
 type giftCollectionJSON struct {
 	ID    string   `json:"id"`
 	Gifts []string `json:"gifts"`
+	// Price is what a gift of the collection costs, in votes; 0 is free.
+	Price int64 `json:"price"`
 }
 
 type giftCatalogResponse struct {

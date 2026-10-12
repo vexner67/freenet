@@ -22,7 +22,7 @@ type fakeGifts struct {
 var giftTime = time.Date(2026, 10, 12, 9, 30, 0, 0, time.UTC)
 
 func (f *fakeGifts) Catalog(context.Context) ([]model.GiftCollection, error) {
-	return []model.GiftCollection{{ID: "flowers", Gifts: []string{"rose", "tulip"}}, {ID: "sweets", Gifts: []string{"cake"}}}, f.err
+	return []model.GiftCollection{{ID: "flowers", Gifts: []string{"rose", "tulip"}}, {ID: "sweets", Gifts: []string{"cake"}, Price: 2}}, f.err
 }
 
 func (f *fakeGifts) Send(_ context.Context, token, userID string, d model.GiftDraft) (model.Gift, error) {
@@ -66,11 +66,12 @@ func TestGiftCatalog(t *testing.T) {
 		Collections []struct {
 			ID    string   `json:"id"`
 			Gifts []string `json:"gifts"`
+			Price int64    `json:"price"`
 		} `json:"collections"`
 	}](t, w)
 
 	if w.Code != http.StatusOK || len(got.Collections) != 2 || got.Collections[0].ID != "flowers" || len(got.Collections[0].Gifts) != 2 ||
-		got.Collections[1].Gifts[0] != "cake" {
+		got.Collections[1].Gifts[0] != "cake" || got.Collections[0].Price != 0 || got.Collections[1].Price != 2 {
 		t.Fatalf("%d %+v", w.Code, got)
 	}
 }
@@ -162,6 +163,14 @@ func TestSendGift(t *testing.T) {
 	if w = h.do("POST", "/api/v1/users/nobody/gifts", `{"gift":"rose"}`, "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
 		t.Fatalf("to nobody: %d", w.Code)
 	}
+	// A gift the sender cannot pay for.
+	h.gifts.err = failure.New(failure.Conflict, "not enough votes")
+	w = h.do("POST", "/api/v1/users/bob/gifts", `{"gift":"cake"}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusConflict || decode[errorBody](t, w).Error.Message != "not enough votes" {
+		t.Fatalf("without votes: %d %s", w.Code, w.Body)
+	}
+	h.gifts.err = nil
+
 	if w = h.do("POST", "/api/v1/users/bob/gifts", `{"gift":"rose","price":1}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
 		t.Fatalf("an unknown field: %d", w.Code)
 	}

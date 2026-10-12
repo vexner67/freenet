@@ -3273,9 +3273,10 @@ paths:
       summary: The catalogue of gifts ("Выбрать подарок")
       description: |
         No token needed. The collections ("Коллекции") and the names of
-        their gifts, in the order they are shown. The catalogue is fixed and
-        every gift is free; the pictures are the site's, which knows a gift
-        by its name.
+        their gifts, in the order they are shown. The catalogue is fixed;
+        the gifts of a collection cost the sender its `price` in votes
+        ("голоса"), 0 for a free one. The pictures are the site's, which
+        knows a gift by its name.
       responses:
         "200":
           description: The catalogue
@@ -3289,9 +3290,10 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, gifts]
+                      required: [id, gifts, price]
                       properties:
                         id: { type: string, description: "The name of the collection, as `flowers`" }
+                        price: { type: integer, minimum: 0, description: "What each of its gifts costs the sender, in votes; 0 is free" }
                         gifts:
                           type: array
                           items: { type: string, description: "The name of a gift, as `rose`" }
@@ -3343,7 +3345,10 @@ paths:
         Needs a filled-in profile. The user hears about it (`gift`), unless
         it is you. A deleted page takes no gifts, and neither does a page
         that does not show itself to you or one with a blacklist between you
-        two, either way. You may send a gift to yourself. Limited per user.
+        two, either way. You may send a gift to yourself. A gift of a paid
+        collection takes its price from your votes (`votes` of GET
+        /api/v1/me): 409 `not enough votes` when you have fewer. Limited per
+        user.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -3373,7 +3378,191 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`not enough votes`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/vouchers:
+    post:
+      summary: Use a voucher ("Активировать ваучер")
+      description: |
+        A voucher gives the account that enters its serial number votes
+        ("голоса", which pay for gifts), rating (percent added to
+        `completeness` of the page) or both, once per account and to as
+        many accounts as its makers allowed. Whatever is wrong with the
+        voucher - there is none, it has run out, you have used it - the
+        answer is the same 409 `voucher is not valid`. Limited per user.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [code]
+              properties:
+                code: { type: string, description: "The serial number: 24 letters and digits, in any case, with dashes and spaces or without" }
+      responses:
+        "200":
+          description: What the voucher gave
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [votes, rating, balance]
+                properties:
+                  votes: { type: integer, description: The votes it gave }
+                  rating: { type: integer, description: The percent of rating it gave }
+                  balance: { type: integer, description: The votes you have now }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409":
+          description: "`voucher is not valid`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/users/{nickname}/votes:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Hand the user some of your votes ("Перевод голосов")
+      description: |
+        The user hears about it (`votes`). Not to yourself, not to a deleted
+        page and not across a blacklist, either way. Limited per user.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [votes]
+              properties:
+                votes: { type: integer, minimum: 1, maximum: 1000000 }
+      responses:
+        "200":
+          description: Handed over
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [votes]
+                properties:
+                  votes: { type: integer, description: The votes you have left }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "`this page is deleted` or `you cannot transfer votes to this user`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`not enough votes`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/vouchers:
+    get:
+      summary: The vouchers ("Ваучеры"), the newest first
+      description: |
+        Only for the administrators of the site (`admin` of GET /api/v1/me),
+        named by the ADMIN_EMAILS of the user service; 403 to anyone else.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [vouchers, nextCursor]
+                properties:
+                  vouchers:
+                    type: array
+                    items: { $ref: "#/components/schemas/Voucher" }
+                  nextCursor: { type: string, description: Empty on the last page }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    post:
+      summary: Make a voucher
+      description: Only for the administrators. A voucher gives votes, rating or both.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [usages]
+              properties:
+                code: { type: string, description: "The serial number, 24 letters and digits; left out or empty for a generated one" }
+                votes: { type: integer, minimum: 0, maximum: 1000000 }
+                rating: { type: integer, minimum: 0, maximum: 1000, description: Percent added to the page of whoever uses it }
+                usages: { type: integer, description: "How many accounts may use it: 1-1000000, or -1 for any number" }
+      responses:
+        "201":
+          description: The voucher
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Voucher" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "409":
+          description: "`voucher with this serial number already exists`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/vouchers/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Delete a voucher
+      description: Only for the administrators. Nobody else can use it; what it gave stays given. Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/v1/gifts/{id}:
     parameters:
@@ -5057,7 +5246,13 @@ components:
             backdrop: { $ref: "#/components/schemas/Backdrop" }
             completeness:
               type: integer
-              description: '"Заполненность страницы" in percent, as openvk weighs it without its rating: interests, the e-mail and the city of the contacts 20 each, Telegram and the status 15 each, 10 always'
+              description: '"Заполненность страницы" in percent, as openvk weighs it: interests, the e-mail and the city of the contacts 20 each, Telegram and the status 15 each, 10 always, and the rating vouchers gave on top, so it may pass 100'
+            votes:
+              type: integer
+              description: '"Баланс": the votes you have, told by GET /api/v1/me; vouchers and transfers give them, paid gifts and transfers take them'
+            admin:
+              type: boolean
+              description: You are an administrator of the site and make the vouchers
             unfilled:
               type: array
               items: { type: string, enum: [interests, email, telegram, status, city] }
@@ -5461,8 +5656,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, event_reminder, note_comment, gift]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; event_reminder: the actor, an event you are going to (surely or maybe), starts within a day — told once, and again if the event is moved; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it)"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, event_reminder, note_comment, gift, votes]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; event_reminder: the actor, an event you are going to (surely or maybe), starts within a day — told once, and again if the event is moved; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -5817,6 +6012,18 @@ components:
             - $ref: "#/components/schemas/Author"
             - type: "null"
           description: "Who sent it; null when you are not told (an anonymous gift) and when the page of the sender is deleted"
+
+    Voucher:
+      type: object
+      description: 'A voucher ("Ваучер"), as the administrators see it'
+      required: [id, code, votes, rating, usagesLeft, activations]
+      properties:
+        id: { type: string, format: uuid }
+        code: { type: string, description: "The serial number: 24 capital letters and digits" }
+        votes: { type: integer, description: The votes it gives }
+        rating: { type: integer, description: The percent of rating it gives }
+        usagesLeft: { type: integer, description: "How many more accounts may use it; -1 for any number, 0 when it has run out" }
+        activations: { type: integer, description: How many accounts have used it }
 
     NoteDraft:
       type: object

@@ -1,0 +1,191 @@
+package rest
+
+import (
+	"net/http"
+
+	"github.com/vexner67/freenet/gateway/internal/model"
+)
+
+type redeemVoucherRequest struct {
+	// Code is the serial number, as typed: in any case, with dashes or
+	// without.
+	Code string `json:"code"`
+}
+
+// redeemedResponse is what a voucher gave and the votes the caller has
+// now.
+type redeemedResponse struct {
+	Votes   int64 `json:"votes"`
+	Rating  int   `json:"rating"`
+	Balance int64 `json:"balance"`
+}
+
+type transferVotesRequest struct {
+	Votes int64 `json:"votes"`
+}
+
+// balanceResponse is the votes the caller has left.
+type balanceResponse struct {
+	Votes int64 `json:"votes"`
+}
+
+type createVoucherRequest struct {
+	// Code is the serial number; empty for a generated one.
+	Code   string `json:"code"`
+	Votes  int64  `json:"votes"`
+	Rating int    `json:"rating"`
+	// Usages is how many accounts may use it; -1 for any number.
+	Usages int `json:"usages"`
+}
+
+type voucherJSON struct {
+	ID     string `json:"id"`
+	Code   string `json:"code"`
+	Votes  int64  `json:"votes"`
+	Rating int    `json:"rating"`
+	// UsagesLeft is -1 for a voucher any number of accounts may use.
+	UsagesLeft  int `json:"usagesLeft"`
+	Activations int `json:"activations"`
+}
+
+type voucherPageResponse struct {
+	Vouchers   []voucherJSON `json:"vouchers"`
+	NextCursor string        `json:"nextCursor"`
+}
+
+func toVoucherJSON(v model.Voucher) voucherJSON {
+	return voucherJSON{
+		ID:          v.ID,
+		Code:        v.Token,
+		Votes:       v.Votes,
+		Rating:      v.Rating,
+		UsagesLeft:  v.UsagesLeft,
+		Activations: v.Activations,
+	}
+}
+
+// redeemVoucher is "Активировать ваучер": the caller gets what the voucher
+// carries, once.
+func (a *api) redeemVoucher(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req redeemVoucherRequest
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	redeemed, err := a.votes.Redeem(r.Context(), token, req.Code)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, redeemedResponse(redeemed))
+}
+
+// transferVotes is "Перевод голосов": the caller hands some of their votes
+// to a person. Whether that person takes them is the user service's to
+// say.
+func (a *api) transferVotes(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req transferVotesRequest
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	recipient, err := a.users.GetProfile(r.Context(), token, r.PathValue("nickname"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	left, err := a.votes.Transfer(r.Context(), token, recipient.ID, req.Votes)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, balanceResponse{Votes: left})
+}
+
+// listVouchers is "Ваучеры" of the administrators: every voucher, newest
+// first.
+func (a *api) listVouchers(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	limit, err := pageLimit(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	page, err := a.votes.ListVouchers(r.Context(), token, r.URL.Query().Get("cursor"), limit)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	resp := voucherPageResponse{Vouchers: make([]voucherJSON, 0, len(page.Vouchers)), NextCursor: page.NextCursor}
+	for _, v := range page.Vouchers {
+		resp.Vouchers = append(resp.Vouchers, toVoucherJSON(v))
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+func (a *api) createVoucher(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req createVoucherRequest
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	voucher, err := a.votes.CreateVoucher(r.Context(), token, model.VoucherDraft{
+		Token:  req.Code,
+		Votes:  req.Votes,
+		Rating: req.Rating,
+		Usages: req.Usages,
+	})
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusCreated, toVoucherJSON(voucher))
+}
+
+func (a *api) deleteVoucher(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.votes.DeleteVoucher(r.Context(), token, r.PathValue("id")); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}

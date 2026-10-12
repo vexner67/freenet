@@ -173,6 +173,10 @@ type User struct {
 	Completeness int
 	Unfilled     []string
 	Interface    Interface
+	// Votes is "Баланс": what the user has to pay for gifts with.
+	Votes int64
+	// Admin: the user makes the vouchers.
+	Admin bool
 }
 
 // Interface is how the site looks to its owner ("Интерфейс" of the
@@ -1093,10 +1097,12 @@ type NoteCommentPage struct {
 }
 
 // GiftCollection is a shelf of the catalogue of gifts ("Коллекции"): the
-// names of its gifts, in the order they are shown.
+// names of its gifts, in the order they are shown, and their price.
 type GiftCollection struct {
 	ID    string
 	Gifts []string
+	// Price is what each of them costs the sender, in votes; 0 for free.
+	Price int64
 }
 
 // GiftDraft is a gift to send: its name in the catalogue, the words with
@@ -1125,4 +1131,38 @@ type GiftPage struct {
 	Gifts      []Gift
 	NextCursor string
 	Total      int
+}
+
+// Redeemed is what a voucher gave the caller and the votes they have now.
+type Redeemed struct {
+	Votes   int64
+	Rating  int
+	Balance int64
+}
+
+// VoucherDraft is a voucher to make: Token empty for a generated serial
+// number, Usages -1 for any number of accounts.
+type VoucherDraft struct {
+	Token  string
+	Votes  int64
+	Rating int
+	Usages int
+}
+
+// Voucher is a voucher as the administrators see it: what it gives, how
+// many more accounts may use it (-1: any number) and how many have.
+type Voucher struct {
+	ID          string
+	Token       string
+	Votes       int64
+	Rating      int
+	UsagesLeft  int
+	Activations int
+}
+
+// VoucherPage is one screen of the vouchers, newest first; NextCursor is
+// empty on the last.
+type VoucherPage struct {
+	Vouchers   []Voucher
+	NextCursor string
 }
