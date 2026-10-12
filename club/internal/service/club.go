@@ -198,6 +198,7 @@ type ClubDeps struct {
 	Members  MemberRepository
 	Tx       TxManager
 	Notifier Notifier
+	Readers  Readers
 }
 
 type ClubService struct {
@@ -205,6 +206,7 @@ type ClubService struct {
 	members  MemberRepository
 	tx       TxManager
 	notifier Notifier
+	readers  Readers
 	now      func() time.Time
 }
 
@@ -214,6 +216,7 @@ func NewClubService(deps ClubDeps) *ClubService {
 		members:  deps.Members,
 		tx:       deps.Tx,
 		notifier: deps.Notifier,
+		readers:  deps.Readers,
 		now:      time.Now,
 	}
 }
@@ -226,11 +229,25 @@ func (s *ClubService) Create(ctx context.Context, ownerID uuid.UUID, name club.N
 		return View{}, errs.Wrap("club.New", err)
 	}
 
-	if err = s.clubs.Create(ctx, c, ownerID); err != nil {
-		return View{}, errs.Wrap("s.clubs.Create", err)
+	if err = s.found(ctx, c, ownerID); err != nil {
+		return View{}, errs.Wrap("s.found", err)
 	}
 
 	return s.view(ctx, ownerID, c.ID())
+}
+
+// found saves a new club with its owner, the first member the news are
+// told about.
+func (s *ClubService) found(ctx context.Context, c *club.Club, ownerID uuid.UUID) error {
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.clubs.Create(ctx, c, ownerID); err != nil {
+			return errs.Wrap("s.clubs.Create", err)
+		}
+
+		return errs.Wrap("s.readers.Joined", s.readers.Joined(ctx, c.ID(), ownerID))
+	})
+
+	return errs.Wrap("s.tx.WithinTx", err)
 }
 
 // CreateEvent makes an event with ownerID as its owner, who comes for
@@ -241,8 +258,8 @@ func (s *ClubService) CreateEvent(ctx context.Context, ownerID uuid.UUID, name c
 		return View{}, errs.Wrap("club.NewEvent", err)
 	}
 
-	if err = s.clubs.Create(ctx, c, ownerID); err != nil {
-		return View{}, errs.Wrap("s.clubs.Create", err)
+	if err = s.found(ctx, c, ownerID); err != nil {
+		return View{}, errs.Wrap("s.found", err)
 	}
 
 	return s.view(ctx, ownerID, c.ID())
@@ -354,8 +371,15 @@ func (s *ClubService) Join(ctx context.Context, userID, clubID uuid.UUID, maybe 
 		return View{}, errs.Wrap("s.clubs.Get", err)
 	}
 
-	if err = s.members.Join(ctx, clubID, userID, c.JoinsAsMaybe(maybe, s.now())); err != nil {
-		return View{}, errs.Wrap("s.members.Join", err)
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.members.Join(ctx, clubID, userID, c.JoinsAsMaybe(maybe, s.now())); err != nil {
+			return errs.Wrap("s.members.Join", err)
+		}
+
+		return errs.Wrap("s.readers.Joined", s.readers.Joined(ctx, clubID, userID))
+	})
+	if err != nil {
+		return View{}, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return s.view(ctx, userID, clubID)
@@ -373,8 +397,15 @@ func (s *ClubService) Leave(ctx context.Context, userID, clubID uuid.UUID) (View
 		return View{}, errs.Wrap("club.CheckLeave", err)
 	}
 
-	if err = s.members.Leave(ctx, clubID, userID); err != nil {
-		return View{}, errs.Wrap("s.members.Leave", err)
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.members.Leave(ctx, clubID, userID); err != nil {
+			return errs.Wrap("s.members.Leave", err)
+		}
+
+		return errs.Wrap("s.readers.Left", s.readers.Left(ctx, clubID, userID))
+	})
+	if err != nil {
+		return View{}, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return s.view(ctx, userID, clubID)

@@ -14,6 +14,7 @@ import (
 	clubgrpc "github.com/vexner67/freenet/club/internal/grpc"
 	"github.com/vexner67/freenet/club/internal/inmem"
 	"github.com/vexner67/freenet/club/internal/notifyclient"
+	"github.com/vexner67/freenet/club/internal/postclient"
 	"github.com/vexner67/freenet/club/internal/postgres"
 	"github.com/vexner67/freenet/club/internal/service"
 	"github.com/vexner67/freenet/club/migrations"
@@ -28,6 +29,7 @@ import (
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/ratelimit"
 	"github.com/vexner67/freenet/pkg/reqid"
+	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
@@ -43,13 +45,15 @@ type App struct {
 	logger  *slog.Logger
 	pool    *pgxpool.Pool
 	limiter ratelimit.Store
-	// notifyConn, queue and relay tell notification about appointments.
-	notifyConn *grpc.ClientConn
-	queue      *outbox.Postgres
-	relay      *outbox.Relay
-	server     *grpcserver.Server
-	metrics    *metrics.Server
-	addr       string
+	// conns lead to the services told through the outbox — notification
+	// about appointments, post about memberships — one stream and one
+	// relay each.
+	conns   []*grpc.ClientConn
+	queues  []*outbox.Postgres
+	relays  []*outbox.Relay
+	server  *grpcserver.Server
+	metrics *metrics.Server
+	addr    string
 	// reminder tells the members of events that they start soon.
 	reminder    *service.ReminderService
 	remindEvery time.Duration
@@ -86,9 +90,14 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newStorage", err)
 	}
 
-	notifier, err := a.newNotifier(cfg, store.outbox, reg)
+	notifier, err := a.newNotifier(cfg, store.newQueue, reg)
 	if err != nil {
 		return errs.Wrap("a.newNotifier", err)
+	}
+
+	readers, err := a.newReaders(cfg, store.newQueue, reg)
+	if err != nil {
+		return errs.Wrap("a.newReaders", err)
 	}
 
 	limiter, err := a.newLimiter(cfg)
@@ -128,7 +137,7 @@ func (a *App) build(cfg config.Config) error {
 	}
 
 	clubv1.RegisterClubServiceServer(a.server.Registrar(), clubgrpc.NewClubHandler(service.NewClubService(service.ClubDeps{
-		Clubs: store.clubs, Members: store.members, Tx: store.tx, Notifier: notifier,
+		Clubs: store.clubs, Members: store.members, Tx: store.tx, Notifier: notifier, Readers: readers,
 	})))
 
 	a.reminder = service.NewReminderService(store.reminders, store.tx, notifier, cfg.EventReminderAhead, time.Now)
@@ -140,7 +149,7 @@ func (a *App) build(cfg config.Config) error {
 		a.metrics = metrics.NewServer(fmt.Sprintf(":%d", cfg.MetricsPort), reg, a.logger)
 	}
 
-	a.logger.Info("club configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(), "notifications", cfg.NotificationServiceAddr != "")
+	a.logger.Info("club configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(), "notifications", cfg.NotificationServiceAddr != "", "news", cfg.PostServiceAddr != "")
 
 	return nil
 }
@@ -200,32 +209,68 @@ func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
 // that tells the notification service. The connection is lazy, so the
 // services may start in any order; until notification is up, the relay
 // retries.
-func (a *App) newNotifier(cfg config.Config, queue outboxQueue, reg prometheus.Registerer) (notifier, error) {
+func (a *App) newNotifier(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (notifier, error) {
 	if cfg.NotificationServiceAddr == "" {
 		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: appointments and events that start soon notify nobody")
 		return notifyclient.Nop{}, nil
 	}
 
+	queue, err := a.newStream(cfg, notifyclient.Stream, cfg.NotificationServiceAddr, newQueue, reg, func(conn *grpc.ClientConn) outbox.Deliver {
+		return notifyclient.NewDeliverer(notificationv1.NewNotificationServiceClient(conn), cfg.NotifyTimeout).Deliver
+	})
+	if err != nil {
+		return nil, errs.Wrap("a.newStream", err)
+	}
+
+	return notifyclient.NewOutbox(queue), nil
+}
+
+// newReaders records memberships in the outbox and sets up the relay that
+// tells the post service, whose news show a member the wall of the club.
+func (a *App) newReaders(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (service.Readers, error) {
+	if cfg.PostServiceAddr == "" {
+		a.logger.Warn("POST_SERVICE_ADDR is not set: the news do not show the walls of clubs")
+		return postclient.Nop{}, nil
+	}
+
+	queue, err := a.newStream(cfg, postclient.Stream, cfg.PostServiceAddr, newQueue, reg, func(conn *grpc.ClientConn) outbox.Deliver {
+		return postclient.Deliver(postv1.NewPostServiceClient(conn), cfg.NotifyTimeout)
+	})
+	if err != nil {
+		return nil, errs.Wrap("a.newStream", err)
+	}
+
+	return postclient.NewOutbox(queue), nil
+}
+
+// newStream opens the outbox stream of the service at addr and the relay
+// that delivers it.
+func (a *App) newStream(
+	cfg config.Config, name, addr string, newQueue func(stream string) outboxQueue, reg prometheus.Registerer,
+	deliver func(*grpc.ClientConn) outbox.Deliver,
+) (outboxQueue, error) {
 	creds, err := mtls.ClientCredentials(cfg.TLS)
 	if err != nil {
 		return nil, errs.Wrap("mtls.ClientCredentials", err)
 	}
 
-	a.notifyConn, err = grpc.NewClient(cfg.NotificationServiceAddr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
+	conn, err := grpc.NewClient(addr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
 	if err != nil {
 		return nil, errs.Wrap("grpc.NewClient", err)
 	}
+	a.conns = append(a.conns, conn)
 
-	deliverer := notifyclient.NewDeliverer(notificationv1.NewNotificationServiceClient(a.notifyConn), cfg.NotifyTimeout)
+	queue := newQueue(name)
 
-	// As in post and user, whose streams share the metrics, told apart by
-	// a label.
-	a.relay, err = outbox.NewRelay(queue, deliverer.Deliver, prometheus.WrapRegistererWith(prometheus.Labels{"stream": notifyclient.Stream}, reg), a.logger)
+	// As in post and user, the streams share the metrics, told apart by a
+	// label.
+	relay, err := outbox.NewRelay(queue, deliver(conn), prometheus.WrapRegistererWith(prometheus.Labels{"stream": name}, reg), a.logger)
 	if err != nil {
 		return nil, errs.Wrap("outbox.NewRelay", err)
 	}
+	a.relays = append(a.relays, relay)
 
-	return notifyclient.NewOutbox(queue), nil
+	return queue, nil
 }
 
 // notifier is what the notification service hears from club.
@@ -234,7 +279,7 @@ type notifier interface {
 	service.Reminder
 }
 
-// outboxQueue is the outbox of the storage in use.
+// outboxQueue is a stream of the outbox of the storage in use.
 type outboxQueue interface {
 	outbox.Queue
 	notifyclient.Recorder
@@ -246,14 +291,18 @@ type storage struct {
 	members   service.MemberRepository
 	reminders service.DueEvents
 	tx        service.TxManager
-	outbox    outboxQueue
+	// newQueue opens a stream of the outbox.
+	newQueue func(stream string) outboxQueue
 }
 
 func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
 		return storage{
-			clubs: store.Clubs(), members: store.Members(), reminders: store.Reminders(), tx: inmem.TxManager{}, outbox: outbox.NewMemory(),
+			clubs: store.Clubs(), members: store.Members(), reminders: store.Reminders(), tx: inmem.TxManager{},
+			newQueue: func(string) outboxQueue {
+				return outbox.NewMemory()
+			},
 		}, nil
 	}
 
@@ -279,14 +328,17 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		return storage{}, errs.Wrap("pgpool.New", err)
 	}
 
-	a.queue = outbox.NewPostgres(a.pool, notifyclient.Stream)
-
 	return storage{
 		clubs:     postgres.NewClubRepository(a.pool),
 		members:   postgres.NewMemberRepository(a.pool),
 		reminders: postgres.NewReminderRepository(a.pool),
 		tx:        pgpool.NewTxManager(a.pool),
-		outbox:    a.queue,
+		newQueue: func(stream string) outboxQueue {
+			q := outbox.NewPostgres(a.pool, stream)
+			a.queues = append(a.queues, q)
+
+			return q
+		},
 	}, nil
 }
 
@@ -305,9 +357,9 @@ func (a *App) Run(ctx context.Context) error {
 		})
 	}
 
-	if a.relay != nil {
+	for _, relay := range a.relays {
 		g.Go(func() error {
-			return errs.Wrap("a.relay.Run", a.relay.Run(ctx))
+			return errs.Wrap("relay.Run", relay.Run(ctx))
 		})
 	}
 
@@ -367,14 +419,14 @@ func (a *App) Close() {
 		}
 	}
 
-	// After Run: the relay owns the outbox connection while it runs.
-	if a.queue != nil {
-		a.queue.Close()
+	// After Run: the relays own the outbox connections while they run.
+	for _, q := range a.queues {
+		q.Close()
 	}
 
-	if a.notifyConn != nil {
-		if err := a.notifyConn.Close(); err != nil {
-			a.logger.Error("notification connection close", "error", err)
+	for _, conn := range a.conns {
+		if err := conn.Close(); err != nil {
+			a.logger.Error("service connection close", "error", err)
 		}
 	}
 

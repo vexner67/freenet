@@ -18,6 +18,7 @@ import (
 	clubgrpc "github.com/vexner67/freenet/club/internal/grpc"
 	"github.com/vexner67/freenet/club/internal/inmem"
 	"github.com/vexner67/freenet/club/internal/notifyclient"
+	"github.com/vexner67/freenet/club/internal/postclient"
 	"github.com/vexner67/freenet/club/internal/service"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"google.golang.org/grpc"
@@ -56,7 +57,7 @@ func newServer(t *testing.T) testServer {
 	)
 	store := inmem.NewStore()
 	clubv1.RegisterClubServiceServer(srv, clubgrpc.NewClubHandler(service.NewClubService(service.ClubDeps{
-		Clubs: store.Clubs(), Members: store.Members(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
+		Clubs: store.Clubs(), Members: store.Members(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Readers: postclient.Nop{},
 	})))
 
 	go func() { _ = srv.Serve(lis) }()

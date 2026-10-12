@@ -42,6 +42,10 @@ type Config struct {
 	NotificationServiceAddr string        `env:"NOTIFICATION_SERVICE_ADDR"`
 	NotifyTimeout           time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
 
+	// PostServiceAddr is optional: without it the news of post do not
+	// show the walls of the clubs their readers are in.
+	PostServiceAddr string `env:"POST_SERVICE_ADDR"`
+
 	// EventReminderAhead is how long before an event starts its members
 	// are reminded of it; EventReminderInterval how often the events that
 	// are due are looked for.

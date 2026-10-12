@@ -35,7 +35,7 @@ func TestReminderService_RemindDue(t *testing.T) {
 	ctx := context.Background()
 	store := inmem.NewStore()
 	svc := service.NewClubService(service.ClubDeps{
-		Clubs: store.Clubs(), Members: store.Members(), Tx: inmem.TxManager{}, Notifier: &notifier{appointed: make(map[[2]uuid.UUID]bool)},
+		Clubs: store.Clubs(), Members: store.Members(), Tx: inmem.TxManager{}, Notifier: &notifier{appointed: make(map[[2]uuid.UUID]bool)}, Readers: &notifier{},
 	})
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 

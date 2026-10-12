@@ -14,6 +14,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/club/internal/club"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/pgpool"
 )
 
 // constraintOf is the constraint a PostgreSQL error is about, "" if none.
@@ -70,7 +71,7 @@ func (r *ClubRepository) Create(ctx context.Context, c *club.Club, ownerID uuid.
 		return errs.Wrap("uuid.NewV7", err)
 	}
 
-	_, err = r.pool.Exec(ctx, createClubQuery,
+	_, err = pgpool.Conn(ctx, r.pool).Exec(ctx, createClubQuery,
 		c.ID(), c.Name().String(), c.Description().String(), c.Wall().String(), c.CreatedAt(), membershipID, ownerID,
 		c.AdminsDisplay().String(), c.Kind().String(), nullableTime(c.Schedule().Start), nullableTime(c.Schedule().End))
 	if err != nil {
