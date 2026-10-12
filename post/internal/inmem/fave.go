@@ -41,6 +41,11 @@ func faves(likes map[uuid.UUID]map[uuid.UUID]time.Time, userID uuid.UUID, keep f
 	return all[:min(len(all), limit)]
 }
 
+// everyFave is a page no list of likes fills.
+const everyFave = int(^uint(0) >> 1)
+
+func everything(uuid.UUID) bool { return true }
+
 // shownPost: the post is there and not archived. The caller holds the lock.
 func (s *Store) shownPost(id uuid.UUID) bool {
 	p, ok := s.posts[id]
@@ -65,10 +70,16 @@ func (r *LikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *s
 	return faves(r.s.likes, userID, r.s.shownPost, after, limit), nil
 }
 
+// CountLikedBy counts every like of userID, of what is in the archive too.
 func (r *LikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
-	all, err := r.LikedBy(ctx, userID, nil, int(^uint(0)>>1))
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
 
-	return len(all), err
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	return len(faves(r.s.likes, userID, everything, nil, everyFave)), nil
 }
 
 func (r *CommentLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *service.FaveCursor, limit int) ([]service.Fave, error) {
@@ -83,9 +94,14 @@ func (r *CommentLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, a
 }
 
 func (r *CommentLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
-	all, err := r.LikedBy(ctx, userID, nil, int(^uint(0)>>1))
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
 
-	return len(all), err
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	return len(faves(r.s.commentLikes, userID, everything, nil, everyFave)), nil
 }
 
 func (l *AlbumPhotoLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *service.FaveCursor, limit int) ([]service.Fave, error) {
@@ -96,11 +112,11 @@ func (l *AlbumPhotoLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID
 	l.r.mu.RLock()
 	defer l.r.mu.RUnlock()
 
-	return faves(l.r.photoLikes, userID, func(uuid.UUID) bool { return true }, after, limit), nil
+	return faves(l.r.photoLikes, userID, everything, after, limit), nil
 }
 
 func (l *AlbumPhotoLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
-	all, err := l.LikedBy(ctx, userID, nil, int(^uint(0)>>1))
+	all, err := l.LikedBy(ctx, userID, nil, everyFave)
 
 	return len(all), err
 }

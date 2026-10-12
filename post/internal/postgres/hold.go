@@ -195,5 +195,16 @@ func (r *HoldRepository) Forget(ctx context.Context, userID uuid.UUID) error {
 		return errs.Wrap("r.conn.Exec", err)
 	}
 
+	// The likes of the page are erased by their own repositories, which
+	// brings its counters to zero: the row itself goes here.
+	if _, err := r.conn(ctx).Exec(ctx, forgetFaveCountsQuery, userID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
 	return nil
 }
+
+const forgetFaveCountsQuery = `
+	DELETE FROM fave_counts
+	WHERE user_id = $1
+`
