@@ -5,6 +5,7 @@ import (
 	"errors"
 	"strings"
 	"time"
+	"unicode"
 	"unicode/utf8"
 
 	"github.com/google/uuid"
@@ -77,21 +78,87 @@ func (t Text) String() string {
 
 // Excerpt is the beginning of the text, at most limit characters, and
 // whether it was cut: lists carry it instead of a text of thousands of
-// characters. Without a limit the text is whole.
+// characters. It ends after a whole word and not inside an address, when
+// it can. Without a limit the text is whole.
 func (t Text) Excerpt(limit int) (string, bool) {
 	if limit <= 0 || len(t) <= limit {
 		return string(t), false
 	}
 
-	n := 0
-	for i := range string(t) {
-		if n == limit {
-			return string(t[:i]), true
-		}
-		n++
+	runes := []rune(string(t))
+	if len(runes) <= limit {
+		return string(t), false
 	}
 
-	return string(t), false
+	return string(runes[:wholeEnd(runes, limit, 0)]), true
+}
+
+// excerptSlack is how far an excerpt gives way to end well: back to the
+// space before the word it would cut, or to the start of an address
+// ("[ann|Анна]") it would end inside. A longer word is cut where it is.
+const excerptSlack = 100
+
+// wholeEnd is where an excerpt of runes, at most limit of them and fewer
+// than there are, ends: after a whole word and outside an address, when
+// one is near enough, and never before keep.
+func wholeEnd(runes []rune, limit, keep int) int {
+	end := limit
+	floor := max(limit-excerptSlack, keep)
+
+	if !unicode.IsSpace(runes[end]) {
+		for end > floor && !unicode.IsSpace(runes[end-1]) {
+			end--
+		}
+
+		if end == 0 || !unicode.IsSpace(runes[end-1]) {
+			end = limit
+		}
+	}
+
+	if open := addressStart(runes, end); open >= keep {
+		end = open
+	}
+
+	for end > keep && unicode.IsSpace(runes[end-1]) {
+		end--
+	}
+
+	if end == 0 {
+		return limit
+	}
+
+	return end
+}
+
+// addressStart is where the address that end falls inside of begins: its
+// bracket was opened shortly before and is closed shortly after, on the
+// same line. It is -1 when end is inside none.
+func addressStart(runes []rune, end int) int {
+	open := -1
+
+	for i := end - 1; i >= max(end-excerptSlack, 0) && open < 0; i-- {
+		switch runes[i] {
+		case ']', '\n':
+			return -1
+		case '[':
+			open = i
+		}
+	}
+
+	if open < 0 {
+		return -1
+	}
+
+	for i := end; i < min(end+excerptSlack, len(runes)); i++ {
+		switch runes[i] {
+		case ']':
+			return open
+		case '[', '\n':
+			return -1
+		}
+	}
+
+	return -1
 }
 
 // Counters are how many likes, comments and reposts a post has. Storage
