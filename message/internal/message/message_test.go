@@ -499,39 +499,78 @@ func TestMessage_EditedPhotos(t *testing.T) {
 	old, fresh := uuid.New(), uuid.New()
 	m, _ := message.New(ann, bob, message.RestoreContent("", message.Photos{old}, uuid.Nil, nil), sent)
 
-	// Photos named without ReplacePhotos change nothing.
-	kept, err := m.Edited(ann, message.Revision{Text: "море", Photos: message.Photos{fresh}}, sent)
+	// An edit that names no photos keeps them.
+	kept, err := m.Edited(ann, message.Revision{Text: "море"}, sent)
 	if err != nil || !slices.Equal(kept.Photos(), message.Photos{old}) {
 		t.Fatalf("the photos kept = %v, %v", kept.Photos(), err)
 	}
 
-	replaced, err := m.Edited(ann, message.Revision{Photos: message.Photos{fresh, old}, ReplacePhotos: true}, sent)
-	if err != nil || !slices.Equal(replaced.Photos(), message.Photos{fresh, old}) || replaced.Text() != "" {
-		t.Fatalf("the photos replaced = %v, %v", replaced.Photos(), err)
+	// The added ones come after those kept.
+	more, err := m.Edited(ann, message.Revision{Added: message.Photos{fresh}}, sent)
+	if err != nil || !slices.Equal(more.Photos(), message.Photos{old, fresh}) || more.Text() != "" {
+		t.Fatalf("a photo added = %v, %v", more.Photos(), err)
 	}
 	if !slices.Equal(m.Photos(), message.Photos{old}) {
 		t.Fatal("the message itself changed")
 	}
 
-	if _, err = m.Edited(ann, message.Revision{ReplacePhotos: true}, sent); !errors.Is(err, message.ErrTextEmpty) {
+	// Two edits made of the same message both take effect, in any order:
+	// one adds a photo, the other takes the old one away.
+	another := uuid.New()
+	for name, revs := range map[string][2]message.Revision{
+		"add, then remove": {{Added: message.Photos{fresh}}, {Removed: message.Photos{old}, Added: message.Photos{another}}},
+		"remove, then add": {{Removed: message.Photos{old}, Added: message.Photos{another}}, {Added: message.Photos{fresh}}},
+	} {
+		first, err := m.Edited(ann, revs[0], sent)
+		if err != nil {
+			t.Fatal(err)
+		}
+		both, err := first.Edited(ann, revs[1], sent)
+		if err != nil || len(both.Photos()) != 2 || !slices.Contains(both.Photos(), fresh) || !slices.Contains(both.Photos(), another) {
+			t.Errorf("%s = %v, %v; want the two added and not the removed", name, both.Photos(), err)
+		}
+	}
+
+	// Another edit was first: nothing to do is fine.
+	same, err := more.Edited(ann, message.Revision{Added: message.Photos{fresh}, Removed: message.Photos{uuid.New()}}, sent)
+	if err != nil || !slices.Equal(same.Photos(), message.Photos{old, fresh}) {
+		t.Errorf("a photo added twice, a missing one removed = %v, %v", same.Photos(), err)
+	}
+	// Removed and added again, a photo goes last.
+	if moved, err := more.Edited(ann, message.Revision{Removed: message.Photos{old}, Added: message.Photos{old}}, sent); err != nil || !slices.Equal(moved.Photos(), message.Photos{fresh, old}) {
+		t.Errorf("a photo put last = %v, %v", moved.Photos(), err)
+	}
+
+	full := make(message.Photos, 10)
+	for i := range full {
+		full[i] = uuid.New()
+	}
+	if _, err = m.Edited(ann, message.Revision{Added: full}, sent); !errors.Is(err, message.ErrTooManyPhotos) {
+		t.Errorf("an eleventh photo: %v", err)
+	}
+	if swapped, err := m.Edited(ann, message.Revision{Removed: message.Photos{old}, Added: full}, sent); err != nil || len(swapped.Photos()) != 10 {
+		t.Errorf("ten in place of one = %v, %v", swapped.Photos(), err)
+	}
+
+	if _, err = m.Edited(ann, message.Revision{Removed: message.Photos{old}}, sent); !errors.Is(err, message.ErrTextEmpty) {
 		t.Errorf("neither words nor photos: %v", err)
 	}
-	if bare, err := m.Edited(ann, message.Revision{Text: "слова", ReplacePhotos: true}, sent); err != nil || len(bare.Photos()) != 0 {
+	if bare, err := m.Edited(ann, message.Revision{Text: "слова", Removed: message.Photos{old}}, sent); err != nil || len(bare.Photos()) != 0 {
 		t.Errorf("the photos taken away = %v, %v", bare.Photos(), err)
 	}
 
 	// What a message carries on is enough for it to lose words and photos.
 	carrying, _ := message.New(ann, bob, message.RestoreContent("", message.Photos{old}, uuid.Nil, message.Forwards{{SenderID: bob, Text: "x", CreatedAt: sent}}), sent)
-	if bare, err := carrying.Edited(ann, message.Revision{ReplacePhotos: true}, sent); err != nil || len(bare.Photos()) != 0 || len(bare.Forwarded()) != 1 {
+	if bare, err := carrying.Edited(ann, message.Revision{Removed: message.Photos{old}}, sent); err != nil || len(bare.Photos()) != 0 || len(bare.Forwarded()) != 1 {
 		t.Errorf("a forward without photos = %+v, %v", bare, err)
 	}
 
 	share, _ := message.NewPhotoShare("фото", uuid.New())
 	shared, _ := message.New(ann, bob, share, sent)
-	if _, err = shared.Edited(ann, message.Revision{Text: "фото", Photos: message.Photos{fresh}, ReplacePhotos: true}, sent); !errors.Is(err, message.ErrSharedPhotoAlone) {
+	if _, err = shared.Edited(ann, message.Revision{Text: "фото", Added: message.Photos{fresh}}, sent); !errors.Is(err, message.ErrSharedPhotoAlone) {
 		t.Errorf("photos next to a shared photo: %v", err)
 	}
-	if again, err := shared.Edited(ann, message.Revision{ReplacePhotos: true}, sent); err != nil || again.SharedPhoto() == uuid.Nil {
+	if again, err := shared.Edited(ann, message.Revision{}, sent); err != nil || again.SharedPhoto() == uuid.Nil {
 		t.Errorf("a shared photo without words = %+v, %v", again, err)
 	}
 }

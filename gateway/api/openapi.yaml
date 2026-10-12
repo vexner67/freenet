@@ -1575,12 +1575,14 @@ paths:
       summary: Edit your message
       description: |
         Within a day of sending (`editableUntil`), as in VK: what it says
-        and, with `photos`, its photos — the list replaces the message's
-        (photos it had and photos uploaded with `POST /api/v1/me/photos`,
-        your own alone; those left out are deleted), `[]` takes them all
-        away, and without the field they stay. The post it shares and the
-        messages it forwards stay; without them and photos the text may
-        not be empty. Both sides get an `edit` event.
+        and its photos. The request names the changes, not the photos
+        left, so edits from two windows do not undo each other:
+        `removePhotos` are deleted, `addPhotos` (uploads from
+        `POST /api/v1/me/photos` that nothing shows yet) come after the
+        photos kept, and the rest stay. The message shows 10 at most. A
+        photo to remove that is gone already is fine. The post it shares
+        and the messages it forwards stay; without them and photos the
+        text may not be empty. Both sides get an `edit` event.
       security: [{ bearer: [] }]
       parameters:
         - name: id
@@ -1596,7 +1598,11 @@ paths:
               required: [text]
               properties:
                 text: { type: string, maxLength: 60000 }
-                photos:
+                addPhotos:
+                  type: array
+                  maxItems: 10
+                  items: { type: string, format: uuid }
+                removePhotos:
                   type: array
                   maxItems: 10
                   items: { type: string, format: uuid }

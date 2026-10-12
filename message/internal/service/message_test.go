@@ -907,15 +907,6 @@ func TestMessageService_Edit(t *testing.T) {
 	if err != nil || edited.Text() != "привет!" || edited.EditedAt().IsZero() {
 		t.Fatalf("Edit = %+v, %v", edited, err)
 	}
-
-	for _, side := range []uuid.UUID{ann, bob} {
-		if got, err := svc.Message(ctx, side, m.ID()); err != nil || got.Text() != "привет!" {
-			t.Fatalf("Message = %+v, %v", got, err)
-		}
-	}
-	if _, err := svc.Message(ctx, cat, m.ID()); !errors.Is(err, message.ErrNotFound) {
-		t.Fatalf("a stranger reads the message: %v", err)
-	}
 	for name, events := range map[string]<-chan service.Event{"sender": annEvents, "recipient": bobEvents} {
 		if e := <-events; e.Edited == nil || e.Edited.ID() != m.ID() || e.Edited.Text() != "привет!" {
 			t.Fatalf("%s got %+v, want the edit", name, e)
@@ -1024,14 +1015,14 @@ func TestMessageService_EditPhotos(t *testing.T) {
 	photos.published = nil
 
 	// An edit that says nothing of photos keeps them.
-	edited, err := svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "гляди", Photos: message.Photos{added}})
+	edited, err := svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "гляди"})
 	if err != nil || !slices.Equal(edited.Photos(), message.Photos{kept, dropped}) || len(photos.published)+len(photos.deleted) != 0 {
 		t.Fatalf("the photos after an edit of the words = %v, %v; media heard %+v, %+v", edited.Photos(), err, photos.published, photos.deleted)
 	}
 
 	// The new photos are kept, those taken away deleted, the rest left.
-	edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "гляди", Photos: message.Photos{added, kept}, ReplacePhotos: true})
-	if err != nil || !slices.Equal(edited.Photos(), message.Photos{added, kept}) {
+	edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "гляди", Removed: message.Photos{dropped}, Added: message.Photos{added}})
+	if err != nil || !slices.Equal(edited.Photos(), message.Photos{kept, added}) {
 		t.Fatalf("the photos = %v, %v", edited.Photos(), err)
 	}
 	if len(photos.published) != 1 || photos.published[0].owner != ann || !slices.Equal(photos.published[0].photos, []uuid.UUID{added}) {
@@ -1040,19 +1031,30 @@ func TestMessageService_EditPhotos(t *testing.T) {
 	if len(photos.deleted) != 1 || photos.deleted[0].owner != ann || !slices.Equal(photos.deleted[0].photos, []uuid.UUID{dropped}) {
 		t.Fatalf("deleted = %+v", photos.deleted)
 	}
-	if page, _ := svc.History(ctx, bob, ann, uuid.Nil, 1); !slices.Equal(page.Messages[0].Photos(), message.Photos{added, kept}) {
+	if page, _ := svc.History(ctx, bob, ann, uuid.Nil, 1); !slices.Equal(page.Messages[0].Photos(), message.Photos{kept, added}) {
 		t.Fatalf("bob sees %v", page.Messages[0].Photos())
 	}
 
+	// Another window, which still shows the photo dropped, adds one more:
+	// it changes the message as the first edit left it.
+	late := uuid.New()
+	if edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "гляди", Added: message.Photos{late}}); err != nil || !slices.Equal(edited.Photos(), message.Photos{kept, added, late}) {
+		t.Fatalf("the photos after an edit from another window = %v, %v", edited.Photos(), err)
+	}
+	if len(photos.published) != 2 || len(photos.deleted) != 1 {
+		t.Fatalf("media heard %+v, %+v", photos.published, photos.deleted)
+	}
+
 	// All photos away: the words stay. Without words, nothing would.
+	all := message.Photos{kept, added, late}
 	photos.published, photos.deleted = nil, nil
-	if _, err = svc.Edit(ctx, ann, m.ID(), message.Revision{ReplacePhotos: true}); !errors.Is(err, message.ErrTextEmpty) {
+	if _, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Removed: all}); !errors.Is(err, message.ErrTextEmpty) {
 		t.Fatalf("an edit to nothing: %v", err)
 	}
-	if edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "слова", ReplacePhotos: true}); err != nil || len(edited.Photos()) != 0 {
+	if edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "слова", Removed: all}); err != nil || len(edited.Photos()) != 0 {
 		t.Fatalf("the photos taken away = %v, %v", edited.Photos(), err)
 	}
-	if len(photos.published) != 0 || len(photos.deleted) != 1 || len(photos.deleted[0].photos) != 2 {
+	if len(photos.published) != 0 || len(photos.deleted) != 1 || len(photos.deleted[0].photos) != 3 {
 		t.Fatalf("media heard %+v, %+v", photos.published, photos.deleted)
 	}
 	if photos.outsideTx != 0 {
@@ -1064,10 +1066,10 @@ func TestMessageService_EditPhotos(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = svc.Edit(ctx, ann, shared.ID(), message.Revision{Text: "фото", Photos: message.Photos{added}, ReplacePhotos: true}); !errors.Is(err, message.ErrSharedPhotoAlone) {
+	if _, err = svc.Edit(ctx, ann, shared.ID(), message.Revision{Text: "фото", Added: message.Photos{added}}); !errors.Is(err, message.ErrSharedPhotoAlone) {
 		t.Fatalf("photos for a shared photo: %v", err)
 	}
-	if _, err = svc.Edit(ctx, ann, shared.ID(), message.Revision{Text: "фото!", ReplacePhotos: true}); err != nil {
+	if _, err = svc.Edit(ctx, ann, shared.ID(), message.Revision{Text: "фото!"}); err != nil {
 		t.Fatalf("an edit of its words: %v", err)
 	}
 }

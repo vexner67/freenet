@@ -120,6 +120,11 @@ func (r *MessageRepository) Get(ctx context.Context, id uuid.UUID) (*message.Mes
 	return m, nil
 }
 
+// Lock is Get: nothing is held in memory, where there are no transactions.
+func (r *MessageRepository) Lock(ctx context.Context, id uuid.UUID) (*message.Message, error) {
+	return r.Get(ctx, id)
+}
+
 func (r *MessageRepository) Update(ctx context.Context, m *message.Message) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)

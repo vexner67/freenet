@@ -287,8 +287,6 @@ type Messages interface {
 	// sides, as Delete, or for the caller alone, as Hide.
 	DeleteMany(ctx context.Context, accessToken string, ids []string, forEveryone bool) error
 	Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.Message, error)
-	// Message is a message the caller has in their dialogs, by its ID.
-	Message(ctx context.Context, accessToken, id string) (model.Message, error)
 	Search(ctx context.Context, accessToken, peerID, query, cursor string, limit int) (model.FoundMessages, error)
 	HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error)
 	Subscribe(ctx context.Context, accessToken string) (model.MessageEvents, error)

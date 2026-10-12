@@ -530,9 +530,9 @@ func TestMessageRepository_EditHideSearch(t *testing.T) {
 	if got, _ := messages.Get(ctx, second.ID()); !got.EditedAt().IsZero() {
 		t.Fatal("a message never edited says it was")
 	}
-	// An edit that replaces the photos writes them.
+	// An edit that changes the photos writes them.
 	photo := uuid.New()
-	withPhoto, err := second.Edited(ann, message.Revision{Text: second.Text(), Photos: message.Photos{photo}, ReplacePhotos: true}, time.Now())
+	withPhoto, err := second.Edited(ann, message.Revision{Text: second.Text(), Added: message.Photos{photo}}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}

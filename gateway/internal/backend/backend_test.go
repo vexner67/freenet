@@ -636,17 +636,9 @@ type fakeMessageAPI struct {
 	removal *messagev1.DeleteMessagesRequest
 }
 
-func (f *fakeMessageAPI) GetMessage(_ context.Context, req *messagev1.GetMessageRequest, _ ...grpc.CallOption) (*messagev1.GetMessageResponse, error) {
-	if req.GetId() != "m1" {
-		return nil, status.Error(codes.NotFound, "message not found")
-	}
-
-	return &messagev1.GetMessageResponse{Message: &messagev1.Message{Id: "m1", PhotoIds: []string{"ph1"}}}, nil
-}
-
 func (f *fakeMessageAPI) EditMessage(_ context.Context, req *messagev1.EditMessageRequest, _ ...grpc.CallOption) (*messagev1.EditMessageResponse, error) {
 	f.edit = req
-	return &messagev1.EditMessageResponse{Message: &messagev1.Message{Id: req.GetId(), Text: req.GetText(), PhotoIds: req.GetPhotoIds()}}, nil
+	return &messagev1.EditMessageResponse{Message: &messagev1.Message{Id: req.GetId(), Text: req.GetText(), PhotoIds: req.GetAddPhotoIds()}}, nil
 }
 
 func (f *fakeMessageAPI) DeleteMessages(_ context.Context, req *messagev1.DeleteMessagesRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -709,13 +701,6 @@ func TestMessages(t *testing.T) {
 		t.Fatalf("HasMessagesFrom = %v, %v (metadata %v)", wrote, err, api.md)
 	}
 
-	if m, err := messages.Message(context.Background(), "tok", "m1"); err != nil || m.ID != "m1" || len(m.PhotoIDs) != 1 {
-		t.Fatalf("Message = %+v, %v", m, err)
-	}
-	if _, err := messages.Message(context.Background(), "tok", "m2"); failure.From(err).Kind != failure.NotFound {
-		t.Fatalf("a message that is not there: %v", err)
-	}
-
 	page, err := messages.History(context.Background(), "tok", "u2", model.MessagesAt{After: "m0"}, 1<<20)
 	if err != nil {
 		t.Fatal(err)
@@ -762,12 +747,12 @@ func TestMessages(t *testing.T) {
 		t.Fatalf("DeleteMany of none: %+v", f)
 	}
 
-	// An edit replaces the photos only when it says so.
-	if _, err = messages.Edit(context.Background(), "tok", "m1", model.MessageEdit{Text: "x"}); err != nil || api.edit.GetReplacePhotos() || api.edit.GetText() != "x" {
+	// An edit names the photos it adds and takes away.
+	if _, err = messages.Edit(context.Background(), "tok", "m1", model.MessageEdit{Text: "x"}); err != nil || len(api.edit.GetAddPhotoIds())+len(api.edit.GetRemovePhotoIds()) != 0 || api.edit.GetText() != "x" {
 		t.Fatalf("Edit of the words = %v, asked %v", err, api.edit)
 	}
-	edited, err := messages.Edit(context.Background(), "tok", "m1", model.MessageEdit{PhotoIDs: []string{"ph1"}, ReplacePhotos: true})
-	if err != nil || !api.edit.GetReplacePhotos() || len(edited.PhotoIDs) != 1 || edited.PhotoIDs[0] != "ph1" {
+	edited, err := messages.Edit(context.Background(), "tok", "m1", model.MessageEdit{AddPhotoIDs: []string{"ph1"}, RemovePhotoIDs: []string{"ph0"}})
+	if err != nil || api.edit.GetRemovePhotoIds()[0] != "ph0" || len(edited.PhotoIDs) != 1 || edited.PhotoIDs[0] != "ph1" {
 		t.Fatalf("Edit of the photos = %+v, %v", edited, err)
 	}
 

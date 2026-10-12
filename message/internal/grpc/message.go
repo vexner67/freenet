@@ -25,7 +25,6 @@ type MessageService interface {
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	Hide(ctx context.Context, userID, id uuid.UUID) error
 	DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID, forEveryone bool) error
-	Message(ctx context.Context, userID, id uuid.UUID) (*message.Message, error)
 	Edit(ctx context.Context, userID, id uuid.UUID, rev message.Revision) (*message.Message, error)
 	Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, cursor uuid.UUID, size int) (service.SearchPage, error)
 	HasMessagesFrom(ctx context.Context, userID, peerID uuid.UUID) (bool, error)
@@ -323,25 +322,6 @@ func (h *MessageHandler) DeleteMessages(ctx context.Context, req *messagev1.Dele
 	}
 
 	return &emptypb.Empty{}, nil
-}
-
-func (h *MessageHandler) GetMessage(ctx context.Context, req *messagev1.GetMessageRequest) (*messagev1.GetMessageResponse, error) {
-	userID, err := currentUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	id, err := parseID(req.GetId(), "invalid message id")
-	if err != nil {
-		return nil, err
-	}
-
-	m, err := h.messageService.Message(ctx, userID, id)
-	if err != nil {
-		return nil, err
-	}
-
-	return &messagev1.GetMessageResponse{Message: toProtoMessage(m, false)}, nil
 }
 
 func (h *MessageHandler) EditMessage(ctx context.Context, req *messagev1.EditMessageRequest) (*messagev1.EditMessageResponse, error) {

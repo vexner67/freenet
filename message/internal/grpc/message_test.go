@@ -485,28 +485,6 @@ func TestEditHideSearch(t *testing.T) {
 		}
 	}
 
-	// Both sides read it by its ID, a stranger does not.
-	for _, side := range []uuid.UUID{ann, bob} {
-		got, err := s.client.GetMessage(s.as(t, side), &messagev1.GetMessageRequest{Id: id})
-		if err != nil || got.GetMessage().GetText() != "Еду на море!" || got.GetMessage().GetSenderId() != ann.String() {
-			t.Fatalf("GetMessage = %v, %v", got, err)
-		}
-	}
-	for name, tt := range map[string]struct {
-		ctx  context.Context
-		id   string
-		code codes.Code
-	}{
-		"without a token": {context.Background(), id, codes.Unauthenticated},
-		"a stranger":      {s.as(t, uuid.New()), id, codes.NotFound},
-		"a bad id":        {s.as(t, ann), "x", codes.InvalidArgument},
-		"no message":      {s.as(t, ann), uuid.NewString(), codes.NotFound},
-	} {
-		if _, err = s.client.GetMessage(tt.ctx, &messagev1.GetMessageRequest{Id: tt.id}); status.Code(err) != tt.code {
-			t.Errorf("GetMessage, %s: %v, want %v", name, err, tt.code)
-		}
-	}
-
 	// Search: in the dialog and in all of them.
 	for _, peer := range []string{"", ann.String()} {
 		found, err := s.client.SearchMessages(s.as(t, bob), &messagev1.SearchMessagesRequest{PeerId: peer, Query: "МОРЕ"})
@@ -639,20 +617,31 @@ func TestEditPhotosSearchForwardedDeleteMany(t *testing.T) {
 	}
 	id := sent.GetMessage().GetId()
 
-	// An edit keeps the photos unless it replaces them.
-	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!", PhotoIds: []string{fresh}})
+	// An edit keeps the photos it does not name, adds and removes.
+	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!"})
 	if err != nil || !slices.Equal(edited.GetMessage().GetPhotoIds(), []string{old}) {
 		t.Fatalf("an edit of the words = %v, %v", edited, err)
 	}
-	edited, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!", PhotoIds: []string{fresh, old}, ReplacePhotos: true})
-	if err != nil || !slices.Equal(edited.GetMessage().GetPhotoIds(), []string{fresh, old}) {
-		t.Fatalf("the photos replaced = %v, %v", edited, err)
+	edited, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!", AddPhotoIds: []string{fresh}})
+	if err != nil || !slices.Equal(edited.GetMessage().GetPhotoIds(), []string{old, fresh}) {
+		t.Fatalf("a photo added = %v, %v", edited, err)
+	}
+	third := uuid.NewString()
+	edited, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!", RemovePhotoIds: []string{old}, AddPhotoIds: []string{third}})
+	if err != nil || !slices.Equal(edited.GetMessage().GetPhotoIds(), []string{fresh, third}) {
+		t.Fatalf("a photo in place of another = %v, %v", edited, err)
+	}
+	var eleven []string
+	for range 11 {
+		eleven = append(eleven, uuid.NewString())
 	}
 	for name, req := range map[string]*messagev1.EditMessageRequest{
-		"a bad photo":     {Id: id, Text: "x", PhotoIds: []string{"x"}, ReplacePhotos: true},
-		"a photo twice":   {Id: id, Text: "x", PhotoIds: []string{fresh, fresh}, ReplacePhotos: true},
-		"too many photos": {Id: id, Text: "x", PhotoIds: slices.Repeat([]string{fresh}, 11), ReplacePhotos: true},
-		"nothing left":    {Id: id, ReplacePhotos: true},
+		"a bad photo":       {Id: id, Text: "x", AddPhotoIds: []string{"x"}},
+		"a bad one to drop": {Id: id, Text: "x", RemovePhotoIds: []string{"x"}},
+		"a photo twice":     {Id: id, Text: "x", AddPhotoIds: []string{old, old}},
+		"too many photos":   {Id: id, Text: "x", AddPhotoIds: eleven[:9]},
+		"too many at once":  {Id: id, Text: "x", AddPhotoIds: eleven},
+		"nothing left":      {Id: id, RemovePhotoIds: []string{fresh, third}},
 	} {
 		if _, err = s.client.EditMessage(s.as(t, ann), req); status.Code(err) != codes.InvalidArgument {
 			t.Errorf("EditMessage, %s: %v", name, err)
