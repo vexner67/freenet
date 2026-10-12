@@ -8,13 +8,14 @@ const (
 	PoliticalViewsNone              PoliticalViews = ""
 	PoliticalViewsCommunist         PoliticalViews = "communist"
 	PoliticalViewsSocialist         PoliticalViews = "socialist"
-	PoliticalViewsModerate          PoliticalViews = "moderate"
 	PoliticalViewsLiberal           PoliticalViews = "liberal"
 	PoliticalViewsConservative      PoliticalViews = "conservative"
 	PoliticalViewsMonarchist        PoliticalViews = "monarchist"
 	PoliticalViewsUltraconservative PoliticalViews = "ultraconservative"
 	PoliticalViewsIndifferent       PoliticalViews = "indifferent"
 	PoliticalViewsLibertarian       PoliticalViews = "libertarian"
+	PoliticalViewsModerateIslamism  PoliticalViews = "moderate_islamism"
+	PoliticalViewsRadicalIslamism   PoliticalViews = "radical_islamism"
 )
 
 var ErrInvalidPoliticalViews = errors.New("invalid political views")
@@ -24,13 +25,14 @@ func NewPoliticalViews(s string) (PoliticalViews, error) {
 	case PoliticalViewsNone,
 		PoliticalViewsCommunist,
 		PoliticalViewsSocialist,
-		PoliticalViewsModerate,
 		PoliticalViewsLiberal,
 		PoliticalViewsConservative,
 		PoliticalViewsMonarchist,
 		PoliticalViewsUltraconservative,
 		PoliticalViewsIndifferent,
-		PoliticalViewsLibertarian:
+		PoliticalViewsLibertarian,
+		PoliticalViewsModerateIslamism,
+		PoliticalViewsRadicalIslamism:
 		return PoliticalViews(s), nil
 	default:
 		return "", ErrInvalidPoliticalViews
