@@ -186,15 +186,16 @@ func scanFollowed(rows pgx.Rows) ([]service.Followed, error) {
 }
 
 // The people online are few: the follows of the user are read by its
-// index and the visits checked on their rows.
+// index and the visits looked up by the key of presence.
 const (
 	listOnlineFollowingQuery = `
 	SELECT
 		f.id,` + qualifiedUserColumns + `
 	FROM follows f
 	JOIN users u ON u.id = f.followee_id
+	JOIN presence p ON p.user_id = f.followee_id
 	WHERE f.follower_id = $1
-		AND u.last_seen_at > $2
+		AND p.last_seen_at > $2
 		AND u.deactivated_at IS NULL
 		AND f.id < $3
 	ORDER BY f.id DESC
@@ -205,8 +206,9 @@ const (
 	SELECT count(*)
 	FROM follows f
 	JOIN users u ON u.id = f.followee_id
+	JOIN presence p ON p.user_id = f.followee_id
 	WHERE f.follower_id = $1
-		AND u.last_seen_at > $2
+		AND p.last_seen_at > $2
 		AND u.deactivated_at IS NULL
 `
 )

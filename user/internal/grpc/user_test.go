@@ -32,6 +32,9 @@ const issuer = "freenet-test"
 type testServer struct {
 	client userv1.UserServiceClient
 	key    *rsa.PrivateKey
+	// presence holds the visits until a test flushes them, as the app
+	// does every few seconds.
+	presence *service.PresenceService
 }
 
 // newServer wires the handler the same way app.New does.
@@ -56,6 +59,7 @@ func newServer(t *testing.T) testServer {
 		),
 	))
 	blocks := inmem.NewBlockRepository(follows)
+	presence := service.NewPresenceService(users)
 	userv1.RegisterUserServiceServer(srv, usergrpc.NewUserHandler(usergrpc.Services{
 		Users:    service.NewUserService(users),
 		Accounts: service.NewAccountService(users, inmem.TxManager{}, purgeclient.NoReactions{}, time.Hour),
@@ -65,7 +69,7 @@ func newServer(t *testing.T) testServer {
 		Blocks:      service.NewBlockService(users, blocks, inmem.TxManager{}, notifyclient.Nop{}),
 		Ignores:     service.NewIgnoreService(inmem.NewIgnoreRepository(users)),
 		Permissions: service.NewPermissionService(users, follows, blocks),
-		Presence:    service.NewPresenceService(users),
+		Presence:    presence,
 		Backdrops:   service.NewBackdropService(users, users),
 	}, log))
 
@@ -83,8 +87,9 @@ func newServer(t *testing.T) testServer {
 	t.Cleanup(func() { _ = conn.Close() })
 
 	return testServer{
-		client: userv1.NewUserServiceClient(conn),
-		key:    key,
+		client:   userv1.NewUserServiceClient(conn),
+		key:      key,
+		presence: presence,
 	}
 }
 

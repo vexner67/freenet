@@ -29,6 +29,10 @@ func TestPresence(t *testing.T) {
 	if _, err := s.client.MarkOnline(bob, &userv1.MarkOnlineRequest{}); err != nil {
 		t.Fatalf("MarkOnline: %v", err)
 	}
+	// The app writes the visits every few seconds.
+	if err := s.presence.Flush(context.Background()); err != nil {
+		t.Fatalf("Flush: %v", err)
+	}
 
 	// Anyone may ask how many people the site has.
 	stats, err := s.client.GetStatistics(context.Background(), &userv1.GetStatisticsRequest{})

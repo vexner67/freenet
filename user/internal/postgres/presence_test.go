@@ -40,14 +40,14 @@ func TestPresence(t *testing.T) {
 		}
 	}
 
-	if err := repo.MarkSeen(ctx, bob.ID(), now); err != nil {
+	if err := repo.MarkSeen(ctx, map[uuid.UUID]time.Time{bob.ID(): now}); err != nil {
 		t.Fatalf("MarkSeen: %v", err)
 	}
 	// Told late: the later visit stays.
-	if err := repo.MarkSeen(ctx, bob.ID(), now.Add(-time.Hour)); err != nil {
+	if err := repo.MarkSeen(ctx, map[uuid.UUID]time.Time{bob.ID(): now.Add(-time.Hour)}); err != nil {
 		t.Fatal(err)
 	}
-	_ = repo.MarkSeen(ctx, cat.ID(), now.Add(-time.Hour))
+	_ = repo.MarkSeen(ctx, map[uuid.UUID]time.Time{cat.ID(): now.Add(-time.Hour)})
 
 	// Counted with everyone else in the table: at least these, of whom Bob
 	// alone came in the last minutes.
@@ -60,7 +60,16 @@ func TestPresence(t *testing.T) {
 	if later, err := repo.Count(ctx, now.Add(time.Hour)); err != nil || later.Online > recent.Online || later.Users < 2 {
 		t.Fatalf("Count since later = %+v, %v", later, err)
 	}
-	_ = repo.MarkSeen(ctx, dan.ID(), now)
+	// Many visits go at once; the one of nobody is left out.
+	if err = repo.MarkSeen(ctx, map[uuid.UUID]time.Time{dan.ID(): now, uuid.New(): now, cat.ID(): now.Add(-2 * time.Hour)}); err != nil {
+		t.Fatalf("MarkSeen, many: %v", err)
+	}
+	if err = repo.MarkSeen(ctx, nil); err != nil {
+		t.Fatalf("MarkSeen, none: %v", err)
+	}
+	if seen, _ := repo.GetByID(ctx, cat.ID()); !seen.LastSeen().Equal(now.Add(-time.Hour)) {
+		t.Fatalf("cat, told late among many: %v", seen.LastSeen())
+	}
 
 	got, err := repo.GetByID(ctx, bob.ID())
 	if err != nil || !got.LastSeen().Equal(now) {
@@ -71,7 +80,7 @@ func TestPresence(t *testing.T) {
 	if err = got.UpdateProfile(user.Profile{Name: "Bob", Nickname: user.Nickname(unique("bob"))}); err != nil {
 		t.Fatal(err)
 	}
-	_ = repo.MarkSeen(ctx, bob.ID(), now.Add(time.Second))
+	_ = repo.MarkSeen(ctx, map[uuid.UUID]time.Time{bob.ID(): now.Add(time.Second)})
 	if err = repo.Update(ctx, got); err != nil {
 		t.Fatal(err)
 	}
