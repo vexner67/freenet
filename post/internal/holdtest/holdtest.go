@@ -23,6 +23,7 @@ type Storage struct {
 	Likes interface {
 		Like(ctx context.Context, postID, userID uuid.UUID) (int, error)
 		Likers(ctx context.Context, postID uuid.UUID, after *service.LikerCursor, limit int) ([]service.Liker, error)
+		CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error)
 	}
 	Comments interface {
 		Save(ctx context.Context, c *post.Comment) error
@@ -214,6 +215,11 @@ func Run(t *testing.T, s Storage) {
 	hold(bob)
 	f.want(ctx, t, "bob is held", 1, 1, 1, 1, 1, 1, 1, 0)
 
+	// Nor are they among the faves of the page.
+	if n, err := s.Likes.CountLikedBy(ctx, bob); err != nil || n != 0 {
+		t.Fatalf("faves of bob while he is held = %d, %v", n, err)
+	}
+
 	likers, err := s.Likes.Likers(ctx, f.post.ID(), nil, 10)
 	if err != nil || len(likers) != 1 || likers[0].UserID != cat {
 		t.Fatalf("likers while bob is held = %+v, %v", likers, err)
@@ -226,6 +232,10 @@ func Run(t *testing.T, s Storage) {
 	release(bob)
 	release(bob)
 	f.want(ctx, t, "bob is released", 2, 2, 2, 2, 2, 2, 2, 1)
+
+	if n, err := s.Likes.CountLikedBy(ctx, bob); err != nil || n != 1 {
+		t.Fatalf("faves of bob once he is back = %d, %v", n, err)
+	}
 
 	if likers, err = s.Likes.Likers(ctx, f.post.ID(), nil, 10); err != nil || len(likers) != 2 || likers[1].UserID != bob {
 		t.Fatalf("likers once bob is back = %+v, %v; want bob the older", likers, err)

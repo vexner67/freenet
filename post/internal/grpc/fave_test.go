@@ -63,7 +63,8 @@ func TestLikedPosts(t *testing.T) {
 		t.Fatalf("the second page = %v, %v", page, err)
 	}
 
-	// A like taken back, a deleted post and an archived one leave.
+	// A like taken back, a deleted post and an archived one leave; the
+	// archived one is still counted.
 	if _, err = s.client.UnlikePost(s.as(t, bob), &postv1.UnlikePostRequest{PostId: first}); err != nil {
 		t.Fatal(err)
 	}
@@ -79,7 +80,7 @@ func TestLikedPosts(t *testing.T) {
 	if _, err = s.client.ArchivePost(s.as(t, ann), &postv1.ArchivePostRequest{Id: second}); err != nil {
 		t.Fatal(err)
 	}
-	if page, err = s.client.ListLikedPosts(s.as(t, bob), &postv1.ListLikedPostsRequest{}); err != nil || page.GetTotal() != 0 || len(page.GetPosts()) != 0 {
+	if page, err = s.client.ListLikedPosts(s.as(t, bob), &postv1.ListLikedPostsRequest{}); err != nil || page.GetTotal() != 1 || len(page.GetPosts()) != 0 {
 		t.Fatalf("after the archive = %v, %v", page, err)
 	}
 
@@ -138,11 +139,11 @@ func TestLikedCommentsAndPhotos(t *testing.T) {
 		t.Fatalf("the second page = %v, %v", comments, err)
 	}
 
-	// The comments of an archived post leave with it.
+	// The comments of an archived post leave with it, still counted.
 	if _, err = s.client.ArchivePost(s.as(t, ann), &postv1.ArchivePostRequest{Id: postID}); err != nil {
 		t.Fatal(err)
 	}
-	if comments, err = s.client.ListLikedComments(s.as(t, bob), &postv1.ListLikedCommentsRequest{}); err != nil || comments.GetTotal() != 0 || len(comments.GetComments()) != 0 {
+	if comments, err = s.client.ListLikedComments(s.as(t, bob), &postv1.ListLikedCommentsRequest{}); err != nil || comments.GetTotal() != 2 || len(comments.GetComments()) != 0 {
 		t.Fatalf("after the archive = %v, %v", comments, err)
 	}
 	if _, err = s.client.ListLikedComments(context.Background(), &postv1.ListLikedCommentsRequest{}); status.Code(err) != codes.Unauthenticated {

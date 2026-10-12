@@ -63,12 +63,15 @@ func (r *LikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *s
 	return faves(ctx, r.conn(ctx), listFavePostsQuery, userID, after, limit)
 }
 
+// The likes of a person are counted as they come and go, by the triggers
+// of the tables of likes: fave_counts has no row for who never liked.
+// Unlike the lists, the numbers count what is in the archive too.
 const countFavePostsQuery = `
-	SELECT count(*)
-	FROM post_likes l
-	JOIN posts p ON p.id = l.post_id
-	WHERE l.user_id = $1
-		AND NOT p.archived
+	SELECT COALESCE((
+		SELECT posts
+		FROM fave_counts
+		WHERE user_id = $1
+	), 0)
 `
 
 func (r *LikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
@@ -101,12 +104,11 @@ func (r *CommentLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, a
 }
 
 const countFaveCommentsQuery = `
-	SELECT count(*)
-	FROM comment_likes l
-	JOIN comments c ON c.id = l.comment_id
-	JOIN posts p ON p.id = c.post_id
-	WHERE l.user_id = $1
-		AND NOT p.archived
+	SELECT COALESCE((
+		SELECT comments
+		FROM fave_counts
+		WHERE user_id = $1
+	), 0)
 `
 
 func (r *CommentLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
@@ -135,9 +137,11 @@ func (l *AlbumPhotoLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID
 }
 
 const countFavePhotosQuery = `
-	SELECT count(*)
-	FROM album_photo_likes
-	WHERE user_id = $1
+	SELECT COALESCE((
+		SELECT photos
+		FROM fave_counts
+		WHERE user_id = $1
+	), 0)
 `
 
 func (l *AlbumPhotoLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {

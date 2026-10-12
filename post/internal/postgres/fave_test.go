@@ -84,8 +84,33 @@ func TestFaves(t *testing.T) {
 		if err != nil || !slices.Equal(faveIDs(page), []uuid.UUID{first.ID(), second.ID()}) {
 			t.Fatalf("without the archived = %v, %v", page, err)
 		}
+		// The number is kept, not counted, and counts the archived too.
+		if n, err := likes.CountLikedBy(ctx, bob); err != nil || n != 3 {
+			t.Fatalf("CountLikedBy with the archived = %d, %v", n, err)
+		}
+
+		// A like that is there already is counted once; one taken back
+		// and one that left with its post are not counted.
+		gone := write(ann, ann, "уйдёт")
+		for _, id := range []uuid.UUID{gone.ID(), first.ID()} {
+			if _, err = likes.Like(ctx, id, bob); err != nil {
+				t.Fatal(err)
+			}
+		}
+		if _, err = likes.Unlike(ctx, second.ID(), bob); err != nil {
+			t.Fatal(err)
+		}
+		if _, err = pool.Exec(ctx, "DELETE FROM posts WHERE id = $1", gone.ID()); err != nil {
+			t.Fatal(err)
+		}
 		if n, err := likes.CountLikedBy(ctx, bob); err != nil || n != 2 {
-			t.Fatalf("CountLikedBy without the archived = %d, %v", n, err)
+			t.Fatalf("CountLikedBy after an unlike and a deleted post = %d, %v", n, err)
+		}
+		if n, err := likes.CountLikedBy(ctx, uuid.New()); err != nil || n != 0 {
+			t.Fatalf("CountLikedBy of who never liked = %d, %v", n, err)
+		}
+		if _, err = likes.Like(ctx, second.ID(), bob); err != nil {
+			t.Fatal(err)
 		}
 
 		// A table this small is read whole unless told otherwise.
@@ -151,7 +176,8 @@ func TestFaves(t *testing.T) {
 			t.Fatalf("the next page = %v, %v", rest, err)
 		}
 
-		if n, err := commentLikes.CountLikedBy(ctx, bob); err != nil || n != 2 {
+		// With the one under the archived post.
+		if n, err := commentLikes.CountLikedBy(ctx, bob); err != nil || n != 3 {
 			t.Fatalf("CountLikedBy = %d, %v", n, err)
 		}
 	})
