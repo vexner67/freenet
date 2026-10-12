@@ -1511,10 +1511,15 @@ paths:
     get:
       summary: Find your messages by what they say
       description: |
-        Newest first, each with who is on the other side; messages you
-        deleted for yourself are not found. A message is found by its own
-        words and by the words of the messages it forwards; a long text,
-        its own or forwarded, comes as the part around what was found.
+        Newest first, in your dialogs and your chats in one list: a
+        message of a dialog comes with who is on the other side (`peer`,
+        `message`), a message of a chat with its chat (`chat`,
+        `chatMessage`). Messages you deleted for yourself, messages taken
+        back and what happened in a chat are not found; who is not in a
+        chat anymore finds what they were shown. A message is found by its
+        own words and by the words of the messages it forwards; a long
+        text, its own or forwarded, comes as the part around what was
+        found.
       security: [{ bearer: [] }]
       parameters:
         - name: q
@@ -1526,6 +1531,10 @@ paths:
           in: query
           description: A nickname, to search the dialog with that user only
           schema: { type: string }
+        - name: chat
+          in: query
+          description: A chat of yours, to search it only; not with `peer`
+          schema: { type: string, format: uuid }
         - name: cursor
           in: query
           schema: { type: string }
@@ -1545,10 +1554,17 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [peer, message]
+                      description: A message of a dialog (`peer`, `message`) or of a chat (`chat`, `chatMessage`)
                       properties:
                         peer: { $ref: "#/components/schemas/Author" }
                         message: { $ref: "#/components/schemas/Message" }
+                        chat:
+                          type: object
+                          required: [id, title]
+                          properties:
+                            id: { type: string, format: uuid }
+                            title: { type: string, description: "May be empty: the chat has no name of its own" }
+                        chatMessage: { $ref: "#/components/schemas/ChatMessage" }
                   nextCursor: { type: string, description: "Empty on the last page" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
@@ -3938,9 +3954,12 @@ paths:
     get:
       summary: The messages of a chat, oldest first
       description: >-
-        The newest page, older ones with `cursor`, or what came after a
-        message with `after`. Long texts come cut (`textCut`). Who is not
-        in the chat anymore reads it up to the moment they went.
+        The newest page, older ones with `cursor`, what came after a
+        message with `after`, or the part around a message with `around`
+        (about half of `limit` before it and half after, as a found
+        message opens; 404 if you are not shown it there). Long texts come
+        cut (`textCut`). Who is not in the chat anymore reads it up to the
+        moment they went.
       security: [{ bearer: [] }]
       parameters:
         - name: cursor
@@ -3948,6 +3967,10 @@ paths:
           schema: { type: string }
         - name: after
           in: query
+          schema: { type: string, format: uuid }
+        - name: around
+          in: query
+          description: Not with `cursor` or `after`
           schema: { type: string, format: uuid }
         - name: limit
           in: query
@@ -3963,7 +3986,14 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
     post:
       summary: Write to a chat
-      description: Text, photos (yours, from POST /me/photos, up to 10) or both.
+      description: >-
+        What a message of a dialog may be: text, photos (yours, from
+        POST /me/photos, up to 10), a shared post (`post`), messages of
+        your dialogs and chats to carry on (`forward`, at most 20 counting
+        those they carry themselves) or some of them; or a photo of an
+        album you are shown (`albumPhoto`), with text alone. What is not
+        there for you answers 400 `post not found`, `photo not found`,
+        `forwarded message not found`.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -3976,6 +4006,12 @@ paths:
                 photos:
                   type: array
                   maxItems: 10
+                  items: { type: string, format: uuid }
+                post: { type: string, format: uuid }
+                albumPhoto: { type: string, format: uuid }
+                forward:
+                  type: array
+                  maxItems: 20
                   items: { type: string, format: uuid }
       responses:
         "201":
@@ -4032,7 +4068,13 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
     patch:
-      summary: Edit the text of your message, within a day
+      summary: Edit your message, within a day
+      description: >-
+        What it says and its photos, as `PATCH /api/v1/messages/{id}`: the
+        request names the changes — `removePhotos` are deleted, `addPhotos`
+        (your uploads that nothing shows yet) come after the photos kept.
+        The post it shares and the messages it forwards stay. Everyone in
+        the chat gets a `chat_edit` event.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -4042,7 +4084,15 @@ paths:
               type: object
               required: [text]
               properties:
-                text: { type: string, maxLength: 60000, description: May be empty only when the message has photos }
+                text: { type: string, maxLength: 60000, description: "May be empty only when the message has photos, shares a post or forwards messages" }
+                addPhotos:
+                  type: array
+                  maxItems: 10
+                  items: { type: string, format: uuid }
+                removePhotos:
+                  type: array
+                  maxItems: 10
+                  items: { type: string, format: uuid }
       responses:
         "200":
           description: The message as it is now
@@ -5304,10 +5354,10 @@ components:
         sharedPhoto:
           description: The shared photo, as in a post that shares one; absent in the list of dialogs and without one
           $ref: "#/components/schemas/SharedPhoto"
-        forwardedCount: { type: integer, description: "How many messages it carries on from other dialogs" }
+        forwardedCount: { type: integer, description: "How many messages it carries on from dialogs and chats" }
         forwarded:
           type: array
-          description: The messages it carries on, oldest first, as a tree written parent first (depth), without those whose authors' pages are gone and what they carried on; absent in the list of dialogs, in a search and without any
+          description: The messages it carries on, oldest first, as a tree written parent first (depth), without those whose authors' pages are gone and what they carried on; absent in the list of dialogs and without any
           items: { $ref: "#/components/schemas/ForwardedMessage" }
         deleted:
           type: boolean
@@ -5315,7 +5365,7 @@ components:
 
     ForwardedMessage:
       type: object
-      description: A message carried on from another dialog, a copy of what its author wrote then; one that carried on others itself is followed by them, one level deeper, and may say nothing of its own
+      description: A message carried on from a dialog or a chat, a copy of what its author wrote then; one that carried on others itself is followed by them, one level deeper, and may say nothing of its own
       required: [depth, author, text, photos, createdAt, post]
       properties:
         depth: { type: integer, description: "How deep it is carried: 0 for a message forwarded itself, 1 for one that message carried on, and so on" }
@@ -5378,14 +5428,14 @@ components:
 
     ChatMessage:
       type: object
-      required: [id, chatId, author, out, text, photos, action, createdAt, editedAt, deleted, deletableUntil, editableUntil, unread]
+      required: [id, chatId, author, out, text, photos, action, createdAt, editedAt, deleted, deletableUntil, editableUntil, unread, post, albumPhoto, forwardedCount]
       properties:
         id: { type: string, format: uuid }
         chatId: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
         out: { type: boolean, description: Your own }
         text: { type: string, maxLength: 60000, description: "Of an action, the title it tells of" }
-        textCut: { type: boolean, description: "`text` is only the beginning; GET /chat-messages/{id} has it whole" }
+        textCut: { type: boolean, description: "`text`, or the text of a message it carries on, is only the beginning; GET /chat-messages/{id} has them whole" }
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
@@ -5403,6 +5453,19 @@ components:
         deletableUntil: { type: string, description: "Until when you may take your message back, a day; \"\" for others' and for actions" }
         editableUntil: { type: string, description: "Until when you may edit your message, a day" }
         unread: { type: boolean, description: "Someone else's, which you have not read" }
+        post: { type: string, description: "A post shared in it; empty for none" }
+        repost:
+          description: The shared post, as inside a repost; absent in the list of dialogs and without one
+          $ref: "#/components/schemas/SharedPost"
+        albumPhoto: { type: string, description: "A photo of an album shared in it; empty for none" }
+        sharedPhoto:
+          description: The shared photo; absent in the list of dialogs and without one
+          $ref: "#/components/schemas/SharedPhoto"
+        forwardedCount: { type: integer, description: "How many messages it carries on from dialogs and chats" }
+        forwarded:
+          type: array
+          description: The messages it carries on, as in Message; absent in the list of dialogs and without any
+          items: { $ref: "#/components/schemas/ForwardedMessage" }
 
     ChatMessagePage:
       type: object

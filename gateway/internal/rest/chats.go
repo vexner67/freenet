@@ -26,16 +26,6 @@ type (
 	addChatMembersRequest struct {
 		Members []string `json:"members"`
 	}
-
-	chatMessageRequest struct {
-		Text string `json:"text"`
-		// Photos are IDs from POST /api/v1/me/photos.
-		Photos []string `json:"photos"`
-	}
-
-	editChatMessageRequest struct {
-		Text string `json:"text"`
-	}
 )
 
 // chatJSON is a chat of several people as the caller has it. State is
@@ -57,7 +47,9 @@ type chatJSON struct {
 // chatMessageJSON is what Author said in a chat or, with Action, what they
 // did there: "create" and "title" (Text is the title), "invite" and "kick"
 // (of Target), "leave", "return". Out is the caller's own, which they may
-// edit until EditableUntil and take back until DeletableUntil.
+// edit until EditableUntil and take back until DeletableUntil. It shows
+// what a message of a dialog may: a shared post, a shared photo of an
+// album and the messages it carries on, except in the list of dialogs.
 type chatMessageJSON struct {
 	ID             string      `json:"id"`
 	ChatID         string      `json:"chatId"`
@@ -75,6 +67,7 @@ type chatMessageJSON struct {
 	EditableUntil  string      `json:"editableUntil"`
 	// Unread: someone else's, which the caller has not read.
 	Unread bool `json:"unread"`
+	attachedJSON
 }
 
 type chatMessagePageResponse struct {
@@ -103,6 +96,8 @@ func toChatMessageJSON(m model.ChatMessage, me string, people map[string]model.A
 		EditedAt:  optionalTime(m.EditedAt),
 		Deleted:   !m.DeletedAt.IsZero(),
 		Unread:    m.Unread,
+
+		attachedJSON: toAttachedJSON(m.PostID, m.SharedPhotoID, m.Forwarded),
 	}
 
 	if m.TargetID != "" {
@@ -182,7 +177,8 @@ func (a *api) shownChat(r *http.Request, me string, view model.ChatView) (chatJS
 }
 
 // shownChatMessages are the messages with the profiles of the people
-// they name, without those of people whose pages are gone.
+// they name and with what they share and carry on, without those of
+// people whose pages are gone.
 func (a *api) shownChatMessages(r *http.Request, me string, messages []model.ChatMessage) ([]chatMessageJSON, error) {
 	people, err := a.people(r, chatPeople(messages))
 	if err != nil {
@@ -194,6 +190,15 @@ func (a *api) shownChatMessages(r *http.Request, me string, messages []model.Cha
 		if j := toChatMessageJSON(m, me, people); j != nil {
 			shown = append(shown, *j)
 		}
+	}
+
+	attached := make([]*attachedJSON, len(shown))
+	for i := range shown {
+		attached[i] = &shown[i].attachedJSON
+	}
+
+	if err = a.showAttached(r, attached); err != nil {
+		return nil, err
 	}
 
 	return shown, nil
@@ -391,8 +396,9 @@ func (a *api) returnToChat(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
-// listChatMessages is the chat back in time with ?cursor=, or what came
-// after a message with ?after=, for polling.
+// listChatMessages is the chat back in time with ?cursor=, what came
+// after a message with ?after=, for polling, or the part around a message
+// with ?around=, as a found message opens.
 func (a *api) listChatMessages(w http.ResponseWriter, r *http.Request) {
 	token, me, err := a.chatCaller(r)
 	if err != nil {
@@ -408,7 +414,9 @@ func (a *api) listChatMessages(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	page, err := a.chats.History(r.Context(), token, r.PathValue("id"), query.Get("cursor"), query.Get("after"), limit)
+	at := model.MessagesAt{Cursor: query.Get("cursor"), After: query.Get("after"), Around: query.Get("around")}
+
+	page, err := a.chats.History(r.Context(), token, r.PathValue("id"), at, limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -439,8 +447,8 @@ func (a *api) writeChatMessage(w http.ResponseWriter, r *http.Request, me string
 	writeJSON(w, status, shown[0])
 }
 
-// sendChatMessage checks the photos with the media service, as a dialog
-// does; who may write, the message service knows.
+// sendChatMessage checks the photos and what the message shares, as a
+// dialog does; who may write, the message service knows.
 func (a *api) sendChatMessage(w http.ResponseWriter, r *http.Request) {
 	token, me, err := a.chatCaller(r)
 	if err != nil {
@@ -448,18 +456,19 @@ func (a *api) sendChatMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req chatMessageRequest
+	var req messageRequest
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	if err = a.claimPhotos(r, token, req.Photos); err != nil {
+	draft, err := a.draft(r, token, req)
+	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	m, err := a.chats.Send(r.Context(), token, r.PathValue("id"), req.Text, req.Photos)
+	m, err := a.chats.Send(r.Context(), token, r.PathValue("id"), draft)
 	if err != nil {
 		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
@@ -487,6 +496,8 @@ func (a *api) getChatMessage(w http.ResponseWriter, r *http.Request) {
 	a.writeChatMessage(w, r, me, m, http.StatusOK)
 }
 
+// editChatMessage changes what the caller's message says and the photos
+// it shows, as editMessage does.
 func (a *api) editChatMessage(w http.ResponseWriter, r *http.Request) {
 	token, me, err := a.chatCaller(r)
 	if err != nil {
@@ -494,14 +505,22 @@ func (a *api) editChatMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var req editChatMessageRequest
+	var req editMessageRequest
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	m, err := a.chats.Edit(r.Context(), token, r.PathValue("id"), req.Text)
+	if err = a.claimPhotos(r, token, req.AddPhotos); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	edit := model.MessageEdit{Text: req.Text, AddPhotoIDs: req.AddPhotos, RemovePhotoIDs: req.RemovePhotos}
+
+	m, err := a.chats.Edit(r.Context(), token, r.PathValue("id"), edit)
 	if err != nil {
+		a.releasePhotos(r, token, req.AddPhotos, err)
 		a.writeError(w, r, err)
 		return
 	}

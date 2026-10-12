@@ -304,11 +304,13 @@ type Chats interface {
 	Kick(ctx context.Context, accessToken, id, userID string) error
 	Leave(ctx context.Context, accessToken, id string) error
 	Return(ctx context.Context, accessToken, id string) error
-	Send(ctx context.Context, accessToken, id, text string, photoIDs []string) (model.ChatMessage, error)
-	History(ctx context.Context, accessToken, id, cursor, after string, limit int) (model.ChatMessagePage, error)
+	Send(ctx context.Context, accessToken, id string, d model.MessageDraft) (model.ChatMessage, error)
+	History(ctx context.Context, accessToken, id string, at model.MessagesAt, limit int) (model.ChatMessagePage, error)
 	// Message is a message with its whole text.
 	Message(ctx context.Context, accessToken, id string) (model.ChatMessage, error)
-	Edit(ctx context.Context, accessToken, id, text string) (model.ChatMessage, error)
+	Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.ChatMessage, error)
+	// Search finds messages in the chat or, for "", in all the caller's.
+	Search(ctx context.Context, accessToken, chatID, query, cursor string, limit int) (model.FoundChatMessages, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	MarkRead(ctx context.Context, accessToken, id, upTo string) error
 }

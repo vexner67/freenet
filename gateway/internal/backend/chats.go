@@ -112,8 +112,11 @@ func (c *Chats) Return(ctx context.Context, accessToken, id string) error {
 	return nil
 }
 
-func (c *Chats) Send(ctx context.Context, accessToken, id, text string, photoIDs []string) (model.ChatMessage, error) {
-	resp, err := c.api.SendChatMessage(withToken(ctx, accessToken), &messagev1.SendChatMessageRequest{ChatId: id, Text: text, PhotoIds: photoIDs})
+// Send writes d into the chat.
+func (c *Chats) Send(ctx context.Context, accessToken, id string, d model.MessageDraft) (model.ChatMessage, error) {
+	resp, err := c.api.SendChatMessage(withToken(ctx, accessToken), &messagev1.SendChatMessageRequest{
+		ChatId: id, Text: d.Text, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID, ForwardIds: d.ForwardIDs,
+	})
 	if err != nil {
 		return model.ChatMessage{}, errs.Wrap("c.api.SendChatMessage", fromStatus(err))
 	}
@@ -121,11 +124,11 @@ func (c *Chats) Send(ctx context.Context, accessToken, id, text string, photoIDs
 	return toChatMessage(resp.GetMessage()), nil
 }
 
-// History is a part of the chat with the beginnings of long texts: older
-// than cursor or, with after, newer than it.
-func (c *Chats) History(ctx context.Context, accessToken, id, cursor, after string, limit int) (model.ChatMessagePage, error) {
+// History is the part of the chat that at names, with the beginnings of
+// long texts.
+func (c *Chats) History(ctx context.Context, accessToken, id string, at model.MessagesAt, limit int) (model.ChatMessagePage, error) {
 	resp, err := c.api.ListChatMessages(withToken(ctx, accessToken), &messagev1.ListChatMessagesRequest{
-		ChatId: id, Cursor: cursor, After: after, Limit: toLimit(limit), TextLimit: model.ExcerptLength,
+		ChatId: id, Cursor: at.Cursor, After: at.After, Around: at.Around, Limit: toLimit(limit), TextLimit: model.ExcerptLength,
 	})
 	if err != nil {
 		return model.ChatMessagePage{}, errs.Wrap("c.api.ListChatMessages", fromStatus(err))
@@ -149,13 +152,34 @@ func (c *Chats) Message(ctx context.Context, accessToken, id string) (model.Chat
 	return toChatMessage(resp.GetMessage()), nil
 }
 
-func (c *Chats) Edit(ctx context.Context, accessToken, id, text string) (model.ChatMessage, error) {
-	resp, err := c.api.EditChatMessage(withToken(ctx, accessToken), &messagev1.EditChatMessageRequest{Id: id, Text: text})
+// Edit changes what the caller's message says and the photos it shows.
+func (c *Chats) Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.ChatMessage, error) {
+	resp, err := c.api.EditChatMessage(withToken(ctx, accessToken), &messagev1.EditChatMessageRequest{
+		Id: id, Text: e.Text, AddPhotoIds: e.AddPhotoIDs, RemovePhotoIds: e.RemovePhotoIDs,
+	})
 	if err != nil {
 		return model.ChatMessage{}, errs.Wrap("c.api.EditChatMessage", fromStatus(err))
 	}
 
 	return toChatMessage(resp.GetMessage()), nil
+}
+
+// Search finds the messages of the caller's chats that say query, in the
+// chat with chatID or, for "", in all of theirs.
+func (c *Chats) Search(ctx context.Context, accessToken, chatID, query, cursor string, limit int) (model.FoundChatMessages, error) {
+	resp, err := c.api.SearchChatMessages(withToken(ctx, accessToken), &messagev1.SearchChatMessagesRequest{
+		ChatId: chatID, Query: query, Cursor: cursor, Limit: toLimit(limit), TextLimit: model.ExcerptLength,
+	})
+	if err != nil {
+		return model.FoundChatMessages{}, errs.Wrap("c.api.SearchChatMessages", fromStatus(err))
+	}
+
+	found := model.FoundChatMessages{Messages: make([]model.ChatMessage, 0, len(resp.GetMessages())), NextCursor: resp.GetNextCursor()}
+	for _, pm := range resp.GetMessages() {
+		found.Messages = append(found.Messages, toChatMessage(pm))
+	}
+
+	return found, nil
 }
 
 func (c *Chats) Delete(ctx context.Context, accessToken, id string) error {
@@ -210,6 +234,9 @@ func toChatMessage(pm *messagev1.ChatMessage) model.ChatMessage {
 		DeletableUntil: fromTimestamp(pm.GetDeletableUntil()),
 		EditableUntil:  fromTimestamp(pm.GetEditableUntil()),
 		Unread:         pm.GetUnread(),
+		PostID:         pm.GetPostId(),
+		SharedPhotoID:  pm.GetPhotoId(),
+		Forwarded:      toForwarded(pm.GetForwarded()),
 	}
 
 	if pm.GetAction() != messagev1.ChatAction_CHAT_ACTION_NONE {

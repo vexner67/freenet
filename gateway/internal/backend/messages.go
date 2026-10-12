@@ -240,9 +240,10 @@ func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.Mes
 	}, nil
 }
 
-func toMessage(pm *messagev1.Message) model.Message {
-	forwarded := make([]model.ForwardedMessage, 0, len(pm.GetForwarded()))
-	for _, f := range pm.GetForwarded() {
+// toForwarded are the messages another one carries on.
+func toForwarded(carried []*messagev1.ForwardedMessage) []model.ForwardedMessage {
+	forwarded := make([]model.ForwardedMessage, 0, len(carried))
+	for _, f := range carried {
 		forwarded = append(forwarded, model.ForwardedMessage{
 			SenderID:  f.GetSenderId(),
 			Text:      f.GetText(),
@@ -255,8 +256,12 @@ func toMessage(pm *messagev1.Message) model.Message {
 		})
 	}
 
+	return forwarded
+}
+
+func toMessage(pm *messagev1.Message) model.Message {
 	return model.Message{
-		Forwarded:      forwarded,
+		Forwarded:      toForwarded(pm.GetForwarded()),
 		DeletedAt:      fromTimestamp(pm.GetDeletedAt()),
 		ID:             pm.GetId(),
 		SenderID:       pm.GetSenderId(),

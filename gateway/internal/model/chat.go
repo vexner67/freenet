@@ -58,6 +58,19 @@ type ChatMessage struct {
 	EditableUntil  time.Time
 	// Unread: someone else's, which the caller has not read.
 	Unread bool
+	// What a message of a dialog may show besides its words: a shared
+	// post, a shared photo of an album ("" for none) and the messages it
+	// carries on.
+	PostID        string
+	SharedPhotoID string
+	Forwarded     []ForwardedMessage
+}
+
+// FoundChatMessages is one screen of messages a search of chats found,
+// newest first.
+type FoundChatMessages struct {
+	Messages   []ChatMessage
+	NextCursor string
 }
 
 // ChatPage is one screen of chats, the most recent first.
