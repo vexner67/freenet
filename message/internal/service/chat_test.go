@@ -14,16 +14,23 @@ import (
 )
 
 type chatFixture struct {
-	svc    *service.ChatService
-	events *pubsub.Hub[uuid.UUID, service.Event]
-	photos *fakePhotos
+	svc *service.ChatService
+	// dialogs writes the messages of dialogs over the same store.
+	dialogs *service.MessageService
+	events  *pubsub.Hub[uuid.UUID, service.Event]
+	photos  *fakePhotos
 }
 
 func newChats() chatFixture {
 	store := inmem.NewStore()
 	f := chatFixture{events: pubsub.New[uuid.UUID, service.Event](64), photos: &fakePhotos{}}
 	f.svc = service.NewChatService(service.ChatDeps{
-		Chats: store.Chats(), Members: store.ChatMembers(), Messages: store.ChatMessages(), Events: f.events, Tx: fakeTx{}, Photos: f.photos,
+		Chats: store.Chats(), Members: store.ChatMembers(), Messages: store.ChatMessages(), DialogMessages: store.Messages(), Events: f.events, Tx: fakeTx{}, Photos: f.photos,
+	})
+
+	f.dialogs = service.NewMessageService(service.Deps{
+		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(),
+		Events: f.events, Tx: fakeTx{}, Photos: f.photos,
 	})
 
 	return f
@@ -91,7 +98,7 @@ func TestChatService_Create(t *testing.T) {
 	if _, err = f.svc.History(ctx, stranger, view.Chat.ID(), uuid.Nil, 20); !errors.Is(err, message.ErrChatNotFound) {
 		t.Fatalf("a stranger reads the chat: %v", err)
 	}
-	if _, err = f.svc.Send(ctx, stranger, view.Chat.ID(), "я тут", nil); !errors.Is(err, message.ErrChatNotFound) {
+	if _, err = f.svc.Send(ctx, stranger, view.Chat.ID(), service.Draft{Text: "я тут"}); !errors.Is(err, message.ErrChatNotFound) {
 		t.Fatalf("a stranger writes into the chat: %v", err)
 	}
 
@@ -117,7 +124,7 @@ func TestChatService_Messages(t *testing.T) {
 
 	photo := uuid.New()
 
-	first, err := f.svc.Send(ctx, bob, chatID, "привет", message.Photos{photo})
+	first, err := f.svc.Send(ctx, bob, chatID, service.Draft{Text: "привет", Photos: message.Photos{photo}})
 	if err != nil {
 		t.Fatalf("Send: %v", err)
 	}
@@ -125,7 +132,7 @@ func TestChatService_Messages(t *testing.T) {
 		t.Fatalf("media heard %+v, outside the transaction %d", f.photos.published, f.photos.outsideTx)
 	}
 
-	second, err := f.svc.Send(ctx, cat, chatID, "и вам", nil)
+	second, err := f.svc.Send(ctx, cat, chatID, service.Draft{Text: "и вам"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -182,11 +189,11 @@ func TestChatService_Messages(t *testing.T) {
 		catEvents, cancel := f.events.Subscribe(cat)
 		defer cancel()
 
-		if _, err := f.svc.Edit(ctx, ann, first.ID(), "не моё"); !errors.Is(err, message.ErrCannotEdit) {
+		if _, err := f.svc.Edit(ctx, ann, first.ID(), message.Revision{Text: "не моё"}); !errors.Is(err, message.ErrCannotEdit) {
 			t.Fatalf("someone else edits: %v", err)
 		}
 
-		edited, err := f.svc.Edit(ctx, bob, first.ID(), "привет всем")
+		edited, err := f.svc.Edit(ctx, bob, first.ID(), message.Revision{Text: "привет всем"})
 		if err != nil || edited.Text() != "привет всем" || len(edited.Photos()) != 1 {
 			t.Fatalf("Edit = %+v, %v", edited, err)
 		}
@@ -278,7 +285,7 @@ func TestChatService_Members(t *testing.T) {
 			t.Fatalf("who was removed heard %+v", e)
 		}
 
-		if _, err := f.svc.Send(ctx, ann, chatID, "без кати", nil); err != nil {
+		if _, err := f.svc.Send(ctx, ann, chatID, service.Draft{Text: "без кати"}); err != nil {
 			t.Fatal(err)
 		}
 
@@ -295,7 +302,7 @@ func TestChatService_Members(t *testing.T) {
 		}
 
 		for name, err := range map[string]error{
-			"write":  second(f.svc.Send(ctx, cat, chatID, "я тут", nil)),
+			"write":  second(f.svc.Send(ctx, cat, chatID, service.Draft{Text: "я тут"})),
 			"rename": f.svc.Rename(ctx, cat, chatID, "Моё"),
 			"invite": f.svc.Invite(ctx, cat, chatID, []uuid.UUID{uuid.New()}),
 			"leave":  f.svc.Leave(ctx, cat, chatID),
@@ -329,7 +336,7 @@ func TestChatService_Members(t *testing.T) {
 			t.Fatalf("who left is brought back by others: %v", err)
 		}
 
-		sent, err := f.svc.Send(ctx, ann, chatID, "без дани", nil)
+		sent, err := f.svc.Send(ctx, ann, chatID, service.Draft{Text: "без дани"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -402,11 +409,11 @@ func TestChatService_PurgeUser(t *testing.T) {
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	chatID := chatOf(t, f.svc, ann, bob, cat)
 
-	kept, err := f.svc.Send(ctx, bob, chatID, "останется", nil)
+	kept, err := f.svc.Send(ctx, bob, chatID, service.Draft{Text: "останется"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = f.svc.Send(ctx, ann, chatID, "уйдёт", nil); err != nil {
+	if _, err = f.svc.Send(ctx, ann, chatID, service.Draft{Text: "уйдёт"}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -436,7 +443,7 @@ func TestChatService_PurgeUser(t *testing.T) {
 		t.Fatalf("the chat keeps %d messages, %v; want 1", len(page.Messages), err)
 	}
 
-	if _, err = f.svc.Send(ctx, bob, chatID, "дальше", nil); err != nil {
+	if _, err = f.svc.Send(ctx, bob, chatID, service.Draft{Text: "дальше"}); err != nil {
 		t.Fatalf("the chat goes on: %v", err)
 	}
 }

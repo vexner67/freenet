@@ -39,24 +39,32 @@ func TestSearch_Indexed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rows, err := tx.Query(ctx, "EXPLAIN SELECT id FROM messages WHERE "+messageWords+" ILIKE $1", "%привет%")
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	var plan strings.Builder
-	for rows.Next() {
-		var line string
-		if err = rows.Scan(&line); err != nil {
+	for _, tt := range []struct {
+		index, query string
+		args         []any
+	}{
+		{"messages_search_idx", "SELECT id FROM messages WHERE " + messageWords + " ILIKE $1", []any{"%привет%"}},
+		{"chat_messages_search_idx", "SELECT msg.id FROM chat_messages msg WHERE " + chatMessageWords + " ILIKE $1", []any{"%привет%"}},
+	} {
+		rows, err := tx.Query(ctx, "EXPLAIN "+tt.query, tt.args...)
+		if err != nil {
 			t.Fatal(err)
 		}
-		plan.WriteString(line + "\n")
-	}
-	if err = rows.Err(); err != nil {
-		t.Fatal(err)
-	}
 
-	if !strings.Contains(plan.String(), "messages_search_idx") {
-		t.Fatalf("the search does not use messages_search_idx:\n%s", plan.String())
+		var plan strings.Builder
+		for rows.Next() {
+			var line string
+			if err = rows.Scan(&line); err != nil {
+				t.Fatal(err)
+			}
+			plan.WriteString(line + "\n")
+		}
+		if err = rows.Err(); err != nil {
+			t.Fatal(err)
+		}
+
+		if !strings.Contains(plan.String(), tt.index) {
+			t.Errorf("the search does not use %s:\n%s", tt.index, plan.String())
+		}
 	}
 }

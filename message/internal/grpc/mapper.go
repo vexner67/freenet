@@ -77,7 +77,17 @@ func photoStrings(photos message.Photos) []string {
 }
 
 // fromProtoDraft reads the message to send.
-func fromProtoDraft(req *messagev1.SendMessageRequest) (service.Draft, error) {
+// draftRequest is a message to send as the requests of dialogs and of
+// chats name it.
+type draftRequest interface {
+	GetText() string
+	GetPhotoIds() []string
+	GetPostId() string
+	GetPhotoId() string
+	GetForwardIds() []string
+}
+
+func fromProtoDraft(req draftRequest) (service.Draft, error) {
 	text, err := message.NewText(req.GetText())
 	if err != nil {
 		return service.Draft{}, status.Error(codes.InvalidArgument, err.Error())
@@ -120,7 +130,15 @@ func fromProtoDraft(req *messagev1.SendMessageRequest) (service.Draft, error) {
 }
 
 // fromProtoRevision reads what an edit makes of a message.
-func fromProtoRevision(req *messagev1.EditMessageRequest) (message.Revision, error) {
+// revisionRequest is an edit as the requests of dialogs and of chats name
+// it.
+type revisionRequest interface {
+	GetText() string
+	GetRemovePhotoIds() []string
+	GetAddPhotoIds() []string
+}
+
+func fromProtoRevision(req revisionRequest) (message.Revision, error) {
 	text, err := message.NewText(req.GetText())
 	if err != nil {
 		return message.Revision{}, status.Error(codes.InvalidArgument, err.Error())

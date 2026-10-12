@@ -127,7 +127,7 @@ func TestEventCodec_Chat(t *testing.T) {
 	at := time.Date(2026, 10, 11, 12, 0, 0, 123000, time.UTC)
 
 	written := message.RestoreChatMessage(message.StoredChatMessage{
-		ID: uuid.New(), ChatID: chat, SenderID: ann, Text: "привет 👋", Photos: message.Photos{uuid.New()}, CreatedAt: at, EditedAt: at.Add(time.Minute),
+		ID: uuid.New(), ChatID: chat, SenderID: ann, Content: message.RestoreContent("привет 👋", message.Photos{uuid.New()}, uuid.Nil, nil), CreatedAt: at, EditedAt: at.Add(time.Minute),
 	})
 
 	data, err := codec.Encode(bob, service.Event{Chat: &service.ChatEvent{Message: written}})
@@ -142,6 +142,34 @@ func TestEventCodec_Chat(t *testing.T) {
 	if got := e.Chat.Message; got.ID() != written.ID() || got.ChatID() != chat || got.SenderID() != ann || got.Text() != written.Text() ||
 		len(got.Photos()) != 1 || !got.CreatedAt().Equal(at) || !got.EditedAt().Equal(written.EditedAt()) || got.IsAction() {
 		t.Fatalf("message round trip = %+v", got)
+	}
+
+	carried, err := message.NewForwards([]message.Forwarded{{SenderID: bob, Text: "дальше", Photos: message.Photos{uuid.New()}, CreatedAt: at}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	post := uuid.New()
+	carrying := message.RestoreChatMessage(message.StoredChatMessage{
+		ID: uuid.New(), ChatID: chat, SenderID: ann, Content: message.RestoreContent("", nil, post, carried), CreatedAt: at,
+	})
+	if data, err = codec.Encode(bob, service.Event{Chat: &service.ChatEvent{Message: carrying}}); err != nil {
+		t.Fatalf("Encode a message carrying another: %v", err)
+	}
+	if _, e, err = codec.Decode(data); err != nil || e.Chat.Message.Post() != post || len(e.Chat.Message.Forwarded()) != 1 ||
+		e.Chat.Message.Forwarded()[0].Text != "дальше" || len(e.Chat.Message.Forwarded()[0].Photos) != 1 {
+		t.Fatalf("carrying round trip = %+v, %v", e.Chat, err)
+	}
+
+	albumPhoto := uuid.New()
+	sharing := message.RestoreChatMessage(message.StoredChatMessage{
+		ID: uuid.New(), ChatID: chat, SenderID: ann, Content: message.RestoreContent("", nil, uuid.Nil, nil).WithSharedPhoto(albumPhoto), CreatedAt: at,
+	})
+	if data, err = codec.Encode(bob, service.Event{Chat: &service.ChatEvent{Message: sharing}}); err != nil {
+		t.Fatalf("Encode a shared photo: %v", err)
+	}
+	if _, e, err = codec.Decode(data); err != nil || e.Chat.Message.SharedPhoto() != albumPhoto {
+		t.Fatalf("shared photo round trip = %+v, %v", e.Chat, err)
 	}
 
 	kicked := message.RestoreChatMessage(message.StoredChatMessage{

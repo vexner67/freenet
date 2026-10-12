@@ -149,11 +149,16 @@ func TestChatMessage(t *testing.T) {
 	chat, ann, bob := uuid.New(), uuid.New(), uuid.New()
 	now := time.Date(2026, 10, 11, 12, 0, 0, 0, time.UTC)
 
-	if _, err := message.NewChatMessage(chat, ann, "", nil, now); !errors.Is(err, message.ErrTextEmpty) {
-		t.Fatalf("an empty message: %v", err)
+	said := func(text message.Text, photos message.Photos) message.Content {
+		c, err := message.NewContent(text, photos, uuid.Nil, nil)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return c
 	}
 
-	m, err := message.NewChatMessage(chat, ann, "привет", message.Photos{uuid.New()}, now)
+	m, err := message.NewChatMessage(chat, ann, said("привет", message.Photos{uuid.New()}), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -164,20 +169,20 @@ func TestChatMessage(t *testing.T) {
 	t.Run("edit", func(t *testing.T) {
 		t.Parallel()
 
-		edited, err := m.Edited(ann, "", now.Add(time.Hour))
+		edited, err := m.Edited(ann, message.Revision{}, now.Add(time.Hour))
 		if err != nil || edited.Text() != "" || len(edited.Photos()) != 1 || edited.EditedAt().IsZero() || m.Text() != "привет" {
 			t.Fatalf("Edited to photos only = %+v, %v", edited, err)
 		}
 
-		if _, err = m.Edited(bob, "нет", now); !errors.Is(err, message.ErrCannotEdit) {
+		if _, err = m.Edited(bob, message.Revision{Text: "нет"}, now); !errors.Is(err, message.ErrCannotEdit) {
 			t.Errorf("someone else edits: %v", err)
 		}
-		if _, err = m.Edited(ann, "поздно", now.Add(25*time.Hour)); !errors.Is(err, message.ErrEditExpired) {
+		if _, err = m.Edited(ann, message.Revision{Text: "поздно"}, now.Add(25*time.Hour)); !errors.Is(err, message.ErrEditExpired) {
 			t.Errorf("an edit a day later: %v", err)
 		}
 
-		words, _ := message.NewChatMessage(chat, ann, "слова", nil, now)
-		if _, err = words.Edited(ann, "", now); !errors.Is(err, message.ErrTextEmpty) {
+		words, _ := message.NewChatMessage(chat, ann, said("слова", nil), now)
+		if _, err = words.Edited(ann, message.Revision{Text: ""}, now); !errors.Is(err, message.ErrTextEmpty) {
 			t.Errorf("words edited to nothing: %v", err)
 		}
 	})
@@ -193,7 +198,7 @@ func TestChatMessage(t *testing.T) {
 		if _, err = gone.TakenBack(ann, now.Add(time.Hour)); !errors.Is(err, message.ErrNotFound) {
 			t.Errorf("taken back twice: %v", err)
 		}
-		if _, err = gone.Edited(ann, "снова", now.Add(time.Hour)); !errors.Is(err, message.ErrNotFound) {
+		if _, err = gone.Edited(ann, message.Revision{Text: "снова"}, now.Add(time.Hour)); !errors.Is(err, message.ErrNotFound) {
 			t.Errorf("a message taken back is edited: %v", err)
 		}
 		if _, err = m.TakenBack(bob, now); !errors.Is(err, message.ErrCannotDelete) {
@@ -212,7 +217,7 @@ func TestChatMessage(t *testing.T) {
 			t.Fatalf("NewChatAction = %+v, %v", invited, err)
 		}
 
-		if _, err = invited.Edited(ann, "не было", now); !errors.Is(err, message.ErrCannotEdit) {
+		if _, err = invited.Edited(ann, message.Revision{Text: "не было"}, now); !errors.Is(err, message.ErrCannotEdit) {
 			t.Errorf("an action is edited: %v", err)
 		}
 		if _, err = invited.TakenBack(ann, now); !errors.Is(err, message.ErrCannotDelete) {
@@ -224,4 +229,74 @@ func TestChatMessage(t *testing.T) {
 			t.Errorf("a renaming tells of %q", renamed.Text())
 		}
 	})
+}
+
+func TestChatMessage_Content(t *testing.T) {
+	t.Parallel()
+
+	chat, ann, bob := uuid.New(), uuid.New(), uuid.New()
+	now := time.Date(2026, 10, 12, 12, 0, 0, 0, time.UTC)
+	post, kept, dropped, added := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+
+	carried, err := message.NewForwards([]message.Forwarded{{SenderID: bob, Text: "идём в Поход", CreatedAt: now.Add(-time.Hour)}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	content, err := message.NewContent("гляньте", message.Photos{kept, dropped}, post, carried)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := message.NewChatMessage(chat, ann, content, now)
+	if err != nil || m.Post() != post || len(m.Forwarded()) != 1 || len(m.Photos()) != 2 {
+		t.Fatalf("NewChatMessage = %+v, %v", m, err)
+	}
+
+	// Carried on, the message goes first and what it carried a level deeper.
+	on := m.Carried()
+	if len(on) != 2 || on[0].SenderID != ann || on[0].Text != "гляньте" || on[0].Post != post || on[0].Depth != 0 || on[1].SenderID != bob || on[1].Depth != 1 {
+		t.Fatalf("Carried = %+v", on)
+	}
+
+	edited, err := m.Edited(ann, message.Revision{Removed: message.Photos{dropped}, Added: message.Photos{added}}, now.Add(time.Minute))
+	if err != nil || edited.Text() != "" || len(edited.Photos()) != 2 || edited.Photos()[0] != kept || edited.Photos()[1] != added ||
+		edited.Post() != post || len(edited.Forwarded()) != 1 {
+		t.Fatalf("Edited = %+v, %v", edited, err)
+	}
+
+	for query, want := range map[string]bool{"глянь": true, "ПОХОД": true, "море": false} {
+		q, err := message.NewQuery(query)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got := q.MatchesChat(m); got != want {
+			t.Errorf("MatchesChat(%q) = %v, want %v", query, got, want)
+		}
+	}
+
+	gone, err := m.TakenBack(ann, now.Add(time.Minute))
+	if err != nil || gone.Post() != uuid.Nil || len(gone.Forwarded()) != 0 || gone.Carried() != nil {
+		t.Fatalf("TakenBack = %+v, %v", gone, err)
+	}
+
+	q, _ := message.NewQuery("поход")
+
+	renamed, err := message.NewChatAction(chat, ann, message.ActionTitle, uuid.Nil, "Поход", now)
+	if err != nil || q.MatchesChat(renamed) || q.MatchesChat(gone) || renamed.Carried() != nil {
+		t.Fatalf("what happened and what was taken back say something: %v", err)
+	}
+
+	share, err := message.NewPhotoShare("фото", uuid.New())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	shared, err := message.NewChatMessage(chat, ann, share, now)
+	if err != nil || shared.SharedPhoto() == uuid.Nil {
+		t.Fatalf("a photo of an album = %+v, %v", shared, err)
+	}
+	if _, err = shared.Edited(ann, message.Revision{Text: "фото", Added: message.Photos{added}}, now); !errors.Is(err, message.ErrSharedPhotoAlone) {
+		t.Errorf("own photos next to a photo of an album: %v", err)
+	}
 }

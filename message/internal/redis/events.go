@@ -52,8 +52,11 @@ type chatMessageJSON struct {
 	TargetID  uuid.UUID   `json:"target_id"`
 	CreatedAt time.Time   `json:"created_at"`
 	// EditedAt and DeletedAt are zero for never.
-	EditedAt  time.Time `json:"edited_at"`
-	DeletedAt time.Time `json:"deleted_at"`
+	EditedAt    time.Time       `json:"edited_at"`
+	DeletedAt   time.Time       `json:"deleted_at"`
+	Post        uuid.UUID       `json:"post"`
+	SharedPhoto uuid.UUID       `json:"shared_photo"`
+	Forwarded   []forwardedJSON `json:"forwarded,omitempty"`
 }
 
 func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
@@ -72,6 +75,10 @@ func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
 		CreatedAt: m.CreatedAt(),
 		EditedAt:  m.EditedAt(),
 		DeletedAt: m.DeletedAt(),
+
+		Post:        m.Post(),
+		SharedPhoto: m.SharedPhoto(),
+		Forwarded:   toForwardedJSON(m.Forwarded()),
 	}
 }
 
@@ -87,20 +94,30 @@ func (m *chatMessageJSON) message() (*message.ChatMessage, error) {
 		return nil, errUnknownAction
 	}
 
-	text, err := message.NewText(m.Text)
-	if err != nil {
-		return nil, errs.Wrap("message.NewText", err)
-	}
-
-	photos, err := message.NewPhotos(m.Photos)
-	if err != nil {
-		return nil, errs.Wrap("message.NewPhotos", err)
-	}
-
-	return message.RestoreChatMessage(message.StoredChatMessage{
-		ID: m.ID, ChatID: m.ChatID, SenderID: m.SenderID, Text: text, Photos: photos, Action: message.Action(m.Action),
+	stored := message.StoredChatMessage{
+		ID: m.ID, ChatID: m.ChatID, SenderID: m.SenderID, Action: message.Action(m.Action),
 		TargetID: m.TargetID, CreatedAt: m.CreatedAt, EditedAt: m.EditedAt, DeletedAt: m.DeletedAt,
-	}), nil
+	}
+
+	// What happened in the chat says at most a title; a message taken
+	// back says nothing.
+	if stored.Action != message.ActionNone || !m.DeletedAt.IsZero() {
+		text, err := message.NewText(m.Text)
+		if err != nil {
+			return nil, errs.Wrap("message.NewText", err)
+		}
+
+		stored.Content = message.RestoreContent(text, nil, uuid.Nil, nil)
+
+		return message.RestoreChatMessage(stored), nil
+	}
+
+	var err error
+	if stored.Content, err = contentOf(m.Text, m.Photos, m.Post, m.SharedPhoto, m.Forwarded); err != nil {
+		return nil, errs.Wrap("contentOf", err)
+	}
+
+	return message.RestoreChatMessage(stored), nil
 }
 
 func toChatJSON(e *service.ChatEvent) *chatJSON {
@@ -162,16 +179,20 @@ type forwardedJSON struct {
 	Depth     int         `json:"depth,omitempty"`
 }
 
-func toMessageJSON(m *message.Message) *messageJSON {
-	forwarded := make([]forwardedJSON, len(m.Forwarded()))
-	for i, f := range m.Forwarded() {
+func toForwardedJSON(carried message.Forwards) []forwardedJSON {
+	forwarded := make([]forwardedJSON, len(carried))
+	for i, f := range carried {
 		forwarded[i] = forwardedJSON{
 			SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, Photo: f.SharedPhoto, CreatedAt: f.CreatedAt, Depth: f.Depth,
 		}
 	}
 
+	return forwarded
+}
+
+func toMessageJSON(m *message.Message) *messageJSON {
 	return &messageJSON{
-		Forwarded:   forwarded,
+		Forwarded:   toForwardedJSON(m.Forwarded()),
 		DeletedAt:   m.DeletedAt(),
 		ID:          m.ID(),
 		SenderID:    m.SenderID(),
@@ -197,39 +218,46 @@ func (m *messageJSON) message() (*message.Message, error) {
 		return message.Restore(stored), nil
 	}
 
-	text, err := message.NewText(m.Text)
-	if err != nil {
-		return nil, errs.Wrap("message.NewText", err)
-	}
-
-	photos, err := message.NewPhotos(m.Photos)
-	if err != nil {
-		return nil, errs.Wrap("message.NewPhotos", err)
-	}
-
-	forwarded, err := m.forwarded()
-	if err != nil {
-		return nil, errs.Wrap("m.forwarded", err)
-	}
-
-	if m.SharedPhoto != uuid.Nil {
-		if stored.Content, err = message.NewPhotoShare(text, m.SharedPhoto); err != nil {
-			return nil, errs.Wrap("message.NewPhotoShare", err)
-		}
-
-		return message.Restore(stored), nil
-	}
-
-	if stored.Content, err = message.NewContent(text, photos, m.Post, forwarded); err != nil {
-		return nil, errs.Wrap("message.NewContent", err)
+	var err error
+	if stored.Content, err = contentOf(m.Text, m.Photos, m.Post, m.SharedPhoto, m.Forwarded); err != nil {
+		return nil, errs.Wrap("contentOf", err)
 	}
 
 	return message.Restore(stored), nil
 }
 
-func (m *messageJSON) forwarded() (message.Forwards, error) {
-	carried := make([]message.Forwarded, len(m.Forwarded))
-	for i, f := range m.Forwarded {
+// contentOf rebuilds what a message of a dialog or of a chat says and
+// shows, checking it as a new one.
+func contentOf(said string, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, carried []forwardedJSON) (message.Content, error) {
+	text, err := message.NewText(said)
+	if err != nil {
+		return message.Content{}, errs.Wrap("message.NewText", err)
+	}
+
+	photos, err := message.NewPhotos(photoIDs)
+	if err != nil {
+		return message.Content{}, errs.Wrap("message.NewPhotos", err)
+	}
+
+	forwarded, err := forwardsOf(carried)
+	if err != nil {
+		return message.Content{}, errs.Wrap("forwardsOf", err)
+	}
+
+	if sharedPhoto != uuid.Nil {
+		content, err := message.NewPhotoShare(text, sharedPhoto)
+
+		return content, errs.Wrap("message.NewPhotoShare", err)
+	}
+
+	content, err := message.NewContent(text, photos, post, forwarded)
+
+	return content, errs.Wrap("message.NewContent", err)
+}
+
+func forwardsOf(raw []forwardedJSON) (message.Forwards, error) {
+	carried := make([]message.Forwarded, len(raw))
+	for i, f := range raw {
 		text, err := message.NewText(f.Text)
 		if err != nil {
 			return nil, errs.Wrap("message.NewText", err)

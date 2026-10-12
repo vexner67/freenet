@@ -55,12 +55,13 @@ func chatServiceOn(t *testing.T, conns int32) (*service.ChatService, context.Con
 	t.Cleanup(pool.Close)
 
 	return service.NewChatService(service.ChatDeps{
-		Chats:    postgres.NewChatRepository(pool),
-		Members:  postgres.NewChatMemberRepository(pool),
-		Messages: postgres.NewChatMessageRepository(pool),
-		Events:   pubsub.New[uuid.UUID, service.Event](64),
-		Tx:       pgpool.NewTxManager(pool),
-		Photos:   mediaclient.Nop{},
+		Chats:          postgres.NewChatRepository(pool),
+		Members:        postgres.NewChatMemberRepository(pool),
+		Messages:       postgres.NewChatMessageRepository(pool),
+		DialogMessages: postgres.NewMessageRepository(pool),
+		Events:         pubsub.New[uuid.UUID, service.Event](64),
+		Tx:             pgpool.NewTxManager(pool),
+		Photos:         mediaclient.Nop{},
 	}), ctx
 }
 
@@ -82,7 +83,7 @@ func TestChats(t *testing.T) {
 
 	photos := message.Photos{uuid.New(), uuid.New()}
 
-	first, err := svc.Send(ctx, bob, chatID, "привет", photos)
+	first, err := svc.Send(ctx, bob, chatID, service.Draft{Text: "привет", Photos: photos})
 	if err != nil {
 		t.Fatalf("Send: %v", err)
 	}
@@ -132,7 +133,7 @@ func TestChats(t *testing.T) {
 	})
 
 	t.Run("history", func(t *testing.T) {
-		second, err := svc.Send(ctx, cat, chatID, "и вам", nil)
+		second, err := svc.Send(ctx, cat, chatID, service.Draft{Text: "и вам"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -154,7 +155,7 @@ func TestChats(t *testing.T) {
 	})
 
 	t.Run("edit and take back", func(t *testing.T) {
-		edited, err := svc.Edit(ctx, bob, first.ID(), "привет всем")
+		edited, err := svc.Edit(ctx, bob, first.ID(), message.Revision{Text: "привет всем"})
 		if err != nil {
 			t.Fatalf("Edit: %v", err)
 		}
@@ -174,7 +175,7 @@ func TestChats(t *testing.T) {
 		if err = svc.Delete(ctx, bob, first.ID()); !errors.Is(err, message.ErrNotFound) {
 			t.Fatalf("taken back twice: %v", err)
 		}
-		if _, err = svc.Edit(ctx, bob, first.ID(), "снова"); !errors.Is(err, message.ErrNotFound) {
+		if _, err = svc.Edit(ctx, bob, first.ID(), message.Revision{Text: "снова"}); !errors.Is(err, message.ErrNotFound) {
 			t.Fatalf("a message taken back is edited: %v", err)
 		}
 	})
@@ -190,7 +191,7 @@ func TestChats(t *testing.T) {
 			t.Fatalf("Kick: %v", err)
 		}
 
-		after, err := svc.Send(ctx, ann, chatID, "без кати", nil)
+		after, err := svc.Send(ctx, ann, chatID, service.Draft{Text: "без кати"})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -207,7 +208,7 @@ func TestChats(t *testing.T) {
 		if page, err := svc.History(ctx, cat, chatID, uuid.Nil, 50); err != nil || page.Messages[len(page.Messages)-1].Action() != message.ActionKick {
 			t.Fatalf("the history of who was removed ends with %+v, %v", page.Messages, err)
 		}
-		if _, err = svc.Send(ctx, cat, chatID, "я тут", nil); !errors.Is(err, message.ErrNotInChat) {
+		if _, err = svc.Send(ctx, cat, chatID, service.Draft{Text: "я тут"}); !errors.Is(err, message.ErrNotInChat) {
 			t.Fatalf("who was removed writes: %v", err)
 		}
 
@@ -237,7 +238,7 @@ func TestChats(t *testing.T) {
 		if _, err := svc.Get(ctx, ann, uuid.New()); !errors.Is(err, message.ErrChatNotFound) {
 			t.Fatalf("Get of no chat: %v", err)
 		}
-		if _, err := svc.Send(ctx, ann, uuid.New(), "куда", nil); !errors.Is(err, message.ErrChatNotFound) {
+		if _, err := svc.Send(ctx, ann, uuid.New(), service.Draft{Text: "куда"}); !errors.Is(err, message.ErrChatNotFound) {
 			t.Fatalf("Send to no chat: %v", err)
 		}
 		if _, _, err := svc.Message(ctx, stranger, first.ID()); !errors.Is(err, message.ErrNotFound) {
@@ -267,7 +268,7 @@ func TestChats_ConcurrentSend(t *testing.T) {
 			go func() {
 				defer wg.Done()
 
-				if _, err := svc.Send(ctx, sender, view.Chat.ID(), "вместе", nil); err != nil {
+				if _, err := svc.Send(ctx, sender, view.Chat.ID(), service.Draft{Text: "вместе"}); err != nil {
 					t.Errorf("Send: %v", err)
 				}
 			}()
@@ -345,14 +346,14 @@ func TestChats_PurgeUser(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	kept, err := svc.Send(ctx, bob, chatID, "останется", nil)
+	kept, err := svc.Send(ctx, bob, chatID, service.Draft{Text: "останется"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = svc.MarkRead(ctx, cat, chatID, kept.ID()); err != nil {
 		t.Fatal(err)
 	}
-	if _, err = svc.Send(ctx, ann, chatID, "уйдёт", nil); err != nil {
+	if _, err = svc.Send(ctx, ann, chatID, service.Draft{Text: "уйдёт"}); err != nil {
 		t.Fatal(err)
 	}
 	if err = svc.Kick(ctx, ann, chatID, cat); err != nil {
@@ -395,7 +396,163 @@ func TestChats_PurgeUser(t *testing.T) {
 		t.Fatalf("a chat of others = %+v, %v", untouched, err)
 	}
 
-	if _, err = svc.Send(ctx, bob, chatID, "дальше", nil); err != nil {
+	if _, err = svc.Send(ctx, bob, chatID, service.Draft{Text: "дальше"}); err != nil {
 		t.Fatalf("the chat goes on: %v", err)
 	}
+}
+
+// Integration test: needs a database with migrations applied.
+func TestChats_ForwardShareAndSearch(t *testing.T) {
+	svc, ctx := chatService(t)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	view, err := svc.Create(ctx, ann, "Горы", []uuid.UUID{bob, cat})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chatID := view.Chat.ID()
+
+	other, err := svc.Create(ctx, ann, "Море", []uuid.UUID{bob, uuid.New()})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	post, albumPhoto, photo := uuid.New(), uuid.New(), uuid.New()
+
+	said, err := svc.Send(ctx, bob, chatID, service.Draft{Text: "Идём на Эльбрус_100%", Photos: message.Photos{photo}, Post: post})
+	if err != nil {
+		t.Fatalf("Send: %v", err)
+	}
+
+	got, _, err := svc.Message(ctx, cat, said.ID())
+	if err != nil || got.Post() != post || len(got.Photos()) != 1 || len(got.Forwarded()) != 0 {
+		t.Fatalf("a post read back = %+v, %v", got, err)
+	}
+
+	shared, err := svc.Send(ctx, bob, chatID, service.Draft{Text: "фото", SharedPhoto: albumPhoto})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, _, err = svc.Message(ctx, cat, shared.ID()); err != nil || got.SharedPhoto() != albumPhoto {
+		t.Fatalf("a photo of an album read back = %+v, %v", got, err)
+	}
+
+	carrying, err := svc.Send(ctx, ann, other.Chat.ID(), service.Draft{Forward: []uuid.UUID{said.ID(), shared.ID()}})
+	if err != nil {
+		t.Fatalf("forwarding: %v", err)
+	}
+
+	got, _, err = svc.Message(ctx, bob, carrying.ID())
+	if err != nil || len(got.Forwarded()) != 2 || got.Forwarded()[0].SenderID != bob || got.Forwarded()[0].Post != post ||
+		got.Forwarded()[0].Photos[0] == photo || got.Forwarded()[1].SharedPhoto != albumPhoto || !got.Forwarded()[0].CreatedAt.Equal(said.CreatedAt()) {
+		t.Fatalf("carried on, read back = %+v, %v", got.Forwarded(), err)
+	}
+
+	// The last message of the list carries them too.
+	if details, err := svc.Get(ctx, bob, other.Chat.ID()); err != nil || len(details.View.LastMessage.Forwarded()) != 2 {
+		t.Fatalf("the last message = %+v, %v", details.View.LastMessage, err)
+	}
+
+	t.Run("edit photos", func(t *testing.T) {
+		added := uuid.New()
+
+		edited, err := svc.Edit(ctx, bob, said.ID(), message.Revision{Text: "Идём на Эльбрус_100%", Removed: message.Photos{photo}, Added: message.Photos{added}})
+		if err != nil {
+			t.Fatalf("Edit: %v", err)
+		}
+
+		got, _, err := svc.Message(ctx, cat, edited.ID())
+		if err != nil || len(got.Photos()) != 1 || got.Photos()[0] != added || got.Post() != post || got.EditedAt().IsZero() {
+			t.Fatalf("edited, read back = %+v, %v", got, err)
+		}
+	})
+
+	t.Run("search", func(t *testing.T) {
+		found := func(user, chat uuid.UUID, query string) []uuid.UUID {
+			t.Helper()
+
+			q, err := message.NewQuery(query)
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			page, err := svc.Search(ctx, user, chat, q, uuid.Nil, 20)
+			if err != nil {
+				t.Fatalf("Search(%q): %v", query, err)
+			}
+
+			ids := make([]uuid.UUID, len(page.Messages))
+			for i, m := range page.Messages {
+				ids[i] = m.ID()
+			}
+
+			return ids
+		}
+
+		// In what a message says itself and in what it carries on,
+		// whatever the case; the title of a chat is not a message.
+		if ids := found(ann, uuid.Nil, "эльбрус"); len(ids) != 2 || ids[0] != carrying.ID() || ids[1] != said.ID() {
+			t.Fatalf("all the chats = %v", ids)
+		}
+		if ids := found(ann, chatID, "ЭЛЬБРУС"); len(ids) != 1 || ids[0] != said.ID() {
+			t.Fatalf("one chat = %v", ids)
+		}
+		if ids := found(ann, uuid.Nil, "горы"); len(ids) != 0 {
+			t.Fatalf("the title was found: %v", ids)
+		}
+		// The wildcards of LIKE are themselves.
+		if ids := found(ann, chatID, "_100%"); len(ids) != 1 {
+			t.Fatalf("wildcards = %v", ids)
+		}
+		if ids := found(ann, chatID, "%"); len(ids) != 1 {
+			t.Fatalf("a percent sign = %v", ids)
+		}
+		// Cat is in one of the chats.
+		if ids := found(cat, uuid.Nil, "эльбрус"); len(ids) != 1 || ids[0] != said.ID() {
+			t.Fatalf("who is in one chat finds %v", ids)
+		}
+
+		// Who left finds what they were shown, and no more.
+		if err := svc.Leave(ctx, cat, chatID); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := svc.Send(ctx, bob, chatID, service.Draft{Text: "эльбрус отменён"}); err != nil {
+			t.Fatal(err)
+		}
+		if ids := found(cat, uuid.Nil, "эльбрус"); len(ids) != 1 || ids[0] != said.ID() {
+			t.Fatalf("who left finds %v", ids)
+		}
+	})
+
+	t.Run("around", func(t *testing.T) {
+		page, err := svc.Around(ctx, ann, chatID, shared.ID(), 2)
+		if err != nil || len(page.Messages) != 3 || page.Messages[0].ID() != said.ID() || page.Messages[1].ID() != shared.ID() {
+			t.Fatalf("Around = %+v, %v", page, err)
+		}
+	})
+
+	t.Run("taken back", func(t *testing.T) {
+		if err := svc.Delete(ctx, ann, carrying.ID()); err != nil {
+			t.Fatalf("Delete: %v", err)
+		}
+
+		got, _, err := svc.Message(ctx, bob, carrying.ID())
+		if err != nil || !got.IsDeleted() || len(got.Forwarded()) != 0 {
+			t.Fatalf("taken back = %+v, %v", got, err)
+		}
+	})
+
+	t.Run("purge", func(t *testing.T) {
+		again, err := svc.Send(ctx, ann, other.Chat.ID(), service.Draft{Forward: []uuid.UUID{shared.ID()}})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err = svc.PurgeUser(ctx, ann); err != nil {
+			t.Fatalf("PurgeUser: %v", err)
+		}
+		if _, _, err = svc.Message(ctx, bob, again.ID()); !errors.Is(err, message.ErrNotFound) {
+			t.Fatalf("a message of who is gone: %v", err)
+		}
+	})
 }

@@ -27,8 +27,9 @@ type ChatRepository interface {
 	// CountUnread counts, up to limit, the chats with unread messages.
 	CountUnread(ctx context.Context, userID uuid.UUID, limit int) (int, error)
 	// DeleteByUser takes a user out of every chat with what they wrote
-	// there; a chat they created goes to who has been in it longest.
-	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+	// there; a chat they created goes to who has been in it longest. It
+	// returns the deleted messages that carried other messages on.
+	DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*message.ChatMessage, error)
 }
 
 // ChatMemberRepository keeps who is in a chat and how far they have read.
@@ -55,8 +56,14 @@ type ChatMessageRepository interface {
 	// ListAfter returns up to limit such messages with IDs above after,
 	// oldest first.
 	ListAfter(ctx context.Context, chatID, after, upTo uuid.UUID, limit int) ([]*message.ChatMessage, error)
-	// Update saves what an edited message says; message.ErrNotFound.
+	// Update saves what an edited message says and shows;
+	// message.ErrNotFound.
 	Update(ctx context.Context, m *message.ChatMessage) error
+	// Search returns up to limit messages people wrote that userID is
+	// shown and that say q, in the chat or, for uuid.Nil, in all of
+	// theirs, newest first, with IDs below before (uuid.Nil: from the
+	// newest).
+	Search(ctx context.Context, userID, chatID uuid.UUID, q message.Query, before uuid.UUID, limit int) ([]*message.ChatMessage, error)
 	// Retract saves a message taken back; message.ErrNotFound if it is gone
 	// or was taken back already.
 	Retract(ctx context.Context, m *message.ChatMessage) error
@@ -100,14 +107,23 @@ type ChatHistoryPage struct {
 	NextCursor uuid.UUID
 }
 
-// ChatDeps are what ChatService works with.
+// ChatSearchPage is one screen of found messages of chats, newest first;
+// NextCursor is uuid.Nil on the last.
+type ChatSearchPage struct {
+	Messages   []*message.ChatMessage
+	NextCursor uuid.UUID
+}
+
+// ChatDeps are what ChatService works with. DialogMessages are read when
+// a message of a dialog is carried on into a chat.
 type ChatDeps struct {
-	Chats    ChatRepository
-	Members  ChatMemberRepository
-	Messages ChatMessageRepository
-	Events   Events
-	Tx       TxManager
-	Photos   PhotoKeeper
+	Chats          ChatRepository
+	Members        ChatMemberRepository
+	Messages       ChatMessageRepository
+	DialogMessages MessageRepository
+	Events         Events
+	Tx             TxManager
+	Photos         PhotoKeeper
 }
 
 // ChatService is the chats of several people ("беседы" of openvk).
@@ -118,6 +134,7 @@ type ChatService struct {
 	events      Events
 	tx          TxManager
 	photos      PhotoKeeper
+	forwards    forwarder
 	now         func() time.Time
 }
 
@@ -129,6 +146,7 @@ func NewChatService(d ChatDeps) *ChatService {
 		events:      d.Events,
 		tx:          d.Tx,
 		photos:      d.Photos,
+		forwards:    forwarder{messages: d.DialogMessages, chatMessages: d.Messages, members: d.Members},
 		now:         time.Now,
 	}
 }
@@ -546,11 +564,22 @@ func (s *ChatService) Return(ctx context.Context, userID, chatID uuid.UUID) erro
 	})
 }
 
-// Send writes into the chat as senderID, who is in it; the caller has
-// made sure the photos are the sender's. Media keeps them. Everyone in
-// the chat hears of it.
-func (s *ChatService) Send(ctx context.Context, senderID, chatID uuid.UUID, text message.Text, photos message.Photos) (*message.ChatMessage, error) {
-	m, err := message.NewChatMessage(chatID, senderID, text, photos, s.now())
+// Send writes into the chat as senderID, who is in it: what a message of
+// a dialog may be (Draft). The caller has made sure the photos are the
+// sender's and what is shared exists. Media keeps the photos, and those
+// of the forwarded messages once more. Everyone in the chat hears of it.
+func (s *ChatService) Send(ctx context.Context, senderID, chatID uuid.UUID, d Draft) (*message.ChatMessage, error) {
+	forwarded, copies, err := s.forwards.forwarded(ctx, senderID, d.Forward)
+	if err != nil {
+		return nil, errs.Wrap("s.forwards.forwarded", err)
+	}
+
+	content, err := d.content(forwarded)
+	if err != nil {
+		return nil, errs.Wrap("d.content", err)
+	}
+
+	m, err := message.NewChatMessage(chatID, senderID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("message.NewChatMessage", err)
 	}
@@ -569,11 +598,7 @@ func (s *ChatService) Send(ctx context.Context, senderID, chatID uuid.UUID, text
 			return errs.Wrap("s.messageRepo.Save", err)
 		}
 
-		if len(photos) > 0 {
-			return errs.Wrap("s.photos.Publish", s.photos.Publish(ctx, senderID, photos))
-		}
-
-		return nil
+		return errs.Wrap("keepPhotos", keepPhotos(ctx, s.photos, senderID, m.Photos(), copies))
 	})
 	if err != nil {
 		return nil, errs.Wrap("s.tx.WithinTx", err)
@@ -626,21 +651,42 @@ func (s *ChatService) Message(ctx context.Context, userID, id uuid.UUID) (*messa
 	return m, me, errs.Wrap("s.shown", err)
 }
 
-// Edit changes what a message says: only its sender, still in the chat,
-// for a day after sending. Everyone in the chat hears of it.
-func (s *ChatService) Edit(ctx context.Context, userID, id uuid.UUID, text message.Text) (*message.ChatMessage, error) {
-	m, err := s.own(ctx, userID, id)
+// Edit changes what a message says and the photos it shows: only its
+// sender, still in the chat, for a day after sending. The caller has made
+// sure new photos are the sender's; media keeps them and deletes those
+// the edit took away. The chat is held while the message is read and
+// saved, so two edits made at once go one after the other. Everyone in
+// the chat hears of it.
+func (s *ChatService) Edit(ctx context.Context, userID, id uuid.UUID, rev message.Revision) (*message.ChatMessage, error) {
+	was, err := s.own(ctx, userID, id)
 	if err != nil {
 		return nil, errs.Wrap("s.own", err)
 	}
 
-	edited, err := m.Edited(userID, text, s.now())
-	if err != nil {
-		return nil, errs.Wrap("m.Edited", err)
-	}
+	var edited *message.ChatMessage
 
-	if err = s.messageRepo.Update(ctx, edited); err != nil {
-		return nil, errs.Wrap("s.messageRepo.Update", err)
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if _, _, err := s.locked(ctx, was.ChatID(), userID); err != nil {
+			return errs.Wrap("s.locked", err)
+		}
+
+		m, err := s.messageRepo.Get(ctx, id)
+		if err != nil {
+			return errs.Wrap("s.messageRepo.Get", err)
+		}
+
+		if edited, err = m.Edited(userID, rev, s.now()); err != nil {
+			return errs.Wrap("m.Edited", err)
+		}
+
+		if err = s.messageRepo.Update(ctx, edited); err != nil {
+			return errs.Wrap("s.messageRepo.Update", err)
+		}
+
+		return errs.Wrap("movePhotos", movePhotos(ctx, s.photos, userID, without(edited.Photos(), m.Photos()), without(m.Photos(), edited.Photos())))
+	})
+	if err != nil {
+		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	s.tell(ctx, Event{Chat: &ChatEvent{Edited: edited}})
@@ -650,7 +696,8 @@ func (s *ChatService) Edit(ctx context.Context, userID, id uuid.UUID, text messa
 
 // Delete takes a message back from the chat: only its sender, still in
 // the chat, for a day after sending. It stays there saying nothing; media
-// deletes its photos. Everyone in the chat hears what it is now.
+// deletes its photos and the copies it carried on. Everyone in the chat
+// hears what it is now.
 func (s *ChatService) Delete(ctx context.Context, userID, id uuid.UUID) error {
 	m, err := s.own(ctx, userID, id)
 	if err != nil {
@@ -667,11 +714,7 @@ func (s *ChatService) Delete(ctx context.Context, userID, id uuid.UUID) error {
 			return errs.Wrap("s.messageRepo.Retract", err)
 		}
 
-		if photos := m.Photos(); len(photos) > 0 {
-			return errs.Wrap("s.photos.Delete", s.photos.Delete(ctx, userID, photos))
-		}
-
-		return nil
+		return errs.Wrap("dropPhotos", dropPhotos(ctx, s.photos, userID, m.Photos(), m.Forwarded(), uuid.Nil))
 	})
 	if err != nil {
 		return errs.Wrap("s.tx.WithinTx", err)
@@ -740,6 +783,70 @@ func (s *ChatService) Newer(ctx context.Context, userID, chatID, after uuid.UUID
 	return ChatHistoryPage{Messages: messages, Me: me}, nil
 }
 
+// Around returns the part of the chat around message id, which userID is
+// shown in it: about half of size before it and half after, oldest first,
+// so that a found message opens where it was said. NextCursor pages to
+// older messages; newer ones come with Newer.
+func (s *ChatService) Around(ctx context.Context, userID, chatID, id uuid.UUID, size int) (ChatHistoryPage, error) {
+	m, me, err := s.shown(ctx, userID, id)
+	if err != nil {
+		return ChatHistoryPage{}, errs.Wrap("s.shown", err)
+	}
+
+	if m.ChatID() != chatID {
+		return ChatHistoryPage{}, message.ErrNotFound
+	}
+
+	half := max(pageSize(size)/2, 1)
+
+	older, err := s.messageRepo.ListBefore(ctx, chatID, id, me.Bound(), half+1)
+	if err != nil {
+		return ChatHistoryPage{}, errs.Wrap("s.messageRepo.ListBefore", err)
+	}
+
+	newer, err := s.messageRepo.ListAfter(ctx, chatID, id, me.Bound(), half)
+	if err != nil {
+		return ChatHistoryPage{}, errs.Wrap("s.messageRepo.ListAfter", err)
+	}
+
+	page := ChatHistoryPage{Me: me}
+
+	if len(older) > half {
+		older = older[:half]
+		page.NextCursor = older[half-1].ID()
+	}
+
+	slices.Reverse(older)
+	page.Messages = append(append(older, m), newer...)
+
+	return page, nil
+}
+
+// Search pages the messages userID is shown in their chats that say q,
+// newest first: in one chat, or in all of theirs for uuid.Nil.
+func (s *ChatService) Search(ctx context.Context, userID, chatID uuid.UUID, q message.Query, cursor uuid.UUID, size int) (ChatSearchPage, error) {
+	if chatID != uuid.Nil {
+		if _, err := s.member(ctx, chatID, userID); err != nil {
+			return ChatSearchPage{}, errs.Wrap("s.member", err)
+		}
+	}
+
+	size = pageSize(size)
+
+	found, err := s.messageRepo.Search(ctx, userID, chatID, q, cursor, size+1)
+	if err != nil {
+		return ChatSearchPage{}, errs.Wrap("s.messageRepo.Search", err)
+	}
+
+	page := ChatSearchPage{Messages: found}
+	if len(found) > size {
+		page.Messages = found[:size]
+		page.NextCursor = found[size-1].ID()
+	}
+
+	return page, nil
+}
+
 // MarkRead reads the chat up to upTo, a message of it the user is shown:
 // an ID made up "in the future" would mark every message still to come
 // as read. The user's other pages hear of it.
@@ -764,10 +871,22 @@ func (s *ChatService) MarkRead(ctx context.Context, userID, chatID, upTo uuid.UU
 
 // PurgeUser takes a user whose page was deleted for good out of every
 // chat, with what they wrote there; their photos media erases with the
-// rest of the user.
+// rest of the user, the copies of others' photos their messages carried
+// on go here.
 func (s *ChatService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		return errs.Wrap("s.chatRepo.DeleteByUser", s.chatRepo.DeleteByUser(ctx, userID))
+		carrying, err := s.chatRepo.DeleteByUser(ctx, userID)
+		if err != nil {
+			return errs.Wrap("s.chatRepo.DeleteByUser", err)
+		}
+
+		for _, m := range carrying {
+			if err = dropPhotos(ctx, s.photos, m.SenderID(), nil, m.Forwarded(), userID); err != nil {
+				return errs.Wrap("dropPhotos", err)
+			}
+		}
+
+		return nil
 	})
 
 	return errs.Wrap("s.tx.WithinTx", err)

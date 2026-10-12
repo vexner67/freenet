@@ -174,18 +174,26 @@ func (r *ChatRepository) CountUnread(ctx context.Context, userID uuid.UUID, limi
 	return count, nil
 }
 
-func (r *ChatRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
+func (r *ChatRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*message.ChatMessage, error) {
 	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
+		return nil, errs.Wrap("ctx.Err", err)
 	}
 
 	r.s.mu.Lock()
 	defer r.s.mu.Unlock()
 
+	var carrying []*message.ChatMessage
+
 	for id, m := range r.s.chatMessages {
-		if m.SenderID() == userID || m.TargetID() == userID {
-			delete(r.s.chatMessages, id)
+		if m.SenderID() != userID && m.TargetID() != userID {
+			continue
 		}
+
+		if len(m.Forwarded()) > 0 {
+			carrying = append(carrying, m)
+		}
+
+		delete(r.s.chatMessages, id)
 	}
 
 	for chatID, c := range r.s.chats {
@@ -209,7 +217,7 @@ func (r *ChatRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) err
 		}
 	}
 
-	return nil
+	return carrying, nil
 }
 
 // settleChat brings m back to the messages the chat has left for them;
@@ -403,6 +411,35 @@ func (r *ChatMessageRepository) of(ctx context.Context, chatID uuid.UUID, match 
 	})
 
 	return found, nil
+}
+
+func (r *ChatMessageRepository) Search(ctx context.Context, userID, chatID uuid.UUID, q message.Query, before uuid.UUID, limit int) ([]*message.ChatMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	var found []*message.ChatMessage
+	for id, m := range r.s.chatMessages {
+		if chatID != uuid.Nil && m.ChatID() != chatID {
+			continue
+		}
+
+		me := r.s.member(m.ChatID(), userID)
+		if me != nil && me.Sees(id) && q.MatchesChat(m) && below(id, before) {
+			found = append(found, m)
+		}
+	}
+
+	// Newest first: UUIDv7 bytes sort by time, as in PostgreSQL.
+	slices.SortFunc(found, func(x, y *message.ChatMessage) int {
+		xi, yi := x.ID(), y.ID()
+		return bytes.Compare(yi[:], xi[:])
+	})
+
+	return found[:min(limit, len(found))], nil
 }
 
 func (r *ChatMessageRepository) Update(ctx context.Context, m *message.ChatMessage) error {
