@@ -236,7 +236,7 @@ func (a *api) notificationTargets(r *http.Request, token string, notifications [
 
 	t.posts = make(map[string]model.Post)
 	if len(postIDs) > 0 {
-		posts, err := a.posts.GetMany(r.Context(), unique(postIDs))
+		posts, err := a.posts.GetMany(r.Context(), viewerToken(r), unique(postIDs))
 		if err != nil {
 			return targets{}, err
 		}

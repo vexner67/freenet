@@ -172,12 +172,41 @@ func (c *Clubs) Update(ctx context.Context, accessToken, clubID string, changes 
 		TopicsAboveWall: changes.TopicsAboveWall,
 		StartsAt:        optionalTimestamp(changes.StartsAt),
 		EndsAt:          optionalTimestamp(changes.EndsAt),
+		Closed:          changes.Closed,
 	})
 	if err != nil {
 		return model.ClubView{}, errs.Wrap("c.api.UpdateClub", fromStatus(err))
 	}
 
 	return toClubView(resp.GetClub()), nil
+}
+
+// JoinRequests pages those who ask to join the closed club, for those who
+// run it.
+func (c *Clubs) JoinRequests(ctx context.Context, accessToken, clubID, cursor string, limit int) (model.JoinRequestPage, error) {
+	resp, err := c.api.ListJoinRequests(withToken(ctx, accessToken), &clubv1.ListJoinRequestsRequest{ClubId: clubID, Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.JoinRequestPage{}, errs.Wrap("c.api.ListJoinRequests", fromStatus(err))
+	}
+
+	return model.JoinRequestPage{UserIDs: resp.GetUserIds(), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
+}
+
+// Decide answers the request of userID to join the club: lets them in or
+// turns them down.
+func (c *Clubs) Decide(ctx context.Context, accessToken, clubID, userID string, accept bool) error {
+	var err error
+	if accept {
+		_, err = c.api.AcceptJoinRequest(withToken(ctx, accessToken), &clubv1.AcceptJoinRequestRequest{ClubId: clubID, UserId: userID})
+	} else {
+		_, err = c.api.RejectJoinRequest(withToken(ctx, accessToken), &clubv1.RejectJoinRequestRequest{ClubId: clubID, UserId: userID})
+	}
+
+	if err != nil {
+		return errs.Wrap("c.api.DecideJoinRequest", fromStatus(err))
+	}
+
+	return nil
 }
 
 // Join makes the caller a member; with maybe, one who only might come to
@@ -423,6 +452,7 @@ func toClub(c *clubv1.Club) model.Club {
 		StartsAt: optionalTime(c.GetStartsAt()),
 		EndsAt:   optionalTime(c.GetEndsAt()),
 		Maybes:   int(c.GetMaybeCount()),
+		Closed:   c.GetClosed(),
 	}
 }
 
@@ -436,5 +466,8 @@ func toClubView(v *clubv1.ClubView) model.ClubView {
 		Maybe:      v.GetMaybe(),
 
 		CanStartTopic: v.GetCanStartTopic(),
+
+		Requested: v.GetRequested(),
+		Requests:  int(v.GetRequestCount()),
 	}
 }

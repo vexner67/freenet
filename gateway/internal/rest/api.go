@@ -125,7 +125,7 @@ type Posts interface {
 	Pin(ctx context.Context, accessToken, id string) error
 	Unpin(ctx context.Context, accessToken, id string) error
 	Get(ctx context.Context, accessToken, id string) (model.Post, error)
-	GetMany(ctx context.Context, ids []string) ([]model.Post, error)
+	GetMany(ctx context.Context, accessToken string, ids []string) ([]model.Post, error)
 	// Count counts the posts on all walls.
 	Count(ctx context.Context) (int, error)
 	// Archive puts a post away in the archive of its wall, or back;
@@ -328,6 +328,10 @@ type Clubs interface {
 	Join(ctx context.Context, accessToken, clubID string, maybe bool) (model.ClubView, error)
 	Leave(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
 	Members(ctx context.Context, accessToken, clubID, cursor string, limit int, filter model.ClubMemberFilter) (model.ClubMemberPage, error)
+	// JoinRequests are those who ask to join a closed club; Decide lets
+	// one of them in or turns them down. Both are for those who run it.
+	JoinRequests(ctx context.Context, accessToken, clubID, cursor string, limit int) (model.JoinRequestPage, error)
+	Decide(ctx context.Context, accessToken, clubID, userID string, accept bool) error
 	Describe(ctx context.Context, accessToken, clubID, userID string, change model.SeatChange) error
 	SetAdmin(ctx context.Context, accessToken, clubID, userID string, admin bool) error
 	Transfer(ctx context.Context, accessToken, clubID, userID string) error
@@ -520,6 +524,9 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/admins/{nickname}", a.appointAdmin)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/admins/{nickname}", a.dismissAdmin)
 	mux.HandleFunc("PATCH /api/v1/clubs/{ref}/admins/{nickname}", a.describeAdmin)
+	mux.HandleFunc("GET /api/v1/clubs/{ref}/requests", a.listJoinRequests)
+	mux.HandleFunc("PUT /api/v1/clubs/{ref}/requests/{nickname}", a.acceptJoinRequest)
+	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/requests/{nickname}", a.rejectJoinRequest)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/owner/{nickname}", a.transferClub)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/posts", a.listClubPosts)
 	mux.HandleFunc("POST /api/v1/clubs/{ref}/posts", a.createClubPost)

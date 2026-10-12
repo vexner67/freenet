@@ -2015,6 +2015,7 @@ paths:
                 adminsDisplay: { $ref: "#/components/schemas/AdminsDisplay" }
                 openTopics: { type: boolean }
                 topicsAboveWall: { type: boolean }
+                closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): people ask to join, and only members see its wall, members, topics and albums. Left out, it stays as it is; an event is never closed. Opening the group drops the requests that wait" }
                 startsAt: { type: string, format: date-time, description: "Of an event" }
                 endsAt: { type: string, format: date-time, description: "Of an event; empty for no end" }
       responses:
@@ -2177,6 +2178,58 @@ paths:
         "403": { description: "You do not run the community", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: "`the user does not run the club`", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+
+  /api/v1/clubs/{ref}/requests:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    get:
+      summary: Those who asked to join a closed group ("Заявки")
+      description: Those who run the group only; the oldest request first.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50 } }
+      responses:
+        "200":
+          description: A page of people
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [people, nextCursor, total]
+                properties:
+                  people: { type: array, items: { $ref: "#/components/schemas/Profile" } }
+                  nextCursor: { type: string }
+                  total: { type: integer }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "You do not run the group", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/clubs/{ref}/requests/{nickname}:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Let the person in ("Принять заявку")
+      description: Those who run the group only. The person becomes a member.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Accepted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "You do not run the group", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "The group, the user, or `join request not found`", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+    delete:
+      summary: Turn the person down ("Отклонить заявку")
+      description: Those who run the group only. The person may ask again.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Rejected }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "You do not run the group", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { description: "The group, the user, or `join request not found`", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/v1/clubs/{ref}/owner/{nickname}:
     parameters:
@@ -4588,6 +4641,8 @@ components:
                   role: { type: string, enum: ["", member, admin, owner], description: "What you are in it; empty without a token or membership" }
                   canStartTopic: { type: boolean, description: "You may start a topic in its discussions (\"Создать тему\")" }
                   ignoredByMe: { type: boolean, description: "Your news leave this wall out; told by `GET /api/v1/clubs/{ref}` alone, with a token" }
+                  requested: { type: boolean, description: "You asked to join this closed group and wait for an answer (\"Отменить заявку\" is `DELETE .../membership`)" }
+                  requests: { type: integer, description: "How many people wait to be let in; told to those who run the group" }
                   owner:
                     description: Its creator; null when the page is deleted or erased, or when the community hides its owner from you
                     oneOf:
@@ -4851,6 +4906,9 @@ components:
           type: string
           enum: [everyone, following, nobody]
           description: "Who may add you to chats (\"Кто может добавлять меня в чаты\"): `following` are the people you follow, the default, also when left out"
+        closed:
+          type: boolean
+          description: "A closed profile (\"Тип профиля: закрытый\"): only the people you follow see anything of the page but the names and the photo, whatever the other settings say; false when left out"
 
     User:
       allOf:
@@ -4957,6 +5015,7 @@ components:
         startsAt: { type: [string, "null"], format: date-time, description: "When the event starts; null for a group" }
         endsAt: { type: [string, "null"], format: date-time, description: "When the event ends; null for none" }
         maybes: { type: integer, description: "How many of `members` only might come to the event (\"Возможно придут\"); the others are sure to" }
+        closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): joining it (`PUT .../membership`) only asks to, and its wall, members, topics and albums answer 403 `this club is closed` (topics and albums by ID - 404) to those who are not members" }
 
     Topic:
       type: object
@@ -5580,7 +5639,10 @@ components:
               description: "The owner deleted the page: only the names and the photo are left"
             pageHidden:
               type: boolean
-              description: "The owner hid the page from you (`pageRead`): only the names and the photo are left"
+              description: "The owner hid the page from you (`pageRead`, or a closed profile whose owner does not follow you): only the names and the photo are left"
+            closed:
+              type: boolean
+              description: "A closed profile (\"Закрытая страница\")"
             infoHidden:
               type: boolean
               description: "The owner hid the information of the page from you (`infoRead`): only the names, the photo, the status and the pronouns are left"

@@ -171,6 +171,7 @@ func (u *Users) UpdatePrivacy(ctx context.Context, accessToken string, p model.P
 			OnlineRead:         reads[4],
 			NotesRead:          reads[5],
 			ChatsInvite:        userv1.MessagesWrite(chatsInvite),
+			Closed:             p.Closed,
 		},
 	})
 	if err != nil {
@@ -481,6 +482,7 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 
 		BirthYearHidden: p.GetBirthYearHidden(),
 		PageHidden:      p.GetPageHidden(),
+		Closed:          p.GetClosed(),
 		InfoHidden:      p.GetInfoHidden(),
 		LastSeen:        fromTimestamp(p.GetLastSeenAt()),
 		Online:          p.GetOnline(),

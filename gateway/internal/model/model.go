@@ -123,6 +123,9 @@ type Privacy struct {
 	// ChatsInvite is "Кто может добавлять меня в чаты": "everyone",
 	// "following" or "nobody"; "" leaves the default.
 	ChatsInvite string
+	// Closed is openvk's "Тип профиля: закрытый": only the owner and the
+	// people the owner follows see the page.
+	Closed bool
 }
 
 // Access is what of a page the viewer may see: the page, its information,
@@ -205,6 +208,9 @@ type PublicProfile struct {
 	// PageHidden: the viewer may not see the page, only the names and the
 	// photo; InfoHidden: nor its information, left empty.
 	PageHidden bool
+	// Closed: the page is a closed one ("Закрытая страница"), which a
+	// hidden page tells too.
+	Closed     bool
 	InfoHidden bool
 	// LastSeen is when the user last visited ("был в сети"), zero if never
 	// or hidden; Online: just now ("Онлайн").
@@ -679,6 +685,9 @@ type Club struct {
 	StartsAt time.Time
 	EndsAt   time.Time
 	Maybes   int
+	// Closed: one joins by a request its admins accept, and only the
+	// members see what is in the club ("Закрытая группа").
+	Closed bool
 }
 
 // ClubKinds are what a club may be.
@@ -700,6 +709,24 @@ type ClubView struct {
 	OwnerID       string
 	OwnerTitle    string
 	CanStartTopic bool
+	// Requested: the caller asked to join the closed club and waits;
+	// Requests: how many do, told to those who run it.
+	Requested bool
+	Requests  int
+}
+
+// Admits tells whether the caller sees what is in the club: anyone in an
+// open one, only the members of a closed one.
+func (v ClubView) Admits() bool {
+	return !v.Club.Closed || v.Role != ""
+}
+
+// JoinRequestPage is one screen of those who ask to join a club, the
+// newest first; Total counts them all.
+type JoinRequestPage struct {
+	UserIDs    []string
+	NextCursor string
+	Total      int
 }
 
 // ClubChanges are a club's settings form: everything at once.
@@ -712,6 +739,8 @@ type ClubChanges struct {
 	AdminsDisplay   string
 	OpenTopics      bool
 	TopicsAboveWall bool
+	// Closed is "Тип группы: закрытая".
+	Closed bool
 	// StartsAt and EndsAt are the schedule of an event; zero for none.
 	StartsAt time.Time
 	EndsAt   time.Time

@@ -493,7 +493,9 @@ func (a *api) sharedPosts(r *http.Request, posts []model.Post) (map[string]model
 		return nil, nil
 	}
 
-	found, err := a.posts.GetMany(r.Context(), unique(ids))
+	// The viewer's token: a post of a closed page or community is shown
+	// to those it lets in.
+	found, err := a.posts.GetMany(r.Context(), viewerToken(r), unique(ids))
 	if err != nil {
 		return nil, err
 	}
@@ -897,7 +899,9 @@ func (a *api) repostsByID(r *http.Request, ids []string) (map[string]*repostJSON
 		return nil, nil
 	}
 
-	found, err := a.posts.GetMany(r.Context(), unique(ids))
+	// The viewer's token: a post of a closed page or community is shown
+	// to those it lets in.
+	found, err := a.posts.GetMany(r.Context(), viewerToken(r), unique(ids))
 	if err != nil {
 		return nil, err
 	}
