@@ -8,8 +8,10 @@
 // Messages go out one at a time in the order they were recorded; one that
 // fails holds back those after it, so an undo (a like taken back) never
 // overtakes what it undoes. For the same reason one relay per database
-// delivers at a time. Delivery is at least once: receivers must accept a
-// message twice.
+// delivers at a time. A relay told what its messages are about (Keyed)
+// keeps that order only among the messages about one thing and delivers
+// those about different things at the same time. Delivery is at least
+// once: receivers must accept a message twice.
 package outbox
 
 import (
@@ -30,8 +32,8 @@ type Message struct {
 	CreatedAt time.Time
 }
 
-// Queue is the outbox as the relay sees it. Its methods belong to one
-// relay goroutine.
+// Queue is the outbox as the relay sees it. Head and Wait belong to one
+// relay goroutine; a keyed relay calls Delete and Postpone from several.
 type Queue interface {
 	// Head returns the oldest messages, at most limit, oldest first; none
 	// while another relay delivers from the same outbox.
