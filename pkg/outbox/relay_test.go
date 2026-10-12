@@ -5,6 +5,7 @@ import (
 	"errors"
 	"log/slog"
 	"slices"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -225,5 +226,134 @@ func TestBackoff(t *testing.T) {
 		if got := backoff(attempts); got != want {
 			t.Errorf("backoff(%d) = %v, want %v", attempts, got, want)
 		}
+	}
+}
+
+// keyOf is the part of a kind before ":": "p1:like" is about p1, and a
+// kind with no ":" is about everything.
+func keyOf(m Message) string {
+	key, _, found := strings.Cut(m.Kind, ":")
+	if !found {
+		return ""
+	}
+
+	return key
+}
+
+func newKeyedRelay(t *testing.T, q Queue, deliver Deliver, c *clock) *Relay {
+	t.Helper()
+
+	relay, err := NewRelay(q, deliver, prometheus.NewRegistry(), slog.New(slog.DiscardHandler), Keyed(keyOf))
+	if err != nil {
+		t.Fatalf("NewRelay: %v", err)
+	}
+
+	relay.now = c.now
+
+	return relay
+}
+
+// The messages about one thing keep their order, and a message about
+// everything goes between those before and those after it.
+func TestRelay_Keyed_Order(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	q := NewMemory()
+	r := &receiver{}
+	relay := newKeyedRelay(t, q, r.deliver, &clock{t: time.Now().Add(time.Hour)})
+
+	add(t, q, ctx, "p1:like", "p2:like", "p1:unlike", "p3:like", "purge", "p2:unlike", "p1:forget")
+	relay.deliverDue(ctx)
+
+	got := r.delivered()
+	if len(got) != 7 {
+		t.Fatalf("delivered %v, want all seven", got)
+	}
+
+	at := func(kind string) int { return slices.Index(got, kind) }
+
+	if at("p1:like") > at("p1:unlike") || at("p2:like") > at("purge") || at("p1:unlike") > at("purge") || at("p3:like") > at("purge") ||
+		at("purge") != 4 || at("p2:unlike") < at("purge") || at("p1:forget") < at("purge") {
+		t.Fatalf("delivered %v: p1 in its order, everything before the purge before it, the rest after", got)
+	}
+}
+
+// Messages about different things do not wait for each other: the first
+// is not answered until the second arrives.
+func TestRelay_Keyed_AtTheSameTime(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	q := NewMemory()
+
+	arrived := make(chan string, 2)
+	release := make(chan struct{})
+
+	deliver := func(_ context.Context, m Message) error {
+		arrived <- m.Kind
+		<-release
+
+		return nil
+	}
+
+	relay := newKeyedRelay(t, q, deliver, &clock{t: time.Now().Add(time.Hour)})
+	add(t, q, ctx, "p1:like", "p2:like")
+
+	done := make(chan struct{})
+	go func() {
+		relay.deliverDue(ctx)
+		close(done)
+	}()
+
+	for range 2 {
+		select {
+		case <-arrived:
+		case <-time.After(5 * time.Second):
+			t.Fatal("the second message waits for the first")
+		}
+	}
+
+	close(release)
+	<-done
+
+	if left, _ := q.Head(ctx, 10); len(left) != 0 {
+		t.Fatalf("left in the outbox: %+v", left)
+	}
+}
+
+// A message that fails holds back those about the same thing and whatever
+// is about everything, but not the messages about other things.
+func TestRelay_Keyed_RetryHoldsBackItsOwn(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	q := NewMemory()
+	c := &clock{t: time.Now().Add(time.Hour)}
+	r := &receiver{fail: map[string]error{"p1:like": errors.New("down")}}
+	relay := newKeyedRelay(t, q, r.deliver, c)
+
+	add(t, q, ctx, "p1:like", "p1:unlike", "p2:like", "purge", "p3:like")
+	relay.deliverDue(ctx)
+
+	if got := r.delivered(); !slices.Equal(got, []string{"p2:like"}) {
+		t.Fatalf("delivered %v, want p2 alone", got)
+	}
+
+	// Postponed, it still holds them back; once it goes, so do they.
+	relay.deliverDue(ctx)
+	if got := r.delivered(); len(got) != 1 {
+		t.Fatalf("delivered %v while p1 waits", got)
+	}
+
+	r.mu.Lock()
+	r.fail = nil
+	r.mu.Unlock()
+
+	c.t = c.t.Add(maxBackoff)
+	relay.deliverDue(ctx)
+
+	if got := r.delivered(); !slices.Equal(got, []string{"p2:like", "p1:like", "p1:unlike", "purge", "p3:like"}) {
+		t.Fatalf("delivered %v", got)
 	}
 }
