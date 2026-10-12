@@ -599,7 +599,7 @@ func TestSearch_TextLimit(t *testing.T) {
 
 	// Said further than the beginning, the words are still in the excerpt.
 	found, err = s.client.SearchMessages(s.as(t, ann), &messagev1.SearchMessagesRequest{Query: "Сообщение", TextLimit: 10})
-	if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetText() != " сообщение" || !found.GetMessages()[0].GetTextCut() {
+	if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetText() != "сообщение" || !found.GetMessages()[0].GetTextCut() {
 		t.Fatalf("SearchMessages further = %v, %v", found, err)
 	}
 }
@@ -648,7 +648,8 @@ func TestEditPhotosSearchForwardedDeleteMany(t *testing.T) {
 		}
 	}
 
-	// Cat finds the message by what it carries on, cut to where it says so.
+	// Cat finds the message by what it carries on, cut to where it says so:
+	// to the word, the long ones around it would not fit whole.
 	long := strings.Repeat("а", 50) + " море " + strings.Repeat("я", 50)
 	carried, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: long})
 	if err != nil {
@@ -661,7 +662,7 @@ func TestEditPhotosSearchForwardedDeleteMany(t *testing.T) {
 	if err != nil || len(found.GetMessages()) != 1 {
 		t.Fatalf("SearchMessages = %v, %v", found, err)
 	}
-	if m := found.GetMessages()[0]; m.GetText() != "смотри" || !m.GetTextCut() || !strings.Contains(m.GetForwarded()[0].GetText(), "море") || len([]rune(m.GetForwarded()[0].GetText())) != 20 {
+	if m := found.GetMessages()[0]; m.GetText() != "смотри" || !m.GetTextCut() || m.GetForwarded()[0].GetText() != "море" {
 		t.Fatalf("the found message = %v", m)
 	}
 
