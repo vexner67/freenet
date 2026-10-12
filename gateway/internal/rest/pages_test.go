@@ -119,9 +119,9 @@ func TestPages(t *testing.T) {
 	}
 
 	for _, tt := range tests {
+		// Not in parallel: the requests share the fake backends, which
+		// remember what they were asked.
 		t.Run(tt.path, func(t *testing.T) {
-			t.Parallel()
-
 			w := get(tt.path)
 			if w.Code != tt.status || !strings.Contains(w.Body.String(), tt.body) {
 				t.Fatalf("%s: %d %q", tt.path, w.Code, w.Body.String())
