@@ -812,6 +812,9 @@ label.chat-person { cursor: pointer; }
 
 /* The clubs pinned to the left menu, under a line, as on openvk. */
 .menu-divider { margin: 4px 0; border-top: 1px solid var(--line-dadada); }
+/* The other accounts of the browser: a small photo before the name. */
+.menu-account img { width: 16px; height: 16px; margin-right: 4px; vertical-align: -4px; }
+.avatars-round .menu-account img { border-radius: 50%; }
 
 /* "Автор: Иван Иванов" under a signed post of a community. */
 .post-signature { padding: 2px 4px 4px; }
