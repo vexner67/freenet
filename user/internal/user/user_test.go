@@ -303,7 +303,7 @@ func TestUser_AccessFor(t *testing.T) {
 	}
 
 	// By default everything is open, as on openvk.
-	everything := user.Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true, Notes: true}
+	everything := user.Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true, Notes: true, Gifts: true}
 	if got := ann.AccessFor(uuid.Nil, user.Ties{}); got != everything {
 		t.Fatalf("default = %+v", got)
 	}
@@ -316,8 +316,8 @@ func TestUser_AccessFor(t *testing.T) {
 		want   user.Access
 	}{
 		{"anonymous", uuid.Nil, user.Ties{}, user.Access{}},
-		{"a user", bob, user.Ties{}, user.Access{Page: true, Info: true, Clubs: true}},
-		{"whom ann follows", bob, friend, user.Access{Page: true, Info: true, Photos: true, Clubs: true, Notes: true}},
+		{"a user", bob, user.Ties{}, user.Access{Page: true, Info: true, Clubs: true, Gifts: true}},
+		{"whom ann follows", bob, friend, user.Access{Page: true, Info: true, Photos: true, Clubs: true, Notes: true, Gifts: true}},
 		{"ann", ann.ID(), user.Ties{}, everything},
 	} {
 		if got := ann.AccessFor(tt.viewer, tt.ties); got != tt.want {

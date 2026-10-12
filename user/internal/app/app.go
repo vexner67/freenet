@@ -129,6 +129,8 @@ func (a *App) build(cfg config.Config) error {
 	if err != nil {
 		return errs.Wrap("grpcserver.New", err)
 	}
+	permissions := service.NewPermissionService(store.users, store.follows, store.blocks)
+
 	userv1.RegisterUserServiceServer(
 		a.server.Registrar(),
 		usergrpc.NewUserHandler(usergrpc.Services{
@@ -142,9 +144,16 @@ func (a *App) build(cfg config.Config) error {
 				Tx:       store.tx,
 				Notifier: notifier,
 			}),
-			Blocks:      service.NewBlockService(store.users, store.blocks, store.tx, notifier),
-			Ignores:     service.NewIgnoreService(store.ignores),
-			Permissions: service.NewPermissionService(store.users, store.follows, store.blocks),
+			Blocks:  service.NewBlockService(store.users, store.blocks, store.tx, notifier),
+			Ignores: service.NewIgnoreService(store.ignores),
+			Gifts: service.NewGiftService(service.GiftDeps{
+				Users:       store.users,
+				Gifts:       store.gifts,
+				Permissions: permissions,
+				Tx:          store.tx,
+				Notifier:    deliver.gifts,
+			}),
+			Permissions: permissions,
 			Presence:    a.presence,
 			Backdrops:   service.NewBackdropService(store.users, store.users),
 		}, a.logger),
@@ -162,10 +171,11 @@ func (a *App) build(cfg config.Config) error {
 	return nil
 }
 
-// rateLimits are how often each user may follow people.
+// rateLimits are how often each user may follow people and send gifts.
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
-		userv1.UserService_Follow_FullMethodName: cfg.FollowLimits,
+		userv1.UserService_Follow_FullMethodName:   cfg.FollowLimits,
+		userv1.UserService_SendGift_FullMethodName: cfg.GiftLimits,
 	}
 }
 
@@ -203,6 +213,7 @@ type storage struct {
 	}
 	blocks  service.BlockRepository
 	ignores service.IgnoreRepository
+	gifts   service.GiftRepository
 	tx      service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
@@ -217,6 +228,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			follows: follows,
 			blocks:  inmem.NewBlockRepository(follows),
 			ignores: inmem.NewIgnoreRepository(users),
+			gifts:   inmem.NewGiftRepository(users),
 			tx:      inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
@@ -251,6 +263,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		follows: postgres.NewFollowRepository(a.pool),
 		blocks:  postgres.NewBlockRepository(a.pool),
 		ignores: postgres.NewIgnoreRepository(a.pool),
+		gifts:   postgres.NewGiftRepository(a.pool),
 		tx:      pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)

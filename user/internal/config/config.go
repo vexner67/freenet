@@ -51,6 +51,7 @@ type Config struct {
 	// replicas; without it they are kept in memory, per replica.
 	RedisAddr    string          `env:"REDIS_ADDR"`
 	FollowLimits ratelimit.Rules `env:"RATE_LIMIT_FOLLOWS" envDefault:"30/1m,300/24h"`
+	GiftLimits   ratelimit.Rules `env:"RATE_LIMIT_GIFTS" envDefault:"10/1m,100/24h"`
 
 	// AccountRetention is how long a deleted page can be restored before
 	// its data is erased; openvk keeps it seven months.

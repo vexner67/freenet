@@ -37,6 +37,14 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, user.ErrIgnoreSelf.Error()), true
 	case errors.Is(err, user.ErrTooManyIgnored):
 		return status.New(codes.FailedPrecondition, user.ErrTooManyIgnored.Error()), true
+	case errors.Is(err, user.ErrGiftNotFound):
+		return status.New(codes.NotFound, user.ErrGiftNotFound.Error()), true
+	case errors.Is(err, user.ErrGiftRefused):
+		return status.New(codes.PermissionDenied, user.ErrGiftRefused.Error()), true
+	case errors.Is(err, user.ErrGiftsHidden):
+		return status.New(codes.PermissionDenied, user.ErrGiftsHidden.Error()), true
+	case errors.Is(err, user.ErrCannotDeleteGift):
+		return status.New(codes.PermissionDenied, user.ErrCannotDeleteGift.Error()), true
 	case errors.Is(err, user.ErrDeactivated):
 		return status.New(codes.PermissionDenied, user.ErrDeactivated.Error()), true
 	case errors.Is(err, user.ErrNotDeactivated):
