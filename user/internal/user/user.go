@@ -149,6 +149,8 @@ type User struct {
 	backdrop     Backdrop
 	// ui is how the site looks to the user ("Интерфейс").
 	ui Interface
+	// wallet is changed by storage alone, never by saving the user.
+	wallet Wallet
 }
 
 // New creates a user with only an email set, as happens on the first
@@ -186,6 +188,7 @@ type Stored struct {
 	LastSeen     time.Time
 	Backdrop     Backdrop
 	Interface    Interface
+	Wallet       Wallet
 }
 
 // Restore rebuilds a user from storage without validation or new IDs.
@@ -203,6 +206,7 @@ func Restore(s Stored) *User {
 		lastSeen:     s.LastSeen,
 		backdrop:     s.Backdrop,
 		ui:           s.Interface,
+		wallet:       s.Wallet,
 	}
 }
 

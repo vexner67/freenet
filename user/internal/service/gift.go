@@ -65,6 +65,7 @@ type GiftPage struct {
 type GiftService struct {
 	userRepo    UserRepository
 	giftRepo    GiftRepository
+	wallets     WalletRepository
 	permissions *PermissionService
 	tx          TxManager
 	notifier    GiftNotifier
@@ -73,8 +74,10 @@ type GiftService struct {
 
 // GiftDeps are what GiftService works with.
 type GiftDeps struct {
-	Users       UserRepository
-	Gifts       GiftRepository
+	Users UserRepository
+	Gifts GiftRepository
+	// Wallets pay for the gifts that cost votes.
+	Wallets     WalletRepository
 	Permissions *PermissionService
 	Tx          TxManager
 	Notifier    GiftNotifier
@@ -84,6 +87,7 @@ func NewGiftService(d GiftDeps) *GiftService {
 	return &GiftService{
 		userRepo:    d.Users,
 		giftRepo:    d.Gifts,
+		wallets:     d.Wallets,
 		permissions: d.Permissions,
 		tx:          d.Tx,
 		notifier:    d.Notifier,
@@ -92,8 +96,10 @@ func NewGiftService(d GiftDeps) *GiftService {
 }
 
 // Send sends recipientID a gift from senderID; the recipient hears of it.
-// user.ErrNotFound for an unknown recipient, user.ErrDeactivated and
-// user.ErrGiftRefused as user.GiftFrom decides.
+// A gift with a price is paid for with the sender's votes, in the
+// transaction of the gift: user.ErrNotEnoughVotes. user.ErrNotFound for
+// an unknown recipient, user.ErrDeactivated and user.ErrGiftRefused as
+// user.GiftFrom decides.
 func (s *GiftService) Send(ctx context.Context, senderID, recipientID uuid.UUID, d GiftDraft) (SentGift, error) {
 	recipient, ties, err := s.permissions.ties(ctx, senderID, recipientID)
 	if err != nil {
@@ -106,6 +112,12 @@ func (s *GiftService) Send(ctx context.Context, senderID, recipientID uuid.UUID,
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if price := d.Kind.Price(); price > 0 {
+			if _, err := s.wallets.Spend(ctx, senderID, price); err != nil {
+				return errs.Wrap("s.wallets.Spend", err)
+			}
+		}
+
 		if err := s.giftRepo.Save(ctx, gift); err != nil {
 			return errs.Wrap("s.giftRepo.Save", err)
 		}

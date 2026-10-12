@@ -52,6 +52,14 @@ type Config struct {
 	RedisAddr    string          `env:"REDIS_ADDR"`
 	FollowLimits ratelimit.Rules `env:"RATE_LIMIT_FOLLOWS" envDefault:"30/1m,300/24h"`
 	GiftLimits   ratelimit.Rules `env:"RATE_LIMIT_GIFTS" envDefault:"10/1m,100/24h"`
+	// Transfers of votes, and vouchers tried: a serial number cannot be
+	// guessed, and is not to be tried often either.
+	TransferLimits ratelimit.Rules `env:"RATE_LIMIT_TRANSFERS" envDefault:"10/1m,100/24h"`
+	VoucherLimits  ratelimit.Rules `env:"RATE_LIMIT_VOUCHERS" envDefault:"5/1m,30/24h"`
+
+	// AdminEmails are the emails of the people who run the site: they make
+	// the vouchers. Nobody without it.
+	AdminEmails []string `env:"ADMIN_EMAILS" envSeparator:","`
 
 	// AccountRetention is how long a deleted page can be restored before
 	// its data is erased; openvk keeps it seven months.

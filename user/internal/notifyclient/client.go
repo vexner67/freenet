@@ -61,6 +61,17 @@ func (o *Outbox) GiftDeleted(ctx context.Context, giftID, senderID, recipientID 
 	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: giftEvent(giftID, senderID, recipientID)})
 }
 
+func (o *Outbox) VotesSent(ctx context.Context, transferID, senderID, recipientID uuid.UUID) error {
+	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: &notificationv1.Event{
+		Kind:        notificationv1.Kind_KIND_VOTES,
+		RecipientId: recipientID.String(),
+		ActorId:     senderID.String(),
+		// The transfer stands where other events name a post: one
+		// notification per transfer.
+		PostId: transferID.String(),
+	}})
+}
+
 func (o *Outbox) add(ctx context.Context, kind string, req proto.Message) error {
 	payload, err := proto.Marshal(req)
 	if err != nil {
@@ -147,3 +158,5 @@ func (Nop) Unfollowed(context.Context, uuid.UUID, uuid.UUID) error { return nil 
 
 func (Nop) GiftSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error    { return nil }
 func (Nop) GiftDeleted(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
+
+func (Nop) VotesSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }

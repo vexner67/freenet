@@ -45,6 +45,24 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.PermissionDenied, user.ErrGiftsHidden.Error()), true
 	case errors.Is(err, user.ErrCannotDeleteGift):
 		return status.New(codes.PermissionDenied, user.ErrCannotDeleteGift.Error()), true
+	case errors.Is(err, user.ErrNotEnoughVotes):
+		return status.New(codes.FailedPrecondition, user.ErrNotEnoughVotes.Error()), true
+	case errors.Is(err, user.ErrTransferSelf):
+		return status.New(codes.InvalidArgument, user.ErrTransferSelf.Error()), true
+	case errors.Is(err, user.ErrTransferRefused):
+		return status.New(codes.PermissionDenied, user.ErrTransferRefused.Error()), true
+	case errors.Is(err, user.ErrVoucherInvalid):
+		return status.New(codes.FailedPrecondition, user.ErrVoucherInvalid.Error()), true
+	case errors.Is(err, user.ErrVoucherExists):
+		return status.New(codes.AlreadyExists, user.ErrVoucherExists.Error()), true
+	case errors.Is(err, user.ErrVoucherEmpty):
+		return status.New(codes.InvalidArgument, user.ErrVoucherEmpty.Error()), true
+	case errors.Is(err, user.ErrVoucherAmountInvalid):
+		return status.New(codes.InvalidArgument, user.ErrVoucherAmountInvalid.Error()), true
+	case errors.Is(err, user.ErrVoucherUsagesInvalid):
+		return status.New(codes.InvalidArgument, user.ErrVoucherUsagesInvalid.Error()), true
+	case errors.Is(err, user.ErrNotAdmin):
+		return status.New(codes.PermissionDenied, user.ErrNotAdmin.Error()), true
 	case errors.Is(err, user.ErrDeactivated):
 		return status.New(codes.PermissionDenied, user.ErrDeactivated.Error()), true
 	case errors.Is(err, user.ErrNotDeactivated):

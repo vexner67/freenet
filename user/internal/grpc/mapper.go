@@ -43,6 +43,7 @@ func toProtoUser(u *user.User) *userv1.User {
 		Interface:             toProtoInterface(u.Interface()),
 		Completeness:          int32(completeness), //nolint:gosec // a percent
 		Unfilled:              unfilled,
+		Votes:                 u.Wallet().Votes,
 	}
 }
 

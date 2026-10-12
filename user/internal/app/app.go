@@ -22,6 +22,7 @@ import (
 	"github.com/vexner67/freenet/user/internal/inmem"
 	"github.com/vexner67/freenet/user/internal/postgres"
 	"github.com/vexner67/freenet/user/internal/service"
+	"github.com/vexner67/freenet/user/internal/user"
 	"github.com/vexner67/freenet/user/migrations"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -131,6 +132,11 @@ func (a *App) build(cfg config.Config) error {
 	}
 	permissions := service.NewPermissionService(store.users, store.follows, store.blocks)
 
+	admins, err := user.NewAdmins(cfg.AdminEmails)
+	if err != nil {
+		return errs.Wrap("user.NewAdmins", err)
+	}
+
 	userv1.RegisterUserServiceServer(
 		a.server.Registrar(),
 		usergrpc.NewUserHandler(usergrpc.Services{
@@ -151,7 +157,17 @@ func (a *App) build(cfg config.Config) error {
 				Gifts:       store.gifts,
 				Permissions: permissions,
 				Tx:          store.tx,
+				Wallets:     store.wallets,
 				Notifier:    deliver.gifts,
+			}),
+			Wallets: service.NewWalletService(service.WalletDeps{
+				Users:       store.users,
+				Wallets:     store.wallets,
+				Vouchers:    store.vouchers,
+				Permissions: permissions,
+				Tx:          store.tx,
+				Notifier:    deliver.votes,
+				Admins:      admins,
 			}),
 			Permissions: permissions,
 			Presence:    a.presence,
@@ -176,6 +192,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		userv1.UserService_Follow_FullMethodName:   cfg.FollowLimits,
 		userv1.UserService_SendGift_FullMethodName: cfg.GiftLimits,
+
+		userv1.UserService_TransferVotes_FullMethodName: cfg.TransferLimits,
+		userv1.UserService_RedeemVoucher_FullMethodName: cfg.VoucherLimits,
 	}
 }
 
@@ -214,7 +233,10 @@ type storage struct {
 	blocks  service.BlockRepository
 	ignores service.IgnoreRepository
 	gifts   service.GiftRepository
-	tx      service.TxManager
+	// wallets are the votes and the rating of users.
+	wallets  service.WalletRepository
+	vouchers service.VoucherRepository
+	tx       service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }
@@ -224,12 +246,14 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		users := inmem.NewUserRepository()
 		follows := inmem.NewFollowRepository(users)
 		return storage{
-			users:   users,
-			follows: follows,
-			blocks:  inmem.NewBlockRepository(follows),
-			ignores: inmem.NewIgnoreRepository(users),
-			gifts:   inmem.NewGiftRepository(users),
-			tx:      inmem.TxManager{},
+			users:    users,
+			follows:  follows,
+			blocks:   inmem.NewBlockRepository(follows),
+			ignores:  inmem.NewIgnoreRepository(users),
+			gifts:    inmem.NewGiftRepository(users),
+			wallets:  users,
+			vouchers: inmem.NewVoucherRepository(users),
+			tx:       inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -259,12 +283,14 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	}
 
 	return storage{
-		users:   postgres.NewUserRepository(a.pool),
-		follows: postgres.NewFollowRepository(a.pool),
-		blocks:  postgres.NewBlockRepository(a.pool),
-		ignores: postgres.NewIgnoreRepository(a.pool),
-		gifts:   postgres.NewGiftRepository(a.pool),
-		tx:      pgpool.NewTxManager(a.pool),
+		users:    postgres.NewUserRepository(a.pool),
+		follows:  postgres.NewFollowRepository(a.pool),
+		blocks:   postgres.NewBlockRepository(a.pool),
+		ignores:  postgres.NewIgnoreRepository(a.pool),
+		gifts:    postgres.NewGiftRepository(a.pool),
+		wallets:  postgres.NewWalletRepository(a.pool),
+		vouchers: postgres.NewVoucherRepository(a.pool),
+		tx:       pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)

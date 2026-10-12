@@ -161,6 +161,8 @@ if [ ! -f "$app_dir/.env" ]; then
 		echo "# Alerts in Telegram (deploy/alertmanager.sh): a bot of @BotFather and the chat it writes to."
 		echo "TELEGRAM_BOT_TOKEN="
 		echo "TELEGRAM_CHAT_ID="
+		echo "# Who makes the vouchers (\"Ваучеры\" of the settings): the emails they sign in with, comma-separated."
+		echo "ADMIN_EMAILS="
 	} > "$app_dir/.env"
 	chown "$app_user:$app_user" "$app_dir/.env"
 	chmod 600 "$app_dir/.env"

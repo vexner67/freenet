@@ -113,6 +113,21 @@ service UserService {
   rpc ListGifts(ListGiftsRequest) returns (ListGiftsResponse);
   rpc DeleteGift(DeleteGiftRequest) returns (google.protobuf.Empty);
 
+  // Votes ("голоса" on openvk) pay for the gifts that have a price.
+  // TransferVotes hands some of the caller's to a user ("Перевод
+  // голосов"): PermissionDenied to a deleted page and across a blacklist,
+  // FailedPrecondition when the caller has fewer. RedeemVoucher gives the
+  // caller what a voucher carries, once: FailedPrecondition whatever is
+  // wrong with the voucher.
+  rpc TransferVotes(TransferVotesRequest) returns (TransferVotesResponse);
+  rpc RedeemVoucher(RedeemVoucherRequest) returns (RedeemVoucherResponse);
+
+  // Vouchers are made by the administrators of the site (ADMIN_EMAILS):
+  // PermissionDenied to anyone else.
+  rpc CreateVoucher(CreateVoucherRequest) returns (CreateVoucherResponse);
+  rpc ListVouchers(ListVouchersRequest) returns (ListVouchersResponse);
+  rpc DeleteVoucher(DeleteVoucherRequest) returns (google.protobuf.Empty);
+
   // Require an access token: deleting the caller's page ("Удаление
   // страницы" on openvk) and restoring it. A deleted page is hidden: others
   // see only its name and photo, nobody may follow it, write on its wall
@@ -160,10 +175,15 @@ message User {
   string backdrop_left = 24;
   string backdrop_right = 25;
   // "Заполненность страницы" of openvk, in percent, and the parts missing
-  // ("interests", "email", "telegram", "status", "city").
+  // ("interests", "email", "telegram", "status", "city"). The percent
+  // counts the rating vouchers gave and may pass 100.
   int32 completeness = 26;
   repeated string unfilled = 27;
   InterfaceSettings interface = 28;
+  // "Баланс": the votes the user has.
+  int64 votes = 29;
+  // The user makes the vouchers.
+  bool admin = 30;
 }
 
 // InterfaceSettings are how the site looks to its owner ("Интерфейс").
@@ -793,6 +813,8 @@ message GiftCollection {
   string id = 1;
   // The names of its gifts, in the order they are shown.
   repeated string gifts = 2;
+  // What each of them costs the sender, in votes; 0 for a free one.
+  int64 price = 3;
 }
 
 message SendGiftRequest {
@@ -843,4 +865,73 @@ message ListGiftsResponse {
 
 message DeleteGiftRequest {
   string gift_id = 1;
+}
+
+message TransferVotesRequest {
+  // The recipient.
+  string user_id = 1;
+  // 1-1000000.
+  int64 votes = 2;
+}
+
+message TransferVotesResponse {
+  // What the caller has left.
+  int64 votes = 1;
+}
+
+message RedeemVoucherRequest {
+  // The serial number, in any case, with or without dashes.
+  string token = 1;
+}
+
+message RedeemVoucherResponse {
+  // What the voucher gave.
+  int64 votes = 1;
+  int32 rating = 2;
+  // What the caller has now.
+  int64 balance = 3;
+}
+
+// A voucher, as its makers see it.
+message Voucher {
+  string id = 1;
+  // 24 letters and digits.
+  string token = 2;
+  int64 votes = 3;
+  int32 rating = 4;
+  // How many more accounts may use it; -1 for any number.
+  int32 usages_left = 5;
+  // How many accounts have used it.
+  int32 activations = 6;
+}
+
+message CreateVoucherRequest {
+  // Empty for a generated serial number.
+  string token = 1;
+  // 0-1000000 votes and 0-1000 of rating, not both zero.
+  int64 votes = 2;
+  int32 rating = 3;
+  // How many accounts may use it: 1-1000000, or -1 for any number.
+  int32 usages = 4;
+}
+
+message CreateVoucherResponse {
+  Voucher voucher = 1;
+}
+
+message ListVouchersRequest {
+  // Empty for the newest vouchers, else next_cursor of the previous page.
+  string cursor = 1;
+  // 1-50; anything else means 20.
+  int32 limit = 2;
+}
+
+message ListVouchersResponse {
+  repeated Voucher vouchers = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+}
+
+message DeleteVoucherRequest {
+  string voucher_id = 1;
 }

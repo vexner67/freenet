@@ -14,11 +14,12 @@ var completenessParts = []struct {
 	{"city", 20, func(u *User) bool { return u.contacts.City != "" }},
 }
 
-// Completeness is how full the page is, in percent, as openvk counts it
-// (without its rating), and which parts are missing ("interests",
-// "email", "telegram", "status", "city"), for the owner's hints.
+// Completeness is the rating of the page, in percent, as openvk counts
+// it: how full the page is plus what vouchers added, so it may pass 100;
+// and which parts are missing ("interests", "email", "telegram",
+// "status", "city"), for the owner's hints.
 func (u *User) Completeness() (percent int, unfilled []string) {
-	percent = 100
+	percent = 100 + u.wallet.Rating
 	for _, part := range completenessParts {
 		if !part.filled(u) {
 			percent -= part.weight

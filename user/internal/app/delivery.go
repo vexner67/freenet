@@ -35,7 +35,9 @@ type outboxQueue interface {
 type delivery struct {
 	notifier service.Notifier
 	// gifts tells notification alone: the news do not follow gifts.
-	gifts     service.GiftNotifier
+	gifts service.GiftNotifier
+	// votes tells it of transfers.
+	votes     service.VotesNotifier
 	eraser    service.Eraser
 	reactions service.Reactions
 	// walls is nil without a post service: closed pages keep their walls
@@ -75,7 +77,7 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 		return delivery{}, errs.Wrap("mtls.ClientCredentials", err)
 	}
 
-	d := delivery{notifier: notifyclient.Nop{}, gifts: notifyclient.Nop{}, reactions: purgeclient.NoReactions{}}
+	d := delivery{notifier: notifyclient.Nop{}, gifts: notifyclient.Nop{}, votes: notifyclient.Nop{}, reactions: purgeclient.NoReactions{}}
 	var erasures []purgeclient.Recorder
 
 	// stream relays the stream to the service at addr by deliver.
@@ -110,7 +112,7 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 		}
 
 		toNotification := notifyclient.NewOutbox(q)
-		d.notifier, d.gifts = toNotification, toNotification
+		d.notifier, d.gifts, d.votes = toNotification, toNotification, toNotification
 		erasures = append(erasures, q)
 	}
 
