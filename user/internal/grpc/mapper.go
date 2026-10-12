@@ -621,8 +621,6 @@ func toProtoPoliticalViews(p user.PoliticalViews) userv1.PoliticalViews {
 		return userv1.PoliticalViews_POLITICAL_VIEWS_COMMUNIST
 	case user.PoliticalViewsSocialist:
 		return userv1.PoliticalViews_POLITICAL_VIEWS_SOCIALIST
-	case user.PoliticalViewsModerate:
-		return userv1.PoliticalViews_POLITICAL_VIEWS_MODERATE
 	case user.PoliticalViewsLiberal:
 		return userv1.PoliticalViews_POLITICAL_VIEWS_LIBERAL
 	case user.PoliticalViewsConservative:
@@ -635,6 +633,10 @@ func toProtoPoliticalViews(p user.PoliticalViews) userv1.PoliticalViews {
 		return userv1.PoliticalViews_POLITICAL_VIEWS_INDIFFERENT
 	case user.PoliticalViewsLibertarian:
 		return userv1.PoliticalViews_POLITICAL_VIEWS_LIBERTARIAN
+	case user.PoliticalViewsModerateIslamism:
+		return userv1.PoliticalViews_POLITICAL_VIEWS_MODERATE_ISLAMISM
+	case user.PoliticalViewsRadicalIslamism:
+		return userv1.PoliticalViews_POLITICAL_VIEWS_RADICAL_ISLAMISM
 	default:
 		return userv1.PoliticalViews_POLITICAL_VIEWS_NONE
 	}
@@ -646,8 +648,6 @@ func fromProtoPoliticalViews(p userv1.PoliticalViews) string {
 		return "communist"
 	case userv1.PoliticalViews_POLITICAL_VIEWS_SOCIALIST:
 		return "socialist"
-	case userv1.PoliticalViews_POLITICAL_VIEWS_MODERATE:
-		return "moderate"
 	case userv1.PoliticalViews_POLITICAL_VIEWS_LIBERAL:
 		return "liberal"
 	case userv1.PoliticalViews_POLITICAL_VIEWS_CONSERVATIVE:
@@ -660,6 +660,10 @@ func fromProtoPoliticalViews(p userv1.PoliticalViews) string {
 		return "indifferent"
 	case userv1.PoliticalViews_POLITICAL_VIEWS_LIBERTARIAN:
 		return "libertarian"
+	case userv1.PoliticalViews_POLITICAL_VIEWS_MODERATE_ISLAMISM:
+		return "moderate_islamism"
+	case userv1.PoliticalViews_POLITICAL_VIEWS_RADICAL_ISLAMISM:
+		return "radical_islamism"
 	default:
 		return ""
 	}

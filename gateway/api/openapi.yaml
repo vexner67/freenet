@@ -4661,8 +4661,9 @@ components:
                  confucianism, secular_humanism]
         politicalViews:
           type: string
-          enum: ["", communist, socialist, moderate, liberal, conservative, monarchist,
-                 ultraconservative, indifferent, libertarian]
+          enum: ["", communist, socialist, liberal, conservative, monarchist,
+                 ultraconservative, indifferent, libertarian, moderate_islamism,
+                 radical_islamism]
         birthday:
           type: [string, "null"]
           example: "1990-05-17"
