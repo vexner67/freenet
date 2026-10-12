@@ -1,0 +1,99 @@
+package backend
+
+import (
+	"context"
+	"math"
+
+	"github.com/vexner67/freenet/gateway/internal/model"
+	"github.com/vexner67/freenet/pkg/errs"
+	userv1 "github.com/vexner67/freenet/user/api/user/v1"
+)
+
+// Votes is rest.Votes over the user service, which keeps the votes of
+// people and the vouchers that give them.
+type Votes struct {
+	api userv1.UserServiceClient
+}
+
+func NewVotes(api userv1.UserServiceClient) *Votes {
+	return &Votes{
+		api: api,
+	}
+}
+
+func (v *Votes) Transfer(ctx context.Context, accessToken, userID string, votes int64) (int64, error) {
+	resp, err := v.api.TransferVotes(withToken(ctx, accessToken), &userv1.TransferVotesRequest{UserId: userID, Votes: votes})
+	if err != nil {
+		// Why the user service refuses a transfer is its to say, as with
+		// gifts.
+		return 0, errs.Wrap("v.api.TransferVotes", giftRefusal(err))
+	}
+
+	return resp.GetVotes(), nil
+}
+
+func (v *Votes) Redeem(ctx context.Context, accessToken, token string) (model.Redeemed, error) {
+	resp, err := v.api.RedeemVoucher(withToken(ctx, accessToken), &userv1.RedeemVoucherRequest{Token: token})
+	if err != nil {
+		return model.Redeemed{}, errs.Wrap("v.api.RedeemVoucher", fromStatus(err))
+	}
+
+	return model.Redeemed{Votes: resp.GetVotes(), Rating: int(resp.GetRating()), Balance: resp.GetBalance()}, nil
+}
+
+func (v *Votes) CreateVoucher(ctx context.Context, accessToken string, d model.VoucherDraft) (model.Voucher, error) {
+	resp, err := v.api.CreateVoucher(withToken(ctx, accessToken), &userv1.CreateVoucherRequest{
+		Token:  d.Token,
+		Votes:  d.Votes,
+		Rating: clampInt32(d.Rating),
+		Usages: clampInt32(d.Usages),
+	})
+	if err != nil {
+		return model.Voucher{}, errs.Wrap("v.api.CreateVoucher", fromStatus(err))
+	}
+
+	return toVoucher(resp.GetVoucher()), nil
+}
+
+func (v *Votes) ListVouchers(ctx context.Context, accessToken, cursor string, limit int) (model.VoucherPage, error) {
+	resp, err := v.api.ListVouchers(withToken(ctx, accessToken), &userv1.ListVouchersRequest{Cursor: cursor, Limit: toLimit(limit)})
+	if err != nil {
+		return model.VoucherPage{}, errs.Wrap("v.api.ListVouchers", fromStatus(err))
+	}
+
+	page := model.VoucherPage{
+		Vouchers:   make([]model.Voucher, 0, len(resp.GetVouchers())),
+		NextCursor: resp.GetNextCursor(),
+	}
+
+	for _, pv := range resp.GetVouchers() {
+		page.Vouchers = append(page.Vouchers, toVoucher(pv))
+	}
+
+	return page, nil
+}
+
+func (v *Votes) DeleteVoucher(ctx context.Context, accessToken, voucherID string) error {
+	if _, err := v.api.DeleteVoucher(withToken(ctx, accessToken), &userv1.DeleteVoucherRequest{VoucherId: voucherID}); err != nil {
+		return errs.Wrap("v.api.DeleteVoucher", fromStatus(err))
+	}
+
+	return nil
+}
+
+func toVoucher(pv *userv1.Voucher) model.Voucher {
+	return model.Voucher{
+		ID:          pv.GetId(),
+		Token:       pv.GetToken(),
+		Votes:       pv.GetVotes(),
+		Rating:      int(pv.GetRating()),
+		UsagesLeft:  int(pv.GetUsagesLeft()),
+		Activations: int(pv.GetActivations()),
+	}
+}
+
+// clampInt32 keeps n within int32: what is out of range stays out of the
+// range the user service accepts.
+func clampInt32(n int) int32 {
+	return int32(min(max(n, math.MinInt32), math.MaxInt32)) //nolint:gosec // clamped
+}

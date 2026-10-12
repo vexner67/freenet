@@ -259,6 +259,9 @@ type userResponse struct {
 	Unfilled     []string `json:"unfilled"`
 	// Interface is how the site looks to the owner ("Интерфейс").
 	Interface interfaceJSON `json:"interface"`
+	// Votes is "Баланс"; Admin tells the one who makes the vouchers.
+	Votes int64 `json:"votes"`
+	Admin bool  `json:"admin"`
 	// PinnedClubs are the clubs in the left menu ("Добавить в левое
 	// меню"); GET /me alone tells them.
 	PinnedClubs []clubJSON `json:"pinnedClubs,omitempty"`
@@ -317,6 +320,8 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 
 		Completeness: u.Completeness,
 		Unfilled:     append([]string{}, u.Unfilled...),
+		Votes:        u.Votes,
+		Admin:        u.Admin,
 		Interface: interfaceJSON{
 			AvatarStyle: u.Interface.AvatarStyle,
 			MainPage:    u.Interface.MainPage,
