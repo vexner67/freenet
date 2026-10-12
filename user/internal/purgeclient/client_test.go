@@ -21,6 +21,7 @@ type fakePost struct {
 	purged   string
 	held     string
 	released string
+	sources  []string
 	deadline bool
 	err      error
 }
@@ -38,6 +39,20 @@ func (f *fakePost) HoldUserReactions(_ context.Context, req *postv1.HoldUserReac
 
 func (f *fakePost) ReleaseUserReactions(_ context.Context, req *postv1.ReleaseUserReactionsRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.released = req.GetUserId()
+	return &emptypb.Empty{}, f.err
+}
+
+func (f *fakePost) FollowSource(ctx context.Context, req *postv1.FollowSourceRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.sources = append(f.sources, "+"+req.GetReaderId()+">"+req.GetSourceId())
+	_, f.deadline = ctx.Deadline()
+	if req.GetClub() {
+		f.sources = append(f.sources, "a club")
+	}
+	return &emptypb.Empty{}, f.err
+}
+
+func (f *fakePost) UnfollowSource(_ context.Context, req *postv1.UnfollowSourceRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.sources = append(f.sources, "-"+req.GetReaderId()+">"+req.GetSourceId())
 	return &emptypb.Empty{}, f.err
 }
 
@@ -117,11 +132,48 @@ func TestReactions(t *testing.T) {
 	}
 }
 
+// A follow and its end go to post, who reads whom, in the order they
+// happened.
+func TestFollows(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	q := outbox.NewMemory()
+	ann, bob := uuid.New(), uuid.New()
+	follows := NewFollows(q)
+
+	if err := follows.Followed(ctx, ann, bob); err != nil {
+		t.Fatal(err)
+	}
+	if err := follows.Unfollowed(ctx, ann, bob); err != nil {
+		t.Fatal(err)
+	}
+
+	head, _ := q.Head(ctx, 10)
+	if len(head) != 2 || head[0].Kind != FollowKind || head[1].Kind != UnfollowKind {
+		t.Fatalf("recorded %+v, want a follow and its end", head)
+	}
+
+	api := &fakePost{}
+	deliver := Post(api, time.Second)
+	for _, m := range head {
+		if err := deliver(ctx, m); err != nil {
+			t.Fatalf("deliver %s: %v", m.Kind, err)
+		}
+	}
+
+	want := []string{"+" + ann.String() + ">" + bob.String(), "-" + ann.String() + ">" + bob.String()}
+	if len(api.sources) != 2 || api.sources[0] != want[0] || api.sources[1] != want[1] || !api.deadline {
+		t.Fatalf("post heard %v (deadline %v), want %v with a timeout", api.sources, api.deadline, want)
+	}
+}
+
 func TestDeliver_Errors(t *testing.T) {
 	t.Parallel()
 
 	ann := uuid.New()
 	erase := outbox.Message{Kind: Kind, Payload: ann[:]}
+	follow := outbox.Message{Kind: FollowKind, Payload: append(ann[:], ann[:]...)}
 
 	tests := []struct {
 		name      string
@@ -132,6 +184,13 @@ func TestDeliver_Errors(t *testing.T) {
 		{name: "down is retried", message: erase, apiErr: status.Error(codes.Unavailable, "down")},
 		{name: "plain error is retried", message: erase, apiErr: errors.New("broken")},
 		{name: "hold down is retried", message: outbox.Message{Kind: HoldKind, Payload: ann[:]}, apiErr: status.Error(codes.Unavailable, "down")},
+		// An older post, still running while the site is rolled out, does
+		// not know the call yet: the record waits for the new one.
+		{name: "unimplemented is retried", message: erase, apiErr: status.Error(codes.Unimplemented, "old")},
+		{name: "follow unimplemented is retried", message: follow, apiErr: status.Error(codes.Unimplemented, "old")},
+		{name: "follow down is retried", message: follow, apiErr: status.Error(codes.Unavailable, "down")},
+		{name: "follow rejected is dropped", message: follow, apiErr: status.Error(codes.InvalidArgument, "bad"), permanent: true},
+		{name: "half a follow is dropped", message: outbox.Message{Kind: UnfollowKind, Payload: ann[:]}, permanent: true},
 		{name: "rejected is dropped", message: erase, apiErr: status.Error(codes.InvalidArgument, "bad"), permanent: true},
 		{name: "unknown kind is dropped", message: outbox.Message{Kind: "notify"}, permanent: true},
 		{name: "bad payload is dropped", message: outbox.Message{Kind: Kind, Payload: []byte{1, 2}}, permanent: true},

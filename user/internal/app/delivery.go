@@ -4,6 +4,7 @@ import (
 	"context"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/prometheus/client_golang/prometheus"
 	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
@@ -29,11 +30,35 @@ type outboxQueue interface {
 }
 
 // delivery is what user tells other services through the outbox: follows
-// to notification, erased pages to every service that keeps data of users.
+// to notification and to post, whose news follow them, erased pages to
+// every service that keeps data of users.
 type delivery struct {
 	notifier  service.Notifier
 	eraser    service.Eraser
 	reactions service.Reactions
+}
+
+// notifiers tells each of them, in order, about a follow and its end.
+type notifiers []service.Notifier
+
+func (n notifiers) Followed(ctx context.Context, followerID, followeeID uuid.UUID) error {
+	for _, notifier := range n {
+		if err := notifier.Followed(ctx, followerID, followeeID); err != nil {
+			return errs.Wrap("notifier.Followed", err)
+		}
+	}
+
+	return nil
+}
+
+func (n notifiers) Unfollowed(ctx context.Context, followerID, followeeID uuid.UUID) error {
+	for _, notifier := range n {
+		if err := notifier.Unfollowed(ctx, followerID, followeeID); err != nil {
+			return errs.Wrap("notifier.Unfollowed", err)
+		}
+	}
+
+	return nil
 }
 
 // newDelivery opens a stream and a relay for each service configured. The
@@ -102,6 +127,9 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 	} {
 		if s.addr == "" {
 			a.logger.Warn(s.variable + " is not set: erased users keep their data in " + s.name)
+			if s.name == purgeclient.PostStream {
+				a.logger.Warn("POST_SERVICE_ADDR is not set: the news do not follow the follows")
+			}
 			continue
 		}
 
@@ -113,6 +141,7 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 
 		if s.name == purgeclient.PostStream {
 			d.reactions = purgeclient.NewReactions(q)
+			d.notifier = notifiers{d.notifier, purgeclient.NewFollows(q)}
 		}
 	}
 

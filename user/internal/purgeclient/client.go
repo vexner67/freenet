@@ -32,6 +32,14 @@ const (
 	ReleaseKind = "release_reactions"
 )
 
+// Kinds of the post stream about a follow and its end: post keeps whom
+// everyone reads in the news. The payload is the follower's ID and then
+// the followee's.
+const (
+	FollowKind   = "follow_source"
+	UnfollowKind = "unfollow_source"
+)
+
 // Streams of the services that keep data of users, besides notification,
 // whose stream it shares with the notifications, so that a follow never
 // arrives after its follower is erased.
@@ -96,11 +104,37 @@ type NoReactions struct{}
 func (NoReactions) UserDeactivated(context.Context, uuid.UUID) error { return nil }
 func (NoReactions) UserReactivated(context.Context, uuid.UUID) error { return nil }
 
+// Follows is a service.Notifier: it records follows and their ends in the
+// post stream, so that the news of post follow them, in order, and an
+// erased user's follows never arrive after the erasure.
+type Follows struct {
+	post Recorder
+}
+
+func NewFollows(post Recorder) *Follows {
+	return &Follows{
+		post: post,
+	}
+}
+
+func (f *Follows) Followed(ctx context.Context, followerID, followeeID uuid.UUID) error {
+	return errs.Wrap("f.post.Add", f.post.Add(ctx, FollowKind, pair(followerID, followeeID)))
+}
+
+func (f *Follows) Unfollowed(ctx context.Context, followerID, followeeID uuid.UUID) error {
+	return errs.Wrap("f.post.Add", f.post.Add(ctx, UnfollowKind, pair(followerID, followeeID)))
+}
+
+// pair is the payload of a follow: who reads and whom.
+func pair(followerID, followeeID uuid.UUID) []byte {
+	return append(followerID[:], followeeID[:]...)
+}
+
 // purgeFunc calls a service's RPC about the user.
 type purgeFunc func(ctx context.Context, userID string) error
 
 func Post(api postv1.PostServiceClient, timeout time.Duration) outbox.Deliver {
-	return deliverKinds(timeout, map[string]purgeFunc{
+	users := deliverKinds(timeout, map[string]purgeFunc{
 		Kind: func(ctx context.Context, id string) error {
 			_, err := api.PurgeUser(ctx, &postv1.PurgeUserRequest{UserId: id})
 			return err
@@ -114,6 +148,30 @@ func Post(api postv1.PostServiceClient, timeout time.Duration) outbox.Deliver {
 			return err
 		},
 	})
+
+	return func(ctx context.Context, m outbox.Message) error {
+		if m.Kind != FollowKind && m.Kind != UnfollowKind {
+			return users(ctx, m)
+		}
+
+		if len(m.Payload) != 2*len(uuid.UUID{}) {
+			return outbox.Permanent(fmt.Errorf("a follow of %d bytes", len(m.Payload)))
+		}
+
+		follower, followee := uuid.UUID(m.Payload[:16]).String(), uuid.UUID(m.Payload[16:]).String()
+
+		ctx, cancel := context.WithTimeout(ctx, timeout)
+		defer cancel()
+
+		var err error
+		if m.Kind == FollowKind {
+			_, err = api.FollowSource(ctx, &postv1.FollowSourceRequest{ReaderId: follower, SourceId: followee})
+		} else {
+			_, err = api.UnfollowSource(ctx, &postv1.UnfollowSourceRequest{ReaderId: follower, SourceId: followee})
+		}
+
+		return outcome(err)
+	}
 }
 
 func Media(api mediav1.MediaServiceClient, timeout time.Duration) outbox.Deliver {
@@ -174,15 +232,21 @@ func deliverKinds(timeout time.Duration, calls map[string]purgeFunc) outbox.Deli
 		ctx, cancel := context.WithTimeout(ctx, timeout)
 		defer cancel()
 
-		// A request the service rejects stays rejected; anything else,
-		// a service down in the first place, is tried again.
-		switch err = purge(ctx, userID.String()); status.Code(err) {
-		case codes.OK:
-			return nil
-		case codes.InvalidArgument, codes.NotFound, codes.Unimplemented:
-			return outbox.Permanent(err)
-		default:
-			return err
-		}
+		return outcome(purge(ctx, userID.String()))
+	}
+}
+
+// outcome tells the relay what to do with the answer of a service: a
+// request it rejects stays rejected; anything else is tried again — a
+// service down in the first place, and one that does not know the call
+// yet, an older version still running while the site is rolled out.
+func outcome(err error) error {
+	switch status.Code(err) {
+	case codes.OK:
+		return nil
+	case codes.InvalidArgument, codes.NotFound:
+		return outbox.Permanent(err)
+	default:
+		return err
 	}
 }
