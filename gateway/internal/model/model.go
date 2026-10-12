@@ -528,8 +528,9 @@ type ForwardedMessage struct {
 	Depth int
 }
 
-// MessageDraft is a message to send: text, photos, a shared post ("" for
-// none), messages of the caller's dialogs to forward, or some of them;
+// MessageDraft is a message to send, into a dialog or a chat: text,
+// photos, a shared post ("" for none), messages of the caller's dialogs
+// and chats to forward, or some of them;
 // or a photo of an album to share (SharedPhotoID), with text alone.
 type MessageDraft struct {
 	Text          string
@@ -549,7 +550,7 @@ type MessageEdit struct {
 	AddPhotoIDs    []string
 }
 
-// MessagesAt names a part of a dialog: older messages with Cursor, those
+// MessagesAt names a part of a dialog or of a chat: older messages with Cursor, those
 // after After, the messages around Around, or, with none of them, the
 // newest.
 type MessagesAt struct {

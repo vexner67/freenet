@@ -23,6 +23,10 @@ type fakeChats struct {
 	// none: the caller has no chats.
 	none bool
 	err  error
+	// What the last message sent, the last edit and the last page asked for were.
+	draft model.MessageDraft
+	edit  model.MessageEdit
+	at    model.MessagesAt
 }
 
 func (f *fakeChats) did(token string, call ...string) {
@@ -85,15 +89,26 @@ func (f *fakeChats) Return(_ context.Context, token, id string) error {
 	return f.err
 }
 
-func (f *fakeChats) Send(_ context.Context, token, id, text string, photoIDs []string) (model.ChatMessage, error) {
-	f.did(token, "send", id, text, strings.Join(photoIDs, ","))
-	return model.ChatMessage{ID: "m9", ChatID: id, SenderID: "u1", Text: text, PhotoIDs: photoIDs, CreatedAt: chatTime, DeletableUntil: chatTime, EditableUntil: chatTime}, f.err
+func (f *fakeChats) Send(_ context.Context, token, id string, d model.MessageDraft) (model.ChatMessage, error) {
+	f.did(token, "send", id, d.Text, strings.Join(d.PhotoIDs, ","))
+	f.draft = d
+
+	m := model.ChatMessage{
+		ID: "m9", ChatID: id, SenderID: "u1", Text: d.Text, PhotoIDs: d.PhotoIDs, CreatedAt: chatTime, DeletableUntil: chatTime, EditableUntil: chatTime,
+		PostID: d.PostID, SharedPhotoID: d.SharedPhotoID,
+	}
+	for range d.ForwardIDs {
+		m.Forwarded = append(m.Forwarded, model.ForwardedMessage{SenderID: "u2", Text: "дальше", CreatedAt: chatTime})
+	}
+
+	return m, f.err
 }
 
 // History: ann created the chat, bob wrote, somebody whose page is gone
 // wrote too, and ann removed cat.
-func (f *fakeChats) History(_ context.Context, token, id, cursor, after string, _ int) (model.ChatMessagePage, error) {
-	f.did(token, "history", id, cursor, after)
+func (f *fakeChats) History(_ context.Context, token, id string, at model.MessagesAt, _ int) (model.ChatMessagePage, error) {
+	f.did(token, "history", id, at.Cursor, at.After)
+	f.at = at
 
 	return model.ChatMessagePage{
 		Messages: []model.ChatMessage{
@@ -112,9 +127,24 @@ func (f *fakeChats) Message(_ context.Context, token, id string) (model.ChatMess
 	return model.ChatMessage{ID: id, ChatID: "c1", SenderID: "u2", Text: "иду, конечно", CreatedAt: chatTime}, f.err
 }
 
-func (f *fakeChats) Edit(_ context.Context, token, id, text string) (model.ChatMessage, error) {
-	f.did(token, "edit", id, text)
-	return model.ChatMessage{ID: id, ChatID: "c1", SenderID: "u1", Text: text, CreatedAt: chatTime, EditedAt: chatTime, EditableUntil: chatTime}, f.err
+func (f *fakeChats) Edit(_ context.Context, token, id string, e model.MessageEdit) (model.ChatMessage, error) {
+	f.did(token, "edit", id, e.Text)
+	f.edit = e
+
+	return model.ChatMessage{ID: id, ChatID: "c1", SenderID: "u1", Text: e.Text, PhotoIDs: e.AddPhotoIDs, CreatedAt: chatTime, EditedAt: chatTime, EditableUntil: chatTime}, f.err
+}
+
+// Search: bob said it in the chat c1, carrying on what cat wrote.
+func (f *fakeChats) Search(_ context.Context, token, chatID, query, cursor string, _ int) (model.FoundChatMessages, error) {
+	f.did(token, "search", chatID, query, cursor)
+	if f.none {
+		return model.FoundChatMessages{}, f.err
+	}
+
+	return model.FoundChatMessages{Messages: []model.ChatMessage{{
+		ID: "m4", ChatID: "c1", SenderID: "u2", Text: "идём в поход", CreatedAt: chatTime,
+		Forwarded: []model.ForwardedMessage{{SenderID: "u3", Text: "какой поход?", CreatedAt: chatTime}},
+	}}}, f.err
 }
 
 func (f *fakeChats) Delete(_ context.Context, token, id string) error {
@@ -341,6 +371,77 @@ func TestChatMessages(t *testing.T) {
 		t.Fatalf("calls = %q, want %q", h.chats.calls, want)
 	}
 
+	t.Run("around a message", func(t *testing.T) {
+		h := newHarness(rest.Config{})
+		if w := h.do("GET", "/api/v1/chats/c1/messages?around=m2", "", "Authorization", annAuth); w.Code != http.StatusOK || h.chats.at.Around != "m2" {
+			t.Fatalf("%d, asked for %+v", w.Code, h.chats.at)
+		}
+	})
+
+	t.Run("what a message shares and carries on", func(t *testing.T) {
+		type attached struct {
+			chatMessageJSON
+			Post           string         `json:"post"`
+			Repost         map[string]any `json:"repost"`
+			AlbumPhoto     string         `json:"albumPhoto"`
+			SharedPhoto    map[string]any `json:"sharedPhoto"`
+			ForwardedCount int            `json:"forwardedCount"`
+			Forwarded      []struct {
+				Text   string         `json:"text"`
+				Author map[string]any `json:"author"`
+			} `json:"forwarded"`
+		}
+
+		h := newHarness(rest.Config{})
+		w := h.do("POST", "/api/v1/chats/c1/messages", `{"post":"p1","forward":["m2","m3"]}`, "Authorization", annAuth)
+		got := decode[attached](t, w)
+
+		if w.Code != http.StatusCreated || h.chats.draft.PostID != "p1" || !slices.Equal(h.chats.draft.ForwardIDs, []string{"m2", "m3"}) {
+			t.Fatalf("%d, sent %+v", w.Code, h.chats.draft)
+		}
+		if got.Post != "p1" || got.Repost == nil || got.ForwardedCount != 2 || len(got.Forwarded) != 2 || got.Forwarded[0].Author["nickname"] != "bob" || got.Forwarded[0].Text != "дальше" {
+			t.Fatalf("sent = %+v", got)
+		}
+
+		h = newHarness(rest.Config{})
+		w = h.do("POST", "/api/v1/chats/c1/messages", `{"text":"смотрите","albumPhoto":"ph6"}`, "Authorization", annAuth)
+		if got = decode[attached](t, w); w.Code != http.StatusCreated || h.chats.draft.SharedPhotoID != "ph6" || got.AlbumPhoto != "ph6" || got.SharedPhoto == nil {
+			t.Fatalf("a photo of an album: %d %+v", w.Code, got)
+		}
+
+		// What is not there for the caller is not theirs to share.
+		for _, body := range []string{`{"post":"p404"}`, `{"text":"вот","albumPhoto":"ph404"}`} {
+			h = newHarness(rest.Config{})
+			if w = h.do("POST", "/api/v1/chats/c1/messages", body, "Authorization", annAuth); w.Code != http.StatusBadRequest || len(h.chats.calls) != 0 {
+				t.Fatalf("%s: %d, calls %q", body, w.Code, h.chats.calls)
+			}
+		}
+	})
+
+	t.Run("an edit of photos", func(t *testing.T) {
+		h := newHarness(rest.Config{})
+		w := h.do("PATCH", "/api/v1/chat-messages/m9", `{"text":"вот","addPhotos":["ph1"],"removePhotos":["ph2"]}`, "Authorization", annAuth)
+
+		got := decode[chatMessageJSON](t, w)
+		if w.Code != http.StatusOK || len(got.Photos) != 1 || !slices.Equal(h.chats.edit.AddPhotoIDs, []string{"ph1"}) || !slices.Equal(h.chats.edit.RemovePhotoIDs, []string{"ph2"}) ||
+			!slices.Equal(h.media.claimed, []string{"ph1"}) || len(h.media.released) != 0 {
+			t.Fatalf("%d %+v, edit %+v, claimed %q, released %q", w.Code, got, h.chats.edit, h.media.claimed, h.media.released)
+		}
+
+		// A refused edit gives the photos back.
+		h = newHarness(rest.Config{})
+		h.chats.err = failure.New(failure.Conflict, "the message can no longer be edited")
+
+		if w = h.do("PATCH", "/api/v1/chat-messages/m9", `{"addPhotos":["ph1"]}`, "Authorization", annAuth); w.Code != http.StatusConflict || !slices.Equal(h.media.released, []string{"ph1"}) {
+			t.Fatalf("refused: %d, released %q", w.Code, h.media.released)
+		}
+
+		h = newHarness(rest.Config{})
+		if w = h.do("PATCH", "/api/v1/chat-messages/m9", `{"addPhotos":["ph7"]}`, "Authorization", annAuth); w.Code != http.StatusBadRequest || len(h.chats.calls) != 0 {
+			t.Fatalf("someone else's photo: %d, calls %q", w.Code, h.chats.calls)
+		}
+	})
+
 	for _, req := range [][2]string{
 		{"GET", "/api/v1/chats/c1/messages"}, {"POST", "/api/v1/chats/c1/messages"}, {"GET", "/api/v1/chat-messages/m2"},
 		{"PATCH", "/api/v1/chat-messages/m2"}, {"DELETE", "/api/v1/chat-messages/m2"}, {"POST", "/api/v1/chats/c1/read"},
@@ -348,5 +449,77 @@ func TestChatMessages(t *testing.T) {
 		if w = newHarness(rest.Config{}).do(req[0], req[1], `{}`); w.Code != http.StatusUnauthorized {
 			t.Fatalf("%s %s without token: %d", req[0], req[1], w.Code)
 		}
+	}
+}
+
+func TestSearchChatMessages(t *testing.T) {
+	t.Parallel()
+
+	type foundJSON struct {
+		Messages []struct {
+			Peer    map[string]any `json:"peer"`
+			Message *struct {
+				ID string `json:"id"`
+			} `json:"message"`
+			Chat *struct {
+				ID    string `json:"id"`
+				Title string `json:"title"`
+			} `json:"chat"`
+			ChatMessage *struct {
+				ID        string         `json:"id"`
+				Author    map[string]any `json:"author"`
+				Text      string         `json:"text"`
+				Forwarded []struct {
+					Text   string         `json:"text"`
+					Author map[string]any `json:"author"`
+				} `json:"forwarded"`
+			} `json:"chatMessage"`
+		} `json:"messages"`
+		NextCursor string `json:"nextCursor"`
+	}
+
+	// In one chat: the dialogs are not asked.
+	h := newHarness(rest.Config{})
+	w := h.do("GET", "/api/v1/messages/search?q=%D0%BF%D0%BE%D1%85%D0%BE%D0%B4&chat=c1&cursor=m7", "", "Authorization", annAuth)
+	got := decode[foundJSON](t, w)
+
+	if w.Code != http.StatusOK || !slices.Equal(h.chats.calls, []string{"search c1 поход m7"}) || h.messages.searched != "" || got.NextCursor != "" || len(got.Messages) != 1 {
+		t.Fatalf("%d %+v, calls %q, dialogs asked for %q", w.Code, got, h.chats.calls, h.messages.searched)
+	}
+
+	row := got.Messages[0]
+	if row.Peer != nil || row.Message != nil || row.Chat == nil || row.Chat.ID != "c1" || row.Chat.Title != "Поход" || row.ChatMessage == nil ||
+		row.ChatMessage.ID != "m4" || row.ChatMessage.Author["nickname"] != "bob" {
+		t.Fatalf("found = %+v", row)
+	}
+	// What it carries on, by which it may have been found.
+	if carried := row.ChatMessage.Forwarded; len(carried) != 1 || carried[0].Text != "какой поход?" || carried[0].Author["nickname"] != "cat" {
+		t.Fatalf("the forwarded of a found message = %+v", carried)
+	}
+
+	// Everywhere: dialogs and chats in one list, newest first. The
+	// dialogs have more below m8, so what the chats found below it waits.
+	h = newHarness(rest.Config{})
+	w = h.do("GET", "/api/v1/messages/search?q=x", "", "Authorization", annAuth)
+	if got = decode[foundJSON](t, w); w.Code != http.StatusOK || len(got.Messages) != 2 || got.Messages[0].Message.ID != "m9" || got.NextCursor != "m8" ||
+		!slices.Equal(h.chats.calls, []string{"search  x "}) {
+		t.Fatalf("everywhere: %d %+v, calls %q", w.Code, got, h.chats.calls)
+	}
+
+	// In one dialog: the chats are not asked.
+	h = newHarness(rest.Config{})
+	if w = h.do("GET", "/api/v1/messages/search?q=x&peer=bob", "", "Authorization", annAuth); w.Code != http.StatusOK || len(h.chats.calls) != 0 {
+		t.Fatalf("one dialog: %d, calls %q", w.Code, h.chats.calls)
+	}
+
+	if w = h.do("GET", "/api/v1/messages/search?q=x&peer=bob&chat=c1", "", "Authorization", annAuth); w.Code != http.StatusBadRequest {
+		t.Fatalf("a dialog and a chat at once: %d", w.Code)
+	}
+
+	h = newHarness(rest.Config{})
+	h.chats.err = failure.New(failure.NotFound, "chat not found")
+
+	if w = h.do("GET", "/api/v1/messages/search?q=x&chat=c9", "", "Authorization", annAuth); w.Code != http.StatusNotFound {
+		t.Fatalf("a chat one is not in: %d", w.Code)
 	}
 }
