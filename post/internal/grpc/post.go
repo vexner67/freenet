@@ -108,6 +108,13 @@ type PurgeService interface {
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
 }
 
+// HoldService keeps a user's likes and votes out of the counts while
+// their page is deleted.
+type HoldService interface {
+	HoldUser(ctx context.Context, userID uuid.UUID) error
+	ReleaseUser(ctx context.Context, userID uuid.UUID) error
+}
+
 // Services are the use cases behind the handler.
 type Services struct {
 	Posts       PostService
@@ -119,6 +126,7 @@ type Services struct {
 	Notes       NoteService
 	Faves       FaveService
 	Purge       PurgeService
+	Holds       HoldService
 }
 
 type PostHandler struct {
@@ -132,6 +140,7 @@ type PostHandler struct {
 	noteService       NoteService
 	faveService       FaveService
 	purgeService      PurgeService
+	holdService       HoldService
 	logger            *slog.Logger
 }
 
@@ -146,8 +155,35 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		noteService:       s.Notes,
 		faveService:       s.Faves,
 		purgeService:      s.Purge,
+		holdService:       s.Holds,
 		logger:            logger,
 	}
+}
+
+func (h *PostHandler) HoldUserReactions(ctx context.Context, req *postv1.HoldUserReactionsRequest) (*emptypb.Empty, error) {
+	userID, err := uuid.Parse(req.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+
+	if err = h.holdService.HoldUser(ctx, userID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *PostHandler) ReleaseUserReactions(ctx context.Context, req *postv1.ReleaseUserReactionsRequest) (*emptypb.Empty, error) {
+	userID, err := uuid.Parse(req.GetUserId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid user id")
+	}
+
+	if err = h.holdService.ReleaseUser(ctx, userID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (h *PostHandler) PurgeUser(ctx context.Context, req *postv1.PurgeUserRequest) (*emptypb.Empty, error) {

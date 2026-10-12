@@ -24,13 +24,16 @@ type TopicRepository struct {
 	messages map[uuid.UUID]*post.TopicMessage
 	// likes are who put a heart on each message, and when.
 	likes map[uuid.UUID]map[uuid.UUID]time.Time
+	// heldLikes are the hearts of deleted pages.
+	heldLikes heldLikes
 }
 
 func NewTopicRepository() *TopicRepository {
 	return &TopicRepository{
-		topics:   make(map[uuid.UUID]post.StoredTopic),
-		messages: make(map[uuid.UUID]*post.TopicMessage),
-		likes:    make(map[uuid.UUID]map[uuid.UUID]time.Time),
+		topics:    make(map[uuid.UUID]post.StoredTopic),
+		messages:  make(map[uuid.UUID]*post.TopicMessage),
+		likes:     make(map[uuid.UUID]map[uuid.UUID]time.Time),
+		heldLikes: make(heldLikes),
 	}
 }
 

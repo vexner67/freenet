@@ -10,7 +10,9 @@ import (
 // (see mtls.RestrictMethods).
 func InternalMethods() map[string][]string {
 	return map[string][]string{
-		postv1.PostService_PurgeUser_FullMethodName: {mtls.User},
+		postv1.PostService_PurgeUser_FullMethodName:            {mtls.User},
+		postv1.PostService_HoldUserReactions_FullMethodName:    {mtls.User},
+		postv1.PostService_ReleaseUserReactions_FullMethodName: {mtls.User},
 	}
 }
 
@@ -54,5 +56,7 @@ func PublicMethods() []string {
 		postv1.PostService_GetNoteComment_FullMethodName,
 		postv1.PostService_GetNoteComments_FullMethodName,
 		postv1.PostService_PurgeUser_FullMethodName,
+		postv1.PostService_HoldUserReactions_FullMethodName,
+		postv1.PostService_ReleaseUserReactions_FullMethodName,
 	}
 }

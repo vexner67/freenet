@@ -251,6 +251,14 @@ service PostService {
   // time. Their posts and the posts on their wall go, with all their likes
   // and comments, and their likes and comments on others' posts. Idempotent.
   rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
+  // Internal, for user: the user deleted their page. Their likes and
+  // their votes in polls leave the counts and the lists of who liked,
+  // kept aside until the page is restored or erased. Idempotent.
+  rpc HoldUserReactions(HoldUserReactionsRequest) returns (google.protobuf.Empty);
+  // Internal, for user: the user restored their page. What was kept
+  // aside is counted again, but for what was deleted meanwhile.
+  // Idempotent.
+  rpc ReleaseUserReactions(ReleaseUserReactionsRequest) returns (google.protobuf.Empty);
 }
 
 // Public methods that return posts fill liked when the caller sends an
@@ -920,6 +928,14 @@ message ListLastCommentsResponse {
 }
 
 message PurgeUserRequest {
+  string user_id = 1;
+}
+
+message HoldUserReactionsRequest {
+  string user_id = 1;
+}
+
+message ReleaseUserReactionsRequest {
   string user_id = 1;
 }
 

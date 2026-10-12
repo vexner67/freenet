@@ -176,7 +176,9 @@ func (a *App) build(cfg config.Config) error {
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
 				Votes:  repos.polls,
 				Topics: repos.topics, Albums: repos.albums, Notes: repos.notes, Tx: repos.tx, Notifier: notifier, Photos: photos,
+				Held: repos.held,
 			}),
+			Holds: service.NewHoldService(repos.tx, repos.held...),
 		}, a.logger),
 	)
 
@@ -410,6 +412,8 @@ type repositories struct {
 		service.NoteRepository
 		service.NoteEraser
 	}
+	// held keep the likes and votes of deleted pages aside.
+	held         []service.ReactionHolder
 	noteComments service.NoteCommentRepository
 	albumPhotos  interface {
 		service.AlbumPhotoRepository
@@ -450,6 +454,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			photoLikes:    albums.PhotoLikes(),
 			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 			notes: notes, noteComments: notes.Comments(),
+			held: []service.ReactionHolder{store.Holds(), topics, albums},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -498,6 +503,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		photoLikes:    albums.PhotoLikes(),
 		photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 		notes: notes, noteComments: notes.Comments(),
+		held: []service.ReactionHolder{postgres.NewHoldRepository(a.pool)},
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)
