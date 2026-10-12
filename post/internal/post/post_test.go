@@ -482,8 +482,17 @@ func TestText_Excerpt(t *testing.T) {
 		{name: "shorter", text: "привет", limit: 10, want: "привет"},
 		{name: "exactly the limit", text: "привет", limit: 6, want: "привет"},
 		{name: "cut by characters, not bytes", text: "привет, мир", limit: 6, want: "привет", wantCut: true},
-		{name: "emoji stays whole", text: "да👋нет", limit: 3, want: "да👋", wantCut: true},
+		{name: "a long word is cut where it is", text: "да👋нет", limit: 3, want: "да👋", wantCut: true},
 		{name: "empty", text: "", limit: 3, want: ""},
+		{name: "ends before the word it would cut", text: "раз два три", limit: 6, want: "раз", wantCut: true},
+		{name: "ends after a word that fits", text: "раз два три", limit: 7, want: "раз два", wantCut: true},
+		{name: "ends at a line break", text: "раз\nдва три", limit: 5, want: "раз", wantCut: true},
+		{name: "ends before the address it would cut", text: "привет, [ann|Анна Петрова], как дела", limit: 20, want: "привет,", wantCut: true},
+		{name: "keeps a whole address", text: "привет, [ann|Анна Петрова], как дела", limit: 27, want: "привет, [ann|Анна Петрова],", wantCut: true},
+		{name: "a bracket never closed is no address", text: "раз [два три четыре", limit: 13, want: "раз [два три", wantCut: true},
+		{name: "a bracket closed on another line is no address", text: "раз [два три\nчетыре] пять", limit: 9, want: "раз [два", wantCut: true},
+		{name: "nothing but an address is cut where it is", text: "[ann|Анна Петрова] привет", limit: 10, want: "[ann|Анна ", wantCut: true},
+		{name: "a word longer than the slack is cut", text: strings.Repeat("а", 150) + " б", limit: 120, want: strings.Repeat("а", 120), wantCut: true},
 	}
 
 	for _, tt := range tests {
