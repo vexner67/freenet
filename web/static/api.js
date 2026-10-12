@@ -93,6 +93,11 @@ export async function exclusive(run) {
   return run();
 }
 
+// The requests of an account that is not the one signed in (accounts.js):
+// new tokens for its refresh token, and a read with its access token.
+export const renewTokens = (refreshToken) => request('POST', '/api/v1/auth/refresh', { refreshToken });
+export const readAs = (accessToken, path) => request('GET', path, undefined, accessToken);
+
 // renewSession replaces an access token that expired, for the event
 // stream, which is no fetch; under the same lock as the requests.
 export function renewSession(expiredAccessToken) {

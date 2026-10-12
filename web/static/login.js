@@ -1,6 +1,6 @@
 import { api, currentUser } from './api.js';
-import { settle } from './accounts.js';
-import { $, accountLinks, renderChrome, homePath, showError, hideError } from './layout.js';
+import { settle, signedInAs } from './accounts.js';
+import { $, accountLinks, renderChrome, showAccounts, homePath, showError, hideError } from './layout.js';
 
 const emailForm = $('email-form');
 const codeForm = $('code-form');
@@ -44,6 +44,7 @@ codeForm.addEventListener('submit', (event) => {
     const me = await api.me();
     // An account that waited in this browser has a new session now.
     settle(me);
+    signedInAs(me.id);
     location.href = me.profileCompleted ? homePath(me) : '/edit?welcome=1';
   });
 });
@@ -64,8 +65,11 @@ if (me) {
   renderChrome(null);
 
   // The accounts set aside in this browser: a click signs in as one.
-  const waiting = accountLinks();
-  $('accounts-list').replaceChildren(...waiting);
-  $('accounts').hidden = waiting.length === 0;
+  showAccounts(() => {
+    const waiting = accountLinks();
+
+    $('accounts-list').replaceChildren(...waiting);
+    $('accounts').hidden = waiting.length === 0;
+  });
   $('email').focus();
 }

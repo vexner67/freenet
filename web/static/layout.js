@@ -1,7 +1,7 @@
 // Shared page chrome: header links, the sidebar menu and small DOM helpers.
 // User data is only ever set with textContent, never as HTML.
 
-import { accountName, canPark, onAccountsChange, park, parkedAccounts, switchTo } from './accounts.js';
+import { accountName, canPark, onAccountChange, park, parkedAccounts, signedInAs, switchTo, tendParked } from './accounts.js';
 import { api } from './api.js';
 import { connectEvents, onEvent } from './events.js';
 import { errorText, foundParts, isLongText, mentionParts, setTimezone, unreadCountText } from './labels.js';
@@ -126,6 +126,7 @@ function menuLink(me, item, href, text, counter) {
 async function logout(event) {
   event.preventDefault();
   await api.logout();
+  signedInAs('');
   forgetLook();
   location.href = '/';
 }
@@ -149,20 +150,24 @@ async function addAccount(me) {
 }
 
 // accountLinks are the accounts that wait, each a link that switches to
-// it.
+// it: a small photo, the name and how much waits there unread.
 export function accountLinks(me = null) {
   return parkedAccounts().map((a) => el('a', {
-    textContent: shortened(accountName(a), ACCOUNT_NAME_LENGTH),
+    className: 'menu-account',
     title: `Войти как ${accountName(a)}`,
     onclick: () => switchAccount(a.id, me),
-  }));
+  },
+  a.unread > 0 && el('span', { className: 'counter', textContent: unreadCountText(a.unread) }),
+  el('img', { src: a.avatar || '/static/avatar.svg', alt: '' }),
+  shortened(accountName(a), ACCOUNT_NAME_LENGTH)));
 }
 
-// drawAccounts adds them under the menu, after a divider, with "Добавить
+// drawAccounts puts them under the menu, after a divider, with "Добавить
 // аккаунт" while there is room for one more.
 function drawAccounts(menu, me) {
   if (!menu) return;
 
+  menu.querySelector('.menu-accounts')?.remove();
   menu.append(el('div', { className: 'menu-accounts' },
     el('div', { className: 'menu-divider' }),
     ...accountLinks(me),
@@ -170,8 +175,18 @@ function drawAccounts(menu, me) {
   ));
 }
 
-// Another tab switched accounts: this page is not its account's anymore.
-if (typeof window !== 'undefined') onAccountsChange(() => location.reload());
+// showAccounts draws the accounts that wait and then looks after them:
+// their sessions are kept alive, and what was learnt of them (names,
+// photos, unread counters) is drawn again. draw is how the page draws
+// them.
+export function showAccounts(draw) {
+  draw();
+  tendParked().then((changed) => changed && draw()).catch(() => {});
+}
+
+// Another tab switched accounts or signed out: this page is not its
+// account's anymore.
+if (typeof window !== 'undefined') onAccountChange(() => location.reload());
 
 // The look of the site is kept in the browser too, so that a page wears
 // it before the server has said whose it is; THEME_KEY is a theme chosen
@@ -310,7 +325,7 @@ export function applyInterface(me) {
   ].filter(Boolean));
   showCounter('messages');
   showCounter('notifications');
-  drawAccounts(menu, me);
+  showAccounts(() => drawAccounts(menu, me));
 
   // /me tells the clubs kept in the menu; an answer that is not /me's
   // (saved settings) leaves those the page already knows.
@@ -325,6 +340,7 @@ export function renderChrome(me) {
 
   // A guest is not shown what is blurred as adult (posts.js).
   document.body.classList.toggle('guest', !me);
+  if (me) signedInAs(me.id);
 
   if (me?.deactivated) {
     renderDeactivatedChrome(me, links, menu);
@@ -366,8 +382,16 @@ export function renderChrome(me) {
 function renderDeactivatedChrome(me, links, menu) {
   links.replaceChildren(el('a', { href: '/', textContent: 'выход', onclick: logout }));
 
+  // Of the menu only the other accounts of the browser are left, when
+  // there are any: the way to them without signing out.
   const sidebar = menu?.closest('.sidebar');
-  if (sidebar) sidebar.hidden = true;
+  const others = parkedAccounts().length > 0;
+
+  if (sidebar) sidebar.hidden = !others;
+  if (others) {
+    menu.replaceChildren();
+    showAccounts(() => drawAccounts(menu, me));
+  }
 
   const own = profilePath(me);
   if (decodeURIComponent(location.pathname) !== own) location.replace(own);
@@ -410,7 +434,7 @@ export async function showPinnedClubs(menu) {
 // openvk cuts the names of pinned clubs to fit the menu.
 const PINNED_NAME_LENGTH = 14;
 // The names of the accounts that wait are cut the same way.
-const ACCOUNT_NAME_LENGTH = 18;
+const ACCOUNT_NAME_LENGTH = 14;
 
 function shortened(s, n) {
   return s.length > n ? s.slice(0, n) + '…' : s;
