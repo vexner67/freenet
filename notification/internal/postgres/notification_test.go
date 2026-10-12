@@ -199,6 +199,50 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("a deleted repost takes its notification: %v, left %d", err, count())
 		}
 	})
+	t.Run("gift", func(t *testing.T) {
+		first, second := uuid.New(), uuid.New()
+
+		count := func() int {
+			t.Helper()
+
+			got, err := repo.List(ctx, service.Query{RecipientID: bob, Unread: true, Limit: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return len(got)
+		}
+
+		before := count()
+
+		// One notification per sent gift, however many one person sends.
+		for _, gift := range []uuid.UUID{first, first, second} {
+			n, err := notification.New(notification.Event{Kind: notification.KindGift, RecipientID: bob, ActorID: ann, PostID: gift}, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err = repo.Save(ctx, n); err != nil {
+				t.Fatalf("Save: %v", err)
+			}
+		}
+
+		if got := count() - before; got != 2 {
+			t.Fatalf("notifications about two gifts = %d, want 2", got)
+		}
+
+		// A deleted gift takes its own back.
+		if err := repo.Delete(ctx, notification.Event{Kind: notification.KindGift, RecipientID: bob, ActorID: ann, PostID: first}); err != nil {
+			t.Fatal(err)
+		}
+
+		if got := count() - before; got != 1 {
+			t.Fatalf("notifications after a deleted gift = %d, want 1", got)
+		}
+
+		if err := repo.Delete(ctx, notification.Event{Kind: notification.KindGift, RecipientID: bob, ActorID: ann, PostID: second}); err != nil {
+			t.Fatal(err)
+		}
+	})
 	t.Run("accepted post", func(t *testing.T) {
 		published, club := uuid.New(), uuid.New()
 		e := notification.Event{Kind: notification.KindPostAccepted, RecipientID: bob, ActorID: club, PostID: published}

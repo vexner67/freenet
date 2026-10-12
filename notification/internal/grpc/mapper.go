@@ -36,6 +36,7 @@ var (
 		notification.KindTopicMessageLike: notificationv1.Kind_KIND_TOPIC_MESSAGE_LIKE,
 
 		notification.KindEventReminder: notificationv1.Kind_KIND_EVENT_REMINDER,
+		notification.KindGift:          notificationv1.Kind_KIND_GIFT,
 	}
 	kindFromProto = map[notificationv1.Kind]notification.Kind{
 		notificationv1.Kind_KIND_LIKE:      notification.KindLike,
@@ -63,6 +64,7 @@ var (
 		notificationv1.Kind_KIND_TOPIC_MESSAGE_LIKE: notification.KindTopicMessageLike,
 
 		notificationv1.Kind_KIND_EVENT_REMINDER: notification.KindEventReminder,
+		notificationv1.Kind_KIND_GIFT:           notification.KindGift,
 	}
 )
 

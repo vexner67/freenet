@@ -71,6 +71,8 @@ const (
 	// KindEventReminder: the actor, an event the recipient comes to,
 	// starts soon ("В ближайшее время состоится событие" of openvk).
 	KindEventReminder Kind = "event_reminder"
+	// KindGift: the actor sent the recipient the gift PostID.
+	KindGift Kind = "gift"
 )
 
 var (
@@ -114,7 +116,7 @@ func (e Event) Validate() error {
 	var ok bool
 
 	switch e.Kind {
-	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention, KindPhotoLike:
+	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention, KindPhotoLike, KindGift:
 		ok = hasPost && !hasComment
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
 		KindPhotoComment, KindTopicMessageLike, KindPhotoMention, KindNoteComment:

@@ -81,9 +81,13 @@ enum Kind {
   KIND_PHOTO_MENTION = 19;
   // The actor wrote comment_id under the recipient's note post_id.
   KIND_NOTE_COMMENT = 20;
+  // The actor sent the recipient a gift; post_id is the sent gift, which
+  // the user service keeps.
+  KIND_GIFT = 21;
 }
 
-// Event: post_id is set for all but follows, appointments and reminders,
+// Event: post_id is set for all but follows, appointments and reminders
+// (of a gift it is the sent gift),
 // comment_id for comments, replies, comment likes, messages of topics
 // and mentions in comments and topics.
 message Event {

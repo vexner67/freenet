@@ -29,6 +29,8 @@ func TestEvent_Validate(t *testing.T) {
 		{"repost without the post", notification.Event{Kind: notification.KindRepost, RecipientID: ann, ActorID: bob}, notification.ErrTargetMismatch},
 		{"accepted post", notification.Event{Kind: notification.KindPostAccepted, RecipientID: ann, ActorID: bob, PostID: post}, nil},
 		{"accepted post with a comment", notification.Event{Kind: notification.KindPostAccepted, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, notification.ErrTargetMismatch},
+		{"gift", notification.Event{Kind: notification.KindGift, RecipientID: ann, ActorID: bob, PostID: post}, nil},
+		{"gift without the gift", notification.Event{Kind: notification.KindGift, RecipientID: ann, ActorID: bob}, notification.ErrTargetMismatch},
 		{"suggested post", notification.Event{Kind: notification.KindSuggestedPost, RecipientID: ann, ActorID: bob, PostID: post}, nil},
 		{"topic message", notification.Event{Kind: notification.KindTopicMessage, RecipientID: ann, ActorID: bob, PostID: post, CommentID: uuid.New()}, nil},
 		{"topic message without the message", notification.Event{Kind: notification.KindTopicMessage, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},
