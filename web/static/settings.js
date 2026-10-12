@@ -43,28 +43,15 @@ function onSubmit(form, save) {
   });
 }
 
-// initMain: the page address is the nickname, a part of "Основное" of the
-// page, so it goes back with the rest of it unchanged.
+// initMain: the page address is the nickname, saved alone, so a profile
+// edited in another tab since this page was opened stays as edited.
 function initMain(me) {
   $('email').textContent = me.email;
   $('page-id').textContent = me.id;
   $('nickname').value = me.nickname;
 
   onSubmit($('address'), async () => {
-    const updated = await api.updateProfile({
-      name: me.name,
-      surname: me.surname,
-      nickname: $('nickname').value.trim(),
-      status: me.status,
-      hometown: me.hometown,
-      gender: me.gender,
-      relationship: me.relationship,
-      partner: me.partner?.nickname ?? '',
-      worldview: me.worldview,
-      politicalViews: me.politicalViews,
-      birthday: me.birthday || null,
-      hideBirthYear: me.hideBirthYear,
-    });
+    const updated = await api.updateNickname($('nickname').value.trim());
     // "Моя Страница" in the header and the menu leads to the new address.
     for (const link of document.querySelectorAll(`a[href="${profilePath(me)}"]`)) link.href = profilePath(updated);
     Object.assign(me, updated);
