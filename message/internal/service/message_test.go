@@ -907,6 +907,15 @@ func TestMessageService_Edit(t *testing.T) {
 	if err != nil || edited.Text() != "привет!" || edited.EditedAt().IsZero() {
 		t.Fatalf("Edit = %+v, %v", edited, err)
 	}
+
+	for _, side := range []uuid.UUID{ann, bob} {
+		if got, err := svc.Message(ctx, side, m.ID()); err != nil || got.Text() != "привет!" {
+			t.Fatalf("Message = %+v, %v", got, err)
+		}
+	}
+	if _, err := svc.Message(ctx, cat, m.ID()); !errors.Is(err, message.ErrNotFound) {
+		t.Fatalf("a stranger reads the message: %v", err)
+	}
 	for name, events := range map[string]<-chan service.Event{"sender": annEvents, "recipient": bobEvents} {
 		if e := <-events; e.Edited == nil || e.Edited.ID() != m.ID() || e.Edited.Text() != "привет!" {
 			t.Fatalf("%s got %+v, want the edit", name, e)

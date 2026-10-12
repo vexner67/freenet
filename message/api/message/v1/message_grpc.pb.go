@@ -28,6 +28,7 @@ const (
 	MessageService_DeleteMessage_FullMethodName      = "/message.v1.MessageService/DeleteMessage"
 	MessageService_HideMessage_FullMethodName        = "/message.v1.MessageService/HideMessage"
 	MessageService_DeleteMessages_FullMethodName     = "/message.v1.MessageService/DeleteMessages"
+	MessageService_GetMessage_FullMethodName         = "/message.v1.MessageService/GetMessage"
 	MessageService_EditMessage_FullMethodName        = "/message.v1.MessageService/EditMessage"
 	MessageService_SearchMessages_FullMethodName     = "/message.v1.MessageService/SearchMessages"
 	MessageService_HasMessagesFrom_FullMethodName    = "/message.v1.MessageService/HasMessagesFrom"
@@ -78,6 +79,9 @@ type MessageServiceClient interface {
 	// none of them: for everyone, as DeleteMessage does, or for themselves,
 	// as HideMessage does.
 	DeleteMessages(ctx context.Context, in *DeleteMessagesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// A message the caller has in their dialogs, whole; NotFound for one
+	// of another dialog or deleted for the caller.
+	GetMessage(ctx context.Context, in *GetMessageRequest, opts ...grpc.CallOption) (*GetMessageResponse, error)
 	// The caller changes what their message says and, with replace_photos,
 	// the photos it shows, within a day of sending (editable_until); the
 	// post it shares and the messages it carries on stay.
@@ -221,6 +225,16 @@ func (c *messageServiceClient) DeleteMessages(ctx context.Context, in *DeleteMes
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, MessageService_DeleteMessages_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) GetMessage(ctx context.Context, in *GetMessageRequest, opts ...grpc.CallOption) (*GetMessageResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetMessageResponse)
+	err := c.cc.Invoke(ctx, MessageService_GetMessage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -455,6 +469,9 @@ type MessageServiceServer interface {
 	// none of them: for everyone, as DeleteMessage does, or for themselves,
 	// as HideMessage does.
 	DeleteMessages(context.Context, *DeleteMessagesRequest) (*emptypb.Empty, error)
+	// A message the caller has in their dialogs, whole; NotFound for one
+	// of another dialog or deleted for the caller.
+	GetMessage(context.Context, *GetMessageRequest) (*GetMessageResponse, error)
 	// The caller changes what their message says and, with replace_photos,
 	// the photos it shows, within a day of sending (editable_until); the
 	// post it shares and the messages it carries on stay.
@@ -547,6 +564,9 @@ func (UnimplementedMessageServiceServer) HideMessage(context.Context, *HideMessa
 }
 func (UnimplementedMessageServiceServer) DeleteMessages(context.Context, *DeleteMessagesRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMessages not implemented")
+}
+func (UnimplementedMessageServiceServer) GetMessage(context.Context, *GetMessageRequest) (*GetMessageResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetMessage not implemented")
 }
 func (UnimplementedMessageServiceServer) EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EditMessage not implemented")
@@ -766,6 +786,24 @@ func _MessageService_DeleteMessages_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MessageServiceServer).DeleteMessages(ctx, req.(*DeleteMessagesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_GetMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).GetMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_GetMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).GetMessage(ctx, req.(*GetMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1143,6 +1181,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteMessages",
 			Handler:    _MessageService_DeleteMessages_Handler,
+		},
+		{
+			MethodName: "GetMessage",
+			Handler:    _MessageService_GetMessage_Handler,
 		},
 		{
 			MethodName: "EditMessage",
