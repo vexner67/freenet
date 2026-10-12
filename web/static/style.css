@@ -1,16 +1,120 @@
 /* Freenet: old-web look. Fixed 791px page, Tahoma 11px, no frameworks. */
 
+/* Every colour of the site is a variable, named by what it paints (back,
+   text, line) and by its value in the plain theme. A theme gives the
+   variables other values (themes/dark.css), so a new block is in the dark
+   as soon as it is written with them: no colour is written anywhere else
+   in this file (web/test/themes.test.js). */
+
+:root {
+  /* Backgrounds */
+  --back-fff: #fff;
+  --back-fafafa: #fafafa;
+  --back-f9f9f9: #f9f9f9;
+  --back-f7f7f7: #f7f7f7;
+  --back-f6f6f6: #f6f6f6;
+  --back-f9f6e7: #f9f6e7;
+  --back-f2f5f8: #f2f5f8;
+  --back-f2f2f2: #f2f2f2;
+  --back-ffefe8: #ffefe8;
+  --back-fbf3c3: #fbf3c3;
+  --back-f7f1d6: #f7f1d6;
+  --back-f0f0f0: #f0f0f0;
+  --back-f6f0d2: #f6f0d2;
+  --back-ededed: #ededed;
+  --back-e9edf1: #e9edf1;
+  --back-f6ebbb: #f6ebbb;
+  --back-e9e9e9: #e9e9e9;
+  --back-e6e6e6: #e6e6e6;
+  --back-ffe58a: #ffe58a;
+  --back-eee5b8: #eee5b8;
+  --back-dae1e8: #dae1e8;
+  --back-d9e1ea: #d9e1ea;
+  --back-ddd: #ddd;
+  --back-e1d7a2: #e1d7a2;
+  --back-d4d4d4: #d4d4d4;
+  --back-8b8b8b: #8b8b8b;
+  --back-5b7aa1: #5b7aa1;
+  --back-6b6b6b: #6b6b6b;
+  --back-636363: #636363;
+  --back-595959: #595959;
+  --back-3e3e3e: #3e3e3e;
+  /* Text */
+  --text-000: #000;
+  --text-c00: #c00;
+  --text-333: #333;
+  --text-3e3e3e: #3e3e3e;
+  --text-404036: #404036;
+  --text-464646: #464646;
+  --text-2b587a: #2b587a;
+  --text-c33: #c33;
+  --text-555: #555;
+  --text-5c5c5c: #5c5c5c;
+  --text-626262: #626262;
+  --text-45688e: #45688e;
+  --text-d94c4c: #d94c4c;
+  --text-777: #777;
+  --text-808080: #808080;
+  --text-8b8b8b: #8b8b8b;
+  --text-7d96af: #7d96af;
+  --text-9c9670: #9c9670;
+  --text-999: #999;
+  --text-a0a0a0: #a0a0a0;
+  --text-aaa: #aaa;
+  --text-ccc: #ccc;
+  --text-fff: #fff;
+  /* Borders, outlines and shadows */
+  --line-fff: #fff;
+  --line-eef1f4: #eef1f4;
+  --line-eee: #eee;
+  --line-ececec: #ececec;
+  --line-e8ebee: #e8ebee;
+  --line-e8e8e8: #e8e8e8;
+  --line-e0e6ec: #e0e6ec;
+  --line-e3e3e3: #e3e3e3;
+  --line-dae1e8: #dae1e8;
+  --line-e0e0e0: #e0e0e0;
+  --line-dedede: #dedede;
+  --line-ddd: #ddd;
+  --line-dadada: #dadada;
+  --line-d5ddb6: #d5ddb6;
+  --line-d6d6d6: #d6d6d6;
+  --line-d0d0d0: #d0d0d0;
+  --line-cfcfcf: #cfcfcf;
+  --line-ddd09a: #ddd09a;
+  --line-c5d0db: #c5d0db;
+  --line-d7cf9e: #d7cf9e;
+  --line-ccc: #ccc;
+  --line-c3cad2: #c3cad2;
+  --line-c0cad5: #c0cad5;
+  --line-c4c4c4: #c4c4c4;
+  --line-bbb: #bbb;
+  --line-b9b597: #b9b597;
+  --line-aaa: #aaa;
+  --line-e89b88: #e89b88;
+  --line-8fa7c2: #8fa7c2;
+  --line-8b8b8b: #8b8b8b;
+  --line-808080: #808080;
+  --line-7e7e7e: #7e7e7e;
+  --line-777: #777;
+  --line-6f6f6f: #6f6f6f;
+  --line-595959: #595959;
+  --line-555: #555;
+  --line-333: #333;
+  --line-2f2f2f: #2f2f2f;
+}
+
 * { box-sizing: border-box; }
 [hidden] { display: none !important; }
 
 body {
   margin: 0;
-  background: #fff;
-  color: #000;
+  background: var(--back-fff);
+  color: var(--text-000);
   font: 11px tahoma, verdana, arial, sans-serif;
 }
 
-a { color: #2b587a; text-decoration: none; cursor: pointer; }
+a { color: var(--text-2b587a); text-decoration: none; cursor: pointer; }
 a:hover { text-decoration: underline; }
 
 h1, h2, h3, p, ul { margin: 0; }
@@ -25,8 +129,8 @@ h1, h2, h3, p, ul { margin: 0; }
   align-items: stretch;
   height: 42px;
   padding-left: 10px;
-  background: linear-gradient(#636363, #3e3e3e);
-  border: 1px solid #333;
+  background: linear-gradient(var(--back-636363), var(--back-3e3e3e));
+  border: 1px solid var(--line-333);
   border-top: 0;
   border-radius: 0 0 7px 7px;
 }
@@ -35,7 +139,7 @@ h1, h2, h3, p, ul { margin: 0; }
   display: flex;
   align-items: center;
   gap: 4px;
-  color: #fff;
+  color: var(--text-fff);
   font: bold 21px tahoma, verdana, arial, sans-serif;
   letter-spacing: -1px;
 }
@@ -48,8 +152,8 @@ h1, h2, h3, p, ul { margin: 0; }
   width: 24px;
   height: 24px;
   border-radius: 5px;
-  background: #fff;
-  color: #3e3e3e;
+  background: var(--back-fff);
+  color: var(--text-3e3e3e);
   font-size: 18px;
 }
 
@@ -59,10 +163,10 @@ h1, h2, h3, p, ul { margin: 0; }
   display: flex;
   align-items: center;
   padding: 0 9px;
-  color: #fff;
+  color: var(--text-fff);
   font-weight: bold;
-  border-left: 1px solid #2f2f2f;
-  box-shadow: inset 1px 0 #6f6f6f;
+  border-left: 1px solid var(--line-2f2f2f);
+  box-shadow: inset 1px 0 var(--line-6f6f6f);
 }
 .header-links a:hover { background: rgba(255, 255, 255, 0.08); text-decoration: none; }
 
@@ -78,16 +182,16 @@ h1, h2, h3, p, ul { margin: 0; }
   display: flex;
   justify-content: space-between;
   padding: 4px 10px;
-  background: #eee5b8;
-  border: 1px solid #d7cf9e;
+  background: var(--back-eee5b8);
+  border: 1px solid var(--line-d7cf9e);
   font-weight: bold;
 }
 
-.page-title .aside { color: #9c9670; font-weight: normal; }
+.page-title .aside { color: var(--text-9c9670); font-weight: normal; }
 
 .page-body {
   padding: 10px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--line-e0e0e0);
   border-top: 0;
 }
 
@@ -97,15 +201,15 @@ h1, h2, h3, p, ul { margin: 0; }
   display: block;
   padding: 3px 6px;
 }
-.menu a:hover { background: #e9edf1; text-decoration: none; }
+.menu a:hover { background: var(--back-e9edf1); text-decoration: none; }
 /* The unread counter next to "Мои Ответы", as on openvk. */
 .menu .counter {
   float: right;
   margin-top: -1px;
   padding: 1px 7px;
-  background: #e6e6e6;
+  background: var(--back-e6e6e6);
   border-radius: 2px;
-  color: #2b587a;
+  color: var(--text-2b587a);
   font-weight: bold;
 }
 
@@ -119,9 +223,9 @@ h1, h2, h3, p, ul { margin: 0; }
   position: relative;
   margin: 12px -10px 8px;
   padding: 3px 10px 3px 22px;
-  background: #e6e6e6;
-  border-top: 1px solid #8b8b8b;
-  color: #626262;
+  background: var(--back-e6e6e6);
+  border-top: 1px solid var(--line-8b8b8b);
+  color: var(--text-626262);
   font-weight: bold;
 }
 .section-title:first-child { margin-top: -10px; }
@@ -132,24 +236,24 @@ h1, h2, h3, p, ul { margin: 0; }
   left: 9px;
   top: 7px;
   border: 4px solid transparent;
-  border-top: 5px solid #8b8b8b;
+  border-top: 5px solid var(--line-8b8b8b);
 }
 
 .notice {
   margin-bottom: 10px;
   padding: 8px 10px;
-  background: #f7f1d6;
-  border: 1px solid #ddd09a;
+  background: var(--back-f7f1d6);
+  border: 1px solid var(--line-ddd09a);
 }
 
 .error {
   margin-bottom: 10px;
   padding: 8px 10px;
-  background: #ffefe8;
-  border: 1px solid #e89b88;
+  background: var(--back-ffefe8);
+  border: 1px solid var(--line-e89b88);
 }
 
-.hint { color: #808080; }
+.hint { color: var(--text-808080); }
 
 .bullets { padding: 0; margin: 8px 0; }
 .bullets li { position: relative; list-style: none; padding: 2px 0 2px 12px; }
@@ -160,7 +264,7 @@ h1, h2, h3, p, ul { margin: 0; }
   top: 7px;
   width: 4px;
   height: 4px;
-  background: #5b7aa1;
+  background: var(--back-5b7aa1);
 }
 
 .center { text-align: center; }
@@ -169,35 +273,35 @@ h1, h2, h3, p, ul { margin: 0; }
 
 .button {
   padding: 4px 9px;
-  background: #595959;
-  border: 1px solid #595959;
+  background: var(--back-595959);
+  border: 1px solid var(--line-595959);
   border-radius: 2px;
-  color: #fff;
+  color: var(--text-fff);
   font: 12px tahoma, verdana, arial, sans-serif;
   cursor: pointer;
 }
-.button:hover { background: #6b6b6b; text-decoration: none; }
+.button:hover { background: var(--back-6b6b6b); text-decoration: none; }
 .button:disabled { opacity: 0.6; cursor: default; }
-.button.secondary { background: #f2f2f2; border-color: #c4c4c4; color: #333; }
-.button.secondary:hover { background: #e6e6e6; }
+.button.secondary { background: var(--back-f2f2f2); border-color: var(--line-c4c4c4); color: var(--text-333); }
+.button.secondary:hover { background: var(--back-e6e6e6); }
 
 input[type="text"],
 input[type="email"],
 select {
   width: 100%;
   padding: 3px 4px;
-  background: #fff;
-  border: 1px solid #c0cad5;
+  background: var(--back-fff);
+  border: 1px solid var(--line-c0cad5);
   font: 11px tahoma, verdana, arial, sans-serif;
 }
-input:focus, select:focus { outline: 1px solid #8fa7c2; }
+input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 
 /* Sized by the columns, so every section lines up the same way. */
 .form { border-collapse: collapse; }
 .form th {
   width: 160px;
   padding: 4px 10px 4px 0;
-  color: #555;
+  color: var(--text-555);
   font-weight: normal;
   text-align: right;
   vertical-align: top;
@@ -211,12 +315,12 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
 .form textarea {
   width: 100%;
   padding: 3px 4px;
-  border: 1px solid #c0cad5;
+  border: 1px solid var(--line-c0cad5);
   font: 11px tahoma, verdana, arial, sans-serif;
   resize: vertical;
 }
-.form textarea:focus { outline: 1px solid #8fa7c2; }
-.required::after { content: " *"; color: #c33; }
+.form textarea:focus { outline: 1px solid var(--line-8fa7c2); }
+.required::after { content: " *"; color: var(--text-c33); }
 
 .date { display: flex; gap: 4px; }
 .date select:first-child { width: 60px; }
@@ -238,22 +342,22 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
   display: block;
   width: 200px;
   height: 200px;
-  border: 1px solid #e0e0e0;
+  border: 1px solid var(--line-e0e0e0);
 }
 .profile-left .button { display: block; width: 100%; margin-top: 6px; text-align: center; }
 
-.name { color: #45688e; font-size: 13px; font-weight: bold; }
+.name { color: var(--text-45688e); font-size: 13px; font-weight: bold; }
 .status { margin: 3px 0 10px; }
-.status.empty { color: #999; }
+.status.empty { color: var(--text-999); }
 /* openvk's deleted page: what is left instead of the information. */
 .settings-delete { margin-top: 20px; padding-left: 170px; }
-.deleted-info { margin: 40px 0; color: #aaa; font-size: 13px; text-align: center; }
+.deleted-info { margin: 40px 0; color: var(--text-aaa); font-size: 13px; text-align: center; }
 
 .info { width: 100%; border-collapse: collapse; }
 .info th {
   width: 150px;
   padding: 2px 0;
-  color: #808080;
+  color: var(--text-808080);
   font-weight: normal;
   text-align: left;
   vertical-align: top;
@@ -261,14 +365,14 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
 .info td { padding: 2px 0; }
 /* Text people write, as a club's description: their line breaks stay. */
 .pre-wrap { white-space: pre-wrap; overflow-wrap: anywhere; }
-.private-mark { color: #a0a0a0; }
+.private-mark { color: var(--text-a0a0a0); }
 
 /* Footer */
 
 .footer {
   margin-top: 12px;
   padding: 10px 0 20px;
-  color: #808080;
+  color: var(--text-808080);
   text-align: center;
 }
 .footer a { margin: 0 6px; }
@@ -276,7 +380,7 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
 
 /* Wall */
 
-.section-title .count { margin-left: 4px; color: #8b8b8b; font-weight: normal; }
+.section-title .count { margin-left: 4px; color: var(--text-8b8b8b); font-weight: normal; }
 
 .wall-form { margin-bottom: 12px; }
 .wall-form textarea,
@@ -286,10 +390,10 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
   height: 30px;
   padding: 4px;
   resize: vertical;
-  border: 1px solid #c0cad5;
+  border: 1px solid var(--line-c0cad5);
   font: 11px tahoma, verdana, arial, sans-serif;
 }
-.wall-form textarea:focus, .modal-body textarea:focus { outline: 1px solid #8fa7c2; }
+.wall-form textarea:focus, .modal-body textarea:focus { outline: 1px solid var(--line-8fa7c2); }
 /* Set by wall.js: grows on focus and shrinks only when empty, so the
    button does not jump away between pressing and releasing the mouse. */
 .wall-form.expanded textarea { height: 70px; }
@@ -301,23 +405,23 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
 
 .post-author {
   padding: 3px 5px;
-  background: #f6f6f6;
-  border-top: 1px solid #8b8b8b;
-  border-bottom: 1px solid #ececec;
+  background: var(--back-f6f6f6);
+  border-top: 1px solid var(--line-8b8b8b);
+  border-bottom: 1px solid var(--line-ececec);
 }
 .post-name { font-weight: bold; }
 /* "на стене Петра Петрова" in the news feed, bold as on openvk. */
 .post-wall { font-weight: bold; }
-.post-date { color: #777; font-size: 9px; }
+.post-date { color: var(--text-777); font-size: 9px; }
 
 .post-text {
   padding: 6px 4px;
-  border-bottom: 1px solid #ececec;
+  border-bottom: 1px solid var(--line-ececec);
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
-.post-date a { color: #777; }
+.post-date a { color: var(--text-777); }
 
 /* Editing in place, as on openvk: the form takes the place of the text
    and photos (postedit.js). */
@@ -333,16 +437,16 @@ input:focus, select:focus { outline: 1px solid #8fa7c2; }
   padding: 3px 4px;
   font-size: 9px;
 }
-.post-menu a { color: #999; }
-.separator { margin: 0 5px; color: #ccc; }
+.post-menu a { color: var(--text-999); }
+.separator { margin: 0 5px; color: var(--text-ccc); }
 
-.like { display: inline-flex; align-items: center; gap: 3px; color: #2b587a; }
-.like svg { width: 11px; height: 10px; fill: #2b587a; opacity: .4; }
+.like { display: inline-flex; align-items: center; gap: 3px; color: var(--text-2b587a); }
+.like svg { width: 11px; height: 10px; fill: var(--text-2b587a); opacity: .4; }
 a.like { cursor: pointer; }
 a.like:hover { text-decoration: none; }
 a.like:hover svg { opacity: .7; }
-.like.liked svg { fill: #d94c4c; opacity: 1; }
-.like-count { color: #000; font-size: 9px; }
+.like.liked svg { fill: var(--text-d94c4c); opacity: 1; }
+.like-count { color: var(--text-000); font-size: 9px; }
 
 /* Comments: a post with a small avatar. */
 .comment .post-avatar img { width: 30px; height: 30px; }
@@ -354,23 +458,23 @@ a.like:hover svg { opacity: .7; }
 .post-deleted {
   margin-bottom: 10px;
   padding: 8px;
-  background: #f6f6f6;
-  color: #808080;
+  background: var(--back-f6f6f6);
+  color: var(--text-808080);
 }
 
 .wall-more {
   display: block;
   padding: 5px;
-  background: #f0f0f0;
-  border-top: 1px solid #ccc;
-  color: #777;
+  background: var(--back-f0f0f0);
+  border-top: 1px solid var(--line-ccc);
+  color: var(--text-777);
   text-align: center;
 }
-.wall-more:hover { background: #e9e9e9; text-decoration: none; }
+.wall-more:hover { background: var(--back-e9e9e9); text-decoration: none; }
 
 /* Follows */
 
-.follow-state { margin-top: 4px; color: #808080; text-align: center; }
+.follow-state { margin-top: 4px; color: var(--text-808080); text-align: center; }
 .profile-left button.button { width: 100%; margin-top: 6px; }
 
 .side-block { margin-top: 12px; }
@@ -380,10 +484,10 @@ a.like:hover svg { opacity: .7; }
   display: flex;
   justify-content: space-between;
   padding: 3px 8px;
-  background: #f0f0f0;
-  border-top: 1px solid #ccc;
-  border-bottom: 1px solid #eee;
-  color: #777;
+  background: var(--back-f0f0f0);
+  border-top: 1px solid var(--line-ccc);
+  border-bottom: 1px solid var(--line-eee);
+  color: var(--text-777);
 }
 
 .people-grid {
@@ -400,25 +504,25 @@ a.like:hover svg { opacity: .7; }
   display: flex;
   gap: 10px;
   padding: 8px 0;
-  border-bottom: 1px solid #ececec;
+  border-bottom: 1px solid var(--line-ececec);
 }
 .person img { display: block; width: 50px; height: 50px; }
-.person-status { margin-top: 3px; color: #555; }
+.person-status { margin-top: 3px; color: var(--text-555); }
 
 .tabs {
   display: flex;
   margin: -10px -10px 10px;
   padding: 0 10px;
-  background: #f0f0f0;
-  border-bottom: 1px solid #ccc;
+  background: var(--back-f0f0f0);
+  border-bottom: 1px solid var(--line-ccc);
 }
 .tabs a { padding: 5px 10px; }
 .tabs a.active {
   margin-bottom: -1px;
-  background: #fff;
-  border: 1px solid #ccc;
-  border-bottom-color: #fff;
-  color: #000;
+  background: var(--back-fff);
+  border: 1px solid var(--line-ccc);
+  border-bottom-color: var(--line-fff);
+  color: var(--text-000);
   font-weight: bold;
 }
 .tabs a.active:hover { text-decoration: none; }
@@ -436,42 +540,42 @@ a.like:hover svg { opacity: .7; }
 
 .search-form { display: flex; gap: 6px; margin-bottom: 10px; }
 .search-form input { flex: 1; }
-.search-count { margin-bottom: 4px; color: #808080; }
+.search-count { margin-bottom: 4px; color: var(--text-808080); }
 
 /* Notifications: a post-like row with the sentence of openvk. */
-.notification { padding-bottom: 8px; border-bottom: 1px solid #ececec; }
+.notification { padding-bottom: 8px; border-bottom: 1px solid var(--line-ececec); }
 .notification-text { padding: 2px 0 3px; line-height: 1.5; overflow-wrap: anywhere; }
 
 /* Messages, as on openvk: the list of dialogs and the messenger. */
-.dialogs { margin: 0 -10px; border-top: 1px solid #d6d6d6; }
+.dialogs { margin: 0 -10px; border-top: 1px solid var(--line-d6d6d6); }
 .dialog {
   display: flex;
   align-items: flex-start;
   gap: 15px;
   padding: 8px 10px;
-  border-bottom: 1px solid #d6d6d6;
-  color: #000;
+  border-bottom: 1px solid var(--line-d6d6d6);
+  color: var(--text-000);
 }
-.dialog:hover { background: #f9f9f9; text-decoration: none; }
+.dialog:hover { background: var(--back-f9f9f9); text-decoration: none; }
 .dialog-avatar { width: 50px; height: 50px; object-fit: cover; border-radius: 3px; }
 .dialog-info { width: 130px; margin-top: 4px; }
-.dialog-name { color: #2b587a; }
-.dialog-date { margin-top: 2px; color: grey; }
-.dialog-forwarded { color: grey; }
+.dialog-name { color: var(--text-2b587a); }
+.dialog-date { margin-top: 2px; color: var(--text-808080); }
+.dialog-forwarded { color: var(--text-808080); }
 .dialog-message { display: flex; gap: 8px; flex: 1; min-width: 0; padding: 3px; border-radius: 3px; }
-.dialog-message.unread { background: #e6e6e6; }
+.dialog-message.unread { background: var(--back-e6e6e6); }
 .dialog-message img { width: 32px; height: 32px; object-fit: cover; border-radius: 3px; }
-.dialog-text { max-height: 40px; overflow: hidden; color: #404036; overflow-wrap: anywhere; }
+.dialog-text { max-height: 40px; overflow: hidden; color: var(--text-404036); overflow-wrap: anywhere; }
 
-.messenger { margin: -10px; border-bottom: 1px solid #c3cad2; }
+.messenger { margin: -10px; border-bottom: 1px solid var(--line-c3cad2); }
 .messenger-messages { height: 420px; padding: 10px 20px; overflow-y: auto; }
 .im-message { display: flex; gap: 10px; margin-bottom: 3px; padding: 8px 10px; border-radius: 3px; }
-.im-message.unread { background: #ededed; }
+.im-message.unread { background: var(--back-ededed); }
 .im-message img { display: block; width: 37px; height: 37px; object-fit: cover; border-radius: 3px; }
 .im-message-content { flex: 1; min-width: 0; line-height: 1.45; }
 .im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .im-message-text.collapsed { max-height: 115px; overflow: hidden; }
-.im-message-date { width: 100px; color: #404036; font-size: 9px; text-align: right; }
+.im-message-date { width: 100px; color: var(--text-404036); font-size: 9px; text-align: right; }
 /* Shown on hover, as the message actions of VK; always on touch screens. */
 .im-message-action { display: block; margin-top: 4px; font-size: 10px; visibility: hidden; cursor: pointer; }
 .im-message:hover .im-message-action { visibility: visible; }
@@ -479,19 +583,19 @@ a.like:hover svg { opacity: .7; }
 /* A click selects a message, as on VK; the bar over the dialog acts on
    the selected ones. */
 .im-message { cursor: default; }
-.im-message.selected, .im-message.selected.unread { background: #dae1e8; }
-.im-selection { display: flex; justify-content: space-between; padding: 6px 20px; background: #f7f7f7; border-bottom: 1px solid #d6d6d6; }
+.im-message.selected, .im-message.selected.unread { background: var(--back-dae1e8); }
+.im-selection { display: flex; justify-content: space-between; padding: 6px 20px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); }
 .im-selection a { cursor: pointer; }
-.im-message.deleted .im-message-text { color: #777; font-style: italic; }
-.im-message.found, .im-message.found.unread { background: #f6f0d2; }
-.found-words { background: #ffe58a; }
-.im-forwarded { margin: 4px 0; padding-left: 8px; border-left: 2px solid #dae1e8; }
+.im-message.deleted .im-message-text { color: var(--text-777); font-style: italic; }
+.im-message.found, .im-message.found.unread { background: var(--back-f6f0d2); }
+.found-words { background: var(--back-ffe58a); }
+.im-forwarded { margin: 4px 0; padding-left: 8px; border-left: 2px solid var(--line-dae1e8); }
 .im-forwarded-message { margin-bottom: 6px; }
 .im-forwarded-message:last-child { margin-bottom: 0; }
 .im-forwarded .im-forwarded { margin-bottom: 0; }
-.im-forwarded-date { margin-left: 6px; color: #777; font-size: 9px; }
-.im-forwarded-hint { color: #777; }
-.forward-list { max-height: 120px; margin: 4px 0 8px; padding-left: 8px; overflow-y: auto; border-left: 2px solid #dae1e8; color: #777; }
+.im-forwarded-date { margin-left: 6px; color: var(--text-777); font-size: 9px; }
+.im-forwarded-hint { color: var(--text-777); }
+.forward-list { max-height: 120px; margin: 4px 0 8px; padding-left: 8px; overflow-y: auto; border-left: 2px solid var(--line-dae1e8); color: var(--text-777); }
 .forward-list div { overflow: hidden; white-space: nowrap; text-overflow: ellipsis; }
 .messenger-box .reply-to { margin: 0 0 6px; }
 
@@ -500,8 +604,8 @@ a.like:hover svg { opacity: .7; }
   align-items: flex-start;
   gap: 10px;
   padding: 10px 20px;
-  background: #f9f9f9;
-  border-top: 1px solid #d6d6d6;
+  background: var(--back-f9f9f9);
+  border-top: 1px solid var(--line-d6d6d6);
 }
 .messenger-avatar { width: 52px; height: 52px; object-fit: cover; border-radius: 3px; }
 .messenger-box { flex: 1; }
@@ -512,7 +616,7 @@ a.like:hover svg { opacity: .7; }
   margin-bottom: 6px;
   padding: 4px;
   resize: none;
-  border: 1px solid #c0cad5;
+  border: 1px solid var(--line-c0cad5);
   font: 11px tahoma, verdana, arial, sans-serif;
 }
 .messenger-buttons { display: flex; align-items: center; gap: 10px; }
@@ -520,22 +624,22 @@ a.like:hover svg { opacity: .7; }
 /* Chats of several people: the line of what happened between the
    messages, and the people to tick in "Новая беседа". */
 .chat-bar a, .messenger-blocked a, .page-title .aside { cursor: pointer; }
-.chat-action { margin: 6px 0; color: #777; text-align: center; }
+.chat-action { margin: 6px 0; color: var(--text-777); text-align: center; }
 .chat-action-date { margin-left: 8px; font-size: 9px; }
 .modal-box.chat-dialog { width: 440px; }
-.modal-body input[type="text"], .modal-body input[type="search"] { padding: 3px 4px; border: 1px solid #c0cad5; font: 11px tahoma, verdana, arial, sans-serif; }
-.chat-people { max-height: 200px; overflow-y: auto; border: 1px solid #dae1e8; }
+.modal-body input[type="text"], .modal-body input[type="search"] { padding: 3px 4px; border: 1px solid var(--line-c0cad5); font: 11px tahoma, verdana, arial, sans-serif; }
+.chat-people { max-height: 200px; overflow-y: auto; border: 1px solid var(--line-dae1e8); }
 .chat-people.tall { max-height: 300px; }
 .chat-people .hint { margin: 10px; text-align: center; }
-.chat-person { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid #eef1f4; cursor: default; }
+.chat-person { display: flex; align-items: center; gap: 8px; padding: 4px 8px; border-bottom: 1px solid var(--line-eef1f4); cursor: default; }
 label.chat-person { cursor: pointer; }
 .chat-person:last-child { border-bottom: 0; }
 .chat-person img { width: 30px; height: 30px; object-fit: cover; border-radius: 3px; }
 .chat-kick { display: block; font-size: 10px; cursor: pointer; }
-.messenger-blocked { padding: 20px; background: #f9f9f9; border-top: 1px solid #d6d6d6; font-weight: bold; text-align: center; }
+.messenger-blocked { padding: 20px; background: var(--back-f9f9f9); border-top: 1px solid var(--line-d6d6d6); font-weight: bold; text-align: center; }
 
 /* Photos of a post, as on openvk: one at its own proportions, more as tiles. */
-.post-photos { display: grid; gap: 3px; padding: 6px 4px; border-bottom: 1px solid #ececec; }
+.post-photos { display: grid; gap: 3px; padding: 6px 4px; border-bottom: 1px solid var(--line-ececec); }
 .post-photos img { display: block; width: 100%; object-fit: cover; cursor: zoom-in; }
 .post-photos.single img { width: auto; max-width: 100%; max-height: 420px; object-fit: contain; }
 .post-photos.grid-2 { grid-template-columns: repeat(2, 1fr); }
@@ -550,24 +654,24 @@ label.chat-person { cursor: pointer; }
 .im-message .post-photos.single img { width: auto; }
 
 /* "Ответ на комментарий ×" over the comment form, as openvk's. */
-.reply-to { margin-top: 4px; color: #777; }
-.reply-cancel { margin-left: 4px; color: #999; font-weight: bold; cursor: pointer; }
-.reply-cancel:hover { color: #555; text-decoration: none; }
+.reply-to { margin-top: 4px; color: var(--text-777); }
+.reply-cancel { margin-left: 4px; color: var(--text-999); font-weight: bold; cursor: pointer; }
+.reply-cancel:hover { color: var(--text-555); text-decoration: none; }
 
 /* Photos attached to a post being written. */
 .attach-link { margin-right: 8px; }
 .attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .attachment { position: relative; }
-.attachment img { display: block; width: 75px; height: 75px; object-fit: cover; border: 1px solid #ccc; }
+.attachment img { display: block; width: 75px; height: 75px; object-fit: cover; border: 1px solid var(--line-ccc); }
 .attachment-loading {
   display: flex;
   align-items: center;
   justify-content: center;
   width: 75px;
   height: 75px;
-  background: #f6f6f6;
-  border: 1px solid #ccc;
-  color: #808080;
+  background: var(--back-f6f6f6);
+  border: 1px solid var(--line-ccc);
+  color: var(--text-808080);
 }
 .attachment-remove {
   position: absolute;
@@ -575,7 +679,7 @@ label.chat-person { cursor: pointer; }
   right: 1px;
   padding: 0 4px;
   background: rgba(0, 0, 0, .55);
-  color: #fff;
+  color: var(--text-fff);
   font-weight: bold;
   line-height: 14px;
 }
@@ -591,14 +695,14 @@ label.chat-person { cursor: pointer; }
   justify-content: center;
   background: rgba(0, 0, 0, .7);
 }
-.viewer-box { max-width: 95vw; background: #fff; border: 1px solid #555; }
+.viewer-box { max-width: 95vw; background: var(--back-fff); border: 1px solid var(--line-555); }
 .viewer-header {
   display: flex;
   justify-content: space-between;
   gap: 20px;
   padding: 6px 10px;
-  background: #e6e6e6;
-  color: #45688e;
+  background: var(--back-e6e6e6);
+  color: var(--text-45688e);
   font-weight: bold;
 }
 .viewer-close { cursor: pointer; }
@@ -609,7 +713,7 @@ label.chat-person { cursor: pointer; }
   top: 50%;
   padding: 8px 12px;
   background: rgba(0, 0, 0, .35);
-  color: #fff;
+  color: var(--text-fff);
   font-size: 28px;
   line-height: 1;
   transform: translateY(-50%);
@@ -620,11 +724,11 @@ label.chat-person { cursor: pointer; }
 .viewer-next { right: 10px; }
 
 /* A shared post inside its repost, compact as on openvk. */
-.post-shared { display: flex; gap: 6px; margin: 6px 4px; padding-left: 6px; border-left: 2px solid #dae1e8; }
+.post-shared { display: flex; gap: 6px; margin: 6px 4px; padding-left: 6px; border-left: 2px solid var(--line-dae1e8); }
 .post-shared .post-avatar img { width: 30px; height: 30px; }
 .post-shared .post-author { padding: 2px 5px; }
 .post-shared .post-text { border-bottom: 0; }
-.post-shared.deleted { padding: 6px; color: #777; }
+.post-shared.deleted { padding: 6px; color: var(--text-777); }
 .post-shared-link { display: inline-block; padding: 2px 4px; }
 
 /* openvk's message box: the "Поделиться" dialog. */
@@ -638,8 +742,8 @@ label.chat-person { cursor: pointer; }
   padding: 16px;
   background: rgba(0, 0, 0, .7);
 }
-.modal-box { width: 400px; max-width: 100%; background: #fff; border: 1px solid #555; }
-.modal-header { padding: 10px 12px; background: linear-gradient(#636363, #3e3e3e); color: #fff; font-size: 13px; font-weight: bold; }
+.modal-box { width: 400px; max-width: 100%; background: var(--back-fff); border: 1px solid var(--line-555); }
+.modal-header { padding: 10px 12px; background: linear-gradient(var(--back-636363), var(--back-3e3e3e)); color: var(--text-fff); font-size: 13px; font-weight: bold; }
 .modal-body { display: flex; flex-direction: column; gap: 5px; padding: 14px 12px; }
 .modal-body textarea { height: 60px; }
 .modal-body .error { margin-bottom: 0; }
@@ -649,18 +753,18 @@ label.chat-person { cursor: pointer; }
 .modal-box.avatar-dialog { width: 487px; }
 .avatar-crop { display: block; margin: 4px auto; cursor: move; touch-action: none; }
 .avatar-turn { display: flex; justify-content: center; gap: 6px; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; background: #f2f2f2; border-top: 1px solid #ddd; }
+.modal-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; background: var(--back-f2f2f2); border-top: 1px solid var(--line-ddd); }
 
 /* Links under the profile photo, as openvk's profile_link. */
-.profile-link { display: block; margin-top: 4px; padding: 3px 6px; background: #f2f2f2; color: #2b587a; cursor: pointer; }
-.profile-link:hover { background: #e6e6e6; text-decoration: none; }
+.profile-link { display: block; margin-top: 4px; padding: 3px 6px; background: var(--back-f2f2f2); color: var(--text-2b587a); cursor: pointer; }
+.profile-link:hover { background: var(--back-e6e6e6); text-decoration: none; }
 
 /* The blacklist page: people with "Удалить из чёрного списка". */
 .blacklist-row { display: flex; justify-content: space-between; align-items: center; }
 .blacklist-row .person { flex: 1; }
 
 /* "Безопасность" of the settings: the sessions with "Завершить". */
-.session-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid #ececec; }
+.session-row { display: flex; justify-content: space-between; align-items: center; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line-ececec); }
 .session-device { flex: 1; min-width: 0; overflow-wrap: anywhere; }
 #end-sessions-block { margin-top: 14px; }
 
@@ -685,9 +789,9 @@ label.chat-person { cursor: pointer; }
 
 /* "От имени сообщества" and "Подпись автора" under the form. */
 .post-options { margin-top: 4px; }
-.post-options label { display: block; padding: 1px 0; color: #555; }
+.post-options label { display: block; padding: 1px 0; color: var(--text-555); }
 .post-options input { vertical-align: middle; margin: 0 3px 0 0; }
-.club-role { color: #808080; }
+.club-role { color: var(--text-808080); }
 /* "Отображение аватаров": round small photos for whoever chose them. */
 .avatars-round .post-avatar img,
 .avatars-round .person img,
@@ -699,24 +803,24 @@ label.chat-person { cursor: pointer; }
 /* The pages of text: "о сайте", "правила" and openvk's FAQ of "помощь". */
 .plain-list { margin: 6px 0; padding-left: 28px; }
 .plain-list li { margin: 3px 0; }
-.faq-head { margin: 0 5px; padding: 5px; background: #fbf3c3; border: 1px solid #d7cf9e; border-bottom: 0; font-weight: bold; }
-.faq-content { margin: 0 5px 10px; padding: 5px 5px 5px 10px; background: #fafafa; border: 1px solid #ddd; }
+.faq-head { margin: 0 5px; padding: 5px; background: var(--back-fbf3c3); border: 1px solid var(--line-d7cf9e); border-bottom: 0; font-weight: bold; }
+.faq-content { margin: 0 5px 10px; padding: 5px 5px 5px 10px; background: var(--back-fafafa); border: 1px solid var(--line-ddd); }
 /* "Онлайн" by a name in a list of people. */
-.person-online { margin-left: 8px; color: #808080; }
-.club-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid #ececec; }
+.person-online { margin-left: 8px; color: var(--text-808080); }
+.club-row { display: flex; gap: 10px; padding: 8px 0; border-bottom: 1px solid var(--line-ececec); }
 .club-row img { width: 50px; height: 50px; object-fit: cover; }
 
 /* The clubs pinned to the left menu, under a line, as on openvk. */
-.menu-divider { margin: 4px 0; border-top: 1px solid #dadada; }
+.menu-divider { margin: 4px 0; border-top: 1px solid var(--line-dadada); }
 
 /* "Автор: Иван Иванов" under a signed post of a community. */
 .post-signature { padding: 2px 4px 4px; }
-.post-signature span { color: #808080; }
+.post-signature span { color: var(--text-808080); }
 .post-signature a { font-weight: bold; }
 
 /* openvk's lists ("Мои Группы", search): the photo, the information and
    the links on the right. */
-.list-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid #ececec; }
+.list-row { display: flex; gap: 10px; padding: 10px 0; border-bottom: 1px solid var(--line-ececec); }
 .list-cover img { display: block; width: 75px; height: 75px; object-fit: cover; }
 .list-info { flex: 1; min-width: 0; }
 .list-info .info th { width: 70px; }
@@ -725,16 +829,16 @@ label.chat-person { cursor: pointer; }
 .list-actions .profile-link { margin-top: 0; margin-bottom: 2px; }
 
 /* The grey bar of "Мои Группы": search and "Создать группу". */
-.gray-bar { display: flex; gap: 8px; margin: -10px -10px 0; padding: 12px; background: #f6f6f6; }
+.gray-bar { display: flex; gap: 8px; margin: -10px -10px 0; padding: 12px; background: var(--back-f6f6f6); }
 .gray-bar-search { flex: 1; }
-.summary-bar { margin: 0 -10px; padding: 11px 10px; border-bottom: 1px solid #dedede; color: #45688e; font-weight: bold; }
+.summary-bar { margin: 0 -10px; padding: 11px 10px; border-bottom: 1px solid var(--line-dedede); color: var(--text-45688e); font-weight: bold; }
 .profile-links { margin-top: 6px; }
 
 /* "Предложка": the link above the wall, the head of the suggestions and
    the buttons of an admin under each, as on openvk. */
-.sugglist { margin: 5px 0 -5px; padding: 5px 9px; border-top: 1px solid #808080; background: #e6e6e6; }
-.sugglist a { color: #626262; }
-.suggested-count { margin: 0 0 7px; border-bottom: 1px solid #e8ebee; color: #45688e; font-size: 12px; font-weight: bold; }
+.sugglist { margin: 5px 0 -5px; padding: 5px 9px; border-top: 1px solid var(--line-808080); background: var(--back-e6e6e6); }
+.sugglist a { color: var(--text-626262); }
+.suggested-count { margin: 0 0 7px; border-bottom: 1px solid var(--line-e8ebee); color: var(--text-45688e); font-size: 12px; font-weight: bold; }
 .suggestion-controls { margin: 4px 0 7px; text-align: center; }
 .suggestion-controls .button { margin: 0 2px; }
 .publish-signed { display: block; margin-top: 4px; }
@@ -743,13 +847,13 @@ label.chat-person { cursor: pointer; }
 /* openvk's "Обсуждения": the list of topics (board.js), the head of a
    topic and the block on the page of a club. */
 .board-search { display: flex; gap: 6px; margin-bottom: 8px; }
-.board-search input { flex: 1; padding: 3px 4px; border: 1px solid #c0cad5; font: inherit; }
+.board-search input { flex: 1; padding: 3px 4px; border: 1px solid var(--line-c0cad5); font: inherit; }
 .board-count { margin: 0 0 8px; }
-.topic-item { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; padding: 8px 10px; border: 1px solid #dae1e8; }
+.topic-item { display: flex; justify-content: space-between; gap: 10px; margin-bottom: 6px; padding: 8px 10px; border: 1px solid var(--line-dae1e8); }
 .topic-name { font-weight: bold; }
 .topic-last { display: flex; gap: 6px; align-items: flex-start; min-width: 170px; }
 .topic-last img { width: 30px; height: 30px; object-fit: cover; }
-.topic-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; padding: 10px; background: #f2f2f2; }
+.topic-head { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 14px; padding: 10px; background: var(--back-f2f2f2); }
 .topic-short { padding: 4px 0; }
 .page-title .title-links { font-weight: bold; }
 .topic-form textarea { width: 100%; height: 80px; }
@@ -770,26 +874,26 @@ label.chat-person { cursor: pointer; }
   width: 800px;
   height: 100%;
   margin: auto;
-  background: #fff;
-  box-shadow: -30px 0 20px 20px #fff, -70px 0 20px 20px rgb(255 255 255 / 43%), -110px 0 20px 20px rgb(255 255 255 / 28%),
-    30px 0 20px 20px #fff, 70px 0 20px 20px rgb(255 255 255 / 43%), 110px 0 20px 20px rgb(255 255 255 / 28%);
+  background: var(--back-fff);
+  box-shadow: -30px 0 20px 20px var(--line-fff), -70px 0 20px 20px rgb(255 255 255 / 43%), -110px 0 20px 20px rgb(255 255 255 / 28%),
+    30px 0 20px 20px var(--line-fff), 70px 0 20px 20px rgb(255 255 255 / 43%), 110px 0 20px 20px rgb(255 255 255 / 28%);
 }
 
 /* The settings: a scheme of the page with "Обзор" on each side. */
 .backdrop-form h4 { margin: 0 0 6px; }
-.backdrop-editor { display: flex; gap: 8px; width: 550px; height: 220px; margin: 10px auto; padding: 8px; border: 4px inset #cfcfcf; background: #f7f7f7; }
+.backdrop-editor { display: flex; gap: 8px; width: 550px; height: 220px; margin: 10px auto; padding: 8px; border: 4px inset var(--line-cfcfcf); background: var(--back-f7f7f7); }
 .backdrop-side { display: flex; flex: 1; flex-direction: column; align-items: center; justify-content: flex-end; gap: 6px; }
 .backdrop-side img { max-width: 100%; max-height: 150px; object-fit: contain; }
-.backdrop-page { width: 220px; background: #fff; border: 1px solid #d0d0d0; }
+.backdrop-page { width: 220px; background: var(--back-fff); border: 1px solid var(--line-d0d0d0); }
 
 /* openvk's photo albums: the list (a grey box of white items with their
    covers), the head and the photos of an album, the upload with its white
    box of limits, the page of a photo and the block on a page. */
-.gray-box { padding: 12px; background: #f6f6f6; }
+.gray-box { padding: 12px; background: var(--back-f6f6f6); }
 .gray-box-title { margin: 0 0 10px; font-size: 11px; }
 .summary-bar .summary-links { font-weight: normal; }
 .album-list .hint { margin: 0; }
-.album-item { display: flex; gap: 10px; margin-bottom: 6px; padding: 4px; background: #fff; border: 1px solid #dedede; }
+.album-item { display: flex; gap: 10px; margin-bottom: 6px; padding: 4px; background: var(--back-fff); border: 1px solid var(--line-dedede); }
 .album-item:last-child { margin-bottom: 0; }
 .album-cover img { display: block; width: 170px; height: 130px; object-fit: cover; }
 .album-info { flex: 1; min-width: 0; overflow-wrap: anywhere; }
@@ -798,7 +902,7 @@ label.chat-person { cursor: pointer; }
 .album-head { margin-bottom: 12px; }
 .album-grid { display: flex; flex-wrap: wrap; }
 .album-photo { position: relative; width: 25%; margin-bottom: 8px; text-align: center; }
-.album-photo img { max-width: 83%; max-height: 120px; padding: 8px; border: 1px solid #ccc; background: #fff; vertical-align: top; }
+.album-photo img { max-width: 83%; max-height: 120px; padding: 8px; border: 1px solid var(--line-ccc); background: var(--back-fff); vertical-align: top; }
 .album-photo-delete {
   position: absolute;
   top: 0;
@@ -806,23 +910,23 @@ label.chat-person { cursor: pointer; }
   margin: 4px;
   padding: 1px 6px;
   background: rgba(0, 0, 0, 0.3);
-  color: #fff;
+  color: var(--text-fff);
   opacity: 0;
   transition: opacity 0.1s ease-out;
 }
 .album-photo-delete:hover { text-decoration: none; }
 .album-photo:hover .album-photo-delete { opacity: 1; }
 .upload-box { min-height: 344px; }
-.white-box { width: 421px; max-width: 100%; margin: 7% auto 0; background: #fff; border: 1px solid #e8e8e8; }
+.white-box { width: 421px; max-width: 100%; margin: 7% auto 0; background: var(--back-fff); border: 1px solid var(--line-e8e8e8); }
 .white-box h4 { margin: 24px 38px 0; font-size: 11px; }
 .upload-limits { margin: 17px 38px 24px; }
-.upload-limits > b { color: #45688e; }
+.upload-limits > b { color: var(--text-45688e); }
 .upload-limits ul { margin: 6px 0 0; padding-left: 18px; }
 .upload-button { padding-top: 4px; text-align: center; }
 .upload-tip { margin: 19px 0 0; line-height: 15px; }
 .upload-again { text-align: center; }
-.uploaded-photo { display: flex; justify-content: space-between; gap: 10px; margin-top: 9px; padding-bottom: 9px; border-bottom: 1px solid #e8e8e8; }
-.uploaded-description { display: flex; flex: 1; gap: 6px; color: #464646; }
+.uploaded-photo { display: flex; justify-content: space-between; gap: 10px; margin-top: 9px; padding-bottom: 9px; border-bottom: 1px solid var(--line-e8e8e8); }
+.uploaded-description { display: flex; flex: 1; gap: 6px; color: var(--text-464646); }
 .uploaded-description textarea { flex: 1; height: 86px; resize: none; }
 .uploaded-image { display: flex; flex-direction: column; width: 125px; }
 .uploaded-image img { width: 125px; }
@@ -847,25 +951,25 @@ label.chat-person { cursor: pointer; }
 .basic-info { margin-bottom: 10px; }
 .about { padding: 6px 8px 12px; }
 .about-title { margin: 6px 0 4px; font-size: 11px; }
-.about-title .edit-link { margin-left: 4px; color: #808080; font-weight: normal; }
-.about-none { margin: 0; padding: 10px; color: #808080; text-align: center; }
+.about-title .edit-link { margin-left: 4px; color: var(--text-808080); font-weight: normal; }
+.about-none { margin: 0; padding: 10px; color: var(--text-808080); text-align: center; }
 .about-text { white-space: pre-line; overflow-wrap: anywhere; }
 #partner, #birth-year-shown { display: block; margin-top: 4px; }
-.extra-field { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid #ececec; }
+.extra-field { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-ececec); }
 .extra-field textarea { width: 100%; height: 60px; }
-.field-remove { padding: 0 6px; color: #808080; font-size: 14px; }
-.field-remove:hover { color: #c00; text-decoration: none; }
+.field-remove { padding: 0 6px; color: var(--text-808080); font-size: 14px; }
+.field-remove:hover { color: var(--text-c00); text-decoration: none; }
 .edit-avatar { display: block; width: 200px; margin-bottom: 6px; }
 .search-filter { margin: 0 0 8px; }
 
 /* openvk's "Заполненность страницы": a grey gauge, gold when full, and
    to the owner the hints of what to fill in. */
 .profile-hints { margin-top: 8px; }
-.completeness-gauge { position: relative; height: 16px; background: #e6e6e6; border-top: 1px solid #bbb; }
-.completeness-gauge > div { height: 100%; background: #d4d4d4; }
+.completeness-gauge { position: relative; height: 16px; background: var(--back-e6e6e6); border-top: 1px solid var(--line-bbb); }
+.completeness-gauge > div { height: 100%; background: var(--back-d4d4d4); }
 .completeness-gauge > span { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%); }
-.completeness-gauge-gold { background: #f6ebbb; border-top-color: #b9b597; }
-.completeness-gauge-gold > div { background: #e1d7a2; }
+.completeness-gauge-gold { background: var(--back-f6ebbb); border-top-color: var(--line-b9b597); }
+.completeness-gauge-gold > div { background: var(--back-e1d7a2); }
 .completeness-hints a { display: block; margin-top: 4px; }
 
 /* The status edited on the page, as openvk's box under the name. */
@@ -877,8 +981,8 @@ label.chat-person { cursor: pointer; }
 .section-title .title-link { float: right; font-weight: normal; }
 
 /* openvk's "Понравилось N людям": a tooltip over a heart and a box. */
-.likers-tooltip { position: absolute; z-index: 50; width: 196px; background: #fff; border: 1px solid #c5d0db; box-shadow: 0 2px 6px rgb(0 0 0 / 20%); }
-.likers-tooltip-head { display: block; padding: 5px 8px; background: #f2f5f8; border-bottom: 1px solid #e0e6ec; cursor: pointer; }
+.likers-tooltip { position: absolute; z-index: 50; width: 196px; background: var(--back-fff); border: 1px solid var(--line-c5d0db); box-shadow: 0 2px 6px rgb(0 0 0 / 20%); }
+.likers-tooltip-head { display: block; padding: 5px 8px; background: var(--back-f2f5f8); border-bottom: 1px solid var(--line-e0e6ec); cursor: pointer; }
 .likers-tooltip-grid { display: flex; flex-wrap: wrap; gap: 2px; padding: 4px; }
 .likers-tooltip-grid img { display: block; width: 30px; height: 30px; object-fit: cover; }
 .likers-box { width: 460px; }
@@ -892,13 +996,13 @@ label.chat-person { cursor: pointer; }
 
 /* Under a photo of an album in the viewer: its description, heart,
    comments and "Поделиться". */
-.viewer-details { padding: 8px 12px; background: #fff; }
+.viewer-details { padding: 8px 12px; background: var(--back-fff); }
 .viewer-description { margin: 0 0 6px; white-space: pre-wrap; }
 .viewer-actions { display: flex; gap: 14px; align-items: center; }
 .photo-page-meta .like { display: inline-flex; margin-left: 4px; }
 
 /* "Это архив записей" over the archive of a wall, as on openvk. */
-.archive-banner { margin-bottom: 10px; padding: 8px 10px; border: 1px solid #d5ddb6; background: #f9f6e7; }
+.archive-banner { margin-bottom: 10px; padding: 8px 10px; border: 1px solid var(--line-d5ddb6); background: var(--back-f9f6e7); }
 .archive-banner b { display: block; margin-bottom: 2px; }
 
 /* openvk's bar of the archive: "Все годы", the years of the wall and
@@ -912,8 +1016,8 @@ label.chat-person { cursor: pointer; }
   justify-content: space-between;
   min-height: 36px;
   margin-bottom: 10px;
-  border-bottom: 1px solid #ccc;
-  background: #f7f7f7;
+  border-bottom: 1px solid var(--line-ccc);
+  background: var(--back-f7f7f7);
   box-shadow: 0 1px 2px rgba(0, 0, 0, 0.08);
 }
 .archive-years { display: flex; align-items: stretch; min-width: 0; }
@@ -923,23 +1027,23 @@ label.chat-person { cursor: pointer; }
   box-sizing: border-box;
   min-height: 36px;
   padding: 0 10px;
-  color: #555;
+  color: var(--text-555);
   cursor: pointer;
 }
 .archive-year:hover, .archive-all:hover { text-decoration: none; }
 .archive-year { border-bottom: 2px solid transparent; }
-.archive-year.current { border-bottom-color: #7e7e7e; color: #000; font-weight: bold; }
-.archive-all { margin-right: 2px; border-right: 1px solid #ddd; }
-.archive-all.active { background: #e9e9e9; color: #333; }
+.archive-year.current { border-bottom-color: var(--line-7e7e7e); color: var(--text-000); font-weight: bold; }
+.archive-all { margin-right: 2px; border-right: 1px solid var(--line-ddd); }
+.archive-all.active { background: var(--back-e9e9e9); color: var(--text-333); }
 .archive-more, .archive-actions { position: relative; }
-.archive-actions { flex: 0 0 auto; margin-left: auto; border-left: 1px solid #ddd; }
+.archive-actions { flex: 0 0 auto; margin-left: auto; border-left: 1px solid var(--line-ddd); }
 .archive-manager summary { list-style: none; }
 .archive-manager summary::-webkit-details-marker { display: none; }
 .archive-manager summary::after {
   content: "";
   margin-left: 5px;
   border: 4px solid transparent;
-  border-top-color: #777;
+  border-top-color: var(--line-777);
   transform: translateY(2px);
 }
 .archive-menu {
@@ -948,12 +1052,12 @@ label.chat-person { cursor: pointer; }
   left: 0;
   z-index: 20;
   min-width: 80px;
-  border: 1px solid #aaa;
-  background: #fff;
+  border: 1px solid var(--line-aaa);
+  background: var(--back-fff);
   box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
 }
 .archive-menu .archive-year { min-height: 30px; border-bottom: 0; }
-.archive-menu .archive-year:hover { background: #e9edf1; }
+.archive-menu .archive-year:hover { background: var(--back-e9edf1); }
 .archive-actions .archive-menu { right: 0; left: auto; width: 230px; }
 .archive-menu button {
   display: block;
@@ -962,13 +1066,13 @@ label.chat-person { cursor: pointer; }
   padding: 5px 12px;
   border: 0;
   background: transparent;
-  color: #5c5c5c;
+  color: var(--text-5c5c5c);
   font: inherit;
   text-align: left;
   cursor: pointer;
 }
-.archive-menu button:hover { background: #8b8b8b; color: #fff; }
-.archive-divider { height: 1px; margin: 4px 0; background: #ddd; }
+.archive-menu button:hover { background: var(--back-8b8b8b); color: var(--text-fff); }
+.archive-divider { height: 1px; margin: 4px 0; background: var(--back-ddd); }
 
 /* Long text of a post or a comment, cut short as on openvk until
    "Показать больше". */
@@ -992,7 +1096,7 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
   align-items: center;
   justify-content: center;
   background: hsla(0, 0%, 0%, .7);
-  color: #fff;
+  color: var(--text-fff);
   text-align: center;
 }
 /* The box of the form shows with the form opened, as openvk's. */
@@ -1009,17 +1113,17 @@ body:not(.nsfw-shown) img.photo-nsfw { filter: saturate(.8) blur(24px); clip-pat
 /* openvk's "Микроблог" ("Вид постов"): no grey bar over a post, the date
    down in its menu, and a line under each. */
 .post-buttons { display: inline-flex; align-items: center; gap: 4px; }
-.posts-microblog .post { margin-bottom: 0; padding: 5px 0; border-bottom: 1px solid #ddd; }
+.posts-microblog .post { margin-bottom: 0; padding: 5px 0; border-bottom: 1px solid var(--line-ddd); }
 .posts-microblog .post-shared { border-bottom: 0; }
 .posts-microblog .post-author { padding: 0 3px 3px; background: transparent; border: 0; }
 .posts-microblog .post-text,
 .posts-microblog .post-photos { padding-top: 0; border-bottom: 0; }
 .posts-microblog .post-menu { font-size: 10px; }
-.posts-microblog .post-menu .post-date { display: inline; margin-right: 8px; color: grey; font-size: 10px; }
-.posts-microblog .post-menu .post-date a { color: grey; }
+.posts-microblog .post-menu .post-date { display: inline; margin-right: 8px; color: var(--text-808080); font-size: 10px; }
+.posts-microblog .post-menu .post-date a { color: var(--text-808080); }
 .posts-microblog .post-buttons .like { padding: 2px 4px; border-radius: 2px; transition: background-color .2s; }
-.posts-microblog .post-buttons a.like:hover { background: #f0f0f0; }
-.posts-microblog .comment { padding: 5px 0 0; border-top: 1px solid #ddd; border-bottom: 0; }
+.posts-microblog .post-buttons a.like:hover { background: var(--back-f0f0f0); }
+.posts-microblog .comment { padding: 5px 0 0; border-top: 1px solid var(--line-ddd); border-bottom: 0; }
 
 /* Its marks by the name of the author, shown when the post is pointed at
    (always where nothing points), and the comments under a post. */
@@ -1027,19 +1131,19 @@ body:not(.nsfw-shown) img.photo-nsfw { filter: saturate(.8) blur(24px); clip-pat
 .post:hover > .post-main > .post-author .post-actions { opacity: 1; }
 @media (hover: none) { .post-actions { opacity: 1; } }
 .post-action { display: inline-flex; cursor: pointer; }
-.post-action svg { width: 11px; height: 10px; fill: #2b587a; opacity: .4; }
+.post-action svg { width: 11px; height: 10px; fill: var(--text-2b587a); opacity: .4; }
 .post-action:hover svg,
 .post-action.on svg { opacity: .9; }
 .post-comments { margin-top: 4px; }
-.post-comments-more { display: block; padding: 4px 6px; background: #f0f0f0; font-size: 10px; text-align: center; }
+.post-comments-more { display: block; padding: 4px 6px; background: var(--back-f0f0f0); font-size: 10px; text-align: center; }
 .post-comments .comment:first-child { border-top: 0; }
 .post-comment-form { display: flex; align-items: flex-start; gap: 5px; padding: 5px 0 0; }
 .post-comment-text { flex: 1; min-height: 22px; height: 22px; padding: 3px 4px; resize: none; box-sizing: border-box; font: inherit; }
 
 /* openvk's polls (poll.js): the block under the words of a post, with the
    options to choose from or the results as bars. */
-.poll { margin: 6px 4px; padding: 8px; border: 1px solid #e3e3e3; }
-.poll h4 { margin: 0 0 6px; font-size: 11px; color: #45688e; overflow-wrap: anywhere; }
+.poll { margin: 6px 4px; padding: 8px; border: 1px solid var(--line-e3e3e3); }
+.poll h4 { margin: 0 0 6px; font-size: 11px; color: var(--text-45688e); overflow-wrap: anywhere; }
 .poll-option { padding: 2px 0; }
 .poll-option label { cursor: pointer; overflow-wrap: anywhere; }
 .poll-option input { margin: 0 3px 0 0; vertical-align: middle; }
@@ -1051,20 +1155,20 @@ body:not(.nsfw-shown) img.photo-nsfw { filter: saturate(.8) blur(24px); clip-pat
 .poll-result-name.chosen { font-weight: bold; }
 a.poll-result-name { cursor: pointer; }
 .poll-result-row { display: flex; align-items: center; gap: 6px; margin-top: 2px; }
-.poll-result-bar { position: relative; flex: 1; height: 13pt; background: #f7f7f7; }
-.poll-result-fill { height: 100%; background: #d9e1ea; }
-.poll-result-count { position: absolute; inset: 0; line-height: 13pt; text-align: center; color: #7d96af; }
+.poll-result-bar { position: relative; flex: 1; height: 13pt; background: var(--back-f7f7f7); }
+.poll-result-fill { height: 100%; background: var(--back-d9e1ea); }
+.poll-result-count { position: absolute; inset: 0; line-height: 13pt; text-align: center; color: var(--text-7d96af); }
 .poll-result-percent { width: 32px; text-align: right; }
-.poll-meta { margin-top: 8px; color: #555; }
-.poll-kind { color: #808080; font-style: oblique; }
+.poll-meta { margin-top: 8px; color: var(--text-555); }
+.poll-kind { color: var(--text-808080); font-style: oblique; }
 
 /* "Опрос" attached to a post being written, and the box "Новый опрос". */
-.post-has-poll { margin-top: 6px; padding: 4px 6px; border: 1px solid #e3e3e3; background: #f7f7f7; overflow-wrap: anywhere; }
-.poll-remove { margin-left: 4px; color: #999; font-weight: bold; cursor: pointer; }
-.poll-remove:hover { color: #555; text-decoration: none; }
+.post-has-poll { margin-top: 6px; padding: 4px 6px; border: 1px solid var(--line-e3e3e3); background: var(--back-f7f7f7); overflow-wrap: anywhere; }
+.poll-remove { margin-left: 4px; color: var(--text-999); font-weight: bold; cursor: pointer; }
+.poll-remove:hover { color: var(--text-555); text-decoration: none; }
 .poll-editor input[type="text"] { display: block; width: 100%; box-sizing: border-box; }
 .poll-editor-options { display: flex; flex-direction: column; gap: 5px; margin-top: 6px; }
-.poll-editor-adder { color: #808080; }
+.poll-editor-adder { color: var(--text-808080); }
 .poll-editor label input { margin: 0 3px 0 0; vertical-align: middle; }
 .poll-editor .poll-editor-expires select { display: inline-block; width: auto; margin: 0; }
 
@@ -1092,7 +1196,7 @@ a.poll-result-name { cursor: pointer; }
 .feed-settings-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
 .feed-settings-row select { display: inline-block; width: 70px; margin: 0; }
 .ignored-list { max-height: 260px; overflow-y: auto; }
-.ignored-row { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-bottom: 1px solid #eee; cursor: pointer; }
+.ignored-row { display: flex; align-items: center; gap: 8px; padding: 4px 2px; border-bottom: 1px solid var(--line-eee); cursor: pointer; }
 .ignored-row:last-child { border-bottom: 0; }
 .ignored-row img { width: 30px; height: 30px; object-fit: cover; }
 .ignored-row a { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: bold; }
