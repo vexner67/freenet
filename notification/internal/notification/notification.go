@@ -160,6 +160,20 @@ func New(e Event, now time.Time) (*Notification, error) {
 }
 
 // Restore rebuilds a notification from storage without validation or new IDs.
+// Before is the ID below every notification made at t or later and above
+// every one made earlier: IDs are UUIDv7, which begin with the time.
+func Before(t time.Time) uuid.UUID {
+	var id uuid.UUID
+
+	ms := max(t.UnixMilli(), 0)
+	for i := 5; i >= 0; i-- {
+		id[i] = byte(ms)
+		ms >>= 8
+	}
+
+	return id
+}
+
 func Restore(id uuid.UUID, e Event, createdAt time.Time) *Notification {
 	return &Notification{
 		id:        id,

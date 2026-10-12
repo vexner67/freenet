@@ -684,3 +684,61 @@ func TestRepositories_CommentReplyAndLike(t *testing.T) {
 		t.Fatalf("after deleting the answer: ann %d, bob %d", count(ann), count(bob))
 	}
 }
+
+func TestRepositories_DeleteOlder(t *testing.T) {
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL is not set")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	pool, err := pgpool.New(ctx, dsn)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+
+	repo := postgres.NewNotificationRepository(pool)
+	ann := uuid.New()
+
+	// Three from ten years ago, older than anything another test left,
+	// and one of today.
+	old := time.Now().Add(-10 * 365 * 24 * time.Hour)
+	for i := range 3 {
+		id := notification.Before(old.Add(time.Duration(i) * time.Millisecond))
+		n := notification.Restore(id, notification.Event{Kind: notification.KindFollow, RecipientID: ann, ActorID: uuid.New()}, old)
+
+		if err = repo.Save(ctx, n); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	fresh, err := notification.New(notification.Event{Kind: notification.KindFollow, RecipientID: ann, ActorID: uuid.New()}, time.Now())
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = repo.Save(ctx, fresh); err != nil {
+		t.Fatal(err)
+	}
+
+	before := notification.Before(old.Add(time.Hour))
+
+	// A batch at a time, the oldest first.
+	if n, err := repo.DeleteOlder(ctx, before, 2); err != nil || n != 2 {
+		t.Fatalf("DeleteOlder = %d, %v; want a batch of two", n, err)
+	}
+	if _, err = repo.Get(ctx, notification.Before(old.Add(2*time.Millisecond))); err != nil {
+		t.Fatalf("the newest of the old went first: %v", err)
+	}
+	if n, err := repo.DeleteOlder(ctx, before, 2); err != nil || n != 1 {
+		t.Fatalf("DeleteOlder = %d, %v; want the last one", n, err)
+	}
+	if n, err := repo.DeleteOlder(ctx, before, 2); err != nil || n != 0 {
+		t.Fatalf("DeleteOlder again = %d, %v", n, err)
+	}
+	if _, err = repo.Get(ctx, fresh.ID()); err != nil {
+		t.Fatalf("the one of today: %v", err)
+	}
+}

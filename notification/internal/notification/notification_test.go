@@ -1,6 +1,7 @@
 package notification_test
 
 import (
+	"bytes"
 	"errors"
 	"testing"
 	"time"
@@ -105,5 +106,28 @@ func TestNew(t *testing.T) {
 
 	if _, err = notification.New(notification.Event{Kind: notification.KindFollow}, now); err == nil {
 		t.Fatal("an invalid event makes no notification")
+	}
+}
+
+// IDs begin with the time: Before of a moment is below what is made at it
+// and later, and above what was made earlier.
+func TestBefore(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+
+	n, err := notification.New(notification.Event{Kind: notification.KindFollow, RecipientID: uuid.New(), ActorID: uuid.New()}, now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	id := n.ID()
+	earlier, later := notification.Before(now.Add(-time.Minute)), notification.Before(now.Add(time.Minute))
+
+	if bytes.Compare(earlier[:], id[:]) >= 0 || bytes.Compare(id[:], later[:]) >= 0 {
+		t.Fatalf("%s is not between %s and %s", id, earlier, later)
+	}
+	if got := notification.Before(time.Unix(-5, 0)); got != uuid.Nil {
+		t.Fatalf("before the epoch = %s", got)
 	}
 }
