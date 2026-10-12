@@ -12,10 +12,10 @@
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
-import { errorText, formatPostDate, forwardTree, genitiveName, isLongText, messagePreview, photoChanges, selectedCount, snippet } from './labels.js';
+import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
+import { errorText, formatPostDate, genitiveName, isLongText, photoChanges, selectedCount } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
-import { photosNode, sharedNode, sharedPhotoNode } from './posts.js';
 
 const POLL_MS = 5000;
 // How many messages one request deletes.
@@ -71,16 +71,14 @@ function messageNode(m) {
     node.classList.toggle('deleted', Boolean(shownMessage.deleted));
     content.replaceChildren(...[
       text && textOf(text, node),
-      photosNode(shownMessage.photos ?? []),
-      shownMessage.repost ? sharedNode(shownMessage.repost, { canVote: true }) : null,
-      shownMessage.sharedPhoto ? sharedPhotoNode(shownMessage.sharedPhoto) : null,
-      forwardedNode(shownMessage, node),
+      ...attachedNodes(shownMessage),
+      forwardedNode(shownMessage, (carried) => textOf(carried, node)),
     ].filter(Boolean));
     date.replaceChildren(...[
       formatPostDate(shownMessage.createdAt),
       shownMessage.editedAt && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
       canEdit(shownMessage) && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(shownMessage) }),
-      !shownMessage.deleted && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => openForward([shownMessage]) }),
+      !shownMessage.deleted && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => forward([shownMessage]) }),
       el('a', { className: 'im-message-action', textContent: 'Удалить', onclick: () => confirmDelete([shownMessage]) }),
     ].filter(Boolean));
   };
@@ -140,33 +138,6 @@ async function whole(m) {
   return m;
 }
 
-// forwardedNode shows the messages a message carries on, as on VK: under
-// its own words, each with who wrote it and when, and under each what it
-// carried on itself.
-function forwardedNode(m, node) {
-  const forwarded = m.forwarded ?? [];
-  if (!m.forwardedCount) return null;
-
-  const carried = (trees) => el('div', { className: 'im-forwarded' },
-    ...trees.map(({ message: f, carried: under }) => el('div', { className: 'im-forwarded-message' },
-      el('a', { className: 'post-name', href: '/' + f.author.nickname, textContent: fullName(f.author) }),
-      el('span', { className: 'im-forwarded-date', textContent: formatPostDate(f.createdAt) }),
-      f.text ? textOf(f.text, node) : null,
-      photosNode(f.photos ?? []),
-      f.repost ? sharedNode(f.repost, { canVote: true }) : null,
-      f.sharedPhoto ? sharedPhotoNode(f.sharedPhoto) : null,
-      under.length ? carried(under) : null,
-    )));
-
-  const shown = carried(forwardTree(forwarded));
-  // Those of people whose pages are gone are not shown.
-  if (forwarded.length < m.forwardedCount) {
-    shown.append(el('div', { className: 'im-forwarded-hint', textContent: 'Пересланное сообщение недоступно.' }));
-  }
-
-  return shown;
-}
-
 // canDeleteForAll: your own message, until deletableUntil; the server
 // says no once it passes while the page is open.
 function canDeleteForAll(m) {
@@ -176,14 +147,6 @@ function canDeleteForAll(m) {
 // canEdit: your own message, until editableUntil.
 function canEdit(m) {
   return m.out && !m.deleted && Boolean(m.editableUntil) && Date.now() < new Date(m.editableUntil);
-}
-
-// takenBack is a message after "Удалить для всех": it says nothing.
-function takenBack(m) {
-  return {
-    ...m, text: '', photos: [], post: '', repost: undefined, forwarded: [], forwardedCount: 0,
-    editedAt: null, deletableUntil: '', editableUntil: '', deleted: true,
-  };
 }
 
 function toggleSelected(id) {
@@ -256,98 +219,10 @@ function confirmDelete(messages) {
   modal.actions.append(remove, button('Отмена', modal.close, { secondary: true }));
 }
 
-// openForward carries messages on into a dialog, as VK's "Переслать":
-// which one, your words to go with them, "Отправить" and "Отмена".
-// Messages taken back have nothing to carry.
-function openForward(messages) {
-  const forward = messages.filter((m) => !m.deleted).sort((a, b) => (a.id < b.id ? -1 : 1));
-  if (forward.length === 0) return;
-
-  const modal = openModal(forward.length > 1 ? 'Пересылка сообщений' : 'Пересылка сообщения', { tag: 'form' });
-  const error = el('div', { className: 'error', hidden: true });
-  const chats = el('select', { ariaLabel: 'Переписка' }, el('option', { value: nickname, textContent: fullName(peer) }));
-  const person = el('input', { type: 'search', maxLength: 64, placeholder: 'Найти человека: имя, фамилия или никнейм', ariaLabel: 'Найти человека' });
-  const text = el('textarea', { maxLength: 60000, placeholder: '…', ariaLabel: 'Ваш комментарий' });
-  const send = button('Отправить', null, { type: 'submit' });
-
-  modal.body.append(
-    error,
-    el('div', { className: 'forward-list' }, ...forward.map((m) => el('div', {},
-      el('b', { textContent: fullName(m.out ? me : peer) + ': ' }), snippet(messagePreview(m), 80)))),
-    el('b', { textContent: 'Кому' }),
-    person,
-    chats,
-    el('b', { textContent: 'Ваш комментарий' }),
-    text,
-  );
-  modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
-
-  const option = (user) => el('option', { value: user.nickname, textContent: fullName(user) });
-  // The latest dialogs, this one first.
-  let latest = [option(peer)];
-
-  api.dialogs().then((page) => {
-    latest = [option(peer), ...page.dialogs.filter((d) => d.peer && d.peer.nickname !== nickname).map((d) => option(d.peer))];
-    if (!person.value.trim()) chats.replaceChildren(...latest);
-  }).catch((e) => showError(error, e));
-
-  // Anyone else is found by name, as the search of people finds them;
-  // only the answer to what the field says now is shown.
-  let timer;
-
-  person.addEventListener('input', () => {
-    clearTimeout(timer);
-    timer = setTimeout(async () => {
-      const q = person.value.trim();
-
-      hideError(error);
-      if (!q) {
-        chats.replaceChildren(...latest);
-        send.disabled = false;
-        return;
-      }
-
-      try {
-        const page = await api.search(q);
-        if (person.value.trim() !== q) return;
-
-        const people = page.users.filter((u) => u.nickname !== me.nickname);
-
-        chats.replaceChildren(...(people.length > 0 ? people.map(option) : [el('option', { value: '', textContent: 'Никого не нашлось' })]));
-        send.disabled = people.length === 0;
-      } catch (e) {
-        showError(error, e);
-      }
-    }, 300);
-  });
-
-  modal.box.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    hideError(error);
-    send.disabled = true;
-
-    try {
-      const to = chats.value;
-      const sent = await api.sendMessage(to, text.value, [], '', forward.map((m) => m.id));
-
-      clearSelection();
-      if (to !== nickname) {
-        modal.body.replaceChildren(el('div', {},
-          forward.length > 1 ? 'Сообщения пересланы. ' : 'Сообщение переслано. ',
-          el('a', { href: '/im/' + encodeURIComponent(to), textContent: 'Перейти' })));
-        modal.actions.replaceChildren(button('Закрыть', modal.close));
-        return;
-      }
-
-      modal.close();
-      showSent(sent);
-    } catch (e) {
-      showError(error, e);
-      send.disabled = false;
-    }
-  });
-
-  text.focus();
+// forward carries messages on ("Переслать"), into this dialog or another
+// conversation.
+function forward(messages) {
+  openForward({ me, messages, here: { peer }, authorOf: (m) => (m.out ? me : peer), onSent: showSent, onDone: clearSelection });
 }
 
 // showSent puts a message just sent at the end of the dialog; opened
@@ -739,7 +614,7 @@ if (!me) {
     $('search-link').hidden = false;
     const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
 
-    $('selection-forward').addEventListener('click', () => openForward(selectedMessages()));
+    $('selection-forward').addEventListener('click', () => forward(selectedMessages()));
     $('selection-delete').addEventListener('click', () => confirmDelete(selectedMessages()));
     $('selection-cancel').addEventListener('click', clearSelection);
 

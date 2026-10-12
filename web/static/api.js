@@ -299,19 +299,24 @@ export const api = {
   leaveChat: (id) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}/membership`),
   returnToChat: (id) => authorized('PUT', `/api/v1/chats/${encodeURIComponent(id)}/membership`),
   // Older messages with cursor, newer ones with after (polling).
-  chatMessages(id, { cursor = '', after = '' } = {}) {
+  chatMessages(id, { cursor = '', after = '', around = '' } = {}) {
     const query = new URLSearchParams();
     if (cursor) query.set('cursor', cursor);
     if (after) query.set('after', after);
+    if (around) query.set('around', around);
     const path = `/api/v1/chats/${encodeURIComponent(id)}/messages`;
     return authorized('GET', query.size ? `${path}?${query}` : path);
   },
-  sendChatMessage: (id, text, photos = []) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos }),
+  // As a message of a dialog, it may share a post or a photo of an album
+  // and carry messages on.
+  sendChatMessage: (id, text, photos = [], post = '', forward = [], albumPhoto = '') =>
+    authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos, post, forward, albumPhoto }),
   markChatRead: (id, upTo) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/read`, { upTo }),
   // A message of a chat whole; your own is edited and taken back within
   // a day.
   chatMessage: (id) => authorized('GET', `/api/v1/chat-messages/${encodeURIComponent(id)}`),
-  editChatMessage: (id, text) => authorized('PATCH', `/api/v1/chat-messages/${encodeURIComponent(id)}`, { text }),
+  editChatMessage: (id, text, { add = [], remove = [] } = {}) =>
+    authorized('PATCH', `/api/v1/chat-messages/${encodeURIComponent(id)}`, { text, addPhotos: add, removePhotos: remove }),
   deleteChatMessage: (id) => authorized('DELETE', `/api/v1/chat-messages/${encodeURIComponent(id)}`),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
   // Your own message, from both sides, within a day of sending: it stays
@@ -332,11 +337,12 @@ export const api = {
     if (forMe) query.set('for', 'me');
     return authorized('DELETE', '/api/v1/messages?' + query);
   },
-  // Your messages that say q, newest first: with peer, a nickname, in
-  // that dialog only.
-  searchMessages(q, { peer = '', cursor = '' } = {}) {
+  // Your messages that say q, of dialogs and chats, newest first: with
+  // peer, a nickname, in that dialog only, with chat, an ID, in that chat.
+  searchMessages(q, { peer = '', chat = '', cursor = '' } = {}) {
     const query = new URLSearchParams({ q });
     if (peer) query.set('peer', peer);
+    if (chat) query.set('chat', chat);
     if (cursor) query.set('cursor', cursor);
     return authorized('GET', '/api/v1/messages/search?' + query);
   },

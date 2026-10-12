@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -749,4 +749,21 @@ test('photoChanges names what an edit adds and takes away', () => {
   assert.deepEqual(photoChanges([{ id: 'a' }, { id: 'b' }], ['b', 'c']), { add: ['c'], remove: ['a'] });
   assert.deepEqual(photoChanges(undefined, ['a']), { add: ['a'], remove: [] });
   assert.deepEqual(photoChanges([{ id: 'a' }], ['a']), { add: [], remove: [] });
+});
+
+test('a conversation is named by a value that tells a dialog from a chat', () => {
+  assert.equal(conversationValue({ peer: { nickname: 'ann' } }), 'user:ann');
+  assert.equal(conversationValue({ chat: { id: '0198' } }), 'chat:0198');
+  assert.deepEqual(conversationOf('user:ann'), { chat: false, ref: 'ann' });
+  assert.deepEqual(conversationOf('chat:0198'), { chat: true, ref: '0198' });
+  assert.equal(conversationPath('user:ann'), '/im/ann');
+  assert.equal(conversationPath('chat:0198'), '/im/chat/0198');
+});
+
+test('chatPreview says what a message of a chat shows without words', () => {
+  const author = { name: 'Пётр' };
+
+  assert.equal(chatPreview({ action: '', text: '', post: 'p1', author, out: false }), 'Пётр: Запись');
+  assert.equal(chatPreview({ action: '', text: '', albumPhoto: 'f1', author, out: true }), 'Фотография');
+  assert.equal(chatPreview({ action: '', text: '', forwardedCount: 2, author, out: false }), 'Пётр: 2 пересланных сообщения');
 });

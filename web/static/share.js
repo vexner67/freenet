@@ -1,11 +1,13 @@
 // openvk's "Поделиться" box: the audience — your wall, a community you
 // run ("в группу", with "От имени сообщества" and "Подпись автора") or a
-// dialog ("в переписку") — your comment, with photos if you share a post,
+// dialog or a chat ("в переписку") — your comment, with photos if you share a post,
 // "Отправить" and "Отмена".
 
 import { api } from './api.js';
 import { initAttachments } from './attach.js';
-import { clubRef, el, fullName, showError, hideError } from './layout.js';
+import { conversationOption, sendTo, writable } from './forward.js';
+import { conversationPath } from './labels.js';
+import { clubRef, el, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { postPath } from './posts.js';
 
@@ -86,9 +88,8 @@ export function openShare(post, onShared, { share = api.repost } = {}) {
     try {
       if (target() === 'chat') {
         if (!chats.value) throw 'Выберите переписку.';
-        if (ofPhoto) await api.sendMessage(chats.value, text.value, [], '', [], post.id);
-        else await api.sendMessage(chats.value, text.value, photos, post.id);
-        done(ofPhoto ? 'Фотография отправлена в переписку.' : 'Запись отправлена в переписку.', '/im/' + encodeURIComponent(chats.value));
+        await sendTo(chats.value, text.value, ofPhoto ? { albumPhoto: post.id } : { photos, post: post.id });
+        done(ofPhoto ? 'Фотография отправлена в переписку.' : 'Запись отправлена в переписку.', conversationPath(chats.value));
         return;
       }
 
@@ -123,15 +124,14 @@ async function fillClubs(select, error) {
   }
 }
 
-// fillChats lists your latest dialogs, once.
+// fillChats lists your latest dialogs and chats, once.
 async function fillChats(select, error) {
   if (select.options.length) return;
 
   try {
     const page = await api.dialogs();
-    // Chats of several people are in the list too: a post goes to a person.
-    const dialogs = page.dialogs.filter((d) => d.peer);
-    select.replaceChildren(...dialogs.map((d) => el('option', { value: d.peer.nickname, textContent: fullName(d.peer) })));
+    const dialogs = page.dialogs.filter(writable);
+    select.replaceChildren(...dialogs.map(conversationOption));
     if (dialogs.length === 0) select.replaceChildren(el('option', { value: '', textContent: 'У вас ещё нет переписок' }));
   } catch (e) {
     showError(error, e);

@@ -3,9 +3,10 @@
 // messages bring their dialog to the top live (events.js); a deleted last
 // message makes the list load afresh, since only the server knows what is
 // last now. The form above searches the messages (?q=): of all dialogs, or
-// of the one the dialog page sent here from (?peer=<nickname>); a found
-// message opens its dialog where it was said (?msg=<id>). Chats of several
-// people ("беседы") stand in the same list, and "Новая беседа" starts one.
+// of the one the dialog or the chat page sent here from (?peer=<nickname>,
+// ?chat=<id>); a found message opens its dialog or chat where it was said
+// (?msg=<id>). Chats of several people ("беседы") stand in the same list,
+// and "Новая беседа" starts one.
 
 import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
@@ -181,23 +182,28 @@ async function loadMore() {
 const params = new URLSearchParams(location.search);
 const query = (params.get('q') ?? '').trim();
 const searchPeer = params.get('peer') ?? '';
+const searchChat = params.get('chat') ?? '';
 
 // foundNode is a found message as a row of the list: who it was written
 // to or by, when, and what it says; it leads to where it was said in the
 // dialog, the words found marked there too (&q=).
-function foundNode({ peer, message: m }) {
-  const href = `/im/${encodeURIComponent(peer.nickname)}?msg=${encodeURIComponent(m.id)}&q=${encodeURIComponent(query)}`;
+function foundNode({ peer, message, chat, chatMessage }) {
+  // A message of a chat stands under the name of the chat, with who
+  // wrote it.
+  const m = message ?? chatMessage;
+  const where = chat ? chatPath(chat.id) : '/im/' + encodeURIComponent(peer.nickname);
+  const href = `${where}?msg=${encodeURIComponent(m.id)}&q=${encodeURIComponent(query)}`;
   const said = foundText(m, query);
   const parts = foundParts(foundSnippet(said.text, query, PREVIEW), query);
 
   return el('a', { className: 'dialog', href },
-    el('img', { className: 'dialog-avatar', src: avatarURL(peer, 'small'), alt: '' }),
+    el('img', { className: 'dialog-avatar', src: chat ? '/static/chat.svg' : avatarURL(peer, 'small'), alt: '' }),
     el('div', { className: 'dialog-info' },
-      el('b', { className: 'dialog-name', textContent: fullName(peer) }),
+      el('b', { className: 'dialog-name', textContent: chat ? chatTitle(chat) : fullName(peer) }),
       el('div', { className: 'dialog-date', textContent: formatPostDate(m.createdAt) }),
     ),
     el('div', { className: 'dialog-message' },
-      m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
+      chat ? el('img', { src: avatarURL(m.author, 'small'), alt: '' }) : m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
       el('div', { className: 'dialog-text' },
         said.forwarded && el('span', { className: 'dialog-forwarded', textContent: 'Пересланное сообщение: ' }),
         ...parts.map((p) => (p.found ? el('span', { className: 'found-words', textContent: p.text }) : p.text))),
@@ -209,7 +215,7 @@ async function searchMore() {
   hideError($('error'));
 
   try {
-    const page = await api.searchMessages(query, { peer: searchPeer, cursor });
+    const page = await api.searchMessages(query, { peer: searchPeer, chat: searchChat, cursor });
 
     $('dialogs').append(...page.messages.map(foundNode));
     cursor = page.nextCursor;
@@ -230,7 +236,13 @@ function showSearch() {
     $('search-text').placeholder = 'Поиск по переписке';
   }
 
-  if (query || searchPeer) {
+  if (searchChat) {
+    $('search-chat').disabled = false;
+    $('search-chat').value = searchChat;
+    $('search-text').placeholder = 'Поиск по переписке';
+  }
+
+  if (query || searchPeer || searchChat) {
     $('tab-all').classList.remove('active');
     $('tab-search').classList.add('active');
     $('tab-search').hidden = false;
@@ -248,7 +260,7 @@ if (!me) {
   if (query) {
     $('more').addEventListener('click', searchMore);
     await searchMore();
-  } else if (searchPeer) {
+  } else if (searchPeer || searchChat) {
     $('search-text').focus();
   } else {
     $('more').addEventListener('click', loadMore);
