@@ -73,6 +73,9 @@ const (
 	KindEventReminder Kind = "event_reminder"
 	// KindGift: the actor sent the recipient the gift PostID.
 	KindGift Kind = "gift"
+	// KindVotes: the actor transferred votes to the recipient; PostID
+	// names the transfer.
+	KindVotes Kind = "votes"
 )
 
 var (
@@ -116,7 +119,8 @@ func (e Event) Validate() error {
 	var ok bool
 
 	switch e.Kind {
-	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention, KindPhotoLike, KindGift:
+	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention, KindPhotoLike, KindGift,
+		KindVotes:
 		ok = hasPost && !hasComment
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
 		KindPhotoComment, KindTopicMessageLike, KindPhotoMention, KindNoteComment:

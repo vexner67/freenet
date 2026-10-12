@@ -41,7 +41,8 @@ func sameEvent(a, b notification.Event) bool {
 		return a.CommentID == b.CommentID
 	case notification.KindCommentLike, notification.KindTopicMessageLike:
 		return a.ActorID == b.ActorID && a.CommentID == b.CommentID
-	case notification.KindWallPost, notification.KindRepost, notification.KindPostAccepted, notification.KindGift:
+	case notification.KindWallPost, notification.KindRepost, notification.KindPostAccepted, notification.KindGift,
+		notification.KindVotes:
 		return a.PostID == b.PostID
 	case notification.KindSuggestedPost, notification.KindPostMention:
 		return a.RecipientID == b.RecipientID && a.PostID == b.PostID

@@ -84,10 +84,13 @@ enum Kind {
   // The actor sent the recipient a gift; post_id is the sent gift, which
   // the user service keeps.
   KIND_GIFT = 21;
+  // The actor transferred votes ("Перевод голосов") to the recipient;
+  // post_id is the transfer, which the user service names.
+  KIND_VOTES = 22;
 }
 
 // Event: post_id is set for all but follows, appointments and reminders
-// (of a gift it is the sent gift),
+// (of a gift it is the sent gift, of votes the transfer),
 // comment_id for comments, replies, comment likes, messages of topics
 // and mentions in comments and topics.
 message Event {
