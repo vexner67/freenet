@@ -763,14 +763,16 @@ export function foundSnippet(text, query, n) {
 // foundText is the text of a found message that says the query: its own
 // or, when a search found the message by what it carries on, that of the
 // first forwarded message that does (forwarded tells which).
+// Whom a text names is read by name, as in the list of dialogs.
 export function foundText(m, query) {
   const q = query.trim().toLowerCase();
   const says = (text) => Boolean(q) && (text ?? '').toLowerCase().includes(q);
-  if (says(m.text)) return { text: m.text, forwarded: false };
+  const plain = (text) => plainMentions(text ?? '');
+  if (says(plain(m.text))) return { text: plain(m.text), forwarded: false };
 
-  const carried = (m.forwarded ?? []).find((f) => says(f.text));
+  const carried = (m.forwarded ?? []).find((f) => says(plain(f.text)));
 
-  return carried ? { text: carried.text, forwarded: true } : { text: messagePreview(m), forwarded: false };
+  return carried ? { text: plain(carried.text), forwarded: true } : { text: messagePreview(m), forwarded: false };
 }
 
 // commentsLink is the link to the comments under a post, as on openvk.
@@ -1021,10 +1023,11 @@ export function forwardedCount(n) {
 }
 
 // messagePreview is a message in one line, for the list of dialogs: what
-// it says or, without words, what it shows, as on VK.
+// it says or, without words, what it shows, as on VK. Whom the text
+// names is read by name: "[ann|Анна]" is "Анна".
 export function messagePreview(m) {
   if (m.deleted) return 'Сообщение удалено';
-  if (m.text) return m.text;
+  if (m.text) return plainMentions(m.text);
   if (m.photos?.length || m.albumPhoto) return 'Фотография';
   if (m.post) return 'Запись';
   if (m.forwardedCount) return forwardedCount(m.forwardedCount);

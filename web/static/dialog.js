@@ -12,8 +12,8 @@
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
-import { errorText, formatPostDate, foundParts, genitiveName, isLongText, messagePreview, selectedCount, snippet } from './labels.js';
-import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
+import { errorText, formatPostDate, genitiveName, isLongText, messagePreview, selectedCount, snippet } from './labels.js';
+import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, sharedNode, sharedPhotoNode } from './posts.js';
 
@@ -108,10 +108,7 @@ const CUT_LENGTH = 1000;
 // first loads the message whole when the dialog carried its beginning.
 function textOf(text, node) {
   const marked = node.message?.id === foundID && foundQuery;
-  const body = marked
-    ? el('div', { className: 'im-message-text' },
-      ...foundParts(text, foundQuery).map((p) => (p.found ? el('span', { className: 'found-words', textContent: p.text }) : p.text)))
-    : el('div', { className: 'im-message-text', textContent: text });
+  const body = el('div', { className: 'im-message-text' }, ...mentionNodes(text, marked ? foundQuery : ''));
   const cut = node.message?.textCut && [...text].length >= CUT_LENGTH;
   if (node.opened || !(cut || isLongText(text))) return body;
 
