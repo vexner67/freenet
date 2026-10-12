@@ -39,6 +39,10 @@ type Config struct {
 	TrustForwardedFor bool          `env:"TRUST_FORWARDED_FOR" envDefault:"false"`
 	RequestTimeout    time.Duration `env:"REQUEST_TIMEOUT" envDefault:"10s"`
 
+	// StatisticsTTL is how long the gateway keeps the numbers of the page
+	// "о сайте": each is a count over a whole table of its service.
+	StatisticsTTL time.Duration `env:"STATISTICS_TTL" envDefault:"1m"`
+
 	// WebDir is the website (the web/ directory) to serve on the same
 	// origin as the API; empty serves the API only.
 	WebDir string `env:"WEB_DIR"`
@@ -51,6 +55,10 @@ func Load() (Config, error) {
 func (c Config) Validate() error {
 	if c.RequestTimeout <= 0 {
 		return errors.New("REQUEST_TIMEOUT must be positive")
+	}
+
+	if c.StatisticsTTL < 0 {
+		return errors.New("STATISTICS_TTL must not be negative")
 	}
 
 	return c.TLS.Validate()

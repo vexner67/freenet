@@ -116,6 +116,7 @@ func (a *App) build(cfg config.Config) error {
 			AllowedOrigins:    cfg.CORSAllowedOrigins,
 			TrustForwardedFor: cfg.TrustForwardedFor,
 			RequestTimeout:    cfg.RequestTimeout,
+			StatisticsTTL:     cfg.StatisticsTTL,
 			WebDir:            cfg.WebDir,
 		},
 		rest.Backends{

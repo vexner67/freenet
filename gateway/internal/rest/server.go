@@ -19,6 +19,9 @@ type Config struct {
 	AllowedOrigins    []string
 	TrustForwardedFor bool
 	RequestTimeout    time.Duration
+	// StatisticsTTL is how long the numbers of "о сайте" are kept before
+	// the services count again; zero counts on every request.
+	StatisticsTTL time.Duration
 	// WebDir is the website to serve next to the API; empty serves API only.
 	WebDir string
 }
@@ -62,6 +65,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 		eventOrigins:      eventOrigins(cfg.AllowedOrigins),
 		eventStreams:      metrics.events,
 		stopping:          stopping,
+		statistics:        &statistics{ttl: cfg.StatisticsTTL},
 	}
 
 	handler := chain(
