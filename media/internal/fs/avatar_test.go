@@ -11,10 +11,11 @@ import (
 	"github.com/vexner67/freenet/media/internal/avatar"
 	"github.com/vexner67/freenet/media/internal/fs"
 	"github.com/vexner67/freenet/media/internal/inmem"
+	"github.com/vexner67/freenet/media/internal/s3"
 	"github.com/vexner67/freenet/media/internal/service"
 )
 
-// Both stores must behave the same.
+// All stores must behave the same.
 func stores(t *testing.T) map[string]service.AvatarStore {
 	t.Helper()
 
@@ -24,7 +25,12 @@ func stores(t *testing.T) map[string]service.AvatarStore {
 		t.Fatal(err)
 	}
 
-	return map[string]service.AvatarStore{"fs": disk, "inmem": inmem.NewAvatarStore()}
+	all := map[string]service.AvatarStore{"fs": disk, "inmem": inmem.NewAvatarStore()}
+	if b := bucket(t); b != nil {
+		all["s3"] = s3.NewAvatarStore(b)
+	}
+
+	return all
 }
 
 func TestAvatarStore(t *testing.T) {

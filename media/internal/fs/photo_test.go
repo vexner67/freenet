@@ -15,10 +15,12 @@ import (
 	"github.com/vexner67/freenet/media/internal/fs"
 	"github.com/vexner67/freenet/media/internal/inmem"
 	"github.com/vexner67/freenet/media/internal/photo"
+	"github.com/vexner67/freenet/media/internal/s3"
 	"github.com/vexner67/freenet/media/internal/service"
 )
 
-// Both photo stores must behave the same.
+// All photo stores must behave the same; the one in a bucket is checked
+// when there is a storage to check it against (see bucket_test.go).
 func photoStores(t *testing.T) map[string]service.PhotoStore {
 	t.Helper()
 
@@ -27,7 +29,12 @@ func photoStores(t *testing.T) map[string]service.PhotoStore {
 		t.Fatal(err)
 	}
 
-	return map[string]service.PhotoStore{"fs": disk, "inmem": inmem.NewPhotoStore()}
+	all := map[string]service.PhotoStore{"fs": disk, "inmem": inmem.NewPhotoStore()}
+	if b := bucket(t); b != nil {
+		all["s3"] = s3.NewPhotoStore(b)
+	}
+
+	return all
 }
 
 func TestPhotoStore(t *testing.T) {

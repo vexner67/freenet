@@ -270,8 +270,17 @@ services:
       METRICS_PORT: 9054
       TLS_CERT_PATH: /certs/media.pem
       TLS_KEY_PATH: /certs/media-key.pem
-      STORAGE: persistent
+      # persistent keeps the files in MEDIA_DIR, on this node; s3 keeps
+      # them in the bucket the S3_* name, for several replicas of media.
+      STORAGE: ${MEDIA_STORAGE:-persistent}
       MEDIA_DIR: /data/media
+      S3_ENDPOINT: ${S3_ENDPOINT:-}
+      S3_REGION: ${S3_REGION:-us-east-1}
+      S3_BUCKET: ${S3_BUCKET:-}
+      S3_ACCESS_KEY: ${S3_ACCESS_KEY:-}
+      S3_SECRET_KEY: ${S3_SECRET_KEY:-}
+      S3_PREFIX: ${S3_PREFIX:-}
+      S3_INSECURE: ${S3_INSECURE:-false}
       REDIS_ADDR: redis:6379
       UNPUBLISHED_PHOTO_TTL: ${UNPUBLISHED_PHOTO_TTL:-24h}
       RETIRED_PHOTO_TTL: ${RETIRED_PHOTO_TTL:-720h}

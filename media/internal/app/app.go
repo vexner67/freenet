@@ -12,6 +12,7 @@ import (
 	mediagrpc "github.com/vexner67/freenet/media/internal/grpc"
 	"github.com/vexner67/freenet/media/internal/imaging"
 	"github.com/vexner67/freenet/media/internal/inmem"
+	"github.com/vexner67/freenet/media/internal/s3"
 	"github.com/vexner67/freenet/media/internal/service"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/grpcserver"
@@ -185,8 +186,11 @@ type stores struct {
 }
 
 func newStores(cfg config.Config) (stores, error) {
-	if cfg.Storage == config.StorageInmem {
+	switch cfg.Storage {
+	case config.StorageInmem:
 		return stores{avatars: inmem.NewAvatarStore(), photos: inmem.NewPhotoStore()}, nil
+	case config.StorageS3:
+		return newBucketStores(cfg)
 	}
 
 	avatars, err := fs.NewAvatarStore(cfg.MediaDir)
@@ -200,6 +204,26 @@ func newStores(cfg config.Config) (stores, error) {
 	}
 
 	return stores{avatars: avatars, photos: photos}, nil
+}
+
+func newBucketStores(cfg config.Config) (stores, error) {
+	ctx, cancel := context.WithTimeout(context.Background(), connectTimeout)
+	defer cancel()
+
+	bucket, err := s3.Open(ctx, s3.Config{
+		Endpoint:  cfg.S3Endpoint,
+		Region:    cfg.S3Region,
+		Bucket:    cfg.S3Bucket,
+		AccessKey: cfg.S3AccessKey,
+		SecretKey: cfg.S3SecretKey,
+		Prefix:    cfg.S3Prefix,
+		Insecure:  cfg.S3Insecure,
+	})
+	if err != nil {
+		return stores{}, errs.Wrap("s3.Open", err)
+	}
+
+	return stores{avatars: s3.NewAvatarStore(bucket), photos: s3.NewPhotoStore(bucket)}, nil
 }
 
 // Run serves and deletes unpublished photos until ctx is cancelled or the
@@ -262,8 +286,8 @@ func Healthcheck(ctx context.Context, cfg config.Config) error {
 	return errs.Wrap("grpcserver.Probe", grpcserver.Probe(ctx, fmt.Sprintf("localhost:%d", cfg.GRPCPort), creds))
 }
 
-// Close is here for symmetry with the other services: media holds no
-// connections.
+// Close closes the rate limiter: the stores hold no connections of their
+// own.
 func (a *App) Close() {
 	if a.limiter != nil {
 		if err := a.limiter.Close(); err != nil {

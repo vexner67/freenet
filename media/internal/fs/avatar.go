@@ -1,5 +1,5 @@
 // Package fs keeps media in a directory: one node, a mounted volume in
-// Docker. An S3 store can replace it behind the same port.
+// Docker. Package s3 keeps it for several, behind the same ports.
 package fs
 
 import (

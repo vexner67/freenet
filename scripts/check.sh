@@ -4,11 +4,12 @@
 # All modules are checked even after a failure, so one run shows them all.
 #
 #   scripts/check.sh                 unit tests
-#   scripts/check.sh --integration   also the PostgreSQL and Redis tests,
-#                                    against throwaway containers: each
-#                                    service gets its own migrated database,
-#                                    shared packages that need PostgreSQL
-#                                    an empty one; and the monitoring of the
+#   scripts/check.sh --integration   also the PostgreSQL, Redis and S3
+#                                    tests, against throwaway containers:
+#                                    each service gets its own migrated
+#                                    database, shared packages that need
+#                                    PostgreSQL an empty one, media an S3
+#                                    storage; and the monitoring of the
 #                                    stack: Prometheus and Alertmanager
 #                                    configs and the alert rule tests, with
 #                                    the tools of their compose.yaml images;
@@ -46,13 +47,19 @@ done
 command -v golangci-lint >/dev/null || die "golangci-lint is not installed: https://golangci-lint.run/docs/welcome/install/"
 command -v node >/dev/null || die "Node.js is not installed (website tests)"
 
+# The S3 storage media is tested against: a gateway that keeps the bucket
+# in a directory of its container, and takes conditional writes.
+s3_image=versity/versitygw:v1.8.0
+
 pg=
 redis=
+s3=
 
 cleanup() {
 	local containers=()
 	[ -n "$pg" ] && containers+=("$pg")
 	[ -n "$redis" ] && containers+=("$redis")
+	[ -n "$s3" ] && containers+=("$s3")
 
 	if [ ${#containers[@]} -gt 0 ]; then
 		docker rm -f "${containers[@]}" >/dev/null 2>&1 || true
@@ -66,9 +73,10 @@ host_port() {
 }
 
 start_databases() {
-	echo "==> starting throwaway PostgreSQL and Redis"
+	echo "==> starting throwaway PostgreSQL, Redis and S3"
 	pg=$(docker run -d --rm -e POSTGRES_PASSWORD=check -p 127.0.0.1::5432 postgres:18)
 	redis=$(docker run -d --rm -p 127.0.0.1::6379 redis:7-alpine)
+	s3=$(docker run -d --rm -e ROOT_ACCESS_KEY=check -e ROOT_SECRET_KEY=checkcheck -p 127.0.0.1::7070 "$s3_image" posix /tmp)
 
 	# Over TCP: while the image initialises the database, its temporary
 	# server listens on the socket only.
@@ -80,6 +88,18 @@ start_databases() {
 
 	TEST_REDIS_ADDR="127.0.0.1:$(host_port "$redis" 6379/tcp)"
 	export TEST_REDIS_ADDR
+
+	TEST_S3_ENDPOINT="127.0.0.1:$(host_port "$s3" 7070/tcp)"
+	TEST_S3_ACCESS_KEY=check
+	TEST_S3_SECRET_KEY=checkcheck
+	export TEST_S3_ENDPOINT TEST_S3_ACCESS_KEY TEST_S3_SECRET_KEY
+
+	# Anything but a refused connection is the storage answering.
+	for _ in $(seq 1 60); do
+		curl -s -o /dev/null "http://$TEST_S3_ENDPOINT/" && break
+		sleep 1
+	done
+	curl -s -o /dev/null "http://$TEST_S3_ENDPOINT/" || die "the S3 storage did not start"
 }
 
 # database_for creates a fresh database for module $1, migrated if the

@@ -14,8 +14,10 @@ const (
 	// StorageInmem keeps media in process memory: nothing to set up,
 	// everything is lost on restart.
 	StorageInmem = "inmem"
-	// StoragePersistent keeps media as files under MEDIA_DIR.
+	// StoragePersistent keeps media as files under MEDIA_DIR: one node.
 	StoragePersistent = "persistent"
+	// StorageS3 keeps media in an S3 bucket, shared by all replicas.
+	StorageS3 = "s3"
 )
 
 type Config struct {
@@ -32,6 +34,18 @@ type Config struct {
 
 	Storage  string `env:"STORAGE" envDefault:"inmem"`
 	MediaDir string `env:"MEDIA_DIR"`
+
+	// STORAGE=s3: the bucket, which must exist, at an S3-compatible
+	// storage that takes conditional writes (If-None-Match), as AWS S3
+	// and MinIO do. S3_PREFIX goes before every key; S3_INSECURE talks
+	// plain HTTP, as to a MinIO next to the service.
+	S3Endpoint  string `env:"S3_ENDPOINT"`
+	S3Region    string `env:"S3_REGION" envDefault:"us-east-1"`
+	S3Bucket    string `env:"S3_BUCKET"`
+	S3AccessKey string `env:"S3_ACCESS_KEY"`
+	S3SecretKey string `env:"S3_SECRET_KEY"`
+	S3Prefix    string `env:"S3_PREFIX"`
+	S3Insecure  bool   `env:"S3_INSECURE"`
 
 	// A photo uploaded for a post that is never published is deleted
 	// after UnpublishedPhotoTTL; the uploads are looked through every
@@ -65,8 +79,12 @@ func (c Config) Validate() error {
 		if c.MediaDir == "" {
 			return errors.New("STORAGE=persistent requires MEDIA_DIR")
 		}
+	case StorageS3:
+		if c.S3Endpoint == "" || c.S3Bucket == "" || c.S3AccessKey == "" || c.S3SecretKey == "" {
+			return errors.New("STORAGE=s3 requires S3_ENDPOINT, S3_BUCKET, S3_ACCESS_KEY and S3_SECRET_KEY")
+		}
 	default:
-		return fmt.Errorf("unknown STORAGE %q, want %q or %q", c.Storage, StorageInmem, StoragePersistent)
+		return fmt.Errorf("unknown STORAGE %q, want %q, %q or %q", c.Storage, StorageInmem, StoragePersistent, StorageS3)
 	}
 
 	if c.UnpublishedPhotoTTL <= 0 || c.PhotoCleanupInterval <= 0 {
