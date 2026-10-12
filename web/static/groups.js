@@ -140,14 +140,20 @@ async function showMine() {
 function membershipLink(club) {
   const ref = clubRef(club);
   const link = el('a', { className: 'profile-link' });
-  const render = () => { link.textContent = club.role ? leaveText() : joinText(club); };
+  // A closed group takes a request ("Подать заявку"), which may be taken back.
+  const inside = () => Boolean(club.role) || Boolean(club.requested);
+  const render = () => {
+    if (club.closed && !club.role) link.textContent = club.requested ? 'Отменить заявку' : 'Подать заявку';
+    else link.textContent = club.role ? leaveText() : joinText(club);
+  };
 
   link.addEventListener('click', async () => {
     hideError($('error'));
 
     try {
-      const changed = await (club.role ? api.leaveClub(ref) : api.joinClub(ref));
+      const changed = await (inside() ? api.leaveClub(ref) : api.joinClub(ref));
       club.role = changed.role;
+      club.requested = changed.requested;
       render();
     } catch (e) {
       showError($('error'), e);

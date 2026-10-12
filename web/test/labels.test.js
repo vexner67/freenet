@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -319,7 +319,7 @@ test('there are no pronouns: a gender is male, female or not set', () => {
 });
 
 test('what a select offers is written in lower case', () => {
-  const lists = [genders, worldviews, politicalViews, wallWrites, messagesWrites, chatsInvites, audiences, pageReads, onlineReads, avatarStyles, themes, ratings, nsfwContents, postViews, mainPages];
+  const lists = [genders, worldviews, politicalViews, wallWrites, messagesWrites, chatsInvites, profileTypes, clubTypes, audiences, pageReads, onlineReads, avatarStyles, themes, ratings, nsfwContents, postViews, mainPages];
 
   for (const [, text] of lists.flat()) assert.equal(text[0], text[0].toLowerCase(), text);
 
@@ -766,4 +766,17 @@ test('chatPreview says what a message of a chat shows without words', () => {
   assert.equal(chatPreview({ action: '', text: '', post: 'p1', author, out: false }), 'Пётр: Запись');
   assert.equal(chatPreview({ action: '', text: '', albumPhoto: 'f1', author, out: true }), 'Фотография');
   assert.equal(chatPreview({ action: '', text: '', forwardedCount: 2, author, out: false }), 'Пётр: 2 пересланных сообщения');
+});
+
+test('closed profiles and groups speak as openvk does', () => {
+  assert.deepEqual(profileTypes.map(([value]) => value), ['open', 'closed']);
+  assert.deepEqual(clubTypes.map(([value]) => value), ['open', 'closed']);
+  assert.equal(clubTypeHints.closed, 'Это закрытая группа. Для вступления необходимо подавать заявку.');
+  assert.equal(requestsCount(0), 'Не найдено ни одной заявки...');
+  assert.equal(requestsCount(1), 'Найдена 1 заявка');
+  assert.equal(requestsCount(3), 'Найдено 3 заявки');
+  assert.equal(requestsCount(5), 'Найдено 5 заявок');
+  assert.equal(requestsLink(2), '2 заявки на вступление');
+  assert.equal(closedFollows('female'), 'подписана сама');
+  assert.equal(errorText({ message: 'this club is closed' }), clubTypeHints.closed);
 });

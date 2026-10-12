@@ -6,7 +6,7 @@
 // come ("Точно придут") and those who might ("Возможно придут") apart.
 
 import { api, currentUser } from './api.js';
-import { clubRoles, membersCount } from './labels.js';
+import { clubRoles, membersCount, requestsCount } from './labels.js';
 import { $, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { personRow } from './people.js';
@@ -15,6 +15,8 @@ import { separated } from './posts.js';
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/members'.length));
 const params = new URLSearchParams(location.search);
 const admins = params.get('admins') === 'true';
+// requests: "Заявки" of a closed group, for those who run it.
+const requests = params.get('requests') === 'true';
 // going is the list of an event: 'sure' unless asked for those who might.
 let going = '';
 
@@ -91,6 +93,49 @@ function memberNode(member) {
   render();
 
   return personRow(member.user, el('div', { className: 'hint' }, role), title, el('div', {}, links));
+}
+
+// requestNode is one who asked to join: "Принять заявку" lets them in,
+// "Отклонить заявку" does not; either way the row goes.
+function requestNode(user) {
+  const row = personRow(user, el('div', {}, ...separated([
+    el('a', { textContent: 'Принять заявку', onclick: () => decide(api.acceptClubRequest, 1) }),
+    el('a', { textContent: 'Отклонить заявку', onclick: () => decide(api.rejectClubRequest, 0) }),
+  ])));
+
+  async function decide(act, joined) {
+    hideError($('error'));
+
+    try {
+      await act(clubRef(club), user.nickname);
+      row.remove();
+      club.requests -= 1;
+      club.members += joined;
+      $('summary').textContent = requestsCount(club.requests);
+      tabs();
+    } catch (e) {
+      showError($('error'), e);
+    }
+  }
+
+  return row;
+}
+
+async function loadRequests() {
+  hideError($('error'));
+
+  try {
+    const page = await api.clubRequests(ref, { cursor });
+
+    club.requests = page.total;
+    $('summary').textContent = requestsCount(page.total);
+    $('summary').hidden = false;
+    $('people').append(...page.people.map(requestNode));
+    cursor = page.nextCursor;
+    $('more').hidden = !cursor;
+  } catch (e) {
+    showError($('error'), e);
+  }
 }
 
 const manages = (role) => role === 'admin' || role === 'owner';
@@ -200,13 +245,14 @@ function tab(id, query, text, active) {
 // "Возможно придут" and "Руководство".
 function tabs() {
   if (club.kind !== 'event') {
-    tab('tab-all', '', `Участники · ${membersCount(club.members)}`, !admins);
+    tab('tab-all', '', `Участники · ${membersCount(club.members)}`, !admins && !requests);
   } else {
     tab('tab-all', '', `Точно придут · ${club.members - club.maybes}`, !admins && going === 'sure');
     tab('tab-maybe', '?going=maybe', `Возможно придут · ${club.maybes}`, !admins && going === 'maybe');
   }
 
   tab('tab-admins', '?admins=true', 'Руководство', admins);
+  if (club.closed && manages(club.role)) tab('tab-requests', '?requests=true', `Заявки · ${club.requests ?? 0}`, requests);
   $('tabs').hidden = false;
 }
 
@@ -225,8 +271,12 @@ try {
   $('back').textContent = club.kind === 'event' ? '← к встрече' : '← к группе';
   tabs();
 
-  $('more').addEventListener('click', loadMore);
-  await loadMore();
+  // "Заявки" is for those who run a closed group; the others get the members.
+  const load = requests && club.closed && manages(club.role) ? loadRequests : loadMore;
+
+  if (load === loadRequests) $('title').textContent = `Заявки: ${club.name}`;
+  $('more').addEventListener('click', load);
+  await load();
 } catch (e) {
   $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';
   showError($('error'), e);

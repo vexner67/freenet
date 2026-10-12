@@ -5,7 +5,7 @@
 // checks it again.
 
 import { api, currentUser } from './api.js';
-import { adminsDisplays, inputDate, inputTime, localTime } from './labels.js';
+import { adminsDisplays, clubTypes, inputDate, inputTime, localTime } from './labels.js';
 import { $, clubRef, el, renderChrome, showError, hideError } from './layout.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/edit'.length));
@@ -25,6 +25,10 @@ function fill(club) {
   $('address').value = club.address;
   $('website').value = club.website;
   $('wall').value = club.wall;
+  // An event is never closed.
+  $('type-row').hidden = club.kind === 'event';
+  $('type').replaceChildren(...clubTypes.map(([value, text]) => el('option', { value, textContent: text })));
+  $('type').value = club.closed ? 'closed' : 'open';
   $('admins-display').replaceChildren(...adminsDisplays.map(([value, text]) => el('label', {},
     el('input', { type: 'radio', name: 'admins-display', value, checked: value === club.adminsDisplay }), text)));
   $('open-topics').checked = club.openTopics;
@@ -80,6 +84,7 @@ async function submit(event, club) {
       adminsDisplay: document.querySelector('input[name="admins-display"]:checked')?.value ?? 'creator',
       openTopics: $('open-topics').checked,
       topicsAboveWall: $('topics-above-wall').checked,
+      ...(club.kind === 'event' ? {} : { closed: $('type').value === 'closed' }),
       ...schedule(club),
     });
 

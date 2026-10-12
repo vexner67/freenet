@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, eventsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, eventsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { notesBlock } from './notes.js';
@@ -316,6 +316,29 @@ function renderHidden(profile) {
   $('error').hidden = false;
 }
 
+// renderClosed is openvk's closed profile ("Закрытая страница") for those
+// its owner does not follow: the photo, the name and how to ask for more.
+function renderClosed(profile) {
+  const name = fullName(profile);
+  const whose = { male: 'его', female: 'её' }[profile.gender] ?? 'его(её)';
+
+  document.title = `${name} | Freenet`;
+  $('title').textContent = name;
+  $('title-aside').textContent = '@' + profile.nickname;
+  $('name').textContent = name;
+  $('status').textContent = 'Закрытая страница';
+  $('status').classList.add('empty');
+  $('limited').replaceChildren(
+    el('b', { textContent: `${name} ${limitedAccess(profile.gender)} доступ к своей странице.` }), el('br'),
+    me
+      ? `Страницу видят те, на кого ${name} ${closedFollows(profile.gender)}. Вы можете подписаться на ${whose} обновления.`
+      : `Зарегистрируйтесь, чтобы получить доступ к ${whose} странице.`,
+  );
+  $('limited').hidden = false;
+  $('profile-content').hidden = true;
+  $('profile').hidden = false;
+}
+
 // renderLimited is openvk's page of someone blacklisted either way: the
 // photo, the name and why there is nothing else. The data stays public
 // (anonymous visitors see it), the page only stops inviting contact.
@@ -382,11 +405,19 @@ try {
   if (profile.deactivated) {
     renderDeactivated(profile, isOwner);
     initPhoto(profile, false);
-  } else if (profile.pageHidden) {
+  } else if (profile.pageHidden && !profile.closed) {
     renderHidden(profile);
   } else if (profile.blockedMe || profile.blockedByMe) {
     renderLimited(profile);
     initPhoto(profile, false);
+  } else if (profile.pageHidden) {
+    renderClosed(profile);
+    initPhoto(profile, false);
+    if (me) {
+      initFollow(profile, me, false);
+      $('write').href = '/im/' + encodeURIComponent(profile.nickname);
+      $('write').hidden = false;
+    }
   } else {
     render(isOwner ? me : profile, isOwner, profile);
     showBackdrop(profile.backdrop);
@@ -408,7 +439,7 @@ try {
   }
 
   // As on openvk, also on the page of whoever blacklisted the viewer.
-  if (me && !isOwner && !profile.deactivated && !profile.pageHidden) {
+  if (me && !isOwner && !profile.deactivated && (!profile.pageHidden || profile.closed)) {
     initBlacklistLink(profile, () => location.reload());
     initIgnoreLink($('ignore'), {
       kind: 'user',
