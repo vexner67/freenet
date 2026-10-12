@@ -3,6 +3,7 @@ package notifyclient
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -172,5 +173,49 @@ func TestDeliverer_Errors(t *testing.T) {
 				t.Errorf("Deliver = %v (permanent %v), want error %v, permanent %v", err, outbox.IsPermanent(err), tt.wantErr, tt.permanent)
 			}
 		})
+	}
+}
+
+// What is said about one post has one key, so it goes in its order; the
+// forgetting of a comment, which names no post, waits for everything.
+func TestKey(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	q := outbox.NewMemory()
+	o := NewOutbox(q)
+
+	first, second := uuid.New(), uuid.New()
+	like := service.Event{Kind: service.EventLike, RecipientID: uuid.New(), ActorID: uuid.New(), PostID: first}
+
+	for _, record := range []func() error{
+		func() error { return o.Notify(ctx, like) },
+		func() error { return o.Retract(ctx, like) },
+		func() error { return o.ForgetPost(ctx, first) },
+		func() error { return o.ForgetPost(ctx, second) },
+		func() error { return o.ForgetComment(ctx, uuid.New()) },
+	} {
+		if err := record(); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	head, _ := q.Head(ctx, 10)
+
+	var keys []string
+	for _, m := range head {
+		keys = append(keys, Key(m))
+	}
+
+	want := []string{first.String(), first.String(), first.String(), second.String(), ""}
+	if !slices.Equal(keys, want) {
+		t.Fatalf("keys = %v, want %v", keys, want)
+	}
+
+	if key := Key(outbox.Message{Kind: kindNotify, Payload: []byte{0xff}}); key != "" {
+		t.Fatalf("a broken message has the key %q", key)
+	}
+	if key := Key(outbox.Message{Kind: "other"}); key != "" {
+		t.Fatalf("an unknown kind has the key %q", key)
 	}
 }
