@@ -3268,6 +3268,134 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
+  /api/v1/gifts:
+    get:
+      summary: The catalogue of gifts ("Выбрать подарок")
+      description: |
+        No token needed. The collections ("Коллекции") and the names of
+        their gifts, in the order they are shown. The catalogue is fixed and
+        every gift is free; the pictures are the site's, which knows a gift
+        by its name.
+      responses:
+        "200":
+          description: The catalogue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [collections]
+                properties:
+                  collections:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, gifts]
+                      properties:
+                        id: { type: string, description: "The name of the collection, as `flowers`" }
+                        gifts:
+                          type: array
+                          items: { type: string, description: "The name of a gift, as `rose`" }
+
+  /api/v1/users/{nickname}/gifts:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    get:
+      summary: The gifts sent to a user ("Подарки"), the newest first
+      description: |
+        No token needed; whether you may see them is the user's `giftsRead`,
+        and those of a deleted page or of a page hidden from you are hidden.
+        A gift sent anonymously tells who sent it and what was said only to
+        the one it was sent to and to its sender.
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [gifts, nextCursor, total]
+                properties:
+                  gifts:
+                    type: array
+                    items: { $ref: "#/components/schemas/Gift" }
+                  nextCursor: { type: string, description: Empty on the last page }
+                  total: { type: integer, description: The gifts on all pages }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "403":
+          description: "`this page is deleted`, `this page is hidden` or `this user's gifts are hidden`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Send the user a gift ("Отправить подарок")
+      description: |
+        Needs a filled-in profile. The user hears about it (`gift`), unless
+        it is you. A deleted page takes no gifts, and neither does a page
+        that does not show itself to you or one with a blacklist between you
+        two, either way. You may send a gift to yourself. Limited per user.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [gift]
+              properties:
+                gift: { type: string, description: "The name of a gift of the catalogue" }
+                caption: { type: string, maxLength: 250, description: "\"Ваше сообщение\"; may be left out" }
+                anonymous:
+                  type: boolean
+                  description: "\"Анонимно\": only the user is told who sent the gift and what was said with it"
+      responses:
+        "201":
+          description: The gift
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Gift" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "`this page is deleted` or `you cannot send a gift to this user`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/gifts/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    delete:
+      summary: Delete a gift from your page
+      description: Only the one a gift was sent to deletes it; the notification about it goes too.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: The gift was sent to someone else
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/users/{nickname}/notes:
     parameters:
       - name: nickname
@@ -4902,6 +5030,10 @@ components:
           type: string
           enum: [everyone, users, following, only_me]
           description: "Who sees your notes (\"Кому видно мои заметки\"); everyone when left out"
+        giftsRead:
+          type: string
+          enum: [everyone, users, following, only_me]
+          description: "Who sees the gifts sent to you (\"Кому видны мои подарки\"); everyone when left out"
         chatsInvite:
           type: string
           enum: [everyone, following, nobody]
@@ -5329,8 +5461,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, event_reminder, note_comment]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; event_reminder: the actor, an event you are going to (surely or maybe), starts within a day — told once, and again if the event is moved; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted)"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, event_reminder, note_comment, gift]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; event_reminder: the actor, an event you are going to (surely or maybe), starts within a day — told once, and again if the event is moved; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it)"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -5662,12 +5794,29 @@ components:
     Access:
       type: object
       description: Which blocks of a page you may see, as its owner's privacy allows
-      required: [photos, friends, clubs, notes]
+      required: [photos, friends, clubs, notes, gifts]
       properties:
         photos: { type: boolean, description: "The albums (`photosRead`)" }
         friends: { type: boolean, description: "The follows, either way (`friendsRead`)" }
         clubs: { type: boolean, description: "The communities (`clubsRead`)" }
         notes: { type: boolean, description: "The notes (`notesRead`)" }
+        gifts: { type: boolean, description: "The gifts (`giftsRead`)" }
+
+    Gift:
+      type: object
+      description: 'A gift sent to a page ("Подарки"), as you see it'
+      required: [id, gift, caption, anonymous, sentAt, sender]
+      properties:
+        id: { type: string, format: uuid }
+        gift: { type: string, description: "Its name in the catalogue, as `rose`" }
+        caption: { type: string, description: "What the sender said with it; empty for none and when you are not told (an anonymous gift)" }
+        anonymous: { type: boolean, description: "Sent anonymously; told to those who are told the sender" }
+        sentAt: { type: string, format: date-time }
+        sender:
+          oneOf:
+            - $ref: "#/components/schemas/Author"
+            - type: "null"
+          description: "Who sent it; null when you are not told (an anonymous gift) and when the page of the sender is deleted"
 
     NoteDraft:
       type: object

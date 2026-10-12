@@ -101,7 +101,7 @@ type fakeUsers struct {
 	// Privacy: the parts of every page hidden from the caller; accessAsked
 	// is whose page the gateway asked about, profileToken the token
 	// GetProfile got.
-	hiddenPage, hiddenInfo, hiddenPhotos, hiddenFriends, hiddenClubs, hiddenNotes bool
+	hiddenPage, hiddenInfo, hiddenPhotos, hiddenFriends, hiddenClubs, hiddenNotes, hiddenGifts bool
 	// closedPage: the hidden page is a closed one ("Закрытая страница").
 	closedPage                bool
 	accessAsked, profileToken string
@@ -255,7 +255,7 @@ func (f *fakeUsers) Access(_ context.Context, token, userID string) (model.Acces
 		return model.Access{}, f.err
 	}
 	return model.Access{
-		Page: !f.hiddenPage, Info: !f.hiddenInfo, Photos: !f.hiddenPhotos, Friends: !f.hiddenFriends, Clubs: !f.hiddenClubs, Notes: !f.hiddenNotes,
+		Page: !f.hiddenPage, Info: !f.hiddenInfo, Photos: !f.hiddenPhotos, Friends: !f.hiddenFriends, Clubs: !f.hiddenClubs, Notes: !f.hiddenNotes, Gifts: !f.hiddenGifts,
 	}, f.err
 }
 
@@ -1066,6 +1066,7 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n-16", Kind: "note_comment", ActorID: "u2", PostID: "note1", CommentID: "nc1", CreatedAt: at},
 			{ID: "n-17", Kind: "note_comment", ActorID: "u2", PostID: "note-deleted", CommentID: "nc1", CreatedAt: at},
 			{ID: "n-18", Kind: "note_comment", ActorID: "u2", PostID: "note1", CommentID: "nc-deleted", CreatedAt: at},
+			{ID: "n-19", Kind: "gift", ActorID: "u2", PostID: "g1", CreatedAt: at},
 		},
 		NextCursor: "n-2",
 	}, f.err
@@ -1266,6 +1267,7 @@ type harness struct {
 	albums        *fakeAlbums
 	notes         *fakeNotes
 	faves         *fakeFaves
+	gifts         *fakeGifts
 }
 
 func newHarness(cfg rest.Config) harness {
@@ -1285,6 +1287,7 @@ func newHarness(cfg rest.Config) harness {
 		topics:        &fakeTopics{},
 		albums:        &fakeAlbums{},
 		notes:         &fakeNotes{},
+		gifts:         &fakeGifts{},
 		faves:         &fakeFaves{},
 	}
 	h.metrics = prometheus.NewRegistry()
@@ -1300,6 +1303,7 @@ func newHarness(cfg rest.Config) harness {
 		Topics:        h.topics,
 		Albums:        h.albums,
 		Notes:         h.notes,
+		Gifts:         h.gifts,
 		Faves:         h.faves,
 	}, h.metrics).Handler()
 
