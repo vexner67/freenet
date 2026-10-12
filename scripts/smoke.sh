@@ -120,7 +120,16 @@ step "message: chats of several people"
 club=$(expect=201 call POST /api/v1/clubs '{"name":"Smoke club","description":"smoke test"}' | jq -r .id)
 expect=201 call POST "/api/v1/clubs/$club/posts" '{"text":"club news","fromClub":true}' | jq -e '.fromWall and .author.club' >/dev/null
 call GET "/api/v1/clubs/$club/posts" | jq -e '.total == 1 and .canPost' >/dev/null
-call GET /api/v1/feed | jq -e '[.posts[] | select(.fromWall)] | length == 1' >/dev/null
+# The feed hears of the new club from club's outbox, a moment later.
+in_feed=''
+for _ in $(seq 1 20); do
+	if call GET /api/v1/feed | jq -e '[.posts[] | select(.fromWall)] | length == 1' >/dev/null; then
+		in_feed=yes
+		break
+	fi
+	sleep 0.5
+done
+[ -n "$in_feed" ] || die "the post of the club is not in the feed of its founder"
 step "club: a club, a post for it on its wall and in the feed"
 
 poll=$(expect=201 call POST /api/v1/me/posts '{"poll":{"title":"Smoke?","options":["yes","no"]}}' | jq -r 'select(.poll.options | length == 2) | .id')
