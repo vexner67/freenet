@@ -164,10 +164,10 @@ func TestClub(t *testing.T) {
 	}
 
 	// Ann gives Bob a title and hides him: only those who run the club see it.
-	if _, err = s.client.DescribeMember(s.as(t, ann), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String(), Title: " кормит  котов ", Hidden: true}); err != nil {
+	if _, err = s.client.DescribeMember(s.as(t, ann), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String(), Title: new(" кормит  котов "), Hidden: new(true)}); err != nil {
 		t.Fatalf("DescribeMember: %v", err)
 	}
-	if _, err = s.client.DescribeMember(s.as(t, ann), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String(), Title: strings.Repeat("я", 37)}); status.Code(err) != codes.InvalidArgument {
+	if _, err = s.client.DescribeMember(s.as(t, ann), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String(), Title: new(strings.Repeat("я", 37))}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("a long title: %v", err)
 	}
 	if _, err = s.client.DescribeMember(s.as(t, uuid.New()), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String()}); status.Code(err) != codes.PermissionDenied {
@@ -186,8 +186,12 @@ func TestClub(t *testing.T) {
 	if admins, err = s.client.ListMembers(context.Background(), &clubv1.ListMembersRequest{ClubId: id, AdminsOnly: true}); err != nil || admins.GetTotal() != 1 || admins.GetMembers()[0].GetUserId() != ann.String() {
 		t.Fatalf("admins to anyone = %v, %v; want only the owner", admins, err)
 	}
-	if _, err = s.client.DescribeMember(s.as(t, bob), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String()}); err != nil {
+	// Showing himself, Bob keeps the title: a request changes what it names.
+	if _, err = s.client.DescribeMember(s.as(t, bob), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String(), Hidden: new(false)}); err != nil {
 		t.Fatalf("an admin shows himself: %v", err)
+	}
+	if admins, err = s.client.ListMembers(context.Background(), &clubv1.ListMembersRequest{ClubId: id, AdminsOnly: true}); err != nil || admins.GetTotal() != 2 || admins.GetMembers()[0].GetTitle() != "кормит котов" {
+		t.Fatalf("admins once Bob is shown = %v, %v", admins, err)
 	}
 
 	// Public: anyone sees the clubs of a user, but not their role or menu.

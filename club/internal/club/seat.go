@@ -60,6 +60,14 @@ func (s Seat) Seen(viewer Role) bool {
 	return s.Shown(viewer).Role.Manages()
 }
 
+// SeatChange is what a change of a seat names: its title, whether it
+// is hidden, or both. What is nil stays as it is, so two people changing
+// different things of one seat undo nothing of each other's.
+type SeatChange struct {
+	Title  *Title
+	Hidden *bool
+}
+
 // CheckDescribe tells whether requester may give a title to someone who
 // is target in the club, or hide them: those who run the club do it for
 // each other, as in openvk.

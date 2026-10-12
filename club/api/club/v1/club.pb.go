@@ -1699,9 +1699,10 @@ type DescribeMemberRequest struct {
 	ClubId string                 `protobuf:"bytes,1,opt,name=club_id,json=clubId,proto3" json:"club_id,omitempty"`
 	// The owner or one of the admins.
 	UserId string `protobuf:"bytes,2,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
-	// At most 36 characters in one line; empty for none.
-	Title         string `protobuf:"bytes,3,opt,name=title,proto3" json:"title,omitempty"`
-	Hidden        bool   `protobuf:"varint,4,opt,name=hidden,proto3" json:"hidden,omitempty"`
+	// At most 36 characters in one line; empty for none. What is not set
+	// stays as it is, here and below.
+	Title         *string `protobuf:"bytes,3,opt,name=title,proto3,oneof" json:"title,omitempty"`
+	Hidden        *bool   `protobuf:"varint,4,opt,name=hidden,proto3,oneof" json:"hidden,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1751,15 +1752,15 @@ func (x *DescribeMemberRequest) GetUserId() string {
 }
 
 func (x *DescribeMemberRequest) GetTitle() string {
-	if x != nil {
-		return x.Title
+	if x != nil && x.Title != nil {
+		return *x.Title
 	}
 	return ""
 }
 
 func (x *DescribeMemberRequest) GetHidden() bool {
-	if x != nil {
-		return x.Hidden
+	if x != nil && x.Hidden != nil {
+		return *x.Hidden
 	}
 	return false
 }
@@ -3347,12 +3348,14 @@ const file_api_club_v1_club_proto_rawDesc = "" +
 	"\x14SetMemberRoleRequest\x12\x17\n" +
 	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12!\n" +
-	"\x04role\x18\x03 \x01(\x0e2\r.club.v1.RoleR\x04role\"w\n" +
+	"\x04role\x18\x03 \x01(\x0e2\r.club.v1.RoleR\x04role\"\x96\x01\n" +
 	"\x15DescribeMemberRequest\x12\x17\n" +
 	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x17\n" +
-	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x14\n" +
-	"\x05title\x18\x03 \x01(\tR\x05title\x12\x16\n" +
-	"\x06hidden\x18\x04 \x01(\bR\x06hidden\"G\n" +
+	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x19\n" +
+	"\x05title\x18\x03 \x01(\tH\x00R\x05title\x88\x01\x01\x12\x1b\n" +
+	"\x06hidden\x18\x04 \x01(\bH\x01R\x06hidden\x88\x01\x01B\b\n" +
+	"\x06_titleB\t\n" +
+	"\a_hidden\"G\n" +
 	"\x13TransferClubRequest\x12\x17\n" +
 	"\aclub_id\x18\x01 \x01(\tR\x06clubId\x12\x17\n" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\"\xa8\x01\n" +
@@ -3682,6 +3685,7 @@ func file_api_club_v1_club_proto_init() {
 	if File_api_club_v1_club_proto != nil {
 		return
 	}
+	file_api_club_v1_club_proto_msgTypes[20].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

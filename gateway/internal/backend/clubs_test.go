@@ -100,9 +100,13 @@ func TestClubs(t *testing.T) {
 		t.Fatalf("SetAdmin(false) = %v, request %v", err, api.role)
 	}
 
-	if err = clubs.Describe(ctx, "tok", "k1", "u2", "кормит котов", true); err != nil || api.described.GetUserId() != "u2" ||
+	if err = clubs.Describe(ctx, "tok", "k1", "u2", model.SeatChange{Title: new("кормит котов"), Hidden: new(true)}); err != nil || api.described.GetUserId() != "u2" ||
 		api.described.GetTitle() != "кормит котов" || !api.described.GetHidden() {
 		t.Fatalf("Describe = %v, request %v", err, api.described)
+	}
+	// What the change does not name is not sent.
+	if err = clubs.Describe(ctx, "tok", "k1", "u2", model.SeatChange{Hidden: new(false)}); err != nil || api.described.Title != nil || api.described.Hidden == nil {
+		t.Fatalf("Describe of the hiding = %v, request %v", err, api.described)
 	}
 
 	page, err := clubs.Members(ctx, "tok", "k1", "", 0, model.ClubMemberFilter{AdminsOnly: true})

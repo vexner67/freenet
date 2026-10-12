@@ -115,10 +115,12 @@ type clubMemberJSON struct {
 	Maybe bool `json:"maybe"`
 }
 
-// describeAdminRequest: title is at most 36 characters, "" for none.
+// describeAdminRequest: title is at most 36 characters, "" for none. A
+// field that is not sent stays as it is, so two people changing
+// different things of one admin undo nothing of each other's.
 type describeAdminRequest struct {
-	Title  string `json:"title"`
-	Hidden bool   `json:"hidden"`
+	Title  *string `json:"title"`
+	Hidden *bool   `json:"hidden"`
 }
 
 // clubMembersResponse: Total counts the members, or the admins, on all
@@ -593,6 +595,11 @@ func (a *api) describeAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Title == nil && req.Hidden == nil {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "title or hidden is required"))
+		return
+	}
+
 	c, err := a.club(r, token)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -605,7 +612,8 @@ func (a *api) describeAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.clubs.Describe(r.Context(), token, c.Club.ID, user.ID, req.Title, req.Hidden); err != nil {
+	change := model.SeatChange{Title: req.Title, Hidden: req.Hidden}
+	if err = a.clubs.Describe(r.Context(), token, c.Club.ID, user.ID, change); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

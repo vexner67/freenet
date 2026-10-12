@@ -229,18 +229,25 @@ func (r *MemberRepository) SetRole(ctx context.Context, clubID, userID uuid.UUID
 	return nil
 }
 
+// What the change does not name stays: each of the two is its own
+// assignment, so changes of different things do not undo each other.
 const describeMemberQuery = `
 	UPDATE club_members
 	SET
-		title = $3,
-		hidden = $4
+		title = COALESCE($3, title),
+		hidden = COALESCE($4, hidden)
 	WHERE club_id = $1
 		AND user_id = $2
 		AND role IN ('admin', 'owner')
 `
 
-func (r *MemberRepository) Describe(ctx context.Context, clubID, userID uuid.UUID, title club.Title, hidden bool) error {
-	tag, err := r.pool.Exec(ctx, describeMemberQuery, clubID, userID, title.String(), hidden)
+func (r *MemberRepository) Describe(ctx context.Context, clubID, userID uuid.UUID, d club.SeatChange) error {
+	var title *string
+	if d.Title != nil {
+		title = new(d.Title.String())
+	}
+
+	tag, err := r.pool.Exec(ctx, describeMemberQuery, clubID, userID, title, d.Hidden)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}

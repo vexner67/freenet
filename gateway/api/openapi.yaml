@@ -2117,7 +2117,8 @@ paths:
       summary: Give an admin a title and hide or show them ("Изменить комментарий", "Скрыт")
       description: >-
         Those who run the community do it for each other, the owner
-        included. Both fields are set at once. A dismissed admin loses both.
+        included. A field that is not sent stays as it is, and one of the
+        two is required. A dismissed admin loses both.
       security: [{ bearer: [] }]
       requestBody:
         required: true

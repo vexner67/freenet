@@ -452,7 +452,7 @@ func (r *MemberRepository) SetRole(ctx context.Context, clubID, userID uuid.UUID
 	return nil
 }
 
-func (r *MemberRepository) Describe(ctx context.Context, clubID, userID uuid.UUID, title club.Title, hidden bool) error {
+func (r *MemberRepository) Describe(ctx context.Context, clubID, userID uuid.UUID, d club.SeatChange) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -465,7 +465,13 @@ func (r *MemberRepository) Describe(ctx context.Context, clubID, userID uuid.UUI
 		return club.ErrNotManager
 	}
 
-	m.title, m.hidden = title, hidden
+	if d.Title != nil {
+		m.title = *d.Title
+	}
+
+	if d.Hidden != nil {
+		m.hidden = *d.Hidden
+	}
 
 	return nil
 }

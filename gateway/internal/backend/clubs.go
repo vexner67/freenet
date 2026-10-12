@@ -249,11 +249,11 @@ func (c *Clubs) SetAdmin(ctx context.Context, accessToken, clubID, userID string
 	return nil
 }
 
-// Describe gives one of those who run the club a title and hides or
-// shows them.
-func (c *Clubs) Describe(ctx context.Context, accessToken, clubID, userID, title string, hidden bool) error {
+// Describe gives one of those who run the club a title, hides or shows
+// them, or both: what the change does not name stays.
+func (c *Clubs) Describe(ctx context.Context, accessToken, clubID, userID string, change model.SeatChange) error {
 	_, err := c.api.DescribeMember(withToken(ctx, accessToken), &clubv1.DescribeMemberRequest{
-		ClubId: clubID, UserId: userID, Title: title, Hidden: hidden,
+		ClubId: clubID, UserId: userID, Title: change.Title, Hidden: change.Hidden,
 	})
 	if err != nil {
 		return errs.Wrap("c.api.DescribeMember", fromStatus(err))

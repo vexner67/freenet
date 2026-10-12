@@ -29,12 +29,14 @@ type fakeClubs struct {
 	suggestWall          bool
 	openTopics           bool
 	transferredTo        string
-	described            model.ClubMember
-	event                model.NewEvent
-	going, kind, period  string
-	clubsOf              string
-	rolesAsked           []string
-	err                  error
+	// described is the admin of the last change of a seat, change what it named.
+	described           string
+	change              model.SeatChange
+	event               model.NewEvent
+	going, kind, period string
+	clubsOf             string
+	rolesAsked          []string
+	err                 error
 }
 
 var cats = model.Club{ID: "k1", Name: "Кошки", Address: "cats", Wall: "open", Members: 2, CreatedAt: time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)}
@@ -122,8 +124,8 @@ func (f *fakeClubs) OfUser(_ context.Context, userID, cursor string, limit int, 
 	return model.UserClubPage{Clubs: []model.Club{cats}, NextCursor: "k1", Total: 4}, f.err
 }
 
-func (f *fakeClubs) Describe(_ context.Context, token, clubID, userID, title string, hidden bool) error {
-	f.token, f.described = token, model.ClubMember{UserID: userID, Title: title, Hidden: hidden}
+func (f *fakeClubs) Describe(_ context.Context, token, clubID, userID string, change model.SeatChange) error {
+	f.token, f.described, f.change = token, userID, change
 	return f.err
 }
 
@@ -313,8 +315,21 @@ func TestClubMembers(t *testing.T) {
 	}
 
 	w = h.do("PATCH", "/api/v1/clubs/cats/admins/bob", `{"title":"главный по котам","hidden":true}`, "Authorization", "Bearer tok")
-	if w.Code != http.StatusNoContent || h.clubs.described != (model.ClubMember{UserID: "u2", Title: "главный по котам", Hidden: true}) {
-		t.Fatalf("describe: %d %s, %+v", w.Code, w.Body, h.clubs.described)
+	if c := h.clubs.change; w.Code != http.StatusNoContent || h.clubs.described != "u2" || c.Title == nil || *c.Title != "главный по котам" || c.Hidden == nil || !*c.Hidden {
+		t.Fatalf("describe: %d %s, %+v", w.Code, w.Body, h.clubs.change)
+	}
+
+	// A field that is not sent is not changed.
+	w = h.do("PATCH", "/api/v1/clubs/cats/admins/bob", `{"hidden":false}`, "Authorization", "Bearer tok")
+	if c := h.clubs.change; w.Code != http.StatusNoContent || c.Title != nil || c.Hidden == nil || *c.Hidden {
+		t.Fatalf("show alone: %d %s, %+v", w.Code, w.Body, h.clubs.change)
+	}
+	w = h.do("PATCH", "/api/v1/clubs/cats/admins/bob", `{"title":""}`, "Authorization", "Bearer tok")
+	if c := h.clubs.change; w.Code != http.StatusNoContent || c.Title == nil || *c.Title != "" || c.Hidden != nil {
+		t.Fatalf("no title alone: %d %s, %+v", w.Code, w.Body, h.clubs.change)
+	}
+	if w = h.do("PATCH", "/api/v1/clubs/cats/admins/bob", `{}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
+		t.Fatalf("a change of nothing: %d", w.Code)
 	}
 	if w = h.do("PATCH", "/api/v1/clubs/cats/admins/bob", `{"title":""}`); w.Code != http.StatusUnauthorized {
 		t.Fatalf("describe without a token: %d", w.Code)

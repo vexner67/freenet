@@ -717,6 +717,13 @@ type ClubChanges struct {
 	EndsAt   time.Time
 }
 
+// SeatChange is what a change of an admin's seat names: the title, the
+// hiding or both; what is nil stays as it is.
+type SeatChange struct {
+	Title  *string
+	Hidden *bool
+}
+
 // ClubMember is one member of a club, with their role. Title is what an
 // admin does in the club; Hidden: the club shows them as a plain member
 // to everyone who does not run it, and only those who do are told.

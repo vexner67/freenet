@@ -326,7 +326,7 @@ type Clubs interface {
 	Join(ctx context.Context, accessToken, clubID string, maybe bool) (model.ClubView, error)
 	Leave(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
 	Members(ctx context.Context, accessToken, clubID, cursor string, limit int, filter model.ClubMemberFilter) (model.ClubMemberPage, error)
-	Describe(ctx context.Context, accessToken, clubID, userID, title string, hidden bool) error
+	Describe(ctx context.Context, accessToken, clubID, userID string, change model.SeatChange) error
 	SetAdmin(ctx context.Context, accessToken, clubID, userID string, admin bool) error
 	Transfer(ctx context.Context, accessToken, clubID, userID string) error
 	OfUser(ctx context.Context, userID, cursor string, limit int, filter model.ClubFilter) (model.UserClubPage, error)
