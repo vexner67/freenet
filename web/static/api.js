@@ -151,6 +151,8 @@ export const api = {
   // reposts are the posts sharing a post, newest first: who shared it.
   reposts: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/posts/${encodeURIComponent(id)}/reposts`, cursor, limit)),
   commentLikers: (id, cursor = '', limit = 0) => optional('GET', page(`/api/v1/comments/${encodeURIComponent(id)}/likes`, cursor, limit)),
+  // "Адрес страницы" of the settings: the nickname alone.
+  updateNickname: (nickname) => authorized('PUT', '/api/v1/me/nickname', { nickname }),
   updateStatus: (status) => authorized('PUT', '/api/v1/me/status', { status }),
   updatePrivacy: (privacy) => authorized('PUT', '/api/v1/me/privacy', privacy),
   // "Интерфейс" of the settings: avatarStyle, mainPage and hiddenMenu.
