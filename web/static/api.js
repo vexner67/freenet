@@ -474,6 +474,13 @@ export const api = {
   faves: (section, cursor = '') => authorized('GET', page(`/api/v1/me/faves/${section}`, cursor, 0)),
   ownPosts: (cursor = '') => authorized('GET', page('/api/v1/me/posts', cursor, 0)),
 
+  // "Подарки": what there is to send, what a page was sent, sending and
+  // removing from your own page.
+  giftCatalog: () => request('GET', '/api/v1/gifts'),
+  gifts: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/gifts`, cursor, limit)),
+  sendGift: (nickname, gift, caption, anonymous) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/gifts`, { gift, caption, anonymous }),
+  deleteGift: (id) => authorized('DELETE', `/api/v1/gifts/${encodeURIComponent(id)}`),
+
   notes: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/notes`, cursor, limit)),
   createNote: (title, text) => authorized('POST', '/api/v1/me/notes', { title, text }),
   note: (id) => optional('GET', `/api/v1/notes/${encodeURIComponent(id)}`),

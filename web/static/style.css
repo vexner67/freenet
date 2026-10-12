@@ -1204,3 +1204,22 @@ a.poll-result-name { cursor: pointer; }
 .ignored-row img { width: 30px; height: 30px; object-fit: cover; }
 .ignored-row a { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: bold; }
 .avatars-round .ignored-row img { border-radius: 50%; }
+
+/* "Подарки": a gift is laid out as a post — who sent it, the picture with
+   what was written under it; the collections are rows of pictures to
+   choose from, as openvk's. */
+.gift-pic { display: block; width: 96px; height: 96px; }
+.user-gift { padding: 8px 5px; }
+.user-gift .gift-comment { margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.gift-collection { padding: 10px 0; border-bottom: 1px solid var(--line-dedede); }
+.gift-collection:last-child { border-bottom: 0; }
+.gift-collection-title { margin: 0 0 8px; color: var(--text-45688e); font-size: 11px; }
+.gift-grid { display: flex; flex-wrap: wrap; gap: 6px; }
+.gift-sel { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 112px; padding: 8px 0; cursor: pointer; }
+.gift-sel:hover { background: var(--back-f6f6f6); text-decoration: none; }
+.gift-price { color: var(--text-808080); font-weight: normal; }
+.gift-send .modal-body { align-items: center; }
+.gift-send .modal-body textarea { width: 100%; }
+.gift-send .modal-body label { align-self: flex-start; }
+.gift-row { display: flex; gap: 10px; padding: 8px 5px; }
+.gift-row .gift-pic { width: 72px; height: 72px; }
