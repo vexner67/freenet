@@ -72,6 +72,9 @@ const (
 	Kind_KIND_PHOTO_MENTION Kind = 19
 	// The actor wrote comment_id under the recipient's note post_id.
 	Kind_KIND_NOTE_COMMENT Kind = 20
+	// The actor sent the recipient a gift; post_id is the sent gift, which
+	// the user service keeps.
+	Kind_KIND_GIFT Kind = 21
 )
 
 // Enum value maps for Kind.
@@ -98,6 +101,7 @@ var (
 		18: "KIND_EVENT_REMINDER",
 		19: "KIND_PHOTO_MENTION",
 		20: "KIND_NOTE_COMMENT",
+		21: "KIND_GIFT",
 	}
 	Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":        0,
@@ -121,6 +125,7 @@ var (
 		"KIND_EVENT_REMINDER":     18,
 		"KIND_PHOTO_MENTION":      19,
 		"KIND_NOTE_COMMENT":       20,
+		"KIND_GIFT":               21,
 	}
 )
 
@@ -257,7 +262,8 @@ func (Change) EnumDescriptor() ([]byte, []int) {
 	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{2}
 }
 
-// Event: post_id is set for all but follows, appointments and reminders,
+// Event: post_id is set for all but follows, appointments and reminders
+// (of a gift it is the sent gift),
 // comment_id for comments, replies, comment likes, messages of topics
 // and mentions in comments and topics.
 type Event struct {
@@ -1009,7 +1015,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId\"\x12\n" +
 	"\x10SubscribeRequest\"D\n" +
 	"\x11SubscribeResponse\x12/\n" +
-	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xdb\x03\n" +
+	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xea\x03\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -1032,7 +1038,8 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x17KIND_TOPIC_MESSAGE_LIKE\x10\x11\x12\x17\n" +
 	"\x13KIND_EVENT_REMINDER\x10\x12\x12\x16\n" +
 	"\x12KIND_PHOTO_MENTION\x10\x13\x12\x15\n" +
-	"\x11KIND_NOTE_COMMENT\x10\x14*;\n" +
+	"\x11KIND_NOTE_COMMENT\x10\x14\x12\r\n" +
+	"\tKIND_GIFT\x10\x15*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +
