@@ -387,15 +387,14 @@ type WallAccess struct {
 	Suggest bool
 }
 
-// FeedSources are what a news feed shows: the posts of Authors and every
-// post on Walls: those of the same people and of the clubs of the reader.
+// FeedSources are what a news feed shows: what the people the reader
+// follows wrote, every post on their walls and on the walls of the clubs
+// of the reader. Whom the reader reads the posts service knows itself.
 //
-// Everyone is "Все новости": the own posts of every wall, with no
-// Authors or Walls.
+// Everyone is "Все новости": the posts of every wall, whomever the reader
+// follows.
 type FeedSources struct {
 	Everyone bool
-	Authors  []string
-	Walls    []string
 	// HideNSFW leaves out the posts marked as adult.
 	HideNSFW bool
 	// Hidden are the people whose posts are left out: the reader's

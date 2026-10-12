@@ -32,7 +32,7 @@ func TestPostService_NSFW(t *testing.T) {
 	}
 
 	// The news show it, unless their reader asked not to.
-	sources := service.FeedSources{Authors: []uuid.UUID{ann}}
+	sources := service.FeedSources{}
 	if feed, err := svc.Feed(ctx, ann, sources, uuid.Nil, 10); err != nil || !slices.Equal(texts(feed.Posts), []string{"для взрослых", "котики"}) {
 		t.Fatalf("the feed = %v, %v", texts(feed.Posts), err)
 	}
@@ -55,7 +55,7 @@ func TestPostService_NSFW(t *testing.T) {
 		t.Fatalf("the feed of everyone = %v, %v", texts(feed.Posts), err)
 	}
 	// Nor what the people the reader blacklisted wrote, on any wall.
-	guests := service.FeedSources{Walls: []uuid.UUID{ann}, HideNSFW: true}
+	guests := service.FeedSources{HideNSFW: true}
 	if feed, err := svc.Feed(ctx, ann, guests, uuid.Nil, 10); err != nil || !slices.Equal(texts(feed.Posts), []string{"в гостях", "котики"}) {
 		t.Fatalf("the feed with a guest = %v, %v", texts(feed.Posts), err)
 	}

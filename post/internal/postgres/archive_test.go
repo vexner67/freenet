@@ -120,7 +120,7 @@ func TestPostRepository_ArchiveSearchAndComments(t *testing.T) {
 	if got := list(post.WallArchive, "горы"); len(got) != 0 {
 		t.Fatalf("горы in the archive = %v", got)
 	}
-	if feed, err := repo.ListFeed(ctx, service.FeedSources{Authors: []uuid.UUID{ann}, Walls: []uuid.UUID{ann}}, uuid.Nil, 10); err != nil || len(feed) != 4 {
+	if feed, err := repo.ListFeed(ctx, service.FeedSources{Reader: ann}, uuid.Nil, 10); err != nil || len(feed) != 4 {
 		t.Fatalf("the feed shows %d posts, %v", len(feed), err)
 	}
 
@@ -182,7 +182,7 @@ func TestPostRepository_NSFW(t *testing.T) {
 		t.Fatalf("the plain post = %+v, %v", got, err)
 	}
 
-	sources := service.FeedSources{Authors: []uuid.UUID{ann}}
+	sources := service.FeedSources{Reader: ann}
 	if feed, err := repo.ListFeed(ctx, sources, uuid.Nil, 10); err != nil || len(feed) != 2 {
 		t.Fatalf("the feed shows %d posts, %v", len(feed), err)
 	}

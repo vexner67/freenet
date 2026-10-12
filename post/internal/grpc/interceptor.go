@@ -21,6 +21,8 @@ func toStatus(err error) (*status.Status, bool) {
 	switch {
 	case errors.Is(err, post.ErrNotFound):
 		return status.New(codes.NotFound, "post not found"), true
+	case errors.Is(err, service.ErrSourceIsReader):
+		return status.New(codes.InvalidArgument, service.ErrSourceIsReader.Error()), true
 	case errors.Is(err, service.ErrTooManyAuthors):
 		return status.New(codes.InvalidArgument, "too many authors"), true
 	case errors.Is(err, service.ErrTooManyIDs):

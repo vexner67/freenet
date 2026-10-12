@@ -259,6 +259,13 @@ service PostService {
   // aside is counted again, but for what was deleted meanwhile.
   // Idempotent.
   rpc ReleaseUserReactions(ReleaseUserReactionsRequest) returns (google.protobuf.Empty);
+  // Internal, for user and club: the reader follows a person or joined a
+  // community, whose posts are in the reader's news (ListFeed) from now
+  // on. Idempotent.
+  rpc FollowSource(FollowSourceRequest) returns (google.protobuf.Empty);
+  // Internal, for user and club: the reader no longer follows the person
+  // or left the community. Idempotent.
+  rpc UnfollowSource(UnfollowSourceRequest) returns (google.protobuf.Empty);
 }
 
 // Public methods that return posts fill liked when the caller sends an
@@ -683,19 +690,20 @@ message ListPostsResponse {
 }
 
 message ListFeedRequest {
-  // At most 1001: the people a user follows and the user.
-  repeated string author_ids = 1;
-  // At most 2001: the people a user follows, the user and the
-  // communities the user is in, every post on whose walls the feed shows.
-  repeated string wall_ids = 4;
+  // author_ids and wall_ids: whom the caller reads the service knows
+  // itself now (FollowSource), so the feed has no limit on them.
+  reserved 1, 4;
+  reserved "author_ids", "wall_ids";
   // Empty for the newest posts, else next_cursor of the previous page.
   string cursor = 2;
   // 1-50; anything else means 20.
   int32 limit = 3;
   // Leaves the posts marked as adult out, as the reader's settings say.
   bool hide_nsfw = 5;
-  // "Все новости" of openvk: the posts of every wall; author_ids and
-  // wall_ids are not looked at.
+  // "Все новости" of openvk: the posts of every wall, whomever the
+  // caller reads. Without it the news are the caller's: what they and
+  // the people they follow wrote, and every post on their walls and on
+  // the walls of the caller's communities.
   bool everyone = 6;
   // The texts are cut to this many characters and say so (text_cut);
   // 0 for whole texts. Lists ask for the beginning: a page of whole texts
@@ -933,6 +941,20 @@ message PurgeUserRequest {
 
 message HoldUserReactionsRequest {
   string user_id = 1;
+}
+
+message FollowSourceRequest {
+  string reader_id = 1;
+  // A person the reader follows or a community the reader is in.
+  string source_id = 2;
+  // A community gives its wall only; a person, what they write anywhere
+  // as well.
+  bool club = 3;
+}
+
+message UnfollowSourceRequest {
+  string reader_id = 1;
+  string source_id = 2;
 }
 
 message ReleaseUserReactionsRequest {

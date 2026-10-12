@@ -64,7 +64,7 @@ func TestLikes(t *testing.T) {
 			t.Fatalf("%s: ListPosts = %v, %v", tt.name, wall, err)
 		}
 
-		feed, err := s.client.ListFeed(tt.ctx, &postv1.ListFeedRequest{AuthorIds: []string{ann.String()}})
+		feed, err := s.client.ListFeed(tt.ctx, &postv1.ListFeedRequest{Everyone: true})
 		if err != nil || feed.GetPosts()[0].GetLiked() != tt.wantLiked {
 			t.Fatalf("%s: ListFeed = %v, %v", tt.name, feed, err)
 		}

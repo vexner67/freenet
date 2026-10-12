@@ -64,6 +64,7 @@ type PurgeService struct {
 	albums       AlbumEraser
 	notes        NoteEraser
 	held         []ReactionHolder
+	sources      SourceRepository
 	tx           TxManager
 	notifier     Notifier
 	photos       PhotoKeeper
@@ -82,7 +83,9 @@ type PurgeDeps struct {
 	Albums      AlbumEraser
 	Notes       NoteEraser
 	// Held keep the likes and votes of a deleted page aside.
-	Held     []ReactionHolder
+	Held []ReactionHolder
+	// Sources are whom everybody reads in the news.
+	Sources  SourceRepository
 	Tx       TxManager
 	Notifier Notifier
 	Photos   PhotoKeeper
@@ -100,6 +103,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		albums:       d.Albums,
 		notes:        d.Notes,
 		held:         d.Held,
+		sources:      d.Sources,
 		tx:           d.Tx,
 		notifier:     d.Notifier,
 		photos:       d.Photos,
@@ -126,6 +130,11 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 
 		if err := s.votes.DeleteByUser(ctx, userID); err != nil {
 			return errs.Wrap("s.votes.DeleteByUser", err)
+		}
+
+		// Nobody reads the page any more, nor does it read anybody.
+		if err := s.sources.Forget(ctx, userID); err != nil {
+			return errs.Wrap("s.sources.Forget", err)
 		}
 
 		// What the page liked before it was deleted is held aside.

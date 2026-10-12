@@ -17,7 +17,9 @@ import (
 // comments are counted in their post and go away with it, as the foreign
 // keys do in PostgreSQL. Its repositories are Posts, Likes and Comments.
 type Store struct {
-	mu       sync.RWMutex
+	mu sync.RWMutex
+	// sources are reader → whom they read → is it a club.
+	sources  map[uuid.UUID]map[uuid.UUID]bool
 	posts    map[uuid.UUID]*post.Post
 	likes    map[uuid.UUID]map[uuid.UUID]time.Time // post → users → when
 	comments map[uuid.UUID]*post.Comment
@@ -405,7 +407,7 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 			return true
 		}
 
-		return (slices.Contains(sources.Authors, p.AuthorID()) && !p.FromWall()) || slices.Contains(sources.Walls, p.WallID())
+		return r.s.reads(sources, p)
 	}
 
 	return r.list(ctx, match, before, limit)

@@ -224,21 +224,8 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 
 	switch r.URL.Query().Get("type") {
 	case "":
-		following, err := a.users.FollowingIDs(r.Context(), token)
-		if err != nil {
-			a.writeError(w, r, err)
-			return
-		}
-
-		clubs, err := a.clubs.MineIDs(r.Context(), token)
-		if err != nil {
-			a.writeError(w, r, err)
-			return
-		}
-
-		// Who is ignored is not followed to the walls of others either.
-		people := without(append(following, me.ID), sources.Ignored)
-		sources.Authors, sources.Walls = people, append(without(clubs, sources.Ignored), people...)
+		// Whom the reader follows and the clubs they are in post knows
+		// itself, by the token.
 	case feedAll:
 		sources.Everyone = true
 	default:

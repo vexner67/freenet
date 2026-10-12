@@ -71,7 +71,7 @@ func TestPostService_Archive(t *testing.T) {
 	if own, _ := svc.ListWall(ctx, ann, ann, service.WallPick{Filter: post.WallOwner}, uuid.Nil, 10); own.Total != 2 {
 		t.Fatalf("ann's own posts: %d", own.Total)
 	}
-	if feed, _ := svc.Feed(ctx, bob, service.FeedSources{Authors: []uuid.UUID{ann}}, uuid.Nil, 10); len(feed.Posts) != 2 {
+	if feed, _ := svc.Feed(ctx, ann, service.FeedSources{}, uuid.Nil, 10); len(feed.Posts) != 2 {
 		t.Fatalf("the feed = %v", texts(feed.Posts))
 	}
 

@@ -17,7 +17,10 @@ func TestPostService_FeedSettings(t *testing.T) {
 
 	ctx := context.Background()
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
-	svc, _ := newWallServices(uuid.New(), uuid.New())
+	svc, reads := newFeedService()
+	dan := uuid.New()
+	reads(cat, []uuid.UUID{ann, bob})
+	reads(dan, []uuid.UUID{ann})
 
 	write(t, svc, ann, "анна у себя")
 	write(t, svc, bob, "боб у себя")
@@ -28,10 +31,10 @@ func TestPostService_FeedSettings(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	feed := func(sources service.FeedSources) []string {
+	feed := func(reader uuid.UUID, sources service.FeedSources) []string {
 		t.Helper()
 
-		page, err := svc.Feed(ctx, cat, sources, uuid.Nil, 10)
+		page, err := svc.Feed(ctx, reader, sources, uuid.Nil, 10)
 		if err != nil {
 			t.Fatalf("Feed(%+v): %v", sources, err)
 		}
@@ -39,32 +42,32 @@ func TestPostService_FeedSettings(t *testing.T) {
 		return texts(page.Posts)
 	}
 
+	// cat follows ann and bob, dan follows ann alone.
 	tests := []struct {
 		name    string
+		reader  uuid.UUID
 		sources service.FeedSources
 		want    []string
 	}{
-		{"everyone", service.FeedSources{Everyone: true}, []string{"анна у боба", "боб у анны", "боб у себя", "анна у себя"}},
-		{"everyone, own only", service.FeedSources{Everyone: true, OwnOnly: true}, []string{"боб у себя", "анна у себя"}},
-		{"everyone but bob's wall", service.FeedSources{Everyone: true, Ignored: []uuid.UUID{bob}}, []string{"боб у анны", "анна у себя"}},
-		{
-			"the followed", service.FeedSources{Authors: []uuid.UUID{ann, bob}, Walls: []uuid.UUID{ann, bob}},
-			[]string{"анна у боба", "боб у анны", "боб у себя", "анна у себя"},
-		},
-		{
-			"the followed, own only", service.FeedSources{Authors: []uuid.UUID{ann, bob}, Walls: []uuid.UUID{ann, bob}, OwnOnly: true},
-			[]string{"боб у себя", "анна у себя"},
-		},
-		{
-			// Ann is followed, so what she wrote comes with her — but not
-			// from a wall the reader ignores.
-			"the followed but bob's wall", service.FeedSources{Authors: []uuid.UUID{ann}, Walls: []uuid.UUID{ann}, Ignored: []uuid.UUID{bob}},
-			[]string{"боб у анны", "анна у себя"},
-		},
+		{"everyone", cat, service.FeedSources{Everyone: true}, []string{"анна у боба", "боб у анны", "боб у себя", "анна у себя"}},
+		{"everyone, own only", cat, service.FeedSources{Everyone: true, OwnOnly: true}, []string{"боб у себя", "анна у себя"}},
+		{"everyone but bob's wall", cat, service.FeedSources{Everyone: true, Ignored: []uuid.UUID{bob}}, []string{"боб у анны", "анна у себя"}},
+		{"the followed", cat, service.FeedSources{}, []string{"анна у боба", "боб у анны", "боб у себя", "анна у себя"}},
+		{"the followed, own only", cat, service.FeedSources{OwnOnly: true}, []string{"боб у себя", "анна у себя"}},
+		// Ann is followed to the walls of others too.
+		{"ann alone", dan, service.FeedSources{}, []string{"анна у боба", "боб у анны", "анна у себя"}},
+		// But not to a wall the reader ignores.
+		{"ann alone but bob's wall", dan, service.FeedSources{Ignored: []uuid.UUID{bob}}, []string{"боб у анны", "анна у себя"}},
+		// Bob ignored is read neither on his wall nor, as an author, on a
+		// wall nobody reads; on ann's wall he stays.
+		{"the followed but bob", cat, service.FeedSources{Ignored: []uuid.UUID{bob}}, []string{"боб у анны", "анна у себя"}},
+		// Ann ignored: her wall goes, and so does what she wrote on bob's
+		// wall — it stays only as a post on a wall the reader reads.
+		{"the followed but ann", cat, service.FeedSources{Ignored: []uuid.UUID{ann}}, []string{"анна у боба", "боб у себя"}},
 	}
 
 	for _, tt := range tests {
-		if got := feed(tt.sources); !slices.Equal(got, tt.want) {
+		if got := feed(tt.reader, tt.sources); !slices.Equal(got, tt.want) {
 			t.Errorf("%s: feed = %v, want %v", tt.name, got, tt.want)
 		}
 	}

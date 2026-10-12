@@ -126,20 +126,19 @@ func TestFeed_Settings(t *testing.T) {
 	}
 
 	h := feed("")
-	if h.posts.ownOnly || len(h.posts.ignored) != 0 || !slices.Equal(h.posts.walls, []string{"k1", "u2", "gone", "u1"}) {
-		t.Fatalf("by default: own only %v, ignored %v, walls %v", h.posts.ownOnly, h.posts.ignored, h.posts.walls)
+	if h.posts.ownOnly || len(h.posts.ignored) != 0 || h.posts.everyone {
+		t.Fatalf("by default: own only %v, ignored %v, everyone %v", h.posts.ownOnly, h.posts.ignored, h.posts.everyone)
 	}
 
-	// An ignored person is followed neither on their wall nor to others'.
+	// The post service leaves the ignored out itself.
 	h = feed("", "u2", "k1")
-	if !slices.Equal(h.posts.ignored, []string{"u2", "k1"}) || !slices.Equal(h.posts.authors, []string{"gone", "u1"}) ||
-		!slices.Equal(h.posts.walls, []string{"gone", "u1"}) {
-		t.Fatalf("with ignored sources: ignored %v, authors %v, walls %v", h.posts.ignored, h.posts.authors, h.posts.walls)
+	if !slices.Equal(h.posts.ignored, []string{"u2", "k1"}) {
+		t.Fatalf("with ignored sources: ignored %v", h.posts.ignored)
 	}
 
 	h = feed("?ignored=true&alien=false", "u2", "k1")
-	if len(h.posts.ignored) != 0 || !h.posts.ownOnly || !slices.Equal(h.posts.authors, []string{"u2", "gone", "u1"}) {
-		t.Fatalf("showing the ignored, own only: ignored %v, own only %v, authors %v", h.posts.ignored, h.posts.ownOnly, h.posts.authors)
+	if len(h.posts.ignored) != 0 || !h.posts.ownOnly {
+		t.Fatalf("showing the ignored, own only: ignored %v, own only %v", h.posts.ignored, h.posts.ownOnly)
 	}
 
 	h = feed("?type=all&alien=false", "k1")

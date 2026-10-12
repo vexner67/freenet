@@ -24,7 +24,7 @@ func TestPurgeService(t *testing.T) {
 	comments := service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: fakeTx{}, Notifier: notifier, Photos: photos, Moderators: fakeModerators{}})
 	suggestions := inmem.NewSuggestionRepository()
 	purge := service.NewPurgeService(service.PurgeDeps{
-		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
+		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Sources: store.Sources(), Comments: store.Comments(), Suggestions: suggestions,
 		Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(), Notes: inmem.NewNoteRepository(), Tx: fakeTx{}, Notifier: notifier, Photos: photos,
 	})
 	ctx := context.Background()
@@ -153,7 +153,7 @@ func TestPurgeService_Topics(t *testing.T) {
 		Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{},
 	})
 	purge := service.NewPurgeService(service.PurgeDeps{
-		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
+		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Sources: store.Sources(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
 		Topics: topicRepo, Albums: inmem.NewAlbumRepository(), Notes: inmem.NewNoteRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
 	})
 	club, ann, bob := uuid.New(), uuid.New(), uuid.New()
@@ -200,7 +200,7 @@ func TestPurgeService_Albums(t *testing.T) {
 		Moderators: fakeModerators{{club, ann}: true, {club, bob}: true},
 	})
 	purge := service.NewPurgeService(service.PurgeDeps{
-		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
+		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Sources: store.Sources(), Comments: store.Comments(), Suggestions: inmem.NewSuggestionRepository(),
 		Topics: inmem.NewTopicRepository(), Albums: albumRepo, Notes: inmem.NewNoteRepository(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: photos,
 	})
 

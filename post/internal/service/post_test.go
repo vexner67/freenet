@@ -143,8 +143,33 @@ func (fakeTx) WithinTx(ctx context.Context, fn func(ctx context.Context) error) 
 }
 
 func newPostService() *service.PostService {
+	svc, _ := newFeedService()
+	return svc
+}
+
+// follow makes a reader read people in the news and, after them, clubs.
+type follow func(reader uuid.UUID, people []uuid.UUID, clubs ...uuid.UUID)
+
+// newFeedService is newPostService with the way to say whom its readers
+// read, as the user and club services tell post.
+func newFeedService() (*service.PostService, follow) {
 	store := inmem.NewStore()
-	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}, Switches: store.Posts(), Polls: store.Polls()})
+	sources := service.NewSourceService(store.Sources())
+
+	reads := func(reader uuid.UUID, people []uuid.UUID, clubs ...uuid.UUID) {
+		for _, id := range people {
+			if err := sources.Follow(context.Background(), reader, id, false); err != nil {
+				panic(err)
+			}
+		}
+		for _, id := range clubs {
+			if err := sources.Follow(context.Background(), reader, id, true); err != nil {
+				panic(err)
+			}
+		}
+	}
+
+	return service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{}, Moderators: fakeModerators{}, Switches: store.Posts(), Polls: store.Polls()}), reads
 }
 
 func write(t *testing.T, svc *service.PostService, author uuid.UUID, texts ...string) []*post.Post {
@@ -312,16 +337,17 @@ func TestPostService_ListWall(t *testing.T) {
 func TestPostService_Feed(t *testing.T) {
 	t.Parallel()
 
-	svc := newPostService()
+	svc, reads := newFeedService()
 	ctx := context.Background()
-	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	ann, bob, cat, reader := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	reads(reader, []uuid.UUID{ann, bob})
 
 	write(t, svc, ann, "ann 1")
 	write(t, svc, bob, "bob 1")
 	write(t, svc, cat, "cat: not followed")
 	write(t, svc, ann, "ann 2")
 
-	first, err := svc.Feed(ctx, uuid.Nil, service.FeedSources{Authors: []uuid.UUID{ann, bob}}, uuid.Nil, 2)
+	first, err := svc.Feed(ctx, reader, service.FeedSources{}, uuid.Nil, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -329,7 +355,7 @@ func TestPostService_Feed(t *testing.T) {
 		t.Fatalf("first page: %v", got)
 	}
 
-	rest, err := svc.Feed(ctx, uuid.Nil, service.FeedSources{Authors: []uuid.UUID{ann, bob}}, first.NextCursor, 2)
+	rest, err := svc.Feed(ctx, reader, service.FeedSources{}, first.NextCursor, 2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,13 +363,18 @@ func TestPostService_Feed(t *testing.T) {
 		t.Fatalf("last page: %v", got)
 	}
 
+	// Nobody's news are empty; who follows nobody reads their own posts.
 	empty, err := svc.Feed(ctx, uuid.Nil, service.FeedSources{}, uuid.Nil, 20)
 	if err != nil || len(empty.Posts) != 0 {
-		t.Fatalf("no authors: %+v, %v", empty, err)
+		t.Fatalf("no reader: %+v, %v", empty, err)
+	}
+	own, err := svc.Feed(ctx, cat, service.FeedSources{}, uuid.Nil, 20)
+	if got := texts(own.Posts); err != nil || len(got) != 1 || got[0] != "cat: not followed" {
+		t.Fatalf("who follows nobody: %v, %v", got, err)
 	}
 
-	if _, err = svc.Feed(ctx, uuid.Nil, service.FeedSources{Authors: make([]uuid.UUID, service.MaxFeedAuthors+1)}, uuid.Nil, 20); !errors.Is(err, service.ErrTooManyAuthors) {
-		t.Fatalf("too many authors: %v", err)
+	if _, err = svc.Feed(ctx, reader, service.FeedSources{Hidden: make([]uuid.UUID, service.MaxFeedHidden+1)}, uuid.Nil, 20); !errors.Is(err, service.ErrTooManyAuthors) {
+		t.Fatalf("too many hidden authors: %v", err)
 	}
 }
 
@@ -395,7 +426,7 @@ func TestPostService_Likes(t *testing.T) {
 		t.Fatalf("wall liked = %v", wall.Liked)
 	}
 
-	feed, err := svc.Feed(ctx, ann, service.FeedSources{Authors: []uuid.UUID{ann}}, uuid.Nil, 20)
+	feed, err := svc.Feed(ctx, ann, service.FeedSources{}, uuid.Nil, 20)
 	if err != nil || !feed.Liked[first.ID()] || len(feed.Liked) != 1 {
 		t.Fatalf("feed liked = %v, %v", feed.Liked, err)
 	}
@@ -581,21 +612,40 @@ func TestPostService_SomeoneElsesWall(t *testing.T) {
 		t.Fatalf("bob's wall = %+v, %v; want empty", bobs, err)
 	}
 
-	feed, err := svc.Feed(ctx, uuid.Nil, service.FeedSources{Authors: []uuid.UUID{bob}}, uuid.Nil, 10)
+	// Whoever follows bob reads what he wrote on ann's wall.
+	sources := service.NewSourceService(store.Sources())
+	bobsReader, annsReader := uuid.New(), uuid.New()
+	if err = sources.Follow(ctx, bobsReader, bob, false); err != nil {
+		t.Fatal(err)
+	}
+
+	feed, err := svc.Feed(ctx, bobsReader, service.FeedSources{}, uuid.Nil, 10)
 	if err != nil || len(feed.Posts) != 1 || feed.Posts[0].ID() != p.ID() {
 		t.Fatalf("bob's posts in a feed = %+v, %v", feed.Posts, err)
 	}
 
 	// Whoever follows ann alone reads what bob wrote on her wall, once
 	// even when following both.
-	for _, sources := range []service.FeedSources{
-		{Authors: []uuid.UUID{ann}, Walls: []uuid.UUID{ann}},
-		{Authors: []uuid.UUID{ann, bob}, Walls: []uuid.UUID{ann, bob}},
-	} {
-		feed, err = svc.Feed(ctx, uuid.Nil, sources, uuid.Nil, 10)
+	for _, followed := range []uuid.UUID{ann, bob} {
+		if err = sources.Follow(ctx, annsReader, followed, false); err != nil {
+			t.Fatal(err)
+		}
+
+		feed, err = svc.Feed(ctx, annsReader, service.FeedSources{}, uuid.Nil, 10)
 		if got := texts(feed.Posts); err != nil || len(got) != 2 || got[0] != "привет, Аня" {
 			t.Fatalf("the feed of ann's wall = %v, %v", got, err)
 		}
+	}
+
+	// Unfollowed, they are read no more.
+	if err = sources.Unfollow(ctx, bobsReader, bob); err != nil {
+		t.Fatal(err)
+	}
+	if feed, err = svc.Feed(ctx, bobsReader, service.FeedSources{}, uuid.Nil, 10); err != nil || len(feed.Posts) != 0 {
+		t.Fatalf("the feed after unfollowing = %+v, %v", feed.Posts, err)
+	}
+	if err = sources.Follow(ctx, ann, ann, false); !errors.Is(err, service.ErrSourceIsReader) {
+		t.Fatalf("following oneself: %v", err)
 	}
 
 	if err = svc.Delete(ctx, cat, p.ID()); !errors.Is(err, post.ErrCannotDelete) {
@@ -1127,8 +1177,8 @@ func TestPostService_FeedOfClubs(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	svc := newPostService()
-	club, admin, member, ann := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	svc, reads := newFeedService()
+	club, admin, member, ann, cat := uuid.New(), uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	content := textContent(t, "x")
 
 	mustCreate := func(in service.CreateInput) *post.Post {
@@ -1144,23 +1194,22 @@ func TestPostService_FeedOfClubs(t *testing.T) {
 	news := mustCreate(service.CreateInput{WallID: club, AuthorID: admin, ClubWall: true, FromWall: true})
 	byMember := mustCreate(service.CreateInput{WallID: club, AuthorID: member, ClubWall: true})
 	adminsOwn := mustCreate(service.CreateInput{WallID: admin, AuthorID: admin})
-	mustCreate(service.CreateInput{WallID: ann, AuthorID: ann})
+	annsOwn := mustCreate(service.CreateInput{WallID: ann, AuthorID: ann})
 
 	// Following the admin shows their own posts, not those that speak for
 	// the club: who wrote those is the club's secret.
-	page, err := svc.Feed(ctx, ann, service.FeedSources{Authors: []uuid.UUID{admin}}, uuid.Nil, 20)
-	if err != nil || len(page.Posts) != 1 || page.Posts[0].ID() != adminsOwn.ID() {
+	reads(ann, []uuid.UUID{admin})
+	page, err := svc.Feed(ctx, ann, service.FeedSources{}, uuid.Nil, 20)
+	if err != nil || len(page.Posts) != 2 || page.Posts[0].ID() != annsOwn.ID() || page.Posts[1].ID() != adminsOwn.ID() {
 		t.Fatalf("feed of the admin = %v, %v", ids(page.Posts), err)
 	}
 
-	// Being in the club shows everything on its wall.
-	page, err = svc.Feed(ctx, ann, service.FeedSources{Walls: []uuid.UUID{club}}, uuid.Nil, 20)
+	// Being in the club shows everything on its wall, and nothing else
+	// its members wrote.
+	reads(cat, nil, club)
+	page, err = svc.Feed(ctx, cat, service.FeedSources{}, uuid.Nil, 20)
 	if err != nil || len(page.Posts) != 2 || page.Posts[0].ID() != byMember.ID() || page.Posts[1].ID() != news.ID() {
 		t.Fatalf("feed of the club = %v, %v", ids(page.Posts), err)
-	}
-
-	if _, err = svc.Feed(ctx, ann, service.FeedSources{Walls: make([]uuid.UUID, service.MaxFeedWalls+1)}, uuid.Nil, 20); !errors.Is(err, service.ErrTooManyAuthors) {
-		t.Fatalf("too many clubs: %v", err)
 	}
 }
 
