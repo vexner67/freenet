@@ -34,6 +34,11 @@ func TestParse(t *testing.T) {
 		{"persistent with a directory", map[string]string{"STORAGE": config.StoragePersistent, "MEDIA_DIR": "/tmp/media"}, true},
 		{"persistent without a directory", map[string]string{"STORAGE": config.StoragePersistent}, false},
 		{"unknown storage", map[string]string{"STORAGE": "files"}, false},
+		{"a bucket", map[string]string{
+			"STORAGE": config.StorageS3, "S3_ENDPOINT": "s3.example.com", "S3_BUCKET": "media",
+			"S3_ACCESS_KEY": "key", "S3_SECRET_KEY": "secret",
+		}, true},
+		{"a bucket without keys", map[string]string{"STORAGE": config.StorageS3, "S3_ENDPOINT": "s3.example.com", "S3_BUCKET": "media"}, false},
 		{"full mtls", map[string]string{"TLS_CA_PATH": "ca.pem", "TLS_CERT_PATH": "c.pem", "TLS_KEY_PATH": "k.pem"}, true},
 		{"partial mtls", map[string]string{"TLS_KEY_PATH": "key.pem"}, false},
 		{"empty issuer", map[string]string{"JWT_ISSUER": ""}, false},
