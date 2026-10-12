@@ -126,18 +126,20 @@ func fromProtoRevision(req *messagev1.EditMessageRequest) (message.Revision, err
 		return message.Revision{}, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	rev := message.Revision{Text: text, ReplacePhotos: req.GetReplacePhotos()}
-	if !rev.ReplacePhotos {
-		return rev, nil
-	}
+	rev := message.Revision{Text: text}
 
-	ids, err := parseIDs(req.GetPhotoIds(), message.ErrInvalidPhoto.Error())
-	if err != nil {
-		return message.Revision{}, err
-	}
+	for _, part := range []struct {
+		raw  []string
+		into *message.Photos
+	}{{req.GetRemovePhotoIds(), &rev.Removed}, {req.GetAddPhotoIds(), &rev.Added}} {
+		ids, err := parseIDs(part.raw, message.ErrInvalidPhoto.Error())
+		if err != nil {
+			return message.Revision{}, err
+		}
 
-	if rev.Photos, err = message.NewPhotos(ids); err != nil {
-		return message.Revision{}, status.Error(codes.InvalidArgument, err.Error())
+		if *part.into, err = message.NewPhotos(ids); err != nil {
+			return message.Revision{}, status.Error(codes.InvalidArgument, err.Error())
+		}
 	}
 
 	return rev, nil

@@ -110,6 +110,20 @@ const getMessageQuery = `
 	WHERE id = $1
 `
 
+// Lock reads the message for the transaction of ctx to change: another
+// one that wants it waits.
+func (r *MessageRepository) Lock(ctx context.Context, id uuid.UUID) (*message.Message, error) {
+	m, err := scanMessage(r.conn(ctx).QueryRow(ctx, getMessageQuery+" FOR UPDATE", id))
+	if errors.Is(err, pgx.ErrNoRows) {
+		return nil, message.ErrNotFound
+	}
+	if err != nil {
+		return nil, errs.Wrap("scanMessage", err)
+	}
+
+	return m, nil
+}
+
 func (r *MessageRepository) Get(ctx context.Context, id uuid.UUID) (*message.Message, error) {
 	m, err := scanMessage(r.pool.QueryRow(ctx, getMessageQuery, id))
 	if errors.Is(err, pgx.ErrNoRows) {

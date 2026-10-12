@@ -1098,11 +1098,11 @@ type fakeMessages struct {
 	// hidden is the message deleted for the caller alone, edited "id/text"
 	// of the last edit, searched the last query.
 	hidden, edited, searched string
-	// editedPhotos are the photos the last edit put in place of the
-	// message's, nil when it left them; deletedMany "ids forEveryone".
-	editedPhotos []string
-	deletedMany  string
-	around       string
+	// addedPhotos and removedPhotos are those of the last edit;
+	// deletedMany "ids forEveryone".
+	addedPhotos, removedPhotos []string
+	deletedMany                string
+	around                     string
 	// peerWrote: the peer has written to the caller.
 	peerWrote bool
 	// dialogs replace the default page when set.
@@ -1216,24 +1216,11 @@ func (f *fakeMessages) DeleteMany(_ context.Context, token string, ids []string,
 	return f.err
 }
 
-// Message: m1 shows ph1 and a photo sent long ago.
-func (f *fakeMessages) Message(_ context.Context, token, id string) (model.Message, error) {
-	f.token = token
-	if id != "m1" {
-		return model.Message{}, failure.New(failure.NotFound, "message not found")
-	}
-
-	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Text: "привет", PhotoIDs: []string{"ph1", "sent"}}, nil
-}
-
 func (f *fakeMessages) Edit(_ context.Context, token, id string, e model.MessageEdit) (model.Message, error) {
 	f.token, f.edited = token, id+"/"+e.Text
-	f.editedPhotos = nil
-	if e.ReplacePhotos {
-		f.editedPhotos = append([]string{}, e.PhotoIDs...)
-	}
+	f.addedPhotos, f.removedPhotos = e.AddPhotoIDs, e.RemovePhotoIDs
 
-	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Text: e.Text, PhotoIDs: e.PhotoIDs, EditedAt: albumTime, EditableUntil: albumTime}, f.err
+	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Text: e.Text, PhotoIDs: e.AddPhotoIDs, EditedAt: albumTime, EditableUntil: albumTime}, f.err
 }
 
 // Search finds a message from bob (u2) and one to cat (u3), whose page

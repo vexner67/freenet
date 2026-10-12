@@ -39,6 +39,9 @@ type MessageRepository interface {
 	// Retract saves a message taken back: it says nothing from now on;
 	// message.ErrNotFound if it is gone or was taken back already.
 	Retract(ctx context.Context, m *message.Message) error
+	// Lock is Get inside a transaction, holding the message until its
+	// end: what is read is what the transaction changes.
+	Lock(ctx context.Context, id uuid.UUID) (*message.Message, error)
 	// Update saves what an edited message says and shows;
 	// message.ErrNotFound.
 	Update(ctx context.Context, m *message.Message) error
@@ -488,56 +491,31 @@ func (s *MessageService) dropPhotos(ctx context.Context, m *message.Message, exc
 // caller has made sure new photos are the sender's; media keeps them and
 // deletes those the edit took away. Both sides that still have the
 // message hear of it.
-// Message is a message the user has in their dialogs: one they sent or
-// were sent, and did not delete for themselves.
-func (s *MessageService) Message(ctx context.Context, userID, id uuid.UUID) (*message.Message, error) {
-	m, err := s.messageRepo.Get(ctx, id)
-	if err != nil {
-		return nil, errs.Wrap("s.messageRepo.Get", err)
-	}
-
-	if !m.VisibleTo(userID) {
-		return nil, message.ErrNotFound
-	}
-
-	return m, nil
-}
-
+// Edit changes what the user's message says and shows. The message is
+// read and saved in one transaction that holds it, so two edits made at
+// once go one after the other, the second changing what the first left.
 func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, rev message.Revision) (*message.Message, error) {
-	m, err := s.messageRepo.Get(ctx, id)
-	if err != nil {
-		return nil, errs.Wrap("s.messageRepo.Get", err)
-	}
+	var edited *message.Message
 
-	if !m.VisibleTo(userID) {
-		return nil, message.ErrNotFound
-	}
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		m, err := s.messageRepo.Lock(ctx, id)
+		if err != nil {
+			return errs.Wrap("s.messageRepo.Lock", err)
+		}
 
-	edited, err := m.Edited(userID, rev, s.now())
-	if err != nil {
-		return nil, errs.Wrap("m.Edited", err)
-	}
+		if !m.VisibleTo(userID) {
+			return message.ErrNotFound
+		}
 
-	added, removed := without(edited.Photos(), m.Photos()), without(m.Photos(), edited.Photos())
+		if edited, err = m.Edited(userID, rev, s.now()); err != nil {
+			return errs.Wrap("m.Edited", err)
+		}
 
-	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if err := s.messageRepo.Update(ctx, edited); err != nil {
+		if err = s.messageRepo.Update(ctx, edited); err != nil {
 			return errs.Wrap("s.messageRepo.Update", err)
 		}
 
-		if len(added) > 0 {
-			if err := s.photos.Publish(ctx, userID, added); err != nil {
-				return errs.Wrap("s.photos.Publish", err)
-			}
-		}
-
-		if len(removed) > 0 {
-			if err := s.photos.Delete(ctx, userID, removed); err != nil {
-				return errs.Wrap("s.photos.Delete", err)
-			}
-		}
-
-		return nil
+		return s.movePhotos(ctx, userID, without(edited.Photos(), m.Photos()), without(m.Photos(), edited.Photos()))
 	})
 	if err != nil {
 		return nil, errs.Wrap("s.tx.WithinTx", err)
@@ -550,6 +528,24 @@ func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, rev mes
 	}
 
 	return edited, nil
+}
+
+// movePhotos keeps the photos an edit added for good and deletes those it
+// removed, with the edit.
+func (s *MessageService) movePhotos(ctx context.Context, ownerID uuid.UUID, added, removed []uuid.UUID) error {
+	if len(added) > 0 {
+		if err := s.photos.Publish(ctx, ownerID, added); err != nil {
+			return errs.Wrap("s.photos.Publish", err)
+		}
+	}
+
+	if len(removed) > 0 {
+		if err := s.photos.Delete(ctx, ownerID, removed); err != nil {
+			return errs.Wrap("s.photos.Delete", err)
+		}
+	}
+
+	return nil
 }
 
 // without are the photos of a that b does not have.

@@ -5,6 +5,7 @@ package message
 import (
 	"bytes"
 	"errors"
+	"slices"
 	"strings"
 	"time"
 	"unicode"
@@ -494,22 +495,35 @@ func (m *Message) EditableUntil() time.Time {
 	return m.createdAt.Add(editWindow)
 }
 
-// Revision is what an edit makes of a message: what it says and, with
-// ReplacePhotos, the photos it shows instead of those it had. An edit
-// that does not speak of photos keeps them.
+// Revision is what an edit makes of a message: what it says, the photos
+// it shows no more and those it shows from now on, after the ones it
+// keeps. It names the changes, not the photos left: two edits made at
+// once, each knowing the message as it was, both take effect.
 type Revision struct {
-	Text          Text
-	Photos        Photos
-	ReplacePhotos bool
+	Text    Text
+	Removed Photos
+	Added   Photos
 }
 
-// photos are those of a message that showed old before the edit.
-func (r Revision) photos(old Photos) Photos {
-	if r.ReplacePhotos {
-		return r.Photos
+// photos are those of a message that showed old before the edit. A photo
+// to remove that is gone already and one to add that is there are fine:
+// another edit was first.
+func (r Revision) photos(old Photos) (Photos, error) {
+	ids := make([]uuid.UUID, 0, len(old)+len(r.Added))
+
+	for _, id := range old {
+		if !slices.Contains(r.Removed, id) {
+			ids = append(ids, id)
+		}
 	}
 
-	return old
+	for _, id := range r.Added {
+		if !slices.Contains(ids, id) {
+			ids = append(ids, id)
+		}
+	}
+
+	return NewPhotos(ids)
 }
 
 // Edited returns m as rev makes it, edited by requesterID at now: only
@@ -530,11 +544,12 @@ func (m *Message) Edited(requesterID uuid.UUID, rev Revision, now time.Time) (*M
 		return nil, ErrEditExpired
 	}
 
-	var (
-		content Content
-		err     error
-	)
-	photos := rev.photos(m.content.photos)
+	photos, err := rev.photos(m.content.photos)
+	if err != nil {
+		return nil, err
+	}
+
+	var content Content
 
 	switch {
 	case m.content.sharedPhoto == uuid.Nil:

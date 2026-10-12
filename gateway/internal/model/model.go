@@ -543,9 +543,11 @@ type MessageDraft struct {
 // MessageEdit is what an edit makes of a message: its words and, with
 // ReplacePhotos, its photos; without, the photos stay.
 type MessageEdit struct {
-	Text          string
-	PhotoIDs      []string
-	ReplacePhotos bool
+	Text string
+	// The photos the message shows no more, and the uploads it shows
+	// from now on.
+	RemovePhotoIDs []string
+	AddPhotoIDs    []string
 }
 
 // MessagesAt names a part of a dialog: older messages with Cursor, those

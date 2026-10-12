@@ -652,9 +652,9 @@ func (a *api) deleteMessages(w http.ResponseWriter, r *http.Request) {
 	w.WriteHeader(http.StatusNoContent)
 }
 
-// editMessage changes what the caller's message says and, when the
-// request names photos, its photos; the message service decides whether
-// they still may.
+// editMessage changes what the caller's message says and the photos it
+// shows: uploads to add, which are claimed as when sending, and photos
+// to remove; the message service decides whether they still may.
 func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -662,40 +662,28 @@ func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Photos left out stay as they are; named, even as none, they
-	// replace the message's.
+	// The edit names what changes, not what is left: an edit from another
+	// window, which shows the message as it was, undoes nothing.
 	var req struct {
-		Text   string    `json:"text"`
-		Photos *[]string `json:"photos"`
+		Text         string   `json:"text"`
+		AddPhotos    []string `json:"addPhotos"`
+		RemovePhotos []string `json:"removePhotos"`
 	}
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	var added []string
-
-	edit := model.MessageEdit{Text: req.Text}
-	if req.Photos != nil {
-		edit.PhotoIDs, edit.ReplacePhotos = *req.Photos, true
-
-		// The photos the message has are its own; the others are new to it.
-		old, err := a.messages.Message(r.Context(), token, r.PathValue("id"))
-		if err != nil {
-			a.writeError(w, r, err)
-			return
-		}
-
-		added = without(edit.PhotoIDs, old.PhotoIDs)
-		if err = a.claimPhotos(r, token, added); err != nil {
-			a.writeError(w, r, err)
-			return
-		}
+	if err = a.claimPhotos(r, token, req.AddPhotos); err != nil {
+		a.writeError(w, r, err)
+		return
 	}
+
+	edit := model.MessageEdit{Text: req.Text, AddPhotoIDs: req.AddPhotos, RemovePhotoIDs: req.RemovePhotos}
 
 	m, err := a.messages.Edit(r.Context(), token, r.PathValue("id"), edit)
 	if err != nil {
-		a.releasePhotos(r, token, added, err)
+		a.releasePhotos(r, token, req.AddPhotos, err)
 		a.writeError(w, r, err)
 		return
 	}

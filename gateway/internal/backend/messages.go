@@ -151,19 +151,9 @@ func (m *Messages) DeleteMany(ctx context.Context, accessToken string, ids []str
 
 // Edit changes what the caller's message says and, when the edit
 // replaces them, its photos.
-// Message is a message the caller has in their dialogs, whole.
-func (m *Messages) Message(ctx context.Context, accessToken, id string) (model.Message, error) {
-	resp, err := m.api.GetMessage(withToken(ctx, accessToken), &messagev1.GetMessageRequest{Id: id})
-	if err != nil {
-		return model.Message{}, errs.Wrap("m.api.GetMessage", fromStatus(err))
-	}
-
-	return toMessage(resp.GetMessage()), nil
-}
-
 func (m *Messages) Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.Message, error) {
 	resp, err := m.api.EditMessage(withToken(ctx, accessToken), &messagev1.EditMessageRequest{
-		Id: id, Text: e.Text, PhotoIds: e.PhotoIDs, ReplacePhotos: e.ReplacePhotos,
+		Id: id, Text: e.Text, AddPhotoIds: e.AddPhotoIDs, RemovePhotoIds: e.RemovePhotoIDs,
 	})
 	if err != nil {
 		return model.Message{}, errs.Wrap("m.api.EditMessage", fromStatus(err))

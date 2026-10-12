@@ -32,12 +32,9 @@ service MessageService {
   // none of them: for everyone, as DeleteMessage does, or for themselves,
   // as HideMessage does.
   rpc DeleteMessages(DeleteMessagesRequest) returns (google.protobuf.Empty);
-  // A message the caller has in their dialogs, whole; NotFound for one
-  // of another dialog or deleted for the caller.
-  rpc GetMessage(GetMessageRequest) returns (GetMessageResponse);
-  // The caller changes what their message says and, with replace_photos,
-  // the photos it shows, within a day of sending (editable_until); the
-  // post it shares and the messages it carries on stay.
+  // The caller changes what their message says and the photos it shows,
+  // within a day of sending (editable_until); the post it shares and the
+  // messages it carries on stay.
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
   // The caller's messages that say the query, in any case, newest first:
   // in the dialog with peer_id or, without it, in all their dialogs.
@@ -239,26 +236,22 @@ message HideMessageRequest {
   string id = 1;
 }
 
-message GetMessageRequest {
-  string id = 1;
-}
-
-message GetMessageResponse {
-  Message message = 1;
-}
-
 message EditMessageRequest {
   string id = 1;
   // May be empty only when the message has photos, shares a post or
   // carries other messages on.
   string text = 2;
-  // With replace_photos: the photos the message shows from now on, at most
-  // 10, the caller's uploads and the photos it had; none takes them all
-  // away. A message that shares a photo of an album takes none.
-  repeated string photo_ids = 3;
-  // false keeps the photos of the message, whatever photo_ids say: an
-  // edit that knows of no photos does not take them away.
-  bool replace_photos = 4;
+  // Once the whole list of photos, which two edits made at once
+  // overwrote for each other.
+  reserved 3, 4;
+  reserved "photo_ids", "replace_photos";
+  // The photos the message shows no more, and the caller's uploads it
+  // shows from now on, after those it keeps; it may show 10. The edit
+  // names changes, so two made at once both take effect; a photo to
+  // remove that is gone and one to add that is there are fine. A message
+  // that shares a photo of an album takes none.
+  repeated string remove_photo_ids = 5;
+  repeated string add_photo_ids = 6;
 }
 
 message DeleteMessagesRequest {

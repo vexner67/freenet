@@ -36,6 +36,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "a message forwards at most 20 messages"), true
 	case errors.Is(err, message.ErrSharedPhotoAlone):
 		return status.New(codes.InvalidArgument, "a shared photo goes with text alone"), true
+	case errors.Is(err, message.ErrTooManyPhotos):
+		return status.New(codes.InvalidArgument, message.ErrTooManyPhotos.Error()), true
 	case errors.Is(err, message.ErrNoMessages):
 		return status.New(codes.InvalidArgument, "no messages to delete"), true
 	case errors.Is(err, message.ErrTooManyMessages):
