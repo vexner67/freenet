@@ -166,8 +166,8 @@ function fieldNode(field = { name: '', text: '', place: 'contacts' }) {
   const name = el('input', { type: 'text', maxLength: 50, value: field.name, className: 'field-name' });
   const text = el('textarea', { maxLength: 1000, value: field.text, className: 'field-text' });
   const place = el('select', { className: 'field-place' },
-    el('option', { value: 'contacts', textContent: 'В «контактах»' }),
-    el('option', { value: 'interests', textContent: 'В «интересах»' }));
+    el('option', { value: 'contacts', textContent: 'в «контактах»' }),
+    el('option', { value: 'interests', textContent: 'в «интересах»' }));
   place.value = field.place;
 
   const node = el('table', { className: 'form extra-field' },

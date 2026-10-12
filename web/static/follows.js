@@ -51,7 +51,7 @@ try {
   tab('tab-common', 'common', 'Общие');
   $('tabs').hidden = false;
 
-  const subscribed = { male: 'подписан', female: 'подписана', neutral: 'подписаны' }[owner.gender] ?? 'подписан(а)';
+  const subscribed = { male: 'подписан', female: 'подписана' }[owner.gender] ?? 'подписан(а)';
   $('empty').textContent = {
     followers: 'Пока никто не подписан.',
     following: `Пока ни на кого не ${subscribed}.`,

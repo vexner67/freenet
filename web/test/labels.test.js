@@ -2,7 +2,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites } from '../static/labels.js';
+import { worldviews, politicalViews, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -177,7 +177,7 @@ test('club admins and who sees the clubs, as openvk says', () => {
   assert.equal(adminsCount(3), '3 администратора');
   assert.equal(adminsCount(12), '12 администраторов');
   assert.deepEqual(audiences.map(([value]) => value), ['everyone', 'users', 'following', 'only_me']);
-  assert.deepEqual(pageReads, [['everyone', 'Всем желающим'], ['users', 'Пользователям Freenet']]);
+  assert.deepEqual(pageReads, [['everyone', 'всем желающим'], ['users', 'пользователям Freenet']]);
   assert.deepEqual(adminsDisplays.map(([value]) => value), ['creator', 'all', 'none']);
   assert.equal(errorText(new Error('the new owner must be an admin of the club')), 'Владельцем можно назначить только администратора группы.');
   assert.equal(errorText(new Error("this user's clubs are hidden")), 'Пользователь скрыл список своих групп.');
@@ -231,7 +231,7 @@ test('notes are counted and found as openvk says', () => {
   assert.equal(foundNotes(4), 'Найдено 4 заметки');
   assert.equal(foundNotes(7), 'Найдено 7 заметок');
   assert.equal(errorText({ message: "this user's notes are hidden" }), 'Пользователь скрыл свои заметки.');
-  assert.ok(menuItems.some(([item, text]) => item === 'notes' && text === 'Мои Заметки'));
+  assert.ok(menuItems.some(([item, text]) => item === 'notes' && text === 'Заметки'));
 });
 
 test('faves are counted as openvk says', () => {
@@ -242,13 +242,26 @@ test('faves are counted as openvk says', () => {
   assert.equal(favesCount(11), '11 закладок');
 });
 
-test('"они/их" speak in the plural, as openvk\'s neutral strings', () => {
-  assert.equal(wrote('neutral'), 'написали');
-  assert.equal(updatedPhoto({ gender: 'neutral' }), 'обновили фотографию на своей странице');
-  assert.equal(limitedAccess('neutral'), 'ограничили');
-  assert.equal(notificationVerb('like', { gender: 'neutral' }), 'оценили');
-  assert.equal(label(genders, 'neutral'), 'они/их');
+test('there are no pronouns: a gender is male, female or not set', () => {
+  assert.deepEqual(genders, [['', 'не указан'], ['male', 'мужской'], ['female', 'женский']]);
+
+  // openvk's "они/их", chosen before it was taken away, reads as not set.
+  assert.equal(wrote('neutral'), 'написал');
+  assert.equal(updatedPhoto({ gender: 'neutral' }), 'обновил фотографию на своей странице');
+  assert.equal(limitedAccess('neutral'), 'ограничил(а)');
+  assert.equal(notificationVerb('like', { gender: 'neutral' }), 'оценил(а)');
+  assert.equal(label(genders, 'neutral'), '');
   assert.equal(label(relationships('neutral'), 'married'), 'в браке');
+});
+
+test('what a select offers is written in lower case', () => {
+  const lists = [genders, worldviews, politicalViews, wallWrites, messagesWrites, chatsInvites, audiences, pageReads, onlineReads, avatarStyles, themes, ratings, nsfwContents, postViews, mainPages];
+
+  for (const [, text] of lists.flat()) assert.equal(text[0], text[0].toLowerCase(), text);
+
+  assert.equal(label(politicalViews, 'moderate'), '');
+  assert.equal(label(politicalViews, 'moderate_islamism'), 'умеренный исламизм');
+  assert.equal(label(politicalViews, 'radical_islamism'), 'радикальный исламизм');
 });
 
 test('a relationship names whom it is with, after openvk\'s prefix', () => {
@@ -270,13 +283,13 @@ test('presence is told as openvk tells it', () => {
   const now = new Date(2026, 9, 9, 18, 0);
   assert.equal(presence({ online: true, lastSeenAt: now.toISOString(), gender: 'female' }, now), 'Онлайн');
   assert.equal(presence({ lastSeenAt: new Date(2026, 9, 9, 12, 5).toISOString(), gender: 'female' }, now), 'была в сети сегодня в 12:05');
-  assert.equal(presence({ lastSeenAt: new Date(2026, 9, 8, 9, 30).toISOString(), gender: 'neutral' }, now), 'были в сети вчера в 9:30');
+  assert.equal(presence({ lastSeenAt: new Date(2026, 9, 8, 9, 30).toISOString(), gender: 'female' }, now), 'была в сети вчера в 9:30');
   assert.equal(presence({ lastSeenAt: new Date(2026, 8, 1, 9, 30).toISOString() }, now), 'был в сети 1 сентября в 9:30');
   assert.equal(presence({ lastSeenAt: null }, now), '');
   assert.equal(onlineCount(1), '1 человек онлайн');
   assert.equal(onlineCount(3), '3 человека онлайн');
   assert.equal(onlineCount(5), '5 человек онлайн');
-  assert.deepEqual(onlineReads.map(([, text]) => text), ['Все', 'Пользователи Freenet', 'Те, на кого я подписан(а)', 'Никто']);
+  assert.deepEqual(onlineReads.map(([, text]) => text), ['все', 'пользователи Freenet', 'те, на кого я подписан(а)', 'никто']);
 });
 
 test('an album the site keeps refuses changes in words', () => {
@@ -629,7 +642,7 @@ test('chats are named, counted and told of', () => {
   assert.equal(chatAction({ action: 'title', text: '', author: ann }), 'убрала название беседы');
   assert.equal(chatAction({ action: 'invite', author: ann, target: petr }), 'пригласила Петра Петрова');
   assert.deepEqual(chatActionParts({ action: 'kick', author: petr, target: ann }), ['исключил ', 'Анну Иванову', ' из беседы']);
-  assert.equal(chatAction({ action: 'leave', author: { gender: 'neutral' } }), 'покинули беседу');
+  assert.equal(chatAction({ action: 'leave', author: { gender: 'female' } }), 'покинула беседу');
   assert.equal(chatAction({ action: 'return', author: ann }), 'вернулась в беседу');
   assert.equal(chatAction({ action: '', author: ann }), '');
 
