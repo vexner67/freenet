@@ -92,6 +92,8 @@ curl -sSf -o /dev/null "$base$(echo "$photo" | jq -r .small)" || die "the photo 
 step "media: photo stored and served"
 
 post=$(expect=201 call POST /api/v1/me/posts "{\"text\":\"smoke test\",\"photos\":[$(echo "$photo" | jq .id)]}" | jq -r .id)
+# The photo is that post's: another one does not get it.
+expect=400 call POST /api/v1/me/posts "{\"photos\":[$(echo "$photo" | jq .id)]}" | jq -e '.error.message == "photo not found"' >/dev/null
 expect=201 call POST "/api/v1/posts/$post/reposts" '{"text":""}' | jq -e ".repost.id == \"$post\"" >/dev/null
 call GET "/api/v1/users/$nickname/posts" | jq -e '.total == 2' >/dev/null
 step "post: a post, its repost and the wall"

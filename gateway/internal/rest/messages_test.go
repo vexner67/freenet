@@ -422,6 +422,30 @@ func TestEditHideAndSearchMessages(t *testing.T) {
 	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","photos":["ph1","someone-elses"]}`, auth...); w.Code != http.StatusBadRequest || h.messages.edited != "" || !strings.Contains(w.Body.String(), "photo not found") {
 		t.Fatalf("a photo of another: %d %s", w.Code, w.Body)
 	}
+
+	// Only the photos new to the message are claimed: those it has are
+	// its own, and stay so when it is edited again.
+	if !slices.Equal(h.media.claimed, []string{"ph2"}) {
+		t.Fatalf("claimed %v, want the added photo alone", h.media.claimed)
+	}
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","photos":["sent"]}`, auth...); w.Code != http.StatusOK || !slices.Equal(h.media.claimed, []string{"ph2"}) {
+		t.Fatalf("the photo it had kept: %d, claimed %v", w.Code, h.media.claimed)
+	}
+
+	// A photo another message shows is not there to add.
+	h.media.taken, h.messages.edited = []string{"ph2"}, ""
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","photos":["ph1","ph2"]}`, auth...); w.Code != http.StatusBadRequest || h.messages.edited != "" {
+		t.Fatalf("a photo shown elsewhere: %d %s", w.Code, w.Body)
+	}
+
+	// A refused edit gives the photos it claimed back.
+	h.media.taken, h.messages.err = nil, failure.New(failure.Conflict, "the message can no longer be edited")
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","photos":["ph2"]}`, auth...); w.Code != http.StatusConflict || !slices.Equal(h.media.released, []string{"ph2"}) {
+		t.Fatalf("a refused edit: %d, released %v", w.Code, h.media.released)
+	}
+	if w = h.do("PATCH", "/api/v1/messages/m2", `{"text":"x","photos":["ph2"]}`, auth...); w.Code != http.StatusNotFound {
+		t.Fatalf("an edit of no message: %d", w.Code)
+	}
 }
 
 func TestDeleteMessages(t *testing.T) {

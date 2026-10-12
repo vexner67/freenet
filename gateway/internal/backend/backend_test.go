@@ -636,6 +636,14 @@ type fakeMessageAPI struct {
 	removal *messagev1.DeleteMessagesRequest
 }
 
+func (f *fakeMessageAPI) GetMessage(_ context.Context, req *messagev1.GetMessageRequest, _ ...grpc.CallOption) (*messagev1.GetMessageResponse, error) {
+	if req.GetId() != "m1" {
+		return nil, status.Error(codes.NotFound, "message not found")
+	}
+
+	return &messagev1.GetMessageResponse{Message: &messagev1.Message{Id: "m1", PhotoIds: []string{"ph1"}}}, nil
+}
+
 func (f *fakeMessageAPI) EditMessage(_ context.Context, req *messagev1.EditMessageRequest, _ ...grpc.CallOption) (*messagev1.EditMessageResponse, error) {
 	f.edit = req
 	return &messagev1.EditMessageResponse{Message: &messagev1.Message{Id: req.GetId(), Text: req.GetText(), PhotoIds: req.GetPhotoIds()}}, nil
@@ -699,6 +707,13 @@ func TestMessages(t *testing.T) {
 
 	if wrote, err := messages.HasMessagesFrom(context.Background(), "tok", "u2"); err != nil || !wrote || len(api.md.Get("authorization")) != 1 {
 		t.Fatalf("HasMessagesFrom = %v, %v (metadata %v)", wrote, err, api.md)
+	}
+
+	if m, err := messages.Message(context.Background(), "tok", "m1"); err != nil || m.ID != "m1" || len(m.PhotoIDs) != 1 {
+		t.Fatalf("Message = %+v, %v", m, err)
+	}
+	if _, err := messages.Message(context.Background(), "tok", "m2"); failure.From(err).Kind != failure.NotFound {
+		t.Fatalf("a message that is not there: %v", err)
 	}
 
 	page, err := messages.History(context.Background(), "tok", "u2", model.MessagesAt{After: "m0"}, 1<<20)
@@ -770,8 +785,9 @@ func TestMessages(t *testing.T) {
 
 type fakeMediaAPI struct {
 	mediav1.MediaServiceClient
-	md   metadata.MD
-	size mediav1.PhotoSize
+	md       metadata.MD
+	size     mediav1.PhotoSize
+	released []string
 }
 
 func (f *fakeMediaAPI) UploadPhoto(ctx context.Context, _ *mediav1.UploadPhotoRequest, _ ...grpc.CallOption) (*mediav1.UploadPhotoResponse, error) {
@@ -784,8 +800,14 @@ func (f *fakeMediaAPI) GetPhoto(_ context.Context, req *mediav1.GetPhotoRequest,
 	return &mediav1.GetPhotoResponse{Image: []byte("jpeg")}, nil
 }
 
-func (f *fakeMediaAPI) ListOwnPhotos(_ context.Context, req *mediav1.ListOwnPhotosRequest, _ ...grpc.CallOption) (*mediav1.ListOwnPhotosResponse, error) {
-	return &mediav1.ListOwnPhotosResponse{PhotoIds: req.GetPhotoIds()[:1]}, nil
+func (f *fakeMediaAPI) ClaimPhotos(ctx context.Context, req *mediav1.ClaimPhotosRequest, _ ...grpc.CallOption) (*mediav1.ClaimPhotosResponse, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	return &mediav1.ClaimPhotosResponse{Claimed: len(req.GetPhotoIds()) == 2}, nil
+}
+
+func (f *fakeMediaAPI) ReleasePhotos(_ context.Context, req *mediav1.ReleasePhotosRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.released = req.GetPhotoIds()
+	return &emptypb.Empty{}, nil
 }
 
 func TestMediaPhotos(t *testing.T) {
@@ -809,9 +831,17 @@ func TestMediaPhotos(t *testing.T) {
 		t.Fatalf("large photo: size %v, %v", api.size, err)
 	}
 
-	own, err := media.OwnPhotos(context.Background(), "tok", []string{"ph1", "ph2"})
-	if err != nil || len(own) != 1 || own[0] != "ph1" {
-		t.Fatalf("OwnPhotos = %v, %v", own, err)
+	if ok, err := media.ClaimPhotos(context.Background(), "tok2", []string{"ph1", "ph2"}); err != nil || !ok {
+		t.Fatalf("ClaimPhotos = %v, %v", ok, err)
+	}
+	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok2" {
+		t.Fatalf("authorization metadata of a claim = %v", got)
+	}
+	if ok, err := media.ClaimPhotos(context.Background(), "tok", []string{"ph1"}); err != nil || ok {
+		t.Fatalf("a refused claim = %v, %v", ok, err)
+	}
+	if err = media.ReleasePhotos(context.Background(), "tok", []string{"ph1"}); err != nil || len(api.released) != 1 {
+		t.Fatalf("ReleasePhotos: %v, released %v", err, api.released)
 	}
 }
 

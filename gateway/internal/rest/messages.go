@@ -406,11 +406,6 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
 	if err = a.checkSharedPost(r, token, req.Post); err != nil {
 		a.writeError(w, r, err)
 		return
@@ -432,8 +427,14 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 		Text: req.Text, PhotoIDs: req.Photos, PostID: req.Post, SharedPhotoID: req.AlbumPhoto, ForwardIDs: req.Forward,
 	}
 
+	if err = a.claimPhotos(r, token, req.Photos); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	m, err := a.messages.Send(r.Context(), token, recipient.ID, draft)
 	if err != nil {
+		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
 		return
 	}
@@ -672,11 +673,21 @@ func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	var added []string
+
 	edit := model.MessageEdit{Text: req.Text}
 	if req.Photos != nil {
 		edit.PhotoIDs, edit.ReplacePhotos = *req.Photos, true
 
-		if err = a.checkOwnPhotos(r, token, edit.PhotoIDs); err != nil {
+		// The photos the message has are its own; the others are new to it.
+		old, err := a.messages.Message(r.Context(), token, r.PathValue("id"))
+		if err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+
+		added = without(edit.PhotoIDs, old.PhotoIDs)
+		if err = a.claimPhotos(r, token, added); err != nil {
 			a.writeError(w, r, err)
 			return
 		}
@@ -684,6 +695,7 @@ func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
 
 	m, err := a.messages.Edit(r.Context(), token, r.PathValue("id"), edit)
 	if err != nil {
+		a.releasePhotos(r, token, added, err)
 		a.writeError(w, r, err)
 		return
 	}

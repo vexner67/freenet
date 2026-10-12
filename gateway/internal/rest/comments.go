@@ -218,13 +218,13 @@ func (a *api) createComment(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	mentions, err := a.mentioned(r, token, req.Text)
-	if err != nil {
+	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
@@ -233,6 +233,7 @@ func (a *api) createComment(w http.ResponseWriter, r *http.Request) {
 		Text: req.Text, PhotoIDs: req.Photos, ReplyTo: req.ReplyTo, FromWall: req.FromClub, Mentions: mentions,
 	})
 	if err != nil {
+		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
 		return
 	}

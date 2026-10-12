@@ -674,13 +674,13 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 		return
 	}
 
-	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	mentions, err := a.mentioned(r, token, req.Text)
-	if err != nil {
+	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
@@ -690,6 +690,7 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 		Poll: toNewPoll(req.Poll),
 	})
 	if err != nil {
+		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
 		return
 	}
@@ -789,11 +790,6 @@ func (a *api) share(w http.ResponseWriter, r *http.Request, what func(token stri
 		return
 	}
 
-	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
 	nr, err := a.repostTarget(r, token, req)
 	if err != nil {
 		a.writeError(w, r, err)
@@ -806,8 +802,14 @@ func (a *api) share(w http.ResponseWriter, r *http.Request, what func(token stri
 		return
 	}
 
+	if err = a.claimPhotos(r, token, req.Photos); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	p, err := a.posts.Repost(r.Context(), token, postID, nr)
 	if err != nil {
+		a.releasePhotos(r, token, req.Photos, err)
 		a.writeError(w, r, err)
 		return
 	}
@@ -947,7 +949,8 @@ func (a *api) deletePost(w http.ResponseWriter, r *http.Request) {
 }
 
 // editPost changes the text and photos of the caller's post, as openvk's
-// "Редактировать"; new photos must be the caller's, as when posting.
+// "Редактировать"; new photos must be the caller's uploads that nothing
+// shows yet, as when posting.
 func (a *api) editPost(w http.ResponseWriter, r *http.Request) {
 	token, err := bearerToken(r)
 	if err != nil {
@@ -966,13 +969,21 @@ func (a *api) editPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = a.checkOwnPhotos(r, token, req.Photos); err != nil {
+	mentions, err := a.mentioned(r, token, req.Text)
+	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	mentions, err := a.mentioned(r, token, req.Text)
+	// The photos the post has are its own; the others are new to it.
+	old, err := a.posts.Get(r.Context(), token, r.PathValue("id"))
 	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	added := without(req.Photos, old.PhotoIDs)
+	if err = a.claimPhotos(r, token, added); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
@@ -981,6 +992,7 @@ func (a *api) editPost(w http.ResponseWriter, r *http.Request) {
 
 	p, err := a.posts.Edit(r.Context(), token, r.PathValue("id"), edit)
 	if err != nil {
+		a.releasePhotos(r, token, added, err)
 		a.writeError(w, r, err)
 		return
 	}

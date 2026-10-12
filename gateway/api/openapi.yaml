@@ -768,8 +768,11 @@ paths:
         The raw image is the request body (JPEG, PNG, GIF or WebP, at most
         8 MB). It is turned upright by its EXIF orientation and scaled down
         whole, keeping its proportions; attach it to a post by its `id`.
-        A photo that no post publishes within a day is deleted, and
-        deleting the post deletes its photos.
+        A photo goes to one post, comment, message or album, the first
+        that takes it: attached anywhere else, it is `photo not found`
+        (400), as a photo of another user is. A post that was refused
+        gives its photos back. A photo that no post publishes within a
+        day is deleted, and deleting the post deletes its photos.
       security: [{ bearer: [] }]
       requestBody:
         required: true

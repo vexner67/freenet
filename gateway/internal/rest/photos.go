@@ -1,11 +1,16 @@
 package rest
 
 import (
+	"context"
 	"net/http"
 	"net/url"
+	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/failure"
 )
+
+// releaseTimeout bounds giving claimed photos back after the request.
+const releaseTimeout = 5 * time.Second
 
 // photoJSON is a photo of a post with the URLs of both sizes. The photo ID
 // in the path makes the URLs unique, so they are cached forever.
@@ -64,30 +69,68 @@ func (a *api) uploadPhoto(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusCreated, toPhotoJSON(me.ID, photoID))
 }
 
-// checkOwnPhotos makes sure a post shows only photos its author uploaded:
-// the post service stores IDs and cannot tell whose photos they are.
-func (a *api) checkOwnPhotos(r *http.Request, token string, photoIDs []string) error {
+// claimPhotos takes the caller's uploads for the post, comment or message
+// that is about to show them: the services that keep those store IDs and
+// cannot tell whose photos they are, nor whether another post shows them
+// already. A photo belongs to one post, which deletes the file when it is
+// deleted itself, so a photo that is not the caller's upload, or that
+// something has taken, refuses them all.
+func (a *api) claimPhotos(r *http.Request, token string, photoIDs []string) error {
 	if len(photoIDs) == 0 {
 		return nil
 	}
 
-	own, err := a.media.OwnPhotos(r.Context(), token, photoIDs)
+	claimed, err := a.media.ClaimPhotos(r.Context(), token, photoIDs)
 	if err != nil {
 		return err
 	}
 
-	owned := make(map[string]bool, len(own))
-	for _, id := range own {
-		owned[id] = true
-	}
-
-	for _, id := range photoIDs {
-		if !owned[id] {
-			return failure.New(failure.InvalidArgument, "photo not found")
-		}
+	if !claimed {
+		return failure.New(failure.InvalidArgument, "photo not found")
 	}
 
 	return nil
+}
+
+// releasePhotos gives claimed photos back when what they were claimed for
+// was refused, so that the next attempt finds them. Only a refusal: after
+// a failure that does not say whether the post was written, the photos
+// stay claimed. A release that fails leaves them so too, until media
+// takes the uploads away.
+func (a *api) releasePhotos(r *http.Request, token string, photoIDs []string, refused error) {
+	if len(photoIDs) == 0 {
+		return
+	}
+
+	switch failure.From(refused).Kind {
+	case failure.InvalidArgument, failure.PermissionDenied, failure.NotFound, failure.Conflict, failure.TooManyRequests:
+	default:
+		return
+	}
+
+	// The client may be gone already; the photos go back all the same.
+	ctx, cancel := context.WithTimeout(context.WithoutCancel(r.Context()), releaseTimeout)
+	defer cancel()
+
+	if err := a.media.ReleasePhotos(ctx, token, photoIDs); err != nil {
+		a.logger.WarnContext(ctx, "claimed photos not released", "error", err)
+	}
+}
+
+// uploadClaimed uploads a photo the gateway itself puts somewhere (a post
+// about a new avatar, an album, a backdrop), taken at once: once its ID
+// is shown, the caller cannot attach it to a post of theirs as well.
+func (a *api) uploadClaimed(r *http.Request, token string, image []byte) (string, error) {
+	photoID, err := a.media.UploadPhoto(r.Context(), token, image)
+	if err != nil {
+		return "", err
+	}
+
+	if err = a.claimPhotos(r, token, []string{photoID}); err != nil {
+		return "", err
+	}
+
+	return photoID, nil
 }
 
 // servePhoto is the image behind a photo URL.

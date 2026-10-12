@@ -78,23 +78,30 @@ func (s *PhotoStore) Load(_ context.Context, ownerID, photoID uuid.UUID, size ph
 	return nil, photo.ErrNotFound
 }
 
-func (s *PhotoStore) Existing(_ context.Context, ownerID uuid.UUID, photoIDs []uuid.UUID) ([]uuid.UUID, error) {
-	var found []uuid.UUID
+// claimFile marks an upload as claimed. It is created exclusively, so of
+// two claims one wins, and travels with the directory of the photo.
+const claimFile = "claimed"
 
-	for _, id := range photoIDs {
-		for _, dir := range s.dirs(ownerID, id) {
-			ok, err := exists(dir)
-			if err != nil {
-				return nil, err
-			}
-			if ok {
-				found = append(found, id)
-				break
-			}
-		}
+func (s *PhotoStore) Claim(_ context.Context, ownerID, photoID uuid.UUID) (bool, error) {
+	f, err := os.OpenFile(filepath.Join(s.dirs(ownerID, photoID)[1], claimFile), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o640)
+	// No upload: no such photo, or it is published. There: claimed.
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, errs.Wrap("os.OpenFile", err)
 	}
 
-	return found, nil
+	return true, errs.Wrap("f.Close", f.Close())
+}
+
+func (s *PhotoStore) Release(_ context.Context, ownerID, photoID uuid.UUID) error {
+	err := os.Remove(filepath.Join(s.dirs(ownerID, photoID)[1], claimFile))
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return errs.Wrap("os.Remove", err)
+	}
+
+	return nil
 }
 
 func exists(path string) (bool, error) {

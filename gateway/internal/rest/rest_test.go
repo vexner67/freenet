@@ -924,7 +924,11 @@ type fakeMedia struct {
 	keptPhotos []string
 	// published and unpublished are the photos kept for good and deleted.
 	published, unpublished []string
-	err                    error
+	// taken are uploads something shows already; claimed and released
+	// are the photos of each claim and release, "id,id".
+	taken             []string
+	claimed, released []string
+	err               error
 }
 
 func (f *fakeMedia) PublishPhotos(_ context.Context, ownerID string, photoIDs []string) error {
@@ -962,14 +966,24 @@ func (f *fakeMedia) UploadPhoto(_ context.Context, _ string, image []byte) (stri
 	return "ph9", f.err
 }
 
-func (f *fakeMedia) OwnPhotos(_ context.Context, _ string, photoIDs []string) ([]string, error) {
-	var own []string
+// ClaimPhotos: the caller has uploaded ph1, ph2 and what UploadPhoto
+// returned, ph9 once it did.
+func (f *fakeMedia) ClaimPhotos(_ context.Context, _ string, photoIDs []string) (bool, error) {
 	for _, id := range photoIDs {
-		if id == "ph1" || id == "ph2" {
-			own = append(own, id)
+		own := id == "ph1" || id == "ph2" || (id == "ph9" && f.uploaded != nil)
+		if !own || slices.Contains(f.taken, id) {
+			return false, f.err
 		}
 	}
-	return own, f.err
+
+	f.claimed = append(f.claimed, strings.Join(photoIDs, ","))
+
+	return true, f.err
+}
+
+func (f *fakeMedia) ReleasePhotos(_ context.Context, _ string, photoIDs []string) error {
+	f.released = append(f.released, strings.Join(photoIDs, ","))
+	return nil
 }
 
 func (f *fakeMedia) Photo(_ context.Context, userID, photoID string, small bool) ([]byte, error) {
@@ -1200,6 +1214,16 @@ func (f *fakeMessages) Hide(_ context.Context, token, id string) error {
 func (f *fakeMessages) DeleteMany(_ context.Context, token string, ids []string, forEveryone bool) error {
 	f.token, f.deletedMany = token, fmt.Sprintf("%s %t", strings.Join(ids, ","), forEveryone)
 	return f.err
+}
+
+// Message: m1 shows ph1 and a photo sent long ago.
+func (f *fakeMessages) Message(_ context.Context, token, id string) (model.Message, error) {
+	f.token = token
+	if id != "m1" {
+		return model.Message{}, failure.New(failure.NotFound, "message not found")
+	}
+
+	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Text: "привет", PhotoIDs: []string{"ph1", "sent"}}, nil
 }
 
 func (f *fakeMessages) Edit(_ context.Context, token, id string, e model.MessageEdit) (model.Message, error) {

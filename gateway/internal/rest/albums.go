@@ -431,13 +431,14 @@ func (a *api) addAlbumPhotos(w http.ResponseWriter, r *http.Request) {
 		photos = append(photos, model.NewAlbumPhoto{PhotoID: p.ID, Description: p.Description})
 	}
 
-	if err = a.checkOwnPhotos(r, token, ids); err != nil {
+	if err = a.claimPhotos(r, token, ids); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
 	added, err := a.albums.AddPhotos(r.Context(), token, r.PathValue("id"), photos)
 	if err != nil {
+		a.releasePhotos(r, token, ids, err)
 		a.writeError(w, r, err)
 		return
 	}

@@ -70,8 +70,24 @@ func TestPhotoService_PublishedLate(t *testing.T) {
 	if n, err := photos.DeleteUnpublished(ctx); err != nil || n != 2 {
 		t.Fatalf("DeleteUnpublished = %d, %v; want the two older than an hour", n, err)
 	}
-	if own, err := photos.Existing(ctx, ann, []uuid.UUID{posted, forgotten, fresh}); err != nil || len(own) != 1 || own[0] != fresh {
-		t.Fatalf("Existing = %v, %v; want the fresh upload alone", own, err)
+	if ok, err := photos.Claim(ctx, ann, []uuid.UUID{fresh, posted}); err != nil || ok {
+		t.Fatalf("Claim with a photo set aside = %v, %v", ok, err)
+	}
+	// None was taken: the fresh upload is still there to post.
+	if ok, err := photos.Claim(ctx, ann, []uuid.UUID{fresh}); err != nil || !ok {
+		t.Fatalf("Claim of the fresh upload = %v, %v", ok, err)
+	}
+	if ok, err := photos.Claim(ctx, ann, []uuid.UUID{fresh}); err != nil || ok {
+		t.Fatalf("Claim of a claimed photo = %v, %v", ok, err)
+	}
+	if err := photos.Release(ctx, ann, []uuid.UUID{fresh}); err != nil {
+		t.Fatalf("Release: %v", err)
+	}
+	if ok, err := photos.Claim(ctx, ann, []uuid.UUID{fresh, fresh}); err != nil || ok {
+		t.Fatalf("Claim of one photo twice = %v, %v", ok, err)
+	}
+	if ok, err := photos.Claim(ctx, ann, make([]uuid.UUID, service.MaxPhotoIDs+1)); !errors.Is(err, service.ErrTooManyPhotoIDs) || ok {
+		t.Fatalf("Claim of too many = %v, %v", ok, err)
 	}
 	if _, err := photos.Get(ctx, ann, posted, photo.Small); !errors.Is(err, photo.ErrNotFound) {
 		t.Fatalf("a photo set aside is shown: %v", err)
