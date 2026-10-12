@@ -13,7 +13,7 @@ import { initAttachments } from './attach.js';
 import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
 import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText } from './labels.js';
-import { $, avatarURL, el, fullName, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
+import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode } from './posts.js';
 
@@ -88,7 +88,7 @@ function messageNode(m) {
 // больше", which first loads it whole when the chat carried its beginning.
 function textOf(node) {
   const m = node.message;
-  const body = el('div', { className: 'im-message-text', textContent: m.text });
+  const body = el('div', { className: 'im-message-text' }, ...mentionNodes(m.text));
   if (node.opened || !(m.textCut || isLongText(m.text))) return body;
 
   body.classList.add('collapsed');

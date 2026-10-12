@@ -326,6 +326,14 @@ test('isLongText is openvk\'s bigText', () => {
   assert.equal(isLongText(Array(11).fill('строка').join('\n')), true);
 });
 
+test('a preview of a message reads whom it names by name', () => {
+  assert.equal(messagePreview({ text: '[ann|Анна], привет' }), 'Анна, привет');
+  assert.equal(messagePreview({ text: 'спроси @ann' }), 'спроси @ann');
+  assert.equal(chatPreview({ action: '', text: '[ann|Анна], иду', author: { name: 'Пётр' }, out: false }), 'Пётр: Анна, иду');
+  assert.deepEqual(foundText({ text: '[ann|Анна], привет' }, 'прив'), { text: 'Анна, привет', forwarded: false });
+  assert.deepEqual(foundText({ text: '', forwarded: [{ text: 'да, [ann|Анна]' }], forwardedCount: 1 }, 'анна'), { text: 'да, Анна', forwarded: true });
+});
+
 test('a message without words is named by what it shows', () => {
   assert.equal(messagePreview({ text: 'привет', photos: [{}] }), 'привет');
   assert.equal(messagePreview({ text: '', photos: [{}] }), 'Фотография');
