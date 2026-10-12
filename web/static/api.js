@@ -81,11 +81,16 @@ async function refresh(expiredAccessToken) {
     }
   };
 
-  if (navigator.locks) {
-    await navigator.locks.request('freenet-refresh', run);
-  } else {
-    await run();
-  }
+  await exclusive(run);
+}
+
+// exclusive runs what reads and replaces the tokens of the session while
+// no other tab does: a refresh, or a switch to another account
+// (accounts.js).
+export async function exclusive(run) {
+  if (typeof navigator !== 'undefined' && navigator.locks) return navigator.locks.request('freenet-refresh', run);
+
+  return run();
 }
 
 // renewSession replaces an access token that expired, for the event

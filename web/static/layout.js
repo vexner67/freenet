@@ -1,6 +1,7 @@
 // Shared page chrome: header links, the sidebar menu and small DOM helpers.
 // User data is only ever set with textContent, never as HTML.
 
+import { accountName, canPark, onAccountsChange, park, parkedAccounts, switchTo } from './accounts.js';
 import { api } from './api.js';
 import { connectEvents, onEvent } from './events.js';
 import { errorText, foundParts, isLongText, mentionParts, setTimezone, unreadCountText } from './labels.js';
@@ -128,6 +129,49 @@ async function logout(event) {
   forgetLook();
   location.href = '/';
 }
+
+// switchAccount signs in as an account set aside in this browser, without
+// signing out: the account of me waits in its place. The page of signing
+// in leads whoever is signed in home.
+export async function switchAccount(id, me = null) {
+  if (!await switchTo(id, me)) return;
+
+  forgetLook();
+  location.href = '/';
+}
+
+// addAccount sets the account of me aside and opens the page of signing
+// in, for another one ("Добавить аккаунт").
+async function addAccount(me) {
+  await park(me);
+  forgetLook();
+  location.href = '/';
+}
+
+// accountLinks are the accounts that wait, each a link that switches to
+// it.
+export function accountLinks(me = null) {
+  return parkedAccounts().map((a) => el('a', {
+    textContent: shortened(accountName(a), ACCOUNT_NAME_LENGTH),
+    title: `Войти как ${accountName(a)}`,
+    onclick: () => switchAccount(a.id, me),
+  }));
+}
+
+// drawAccounts adds them under the menu, after a divider, with "Добавить
+// аккаунт" while there is room for one more.
+function drawAccounts(menu, me) {
+  if (!menu) return;
+
+  menu.append(el('div', { className: 'menu-accounts' },
+    el('div', { className: 'menu-divider' }),
+    ...accountLinks(me),
+    canPark() && el('a', { textContent: 'Добавить аккаунт', onclick: () => addAccount(me) }),
+  ));
+}
+
+// Another tab switched accounts: this page is not its account's anymore.
+if (typeof window !== 'undefined') onAccountsChange(() => location.reload());
 
 // The look of the site is kept in the browser too, so that a page wears
 // it before the server has said whose it is; THEME_KEY is a theme chosen
@@ -266,6 +310,7 @@ export function applyInterface(me) {
   ].filter(Boolean));
   showCounter('messages');
   showCounter('notifications');
+  drawAccounts(menu, me);
 
   // /me tells the clubs kept in the menu; an answer that is not /me's
   // (saved settings) leaves those the page already knows.
@@ -340,10 +385,15 @@ function drawPinnedClubs(menu) {
   menu.querySelector('.menu-clubs')?.remove();
   if (pinnedClubs.length === 0) return;
 
-  menu.append(el('div', { className: 'menu-clubs' },
+  const clubs = el('div', { className: 'menu-clubs' },
     el('div', { className: 'menu-divider' }),
     ...pinnedClubs.map((c) => el('a', { href: pagePath({ ...c, club: true }), textContent: shortened(c.name, PINNED_NAME_LENGTH) })),
-  ));
+  );
+  // The accounts of the browser stay last.
+  const accounts = menu.querySelector('.menu-accounts');
+
+  if (accounts) accounts.before(clubs);
+  else menu.append(clubs);
 }
 
 // showPinnedClubs asks for them again, after one is added or removed. A
@@ -359,6 +409,8 @@ export async function showPinnedClubs(menu) {
 
 // openvk cuts the names of pinned clubs to fit the menu.
 const PINNED_NAME_LENGTH = 14;
+// The names of the accounts that wait are cut the same way.
+const ACCOUNT_NAME_LENGTH = 18;
 
 function shortened(s, n) {
   return s.length > n ? s.slice(0, n) + '…' : s;
