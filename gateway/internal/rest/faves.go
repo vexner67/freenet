@@ -81,7 +81,7 @@ func (a *api) listFaveComments(w http.ResponseWriter, r *http.Request) {
 	}
 
 	// The posts tell the walls: a comment for a community shows it.
-	found, err := a.posts.GetMany(r.Context(), unique(postIDs))
+	found, err := a.posts.GetMany(r.Context(), token, unique(postIDs))
 	if err != nil {
 		a.writeError(w, r, err)
 		return

@@ -152,7 +152,7 @@ func (a *api) listTopics(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := a.club(r, token)
+	c, err := a.openClub(r, token)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -289,6 +289,11 @@ func (a *api) topicAndClub(r *http.Request, token string) (model.Topic, model.Cl
 	c, err := a.clubs.Get(r.Context(), token, t.ClubID)
 	if err != nil {
 		return model.Topic{}, model.ClubView{}, err
+	}
+
+	// The discussions of a closed community are for its members.
+	if !c.Admits() {
+		return model.Topic{}, model.ClubView{}, failure.New(failure.NotFound, "topic not found")
 	}
 
 	return t, c, nil

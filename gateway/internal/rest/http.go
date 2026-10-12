@@ -106,6 +106,18 @@ func optionalBearerToken(r *http.Request) (string, error) {
 	return bearerToken(r)
 }
 
+// viewerToken is the access token of the request, "" without one or with
+// a malformed one: for what is read on the way, where the handler has
+// checked the token already.
+func viewerToken(r *http.Request) string {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		return ""
+	}
+
+	return token
+}
+
 // pageLimit reads ?limit=; 0 means the service default.
 func pageLimit(r *http.Request) (int, error) {
 	s := r.URL.Query().Get("limit")

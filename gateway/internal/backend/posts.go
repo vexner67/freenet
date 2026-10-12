@@ -248,10 +248,11 @@ func (p *Posts) Reposts(ctx context.Context, accessToken, postID, cursor string,
 	return model.PostPage{Posts: toPosts(resp.GetPosts()), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
 }
 
-// GetMany returns the posts that exist, in no order, with the beginnings
-// of their texts: they are shown inside something else.
-func (p *Posts) GetMany(ctx context.Context, ids []string) ([]model.Post, error) {
-	resp, err := p.api.GetPosts(ctx, &postv1.GetPostsRequest{Ids: ids, TextLimit: model.ExcerptLength})
+// GetMany returns the posts that exist and that the caller, anonymous
+// without token, may see, in no order, with the beginnings of their
+// texts: they are shown inside something else.
+func (p *Posts) GetMany(ctx context.Context, accessToken string, ids []string) ([]model.Post, error) {
+	resp, err := p.api.GetPosts(withToken(ctx, accessToken), &postv1.GetPostsRequest{Ids: ids, TextLimit: model.ExcerptLength})
 	if err != nil {
 		return nil, errs.Wrap("p.api.GetPosts", fromStatus(err))
 	}

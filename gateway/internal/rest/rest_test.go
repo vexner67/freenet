@@ -102,7 +102,9 @@ type fakeUsers struct {
 	// is whose page the gateway asked about, profileToken the token
 	// GetProfile got.
 	hiddenPage, hiddenInfo, hiddenPhotos, hiddenFriends, hiddenClubs, hiddenNotes bool
-	accessAsked, profileToken                                                     string
+	// closedPage: the hidden page is a closed one ("Закрытая страница").
+	closedPage                bool
+	accessAsked, profileToken string
 	// Messages: closed unless the peer wrote first; wroteFirst is what the
 	// gateway passed on.
 	closedMessages, wroteFirst bool
@@ -181,7 +183,7 @@ func (f *fakeUsers) GetProfile(_ context.Context, token, nickname string) (model
 	f.profileToken = token
 	p, err := f.profileOf(nickname)
 	if err == nil && f.hiddenPage {
-		return model.PublicProfile{ID: p.ID, Profile: model.Profile{Name: p.Profile.Name, Nickname: p.Profile.Nickname}, PageHidden: true}, nil
+		return model.PublicProfile{ID: p.ID, Profile: model.Profile{Name: p.Profile.Name, Nickname: p.Profile.Nickname}, PageHidden: true, Closed: f.closedPage}, nil
 	}
 	if err == nil && f.hiddenInfo {
 		p.InfoHidden, p.About = true, model.About{}
@@ -465,6 +467,8 @@ func (f *fakeUsers) markedOnline() []string {
 }
 
 type fakePosts struct {
+	// manyToken is the token of the last GetMany.
+	manyToken string
 	lastAsked []string
 	feedMore  []model.Post
 	hideNSFW  bool
@@ -699,7 +703,8 @@ func (f *fakePosts) Count(context.Context) (int, error) {
 	return 40, f.err
 }
 
-func (f *fakePosts) GetMany(_ context.Context, ids []string) ([]model.Post, error) {
+func (f *fakePosts) GetMany(_ context.Context, token string, ids []string) ([]model.Post, error) {
+	f.manyToken = token
 	var found []model.Post
 	for _, id := range ids {
 		if id == "p1" {

@@ -182,7 +182,7 @@ func (a *api) listClubAlbums(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := a.club(r, token)
+	c, err := a.openClub(r, token)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -280,6 +280,11 @@ func (a *api) albumOwner(r *http.Request, token, ownerID string) (albumOwnerJSON
 	c, err := a.clubs.Get(r.Context(), token, ownerID)
 	if err != nil {
 		return albumOwnerJSON{}, err
+	}
+
+	// The albums of a closed community are for its members.
+	if !c.Admits() {
+		return albumOwnerJSON{}, failure.New(failure.NotFound, "album not found")
 	}
 
 	return albumOwnerJSON{Owner: toAuthorJSON(owner), Role: c.Role}, nil

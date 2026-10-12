@@ -36,6 +36,8 @@ type clubSettingsRequest struct {
 	// listed above the wall ("Отображать список тем над стеной").
 	OpenTopics      bool `json:"openTopics"`
 	TopicsAboveWall bool `json:"topicsAboveWall"`
+	// Closed is "Тип группы: закрытая"; an event is never closed.
+	Closed bool `json:"closed"`
 	// The schedule of an event, RFC 3339; a group sends neither.
 	StartsAt string `json:"startsAt"`
 	EndsAt   string `json:"endsAt"`
@@ -77,6 +79,9 @@ type clubJSON struct {
 	StartsAt *string `json:"startsAt"`
 	EndsAt   *string `json:"endsAt"`
 	Maybes   int     `json:"maybes"`
+	// Closed: one joins by a request its admins accept, and only the
+	// members see what is in the club.
+	Closed bool `json:"closed"`
 }
 
 // backdropJSON is the photos on the left and on the right of a club's
@@ -102,6 +107,18 @@ type clubResponse struct {
 	// IgnoredByMe: the viewer's news leave this wall out; told only by
 	// the page of the club.
 	IgnoredByMe bool `json:"ignoredByMe,omitempty"`
+	// Requested: the viewer asked to join the closed club and waits;
+	// Requests: how many do, told to those who run it.
+	Requested bool `json:"requested"`
+	Requests  int  `json:"requests"`
+}
+
+// joinRequestsResponse are those who ask to join a club, the newest
+// first; Total counts them on all pages, those whose page is deleted too.
+type joinRequestsResponse struct {
+	People     []authorJSON `json:"people"`
+	NextCursor string       `json:"nextCursor"`
+	Total      int          `json:"total"`
 }
 
 // clubMemberJSON: title is what an admin does in the club; hidden: the
@@ -183,6 +200,7 @@ func toClubJSON(c model.Club) clubJSON {
 		StartsAt: optionalTimeJSON(c.StartsAt),
 		EndsAt:   optionalTimeJSON(c.EndsAt),
 		Maybes:   c.Maybes,
+		Closed:   c.Closed,
 	}
 }
 
@@ -256,7 +274,10 @@ func toClubsJSON(clubs []model.Club) []clubJSON {
 // clubResponseOf adds the owner's profile to a club, looked up unless the
 // caller knows it (owner, "" for none).
 func (a *api) clubResponseOf(r *http.Request, v model.ClubView) (clubResponse, error) {
-	resp := clubResponse{clubJSON: toClubJSON(v.Club), Role: v.Role, Maybe: v.Maybe, CanStartTopic: v.CanStartTopic}
+	resp := clubResponse{
+		clubJSON: toClubJSON(v.Club), Role: v.Role, Maybe: v.Maybe, CanStartTopic: v.CanStartTopic,
+		Requested: v.Requested, Requests: v.Requests,
+	}
 
 	if v.OwnerID == "" {
 		return resp, nil
@@ -364,6 +385,102 @@ func (a *api) club(r *http.Request, token string) (model.ClubView, error) {
 	return a.clubs.Get(r.Context(), token, r.PathValue("ref"))
 }
 
+// openClub is the club of the path, refused unless the caller, anonymous
+// without token, sees what is in it: a closed club ("Закрытая группа")
+// shows its wall, members, discussions and albums to its members only.
+func (a *api) openClub(r *http.Request, token string) (model.ClubView, error) {
+	c, err := a.club(r, token)
+	if err != nil {
+		return model.ClubView{}, err
+	}
+
+	if !c.Admits() {
+		return model.ClubView{}, failure.New(failure.PermissionDenied, "this club is closed")
+	}
+
+	return c, nil
+}
+
+// listJoinRequests is "Заявки" of a closed club: who asks to join it, for
+// those who run it.
+func (a *api) listJoinRequests(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	limit, err := pageLimit(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.club(r, token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	page, err := a.clubs.JoinRequests(r.Context(), token, c.Club.ID, r.URL.Query().Get("cursor"), limit)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	people, err := a.authors(r, page.UserIDs)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	resp := joinRequestsResponse{People: make([]authorJSON, 0, len(page.UserIDs)), NextCursor: page.NextCursor, Total: page.Total}
+	for _, id := range page.UserIDs {
+		if p, ok := people[id]; ok && !p.Club {
+			resp.People = append(resp.People, toAuthorJSON(p))
+		}
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// acceptJoinRequest and rejectJoinRequest are "Принять заявку" and
+// "Отклонить заявку" of those who run a closed club.
+func (a *api) acceptJoinRequest(w http.ResponseWriter, r *http.Request) {
+	a.decideJoinRequest(w, r, true)
+}
+
+func (a *api) rejectJoinRequest(w http.ResponseWriter, r *http.Request) {
+	a.decideJoinRequest(w, r, false)
+}
+
+func (a *api) decideJoinRequest(w http.ResponseWriter, r *http.Request, accept bool) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	c, err := a.club(r, token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	user, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.clubs.Decide(r.Context(), token, c.Club.ID, user.ID, accept); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
 // updateClub saves the settings form of a club; the club service lets
 // only its admins.
 // createEvent is "Создать встречу" of openvk: a club with the time it
@@ -432,7 +549,7 @@ func (a *api) updateClub(w http.ResponseWriter, r *http.Request) {
 		Name: req.Name, Description: req.Description, Address: req.Address, Website: req.Website,
 		Wall: req.Wall, AdminsDisplay: req.AdminsDisplay,
 		OpenTopics: req.OpenTopics, TopicsAboveWall: req.TopicsAboveWall,
-		StartsAt: start, EndsAt: end,
+		StartsAt: start, EndsAt: end, Closed: req.Closed,
 	})
 	if err != nil {
 		a.writeError(w, r, err)
@@ -506,7 +623,7 @@ func (a *api) listClubMembers(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := a.club(r, token)
+	c, err := a.openClub(r, token)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -961,7 +1078,7 @@ func (a *api) listClubPosts(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c, err := a.club(r, token)
+	c, err := a.openClub(r, token)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

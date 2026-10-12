@@ -191,6 +191,8 @@ type privacyJSON struct {
 	NotesRead          string `json:"notesRead"`
 	// ChatsInvite: who may add the user to chats; "" leaves the default.
 	ChatsInvite string `json:"chatsInvite"`
+	// Closed is "Тип профиля: закрытый".
+	Closed bool `json:"closed"`
 }
 
 func (p privacyJSON) toModel() model.Privacy {
@@ -209,6 +211,7 @@ func (p privacyJSON) toModel() model.Privacy {
 		OnlineRead:         p.OnlineRead,
 		NotesRead:          p.NotesRead,
 		ChatsInvite:        p.ChatsInvite,
+		Closed:             p.Closed,
 	}
 }
 
@@ -301,6 +304,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			OnlineRead:         u.Privacy.OnlineRead,
 			NotesRead:          u.Privacy.NotesRead,
 			ChatsInvite:        u.Privacy.ChatsInvite,
+			Closed:             u.Privacy.Closed,
 		},
 		Deactivated: u.Deactivated,
 		PurgeAt:     timeString(u.PurgeAt),
@@ -342,6 +346,9 @@ type publicProfileResponse struct {
 	// told; InfoHidden: they hide its information, left empty.
 	PageHidden bool `json:"pageHidden"`
 	InfoHidden bool `json:"infoHidden"`
+	// Closed: the page is a closed one ("Закрытая страница"): with
+	// pageHidden, the viewer is not one of those its owner follows.
+	Closed bool `json:"closed"`
 	// LastSeenAt is when the user last visited ("был в сети"), null if
 	// never, hidden or in a list; Online: just now ("Онлайн"), which a
 	// list tells too if the page is open to everyone.
@@ -370,6 +377,7 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 		profileJSON: profile,
 		Deactivated: p.Deactivated,
 		PageHidden:  p.PageHidden,
+		Closed:      p.Closed,
 		InfoHidden:  p.InfoHidden,
 		LastSeenAt:  optionalTime(p.LastSeen),
 		Online:      p.Online,

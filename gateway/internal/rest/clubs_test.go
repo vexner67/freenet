@@ -37,6 +37,27 @@ type fakeClubs struct {
 	clubsOf             string
 	rolesAsked          []string
 	err                 error
+	// closed: the club is a closed one; requests are who asks to join it,
+	// decided what its admins answered them.
+	closed    bool
+	requested bool
+	requests  []string
+	decided   []string
+}
+
+func (f *fakeClubs) JoinRequests(_ context.Context, token, clubID, cursor string, limit int) (model.JoinRequestPage, error) {
+	f.token = token
+	return model.JoinRequestPage{UserIDs: f.requests, NextCursor: "r1", Total: len(f.requests)}, f.err
+}
+
+func (f *fakeClubs) Decide(_ context.Context, token, clubID, userID string, accept bool) error {
+	f.token = token
+	if accept {
+		f.decided = append(f.decided, "+"+userID)
+	} else {
+		f.decided = append(f.decided, "-"+userID)
+	}
+	return f.err
 }
 
 var cats = model.Club{ID: "k1", Name: "Кошки", Address: "cats", Wall: "open", Members: 2, CreatedAt: time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC)}
@@ -51,7 +72,11 @@ func (f *fakeClubs) view() model.ClubView {
 	if f.suggestWall {
 		c.Wall = "suggest"
 	}
-	return model.ClubView{Club: c, Role: f.role, OwnerID: "u1", CanStartTopic: f.openTopics || f.role == "admin" || f.role == "owner"}
+	c.Closed = f.closed
+	return model.ClubView{
+		Club: c, Role: f.role, OwnerID: "u1", CanStartTopic: f.openTopics || f.role == "admin" || f.role == "owner",
+		Requested: f.requested, Requests: len(f.requests),
+	}
 }
 
 func (f *fakeClubs) Create(_ context.Context, token, name, description string) (model.ClubView, error) {
@@ -95,6 +120,10 @@ func (f *fakeClubs) Update(_ context.Context, token, clubID string, changes mode
 
 func (f *fakeClubs) Join(_ context.Context, token, clubID string, maybe bool) (model.ClubView, error) {
 	f.token, f.joined = token, clubID
+	if f.closed && f.role == "" {
+		f.requested = true
+		return f.view(), f.err
+	}
 	v := f.view()
 	v.Role, v.Maybe = "member", maybe
 	return v, f.err
