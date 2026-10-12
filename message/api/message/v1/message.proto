@@ -32,6 +32,9 @@ service MessageService {
   // none of them: for everyone, as DeleteMessage does, or for themselves,
   // as HideMessage does.
   rpc DeleteMessages(DeleteMessagesRequest) returns (google.protobuf.Empty);
+  // A message the caller has in their dialogs, whole; NotFound for one
+  // of another dialog or deleted for the caller.
+  rpc GetMessage(GetMessageRequest) returns (GetMessageResponse);
   // The caller changes what their message says and, with replace_photos,
   // the photos it shows, within a day of sending (editable_until); the
   // post it shares and the messages it carries on stay.
@@ -234,6 +237,14 @@ message DeleteMessageRequest {
 
 message HideMessageRequest {
   string id = 1;
+}
+
+message GetMessageRequest {
+  string id = 1;
+}
+
+message GetMessageResponse {
+  Message message = 1;
 }
 
 message EditMessageRequest {

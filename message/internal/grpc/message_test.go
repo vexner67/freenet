@@ -485,6 +485,28 @@ func TestEditHideSearch(t *testing.T) {
 		}
 	}
 
+	// Both sides read it by its ID, a stranger does not.
+	for _, side := range []uuid.UUID{ann, bob} {
+		got, err := s.client.GetMessage(s.as(t, side), &messagev1.GetMessageRequest{Id: id})
+		if err != nil || got.GetMessage().GetText() != "Еду на море!" || got.GetMessage().GetSenderId() != ann.String() {
+			t.Fatalf("GetMessage = %v, %v", got, err)
+		}
+	}
+	for name, tt := range map[string]struct {
+		ctx  context.Context
+		id   string
+		code codes.Code
+	}{
+		"without a token": {context.Background(), id, codes.Unauthenticated},
+		"a stranger":      {s.as(t, uuid.New()), id, codes.NotFound},
+		"a bad id":        {s.as(t, ann), "x", codes.InvalidArgument},
+		"no message":      {s.as(t, ann), uuid.NewString(), codes.NotFound},
+	} {
+		if _, err = s.client.GetMessage(tt.ctx, &messagev1.GetMessageRequest{Id: tt.id}); status.Code(err) != tt.code {
+			t.Errorf("GetMessage, %s: %v, want %v", name, err, tt.code)
+		}
+	}
+
 	// Search: in the dialog and in all of them.
 	for _, peer := range []string{"", ann.String()} {
 		found, err := s.client.SearchMessages(s.as(t, bob), &messagev1.SearchMessagesRequest{PeerId: peer, Query: "МОРЕ"})

@@ -488,6 +488,21 @@ func (s *MessageService) dropPhotos(ctx context.Context, m *message.Message, exc
 // caller has made sure new photos are the sender's; media keeps them and
 // deletes those the edit took away. Both sides that still have the
 // message hear of it.
+// Message is a message the user has in their dialogs: one they sent or
+// were sent, and did not delete for themselves.
+func (s *MessageService) Message(ctx context.Context, userID, id uuid.UUID) (*message.Message, error) {
+	m, err := s.messageRepo.Get(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.messageRepo.Get", err)
+	}
+
+	if !m.VisibleTo(userID) {
+		return nil, message.ErrNotFound
+	}
+
+	return m, nil
+}
+
 func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, rev message.Revision) (*message.Message, error) {
 	m, err := s.messageRepo.Get(ctx, id)
 	if err != nil {
