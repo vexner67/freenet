@@ -129,6 +129,33 @@ func (d *Deliverer) Deliver(ctx context.Context, m outbox.Message) error {
 	}
 }
 
+// Key is the outbox.Key of the stream: what a message is about. Events
+// and the forgetting of a post are about that post (or the topic, photo
+// or note in its place), so those about different posts go at the same
+// time and a like never overtakes its taking back. The forgetting of a
+// comment does not say its post and waits for everything before it.
+func Key(m outbox.Message) string {
+	switch m.Kind {
+	case kindNotify:
+		var req notificationv1.NotifyRequest
+		if proto.Unmarshal(m.Payload, &req) == nil {
+			return req.GetEvent().GetPostId()
+		}
+	case kindRetract:
+		var req notificationv1.RetractRequest
+		if proto.Unmarshal(m.Payload, &req) == nil {
+			return req.GetEvent().GetPostId()
+		}
+	case kindForgetPost:
+		var req notificationv1.ForgetPostRequest
+		if proto.Unmarshal(m.Payload, &req) == nil {
+			return req.GetPostId()
+		}
+	}
+
+	return ""
+}
+
 type rpc[Req proto.Message] func(ctx context.Context, req Req, opts ...grpc.CallOption) (*emptypb.Empty, error)
 
 // call decodes req from payload and makes the call. Errors that a retry

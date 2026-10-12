@@ -281,9 +281,11 @@ func (a *App) newNotifier(cfg config.Config, newQueue func(stream string) outbox
 		return notifyclient.Nop{}, nil
 	}
 
+	// Most of what post tells is about one post: the likes of different
+	// posts do not wait for each other.
 	q, err := a.stream(cfg, notifyclient.Stream, cfg.NotificationServiceAddr, newQueue, reg, func(conn *grpc.ClientConn) outbox.Deliver {
 		return notifyclient.NewDeliverer(notificationv1.NewNotificationServiceClient(conn), cfg.NotifyTimeout).Deliver
-	})
+	}, outbox.Keyed(notifyclient.Key))
 	if err != nil {
 		return nil, err
 	}
@@ -336,7 +338,7 @@ func (a *App) newPhotoKeeper(cfg config.Config, newQueue func(stream string) out
 // start in any order; until the service is up, the relay retries.
 func (a *App) stream(
 	cfg config.Config, name, addr string, newQueue func(stream string) outboxQueue,
-	reg prometheus.Registerer, deliver func(*grpc.ClientConn) outbox.Deliver,
+	reg prometheus.Registerer, deliver func(*grpc.ClientConn) outbox.Deliver, opts ...outbox.Option,
 ) (outboxQueue, error) {
 	creds, err := mtls.ClientCredentials(cfg.TLS)
 	if err != nil {
@@ -352,7 +354,7 @@ func (a *App) stream(
 	q := newQueue(name)
 
 	// The streams share the metrics, told apart by a label.
-	relay, err := outbox.NewRelay(q, deliver(conn), prometheus.WrapRegistererWith(prometheus.Labels{"stream": name}, reg), a.logger)
+	relay, err := outbox.NewRelay(q, deliver(conn), prometheus.WrapRegistererWith(prometheus.Labels{"stream": name}, reg), a.logger, opts...)
 	if err != nil {
 		return nil, errs.Wrap("outbox.NewRelay", err)
 	}
