@@ -59,6 +59,8 @@ type FaveDeps struct {
 	Comments     FaveComments
 	Photos       FavePhotos
 	Albums       FaveAlbums
+	// Walls tells the walls closed to a viewer; nil: none is.
+	Walls Walls
 }
 
 // FaveService is openvk's "Закладки": what a person likes — posts,
@@ -104,6 +106,11 @@ func (s *FaveService) Posts(ctx context.Context, userID uuid.UUID, cursor *FaveC
 	posts, err := s.deps.Posts.GetMany(ctx, faveIDs(faves))
 	if err != nil {
 		return FavePostPage{}, errs.Wrap("s.deps.Posts.GetMany", err)
+	}
+
+	// A post on a wall since closed to the reader is counted and not shown.
+	if posts, err = readable(ctx, s.deps.Walls, userID, posts); err != nil {
+		return FavePostPage{}, errs.Wrap("readable", err)
 	}
 
 	return FavePostPage{Posts: inFaveOrder(faves, posts, (*post.Post).ID), Next: next, Total: total}, nil

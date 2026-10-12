@@ -23,7 +23,7 @@ type PostService interface {
 	Pin(ctx context.Context, requesterID, postID uuid.UUID) error
 	Unpin(ctx context.Context, requesterID, postID uuid.UUID) error
 	Get(ctx context.Context, viewerID, postID uuid.UUID) (*post.Post, bool, error)
-	GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error)
+	GetMany(ctx context.Context, viewerID uuid.UUID, ids []uuid.UUID) ([]*post.Post, error)
 	Archive(ctx context.Context, requesterID, postID uuid.UUID) error
 	Unarchive(ctx context.Context, requesterID, postID uuid.UUID) error
 	ArchiveWall(ctx context.Context, requesterID, wallID uuid.UUID, year post.WallYear, archived bool) (int, error)
@@ -120,6 +120,8 @@ type HoldService interface {
 type SourceService interface {
 	Follow(ctx context.Context, readerID, sourceID uuid.UUID, club bool) error
 	Unfollow(ctx context.Context, readerID, sourceID uuid.UUID) error
+	CloseWall(ctx context.Context, wallID uuid.UUID, club bool) error
+	OpenWall(ctx context.Context, wallID uuid.UUID) error
 }
 
 // Services are the use cases behind the handler.
@@ -190,6 +192,32 @@ func (h *PostHandler) UnfollowSource(ctx context.Context, req *postv1.UnfollowSo
 	}
 
 	if err = h.sourceService.Unfollow(ctx, readerID, sourceID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *PostHandler) CloseWall(ctx context.Context, req *postv1.CloseWallRequest) (*emptypb.Empty, error) {
+	wallID, err := uuid.Parse(req.GetWallId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid wall id")
+	}
+
+	if err = h.sourceService.CloseWall(ctx, wallID, req.GetClub()); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *PostHandler) OpenWall(ctx context.Context, req *postv1.OpenWallRequest) (*emptypb.Empty, error) {
+	wallID, err := uuid.Parse(req.GetWallId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid wall id")
+	}
+
+	if err = h.sourceService.OpenWall(ctx, wallID); err != nil {
 		return nil, err
 	}
 
@@ -518,7 +546,7 @@ func (h *PostHandler) GetPosts(ctx context.Context, req *postv1.GetPostsRequest)
 		return nil, err
 	}
 
-	posts, err := h.postService.GetMany(ctx, ids)
+	posts, err := h.postService.GetMany(ctx, viewerID(ctx), ids)
 	if err != nil {
 		return nil, err
 	}

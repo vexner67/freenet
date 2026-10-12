@@ -114,6 +114,8 @@ const (
 	PostService_ReleaseUserReactions_FullMethodName   = "/post.v1.PostService/ReleaseUserReactions"
 	PostService_FollowSource_FullMethodName           = "/post.v1.PostService/FollowSource"
 	PostService_UnfollowSource_FullMethodName         = "/post.v1.PostService/UnfollowSource"
+	PostService_CloseWall_FullMethodName              = "/post.v1.PostService/CloseWall"
+	PostService_OpenWall_FullMethodName               = "/post.v1.PostService/OpenWall"
 )
 
 // PostServiceClient is the client API for PostService service.
@@ -368,6 +370,14 @@ type PostServiceClient interface {
 	// Internal, for user and club: the reader no longer follows the person
 	// or left the community. Idempotent.
 	UnfollowSource(ctx context.Context, in *UnfollowSourceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for user and club: the wall is closed — of a person whose
+	// profile is closed, read by the owner and those the owner follows, or
+	// of a closed community, read by its members. The others do not find
+	// its posts, in the news or by ID. Idempotent.
+	CloseWall(ctx context.Context, in *CloseWallRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for user and club: everyone reads the wall again.
+	// Idempotent.
+	OpenWall(ctx context.Context, in *OpenWallRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type postServiceClient struct {
@@ -1318,6 +1328,26 @@ func (c *postServiceClient) UnfollowSource(ctx context.Context, in *UnfollowSour
 	return out, nil
 }
 
+func (c *postServiceClient) CloseWall(ctx context.Context, in *CloseWallRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_CloseWall_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) OpenWall(ctx context.Context, in *OpenWallRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_OpenWall_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // PostServiceServer is the server API for PostService service.
 // All implementations must embed UnimplementedPostServiceServer
 // for forward compatibility.
@@ -1570,6 +1600,14 @@ type PostServiceServer interface {
 	// Internal, for user and club: the reader no longer follows the person
 	// or left the community. Idempotent.
 	UnfollowSource(context.Context, *UnfollowSourceRequest) (*emptypb.Empty, error)
+	// Internal, for user and club: the wall is closed — of a person whose
+	// profile is closed, read by the owner and those the owner follows, or
+	// of a closed community, read by its members. The others do not find
+	// its posts, in the news or by ID. Idempotent.
+	CloseWall(context.Context, *CloseWallRequest) (*emptypb.Empty, error)
+	// Internal, for user and club: everyone reads the wall again.
+	// Idempotent.
+	OpenWall(context.Context, *OpenWallRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedPostServiceServer()
 }
 
@@ -1861,6 +1899,12 @@ func (UnimplementedPostServiceServer) FollowSource(context.Context, *FollowSourc
 }
 func (UnimplementedPostServiceServer) UnfollowSource(context.Context, *UnfollowSourceRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method UnfollowSource not implemented")
+}
+func (UnimplementedPostServiceServer) CloseWall(context.Context, *CloseWallRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method CloseWall not implemented")
+}
+func (UnimplementedPostServiceServer) OpenWall(context.Context, *OpenWallRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method OpenWall not implemented")
 }
 func (UnimplementedPostServiceServer) mustEmbedUnimplementedPostServiceServer() {}
 func (UnimplementedPostServiceServer) testEmbeddedByValue()                     {}
@@ -3575,6 +3619,42 @@ func _PostService_UnfollowSource_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_CloseWall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CloseWallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CloseWall(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CloseWall_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CloseWall(ctx, req.(*CloseWallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_OpenWall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(OpenWallRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).OpenWall(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_OpenWall_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).OpenWall(ctx, req.(*OpenWallRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // PostService_ServiceDesc is the grpc.ServiceDesc for PostService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -3957,6 +4037,14 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnfollowSource",
 			Handler:    _PostService_UnfollowSource_Handler,
+		},
+		{
+			MethodName: "CloseWall",
+			Handler:    _PostService_CloseWall_Handler,
+		},
+		{
+			MethodName: "OpenWall",
+			Handler:    _PostService_OpenWall_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

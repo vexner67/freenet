@@ -66,6 +66,7 @@ type CommentService struct {
 	notifier    Notifier
 	photos      PhotoKeeper
 	moderators  WallModerators
+	walls       Walls
 	now         func() time.Time
 }
 
@@ -78,6 +79,8 @@ type CommentDeps struct {
 	Notifier   Notifier
 	Photos     PhotoKeeper
 	Moderators WallModerators
+	// Walls tells the walls closed to a viewer; nil: none is.
+	Walls Walls
 }
 
 func NewCommentService(d CommentDeps) *CommentService {
@@ -89,6 +92,7 @@ func NewCommentService(d CommentDeps) *CommentService {
 		notifier:    d.Notifier,
 		photos:      d.Photos,
 		moderators:  d.Moderators,
+		walls:       d.Walls,
 		now:         time.Now,
 	}
 }
@@ -158,7 +162,7 @@ func (s *CommentService) Create(ctx context.Context, in CommentInput) (*post.Com
 // away from them (post.ErrNotFound), nor one whose comments the owner of
 // its wall has closed (post.ErrCommentsClosed), for everyone alike.
 func (s *CommentService) checkOpen(ctx context.Context, p *post.Post, authorID uuid.UUID) error {
-	away, err := hidden(ctx, s.moderators, p, authorID)
+	away, err := hidden(ctx, s.moderators, s.walls, p, authorID)
 	if err != nil {
 		return errs.Wrap("hidden", err)
 	}
@@ -432,6 +436,15 @@ func (s *CommentService) List(ctx context.Context, viewerID, postID, cursor uuid
 	p, err := s.postRepo.Get(ctx, postID)
 	if err != nil {
 		return CommentPage{}, errs.Wrap("s.postRepo.Get", err)
+	}
+
+	closed, err := closedTo(ctx, s.walls, viewerID, p.WallID())
+	if err != nil {
+		return CommentPage{}, errs.Wrap("closedTo", err)
+	}
+
+	if closed {
+		return CommentPage{}, post.ErrNotFound
 	}
 
 	// One extra comment tells whether there is a next page.

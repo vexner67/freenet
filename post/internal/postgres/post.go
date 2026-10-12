@@ -479,13 +479,15 @@ const listFeedQuery = `
 		AND (NOT $6 OR author_id = wall_id OR from_wall)
 		AND NOT (wall_id = ANY($7))
 		AND NOT post_hidden(wall_id, author_id, from_wall)
+		AND NOT wall_closed_to(wall_id, $1)
 	ORDER BY id DESC
 	LIMIT $3
 `
 
 // listGlobalFeedQuery: the posts of every wall, read down the primary
 // key; $5 leaves only what a wall says itself (post.ByWallOwner), $6 are
-// the walls the reader ignores.
+// the walls the reader ignores, $7 the reader, kept from the walls closed
+// to them.
 const listGlobalFeedQuery = `
 	SELECT
 		id,
@@ -517,6 +519,7 @@ const listGlobalFeedQuery = `
 		AND (NOT $5 OR author_id = wall_id OR from_wall)
 		AND NOT (wall_id = ANY($6))
 		AND NOT post_hidden(wall_id, author_id, from_wall)
+		AND NOT wall_closed_to(wall_id, $7)
 	ORDER BY id DESC
 	LIMIT $2
 `
@@ -528,7 +531,7 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 
 	if sources.Everyone {
 		rows, err := r.conn(ctx).Query(ctx, listGlobalFeedQuery,
-			before, limit, sources.HideNSFW, ids(sources.Hidden), sources.OwnOnly, ids(sources.Ignored),
+			before, limit, sources.HideNSFW, ids(sources.Hidden), sources.OwnOnly, ids(sources.Ignored), reader(sources.Reader),
 		)
 		if err != nil {
 			return nil, errs.Wrap("r.conn.Query", err)

@@ -91,7 +91,7 @@ func TestPostService_Archive(t *testing.T) {
 	if p, _, err := svc.Get(ctx, ann, old.ID()); err != nil || !p.Archived() {
 		t.Fatalf("ann gets her archived post: %v", err)
 	}
-	if many, _ := svc.GetMany(ctx, []uuid.UUID{old.ID(), posts[1].ID()}); len(many) != 1 || many[0].ID() != posts[1].ID() {
+	if many, _ := svc.GetMany(ctx, uuid.Nil, []uuid.UUID{old.ID(), posts[1].ID()}); len(many) != 1 || many[0].ID() != posts[1].ID() {
 		t.Fatalf("GetMany shows an archived post: %d", len(many))
 	}
 

@@ -535,16 +535,16 @@ func TestPostService_GetMany(t *testing.T) {
 	ctx := context.Background()
 	posts := write(t, svc, uuid.New(), "раз", "два")
 
-	got, err := svc.GetMany(ctx, []uuid.UUID{posts[0].ID(), uuid.New(), posts[1].ID()})
+	got, err := svc.GetMany(ctx, uuid.Nil, []uuid.UUID{posts[0].ID(), uuid.New(), posts[1].ID()})
 	if err != nil || len(got) != 2 {
 		t.Fatalf("GetMany = %v, %v; missing posts are left out", got, err)
 	}
 
-	if got, err = svc.GetMany(ctx, nil); err != nil || len(got) != 0 {
+	if got, err = svc.GetMany(ctx, uuid.Nil, nil); err != nil || len(got) != 0 {
 		t.Fatalf("no ids: %v, %v", got, err)
 	}
 
-	if _, err = svc.GetMany(ctx, make([]uuid.UUID, service.MaxPageSize+1)); !errors.Is(err, service.ErrTooManyIDs) {
+	if _, err = svc.GetMany(ctx, uuid.Nil, make([]uuid.UUID, service.MaxPageSize+1)); !errors.Is(err, service.ErrTooManyIDs) {
 		t.Fatalf("too many ids: %v", err)
 	}
 }

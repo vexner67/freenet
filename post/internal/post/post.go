@@ -41,6 +41,9 @@ var (
 	ErrCannotArchive       = errors.New("only the owner of the wall keeps its archive")
 	ErrCannotCloseComments = errors.New("only the owner of the wall can close the comments")
 	ErrCommentsClosed      = errors.New("the comments are closed")
+	// ErrWallClosed: the wall is of a closed profile or a closed
+	// community, and the viewer is not among those it is for.
+	ErrWallClosed = errors.New("this wall is closed")
 )
 
 // Text is what a post says: trimmed, with "\n" line breaks. It may be

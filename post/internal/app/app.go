@@ -149,12 +149,12 @@ func (a *App) build(cfg config.Config) error {
 		postgrpc.NewPostHandler(postgrpc.Services{
 			Posts: service.NewPostService(service.PostDeps{
 				Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
-				Moderators: moderators, AlbumPhotos: repos.albumPhotos, WallPhotos: albums, Switches: repos.posts,
+				Moderators: moderators, AlbumPhotos: repos.albumPhotos, WallPhotos: albums, Switches: repos.posts, Walls: repos.sources,
 				Polls: repos.polls,
 			}),
 			Comments: service.NewCommentService(service.CommentDeps{
 				Posts: repos.posts, Comments: repos.comments, Likes: repos.commentLikes, Tx: repos.tx, Notifier: notifier, Photos: photos,
-				Moderators: moderators,
+				Moderators: moderators, Walls: repos.sources,
 			}),
 			Suggestions: service.NewSuggestionService(service.SuggestionDeps{
 				Suggestions: repos.suggestions, Posts: repos.posts, Tx: repos.tx, Notifier: notifier, Photos: photos, Moderators: moderators,
@@ -164,13 +164,13 @@ func (a *App) build(cfg config.Config) error {
 				Notifier: notifier, Photos: photos, Moderators: moderators,
 			}),
 			Albums: albums,
-			Polls:  service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Tx: repos.tx}),
+			Polls:  service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Walls: repos.sources, Tx: repos.tx}),
 			Notes: service.NewNoteService(service.NoteDeps{
 				Notes: repos.notes, Comments: repos.noteComments, Tx: repos.tx, Notifier: notifier,
 			}),
 			Faves: service.NewFaveService(service.FaveDeps{
 				PostLikes: repos.likes, CommentLikes: repos.commentLikes, PhotoLikes: repos.photoLikes,
-				Posts: repos.posts, Comments: repos.comments, Photos: repos.albumPhotos, Albums: repos.albums,
+				Posts: repos.posts, Comments: repos.comments, Photos: repos.albumPhotos, Albums: repos.albums, Walls: repos.sources,
 			}),
 			Purge: service.NewPurgeService(service.PurgeDeps{
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
