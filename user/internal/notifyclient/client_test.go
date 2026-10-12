@@ -77,6 +77,36 @@ func TestOutboxAndDeliverer(t *testing.T) {
 	}
 }
 
+func TestOutbox_Gifts(t *testing.T) {
+	t.Parallel()
+
+	gift, sender, recipient := uuid.New(), uuid.New(), uuid.New()
+	api := &fakeAPI{}
+
+	queue := outbox.NewMemory()
+	if err := NewOutbox(queue).GiftSent(context.Background(), gift, sender, recipient); err != nil {
+		t.Fatal(err)
+	}
+	if errs := deliverAll(t, queue, NewDeliverer(api, time.Second)); len(errs) != 1 || errs[0] != nil {
+		t.Fatalf("deliver = %v", errs)
+	}
+	if e := api.notified; e.GetKind() != notificationv1.Kind_KIND_GIFT || e.GetActorId() != sender.String() ||
+		e.GetRecipientId() != recipient.String() || e.GetPostId() != gift.String() || e.GetCommentId() != "" {
+		t.Fatalf("gift event = %v", e)
+	}
+
+	queue = outbox.NewMemory()
+	if err := NewOutbox(queue).GiftDeleted(context.Background(), gift, sender, recipient); err != nil {
+		t.Fatal(err)
+	}
+	if errs := deliverAll(t, queue, NewDeliverer(api, time.Second)); len(errs) != 1 || errs[0] != nil {
+		t.Fatalf("deliver = %v", errs)
+	}
+	if e := api.retracted; e.GetKind() != notificationv1.Kind_KIND_GIFT || e.GetPostId() != gift.String() {
+		t.Fatalf("deleted gift event = %v", e)
+	}
+}
+
 func TestDeliverer_Errors(t *testing.T) {
 	t.Parallel()
 

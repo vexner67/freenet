@@ -101,6 +101,18 @@ service UserService {
   // the other.
   rpc GetRelation(GetRelationRequest) returns (GetRelationResponse);
 
+  // Gifts ("Подарки" on openvk). GetGiftCatalog is public: what there is
+  // to send. SendGift sends one to a user: PermissionDenied if the page
+  // is deleted, does not show itself to the caller or the two are
+  // blacklisted either way. ListGifts is public: the gifts sent to a
+  // user, newest first; PermissionDenied if the page or its gifts are
+  // hidden from the caller. DeleteGift is for the one the gift was sent
+  // to.
+  rpc GetGiftCatalog(GetGiftCatalogRequest) returns (GetGiftCatalogResponse);
+  rpc SendGift(SendGiftRequest) returns (SendGiftResponse);
+  rpc ListGifts(ListGiftsRequest) returns (ListGiftsResponse);
+  rpc DeleteGift(DeleteGiftRequest) returns (google.protobuf.Empty);
+
   // Require an access token: deleting the caller's page ("Удаление
   // страницы" on openvk) and restoring it. A deleted page is hidden: others
   // see only its name and photo, nobody may follow it, write on its wall
@@ -255,6 +267,9 @@ message PrivacySettings {
   // "Тип профиля: закрытый": only the owner and the people the owner
   // follows see the page.
   bool closed = 15;
+  // Who sees the gifts ("Кому видны мои подарки"); unspecified, as from
+  // a client that does not know it, is everyone.
+  Audience gifts_read = 16;
 }
 
 // Who sees a part of a page.
@@ -632,6 +647,8 @@ message GetAccessResponse {
   bool clubs = 5;
   // The notes.
   bool notes = 6;
+  // The gifts.
+  bool gifts = 7;
 }
 
 message CanMessageRequest {
@@ -763,4 +780,67 @@ message GetAccountStateRequest {
 
 message GetAccountStateResponse {
   bool deactivated = 1;
+}
+
+message GetGiftCatalogRequest {}
+
+message GetGiftCatalogResponse {
+  repeated GiftCollection collections = 1;
+}
+
+// A shelf of the catalogue ("Коллекции").
+message GiftCollection {
+  string id = 1;
+  // The names of its gifts, in the order they are shown.
+  repeated string gifts = 2;
+}
+
+message SendGiftRequest {
+  // The recipient; it may be the caller.
+  string user_id = 1;
+  // A gift of the catalogue.
+  string gift = 2;
+  // "Ваше сообщение": up to 250 characters, may be empty.
+  string caption = 3;
+  // "Анонимно": only the recipient is told who sent the gift and what
+  // was said with it.
+  bool anonymous = 4;
+}
+
+message SendGiftResponse {
+  Gift gift = 1;
+}
+
+// A gift sent to a page, as the caller sees it.
+message Gift {
+  string id = 1;
+  // Its name in the catalogue.
+  string gift = 2;
+  // Empty when the caller is not told the words of an anonymous gift.
+  string caption = 3;
+  // Told to those who are told the sender.
+  bool anonymous = 4;
+  google.protobuf.Timestamp sent_at = 5;
+  // Unset when the caller is not told who sent the gift: it is
+  // anonymous, or the page of the sender is deleted.
+  PublicProfile sender = 6;
+}
+
+message ListGiftsRequest {
+  string user_id = 1;
+  // Empty for the newest gifts, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message ListGiftsResponse {
+  repeated Gift gifts = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  int32 total = 3;
+}
+
+message DeleteGiftRequest {
+  string gift_id = 1;
 }

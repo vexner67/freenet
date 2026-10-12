@@ -1,5 +1,5 @@
-// Package notifyclient tells the notification service about follows
-// through the outbox: Outbox records them with the change that caused
+// Package notifyclient tells the notification service about follows and
+// gifts through the outbox: Outbox records them with the change that caused
 // them, Deliverer hands them over afterwards. It is the only place in user
 // that knows the notification proto contract.
 package notifyclient
@@ -51,6 +51,14 @@ func (o *Outbox) Followed(ctx context.Context, followerID, followeeID uuid.UUID)
 
 func (o *Outbox) Unfollowed(ctx context.Context, followerID, followeeID uuid.UUID) error {
 	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: followEvent(followerID, followeeID)})
+}
+
+func (o *Outbox) GiftSent(ctx context.Context, giftID, senderID, recipientID uuid.UUID) error {
+	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: giftEvent(giftID, senderID, recipientID)})
+}
+
+func (o *Outbox) GiftDeleted(ctx context.Context, giftID, senderID, recipientID uuid.UUID) error {
+	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: giftEvent(giftID, senderID, recipientID)})
 }
 
 func (o *Outbox) add(ctx context.Context, kind string, req proto.Message) error {
@@ -120,8 +128,22 @@ func followEvent(followerID, followeeID uuid.UUID) *notificationv1.Event {
 	}
 }
 
+// giftEvent names the sent gift where other events name a post: one
+// notification per gift, however many one person sends.
+func giftEvent(giftID, senderID, recipientID uuid.UUID) *notificationv1.Event {
+	return &notificationv1.Event{
+		Kind:        notificationv1.Kind_KIND_GIFT,
+		RecipientId: recipientID.String(),
+		ActorId:     senderID.String(),
+		PostId:      giftID.String(),
+	}
+}
+
 // Nop is the Notifier when no notification service is configured.
 type Nop struct{}
 
 func (Nop) Followed(context.Context, uuid.UUID, uuid.UUID) error   { return nil }
 func (Nop) Unfollowed(context.Context, uuid.UUID, uuid.UUID) error { return nil }
+
+func (Nop) GiftSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error    { return nil }
+func (Nop) GiftDeleted(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }

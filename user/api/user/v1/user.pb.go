@@ -1350,7 +1350,10 @@ type PrivacySettings struct {
 	ChatsInvite MessagesWrite `protobuf:"varint,14,opt,name=chats_invite,json=chatsInvite,proto3,enum=user.v1.MessagesWrite" json:"chats_invite,omitempty"`
 	// "Тип профиля: закрытый": only the owner and the people the owner
 	// follows see the page.
-	Closed        bool `protobuf:"varint,15,opt,name=closed,proto3" json:"closed,omitempty"`
+	Closed bool `protobuf:"varint,15,opt,name=closed,proto3" json:"closed,omitempty"`
+	// Who sees the gifts ("Кому видны мои подарки"); unspecified, as from
+	// a client that does not know it, is everyone.
+	GiftsRead     Audience `protobuf:"varint,16,opt,name=gifts_read,json=giftsRead,proto3,enum=user.v1.Audience" json:"gifts_read,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -1488,6 +1491,13 @@ func (x *PrivacySettings) GetClosed() bool {
 		return x.Closed
 	}
 	return false
+}
+
+func (x *PrivacySettings) GetGiftsRead() Audience {
+	if x != nil {
+		return x.GiftsRead
+	}
+	return Audience_AUDIENCE_UNSPECIFIED
 }
 
 // Fields 7-10 are empty both when not set and when hidden by the owner.
@@ -3863,7 +3873,9 @@ type GetAccessResponse struct {
 	// The communities the user is in.
 	Clubs bool `protobuf:"varint,5,opt,name=clubs,proto3" json:"clubs,omitempty"`
 	// The notes.
-	Notes         bool `protobuf:"varint,6,opt,name=notes,proto3" json:"notes,omitempty"`
+	Notes bool `protobuf:"varint,6,opt,name=notes,proto3" json:"notes,omitempty"`
+	// The gifts.
+	Gifts         bool `protobuf:"varint,7,opt,name=gifts,proto3" json:"gifts,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -3936,6 +3948,13 @@ func (x *GetAccessResponse) GetClubs() bool {
 func (x *GetAccessResponse) GetNotes() bool {
 	if x != nil {
 		return x.Notes
+	}
+	return false
+}
+
+func (x *GetAccessResponse) GetGifts() bool {
+	if x != nil {
+		return x.Gifts
 	}
 	return false
 }
@@ -5182,6 +5201,514 @@ func (x *GetAccountStateResponse) GetDeactivated() bool {
 	return false
 }
 
+type GetGiftCatalogRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetGiftCatalogRequest) Reset() {
+	*x = GetGiftCatalogRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[79]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGiftCatalogRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGiftCatalogRequest) ProtoMessage() {}
+
+func (x *GetGiftCatalogRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[79]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGiftCatalogRequest.ProtoReflect.Descriptor instead.
+func (*GetGiftCatalogRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{79}
+}
+
+type GetGiftCatalogResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Collections   []*GiftCollection      `protobuf:"bytes,1,rep,name=collections,proto3" json:"collections,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetGiftCatalogResponse) Reset() {
+	*x = GetGiftCatalogResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[80]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetGiftCatalogResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetGiftCatalogResponse) ProtoMessage() {}
+
+func (x *GetGiftCatalogResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[80]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetGiftCatalogResponse.ProtoReflect.Descriptor instead.
+func (*GetGiftCatalogResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{80}
+}
+
+func (x *GetGiftCatalogResponse) GetCollections() []*GiftCollection {
+	if x != nil {
+		return x.Collections
+	}
+	return nil
+}
+
+// A shelf of the catalogue ("Коллекции").
+type GiftCollection struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// The names of its gifts, in the order they are shown.
+	Gifts         []string `protobuf:"bytes,2,rep,name=gifts,proto3" json:"gifts,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GiftCollection) Reset() {
+	*x = GiftCollection{}
+	mi := &file_api_user_v1_user_proto_msgTypes[81]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GiftCollection) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GiftCollection) ProtoMessage() {}
+
+func (x *GiftCollection) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[81]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GiftCollection.ProtoReflect.Descriptor instead.
+func (*GiftCollection) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{81}
+}
+
+func (x *GiftCollection) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *GiftCollection) GetGifts() []string {
+	if x != nil {
+		return x.Gifts
+	}
+	return nil
+}
+
+type SendGiftRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The recipient; it may be the caller.
+	UserId string `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// A gift of the catalogue.
+	Gift string `protobuf:"bytes,2,opt,name=gift,proto3" json:"gift,omitempty"`
+	// "Ваше сообщение": up to 250 characters, may be empty.
+	Caption string `protobuf:"bytes,3,opt,name=caption,proto3" json:"caption,omitempty"`
+	// "Анонимно": only the recipient is told who sent the gift and what
+	// was said with it.
+	Anonymous     bool `protobuf:"varint,4,opt,name=anonymous,proto3" json:"anonymous,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendGiftRequest) Reset() {
+	*x = SendGiftRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[82]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendGiftRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendGiftRequest) ProtoMessage() {}
+
+func (x *SendGiftRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[82]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendGiftRequest.ProtoReflect.Descriptor instead.
+func (*SendGiftRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{82}
+}
+
+func (x *SendGiftRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *SendGiftRequest) GetGift() string {
+	if x != nil {
+		return x.Gift
+	}
+	return ""
+}
+
+func (x *SendGiftRequest) GetCaption() string {
+	if x != nil {
+		return x.Caption
+	}
+	return ""
+}
+
+func (x *SendGiftRequest) GetAnonymous() bool {
+	if x != nil {
+		return x.Anonymous
+	}
+	return false
+}
+
+type SendGiftResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Gift          *Gift                  `protobuf:"bytes,1,opt,name=gift,proto3" json:"gift,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SendGiftResponse) Reset() {
+	*x = SendGiftResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[83]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SendGiftResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SendGiftResponse) ProtoMessage() {}
+
+func (x *SendGiftResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[83]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SendGiftResponse.ProtoReflect.Descriptor instead.
+func (*SendGiftResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{83}
+}
+
+func (x *SendGiftResponse) GetGift() *Gift {
+	if x != nil {
+		return x.Gift
+	}
+	return nil
+}
+
+// A gift sent to a page, as the caller sees it.
+type Gift struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Id    string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	// Its name in the catalogue.
+	Gift string `protobuf:"bytes,2,opt,name=gift,proto3" json:"gift,omitempty"`
+	// Empty when the caller is not told the words of an anonymous gift.
+	Caption string `protobuf:"bytes,3,opt,name=caption,proto3" json:"caption,omitempty"`
+	// Told to those who are told the sender.
+	Anonymous bool                   `protobuf:"varint,4,opt,name=anonymous,proto3" json:"anonymous,omitempty"`
+	SentAt    *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=sent_at,json=sentAt,proto3" json:"sent_at,omitempty"`
+	// Unset when the caller is not told who sent the gift: it is
+	// anonymous, or the page of the sender is deleted.
+	Sender        *PublicProfile `protobuf:"bytes,6,opt,name=sender,proto3" json:"sender,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *Gift) Reset() {
+	*x = Gift{}
+	mi := &file_api_user_v1_user_proto_msgTypes[84]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *Gift) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*Gift) ProtoMessage() {}
+
+func (x *Gift) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[84]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use Gift.ProtoReflect.Descriptor instead.
+func (*Gift) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{84}
+}
+
+func (x *Gift) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *Gift) GetGift() string {
+	if x != nil {
+		return x.Gift
+	}
+	return ""
+}
+
+func (x *Gift) GetCaption() string {
+	if x != nil {
+		return x.Caption
+	}
+	return ""
+}
+
+func (x *Gift) GetAnonymous() bool {
+	if x != nil {
+		return x.Anonymous
+	}
+	return false
+}
+
+func (x *Gift) GetSentAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.SentAt
+	}
+	return nil
+}
+
+func (x *Gift) GetSender() *PublicProfile {
+	if x != nil {
+		return x.Sender
+	}
+	return nil
+}
+
+type ListGiftsRequest struct {
+	state  protoimpl.MessageState `protogen:"open.v1"`
+	UserId string                 `protobuf:"bytes,1,opt,name=user_id,json=userId,proto3" json:"user_id,omitempty"`
+	// Empty for the newest gifts, else next_cursor of the previous page.
+	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	// 1-50; anything else means 20.
+	Limit         int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGiftsRequest) Reset() {
+	*x = ListGiftsRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[85]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGiftsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGiftsRequest) ProtoMessage() {}
+
+func (x *ListGiftsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[85]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGiftsRequest.ProtoReflect.Descriptor instead.
+func (*ListGiftsRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{85}
+}
+
+func (x *ListGiftsRequest) GetUserId() string {
+	if x != nil {
+		return x.UserId
+	}
+	return ""
+}
+
+func (x *ListGiftsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListGiftsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListGiftsResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	Gifts []*Gift                `protobuf:"bytes,1,rep,name=gifts,proto3" json:"gifts,omitempty"`
+	// Empty on the last page.
+	NextCursor    string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	Total         int32  `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListGiftsResponse) Reset() {
+	*x = ListGiftsResponse{}
+	mi := &file_api_user_v1_user_proto_msgTypes[86]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListGiftsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListGiftsResponse) ProtoMessage() {}
+
+func (x *ListGiftsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[86]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListGiftsResponse.ProtoReflect.Descriptor instead.
+func (*ListGiftsResponse) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{86}
+}
+
+func (x *ListGiftsResponse) GetGifts() []*Gift {
+	if x != nil {
+		return x.Gifts
+	}
+	return nil
+}
+
+func (x *ListGiftsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListGiftsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type DeleteGiftRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	GiftId        string                 `protobuf:"bytes,1,opt,name=gift_id,json=giftId,proto3" json:"gift_id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteGiftRequest) Reset() {
+	*x = DeleteGiftRequest{}
+	mi := &file_api_user_v1_user_proto_msgTypes[87]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteGiftRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteGiftRequest) ProtoMessage() {}
+
+func (x *DeleteGiftRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_user_v1_user_proto_msgTypes[87]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteGiftRequest.ProtoReflect.Descriptor instead.
+func (*DeleteGiftRequest) Descriptor() ([]byte, []int) {
+	return file_api_user_v1_user_proto_rawDescGZIP(), []int{87}
+}
+
+func (x *DeleteGiftRequest) GetGiftId() string {
+	if x != nil {
+		return x.GiftId
+	}
+	return ""
+}
+
 var File_api_user_v1_user_proto protoreflect.FileDescriptor
 
 const file_api_user_v1_user_proto_rawDesc = "" +
@@ -5252,7 +5779,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"ExtraField\x12\x12\n" +
 	"\x04name\x18\x01 \x01(\tR\x04name\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12)\n" +
-	"\x05place\x18\x03 \x01(\x0e2\x13.user.v1.FieldPlaceR\x05place\"\xe4\x05\n" +
+	"\x05place\x18\x03 \x01(\x0e2\x13.user.v1.FieldPlaceR\x05place\"\x96\x06\n" +
 	"\x0fPrivacySettings\x12#\n" +
 	"\rshow_birthday\x18\x01 \x01(\bR\fshowBirthday\x12+\n" +
 	"\x11show_relationship\x18\x02 \x01(\bR\x10showRelationship\x12%\n" +
@@ -5274,7 +5801,9 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\n" +
 	"notes_read\x18\r \x01(\x0e2\x11.user.v1.AudienceR\tnotesRead\x129\n" +
 	"\fchats_invite\x18\x0e \x01(\x0e2\x16.user.v1.MessagesWriteR\vchatsInvite\x12\x16\n" +
-	"\x06closed\x18\x0f \x01(\bR\x06closed\"\xca\b\n" +
+	"\x06closed\x18\x0f \x01(\bR\x06closed\x120\n" +
+	"\n" +
+	"gifts_read\x18\x10 \x01(\x0e2\x11.user.v1.AudienceR\tgiftsRead\"\xca\b\n" +
 	"\rPublicProfile\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04name\x18\x02 \x01(\tR\x04name\x12\x18\n" +
@@ -5420,14 +5949,15 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x15CanPostOnWallResponse\x12\x18\n" +
 	"\aallowed\x18\x01 \x01(\bR\aallowed\"+\n" +
 	"\x10GetAccessRequest\x12\x17\n" +
-	"\auser_id\x18\x01 \x01(\tR\x06userId\"\x99\x01\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\"\xaf\x01\n" +
 	"\x11GetAccessResponse\x12\x12\n" +
 	"\x04page\x18\x01 \x01(\bR\x04page\x12\x12\n" +
 	"\x04info\x18\x02 \x01(\bR\x04info\x12\x16\n" +
 	"\x06photos\x18\x03 \x01(\bR\x06photos\x12\x18\n" +
 	"\afriends\x18\x04 \x01(\bR\afriends\x12\x14\n" +
 	"\x05clubs\x18\x05 \x01(\bR\x05clubs\x12\x14\n" +
-	"\x05notes\x18\x06 \x01(\bR\x05notes\"M\n" +
+	"\x05notes\x18\x06 \x01(\bR\x05notes\x12\x14\n" +
+	"\x05gifts\x18\a \x01(\bR\x05gifts\"M\n" +
 	"\x11CanMessageRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x1f\n" +
 	"\vwrote_first\x18\x02 \x01(\bR\n" +
@@ -5490,7 +6020,38 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\x16GetAccountStateRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\";\n" +
 	"\x17GetAccountStateResponse\x12 \n" +
-	"\vdeactivated\x18\x01 \x01(\bR\vdeactivated*^\n" +
+	"\vdeactivated\x18\x01 \x01(\bR\vdeactivated\"\x17\n" +
+	"\x15GetGiftCatalogRequest\"S\n" +
+	"\x16GetGiftCatalogResponse\x129\n" +
+	"\vcollections\x18\x01 \x03(\v2\x17.user.v1.GiftCollectionR\vcollections\"6\n" +
+	"\x0eGiftCollection\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x14\n" +
+	"\x05gifts\x18\x02 \x03(\tR\x05gifts\"v\n" +
+	"\x0fSendGiftRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x12\n" +
+	"\x04gift\x18\x02 \x01(\tR\x04gift\x12\x18\n" +
+	"\acaption\x18\x03 \x01(\tR\acaption\x12\x1c\n" +
+	"\tanonymous\x18\x04 \x01(\bR\tanonymous\"5\n" +
+	"\x10SendGiftResponse\x12!\n" +
+	"\x04gift\x18\x01 \x01(\v2\r.user.v1.GiftR\x04gift\"\xc7\x01\n" +
+	"\x04Gift\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
+	"\x04gift\x18\x02 \x01(\tR\x04gift\x12\x18\n" +
+	"\acaption\x18\x03 \x01(\tR\acaption\x12\x1c\n" +
+	"\tanonymous\x18\x04 \x01(\bR\tanonymous\x123\n" +
+	"\asent_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\x06sentAt\x12.\n" +
+	"\x06sender\x18\x06 \x01(\v2\x16.user.v1.PublicProfileR\x06sender\"Y\n" +
+	"\x10ListGiftsRequest\x12\x17\n" +
+	"\auser_id\x18\x01 \x01(\tR\x06userId\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"o\n" +
+	"\x11ListGiftsResponse\x12#\n" +
+	"\x05gifts\x18\x01 \x03(\v2\r.user.v1.GiftR\x05gifts\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\",\n" +
+	"\x11DeleteGiftRequest\x12\x17\n" +
+	"\agift_id\x18\x01 \x01(\tR\x06giftId*^\n" +
 	"\n" +
 	"FieldPlace\x12\x1b\n" +
 	"\x17FIELD_PLACE_UNSPECIFIED\x10\x00\x12\x18\n" +
@@ -5559,7 +6120,7 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\fBackdropSide\x12\x1d\n" +
 	"\x19BACKDROP_SIDE_UNSPECIFIED\x10\x00\x12\x16\n" +
 	"\x12BACKDROP_SIDE_LEFT\x10\x01\x12\x17\n" +
-	"\x13BACKDROP_SIDE_RIGHT\x10\x022\xa4\x18\n" +
+	"\x13BACKDROP_SIDE_RIGHT\x10\x022\xbe\x1a\n" +
 	"\vUserService\x12]\n" +
 	"\x12GetOrCreateByEmail\x12\".user.v1.GetOrCreateByEmailRequest\x1a#.user.v1.GetOrCreateByEmailResponse\x126\n" +
 	"\x05GetMe\x12\x15.user.v1.GetMeRequest\x1a\x16.user.v1.GetMeResponse\x12N\n" +
@@ -5600,7 +6161,12 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\fIgnoreSource\x12\x1c.user.v1.IgnoreSourceRequest\x1a\x16.google.protobuf.Empty\x12J\n" +
 	"\x0fUnignoreSources\x12\x1f.user.v1.UnignoreSourcesRequest\x1a\x16.google.protobuf.Empty\x12]\n" +
 	"\x12ListIgnoredSources\x12\".user.v1.ListIgnoredSourcesRequest\x1a#.user.v1.ListIgnoredSourcesResponse\x12H\n" +
-	"\vGetRelation\x12\x1b.user.v1.GetRelationRequest\x1a\x1c.user.v1.GetRelationResponse\x12Z\n" +
+	"\vGetRelation\x12\x1b.user.v1.GetRelationRequest\x1a\x1c.user.v1.GetRelationResponse\x12Q\n" +
+	"\x0eGetGiftCatalog\x12\x1e.user.v1.GetGiftCatalogRequest\x1a\x1f.user.v1.GetGiftCatalogResponse\x12?\n" +
+	"\bSendGift\x12\x18.user.v1.SendGiftRequest\x1a\x19.user.v1.SendGiftResponse\x12B\n" +
+	"\tListGifts\x12\x19.user.v1.ListGiftsRequest\x1a\x1a.user.v1.ListGiftsResponse\x12@\n" +
+	"\n" +
+	"DeleteGift\x12\x1a.user.v1.DeleteGiftRequest\x1a\x16.google.protobuf.Empty\x12Z\n" +
 	"\x11DeactivateAccount\x12!.user.v1.DeactivateAccountRequest\x1a\".user.v1.DeactivateAccountResponse\x12Z\n" +
 	"\x11ReactivateAccount\x12!.user.v1.ReactivateAccountRequest\x1a\".user.v1.ReactivateAccountResponse\x12T\n" +
 	"\x0fGetAccountState\x12\x1f.user.v1.GetAccountStateRequest\x1a .user.v1.GetAccountStateResponseB5Z3github.com/vexner67/freenet/user/api/user/v1;userv1b\x06proto3"
@@ -5618,7 +6184,7 @@ func file_api_user_v1_user_proto_rawDescGZIP() []byte {
 }
 
 var file_api_user_v1_user_proto_enumTypes = make([]protoimpl.EnumInfo, 10)
-var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 79)
+var file_api_user_v1_user_proto_msgTypes = make([]protoimpl.MessageInfo, 88)
 var file_api_user_v1_user_proto_goTypes = []any{
 	(FieldPlace)(0),                    // 0: user.v1.FieldPlace
 	(Audience)(0),                      // 1: user.v1.Audience
@@ -5709,21 +6275,30 @@ var file_api_user_v1_user_proto_goTypes = []any{
 	(*ReactivateAccountResponse)(nil),  // 86: user.v1.ReactivateAccountResponse
 	(*GetAccountStateRequest)(nil),     // 87: user.v1.GetAccountStateRequest
 	(*GetAccountStateResponse)(nil),    // 88: user.v1.GetAccountStateResponse
-	(*timestamppb.Timestamp)(nil),      // 89: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),              // 90: google.protobuf.Empty
+	(*GetGiftCatalogRequest)(nil),      // 89: user.v1.GetGiftCatalogRequest
+	(*GetGiftCatalogResponse)(nil),     // 90: user.v1.GetGiftCatalogResponse
+	(*GiftCollection)(nil),             // 91: user.v1.GiftCollection
+	(*SendGiftRequest)(nil),            // 92: user.v1.SendGiftRequest
+	(*SendGiftResponse)(nil),           // 93: user.v1.SendGiftResponse
+	(*Gift)(nil),                       // 94: user.v1.Gift
+	(*ListGiftsRequest)(nil),           // 95: user.v1.ListGiftsRequest
+	(*ListGiftsResponse)(nil),          // 96: user.v1.ListGiftsResponse
+	(*DeleteGiftRequest)(nil),          // 97: user.v1.DeleteGiftRequest
+	(*timestamppb.Timestamp)(nil),      // 98: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),              // 99: google.protobuf.Empty
 }
 var file_api_user_v1_user_proto_depIdxs = []int32{
 	5,   // 0: user.v1.User.gender:type_name -> user.v1.Gender
 	6,   // 1: user.v1.User.relationship:type_name -> user.v1.Relationship
 	7,   // 2: user.v1.User.worldview:type_name -> user.v1.Worldview
 	8,   // 3: user.v1.User.political_views:type_name -> user.v1.PoliticalViews
-	89,  // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
+	98,  // 4: user.v1.User.birthday:type_name -> google.protobuf.Timestamp
 	17,  // 5: user.v1.User.privacy:type_name -> user.v1.PrivacySettings
-	89,  // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
+	98,  // 6: user.v1.User.purge_at:type_name -> google.protobuf.Timestamp
 	14,  // 7: user.v1.User.contacts:type_name -> user.v1.Contacts
 	15,  // 8: user.v1.User.interests:type_name -> user.v1.Interests
 	16,  // 9: user.v1.User.extra_fields:type_name -> user.v1.ExtraField
-	89,  // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
+	98,  // 10: user.v1.User.registered_at:type_name -> google.protobuf.Timestamp
 	11,  // 11: user.v1.User.interface:type_name -> user.v1.InterfaceSettings
 	11,  // 12: user.v1.UpdateInterfaceRequest.interface:type_name -> user.v1.InterfaceSettings
 	10,  // 13: user.v1.UpdateInterfaceResponse.user:type_name -> user.v1.User
@@ -5738,129 +6313,143 @@ var file_api_user_v1_user_proto_depIdxs = []int32{
 	1,   // 22: user.v1.PrivacySettings.online_read:type_name -> user.v1.Audience
 	1,   // 23: user.v1.PrivacySettings.notes_read:type_name -> user.v1.Audience
 	3,   // 24: user.v1.PrivacySettings.chats_invite:type_name -> user.v1.MessagesWrite
-	5,   // 25: user.v1.PublicProfile.gender:type_name -> user.v1.Gender
-	6,   // 26: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
-	7,   // 27: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
-	8,   // 28: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
-	89,  // 29: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
-	14,  // 30: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
-	15,  // 31: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
-	16,  // 32: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
-	89,  // 33: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
-	89,  // 34: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
-	10,  // 35: user.v1.GetMeResponse.user:type_name -> user.v1.User
-	5,   // 36: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
-	6,   // 37: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
-	7,   // 38: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
-	8,   // 39: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
-	89,  // 40: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
-	10,  // 41: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
-	14,  // 42: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
-	10,  // 43: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
-	15,  // 44: user.v1.UpdateInterestsRequest.interests:type_name -> user.v1.Interests
-	10,  // 45: user.v1.UpdateInterestsResponse.user:type_name -> user.v1.User
-	16,  // 46: user.v1.UpdateExtraFieldsRequest.fields:type_name -> user.v1.ExtraField
-	10,  // 47: user.v1.UpdateExtraFieldsResponse.user:type_name -> user.v1.User
-	18,  // 48: user.v1.GetProfileResponse.profile:type_name -> user.v1.PublicProfile
-	17,  // 49: user.v1.UpdatePrivacyRequest.privacy:type_name -> user.v1.PrivacySettings
-	10,  // 50: user.v1.UpdatePrivacyResponse.user:type_name -> user.v1.User
-	18,  // 51: user.v1.GetProfilesResponse.profiles:type_name -> user.v1.PublicProfile
-	18,  // 52: user.v1.ListFollowsResponse.users:type_name -> user.v1.PublicProfile
-	10,  // 53: user.v1.UpdateStatusResponse.user:type_name -> user.v1.User
-	10,  // 54: user.v1.UpdateNicknameResponse.user:type_name -> user.v1.User
-	10,  // 55: user.v1.SetAvatarResponse.user:type_name -> user.v1.User
-	9,   // 56: user.v1.SetBackdropRequest.side:type_name -> user.v1.BackdropSide
-	10,  // 57: user.v1.SetBackdropResponse.user:type_name -> user.v1.User
-	18,  // 58: user.v1.SearchUsersResponse.users:type_name -> user.v1.PublicProfile
-	18,  // 59: user.v1.ListBlockedResponse.users:type_name -> user.v1.PublicProfile
-	78,  // 60: user.v1.ResolveInvitesResponse.invitees:type_name -> user.v1.Invitee
-	10,  // 61: user.v1.DeactivateAccountResponse.user:type_name -> user.v1.User
-	10,  // 62: user.v1.ReactivateAccountResponse.user:type_name -> user.v1.User
-	19,  // 63: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
-	21,  // 64: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
-	23,  // 65: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
-	49,  // 66: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
-	51,  // 67: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
-	33,  // 68: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
-	12,  // 69: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
-	25,  // 70: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
-	27,  // 71: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
-	29,  // 72: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
-	48,  // 73: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
-	54,  // 74: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
-	31,  // 75: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
-	35,  // 76: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
-	56,  // 77: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
-	37,  // 78: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
-	38,  // 79: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
-	39,  // 80: user.v1.UserService.ListFollowingIDs:input_type -> user.v1.ListFollowingIDsRequest
-	41,  // 81: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
-	43,  // 82: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
-	43,  // 83: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
-	44,  // 84: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
-	45,  // 85: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
-	58,  // 86: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
-	62,  // 87: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
-	74,  // 88: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
-	76,  // 89: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
-	79,  // 90: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
-	60,  // 91: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
-	64,  // 92: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
-	65,  // 93: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
-	66,  // 94: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
-	68,  // 95: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
-	70,  // 96: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
-	71,  // 97: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
-	72,  // 98: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
-	81,  // 99: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
-	83,  // 100: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
-	85,  // 101: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
-	87,  // 102: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
-	20,  // 103: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
-	22,  // 104: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
-	24,  // 105: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
-	50,  // 106: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
-	52,  // 107: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
-	34,  // 108: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
-	13,  // 109: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
-	26,  // 110: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
-	28,  // 111: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
-	30,  // 112: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
-	53,  // 113: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
-	55,  // 114: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
-	32,  // 115: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
-	36,  // 116: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
-	57,  // 117: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
-	90,  // 118: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
-	90,  // 119: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
-	40,  // 120: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
-	42,  // 121: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
-	47,  // 122: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
-	47,  // 123: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
-	90,  // 124: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
-	46,  // 125: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
-	59,  // 126: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
-	63,  // 127: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
-	75,  // 128: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
-	77,  // 129: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
-	80,  // 130: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
-	61,  // 131: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
-	90,  // 132: user.v1.UserService.Block:output_type -> google.protobuf.Empty
-	90,  // 133: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
-	67,  // 134: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
-	69,  // 135: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
-	90,  // 136: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
-	90,  // 137: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
-	73,  // 138: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
-	82,  // 139: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
-	84,  // 140: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
-	86,  // 141: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
-	88,  // 142: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
-	103, // [103:143] is the sub-list for method output_type
-	63,  // [63:103] is the sub-list for method input_type
-	63,  // [63:63] is the sub-list for extension type_name
-	63,  // [63:63] is the sub-list for extension extendee
-	0,   // [0:63] is the sub-list for field type_name
+	1,   // 25: user.v1.PrivacySettings.gifts_read:type_name -> user.v1.Audience
+	5,   // 26: user.v1.PublicProfile.gender:type_name -> user.v1.Gender
+	6,   // 27: user.v1.PublicProfile.relationship:type_name -> user.v1.Relationship
+	7,   // 28: user.v1.PublicProfile.worldview:type_name -> user.v1.Worldview
+	8,   // 29: user.v1.PublicProfile.political_views:type_name -> user.v1.PoliticalViews
+	98,  // 30: user.v1.PublicProfile.birthday:type_name -> google.protobuf.Timestamp
+	14,  // 31: user.v1.PublicProfile.contacts:type_name -> user.v1.Contacts
+	15,  // 32: user.v1.PublicProfile.interests:type_name -> user.v1.Interests
+	16,  // 33: user.v1.PublicProfile.extra_fields:type_name -> user.v1.ExtraField
+	98,  // 34: user.v1.PublicProfile.registered_at:type_name -> google.protobuf.Timestamp
+	98,  // 35: user.v1.PublicProfile.last_seen_at:type_name -> google.protobuf.Timestamp
+	10,  // 36: user.v1.GetMeResponse.user:type_name -> user.v1.User
+	5,   // 37: user.v1.UpdateProfileRequest.gender:type_name -> user.v1.Gender
+	6,   // 38: user.v1.UpdateProfileRequest.relationship:type_name -> user.v1.Relationship
+	7,   // 39: user.v1.UpdateProfileRequest.worldview:type_name -> user.v1.Worldview
+	8,   // 40: user.v1.UpdateProfileRequest.political_views:type_name -> user.v1.PoliticalViews
+	98,  // 41: user.v1.UpdateProfileRequest.birthday:type_name -> google.protobuf.Timestamp
+	10,  // 42: user.v1.UpdateProfileResponse.user:type_name -> user.v1.User
+	14,  // 43: user.v1.UpdateContactsRequest.contacts:type_name -> user.v1.Contacts
+	10,  // 44: user.v1.UpdateContactsResponse.user:type_name -> user.v1.User
+	15,  // 45: user.v1.UpdateInterestsRequest.interests:type_name -> user.v1.Interests
+	10,  // 46: user.v1.UpdateInterestsResponse.user:type_name -> user.v1.User
+	16,  // 47: user.v1.UpdateExtraFieldsRequest.fields:type_name -> user.v1.ExtraField
+	10,  // 48: user.v1.UpdateExtraFieldsResponse.user:type_name -> user.v1.User
+	18,  // 49: user.v1.GetProfileResponse.profile:type_name -> user.v1.PublicProfile
+	17,  // 50: user.v1.UpdatePrivacyRequest.privacy:type_name -> user.v1.PrivacySettings
+	10,  // 51: user.v1.UpdatePrivacyResponse.user:type_name -> user.v1.User
+	18,  // 52: user.v1.GetProfilesResponse.profiles:type_name -> user.v1.PublicProfile
+	18,  // 53: user.v1.ListFollowsResponse.users:type_name -> user.v1.PublicProfile
+	10,  // 54: user.v1.UpdateStatusResponse.user:type_name -> user.v1.User
+	10,  // 55: user.v1.UpdateNicknameResponse.user:type_name -> user.v1.User
+	10,  // 56: user.v1.SetAvatarResponse.user:type_name -> user.v1.User
+	9,   // 57: user.v1.SetBackdropRequest.side:type_name -> user.v1.BackdropSide
+	10,  // 58: user.v1.SetBackdropResponse.user:type_name -> user.v1.User
+	18,  // 59: user.v1.SearchUsersResponse.users:type_name -> user.v1.PublicProfile
+	18,  // 60: user.v1.ListBlockedResponse.users:type_name -> user.v1.PublicProfile
+	78,  // 61: user.v1.ResolveInvitesResponse.invitees:type_name -> user.v1.Invitee
+	10,  // 62: user.v1.DeactivateAccountResponse.user:type_name -> user.v1.User
+	10,  // 63: user.v1.ReactivateAccountResponse.user:type_name -> user.v1.User
+	91,  // 64: user.v1.GetGiftCatalogResponse.collections:type_name -> user.v1.GiftCollection
+	94,  // 65: user.v1.SendGiftResponse.gift:type_name -> user.v1.Gift
+	98,  // 66: user.v1.Gift.sent_at:type_name -> google.protobuf.Timestamp
+	18,  // 67: user.v1.Gift.sender:type_name -> user.v1.PublicProfile
+	94,  // 68: user.v1.ListGiftsResponse.gifts:type_name -> user.v1.Gift
+	19,  // 69: user.v1.UserService.GetOrCreateByEmail:input_type -> user.v1.GetOrCreateByEmailRequest
+	21,  // 70: user.v1.UserService.GetMe:input_type -> user.v1.GetMeRequest
+	23,  // 71: user.v1.UserService.UpdateProfile:input_type -> user.v1.UpdateProfileRequest
+	49,  // 72: user.v1.UserService.UpdateStatus:input_type -> user.v1.UpdateStatusRequest
+	51,  // 73: user.v1.UserService.UpdateNickname:input_type -> user.v1.UpdateNicknameRequest
+	33,  // 74: user.v1.UserService.UpdatePrivacy:input_type -> user.v1.UpdatePrivacyRequest
+	12,  // 75: user.v1.UserService.UpdateInterface:input_type -> user.v1.UpdateInterfaceRequest
+	25,  // 76: user.v1.UserService.UpdateContacts:input_type -> user.v1.UpdateContactsRequest
+	27,  // 77: user.v1.UserService.UpdateInterests:input_type -> user.v1.UpdateInterestsRequest
+	29,  // 78: user.v1.UserService.UpdateExtraFields:input_type -> user.v1.UpdateExtraFieldsRequest
+	48,  // 79: user.v1.UserService.SetAvatar:input_type -> user.v1.SetAvatarRequest
+	54,  // 80: user.v1.UserService.SetBackdrop:input_type -> user.v1.SetBackdropRequest
+	31,  // 81: user.v1.UserService.GetProfile:input_type -> user.v1.GetProfileRequest
+	35,  // 82: user.v1.UserService.GetProfiles:input_type -> user.v1.GetProfilesRequest
+	56,  // 83: user.v1.UserService.SearchUsers:input_type -> user.v1.SearchUsersRequest
+	37,  // 84: user.v1.UserService.Follow:input_type -> user.v1.FollowRequest
+	38,  // 85: user.v1.UserService.Unfollow:input_type -> user.v1.UnfollowRequest
+	39,  // 86: user.v1.UserService.ListFollowingIDs:input_type -> user.v1.ListFollowingIDsRequest
+	41,  // 87: user.v1.UserService.GetFollowStats:input_type -> user.v1.GetFollowStatsRequest
+	43,  // 88: user.v1.UserService.ListFollowers:input_type -> user.v1.ListFollowsRequest
+	43,  // 89: user.v1.UserService.ListFollowing:input_type -> user.v1.ListFollowsRequest
+	44,  // 90: user.v1.UserService.MarkOnline:input_type -> user.v1.MarkOnlineRequest
+	45,  // 91: user.v1.UserService.GetStatistics:input_type -> user.v1.GetStatisticsRequest
+	58,  // 92: user.v1.UserService.CanPostOnWall:input_type -> user.v1.CanPostOnWallRequest
+	62,  // 93: user.v1.UserService.CanMessage:input_type -> user.v1.CanMessageRequest
+	74,  // 94: user.v1.UserService.ResolveMentions:input_type -> user.v1.ResolveMentionsRequest
+	76,  // 95: user.v1.UserService.ResolveInvites:input_type -> user.v1.ResolveInvitesRequest
+	79,  // 96: user.v1.UserService.FindNicknames:input_type -> user.v1.FindNicknamesRequest
+	60,  // 97: user.v1.UserService.GetAccess:input_type -> user.v1.GetAccessRequest
+	64,  // 98: user.v1.UserService.Block:input_type -> user.v1.BlockRequest
+	65,  // 99: user.v1.UserService.Unblock:input_type -> user.v1.UnblockRequest
+	66,  // 100: user.v1.UserService.ListBlocked:input_type -> user.v1.ListBlockedRequest
+	68,  // 101: user.v1.UserService.ListBlockedIDs:input_type -> user.v1.ListBlockedIDsRequest
+	70,  // 102: user.v1.UserService.IgnoreSource:input_type -> user.v1.IgnoreSourceRequest
+	71,  // 103: user.v1.UserService.UnignoreSources:input_type -> user.v1.UnignoreSourcesRequest
+	72,  // 104: user.v1.UserService.ListIgnoredSources:input_type -> user.v1.ListIgnoredSourcesRequest
+	81,  // 105: user.v1.UserService.GetRelation:input_type -> user.v1.GetRelationRequest
+	89,  // 106: user.v1.UserService.GetGiftCatalog:input_type -> user.v1.GetGiftCatalogRequest
+	92,  // 107: user.v1.UserService.SendGift:input_type -> user.v1.SendGiftRequest
+	95,  // 108: user.v1.UserService.ListGifts:input_type -> user.v1.ListGiftsRequest
+	97,  // 109: user.v1.UserService.DeleteGift:input_type -> user.v1.DeleteGiftRequest
+	83,  // 110: user.v1.UserService.DeactivateAccount:input_type -> user.v1.DeactivateAccountRequest
+	85,  // 111: user.v1.UserService.ReactivateAccount:input_type -> user.v1.ReactivateAccountRequest
+	87,  // 112: user.v1.UserService.GetAccountState:input_type -> user.v1.GetAccountStateRequest
+	20,  // 113: user.v1.UserService.GetOrCreateByEmail:output_type -> user.v1.GetOrCreateByEmailResponse
+	22,  // 114: user.v1.UserService.GetMe:output_type -> user.v1.GetMeResponse
+	24,  // 115: user.v1.UserService.UpdateProfile:output_type -> user.v1.UpdateProfileResponse
+	50,  // 116: user.v1.UserService.UpdateStatus:output_type -> user.v1.UpdateStatusResponse
+	52,  // 117: user.v1.UserService.UpdateNickname:output_type -> user.v1.UpdateNicknameResponse
+	34,  // 118: user.v1.UserService.UpdatePrivacy:output_type -> user.v1.UpdatePrivacyResponse
+	13,  // 119: user.v1.UserService.UpdateInterface:output_type -> user.v1.UpdateInterfaceResponse
+	26,  // 120: user.v1.UserService.UpdateContacts:output_type -> user.v1.UpdateContactsResponse
+	28,  // 121: user.v1.UserService.UpdateInterests:output_type -> user.v1.UpdateInterestsResponse
+	30,  // 122: user.v1.UserService.UpdateExtraFields:output_type -> user.v1.UpdateExtraFieldsResponse
+	53,  // 123: user.v1.UserService.SetAvatar:output_type -> user.v1.SetAvatarResponse
+	55,  // 124: user.v1.UserService.SetBackdrop:output_type -> user.v1.SetBackdropResponse
+	32,  // 125: user.v1.UserService.GetProfile:output_type -> user.v1.GetProfileResponse
+	36,  // 126: user.v1.UserService.GetProfiles:output_type -> user.v1.GetProfilesResponse
+	57,  // 127: user.v1.UserService.SearchUsers:output_type -> user.v1.SearchUsersResponse
+	99,  // 128: user.v1.UserService.Follow:output_type -> google.protobuf.Empty
+	99,  // 129: user.v1.UserService.Unfollow:output_type -> google.protobuf.Empty
+	40,  // 130: user.v1.UserService.ListFollowingIDs:output_type -> user.v1.ListFollowingIDsResponse
+	42,  // 131: user.v1.UserService.GetFollowStats:output_type -> user.v1.GetFollowStatsResponse
+	47,  // 132: user.v1.UserService.ListFollowers:output_type -> user.v1.ListFollowsResponse
+	47,  // 133: user.v1.UserService.ListFollowing:output_type -> user.v1.ListFollowsResponse
+	99,  // 134: user.v1.UserService.MarkOnline:output_type -> google.protobuf.Empty
+	46,  // 135: user.v1.UserService.GetStatistics:output_type -> user.v1.GetStatisticsResponse
+	59,  // 136: user.v1.UserService.CanPostOnWall:output_type -> user.v1.CanPostOnWallResponse
+	63,  // 137: user.v1.UserService.CanMessage:output_type -> user.v1.CanMessageResponse
+	75,  // 138: user.v1.UserService.ResolveMentions:output_type -> user.v1.ResolveMentionsResponse
+	77,  // 139: user.v1.UserService.ResolveInvites:output_type -> user.v1.ResolveInvitesResponse
+	80,  // 140: user.v1.UserService.FindNicknames:output_type -> user.v1.FindNicknamesResponse
+	61,  // 141: user.v1.UserService.GetAccess:output_type -> user.v1.GetAccessResponse
+	99,  // 142: user.v1.UserService.Block:output_type -> google.protobuf.Empty
+	99,  // 143: user.v1.UserService.Unblock:output_type -> google.protobuf.Empty
+	67,  // 144: user.v1.UserService.ListBlocked:output_type -> user.v1.ListBlockedResponse
+	69,  // 145: user.v1.UserService.ListBlockedIDs:output_type -> user.v1.ListBlockedIDsResponse
+	99,  // 146: user.v1.UserService.IgnoreSource:output_type -> google.protobuf.Empty
+	99,  // 147: user.v1.UserService.UnignoreSources:output_type -> google.protobuf.Empty
+	73,  // 148: user.v1.UserService.ListIgnoredSources:output_type -> user.v1.ListIgnoredSourcesResponse
+	82,  // 149: user.v1.UserService.GetRelation:output_type -> user.v1.GetRelationResponse
+	90,  // 150: user.v1.UserService.GetGiftCatalog:output_type -> user.v1.GetGiftCatalogResponse
+	93,  // 151: user.v1.UserService.SendGift:output_type -> user.v1.SendGiftResponse
+	96,  // 152: user.v1.UserService.ListGifts:output_type -> user.v1.ListGiftsResponse
+	99,  // 153: user.v1.UserService.DeleteGift:output_type -> google.protobuf.Empty
+	84,  // 154: user.v1.UserService.DeactivateAccount:output_type -> user.v1.DeactivateAccountResponse
+	86,  // 155: user.v1.UserService.ReactivateAccount:output_type -> user.v1.ReactivateAccountResponse
+	88,  // 156: user.v1.UserService.GetAccountState:output_type -> user.v1.GetAccountStateResponse
+	113, // [113:157] is the sub-list for method output_type
+	69,  // [69:113] is the sub-list for method input_type
+	69,  // [69:69] is the sub-list for extension type_name
+	69,  // [69:69] is the sub-list for extension extendee
+	0,   // [0:69] is the sub-list for field type_name
 }
 
 func init() { file_api_user_v1_user_proto_init() }
@@ -5875,7 +6464,7 @@ func file_api_user_v1_user_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_user_v1_user_proto_rawDesc), len(file_api_user_v1_user_proto_rawDesc)),
 			NumEnums:      10,
-			NumMessages:   79,
+			NumMessages:   88,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

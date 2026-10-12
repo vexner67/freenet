@@ -33,7 +33,9 @@ type outboxQueue interface {
 // to notification and to post, whose news follow them, erased pages to
 // every service that keeps data of users.
 type delivery struct {
-	notifier  service.Notifier
+	notifier service.Notifier
+	// gifts tells notification alone: the news do not follow gifts.
+	gifts     service.GiftNotifier
 	eraser    service.Eraser
 	reactions service.Reactions
 	// walls is nil without a post service: closed pages keep their walls
@@ -73,7 +75,7 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 		return delivery{}, errs.Wrap("mtls.ClientCredentials", err)
 	}
 
-	d := delivery{notifier: notifyclient.Nop{}, reactions: purgeclient.NoReactions{}}
+	d := delivery{notifier: notifyclient.Nop{}, gifts: notifyclient.Nop{}, reactions: purgeclient.NoReactions{}}
 	var erasures []purgeclient.Recorder
 
 	// stream relays the stream to the service at addr by deliver.
@@ -97,7 +99,7 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 	}
 
 	if cfg.NotificationServiceAddr == "" {
-		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: follows notify nobody, erased users keep their notifications")
+		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: follows and gifts notify nobody, erased users keep their notifications")
 	} else {
 		q, err := stream(notifyclient.Stream, cfg.NotificationServiceAddr, func(conn *grpc.ClientConn) outbox.Deliver {
 			api := notificationv1.NewNotificationServiceClient(conn)
@@ -107,7 +109,8 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 			return delivery{}, err
 		}
 
-		d.notifier = notifyclient.NewOutbox(q)
+		toNotification := notifyclient.NewOutbox(q)
+		d.notifier, d.gifts = toNotification, toNotification
 		erasures = append(erasures, q)
 	}
 

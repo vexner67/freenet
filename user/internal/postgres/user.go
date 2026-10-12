@@ -151,6 +151,7 @@ const updateUserQuery = `
 		notes_read = $52,
 		chats_invite = $53,
 		closed = $54,
+		gifts_read = $55,
 		updated_at = now()
 	WHERE id = $1
 `
@@ -225,6 +226,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 		pr.NotesRead.String(),
 		pr.ChatsInvite.String(),
 		pr.Closed,
+		pr.GiftsRead.String(),
 	)
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", translateError(err))
@@ -397,7 +399,8 @@ const userColumns = `
 		timezone_offset,
 		notes_read,
 		chats_invite,
-		closed`
+		closed,
+		gifts_read`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -458,7 +461,8 @@ const qualifiedUserColumns = `
 		u.timezone_offset,
 		u.notes_read,
 		u.chats_invite,
-		u.closed`
+		u.closed,
+		u.gifts_read`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -589,7 +593,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		extraFields                                []byte
 		hideBirthYear                              bool
 		reads                                      [5]string
-		notesRead, chatsInvite                     string
+		notesRead, chatsInvite, giftsRead          string
 		lastSeen                                   *time.Time
 		backdrop                                   [2]*uuid.UUID
 		avatarStyle, mainPage                      string
@@ -637,6 +641,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&notesRead,
 		&chatsInvite,
 		&privacy.Closed,
+		&giftsRead,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -653,6 +658,7 @@ func scanUser(row pgx.Row) (*user.User, error) {
 	privacy.PhotosRead, privacy.FriendsRead = user.Audience(reads[2]), user.Audience(reads[3])
 	privacy.OnlineRead = user.Audience(reads[4])
 	privacy.NotesRead = user.Audience(notesRead)
+	privacy.GiftsRead = user.Audience(giftsRead)
 	privacy.ChatsInvite = user.MessagesWrite(chatsInvite)
 
 	fields, err := extraFieldsFromDB(extraFields)

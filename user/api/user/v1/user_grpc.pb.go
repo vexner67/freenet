@@ -57,6 +57,10 @@ const (
 	UserService_UnignoreSources_FullMethodName    = "/user.v1.UserService/UnignoreSources"
 	UserService_ListIgnoredSources_FullMethodName = "/user.v1.UserService/ListIgnoredSources"
 	UserService_GetRelation_FullMethodName        = "/user.v1.UserService/GetRelation"
+	UserService_GetGiftCatalog_FullMethodName     = "/user.v1.UserService/GetGiftCatalog"
+	UserService_SendGift_FullMethodName           = "/user.v1.UserService/SendGift"
+	UserService_ListGifts_FullMethodName          = "/user.v1.UserService/ListGifts"
+	UserService_DeleteGift_FullMethodName         = "/user.v1.UserService/DeleteGift"
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
 	UserService_ReactivateAccount_FullMethodName  = "/user.v1.UserService/ReactivateAccount"
 	UserService_GetAccountState_FullMethodName    = "/user.v1.UserService/GetAccountState"
@@ -151,6 +155,17 @@ type UserServiceClient interface {
 	// Requires an access token: who of the caller and the user blacklisted
 	// the other.
 	GetRelation(ctx context.Context, in *GetRelationRequest, opts ...grpc.CallOption) (*GetRelationResponse, error)
+	// Gifts ("Подарки" on openvk). GetGiftCatalog is public: what there is
+	// to send. SendGift sends one to a user: PermissionDenied if the page
+	// is deleted, does not show itself to the caller or the two are
+	// blacklisted either way. ListGifts is public: the gifts sent to a
+	// user, newest first; PermissionDenied if the page or its gifts are
+	// hidden from the caller. DeleteGift is for the one the gift was sent
+	// to.
+	GetGiftCatalog(ctx context.Context, in *GetGiftCatalogRequest, opts ...grpc.CallOption) (*GetGiftCatalogResponse, error)
+	SendGift(ctx context.Context, in *SendGiftRequest, opts ...grpc.CallOption) (*SendGiftResponse, error)
+	ListGifts(ctx context.Context, in *ListGiftsRequest, opts ...grpc.CallOption) (*ListGiftsResponse, error)
+	DeleteGift(ctx context.Context, in *DeleteGiftRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token: deleting the caller's page ("Удаление
 	// страницы" on openvk) and restoring it. A deleted page is hidden: others
 	// see only its name and photo, nobody may follow it, write on its wall
@@ -542,6 +557,46 @@ func (c *userServiceClient) GetRelation(ctx context.Context, in *GetRelationRequ
 	return out, nil
 }
 
+func (c *userServiceClient) GetGiftCatalog(ctx context.Context, in *GetGiftCatalogRequest, opts ...grpc.CallOption) (*GetGiftCatalogResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetGiftCatalogResponse)
+	err := c.cc.Invoke(ctx, UserService_GetGiftCatalog_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SendGift(ctx context.Context, in *SendGiftRequest, opts ...grpc.CallOption) (*SendGiftResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SendGiftResponse)
+	err := c.cc.Invoke(ctx, UserService_SendGift_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) ListGifts(ctx context.Context, in *ListGiftsRequest, opts ...grpc.CallOption) (*ListGiftsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListGiftsResponse)
+	err := c.cc.Invoke(ctx, UserService_ListGifts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DeleteGift(ctx context.Context, in *DeleteGiftRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_DeleteGift_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) DeactivateAccount(ctx context.Context, in *DeactivateAccountRequest, opts ...grpc.CallOption) (*DeactivateAccountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeactivateAccountResponse)
@@ -661,6 +716,17 @@ type UserServiceServer interface {
 	// Requires an access token: who of the caller and the user blacklisted
 	// the other.
 	GetRelation(context.Context, *GetRelationRequest) (*GetRelationResponse, error)
+	// Gifts ("Подарки" on openvk). GetGiftCatalog is public: what there is
+	// to send. SendGift sends one to a user: PermissionDenied if the page
+	// is deleted, does not show itself to the caller or the two are
+	// blacklisted either way. ListGifts is public: the gifts sent to a
+	// user, newest first; PermissionDenied if the page or its gifts are
+	// hidden from the caller. DeleteGift is for the one the gift was sent
+	// to.
+	GetGiftCatalog(context.Context, *GetGiftCatalogRequest) (*GetGiftCatalogResponse, error)
+	SendGift(context.Context, *SendGiftRequest) (*SendGiftResponse, error)
+	ListGifts(context.Context, *ListGiftsRequest) (*ListGiftsResponse, error)
+	DeleteGift(context.Context, *DeleteGiftRequest) (*emptypb.Empty, error)
 	// Require an access token: deleting the caller's page ("Удаление
 	// страницы" on openvk) and restoring it. A deleted page is hidden: others
 	// see only its name and photo, nobody may follow it, write on its wall
@@ -792,6 +858,18 @@ func (UnimplementedUserServiceServer) ListIgnoredSources(context.Context, *ListI
 }
 func (UnimplementedUserServiceServer) GetRelation(context.Context, *GetRelationRequest) (*GetRelationResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetRelation not implemented")
+}
+func (UnimplementedUserServiceServer) GetGiftCatalog(context.Context, *GetGiftCatalogRequest) (*GetGiftCatalogResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetGiftCatalog not implemented")
+}
+func (UnimplementedUserServiceServer) SendGift(context.Context, *SendGiftRequest) (*SendGiftResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SendGift not implemented")
+}
+func (UnimplementedUserServiceServer) ListGifts(context.Context, *ListGiftsRequest) (*ListGiftsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListGifts not implemented")
+}
+func (UnimplementedUserServiceServer) DeleteGift(context.Context, *DeleteGiftRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteGift not implemented")
 }
 func (UnimplementedUserServiceServer) DeactivateAccount(context.Context, *DeactivateAccountRequest) (*DeactivateAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeactivateAccount not implemented")
@@ -1489,6 +1567,78 @@ func _UserService_GetRelation_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetGiftCatalog_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetGiftCatalogRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetGiftCatalog(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetGiftCatalog_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetGiftCatalog(ctx, req.(*GetGiftCatalogRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SendGift_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SendGiftRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SendGift(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SendGift_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SendGift(ctx, req.(*SendGiftRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_ListGifts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListGiftsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListGifts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListGifts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListGifts(ctx, req.(*ListGiftsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DeleteGift_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteGiftRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeleteGift(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeleteGift_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeleteGift(ctx, req.(*DeleteGiftRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_DeactivateAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeactivateAccountRequest)
 	if err := dec(in); err != nil {
@@ -1697,6 +1847,22 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetRelation",
 			Handler:    _UserService_GetRelation_Handler,
+		},
+		{
+			MethodName: "GetGiftCatalog",
+			Handler:    _UserService_GetGiftCatalog_Handler,
+		},
+		{
+			MethodName: "SendGift",
+			Handler:    _UserService_SendGift_Handler,
+		},
+		{
+			MethodName: "ListGifts",
+			Handler:    _UserService_ListGifts_Handler,
+		},
+		{
+			MethodName: "DeleteGift",
+			Handler:    _UserService_DeleteGift_Handler,
 		},
 		{
 			MethodName: "DeactivateAccount",

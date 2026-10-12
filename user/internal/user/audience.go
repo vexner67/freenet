@@ -66,7 +66,7 @@ func (a Audience) admits(viewerID uuid.UUID, t Ties) bool {
 // Access is what of a page a viewer may see: the page itself, its
 // information (everything but the names, the photo, the status and the
 // pronouns, which speak of the person), the albums, the follows, the
-// communities and the notes.
+// communities, the notes and the gifts.
 type Access struct {
 	Page    bool
 	Info    bool
@@ -74,6 +74,7 @@ type Access struct {
 	Friends bool
 	Clubs   bool
 	Notes   bool
+	Gifts   bool
 }
 
 // AccessFor is what viewerID (uuid.Nil: anonymous), tied to u by t, may
@@ -83,7 +84,7 @@ type Access struct {
 // профиля: закрытый") shows itself only to those its owner follows.
 func (u *User) AccessFor(viewerID uuid.UUID, t Ties) Access {
 	if viewerID == u.id {
-		return Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true, Notes: true}
+		return Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true, Notes: true, Gifts: true}
 	}
 
 	if u.IsDeactivated() {
@@ -102,5 +103,6 @@ func (u *User) AccessFor(viewerID uuid.UUID, t Ties) Access {
 		Friends: u.privacy.FriendsRead.admits(viewerID, t),
 		Clubs:   Audience(u.privacy.ClubsRead).admits(viewerID, t),
 		Notes:   u.privacy.NotesRead.admits(viewerID, t),
+		Gifts:   u.privacy.GiftsRead.admits(viewerID, t),
 	}
 }
