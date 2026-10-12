@@ -652,7 +652,7 @@ func TestMessageRepository_ForwardAndRetract(t *testing.T) {
 
 	carried := message.Forwards{
 		{SenderID: cat, Text: "смотри", Photos: message.Photos{uuid.New()}, Post: uuid.New(), CreatedAt: now.Add(-time.Hour)},
-		{SenderID: ann, Text: "ого", CreatedAt: now.Add(-time.Minute)},
+		{SenderID: ann, Text: "ого", CreatedAt: now.Add(-time.Minute), Depth: 1},
 	}
 
 	// Forwards alone are a message.
@@ -670,7 +670,8 @@ func TestMessageRepository_ForwardAndRetract(t *testing.T) {
 	}
 	for i, f := range got.Forwarded() {
 		want := carried[i]
-		if f.SenderID != want.SenderID || f.Text != want.Text || !slices.Equal(f.Photos, want.Photos) || f.Post != want.Post || !f.CreatedAt.Equal(want.CreatedAt) {
+		if f.SenderID != want.SenderID || f.Text != want.Text || !slices.Equal(f.Photos, want.Photos) || f.Post != want.Post || !f.CreatedAt.Equal(want.CreatedAt) ||
+			f.Depth != want.Depth {
 			t.Fatalf("forwarded[%d] = %+v, want %+v", i, f, want)
 		}
 	}
