@@ -1,6 +1,7 @@
 // Shared page chrome: header links, the sidebar menu and small DOM helpers.
 // User data is only ever set with textContent, never as HTML.
 
+import { button, openModal } from './modal.js';
 import { accountName, canPark, onAccountChange, park, parkedAccounts, signedInAs, switchTo, tendParked } from './accounts.js';
 import { api } from './api.js';
 import { connectEvents, onEvent } from './events.js';
@@ -162,17 +163,34 @@ export function accountLinks(me = null) {
   shortened(accountName(a), ACCOUNT_NAME_LENGTH)));
 }
 
-// drawAccounts puts them under the menu, after a divider, with "Добавить
-// аккаунт" while there is room for one more.
-function drawAccounts(menu, me) {
-  if (!menu) return;
+// accountsLink is "Аккаунты" of the left menu. The accounts that wait are
+// not in the menu itself: whoever is shown a page of the site would see
+// whose else the browser is. The link opens them in a box, each a link
+// that switches to it, with "Добавить аккаунт" while there is room for
+// one more.
+function accountsLink(me) {
+  return el('a', { textContent: 'Аккаунты', onclick: () => openAccounts(me) });
+}
 
-  menu.querySelector('.menu-accounts')?.remove();
-  menu.append(el('div', { className: 'menu-accounts' },
-    el('div', { className: 'menu-divider' }),
-    ...accountLinks(me),
-    canPark() && el('a', { textContent: 'Добавить аккаунт', onclick: () => addAccount(me) }),
-  ));
+function openAccounts(me) {
+  const modal = openModal('Аккаунты');
+
+  function draw() {
+    // Closed meanwhile: there is nothing to draw in.
+    if (!modal.box.isConnected) return;
+
+    const waiting = accountLinks(me);
+
+    modal.body.replaceChildren(waiting.length > 0
+      ? el('nav', { className: 'menu account-list' }, ...waiting)
+      : el('p', { className: 'hint', textContent: 'Других аккаунтов в этом браузере нет.' }));
+    modal.actions.replaceChildren(
+      canPark() && button('Добавить аккаунт', () => addAccount(me)),
+      button('Закрыть', modal.close, { secondary: true }),
+    );
+  }
+
+  showAccounts(draw);
 }
 
 // showAccounts draws the accounts that wait and then looks after them:
@@ -320,12 +338,15 @@ export function applyInterface(me) {
     menuLink(me, 'feed', '/feed', 'Новости'),
     menuLink(me, 'notifications', '/notifications', 'Ответы', 'notifications-count'),
     el('a', { href: '/settings', textContent: 'Настройки' }),
+    accountsLink(me),
     el('a', { href: '/search', textContent: 'Люди' }),
     el('a', { href: '/', textContent: 'Выйти', onclick: logout }),
   ].filter(Boolean));
   showCounter('messages');
   showCounter('notifications');
-  showAccounts(() => drawAccounts(menu, me));
+  // The accounts that wait are looked after though the menu does not
+  // show them.
+  showAccounts(() => {});
 
   // /me tells the clubs kept in the menu; an answer that is not /me's
   // (saved settings) leaves those the page already knows.
@@ -382,15 +403,15 @@ export function renderChrome(me) {
 function renderDeactivatedChrome(me, links, menu) {
   links.replaceChildren(el('a', { href: '/', textContent: 'выход', onclick: logout }));
 
-  // Of the menu only the other accounts of the browser are left, when
+  // Of the menu only "Аккаунты" is left, when
   // there are any: the way to them without signing out.
   const sidebar = menu?.closest('.sidebar');
   const others = parkedAccounts().length > 0;
 
   if (sidebar) sidebar.hidden = !others;
   if (others) {
-    menu.replaceChildren();
-    showAccounts(() => drawAccounts(menu, me));
+    menu.replaceChildren(accountsLink(me));
+    showAccounts(() => {});
   }
 
   const own = profilePath(me);
@@ -413,11 +434,7 @@ function drawPinnedClubs(menu) {
     el('div', { className: 'menu-divider' }),
     ...pinnedClubs.map((c) => el('a', { href: pagePath({ ...c, club: true }), textContent: shortened(c.name, PINNED_NAME_LENGTH) })),
   );
-  // The accounts of the browser stay last.
-  const accounts = menu.querySelector('.menu-accounts');
-
-  if (accounts) accounts.before(clubs);
-  else menu.append(clubs);
+  menu.append(clubs);
 }
 
 // showPinnedClubs asks for them again, after one is added or removed. A
