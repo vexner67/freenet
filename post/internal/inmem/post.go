@@ -28,17 +28,25 @@ type Store struct {
 	// their choice, counted in the poll.
 	polls     map[uuid.UUID]*post.Poll
 	pollVotes map[uuid.UUID]map[uuid.UUID]pollVote
+	// What deleted pages liked and voted for (user → poll → choice),
+	// kept out of the above until the page is restored.
+	heldLikes        heldLikes
+	heldCommentLikes heldLikes
+	heldVotes        map[uuid.UUID]map[uuid.UUID]pollVote
 }
 
 func NewStore() *Store {
 	return &Store{
-		posts:        make(map[uuid.UUID]*post.Post),
-		likes:        make(map[uuid.UUID]map[uuid.UUID]time.Time),
-		comments:     make(map[uuid.UUID]*post.Comment),
-		commentLikes: make(map[uuid.UUID]map[uuid.UUID]time.Time),
-		pins:         make(map[uuid.UUID]uuid.UUID),
-		polls:        make(map[uuid.UUID]*post.Poll),
-		pollVotes:    make(map[uuid.UUID]map[uuid.UUID]pollVote),
+		posts:            make(map[uuid.UUID]*post.Post),
+		likes:            make(map[uuid.UUID]map[uuid.UUID]time.Time),
+		heldLikes:        make(heldLikes),
+		heldCommentLikes: make(heldLikes),
+		heldVotes:        make(map[uuid.UUID]map[uuid.UUID]pollVote),
+		comments:         make(map[uuid.UUID]*post.Comment),
+		commentLikes:     make(map[uuid.UUID]map[uuid.UUID]time.Time),
+		pins:             make(map[uuid.UUID]uuid.UUID),
+		polls:            make(map[uuid.UUID]*post.Poll),
+		pollVotes:        make(map[uuid.UUID]map[uuid.UUID]pollVote),
 	}
 }
 

@@ -81,7 +81,9 @@ func newServer(t *testing.T) testServer {
 		Purge: service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
 			Topics: topics, Albums: albums, Notes: notes, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
+			Held: []service.ReactionHolder{store.Holds(), topics, albums},
 		}),
+		Holds: service.NewHoldService(inmem.TxManager{}, store.Holds(), topics, albums),
 	}, log))
 
 	go func() { _ = srv.Serve(lis) }()

@@ -26,15 +26,20 @@ type AlbumRepository struct {
 	photoComments map[uuid.UUID]*post.PhotoComment
 	// commentLikes are comment → users → when.
 	commentLikes map[uuid.UUID]map[uuid.UUID]time.Time
+	// The likes of deleted pages, of photos and of comments.
+	heldPhotoLikes   heldLikes
+	heldCommentLikes heldLikes
 }
 
 func NewAlbumRepository() *AlbumRepository {
 	return &AlbumRepository{
-		albums:        make(map[uuid.UUID]post.StoredAlbum),
-		photos:        make(map[uuid.UUID]*post.AlbumPhoto),
-		photoLikes:    make(map[uuid.UUID]map[uuid.UUID]time.Time),
-		photoComments: make(map[uuid.UUID]*post.PhotoComment),
-		commentLikes:  make(map[uuid.UUID]map[uuid.UUID]time.Time),
+		albums:           make(map[uuid.UUID]post.StoredAlbum),
+		photos:           make(map[uuid.UUID]*post.AlbumPhoto),
+		photoLikes:       make(map[uuid.UUID]map[uuid.UUID]time.Time),
+		heldPhotoLikes:   make(heldLikes),
+		heldCommentLikes: make(heldLikes),
+		photoComments:    make(map[uuid.UUID]*post.PhotoComment),
+		commentLikes:     make(map[uuid.UUID]map[uuid.UUID]time.Time),
 	}
 }
 
