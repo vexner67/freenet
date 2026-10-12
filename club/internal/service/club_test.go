@@ -13,9 +13,24 @@ import (
 	"github.com/vexner67/freenet/club/internal/service"
 )
 
-// notifier remembers who was told of an appointment, by club and user.
+// notifier remembers who was told of an appointment, by club and user,
+// and whom the news were told to be a member, as the service.Readers.
 type notifier struct {
 	appointed map[[2]uuid.UUID]bool
+	readers   map[[2]uuid.UUID]bool
+}
+
+func (n *notifier) Joined(_ context.Context, clubID, userID uuid.UUID) error {
+	if n.readers == nil {
+		n.readers = make(map[[2]uuid.UUID]bool)
+	}
+	n.readers[[2]uuid.UUID{clubID, userID}] = true
+	return nil
+}
+
+func (n *notifier) Left(_ context.Context, clubID, userID uuid.UUID) error {
+	delete(n.readers, [2]uuid.UUID{clubID, userID})
+	return nil
 }
 
 func (n *notifier) Appointed(_ context.Context, clubID, userID uuid.UUID) error {
@@ -32,7 +47,7 @@ func newNotified() (*service.ClubService, *notifier) {
 	store := inmem.NewStore()
 	n := &notifier{appointed: make(map[[2]uuid.UUID]bool)}
 
-	return service.NewClubService(service.ClubDeps{Clubs: store.Clubs(), Members: store.Members(), Tx: inmem.TxManager{}, Notifier: n}), n
+	return service.NewClubService(service.ClubDeps{Clubs: store.Clubs(), Members: store.Members(), Tx: inmem.TxManager{}, Notifier: n, Readers: n}), n
 }
 
 func newService() *service.ClubService {
@@ -110,6 +125,51 @@ func TestClubService_Update(t *testing.T) {
 
 	if _, err = svc.Update(ctx, ann, uuid.New(), changes); !errors.Is(err, club.ErrNotFound) {
 		t.Fatalf("unknown club: %v", err)
+	}
+}
+
+// The news of post hear of everyone who comes into a club and goes: the
+// owner with the club, an event's too, and the members after.
+func TestClubService_Readers(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc, n := newNotified()
+	ann, bob := uuid.New(), uuid.New()
+
+	cats := create(t, svc, ann).ID()
+	party, err := svc.CreateEvent(ctx, ann, "Встреча", "", club.Schedule{Start: time.Now().Add(time.Hour)})
+	if err != nil {
+		t.Fatalf("CreateEvent: %v", err)
+	}
+
+	if !n.readers[[2]uuid.UUID{cats, ann}] || !n.readers[[2]uuid.UUID{party.Club.ID(), ann}] {
+		t.Fatalf("readers = %v, want the owner of the club and of the event", n.readers)
+	}
+
+	if _, err = svc.Join(ctx, bob, cats, false); err != nil {
+		t.Fatalf("Join: %v", err)
+	}
+	if !n.readers[[2]uuid.UUID{cats, bob}] {
+		t.Fatalf("readers = %v, want bob", n.readers)
+	}
+
+	if _, err = svc.Leave(ctx, bob, cats); err != nil {
+		t.Fatalf("Leave: %v", err)
+	}
+	if n.readers[[2]uuid.UUID{cats, bob}] {
+		t.Fatalf("readers = %v: bob left", n.readers)
+	}
+
+	// The owner cannot leave, and stays a reader.
+	if _, err = svc.Leave(ctx, ann, cats); err == nil || !n.readers[[2]uuid.UUID{cats, ann}] {
+		t.Fatalf("the owner left: %v, readers %v", err, n.readers)
+	}
+
+	// Nobody joins a club that is not there.
+	nowhere := uuid.New()
+	if _, err = svc.Join(ctx, bob, nowhere, false); err == nil || n.readers[[2]uuid.UUID{nowhere, bob}] {
+		t.Fatalf("joined no club: %v, readers %v", err, n.readers)
 	}
 }
 

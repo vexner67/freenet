@@ -18,6 +18,15 @@ type Notifier interface {
 	Dismissed(ctx context.Context, clubID, userID uuid.UUID) error
 }
 
+// Readers records what the post service has to hear about memberships:
+// its news show a member the wall of the club. Like Notifier, it is called
+// inside the transaction of the change and delivered afterwards. Joined
+// and Left may be told twice.
+type Readers interface {
+	Joined(ctx context.Context, clubID, userID uuid.UUID) error
+	Left(ctx context.Context, clubID, userID uuid.UUID) error
+}
+
 // TxManager runs fn in one transaction: everything it saves is kept if it
 // returns nil and undone otherwise.
 type TxManager interface {

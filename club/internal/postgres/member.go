@@ -166,7 +166,7 @@ func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID, m
 		return errs.Wrap("uuid.NewV7", err)
 	}
 
-	_, err = r.pool.Exec(ctx, joinQuery, id, clubID, userID, maybe)
+	_, err = pgpool.Conn(ctx, r.pool).Exec(ctx, joinQuery, id, clubID, userID, maybe)
 	if constraintOf(err) == "club_members_club_id_fkey" {
 		return club.ErrNotFound
 	}
@@ -194,7 +194,7 @@ const leaveQuery = `
 `
 
 func (r *MemberRepository) Leave(ctx context.Context, clubID, userID uuid.UUID) error {
-	if _, err := r.pool.Exec(ctx, leaveQuery, clubID, userID); err != nil {
+	if _, err := pgpool.Conn(ctx, r.pool).Exec(ctx, leaveQuery, clubID, userID); err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
 

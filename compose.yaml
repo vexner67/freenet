@@ -207,6 +207,9 @@ services:
       DATABASE_URL: postgres://${CLUB_POSTGRES_USER}:${CLUB_POSTGRES_PASSWORD}@club-postgres:5432/${CLUB_POSTGRES_DB}?sslmode=disable
       REDIS_ADDR: redis:6379
       NOTIFICATION_SERVICE_ADDR: notification:7055
+      # Not in depends_on: post waits for club, and the outbox retries
+      # until post is up.
+      POST_SERVICE_ADDR: post:7053
     depends_on:
       club-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
