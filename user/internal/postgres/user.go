@@ -235,16 +235,41 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 	return nil
 }
 
-// markSeenQuery keeps the latest visit: requests may be told out of order.
+// markSeenQuery writes the visits of many people at once and keeps the
+// latest of each: they may be told out of order. A visit of nobody (a
+// page erased meanwhile) is left out by the join. The rows go in the
+// order of their keys, so two replicas writing the same people do not
+// wait for each other in a circle.
 const markSeenQuery = `
-	UPDATE users
-	SET last_seen_at = $2
-	WHERE id = $1
-		AND (last_seen_at IS NULL OR last_seen_at < $2)
+	INSERT INTO presence (
+		user_id,
+		last_seen_at
+	)
+	SELECT
+		v.user_id,
+		v.last_seen_at
+	FROM unnest($1::uuid[], $2::timestamptz[]) AS v (user_id, last_seen_at)
+	JOIN users u ON u.id = v.user_id
+	ORDER BY v.user_id
+	ON CONFLICT (user_id) DO UPDATE
+	SET last_seen_at = EXCLUDED.last_seen_at
+	WHERE presence.last_seen_at < EXCLUDED.last_seen_at
 `
 
-func (r *UserRepository) MarkSeen(ctx context.Context, id uuid.UUID, at time.Time) error {
-	if _, err := r.pool.Exec(ctx, markSeenQuery, id, at); err != nil {
+func (r *UserRepository) MarkSeen(ctx context.Context, visits map[uuid.UUID]time.Time) error {
+	if len(visits) == 0 {
+		return nil
+	}
+
+	ids := make([]uuid.UUID, 0, len(visits))
+	times := make([]time.Time, 0, len(visits))
+
+	for id, at := range visits {
+		ids = append(ids, id)
+		times = append(times, at)
+	}
+
+	if _, err := r.pool.Exec(ctx, markSeenQuery, ids, times); err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
 
@@ -256,7 +281,12 @@ func (r *UserRepository) MarkSeen(ctx context.Context, id uuid.UUID, at time.Tim
 const countUsersQuery = `
 	SELECT
 		count(*),
-		count(*) FILTER (WHERE last_seen_at > $1)
+		count(*) FILTER (WHERE EXISTS (
+			SELECT 1
+			FROM presence p
+			WHERE p.user_id = users.id
+				AND p.last_seen_at > $1
+		))
 	FROM users
 	WHERE deactivated_at IS NULL
 `
@@ -352,7 +382,7 @@ const userColumns = `
 		photos_read,
 		friends_read,
 		online_read,
-		last_seen_at,
+		(SELECT p.last_seen_at FROM presence p WHERE p.user_id = users.id),
 		backdrop_left,
 		backdrop_right,
 		avatar_style,
@@ -412,7 +442,7 @@ const qualifiedUserColumns = `
 		u.photos_read,
 		u.friends_read,
 		u.online_read,
-		u.last_seen_at,
+		(SELECT p.last_seen_at FROM presence p WHERE p.user_id = u.id),
 		u.backdrop_left,
 		u.backdrop_right,
 		u.avatar_style,

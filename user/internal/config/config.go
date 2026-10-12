@@ -8,6 +8,7 @@ import (
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/ratelimit"
+	"github.com/vexner67/freenet/user/internal/user"
 )
 
 const (
@@ -57,6 +58,11 @@ type Config struct {
 	// AccountPurgeInterval is how often the pages that are due are erased.
 	AccountPurgeInterval time.Duration `env:"ACCOUNT_PURGE_INTERVAL" envDefault:"1m"`
 
+	// PresenceFlushInterval is how often the visits of the people on the
+	// site are written, all at once: a person shows as online that much
+	// later.
+	PresenceFlushInterval time.Duration `env:"PRESENCE_FLUSH_INTERVAL" envDefault:"10s"`
+
 	// Access tokens are issued by the auth service; user only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
 	JWTIssuer        string `env:"JWT_ISSUER,required,notEmpty"`
@@ -79,6 +85,10 @@ func (c Config) Validate() error {
 
 	if c.AccountRetention <= 0 || c.AccountPurgeInterval <= 0 {
 		return errors.New("ACCOUNT_RETENTION and ACCOUNT_PURGE_INTERVAL must be positive")
+	}
+
+	if c.PresenceFlushInterval <= 0 || c.PresenceFlushInterval >= user.OnlineFor {
+		return fmt.Errorf("PRESENCE_FLUSH_INTERVAL must be positive and below %s, how long a visit counts as online", user.OnlineFor)
 	}
 
 	return c.TLS.Validate()

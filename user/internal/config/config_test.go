@@ -39,6 +39,9 @@ func TestParse(t *testing.T) {
 		{"empty issuer", map[string]string{"JWT_ISSUER": ""}, false},
 		{"retention", map[string]string{"ACCOUNT_RETENTION": "720h"}, true},
 		{"no retention", map[string]string{"ACCOUNT_RETENTION": "0s"}, false},
+		{"visits written often", map[string]string{"PRESENCE_FLUSH_INTERVAL": "2s"}, true},
+		{"visits never written", map[string]string{"PRESENCE_FLUSH_INTERVAL": "0s"}, false},
+		{"visits written after they stop counting", map[string]string{"PRESENCE_FLUSH_INTERVAL": "5m"}, false},
 	}
 
 	for _, tt := range tests {

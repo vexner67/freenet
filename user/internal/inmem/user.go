@@ -88,7 +88,7 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 	return nil
 }
 
-func (r *UserRepository) MarkSeen(ctx context.Context, id uuid.UUID, at time.Time) error {
+func (r *UserRepository) MarkSeen(ctx context.Context, visits map[uuid.UUID]time.Time) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -96,9 +96,11 @@ func (r *UserRepository) MarkSeen(ctx context.Context, id uuid.UUID, at time.Tim
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
-	if u, ok := r.users[id]; ok {
-		u.MarkSeen(at)
-		r.users[id] = u
+	for id, at := range visits {
+		if u, ok := r.users[id]; ok {
+			u.MarkSeen(at)
+			r.users[id] = u
+		}
 	}
 
 	return nil

@@ -45,9 +45,13 @@ type App struct {
 	relays     []*outbox.Relay
 	purge      *service.PurgeService
 	purgeEvery time.Duration
-	server     *grpcserver.Server
-	metrics    *metrics.Server
-	addr       string
+	// presence writes the visits of the people on the site every
+	// presenceEvery, all at once.
+	presence      *service.PresenceService
+	presenceEvery time.Duration
+	server        *grpcserver.Server
+	metrics       *metrics.Server
+	addr          string
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -89,6 +93,8 @@ func (a *App) build(cfg config.Config) error {
 	notifier := deliver.notifier
 	a.purge = service.NewPurgeService(store.users, store.tx, deliver.eraser)
 	a.purgeEvery = cfg.AccountPurgeInterval
+	a.presence = service.NewPresenceService(store.users)
+	a.presenceEvery = cfg.PresenceFlushInterval
 
 	limiter, err := a.newLimiter(cfg)
 	if err != nil {
@@ -139,7 +145,7 @@ func (a *App) build(cfg config.Config) error {
 			Blocks:      service.NewBlockService(store.users, store.blocks, store.tx, notifier),
 			Ignores:     service.NewIgnoreService(store.ignores),
 			Permissions: service.NewPermissionService(store.users, store.follows, store.blocks),
-			Presence:    service.NewPresenceService(store.users),
+			Presence:    a.presence,
 			Backdrops:   service.NewBackdropService(store.users, store.users),
 		}, a.logger),
 	)
@@ -278,6 +284,14 @@ func (a *App) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		return errs.Wrap("a.runPurge", a.runPurge(ctx, a.purgeEvery))
+	})
+
+	g.Go(func() error {
+		a.presence.Run(ctx, a.presenceEvery, func(err error) {
+			a.logger.WarnContext(ctx, "visits not recorded", "error", err)
+		})
+
+		return nil
 	})
 
 	return g.Wait()
