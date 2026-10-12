@@ -1,16 +1,17 @@
 // Russian texts for API values and errors.
 
-// genders are openvk's "Местоимения"; neutral is its "они/их", which
-// speaks of the person in the plural.
+// genders are "Пол" of the profile form. The site has no pronouns: the
+// gender is asked only because Russian words agree with it. openvk's
+// "они/их" (neutral) is no longer offered, and a page that chose it is
+// spoken of as one whose gender is not set.
 export const genders = [
-  ['', 'не указаны'],
-  ['male', 'он/его'],
-  ['female', 'она/её'],
-  ['neutral', 'они/их'],
+  ['', 'не указан'],
+  ['male', 'мужской'],
+  ['female', 'женский'],
 ];
 
 // Relationship labels agree with gender, as in Russian they must; '' is
-// for a gender not set and for "они/их".
+// for a gender not set.
 const relationshipLabels = {
   single: { male: 'не женат', female: 'не замужем', '': 'не женат / не замужем' },
   dating: { male: 'встречается', female: 'встречается', '': 'встречается' },
@@ -45,14 +46,14 @@ export function partnerPrefix(relationship, gender) {
 
 export const worldviews = [
   ['', 'не выбрано'],
-  ['orthodox', 'Православие'],
-  ['catholicism', 'Католицизм'],
-  ['protestantism', 'Протестантизм'],
-  ['islam', 'Ислам'],
-  ['judaism', 'Иудаизм'],
-  ['buddhism', 'Буддизм'],
-  ['confucianism', 'Конфуцианство'],
-  ['secular_humanism', 'Светский гуманизм'],
+  ['orthodox', 'православие'],
+  ['catholicism', 'католицизм'],
+  ['protestantism', 'протестантизм'],
+  ['islam', 'ислам'],
+  ['judaism', 'иудаизм'],
+  ['buddhism', 'буддизм'],
+  ['confucianism', 'конфуцианство'],
+  ['secular_humanism', 'светский гуманизм'],
 ];
 
 export const politicalViews = [
@@ -60,45 +61,46 @@ export const politicalViews = [
   ['indifferent', 'индифферентные'],
   ['communist', 'коммунистические'],
   ['socialist', 'социалистические'],
-  ['moderate', 'умеренные'],
   ['liberal', 'либеральные'],
   ['conservative', 'консервативные'],
   ['monarchist', 'монархические'],
   ['ultraconservative', 'ультраконсервативные'],
   ['libertarian', 'либертарианские'],
+  ['moderate_islamism', 'умеренный исламизм'],
+  ['radical_islamism', 'радикальный исламизм'],
 ];
 
 // wallWrites is "Кто может писать у меня на стене" of openvk. There are no
 // friends here: openvk's "Друзья" are the people you follow.
 export const wallWrites = [
-  ['everyone', 'Все желающие'],
-  ['following', 'Те, на кого я подписан(а)'],
-  ['only_me', 'Только я'],
+  ['everyone', 'все желающие'],
+  ['following', 'те, на кого я подписан(а)'],
+  ['only_me', 'только я'],
 ];
 
 // messagesWrites is "Кто может писать мне сообщения" of openvk, with its
 // "Друзья" as the people you follow; whoever you wrote to may answer.
 // chatsInvites are "Кто может добавлять меня в чаты" of openvk.
 export const chatsInvites = [
-  ['everyone', 'Все желающие'],
-  ['following', 'Те, на кого я подписан(а)'],
-  ['nobody', 'Никто'],
+  ['everyone', 'все желающие'],
+  ['following', 'те, на кого я подписан(а)'],
+  ['nobody', 'никто'],
 ];
 
 export const messagesWrites = [
-  ['everyone', 'Все желающие'],
-  ['following', 'Те, на кого я подписан(а)'],
-  ['nobody', 'Никто'],
+  ['everyone', 'все желающие'],
+  ['following', 'те, на кого я подписан(а)'],
+  ['nobody', 'никто'],
 ];
 
 // audiences are who sees a part of a page ("Кому видно мои группы",
 // "… мои фотографии", "… моих друзей", "… основную информацию моей
 // страницы" of openvk), with its "Друзьям" as the people you follow.
 export const audiences = [
-  ['everyone', 'Всем желающим'],
-  ['users', 'Пользователям Freenet'],
-  ['following', 'Тем, на кого я подписан(а)'],
-  ['only_me', 'Только мне'],
+  ['everyone', 'всем желающим'],
+  ['users', 'пользователям Freenet'],
+  ['following', 'тем, на кого я подписан(а)'],
+  ['only_me', 'только мне'],
 ];
 
 // pageReads is "Кому в интернете видно мою страницу" of openvk.
@@ -106,17 +108,17 @@ export const pageReads = audiences.slice(0, 2);
 
 // onlineReads is "Кто видит мою неактивность" of openvk, in its words.
 export const onlineReads = [
-  ['everyone', 'Все'],
-  ['users', 'Пользователи Freenet'],
-  ['following', 'Те, на кого я подписан(а)'],
-  ['only_me', 'Никто'],
+  ['everyone', 'все'],
+  ['users', 'пользователи Freenet'],
+  ['following', 'те, на кого я подписан(а)'],
+  ['only_me', 'никто'],
 ];
 
 // adminsDisplays is "Список админов" of a community's settings in openvk.
 export const adminsDisplays = [
-  ['creator', 'Отображать только создателя группы'],
-  ['all', 'Отображать всех администраторов'],
-  ['none', 'Ничего не отображать'],
+  ['creator', 'отображать только создателя группы'],
+  ['all', 'отображать всех администраторов'],
+  ['none', 'ничего не отображать'],
 ];
 
 export const months = [
@@ -234,38 +236,38 @@ export function inputTime(iso) {
 // avatarStyles, mainPages and menuItems are the choices of "Интерфейс" of
 // the settings, as on openvk; the photos here are square as they are.
 export const avatarStyles = [
-  ['square', 'Квадратные (по умолчанию)'],
-  ['round', 'Круглые'],
+  ['square', 'квадратные (по умолчанию)'],
+  ['round', 'круглые'],
 ];
 
 // themes, ratings, nsfwContents and postViews are the rest of openvk's
 // "Интерфейс"; the themes are ours.
 export const themes = [
-  ['default', 'Обычный (по умолчанию)'],
-  ['blue', 'Синий'],
-  ['dark', 'Тёмный'],
+  ['default', 'обычный (по умолчанию)'],
+  ['blue', 'синий'],
+  ['dark', 'тёмный'],
 ];
 
 export const ratings = [
-  ['show', 'Показывать'],
-  ['hide', 'Скрывать'],
+  ['show', 'показывать'],
+  ['hide', 'скрывать'],
 ];
 
 export const nsfwContents = [
-  ['hide', 'Не показывать в ленте'],
-  ['blur', 'Только замазывать'],
-  ['show', 'Показывать'],
+  ['hide', 'не показывать в ленте'],
+  ['blur', 'только замазывать'],
+  ['show', 'показывать'],
 ];
 
 export const postViews = [
-  ['old', 'Старый'],
-  ['microblog', 'Микроблог'],
+  ['old', 'старый'],
+  ['microblog', 'микроблог'],
 ];
 
 // timezones are openvk's clocks ("Часовой пояс"), by minutes east of
 // UTC; the first is the browser's own.
 export const timezones = [
-  ['', 'Как в браузере (по умолчанию)'],
+  ['', 'как в браузере (по умолчанию)'],
   ['-720', '(GMT-12): Остров Бейкер, Хауленд'],
   ['-660', '(GMT-11): Паго-Паго, Ниуэ, Мидуэй'],
   ['-600', '(GMT-10): Гонолулу, Папеэте, Адак'],
@@ -307,18 +309,18 @@ export const timezones = [
 ];
 
 export const mainPages = [
-  ['page', 'Моя Страница'],
-  ['feed', 'Мои Новости'],
+  ['page', 'страница'],
+  ['feed', 'новости'],
 ];
 
 export const menuItems = [
-  ['photos', 'Мои Фотографии'],
-  ['messages', 'Мои Сообщения'],
-  ['notes', 'Мои Заметки'],
-  ['groups', 'Мои Группы'],
-  ['events', 'Мои Встречи'],
-  ['feed', 'Мои Новости'],
-  ['notifications', 'Мои Ответы'],
+  ['photos', 'Фотографии'],
+  ['messages', 'Сообщения'],
+  ['notes', 'Заметки'],
+  ['groups', 'Группы'],
+  ['events', 'Встречи'],
+  ['feed', 'Новости'],
+  ['notifications', 'Ответы'],
 ];
 
 // deactivationReasons are openvk's reasons to delete a page: a title and
@@ -332,14 +334,14 @@ export const deactivationReasons = [
   ['Другая причина', ''],
 ];
 
-// byGender picks the form of a verb for a person: "они/их" speak in the
-// plural, as openvk's "_neutral" strings.
-function byGender(gender, male, female, neutral) {
-  return { female, neutral }[gender] ?? male;
+// byGender picks the form of a verb for a person; the masculine speaks of
+// one whose gender is not set, as on openvk.
+function byGender(gender, male, female) {
+  return gender === 'female' ? female : male;
 }
 
 export function wrote(gender) {
-  return byGender(gender, 'написал', 'написала', 'написали');
+  return byGender(gender, 'написал', 'написала');
 }
 
 // updatedPhoto is what openvk says of the post of a new photo (upd_m,
@@ -347,13 +349,13 @@ export function wrote(gender) {
 export function updatedPhoto(author) {
   if (author.club) return 'обновило фотографию группы';
 
-  return byGender(author.gender, 'обновил', 'обновила', 'обновили') + ' фотографию на своей странице';
+  return byGender(author.gender, 'обновил', 'обновила') + ' фотографию на своей странице';
 }
 
 // limitedAccess is openvk's "$1 ограничил доступ к своей странице." for
 // whoever blacklisted the viewer.
 export function limitedAccess(gender) {
-  return { male: 'ограничил', female: 'ограничила', neutral: 'ограничили' }[gender] ?? 'ограничил(а)';
+  return { male: 'ограничил', female: 'ограничила' }[gender] ?? 'ограничил(а)';
 }
 
 // blacklistCount is the head of the blacklist, as on openvk.
@@ -471,7 +473,7 @@ export function presence(user, now = new Date()) {
   if (user.online) return 'Онлайн';
   if (!user.lastSeenAt) return '';
 
-  return `${byGender(user.gender, 'был', 'была', 'были')} в сети ${formatPostDate(user.lastSeenAt, now)}`;
+  return `${byGender(user.gender, 'был', 'была')} в сети ${formatPostDate(user.lastSeenAt, now)}`;
 }
 
 export function followingCount(n) {
@@ -693,22 +695,21 @@ export const completenessHints = {
 // so on; the verb agrees with the actor's gender, or is neuter for a
 // community: "Сообщество Кошки оставило комментарий".
 const notificationVerbs = {
-  like: ['оценил', 'оценила', 'оценил(а)', 'оценило', 'оценили'],
-  comment: ['оставил', 'оставила', 'оставил(а)', 'оставило', 'оставили'],
-  follow: ['подписался', 'подписалась', 'подписался(-ась)', 'подписалось', 'подписались'],
-  wall_post: ['написал', 'написала', 'написал(а)', 'написало', 'написали'],
-  repost: ['поделился', 'поделилась', 'поделился(-лась)', 'поделилось', 'поделились'],
-  comment_reply: ['ответил', 'ответила', 'ответил(а)', 'ответило', 'ответили'],
-  comment_like: ['оценил', 'оценила', 'оценил(а)', 'оценило', 'оценили'],
-  mention: ['упомянул', 'упомянула', 'упомянул(а)', 'упомянуло', 'упомянули'],
+  like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
+  comment: ['оставил', 'оставила', 'оставил(а)', 'оставило'],
+  follow: ['подписался', 'подписалась', 'подписался(-ась)', 'подписалось'],
+  wall_post: ['написал', 'написала', 'написал(а)', 'написало'],
+  repost: ['поделился', 'поделилась', 'поделился(-лась)', 'поделилось'],
+  comment_reply: ['ответил', 'ответила', 'ответил(а)', 'ответило'],
+  comment_like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
+  mention: ['упомянул', 'упомянула', 'упомянул(а)', 'упомянуло'],
 };
 
-// notificationVerb agrees with actor: a person's gender (the plural for
-// "они/их"), or a community.
+// notificationVerb agrees with actor: a person's gender, or a community.
 export function notificationVerb(type, actor) {
-  const [male, female, unknown, neuter, neutral] = notificationVerbs[type];
+  const [male, female, unknown, neuter] = notificationVerbs[type];
   if (actor.club) return neuter;
-  return { male, female, neutral }[actor.gender] ?? unknown;
+  return { male, female }[actor.gender] ?? unknown;
 }
 
 // unreadCountText is the menu counter: nothing at 0, "99+" beyond 99.
@@ -1079,19 +1080,19 @@ export function chatActionParts(m) {
 
   switch (m.action) {
     case 'create':
-      return [`${byGender(g, 'создал', 'создала', 'создали')} беседу` + (m.text ? ` «${m.text}»` : ''), '', ''];
+      return [`${byGender(g, 'создал', 'создала')} беседу` + (m.text ? ` «${m.text}»` : ''), '', ''];
     case 'title':
       return [m.text
-        ? `${byGender(g, 'изменил', 'изменила', 'изменили')} название беседы на «${m.text}»`
-        : `${byGender(g, 'убрал', 'убрала', 'убрали')} название беседы`, '', ''];
+        ? `${byGender(g, 'изменил', 'изменила')} название беседы на «${m.text}»`
+        : `${byGender(g, 'убрал', 'убрала')} название беседы`, '', ''];
     case 'invite':
-      return [`${byGender(g, 'пригласил', 'пригласила', 'пригласили')} `, whom, ''];
+      return [`${byGender(g, 'пригласил', 'пригласила')} `, whom, ''];
     case 'kick':
-      return [`${byGender(g, 'исключил', 'исключила', 'исключили')} `, whom, ' из беседы'];
+      return [`${byGender(g, 'исключил', 'исключила')} `, whom, ' из беседы'];
     case 'leave':
-      return [`${byGender(g, 'покинул', 'покинула', 'покинули')} беседу`, '', ''];
+      return [`${byGender(g, 'покинул', 'покинула')} беседу`, '', ''];
     case 'return':
-      return [`${byGender(g, 'вернулся', 'вернулась', 'вернулись')} в беседу`, '', ''];
+      return [`${byGender(g, 'вернулся', 'вернулась')} в беседу`, '', ''];
     default:
       return ['', '', ''];
   }

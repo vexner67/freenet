@@ -252,15 +252,15 @@ export function applyInterface(me) {
   applyLook(ui);
 
   menu?.replaceChildren(...[
-    el('a', { href: profilePath(me), textContent: 'Моя Страница' }),
-    menuLink(me, 'photos', '/albums', 'Мои Фотографии'),
-    menuLink(me, 'messages', '/im', 'Мои Сообщения', 'messages-count'),
-    menuLink(me, 'notes', '/notes', 'Мои Заметки'),
-    menuLink(me, 'groups', '/groups', 'Мои Группы'),
-    menuLink(me, 'events', '/events', 'Мои Встречи'),
-    menuLink(me, 'feed', '/feed', 'Мои Новости'),
-    menuLink(me, 'notifications', '/notifications', 'Мои Ответы', 'notifications-count'),
-    el('a', { href: '/settings', textContent: 'Мои Настройки' }),
+    el('a', { href: profilePath(me), textContent: 'Страница' }),
+    menuLink(me, 'photos', '/albums', 'Фотографии'),
+    menuLink(me, 'messages', '/im', 'Сообщения', 'messages-count'),
+    menuLink(me, 'notes', '/notes', 'Заметки'),
+    menuLink(me, 'groups', '/groups', 'Группы'),
+    menuLink(me, 'events', '/events', 'Встречи'),
+    menuLink(me, 'feed', '/feed', 'Новости'),
+    menuLink(me, 'notifications', '/notifications', 'Ответы', 'notifications-count'),
+    el('a', { href: '/settings', textContent: 'Настройки' }),
     el('a', { href: '/search', textContent: 'Люди' }),
     el('a', { href: '/', textContent: 'Выйти', onclick: logout }),
   ].filter(Boolean));

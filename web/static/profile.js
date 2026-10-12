@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { genders, relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, eventsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
+import { relationships, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, eventsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { notesBlock } from './notes.js';
@@ -24,7 +24,6 @@ const NOTES_SHOWN = 4;
 // rows others cannot see (only the owner gets them at all, from /me).
 function rows(user, privacy) {
   return [
-    ['Местоимения:', label(genders, user.gender), false],
     ['Семейное положение:', relationship(user), privacy && !privacy.showRelationship],
     ['Дата регистрации:', user.registeredAt ? formatDateTime(user.registeredAt) : '', false],
     ['Родной город:', user.hometown && searchLink('hometown', user.hometown), false],
