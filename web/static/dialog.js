@@ -12,7 +12,7 @@
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { isLive, onEvent } from './events.js';
-import { errorText, formatPostDate, genitiveName, isLongText, messagePreview, selectedCount, snippet } from './labels.js';
+import { errorText, formatPostDate, forwardTree, genitiveName, isLongText, messagePreview, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, sharedNode, sharedPhotoNode } from './posts.js';
@@ -141,23 +141,30 @@ async function whole(m) {
 }
 
 // forwardedNode shows the messages a message carries on, as on VK: under
-// its own words, each with who wrote it and when.
+// its own words, each with who wrote it and when, and under each what it
+// carried on itself.
 function forwardedNode(m, node) {
   const forwarded = m.forwarded ?? [];
   if (!m.forwardedCount) return null;
 
-  return el('div', { className: 'im-forwarded' },
-    ...forwarded.map((f) => el('div', { className: 'im-forwarded-message' },
+  const carried = (trees) => el('div', { className: 'im-forwarded' },
+    ...trees.map(({ message: f, carried: under }) => el('div', { className: 'im-forwarded-message' },
       el('a', { className: 'post-name', href: '/' + f.author.nickname, textContent: fullName(f.author) }),
       el('span', { className: 'im-forwarded-date', textContent: formatPostDate(f.createdAt) }),
       f.text ? textOf(f.text, node) : null,
       photosNode(f.photos ?? []),
       f.repost ? sharedNode(f.repost, { canVote: true }) : null,
       f.sharedPhoto ? sharedPhotoNode(f.sharedPhoto) : null,
-    )),
-    // Those of people whose pages are gone are not shown.
-    forwarded.length < m.forwardedCount ? el('div', { className: 'im-forwarded-hint', textContent: 'Пересланное сообщение недоступно.' }) : null,
-  );
+      under.length ? carried(under) : null,
+    )));
+
+  const shown = carried(forwardTree(forwarded));
+  // Those of people whose pages are gone are not shown.
+  if (forwarded.length < m.forwardedCount) {
+    shown.append(el('div', { className: 'im-forwarded-hint', textContent: 'Пересланное сообщение недоступно.' }));
+  }
+
+  return shown;
 }
 
 // canDeleteForAll: your own message, until deletableUntil; the server
