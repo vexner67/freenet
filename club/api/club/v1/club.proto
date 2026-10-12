@@ -33,6 +33,14 @@ service ClubService {
   // newest first; with admins_only, only the owner and the admins. Those
   // the club hides are plain members to callers who do not run it.
   rpc ListMembers(ListMembersRequest) returns (ListMembersResponse);
+  // ListJoinRequests pages those who ask to join a closed club ("Заявки"),
+  // the newest first, for those who run it.
+  rpc ListJoinRequests(ListJoinRequestsRequest) returns (ListJoinRequestsResponse);
+  // AcceptJoinRequest lets someone who asked into the club, and
+  // RejectJoinRequest turns them down: the call of those who run it.
+  // NOT_FOUND "join request not found" when there is none.
+  rpc AcceptJoinRequest(AcceptJoinRequestRequest) returns (google.protobuf.Empty);
+  rpc RejectJoinRequest(RejectJoinRequestRequest) returns (google.protobuf.Empty);
   // The owner makes a member an admin, or an admin a member again.
   rpc SetMemberRole(SetMemberRoleRequest) returns (google.protobuf.Empty);
   // Those who run a club give one of them a title, shown under the name
@@ -173,6 +181,9 @@ message Club {
   google.protobuf.Timestamp ends_at = 17;
   // How many of member_count only might come to the event.
   int32 maybe_count = 18;
+  // "Тип группы: закрытая": one joins by a request its admins accept
+  // (JoinClub makes it), and only the members see what is in the club.
+  bool closed = 19;
 }
 
 // ClubView is a club as the caller sees it.
@@ -189,6 +200,10 @@ message ClubView {
   string owner_title = 5;
   // The caller only might come to the event.
   bool maybe = 6;
+  // The caller asked to join the closed club and waits.
+  bool requested = 7;
+  // How many wait to be let in; told to those who run the club.
+  int32 request_count = 8;
 }
 
 message CreateEventRequest {
@@ -244,6 +259,8 @@ message UpdateClubRequest {
   // The schedule of an event, which must have a start; a group has none.
   google.protobuf.Timestamp starts_at = 10;
   google.protobuf.Timestamp ends_at = 11;
+  // "Тип группы: закрытая"; an event is never closed.
+  bool closed = 12;
 }
 
 message UpdateClubResponse {
@@ -296,6 +313,33 @@ message ListMembersResponse {
   string next_cursor = 2;
   // How many there are on all pages.
   int32 total = 3;
+}
+
+message ListJoinRequestsRequest {
+  string club_id = 1;
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+message ListJoinRequestsResponse {
+  // Who asks to join.
+  repeated string user_ids = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // How many there are on all pages.
+  int32 total = 3;
+}
+
+message AcceptJoinRequestRequest {
+  string club_id = 1;
+  string user_id = 2;
+}
+
+message RejectJoinRequestRequest {
+  string club_id = 1;
+  string user_id = 2;
 }
 
 message SetMemberRoleRequest {

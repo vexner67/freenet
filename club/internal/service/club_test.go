@@ -18,6 +18,18 @@ import (
 type notifier struct {
 	appointed map[[2]uuid.UUID]bool
 	readers   map[[2]uuid.UUID]bool
+	// walls are what the news were told of clubs closed and opened.
+	walls []string
+}
+
+func (n *notifier) Closed(_ context.Context, clubID uuid.UUID) error {
+	n.walls = append(n.walls, "closed "+clubID.String())
+	return nil
+}
+
+func (n *notifier) Opened(_ context.Context, clubID uuid.UUID) error {
+	n.walls = append(n.walls, "opened "+clubID.String())
+	return nil
 }
 
 func (n *notifier) Joined(_ context.Context, clubID, userID uuid.UUID) error {
@@ -47,7 +59,7 @@ func newNotified() (*service.ClubService, *notifier) {
 	store := inmem.NewStore()
 	n := &notifier{appointed: make(map[[2]uuid.UUID]bool)}
 
-	return service.NewClubService(service.ClubDeps{Clubs: store.Clubs(), Members: store.Members(), Tx: inmem.TxManager{}, Notifier: n, Readers: n}), n
+	return service.NewClubService(service.ClubDeps{Clubs: store.Clubs(), Members: store.Members(), Requests: store.Requests(), Tx: inmem.TxManager{}, Notifier: n, Readers: n}), n
 }
 
 func newService() *service.ClubService {

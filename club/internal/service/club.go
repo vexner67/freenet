@@ -163,6 +163,10 @@ type View struct {
 	Maybe      bool
 	OwnerID    uuid.UUID
 	OwnerTitle club.Title
+	// Requested: the viewer asked to join the closed club and waits.
+	// Requests counts those who wait, for those who run it.
+	Requested bool
+	Requests  int
 }
 
 // MemberPage and ClubPage are one screen of a list; NextCursor is
@@ -196,6 +200,7 @@ type Ref struct {
 type ClubDeps struct {
 	Clubs    ClubRepository
 	Members  MemberRepository
+	Requests RequestRepository
 	Tx       TxManager
 	Notifier Notifier
 	Readers  Readers
@@ -204,6 +209,7 @@ type ClubDeps struct {
 type ClubService struct {
 	clubs    ClubRepository
 	members  MemberRepository
+	requests RequestRepository
 	tx       TxManager
 	notifier Notifier
 	readers  Readers
@@ -214,6 +220,7 @@ func NewClubService(deps ClubDeps) *ClubService {
 	return &ClubService{
 		clubs:    deps.Clubs,
 		members:  deps.Members,
+		requests: deps.Requests,
 		tx:       deps.Tx,
 		notifier: deps.Notifier,
 		readers:  deps.Readers,
@@ -299,6 +306,10 @@ func (s *ClubService) view(ctx context.Context, viewerID, clubID uuid.UUID) (Vie
 		}
 
 		v.Role, v.Maybe = viewer.Role, viewer.Maybe
+
+		if err = s.viewRequests(ctx, &v, viewerID); err != nil {
+			return View{}, err
+		}
 	}
 
 	if v.OwnerID == uuid.Nil {
@@ -318,6 +329,29 @@ func (s *ClubService) view(ctx context.Context, viewerID, clubID uuid.UUID) (Vie
 	v.OwnerTitle = owner.Title
 
 	return v, nil
+}
+
+// viewRequests tells v what of the requests to join its closed club the
+// viewer may know: whether they wait themselves, or how many do.
+func (s *ClubService) viewRequests(ctx context.Context, v *View, viewerID uuid.UUID) error {
+	if !v.Club.Closed() {
+		return nil
+	}
+
+	var err error
+
+	switch {
+	case v.Role == club.RoleNone:
+		if v.Requested, err = s.requests.Has(ctx, v.Club.ID(), viewerID); err != nil {
+			return errs.Wrap("s.requests.Has", err)
+		}
+	case v.Role.Manages():
+		if v.Requests, err = s.requests.Count(ctx, v.Club.ID()); err != nil {
+			return errs.Wrap("s.requests.Count", err)
+		}
+	}
+
+	return nil
 }
 
 // GetMany returns the clubs found among ids, for a page that names them.
@@ -355,8 +389,33 @@ func (s *ClubService) Update(ctx context.Context, userID, clubID uuid.UUID, chan
 		return View{}, errs.Wrap("c.Edited", err)
 	}
 
-	if err = s.clubs.Update(ctx, edited); err != nil {
-		return View{}, errs.Wrap("s.clubs.Update", err)
+	if edited.Closed() == c.Closed() {
+		if err = s.clubs.Update(ctx, edited); err != nil {
+			return View{}, errs.Wrap("s.clubs.Update", err)
+		}
+
+		return s.view(ctx, userID, clubID)
+	}
+
+	// The club and the word about its wall are stored together or not at
+	// all. A club that opens forgets who asked to join: now they just do.
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.clubs.Update(ctx, edited); err != nil {
+			return errs.Wrap("s.clubs.Update", err)
+		}
+
+		if edited.Closed() {
+			return errs.Wrap("s.readers.Closed", s.readers.Closed(ctx, clubID))
+		}
+
+		if err := s.requests.DeleteByClub(ctx, clubID); err != nil {
+			return errs.Wrap("s.requests.DeleteByClub", err)
+		}
+
+		return errs.Wrap("s.readers.Opened", s.readers.Opened(ctx, clubID))
+	})
+	if err != nil {
+		return View{}, errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return s.view(ctx, userID, clubID)
@@ -364,11 +423,25 @@ func (s *ClubService) Update(ctx context.Context, userID, clubID uuid.UUID, chan
 
 // Join makes userID a member ("Вступить в группу", "Я приду"); joining
 // twice is fine. With maybe they only might come ("Возможно приду"),
-// which only an event that has not started takes.
+// which only an event that has not started takes. A closed club takes a
+// request instead ("Подать заявку"), which its admins accept.
 func (s *ClubService) Join(ctx context.Context, userID, clubID uuid.UUID, maybe bool) (View, error) {
 	c, err := s.clubs.Get(ctx, clubID)
 	if err != nil {
 		return View{}, errs.Wrap("s.clubs.Get", err)
+	}
+
+	role, err := s.members.Role(ctx, clubID, userID)
+	if err != nil {
+		return View{}, errs.Wrap("s.members.Role", err)
+	}
+
+	if c.JoinsByRequest(role) {
+		if err = s.requests.Add(ctx, clubID, userID); err != nil {
+			return View{}, errs.Wrap("s.requests.Add", err)
+		}
+
+		return s.view(ctx, userID, clubID)
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
@@ -386,7 +459,8 @@ func (s *ClubService) Join(ctx context.Context, userID, clubID uuid.UUID, maybe 
 }
 
 // Leave takes userID out of the club ("Выйти из группы"), unless they own
-// it; leaving a club one is not in is fine.
+// it; leaving a club one is not in is fine, and takes back the request to
+// join it ("Отменить заявку").
 func (s *ClubService) Leave(ctx context.Context, userID, clubID uuid.UUID) (View, error) {
 	role, err := s.members.Role(ctx, clubID, userID)
 	if err != nil {
@@ -400,6 +474,10 @@ func (s *ClubService) Leave(ctx context.Context, userID, clubID uuid.UUID) (View
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
 		if err := s.members.Leave(ctx, clubID, userID); err != nil {
 			return errs.Wrap("s.members.Leave", err)
+		}
+
+		if _, err := s.requests.Delete(ctx, clubID, userID); err != nil {
+			return errs.Wrap("s.requests.Delete", err)
 		}
 
 		return errs.Wrap("s.readers.Left", s.readers.Left(ctx, clubID, userID))
@@ -517,6 +595,11 @@ func (s *ClubService) Members(ctx context.Context, viewerID, clubID, cursor uuid
 		if viewer, err = s.members.Role(ctx, clubID, viewerID); err != nil {
 			return MemberPage{}, errs.Wrap("s.members.Role", err)
 		}
+	}
+
+	// Who is in a closed club, its members know.
+	if !c.Admits(viewer) {
+		return MemberPage{}, club.ErrClosed
 	}
 
 	filter, total := memberFilter(c, pick, viewer)
@@ -795,6 +878,10 @@ func (s *ClubService) WallModerators(ctx context.Context, wallID uuid.UUID) ([]u
 // they owned goes to its oldest admin or, without admins, its oldest
 // member: nobody else could name the next owner.
 func (s *ClubService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
+	if err := s.requests.DeleteByUser(ctx, userID); err != nil {
+		return errs.Wrap("s.requests.DeleteByUser", err)
+	}
+
 	return errs.Wrap("s.members.DeleteByUser", s.members.DeleteByUser(ctx, userID))
 }
 

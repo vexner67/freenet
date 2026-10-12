@@ -39,6 +39,9 @@ type ClubService interface {
 	CanModerateWall(ctx context.Context, wallID, userID uuid.UUID) (bool, error)
 	WallModerators(ctx context.Context, wallID uuid.UUID) ([]uuid.UUID, error)
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
+	Requests(ctx context.Context, viewerID, clubID, cursor uuid.UUID, size int) (service.RequestPage, error)
+	Accept(ctx context.Context, requesterID, clubID, userID uuid.UUID) error
+	Reject(ctx context.Context, requesterID, clubID, userID uuid.UUID) error
 }
 
 type ClubHandler struct {
@@ -228,6 +231,79 @@ func (h *ClubHandler) ListMembers(ctx context.Context, req *clubv1.ListMembersRe
 	}
 
 	return resp, nil
+}
+
+func (h *ClubHandler) ListJoinRequests(ctx context.Context, req *clubv1.ListJoinRequestsRequest) (*clubv1.ListJoinRequestsResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clubID, err := parseID(req.GetClubId(), "invalid club id")
+	if err != nil {
+		return nil, err
+	}
+
+	cursor, err := parseOptionalID(req.GetCursor(), "invalid cursor")
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.clubService.Requests(ctx, userID, clubID, cursor, int(req.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &clubv1.ListJoinRequestsResponse{
+		UserIds:    make([]string, 0, len(page.Requests)),
+		NextCursor: optionalID(page.NextCursor),
+		Total:      int32(page.Total), //nolint:gosec // a count of rows
+	}
+	for _, r := range page.Requests {
+		resp.UserIds = append(resp.UserIds, r.UserID.String())
+	}
+
+	return resp, nil
+}
+
+func (h *ClubHandler) AcceptJoinRequest(ctx context.Context, req *clubv1.AcceptJoinRequestRequest) (*emptypb.Empty, error) {
+	return h.decide(ctx, req, h.clubService.Accept)
+}
+
+func (h *ClubHandler) RejectJoinRequest(ctx context.Context, req *clubv1.RejectJoinRequestRequest) (*emptypb.Empty, error) {
+	return h.decide(ctx, req, h.clubService.Reject)
+}
+
+// decide answers the request of a user to join a club as the caller, one
+// of those who run it, says.
+func (h *ClubHandler) decide(
+	ctx context.Context,
+	req interface {
+		GetClubId() string
+		GetUserId() string
+	},
+	decide func(ctx context.Context, requesterID, clubID, userID uuid.UUID) error,
+) (*emptypb.Empty, error) {
+	requesterID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clubID, err := parseID(req.GetClubId(), "invalid club id")
+	if err != nil {
+		return nil, err
+	}
+
+	userID, err := parseID(req.GetUserId(), "invalid user id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = decide(ctx, requesterID, clubID, userID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (h *ClubHandler) SetMemberRole(ctx context.Context, req *clubv1.SetMemberRoleRequest) (*emptypb.Empty, error) {

@@ -111,7 +111,8 @@ const (
 			kind,
 			starts_at,
 			ends_at,
-			maybe_count
+			maybe_count,
+			closed
 		FROM clubs
 		WHERE id = $1
 	`
@@ -134,7 +135,8 @@ const (
 			kind,
 			starts_at,
 			ends_at,
-			maybe_count
+			maybe_count,
+			closed
 		FROM clubs
 		WHERE lower(address) = lower($1)
 	`
@@ -157,7 +159,8 @@ const (
 			kind,
 			starts_at,
 			ends_at,
-			maybe_count
+			maybe_count,
+			closed
 		FROM clubs
 		WHERE id = ANY($1)
 	`
@@ -228,7 +231,7 @@ func scanClub(row pgx.Row, before ...any) (*club.Club, error) {
 
 	dest := append(before, &s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID,
 		&website, &adminsDisplay, &s.OpenTopics, &s.TopicsAboveWall, &backdropLeft, &backdropRight,
-		&kind, &startsAt, &endsAt, &s.Maybes)
+		&kind, &startsAt, &endsAt, &s.Maybes, &s.Closed)
 	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
@@ -275,15 +278,16 @@ const updateClubQuery = `
 		topics_above_wall = $9,
 		reminded_at = CASE WHEN starts_at IS DISTINCT FROM $10 THEN NULL ELSE reminded_at END,
 		starts_at = $10,
-		ends_at = $11
+		ends_at = $11,
+		closed = $12
 	WHERE id = $1
 `
 
 func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
-	tag, err := r.pool.Exec(ctx, updateClubQuery,
+	tag, err := pgpool.Conn(ctx, r.pool).Exec(ctx, updateClubQuery,
 		c.ID(), c.Name().String(), c.Description().String(), c.Address().String(), c.Wall().String(),
 		c.Website().String(), c.AdminsDisplay().String(), c.OpenTopics(), c.TopicsAboveWall(),
-		nullableTime(c.Schedule().Start), nullableTime(c.Schedule().End))
+		nullableTime(c.Schedule().Start), nullableTime(c.Schedule().End), c.Closed())
 	if constraintOf(err) == "clubs_address_key" {
 		return club.ErrAddressTaken
 	}
@@ -380,7 +384,8 @@ const searchClubsSelect = `
 		kind,
 		starts_at,
 		ends_at,
-		maybe_count
+		maybe_count,
+		closed
 	FROM clubs
 	WHERE id < $1`
 

@@ -57,7 +57,7 @@ func newServer(t *testing.T) testServer {
 	)
 	store := inmem.NewStore()
 	clubv1.RegisterClubServiceServer(srv, clubgrpc.NewClubHandler(service.NewClubService(service.ClubDeps{
-		Clubs: store.Clubs(), Members: store.Members(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Readers: postclient.Nop{},
+		Clubs: store.Clubs(), Members: store.Members(), Requests: store.Requests(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Readers: postclient.Nop{},
 	})))
 
 	go func() { _ = srv.Serve(lis) }()
