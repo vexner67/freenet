@@ -69,6 +69,49 @@ func TestInterface(t *testing.T) {
 	}
 }
 
+// The address of the page changes alone: the rest of the profile stays
+// as another request left it.
+func TestUpdateNickname(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, _ := s.member(t, "ann")
+	s.member(t, "bob")
+
+	if _, err := s.client.UpdateStatus(ann, &userv1.UpdateStatusRequest{Status: "Привет"}); err != nil {
+		t.Fatal(err)
+	}
+
+	got, err := s.client.UpdateNickname(ann, &userv1.UpdateNicknameRequest{Nickname: "anna"})
+	if u := got.GetUser(); err != nil || u.GetNickname() != "anna" || u.GetName() != "ann" || u.GetStatus() != "Привет" {
+		t.Fatalf("UpdateNickname = %v, %v", got, err)
+	}
+	if _, err = s.client.GetProfile(context.Background(), &userv1.GetProfileRequest{Nickname: "ann"}); status.Code(err) != codes.NotFound {
+		t.Fatalf("the old address: %v", err)
+	}
+
+	tests := []struct {
+		name     string
+		ctx      context.Context
+		nickname string
+		want     codes.Code
+	}{
+		{name: "taken", ctx: ann, nickname: "Bob", want: codes.AlreadyExists},
+		{name: "empty", ctx: ann, nickname: "", want: codes.InvalidArgument},
+		{name: "malformed", ctx: ann, nickname: "1ann", want: codes.InvalidArgument},
+		{name: "reserved", ctx: ann, nickname: "settings", want: codes.InvalidArgument},
+		{name: "unfilled page", ctx: s.signIn(t, "new@example.com"), nickname: "newcomer", want: codes.InvalidArgument},
+		{name: "without a token", ctx: context.Background(), nickname: "anna2", want: codes.Unauthenticated},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			if _, err := s.client.UpdateNickname(tt.ctx, &userv1.UpdateNicknameRequest{Nickname: tt.nickname}); status.Code(err) != tt.want {
+				t.Errorf("UpdateNickname(%q) = %v, want %v", tt.nickname, err, tt.want)
+			}
+		})
+	}
+}
+
 func TestStatusAndCompleteness(t *testing.T) {
 	t.Parallel()
 

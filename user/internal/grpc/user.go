@@ -20,6 +20,7 @@ type UserService interface {
 	UpdateContacts(ctx context.Context, id uuid.UUID, contacts user.Contacts) (*user.User, error)
 	UpdateInterests(ctx context.Context, id uuid.UUID, interests user.Interests) (*user.User, error)
 	UpdateStatus(ctx context.Context, id uuid.UUID, status user.Status) (*user.User, error)
+	UpdateNickname(ctx context.Context, id uuid.UUID, nickname user.Nickname) (*user.User, error)
 	UpdateInterface(ctx context.Context, id uuid.UUID, ui user.Interface) (*user.User, error)
 	UpdateExtraFields(ctx context.Context, id uuid.UUID, fields []user.ExtraField) (*user.User, error)
 	UpdatePrivacy(ctx context.Context, id uuid.UUID, privacy user.Privacy) (*user.User, error)
@@ -172,6 +173,27 @@ func (h *UserHandler) UpdateInterface(ctx context.Context, req *userv1.UpdateInt
 	}
 
 	return &userv1.UpdateInterfaceResponse{User: toProtoUser(u)}, nil
+}
+
+// UpdateNickname is the address of the page alone: the settings change it
+// without sending the rest of the profile.
+func (h *UserHandler) UpdateNickname(ctx context.Context, req *userv1.UpdateNicknameRequest) (*userv1.UpdateNicknameResponse, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	nickname, err := user.NewNickname(req.GetNickname())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	u, err := h.userService.UpdateNickname(ctx, userID, nickname)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.UpdateNicknameResponse{User: toProtoUser(u)}, nil
 }
 
 // UpdateStatus is the status alone, as openvk edits it on the page.

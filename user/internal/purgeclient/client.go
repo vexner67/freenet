@@ -25,6 +25,13 @@ import (
 // Kind is the outbox kind of an erasure; the payload is the user's ID.
 const Kind = "purge_user"
 
+// Kinds of the post stream about a page deleted and restored: its likes
+// and poll votes are set aside and put back. The payload is the user's ID.
+const (
+	HoldKind    = "hold_reactions"
+	ReleaseKind = "release_reactions"
+)
+
 // Streams of the services that keep data of users, besides notification,
 // whose stream it shares with the notifications, so that a follow never
 // arrives after its follower is erased.
@@ -62,13 +69,50 @@ func (o *Outbox) UserErased(ctx context.Context, userID uuid.UUID) error {
 	return nil
 }
 
-// purgeFunc calls a service's PurgeUser.
+// Reactions is the service.Reactions: it records a deleted and a restored
+// page in the post stream, the one that also carries the erasure, so the
+// three arrive in the order they happened.
+type Reactions struct {
+	post Recorder
+}
+
+func NewReactions(post Recorder) *Reactions {
+	return &Reactions{
+		post: post,
+	}
+}
+
+func (r *Reactions) UserDeactivated(ctx context.Context, userID uuid.UUID) error {
+	return errs.Wrap("r.post.Add", r.post.Add(ctx, HoldKind, userID[:]))
+}
+
+func (r *Reactions) UserReactivated(ctx context.Context, userID uuid.UUID) error {
+	return errs.Wrap("r.post.Add", r.post.Add(ctx, ReleaseKind, userID[:]))
+}
+
+// NoReactions is the service.Reactions when no post service is configured.
+type NoReactions struct{}
+
+func (NoReactions) UserDeactivated(context.Context, uuid.UUID) error { return nil }
+func (NoReactions) UserReactivated(context.Context, uuid.UUID) error { return nil }
+
+// purgeFunc calls a service's RPC about the user.
 type purgeFunc func(ctx context.Context, userID string) error
 
 func Post(api postv1.PostServiceClient, timeout time.Duration) outbox.Deliver {
-	return deliver(timeout, func(ctx context.Context, id string) error {
-		_, err := api.PurgeUser(ctx, &postv1.PurgeUserRequest{UserId: id})
-		return err
+	return deliverKinds(timeout, map[string]purgeFunc{
+		Kind: func(ctx context.Context, id string) error {
+			_, err := api.PurgeUser(ctx, &postv1.PurgeUserRequest{UserId: id})
+			return err
+		},
+		HoldKind: func(ctx context.Context, id string) error {
+			_, err := api.HoldUserReactions(ctx, &postv1.HoldUserReactionsRequest{UserId: id})
+			return err
+		},
+		ReleaseKind: func(ctx context.Context, id string) error {
+			_, err := api.ReleaseUserReactions(ctx, &postv1.ReleaseUserReactionsRequest{UserId: id})
+			return err
+		},
 	})
 }
 
@@ -111,8 +155,14 @@ func Notification(api notificationv1.NotificationServiceClient, timeout time.Dur
 }
 
 func deliver(timeout time.Duration, purge purgeFunc) outbox.Deliver {
+	return deliverKinds(timeout, map[string]purgeFunc{Kind: purge})
+}
+
+// deliverKinds delivers each kind of a stream by its call.
+func deliverKinds(timeout time.Duration, calls map[string]purgeFunc) outbox.Deliver {
 	return func(ctx context.Context, m outbox.Message) error {
-		if m.Kind != Kind {
+		purge, ok := calls[m.Kind]
+		if !ok {
 			return outbox.Permanent(fmt.Errorf("unknown kind %q", m.Kind))
 		}
 

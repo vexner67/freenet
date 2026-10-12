@@ -31,8 +31,9 @@ type outboxQueue interface {
 // delivery is what user tells other services through the outbox: follows
 // to notification, erased pages to every service that keeps data of users.
 type delivery struct {
-	notifier service.Notifier
-	eraser   service.Eraser
+	notifier  service.Notifier
+	eraser    service.Eraser
+	reactions service.Reactions
 }
 
 // newDelivery opens a stream and a relay for each service configured. The
@@ -44,7 +45,7 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 		return delivery{}, errs.Wrap("mtls.ClientCredentials", err)
 	}
 
-	d := delivery{notifier: notifyclient.Nop{}}
+	d := delivery{notifier: notifyclient.Nop{}, reactions: purgeclient.NoReactions{}}
 	var erasures []purgeclient.Recorder
 
 	// stream relays the stream to the service at addr by deliver.
@@ -109,6 +110,10 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 			return delivery{}, err
 		}
 		erasures = append(erasures, q)
+
+		if s.name == purgeclient.PostStream {
+			d.reactions = purgeclient.NewReactions(q)
+		}
 	}
 
 	d.eraser = purgeclient.NewOutbox(erasures...)

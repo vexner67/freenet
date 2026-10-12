@@ -15,6 +15,9 @@ service UserService {
   rpc UpdateProfile(UpdateProfileRequest) returns (UpdateProfileResponse);
   // The status alone, as openvk edits it on the page.
   rpc UpdateStatus(UpdateStatusRequest) returns (UpdateStatusResponse);
+  // The address of the page alone ("Адрес страницы" of the settings); the
+  // profile has to be filled first.
+  rpc UpdateNickname(UpdateNicknameRequest) returns (UpdateNicknameResponse);
   rpc UpdatePrivacy(UpdatePrivacyRequest) returns (UpdatePrivacyResponse);
   // "Интерфейс" of the settings: how the site looks to the caller alone.
   rpc UpdateInterface(UpdateInterfaceRequest) returns (UpdateInterfaceResponse);
@@ -541,6 +544,14 @@ message UpdateStatusRequest {
 }
 
 message UpdateStatusResponse {
+  User user = 1;
+}
+
+message UpdateNicknameRequest {
+  string nickname = 1;
+}
+
+message UpdateNicknameResponse {
   User user = 1;
 }
 

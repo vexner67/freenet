@@ -34,3 +34,19 @@ func (u *User) Completeness() (percent int, unfilled []string) {
 func (u *User) UpdateStatus(status Status) {
 	u.profile.Status = status
 }
+
+// UpdateNickname replaces the address of the page alone ("Адрес страницы"
+// of the settings), leaving the rest of the profile as it is. The page
+// has to be filled first: nobody has an address without a name.
+func (u *User) UpdateNickname(nickname Nickname) error {
+	profile := u.profile
+	profile.Nickname = nickname
+
+	if err := profile.validate(); err != nil {
+		return err
+	}
+
+	u.profile = profile
+
+	return nil
+}

@@ -127,7 +127,7 @@ func (a *App) build(cfg config.Config) error {
 		a.server.Registrar(),
 		usergrpc.NewUserHandler(usergrpc.Services{
 			Users:    service.NewUserService(store.users),
-			Accounts: service.NewAccountService(store.users, cfg.AccountRetention),
+			Accounts: service.NewAccountService(store.users, store.tx, deliver.reactions, cfg.AccountRetention),
 			Follows: service.NewFollowService(service.FollowDeps{
 				Users:    store.users,
 				Follows:  store.follows,
