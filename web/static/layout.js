@@ -129,19 +129,19 @@ async function logout(event) {
   location.href = '/';
 }
 
-// asset is the address of a file of /static/ beside this script: under the
-// version of the site the page named, where the browser keeps it for good.
-export function asset(name) {
-  return new URL(name, import.meta.url).href;
-}
-
 // The look of the site is kept in the browser too, so that a page wears
 // it before the server has said whose it is; THEME_KEY is a theme chosen
 // for this device alone ("Применить стиль только для этого устройства").
 // theme.js reads the same keys to put the theme on before the first paint.
 const LOOK_KEY = 'freenet.interface';
 const THEME_KEY = 'freenet.theme';
-const THEMES = ['blue', 'dark'];
+// The stylesheets of the themes. A file of /static/ is named in a script
+// whole, as one string: the server puts the version of the file into such
+// a path, and the browser keeps the file for good.
+const THEMES = {
+  blue: '/static/themes/blue.css',
+  dark: '/static/themes/dark.css',
+};
 
 function stored(key) {
   try {
@@ -189,13 +189,13 @@ function applyLook(ui) {
   const theme = deviceTheme() ?? ui.theme;
   let link = $('theme');
 
-  if (THEMES.includes(theme)) {
-    const href = asset(`themes/${theme}.css`);
+  if (Object.hasOwn(THEMES, theme)) {
+    const href = THEMES[theme];
     if (!link) {
       link = el('link', { id: 'theme', rel: 'stylesheet' });
       document.head.append(link);
     }
-    if (link.href !== href) link.href = href;
+    if (link.getAttribute('href') !== href) link.href = href;
   } else {
     link?.remove();
   }
@@ -406,7 +406,7 @@ export function setCounter(name, n) {
 // avatarURL is the photo of a user, author or profile, or the placeholder;
 // a community has a placeholder of its own, the camera of openvk.
 export function avatarURL(user, size) {
-  return user.avatar?.[size] ?? asset(user.club ? 'club.svg' : 'avatar.svg');
+  return user.avatar?.[size] ?? (user.club ? '/static/club.svg' : '/static/avatar.svg');
 }
 
 export function fullName(user) {

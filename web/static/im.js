@@ -11,7 +11,7 @@ import { api, currentUser } from './api.js';
 import { onEvent } from './events.js';
 import { openNewChat, chatPath } from './chats.js';
 import { chatPreview, chatTitle, formatPostDate, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
-import { $, asset, avatarURL, el, fullName, renderChrome, showError, hideError } from './layout.js';
+import { $, avatarURL, el, fullName, renderChrome, showError, hideError } from './layout.js';
 
 const PREVIEW = 120;
 
@@ -28,7 +28,7 @@ function chatNode(d) {
   const m = d.chat.lastMessage;
 
   return el('a', { className: 'dialog', href: chatPath(d.chat.id) },
-    el('img', { className: 'dialog-avatar', src: asset('chat.svg'), alt: '' }),
+    el('img', { className: 'dialog-avatar', src: '/static/chat.svg', alt: '' }),
     el('div', { className: 'dialog-info' },
       el('b', { className: 'dialog-name', textContent: chatTitle(d.chat) }),
       el('div', { className: 'dialog-date', textContent: formatPostDate(m?.createdAt ?? d.chat.createdAt) }),

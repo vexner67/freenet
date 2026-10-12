@@ -5,8 +5,13 @@
 // stylesheet of the theme into the document there, so the browser waits
 // for it as it waits for style.css. layout.js keeps the same link once
 // the settings are known; the keys and the themes are the ones it names.
+// The stylesheets are named whole: the server puts their versions into
+// the paths, the same ones layout.js gets.
 (() => {
-  const themes = ['blue', 'dark'];
+  const themes = {
+    blue: '/static/themes/blue.css',
+    dark: '/static/themes/dark.css',
+  };
 
   let theme = null;
   try {
@@ -16,8 +21,7 @@
     // Without storage the page wears the theme layout.js gives it.
   }
 
-  if (!themes.includes(theme)) return;
+  if (typeof theme !== 'string' || !Object.hasOwn(themes, theme)) return;
 
-  const href = new URL(`themes/${theme}.css`, document.currentScript.src).href;
-  document.write(`<link id="theme" rel="stylesheet" href="${href}">`);
+  document.write(`<link id="theme" rel="stylesheet" href="${themes[theme]}">`);
 })();

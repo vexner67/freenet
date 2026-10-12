@@ -4,7 +4,6 @@ import { readFileSync, readdirSync } from 'node:fs';
 import vm from 'node:vm';
 
 const source = readFileSync(new URL('../static/theme.js', import.meta.url), 'utf8');
-const script = 'https://freenet.test/static/v/abc123/theme.js';
 
 // written is what theme.js writes into a document whose storage holds items.
 function written(items, broken = false) {
@@ -19,8 +18,8 @@ function written(items, broken = false) {
         return items[key] ?? null;
       },
     },
+    Object,
     document: {
-      currentScript: { src: script },
       write: (html) => out.push(html),
     },
   });
@@ -28,10 +27,10 @@ function written(items, broken = false) {
   return out.join('');
 }
 
-test('the theme of the settings is put on beside the script', () => {
+test('the theme of the settings is put on by the path the server versions', () => {
   const html = written({ 'freenet.interface': JSON.stringify({ theme: 'dark' }) });
 
-  assert.equal(html, '<link id="theme" rel="stylesheet" href="https://freenet.test/static/v/abc123/themes/dark.css">');
+  assert.equal(html, '<link id="theme" rel="stylesheet" href="/static/themes/dark.css">');
 });
 
 test('the theme of the device wins over the one of the settings', () => {
@@ -44,6 +43,7 @@ test('nothing is written for the default theme, an unknown one or broken storage
   assert.equal(written({}), '');
   assert.equal(written({ 'freenet.interface': JSON.stringify({ theme: 'default' }) }), '');
   assert.equal(written({ 'freenet.theme': '"><script src=//evil>' }), '');
+  assert.equal(written({ 'freenet.theme': 'constructor' }), '');
   assert.equal(written({ 'freenet.interface': '{not json' }), '');
   assert.equal(written({ 'freenet.theme': 'dark' }, true), '');
 });
