@@ -56,7 +56,7 @@ const getNoteQuery = `
 		author_id,
 		title,
 		text,
-		comment_count,
+		comment_count - hidden_note_comments(id) AS comment_count,
 		created_at,
 		edited_at
 	FROM notes
@@ -122,7 +122,7 @@ const listNotesQuery = `
 		author_id,
 		title,
 		text,
-		comment_count,
+		comment_count - hidden_note_comments(id) AS comment_count,
 		created_at,
 		edited_at
 	FROM notes
@@ -330,6 +330,7 @@ const listNoteCommentsQuery = `
 	FROM note_comments
 	WHERE note_id = $1
 		AND id > $2
+		AND NOT user_hidden(author_id)
 	ORDER BY id
 	LIMIT $3
 `

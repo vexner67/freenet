@@ -29,6 +29,8 @@ type AlbumRepository struct {
 	// The likes of deleted pages, of photos and of comments.
 	heldPhotoLikes   heldLikes
 	heldCommentLikes heldLikes
+	// hidden are the deleted pages themselves.
+	hidden hiddenUsers
 }
 
 func NewAlbumRepository() *AlbumRepository {
@@ -40,6 +42,7 @@ func NewAlbumRepository() *AlbumRepository {
 		heldCommentLikes: make(heldLikes),
 		photoComments:    make(map[uuid.UUID]*post.PhotoComment),
 		commentLikes:     make(map[uuid.UUID]map[uuid.UUID]time.Time),
+		hidden:           make(hiddenUsers),
 	}
 }
 
@@ -81,7 +84,7 @@ func (r *AlbumRepository) SystemAlbum(ctx context.Context, ownerID uuid.UUID, ki
 		return nil, post.ErrAlbumNotFound
 	}
 
-	return post.RestoreAlbum(s), nil
+	return r.seenAlbum(s), nil
 }
 
 func (r *AlbumRepository) systemAlbum(ownerID uuid.UUID, kind post.AlbumKind) (post.StoredAlbum, bool) {
@@ -126,7 +129,7 @@ func (r *AlbumRepository) Get(ctx context.Context, id uuid.UUID) (*post.Album, e
 		return nil, post.ErrAlbumNotFound
 	}
 
-	return post.RestoreAlbum(s), nil
+	return r.seenAlbum(s), nil
 }
 
 func (r *AlbumRepository) Update(ctx context.Context, a *post.Album) error {
@@ -256,7 +259,7 @@ func (r *AlbumRepository) List(ctx context.Context, ownerID, before uuid.UUID, l
 
 	albums := make([]*post.Album, 0, min(len(found), limit))
 	for _, s := range found[:min(len(found), limit)] {
-		albums = append(albums, post.RestoreAlbum(s))
+		albums = append(albums, r.seenAlbum(s))
 	}
 
 	return albums, nil
@@ -384,7 +387,7 @@ func (p *AlbumPhotoRepository) Get(ctx context.Context, id uuid.UUID) (*post.Alb
 		return nil, post.ErrAlbumPhotoNotFound
 	}
 
-	return photo, nil
+	return p.r.seenPhoto(photo), nil
 }
 
 func (p *AlbumPhotoRepository) Describe(ctx context.Context, photo *post.AlbumPhoto) error {
@@ -463,8 +466,8 @@ func (p *AlbumPhotoRepository) List(ctx context.Context, albumID, after uuid.UUI
 	var found []*post.AlbumPhoto
 	for _, photo := range p.r.photos {
 		id := photo.ID()
-		if photo.AlbumID() == albumID && bytes.Compare(id[:], after[:]) > 0 {
-			found = append(found, photo)
+		if photo.AlbumID() == albumID && bytes.Compare(id[:], after[:]) > 0 && !p.r.hidden[photo.AuthorID()] {
+			found = append(found, p.r.seenPhoto(photo))
 		}
 	}
 
@@ -484,7 +487,7 @@ func (p *AlbumPhotoRepository) Covers(ctx context.Context, albumIDs []uuid.UUID)
 	// The photo chosen to show the album, else its first.
 	first := make(map[uuid.UUID]*post.AlbumPhoto)
 	for _, photo := range p.r.photos {
-		if !slices.Contains(albumIDs, photo.AlbumID()) {
+		if !slices.Contains(albumIDs, photo.AlbumID()) || p.r.hidden[photo.AuthorID()] {
 			continue
 		}
 

@@ -35,6 +35,8 @@ type Store struct {
 	heldLikes        heldLikes
 	heldCommentLikes heldLikes
 	heldVotes        map[uuid.UUID]map[uuid.UUID]pollVote
+	// hidden are the deleted pages themselves.
+	hidden hiddenUsers
 }
 
 func NewStore() *Store {
@@ -44,6 +46,7 @@ func NewStore() *Store {
 		heldLikes:        make(heldLikes),
 		heldCommentLikes: make(heldLikes),
 		heldVotes:        make(map[uuid.UUID]map[uuid.UUID]pollVote),
+		hidden:           make(hiddenUsers),
 		comments:         make(map[uuid.UUID]*post.Comment),
 		commentLikes:     make(map[uuid.UUID]map[uuid.UUID]time.Time),
 		pins:             make(map[uuid.UUID]uuid.UUID),
@@ -159,7 +162,7 @@ func (r *PostRepository) Get(ctx context.Context, id uuid.UUID) (*post.Post, err
 		return nil, post.ErrNotFound
 	}
 
-	return p, nil
+	return r.s.seen(p), nil
 }
 
 func (r *PostRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Post, error) {
@@ -173,7 +176,7 @@ func (r *PostRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.
 	var found []*post.Post
 	for _, id := range ids {
 		if p, ok := r.s.posts[id]; ok {
-			found = append(found, p)
+			found = append(found, r.s.seen(p))
 		}
 	}
 
@@ -215,7 +218,7 @@ func (r *PostRepository) ListByWall(ctx context.Context, wallID uuid.UUID, pick 
 	plain := pick.ShowsPinnedFirst()
 
 	return r.list(ctx, func(p *post.Post) bool {
-		return p.WallID() == wallID && pick.Matches(p) && (!plain || !p.Pinned())
+		return p.WallID() == wallID && pick.Matches(p) && (!plain || !p.Pinned()) && !r.s.postHidden(p)
 	}, before, limit)
 }
 
@@ -384,14 +387,14 @@ func (r *PostRepository) Pinned(ctx context.Context, wallID uuid.UUID) (*post.Po
 		return nil, post.ErrNotFound
 	}
 
-	return r.s.posts[id], nil
+	return r.s.seen(r.s.posts[id]), nil
 }
 
 // ListFeed: a post that speaks for a community comes with its wall, not
 // with its author, as in PostgreSQL.
 func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSources, before uuid.UUID, limit int) ([]*post.Post, error) {
 	match := func(p *post.Post) bool {
-		if p.Archived() || (p.NSFW() && sources.HideNSFW) {
+		if p.Archived() || (p.NSFW() && sources.HideNSFW) || r.s.postHidden(p) {
 			return false
 		}
 
@@ -414,7 +417,7 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 }
 
 func (r *PostRepository) ListByAuthor(ctx context.Context, authorID, before uuid.UUID, limit int) ([]*post.Post, error) {
-	return r.list(ctx, func(p *post.Post) bool { return p.ListedFor(authorID) }, before, limit)
+	return r.list(ctx, func(p *post.Post) bool { return p.ListedFor(authorID) && !r.s.postHidden(p) }, before, limit)
 }
 
 func (r *PostRepository) CountByAuthor(ctx context.Context, authorID uuid.UUID) (int, error) {
@@ -427,7 +430,7 @@ func (r *PostRepository) CountByAuthor(ctx context.Context, authorID uuid.UUID) 
 
 	n := 0
 	for _, p := range r.s.posts {
-		if p.ListedFor(authorID) {
+		if p.ListedFor(authorID) && !r.s.postHidden(p) {
 			n++
 		}
 	}
@@ -437,7 +440,7 @@ func (r *PostRepository) CountByAuthor(ctx context.Context, authorID uuid.UUID) 
 
 func (r *PostRepository) ListReposts(ctx context.Context, postID, before uuid.UUID, limit int, archived bool) ([]*post.Post, error) {
 	match := func(p *post.Post) bool {
-		return p.Content().RepostOf() == postID && (archived || !p.Archived())
+		return p.Content().RepostOf() == postID && (archived || (!p.Archived() && !r.s.postHidden(p)))
 	}
 
 	return r.list(ctx, match, before, limit)
@@ -457,7 +460,7 @@ func (r *PostRepository) list(ctx context.Context, match func(*post.Post) bool, 
 	for _, p := range r.s.posts {
 		id := p.ID()
 		if match(p) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
-			found = append(found, p)
+			found = append(found, r.s.seen(p))
 		}
 	}
 
@@ -502,7 +505,7 @@ func (r *PostRepository) CountByWall(ctx context.Context, wallID uuid.UUID, pick
 
 	count := 0
 	for _, p := range r.s.posts {
-		if p.WallID() == wallID && pick.Matches(p) {
+		if p.WallID() == wallID && pick.Matches(p) && !r.s.postHidden(p) {
 			count++
 		}
 	}

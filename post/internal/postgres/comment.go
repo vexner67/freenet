@@ -157,6 +157,7 @@ const listCommentsByPostQuery = `
 	FROM comments
 	WHERE post_id = $1
 		AND id > $2
+		AND NOT (user_hidden(author_id) AND NOT from_wall)
 	ORDER BY id
 	LIMIT $3
 `
@@ -197,6 +198,7 @@ const lastCommentsQuery = `
 			from_wall
 		FROM comments
 		WHERE post_id = p.id
+			AND NOT (user_hidden(author_id) AND NOT from_wall)
 		ORDER BY id DESC
 		LIMIT $2
 	) c

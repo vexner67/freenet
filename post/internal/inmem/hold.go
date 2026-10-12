@@ -78,6 +78,8 @@ func (r *HoldRepository) Hold(ctx context.Context, userID uuid.UUID) error {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 
+	s.hidden[userID] = true
+
 	s.heldLikes.hold(s.likes, userID, func(id uuid.UUID) { s.count(id, func(c *post.Counters) { c.Likes-- }) })
 	s.heldCommentLikes.hold(s.commentLikes, userID, func(id uuid.UUID) {
 		s.restoreComment(id, func(sc *post.StoredComment) { sc.Likes-- })
@@ -109,6 +111,8 @@ func (r *HoldRepository) Release(ctx context.Context, userID uuid.UUID) error {
 
 	s.mu.Lock()
 	defer s.mu.Unlock()
+
+	delete(s.hidden, userID)
 
 	s.heldLikes.release(s.likes, userID,
 		func(id uuid.UUID) bool { return s.posts[id] != nil },
@@ -149,6 +153,7 @@ func (r *HoldRepository) Forget(ctx context.Context, userID uuid.UUID) error {
 	delete(r.s.heldLikes, userID)
 	delete(r.s.heldCommentLikes, userID)
 	delete(r.s.heldVotes, userID)
+	delete(r.s.hidden, userID)
 
 	return nil
 }
@@ -162,6 +167,7 @@ func (r *TopicRepository) Hold(ctx context.Context, userID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	r.hidden[userID] = true
 	r.heldLikes.hold(r.likes, userID, uncounted)
 
 	return nil
@@ -175,6 +181,7 @@ func (r *TopicRepository) Release(ctx context.Context, userID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	delete(r.hidden, userID)
 	r.heldLikes.release(r.likes, userID, func(id uuid.UUID) bool { return r.messages[id] != nil }, uncounted)
 
 	return nil
@@ -189,6 +196,7 @@ func (r *TopicRepository) Forget(ctx context.Context, userID uuid.UUID) error {
 	defer r.mu.Unlock()
 
 	delete(r.heldLikes, userID)
+	delete(r.hidden, userID)
 
 	return nil
 }
@@ -203,6 +211,7 @@ func (r *AlbumRepository) Hold(ctx context.Context, userID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	r.hidden[userID] = true
 	r.heldPhotoLikes.hold(r.photoLikes, userID, func(id uuid.UUID) { r.recountPhoto(id, -1, 0) })
 	r.heldCommentLikes.hold(r.commentLikes, userID, uncounted)
 
@@ -217,6 +226,7 @@ func (r *AlbumRepository) Release(ctx context.Context, userID uuid.UUID) error {
 	r.mu.Lock()
 	defer r.mu.Unlock()
 
+	delete(r.hidden, userID)
 	r.heldPhotoLikes.release(r.photoLikes, userID,
 		func(id uuid.UUID) bool { return r.photos[id] != nil },
 		func(id uuid.UUID) { r.recountPhoto(id, 1, 0) })
@@ -235,6 +245,39 @@ func (r *AlbumRepository) Forget(ctx context.Context, userID uuid.UUID) error {
 
 	delete(r.heldPhotoLikes, userID)
 	delete(r.heldCommentLikes, userID)
+	delete(r.hidden, userID)
+
+	return nil
+}
+
+// Hold leaves the comments a deleted page wrote under notes out of the
+// lists and the counts; notes have no likes to keep aside.
+func (r *NoteRepository) Hold(ctx context.Context, userID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	r.hidden[userID] = true
+
+	return nil
+}
+
+func (r *NoteRepository) Release(ctx context.Context, userID uuid.UUID) error {
+	return r.Forget(ctx, userID)
+}
+
+func (r *NoteRepository) Forget(ctx context.Context, userID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	delete(r.hidden, userID)
 
 	return nil
 }

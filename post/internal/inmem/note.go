@@ -19,12 +19,15 @@ type NoteRepository struct {
 	mu       sync.RWMutex
 	notes    map[uuid.UUID]*post.Note
 	comments map[uuid.UUID]*post.NoteComment
+	// hidden are the pages their owners deleted.
+	hidden hiddenUsers
 }
 
 func NewNoteRepository() *NoteRepository {
 	return &NoteRepository{
 		notes:    make(map[uuid.UUID]*post.Note),
 		comments: make(map[uuid.UUID]*post.NoteComment),
+		hidden:   make(hiddenUsers),
 	}
 }
 
@@ -54,7 +57,7 @@ func (r *NoteRepository) Get(ctx context.Context, id uuid.UUID) (*post.Note, err
 		return nil, post.ErrNoteNotFound
 	}
 
-	return n, nil
+	return r.seenNote(n), nil
 }
 
 // Update keeps the title, the text and the time of the change: the
@@ -136,7 +139,7 @@ func (r *NoteRepository) List(ctx context.Context, authorID, before uuid.UUID, l
 	for _, n := range r.byAuthor(authorID) {
 		id := n.ID()
 		if before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0 {
-			found = append(found, n)
+			found = append(found, r.seenNote(n))
 		}
 	}
 
@@ -264,7 +267,7 @@ func (c *NoteCommentRepository) List(ctx context.Context, noteID, after uuid.UUI
 	var found []*post.NoteComment
 	for _, nc := range c.r.comments {
 		id := nc.ID()
-		if nc.NoteID() == noteID && bytes.Compare(id[:], after[:]) > 0 {
+		if nc.NoteID() == noteID && bytes.Compare(id[:], after[:]) > 0 && !c.r.hidden[nc.AuthorID()] {
 			found = append(found, nc)
 		}
 	}

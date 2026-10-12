@@ -11,7 +11,9 @@ import (
 )
 
 // HoldRepository keeps the likes and the poll votes of deleted pages in
-// held_reactions, out of the tables every count and list reads.
+// held_reactions, out of the tables every count and list reads, and the
+// pages themselves in hidden_users: what they wrote stays where it is,
+// and the lists and the counts that read it leave it out.
 type HoldRepository struct {
 	pool *pgxpool.Pool
 }
@@ -162,11 +164,32 @@ const releaseVotesQuery = `
 	WHERE post_id IN (SELECT post_id FROM put)
 `
 
+const hideUserQuery = `
+	INSERT INTO hidden_users (
+		user_id
+	)
+	VALUES ($1)
+	ON CONFLICT DO NOTHING
+`
+
+const showUserQuery = `
+	DELETE FROM hidden_users
+	WHERE user_id = $1
+`
+
 func (r *HoldRepository) Hold(ctx context.Context, userID uuid.UUID) error {
+	if _, err := r.conn(ctx).Exec(ctx, hideUserQuery, userID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
 	return r.each(ctx, userID, holdLikesQuery, holdVotesQuery)
 }
 
 func (r *HoldRepository) Release(ctx context.Context, userID uuid.UUID) error {
+	if _, err := r.conn(ctx).Exec(ctx, showUserQuery, userID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
 	return r.each(ctx, userID, releaseLikesQuery, releaseVotesQuery)
 }
 
@@ -192,6 +215,11 @@ const forgetHeldQuery = `
 
 func (r *HoldRepository) Forget(ctx context.Context, userID uuid.UUID) error {
 	if _, err := r.conn(ctx).Exec(ctx, forgetHeldQuery, userID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	// What the page wrote is erased with it: there is nothing to hide.
+	if _, err := r.conn(ctx).Exec(ctx, showUserQuery, userID); err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
 

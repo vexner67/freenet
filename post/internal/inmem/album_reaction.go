@@ -254,7 +254,7 @@ func (c *PhotoCommentRepository) List(ctx context.Context, photoID, after uuid.U
 
 	var found []*post.PhotoComment
 	for _, pc := range c.r.photoComments {
-		if id := pc.ID(); pc.PhotoID() == photoID && bytes.Compare(id[:], after[:]) > 0 {
+		if id := pc.ID(); pc.PhotoID() == photoID && bytes.Compare(id[:], after[:]) > 0 && !c.r.hidden[pc.AuthorID()] {
 			found = append(found, c.r.counted(pc))
 		}
 	}

@@ -827,9 +827,9 @@ func TestPostService_RepostsOfAPost(t *testing.T) {
 	}
 
 	// Who shared it: newest first, a page at a time, without the archived
-	// repost, which is counted still.
+	// repost, which is not counted either.
 	page, err := svc.Reposts(ctx, uuid.Nil, original.ID(), uuid.Nil, 2)
-	if err != nil || page.Total != 4 || len(page.Posts) != 2 || page.Posts[0].ID() != own.ID() || page.Posts[1].ID() != inClub.ID() ||
+	if err != nil || page.Total != 3 || len(page.Posts) != 2 || page.Posts[0].ID() != own.ID() || page.Posts[1].ID() != inClub.ID() ||
 		page.NextCursor != inClub.ID() {
 		t.Fatalf("Reposts = %+v, %v", page, err)
 	}

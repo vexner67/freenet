@@ -30,3 +30,28 @@ func TestHolds(t *testing.T) {
 		Holders:       []service.ReactionHolder{store.Holds(), topics, albums},
 	})
 }
+
+func TestHolds_Written(t *testing.T) {
+	t.Parallel()
+
+	store := inmem.NewStore()
+	topics := inmem.NewTopicRepository()
+	albums := inmem.NewAlbumRepository()
+	notes := inmem.NewNoteRepository()
+
+	holdtest.RunWritten(t, holdtest.Written{
+		Posts:         store.Posts(),
+		Likes:         store.Likes(),
+		Comments:      store.Comments(),
+		CommentLikes:  store.CommentLikes(),
+		Topics:        topics,
+		Messages:      topics.Messages(),
+		Albums:        albums,
+		Photos:        albums.Photos(),
+		PhotoLikes:    albums.PhotoLikes(),
+		PhotoComments: albums.PhotoComments(),
+		Notes:         notes,
+		NoteComments:  notes.Comments(),
+		Holders:       []service.ReactionHolder{store.Holds(), topics, albums, notes},
+	})
+}

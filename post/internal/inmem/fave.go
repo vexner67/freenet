@@ -44,19 +44,40 @@ func faves(likes map[uuid.UUID]map[uuid.UUID]time.Time, userID uuid.UUID, keep f
 // everyFave is a page no list of likes fills.
 const everyFave = int(^uint(0) >> 1)
 
-func everything(uuid.UUID) bool { return true }
-
-// shownPost: the post is there and not archived. The caller holds the lock.
+// shownPost: the post is there, not archived and not of a deleted page.
+// The caller holds the lock.
 func (s *Store) shownPost(id uuid.UUID) bool {
 	p, ok := s.posts[id]
 
-	return ok && !p.Archived()
+	return ok && !p.Archived() && !s.postHidden(p)
 }
 
 func (s *Store) shownComment(id uuid.UUID) bool {
 	c, ok := s.comments[id]
 
-	return ok && s.shownPost(c.PostID())
+	return ok && s.shownPost(c.PostID()) && !s.commentHidden(c)
+}
+
+// countedPost is what the number of faves counts: the archive too, but
+// not what deleted pages wrote.
+func (s *Store) countedPost(id uuid.UUID) bool {
+	p, ok := s.posts[id]
+
+	return ok && !s.postHidden(p)
+}
+
+func (s *Store) countedComment(id uuid.UUID) bool {
+	c, ok := s.comments[id]
+
+	return ok && s.countedPost(c.PostID()) && !s.commentHidden(c)
+}
+
+// shownPhoto: neither who put the photo nor the owner of its album
+// deleted the page. The caller holds the lock.
+func (r *AlbumRepository) shownPhoto(id uuid.UUID) bool {
+	p, ok := r.photos[id]
+
+	return ok && !r.photoHidden(p)
 }
 
 func (r *LikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *service.FaveCursor, limit int) ([]service.Fave, error) {
@@ -79,7 +100,7 @@ func (r *LikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (in
 	r.s.mu.RLock()
 	defer r.s.mu.RUnlock()
 
-	return len(faves(r.s.likes, userID, everything, nil, everyFave)), nil
+	return len(faves(r.s.likes, userID, r.s.countedPost, nil, everyFave)), nil
 }
 
 func (r *CommentLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *service.FaveCursor, limit int) ([]service.Fave, error) {
@@ -101,7 +122,7 @@ func (r *CommentLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UU
 	r.s.mu.RLock()
 	defer r.s.mu.RUnlock()
 
-	return len(faves(r.s.commentLikes, userID, everything, nil, everyFave)), nil
+	return len(faves(r.s.commentLikes, userID, r.s.countedComment, nil, everyFave)), nil
 }
 
 func (l *AlbumPhotoLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID, after *service.FaveCursor, limit int) ([]service.Fave, error) {
@@ -112,7 +133,7 @@ func (l *AlbumPhotoLikeRepository) LikedBy(ctx context.Context, userID uuid.UUID
 	l.r.mu.RLock()
 	defer l.r.mu.RUnlock()
 
-	return faves(l.r.photoLikes, userID, everything, after, limit), nil
+	return faves(l.r.photoLikes, userID, l.r.shownPhoto, after, limit), nil
 }
 
 func (l *AlbumPhotoLikeRepository) CountLikedBy(ctx context.Context, userID uuid.UUID) (int, error) {
@@ -133,7 +154,7 @@ func (p *AlbumPhotoRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]
 	found := make([]*post.AlbumPhoto, 0, len(ids))
 	for _, id := range ids {
 		if photo, ok := p.r.photos[id]; ok {
-			found = append(found, photo)
+			found = append(found, p.r.seenPhoto(photo))
 		}
 	}
 

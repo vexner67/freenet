@@ -643,7 +643,8 @@ func (s *PostService) Own(ctx context.Context, userID, cursor uuid.UUID, size in
 }
 
 // Reposts pages the posts that share a post, newest first, for "who
-// shared it"; Total is how many share it, the archived ones too.
+// shared it"; Total is how many share it for everyone to see: neither the
+// archived reposts nor those of deleted pages.
 // post.ErrNotFound for a missing post or an archived one.
 func (s *PostService) Reposts(ctx context.Context, viewerID, postID, cursor uuid.UUID, size int) (Page, error) {
 	if size <= 0 || size > MaxPageSize {

@@ -235,6 +235,7 @@ const listPhotoCommentsQuery = `
 	FROM photo_comments
 	WHERE photo_id = $1
 		AND id > $2
+		AND NOT user_hidden(author_id)
 	ORDER BY id
 	LIMIT $3
 `
