@@ -6,16 +6,19 @@
 // people and renames it; only its creator removes them ("Исключить из
 // беседы", in "О чате"). Whoever left ("Покинуть чат") keeps the chat as it
 // was and may come back; whoever was removed comes back only when added
-// again. Your own message is edited and taken back within a day.
+// again. Your own message is edited and taken back within a day; any
+// message is carried on ("Переслать"), and a click selects several to
+// carry on at once. With ?msg=<id> the chat opens around that message, as
+// a search leads to it.
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
-import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText } from './labels.js';
+import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
+import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, photoChanges, selectedCount } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
-import { photosNode } from './posts.js';
 
 const POLL_MS = 5000;
 // How close to the top, in pixels, loads older messages.
@@ -23,16 +26,27 @@ const LOAD_OLDER_AT = 40;
 
 const chatID = decodeURIComponent(location.pathname.slice('/im/chat/'.length));
 const list = $('messages');
+// The message to open the chat around, from a search, and what the
+// search looked for: these words are marked in that message.
+const foundID = new URLSearchParams(location.search).get('msg') ?? '';
+const foundQuery = (new URLSearchParams(location.search).get('q') ?? '').trim();
 
 let me;
 let chat;
 let olderCursor = '';
 let newestID = '';
 let loadingOlder = false;
+// gap: the chat was opened around an old message and the newer ones are
+// not all loaded yet; they load as the user scrolls down, and until then
+// live messages wait their turn.
+let gap = false;
+let loadingNewer = false;
 let attachments;
 let editing = null;
 // Message ID → node, so polling does not repeat a message.
 const shown = new Map();
+// The messages selected by a click, by ID.
+const selected = new Set();
 
 const personLink = (user, text = fullName(user)) => el('a', { href: '/' + user.nickname, textContent: text });
 
@@ -66,14 +80,16 @@ function messageNode(m) {
 
     node.classList.toggle('deleted', now.deleted);
     content.replaceChildren(...[
-      now.deleted ? el('div', { className: 'im-message-text', textContent: 'Сообщение удалено' }) : now.text && textOf(node),
-      photosNode(now.photos ?? []),
+      now.deleted ? el('div', { className: 'im-message-text', textContent: 'Сообщение удалено' }) : now.text && textOf(now.text, node),
+      ...attachedNodes(now),
+      forwardedNode(now, (carried) => textOf(carried, node)),
     ].filter(Boolean));
     date.replaceChildren(...[
       formatPostDate(now.createdAt),
       now.editedAt && !now.deleted && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
       mine && now.editableUntil && new Date(now.editableUntil) > new Date()
         && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(now) }),
+      !now.deleted && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => forward([now]) }),
       mine && now.deletableUntil && new Date(now.deletableUntil) > new Date()
         && el('a', { className: 'im-message-action', textContent: 'Удалить', onclick: () => confirmDelete(now) }),
     ].filter(Boolean));
@@ -81,15 +97,31 @@ function messageNode(m) {
   node.message = m;
   node.render();
 
+  // A click on the message itself, not on a link or a photo in it,
+  // selects it, as in a dialog.
+  node.addEventListener('click', (event) => {
+    if (event.target.closest('a, img, button')) return;
+    if (window.getSelection()?.toString()) return;
+
+    toggleSelected(m.id);
+  });
+
   return node;
 }
 
-// textOf shows what a message says: a long text cut short until "Показать
-// больше", which first loads it whole when the chat carried its beginning.
-function textOf(node) {
+// CUT_LENGTH is how much of a long text a chat carries; the message says
+// only that some text of it is cut (textCut), not which.
+const CUT_LENGTH = 1000;
+
+// textOf shows a text of the message of node, its own or of one it
+// carries on: a long one cut short until "Показать больше", which first
+// loads the message whole when the chat carried its beginning.
+function textOf(text, node) {
   const m = node.message;
-  const body = el('div', { className: 'im-message-text' }, ...mentionNodes(m.text));
-  if (node.opened || !(m.textCut || isLongText(m.text))) return body;
+  const marked = m.id === foundID && foundQuery;
+  const body = el('div', { className: 'im-message-text' }, ...mentionNodes(text, marked ? foundQuery : ''));
+  const cut = m.textCut && [...text].length >= CUT_LENGTH;
+  if (node.opened || !(cut || isLongText(text))) return body;
 
   body.classList.add('collapsed');
 
@@ -109,11 +141,49 @@ function textOf(node) {
   }));
 }
 
-// whole loads all a message says into it.
+// whole loads all a message says, and those it carries on, into it.
 async function whole(m) {
   if (m.textCut) Object.assign(m, { textCut: false }, await api.chatMessage(m.id), { unread: m.unread });
 
   return m;
+}
+
+function toggleSelected(id) {
+  if (selected.has(id)) selected.delete(id);
+  else selected.add(id);
+
+  shown.get(id)?.classList.toggle('selected', selected.has(id));
+  showSelection();
+}
+
+function clearSelection() {
+  for (const id of selected) shown.get(id)?.classList.remove('selected');
+  selected.clear();
+  showSelection();
+}
+
+// showSelection is the bar over the chat while messages are selected.
+function showSelection() {
+  $('selection').hidden = selected.size === 0;
+  $('selection-count').textContent = selectedCount(selected.size);
+}
+
+// forward carries messages on ("Переслать"), into this chat or another
+// conversation.
+function forward(messages) {
+  openForward({ me, messages, here: { chat }, authorOf: (m) => m.author, onSent: showSent, onDone: clearSelection });
+}
+
+// showSent puts a message just sent at the end of the chat; opened around
+// an old message, the chat goes to its end first.
+function showSent(m) {
+  if (gap) {
+    location.assign('/im/chat/' + encodeURIComponent(chatID));
+    return;
+  }
+
+  add([m], false);
+  toBottom();
 }
 
 function confirmDelete(m) {
@@ -125,7 +195,7 @@ function confirmDelete(m) {
 
     try {
       await api.deleteChatMessage(m.id);
-      edited({ ...m, deleted: true, text: '', photos: [] });
+      edited(takenBack(m));
       modal.close();
     } catch (e) {
       showError(error, e);
@@ -137,7 +207,9 @@ function confirmDelete(m) {
   modal.actions.append(remove, button('Отмена', modal.close, { secondary: true }));
 }
 
-// startEdit puts what the message says back in the form: sending saves it.
+// startEdit puts what the message says and its photos back in the form:
+// sending saves the edit. A message that shares a photo of an album takes
+// no photos of its own.
 async function startEdit(m) {
   const text = $('text');
 
@@ -151,9 +223,9 @@ async function startEdit(m) {
   editing = m;
   text.value = m.text;
   autosize(text);
+  attachments.set(m.photos ?? []);
   $('editing').hidden = false;
-  $('attach').hidden = true;
-  $('photos').hidden = true;
+  $('attach').hidden = Boolean(m.sharedPhoto);
   $('send').textContent = 'Сохранить';
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
@@ -165,9 +237,9 @@ function cancelEdit() {
   editing = null;
   $('text').value = '';
   autosize($('text'));
+  attachments.clear();
   $('editing').hidden = true;
   $('attach').hidden = false;
-  $('photos').hidden = attachments.count() === 0;
   $('send').textContent = 'Отправить';
 }
 
@@ -248,6 +320,70 @@ async function loadOlder() {
   }
 }
 
+// loadNewer continues a chat opened around an old message towards its
+// end; with nothing newer left the chat is whole and live again.
+async function loadNewer() {
+  if (loadingNewer || !gap) return;
+  loadingNewer = true;
+
+  try {
+    const page = await api.chatMessages(chatID, { after: newestID });
+
+    if (page.messages.length === 0) gap = false;
+    await readIncoming(add(page.messages, false));
+  } catch (e) {
+    showError($('error'), e);
+  } finally {
+    loadingNewer = false;
+  }
+}
+
+// fillNewer loads on while the end of the list is in view: a scroll that
+// reached it, or a list too short to scroll at all.
+async function fillNewer() {
+  while (gap && nearBottom()) {
+    const before = newestID;
+
+    await loadNewer();
+    if (gap && newestID === before) break; // busy or failed: the next scroll tries again
+  }
+}
+
+// showFound brings the message the chat was opened around into view and
+// marks it.
+async function showFound() {
+  const node = shown.get(foundID);
+
+  // The words may be said after what a collapsed text shows: it opens.
+  if (node?.render && foundQuery && node.querySelector('.im-message-text.collapsed')) {
+    await whole(node.message).then(() => {
+      node.opened = true;
+      node.render();
+    }).catch(() => {});
+  }
+
+  node?.classList.add('found');
+  (node?.querySelector('.found-words') ?? node)?.scrollIntoView({ block: 'center' });
+  await fillNewer();
+}
+
+// firstPage is the chat around the found message, or its newest messages:
+// without one, or when it is not there anymore.
+async function firstPage() {
+  if (foundID) {
+    try {
+      const page = await api.chatMessages(chatID, { around: foundID });
+
+      gap = true;
+      return page;
+    } catch (e) {
+      if (e.status !== 404 && e.status !== 400) throw e;
+    }
+  }
+
+  return api.chatMessages(chatID);
+}
+
 // showNew adds new messages, keeping the view at the bottom if it was.
 // What happened in the chat changes who is in it and what it is called.
 async function showNew(messages) {
@@ -263,6 +399,9 @@ async function showNew(messages) {
 // catchUp asks for what came after the newest message shown: by polling
 // while events are down, and once after they come back.
 async function catchUp() {
+  // Opened around an old message, the chat catches up by scrolling.
+  if (gap) return;
+
   try {
     const page = await api.chatMessages(chatID, newestID ? { after: newestID } : {});
 
@@ -280,7 +419,7 @@ async function poll() {
 
 function listenToEvents() {
   onEvent('chat_message', (e) => {
-    if (e.chat === chatID) showNew([e.message]);
+    if (e.chat === chatID && !gap) showNew([e.message]);
   });
   onEvent('chat_edit', (e) => {
     if (e.chat === chatID) edited(e.message);
@@ -298,7 +437,7 @@ async function send(event) {
 
   if (!editing && !text.value.trim() && attachments.count() === 0) return;
 
-  if (!editing && attachments.busy()) {
+  if (attachments.busy()) {
     showError($('error'), 'Дождитесь, пока загрузятся фотографии.');
     return;
   }
@@ -307,7 +446,7 @@ async function send(event) {
 
   try {
     if (editing) {
-      edited(await api.editChatMessage(editing.id, text.value));
+      edited(await api.editChatMessage(editing.id, text.value, photoChanges(editing.photos, attachments.ids())));
       cancelEdit();
     } else {
       const m = await api.sendChatMessage(chatID, text.value, attachments.ids());
@@ -315,8 +454,7 @@ async function send(event) {
       text.value = '';
       autosize(text);
       attachments.clear();
-      add([m], false);
-      toBottom();
+      showSent(m);
     }
   } catch (e) {
     showError($('error'), e);
@@ -423,9 +561,10 @@ function show(now) {
 
   const active = chat.state === 'active';
   const link = (text, onclick) => el('a', { textContent: text, onclick });
+  const search = el('a', { href: '/im?chat=' + encodeURIComponent(chatID), textContent: 'Поиск по переписке' });
   const links = active
-    ? [link('Добавить участников', () => openAddMembers(me, chat, (changed) => { show(changed); catchUp(); })), link('Обновить название', openRename), link('Покинуть чат', confirmLeave)]
-    : [];
+    ? [search, link('Добавить участников', () => openAddMembers(me, chat, (changed) => { show(changed); catchUp(); })), link('Обновить название', openRename), link('Покинуть чат', confirmLeave)]
+    : [search];
 
   document.title = `${chatTitle(chat)} | Сообщения`;
   $('title').replaceChildren(el('a', { href: '/im', textContent: 'Мои Сообщения' }), ' » ', chatTitle(chat));
@@ -480,18 +619,23 @@ if (!me) {
   renderChrome(me);
 
   try {
-    const [found, page] = await Promise.all([api.chat(chatID), api.chatMessages(chatID)]);
+    const [found, page] = await Promise.all([api.chat(chatID), firstPage()]);
+    const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
 
     setUpInput();
+    $('selection-forward').addEventListener('click', () => forward(selectedMessages()));
+    $('selection-cancel').addEventListener('click', clearSelection);
     $('about').addEventListener('click', openAbout);
     $('messenger').hidden = false;
     show(found);
     add(page.messages, false);
     olderCursor = page.nextCursor;
     toBottom();
+    if (gap) await showFound();
 
     list.addEventListener('scroll', () => {
       if (list.scrollTop < LOAD_OLDER_AT) loadOlder();
+      fillNewer();
     });
     document.addEventListener('visibilitychange', () => {
       if (!document.hidden) readIncoming([...shown.values()].map((node) => node.message));

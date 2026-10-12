@@ -1225,6 +1225,25 @@ export function chatPreview(m) {
   return m.out ? said : `${m.author.name}: ${said}`;
 }
 
+// A conversation a message is sent on to, a dialog or a chat, as the
+// value of a choice: "user:<nickname>" and "chat:<id>" (a nickname has no
+// colon). conversationOf reads it back, conversationPath is its page.
+export function conversationValue(d) {
+  return d.chat ? 'chat:' + d.chat.id : 'user:' + d.peer.nickname;
+}
+
+export function conversationOf(value) {
+  const at = value.indexOf(':');
+
+  return { chat: value.slice(0, at) === 'chat', ref: value.slice(at + 1) };
+}
+
+export function conversationPath(value) {
+  const { chat, ref } = conversationOf(value);
+
+  return (chat ? '/im/chat/' : '/im/') + encodeURIComponent(ref);
+}
+
 // chatStateText is why someone who is not in a chat anymore cannot write
 // there.
 export function chatStateText(state) {
