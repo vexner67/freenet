@@ -1,0 +1,44 @@
+# Jaeger of the Docker stack: the traces of requests through the services
+# (pkg/tracing sends them, TRACING_ENDPOINT), kept in memory — the last
+# few thousand, gone on a restart: http://localhost:16686 (JAEGER_PORT). A
+# trace is found by the request ID of its log lines: the tag request_id of
+# the gateway's span.
+service:
+  extensions: [jaeger_storage, jaeger_query, healthcheckv2]
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [batch]
+      exporters: [jaeger_storage_exporter]
+  telemetry:
+    logs:
+      level: warn
+    metrics:
+      level: none
+
+extensions:
+  healthcheckv2:
+    use_v2: true
+    http:
+      endpoint: 0.0.0.0:13133
+  jaeger_query:
+    storage:
+      traces: memory
+  jaeger_storage:
+    backends:
+      memory:
+        memory:
+          max_traces: 5000
+
+receivers:
+  otlp:
+    protocols:
+      grpc:
+        endpoint: 0.0.0.0:4317
+
+processors:
+  batch:
+
+exporters:
+  jaeger_storage_exporter:
+    trace_storage: memory

@@ -6,9 +6,20 @@
 # health (HEALTHCHECK in Dockerfile), so a service waits for those it
 # calls.
 
+# Every line of a log says which service wrote it, for Fluent Bit
+# (monitoring/fluent-bit.yaml) to collect them in one place; the files
+# rotate here, since options of a container replace those of the daemon.
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: 10m
+    max-file: "5"
+    labels: com.docker.compose.service
+
 x-service: &service
   profiles: [app]
   restart: unless-stopped
+  logging: *logging
   # `make stack` runs them as you, so they can read the keys in certs/
   # (mode 600) and write .data/media.
   user: "${FREENET_UID:-65532}:${FREENET_GID:-65532}"
@@ -30,10 +41,13 @@ x-env: &env
   JWT_PUBLIC_KEY_PATH: /certs/jwt-public.pem
   JWT_ISSUER: freenet-auth
   NOTIFY_TIMEOUT: 2s
+  # Spans of every call go to Jaeger; a service does not wait for it.
+  TRACING_ENDPOINT: jaeger:4317
 
 services:
   auth-postgres:
     image: postgres:18
+    logging: *logging
     environment:
       POSTGRES_USER: ${AUTH_POSTGRES_USER}
       POSTGRES_PASSWORD: ${AUTH_POSTGRES_PASSWORD}
@@ -55,6 +69,7 @@ services:
 
   user-postgres:
     image: postgres:18
+    logging: *logging
     environment:
       POSTGRES_USER: ${USER_POSTGRES_USER}
       POSTGRES_PASSWORD: ${USER_POSTGRES_PASSWORD}
@@ -73,6 +88,7 @@ services:
 
   post-postgres:
     image: postgres:18
+    logging: *logging
     environment:
       POSTGRES_USER: ${POST_POSTGRES_USER}
       POSTGRES_PASSWORD: ${POST_POSTGRES_PASSWORD}
@@ -91,6 +107,7 @@ services:
 
   notification-postgres:
     image: postgres:18
+    logging: *logging
     environment:
       POSTGRES_USER: ${NOTIFICATION_POSTGRES_USER}
       POSTGRES_PASSWORD: ${NOTIFICATION_POSTGRES_PASSWORD}
@@ -109,6 +126,7 @@ services:
 
   message-postgres:
     image: postgres:18
+    logging: *logging
     environment:
       POSTGRES_USER: ${MESSAGE_POSTGRES_USER}
       POSTGRES_PASSWORD: ${MESSAGE_POSTGRES_PASSWORD}
@@ -127,6 +145,7 @@ services:
 
   club-postgres:
     image: postgres:18
+    logging: *logging
     environment:
       POSTGRES_USER: ${CLUB_POSTGRES_USER}
       POSTGRES_PASSWORD: ${CLUB_POSTGRES_PASSWORD}
@@ -145,6 +164,7 @@ services:
 
   redis:
     image: redis:7-alpine
+    logging: *logging
     # Everything in it expires by itself (sign-in codes, rate limit
     # counters); at the limit what expires soonest goes first instead of
     # the server running out of memory.
@@ -335,6 +355,7 @@ services:
       TLS_CA_PATH: /certs/ca.pem
       TLS_CERT_PATH: /certs/gateway.pem
       TLS_KEY_PATH: /certs/gateway-key.pem
+      TRACING_ENDPOINT: jaeger:4317
       AUTH_SERVICE_ADDR: auth:7051
       USER_SERVICE_ADDR: user:7052
       POST_SERVICE_ADDR: post:7053
@@ -458,6 +479,57 @@ services:
       timeout: 3s
       retries: 20
 
+  # The logs of every service in one place, kept two weeks or half a
+  # gigabyte: http://localhost:9428/select/vmui (VICTORIALOGS_PORT), e.g.
+  # request_id:"..." for one request through all the services.
+  victorialogs:
+    profiles: [app]
+    image: victoriametrics/victoria-logs:v1.53.0
+    restart: unless-stopped
+    command:
+      - -storageDataPath=/data
+      - -retentionPeriod=14d
+      - -retention.maxDiskSpaceUsageBytes=512MiB
+    volumes:
+      - victorialogs_data:/data
+    ports:
+      - "127.0.0.1:${VICTORIALOGS_PORT:-9428}:9428"
+
+  # Reads the log files of Docker, which only root can, and sends the
+  # lines of the services to VictoriaLogs (monitoring/fluent-bit.yaml).
+  fluent-bit:
+    profiles: [app]
+    image: fluent/fluent-bit:5.1.3
+    restart: unless-stopped
+    user: "0"
+    command: [-c, /fluent-bit/etc/fluent-bit.yaml]
+    volumes:
+      - ./monitoring/fluent-bit.yaml:/fluent-bit/etc/fluent-bit.yaml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+      - fluent_bit_data:/state
+    depends_on:
+      - victorialogs
+
+  # The traces of requests through the services, the last few thousand,
+  # in memory (monitoring/jaeger.yml): http://localhost:16686
+  # (JAEGER_PORT); the tag request_id finds the trace of a log line.
+  jaeger:
+    profiles: [app]
+    image: jaegertracing/jaeger:2.22.0
+    restart: unless-stopped
+    command: [--config, /etc/jaeger/config.yml]
+    volumes:
+      - ./monitoring/jaeger.yml:/etc/jaeger/config.yml:ro
+    ports:
+      - "127.0.0.1:${JAEGER_PORT:-16686}:16686"
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:13133/status"]
+      interval: 30s
+      start_period: 60s
+      start_interval: 1s
+      timeout: 3s
+      retries: 20
+
   # Groups and silences the alerts Prometheus sends: http://localhost:9093
   # (ALERTMANAGER_PORT); who is notified is monitoring/alertmanager.yml.
   alertmanager:
@@ -519,4 +591,6 @@ volumes:
   club_postgres_data:
   redis_data:
   alertmanager_data:
+  victorialogs_data:
+  fluent_bit_data:
   grafana_data:

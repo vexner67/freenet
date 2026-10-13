@@ -14,6 +14,12 @@
 	# Caddy gives every request its own, never the client's.
 	reverse_proxy gateway:8080 {
 		header_up X-Request-ID {http.request.uuid}
+
+		# A deployment restarts the gateway: a request that cannot reach
+		# it waits for the new one instead of failing. Only a request not
+		# sent yet is tried again.
+		lb_try_duration 30s
+		lb_try_interval 500ms
 	}
 
 	header {
