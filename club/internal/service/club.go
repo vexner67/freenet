@@ -17,8 +17,6 @@ const (
 	// MaxClubs bounds GetMany and Roles: the gateway asks for the clubs of
 	// one page.
 	MaxClubs = 100
-	// MaxClubIDs is how many of a user's clubs the feed reads posts from.
-	MaxClubIDs = 1000
 	// MaxWallModerators is how many admins of a club hear about a post
 	// suggested for its wall; a club rarely has more.
 	MaxWallModerators = 100
@@ -93,8 +91,6 @@ type MemberRepository interface {
 	// Pinned are the clubs in the user's menu that they still run, in the
 	// order of joining.
 	Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error)
-	// ClubIDs are the newest limit clubs of a user.
-	ClubIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error)
 	// DeleteByUser takes a user out of every club. A club they owned goes
 	// to who has been in it longest: of its admins or, when it has none,
 	// of all its members; a club nobody else is in is left without an owner.
@@ -791,16 +787,6 @@ func (s *ClubService) Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Clu
 	}
 
 	return clubs, nil
-}
-
-// ClubIDs are the clubs whose walls the feed of userID shows.
-func (s *ClubService) ClubIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	ids, err := s.members.ClubIDs(ctx, userID, MaxClubIDs)
-	if err != nil {
-		return nil, errs.Wrap("s.members.ClubIDs", err)
-	}
-
-	return ids, nil
 }
 
 // Roles tells what userID is in those of the clubs they are in: a page

@@ -205,10 +205,6 @@ func TestClub(t *testing.T) {
 	if err != nil || len(mine.GetClubs()) != 1 || mine.GetClubs()[0].GetRole() != clubv1.Role_ROLE_ADMIN {
 		t.Fatalf("ListMyClubs = %v, %v", mine, err)
 	}
-	ids, err := s.client.ListMyClubIDs(s.as(t, bob), &clubv1.ListMyClubIDsRequest{})
-	if err != nil || len(ids.GetClubIds()) != 1 || ids.GetClubIds()[0] != id {
-		t.Fatalf("ListMyClubIDs = %v, %v", ids, err)
-	}
 	roles, err := s.client.ListMyRoles(s.as(t, bob), &clubv1.ListMyRolesRequest{ClubIds: []string{uuid.NewString(), id}})
 	if err != nil || len(roles.GetRoles()) != 1 || roles.GetRoles()[0].GetClubId() != id || roles.GetRoles()[0].GetRole() != clubv1.Role_ROLE_ADMIN {
 		t.Fatalf("ListMyRoles = %v, %v", roles, err)
