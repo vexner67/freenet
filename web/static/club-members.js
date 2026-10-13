@@ -164,7 +164,7 @@ function editTitle(member, done) {
     try {
       const title = input.value.trim();
 
-      await api.describeAdmin(clubRef(club), member.user.nickname, { title });
+      await api.describeAdmin(clubRef(club), member.user.nickname, { title, baseTitle: member.title ?? '' });
       member.title = title;
       modal.close();
       done();

@@ -1144,6 +1144,8 @@ const errorTexts = {
   'you cannot comment on this note': 'Вы не можете комментировать эту заметку.',
   'only the sender can edit the message': 'Редактировать можно только свои сообщения.',
   'the message can no longer be edited': 'Сообщение можно редактировать только в течение суток после отправки.',
+  'the title was changed': 'Комментарий уже изменил другой руководитель. Обновите страницу и попробуйте снова.',
+  'the message was changed': 'Сообщение изменили, пока вы его редактировали. Отмените правку и начните её заново.',
   'forwarded message not found': 'Сообщение не удалось переслать: его уже нет.',
   'a message forwards at most 20 messages': 'За один раз можно переслать не больше 20 сообщений.',
   'search query is empty': 'Введите, что искать.',

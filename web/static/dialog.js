@@ -47,6 +47,9 @@ const shown = new Map();
 // The messages selected by a click, by ID, and the one being edited.
 const selected = new Set();
 let editing = null;
+// What the message said when its edit began: saving names it, so an edit
+// made in another window meanwhile is not overwritten.
+let editingBase = '';
 
 function messageNode(m) {
   const author = m.out ? me : peer;
@@ -260,6 +263,7 @@ async function startEdit(m) {
   }
 
   editing = m;
+  editingBase = m.text;
   text.value = m.text;
   autosize(text);
   attachments.set(m.photos ?? []);
@@ -503,7 +507,7 @@ async function send(event) {
     button.disabled = true;
 
     try {
-      edited(await api.editMessage(editing.id, text.value, photoChanges(editing.photos, attachments.ids())));
+      edited(await api.editMessage(editing.id, text.value, { ...photoChanges(editing.photos, attachments.ids()), base: editingBase }));
       cancelEdit();
     } catch (e) {
       showError($('error'), e);
