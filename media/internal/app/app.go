@@ -21,6 +21,7 @@ import (
 	"github.com/vexner67/freenet/pkg/metrics"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/ratelimit"
+	"github.com/vexner67/freenet/pkg/tracing"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
@@ -37,6 +38,7 @@ const (
 
 type App struct {
 	logger       *slog.Logger
+	tracer       *tracing.Tracer
 	limiter      ratelimit.Store
 	server       *grpcserver.Server
 	metrics      *metrics.Server
@@ -68,6 +70,12 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
+	tracer, err := tracing.New(context.Background(), "media", cfg.Tracing, a.logger)
+	if err != nil {
+		return errs.Wrap("tracing.New", err)
+	}
+	a.tracer = tracer
+
 	stores, err := newStores(cfg)
 	if err != nil {
 		return errs.Wrap("newStores", err)
@@ -98,6 +106,7 @@ func (a *App) build(cfg config.Config) error {
 		a.logger,
 		reg,
 		grpc.Creds(creds),
+		a.tracer.ServerOption(),
 		grpc.MaxRecvMsgSize(maxMessageBytes),
 		grpc.ChainUnaryInterceptor(
 			mediagrpc.ErrorInterceptor(a.logger),
@@ -289,6 +298,12 @@ func Healthcheck(ctx context.Context, cfg config.Config) error {
 // Close closes the rate limiter: the stores hold no connections of their
 // own.
 func (a *App) Close() {
+	if a.tracer != nil {
+		if err := a.tracer.Close(); err != nil {
+			a.logger.Error("tracer close", "error", err)
+		}
+	}
+
 	if a.limiter != nil {
 		if err := a.limiter.Close(); err != nil {
 			a.logger.Error("rate limiter close", "error", err)

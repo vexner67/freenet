@@ -16,6 +16,7 @@ import (
 	"github.com/vexner67/freenet/pkg/outbox"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/ratelimit"
+	"github.com/vexner67/freenet/pkg/tracing"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"github.com/vexner67/freenet/user/internal/config"
 	usergrpc "github.com/vexner67/freenet/user/internal/grpc"
@@ -37,6 +38,7 @@ const (
 
 type App struct {
 	logger  *slog.Logger
+	tracer  *tracing.Tracer
 	pool    *pgxpool.Pool
 	limiter ratelimit.Store
 	// conns lead to the services told through the outbox, one relay per
@@ -82,6 +84,12 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
+	tracer, err := tracing.New(context.Background(), "user", cfg.Tracing, a.logger)
+	if err != nil {
+		return errs.Wrap("tracing.New", err)
+	}
+	a.tracer = tracer
+
 	reg := metrics.NewRegistry()
 
 	store, err := a.newStorage(cfg)
@@ -133,7 +141,7 @@ func (a *App) build(cfg config.Config) error {
 	))
 	interceptors = append(interceptors, ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger))
 
-	a.server, err = grpcserver.New(a.logger, reg, grpc.Creds(creds), grpc.ChainUnaryInterceptor(interceptors...))
+	a.server, err = grpcserver.New(a.logger, reg, grpc.Creds(creds), a.tracer.ServerOption(), grpc.ChainUnaryInterceptor(interceptors...))
 	if err != nil {
 		return errs.Wrap("grpcserver.New", err)
 	}
@@ -366,6 +374,12 @@ func Healthcheck(ctx context.Context, cfg config.Config) error {
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.tracer != nil {
+		if err := a.tracer.Close(); err != nil {
+			a.logger.Error("tracer close", "error", err)
+		}
+	}
+
 	if a.limiter != nil {
 		if err := a.limiter.Close(); err != nil {
 			a.logger.Error("rate limiter close", "error", err)

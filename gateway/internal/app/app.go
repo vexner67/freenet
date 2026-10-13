@@ -16,10 +16,11 @@ import (
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/grpcclient"
 	"github.com/vexner67/freenet/pkg/logger"
 	"github.com/vexner67/freenet/pkg/metrics"
 	"github.com/vexner67/freenet/pkg/mtls"
-	"github.com/vexner67/freenet/pkg/reqid"
+	"github.com/vexner67/freenet/pkg/tracing"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"golang.org/x/sync/errgroup"
@@ -29,6 +30,7 @@ import (
 
 type App struct {
 	logger           *slog.Logger
+	tracer           *tracing.Tracer
 	authConn         *grpc.ClientConn
 	userConn         *grpc.ClientConn
 	postConn         *grpc.ClientConn
@@ -64,6 +66,12 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
+	tracer, err := tracing.New(context.Background(), "gateway", cfg.Tracing, a.logger)
+	if err != nil {
+		return errs.Wrap("tracing.New", err)
+	}
+	a.tracer = tracer
+
 	creds, err := mtls.ClientCredentials(cfg.TLS)
 	if err != nil {
 		return errs.Wrap("mtls.ClientCredentials", err)
@@ -73,39 +81,39 @@ func (a *App) build(cfg config.Config) error {
 		a.logger.Warn("mTLS is off: calls to internal services are plaintext, do not use in production")
 	}
 
-	a.authConn, err = dial(cfg.AuthServiceAddr, creds)
+	a.authConn, err = a.dial(cfg.AuthServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("dial", err)
+		return errs.Wrap("a.dial", err)
 	}
 
-	a.userConn, err = dial(cfg.UserServiceAddr, creds)
+	a.userConn, err = a.dial(cfg.UserServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("dial", err)
+		return errs.Wrap("a.dial", err)
 	}
 
-	a.postConn, err = dial(cfg.PostServiceAddr, creds)
+	a.postConn, err = a.dial(cfg.PostServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("dial", err)
+		return errs.Wrap("a.dial", err)
 	}
 
-	a.mediaConn, err = dial(cfg.MediaServiceAddr, creds)
+	a.mediaConn, err = a.dial(cfg.MediaServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("dial", err)
+		return errs.Wrap("a.dial", err)
 	}
 
-	a.notificationConn, err = dial(cfg.NotificationServiceAddr, creds)
+	a.notificationConn, err = a.dial(cfg.NotificationServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("dial", err)
+		return errs.Wrap("a.dial", err)
 	}
 
-	a.messageConn, err = dial(cfg.MessageServiceAddr, creds)
+	a.messageConn, err = a.dial(cfg.MessageServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("dial", err)
+		return errs.Wrap("a.dial", err)
 	}
 
-	a.clubConn, err = dial(cfg.ClubServiceAddr, creds)
+	a.clubConn, err = a.dial(cfg.ClubServiceAddr, creds)
 	if err != nil {
-		return errs.Wrap("dial", err)
+		return errs.Wrap("a.dial", err)
 	}
 
 	reg := metrics.NewRegistry()
@@ -118,6 +126,7 @@ func (a *App) build(cfg config.Config) error {
 			RequestTimeout:    cfg.RequestTimeout,
 			StatisticsTTL:     cfg.StatisticsTTL,
 			WebDir:            cfg.WebDir,
+			Trace:             a.tracer.Handler,
 		},
 		rest.Backends{
 			Auth:          backend.NewAuth(authv1.NewAuthServiceClient(a.authConn)),
@@ -198,12 +207,18 @@ func Healthcheck(ctx context.Context, cfg config.Config) error {
 }
 
 // dial connects to a service; calls carry the request's ID.
-func dial(addr string, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
-	return grpc.NewClient(addr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
+func (a *App) dial(addr string, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
+	return grpcclient.New(addr, creds, a.tracer.DialOption())
 }
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.tracer != nil {
+		if err := a.tracer.Close(); err != nil {
+			a.logger.Error("tracer close", "error", err)
+		}
+	}
+
 	conns := map[string]*grpc.ClientConn{
 		"auth":         a.authConn,
 		"user":         a.userConn,

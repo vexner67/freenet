@@ -23,6 +23,7 @@ import (
 	"github.com/vexner67/freenet/auth/internal/userclient"
 	"github.com/vexner67/freenet/auth/migrations"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/grpcclient"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"github.com/vexner67/freenet/pkg/hmac"
 	"github.com/vexner67/freenet/pkg/jwtauth"
@@ -31,7 +32,7 @@ import (
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/ratelimit"
-	"github.com/vexner67/freenet/pkg/reqid"
+	"github.com/vexner67/freenet/pkg/tracing"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -46,6 +47,7 @@ const (
 
 type App struct {
 	logger   *slog.Logger
+	tracer   *tracing.Tracer
 	pool     *pgxpool.Pool
 	redis    *goredis.Client
 	userConn *grpc.ClientConn
@@ -91,6 +93,12 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
+	tracer, err := tracing.New(context.Background(), "auth", cfg.Tracing, a.logger)
+	if err != nil {
+		return errs.Wrap("tracing.New", err)
+	}
+	a.tracer = tracer
+
 	store, err := a.newStorage(cfg)
 	if err != nil {
 		return errs.Wrap("a.newStorage", err)
@@ -101,9 +109,9 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("mtls.ClientCredentials", err)
 	}
 
-	a.userConn, err = grpc.NewClient(cfg.UserServiceAddr, append(reqid.DialOptions(), grpc.WithTransportCredentials(clientCreds))...)
+	a.userConn, err = grpcclient.New(cfg.UserServiceAddr, clientCreds, a.tracer.DialOption())
 	if err != nil {
-		return errs.Wrap("grpc.NewClient", err)
+		return errs.Wrap("grpcclient.New", err)
 	}
 
 	publicKey, err := jwtauth.LoadPublicKey(cfg.JWTPublicKeyPath)
@@ -148,6 +156,7 @@ func (a *App) build(cfg config.Config) error {
 		a.logger,
 		reg,
 		grpc.Creds(serverCreds),
+		a.tracer.ServerOption(),
 		grpc.ChainUnaryInterceptor(
 			authgrpc.ErrorInterceptor(a.logger),
 			// Signing in needs no access token; a user's sessions do.
@@ -291,6 +300,12 @@ func Healthcheck(ctx context.Context, cfg config.Config) error {
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.tracer != nil {
+		if err := a.tracer.Close(); err != nil {
+			a.logger.Error("tracer close", "error", err)
+		}
+	}
+
 	if a.userConn != nil {
 		if err := a.userConn.Close(); err != nil {
 			a.logger.Error("user connection close", "error", err)

@@ -25,6 +25,7 @@ import (
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/pubsub"
+	"github.com/vexner67/freenet/pkg/tracing"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
@@ -41,6 +42,7 @@ const (
 
 type App struct {
 	logger *slog.Logger
+	tracer *tracing.Tracer
 	pool   *pgxpool.Pool
 	redis  *goredis.Client
 	// shared carries live events between replicas; nil keeps them here.
@@ -77,6 +79,12 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
+	tracer, err := tracing.New(context.Background(), "notification", cfg.Tracing, a.logger)
+	if err != nil {
+		return errs.Wrap("tracing.New", err)
+	}
+	a.tracer = tracer
+
 	repos, err := a.newRepositories(cfg)
 	if err != nil {
 		return errs.Wrap("a.newRepositories", err)
@@ -109,6 +117,7 @@ func (a *App) build(cfg config.Config) error {
 		a.logger,
 		reg,
 		grpc.Creds(creds),
+		a.tracer.ServerOption(),
 		grpc.ChainUnaryInterceptor(interceptors...),
 		grpc.ChainStreamInterceptor(jwtauth.StreamServerInterceptor(verifier)),
 	)
@@ -268,6 +277,12 @@ func (a *App) newEvents(cfg config.Config) service.Events {
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.tracer != nil {
+		if err := a.tracer.Close(); err != nil {
+			a.logger.Error("tracer close", "error", err)
+		}
+	}
+
 	if a.redis != nil {
 		if err := a.redis.Close(); err != nil {
 			a.logger.Error("redis close", "error", err)

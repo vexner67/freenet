@@ -21,6 +21,7 @@ import (
 	"github.com/vexner67/freenet/message/internal/service"
 	"github.com/vexner67/freenet/message/migrations"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/grpcclient"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/logger"
@@ -30,7 +31,7 @@ import (
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/pubsub"
 	"github.com/vexner67/freenet/pkg/ratelimit"
-	"github.com/vexner67/freenet/pkg/reqid"
+	"github.com/vexner67/freenet/pkg/tracing"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
@@ -47,6 +48,7 @@ const (
 
 type App struct {
 	logger  *slog.Logger
+	tracer  *tracing.Tracer
 	pool    *pgxpool.Pool
 	limiter ratelimit.Store
 	// mediaConn, queue and relay tell media about the photos of messages.
@@ -85,6 +87,12 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
+	tracer, err := tracing.New(context.Background(), "message", cfg.Tracing, a.logger)
+	if err != nil {
+		return errs.Wrap("tracing.New", err)
+	}
+	a.tracer = tracer
+
 	reg := metrics.NewRegistry()
 
 	repos, err := a.newRepositories(cfg)
@@ -122,6 +130,7 @@ func (a *App) build(cfg config.Config) error {
 		a.logger,
 		reg,
 		grpc.Creds(creds),
+		a.tracer.ServerOption(),
 		grpc.ChainUnaryInterceptor(
 			messagegrpc.ErrorInterceptor(a.logger),
 			restrictInternal(cfg),
@@ -191,9 +200,9 @@ func (a *App) newPhotoKeeper(cfg config.Config, queue outboxQueue, reg prometheu
 		return nil, errs.Wrap("mtls.ClientCredentials", err)
 	}
 
-	a.mediaConn, err = grpc.NewClient(cfg.MediaServiceAddr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
+	a.mediaConn, err = grpcclient.New(cfg.MediaServiceAddr, creds, a.tracer.DialOption())
 	if err != nil {
-		return nil, errs.Wrap("grpc.NewClient", err)
+		return nil, errs.Wrap("grpcclient.New", err)
 	}
 
 	deliverer := mediaclient.NewDeliverer(mediav1.NewMediaServiceClient(a.mediaConn), cfg.MediaTimeout)
@@ -369,6 +378,12 @@ func Healthcheck(ctx context.Context, cfg config.Config) error {
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.tracer != nil {
+		if err := a.tracer.Close(); err != nil {
+			a.logger.Error("tracer close", "error", err)
+		}
+	}
+
 	if a.redis != nil {
 		if err := a.redis.Close(); err != nil {
 			a.logger.Error("redis close", "error", err)

@@ -20,6 +20,7 @@ import (
 	"github.com/vexner67/freenet/club/migrations"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/grpcclient"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/logger"
@@ -28,7 +29,7 @@ import (
 	"github.com/vexner67/freenet/pkg/outbox"
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/ratelimit"
-	"github.com/vexner67/freenet/pkg/reqid"
+	"github.com/vexner67/freenet/pkg/tracing"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
@@ -43,6 +44,7 @@ const (
 
 type App struct {
 	logger  *slog.Logger
+	tracer  *tracing.Tracer
 	pool    *pgxpool.Pool
 	limiter ratelimit.Store
 	// conns lead to the services told through the outbox — notification
@@ -86,6 +88,12 @@ func New(cfg config.Config) (*App, error) {
 }
 
 func (a *App) build(cfg config.Config) error {
+	tracer, err := tracing.New(context.Background(), "club", cfg.Tracing, a.logger)
+	if err != nil {
+		return errs.Wrap("tracing.New", err)
+	}
+	a.tracer = tracer
+
 	reg := metrics.NewRegistry()
 
 	store, err := a.newStorage(cfg)
@@ -128,6 +136,7 @@ func (a *App) build(cfg config.Config) error {
 		a.logger,
 		reg,
 		grpc.Creds(creds),
+		a.tracer.ServerOption(),
 		grpc.ChainUnaryInterceptor(
 			clubgrpc.ErrorInterceptor(a.logger),
 			restrictInternal(cfg),
@@ -265,9 +274,9 @@ func (a *App) newStream(
 		return nil, errs.Wrap("mtls.ClientCredentials", err)
 	}
 
-	conn, err := grpc.NewClient(addr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
+	conn, err := grpcclient.New(addr, creds, a.tracer.DialOption())
 	if err != nil {
-		return nil, errs.Wrap("grpc.NewClient", err)
+		return nil, errs.Wrap("grpcclient.New", err)
 	}
 	a.conns = append(a.conns, conn)
 
@@ -457,6 +466,12 @@ func Healthcheck(ctx context.Context, cfg config.Config) error {
 
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	if a.tracer != nil {
+		if err := a.tracer.Close(); err != nil {
+			a.logger.Error("tracer close", "error", err)
+		}
+	}
+
 	if a.limiter != nil {
 		if err := a.limiter.Close(); err != nil {
 			a.logger.Error("rate limiter close", "error", err)
