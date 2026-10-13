@@ -13,7 +13,7 @@ const (
 	DefaultPageSize = 20
 	MaxPageSize     = 50
 
-	// MaxFeedSources bounds how many followed users a news feed reads.
+	// MaxFeedSources bounds how many blocked authors a news feed leaves out.
 	MaxFeedSources = 1000
 )
 
@@ -30,7 +30,6 @@ type FollowRepository interface {
 type FollowListRepository interface {
 	ListFollowers(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error)
 	ListFollowing(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error)
-	FollowingIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error)
 	// ListOnlineFollowing and CountOnlineFollowing are whom userID follows
 	// who visited after since, but deleted pages.
 	ListOnlineFollowing(ctx context.Context, userID uuid.UUID, since time.Time, before uuid.UUID, limit int) ([]Followed, error)
@@ -211,16 +210,6 @@ func (s *FollowService) ListCommonFollowing(ctx context.Context, userID, viewerI
 		common, err := s.listRepo.CountCommonFollowing(ctx, userID, viewerID)
 		return common, errs.Wrap("s.listRepo.CountCommonFollowing", err)
 	})
-}
-
-// FollowingIDs are the users whose posts make up userID's news feed.
-func (s *FollowService) FollowingIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error) {
-	ids, err := s.listRepo.FollowingIDs(ctx, userID, MaxFeedSources)
-	if err != nil {
-		return nil, errs.Wrap("s.listRepo.FollowingIDs", err)
-	}
-
-	return ids, nil
 }
 
 type listFunc func(ctx context.Context, userID, before uuid.UUID, limit int) ([]Followed, error)

@@ -296,28 +296,6 @@ func (r *FollowRepository) CountCommonFollowing(ctx context.Context, userID, vie
 	return n, nil
 }
 
-const followingIDsQuery = `
-	SELECT followee_id
-	FROM follows
-	WHERE follower_id = $1
-	ORDER BY id DESC
-	LIMIT $2
-`
-
-func (r *FollowRepository) FollowingIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error) {
-	rows, err := r.conn(ctx).Query(ctx, followingIDsQuery, userID, limit)
-	if err != nil {
-		return nil, errs.Wrap("r.conn.Query", err)
-	}
-
-	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
-	if err != nil {
-		return nil, errs.Wrap("pgx.CollectRows", err)
-	}
-
-	return ids, nil
-}
-
 // prefixedRow scans leading columns into prefix and the rest into the
 // destinations of the wrapped scan, so scanUser can read joined rows.
 type prefixedRow struct {

@@ -176,20 +176,6 @@ func seenAfter(since time.Time) func(*user.User) bool {
 	return func(u *user.User) bool { return u.LastSeen().After(since) && !u.IsDeactivated() }
 }
 
-func (r *FollowRepository) FollowingIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error) {
-	found, err := r.list(ctx, uuid.Nil, limit, following(userID), nil)
-	if err != nil {
-		return nil, err
-	}
-
-	ids := make([]uuid.UUID, len(found))
-	for i, f := range found {
-		ids[i] = f.User.ID()
-	}
-
-	return ids, nil
-}
-
 // list returns the other side of matching follows, newest follow first;
 // keep, if set, picks the users.
 func (r *FollowRepository) list(

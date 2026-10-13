@@ -22,7 +22,6 @@ type FollowService interface {
 	ListFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
 	ListOnlineFollowing(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
 	ListCommonFollowing(ctx context.Context, userID, viewerID, cursor uuid.UUID, size int) (service.FollowPage, error)
-	FollowingIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
 
 func parseID(s, what string) (uuid.UUID, error) {
@@ -89,28 +88,6 @@ func (h *UserHandler) changeFollow(
 	}
 
 	return &emptypb.Empty{}, nil
-}
-
-func (h *UserHandler) ListFollowingIDs(
-	ctx context.Context,
-	_ *userv1.ListFollowingIDsRequest,
-) (*userv1.ListFollowingIDsResponse, error) {
-	userID, err := currentUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	ids, err := h.followService.FollowingIDs(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &userv1.ListFollowingIDsResponse{UserIds: make([]string, len(ids))}
-	for i, id := range ids {
-		resp.UserIds[i] = id.String()
-	}
-
-	return resp, nil
 }
 
 func (h *UserHandler) GetFollowStats(

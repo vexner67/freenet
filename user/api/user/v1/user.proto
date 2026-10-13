@@ -45,8 +45,6 @@ service UserService {
   // Require an access token; the follower is the caller. Idempotent.
   rpc Follow(FollowRequest) returns (google.protobuf.Empty);
   rpc Unfollow(UnfollowRequest) returns (google.protobuf.Empty);
-  // Requires an access token: whom the caller follows, for the news feed.
-  rpc ListFollowingIDs(ListFollowingIDsRequest) returns (ListFollowingIDsResponse);
 
   // Public. With an access token GetFollowStats also tells whether the
   // caller follows the user.
@@ -525,13 +523,6 @@ message FollowRequest {
 
 message UnfollowRequest {
   string user_id = 1;
-}
-
-message ListFollowingIDsRequest {}
-
-message ListFollowingIDsResponse {
-  // Newest follows first, at most 1000.
-  repeated string user_ids = 1;
 }
 
 message GetFollowStatsRequest {
