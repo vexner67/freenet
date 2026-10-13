@@ -9,6 +9,8 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"sync"
+	"time"
 
 	"google.golang.org/grpc/credentials"
 	"google.golang.org/grpc/credentials/insecure"
@@ -54,22 +56,25 @@ func (c Config) Validate() error {
 	return nil
 }
 
-// ServerCredentials require a client certificate signed by the CA.
+// ServerCredentials require a client certificate signed by the CA. The
+// certificate is read again when its files change, see keeper.
 func ServerCredentials(c Config) (credentials.TransportCredentials, error) {
 	if !c.Enabled() {
 		return insecure.NewCredentials(), nil
 	}
 
-	cert, pool, err := load(c)
+	own, pool, err := load(c)
 	if err != nil {
 		return nil, err
 	}
 
 	return credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{cert},
-		ClientCAs:    pool,
-		ClientAuth:   tls.RequireAndVerifyClientCert,
-		MinVersion:   tls.VersionTLS13,
+		GetCertificate: func(*tls.ClientHelloInfo) (*tls.Certificate, error) {
+			return own.current(), nil
+		},
+		ClientCAs:  pool,
+		ClientAuth: tls.RequireAndVerifyClientCert,
+		MinVersion: tls.VersionTLS13,
 	}), nil
 }
 
@@ -80,33 +85,108 @@ func ClientCredentials(c Config) (credentials.TransportCredentials, error) {
 		return insecure.NewCredentials(), nil
 	}
 
-	cert, pool, err := load(c)
+	own, pool, err := load(c)
 	if err != nil {
 		return nil, err
 	}
 
 	return credentials.NewTLS(&tls.Config{
-		Certificates: []tls.Certificate{cert},
-		RootCAs:      pool,
-		MinVersion:   tls.VersionTLS13,
+		GetClientCertificate: func(*tls.CertificateRequestInfo) (*tls.Certificate, error) {
+			return own.current(), nil
+		},
+		RootCAs:    pool,
+		MinVersion: tls.VersionTLS13,
 	}), nil
 }
 
-func load(c Config) (tls.Certificate, *x509.CertPool, error) {
-	cert, err := tls.LoadX509KeyPair(c.CertPath, c.KeyPath)
+func load(c Config) (*keeper, *x509.CertPool, error) {
+	own, err := newKeeper(c.CertPath, c.KeyPath)
 	if err != nil {
-		return tls.Certificate{}, nil, fmt.Errorf("tls.LoadX509KeyPair: %w", err)
+		return nil, nil, err
 	}
 
 	caPEM, err := os.ReadFile(c.CAPath)
 	if err != nil {
-		return tls.Certificate{}, nil, fmt.Errorf("os.ReadFile: %w", err)
+		return nil, nil, fmt.Errorf("os.ReadFile: %w", err)
 	}
 
 	pool := x509.NewCertPool()
 	if !pool.AppendCertsFromPEM(caPEM) {
-		return tls.Certificate{}, nil, fmt.Errorf("no certificates in %s", c.CAPath)
+		return nil, nil, fmt.Errorf("no certificates in %s", c.CAPath)
 	}
 
-	return cert, pool, nil
+	return own, pool, nil
+}
+
+// keeper holds the certificate of the service and reads it again once its
+// files have changed, on the next handshake: a certificate renewed on disk
+// (deploy/certs.sh) is presented without a restart. Connections already
+// open keep the one they were made with.
+type keeper struct {
+	certPath string
+	keyPath  string
+
+	mu    sync.Mutex
+	cert  *tls.Certificate
+	stamp stamp
+}
+
+// stamp tells one pair of files from the next.
+type stamp struct {
+	cert time.Time
+	key  time.Time
+}
+
+func newKeeper(certPath, keyPath string) (*keeper, error) {
+	k := &keeper{certPath: certPath, keyPath: keyPath}
+
+	seen, err := k.seen()
+	if err != nil {
+		return nil, err
+	}
+
+	cert, err := tls.LoadX509KeyPair(certPath, keyPath)
+	if err != nil {
+		return nil, fmt.Errorf("tls.LoadX509KeyPair: %w", err)
+	}
+
+	k.cert, k.stamp = &cert, seen
+
+	return k, nil
+}
+
+func (k *keeper) seen() (stamp, error) {
+	cert, err := os.Stat(k.certPath)
+	if err != nil {
+		return stamp{}, fmt.Errorf("os.Stat: %w", err)
+	}
+
+	key, err := os.Stat(k.keyPath)
+	if err != nil {
+		return stamp{}, fmt.Errorf("os.Stat: %w", err)
+	}
+
+	return stamp{cert: cert.ModTime(), key: key.ModTime()}, nil
+}
+
+// current is the certificate on disk, or the last one that could be read:
+// files that are missing or do not match yet, a pair half replaced, are
+// looked at again on the next handshake.
+func (k *keeper) current() *tls.Certificate {
+	k.mu.Lock()
+	defer k.mu.Unlock()
+
+	seen, err := k.seen()
+	if err != nil || seen == k.stamp {
+		return k.cert
+	}
+
+	cert, err := tls.LoadX509KeyPair(k.certPath, k.keyPath)
+	if err != nil {
+		return k.cert
+	}
+
+	k.cert, k.stamp = &cert, seen
+
+	return k.cert
 }

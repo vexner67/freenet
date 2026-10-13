@@ -216,6 +216,90 @@ func TestMutualTLS(t *testing.T) {
 	})
 }
 
+// replace puts the certificate and the key of from in the place of
+// those of to, as a renewal does, with a time of their own.
+func replace(t *testing.T, from, to mtls.Config, files ...string) {
+	t.Helper()
+
+	later := time.Now().Add(time.Hour)
+
+	for _, pair := range [][2]string{{from.CertPath, to.CertPath}, {from.KeyPath, to.KeyPath}} {
+		if len(files) > 0 && pair[1] != files[0] {
+			continue
+		}
+		if err := os.Chtimes(pair[0], later, later); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(pair[0], pair[1]); err != nil {
+			t.Fatal(err)
+		}
+	}
+}
+
+func TestCredentials_RenewedCertificate(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	internal := newCA(t, dir)
+	addr, seen := serve(t, internal.issue(t, dir, mtls.User))
+
+	cfg := internal.issue(t, dir, mtls.Auth)
+	creds := clientCreds(t, cfg)
+
+	if err := check(t, addr, creds); err != nil {
+		t.Fatalf("before: %v", err)
+	}
+	if id := <-seen; id != mtls.Auth {
+		t.Fatalf("identity = %q, want %q", id, mtls.Auth)
+	}
+
+	// Only the certificate so far: it does not match the key, the one
+	// loaded is still presented.
+	renewed := internal.issue(t, t.TempDir(), mtls.Post)
+	replace(t, renewed, cfg, cfg.CertPath)
+
+	if err := check(t, addr, creds); status.Code(err) != codes.OK {
+		t.Fatalf("half replaced: %v", err)
+	}
+	if id := <-seen; id != mtls.Auth {
+		t.Fatalf("half replaced: identity = %q, want %q", id, mtls.Auth)
+	}
+
+	replace(t, renewed, cfg, cfg.KeyPath)
+
+	// The same credentials, no restart: the next connection presents the
+	// new certificate.
+	if err := check(t, addr, creds); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("after: got %v, want PermissionDenied for %s", err, mtls.Post)
+	}
+	if id := <-seen; id != mtls.Post {
+		t.Fatalf("identity = %q, want %q", id, mtls.Post)
+	}
+}
+
+func TestServerCredentials_RenewedCertificate(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	internal := newCA(t, dir)
+	cfg := internal.issue(t, dir, mtls.User)
+	addr, _ := serve(t, cfg)
+	creds := clientCreds(t, internal.issue(t, dir, mtls.Auth))
+
+	if err := check(t, addr, creds); err != nil {
+		t.Fatalf("before: %v", err)
+	}
+
+	// A certificate of another CA in its place: the client, which trusts
+	// only ours, turns the server down from now on.
+	foreignDir := t.TempDir()
+	replace(t, newCA(t, foreignDir).issue(t, foreignDir, mtls.User), cfg)
+
+	if err := check(t, addr, creds); status.Code(err) != codes.Unavailable {
+		t.Fatalf("after: got %v, want Unavailable", err)
+	}
+}
+
 func TestRestrictMethods_WithoutTLS(t *testing.T) {
 	t.Parallel()
 
