@@ -1,6 +1,7 @@
 package service
 
 import (
+	"bytes"
 	"context"
 	"errors"
 
@@ -13,10 +14,48 @@ import (
 // in their news anyway.
 var ErrSourceIsReader = errors.New("a reader cannot be their own source")
 
+// ErrSyncMalformed: a stretch of sources that does not hold together.
+var ErrSyncMalformed = errors.New("malformed stretch of sources")
+
+// MaxSyncIDs is how many IDs one stretch of sources tells.
+const MaxSyncIDs = 1000
+
+// SourceSync is a stretch of whom a reader follows (Owner is the reader,
+// IDs the people) or of who is in a community (Club: Owner is the
+// community, IDs its members), as the service that owns them has it: the
+// IDs above After, ascending, up to the last of IDs, or to the end when
+// Last.
+type SourceSync struct {
+	Owner uuid.UUID
+	Club  bool
+	After uuid.UUID
+	Last  bool
+	IDs   []uuid.UUID
+}
+
+// check tells whether the stretch holds together.
+func (s SourceSync) check() error {
+	if s.Owner == uuid.Nil || len(s.IDs) > MaxSyncIDs || (!s.Last && len(s.IDs) == 0) {
+		return ErrSyncMalformed
+	}
+
+	prev := s.After
+	for _, id := range s.IDs {
+		if id == s.Owner || bytes.Compare(id[:], prev[:]) <= 0 {
+			return ErrSyncMalformed
+		}
+
+		prev = id
+	}
+
+	return nil
+}
+
 // SourceRepository keeps whom each reader reads in the news: a copy of
 // the follows of the user service and of the memberships of the club
 // service, kept here so that the feed joins it. Add and Remove are
-// idempotent; Forget drops an erased user from both sides.
+// idempotent; Forget drops an erased user from both sides. Sync makes
+// what is kept within a stretch exactly what the stretch tells.
 //
 // It also keeps which walls are closed: of a person with a closed
 // profile, read by the owner and those the owner follows, and of a
@@ -25,6 +64,7 @@ var ErrSourceIsReader = errors.New("a reader cannot be their own source")
 type SourceRepository interface {
 	Add(ctx context.Context, readerID, sourceID uuid.UUID, club bool) error
 	Remove(ctx context.Context, readerID, sourceID uuid.UUID) error
+	Sync(ctx context.Context, s SourceSync) error
 	Forget(ctx context.Context, userID uuid.UUID) error
 	Close(ctx context.Context, wallID uuid.UUID, club bool) error
 	Open(ctx context.Context, wallID uuid.UUID) error
@@ -108,6 +148,17 @@ func (s *SourceService) Follow(ctx context.Context, readerID, sourceID uuid.UUID
 // Unfollow takes it out again.
 func (s *SourceService) Unfollow(ctx context.Context, readerID, sourceID uuid.UUID) error {
 	return errs.Wrap("s.sources.Remove", s.sources.Remove(ctx, readerID, sourceID))
+}
+
+// Sync takes a stretch of what the user or the club service has and
+// makes the copy here match it: a follow or a membership whose word was
+// lost on the way appears, one whose end was lost goes.
+func (s *SourceService) Sync(ctx context.Context, stretch SourceSync) error {
+	if err := stretch.check(); err != nil {
+		return err
+	}
+
+	return errs.Wrap("s.sources.Sync", s.sources.Sync(ctx, stretch))
 }
 
 // CloseWall keeps a wall from everyone but those it is for: the wall of

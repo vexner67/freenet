@@ -2,6 +2,7 @@ package service_test
 
 import (
 	"context"
+	"errors"
 	"testing"
 
 	"github.com/google/uuid"
@@ -53,5 +54,42 @@ func TestPurgeService_Sources(t *testing.T) {
 	write(t, posts, ann, "новая Анна")
 	if page, err := posts.Feed(ctx, bob, service.FeedSources{}, uuid.Nil, 10); err != nil || len(page.Posts) != 1 {
 		t.Fatalf("bob's feed = %v, %v", ids(page.Posts), err)
+	}
+}
+
+// A stretch of sources that does not hold together is refused whole.
+func TestSourceService_Sync(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	sources := service.NewSourceService(inmem.NewStore().Sources())
+	owner := uuid.New()
+	low, high := uuid.MustParse("00000000-0000-7000-8000-000000000001"), uuid.MustParse("00000000-0000-7000-8000-000000000002")
+
+	tests := []struct {
+		name    string
+		stretch service.SourceSync
+		wantErr bool
+	}{
+		{name: "a stretch", stretch: service.SourceSync{Owner: owner, IDs: []uuid.UUID{low, high}}},
+		{name: "the last, of nobody", stretch: service.SourceSync{Owner: owner, Last: true}},
+		{name: "of a community", stretch: service.SourceSync{Owner: owner, Club: true, After: low, IDs: []uuid.UUID{high}, Last: true}},
+		{name: "nobody's", stretch: service.SourceSync{IDs: []uuid.UUID{low}}, wantErr: true},
+		{name: "empty and not the last", stretch: service.SourceSync{Owner: owner}, wantErr: true},
+		{name: "out of order", stretch: service.SourceSync{Owner: owner, IDs: []uuid.UUID{high, low}}, wantErr: true},
+		{name: "twice the same", stretch: service.SourceSync{Owner: owner, IDs: []uuid.UUID{low, low}}, wantErr: true},
+		{name: "not above the start", stretch: service.SourceSync{Owner: owner, After: low, IDs: []uuid.UUID{low}}, wantErr: true},
+		{name: "the owner among them", stretch: service.SourceSync{Owner: high, IDs: []uuid.UUID{low, high}}, wantErr: true},
+		{name: "too many", stretch: service.SourceSync{Owner: owner, IDs: make([]uuid.UUID, service.MaxSyncIDs+1)}, wantErr: true},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			err := sources.Sync(ctx, tt.stretch)
+			if tt.wantErr != errors.Is(err, service.ErrSyncMalformed) || (!tt.wantErr && err != nil) {
+				t.Fatalf("Sync = %v, want an error: %v", err, tt.wantErr)
+			}
+		})
 	}
 }

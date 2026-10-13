@@ -120,6 +120,7 @@ type HoldService interface {
 type SourceService interface {
 	Follow(ctx context.Context, readerID, sourceID uuid.UUID, club bool) error
 	Unfollow(ctx context.Context, readerID, sourceID uuid.UUID) error
+	Sync(ctx context.Context, stretch service.SourceSync) error
 	CloseWall(ctx context.Context, wallID uuid.UUID, club bool) error
 	OpenWall(ctx context.Context, wallID uuid.UUID) error
 }
@@ -198,6 +199,19 @@ func (h *PostHandler) UnfollowSource(ctx context.Context, req *postv1.UnfollowSo
 	return &emptypb.Empty{}, nil
 }
 
+func (h *PostHandler) SyncSources(ctx context.Context, req *postv1.SyncSourcesRequest) (*emptypb.Empty, error) {
+	stretch, err := fromProtoSourceSync(req)
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.sourceService.Sync(ctx, stretch); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (h *PostHandler) CloseWall(ctx context.Context, req *postv1.CloseWallRequest) (*emptypb.Empty, error) {
 	wallID, err := uuid.Parse(req.GetWallId())
 	if err != nil {
@@ -222,6 +236,37 @@ func (h *PostHandler) OpenWall(ctx context.Context, req *postv1.OpenWallRequest)
 	}
 
 	return &emptypb.Empty{}, nil
+}
+
+// fromProtoSourceSync reads a stretch of sources.
+func fromProtoSourceSync(req *postv1.SyncSourcesRequest) (service.SourceSync, error) {
+	ownerID, err := uuid.Parse(req.GetOwnerId())
+	if err != nil {
+		return service.SourceSync{}, status.Error(codes.InvalidArgument, "invalid owner id")
+	}
+
+	after := uuid.Nil
+	if req.GetAfterId() != "" {
+		if after, err = uuid.Parse(req.GetAfterId()); err != nil {
+			return service.SourceSync{}, status.Error(codes.InvalidArgument, "invalid after id")
+		}
+	}
+
+	if len(req.GetIds()) > service.MaxSyncIDs {
+		return service.SourceSync{}, status.Error(codes.InvalidArgument, service.ErrSyncMalformed.Error())
+	}
+
+	ids := make([]uuid.UUID, 0, len(req.GetIds()))
+	for _, raw := range req.GetIds() {
+		id, err := uuid.Parse(raw)
+		if err != nil {
+			return service.SourceSync{}, status.Error(codes.InvalidArgument, "invalid id")
+		}
+
+		ids = append(ids, id)
+	}
+
+	return service.SourceSync{Owner: ownerID, Club: req.GetClub(), After: after, Last: req.GetLast(), IDs: ids}, nil
 }
 
 // parseSource reads who reads whom from a request about a feed source.

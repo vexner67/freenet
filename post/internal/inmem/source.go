@@ -1,6 +1,7 @@
 package inmem
 
 import (
+	"bytes"
 	"context"
 	"slices"
 
@@ -50,6 +51,64 @@ func (r *SourceRepository) Remove(ctx context.Context, readerID, sourceID uuid.U
 	defer r.s.mu.Unlock()
 
 	delete(r.s.sources[readerID], sourceID)
+
+	return nil
+}
+
+func (r *SourceRepository) Sync(ctx context.Context, s service.SourceSync) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	// within tells whether id is in the stretch.
+	within := func(id uuid.UUID) bool {
+		if bytes.Compare(id[:], s.After[:]) <= 0 {
+			return false
+		}
+
+		return s.Last || bytes.Compare(id[:], s.IDs[len(s.IDs)-1][:]) <= 0
+	}
+
+	if r.s.sources == nil {
+		r.s.sources = make(map[uuid.UUID]map[uuid.UUID]bool)
+	}
+
+	if s.Club {
+		for reader, read := range r.s.sources {
+			if _, ok := read[s.Owner]; ok && within(reader) && !slices.Contains(s.IDs, reader) {
+				delete(read, s.Owner)
+			}
+		}
+
+		for _, reader := range s.IDs {
+			if r.s.sources[reader] == nil {
+				r.s.sources[reader] = make(map[uuid.UUID]bool)
+			}
+
+			r.s.sources[reader][s.Owner] = true
+		}
+
+		return nil
+	}
+
+	read := r.s.sources[s.Owner]
+	if read == nil {
+		read = make(map[uuid.UUID]bool)
+		r.s.sources[s.Owner] = read
+	}
+
+	for source, club := range read {
+		if !club && within(source) && !slices.Contains(s.IDs, source) {
+			delete(read, source)
+		}
+	}
+
+	for _, source := range s.IDs {
+		read[source] = false
+	}
 
 	return nil
 }

@@ -179,6 +179,22 @@ func TestFeedSources(t *testing.T) {
 		t.Fatalf("bob reads %d posts after unfollowing", got)
 	}
 
+	// The whole of what bob follows, told anew, brings the lost follow
+	// back, and takes it away once it says nobody.
+	stretch := &postv1.SyncSourcesRequest{OwnerId: bob.String(), Ids: []string{ann.String()}, Last: true}
+	if _, err := s.client.SyncSources(context.Background(), stretch); err != nil {
+		t.Fatalf("SyncSources: %v", err)
+	}
+	if got := feed(s.as(t, bob)); got != 1 {
+		t.Fatalf("bob reads %d posts after the stretch, want ann's", got)
+	}
+	if _, err := s.client.SyncSources(context.Background(), &postv1.SyncSourcesRequest{OwnerId: bob.String(), Last: true}); err != nil {
+		t.Fatalf("SyncSources: %v", err)
+	}
+	if got := feed(s.as(t, bob)); got != 0 {
+		t.Fatalf("bob reads %d posts after a stretch of nobody", got)
+	}
+
 	tests := []struct {
 		name string
 		call func() error
@@ -193,6 +209,22 @@ func TestFeedSources(t *testing.T) {
 		}},
 		{"oneself", func() error {
 			_, err := s.client.FollowSource(context.Background(), &postv1.FollowSourceRequest{ReaderId: bob.String(), SourceId: bob.String()})
+			return err
+		}},
+		{"a stretch of a bad owner", func() error {
+			_, err := s.client.SyncSources(context.Background(), &postv1.SyncSourcesRequest{OwnerId: "x", Last: true})
+			return err
+		}},
+		{"a stretch from a bad start", func() error {
+			_, err := s.client.SyncSources(context.Background(), &postv1.SyncSourcesRequest{OwnerId: bob.String(), AfterId: "x", Last: true})
+			return err
+		}},
+		{"a stretch with a bad id", func() error {
+			_, err := s.client.SyncSources(context.Background(), &postv1.SyncSourcesRequest{OwnerId: bob.String(), Ids: []string{"x"}, Last: true})
+			return err
+		}},
+		{"a stretch with the owner in it", func() error {
+			_, err := s.client.SyncSources(context.Background(), &postv1.SyncSourcesRequest{OwnerId: bob.String(), Ids: []string{bob.String()}, Last: true})
 			return err
 		}},
 		{"unfollowing a bad source", func() error {
