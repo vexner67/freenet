@@ -37,7 +37,6 @@ const (
 	UserService_SearchUsers_FullMethodName        = "/user.v1.UserService/SearchUsers"
 	UserService_Follow_FullMethodName             = "/user.v1.UserService/Follow"
 	UserService_Unfollow_FullMethodName           = "/user.v1.UserService/Unfollow"
-	UserService_ListFollowingIDs_FullMethodName   = "/user.v1.UserService/ListFollowingIDs"
 	UserService_GetFollowStats_FullMethodName     = "/user.v1.UserService/GetFollowStats"
 	UserService_ListFollowers_FullMethodName      = "/user.v1.UserService/ListFollowers"
 	UserService_ListFollowing_FullMethodName      = "/user.v1.UserService/ListFollowing"
@@ -109,8 +108,6 @@ type UserServiceClient interface {
 	// Require an access token; the follower is the caller. Idempotent.
 	Follow(ctx context.Context, in *FollowRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Unfollow(ctx context.Context, in *UnfollowRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// Requires an access token: whom the caller follows, for the news feed.
-	ListFollowingIDs(ctx context.Context, in *ListFollowingIDsRequest, opts ...grpc.CallOption) (*ListFollowingIDsResponse, error)
 	// Public. With an access token GetFollowStats also tells whether the
 	// caller follows the user.
 	GetFollowStats(ctx context.Context, in *GetFollowStatsRequest, opts ...grpc.CallOption) (*GetFollowStatsResponse, error)
@@ -369,16 +366,6 @@ func (c *userServiceClient) Unfollow(ctx context.Context, in *UnfollowRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, UserService_Unfollow_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *userServiceClient) ListFollowingIDs(ctx context.Context, in *ListFollowingIDsRequest, opts ...grpc.CallOption) (*ListFollowingIDsResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(ListFollowingIDsResponse)
-	err := c.cc.Invoke(ctx, UserService_ListFollowingIDs_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -733,8 +720,6 @@ type UserServiceServer interface {
 	// Require an access token; the follower is the caller. Idempotent.
 	Follow(context.Context, *FollowRequest) (*emptypb.Empty, error)
 	Unfollow(context.Context, *UnfollowRequest) (*emptypb.Empty, error)
-	// Requires an access token: whom the caller follows, for the news feed.
-	ListFollowingIDs(context.Context, *ListFollowingIDsRequest) (*ListFollowingIDsResponse, error)
 	// Public. With an access token GetFollowStats also tells whether the
 	// caller follows the user.
 	GetFollowStats(context.Context, *GetFollowStatsRequest) (*GetFollowStatsResponse, error)
@@ -879,9 +864,6 @@ func (UnimplementedUserServiceServer) Follow(context.Context, *FollowRequest) (*
 }
 func (UnimplementedUserServiceServer) Unfollow(context.Context, *UnfollowRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Unfollow not implemented")
-}
-func (UnimplementedUserServiceServer) ListFollowingIDs(context.Context, *ListFollowingIDsRequest) (*ListFollowingIDsResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method ListFollowingIDs not implemented")
 }
 func (UnimplementedUserServiceServer) GetFollowStats(context.Context, *GetFollowStatsRequest) (*GetFollowStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetFollowStats not implemented")
@@ -1299,24 +1281,6 @@ func _UserService_Unfollow_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).Unfollow(ctx, req.(*UnfollowRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _UserService_ListFollowingIDs_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(ListFollowingIDsRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(UserServiceServer).ListFollowingIDs(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: UserService_ListFollowingIDs_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(UserServiceServer).ListFollowingIDs(ctx, req.(*ListFollowingIDsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1953,10 +1917,6 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Unfollow",
 			Handler:    _UserService_Unfollow_Handler,
-		},
-		{
-			MethodName: "ListFollowingIDs",
-			Handler:    _UserService_ListFollowingIDs_Handler,
 		},
 		{
 			MethodName: "GetFollowStats",

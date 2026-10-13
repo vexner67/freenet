@@ -194,11 +194,6 @@ func TestUserRepository(t *testing.T) {
 			t.Fatalf("after the cursor: %+v, %v", after, err)
 		}
 
-		ids, err := follows.FollowingIDs(ctx, other.ID(), 10)
-		if err != nil || len(ids) != 1 || ids[0] != u.ID() {
-			t.Fatalf("FollowingIDs = %v, %v", ids, err)
-		}
-
 		if err = follows.Follow(ctx, other.ID(), uuid.New()); !errors.Is(err, user.ErrNotFound) {
 			t.Fatalf("follow a missing user: %v", err)
 		}

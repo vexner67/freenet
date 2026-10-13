@@ -67,11 +67,6 @@ func TestFollows(t *testing.T) {
 		t.Fatalf("last page: %v, %v", last, err)
 	}
 
-	ids, err := s.client.ListFollowingIDs(ann, &userv1.ListFollowingIDsRequest{})
-	if err != nil || len(ids.GetUserIds()) != 1 || ids.GetUserIds()[0] != catID {
-		t.Fatalf("ann follows: %v, %v", ids, err)
-	}
-
 	if _, err = s.client.Unfollow(bob, &userv1.UnfollowRequest{UserId: annID}); err != nil {
 		t.Fatal(err)
 	}
@@ -111,10 +106,6 @@ func TestFollowErrors(t *testing.T) {
 		}, codes.NotFound},
 		{"follow without token", func() error {
 			_, err := s.client.Follow(context.Background(), &userv1.FollowRequest{UserId: annID})
-			return err
-		}, codes.Unauthenticated},
-		{"following ids without token", func() error {
-			_, err := s.client.ListFollowingIDs(context.Background(), &userv1.ListFollowingIDsRequest{})
 			return err
 		}, codes.Unauthenticated},
 		{"bad user id", func() error {
