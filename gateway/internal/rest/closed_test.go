@@ -35,6 +35,22 @@ func TestClosedClub(t *testing.T) {
 		}
 	}
 
+	// What was said in its discussions is not read by its ID either, nor
+	// who liked it; a heart is not put on it, and one put before comes off.
+	for _, tt := range []struct {
+		method, path string
+		code         int
+	}{
+		{"GET", "/api/v1/topic-messages/m1/text", http.StatusNotFound},
+		{"GET", "/api/v1/topic-messages/m1/likes", http.StatusNotFound},
+		{"PUT", "/api/v1/topic-messages/m1/like", http.StatusNotFound},
+		{"DELETE", "/api/v1/topic-messages/m1/like", http.StatusOK},
+	} {
+		if w = h.do(tt.method, tt.path, "", "Authorization", "Bearer tok"); w.Code != tt.code {
+			t.Errorf("a stranger: %s %s: %d %s, want %d", tt.method, tt.path, w.Code, w.Body, tt.code)
+		}
+	}
+
 	// Joining is asking.
 	w = h.do("PUT", "/api/v1/clubs/cats/membership", "", "Authorization", "Bearer tok")
 	if got := decode[closedClubJSON](t, w); w.Code != http.StatusOK || got.Role != "" || !got.Requested {
@@ -42,6 +58,17 @@ func TestClosedClub(t *testing.T) {
 	}
 
 	h.clubs.role = "member"
+	for _, path := range []string{"/topic-messages/m1/text", "/topic-messages/m1/likes"} {
+		if w = h.do("GET", "/api/v1"+path, "", "Authorization", "Bearer tok"); w.Code != http.StatusOK {
+			t.Errorf("a member reads %s: %d %s", path, w.Code, w.Body.String())
+		}
+	}
+	// What a deleted page wrote there is gone for everyone.
+	for _, path := range []string{"/topic-messages/m3/text", "/topic-messages/m3/likes"} {
+		if w = h.do("GET", "/api/v1"+path, "", "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+			t.Errorf("a message of a deleted page, %s: %d %s", path, w.Code, w.Body.String())
+		}
+	}
 	for _, path := range []string{"/posts", "/members", "/topics", "/albums"} {
 		if w = h.do("GET", "/api/v1/clubs/cats"+path, "", "Authorization", "Bearer tok"); w.Code != http.StatusOK {
 			t.Errorf("a member reads %s: %d %s", path, w.Code, w.Body.String())

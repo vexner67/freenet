@@ -2,6 +2,7 @@ package backend
 
 import (
 	"context"
+	"slices"
 	"testing"
 	"time"
 
@@ -22,9 +23,11 @@ type fakeClubAPI struct {
 	update    *clubv1.UpdateClubRequest
 	role      *clubv1.SetMemberRoleRequest
 	described *clubv1.DescribeMemberRequest
-	event     *clubv1.CreateEventRequest
-	join      *clubv1.JoinClubRequest
-	mine      *clubv1.ListMyClubsRequest
+	// hiddenOf are the clubs ListHiddenManagers was asked about.
+	hiddenOf []string
+	event    *clubv1.CreateEventRequest
+	join     *clubv1.JoinClubRequest
+	mine     *clubv1.ListMyClubsRequest
 }
 
 var protoCats = &clubv1.Club{
@@ -55,6 +58,13 @@ func (f *fakeClubAPI) ListMembers(_ context.Context, _ *clubv1.ListMembersReques
 		Members:    []*clubv1.Member{{UserId: "u1", Role: clubv1.Role_ROLE_OWNER, Title: "главная", Hidden: true}},
 		NextCursor: "m1", Total: 2,
 	}, nil
+}
+
+func (f *fakeClubAPI) ListHiddenManagers(ctx context.Context, req *clubv1.ListHiddenManagersRequest, _ ...grpc.CallOption) (*clubv1.ListHiddenManagersResponse, error) {
+	f.hiddenOf = req.GetClubIds()
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+
+	return &clubv1.ListHiddenManagersResponse{Clubs: []*clubv1.HiddenManagers{{ClubId: "k1", UserIds: []string{"u2"}}}}, nil
 }
 
 func (f *fakeClubAPI) DescribeMember(_ context.Context, req *clubv1.DescribeMemberRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -103,6 +113,17 @@ func TestClubs(t *testing.T) {
 	if err = clubs.Describe(ctx, "tok", "k1", "u2", model.SeatChange{Title: new("кормит котов"), Hidden: new(true)}); err != nil || api.described.GetUserId() != "u2" ||
 		api.described.GetTitle() != "кормит котов" || !api.described.GetHidden() {
 		t.Fatalf("Describe = %v, request %v", err, api.described)
+	}
+	if api.described.BaseTitle != nil {
+		t.Fatalf("a change that names no title it started from sent %q", api.described.GetBaseTitle())
+	}
+	if err = clubs.Describe(ctx, "tok", "k1", "u2", model.SeatChange{Title: new("повар"), BaseTitle: new("")}); err != nil || api.described.BaseTitle == nil || api.described.GetBaseTitle() != "" {
+		t.Fatalf("Describe from no title = %v, request %v", err, api.described)
+	}
+	hid, err := clubs.HiddenManagers(ctx, "tok", []string{"k1", "k2"})
+	if err != nil || len(hid) != 1 || !slices.Equal(hid["k1"], []string{"u2"}) || !slices.Equal(api.hiddenOf, []string{"k1", "k2"}) ||
+		!slices.Equal(api.md.Get("authorization"), []string{"Bearer tok"}) {
+		t.Fatalf("HiddenManagers = %v, %v; asked of %v with %v", hid, err, api.hiddenOf, api.md)
 	}
 	// What the change does not name is not sent.
 	if err = clubs.Describe(ctx, "tok", "k1", "u2", model.SeatChange{Hidden: new(false)}); err != nil || api.described.Title != nil || api.described.Hidden == nil {

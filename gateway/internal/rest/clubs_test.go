@@ -36,7 +36,12 @@ type fakeClubs struct {
 	going, kind, period string
 	clubsOf             string
 	rolesAsked          []string
-	err                 error
+	// hidden are those the clubs hide, by club; hiddenFor is whose token
+	// asked about them, hiddenAsked how many times.
+	hidden      map[string][]string
+	hiddenFor   string
+	hiddenAsked int
+	err         error
 	// closed: the club is a closed one; requests are who asks to join it,
 	// decided what its admins answered them.
 	closed    bool
@@ -218,6 +223,20 @@ func (f *fakeClubs) Pinned(_ context.Context, token string) ([]model.Club, error
 }
 
 // MyRoles: the caller is what the test says in the club of cats alone.
+func (f *fakeClubs) HiddenManagers(_ context.Context, token string, clubIDs []string) (map[string][]string, error) {
+	f.hiddenFor = token
+	f.hiddenAsked++
+
+	hidden := make(map[string][]string)
+	for _, id := range clubIDs {
+		if users, ok := f.hidden[id]; ok {
+			hidden[id] = users
+		}
+	}
+
+	return hidden, f.err
+}
+
 func (f *fakeClubs) MyRoles(_ context.Context, token string, clubIDs []string) (map[string]string, error) {
 	f.rolesAsked = clubIDs
 	if f.role == "" || !slices.Contains(clubIDs, "k1") {
@@ -353,6 +372,14 @@ func TestClubMembers(t *testing.T) {
 	if c := h.clubs.change; w.Code != http.StatusNoContent || c.Title == nil || *c.Title != "" || c.Hidden != nil {
 		t.Fatalf("no title alone: %d %s, %+v", w.Code, w.Body, h.clubs.change)
 	}
+	if h.clubs.change.BaseTitle != nil {
+		t.Fatalf("a change that names no title it started from sent %q", *h.clubs.change.BaseTitle)
+	}
+	// The title the change started from goes with it, an empty one too.
+	w = h.do("PATCH", "/api/v1/clubs/cats/admins/bob", `{"title":"повар","baseTitle":""}`, "Authorization", "Bearer tok")
+	if c := h.clubs.change; w.Code != http.StatusNoContent || c.BaseTitle == nil || *c.BaseTitle != "" {
+		t.Fatalf("a title from none: %d %s, %+v", w.Code, w.Body, h.clubs.change)
+	}
 	if w = h.do("PATCH", "/api/v1/clubs/cats/admins/bob", `{}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
 		t.Fatalf("a change of nothing: %d", w.Code)
 	}
@@ -366,6 +393,51 @@ func TestClubMembers(t *testing.T) {
 	}](t, w)
 	if w.Code != http.StatusOK || len(mine.Clubs) != 1 || mine.Clubs[0].Role != "admin" || mine.Clubs[0].Address != "cats" {
 		t.Fatalf("my clubs: %d %+v", w.Code, mine)
+	}
+}
+
+// A post for the club may name its author under it; one the club hides
+// is not named to those who do not run it.
+func TestClubWall_HiddenSigner(t *testing.T) {
+	t.Parallel()
+
+	type wall struct {
+		Posts []struct {
+			ID     string         `json:"id"`
+			Author map[string]any `json:"author"`
+			Signer map[string]any `json:"signer"`
+		} `json:"posts"`
+	}
+
+	h := newHarness(rest.Config{})
+
+	// Not signed: the clubs are not asked at all.
+	w := h.do("GET", "/api/v1/clubs/cats/posts", "")
+	if got := decode[wall](t, w); w.Code != http.StatusOK || len(got.Posts) != 2 || got.Posts[0].Signer != nil || h.clubs.hiddenAsked != 0 {
+		t.Fatalf("not signed: %d %+v, asked %d times", w.Code, got, h.clubs.hiddenAsked)
+	}
+
+	h.posts.signedForClub = true
+
+	w = h.do("GET", "/api/v1/clubs/cats/posts", "", "Authorization", "Bearer tok")
+	if got := decode[wall](t, w); w.Code != http.StatusOK || got.Posts[0].Signer["nickname"] != "ann" || h.clubs.hiddenFor != "tok" {
+		t.Fatalf("signed: %d %+v, asked as %q", w.Code, got, h.clubs.hiddenFor)
+	}
+
+	// The club hides Ann from this viewer: the post is the club's alone.
+	h.clubs.hidden = map[string][]string{"k1": {"u1"}}
+
+	w = h.do("GET", "/api/v1/clubs/cats/posts", "")
+	if got := decode[wall](t, w); w.Code != http.StatusOK || len(got.Posts) != 2 || got.Posts[0].ID != "p8" || got.Posts[0].Signer != nil || got.Posts[0].Author["club"] != true {
+		t.Fatalf("signed by one the club hides: %d %+v", w.Code, got)
+	}
+
+	// Someone else it hides does not unsign her.
+	h.clubs.hidden = map[string][]string{"k1": {"u2"}}
+
+	w = h.do("GET", "/api/v1/clubs/cats/posts", "")
+	if got := decode[wall](t, w); w.Code != http.StatusOK || got.Posts[0].Signer["nickname"] != "ann" {
+		t.Fatalf("another is hidden: %d %+v", w.Code, got)
 	}
 }
 

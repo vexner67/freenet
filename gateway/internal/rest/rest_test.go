@@ -482,7 +482,9 @@ type fakePosts struct {
 	token, cursor, deleted string
 	limit                  int
 	wallPosts              []model.Post
-	created, wall, shared  string
+	// signedForClub: the post for the club k1 names its author.
+	signedForClub         bool
+	created, wall, shared string
 	// mentioned are the people the last edit named.
 	mentioned      []string
 	edited, pinned string
@@ -802,7 +804,7 @@ func (f *fakePosts) List(_ context.Context, token, wallID string, pick model.Wal
 	if wallID == "k1" {
 		ann, club := model.Author{ID: "u1"}, model.Author{ID: "k1"}
 		return model.PostPage{Posts: []model.Post{
-			{ID: "p8", Author: ann, Wall: club, Text: "новости", FromWall: true, PhotoIDs: []string{"ph1"}},
+			{ID: "p8", Author: ann, Wall: club, Text: "новости", FromWall: true, Signed: f.signedForClub, PhotoIDs: []string{"ph1"}},
 			{ID: "p7", Author: model.Author{ID: "u2"}, Wall: club, Text: "от боба"},
 		}, Total: 2}, f.err
 	}
@@ -937,7 +939,9 @@ type fakeMedia struct {
 	// are the photos of each claim and release, "id,id".
 	taken             []string
 	claimed, released []string
-	err               error
+	// releaseFails is how many releases fail before one goes through.
+	releaseFails int
+	err          error
 }
 
 func (f *fakeMedia) PublishPhotos(_ context.Context, ownerID string, photoIDs []string) error {
@@ -991,6 +995,11 @@ func (f *fakeMedia) ClaimPhotos(_ context.Context, _ string, photoIDs []string) 
 }
 
 func (f *fakeMedia) ReleasePhotos(_ context.Context, _ string, photoIDs []string) error {
+	if f.releaseFails > 0 {
+		f.releaseFails--
+		return failure.New(failure.Unavailable, "service unavailable")
+	}
+
 	f.released = append(f.released, strings.Join(photoIDs, ","))
 	return nil
 }
@@ -1111,8 +1120,10 @@ type fakeMessages struct {
 	// addedPhotos and removedPhotos are those of the last edit;
 	// deletedMany "ids forEveryone".
 	addedPhotos, removedPhotos []string
-	deletedMany                string
-	around                     string
+	// baseText is what the last edit said the message read.
+	baseText    *string
+	deletedMany string
+	around      string
 	// peerWrote: the peer has written to the caller.
 	peerWrote bool
 	// dialogs replace the default page when set.
@@ -1229,6 +1240,7 @@ func (f *fakeMessages) DeleteMany(_ context.Context, token string, ids []string,
 func (f *fakeMessages) Edit(_ context.Context, token, id string, e model.MessageEdit) (model.Message, error) {
 	f.token, f.edited = token, id+"/"+e.Text
 	f.addedPhotos, f.removedPhotos = e.AddPhotoIDs, e.RemovePhotoIDs
+	f.baseText = e.BaseText
 
 	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Text: e.Text, PhotoIDs: e.AddPhotoIDs, EditedAt: albumTime, EditableUntil: albumTime}, f.err
 }

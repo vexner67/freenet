@@ -13,7 +13,10 @@ import (
 // editMessageRequest names what changes, not what is left: an edit from
 // another window, which shows the message as it was, undoes nothing.
 type editMessageRequest struct {
-	Text         string   `json:"text"`
+	Text string `json:"text"`
+	// BaseText is the text the edit started from; with it a message that
+	// says something else by now is not edited (409).
+	BaseText     *string  `json:"baseText"`
 	AddPhotos    []string `json:"addPhotos"`
 	RemovePhotos []string `json:"removePhotos"`
 }
@@ -706,7 +709,7 @@ func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	edit := model.MessageEdit{Text: req.Text, AddPhotoIDs: req.AddPhotos, RemovePhotoIDs: req.RemovePhotos}
+	edit := model.MessageEdit{Text: req.Text, BaseText: req.BaseText, AddPhotoIDs: req.AddPhotos, RemovePhotoIDs: req.RemovePhotos}
 
 	m, err := a.messages.Edit(r.Context(), token, r.PathValue("id"), edit)
 	if err != nil {

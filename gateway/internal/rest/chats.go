@@ -516,7 +516,7 @@ func (a *api) editChatMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	edit := model.MessageEdit{Text: req.Text, AddPhotoIDs: req.AddPhotos, RemovePhotoIDs: req.RemovePhotos}
+	edit := model.MessageEdit{Text: req.Text, BaseText: req.BaseText, AddPhotoIDs: req.AddPhotos, RemovePhotoIDs: req.RemovePhotos}
 
 	m, err := a.chats.Edit(r.Context(), token, r.PathValue("id"), edit)
 	if err != nil {
