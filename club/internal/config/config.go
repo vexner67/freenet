@@ -10,6 +10,7 @@ import (
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/ratelimit"
+	"github.com/vexner67/freenet/pkg/tracing"
 )
 
 const (
@@ -31,6 +32,10 @@ type Config struct {
 
 	// mTLS with other services: TLS_CA_PATH, TLS_CERT_PATH, TLS_KEY_PATH.
 	TLS mtls.Config `envPrefix:"TLS_"`
+
+	// Tracing of requests through the services: TRACING_ENDPOINT, the
+	// collector (without it nothing is traced), TRACING_SAMPLE_RATIO.
+	Tracing tracing.Config `envPrefix:"TRACING_"`
 
 	Storage     string `env:"STORAGE" envDefault:"inmem"`
 	DatabaseURL string `env:"DATABASE_URL"`
@@ -89,6 +94,10 @@ func (c Config) Validate() error {
 
 	if c.EventReminderAhead <= 0 || c.EventReminderInterval <= 0 {
 		return errors.New("EVENT_REMINDER_AHEAD and EVENT_REMINDER_INTERVAL must be positive")
+	}
+
+	if err := c.Tracing.Validate(); err != nil {
+		return err
 	}
 
 	return c.TLS.Validate()

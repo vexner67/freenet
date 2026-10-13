@@ -50,6 +50,15 @@ func logRequests(logger *slog.Logger) middleware {
 	}
 }
 
+// traced is trace, or nothing without one.
+func traced(trace func(http.Handler) http.Handler) middleware {
+	if trace == nil {
+		return func(next http.Handler) http.Handler { return next }
+	}
+
+	return trace
+}
+
 // requestID names each request for the logs of the gateway and of every
 // service it calls, and tells the name to the client. An ID that came with
 // the request is kept only behind our own proxy, which sets it.

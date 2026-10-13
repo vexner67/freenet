@@ -24,6 +24,9 @@ type Config struct {
 	StatisticsTTL time.Duration
 	// WebDir is the website to serve next to the API; empty serves API only.
 	WebDir string
+	// Trace makes every request the root span of a trace
+	// (tracing.Tracer.Handler); nil traces nothing.
+	Trace func(http.Handler) http.Handler
 }
 
 // HealthPath answers 200 while the server serves.
@@ -78,6 +81,8 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 		secureHeaders,
 		cors(cfg.AllowedOrigins),
 		timeout(cfg.RequestTimeout),
+		// Next to the mux, as observe: it names the span by the route.
+		traced(cfg.Trace),
 		metrics.observe,
 	)
 

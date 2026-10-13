@@ -11,16 +11,15 @@ import (
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/grpcclient"
 	"github.com/vexner67/freenet/pkg/mtls"
 	"github.com/vexner67/freenet/pkg/outbox"
-	"github.com/vexner67/freenet/pkg/reqid"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
 	"github.com/vexner67/freenet/user/internal/config"
 	"github.com/vexner67/freenet/user/internal/notifyclient"
 	"github.com/vexner67/freenet/user/internal/purgeclient"
 	"github.com/vexner67/freenet/user/internal/service"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials"
 )
 
 // outboxQueue is a stream of the outbox of the storage in use.
@@ -85,9 +84,9 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 
 	// stream relays the stream to the service at addr by deliver.
 	stream := func(name, addr string, deliver func(*grpc.ClientConn) outbox.Deliver) (outboxQueue, error) {
-		conn, err := dial(addr, creds)
+		conn, err := grpcclient.New(addr, creds, a.tracer.DialOption())
 		if err != nil {
-			return nil, errs.Wrap("dial", err)
+			return nil, errs.Wrap("grpcclient.New", err)
 		}
 		a.conns = append(a.conns, conn)
 
@@ -161,11 +160,6 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 	d.eraser = purgeclient.NewOutbox(erasures...)
 
 	return d, nil
-}
-
-// dial connects to a service; calls carry the request's ID.
-func dial(addr string, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
-	return grpc.NewClient(addr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
 }
 
 // runSync tells post whom everybody follows every interval until ctx

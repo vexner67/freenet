@@ -6,6 +6,7 @@ import (
 
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/tracing"
 )
 
 type Config struct {
@@ -29,6 +30,10 @@ type Config struct {
 
 	// mTLS to the internal services: TLS_CA_PATH, TLS_CERT_PATH, TLS_KEY_PATH.
 	TLS mtls.Config `envPrefix:"TLS_"`
+
+	// Tracing of requests through the services: TRACING_ENDPOINT, the
+	// collector (without it nothing is traced), TRACING_SAMPLE_RATIO.
+	Tracing tracing.Config `envPrefix:"TRACING_"`
 
 	// CORSAllowedOrigins are the web frontends allowed to call the API,
 	// e.g. "http://localhost:5173,https://freenet.example".
@@ -59,6 +64,10 @@ func (c Config) Validate() error {
 
 	if c.StatisticsTTL < 0 {
 		return errors.New("STATISTICS_TTL must not be negative")
+	}
+
+	if err := c.Tracing.Validate(); err != nil {
+		return err
 	}
 
 	return c.TLS.Validate()

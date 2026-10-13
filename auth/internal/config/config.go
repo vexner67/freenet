@@ -12,6 +12,7 @@ import (
 	"github.com/vexner67/freenet/pkg/envconfig"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/mtls"
+	"github.com/vexner67/freenet/pkg/tracing"
 )
 
 const (
@@ -42,6 +43,10 @@ type Config struct {
 	// mTLS with other services, as server and as client of user:
 	// TLS_CA_PATH, TLS_CERT_PATH, TLS_KEY_PATH.
 	TLS mtls.Config `envPrefix:"TLS_"`
+
+	// Tracing of requests through the services: TRACING_ENDPOINT, the
+	// collector (without it nothing is traced), TRACING_SAMPLE_RATIO.
+	Tracing tracing.Config `envPrefix:"TRACING_"`
 
 	UserServiceAddr string `env:"USER_SERVICE_ADDR,required,notEmpty"`
 
@@ -122,6 +127,10 @@ func (c Config) Validate() error {
 	if c.Code.TTL <= 0 || c.Code.ResendInterval <= 0 || c.Code.RequestsWindow <= 0 ||
 		c.Code.MaxAttempts <= 0 || c.Code.RequestsPerIP <= 0 {
 		return errors.New("CODE_* settings must be positive")
+	}
+
+	if err := c.Tracing.Validate(); err != nil {
+		return err
 	}
 
 	return c.TLS.Validate()
