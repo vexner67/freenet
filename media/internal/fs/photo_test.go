@@ -502,3 +502,92 @@ func TestPhotoStore_DeleteExcept(t *testing.T) {
 		})
 	}
 }
+
+// TestPhotoStore_Reclaim: a claim is taken over by one of those asking at
+// once, each takeover has the next number, and there is nothing to take
+// over once the photo is released or published.
+func TestPhotoStore_Reclaim(t *testing.T) {
+	t.Parallel()
+
+	for name, store := range photoStores(t) {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			ctx := context.Background()
+			ann, upload := uuid.New(), mustV7(t)
+			if err := store.Save(ctx, ann, upload, photo.Images{Large: []byte("L"), Small: []byte("S")}); err != nil {
+				t.Fatal(err)
+			}
+
+			if _, ok, err := store.Claimed(ctx, ann, upload); err != nil || ok {
+				t.Fatalf("Claimed before a claim = %v, %v", ok, err)
+			}
+			if ok, err := store.Reclaim(ctx, ann, upload, 0); err != nil || ok {
+				t.Fatalf("Reclaim of an unclaimed photo = %v, %v", ok, err)
+			}
+			// The attempt left nothing behind.
+			if ok, err := store.Claim(ctx, ann, upload); err != nil || !ok {
+				t.Fatalf("Claim = %v, %v", ok, err)
+			}
+
+			for number := range 3 {
+				claim, ok, err := store.Claimed(ctx, ann, upload)
+				if err != nil || !ok || claim.Number != number {
+					t.Fatalf("Claimed = %+v, %v, %v; want number %d", claim, ok, err, number)
+				}
+				if time.Since(claim.At).Abs() > time.Hour {
+					t.Fatalf("claimed at %v, want now", claim.At)
+				}
+
+				var (
+					wg    sync.WaitGroup
+					taken atomic.Int32
+				)
+				for range 8 {
+					wg.Go(func() {
+						if ok, err := store.Reclaim(ctx, ann, upload, number); err != nil {
+							t.Errorf("Reclaim: %v", err)
+						} else if ok {
+							taken.Add(1)
+						}
+					})
+				}
+				wg.Wait()
+
+				if n := taken.Load(); n != 1 {
+					t.Fatalf("%d took claim %d over, want one", n, number)
+				}
+			}
+
+			if ok, err := store.Claim(ctx, ann, upload); err != nil || ok {
+				t.Fatalf("Claim of a photo taken over = %v, %v", ok, err)
+			}
+
+			if err := store.Release(ctx, ann, upload); err != nil {
+				t.Fatalf("Release: %v", err)
+			}
+			if _, ok, err := store.Claimed(ctx, ann, upload); err != nil || ok {
+				t.Fatalf("Claimed after release = %v, %v", ok, err)
+			}
+			if ok, err := store.Reclaim(ctx, ann, upload, 3); err != nil || ok {
+				t.Fatalf("Reclaim after release = %v, %v", ok, err)
+			}
+			if ok, err := store.Claim(ctx, ann, upload); err != nil || !ok {
+				t.Fatalf("Claim after release = %v, %v", ok, err)
+			}
+			if claim, ok, err := store.Claimed(ctx, ann, upload); err != nil || !ok || claim.Number != 0 {
+				t.Fatalf("Claimed anew = %+v, %v, %v", claim, ok, err)
+			}
+
+			if err := store.Publish(ctx, ann, []uuid.UUID{upload}); err != nil {
+				t.Fatalf("Publish: %v", err)
+			}
+			if _, ok, err := store.Claimed(ctx, ann, upload); err != nil || ok {
+				t.Fatalf("Claimed after publishing = %v, %v", ok, err)
+			}
+			if ok, err := store.Reclaim(ctx, ann, upload, 0); err != nil || ok {
+				t.Fatalf("Reclaim after publishing = %v, %v", ok, err)
+			}
+		})
+	}
+}

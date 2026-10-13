@@ -19,7 +19,7 @@ func TestPhotoService_Unpublished(t *testing.T) {
 	t.Parallel()
 
 	ctx := context.Background()
-	photos := service.NewPhotoService(inmem.NewPhotoStore(), time.Hour, 24*time.Hour)
+	photos := service.NewPhotoService(inmem.NewPhotoStore(), time.Hour, 24*time.Hour, 0)
 	ann := uuid.New()
 
 	var picture bytes.Buffer
@@ -56,7 +56,7 @@ func TestPhotoService_PublishedLate(t *testing.T) {
 
 	ctx := context.Background()
 	store := inmem.NewPhotoStore()
-	photos := service.NewPhotoService(store, time.Hour, 24*time.Hour)
+	photos := service.NewPhotoService(store, time.Hour, 24*time.Hour, 0)
 	ann := uuid.New()
 	images := photo.Images{Large: []byte("L"), Small: []byte("S")}
 
@@ -123,4 +123,86 @@ func uploadedAgo(ago time.Duration) uuid.UUID {
 	}
 
 	return id
+}
+
+// agedClaims is a store whose claims look older than they are.
+type agedClaims struct {
+	*inmem.PhotoStore
+	by time.Duration
+}
+
+func (s agedClaims) Claimed(ctx context.Context, ownerID, photoID uuid.UUID) (service.PhotoClaim, bool, error) {
+	claim, ok, err := s.PhotoStore.Claimed(ctx, ownerID, photoID)
+	claim.At = claim.At.Add(-s.by)
+
+	return claim, ok, err
+}
+
+// TestPhotoService_ClaimLeftBehind: a photo claimed for a post nobody
+// knows the fate of is its owner's to post again once the claim is old
+// and nothing has published the photo.
+func TestPhotoService_ClaimLeftBehind(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ann := uuid.New()
+	images := photo.Images{Large: []byte("L"), Small: []byte("S")}
+
+	tests := []struct {
+		name string
+		keep time.Duration
+		aged time.Duration
+		want bool
+	}{
+		{name: "a fresh claim holds", keep: 15 * time.Minute, aged: time.Minute},
+		{name: "an old one is taken over", keep: 15 * time.Minute, aged: 16 * time.Minute, want: true},
+		{name: "never, when told so", keep: 0, aged: 24 * time.Hour},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			store := inmem.NewPhotoStore()
+			photos := service.NewPhotoService(agedClaims{PhotoStore: store, by: tt.aged}, time.Hour, 24*time.Hour, tt.keep)
+
+			left, other := uuid.Must(uuid.NewV7()), uuid.Must(uuid.NewV7())
+			for _, id := range []uuid.UUID{left, other} {
+				if err := store.Save(ctx, ann, id, images); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			if ok, err := photos.Claim(ctx, ann, []uuid.UUID{left}); err != nil || !ok {
+				t.Fatalf("Claim = %v, %v", ok, err)
+			}
+			if ok, err := photos.Claim(ctx, ann, []uuid.UUID{other, left}); err != nil || ok != tt.want {
+				t.Fatalf("Claim again = %v, %v; want %v", ok, err, tt.want)
+			}
+			// Refused, it took nothing.
+			if ok, err := store.Claim(ctx, ann, other); err != nil || ok == tt.want {
+				t.Fatalf("the other photo taken = %v, %v", !ok, err)
+			}
+		})
+	}
+
+	t.Run("a published photo is not", func(t *testing.T) {
+		t.Parallel()
+
+		store := inmem.NewPhotoStore()
+		photos := service.NewPhotoService(agedClaims{PhotoStore: store, by: time.Hour}, time.Hour, 24*time.Hour, time.Minute)
+
+		id := uuid.Must(uuid.NewV7())
+		if err := store.Save(ctx, ann, id, images); err != nil {
+			t.Fatal(err)
+		}
+		if ok, err := photos.Claim(ctx, ann, []uuid.UUID{id}); err != nil || !ok {
+			t.Fatalf("Claim = %v, %v", ok, err)
+		}
+		if err := photos.Publish(ctx, ann, []uuid.UUID{id}); err != nil {
+			t.Fatal(err)
+		}
+		if ok, err := photos.Claim(ctx, ann, []uuid.UUID{id}); err != nil || ok {
+			t.Fatalf("Claim of a published photo = %v, %v", ok, err)
+		}
+	})
 }

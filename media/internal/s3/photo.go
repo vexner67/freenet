@@ -2,12 +2,15 @@ package s3
 
 import (
 	"context"
+	"maps"
 	"slices"
+	"strconv"
 	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/media/internal/photo"
+	"github.com/vexner67/freenet/media/internal/service"
 	"github.com/vexner67/freenet/pkg/errs"
 )
 
@@ -96,8 +99,112 @@ func (s *PhotoStore) Claim(ctx context.Context, ownerID, photoID uuid.UUID) (boo
 	return s.bucket.has(ctx, dir+imageName(photo.Large))
 }
 
+// A claim taken over leaves a mark of its own, claimed.<number>, written
+// only if there is none too: the upload is claimed while claimName is
+// there, and the highest number tells whose claim it is.
+func takeover(number int) string {
+	if number == 0 {
+		return claimName
+	}
+
+	return claimName + "." + strconv.Itoa(number)
+}
+
+// marks are the marks of the claims of what is in dir, by number.
+func (s *PhotoStore) marks(ctx context.Context, dir string) (map[int]object, error) {
+	found, err := s.bucket.list(ctx, dir+claimName)
+	if err != nil {
+		return nil, err
+	}
+
+	marks := make(map[int]object, len(found))
+	for _, o := range found {
+		name := strings.TrimPrefix(o.key, dir)
+		if name == claimName {
+			marks[0] = o
+			continue
+		}
+
+		if suffix, ok := strings.CutPrefix(name, claimName+"."); ok {
+			if n, err := strconv.Atoi(suffix); err == nil && n > 0 {
+				marks[n] = o
+			}
+		}
+	}
+
+	return marks, nil
+}
+
+func (s *PhotoStore) Claimed(ctx context.Context, ownerID, photoID uuid.UUID) (service.PhotoClaim, bool, error) {
+	dir := photoDir(uploads, ownerID, photoID)
+
+	marks, err := s.marks(ctx, dir)
+	if err != nil {
+		return service.PhotoClaim{}, false, err
+	}
+
+	if _, held := marks[0]; !held {
+		return service.PhotoClaim{}, false, nil
+	}
+
+	// The mark of a photo published since claims nothing.
+	if waiting, err := s.bucket.has(ctx, dir+imageName(photo.Large)); err != nil || !waiting {
+		return service.PhotoClaim{}, false, err
+	}
+
+	last := slices.Max(slices.Collect(maps.Keys(marks)))
+
+	return service.PhotoClaim{At: marks[last].modified, Number: last}, true, nil
+}
+
+func (s *PhotoStore) Reclaim(ctx context.Context, ownerID, photoID uuid.UUID, number int) (bool, error) {
+	dir := photoDir(uploads, ownerID, photoID)
+
+	mine := dir + takeover(number+1)
+
+	if marked, err := s.bucket.putNew(ctx, mine); err != nil || !marked {
+		return false, err
+	}
+
+	// Released meanwhile, there was no claim left to take over; published,
+	// no upload. The mark is taken back then: left behind, it would pass
+	// for a takeover of the next claim.
+	for _, key := range []string{dir + claimName, dir + imageName(photo.Large)} {
+		there, err := s.bucket.has(ctx, key)
+		if err != nil {
+			return false, err
+		}
+
+		if !there {
+			return false, s.bucket.remove(ctx, mine)
+		}
+	}
+
+	return true, nil
+}
+
+// Release removes claimName first: from then on the upload is not
+// claimed, whatever marks of claims taken over are still to go.
 func (s *PhotoStore) Release(ctx context.Context, ownerID, photoID uuid.UUID) error {
-	return s.bucket.remove(ctx, photoDir(uploads, ownerID, photoID)+claimName)
+	return s.unmark(ctx, photoDir(uploads, ownerID, photoID))
+}
+
+// unmark removes the marks of the claims of what is in dir.
+func (s *PhotoStore) unmark(ctx context.Context, dir string) error {
+	marks, err := s.marks(ctx, dir)
+	if err != nil {
+		return err
+	}
+
+	keys := make([]string, 0, len(marks)+1)
+	keys = append(keys, dir+claimName)
+	for n := range marks {
+		if n != 0 {
+			keys = append(keys, dir+takeover(n))
+		}
+	}
+
+	return s.bucket.remove(ctx, keys...)
 }
 
 // Publish keeps the mark of a claim in the uploads: whoever is claiming
@@ -173,7 +280,15 @@ func (s *PhotoStore) Delete(ctx context.Context, ownerID uuid.UUID, photoIDs []u
 		for _, place := range []string{published, uploads, retired} {
 			dir := photoDir(place, ownerID, id)
 
-			if err := s.bucket.remove(ctx, dir+imageName(photo.Large), dir+imageName(photo.Small), dir+claimName); err != nil {
+			if err := s.bucket.remove(ctx, dir+imageName(photo.Large), dir+imageName(photo.Small)); err != nil {
+				return err
+			}
+
+			if place != uploads {
+				continue
+			}
+
+			if err := s.unmark(ctx, dir); err != nil {
 				return err
 			}
 		}
@@ -228,7 +343,11 @@ func (s *PhotoStore) Retire(ctx context.Context, before time.Time) (int, error) 
 		}
 
 		// What a save or a move left half way goes too.
-		return s.bucket.remove(ctx, dir+imageName(photo.Large), dir+imageName(photo.Small), dir+claimName)
+		if err := s.bucket.remove(ctx, dir+imageName(photo.Large), dir+imageName(photo.Small)); err != nil {
+			return err
+		}
+
+		return s.unmark(ctx, dir)
 	})
 }
 

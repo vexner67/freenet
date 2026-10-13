@@ -25,6 +25,14 @@ type PhotoStore interface {
 	// telling whether it did: a photo that is missing, published or
 	// claimed already is not taken. Whoever asks first gets it.
 	Claim(ctx context.Context, ownerID, photoID uuid.UUID) (bool, error)
+	// Claimed tells of the claim an upload is under: when it was made and
+	// its number, which grows each time the claim is taken over. false
+	// for a photo that is not claimed, missing or published.
+	Claimed(ctx context.Context, ownerID, photoID uuid.UUID) (PhotoClaim, bool, error)
+	// Reclaim takes the photo over from the claim with this number,
+	// telling whether it did: of those asking at once one does, and none
+	// once the photo is released or published.
+	Reclaim(ctx context.Context, ownerID, photoID uuid.UUID, number int) (bool, error)
 	// Release lets a claimed photo be claimed again; a missing or
 	// published one is fine.
 	Release(ctx context.Context, ownerID, photoID uuid.UUID) error
@@ -53,16 +61,26 @@ type PhotoService struct {
 	store PhotoStore
 	// keepUnpublished is how long a photo may wait for its post, and
 	// keepRetired how long after its upload a late Publish still finds it.
+	keepClaimed     time.Duration
 	keepUnpublished time.Duration
 	keepRetired     time.Duration
 	now             func() time.Time
 }
 
-func NewPhotoService(store PhotoStore, keepUnpublished, keepRetired time.Duration) *PhotoService {
+// PhotoClaim is the claim an upload is under.
+type PhotoClaim struct {
+	At     time.Time
+	Number int
+}
+
+// NewPhotoService: keepClaimed is how long a claim holds a photo that
+// nothing has published; 0: until the upload is taken away.
+func NewPhotoService(store PhotoStore, keepUnpublished, keepRetired, keepClaimed time.Duration) *PhotoService {
 	return &PhotoService{
 		store:           store,
 		keepUnpublished: keepUnpublished,
 		keepRetired:     keepRetired,
+		keepClaimed:     keepClaimed,
 		now:             time.Now,
 	}
 }
@@ -107,9 +125,9 @@ func (s *PhotoService) Claim(ctx context.Context, ownerID uuid.UUID, photoIDs []
 	}
 
 	for i, id := range photoIDs {
-		taken, err := s.store.Claim(ctx, ownerID, id)
+		taken, err := s.take(ctx, ownerID, id)
 		if err != nil {
-			return false, errs.Wrap("s.store.Claim", err)
+			return false, errs.Wrap("s.take", err)
 		}
 		if taken {
 			continue
@@ -124,6 +142,35 @@ func (s *PhotoService) Claim(ctx context.Context, ownerID uuid.UUID, photoIDs []
 	}
 
 	return true, nil
+}
+
+// take claims one photo, or takes it over from a claim that has held it
+// for keepClaimed with nothing published. Such a claim is left by a post
+// that failed without a word on whether it was written: had it been, its
+// service would have published the photo long since, and the upload
+// would not be there to take.
+func (s *PhotoService) take(ctx context.Context, ownerID, id uuid.UUID) (bool, error) {
+	taken, err := s.store.Claim(ctx, ownerID, id)
+	if err != nil {
+		return false, errs.Wrap("s.store.Claim", err)
+	}
+
+	if taken || s.keepClaimed <= 0 {
+		return taken, nil
+	}
+
+	claim, ok, err := s.store.Claimed(ctx, ownerID, id)
+	if err != nil {
+		return false, errs.Wrap("s.store.Claimed", err)
+	}
+
+	if !ok || claim.At.After(s.now().Add(-s.keepClaimed)) {
+		return false, nil
+	}
+
+	taken, err = s.store.Reclaim(ctx, ownerID, id, claim.Number)
+
+	return taken, errs.Wrap("s.store.Reclaim", err)
 }
 
 // Release gives claimed photos back: the post they were claimed for was

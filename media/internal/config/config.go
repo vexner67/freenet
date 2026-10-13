@@ -56,6 +56,11 @@ type Config struct {
 	// gets its photo when the word arrives.
 	RetiredPhotoTTL      time.Duration `env:"RETIRED_PHOTO_TTL" envDefault:"720h"`
 	PhotoCleanupInterval time.Duration `env:"PHOTO_CLEANUP_INTERVAL" envDefault:"1h"`
+	// A photo claimed for a post that failed without a word on whether
+	// it was written stays claimed; once the claim is PhotoClaimTTL old
+	// and nothing has published the photo, its owner may post it again.
+	// 0: never, the claim holds until the upload is taken away.
+	PhotoClaimTTL time.Duration `env:"PHOTO_CLAIM_TTL" envDefault:"15m"`
 
 	// Spam protection, per user. REDIS_ADDR shares the counters between
 	// replicas; without it they are kept in memory, per replica.
@@ -89,6 +94,10 @@ func (c Config) Validate() error {
 
 	if c.UnpublishedPhotoTTL <= 0 || c.PhotoCleanupInterval <= 0 {
 		return errors.New("UNPUBLISHED_PHOTO_TTL and PHOTO_CLEANUP_INTERVAL must be positive")
+	}
+
+	if c.PhotoClaimTTL < 0 {
+		return errors.New("PHOTO_CLAIM_TTL must not be negative")
 	}
 
 	if c.RetiredPhotoTTL < c.UnpublishedPhotoTTL {
