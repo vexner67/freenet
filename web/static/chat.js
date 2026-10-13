@@ -43,6 +43,9 @@ let gap = false;
 let loadingNewer = false;
 let attachments;
 let editing = null;
+// What the message said when its edit began: saving names it, so an edit
+// made in another window meanwhile is not overwritten.
+let editingBase = '';
 // Message ID → node, so polling does not repeat a message.
 const shown = new Map();
 // The messages selected by a click, by ID.
@@ -221,6 +224,7 @@ async function startEdit(m) {
   }
 
   editing = m;
+  editingBase = m.text;
   text.value = m.text;
   autosize(text);
   attachments.set(m.photos ?? []);
@@ -446,7 +450,7 @@ async function send(event) {
 
   try {
     if (editing) {
-      edited(await api.editChatMessage(editing.id, text.value, photoChanges(editing.photos, attachments.ids())));
+      edited(await api.editChatMessage(editing.id, text.value, { ...photoChanges(editing.photos, attachments.ids()), base: editingBase }));
       cancelEdit();
     } else {
       const m = await api.sendChatMessage(chatID, text.value, attachments.ids());

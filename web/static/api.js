@@ -325,8 +325,10 @@ export const api = {
   // A message of a chat whole; your own is edited and taken back within
   // a day.
   chatMessage: (id) => authorized('GET', `/api/v1/chat-messages/${encodeURIComponent(id)}`),
-  editChatMessage: (id, text, { add = [], remove = [] } = {}) =>
-    authorized('PATCH', `/api/v1/chat-messages/${encodeURIComponent(id)}`, { text, addPhotos: add, removePhotos: remove }),
+  // base is the text the edit started from: the server refuses the edit if
+  // the message says something else by now.
+  editChatMessage: (id, text, { add = [], remove = [], base } = {}) =>
+    authorized('PATCH', `/api/v1/chat-messages/${encodeURIComponent(id)}`, { text, baseText: base, addPhotos: add, removePhotos: remove }),
   deleteChatMessage: (id) => authorized('DELETE', `/api/v1/chat-messages/${encodeURIComponent(id)}`),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
   // Your own message, from both sides, within a day of sending: it stays
@@ -339,8 +341,8 @@ export const api = {
   message: (nickname, id) => authorized('GET', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages/${encodeURIComponent(id)}`),
   // The edit names the photos it adds and takes away, not those left:
   // an edit from another window is not undone.
-  editMessage: (id, text, { add = [], remove = [] } = {}) =>
-    authorized('PATCH', `/api/v1/messages/${encodeURIComponent(id)}`, { text, addPhotos: add, removePhotos: remove }),
+  editMessage: (id, text, { add = [], remove = [], base } = {}) =>
+    authorized('PATCH', `/api/v1/messages/${encodeURIComponent(id)}`, { text, baseText: base, addPhotos: add, removePhotos: remove }),
   // Several messages at once, all or none (up to 100).
   deleteMessages(ids, { forMe = false } = {}) {
     const query = new URLSearchParams(ids.map((id) => ['id', id]));
@@ -391,8 +393,10 @@ export const api = {
   dismissAdmin: (ref, nickname) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`),
   // Those who run a club give one of them a title and hide or show them
   // ("Изменить комментарий", "Скрыт").
-  describeAdmin: (ref, nickname, { title, hidden }) =>
-    authorized('PATCH', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`, { title, hidden }),
+  // baseTitle is the title the change started from: the server refuses to
+  // write over another.
+  describeAdmin: (ref, nickname, { title, baseTitle, hidden }) =>
+    authorized('PATCH', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`, { title, baseTitle, hidden }),
   // The owner hands the club over to one of its admins ("Назначить владельцем").
   transferClub: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/owner/${encodeURIComponent(nickname)}`),
   // The clubs of a user, as their "Кому видно мои группы" allows: 403 if hidden.
