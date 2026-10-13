@@ -67,6 +67,11 @@ type Config struct {
 	// AccountPurgeInterval is how often the pages that are due are erased.
 	AccountPurgeInterval time.Duration `env:"ACCOUNT_PURGE_INTERVAL" envDefault:"1m"`
 
+	// FeedSyncInterval is how often post is told anew whom everybody
+	// follows, which mends its copy after a word lost on the way; 0:
+	// never.
+	FeedSyncInterval time.Duration `env:"FEED_SYNC_INTERVAL" envDefault:"6h"`
+
 	// PresenceFlushInterval is how often the visits of the people on the
 	// site are written, all at once: a person shows as online that much
 	// later.
@@ -94,6 +99,10 @@ func (c Config) Validate() error {
 
 	if c.AccountRetention <= 0 || c.AccountPurgeInterval <= 0 {
 		return errors.New("ACCOUNT_RETENTION and ACCOUNT_PURGE_INTERVAL must be positive")
+	}
+
+	if c.FeedSyncInterval < 0 {
+		return errors.New("FEED_SYNC_INTERVAL must not be negative")
 	}
 
 	if c.PresenceFlushInterval <= 0 || c.PresenceFlushInterval >= user.OnlineFor {

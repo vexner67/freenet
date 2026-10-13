@@ -51,6 +51,50 @@ func (r *FollowRepository) forget(userID uuid.UUID) {
 	}
 }
 
+func (r *FollowRepository) Readers(ctx context.Context, after uuid.UUID, limit int) ([]uuid.UUID, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	return above(r.users.ids(), after, limit), nil
+}
+
+func (r *FollowRepository) Followees(ctx context.Context, readerID, after uuid.UUID, limit int) ([]uuid.UUID, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	var ids []uuid.UUID
+	for e := range r.follows {
+		if e.follower == readerID {
+			ids = append(ids, e.followee)
+		}
+	}
+
+	return above(ids, after, limit), nil
+}
+
+// above are up to limit of ids above after, ascending.
+func above(ids []uuid.UUID, after uuid.UUID, limit int) []uuid.UUID {
+	ids = slices.DeleteFunc(ids, func(id uuid.UUID) bool {
+		return bytes.Compare(id[:], after[:]) <= 0
+	})
+
+	slices.SortFunc(ids, func(a, b uuid.UUID) int {
+		return bytes.Compare(a[:], b[:])
+	})
+
+	return ids[:min(limit, len(ids))]
+}
+
+// LockReader: there are no transactions in memory to hold a lock.
+func (r *FollowRepository) LockReader(ctx context.Context, _ uuid.UUID) error {
+	return errs.Wrap("ctx.Err", ctx.Err())
+}
+
 func (r *FollowRepository) Follow(ctx context.Context, followerID, followeeID uuid.UUID) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
