@@ -114,6 +114,7 @@ const (
 	PostService_ReleaseUserReactions_FullMethodName   = "/post.v1.PostService/ReleaseUserReactions"
 	PostService_FollowSource_FullMethodName           = "/post.v1.PostService/FollowSource"
 	PostService_UnfollowSource_FullMethodName         = "/post.v1.PostService/UnfollowSource"
+	PostService_SyncSources_FullMethodName            = "/post.v1.PostService/SyncSources"
 	PostService_CloseWall_FullMethodName              = "/post.v1.PostService/CloseWall"
 	PostService_OpenWall_FullMethodName               = "/post.v1.PostService/OpenWall"
 )
@@ -370,6 +371,12 @@ type PostServiceClient interface {
 	// Internal, for user and club: the reader no longer follows the person
 	// or left the community. Idempotent.
 	UnfollowSource(ctx context.Context, in *UnfollowSourceRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for user and club: a stretch of whom the reader follows, or
+	// of who is in the community, as the service has it now. What the news
+	// keep within the stretch becomes exactly that: told now and then, it
+	// mends whatever a lost FollowSource or UnfollowSource left behind.
+	// Idempotent.
+	SyncSources(ctx context.Context, in *SyncSourcesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user and club: the wall is closed — of a person whose
 	// profile is closed, read by the owner and those the owner follows, or
 	// of a closed community, read by its members. The others do not find
@@ -1328,6 +1335,16 @@ func (c *postServiceClient) UnfollowSource(ctx context.Context, in *UnfollowSour
 	return out, nil
 }
 
+func (c *postServiceClient) SyncSources(ctx context.Context, in *SyncSourcesRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_SyncSources_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) CloseWall(ctx context.Context, in *CloseWallRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1600,6 +1617,12 @@ type PostServiceServer interface {
 	// Internal, for user and club: the reader no longer follows the person
 	// or left the community. Idempotent.
 	UnfollowSource(context.Context, *UnfollowSourceRequest) (*emptypb.Empty, error)
+	// Internal, for user and club: a stretch of whom the reader follows, or
+	// of who is in the community, as the service has it now. What the news
+	// keep within the stretch becomes exactly that: told now and then, it
+	// mends whatever a lost FollowSource or UnfollowSource left behind.
+	// Idempotent.
+	SyncSources(context.Context, *SyncSourcesRequest) (*emptypb.Empty, error)
 	// Internal, for user and club: the wall is closed — of a person whose
 	// profile is closed, read by the owner and those the owner follows, or
 	// of a closed community, read by its members. The others do not find
@@ -1899,6 +1922,9 @@ func (UnimplementedPostServiceServer) FollowSource(context.Context, *FollowSourc
 }
 func (UnimplementedPostServiceServer) UnfollowSource(context.Context, *UnfollowSourceRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method UnfollowSource not implemented")
+}
+func (UnimplementedPostServiceServer) SyncSources(context.Context, *SyncSourcesRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SyncSources not implemented")
 }
 func (UnimplementedPostServiceServer) CloseWall(context.Context, *CloseWallRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method CloseWall not implemented")
@@ -3619,6 +3645,24 @@ func _PostService_UnfollowSource_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_SyncSources_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SyncSourcesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).SyncSources(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_SyncSources_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).SyncSources(ctx, req.(*SyncSourcesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_CloseWall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CloseWallRequest)
 	if err := dec(in); err != nil {
@@ -4037,6 +4081,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "UnfollowSource",
 			Handler:    _PostService_UnfollowSource_Handler,
+		},
+		{
+			MethodName: "SyncSources",
+			Handler:    _PostService_SyncSources_Handler,
 		},
 		{
 			MethodName: "CloseWall",

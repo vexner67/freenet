@@ -7,6 +7,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/pgpool"
+	"github.com/vexner67/freenet/post/internal/service"
 )
 
 // SourceRepository keeps feed_sources: whom each reader reads.
@@ -46,6 +47,67 @@ const removeSourceQuery = `DELETE FROM feed_sources WHERE reader_id = $1 AND sou
 
 func (r *SourceRepository) Remove(ctx context.Context, readerID, sourceID uuid.UUID) error {
 	if _, err := r.conn(ctx).Exec(ctx, removeSourceQuery, readerID, sourceID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}
+
+// syncFollowsQuery: the people the reader $1 follows, within the stretch
+// above $2 up to $3 (or to the end with $4), are $5.
+const syncFollowsQuery = `
+	WITH gone AS (
+		DELETE FROM feed_sources
+		WHERE reader_id = $1
+			AND NOT club
+			AND source_id > $2
+			AND ($4 OR source_id <= $3)
+			AND source_id <> ALL ($5::uuid[])
+	)
+	INSERT INTO feed_sources (
+		reader_id,
+		source_id,
+		club
+	)
+	SELECT $1, s, false
+	FROM unnest($5::uuid[]) AS s
+	ON CONFLICT (reader_id, source_id) DO UPDATE SET club = false WHERE feed_sources.club
+`
+
+// syncMembersQuery is the same for the members $5 of the community $1.
+const syncMembersQuery = `
+	WITH gone AS (
+		DELETE FROM feed_sources
+		WHERE source_id = $1
+			AND reader_id > $2
+			AND ($4 OR reader_id <= $3)
+			AND reader_id <> ALL ($5::uuid[])
+	)
+	INSERT INTO feed_sources (
+		reader_id,
+		source_id,
+		club
+	)
+	SELECT r, $1, true
+	FROM unnest($5::uuid[]) AS r
+	ON CONFLICT (reader_id, source_id) DO UPDATE SET club = true WHERE NOT feed_sources.club
+`
+
+func (r *SourceRepository) Sync(ctx context.Context, s service.SourceSync) error {
+	query := syncFollowsQuery
+	if s.Club {
+		query = syncMembersQuery
+	}
+
+	upTo := s.After
+	if len(s.IDs) > 0 {
+		upTo = s.IDs[len(s.IDs)-1]
+	}
+
+	// A nil slice would be NULL, and "<> ALL (NULL)" true of no row.
+	ids := append([]uuid.UUID{}, s.IDs...)
+
+	if _, err := r.conn(ctx).Exec(ctx, query, s.Owner, s.After, upTo, s.Last, ids); err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
 

@@ -266,6 +266,12 @@ service PostService {
   // Internal, for user and club: the reader no longer follows the person
   // or left the community. Idempotent.
   rpc UnfollowSource(UnfollowSourceRequest) returns (google.protobuf.Empty);
+  // Internal, for user and club: a stretch of whom the reader follows, or
+  // of who is in the community, as the service has it now. What the news
+  // keep within the stretch becomes exactly that: told now and then, it
+  // mends whatever a lost FollowSource or UnfollowSource left behind.
+  // Idempotent.
+  rpc SyncSources(SyncSourcesRequest) returns (google.protobuf.Empty);
   // Internal, for user and club: the wall is closed — of a person whose
   // profile is closed, read by the owner and those the owner follows, or
   // of a closed community, read by its members. The others do not find
@@ -963,6 +969,18 @@ message FollowSourceRequest {
 message UnfollowSourceRequest {
   string reader_id = 1;
   string source_id = 2;
+}
+
+message SyncSourcesRequest {
+  // A reader, and ids are the people they follow; or, with club, a
+  // community, and ids are its members.
+  string owner_id = 1;
+  bool club = 2;
+  // The stretch: the IDs above after_id (empty: from the first) up to
+  // the last of ids, or to the end when last. ids ascend, 1000 at most.
+  string after_id = 3;
+  bool last = 4;
+  repeated string ids = 5;
 }
 
 message CloseWallRequest {
