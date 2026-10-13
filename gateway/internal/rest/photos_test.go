@@ -87,17 +87,24 @@ func TestCreatePostWithPhotos(t *testing.T) {
 	t.Run("a refused post gives its photos back", func(t *testing.T) {
 		t.Parallel()
 
+		tooMany := failure.New(failure.TooManyRequests, "too many requests, try again later")
+
 		for name, tt := range map[string]struct {
 			err      error
+			fails    int
 			released []string
 		}{
-			"too many posts": {failure.New(failure.TooManyRequests, "too many requests, try again later"), []string{"ph1,ph2"}},
+			"too many posts": {tooMany, 0, []string{"ph1,ph2"}},
 			// Written or not, nobody knows: the photos stay the post's.
-			"no answer": {failure.New(failure.Unavailable, "service unavailable"), nil},
+			"no answer": {failure.New(failure.Unavailable, "service unavailable"), 0, nil},
+			// media stumbled: the release is tried again.
+			"media answers the second time": {tooMany, 1, []string{"ph1,ph2"}},
+			"media does not answer":         {tooMany, 5, nil},
 		} {
 			h := newHarness(rest.Config{})
 			h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
 			h.posts.err = tt.err
+			h.media.releaseFails = tt.fails
 
 			w := h.do("POST", "/api/v1/me/posts", `{"photos":["ph1","ph2"]}`, "Authorization", "Bearer tok")
 			if w.Code < 400 || !slices.Equal(h.media.claimed, []string{"ph1,ph2"}) || !slices.Equal(h.media.released, tt.released) {

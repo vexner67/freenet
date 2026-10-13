@@ -153,7 +153,7 @@ func (m *Messages) DeleteMany(ctx context.Context, accessToken string, ids []str
 // replaces them, its photos.
 func (m *Messages) Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.Message, error) {
 	resp, err := m.api.EditMessage(withToken(ctx, accessToken), &messagev1.EditMessageRequest{
-		Id: id, Text: e.Text, AddPhotoIds: e.AddPhotoIDs, RemovePhotoIds: e.RemovePhotoIDs,
+		Id: id, Text: e.Text, BaseText: e.BaseText, AddPhotoIds: e.AddPhotoIDs, RemovePhotoIds: e.RemovePhotoIDs,
 	})
 	if err != nil {
 		return model.Message{}, errs.Wrap("m.api.EditMessage", fromStatus(err))

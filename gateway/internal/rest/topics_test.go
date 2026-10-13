@@ -83,6 +83,11 @@ func (f *fakeTopics) Messages(_ context.Context, _, topicID, _ string, _ int) (m
 
 // Message knows m1, whose text lists cut.
 func (f *fakeTopics) Message(_ context.Context, id string) (model.TopicMessage, error) {
+	// m3 is of someone whose page is gone.
+	if id == "m3" {
+		return model.TopicMessage{ID: id, TopicID: "t1", AuthorID: "gone", Text: "?", CreatedAt: topicTime}, nil
+	}
+
 	if id != "m1" {
 		return model.TopicMessage{}, failure.New(failure.NotFound, "message not found")
 	}

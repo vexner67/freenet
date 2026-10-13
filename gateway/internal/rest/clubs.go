@@ -136,8 +136,11 @@ type clubMemberJSON struct {
 // field that is not sent stays as it is, so two people changing
 // different things of one admin undo nothing of each other's.
 type describeAdminRequest struct {
-	Title  *string `json:"title"`
-	Hidden *bool   `json:"hidden"`
+	Title *string `json:"title"`
+	// BaseTitle is the title the change started from; with it a seat
+	// that says another by now is not written over.
+	BaseTitle *string `json:"baseTitle"`
+	Hidden    *bool   `json:"hidden"`
 }
 
 // clubMembersResponse: Total counts the members, or the admins, on all
@@ -729,7 +732,7 @@ func (a *api) describeAdmin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	change := model.SeatChange{Title: req.Title, Hidden: req.Hidden}
+	change := model.SeatChange{Title: req.Title, BaseTitle: req.BaseTitle, Hidden: req.Hidden}
 	if err = a.clubs.Describe(r.Context(), token, c.Club.ID, user.ID, change); err != nil {
 		a.writeError(w, r, err)
 		return

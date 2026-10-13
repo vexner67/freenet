@@ -557,6 +557,9 @@ type MessageDraft struct {
 // ReplacePhotos, its photos; without, the photos stay.
 type MessageEdit struct {
 	Text string
+	// BaseText, when set, is the text the edit started from: a message
+	// that says something else by now is not edited.
+	BaseText *string
 	// The photos the message shows no more, and the uploads it shows
 	// from now on.
 	RemovePhotoIDs []string
@@ -754,10 +757,13 @@ type ClubChanges struct {
 }
 
 // SeatChange is what a change of an admin's seat names: the title, the
-// hiding or both; what is nil stays as it is.
+// hiding or both; what is nil stays as it is. BaseTitle, when set, is
+// the title the change started from: a seat that says another by now
+// keeps it.
 type SeatChange struct {
-	Title  *string
-	Hidden *bool
+	Title     *string
+	BaseTitle *string
+	Hidden    *bool
 }
 
 // ClubMember is one member of a club, with their role. Title is what an

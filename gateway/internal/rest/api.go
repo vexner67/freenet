@@ -345,6 +345,10 @@ type Clubs interface {
 	// MyRoles tells what the caller is in those of up to 100 clubs they
 	// are in, by the ID of the club.
 	MyRoles(ctx context.Context, accessToken string, clubIDs []string) (map[string]string, error)
+	// HiddenManagers are those who run each of up to 100 clubs and whom
+	// the caller (accessToken may be empty) may not know to, by the ID of
+	// the club; clubs that hide nobody are left out. Not to be shown.
+	HiddenManagers(ctx context.Context, accessToken string, clubIDs []string) (map[string][]string, error)
 	CanPostOnWall(ctx context.Context, accessToken, clubID string, fromClub bool) (model.WallAccess, error)
 }
 

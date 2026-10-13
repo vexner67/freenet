@@ -356,6 +356,10 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 		return nil, err
 	}
 
+	if err = a.unsign(r, posts); err != nil {
+		return nil, err
+	}
+
 	shown := make([]postResponse, 0, len(posts))
 	for _, p := range posts {
 		if !withProfiles(&p, people) {
@@ -384,6 +388,41 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 	}
 
 	return shown, nil
+}
+
+// unsign takes the signature ("Подпись автора") off the posts written for
+// a community by someone it hides: to those who do not run it, the name
+// under the post would tell who does. The communities are asked only when
+// a post is signed.
+func (a *api) unsign(r *http.Request, posts []model.Post) error {
+	var clubs []string
+	for _, p := range posts {
+		if p.FromWall && p.Signed {
+			clubs = append(clubs, p.Wall.ID)
+		}
+	}
+
+	if len(clubs) == 0 {
+		return nil
+	}
+
+	hidden := make(map[string][]string)
+	for chunk := range slices.Chunk(unique(clubs), maxClubsPerRequest) {
+		of, err := a.clubs.HiddenManagers(r.Context(), viewerToken(r), chunk)
+		if err != nil {
+			return err
+		}
+
+		maps.Copy(hidden, of)
+	}
+
+	for i, p := range posts {
+		if p.FromWall && p.Signed && slices.Contains(hidden[p.Wall.ID], p.Author.ID) {
+			posts[i].Signed = false
+		}
+	}
+
+	return nil
 }
 
 // maxPostsPerRequest is how many posts post tells the comments of at once.

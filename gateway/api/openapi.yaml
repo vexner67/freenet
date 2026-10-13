@@ -1638,6 +1638,15 @@ paths:
               required: [text]
               properties:
                 text: { type: string, maxLength: 60000 }
+                baseText:
+                  type: string
+                  maxLength: 60000
+                  description: >-
+                    The whole text the edit started from. With it the edit is
+                    refused (409 `the message was changed`) when the message
+                    says something else by now, so two windows do not
+                    overwrite each other's words; without it the edit is
+                    applied as is.
                 addPhotos:
                   type: array
                   maxItems: 10
@@ -1661,7 +1670,7 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          description: "`the message can no longer be edited` after `editableUntil`"
+          description: "`the message can no longer be edited` after `editableUntil`; `the message was changed` when it no longer says `baseText`"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -2170,6 +2179,7 @@ paths:
               type: object
               properties:
                 title: { type: string, maxLength: 36, description: "One line; empty for none" }
+                baseTitle: { type: string, maxLength: 36, description: "The title the change started from: with it `title` is written only over this one (409 `the title was changed` otherwise), so two admins do not overwrite each other" }
                 hidden: { type: boolean }
       responses:
         "204": { description: Saved }
@@ -2177,7 +2187,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { description: "You do not run the community", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
-        "409": { description: "`the user does not run the club`", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409": { description: "`the user does not run the club`; `the title was changed` when the seat no longer says `baseTitle`", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
 
   /api/v1/clubs/{ref}/requests:
     parameters:
@@ -4455,6 +4465,7 @@ paths:
               required: [text]
               properties:
                 text: { type: string, maxLength: 60000, description: "May be empty only when the message has photos, shares a post or forwards messages" }
+                baseText: { type: string, maxLength: 60000, description: "The whole text the edit started from, as in `PATCH /api/v1/messages/{id}`" }
                 addPhotos:
                   type: array
                   maxItems: 10
@@ -4473,7 +4484,7 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "403": { description: "Not yours to do: `permission denied`" }
         "404": { $ref: "#/components/responses/NotFound" }
-        "409": { description: "The day in which it could be done has passed" }
+        "409": { description: "The day in which it could be done has passed (`the message can no longer be edited`), or the message no longer says `baseText` (`the message was changed`)" }
     delete:
       summary: Take your message back from everyone, within a day
       description: It stays in its place saying nothing ("Сообщение удалено").

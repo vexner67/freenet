@@ -428,6 +428,16 @@ func TestChatMessages(t *testing.T) {
 			t.Fatalf("%d %+v, edit %+v, claimed %q, released %q", w.Code, got, h.chats.edit, h.media.claimed, h.media.released)
 		}
 
+		if h.chats.edit.BaseText != nil {
+			t.Fatalf("an edit that names no text it started from sent %q", *h.chats.edit.BaseText)
+		}
+
+		// The text the edit started from goes with it.
+		w = h.do("PATCH", "/api/v1/chat-messages/m9", `{"text":"вот так","baseText":"вот"}`, "Authorization", annAuth)
+		if w.Code != http.StatusOK || h.chats.edit.BaseText == nil || *h.chats.edit.BaseText != "вот" {
+			t.Fatalf("an edit from a text: %d, edit %+v", w.Code, h.chats.edit)
+		}
+
 		// A refused edit gives the photos back.
 		h = newHarness(rest.Config{})
 		h.chats.err = failure.New(failure.Conflict, "the message can no longer be edited")

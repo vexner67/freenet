@@ -282,7 +282,7 @@ func (c *Clubs) SetAdmin(ctx context.Context, accessToken, clubID, userID string
 // them, or both: what the change does not name stays.
 func (c *Clubs) Describe(ctx context.Context, accessToken, clubID, userID string, change model.SeatChange) error {
 	_, err := c.api.DescribeMember(withToken(ctx, accessToken), &clubv1.DescribeMemberRequest{
-		ClubId: clubID, UserId: userID, Title: change.Title, Hidden: change.Hidden,
+		ClubId: clubID, UserId: userID, Title: change.Title, BaseTitle: change.BaseTitle, Hidden: change.Hidden,
 	})
 	if err != nil {
 		return errs.Wrap("c.api.DescribeMember", fromStatus(err))
@@ -417,6 +417,22 @@ func (c *Clubs) MyRoles(ctx context.Context, accessToken string, clubIDs []strin
 	}
 
 	return mine, nil
+}
+
+// HiddenManagers are those who run each of the clubs and whom the caller
+// may not know to: the club hides them and the caller does not run it.
+func (c *Clubs) HiddenManagers(ctx context.Context, accessToken string, clubIDs []string) (map[string][]string, error) {
+	resp, err := c.api.ListHiddenManagers(withToken(ctx, accessToken), &clubv1.ListHiddenManagersRequest{ClubIds: clubIDs})
+	if err != nil {
+		return nil, errs.Wrap("c.api.ListHiddenManagers", fromStatus(err))
+	}
+
+	hidden := make(map[string][]string, len(resp.GetClubs()))
+	for _, of := range resp.GetClubs() {
+		hidden[of.GetClubId()] = of.GetUserIds()
+	}
+
+	return hidden, nil
 }
 
 // CanPostOnWall tells whether the caller may write on the club's wall, on

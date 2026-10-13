@@ -155,7 +155,7 @@ func (c *Chats) Message(ctx context.Context, accessToken, id string) (model.Chat
 // Edit changes what the caller's message says and the photos it shows.
 func (c *Chats) Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.ChatMessage, error) {
 	resp, err := c.api.EditChatMessage(withToken(ctx, accessToken), &messagev1.EditChatMessageRequest{
-		Id: id, Text: e.Text, AddPhotoIds: e.AddPhotoIDs, RemovePhotoIds: e.RemovePhotoIDs,
+		Id: id, Text: e.Text, BaseText: e.BaseText, AddPhotoIds: e.AddPhotoIDs, RemovePhotoIds: e.RemovePhotoIDs,
 	})
 	if err != nil {
 		return model.ChatMessage{}, errs.Wrap("c.api.EditChatMessage", fromStatus(err))

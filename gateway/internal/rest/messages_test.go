@@ -406,6 +406,17 @@ func TestEditHideAndSearchMessages(t *testing.T) {
 	if h.messages.addedPhotos != nil || h.messages.removedPhotos != nil {
 		t.Fatalf("an edit of the words changed the photos: +%v -%v", h.messages.addedPhotos, h.messages.removedPhotos)
 	}
+	if h.messages.baseText != nil {
+		t.Fatalf("an edit that names no text it started from sent %q", *h.messages.baseText)
+	}
+
+	// The text the edit started from goes with it, an empty one too.
+	for _, base := range []string{"привет", ""} {
+		body := `{"text":"x","baseText":"` + base + `"}`
+		if w = h.do("PATCH", "/api/v1/messages/m1", body, auth...); w.Code != http.StatusOK || h.messages.baseText == nil || *h.messages.baseText != base {
+			t.Fatalf("an edit from %q: %d, sent %v", base, w.Code, h.messages.baseText)
+		}
+	}
 	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x"}`); w.Code != http.StatusUnauthorized {
 		t.Fatalf("edit without a token: %d", w.Code)
 	}

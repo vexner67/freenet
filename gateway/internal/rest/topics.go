@@ -512,6 +512,13 @@ func (a *api) setTopicMessageLike(w http.ResponseWriter, r *http.Request, liked 
 
 	set := a.topics.UnlikeMessage
 	if liked {
+		// A heart is put on what the caller may read; one put before is
+		// taken back all the same.
+		if _, err = a.shownTopicMessage(r, token); err != nil {
+			a.writeError(w, r, err)
+			return
+		}
+
 		set = a.topics.LikeMessage
 	}
 
@@ -527,7 +534,13 @@ func (a *api) setTopicMessageLike(w http.ResponseWriter, r *http.Request, liked 
 // topicMessageText is what a message of a topic says, whole: the topic
 // carries its beginning. Public, as discussions are.
 func (a *api) topicMessageText(w http.ResponseWriter, r *http.Request) {
-	m, err := a.topics.Message(r.Context(), r.PathValue("id"))
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	m, err := a.shownTopicMessage(r, token)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -536,8 +549,62 @@ func (a *api) topicMessageText(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, textResponse{Text: m.Text})
 }
 
+// shownTopicMessage is the message of the path as the caller, anonymous
+// without token, may read it by its ID: not found when the discussions of
+// its community are closed to them, as the topic itself is, or when its
+// writer's page is deleted, as the list of the topic leaves it out.
+func (a *api) shownTopicMessage(r *http.Request, token string) (model.TopicMessage, error) {
+	gone := failure.New(failure.NotFound, "message not found")
+
+	m, err := a.topics.Message(r.Context(), r.PathValue("id"))
+	if err != nil {
+		return model.TopicMessage{}, err
+	}
+
+	t, err := a.topics.Get(r.Context(), token, m.TopicID)
+	if err != nil {
+		return model.TopicMessage{}, err
+	}
+
+	c, err := a.clubs.Get(r.Context(), token, t.ClubID)
+	if err != nil {
+		return model.TopicMessage{}, err
+	}
+
+	if !c.Admits() {
+		return model.TopicMessage{}, gone
+	}
+
+	// What speaks for the community is the community's.
+	if m.FromWall {
+		return m, nil
+	}
+
+	people, err := a.authors(r, []string{m.AuthorID})
+	if err != nil {
+		return model.TopicMessage{}, err
+	}
+
+	if _, ok := people[m.AuthorID]; !ok {
+		return model.TopicMessage{}, gone
+	}
+
+	return m, nil
+}
+
 // listTopicMessageLikers is "Понравилось N людям" of a message of a
 // topic, public as discussions are.
 func (a *api) listTopicMessageLikers(w http.ResponseWriter, r *http.Request) {
+	token, err := optionalBearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if _, err = a.shownTopicMessage(r, token); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	a.listLikers(w, r, a.topics.MessageLikers)
 }
