@@ -652,6 +652,18 @@ func TestClubService_Describe(t *testing.T) {
 	if err := svc.Describe(ctx, bob, c.ID(), bob, club.SeatChange{Title: &title}); err != nil {
 		t.Fatal(err)
 	}
+	// A title written over another than the one the change started from
+	// would undo someone's words.
+	cook, none := club.Title("повар"), club.Title("")
+	if err := svc.Describe(ctx, ann, c.ID(), bob, club.SeatChange{Title: &cook, Was: &none}); !errors.Is(err, club.ErrTitleChanged) {
+		t.Fatalf("a title over one the change did not see: %v", err)
+	}
+	if err := svc.Describe(ctx, ann, c.ID(), bob, club.SeatChange{Title: &cook, Was: &title}); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.Describe(ctx, ann, c.ID(), bob, club.SeatChange{Title: &title, Was: &cook}); err != nil {
+		t.Fatal(err)
+	}
 
 	// Those who run the club see Bob as he is; the others, a plain member.
 	for _, viewer := range []uuid.UUID{ann, bob} {
@@ -672,6 +684,27 @@ func TestClubService_Describe(t *testing.T) {
 		if err != nil || len(all.Members) != 3 || all.Members[1].UserID != bob || all.Members[1].Seat != (club.Seat{Role: club.RoleMember}) {
 			t.Fatalf("members to others = %+v, %v; want Bob a plain member", all, err)
 		}
+	}
+
+	// Whom the club hides, those who do not run it are not to learn from
+	// a name under its post either.
+	other := uuid.New()
+	for _, viewer := range []uuid.UUID{cat, uuid.Nil} {
+		hid, err := svc.HiddenManagers(ctx, viewer, []uuid.UUID{other, c.ID()})
+		if err != nil || len(hid) != 1 || !slices.Equal(hid[c.ID()], []uuid.UUID{bob}) {
+			t.Fatalf("HiddenManagers for others = %v, %v; want Bob", hid, err)
+		}
+	}
+	for _, viewer := range []uuid.UUID{ann, bob} {
+		if hid, err := svc.HiddenManagers(ctx, viewer, []uuid.UUID{c.ID()}); err != nil || len(hid) != 0 {
+			t.Fatalf("HiddenManagers for one of them = %v, %v; want none", hid, err)
+		}
+	}
+	if hid, err := svc.HiddenManagers(ctx, cat, nil); err != nil || len(hid) != 0 {
+		t.Fatalf("HiddenManagers of no clubs = %v, %v", hid, err)
+	}
+	if _, err := svc.HiddenManagers(ctx, cat, make([]uuid.UUID, service.MaxClubs+1)); !errors.Is(err, service.ErrTooManyIDs) {
+		t.Fatalf("HiddenManagers of too many clubs: %v", err)
 	}
 
 	if v, err := svc.Find(ctx, cat, service.Ref{ID: c.ID()}); err != nil || v.OwnerID != ann || v.OwnerTitle != "главная" {

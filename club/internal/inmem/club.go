@@ -431,6 +431,24 @@ func (r *MemberRepository) Roles(ctx context.Context, userID uuid.UUID, clubIDs 
 	return roles, nil
 }
 
+func (r *MemberRepository) Hidden(ctx context.Context, clubIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	hidden := make(map[uuid.UUID][]uuid.UUID)
+	for _, m := range r.s.members {
+		if m.hidden && m.role.Manages() && slices.Contains(clubIDs, m.clubID) {
+			hidden[m.clubID] = append(hidden[m.clubID], m.userID)
+		}
+	}
+
+	return hidden, nil
+}
+
 func (r *MemberRepository) Leave(ctx context.Context, clubID, userID uuid.UUID) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
@@ -478,6 +496,10 @@ func (r *MemberRepository) Describe(ctx context.Context, clubID, userID uuid.UUI
 	_, m := r.s.membership(clubID, userID)
 	if m == nil || !m.role.Manages() {
 		return club.ErrNotManager
+	}
+
+	if d.Outdated(m.title) {
+		return club.ErrTitleChanged
 	}
 
 	if d.Title != nil {

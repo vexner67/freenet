@@ -56,6 +56,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, "the new owner must be an admin of the club"), true
 	case errors.Is(err, club.ErrNotManager):
 		return status.New(codes.FailedPrecondition, "the user does not run the club"), true
+	case errors.Is(err, club.ErrTitleChanged):
+		return status.New(codes.FailedPrecondition, "the title was changed"), true
 	case errors.Is(err, club.ErrCannotPin):
 		return status.New(codes.PermissionDenied, "only the admins can add the club to their menu"), true
 	case errors.Is(err, club.ErrTooManyPinned):

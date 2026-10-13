@@ -187,6 +187,31 @@ func TestClub(t *testing.T) {
 	if admins, err = s.client.ListMembers(context.Background(), &clubv1.ListMembersRequest{ClubId: id, AdminsOnly: true}); err != nil || admins.GetTotal() != 1 || admins.GetMembers()[0].GetUserId() != ann.String() {
 		t.Fatalf("admins to anyone = %v, %v; want only the owner", admins, err)
 	}
+	// Whom the club hides: told to those who do not run it, for gateway
+	// to leave his name out.
+	for name, ctx := range map[string]context.Context{"anyone": context.Background(), "a stranger": s.as(t, uuid.New())} {
+		hid, err := s.client.ListHiddenManagers(ctx, &clubv1.ListHiddenManagersRequest{ClubIds: []string{id, uuid.NewString(), id}})
+		if err != nil || len(hid.GetClubs()) != 1 || hid.GetClubs()[0].GetClubId() != id || len(hid.GetClubs()[0].GetUserIds()) != 1 || hid.GetClubs()[0].GetUserIds()[0] != bob.String() {
+			t.Fatalf("ListHiddenManagers for %s = %v, %v; want Bob", name, hid, err)
+		}
+	}
+	if hid, err := s.client.ListHiddenManagers(s.as(t, ann), &clubv1.ListHiddenManagersRequest{ClubIds: []string{id}}); err != nil || len(hid.GetClubs()) != 0 {
+		t.Fatalf("ListHiddenManagers for the owner = %v, %v; want none", hid, err)
+	}
+	if _, err = s.client.ListHiddenManagers(context.Background(), &clubv1.ListHiddenManagersRequest{ClubIds: []string{"x"}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("ListHiddenManagers of a bad id: %v", err)
+	}
+
+	// A title is not written over one the request did not start from.
+	if _, err = s.client.DescribeMember(s.as(t, ann), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String(), Title: new("повар"), BaseTitle: new("")}); status.Code(err) != codes.FailedPrecondition || status.Convert(err).Message() != "the title was changed" {
+		t.Fatalf("a title over one the request did not see: %v", err)
+	}
+	if _, err = s.client.DescribeMember(s.as(t, ann), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String(), Title: new("кормит котов"), BaseTitle: new(" кормит котов ")}); err != nil {
+		t.Fatalf("a title over the one the request saw: %v", err)
+	}
+	if _, err = s.client.DescribeMember(s.as(t, ann), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String(), Title: new("x"), BaseTitle: new(strings.Repeat("я", 37))}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a long base title: %v", err)
+	}
 	// Showing himself, Bob keeps the title: a request changes what it names.
 	if _, err = s.client.DescribeMember(s.as(t, bob), &clubv1.DescribeMemberRequest{ClubId: id, UserId: bob.String(), Hidden: new(false)}); err != nil {
 		t.Fatalf("an admin shows himself: %v", err)

@@ -34,6 +34,7 @@ type ClubService interface {
 	Pin(ctx context.Context, userID, clubID uuid.UUID, pinned bool) error
 	Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error)
 	Roles(ctx context.Context, userID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID]club.Role, error)
+	HiddenManagers(ctx context.Context, viewerID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
 	CanPostOnWall(ctx context.Context, userID, clubID uuid.UUID, fromClub bool) (service.WallAccess, error)
 	CanModerateWall(ctx context.Context, wallID, userID uuid.UUID) (bool, error)
 	WallModerators(ctx context.Context, wallID uuid.UUID) ([]uuid.UUID, error)
@@ -360,6 +361,15 @@ func (h *ClubHandler) DescribeMember(ctx context.Context, req *clubv1.DescribeMe
 		d.Title = &title
 	}
 
+	if req.BaseTitle != nil {
+		was, err := club.NewTitle(req.GetBaseTitle())
+		if err != nil {
+			return nil, err
+		}
+
+		d.Was = &was
+	}
+
 	if err = h.clubService.Describe(ctx, requesterID, clubID, userID, d); err != nil {
 		return nil, err
 	}
@@ -597,6 +607,40 @@ func (h *ClubHandler) ListMyRoles(ctx context.Context, req *clubv1.ListMyRolesRe
 		if role, ok := mine[id]; ok {
 			resp.Roles = append(resp.Roles, &clubv1.ClubRole{ClubId: id.String(), Role: roles[role]})
 		}
+	}
+
+	return resp, nil
+}
+
+func (h *ClubHandler) ListHiddenManagers(ctx context.Context, req *clubv1.ListHiddenManagersRequest) (*clubv1.ListHiddenManagersResponse, error) {
+	ids := make([]uuid.UUID, 0, len(req.GetClubIds()))
+	for _, s := range req.GetClubIds() {
+		id, err := parseID(s, "invalid club id")
+		if err != nil {
+			return nil, err
+		}
+		ids = append(ids, id)
+	}
+
+	hidden, err := h.clubService.HiddenManagers(ctx, viewerID(ctx), ids)
+	if err != nil {
+		return nil, err
+	}
+
+	resp := &clubv1.ListHiddenManagersResponse{Clubs: make([]*clubv1.HiddenManagers, 0, len(hidden))}
+	for _, id := range ids {
+		users, ok := hidden[id]
+		if !ok {
+			continue
+		}
+		// One club named twice is told once.
+		delete(hidden, id)
+
+		of := &clubv1.HiddenManagers{ClubId: id.String(), UserIds: make([]string, 0, len(users))}
+		for _, user := range users {
+			of.UserIds = append(of.UserIds, user.String())
+		}
+		resp.Clubs = append(resp.Clubs, of)
 	}
 
 	return resp, nil

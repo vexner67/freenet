@@ -439,6 +439,29 @@ func TestSeat(t *testing.T) {
 	}
 }
 
+func TestSeatChange_Outdated(t *testing.T) {
+	t.Parallel()
+
+	title, cook, none := club.Title("кормит котов"), club.Title("повар"), club.Title("")
+	hidden := true
+
+	for name, tt := range map[string]struct {
+		change club.SeatChange
+		now    club.Title
+		want   bool
+	}{
+		"from the title the seat has":  {club.SeatChange{Title: &title, Was: &cook}, "повар", false},
+		"from an older title":          {club.SeatChange{Title: &title, Was: &cook}, "кот", true},
+		"from none, and there is one":  {club.SeatChange{Title: &title, Was: &none}, "повар", true},
+		"names no title it started at": {club.SeatChange{Title: &title}, "повар", false},
+		"changes the hiding only":      {club.SeatChange{Hidden: &hidden, Was: &cook}, "кот", false},
+	} {
+		if got := tt.change.Outdated(tt.now); got != tt.want {
+			t.Errorf("%s: Outdated = %v, want %v", name, got, tt.want)
+		}
+	}
+}
+
 func TestCheckDescribe(t *testing.T) {
 	t.Parallel()
 

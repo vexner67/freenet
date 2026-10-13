@@ -12,6 +12,7 @@ const maxTitleLen = 36
 var (
 	ErrTitleTooLong = errors.New("title is too long")
 	ErrNotManager   = errors.New("the user does not run the club")
+	ErrTitleChanged = errors.New("the title was changed")
 )
 
 // Title is what an admin does in the club, in a few words shown under
@@ -63,9 +64,20 @@ func (s Seat) Seen(viewer Role) bool {
 // SeatChange is what a change of a seat names: its title, whether it
 // is hidden, or both. What is nil stays as it is, so two people changing
 // different things of one seat undo nothing of each other's.
+//
+// A title is one value, so two people writing it at once would undo each
+// other's words: a change that names the title it started from (Was) is
+// refused with ErrTitleChanged when the seat says another by now.
 type SeatChange struct {
 	Title  *Title
+	Was    *Title
 	Hidden *bool
+}
+
+// Outdated tells whether the change started from a title the seat, whose
+// title is now, no longer has.
+func (c SeatChange) Outdated(now Title) bool {
+	return c.Title != nil && c.Was != nil && *c.Was != now
 }
 
 // CheckDescribe tells whether requester may give a title to someone who

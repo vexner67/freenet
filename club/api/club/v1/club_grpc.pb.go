@@ -43,6 +43,7 @@ const (
 	ClubService_PinClub_FullMethodName            = "/club.v1.ClubService/PinClub"
 	ClubService_ListPinnedClubs_FullMethodName    = "/club.v1.ClubService/ListPinnedClubs"
 	ClubService_ListMyRoles_FullMethodName        = "/club.v1.ClubService/ListMyRoles"
+	ClubService_ListHiddenManagers_FullMethodName = "/club.v1.ClubService/ListHiddenManagers"
 	ClubService_CanPostOnWall_FullMethodName      = "/club.v1.ClubService/CanPostOnWall"
 	ClubService_CanModerateWall_FullMethodName    = "/club.v1.ClubService/CanModerateWall"
 	ClubService_ListWallModerators_FullMethodName = "/club.v1.ClubService/ListWallModerators"
@@ -125,6 +126,12 @@ type ClubServiceClient interface {
 	// What the caller is in each of up to 100 clubs; those they are not in
 	// are left out.
 	ListMyRoles(ctx context.Context, in *ListMyRolesRequest, opts ...grpc.CallOption) (*ListMyRolesResponse, error)
+	// Internal, for gateway: those who run each of up to 100 clubs and whom
+	// the caller (the token is optional) may not know to, because the club
+	// hides them and the caller does not run it. Gateway leaves their names
+	// out of what was written for the club ("Подпись автора"); the answer
+	// itself never leaves it. Clubs that hide nobody are left out.
+	ListHiddenManagers(ctx context.Context, in *ListHiddenManagersRequest, opts ...grpc.CallOption) (*ListHiddenManagersResponse, error)
 	// Whether the caller may write on the club's wall, on their own behalf
 	// or, with from_club, on the club's, or else suggest a post.
 	CanPostOnWall(ctx context.Context, in *CanPostOnWallRequest, opts ...grpc.CallOption) (*CanPostOnWallResponse, error)
@@ -379,6 +386,16 @@ func (c *clubServiceClient) ListMyRoles(ctx context.Context, in *ListMyRolesRequ
 	return out, nil
 }
 
+func (c *clubServiceClient) ListHiddenManagers(ctx context.Context, in *ListHiddenManagersRequest, opts ...grpc.CallOption) (*ListHiddenManagersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListHiddenManagersResponse)
+	err := c.cc.Invoke(ctx, ClubService_ListHiddenManagers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *clubServiceClient) CanPostOnWall(ctx context.Context, in *CanPostOnWallRequest, opts ...grpc.CallOption) (*CanPostOnWallResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CanPostOnWallResponse)
@@ -495,6 +512,12 @@ type ClubServiceServer interface {
 	// What the caller is in each of up to 100 clubs; those they are not in
 	// are left out.
 	ListMyRoles(context.Context, *ListMyRolesRequest) (*ListMyRolesResponse, error)
+	// Internal, for gateway: those who run each of up to 100 clubs and whom
+	// the caller (the token is optional) may not know to, because the club
+	// hides them and the caller does not run it. Gateway leaves their names
+	// out of what was written for the club ("Подпись автора"); the answer
+	// itself never leaves it. Clubs that hide nobody are left out.
+	ListHiddenManagers(context.Context, *ListHiddenManagersRequest) (*ListHiddenManagersResponse, error)
 	// Whether the caller may write on the club's wall, on their own behalf
 	// or, with from_club, on the club's, or else suggest a post.
 	CanPostOnWall(context.Context, *CanPostOnWallRequest) (*CanPostOnWallResponse, error)
@@ -587,6 +610,9 @@ func (UnimplementedClubServiceServer) ListPinnedClubs(context.Context, *ListPinn
 }
 func (UnimplementedClubServiceServer) ListMyRoles(context.Context, *ListMyRolesRequest) (*ListMyRolesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMyRoles not implemented")
+}
+func (UnimplementedClubServiceServer) ListHiddenManagers(context.Context, *ListHiddenManagersRequest) (*ListHiddenManagersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListHiddenManagers not implemented")
 }
 func (UnimplementedClubServiceServer) CanPostOnWall(context.Context, *CanPostOnWallRequest) (*CanPostOnWallResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CanPostOnWall not implemented")
@@ -1035,6 +1061,24 @@ func _ClubService_ListMyRoles_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ClubService_ListHiddenManagers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListHiddenManagersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).ListHiddenManagers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_ListHiddenManagers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).ListHiddenManagers(ctx, req.(*ListHiddenManagersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ClubService_CanPostOnWall_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(CanPostOnWallRequest)
 	if err := dec(in); err != nil {
@@ -1205,6 +1249,10 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ListMyRoles",
 			Handler:    _ClubService_ListMyRoles_Handler,
+		},
+		{
+			MethodName: "ListHiddenManagers",
+			Handler:    _ClubService_ListHiddenManagers_Handler,
 		},
 		{
 			MethodName: "CanPostOnWall",

@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -460,6 +461,55 @@ func TestRepositories_SettingsAndTransfer(t *testing.T) {
 	}
 	if err = members.Describe(ctx, c.ID(), bob, club.SeatChange{}); err != nil {
 		t.Fatal(err)
+	}
+	// A title is written only over the one the change started from.
+	cook, none := club.Title("повар"), club.Title("")
+	if err = members.Describe(ctx, c.ID(), bob, club.SeatChange{Title: &cook, Was: &none}); !errors.Is(err, club.ErrTitleChanged) {
+		t.Fatalf("Describe over a title the change did not see: %v", err)
+	}
+	if err = members.Describe(ctx, c.ID(), cat, club.SeatChange{Title: &cook, Was: &none}); !errors.Is(err, club.ErrNotManager) {
+		t.Fatalf("Describe a member from a title: %v", err)
+	}
+	// The hiding does not look at the title.
+	if err = members.Describe(ctx, c.ID(), bob, club.SeatChange{Hidden: &hidden, Was: &none}); err != nil {
+		t.Fatalf("Describe the hiding from another title: %v", err)
+	}
+	if err = members.Describe(ctx, c.ID(), bob, club.SeatChange{Title: &cook, Was: &title}); err != nil {
+		t.Fatal(err)
+	}
+
+	// Of several changes that started from one title, one is written.
+	const writers = 8
+
+	results := make(chan error, writers)
+	for i := range writers {
+		go func() {
+			next := club.Title("повар " + strconv.Itoa(i))
+			results <- members.Describe(ctx, c.ID(), bob, club.SeatChange{Title: &next, Was: &cook})
+		}()
+	}
+
+	written := 0
+	for range writers {
+		switch err := <-results; {
+		case err == nil:
+			written++
+		case !errors.Is(err, club.ErrTitleChanged):
+			t.Fatalf("a concurrent Describe: %v", err)
+		}
+	}
+	if written != 1 {
+		t.Fatalf("%d of %d changes from one title were written, want 1", written, writers)
+	}
+	if err = members.Describe(ctx, c.ID(), bob, club.SeatChange{Title: &title}); err != nil {
+		t.Fatal(err)
+	}
+	// Bob is hidden, Ann is not, and Cat runs nothing.
+	if hid, err := members.Hidden(ctx, []uuid.UUID{uuid.New(), c.ID()}); err != nil || len(hid) != 1 || len(hid[c.ID()]) != 1 || hid[c.ID()][0] != bob {
+		t.Fatalf("Hidden = %v, %v; want Bob", hid, err)
+	}
+	if hid, err := members.Hidden(ctx, nil); err != nil || len(hid) != 0 {
+		t.Fatalf("Hidden of no clubs = %v, %v", hid, err)
 	}
 	if err = members.Describe(ctx, c.ID(), ann, described("главная", false)); err != nil {
 		t.Fatal(err)
