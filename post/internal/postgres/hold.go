@@ -177,6 +177,36 @@ const showUserQuery = `
 	WHERE user_id = $1
 `
 
+const deletedUsersQuery = `
+	SELECT user_id
+	FROM hidden_users
+	WHERE user_id = ANY($1)
+`
+
+// Deleted tells which of the users deleted their page: those Hold hid
+// and Release has not shown since.
+func (r *HoldRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	rows, err := r.conn(ctx).Query(ctx, deletedUsersQuery, userIDs)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+	defer rows.Close()
+
+	gone := make(map[uuid.UUID]bool)
+	for rows.Next() {
+		var id uuid.UUID
+		if err = rows.Scan(&id); err != nil {
+			return nil, errs.Wrap("rows.Scan", err)
+		}
+		gone[id] = true
+	}
+	if err = rows.Err(); err != nil {
+		return nil, errs.Wrap("rows.Err", err)
+	}
+
+	return gone, nil
+}
+
 func (r *HoldRepository) Hold(ctx context.Context, userID uuid.UUID) error {
 	if _, err := r.conn(ctx).Exec(ctx, hideUserQuery, userID); err != nil {
 		return errs.Wrap("r.conn.Exec", err)

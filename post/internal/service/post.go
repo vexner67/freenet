@@ -189,6 +189,7 @@ type PostService struct {
 	switches    PostSwitchRepository
 	polls       PollSaver
 	walls       Walls
+	pages       Pages
 }
 
 // PollSaver keeps the poll a new post asks, in the transaction that saves
@@ -199,6 +200,8 @@ type PollSaver interface {
 
 // PostDeps are what PostService works with.
 type PostDeps struct {
+	// Pages knows the deleted pages, whose posts are not found; nil: none.
+	Pages      Pages
 	Posts      PostRepository
 	Pins       PinRepository
 	Comments   PostCommentEraser
@@ -248,6 +251,7 @@ func NewPostService(d PostDeps) *PostService {
 		switches:    d.Switches,
 		polls:       d.Polls,
 		walls:       d.Walls,
+		pages:       d.Pages,
 		now:         time.Now,
 	}
 }
@@ -1017,6 +1021,17 @@ func (s *PostService) seen(ctx context.Context, viewerID, postID uuid.UUID) (*po
 		return nil, post.ErrNotFound
 	}
 
+	// The page of its wall or of its author is deleted: the lists leave
+	// the post out, and so does this.
+	gone, err := deletedPages(ctx, s.pages, p.WallID(), own(p.AuthorID(), p.FromWall()))
+	if err != nil {
+		return nil, errs.Wrap("deletedPages", err)
+	}
+
+	if len(gone) > 0 {
+		return nil, post.ErrNotFound
+	}
+
 	return p, nil
 }
 
@@ -1058,6 +1073,16 @@ func (s *PostService) GetMany(ctx context.Context, viewerID uuid.UUID, ids []uui
 	shown, err := readable(ctx, s.walls, viewerID, slices.DeleteFunc(posts, (*post.Post).Archived))
 	if err != nil {
 		return nil, errs.Wrap("readable", err)
+	}
+
+	// Neither the posts of deleted pages nor those on their walls.
+	if shown, err = written(ctx, s.pages, shown, (*post.Post).WallID); err != nil {
+		return nil, errs.Wrap("written", err)
+	}
+
+	shown, err = written(ctx, s.pages, shown, func(p *post.Post) uuid.UUID { return own(p.AuthorID(), p.FromWall()) })
+	if err != nil {
+		return nil, errs.Wrap("written", err)
 	}
 
 	return shown, nil

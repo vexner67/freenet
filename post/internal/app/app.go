@@ -142,6 +142,7 @@ func (a *App) build(cfg config.Config) error {
 	albums := service.NewAlbumService(service.AlbumDeps{
 		Albums: repos.albums, Photos: repos.albumPhotos, Tx: repos.tx, Media: photos, Moderators: moderators,
 		Likes: repos.photoLikes, Comments: repos.photoComments, CommentLikes: repos.photoCommentLikes, Notifier: notifier,
+		Pages: repos.pages,
 	})
 
 	postv1.RegisterPostServiceServer(
@@ -150,23 +151,23 @@ func (a *App) build(cfg config.Config) error {
 			Posts: service.NewPostService(service.PostDeps{
 				Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Moderators: moderators, AlbumPhotos: repos.albumPhotos, WallPhotos: albums, Switches: repos.posts, Walls: repos.sources,
-				Polls: repos.polls,
+				Polls: repos.polls, Pages: repos.pages,
 			}),
 			Comments: service.NewCommentService(service.CommentDeps{
 				Posts: repos.posts, Comments: repos.comments, Likes: repos.commentLikes, Tx: repos.tx, Notifier: notifier, Photos: photos,
-				Moderators: moderators, Walls: repos.sources,
+				Moderators: moderators, Walls: repos.sources, Pages: repos.pages,
 			}),
 			Suggestions: service.NewSuggestionService(service.SuggestionDeps{
 				Suggestions: repos.suggestions, Posts: repos.posts, Tx: repos.tx, Notifier: notifier, Photos: photos, Moderators: moderators,
 			}),
 			Topics: service.NewTopicService(service.TopicDeps{
 				Topics: repos.topics, Messages: repos.topicMessages, Likes: repos.topicMessages, Tx: repos.tx,
-				Notifier: notifier, Photos: photos, Moderators: moderators,
+				Notifier: notifier, Photos: photos, Moderators: moderators, Pages: repos.pages,
 			}),
 			Albums: albums,
 			Polls:  service.NewPollService(service.PollDeps{Polls: repos.polls, Posts: repos.posts, Moderators: moderators, Walls: repos.sources, Tx: repos.tx}),
 			Notes: service.NewNoteService(service.NoteDeps{
-				Notes: repos.notes, Comments: repos.noteComments, Tx: repos.tx, Notifier: notifier,
+				Notes: repos.notes, Comments: repos.noteComments, Tx: repos.tx, Notifier: notifier, Pages: repos.pages,
 			}),
 			Faves: service.NewFaveService(service.FaveDeps{
 				PostLikes: repos.likes, CommentLikes: repos.commentLikes, PhotoLikes: repos.photoLikes,
@@ -417,6 +418,8 @@ type repositories struct {
 	}
 	// held keep the likes and votes of deleted pages aside.
 	held []service.ReactionHolder
+	// pages knows the deleted pages, for what is read by its ID.
+	pages service.Pages
 	// sources are whom each reader reads in the news.
 	sources      service.SourceRepository
 	noteComments service.NoteCommentRepository
@@ -459,7 +462,9 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			photoLikes:    albums.PhotoLikes(),
 			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 			notes: notes, noteComments: notes.Comments(),
-			held:    []service.ReactionHolder{store.Holds(), topics, albums, notes},
+			held: []service.ReactionHolder{store.Holds(), topics, albums, notes},
+			// Every store is told of a deleted page; one answers for all.
+			pages:   store.Holds(),
 			sources: store.Sources(),
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
@@ -492,6 +497,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	topics := postgres.NewTopicRepository(a.pool)
 	albums := postgres.NewAlbumRepository(a.pool)
 	notes := postgres.NewNoteRepository(a.pool)
+	held := postgres.NewHoldRepository(a.pool)
 
 	return repositories{
 		posts:        postgres.NewPostRepository(a.pool),
@@ -509,7 +515,8 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		photoLikes:    albums.PhotoLikes(),
 		photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 		notes: notes, noteComments: notes.Comments(),
-		held:    []service.ReactionHolder{postgres.NewHoldRepository(a.pool)},
+		held:    []service.ReactionHolder{held},
+		pages:   held,
 		sources: postgres.NewSourceRepository(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)

@@ -53,5 +53,6 @@ func TestHolds_Written(t *testing.T) {
 		Notes:         notes,
 		NoteComments:  notes.Comments(),
 		Holders:       []service.ReactionHolder{store.Holds(), topics, albums, notes},
+		Pages:         []service.Pages{store.Holds(), topics, albums, notes},
 	})
 }

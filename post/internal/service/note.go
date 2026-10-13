@@ -61,11 +61,15 @@ type NoteService struct {
 	comments NoteCommentRepository
 	tx       TxManager
 	notifier Notifier
+	pages    Pages
 	now      func() time.Time
 }
 
 // NoteDeps are what NoteService works with.
 type NoteDeps struct {
+	// Pages knows the deleted pages, whose notes and comments are not
+	// read; nil: none.
+	Pages    Pages
 	Notes    NoteRepository
 	Comments NoteCommentRepository
 	Tx       TxManager
@@ -73,7 +77,7 @@ type NoteDeps struct {
 }
 
 func NewNoteService(d NoteDeps) *NoteService {
-	return &NoteService{notes: d.Notes, comments: d.Comments, tx: d.Tx, notifier: d.Notifier, now: time.Now}
+	return &NoteService{notes: d.Notes, comments: d.Comments, tx: d.Tx, notifier: d.Notifier, pages: d.Pages, now: time.Now}
 }
 
 // Create writes a note of authorID.
@@ -90,11 +94,24 @@ func (s *NoteService) Create(ctx context.Context, authorID uuid.UUID, title post
 	return n, nil
 }
 
-// Get is one note, whole; post.ErrNoteNotFound for a missing one.
+// Get is one note, whole; post.ErrNoteNotFound for a missing one and for
+// one whose author deleted the page.
 func (s *NoteService) Get(ctx context.Context, id uuid.UUID) (*post.Note, error) {
 	n, err := s.notes.Get(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.notes.Get", err)
+	}
 
-	return n, errs.Wrap("s.notes.Get", err)
+	gone, err := deletedPages(ctx, s.pages, n.AuthorID())
+	if err != nil {
+		return nil, errs.Wrap("deletedPages", err)
+	}
+
+	if len(gone) > 0 {
+		return nil, post.ErrNoteNotFound
+	}
+
+	return n, nil
 }
 
 // List pages the notes of authorID, newest first.
@@ -228,15 +245,30 @@ func (s *NoteService) Comments(ctx context.Context, noteID, after uuid.UUID, siz
 	return page, nil
 }
 
-// CommentByID is one comment of a note, whole.
+// CommentByID is one comment of a note, whole;
+// post.ErrCommentNotFound for a missing one and for one a deleted
+// page wrote.
 func (s *NoteService) CommentByID(ctx context.Context, id uuid.UUID) (*post.NoteComment, error) {
 	c, err := s.comments.Get(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.comments.Get", err)
+	}
 
-	return c, errs.Wrap("s.comments.Get", err)
+	gone, err := deletedPages(ctx, s.pages, c.AuthorID())
+	if err != nil {
+		return nil, errs.Wrap("deletedPages", err)
+	}
+
+	if len(gone) > 0 {
+		return nil, post.ErrCommentNotFound
+	}
+
+	return c, nil
 }
 
 // CommentsByID returns the comments of notes with these IDs that exist,
-// at most MaxPageSize, in no particular order.
+// at most MaxPageSize, in no particular order; those a deleted page wrote
+// are left out, as the list of a note leaves them.
 func (s *NoteService) CommentsByID(ctx context.Context, ids []uuid.UUID) ([]*post.NoteComment, error) {
 	if len(ids) > MaxPageSize {
 		return nil, ErrTooManyIDs
@@ -247,8 +279,13 @@ func (s *NoteService) CommentsByID(ctx context.Context, ids []uuid.UUID) ([]*pos
 	}
 
 	found, err := s.comments.GetMany(ctx, ids)
+	if err != nil {
+		return nil, errs.Wrap("s.comments.GetMany", err)
+	}
 
-	return found, errs.Wrap("s.comments.GetMany", err)
+	found, err = written(ctx, s.pages, found, (*post.NoteComment).AuthorID)
+
+	return found, errs.Wrap("written", err)
 }
 
 // DeleteComment deletes a comment: by its author or the author of the

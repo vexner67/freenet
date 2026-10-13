@@ -1,7 +1,11 @@
 package inmem
 
 import (
+	"context"
+	"sync"
+
 	"github.com/google/uuid"
+	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/post/internal/post"
 )
 
@@ -118,4 +122,42 @@ func (r *NoteRepository) seenNote(n *post.Note) *post.Note {
 	}
 
 	return n.WithComments(n.Comments() - hidden)
+}
+
+// among tells which of the users are hidden, under the lock of the store
+// that keeps them.
+func (h hiddenUsers) among(ctx context.Context, mu *sync.RWMutex, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	mu.RLock()
+	defer mu.RUnlock()
+
+	gone := make(map[uuid.UUID]bool)
+	for _, id := range userIDs {
+		if h[id] {
+			gone[id] = true
+		}
+	}
+
+	return gone, nil
+}
+
+// Deleted tells which of the users deleted their page: each store learns
+// of them as it holds their likes.
+func (r *HoldRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	return r.s.hidden.among(ctx, &r.s.mu, userIDs)
+}
+
+func (r *TopicRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	return r.hidden.among(ctx, &r.mu, userIDs)
+}
+
+func (r *AlbumRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	return r.hidden.among(ctx, &r.mu, userIDs)
+}
+
+func (r *NoteRepository) Deleted(ctx context.Context, userIDs []uuid.UUID) (map[uuid.UUID]bool, error) {
+	return r.hidden.among(ctx, &r.mu, userIDs)
 }

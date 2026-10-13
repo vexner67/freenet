@@ -122,11 +122,14 @@ type TopicService struct {
 	notifier   Notifier
 	photos     PhotoKeeper
 	moderators WallModerators
+	pages      Pages
 	now        func() time.Time
 }
 
 // TopicDeps are what TopicService works with.
 type TopicDeps struct {
+	// Pages knows the deleted pages, whose messages are not read; nil: none.
+	Pages      Pages
 	Topics     TopicRepository
 	Messages   TopicMessageRepository
 	Likes      TopicMessageLikeRepository
@@ -145,6 +148,7 @@ func NewTopicService(d TopicDeps) *TopicService {
 		notifier:   d.Notifier,
 		photos:     d.Photos,
 		moderators: d.Moderators,
+		pages:      d.Pages,
 		now:        time.Now,
 	}
 }
@@ -488,7 +492,8 @@ func (s *TopicService) MessageLikers(ctx context.Context, id uuid.UUID, cursor *
 }
 
 // MessagesByID returns the messages with these IDs that exist, at most
-// MaxPageSize, in no particular order.
+// MaxPageSize, in no particular order; those a deleted page wrote are
+// left out, as the list of a topic leaves them.
 func (s *TopicService) MessagesByID(ctx context.Context, ids []uuid.UUID) ([]*post.TopicMessage, error) {
 	if len(ids) > MaxPageSize {
 		return nil, ErrTooManyIDs
@@ -499,15 +504,39 @@ func (s *TopicService) MessagesByID(ctx context.Context, ids []uuid.UUID) ([]*po
 	}
 
 	found, err := s.messages.GetMany(ctx, ids)
+	if err != nil {
+		return nil, errs.Wrap("s.messages.GetMany", err)
+	}
 
-	return found, errs.Wrap("s.messages.GetMany", err)
+	found, err = written(ctx, s.pages, found, messageWriter)
+
+	return found, errs.Wrap("written", err)
 }
 
-// Message is one message of a topic, whole.
+// messageWriter is whose words a message is: no one's when it speaks for
+// the community.
+func messageWriter(m *post.TopicMessage) uuid.UUID {
+	return own(m.AuthorID(), m.FromWall())
+}
+
+// Message is one message of a topic, whole; post.ErrMessageNotFound for
+// a missing one and for one a deleted page wrote.
 func (s *TopicService) Message(ctx context.Context, id uuid.UUID) (*post.TopicMessage, error) {
 	m, err := s.messages.Get(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.messages.Get", err)
+	}
 
-	return m, errs.Wrap("s.messages.Get", err)
+	gone, err := deletedPages(ctx, s.pages, messageWriter(m))
+	if err != nil {
+		return nil, errs.Wrap("deletedPages", err)
+	}
+
+	if len(gone) > 0 {
+		return nil, post.ErrMessageNotFound
+	}
+
+	return m, nil
 }
 
 // DeleteMessage deletes a message with its photos: its author or the

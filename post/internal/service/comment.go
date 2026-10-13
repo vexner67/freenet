@@ -67,11 +67,14 @@ type CommentService struct {
 	photos      PhotoKeeper
 	moderators  WallModerators
 	walls       Walls
+	pages       Pages
 	now         func() time.Time
 }
 
 // CommentDeps are what CommentService works with.
 type CommentDeps struct {
+	// Pages knows the deleted pages, whose comments are not read; nil: none.
+	Pages      Pages
 	Posts      PostReader
 	Comments   CommentRepository
 	Likes      CommentLikeRepository
@@ -93,6 +96,7 @@ func NewCommentService(d CommentDeps) *CommentService {
 		photos:      d.Photos,
 		moderators:  d.Moderators,
 		walls:       d.Walls,
+		pages:       d.Pages,
 		now:         time.Now,
 	}
 }
@@ -360,7 +364,8 @@ func commentEvents(p *post.Post, c, parent *post.Comment, mentions post.Mentions
 }
 
 // GetMany returns the comments with these IDs that exist, at most
-// MaxPageSize, in no particular order.
+// MaxPageSize, in no particular order; those a deleted page wrote are
+// left out, as the lists leave them.
 func (s *CommentService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.Comment, error) {
 	if len(ids) > MaxPageSize {
 		return nil, ErrTooManyIDs
@@ -373,6 +378,11 @@ func (s *CommentService) GetMany(ctx context.Context, ids []uuid.UUID) ([]*post.
 	comments, err := s.commentRepo.GetMany(ctx, ids)
 	if err != nil {
 		return nil, errs.Wrap("s.commentRepo.GetMany", err)
+	}
+
+	comments, err = written(ctx, s.pages, comments, func(c *post.Comment) uuid.UUID { return own(c.AuthorID(), c.FromWall()) })
+	if err != nil {
+		return nil, errs.Wrap("written", err)
 	}
 
 	return comments, nil
