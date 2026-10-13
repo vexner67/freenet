@@ -266,6 +266,15 @@ func TestMessage_Edited(t *testing.T) {
 	if edited, err = photo.Edited(ann, message.Revision{Text: ""}, sent); err != nil || len(edited.Photos()) != 1 {
 		t.Errorf("a photo without words: %+v, %v", edited, err)
 	}
+
+	// An edit that names the text it started from fails once the text has moved on.
+	was, stale := message.Text("привет"), message.Text("привет?")
+	if edited, err = m.Edited(ann, message.Revision{Text: "пока", Base: &was}, sent); err != nil || edited.Text() != "пока" {
+		t.Errorf("an edit of the text it saw: %+v, %v", edited, err)
+	}
+	if _, err = m.Edited(ann, message.Revision{Text: "пока", Base: &stale}, sent); !errors.Is(err, message.ErrEditConflict) {
+		t.Errorf("an edit of an older text: %v", err)
+	}
 }
 
 func TestMessage_HiddenFrom(t *testing.T) {

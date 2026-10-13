@@ -258,6 +258,11 @@ message EditMessageRequest {
   // that shares a photo of an album takes none.
   repeated string remove_photo_ids = 5;
   repeated string add_photo_ids = 6;
+  // The text the edit started from. When set, a message that says
+  // something else by now is not edited (FailedPrecondition "the message
+  // was changed"): the words are replaced whole, and an edit made from an
+  // older text would undo the one made first.
+  optional string base_text = 7;
 }
 
 message DeleteMessagesRequest {
@@ -546,6 +551,8 @@ message EditChatMessageRequest {
   // caller's uploads it shows from now on.
   repeated string remove_photo_ids = 3;
   repeated string add_photo_ids = 4;
+  // As in EditMessageRequest: the text the edit started from.
+  optional string base_text = 5;
 }
 
 message EditChatMessageResponse {

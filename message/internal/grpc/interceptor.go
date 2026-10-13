@@ -30,6 +30,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.PermissionDenied, "only the sender can edit the message"), true
 	case errors.Is(err, message.ErrEditExpired):
 		return status.New(codes.FailedPrecondition, "the message can no longer be edited"), true
+	case errors.Is(err, message.ErrEditConflict):
+		return status.New(codes.FailedPrecondition, "the message was changed"), true
 	case errors.Is(err, message.ErrForwardNotFound):
 		return status.New(codes.InvalidArgument, "forwarded message not found"), true
 	case errors.Is(err, message.ErrTooManyForwarded):
