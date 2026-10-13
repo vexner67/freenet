@@ -152,6 +152,7 @@ type AlbumService struct {
 	tx         TxManager
 	media      PhotoKeeper
 	moderators WallModerators
+	pages      Pages
 	likes      AlbumPhotoLikeRepository
 	comments   PhotoCommentRepository
 	hearts     PhotoCommentLikeRepository
@@ -161,6 +162,9 @@ type AlbumService struct {
 
 // AlbumDeps are what AlbumService works with.
 type AlbumDeps struct {
+	// Pages knows the deleted pages, whose photos and comments are not
+	// read; nil: none.
+	Pages      Pages
 	Albums     AlbumRepository
 	Photos     AlbumPhotoRepository
 	Tx         TxManager
@@ -180,6 +184,7 @@ func NewAlbumService(d AlbumDeps) *AlbumService {
 		tx:         d.Tx,
 		media:      d.Media,
 		moderators: d.Moderators,
+		pages:      d.Pages,
 		likes:      d.Likes,
 		comments:   d.Comments,
 		hearts:     d.CommentLikes,
@@ -556,7 +561,9 @@ func (s *AlbumService) Photos(ctx context.Context, albumID, after uuid.UUID, siz
 	return page, nil
 }
 
-// Photo returns a photo of an album with the album.
+// Photo returns a photo of an album with the album;
+// post.ErrAlbumPhotoNotFound for a missing photo and for one nobody is
+// shown: who uploaded it, or who owns its album, deleted the page.
 func (s *AlbumService) Photo(ctx context.Context, id uuid.UUID) (*post.AlbumPhoto, *post.Album, error) {
 	p, err := s.photos.Get(ctx, id)
 	if err != nil {
@@ -566,6 +573,15 @@ func (s *AlbumService) Photo(ctx context.Context, id uuid.UUID) (*post.AlbumPhot
 	a, err := s.albums.Get(ctx, p.AlbumID())
 	if err != nil {
 		return nil, nil, errs.Wrap("s.albums.Get", err)
+	}
+
+	gone, err := deletedPages(ctx, s.pages, p.AuthorID(), a.OwnerID())
+	if err != nil {
+		return nil, nil, errs.Wrap("deletedPages", err)
+	}
+
+	if len(gone) > 0 {
+		return nil, nil, post.ErrAlbumPhotoNotFound
 	}
 
 	return p, a, nil
@@ -879,7 +895,8 @@ func (s *AlbumService) PhotoCommentLikers(ctx context.Context, id uuid.UUID, cur
 }
 
 // PhotoCommentsByID returns the comments of photos with these IDs that
-// exist, at most MaxPageSize, in no particular order.
+// exist, at most MaxPageSize, in no particular order; those a deleted
+// page wrote are left out, as the list of a photo leaves them.
 func (s *AlbumService) PhotoCommentsByID(ctx context.Context, ids []uuid.UUID) ([]*post.PhotoComment, error) {
 	if len(ids) > MaxPageSize {
 		return nil, ErrTooManyIDs
@@ -890,8 +907,13 @@ func (s *AlbumService) PhotoCommentsByID(ctx context.Context, ids []uuid.UUID) (
 	}
 
 	found, err := s.comments.GetMany(ctx, ids)
+	if err != nil {
+		return nil, errs.Wrap("s.comments.GetMany", err)
+	}
 
-	return found, errs.Wrap("s.comments.GetMany", err)
+	found, err = written(ctx, s.pages, found, (*post.PhotoComment).AuthorID)
+
+	return found, errs.Wrap("written", err)
 }
 
 // DeletePhotoComment deletes a comment: by its author, who uploaded the
@@ -931,11 +953,25 @@ func (s *AlbumService) DeletePhotoComment(ctx context.Context, requesterID, id u
 	return nil
 }
 
-// PhotoComment is one comment of a photo, whole.
+// PhotoComment is one comment of a photo, whole;
+// post.ErrCommentNotFound for a missing one and for one a deleted
+// page wrote.
 func (s *AlbumService) PhotoComment(ctx context.Context, id uuid.UUID) (*post.PhotoComment, error) {
 	c, err := s.comments.Get(ctx, id)
+	if err != nil {
+		return nil, errs.Wrap("s.comments.Get", err)
+	}
 
-	return c, errs.Wrap("s.comments.Get", err)
+	gone, err := deletedPages(ctx, s.pages, c.AuthorID())
+	if err != nil {
+		return nil, errs.Wrap("deletedPages", err)
+	}
+
+	if len(gone) > 0 {
+		return nil, post.ErrCommentNotFound
+	}
+
+	return c, nil
 }
 
 // PhotoComments pages the comments of a photo, oldest first, as openvk

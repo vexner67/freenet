@@ -73,6 +73,8 @@ type Written struct {
 	}
 	// Holders hide the pages between them.
 	Holders []service.ReactionHolder
+	// Pages tell which pages are deleted, each of them the same.
+	Pages []service.Pages
 }
 
 // writing is what Ann, Bob and Cat wrote to one another.
@@ -302,16 +304,32 @@ func RunWritten(t *testing.T, s Written) {
 	w.want(ctx, t, "everyone is here", everyone...)
 
 	// Twice, as the outbox may deliver it.
+	// What is read by its ID asks whose page is deleted.
+	deleted := func(when string, want bool) {
+		t.Helper()
+
+		for _, p := range s.Pages {
+			gone, err := p.Deleted(ctx, []uuid.UUID{w.ann, bob, uuid.New()})
+			if err != nil || gone[bob] != want || gone[w.ann] || len(gone) > 1 {
+				t.Fatalf("%s: Deleted = %v, %v; want bob: %v", when, gone, err, want)
+			}
+		}
+	}
+	deleted("everyone is here", false)
+
 	each(func(h service.ReactionHolder) error { return h.Hold(ctx, bob) })
 	each(func(h service.ReactionHolder) error { return h.Hold(ctx, bob) })
 	w.want(ctx, t, "bob deleted the page", 1, 1, 1, 1, 1, 1, 1, 1, 1, 1, 0, 1)
+	deleted("bob deleted the page", true)
 
 	each(func(h service.ReactionHolder) error { return h.Release(ctx, bob) })
 	w.want(ctx, t, "bob is back", everyone...)
+	deleted("bob is back", false)
 
 	// Erased for good, the page is no longer hidden: what it wrote goes
 	// by its own ways.
 	each(func(h service.ReactionHolder) error { return h.Hold(ctx, bob) })
 	each(func(h service.ReactionHolder) error { return h.Forget(ctx, bob) })
 	w.want(ctx, t, "bob is erased", everyone...)
+	deleted("bob is erased", false)
 }
