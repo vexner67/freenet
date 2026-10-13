@@ -18,6 +18,10 @@ cd "$(dirname "$0")/.."
 # The commit runs from now on, also for a plain `docker compose` here.
 sed -i "s/^FREENET_TAG=.*/FREENET_TAG=$tag/" .env
 
+# Grafana signs its admin in with a password of this server, never the
+# "admin" it is born with.
+grep -q '^GRAFANA_ADMIN_PASSWORD=.' .env || echo "GRAFANA_ADMIN_PASSWORD=$(openssl rand -hex 16)" >> .env
+
 docker login ghcr.io --username "$user" --password-stdin >/dev/null
 trap 'docker logout ghcr.io >/dev/null' EXIT
 
@@ -36,6 +40,11 @@ docker compose run --rm --no-deps --entrypoint amtool alertmanager \
 	check-config /etc/alertmanager/alertmanager.yml >/dev/null 2>&1 ||
 	{ echo "alertmanager.yml does not work with this .env"; exit 1; }
 
+# Certificates of the services close to their end are issued anew, and
+# node-exporter is told when each ends; the services read a renewed one
+# themselves.
+deploy/certs.sh
+
 docker compose up --detach --wait --wait-timeout 300 --remove-orphans
 
 # A file mounted into a container changes there only on a restart.
@@ -52,8 +61,17 @@ for file in prometheus.yml alerts.yml; do
 	fi
 done
 
-# Images of older commits, kept a few days for a quick rollback.
-docker image prune --all --force --filter "until=72h" >/dev/null
+# Grafana keeps the password it first started with in its volume: one
+# that still lets "admin" in with "admin" gets the password of .env.
+if docker compose exec -T grafana wget -qO /dev/null \
+	--header "Authorization: Basic $(printf admin:admin | base64)" http://localhost:3000/api/admin/stats 2>/dev/null; then
+	docker compose exec -T grafana sh -c 'grafana cli admin reset-admin-password "$GF_SECURITY_ADMIN_PASSWORD"' >/dev/null
+	echo "grafana: the admin password is now GRAFANA_ADMIN_PASSWORD of .env"
+fi
+
+# Images of older commits, kept a day for a quick rollback: eight images
+# a deployment fill a small disk in a few days.
+docker image prune --all --force --filter "until=24h" >/dev/null
 
 echo "deployed $tag"
 docker compose ps --format 'table {{.Service}}\t{{.Status}}'

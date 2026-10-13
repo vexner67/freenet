@@ -69,6 +69,11 @@ services:
       # Caddy sets X-Forwarded-For and X-Request-ID.
       TRUST_FORWARDED_FOR: "true"
 
+  grafana:
+    environment:
+      # Never the default: deploy/deploy.sh writes one into .env.
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?set GRAFANA_ADMIN_PASSWORD}
+
   # Who is notified comes from the server's .env (deploy/alertmanager.sh).
   alertmanager:
     volumes:
