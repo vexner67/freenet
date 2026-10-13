@@ -145,6 +145,10 @@ services:
 
   redis:
     image: redis:7-alpine
+    # Everything in it expires by itself (sign-in codes, rate limit
+    # counters); at the limit what expires soonest goes first instead of
+    # the server running out of memory.
+    command: [redis-server, --maxmemory, 64mb, --maxmemory-policy, volatile-ttl]
     ports:
       - "${REDIS_PORT}:6379"
     volumes:
@@ -412,7 +416,29 @@ services:
     depends_on:
       redis: { condition: service_healthy }
 
-  # Metrics of every service, database and Redis and the alerts on them
+  # The machine itself for Prometheus: processor, memory and the disk of
+  # the host, read through its root mounted read-only, and what files in
+  # .data/node say (deploy/certs.sh: when the mTLS certificates end). Only
+  # the collectors the alerts and the dashboard use.
+  node-exporter:
+    profiles: [app]
+    image: prom/node-exporter:v1.12.1
+    restart: unless-stopped
+    command:
+      - --path.rootfs=/host
+      - --collector.disable-defaults
+      - --collector.cpu
+      - --collector.meminfo
+      - --collector.filesystem
+      - --collector.loadavg
+      - --collector.textfile
+      - --collector.textfile.directory=/textfile
+    volumes:
+      - /:/host:ro
+      - ./.data/node:/textfile:ro
+
+  # Metrics of every service, database, Redis and the machine and the
+  # alerts on them
   # (monitoring/alerts.yml): http://localhost:9090 (PROMETHEUS_PORT). The
   # metrics ports are not published.
   prometheus:

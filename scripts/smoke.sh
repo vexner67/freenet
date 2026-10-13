@@ -243,10 +243,28 @@ done
 [ "$stores" = "$watched" ] || die "Prometheus at $prometheus sees the databases and Redis up: ${stores:-none}"
 step "metrics: Prometheus watches every database and Redis"
 
+# The machine itself: its disk, its memory and when the mTLS certificates
+# end (deploy/certs.sh, which `make stack` runs). The alerts look at the
+# disk mounted at /; Docker Desktop runs in a machine of its own, whose
+# root is no disk.
+disk='node_filesystem_avail_bytes{mountpoint="/"}'
+[ "$(uname)" = Linux ] || disk='node_filesystem_avail_bytes'
+host=
+for _ in $(seq 1 60); do
+	host=$(curl -sfG "$prometheus/api/v1/query" --data-urlencode "query=(count($disk) > bool 0) + count(node_memory_MemAvailable_bytes) + count(freenet_certificate_not_after_seconds > time())" |
+		jq -r '.data.result[0].value[1] // empty' || true)
+	[ "$host" = 11 ] && break
+	sleep 1
+done
+[ "$host" = 11 ] || die "Prometheus at $prometheus does not see the disk, the memory and the nine certificates of the machine: ${host:-nothing}"
+curl -sfG "$prometheus/api/v1/query" --data-urlencode 'query=redis_memory_max_bytes' | jq -e '.data.result[0].value[1] | tonumber > 0' >/dev/null \
+	|| die "Redis has no memory limit"
+step "metrics: Prometheus watches the machine, the certificates and the memory limit of Redis"
+
 # Rules that fail to evaluate (a typo in a metric name does not) say so in
 # their health.
 rules=$(curl -sf "$prometheus/api/v1/rules?type=alert") || die "no rules from Prometheus at $prometheus"
-echo "$rules" | jq -e '[.data.groups[].rules[]] | length >= 11 and all(.health == "ok" or .health == "unknown")' >/dev/null \
+echo "$rules" | jq -e '[.data.groups[].rules[]] | length >= 17 and all(.health == "ok" or .health == "unknown")' >/dev/null \
 	|| die "Prometheus alert rules are missing or broken: $(echo "$rules" | jq -c '[.data.groups[].rules[] | {name, health, lastError}]')"
 curl -sf "$prometheus/api/v1/alertmanagers" | jq -e '.data.activeAlertmanagers | length == 1' >/dev/null \
 	|| die "Prometheus has no Alertmanager"

@@ -50,6 +50,76 @@ groups:
           summary: "Redis is down"
           description: "The Redis exporter has not reached Redis, or Prometheus the exporter, for a minute: login codes, rate limits and live events depend on it."
 
+      # At the limit (compose.yaml) Redis drops what expires soonest:
+      # sign-in codes and rate limit counters, before their time.
+      - alert: RedisMemoryHigh
+        expr: redis_memory_used_bytes / (redis_memory_max_bytes > 0) > 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Redis uses {{ $value | humanizePercentage }} of its memory"
+          description: "Redis has been above 80% of maxmemory for 10 minutes; at the limit it drops the keys that expire soonest. Look at what fills it or raise the limit (compose.yaml)."
+
+  # The machine everything runs on, through node-exporter.
+  - name: host
+    rules:
+      - alert: HostDown
+        expr: up{job="node"} == 0
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "The machine is not watched"
+          description: "Prometheus has not reached node-exporter for 5 minutes: nobody sees the disk, the memory and the certificates."
+
+      # Databases, photos, images of the last deployments and logs share
+      # one disk; a full one stops the databases.
+      - alert: HostDiskLow
+        expr: |
+          node_filesystem_avail_bytes{mountpoint="/"}
+            / node_filesystem_size_bytes{mountpoint="/"}
+            < 0.15
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of the disk is left"
+          description: "Less than 15% of the disk has been free for 10 minutes. See what takes it (`docker system df`, `du -sh /opt/freenet/.data`) and make room before the databases stop."
+
+      - alert: HostDiskFull
+        expr: |
+          node_filesystem_avail_bytes{mountpoint="/"}
+            / node_filesystem_size_bytes{mountpoint="/"}
+            < 0.05
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "The disk is almost full: {{ $value | humanizePercentage }} left"
+          description: "Less than 5% of the disk is free. PostgreSQL stops writing when it runs out: make room now."
+
+      - alert: HostMemoryLow
+        expr: node_memory_MemAvailable_bytes / node_memory_MemTotal_bytes < 0.1
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "{{ $value | humanizePercentage }} of the memory is left"
+          description: "Less than 10% of the memory has been available for 10 minutes: the machine swaps, and the kernel kills a container when there is none."
+
+      # deploy/certs.sh renews a certificate two months before it ends, on
+      # every deployment: one this close was not renewed, or it is the CA,
+      # which is replaced by hand (scripts/gen-certs.sh).
+      - alert: CertificateExpiring
+        expr: freenet_certificate_not_after_seconds - time() < 30 * 86400
+        for: 1h
+        labels:
+          severity: warning
+        annotations:
+          summary: "The mTLS certificate of {{ $labels.name }} ends in {{ $value | humanizeDuration }}"
+          description: "The services stop talking to each other when it ends. Run deploy/certs.sh on the server; the CA is replaced with scripts/gen-certs.sh and a restart of everything."
+
   - name: errors
     rules:
       # Codes that mean the service failed, not the caller: Internal hides

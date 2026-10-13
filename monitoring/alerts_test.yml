@@ -227,3 +227,117 @@ tests:
             exp_annotations:
               summary: "user dropped messages to notification"
               description: "notification rejected messages of user with an error a retry cannot fix; they are lost. The ERROR lines in the log of user say which."
+
+  - name: Redis close to its memory limit, and one with no limit
+    interval: 1m
+    input_series:
+      - series: 'redis_memory_used_bytes{job="redis", instance="redis-exporter:9121"}'
+        values: "1000x9 9000x20"
+      - series: 'redis_memory_max_bytes{job="redis", instance="redis-exporter:9121"}'
+        values: "10000x30"
+      # No maxmemory: nothing to be a share of.
+      - series: 'redis_memory_used_bytes{job="redis", instance="other:9121"}'
+        values: "9000x30"
+      - series: 'redis_memory_max_bytes{job="redis", instance="other:9121"}'
+        values: "0x30"
+    alert_rule_test:
+      - eval_time: 15m
+        alertname: RedisMemoryHigh
+        exp_alerts: []
+      - eval_time: 25m
+        alertname: RedisMemoryHigh
+        exp_alerts:
+          - exp_labels: { severity: warning, job: redis, instance: "redis-exporter:9121" }
+            exp_annotations:
+              summary: "Redis uses 90% of its memory"
+              description: "Redis has been above 80% of maxmemory for 10 minutes; at the limit it drops the keys that expire soonest. Look at what fills it or raise the limit (compose.yaml)."
+
+  - name: a machine nobody watches
+    interval: 1m
+    input_series:
+      - series: 'up{job="node", instance="node-exporter:9100"}'
+        values: "1 1 0x10"
+    alert_rule_test:
+      - eval_time: 5m
+        alertname: HostDown
+        exp_alerts: []
+      - eval_time: 8m
+        alertname: HostDown
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node, instance: "node-exporter:9100" }
+            exp_annotations:
+              summary: "The machine is not watched"
+              description: "Prometheus has not reached node-exporter for 5 minutes: nobody sees the disk, the memory and the certificates."
+
+  - name: a disk filling up
+    interval: 1m
+    input_series:
+      - series: 'node_filesystem_size_bytes{job="node", instance="node-exporter:9100", mountpoint="/"}'
+        values: "1000x40"
+      - series: 'node_filesystem_avail_bytes{job="node", instance="node-exporter:9100", mountpoint="/"}'
+        values: "200x5 100x19 40x15"
+      # Another mount is not the disk the site lives on.
+      - series: 'node_filesystem_size_bytes{job="node", instance="node-exporter:9100", mountpoint="/boot"}'
+        values: "1000x40"
+      - series: 'node_filesystem_avail_bytes{job="node", instance="node-exporter:9100", mountpoint="/boot"}'
+        values: "10x40"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HostDiskLow
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: HostDiskLow
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node, instance: "node-exporter:9100", mountpoint: / }
+            exp_annotations:
+              summary: "10% of the disk is left"
+              description: "Less than 15% of the disk has been free for 10 minutes. See what takes it (`docker system df`, `du -sh /opt/freenet/.data`) and make room before the databases stop."
+      - eval_time: 20m
+        alertname: HostDiskFull
+        exp_alerts: []
+      - eval_time: 35m
+        alertname: HostDiskFull
+        exp_alerts:
+          - exp_labels: { severity: critical, job: node, instance: "node-exporter:9100", mountpoint: / }
+            exp_annotations:
+              summary: "The disk is almost full: 4% left"
+              description: "Less than 5% of the disk is free. PostgreSQL stops writing when it runs out: make room now."
+
+  - name: a machine out of memory
+    interval: 1m
+    input_series:
+      - series: 'node_memory_MemTotal_bytes{job="node", instance="node-exporter:9100"}'
+        values: "2000x30"
+      - series: 'node_memory_MemAvailable_bytes{job="node", instance="node-exporter:9100"}'
+        values: "1000x5 100x25"
+    alert_rule_test:
+      - eval_time: 10m
+        alertname: HostMemoryLow
+        exp_alerts: []
+      - eval_time: 20m
+        alertname: HostMemoryLow
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node, instance: "node-exporter:9100" }
+            exp_annotations:
+              summary: "5% of the memory is left"
+              description: "Less than 10% of the memory has been available for 10 minutes: the machine swaps, and the kernel kills a container when there is none."
+
+  - name: a certificate about to end, and one with years left
+    interval: 1m
+    input_series:
+      # 20 days from the start of the test, and 800.
+      - series: 'freenet_certificate_not_after_seconds{job="node", instance="node-exporter:9100", name="post"}'
+        values: "1728000x130"
+      - series: 'freenet_certificate_not_after_seconds{job="node", instance="node-exporter:9100", name="ca"}'
+        values: "69120000x130"
+    alert_rule_test:
+      - eval_time: 30m
+        alertname: CertificateExpiring
+        exp_alerts: []
+      - eval_time: 2h
+        alertname: CertificateExpiring
+        exp_alerts:
+          - exp_labels: { severity: warning, job: node, instance: "node-exporter:9100", name: post }
+            exp_annotations:
+              summary: "The mTLS certificate of post ends in 19d 22h 0m 0s"
+              description: "The services stop talking to each other when it ends. Run deploy/certs.sh on the server; the CA is replaced with scripts/gen-certs.sh and a restart of everything."
