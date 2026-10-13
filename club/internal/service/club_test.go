@@ -230,9 +230,6 @@ func TestClubService_Membership(t *testing.T) {
 	if err != nil || len(mine.Clubs) != 1 || mine.Clubs[0].Club.ID() != c.ID() || mine.Clubs[0].Role != club.RoleMember {
 		t.Fatalf("bob's clubs = %+v, %v", mine, err)
 	}
-	if ids, err := svc.ClubIDs(ctx, bob); err != nil || len(ids) != 1 || ids[0] != c.ID() {
-		t.Fatalf("bob's club IDs = %v, %v", ids, err)
-	}
 
 	// What one is in the clubs of a page: those one is not in are left out.
 	other := create(t, svc, cat)

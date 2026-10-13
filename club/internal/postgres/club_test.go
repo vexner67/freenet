@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"os"
-	"reflect"
 	"strings"
 	"sync"
 	"testing"
@@ -146,9 +145,6 @@ func TestRepositories(t *testing.T) {
 		mine, err := members.ListClubs(ctx, bob, uuid.Nil, 10, service.ClubFilter{})
 		if err != nil || len(mine) != 1 || mine[0].Club.ID() != c.ID() || mine[0].Role != club.RoleAdmin || mine[0].Club.Members() != 2 {
 			t.Fatalf("ListClubs = %+v, %v", mine, err)
-		}
-		if ids, err := members.ClubIDs(ctx, bob, 10); err != nil || !reflect.DeepEqual(ids, []uuid.UUID{c.ID()}) {
-			t.Fatalf("ClubIDs = %v, %v", ids, err)
 		}
 
 		// The owner never leaves, whatever the caller checked.

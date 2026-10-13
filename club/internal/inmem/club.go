@@ -657,20 +657,6 @@ func (r *MemberRepository) Pinned(ctx context.Context, userID uuid.UUID) ([]*clu
 	return clubs, nil
 }
 
-func (r *MemberRepository) ClubIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error) {
-	clubs, err := r.ListClubs(ctx, userID, uuid.Nil, limit, service.ClubFilter{})
-	if err != nil {
-		return nil, err
-	}
-
-	ids := make([]uuid.UUID, len(clubs))
-	for i, m := range clubs {
-		ids[i] = m.Club.ID()
-	}
-
-	return ids, nil
-}
-
 func (r *MemberRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)

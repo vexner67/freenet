@@ -79,8 +79,6 @@ service ClubService {
   // What the caller is in each of up to 100 clubs; those they are not in
   // are left out.
   rpc ListMyRoles(ListMyRolesRequest) returns (ListMyRolesResponse);
-  // The caller's newest 1000 clubs, whose walls their feed shows.
-  rpc ListMyClubIDs(ListMyClubIDsRequest) returns (ListMyClubIDsResponse);
   // Whether the caller may write on the club's wall, on their own behalf
   // or, with from_club, on the club's, or else suggest a post.
   rpc CanPostOnWall(CanPostOnWallRequest) returns (CanPostOnWallResponse);
@@ -474,12 +472,6 @@ message ListMyRolesResponse {
 message ClubRole {
   string club_id = 1;
   Role role = 2;
-}
-
-message ListMyClubIDsRequest {}
-
-message ListMyClubIDsResponse {
-  repeated string club_ids = 1;
 }
 
 message CanPostOnWallRequest {

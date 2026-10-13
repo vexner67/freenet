@@ -571,28 +571,6 @@ func (r *MemberRepository) Pinned(ctx context.Context, userID uuid.UUID) ([]*clu
 	return collectClubs(rows)
 }
 
-const userClubIDsQuery = `
-	SELECT club_id
-	FROM club_members
-	WHERE user_id = $1
-	ORDER BY id DESC
-	LIMIT $2
-`
-
-func (r *MemberRepository) ClubIDs(ctx context.Context, userID uuid.UUID, limit int) ([]uuid.UUID, error) {
-	rows, err := r.pool.Query(ctx, userClubIDsQuery, userID, limit)
-	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
-	}
-
-	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
-	if err != nil {
-		return nil, errs.Wrap("pgx.CollectRows", err)
-	}
-
-	return ids, nil
-}
-
 const (
 	// deleteUserMembershipsQuery takes the user out of every club, the
 	// owned ones too, with the counts in the same statement, and tells

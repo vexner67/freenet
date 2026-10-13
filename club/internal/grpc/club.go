@@ -33,7 +33,6 @@ type ClubService interface {
 	SetBackdrop(ctx context.Context, userID, clubID uuid.UUID, side club.BackdropSide, photoID uuid.UUID) (service.View, error)
 	Pin(ctx context.Context, userID, clubID uuid.UUID, pinned bool) error
 	Pinned(ctx context.Context, userID uuid.UUID) ([]*club.Club, error)
-	ClubIDs(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 	Roles(ctx context.Context, userID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID]club.Role, error)
 	CanPostOnWall(ctx context.Context, userID, clubID uuid.UUID, fromClub bool) (service.WallAccess, error)
 	CanModerateWall(ctx context.Context, wallID, userID uuid.UUID) (bool, error)
@@ -598,25 +597,6 @@ func (h *ClubHandler) ListMyRoles(ctx context.Context, req *clubv1.ListMyRolesRe
 		if role, ok := mine[id]; ok {
 			resp.Roles = append(resp.Roles, &clubv1.ClubRole{ClubId: id.String(), Role: roles[role]})
 		}
-	}
-
-	return resp, nil
-}
-
-func (h *ClubHandler) ListMyClubIDs(ctx context.Context, _ *clubv1.ListMyClubIDsRequest) (*clubv1.ListMyClubIDsResponse, error) {
-	userID, err := currentUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	ids, err := h.clubService.ClubIDs(ctx, userID)
-	if err != nil {
-		return nil, err
-	}
-
-	resp := &clubv1.ListMyClubIDsResponse{ClubIds: make([]string, len(ids))}
-	for i, id := range ids {
-		resp.ClubIds[i] = id.String()
 	}
 
 	return resp, nil
