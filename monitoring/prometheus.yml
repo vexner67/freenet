@@ -54,3 +54,8 @@ scrape_configs:
   - job_name: redis
     static_configs:
       - targets: ["redis-exporter:9121"]
+
+  # The machine: processor, memory, disk, and when the certificates end.
+  - job_name: node
+    static_configs:
+      - targets: ["node-exporter:9100"]

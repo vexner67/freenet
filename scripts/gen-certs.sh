@@ -5,18 +5,21 @@
 # gateway); SANs cover localhost and the service name. Also the RSA key
 # pair auth signs access tokens with (jwt-private.pem, PKCS#1) and the
 # others verify them with (jwt-public.pem).
-# Re-running replaces everything, including the CA and the JWT keys.
+# Re-running replaces everything, including the CA and the JWT keys;
+# deploy/certs.sh renews the certificates of the services alone, from the
+# same CA, before they end.
 set -euo pipefail
 
 out="${1:-certs}"
 days=825
+ca_days=3650
 services=(auth user post media notification message club gateway)
 
 mkdir -p "$out"
 cd "$out"
 
 openssl ecparam -name prime256v1 -genkey -noout -out ca-key.pem
-openssl req -x509 -new -key ca-key.pem -sha256 -days "$days" \
+openssl req -x509 -new -key ca-key.pem -sha256 -days "$ca_days" \
 	-subj "/CN=freenet development CA" \
 	-addext "basicConstraints=critical,CA:TRUE" \
 	-addext "keyUsage=critical,keyCertSign,cRLSign" \

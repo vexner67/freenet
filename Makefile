@@ -25,6 +25,7 @@ stack:
 	@test -f certs/ca.pem -a -f certs/jwt-private.pem || { echo 'stack: no certs/ with JWT keys, run "make certs"'; exit 1; }
 	@grep -q '^HASH_SECRET=.' .env || { echo 'stack: set HASH_SECRET in .env, e.g. to the output of "openssl rand -hex 32"'; exit 1; }
 	mkdir -p .data/media
+	deploy/certs.sh certs .data/node/certs.prom
 	FREENET_UID=$$(id -u) FREENET_GID=$$(id -g) docker compose --profile app up -d --build --wait
 
 # Signs a user up through the running stack and touches every service.
