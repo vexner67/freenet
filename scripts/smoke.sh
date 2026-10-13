@@ -7,14 +7,17 @@
 # (a club and a post for it), the feed with an ignored source, a second
 # person whose follow and whose appointment in the club travel through the
 # outboxes of user and club, and the website itself; then observability: every
-# container healthy, a request ID from the gateway in the auth log, every
+# container healthy, a request ID from the gateway in the auth log, that
+# line in VictoriaLogs and the request as a trace in Jaeger, the machine
+# and the certificates watched, every
 # service's metrics in Prometheus, its alert rules loaded and sent to
 # Alertmanager, the Grafana dashboard.
 #
 #   scripts/smoke.sh [base URL]   default http://localhost:8080
 #
-# PROMETHEUS_URL, ALERTMANAGER_URL and GRAFANA_URL are the stack's, default
-# http://localhost:9090, :9093 and :3001.
+# PROMETHEUS_URL, ALERTMANAGER_URL, GRAFANA_URL, VICTORIALOGS_URL and
+# JAEGER_URL are the stack's, default http://localhost:9090, :9093, :3001,
+# :9428 and :16686.
 #
 # Needs curl and jq.
 set -euo pipefail
@@ -25,6 +28,8 @@ base=${1:-http://localhost:8080}
 prometheus=${PROMETHEUS_URL:-http://localhost:9090}
 alertmanager=${ALERTMANAGER_URL:-http://localhost:9093}
 grafana=${GRAFANA_URL:-http://localhost:3001}
+logs=${VICTORIALOGS_URL:-http://localhost:9428}
+jaeger=${JAEGER_URL:-http://localhost:16686}
 services=(gateway auth user post media notification message club)
 email="smoke-$(date +%s)-$RANDOM@example.com"
 nickname="smoke$RANDOM$RANDOM"
@@ -78,6 +83,32 @@ done
 code=$(echo "$line" | grep -o '"code":"[0-9]*"' | grep -o '[0-9]\+')
 echo "$line" | grep -qF "\"request_id\":\"$request_id\"" || die "the auth log line has no request_id $request_id: $line"
 step "request ID: from the gateway to the auth log"
+
+# Fluent Bit sends what the containers log every few seconds.
+collected=
+for _ in $(seq 1 60); do
+	collected=$(curl -sfG "$logs/select/logsql/query" --data-urlencode "query=request_id:\"$request_id\" service:auth" | head -1 || true)
+	[ -n "$collected" ] && break
+	sleep 1
+done
+[ -n "$collected" ] || die "VictoriaLogs at $logs has no line of auth with request_id $request_id"
+step "logs: the line of auth is in VictoriaLogs, found by its request ID"
+
+# The same request as a trace: the span of the gateway carries the request
+# ID, the spans of the call to auth are its children. Spans are sent in
+# batches, every few seconds.
+traced=
+since=$(date -u -d '1 hour ago' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null || date -u -v-1H +%Y-%m-%dT%H:%M:%SZ)
+for _ in $(seq 1 60); do
+	traced=$(curl -sfG "$jaeger/api/v3/traces" --data-urlencode query.service_name=gateway \
+		--data-urlencode "query.attributes={\"request_id\":\"$request_id\"}" \
+		--data-urlencode "query.start_time_min=$since" --data-urlencode "query.start_time_max=$(date -u +%Y-%m-%dT%H:%M:%SZ)" |
+		jq -r '[.result.resourceSpans[]?.resource.attributes[] | select(.key == "service.name") | .value.stringValue] | unique | join(" ")' || true)
+	[ "$traced" = "auth gateway" ] && break
+	sleep 1
+done
+[ "$traced" = "auth gateway" ] || die "Jaeger at $jaeger has no trace of request $request_id through the gateway and auth: ${traced:-nothing}"
+step "tracing: the request is one trace through the gateway and auth, found by its request ID"
 tokens=$(call POST /api/v1/auth/verify "{\"email\":\"$email\",\"code\":\"$code\"}")
 token=$(echo "$tokens" | jq -r .accessToken)
 step "auth: signed in with the code from the log"

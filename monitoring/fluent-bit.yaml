@@ -1,0 +1,54 @@
+# Fluent Bit of the Docker stack: the logs of the containers in one place.
+# It follows the files Docker writes (json-file), keeps the lines of the
+# containers that say which service they are (the logging of compose.yaml
+# puts the label into every line), reads a JSON line of a service into
+# fields, request_id among them, and sends everything to VictoriaLogs:
+# http://localhost:9428/select/vmui, e.g. request_id:"..." or service:auth.
+service:
+  flush: 5
+  log_level: warn
+
+parsers:
+  - name: docker
+    format: json
+    time_key: time
+    time_format: "%Y-%m-%dT%H:%M:%S.%L%z"
+  - name: line
+    format: json
+
+pipeline:
+  inputs:
+    - name: tail
+      path: /var/lib/docker/containers/*/*-json.log
+      parser: docker
+      db: /state/tail.db
+      mem_buf_limit: 5MB
+      skip_long_lines: on
+      refresh_interval: 10
+
+  filters:
+    - name: nest
+      match: "*"
+      operation: lift
+      nested_under: attrs
+    - name: modify
+      match: "*"
+      rename: com.docker.compose.service service
+    - name: grep
+      match: "*"
+      regex: service .
+    - name: parser
+      match: "*"
+      key_name: log
+      parser: line
+      reserve_data: on
+
+  outputs:
+    - name: http
+      match: "*"
+      host: victorialogs
+      port: 9428
+      uri: /insert/jsonline?_stream_fields=service&_msg_field=msg,log&_time_field=date
+      format: json_lines
+      json_date_format: iso8601
+      compress: gzip

@@ -83,6 +83,13 @@ services:
     profiles: [app]
     image: caddy:2.10.2
     restart: unless-stopped
+    # As the services in compose.yaml: its lines say they are Caddy's.
+    logging:
+      driver: json-file
+      options:
+        max-size: 10m
+        max-file: "5"
+        labels: com.docker.compose.service
     environment:
       SITE_ADDRESS: ${SITE_ADDRESS:-:80}
       REDIRECT_ADDRESS: ${REDIRECT_ADDRESS:-:8081}

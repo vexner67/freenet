@@ -52,14 +52,20 @@ if [ "$alerts" = changed ]; then
 	docker compose restart alertmanager >/dev/null
 fi
 
-# So does Prometheus read its files only as it starts: restart it when
-# what it runs is not what was deployed.
-for file in prometheus.yml alerts.yml; do
-	if ! docker compose exec -T prometheus cat "/etc/prometheus/$file" | cmp -s - "monitoring/$file"; then
-		docker compose restart prometheus >/dev/null
-		break
-	fi
-done
+# So do Prometheus and Jaeger read their files only as they start:
+# restart the one that runs something else than what was deployed.
+running() { docker compose exec -T "$1" cat "$2" | cmp -s - "$3"; }
+if ! running prometheus /etc/prometheus/prometheus.yml monitoring/prometheus.yml ||
+	! running prometheus /etc/prometheus/alerts.yml monitoring/alerts.yml; then
+	docker compose restart prometheus >/dev/null
+fi
+if ! running jaeger /etc/jaeger/config.yml monitoring/jaeger.yml; then
+	docker compose restart jaeger >/dev/null
+fi
+
+# Fluent Bit too, and its image has nothing to look inside with; it
+# remembers where it stopped in every log.
+docker compose restart fluent-bit >/dev/null
 
 # Grafana keeps the password it first started with in its volume: one
 # that still lets "admin" in with "admin" gets the password of .env.
