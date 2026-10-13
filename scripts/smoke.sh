@@ -4,8 +4,9 @@
 # its database: auth (code from its log), user (profile), media (a photo,
 # written to its volume and served back), post (a post with it, a repost,
 # a poll, a note and the faves), notification (unread count), message (dialogs and chats), club
-# (a club and a post for it), the feed with an ignored source and the website
-# itself; then observability: every
+# (a club and a post for it), the feed with an ignored source, a second
+# person whose follow and whose appointment in the club travel through the
+# outboxes of user and club, and the website itself; then observability: every
 # container healthy, a request ID from the gateway in the auth log, every
 # service's metrics in Prometheus, its alert rules loaded and sent to
 # Alertmanager, the Grafana dashboard.
@@ -156,6 +157,47 @@ call GET "/api/v1/feed?ignored=true" | jq -e '[.posts[] | select(.fromWall)] | l
 expect=204 call DELETE "/api/v1/me/feed/ignored?id=$club" >/dev/null
 call GET /api/v1/feed | jq -e '[.posts[] | select(.fromWall)] | length == 1' >/dev/null
 step "user: an ignored source left out of the feed and brought back"
+
+# A second person, for what takes two: what one does reaches the other
+# through the outbox of the service it was done in, a moment later.
+email2="smoke2-$(date +%s)-$RANDOM@example.com"
+nickname2="smoke$RANDOM$RANDOM"
+token='' expect=204 call POST /api/v1/auth/code "{\"email\":\"$email2\"}" >/dev/null
+code2=
+for _ in $(seq 1 20); do
+	code2=$(docker compose logs auth 2>/dev/null | grep -F "\"email\":\"$email2\"" | tail -1 | grep -o '"code":"[0-9]*"' | grep -o '[0-9]\+' || true)
+	[ -n "$code2" ] && break
+	sleep 0.5
+done
+[ -n "$code2" ] || die "no sign-in code for $email2 in the auth log"
+token2=$(token='' call POST /api/v1/auth/verify "{\"email\":\"$email2\",\"code\":\"$code2\"}" | jq -r .accessToken)
+token=$token2 call PUT /api/v1/me/profile "{\"name\":\"Smoke Two\",\"nickname\":\"$nickname2\"}" >/dev/null
+
+# eventually CHECK... retries a check for up to 10 seconds.
+eventually() {
+	for _ in $(seq 1 20); do
+		"$@" 2>/dev/null && return 0
+		sleep 0.5
+	done
+	return 1
+}
+
+token=$token2 call GET /api/v1/feed | jq -e '.posts | length == 0' >/dev/null
+token=$token2 call POST "/api/v1/users/$nickname/follow" | jq -e '.isFollowing' >/dev/null
+# The post service hears whom the second person reads, and the first one
+# hears of the follower: user's outbox, the streams of post and notification.
+reads() { token=$token2 call GET /api/v1/feed | jq -e '.posts | length > 0' >/dev/null; }
+eventually reads || die "the posts of a followed person are not in the feed of the follower"
+followed() { call GET /api/v1/notifications | jq -e '[.notifications[] | select(.type == "follow")] | length == 1' >/dev/null; }
+eventually followed || die "the followed person has no notification of the follower"
+step "user: a follow reaches the feed of the follower and the notifications of the followed"
+
+token=$token2 call PUT "/api/v1/clubs/$club/membership" | jq -e '.role == "member"' >/dev/null
+expect=204 call PUT "/api/v1/clubs/$club/admins/$nickname2" >/dev/null
+# club's outbox, the stream of notification.
+appointed() { token=$token2 call GET /api/v1/notifications | jq -e '[.notifications[] | select(.type == "club_admin" and .actor.club)] | length == 1' >/dev/null; }
+eventually appointed || die "the new admin of the club has no notification of it"
+step "club: a member made an admin hears of it"
 
 # refresh replaces the tokens, as the website does after deleting and
 # restoring the page.
