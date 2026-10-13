@@ -78,6 +78,38 @@ func (r *MemberRepository) Roles(ctx context.Context, userID uuid.UUID, clubIDs 
 	return roles, nil
 }
 
+const hiddenQuery = `
+	SELECT
+		club_id,
+		user_id
+	FROM club_members
+	WHERE club_id = ANY($1)
+		AND role IN ('admin', 'owner')
+		AND hidden
+`
+
+func (r *MemberRepository) Hidden(ctx context.Context, clubIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+	rows, err := r.pool.Query(ctx, hiddenQuery, clubIDs)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+	defer rows.Close()
+
+	hidden := make(map[uuid.UUID][]uuid.UUID)
+	for rows.Next() {
+		var clubID, userID uuid.UUID
+		if err = rows.Scan(&clubID, &userID); err != nil {
+			return nil, errs.Wrap("rows.Scan", err)
+		}
+		hidden[clubID] = append(hidden[clubID], userID)
+	}
+	if err = rows.Err(); err != nil {
+		return nil, errs.Wrap("rows.Err", err)
+	}
+
+	return hidden, nil
+}
+
 const seatQuery = `
 	SELECT
 		role,
@@ -230,15 +262,32 @@ func (r *MemberRepository) SetRole(ctx context.Context, clubID, userID uuid.UUID
 }
 
 // What the change does not name stays: each of the two is its own
-// assignment, so changes of different things do not undo each other.
+// assignment, so changes of different things do not undo each other. A
+// title is written only over the one the change started from ($5), when
+// it names one: the condition is checked again on the row as it is once
+// another change of it has committed. The first number tells whether the
+// user runs the club at all, the second whether the seat was changed.
 const describeMemberQuery = `
-	UPDATE club_members
-	SET
-		title = COALESCE($3, title),
-		hidden = COALESCE($4, hidden)
-	WHERE club_id = $1
-		AND user_id = $2
-		AND role IN ('admin', 'owner')
+	WITH seat AS (
+		SELECT 1
+		FROM club_members
+		WHERE club_id = $1
+			AND user_id = $2
+			AND role IN ('admin', 'owner')
+	), changed AS (
+		UPDATE club_members
+		SET
+			title = COALESCE($3, title),
+			hidden = COALESCE($4, hidden)
+		WHERE club_id = $1
+			AND user_id = $2
+			AND role IN ('admin', 'owner')
+			AND ($3::text IS NULL OR $5::text IS NULL OR title = $5)
+		RETURNING 1
+	)
+	SELECT
+		(SELECT count(*) FROM seat),
+		(SELECT count(*) FROM changed)
 `
 
 func (r *MemberRepository) Describe(ctx context.Context, clubID, userID uuid.UUID, d club.SeatChange) error {
@@ -247,17 +296,27 @@ func (r *MemberRepository) Describe(ctx context.Context, clubID, userID uuid.UUI
 		title = new(d.Title.String())
 	}
 
-	tag, err := r.pool.Exec(ctx, describeMemberQuery, clubID, userID, title, d.Hidden)
-	if err != nil {
-		return errs.Wrap("r.pool.Exec", err)
+	var was *string
+	if d.Was != nil {
+		was = new(d.Was.String())
 	}
 
-	// Dismissed between the check and the change.
-	if tag.RowsAffected() == 0 {
+	var seats, changed int
+
+	err := r.pool.QueryRow(ctx, describeMemberQuery, clubID, userID, title, d.Hidden, was).Scan(&seats, &changed)
+	if err != nil {
+		return errs.Wrap("r.pool.QueryRow", err)
+	}
+
+	switch {
+	case changed > 0:
+		return nil
+	case seats > 0 && was != nil:
+		return club.ErrTitleChanged
+	default:
+		// Dismissed between the check and the change.
 		return club.ErrNotManager
 	}
-
-	return nil
 }
 
 // Transfer swaps the roles in a transaction: one statement would

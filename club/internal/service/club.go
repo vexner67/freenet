@@ -57,6 +57,8 @@ type MemberRepository interface {
 	Owner(ctx context.Context, clubID uuid.UUID) (uuid.UUID, error)
 	// Roles are what the user is in those of the clubs they are in.
 	Roles(ctx context.Context, userID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID]club.Role, error)
+	// Hidden are those who run each of the clubs and whom it hides.
+	Hidden(ctx context.Context, clubIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
 	// Join is idempotent; club.ErrNotFound when the club is gone. maybe:
 	// the member only might come to the event. A member who joins again
 	// changes that answer, unless they own the club.
@@ -806,6 +808,43 @@ func (s *ClubService) Roles(ctx context.Context, userID uuid.UUID, clubIDs []uui
 	}
 
 	return roles, nil
+}
+
+// HiddenManagers are those who run each of the clubs and whom viewerID
+// (uuid.Nil: anonymous) may not know to: the clubs hide them from
+// everyone but those who run them too. Whoever shows what was written
+// for a club leaves their names out, or the name would give them away.
+// Clubs that hide nobody from the viewer are left out.
+func (s *ClubService) HiddenManagers(ctx context.Context, viewerID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error) {
+	if len(clubIDs) > MaxClubs {
+		return nil, ErrTooManyIDs
+	}
+
+	if len(clubIDs) == 0 {
+		return nil, nil
+	}
+
+	hidden, err := s.members.Hidden(ctx, clubIDs)
+	if err != nil {
+		return nil, errs.Wrap("s.members.Hidden", err)
+	}
+
+	if len(hidden) == 0 || viewerID == uuid.Nil {
+		return hidden, nil
+	}
+
+	roles, err := s.members.Roles(ctx, viewerID, clubIDs)
+	if err != nil {
+		return nil, errs.Wrap("s.members.Roles", err)
+	}
+
+	for id := range hidden {
+		if (club.Seat{Role: club.RoleAdmin, Hidden: true}).Seen(roles[id]) {
+			delete(hidden, id)
+		}
+	}
+
+	return hidden, nil
 }
 
 // WallAccess is what a user may do on a club's wall: Post, or else

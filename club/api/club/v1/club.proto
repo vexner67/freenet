@@ -79,6 +79,12 @@ service ClubService {
   // What the caller is in each of up to 100 clubs; those they are not in
   // are left out.
   rpc ListMyRoles(ListMyRolesRequest) returns (ListMyRolesResponse);
+  // Internal, for gateway: those who run each of up to 100 clubs and whom
+  // the caller (the token is optional) may not know to, because the club
+  // hides them and the caller does not run it. Gateway leaves their names
+  // out of what was written for the club ("Подпись автора"); the answer
+  // itself never leaves it. Clubs that hide nobody are left out.
+  rpc ListHiddenManagers(ListHiddenManagersRequest) returns (ListHiddenManagersResponse);
   // Whether the caller may write on the club's wall, on their own behalf
   // or, with from_club, on the club's, or else suggest a post.
   rpc CanPostOnWall(CanPostOnWallRequest) returns (CanPostOnWallResponse);
@@ -355,6 +361,10 @@ message DescribeMemberRequest {
   // stays as it is, here and below.
   optional string title = 3;
   optional bool hidden = 4;
+  // The title the change started from. With it a title is written only
+  // over this one: FailedPrecondition "the title was changed" when the
+  // seat says another by now, so two admins do not overwrite each other.
+  optional string base_title = 5;
 }
 
 message TransferClubRequest {
@@ -472,6 +482,19 @@ message ListMyRolesResponse {
 message ClubRole {
   string club_id = 1;
   Role role = 2;
+}
+
+message ListHiddenManagersRequest {
+  repeated string club_ids = 1;
+}
+
+message ListHiddenManagersResponse {
+  repeated HiddenManagers clubs = 1;
+}
+
+message HiddenManagers {
+  string club_id = 1;
+  repeated string user_ids = 2;
 }
 
 message CanPostOnWallRequest {
