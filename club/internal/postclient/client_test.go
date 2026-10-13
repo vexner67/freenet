@@ -3,6 +3,7 @@ package postclient
 import (
 	"context"
 	"errors"
+	"slices"
 	"testing"
 	"time"
 
@@ -12,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/emptypb"
 )
 
@@ -19,9 +21,25 @@ type fakePost struct {
 	postv1.PostServiceClient
 	followed   *postv1.FollowSourceRequest
 	unfollowed *postv1.UnfollowSourceRequest
+	synced     *postv1.SyncSourcesRequest
 	deadline   bool
 	err        error
 	walls      []string
+}
+
+func (f *fakePost) SyncSources(_ context.Context, req *postv1.SyncSourcesRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.synced = req
+	return &emptypb.Empty{}, f.err
+}
+
+// fakeLock records the clubs whose members were locked.
+type fakeLock struct {
+	clubs []uuid.UUID
+}
+
+func (f *fakeLock) LockClub(_ context.Context, clubID uuid.UUID) error {
+	f.clubs = append(f.clubs, clubID)
+	return nil
 }
 
 func (f *fakePost) FollowSource(ctx context.Context, req *postv1.FollowSourceRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -55,7 +73,8 @@ func TestWalls(t *testing.T) {
 	ctx := context.Background()
 	q := outbox.NewMemory()
 	cats := uuid.New()
-	o := NewOutbox(q)
+	lock := &fakeLock{}
+	o := NewOutbox(q, lock)
 
 	if err := o.Closed(ctx, cats); err != nil {
 		t.Fatal(err)
@@ -101,7 +120,8 @@ func TestOutboxAndDelivery(t *testing.T) {
 	ctx := context.Background()
 	q := outbox.NewMemory()
 	cats, ann := uuid.New(), uuid.New()
-	o := NewOutbox(q)
+	lock := &fakeLock{}
+	o := NewOutbox(q, lock)
 
 	if err := o.Joined(ctx, cats, ann); err != nil {
 		t.Fatal(err)
@@ -110,9 +130,19 @@ func TestOutboxAndDelivery(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	bob, cat := uuid.MustParse("00000000-0000-7000-8000-000000000001"), uuid.MustParse("00000000-0000-7000-8000-000000000002")
+	if err := o.Roster(ctx, cats, bob, []uuid.UUID{cat}, true); err != nil {
+		t.Fatal(err)
+	}
+
+	// Each is recorded under the lock of the club.
+	if want := []uuid.UUID{cats, cats, cats}; !slices.Equal(lock.clubs, want) {
+		t.Fatalf("locked %v, want %v", lock.clubs, want)
+	}
+
 	head, _ := q.Head(ctx, 10)
-	if len(head) != 2 || head[0].Kind != JoinKind || head[1].Kind != LeaveKind {
-		t.Fatalf("recorded %+v, want a join and a leave", head)
+	if len(head) != 3 || head[0].Kind != JoinKind || head[1].Kind != LeaveKind || head[2].Kind != SyncKind {
+		t.Fatalf("recorded %+v, want a join, a leave and a stretch", head)
 	}
 
 	api := &fakePost{}
@@ -129,6 +159,17 @@ func TestOutboxAndDelivery(t *testing.T) {
 	}
 	if u := api.unfollowed; u.GetReaderId() != ann.String() || u.GetSourceId() != cats.String() {
 		t.Fatalf("unfollowed %v, want ann and the club", u)
+	}
+
+	// The stretch tells the members of a club, above the one it starts at.
+	want := &postv1.SyncSourcesRequest{OwnerId: cats.String(), Club: true, AfterId: bob.String(), Last: true, Ids: []string{cat.String()}}
+	if !proto.Equal(api.synced, want) {
+		t.Fatalf("synced %v, want %v", api.synced, want)
+	}
+
+	// A stretch cut short is dropped, not retried for ever.
+	if err := deliver(ctx, outbox.Message{Kind: SyncKind, Payload: head[2].Payload[:40]}); !outbox.IsPermanent(err) {
+		t.Fatalf("a stretch cut short: %v", err)
 	}
 
 	if err := (Nop{}).Joined(ctx, cats, ann); err != nil {

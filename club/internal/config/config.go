@@ -46,6 +46,10 @@ type Config struct {
 	// show the walls of the clubs their readers are in.
 	PostServiceAddr string `env:"POST_SERVICE_ADDR"`
 
+	// FeedSyncInterval is how often post is told anew who is in every
+	// club, which mends its copy after a word lost on the way; 0: never.
+	FeedSyncInterval time.Duration `env:"FEED_SYNC_INTERVAL" envDefault:"6h"`
+
 	// EventReminderAhead is how long before an event starts its members
 	// are reminded of it; EventReminderInterval how often the events that
 	// are due are looked for.
@@ -77,6 +81,10 @@ func (c Config) Validate() error {
 		}
 	default:
 		return fmt.Errorf("unknown STORAGE %q, want %q or %q", c.Storage, StorageInmem, StoragePersistent)
+	}
+
+	if c.FeedSyncInterval < 0 {
+		return errors.New("FEED_SYNC_INTERVAL must not be negative")
 	}
 
 	if c.EventReminderAhead <= 0 || c.EventReminderInterval <= 0 {

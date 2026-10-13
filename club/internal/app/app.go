@@ -55,7 +55,10 @@ type App struct {
 	metrics *metrics.Server
 	addr    string
 	// reminder tells the members of events that they start soon.
-	reminder    *service.ReminderService
+	reminder *service.ReminderService
+	// sync is nil without a post service to tell.
+	sync        *service.ReaderSyncService
+	syncEvery   time.Duration
 	remindEvery time.Duration
 }
 
@@ -95,7 +98,7 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newNotifier", err)
 	}
 
-	readers, err := a.newReaders(cfg, store.newQueue, reg)
+	readers, rosters, err := a.newReaders(cfg, store, reg)
 	if err != nil {
 		return errs.Wrap("a.newReaders", err)
 	}
@@ -142,6 +145,10 @@ func (a *App) build(cfg config.Config) error {
 
 	a.reminder = service.NewReminderService(store.reminders, store.tx, notifier, cfg.EventReminderAhead, time.Now)
 	a.remindEvery = cfg.EventReminderInterval
+	if rosters != nil && cfg.FeedSyncInterval > 0 {
+		a.sync = service.NewReaderSyncService(store.book, store.tx, rosters)
+		a.syncEvery = cfg.FeedSyncInterval
+	}
 
 	if cfg.MetricsPort == 0 {
 		a.logger.Info("METRICS_PORT is not set: metrics are not served")
@@ -227,20 +234,24 @@ func (a *App) newNotifier(cfg config.Config, newQueue func(stream string) outbox
 
 // newReaders records memberships in the outbox and sets up the relay that
 // tells the post service, whose news show a member the wall of the club.
-func (a *App) newReaders(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (service.Readers, error) {
+// The rosters, nil without a post service, tell it who is in every club
+// now and then.
+func (a *App) newReaders(cfg config.Config, store storage, reg prometheus.Registerer) (service.Readers, service.Rosters, error) {
 	if cfg.PostServiceAddr == "" {
 		a.logger.Warn("POST_SERVICE_ADDR is not set: the news do not show the walls of clubs")
-		return postclient.Nop{}, nil
+		return postclient.Nop{}, nil, nil
 	}
 
-	queue, err := a.newStream(cfg, postclient.Stream, cfg.PostServiceAddr, newQueue, reg, func(conn *grpc.ClientConn) outbox.Deliver {
+	queue, err := a.newStream(cfg, postclient.Stream, cfg.PostServiceAddr, store.newQueue, reg, func(conn *grpc.ClientConn) outbox.Deliver {
 		return postclient.Deliver(postv1.NewPostServiceClient(conn), cfg.NotifyTimeout)
 	})
 	if err != nil {
-		return nil, errs.Wrap("a.newStream", err)
+		return nil, nil, errs.Wrap("a.newStream", err)
 	}
 
-	return postclient.NewOutbox(queue), nil
+	toPost := postclient.NewOutbox(queue, store.book)
+
+	return toPost, toPost, nil
 }
 
 // newStream opens the outbox stream of the service at addr and the relay
@@ -291,7 +302,9 @@ type storage struct {
 	members   service.MemberRepository
 	requests  service.RequestRepository
 	reminders service.DueEvents
-	tx        service.TxManager
+	// book reads the memberships for post to match its copy of them.
+	book service.MemberBook
+	tx   service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }
@@ -300,7 +313,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
 		return storage{
-			clubs: store.Clubs(), members: store.Members(), requests: store.Requests(), reminders: store.Reminders(), tx: inmem.TxManager{},
+			clubs: store.Clubs(), members: store.Members(), requests: store.Requests(), reminders: store.Reminders(), book: store.Book(), tx: inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -334,6 +347,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		members:   postgres.NewMemberRepository(a.pool),
 		requests:  postgres.NewRequestRepository(a.pool),
 		reminders: postgres.NewReminderRepository(a.pool),
+		book:      postgres.NewBookRepository(a.pool),
 		tx:        pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
@@ -369,7 +383,35 @@ func (a *App) Run(ctx context.Context) error {
 		return errs.Wrap("a.runReminder", a.runReminder(ctx))
 	})
 
+	if a.sync != nil {
+		g.Go(func() error {
+			return errs.Wrap("a.runSync", a.runSync(ctx))
+		})
+	}
+
 	return g.Wait()
+}
+
+// runSync tells post who is in every club every interval until ctx is
+// cancelled; a failure is logged and the next round starts over.
+func (a *App) runSync(ctx context.Context) error {
+	ticker := time.NewTicker(a.syncEvery)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+		}
+
+		told, err := a.sync.SyncAll(ctx)
+		if err != nil && ctx.Err() == nil {
+			a.logger.ErrorContext(ctx, "sync of feed sources", "error", err)
+		}
+
+		a.logger.InfoContext(ctx, "members told to post anew", "clubs", told)
+	}
 }
 
 // runReminder reminds of the events that start soon until ctx is
