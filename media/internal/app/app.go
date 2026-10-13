@@ -112,7 +112,7 @@ func (a *App) build(cfg config.Config) error {
 	if err != nil {
 		return errs.Wrap("grpcserver.New", err)
 	}
-	a.photos = service.NewPhotoService(stores.photos, cfg.UnpublishedPhotoTTL, cfg.RetiredPhotoTTL)
+	a.photos = service.NewPhotoService(stores.photos, cfg.UnpublishedPhotoTTL, cfg.RetiredPhotoTTL, cfg.PhotoClaimTTL)
 
 	mediav1.RegisterMediaServiceServer(
 		a.server.Registrar(),

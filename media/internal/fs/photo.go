@@ -7,10 +7,13 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/media/internal/photo"
+	"github.com/vexner67/freenet/media/internal/service"
 	"github.com/vexner67/freenet/pkg/errs"
 )
 
@@ -79,8 +82,36 @@ func (s *PhotoStore) Load(_ context.Context, ownerID, photoID uuid.UUID, size ph
 }
 
 // claimFile marks an upload as claimed. It is created exclusively, so of
-// two claims one wins, and travels with the directory of the photo.
+// two claims one wins, and travels with the directory of the photo. A
+// claim taken over leaves a file of its own next to it, claimed.<number>,
+// created exclusively too: the upload is claimed while claimFile is
+// there, and the highest number tells whose claim it is.
 const claimFile = "claimed"
+
+// takeover is the file of the claim with this number.
+func takeover(number int) string {
+	if number == 0 {
+		return claimFile
+	}
+
+	return claimFile + "." + strconv.Itoa(number)
+}
+
+// claimNumber reads the number of a claim from the name of its file.
+func claimNumber(name string) (int, bool) {
+	if name == claimFile {
+		return 0, true
+	}
+
+	suffix, ok := strings.CutPrefix(name, claimFile+".")
+	if !ok {
+		return 0, false
+	}
+
+	n, err := strconv.Atoi(suffix)
+
+	return n, err == nil && n > 0
+}
 
 func (s *PhotoStore) Claim(_ context.Context, ownerID, photoID uuid.UUID) (bool, error) {
 	f, err := os.OpenFile(filepath.Join(s.dirs(ownerID, photoID)[1], claimFile), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o640)
@@ -95,10 +126,93 @@ func (s *PhotoStore) Claim(_ context.Context, ownerID, photoID uuid.UUID) (bool,
 	return true, errs.Wrap("f.Close", f.Close())
 }
 
+func (s *PhotoStore) Claimed(_ context.Context, ownerID, photoID uuid.UUID) (service.PhotoClaim, bool, error) {
+	dir := s.dirs(ownerID, photoID)[1]
+
+	numbers, err := claims(dir)
+	if err != nil || len(numbers) == 0 || numbers[0] != 0 {
+		return service.PhotoClaim{}, false, err
+	}
+
+	last := numbers[len(numbers)-1]
+
+	info, err := os.Stat(filepath.Join(dir, takeover(last)))
+	// Released this instant.
+	if errors.Is(err, fs.ErrNotExist) {
+		return service.PhotoClaim{}, false, nil
+	}
+	if err != nil {
+		return service.PhotoClaim{}, false, errs.Wrap("os.Stat", err)
+	}
+
+	return service.PhotoClaim{At: info.ModTime(), Number: last}, true, nil
+}
+
+// claims are the numbers of the claim files of an upload, ascending; none
+// when the upload is not there.
+func claims(dir string) ([]int, error) {
+	entries, err := os.ReadDir(dir)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, errs.Wrap("os.ReadDir", err)
+	}
+
+	var numbers []int
+	for _, e := range entries {
+		if n, ok := claimNumber(e.Name()); ok {
+			numbers = append(numbers, n)
+		}
+	}
+	slices.Sort(numbers)
+
+	return numbers, nil
+}
+
+func (s *PhotoStore) Reclaim(_ context.Context, ownerID, photoID uuid.UUID, number int) (bool, error) {
+	dir := s.dirs(ownerID, photoID)[1]
+	mine := filepath.Join(dir, takeover(number+1))
+
+	f, err := os.OpenFile(mine, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o640)
+	// No upload: it is published. There: someone took the claim over first.
+	if errors.Is(err, fs.ErrNotExist) || errors.Is(err, fs.ErrExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, errs.Wrap("os.OpenFile", err)
+	}
+	if err = f.Close(); err != nil {
+		return false, errs.Wrap("f.Close", err)
+	}
+
+	// Released meanwhile: there was no claim left to take over.
+	held, err := exists(filepath.Join(dir, claimFile))
+	if err != nil || held {
+		return held, err
+	}
+
+	if err = os.Remove(mine); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return false, errs.Wrap("os.Remove", err)
+	}
+
+	return false, nil
+}
+
+// Release removes claimFile first: from then on the upload is not
+// claimed, whatever files of claims taken over are still to go.
 func (s *PhotoStore) Release(_ context.Context, ownerID, photoID uuid.UUID) error {
-	err := os.Remove(filepath.Join(s.dirs(ownerID, photoID)[1], claimFile))
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
-		return errs.Wrap("os.Remove", err)
+	dir := s.dirs(ownerID, photoID)[1]
+
+	numbers, err := claims(dir)
+	if err != nil {
+		return err
+	}
+
+	for _, n := range numbers {
+		if err = os.Remove(filepath.Join(dir, takeover(n))); err != nil && !errors.Is(err, fs.ErrNotExist) {
+			return errs.Wrap("os.Remove", err)
+		}
 	}
 
 	return nil

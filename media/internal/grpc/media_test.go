@@ -53,7 +53,7 @@ func newServer(t *testing.T) testServer {
 	))
 	mediav1.RegisterMediaServiceServer(srv, mediagrpc.NewMediaHandler(
 		service.NewAvatarService(avatars),
-		service.NewPhotoService(photos, time.Hour, 24*time.Hour),
+		service.NewPhotoService(photos, time.Hour, 24*time.Hour, 0),
 		service.NewPurgeService(avatars, photos),
 		log,
 	))

@@ -8,6 +8,7 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/media/internal/photo"
+	"github.com/vexner67/freenet/media/internal/service"
 	"github.com/vexner67/freenet/pkg/errs"
 )
 
@@ -19,8 +20,10 @@ type PhotoStore struct {
 type storedPhoto struct {
 	images    photo.Images
 	published bool
-	// claimed: taken for a post that is being published.
+	// claimed: taken for a post that is being published; claim is when
+	// and which time, counting the times the claim was taken over.
 	claimed bool
+	claim   service.PhotoClaim
 	// retired: set aside as unpublished too long; only Publish finds it.
 	retired bool
 }
@@ -76,7 +79,42 @@ func (s *PhotoStore) Claim(ctx context.Context, ownerID, photoID uuid.UUID) (boo
 		return false, nil
 	}
 
-	p.claimed = true
+	p.claimed, p.claim = true, service.PhotoClaim{At: time.Now()}
+	s.photos[ownerID][photoID] = p
+
+	return true, nil
+}
+
+func (s *PhotoStore) Claimed(ctx context.Context, ownerID, photoID uuid.UUID) (service.PhotoClaim, bool, error) {
+	if err := ctx.Err(); err != nil {
+		return service.PhotoClaim{}, false, errs.Wrap("ctx.Err", err)
+	}
+
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+
+	p, ok := s.photos[ownerID][photoID]
+	if !ok || p.published || p.retired || !p.claimed {
+		return service.PhotoClaim{}, false, nil
+	}
+
+	return p.claim, true, nil
+}
+
+func (s *PhotoStore) Reclaim(ctx context.Context, ownerID, photoID uuid.UUID, number int) (bool, error) {
+	if err := ctx.Err(); err != nil {
+		return false, errs.Wrap("ctx.Err", err)
+	}
+
+	s.mu.Lock()
+	defer s.mu.Unlock()
+
+	p, ok := s.photos[ownerID][photoID]
+	if !ok || p.published || p.retired || !p.claimed || p.claim.Number != number {
+		return false, nil
+	}
+
+	p.claim = service.PhotoClaim{At: time.Now(), Number: number + 1}
 	s.photos[ownerID][photoID] = p
 
 	return true, nil
