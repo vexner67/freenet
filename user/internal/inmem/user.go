@@ -289,6 +289,19 @@ func (r *UserRepository) onDelete(fn func(uuid.UUID)) {
 	r.cascade = append(r.cascade, fn)
 }
 
+// ids are the IDs of all users.
+func (r *UserRepository) ids() []uuid.UUID {
+	r.mu.RLock()
+	defer r.mu.RUnlock()
+
+	ids := make([]uuid.UUID, 0, len(r.users))
+	for id := range r.users {
+		ids = append(ids, id)
+	}
+
+	return ids
+}
+
 func (r *UserRepository) DeleteDue(ctx context.Context, now time.Time, limit int) ([]uuid.UUID, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, errs.Wrap("ctx.Err", err)

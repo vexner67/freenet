@@ -3,6 +3,8 @@ package purgeclient
 import (
 	"context"
 	"errors"
+	"slices"
+	"strings"
 	"testing"
 	"time"
 
@@ -40,6 +42,31 @@ func (f *fakePost) HoldUserReactions(_ context.Context, req *postv1.HoldUserReac
 func (f *fakePost) ReleaseUserReactions(_ context.Context, req *postv1.ReleaseUserReactionsRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.released = req.GetUserId()
 	return &emptypb.Empty{}, f.err
+}
+
+func (f *fakePost) SyncSources(ctx context.Context, req *postv1.SyncSourcesRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	told := "=" + req.GetOwnerId() + " above " + req.GetAfterId() + ": " + strings.Join(req.GetIds(), ",")
+	if req.GetLast() {
+		told += " last"
+	}
+	if req.GetClub() {
+		told += " a club"
+	}
+
+	f.sources = append(f.sources, told)
+	_, f.deadline = ctx.Deadline()
+
+	return &emptypb.Empty{}, f.err
+}
+
+// fakeLock records whose follows were locked.
+type fakeLock struct {
+	readers []uuid.UUID
+}
+
+func (f *fakeLock) LockReader(_ context.Context, readerID uuid.UUID) error {
+	f.readers = append(f.readers, readerID)
+	return nil
 }
 
 func (f *fakePost) FollowSource(ctx context.Context, req *postv1.FollowSourceRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
@@ -153,7 +180,8 @@ func TestFollows(t *testing.T) {
 	ctx := context.Background()
 	q := outbox.NewMemory()
 	ann, bob := uuid.New(), uuid.New()
-	follows := NewFollows(q)
+	lock := &fakeLock{}
+	follows := NewFollows(q, lock)
 
 	if err := follows.Followed(ctx, ann, bob); err != nil {
 		t.Fatal(err)
@@ -162,9 +190,27 @@ func TestFollows(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	cat, dan := uuid.MustParse("00000000-0000-7000-8000-000000000001"), uuid.MustParse("00000000-0000-7000-8000-000000000002")
+	if err := follows.Following(ctx, ann, cat, []uuid.UUID{dan}, true); err != nil {
+		t.Fatal(err)
+	}
+	if err := follows.Following(ctx, bob, uuid.Nil, nil, false); err != nil {
+		t.Fatal(err)
+	}
+
+	// Each is recorded under the lock of the one who follows.
+	if want := []uuid.UUID{ann, ann, ann, bob}; !slices.Equal(lock.readers, want) {
+		t.Fatalf("locked %v, want %v", lock.readers, want)
+	}
+
 	head, _ := q.Head(ctx, 10)
-	if len(head) != 2 || head[0].Kind != FollowKind || head[1].Kind != UnfollowKind {
-		t.Fatalf("recorded %+v, want a follow and its end", head)
+	if len(head) != 4 || head[0].Kind != FollowKind || head[1].Kind != UnfollowKind || head[2].Kind != SyncKind {
+		t.Fatalf("recorded %+v, want a follow, its end and two stretches", head)
+	}
+
+	// A stretch cut short is dropped, not retried for ever.
+	if err := Post(&fakePost{}, time.Second)(ctx, outbox.Message{Kind: SyncKind, Payload: head[2].Payload[:40]}); !outbox.IsPermanent(err) {
+		t.Fatalf("a stretch cut short: %v", err)
 	}
 
 	api := &fakePost{}
@@ -175,8 +221,13 @@ func TestFollows(t *testing.T) {
 		}
 	}
 
-	want := []string{"+" + ann.String() + ">" + bob.String(), "-" + ann.String() + ">" + bob.String()}
-	if len(api.sources) != 2 || api.sources[0] != want[0] || api.sources[1] != want[1] || !api.deadline {
+	want := []string{
+		"+" + ann.String() + ">" + bob.String(),
+		"-" + ann.String() + ">" + bob.String(),
+		"=" + ann.String() + " above " + cat.String() + ": " + dan.String() + " last",
+		"=" + bob.String() + " above " + uuid.Nil.String() + ": ",
+	}
+	if !slices.Equal(api.sources, want) || !api.deadline {
 		t.Fatalf("post heard %v (deadline %v), want %v with a timeout", api.sources, api.deadline, want)
 	}
 }

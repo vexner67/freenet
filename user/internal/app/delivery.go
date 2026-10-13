@@ -43,6 +43,9 @@ type delivery struct {
 	// walls is nil without a post service: closed pages keep their walls
 	// open there.
 	walls service.Walls
+	// sources is nil without a post service too: nobody to tell whom
+	// everybody follows.
+	sources service.Sources
 }
 
 // notifiers tells each of them, in order, about a follow and its end.
@@ -71,7 +74,7 @@ func (n notifiers) Unfollowed(ctx context.Context, followerID, followeeID uuid.U
 // newDelivery opens a stream and a relay for each service configured. The
 // connections are lazy, so the services may start in any order; until one
 // is up, its relay retries.
-func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (delivery, error) {
+func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outboxQueue, lock purgeclient.Locker, reg prometheus.Registerer) (delivery, error) {
 	creds, err := mtls.ClientCredentials(cfg.TLS)
 	if err != nil {
 		return delivery{}, errs.Wrap("mtls.ClientCredentials", err)
@@ -150,7 +153,8 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 		if s.name == purgeclient.PostStream {
 			d.reactions = purgeclient.NewReactions(q)
 			d.walls = purgeclient.NewWalls(q)
-			d.notifier = notifiers{d.notifier, purgeclient.NewFollows(q)}
+			follows := purgeclient.NewFollows(q, lock)
+			d.notifier, d.sources = notifiers{d.notifier, follows}, follows
 		}
 	}
 
@@ -162,6 +166,28 @@ func (a *App) newDelivery(cfg config.Config, newQueue func(stream string) outbox
 // dial connects to a service; calls carry the request's ID.
 func dial(addr string, creds credentials.TransportCredentials) (*grpc.ClientConn, error) {
 	return grpc.NewClient(addr, append(reqid.DialOptions(), grpc.WithTransportCredentials(creds))...)
+}
+
+// runSync tells post whom everybody follows every interval until ctx
+// ends; a failure is logged and the next round starts over.
+func (a *App) runSync(ctx context.Context, every time.Duration) error {
+	t := time.NewTicker(every)
+	defer t.Stop()
+
+	for {
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-t.C:
+		}
+
+		told, err := a.sync.SyncAll(ctx)
+		if err != nil && ctx.Err() == nil {
+			a.logger.ErrorContext(ctx, "sync of feed sources", "error", err)
+		}
+
+		a.logger.InfoContext(ctx, "follows told to post anew", "users", told)
+	}
 }
 
 // runPurge erases the pages that are due every interval until ctx ends; a

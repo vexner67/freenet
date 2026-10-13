@@ -33,6 +33,58 @@ func (r *FollowRepository) conn(ctx context.Context) pgpool.Querier {
 	return pgpool.Conn(ctx, r.pool)
 }
 
+const readersQuery = `
+	SELECT id
+	FROM users
+	WHERE id > $1
+	ORDER BY id
+	LIMIT $2
+`
+
+func (r *FollowRepository) Readers(ctx context.Context, after uuid.UUID, limit int) ([]uuid.UUID, error) {
+	return r.ids(ctx, readersQuery, after, limit)
+}
+
+const followeesQuery = `
+	SELECT followee_id
+	FROM follows
+	WHERE follower_id = $1
+		AND followee_id > $2
+	ORDER BY followee_id
+	LIMIT $3
+`
+
+func (r *FollowRepository) Followees(ctx context.Context, readerID, after uuid.UUID, limit int) ([]uuid.UUID, error) {
+	return r.ids(ctx, followeesQuery, readerID, after, limit)
+}
+
+// ids reads the rows of one ID.
+func (r *FollowRepository) ids(ctx context.Context, query string, args ...any) ([]uuid.UUID, error) {
+	rows, err := r.conn(ctx).Query(ctx, query, args...)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	if err != nil {
+		return nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	return ids, nil
+}
+
+// lockReaderQuery takes an advisory lock that the transaction holds to
+// its end; outside a transaction it would be gone at once.
+const lockReaderQuery = `SELECT pg_advisory_xact_lock(hashtextextended('feed_sources:' || $1::text, 0))`
+
+func (r *FollowRepository) LockReader(ctx context.Context, readerID uuid.UUID) error {
+	if _, err := r.conn(ctx).Exec(ctx, lockReaderQuery, readerID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}
+
 // Following twice is not an error: the unique pair keeps one follow.
 const followQuery = `
 	INSERT INTO follows (

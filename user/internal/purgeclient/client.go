@@ -40,6 +40,10 @@ const (
 	UnfollowKind = "unfollow_source"
 )
 
+// SyncKind is the kind of the post stream about a stretch of all a
+// reader follows, told now and then so that the copy of post matches.
+const SyncKind = "sync_follows"
+
 // Kinds of the post stream about a page closed and opened ("Тип
 // профиля"): post stops showing its wall to strangers. The payload is the
 // user's ID.
@@ -132,25 +136,93 @@ type NoReactions struct{}
 func (NoReactions) UserDeactivated(context.Context, uuid.UUID) error { return nil }
 func (NoReactions) UserReactivated(context.Context, uuid.UUID) error { return nil }
 
-// Follows is a service.Notifier: it records follows and their ends in the
-// post stream, so that the news of post follow them, in order, and an
-// erased user's follows never arrive after the erasure.
-type Follows struct {
-	post Recorder
+// Locker keeps everyone else from telling of the follows of a reader
+// until the transaction of ctx ends.
+type Locker interface {
+	LockReader(ctx context.Context, readerID uuid.UUID) error
 }
 
-func NewFollows(post Recorder) *Follows {
+// Follows is a service.Notifier: it records follows and their ends in the
+// post stream, so that the news of post follow them, in order, and an
+// erased user's follows never arrive after the erasure. It is the
+// service.Sources too: the stretches of all a reader follows, told now
+// and then, go the same way. Each is recorded under the lock of the
+// reader, so a follow and a stretch are recorded in the order they
+// became true.
+type Follows struct {
+	post Recorder
+	lock Locker
+}
+
+func NewFollows(post Recorder, lock Locker) *Follows {
 	return &Follows{
 		post: post,
+		lock: lock,
 	}
 }
 
 func (f *Follows) Followed(ctx context.Context, followerID, followeeID uuid.UUID) error {
-	return errs.Wrap("f.post.Add", f.post.Add(ctx, FollowKind, pair(followerID, followeeID)))
+	return f.add(ctx, followerID, FollowKind, pair(followerID, followeeID))
 }
 
 func (f *Follows) Unfollowed(ctx context.Context, followerID, followeeID uuid.UUID) error {
-	return errs.Wrap("f.post.Add", f.post.Add(ctx, UnfollowKind, pair(followerID, followeeID)))
+	return f.add(ctx, followerID, UnfollowKind, pair(followerID, followeeID))
+}
+
+func (f *Follows) Following(ctx context.Context, readerID, after uuid.UUID, ids []uuid.UUID, last bool) error {
+	return f.add(ctx, readerID, SyncKind, stretch(readerID, after, ids, last))
+}
+
+func (f *Follows) add(ctx context.Context, readerID uuid.UUID, kind string, payload []byte) error {
+	if err := f.lock.LockReader(ctx, readerID); err != nil {
+		return errs.Wrap("f.lock.LockReader", err)
+	}
+
+	return errs.Wrap("f.post.Add", f.post.Add(ctx, kind, payload))
+}
+
+// stretch is the payload of SyncKind: the reader, the ID the stretch
+// starts above, whether it is the last one, and the IDs.
+func stretch(readerID, after uuid.UUID, ids []uuid.UUID, last bool) []byte {
+	payload := make([]byte, 0, stretchHead+len(ids)*len(uuid.UUID{}))
+	payload = append(payload, readerID[:]...)
+	payload = append(payload, after[:]...)
+
+	if last {
+		payload = append(payload, 1)
+	} else {
+		payload = append(payload, 0)
+	}
+
+	for _, id := range ids {
+		payload = append(payload, id[:]...)
+	}
+
+	return payload
+}
+
+// stretchHead is what a stretch holds before its IDs.
+const stretchHead = 2*len(uuid.UUID{}) + 1
+
+// syncRequest reads the payload of SyncKind.
+func syncRequest(payload []byte) (*postv1.SyncSourcesRequest, bool) {
+	const size = len(uuid.UUID{})
+
+	if len(payload) < stretchHead || (len(payload)-stretchHead)%size != 0 {
+		return nil, false
+	}
+
+	req := &postv1.SyncSourcesRequest{
+		OwnerId: uuid.UUID(payload[:size]).String(),
+		AfterId: uuid.UUID(payload[size : 2*size]).String(),
+		Last:    payload[2*size] == 1,
+	}
+
+	for rest := payload[stretchHead:]; len(rest) > 0; rest = rest[size:] {
+		req.Ids = append(req.Ids, uuid.UUID(rest[:size]).String())
+	}
+
+	return req, true
 }
 
 // pair is the payload of a follow: who reads and whom.
@@ -186,6 +258,20 @@ func Post(api postv1.PostServiceClient, timeout time.Duration) outbox.Deliver {
 	})
 
 	return func(ctx context.Context, m outbox.Message) error {
+		if m.Kind == SyncKind {
+			req, ok := syncRequest(m.Payload)
+			if !ok {
+				return outbox.Permanent(fmt.Errorf("a stretch of %d bytes", len(m.Payload)))
+			}
+
+			ctx, cancel := context.WithTimeout(ctx, timeout)
+			defer cancel()
+
+			_, err := api.SyncSources(ctx, req)
+
+			return outcome(err)
+		}
+
 		if m.Kind != FollowKind && m.Kind != UnfollowKind {
 			return users(ctx, m)
 		}

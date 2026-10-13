@@ -41,10 +41,13 @@ type App struct {
 	limiter ratelimit.Store
 	// conns lead to the services told through the outbox, one relay per
 	// stream; queues are the PostgreSQL streams, held by the relays.
-	conns      []*grpc.ClientConn
-	queues     []*outbox.Postgres
-	relays     []*outbox.Relay
-	purge      *service.PurgeService
+	conns  []*grpc.ClientConn
+	queues []*outbox.Postgres
+	relays []*outbox.Relay
+	purge  *service.PurgeService
+	// sync is nil without a post service to tell.
+	sync       *service.SourceSyncService
+	syncEvery  time.Duration
 	purgeEvery time.Duration
 	// presence writes the visits of the people on the site every
 	// presenceEvery, all at once.
@@ -86,7 +89,7 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newStorage", err)
 	}
 
-	deliver, err := a.newDelivery(cfg, store.newQueue, reg)
+	deliver, err := a.newDelivery(cfg, store.newQueue, store.follows, reg)
 	if err != nil {
 		return errs.Wrap("a.newDelivery", err)
 	}
@@ -94,6 +97,10 @@ func (a *App) build(cfg config.Config) error {
 	notifier := deliver.notifier
 	a.purge = service.NewPurgeService(store.users, store.tx, deliver.eraser)
 	a.purgeEvery = cfg.AccountPurgeInterval
+	if deliver.sources != nil && cfg.FeedSyncInterval > 0 {
+		a.sync = service.NewSourceSyncService(store.follows, store.tx, deliver.sources)
+		a.syncEvery = cfg.FeedSyncInterval
+	}
 	a.presence = service.NewPresenceService(store.users)
 	a.presenceEvery = cfg.PresenceFlushInterval
 
@@ -229,6 +236,7 @@ type storage struct {
 	follows interface {
 		service.FollowRepository
 		service.FollowListRepository
+		service.FollowBook
 	}
 	blocks  service.BlockRepository
 	ignores service.IgnoreRepository
@@ -324,6 +332,12 @@ func (a *App) Run(ctx context.Context) error {
 	g.Go(func() error {
 		return errs.Wrap("a.runPurge", a.runPurge(ctx, a.purgeEvery))
 	})
+
+	if a.sync != nil {
+		g.Go(func() error {
+			return errs.Wrap("a.runSync", a.runSync(ctx, a.syncEvery))
+		})
+	}
 
 	g.Go(func() error {
 		a.presence.Run(ctx, a.presenceEvery, func(err error) {
