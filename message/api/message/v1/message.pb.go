@@ -1117,8 +1117,13 @@ type EditMessageRequest struct {
 	// that shares a photo of an album takes none.
 	RemovePhotoIds []string `protobuf:"bytes,5,rep,name=remove_photo_ids,json=removePhotoIds,proto3" json:"remove_photo_ids,omitempty"`
 	AddPhotoIds    []string `protobuf:"bytes,6,rep,name=add_photo_ids,json=addPhotoIds,proto3" json:"add_photo_ids,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// The text the edit started from. When set, a message that says
+	// something else by now is not edited (FailedPrecondition "the message
+	// was changed"): the words are replaced whole, and an edit made from an
+	// older text would undo the one made first.
+	BaseText      *string `protobuf:"bytes,7,opt,name=base_text,json=baseText,proto3,oneof" json:"base_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EditMessageRequest) Reset() {
@@ -1177,6 +1182,13 @@ func (x *EditMessageRequest) GetAddPhotoIds() []string {
 		return x.AddPhotoIds
 	}
 	return nil
+}
+
+func (x *EditMessageRequest) GetBaseText() string {
+	if x != nil && x.BaseText != nil {
+		return *x.BaseText
+	}
+	return ""
 }
 
 type DeleteMessagesRequest struct {
@@ -3203,8 +3215,10 @@ type EditChatMessageRequest struct {
 	// caller's uploads it shows from now on.
 	RemovePhotoIds []string `protobuf:"bytes,3,rep,name=remove_photo_ids,json=removePhotoIds,proto3" json:"remove_photo_ids,omitempty"`
 	AddPhotoIds    []string `protobuf:"bytes,4,rep,name=add_photo_ids,json=addPhotoIds,proto3" json:"add_photo_ids,omitempty"`
-	unknownFields  protoimpl.UnknownFields
-	sizeCache      protoimpl.SizeCache
+	// As in EditMessageRequest: the text the edit started from.
+	BaseText      *string `protobuf:"bytes,5,opt,name=base_text,json=baseText,proto3,oneof" json:"base_text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
 }
 
 func (x *EditChatMessageRequest) Reset() {
@@ -3263,6 +3277,13 @@ func (x *EditChatMessageRequest) GetAddPhotoIds() []string {
 		return x.AddPhotoIds
 	}
 	return nil
+}
+
+func (x *EditChatMessageRequest) GetBaseText() string {
+	if x != nil && x.BaseText != nil {
+		return *x.BaseText
+	}
+	return ""
 }
 
 type EditChatMessageResponse struct {
@@ -3619,12 +3640,15 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x14DeleteMessageRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"$\n" +
 	"\x12HideMessageRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\xad\x01\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xdd\x01\n" +
 	"\x12EditMessageRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12(\n" +
 	"\x10remove_photo_ids\x18\x05 \x03(\tR\x0eremovePhotoIds\x12\"\n" +
-	"\radd_photo_ids\x18\x06 \x03(\tR\vaddPhotoIdsJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\tphoto_idsR\x0ereplace_photos\"L\n" +
+	"\radd_photo_ids\x18\x06 \x03(\tR\vaddPhotoIds\x12 \n" +
+	"\tbase_text\x18\a \x01(\tH\x00R\bbaseText\x88\x01\x01B\f\n" +
+	"\n" +
+	"_base_textJ\x04\b\x03\x10\x04J\x04\b\x04\x10\x05R\tphoto_idsR\x0ereplace_photos\"L\n" +
 	"\x15DeleteMessagesRequest\x12\x10\n" +
 	"\x03ids\x18\x01 \x03(\tR\x03ids\x12!\n" +
 	"\ffor_everyone\x18\x02 \x01(\bR\vforEveryone\"D\n" +
@@ -3762,12 +3786,15 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x15GetChatMessageRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"K\n" +
 	"\x16GetChatMessageResponse\x121\n" +
-	"\amessage\x18\x01 \x01(\v2\x17.message.v1.ChatMessageR\amessage\"\x8a\x01\n" +
+	"\amessage\x18\x01 \x01(\v2\x17.message.v1.ChatMessageR\amessage\"\xba\x01\n" +
 	"\x16EditChatMessageRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12(\n" +
 	"\x10remove_photo_ids\x18\x03 \x03(\tR\x0eremovePhotoIds\x12\"\n" +
-	"\radd_photo_ids\x18\x04 \x03(\tR\vaddPhotoIds\"L\n" +
+	"\radd_photo_ids\x18\x04 \x03(\tR\vaddPhotoIds\x12 \n" +
+	"\tbase_text\x18\x05 \x01(\tH\x00R\bbaseText\x88\x01\x01B\f\n" +
+	"\n" +
+	"_base_text\"L\n" +
 	"\x17EditChatMessageResponse\x121\n" +
 	"\amessage\x18\x01 \x01(\v2\x17.message.v1.ChatMessageR\amessage\"\x97\x01\n" +
 	"\x19SearchChatMessagesRequest\x12\x17\n" +
@@ -4014,6 +4041,7 @@ func file_api_message_v1_message_proto_init() {
 	if File_api_message_v1_message_proto != nil {
 		return
 	}
+	file_api_message_v1_message_proto_msgTypes[14].OneofWrappers = []any{}
 	file_api_message_v1_message_proto_msgTypes[22].OneofWrappers = []any{
 		(*SubscribeResponse_Message)(nil),
 		(*SubscribeResponse_Read)(nil),
@@ -4023,6 +4051,7 @@ func file_api_message_v1_message_proto_init() {
 		(*SubscribeResponse_ChatEdited)(nil),
 		(*SubscribeResponse_ChatRead)(nil),
 	}
+	file_api_message_v1_message_proto_msgTypes[47].OneofWrappers = []any{}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
 		File: protoimpl.DescBuilder{

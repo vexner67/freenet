@@ -129,7 +129,6 @@ func fromProtoDraft(req draftRequest) (service.Draft, error) {
 	return service.Draft{Text: text, Photos: photos, Post: post, SharedPhoto: sharedPhoto, Forward: forward}, nil
 }
 
-// fromProtoRevision reads what an edit makes of a message.
 // revisionRequest is an edit as the requests of dialogs and of chats name
 // it.
 type revisionRequest interface {
@@ -138,13 +137,24 @@ type revisionRequest interface {
 	GetAddPhotoIds() []string
 }
 
-func fromProtoRevision(req revisionRequest) (message.Revision, error) {
+// fromProtoRevision reads what an edit makes of a message; baseText, if
+// the request names it, is the text the edit started from.
+func fromProtoRevision(req revisionRequest, baseText *string) (message.Revision, error) {
 	text, err := message.NewText(req.GetText())
 	if err != nil {
 		return message.Revision{}, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	rev := message.Revision{Text: text}
+
+	if baseText != nil {
+		base, err := message.NewText(*baseText)
+		if err != nil {
+			return message.Revision{}, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		rev.Base = &base
+	}
 
 	for _, part := range []struct {
 		raw  []string

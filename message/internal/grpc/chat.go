@@ -329,7 +329,7 @@ func (h *MessageHandler) EditChatMessage(ctx context.Context, req *messagev1.Edi
 		return nil, err
 	}
 
-	rev, err := fromProtoRevision(req)
+	rev, err := fromProtoRevision(req, req.BaseText)
 	if err != nil {
 		return nil, err
 	}

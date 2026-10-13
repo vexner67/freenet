@@ -27,6 +27,7 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
+	"google.golang.org/protobuf/proto"
 )
 
 const issuer = "freenet-test"
@@ -479,10 +480,16 @@ func TestEditHideSearch(t *testing.T) {
 		"no text":         {s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: " "}, codes.InvalidArgument},
 		"a bad id":        {s.as(t, ann), &messagev1.EditMessageRequest{Id: "x", Text: "x"}, codes.InvalidArgument},
 		"no message":      {s.as(t, ann), &messagev1.EditMessageRequest{Id: uuid.NewString(), Text: "x"}, codes.NotFound},
+		"an older text":   {s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "x", BaseText: proto.String("Еду на море")}, codes.FailedPrecondition},
 	} {
 		if _, err = s.client.EditMessage(tt.ctx, tt.req); status.Code(err) != tt.code {
 			t.Errorf("EditMessage, %s: %v, want %v", name, err, tt.code)
 		}
+	}
+
+	// An edit that names the text it saw goes through.
+	if _, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!", BaseText: proto.String(" Еду на море!\r\n")}); err != nil {
+		t.Fatalf("EditMessage with the text it saw: %v", err)
 	}
 
 	// Search: in the dialog and in all of them.

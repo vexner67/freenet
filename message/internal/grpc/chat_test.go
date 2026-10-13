@@ -10,6 +10,7 @@ import (
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/proto"
 )
 
 func TestChat(t *testing.T) {
@@ -126,6 +127,15 @@ func TestChat(t *testing.T) {
 		edited, err := s.client.EditChatMessage(s.as(t, bob), &messagev1.EditChatMessageRequest{Id: id, Text: "иначе"})
 		if err != nil || edited.GetMessage().GetText() != "иначе" || edited.GetMessage().GetEditedAt() == nil {
 			t.Fatalf("EditChatMessage = %v, %v", edited, err)
+		}
+
+		// Another window still shows the text it loaded before that edit.
+		_, err = s.client.EditChatMessage(s.as(t, bob), &messagev1.EditChatMessageRequest{Id: id, Text: "поздно", BaseText: proto.String(sent.GetMessage().GetText())})
+		if status.Code(err) != codes.FailedPrecondition {
+			t.Fatalf("EditChatMessage of an older text: %v", err)
+		}
+		if _, err = s.client.EditChatMessage(s.as(t, bob), &messagev1.EditChatMessageRequest{Id: id, Text: "иначе", BaseText: proto.String("иначе")}); err != nil {
+			t.Fatalf("EditChatMessage of the text it saw: %v", err)
 		}
 
 		if _, err = s.client.DeleteChatMessage(s.as(t, bob), &messagev1.DeleteChatMessageRequest{Id: id}); err != nil {

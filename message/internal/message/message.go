@@ -54,8 +54,11 @@ var (
 	ErrDeleteExpired    = errors.New("the message can no longer be deleted")
 	ErrCannotEdit       = errors.New("only the sender can edit the message")
 	ErrEditExpired      = errors.New("the message can no longer be edited")
-	ErrQueryEmpty       = errors.New("search query is empty")
-	ErrQueryTooLong     = errors.New("search query is too long")
+	// ErrEditConflict: the message says something else than the edit
+	// started from; another edit was first.
+	ErrEditConflict = errors.New("the message was changed")
+	ErrQueryEmpty   = errors.New("search query is empty")
+	ErrQueryTooLong = errors.New("search query is too long")
 	// ErrForwardNotFound: a message to forward is not in the dialogs of
 	// whoever forwards it, or was taken back.
 	ErrForwardNotFound  = errors.New("forwarded message not found")
@@ -652,10 +655,20 @@ func (m *Message) EditableUntil() time.Time {
 // it shows no more and those it shows from now on, after the ones it
 // keeps. It names the changes, not the photos left: two edits made at
 // once, each knowing the message as it was, both take effect.
+//
+// The words are not changes but the whole text, so Base, when set, is the
+// text the edit started from: an edit of a message that says something
+// else by now is refused rather than left to undo the edit made first.
 type Revision struct {
 	Text    Text
+	Base    *Text
 	Removed Photos
 	Added   Photos
+}
+
+// outdated tells whether the edit started from another text than now.
+func (r Revision) outdated(now Text) bool {
+	return r.Base != nil && *r.Base != now
 }
 
 // photos are those of a message that showed old before the edit. A photo
@@ -695,6 +708,10 @@ func (m *Message) Edited(requesterID uuid.UUID, rev Revision, now time.Time) (*M
 
 	if now.After(m.EditableUntil()) {
 		return nil, ErrEditExpired
+	}
+
+	if rev.outdated(m.content.text) {
+		return nil, ErrEditConflict
 	}
 
 	content, err := m.content.revised(rev)

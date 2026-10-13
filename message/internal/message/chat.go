@@ -450,6 +450,10 @@ func (m *ChatMessage) Edited(requesterID uuid.UUID, rev Revision, now time.Time)
 		return nil, ErrEditExpired
 	}
 
+	if rev.outdated(m.content.text) {
+		return nil, ErrEditConflict
+	}
+
 	content, err := m.content.revised(rev)
 	if err != nil {
 		return nil, err

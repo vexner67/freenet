@@ -185,6 +185,14 @@ func TestChatMessage(t *testing.T) {
 		if _, err = words.Edited(ann, message.Revision{Text: ""}, now); !errors.Is(err, message.ErrTextEmpty) {
 			t.Errorf("words edited to nothing: %v", err)
 		}
+
+		was, stale := message.Text("слова"), message.Text("слово")
+		if _, err = words.Edited(ann, message.Revision{Text: "иначе", Base: &was}, now); err != nil {
+			t.Errorf("an edit of the text it saw: %v", err)
+		}
+		if _, err = words.Edited(ann, message.Revision{Text: "иначе", Base: &stale}, now); !errors.Is(err, message.ErrEditConflict) {
+			t.Errorf("an edit of an older text: %v", err)
+		}
 	})
 
 	t.Run("take back", func(t *testing.T) {
