@@ -9,6 +9,7 @@ use (
 	./notification
 	./pkg/envconfig
 	./pkg/errs
+	./pkg/grpcclient
 	./pkg/grpcserver
 	./pkg/hmac
 	./pkg/jwtauth
@@ -20,6 +21,7 @@ use (
 	./pkg/pubsub
 	./pkg/ratelimit
 	./pkg/reqid
+	./pkg/tracing
 	./post
 	./user
 )
