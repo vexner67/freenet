@@ -1,6 +1,6 @@
 // openvk's "Мои Настройки" at /settings: "Основное" (the e-mail, the
 // page address and "удалить свою страницу"), "Безопасность" (?act=security:
-// where you are signed in) and "Приватность" (?act=privacy:
+// where you are signed in, and the key messages are sealed with) and "Приватность" (?act=privacy:
 // who sees the page and its parts and who writes to you) and "Внешний вид"
 // (?act=interface: the style, the photos and the posts, the clock, where
 // the site opens and what the left menu shows); "Чёрный список" is a page of its own.
@@ -9,10 +9,11 @@
 // site, "Ваучеры" (?act=vouchers: the vouchers and the form that makes one).
 
 import { api, currentUser } from './api.js';
-import { deviceName, formatDateTime, sessionsCount, plural, votesCount, voucherCode, voucherGave, voucherStatus, voucherUsages, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes } from './labels.js';
+import { deviceName, formatDateTime, keyStateText, sessionsCount, plural, votesCount, voucherCode, voucherGave, voucherStatus, voucherUsages, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes } from './labels.js';
 import { $, applyInterface, deviceTheme, el, fullName, pagePath, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
+import { ensureKey, exportKeys, forgetKeys, hasKeys, importKeys, KEY_READY, newCode, newKey } from './e2ee.js';
 
 const error = $('error');
 const tabs = {
@@ -153,7 +154,7 @@ function sessionRow(session, onEnd) {
 
 // initSecurity: openvk's "Безопасность" has "Сессии" with "Сбросить все
 // сессии"; ours also lists them, each with "Завершить".
-function initSecurity() {
+function initSecurity(me) {
   // run does what a link or the button asks and draws the list anew.
   async function run(action) {
     hideError(error);
@@ -182,6 +183,115 @@ function initSecurity() {
   }));
 
   show().catch((e) => showError(error, e));
+  showKey(me);
+}
+
+// showKey is what this browser has of the key messages of dialogs are
+// sealed with (e2ee.js), and what can be done with it.
+async function showKey(me, state) {
+  try {
+    state ??= await ensureKey(me.id, { force: true });
+  } catch (e) {
+    showError(error, e);
+    return;
+  }
+
+  const ready = state === KEY_READY;
+  const again = (next) => showKey(me, next);
+
+  $('key-state').textContent = ready ? 'На этом устройстве есть ключ шифрования сообщений.' : keyStateText(state);
+  $('key-actions').replaceChildren(...[
+    ready && button('Сохранить ключ в файл', () => openExport(me)),
+    button('Загрузить ключ из файла', () => openImport(me, again), { secondary: ready }),
+    button('Создать новый ключ', () => openNewKey(me, again), { secondary: true }),
+    hasKeys(me.id) && button('Удалить ключ с этого устройства', () => openForget(me, again), { secondary: true }),
+  ].filter(Boolean));
+}
+
+// openExport saves the keys into a file locked with a code, which the
+// window shows: both are needed on the other device.
+async function openExport(me) {
+  const code = newCode();
+  const file = new Blob([await exportKeys(me.id, code)], { type: 'application/json' });
+  const link = el('a', { href: URL.createObjectURL(file), download: `freenet-key-${me.nickname}.json`, textContent: 'Скачать файл ещё раз' });
+  const modal = openModal('Перенос ключа');
+
+  modal.body.append(
+    el('p', {}, 'Файл с ключом сохраняется. Перенесите его на другое устройство и загрузите там в «Настройках» → «Безопасность», введя этот код:'),
+    el('p', { className: 'safety-code', textContent: code }),
+    el('p', { className: 'hint', textContent: 'Код показывается один раз: запишите его. С файлом и кодом можно прочитать ваши сообщения — не храните их вместе и никому не передавайте.' }),
+    link,
+  );
+  modal.actions.append(button('Закрыть', modal.close));
+  link.click();
+}
+
+// openImport takes keys from a file openExport made, with its code.
+function openImport(me, done) {
+  const modal = openModal('Загрузка ключа', { tag: 'form' });
+  const fail = el('div', { className: 'error', hidden: true });
+  const file = el('input', { type: 'file', accept: 'application/json,.json', ariaLabel: 'Файл с ключом' });
+  const code = el('input', { type: 'text', maxLength: 40, autocomplete: 'off', placeholder: 'XXXX-XXXX-XXXX-XXXX-XXXX', ariaLabel: 'Код' });
+  const load = button('Загрузить', null, { type: 'submit' });
+
+  modal.body.append(fail, el('p', {}, 'Файл с ключом:'), file, el('p', {}, 'Код, который показало другое устройство:'), code);
+  modal.actions.append(load, button('Отмена', modal.close, { secondary: true }));
+  modal.box.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    hideError(fail);
+    load.disabled = true;
+
+    try {
+      if (!file.files[0]) throw 'Выберите файл с ключом.';
+
+      const state = await importKeys(me.id, await file.files[0].text(), code.value);
+
+      modal.close();
+      say(state === KEY_READY ? 'Ключ загружен' : 'Ключ загружен, но он не тот, что действует сейчас: загрузите файл, сохранённый позже.');
+      done(state);
+    } catch (e) {
+      showError(fail, e);
+      load.disabled = false;
+    }
+  });
+}
+
+// openNewKey sets up a new key: what the old one sealed opens only where
+// it is kept.
+function openNewKey(me, done) {
+  const modal = openModal('Новый ключ шифрования');
+  const fail = el('div', { className: 'error', hidden: true });
+  const make = button('Создать', async () => {
+    hideError(fail);
+    make.disabled = true;
+
+    try {
+      const state = await newKey(me.id);
+
+      modal.close();
+      say('Новый ключ создан', 'Собеседники увидят, что ваш ключ изменился. Перенесите его на другие свои устройства.');
+      done(state);
+    } catch (e) {
+      showError(fail, e);
+      make.disabled = false;
+    }
+  });
+
+  modal.body.append(fail, el('p', {}, 'Новые сообщения будут шифроваться новым ключом. Сообщения, зашифрованные прежним, откроются только там, где он есть, а на других своих устройствах нужно будет загрузить новый ключ.'));
+  modal.actions.append(make, button('Отмена', modal.close, { secondary: true }));
+}
+
+// openForget removes the keys from this browser, as on a computer that is
+// not yours.
+function openForget(me, done) {
+  const modal = openModal('Удаление ключа');
+
+  modal.body.append(el('p', {}, 'После удаления на этом устройстве нельзя будет читать и писать личные сообщения, пока вы не загрузите ключ снова. Если ключ не сохранён в файл или на другом устройстве, сообщения будет не прочитать нигде.'));
+  modal.actions.append(button('Удалить', () => {
+    forgetKeys(me.id);
+    modal.close();
+    done();
+  }), button('Отмена', modal.close, { secondary: true }));
 }
 
 // say shows the notice above the tab: a bold line and what follows it.

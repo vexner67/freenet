@@ -6,9 +6,12 @@
 // of the one the dialog or the chat page sent here from (?peer=<nickname>,
 // ?chat=<id>); a found message opens its dialog or chat where it was said
 // (?msg=<id>). Chats of several people ("беседы") stand in the same list,
-// and "Новая беседа" starts one.
+// and "Новая беседа" starts one. Messages of dialogs are sealed
+// (e2ee.js): the page opens the last ones itself, and searches a dialog
+// itself, page by page, the server searching chats only.
 
 import { api, currentUser } from './api.js';
+import { openMessages } from './e2ee.js';
 import { onEvent } from './events.js';
 import { openNewChat, chatPath } from './chats.js';
 import { chatPreview, chatTitle, formatPostDate, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
@@ -82,7 +85,8 @@ function show(d, atTop) {
 }
 
 function listenToEvents() {
-  onEvent('message', (e) => {
+  onEvent('message', async (e) => {
+    await openMessages(me.id, [e.message]);
     show({ peer: e.peer, lastMessage: e.message, unread: !e.message.out }, true);
   });
 
@@ -105,10 +109,11 @@ function listenToEvents() {
   });
 
   // The last message was edited or taken back: the row says so.
-  onEvent('edit', (e) => {
+  onEvent('edit', async (e) => {
     const entry = shown.get(e.peer.id);
     if (entry?.dialog.lastMessage.id !== e.message.id) return;
 
+    await openMessages(me.id, [e.message]);
     entry.dialog.lastMessage = { ...e.message, read: entry.dialog.lastMessage.read };
     show(entry.dialog, false);
   });
@@ -166,6 +171,7 @@ async function loadMore() {
     const page = await api.dialogs(cursor);
     const fresh = page.dialogs.filter((d) => !shown.has(keyOf(d)));
 
+    await openMessages(me.id, fresh.filter((d) => !d.chat).map((d) => d.lastMessage));
     $('dialogs').append(...fresh.map((d) => {
       const node = dialogNode(d);
       shown.set(keyOf(d), { dialog: d, node });
@@ -213,9 +219,10 @@ function foundNode({ peer, message, chat, chatMessage }) {
 
 async function searchMore() {
   hideError($('error'));
+  $('more').hidden = true;
 
   try {
-    const page = await api.searchMessages(query, { peer: searchPeer, chat: searchChat, cursor });
+    const page = searchPeer ? await searchDialog() : await api.searchMessages(query, { chat: searchChat, cursor });
 
     $('dialogs').append(...page.messages.map(foundNode));
     cursor = page.nextCursor;
@@ -224,7 +231,36 @@ async function searchMore() {
     $('empty').hidden = $('dialogs').children.length > 0;
   } catch (e) {
     showError($('error'), e);
+    $('more').hidden = !cursor;
   }
+}
+
+// How many messages of a dialog one page of its search reads, and in
+// how many requests at most.
+const SEARCH_PAGE = 50;
+const SEARCH_READS = 20;
+const FOUND_PAGE = 20;
+
+// searchDialog finds the messages of the dialog with searchPeer that say
+// query, newest first, opening them page by page: only this browser can
+// read them. One call reads until it found a page of them or read
+// SEARCH_READS pages; "Показать ещё" reads on from where it stopped.
+async function searchDialog() {
+  const found = [];
+  const needle = query.toLowerCase();
+  const says = (m) => [m.text, ...(m.forwarded ?? []).map((f) => f.text)].some((t) => t?.toLowerCase().includes(needle));
+  let read = cursor;
+
+  for (let i = 0; i < SEARCH_READS && found.length < FOUND_PAGE; i++) {
+    const page = await api.messages(searchPeer, { cursor: read, limit: SEARCH_PAGE });
+
+    await openMessages(me.id, page.messages);
+    found.push(...page.messages.filter((m) => !m.deleted && says(m)).reverse().map((message) => ({ peer: page.peer, message })));
+    read = page.nextCursor;
+    if (!read) break;
+  }
+
+  return { messages: found, nextCursor: read };
 }
 
 // showSearch fills the form in and names the tab of the results.
@@ -247,6 +283,9 @@ function showSearch() {
     $('tab-search').classList.add('active');
     $('tab-search').hidden = false;
   }
+
+  // The server cannot read dialogs: a search of all is a search of chats.
+  $('search-hint').hidden = !query || Boolean(searchPeer || searchChat);
 }
 
 me = await currentUser().catch(() => null);

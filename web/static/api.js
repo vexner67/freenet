@@ -286,20 +286,23 @@ export const api = {
   dialogs: (cursor = '') => authorized('GET', page('/api/v1/dialogs', cursor, 0)),
   unreadDialogs: () => authorized('GET', '/api/v1/dialogs/unread-count'),
   // Older messages with cursor, newer ones with after (polling), or the
-  // part of the dialog around a message, as a found one opens.
-  messages(nickname, { cursor = '', after = '', around = '' } = {}) {
+  // part of the dialog around a message, as a found one opens. What they
+  // say is sealed: e2ee.js opens it.
+  messages(nickname, { cursor = '', after = '', around = '', limit = 0 } = {}) {
     const query = new URLSearchParams();
     if (cursor) query.set('cursor', cursor);
     if (after) query.set('after', after);
     if (around) query.set('around', around);
+    if (limit) query.set('limit', String(limit));
     const path = `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`;
     return authorized('GET', query.size ? `${path}?${query}` : path);
   },
-  // post shares a post into the dialog ("Поделиться" "в переписку");
-  // forward carries messages of your dialogs on ("Переслать").
-  // albumPhoto shares a photo of an album the same way.
-  sendMessage: (nickname, text, photos = [], post = '', forward = [], albumPhoto = '') =>
-    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { text, photos, post, forward, albumPhoto }),
+  // sealed is what the message says, sealed by e2ee.js (sendSealed):
+  // plain words are refused. post shares a post into the dialog
+  // ("Поделиться" "в переписку"), albumPhoto a photo of an album; forward
+  // carries messages of your dialogs and chats on ("Переслать").
+  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '' } = {}) =>
+    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto }),
   // Chats of several people ("беседы"): members are nicknames.
   createChat: (title, members) => authorized('POST', '/api/v1/chats', { title, members }),
   chat: (id) => authorized('GET', `/api/v1/chats/${encodeURIComponent(id)}`),
@@ -336,24 +339,27 @@ export const api = {
   // deletes any message of your dialog for you alone ("Удалить у себя").
   deleteMessage: (id, { forMe = false } = {}) => authorized('DELETE', `/api/v1/messages/${encodeURIComponent(id)}` + (forMe ? '?for=me' : '')),
   // What your own message says, within a day of sending.
-  // message is a message of a dialog whole: the dialog carries the
-  // beginnings of long texts.
-  message: (nickname, id) => authorized('GET', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages/${encodeURIComponent(id)}`),
   // The edit names the photos it adds and takes away, not those left:
-  // an edit from another window is not undone.
-  editMessage: (id, text, { add = [], remove = [], base } = {}) =>
-    authorized('PATCH', `/api/v1/messages/${encodeURIComponent(id)}`, { text, baseText: base, addPhotos: add, removePhotos: remove }),
+  // an edit from another window is not undone. sealed and base, what the
+  // message said when the edit began ('' for nothing), as e2ee.js seals
+  // them (editSealed).
+  editMessage: (id, { sealed = null, base, add = [], remove = [] } = {}) =>
+    authorized('PATCH', `/api/v1/messages/${encodeURIComponent(id)}`, { sealed, baseSealed: base, addPhotos: add, removePhotos: remove }),
+  // The public keys messages of dialogs are sealed with (base64, null for
+  // none): your own as the server has it, and another's by nickname.
+  myMessageKey: () => authorized('GET', '/api/v1/me/message-key'),
+  setMessageKey: (publicKey) => authorized('PUT', '/api/v1/me/message-key', { publicKey }),
+  messageKey: (nickname) => authorized('GET', `/api/v1/users/${encodeURIComponent(nickname)}/message-key`),
   // Several messages at once, all or none (up to 100).
   deleteMessages(ids, { forMe = false } = {}) {
     const query = new URLSearchParams(ids.map((id) => ['id', id]));
     if (forMe) query.set('for', 'me');
     return authorized('DELETE', '/api/v1/messages?' + query);
   },
-  // Your messages that say q, of dialogs and chats, newest first: with
-  // peer, a nickname, in that dialog only, with chat, an ID, in that chat.
-  searchMessages(q, { peer = '', chat = '', cursor = '' } = {}) {
+  // Your messages of chats that say q, newest first: with chat, an ID, in
+  // that chat. The server cannot read dialogs: e2ee.js searches them.
+  searchMessages(q, { chat = '', cursor = '' } = {}) {
     const query = new URLSearchParams({ q });
-    if (peer) query.set('peer', peer);
     if (chat) query.set('chat', chat);
     if (cursor) query.set('cursor', cursor);
     return authorized('GET', '/api/v1/messages/search?' + query);

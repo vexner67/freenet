@@ -188,6 +188,7 @@ h1, h2, h3, p, ul { margin: 0; }
 }
 
 .page-title .aside { color: var(--text-9c9670); font-weight: normal; }
+.page-title .aside a { color: inherit; cursor: pointer; }
 
 .page-body {
   padding: 10px;
@@ -331,6 +332,7 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 .checks input { vertical-align: middle; margin: 0 4px 0 0; }
 
 .actions { display: flex; gap: 6px; margin-top: 12px; padding-left: 170px; }
+.key-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
 
 /* Profile */
 
@@ -586,7 +588,8 @@ a.like:hover svg { opacity: .7; }
 .im-message.selected, .im-message.selected.unread { background: var(--back-dae1e8); }
 .im-selection { display: flex; justify-content: space-between; padding: 6px 20px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); }
 .im-selection a { cursor: pointer; }
-.im-message.deleted .im-message-text { color: var(--text-777); font-style: italic; }
+.safety-code { margin: 8px 0; font: bold 16px monospace; letter-spacing: 1px; text-align: center; }
+.im-message.deleted .im-message-text, .im-message-text.unreadable { color: var(--text-777); font-style: italic; }
 .im-message.found, .im-message.found.unread { background: var(--back-f6f0d2); }
 .found-words { background: var(--back-ffe58a); }
 .im-forwarded { margin: 4px 0; padding-left: 8px; border-left: 2px solid var(--line-dae1e8); }
