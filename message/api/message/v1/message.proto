@@ -144,6 +144,9 @@ message Message {
   // recipient (32 bytes each), the IV (12) and AES-GCM's ciphertext with
   // its tag. Empty when it says nothing, as photos alone.
   bytes sealed = 16;
+  // The sticker the message is ("Стикеры" of openvk), nothing else with
+  // it; empty for none.
+  string sticker = 17;
 }
 
 // A message as another one carries it on: a copy of what it showed. One
@@ -162,6 +165,8 @@ message ForwardedMessage {
   // How deep it is carried: 0 for a message forwarded itself, 1 for one
   // that message carried on. The list is a tree written parent first.
   int32 depth = 7;
+  // The sticker it was; empty for none.
+  string sticker = 8;
 }
 
 message Dialog {
@@ -194,6 +199,10 @@ message SendMessageRequest {
   // between keys other than those the two have now, it fails with
   // FailedPrecondition "the encryption keys changed".
   bytes sealed = 7;
+  // A sticker of the catalogue the caller has checked the sender has; it
+  // goes alone, anything else with it fails with InvalidArgument "a
+  // sticker goes alone".
+  string sticker = 8;
 }
 
 message SendMessageResponse {
@@ -450,6 +459,8 @@ message ChatMessage {
   // Messages it carries on from dialogs and chats, oldest first; their
   // texts are cut with text.
   repeated ForwardedMessage forwarded = 17;
+  // The sticker the message is; empty for none.
+  string sticker = 18;
 }
 
 message CreateChatRequest {
@@ -522,6 +533,7 @@ message SendChatMessageRequest {
   // Messages of the caller's dialogs and chats to carry on.
   repeated string forward_ids = 5;
   string photo_id = 6;
+  string sticker = 7;
 }
 
 message SendChatMessageResponse {

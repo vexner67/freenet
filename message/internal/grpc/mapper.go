@@ -23,6 +23,7 @@ func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 		PhotoId:     postString(m.SharedPhoto()),
 		Forwarded:   toProtoForwarded(m.Forwarded()),
 		Sealed:      m.Sealed().Bytes(),
+		Sticker:     m.Sticker().String(),
 	}
 
 	// A message taken back can be neither edited nor taken back again.
@@ -53,6 +54,7 @@ func toProtoForwarded(forwarded message.Forwards) []*messagev1.ForwardedMessage 
 			PhotoId:   postString(f.SharedPhoto),
 			CreatedAt: timestamppb.New(f.CreatedAt),
 			Depth:     int32(f.Depth), //nolint:gosec // at most MaxForwarded
+			Sticker:   f.Sticker.String(),
 		}
 	}
 
@@ -86,6 +88,7 @@ type draftRequest interface {
 	GetPostId() string
 	GetPhotoId() string
 	GetForwardIds() []string
+	GetSticker() string
 }
 
 func fromProtoDraft(req draftRequest) (service.Draft, error) {
@@ -127,7 +130,14 @@ func fromProtoDraft(req draftRequest) (service.Draft, error) {
 		return service.Draft{}, err
 	}
 
-	return service.Draft{Text: text, Photos: photos, Post: post, SharedPhoto: sharedPhoto, Forward: forward}, nil
+	var sticker message.Sticker
+	if req.GetSticker() != "" {
+		if sticker, err = message.NewSticker(req.GetSticker()); err != nil {
+			return service.Draft{}, status.Error(codes.InvalidArgument, err.Error())
+		}
+	}
+
+	return service.Draft{Text: text, Photos: photos, Post: post, SharedPhoto: sharedPhoto, Forward: forward, Sticker: sticker}, nil
 }
 
 // revisionRequest is an edit as the requests of dialogs and of chats name

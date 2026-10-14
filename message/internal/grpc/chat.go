@@ -489,6 +489,7 @@ func toProtoChatMessage(m *message.ChatMessage) *messagev1.ChatMessage {
 		PostId:    postString(m.Post()),
 		PhotoId:   postString(m.SharedPhoto()),
 		Forwarded: toProtoForwarded(m.Forwarded()),
+		Sticker:   m.Sticker().String(),
 	}
 
 	if m.IsDeleted() {

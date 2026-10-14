@@ -374,6 +374,11 @@ func (m *ChatMessage) SharedPhoto() uuid.UUID {
 	return m.content.sharedPhoto
 }
 
+// Sticker is the sticker m is, "" for none.
+func (m *ChatMessage) Sticker() Sticker {
+	return m.content.sticker
+}
+
 // Forwarded are the messages m carries on, nil for none.
 func (m *ChatMessage) Forwarded() Forwards {
 	return m.content.forwarded

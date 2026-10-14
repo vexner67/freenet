@@ -378,7 +378,9 @@ type Forwarded struct {
 	Post     uuid.UUID
 	// SharedPhoto is a photo of an album it shared, uuid.Nil for none.
 	SharedPhoto uuid.UUID
-	CreatedAt   time.Time
+	// Sticker is the sticker it was, "" for none.
+	Sticker   Sticker
+	CreatedAt time.Time
 	// Depth is how deep it is carried: 0 for a message forwarded itself,
 	// 1 for one that message carried on, and so on, as VK nests them.
 	Depth int
@@ -428,6 +430,9 @@ type Content struct {
 	// sharedPhoto is a photo of an album shared ("Поделиться" under a
 	// photo), uuid.Nil for none; only with text.
 	sharedPhoto uuid.UUID
+	// sticker is the sticker the message is, "" for none; nothing goes
+	// with it.
+	sticker Sticker
 }
 
 // NewContent: post is uuid.Nil for none; whether it exists the caller has
@@ -552,6 +557,10 @@ func (c Content) Photos() Photos {
 // revised is c as rev makes it: the words and the photos change, what it
 // shares and carries on stays.
 func (c Content) revised(rev Revision) (Content, error) {
+	if c.sticker != "" {
+		return Content{}, ErrStickerAlone
+	}
+
 	photos, err := rev.photos(c.photos)
 	if err != nil {
 		return Content{}, err
@@ -578,6 +587,7 @@ func (c Content) carried(senderID uuid.UUID, createdAt time.Time) []Forwarded {
 		Photos:      c.photos,
 		Post:        c.post,
 		SharedPhoto: c.sharedPhoto,
+		Sticker:     c.sticker,
 		CreatedAt:   createdAt,
 	})
 
@@ -840,6 +850,11 @@ func (m *Message) Post() uuid.UUID {
 // for none.
 func (m *Message) SharedPhoto() uuid.UUID {
 	return m.content.sharedPhoto
+}
+
+// Sticker is the sticker m is, "" for none.
+func (m *Message) Sticker() Sticker {
+	return m.content.sticker
 }
 
 func (m *Message) CreatedAt() time.Time {

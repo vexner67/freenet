@@ -52,9 +52,10 @@ const saveMessageQuery = `
 			shared_photo_id,
 			forwarded,
 			created_at,
-			sealed
+			sealed,
+			sticker
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING id, sender_id, recipient_id
 	)
 	INSERT INTO dialogs (
@@ -84,7 +85,7 @@ func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error 
 		return errs.Wrap("forwardedToDB", err)
 	}
 
-	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt(), m.Sealed().Bytes())
+	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt(), m.Sealed().Bytes(), m.Sticker().String())
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -107,7 +108,8 @@ const getMessageQuery = `
 		hidden_from_recipient,
 		forwarded,
 		deleted_at,
-		sealed
+		sealed,
+		sticker
 	FROM messages
 	WHERE id = $1
 `
@@ -156,7 +158,8 @@ const (
 			hidden_from_recipient,
 			forwarded,
 			deleted_at,
-			sealed
+			sealed,
+			sticker
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
@@ -180,7 +183,8 @@ const (
 			hidden_from_recipient,
 			forwarded,
 			deleted_at,
-			sealed
+			sealed,
+			sticker
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
@@ -244,13 +248,14 @@ type scanned struct {
 	editedAt    *time.Time
 	deletedAt   *time.Time
 	sealed      []byte
+	sticker     string
 }
 
 // dest are the columns of a message, in the order the queries list them.
 func (s *scanned) dest() []any {
 	return []any{
 		&s.stored.ID, &s.stored.SenderID, &s.stored.RecipientID, &s.text, &s.photos, &s.post, &s.sharedPhoto, &s.stored.CreatedAt,
-		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt, &s.sealed,
+		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt, &s.sealed, &s.sticker,
 	}
 }
 
@@ -283,7 +288,7 @@ func (s *scanned) message() (*message.Message, error) {
 	}
 
 	stored := s.stored
-	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded).WithSealed(message.Sealed(s.sealed))
+	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded).WithSealed(message.Sealed(s.sealed)).WithSticker(message.Sticker(s.sticker))
 	if s.sharedPhoto != nil {
 		stored.Content = stored.Content.WithSharedPhoto(*s.sharedPhoto)
 	}
@@ -307,6 +312,7 @@ type forwardedJSON struct {
 	Photos    []uuid.UUID `json:"photos,omitempty"`
 	Post      *uuid.UUID  `json:"post,omitempty"`
 	Photo     *uuid.UUID  `json:"photo,omitempty"`
+	Sticker   string      `json:"sticker,omitempty"`
 	CreatedAt time.Time   `json:"created_at"`
 	// Depth is absent for a message forwarded itself, as all were before
 	// forwards nested.
@@ -322,6 +328,7 @@ func forwardedToDB(forwarded message.Forwards) ([]byte, error) {
 			Photos:    f.Photos,
 			Post:      postIDToDB(f.Post),
 			Photo:     postIDToDB(f.SharedPhoto),
+			Sticker:   f.Sticker.String(),
 			CreatedAt: f.CreatedAt,
 			Depth:     f.Depth,
 		}
@@ -352,6 +359,7 @@ func forwardedFromDB(data []byte) (message.Forwards, error) {
 			Text:      message.Text(row.Text),
 			CreatedAt: row.CreatedAt.UTC(),
 			Depth:     row.Depth,
+			Sticker:   message.Sticker(row.Sticker),
 		}
 		if len(row.Photos) > 0 {
 			forwarded[i].Photos = row.Photos
@@ -417,7 +425,8 @@ const listDialogsQuery = `
 		m.hidden_from_recipient,
 		m.forwarded,
 		m.deleted_at,
-		m.sealed
+		m.sealed,
+		m.sticker
 	FROM dialogs d
 	JOIN messages m ON m.id = d.last_message_id
 	LEFT JOIN dialogs p ON p.user_id = d.peer_id AND p.peer_id = d.user_id
@@ -633,6 +642,7 @@ const retractMessageQuery = `
 		shared_photo_id = NULL,
 		forwarded = '[]',
 		sealed = NULL,
+		sticker = '',
 		edited_at = NULL,
 		deleted_at = $2
 	WHERE id = $1
@@ -768,7 +778,8 @@ const deleteUserDialogsQuery = `
 			m.hidden_from_recipient,
 			m.forwarded,
 			m.deleted_at,
-			m.sealed
+			m.sealed,
+			m.sticker
 	), gone_dialogs AS (
 		DELETE FROM dialogs
 		WHERE user_id = $1
@@ -792,7 +803,8 @@ const deleteUserDialogsQuery = `
 		hidden_from_recipient,
 		forwarded,
 		deleted_at,
-		sealed
+		sealed,
+		sticker
 	FROM gone_messages
 	WHERE cardinality(photo_ids) > 0
 		OR forwarded <> '[]'
