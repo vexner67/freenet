@@ -1,6 +1,7 @@
 package redis_test
 
 import (
+	"bytes"
 	"testing"
 	"time"
 
@@ -16,12 +17,10 @@ func TestEventCodec(t *testing.T) {
 	var codec redis.EventCodec
 	ann, bob := uuid.New(), uuid.New()
 
-	text, err := message.NewText("привет\nкак дела? 👋")
-	if err != nil {
-		t.Fatal(err)
-	}
+	sealed := seal("привет\nкак дела? 👋")
 	sent := message.Restore(message.Stored{
-		ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: message.RestoreContent(text, message.Photos{uuid.New()}, uuid.Nil, nil), CreatedAt: time.Date(2026, 10, 7, 12, 0, 0, 123000, time.UTC),
+		ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: message.RestoreContent("", message.Photos{uuid.New()}, uuid.Nil, nil).WithSealed(sealed),
+		CreatedAt: time.Date(2026, 10, 7, 12, 0, 0, 123000, time.UTC),
 	})
 
 	data, err := codec.Encode(bob, service.Event{Message: sent})
@@ -35,7 +34,7 @@ func TestEventCodec(t *testing.T) {
 	}
 	got := e.Message
 	if key != bob || got == nil || e.Read != nil || got.ID() != sent.ID() || got.SenderID() != ann || got.RecipientID() != bob ||
-		got.Text() != text || !got.CreatedAt().Equal(sent.CreatedAt()) {
+		got.Sealed() != sealed || !got.CreatedAt().Equal(sent.CreatedAt()) {
 		t.Fatalf("message round trip = %v %+v", key, got)
 	}
 
@@ -55,7 +54,7 @@ func TestEventCodec(t *testing.T) {
 		t.Fatalf("deleted round trip = %v %+v %v", key, e.Deleted, err)
 	}
 
-	share, err := message.NewPhotoShare("", uuid.New())
+	share, err := message.NewSealedPhotoShare("", uuid.New())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,12 +62,14 @@ func TestEventCodec(t *testing.T) {
 	if data, err = codec.Encode(bob, service.Event{Message: shared}); err != nil {
 		t.Fatalf("Encode a shared photo: %v", err)
 	}
-	if _, e, err = codec.Decode(data); err != nil || e.Message == nil || e.Message.SharedPhoto() != shared.SharedPhoto() || e.Message.Text() != "" {
+	if _, e, err = codec.Decode(data); err != nil || e.Message == nil || e.Message.SharedPhoto() != shared.SharedPhoto() || e.Message.Sealed() != "" {
 		t.Fatalf("a shared photo round trip = %+v, %v", e.Message, err)
 	}
 
+	// The words of what a message of a dialog carries on are sealed with
+	// its own.
 	carried := message.Forwarded{
-		SenderID: uuid.New(), Text: "смотри", Photos: message.Photos{uuid.New()}, Post: uuid.New(), SharedPhoto: uuid.New(),
+		SenderID: uuid.New(), Photos: message.Photos{uuid.New()}, Post: uuid.New(), SharedPhoto: uuid.New(),
 		CreatedAt: sent.CreatedAt().Add(-time.Hour),
 	}
 	forward := message.Restore(message.Stored{
@@ -80,7 +81,7 @@ func TestEventCodec(t *testing.T) {
 	if _, e, err = codec.Decode(data); err != nil || e.Message == nil || len(e.Message.Forwarded()) != 1 {
 		t.Fatalf("forward round trip = %+v, %v", e.Message, err)
 	}
-	if got := e.Message.Forwarded()[0]; got.SenderID != carried.SenderID || got.Text != carried.Text || got.Photos[0] != carried.Photos[0] ||
+	if got := e.Message.Forwarded()[0]; got.SenderID != carried.SenderID || got.Text != "" || got.Photos[0] != carried.Photos[0] ||
 		got.Post != carried.Post || !got.CreatedAt.Equal(carried.CreatedAt) {
 		t.Fatalf("forwarded = %+v, want %+v", got, carried)
 	}
@@ -92,12 +93,12 @@ func TestEventCodec(t *testing.T) {
 	if data, err = codec.Encode(bob, service.Event{Edited: gone}); err != nil {
 		t.Fatalf("Encode taken back: %v", err)
 	}
-	if _, e, err = codec.Decode(data); err != nil || e.Edited == nil || !e.Edited.IsDeleted() || e.Edited.Text() != "" ||
+	if _, e, err = codec.Decode(data); err != nil || e.Edited == nil || !e.Edited.IsDeleted() || e.Edited.Sealed() != "" ||
 		!e.Edited.DeletedAt().Equal(gone.DeletedAt()) {
 		t.Fatalf("taken back round trip = %+v, %v", e.Edited, err)
 	}
 
-	edit, err := sent.Edited(ann, message.Revision{Text: "привет!"}, sent.CreatedAt().Add(time.Minute))
+	edit, err := sent.Edited(ann, message.Revision{Sealed: seal("привет!")}, sent.CreatedAt().Add(time.Minute))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -105,14 +106,14 @@ func TestEventCodec(t *testing.T) {
 		t.Fatalf("Encode edited: %v", err)
 	}
 	if key, e, err = codec.Decode(data); err != nil || key != bob || e.Message != nil || e.Edited == nil ||
-		e.Edited.ID() != sent.ID() || e.Edited.Text() != "привет!" || !e.Edited.EditedAt().Equal(edit.EditedAt()) || len(e.Edited.Photos()) != 1 {
+		e.Edited.ID() != sent.ID() || e.Edited.Sealed() != seal("привет!") || !e.Edited.EditedAt().Equal(edit.EditedAt()) || len(e.Edited.Photos()) != 1 {
 		t.Fatalf("edited round trip = %v %+v %v", key, e.Edited, err)
 	}
 
 	if _, err = codec.Encode(ann, service.Event{}); err == nil {
 		t.Error("Encode of an empty event = nil, want an error")
 	}
-	for _, bad := range []string{`not json`, `{"user_id":"` + ann.String() + `"}`, `{"message":{"text":"   "}}`} {
+	for _, bad := range []string{`not json`, `{"user_id":"` + ann.String() + `"}`, `{"message":{"text":"   "}}`, `{"message":{"sealed":"AQ=="}}`} {
 		if _, _, err = codec.Decode([]byte(bad)); err == nil {
 			t.Errorf("Decode(%s) = nil, want an error", bad)
 		}
@@ -200,4 +201,13 @@ func TestEventCodec_Chat(t *testing.T) {
 			t.Errorf("%s was decoded", name)
 		}
 	}
+}
+
+// seal is text as a browser would seal it: the server never opens it, so
+// the bytes only have to look right.
+func seal(text string) message.Sealed {
+	b := append([]byte{1}, bytes.Repeat([]byte{7}, 2*message.KeySize+12)...)
+	b = append(b, text...)
+
+	return message.Sealed(append(b, make([]byte, 16)...))
 }

@@ -77,11 +77,11 @@ func TestSendMessage_Permissions(t *testing.T) {
 			h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
 			h.users.closedMessages, h.users.relation, h.messages.peerWrote = tt.closed, tt.relation, tt.peerWrote
 
-			w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"text":"привет"}`, "Authorization", "Bearer tok")
+			w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"sealed":"cHJpdmV0"}`, "Authorization", "Bearer tok")
 			if w.Code != tt.want || h.users.wroteFirst != tt.peerWrote {
 				t.Fatalf("status = %d, want %d; wroteFirst passed = %v", w.Code, tt.want, h.users.wroteFirst)
 			}
-			if tt.want == http.StatusForbidden && h.messages.sentText != "" {
+			if tt.want == http.StatusForbidden && h.messages.sent != "" {
 				t.Fatal("a refused message was sent")
 			}
 		})

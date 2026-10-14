@@ -275,21 +275,21 @@ type Messages interface {
 	Dialogs(ctx context.Context, accessToken, cursor string, limit int) (model.DialogPage, error)
 	CountUnread(ctx context.Context, accessToken string) (int, error)
 	History(ctx context.Context, accessToken, peerID string, at model.MessagesAt, limit int) (model.MessagePage, error)
-	// Whole is a message of the dialog with peerID with its whole text.
-	Whole(ctx context.Context, accessToken, peerID, id string) (model.Message, error)
 	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
 	Delete(ctx context.Context, accessToken, id string) error
 	// Hide deletes a message for the caller alone; Edit changes what
-	// their own says; Search finds theirs that say query, in the dialog
-	// with peerID or, for "", in all.
+	// their own says.
 	Hide(ctx context.Context, accessToken, id string) error
 	// DeleteMany deletes several messages at once, all or none: for both
 	// sides, as Delete, or for the caller alone, as Hide.
 	DeleteMany(ctx context.Context, accessToken string, ids []string, forEveryone bool) error
 	Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.Message, error)
-	Search(ctx context.Context, accessToken, peerID, query, cursor string, limit int) (model.FoundMessages, error)
 	HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error)
 	Subscribe(ctx context.Context, accessToken string) (model.MessageEvents, error)
+	// SetKey makes publicKey the one messages to and from the caller are
+	// sealed with; Key is userID's, nil for a user who has none yet.
+	SetKey(ctx context.Context, accessToken string, publicKey []byte) error
+	Key(ctx context.Context, accessToken, userID string) ([]byte, error)
 }
 
 // Chats are the chats of several people ("беседы"); all take the access
@@ -514,12 +514,14 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/dialogs/unread-count", a.countUnreadDialogs)
 	mux.HandleFunc("GET /api/v1/dialogs/{nickname}/messages", a.listMessages)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/messages", a.sendMessage)
-	mux.HandleFunc("GET /api/v1/dialogs/{nickname}/messages/{id}", a.getMessage)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/read", a.markDialogRead)
 	mux.HandleFunc("GET /api/v1/messages/search", a.searchMessages)
 	mux.HandleFunc("PATCH /api/v1/messages/{id}", a.editMessage)
 	mux.HandleFunc("DELETE /api/v1/messages/{id}", a.deleteMessage)
 	mux.HandleFunc("DELETE /api/v1/messages", a.deleteMessages)
+	mux.HandleFunc("GET /api/v1/me/message-key", a.getMyMessageKey)
+	mux.HandleFunc("PUT /api/v1/me/message-key", a.setMessageKey)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/message-key", a.getMessageKey)
 
 	mux.HandleFunc("POST /api/v1/chats", a.createChat)
 	mux.HandleFunc("GET /api/v1/chats/{id}", a.getChat)

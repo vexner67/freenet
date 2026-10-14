@@ -409,8 +409,9 @@ func TestChatMessages(t *testing.T) {
 			t.Fatalf("a photo of an album: %d %+v", w.Code, got)
 		}
 
-		// What is not there for the caller is not theirs to share.
-		for _, body := range []string{`{"post":"p404"}`, `{"text":"вот","albumPhoto":"ph404"}`} {
+		// What is not there for the caller is not theirs to share, and
+		// messages of chats are not sealed.
+		for _, body := range []string{`{"post":"p404"}`, `{"text":"вот","albumPhoto":"ph404"}`, `{"sealed":"eA=="}`} {
 			h = newHarness(rest.Config{})
 			if w = h.do("POST", "/api/v1/chats/c1/messages", body, "Authorization", annAuth); w.Code != http.StatusBadRequest || len(h.chats.calls) != 0 {
 				t.Fatalf("%s: %d, calls %q", body, w.Code, h.chats.calls)
@@ -488,13 +489,13 @@ func TestSearchChatMessages(t *testing.T) {
 		NextCursor string `json:"nextCursor"`
 	}
 
-	// In one chat: the dialogs are not asked.
+	// In one chat.
 	h := newHarness(rest.Config{})
 	w := h.do("GET", "/api/v1/messages/search?q=%D0%BF%D0%BE%D1%85%D0%BE%D0%B4&chat=c1&cursor=m7", "", "Authorization", annAuth)
 	got := decode[foundJSON](t, w)
 
-	if w.Code != http.StatusOK || !slices.Equal(h.chats.calls, []string{"search c1 поход m7"}) || h.messages.searched != "" || got.NextCursor != "" || len(got.Messages) != 1 {
-		t.Fatalf("%d %+v, calls %q, dialogs asked for %q", w.Code, got, h.chats.calls, h.messages.searched)
+	if w.Code != http.StatusOK || !slices.Equal(h.chats.calls, []string{"search c1 поход m7"}) || got.NextCursor != "" || len(got.Messages) != 1 {
+		t.Fatalf("%d %+v, calls %q", w.Code, got, h.chats.calls)
 	}
 
 	row := got.Messages[0]
@@ -507,23 +508,21 @@ func TestSearchChatMessages(t *testing.T) {
 		t.Fatalf("the forwarded of a found message = %+v", carried)
 	}
 
-	// Everywhere: dialogs and chats in one list, newest first. The
-	// dialogs have more below m8, so what the chats found below it waits.
+	// Everywhere: all the caller's chats. Dialogs are sealed, the server
+	// cannot search them.
 	h = newHarness(rest.Config{})
 	w = h.do("GET", "/api/v1/messages/search?q=x", "", "Authorization", annAuth)
-	if got = decode[foundJSON](t, w); w.Code != http.StatusOK || len(got.Messages) != 2 || got.Messages[0].Message.ID != "m9" || got.NextCursor != "m8" ||
+	if got = decode[foundJSON](t, w); w.Code != http.StatusOK || len(got.Messages) != 1 || got.Messages[0].Message != nil || got.Messages[0].ChatMessage.ID != "m4" ||
 		!slices.Equal(h.chats.calls, []string{"search  x "}) {
 		t.Fatalf("everywhere: %d %+v, calls %q", w.Code, got, h.chats.calls)
 	}
 
-	// In one dialog: the chats are not asked.
 	h = newHarness(rest.Config{})
-	if w = h.do("GET", "/api/v1/messages/search?q=x&peer=bob", "", "Authorization", annAuth); w.Code != http.StatusOK || len(h.chats.calls) != 0 {
-		t.Fatalf("one dialog: %d, calls %q", w.Code, h.chats.calls)
+	if w = h.do("GET", "/api/v1/messages/search?q=x&peer=bob", "", "Authorization", annAuth); w.Code != http.StatusBadRequest || len(h.chats.calls) != 0 {
+		t.Fatalf("a dialog: %d, calls %q", w.Code, h.chats.calls)
 	}
-
-	if w = h.do("GET", "/api/v1/messages/search?q=x&peer=bob&chat=c1", "", "Authorization", annAuth); w.Code != http.StatusBadRequest {
-		t.Fatalf("a dialog and a chat at once: %d", w.Code)
+	if w = h.do("GET", "/api/v1/messages/search?q=x", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", w.Code)
 	}
 
 	h = newHarness(rest.Config{})

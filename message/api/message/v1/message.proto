@@ -10,7 +10,9 @@ import "google/protobuf/timestamp.proto";
 // Every RPC requires an access token: the caller is one side of a dialog.
 service MessageService {
   // The caller writes to recipient_id; the gateway has checked that the
-  // recipient exists.
+  // recipient exists. Messages of dialogs are end-to-end encrypted: what
+  // one says is sealed by the sender's browser between the keys the two
+  // have now (SetKey).
   rpc SendMessage(SendMessageRequest) returns (SendMessageResponse);
   // The caller's dialogs, the most recently written first.
   rpc ListDialogs(ListDialogsRequest) returns (ListDialogsResponse);
@@ -36,9 +38,13 @@ service MessageService {
   // within a day of sending (editable_until); the post it shares and the
   // messages it carries on stay.
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
-  // The caller's messages that say the query, in any case, newest first:
-  // in the dialog with peer_id or, without it, in all their dialogs.
-  rpc SearchMessages(SearchMessagesRequest) returns (SearchMessagesResponse);
+  // The public key the caller's browsers seal and open messages of dialogs
+  // with from now on: set up the first time, or anew when the old one is
+  // lost. Messages sealed with the old one stay so.
+  rpc SetKey(SetKeyRequest) returns (google.protobuf.Empty);
+  // A user's public key, empty when they have not set one up: messages to
+  // them cannot be sealed yet.
+  rpc GetKey(GetKeyRequest) returns (GetKeyResponse);
   // Requires an access token: whether the peer has ever written to the
   // caller, who may then answer whatever the peer's privacy.
   rpc HasMessagesFrom(HasMessagesFromRequest) returns (HasMessagesFromResponse);
@@ -106,7 +112,7 @@ message Message {
   string id = 1;
   string sender_id = 2;
   string recipient_id = 3;
-  // Empty when the message has photos only.
+  // Always empty: a message says sealed what it says.
   string text = 4;
   google.protobuf.Timestamp created_at = 5;
   // The recipient has read it.
@@ -133,9 +139,16 @@ message Message {
   // A photo of an album of the post service shared into the dialog
   // ("Поделиться" under a photo, "в переписку"); empty for none.
   string photo_id = 15;
+  // What it says, and what the messages it carries on say, sealed by the
+  // sender's browser: version 1, the public keys of the sender and of the
+  // recipient (32 bytes each), the IV (12) and AES-GCM's ciphertext with
+  // its tag. Empty when it says nothing, as photos alone.
+  bytes sealed = 16;
 }
 
-// A message as another one carries it on: a copy of what it showed.
+// A message as another one carries it on: a copy of what it showed. One
+// carried on in a dialog says nothing here: its words are sealed with the
+// message, in the order of the list.
 message ForwardedMessage {
   string sender_id = 1;
   string text = 2;
@@ -160,9 +173,11 @@ message Dialog {
 
 message SendMessageRequest {
   string recipient_id = 1;
-  // Text, photos, a shared post, forwarded messages or some of them. The
-  // caller has checked with the media service that the photos are the
-  // sender's, and with the post service that the post exists.
+  // What it says, photos, a shared post, forwarded messages or some of
+  // them. The caller has checked with the media service that the photos
+  // are the sender's, and with the post service that the post exists.
+  // text is never set (InvalidArgument "messages are end-to-end
+  // encrypted"): what it says goes sealed.
   string text = 2;
   repeated string photo_ids = 3;
   string post_id = 4;
@@ -174,6 +189,11 @@ message SendMessageRequest {
   // sender may see; with text alone, anything else with it fails with
   // InvalidArgument.
   string photo_id = 6;
+  // What it says, sealed as Message.sealed tells, and what the messages it
+  // carries on say, in their order; empty when it says nothing. Sealed
+  // between keys other than those the two have now, it fails with
+  // FailedPrecondition "the encryption keys changed".
+  bytes sealed = 7;
 }
 
 message SendMessageResponse {
@@ -244,8 +264,7 @@ message HideMessageRequest {
 
 message EditMessageRequest {
   string id = 1;
-  // May be empty only when the message has photos, shares a post or
-  // carries other messages on.
+  // Never set, as when sending: what it says goes in sealed.
   string text = 2;
   // Once the whole list of photos, which two edits made at once
   // overwrote for each other.
@@ -263,6 +282,13 @@ message EditMessageRequest {
   // was changed"): the words are replaced whole, and an edit made from an
   // older text would undo the one made first.
   optional string base_text = 7;
+  // What the message says from now on, sealed as when sending, with what
+  // the messages it carries on say; empty when it says nothing anymore —
+  // then it has photos, shares something or carries messages on.
+  bytes sealed = 8;
+  // What it said sealed when the edit started; as base_text, a message
+  // that says something else by now is not edited.
+  optional bytes base_sealed = 9;
 }
 
 message DeleteMessagesRequest {
@@ -277,26 +303,18 @@ message EditMessageResponse {
   Message message = 1;
 }
 
-message SearchMessagesRequest {
-  // The dialog to search; empty for all the caller's dialogs.
-  string peer_id = 1;
-  // At most 100 characters, not empty.
-  string query = 2;
-  // Empty for the newest, else next_cursor of the previous page.
-  string cursor = 3;
-  // 1-50; anything else means 20.
-  int32 limit = 4;
-  // The texts of the messages are cut to this many characters and say so
-  // (text_cut): the text of a message to where it says the query, those
-  // it carries on to their beginnings; 0 for whole texts.
-  int32 text_limit = 5;
+message SetKeyRequest {
+  // 32 bytes of a public X25519 key.
+  bytes public_key = 1;
 }
 
-message SearchMessagesResponse {
-  // read is not told here.
-  repeated Message messages = 1;
-  // Empty on the last page.
-  string next_cursor = 2;
+message GetKeyRequest {
+  string user_id = 1;
+}
+
+message GetKeyResponse {
+  // Empty for none.
+  bytes public_key = 1;
 }
 
 message HasMessagesFromRequest {

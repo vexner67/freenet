@@ -167,6 +167,8 @@ type messageJSON struct {
 	Forwarded []forwardedJSON `json:"forwarded,omitempty"`
 	// DeletedAt is zero for a message never taken back.
 	DeletedAt time.Time `json:"deleted_at"`
+	// Sealed is what a message of a dialog says, sealed: base64 in JSON.
+	Sealed []byte `json:"sealed,omitempty"`
 }
 
 type forwardedJSON struct {
@@ -203,6 +205,7 @@ func toMessageJSON(m *message.Message) *messageJSON {
 		SharedPhoto: m.SharedPhoto(),
 		CreatedAt:   m.CreatedAt(),
 		EditedAt:    m.EditedAt(),
+		Sealed:      m.Sealed().Bytes(),
 	}
 }
 
@@ -218,16 +221,44 @@ func (m *messageJSON) message() (*message.Message, error) {
 		return message.Restore(stored), nil
 	}
 
-	var err error
-	if stored.Content, err = contentOf(m.Text, m.Photos, m.Post, m.SharedPhoto, m.Forwarded); err != nil {
-		return nil, errs.Wrap("contentOf", err)
+	sealed, err := message.NewSealed(m.Sealed)
+	if err != nil {
+		return nil, errs.Wrap("message.NewSealed", err)
+	}
+
+	if stored.Content, err = sealedContentOf(sealed, m.Photos, m.Post, m.SharedPhoto, m.Forwarded); err != nil {
+		return nil, errs.Wrap("sealedContentOf", err)
 	}
 
 	return message.Restore(stored), nil
 }
 
-// contentOf rebuilds what a message of a dialog or of a chat says and
-// shows, checking it as a new one.
+// sealedContentOf rebuilds what a message of a dialog says and shows,
+// checking it as a new one.
+func sealedContentOf(sealed message.Sealed, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, carried []forwardedJSON) (message.Content, error) {
+	photos, err := message.NewPhotos(photoIDs)
+	if err != nil {
+		return message.Content{}, errs.Wrap("message.NewPhotos", err)
+	}
+
+	forwarded, err := forwardsOf(carried)
+	if err != nil {
+		return message.Content{}, errs.Wrap("forwardsOf", err)
+	}
+
+	if sharedPhoto != uuid.Nil {
+		content, err := message.NewSealedPhotoShare(sealed, sharedPhoto)
+
+		return content, errs.Wrap("message.NewSealedPhotoShare", err)
+	}
+
+	content, err := message.NewSealedContent(sealed, photos, post, forwarded)
+
+	return content, errs.Wrap("message.NewSealedContent", err)
+}
+
+// contentOf rebuilds what a message of a chat says and shows, checking it
+// as a new one.
 func contentOf(said string, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, carried []forwardedJSON) (message.Content, error) {
 	text, err := message.NewText(said)
 	if err != nil {

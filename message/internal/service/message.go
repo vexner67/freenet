@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"time"
 
@@ -46,10 +47,6 @@ type MessageRepository interface {
 	// Hide deletes the message for userID alone and brings their side of
 	// the dialog back to the messages they have left; message.ErrNotFound.
 	Hide(ctx context.Context, m *message.Message, userID uuid.UUID) error
-	// Search returns up to limit messages userID has that say q, in the
-	// dialog with peerID or, for uuid.Nil, in all of theirs, newest first,
-	// with IDs below before (uuid.Nil: from the newest).
-	Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, before uuid.UUID, limit int) ([]*message.Message, error)
 	// DeleteByUser removes the dialogs of a user, both sides of each, with
 	// every message in them, and returns the deleted messages that had
 	// photos, their own or of the messages they carried on.
@@ -77,17 +74,25 @@ type PhotoCopy struct {
 // Draft is a message to send, into a dialog or a chat. Forward are the
 // messages of the sender's dialogs and chats it carries on ("Переслать"); the rest is what it says itself,
 // and one of them is there. SharedPhoto, a photo of an album to share,
-// goes with text alone.
+// goes with text alone. A message of a dialog says Sealed instead of
+// Text: its words and those of what it carries on, sealed by the sender's
+// browser.
 type Draft struct {
 	Text        message.Text
+	Sealed      message.Sealed
 	Photos      message.Photos
 	Post        uuid.UUID
 	SharedPhoto uuid.UUID
 	Forward     []uuid.UUID
 }
 
-// content is what the draft says itself, with the messages it carries on.
+// content is what the draft says itself in a chat, with the messages it
+// carries on.
 func (d Draft) content(forwarded message.Forwards) (message.Content, error) {
+	if d.Sealed != "" {
+		return message.Content{}, message.ErrSealedInChat
+	}
+
 	if d.SharedPhoto == uuid.Nil {
 		content, err := message.NewContent(d.Text, d.Photos, d.Post, forwarded)
 		return content, errs.Wrap("message.NewContent", err)
@@ -100,6 +105,37 @@ func (d Draft) content(forwarded message.Forwards) (message.Content, error) {
 	content, err := message.NewPhotoShare(d.Text, d.SharedPhoto)
 
 	return content, errs.Wrap("message.NewPhotoShare", err)
+}
+
+// sealedContent is what the draft says in a dialog: sealed, with the
+// messages it carries on.
+func (d Draft) sealedContent(forwarded message.Forwards) (message.Content, error) {
+	if d.Text != "" {
+		return message.Content{}, message.ErrPlainText
+	}
+
+	if d.SharedPhoto == uuid.Nil {
+		content, err := message.NewSealedContent(d.Sealed, d.Photos, d.Post, forwarded)
+		return content, errs.Wrap("message.NewSealedContent", err)
+	}
+
+	if len(d.Photos) > 0 || d.Post != uuid.Nil || len(forwarded) > 0 {
+		return message.Content{}, message.ErrSharedPhotoAlone
+	}
+
+	content, err := message.NewSealedPhotoShare(d.Sealed, d.SharedPhoto)
+
+	return content, errs.Wrap("message.NewSealedPhotoShare", err)
+}
+
+// KeyRepository keeps the public key of each user that messages of
+// dialogs are sealed with: one at a time.
+type KeyRepository interface {
+	// Get returns message.ErrNoKey for a user who has none.
+	Get(ctx context.Context, userID uuid.UUID) (message.Key, error)
+	// Set makes key the user's from now on.
+	Set(ctx context.Context, userID uuid.UUID, key message.Key) error
+	Delete(ctx context.Context, userID uuid.UUID) error
 }
 
 // TxManager runs fn in one transaction: everything it saves is kept if it
@@ -149,13 +185,6 @@ type Event struct {
 	Chat    *ChatEvent
 }
 
-// SearchPage is one screen of found messages, newest first; NextCursor is
-// uuid.Nil on the last.
-type SearchPage struct {
-	Messages   []*message.Message
-	NextCursor uuid.UUID
-}
-
 // Deleted: message ID is gone from the dialog of whoever hears it, who
 // deleted it for themselves.
 type Deleted struct {
@@ -182,6 +211,7 @@ type Events interface {
 type MessageService struct {
 	messageRepo MessageRepository
 	dialogRepo  DialogRepository
+	keys        KeyRepository
 	events      Events
 	tx          TxManager
 	photos      PhotoKeeper
@@ -194,6 +224,7 @@ type MessageService struct {
 type Deps struct {
 	Messages     MessageRepository
 	Dialogs      DialogRepository
+	Keys         KeyRepository
 	ChatMessages ChatMessageRepository
 	ChatMembers  ChatMemberRepository
 	Events       Events
@@ -205,32 +236,38 @@ func NewMessageService(d Deps) *MessageService {
 	return &MessageService{
 		messageRepo: d.Messages,
 		dialogRepo:  d.Dialogs,
+		keys:        d.Keys,
 		events:      d.Events,
 		tx:          d.Tx,
 		photos:      d.Photos,
-		forwards:    forwarder{messages: d.Messages, chatMessages: d.ChatMessages, members: d.ChatMembers},
+		forwards:    forwarder{messages: d.Messages, chatMessages: d.ChatMessages, members: d.ChatMembers, dialogs: true},
 		now:         time.Now,
 	}
 }
 
 // Send writes from senderID to recipientID; the caller has made sure the
-// recipient exists and the photos are the sender's. Media keeps the
-// photos, and those of the forwarded messages once more. Both hear of
-// it: the sender's other pages too.
+// recipient exists and the photos are the sender's. What it says is
+// sealed between the keys the two have now. Media keeps the photos, and
+// those of the forwarded messages once more. Both hear of it: the
+// sender's other pages too.
 func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UUID, d Draft) (*message.Message, error) {
 	forwarded, copies, err := s.forwards.forwarded(ctx, senderID, d.Forward)
 	if err != nil {
 		return nil, errs.Wrap("s.forwards.forwarded", err)
 	}
 
-	content, err := d.content(forwarded)
+	content, err := d.sealedContent(forwarded)
 	if err != nil {
-		return nil, errs.Wrap("d.content", err)
+		return nil, errs.Wrap("d.sealedContent", err)
 	}
 
 	m, err := message.New(senderID, recipientID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("message.New", err)
+	}
+
+	if err = s.checkKeys(ctx, m); err != nil {
+		return nil, errs.Wrap("s.checkKeys", err)
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
@@ -395,6 +432,10 @@ func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, rev mes
 			return errs.Wrap("m.Edited", err)
 		}
 
+		if err = s.checkKeys(ctx, edited); err != nil {
+			return errs.Wrap("s.checkKeys", err)
+		}
+
 		if err = s.messageRepo.Update(ctx, edited); err != nil {
 			return errs.Wrap("s.messageRepo.Update", err)
 		}
@@ -414,23 +455,52 @@ func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, rev mes
 	return edited, nil
 }
 
-// Search pages the messages of userID that say q, newest first: in the
-// dialog with peerID, or in all of theirs for uuid.Nil.
-func (s *MessageService) Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, cursor uuid.UUID, size int) (SearchPage, error) {
-	size = pageSize(size)
+// checkKeys tells whether m is sealed between the keys its sender and its
+// recipient have now (message.Sealed.CheckKeys).
+func (s *MessageService) checkKeys(ctx context.Context, m *message.Message) error {
+	if m.Sealed() == "" {
+		return nil
+	}
 
-	found, err := s.messageRepo.Search(ctx, userID, peerID, q, cursor, size+1)
+	sender, err := s.key(ctx, m.SenderID())
 	if err != nil {
-		return SearchPage{}, errs.Wrap("s.messageRepo.Search", err)
+		return err
 	}
 
-	page := SearchPage{Messages: found}
-	if len(found) > size {
-		page.Messages = found[:size]
-		page.NextCursor = found[size-1].ID()
+	recipient, err := s.key(ctx, m.RecipientID())
+	if err != nil {
+		return err
 	}
 
-	return page, nil
+	return errs.Wrap("m.Sealed().CheckKeys", m.Sealed().CheckKeys(sender, recipient))
+}
+
+// key is the key of userID, "" for none.
+func (s *MessageService) key(ctx context.Context, userID uuid.UUID) (message.Key, error) {
+	key, err := s.keys.Get(ctx, userID)
+	if errors.Is(err, message.ErrNoKey) {
+		return "", nil
+	}
+
+	return key, errs.Wrap("s.keys.Get", err)
+}
+
+// SetKey makes key the one messages to and from userID are sealed with
+// from now on, set up by their browser: the first time, or anew after the
+// old one was lost. What was sealed with the old one stays so.
+func (s *MessageService) SetKey(ctx context.Context, userID uuid.UUID, key message.Key) error {
+	return errs.Wrap("s.keys.Set", s.keys.Set(ctx, userID, key))
+}
+
+// Key is the key messages to userID are sealed with; message.ErrNoKey
+// for a user who has not set one up.
+func (s *MessageService) Key(ctx context.Context, userID uuid.UUID) (message.Key, error) {
+	key, err := s.keys.Get(ctx, userID)
+	if err != nil {
+		return "", errs.Wrap("s.keys.Get", err)
+	}
+
+	return key, nil
 }
 
 // Dialogs pages a user's dialogs, the most recently written first; cursor
@@ -603,11 +673,15 @@ func pageSize(size int) int {
 }
 
 // PurgeUser erases the dialogs of a user whose page was deleted for good,
-// from both sides: the peers would only keep a dialog with nobody. The
-// photos the peers sent or forwarded there go too; the user's own media
-// erases with the rest of the user.
+// from both sides, and their key: the peers would only keep a dialog with
+// nobody. The photos the peers sent or forwarded there go too; the user's
+// own media erases with the rest of the user.
 func (s *MessageService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.keys.Delete(ctx, userID); err != nil {
+			return errs.Wrap("s.keys.Delete", err)
+		}
+
 		withPhotos, err := s.messageRepo.DeleteByUser(ctx, userID)
 		if err != nil {
 			return errs.Wrap("s.messageRepo.DeleteByUser", err)

@@ -149,7 +149,7 @@ func (a *App) build(cfg config.Config) error {
 		a.server.Registrar(),
 		messagegrpc.NewMessageHandler(
 			service.NewMessageService(service.Deps{
-				Messages: repos.messages, Dialogs: repos.dialogs, ChatMessages: repos.chatMessages, ChatMembers: repos.chatMembers,
+				Messages: repos.messages, Dialogs: repos.dialogs, Keys: repos.keys, ChatMessages: repos.chatMessages, ChatMembers: repos.chatMembers,
 				Events: events, Tx: repos.tx, Photos: photos,
 			}),
 			service.NewChatService(service.ChatDeps{
@@ -273,6 +273,7 @@ func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
 type repositories struct {
 	messages service.MessageRepository
 	dialogs  service.DialogRepository
+	keys     service.KeyRepository
 	tx       service.TxManager
 	outbox   outboxQueue
 
@@ -287,6 +288,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		return repositories{
 			messages: store.Messages(),
 			dialogs:  store.Dialogs(),
+			keys:     store.Keys(),
 			tx:       inmem.TxManager{},
 			outbox:   outbox.NewMemory(),
 
@@ -323,6 +325,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 	return repositories{
 		messages: postgres.NewMessageRepository(a.pool),
 		dialogs:  postgres.NewDialogRepository(a.pool),
+		keys:     postgres.NewKeyRepository(a.pool),
 		tx:       pgpool.NewTxManager(a.pool),
 		outbox:   a.queue,
 

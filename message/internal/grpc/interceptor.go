@@ -64,6 +64,16 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.FailedPrecondition, "you were removed from this chat"), true
 	case errors.Is(err, message.ErrTextEmpty):
 		return status.New(codes.InvalidArgument, "message text is empty"), true
+	case errors.Is(err, message.ErrKeyChanged):
+		return status.New(codes.FailedPrecondition, message.ErrKeyChanged.Error()), true
+	case errors.Is(err, message.ErrNoKey):
+		return status.New(codes.NotFound, message.ErrNoKey.Error()), true
+	case errors.Is(err, message.ErrPlainText):
+		return status.New(codes.InvalidArgument, message.ErrPlainText.Error()), true
+	case errors.Is(err, message.ErrSealedInChat):
+		return status.New(codes.InvalidArgument, message.ErrSealedInChat.Error()), true
+	case errors.Is(err, message.ErrForwardIntoChat):
+		return status.New(codes.InvalidArgument, message.ErrForwardIntoChat.Error()), true
 	default:
 		return nil, false
 	}

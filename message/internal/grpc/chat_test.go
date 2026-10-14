@@ -40,7 +40,7 @@ func TestChat(t *testing.T) {
 	}
 
 	t.Run("the counter of the menu counts chats with dialogs", func(t *testing.T) {
-		if _, err := s.client.SendMessage(s.as(t, dan), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "привет"}); err != nil {
+		if _, err := s.client.SendMessage(s.as(t, dan), &messagev1.SendMessageRequest{RecipientId: ann.String(), Sealed: s.sealed(t, "привет", dan, ann)}); err != nil {
 			t.Fatal(err)
 		}
 
@@ -304,7 +304,18 @@ func TestChat_ForwardShareAndSearch(t *testing.T) {
 
 	post, albumPhoto, photo := uuid.New().String(), uuid.New().String(), uuid.New().String()
 
-	private, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: strings.Repeat("я", 30) + " поход", PhotoIds: []string{photo}})
+	// What bob wrote in another chat, without cat.
+	elsewhere, err := s.client.CreateChat(s.as(t, bob), &messagev1.CreateChatRequest{Title: "Без Кати", MemberIds: []string{ann.String(), uuid.NewString()}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	private, err := s.client.SendChatMessage(s.as(t, bob), &messagev1.SendChatMessageRequest{
+		ChatId: elsewhere.GetChat().GetId(), Text: strings.Repeat("я", 30) + " поход", PhotoIds: []string{photo},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	dialog, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Sealed: s.sealed(t, "только тебе", bob, ann)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -391,6 +402,10 @@ func TestChat_ForwardShareAndSearch(t *testing.T) {
 		}{
 			{"a message one does not have is carried on", func() error {
 				_, err := s.client.SendChatMessage(s.as(t, cat), &messagev1.SendChatMessageRequest{ChatId: chatID, ForwardIds: []string{private.GetMessage().GetId()}})
+				return err
+			}, codes.InvalidArgument},
+			{"a message of a dialog is carried into a chat", func() error {
+				_, err := s.client.SendChatMessage(s.as(t, ann), &messagev1.SendChatMessageRequest{ChatId: chatID, ForwardIds: []string{dialog.GetMessage().GetId()}})
 				return err
 			}, codes.InvalidArgument},
 			{"a photo of an album with a post", func() error {

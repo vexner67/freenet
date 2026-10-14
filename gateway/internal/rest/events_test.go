@@ -92,10 +92,10 @@ func TestEvents(t *testing.T) {
 
 	// u1 is the caller (GetMe), u2 is bob.
 	h.messages.events <- model.MessageEvent{Message: &model.Message{
-		ID: "m1", SenderID: "u2", RecipientID: "u1", Text: "привет", CreatedAt: time.Now(),
+		ID: "m1", SenderID: "u2", RecipientID: "u1", Sealed: []byte("privet"), CreatedAt: time.Now(),
 	}}
 
-	if e := next(t, conn); e.Type != "message" || e.Peer["nickname"] != "bob" || e.Message["text"] != "привет" || e.Message["out"] != false {
+	if e := next(t, conn); e.Type != "message" || e.Peer["nickname"] != "bob" || e.Message["sealed"] != "cHJpdmV0" || e.Message["out"] != false {
 		t.Fatalf("message event = %+v", e)
 	}
 	if e := next(t, conn); e.Type != "counters" || e.Messages == nil || *e.Messages != 2 || e.Notifications != nil {

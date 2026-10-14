@@ -43,7 +43,6 @@ func TestSearch_Indexed(t *testing.T) {
 		index, query string
 		args         []any
 	}{
-		{"messages_search_idx", "SELECT id FROM messages WHERE " + messageWords + " ILIKE $1", []any{"%привет%"}},
 		{"chat_messages_search_idx", "SELECT msg.id FROM chat_messages msg WHERE " + chatMessageWords + " ILIKE $1", []any{"%привет%"}},
 	} {
 		rows, err := tx.Query(ctx, "EXPLAIN "+tt.query, tt.args...)

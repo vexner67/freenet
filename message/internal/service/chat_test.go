@@ -29,7 +29,7 @@ func newChats() chatFixture {
 	})
 
 	f.dialogs = service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(),
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(),
 		Events: f.events, Tx: fakeTx{}, Photos: f.photos,
 	})
 

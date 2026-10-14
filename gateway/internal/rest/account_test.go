@@ -55,7 +55,7 @@ func TestDeactivatedPage(t *testing.T) {
 	}
 
 	h.chats.none = true
-	h.messages.dialogs = []model.Dialog{{PeerID: "u3", LastMessage: model.Message{ID: "m3", SenderID: "u3", RecipientID: "u1", Text: "пока"}}}
+	h.messages.dialogs = []model.Dialog{{PeerID: "u3", LastMessage: model.Message{ID: "m3", SenderID: "u3", RecipientID: "u1", Sealed: []byte("пока")}}}
 	w = h.do(http.MethodGet, "/api/v1/dialogs", "", "Authorization", "Bearer tok")
 	page := decode[struct {
 		Dialogs []struct {

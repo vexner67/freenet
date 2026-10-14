@@ -1509,12 +1509,12 @@ paths:
 
   /api/v1/messages/search:
     get:
-      summary: Find your messages by what they say
+      summary: Find your messages of chats by what they say
       description: |
-        Newest first, in your dialogs and your chats in one list: a
-        message of a dialog comes with who is on the other side (`peer`,
-        `message`), a message of a chat with its chat (`chat`,
-        `chatMessage`). Messages you deleted for yourself, messages taken
+        Newest first, each with its chat (`chat`, `chatMessage`). Messages
+        of dialogs are end-to-end encrypted: the server cannot read them,
+        the browser searches what it has opened itself (`peer` answers 400
+        `messages of dialogs are end-to-end encrypted`). Messages taken
         back and what happened in a chat are not found; who is not in a
         chat anymore finds what they were shown. A message is found by its
         own words and by the words of the messages it forwards; a long
@@ -1527,13 +1527,9 @@ paths:
           required: true
           description: Text the messages say, in any case
           schema: { type: string, minLength: 1, maxLength: 100 }
-        - name: peer
-          in: query
-          description: A nickname, to search the dialog with that user only
-          schema: { type: string }
         - name: chat
           in: query
-          description: A chat of yours, to search it only; not with `peer`
+          description: A chat of yours, to search it only
           schema: { type: string, format: uuid }
         - name: cursor
           in: query
@@ -1554,10 +1550,8 @@ paths:
                     type: array
                     items:
                       type: object
-                      description: A message of a dialog (`peer`, `message`) or of a chat (`chat`, `chatMessage`)
+                      required: [chat, chatMessage]
                       properties:
-                        peer: { $ref: "#/components/schemas/Author" }
-                        message: { $ref: "#/components/schemas/Message" }
                         chat:
                           type: object
                           required: [id, title]
@@ -1614,15 +1608,17 @@ paths:
     patch:
       summary: Edit your message
       description: |
-        Within a day of sending (`editableUntil`), as in VK: what it says
-        and its photos. The request names the changes, not the photos
+        Within a day of sending (`editableUntil`), as in VK: what it says,
+        sealed anew for the keys of both sides as they are now (409 `the
+        encryption keys changed` otherwise), and its photos. The request
+        names the changes, not the photos
         left, so edits from two windows do not undo each other:
         `removePhotos` are deleted, `addPhotos` (uploads from
         `POST /api/v1/me/photos` that nothing shows yet) come after the
         photos kept, and the rest stay. The message shows 10 at most. A
         photo to remove that is gone already is fine. The post it shares
         and the messages it forwards stay; without them and photos the
-        text may not be empty. Both sides get an `edit` event.
+        message may not say nothing. Both sides get an `edit` event.
       security: [{ bearer: [] }]
       parameters:
         - name: id
@@ -1635,18 +1631,20 @@ paths:
           application/json:
             schema:
               type: object
-              required: [text]
               properties:
-                text: { type: string, maxLength: 60000 }
-                baseText:
+                sealed:
                   type: string
-                  maxLength: 60000
+                  format: byte
+                  description: What it says from now on, sealed as in `Message`; absent or empty for nothing
+                baseSealed:
+                  type: string
+                  format: byte
                   description: >-
-                    The whole text the edit started from. With it the edit is
-                    refused (409 `the message was changed`) when the message
-                    says something else by now, so two windows do not
-                    overwrite each other's words; without it the edit is
-                    applied as is.
+                    `sealed` of the message the edit started from, "" for
+                    nothing. With it the edit is refused (409 `the message
+                    was changed`) when the message says something else by
+                    now, so two windows do not overwrite each other's words;
+                    without it the edit is applied as is.
                 addPhotos:
                   type: array
                   maxItems: 10
@@ -1670,7 +1668,7 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409":
-          description: "`the message can no longer be edited` after `editableUntil`; `the message was changed` when it no longer says `baseText`"
+          description: "`the message can no longer be edited` after `editableUntil`; `the message was changed` when it no longer says `baseSealed`; `the encryption keys changed` when one side has a new key: fetch it and seal again"
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
@@ -4367,13 +4365,16 @@ paths:
     post:
       summary: Write to a chat
       description: >-
-        What a message of a dialog may be: text, photos (yours, from
-        POST /me/photos, up to 10), a shared post (`post`), messages of
-        your dialogs and chats to carry on (`forward`, at most 20 counting
-        those they carry themselves) or some of them; or a photo of an
-        album you are shown (`albumPhoto`), with text alone. What is not
-        there for you answers 400 `post not found`, `photo not found`,
-        `forwarded message not found`.
+        Text, photos (yours, from POST /me/photos, up to 10), a shared post
+        (`post`), messages of your chats to carry on (`forward`, at most 20
+        counting those they carry themselves) or some of them; or a photo
+        of an album you are shown (`albumPhoto`), with text alone. What is
+        not there for you answers 400 `post not found`, `photo not found`,
+        `forwarded message not found`. Messages of chats are not
+        encrypted: `sealed` answers 400 `messages of chats are not
+        encrypted`, and a message of a dialog, which is, cannot be carried
+        into a chat (400 `encrypted messages cannot be forwarded into a
+        chat`).
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -4465,7 +4466,7 @@ paths:
               required: [text]
               properties:
                 text: { type: string, maxLength: 60000, description: "May be empty only when the message has photos, shares a post or forwards messages" }
-                baseText: { type: string, maxLength: 60000, description: "The whole text the edit started from, as in `PATCH /api/v1/messages/{id}`" }
+                baseText: { type: string, maxLength: 60000, description: "The whole text the edit started from: with it the edit is refused (409 `the message was changed`) when the message says something else by now" }
                 addPhotos:
                   type: array
                   maxItems: 10
@@ -4512,31 +4513,6 @@ paths:
                   count: { type: integer, maximum: 100 }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
-  /api/v1/dialogs/{nickname}/messages/{id}:
-    get:
-      summary: A message of the dialog, whole
-      description: |
-        The dialog carries the beginnings of long texts (`textCut`), its
-        own and of the messages it carries on; this is the message with
-        all of them, for "Показать больше" and for editing.
-      parameters:
-        - name: nickname
-          in: path
-          required: true
-          schema: { type: string }
-        - name: id
-          in: path
-          required: true
-          schema: { type: string, format: uuid }
-      responses:
-        "200":
-          description: The message
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Message" }
-        "401": { $ref: "#/components/responses/Unauthorized" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
   /api/v1/dialogs/{nickname}/messages:
     parameters:
       - name: nickname
@@ -4581,17 +4557,21 @@ paths:
         Your profile must be filled in first; you cannot write to yourself.
         The user's privacy (`messagesWrite`) and blacklists decide whether
         you may; whoever wrote to you may always be answered, unless one of
-        you blacklisted the other. Text, photos, a post shared into the
+        you blacklisted the other. What it says goes sealed (`sealed`, as
+        in `Message`, for the keys of both of you as they are now: 409 `the
+        encryption keys changed` otherwise, and the user must have a key —
+        `GET /api/v1/users/{nickname}/message-key`); plain `text` answers
+        400 `messages are end-to-end encrypted`. Photos, a post shared into the
         dialog ("Поделиться" "в переписку"), messages of your dialogs to
         carry on ("Переслать") or some of them; photos are IDs from
         `POST /api/v1/me/photos` and must be yours, the post must be there
         (`post not found` otherwise). `albumPhoto` shares a photo of an
         album you can see ("Поделиться" under a photo; `photo not found`
-        otherwise), with text alone. `forward`: at most 20 messages,
+        otherwise), with words alone. `forward`: at most 20 messages,
         counting those they carry themselves; they go oldest first, as
-        copies of what they say now, with their photos; one that you do
-        not have or that was taken back fails with `forwarded message not
-        found`.
+        copies of what they are now, with their photos, their words sealed
+        in `sealed` with the message's own; one that you do not have or
+        that was taken back fails with `forwarded message not found`.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -4601,7 +4581,7 @@ paths:
               type: object
               additionalProperties: false
               properties:
-                text: { type: string, maxLength: 60000 }
+                sealed: { type: string, format: byte }
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 post: { type: string, format: uuid }
                 albumPhoto: { type: string, format: uuid }
@@ -4623,7 +4603,68 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`the encryption keys changed`: the message is sealed for keys that are not yours or the user's anymore, or the user has none"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/me/message-key:
+    get:
+      summary: Your key for messages, as the server has it
+      description: |
+        The public key (X25519) messages of your dialogs are sealed with;
+        the private one lives in your browsers only. A browser whose key is
+        not this one cannot open new messages: move the key to it from the
+        one that has it, or set up a new one. Null before any.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessageKey" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    put:
+      summary: Set up your key for messages
+      description: |
+        A key your browser made becomes the one your messages are sealed
+        with from now on. What was sealed with the one before stays so: a
+        browser without it cannot open those messages.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [publicKey]
+              properties:
+                publicKey: { type: string, format: byte, description: "32 bytes" }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/users/{nickname}/message-key:
+    get:
+      summary: The key messages to a user are sealed with
+      description: Null for a user who has not set one up yet; nobody can write to them until they do.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: nickname
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "200":
+          description: The key
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/MessageKey" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/dialogs/{nickname}/read:
     post:
@@ -5718,15 +5759,30 @@ components:
           type: string
           description: "The newest notification of the page, shown or not; empty on an empty page"
 
+    MessageKey:
+      type: object
+      required: [publicKey]
+      properties:
+        publicKey: { type: ["string", "null"], format: byte, description: "32 bytes of X25519; null for none" }
+
     Message:
       type: object
-      required: [id, text, photos, createdAt, out, read, deletableUntil, forwardedCount, deleted]
+      required: [id, sealed, photos, createdAt, out, read, deletableUntil, forwardedCount, deleted]
       properties:
         id: { type: string, format: uuid }
-        text: { type: string, description: "Plain text with \\n line breaks; never HTML; empty when photos only" }
-        textCut:
-          type: boolean
-          description: "`text`, or the text of a message it carries on, is only its beginning: 200 characters of the last message in GET /api/v1/dialogs, 1000 in a dialog. GET /api/v1/dialogs/{nickname}/messages/{id} tells it whole. Found messages carry 1000 characters too, from a little before the place they say the query. Absent when the texts are whole; live events are whole"
+        sealed:
+          type: ["string", "null"]
+          format: byte
+          description: >-
+            What it says, end-to-end encrypted; null when it says nothing.
+            The bytes: version 1, the X25519 public keys of the sender and
+            of the recipient (32 each), a 12-byte IV and AES-256-GCM's
+            ciphertext with its tag, the first 77 bytes its additional
+            data. The AES key is HKDF-SHA256 of the X25519 shared secret,
+            with no salt and the info "freenet message v1" followed by the
+            two public keys, the smaller first. The plaintext is the JSON
+            `{"t": text, "f": [the texts of the messages it carries on, in
+            the order of all of them]}`, plain text with \\n line breaks.
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
@@ -5763,11 +5819,12 @@ components:
     ForwardedMessage:
       type: object
       description: A message carried on from a dialog or a chat, a copy of what its author wrote then; one that carried on others itself is followed by them, one level deeper, and may say nothing of its own
-      required: [depth, author, text, photos, createdAt, post]
+      required: [index, depth, author, text, photos, createdAt, post]
       properties:
+        index: { type: integer, description: "Its place among all the messages carried on, those not shown too: in a dialog its text is the `f[index]` of the sealed message" }
         depth: { type: integer, description: "How deep it is carried: 0 for a message forwarded itself, 1 for one that message carried on, and so on" }
         author: { $ref: "#/components/schemas/Author" }
-        text: { type: string }
+        text: { type: string, description: "Empty in a dialog: the text is sealed in the message" }
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
