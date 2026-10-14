@@ -45,6 +45,8 @@ type messageRequest struct {
 	// AlbumPhoto is a photo of an album shared into the dialog
 	// ("Поделиться" under a photo, "в переписку"), with text alone.
 	AlbumPhoto string `json:"albumPhoto"`
+	// Sticker is a sticker of a pack among the caller's stickers, alone.
+	Sticker string `json:"sticker"`
 }
 
 // messageJSON: Out is the caller's own message, Read means its recipient
@@ -84,13 +86,15 @@ type attachedJSON struct {
 	// pages are gone.
 	ForwardedCount int             `json:"forwardedCount"`
 	Forwarded      []forwardedJSON `json:"forwarded,omitempty"`
+	// Sticker is the sticker the message is, "" for none.
+	Sticker string `json:"sticker"`
 
 	// carried is what Forwarded is made of (showAttached).
 	carried []model.ForwardedMessage
 }
 
-func toAttachedJSON(postID, sharedPhotoID string, forwarded []model.ForwardedMessage) attachedJSON {
-	return attachedJSON{Post: postID, AlbumPhoto: sharedPhotoID, ForwardedCount: len(forwarded), carried: forwarded}
+func toAttachedJSON(postID, sharedPhotoID, sticker string, forwarded []model.ForwardedMessage) attachedJSON {
+	return attachedJSON{Post: postID, AlbumPhoto: sharedPhotoID, Sticker: sticker, ForwardedCount: len(forwarded), carried: forwarded}
 }
 
 // attachedTo are the attachments of the messages, to fill in in place.
@@ -120,6 +124,7 @@ type forwardedJSON struct {
 
 	AlbumPhoto  string           `json:"albumPhoto"`
 	SharedPhoto *sharedPhotoJSON `json:"sharedPhoto,omitempty"`
+	Sticker     string           `json:"sticker"`
 }
 
 // dialogJSON is a row of "Мои Сообщения": the dialog with Peer or, with
@@ -157,7 +162,7 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 		Read:      m.Read,
 		EditedAt:  optionalTime(m.EditedAt),
 
-		attachedJSON: toAttachedJSON(m.PostID, m.SharedPhotoID, m.Forwarded),
+		attachedJSON: toAttachedJSON(m.PostID, m.SharedPhotoID, m.Sticker, m.Forwarded),
 		Deleted:      !m.DeletedAt.IsZero(),
 	}
 
@@ -469,12 +474,17 @@ func (a *api) draft(r *http.Request, token string, req messageRequest) (model.Me
 		}
 	}
 
+	if err := a.checkSticker(r, token, req.Sticker); err != nil {
+		return model.MessageDraft{}, err
+	}
+
 	if err := a.claimPhotos(r, token, req.Photos); err != nil {
 		return model.MessageDraft{}, err
 	}
 
 	return model.MessageDraft{
 		Text: req.Text, Sealed: req.Sealed, PhotoIDs: req.Photos, PostID: req.Post, SharedPhotoID: req.AlbumPhoto, ForwardIDs: req.Forward,
+		Sticker: req.Sticker,
 	}, nil
 }
 
@@ -568,6 +578,7 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 
 				AlbumPhoto:  f.SharedPhotoID,
 				SharedPhoto: sharedPhoto(f.SharedPhotoID),
+				Sticker:     f.Sticker,
 			}
 			if f.PostID != "" {
 				fj.Repost = shown[f.PostID]

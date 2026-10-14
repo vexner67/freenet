@@ -364,6 +364,16 @@ type Gifts interface {
 	Delete(ctx context.Context, accessToken, giftID string) error
 }
 
+// Stickers are openvk's "Стикеры", which the user service keeps: packs
+// people take, free or for votes, and send in messages.
+type Stickers interface {
+	// Catalog is every pack, with which of them the caller, anonymous
+	// without accessToken, has taken and keeps among their stickers.
+	Catalog(ctx context.Context, accessToken string) ([]model.StickerPack, error)
+	Add(ctx context.Context, accessToken, packID string) error
+	Remove(ctx context.Context, accessToken, packID string) error
+}
+
 // Votes are openvk's "голоса", which the user service keeps: vouchers give
 // them, gifts cost them and people hand them to each other.
 type Votes interface {
@@ -394,6 +404,7 @@ type Backends struct {
 	Notes         Notes
 	Faves         Faves
 	Gifts         Gifts
+	Stickers      Stickers
 	Votes         Votes
 }
 
@@ -411,6 +422,7 @@ type api struct {
 	notes             Notes
 	faves             Faves
 	gifts             Gifts
+	stickers          Stickers
 	votes             Votes
 	logger            *slog.Logger
 	trustForwardedFor bool
@@ -620,6 +632,9 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/users/{nickname}/gifts", a.listGifts)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/gifts", a.sendGift)
 	mux.HandleFunc("DELETE /api/v1/gifts/{id}", a.deleteGift)
+	mux.HandleFunc("GET /api/v1/stickers", a.stickerCatalog)
+	mux.HandleFunc("PUT /api/v1/me/stickers/{pack}", a.addStickerPack)
+	mux.HandleFunc("DELETE /api/v1/me/stickers/{pack}", a.removeStickerPack)
 	mux.HandleFunc("POST /api/v1/me/vouchers", a.redeemVoucher)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/votes", a.transferVotes)
 	mux.HandleFunc("GET /api/v1/vouchers", a.listVouchers)

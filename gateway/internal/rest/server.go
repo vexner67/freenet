@@ -58,6 +58,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 		notes:             backends.Notes,
 		faves:             backends.Faves,
 		gifts:             backends.Gifts,
+		stickers:          backends.Stickers,
 		votes:             backends.Votes,
 		media:             backends.Media,
 		notifications:     backends.Notifications,

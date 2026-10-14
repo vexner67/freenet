@@ -1181,8 +1181,8 @@ func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d mode
 
 	return model.Message{
 		ID: "m9", SenderID: "u1", RecipientID: recipientID, Sealed: d.Sealed, PhotoIDs: d.PhotoIDs, PostID: d.PostID, Forwarded: forwarded,
-		SharedPhotoID: d.SharedPhotoID,
-		CreatedAt:     time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC),
+		SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker,
+		CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC),
 	}, f.err
 }
 
@@ -1281,6 +1281,7 @@ type harness struct {
 	notes         *fakeNotes
 	faves         *fakeFaves
 	gifts         *fakeGifts
+	stickers      *fakeStickers
 	votes         *fakeVotes
 }
 
@@ -1302,6 +1303,7 @@ func newHarness(cfg rest.Config) harness {
 		albums:        &fakeAlbums{},
 		notes:         &fakeNotes{},
 		gifts:         &fakeGifts{},
+		stickers:      &fakeStickers{},
 		votes:         &fakeVotes{},
 		faves:         &fakeFaves{},
 	}
@@ -1319,6 +1321,7 @@ func newHarness(cfg rest.Config) harness {
 		Albums:        h.albums,
 		Notes:         h.notes,
 		Gifts:         h.gifts,
+		Stickers:      h.stickers,
 		Votes:         h.votes,
 		Faves:         h.faves,
 	}, h.metrics).Handler()
