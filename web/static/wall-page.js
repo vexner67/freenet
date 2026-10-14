@@ -3,17 +3,19 @@
 // Петрова » Стена" with how many posts, the tabs "Все записи", "Записи
 // Анны" (of a community, "Записи сообщества"), "Чужие записи", "Архив
 // записей" for whoever owns the wall and "Поиск"; the form to write is on
-// the first tab only.
+// the first tab only. VK's "Отложенные записи" (openvk has none), the
+// posts that wait for their time, are a tab of the same page.
 
 import { api, currentUser } from './api.js';
 import { archiveYears, genitiveName } from './labels.js';
 import { $, clubRef, el, fullName, hideError, pagePath, renderChrome, showError } from './layout.js';
 import { button, openModal } from './modal.js';
+import { showPostponedList } from './postponed.js';
 import { initWall, wallPath } from './wall.js';
 
 const clubMatch = location.pathname.match(/^\/club\/([^/]+)\/wall$/);
 const params = new URLSearchParams(location.search);
-const type = ['owner', 'others', 'archive', 'search'].includes(params.get('type')) ? params.get('type') : '';
+const type = ['owner', 'others', 'archive', 'postponed', 'search'].includes(params.get('type')) ? params.get('type') : '';
 const query = type === 'search' ? (params.get('q') ?? '').trim() : '';
 // The year of the archive, as openvk's ?year=; none is "Все годы".
 const year = type === 'archive' && /^[1-9]\d{3}$/.test(params.get('year') ?? '') ? Number(params.get('year')) : 0;
@@ -33,10 +35,11 @@ async function loadOwner() {
 
 function renderTabs(owner, moderates) {
   const path = wallPath(owner);
-  const tabs = { '': 'tab-all', owner: 'tab-owner', others: 'tab-others', archive: 'tab-archive', search: 'tab-search' };
+  const tabs = { '': 'tab-all', owner: 'tab-owner', others: 'tab-others', archive: 'tab-archive', postponed: 'tab-postponed', search: 'tab-search' };
 
   // As openvk: the archive is its owner's only.
   $('tab-archive').hidden = !moderates;
+  $('tab-postponed').hidden = !moderates;
   $('archive-banner').hidden = type !== 'archive';
   $('wall-search').hidden = type !== 'search';
   $('wall-search').action = path;
@@ -146,14 +149,16 @@ try {
   $('title').replaceChildren(el('a', { href: pagePath(owner), textContent: name }), ' » Стена');
   const moderates = options.moderates ?? me?.id === owner.id;
 
-  if (type === 'archive' && !moderates) throw new Error('permission denied');
+  if ((type === 'archive' || type === 'postponed') && !moderates) throw new Error('permission denied');
 
   renderTabs(owner, moderates);
   $('wall').hidden = false;
 
   // "Поиск" searches all posts of the wall, once there is something to
   // search for.
-  if (type !== 'search' || query) {
+  if (type === 'postponed') {
+    await showPostponedList(owner);
+  } else if (type !== 'search' || query) {
     await initWall(owner, me, {
       ...options, type: type === 'search' ? '' : type, query, year, onYears: (years) => renderArchive(owner, years),
     });

@@ -3,6 +3,7 @@ import { $, el, isMicroblog, renderChrome, showError, hideError, autosize } from
 import { postNode, wallOwnerID } from './posts.js';
 import { initAttachments } from './attach.js';
 import { initPollDraft } from './poll.js';
+import { initTimer, postponedNotice } from './postponed.js';
 import { openFeedSettings, readFeedSettings } from './feedsettings.js';
 
 // openvk's limit of a post; the counter shows near the end.
@@ -121,6 +122,16 @@ function initForm(me) {
     },
   });
 
+  // "Таймер": the post waits for its time on my wall.
+  const timer = initTimer({
+    link: $('post-timer'),
+    box: $('post-timer-box'),
+    submit: $('post-submit'),
+    onChange: (on) => {
+      if (on) form.classList.add('expanded');
+    },
+  });
+
   function updateCounter() {
     const left = MAX_LENGTH - text.value.length;
     $('post-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? `осталось ${left}` : '';
@@ -136,12 +147,21 @@ function initForm(me) {
       return;
     }
 
+    if (timer.active() && poll.value()) {
+      showError(error, 'К отложенной записи нельзя прикрепить опрос.');
+      return;
+    }
+
     $('post-submit').disabled = true;
 
     try {
-      const post = await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked, poll.value());
-
-      $('posts').prepend(feedNode(post, me));
+      if (timer.active()) {
+        const p = await api.postpone(text.value, attachments.ids(), $('post-nsfw').checked, timer.value());
+        $('posts').prepend(postponedNotice(p, me));
+        timer.clear();
+      } else {
+        $('posts').prepend(feedNode(await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked, poll.value()), me));
+      }
       showEmpty();
       text.value = '';
       $('post-nsfw').checked = false;
@@ -160,7 +180,7 @@ function initForm(me) {
   text.addEventListener('focus', () => form.classList.add('expanded'));
   // The form stays open while it holds text, photos or a poll.
   text.addEventListener('blur', () => {
-    if (!text.value.trim() && attachments.count() === 0 && !poll.value()) form.classList.remove('expanded');
+    if (!text.value.trim() && attachments.count() === 0 && !poll.value() && !timer.active()) form.classList.remove('expanded');
   });
   text.addEventListener('input', updateCounter);
   // Ctrl+Enter (Cmd+Enter on a Mac) sends, as on a wall.

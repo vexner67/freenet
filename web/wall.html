@@ -33,6 +33,7 @@
             <a id="tab-owner"></a>
             <a id="tab-others">Чужие записи</a>
             <a id="tab-archive" hidden>Архив записей</a>
+            <a id="tab-postponed" hidden>Отложенные записи</a>
             <a id="tab-search">Поиск</a>
           </div>
 
@@ -63,10 +64,12 @@
               <span>
                 <a class="attach-link" id="post-attach">Прикрепить фотографию</a>
                   <a class="attach-link" id="post-poll">Прикрепить опрос</a>
+                  <a class="attach-link" id="post-timer" hidden>Таймер</a>
                 <span class="hint" id="post-counter"></span>
               </span>
               <button class="button" type="submit" id="post-submit">Отправить</button>
             </div>
+            <div class="post-timer" id="post-timer-box" hidden></div>
             <div class="post-options">
               <label id="post-from-club-label" hidden><input type="checkbox" id="post-from-club" checked> От имени сообщества</label>
               <label id="post-signed-label" hidden><input type="checkbox" id="post-signed"> Подпись автора</label>

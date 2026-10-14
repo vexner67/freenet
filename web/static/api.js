@@ -199,6 +199,19 @@ export const api = {
   // locked, days }), null for none.
   createPost: (nickname, text, photos = [], nsfw = false, poll = null) =>
     authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos, nsfw, ...(poll && { poll }) }),
+  // VK's "Таймер": a post kept to come out at publishAt (ISO) on your own
+  // wall, or, as postponeClubPost, speaking for a club you run.
+  postpone: (text, photos, nsfw, publishAt) => authorized('POST', '/api/v1/me/postponed', { text, photos, nsfw, publishAt }),
+  postponeClubPost: (ref, text, photos, { signed = false, nsfw = false, publishAt }) =>
+    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/postponed`, { text, photos, signed, nsfw, publishAt }),
+  // The posts that wait for your wall or a club's, the soonest first.
+  myPostponed: () => authorized('GET', '/api/v1/me/postponed'),
+  clubPostponed: (ref) => authorized('GET', `/api/v1/clubs/${encodeURIComponent(ref)}/postponed`),
+  postponedPost: (id) => authorized('GET', `/api/v1/postponed/${encodeURIComponent(id)}`),
+  editPostponed: (id, text, nsfw, publishAt) => authorized('PATCH', `/api/v1/postponed/${encodeURIComponent(id)}`, { text, nsfw, publishAt }),
+  // "Опубликовать сейчас": the post it became, null if it is not shown.
+  publishPostponed: (id) => authorized('POST', `/api/v1/postponed/${encodeURIComponent(id)}/publish`),
+  deletePostponed: (id) => authorized('DELETE', `/api/v1/postponed/${encodeURIComponent(id)}`),
   // Uploads a photo for a post; the post refers to it by ID.
   uploadPhoto: (file) => authorized('POST', '/api/v1/me/photos', file),
   // Shares a post on your wall, with a comment that may be empty.
