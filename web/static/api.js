@@ -303,6 +303,8 @@ export const api = {
   // carries messages of your dialogs and chats on ("Переслать").
   sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '' } = {}) =>
     authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto }),
+  // A sticker is a message by itself, not sealed: it says nothing.
+  sendSticker: (nickname, sticker) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sticker }),
   // Chats of several people ("беседы"): members are nicknames.
   createChat: (title, members) => authorized('POST', '/api/v1/chats', { title, members }),
   chat: (id) => authorized('GET', `/api/v1/chats/${encodeURIComponent(id)}`),
@@ -324,6 +326,7 @@ export const api = {
   // and carry messages on.
   sendChatMessage: (id, text, photos = [], post = '', forward = [], albumPhoto = '') =>
     authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos, post, forward, albumPhoto }),
+  sendChatSticker: (id, sticker) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { sticker }),
   markChatRead: (id, upTo) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/read`, { upTo }),
   // A message of a chat whole; your own is edited and taken back within
   // a day.
@@ -490,6 +493,11 @@ export const api = {
   gifts: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/gifts`, cursor, limit)),
   sendGift: (nickname, gift, caption, anonymous) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/gifts`, { gift, caption, anonymous }),
   deleteGift: (id) => authorized('DELETE', `/api/v1/gifts/${encodeURIComponent(id)}`),
+  // Stickers: the "Магазин стикеров", whose packs one adds, free or for
+  // votes, and puts away.
+  stickers: () => optional('GET', '/api/v1/stickers'),
+  addStickerPack: (id) => authorized('PUT', `/api/v1/me/stickers/${encodeURIComponent(id)}`),
+  removeStickerPack: (id) => authorized('DELETE', `/api/v1/me/stickers/${encodeURIComponent(id)}`),
   // Votes ("голоса"): a voucher gives them, a transfer hands them over;
   // the vouchers themselves are the administrators'.
   redeemVoucher: (code) => authorized('POST', '/api/v1/me/vouchers', { code }),

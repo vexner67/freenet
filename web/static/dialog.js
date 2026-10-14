@@ -20,6 +20,7 @@ import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.
 import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, selectedCount } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
+import { initStickers } from './stickers.js';
 
 const POLL_MS = 5000;
 // How many messages one request deletes.
@@ -142,9 +143,9 @@ function canDeleteForAll(m) {
 }
 
 // canEdit: your own message, until editableUntil, that this browser can
-// open.
+// open; a sticker is not edited.
 function canEdit(m) {
-  return m.out && !m.deleted && !m.unreadable && Boolean(m.editableUntil) && Date.now() < new Date(m.editableUntil);
+  return m.out && !m.deleted && !m.unreadable && !m.sticker && Boolean(m.editableUntil) && Date.now() < new Date(m.editableUntil);
 }
 
 function toggleSelected(id) {
@@ -534,6 +535,19 @@ async function send(event) {
   }
 }
 
+// sendSticker sends a sticker by itself: it is not sealed, it says
+// nothing.
+async function sendSticker(sticker) {
+  hideError($('error'));
+  if (editing) cancelEdit();
+
+  try {
+    showSent((await openMessages(me.id, [await api.sendSticker(nickname, sticker)]))[0]);
+  } catch (e) {
+    showError($('error'), e);
+  }
+}
+
 // setUpInput shows the form, or why there is none; canWrite is the
 // peer's privacy and blacklists, as the first page of the dialog says.
 async function setUpInput(canWrite) {
@@ -570,6 +584,7 @@ async function setUpInput(canWrite) {
   $('my-avatar').src = avatarURL(me, 'small');
   $('peer-avatar').src = avatarURL(peer, 'small');
   attachments = initAttachments({ link: $('attach'), input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
+  initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   $('form').addEventListener('submit', send);
   $('editing-cancel').addEventListener('click', cancelEdit);
   $('text').addEventListener('keydown', (event) => {
