@@ -1,14 +1,15 @@
 package grpc_test
 
 import (
+	"bytes"
 	"context"
 	"crypto/rand"
 	"crypto/rsa"
+	"crypto/sha256"
 	"io"
 	"log/slog"
 	"net"
 	"slices"
-	"strings"
 	"testing"
 	"time"
 
@@ -18,6 +19,7 @@ import (
 	messagegrpc "github.com/vexner67/freenet/message/internal/grpc"
 	"github.com/vexner67/freenet/message/internal/inmem"
 	"github.com/vexner67/freenet/message/internal/mediaclient"
+	"github.com/vexner67/freenet/message/internal/message"
 	"github.com/vexner67/freenet/message/internal/service"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/pubsub"
@@ -27,7 +29,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
-	"google.golang.org/protobuf/proto"
 )
 
 const issuer = "freenet-test"
@@ -59,7 +60,7 @@ func newServer(t *testing.T) testServer {
 	store := inmem.NewStore()
 	events := pubsub.New[uuid.UUID, service.Event](64)
 	messagev1.RegisterMessageServiceServer(srv, messagegrpc.NewMessageHandler(
-		service.NewMessageService(service.Deps{Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: events, Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}}),
+		service.NewMessageService(service.Deps{Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: store.Keys(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: events, Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}}),
 		service.NewChatService(service.ChatDeps{
 			Chats: store.Chats(), Members: store.ChatMembers(), Messages: store.ChatMessages(), DialogMessages: store.Messages(), Events: events, Tx: inmem.TxManager{}, Photos: mediaclient.Nop{},
 		}),
@@ -109,7 +110,7 @@ func TestDialog(t *testing.T) {
 
 	var fromBob []string
 	for _, text := range []string{"привет", "как дела?"} {
-		resp, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: text})
+		resp, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Sealed: s.sealed(t, text, bob, ann)})
 		if err != nil {
 			t.Fatalf("SendMessage: %v", err)
 		}
@@ -129,7 +130,7 @@ func TestDialog(t *testing.T) {
 	if err != nil || len(dialogs.GetDialogs()) != 1 {
 		t.Fatalf("ListDialogs = %v, %v", dialogs, err)
 	}
-	if d := dialogs.GetDialogs()[0]; d.GetPeerId() != bob.String() || !d.GetUnread() || d.GetLastMessage().GetText() != "как дела?" {
+	if d := dialogs.GetDialogs()[0]; d.GetPeerId() != bob.String() || !d.GetUnread() || opened(d.GetLastMessage()) != "как дела?" {
 		t.Fatalf("dialog = %v", d)
 	}
 
@@ -145,11 +146,11 @@ func TestDialog(t *testing.T) {
 	if len(history.GetMessages()) != 2 || !history.GetMessages()[1].GetRead() || history.GetPeerReadUpTo() != fromBob[1] || history.GetNextCursor() != "" {
 		t.Fatalf("bob's history = %v", history)
 	}
-	if history.GetMessages()[0].GetText() != "привет" {
+	if opened(history.GetMessages()[0]) != "привет" {
 		t.Fatalf("oldest first: %v", history.GetMessages())
 	}
 
-	reply, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Text: "хорошо"})
+	reply, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Sealed: s.sealed(t, "хорошо", ann, bob)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -157,7 +158,7 @@ func TestDialog(t *testing.T) {
 	// Ann shares a post: a message of it alone.
 	post := uuid.NewString()
 	shared, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PostId: post})
-	if err != nil || shared.GetMessage().GetPostId() != post || shared.GetMessage().GetText() != "" {
+	if err != nil || shared.GetMessage().GetPostId() != post || shared.GetMessage().GetSealed() != nil {
 		t.Fatalf("a shared post = %v, %v", shared, err)
 	}
 	if _, err = s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PostId: "x"}); status.Code(err) != codes.InvalidArgument {
@@ -166,8 +167,8 @@ func TestDialog(t *testing.T) {
 
 	// And a photo of an album, with words or without, but nothing else.
 	photo := uuid.NewString()
-	pictured, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PhotoId: photo, Text: "смотри"})
-	if err != nil || pictured.GetMessage().GetPhotoId() != photo || pictured.GetMessage().GetText() != "смотри" || pictured.GetMessage().GetPostId() != "" {
+	pictured, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PhotoId: photo, Sealed: s.sealed(t, "смотри", ann, bob)})
+	if err != nil || pictured.GetMessage().GetPhotoId() != photo || opened(pictured.GetMessage()) != "смотри" || pictured.GetMessage().GetPostId() != "" {
 		t.Fatalf("a shared photo = %v, %v", pictured, err)
 	}
 	if _, err = s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), PhotoId: "x"}); status.Code(err) != codes.InvalidArgument {
@@ -177,8 +178,8 @@ func TestDialog(t *testing.T) {
 		t.Fatalf("a shared photo with a post: %v", err)
 	}
 	// Edited, it shares the photo still and may say nothing.
-	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: pictured.GetMessage().GetId(), Text: ""})
-	if err != nil || edited.GetMessage().GetPhotoId() != photo || edited.GetMessage().GetText() != "" {
+	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: pictured.GetMessage().GetId()})
+	if err != nil || edited.GetMessage().GetPhotoId() != photo || edited.GetMessage().GetSealed() != nil {
 		t.Fatalf("an edited shared photo = %v, %v", edited, err)
 	}
 	// Forwarded, it is carried on.
@@ -206,13 +207,14 @@ func TestDialog(t *testing.T) {
 		t.Fatalf("newer = %v, %v", newer, err)
 	}
 
-	// Bob forwards ann's answer to cat: it goes as a copy of what it said.
+	// Bob forwards ann's answer to cat: it goes as a copy of what it showed;
+	// its words bob's browser seals anew with his own.
 	cat := uuid.New()
 	fwd, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: cat.String(), ForwardIds: []string{reply.GetMessage().GetId()}})
 	if err != nil {
 		t.Fatalf("forward: %v", err)
 	}
-	if got := fwd.GetMessage().GetForwarded(); len(got) != 1 || got[0].GetSenderId() != ann.String() || got[0].GetText() != "хорошо" ||
+	if got := fwd.GetMessage().GetForwarded(); len(got) != 1 || got[0].GetSenderId() != ann.String() || got[0].GetText() != "" ||
 		!got[0].GetCreatedAt().AsTime().Equal(reply.GetMessage().GetCreatedAt().AsTime()) {
 		t.Fatalf("forwarded = %v", got)
 	}
@@ -244,10 +246,10 @@ func TestDialog(t *testing.T) {
 	if err != nil || len(history.GetMessages()) != 3 {
 		t.Fatalf("bob's history after the deletion = %v, %v", history, err)
 	}
-	if gone := history.GetMessages()[2]; gone.GetId() != reply.GetMessage().GetId() || gone.GetDeletedAt() == nil || gone.GetText() != "" || gone.GetEditableUntil() != nil {
+	if gone := history.GetMessages()[2]; gone.GetId() != reply.GetMessage().GetId() || gone.GetDeletedAt() == nil || gone.GetSealed() != nil || gone.GetEditableUntil() != nil {
 		t.Fatalf("the message taken back = %v", gone)
 	}
-	if kept, err := s.client.ListMessages(s.as(t, cat), &messagev1.ListMessagesRequest{PeerId: bob.String()}); err != nil || len(kept.GetMessages()) != 1 || kept.GetMessages()[0].GetForwarded()[0].GetText() != "хорошо" {
+	if kept, err := s.client.ListMessages(s.as(t, cat), &messagev1.ListMessagesRequest{PeerId: bob.String()}); err != nil || len(kept.GetMessages()) != 1 || kept.GetMessages()[0].GetForwarded()[0].GetSenderId() != ann.String() {
 		t.Fatalf("cat's history = %v, %v", kept, err)
 	}
 }
@@ -266,27 +268,39 @@ func TestErrors(t *testing.T) {
 		want codes.Code
 	}{
 		{"send without token", func() error {
-			_, err := s.client.SendMessage(context.Background(), &messagev1.SendMessageRequest{RecipientId: bob, Text: "x"})
+			_, err := s.client.SendMessage(context.Background(), &messagev1.SendMessageRequest{RecipientId: bob, PostId: uuid.NewString()})
 			return err
 		}, codes.Unauthenticated},
 		{"dialogs without token", func() error {
 			_, err := s.client.ListDialogs(context.Background(), &messagev1.ListDialogsRequest{})
 			return err
 		}, codes.Unauthenticated},
-		{"empty text", func() error {
-			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: bob, Text: " \n "})
+		{"nothing", func() error {
+			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: bob})
 			return err
 		}, codes.InvalidArgument},
-		{"too long text", func() error {
-			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: bob, Text: strings.Repeat("я", 60001)})
+		{"plain words", func() error {
+			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: bob, Text: "x"})
 			return err
 		}, codes.InvalidArgument},
+		{"not sealed right", func() error {
+			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: bob, Sealed: []byte("x")})
+			return err
+		}, codes.InvalidArgument},
+		{"sealed too long", func() error {
+			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: bob, Sealed: make([]byte, 640<<10+1)})
+			return err
+		}, codes.InvalidArgument},
+		{"to a person without a key", func() error {
+			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: bob, Sealed: sealedBy(keyOf("ann"), keyOf("bob"), "x")})
+			return err
+		}, codes.FailedPrecondition},
 		{"to yourself", func() error {
-			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "x"})
+			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: ann.String(), PostId: uuid.NewString()})
 			return err
 		}, codes.InvalidArgument},
 		{"bad recipient", func() error {
-			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: "bob", Text: "x"})
+			_, err := s.client.SendMessage(asAnn, &messagev1.SendMessageRequest{RecipientId: "bob", PostId: uuid.NewString()})
 			return err
 		}, codes.InvalidArgument},
 		{"cursor and after", func() error {
@@ -314,7 +328,7 @@ func TestErrors(t *testing.T) {
 			return err
 		}, codes.NotFound},
 		{"delete a message to you", func() error {
-			resp, err := s.client.SendMessage(s.as(t, uuid.MustParse(bob)), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "x"})
+			resp, err := s.client.SendMessage(s.as(t, uuid.MustParse(bob)), &messagev1.SendMessageRequest{RecipientId: ann.String(), PostId: uuid.NewString()})
 			if err != nil {
 				return err
 			}
@@ -344,7 +358,7 @@ func TestHasMessagesFrom(t *testing.T) {
 	s := newServer(t)
 	ann, bob := uuid.New(), uuid.New()
 
-	if _, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "привет"}); err != nil {
+	if _, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Sealed: s.sealed(t, "привет", bob, ann)}); err != nil {
 		t.Fatal(err)
 	}
 
@@ -391,7 +405,7 @@ func TestSubscribe(t *testing.T) {
 
 	var sent *messagev1.Message
 	for got == nil {
-		resp, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "привет"})
+		resp, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Sealed: s.sealed(t, "привет", bob, ann)})
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -403,7 +417,7 @@ func TestSubscribe(t *testing.T) {
 		}
 	}
 
-	if m := got.GetMessage(); m == nil || m.GetSenderId() != bob.String() || m.GetText() != "привет" {
+	if m := got.GetMessage(); m == nil || m.GetSenderId() != bob.String() || opened(m) != "привет" {
 		t.Fatalf("event = %v, want bob's message", got)
 	}
 
@@ -429,7 +443,7 @@ func TestSubscribe(t *testing.T) {
 		t.Fatal(err)
 	}
 	if resp, err := stream.Recv(); err != nil || resp.GetEdited().GetId() != sent.GetId() || resp.GetEdited().GetDeletedAt() == nil ||
-		resp.GetEdited().GetText() != "" || resp.GetEdited().GetDeletableUntil() != nil {
+		resp.GetEdited().GetSealed() != nil || resp.GetEdited().GetDeletableUntil() != nil {
 		t.Fatalf("event = %v, %v; want the message taken back", resp, err)
 	}
 
@@ -450,13 +464,13 @@ func TestSubscribe(t *testing.T) {
 	}
 }
 
-func TestEditHideSearch(t *testing.T) {
+func TestEditHide(t *testing.T) {
 	t.Parallel()
 
 	s := newServer(t)
 	ann, bob := uuid.New(), uuid.New()
 
-	sent, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Text: "Еду на море"})
+	sent, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Sealed: s.sealed(t, "Еду на море", ann, bob)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -466,8 +480,8 @@ func TestEditHideSearch(t *testing.T) {
 	}
 
 	// Edit: the sender only.
-	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!"})
-	if err != nil || edited.GetMessage().GetText() != "Еду на море!" || edited.GetMessage().GetEditedAt() == nil {
+	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Sealed: s.sealed(t, "Еду на море!", ann, bob)})
+	if err != nil || opened(edited.GetMessage()) != "Еду на море!" || edited.GetMessage().GetEditedAt() == nil {
 		t.Fatalf("EditMessage = %v, %v", edited, err)
 	}
 	for name, tt := range map[string]struct {
@@ -475,32 +489,23 @@ func TestEditHideSearch(t *testing.T) {
 		req  *messagev1.EditMessageRequest
 		code codes.Code
 	}{
-		"without a token": {context.Background(), &messagev1.EditMessageRequest{Id: id, Text: "x"}, codes.Unauthenticated},
-		"the recipient":   {s.as(t, bob), &messagev1.EditMessageRequest{Id: id, Text: "x"}, codes.PermissionDenied},
-		"no text":         {s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: " "}, codes.InvalidArgument},
-		"a bad id":        {s.as(t, ann), &messagev1.EditMessageRequest{Id: "x", Text: "x"}, codes.InvalidArgument},
-		"no message":      {s.as(t, ann), &messagev1.EditMessageRequest{Id: uuid.NewString(), Text: "x"}, codes.NotFound},
-		"an older text":   {s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "x", BaseText: proto.String("Еду на море")}, codes.FailedPrecondition},
+		"without a token": {context.Background(), &messagev1.EditMessageRequest{Id: id, Sealed: s.sealed(t, "x", ann, bob)}, codes.Unauthenticated},
+		"the recipient":   {s.as(t, bob), &messagev1.EditMessageRequest{Id: id, Sealed: s.sealed(t, "x", ann, bob)}, codes.PermissionDenied},
+		"plain words":     {s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "x"}, codes.InvalidArgument},
+		"nothing":         {s.as(t, ann), &messagev1.EditMessageRequest{Id: id}, codes.InvalidArgument},
+		"a bad id":        {s.as(t, ann), &messagev1.EditMessageRequest{Id: "x", Sealed: s.sealed(t, "x", ann, bob)}, codes.InvalidArgument},
+		"an old key":      {s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Sealed: sealedBy(keyOf("ann before"), keyOf(bob.String()), "x")}, codes.FailedPrecondition},
+		"no message":      {s.as(t, ann), &messagev1.EditMessageRequest{Id: uuid.NewString(), Sealed: s.sealed(t, "x", ann, bob)}, codes.NotFound},
+		"older words":     {s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Sealed: s.sealed(t, "x", ann, bob), BaseSealed: s.sealed(t, "Еду на море", ann, bob)}, codes.FailedPrecondition},
 	} {
 		if _, err = s.client.EditMessage(tt.ctx, tt.req); status.Code(err) != tt.code {
 			t.Errorf("EditMessage, %s: %v, want %v", name, err, tt.code)
 		}
 	}
 
-	// An edit that names the text it saw goes through.
-	if _, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!", BaseText: proto.String(" Еду на море!\r\n")}); err != nil {
-		t.Fatalf("EditMessage with the text it saw: %v", err)
-	}
-
-	// Search: in the dialog and in all of them.
-	for _, peer := range []string{"", ann.String()} {
-		found, err := s.client.SearchMessages(s.as(t, bob), &messagev1.SearchMessagesRequest{PeerId: peer, Query: "МОРЕ"})
-		if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetId() != id {
-			t.Fatalf("SearchMessages(%q) = %v, %v", peer, found, err)
-		}
-	}
-	if _, err = s.client.SearchMessages(s.as(t, bob), &messagev1.SearchMessagesRequest{Query: " "}); status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("an empty query: %v", err)
+	// An edit that names the words it saw goes through.
+	if _, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Sealed: s.sealed(t, "Еду в горы", ann, bob), BaseSealed: s.sealed(t, "Еду на море!", ann, bob)}); err != nil {
+		t.Fatalf("EditMessage with the words it saw: %v", err)
 	}
 
 	// Hide: bob deletes it for himself, ann keeps it.
@@ -516,125 +521,32 @@ func TestEditHideSearch(t *testing.T) {
 	if anns, _ := s.client.ListMessages(s.as(t, ann), &messagev1.ListMessagesRequest{PeerId: bob.String()}); len(anns.GetMessages()) != 1 {
 		t.Fatalf("ann reads %v", anns.GetMessages())
 	}
-	if found, _ := s.client.SearchMessages(s.as(t, bob), &messagev1.SearchMessagesRequest{Query: "море"}); len(found.GetMessages()) != 0 {
-		t.Fatalf("bob finds a hidden message: %v", found)
-	}
 }
 
-// The list of dialogs asks for the beginnings of the last messages.
-func TestDialogs_TextLimit(t *testing.T) {
-	t.Parallel()
-
-	s := newServer(t)
-	ann, bob := uuid.New(), uuid.New()
-
-	sent, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "длинное сообщение"})
-	if err != nil {
-		t.Fatalf("SendMessage: %v", err)
-	}
-
-	dialogs, err := s.client.ListDialogs(s.as(t, ann), &messagev1.ListDialogsRequest{TextLimit: 7})
-	if err != nil || len(dialogs.GetDialogs()) != 1 {
-		t.Fatalf("ListDialogs = %v, %v", dialogs, err)
-	}
-	if m := dialogs.GetDialogs()[0].GetLastMessage(); m.GetText() != "длинное" || !m.GetTextCut() {
-		t.Fatalf("last message = %v", m)
-	}
-
-	forward := &messagev1.SendMessageRequest{RecipientId: bob.String(), Text: "да", ForwardIds: []string{sent.GetMessage().GetId()}}
-	if _, err = s.client.SendMessage(s.as(t, ann), forward); err != nil {
-		t.Fatalf("forward: %v", err)
-	}
-
-	dialogs, err = s.client.ListDialogs(s.as(t, ann), &messagev1.ListDialogsRequest{TextLimit: 7})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if m := dialogs.GetDialogs()[0].GetLastMessage(); m.GetText() != "да" || !m.GetTextCut() ||
-		len(m.GetForwarded()) != 1 || m.GetForwarded()[0].GetText() != "длинное" {
-		t.Fatalf("last message with a forward = %v", m)
-	}
-
-	dialogs, err = s.client.ListDialogs(s.as(t, ann), &messagev1.ListDialogsRequest{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if m := dialogs.GetDialogs()[0].GetLastMessage(); m.GetTextCut() || m.GetForwarded()[0].GetText() != "длинное сообщение" {
-		t.Fatalf("last message whole = %v", m)
-	}
-}
-
-// A page of a dialog asks for the beginnings of its messages.
-func TestHistory_TextLimit(t *testing.T) {
-	t.Parallel()
-
-	s := newServer(t)
-	ann, bob := uuid.New(), uuid.New()
-
-	if _, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "длинное сообщение"}); err != nil {
-		t.Fatalf("SendMessage: %v", err)
-	}
-
-	page, err := s.client.ListMessages(s.as(t, ann), &messagev1.ListMessagesRequest{PeerId: bob.String(), TextLimit: 7})
-	if err != nil || len(page.GetMessages()) != 1 || page.GetMessages()[0].GetText() != "длинное" || !page.GetMessages()[0].GetTextCut() {
-		t.Fatalf("ListMessages = %v, %v", page, err)
-	}
-
-	around := &messagev1.ListMessagesRequest{PeerId: bob.String(), Around: page.GetMessages()[0].GetId(), Limit: 1}
-	if page, err = s.client.ListMessages(s.as(t, ann), around); err != nil || len(page.GetMessages()) != 1 ||
-		page.GetMessages()[0].GetText() != "длинное сообщение" || page.GetMessages()[0].GetTextCut() {
-		t.Fatalf("ListMessages around, whole = %v, %v", page, err)
-	}
-}
-
-// Found messages come with the parts of their texts that say the query
-// when asked.
-func TestSearch_TextLimit(t *testing.T) {
-	t.Parallel()
-
-	s := newServer(t)
-	ann, bob := uuid.New(), uuid.New()
-
-	if _, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: "длинное сообщение"}); err != nil {
-		t.Fatalf("SendMessage: %v", err)
-	}
-
-	found, err := s.client.SearchMessages(s.as(t, ann), &messagev1.SearchMessagesRequest{Query: "длин", TextLimit: 7})
-	if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetText() != "длинное" || !found.GetMessages()[0].GetTextCut() {
-		t.Fatalf("SearchMessages = %v, %v", found, err)
-	}
-
-	// Said further than the beginning, the words are still in the excerpt.
-	found, err = s.client.SearchMessages(s.as(t, ann), &messagev1.SearchMessagesRequest{Query: "Сообщение", TextLimit: 10})
-	if err != nil || len(found.GetMessages()) != 1 || found.GetMessages()[0].GetText() != "сообщение" || !found.GetMessages()[0].GetTextCut() {
-		t.Fatalf("SearchMessages further = %v, %v", found, err)
-	}
-}
-
-func TestEditPhotosSearchForwardedDeleteMany(t *testing.T) {
+func TestEditPhotosDeleteMany(t *testing.T) {
 	t.Parallel()
 
 	s := newServer(t)
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	old, fresh := uuid.NewString(), uuid.NewString()
 
-	sent, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Text: "Еду на море", PhotoIds: []string{old}})
+	sent, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Sealed: s.sealed(t, "Еду на море", ann, bob), PhotoIds: []string{old}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	id := sent.GetMessage().GetId()
 
 	// An edit keeps the photos it does not name, adds and removes.
-	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!"})
+	edited, err := s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Sealed: s.sealed(t, "Еду на море!", ann, bob)})
 	if err != nil || !slices.Equal(edited.GetMessage().GetPhotoIds(), []string{old}) {
 		t.Fatalf("an edit of the words = %v, %v", edited, err)
 	}
-	edited, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!", AddPhotoIds: []string{fresh}})
+	edited, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Sealed: s.sealed(t, "Еду на море!", ann, bob), AddPhotoIds: []string{fresh}})
 	if err != nil || !slices.Equal(edited.GetMessage().GetPhotoIds(), []string{old, fresh}) {
 		t.Fatalf("a photo added = %v, %v", edited, err)
 	}
 	third := uuid.NewString()
-	edited, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Text: "Еду на море!", RemovePhotoIds: []string{old}, AddPhotoIds: []string{third}})
+	edited, err = s.client.EditMessage(s.as(t, ann), &messagev1.EditMessageRequest{Id: id, Sealed: s.sealed(t, "Еду на море!", ann, bob), RemovePhotoIds: []string{old}, AddPhotoIds: []string{third}})
 	if err != nil || !slices.Equal(edited.GetMessage().GetPhotoIds(), []string{fresh, third}) {
 		t.Fatalf("a photo in place of another = %v, %v", edited, err)
 	}
@@ -643,11 +555,11 @@ func TestEditPhotosSearchForwardedDeleteMany(t *testing.T) {
 		eleven = append(eleven, uuid.NewString())
 	}
 	for name, req := range map[string]*messagev1.EditMessageRequest{
-		"a bad photo":       {Id: id, Text: "x", AddPhotoIds: []string{"x"}},
-		"a bad one to drop": {Id: id, Text: "x", RemovePhotoIds: []string{"x"}},
-		"a photo twice":     {Id: id, Text: "x", AddPhotoIds: []string{old, old}},
-		"too many photos":   {Id: id, Text: "x", AddPhotoIds: eleven[:9]},
-		"too many at once":  {Id: id, Text: "x", AddPhotoIds: eleven},
+		"a bad photo":       {Id: id, Sealed: s.sealed(t, "x", ann, bob), AddPhotoIds: []string{"x"}},
+		"a bad one to drop": {Id: id, Sealed: s.sealed(t, "x", ann, bob), RemovePhotoIds: []string{"x"}},
+		"a photo twice":     {Id: id, Sealed: s.sealed(t, "x", ann, bob), AddPhotoIds: []string{old, old}},
+		"too many photos":   {Id: id, Sealed: s.sealed(t, "x", ann, bob), AddPhotoIds: eleven[:9]},
+		"too many at once":  {Id: id, Sealed: s.sealed(t, "x", ann, bob), AddPhotoIds: eleven},
 		"nothing left":      {Id: id, RemovePhotoIds: []string{fresh, third}},
 	} {
 		if _, err = s.client.EditMessage(s.as(t, ann), req); status.Code(err) != codes.InvalidArgument {
@@ -655,26 +567,11 @@ func TestEditPhotosSearchForwardedDeleteMany(t *testing.T) {
 		}
 	}
 
-	// Cat finds the message by what it carries on, cut to where it says so:
-	// to the word, the long ones around it would not fit whole.
-	long := strings.Repeat("а", 50) + " море " + strings.Repeat("я", 50)
-	carried, err := s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Text: long})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err = s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: cat.String(), Text: "смотри", ForwardIds: []string{carried.GetMessage().GetId()}}); err != nil {
-		t.Fatal(err)
-	}
-	found, err := s.client.SearchMessages(s.as(t, cat), &messagev1.SearchMessagesRequest{Query: "МОРЕ", TextLimit: 20})
-	if err != nil || len(found.GetMessages()) != 1 {
-		t.Fatalf("SearchMessages = %v, %v", found, err)
-	}
-	if m := found.GetMessages()[0]; m.GetText() != "смотри" || !m.GetTextCut() || m.GetForwarded()[0].GetText() != "море" {
-		t.Fatalf("the found message = %v", m)
-	}
-
 	// Several messages at once.
-	second, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Text: "два"})
+	if _, err = s.client.SendMessage(s.as(t, bob), &messagev1.SendMessageRequest{RecipientId: ann.String(), Sealed: s.sealed(t, "море", bob, ann)}); err != nil {
+		t.Fatal(err)
+	}
+	second, err := s.client.SendMessage(s.as(t, ann), &messagev1.SendMessageRequest{RecipientId: bob.String(), Sealed: s.sealed(t, "два", ann, bob)})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -709,5 +606,97 @@ func TestEditPhotosSearchForwardedDeleteMany(t *testing.T) {
 	anns, err := s.client.ListMessages(s.as(t, ann), &messagev1.ListMessagesRequest{PeerId: bob.String()})
 	if err != nil || len(anns.GetMessages()) != 3 || anns.GetMessages()[0].GetDeletedAt() == nil || anns.GetMessages()[2].GetDeletedAt() == nil || anns.GetMessages()[1].GetDeletedAt() != nil {
 		t.Fatalf("ann reads %v, %v", anns.GetMessages(), err)
+	}
+}
+
+func keyOf(name string) message.Key {
+	sum := sha256.Sum256([]byte(name))
+	return message.Key(sum[:])
+}
+
+// sealedBy is text as a browser with the key from would seal it for the
+// key to: the server never opens it, so the bytes only have to look right.
+func sealedBy(from, to message.Key, text string) []byte {
+	b := []byte{1}
+	b = append(b, from.Bytes()...)
+	b = append(b, to.Bytes()...)
+	b = append(b, make([]byte, 12)...)
+	b = append(b, text...)
+
+	return append(b, make([]byte, 16)...)
+}
+
+// sealed is text sealed between the keys of from and to, which their
+// browsers set up first.
+func (s testServer) sealed(t *testing.T, text string, from, to uuid.UUID) []byte {
+	t.Helper()
+
+	for _, id := range []uuid.UUID{from, to} {
+		if _, err := s.client.SetKey(s.as(t, id), &messagev1.SetKeyRequest{PublicKey: keyOf(id.String()).Bytes()}); err != nil {
+			t.Fatalf("SetKey: %v", err)
+		}
+	}
+
+	return sealedBy(keyOf(from.String()), keyOf(to.String()), text)
+}
+
+// sealedMessage is a message, or one carried on, with what it says sealed.
+type sealedMessage interface {
+	GetSealed() []byte
+}
+
+// opened is what m says, as a browser opens it.
+func opened(m sealedMessage) string {
+	b := m.GetSealed()
+	if len(b) == 0 {
+		return ""
+	}
+
+	return string(b[1+2*message.KeySize+12 : len(b)-16])
+}
+
+func TestKeys(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	got, err := s.client.GetKey(s.as(t, ann), &messagev1.GetKeyRequest{UserId: bob.String()})
+	if err != nil || got.GetPublicKey() != nil {
+		t.Fatalf("no key yet = %v, %v", got, err)
+	}
+
+	key := keyOf("bob").Bytes()
+	if _, err = s.client.SetKey(s.as(t, bob), &messagev1.SetKeyRequest{PublicKey: key}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err = s.client.GetKey(s.as(t, ann), &messagev1.GetKeyRequest{UserId: bob.String()}); err != nil || !bytes.Equal(got.GetPublicKey(), key) {
+		t.Fatalf("GetKey = %v, %v", got, err)
+	}
+
+	for name, tt := range map[string]struct {
+		call func() error
+		code codes.Code
+	}{
+		"set without a token": {func() error {
+			_, err := s.client.SetKey(context.Background(), &messagev1.SetKeyRequest{PublicKey: key})
+			return err
+		}, codes.Unauthenticated},
+		"get without a token": {func() error {
+			_, err := s.client.GetKey(context.Background(), &messagev1.GetKeyRequest{UserId: bob.String()})
+			return err
+		}, codes.Unauthenticated},
+		"a short key": {func() error {
+			_, err := s.client.SetKey(s.as(t, ann), &messagev1.SetKeyRequest{PublicKey: key[:31]})
+			return err
+		}, codes.InvalidArgument},
+		"a bad user id": {func() error {
+			_, err := s.client.GetKey(s.as(t, ann), &messagev1.GetKeyRequest{UserId: "x"})
+			return err
+		}, codes.InvalidArgument},
+	} {
+		if got := status.Code(tt.call()); got != tt.code {
+			t.Errorf("%s: %v, want %v", name, got, tt.code)
+		}
 	}
 }

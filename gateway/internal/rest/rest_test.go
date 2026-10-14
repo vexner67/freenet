@@ -1113,15 +1113,19 @@ func (f *fakeNotifications) MarkRead(_ context.Context, token, id string) error 
 // fakeMessages: ann is u1, bob u2. Ann has dialogs with bob and with an
 // account that is gone.
 type fakeMessages struct {
-	token, peerID, cursor, after, sentText, markedUpTo, deleted string
-	// hidden is the message deleted for the caller alone, edited "id/text"
-	// of the last edit, searched the last query.
-	hidden, edited, searched string
+	// sent is what the last message sent said, sealed.
+	token, peerID, cursor, after, sent, markedUpTo, deleted string
+	// hidden is the message deleted for the caller alone, edited
+	// "id/sealed" of the last edit.
+	hidden, edited string
 	// addedPhotos and removedPhotos are those of the last edit;
 	// deletedMany "ids forEveryone".
 	addedPhotos, removedPhotos []string
-	// baseText is what the last edit said the message read.
-	baseText    *string
+	// baseSealed is what the last edit said the message read.
+	baseSealed []byte
+	// keys are the public keys of users by ID; key the last one set.
+	keys        map[string][]byte
+	key         []byte
 	deletedMany string
 	around      string
 	// peerWrote: the peer has written to the caller.
@@ -1157,7 +1161,7 @@ func (f *fakeMessages) HasMessagesFrom(_ context.Context, token, peerID string) 
 // Send carries each forwarded message on as one bob (u2) wrote, and
 // "gone" as one of somebody whose page is no more.
 func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d model.MessageDraft) (model.Message, error) {
-	f.token, f.peerID, f.sentText = token, recipientID, d.Text
+	f.token, f.peerID, f.sent = token, recipientID, string(d.Sealed)
 
 	var forwarded []model.ForwardedMessage
 	for _, id := range d.ForwardIDs {
@@ -1171,12 +1175,12 @@ func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d mode
 			depth = 1
 		}
 		forwarded = append(forwarded, model.ForwardedMessage{
-			SenderID: sender, Text: "из " + id, PhotoIDs: []string{"ph1"}, CreatedAt: albumTime, Depth: depth,
+			SenderID: sender, PhotoIDs: []string{"ph1"}, CreatedAt: albumTime, Depth: depth,
 		})
 	}
 
 	return model.Message{
-		ID: "m9", SenderID: "u1", RecipientID: recipientID, Text: d.Text, PhotoIDs: d.PhotoIDs, PostID: d.PostID, Forwarded: forwarded,
+		ID: "m9", SenderID: "u1", RecipientID: recipientID, Sealed: d.Sealed, PhotoIDs: d.PhotoIDs, PostID: d.PostID, Forwarded: forwarded,
 		SharedPhotoID: d.SharedPhotoID,
 		CreatedAt:     time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC),
 	}, f.err
@@ -1189,8 +1193,8 @@ func (f *fakeMessages) Dialogs(_ context.Context, token, cursor string, _ int) (
 	}
 	return model.DialogPage{
 		Dialogs: []model.Dialog{
-			{PeerID: "u2", LastMessage: model.Message{ID: "m2", SenderID: "u2", RecipientID: "u1", Text: "как дела?"}, Unread: true},
-			{PeerID: "gone", LastMessage: model.Message{ID: "m1", SenderID: "u1", RecipientID: "gone", Text: "ау", Read: true}},
+			{PeerID: "u2", LastMessage: model.Message{ID: "m2", SenderID: "u2", RecipientID: "u1", Sealed: []byte("как дела?")}, Unread: true},
+			{PeerID: "gone", LastMessage: model.Message{ID: "m1", SenderID: "u1", RecipientID: "gone", Sealed: []byte("ау"), Read: true}},
 		},
 		NextCursor: "m1",
 	}, f.err
@@ -1208,8 +1212,8 @@ func (f *fakeMessages) History(_ context.Context, token, peerID string, at model
 	f.token, f.peerID, f.cursor, f.after, f.around = token, peerID, at.Cursor, at.After, at.Around
 
 	messages := []model.Message{
-		{ID: "m1", SenderID: "u1", RecipientID: peerID, Text: "привет", Read: true, DeletableUntil: time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)},
-		{ID: "m2", SenderID: peerID, RecipientID: "u1", Text: "как дела?"},
+		{ID: "m1", SenderID: "u1", RecipientID: peerID, Sealed: []byte("привет"), Read: true, DeletableUntil: time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)},
+		{ID: "m2", SenderID: peerID, RecipientID: "u1", Sealed: []byte("как дела?")},
 	}
 	if at.Around != "" {
 		messages = append(messages, model.Message{ID: "m3", SenderID: "u1", RecipientID: peerID, DeletedAt: albumTime, DeletableUntil: albumTime})
@@ -1238,25 +1242,22 @@ func (f *fakeMessages) DeleteMany(_ context.Context, token string, ids []string,
 }
 
 func (f *fakeMessages) Edit(_ context.Context, token, id string, e model.MessageEdit) (model.Message, error) {
-	f.token, f.edited = token, id+"/"+e.Text
+	f.token, f.edited = token, id+"/"+string(e.Sealed)
 	f.addedPhotos, f.removedPhotos = e.AddPhotoIDs, e.RemovePhotoIDs
-	f.baseText = e.BaseText
+	f.baseSealed = e.BaseSealed
 
-	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Text: e.Text, PhotoIDs: e.AddPhotoIDs, EditedAt: albumTime, EditableUntil: albumTime}, f.err
+	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Sealed: e.Sealed, PhotoIDs: e.AddPhotoIDs, EditedAt: albumTime, EditableUntil: albumTime}, f.err
 }
 
-// Search finds a message from bob (u2) and one to cat (u3), whose page
-// is deleted.
-func (f *fakeMessages) Search(_ context.Context, token, peerID, query, cursor string, _ int) (model.FoundMessages, error) {
-	f.token, f.peerID, f.searched, f.cursor = token, peerID, query, cursor
+func (f *fakeMessages) SetKey(_ context.Context, token string, publicKey []byte) error {
+	f.token, f.key = token, publicKey
+	return f.err
+}
 
-	return model.FoundMessages{Messages: []model.Message{
-		{
-			ID: "m9", SenderID: "u2", RecipientID: "u1", Text: "на море", CreatedAt: albumTime,
-			Forwarded: []model.ForwardedMessage{{SenderID: "u1", Text: "еду на море", CreatedAt: albumTime}},
-		},
-		{ID: "m8", SenderID: "u1", RecipientID: "u3", Text: "море", CreatedAt: albumTime},
-	}, NextCursor: "m8"}, f.err
+// Key is nil for a user with no key.
+func (f *fakeMessages) Key(_ context.Context, token, userID string) ([]byte, error) {
+	f.token = token
+	return f.keys[userID], f.err
 }
 
 func (f *fakeMessages) MarkRead(_ context.Context, token, peerID, upTo string) error {
@@ -1670,16 +1671,6 @@ func (f *fakePosts) Suggestion(_ context.Context, token, id string) (model.Sugge
 	return model.Suggestion{ID: id, WallID: "k1", AuthorID: "u2", Text: "от Петра, целиком"}, f.err
 }
 
-// Whole knows m1 of every dialog.
-func (f *fakeMessages) Whole(_ context.Context, token, peerID, id string) (model.Message, error) {
-	f.token, f.peerID = token, peerID
-	if id != "m1" {
-		return model.Message{}, failure.New(failure.NotFound, "message not found")
-	}
-
-	return model.Message{ID: id, SenderID: "u1", RecipientID: peerID, Text: "привет, целиком"}, nil
-}
-
 func TestWholeTexts(t *testing.T) {
 	t.Parallel()
 
@@ -1694,9 +1685,6 @@ func TestWholeTexts(t *testing.T) {
 		{"suggestion", "/api/v1/suggestions/s2/text", "token", "от Петра, целиком", http.StatusOK},
 		{"suggestion, anonymous", "/api/v1/suggestions/s2/text", "", "", http.StatusUnauthorized},
 		{"unknown suggestion", "/api/v1/suggestions/s404/text", "token", "", http.StatusNotFound},
-		{"message", "/api/v1/dialogs/bob/messages/m1", "token", "привет, целиком", http.StatusOK},
-		{"message, anonymous", "/api/v1/dialogs/bob/messages/m1", "", "", http.StatusUnauthorized},
-		{"unknown message", "/api/v1/dialogs/bob/messages/m404", "token", "", http.StatusNotFound},
 	}
 
 	for _, tt := range tests {

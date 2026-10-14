@@ -3,7 +3,6 @@ package backend
 import (
 	"context"
 
-	"github.com/vexner67/freenet/gateway/internal/failure"
 	"github.com/vexner67/freenet/gateway/internal/model"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
 	"github.com/vexner67/freenet/pkg/errs"
@@ -22,7 +21,7 @@ func NewMessages(api messagev1.MessageServiceClient) *Messages {
 // Send writes d to recipientID.
 func (m *Messages) Send(ctx context.Context, accessToken, recipientID string, d model.MessageDraft) (model.Message, error) {
 	resp, err := m.api.SendMessage(withToken(ctx, accessToken), &messagev1.SendMessageRequest{
-		RecipientId: recipientID, Text: d.Text, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID,
+		RecipientId: recipientID, Text: d.Text, Sealed: d.Sealed, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID,
 		ForwardIds: d.ForwardIDs,
 	})
 	if err != nil {
@@ -33,7 +32,7 @@ func (m *Messages) Send(ctx context.Context, accessToken, recipientID string, d 
 }
 
 func (m *Messages) Dialogs(ctx context.Context, accessToken, cursor string, limit int) (model.DialogPage, error) {
-	resp, err := m.api.ListDialogs(withToken(ctx, accessToken), &messagev1.ListDialogsRequest{Cursor: cursor, Limit: toLimit(limit), TextLimit: model.PreviewLength})
+	resp, err := m.api.ListDialogs(withToken(ctx, accessToken), &messagev1.ListDialogsRequest{Cursor: cursor, Limit: toLimit(limit)})
 	if err != nil {
 		return model.DialogPage{}, errs.Wrap("m.api.ListDialogs", fromStatus(err))
 	}
@@ -63,25 +62,7 @@ func (m *Messages) CountUnread(ctx context.Context, accessToken string) (int, er
 	return int(resp.GetCount()), nil
 }
 
-// Whole is message id of the dialog with peerID with its whole text and
-// the whole texts of those it carries on.
-func (m *Messages) Whole(ctx context.Context, accessToken, peerID, id string) (model.Message, error) {
-	resp, err := m.api.ListMessages(withToken(ctx, accessToken), &messagev1.ListMessagesRequest{PeerId: peerID, Around: id, Limit: 1})
-	if err != nil {
-		return model.Message{}, errs.Wrap("m.api.ListMessages", fromStatus(err))
-	}
-
-	for _, pm := range resp.GetMessages() {
-		if pm.GetId() == id {
-			return toMessage(pm), nil
-		}
-	}
-
-	return model.Message{}, failure.New(failure.NotFound, "message not found")
-}
-
-// History is the part of the dialog with peerID that at names, with the
-// beginnings of long texts.
+// History is the part of the dialog with peerID that at names.
 func (m *Messages) History(ctx context.Context, accessToken, peerID string, at model.MessagesAt, limit int) (model.MessagePage, error) {
 	resp, err := m.api.ListMessages(withToken(ctx, accessToken), &messagev1.ListMessagesRequest{
 		PeerId: peerID,
@@ -89,8 +70,6 @@ func (m *Messages) History(ctx context.Context, accessToken, peerID string, at m
 		After:  at.After,
 		Around: at.Around,
 		Limit:  toLimit(limit),
-
-		TextLimit: model.ExcerptLength,
 	})
 	if err != nil {
 		return model.MessagePage{}, errs.Wrap("m.api.ListMessages", fromStatus(err))
@@ -153,31 +132,13 @@ func (m *Messages) DeleteMany(ctx context.Context, accessToken string, ids []str
 // replaces them, its photos.
 func (m *Messages) Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.Message, error) {
 	resp, err := m.api.EditMessage(withToken(ctx, accessToken), &messagev1.EditMessageRequest{
-		Id: id, Text: e.Text, BaseText: e.BaseText, AddPhotoIds: e.AddPhotoIDs, RemovePhotoIds: e.RemovePhotoIDs,
+		Id: id, Text: e.Text, Sealed: e.Sealed, BaseSealed: e.BaseSealed, AddPhotoIds: e.AddPhotoIDs, RemovePhotoIds: e.RemovePhotoIDs,
 	})
 	if err != nil {
 		return model.Message{}, errs.Wrap("m.api.EditMessage", fromStatus(err))
 	}
 
 	return toMessage(resp.GetMessage()), nil
-}
-
-// Search finds the caller's messages that say query, in the dialog with
-// peerID or, for "", in all of theirs.
-func (m *Messages) Search(ctx context.Context, accessToken, peerID, query, cursor string, limit int) (model.FoundMessages, error) {
-	resp, err := m.api.SearchMessages(withToken(ctx, accessToken), &messagev1.SearchMessagesRequest{
-		PeerId: peerID, Query: query, Cursor: cursor, Limit: toLimit(limit), TextLimit: model.ExcerptLength,
-	})
-	if err != nil {
-		return model.FoundMessages{}, errs.Wrap("m.api.SearchMessages", fromStatus(err))
-	}
-
-	found := model.FoundMessages{Messages: make([]model.Message, 0, len(resp.GetMessages())), NextCursor: resp.GetNextCursor()}
-	for _, pm := range resp.GetMessages() {
-		found.Messages = append(found.Messages, toMessage(pm))
-	}
-
-	return found, nil
 }
 
 // HasMessagesFrom tells whether peerID has ever written to the caller.
@@ -240,6 +201,26 @@ func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.Mes
 	}, nil
 }
 
+// SetKey makes publicKey the one messages to and from the caller are
+// sealed with.
+func (m *Messages) SetKey(ctx context.Context, accessToken string, publicKey []byte) error {
+	if _, err := m.api.SetKey(withToken(ctx, accessToken), &messagev1.SetKeyRequest{PublicKey: publicKey}); err != nil {
+		return errs.Wrap("m.api.SetKey", fromStatus(err))
+	}
+
+	return nil
+}
+
+// Key is the key messages to userID are sealed with, nil for none yet.
+func (m *Messages) Key(ctx context.Context, accessToken, userID string) ([]byte, error) {
+	resp, err := m.api.GetKey(withToken(ctx, accessToken), &messagev1.GetKeyRequest{UserId: userID})
+	if err != nil {
+		return nil, errs.Wrap("m.api.GetKey", fromStatus(err))
+	}
+
+	return resp.GetPublicKey(), nil
+}
+
 // toForwarded are the messages another one carries on.
 func toForwarded(carried []*messagev1.ForwardedMessage) []model.ForwardedMessage {
 	forwarded := make([]model.ForwardedMessage, 0, len(carried))
@@ -266,8 +247,7 @@ func toMessage(pm *messagev1.Message) model.Message {
 		ID:             pm.GetId(),
 		SenderID:       pm.GetSenderId(),
 		RecipientID:    pm.GetRecipientId(),
-		Text:           pm.GetText(),
-		TextCut:        pm.GetTextCut(),
+		Sealed:         pm.GetSealed(),
 		PhotoIDs:       pm.GetPhotoIds(),
 		CreatedAt:      pm.GetCreatedAt().AsTime(),
 		Read:           pm.GetRead(),

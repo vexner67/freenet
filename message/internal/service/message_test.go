@@ -17,7 +17,7 @@ import (
 func newService() *service.MessageService {
 	store := inmem.NewStore()
 	return service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{},
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{},
 	})
 }
 
@@ -26,7 +26,7 @@ func send(t *testing.T, svc *service.MessageService, from, to uuid.UUID, texts .
 
 	sent := make([]*message.Message, 0, len(texts))
 	for _, text := range texts {
-		m, err := svc.Send(context.Background(), from, to, service.Draft{Text: message.Text(text)})
+		m, err := svc.Send(context.Background(), from, to, service.Draft{Sealed: seal(text)})
 		if err != nil {
 			t.Fatalf("Send: %v", err)
 		}
@@ -39,7 +39,7 @@ func send(t *testing.T, svc *service.MessageService, from, to uuid.UUID, texts .
 func texts(messages []*message.Message) []string {
 	out := make([]string, len(messages))
 	for i, m := range messages {
-		out[i] = m.Text().String()
+		out[i] = opened(m)
 	}
 	return out
 }
@@ -153,8 +153,8 @@ func TestDialogs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if d := first.Dialogs[0]; d.LastMessage.Text() != "бобу" || !d.HasUnread() {
-		t.Fatalf("bob's dialog: last %q, unread %v; bob's message is still unread", d.LastMessage.Text(), d.HasUnread())
+	if d := first.Dialogs[0]; opened(d.LastMessage) != "бобу" || !d.HasUnread() {
+		t.Fatalf("bob's dialog: last %q, unread %v; bob's message is still unread", opened(d.LastMessage), d.HasUnread())
 	}
 }
 
@@ -238,7 +238,7 @@ func TestSend_ToYourself(t *testing.T) {
 	t.Parallel()
 
 	ann := uuid.New()
-	if _, err := newService().Send(context.Background(), ann, ann, service.Draft{Text: "сам себе"}); !errors.Is(err, message.ErrToYourself) {
+	if _, err := newService().Send(context.Background(), ann, ann, service.Draft{Sealed: seal("сам себе")}); !errors.Is(err, message.ErrToYourself) {
 		t.Fatalf("to yourself: %v", err)
 	}
 }
@@ -340,7 +340,7 @@ func TestMessageService_Events(t *testing.T) {
 
 	// Taken back, the message says nothing: both hear what it is now.
 	for name, events := range map[string]<-chan service.Event{"recipient": annEvents, "sender": bobEvents} {
-		if e := <-events; e.Edited == nil || e.Edited.ID() != m.ID() || !e.Edited.IsDeleted() || e.Edited.Text() != "" {
+		if e := <-events; e.Edited == nil || e.Edited.ID() != m.ID() || !e.Edited.IsDeleted() || e.Edited.Sealed() != "" {
 			t.Fatalf("%s got %+v, want the message taken back", name, e)
 		}
 	}
@@ -405,15 +405,12 @@ func TestMessageService_Delete(t *testing.T) {
 		}
 	}
 
-	// It can be neither edited nor forwarded, and a search does not find it.
-	if _, err := svc.Edit(ctx, ann, fromAnn[1].ID(), message.Revision{Text: "снова"}); !errors.Is(err, message.ErrNotFound) {
+	// It can be neither edited nor forwarded.
+	if _, err := svc.Edit(ctx, ann, fromAnn[1].ID(), message.Revision{Sealed: seal("снова")}); !errors.Is(err, message.ErrNotFound) {
 		t.Fatalf("edit a message taken back: %v", err)
 	}
 	if _, err := svc.Send(ctx, ann, cat, service.Draft{Forward: []uuid.UUID{fromAnn[1].ID()}}); !errors.Is(err, message.ErrForwardNotFound) {
 		t.Fatalf("forward a message taken back: %v", err)
-	}
-	if found, err := svc.Search(ctx, bob, uuid.Nil, "не то", uuid.Nil, 20); err != nil || len(found.Messages) != 0 {
-		t.Fatalf("search = %v, %v; want nothing", texts(found.Messages), err)
 	}
 
 	// Bob takes his message back too: it is still the last of the dialog
@@ -460,12 +457,12 @@ func TestMessageService_Forward(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ann, bob, cat, dan := uuid.New(), uuid.New(), uuid.New(), uuid.New()
 	photo, post := uuid.New(), uuid.New()
 
-	first, err := svc.Send(ctx, bob, ann, service.Draft{Text: "смотри", Photos: message.Photos{photo}})
+	first, err := svc.Send(ctx, bob, ann, service.Draft{Sealed: seal("смотри"), Photos: message.Photos{photo}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -476,13 +473,13 @@ func TestMessageService_Forward(t *testing.T) {
 
 	// Ann forwards both to cat, newest named first: they go oldest first,
 	// the same one once, and bob's photo is kept once more under a new ID.
-	fwd, err := svc.Send(ctx, ann, cat, service.Draft{Text: "вот", Forward: []uuid.UUID{second.ID(), first.ID(), second.ID()}})
+	fwd, err := svc.Send(ctx, ann, cat, service.Draft{Sealed: seal("вот"), Forward: []uuid.UUID{second.ID(), first.ID(), second.ID()}})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	carried := fwd.Forwarded()
-	if len(carried) != 2 || carried[0].SenderID != bob || carried[0].Text != "смотри" || carried[1].SenderID != ann || carried[1].Post != post {
+	if len(carried) != 2 || carried[0].SenderID != bob || carried[0].Text != "" || carried[1].SenderID != ann || carried[1].Post != post {
 		t.Fatalf("forwarded = %+v", carried)
 	}
 	if !carried[0].CreatedAt.Equal(first.CreatedAt()) {
@@ -506,7 +503,7 @@ func TestMessageService_Forward(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := again.Forwarded(); len(got) != 3 || got[0].SenderID != ann || got[0].Text != "вот" || got[1].Text != "смотри" || got[1].Photos[0] == carried[0].Photos[0] ||
+	if got := again.Forwarded(); len(got) != 3 || got[0].SenderID != ann || got[0].Text != "" || got[1].SenderID != bob || got[1].Photos[0] == carried[0].Photos[0] ||
 		got[0].Depth != 0 || got[1].Depth != 1 || got[2].Depth != 1 {
 		t.Fatalf("forwarded again = %+v", got)
 	}
@@ -699,7 +696,7 @@ func TestMessageService_Photos(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ann, bob := uuid.New(), uuid.New()
 	annsPhoto, bobsPhoto := uuid.New(), uuid.New()
@@ -803,10 +800,6 @@ func TestMessageService_Hide(t *testing.T) {
 	if err := svc.MarkRead(ctx, ann, bob, fromBob.ID()); !errors.Is(err, message.ErrNotFound) {
 		t.Fatalf("reading up to a hidden message: %v", err)
 	}
-	q, _ := message.NewQuery("хорошо")
-	if page, _ := svc.Search(ctx, ann, uuid.Nil, q, uuid.Nil, 20); len(page.Messages) != 0 {
-		t.Fatalf("ann finds a hidden message: %v", texts(page.Messages))
-	}
 
 	// Her own message she hides from herself; he keeps it. Then she cannot
 	// take it back from both.
@@ -816,7 +809,7 @@ func TestMessageService_Hide(t *testing.T) {
 	if err := svc.Delete(ctx, ann, fromAnn[1].ID()); !errors.Is(err, message.ErrNotFound) {
 		t.Fatalf("deleting for all what she hid: %v", err)
 	}
-	if _, err := svc.Edit(ctx, ann, fromAnn[1].ID(), message.Revision{Text: "x"}); !errors.Is(err, message.ErrNotFound) {
+	if _, err := svc.Edit(ctx, ann, fromAnn[1].ID(), message.Revision{Sealed: seal("x")}); !errors.Is(err, message.ErrNotFound) {
 		t.Fatalf("editing what she hid: %v", err)
 	}
 
@@ -846,7 +839,7 @@ func TestMessageService_HidePhotos(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ctx := context.Background()
 	ann, bob := uuid.New(), uuid.New()
@@ -899,26 +892,26 @@ func TestMessageService_Edit(t *testing.T) {
 			t.Fatalf("%s: %v, want %v", name, err, tt.err)
 		}
 	}
-	if _, err := svc.Edit(ctx, ann, uuid.New(), message.Revision{Text: "x"}); !errors.Is(err, message.ErrNotFound) {
+	if _, err := svc.Edit(ctx, ann, uuid.New(), message.Revision{Sealed: seal("x")}); !errors.Is(err, message.ErrNotFound) {
 		t.Fatalf("no message: %v", err)
 	}
 
-	edited, err := svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "привет!"})
-	if err != nil || edited.Text() != "привет!" || edited.EditedAt().IsZero() {
+	edited, err := svc.Edit(ctx, ann, m.ID(), message.Revision{Sealed: seal("привет!")})
+	if err != nil || opened(edited) != "привет!" || edited.EditedAt().IsZero() {
 		t.Fatalf("Edit = %+v, %v", edited, err)
 	}
 	for name, events := range map[string]<-chan service.Event{"sender": annEvents, "recipient": bobEvents} {
-		if e := <-events; e.Edited == nil || e.Edited.ID() != m.ID() || e.Edited.Text() != "привет!" {
+		if e := <-events; e.Edited == nil || e.Edited.ID() != m.ID() || opened(e.Edited) != "привет!" {
 			t.Fatalf("%s got %+v, want the edit", name, e)
 		}
 	}
 
 	page, _ := svc.History(ctx, bob, ann, uuid.Nil, 50)
-	if len(page.Messages) != 1 || page.Messages[0].Text() != "привет!" || page.Messages[0].EditedAt().IsZero() {
+	if len(page.Messages) != 1 || opened(page.Messages[0]) != "привет!" || page.Messages[0].EditedAt().IsZero() {
 		t.Fatalf("bob reads %+v", page.Messages)
 	}
-	if dialogs, _ := svc.Dialogs(ctx, bob, uuid.Nil, 20); dialogs.Dialogs[0].LastMessage.Text() != "привет!" {
-		t.Fatalf("bob's dialog says %q", dialogs.Dialogs[0].LastMessage.Text())
+	if dialogs, _ := svc.Dialogs(ctx, bob, uuid.Nil, 20); opened(dialogs.Dialogs[0].LastMessage) != "привет!" {
+		t.Fatalf("bob's dialog says %q", opened(dialogs.Dialogs[0].LastMessage))
 	}
 
 	// Who deleted the message for themselves does not hear of its edits.
@@ -926,73 +919,13 @@ func TestMessageService_Edit(t *testing.T) {
 		t.Fatal(err)
 	}
 	<-bobEvents // his own deletion
-	if _, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "пока"}); err != nil {
+	if _, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Sealed: seal("пока")}); err != nil {
 		t.Fatal(err)
 	}
 	select {
 	case e := <-bobEvents:
 		t.Fatalf("bob heard %+v", e)
 	default:
-	}
-}
-
-func TestMessageService_Search(t *testing.T) {
-	t.Parallel()
-
-	svc := newService()
-	ctx := context.Background()
-	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
-
-	send(t, svc, ann, bob, "Еду на море", "горы")
-	send(t, svc, bob, ann, "МОРЕ волнуется")
-	send(t, svc, cat, ann, "на море хорошо")
-	send(t, svc, bob, cat, "море не для ann")
-
-	q, _ := message.NewQuery("море")
-
-	all, err := svc.Search(ctx, ann, uuid.Nil, q, uuid.Nil, 2)
-	if err != nil || !slices.Equal(texts(all.Messages), []string{"на море хорошо", "МОРЕ волнуется"}) || all.NextCursor == uuid.Nil {
-		t.Fatalf("the first page = %v, %v", texts(all.Messages), err)
-	}
-	rest, err := svc.Search(ctx, ann, uuid.Nil, q, all.NextCursor, 2)
-	if err != nil || !slices.Equal(texts(rest.Messages), []string{"Еду на море"}) || rest.NextCursor != uuid.Nil {
-		t.Fatalf("the second page = %v, %v", texts(rest.Messages), err)
-	}
-
-	withBob, err := svc.Search(ctx, ann, bob, q, uuid.Nil, 20)
-	if err != nil || !slices.Equal(texts(withBob.Messages), []string{"МОРЕ волнуется", "Еду на море"}) {
-		t.Fatalf("with bob = %v, %v", texts(withBob.Messages), err)
-	}
-}
-
-// A message is found by what the messages it carries on say too.
-func TestMessageService_SearchForwarded(t *testing.T) {
-	t.Parallel()
-
-	svc := newService()
-	ctx := context.Background()
-	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
-
-	sea := send(t, svc, bob, ann, "Еду на МОРЕ")[0]
-	if _, err := svc.Send(ctx, ann, cat, service.Draft{Text: "смотри", Forward: []uuid.UUID{sea.ID()}}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := svc.Send(ctx, ann, cat, service.Draft{Forward: []uuid.UUID{sea.ID()}}); err != nil {
-		t.Fatal(err)
-	}
-	send(t, svc, ann, cat, "горы")
-
-	q, _ := message.NewQuery("море")
-
-	found, err := svc.Search(ctx, cat, uuid.Nil, q, uuid.Nil, 20)
-	if err != nil || !slices.Equal(texts(found.Messages), []string{"", "смотри"}) {
-		t.Fatalf("cat finds %v, %v", texts(found.Messages), err)
-	}
-	if withAnn, err := svc.Search(ctx, cat, ann, q, uuid.Nil, 20); err != nil || len(withAnn.Messages) != 2 {
-		t.Fatalf("cat finds %d with ann, %v", len(withAnn.Messages), err)
-	}
-	if withBob, err := svc.Search(ctx, cat, bob, q, uuid.Nil, 20); err != nil || len(withBob.Messages) != 0 {
-		t.Fatalf("cat finds %d with bob, %v", len(withBob.Messages), err)
 	}
 }
 
@@ -1003,25 +936,25 @@ func TestMessageService_EditPhotos(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ann, bob := uuid.New(), uuid.New()
 	kept, dropped, added := uuid.New(), uuid.New(), uuid.New()
 
-	m, err := svc.Send(ctx, ann, bob, service.Draft{Text: "смотри", Photos: message.Photos{kept, dropped}})
+	m, err := svc.Send(ctx, ann, bob, service.Draft{Sealed: seal("смотри"), Photos: message.Photos{kept, dropped}})
 	if err != nil {
 		t.Fatal(err)
 	}
 	photos.published = nil
 
 	// An edit that says nothing of photos keeps them.
-	edited, err := svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "гляди"})
+	edited, err := svc.Edit(ctx, ann, m.ID(), message.Revision{Sealed: seal("гляди")})
 	if err != nil || !slices.Equal(edited.Photos(), message.Photos{kept, dropped}) || len(photos.published)+len(photos.deleted) != 0 {
 		t.Fatalf("the photos after an edit of the words = %v, %v; media heard %+v, %+v", edited.Photos(), err, photos.published, photos.deleted)
 	}
 
 	// The new photos are kept, those taken away deleted, the rest left.
-	edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "гляди", Removed: message.Photos{dropped}, Added: message.Photos{added}})
+	edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Sealed: seal("гляди"), Removed: message.Photos{dropped}, Added: message.Photos{added}})
 	if err != nil || !slices.Equal(edited.Photos(), message.Photos{kept, added}) {
 		t.Fatalf("the photos = %v, %v", edited.Photos(), err)
 	}
@@ -1038,7 +971,7 @@ func TestMessageService_EditPhotos(t *testing.T) {
 	// Another window, which still shows the photo dropped, adds one more:
 	// it changes the message as the first edit left it.
 	late := uuid.New()
-	if edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "гляди", Added: message.Photos{late}}); err != nil || !slices.Equal(edited.Photos(), message.Photos{kept, added, late}) {
+	if edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Sealed: seal("гляди"), Added: message.Photos{late}}); err != nil || !slices.Equal(edited.Photos(), message.Photos{kept, added, late}) {
 		t.Fatalf("the photos after an edit from another window = %v, %v", edited.Photos(), err)
 	}
 	if len(photos.published) != 2 || len(photos.deleted) != 1 {
@@ -1051,7 +984,7 @@ func TestMessageService_EditPhotos(t *testing.T) {
 	if _, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Removed: all}); !errors.Is(err, message.ErrTextEmpty) {
 		t.Fatalf("an edit to nothing: %v", err)
 	}
-	if edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Text: "слова", Removed: all}); err != nil || len(edited.Photos()) != 0 {
+	if edited, err = svc.Edit(ctx, ann, m.ID(), message.Revision{Sealed: seal("слова"), Removed: all}); err != nil || len(edited.Photos()) != 0 {
 		t.Fatalf("the photos taken away = %v, %v", edited.Photos(), err)
 	}
 	if len(photos.published) != 0 || len(photos.deleted) != 1 || len(photos.deleted[0].photos) != 3 {
@@ -1062,14 +995,14 @@ func TestMessageService_EditPhotos(t *testing.T) {
 	}
 
 	// A message that shares a photo of an album takes none of its own.
-	shared, err := svc.Send(ctx, ann, bob, service.Draft{Text: "фото", SharedPhoto: uuid.New()})
+	shared, err := svc.Send(ctx, ann, bob, service.Draft{Sealed: seal("фото"), SharedPhoto: uuid.New()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = svc.Edit(ctx, ann, shared.ID(), message.Revision{Text: "фото", Added: message.Photos{added}}); !errors.Is(err, message.ErrSharedPhotoAlone) {
+	if _, err = svc.Edit(ctx, ann, shared.ID(), message.Revision{Sealed: seal("фото"), Added: message.Photos{added}}); !errors.Is(err, message.ErrSharedPhotoAlone) {
 		t.Fatalf("photos for a shared photo: %v", err)
 	}
-	if _, err = svc.Edit(ctx, ann, shared.ID(), message.Revision{Text: "фото!"}); err != nil {
+	if _, err = svc.Edit(ctx, ann, shared.ID(), message.Revision{Sealed: seal("фото!")}); err != nil {
 		t.Fatalf("an edit of its words: %v", err)
 	}
 }
@@ -1081,7 +1014,7 @@ func TestMessageService_DeleteMany(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(), Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	photo := uuid.New()
@@ -1104,7 +1037,7 @@ func TestMessageService_DeleteMany(t *testing.T) {
 
 		out := make([]string, len(page.Messages))
 		for i, m := range page.Messages {
-			out[i] = m.Text().String()
+			out[i] = opened(m)
 			if m.IsDeleted() {
 				out[i] = "-"
 			}

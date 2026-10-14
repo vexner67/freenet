@@ -13,7 +13,7 @@ import (
 
 type messageJSON struct {
 	ID             string `json:"id"`
-	Text           string `json:"text"`
+	Sealed         []byte `json:"sealed"`
 	CreatedAt      string `json:"createdAt"`
 	Out            bool   `json:"out"`
 	Read           bool   `json:"read"`
@@ -48,7 +48,7 @@ func TestListDialogs(t *testing.T) {
 		d.Chat.LastMessage == nil || d.Chat.LastMessage.Text != "иду" || d.Chat.LastMessage.Author["nickname"] != "bob" || d.Chat.LastMessage.Out {
 		t.Fatalf("chat = %+v", d)
 	}
-	if d := got.Dialogs[1]; d.Chat != nil || d.Peer["nickname"] != "bob" || !d.Unread || d.LastMessage.Out || d.LastMessage.Text != "как дела?" {
+	if d := got.Dialogs[1]; d.Chat != nil || d.Peer["nickname"] != "bob" || !d.Unread || d.LastMessage.Out || string(d.LastMessage.Sealed) != "как дела?" {
 		t.Fatalf("dialog = %+v", d)
 	}
 
@@ -69,7 +69,7 @@ func TestListDialogs(t *testing.T) {
 
 	h = newHarness(rest.Config{})
 	h.chats.none = true
-	h.messages.dialogs = []model.Dialog{{PeerID: "u2", LastMessage: model.Message{ID: "m2", SenderID: "u2", RecipientID: "u1", Text: "как дела?"}}}
+	h.messages.dialogs = []model.Dialog{{PeerID: "u2", LastMessage: model.Message{ID: "m2", SenderID: "u2", RecipientID: "u1", Sealed: []byte("как дела?")}}}
 	w = h.do("GET", "/api/v1/dialogs", "", "Authorization", "Bearer tok")
 	if !strings.Contains(w.Body.String(), `"nextCursor":""`) || strings.Contains(w.Body.String(), `"chat"`) {
 		t.Fatalf("the last page = %s", w.Body.String())
@@ -109,7 +109,7 @@ func TestListMessages(t *testing.T) {
 	if h.messages.peerID != "u2" || h.messages.cursor != "m7" || h.messages.after != "" {
 		t.Fatalf("request = %+v", h.messages)
 	}
-	if len(got.Messages) != 2 || !got.Messages[0].Out || !got.Messages[0].Read || got.Messages[1].Out {
+	if len(got.Messages) != 2 || !got.Messages[0].Out || !got.Messages[0].Read || got.Messages[1].Out || string(got.Messages[1].Sealed) != "как дела?" {
 		t.Fatalf("messages = %+v; ann's own first, then bob's", got.Messages)
 	}
 	if got.Messages[0].DeletableUntil != "2026-10-06T22:00:00Z" || got.Messages[1].DeletableUntil != "" {
@@ -132,7 +132,7 @@ func TestListMessages(t *testing.T) {
 	page := decode[struct {
 		Messages []struct {
 			ID             string `json:"id"`
-			Text           string `json:"text"`
+			Sealed         []byte `json:"sealed"`
 			Deleted        bool   `json:"deleted"`
 			DeletableUntil string `json:"deletableUntil"`
 			EditableUntil  string `json:"editableUntil"`
@@ -142,7 +142,7 @@ func TestListMessages(t *testing.T) {
 	if w.Code != http.StatusOK || found.messages.around != "m2" || !page.CanWrite || len(page.Messages) != 3 {
 		t.Fatalf("around: %d %s", w.Code, w.Body)
 	}
-	if gone := page.Messages[2]; !gone.Deleted || gone.Text != "" || gone.DeletableUntil != "" || gone.EditableUntil != "" || page.Messages[0].Deleted {
+	if gone := page.Messages[2]; !gone.Deleted || gone.Sealed != nil || gone.DeletableUntil != "" || gone.EditableUntil != "" || page.Messages[0].Deleted {
 		t.Fatalf("messages = %+v; want the last taken back and nothing to do with it", page.Messages)
 	}
 }
@@ -156,14 +156,26 @@ func TestSendMessage(t *testing.T) {
 		h := newHarness(rest.Config{})
 		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
 
-		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"text":"привет"}`, "Authorization", "Bearer tok")
+		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"sealed":"cHJpdmV0"}`, "Authorization", "Bearer tok")
 		got := decode[messageJSON](t, w)
 
-		if w.Code != http.StatusCreated || h.messages.peerID != "u2" || h.messages.sentText != "привет" || h.messages.token != "tok" {
+		if w.Code != http.StatusCreated || h.messages.peerID != "u2" || h.messages.sent != "privet" || h.messages.token != "tok" {
 			t.Fatalf("%d %+v", w.Code, got)
 		}
-		if !got.Out || got.Read || got.CreatedAt != "2026-10-05T22:00:00Z" {
+		if !got.Out || got.Read || got.CreatedAt != "2026-10-05T22:00:00Z" || string(got.Sealed) != "privet" {
 			t.Fatalf("message = %+v", got)
+		}
+	})
+
+	t.Run("not in plain words", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+
+		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"text":"привет","photos":["ph1"]}`, "Authorization", "Bearer tok")
+		if got := decode[errorBody](t, w); w.Code != http.StatusBadRequest || got.Error.Message != "messages are end-to-end encrypted" || h.messages.sent != "" || len(h.media.claimed) != 0 {
+			t.Fatalf("%d %+v, claimed %v", w.Code, got, h.media.claimed)
 		}
 	})
 
@@ -173,23 +185,25 @@ func TestSendMessage(t *testing.T) {
 		h := newHarness(rest.Config{})
 		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
 
-		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"text":"вот","forward":["m1","gone"]}`, "Authorization", "Bearer tok")
+		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"sealed":"dm90","forward":["gone","m1"]}`, "Authorization", "Bearer tok")
 		got := decode[struct {
-			Text           string `json:"text"`
+			Sealed         []byte `json:"sealed"`
 			ForwardedCount int    `json:"forwardedCount"`
 			Forwarded      []struct {
+				Index     int                 `json:"index"`
 				Author    map[string]string   `json:"author"`
-				Text      string              `json:"text"`
 				Photos    []map[string]string `json:"photos"`
 				CreatedAt string              `json:"createdAt"`
 			} `json:"forwarded"`
 		}](t, w)
 
 		// Both are counted; the one whose author's page is gone is not shown.
-		if w.Code != http.StatusCreated || got.Text != "вот" || got.ForwardedCount != 2 || len(got.Forwarded) != 1 {
+		// Their words are sealed with the message, in the order of all:
+		// index tells which the one shown is.
+		if w.Code != http.StatusCreated || string(got.Sealed) != "vot" || got.ForwardedCount != 2 || len(got.Forwarded) != 1 {
 			t.Fatalf("%d %s", w.Code, w.Body)
 		}
-		if f := got.Forwarded[0]; f.Author["nickname"] != "bob" || f.Text != "из m1" || f.CreatedAt != "2026-10-09T12:00:00Z" ||
+		if f := got.Forwarded[0]; f.Index != 1 || f.Author["nickname"] != "bob" || f.CreatedAt != "2026-10-09T12:00:00Z" ||
 			len(f.Photos) != 1 || f.Photos[0]["large"] != "/media/photos/u2/ph1/large.jpg" {
 			t.Fatalf("forwarded = %+v", f)
 		}
@@ -205,8 +219,8 @@ func TestSendMessage(t *testing.T) {
 		got := decode[struct {
 			ForwardedCount int `json:"forwardedCount"`
 			Forwarded      []struct {
-				Depth int    `json:"depth"`
-				Text  string `json:"text"`
+				Depth int `json:"depth"`
+				Index int `json:"index"`
 			} `json:"forwarded"`
 		}](t, w)
 
@@ -215,11 +229,8 @@ func TestSendMessage(t *testing.T) {
 		if w.Code != http.StatusCreated || got.ForwardedCount != 5 || len(got.Forwarded) != 3 {
 			t.Fatalf("%d %s", w.Code, w.Body)
 		}
-		for i, want := range []struct {
-			depth int
-			text  string
-		}{{0, "из m1"}, {1, "из under:m2"}, {0, "из m4"}} {
-			if f := got.Forwarded[i]; f.Depth != want.depth || f.Text != want.text {
+		for i, want := range []struct{ depth, index int }{{0, 0}, {1, 1}, {0, 4}} {
+			if f := got.Forwarded[i]; f.Depth != want.depth || f.Index != want.index {
 				t.Fatalf("forwarded[%d] = %+v, want %+v", i, f, want)
 			}
 		}
@@ -231,9 +242,8 @@ func TestSendMessage(t *testing.T) {
 		h := newHarness(rest.Config{})
 		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
 
-		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"text":"смотри","albumPhoto":"ph6"}`, "Authorization", "Bearer tok")
+		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"sealed":"eA==","albumPhoto":"ph6"}`, "Authorization", "Bearer tok")
 		got := decode[struct {
-			Text        string `json:"text"`
 			AlbumPhoto  string `json:"albumPhoto"`
 			SharedPhoto struct {
 				ID      string            `json:"id"`
@@ -244,7 +254,7 @@ func TestSendMessage(t *testing.T) {
 			} `json:"sharedPhoto"`
 		}](t, w)
 
-		if w.Code != http.StatusCreated || got.Text != "смотри" || got.AlbumPhoto != "ph6" {
+		if w.Code != http.StatusCreated || got.AlbumPhoto != "ph6" {
 			t.Fatalf("%d %s", w.Code, w.Body)
 		}
 		if p := got.SharedPhoto; p.ID != "ph6" || p.Deleted || p.AlbumID != "a2" || !p.NSFW || p.Photo["small"] != "/media/photos/u2/ph6/small.jpg" {
@@ -254,7 +264,7 @@ func TestSendMessage(t *testing.T) {
 		// A photo that is not there is not sent.
 		h = newHarness(rest.Config{})
 		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
-		if w = h.do("POST", "/api/v1/dialogs/bob/messages", `{"text":"вот","albumPhoto":"ph404"}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest || h.messages.sentText != "" {
+		if w = h.do("POST", "/api/v1/dialogs/bob/messages", `{"sealed":"eA==","albumPhoto":"ph404"}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest || h.messages.sent != "" {
 			t.Fatalf("a missing photo: %d %s", w.Code, w.Body)
 		}
 	})
@@ -306,9 +316,9 @@ func TestSendMessage(t *testing.T) {
 		t.Parallel()
 
 		h := newHarness(rest.Config{})
-		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"text":"привет"}`, "Authorization", "Bearer tok")
+		w := h.do("POST", "/api/v1/dialogs/bob/messages", `{"sealed":"eA=="}`, "Authorization", "Bearer tok")
 
-		if got := decode[errorBody](t, w); w.Code != http.StatusBadRequest || got.Error.Message != "fill in your profile before writing messages" || h.messages.sentText != "" {
+		if got := decode[errorBody](t, w); w.Code != http.StatusBadRequest || got.Error.Message != "fill in your profile before writing messages" || h.messages.sent != "" {
 			t.Fatalf("%d %+v", w.Code, got)
 		}
 	})
@@ -319,7 +329,7 @@ func TestSendMessage(t *testing.T) {
 		h := newHarness(rest.Config{})
 		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
 
-		if w := h.do("POST", "/api/v1/dialogs/nobody/messages", `{"text":"привет"}`, "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		if w := h.do("POST", "/api/v1/dialogs/nobody/messages", `{"sealed":"eA=="}`, "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
 			t.Fatalf("status = %d", w.Code)
 		}
 	})
@@ -327,7 +337,7 @@ func TestSendMessage(t *testing.T) {
 	t.Run("needs a token", func(t *testing.T) {
 		t.Parallel()
 
-		if w := newHarness(rest.Config{}).do("POST", "/api/v1/dialogs/bob/messages", `{"text":"x"}`); w.Code != http.StatusUnauthorized {
+		if w := newHarness(rest.Config{}).do("POST", "/api/v1/dialogs/bob/messages", `{"sealed":"eA=="}`); w.Code != http.StatusUnauthorized {
 			t.Fatalf("status = %d", w.Code)
 		}
 	})
@@ -375,7 +385,7 @@ func TestDeleteMessage(t *testing.T) {
 	}
 }
 
-func TestEditHideAndSearchMessages(t *testing.T) {
+func TestEditHideMessages(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(rest.Config{})
@@ -393,64 +403,72 @@ func TestEditHideAndSearchMessages(t *testing.T) {
 	}
 
 	// Edit: the message as the caller's own, with when it was edited.
-	w := h.do("PATCH", "/api/v1/messages/m1", `{"text":"привет!"}`, auth...)
+	w := h.do("PATCH", "/api/v1/messages/m1", `{"sealed":"cHJpdmV0IQ=="}`, auth...)
 	edited := decode[struct {
-		Text          string  `json:"text"`
+		Sealed        []byte  `json:"sealed"`
 		Out           bool    `json:"out"`
 		EditedAt      *string `json:"editedAt"`
 		EditableUntil string  `json:"editableUntil"`
 	}](t, w)
-	if w.Code != http.StatusOK || h.messages.edited != "m1/привет!" || !edited.Out || edited.EditedAt == nil || edited.EditableUntil == "" {
+	if w.Code != http.StatusOK || h.messages.edited != "m1/privet!" || string(edited.Sealed) != "privet!" || !edited.Out || edited.EditedAt == nil || edited.EditableUntil == "" {
 		t.Fatalf("edit: %d %+v, edited %q", w.Code, edited, h.messages.edited)
 	}
 	if h.messages.addedPhotos != nil || h.messages.removedPhotos != nil {
 		t.Fatalf("an edit of the words changed the photos: +%v -%v", h.messages.addedPhotos, h.messages.removedPhotos)
 	}
-	if h.messages.baseText != nil {
-		t.Fatalf("an edit that names no text it started from sent %q", *h.messages.baseText)
+	if h.messages.baseSealed != nil {
+		t.Fatalf("an edit that names nothing it started from sent %q", h.messages.baseSealed)
 	}
 
-	// The text the edit started from goes with it, an empty one too.
-	for _, base := range []string{"привет", ""} {
-		body := `{"text":"x","baseText":"` + base + `"}`
-		if w = h.do("PATCH", "/api/v1/messages/m1", body, auth...); w.Code != http.StatusOK || h.messages.baseText == nil || *h.messages.baseText != base {
-			t.Fatalf("an edit from %q: %d, sent %v", base, w.Code, h.messages.baseText)
+	// What the edit started from goes with it, nothing too.
+	for _, base := range []struct{ json, want string }{{"cHJpdmV0", "privet"}, {"", ""}} {
+		body := `{"sealed":"eA==","baseSealed":"` + base.json + `"}`
+		if w = h.do("PATCH", "/api/v1/messages/m1", body, auth...); w.Code != http.StatusOK || h.messages.baseSealed == nil || string(h.messages.baseSealed) != base.want {
+			t.Fatalf("an edit from %q: %d, sent %q", base.want, w.Code, h.messages.baseSealed)
 		}
 	}
-	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x"}`); w.Code != http.StatusUnauthorized {
+
+	// Plain words are not taken.
+	h.messages.edited = ""
+	for _, body := range []string{`{"text":"x"}`, `{"sealed":"eA==","baseText":"привет"}`} {
+		if w = h.do("PATCH", "/api/v1/messages/m1", body, auth...); w.Code != http.StatusBadRequest || h.messages.edited != "" {
+			t.Fatalf("%s: %d, edited %q", body, w.Code, h.messages.edited)
+		}
+	}
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"sealed":"eA=="}`); w.Code != http.StatusUnauthorized {
 		t.Fatalf("edit without a token: %d", w.Code)
 	}
 
 	// The edit names the photos to add, which are claimed, and to remove.
-	w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"","addPhotos":["ph2"],"removePhotos":["sent"]}`, auth...)
+	w = h.do("PATCH", "/api/v1/messages/m1", `{"addPhotos":["ph2"],"removePhotos":["sent"]}`, auth...)
 	if w.Code != http.StatusOK || !slices.Equal(h.messages.addedPhotos, []string{"ph2"}) || !slices.Equal(h.messages.removedPhotos, []string{"sent"}) || !strings.Contains(w.Body.String(), "/media/photos/u1/ph2/") {
 		t.Fatalf("edit of the photos: %d %s, +%v -%v", w.Code, w.Body, h.messages.addedPhotos, h.messages.removedPhotos)
 	}
 	if !slices.Equal(h.media.claimed, []string{"ph2"}) {
 		t.Fatalf("claimed %v, want the added photo", h.media.claimed)
 	}
-	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","removePhotos":["sent"]}`, auth...); w.Code != http.StatusOK || len(h.media.claimed) != 1 {
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"sealed":"eA==","removePhotos":["sent"]}`, auth...); w.Code != http.StatusOK || len(h.media.claimed) != 1 {
 		t.Fatalf("a photo taken away: %d, claimed %v", w.Code, h.media.claimed)
 	}
 	// The whole list, as edits once went, is no longer taken.
-	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","photos":["ph1"]}`, auth...); w.Code != http.StatusBadRequest {
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"sealed":"eA==","photos":["ph1"]}`, auth...); w.Code != http.StatusBadRequest {
 		t.Fatalf("an edit with the whole list of photos: %d", w.Code)
 	}
 
 	h.messages.edited = ""
-	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","addPhotos":["ph1","someone-elses"]}`, auth...); w.Code != http.StatusBadRequest || h.messages.edited != "" || !strings.Contains(w.Body.String(), "photo not found") {
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"sealed":"eA==","addPhotos":["ph1","someone-elses"]}`, auth...); w.Code != http.StatusBadRequest || h.messages.edited != "" || !strings.Contains(w.Body.String(), "photo not found") {
 		t.Fatalf("a photo of another: %d %s", w.Code, w.Body)
 	}
 
 	// A photo another message shows is not there to add.
 	h.media.taken = []string{"ph2"}
-	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","addPhotos":["ph2"]}`, auth...); w.Code != http.StatusBadRequest || h.messages.edited != "" {
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"sealed":"eA==","addPhotos":["ph2"]}`, auth...); w.Code != http.StatusBadRequest || h.messages.edited != "" {
 		t.Fatalf("a photo shown elsewhere: %d %s", w.Code, w.Body)
 	}
 
 	// A refused edit gives the photos it claimed back.
 	h.media.taken, h.messages.err = nil, failure.New(failure.Conflict, "the message can no longer be edited")
-	if w = h.do("PATCH", "/api/v1/messages/m1", `{"text":"x","addPhotos":["ph2"]}`, auth...); w.Code != http.StatusConflict || !slices.Equal(h.media.released, []string{"ph2"}) {
+	if w = h.do("PATCH", "/api/v1/messages/m1", `{"sealed":"eA==","addPhotos":["ph2"]}`, auth...); w.Code != http.StatusConflict || !slices.Equal(h.media.released, []string{"ph2"}) {
 		t.Fatalf("a refused edit: %d, released %v", w.Code, h.media.released)
 	}
 }
@@ -494,45 +512,48 @@ func TestDeleteMessages(t *testing.T) {
 	}
 }
 
-func TestSearchMessages(t *testing.T) {
+func TestMessageKeys(t *testing.T) {
 	t.Parallel()
 
 	h := newHarness(rest.Config{})
+	h.messages.keys = map[string][]byte{"u1": []byte("ann's"), "u2": []byte("bob's")}
 	auth := []string{"Authorization", "Bearer tok"}
 
-	// Search: all dialogs, each message with who is on the other side.
-	w := h.do("GET", "/api/v1/messages/search?q=%D0%BC%D0%BE%D1%80%D0%B5&cursor=m10", "", auth...)
-	found := decode[struct {
-		Messages []struct {
-			Peer    map[string]any `json:"peer"`
-			Message struct {
-				ID        string `json:"id"`
-				Out       bool   `json:"out"`
-				Forwarded []struct {
-					Text   string         `json:"text"`
-					Author map[string]any `json:"author"`
-				} `json:"forwarded"`
-			} `json:"message"`
-		} `json:"messages"`
-		NextCursor string `json:"nextCursor"`
-	}](t, w)
-	if w.Code != http.StatusOK || h.messages.searched != "море" || h.messages.peerID != "" || h.messages.cursor != "m10" || found.NextCursor != "m8" ||
-		len(found.Messages) == 0 || found.Messages[0].Peer["nickname"] != "bob" || found.Messages[0].Message.ID != "m9" || found.Messages[0].Message.Out {
-		t.Fatalf("search: %d %+v, asked for %q with %q", w.Code, found, h.messages.searched, h.messages.peerID)
-	}
-	// What the message carries on, by which it may have been found.
-	if carried := found.Messages[0].Message.Forwarded; len(carried) != 1 || carried[0].Text != "еду на море" || carried[0].Author["nickname"] != "ann" {
-		t.Fatalf("the forwarded of a found message = %+v", carried)
+	type keyJSON struct {
+		PublicKey []byte `json:"publicKey"`
 	}
 
-	// In one dialog: the peer by nickname.
-	if w = h.do("GET", "/api/v1/messages/search?q=x&peer=bob", "", auth...); w.Code != http.StatusOK || h.messages.peerID != "u2" {
-		t.Fatalf("search with bob: %d, peer %q", w.Code, h.messages.peerID)
+	// The caller's own, as the server has it.
+	w := h.do("GET", "/api/v1/me/message-key", "", auth...)
+	if got := decode[keyJSON](t, w); w.Code != http.StatusOK || string(got.PublicKey) != "ann's" {
+		t.Fatalf("own: %d %s", w.Code, w.Body)
 	}
-	if w = h.do("GET", "/api/v1/messages/search?q=x&peer=nobody", "", auth...); w.Code != http.StatusNotFound {
-		t.Fatalf("search with nobody: %d", w.Code)
+
+	// Another's, by nickname; null for one who has none yet.
+	w = h.do("GET", "/api/v1/users/bob/message-key", "", auth...)
+	if got := decode[keyJSON](t, w); w.Code != http.StatusOK || string(got.PublicKey) != "bob's" {
+		t.Fatalf("bob's: %d %s", w.Code, w.Body)
 	}
-	if w = h.do("GET", "/api/v1/messages/search?q=x", ""); w.Code != http.StatusUnauthorized {
-		t.Fatalf("search without a token: %d", w.Code)
+	delete(h.messages.keys, "u2")
+	if w = h.do("GET", "/api/v1/users/bob/message-key", "", auth...); w.Code != http.StatusOK || !strings.Contains(w.Body.String(), `"publicKey":null`) {
+		t.Fatalf("no key: %d %s", w.Code, w.Body)
+	}
+	if w = h.do("GET", "/api/v1/users/nobody/message-key", "", auth...); w.Code != http.StatusNotFound {
+		t.Fatalf("nobody's: %d", w.Code)
+	}
+
+	// A key the browser made, base64.
+	if w = h.do("PUT", "/api/v1/me/message-key", `{"publicKey":"a2V5"}`, auth...); w.Code != http.StatusNoContent || string(h.messages.key) != "key" || h.messages.token != "tok" {
+		t.Fatalf("set: %d %s, key %q", w.Code, w.Body, h.messages.key)
+	}
+	h.messages.err = failure.New(failure.InvalidArgument, "invalid encryption key")
+	if w = h.do("PUT", "/api/v1/me/message-key", `{"publicKey":"a2V5"}`, auth...); w.Code != http.StatusBadRequest {
+		t.Fatalf("a bad key: %d", w.Code)
+	}
+
+	for _, req := range [][2]string{{"GET", "/api/v1/me/message-key"}, {"PUT", "/api/v1/me/message-key"}, {"GET", "/api/v1/users/bob/message-key"}} {
+		if w = newHarness(rest.Config{}).do(req[0], req[1], `{}`); w.Code != http.StatusUnauthorized {
+			t.Fatalf("%s %s without a token: %d", req[0], req[1], w.Code)
+		}
 	}
 }

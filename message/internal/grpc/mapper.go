@@ -22,6 +22,7 @@ func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 		PostId:      postString(m.Post()),
 		PhotoId:     postString(m.SharedPhoto()),
 		Forwarded:   toProtoForwarded(m.Forwarded()),
+		Sealed:      m.Sealed().Bytes(),
 	}
 
 	// A message taken back can be neither edited nor taken back again.
@@ -193,20 +194,6 @@ func excerpted(pm *messagev1.Message, m *message.Message, limit int32) *messagev
 
 	for i, f := range m.Forwarded() {
 		text, cut := f.Text.Excerpt(int(limit))
-		pm.Forwarded[i].Text = text
-		pm.TextCut = pm.TextCut || cut
-	}
-
-	return pm
-}
-
-// found cuts a found message as excerpted does, each text that says query
-// to where it says it: its own and those of the messages it carries on.
-func found(pm *messagev1.Message, m *message.Message, query message.Query, limit int32) *messagev1.Message {
-	pm.Text, pm.TextCut = m.Text().ExcerptAround(query.String(), int(limit))
-
-	for i, f := range m.Forwarded() {
-		text, cut := f.Text.ExcerptAround(query.String(), int(limit))
 		pm.Forwarded[i].Text = text
 		pm.TextCut = pm.TextCut || cut
 	}

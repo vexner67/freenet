@@ -650,12 +650,17 @@ func collectChatMessages(rows pgx.Rows) ([]*message.ChatMessage, error) {
 	return messages, nil
 }
 
-// chatMessageWords is all a message of a chat says, as
-// chat_messages_search_idx has it (see messageWords).
+// chatMessageWords is all a message of a chat says, itself and in the
+// messages it carries on, as chat_messages_search_idx has it: the
+// expression here and in the migration must be the same for the index to
+// serve the search.
 const chatMessageWords = `message_words(msg.text, msg.forwarded)`
 
 // searchChatMessagesQuery: $2 is one chat, NULL for all the chats of the
-// user $1; $3 is the pattern, as in searchMessagesQuery. Only what people
+// user $1; $3 is the pattern of what the messages say, themselves or in
+// the messages they carry on: the index finds the messages whose words,
+// put together, match it, and which of them says it in one text is
+// checked after. Only what people
 // wrote and did not take back is found, and only what the user is shown:
 // who is out of a chat keeps it as it was.
 const searchChatMessagesQuery = `

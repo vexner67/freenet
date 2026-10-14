@@ -462,6 +462,11 @@ func (a *api) sendChatMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if len(req.Sealed) > 0 {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "messages of chats are not encrypted"))
+		return
+	}
+
 	draft, err := a.draft(r, token, req)
 	if err != nil {
 		a.writeError(w, r, err)

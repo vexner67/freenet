@@ -11,8 +11,8 @@ import (
 	"github.com/vexner67/freenet/message/internal/service"
 )
 
-// A message is carried on from a dialog into a chat, from a chat into a
-// dialog and from a chat into another: only by who has it.
+// A message is carried on from a chat into a dialog and into another chat:
+// only by who has it. One of a dialog does not go into a chat at all.
 func TestChatService_Forward(t *testing.T) {
 	t.Parallel()
 
@@ -24,7 +24,12 @@ func TestChatService_Forward(t *testing.T) {
 
 	photo := uuid.New()
 
-	private, err := f.dialogs.Send(ctx, bob, ann, service.Draft{Text: "только тебе", Photos: message.Photos{photo}})
+	private, err := f.dialogs.Send(ctx, bob, ann, service.Draft{Sealed: seal("только тебе")})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pictured, err := f.svc.Send(ctx, bob, chatID, service.Draft{Text: "смотрите", Photos: message.Photos{photo}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -34,13 +39,13 @@ func TestChatService_Forward(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	carrying, err := f.svc.Send(ctx, ann, chatID, service.Draft{Forward: []uuid.UUID{said.ID(), private.ID(), private.ID()}})
+	carrying, err := f.svc.Send(ctx, ann, chatID, service.Draft{Forward: []uuid.UUID{said.ID(), pictured.ID(), pictured.ID()}})
 	if err != nil {
-		t.Fatalf("a dialog message and a chat message into a chat: %v", err)
+		t.Fatalf("messages of a chat into it: %v", err)
 	}
 
 	forwarded := carrying.Forwarded()
-	if len(forwarded) != 2 || forwarded[0].SenderID != bob || forwarded[0].Text != "только тебе" || forwarded[1].SenderID != cat || forwarded[1].Text != "всем привет" {
+	if len(forwarded) != 2 || forwarded[0].SenderID != bob || forwarded[0].Text != "смотрите" || forwarded[1].SenderID != cat || forwarded[1].Text != "всем привет" {
 		t.Fatalf("carried on = %+v", forwarded)
 	}
 	// The photo is kept once more, under a new ID, with the message.
@@ -54,7 +59,7 @@ func TestChatService_Forward(t *testing.T) {
 
 	t.Run("deeper", func(t *testing.T) {
 		// What carried messages on carries them a level deeper, into a dialog too.
-		again, err := f.dialogs.Send(ctx, bob, dan, service.Draft{Text: "гляди", Forward: []uuid.UUID{carrying.ID()}})
+		again, err := f.dialogs.Send(ctx, bob, dan, service.Draft{Sealed: seal("гляди"), Forward: []uuid.UUID{carrying.ID()}})
 		if err != nil {
 			t.Fatalf("a chat message into a dialog: %v", err)
 		}

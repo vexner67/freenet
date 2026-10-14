@@ -498,13 +498,13 @@ type NotificationPage struct {
 }
 
 // Message is one private message; Read means its recipient has read it.
+// What it says, and what the messages it carries on said, is Sealed: the
+// browsers of its two people seal and open it, the server cannot.
 type Message struct {
 	ID          string
 	SenderID    string
 	RecipientID string
-	Text        string
-	// TextCut: Text is only its beginning, as lists carry it.
-	TextCut bool
+	Sealed      []byte
 	// PhotoIDs are the sender's photos in the media service, in order.
 	PhotoIDs  []string
 	CreatedAt time.Time
@@ -544,9 +544,11 @@ type ForwardedMessage struct {
 // MessageDraft is a message to send, into a dialog or a chat: text,
 // photos, a shared post ("" for none), messages of the caller's dialogs
 // and chats to forward, or some of them;
-// or a photo of an album to share (SharedPhotoID), with text alone.
+// or a photo of an album to share (SharedPhotoID), with text alone. Into a
+// dialog the text goes Sealed, with that of the messages it forwards.
 type MessageDraft struct {
 	Text          string
+	Sealed        []byte
 	PhotoIDs      []string
 	PostID        string
 	SharedPhotoID string
@@ -554,12 +556,16 @@ type MessageDraft struct {
 }
 
 // MessageEdit is what an edit makes of a message: its words and, with
-// ReplacePhotos, its photos; without, the photos stay.
+// ReplacePhotos, its photos; without, the photos stay. The words of a
+// message of a dialog are Sealed.
 type MessageEdit struct {
-	Text string
-	// BaseText, when set, is the text the edit started from: a message
-	// that says something else by now is not edited.
-	BaseText *string
+	Text   string
+	Sealed []byte
+	// BaseText (BaseSealed), when set, is what the message said when the
+	// edit started: a message that says something else by now is not
+	// edited.
+	BaseText   *string
+	BaseSealed []byte
 	// The photos the message shows no more, and the uploads it shows
 	// from now on.
 	RemovePhotoIDs []string
@@ -573,12 +579,6 @@ type MessagesAt struct {
 	Cursor string
 	After  string
 	Around string
-}
-
-// FoundMessages is one screen of messages a search found, newest first.
-type FoundMessages struct {
-	Messages   []Message
-	NextCursor string
 }
 
 // Dialog is the caller's conversation with PeerID; Unread means the peer

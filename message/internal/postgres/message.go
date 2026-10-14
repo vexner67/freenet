@@ -51,9 +51,10 @@ const saveMessageQuery = `
 			post_id,
 			shared_photo_id,
 			forwarded,
-			created_at
+			created_at,
+			sealed
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
 		RETURNING id, sender_id, recipient_id
 	)
 	INSERT INTO dialogs (
@@ -83,7 +84,7 @@ func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error 
 		return errs.Wrap("forwardedToDB", err)
 	}
 
-	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt())
+	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt(), m.Sealed().Bytes())
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -105,7 +106,8 @@ const getMessageQuery = `
 		hidden_from_sender,
 		hidden_from_recipient,
 		forwarded,
-		deleted_at
+		deleted_at,
+		sealed
 	FROM messages
 	WHERE id = $1
 `
@@ -153,7 +155,8 @@ const (
 			hidden_from_sender,
 			hidden_from_recipient,
 			forwarded,
-			deleted_at
+			deleted_at,
+			sealed
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
@@ -176,7 +179,8 @@ const (
 			hidden_from_sender,
 			hidden_from_recipient,
 			forwarded,
-			deleted_at
+			deleted_at,
+			sealed
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
@@ -239,13 +243,14 @@ type scanned struct {
 	sharedPhoto *uuid.UUID
 	editedAt    *time.Time
 	deletedAt   *time.Time
+	sealed      []byte
 }
 
 // dest are the columns of a message, in the order the queries list them.
 func (s *scanned) dest() []any {
 	return []any{
 		&s.stored.ID, &s.stored.SenderID, &s.stored.RecipientID, &s.text, &s.photos, &s.post, &s.sharedPhoto, &s.stored.CreatedAt,
-		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt,
+		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt, &s.sealed,
 	}
 }
 
@@ -278,7 +283,7 @@ func (s *scanned) message() (*message.Message, error) {
 	}
 
 	stored := s.stored
-	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded)
+	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded).WithSealed(message.Sealed(s.sealed))
 	if s.sharedPhoto != nil {
 		stored.Content = stored.Content.WithSharedPhoto(*s.sharedPhoto)
 	}
@@ -411,7 +416,8 @@ const listDialogsQuery = `
 		m.hidden_from_sender,
 		m.hidden_from_recipient,
 		m.forwarded,
-		m.deleted_at
+		m.deleted_at,
+		m.sealed
 	FROM dialogs d
 	JOIN messages m ON m.id = d.last_message_id
 	LEFT JOIN dialogs p ON p.user_id = d.peer_id AND p.peer_id = d.user_id
@@ -626,6 +632,7 @@ const retractMessageQuery = `
 		post_id = NULL,
 		shared_photo_id = NULL,
 		forwarded = '[]',
+		sealed = NULL,
 		edited_at = NULL,
 		deleted_at = $2
 	WHERE id = $1
@@ -649,12 +656,13 @@ const updateMessageQuery = `
 	UPDATE messages
 	SET text = $2,
 		edited_at = $3,
-		photo_ids = $4
+		photo_ids = $4,
+		sealed = $5
 	WHERE id = $1
 `
 
 func (r *MessageRepository) Update(ctx context.Context, m *message.Message) error {
-	tag, err := r.conn(ctx).Exec(ctx, updateMessageQuery, m.ID(), m.Text().String(), m.EditedAt(), photoIDs(m.Photos()))
+	tag, err := r.conn(ctx).Exec(ctx, updateMessageQuery, m.ID(), m.Text().String(), m.EditedAt(), photoIDs(m.Photos()), m.Sealed().Bytes())
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -730,62 +738,6 @@ func (r *MessageRepository) Hide(ctx context.Context, m *message.Message, userID
 	return nil
 }
 
-// messageWords is all a message says, itself and in the messages it
-// carries on, as messages_search_idx has it: the expression here and in
-// the migration must be the same for the index to serve the search.
-const messageWords = `message_words(text, forwarded)`
-
-// searchMessagesQuery: $2 is the peer of one dialog, NULL for all the
-// dialogs of the user $1; $3 is the pattern of what the messages say,
-// themselves or in the messages they carry on. The index finds the
-// messages whose words, put together, match the pattern; which of them
-// says it in one text is checked after.
-const searchMessagesQuery = `
-	SELECT
-		id,
-		sender_id,
-		recipient_id,
-		text,
-		photo_ids,
-		post_id,
-		shared_photo_id,
-		created_at,
-		edited_at,
-		hidden_from_sender,
-		hidden_from_recipient,
-		forwarded,
-		deleted_at
-	FROM messages
-	WHERE $1 IN (sender_id, recipient_id)
-		AND ($2::uuid IS NULL OR $2 IN (sender_id, recipient_id))
-		AND ` + messageWords + ` ILIKE $3
-		AND (
-			text ILIKE $3
-			OR EXISTS (
-				SELECT 1
-				FROM jsonb_array_elements(forwarded) AS f
-				WHERE f->>'text' ILIKE $3
-			)
-		)
-		AND id < $4
-		AND NOT CASE WHEN sender_id = $1 THEN hidden_from_sender ELSE hidden_from_recipient END
-	ORDER BY id DESC
-	LIMIT $5
-`
-
-func (r *MessageRepository) Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, before uuid.UUID, limit int) ([]*message.Message, error) {
-	if before == uuid.Nil {
-		before = newestCursor
-	}
-
-	rows, err := r.pool.Query(ctx, searchMessagesQuery, userID, postIDToDB(peerID), likePattern(q), before, limit)
-	if err != nil {
-		return nil, errs.Wrap("r.pool.Query", err)
-	}
-
-	return collectMessages(rows)
-}
-
 // likePattern finds q as a substring: the wildcards of LIKE in it are
 // themselves.
 func likePattern(q message.Query) string {
@@ -815,7 +767,8 @@ const deleteUserDialogsQuery = `
 			m.hidden_from_sender,
 			m.hidden_from_recipient,
 			m.forwarded,
-			m.deleted_at
+			m.deleted_at,
+			m.sealed
 	), gone_dialogs AS (
 		DELETE FROM dialogs
 		WHERE user_id = $1
@@ -838,7 +791,8 @@ const deleteUserDialogsQuery = `
 		hidden_from_sender,
 		hidden_from_recipient,
 		forwarded,
-		deleted_at
+		deleted_at,
+		sealed
 	FROM gone_messages
 	WHERE cardinality(photo_ids) > 0
 		OR forwarded <> '[]'
@@ -851,4 +805,70 @@ func (r *MessageRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) 
 	}
 
 	return collectMessages(rows)
+}
+
+// KeyRepository keeps the public key of each user in message_keys.
+type KeyRepository struct {
+	pool *pgxpool.Pool
+}
+
+func NewKeyRepository(pool *pgxpool.Pool) *KeyRepository {
+	return &KeyRepository{pool: pool}
+}
+
+func (r *KeyRepository) conn(ctx context.Context) pgpool.Querier {
+	return pgpool.Conn(ctx, r.pool)
+}
+
+const getKeyQuery = `
+	SELECT public_key
+	FROM message_keys
+	WHERE user_id = $1
+`
+
+func (r *KeyRepository) Get(ctx context.Context, userID uuid.UUID) (message.Key, error) {
+	var key []byte
+
+	err := r.conn(ctx).QueryRow(ctx, getKeyQuery, userID).Scan(&key)
+	if errors.Is(err, pgx.ErrNoRows) {
+		return "", message.ErrNoKey
+	}
+	if err != nil {
+		return "", errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return message.Key(key), nil
+}
+
+const setKeyQuery = `
+	INSERT INTO message_keys (
+		user_id,
+		public_key,
+		updated_at
+	)
+	VALUES ($1, $2, now())
+	ON CONFLICT (user_id) DO UPDATE
+	SET public_key = EXCLUDED.public_key,
+		updated_at = EXCLUDED.updated_at
+`
+
+func (r *KeyRepository) Set(ctx context.Context, userID uuid.UUID, key message.Key) error {
+	if _, err := r.conn(ctx).Exec(ctx, setKeyQuery, userID, key.Bytes()); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
+}
+
+const deleteKeyQuery = `
+	DELETE FROM message_keys
+	WHERE user_id = $1
+`
+
+func (r *KeyRepository) Delete(ctx context.Context, userID uuid.UUID) error {
+	if _, err := r.conn(ctx).Exec(ctx, deleteKeyQuery, userID); err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	return nil
 }

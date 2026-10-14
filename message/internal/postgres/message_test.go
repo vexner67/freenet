@@ -39,7 +39,7 @@ func TestRepositories(t *testing.T) {
 
 	save := func(from, to uuid.UUID, text string) *message.Message {
 		t.Helper()
-		m, err := message.New(from, to, message.RestoreContent(message.Text(text), nil, uuid.Nil, nil), time.Now())
+		m, err := message.New(from, to, said(text, nil, uuid.Nil, nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -152,7 +152,7 @@ func TestRepositories(t *testing.T) {
 				from, to = eve, dan
 			}
 			wg.Go(func() {
-				m, err := message.New(from, to, message.RestoreContent("x", nil, uuid.Nil, nil), time.Now())
+				m, err := message.New(from, to, said("x", nil, uuid.Nil, nil), time.Now())
 				if err == nil {
 					err = messages.Save(ctx, m)
 				}
@@ -203,7 +203,7 @@ func TestMessageRepository_DeleteByUser(t *testing.T) {
 			photos = message.Photos{bobsPhoto}
 		}
 
-		m, err := message.New(pair[0], pair[1], message.RestoreContent("привет", photos, uuid.Nil, nil), time.Now())
+		m, err := message.New(pair[0], pair[1], said("привет", photos, uuid.Nil, nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -252,7 +252,7 @@ func TestMessageRepository_SharedPost(t *testing.T) {
 	messages := postgres.NewMessageRepository(pool)
 	ann, bob, post := uuid.New(), uuid.New(), uuid.New()
 
-	m, err := message.New(ann, bob, message.RestoreContent("", nil, post, nil), time.Now())
+	m, err := message.New(ann, bob, said("", nil, post, nil), time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,11 +261,11 @@ func TestMessageRepository_SharedPost(t *testing.T) {
 	}
 
 	got, err := messages.Get(ctx, m.ID())
-	if err != nil || got.Post() != post || got.Text() != "" {
+	if err != nil || got.Post() != post || got.Sealed() != "" {
 		t.Fatalf("Get = %+v, %v", got, err)
 	}
 
-	plain, _ := message.New(ann, bob, message.RestoreContent("привет", nil, uuid.Nil, nil), time.Now())
+	plain, _ := message.New(ann, bob, said("привет", nil, uuid.Nil, nil), time.Now())
 	if err = messages.Save(ctx, plain); err != nil {
 		t.Fatal(err)
 	}
@@ -286,14 +286,14 @@ func TestMessageRepository_SharedPost(t *testing.T) {
 	if err = messages.Save(ctx, shared); err != nil {
 		t.Fatalf("Save a shared photo alone: %v", err)
 	}
-	if got, err = messages.Get(ctx, shared.ID()); err != nil || got.SharedPhoto() != photo || got.Post() != uuid.Nil || got.Text() != "" {
+	if got, err = messages.Get(ctx, shared.ID()); err != nil || got.SharedPhoto() != photo || got.Post() != uuid.Nil || got.Sealed() != "" {
 		t.Fatalf("a shared photo = %+v, %v", got, err)
 	}
 	if page, err := messages.ListBefore(ctx, ann, bob, uuid.Nil, 1); err != nil || len(page) != 1 || page[0].SharedPhoto() != photo {
 		t.Fatalf("the dialog shows %+v, %v", page, err)
 	}
 
-	forward, err := message.New(bob, ann, message.RestoreContent("", nil, uuid.Nil, shared.Carried()), time.Now())
+	forward, err := message.New(bob, ann, said("", nil, uuid.Nil, shared.Carried()), time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +337,7 @@ func TestMessageRepository_Delete(t *testing.T) {
 
 	save := func(from, to uuid.UUID) *message.Message {
 		t.Helper()
-		m, err := message.New(from, to, message.RestoreContent("x", nil, uuid.Nil, nil), time.Now())
+		m, err := message.New(from, to, said("x", nil, uuid.Nil, nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -430,7 +430,7 @@ func TestMessageRepository_Delete(t *testing.T) {
 				from, to = eve, dan
 			}
 			wg.Go(func() {
-				m, err := message.New(from, to, message.RestoreContent("x", nil, uuid.Nil, nil), time.Now())
+				m, err := message.New(from, to, said("x", nil, uuid.Nil, nil), time.Now())
 				if err == nil {
 					err = messages.Save(ctx, m)
 				}
@@ -460,7 +460,7 @@ func TestMessageRepository_Delete(t *testing.T) {
 	})
 }
 
-func TestMessageRepository_EditHideSearch(t *testing.T) {
+func TestMessageRepository_EditHide(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
 		t.Skip("TEST_DATABASE_URL is not set")
@@ -481,7 +481,7 @@ func TestMessageRepository_EditHideSearch(t *testing.T) {
 
 	save := func(from, to uuid.UUID, text string) *message.Message {
 		t.Helper()
-		m, err := message.New(from, to, message.RestoreContent(message.Text(text), nil, uuid.Nil, nil), time.Now())
+		m, err := message.New(from, to, said(text, nil, uuid.Nil, nil), time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -493,7 +493,7 @@ func TestMessageRepository_EditHideSearch(t *testing.T) {
 	says := func(found []*message.Message) []string {
 		out := make([]string, len(found))
 		for i, m := range found {
-			out[i] = m.Text().String()
+			out[i] = opened(m)
 		}
 		return out
 	}
@@ -516,15 +516,15 @@ func TestMessageRepository_EditHideSearch(t *testing.T) {
 	fromBob := save(bob, ann, "МОРЕ волнуется")
 	save(cat, ann, "на море хорошо")
 
-	// Edit: the text and when, read back.
-	edited, err := first.Edited(ann, message.Revision{Text: "Еду на море!"}, time.Now())
+	// Edit: the words and when, read back.
+	edited, err := first.Edited(ann, message.Revision{Sealed: seal("Еду на море!")}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = messages.Update(ctx, edited); err != nil {
 		t.Fatalf("Update: %v", err)
 	}
-	if got, err := messages.Get(ctx, first.ID()); err != nil || got.Text() != "Еду на море!" || !got.EditedAt().Equal(edited.EditedAt()) {
+	if got, err := messages.Get(ctx, first.ID()); err != nil || opened(got) != "Еду на море!" || !got.EditedAt().Equal(edited.EditedAt()) {
 		t.Fatalf("the edited message = %+v, %v", got, err)
 	}
 	if got, _ := messages.Get(ctx, second.ID()); !got.EditedAt().IsZero() {
@@ -532,60 +532,22 @@ func TestMessageRepository_EditHideSearch(t *testing.T) {
 	}
 	// An edit that changes the photos writes them.
 	photo := uuid.New()
-	withPhoto, err := second.Edited(ann, message.Revision{Text: second.Text(), Added: message.Photos{photo}}, time.Now())
+	withPhoto, err := second.Edited(ann, message.Revision{Sealed: second.Sealed(), Added: message.Photos{photo}}, time.Now())
 	if err != nil {
 		t.Fatal(err)
 	}
 	if err = messages.Update(ctx, withPhoto); err != nil {
 		t.Fatalf("Update with a photo: %v", err)
 	}
-	if got, err := messages.Get(ctx, second.ID()); err != nil || !slices.Equal(got.Photos(), message.Photos{photo}) || got.Text() != second.Text() {
+	if got, err := messages.Get(ctx, second.ID()); err != nil || !slices.Equal(got.Photos(), message.Photos{photo}) || got.Sealed() != second.Sealed() {
 		t.Fatalf("the message with a photo = %+v, %v", got, err)
 	}
 	if got, _ := messages.Get(ctx, first.ID()); len(got.Photos()) != 0 {
 		t.Fatal("an edit of the words gave the message photos")
 	}
-	missing, _ := message.New(ann, bob, message.RestoreContent("x", nil, uuid.Nil, nil), time.Now())
+	missing, _ := message.New(ann, bob, said("x", nil, uuid.Nil, nil), time.Now())
 	if err = messages.Update(ctx, missing); !errors.Is(err, message.ErrNotFound) {
 		t.Fatalf("Update of no message: %v", err)
-	}
-
-	// Search: any case, the wildcards as themselves, one dialog or all.
-	sea, _ := message.NewQuery("море")
-	if found, err := messages.Search(ctx, ann, uuid.Nil, sea, uuid.Nil, 10); err != nil || !slices.Equal(says(found), []string{"на море хорошо", "МОРЕ волнуется", "Еду на море!"}) {
-		t.Fatalf("море = %v, %v", says(found), err)
-	}
-	if found, _ := messages.Search(ctx, ann, bob, sea, uuid.Nil, 10); !slices.Equal(says(found), []string{"МОРЕ волнуется", "Еду на море!"}) {
-		t.Fatalf("море with bob = %v", says(found))
-	}
-	if found, _ := messages.Search(ctx, ann, bob, sea, fromBob.ID(), 10); !slices.Equal(says(found), []string{"Еду на море!"}) {
-		t.Fatalf("море before the cursor = %v", says(found))
-	}
-	// What a message carries on is searched as its own words are.
-	dan := uuid.New()
-	carrying, err := message.New(dan, cat, message.RestoreContent("смотри", nil, uuid.Nil, message.Forwards{
-		{SenderID: ann, Text: "горы", CreatedAt: time.Now()},
-		{SenderID: ann, Text: "Еду на МОРЕ", CreatedAt: time.Now()},
-	}), time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = messages.Save(ctx, carrying); err != nil {
-		t.Fatal(err)
-	}
-	if found, err := messages.Search(ctx, dan, uuid.Nil, sea, uuid.Nil, 10); err != nil || !slices.Equal(says(found), []string{"смотри"}) {
-		t.Fatalf("море among the forwarded = %v, %v", says(found), err)
-	}
-	peaks, _ := message.NewQuery("гор_")
-	if found, _ := messages.Search(ctx, dan, cat, peaks, uuid.Nil, 10); len(found) != 0 {
-		t.Fatalf("a wildcard among the forwarded = %v", says(found))
-	}
-	percent, _ := message.NewQuery("%")
-	if found, _ := messages.Search(ctx, ann, uuid.Nil, percent, uuid.Nil, 10); !slices.Equal(says(found), []string{"скидка 50%"}) {
-		t.Fatalf("%% = %v", says(found))
-	}
-	if found, _ := messages.Search(ctx, cat, bob, sea, uuid.Nil, 10); len(found) != 0 {
-		t.Fatalf("cat finds what ann and bob wrote: %v", says(found))
 	}
 
 	// Hide: ann deletes bob's message for herself, her side falls back.
@@ -609,9 +571,6 @@ func TestMessageRepository_EditHideSearch(t *testing.T) {
 	}
 	if bobs, _ := messages.ListBefore(ctx, bob, ann, uuid.Nil, 10); len(bobs) != 3 {
 		t.Fatalf("bob reads %v", says(bobs))
-	}
-	if found, _ := messages.Search(ctx, ann, bob, sea, uuid.Nil, 10); !slices.Equal(says(found), []string{"Еду на море!"}) {
-		t.Fatalf("ann finds a hidden message: %v", says(found))
 	}
 	if err = messages.Hide(ctx, fromBob, cat); !errors.Is(err, message.ErrNotFound) {
 		t.Fatalf("a stranger hides: %v", err)
@@ -656,7 +615,7 @@ func TestMessageRepository_ForwardAndRetract(t *testing.T) {
 	}
 
 	// Forwards alone are a message.
-	m, err := message.New(ann, bob, message.RestoreContent("", nil, uuid.Nil, carried), now)
+	m, err := message.New(ann, bob, said("", nil, uuid.Nil, carried), now)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -670,7 +629,7 @@ func TestMessageRepository_ForwardAndRetract(t *testing.T) {
 	}
 	for i, f := range got.Forwarded() {
 		want := carried[i]
-		if f.SenderID != want.SenderID || f.Text != want.Text || !slices.Equal(f.Photos, want.Photos) || f.Post != want.Post || !f.CreatedAt.Equal(want.CreatedAt) ||
+		if f.SenderID != want.SenderID || f.Text != "" || !slices.Equal(f.Photos, want.Photos) || f.Post != want.Post || !f.CreatedAt.Equal(want.CreatedAt) ||
 			f.Depth != want.Depth {
 			t.Fatalf("forwarded[%d] = %+v, want %+v", i, f, want)
 		}
@@ -695,7 +654,7 @@ func TestMessageRepository_ForwardAndRetract(t *testing.T) {
 	}
 
 	got, err = messages.Get(ctx, m.ID())
-	if err != nil || !got.IsDeleted() || !got.DeletedAt().Equal(gone.DeletedAt()) || got.Text() != "" || len(got.Forwarded()) != 0 {
+	if err != nil || !got.IsDeleted() || !got.DeletedAt().Equal(gone.DeletedAt()) || got.Sealed() != "" || len(got.Forwarded()) != 0 {
 		t.Fatalf("taken back = %+v, %v", got, err)
 	}
 	if list, err = dialogs.List(ctx, bob, uuid.Nil, 10); err != nil || len(list) != 1 || !list[0].LastMessage.IsDeleted() || !list[0].HasUnread() {
@@ -706,7 +665,7 @@ func TestMessageRepository_ForwardAndRetract(t *testing.T) {
 	}
 
 	// The erased page's dialogs return what carried photos on.
-	again, _ := message.New(bob, ann, message.RestoreContent("", nil, uuid.Nil, carried[:1]), now)
+	again, _ := message.New(bob, ann, said("", nil, uuid.Nil, carried[:1]), now)
 	if err = messages.Save(ctx, again); err != nil {
 		t.Fatal(err)
 	}

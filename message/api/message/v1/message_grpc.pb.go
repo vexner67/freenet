@@ -29,7 +29,8 @@ const (
 	MessageService_HideMessage_FullMethodName        = "/message.v1.MessageService/HideMessage"
 	MessageService_DeleteMessages_FullMethodName     = "/message.v1.MessageService/DeleteMessages"
 	MessageService_EditMessage_FullMethodName        = "/message.v1.MessageService/EditMessage"
-	MessageService_SearchMessages_FullMethodName     = "/message.v1.MessageService/SearchMessages"
+	MessageService_SetKey_FullMethodName             = "/message.v1.MessageService/SetKey"
+	MessageService_GetKey_FullMethodName             = "/message.v1.MessageService/GetKey"
 	MessageService_HasMessagesFrom_FullMethodName    = "/message.v1.MessageService/HasMessagesFrom"
 	MessageService_CreateChat_FullMethodName         = "/message.v1.MessageService/CreateChat"
 	MessageService_GetChat_FullMethodName            = "/message.v1.MessageService/GetChat"
@@ -57,7 +58,9 @@ const (
 // Every RPC requires an access token: the caller is one side of a dialog.
 type MessageServiceClient interface {
 	// The caller writes to recipient_id; the gateway has checked that the
-	// recipient exists.
+	// recipient exists. Messages of dialogs are end-to-end encrypted: what
+	// one says is sealed by the sender's browser between the keys the two
+	// have now (SetKey).
 	SendMessage(ctx context.Context, in *SendMessageRequest, opts ...grpc.CallOption) (*SendMessageResponse, error)
 	// The caller's dialogs, the most recently written first.
 	ListDialogs(ctx context.Context, in *ListDialogsRequest, opts ...grpc.CallOption) (*ListDialogsResponse, error)
@@ -83,9 +86,13 @@ type MessageServiceClient interface {
 	// within a day of sending (editable_until); the post it shares and the
 	// messages it carries on stay.
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error)
-	// The caller's messages that say the query, in any case, newest first:
-	// in the dialog with peer_id or, without it, in all their dialogs.
-	SearchMessages(ctx context.Context, in *SearchMessagesRequest, opts ...grpc.CallOption) (*SearchMessagesResponse, error)
+	// The public key the caller's browsers seal and open messages of dialogs
+	// with from now on: set up the first time, or anew when the old one is
+	// lost. Messages sealed with the old one stay so.
+	SetKey(ctx context.Context, in *SetKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// A user's public key, empty when they have not set one up: messages to
+	// them cannot be sealed yet.
+	GetKey(ctx context.Context, in *GetKeyRequest, opts ...grpc.CallOption) (*GetKeyResponse, error)
 	// Requires an access token: whether the peer has ever written to the
 	// caller, who may then answer whatever the peer's privacy.
 	HasMessagesFrom(ctx context.Context, in *HasMessagesFromRequest, opts ...grpc.CallOption) (*HasMessagesFromResponse, error)
@@ -244,10 +251,20 @@ func (c *messageServiceClient) EditMessage(ctx context.Context, in *EditMessageR
 	return out, nil
 }
 
-func (c *messageServiceClient) SearchMessages(ctx context.Context, in *SearchMessagesRequest, opts ...grpc.CallOption) (*SearchMessagesResponse, error) {
+func (c *messageServiceClient) SetKey(ctx context.Context, in *SetKeyRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(SearchMessagesResponse)
-	err := c.cc.Invoke(ctx, MessageService_SearchMessages_FullMethodName, in, out, cOpts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_SetKey_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) GetKey(ctx context.Context, in *GetKeyRequest, opts ...grpc.CallOption) (*GetKeyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetKeyResponse)
+	err := c.cc.Invoke(ctx, MessageService_GetKey_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -450,7 +467,9 @@ func (c *messageServiceClient) PurgeUser(ctx context.Context, in *PurgeUserReque
 // Every RPC requires an access token: the caller is one side of a dialog.
 type MessageServiceServer interface {
 	// The caller writes to recipient_id; the gateway has checked that the
-	// recipient exists.
+	// recipient exists. Messages of dialogs are end-to-end encrypted: what
+	// one says is sealed by the sender's browser between the keys the two
+	// have now (SetKey).
 	SendMessage(context.Context, *SendMessageRequest) (*SendMessageResponse, error)
 	// The caller's dialogs, the most recently written first.
 	ListDialogs(context.Context, *ListDialogsRequest) (*ListDialogsResponse, error)
@@ -476,9 +495,13 @@ type MessageServiceServer interface {
 	// within a day of sending (editable_until); the post it shares and the
 	// messages it carries on stay.
 	EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error)
-	// The caller's messages that say the query, in any case, newest first:
-	// in the dialog with peer_id or, without it, in all their dialogs.
-	SearchMessages(context.Context, *SearchMessagesRequest) (*SearchMessagesResponse, error)
+	// The public key the caller's browsers seal and open messages of dialogs
+	// with from now on: set up the first time, or anew when the old one is
+	// lost. Messages sealed with the old one stay so.
+	SetKey(context.Context, *SetKeyRequest) (*emptypb.Empty, error)
+	// A user's public key, empty when they have not set one up: messages to
+	// them cannot be sealed yet.
+	GetKey(context.Context, *GetKeyRequest) (*GetKeyResponse, error)
 	// Requires an access token: whether the peer has ever written to the
 	// caller, who may then answer whatever the peer's privacy.
 	HasMessagesFrom(context.Context, *HasMessagesFromRequest) (*HasMessagesFromResponse, error)
@@ -574,8 +597,11 @@ func (UnimplementedMessageServiceServer) DeleteMessages(context.Context, *Delete
 func (UnimplementedMessageServiceServer) EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EditMessage not implemented")
 }
-func (UnimplementedMessageServiceServer) SearchMessages(context.Context, *SearchMessagesRequest) (*SearchMessagesResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method SearchMessages not implemented")
+func (UnimplementedMessageServiceServer) SetKey(context.Context, *SetKeyRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetKey not implemented")
+}
+func (UnimplementedMessageServiceServer) GetKey(context.Context, *GetKeyRequest) (*GetKeyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetKey not implemented")
 }
 func (UnimplementedMessageServiceServer) HasMessagesFrom(context.Context, *HasMessagesFromRequest) (*HasMessagesFromResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method HasMessagesFrom not implemented")
@@ -814,20 +840,38 @@ func _MessageService_EditMessage_Handler(srv interface{}, ctx context.Context, d
 	return interceptor(ctx, in, info, handler)
 }
 
-func _MessageService_SearchMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(SearchMessagesRequest)
+func _MessageService_SetKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetKeyRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(MessageServiceServer).SearchMessages(ctx, in)
+		return srv.(MessageServiceServer).SetKey(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: MessageService_SearchMessages_FullMethodName,
+		FullMethod: MessageService_SetKey_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(MessageServiceServer).SearchMessages(ctx, req.(*SearchMessagesRequest))
+		return srv.(MessageServiceServer).SetKey(ctx, req.(*SetKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_GetKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).GetKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_GetKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).GetKey(ctx, req.(*GetKeyRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1193,8 +1237,12 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MessageService_EditMessage_Handler,
 		},
 		{
-			MethodName: "SearchMessages",
-			Handler:    _MessageService_SearchMessages_Handler,
+			MethodName: "SetKey",
+			Handler:    _MessageService_SetKey_Handler,
+		},
+		{
+			MethodName: "GetKey",
+			Handler:    _MessageService_GetKey_Handler,
 		},
 		{
 			MethodName: "HasMessagesFrom",

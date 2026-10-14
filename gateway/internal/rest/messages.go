@@ -11,18 +11,30 @@ import (
 )
 
 // editMessageRequest names what changes, not what is left: an edit from
-// another window, which shows the message as it was, undoes nothing.
+// another window, which shows the message as it was, undoes nothing. A
+// message of a chat says Text; BaseText is the text the edit started
+// from.
 type editMessageRequest struct {
-	Text string `json:"text"`
-	// BaseText is the text the edit started from; with it a message that
-	// says something else by now is not edited (409).
-	BaseText     *string  `json:"baseText"`
+	Text     string  `json:"text"`
+	BaseText *string `json:"baseText"`
+	// Sealed is what a message of a dialog says from now on, sealed by
+	// the browser: base64 in JSON.
+	Sealed []byte `json:"sealed"`
+	// BaseSealed is what it said when the edit started, "" for nothing;
+	// with it a message that says something else by now is not edited
+	// (409).
+	BaseSealed   []byte   `json:"baseSealed"`
 	AddPhotos    []string `json:"addPhotos"`
 	RemovePhotos []string `json:"removePhotos"`
 }
 
+// messageRequest is a message into a dialog or a chat. Into a dialog it
+// says nothing the server can read: its words and those of what it
+// forwards are Sealed by the sender's browser (base64 in JSON); into a
+// chat, Text.
 type messageRequest struct {
-	Text string `json:"text"`
+	Text   string `json:"text"`
+	Sealed []byte `json:"sealed"`
 	// Photos are IDs from POST /api/v1/me/photos.
 	Photos []string `json:"photos"`
 	// Post is a post shared into the dialog ("Поделиться" "в переписку").
@@ -39,12 +51,10 @@ type messageRequest struct {
 // has read it. The caller may delete their message from both sides until
 // DeletableUntil and edit it until EditableUntil, "" for the peer's.
 // Deleted: its sender took it back, it says nothing ("Сообщение удалено").
+// What it says is Sealed, base64: the browsers of the two open it.
 type messageJSON struct {
-	ID   string `json:"id"`
-	Text string `json:"text"`
-	// TextCut: text is only the beginning of what the message says, as
-	// the list of dialogs carries it.
-	TextCut        bool        `json:"textCut,omitempty"`
+	ID             string      `json:"id"`
+	Sealed         []byte      `json:"sealed"`
 	Photos         []photoJSON `json:"photos"`
 	CreatedAt      string      `json:"createdAt"`
 	Out            bool        `json:"out"`
@@ -95,8 +105,11 @@ func attachedTo(messages []messageJSON) []*attachedJSON {
 
 // forwardedJSON is a message carried on from a dialog or a chat, as its
 // author wrote it then. Depth nests them: a message follows the one that
-// carried it on, one level deeper.
+// carried it on, one level deeper. Index is its place among all those
+// carried, the left out too: a message of a dialog seals their words in
+// that order.
 type forwardedJSON struct {
+	Index     int         `json:"index"`
 	Depth     int         `json:"depth"`
 	Author    authorJSON  `json:"author"`
 	Text      string      `json:"text"`
@@ -137,8 +150,7 @@ type messagePageResponse struct {
 func toMessageJSON(m model.Message, peerID string) messageJSON {
 	j := messageJSON{
 		ID:        m.ID,
-		Text:      m.Text,
-		TextCut:   m.TextCut,
+		Sealed:    m.Sealed,
 		Photos:    toPhotosJSON(m.SenderID, m.PhotoIDs),
 		CreatedAt: m.CreatedAt.UTC().Format(time.RFC3339),
 		Out:       m.SenderID != peerID,
@@ -348,36 +360,6 @@ func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
-// getMessage is a message of the dialog with a user, whole: the dialog
-// carries the beginnings of long texts.
-func (a *api) getMessage(w http.ResponseWriter, r *http.Request) {
-	token, err := bearerToken(r)
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	peer, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	m, err := a.messages.Whole(r.Context(), token, peer.ID, r.PathValue("id"))
-	if err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	shown := []messageJSON{toMessageJSON(m, peer.ID)}
-	if err = a.showAttached(r, attachedTo(shown)); err != nil {
-		a.writeError(w, r, err)
-		return
-	}
-
-	writeJSON(w, http.StatusOK, shown[0])
-}
-
 // canMessage asks the user service, which keeps privacy and blacklists,
 // whether the caller may write to peerID, telling it what only the message
 // service knows: whether the peer wrote first, so may be answered.
@@ -389,6 +371,10 @@ func (a *api) canMessage(r *http.Request, token, peerID string) (bool, error) {
 
 	return a.users.CanMessage(r.Context(), token, peerID, wroteFirst)
 }
+
+// errPlainText refuses the plain words of a message of a dialog: its two
+// browsers seal them.
+var errPlainText = failure.New(failure.InvalidArgument, "messages are end-to-end encrypted")
 
 // sendMessage needs a filled-in profile, as posting does: the recipient
 // sees the sender's name and page. The recipient is checked here, since
@@ -403,6 +389,13 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 	var req messageRequest
 	if err = decode(w, r, &req); err != nil {
 		a.writeError(w, r, err)
+		return
+	}
+
+	// The words of a dialog go sealed: plain ones are refused before the
+	// photos are claimed.
+	if req.Text != "" {
+		a.writeError(w, r, errPlainText)
 		return
 	}
 
@@ -481,7 +474,7 @@ func (a *api) draft(r *http.Request, token string, req messageRequest) (model.Me
 	}
 
 	return model.MessageDraft{
-		Text: req.Text, PhotoIDs: req.Photos, PostID: req.Post, SharedPhotoID: req.AlbumPhoto, ForwardIDs: req.Forward,
+		Text: req.Text, Sealed: req.Sealed, PhotoIDs: req.Photos, PostID: req.Post, SharedPhotoID: req.AlbumPhoto, ForwardIDs: req.Forward,
 	}, nil
 }
 
@@ -551,7 +544,7 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 
 		// gone is the depth of a message left out: those under it go too.
 		gone := -1
-		for _, f := range m.carried {
+		for i, f := range m.carried {
 			if gone >= 0 && f.Depth > gone {
 				continue
 			}
@@ -565,6 +558,7 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 			gone = -1
 
 			fj := forwardedJSON{
+				Index:     i,
 				Depth:     f.Depth,
 				Author:    toAuthorJSON(author),
 				Text:      f.Text,
@@ -704,12 +698,17 @@ func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if req.Text != "" || req.BaseText != nil {
+		a.writeError(w, r, errPlainText)
+		return
+	}
+
 	if err = a.claimPhotos(r, token, req.AddPhotos); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	edit := model.MessageEdit{Text: req.Text, BaseText: req.BaseText, AddPhotoIDs: req.AddPhotos, RemovePhotoIDs: req.RemovePhotos}
+	edit := model.MessageEdit{Sealed: req.Sealed, BaseSealed: req.BaseSealed, AddPhotoIDs: req.AddPhotos, RemovePhotoIDs: req.RemovePhotos}
 
 	m, err := a.messages.Edit(r.Context(), token, r.PathValue("id"), edit)
 	if err != nil {
@@ -728,13 +727,11 @@ func (a *api) editMessage(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, j[0])
 }
 
-// foundMessageJSON is a found message of the dialog with Peer or, with
-// Chat, of a chat of several people.
+// foundMessageJSON is a found message of a chat. Messages of dialogs are
+// sealed: only the browsers of their two people can search them.
 type foundMessageJSON struct {
-	Peer        *authorJSON      `json:"peer,omitempty"`
-	Message     *messageJSON     `json:"message,omitempty"`
-	Chat        *foundChatJSON   `json:"chat,omitempty"`
-	ChatMessage *chatMessageJSON `json:"chatMessage,omitempty"`
+	Chat        *foundChatJSON   `json:"chat"`
+	ChatMessage *chatMessageJSON `json:"chatMessage"`
 }
 
 // foundChatJSON is the chat a found message is of; Title is "" for a
@@ -749,84 +746,9 @@ type foundMessagesResponse struct {
 	NextCursor string             `json:"nextCursor"`
 }
 
-// found is a message a search found, of a dialog or of a chat, placed by
-// its ID.
-type found struct {
-	id      string
-	message *model.Message
-	chat    *model.ChatMessage
-}
-
-// foundIn are a page of the caller's messages that say query, newest
-// first: of the dialog with peerID, of the chat chatID or, with neither,
-// of all their dialogs and chats in one list. The IDs of both grow with
-// time, so a page of each merges into a page of the two, as the list of
-// dialogs does (conversations).
-func (a *api) foundIn(r *http.Request, token, peerID, chatID, query, cursor string, limit int) ([]found, string, error) {
-	if limit == 0 {
-		limit = defaultPageSize
-	}
-
-	var (
-		rows []found
-		// floor is the oldest message of a page that has more below it:
-		// nothing older is told yet, or the next page would skip what
-		// that source still has between them.
-		floor string
-	)
-
-	below := func(next string) {
-		if next > floor {
-			floor = next
-		}
-	}
-
-	if chatID == "" {
-		page, err := a.messages.Search(r.Context(), token, peerID, query, cursor, limit)
-		if err != nil {
-			return nil, "", err
-		}
-
-		for i := range page.Messages {
-			rows = append(rows, found{id: page.Messages[i].ID, message: &page.Messages[i]})
-		}
-
-		below(page.NextCursor)
-	}
-
-	if peerID == "" {
-		page, err := a.chats.Search(r.Context(), token, chatID, query, cursor, limit)
-		if err != nil {
-			return nil, "", err
-		}
-
-		for i := range page.Messages {
-			rows = append(rows, found{id: page.Messages[i].ID, chat: &page.Messages[i]})
-		}
-
-		below(page.NextCursor)
-	}
-
-	slices.SortFunc(rows, func(x, y found) int { return strings.Compare(y.id, x.id) })
-
-	more := floor != ""
-	rows = slices.DeleteFunc(rows, func(f found) bool { return f.id < floor })
-
-	if len(rows) > limit {
-		rows, more = rows[:limit], true
-	}
-
-	if !more || len(rows) == 0 {
-		return rows, "", nil
-	}
-
-	return rows, rows[len(rows)-1].id, nil
-}
-
-// searchMessages finds the caller's messages that say ?q=, newest first,
-// each with whom it was written to or by, or with its chat: in the dialog
-// with ?peer=, a nickname, in the chat ?chat=, or in all their dialogs and
-// chats. Messages of people whose pages are gone are left out.
+// searchMessages finds the caller's messages of chats that say ?q=,
+// newest first, each with its chat: in the chat ?chat= or in all of
+// theirs. Messages of people whose pages are gone are left out.
 func (a *api) searchMessages(w http.ResponseWriter, r *http.Request) {
 	token, me, err := a.chatCaller(r)
 	if err != nil {
@@ -842,76 +764,49 @@ func (a *api) searchMessages(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	chatID := query.Get("chat")
-
-	var peerID string
-	if nickname := query.Get("peer"); nickname != "" {
-		if chatID != "" {
-			a.writeError(w, r, failure.New(failure.InvalidArgument, "peer and chat cannot be used together"))
-			return
-		}
-
-		peer, err := a.users.GetProfile(r.Context(), "", nickname)
-		if err != nil {
-			a.writeError(w, r, err)
-			return
-		}
-
-		peerID = peer.ID
+	if query.Get("peer") != "" {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "messages of dialogs are end-to-end encrypted"))
+		return
 	}
 
-	rows, next, err := a.foundIn(r, token, peerID, chatID, query.Get("q"), query.Get("cursor"), limit)
+	page, err := a.chats.Search(r.Context(), token, query.Get("chat"), query.Get("q"), query.Get("cursor"), limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	shown, err := a.shownFound(r, token, me, rows)
+	shown, err := a.shownFound(r, token, me, page.Messages)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
-	writeJSON(w, http.StatusOK, foundMessagesResponse{Messages: shown, NextCursor: next})
+	writeJSON(w, http.StatusOK, foundMessagesResponse{Messages: shown, NextCursor: page.NextCursor})
 }
 
 // shownFound are the found messages with the people and the chats they
 // name. A message may be found by what it carries on: the forwarded
 // messages come with it.
-func (a *api) shownFound(r *http.Request, token, me string, rows []found) ([]foundMessageJSON, error) {
-	// Who is on the other side of a message of a dialog.
-	other := func(m *model.Message) string {
-		if m.SenderID == me {
-			return m.RecipientID
-		}
-
-		return m.SenderID
-	}
-
+func (a *api) shownFound(r *http.Request, token, me string, rows []model.ChatMessage) ([]foundMessageJSON, error) {
 	var (
 		ids   []string
 		chats = make(map[string]*foundChatJSON)
 	)
 
 	for _, row := range rows {
-		if row.message != nil {
-			ids = append(ids, other(row.message))
-			continue
-		}
+		ids = append(ids, row.SenderID)
 
-		ids = append(ids, row.chat.SenderID)
-
-		if _, ok := chats[row.chat.ChatID]; ok {
+		if _, ok := chats[row.ChatID]; ok {
 			continue
 		}
 
 		// The message service tells a chat by itself: one request a chat.
-		view, err := a.chats.Get(r.Context(), token, row.chat.ChatID)
+		view, err := a.chats.Get(r.Context(), token, row.ChatID)
 		if err != nil {
 			return nil, err
 		}
 
-		chats[row.chat.ChatID] = &foundChatJSON{ID: view.Chat.ID, Title: view.Chat.Title}
+		chats[row.ChatID] = &foundChatJSON{ID: view.Chat.ID, Title: view.Chat.Title}
 	}
 
 	people, err := a.people(r, ids)
@@ -923,24 +818,10 @@ func (a *api) shownFound(r *http.Request, token, me string, rows []found) ([]fou
 	attached := make([]*attachedJSON, 0, len(rows))
 
 	for _, row := range rows {
-		if row.chat != nil {
-			if j := toChatMessageJSON(*row.chat, me, people); j != nil {
-				shown = append(shown, foundMessageJSON{Chat: chats[row.chat.ChatID], ChatMessage: j})
-				attached = append(attached, &j.attachedJSON)
-			}
-
-			continue
+		if j := toChatMessageJSON(row, me, people); j != nil {
+			shown = append(shown, foundMessageJSON{Chat: chats[row.ChatID], ChatMessage: j})
+			attached = append(attached, &j.attachedJSON)
 		}
-
-		peer, ok := people[other(row.message)]
-		if !ok {
-			continue
-		}
-
-		with, j := toAuthorJSON(peer), toMessageJSON(*row.message, other(row.message))
-
-		shown = append(shown, foundMessageJSON{Peer: &with, Message: &j})
-		attached = append(attached, &j.attachedJSON)
 	}
 
 	if err = a.showAttached(r, attached); err != nil {
@@ -948,4 +829,74 @@ func (a *api) shownFound(r *http.Request, token, me string, rows []found) ([]fou
 	}
 
 	return shown, nil
+}
+
+// keyJSON is a public key messages are sealed with (X25519), base64; null
+// for a user who has none yet.
+type keyJSON struct {
+	PublicKey []byte `json:"publicKey"`
+}
+
+// getMyMessageKey is the caller's own key, as the server has it: a
+// browser that holds another one is not the one that set it up.
+func (a *api) getMyMessageKey(w http.ResponseWriter, r *http.Request) {
+	token, me, err := a.chatCaller(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	key, err := a.messages.Key(r.Context(), token, me)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, keyJSON{PublicKey: key})
+}
+
+// setMessageKey makes a key the caller's browser made the one their
+// messages are sealed with from now on.
+func (a *api) setMessageKey(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req keyJSON
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.messages.SetKey(r.Context(), token, req.PublicKey); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// getMessageKey is the key messages to a user are sealed with.
+func (a *api) getMessageKey(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	user, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	key, err := a.messages.Key(r.Context(), token, user.ID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, keyJSON{PublicKey: key})
 }

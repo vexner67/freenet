@@ -2,6 +2,7 @@ package grpc
 
 import (
 	"context"
+	"errors"
 	"log/slog"
 
 	"github.com/google/uuid"
@@ -26,7 +27,8 @@ type MessageService interface {
 	Hide(ctx context.Context, userID, id uuid.UUID) error
 	DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID, forEveryone bool) error
 	Edit(ctx context.Context, userID, id uuid.UUID, rev message.Revision) (*message.Message, error)
-	Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, cursor uuid.UUID, size int) (service.SearchPage, error)
+	SetKey(ctx context.Context, userID uuid.UUID, key message.Key) error
+	Key(ctx context.Context, userID uuid.UUID) (message.Key, error)
 	HasMessagesFrom(ctx context.Context, userID, peerID uuid.UUID) (bool, error)
 	Subscribe(userID uuid.UUID) (<-chan service.Event, func())
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
@@ -61,6 +63,10 @@ func (h *MessageHandler) SendMessage(ctx context.Context, req *messagev1.SendMes
 	draft, err := fromProtoDraft(req)
 	if err != nil {
 		return nil, err
+	}
+
+	if draft.Sealed, err = message.NewSealed(req.GetSealed()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
 	m, err := h.messageService.Send(ctx, senderID, recipientID, draft)
@@ -340,6 +346,19 @@ func (h *MessageHandler) EditMessage(ctx context.Context, req *messagev1.EditMes
 		return nil, err
 	}
 
+	if rev.Sealed, err = message.NewSealed(req.GetSealed()); err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if req.BaseSealed != nil {
+		base, err := message.NewSealed(req.GetBaseSealed())
+		if err != nil {
+			return nil, status.Error(codes.InvalidArgument, err.Error())
+		}
+
+		rev.BaseSealed = &base
+	}
+
 	m, err := h.messageService.Edit(ctx, userID, id, rev)
 	if err != nil {
 		return nil, err
@@ -348,41 +367,40 @@ func (h *MessageHandler) EditMessage(ctx context.Context, req *messagev1.EditMes
 	return &messagev1.EditMessageResponse{Message: toProtoMessage(m, false)}, nil
 }
 
-func (h *MessageHandler) SearchMessages(ctx context.Context, req *messagev1.SearchMessagesRequest) (*messagev1.SearchMessagesResponse, error) {
+func (h *MessageHandler) SetKey(ctx context.Context, req *messagev1.SetKeyRequest) (*emptypb.Empty, error) {
 	userID, err := currentUserID(ctx)
 	if err != nil {
 		return nil, err
 	}
 
-	peerID, err := parseOptionalID(req.GetPeerId(), "invalid peer id")
-	if err != nil {
-		return nil, err
-	}
-
-	query, err := message.NewQuery(req.GetQuery())
+	key, err := message.NewKey(req.GetPublicKey())
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	cursor, err := parseOptionalID(req.GetCursor(), "invalid cursor")
+	if err = h.messageService.SetKey(ctx, userID, key); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) GetKey(ctx context.Context, req *messagev1.GetKeyRequest) (*messagev1.GetKeyResponse, error) {
+	userID, err := parseID(req.GetUserId(), "invalid user id")
 	if err != nil {
 		return nil, err
 	}
 
-	page, err := h.messageService.Search(ctx, userID, peerID, query, cursor, int(req.GetLimit()))
+	key, err := h.messageService.Key(ctx, userID)
+	if errors.Is(err, message.ErrNoKey) {
+		return &messagev1.GetKeyResponse{}, nil
+	}
+
 	if err != nil {
 		return nil, err
 	}
 
-	resp := &messagev1.SearchMessagesResponse{
-		Messages:   make([]*messagev1.Message, 0, len(page.Messages)),
-		NextCursor: optionalID(page.NextCursor),
-	}
-	for _, m := range page.Messages {
-		resp.Messages = append(resp.Messages, found(toProtoMessage(m, false), m, query, req.GetTextLimit()))
-	}
-
-	return resp, nil
+	return &messagev1.GetKeyResponse{PublicKey: key.Bytes()}, nil
 }
 
 func parseID(s, invalid string) (uuid.UUID, error) {

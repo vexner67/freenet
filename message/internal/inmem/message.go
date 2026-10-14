@@ -19,6 +19,8 @@ type Store struct {
 	messages map[uuid.UUID]*message.Message
 	dialogs  map[side]*dialogState
 
+	keys map[uuid.UUID]message.Key
+
 	// Chats of several people: see chat.go.
 	chats        map[uuid.UUID]*message.Chat
 	chatMembers  map[uuid.UUID][]*message.Member
@@ -40,6 +42,7 @@ func NewStore() *Store {
 	return &Store{
 		messages: make(map[uuid.UUID]*message.Message),
 		dialogs:  make(map[side]*dialogState),
+		keys:     make(map[uuid.UUID]message.Key),
 
 		chats:        make(map[uuid.UUID]*message.Chat),
 		chatMembers:  make(map[uuid.UUID][]*message.Member),
@@ -53,6 +56,57 @@ func (s *Store) Messages() *MessageRepository {
 
 func (s *Store) Dialogs() *DialogRepository {
 	return &DialogRepository{s: s}
+}
+
+func (s *Store) Keys() *KeyRepository {
+	return &KeyRepository{s: s}
+}
+
+// KeyRepository keeps the users' keys as message_keys does.
+type KeyRepository struct {
+	s *Store
+}
+
+func (r *KeyRepository) Get(ctx context.Context, userID uuid.UUID) (message.Key, error) {
+	if err := ctx.Err(); err != nil {
+		return "", errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	key, ok := r.s.keys[userID]
+	if !ok {
+		return "", message.ErrNoKey
+	}
+
+	return key, nil
+}
+
+func (r *KeyRepository) Set(ctx context.Context, userID uuid.UUID, key message.Key) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	r.s.keys[userID] = key
+
+	return nil
+}
+
+func (r *KeyRepository) Delete(ctx context.Context, userID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	delete(r.s.keys, userID)
+
+	return nil
 }
 
 // dialog returns the state of a side, creating it; the caller holds the
@@ -206,30 +260,6 @@ func (s *Store) settle(m *message.Message, userID uuid.UUID) {
 	if d.lastIncomingID == m.ID() {
 		d.lastIncomingID = s.newest(key, func(m *message.Message) bool { return m.SenderID() == key.peerID })
 	}
-}
-
-func (r *MessageRepository) Search(ctx context.Context, userID, peerID uuid.UUID, q message.Query, before uuid.UUID, limit int) ([]*message.Message, error) {
-	if err := ctx.Err(); err != nil {
-		return nil, errs.Wrap("ctx.Err", err)
-	}
-
-	r.s.mu.RLock()
-	defer r.s.mu.RUnlock()
-
-	var found []*message.Message
-	for id, m := range r.s.messages {
-		if m.VisibleTo(userID) && (peerID == uuid.Nil || m.Between(peerID)) && q.Matches(m) && below(id, before) {
-			found = append(found, m)
-		}
-	}
-
-	// Newest first: UUIDv7 bytes sort by time, as in PostgreSQL.
-	slices.SortFunc(found, func(x, y *message.Message) int {
-		xi, yi := x.ID(), y.ID()
-		return bytes.Compare(yi[:], xi[:])
-	})
-
-	return found[:min(limit, len(found))], nil
 }
 
 func (r *MessageRepository) ListBefore(ctx context.Context, a, b, before uuid.UUID, limit int) ([]*message.Message, error) {

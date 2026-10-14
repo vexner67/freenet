@@ -442,6 +442,10 @@ func (m *ChatMessage) Edited(requesterID uuid.UUID, rev Revision, now time.Time)
 		return nil, ErrCannotEdit
 	}
 
+	if rev.Sealed != "" {
+		return nil, ErrSealedInChat
+	}
+
 	if m.IsDeleted() {
 		return nil, ErrNotFound
 	}

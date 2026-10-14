@@ -12,12 +12,14 @@ import (
 )
 
 // forwarder reads the messages a user carries on ("Переслать"), from
-// their dialogs and from their chats alike: a message goes from either
-// into either.
+// their dialogs and from their chats: a message of a chat goes into
+// either, one of a dialog only into a dialog (dialogs), since what it
+// says is sealed for two.
 type forwarder struct {
 	messages     MessageRepository
 	chatMessages ChatMessageRepository
 	members      ChatMemberRepository
+	dialogs      bool
 }
 
 // photoCopies are the photos of one forwarded message to keep once more.
@@ -80,6 +82,10 @@ func (f forwarder) carried(ctx context.Context, userID, id uuid.UUID) ([]message
 	if err == nil {
 		if !m.VisibleTo(userID) || m.IsDeleted() {
 			return nil, message.ErrForwardNotFound
+		}
+
+		if !f.dialogs {
+			return nil, message.ErrForwardIntoChat
 		}
 
 		return m.Carried(), nil

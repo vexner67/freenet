@@ -635,6 +635,8 @@ type fakeMessageAPI struct {
 	// edit and removal are the last EditMessage and DeleteMessages.
 	edit    *messagev1.EditMessageRequest
 	removal *messagev1.DeleteMessagesRequest
+	// key is the one SetKey set.
+	key []byte
 }
 
 func (f *fakeMessageAPI) EditMessage(_ context.Context, req *messagev1.EditMessageRequest, _ ...grpc.CallOption) (*messagev1.EditMessageResponse, error) {
@@ -661,7 +663,7 @@ func (f *fakeMessageAPI) ListMessages(ctx context.Context, req *messagev1.ListMe
 	f.req = req
 	return &messagev1.ListMessagesResponse{
 		Messages: []*messagev1.Message{{
-			Id: "m1", SenderId: "u1", RecipientId: "u2", Text: "привет", CreatedAt: timestamppb.Now(), Read: true,
+			Id: "m1", SenderId: "u1", RecipientId: "u2", Sealed: []byte("sealed"), CreatedAt: timestamppb.Now(), Read: true,
 			DeletableUntil: timestamppb.New(time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)),
 			Forwarded: []*messagev1.ForwardedMessage{{
 				SenderId: "u3", Text: "смотри", PhotoIds: []string{"ph1"}, PostId: "p1", CreatedAt: timestamppb.New(time.Date(2026, 10, 1, 9, 0, 0, 0, time.UTC)),
@@ -677,7 +679,7 @@ func (f *fakeMessageAPI) ListMessages(ctx context.Context, req *messagev1.ListMe
 
 func (f *fakeMessageAPI) ListDialogs(_ context.Context, req *messagev1.ListDialogsRequest, _ ...grpc.CallOption) (*messagev1.ListDialogsResponse, error) {
 	return &messagev1.ListDialogsResponse{Dialogs: []*messagev1.Dialog{
-		{PeerId: "u2", LastMessage: &messagev1.Message{Id: "m3", SenderId: "u2", Text: "ау", TextCut: req.GetTextLimit() == model.PreviewLength}, Unread: true},
+		{PeerId: "u2", LastMessage: &messagev1.Message{Id: "m3", SenderId: "u2", Sealed: []byte("ау"), TextCut: req.GetTextLimit() > 0}, Unread: true},
 	}}, nil
 }
 
@@ -690,6 +692,44 @@ func (f *fakeMessageAPI) DeleteMessage(_ context.Context, req *messagev1.DeleteM
 
 func (f *fakeMessageAPI) SendMessage(_ context.Context, _ *messagev1.SendMessageRequest, _ ...grpc.CallOption) (*messagev1.SendMessageResponse, error) {
 	return nil, status.Error(codes.InvalidArgument, "you cannot write to yourself")
+}
+
+func (f *fakeMessageAPI) SetKey(ctx context.Context, req *messagev1.SetKeyRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	if len(req.GetPublicKey()) != 32 {
+		return nil, status.Error(codes.InvalidArgument, "invalid encryption key")
+	}
+	f.key = req.GetPublicKey()
+	return &emptypb.Empty{}, nil
+}
+
+func (f *fakeMessageAPI) GetKey(_ context.Context, req *messagev1.GetKeyRequest, _ ...grpc.CallOption) (*messagev1.GetKeyResponse, error) {
+	if req.GetUserId() != "u1" {
+		return &messagev1.GetKeyResponse{}, nil
+	}
+	return &messagev1.GetKeyResponse{PublicKey: f.key}, nil
+}
+
+func TestMessages_Keys(t *testing.T) {
+	t.Parallel()
+
+	api := &fakeMessageAPI{}
+	messages := NewMessages(api)
+	key := make([]byte, 32)
+	key[0] = 1
+
+	if err := messages.SetKey(context.Background(), "tok", key); err != nil || len(api.md.Get("authorization")) != 1 {
+		t.Fatalf("SetKey = %v (metadata %v)", err, api.md)
+	}
+	if got, err := messages.Key(context.Background(), "tok", "u1"); err != nil || len(got) != 32 || got[0] != 1 {
+		t.Fatalf("Key = %v, %v", got, err)
+	}
+	if got, err := messages.Key(context.Background(), "tok", "u2"); err != nil || got != nil {
+		t.Fatalf("Key of none = %v, %v", got, err)
+	}
+	if f := failure.From(messages.SetKey(context.Background(), "tok", key[:3])); f.Kind != failure.InvalidArgument || f.Message != "invalid encryption key" {
+		t.Fatalf("SetKey of a bad key: %+v", f)
+	}
 }
 
 func TestMessages(t *testing.T) {
@@ -706,13 +746,13 @@ func TestMessages(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if api.req.GetPeerId() != "u2" || api.req.GetAfter() != "m0" || api.req.GetLimit() != 1<<10 {
+	if api.req.GetPeerId() != "u2" || api.req.GetAfter() != "m0" || api.req.GetLimit() != 1<<10 || api.req.GetTextLimit() != 0 {
 		t.Fatalf("request = %v", api.req)
 	}
 	if got := api.md.Get("authorization"); len(got) != 1 || got[0] != "Bearer tok" {
 		t.Fatalf("authorization metadata = %v", got)
 	}
-	if m := page.Messages[0]; m.ID != "m1" || m.SenderID != "u1" || !m.Read || page.PeerReadUpTo != "m1" || page.NextCursor != "m1" ||
+	if m := page.Messages[0]; m.ID != "m1" || m.SenderID != "u1" || string(m.Sealed) != "sealed" || !m.Read || page.PeerReadUpTo != "m1" || page.NextCursor != "m1" ||
 		!m.DeletableUntil.Equal(time.Date(2026, 10, 6, 22, 0, 0, 0, time.UTC)) {
 		t.Fatalf("page = %+v", page)
 	}
@@ -749,8 +789,13 @@ func TestMessages(t *testing.T) {
 	}
 
 	// An edit names the photos it adds and takes away.
-	if _, err = messages.Edit(context.Background(), "tok", "m1", model.MessageEdit{Text: "x"}); err != nil || len(api.edit.GetAddPhotoIds())+len(api.edit.GetRemovePhotoIds()) != 0 || api.edit.GetText() != "x" {
+	was := []byte("was")
+	if _, err = messages.Edit(context.Background(), "tok", "m1", model.MessageEdit{Sealed: []byte("x"), BaseSealed: was}); err != nil ||
+		len(api.edit.GetAddPhotoIds())+len(api.edit.GetRemovePhotoIds()) != 0 || string(api.edit.GetSealed()) != "x" || string(api.edit.BaseSealed) != "was" {
 		t.Fatalf("Edit of the words = %v, asked %v", err, api.edit)
+	}
+	if _, err = messages.Edit(context.Background(), "tok", "m1", model.MessageEdit{Sealed: []byte("x")}); err != nil || api.edit.BaseSealed != nil {
+		t.Fatalf("Edit without what it saw = %v, asked %v", err, api.edit)
 	}
 	edited, err := messages.Edit(context.Background(), "tok", "m1", model.MessageEdit{AddPhotoIDs: []string{"ph1"}, RemovePhotoIDs: []string{"ph0"}})
 	if err != nil || api.edit.GetRemovePhotoIds()[0] != "ph0" || len(edited.PhotoIDs) != 1 || edited.PhotoIDs[0] != "ph1" {
@@ -758,8 +803,8 @@ func TestMessages(t *testing.T) {
 	}
 
 	dialogs, err := messages.Dialogs(context.Background(), "tok", "", 0)
-	if err != nil || len(dialogs.Dialogs) != 1 || !dialogs.Dialogs[0].Unread || dialogs.Dialogs[0].LastMessage.Text != "ау" ||
-		!dialogs.Dialogs[0].LastMessage.TextCut {
+	// What the last message says comes sealed, whole.
+	if err != nil || len(dialogs.Dialogs) != 1 || !dialogs.Dialogs[0].Unread || string(dialogs.Dialogs[0].LastMessage.Sealed) != "ау" {
 		t.Fatalf("dialogs = %+v, %v", dialogs, err)
 	}
 
@@ -853,7 +898,7 @@ func (f *fakeMessageAPI) Subscribe(ctx context.Context, _ *messagev1.SubscribeRe
 	f.md, _ = metadata.FromOutgoingContext(ctx)
 	return &fakeStream[messagev1.SubscribeResponse]{
 		responses: []*messagev1.SubscribeResponse{
-			{Event: &messagev1.SubscribeResponse_Message{Message: &messagev1.Message{Id: "m1", SenderId: "u2", RecipientId: "u1", Text: "привет"}}},
+			{Event: &messagev1.SubscribeResponse_Message{Message: &messagev1.Message{Id: "m1", SenderId: "u2", RecipientId: "u1", Sealed: []byte("привет")}}},
 			{Event: &messagev1.SubscribeResponse_Read{Read: &messagev1.ReadMark{ReaderId: "u2", PeerId: "u1", UpToId: "m1"}}},
 		},
 		err: status.Error(codes.Unauthenticated, "access token expired"),
@@ -873,7 +918,7 @@ func TestMessages_Subscribe(t *testing.T) {
 	}
 
 	e, err := next()
-	if err != nil || e.Message == nil || e.Message.ID != "m1" || e.Message.Text != "привет" || e.Read != nil {
+	if err != nil || e.Message == nil || e.Message.ID != "m1" || string(e.Message.Sealed) != "привет" || e.Read != nil {
 		t.Fatalf("first event = %+v, %v", e, err)
 	}
 

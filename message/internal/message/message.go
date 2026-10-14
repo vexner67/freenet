@@ -120,13 +120,10 @@ func (q Query) String() string {
 	return string(q)
 }
 
-// Matches tells whether m says q, itself or in a message it carries on.
-func (q Query) Matches(m *Message) bool {
-	return q.said(m.content)
-}
-
-// MatchesChat tells the same of a message a person wrote in a chat: what
-// happened there and a message taken back say nothing to search.
+// MatchesChat tells whether a message a person wrote in a chat says q,
+// itself or in a message it carries on: what happened there and a message
+// taken back say nothing to search. Messages of dialogs are sealed, and
+// only the browsers of their people can search them.
 func (q Query) MatchesChat(m *ChatMessage) bool {
 	return !m.IsAction() && !m.IsDeleted() && q.said(m.content)
 }
@@ -420,9 +417,11 @@ func NewForwards(carried []Forwarded) (Forwards, error) {
 // other dialogs or some of them, or a photo of an album shared into the
 // dialog with text, never nothing. The post and the photo of an album
 // live in the post service: the message keeps the ID, and a deleted one
-// stays "Запись удалена." or "Фотография удалена.".
+// stays "Запись удалена." or "Фотография удалена.". A message of a dialog
+// says it all sealed instead: its words and those of what it carries on.
 type Content struct {
 	text      Text
+	sealed    Sealed
 	photos    Photos
 	post      uuid.UUID
 	forwarded Forwards
@@ -434,11 +433,36 @@ type Content struct {
 // NewContent: post is uuid.Nil for none; whether it exists the caller has
 // checked with the post service.
 func NewContent(text Text, photos Photos, post uuid.UUID, forwarded Forwards) (Content, error) {
-	if text == "" && len(photos) == 0 && post == uuid.Nil && len(forwarded) == 0 {
+	return newContent(text, "", photos, post, forwarded)
+}
+
+// NewSealedContent is the content of a message of a dialog: what it says
+// is sealed, and the words of the messages it carries on are sealed with
+// it, so their copies here say nothing.
+func NewSealedContent(sealed Sealed, photos Photos, post uuid.UUID, forwarded Forwards) (Content, error) {
+	return newContent("", sealed, photos, post, forwarded.wordless())
+}
+
+func newContent(text Text, sealed Sealed, photos Photos, post uuid.UUID, forwarded Forwards) (Content, error) {
+	if text == "" && sealed == "" && len(photos) == 0 && post == uuid.Nil && len(forwarded) == 0 {
 		return Content{}, ErrTextEmpty
 	}
 
-	return Content{text: text, photos: photos, post: post, forwarded: forwarded}, nil
+	return Content{text: text, sealed: sealed, photos: photos, post: post, forwarded: forwarded}, nil
+}
+
+// wordless are the forwarded messages without their words.
+func (f Forwards) wordless() Forwards {
+	if len(f) == 0 {
+		return nil
+	}
+
+	out := slices.Clone(f)
+	for i := range out {
+		out[i].Text = ""
+	}
+
+	return out
 }
 
 // NewPhotoShare is the content of a message sharing a photo of an album,
@@ -450,6 +474,43 @@ func NewPhotoShare(text Text, photoID uuid.UUID) (Content, error) {
 	}
 
 	return Content{text: text, sharedPhoto: photoID}, nil
+}
+
+// NewSealedPhotoShare is NewPhotoShare in a dialog: what the sender says
+// about the photo is sealed.
+func NewSealedPhotoShare(sealed Sealed, photoID uuid.UUID) (Content, error) {
+	if photoID == uuid.Nil {
+		return Content{}, ErrInvalidPhoto
+	}
+
+	return Content{sealed: sealed, sharedPhoto: photoID}, nil
+}
+
+// WithSealed is c saying sealed, restored from storage.
+func (c Content) WithSealed(sealed Sealed) Content {
+	c.sealed = sealed
+	return c
+}
+
+// Sealed is what a message of a dialog says, "" for nothing.
+func (c Content) Sealed() Sealed {
+	return c.sealed
+}
+
+// plain tells whether c says something the server could read: its own
+// words or those of what it carries on.
+func (c Content) plain() bool {
+	if c.text != "" {
+		return true
+	}
+
+	for _, f := range c.forwarded {
+		if f.Text != "" {
+			return true
+		}
+	}
+
+	return false
 }
 
 // WithSharedPhoto is c sharing photoID, restored from storage.
@@ -498,12 +559,12 @@ func (c Content) revised(rev Revision) (Content, error) {
 
 	switch {
 	case c.sharedPhoto == uuid.Nil:
-		return NewContent(rev.Text, photos, c.post, c.forwarded)
+		return newContent(rev.Text, rev.Sealed, photos, c.post, c.forwarded)
 	case len(photos) > 0:
 		return Content{}, ErrSharedPhotoAlone
 	default:
 		// It shares the photo still: the words are what changes.
-		return NewPhotoShare(rev.Text, c.sharedPhoto)
+		return Content{text: rev.Text, sealed: rev.Sealed, sharedPhoto: c.sharedPhoto}, nil
 	}
 }
 
@@ -549,10 +610,15 @@ type Message struct {
 }
 
 // New creates a message. Its UUIDv7 ID grows with time, so a dialog is
-// ordered and paged by ID, and "read up to" is one ID.
+// ordered and paged by ID, and "read up to" is one ID. It says nothing in
+// plain text: see NewSealedContent.
 func New(senderID, recipientID uuid.UUID, content Content, now time.Time) (*Message, error) {
 	if senderID == recipientID {
 		return nil, ErrToYourself
+	}
+
+	if content.plain() {
+		return nil, ErrPlainText
 	}
 
 	id, err := uuid.NewV7()
@@ -658,17 +724,26 @@ func (m *Message) EditableUntil() time.Time {
 //
 // The words are not changes but the whole text, so Base, when set, is the
 // text the edit started from: an edit of a message that says something
-// else by now is refused rather than left to undo the edit made first.
+// else by now is refused rather than left to undo the edit made first. A
+// message of a dialog says Sealed instead, and BaseSealed is what it said
+// sealed when the edit started.
 type Revision struct {
-	Text    Text
-	Base    *Text
-	Removed Photos
-	Added   Photos
+	Text       Text
+	Base       *Text
+	Sealed     Sealed
+	BaseSealed *Sealed
+	Removed    Photos
+	Added      Photos
 }
 
 // outdated tells whether the edit started from another text than now.
 func (r Revision) outdated(now Text) bool {
 	return r.Base != nil && *r.Base != now
+}
+
+// outdatedSealed tells the same of what a message of a dialog says.
+func (r Revision) outdatedSealed(now Sealed) bool {
+	return r.BaseSealed != nil && *r.BaseSealed != now
 }
 
 // photos are those of a message that showed old before the edit. A photo
@@ -695,11 +770,16 @@ func (r Revision) photos(old Photos) (Photos, error) {
 // Edited returns m as rev makes it, edited by requesterID at now: only
 // its sender, for editWindow after sending. The post or the photo of an
 // album it shares and the messages it carries on stay; without them and
-// without photos the text may not be empty. A message sharing a photo of
-// an album takes no photos of its own.
+// without photos it may not say nothing. A message sharing a photo of an
+// album takes no photos of its own. What it says is sealed, as when it
+// was sent.
 func (m *Message) Edited(requesterID uuid.UUID, rev Revision, now time.Time) (*Message, error) {
 	if requesterID != m.senderID {
 		return nil, ErrCannotEdit
+	}
+
+	if rev.Text != "" {
+		return nil, ErrPlainText
 	}
 
 	if m.IsDeleted() {
@@ -710,7 +790,7 @@ func (m *Message) Edited(requesterID uuid.UUID, rev Revision, now time.Time) (*M
 		return nil, ErrEditExpired
 	}
 
-	if rev.outdated(m.content.text) {
+	if rev.outdatedSealed(m.content.sealed) {
 		return nil, ErrEditConflict
 	}
 
@@ -740,6 +820,11 @@ func (m *Message) RecipientID() uuid.UUID {
 
 func (m *Message) Text() Text {
 	return m.content.text
+}
+
+// Sealed is what the message says, sealed; "" for nothing.
+func (m *Message) Sealed() Sealed {
+	return m.content.sealed
 }
 
 func (m *Message) Photos() Photos {
