@@ -1,8 +1,10 @@
 // What dialogs and chats of several people share: the messages a message
 // carries on, shown under its words, and VK's "Переслать" — a window that
-// sends messages on into a dialog or a chat.
+// sends messages on into a dialog or a chat. Messages of dialogs are
+// sealed (e2ee.js): they go on into dialogs only.
 
 import { api } from './api.js';
+import { sendSealed } from './e2ee.js';
 import { chatTitle, conversationOf, conversationPath, conversationValue, formatPostDate, forwardTree, messagePreview, snippet } from './labels.js';
 import { el, fullName, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -57,14 +59,20 @@ export function conversationOption(d) {
   return el('option', { value: conversationValue(d), textContent: d.chat ? chatTitle(d.chat) : fullName(d.peer) });
 }
 
-// sendTo writes into the dialog or the chat a choice names.
-export function sendTo(value, text, { photos = [], post = '', forward = [], albumPhoto = '' } = {}) {
+// sendTo writes into the dialog or the chat a choice names: into a
+// dialog sealed for its two people, me (the caller, asked for when not
+// given) and the peer. forward are the messages carried on.
+export async function sendTo(value, text, { me = null, photos = [], post = '', forward = [], albumPhoto = '' } = {}) {
   const { chat, ref } = conversationOf(value);
+  if (chat) return api.sendChatMessage(ref, text, photos, post, forward.map((m) => m.id), albumPhoto);
 
-  return chat
-    ? api.sendChatMessage(ref, text, photos, post, forward, albumPhoto)
-    : api.sendMessage(ref, text, photos, post, forward, albumPhoto);
+  const caller = me ?? await api.me();
+
+  return sendSealed(caller.id, ref, text, { photos, post, forward, albumPhoto });
 }
+
+// fromDialog: a message of a dialog, not of a chat.
+const fromDialog = (m) => !m.chatId;
 
 // openForward carries messages on: which ones, where to ("Кому": this
 // conversation, your latest dialogs and chats, or a person found by
@@ -77,11 +85,14 @@ export function openForward({ me, messages, here, authorOf, onSent, onDone = () 
   const forward = messages.filter((m) => !m.deleted && !m.action).sort((a, b) => (a.id < b.id ? -1 : 1));
   if (forward.length === 0) return;
 
+  // What a dialog says stays sealed: it goes on into dialogs only.
+  const sealed = forward.some(fromDialog);
+  const takes = (d) => writable(d) && !(sealed && d.chat);
   const modal = openModal(forward.length > 1 ? 'Пересылка сообщений' : 'Пересылка сообщения', { tag: 'form' });
   const error = el('div', { className: 'error', hidden: true });
   const hereValue = conversationValue(here);
   // A chat I am not in anymore takes nothing from me.
-  const first = writable(here) ? [conversationOption(here)] : [];
+  const first = takes(here) ? [conversationOption(here)] : [];
   const chats = el('select', { ariaLabel: 'Переписка' }, ...first);
   const person = el('input', { type: 'search', maxLength: 64, placeholder: 'Найти человека: имя, фамилия или никнейм', ariaLabel: 'Найти человека' });
   const text = el('textarea', { maxLength: 60000, placeholder: '…', ariaLabel: 'Ваш комментарий' });
@@ -92,6 +103,7 @@ export function openForward({ me, messages, here, authorOf, onSent, onDone = () 
     el('div', { className: 'forward-list' }, ...forward.map((m) => el('div', {},
       el('b', { textContent: fullName(authorOf(m)) + ': ' }), snippet(messagePreview(m), 80)))),
     el('b', { textContent: 'Кому' }),
+    ...(sealed ? [el('div', { className: 'hint', textContent: 'Сообщения диалогов зашифрованы: переслать их можно только в диалог.' })] : []),
     person,
     chats,
     el('b', { textContent: 'Ваш комментарий' }),
@@ -103,7 +115,7 @@ export function openForward({ me, messages, here, authorOf, onSent, onDone = () 
   let latest = first;
 
   api.dialogs().then((page) => {
-    latest = [...first, ...page.dialogs.filter((d) => conversationValue(d) !== hereValue && writable(d)).map(conversationOption)];
+    latest = [...first, ...page.dialogs.filter((d) => conversationValue(d) !== hereValue && takes(d)).map(conversationOption)];
     if (!person.value.trim()) chats.replaceChildren(...latest);
   }).catch((e) => showError(error, e));
 
@@ -148,7 +160,7 @@ export function openForward({ me, messages, here, authorOf, onSent, onDone = () 
       const to = chats.value;
       if (!to) throw 'Выберите переписку.';
 
-      const sent = await sendTo(to, text.value, { forward: forward.map((m) => m.id) });
+      const sent = await sendTo(to, text.value, { me, forward });
 
       onDone();
       if (to !== hereValue) {

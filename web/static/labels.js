@@ -1146,6 +1146,14 @@ const errorTexts = {
   'the message can no longer be edited': 'Сообщение можно редактировать только в течение суток после отправки.',
   'the title was changed': 'Комментарий уже изменил другой руководитель. Обновите страницу и попробуйте снова.',
   'the message was changed': 'Сообщение изменили, пока вы его редактировали. Отмените правку и начните её заново.',
+  'messages are end-to-end encrypted': 'Сообщения диалогов шифруются: обновите страницу.',
+  'messages of dialogs are end-to-end encrypted': 'Сообщения диалогов зашифрованы: искать в них можно только на странице диалога.',
+  'the encryption keys changed': 'Ключ шифрования собеседника изменился. Обновите страницу и отправьте ещё раз.',
+  'encrypted messages cannot be forwarded into a chat': 'Сообщения диалогов зашифрованы, их нельзя переслать в беседу.',
+  'messages of chats are not encrypted': 'Сообщения бесед не шифруются: обновите страницу.',
+  'invalid encryption key': 'Неверный ключ шифрования.',
+  'invalid encrypted message': 'Не удалось зашифровать сообщение.',
+  'encrypted message is too long': 'Сообщение слишком длинное.',
   'forwarded message not found': 'Сообщение не удалось переслать: его уже нет.',
   'a message forwards at most 20 messages': 'За один раз можно переслать не больше 20 сообщений.',
   'search query is empty': 'Введите, что искать.',
@@ -1180,6 +1188,15 @@ const errorTexts = {
   'invalid access token': 'Сессия истекла, войдите снова.',
   'invalid refresh token': 'Сессия истекла, войдите снова.',
 };
+
+// keyStateText says why this browser cannot open and seal messages of
+// dialogs (e2ee.js): the key of the page is in another browser
+// ('missing'), or this one has an older key ('stale').
+export function keyStateText(state) {
+  return state === 'stale'
+    ? 'На этом устройстве старый ключ шифрования сообщений: новый создан на другом устройстве.'
+    : 'На этом устройстве нет ключа шифрования сообщений: он на другом устройстве.';
+}
 
 export function errorText(e) {
   return errorTexts[e?.message] ?? 'Что-то пошло не так. Попробуйте позже.';
@@ -1282,6 +1299,7 @@ export function forwardTree(forwarded) {
 // names is read by name: "[ann|Анна]" is "Анна".
 export function messagePreview(m) {
   if (m.deleted) return 'Сообщение удалено';
+  if (m.unreadable) return 'Зашифрованное сообщение';
   if (m.text) return plainMentions(m.text);
   if (m.photos?.length || m.albumPhoto) return 'Фотография';
   if (m.post) return 'Запись';

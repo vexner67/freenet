@@ -4,6 +4,7 @@
 import { button, openModal } from './modal.js';
 import { accountName, canPark, onAccountChange, park, parkedAccounts, signedInAs, switchTo, tendParked } from './accounts.js';
 import { api } from './api.js';
+import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
 import { errorText, foundParts, isLongText, mentionParts, setTimezone, unreadCountText } from './labels.js';
 import { nicknameLookup } from './nicknames.js';
@@ -380,6 +381,9 @@ export function renderChrome(me) {
     onEvent('ready', applyCounters);
     onEvent('counters', applyCounters);
     connectEvents();
+    // The key messages of dialogs are sealed with: made here for one who
+    // has none, checked now and then against the server's.
+    ensureKey(me.id).catch(() => {});
   } else {
     // A guest sees the site as it is, whoever was here before.
     forgetLook();

@@ -7,13 +7,17 @@
 // ("Удалить для всех") and edited for a day; a click on a message selects
 // it, and several are deleted or forwarded ("Переслать") at once. A
 // message taken back stays as "Сообщение удалено". With ?msg=<id> the
-// dialog opens around that message, as a search leads to it.
+// dialog opens around that message, as a search leads to it. What the
+// messages say is sealed for the two people (e2ee.js): the page opens it
+// with the key of this browser and seals what it sends; until the peer has
+// a key nobody can write to them.
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
+import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
 import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
-import { errorText, formatPostDate, genitiveName, isLongText, photoChanges, selectedCount } from './labels.js';
+import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, selectedCount } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 
@@ -41,15 +45,14 @@ let loadingOlder = false;
 let gap = false;
 let loadingNewer = false;
 let attachments;
+// The key messages to the peer are sealed with, as the server has it.
+let peerKey = null;
 // Message ID → node, so polling neither repeats a message nor misses a read.
 const shown = new Map();
 
 // The messages selected by a click, by ID, and the one being edited.
 const selected = new Set();
 let editing = null;
-// What the message said when its edit began: saving names it, so an edit
-// made in another window meanwhile is not overwritten.
-let editingBase = '';
 
 function messageNode(m) {
   const author = m.out ? me : peer;
@@ -73,7 +76,9 @@ function messageNode(m) {
 
     node.classList.toggle('deleted', Boolean(shownMessage.deleted));
     content.replaceChildren(...[
-      text && textOf(text, node),
+      !shownMessage.deleted && shownMessage.unreadable
+        ? el('div', { className: 'im-message-text unreadable', textContent: 'Не удалось расшифровать сообщение: оно зашифровано ключом, которого нет на этом устройстве.' })
+        : text && textOf(text, node),
       ...attachedNodes(shownMessage),
       forwardedNode(shownMessage, (carried) => textOf(carried, node)),
     ].filter(Boolean));
@@ -81,7 +86,7 @@ function messageNode(m) {
       formatPostDate(shownMessage.createdAt),
       shownMessage.editedAt && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
       canEdit(shownMessage) && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(shownMessage) }),
-      !shownMessage.deleted && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => forward([shownMessage]) }),
+      !shownMessage.deleted && !shownMessage.unreadable && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => forward([shownMessage]) }),
       el('a', { className: 'im-message-action', textContent: 'Удалить', onclick: () => confirmDelete([shownMessage]) }),
     ].filter(Boolean));
   };
@@ -100,32 +105,20 @@ function messageNode(m) {
   return node;
 }
 
-// CUT_LENGTH is how much of a long text a dialog carries; the message
-// says only that some text of it is cut (textCut), not which.
-const CUT_LENGTH = 1000;
-
 // textOf shows a text of a message of node, its own or of one it carries
-// on: a long one cut short until "Показать больше", as posts are, which
-// first loads the message whole when the dialog carried its beginning.
+// on: a long one cut short until "Показать больше", as posts are. Sealed,
+// a message comes whole.
 function textOf(text, node) {
   const marked = node.message?.id === foundID && foundQuery;
   const body = el('div', { className: 'im-message-text' }, ...mentionNodes(text, marked ? foundQuery : ''));
-  const cut = node.message?.textCut && [...text].length >= CUT_LENGTH;
-  if (node.opened || !(cut || isLongText(text))) return body;
+  if (node.opened || !isLongText(text)) return body;
 
   body.classList.add('collapsed');
 
   const more = el('a', {
     className: 'post-text-more',
     textContent: 'Показать больше',
-    onclick: async () => {
-      try {
-        await whole(node.message);
-      } catch {
-        // The link stays to try again.
-        return;
-      }
-
+    onclick: () => {
       node.opened = true;
       node.render();
     },
@@ -134,11 +127,12 @@ function textOf(text, node) {
   return el('div', {}, body, more);
 }
 
-// whole loads all a message says, and those it carries on, into it.
-async function whole(m) {
-  if (m.textCut) Object.assign(m, { textCut: false }, await api.message(nickname, m.id), { read: m.read });
+// page is a page of the dialog with what its messages say opened.
+async function page(at = {}) {
+  const p = await api.messages(nickname, at);
 
-  return m;
+  await openMessages(me.id, p.messages);
+  return p;
 }
 
 // canDeleteForAll: your own message, until deletableUntil; the server
@@ -147,9 +141,10 @@ function canDeleteForAll(m) {
   return m.out && !m.deleted && Boolean(m.deletableUntil) && Date.now() < new Date(m.deletableUntil);
 }
 
-// canEdit: your own message, until editableUntil.
+// canEdit: your own message, until editableUntil, that this browser can
+// open.
 function canEdit(m) {
-  return m.out && !m.deleted && Boolean(m.editableUntil) && Date.now() < new Date(m.editableUntil);
+  return m.out && !m.deleted && !m.unreadable && Boolean(m.editableUntil) && Date.now() < new Date(m.editableUntil);
 }
 
 function toggleSelected(id) {
@@ -225,7 +220,7 @@ function confirmDelete(messages) {
 // forward carries messages on ("Переслать"), into this dialog or another
 // conversation.
 function forward(messages) {
-  openForward({ me, messages, here: { peer }, authorOf: (m) => (m.out ? me : peer), onSent: showSent, onDone: clearSelection });
+  openForward({ me, messages: messages.filter((m) => !m.unreadable), here: { peer }, authorOf: (m) => (m.out ? me : peer), onSent: showSent, onDone: clearSelection });
 }
 
 // showSent puts a message just sent at the end of the dialog; opened
@@ -252,18 +247,10 @@ function drop(id) {
 // startEdit puts what the message says and its photos back in the form:
 // sending saves the edit, as on VK. A message that shares a photo of an
 // album takes no photos of its own.
-async function startEdit(m) {
+function startEdit(m) {
   const text = $('text');
 
-  try {
-    await whole(m);
-  } catch (e) {
-    showError($('error'), e);
-    return;
-  }
-
   editing = m;
-  editingBase = m.text;
   text.value = m.text;
   autosize(text);
   attachments.set(m.photos ?? []);
@@ -291,7 +278,7 @@ function edited(m) {
   const node = shown.get(m.id);
   if (!node) return;
 
-  node.message = { ...node.message, textCut: false, ...m, read: node.message.read };
+  node.message = { ...node.message, ...m, read: node.message.read };
   node.render();
   if (editing?.id === m.id && m.deleted) cancelEdit();
 }
@@ -362,12 +349,12 @@ async function loadOlder() {
   loadingOlder = true;
 
   try {
-    const page = await api.messages(nickname, { cursor: olderCursor });
+    const older = await page({ cursor: olderCursor });
     // Keep the view still while messages appear above it.
     const fromBottom = list.scrollHeight - list.scrollTop;
 
-    add(page.messages, true);
-    olderCursor = page.nextCursor;
+    add(older.messages, true);
+    olderCursor = older.nextCursor;
     list.scrollTop = list.scrollHeight - fromBottom;
   } catch (e) {
     showError($('error'), e);
@@ -383,11 +370,11 @@ async function loadNewer() {
   loadingNewer = true;
 
   try {
-    const page = await api.messages(nickname, { after: newestID });
+    const newer = await page({ after: newestID });
 
-    markTheirRead(page.peerReadUpTo);
-    if (page.messages.length === 0) gap = false;
-    await readIncoming(add(page.messages, false));
+    markTheirRead(newer.peerReadUpTo);
+    if (newer.messages.length === 0) gap = false;
+    await readIncoming(add(newer.messages, false));
   } catch (e) {
     showError($('error'), e);
   } finally {
@@ -413,10 +400,8 @@ async function showFound() {
 
   // The words may be said after what a collapsed text shows: it opens.
   if (node && foundQuery && node.querySelector('.im-message-text.collapsed')) {
-    await whole(node.message).then(() => {
-      node.opened = true;
-      node.render();
-    }).catch(() => {});
+    node.opened = true;
+    node.render();
   }
 
   node?.classList.add('found');
@@ -429,16 +414,16 @@ async function showFound() {
 async function firstPage() {
   if (foundID) {
     try {
-      const page = await api.messages(nickname, { around: foundID });
+      const around = await page({ around: foundID });
 
       gap = true;
-      return page;
+      return around;
     } catch (e) {
       if (e.status !== 404 && e.status !== 400) throw e;
     }
   }
 
-  return api.messages(nickname);
+  return page();
 }
 
 // showNew adds new messages, keeping the view at the bottom if it was.
@@ -458,10 +443,10 @@ async function catchUp() {
 
   try {
     // An empty dialog has nothing to ask after: ask for the newest.
-    const page = await api.messages(nickname, newestID ? { after: newestID } : {});
+    const newer = await page(newestID ? { after: newestID } : {});
 
-    markTheirRead(page.peerReadUpTo);
-    await showNew(page.messages);
+    markTheirRead(newer.peerReadUpTo);
+    await showNew(newer.messages);
   } catch {
     // A missed poll is caught up by the next one.
   }
@@ -474,8 +459,11 @@ async function poll() {
 }
 
 function listenToEvents() {
-  onEvent('message', (e) => {
-    if (e.peer.id === peer.id && !gap) showNew([e.message]);
+  onEvent('message', async (e) => {
+    if (e.peer.id !== peer.id || gap) return;
+
+    await openMessages(me.id, [e.message]);
+    showNew([e.message]);
   });
   onEvent('read', (e) => {
     if (e.peer.id === peer.id && !e.byMe) markTheirRead(e.upTo);
@@ -484,8 +472,11 @@ function listenToEvents() {
   onEvent('delete', (e) => {
     if (e.peer.id === peer.id) drop(e.id);
   });
-  onEvent('edit', (e) => {
-    if (e.peer.id === peer.id) edited(e.message);
+  onEvent('edit', async (e) => {
+    if (e.peer.id !== peer.id) return;
+
+    await openMessages(me.id, [e.message]);
+    edited(e.message);
   });
   // Whatever happened while disconnected.
   onEvent('ready', catchUp);
@@ -507,7 +498,7 @@ async function send(event) {
     button.disabled = true;
 
     try {
-      edited(await api.editMessage(editing.id, text.value, { ...photoChanges(editing.photos, attachments.ids()), base: editingBase }));
+      edited(await editSealed(me.id, nickname, editing, text.value, photoChanges(editing.photos, attachments.ids())));
       cancelEdit();
     } catch (e) {
       showError($('error'), e);
@@ -529,7 +520,7 @@ async function send(event) {
   button.disabled = true;
 
   try {
-    const m = await api.sendMessage(nickname, text.value, attachments.ids());
+    const m = await sendSealed(me.id, nickname, text.value, { photos: attachments.ids() });
 
     text.value = '';
     autosize(text);
@@ -567,6 +558,15 @@ async function setUpInput(canWrite) {
     return;
   }
 
+  // Until both have keys, nothing can be sealed.
+  const ownState = await ensureKey(me.id).catch(() => KEY_READY);
+  if (ownState !== KEY_READY || !peerKey) {
+    $('form').hidden = true;
+    $('blocked').replaceChildren(...(ownState !== KEY_READY ? keyHint(ownState) : [NO_PEER_KEY]));
+    $('blocked').hidden = false;
+    return;
+  }
+
   $('my-avatar').src = avatarURL(me, 'small');
   $('peer-avatar').src = avatarURL(peer, 'small');
   attachments = initAttachments({ link: $('attach'), input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
@@ -579,6 +579,48 @@ async function setUpInput(canWrite) {
       $('form').requestSubmit();
     }
   });
+}
+
+// keyHint is why this browser can neither open nor seal messages, with
+// where to bring the key.
+function keyHint(state) {
+  return [keyStateText(state) + ' ', el('a', { href: '/settings?act=security', textContent: 'Перейти к настройкам шифрования' }), '.'];
+}
+
+// showKeys learns the peer's key and says when it is not the one this
+// browser saw before: a new device of theirs, or someone between.
+async function showKeys() {
+  peerKey = (await api.messageKey(peer.nickname)).publicKey;
+  if (!peerKey) return;
+
+  if (notePeerKey(me.id, peer.id, peerKey) === 'changed') {
+    $('key-notice').replaceChildren(
+      `Ключ шифрования собеседника изменился: возможно, ${fullName(peer)} настраивает новое устройство. `,
+      el('a', { textContent: 'Сравните код безопасности', onclick: showSafetyCode }),
+      '.',
+    );
+    $('key-notice').hidden = false;
+  }
+}
+
+// showSafetyCode is the code both people compare, each in their dialog,
+// to be sure no one reads between them.
+async function showSafetyCode() {
+  const modal = openModal('Шифрование сообщений');
+  const own = ownKey(me.id);
+
+  modal.body.append(el('p', {}, 'Сообщения этого диалога зашифрованы: прочитать их можете только вы и ',
+    fullName(peer), ', даже сервер их не видит.'));
+  if (own && peerKey) {
+    modal.body.append(
+      el('p', {}, 'Код безопасности:'),
+      el('p', { className: 'safety-code', textContent: await safetyCode(own, peerKey) }),
+      el('p', { className: 'hint', textContent: 'Сравните его с кодом в этом диалоге у собеседника — при встрече или по другому каналу. Если коды совпадают, вашу переписку никто не подменяет.' }),
+    );
+  } else {
+    modal.body.append(el('p', { className: 'hint', textContent: own ? NO_PEER_KEY : keyStateText(keyState(me.id) || 'missing') }));
+  }
+  modal.actions.append(button('Закрыть', modal.close));
 }
 
 // whyNotWrite tells the caller's own blacklist and a deleted page apart
@@ -604,8 +646,8 @@ if (!me) {
   renderChrome(me);
 
   try {
-    const page = await firstPage();
-    peer = page.peer;
+    const first = await firstPage();
+    peer = first.peer;
 
     document.title = `${fullName(peer)} | Сообщения`;
     $('title').replaceChildren(
@@ -615,18 +657,20 @@ if (!me) {
     );
 
     $('search-link').href = '/im?peer=' + encodeURIComponent(peer.nickname);
-    $('search-link').hidden = false;
+    $('safety-link').addEventListener('click', showSafetyCode);
+    $('dialog-links').hidden = false;
     const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
 
     $('selection-forward').addEventListener('click', () => forward(selectedMessages()));
     $('selection-delete').addEventListener('click', () => confirmDelete(selectedMessages()));
     $('selection-cancel').addEventListener('click', clearSelection);
 
+    await showKeys().catch(() => {});
     $('messenger').hidden = false;
-    add(page.messages, false);
-    olderCursor = page.nextCursor;
+    add(first.messages, false);
+    olderCursor = first.nextCursor;
     toBottom();
-    await setUpInput(page.canWrite);
+    await setUpInput(first.canWrite);
     if (gap) await showFound();
 
     list.addEventListener('scroll', () => {
@@ -637,7 +681,7 @@ if (!me) {
       if (!document.hidden) readIncoming([...shown.values()].map((node) => node.message));
     });
 
-    await readIncoming(page.messages);
+    await readIncoming(first.messages);
     listenToEvents();
     setTimeout(poll, POLL_MS);
   } catch (e) {
