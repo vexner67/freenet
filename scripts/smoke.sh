@@ -6,7 +6,8 @@
 # a poll, a note and the faves), notification (unread count), message (dialogs and chats), club
 # (a club and a post for it), the feed with an ignored source, a second
 # person whose follow and whose appointment in the club travel through the
-# outboxes of user and club, and the website itself; then observability: every
+# outboxes of user and club and who gets a sealed message, and the
+# website itself; then observability: every
 # container healthy, a request ID from the gateway in the auth log, that
 # line in VictoriaLogs and the request as a trace in Jaeger, the machine
 # and the certificates watched, every
@@ -229,6 +230,21 @@ expect=204 call PUT "/api/v1/clubs/$club/admins/$nickname2" >/dev/null
 appointed() { token=$token2 call GET /api/v1/notifications | jq -e '[.notifications[] | select(.type == "club_admin" and .actor.club)] | length == 1' >/dev/null; }
 eventually appointed || die "the new admin of the club has no notification of it"
 step "club: a member made an admin hears of it"
+
+# Messages of dialogs are sealed by the browsers: the server takes sealed
+# bytes for the keys of both as they are now, and no plain words. These
+# bytes open for no one; the server never tries.
+key1=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
+key2=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
+sealed=$({ printf '\001'; echo "$key1" | base64 --decode; echo "$key2" | base64 --decode; head -c 28 /dev/urandom; } | base64 | tr -d '\n')
+expect=204 call PUT /api/v1/me/message-key "{\"publicKey\":\"$key1\"}" >/dev/null
+expect=409 call POST "/api/v1/dialogs/$nickname2/messages" "{\"sealed\":\"$sealed\"}" | jq -e '.error.message == "the encryption keys changed"' >/dev/null
+token=$token2 expect=204 call PUT /api/v1/me/message-key "{\"publicKey\":\"$key2\"}" >/dev/null
+call GET "/api/v1/users/$nickname2/message-key" | jq -e --arg k "$key2" '.publicKey == $k' >/dev/null
+expect=201 call POST "/api/v1/dialogs/$nickname2/messages" "{\"sealed\":\"$sealed\"}" >/dev/null
+token=$token2 call GET /api/v1/dialogs | jq -e --arg s "$sealed" '.dialogs[0].lastMessage.sealed == $s' >/dev/null
+expect=400 call POST "/api/v1/dialogs/$nickname2/messages" '{"text":"plain"}' | jq -e '.error.message == "messages are end-to-end encrypted"' >/dev/null
+step "message: dialogs sealed for the keys of both"
 
 # refresh replaces the tokens, as the website does after deleting and
 # restoring the page.
