@@ -175,6 +175,7 @@ func (a *App) build(cfg config.Config) error {
 				Wallets:     store.wallets,
 				Notifier:    deliver.gifts,
 			}),
+			Stickers: service.NewStickerService(store.stickers, store.wallets, store.tx),
 			Wallets: service.NewWalletService(service.WalletDeps{
 				Users:       store.users,
 				Wallets:     store.wallets,
@@ -249,6 +250,8 @@ type storage struct {
 	blocks  service.BlockRepository
 	ignores service.IgnoreRepository
 	gifts   service.GiftRepository
+	// stickers are the packs of stickers users have taken.
+	stickers service.StickerRepository
 	// wallets are the votes and the rating of users.
 	wallets  service.WalletRepository
 	vouchers service.VoucherRepository
@@ -267,6 +270,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			blocks:   inmem.NewBlockRepository(follows),
 			ignores:  inmem.NewIgnoreRepository(users),
 			gifts:    inmem.NewGiftRepository(users),
+			stickers: inmem.NewStickerRepository(users),
 			wallets:  users,
 			vouchers: inmem.NewVoucherRepository(users),
 			tx:       inmem.TxManager{},
@@ -304,6 +308,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		blocks:   postgres.NewBlockRepository(a.pool),
 		ignores:  postgres.NewIgnoreRepository(a.pool),
 		gifts:    postgres.NewGiftRepository(a.pool),
+		stickers: postgres.NewStickerRepository(a.pool),
 		wallets:  postgres.NewWalletRepository(a.pool),
 		vouchers: postgres.NewVoucherRepository(a.pool),
 		tx:       pgpool.NewTxManager(a.pool),
