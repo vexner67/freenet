@@ -57,6 +57,10 @@ type App struct {
 	server  *grpcserver.Server
 	metrics *metrics.Server
 	addr    string
+	// postponed publishes the postponed posts whose time has come, every
+	// postponedEvery.
+	postponed      *service.PostponedService
+	postponedEvery time.Duration
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -154,14 +158,20 @@ func (a *App) build(cfg config.Config) error {
 		Pages: repos.pages,
 	})
 
+	posts := service.NewPostService(service.PostDeps{
+		Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
+		Moderators: moderators, AlbumPhotos: repos.albumPhotos, WallPhotos: albums, Switches: repos.posts, Walls: repos.sources,
+		Polls: repos.polls, Pages: repos.pages,
+	})
+	a.postponed = service.NewPostponedService(service.PostponedDeps{
+		Postponed: repos.postponed, Poster: posts, Tx: repos.tx, Photos: photos, Moderators: moderators,
+	})
+	a.postponedEvery = cfg.PostponedInterval
+
 	postv1.RegisterPostServiceServer(
 		a.server.Registrar(),
 		postgrpc.NewPostHandler(postgrpc.Services{
-			Posts: service.NewPostService(service.PostDeps{
-				Posts: repos.posts, Pins: repos.posts, Comments: repos.comments, Likes: repos.likes, Tx: repos.tx, Notifier: notifier, Photos: photos,
-				Moderators: moderators, AlbumPhotos: repos.albumPhotos, WallPhotos: albums, Switches: repos.posts, Walls: repos.sources,
-				Polls: repos.polls, Pages: repos.pages,
-			}),
+			Posts: posts,
 			Comments: service.NewCommentService(service.CommentDeps{
 				Posts: repos.posts, Comments: repos.comments, Likes: repos.commentLikes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Moderators: moderators, Walls: repos.sources, Pages: repos.pages,
@@ -169,6 +179,7 @@ func (a *App) build(cfg config.Config) error {
 			Suggestions: service.NewSuggestionService(service.SuggestionDeps{
 				Suggestions: repos.suggestions, Posts: repos.posts, Tx: repos.tx, Notifier: notifier, Photos: photos, Moderators: moderators,
 			}),
+			Postponed: a.postponed,
 			Topics: service.NewTopicService(service.TopicDeps{
 				Topics: repos.topics, Messages: repos.topicMessages, Likes: repos.topicMessages, Tx: repos.tx,
 				Notifier: notifier, Photos: photos, Moderators: moderators, Pages: repos.pages,
@@ -186,7 +197,7 @@ func (a *App) build(cfg config.Config) error {
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
 				Votes:  repos.polls,
 				Topics: repos.topics, Albums: repos.albums, Notes: repos.notes, Tx: repos.tx, Notifier: notifier, Photos: photos,
-				Held: repos.held, Sources: repos.sources,
+				Held: repos.held, Sources: repos.sources, Postponed: repos.postponed,
 			}),
 			Holds:   service.NewHoldService(repos.tx, repos.held...),
 			Sources: service.NewSourceService(repos.sources),
@@ -245,6 +256,11 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// a post for everyone. Each has its own counter.
 		postv1.PostService_SuggestPost_FullMethodName:       cfg.PostLimits,
 		postv1.PostService_PublishSuggestion_FullMethodName: cfg.PostLimits,
+		// A postponed post is a post to come, published at once a post
+		// now; changing it is an edit.
+		postv1.PostService_PostponePost_FullMethodName:     cfg.PostLimits,
+		postv1.PostService_PublishPostponed_FullMethodName: cfg.PostLimits,
+		postv1.PostService_EditPostponed_FullMethodName:    cfg.EditLimits,
 		// A topic is a post of the discussions, a message in it a comment.
 		postv1.PostService_CreateTopic_FullMethodName:        cfg.PostLimits,
 		postv1.PostService_CreateTopicMessage_FullMethodName: cfg.CommentLimits,
@@ -405,6 +421,10 @@ type repositories struct {
 		service.SuggestionRepository
 		service.SuggestionEraser
 	}
+	postponed interface {
+		service.PostponedRepository
+		service.PostponedEraser
+	}
 	topics interface {
 		service.TopicRepository
 		service.TopicEraser
@@ -462,6 +482,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			comments:     store.Comments(),
 			commentLikes: store.CommentLikes(),
 			suggestions:  inmem.NewSuggestionRepository(),
+			postponed:    inmem.NewPostponedRepository(),
 			topics:       topics,
 			tx:           inmem.TxManager{},
 
@@ -515,6 +536,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		comments:     postgres.NewCommentRepository(a.pool),
 		commentLikes: postgres.NewCommentLikeRepository(a.pool),
 		suggestions:  postgres.NewSuggestionRepository(a.pool),
+		postponed:    postgres.NewPostponedRepository(a.pool),
 		topics:       topics,
 		tx:           pgpool.NewTxManager(a.pool),
 
@@ -556,7 +578,38 @@ func (a *App) Run(ctx context.Context) error {
 		})
 	}
 
+	g.Go(func() error {
+		return errs.Wrap("a.runPostponed", a.runPostponed(ctx))
+	})
+
 	return g.Wait()
+}
+
+// runPostponed publishes the postponed posts whose time has come until
+// ctx is cancelled. A failed round is logged and tried again next time:
+// the posts stay due.
+func (a *App) runPostponed(ctx context.Context) error {
+	ticker := time.NewTicker(a.postponedEvery)
+	defer ticker.Stop()
+
+	for {
+		published, err := a.postponed.PublishDue(ctx)
+
+		switch {
+		case ctx.Err() != nil:
+			return nil
+		case err != nil:
+			a.logger.ErrorContext(ctx, "publish postponed posts", "error", err)
+		case published > 0:
+			a.logger.InfoContext(ctx, "postponed posts published", "count", published)
+		}
+
+		select {
+		case <-ctx.Done():
+			return nil
+		case <-ticker.C:
+		}
+	}
 }
 
 // Healthcheck asks the service running with cfg on this host whether it

@@ -332,7 +332,7 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 			return errs.Wrap("s.publishPhotos", err)
 		}
 
-		for _, e := range postEvents(p, in) {
+		for _, e := range postEvents(p, in.ClubWall, in.Mentions) {
 			if err := s.notifier.Notify(ctx, e); err != nil {
 				return errs.Wrap("s.notifier.Notify", err)
 			}
@@ -365,20 +365,59 @@ func newPoll(p *post.Post, draft *post.PollDraft, now time.Time) (*post.Poll, er
 // user's wall hears of what others write there, and the people it names
 // of that, unless they heard as the owner. A post that speaks for a
 // community names them for the community.
-func postEvents(p *post.Post, in CreateInput) []Event {
+func postEvents(p *post.Post, clubWall bool, mentions post.Mentions) []Event {
 	var events []Event
 
 	owner := uuid.Nil
-	if !p.OnOwnWall() && !in.ClubWall {
+	if !p.OnOwnWall() && !clubWall {
 		owner = p.WallID()
 		events = append(events, Event{Kind: EventWallPost, RecipientID: owner, ActorID: p.AuthorID(), PostID: p.ID()})
 	}
 
-	for _, id := range in.Mentions.Heard(p.AuthorID(), owner) {
+	for _, id := range mentions.Heard(p.AuthorID(), owner) {
 		events = append(events, Event{Kind: EventPostMention, RecipientID: id, ActorID: speaker(p), PostID: p.ID()})
 	}
 
 	return events
+}
+
+// Posted writes p, a postponed post that comes out, as Create writes a
+// new one: claim runs first in the transaction and takes the postponed
+// post, so that it comes out once. Media keeps its photos already; they
+// only go to "Фотографии со стены". A postponed post is on its author's
+// own wall or speaks for a community, so nobody owns the wall to hear of
+// it, and the people it names do.
+func (s *PostService) Posted(ctx context.Context, p *post.Post, mentions post.Mentions, claim func(context.Context) error) error {
+	photos := p.Content().Photos()
+
+	album, err := s.wallAlbum(ctx, p, photos)
+	if err != nil {
+		return errs.Wrap("s.wallAlbum", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := claim(ctx); err != nil {
+			return errs.Wrap("claim", err)
+		}
+
+		if err := s.postRepo.Save(ctx, p); err != nil {
+			return errs.Wrap("s.postRepo.Save", err)
+		}
+
+		if err := s.keepWallPhotos(ctx, p, album, photos); err != nil {
+			return errs.Wrap("s.keepWallPhotos", err)
+		}
+
+		for _, e := range postEvents(p, p.FromWall(), mentions) {
+			if err := s.notifier.Notify(ctx, e); err != nil {
+				return errs.Wrap("s.notifier.Notify", err)
+			}
+		}
+
+		return nil
+	})
+
+	return errs.Wrap("s.tx.WithinTx", err)
 }
 
 // RepostInput is a post to share: on the author's own wall, or on a
@@ -801,7 +840,13 @@ func (s *PostService) publishPhotos(ctx context.Context, p *post.Post, album *po
 		return errs.Wrap("s.photos.Publish", err)
 	}
 
-	if album == nil {
+	return errs.Wrap("s.keepWallPhotos", s.keepWallPhotos(ctx, p, album, photos))
+}
+
+// keepWallPhotos puts copies of the photos of p in album, if any; media
+// must keep them already.
+func (s *PostService) keepWallPhotos(ctx context.Context, p *post.Post, album *post.Album, photos []uuid.UUID) error {
+	if album == nil || len(photos) == 0 {
 		return nil
 	}
 

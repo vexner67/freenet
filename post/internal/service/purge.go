@@ -32,6 +32,12 @@ type SuggestionEraser interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) ([]uuid.UUID, error)
 }
 
+// PostponedEraser deletes what a user postponed; media erases its photos
+// with the rest of the user.
+type PostponedEraser interface {
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+}
+
 // TopicEraser deletes the messages a user wrote in topics and the topics
 // they started, returning the messages of others those took with them.
 type TopicEraser interface {
@@ -60,6 +66,7 @@ type PurgeService struct {
 	votes        ReactionEraser
 	comments     CommentEraser
 	suggestions  SuggestionEraser
+	postponed    PostponedEraser
 	topics       TopicEraser
 	albums       AlbumEraser
 	notes        NoteEraser
@@ -79,6 +86,7 @@ type PurgeDeps struct {
 	Votes       ReactionEraser
 	Comments    CommentEraser
 	Suggestions SuggestionEraser
+	Postponed   PostponedEraser
 	Topics      TopicEraser
 	Albums      AlbumEraser
 	Notes       NoteEraser
@@ -99,6 +107,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		votes:        d.Votes,
 		comments:     d.Comments,
 		suggestions:  d.Suggestions,
+		postponed:    d.Postponed,
 		topics:       d.Topics,
 		albums:       d.Albums,
 		notes:        d.Notes,
@@ -111,7 +120,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 }
 
 // PurgeUser deletes, in one transaction, the user's likes and comments on
-// others' posts, their votes in polls, what they suggested, their topics and the messages they
+// others' posts, their votes in polls, what they suggested and postponed, their topics and the messages they
 // wrote in topics, their albums and the photos they put in others', their
 // notes and the comments they left under others', the
 // posts they wrote and those on their wall (others' on it included, as a
@@ -158,6 +167,10 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 			if err = s.notifier.ForgetPost(ctx, id); err != nil {
 				return errs.Wrap("s.notifier.ForgetPost", err)
 			}
+		}
+
+		if err = s.postponed.DeleteByUser(ctx, userID); err != nil {
+			return errs.Wrap("s.postponed.DeleteByUser", err)
 		}
 
 		// Others' messages in the user's topics go with the topics, and
