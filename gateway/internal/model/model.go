@@ -393,6 +393,46 @@ type SuggestionPage struct {
 	Total       int
 }
 
+// Postponed is a post that waits for its time (VK's "отложенная
+// запись"), seen by its author and, for a community, the community's
+// admins until it comes out.
+type Postponed struct {
+	ID       string
+	WallID   string
+	AuthorID string
+	Text     string
+	// TextCut: Text is only its beginning, as lists carry it.
+	TextCut   bool
+	PhotoIDs  []string
+	FromWall  bool
+	Signed    bool
+	NSFW      bool
+	PublishAt time.Time
+	CreatedAt time.Time
+}
+
+// NewPostponed is a post to postpone: on the author's own wall (WallID
+// "") or, FromWall, for a community.
+type NewPostponed struct {
+	WallID   string
+	Text     string
+	PhotoIDs []string
+	FromWall bool
+	Signed   bool
+	NSFW     bool
+	// Mentions are the IDs of the people the text names.
+	Mentions  []string
+	PublishAt time.Time
+}
+
+// PostponedEdit is what an edit of a postponed post sets; its photos stay.
+type PostponedEdit struct {
+	Text      string
+	NSFW      bool
+	Mentions  []string
+	PublishAt time.Time
+}
+
 // WallAccess is what a user may do on a club's wall: Post, or else
 // Suggest a post for its admins to publish.
 type WallAccess struct {

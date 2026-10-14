@@ -174,6 +174,15 @@ type Posts interface {
 	Suggestion(ctx context.Context, accessToken, id string) (model.Suggestion, error)
 	PublishSuggestion(ctx context.Context, accessToken, id, text string, signed bool) (model.Post, error)
 	DeleteSuggestion(ctx context.Context, accessToken, id string) error
+
+	Postpone(ctx context.Context, accessToken string, in model.NewPostponed) (model.Postponed, error)
+	// PostponedPosts are the posts that wait for a wall, the soonest
+	// first; PostponedPost is one of them, whole.
+	PostponedPosts(ctx context.Context, accessToken, wallID string) ([]model.Postponed, error)
+	PostponedPost(ctx context.Context, accessToken, id string) (model.Postponed, error)
+	EditPostponed(ctx context.Context, accessToken, id string, edit model.PostponedEdit) (model.Postponed, error)
+	PublishPostponed(ctx context.Context, accessToken, id string) (model.Post, error)
+	DeletePostponed(ctx context.Context, accessToken, id string) error
 }
 
 // Topics are the discussions of communities; methods that read take an
@@ -586,6 +595,14 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/suggestions/{id}/publish", a.publishSuggestion)
 	mux.HandleFunc("DELETE /api/v1/suggestions/{id}", a.deleteSuggestion)
 	mux.HandleFunc("GET /api/v1/suggestions/{id}/text", a.suggestionText)
+	mux.HandleFunc("GET /api/v1/me/postponed", a.listMyPostponed)
+	mux.HandleFunc("POST /api/v1/me/postponed", a.postponeMyPost)
+	mux.HandleFunc("GET /api/v1/clubs/{ref}/postponed", a.listClubPostponed)
+	mux.HandleFunc("POST /api/v1/clubs/{ref}/postponed", a.postponeClubPost)
+	mux.HandleFunc("GET /api/v1/postponed/{id}", a.getPostponed)
+	mux.HandleFunc("PATCH /api/v1/postponed/{id}", a.editPostponed)
+	mux.HandleFunc("POST /api/v1/postponed/{id}/publish", a.publishPostponed)
+	mux.HandleFunc("DELETE /api/v1/postponed/{id}", a.deletePostponed)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}/topics", a.listTopics)
 	mux.HandleFunc("POST /api/v1/clubs/{ref}/topics", a.createTopic)
 	mux.HandleFunc("GET /api/v1/topics/{id}", a.getTopic)

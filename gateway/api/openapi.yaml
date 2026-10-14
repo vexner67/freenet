@@ -2422,6 +2422,180 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/me/postponed:
+    get:
+      summary: Your postponed posts ("Отложенные записи")
+      description: |
+        The posts that wait for your own wall, the soonest first: at most
+        100 wait at once, so there are no pages.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The posts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostponedPosts" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Postpone a post for your own wall ("Таймер" of VK)
+      description: |
+        Nobody but you sees it until `publishAt`, when it is published as a
+        new post dated then; the people its text names hear of it then.
+        Text, photos or both, no poll. Your profile must be filled in first;
+        the photos must be yours.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewPostponed" }
+      responses:
+        "201":
+          description: The postponed post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Postponed" }
+        "400": { description: "`invalid publish time`, or `a postponed post is published within a year from now` (it must be ahead of now)", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { description: "`too many postponed posts`: 100 wait already", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/clubs/{ref}/postponed:
+    parameters:
+      - $ref: "#/components/parameters/ClubRef"
+    get:
+      summary: The posts that wait for a community's wall
+      description: For its admins, the soonest first. Those whose author's page is deleted are left out.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The posts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostponedPosts" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not an admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Postpone a post for a community
+      description: |
+        By its admins only: the post will speak for the community and, with
+        `signed`, name you. The other admins see it, change it and publish
+        it at once too.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/NewPostponed" }
+      responses:
+        "201":
+          description: The postponed post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Postponed" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: "`you cannot post on this wall`: not an admin"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`too many postponed posts`", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/postponed/{id}:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    get:
+      summary: A postponed post, whole
+      description: For its author and those who see it listed.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Postponed" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    patch:
+      summary: Change a postponed post
+      description: |
+        What it says and when it comes out, by its author or, for a
+        community, its admins; the photos stay. The people the new text
+        names will hear of it.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [text, publishAt]
+              additionalProperties: false
+              properties:
+                text: { type: string, maxLength: 60000, description: "May be empty when it has photos" }
+                nsfw: { type: boolean }
+                publishAt: { type: string, format: date-time }
+      responses:
+        "200":
+          description: The post as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Postponed" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: For a community, and no longer its admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Delete a postponed post
+      description: By its author or, for a community, its admins; its photos go with it.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/postponed/{id}/publish:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    post:
+      summary: Publish a postponed post now ("Опубликовать сейчас")
+      description: As PATCH tells who may. The post is new, dated now, on top of the wall.
+      security: [{ bearer: [] }]
+      responses:
+        "201":
+          description: The post
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Post" }
+        "204": { description: "Published, but its author's page was deleted meanwhile, so it is not shown" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: For a community, and no longer its admin
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { description: "`postponed post not found`: published or deleted", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/clubs/{ref}/backdrop/{side}:
     parameters:
       - $ref: "#/components/parameters/ClubRef"
@@ -6071,6 +6245,48 @@ components:
           type: array
           items: { type: integer }
           description: "On the first page of the archive (`type=archive`): the years (UTC) the posts of the wall were written in, archived or not, the latest first"
+
+    NewPostponed:
+      type: object
+      required: [publishAt]
+      additionalProperties: false
+      properties:
+        text: { type: string, maxLength: 60000 }
+        photos:
+          type: array
+          maxItems: 10
+          items: { type: string, format: uuid }
+          description: IDs from POST /api/v1/me/photos
+        nsfw: { type: boolean }
+        signed: { type: boolean, description: "For a community: name you under the post (\"Подпись автора\")" }
+        publishAt: { type: string, format: date-time, description: "Ahead of now, within a year" }
+
+    Postponed:
+      type: object
+      required: [id, author, text, photos, publishAt, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/Author" }
+        text: { type: string }
+        textCut:
+          type: boolean
+          description: "`text` is only its beginning (1000 characters), as the list carries it; GET /api/v1/postponed/{id} tells it whole"
+        photos:
+          type: array
+          items: { $ref: "#/components/schemas/Photo" }
+        nsfw: { type: boolean }
+        fromClub: { type: boolean, description: "It will speak for the community" }
+        signed: { type: boolean }
+        publishAt: { type: string, format: date-time }
+        createdAt: { type: string, format: date-time }
+
+    PostponedPosts:
+      type: object
+      required: [postponed]
+      properties:
+        postponed:
+          type: array
+          items: { $ref: "#/components/schemas/Postponed" }
 
     Suggestion:
       type: object

@@ -8,6 +8,7 @@ import (
 	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/pkg/errs"
 	postv1 "github.com/vexner67/freenet/post/api/post/v1"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 // Posts talks to the post service. Methods that read take an optional
@@ -547,6 +548,96 @@ func (p *Posts) DeleteSuggestion(ctx context.Context, accessToken, id string) er
 	}
 
 	return nil
+}
+
+// Postpone keeps a post to publish at its time; the caller has checked
+// that the user may speak for the community and that the photos are
+// theirs.
+func (p *Posts) Postpone(ctx context.Context, accessToken string, in model.NewPostponed) (model.Postponed, error) {
+	resp, err := p.api.PostponePost(withToken(ctx, accessToken), &postv1.PostponePostRequest{
+		WallId: in.WallID, Text: in.Text, PhotoIds: in.PhotoIDs, FromWall: in.FromWall, Signed: in.Signed, Nsfw: in.NSFW,
+		MentionedIds: in.Mentions, PublishAt: timestamppb.New(in.PublishAt),
+	})
+	if err != nil {
+		return model.Postponed{}, errs.Wrap("p.api.PostponePost", fromStatus(err))
+	}
+
+	return toPostponed(resp.GetPostponed()), nil
+}
+
+// PostponedPosts are all the posts that wait for the wall wallID, the
+// soonest first, with the beginnings of their texts.
+func (p *Posts) PostponedPosts(ctx context.Context, accessToken, wallID string) ([]model.Postponed, error) {
+	resp, err := p.api.ListPostponed(withToken(ctx, accessToken), &postv1.ListPostponedRequest{
+		WallId: wallID, TextLimit: model.ExcerptLength,
+	})
+	if err != nil {
+		return nil, errs.Wrap("p.api.ListPostponed", fromStatus(err))
+	}
+
+	found := make([]model.Postponed, 0, len(resp.GetPostponed()))
+	for _, pp := range resp.GetPostponed() {
+		found = append(found, toPostponed(pp))
+	}
+
+	return found, nil
+}
+
+// PostponedPost is one postponed post, whole.
+func (p *Posts) PostponedPost(ctx context.Context, accessToken, id string) (model.Postponed, error) {
+	resp, err := p.api.GetPostponed(withToken(ctx, accessToken), &postv1.GetPostponedRequest{Id: id})
+	if err != nil {
+		return model.Postponed{}, errs.Wrap("p.api.GetPostponed", fromStatus(err))
+	}
+
+	return toPostponed(resp.GetPostponed()), nil
+}
+
+// EditPostponed changes what a postponed post says and when it comes out.
+func (p *Posts) EditPostponed(ctx context.Context, accessToken, id string, edit model.PostponedEdit) (model.Postponed, error) {
+	resp, err := p.api.EditPostponed(withToken(ctx, accessToken), &postv1.EditPostponedRequest{
+		Id: id, Text: edit.Text, Nsfw: edit.NSFW, MentionedIds: edit.Mentions, PublishAt: timestamppb.New(edit.PublishAt),
+	})
+	if err != nil {
+		return model.Postponed{}, errs.Wrap("p.api.EditPostponed", fromStatus(err))
+	}
+
+	return toPostponed(resp.GetPostponed()), nil
+}
+
+// PublishPostponed publishes a postponed post at once.
+func (p *Posts) PublishPostponed(ctx context.Context, accessToken, id string) (model.Post, error) {
+	resp, err := p.api.PublishPostponed(withToken(ctx, accessToken), &postv1.PublishPostponedRequest{Id: id})
+	if err != nil {
+		return model.Post{}, errs.Wrap("p.api.PublishPostponed", fromStatus(err))
+	}
+
+	return toPost(resp.GetPost()), nil
+}
+
+// DeletePostponed deletes a postponed post with its photos.
+func (p *Posts) DeletePostponed(ctx context.Context, accessToken, id string) error {
+	if _, err := p.api.DeletePostponed(withToken(ctx, accessToken), &postv1.DeletePostponedRequest{Id: id}); err != nil {
+		return errs.Wrap("p.api.DeletePostponed", fromStatus(err))
+	}
+
+	return nil
+}
+
+func toPostponed(p *postv1.PostponedPost) model.Postponed {
+	return model.Postponed{
+		ID:        p.GetId(),
+		WallID:    p.GetWallId(),
+		AuthorID:  p.GetAuthorId(),
+		Text:      p.GetText(),
+		TextCut:   p.GetTextCut(),
+		PhotoIDs:  p.GetPhotoIds(),
+		FromWall:  p.GetFromWall(),
+		Signed:    p.GetSigned(),
+		NSFW:      p.GetNsfw(),
+		PublishAt: p.GetPublishAt().AsTime(),
+		CreatedAt: p.GetCreatedAt().AsTime(),
+	}
 }
 
 func toSuggestion(s *postv1.Suggestion) model.Suggestion {
