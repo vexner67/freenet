@@ -1227,6 +1227,23 @@ a.poll-result-name { cursor: pointer; }
 .gift-send .modal-body textarea { width: 100%; }
 .gift-send .modal-body label { align-self: flex-start; }
 .gift-row { display: flex; gap: 10px; padding: 8px 5px; }
+
+/* Stickers: one in a message, the panel under the form and the shop. */
+.sticker { display: block; width: 128px; height: 128px; margin: 2px 0; }
+.im-message img.sticker { width: 128px; height: 128px; object-fit: contain; border-radius: 0; }
+.sticker-panel { margin: 8px 0 0; padding: 8px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line-dedede); background: var(--back-fff); }
+.sticker-pack { margin: 0 0 8px; }
+.sticker-pack-title { display: block; margin: 0 0 4px; color: var(--text-45688e); }
+.sticker-grid { display: flex; flex-wrap: wrap; gap: 4px; }
+.sticker-grid .sticker { width: 64px; height: 64px; margin: 0; }
+.sticker-pick { display: block; padding: 2px; cursor: pointer; }
+.sticker-pick:hover { background: var(--back-f6f6f6); }
+.sticker-store { display: block; padding: 4px 0 0; border-top: 1px solid var(--line-dedede); }
+.sticker-pack-card { padding: 10px 0; border-bottom: 1px solid var(--line-dedede); }
+.sticker-pack-card:last-child { border-bottom: 0; }
+.sticker-pack-head { display: flex; gap: 8px; align-items: baseline; margin: 0 0 8px; }
+.sticker-pack-head b { color: var(--text-45688e); }
+.sticker-pack-actions { margin: 8px 0 0; }
 .gift-row .gift-pic { width: 72px; height: 72px; }
 
 /* "Голоса" of the settings, as openvk's: what votes are on the left, the

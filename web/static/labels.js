@@ -741,6 +741,49 @@ export function giftImage(gift) {
   return giftImages[gift] ?? giftImages.present;
 }
 
+// Stickers ("Стикеры" of openvk): what each pack is called and the
+// picture of each sticker. The packs are the catalogue of the user
+// service; a picture is a file of the site, named by its whole path.
+export const stickerPacks = { smiles: 'Смайлы', cats: 'Котики', bears: 'Мишки' };
+
+const stickerImages = {
+  smile_happy: '/static/stickers/smile_happy.svg',
+  smile_laugh: '/static/stickers/smile_laugh.svg',
+  smile_wink: '/static/stickers/smile_wink.svg',
+  smile_love: '/static/stickers/smile_love.svg',
+  smile_cool: '/static/stickers/smile_cool.svg',
+  smile_wow: '/static/stickers/smile_wow.svg',
+  smile_sad: '/static/stickers/smile_sad.svg',
+  smile_angry: '/static/stickers/smile_angry.svg',
+  cat_hi: '/static/stickers/cat_hi.svg',
+  cat_love: '/static/stickers/cat_love.svg',
+  cat_lol: '/static/stickers/cat_lol.svg',
+  cat_wow: '/static/stickers/cat_wow.svg',
+  cat_sleep: '/static/stickers/cat_sleep.svg',
+  cat_angry: '/static/stickers/cat_angry.svg',
+  bear_hi: '/static/stickers/bear_hi.svg',
+  bear_hug: '/static/stickers/bear_hug.svg',
+  bear_love: '/static/stickers/bear_love.svg',
+  bear_ok: '/static/stickers/bear_ok.svg',
+  bear_party: '/static/stickers/bear_party.svg',
+  bear_sad: '/static/stickers/bear_sad.svg',
+};
+
+// stickerImage is the picture of a sticker; null for one this site does
+// not know yet (a newer catalogue).
+export function stickerImage(sticker) {
+  return stickerImages[sticker] ?? null;
+}
+
+// stickerPackAction is the button of a pack in the "Магазин стикеров", as
+// openvk's: a pack once bought and put away comes back free.
+export function stickerPackAction(pack) {
+  if (pack.added) return 'Набор добавлен';
+  if (pack.bought || !pack.price) return pack.bought ? 'Добавить' : 'Добавить бесплатно';
+
+  return `Купить за ${votesCount(pack.price)}`;
+}
+
 // votesCount is openvk's "points_amount": "1 голос", "3 голоса", "0
 // голосов"; giftPrice is what stands under a gift to choose, "Бесплатно"
 // for a free one.
@@ -1126,6 +1169,10 @@ const errorTexts = {
   'gift caption is too long': 'Сообщение слишком длинное: не больше 250 символов.',
   'gift not found': 'Подарок не найден.',
   'not enough votes': 'У вас недостаточно голосов.',
+  'invalid sticker': 'Такого стикера нет.',
+  'you do not have this sticker': 'Набор с этим стикером не добавлен.',
+  'a sticker goes alone': 'Стикер отправляется отдельным сообщением.',
+  'unknown sticker pack': 'Такого набора стикеров нет.',
   'voucher is not valid': 'Ваучер недействительный. Возможно, вы ввели неверный серийный номер, уже использовали данный ваучер или же он просто истёк.',
   'you cannot transfer votes to yourself': 'Нельзя передать голоса самому себе.',
   'you cannot transfer votes to this user': 'Вы не можете передать голоса этому пользователю.',
@@ -1299,6 +1346,7 @@ export function forwardTree(forwarded) {
 // names is read by name: "[ann|Анна]" is "Анна".
 export function messagePreview(m) {
   if (m.deleted) return 'Сообщение удалено';
+  if (m.sticker) return 'Стикер';
   if (m.unreadable) return 'Зашифрованное сообщение';
   if (m.text) return plainMentions(m.text);
   if (m.photos?.length || m.albumPhoto) return 'Фотография';

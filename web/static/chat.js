@@ -19,6 +19,7 @@ import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.
 import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, photoChanges, selectedCount } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
+import { initStickers } from './stickers.js';
 
 const POLL_MS = 5000;
 // How close to the top, in pixels, loads older messages.
@@ -90,7 +91,7 @@ function messageNode(m) {
     date.replaceChildren(...[
       formatPostDate(now.createdAt),
       now.editedAt && !now.deleted && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
-      mine && now.editableUntil && new Date(now.editableUntil) > new Date()
+      mine && !now.sticker && now.editableUntil && new Date(now.editableUntil) > new Date()
         && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(now) }),
       !now.deleted && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => forward([now]) }),
       mine && now.deletableUntil && new Date(now.deletableUntil) > new Date()
@@ -602,9 +603,22 @@ async function refresh() {
   }
 }
 
+// sendSticker sends a sticker by itself.
+async function sendSticker(sticker) {
+  hideError($('error'));
+  if (editing) cancelEdit();
+
+  try {
+    showSent(await api.sendChatSticker(chatID, sticker));
+  } catch (e) {
+    showError($('error'), e);
+  }
+}
+
 function setUpInput() {
   $('my-avatar').src = avatarURL(me, 'small');
   attachments = initAttachments({ link: $('attach'), input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
+  initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   $('form').addEventListener('submit', send);
   $('editing-cancel').addEventListener('click', cancelEdit);
   $('text').addEventListener('keydown', (event) => {
