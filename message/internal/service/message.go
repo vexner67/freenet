@@ -76,7 +76,7 @@ type PhotoCopy struct {
 // and one of them is there. SharedPhoto, a photo of an album to share,
 // goes with text alone. A message of a dialog says Sealed instead of
 // Text: its words and those of what it carries on, sealed by the sender's
-// browser.
+// browser. A Sticker goes alone.
 type Draft struct {
 	Text        message.Text
 	Sealed      message.Sealed
@@ -84,6 +84,18 @@ type Draft struct {
 	Post        uuid.UUID
 	SharedPhoto uuid.UUID
 	Forward     []uuid.UUID
+	Sticker     message.Sticker
+}
+
+// sticker is the draft that is a sticker, with nothing else.
+func (d Draft) sticker() (message.Content, error) {
+	if d.Text != "" || d.Sealed != "" || len(d.Photos) > 0 || d.Post != uuid.Nil || d.SharedPhoto != uuid.Nil || len(d.Forward) > 0 {
+		return message.Content{}, message.ErrStickerAlone
+	}
+
+	content, err := message.NewStickerContent(d.Sticker)
+
+	return content, errs.Wrap("message.NewStickerContent", err)
 }
 
 // content is what the draft says itself in a chat, with the messages it
@@ -91,6 +103,10 @@ type Draft struct {
 func (d Draft) content(forwarded message.Forwards) (message.Content, error) {
 	if d.Sealed != "" {
 		return message.Content{}, message.ErrSealedInChat
+	}
+
+	if d.Sticker != "" {
+		return d.sticker()
 	}
 
 	if d.SharedPhoto == uuid.Nil {
@@ -112,6 +128,10 @@ func (d Draft) content(forwarded message.Forwards) (message.Content, error) {
 func (d Draft) sealedContent(forwarded message.Forwards) (message.Content, error) {
 	if d.Text != "" {
 		return message.Content{}, message.ErrPlainText
+	}
+
+	if d.Sticker != "" {
+		return d.sticker()
 	}
 
 	if d.SharedPhoto == uuid.Nil {

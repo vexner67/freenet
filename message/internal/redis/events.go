@@ -57,6 +57,7 @@ type chatMessageJSON struct {
 	Post        uuid.UUID       `json:"post"`
 	SharedPhoto uuid.UUID       `json:"shared_photo"`
 	Forwarded   []forwardedJSON `json:"forwarded,omitempty"`
+	Sticker     string          `json:"sticker,omitempty"`
 }
 
 func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
@@ -79,6 +80,7 @@ func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
 		Post:        m.Post(),
 		SharedPhoto: m.SharedPhoto(),
 		Forwarded:   toForwardedJSON(m.Forwarded()),
+		Sticker:     m.Sticker().String(),
 	}
 }
 
@@ -113,7 +115,7 @@ func (m *chatMessageJSON) message() (*message.ChatMessage, error) {
 	}
 
 	var err error
-	if stored.Content, err = contentOf(m.Text, m.Photos, m.Post, m.SharedPhoto, m.Forwarded); err != nil {
+	if stored.Content, err = contentOf(m.Text, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker); err != nil {
 		return nil, errs.Wrap("contentOf", err)
 	}
 
@@ -168,7 +170,8 @@ type messageJSON struct {
 	// DeletedAt is zero for a message never taken back.
 	DeletedAt time.Time `json:"deleted_at"`
 	// Sealed is what a message of a dialog says, sealed: base64 in JSON.
-	Sealed []byte `json:"sealed,omitempty"`
+	Sealed  []byte `json:"sealed,omitempty"`
+	Sticker string `json:"sticker,omitempty"`
 }
 
 type forwardedJSON struct {
@@ -179,6 +182,7 @@ type forwardedJSON struct {
 	Photo     uuid.UUID   `json:"shared_photo"`
 	CreatedAt time.Time   `json:"created_at"`
 	Depth     int         `json:"depth,omitempty"`
+	Sticker   string      `json:"sticker,omitempty"`
 }
 
 func toForwardedJSON(carried message.Forwards) []forwardedJSON {
@@ -186,6 +190,7 @@ func toForwardedJSON(carried message.Forwards) []forwardedJSON {
 	for i, f := range carried {
 		forwarded[i] = forwardedJSON{
 			SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, Photo: f.SharedPhoto, CreatedAt: f.CreatedAt, Depth: f.Depth,
+			Sticker: f.Sticker.String(),
 		}
 	}
 
@@ -206,6 +211,7 @@ func toMessageJSON(m *message.Message) *messageJSON {
 		CreatedAt:   m.CreatedAt(),
 		EditedAt:    m.EditedAt(),
 		Sealed:      m.Sealed().Bytes(),
+		Sticker:     m.Sticker().String(),
 	}
 }
 
@@ -226,7 +232,7 @@ func (m *messageJSON) message() (*message.Message, error) {
 		return nil, errs.Wrap("message.NewSealed", err)
 	}
 
-	if stored.Content, err = sealedContentOf(sealed, m.Photos, m.Post, m.SharedPhoto, m.Forwarded); err != nil {
+	if stored.Content, err = sealedContentOf(sealed, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker); err != nil {
 		return nil, errs.Wrap("sealedContentOf", err)
 	}
 
@@ -235,7 +241,11 @@ func (m *messageJSON) message() (*message.Message, error) {
 
 // sealedContentOf rebuilds what a message of a dialog says and shows,
 // checking it as a new one.
-func sealedContentOf(sealed message.Sealed, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, carried []forwardedJSON) (message.Content, error) {
+func sealedContentOf(sealed message.Sealed, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, carried []forwardedJSON, sticker string) (message.Content, error) {
+	if sticker != "" {
+		return stickerContentOf(sticker)
+	}
+
 	photos, err := message.NewPhotos(photoIDs)
 	if err != nil {
 		return message.Content{}, errs.Wrap("message.NewPhotos", err)
@@ -259,7 +269,11 @@ func sealedContentOf(sealed message.Sealed, photoIDs []uuid.UUID, post, sharedPh
 
 // contentOf rebuilds what a message of a chat says and shows, checking it
 // as a new one.
-func contentOf(said string, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, carried []forwardedJSON) (message.Content, error) {
+func contentOf(said string, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, carried []forwardedJSON, sticker string) (message.Content, error) {
+	if sticker != "" {
+		return stickerContentOf(sticker)
+	}
+
 	text, err := message.NewText(said)
 	if err != nil {
 		return message.Content{}, errs.Wrap("message.NewText", err)
@@ -286,6 +300,18 @@ func contentOf(said string, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, c
 	return content, errs.Wrap("message.NewContent", err)
 }
 
+// stickerContentOf rebuilds a message that is a sticker.
+func stickerContentOf(name string) (message.Content, error) {
+	sticker, err := message.NewSticker(name)
+	if err != nil {
+		return message.Content{}, errs.Wrap("message.NewSticker", err)
+	}
+
+	content, err := message.NewStickerContent(sticker)
+
+	return content, errs.Wrap("message.NewStickerContent", err)
+}
+
 func forwardsOf(raw []forwardedJSON) (message.Forwards, error) {
 	carried := make([]message.Forwarded, len(raw))
 	for i, f := range raw {
@@ -301,6 +327,12 @@ func forwardsOf(raw []forwardedJSON) (message.Forwards, error) {
 
 		carried[i] = message.Forwarded{
 			SenderID: f.SenderID, Text: text, Photos: photos, Post: f.Post, SharedPhoto: f.Photo, CreatedAt: f.CreatedAt, Depth: f.Depth,
+		}
+
+		if f.Sticker != "" {
+			if carried[i].Sticker, err = message.NewSticker(f.Sticker); err != nil {
+				return nil, errs.Wrap("message.NewSticker", err)
+			}
 		}
 	}
 

@@ -211,3 +211,43 @@ func seal(text string) message.Sealed {
 
 	return message.Sealed(append(b, make([]byte, 16)...))
 }
+
+func TestEventCodec_Stickers(t *testing.T) {
+	t.Parallel()
+
+	var codec redis.EventCodec
+	ann, bob := uuid.New(), uuid.New()
+	sent := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+
+	content, err := message.NewStickerContent("cat_hi")
+	if err != nil {
+		t.Fatal(err)
+	}
+	sticker := message.Restore(message.Stored{ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: content, CreatedAt: sent})
+
+	data, err := codec.Encode(bob, service.Event{Message: sticker})
+	if err != nil {
+		t.Fatalf("Encode a sticker: %v", err)
+	}
+	if _, e, err := codec.Decode(data); err != nil || e.Message == nil || e.Message.Sticker() != "cat_hi" || e.Message.Sealed() != "" {
+		t.Fatalf("a sticker round trip = %+v, %v", e.Message, err)
+	}
+
+	forward := message.Restore(message.Stored{
+		ID: uuid.New(), SenderID: bob, RecipientID: ann, Content: message.RestoreContent("", nil, uuid.Nil, message.Forwards(sticker.Carried())), CreatedAt: sent,
+	})
+	if data, err = codec.Encode(ann, service.Event{Message: forward}); err != nil {
+		t.Fatalf("Encode a forwarded sticker: %v", err)
+	}
+	if _, e, err := codec.Decode(data); err != nil || e.Message == nil || len(e.Message.Forwarded()) != 1 || e.Message.Forwarded()[0].Sticker != "cat_hi" {
+		t.Fatalf("a forwarded sticker round trip = %+v, %v", e.Message, err)
+	}
+
+	inChat := message.RestoreChatMessage(message.StoredChatMessage{ID: uuid.New(), ChatID: uuid.New(), SenderID: ann, Content: content, CreatedAt: sent})
+	if data, err = codec.Encode(bob, service.Event{Chat: &service.ChatEvent{Message: inChat}}); err != nil {
+		t.Fatalf("Encode a sticker of a chat: %v", err)
+	}
+	if _, e, err := codec.Decode(data); err != nil || e.Chat == nil || e.Chat.Message == nil || e.Chat.Message.Sticker() != "cat_hi" {
+		t.Fatalf("a sticker of a chat round trip = %+v, %v", e, err)
+	}
+}

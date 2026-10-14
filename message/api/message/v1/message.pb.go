@@ -180,7 +180,10 @@ type Message struct {
 	// sender's browser: version 1, the public keys of the sender and of the
 	// recipient (32 bytes each), the IV (12) and AES-GCM's ciphertext with
 	// its tag. Empty when it says nothing, as photos alone.
-	Sealed        []byte `protobuf:"bytes,16,opt,name=sealed,proto3" json:"sealed,omitempty"`
+	Sealed []byte `protobuf:"bytes,16,opt,name=sealed,proto3" json:"sealed,omitempty"`
+	// The sticker the message is ("Стикеры" of openvk), nothing else with
+	// it; empty for none.
+	Sticker       string `protobuf:"bytes,17,opt,name=sticker,proto3" json:"sticker,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -327,6 +330,13 @@ func (x *Message) GetSealed() []byte {
 	return nil
 }
 
+func (x *Message) GetSticker() string {
+	if x != nil {
+		return x.Sticker
+	}
+	return ""
+}
+
 // A message as another one carries it on: a copy of what it showed. One
 // carried on in a dialog says nothing here: its words are sealed with the
 // message, in the order of the list.
@@ -343,7 +353,9 @@ type ForwardedMessage struct {
 	PhotoId string `protobuf:"bytes,6,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	// How deep it is carried: 0 for a message forwarded itself, 1 for one
 	// that message carried on. The list is a tree written parent first.
-	Depth         int32 `protobuf:"varint,7,opt,name=depth,proto3" json:"depth,omitempty"`
+	Depth int32 `protobuf:"varint,7,opt,name=depth,proto3" json:"depth,omitempty"`
+	// The sticker it was; empty for none.
+	Sticker       string `protobuf:"bytes,8,opt,name=sticker,proto3" json:"sticker,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -425,6 +437,13 @@ func (x *ForwardedMessage) GetDepth() int32 {
 		return x.Depth
 	}
 	return 0
+}
+
+func (x *ForwardedMessage) GetSticker() string {
+	if x != nil {
+		return x.Sticker
+	}
+	return ""
 }
 
 type Dialog struct {
@@ -511,7 +530,11 @@ type SendMessageRequest struct {
 	// carries on say, in their order; empty when it says nothing. Sealed
 	// between keys other than those the two have now, it fails with
 	// FailedPrecondition "the encryption keys changed".
-	Sealed        []byte `protobuf:"bytes,7,opt,name=sealed,proto3" json:"sealed,omitempty"`
+	Sealed []byte `protobuf:"bytes,7,opt,name=sealed,proto3" json:"sealed,omitempty"`
+	// A sticker of the catalogue the caller has checked the sender has; it
+	// goes alone, anything else with it fails with InvalidArgument "a
+	// sticker goes alone".
+	Sticker       string `protobuf:"bytes,8,opt,name=sticker,proto3" json:"sticker,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -593,6 +616,13 @@ func (x *SendMessageRequest) GetSealed() []byte {
 		return x.Sealed
 	}
 	return nil
+}
+
+func (x *SendMessageRequest) GetSticker() string {
+	if x != nil {
+		return x.Sticker
+	}
+	return ""
 }
 
 type SendMessageResponse struct {
@@ -2175,7 +2205,9 @@ type ChatMessage struct {
 	PhotoId string `protobuf:"bytes,16,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
 	// Messages it carries on from dialogs and chats, oldest first; their
 	// texts are cut with text.
-	Forwarded     []*ForwardedMessage `protobuf:"bytes,17,rep,name=forwarded,proto3" json:"forwarded,omitempty"`
+	Forwarded []*ForwardedMessage `protobuf:"bytes,17,rep,name=forwarded,proto3" json:"forwarded,omitempty"`
+	// The sticker the message is; empty for none.
+	Sticker       string `protobuf:"bytes,18,opt,name=sticker,proto3" json:"sticker,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2327,6 +2359,13 @@ func (x *ChatMessage) GetForwarded() []*ForwardedMessage {
 		return x.Forwarded
 	}
 	return nil
+}
+
+func (x *ChatMessage) GetSticker() string {
+	if x != nil {
+		return x.Sticker
+	}
+	return ""
 }
 
 type CreateChatRequest struct {
@@ -2896,6 +2935,7 @@ type SendChatMessageRequest struct {
 	// Messages of the caller's dialogs and chats to carry on.
 	ForwardIds    []string `protobuf:"bytes,5,rep,name=forward_ids,json=forwardIds,proto3" json:"forward_ids,omitempty"`
 	PhotoId       string   `protobuf:"bytes,6,opt,name=photo_id,json=photoId,proto3" json:"photo_id,omitempty"`
+	Sticker       string   `protobuf:"bytes,7,opt,name=sticker,proto3" json:"sticker,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -2968,6 +3008,13 @@ func (x *SendChatMessageRequest) GetForwardIds() []string {
 func (x *SendChatMessageRequest) GetPhotoId() string {
 	if x != nil {
 		return x.PhotoId
+	}
+	return ""
+}
+
+func (x *SendChatMessageRequest) GetSticker() string {
+	if x != nil {
+		return x.Sticker
 	}
 	return ""
 }
@@ -3611,7 +3658,7 @@ var File_api_message_v1_message_proto protoreflect.FileDescriptor
 const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"\x1capi/message/v1/message.proto\x12\n" +
-	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\xf8\x04\n" +
+	"message.v1\x1a\x1bgoogle/protobuf/empty.proto\x1a\x1fgoogle/protobuf/timestamp.proto\"\x92\x05\n" +
 	"\aMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12!\n" +
@@ -3631,7 +3678,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"deleted_at\x18\r \x01(\v2\x1a.google.protobuf.TimestampR\tdeletedAt\x12\x19\n" +
 	"\btext_cut\x18\x0e \x01(\bR\atextCut\x12\x19\n" +
 	"\bphoto_id\x18\x0f \x01(\tR\aphotoId\x12\x16\n" +
-	"\x06sealed\x18\x10 \x01(\fR\x06sealed\"\xe5\x01\n" +
+	"\x06sealed\x18\x10 \x01(\fR\x06sealed\x12\x18\n" +
+	"\asticker\x18\x11 \x01(\tR\asticker\"\xff\x01\n" +
 	"\x10ForwardedMessage\x12\x1b\n" +
 	"\tsender_id\x18\x01 \x01(\tR\bsenderId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
@@ -3640,11 +3688,12 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x19\n" +
 	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\x12\x14\n" +
-	"\x05depth\x18\a \x01(\x05R\x05depth\"q\n" +
+	"\x05depth\x18\a \x01(\x05R\x05depth\x12\x18\n" +
+	"\asticker\x18\b \x01(\tR\asticker\"q\n" +
 	"\x06Dialog\x12\x17\n" +
 	"\apeer_id\x18\x01 \x01(\tR\x06peerId\x126\n" +
 	"\flast_message\x18\x02 \x01(\v2\x13.message.v1.MessageR\vlastMessage\x12\x16\n" +
-	"\x06unread\x18\x03 \x01(\bR\x06unread\"\xd5\x01\n" +
+	"\x06unread\x18\x03 \x01(\bR\x06unread\"\xef\x01\n" +
 	"\x12SendMessageRequest\x12!\n" +
 	"\frecipient_id\x18\x01 \x01(\tR\vrecipientId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
@@ -3653,7 +3702,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\vforward_ids\x18\x05 \x03(\tR\n" +
 	"forwardIds\x12\x19\n" +
 	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\x12\x16\n" +
-	"\x06sealed\x18\a \x01(\fR\x06sealed\"D\n" +
+	"\x06sealed\x18\a \x01(\fR\x06sealed\x12\x18\n" +
+	"\asticker\x18\b \x01(\tR\asticker\"D\n" +
 	"\x13SendMessageResponse\x12-\n" +
 	"\amessage\x18\x01 \x01(\v2\x13.message.v1.MessageR\amessage\"a\n" +
 	"\x12ListDialogsRequest\x12\x16\n" +
@@ -3754,7 +3804,7 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\n" +
 	"ChatMember\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x127\n" +
-	"\tjoined_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xab\x05\n" +
+	"\tjoined_at\x18\x02 \x01(\v2\x1a.google.protobuf.TimestampR\bjoinedAt\"\xc5\x05\n" +
 	"\vChatMessage\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x17\n" +
 	"\achat_id\x18\x02 \x01(\tR\x06chatId\x12\x1b\n" +
@@ -3775,7 +3825,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x06unread\x18\x0e \x01(\bR\x06unread\x12\x17\n" +
 	"\apost_id\x18\x0f \x01(\tR\x06postId\x12\x19\n" +
 	"\bphoto_id\x18\x10 \x01(\tR\aphotoId\x12:\n" +
-	"\tforwarded\x18\x11 \x03(\v2\x1c.message.v1.ForwardedMessageR\tforwarded\"H\n" +
+	"\tforwarded\x18\x11 \x03(\v2\x1c.message.v1.ForwardedMessageR\tforwarded\x12\x18\n" +
+	"\asticker\x18\x12 \x01(\tR\asticker\"H\n" +
 	"\x11CreateChatRequest\x12\x14\n" +
 	"\x05title\x18\x01 \x01(\tR\x05title\x12\x1d\n" +
 	"\n" +
@@ -3808,7 +3859,7 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\x10LeaveChatRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\".\n" +
 	"\x13ReturnToChatRequest\x12\x17\n" +
-	"\achat_id\x18\x01 \x01(\tR\x06chatId\"\xb7\x01\n" +
+	"\achat_id\x18\x01 \x01(\tR\x06chatId\"\xd1\x01\n" +
 	"\x16SendChatMessageRequest\x12\x17\n" +
 	"\achat_id\x18\x01 \x01(\tR\x06chatId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\x12\x1b\n" +
@@ -3816,7 +3867,8 @@ const file_api_message_v1_message_proto_rawDesc = "" +
 	"\apost_id\x18\x04 \x01(\tR\x06postId\x12\x1f\n" +
 	"\vforward_ids\x18\x05 \x03(\tR\n" +
 	"forwardIds\x12\x19\n" +
-	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\"L\n" +
+	"\bphoto_id\x18\x06 \x01(\tR\aphotoId\x12\x18\n" +
+	"\asticker\x18\a \x01(\tR\asticker\"L\n" +
 	"\x17SendChatMessageResponse\x121\n" +
 	"\amessage\x18\x01 \x01(\v2\x17.message.v1.ChatMessageR\amessage\"\xad\x01\n" +
 	"\x17ListChatMessagesRequest\x12\x17\n" +
