@@ -23,6 +23,7 @@ func TestPurgeService_Sources(t *testing.T) {
 		Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Sources: store.Sources(), Comments: store.Comments(),
 		Suggestions: inmem.NewSuggestionRepository(), Topics: inmem.NewTopicRepository(), Albums: inmem.NewAlbumRepository(), Notes: inmem.NewNoteRepository(),
 		Tx: fakeTx{}, Notifier: &fakeNotifier{}, Photos: &fakePhotos{},
+		Postponed: inmem.NewPostponedRepository(),
 	})
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 

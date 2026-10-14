@@ -64,6 +64,10 @@ type Config struct {
 	LikeLimits    ratelimit.Rules `env:"RATE_LIMIT_LIKES" envDefault:"60/1m,1000/24h"`
 	EditLimits    ratelimit.Rules `env:"RATE_LIMIT_POST_EDITS" envDefault:"10/1m,200/24h"`
 
+	// PostponedInterval is how often the postponed posts whose time has
+	// come are published: a post comes out up to this late.
+	PostponedInterval time.Duration `env:"POSTPONED_INTERVAL" envDefault:"30s"`
+
 	// Access tokens are issued by the auth service; post only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
 	JWTIssuer        string `env:"JWT_ISSUER,required,notEmpty"`
@@ -86,6 +90,10 @@ func (c Config) Validate() error {
 
 	if err := c.Tracing.Validate(); err != nil {
 		return err
+	}
+
+	if c.PostponedInterval <= 0 {
+		return errors.New("POSTPONED_INTERVAL must be positive")
 	}
 
 	return c.TLS.Validate()

@@ -62,6 +62,12 @@ const (
 	PostService_GetSuggestion_FullMethodName          = "/post.v1.PostService/GetSuggestion"
 	PostService_PublishSuggestion_FullMethodName      = "/post.v1.PostService/PublishSuggestion"
 	PostService_DeleteSuggestion_FullMethodName       = "/post.v1.PostService/DeleteSuggestion"
+	PostService_PostponePost_FullMethodName           = "/post.v1.PostService/PostponePost"
+	PostService_ListPostponed_FullMethodName          = "/post.v1.PostService/ListPostponed"
+	PostService_GetPostponed_FullMethodName           = "/post.v1.PostService/GetPostponed"
+	PostService_EditPostponed_FullMethodName          = "/post.v1.PostService/EditPostponed"
+	PostService_PublishPostponed_FullMethodName       = "/post.v1.PostService/PublishPostponed"
+	PostService_DeletePostponed_FullMethodName        = "/post.v1.PostService/DeletePostponed"
 	PostService_CreateTopic_FullMethodName            = "/post.v1.PostService/CreateTopic"
 	PostService_GetTopic_FullMethodName               = "/post.v1.PostService/GetTopic"
 	PostService_ListTopics_FullMethodName             = "/post.v1.PostService/ListTopics"
@@ -239,6 +245,26 @@ type PostServiceClient interface {
 	PublishSuggestion(ctx context.Context, in *PublishSuggestionRequest, opts ...grpc.CallOption) (*PublishSuggestionResponse, error)
 	// The author withdraws a suggestion, or an admin declines it.
 	DeleteSuggestion(ctx context.Context, in *DeleteSuggestionRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token: posts that wait for their time ("отложенные
+	// записи" of VK), seen only by their authors and, on a community's
+	// wall, the community's admins, whom post asks the club service about.
+	// A post waits for the caller's own wall or speaks for a community: the
+	// caller of PostponePost has checked that the author may and that the
+	// photos are theirs. When its time comes, post publishes it as a new
+	// post, dated then.
+	PostponePost(ctx context.Context, in *PostponePostRequest, opts ...grpc.CallOption) (*PostponePostResponse, error)
+	// All the posts that wait for a wall, the soonest first: for the owner
+	// of a user's wall and the admins of a community.
+	ListPostponed(ctx context.Context, in *ListPostponedRequest, opts ...grpc.CallOption) (*ListPostponedResponse, error)
+	// One postponed post, whole: for those who list it and its author.
+	GetPostponed(ctx context.Context, in *GetPostponedRequest, opts ...grpc.CallOption) (*GetPostponedResponse, error)
+	// The author, or an admin of the community it speaks for, changes what
+	// it says and when it comes out.
+	EditPostponed(ctx context.Context, in *EditPostponedRequest, opts ...grpc.CallOption) (*EditPostponedResponse, error)
+	// The same publish it at once ("Опубликовать сейчас").
+	PublishPostponed(ctx context.Context, in *PublishPostponedRequest, opts ...grpc.CallOption) (*PublishPostponedResponse, error)
+	// The author takes it back, or an admin deletes it, with its photos.
+	DeletePostponed(ctx context.Context, in *DeletePostponedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The discussions of communities ("Обсуждения" of openvk). The caller
 	// of CreateTopic has checked with the club service that the author may
 	// start a topic there and, with from_wall, speak for the community, and
@@ -809,6 +835,66 @@ func (c *postServiceClient) DeleteSuggestion(ctx context.Context, in *DeleteSugg
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, PostService_DeleteSuggestion_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) PostponePost(ctx context.Context, in *PostponePostRequest, opts ...grpc.CallOption) (*PostponePostResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PostponePostResponse)
+	err := c.cc.Invoke(ctx, PostService_PostponePost_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListPostponed(ctx context.Context, in *ListPostponedRequest, opts ...grpc.CallOption) (*ListPostponedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListPostponedResponse)
+	err := c.cc.Invoke(ctx, PostService_ListPostponed_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetPostponed(ctx context.Context, in *GetPostponedRequest, opts ...grpc.CallOption) (*GetPostponedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPostponedResponse)
+	err := c.cc.Invoke(ctx, PostService_GetPostponed_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) EditPostponed(ctx context.Context, in *EditPostponedRequest, opts ...grpc.CallOption) (*EditPostponedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditPostponedResponse)
+	err := c.cc.Invoke(ctx, PostService_EditPostponed_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) PublishPostponed(ctx context.Context, in *PublishPostponedRequest, opts ...grpc.CallOption) (*PublishPostponedResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(PublishPostponedResponse)
+	err := c.cc.Invoke(ctx, PostService_PublishPostponed_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeletePostponed(ctx context.Context, in *DeletePostponedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeletePostponed_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1485,6 +1571,26 @@ type PostServiceServer interface {
 	PublishSuggestion(context.Context, *PublishSuggestionRequest) (*PublishSuggestionResponse, error)
 	// The author withdraws a suggestion, or an admin declines it.
 	DeleteSuggestion(context.Context, *DeleteSuggestionRequest) (*emptypb.Empty, error)
+	// Require an access token: posts that wait for their time ("отложенные
+	// записи" of VK), seen only by their authors and, on a community's
+	// wall, the community's admins, whom post asks the club service about.
+	// A post waits for the caller's own wall or speaks for a community: the
+	// caller of PostponePost has checked that the author may and that the
+	// photos are theirs. When its time comes, post publishes it as a new
+	// post, dated then.
+	PostponePost(context.Context, *PostponePostRequest) (*PostponePostResponse, error)
+	// All the posts that wait for a wall, the soonest first: for the owner
+	// of a user's wall and the admins of a community.
+	ListPostponed(context.Context, *ListPostponedRequest) (*ListPostponedResponse, error)
+	// One postponed post, whole: for those who list it and its author.
+	GetPostponed(context.Context, *GetPostponedRequest) (*GetPostponedResponse, error)
+	// The author, or an admin of the community it speaks for, changes what
+	// it says and when it comes out.
+	EditPostponed(context.Context, *EditPostponedRequest) (*EditPostponedResponse, error)
+	// The same publish it at once ("Опубликовать сейчас").
+	PublishPostponed(context.Context, *PublishPostponedRequest) (*PublishPostponedResponse, error)
+	// The author takes it back, or an admin deletes it, with its photos.
+	DeletePostponed(context.Context, *DeletePostponedRequest) (*emptypb.Empty, error)
 	// The discussions of communities ("Обсуждения" of openvk). The caller
 	// of CreateTopic has checked with the club service that the author may
 	// start a topic there and, with from_wall, speak for the community, and
@@ -1766,6 +1872,24 @@ func (UnimplementedPostServiceServer) PublishSuggestion(context.Context, *Publis
 }
 func (UnimplementedPostServiceServer) DeleteSuggestion(context.Context, *DeleteSuggestionRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteSuggestion not implemented")
+}
+func (UnimplementedPostServiceServer) PostponePost(context.Context, *PostponePostRequest) (*PostponePostResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PostponePost not implemented")
+}
+func (UnimplementedPostServiceServer) ListPostponed(context.Context, *ListPostponedRequest) (*ListPostponedResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListPostponed not implemented")
+}
+func (UnimplementedPostServiceServer) GetPostponed(context.Context, *GetPostponedRequest) (*GetPostponedResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPostponed not implemented")
+}
+func (UnimplementedPostServiceServer) EditPostponed(context.Context, *EditPostponedRequest) (*EditPostponedResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditPostponed not implemented")
+}
+func (UnimplementedPostServiceServer) PublishPostponed(context.Context, *PublishPostponedRequest) (*PublishPostponedResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method PublishPostponed not implemented")
+}
+func (UnimplementedPostServiceServer) DeletePostponed(context.Context, *DeletePostponedRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeletePostponed not implemented")
 }
 func (UnimplementedPostServiceServer) CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateTopic not implemented")
@@ -2705,6 +2829,114 @@ func _PostService_DeleteSuggestion_Handler(srv interface{}, ctx context.Context,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).DeleteSuggestion(ctx, req.(*DeleteSuggestionRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_PostponePost_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PostponePostRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).PostponePost(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_PostponePost_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).PostponePost(ctx, req.(*PostponePostRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListPostponed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListPostponedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListPostponed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListPostponed_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListPostponed(ctx, req.(*ListPostponedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetPostponed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPostponedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetPostponed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetPostponed_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetPostponed(ctx, req.(*GetPostponedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_EditPostponed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditPostponedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).EditPostponed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_EditPostponed_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).EditPostponed(ctx, req.(*EditPostponedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_PublishPostponed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PublishPostponedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).PublishPostponed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_PublishPostponed_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).PublishPostponed(ctx, req.(*PublishPostponedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeletePostponed_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeletePostponedRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeletePostponed(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeletePostponed_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeletePostponed(ctx, req.(*DeletePostponedRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -3873,6 +4105,30 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteSuggestion",
 			Handler:    _PostService_DeleteSuggestion_Handler,
+		},
+		{
+			MethodName: "PostponePost",
+			Handler:    _PostService_PostponePost_Handler,
+		},
+		{
+			MethodName: "ListPostponed",
+			Handler:    _PostService_ListPostponed_Handler,
+		},
+		{
+			MethodName: "GetPostponed",
+			Handler:    _PostService_GetPostponed_Handler,
+		},
+		{
+			MethodName: "EditPostponed",
+			Handler:    _PostService_EditPostponed_Handler,
+		},
+		{
+			MethodName: "PublishPostponed",
+			Handler:    _PostService_PublishPostponed_Handler,
+		},
+		{
+			MethodName: "DeletePostponed",
+			Handler:    _PostService_DeletePostponed_Handler,
 		},
 		{
 			MethodName: "CreateTopic",

@@ -61,8 +61,13 @@ func newServer(t *testing.T) testServer {
 		Albums: albums, Photos: albums.Photos(), Tx: inmem.TxManager{}, Media: mediaclient.Nop{}, Moderators: clubclient.Nop{},
 		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(), CommentLikes: albums.PhotoComments(), Notifier: notifyclient.Nop{},
 	})
+	posts := service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}, AlbumPhotos: albums.Photos(), WallPhotos: albumService, Switches: store.Posts(), Polls: store.Polls(), Walls: store.Sources()})
+	postponed := inmem.NewPostponedRepository()
 	postv1.RegisterPostServiceServer(srv, postgrpc.NewPostHandler(postgrpc.Services{
-		Posts:    service.NewPostService(service.PostDeps{Posts: store.Posts(), Pins: store.Posts(), Comments: store.Comments(), Likes: store.Likes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}, AlbumPhotos: albums.Photos(), WallPhotos: albumService, Switches: store.Posts(), Polls: store.Polls(), Walls: store.Sources()}),
+		Posts: posts,
+		Postponed: service.NewPostponedService(service.PostponedDeps{
+			Postponed: postponed, Poster: posts, Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
+		}),
 		Comments: service.NewCommentService(service.CommentDeps{Posts: store.Posts(), Comments: store.Comments(), Likes: store.CommentLikes(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{}, Walls: store.Sources()}),
 		Suggestions: service.NewSuggestionService(service.SuggestionDeps{
 			Suggestions: suggestions, Posts: store.Posts(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{}, Moderators: clubclient.Nop{},
@@ -82,6 +87,7 @@ func newServer(t *testing.T) testServer {
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
 			Topics: topics, Albums: albums, Notes: notes, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
 			Held: []service.ReactionHolder{store.Holds(), topics, albums}, Sources: store.Sources(),
+			Postponed: postponed,
 		}),
 		Holds:   service.NewHoldService(inmem.TxManager{}, store.Holds(), topics, albums),
 		Sources: service.NewSourceService(store.Sources()),

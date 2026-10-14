@@ -111,6 +111,13 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrNoteNotFound, codes.NotFound},
 		{post.ErrCannotChangeNote, codes.PermissionDenied},
 		{post.ErrCannotDeleteNoteComment, codes.PermissionDenied},
+		{post.ErrPostponedNotFound, codes.NotFound},
+		{post.ErrPublishTime, codes.InvalidArgument},
+		{post.ErrPostponedElsewhere, codes.InvalidArgument},
+		{post.ErrPostponedContent, codes.InvalidArgument},
+		{post.ErrCannotSeePostponed, codes.PermissionDenied},
+		{post.ErrCannotPostpone, codes.PermissionDenied},
+		{post.ErrTooManyPostponed, codes.FailedPrecondition},
 	} {
 		if errors.Is(err, known.err) {
 			return status.New(known.code, known.err.Error()), true

@@ -131,6 +131,27 @@ service PostService {
   // The author withdraws a suggestion, or an admin declines it.
   rpc DeleteSuggestion(DeleteSuggestionRequest) returns (google.protobuf.Empty);
 
+  // Require an access token: posts that wait for their time ("отложенные
+  // записи" of VK), seen only by their authors and, on a community's
+  // wall, the community's admins, whom post asks the club service about.
+  // A post waits for the caller's own wall or speaks for a community: the
+  // caller of PostponePost has checked that the author may and that the
+  // photos are theirs. When its time comes, post publishes it as a new
+  // post, dated then.
+  rpc PostponePost(PostponePostRequest) returns (PostponePostResponse);
+  // All the posts that wait for a wall, the soonest first: for the owner
+  // of a user's wall and the admins of a community.
+  rpc ListPostponed(ListPostponedRequest) returns (ListPostponedResponse);
+  // One postponed post, whole: for those who list it and its author.
+  rpc GetPostponed(GetPostponedRequest) returns (GetPostponedResponse);
+  // The author, or an admin of the community it speaks for, changes what
+  // it says and when it comes out.
+  rpc EditPostponed(EditPostponedRequest) returns (EditPostponedResponse);
+  // The same publish it at once ("Опубликовать сейчас").
+  rpc PublishPostponed(PublishPostponedRequest) returns (PublishPostponedResponse);
+  // The author takes it back, or an admin deletes it, with its photos.
+  rpc DeletePostponed(DeletePostponedRequest) returns (google.protobuf.Empty);
+
   // The discussions of communities ("Обсуждения" of openvk). The caller
   // of CreateTopic has checked with the club service that the author may
   // start a topic there and, with from_wall, speak for the community, and
@@ -424,6 +445,95 @@ message PublishSuggestionResponse {
 }
 
 message DeleteSuggestionRequest {
+  string id = 1;
+}
+
+// PostponedPost is a post that waits for its time.
+message PostponedPost {
+  string id = 1;
+  // The author's own wall, or the community the post speaks for.
+  string wall_id = 2;
+  string author_id = 3;
+  string text = 4;
+  repeated string photo_ids = 5;
+  bool from_wall = 6;
+  // With from_wall: the post will name its author ("Подпись автора").
+  bool signed = 7;
+  bool nsfw = 8;
+  // The people the text names, who will hear of the post.
+  repeated string mentioned_ids = 9;
+  google.protobuf.Timestamp publish_at = 10;
+  google.protobuf.Timestamp created_at = 11;
+  // text is only its beginning: the request set text_limit.
+  bool text_cut = 12;
+}
+
+message PostponePostRequest {
+  // Text, photos or both; never a repost or a poll. The caller has
+  // checked with the media service that the photos are the author's.
+  string text = 1;
+  // At most 10.
+  repeated string photo_ids = 2;
+  // A community's wall, for from_wall; empty for the caller's own.
+  string wall_id = 3;
+  // The post speaks for the community: the caller has checked with the
+  // club service that the author may.
+  bool from_wall = 4;
+  bool signed = 5;
+  bool nsfw = 6;
+  // As in CreatePostRequest: they hear of the post when it comes out.
+  repeated string mentioned_ids = 7;
+  // When to publish it: ahead of now, within a year.
+  google.protobuf.Timestamp publish_at = 8;
+}
+
+message PostponePostResponse {
+  PostponedPost postponed = 1;
+}
+
+message ListPostponedRequest {
+  string wall_id = 1;
+  // The texts are cut to this many characters and say so (text_cut);
+  // 0 for whole texts.
+  int32 text_limit = 2;
+}
+
+message ListPostponedResponse {
+  // At most 100: as many as wait for a wall at once.
+  repeated PostponedPost postponed = 1;
+}
+
+message GetPostponedRequest {
+  string id = 1;
+}
+
+message GetPostponedResponse {
+  PostponedPost postponed = 1;
+}
+
+message EditPostponedRequest {
+  string id = 1;
+  // What it says; it keeps its photos, and without them may not be empty.
+  string text = 2;
+  bool nsfw = 3;
+  // Whom the new text names.
+  repeated string mentioned_ids = 4;
+  google.protobuf.Timestamp publish_at = 5;
+}
+
+message EditPostponedResponse {
+  PostponedPost postponed = 1;
+}
+
+message PublishPostponedRequest {
+  string id = 1;
+}
+
+message PublishPostponedResponse {
+  Post post = 1;
+}
+
+message DeletePostponedRequest {
   string id = 1;
 }
 

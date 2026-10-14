@@ -117,6 +117,15 @@ type HoldService interface {
 
 // SourceService keeps whom each reader reads in the news, as the user and
 // club services tell.
+type PostponedService interface {
+	Postpone(ctx context.Context, d post.PostponedDraft) (*post.Postponed, error)
+	List(ctx context.Context, viewerID, wallID uuid.UUID) ([]*post.Postponed, error)
+	Get(ctx context.Context, viewerID, id uuid.UUID) (*post.Postponed, error)
+	Edit(ctx context.Context, requesterID, id uuid.UUID, edit post.PostponedEdit) (*post.Postponed, error)
+	Publish(ctx context.Context, requesterID, id uuid.UUID) (*post.Post, error)
+	Delete(ctx context.Context, requesterID, id uuid.UUID) error
+}
+
 type SourceService interface {
 	Follow(ctx context.Context, readerID, sourceID uuid.UUID, club bool) error
 	Unfollow(ctx context.Context, readerID, sourceID uuid.UUID) error
@@ -130,6 +139,7 @@ type Services struct {
 	Posts       PostService
 	Comments    CommentService
 	Suggestions SuggestionService
+	Postponed   PostponedService
 	Topics      TopicService
 	Albums      AlbumService
 	Polls       PollService
@@ -145,6 +155,7 @@ type PostHandler struct {
 	postService       PostService
 	commentService    CommentService
 	suggestionService SuggestionService
+	postponedService  PostponedService
 	topicService      TopicService
 	albumService      AlbumService
 	pollService       PollService
@@ -161,6 +172,7 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		postService:       s.Posts,
 		commentService:    s.Comments,
 		suggestionService: s.Suggestions,
+		postponedService:  s.Postponed,
 		topicService:      s.Topics,
 		albumService:      s.Albums,
 		pollService:       s.Polls,
