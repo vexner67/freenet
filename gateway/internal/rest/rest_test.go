@@ -508,6 +508,11 @@ type fakePosts struct {
 	err                  error
 	// wallFilter is the tab of the wall List got.
 	wallFilter string
+	// Postponed posts: what Postpone and EditPostponed got, whose wall
+	// was listed, and the IDs published and deleted.
+	postponed                           model.NewPostponed
+	postponedEdit                       model.PostponedEdit
+	postponedOf, publishedPP, deletedPP string
 	// likersOf is whose likers were asked for.
 	likersOf string
 	// repost is how Repost was asked to share.
@@ -594,6 +599,64 @@ func (f *fakePosts) PublishSuggestion(_ context.Context, token, id, text string,
 
 func (f *fakePosts) DeleteSuggestion(_ context.Context, token, id string) error {
 	f.token, f.withdrawn = token, id
+	return f.err
+}
+
+// Postpone keeps one postponed post by u1.
+func (f *fakePosts) Postpone(_ context.Context, token string, in model.NewPostponed) (model.Postponed, error) {
+	f.token, f.postponed = token, in
+	wallID := in.WallID
+	if wallID == "" {
+		wallID = "u1"
+	}
+
+	return model.Postponed{
+		ID: "pp1", WallID: wallID, AuthorID: "u1", Text: in.Text, PhotoIDs: in.PhotoIDs, FromWall: in.FromWall, Signed: in.Signed,
+		NSFW: in.NSFW, PublishAt: in.PublishAt, CreatedAt: time.Date(2026, 10, 8, 12, 0, 0, 0, time.UTC),
+	}, f.err
+}
+
+// PostponedPosts are one by Bob and one by Cat, whose page is deleted.
+func (f *fakePosts) PostponedPosts(_ context.Context, token, wallID string) ([]model.Postponed, error) {
+	f.token, f.postponedOf = token, wallID
+	at := time.Date(2026, 10, 20, 9, 0, 0, 0, time.UTC)
+
+	return []model.Postponed{
+		{ID: "pp2", WallID: wallID, AuthorID: "u2", Text: "от Петра", TextCut: true, PublishAt: at},
+		{ID: "pp3", WallID: wallID, AuthorID: "u3", Text: "от Кати", PublishAt: at},
+	}, f.err
+}
+
+// PostponedPost knows pp2, by Bob.
+func (f *fakePosts) PostponedPost(_ context.Context, token, id string) (model.Postponed, error) {
+	f.token = token
+	if id != "pp2" {
+		return model.Postponed{}, failure.New(failure.NotFound, "postponed post not found")
+	}
+
+	return model.Postponed{ID: id, WallID: "u2", AuthorID: "u2", Text: "от Петра целиком", PublishAt: time.Date(2026, 10, 20, 9, 0, 0, 0, time.UTC)}, f.err
+}
+
+func (f *fakePosts) EditPostponed(ctx context.Context, token, id string, edit model.PostponedEdit) (model.Postponed, error) {
+	p, err := f.PostponedPost(ctx, token, id)
+	if err != nil {
+		return model.Postponed{}, err
+	}
+
+	f.postponedEdit = edit
+	p.Text, p.NSFW, p.PublishAt = edit.Text, edit.NSFW, edit.PublishAt
+
+	return p, f.err
+}
+
+// PublishPostponed makes a post by Bob on his wall.
+func (f *fakePosts) PublishPostponed(_ context.Context, token, id string) (model.Post, error) {
+	f.token, f.publishedPP = token, id
+	return model.Post{ID: "p8", Author: model.Author{ID: "u2"}, Wall: model.Author{ID: "u2"}, Text: "от Петра", Mine: true}, f.err
+}
+
+func (f *fakePosts) DeletePostponed(_ context.Context, token, id string) error {
+	f.token, f.deletedPP = token, id
 	return f.err
 }
 
