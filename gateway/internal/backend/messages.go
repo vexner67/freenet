@@ -22,7 +22,7 @@ func NewMessages(api messagev1.MessageServiceClient) *Messages {
 func (m *Messages) Send(ctx context.Context, accessToken, recipientID string, d model.MessageDraft) (model.Message, error) {
 	resp, err := m.api.SendMessage(withToken(ctx, accessToken), &messagev1.SendMessageRequest{
 		RecipientId: recipientID, Text: d.Text, Sealed: d.Sealed, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID,
-		ForwardIds: d.ForwardIDs,
+		ForwardIds: d.ForwardIDs, Sticker: d.Sticker,
 	})
 	if err != nil {
 		return model.Message{}, errs.Wrap("m.api.SendMessage", fromStatus(err))
@@ -234,6 +234,7 @@ func toForwarded(carried []*messagev1.ForwardedMessage) []model.ForwardedMessage
 
 			SharedPhotoID: f.GetPhotoId(),
 			Depth:         int(f.GetDepth()),
+			Sticker:       f.GetSticker(),
 		})
 	}
 
@@ -254,6 +255,7 @@ func toMessage(pm *messagev1.Message) model.Message {
 		DeletableUntil: fromTimestamp(pm.GetDeletableUntil()),
 		PostID:         pm.GetPostId(),
 		SharedPhotoID:  pm.GetPhotoId(),
+		Sticker:        pm.GetSticker(),
 		EditedAt:       fromTimestamp(pm.GetEditedAt()),
 		EditableUntil:  fromTimestamp(pm.GetEditableUntil()),
 	}

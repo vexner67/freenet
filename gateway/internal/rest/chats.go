@@ -97,7 +97,7 @@ func toChatMessageJSON(m model.ChatMessage, me string, people map[string]model.A
 		Deleted:   !m.DeletedAt.IsZero(),
 		Unread:    m.Unread,
 
-		attachedJSON: toAttachedJSON(m.PostID, m.SharedPhotoID, m.Forwarded),
+		attachedJSON: toAttachedJSON(m.PostID, m.SharedPhotoID, m.Sticker, m.Forwarded),
 	}
 
 	if m.TargetID != "" {

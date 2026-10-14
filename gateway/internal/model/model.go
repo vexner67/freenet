@@ -515,6 +515,8 @@ type Message struct {
 	PostID string
 	// SharedPhotoID is a photo of an album shared into it, "" for none.
 	SharedPhotoID string
+	// Sticker is the sticker the message is, "" for none.
+	Sticker string
 	// EditedAt is zero for a message never edited; the sender may edit it
 	// until EditableUntil.
 	EditedAt      time.Time
@@ -539,13 +541,16 @@ type ForwardedMessage struct {
 	// Depth is how deep it is carried: 0 for a message forwarded itself,
 	// 1 for one that message carried on.
 	Depth int
+	// Sticker is the sticker it was, "" for none.
+	Sticker string
 }
 
 // MessageDraft is a message to send, into a dialog or a chat: text,
 // photos, a shared post ("" for none), messages of the caller's dialogs
 // and chats to forward, or some of them;
-// or a photo of an album to share (SharedPhotoID), with text alone. Into a
-// dialog the text goes Sealed, with that of the messages it forwards.
+// or a photo of an album to share (SharedPhotoID), with text alone; or a
+// Sticker, alone. Into a dialog the text goes Sealed, with that of the
+// messages it forwards.
 type MessageDraft struct {
 	Text          string
 	Sealed        []byte
@@ -553,6 +558,7 @@ type MessageDraft struct {
 	PostID        string
 	SharedPhotoID string
 	ForwardIDs    []string
+	Sticker       string
 }
 
 // MessageEdit is what an edit makes of a message: its words and, with
@@ -1171,4 +1177,15 @@ type Voucher struct {
 type VoucherPage struct {
 	Vouchers   []Voucher
 	NextCursor string
+}
+
+// StickerPack is a pack of the "Магазин стикеров": Price votes once, 0
+// for a free one. Bought: the caller has taken it; Added: it is among
+// their stickers.
+type StickerPack struct {
+	ID       string
+	Price    int64
+	Stickers []string
+	Bought   bool
+	Added    bool
 }

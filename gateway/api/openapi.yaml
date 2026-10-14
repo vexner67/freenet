@@ -3593,6 +3593,67 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/stickers:
+    get:
+      summary: The sticker shop ("Магазин стикеров")
+      description: |
+        No token needed; with one, each pack says whether it is yours. The
+        catalogue is fixed: a pack costs `price` votes ("голоса") once, 0
+        for a free one. The pictures are the site's, which knows a sticker
+        by its name.
+      responses:
+        "200":
+          description: The catalogue
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [packs]
+                properties:
+                  packs:
+                    type: array
+                    items:
+                      type: object
+                      required: [id, price, stickers, bought, added]
+                      properties:
+                        id: { type: string, description: "The name of the pack, as `cats`" }
+                        price: { type: integer, minimum: 0, description: "What it costs once, in votes; 0 is free" }
+                        stickers:
+                          type: array
+                          items: { type: string, description: "The name of a sticker, as `cat_hi`" }
+                        bought: { type: boolean, description: "You have taken it, free or for votes" }
+                        added: { type: boolean, description: "It is among your stickers: you can send them" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/stickers/{pack}:
+    parameters:
+      - name: pack
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Add a pack to your stickers ("Добавить бесплатно", "Купить")
+      description: A pack with a price takes it from your votes the first time; added again after it was put away, it is free. Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Added }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409":
+          description: You have fewer votes than the pack costs (`not enough votes`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Put a pack away ("Убрать набор")
+      description: Its stickers can no longer be sent; a bought pack stays bought. Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Put away }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
   /api/v1/users/{nickname}/notes:
     parameters:
       - name: nickname
@@ -4390,6 +4451,7 @@ paths:
                   items: { type: string, format: uuid }
                 post: { type: string, format: uuid }
                 albumPhoto: { type: string, format: uuid }
+                sticker: { type: string, description: "A sticker of a pack among your stickers (GET /stickers); it goes alone, with nothing else" }
                 forward:
                   type: array
                   maxItems: 20
@@ -4585,6 +4647,7 @@ paths:
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 post: { type: string, format: uuid }
                 albumPhoto: { type: string, format: uuid }
+                sticker: { type: string, description: "A sticker of a pack among your stickers (GET /stickers); it goes alone, with nothing else" }
                 forward:
                   type: array
                   maxItems: 20
@@ -5807,6 +5870,7 @@ components:
         sharedPhoto:
           description: The shared photo, as in a post that shares one; absent in the list of dialogs and without one
           $ref: "#/components/schemas/SharedPhoto"
+        sticker: { type: string, description: "The sticker the message is, alone; empty for none" }
         forwardedCount: { type: integer, description: "How many messages it carries on from dialogs and chats" }
         forwarded:
           type: array
@@ -5833,6 +5897,7 @@ components:
         repost: { $ref: "#/components/schemas/SharedPost" }
         albumPhoto: { type: string, description: "A photo of an album shared in it; empty for none" }
         sharedPhoto: { $ref: "#/components/schemas/SharedPhoto" }
+        sticker: { type: string, description: "The sticker it is; empty for none" }
 
     SharedPhoto:
       type: object
@@ -5915,6 +5980,7 @@ components:
         sharedPhoto:
           description: The shared photo; absent in the list of dialogs and without one
           $ref: "#/components/schemas/SharedPhoto"
+        sticker: { type: string, description: "The sticker the message is, alone; empty for none" }
         forwardedCount: { type: integer, description: "How many messages it carries on from dialogs and chats" }
         forwarded:
           type: array
