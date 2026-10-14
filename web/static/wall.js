@@ -7,6 +7,7 @@ import { $, clubRef, el, isMicroblog, showError, hideError, autosize } from './l
 import { postNode as renderPost } from './posts.js';
 import { initAttachments } from './attach.js';
 import { initPollDraft } from './poll.js';
+import { initTimer, postponedNotice, showPostponedLink } from './postponed.js';
 
 // openvk's limit of a post or a comment; the counter shows near the end.
 const MAX_LENGTH = 60000;
@@ -43,6 +44,8 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   let attachments;
   // poll is the poll attached to the post being written ("Опрос").
   let poll;
+  // timer is VK's "Таймер": the post waits for its time.
+  let timer = null;
   let canPost = false;
   // suggesting: the form suggests a post for the admins of the club.
   let suggesting = false;
@@ -138,6 +141,11 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       return;
     }
 
+    if (timer?.active() && poll.value()) {
+      showError(error, 'К отложенной записи нельзя прикрепить опрос.');
+      return;
+    }
+
     const button = $('post-submit');
     button.disabled = true;
 
@@ -148,12 +156,19 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
         return;
       }
 
-      const post = await create($('post-text').value, attachments.ids());
+      if (timer?.active()) {
+        posts.prepend(postponedNotice(await postpone($('post-text').value, attachments.ids()), owner));
+        timer.clear();
+        showPostponedLink(owner);
+      } else {
+        const post = await create($('post-text').value, attachments.ids());
 
-      // Below the pinned post, which stays first.
-      const pinned = posts.firstElementChild?.classList.contains('pinned') ? posts.firstElementChild : null;
-      if (pinned) pinned.after(postNode(post));
-      else posts.prepend(postNode(post));
+        // Below the pinned post, which stays first.
+        const pinned = posts.firstElementChild?.classList.contains('pinned') ? posts.firstElementChild : null;
+        if (pinned) pinned.after(postNode(post));
+        else posts.prepend(postNode(post));
+        total++;
+      }
       $('post-text').value = '';
       $('post-nsfw').checked = false;
       autosize($('post-text'));
@@ -161,7 +176,6 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       attachments.clear();
       poll.clear();
       $('post-form').classList.remove('expanded');
-      total++;
       updateCount();
       updateCounter();
     } catch (e) {
@@ -184,18 +198,36 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     if (suggest) text.placeholder = 'Предложить новость';
     // A suggested post is marked by the admins, if at all.
     $('post-nsfw-label').hidden = suggest;
+    let showSigned = null;
     if (speaksForClub) {
       // "От имени сообщества" only where there is a choice; "Подпись
       // автора" while the post speaks for the club.
       $('post-from-club-label').hidden = owner.wall !== 'open';
-      const showSigned = () => { $('post-signed-label').hidden = !fromClub(); };
+      showSigned = () => { $('post-signed-label').hidden = !fromClub(); };
       $('post-from-club').addEventListener('change', showSigned);
       showSigned();
     }
 
+    // "Таймер" postpones a post for your own wall or, for its admins, one
+    // that speaks for the community: always in its name.
+    if (!suggest && (owner.club ? speaksForClub : isOwner)) {
+      timer = initTimer({
+        link: $('post-timer'),
+        box: $('post-timer-box'),
+        submit: $('post-submit'),
+        onChange: (on) => {
+          if (on) form.classList.add('expanded');
+          if (!showSigned) return;
+          if (on) $('post-from-club').checked = true;
+          $('post-from-club').disabled = on;
+          showSigned();
+        },
+      });
+    }
+
     // The form stays open while it holds text, photos or a poll.
     const collapseIfEmpty = () => {
-      if (!text.value.trim() && attachments.count() === 0 && !poll.value() && document.activeElement !== text) {
+      if (!text.value.trim() && attachments.count() === 0 && !poll.value() && !timer?.active() && document.activeElement !== text) {
         form.classList.remove('expanded');
       }
     };
@@ -231,7 +263,16 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     });
   }
 
+  // postpone keeps the post for the time the timer says.
+  function postpone(text, photos) {
+    const nsfw = $('post-nsfw').checked;
+    if (!owner.club) return api.postpone(text, photos, nsfw, timer.value());
+
+    return api.postponeClubPost(clubRef(owner), text, photos, { signed: $('post-signed').checked, nsfw, publishAt: timer.value() });
+  }
+
   $('wall-more').addEventListener('click', loadMore);
+  if (plain && moderates && me) showPostponedLink(owner);
   if ($('wall-all')) $('wall-all').href = wallPath(owner);
 
   return loadMore();

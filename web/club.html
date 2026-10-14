@@ -46,6 +46,7 @@
 
             <div class="sugglist" id="requests" hidden><a id="requests-link"></a></div>
             <div class="sugglist" id="suggestions" hidden><a id="suggestions-link"></a></div>
+            <div class="sugglist" id="postponed" hidden><a id="postponed-link"></a></div>
 
             <div id="wall-block">
             <div class="section-title" id="wall-title">Стена<span class="count" id="wall-count"></span><a class="title-link" id="wall-all">Все</a></div>
@@ -58,10 +59,12 @@
                 <span>
                   <a class="attach-link" id="post-attach">Прикрепить фотографию</a>
                   <a class="attach-link" id="post-poll">Прикрепить опрос</a>
+                  <a class="attach-link" id="post-timer" hidden>Таймер</a>
                   <span class="hint" id="post-counter"></span>
                 </span>
                 <button class="button" type="submit" id="post-submit">Отправить</button>
               </div>
+              <div class="post-timer" id="post-timer-box" hidden></div>
               <div class="post-options">
                 <label id="post-from-club-label" hidden><input type="checkbox" id="post-from-club" checked> От имени сообщества</label>
                 <label id="post-signed-label" hidden><input type="checkbox" id="post-signed"> Подпись автора</label>

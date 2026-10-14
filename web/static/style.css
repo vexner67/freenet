@@ -792,6 +792,11 @@ label.chat-person { cursor: pointer; }
 
 /* "От имени сообщества" and "Подпись автора" under the form. */
 .post-options { margin-top: 4px; }
+/* "Таймер": when a postponed post comes out, under the form and in the
+   box that edits it. */
+.post-timer, .postponed-time { margin-top: 4px; color: var(--text-555); }
+.post-timer input, .postponed-time input { margin: 0 2px; font: inherit; }
+.timer-remove { margin-left: 4px; color: var(--text-999); }
 .post-options label { display: block; padding: 1px 0; color: var(--text-555); }
 .post-options input { vertical-align: middle; margin: 0 3px 0 0; }
 .club-role { color: var(--text-808080); }

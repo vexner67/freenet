@@ -665,6 +665,26 @@ export function suggestedByYou(n) {
   return `${n} ${plural(n, ['предложенная вами запись', 'предложенные вами записи', 'предложенных вами записей'])}`;
 }
 
+// postponedCount is VK's link above the wall: "3 отложенные записи".
+export function postponedCount(n) {
+  if (n === 0) return 'Нет отложенных записей';
+
+  return `${n} ${plural(n, ['отложенная запись', 'отложенные записи', 'отложенных записей'])}`;
+}
+
+// publishesAt is when a postponed post comes out, as VK says it.
+export function publishesAt(iso) {
+  return 'Будет опубликована ' + formatDateTime(iso);
+}
+
+// nextHour is the time "Таймер" offers first: the next full hour.
+export function nextHour(now = new Date()) {
+  const at = new Date(now.getTime() + 3_600_000);
+  at.setUTCMinutes(0, 0, 0);
+
+  return at.toISOString();
+}
+
 // topicsCount is openvk's "topics": "1 тема", "5 тем".
 export function topicsCount(n) {
   return `${n} ${plural(n, ['тема', 'темы', 'тем'])}`;
@@ -1212,6 +1232,11 @@ const errorTexts = {
   'this page is hidden': 'Настройки приватности этого пользователя не разрешают вам смотреть на его страницу.',
   'you cannot suggest posts here': 'В эту группу нельзя предлагать записи.',
   'suggestion not found': 'Запись уже опубликована или отклонена.',
+  'postponed post not found': 'Запись уже опубликована или удалена.',
+  'invalid publish time': 'Укажите дату и время публикации.',
+  'a postponed post is published within a year from now': 'Время публикации должно быть в будущем, но не позже чем через год.',
+  'a postponed post says words and shows photos only': 'К отложенной записи можно прикрепить только фотографии.',
+  'too many postponed posts': 'Отложено слишком много записей: не больше 100 на стену.',
   'fill in your profile before creating a club': 'Сначала заполните свою страницу.',
   'fill in your profile before joining a club': 'Сначала заполните свою страницу.',
   'the message can no longer be deleted': 'Сообщение можно удалить только в течение суток после отправки.',
