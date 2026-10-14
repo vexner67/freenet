@@ -45,6 +45,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.PermissionDenied, user.ErrGiftsHidden.Error()), true
 	case errors.Is(err, user.ErrCannotDeleteGift):
 		return status.New(codes.PermissionDenied, user.ErrCannotDeleteGift.Error()), true
+	case errors.Is(err, user.ErrUnknownStickerPack):
+		return status.New(codes.InvalidArgument, user.ErrUnknownStickerPack.Error()), true
 	case errors.Is(err, user.ErrNotEnoughVotes):
 		return status.New(codes.FailedPrecondition, user.ErrNotEnoughVotes.Error()), true
 	case errors.Is(err, user.ErrTransferSelf):

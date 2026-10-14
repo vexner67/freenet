@@ -111,6 +111,15 @@ service UserService {
   rpc ListGifts(ListGiftsRequest) returns (ListGiftsResponse);
   rpc DeleteGift(DeleteGiftRequest) returns (google.protobuf.Empty);
 
+  // Stickers ("Стикеры" on openvk). GetStickerCatalog is public: the
+  // packs there are, and with a token which of them the caller has taken
+  // and keeps among their stickers. AddStickerPack takes a pack, paying
+  // its price in votes the first time (FailedPrecondition "not enough
+  // votes"), or adds back one put away; RemoveStickerPack puts it away.
+  rpc GetStickerCatalog(GetStickerCatalogRequest) returns (GetStickerCatalogResponse);
+  rpc AddStickerPack(AddStickerPackRequest) returns (google.protobuf.Empty);
+  rpc RemoveStickerPack(RemoveStickerPackRequest) returns (google.protobuf.Empty);
+
   // Votes ("голоса" on openvk) pay for the gifts that have a price.
   // TransferVotes hands some of the caller's to a user ("Перевод
   // голосов"): PermissionDenied to a deleted page and across a blacklist,
@@ -925,4 +934,31 @@ message ListVouchersResponse {
 
 message DeleteVoucherRequest {
   string voucher_id = 1;
+}
+
+message GetStickerCatalogRequest {}
+
+message GetStickerCatalogResponse {
+  repeated StickerPack packs = 1;
+}
+
+// A pack of the "Магазин стикеров".
+message StickerPack {
+  string id = 1;
+  // What it costs, in votes, once; 0 for a free one.
+  int64 price = 2;
+  // The names of its stickers, in the order they are shown.
+  repeated string stickers = 3;
+  // The caller has taken it, free or for votes.
+  bool bought = 4;
+  // It is among the caller's stickers.
+  bool added = 5;
+}
+
+message AddStickerPackRequest {
+  string pack_id = 1;
+}
+
+message RemoveStickerPackRequest {
+  string pack_id = 1;
 }
