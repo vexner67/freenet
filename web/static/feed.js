@@ -7,6 +7,7 @@ import { initDocuments } from './docs.js';
 import { initPollDraft } from './poll.js';
 import { initTimer, postponedNotice } from './postponed.js';
 import { openFeedSettings, readFeedSettings } from './feedsettings.js';
+import { initStoryBar } from './stories.js';
 
 // openvk's limit of a post; the counter shows near the end.
 const MAX_LENGTH = 60000;
@@ -238,6 +239,7 @@ if (!me) {
   $('example-url').textContent = `${location.host}/никнейм`;
   // Without a nickname of your own you have no name to sign a post.
   if (me.profileCompleted) initForm(me);
+  initStoryBar($('story-bar'), me);
   $('more').addEventListener('click', () => loadMore(me));
   $('feed-settings').addEventListener('click', () => openFeedSettings({
     showIgnored,

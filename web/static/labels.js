@@ -236,6 +236,29 @@ export function formatPostDate(iso, now = new Date()) {
   return date.getUTCFullYear() === today.getUTCFullYear() ? `${day} в ${time}` : `${day} ${date.getUTCFullYear()} в ${time}`;
 }
 
+// storyAge is how long ago a story was told, as VK writes it: "только
+// что", "5 минут назад", "3 часа назад" (a story lives a day).
+export function storyAge(iso, now = new Date()) {
+  const minutes = Math.floor((now - new Date(iso)) / 60_000);
+
+  if (minutes < 1) return 'только что';
+  if (minutes < 60) return `${minutes} ${plural(minutes, ['минуту', 'минуты', 'минут'])} назад`;
+
+  const hours = Math.floor(minutes / 60);
+
+  return `${hours} ${plural(hours, ['час', 'часа', 'часов'])} назад`;
+}
+
+// storyViews is "N просмотров" under a story of one's own.
+export function storyViews(n) {
+  return `${n} ${plural(n, ['просмотр', 'просмотра', 'просмотров'])}`;
+}
+
+// storyViewers heads the box of who viewed a story.
+export function storyViewers(n) {
+  return `Историю ${plural(n, ['посмотрел', 'посмотрели', 'посмотрели'])} ${n} ${plural(n, ['человек', 'человека', 'человек'])}`;
+}
+
 // formatDateTime turns an ISO time into openvk's "7 мая 2027 в 12:00".
 export function formatDateTime(iso) {
   const date = onClock(new Date(iso));
@@ -1295,6 +1318,10 @@ const errorTexts = {
   'a postponed post is published within a year from now': 'Время публикации должно быть в будущем, но не позже чем через год.',
   'a postponed post says words and shows photos only': 'К отложенной записи можно прикрепить только фотографии.',
   'too many postponed posts': 'Отложено слишком много записей: не больше 100 на стену.',
+  'too many stories': 'Сразу можно показывать не больше 30 историй.',
+  'story not found': 'Этой истории уже нет.',
+  'story text is too long': 'Подпись истории — не больше 200 символов.',
+  'a story shows a photo': 'Выберите фотографию для истории.',
   'fill in your profile before creating a club': 'Сначала заполните свою страницу.',
   'fill in your profile before joining a club': 'Сначала заполните свою страницу.',
   'the message can no longer be deleted': 'Сообщение можно удалить только в течение суток после отправки.',
@@ -1382,6 +1409,45 @@ export function mentionParts(text) {
   }
 
   push(text.slice(from));
+
+  return parts;
+}
+
+// hashtagPattern finds the tags a text says ("#поход"), as post does
+// (post.Text.Hashtags): "#" at the start or after a space, then letters,
+// digits and "_", up to MAX_HASHTAG of them.
+const hashtagPattern = /(^|\s)#([\p{L}\p{Nd}\p{Mn}_]+)/gu;
+
+const MAX_HASHTAG = 64;
+
+// hashtagPath is the search of the posts that say a tag, where openvk
+// links it.
+export function hashtagPath(tag) {
+  return '/search?section=posts&q=' + encodeURIComponent('#' + tag);
+}
+
+// textParts is mentionParts with the tags too: the strings say
+// { hashtag, text } of each, the tag without "#".
+export function textParts(text) {
+  return mentionParts(text).flatMap((part, i) => (typeof part === 'string' ? hashtagParts(part, i === 0) : [part]));
+}
+
+// hashtagParts cuts a string of a text into strings and tags; atStart: the
+// string starts the text, else it follows a mention, which is no space.
+function hashtagParts(s, atStart) {
+  const parts = [];
+  let from = 0;
+
+  for (const m of s.matchAll(hashtagPattern)) {
+    if ([...m[2]].length > MAX_HASHTAG || (m.index === 0 && !m[1] && !atStart)) continue;
+
+    const start = m.index + m[1].length;
+    if (start > from) parts.push(s.slice(from, start));
+    parts.push({ hashtag: m[2], text: '#' + m[2] });
+    from = start + 1 + m[2].length;
+  }
+
+  if (from < s.length) parts.push(s.slice(from));
 
   return parts;
 }

@@ -31,6 +31,7 @@
         <div class="tabs">
           <a id="tab-people">Люди</a>
           <a id="tab-groups">Группы</a>
+          <a id="tab-posts">Записи</a>
         </div>
         <form class="search-form" id="search-form" action="/search" method="get">
           <input type="hidden" id="section" name="section">
@@ -40,6 +41,8 @@
         <div class="error" id="error" hidden></div>
         <p class="hint" id="intro">Например: <i>Анна Ли</i> или <i>ann</i>. Регистр и порядок слов не важны.</p>
         <p class="hint" id="intro-groups" hidden>По названию или адресу группы, например <i>любители котов</i>. Регистр и порядок слов не важны.</p>
+        <p class="hint" id="intro-posts" hidden>По словам записи, например <i>идём в поход</i>, или по хэштегу — <i>#поход</i>. Регистр не важен.</p>
+        <p class="hint" id="guest-posts" hidden>Искать записи могут только вошедшие на сайт. <a href="/">Войти</a></p>
         <p class="search-filter" id="filter" hidden></p>
         <p class="search-count" id="count" hidden></p>
         <div id="people"></div>

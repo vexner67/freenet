@@ -11,6 +11,7 @@ import { initPhoto } from './photo.js';
 import { initWall } from './wall.js';
 import { showBackdrop } from './backdrop.js';
 import { personCell } from './people.js';
+import { openStories } from './stories.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
 const CLUBS_SHOWN = 6;
@@ -317,6 +318,22 @@ async function showGifts(user, me, isOwner) {
   }
 }
 
+// showStories offers "Смотреть историю" under the photo while the user
+// has live stories the viewer sees.
+async function showStories(user) {
+  let authors;
+  try {
+    ({ authors } = await api.userStories(user.nickname));
+  } catch {
+    return; // Not to be had: the page works without it.
+  }
+
+  if (authors.length === 0) return;
+
+  $('stories').hidden = false;
+  $('stories').addEventListener('click', () => openStories(authors, 0));
+}
+
 // showNotes is openvk's block "Заметки": how many, "Все" and the newest,
 // as the user's "Кому видно мои заметки" allows.
 async function showNotes(user) {
@@ -456,6 +473,7 @@ try {
     if (profile.access.clubs) showClubs(profile);
     if (profile.access.notes) showNotes(profile);
     showGifts(profile, me, isOwner);
+    if (me) showStories(profile);
     if (isOwner) showOnline(profile);
     if (me && !isOwner && profile.access.friends) showCommon(profile);
     showCompleteness(isOwner ? me : profile, isOwner);
