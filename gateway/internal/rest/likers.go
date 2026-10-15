@@ -36,30 +36,43 @@ func (a *api) listLikers(
 		return
 	}
 
+	resp, err := a.peoplePage(r, page)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
+// peoplePage shows a page of people: those of deleted pages are left out,
+// as everything they did, but counted.
+func (a *api) peoplePage(r *http.Request, page model.LikerPage) (userPageResponse, error) {
 	resp := userPageResponse{
 		Users:      make([]publicProfileResponse, 0, len(page.UserIDs)),
 		NextCursor: page.NextCursor,
 		Total:      page.Total,
 	}
 
-	if len(page.UserIDs) > 0 {
-		profiles, err := a.users.GetProfiles(r.Context(), page.UserIDs)
-		if err != nil {
-			a.writeError(w, r, err)
-			return
-		}
+	if len(page.UserIDs) == 0 {
+		return resp, nil
+	}
 
-		byID := make(map[string]model.PublicProfile, len(profiles))
-		for _, p := range profiles {
-			byID[p.ID] = p
-		}
+	profiles, err := a.users.GetProfiles(r.Context(), page.UserIDs)
+	if err != nil {
+		return userPageResponse{}, err
+	}
 
-		for _, id := range page.UserIDs {
-			if p, ok := byID[id]; ok && !p.Deactivated {
-				resp.Users = append(resp.Users, toPublicProfileResponse(p))
-			}
+	byID := make(map[string]model.PublicProfile, len(profiles))
+	for _, p := range profiles {
+		byID[p.ID] = p
+	}
+
+	for _, id := range page.UserIDs {
+		if p, ok := byID[id]; ok && !p.Deactivated {
+			resp.Users = append(resp.Users, toPublicProfileResponse(p))
 		}
 	}
 
-	writeJSON(w, http.StatusOK, resp)
+	return resp, nil
 }

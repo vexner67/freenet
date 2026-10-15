@@ -475,6 +475,8 @@ type fakePosts struct {
 	// hidden are the authors the last feed was asked to leave out.
 	hidden   []string
 	everyone bool
+	// searched is what the posts were searched for.
+	searched string
 	// ownOnly and ignored: the feed settings the gateway passed on.
 	ownOnly                bool
 	ignored                []string
@@ -815,6 +817,13 @@ func (f *fakePosts) Feed(_ context.Context, token string, sources model.FeedSour
 		}, f.feedMore...),
 		NextCursor: "p1",
 	}, nil
+}
+
+// Search finds what Feed shows, the first two posts.
+func (f *fakePosts) Search(ctx context.Context, token, query string, hidden []string, cursor string, limit int) (model.PostPage, error) {
+	page, _ := f.Feed(ctx, token, model.FeedSources{Hidden: hidden}, cursor, limit)
+	f.searched = query
+	return model.PostPage{Posts: page.Posts[:2], NextCursor: "p2", Total: 7}, f.err
 }
 
 // List is u1's wall: bob's post p4 on it and u1's own p2 and p1.
@@ -1424,6 +1433,7 @@ type harness struct {
 	stickers      *fakeStickers
 	votes         *fakeVotes
 	documents     *fakeDocuments
+	stories       *fakeStories
 }
 
 func newHarness(cfg rest.Config) harness {
@@ -1448,6 +1458,7 @@ func newHarness(cfg rest.Config) harness {
 		votes:         &fakeVotes{},
 		faves:         &fakeFaves{},
 		documents:     &fakeDocuments{},
+		stories:       &fakeStories{},
 	}
 	h.metrics = prometheus.NewRegistry()
 	h.handler = mustServer(cfg, rest.Backends{
@@ -1467,6 +1478,7 @@ func newHarness(cfg rest.Config) harness {
 		Votes:         h.votes,
 		Faves:         h.faves,
 		Documents:     h.documents,
+		Stories:       h.stories,
 	}, h.metrics).Handler()
 
 	return h

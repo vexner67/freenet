@@ -133,6 +133,20 @@ type Documents interface {
 	Delete(ctx context.Context, accessToken, id string) error
 }
 
+// Stories are what people show for a day, VK's "истории"; all need an
+// access token.
+type Stories interface {
+	Tell(ctx context.Context, accessToken, photoID, text string) (model.Story, error)
+	// Feed is the stories above the caller's news, grouped by author: the
+	// caller first, then those with a story not viewed yet.
+	Feed(ctx context.Context, accessToken string, hidden, ignored []string) ([]model.Story, error)
+	User(ctx context.Context, accessToken, userID string, hidden []string) ([]model.Story, error)
+	View(ctx context.Context, accessToken, id string) error
+	// Viewers are who viewed a story of the caller, the latest first.
+	Viewers(ctx context.Context, accessToken, id, cursor string, limit int) (model.LikerPage, error)
+	Delete(ctx context.Context, accessToken, id string) error
+}
+
 // Posts: methods that read take an optional access token ("" for
 // anonymous viewers), with which posts tell whether the viewer likes them.
 type Posts interface {
@@ -164,6 +178,9 @@ type Posts interface {
 	// what the posts say ("Поиск").
 	List(ctx context.Context, accessToken, wallID string, pick model.WallPick, cursor string, limit int) (model.PostPage, error)
 	Feed(ctx context.Context, accessToken string, sources model.FeedSources, cursor string, limit int) (model.PostPage, error)
+	// Search finds the posts of every wall by a tag or a part of the
+	// text, without those of the people hidden.
+	Search(ctx context.Context, accessToken, query string, hidden []string, cursor string, limit int) (model.PostPage, error)
 
 	Like(ctx context.Context, accessToken, postID string) (int, error)
 	Unlike(ctx context.Context, accessToken, postID string) (int, error)
@@ -452,6 +469,7 @@ type Backends struct {
 	Stickers      Stickers
 	Votes         Votes
 	Documents     Documents
+	Stories       Stories
 }
 
 type api struct {
@@ -471,6 +489,7 @@ type api struct {
 	stickers          Stickers
 	votes             Votes
 	documents         Documents
+	stories           Stories
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -520,6 +539,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/posts/archive", a.archiveWall)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/posts/archive", a.unarchiveWall)
 	mux.HandleFunc("POST /api/v1/me/posts", a.createPost)
+	mux.HandleFunc("GET /api/v1/posts", a.searchPosts)
 	mux.HandleFunc("GET /api/v1/posts/{id}", a.getPost)
 	mux.HandleFunc("DELETE /api/v1/posts/{id}", a.deletePost)
 	mux.HandleFunc("PATCH /api/v1/posts/{id}", a.editPost)
@@ -704,6 +724,12 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/me/documents", a.uploadDocument)
 	mux.HandleFunc("PATCH /api/v1/documents/{id}", a.renameDocument)
 	mux.HandleFunc("DELETE /api/v1/documents/{id}", a.deleteDocument)
+	mux.HandleFunc("GET /api/v1/stories", a.listFeedStories)
+	mux.HandleFunc("GET /api/v1/users/{nickname}/stories", a.listUserStories)
+	mux.HandleFunc("POST /api/v1/me/stories", a.tellStory)
+	mux.HandleFunc("PUT /api/v1/stories/{id}/view", a.viewStory)
+	mux.HandleFunc("GET /api/v1/stories/{id}/viewers", a.listStoryViewers)
+	mux.HandleFunc("DELETE /api/v1/stories/{id}", a.deleteStory)
 
 	mux.HandleFunc("GET /api/v1/stickers", a.stickerCatalog)
 	mux.HandleFunc("PUT /api/v1/me/stickers/{pack}", a.addStickerPack)

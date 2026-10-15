@@ -1310,3 +1310,18 @@ type DocumentPage struct {
 	NextCursor string
 	Total      int
 }
+
+// Story is a photo with a few words shown for a day, VK's "история".
+type Story struct {
+	ID        string
+	AuthorID  string
+	PhotoID   string
+	Text      string
+	CreatedAt time.Time
+	ExpiresAt time.Time
+	// Viewed: the viewer viewed it; Mine: the viewer told it, and Views
+	// is how many others viewed it.
+	Viewed bool
+	Mine   bool
+	Views  int
+}

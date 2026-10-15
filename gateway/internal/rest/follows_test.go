@@ -2,6 +2,7 @@ package rest_test
 
 import (
 	"net/http"
+	"slices"
 	"testing"
 
 	"github.com/vexner67/freenet/gateway/internal/model"
@@ -162,5 +163,31 @@ func TestFeed_All(t *testing.T) {
 
 	if w = h.do("GET", "/api/v1/feed?type=mine", "", "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
 		t.Fatalf("an unknown type: %d", w.Code)
+	}
+}
+
+// "Поиск записей" of openvk: every wall, without the blacklisted.
+func TestSearchPosts(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.blockedIDs = []string{"x9"}
+
+	w := h.do("GET", "/api/v1/posts?q=%23%D0%BF%D0%BE%D1%85%D0%BE%D0%B4&cursor=p9", "", "Authorization", "Bearer tok")
+	got := decode[wall](t, w)
+
+	if w.Code != http.StatusOK || got.Total != 7 || got.NextCursor != "p2" {
+		t.Fatalf("status = %d, %+v", w.Code, got)
+	}
+	if h.posts.searched != "#поход" || h.posts.cursor != "p9" || !slices.Equal(h.posts.hidden, []string{"x9"}) {
+		t.Fatalf("searched %q from %q without %v", h.posts.searched, h.posts.cursor, h.posts.hidden)
+	}
+	// The post of a deleted page is left out, as in the news.
+	if len(got.Posts) != 1 || got.Posts[0].Author["nickname"] != "bob" {
+		t.Fatalf("posts with authors: %+v", got.Posts)
+	}
+
+	if w = newHarness(rest.Config{}).do("GET", "/api/v1/posts?q=x", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without token: %d", w.Code)
 	}
 }
