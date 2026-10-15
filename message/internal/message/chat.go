@@ -63,13 +63,17 @@ func (t Title) String() string {
 }
 
 // Chat is a conversation of several people ("беседа" of openvk). Whoever
-// created it removes others; everyone in it writes, adds people and
-// renames it.
+// created it removes others; everyone in it writes, adds people, renames
+// it, sets its photo and pins a message.
 type Chat struct {
 	id        uuid.UUID
 	title     Title
 	ownerID   uuid.UUID
 	createdAt time.Time
+	// photoID is the photo of the chat in the media service, pinnedID the
+	// message pinned above it; uuid.Nil for none.
+	photoID  uuid.UUID
+	pinnedID uuid.UUID
 }
 
 func NewChat(ownerID uuid.UUID, title Title, now time.Time) (*Chat, error) {
@@ -81,9 +85,39 @@ func NewChat(ownerID uuid.UUID, title Title, now time.Time) (*Chat, error) {
 	return &Chat{id: id, title: title, ownerID: ownerID, createdAt: now.UTC().Truncate(time.Microsecond)}, nil
 }
 
+// StoredChat is a chat as storage keeps it.
+type StoredChat struct {
+	ID        uuid.UUID
+	Title     Title
+	OwnerID   uuid.UUID
+	CreatedAt time.Time
+	// PhotoID and PinnedID are uuid.Nil for none.
+	PhotoID  uuid.UUID
+	PinnedID uuid.UUID
+}
+
 // RestoreChat rebuilds a chat from storage without validation or new IDs.
-func RestoreChat(id uuid.UUID, title Title, ownerID uuid.UUID, createdAt time.Time) *Chat {
-	return &Chat{id: id, title: title, ownerID: ownerID, createdAt: createdAt}
+func RestoreChat(s StoredChat) *Chat {
+	return &Chat{
+		id:        s.ID,
+		title:     s.Title,
+		ownerID:   s.OwnerID,
+		createdAt: s.CreatedAt,
+		photoID:   s.PhotoID,
+		pinnedID:  s.PinnedID,
+	}
+}
+
+// Stored is c as storage keeps it.
+func (c *Chat) Stored() StoredChat {
+	return StoredChat{
+		ID:        c.id,
+		Title:     c.title,
+		OwnerID:   c.ownerID,
+		CreatedAt: c.createdAt,
+		PhotoID:   c.photoID,
+		PinnedID:  c.pinnedID,
+	}
 }
 
 func (c *Chat) ID() uuid.UUID {
@@ -102,12 +136,63 @@ func (c *Chat) CreatedAt() time.Time {
 	return c.createdAt
 }
 
+// PhotoID is the photo of the chat, uuid.Nil for none.
+func (c *Chat) PhotoID() uuid.UUID {
+	return c.photoID
+}
+
+// PinnedID is the message pinned in the chat, uuid.Nil for none.
+func (c *Chat) PinnedID() uuid.UUID {
+	return c.pinnedID
+}
+
 // Renamed returns c called title.
 func (c *Chat) Renamed(title Title) *Chat {
 	renamed := *c
 	renamed.title = title
 
 	return &renamed
+}
+
+// WithPhoto returns c showing photo id, uuid.Nil for none.
+func (c *Chat) WithPhoto(id uuid.UUID) *Chat {
+	changed := *c
+	changed.photoID = id
+
+	return &changed
+}
+
+// Pinned returns c with m pinned above it, as VK's "Закрепить": one
+// message at a time, something a person wrote in this chat and has not
+// taken back (ErrNotFound otherwise).
+func (c *Chat) Pinned(m *ChatMessage) (*Chat, error) {
+	if m.ChatID() != c.id || m.IsAction() || m.IsDeleted() {
+		return nil, ErrNotFound
+	}
+
+	pinned := *c
+	pinned.pinnedID = m.ID()
+
+	return &pinned, nil
+}
+
+// Unpinned returns c with nothing pinned.
+func (c *Chat) Unpinned() *Chat {
+	unpinned := *c
+	unpinned.pinnedID = uuid.Nil
+
+	return &unpinned
+}
+
+// PinnedFor is the pinned message as me has it: nil when nothing is
+// pinned, when me went before it was written or when its sender took it
+// back.
+func PinnedFor(m *ChatMessage, me Member) *ChatMessage {
+	if m == nil || m.IsDeleted() || !me.Sees(m.ID()) {
+		return nil
+	}
+
+	return m
 }
 
 // CheckKick tells whether byID may remove targetID: the creator, anyone
@@ -265,6 +350,13 @@ const (
 	ActionLeave Action = "leave"
 	// ActionReturn: the sender came back.
 	ActionReturn Action = "return"
+	// ActionPin: the sender pinned a message, ActionUnpin took it down.
+	ActionPin   Action = "pin"
+	ActionUnpin Action = "unpin"
+	// ActionPhoto: the sender set the photo of the chat,
+	// ActionPhotoRemove removed it.
+	ActionPhoto       Action = "photo"
+	ActionPhotoRemove Action = "photo_remove"
 )
 
 // ChatMessage is a message of a chat: what a member wrote there — text,

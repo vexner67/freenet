@@ -384,13 +384,23 @@ func forwardedFromDB(data []byte) (message.Forwards, error) {
 	return forwarded, nil
 }
 
-// postIDToDB is NULL for no post, and for no shared photo.
+// postIDToDB is NULL for no post, and for no shared photo, chat photo or
+// pinned message.
 func postIDToDB(id uuid.UUID) *uuid.UUID {
 	if id == uuid.Nil {
 		return nil
 	}
 
 	return &id
+}
+
+// orNil reads what postIDToDB wrote: uuid.Nil for NULL.
+func orNil(id *uuid.UUID) uuid.UUID {
+	if id == nil {
+		return uuid.Nil
+	}
+
+	return *id
 }
 
 // photoIDs is photos for the photo_ids column: pgx writes a nil slice as

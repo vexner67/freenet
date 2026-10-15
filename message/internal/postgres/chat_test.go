@@ -556,3 +556,58 @@ func TestChats_ForwardShareAndSearch(t *testing.T) {
 		}
 	})
 }
+
+// Integration test: needs a database with migrations applied.
+func TestChats_PinAndPhoto(t *testing.T) {
+	svc, ctx := chatService(t)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	view, err := svc.Create(ctx, ann, "Поход", []uuid.UUID{bob, cat})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chatID := view.Chat.ID()
+
+	said, err := svc.Send(ctx, ann, chatID, service.Draft{Text: "встречаемся в 9"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	photo := uuid.New()
+	if err = svc.SetPhoto(ctx, cat, chatID, photo); err != nil {
+		t.Fatalf("SetPhoto: %v", err)
+	}
+	if err = svc.Pin(ctx, bob, chatID, said.ID()); err != nil {
+		t.Fatalf("Pin: %v", err)
+	}
+	// Renaming keeps the photo and the pin: the chat is saved whole.
+	if err = svc.Rename(ctx, cat, chatID, "Горы"); err != nil {
+		t.Fatal(err)
+	}
+
+	details, err := svc.Get(ctx, cat, chatID)
+	if err != nil || details.View.Chat.PhotoID() != photo || details.View.Chat.PinnedID() != said.ID() || details.Pinned == nil ||
+		details.Pinned.Text() != "встречаемся в 9" || details.View.Chat.Title() != "Горы" {
+		t.Fatalf("the chat = %+v, pinned %+v, %v", details.View.Chat, details.Pinned, err)
+	}
+
+	page, err := svc.Chats(ctx, bob, uuid.Nil, 20)
+	if err != nil || page.Chats[0].Chat.PhotoID() != photo {
+		t.Fatalf("Chats = %+v, %v", page, err)
+	}
+
+	// A pinned message gone with its sender is pinned no more.
+	if err = svc.PurgeUser(ctx, ann); err != nil {
+		t.Fatalf("PurgeUser: %v", err)
+	}
+	if details, err = svc.Get(ctx, cat, chatID); err != nil || details.View.Chat.PinnedID() != uuid.Nil || details.Pinned != nil {
+		t.Fatalf("the chat after the sender went = %+v, %v", details.View.Chat, err)
+	}
+
+	if err = svc.SetPhoto(ctx, cat, chatID, uuid.Nil); err != nil {
+		t.Fatal(err)
+	}
+	if details, err = svc.Get(ctx, cat, chatID); err != nil || details.View.Chat.PhotoID() != uuid.Nil || details.View.LastMessage.Action() != message.ActionPhotoRemove {
+		t.Fatalf("the chat without a photo = %+v, %v", details.View, err)
+	}
+}

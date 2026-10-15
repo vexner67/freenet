@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"slices"
 	"time"
 
@@ -16,8 +17,9 @@ type ChatRepository interface {
 	// Lock reads the chat and holds it until the transaction ends: what
 	// happens in one chat happens in turn. message.ErrChatNotFound.
 	Lock(ctx context.Context, id uuid.UUID) (*message.Chat, error)
-	// Rename saves the title of the chat.
-	Rename(ctx context.Context, c *message.Chat) error
+	// Update saves what changes in the chat: its title, photo and pinned
+	// message.
+	Update(ctx context.Context, c *message.Chat) error
 	// View is the chat as userID has it; message.ErrChatNotFound for
 	// someone who was never in it.
 	View(ctx context.Context, chatID, userID uuid.UUID) (message.ChatView, error)
@@ -86,10 +88,12 @@ type ChatRead struct {
 }
 
 // ChatDetails is a chat as one of its people opens it; Members are those
-// in it now, and nobody for who is not in it anymore.
+// in it now, and nobody for who is not in it anymore. Pinned is the
+// message pinned above it as they have it, nil for none.
 type ChatDetails struct {
 	View    message.ChatView
 	Members []message.Member
+	Pinned  *message.ChatMessage
 }
 
 // ChatPage is one screen of chats; NextCursor is uuid.Nil on the last.
@@ -205,6 +209,16 @@ func (s *ChatService) Get(ctx context.Context, userID, chatID uuid.UUID) (ChatDe
 	}
 
 	details := ChatDetails{View: view}
+
+	if id := view.Chat.PinnedID(); id != uuid.Nil {
+		pinned, err := s.messageRepo.Get(ctx, id)
+		if err != nil && !errors.Is(err, message.ErrNotFound) {
+			return ChatDetails{}, errs.Wrap("s.messageRepo.Get", err)
+		}
+
+		details.Pinned = message.PinnedFor(pinned, view.Me)
+	}
+
 	if !view.Me.IsActive() {
 		return details, nil
 	}
@@ -380,7 +394,103 @@ func (s *ChatService) Rename(ctx context.Context, userID, chatID uuid.UUID, titl
 			return []*message.ChatMessage{renamed}, errs.Wrap("message.NewChatAction", err)
 		},
 		apply: func(ctx context.Context, chat *message.Chat) error {
-			return errs.Wrap("s.chatRepo.Rename", s.chatRepo.Rename(ctx, chat.Renamed(title)))
+			return errs.Wrap("s.chatRepo.Update", s.chatRepo.Update(ctx, chat.Renamed(title)))
+		},
+	})
+}
+
+// Pin pins message id above the chat, in place of what was pinned:
+// anyone in it may, a message someone wrote there and has not taken back.
+func (s *ChatService) Pin(ctx context.Context, userID, chatID, id uuid.UUID) error {
+	now := s.now()
+
+	var pinned *message.Chat
+
+	return s.act(ctx, userID, chatID, change{
+		check: func(ctx context.Context, chat *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
+			if err := me.CheckActive(); err != nil {
+				return nil, errs.Wrap("me.CheckActive", err)
+			}
+
+			m, err := s.messageRepo.Get(ctx, id)
+			if err != nil {
+				return nil, errs.Wrap("s.messageRepo.Get", err)
+			}
+
+			if pinned, err = chat.Pinned(m); err != nil {
+				return nil, errs.Wrap("chat.Pinned", err)
+			}
+
+			if chat.PinnedID() == id {
+				return nil, nil
+			}
+
+			told, err := message.NewChatAction(chatID, userID, message.ActionPin, uuid.Nil, "", now)
+
+			return []*message.ChatMessage{told}, errs.Wrap("message.NewChatAction", err)
+		},
+		apply: func(ctx context.Context, _ *message.Chat) error {
+			return errs.Wrap("s.chatRepo.Update", s.chatRepo.Update(ctx, pinned))
+		},
+	})
+}
+
+// Unpin takes down the message pinned above the chat: anyone in it may.
+func (s *ChatService) Unpin(ctx context.Context, userID, chatID uuid.UUID) error {
+	now := s.now()
+
+	return s.act(ctx, userID, chatID, change{
+		check: func(_ context.Context, chat *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
+			if err := me.CheckActive(); err != nil {
+				return nil, errs.Wrap("me.CheckActive", err)
+			}
+
+			if chat.PinnedID() == uuid.Nil {
+				return nil, nil
+			}
+
+			told, err := message.NewChatAction(chatID, userID, message.ActionUnpin, uuid.Nil, "", now)
+
+			return []*message.ChatMessage{told}, errs.Wrap("message.NewChatAction", err)
+		},
+		apply: func(ctx context.Context, chat *message.Chat) error {
+			if chat.PinnedID() == uuid.Nil {
+				return nil
+			}
+
+			return errs.Wrap("s.chatRepo.Update", s.chatRepo.Update(ctx, chat.Unpinned()))
+		},
+	})
+}
+
+// SetPhoto shows photoID, a photo the media service keeps under the
+// chat's ID, as the photo of the chat, uuid.Nil removes it: anyone in it
+// may. The caller has uploaded it and deletes the photos the chat no
+// longer shows.
+func (s *ChatService) SetPhoto(ctx context.Context, userID, chatID, photoID uuid.UUID) error {
+	now := s.now()
+
+	return s.act(ctx, userID, chatID, change{
+		check: func(_ context.Context, chat *message.Chat, me message.Member) ([]*message.ChatMessage, error) {
+			if err := me.CheckActive(); err != nil {
+				return nil, errs.Wrap("me.CheckActive", err)
+			}
+
+			if chat.PhotoID() == photoID {
+				return nil, nil
+			}
+
+			action := message.ActionPhoto
+			if photoID == uuid.Nil {
+				action = message.ActionPhotoRemove
+			}
+
+			told, err := message.NewChatAction(chatID, userID, action, uuid.Nil, "", now)
+
+			return []*message.ChatMessage{told}, errs.Wrap("message.NewChatAction", err)
+		},
+		apply: func(ctx context.Context, chat *message.Chat) error {
+			return errs.Wrap("s.chatRepo.Update", s.chatRepo.Update(ctx, chat.WithPhoto(photoID)))
 		},
 	})
 }

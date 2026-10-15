@@ -37,6 +37,9 @@ const (
 	MessageService_GetChat_FullMethodName            = "/message.v1.MessageService/GetChat"
 	MessageService_ListChats_FullMethodName          = "/message.v1.MessageService/ListChats"
 	MessageService_RenameChat_FullMethodName         = "/message.v1.MessageService/RenameChat"
+	MessageService_PinChatMessage_FullMethodName     = "/message.v1.MessageService/PinChatMessage"
+	MessageService_UnpinChatMessage_FullMethodName   = "/message.v1.MessageService/UnpinChatMessage"
+	MessageService_SetChatPhoto_FullMethodName       = "/message.v1.MessageService/SetChatPhoto"
 	MessageService_AddChatMembers_FullMethodName     = "/message.v1.MessageService/AddChatMembers"
 	MessageService_RemoveChatMember_FullMethodName   = "/message.v1.MessageService/RemoveChatMember"
 	MessageService_LeaveChat_FullMethodName          = "/message.v1.MessageService/LeaveChat"
@@ -115,6 +118,14 @@ type MessageServiceClient interface {
 	// those of ListDialogs, so the two lists merge into one.
 	ListChats(ctx context.Context, in *ListChatsRequest, opts ...grpc.CallOption) (*ListChatsResponse, error)
 	RenameChat(ctx context.Context, in *RenameChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Anyone in the chat pins a message above it, in place of what was
+	// pinned, and takes it down: something a person wrote there and has not
+	// taken back, NotFound otherwise.
+	PinChatMessage(ctx context.Context, in *PinChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UnpinChatMessage(ctx context.Context, in *UnpinChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Anyone in the chat sets its photo, which the gateway has uploaded to
+	// the media service under the chat's ID; an empty photo_id removes it.
+	SetChatPhoto(ctx context.Context, in *SetChatPhotoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Adds people while there is room (50 with the caller); who is in the
 	// chat already stays, who left on their own fails with
 	// FailedPrecondition "the user has left the chat".
@@ -340,6 +351,36 @@ func (c *messageServiceClient) RenameChat(ctx context.Context, in *RenameChatReq
 	return out, nil
 }
 
+func (c *messageServiceClient) PinChatMessage(ctx context.Context, in *PinChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_PinChatMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) UnpinChatMessage(ctx context.Context, in *UnpinChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_UnpinChatMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) SetChatPhoto(ctx context.Context, in *SetChatPhotoRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_SetChatPhoto_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) AddChatMembers(ctx context.Context, in *AddChatMembersRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -551,6 +592,14 @@ type MessageServiceServer interface {
 	// those of ListDialogs, so the two lists merge into one.
 	ListChats(context.Context, *ListChatsRequest) (*ListChatsResponse, error)
 	RenameChat(context.Context, *RenameChatRequest) (*emptypb.Empty, error)
+	// Anyone in the chat pins a message above it, in place of what was
+	// pinned, and takes it down: something a person wrote there and has not
+	// taken back, NotFound otherwise.
+	PinChatMessage(context.Context, *PinChatMessageRequest) (*emptypb.Empty, error)
+	UnpinChatMessage(context.Context, *UnpinChatMessageRequest) (*emptypb.Empty, error)
+	// Anyone in the chat sets its photo, which the gateway has uploaded to
+	// the media service under the chat's ID; an empty photo_id removes it.
+	SetChatPhoto(context.Context, *SetChatPhotoRequest) (*emptypb.Empty, error)
 	// Adds people while there is room (50 with the caller); who is in the
 	// chat already stays, who left on their own fails with
 	// FailedPrecondition "the user has left the chat".
@@ -656,6 +705,15 @@ func (UnimplementedMessageServiceServer) ListChats(context.Context, *ListChatsRe
 }
 func (UnimplementedMessageServiceServer) RenameChat(context.Context, *RenameChatRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RenameChat not implemented")
+}
+func (UnimplementedMessageServiceServer) PinChatMessage(context.Context, *PinChatMessageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method PinChatMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) UnpinChatMessage(context.Context, *UnpinChatMessageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnpinChatMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) SetChatPhoto(context.Context, *SetChatPhotoRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetChatPhoto not implemented")
 }
 func (UnimplementedMessageServiceServer) AddChatMembers(context.Context, *AddChatMembersRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method AddChatMembers not implemented")
@@ -1026,6 +1084,60 @@ func _MessageService_RenameChat_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_PinChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PinChatMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).PinChatMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_PinChatMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).PinChatMessage(ctx, req.(*PinChatMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_UnpinChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnpinChatMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).UnpinChatMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_UnpinChatMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).UnpinChatMessage(ctx, req.(*UnpinChatMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_SetChatPhoto_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetChatPhotoRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).SetChatPhoto(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_SetChatPhoto_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).SetChatPhoto(ctx, req.(*SetChatPhotoRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_AddChatMembers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(AddChatMembersRequest)
 	if err := dec(in); err != nil {
@@ -1345,6 +1457,18 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RenameChat",
 			Handler:    _MessageService_RenameChat_Handler,
+		},
+		{
+			MethodName: "PinChatMessage",
+			Handler:    _MessageService_PinChatMessage_Handler,
+		},
+		{
+			MethodName: "UnpinChatMessage",
+			Handler:    _MessageService_UnpinChatMessage_Handler,
+		},
+		{
+			MethodName: "SetChatPhoto",
+			Handler:    _MessageService_SetChatPhoto_Handler,
 		},
 		{
 			MethodName: "AddChatMembers",

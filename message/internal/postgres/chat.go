@@ -53,7 +53,9 @@ const lockChatQuery = `
 		id,
 		title,
 		owner_id,
-		created_at
+		created_at,
+		photo_id,
+		pinned_message_id
 	FROM chats
 	WHERE id = $1
 	FOR UPDATE
@@ -61,12 +63,12 @@ const lockChatQuery = `
 
 func (r *ChatRepository) Lock(ctx context.Context, id uuid.UUID) (*message.Chat, error) {
 	var (
-		title     string
-		ownerID   uuid.UUID
-		createdAt time.Time
+		stored          message.StoredChat
+		title           string
+		photo, pinnedID *uuid.UUID
 	)
 
-	err := r.conn(ctx).QueryRow(ctx, lockChatQuery, id).Scan(&id, &title, &ownerID, &createdAt)
+	err := r.conn(ctx).QueryRow(ctx, lockChatQuery, id).Scan(&stored.ID, &title, &stored.OwnerID, &stored.CreatedAt, &photo, &pinnedID)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, message.ErrChatNotFound
 	}
@@ -74,17 +76,25 @@ func (r *ChatRepository) Lock(ctx context.Context, id uuid.UUID) (*message.Chat,
 		return nil, errs.Wrap("r.conn.QueryRow", err)
 	}
 
-	return message.RestoreChat(id, message.Title(title), ownerID, createdAt.UTC()), nil
+	stored.Title = message.Title(title)
+	stored.CreatedAt = stored.CreatedAt.UTC()
+	stored.PhotoID, stored.PinnedID = orNil(photo), orNil(pinnedID)
+
+	return message.RestoreChat(stored), nil
 }
 
-const renameChatQuery = `
+// updateChatQuery saves what changes in a chat: its title, its photo and
+// the message pinned in it.
+const updateChatQuery = `
 	UPDATE chats
-	SET title = $2
+	SET title = $2,
+		photo_id = $3,
+		pinned_message_id = $4
 	WHERE id = $1
 `
 
-func (r *ChatRepository) Rename(ctx context.Context, c *message.Chat) error {
-	tag, err := r.conn(ctx).Exec(ctx, renameChatQuery, c.ID(), c.Title().String())
+func (r *ChatRepository) Update(ctx context.Context, c *message.Chat) error {
+	tag, err := r.conn(ctx).Exec(ctx, updateChatQuery, c.ID(), c.Title().String(), postIDToDB(c.PhotoID()), postIDToDB(c.PinnedID()))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -103,6 +113,8 @@ const chatViewColumns = `
 		c.title,
 		c.owner_id,
 		c.created_at,
+		c.photo_id,
+		c.pinned_message_id,
 		(
 			SELECT count(*)
 			FROM chat_members a
@@ -195,12 +207,13 @@ func (r *ChatRepository) List(ctx context.Context, userID, before uuid.UUID, lim
 // has none left.
 func scanChatView(row pgx.Row) (message.ChatView, error) {
 	var (
-		view      message.ChatView
-		id, owner uuid.UUID
-		title     string
-		createdAt time.Time
-		state     string
-		last      struct {
+		view            message.ChatView
+		id, owner       uuid.UUID
+		title           string
+		createdAt       time.Time
+		photo, pinnedID *uuid.UUID
+		state           string
+		last            struct {
 			id, sender *uuid.UUID
 			text       *string
 			photos     []uuid.UUID
@@ -218,7 +231,7 @@ func scanChatView(row pgx.Row) (message.ChatView, error) {
 	)
 
 	err := row.Scan(
-		&id, &title, &owner, &createdAt, &view.Members,
+		&id, &title, &owner, &createdAt, &photo, &pinnedID, &view.Members,
 		&view.Me.UserID, &state, &view.Me.JoinedAt, &view.Me.SeenUpTo, &view.Me.LastIncomingID, &view.Me.ReadUpTo,
 		&last.id, &last.sender, &last.text, &last.photos, &last.action, &last.target, &last.createdAt, &last.editedAt, &last.deletedAt,
 		&last.post, &last.shared, &last.forwarded, &last.sticker, &last.documents,
@@ -227,7 +240,14 @@ func scanChatView(row pgx.Row) (message.ChatView, error) {
 		return message.ChatView{}, err
 	}
 
-	view.Chat = message.RestoreChat(id, message.Title(title), owner, createdAt.UTC())
+	view.Chat = message.RestoreChat(message.StoredChat{
+		ID:        id,
+		Title:     message.Title(title),
+		OwnerID:   owner,
+		CreatedAt: createdAt.UTC(),
+		PhotoID:   orNil(photo),
+		PinnedID:  orNil(pinnedID),
+	})
 	view.Me.State = message.MemberState(state)
 	view.Me.JoinedAt = view.Me.JoinedAt.UTC()
 

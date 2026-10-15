@@ -264,6 +264,76 @@ func TestChatService_Members(t *testing.T) {
 		t.Fatalf("renamed to the same: %v, %v", err, history(ann))
 	}
 
+	t.Run("pinning a message", func(t *testing.T) {
+		said, err := f.svc.Send(ctx, bob, chatID, service.Draft{Text: "встречаемся в 9"})
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		if err = f.svc.Pin(ctx, dan, chatID, said.ID()); err != nil {
+			t.Fatalf("Pin: %v", err)
+		}
+
+		details, err := f.svc.Get(ctx, ann, chatID)
+		if err != nil || details.Pinned == nil || details.Pinned.ID() != said.ID() || details.View.LastMessage.Action() != message.ActionPin {
+			t.Fatalf("the chat pinned = %+v, %v", details, err)
+		}
+
+		// The same again tells the chat nothing; an action is not pinned.
+		before := len(history(ann))
+		if err = f.svc.Pin(ctx, dan, chatID, said.ID()); err != nil || len(history(ann)) != before {
+			t.Fatalf("pinned again: %v", err)
+		}
+		if err = f.svc.Pin(ctx, dan, chatID, details.View.LastMessage.ID()); !errors.Is(err, message.ErrNotFound) {
+			t.Fatalf("an action pinned: %v", err)
+		}
+		if err = f.svc.Pin(ctx, dan, chatID, uuid.New()); !errors.Is(err, message.ErrNotFound) {
+			t.Fatalf("nothing pinned: %v", err)
+		}
+
+		// Taken back, it is shown pinned no more.
+		if err = f.svc.Delete(ctx, bob, said.ID()); err != nil {
+			t.Fatal(err)
+		}
+		if details, err = f.svc.Get(ctx, ann, chatID); err != nil || details.Pinned != nil {
+			t.Fatalf("a message taken back is pinned: %+v, %v", details.Pinned, err)
+		}
+
+		if err = f.svc.Unpin(ctx, ann, chatID); err != nil {
+			t.Fatalf("Unpin: %v", err)
+		}
+		if details, err = f.svc.Get(ctx, ann, chatID); err != nil || details.View.Chat.PinnedID() != uuid.Nil || details.View.LastMessage.Action() != message.ActionUnpin {
+			t.Fatalf("the chat unpinned = %+v, %v", details, err)
+		}
+
+		before = len(history(ann))
+		if err = f.svc.Unpin(ctx, ann, chatID); err != nil || len(history(ann)) != before {
+			t.Fatalf("unpinned again: %v", err)
+		}
+	})
+
+	t.Run("the photo of the chat", func(t *testing.T) {
+		photo := uuid.New()
+
+		if err := f.svc.SetPhoto(ctx, bob, chatID, photo); err != nil {
+			t.Fatalf("SetPhoto: %v", err)
+		}
+
+		page, err := f.svc.Chats(ctx, ann, uuid.Nil, 20)
+		if err != nil || page.Chats[0].Chat.PhotoID() != photo || page.Chats[0].LastMessage.Action() != message.ActionPhoto {
+			t.Fatalf("the chat with a photo = %+v, %v", page, err)
+		}
+
+		if err = f.svc.SetPhoto(ctx, bob, chatID, uuid.Nil); err != nil {
+			t.Fatalf("SetPhoto removing: %v", err)
+		}
+
+		details, err := f.svc.Get(ctx, ann, chatID)
+		if err != nil || details.View.Chat.PhotoID() != uuid.Nil || details.View.LastMessage.Action() != message.ActionPhotoRemove {
+			t.Fatalf("the chat without a photo = %+v, %v", details, err)
+		}
+	})
+
 	t.Run("only the creator removes", func(t *testing.T) {
 		if err := f.svc.Kick(ctx, bob, chatID, cat); !errors.Is(err, message.ErrCannotKick) {
 			t.Fatalf("a member removes: %v", err)
@@ -304,6 +374,8 @@ func TestChatService_Members(t *testing.T) {
 		for name, err := range map[string]error{
 			"write":  second(f.svc.Send(ctx, cat, chatID, service.Draft{Text: "я тут"})),
 			"rename": f.svc.Rename(ctx, cat, chatID, "Моё"),
+			"pin":    f.svc.Unpin(ctx, cat, chatID),
+			"photo":  f.svc.SetPhoto(ctx, cat, chatID, uuid.New()),
 			"invite": f.svc.Invite(ctx, cat, chatID, []uuid.UUID{uuid.New()}),
 			"leave":  f.svc.Leave(ctx, cat, chatID),
 		} {

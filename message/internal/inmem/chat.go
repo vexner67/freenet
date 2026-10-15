@@ -91,7 +91,7 @@ func (r *ChatRepository) Lock(ctx context.Context, id uuid.UUID) (*message.Chat,
 	return c, nil
 }
 
-func (r *ChatRepository) Rename(ctx context.Context, c *message.Chat) error {
+func (r *ChatRepository) Update(ctx context.Context, c *message.Chat) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -204,6 +204,13 @@ func (r *ChatRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]
 			r.s.settleChat(chatID, m)
 		}
 
+		// A pinned message gone with its sender is pinned no more, as ON
+		// DELETE SET NULL does.
+		if _, ok := r.s.chatMessages[c.PinnedID()]; !ok && c.PinnedID() != uuid.Nil {
+			c = c.Unpinned()
+			r.s.chats[chatID] = c
+		}
+
 		if c.OwnerID() != userID {
 			continue
 		}
@@ -211,7 +218,9 @@ func (r *ChatRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]
 		// Whoever has been in the chat longest has it now.
 		for _, m := range members {
 			if m.IsActive() {
-				r.s.chats[chatID] = message.RestoreChat(c.ID(), c.Title(), m.UserID, c.CreatedAt())
+				stored := c.Stored()
+				stored.OwnerID = m.UserID
+				r.s.chats[chatID] = message.RestoreChat(stored)
 				break
 			}
 		}

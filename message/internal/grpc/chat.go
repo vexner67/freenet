@@ -21,6 +21,9 @@ type ChatService interface {
 	Chats(ctx context.Context, userID, cursor uuid.UUID, size int) (service.ChatPage, error)
 	CountUnread(ctx context.Context, userID uuid.UUID) (int, error)
 	Rename(ctx context.Context, userID, chatID uuid.UUID, title message.Title) error
+	Pin(ctx context.Context, userID, chatID, id uuid.UUID) error
+	Unpin(ctx context.Context, userID, chatID uuid.UUID) error
+	SetPhoto(ctx context.Context, userID, chatID, photoID uuid.UUID) error
 	Invite(ctx context.Context, userID, chatID uuid.UUID, ids []uuid.UUID) error
 	Kick(ctx context.Context, userID, chatID, targetID uuid.UUID) error
 	Leave(ctx context.Context, userID, chatID uuid.UUID) error
@@ -106,6 +109,10 @@ func (h *MessageHandler) GetChat(ctx context.Context, req *messagev1.GetChatRequ
 		Members: make([]*messagev1.ChatMember, 0, len(details.Members)),
 	}
 
+	if details.Pinned != nil {
+		resp.Pinned = shownChatMessage(details.Pinned, details.View.Me, 0)
+	}
+
 	for _, m := range details.Members {
 		resp.Members = append(resp.Members, &messagev1.ChatMember{UserId: m.UserID.String(), JoinedAt: timestamppb.New(m.JoinedAt)})
 	}
@@ -153,6 +160,55 @@ func (h *MessageHandler) RenameChat(ctx context.Context, req *messagev1.RenameCh
 	}
 
 	if err = h.chatService.Rename(ctx, userID, chatID, title); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) PinChatMessage(ctx context.Context, req *messagev1.PinChatMessageRequest) (*emptypb.Empty, error) {
+	userID, chatID, err := chatCaller(ctx, req.GetChatId())
+	if err != nil {
+		return nil, err
+	}
+
+	id, err := parseID(req.GetMessageId(), "invalid message id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.chatService.Pin(ctx, userID, chatID, id); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) UnpinChatMessage(ctx context.Context, req *messagev1.UnpinChatMessageRequest) (*emptypb.Empty, error) {
+	userID, chatID, err := chatCaller(ctx, req.GetChatId())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.chatService.Unpin(ctx, userID, chatID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) SetChatPhoto(ctx context.Context, req *messagev1.SetChatPhotoRequest) (*emptypb.Empty, error) {
+	userID, chatID, err := chatCaller(ctx, req.GetChatId())
+	if err != nil {
+		return nil, err
+	}
+
+	photoID, err := parseOptionalID(req.GetPhotoId(), "invalid photo id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.chatService.SetPhoto(ctx, userID, chatID, photoID); err != nil {
 		return nil, err
 	}
 
@@ -449,6 +505,7 @@ func toProtoChat(view message.ChatView, textLimit int32) *messagev1.Chat {
 		MemberCount: int32(view.Members), //nolint:gosec // at most message.MaxChatMembers
 		State:       toProtoMemberState(view.Me.State),
 		Unread:      view.Me.HasUnread(),
+		PhotoId:     optionalID(view.Chat.PhotoID()),
 	}
 
 	if view.LastMessage != nil {
@@ -485,6 +542,14 @@ func toProtoChatAction(a message.Action) messagev1.ChatAction {
 		return messagev1.ChatAction_CHAT_ACTION_LEAVE
 	case message.ActionReturn:
 		return messagev1.ChatAction_CHAT_ACTION_RETURN
+	case message.ActionPin:
+		return messagev1.ChatAction_CHAT_ACTION_PIN
+	case message.ActionUnpin:
+		return messagev1.ChatAction_CHAT_ACTION_UNPIN
+	case message.ActionPhoto:
+		return messagev1.ChatAction_CHAT_ACTION_PHOTO
+	case message.ActionPhotoRemove:
+		return messagev1.ChatAction_CHAT_ACTION_PHOTO_REMOVE
 	default:
 		return messagev1.ChatAction_CHAT_ACTION_NONE
 	}
