@@ -21,6 +21,11 @@ service MediaService {
   // filed under its ID and served by GetAvatar as a user's.
   rpc UploadClubAvatar(UploadClubAvatarRequest) returns (UploadAvatarResponse);
   rpc DeleteClubAvatars(DeleteClubAvatarsRequest) returns (google.protobuf.Empty);
+  // Internal, for the gateway, which has checked that the caller is in
+  // the chat: the photos of a chat of several people, filed under its ID
+  // and served by GetAvatar as a user's.
+  rpc UploadChatAvatar(UploadChatAvatarRequest) returns (UploadAvatarResponse);
+  rpc DeleteChatAvatars(DeleteChatAvatarsRequest) returns (google.protobuf.Empty);
   // Internal, for the gateway, as UploadClubAvatar: photos of a community,
   // its backdrop ("Фон страницы"), filed under its ID, kept for good at
   // once and served by GetPhoto; DeleteClubPhotos removes those it no
@@ -90,6 +95,18 @@ message UploadClubAvatarRequest {
 
 message DeleteClubAvatarsRequest {
   string club_id = 1;
+  // The avatar to keep; empty deletes them all.
+  string keep_avatar_id = 2;
+}
+
+message UploadChatAvatarRequest {
+  string chat_id = 1;
+  // JPEG, PNG, GIF or WebP, at most 8 MB, at least 50x50.
+  bytes image = 2;
+}
+
+message DeleteChatAvatarsRequest {
+  string chat_id = 1;
   // The avatar to keep; empty deletes them all.
   string keep_avatar_id = 2;
 }

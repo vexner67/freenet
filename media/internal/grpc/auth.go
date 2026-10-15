@@ -33,6 +33,8 @@ func InternalMethods() map[string][]string {
 		mediav1.MediaService_PurgeUser_FullMethodName:             {mtls.User},
 		mediav1.MediaService_UploadClubAvatar_FullMethodName:      {mtls.Gateway},
 		mediav1.MediaService_DeleteClubAvatars_FullMethodName:     {mtls.Gateway},
+		mediav1.MediaService_UploadChatAvatar_FullMethodName:      {mtls.Gateway},
+		mediav1.MediaService_DeleteChatAvatars_FullMethodName:     {mtls.Gateway},
 		mediav1.MediaService_UploadClubPhoto_FullMethodName:       {mtls.Gateway},
 		mediav1.MediaService_DeleteClubPhotos_FullMethodName:      {mtls.Gateway},
 		mediav1.MediaService_DeleteDocuments_FullMethodName:       {mtls.Post, mtls.Gateway},

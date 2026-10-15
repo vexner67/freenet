@@ -352,6 +352,43 @@ func TestClubAvatars(t *testing.T) {
 	}
 }
 
+func TestChatAvatars(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	chat, member := uuid.New(), uuid.New()
+
+	var picture bytes.Buffer
+	if err := png.Encode(&picture, image.NewRGBA(image.Rect(0, 0, 80, 80))); err != nil {
+		t.Fatal(err)
+	}
+
+	first, err := s.client.UploadChatAvatar(s.as(t, member), &mediav1.UploadChatAvatarRequest{ChatId: chat.String(), Image: picture.Bytes()})
+	if err != nil {
+		t.Fatalf("UploadChatAvatar: %v", err)
+	}
+
+	get := func(id string) error {
+		_, err := s.client.GetAvatar(context.Background(), &mediav1.GetAvatarRequest{UserId: chat.String(), AvatarId: id, Size: mediav1.AvatarSize_AVATAR_SIZE_SMALL})
+		return err
+	}
+	if err = get(first.GetAvatarId()); err != nil {
+		t.Fatalf("GetAvatar: %v", err)
+	}
+
+	// The photo removed: nothing is kept.
+	if _, err = s.client.DeleteChatAvatars(s.as(t, member), &mediav1.DeleteChatAvatarsRequest{ChatId: chat.String()}); err != nil {
+		t.Fatalf("DeleteChatAvatars: %v", err)
+	}
+	if err = get(first.GetAvatarId()); status.Code(err) != codes.NotFound {
+		t.Fatalf("the removed avatar: %v", err)
+	}
+
+	if _, err = s.client.UploadChatAvatar(s.as(t, member), &mediav1.UploadChatAvatarRequest{ChatId: "x", Image: picture.Bytes()}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a bad chat id: %v", err)
+	}
+}
+
 func TestClubPhotos(t *testing.T) {
 	t.Parallel()
 
