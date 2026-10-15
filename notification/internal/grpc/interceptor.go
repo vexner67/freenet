@@ -5,6 +5,8 @@ import (
 	"log/slog"
 
 	"github.com/vexner67/freenet/notification/internal/notification"
+	"github.com/vexner67/freenet/notification/internal/push"
+	"github.com/vexner67/freenet/notification/internal/service"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -26,6 +28,14 @@ func toStatus(err error) (*status.Status, bool) {
 		errors.Is(err, notification.ErrActorRecipient),
 		errors.Is(err, notification.ErrTargetMismatch):
 		return status.New(codes.InvalidArgument, err.Error()), true
+	case errors.Is(err, push.ErrEndpointInvalid),
+		errors.Is(err, push.ErrKeysInvalid),
+		errors.Is(err, push.ErrNoUser),
+		errors.Is(err, push.ErrNoRecipients),
+		errors.Is(err, push.ErrTooManyRecipients):
+		return status.New(codes.InvalidArgument, err.Error()), true
+	case errors.Is(err, service.ErrPushOff):
+		return status.New(codes.FailedPrecondition, err.Error()), true
 	default:
 		return nil, false
 	}

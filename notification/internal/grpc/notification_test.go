@@ -52,8 +52,17 @@ func newServer(t *testing.T) testServer {
 		),
 		grpc.ChainStreamInterceptor(jwtauth.StreamServerInterceptor(verifier)),
 	)
+	pushes := service.NewPushService(service.PushDeps{
+		Subscriptions: inmem.NewSubscriptionRepository(),
+		Sender:        keyOnly{},
+		Actors:        nobody{},
+		Logger:        log,
+		Queue:         16,
+		Timeout:       time.Second,
+	})
 	notificationv1.RegisterNotificationServiceServer(srv, notificationgrpc.NewNotificationHandler(
-		service.NewNotificationService(inmem.NewNotificationRepository(), inmem.NewReadMarkRepository(), pubsub.New[uuid.UUID, service.Change](64)),
+		service.NewNotificationService(inmem.NewNotificationRepository(), inmem.NewReadMarkRepository(), pubsub.New[uuid.UUID, service.Change](64), pushes),
+		pushes,
 		log,
 	))
 

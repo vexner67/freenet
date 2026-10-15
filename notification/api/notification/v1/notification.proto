@@ -32,6 +32,19 @@ service NotificationService {
   // Unauthenticated when the token expires and with ResourceExhausted when
   // the caller falls behind; then subscribe again and count afresh.
   rpc Subscribe(SubscribeRequest) returns (stream SubscribeResponse);
+
+  // Public: the key browsers subscribe to pushes with (VAPID); empty when
+  // pushes are off.
+  rpc GetPushKey(GetPushKeyRequest) returns (GetPushKeyResponse);
+  // Require an access token: the browser at endpoint gets the caller's
+  // pushes, taken over from whoever had it; or stops, if it was the
+  // caller's. Both idempotent. Subscribing while pushes are off is
+  // FailedPrecondition.
+  rpc SubscribePush(SubscribePushRequest) returns (google.protobuf.Empty);
+  rpc UnsubscribePush(UnsubscribePushRequest) returns (google.protobuf.Empty);
+  // Internal, for message: a new message, pushed to its recipients. Best
+  // effort: it is queued and sent after the answer.
+  rpc PushMessage(PushMessageRequest) returns (google.protobuf.Empty);
 }
 
 enum Kind {
@@ -179,4 +192,34 @@ enum Change {
   CHANGE_GONE = 2;
   // The caller read them, on another page.
   CHANGE_READ = 3;
+}
+
+message GetPushKeyRequest {}
+
+message GetPushKeyResponse {
+  // The application server key, base64url without padding.
+  string public_key = 1;
+}
+
+message SubscribePushRequest {
+  // As PushSubscription of the browser gives them: an https URL and the
+  // keys in base64url.
+  string endpoint = 1;
+  string p256dh = 2;
+  string auth = 3;
+}
+
+message UnsubscribePushRequest {
+  string endpoint = 1;
+}
+
+message PushMessageRequest {
+  string message_id = 1;
+  string sender_id = 2;
+  // At most 49; the sender among them is skipped.
+  repeated string recipient_ids = 3;
+  // Empty for a dialog.
+  string chat_id = 4;
+  // May be empty for a chat too.
+  string chat_title = 5;
 }

@@ -24,7 +24,7 @@ func TestCleanupService(t *testing.T) {
 		id := notification.Before(old.Add(time.Duration(i) * time.Millisecond))
 		n := notification.Restore(id, notification.Event{Kind: notification.KindFollow, RecipientID: ann, ActorID: uuid.New()}, old)
 
-		if err := repo.Save(ctx, n); err != nil {
+		if _, err := repo.Save(ctx, n); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -33,7 +33,7 @@ func TestCleanupService(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = repo.Save(ctx, fresh); err != nil {
+	if _, err = repo.Save(ctx, fresh); err != nil {
 		t.Fatal(err)
 	}
 

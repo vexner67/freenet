@@ -8,7 +8,9 @@
 # scripts/gen-certs.sh issued it. The services read their certificate again
 # as its files change (pkg/mtls), so nothing restarts. The CA itself and
 # the JWT keys are not touched: replacing the CA means running
-# scripts/gen-certs.sh and restarting everything.
+# scripts/gen-certs.sh and restarting everything. The key notification
+# pushes to browsers with (push-key.pem) is made once, when missing, and
+# then kept: browsers subscribed with it.
 #
 # The metrics file (.data/node/certs.prom, read by node-exporter) gets
 # freenet_certificate_not_after_seconds for the CA and every certificate;
@@ -55,6 +57,13 @@ not_after() {
 	# GNU date, then the one of macOS.
 	date -u -d "$end" +%s 2>/dev/null || date -u -j -f '%b %e %T %Y %Z' "$end" +%s
 }
+
+if [ ! -f "$dir/push-key.pem" ]; then
+	openssl ecparam -name prime256v1 -genkey -noout -out "$dir/.push-key.pem"
+	chmod 600 "$dir/.push-key.pem"
+	mv "$dir/.push-key.pem" "$dir/push-key.pem"
+	echo "made push-key.pem"
+fi
 
 names=()
 for key in "$dir"/*-key.pem; do

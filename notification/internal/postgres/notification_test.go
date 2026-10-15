@@ -44,13 +44,14 @@ func TestRepositories(t *testing.T) {
 	}
 
 	var saved []*notification.Notification
-	for _, e := range append(events, events...) { // each twice: saved once
+	for i, e := range append(events, events...) { // each twice: saved once
 		n, err := notification.New(e, time.Now())
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err = repo.Save(ctx, n); err != nil {
-			t.Fatalf("Save: %v", err)
+		isNew, err := repo.Save(ctx, n)
+		if err != nil || isNew != (i < len(events)) {
+			t.Fatalf("Save #%d = %v, %v", i, isNew, err)
 		}
 		saved = append(saved, n)
 	}
@@ -144,7 +145,7 @@ func TestRepositories(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = repo.Save(ctx, n); err != nil {
+			if _, err = repo.Save(ctx, n); err != nil {
 				t.Fatalf("Save: %v", err)
 			}
 		}
@@ -160,7 +161,7 @@ func TestRepositories(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err = repo.Save(ctx, n); err != nil {
+		if _, err = repo.Save(ctx, n); err != nil {
 			t.Fatal(err)
 		}
 		if err = repo.DeleteByPost(ctx, wallPost); err != nil || count() != 0 {
@@ -187,7 +188,7 @@ func TestRepositories(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = repo.Save(ctx, n); err != nil {
+			if _, err = repo.Save(ctx, n); err != nil {
 				t.Fatalf("Save: %v", err)
 			}
 		}
@@ -221,7 +222,7 @@ func TestRepositories(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = repo.Save(ctx, n); err != nil {
+			if _, err = repo.Save(ctx, n); err != nil {
 				t.Fatalf("Save: %v", err)
 			}
 		}
@@ -265,7 +266,7 @@ func TestRepositories(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = repo.Save(ctx, n); err != nil {
+			if _, err = repo.Save(ctx, n); err != nil {
 				t.Fatalf("Save: %v", err)
 			}
 		}
@@ -304,7 +305,7 @@ func TestRepositories(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = repo.Save(ctx, n); err != nil {
+			if _, err = repo.Save(ctx, n); err != nil {
 				t.Fatalf("Save: %v", err)
 			}
 		}
@@ -338,7 +339,7 @@ func TestRepositories(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err = repo.Save(ctx, n); err != nil {
+				if _, err = repo.Save(ctx, n); err != nil {
 					t.Fatalf("Save: %v", err)
 				}
 			}
@@ -382,7 +383,7 @@ func TestRepositories(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err = repo.Save(ctx, n); err != nil {
+				if _, err = repo.Save(ctx, n); err != nil {
 					t.Fatalf("Save(%s): %v", e.Kind, err)
 				}
 			}
@@ -433,7 +434,7 @@ func TestRepositories(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = repo.Save(ctx, n); err != nil {
+			if _, err = repo.Save(ctx, n); err != nil {
 				t.Fatalf("Save: %v", err)
 			}
 		}
@@ -478,7 +479,7 @@ func TestRepositories(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = repo.Save(ctx, n); err != nil {
+			if _, err = repo.Save(ctx, n); err != nil {
 				t.Fatalf("Save: %v", err)
 			}
 		}
@@ -529,7 +530,7 @@ func TestRepositories(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err = repo.Save(ctx, n); err != nil {
+				if _, err = repo.Save(ctx, n); err != nil {
 					t.Fatalf("Save(%s): %v", e.Kind, err)
 				}
 			}
@@ -579,7 +580,7 @@ func TestRepositories(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = repo.Save(ctx, n); err != nil {
+			if _, err = repo.Save(ctx, n); err != nil {
 				t.Fatalf("Save: %v", err)
 			}
 		}
@@ -594,7 +595,7 @@ func TestRepositories(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if err = repo.Save(ctx, n); err != nil {
+			if _, err = repo.Save(ctx, n); err != nil {
 				t.Fatalf("Save: %v", err)
 			}
 		}
@@ -631,7 +632,7 @@ func TestRepositories(t *testing.T) {
 				if err != nil {
 					t.Fatal(err)
 				}
-				if err = repo.Save(ctx, n); err != nil {
+				if _, err = repo.Save(ctx, n); err != nil {
 					t.Fatalf("Save: %v", err)
 				}
 			}
@@ -679,7 +680,7 @@ func TestRepositories_DeleteByUser(t *testing.T) {
 		if last, err = notification.New(e, time.Now()); err != nil {
 			t.Fatal(err)
 		}
-		if err = repo.Save(ctx, last); err != nil {
+		if _, err = repo.Save(ctx, last); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -735,7 +736,7 @@ func TestRepositories_CommentReplyAndLike(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if err = repo.Save(ctx, n); err != nil {
+		if _, err = repo.Save(ctx, n); err != nil {
 			t.Fatalf("Save %s: %v", e.Kind, err)
 		}
 	}
@@ -795,7 +796,7 @@ func TestRepositories_DeleteOlder(t *testing.T) {
 		id := notification.Before(old.Add(time.Duration(i) * time.Millisecond))
 		n := notification.Restore(id, notification.Event{Kind: notification.KindFollow, RecipientID: ann, ActorID: uuid.New()}, old)
 
-		if err = repo.Save(ctx, n); err != nil {
+		if _, err = repo.Save(ctx, n); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -804,7 +805,7 @@ func TestRepositories_DeleteOlder(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err = repo.Save(ctx, fresh); err != nil {
+	if _, err = repo.Save(ctx, fresh); err != nil {
 		t.Fatal(err)
 	}
 

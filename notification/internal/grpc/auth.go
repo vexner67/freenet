@@ -17,6 +17,8 @@ func PublicMethods() []string {
 		notificationv1.NotificationService_ForgetPost_FullMethodName,
 		notificationv1.NotificationService_ForgetComment_FullMethodName,
 		notificationv1.NotificationService_PurgeUser_FullMethodName,
+		notificationv1.NotificationService_PushMessage_FullMethodName,
+		notificationv1.NotificationService_GetPushKey_FullMethodName,
 	}
 }
 
@@ -29,5 +31,6 @@ func InternalMethods() map[string][]string {
 		notificationv1.NotificationService_ForgetPost_FullMethodName:    {mtls.Post},
 		notificationv1.NotificationService_ForgetComment_FullMethodName: {mtls.Post},
 		notificationv1.NotificationService_PurgeUser_FullMethodName:     {mtls.User},
+		notificationv1.NotificationService_PushMessage_FullMethodName:   {mtls.Message},
 	}
 }

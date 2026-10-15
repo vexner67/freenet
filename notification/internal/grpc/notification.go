@@ -64,12 +64,14 @@ func (h *NotificationHandler) Subscribe(_ *notificationv1.SubscribeRequest, stre
 type NotificationHandler struct {
 	notificationv1.UnimplementedNotificationServiceServer
 	notificationService NotificationService
+	pushService         PushService
 	logger              *slog.Logger
 }
 
-func NewNotificationHandler(notificationService NotificationService, logger *slog.Logger) *NotificationHandler {
+func NewNotificationHandler(notificationService NotificationService, pushService PushService, logger *slog.Logger) *NotificationHandler {
 	return &NotificationHandler{
 		notificationService: notificationService,
+		pushService:         pushService,
 		logger:              logger,
 	}
 }

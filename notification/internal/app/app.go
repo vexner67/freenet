@@ -9,15 +9,19 @@ import (
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5/pgxpool"
 	goredis "github.com/redis/go-redis/v9"
+	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/notification/internal/config"
 	notificationgrpc "github.com/vexner67/freenet/notification/internal/grpc"
 	"github.com/vexner67/freenet/notification/internal/inmem"
+	"github.com/vexner67/freenet/notification/internal/peopleclient"
 	"github.com/vexner67/freenet/notification/internal/postgres"
 	notificationredis "github.com/vexner67/freenet/notification/internal/redis"
 	"github.com/vexner67/freenet/notification/internal/service"
+	"github.com/vexner67/freenet/notification/internal/webpush"
 	"github.com/vexner67/freenet/notification/migrations"
 	"github.com/vexner67/freenet/pkg/errs"
+	"github.com/vexner67/freenet/pkg/grpcclient"
 	"github.com/vexner67/freenet/pkg/grpcserver"
 	"github.com/vexner67/freenet/pkg/jwtauth"
 	"github.com/vexner67/freenet/pkg/logger"
@@ -26,6 +30,7 @@ import (
 	"github.com/vexner67/freenet/pkg/pgpool"
 	"github.com/vexner67/freenet/pkg/pubsub"
 	"github.com/vexner67/freenet/pkg/tracing"
+	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"golang.org/x/sync/errgroup"
 	"google.golang.org/grpc"
 )
@@ -53,6 +58,10 @@ type App struct {
 	// cleanup forgets the notifications older than the retention.
 	cleanup      *service.CleanupService
 	cleanupEvery time.Duration
+	// pushes tell browsers what happens, pushWorkers at once.
+	pushes      *service.PushService
+	pushWorkers int
+	peopleConns []*grpc.ClientConn
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -125,10 +134,17 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("grpcserver.New", err)
 	}
 
+	a.pushes, err = a.newPushes(cfg, repos.subscriptions)
+	if err != nil {
+		return errs.Wrap("a.newPushes", err)
+	}
+	a.pushWorkers = cfg.PushWorkers
+
 	notificationv1.RegisterNotificationServiceServer(
 		a.server.Registrar(),
 		notificationgrpc.NewNotificationHandler(
-			service.NewNotificationService(repos.notifications, repos.readMarks, a.newEvents(cfg)),
+			service.NewNotificationService(repos.notifications, repos.readMarks, a.newEvents(cfg), a.pushes),
+			a.pushes,
 			a.logger,
 		),
 	)
@@ -142,7 +158,7 @@ func (a *App) build(cfg config.Config) error {
 		a.metrics = metrics.NewServer(fmt.Sprintf(":%d", cfg.MetricsPort), reg, a.logger)
 	}
 
-	a.logger.Info("notification configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled())
+	a.logger.Info("notification configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(), "push", cfg.PushKeyPath != "")
 
 	return nil
 }
@@ -151,6 +167,7 @@ type repositories struct {
 	notifications service.NotificationRepository
 	readMarks     service.ReadMarkRepository
 	old           service.OldNotificationDeleter
+	subscriptions service.SubscriptionRepository
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
@@ -161,6 +178,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			notifications: notifications,
 			readMarks:     inmem.NewReadMarkRepository(),
 			old:           notifications,
+			subscriptions: inmem.NewSubscriptionRepository(),
 		}, nil
 	}
 
@@ -192,6 +210,7 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		notifications: notifications,
 		readMarks:     postgres.NewReadMarkRepository(a.pool),
 		old:           notifications,
+		subscriptions: postgres.NewSubscriptionRepository(a.pool),
 	}, nil
 }
 
@@ -218,6 +237,11 @@ func (a *App) Run(ctx context.Context) error {
 
 	g.Go(func() error {
 		a.runCleanup(ctx)
+		return nil
+	})
+
+	g.Go(func() error {
+		a.pushes.Run(ctx, a.pushWorkers)
 		return nil
 	})
 
@@ -275,8 +299,70 @@ func (a *App) newEvents(cfg config.Config) service.Events {
 	return a.shared
 }
 
+// newPushes pushes with the VAPID key of cfg; without one pushes are off.
+// The user and club services name who did it.
+func (a *App) newPushes(cfg config.Config, subscriptions service.SubscriptionRepository) (*service.PushService, error) {
+	deps := service.PushDeps{
+		Subscriptions: subscriptions,
+		Actors:        peopleclient.Nop{},
+		Logger:        a.logger,
+		Queue:         cfg.PushQueue,
+		Timeout:       cfg.PushTimeout,
+	}
+
+	if cfg.PushKeyPath == "" {
+		a.logger.Warn("PUSH_KEY_PATH is not set: browsers get no push notifications")
+		return service.NewPushService(deps), nil
+	}
+
+	sender, err := webpush.Load(cfg.PushKeyPath, cfg.PushSubject, cfg.PushTimeout)
+	if err != nil {
+		return nil, errs.Wrap("webpush.Load", err)
+	}
+	deps.Sender = sender
+
+	if cfg.UserServiceAddr == "" {
+		a.logger.Warn("USER_SERVICE_ADDR is not set: pushes name nobody")
+		return service.NewPushService(deps), nil
+	}
+
+	creds, err := mtls.ClientCredentials(cfg.TLS)
+	if err != nil {
+		return nil, errs.Wrap("mtls.ClientCredentials", err)
+	}
+
+	users, err := grpcclient.New(cfg.UserServiceAddr, creds, a.tracer.DialOption())
+	if err != nil {
+		return nil, errs.Wrap("grpcclient.New", err)
+	}
+	a.peopleConns = append(a.peopleConns, users)
+
+	var clubs clubv1.ClubServiceClient
+
+	if cfg.ClubServiceAddr == "" {
+		a.logger.Warn("CLUB_SERVICE_ADDR is not set: pushes do not name communities")
+	} else {
+		conn, err := grpcclient.New(cfg.ClubServiceAddr, creds, a.tracer.DialOption())
+		if err != nil {
+			return nil, errs.Wrap("grpcclient.New", err)
+		}
+		a.peopleConns = append(a.peopleConns, conn)
+		clubs = clubv1.NewClubServiceClient(conn)
+	}
+
+	deps.Actors = peopleclient.New(userv1.NewUserServiceClient(users), clubs, cfg.PeopleTimeout)
+
+	return service.NewPushService(deps), nil
+}
+
 // Close releases everything New opened; safe after a partial New.
 func (a *App) Close() {
+	for _, conn := range a.peopleConns {
+		if err := conn.Close(); err != nil {
+			a.logger.Error("grpc client close", "error", err)
+		}
+	}
+
 	if a.tracer != nil {
 		if err := a.tracer.Close(); err != nil {
 			a.logger.Error("tracer close", "error", err)

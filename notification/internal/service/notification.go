@@ -20,8 +20,8 @@ const (
 
 type NotificationRepository interface {
 	// Save is idempotent: an event already notified (the same like, comment
-	// or follow) is not saved twice.
-	Save(ctx context.Context, n *notification.Notification) error
+	// or follow) is not saved twice, and saved tells whether n was.
+	Save(ctx context.Context, n *notification.Notification) (saved bool, err error)
 	// Get returns notification.ErrNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*notification.Notification, error)
 	// Delete removes the notification of an event, if there is one.
@@ -86,35 +86,50 @@ type Events interface {
 	Subscribe(userID uuid.UUID) (<-chan Change, func())
 }
 
+// Pushes tell the browsers of users what happens while no page of the
+// site is open (PushService).
+type Pushes interface {
+	Notified(ctx context.Context, n *notification.Notification)
+	PurgeUser(ctx context.Context, userID uuid.UUID) error
+}
+
 type NotificationService struct {
 	notificationRepo NotificationRepository
 	readMarkRepo     ReadMarkRepository
 	events           Events
+	pushes           Pushes
 	now              func() time.Time
 }
 
-func NewNotificationService(notificationRepo NotificationRepository, readMarkRepo ReadMarkRepository, events Events) *NotificationService {
+func NewNotificationService(notificationRepo NotificationRepository, readMarkRepo ReadMarkRepository, events Events, pushes Pushes) *NotificationService {
 	return &NotificationService{
 		notificationRepo: notificationRepo,
 		readMarkRepo:     readMarkRepo,
 		events:           events,
+		pushes:           pushes,
 		now:              time.Now,
 	}
 }
 
 // Notify records an event; a repeated event is notified once. The
-// recipient hears of it at once.
+// recipient hears of it at once, and their browsers get a push.
 func (s *NotificationService) Notify(ctx context.Context, e notification.Event) error {
 	n, err := notification.New(e, s.now())
 	if err != nil {
 		return errs.Wrap("notification.New", err)
 	}
 
-	if err = s.notificationRepo.Save(ctx, n); err != nil {
+	saved, err := s.notificationRepo.Save(ctx, n)
+	if err != nil {
 		return errs.Wrap("s.notificationRepo.Save", err)
+	}
+	// Delivered again (the outbox delivers at least once): heard of already.
+	if !saved {
+		return nil
 	}
 
 	s.events.Publish(ctx, e.RecipientID, ChangeNew)
+	s.pushes.Notified(ctx, n)
 
 	return nil
 }
@@ -158,7 +173,8 @@ func (s *NotificationService) ForgetComment(ctx context.Context, commentID uuid.
 
 // PurgeUser erases what notification keeps about a user whose page was
 // deleted for good: the notifications they got or caused and their read
-// mark. Like ForgetPost it tells nobody live.
+// mark, and the browsers they got pushes in. Like ForgetPost it tells
+// nobody live.
 func (s *NotificationService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 	if err := s.notificationRepo.DeleteByUser(ctx, userID); err != nil {
 		return errs.Wrap("s.notificationRepo.DeleteByUser", err)
@@ -166,6 +182,10 @@ func (s *NotificationService) PurgeUser(ctx context.Context, userID uuid.UUID) e
 
 	if err := s.readMarkRepo.Delete(ctx, userID); err != nil {
 		return errs.Wrap("s.readMarkRepo.Delete", err)
+	}
+
+	if err := s.pushes.PurgeUser(ctx, userID); err != nil {
+		return errs.Wrap("s.pushes.PurgeUser", err)
 	}
 
 	return nil

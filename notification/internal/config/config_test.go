@@ -39,6 +39,9 @@ func TestParse(t *testing.T) {
 		{"full mtls", map[string]string{"TLS_CA_PATH": "ca.pem", "TLS_CERT_PATH": "c.pem", "TLS_KEY_PATH": "k.pem"}, true},
 		{"partial mtls", map[string]string{"TLS_KEY_PATH": "key.pem"}, false},
 		{"empty issuer", map[string]string{"JWT_ISSUER": ""}, false},
+		{"push contact by mail", map[string]string{"PUSH_SUBJECT": "mailto:admin@example.com"}, true},
+		{"push contact not a URL", map[string]string{"PUSH_SUBJECT": "admin"}, false},
+		{"no push workers", map[string]string{"PUSH_WORKERS": "0"}, false},
 	}
 
 	for _, tt := range tests {
