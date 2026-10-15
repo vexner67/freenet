@@ -361,6 +361,7 @@ export function renderChrome(me) {
   const links = $('header-links');
   const menu = $('menu');
 
+  addMenuToggle(menu);
   // A guest is not shown what is blurred as adult (posts.js).
   document.body.classList.toggle('guest', !me);
   if (me) signedInAs(me.id);
@@ -402,6 +403,24 @@ export function renderChrome(me) {
   }
 }
 
+// addMenuToggle puts the button that opens the left menu into the header:
+// on a phone the menu is not beside the page but under the header, as on
+// m.vk.com (style.css hides the button on a wide screen).
+function addMenuToggle(menu) {
+  const header = document.querySelector('.header');
+  if (!menu || !header || header.querySelector('.menu-toggle')) return;
+
+  const toggle = el('a', { className: 'menu-toggle', title: 'Меню', ariaLabel: 'Меню', ariaExpanded: 'false' },
+    el('span'), el('span'), el('span'));
+  toggle.setAttribute('role', 'button');
+  toggle.addEventListener('click', () => {
+    const open = document.body.classList.toggle('menu-open');
+    toggle.ariaExpanded = String(open);
+  });
+
+  header.prepend(toggle);
+}
+
 // renderDeactivatedChrome is openvk's for the owner of a deleted page: no
 // menu, only "выход" in the header, and no page but their own, where they
 // can restore it.
@@ -414,6 +433,8 @@ function renderDeactivatedChrome(me, links, menu) {
   const others = parkedAccounts().length > 0;
 
   if (sidebar) sidebar.hidden = !others;
+  const toggle = document.querySelector('.menu-toggle');
+  if (toggle) toggle.hidden = !others;
   if (others) {
     menu.replaceChildren(accountsLink(me));
     showAccounts(() => {});
