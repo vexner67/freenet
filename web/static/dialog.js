@@ -6,7 +6,8 @@
 // message can be deleted for yourself, your own for both for a day
 // ("Удалить для всех") and edited for a day; a click on a message selects
 // it, and several are deleted or forwarded ("Переслать") at once, and
-// "печатает..." shows while the peer types (typing.js). A
+// "печатает..." shows while the peer types (typing.js). A message is
+// answered ("Ответить") and reacted to, as on VK (replies.js). A
 // message taken back stays as "Сообщение удалено". With ?msg=<id> the
 // dialog opens around that message, as a search leads to it. What the
 // messages say is sealed for the two people (e2ee.js): the page opens it
@@ -24,6 +25,7 @@ import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, phot
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
+import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
 
@@ -64,6 +66,8 @@ const shown = new Map();
 // The messages selected by a click, by ID, and the one being edited.
 const selected = new Set();
 let editing = null;
+// replies runs "Ответить" once the form is there.
+let replies = null;
 
 function messageNode(m) {
   const author = m.out ? me : peer;
@@ -92,10 +96,21 @@ function messageNode(m) {
         : text && textOf(text, node),
       ...attachedNodes(shownMessage),
       forwardedNode(shownMessage, (carried) => textOf(carried, node)),
+      ...(shownMessage.deleted ? [] : reactionNodes(shownMessage, me.id, node.picking, react)),
     ].filter(Boolean));
+    if (shownMessage.replyTo && !shownMessage.deleted) content.prepend(quoteNode(shownMessage.replyTo, quotedText(shownMessage), goTo));
     date.replaceChildren(...[
       formatPostDate(shownMessage.createdAt),
       shownMessage.editedAt && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
+      replies && !shownMessage.deleted && !shownMessage.unreadable && el('a', { className: 'im-message-action', textContent: 'Ответить', onclick: () => answer(shownMessage) }),
+      !shownMessage.deleted && el('a', {
+        className: 'im-message-action',
+        textContent: 'Реакция',
+        onclick: () => {
+          node.picking = !node.picking;
+          node.render();
+        },
+      }),
       canEdit(shownMessage) && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(shownMessage) }),
       !shownMessage.deleted && !shownMessage.unreadable && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => forward([shownMessage]) }),
       el('a', { className: 'im-message-action', textContent: 'Удалить', onclick: () => confirmDelete([shownMessage]) }),
@@ -137,6 +152,35 @@ function textOf(text, node) {
 
   return el('div', {}, body, more);
 }
+
+// quotedText is the words of the message m answers: as it says now when
+// it is on the page, otherwise as its sender quoted it, sealed.
+function quotedText(m) {
+  const original = shown.get(m.replyTo.id)?.message;
+  return original && !original.unreadable && !original.deleted ? original.text : m.quoted;
+}
+
+// goTo shows a message of the dialog: where it stands when it is loaded,
+// otherwise the dialog opens around it.
+function goTo(id) {
+  const node = shown.get(id);
+  if (!node) {
+    location.assign('/im/' + encodeURIComponent(nickname) + '?msg=' + encodeURIComponent(id));
+    return;
+  }
+
+  for (const other of list.querySelectorAll('.im-message.found')) other.classList.remove('found');
+  node.classList.add('found');
+  node.scrollIntoView({ block: 'center' });
+}
+
+// answer is "Ответить": the next message sent answers m.
+function answer(m) {
+  cancelEdit();
+  replies.start(m, m.out ? me : peer, m.text);
+}
+
+const react = (m, reaction) => reactWith({ shown, userID: me.id, put: api.reactToMessage, error: $('error') })(m, reaction);
 
 // page is a page of the dialog with what its messages say opened.
 async function page(at = {}) {
@@ -252,6 +296,7 @@ function drop(id) {
   shown.delete(id);
   if (selected.delete(id)) showSelection();
   if (editing?.id === id) cancelEdit();
+  if (replies?.replyingTo()?.id === id) replies.cancel();
   $('empty').hidden = shown.size > 0;
 }
 
@@ -261,6 +306,7 @@ function drop(id) {
 function startEdit(m) {
   const text = $('text');
 
+  replies.cancel();
   editing = m;
   text.value = m.text;
   autosize(text);
@@ -296,6 +342,7 @@ function edited(m) {
   node.message = { ...node.message, ...m, read: node.message.read };
   node.render();
   if (editing?.id === m.id && m.deleted) cancelEdit();
+  if (replies?.replyingTo()?.id === m.id && m.deleted) replies.cancel();
 }
 
 // add puts messages at the end (newer) or the start (older), skipping
@@ -541,10 +588,11 @@ async function send(event) {
   button.disabled = true;
 
   try {
-    const m = await sendSealed(me.id, nickname, text.value, { photos: attachments.ids(), documents: documents.ids() });
+    const m = await sendSealed(me.id, nickname, text.value, { photos: attachments.ids(), documents: documents.ids(), replyTo: replies.replyingTo() });
 
     text.value = '';
     autosize(text);
+    replies.cancel();
     typingWatch.sent();
     attachments.clear();
     documents.clear();
@@ -611,8 +659,14 @@ async function setUpInput(canWrite) {
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   $('form').addEventListener('submit', send);
   $('editing-cancel').addEventListener('click', cancelEdit);
+  replies = replyBar();
+  // The messages shown already get "Ответить".
+  for (const node of shown.values()) node.render();
   $('text').addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') cancelEdit();
+    if (event.key === 'Escape') {
+      cancelEdit();
+      replies.cancel();
+    }
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       $('form').requestSubmit();

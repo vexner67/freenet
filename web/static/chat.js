@@ -12,6 +12,8 @@
 // a search leads to it. While others type, "печатает..." shows under the
 // messages (typing.js). Anyone in the chat pins a message above it
 // ("Закрепить", as VK: one at a time) and sets its photo, in "О чате".
+// A message is answered ("Ответить") and reacted to, as on VK
+// (replies.js).
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
@@ -25,6 +27,7 @@ import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle,
 import { $, avatarURL, chatPhotoURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
+import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
 
@@ -56,6 +59,8 @@ let documents;
 // typingWatch tells the others while the user types.
 let typingWatch;
 let editing = null;
+// replies runs "Ответить" once the form is there.
+let replies = null;
 // What the message said when its edit began: saving names it, so an edit
 // made in another window meanwhile is not overwritten.
 let editingBase = '';
@@ -98,13 +103,24 @@ function messageNode(m) {
 
     node.classList.toggle('deleted', now.deleted);
     content.replaceChildren(...[
+      !now.deleted && now.replyTo && quoteNode(now.replyTo, now.replyTo.text, goTo),
       now.deleted ? el('div', { className: 'im-message-text', textContent: 'Сообщение удалено' }) : now.text && textOf(now.text, node),
       ...attachedNodes(now),
       forwardedNode(now, (carried) => textOf(carried, node)),
+      ...(now.deleted ? [] : reactionNodes(now, me.id, node.picking, react)),
     ].filter(Boolean));
     date.replaceChildren(...[
       formatPostDate(now.createdAt),
       now.editedAt && !now.deleted && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
+      replies && !now.deleted && active && el('a', { className: 'im-message-action', textContent: 'Ответить', onclick: () => answer(now) }),
+      !now.deleted && active && el('a', {
+        className: 'im-message-action',
+        textContent: 'Реакция',
+        onclick: () => {
+          node.picking = !node.picking;
+          node.render();
+        },
+      }),
       mine && !now.sticker && now.editableUntil && new Date(now.editableUntil) > new Date()
         && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(now) }),
       !now.deleted && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => forward([now]) }),
@@ -131,6 +147,14 @@ function messageNode(m) {
 
   return node;
 }
+
+// answer is "Ответить": the next message sent answers m.
+function answer(m) {
+  cancelEdit();
+  replies.start(m, m.author, m.text);
+}
+
+const react = (m, reaction) => reactWith({ shown, userID: me.id, put: api.reactToChatMessage, error: $('error') })(m, reaction);
 
 // CUT_LENGTH is how much of a long text a chat carries; the message says
 // only that some text of it is cut (textCut), not which.
@@ -243,6 +267,7 @@ async function startEdit(m) {
     return;
   }
 
+  replies.cancel();
   editing = m;
   editingBase = m.text;
   text.value = m.text;
@@ -279,6 +304,7 @@ function edited(m) {
   node.message = { ...node.message, textCut: false, ...m, unread: node.message.unread };
   node.render();
   if (editing?.id === m.id && m.deleted) cancelEdit();
+  if (replies?.replyingTo()?.id === m.id && m.deleted) replies.cancel();
   // The pinned message shows what it says now, or goes when taken back.
   if (chat.pinned?.id === m.id) refresh();
 }
@@ -484,10 +510,11 @@ async function send(event) {
       edited(await api.editChatMessage(editing.id, text.value, { ...photoChanges(editing.photos, attachments.ids()), base: editingBase }));
       cancelEdit();
     } else {
-      const m = await api.sendChatMessage(chatID, text.value, attachments.ids(), '', [], '', documents.ids());
+      const m = await api.sendChatMessage(chatID, text.value, attachments.ids(), '', [], '', documents.ids(), replies.replyingTo()?.id ?? '');
 
       text.value = '';
       autosize(text);
+      replies.cancel();
       typingWatch.sent();
       attachments.clear();
       documents.clear();
@@ -717,8 +744,14 @@ function setUpInput() {
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   $('form').addEventListener('submit', send);
   $('editing-cancel').addEventListener('click', cancelEdit);
+  replies = replyBar();
+  // The messages shown already get "Ответить".
+  for (const node of shown.values()) node.render?.();
   $('text').addEventListener('keydown', (event) => {
-    if (event.key === 'Escape') cancelEdit();
+    if (event.key === 'Escape') {
+      cancelEdit();
+      replies.cancel();
+    }
     if (event.key === 'Enter' && !event.shiftKey && !event.isComposing) {
       event.preventDefault();
       $('form').requestSubmit();

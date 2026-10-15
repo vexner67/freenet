@@ -1278,6 +1278,8 @@ const errorTexts = {
   'invalid encrypted message': 'Не удалось зашифровать сообщение.',
   'encrypted message is too long': 'Сообщение слишком длинное.',
   'forwarded message not found': 'Сообщение не удалось переслать: его уже нет.',
+  'replied message not found': 'Сообщение, на которое вы отвечаете, уже недоступно.',
+  'invalid reaction': 'Такой реакции нет.',
   'a message forwards at most 20 messages': 'За один раз можно переслать не больше 20 сообщений.',
   'search query is empty': 'Введите, что искать.',
   'the comments are closed': 'Комментарии к этой записи закрыты.',
@@ -1451,6 +1453,56 @@ export function messagePreview(m) {
   if (m.forwardedCount) return forwardedCount(m.forwardedCount);
 
   return '';
+}
+
+// Answers ("Ответить", as on VK): over its words an answer shows who
+// wrote the message it answers and, in one line, its beginning. A dialog's
+// answer carries those words sealed itself (e2ee.js): the server cannot
+// quote them.
+export const QUOTE_LENGTH = 200;
+
+export function quoteSnippet(text) {
+  const line = text.replace(/\s+/g, ' ').trim();
+  const chars = [...line];
+  return chars.length <= QUOTE_LENGTH ? line : chars.slice(0, QUOTE_LENGTH).join('').trimEnd() + '…';
+}
+
+// quoteText is what the line says of q, the message answered; text is
+// its words as the page knows them.
+export function quoteText(q, text = q.text) {
+  if (!q.author) return 'Сообщение недоступно';
+
+  return messagePreview({
+    deleted: q.deleted, sticker: q.sticker, text: text ? quoteSnippet(text) : '', photos: q.photoCount ? [q.id] : [],
+    albumPhoto: q.albumPhoto, post: q.post, documentCount: q.documentCount, forwardedCount: q.forwardedCount,
+  }) || 'Сообщение';
+}
+
+// Reactions to messages, as on VK: one a person, of these.
+export const REACTIONS = [
+  { name: 'heart', emoji: '❤️', title: 'Сердечко' },
+  { name: 'like', emoji: '👍', title: 'Нравится' },
+  { name: 'laugh', emoji: '😂', title: 'Смешно' },
+  { name: 'wow', emoji: '😮', title: 'Удивительно' },
+  { name: 'sad', emoji: '😢', title: 'Грустно' },
+  { name: 'fire', emoji: '🔥', title: 'Огонь' },
+];
+
+// reactionCounts are the reactions put on a message, in the order of
+// REACTIONS: how many of each and whether one is userID's.
+export function reactionCounts(reactions = [], userID = '') {
+  return REACTIONS.map((r) => ({
+    ...r,
+    count: reactions.filter((x) => x.reaction === r.name).length,
+    mine: reactions.some((x) => x.reaction === r.name && x.userId === userID),
+  })).filter((r) => r.count > 0);
+}
+
+// reacted is reactions with userID's changed to reaction ('' takes it
+// away), as the server will have them.
+export function reacted(reactions = [], userID, reaction) {
+  const others = reactions.filter((x) => x.userId !== userID);
+  return reaction ? [...others, { userId: userID, reaction }] : others;
 }
 
 // Chats of several people ("беседы"). A chat without a title of its own

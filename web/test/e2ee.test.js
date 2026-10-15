@@ -74,7 +74,7 @@ test('a message sealed for two opens for both and no one else', async () => {
   await as('bob', () => e2ee.ensureKey('bob'));
   await as('cat', () => e2ee.ensureKey('cat'));
 
-  const payload = { t: 'привет 👋\nвторая строка', f: ['из пересланного', ''] };
+  const payload = { t: 'привет 👋\nвторая строка', f: ['из пересланного', ''], r: 'на что ответ' };
   const sealed = await e2ee.seal('ann', server.get('bob'), payload);
   const bytes = e2ee.fromBase64(sealed);
 
@@ -177,6 +177,12 @@ test('sendSealed seals for both and, when a key changed meanwhile, once more', a
   api.sendMessage = async () => { throw new ApiError(409, 'conflict', 'the encryption keys changed'); };
   await assert.rejects(e2ee.sendSealed('ann', 'bob', 'нет'), /keys changed/);
   api.sendMessage = send;
+
+  // An answer quotes the words it answers, sealed: the server cannot.
+  const answer = await e2ee.sendSealed('ann', 'bob', '', { photos: ['ph3'], replyTo: { id: 'm1', text: 'идёшь\n  завтра?' } });
+  assert.equal(sent.at(-1).replyTo, 'm1');
+  assert.equal(answer.quoted, 'идёшь завтра?');
+  assert.equal((await e2ee.open('bob', sent.at(-1).sealed)).r, 'идёшь завтра?');
 
   // Nobody can write to one with no key.
   await assert.rejects(e2ee.sendSealed('ann', 'cat', 'эй'), (e) => e === e2ee.NO_PEER_KEY);

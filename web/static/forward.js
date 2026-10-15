@@ -55,7 +55,7 @@ export function forwardedNode(m, textOf) {
 export function takenBack(m) {
   return {
     ...m, text: '', photos: [], post: '', sticker: '', repost: undefined, albumPhoto: '', sharedPhoto: undefined, forwarded: [], forwardedCount: 0, documents: [], documentCount: 0,
-    editedAt: null, deletableUntil: '', editableUntil: '', deleted: true,
+    editedAt: null, deletableUntil: '', editableUntil: '', deleted: true, reactions: [], replyTo: undefined, quoted: '',
   };
 }
 
