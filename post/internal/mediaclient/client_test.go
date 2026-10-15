@@ -22,6 +22,7 @@ type fakeAPI struct {
 	published *mediav1.PublishPhotosRequest
 	deleted   *mediav1.DeletePublishedPhotosRequest
 	copied    *mediav1.CopyPhotosRequest
+	documents *mediav1.DeleteDocumentsRequest
 	deadline  bool
 	err       error
 }
@@ -39,6 +40,11 @@ func (f *fakeAPI) DeletePublishedPhotos(_ context.Context, req *mediav1.DeletePu
 
 func (f *fakeAPI) CopyPhotos(_ context.Context, req *mediav1.CopyPhotosRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.copied = req
+	return &emptypb.Empty{}, f.err
+}
+
+func (f *fakeAPI) DeleteDocuments(_ context.Context, req *mediav1.DeleteDocumentsRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.documents = req
 	return &emptypb.Empty{}, f.err
 }
 
@@ -92,6 +98,13 @@ func TestOutboxAndDeliverer(t *testing.T) {
 	if r := api.copied; r.GetOwnerId() != owner.String() || len(r.GetCopies()) != 1 ||
 		r.GetCopies()[0].GetFromId() != want[0] || r.GetCopies()[0].GetToId() != copies[0].To.String() {
 		t.Fatalf("copied %v", r)
+	}
+
+	if err := roundTrip(t, api, func(o *Outbox) error { return o.DeleteDocuments(ctx, owner, photos) }); err != nil {
+		t.Fatalf("deliver delete documents: %v", err)
+	}
+	if r := api.documents; r.GetOwnerId() != owner.String() || !slices.Equal(r.GetDocumentIds(), want) {
+		t.Fatalf("deleted documents %v", r)
 	}
 }
 

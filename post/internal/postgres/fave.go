@@ -259,6 +259,7 @@ const listPostsByAuthorQuery = `
 		comments_closed,
 		nsfw,
 		polled,
+		document_ids,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE author_id = $1

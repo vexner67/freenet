@@ -115,6 +115,11 @@ const (
 	PostService_ListNoteComments_FullMethodName       = "/post.v1.PostService/ListNoteComments"
 	PostService_GetNoteComment_FullMethodName         = "/post.v1.PostService/GetNoteComment"
 	PostService_GetNoteComments_FullMethodName        = "/post.v1.PostService/GetNoteComments"
+	PostService_AddDocument_FullMethodName            = "/post.v1.PostService/AddDocument"
+	PostService_ListDocuments_FullMethodName          = "/post.v1.PostService/ListDocuments"
+	PostService_GetDocuments_FullMethodName           = "/post.v1.PostService/GetDocuments"
+	PostService_RenameDocument_FullMethodName         = "/post.v1.PostService/RenameDocument"
+	PostService_DeleteDocument_FullMethodName         = "/post.v1.PostService/DeleteDocument"
 	PostService_PurgeUser_FullMethodName              = "/post.v1.PostService/PurgeUser"
 	PostService_HoldUserReactions_FullMethodName      = "/post.v1.PostService/HoldUserReactions"
 	PostService_ReleaseUserReactions_FullMethodName   = "/post.v1.PostService/ReleaseUserReactions"
@@ -378,6 +383,19 @@ type PostServiceClient interface {
 	// Public: the comments with these IDs that exist, in no particular
 	// order, for notifications.
 	GetNoteComments(ctx context.Context, in *GetNoteCommentsRequest, opts ...grpc.CallOption) (*GetNoteCommentsResponse, error)
+	// Documents ("Мои Документы" of openvk): files of a person whose bytes
+	// the media service keeps under the same ID; posts and messages attach
+	// them. Only the owner lists, renames and deletes them.
+	AddDocument(ctx context.Context, in *AddDocumentRequest, opts ...grpc.CallOption) (*AddDocumentResponse, error)
+	// The caller's documents, newest first.
+	ListDocuments(ctx context.Context, in *ListDocumentsRequest, opts ...grpc.CallOption) (*ListDocumentsResponse, error)
+	// Public: the documents with these IDs that exist, in no particular
+	// order, for what attaches them.
+	GetDocuments(ctx context.Context, in *GetDocumentsRequest, opts ...grpc.CallOption) (*GetDocumentsResponse, error)
+	RenameDocument(ctx context.Context, in *RenameDocumentRequest, opts ...grpc.CallOption) (*RenameDocumentResponse, error)
+	// The media service deletes the bytes after; what attached the
+	// document loses it.
+	DeleteDocument(ctx context.Context, in *DeleteDocumentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -1371,6 +1389,56 @@ func (c *postServiceClient) GetNoteComments(ctx context.Context, in *GetNoteComm
 	return out, nil
 }
 
+func (c *postServiceClient) AddDocument(ctx context.Context, in *AddDocumentRequest, opts ...grpc.CallOption) (*AddDocumentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(AddDocumentResponse)
+	err := c.cc.Invoke(ctx, PostService_AddDocument_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListDocuments(ctx context.Context, in *ListDocumentsRequest, opts ...grpc.CallOption) (*ListDocumentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListDocumentsResponse)
+	err := c.cc.Invoke(ctx, PostService_ListDocuments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) GetDocuments(ctx context.Context, in *GetDocumentsRequest, opts ...grpc.CallOption) (*GetDocumentsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDocumentsResponse)
+	err := c.cc.Invoke(ctx, PostService_GetDocuments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) RenameDocument(ctx context.Context, in *RenameDocumentRequest, opts ...grpc.CallOption) (*RenameDocumentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(RenameDocumentResponse)
+	err := c.cc.Invoke(ctx, PostService_RenameDocument_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteDocument(ctx context.Context, in *DeleteDocumentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeleteDocument_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1704,6 +1772,19 @@ type PostServiceServer interface {
 	// Public: the comments with these IDs that exist, in no particular
 	// order, for notifications.
 	GetNoteComments(context.Context, *GetNoteCommentsRequest) (*GetNoteCommentsResponse, error)
+	// Documents ("Мои Документы" of openvk): files of a person whose bytes
+	// the media service keeps under the same ID; posts and messages attach
+	// them. Only the owner lists, renames and deletes them.
+	AddDocument(context.Context, *AddDocumentRequest) (*AddDocumentResponse, error)
+	// The caller's documents, newest first.
+	ListDocuments(context.Context, *ListDocumentsRequest) (*ListDocumentsResponse, error)
+	// Public: the documents with these IDs that exist, in no particular
+	// order, for what attaches them.
+	GetDocuments(context.Context, *GetDocumentsRequest) (*GetDocumentsResponse, error)
+	RenameDocument(context.Context, *RenameDocumentRequest) (*RenameDocumentResponse, error)
+	// The media service deletes the bytes after; what attached the
+	// document loses it.
+	DeleteDocument(context.Context, *DeleteDocumentRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
@@ -2031,6 +2112,21 @@ func (UnimplementedPostServiceServer) GetNoteComment(context.Context, *GetNoteCo
 }
 func (UnimplementedPostServiceServer) GetNoteComments(context.Context, *GetNoteCommentsRequest) (*GetNoteCommentsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetNoteComments not implemented")
+}
+func (UnimplementedPostServiceServer) AddDocument(context.Context, *AddDocumentRequest) (*AddDocumentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method AddDocument not implemented")
+}
+func (UnimplementedPostServiceServer) ListDocuments(context.Context, *ListDocumentsRequest) (*ListDocumentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListDocuments not implemented")
+}
+func (UnimplementedPostServiceServer) GetDocuments(context.Context, *GetDocumentsRequest) (*GetDocumentsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDocuments not implemented")
+}
+func (UnimplementedPostServiceServer) RenameDocument(context.Context, *RenameDocumentRequest) (*RenameDocumentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method RenameDocument not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteDocument(context.Context, *DeleteDocumentRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteDocument not implemented")
 }
 func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -3787,6 +3883,96 @@ func _PostService_GetNoteComments_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_AddDocument_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AddDocumentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).AddDocument(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_AddDocument_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).AddDocument(ctx, req.(*AddDocumentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListDocuments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListDocumentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListDocuments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListDocuments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListDocuments(ctx, req.(*ListDocumentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_GetDocuments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDocumentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).GetDocuments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_GetDocuments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).GetDocuments(ctx, req.(*GetDocumentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_RenameDocument_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(RenameDocumentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).RenameDocument(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_RenameDocument_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).RenameDocument(ctx, req.(*RenameDocumentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteDocument_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDocumentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteDocument(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteDocument_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteDocument(ctx, req.(*DeleteDocumentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -4317,6 +4503,26 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "GetNoteComments",
 			Handler:    _PostService_GetNoteComments_Handler,
+		},
+		{
+			MethodName: "AddDocument",
+			Handler:    _PostService_AddDocument_Handler,
+		},
+		{
+			MethodName: "ListDocuments",
+			Handler:    _PostService_ListDocuments_Handler,
+		},
+		{
+			MethodName: "GetDocuments",
+			Handler:    _PostService_GetDocuments_Handler,
+		},
+		{
+			MethodName: "RenameDocument",
+			Handler:    _PostService_RenameDocument_Handler,
+		},
+		{
+			MethodName: "DeleteDocument",
+			Handler:    _PostService_DeleteDocument_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

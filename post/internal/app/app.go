@@ -189,6 +189,7 @@ func (a *App) build(cfg config.Config) error {
 			Notes: service.NewNoteService(service.NoteDeps{
 				Notes: repos.notes, Comments: repos.noteComments, Tx: repos.tx, Notifier: notifier, Pages: repos.pages,
 			}),
+			Documents: service.NewDocumentService(repos.documents, repos.tx, photos),
 			Faves: service.NewFaveService(service.FaveDeps{
 				PostLikes: repos.likes, CommentLikes: repos.commentLikes, PhotoLikes: repos.photoLikes,
 				Posts: repos.posts, Comments: repos.comments, Photos: repos.albumPhotos, Albums: repos.albums, Walls: repos.sources,
@@ -197,7 +198,7 @@ func (a *App) build(cfg config.Config) error {
 				Posts: repos.posts, Likes: repos.likes, CommentLikes: repos.commentLikes, Comments: repos.comments, Suggestions: repos.suggestions,
 				Votes:  repos.polls,
 				Topics: repos.topics, Albums: repos.albums, Notes: repos.notes, Tx: repos.tx, Notifier: notifier, Photos: photos,
-				Held: repos.held, Sources: repos.sources, Postponed: repos.postponed,
+				Held: repos.held, Sources: repos.sources, Postponed: repos.postponed, Documents: repos.documents,
 			}),
 			Holds:   service.NewHoldService(repos.tx, repos.held...),
 			Sources: service.NewSourceService(repos.sources),
@@ -276,6 +277,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		postv1.PostService_CreateNote_FullMethodName:        cfg.PostLimits,
 		postv1.PostService_EditNote_FullMethodName:          cfg.EditLimits,
 		postv1.PostService_CreateNoteComment_FullMethodName: cfg.CommentLimits,
+		// A document is added after every upload, which media counts too.
+		postv1.PostService_AddDocument_FullMethodName:    cfg.PostLimits,
+		postv1.PostService_RenameDocument_FullMethodName: cfg.EditLimits,
 	}
 }
 
@@ -341,9 +345,16 @@ func (a *App) newModerators(cfg config.Config) (service.SuggestionModerators, er
 	return clubclient.New(clubv1.NewClubServiceClient(conn), cfg.NotifyTimeout), nil
 }
 
+// mediaKeeper records what media has to do with the photos of posts and
+// the documents of people.
+type mediaKeeper interface {
+	service.PhotoKeeper
+	service.DocumentKeeper
+}
+
 // newPhotoKeeper records in the outbox what media has to do with the
-// photos of posts and sets up the relay that tells it.
-func (a *App) newPhotoKeeper(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (service.PhotoKeeper, error) {
+// photos of posts and the documents and sets up the relay that tells it.
+func (a *App) newPhotoKeeper(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (mediaKeeper, error) {
 	if cfg.MediaServiceAddr == "" {
 		a.logger.Warn("MEDIA_SERVICE_ADDR is not set: media deletes the photos of posts as never published, those of deleted posts stay")
 		return mediaclient.Nop{}, nil
@@ -445,6 +456,10 @@ type repositories struct {
 		service.NoteRepository
 		service.NoteEraser
 	}
+	documents interface {
+		service.DocumentRepository
+		service.DocumentEraser
+	}
 	// held keep the likes and votes of deleted pages aside.
 	held []service.ReactionHolder
 	// pages knows the deleted pages, for what is read by its ID.
@@ -492,7 +507,8 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			photoLikes:    albums.PhotoLikes(),
 			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 			notes: notes, noteComments: notes.Comments(),
-			held: []service.ReactionHolder{store.Holds(), topics, albums, notes},
+			documents: inmem.NewDocumentRepository(),
+			held:      []service.ReactionHolder{store.Holds(), topics, albums, notes},
 			// Every store is told of a deleted page; one answers for all.
 			pages:   store.Holds(),
 			sources: store.Sources(),
@@ -546,9 +562,10 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		photoLikes:    albums.PhotoLikes(),
 		photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 		notes: notes, noteComments: notes.Comments(),
-		held:    []service.ReactionHolder{held},
-		pages:   held,
-		sources: postgres.NewSourceRepository(a.pool),
+		documents: postgres.NewDocumentRepository(a.pool),
+		held:      []service.ReactionHolder{held},
+		pages:     held,
+		sources:   postgres.NewSourceRepository(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)

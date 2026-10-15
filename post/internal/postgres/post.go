@@ -49,9 +49,10 @@ const savePostQuery = `
 		avatar_update,
 		shared_photo_id,
 		nsfw,
-		polled
+		polled,
+		document_ids
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -90,7 +91,7 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	}
 
 	if content.RepostOf() == uuid.Nil {
-		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, append(args, p.NSFW(), content.Polled())...); err != nil {
+		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, append(args, p.NSFW(), content.Polled(), documentIDs(content.Documents()))...); err != nil {
 			return errs.Wrap("r.conn.Exec", err)
 		}
 
@@ -132,6 +133,7 @@ const getPostQuery = `
 		comments_closed,
 		nsfw,
 		polled,
+		document_ids,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = $1
@@ -171,6 +173,7 @@ const getPostsQuery = `
 		comments_closed,
 		nsfw,
 		polled,
+		document_ids,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = ANY($1)
@@ -303,6 +306,7 @@ const getPinnedPostQuery = `
 		comments_closed,
 		nsfw,
 		polled,
+		document_ids,
 		true AS pinned
 	FROM posts
 	WHERE id = (SELECT post_id FROM pinned_posts WHERE wall_id = $1)
@@ -342,6 +346,7 @@ const postsByWallSelect = `
 		comments_closed,
 		nsfw,
 		polled,
+		document_ids,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE wall_id = $1
@@ -458,6 +463,7 @@ const listFeedQuery = `
 		comments_closed,
 		nsfw,
 		polled,
+		document_ids,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE (
@@ -510,6 +516,7 @@ const listGlobalFeedQuery = `
 		comments_closed,
 		nsfw,
 		polled,
+		document_ids,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id < $1
@@ -573,6 +580,7 @@ const listRepostsQuery = `
 		comments_closed,
 		nsfw,
 		polled,
+		document_ids,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE repost_of = $1
@@ -762,6 +770,16 @@ func (r *PostRepository) switchPost(ctx context.Context, query string, id uuid.U
 	return nil
 }
 
+// documentIDs is documents for the document_ids column, which wants an
+// empty array rather than NULL.
+func documentIDs(documents post.Documents) []uuid.UUID {
+	if documents == nil {
+		return []uuid.UUID{}
+	}
+
+	return documents
+}
+
 // photoIDs is photos for the photo_ids column: pgx writes a nil slice as
 // NULL, the column wants an empty array.
 func photoIDs(photos post.Photos) []uuid.UUID {
@@ -801,11 +819,12 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 		editedAt *time.Time
 		photo    *uuid.UUID
 		polled   bool
+		docs     []uuid.UUID
 	)
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
 		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested, &s.AvatarUpdate,
-		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &polled, &s.Pinned)
+		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &polled, &docs, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -826,6 +845,9 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	}
 	if polled {
 		s.Content = s.Content.WithPoll()
+	}
+	if len(docs) > 0 {
+		s.Content = s.Content.WithDocuments(post.Documents(docs))
 	}
 	s.CreatedAt = s.CreatedAt.UTC()
 	if editedAt != nil {
@@ -865,6 +887,7 @@ const deletePostsByUserQuery = `
 			comments_closed,
 			nsfw,
 			polled,
+			document_ids,
 			EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	), uncounted AS (
 		UPDATE posts p
@@ -900,6 +923,7 @@ const deletePostsByUserQuery = `
 		comments_closed,
 		nsfw,
 		polled,
+		document_ids,
 		pinned
 	FROM deleted
 `

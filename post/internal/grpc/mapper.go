@@ -18,16 +18,21 @@ func fromProtoContent(req *postv1.CreatePostRequest) (post.Content, *post.PollDr
 		return post.Content{}, nil, err
 	}
 
+	documents, err := fromProtoDocuments(req.GetDocumentIds())
+	if err != nil {
+		return post.Content{}, nil, err
+	}
+
 	if req.GetPoll() != nil {
 		poll, err := fromProtoPollDraft(req.GetPoll())
 		if err != nil {
 			return post.Content{}, nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		return post.NewPolled(text, photos), &poll, nil
+		return post.NewPolled(text, photos).WithDocuments(documents), &poll, nil
 	}
 
-	content, err := post.NewContent(text, photos)
+	content, err := post.NewDocumented(text, photos, documents)
 	if err != nil {
 		return post.Content{}, nil, status.Error(codes.InvalidArgument, err.Error())
 	}
@@ -205,6 +210,7 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 		CommentsClosed: p.CommentsClosed(),
 		Nsfw:           p.NSFW(),
 		Polled:         p.Content().Polled(),
+		DocumentIds:    idStrings(p.Content().Documents()),
 	}
 
 	if !p.EditedAt().IsZero() {

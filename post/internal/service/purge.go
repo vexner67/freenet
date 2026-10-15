@@ -57,6 +57,12 @@ type NoteEraser interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 }
 
+// DocumentEraser deletes the documents a user keeps, whose bytes media
+// erases with the rest of the user.
+type DocumentEraser interface {
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+}
+
 // PurgeService erases what post keeps of a user whose page was deleted for
 // good.
 type PurgeService struct {
@@ -70,6 +76,7 @@ type PurgeService struct {
 	topics       TopicEraser
 	albums       AlbumEraser
 	notes        NoteEraser
+	documents    DocumentEraser
 	held         []ReactionHolder
 	sources      SourceRepository
 	tx           TxManager
@@ -90,6 +97,8 @@ type PurgeDeps struct {
 	Topics      TopicEraser
 	Albums      AlbumEraser
 	Notes       NoteEraser
+	// Documents are the files of people; nil: none kept.
+	Documents DocumentEraser
 	// Held keep the likes and votes of a deleted page aside.
 	Held []ReactionHolder
 	// Sources are whom everybody reads in the news.
@@ -111,6 +120,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		topics:       d.Topics,
 		albums:       d.Albums,
 		notes:        d.Notes,
+		documents:    d.Documents,
 		held:         d.Held,
 		sources:      d.Sources,
 		tx:           d.Tx,
@@ -122,7 +132,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 // PurgeUser deletes, in one transaction, the user's likes and comments on
 // others' posts, their votes in polls, what they suggested and postponed, their topics and the messages they
 // wrote in topics, their albums and the photos they put in others', their
-// notes and the comments they left under others', the
+// notes and the comments they left under others', their documents, the
 // posts they wrote and those on their wall (others' on it included, as a
 // deleted post takes its comments). The notifications
 // about the deleted posts and suggestions and the photos of the posts go
@@ -190,6 +200,12 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 
 		if err = s.notes.DeleteByUser(ctx, userID); err != nil {
 			return errs.Wrap("s.notes.DeleteByUser", err)
+		}
+
+		if s.documents != nil {
+			if err = s.documents.DeleteByUser(ctx, userID); err != nil {
+				return errs.Wrap("s.documents.DeleteByUser", err)
+			}
 		}
 
 		// Others' comments on the posts about to go: their photos go too.

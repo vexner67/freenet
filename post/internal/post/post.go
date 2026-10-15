@@ -362,9 +362,10 @@ func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.
 		}
 		content, err = NewPhotoShare(p.content.sharedPhoto, text)
 	case p.content.polled:
-		content = NewPolled(text, photos)
+		content = NewPolled(text, photos).WithDocuments(p.content.documents)
 	default:
-		content, err = NewContent(text, photos)
+		// The documents stay: an edit changes the words and the photos.
+		content, err = NewDocumented(text, photos, p.content.documents)
 	}
 	if err != nil {
 		return nil, err

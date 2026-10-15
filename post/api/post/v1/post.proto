@@ -268,6 +268,20 @@ service PostService {
   // order, for notifications.
   rpc GetNoteComments(GetNoteCommentsRequest) returns (GetNoteCommentsResponse);
 
+  // Documents ("Мои Документы" of openvk): files of a person whose bytes
+  // the media service keeps under the same ID; posts and messages attach
+  // them. Only the owner lists, renames and deletes them.
+  rpc AddDocument(AddDocumentRequest) returns (AddDocumentResponse);
+  // The caller's documents, newest first.
+  rpc ListDocuments(ListDocumentsRequest) returns (ListDocumentsResponse);
+  // Public: the documents with these IDs that exist, in no particular
+  // order, for what attaches them.
+  rpc GetDocuments(GetDocumentsRequest) returns (GetDocumentsResponse);
+  rpc RenameDocument(RenameDocumentRequest) returns (RenameDocumentResponse);
+  // The media service deletes the bytes after; what attached the
+  // document loses it.
+  rpc DeleteDocument(DeleteDocumentRequest) returns (google.protobuf.Empty);
+
   // Internal, for user: the user's page was deleted and not restored in
   // time. Their posts and the posts on their wall go, with all their likes
   // and comments, and their likes and comments on others' posts. Idempotent.
@@ -357,6 +371,9 @@ message Post {
   bool text_cut = 23;
   // The post asks a poll: GetPolls gives it.
   bool polled = 24;
+  // Documents the post attaches, in the order shown; GetDocuments tells
+  // what they are, and a deleted one is gone.
+  repeated string document_ids = 25;
 }
 
 message Comment {
@@ -567,6 +584,9 @@ message CreatePostRequest {
   // The poll the post asks, if any: with it the text and the photos may
   // be none.
   PollDraft poll = 10;
+  // Documents of the author, at most 10, as the caller has checked: with
+  // them the text and the photos may be none.
+  repeated string document_ids = 11;
 }
 
 // PollDraft is a poll as its author asks it.
@@ -1727,4 +1747,63 @@ message GetNoteCommentsRequest {
 
 message GetNoteCommentsResponse {
   repeated NoteComment comments = 1;
+}
+
+// A file of "Мои Документы".
+message Document {
+  string id = 1;
+  string owner_id = 2;
+  string name = 3;
+  // The extension of the file in lower case: "pdf".
+  string ext = 4;
+  // Bytes.
+  int64 size = 5;
+  google.protobuf.Timestamp created_at = 6;
+}
+
+message AddDocumentRequest {
+  // The ID the media service gave the caller's file.
+  string id = 1;
+  // The name of the file: its extension is the format of the document.
+  string file_name = 2;
+  int64 size = 3;
+}
+
+message AddDocumentResponse {
+  Document document = 1;
+}
+
+message ListDocumentsRequest {
+  // Empty for the newest, else next_cursor of the previous page.
+  string cursor = 1;
+  int32 limit = 2;
+}
+
+message ListDocumentsResponse {
+  repeated Document documents = 1;
+  string next_cursor = 2;
+  // The caller's documents on all pages.
+  int32 total = 3;
+}
+
+message GetDocumentsRequest {
+  // At most 50.
+  repeated string ids = 1;
+}
+
+message GetDocumentsResponse {
+  repeated Document documents = 1;
+}
+
+message RenameDocumentRequest {
+  string id = 1;
+  string name = 2;
+}
+
+message RenameDocumentResponse {
+  Document document = 1;
+}
+
+message DeleteDocumentRequest {
+  string id = 1;
 }

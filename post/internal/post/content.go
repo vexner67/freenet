@@ -39,9 +39,9 @@ func NewPhotos(ids []uuid.UUID) (Photos, error) {
 	return Photos(ids), nil
 }
 
-// Content is what a post shows: text, photos, a poll, a shared post (a
-// repost) or some of them, or a shared photo of an album with text, never
-// nothing.
+// Content is what a post shows: text, photos, documents, a poll, a shared
+// post (a repost) or some of them, or a shared photo of an album with
+// text, never nothing.
 type Content struct {
 	text     Text
 	photos   Photos
@@ -51,6 +51,8 @@ type Content struct {
 	sharedPhoto uuid.UUID
 	// polled: the post asks a poll (see Poll), which is content enough.
 	polled bool
+	// documents are files of "Мои Документы" the post attaches.
+	documents Documents
 }
 
 func NewContent(text Text, photos Photos) (Content, error) {
@@ -59,6 +61,28 @@ func NewContent(text Text, photos Photos) (Content, error) {
 	}
 
 	return Content{text: text, photos: photos}, nil
+}
+
+// NewDocumented is the content of a post with documents: with them the
+// text and the photos may be none.
+func NewDocumented(text Text, photos Photos, documents Documents) (Content, error) {
+	if len(documents) == 0 {
+		return NewContent(text, photos)
+	}
+
+	return Content{text: text, photos: photos, documents: documents}, nil
+}
+
+// WithDocuments is c attaching documents, restored from storage or of a
+// post that asks a poll.
+func (c Content) WithDocuments(documents Documents) Content {
+	c.documents = documents
+	return c
+}
+
+// Documents are the documents the post attaches.
+func (c Content) Documents() Documents {
+	return c.documents
 }
 
 // NewPolled is the content of a post that asks a poll: with it the text
