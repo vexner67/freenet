@@ -40,18 +40,28 @@ type PurgeService interface {
 
 type MediaHandler struct {
 	mediav1.UnimplementedMediaServiceServer
-	avatars AvatarService
-	photos  PhotoService
-	purges  PurgeService
-	logger  *slog.Logger
+	avatars   AvatarService
+	photos    PhotoService
+	documents DocumentService
+	purges    PurgeService
+	logger    *slog.Logger
 }
 
-func NewMediaHandler(avatars AvatarService, photos PhotoService, purges PurgeService, logger *slog.Logger) *MediaHandler {
+// Services are what MediaHandler serves.
+type Services struct {
+	Avatars   AvatarService
+	Photos    PhotoService
+	Documents DocumentService
+	Purges    PurgeService
+}
+
+func NewMediaHandler(s Services, logger *slog.Logger) *MediaHandler {
 	return &MediaHandler{
-		avatars: avatars,
-		photos:  photos,
-		purges:  purges,
-		logger:  logger,
+		avatars:   s.Avatars,
+		photos:    s.Photos,
+		documents: s.Documents,
+		purges:    s.Purges,
+		logger:    logger,
 	}
 }
 
