@@ -1607,6 +1607,77 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/push/key:
+    get:
+      summary: The key browsers subscribe to pushes with
+      description: |
+        The application server key (VAPID, P-256, base64url without
+        padding) for `PushManager.subscribe`; null when the site does not
+        push. Anyone may ask.
+      responses:
+        "200":
+          description: The key
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [publicKey]
+                properties:
+                  publicKey: { type: string, nullable: true }
+
+  /api/v1/me/push:
+    put:
+      summary: Get your pushes in this browser
+      description: |
+        The browser takes the pushes of what happens to you while no page
+        of the site is open: new notifications and messages. They say who
+        did what, never the words of a message. A browser pushes to one
+        user, whoever subscribed it last; you keep your ten newest
+        browsers. The body is `PushSubscription.toJSON()` of the browser.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint, keys]
+              properties:
+                endpoint: { type: string, description: "https URL of the browser's push service" }
+                expirationTime: { type: number, nullable: true, description: "Not used" }
+                keys:
+                  type: object
+                  required: [p256dh, auth]
+                  properties:
+                    p256dh: { type: string, description: "base64url, 65 bytes" }
+                    auth: { type: string, description: "base64url, 16 bytes" }
+      responses:
+        "204": { description: Subscribed }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409":
+          description: "`push notifications are off`: the site does not push"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      summary: Stop your pushes in this browser
+      description: A browser that pushes to someone else now is left alone.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [endpoint]
+              properties:
+                endpoint: { type: string }
+      responses:
+        "204": { description: Unsubscribed }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
   /api/v1/messages/search:
     get:
       summary: Find your messages of chats by what they say

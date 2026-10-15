@@ -524,6 +524,15 @@ type CommentPage struct {
 	Total      int
 }
 
+// PushSubscription is a browser that takes pushes (Web Push): where its
+// push service takes them and the keys, base64url, as the browser gives
+// them.
+type PushSubscription struct {
+	Endpoint string
+	P256DH   string
+	Auth     string
+}
+
 // Notification kinds are "like", "comment" and "follow". PostID is set
 // for likes and comments, CommentID for comments.
 type Notification struct {

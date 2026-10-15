@@ -1141,6 +1141,11 @@ type fakeNotifications struct {
 	streamEnd error
 	mu        sync.Mutex // the event stream counts from its goroutines
 	err       error
+	// pushKey is what GetPushKey says; subscribed and unsubscribed are the
+	// browsers the last calls named.
+	pushKey      string
+	subscribed   model.PushSubscription
+	unsubscribed string
 }
 
 func (f *fakeNotifications) List(_ context.Context, token string, unread bool, cursor string, limit int) (model.NotificationPage, error) {
@@ -1203,6 +1208,26 @@ func (f *fakeNotifications) Subscribe(ctx context.Context, token string) (model.
 
 func (f *fakeNotifications) MarkRead(_ context.Context, token, id string) error {
 	f.token, f.markedUpTo = token, id
+	return f.err
+}
+
+func (f *fakeNotifications) PushKey(context.Context) (string, error) {
+	return f.pushKey, f.err
+}
+
+func (f *fakeNotifications) SubscribePush(_ context.Context, token string, s model.PushSubscription) error {
+	if token != "tok" {
+		return failure.New(failure.Unauthenticated, "invalid access token")
+	}
+	if s.Endpoint == "" {
+		return failure.New(failure.InvalidArgument, "invalid push endpoint")
+	}
+	f.subscribed = s
+	return f.err
+}
+
+func (f *fakeNotifications) UnsubscribePush(_ context.Context, token, endpoint string) error {
+	f.token, f.unsubscribed = token, endpoint
 	return f.err
 }
 
