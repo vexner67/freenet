@@ -48,6 +48,7 @@ func webDir(t *testing.T) string {
 		"note-edit.html":      "NOTE_EDIT",
 		"static/style.css":    "body{}",
 		"static/favicon.png":  "ICON",
+		"static/sw.js":        `icon: "/static/favicon.png"`,
 	}
 
 	for name, content := range files {
@@ -119,6 +120,7 @@ func TestPages(t *testing.T) {
 		{"/static/style.css", 200, "body{}", false},
 		{"/static/", 404, "", false},
 		{"/favicon.ico", 200, "ICON", false},
+		{"/sw.js", 200, `icon: "/static/c/`, false},
 		{"/api/v1/users/ann", 200, `"nickname":"ann"`, false},
 		{"/api/v1/nope", 404, `"not_found"`, false},
 		{"/healthz", 200, "ok", false},
@@ -165,6 +167,12 @@ func TestPages(t *testing.T) {
 			if other.Code != 200 || other.Body.String() != "body{}" || other.Header().Get("Cache-Control") != "no-cache" {
 				t.Fatalf("%s: %d, Cache-Control %q", path, other.Code, other.Header().Get("Cache-Control"))
 			}
+		}
+
+		// The service worker is checked every time, or it would never be
+		// replaced.
+		if worker := get("/sw.js"); worker.Header().Get("Cache-Control") != "no-cache" || !strings.Contains(worker.Header().Get("Content-Type"), "javascript") {
+			t.Fatalf("/sw.js: Cache-Control %q, Content-Type %q", worker.Header().Get("Cache-Control"), worker.Header().Get("Content-Type"))
 		}
 
 		if plain := get("/static/style.css"); plain.Header().Get("Cache-Control") != "no-cache" {

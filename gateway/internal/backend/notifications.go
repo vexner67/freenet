@@ -88,3 +88,37 @@ func (n *Notifications) Subscribe(ctx context.Context, accessToken string) (mode
 		return enumName(resp.GetChange().String(), changePrefix), nil
 	}, nil
 }
+
+// PushKey is the key browsers subscribe to pushes with; "" when pushes are
+// off.
+func (n *Notifications) PushKey(ctx context.Context) (string, error) {
+	resp, err := n.api.GetPushKey(ctx, &notificationv1.GetPushKeyRequest{})
+	if err != nil {
+		return "", errs.Wrap("n.api.GetPushKey", fromStatus(err))
+	}
+
+	return resp.GetPublicKey(), nil
+}
+
+// SubscribePush lets the browser of s take the caller's pushes.
+func (n *Notifications) SubscribePush(ctx context.Context, accessToken string, s model.PushSubscription) error {
+	_, err := n.api.SubscribePush(withToken(ctx, accessToken), &notificationv1.SubscribePushRequest{
+		Endpoint: s.Endpoint,
+		P256Dh:   s.P256DH,
+		Auth:     s.Auth,
+	})
+	if err != nil {
+		return errs.Wrap("n.api.SubscribePush", fromStatus(err))
+	}
+
+	return nil
+}
+
+// UnsubscribePush stops pushing to the caller's browser at endpoint.
+func (n *Notifications) UnsubscribePush(ctx context.Context, accessToken, endpoint string) error {
+	if _, err := n.api.UnsubscribePush(withToken(ctx, accessToken), &notificationv1.UnsubscribePushRequest{Endpoint: endpoint}); err != nil {
+		return errs.Wrap("n.api.UnsubscribePush", fromStatus(err))
+	}
+
+	return nil
+}

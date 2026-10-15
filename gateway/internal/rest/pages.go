@@ -45,6 +45,7 @@ func registerPages(mux *http.ServeMux, dir string) {
 	// Browsers ask for it whatever the pages say; without it the request
 	// would open the page of a person named so.
 	mux.Handle("GET /favicon.ico", cached(cacheRevalidate, asset(dir, "favicon.png")))
+	mux.Handle("GET /sw.js", site.worker())
 
 	mux.Handle("GET /{$}", site.page(dir, "index.html"))
 	mux.Handle("GET /edit", site.page(dir, "edit.html"))
@@ -103,6 +104,24 @@ func asset(dir, name string) http.Handler {
 
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		http.ServeFile(w, r, path)
+	})
+}
+
+// worker serves the service worker of the site (static/sw.js) at the root:
+// a worker acts on the pages under its own path, here all of them. It is
+// checked every time, as a page: a worker kept for good would never be
+// replaced.
+func (a *assets) worker() http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		file, ok := a.current()["sw.js"]
+		if !ok {
+			http.NotFound(w, r)
+			return
+		}
+
+		w.Header().Set("Cache-Control", cacheRevalidate)
+		w.Header().Set("ETag", `"`+file.version+`"`)
+		http.ServeContent(w, r, "sw.js", time.Time{}, bytes.NewReader(file.content))
 	})
 }
 

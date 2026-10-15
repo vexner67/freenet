@@ -297,6 +297,10 @@ type Notifications interface {
 	CountUnread(ctx context.Context, accessToken string) (int, error)
 	MarkRead(ctx context.Context, accessToken, id string) error
 	Subscribe(ctx context.Context, accessToken string) (model.NotificationChanges, error)
+	// PushKey is "" when pushes are off.
+	PushKey(ctx context.Context) (string, error)
+	SubscribePush(ctx context.Context, accessToken string, s model.PushSubscription) error
+	UnsubscribePush(ctx context.Context, accessToken, endpoint string) error
 }
 
 type Messages interface {
@@ -558,6 +562,9 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/notifications", a.listNotifications)
 	mux.HandleFunc("GET /api/v1/notifications/unread-count", a.countUnreadNotifications)
 	mux.HandleFunc("POST /api/v1/notifications/read", a.markNotificationsRead)
+	mux.HandleFunc("GET /api/v1/push/key", a.getPushKey)
+	mux.HandleFunc("PUT /api/v1/me/push", a.subscribePush)
+	mux.HandleFunc("DELETE /api/v1/me/push", a.unsubscribePush)
 
 	mux.HandleFunc("GET "+eventsPath, a.events)
 
