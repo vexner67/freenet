@@ -25,6 +25,8 @@ const (
 	MediaService_GetAvatar_FullMethodName             = "/media.v1.MediaService/GetAvatar"
 	MediaService_UploadClubAvatar_FullMethodName      = "/media.v1.MediaService/UploadClubAvatar"
 	MediaService_DeleteClubAvatars_FullMethodName     = "/media.v1.MediaService/DeleteClubAvatars"
+	MediaService_UploadChatAvatar_FullMethodName      = "/media.v1.MediaService/UploadChatAvatar"
+	MediaService_DeleteChatAvatars_FullMethodName     = "/media.v1.MediaService/DeleteChatAvatars"
 	MediaService_UploadClubPhoto_FullMethodName       = "/media.v1.MediaService/UploadClubPhoto"
 	MediaService_DeleteClubPhotos_FullMethodName      = "/media.v1.MediaService/DeleteClubPhotos"
 	MediaService_UploadPhoto_FullMethodName           = "/media.v1.MediaService/UploadPhoto"
@@ -56,6 +58,11 @@ type MediaServiceClient interface {
 	// filed under its ID and served by GetAvatar as a user's.
 	UploadClubAvatar(ctx context.Context, in *UploadClubAvatarRequest, opts ...grpc.CallOption) (*UploadAvatarResponse, error)
 	DeleteClubAvatars(ctx context.Context, in *DeleteClubAvatarsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for the gateway, which has checked that the caller is in
+	// the chat: the photos of a chat of several people, filed under its ID
+	// and served by GetAvatar as a user's.
+	UploadChatAvatar(ctx context.Context, in *UploadChatAvatarRequest, opts ...grpc.CallOption) (*UploadAvatarResponse, error)
+	DeleteChatAvatars(ctx context.Context, in *DeleteChatAvatarsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for the gateway, as UploadClubAvatar: photos of a community,
 	// its backdrop ("Фон страницы"), filed under its ID, kept for good at
 	// once and served by GetPhoto; DeleteClubPhotos removes those it no
@@ -155,6 +162,26 @@ func (c *mediaServiceClient) DeleteClubAvatars(ctx context.Context, in *DeleteCl
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, MediaService_DeleteClubAvatars_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) UploadChatAvatar(ctx context.Context, in *UploadChatAvatarRequest, opts ...grpc.CallOption) (*UploadAvatarResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadAvatarResponse)
+	err := c.cc.Invoke(ctx, MediaService_UploadChatAvatar_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) DeleteChatAvatars(ctx context.Context, in *DeleteChatAvatarsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MediaService_DeleteChatAvatars_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -307,6 +334,11 @@ type MediaServiceServer interface {
 	// filed under its ID and served by GetAvatar as a user's.
 	UploadClubAvatar(context.Context, *UploadClubAvatarRequest) (*UploadAvatarResponse, error)
 	DeleteClubAvatars(context.Context, *DeleteClubAvatarsRequest) (*emptypb.Empty, error)
+	// Internal, for the gateway, which has checked that the caller is in
+	// the chat: the photos of a chat of several people, filed under its ID
+	// and served by GetAvatar as a user's.
+	UploadChatAvatar(context.Context, *UploadChatAvatarRequest) (*UploadAvatarResponse, error)
+	DeleteChatAvatars(context.Context, *DeleteChatAvatarsRequest) (*emptypb.Empty, error)
 	// Internal, for the gateway, as UploadClubAvatar: photos of a community,
 	// its backdrop ("Фон страницы"), filed under its ID, kept for good at
 	// once and served by GetPhoto; DeleteClubPhotos removes those it no
@@ -376,6 +408,12 @@ func (UnimplementedMediaServiceServer) UploadClubAvatar(context.Context, *Upload
 }
 func (UnimplementedMediaServiceServer) DeleteClubAvatars(context.Context, *DeleteClubAvatarsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteClubAvatars not implemented")
+}
+func (UnimplementedMediaServiceServer) UploadChatAvatar(context.Context, *UploadChatAvatarRequest) (*UploadAvatarResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UploadChatAvatar not implemented")
+}
+func (UnimplementedMediaServiceServer) DeleteChatAvatars(context.Context, *DeleteChatAvatarsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteChatAvatars not implemented")
 }
 func (UnimplementedMediaServiceServer) UploadClubPhoto(context.Context, *UploadClubPhotoRequest) (*UploadPhotoResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method UploadClubPhoto not implemented")
@@ -523,6 +561,42 @@ func _MediaService_DeleteClubAvatars_Handler(srv interface{}, ctx context.Contex
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MediaServiceServer).DeleteClubAvatars(ctx, req.(*DeleteClubAvatarsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_UploadChatAvatar_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadChatAvatarRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).UploadChatAvatar(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_UploadChatAvatar_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).UploadChatAvatar(ctx, req.(*UploadChatAvatarRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_DeleteChatAvatars_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteChatAvatarsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).DeleteChatAvatars(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_DeleteChatAvatars_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).DeleteChatAvatars(ctx, req.(*DeleteChatAvatarsRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -787,6 +861,14 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteClubAvatars",
 			Handler:    _MediaService_DeleteClubAvatars_Handler,
+		},
+		{
+			MethodName: "UploadChatAvatar",
+			Handler:    _MediaService_UploadChatAvatar_Handler,
+		},
+		{
+			MethodName: "DeleteChatAvatars",
+			Handler:    _MediaService_DeleteChatAvatars_Handler,
 		},
 		{
 			MethodName: "UploadClubPhoto",
