@@ -766,7 +766,7 @@ label.chat-person { cursor: pointer; }
 .modal-option input { margin: 0 4px 0 0; vertical-align: middle; }
 /* openvk's "Загрузка новой фотографии" (avatar.js). */
 .modal-box.avatar-dialog { width: 487px; }
-.avatar-crop { display: block; margin: 4px auto; cursor: move; touch-action: none; }
+.avatar-crop { display: block; max-width: 100%; height: auto; margin: 4px auto; cursor: move; touch-action: none; }
 /* openvk's "Граффити": a white sheet and the tools under it. */
 .modal-box.graffiti-dialog { width: 600px; max-width: calc(100vw - 32px); }
 .graffiti-canvas { display: block; width: 100%; border: 1px solid var(--line-c0cad5); cursor: crosshair; touch-action: none; }
@@ -1317,3 +1317,125 @@ a.poll-result-name { cursor: pointer; }
 .doc-picker { max-height: 360px; overflow-y: auto; }
 .doc-attached { margin-top: 6px; }
 .doc-attached .doc-item { padding: 4px; }
+
+/* Phones and narrow windows: the page takes the width of the screen, the
+   columns go one under the other, and the left menu opens from the
+   button in the header (layout.js), as on m.vk.com. The type is larger to
+   be read on a phone, and fields are 16px, or iOS zooms in on them. */
+.menu-toggle { display: none; }
+
+@media (max-width: 800px) {
+  body { font-size: 13px; -webkit-text-size-adjust: 100%; }
+  /* Whatever rule sets a field's type, smaller would zoom the page. */
+  input, select, textarea { font-size: 16px !important; }
+  .button { font-size: 13px; }
+
+  .layout { width: auto; }
+
+  .header { height: 44px; padding-left: 0; border-radius: 0; }
+  .logo { margin-right: auto; padding-left: 4px; }
+  .menu-toggle {
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 4px;
+    width: 44px;
+    padding: 0 12px;
+    cursor: pointer;
+  }
+  .menu-toggle span { display: block; height: 2px; background: var(--back-fff); border-radius: 1px; }
+  .menu-toggle:hover { background: rgba(255, 255, 255, 0.08); }
+  .header-links a { padding: 0 8px; white-space: nowrap; }
+
+  .columns { display: block; margin-top: 0; }
+  .sidebar { width: auto; }
+  .sidebar:has(> .menu) { display: none; }
+  .menu-open .sidebar:has(> .menu) { display: block; border-bottom: 1px solid var(--line-e0e0e0); }
+  .menu a { padding: 9px 12px; border-top: 1px solid var(--line-ececec); }
+  .menu .counter { margin-top: 0; }
+  .sidebar-form { padding: 10px; }
+
+  .page { width: auto; min-width: 0; }
+  .page-title { flex-wrap: wrap; gap: 2px 10px; padding: 6px 10px; border-left: 0; border-right: 0; }
+  .page-body { border-left: 0; border-right: 0; }
+  .footer a { display: inline-block; padding: 4px 0; }
+
+  /* Forms of two columns: the label over its field. */
+  .form, .form tbody, .form tr, .form th, .form td { display: block; width: auto; }
+  .form th { padding: 6px 0 2px; text-align: left; line-height: normal; }
+  .form td.control, .note-form .form td.control { width: auto; }
+  .form td.note { padding-left: 0; }
+  .actions, .settings-delete { padding-left: 0; }
+  .info th { width: 125px; padding-right: 6px; }
+
+  /* A person's page: the photo and buttons, then the name and the wall;
+     the blocks of the left column go last. */
+  .profile { flex-direction: column; }
+  .profile-left { display: contents; }
+  .profile-left > .side-block { order: 2; }
+  .profile-right { order: 1; }
+  .profile-left .avatar { width: 200px; max-width: 100%; height: auto; aspect-ratio: 1; margin: 0 auto; }
+  .profile-left .button, .profile-left .profile-link, .profile-left .follow-state, .profile-left .avatar-actions { width: 100%; }
+
+  /* A community's: its photo and links first. */
+  .club { flex-direction: column; }
+  .club-side { order: -1; width: auto; }
+  .club-side .avatar { width: 200px; max-width: 100%; height: auto; aspect-ratio: 1; margin: 0 auto; }
+  .people-grid.wide { grid-template-columns: repeat(4, 1fr); }
+
+  .tabs { flex-wrap: wrap; }
+
+  /* The small print of posts and messages, large enough for a finger. */
+  .post-date, .like-count, .im-message-date, .im-forwarded-date, .chat-action-date { font-size: 11px; }
+  .post-menu, .posts-microblog .post-menu, .posts-microblog .post-menu .post-date,
+  .im-message-action, .chat-kick, .post-comments-more { font-size: 12px; }
+  .post-menu { padding: 6px 4px; line-height: 1.8; }
+  .like svg, .post-action svg { width: 16px; height: 15px; }
+
+  /* The list of dialogs: the name and the date over the last message. */
+  .dialog { display: grid; grid-template-columns: 50px 1fr; gap: 2px 10px; }
+  .dialog-avatar { grid-row: span 2; }
+  .dialog-info { display: flex; justify-content: space-between; gap: 8px; width: auto; margin-top: 0; overflow-wrap: anywhere; }
+  .dialog-date { flex-shrink: 0; margin-top: 0; }
+
+  /* A dialog takes the height of the screen; the date and the links of a
+     message go under its text, and the form loses its photos. */
+  .messenger-messages { height: calc(100dvh - 330px); min-height: 240px; padding: 8px; }
+  .messenger-typing { padding-left: 54px; }
+  .messenger-input { padding: 8px 10px; }
+  .messenger-input .messenger-avatar { display: none; }
+  .im-message { flex-wrap: wrap; gap: 4px 8px; padding: 6px; }
+  .im-message-date { order: 3; width: 100%; padding-left: 45px; text-align: left; }
+  .im-message-action { display: inline-block; margin: 4px 0 0 14px; }
+  .im-selection, .chat-pinned { flex-wrap: wrap; gap: 4px; padding: 6px 10px; }
+
+  .list-row { flex-wrap: wrap; }
+  .list-actions { width: 100%; }
+  .album-cover img { width: 100px; height: 80px; }
+  .album-photo { width: 33.33%; }
+  .photo-page-columns { flex-direction: column; }
+  .photo-page-main, .photo-page-actions { width: auto; }
+  .photo-page-image img { max-width: 100%; }
+  .photo-page-description { padding: 5px 0; }
+  .uploaded-photo { flex-direction: column; }
+  .white-box h4 { margin: 20px 16px 0; }
+  .upload-limits { margin: 14px 16px 20px; }
+
+  /* The backdrop of a page has no room beside a page as wide as the screen. */
+  .backdrop { display: none; }
+  .backdrop-editor { width: auto; }
+
+  /* Windows: from the top, scrolled when taller than the screen. */
+  .modal { align-items: flex-start; padding: 8px; overflow-y: auto; }
+}
+
+/* A phone too narrow for the word of the logo beside the links: its mark. */
+@media (max-width: 420px) {
+  .logo { font-size: 0; }
+  .logo-mark { font-size: 18px; }
+}
+
+/* Where nothing points, what shows on pointing is always there. */
+@media (hover: none) {
+  .album-photo-delete { opacity: 1; }
+}

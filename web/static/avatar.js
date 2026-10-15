@@ -156,9 +156,13 @@ function showCropper(modal, img, { club, chat, upload }) {
 
   // Dragging inside the square moves it, the corner handle resizes it.
   let drag = null;
+  // shown is how many pixels of the canvas a pixel of the page is: a
+  // phone shows the canvas smaller than it is drawn.
+  const shown = () => view.width / (view.clientWidth || view.width);
+  const pictureAt = (event) => ({ x: (event.offsetX * shown()) / scale, y: (event.offsetY * shown()) / scale });
   view.addEventListener('pointerdown', (event) => {
-    const at = { x: event.offsetX / scale, y: event.offsetY / scale };
-    const handle = HANDLE / scale;
+    const at = pictureAt(event);
+    const handle = (HANDLE * shown()) / scale;
     const inside = at.x >= square.x && at.x <= square.x + square.side && at.y >= square.y && at.y <= square.y + square.side;
     if (!inside) return;
 
@@ -169,8 +173,9 @@ function showCropper(modal, img, { club, chat, upload }) {
   view.addEventListener('pointermove', (event) => {
     if (!drag) return;
 
-    const dx = event.offsetX / scale - drag.from.x;
-    const dy = event.offsetY / scale - drag.from.y;
+    const at = pictureAt(event);
+    const dx = at.x - drag.from.x;
+    const dy = at.y - drag.from.y;
     const bounds = { width: picture.width, height: picture.height };
     square = drag.resizing
       ? resizedSquare(drag.start, Math.max(dx, dy), bounds, MIN_SIDE)
