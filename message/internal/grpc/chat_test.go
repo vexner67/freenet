@@ -435,3 +435,60 @@ func TestChat_ForwardShareAndSearch(t *testing.T) {
 		}
 	})
 }
+
+func TestChat_PinAndPhoto(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob, cat, dan := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+
+	created, err := s.client.CreateChat(s.as(t, ann), &messagev1.CreateChatRequest{Title: "Поход", MemberIds: []string{bob.String(), cat.String()}})
+	if err != nil {
+		t.Fatalf("CreateChat: %v", err)
+	}
+
+	chat := created.GetChat()
+
+	sent, err := s.client.SendChatMessage(s.as(t, bob), &messagev1.SendChatMessageRequest{ChatId: chat.GetId(), Text: strings.Repeat("я", 30)})
+	if err != nil {
+		t.Fatalf("SendChatMessage: %v", err)
+	}
+
+	if _, err = s.client.PinChatMessage(s.as(t, cat), &messagev1.PinChatMessageRequest{ChatId: chat.GetId(), MessageId: sent.GetMessage().GetId()}); err != nil {
+		t.Fatalf("PinChatMessage: %v", err)
+	}
+
+	got, err := s.client.GetChat(s.as(t, ann), &messagev1.GetChatRequest{ChatId: chat.GetId()})
+	if err != nil || got.GetPinned().GetId() != sent.GetMessage().GetId() || got.GetPinned().GetText() != strings.Repeat("я", 30) ||
+		got.GetChat().GetLastMessage().GetAction() != messagev1.ChatAction_CHAT_ACTION_PIN {
+		t.Fatalf("GetChat pinned = %v, %v", got, err)
+	}
+
+	if _, err = s.client.PinChatMessage(s.as(t, cat), &messagev1.PinChatMessageRequest{ChatId: chat.GetId(), MessageId: uuid.NewString()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("pinned nothing: %v", err)
+	}
+	if _, err = s.client.PinChatMessage(s.as(t, cat), &messagev1.PinChatMessageRequest{ChatId: chat.GetId(), MessageId: "x"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("pinned a bad id: %v", err)
+	}
+
+	if _, err = s.client.UnpinChatMessage(s.as(t, ann), &messagev1.UnpinChatMessageRequest{ChatId: chat.GetId()}); err != nil {
+		t.Fatalf("UnpinChatMessage: %v", err)
+	}
+
+	photo := uuid.NewString()
+	if _, err = s.client.SetChatPhoto(s.as(t, bob), &messagev1.SetChatPhotoRequest{ChatId: chat.GetId(), PhotoId: photo}); err != nil {
+		t.Fatalf("SetChatPhoto: %v", err)
+	}
+
+	got, err = s.client.GetChat(s.as(t, ann), &messagev1.GetChatRequest{ChatId: chat.GetId()})
+	if err != nil || got.GetPinned() != nil || got.GetChat().GetPhotoId() != photo || got.GetChat().GetLastMessage().GetAction() != messagev1.ChatAction_CHAT_ACTION_PHOTO {
+		t.Fatalf("GetChat with a photo = %v, %v", got, err)
+	}
+
+	if _, err = s.client.SetChatPhoto(s.as(t, bob), &messagev1.SetChatPhotoRequest{ChatId: chat.GetId()}); err != nil {
+		t.Fatalf("SetChatPhoto removing: %v", err)
+	}
+	if _, err = s.client.SetChatPhoto(s.as(t, dan), &messagev1.SetChatPhotoRequest{ChatId: chat.GetId(), PhotoId: photo}); status.Code(err) != codes.NotFound {
+		t.Fatalf("a stranger sets the photo: %v", err)
+	}
+}

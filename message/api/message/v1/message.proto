@@ -66,6 +66,14 @@ service MessageService {
   // those of ListDialogs, so the two lists merge into one.
   rpc ListChats(ListChatsRequest) returns (ListChatsResponse);
   rpc RenameChat(RenameChatRequest) returns (google.protobuf.Empty);
+  // Anyone in the chat pins a message above it, in place of what was
+  // pinned, and takes it down: something a person wrote there and has not
+  // taken back, NotFound otherwise.
+  rpc PinChatMessage(PinChatMessageRequest) returns (google.protobuf.Empty);
+  rpc UnpinChatMessage(UnpinChatMessageRequest) returns (google.protobuf.Empty);
+  // Anyone in the chat sets its photo, which the gateway has uploaded to
+  // the media service under the chat's ID; an empty photo_id removes it.
+  rpc SetChatPhoto(SetChatPhotoRequest) returns (google.protobuf.Empty);
   // Adds people while there is room (50 with the caller); who is in the
   // chat already stays, who left on their own fails with
   // FailedPrecondition "the user has left the chat".
@@ -432,6 +440,12 @@ enum ChatAction {
   CHAT_ACTION_KICK = 4;
   CHAT_ACTION_LEAVE = 5;
   CHAT_ACTION_RETURN = 6;
+  // The sender pinned a message, took it down.
+  CHAT_ACTION_PIN = 7;
+  CHAT_ACTION_UNPIN = 8;
+  // The sender set the photo of the chat, removed it.
+  CHAT_ACTION_PHOTO = 9;
+  CHAT_ACTION_PHOTO_REMOVE = 10;
 }
 
 // A chat as the caller has it.
@@ -449,6 +463,9 @@ message Chat {
   ChatMessage last_message = 7;
   // Others wrote something the caller has not read.
   bool unread = 8;
+  // The photo of the chat in the media service, filed under its ID;
+  // empty for none.
+  string photo_id = 9;
 }
 
 message ChatMember {
@@ -513,6 +530,9 @@ message GetChatResponse {
   // Who is in the chat, who joined first first; none for a caller who is
   // not in it anymore.
   repeated ChatMember members = 2;
+  // The message pinned above the chat, whole; unset when nothing is, when
+  // its sender took it back or the caller went before it was written.
+  ChatMessage pinned = 3;
 }
 
 message ListChatsRequest {
@@ -534,6 +554,21 @@ message ListChatsResponse {
 message RenameChatRequest {
   string chat_id = 1;
   string title = 2;
+}
+
+message PinChatMessageRequest {
+  string chat_id = 1;
+  string message_id = 2;
+}
+
+message UnpinChatMessageRequest {
+  string chat_id = 1;
+}
+
+message SetChatPhotoRequest {
+  string chat_id = 1;
+  // Empty removes the photo.
+  string photo_id = 2;
 }
 
 message AddChatMembersRequest {

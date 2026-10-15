@@ -91,6 +91,67 @@ func TestChat_CheckKick(t *testing.T) {
 	if renamed := chat.Renamed("Горы"); renamed.Title() != "Горы" || chat.Title() != "Поход" || renamed.ID() != chat.ID() {
 		t.Errorf("Renamed = %q, the chat itself %q", renamed.Title(), chat.Title())
 	}
+
+	photo := uuid.New()
+	if shown := chat.WithPhoto(photo); shown.PhotoID() != photo || chat.PhotoID() != uuid.Nil {
+		t.Errorf("WithPhoto = %v, the chat itself %v", shown.PhotoID(), chat.PhotoID())
+	}
+
+	if restored := message.RestoreChat(chat.WithPhoto(photo).Stored()); restored.PhotoID() != photo || restored.Title() != "Поход" || restored.OwnerID() != owner {
+		t.Errorf("RestoreChat(Stored) = %+v", restored)
+	}
+}
+
+func TestChat_Pinned(t *testing.T) {
+	t.Parallel()
+
+	now := time.Now()
+	owner := uuid.New()
+
+	chat, err := message.NewChat(owner, "Поход", now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	said, err := message.NewChatMessage(chat.ID(), owner, message.RestoreContent("идём", nil, uuid.Nil, nil), now)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	pinned, err := chat.Pinned(said)
+	if err != nil || pinned.PinnedID() != said.ID() || chat.PinnedID() != uuid.Nil {
+		t.Fatalf("Pinned = %v, %v", pinned, err)
+	}
+	if pinned.Unpinned().PinnedID() != uuid.Nil {
+		t.Fatal("Unpinned keeps the message")
+	}
+
+	other, _ := message.NewChat(owner, "", now)
+	elsewhere, _ := message.NewChatMessage(other.ID(), owner, message.RestoreContent("там", nil, uuid.Nil, nil), now)
+	action, _ := message.NewChatAction(chat.ID(), owner, message.ActionTitle, uuid.Nil, "Горы", now)
+	gone, _ := said.TakenBack(owner, now)
+
+	for name, m := range map[string]*message.ChatMessage{"of another chat": elsewhere, "an action": action, "taken back": gone} {
+		if _, err := chat.Pinned(m); !errors.Is(err, message.ErrNotFound) {
+			t.Errorf("pinned %s: %v", name, err)
+		}
+	}
+
+	active := message.Member{UserID: owner, State: message.MemberActive}
+	left := message.Member{UserID: owner, State: message.MemberLeft, SeenUpTo: uuid.Nil}
+
+	if message.PinnedFor(said, active) != said {
+		t.Error("a member is not shown the pinned message")
+	}
+	for name, got := range map[string]*message.ChatMessage{
+		"nothing pinned":        message.PinnedFor(nil, active),
+		"taken back":            message.PinnedFor(gone, active),
+		"written after leaving": message.PinnedFor(said, left),
+	} {
+		if got != nil {
+			t.Errorf("%s: shown %v", name, got)
+		}
+	}
 }
 
 func TestAdmit(t *testing.T) {
