@@ -1239,8 +1239,9 @@ type fakeMessages struct {
 	// hidden is the message deleted for the caller alone, edited
 	// "id/sealed" of the last edit.
 	hidden, edited string
-	// typingTo is whom the caller last told they type to.
-	typingTo string
+	// typingTo is whom the caller last told they type to; reacted
+	// "id/reaction" of the last reaction.
+	typingTo, reacted string
 	// addedPhotos and removedPhotos are those of the last edit;
 	// deletedMany "ids forEveryone".
 	addedPhotos, removedPhotos []string
@@ -1302,11 +1303,17 @@ func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d mode
 		})
 	}
 
-	return model.Message{
+	m := model.Message{
 		ID: "m9", SenderID: "u1", RecipientID: recipientID, Sealed: d.Sealed, PhotoIDs: d.PhotoIDs, PostID: d.PostID, Forwarded: forwarded,
 		SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker, DocumentIDs: d.DocumentIDs,
 		CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC),
-	}, f.err
+	}
+	// A reply quotes a photo of bob's.
+	if d.ReplyToID != "" {
+		m.ReplyTo = &model.Quote{ID: d.ReplyToID, SenderID: "u2", PhotoCount: 1, Found: true}
+	}
+
+	return m, f.err
 }
 
 func (f *fakeMessages) Dialogs(_ context.Context, token, cursor string, _ int) (model.DialogPage, error) {
@@ -1370,6 +1377,11 @@ func (f *fakeMessages) Edit(_ context.Context, token, id string, e model.Message
 	f.baseSealed = e.BaseSealed
 
 	return model.Message{ID: id, SenderID: "u1", RecipientID: "u2", Sealed: e.Sealed, PhotoIDs: e.AddPhotoIDs, EditedAt: albumTime, EditableUntil: albumTime}, f.err
+}
+
+func (f *fakeMessages) React(_ context.Context, token, id, reaction string) error {
+	f.token, f.reacted = token, id+"/"+reaction
+	return f.err
 }
 
 func (f *fakeMessages) SetKey(_ context.Context, token string, publicKey []byte) error {

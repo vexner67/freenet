@@ -149,7 +149,7 @@ func (c *Chats) Return(ctx context.Context, accessToken, id string) error {
 func (c *Chats) Send(ctx context.Context, accessToken, id string, d model.MessageDraft) (model.ChatMessage, error) {
 	resp, err := c.api.SendChatMessage(withToken(ctx, accessToken), &messagev1.SendChatMessageRequest{
 		ChatId: id, Text: d.Text, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID, ForwardIds: d.ForwardIDs, DocumentIds: d.DocumentIDs,
-		Sticker: d.Sticker,
+		Sticker: d.Sticker, ReplyToId: d.ReplyToID,
 	})
 	if err != nil {
 		return model.ChatMessage{}, errs.Wrap("c.api.SendChatMessage", fromStatus(err))
@@ -274,6 +274,8 @@ func toChatMessage(pm *messagev1.ChatMessage) model.ChatMessage {
 		SharedPhotoID:  pm.GetPhotoId(),
 		Forwarded:      toForwarded(pm.GetForwarded()),
 		Sticker:        pm.GetSticker(),
+		ReplyTo:        toQuote(pm.GetReplyTo()),
+		Reactions:      toReactions(pm.GetReactions()),
 	}
 
 	if pm.GetAction() != messagev1.ChatAction_CHAT_ACTION_NONE {
@@ -281,6 +283,16 @@ func toChatMessage(pm *messagev1.ChatMessage) model.ChatMessage {
 	}
 
 	return m
+}
+
+// React puts the caller's reaction on a message of the chat, or takes
+// theirs away for "".
+func (c *Chats) React(ctx context.Context, accessToken, id, reaction string) error {
+	if _, err := c.api.ReactToChatMessage(withToken(ctx, accessToken), &messagev1.ReactToChatMessageRequest{MessageId: id, Reaction: reaction}); err != nil {
+		return errs.Wrap("c.api.ReactToChatMessage", fromStatus(err))
+	}
+
+	return nil
 }
 
 // Typing tells the others in the chat that the caller is writing there.

@@ -73,6 +73,9 @@ type ChatMessage struct {
 	// Sticker is the sticker the message is, "" for none.
 	Sticker     string
 	DocumentIDs []string
+	// ReplyTo and Reactions: as a message of a dialog's.
+	ReplyTo   *Quote
+	Reactions []Reaction
 }
 
 // FoundChatMessages is one screen of messages a search of chats found,

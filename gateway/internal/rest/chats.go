@@ -109,6 +109,7 @@ func toChatMessageJSON(m model.ChatMessage, me string, people map[string]model.A
 
 		attachedJSON: toAttachedJSON(attachment{
 			PostID: m.PostID, SharedPhotoID: m.SharedPhotoID, Sticker: m.Sticker, Forwarded: m.Forwarded, DocumentIDs: m.DocumentIDs,
+			ReplyTo: m.ReplyTo, Reactions: m.Reactions,
 		}),
 	}
 
@@ -651,6 +652,29 @@ func (a *api) deleteChatMessage(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.chats.Delete(r.Context(), token, r.PathValue("id")); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// reactToChatMessage puts the caller's reaction on a message of a chat
+// or takes it away; everyone in the chat hears the message as it is now.
+func (a *api) reactToChatMessage(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	given, err := reaction(w, r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.chats.React(r.Context(), token, r.PathValue("id"), given); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

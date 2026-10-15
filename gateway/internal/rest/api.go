@@ -319,6 +319,9 @@ type Messages interface {
 	// sides, as Delete, or for the caller alone, as Hide.
 	DeleteMany(ctx context.Context, accessToken string, ids []string, forEveryone bool) error
 	Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.Message, error)
+	// React puts the caller's reaction on a message of their dialog, or
+	// takes theirs away for "".
+	React(ctx context.Context, accessToken, id, reaction string) error
 	HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error)
 	Subscribe(ctx context.Context, accessToken string) (model.MessageEvents, error)
 	// SetKey makes publicKey the one messages to and from the caller are
@@ -348,6 +351,7 @@ type Chats interface {
 	// Message is a message with its whole text.
 	Message(ctx context.Context, accessToken, id string) (model.ChatMessage, error)
 	Edit(ctx context.Context, accessToken, id string, e model.MessageEdit) (model.ChatMessage, error)
+	React(ctx context.Context, accessToken, id, reaction string) error
 	// Search finds messages in the chat or, for "", in all the caller's.
 	Search(ctx context.Context, accessToken, chatID, query, cursor string, limit int) (model.FoundChatMessages, error)
 	Delete(ctx context.Context, accessToken, id string) error
@@ -577,6 +581,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/messages/search", a.searchMessages)
 	mux.HandleFunc("PATCH /api/v1/messages/{id}", a.editMessage)
 	mux.HandleFunc("DELETE /api/v1/messages/{id}", a.deleteMessage)
+	mux.HandleFunc("PUT /api/v1/messages/{id}/reaction", a.reactToMessage)
+	mux.HandleFunc("DELETE /api/v1/messages/{id}/reaction", a.reactToMessage)
 	mux.HandleFunc("DELETE /api/v1/messages", a.deleteMessages)
 	mux.HandleFunc("GET /api/v1/me/message-key", a.getMyMessageKey)
 	mux.HandleFunc("PUT /api/v1/me/message-key", a.setMessageKey)
@@ -600,6 +606,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/chat-messages/{id}", a.getChatMessage)
 	mux.HandleFunc("PATCH /api/v1/chat-messages/{id}", a.editChatMessage)
 	mux.HandleFunc("DELETE /api/v1/chat-messages/{id}", a.deleteChatMessage)
+	mux.HandleFunc("PUT /api/v1/chat-messages/{id}/reaction", a.reactToChatMessage)
+	mux.HandleFunc("DELETE /api/v1/chat-messages/{id}/reaction", a.reactToChatMessage)
 
 	mux.HandleFunc("POST /api/v1/clubs", a.createClub)
 	mux.HandleFunc("POST /api/v1/events", a.createEvent)

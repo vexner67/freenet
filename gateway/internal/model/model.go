@@ -582,6 +582,38 @@ type Message struct {
 	DeletedAt time.Time
 	// DocumentIDs are documents of the sender it attaches.
 	DocumentIDs []string
+	// ReplyTo is what it shows of the message it answers, nil for none.
+	ReplyTo *Quote
+	// Reactions are those to it, the oldest first.
+	Reactions []Reaction
+}
+
+// Quote is what a message answering another shows of it ("Ответить").
+// Only its ID is known of one gone for good (Found is false); Text is a
+// chat's, a message of a dialog says its words sealed.
+type Quote struct {
+	ID       string
+	SenderID string
+	Text     string
+	TextCut  bool
+	// PhotoCount, ForwardedCount and DocumentCount are how many it shows.
+	PhotoCount     int
+	ForwardedCount int
+	DocumentCount  int
+	Sticker        string
+	// Post and SharedPhoto: it shares a post, a photo of an album.
+	Post        bool
+	SharedPhoto bool
+	// Deleted: it was taken back.
+	Deleted bool
+	Found   bool
+}
+
+// Reaction is one person's reaction to a message: heart, like, laugh,
+// wow, sad or fire.
+type Reaction struct {
+	UserID   string
+	Reaction string
 }
 
 // ForwardedMessage is a message as another one carries it on: a copy of
@@ -618,6 +650,9 @@ type MessageDraft struct {
 	Sticker       string
 	// DocumentIDs are documents of the caller the message attaches.
 	DocumentIDs []string
+	// ReplyToID is the message of the dialog or chat it answers, "" for
+	// none.
+	ReplyToID string
 }
 
 // MessageEdit is what an edit makes of a message: its words and, with

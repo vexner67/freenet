@@ -22,7 +22,7 @@ func NewMessages(api messagev1.MessageServiceClient) *Messages {
 func (m *Messages) Send(ctx context.Context, accessToken, recipientID string, d model.MessageDraft) (model.Message, error) {
 	resp, err := m.api.SendMessage(withToken(ctx, accessToken), &messagev1.SendMessageRequest{
 		RecipientId: recipientID, Text: d.Text, Sealed: d.Sealed, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID, DocumentIds: d.DocumentIDs,
-		ForwardIds: d.ForwardIDs, Sticker: d.Sticker,
+		ForwardIds: d.ForwardIDs, Sticker: d.Sticker, ReplyToId: d.ReplyToID,
 	})
 	if err != nil {
 		return model.Message{}, errs.Wrap("m.api.SendMessage", fromStatus(err))
@@ -150,6 +150,16 @@ func (m *Messages) Edit(ctx context.Context, accessToken, id string, e model.Mes
 	return toMessage(resp.GetMessage()), nil
 }
 
+// React puts the caller's reaction on a message of their dialog, or
+// takes theirs away for "".
+func (m *Messages) React(ctx context.Context, accessToken, id, reaction string) error {
+	if _, err := m.api.ReactToMessage(withToken(ctx, accessToken), &messagev1.ReactToMessageRequest{MessageId: id, Reaction: reaction}); err != nil {
+		return errs.Wrap("m.api.ReactToMessage", fromStatus(err))
+	}
+
+	return nil
+}
+
 // HasMessagesFrom tells whether peerID has ever written to the caller.
 func (m *Messages) HasMessagesFrom(ctx context.Context, accessToken, peerID string) (bool, error) {
 	resp, err := m.api.HasMessagesFrom(withToken(ctx, accessToken), &messagev1.HasMessagesFromRequest{PeerId: peerID})
@@ -255,8 +265,32 @@ func toForwarded(carried []*messagev1.ForwardedMessage) []model.ForwardedMessage
 	return forwarded
 }
 
+// toQuote is nil for a message that answers none.
+func toQuote(pq *messagev1.Quote) *model.Quote {
+	if pq == nil {
+		return nil
+	}
+
+	return &model.Quote{
+		ID: pq.GetId(), SenderID: pq.GetSenderId(), Text: pq.GetText(), TextCut: pq.GetTextCut(),
+		PhotoCount: int(pq.GetPhotoCount()), ForwardedCount: int(pq.GetForwardedCount()), DocumentCount: int(pq.GetDocumentCount()),
+		Sticker: pq.GetSticker(), Post: pq.GetPost(), SharedPhoto: pq.GetPhoto(), Deleted: pq.GetDeleted(), Found: pq.GetFound(),
+	}
+}
+
+func toReactions(pr []*messagev1.Reaction) []model.Reaction {
+	out := make([]model.Reaction, len(pr))
+	for i, r := range pr {
+		out[i] = model.Reaction{UserID: r.GetUserId(), Reaction: r.GetReaction()}
+	}
+
+	return out
+}
+
 func toMessage(pm *messagev1.Message) model.Message {
 	return model.Message{
+		ReplyTo:        toQuote(pm.GetReplyTo()),
+		Reactions:      toReactions(pm.GetReactions()),
 		Forwarded:      toForwarded(pm.GetForwarded()),
 		DeletedAt:      fromTimestamp(pm.GetDeletedAt()),
 		ID:             pm.GetId(),
