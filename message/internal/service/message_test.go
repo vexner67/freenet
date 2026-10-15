@@ -1164,3 +1164,25 @@ func TestMessageService_Typing(t *testing.T) {
 	default:
 	}
 }
+
+func TestSend_Pushes(t *testing.T) {
+	t.Parallel()
+
+	store := inmem.NewStore()
+	pushed := &fakePusher{}
+	svc := service.NewMessageService(service.Deps{
+		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(),
+		Events: pubsub.New[uuid.UUID, service.Event](64), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}, Pusher: pushed,
+	})
+
+	ann, bob := uuid.New(), uuid.New()
+	m := send(t, svc, ann, bob, "привет")[0]
+
+	if len(pushed.pushed) != 1 {
+		t.Fatalf("pushed %d times", len(pushed.pushed))
+	}
+
+	if p := pushed.pushed[0]; p.ID != m.ID() || p.SenderID != ann || p.ChatID != uuid.Nil || len(p.RecipientIDs) != 1 || p.RecipientIDs[0] != bob {
+		t.Fatalf("pushed %+v", p)
+	}
+}

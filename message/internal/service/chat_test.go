@@ -19,18 +19,29 @@ type chatFixture struct {
 	dialogs *service.MessageService
 	events  *pubsub.Hub[uuid.UUID, service.Event]
 	photos  *fakePhotos
+	pushed  *fakePusher
+}
+
+// fakePusher remembers what was pushed.
+type fakePusher struct {
+	pushed []service.Pushed
+}
+
+func (f *fakePusher) Push(_ context.Context, p service.Pushed) {
+	f.pushed = append(f.pushed, p)
 }
 
 func newChats() chatFixture {
 	store := inmem.NewStore()
-	f := chatFixture{events: pubsub.New[uuid.UUID, service.Event](64), photos: &fakePhotos{}}
+	f := chatFixture{events: pubsub.New[uuid.UUID, service.Event](64), photos: &fakePhotos{}, pushed: &fakePusher{}}
 	f.svc = service.NewChatService(service.ChatDeps{
 		Chats: store.Chats(), Members: store.ChatMembers(), Messages: store.ChatMessages(), DialogMessages: store.Messages(), Events: f.events, Tx: fakeTx{}, Photos: f.photos,
+		Pusher: f.pushed,
 	})
 
 	f.dialogs = service.NewMessageService(service.Deps{
 		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(),
-		Events: f.events, Tx: fakeTx{}, Photos: f.photos,
+		Events: f.events, Tx: fakeTx{}, Photos: f.photos, Pusher: f.pushed,
 	})
 
 	return f
@@ -562,5 +573,34 @@ func TestChatService_Typing(t *testing.T) {
 			t.Fatalf("%s got unexpected event %+v", name, e)
 		default:
 		}
+	}
+}
+
+func TestChatSend_Pushes(t *testing.T) {
+	t.Parallel()
+
+	f := newChats()
+	ctx := context.Background()
+	ann, bob, eve := uuid.New(), uuid.New(), uuid.New()
+	chatID := chatOf(t, f.svc, ann, bob, eve)
+
+	if err := f.svc.Leave(ctx, eve, chatID); err != nil {
+		t.Fatal(err)
+	}
+
+	m, err := f.svc.Send(ctx, ann, chatID, service.Draft{Text: "идём?"})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Creating and leaving push nothing; the message goes to bob alone:
+	// ann wrote it and eve has left.
+	if len(f.pushed.pushed) != 1 {
+		t.Fatalf("pushed %d times", len(f.pushed.pushed))
+	}
+
+	p := f.pushed.pushed[0]
+	if p.ID != m.ID() || p.SenderID != ann || p.ChatID != chatID || p.ChatTitle != "Поход" || !slices.Equal(p.RecipientIDs, []uuid.UUID{bob}) {
+		t.Fatalf("pushed %+v", p)
 	}
 }

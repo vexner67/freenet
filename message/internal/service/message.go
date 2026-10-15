@@ -65,6 +65,36 @@ type PhotoKeeper interface {
 	Copy(ctx context.Context, ownerID uuid.UUID, copies []PhotoCopy) error
 }
 
+// Pushed is a new message for the browsers of its recipients: SenderID
+// wrote message ID to RecipientIDs, in a dialog or, when ChatID is set,
+// in that chat. Who has a page of the site open hears of it live anyway.
+type Pushed struct {
+	ID           uuid.UUID
+	SenderID     uuid.UUID
+	RecipientIDs []uuid.UUID
+	ChatID       uuid.UUID
+	ChatTitle    string
+}
+
+// Pusher tells the notification service of new messages, to push them to
+// browsers. Best effort, as live events are: it does not fail the send.
+type Pusher interface {
+	Push(ctx context.Context, p Pushed)
+}
+
+// noPushes is the Pusher of services given none.
+type noPushes struct{}
+
+func (noPushes) Push(context.Context, Pushed) {}
+
+func pusherOr(p Pusher) Pusher {
+	if p == nil {
+		return noPushes{}
+	}
+
+	return p
+}
+
 // PhotoCopy: photo From is kept once more as To.
 type PhotoCopy struct {
 	From uuid.UUID
@@ -277,6 +307,7 @@ type MessageService struct {
 	events      Events
 	tx          TxManager
 	photos      PhotoKeeper
+	pusher      Pusher
 	forwards    forwarder
 	now         func() time.Time
 }
@@ -292,6 +323,8 @@ type Deps struct {
 	Events       Events
 	Tx           TxManager
 	Photos       PhotoKeeper
+	// Pusher may be nil: nobody's browsers hear of the messages.
+	Pusher Pusher
 }
 
 func NewMessageService(d Deps) *MessageService {
@@ -302,6 +335,7 @@ func NewMessageService(d Deps) *MessageService {
 		events:      d.Events,
 		tx:          d.Tx,
 		photos:      d.Photos,
+		pusher:      pusherOr(d.Pusher),
 		forwards:    forwarder{messages: d.Messages, chatMessages: d.ChatMessages, members: d.ChatMembers, dialogs: true},
 		now:         time.Now,
 	}
@@ -311,7 +345,7 @@ func NewMessageService(d Deps) *MessageService {
 // recipient exists and the photos are the sender's. What it says is
 // sealed between the keys the two have now. Media keeps the photos, and
 // those of the forwarded messages once more. Both hear of it: the
-// sender's other pages too.
+// sender's other pages too; the recipient's browsers get a push.
 func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UUID, d Draft) (*message.Message, error) {
 	forwarded, copies, err := s.forwards.forwarded(ctx, senderID, d.Forward)
 	if err != nil {
@@ -345,6 +379,7 @@ func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UU
 
 	s.events.Publish(ctx, senderID, Event{Message: m})
 	s.events.Publish(ctx, recipientID, Event{Message: m})
+	s.pusher.Push(ctx, Pushed{ID: m.ID(), SenderID: senderID, RecipientIDs: []uuid.UUID{recipientID}})
 
 	return m, nil
 }
