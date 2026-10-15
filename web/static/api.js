@@ -303,6 +303,11 @@ export const api = {
   },
   unreadNotifications: () => authorized('GET', '/api/v1/notifications/unread-count'),
   markNotificationsRead: (upTo) => authorized('POST', '/api/v1/notifications/read', { upTo }),
+  // Push notifications (push.js): the key of the server, and the
+  // subscription of this browser.
+  pushKey: () => request('GET', '/api/v1/push/key'),
+  subscribePush: (subscription) => authorized('PUT', '/api/v1/me/push', subscription),
+  unsubscribePush: (endpoint) => authorized('DELETE', '/api/v1/me/push', { endpoint }),
 
   dialogs: (cursor = '') => authorized('GET', page('/api/v1/dialogs', cursor, 0)),
   unreadDialogs: () => authorized('GET', '/api/v1/dialogs/unread-count'),

@@ -1268,6 +1268,9 @@ const errorTexts = {
   'the message was changed': 'Сообщение изменили, пока вы его редактировали. Отмените правку и начните её заново.',
   'messages are end-to-end encrypted': 'Сообщения диалогов шифруются: обновите страницу.',
   'messages of dialogs are end-to-end encrypted': 'Сообщения диалогов зашифрованы: искать в них можно только на странице диалога.',
+  'push notifications are off': 'Сайт пока не отправляет уведомления.',
+  'invalid push endpoint': 'Браузер не смог подписаться на уведомления.',
+  'invalid push keys': 'Браузер не смог подписаться на уведомления.',
   'the encryption keys changed': 'Ключ шифрования собеседника изменился. Обновите страницу и отправьте ещё раз.',
   'encrypted messages cannot be forwarded into a chat': 'Сообщения диалогов зашифрованы, их нельзя переслать в беседу.',
   'messages of chats are not encrypted': 'Сообщения бесед не шифруются: обновите страницу.',
@@ -1322,6 +1325,17 @@ export function keyStateText(state) {
     ? 'На этом устройстве старый ключ шифрования сообщений: новый создан на другом устройстве.'
     : 'На этом устройстве нет ключа шифрования сообщений: он на другом устройстве.';
 }
+
+// pushStateTexts say what the push notifications of this browser are
+// (push.js pushState).
+export const pushStateTexts = {
+  on: 'Уведомления включены.',
+  off: 'Уведомления выключены.',
+  denied: 'Уведомления запрещены в настройках браузера. Чтобы включить их, разрешите их этому сайту там.',
+  'off-server': 'Сайт пока не отправляет уведомления.',
+  unsupported: 'Этот браузер не получает уведомления.',
+  install: 'На iPhone и iPad уведомления приходят, только когда сайт добавлен на экран «Домой»: нажмите «Поделиться», затем «На экран «Домой»» и откройте сайт оттуда.',
+};
 
 export function errorText(e) {
   return errorTexts[e?.message] ?? 'Что-то пошло не так. Попробуйте позже.';
