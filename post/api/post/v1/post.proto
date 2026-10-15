@@ -81,6 +81,12 @@ service PostService {
   // ("Написанные мной записи" of openvk): not what was archived on the
   // wall of another, nor what they suggested for a community.
   rpc ListOwnPosts(ListOwnPostsRequest) returns (ListOwnPostsResponse);
+  // The posts of every wall a query finds, newest first ("Поиск
+  // записей" of openvk): one tag ("#поход") finds the posts that say it,
+  // any other text the posts that say it as a part of theirs, in any
+  // case. What "Все новости" (ListFeed with everyone) shows the caller,
+  // and nothing for an empty query.
+  rpc SearchPosts(SearchPostsRequest) returns (SearchPostsResponse);
 
   // Public: the polls of the posts that ask one ("Опрос" of openvk), at
   // most 100 posts, in no particular order; with an access token each
@@ -151,6 +157,28 @@ service PostService {
   rpc PublishPostponed(PublishPostponedRequest) returns (PublishPostponedResponse);
   // The author takes it back, or an admin deletes it, with its photos.
   rpc DeletePostponed(DeletePostponedRequest) returns (google.protobuf.Empty);
+
+  // Require an access token: stories ("истории" of VK; openvk has none),
+  // a photo with a few words a person shows for a day to those who read
+  // them. The caller of CreateStory has checked with the media service
+  // that the photo is theirs; post keeps it for good at once and deletes
+  // it with the story when the day is over.
+  rpc CreateStory(CreateStoryRequest) returns (CreateStoryResponse);
+  // The stories above the caller's news: theirs and of the people they
+  // follow, grouped by author — the caller first, then those with a story
+  // the caller has not viewed, then the rest; each one's stories the
+  // oldest first. A deleted page and a closed one keep theirs to
+  // themselves, as their walls.
+  rpc ListFeedStories(ListFeedStoriesRequest) returns (ListFeedStoriesResponse);
+  // The live stories of one person the caller sees, the oldest first.
+  rpc ListUserStories(ListUserStoriesRequest) returns (ListUserStoriesResponse);
+  // The caller viewed a story they see; once is enough. Their own is not
+  // counted.
+  rpc ViewStory(ViewStoryRequest) returns (google.protobuf.Empty);
+  // Who viewed a story, the latest first: for its author alone.
+  rpc ListStoryViewers(ListStoryViewersRequest) returns (ListStoryViewersResponse);
+  // The author deletes a story with its photo.
+  rpc DeleteStory(DeleteStoryRequest) returns (google.protobuf.Empty);
 
   // The discussions of communities ("Обсуждения" of openvk). The caller
   // of CreateTopic has checked with the club service that the author may
@@ -962,6 +990,27 @@ message ListOwnPostsRequest {
 message ListOwnPostsResponse {
   repeated Post posts = 1;
   string next_cursor = 2;
+  int32 total = 3;
+}
+
+message SearchPostsRequest {
+  // At most 100 characters.
+  string query = 1;
+  // Empty for the newest posts, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+  // As in ListFeedRequest.
+  int32 text_limit = 4;
+  // As in ListFeedRequest: the people the caller blacklisted.
+  repeated string hidden_author_ids = 5;
+}
+
+message SearchPostsResponse {
+  repeated Post posts = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // How many posts the query finds.
   int32 total = 3;
 }
 
@@ -1805,5 +1854,84 @@ message RenameDocumentResponse {
 }
 
 message DeleteDocumentRequest {
+  string id = 1;
+}
+
+// Story is a photo with a few words shown for a day.
+message Story {
+  string id = 1;
+  string author_id = 2;
+  string photo_id = 3;
+  // Up to 200 characters; may be empty.
+  string text = 4;
+  google.protobuf.Timestamp created_at = 5;
+  // A day after created_at, when it is gone.
+  google.protobuf.Timestamp expires_at = 6;
+  // The caller viewed it.
+  bool viewed = 7;
+  // The caller told it.
+  bool mine = 8;
+  // Of the caller's own: how many others viewed it.
+  int32 views = 9;
+}
+
+message CreateStoryRequest {
+  // A photo of the caller's, uploaded to the media service.
+  string photo_id = 1;
+  string text = 2;
+}
+
+message CreateStoryResponse {
+  Story story = 1;
+}
+
+message ListFeedStoriesRequest {
+  // As in ListFeedRequest: the people the caller blacklisted, at most
+  // 1000, and the sources they ignore, at most 50.
+  repeated string hidden_author_ids = 1;
+  repeated string ignored_wall_ids = 2;
+}
+
+message ListFeedStoriesResponse {
+  repeated Story stories = 1;
+}
+
+message ListUserStoriesRequest {
+  string user_id = 1;
+  // As in ListFeedRequest.
+  repeated string hidden_author_ids = 2;
+}
+
+message ListUserStoriesResponse {
+  repeated Story stories = 1;
+}
+
+message ViewStoryRequest {
+  string id = 1;
+}
+
+message ListStoryViewersRequest {
+  string id = 1;
+  // Empty for the latest viewers, else next_cursor of the previous page.
+  string cursor = 2;
+  // 1-50; anything else means 20.
+  int32 limit = 3;
+}
+
+// StoryViewer is someone who viewed a story.
+message StoryViewer {
+  string user_id = 1;
+  google.protobuf.Timestamp viewed_at = 2;
+}
+
+message ListStoryViewersResponse {
+  repeated StoryViewer viewers = 1;
+  // Empty on the last page.
+  string next_cursor = 2;
+  // How many viewed it.
+  int32 total = 3;
+}
+
+message DeleteStoryRequest {
   string id = 1;
 }

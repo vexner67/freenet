@@ -63,6 +63,12 @@ type DocumentEraser interface {
 	DeleteByUser(ctx context.Context, userID uuid.UUID) error
 }
 
+// StoryEraser deletes the stories a user told and their views of others';
+// media erases the photos with the rest of the user.
+type StoryEraser interface {
+	DeleteByUser(ctx context.Context, userID uuid.UUID) error
+}
+
 // PurgeService erases what post keeps of a user whose page was deleted for
 // good.
 type PurgeService struct {
@@ -77,6 +83,7 @@ type PurgeService struct {
 	albums       AlbumEraser
 	notes        NoteEraser
 	documents    DocumentEraser
+	stories      StoryEraser
 	held         []ReactionHolder
 	sources      SourceRepository
 	tx           TxManager
@@ -99,6 +106,8 @@ type PurgeDeps struct {
 	Notes       NoteEraser
 	// Documents are the files of people; nil: none kept.
 	Documents DocumentEraser
+	// Stories are what people show for a day; nil: none kept.
+	Stories StoryEraser
 	// Held keep the likes and votes of a deleted page aside.
 	Held []ReactionHolder
 	// Sources are whom everybody reads in the news.
@@ -121,6 +130,7 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 		albums:       d.Albums,
 		notes:        d.Notes,
 		documents:    d.Documents,
+		stories:      d.Stories,
 		held:         d.Held,
 		sources:      d.Sources,
 		tx:           d.Tx,
@@ -132,8 +142,8 @@ func NewPurgeService(d PurgeDeps) *PurgeService {
 // PurgeUser deletes, in one transaction, the user's likes and comments on
 // others' posts, their votes in polls, what they suggested and postponed, their topics and the messages they
 // wrote in topics, their albums and the photos they put in others', their
-// notes and the comments they left under others', their documents, the
-// posts they wrote and those on their wall (others' on it included, as a
+// notes and the comments they left under others', their documents, their
+// stories and their views of others', the posts they wrote and those on their wall (others' on it included, as a
 // deleted post takes its comments). The notifications
 // about the deleted posts and suggestions and the photos of the posts go
 // with them, as when a post is deleted; the user's own photos media erases itself.
@@ -205,6 +215,12 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 		if s.documents != nil {
 			if err = s.documents.DeleteByUser(ctx, userID); err != nil {
 				return errs.Wrap("s.documents.DeleteByUser", err)
+			}
+		}
+
+		if s.stories != nil {
+			if err = s.stories.DeleteByUser(ctx, userID); err != nil {
+				return errs.Wrap("s.stories.DeleteByUser", err)
 			}
 		}
 

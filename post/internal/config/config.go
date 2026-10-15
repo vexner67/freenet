@@ -67,6 +67,9 @@ type Config struct {
 	// PostponedInterval is how often the postponed posts whose time has
 	// come are published: a post comes out up to this late.
 	PostponedInterval time.Duration `env:"POSTPONED_INTERVAL" envDefault:"30s"`
+	// StoryCleanupInterval is how often the stories whose day is over are
+	// deleted with their photos; until then the lists leave them out.
+	StoryCleanupInterval time.Duration `env:"STORY_CLEANUP_INTERVAL" envDefault:"10m"`
 
 	// Access tokens are issued by the auth service; post only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
@@ -94,6 +97,10 @@ func (c Config) Validate() error {
 
 	if c.PostponedInterval <= 0 {
 		return errors.New("POSTPONED_INTERVAL must be positive")
+	}
+
+	if c.StoryCleanupInterval <= 0 {
+		return errors.New("STORY_CLEANUP_INTERVAL must be positive")
 	}
 
 	return c.TLS.Validate()

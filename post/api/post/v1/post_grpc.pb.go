@@ -46,6 +46,7 @@ const (
 	PostService_ListLikedComments_FullMethodName      = "/post.v1.PostService/ListLikedComments"
 	PostService_ListLikedAlbumPhotos_FullMethodName   = "/post.v1.PostService/ListLikedAlbumPhotos"
 	PostService_ListOwnPosts_FullMethodName           = "/post.v1.PostService/ListOwnPosts"
+	PostService_SearchPosts_FullMethodName            = "/post.v1.PostService/SearchPosts"
 	PostService_GetPolls_FullMethodName               = "/post.v1.PostService/GetPolls"
 	PostService_VotePoll_FullMethodName               = "/post.v1.PostService/VotePoll"
 	PostService_RetractPollVote_FullMethodName        = "/post.v1.PostService/RetractPollVote"
@@ -68,6 +69,12 @@ const (
 	PostService_EditPostponed_FullMethodName          = "/post.v1.PostService/EditPostponed"
 	PostService_PublishPostponed_FullMethodName       = "/post.v1.PostService/PublishPostponed"
 	PostService_DeletePostponed_FullMethodName        = "/post.v1.PostService/DeletePostponed"
+	PostService_CreateStory_FullMethodName            = "/post.v1.PostService/CreateStory"
+	PostService_ListFeedStories_FullMethodName        = "/post.v1.PostService/ListFeedStories"
+	PostService_ListUserStories_FullMethodName        = "/post.v1.PostService/ListUserStories"
+	PostService_ViewStory_FullMethodName              = "/post.v1.PostService/ViewStory"
+	PostService_ListStoryViewers_FullMethodName       = "/post.v1.PostService/ListStoryViewers"
+	PostService_DeleteStory_FullMethodName            = "/post.v1.PostService/DeleteStory"
 	PostService_CreateTopic_FullMethodName            = "/post.v1.PostService/CreateTopic"
 	PostService_GetTopic_FullMethodName               = "/post.v1.PostService/GetTopic"
 	PostService_ListTopics_FullMethodName             = "/post.v1.PostService/ListTopics"
@@ -204,6 +211,12 @@ type PostServiceClient interface {
 	// ("Написанные мной записи" of openvk): not what was archived on the
 	// wall of another, nor what they suggested for a community.
 	ListOwnPosts(ctx context.Context, in *ListOwnPostsRequest, opts ...grpc.CallOption) (*ListOwnPostsResponse, error)
+	// The posts of every wall a query finds, newest first ("Поиск
+	// записей" of openvk): one tag ("#поход") finds the posts that say it,
+	// any other text the posts that say it as a part of theirs, in any
+	// case. What "Все новости" (ListFeed with everyone) shows the caller,
+	// and nothing for an empty query.
+	SearchPosts(ctx context.Context, in *SearchPostsRequest, opts ...grpc.CallOption) (*SearchPostsResponse, error)
 	// Public: the polls of the posts that ask one ("Опрос" of openvk), at
 	// most 100 posts, in no particular order; with an access token each
 	// says what the caller chose. The poll of an archived post is given to
@@ -270,6 +283,27 @@ type PostServiceClient interface {
 	PublishPostponed(ctx context.Context, in *PublishPostponedRequest, opts ...grpc.CallOption) (*PublishPostponedResponse, error)
 	// The author takes it back, or an admin deletes it, with its photos.
 	DeletePostponed(ctx context.Context, in *DeletePostponedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token: stories ("истории" of VK; openvk has none),
+	// a photo with a few words a person shows for a day to those who read
+	// them. The caller of CreateStory has checked with the media service
+	// that the photo is theirs; post keeps it for good at once and deletes
+	// it with the story when the day is over.
+	CreateStory(ctx context.Context, in *CreateStoryRequest, opts ...grpc.CallOption) (*CreateStoryResponse, error)
+	// The stories above the caller's news: theirs and of the people they
+	// follow, grouped by author — the caller first, then those with a story
+	// the caller has not viewed, then the rest; each one's stories the
+	// oldest first. A deleted page and a closed one keep theirs to
+	// themselves, as their walls.
+	ListFeedStories(ctx context.Context, in *ListFeedStoriesRequest, opts ...grpc.CallOption) (*ListFeedStoriesResponse, error)
+	// The live stories of one person the caller sees, the oldest first.
+	ListUserStories(ctx context.Context, in *ListUserStoriesRequest, opts ...grpc.CallOption) (*ListUserStoriesResponse, error)
+	// The caller viewed a story they see; once is enough. Their own is not
+	// counted.
+	ViewStory(ctx context.Context, in *ViewStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Who viewed a story, the latest first: for its author alone.
+	ListStoryViewers(ctx context.Context, in *ListStoryViewersRequest, opts ...grpc.CallOption) (*ListStoryViewersResponse, error)
+	// The author deletes a story with its photo.
+	DeleteStory(ctx context.Context, in *DeleteStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The discussions of communities ("Обсуждения" of openvk). The caller
 	// of CreateTopic has checked with the club service that the author may
 	// start a topic there and, with from_wall, speak for the community, and
@@ -699,6 +733,16 @@ func (c *postServiceClient) ListOwnPosts(ctx context.Context, in *ListOwnPostsRe
 	return out, nil
 }
 
+func (c *postServiceClient) SearchPosts(ctx context.Context, in *SearchPostsRequest, opts ...grpc.CallOption) (*SearchPostsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(SearchPostsResponse)
+	err := c.cc.Invoke(ctx, PostService_SearchPosts_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) GetPolls(ctx context.Context, in *GetPollsRequest, opts ...grpc.CallOption) (*GetPollsResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(GetPollsResponse)
@@ -913,6 +957,66 @@ func (c *postServiceClient) DeletePostponed(ctx context.Context, in *DeletePostp
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, PostService_DeletePostponed_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) CreateStory(ctx context.Context, in *CreateStoryRequest, opts ...grpc.CallOption) (*CreateStoryResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateStoryResponse)
+	err := c.cc.Invoke(ctx, PostService_CreateStory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListFeedStories(ctx context.Context, in *ListFeedStoriesRequest, opts ...grpc.CallOption) (*ListFeedStoriesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListFeedStoriesResponse)
+	err := c.cc.Invoke(ctx, PostService_ListFeedStories_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListUserStories(ctx context.Context, in *ListUserStoriesRequest, opts ...grpc.CallOption) (*ListUserStoriesResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListUserStoriesResponse)
+	err := c.cc.Invoke(ctx, PostService_ListUserStories_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ViewStory(ctx context.Context, in *ViewStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_ViewStory_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) ListStoryViewers(ctx context.Context, in *ListStoryViewersRequest, opts ...grpc.CallOption) (*ListStoryViewersResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListStoryViewersResponse)
+	err := c.cc.Invoke(ctx, PostService_ListStoryViewers_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *postServiceClient) DeleteStory(ctx context.Context, in *DeleteStoryRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_DeleteStory_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1593,6 +1697,12 @@ type PostServiceServer interface {
 	// ("Написанные мной записи" of openvk): not what was archived on the
 	// wall of another, nor what they suggested for a community.
 	ListOwnPosts(context.Context, *ListOwnPostsRequest) (*ListOwnPostsResponse, error)
+	// The posts of every wall a query finds, newest first ("Поиск
+	// записей" of openvk): one tag ("#поход") finds the posts that say it,
+	// any other text the posts that say it as a part of theirs, in any
+	// case. What "Все новости" (ListFeed with everyone) shows the caller,
+	// and nothing for an empty query.
+	SearchPosts(context.Context, *SearchPostsRequest) (*SearchPostsResponse, error)
 	// Public: the polls of the posts that ask one ("Опрос" of openvk), at
 	// most 100 posts, in no particular order; with an access token each
 	// says what the caller chose. The poll of an archived post is given to
@@ -1659,6 +1769,27 @@ type PostServiceServer interface {
 	PublishPostponed(context.Context, *PublishPostponedRequest) (*PublishPostponedResponse, error)
 	// The author takes it back, or an admin deletes it, with its photos.
 	DeletePostponed(context.Context, *DeletePostponedRequest) (*emptypb.Empty, error)
+	// Require an access token: stories ("истории" of VK; openvk has none),
+	// a photo with a few words a person shows for a day to those who read
+	// them. The caller of CreateStory has checked with the media service
+	// that the photo is theirs; post keeps it for good at once and deletes
+	// it with the story when the day is over.
+	CreateStory(context.Context, *CreateStoryRequest) (*CreateStoryResponse, error)
+	// The stories above the caller's news: theirs and of the people they
+	// follow, grouped by author — the caller first, then those with a story
+	// the caller has not viewed, then the rest; each one's stories the
+	// oldest first. A deleted page and a closed one keep theirs to
+	// themselves, as their walls.
+	ListFeedStories(context.Context, *ListFeedStoriesRequest) (*ListFeedStoriesResponse, error)
+	// The live stories of one person the caller sees, the oldest first.
+	ListUserStories(context.Context, *ListUserStoriesRequest) (*ListUserStoriesResponse, error)
+	// The caller viewed a story they see; once is enough. Their own is not
+	// counted.
+	ViewStory(context.Context, *ViewStoryRequest) (*emptypb.Empty, error)
+	// Who viewed a story, the latest first: for its author alone.
+	ListStoryViewers(context.Context, *ListStoryViewersRequest) (*ListStoryViewersResponse, error)
+	// The author deletes a story with its photo.
+	DeleteStory(context.Context, *DeleteStoryRequest) (*emptypb.Empty, error)
 	// The discussions of communities ("Обсуждения" of openvk). The caller
 	// of CreateTopic has checked with the club service that the author may
 	// start a topic there and, with from_wall, speak for the community, and
@@ -1906,6 +2037,9 @@ func (UnimplementedPostServiceServer) ListLikedAlbumPhotos(context.Context, *Lis
 func (UnimplementedPostServiceServer) ListOwnPosts(context.Context, *ListOwnPostsRequest) (*ListOwnPostsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListOwnPosts not implemented")
 }
+func (UnimplementedPostServiceServer) SearchPosts(context.Context, *SearchPostsRequest) (*SearchPostsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method SearchPosts not implemented")
+}
 func (UnimplementedPostServiceServer) GetPolls(context.Context, *GetPollsRequest) (*GetPollsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetPolls not implemented")
 }
@@ -1971,6 +2105,24 @@ func (UnimplementedPostServiceServer) PublishPostponed(context.Context, *Publish
 }
 func (UnimplementedPostServiceServer) DeletePostponed(context.Context, *DeletePostponedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeletePostponed not implemented")
+}
+func (UnimplementedPostServiceServer) CreateStory(context.Context, *CreateStoryRequest) (*CreateStoryResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateStory not implemented")
+}
+func (UnimplementedPostServiceServer) ListFeedStories(context.Context, *ListFeedStoriesRequest) (*ListFeedStoriesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListFeedStories not implemented")
+}
+func (UnimplementedPostServiceServer) ListUserStories(context.Context, *ListUserStoriesRequest) (*ListUserStoriesResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListUserStories not implemented")
+}
+func (UnimplementedPostServiceServer) ViewStory(context.Context, *ViewStoryRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ViewStory not implemented")
+}
+func (UnimplementedPostServiceServer) ListStoryViewers(context.Context, *ListStoryViewersRequest) (*ListStoryViewersResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListStoryViewers not implemented")
+}
+func (UnimplementedPostServiceServer) DeleteStory(context.Context, *DeleteStoryRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteStory not implemented")
 }
 func (UnimplementedPostServiceServer) CreateTopic(context.Context, *CreateTopicRequest) (*CreateTopicResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateTopic not implemented")
@@ -2641,6 +2793,24 @@ func _PostService_ListOwnPosts_Handler(srv interface{}, ctx context.Context, dec
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_SearchPosts_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SearchPostsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).SearchPosts(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_SearchPosts_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).SearchPosts(ctx, req.(*SearchPostsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_GetPolls_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(GetPollsRequest)
 	if err := dec(in); err != nil {
@@ -3033,6 +3203,114 @@ func _PostService_DeletePostponed_Handler(srv interface{}, ctx context.Context, 
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(PostServiceServer).DeletePostponed(ctx, req.(*DeletePostponedRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_CreateStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateStoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).CreateStory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_CreateStory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).CreateStory(ctx, req.(*CreateStoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListFeedStories_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListFeedStoriesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListFeedStories(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListFeedStories_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListFeedStories(ctx, req.(*ListFeedStoriesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListUserStories_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListUserStoriesRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListUserStories(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListUserStories_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListUserStories(ctx, req.(*ListUserStoriesRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ViewStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ViewStoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ViewStory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ViewStory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ViewStory(ctx, req.(*ViewStoryRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_ListStoryViewers_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListStoryViewersRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).ListStoryViewers(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_ListStoryViewers_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).ListStoryViewers(ctx, req.(*ListStoryViewersRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _PostService_DeleteStory_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteStoryRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).DeleteStory(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_DeleteStory_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).DeleteStory(ctx, req.(*DeleteStoryRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -4229,6 +4507,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _PostService_ListOwnPosts_Handler,
 		},
 		{
+			MethodName: "SearchPosts",
+			Handler:    _PostService_SearchPosts_Handler,
+		},
+		{
 			MethodName: "GetPolls",
 			Handler:    _PostService_GetPolls_Handler,
 		},
@@ -4315,6 +4597,30 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeletePostponed",
 			Handler:    _PostService_DeletePostponed_Handler,
+		},
+		{
+			MethodName: "CreateStory",
+			Handler:    _PostService_CreateStory_Handler,
+		},
+		{
+			MethodName: "ListFeedStories",
+			Handler:    _PostService_ListFeedStories_Handler,
+		},
+		{
+			MethodName: "ListUserStories",
+			Handler:    _PostService_ListUserStories_Handler,
+		},
+		{
+			MethodName: "ViewStory",
+			Handler:    _PostService_ViewStory_Handler,
+		},
+		{
+			MethodName: "ListStoryViewers",
+			Handler:    _PostService_ListStoryViewers_Handler,
+		},
+		{
+			MethodName: "DeleteStory",
+			Handler:    _PostService_DeleteStory_Handler,
 		},
 		{
 			MethodName: "CreateTopic",

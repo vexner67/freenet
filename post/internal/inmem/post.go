@@ -39,6 +39,9 @@ type Store struct {
 	heldVotes        map[uuid.UUID]map[uuid.UUID]pollVote
 	// hidden are the deleted pages themselves.
 	hidden hiddenUsers
+	// stories are the stories told, and storyViews story → its views.
+	stories    map[uuid.UUID]*post.Story
+	storyViews map[uuid.UUID][]storyView
 }
 
 func NewStore() *Store {
@@ -395,7 +398,13 @@ func (r *PostRepository) Pinned(ctx context.Context, wallID uuid.UUID) (*post.Po
 // ListFeed: a post that speaks for a community comes with its wall, not
 // with its author, as in PostgreSQL.
 func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSources, before uuid.UUID, limit int) ([]*post.Post, error) {
-	match := func(p *post.Post) bool {
+	return r.list(ctx, r.inFeed(sources), before, limit)
+}
+
+// inFeed tells which posts a feed of sources shows; it is called with
+// the store locked.
+func (r *PostRepository) inFeed(sources service.FeedSources) func(*post.Post) bool {
+	return func(p *post.Post) bool {
 		if p.Archived() || (p.NSFW() && sources.HideNSFW) || r.s.postHidden(p) || r.s.wallClosedTo(p.WallID(), sources.Reader) {
 			return false
 		}
@@ -414,8 +423,32 @@ func (r *PostRepository) ListFeed(ctx context.Context, sources service.FeedSourc
 
 		return r.s.reads(sources, p)
 	}
+}
 
-	return r.list(ctx, match, before, limit)
+func (r *PostRepository) Search(ctx context.Context, query post.SearchQuery, sources service.FeedSources, before uuid.UUID, limit int) ([]*post.Post, error) {
+	inFeed := r.inFeed(sources)
+
+	return r.list(ctx, func(p *post.Post) bool { return inFeed(p) && query.Matches(p) }, before, limit)
+}
+
+func (r *PostRepository) CountSearch(ctx context.Context, query post.SearchQuery, sources service.FeedSources) (int, error) {
+	if err := ctx.Err(); err != nil {
+		return 0, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	inFeed := r.inFeed(sources)
+
+	count := 0
+	for _, p := range r.s.posts {
+		if inFeed(p) && query.Matches(p) {
+			count++
+		}
+	}
+
+	return count, nil
 }
 
 func (r *PostRepository) ListByAuthor(ctx context.Context, authorID, before uuid.UUID, limit int) ([]*post.Post, error) {

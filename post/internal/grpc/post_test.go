@@ -85,6 +85,9 @@ func newServer(t *testing.T) testServer {
 		}),
 		Notes:     service.NewNoteService(service.NoteDeps{Notes: notes, Comments: notes.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}}),
 		Documents: service.NewDocumentService(documents, inmem.TxManager{}, mediaclient.Nop{}),
+		Stories: service.NewStoryService(service.StoryDeps{
+			Stories: store.Stories(), Views: store.StoryViews(), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{},
+		}),
 		Purge: service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
 			Topics: topics, Albums: albums, Notes: notes, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
@@ -1708,5 +1711,35 @@ func TestPolls(t *testing.T) {
 
 	if _, err = s.client.GetPolls(anyone, &postv1.GetPollsRequest{PostIds: make([]string, 1)}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("GetPolls of a malformed id: got %v", err)
+	}
+}
+
+func TestSearchPosts(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob := uuid.New(), uuid.New()
+
+	for author, text := range map[uuid.UUID]string{ann: "Идём в #поход", bob: "поход без тега"} {
+		if _, err := s.client.CreatePost(s.as(t, author), &postv1.CreatePostRequest{Text: text, WallId: author.String()}); err != nil {
+			t.Fatal(err)
+		}
+	}
+
+	found, err := s.client.SearchPosts(s.as(t, bob), &postv1.SearchPostsRequest{Query: "#Поход"})
+	if err != nil || found.GetTotal() != 1 || !slices.Equal(postTexts(found.GetPosts()), []string{"Идём в #поход"}) {
+		t.Fatalf("the tag finds %v, %v", found, err)
+	}
+
+	found, err = s.client.SearchPosts(s.as(t, ann), &postv1.SearchPostsRequest{Query: "поход", HiddenAuthorIds: []string{bob.String()}})
+	if err != nil || found.GetTotal() != 1 || !found.GetPosts()[0].GetMine() {
+		t.Fatalf("without the blacklisted the text finds %v, %v", found, err)
+	}
+
+	if _, err = s.client.SearchPosts(s.as(t, ann), &postv1.SearchPostsRequest{Query: strings.Repeat("я", 101)}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("a long query: %v", err)
+	}
+	if _, err = s.client.SearchPosts(context.Background(), &postv1.SearchPostsRequest{Query: "поход"}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("anonymous: %v", err)
 	}
 }
