@@ -23,6 +23,7 @@ import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.
 import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, selectedCount } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
+import { closePushes } from './push.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
 
@@ -345,6 +346,7 @@ async function readIncoming(messages) {
 
   try {
     await api.markDialogRead(nickname, newest.id);
+    closePushes('im:' + peer.id).catch(() => {});
     for (const m of incoming) {
       m.read = true;
       shown.get(m.id)?.classList.remove('unread');

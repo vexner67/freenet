@@ -24,6 +24,7 @@ import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.
 import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, chatPhotoURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
+import { closePushes } from './push.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
 
@@ -316,6 +317,7 @@ async function readIncoming(messages) {
 
   try {
     await api.markChatRead(chatID, newest.id);
+    closePushes('chat:' + chatID).catch(() => {});
     for (const m of incoming) {
       m.unread = false;
       shown.get(m.id)?.classList.remove('unread');

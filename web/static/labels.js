@@ -1337,6 +1337,10 @@ export const pushStateTexts = {
   install: 'На iPhone и iPad уведомления приходят, только когда сайт добавлен на экран «Домой»: нажмите «Поделиться», затем «На экран «Домой»» и откройте сайт оттуда.',
 };
 
+// pushOfferText is what a phone is asked once over its pages (layout.js
+// offerPush).
+export const pushOfferText = 'Получать на этом телефоне уведомления о новых сообщениях и ответах, даже когда сайт закрыт?';
+
 export function errorText(e) {
   return errorTexts[e?.message] ?? 'Что-то пошло не так. Попробуйте позже.';
 }

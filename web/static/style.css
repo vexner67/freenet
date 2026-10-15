@@ -247,6 +247,10 @@ h1, h2, h3, p, ul { margin: 0; }
   border: 1px solid var(--line-ddd09a);
 }
 
+/* The offer of pushes over the page of a phone (layout.js offerPush). */
+.push-offer p { margin: 0 0 8px; }
+.push-offer-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+
 .error {
   margin-bottom: 10px;
   padding: 8px 10px;

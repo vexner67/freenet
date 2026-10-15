@@ -8,9 +8,9 @@ import { keyBytes } from '../static/push.js';
 
 // The worker is a classic script: its functions are globals of the context
 // it runs in.
-function worker() {
+function worker(self = {}, globals = {}) {
   const listeners = {};
-  const context = { self: { addEventListener: (type, f) => { listeners[type] = f; } } };
+  const context = { ...globals, self: { ...self, addEventListener: (type, f) => { listeners[type] = f; } } };
   vm.runInNewContext(readFileSync(new URL('../static/sw.js', import.meta.url), 'utf8'), context);
   return { ...context, listeners };
 }
@@ -77,7 +77,51 @@ test('a community is the title of what it did', () => {
 
 test('the worker listens for pushes and clicks', () => {
   const { listeners } = worker();
-  for (const type of ['install', 'activate', 'push', 'notificationclick']) assert.equal(typeof listeners[type], 'function', type);
+  for (const type of ['install', 'activate', 'push', 'message', 'notificationclick']) assert.equal(typeof listeners[type], 'function', type);
+});
+
+// A phone: no page of the site in front, a shade of notifications, the
+// number on the icon and the cache it is kept in.
+function phone() {
+  const shade = [];
+  const badges = [];
+  const kept = new Map();
+  const cache = {
+    match: async (key) => (kept.has(key) ? new Response(kept.get(key)) : undefined),
+    put: async (key, response) => { kept.set(key, await response.text()); },
+  };
+  const self = {
+    navigator: { userAgent: 'Mozilla/5.0 (Linux; Android 14) Chrome/130.0', setAppBadge: async (n) => { badges.push(n); } },
+    clients: { matchAll: async () => [] },
+    registration: {
+      getNotifications: async ({ tag } = {}) => shade.filter((n) => !tag || n.tag === tag),
+      showNotification: async (title, options) => {
+        const at = shade.findIndex((n) => n.tag === options.tag);
+        if (at >= 0) shade.splice(at, 1);
+        shade.push({ title, ...options });
+      },
+    },
+  };
+  return { shade, badges, w: worker(self, { caches: { open: async () => cache }, Response }) };
+}
+
+test('a push of something new adds one to the number on the icon', async () => {
+  const { shade, badges, w } = phone();
+  const wait = (event) => new Promise((resolve) => w.listeners[event.type]({ ...event, waitUntil: resolve }));
+
+  await wait({ type: 'message', data: { unread: 3 } });
+  await wait({ type: 'push', data: { json: () => ({ type: 'message', id: 'm1', actor: ann }) } });
+  await wait({ type: 'push', data: { json: () => ({ type: 'message', id: 'm2', actor: ann }) } });
+  await wait({ type: 'push', data: { json: () => ({ type: 'notification', kind: 'follow', id: 'n1', actor: ann }) } });
+
+  // The second message is of a dialog already in the shade.
+  assert.deepEqual(badges, [4, 5]);
+  assert.equal(shade.length, 2);
+  assert.ok(shade.every((n) => n.badge === '/static/badge.png'));
+});
+
+test('the badge of Android is a file of the site', () => {
+  assert.ok(readFileSync(new URL('../static/badge.png', import.meta.url)).length > 0);
 });
 
 test('keyBytes reads the base64url key of the server', () => {

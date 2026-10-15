@@ -88,11 +88,14 @@ export async function pushState() {
 }
 
 // enablePush asks the browser for permission (on a click: browsers ask
-// only then) and subscribes me; it tells whether they are on now.
+// only then) and subscribes me; it tells whether they are on now. The
+// permission is asked first: Safari asks only straight in the tap, not
+// after a request to the server.
 export async function enablePush(me) {
+  if (await Notification.requestPermission() !== 'granted') return false;
+
   const { publicKey } = await api.pushKey();
   if (!publicKey) return false;
-  if (await Notification.requestPermission() !== 'granted') return false;
 
   await tell(me, publicKey);
   return true;
@@ -126,6 +129,67 @@ export async function syncPush(me) {
 
   const { publicKey } = await api.pushKey();
   if (publicKey) await tell(me, publicKey);
+}
+
+// closePushes takes away the pushes this browser shows whose tags start
+// so (sw.js: 'im:<user>', 'chat:<chat>', 'n:<notification>'): what was
+// read here is no longer news in the notification shade of a phone.
+export async function closePushes(...prefixes) {
+  if (!pushSupported()) return;
+
+  const registration = await navigator.serviceWorker.getRegistration('/');
+  for (const n of await registration?.getNotifications() ?? []) {
+    if (prefixes.some((p) => n.tag.startsWith(p))) n.close();
+  }
+}
+
+// showUnread puts the number of what is unread on the icon of the site
+// added to the home screen (the Badging API; elsewhere it does nothing),
+// and tells the service worker, which counts on from it as pushes come.
+export function showUnread(n) {
+  if (typeof navigator === 'undefined' || !('setAppBadge' in navigator)) return;
+
+  (n > 0 ? navigator.setAppBadge(n) : navigator.clearAppBadge()).catch(() => {});
+  navigator.serviceWorker?.controller?.postMessage({ unread: n });
+}
+
+// onPhone is a narrow screen or the site opened from the home screen.
+export function onPhone() {
+  return matchMedia('(max-width: 800px)').matches || matchMedia('(display-mode: standalone)').matches ||
+    navigator.standalone === true;
+}
+
+const OFFER_KEY = 'freenet.pushoffer';
+
+function offered() {
+  try {
+    return localStorage.getItem(OFFER_KEY) !== null;
+  } catch {
+    // Without storage a bar on every page would be a nuisance.
+    return true;
+  }
+}
+
+// pushOffer is what a phone is offered over its pages, once: 'enable'
+// when a tap turns pushes on, 'install' on an iPhone that has to add the
+// site to the home screen first; null when nothing is (not a phone,
+// declined already, on already, or decided in the browser).
+export async function pushOffer() {
+  if (!onPhone() || offered()) return null;
+  if (!pushSupported()) return needsInstall() ? 'install' : null;
+  if (stored().on || Notification.permission !== 'default') return null;
+
+  const { publicKey } = await api.pushKey();
+  return publicKey ? 'enable' : null;
+}
+
+// endPushOffer keeps the offer from coming back, whatever was answered.
+export function endPushOffer() {
+  try {
+    localStorage.setItem(OFFER_KEY, String(Date.now()));
+  } catch {
+    // offered() says so without storage anyway.
+  }
 }
 
 // forgetPushAccount stops pushing to the account signing out: the next
