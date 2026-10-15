@@ -129,8 +129,14 @@ func (a *api) asked(r *http.Request, p model.Post) (postResponse, error) {
 		return postResponse{}, err
 	}
 
+	docs, err := a.postDocuments(r, p)
+	if err != nil {
+		return postResponse{}, err
+	}
+
 	resp := toPostResponse(p)
 	resp.Poll = polls[p.ID]
+	resp.Documents = documentsJSON(p.DocumentIDs, docs)
 
 	return resp, nil
 }

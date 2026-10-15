@@ -85,6 +85,15 @@ type (
 		UpTo string `json:"upTo"`
 	}
 
+	// typingEventJSON: User is writing to the caller, in Chat or, when it
+	// is "", in their dialog; the page shows it for a few seconds unless
+	// told again.
+	typingEventJSON struct {
+		Type string     `json:"type"` // "typing"
+		User authorJSON `json:"user"`
+		Chat string     `json:"chat,omitempty"`
+	}
+
 	notificationEventJSON struct {
 		Type   string `json:"type"`   // "notification"
 		Change string `json:"change"` // "new", "gone" or "read"
@@ -303,6 +312,10 @@ func (s *eventSession) forwardMessages(ctx context.Context, next model.MessageEv
 			return err
 		}
 
+		if e.Typing != nil {
+			continue // nothing unread changes
+		}
+
 		// Unread dialogs change with incoming messages, own reads and
 		// unread messages taken back.
 		counters, err := s.counters(ctx, "counters", true, false)
@@ -343,6 +356,15 @@ func (s *eventSession) messageEvent(e model.MessageEvent) (any, error) {
 		}
 
 		return deleteEventJSON{Type: "delete", Peer: peer, ID: d.ID}, nil
+	}
+
+	if t := e.Typing; t != nil {
+		user, ok, err := s.peer(t.UserID)
+		if err != nil || !ok {
+			return nil, err
+		}
+
+		return typingEventJSON{Type: "typing", User: user, Chat: t.ChatID}, nil
 	}
 
 	if e.ChatRead != nil {

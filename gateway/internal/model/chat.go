@@ -65,7 +65,8 @@ type ChatMessage struct {
 	SharedPhotoID string
 	Forwarded     []ForwardedMessage
 	// Sticker is the sticker the message is, "" for none.
-	Sticker string
+	Sticker     string
+	DocumentIDs []string
 }
 
 // FoundChatMessages is one screen of messages a search of chats found,

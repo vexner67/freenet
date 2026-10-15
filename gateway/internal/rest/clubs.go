@@ -54,6 +54,8 @@ type clubPostRequest struct {
 	NSFW bool `json:"nsfw"`
 	// Poll is the poll the post asks, as on a person's wall.
 	Poll *pollRequest `json:"poll"`
+	// Documents are IDs of the caller's documents the post attaches.
+	Documents []string `json:"documents"`
 }
 
 type clubJSON struct {
@@ -1173,21 +1175,27 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err = a.checkDocuments(r.Context(), me.ID, req.Documents); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
 
 	p, err := a.posts.Create(r.Context(), token, model.NewPost{
-		WallID:   c.Club.ID,
-		Text:     req.Text,
-		PhotoIDs: req.Photos,
-		ClubWall: true,
-		FromWall: fromClub,
-		Signed:   fromClub && req.Signed,
-		NSFW:     req.NSFW,
-		Mentions: mentions,
-		Poll:     toNewPoll(req.Poll),
+		DocumentIDs: req.Documents,
+		WallID:      c.Club.ID,
+		Text:        req.Text,
+		PhotoIDs:    req.Photos,
+		ClubWall:    true,
+		FromWall:    fromClub,
+		Signed:      fromClub && req.Signed,
+		NSFW:        req.NSFW,
+		Mentions:    mentions,
+		Poll:        toNewPoll(req.Poll),
 	})
 	if err != nil {
 		a.releasePhotos(r, token, req.Photos, err)

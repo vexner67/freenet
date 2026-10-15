@@ -89,6 +89,7 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /fave/own", site.page(dir, "fave.html"))
 	mux.Handle("GET /gifts", site.page(dir, "gifts.html"))
 	mux.Handle("GET /stickers", site.page(dir, "stickers.html"))
+	mux.Handle("GET /docs", site.page(dir, "docs.html"))
 	mux.Handle("GET /notes", site.page(dir, "notes.html"))
 	mux.Handle("GET /notes/create", site.page(dir, "note-edit.html"))
 	mux.Handle("GET /note/{id}", site.page(dir, "note.html"))

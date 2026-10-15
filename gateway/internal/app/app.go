@@ -142,6 +142,7 @@ func (a *App) build(cfg config.Config) error {
 			Notes:         backend.NewNotes(postv1.NewPostServiceClient(a.postConn)),
 			Gifts:         backend.NewGifts(userv1.NewUserServiceClient(a.userConn)),
 			Stickers:      backend.NewStickers(userv1.NewUserServiceClient(a.userConn)),
+			Documents:     backend.NewDocuments(postv1.NewPostServiceClient(a.postConn)),
 			Votes:         backend.NewVotes(userv1.NewUserServiceClient(a.userConn)),
 			Faves:         backend.NewFaves(postv1.NewPostServiceClient(a.postConn)),
 		},

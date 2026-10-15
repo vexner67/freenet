@@ -31,6 +31,7 @@ type eventJSON struct {
 	ID            string         `json:"id"`
 	Change        string         `json:"change"`
 	Chat          string         `json:"chat"`
+	User          map[string]any `json:"user"`
 }
 
 // connect opens the event stream of h and sends the token.
@@ -145,6 +146,18 @@ func TestEvents(t *testing.T) {
 		t.Fatalf("chat read event = %+v", e)
 	}
 	next(t, conn) // counters
+
+	// Bob types to the caller, in their dialog and in the chat; nothing
+	// unread changes.
+	h.messages.events <- model.MessageEvent{Typing: &model.Typing{UserID: "u2"}}
+	h.messages.events <- model.MessageEvent{Typing: &model.Typing{UserID: "u2", ChatID: "c1"}}
+
+	if e := next(t, conn); e.Type != "typing" || e.User["nickname"] != "bob" || e.Chat != "" {
+		t.Fatalf("typing event = %+v, want bob in the dialog", e)
+	}
+	if e := next(t, conn); e.Type != "typing" || e.User["nickname"] != "bob" || e.Chat != "c1" {
+		t.Fatalf("typing event = %+v, want bob in the chat", e)
+	}
 
 	h.notifications.changes <- "new"
 
