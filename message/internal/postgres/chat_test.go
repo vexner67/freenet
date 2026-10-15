@@ -59,6 +59,7 @@ func chatServiceOn(t *testing.T, conns int32) (*service.ChatService, context.Con
 		Members:        postgres.NewChatMemberRepository(pool),
 		Messages:       postgres.NewChatMessageRepository(pool),
 		DialogMessages: postgres.NewMessageRepository(pool),
+		Reactions:      postgres.NewChatReactionRepository(pool),
 		Events:         pubsub.New[uuid.UUID, service.Event](64),
 		Tx:             pgpool.NewTxManager(pool),
 		Photos:         mediaclient.Nop{},

@@ -549,9 +549,10 @@ const saveChatMessageQuery = `
 			shared_photo_id,
 			forwarded,
 			sticker,
-			document_ids
+			document_ids,
+			reply_to_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
 		RETURNING id, chat_id, sender_id
 	)
 	UPDATE chat_members m
@@ -573,7 +574,7 @@ func (r *ChatMessageRepository) Save(ctx context.Context, m *message.ChatMessage
 
 	_, err = r.conn(ctx).Exec(ctx, saveChatMessageQuery,
 		m.ID(), m.ChatID(), m.SenderID(), m.Text().String(), photoIDs(m.Photos()), string(m.Action()), postIDToDB(m.TargetID()), m.CreatedAt(),
-		postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.Sticker().String(), documentIDs(m.Documents()))
+		postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.Sticker().String(), documentIDs(m.Documents()), postIDToDB(m.ReplyTo()))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -596,7 +597,8 @@ const chatMessageColumns = `
 		shared_photo_id,
 		forwarded,
 		sticker,
-		document_ids`
+		document_ids,
+		reply_to_id`
 
 const getChatMessageQuery = `
 	SELECT` + chatMessageColumns + `
@@ -614,6 +616,25 @@ func (r *ChatMessageRepository) Get(ctx context.Context, id uuid.UUID) (*message
 	}
 
 	return m, nil
+}
+
+const getChatMessagesQuery = `
+	SELECT` + chatMessageColumns + `
+	FROM chat_messages
+	WHERE id = ANY($1)
+`
+
+func (r *ChatMessageRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*message.ChatMessage, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	rows, err := r.pool.Query(ctx, getChatMessagesQuery, ids)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+
+	return collectChatMessages(rows)
 }
 
 const (
@@ -707,7 +728,8 @@ const searchChatMessagesQuery = `
 		msg.shared_photo_id,
 		msg.forwarded,
 		msg.sticker,
-		msg.document_ids
+		msg.document_ids,
+		msg.reply_to_id
 	FROM chat_members m
 	JOIN chat_messages msg ON msg.chat_id = m.chat_id
 	WHERE m.user_id = $1
@@ -756,6 +778,8 @@ type scannedChatMessage struct {
 	forwarded   []byte
 	sticker     string
 	documents   []uuid.UUID
+	// replyTo is NULL for a message answering none.
+	replyTo *uuid.UUID
 }
 
 func scanChatMessage(row pgx.Row) (*message.ChatMessage, error) {
@@ -763,7 +787,7 @@ func scanChatMessage(row pgx.Row) (*message.ChatMessage, error) {
 
 	err := row.Scan(
 		&s.stored.ID, &s.stored.ChatID, &s.stored.SenderID, &s.text, &s.photos, &s.action, &s.target, &s.stored.CreatedAt, &s.editedAt, &s.deletedAt,
-		&s.post, &s.sharedPhoto, &s.forwarded, &s.sticker, &s.documents,
+		&s.post, &s.sharedPhoto, &s.forwarded, &s.sticker, &s.documents, &s.replyTo,
 	)
 	if err != nil {
 		return nil, err
@@ -792,7 +816,7 @@ func (s *scannedChatMessage) message() (*message.ChatMessage, error) {
 
 	stored := s.stored
 	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded).WithSticker(message.Sticker(s.sticker)).
-		WithDocuments(documentsFromDB(s.documents))
+		WithDocuments(documentsFromDB(s.documents)).Answering(orNil(s.replyTo))
 	if s.sharedPhoto != nil {
 		stored.Content = stored.Content.WithSharedPhoto(*s.sharedPhoto)
 	}
@@ -838,8 +862,13 @@ func (r *ChatMessageRepository) Update(ctx context.Context, m *message.ChatMessa
 }
 
 const retractChatMessageQuery = `
+	WITH reactions AS (
+		DELETE FROM chat_message_reactions
+		WHERE message_id = $1
+	)
 	UPDATE chat_messages
 	SET text = '',
+		reply_to_id = NULL,
 		photo_ids = '{}',
 		post_id = NULL,
 		shared_photo_id = NULL,

@@ -42,6 +42,10 @@ service MessageService {
   // within a day of sending (editable_until); the post it shares and the
   // messages it carries on stay.
   rpc EditMessage(EditMessageRequest) returns (EditMessageResponse);
+  // The caller puts a reaction on a message of their dialog, in place of
+  // the one they had, or takes theirs away (an empty reaction): both
+  // sides hear an edit event. Not on a message taken back (NotFound).
+  rpc ReactToMessage(ReactToMessageRequest) returns (google.protobuf.Empty);
   // The public key the caller's browsers seal and open messages of dialogs
   // with from now on: set up the first time, or anew when the old one is
   // lost. Messages sealed with the old one stay so.
@@ -96,6 +100,9 @@ service MessageService {
   // The sender changes what their message says and the photos it shows,
   // within a day of sending.
   rpc EditChatMessage(EditChatMessageRequest) returns (EditChatMessageResponse);
+  // The caller, in the chat, puts a reaction on a message of it or takes
+  // theirs away, as in a dialog; not on an action.
+  rpc ReactToChatMessage(ReactToChatMessageRequest) returns (google.protobuf.Empty);
   // Messages people wrote in the caller's chats, in all of them or in
   // one, that say the query, themselves or in the messages they carry on,
   // newest first: a substring, whatever the case.
@@ -165,6 +172,10 @@ message Message {
   // Documents of "Мои Документы" the message attaches, which the post
   // service keeps; a deleted one is gone.
   repeated string document_ids = 18;
+  // The message of the dialog it answers; unset for none.
+  Quote reply_to = 19;
+  // The reactions to it, the oldest first; none once taken back.
+  repeated Reaction reactions = 20;
 }
 
 // A message as another one carries it on: a copy of what it showed. One
@@ -187,6 +198,37 @@ message ForwardedMessage {
   string sticker = 8;
   // The documents it attached.
   repeated string document_ids = 9;
+}
+
+// What a message answering another shows of it ("Ответить"): who wrote it
+// and what it is now, in short.
+message Quote {
+  string id = 1;
+  // Empty, as the rest, when the message is gone for good (found is
+  // false): only its ID is known.
+  string sender_id = 2;
+  // Its beginning, of a chat's message only: a dialog's says its words
+  // sealed, and the answer carries the words it quotes sealed itself.
+  string text = 3;
+  int32 photo_count = 4;
+  int32 forwarded_count = 5;
+  int32 document_count = 6;
+  string sticker = 7;
+  // It shares a post, a photo of an album.
+  bool post = 8;
+  bool photo = 9;
+  // It was taken back and says nothing.
+  bool deleted = 10;
+  bool found = 11;
+  // text says more.
+  bool text_cut = 12;
+}
+
+// One person's reaction to a message.
+message Reaction {
+  string user_id = 1;
+  // heart, like, laugh, wow, sad or fire.
+  string reaction = 2;
 }
 
 message Dialog {
@@ -226,6 +268,10 @@ message SendMessageRequest {
   // Documents of the sender, at most 10, as the caller has checked: with
   // them the message may say nothing else.
   repeated string document_ids = 9;
+  // A message of the dialog the caller sees to answer; one that is not
+  // there or was taken back fails with InvalidArgument "replied message
+  // not found".
+  string reply_to_id = 10;
 }
 
 message SendMessageResponse {
@@ -325,6 +371,17 @@ message EditMessageRequest {
   // What it said sealed when the edit started; as base_text, a message
   // that says something else by now is not edited.
   optional bytes base_sealed = 9;
+}
+
+message ReactToMessageRequest {
+  string message_id = 1;
+  // heart, like, laugh, wow, sad or fire; empty takes the caller's away.
+  string reaction = 2;
+}
+
+message ReactToChatMessageRequest {
+  string message_id = 1;
+  string reaction = 2;
 }
 
 message DeleteMessagesRequest {
@@ -509,6 +566,10 @@ message ChatMessage {
   string sticker = 18;
   // The documents the message attaches.
   repeated string document_ids = 19;
+  // The message of the chat it answers; unset for none.
+  Quote reply_to = 20;
+  // The reactions to it, the oldest first.
+  repeated Reaction reactions = 21;
 }
 
 message CreateChatRequest {
@@ -602,6 +663,9 @@ message SendChatMessageRequest {
   string sticker = 7;
   // Documents of the sender, as in a dialog.
   repeated string document_ids = 8;
+  // A message of the chat shown to the caller to answer, as in a dialog;
+  // not an action.
+  string reply_to_id = 9;
 }
 
 message SendChatMessageResponse {

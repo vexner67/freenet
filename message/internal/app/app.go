@@ -159,11 +159,11 @@ func (a *App) build(cfg config.Config) error {
 		messagegrpc.NewMessageHandler(
 			service.NewMessageService(service.Deps{
 				Messages: repos.messages, Dialogs: repos.dialogs, Keys: repos.keys, ChatMessages: repos.chatMessages, ChatMembers: repos.chatMembers,
-				Events: events, Tx: repos.tx, Photos: photos, Pusher: a.servicePusher(),
+				Reactions: repos.reactions, Events: events, Tx: repos.tx, Photos: photos, Pusher: a.servicePusher(),
 			}),
 			service.NewChatService(service.ChatDeps{
 				Chats: repos.chats, Members: repos.chatMembers, Messages: repos.chatMessages, DialogMessages: repos.messages,
-				Events: events, Tx: repos.tx, Photos: photos, Pusher: a.servicePusher(),
+				Reactions: repos.chatReactions, Events: events, Tx: repos.tx, Photos: photos, Pusher: a.servicePusher(),
 			}),
 			a.logger,
 		),
@@ -293,6 +293,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		// Typing tells others nothing to keep, but it is told to them.
 		messagev1.MessageService_SetTyping_FullMethodName:     cfg.TypingLimits,
 		messagev1.MessageService_SetChatTyping_FullMethodName: cfg.TypingLimits,
+		// A reaction is told to the others too.
+		messagev1.MessageService_ReactToMessage_FullMethodName:     cfg.ReactionLimits,
+		messagev1.MessageService_ReactToChatMessage_FullMethodName: cfg.ReactionLimits,
 	}
 }
 
@@ -326,6 +329,9 @@ type repositories struct {
 	chats        service.ChatRepository
 	chatMembers  service.ChatMemberRepository
 	chatMessages service.ChatMessageRepository
+
+	reactions     service.ReactionRepository
+	chatReactions service.ReactionRepository
 }
 
 func (a *App) newRepositories(cfg config.Config) (repositories, error) {
@@ -341,6 +347,9 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			chats:        store.Chats(),
 			chatMembers:  store.ChatMembers(),
 			chatMessages: store.ChatMessages(),
+
+			reactions:     store.Reactions(),
+			chatReactions: store.ChatReactions(),
 		}, nil
 	}
 
@@ -378,6 +387,9 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		chats:        postgres.NewChatRepository(a.pool),
 		chatMembers:  postgres.NewChatMemberRepository(a.pool),
 		chatMessages: postgres.NewChatMessageRepository(a.pool),
+
+		reactions:     postgres.NewReactionRepository(a.pool),
+		chatReactions: postgres.NewChatReactionRepository(a.pool),
 	}, nil
 }
 

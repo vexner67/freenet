@@ -35,12 +35,12 @@ func newChats() chatFixture {
 	store := inmem.NewStore()
 	f := chatFixture{events: pubsub.New[uuid.UUID, service.Event](64), photos: &fakePhotos{}, pushed: &fakePusher{}}
 	f.svc = service.NewChatService(service.ChatDeps{
-		Chats: store.Chats(), Members: store.ChatMembers(), Messages: store.ChatMessages(), DialogMessages: store.Messages(), Events: f.events, Tx: fakeTx{}, Photos: f.photos,
+		Chats: store.Chats(), Reactions: store.ChatReactions(), Members: store.ChatMembers(), Messages: store.ChatMessages(), DialogMessages: store.Messages(), Events: f.events, Tx: fakeTx{}, Photos: f.photos,
 		Pusher: f.pushed,
 	})
 
 	f.dialogs = service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(),
+		Messages: store.Messages(), Reactions: store.Reactions(), Dialogs: store.Dialogs(), Keys: sameKeys{}, ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(),
 		Events: f.events, Tx: fakeTx{}, Photos: f.photos, Pusher: f.pushed,
 	})
 

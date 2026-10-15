@@ -52,6 +52,8 @@ type ChatMessageRepository interface {
 	Save(ctx context.Context, m *message.ChatMessage) error
 	// Get returns message.ErrNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*message.ChatMessage, error)
+	// GetMany returns those of the messages that are there, in any order.
+	GetMany(ctx context.Context, ids []uuid.UUID) ([]*message.ChatMessage, error)
 	// ListBefore returns up to limit messages of the chat with IDs below
 	// before (uuid.Nil: from the newest) and not above upTo, newest first.
 	ListBefore(ctx context.Context, chatID, before, upTo uuid.UUID, limit int) ([]*message.ChatMessage, error)
@@ -125,6 +127,7 @@ type ChatDeps struct {
 	Members        ChatMemberRepository
 	Messages       ChatMessageRepository
 	DialogMessages MessageRepository
+	Reactions      ReactionRepository
 	Events         Events
 	Tx             TxManager
 	Photos         PhotoKeeper
@@ -137,6 +140,7 @@ type ChatService struct {
 	chatRepo    ChatRepository
 	memberRepo  ChatMemberRepository
 	messageRepo ChatMessageRepository
+	reactions   ReactionRepository
 	events      Events
 	tx          TxManager
 	photos      PhotoKeeper
@@ -150,6 +154,7 @@ func NewChatService(d ChatDeps) *ChatService {
 		chatRepo:    d.Chats,
 		memberRepo:  d.Members,
 		messageRepo: d.Messages,
+		reactions:   d.Reactions,
 		events:      d.Events,
 		tx:          d.Tx,
 		photos:      d.Photos,
@@ -698,9 +703,18 @@ func (s *ChatService) Send(ctx context.Context, senderID, chatID uuid.UUID, d Dr
 		return nil, errs.Wrap("d.content", err)
 	}
 
+	content, quote, err := s.chatAnswering(ctx, chatID, senderID, d, content)
+	if err != nil {
+		return nil, errs.Wrap("s.chatAnswering", err)
+	}
+
 	m, err := message.NewChatMessage(chatID, senderID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("message.NewChatMessage", err)
+	}
+
+	if quote != nil {
+		m = m.Quoting(*quote)
 	}
 
 	var title message.Title
@@ -815,6 +829,10 @@ func (s *ChatService) Edit(ctx context.Context, userID, id uuid.UUID, rev messag
 		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
+	if edited, err = s.dressedOne(ctx, edited); err != nil {
+		return nil, errs.Wrap("s.dressedOne", err)
+	}
+
 	s.tell(ctx, Event{Chat: &ChatEvent{Edited: edited}})
 
 	return edited, nil
@@ -890,6 +908,10 @@ func (s *ChatService) History(ctx context.Context, userID, chatID, cursor uuid.U
 
 	slices.Reverse(page.Messages)
 
+	if page.Messages, err = s.dressed(ctx, page.Messages); err != nil {
+		return ChatHistoryPage{}, errs.Wrap("s.dressed", err)
+	}
+
 	return page, nil
 }
 
@@ -904,6 +926,10 @@ func (s *ChatService) Newer(ctx context.Context, userID, chatID, after uuid.UUID
 	messages, err := s.messageRepo.ListAfter(ctx, chatID, after, me.Bound(), pageSize(size))
 	if err != nil {
 		return ChatHistoryPage{}, errs.Wrap("s.messageRepo.ListAfter", err)
+	}
+
+	if messages, err = s.dressed(ctx, messages); err != nil {
+		return ChatHistoryPage{}, errs.Wrap("s.dressed", err)
 	}
 
 	return ChatHistoryPage{Messages: messages, Me: me}, nil
@@ -944,6 +970,10 @@ func (s *ChatService) Around(ctx context.Context, userID, chatID, id uuid.UUID, 
 
 	slices.Reverse(older)
 	page.Messages = append(append(older, m), newer...)
+
+	if page.Messages, err = s.dressed(ctx, page.Messages); err != nil {
+		return ChatHistoryPage{}, errs.Wrap("s.dressed", err)
+	}
 
 	return page, nil
 }
@@ -1029,9 +1059,13 @@ func (s *ChatService) Typing(ctx context.Context, userID, chatID uuid.UUID) erro
 // PurgeUser takes a user whose page was deleted for good out of every
 // chat, with what they wrote there; their photos media erases with the
 // rest of the user, the copies of others' photos their messages carried
-// on go here.
+// on go here, and so do their reactions.
 func (s *ChatService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.reactions.Forget(ctx, userID); err != nil {
+			return errs.Wrap("s.reactions.Forget", err)
+		}
+
 		carrying, err := s.chatRepo.DeleteByUser(ctx, userID)
 		if err != nil {
 			return errs.Wrap("s.chatRepo.DeleteByUser", err)

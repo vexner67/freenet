@@ -25,6 +25,10 @@ type Store struct {
 	chats        map[uuid.UUID]*message.Chat
 	chatMembers  map[uuid.UUID][]*message.Member
 	chatMessages map[uuid.UUID]*message.ChatMessage
+
+	// Reactions to messages of dialogs and of chats: see reaction.go.
+	reactions     map[uuid.UUID]message.Reactions
+	chatReactions map[uuid.UUID]message.Reactions
 }
 
 // side is one user's view of a dialog.
@@ -47,6 +51,9 @@ func NewStore() *Store {
 		chats:        make(map[uuid.UUID]*message.Chat),
 		chatMembers:  make(map[uuid.UUID][]*message.Member),
 		chatMessages: make(map[uuid.UUID]*message.ChatMessage),
+
+		reactions:     make(map[uuid.UUID]message.Reactions),
+		chatReactions: make(map[uuid.UUID]message.Reactions),
 	}
 }
 
@@ -172,6 +179,24 @@ func (r *MessageRepository) Get(ctx context.Context, id uuid.UUID) (*message.Mes
 	}
 
 	return m, nil
+}
+
+func (r *MessageRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*message.Message, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	var out []*message.Message
+	for _, id := range ids {
+		if m, ok := r.s.messages[id]; ok {
+			out = append(out, m)
+		}
+	}
+
+	return out, nil
 }
 
 // Lock is Get: nothing is held in memory, where there are no transactions.

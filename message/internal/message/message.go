@@ -437,6 +437,8 @@ type Content struct {
 	sticker Sticker
 	// documents are files of "Мои Документы" the message attaches.
 	documents Documents
+	// replyTo is the message it answers, uuid.Nil for none.
+	replyTo uuid.UUID
 }
 
 // NewContent: post is uuid.Nil for none; whether it exists the caller has
@@ -570,6 +572,13 @@ func (c Content) revised(rev Revision) (Content, error) {
 		return Content{}, err
 	}
 
+	revised, err := c.revisedWith(rev, photos)
+
+	return revised.Answering(c.replyTo), err
+}
+
+// revisedWith is c saying what rev says, with photos.
+func (c Content) revisedWith(rev Revision, photos Photos) (Content, error) {
 	switch {
 	case c.sharedPhoto == uuid.Nil:
 		revised, err := newContent(rev.Text, rev.Sealed, photos, c.post, c.forwarded)
@@ -629,6 +638,10 @@ type Message struct {
 	// message for themselves ("Удалить у себя"); the other still has it.
 	hiddenFromSender    bool
 	hiddenFromRecipient bool
+	// quote and reactions are read with the message, not kept in it: what
+	// the message it answers says now and how people reacted to it.
+	quote     *Quote
+	reactions Reactions
 }
 
 // New creates a message. Its UUIDv7 ID grows with time, so a dialog is
@@ -912,6 +925,7 @@ func (m *Message) TakenBack(requesterID uuid.UUID, now time.Time) (*Message, err
 
 	gone := *m
 	gone.content = Content{}
+	gone.quote = nil
 	gone.editedAt = time.Time{}
 	gone.deletedAt = now.UTC().Truncate(time.Microsecond)
 

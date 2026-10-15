@@ -54,9 +54,10 @@ const saveMessageQuery = `
 			created_at,
 			sealed,
 			sticker,
-			document_ids
+			document_ids,
+			reply_to_id
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		RETURNING id, sender_id, recipient_id
 	)
 	INSERT INTO dialogs (
@@ -86,7 +87,7 @@ func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error 
 		return errs.Wrap("forwardedToDB", err)
 	}
 
-	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt(), m.Sealed().Bytes(), m.Sticker().String(), documentIDs(m.Documents()))
+	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt(), m.Sealed().Bytes(), m.Sticker().String(), documentIDs(m.Documents()), postIDToDB(m.ReplyTo()))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -111,7 +112,8 @@ const getMessageQuery = `
 		deleted_at,
 		sealed,
 		sticker,
-		document_ids
+		document_ids,
+		reply_to_id
 	FROM messages
 	WHERE id = $1
 `
@@ -142,6 +144,42 @@ func (r *MessageRepository) Get(ctx context.Context, id uuid.UUID) (*message.Mes
 	return m, nil
 }
 
+const getMessagesQuery = `
+	SELECT
+		id,
+		sender_id,
+		recipient_id,
+		text,
+		photo_ids,
+		post_id,
+		shared_photo_id,
+		created_at,
+		edited_at,
+		hidden_from_sender,
+		hidden_from_recipient,
+		forwarded,
+		deleted_at,
+		sealed,
+		sticker,
+		document_ids,
+		reply_to_id
+	FROM messages
+	WHERE id = ANY($1)
+`
+
+func (r *MessageRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*message.Message, error) {
+	if len(ids) == 0 {
+		return nil, nil
+	}
+
+	rows, err := r.pool.Query(ctx, getMessagesQuery, ids)
+	if err != nil {
+		return nil, errs.Wrap("r.pool.Query", err)
+	}
+
+	return collectMessages(rows)
+}
+
 // The dialog queries take the reader as $1 and the peer as $2: messages
 // the reader deleted for themselves are left out.
 const (
@@ -162,7 +200,8 @@ const (
 			deleted_at,
 			sealed,
 			sticker,
-			document_ids
+			document_ids,
+			reply_to_id
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
@@ -188,7 +227,8 @@ const (
 			deleted_at,
 			sealed,
 			sticker,
-			document_ids
+			document_ids,
+			reply_to_id
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
@@ -254,13 +294,15 @@ type scanned struct {
 	sealed      []byte
 	sticker     string
 	documents   []uuid.UUID
+	// replyTo is NULL for a message answering none.
+	replyTo *uuid.UUID
 }
 
 // dest are the columns of a message, in the order the queries list them.
 func (s *scanned) dest() []any {
 	return []any{
 		&s.stored.ID, &s.stored.SenderID, &s.stored.RecipientID, &s.text, &s.photos, &s.post, &s.sharedPhoto, &s.stored.CreatedAt,
-		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt, &s.sealed, &s.sticker, &s.documents,
+		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt, &s.sealed, &s.sticker, &s.documents, &s.replyTo,
 	}
 }
 
@@ -294,7 +336,7 @@ func (s *scanned) message() (*message.Message, error) {
 
 	stored := s.stored
 	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded).WithSealed(message.Sealed(s.sealed)).WithSticker(message.Sticker(s.sticker)).
-		WithDocuments(documentsFromDB(s.documents))
+		WithDocuments(documentsFromDB(s.documents)).Answering(orNil(s.replyTo))
 	if s.sharedPhoto != nil {
 		stored.Content = stored.Content.WithSharedPhoto(*s.sharedPhoto)
 	}
@@ -465,7 +507,8 @@ const listDialogsQuery = `
 		m.deleted_at,
 		m.sealed,
 		m.sticker,
-		m.document_ids
+		m.document_ids,
+		m.reply_to_id
 	FROM dialogs d
 	JOIN messages m ON m.id = d.last_message_id
 	LEFT JOIN dialogs p ON p.user_id = d.peer_id AND p.peer_id = d.user_id
@@ -674,8 +717,13 @@ func (r *MessageRepository) Delete(ctx context.Context, m *message.Message) erro
 // retractMessageQuery leaves the row where the dialogs point at it and
 // empties it: the message was taken back and says nothing anymore.
 const retractMessageQuery = `
+	WITH reactions AS (
+		DELETE FROM message_reactions
+		WHERE message_id = $1
+	)
 	UPDATE messages
 	SET text = '',
+		reply_to_id = NULL,
 		photo_ids = '{}',
 		post_id = NULL,
 		shared_photo_id = NULL,
@@ -820,7 +868,8 @@ const deleteUserDialogsQuery = `
 			m.deleted_at,
 			m.sealed,
 			m.sticker,
-			m.document_ids
+			m.document_ids,
+			m.reply_to_id
 	), gone_dialogs AS (
 		DELETE FROM dialogs
 		WHERE user_id = $1
@@ -846,7 +895,8 @@ const deleteUserDialogsQuery = `
 		deleted_at,
 		sealed,
 		sticker,
-		document_ids
+		document_ids,
+		reply_to_id
 	FROM gone_messages
 	WHERE cardinality(photo_ids) > 0
 		OR forwarded <> '[]'

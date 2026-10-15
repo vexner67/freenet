@@ -67,6 +67,108 @@ type chatMessageJSON struct {
 	Forwarded   []forwardedJSON `json:"forwarded,omitempty"`
 	Sticker     string          `json:"sticker,omitempty"`
 	Documents   []uuid.UUID     `json:"documents,omitempty"`
+	ReplyTo     uuid.UUID       `json:"reply_to"`
+	Quote       *quoteJSON      `json:"quote,omitempty"`
+	Reactions   []reactionJSON  `json:"reactions,omitempty"`
+}
+
+// quoteJSON is what an answer shows of the message it answers.
+type quoteJSON struct {
+	ID          uuid.UUID `json:"id"`
+	SenderID    uuid.UUID `json:"sender_id"`
+	Text        string    `json:"text,omitempty"`
+	Photos      int       `json:"photos,omitempty"`
+	Forwarded   int       `json:"forwarded,omitempty"`
+	Documents   int       `json:"documents,omitempty"`
+	Sticker     string    `json:"sticker,omitempty"`
+	Post        bool      `json:"post,omitempty"`
+	SharedPhoto bool      `json:"shared_photo,omitempty"`
+	Deleted     bool      `json:"deleted,omitempty"`
+	Found       bool      `json:"found,omitempty"`
+}
+
+type reactionJSON struct {
+	UserID   uuid.UUID `json:"user_id"`
+	Reaction string    `json:"reaction"`
+}
+
+func toQuoteJSON(q message.Quote, ok bool) *quoteJSON {
+	if !ok {
+		return nil
+	}
+
+	return &quoteJSON{
+		ID: q.ID, SenderID: q.SenderID, Text: q.Text.String(), Photos: q.Photos, Forwarded: q.Forwarded, Documents: q.Documents,
+		Sticker: q.Sticker.String(), Post: q.Post, SharedPhoto: q.SharedPhoto, Deleted: q.Deleted, Found: q.Found,
+	}
+}
+
+// quote rebuilds the quote of an answer, checked as any input is.
+func (q *quoteJSON) quote() (message.Quote, error) {
+	if !q.Found {
+		return message.Lost(q.ID), nil
+	}
+
+	text, err := message.NewText(q.Text)
+	if err != nil {
+		return message.Quote{}, errs.Wrap("message.NewText", err)
+	}
+
+	return message.Quote{
+		ID: q.ID, SenderID: q.SenderID, Text: text, Photos: q.Photos, Forwarded: q.Forwarded, Documents: q.Documents,
+		Sticker: message.Sticker(q.Sticker), Post: q.Post, SharedPhoto: q.SharedPhoto, Deleted: q.Deleted, Found: true,
+	}, nil
+}
+
+func toReactionsJSON(reactions message.Reactions) []reactionJSON {
+	out := make([]reactionJSON, len(reactions))
+	for i, r := range reactions {
+		out[i] = reactionJSON{UserID: r.UserID, Reaction: string(r.Reaction)}
+	}
+
+	return out
+}
+
+func reactionsOf(raw []reactionJSON) (message.Reactions, error) {
+	if len(raw) == 0 {
+		return nil, nil
+	}
+
+	out := make(message.Reactions, len(raw))
+	for i, r := range raw {
+		reaction, err := message.NewReaction(r.Reaction)
+		if err != nil {
+			return nil, errs.Wrap("message.NewReaction", err)
+		}
+
+		out[i] = message.Reacted{UserID: r.UserID, Reaction: reaction}
+	}
+
+	return out, nil
+}
+
+// dressed is what the answer and the reactions add to a message rebuilt.
+type dressed[M any] interface {
+	Quoting(q message.Quote) M
+	Reacting(r message.Reactions) M
+}
+
+func dress[M dressed[M]](m M, quote *quoteJSON, raw []reactionJSON) (M, error) {
+	if quote != nil {
+		q, err := quote.quote()
+		if err != nil {
+			return m, err
+		}
+
+		m = m.Quoting(q)
+	}
+
+	reactions, err := reactionsOf(raw)
+	if err != nil {
+		return m, err
+	}
+
+	return m.Reacting(reactions), nil
 }
 
 func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
@@ -91,6 +193,9 @@ func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
 		Forwarded:   toForwardedJSON(m.Forwarded()),
 		Sticker:     m.Sticker().String(),
 		Documents:   m.Documents(),
+		ReplyTo:     m.ReplyTo(),
+		Quote:       toQuoteJSON(m.Quote()),
+		Reactions:   toReactionsJSON(m.Reactions()),
 	}
 }
 
@@ -101,7 +206,8 @@ var errUnknownAction = errors.New("unknown chat action")
 func (m *chatMessageJSON) message() (*message.ChatMessage, error) {
 	switch message.Action(m.Action) {
 	case message.ActionNone, message.ActionCreate, message.ActionTitle, message.ActionInvite,
-		message.ActionKick, message.ActionLeave, message.ActionReturn:
+		message.ActionKick, message.ActionLeave, message.ActionReturn, message.ActionPin, message.ActionUnpin,
+		message.ActionPhoto, message.ActionPhotoRemove:
 	default:
 		return nil, errUnknownAction
 	}
@@ -125,11 +231,18 @@ func (m *chatMessageJSON) message() (*message.ChatMessage, error) {
 	}
 
 	content, err := contentOf(m.Text, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker)
-	if stored.Content, err = documented(content, err, m.Documents); err != nil {
+	if content, err = documented(content, err, m.Documents); err != nil {
 		return nil, errs.Wrap("contentOf", err)
 	}
 
-	return message.RestoreChatMessage(stored), nil
+	stored.Content = content.Answering(m.ReplyTo)
+
+	shown, err := dress(message.RestoreChatMessage(stored), m.Quote, m.Reactions)
+	if err != nil {
+		return nil, errs.Wrap("dress", err)
+	}
+
+	return shown, nil
 }
 
 func toChatJSON(e *service.ChatEvent) *chatJSON {
@@ -180,9 +293,12 @@ type messageJSON struct {
 	// DeletedAt is zero for a message never taken back.
 	DeletedAt time.Time `json:"deleted_at"`
 	// Sealed is what a message of a dialog says, sealed: base64 in JSON.
-	Sealed    []byte      `json:"sealed,omitempty"`
-	Sticker   string      `json:"sticker,omitempty"`
-	Documents []uuid.UUID `json:"documents,omitempty"`
+	Sealed    []byte         `json:"sealed,omitempty"`
+	Sticker   string         `json:"sticker,omitempty"`
+	Documents []uuid.UUID    `json:"documents,omitempty"`
+	ReplyTo   uuid.UUID      `json:"reply_to"`
+	Quote     *quoteJSON     `json:"quote,omitempty"`
+	Reactions []reactionJSON `json:"reactions,omitempty"`
 }
 
 type forwardedJSON struct {
@@ -225,6 +341,9 @@ func toMessageJSON(m *message.Message) *messageJSON {
 		Sealed:      m.Sealed().Bytes(),
 		Sticker:     m.Sticker().String(),
 		Documents:   m.Documents(),
+		ReplyTo:     m.ReplyTo(),
+		Quote:       toQuoteJSON(m.Quote()),
+		Reactions:   toReactionsJSON(m.Reactions()),
 	}
 }
 
@@ -246,11 +365,18 @@ func (m *messageJSON) message() (*message.Message, error) {
 	}
 
 	content, err := sealedContentOf(sealed, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker)
-	if stored.Content, err = documented(content, err, m.Documents); err != nil {
+	if content, err = documented(content, err, m.Documents); err != nil {
 		return nil, errs.Wrap("sealedContentOf", err)
 	}
 
-	return message.Restore(stored), nil
+	stored.Content = content.Answering(m.ReplyTo)
+
+	shown, err := dress(message.Restore(stored), m.Quote, m.Reactions)
+	if err != nil {
+		return nil, errs.Wrap("dress", err)
+	}
+
+	return shown, nil
 }
 
 // sealedContentOf rebuilds what a message of a dialog says and shows,
