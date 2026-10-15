@@ -62,7 +62,8 @@ cleanup() {
 	[ -n "$s3" ] && containers+=("$s3")
 
 	if [ ${#containers[@]} -gt 0 ]; then
-		docker rm -f "${containers[@]}" >/dev/null 2>&1 || true
+		# -v: the images declare volumes, and without it each run leaves them behind.
+		docker rm -f -v "${containers[@]}" >/dev/null 2>&1 || true
 	fi
 }
 trap cleanup EXIT
