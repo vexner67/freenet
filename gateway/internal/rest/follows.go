@@ -255,6 +255,45 @@ func (a *api) feed(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, resp)
 }
 
+// searchPosts is openvk's "Поиск записей": the posts of every wall that
+// a tag ("#поход") or a part of the text finds, newest first, shown as the
+// news show them; the people the caller blacklisted are left out.
+func (a *api) searchPosts(w http.ResponseWriter, r *http.Request) {
+	token, limit, err := ownList(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	blocked, err := a.users.BlockedIDs(r.Context(), token)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	query := r.URL.Query()
+
+	page, err := a.posts.Search(r.Context(), token, query.Get("q"), blocked, query.Get("cursor"), limit)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	resp := postPageResponse{NextCursor: page.NextCursor, Total: page.Total}
+
+	if resp.Posts, err = a.withPeople(r, page.Posts); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.markModerated(r, token, resp.Posts); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, resp)
+}
+
 // markModerated marks the posts on the walls of the communities the reader
 // runs: in the news they delete, pin and put those away as on the wall.
 func (a *api) markModerated(r *http.Request, token string, posts []postResponse) error {

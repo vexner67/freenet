@@ -238,6 +238,24 @@ func (p *Posts) Feed(ctx context.Context, accessToken string, sources model.Feed
 	}, nil
 }
 
+// Search is openvk's "Поиск записей" for the owner of the token: the
+// posts of every wall a tag or a part of the text finds, newest first,
+// without those of the people hidden (the blacklist); Total counts them.
+func (p *Posts) Search(ctx context.Context, accessToken, query string, hidden []string, cursor string, limit int) (model.PostPage, error) {
+	resp, err := p.api.SearchPosts(withToken(ctx, accessToken), &postv1.SearchPostsRequest{
+		Query:           query,
+		HiddenAuthorIds: hidden,
+		Cursor:          cursor,
+		Limit:           toLimit(limit),
+		TextLimit:       model.ExcerptLength,
+	})
+	if err != nil {
+		return model.PostPage{}, errs.Wrap("p.api.SearchPosts", fromStatus(err))
+	}
+
+	return model.PostPage{Posts: toPosts(resp.GetPosts()), NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}, nil
+}
+
 // Reposts are the posts that share the post, newest first, with the
 // beginnings of their texts; Total counts them all.
 func (p *Posts) Reposts(ctx context.Context, accessToken, postID, cursor string, limit int) (model.PostPage, error) {

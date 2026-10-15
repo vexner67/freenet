@@ -953,6 +953,115 @@ paths:
         "403": { description: "Not your document", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/stories:
+    get:
+      summary: The stories above your news ("истории" of VK)
+      description: |
+        A story is a photo with a few words shown for a day. These are
+        yours and of the people you follow, grouped by author: you first,
+        then those with a story you have not viewed, then the rest; each
+        one's stories the oldest first. Those you blacklisted or ignore in
+        the news, deleted pages and closed pages you may not see are left
+        out.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The stories
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StoryList" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/users/{nickname}/stories:
+    get:
+      summary: The live stories of a person, the oldest first
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: nickname, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The stories, under one author or none
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StoryList" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "The page is deleted or hidden", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/stories:
+    post:
+      summary: Tell a story
+      description: |
+        The profile must be filled in first. The photo is an ID from
+        `POST /api/v1/me/photos`, yours; it is shown for a day and then
+        deleted. At most 30 stories of yours live at once (409).
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [photo]
+              properties:
+                photo: { type: string, format: uuid }
+                text: { type: string, maxLength: 200 }
+      responses:
+        "201":
+          description: The story
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Story" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409": { description: "Too many stories", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/stories/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      summary: Delete your story with its photo
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not your story", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/stories/{id}/view:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      summary: You viewed a story; once is enough, your own is not counted
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Viewed }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/stories/{id}/viewers:
+    get:
+      summary: Who viewed your story, the latest first
+      description: |
+        `total` counts them; people whose page is deleted are left out of
+        `users` and of `total`.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: One page of people
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/UserPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not your story", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/me/posts:
     post:
       summary: Write on your own wall
@@ -975,6 +1084,45 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/posts:
+    get:
+      summary: Search the posts of every wall
+      description: |
+        "Поиск записей" of openvk: the posts of every wall that the query
+        finds, newest first, each with its author, as the news show them
+        (`moderated` too). One tag (`#поход`, in any case) finds the posts
+        that say it as a tag — `#` at the start of the text or after a space,
+        then letters, digits and `_` — and not as a part of a longer one;
+        any other query finds the posts whose text says it, in any case. An
+        empty query finds nothing. `total` counts what the query finds.
+        What "Все новости" would not show you is not found: archived posts,
+        those of deleted pages, the walls closed to you and what the people
+        in your blacklist wrote (but in the name of a community).
+      security: [{ bearer: [] }]
+      parameters:
+        - name: q
+          in: query
+          description: At most 100 characters; longer is 400 `search query is too long`
+          schema: { type: string }
+        - name: comments
+          in: query
+          description: "`last` brings each post with `lastComments`, its three newest comments (\"Микроблог\")"
+          schema: { type: string, enum: [last] }
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: One page of the posts found
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
 
   /api/v1/posts/{id}:
     get:
@@ -6144,6 +6292,36 @@ components:
       maxItems: 10
       uniqueItems: true
       items: { type: string, format: uuid }
+
+    Story:
+      type: object
+      description: A photo with a few words shown for a day
+      required: [id, photo, text, createdAt, expiresAt, viewed, views]
+      properties:
+        id: { type: string, format: uuid }
+        photo: { $ref: "#/components/schemas/Photo" }
+        text: { type: string, description: "Up to 200 characters; may be empty" }
+        createdAt: { type: string, format: date-time }
+        expiresAt: { type: string, format: date-time, description: "A day after createdAt" }
+        viewed: { type: boolean, description: "You viewed it" }
+        mine: { type: boolean, description: "You told it" }
+        views: { type: integer, description: "Of yours: how many others viewed it; 0 otherwise" }
+
+    StoryList:
+      type: object
+      required: [authors]
+      properties:
+        authors:
+          type: array
+          items:
+            type: object
+            required: [author, stories, viewed]
+            properties:
+              author: { $ref: "#/components/schemas/Author" }
+              stories:
+                type: array
+                items: { $ref: "#/components/schemas/Story" }
+              viewed: { type: boolean, description: "You viewed them all" }
 
     Document:
       type: object
