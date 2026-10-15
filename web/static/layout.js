@@ -507,6 +507,11 @@ export function avatarURL(user, size) {
   return user.avatar?.[size] ?? (user.club ? '/static/club.svg' : '/static/avatar.svg');
 }
 
+// chatPhotoURL is the photo of a chat or, without one, the placeholder.
+export function chatPhotoURL(chat, size) {
+  return chat.photo?.[size] ?? '/static/chat.svg';
+}
+
 export function fullName(user) {
   return [user.name, user.surname].filter(Boolean).join(' ');
 }

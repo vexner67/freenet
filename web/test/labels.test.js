@@ -729,6 +729,10 @@ test('chats are named, counted and told of', () => {
   assert.deepEqual(chatActionParts({ action: 'kick', author: petr, target: ann }), ['исключил ', 'Анну Иванову', ' из беседы']);
   assert.equal(chatAction({ action: 'leave', author: { gender: 'female' } }), 'покинула беседу');
   assert.equal(chatAction({ action: 'return', author: ann }), 'вернулась в беседу');
+  assert.equal(chatAction({ action: 'pin', author: ann }), 'закрепила сообщение');
+  assert.equal(chatAction({ action: 'unpin', author: petr }), 'открепил сообщение');
+  assert.equal(chatAction({ action: 'photo', author: ann }), 'обновила фотографию беседы');
+  assert.equal(chatAction({ action: 'photo_remove', author: petr }), 'удалил фотографию беседы');
   assert.equal(chatAction({ action: '', author: ann }), '');
 
   assert.equal(chatPreview(null), '');

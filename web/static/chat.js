@@ -10,16 +10,19 @@
 // message is carried on ("Переслать"), and a click selects several to
 // carry on at once. With ?msg=<id> the chat opens around that message, as
 // a search leads to it. While others type, "печатает..." shows under the
-// messages (typing.js).
+// messages (typing.js). Anyone in the chat pins a message above it
+// ("Закрепить", as VK: one at a time) and sets its photo, in "О чате".
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
+import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
 import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
+import { openAvatarDialog } from './avatar.js';
 import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
-import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, photoChanges, selectedCount } from './labels.js';
-import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
+import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, selectedCount, snippet } from './labels.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
@@ -88,7 +91,9 @@ function messageNode(m) {
   // and taken back it says nothing.
   node.render = () => {
     const now = node.message;
-    const mine = now.out && !now.deleted && chat.state === 'active';
+    const active = chat.state === 'active';
+    const mine = now.out && !now.deleted && active;
+    const pinned = chat.pinned?.id === now.id;
 
     node.classList.toggle('deleted', now.deleted);
     content.replaceChildren(...[
@@ -102,6 +107,11 @@ function messageNode(m) {
       mine && !now.sticker && now.editableUntil && new Date(now.editableUntil) > new Date()
         && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(now) }),
       !now.deleted && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => forward([now]) }),
+      !now.deleted && active && el('a', {
+        className: 'im-message-action',
+        textContent: pinned ? 'Открепить' : 'Закрепить',
+        onclick: () => change(() => (pinned ? api.unpinChatMessage(chatID) : api.pinChatMessage(chatID, now.id))),
+      }),
       mine && now.deletableUntil && new Date(now.deletableUntil) > new Date()
         && el('a', { className: 'im-message-action', textContent: 'Удалить', onclick: () => confirmDelete(now) }),
     ].filter(Boolean));
@@ -238,7 +248,7 @@ async function startEdit(m) {
   autosize(text);
   attachments.set(m.photos ?? []);
   $('editing').hidden = false;
-  $('attach').hidden = Boolean(m.sharedPhoto);
+  if (m.sharedPhoto) $('attach').hidden = $('graffiti').hidden = true;
   // An edit changes the words and the photos; the documents stay.
   documents.clear();
   $('doc').hidden = true;
@@ -255,7 +265,6 @@ function cancelEdit() {
   autosize($('text'));
   attachments.clear();
   $('editing').hidden = true;
-  $('attach').hidden = false;
   $('doc').hidden = false;
   $('send').textContent = 'Отправить';
 }
@@ -269,6 +278,8 @@ function edited(m) {
   node.message = { ...node.message, textCut: false, ...m, unread: node.message.unread };
   node.render();
   if (editing?.id === m.id && m.deleted) cancelEdit();
+  // The pinned message shows what it says now, or goes when taken back.
+  if (chat.pinned?.id === m.id) refresh();
 }
 
 // add puts messages at the end (newer) or the start (older), skipping
@@ -540,8 +551,55 @@ function confirmLeave() {
   );
 }
 
-// openAbout is "О чате": who is in it, its creator marked; the creator
-// removes the others here.
+// showPinned is the line of the message pinned above the chat: who wrote
+// it and its beginning; a click goes to it, "×" takes it down.
+function showPinned() {
+  const m = chat.pinned;
+
+  $('pinned').hidden = !m;
+  if (!m) return;
+
+  $('pinned').replaceChildren(
+    el('div', { className: 'chat-pinned-body', title: 'Перейти к сообщению', onclick: () => goTo(m.id) },
+      el('span', { className: 'chat-pinned-head', textContent: 'Закреплённое сообщение' }),
+      el('b', { textContent: fullName(m.author) }), ': ', snippet(messagePreview(m), 200)),
+    chat.state === 'active' && el('a', {
+      className: 'chat-pinned-remove',
+      title: 'Открепить сообщение',
+      textContent: '×',
+      onclick: () => change(() => api.unpinChatMessage(chatID)),
+    }),
+  );
+}
+
+// goTo shows a message of the chat: where it stands when it is loaded,
+// otherwise the chat opens around it.
+function goTo(id) {
+  const node = shown.get(id);
+  if (!node) {
+    location.assign('/im/chat/' + encodeURIComponent(chatID) + '?msg=' + encodeURIComponent(id));
+    return;
+  }
+
+  for (const other of list.querySelectorAll('.im-message.found')) other.classList.remove('found');
+  node.classList.add('found');
+  node.scrollIntoView({ block: 'center' });
+}
+
+// openPhoto is "Обновить фотографию": a square cut out of a picture, as
+// the photo of a page.
+function openPhoto() {
+  openAvatarDialog({
+    chat: true,
+    upload: async (blob) => {
+      show(await api.uploadChatPhoto(chatID, blob));
+      await catchUp();
+    },
+  });
+}
+
+// openAbout is "О чате": its photo, who is in it, its creator marked;
+// anyone in it changes the photo, the creator removes the others here.
 function openAbout() {
   const modal = openModal('О чате');
   const error = el('div', { className: 'error', hidden: true });
@@ -572,9 +630,22 @@ function openAbout() {
     )));
   }
 
+  const photoLinks = el('div', { className: 'chat-about-links' },
+    el('a', { textContent: 'Обновить фотографию', onclick: () => { modal.close(); openPhoto(); } }),
+    chat.photo && ' | ',
+    chat.photo && el('a', { textContent: 'Удалить фотографию', onclick: () => { modal.close(); change(() => api.deleteChatPhoto(chatID)); } }),
+  );
+
   fill();
   modal.box.classList.add('chat-dialog');
-  modal.body.append(error, el('b', { textContent: chatTitle(chat) }), el('div', { className: 'hint', textContent: chatMembers(chat.memberCount) }), people);
+  modal.body.append(
+    error,
+    el('img', { className: 'chat-about-photo', src: chatPhotoURL(chat, 'large'), alt: '' }),
+    chat.state === 'active' ? photoLinks : '',
+    el('b', { textContent: chatTitle(chat) }),
+    el('div', { className: 'hint', textContent: chatMembers(chat.memberCount) }),
+    people,
+  );
   modal.actions.append(button('Закрыть', modal.close, { secondary: true }));
 }
 
@@ -593,6 +664,8 @@ function show(now) {
   document.title = `${chatTitle(chat)} | Сообщения`;
   $('title').replaceChildren(el('a', { href: '/im', textContent: 'Мои Сообщения' }), ' » ', chatTitle(chat));
   $('members').textContent = chatMembers(chat.memberCount);
+  $('chat-avatar').src = chatPhotoURL(chat, 'small');
+  showPinned();
   $('actions').replaceChildren(...links.flatMap((node, i) => (i ? [' | ', node] : [node])));
   $('about').hidden = !active;
 
@@ -636,7 +709,8 @@ async function sendSticker(sticker) {
 
 function setUpInput() {
   $('my-avatar').src = avatarURL(me, 'small');
-  attachments = initAttachments({ link: $('attach'), input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
+  attachments = initAttachments({ link: $('attach'), also: [$('graffiti')], input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
+  initGraffiti({ link: $('graffiti'), attachments });
   documents = initDocuments({ link: $('doc'), list: $('documents') });
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   $('form').addEventListener('submit', send);

@@ -1490,6 +1490,14 @@ export function chatActionParts(m) {
       return [`${byGender(g, 'покинул', 'покинула')} беседу`, '', ''];
     case 'return':
       return [`${byGender(g, 'вернулся', 'вернулась')} в беседу`, '', ''];
+    case 'pin':
+      return [`${byGender(g, 'закрепил', 'закрепила')} сообщение`, '', ''];
+    case 'unpin':
+      return [`${byGender(g, 'открепил', 'открепила')} сообщение`, '', ''];
+    case 'photo':
+      return [`${byGender(g, 'обновил', 'обновила')} фотографию беседы`, '', ''];
+    case 'photo_remove':
+      return [`${byGender(g, 'удалил', 'удалила')} фотографию беседы`, '', ''];
     default:
       return ['', '', ''];
   }

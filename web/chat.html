@@ -32,6 +32,7 @@
             <b id="members"></b>
             <span id="actions"></span>
           </div>
+          <div class="chat-pinned" id="pinned" hidden></div>
           <div class="im-selection" id="selection" hidden>
             <b id="selection-count"></b>
             <span><a id="selection-forward">Переслать</a> | <a id="selection-cancel">Отмена</a></span>
@@ -50,13 +51,14 @@
               <div class="messenger-buttons">
                 <button class="button" type="submit" id="send">Отправить</button>
                 <a class="attach-link" id="attach">Прикрепить фотографию</a>
+                <a class="attach-link" id="graffiti">Граффити</a>
                 <a class="attach-link" id="doc">Прикрепить документ</a>
                 <a class="attach-link" id="stickers-link">Стикеры</a>
               </div>
               <div class="sticker-panel" id="stickers" hidden></div>
               <input type="file" id="file" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
             </div>
-            <img class="messenger-avatar" src="/static/chat.svg" alt="">
+            <img class="messenger-avatar" id="chat-avatar" src="/static/chat.svg" alt="">
           </form>
           <p class="messenger-blocked" id="blocked" hidden></p>
         </div>

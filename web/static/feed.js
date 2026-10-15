@@ -2,6 +2,7 @@ import { api, currentUser } from './api.js';
 import { $, el, isMicroblog, renderChrome, showError, hideError, autosize } from './layout.js';
 import { postNode, wallOwnerID } from './posts.js';
 import { initAttachments } from './attach.js';
+import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
 import { initPollDraft } from './poll.js';
 import { initTimer, postponedNotice } from './postponed.js';
@@ -105,6 +106,7 @@ function initForm(me) {
 
   attachments = initAttachments({
     link: $('post-attach'),
+    also: [$('post-graffiti')],
     input: $('post-file'),
     list: $('post-photos'),
     error,
@@ -112,6 +114,7 @@ function initForm(me) {
       if (attachments?.count()) form.classList.add('expanded');
     },
   });
+  initGraffiti({ link: $('post-graffiti'), attachments });
 
   const documents = initDocuments({
     link: $('post-doc'),
