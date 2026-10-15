@@ -54,9 +54,9 @@ func sameEvent(a, b notification.Event) bool {
 }
 
 // Notifications are immutable, so sharing pointers with callers is safe.
-func (r *NotificationRepository) Save(ctx context.Context, n *notification.Notification) error {
+func (r *NotificationRepository) Save(ctx context.Context, n *notification.Notification) (bool, error) {
 	if err := ctx.Err(); err != nil {
-		return errs.Wrap("ctx.Err", err)
+		return false, errs.Wrap("ctx.Err", err)
 	}
 
 	r.mu.Lock()
@@ -64,13 +64,13 @@ func (r *NotificationRepository) Save(ctx context.Context, n *notification.Notif
 
 	for _, existing := range r.notifications {
 		if sameEvent(existing.Event(), n.Event()) {
-			return nil
+			return false, nil
 		}
 	}
 
 	r.notifications[n.ID()] = n
 
-	return nil
+	return true, nil
 }
 
 func (r *NotificationRepository) Get(ctx context.Context, id uuid.UUID) (*notification.Notification, error) {

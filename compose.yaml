@@ -194,6 +194,13 @@ services:
       STORAGE: persistent
       DATABASE_URL: postgres://${NOTIFICATION_POSTGRES_USER}:${NOTIFICATION_POSTGRES_PASSWORD}@notification-postgres:5432/${NOTIFICATION_POSTGRES_DB}?sslmode=disable
       REDIS_ADDR: redis:6379
+      # Push notifications to browsers: the key deploy/certs.sh makes once.
+      PUSH_KEY_PATH: /certs/push-key.pem
+      PUSH_SUBJECT: ${PUSH_SUBJECT:-https://github.com/vexner67/freenet}
+      # Who did what a push tells of. Not in depends_on: both wait for
+      # notification; until they are up, pushes name nobody.
+      USER_SERVICE_ADDR: user:7052
+      CLUB_SERVICE_ADDR: club:7057
     depends_on:
       notification-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
@@ -212,10 +219,12 @@ services:
       DATABASE_URL: postgres://${MESSAGE_POSTGRES_USER}:${MESSAGE_POSTGRES_PASSWORD}@message-postgres:5432/${MESSAGE_POSTGRES_DB}?sslmode=disable
       REDIS_ADDR: redis:6379
       MEDIA_SERVICE_ADDR: media:7054
+      NOTIFICATION_SERVICE_ADDR: notification:7055
     depends_on:
       message-postgres: { condition: service_healthy }
       redis: { condition: service_healthy }
       media: { condition: service_healthy }
+      notification: { condition: service_healthy }
 
   club:
     <<: *service

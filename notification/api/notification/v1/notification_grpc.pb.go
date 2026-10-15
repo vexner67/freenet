@@ -29,6 +29,10 @@ const (
 	NotificationService_CountUnread_FullMethodName       = "/notification.v1.NotificationService/CountUnread"
 	NotificationService_MarkRead_FullMethodName          = "/notification.v1.NotificationService/MarkRead"
 	NotificationService_Subscribe_FullMethodName         = "/notification.v1.NotificationService/Subscribe"
+	NotificationService_GetPushKey_FullMethodName        = "/notification.v1.NotificationService/GetPushKey"
+	NotificationService_SubscribePush_FullMethodName     = "/notification.v1.NotificationService/SubscribePush"
+	NotificationService_UnsubscribePush_FullMethodName   = "/notification.v1.NotificationService/UnsubscribePush"
+	NotificationService_PushMessage_FullMethodName       = "/notification.v1.NotificationService/PushMessage"
 )
 
 // NotificationServiceClient is the client API for NotificationService service.
@@ -57,6 +61,18 @@ type NotificationServiceClient interface {
 	// Unauthenticated when the token expires and with ResourceExhausted when
 	// the caller falls behind; then subscribe again and count afresh.
 	Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeResponse], error)
+	// Public: the key browsers subscribe to pushes with (VAPID); empty when
+	// pushes are off.
+	GetPushKey(ctx context.Context, in *GetPushKeyRequest, opts ...grpc.CallOption) (*GetPushKeyResponse, error)
+	// Require an access token: the browser at endpoint gets the caller's
+	// pushes, taken over from whoever had it; or stops, if it was the
+	// caller's. Both idempotent. Subscribing while pushes are off is
+	// FailedPrecondition.
+	SubscribePush(ctx context.Context, in *SubscribePushRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UnsubscribePush(ctx context.Context, in *UnsubscribePushRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for message: a new message, pushed to its recipients. Best
+	// effort: it is queued and sent after the answer.
+	PushMessage(ctx context.Context, in *PushMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
 type notificationServiceClient struct {
@@ -166,6 +182,46 @@ func (c *notificationServiceClient) Subscribe(ctx context.Context, in *Subscribe
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type NotificationService_SubscribeClient = grpc.ServerStreamingClient[SubscribeResponse]
 
+func (c *notificationServiceClient) GetPushKey(ctx context.Context, in *GetPushKeyRequest, opts ...grpc.CallOption) (*GetPushKeyResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetPushKeyResponse)
+	err := c.cc.Invoke(ctx, NotificationService_GetPushKey_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *notificationServiceClient) SubscribePush(ctx context.Context, in *SubscribePushRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, NotificationService_SubscribePush_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *notificationServiceClient) UnsubscribePush(ctx context.Context, in *UnsubscribePushRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, NotificationService_UnsubscribePush_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *notificationServiceClient) PushMessage(ctx context.Context, in *PushMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, NotificationService_PushMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // NotificationServiceServer is the server API for NotificationService service.
 // All implementations must embed UnimplementedNotificationServiceServer
 // for forward compatibility.
@@ -192,6 +248,18 @@ type NotificationServiceServer interface {
 	// Unauthenticated when the token expires and with ResourceExhausted when
 	// the caller falls behind; then subscribe again and count afresh.
 	Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error
+	// Public: the key browsers subscribe to pushes with (VAPID); empty when
+	// pushes are off.
+	GetPushKey(context.Context, *GetPushKeyRequest) (*GetPushKeyResponse, error)
+	// Require an access token: the browser at endpoint gets the caller's
+	// pushes, taken over from whoever had it; or stops, if it was the
+	// caller's. Both idempotent. Subscribing while pushes are off is
+	// FailedPrecondition.
+	SubscribePush(context.Context, *SubscribePushRequest) (*emptypb.Empty, error)
+	UnsubscribePush(context.Context, *UnsubscribePushRequest) (*emptypb.Empty, error)
+	// Internal, for message: a new message, pushed to its recipients. Best
+	// effort: it is queued and sent after the answer.
+	PushMessage(context.Context, *PushMessageRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedNotificationServiceServer()
 }
 
@@ -228,6 +296,18 @@ func (UnimplementedNotificationServiceServer) MarkRead(context.Context, *MarkRea
 }
 func (UnimplementedNotificationServiceServer) Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error {
 	return status.Error(codes.Unimplemented, "method Subscribe not implemented")
+}
+func (UnimplementedNotificationServiceServer) GetPushKey(context.Context, *GetPushKeyRequest) (*GetPushKeyResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetPushKey not implemented")
+}
+func (UnimplementedNotificationServiceServer) SubscribePush(context.Context, *SubscribePushRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SubscribePush not implemented")
+}
+func (UnimplementedNotificationServiceServer) UnsubscribePush(context.Context, *UnsubscribePushRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnsubscribePush not implemented")
+}
+func (UnimplementedNotificationServiceServer) PushMessage(context.Context, *PushMessageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method PushMessage not implemented")
 }
 func (UnimplementedNotificationServiceServer) mustEmbedUnimplementedNotificationServiceServer() {}
 func (UnimplementedNotificationServiceServer) testEmbeddedByValue()                             {}
@@ -405,6 +485,78 @@ func _NotificationService_Subscribe_Handler(srv interface{}, stream grpc.ServerS
 // This type alias is provided for backwards compatibility with existing code that references the prior non-generic stream type by name.
 type NotificationService_SubscribeServer = grpc.ServerStreamingServer[SubscribeResponse]
 
+func _NotificationService_GetPushKey_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetPushKeyRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotificationServiceServer).GetPushKey(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotificationService_GetPushKey_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotificationServiceServer).GetPushKey(ctx, req.(*GetPushKeyRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NotificationService_SubscribePush_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SubscribePushRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotificationServiceServer).SubscribePush(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotificationService_SubscribePush_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotificationServiceServer).SubscribePush(ctx, req.(*SubscribePushRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NotificationService_UnsubscribePush_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnsubscribePushRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotificationServiceServer).UnsubscribePush(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotificationService_UnsubscribePush_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotificationServiceServer).UnsubscribePush(ctx, req.(*UnsubscribePushRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _NotificationService_PushMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PushMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(NotificationServiceServer).PushMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: NotificationService_PushMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(NotificationServiceServer).PushMessage(ctx, req.(*PushMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // NotificationService_ServiceDesc is the grpc.ServiceDesc for NotificationService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -443,6 +595,22 @@ var NotificationService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MarkRead",
 			Handler:    _NotificationService_MarkRead_Handler,
+		},
+		{
+			MethodName: "GetPushKey",
+			Handler:    _NotificationService_GetPushKey_Handler,
+		},
+		{
+			MethodName: "SubscribePush",
+			Handler:    _NotificationService_SubscribePush_Handler,
+		},
+		{
+			MethodName: "UnsubscribePush",
+			Handler:    _NotificationService_UnsubscribePush_Handler,
+		},
+		{
+			MethodName: "PushMessage",
+			Handler:    _NotificationService_PushMessage_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{

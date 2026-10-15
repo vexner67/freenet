@@ -13,7 +13,9 @@ import (
 )
 
 func newService() *service.NotificationService {
-	return service.NewNotificationService(inmem.NewNotificationRepository(), inmem.NewReadMarkRepository(), pubsub.New[uuid.UUID, service.Change](64))
+	pushes := service.NewPushService(service.PushDeps{Subscriptions: inmem.NewSubscriptionRepository()})
+
+	return service.NewNotificationService(inmem.NewNotificationRepository(), inmem.NewReadMarkRepository(), pubsub.New[uuid.UUID, service.Change](64), pushes)
 }
 
 func like(recipient, actor, post uuid.UUID) notification.Event {

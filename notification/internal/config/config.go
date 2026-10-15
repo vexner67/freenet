@@ -3,6 +3,7 @@ package config
 import (
 	"errors"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/vexner67/freenet/pkg/envconfig"
@@ -48,6 +49,24 @@ type Config struct {
 	Retention       time.Duration `env:"NOTIFICATION_RETENTION" envDefault:"4320h"`
 	CleanupInterval time.Duration `env:"NOTIFICATION_CLEANUP_INTERVAL" envDefault:"1h"`
 
+	// PushKeyPath is the VAPID private key (P-256, PEM) pushes to browsers
+	// are signed with; empty keeps pushes off. PushSubject is whom the push
+	// services may contact: a mailto: or https URL.
+	PushKeyPath string `env:"PUSH_KEY_PATH"`
+	PushSubject string `env:"PUSH_SUBJECT" envDefault:"https://github.com/vexner67/freenet"`
+	// PushTimeout bounds pushing one event to all browsers of a user;
+	// PushQueue is how many may wait (more are dropped), PushWorkers how
+	// many are pushed at once.
+	PushTimeout time.Duration `env:"PUSH_TIMEOUT" envDefault:"10s"`
+	PushQueue   int           `env:"PUSH_QUEUE" envDefault:"1000"`
+	PushWorkers int           `env:"PUSH_WORKERS" envDefault:"4"`
+
+	// UserServiceAddr and ClubServiceAddr name who did what a push tells
+	// of, within PEOPLE_TIMEOUT; without them pushes name nobody.
+	UserServiceAddr string        `env:"USER_SERVICE_ADDR"`
+	ClubServiceAddr string        `env:"CLUB_SERVICE_ADDR"`
+	PeopleTimeout   time.Duration `env:"PEOPLE_TIMEOUT" envDefault:"2s"`
+
 	// Access tokens are issued by the auth service; notification only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`
 	JWTIssuer        string `env:"JWT_ISSUER,required,notEmpty"`
@@ -70,6 +89,14 @@ func (c Config) Validate() error {
 
 	if c.Retention <= 0 || c.CleanupInterval <= 0 {
 		return errors.New("NOTIFICATION_RETENTION and NOTIFICATION_CLEANUP_INTERVAL must be positive")
+	}
+
+	if !strings.HasPrefix(c.PushSubject, "mailto:") && !strings.HasPrefix(c.PushSubject, "https://") {
+		return errors.New("PUSH_SUBJECT must be a mailto: or https URL")
+	}
+
+	if c.PushTimeout <= 0 || c.PushQueue <= 0 || c.PushWorkers <= 0 || c.PeopleTimeout <= 0 {
+		return errors.New("PUSH_TIMEOUT, PUSH_QUEUE, PUSH_WORKERS and PEOPLE_TIMEOUT must be positive")
 	}
 
 	if err := c.Tracing.Validate(); err != nil {

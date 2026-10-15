@@ -973,6 +973,272 @@ func (x *SubscribeResponse) GetChange() Change {
 	return Change_CHANGE_UNSPECIFIED
 }
 
+type GetPushKeyRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPushKeyRequest) Reset() {
+	*x = GetPushKeyRequest{}
+	mi := &file_api_notification_v1_notification_proto_msgTypes[14]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPushKeyRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPushKeyRequest) ProtoMessage() {}
+
+func (x *GetPushKeyRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notification_v1_notification_proto_msgTypes[14]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPushKeyRequest.ProtoReflect.Descriptor instead.
+func (*GetPushKeyRequest) Descriptor() ([]byte, []int) {
+	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{14}
+}
+
+type GetPushKeyResponse struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// The application server key, base64url without padding.
+	PublicKey     string `protobuf:"bytes,1,opt,name=public_key,json=publicKey,proto3" json:"public_key,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetPushKeyResponse) Reset() {
+	*x = GetPushKeyResponse{}
+	mi := &file_api_notification_v1_notification_proto_msgTypes[15]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetPushKeyResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetPushKeyResponse) ProtoMessage() {}
+
+func (x *GetPushKeyResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notification_v1_notification_proto_msgTypes[15]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetPushKeyResponse.ProtoReflect.Descriptor instead.
+func (*GetPushKeyResponse) Descriptor() ([]byte, []int) {
+	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{15}
+}
+
+func (x *GetPushKeyResponse) GetPublicKey() string {
+	if x != nil {
+		return x.PublicKey
+	}
+	return ""
+}
+
+type SubscribePushRequest struct {
+	state protoimpl.MessageState `protogen:"open.v1"`
+	// As PushSubscription of the browser gives them: an https URL and the
+	// keys in base64url.
+	Endpoint      string `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	P256Dh        string `protobuf:"bytes,2,opt,name=p256dh,proto3" json:"p256dh,omitempty"`
+	Auth          string `protobuf:"bytes,3,opt,name=auth,proto3" json:"auth,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *SubscribePushRequest) Reset() {
+	*x = SubscribePushRequest{}
+	mi := &file_api_notification_v1_notification_proto_msgTypes[16]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *SubscribePushRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*SubscribePushRequest) ProtoMessage() {}
+
+func (x *SubscribePushRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notification_v1_notification_proto_msgTypes[16]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use SubscribePushRequest.ProtoReflect.Descriptor instead.
+func (*SubscribePushRequest) Descriptor() ([]byte, []int) {
+	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{16}
+}
+
+func (x *SubscribePushRequest) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+func (x *SubscribePushRequest) GetP256Dh() string {
+	if x != nil {
+		return x.P256Dh
+	}
+	return ""
+}
+
+func (x *SubscribePushRequest) GetAuth() string {
+	if x != nil {
+		return x.Auth
+	}
+	return ""
+}
+
+type UnsubscribePushRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Endpoint      string                 `protobuf:"bytes,1,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnsubscribePushRequest) Reset() {
+	*x = UnsubscribePushRequest{}
+	mi := &file_api_notification_v1_notification_proto_msgTypes[17]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnsubscribePushRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnsubscribePushRequest) ProtoMessage() {}
+
+func (x *UnsubscribePushRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notification_v1_notification_proto_msgTypes[17]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnsubscribePushRequest.ProtoReflect.Descriptor instead.
+func (*UnsubscribePushRequest) Descriptor() ([]byte, []int) {
+	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{17}
+}
+
+func (x *UnsubscribePushRequest) GetEndpoint() string {
+	if x != nil {
+		return x.Endpoint
+	}
+	return ""
+}
+
+type PushMessageRequest struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	MessageId string                 `protobuf:"bytes,1,opt,name=message_id,json=messageId,proto3" json:"message_id,omitempty"`
+	SenderId  string                 `protobuf:"bytes,2,opt,name=sender_id,json=senderId,proto3" json:"sender_id,omitempty"`
+	// At most 49; the sender among them is skipped.
+	RecipientIds []string `protobuf:"bytes,3,rep,name=recipient_ids,json=recipientIds,proto3" json:"recipient_ids,omitempty"`
+	// Empty for a dialog.
+	ChatId string `protobuf:"bytes,4,opt,name=chat_id,json=chatId,proto3" json:"chat_id,omitempty"`
+	// May be empty for a chat too.
+	ChatTitle     string `protobuf:"bytes,5,opt,name=chat_title,json=chatTitle,proto3" json:"chat_title,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *PushMessageRequest) Reset() {
+	*x = PushMessageRequest{}
+	mi := &file_api_notification_v1_notification_proto_msgTypes[18]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *PushMessageRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*PushMessageRequest) ProtoMessage() {}
+
+func (x *PushMessageRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_notification_v1_notification_proto_msgTypes[18]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use PushMessageRequest.ProtoReflect.Descriptor instead.
+func (*PushMessageRequest) Descriptor() ([]byte, []int) {
+	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{18}
+}
+
+func (x *PushMessageRequest) GetMessageId() string {
+	if x != nil {
+		return x.MessageId
+	}
+	return ""
+}
+
+func (x *PushMessageRequest) GetSenderId() string {
+	if x != nil {
+		return x.SenderId
+	}
+	return ""
+}
+
+func (x *PushMessageRequest) GetRecipientIds() []string {
+	if x != nil {
+		return x.RecipientIds
+	}
+	return nil
+}
+
+func (x *PushMessageRequest) GetChatId() string {
+	if x != nil {
+		return x.ChatId
+	}
+	return ""
+}
+
+func (x *PushMessageRequest) GetChatTitle() string {
+	if x != nil {
+		return x.ChatTitle
+	}
+	return ""
+}
+
 var File_api_notification_v1_notification_proto protoreflect.FileDescriptor
 
 const file_api_notification_v1_notification_proto_rawDesc = "" +
@@ -1020,7 +1286,25 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x0fnotification_id\x18\x01 \x01(\tR\x0enotificationId\"\x12\n" +
 	"\x10SubscribeRequest\"D\n" +
 	"\x11SubscribeResponse\x12/\n" +
-	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change*\xfa\x03\n" +
+	"\x06change\x18\x01 \x01(\x0e2\x17.notification.v1.ChangeR\x06change\"\x13\n" +
+	"\x11GetPushKeyRequest\"3\n" +
+	"\x12GetPushKeyResponse\x12\x1d\n" +
+	"\n" +
+	"public_key\x18\x01 \x01(\tR\tpublicKey\"^\n" +
+	"\x14SubscribePushRequest\x12\x1a\n" +
+	"\bendpoint\x18\x01 \x01(\tR\bendpoint\x12\x16\n" +
+	"\x06p256dh\x18\x02 \x01(\tR\x06p256dh\x12\x12\n" +
+	"\x04auth\x18\x03 \x01(\tR\x04auth\"4\n" +
+	"\x16UnsubscribePushRequest\x12\x1a\n" +
+	"\bendpoint\x18\x01 \x01(\tR\bendpoint\"\xad\x01\n" +
+	"\x12PushMessageRequest\x12\x1d\n" +
+	"\n" +
+	"message_id\x18\x01 \x01(\tR\tmessageId\x12\x1b\n" +
+	"\tsender_id\x18\x02 \x01(\tR\bsenderId\x12#\n" +
+	"\rrecipient_ids\x18\x03 \x03(\tR\frecipientIds\x12\x17\n" +
+	"\achat_id\x18\x04 \x01(\tR\x06chatId\x12\x1d\n" +
+	"\n" +
+	"chat_title\x18\x05 \x01(\tR\tchatTitle*\xfa\x03\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -1057,7 +1341,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\n" +
 	"CHANGE_NEW\x10\x01\x12\x0f\n" +
 	"\vCHANGE_GONE\x10\x02\x12\x0f\n" +
-	"\vCHANGE_READ\x10\x032\xdf\x05\n" +
+	"\vCHANGE_READ\x10\x032\xa6\b\n" +
 	"\x13NotificationService\x12@\n" +
 	"\x06Notify\x12\x1e.notification.v1.NotifyRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
 	"\aRetract\x12\x1f.notification.v1.RetractRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
@@ -1068,7 +1352,12 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x11ListNotifications\x12).notification.v1.ListNotificationsRequest\x1a*.notification.v1.ListNotificationsResponse\x12X\n" +
 	"\vCountUnread\x12#.notification.v1.CountUnreadRequest\x1a$.notification.v1.CountUnreadResponse\x12D\n" +
 	"\bMarkRead\x12 .notification.v1.MarkReadRequest\x1a\x16.google.protobuf.Empty\x12T\n" +
-	"\tSubscribe\x12!.notification.v1.SubscribeRequest\x1a\".notification.v1.SubscribeResponse0\x01BMZKgithub.com/vexner67/freenet/notification/api/notification/v1;notificationv1b\x06proto3"
+	"\tSubscribe\x12!.notification.v1.SubscribeRequest\x1a\".notification.v1.SubscribeResponse0\x01\x12U\n" +
+	"\n" +
+	"GetPushKey\x12\".notification.v1.GetPushKeyRequest\x1a#.notification.v1.GetPushKeyResponse\x12N\n" +
+	"\rSubscribePush\x12%.notification.v1.SubscribePushRequest\x1a\x16.google.protobuf.Empty\x12R\n" +
+	"\x0fUnsubscribePush\x12'.notification.v1.UnsubscribePushRequest\x1a\x16.google.protobuf.Empty\x12J\n" +
+	"\vPushMessage\x12#.notification.v1.PushMessageRequest\x1a\x16.google.protobuf.EmptyBMZKgithub.com/vexner67/freenet/notification/api/notification/v1;notificationv1b\x06proto3"
 
 var (
 	file_api_notification_v1_notification_proto_rawDescOnce sync.Once
@@ -1083,7 +1372,7 @@ func file_api_notification_v1_notification_proto_rawDescGZIP() []byte {
 }
 
 var file_api_notification_v1_notification_proto_enumTypes = make([]protoimpl.EnumInfo, 3)
-var file_api_notification_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 14)
+var file_api_notification_v1_notification_proto_msgTypes = make([]protoimpl.MessageInfo, 19)
 var file_api_notification_v1_notification_proto_goTypes = []any{
 	(Kind)(0),                         // 0: notification.v1.Kind
 	(Box)(0),                          // 1: notification.v1.Box
@@ -1102,15 +1391,20 @@ var file_api_notification_v1_notification_proto_goTypes = []any{
 	(*MarkReadRequest)(nil),           // 14: notification.v1.MarkReadRequest
 	(*SubscribeRequest)(nil),          // 15: notification.v1.SubscribeRequest
 	(*SubscribeResponse)(nil),         // 16: notification.v1.SubscribeResponse
-	(*timestamppb.Timestamp)(nil),     // 17: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),             // 18: google.protobuf.Empty
+	(*GetPushKeyRequest)(nil),         // 17: notification.v1.GetPushKeyRequest
+	(*GetPushKeyResponse)(nil),        // 18: notification.v1.GetPushKeyResponse
+	(*SubscribePushRequest)(nil),      // 19: notification.v1.SubscribePushRequest
+	(*UnsubscribePushRequest)(nil),    // 20: notification.v1.UnsubscribePushRequest
+	(*PushMessageRequest)(nil),        // 21: notification.v1.PushMessageRequest
+	(*timestamppb.Timestamp)(nil),     // 22: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),             // 23: google.protobuf.Empty
 }
 var file_api_notification_v1_notification_proto_depIdxs = []int32{
 	0,  // 0: notification.v1.Event.kind:type_name -> notification.v1.Kind
 	3,  // 1: notification.v1.NotifyRequest.event:type_name -> notification.v1.Event
 	3,  // 2: notification.v1.RetractRequest.event:type_name -> notification.v1.Event
 	0,  // 3: notification.v1.Notification.kind:type_name -> notification.v1.Kind
-	17, // 4: notification.v1.Notification.created_at:type_name -> google.protobuf.Timestamp
+	22, // 4: notification.v1.Notification.created_at:type_name -> google.protobuf.Timestamp
 	1,  // 5: notification.v1.ListNotificationsRequest.box:type_name -> notification.v1.Box
 	9,  // 6: notification.v1.ListNotificationsResponse.notifications:type_name -> notification.v1.Notification
 	2,  // 7: notification.v1.SubscribeResponse.change:type_name -> notification.v1.Change
@@ -1123,17 +1417,25 @@ var file_api_notification_v1_notification_proto_depIdxs = []int32{
 	12, // 14: notification.v1.NotificationService.CountUnread:input_type -> notification.v1.CountUnreadRequest
 	14, // 15: notification.v1.NotificationService.MarkRead:input_type -> notification.v1.MarkReadRequest
 	15, // 16: notification.v1.NotificationService.Subscribe:input_type -> notification.v1.SubscribeRequest
-	18, // 17: notification.v1.NotificationService.Notify:output_type -> google.protobuf.Empty
-	18, // 18: notification.v1.NotificationService.Retract:output_type -> google.protobuf.Empty
-	18, // 19: notification.v1.NotificationService.ForgetPost:output_type -> google.protobuf.Empty
-	18, // 20: notification.v1.NotificationService.ForgetComment:output_type -> google.protobuf.Empty
-	18, // 21: notification.v1.NotificationService.PurgeUser:output_type -> google.protobuf.Empty
-	11, // 22: notification.v1.NotificationService.ListNotifications:output_type -> notification.v1.ListNotificationsResponse
-	13, // 23: notification.v1.NotificationService.CountUnread:output_type -> notification.v1.CountUnreadResponse
-	18, // 24: notification.v1.NotificationService.MarkRead:output_type -> google.protobuf.Empty
-	16, // 25: notification.v1.NotificationService.Subscribe:output_type -> notification.v1.SubscribeResponse
-	17, // [17:26] is the sub-list for method output_type
-	8,  // [8:17] is the sub-list for method input_type
+	17, // 17: notification.v1.NotificationService.GetPushKey:input_type -> notification.v1.GetPushKeyRequest
+	19, // 18: notification.v1.NotificationService.SubscribePush:input_type -> notification.v1.SubscribePushRequest
+	20, // 19: notification.v1.NotificationService.UnsubscribePush:input_type -> notification.v1.UnsubscribePushRequest
+	21, // 20: notification.v1.NotificationService.PushMessage:input_type -> notification.v1.PushMessageRequest
+	23, // 21: notification.v1.NotificationService.Notify:output_type -> google.protobuf.Empty
+	23, // 22: notification.v1.NotificationService.Retract:output_type -> google.protobuf.Empty
+	23, // 23: notification.v1.NotificationService.ForgetPost:output_type -> google.protobuf.Empty
+	23, // 24: notification.v1.NotificationService.ForgetComment:output_type -> google.protobuf.Empty
+	23, // 25: notification.v1.NotificationService.PurgeUser:output_type -> google.protobuf.Empty
+	11, // 26: notification.v1.NotificationService.ListNotifications:output_type -> notification.v1.ListNotificationsResponse
+	13, // 27: notification.v1.NotificationService.CountUnread:output_type -> notification.v1.CountUnreadResponse
+	23, // 28: notification.v1.NotificationService.MarkRead:output_type -> google.protobuf.Empty
+	16, // 29: notification.v1.NotificationService.Subscribe:output_type -> notification.v1.SubscribeResponse
+	18, // 30: notification.v1.NotificationService.GetPushKey:output_type -> notification.v1.GetPushKeyResponse
+	23, // 31: notification.v1.NotificationService.SubscribePush:output_type -> google.protobuf.Empty
+	23, // 32: notification.v1.NotificationService.UnsubscribePush:output_type -> google.protobuf.Empty
+	23, // 33: notification.v1.NotificationService.PushMessage:output_type -> google.protobuf.Empty
+	21, // [21:34] is the sub-list for method output_type
+	8,  // [8:21] is the sub-list for method input_type
 	8,  // [8:8] is the sub-list for extension type_name
 	8,  // [8:8] is the sub-list for extension extendee
 	0,  // [0:8] is the sub-list for field type_name
@@ -1150,7 +1452,7 @@ func file_api_notification_v1_notification_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_notification_v1_notification_proto_rawDesc), len(file_api_notification_v1_notification_proto_rawDesc)),
 			NumEnums:      3,
-			NumMessages:   14,
+			NumMessages:   19,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

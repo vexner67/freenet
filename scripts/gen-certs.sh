@@ -4,7 +4,8 @@
 # pkg/mtls (auth, user, post, media, notification, message, club,
 # gateway); SANs cover localhost and the service name. Also the RSA key
 # pair auth signs access tokens with (jwt-private.pem, PKCS#1) and the
-# others verify them with (jwt-public.pem).
+# others verify them with (jwt-public.pem), and the P-256 key notification
+# signs push notifications with (push-key.pem, the VAPID key).
 # Re-running replaces everything, including the CA and the JWT keys;
 # deploy/certs.sh renews the certificates of the services alone, from the
 # same CA, before they end.
@@ -51,6 +52,10 @@ openssl rsa -help 2>&1 | grep -q -- -traditional && traditional=-traditional
 openssl genrsa 2048 2>/dev/null | openssl rsa $traditional -out jwt-private.pem 2>/dev/null
 openssl rsa -in jwt-private.pem -pubout -out jwt-public.pem 2>/dev/null
 
+# Replacing it unsubscribes every browser from pushes: they subscribed
+# with its public half.
+openssl ecparam -name prime256v1 -genkey -noout -out push-key.pem
+
 chmod 600 ./*-key.pem jwt-private.pem
 
-echo "certificates for ${services[*]} and JWT keys written to $(pwd)"
+echo "certificates for ${services[*]}, JWT and push keys written to $(pwd)"

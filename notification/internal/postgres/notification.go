@@ -43,16 +43,16 @@ const saveNotificationQuery = `
 	ON CONFLICT DO NOTHING
 `
 
-func (r *NotificationRepository) Save(ctx context.Context, n *notification.Notification) error {
+func (r *NotificationRepository) Save(ctx context.Context, n *notification.Notification) (bool, error) {
 	e := n.Event()
 
-	_, err := r.pool.Exec(ctx, saveNotificationQuery,
+	tag, err := r.pool.Exec(ctx, saveNotificationQuery,
 		n.ID(), string(e.Kind), e.RecipientID, e.ActorID, nullable(e.PostID), nullable(e.CommentID), n.CreatedAt())
 	if err != nil {
-		return errs.Wrap("r.pool.Exec", err)
+		return false, errs.Wrap("r.pool.Exec", err)
 	}
 
-	return nil
+	return tag.RowsAffected() == 1, nil
 }
 
 const getNotificationQuery = `
