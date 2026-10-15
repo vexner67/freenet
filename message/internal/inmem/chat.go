@@ -373,6 +373,24 @@ func (r *ChatMessageRepository) Get(ctx context.Context, id uuid.UUID) (*message
 	return m, nil
 }
 
+func (r *ChatMessageRepository) GetMany(ctx context.Context, ids []uuid.UUID) ([]*message.ChatMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.RLock()
+	defer r.s.mu.RUnlock()
+
+	var out []*message.ChatMessage
+	for _, id := range ids {
+		if m, ok := r.s.chatMessages[id]; ok {
+			out = append(out, m)
+		}
+	}
+
+	return out, nil
+}
+
 func (r *ChatMessageRepository) ListBefore(ctx context.Context, chatID, before, upTo uuid.UUID, limit int) ([]*message.ChatMessage, error) {
 	found, err := r.of(ctx, chatID, func(id uuid.UUID) bool {
 		return below(id, before) && bytes.Compare(id[:], upTo[:]) <= 0

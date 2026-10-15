@@ -374,6 +374,9 @@ type ChatMessage struct {
 	createdAt time.Time
 	editedAt  time.Time
 	deletedAt time.Time
+	// quote and reactions are read with the message, as with Message.
+	quote     *Quote
+	reactions Reactions
 }
 
 // NewChatMessage is what senderID writes in a chat.
@@ -590,6 +593,7 @@ func (m *ChatMessage) TakenBack(requesterID uuid.UUID, now time.Time) (*ChatMess
 
 	gone := *m
 	gone.content = Content{}
+	gone.quote = nil
 	gone.editedAt = time.Time{}
 	gone.deletedAt = now.UTC().Truncate(time.Microsecond)
 

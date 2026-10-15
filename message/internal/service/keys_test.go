@@ -62,7 +62,7 @@ func TestMessageService_Keys(t *testing.T) {
 	store := inmem.NewStore()
 	photos := &fakePhotos{}
 	svc := service.NewMessageService(service.Deps{
-		Messages: store.Messages(), Dialogs: store.Dialogs(), Keys: store.Keys(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(),
+		Messages: store.Messages(), Reactions: store.Reactions(), Dialogs: store.Dialogs(), Keys: store.Keys(), ChatMessages: store.ChatMessages(), ChatMembers: store.ChatMembers(),
 		Events: pubsub.New[uuid.UUID, service.Event](64), Tx: fakeTx{}, Photos: photos,
 	})
 	ann, bob := uuid.New(), uuid.New()

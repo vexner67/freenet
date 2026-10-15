@@ -28,6 +28,7 @@ type MessageService interface {
 	Hide(ctx context.Context, userID, id uuid.UUID) error
 	DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID, forEveryone bool) error
 	Edit(ctx context.Context, userID, id uuid.UUID, rev message.Revision) (*message.Message, error)
+	React(ctx context.Context, userID, id uuid.UUID, r message.Reaction) (*message.Message, error)
 	SetKey(ctx context.Context, userID uuid.UUID, key message.Key) error
 	Key(ctx context.Context, userID uuid.UUID) (message.Key, error)
 	HasMessagesFrom(ctx context.Context, userID, peerID uuid.UUID) (bool, error)
@@ -384,6 +385,51 @@ func (h *MessageHandler) EditMessage(ctx context.Context, req *messagev1.EditMes
 	}
 
 	return &messagev1.EditMessageResponse{Message: toProtoMessage(m, false)}, nil
+}
+
+// reactionRequest is a reaction as the requests of dialogs and of chats
+// name it.
+type reactionRequest interface {
+	GetMessageId() string
+	GetReaction() string
+}
+
+// reactionOf reads who reacts, to what and how; an empty reaction takes
+// theirs away.
+func reactionOf(ctx context.Context, req reactionRequest) (uuid.UUID, uuid.UUID, message.Reaction, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return uuid.Nil, uuid.Nil, "", err
+	}
+
+	id, err := parseID(req.GetMessageId(), "invalid message id")
+	if err != nil {
+		return uuid.Nil, uuid.Nil, "", err
+	}
+
+	if req.GetReaction() == "" {
+		return userID, id, "", nil
+	}
+
+	r, err := message.NewReaction(req.GetReaction())
+	if err != nil {
+		return uuid.Nil, uuid.Nil, "", status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	return userID, id, r, nil
+}
+
+func (h *MessageHandler) ReactToMessage(ctx context.Context, req *messagev1.ReactToMessageRequest) (*emptypb.Empty, error) {
+	userID, id, r, err := reactionOf(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := h.messageService.React(ctx, userID, id, r); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }
 
 func (h *MessageHandler) SetKey(ctx context.Context, req *messagev1.SetKeyRequest) (*emptypb.Empty, error) {

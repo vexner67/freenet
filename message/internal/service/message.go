@@ -24,6 +24,8 @@ type MessageRepository interface {
 	Save(ctx context.Context, m *message.Message) error
 	// Get returns message.ErrNotFound.
 	Get(ctx context.Context, id uuid.UUID) (*message.Message, error)
+	// GetMany returns those of the messages that are there, in any order.
+	GetMany(ctx context.Context, ids []uuid.UUID) ([]*message.Message, error)
 	// ListBefore returns up to limit messages between a and b that a has
 	// not deleted for themselves, with IDs below before (uuid.Nil: from
 	// the newest), newest first.
@@ -117,6 +119,9 @@ type Draft struct {
 	Forward     []uuid.UUID
 	Sticker     message.Sticker
 	Documents   message.Documents
+	// ReplyTo is the message it answers ("Ответить"), uuid.Nil for none:
+	// an earlier one of the same dialog or chat.
+	ReplyTo uuid.UUID
 }
 
 // sticker is the draft that is a sticker, with nothing else.
@@ -304,6 +309,7 @@ type MessageService struct {
 	messageRepo MessageRepository
 	dialogRepo  DialogRepository
 	keys        KeyRepository
+	reactions   ReactionRepository
 	events      Events
 	tx          TxManager
 	photos      PhotoKeeper
@@ -318,6 +324,7 @@ type Deps struct {
 	Messages     MessageRepository
 	Dialogs      DialogRepository
 	Keys         KeyRepository
+	Reactions    ReactionRepository
 	ChatMessages ChatMessageRepository
 	ChatMembers  ChatMemberRepository
 	Events       Events
@@ -332,6 +339,7 @@ func NewMessageService(d Deps) *MessageService {
 		messageRepo: d.Messages,
 		dialogRepo:  d.Dialogs,
 		keys:        d.Keys,
+		reactions:   d.Reactions,
 		events:      d.Events,
 		tx:          d.Tx,
 		photos:      d.Photos,
@@ -357,9 +365,18 @@ func (s *MessageService) Send(ctx context.Context, senderID, recipientID uuid.UU
 		return nil, errs.Wrap("d.sealedContent", err)
 	}
 
+	content, quote, err := s.answering(ctx, senderID, recipientID, d, content)
+	if err != nil {
+		return nil, errs.Wrap("s.answering", err)
+	}
+
 	m, err := message.New(senderID, recipientID, content, s.now())
 	if err != nil {
 		return nil, errs.Wrap("message.New", err)
+	}
+
+	if quote != nil {
+		m = m.Quoting(*quote)
 	}
 
 	if err = s.checkKeys(ctx, m); err != nil {
@@ -543,6 +560,10 @@ func (s *MessageService) Edit(ctx context.Context, userID, id uuid.UUID, rev mes
 		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
+	if edited, err = s.dressedOne(ctx, edited); err != nil {
+		return nil, errs.Wrap("s.dressedOne", err)
+	}
+
 	for _, side := range []uuid.UUID{edited.SenderID(), edited.RecipientID()} {
 		if edited.VisibleTo(side) {
 			s.events.Publish(ctx, side, Event{Edited: edited})
@@ -650,6 +671,10 @@ func (s *MessageService) History(ctx context.Context, userID, peerID, cursor uui
 
 	slices.Reverse(page.Messages)
 
+	if page.Messages, err = s.dressed(ctx, page.Messages); err != nil {
+		return HistoryPage{}, errs.Wrap("s.dressed", err)
+	}
+
 	if page.Marks, err = s.dialogRepo.ReadMarks(ctx, userID, peerID); err != nil {
 		return HistoryPage{}, errs.Wrap("s.dialogRepo.ReadMarks", err)
 	}
@@ -693,6 +718,10 @@ func (s *MessageService) Around(ctx context.Context, userID, peerID, id uuid.UUI
 	slices.Reverse(older)
 	page.Messages = append(append(older, m), newer...)
 
+	if page.Messages, err = s.dressed(ctx, page.Messages); err != nil {
+		return HistoryPage{}, errs.Wrap("s.dressed", err)
+	}
+
 	if page.Marks, err = s.dialogRepo.ReadMarks(ctx, userID, peerID); err != nil {
 		return HistoryPage{}, errs.Wrap("s.dialogRepo.ReadMarks", err)
 	}
@@ -707,6 +736,10 @@ func (s *MessageService) Newer(ctx context.Context, userID, peerID, after uuid.U
 	messages, err := s.messageRepo.ListAfter(ctx, userID, peerID, after, pageSize(size))
 	if err != nil {
 		return HistoryPage{}, errs.Wrap("s.messageRepo.ListAfter", err)
+	}
+
+	if messages, err = s.dressed(ctx, messages); err != nil {
+		return HistoryPage{}, errs.Wrap("s.dressed", err)
 	}
 
 	marks, err := s.dialogRepo.ReadMarks(ctx, userID, peerID)

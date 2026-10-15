@@ -31,6 +31,7 @@ type ChatService interface {
 	Send(ctx context.Context, senderID, chatID uuid.UUID, d service.Draft) (*message.ChatMessage, error)
 	Message(ctx context.Context, userID, id uuid.UUID) (*message.ChatMessage, message.Member, error)
 	Edit(ctx context.Context, userID, id uuid.UUID, rev message.Revision) (*message.ChatMessage, error)
+	React(ctx context.Context, userID, id uuid.UUID, r message.Reaction) (*message.ChatMessage, error)
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	History(ctx context.Context, userID, chatID, cursor uuid.UUID, size int) (service.ChatHistoryPage, error)
 	Newer(ctx context.Context, userID, chatID, after uuid.UUID, size int) (service.ChatHistoryPage, error)
@@ -399,6 +400,19 @@ func (h *MessageHandler) EditChatMessage(ctx context.Context, req *messagev1.Edi
 	return &messagev1.EditChatMessageResponse{Message: toProtoChatMessage(m)}, nil
 }
 
+func (h *MessageHandler) ReactToChatMessage(ctx context.Context, req *messagev1.ReactToChatMessageRequest) (*emptypb.Empty, error) {
+	userID, id, r, err := reactionOf(ctx, req)
+	if err != nil {
+		return nil, err
+	}
+
+	if _, err := h.chatService.React(ctx, userID, id, r); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (h *MessageHandler) SearchChatMessages(ctx context.Context, req *messagev1.SearchChatMessagesRequest) (*messagev1.SearchChatMessagesResponse, error) {
 	userID, err := currentUserID(ctx)
 	if err != nil {
@@ -570,6 +584,8 @@ func toProtoChatMessage(m *message.ChatMessage) *messagev1.ChatMessage {
 		Forwarded:   toProtoForwarded(m.Forwarded()),
 		Sticker:     m.Sticker().String(),
 		DocumentIds: idStrings(m.Documents()),
+		ReplyTo:     toProtoQuote(m.Quote()),
+		Reactions:   toProtoReactions(m.Reactions()),
 	}
 
 	if m.IsDeleted() {

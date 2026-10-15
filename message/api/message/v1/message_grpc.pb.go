@@ -30,6 +30,7 @@ const (
 	MessageService_HideMessage_FullMethodName        = "/message.v1.MessageService/HideMessage"
 	MessageService_DeleteMessages_FullMethodName     = "/message.v1.MessageService/DeleteMessages"
 	MessageService_EditMessage_FullMethodName        = "/message.v1.MessageService/EditMessage"
+	MessageService_ReactToMessage_FullMethodName     = "/message.v1.MessageService/ReactToMessage"
 	MessageService_SetKey_FullMethodName             = "/message.v1.MessageService/SetKey"
 	MessageService_GetKey_FullMethodName             = "/message.v1.MessageService/GetKey"
 	MessageService_HasMessagesFrom_FullMethodName    = "/message.v1.MessageService/HasMessagesFrom"
@@ -48,6 +49,7 @@ const (
 	MessageService_ListChatMessages_FullMethodName   = "/message.v1.MessageService/ListChatMessages"
 	MessageService_GetChatMessage_FullMethodName     = "/message.v1.MessageService/GetChatMessage"
 	MessageService_EditChatMessage_FullMethodName    = "/message.v1.MessageService/EditChatMessage"
+	MessageService_ReactToChatMessage_FullMethodName = "/message.v1.MessageService/ReactToChatMessage"
 	MessageService_SearchChatMessages_FullMethodName = "/message.v1.MessageService/SearchChatMessages"
 	MessageService_DeleteChatMessage_FullMethodName  = "/message.v1.MessageService/DeleteChatMessage"
 	MessageService_MarkChatRead_FullMethodName       = "/message.v1.MessageService/MarkChatRead"
@@ -95,6 +97,10 @@ type MessageServiceClient interface {
 	// within a day of sending (editable_until); the post it shares and the
 	// messages it carries on stay.
 	EditMessage(ctx context.Context, in *EditMessageRequest, opts ...grpc.CallOption) (*EditMessageResponse, error)
+	// The caller puts a reaction on a message of their dialog, in place of
+	// the one they had, or takes theirs away (an empty reaction): both
+	// sides hear an edit event. Not on a message taken back (NotFound).
+	ReactToMessage(ctx context.Context, in *ReactToMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The public key the caller's browsers seal and open messages of dialogs
 	// with from now on: set up the first time, or anew when the old one is
 	// lost. Messages sealed with the old one stay so.
@@ -148,6 +154,9 @@ type MessageServiceClient interface {
 	// The sender changes what their message says and the photos it shows,
 	// within a day of sending.
 	EditChatMessage(ctx context.Context, in *EditChatMessageRequest, opts ...grpc.CallOption) (*EditChatMessageResponse, error)
+	// The caller, in the chat, puts a reaction on a message of it or takes
+	// theirs away, as in a dialog; not on an action.
+	ReactToChatMessage(ctx context.Context, in *ReactToChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Messages people wrote in the caller's chats, in all of them or in
 	// one, that say the query, themselves or in the messages they carry on,
 	// newest first: a substring, whatever the case.
@@ -275,6 +284,16 @@ func (c *messageServiceClient) EditMessage(ctx context.Context, in *EditMessageR
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(EditMessageResponse)
 	err := c.cc.Invoke(ctx, MessageService_EditMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) ReactToMessage(ctx context.Context, in *ReactToMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_ReactToMessage_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -461,6 +480,16 @@ func (c *messageServiceClient) EditChatMessage(ctx context.Context, in *EditChat
 	return out, nil
 }
 
+func (c *messageServiceClient) ReactToChatMessage(ctx context.Context, in *ReactToChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_ReactToChatMessage_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) SearchChatMessages(ctx context.Context, in *SearchChatMessagesRequest, opts ...grpc.CallOption) (*SearchChatMessagesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SearchChatMessagesResponse)
@@ -569,6 +598,10 @@ type MessageServiceServer interface {
 	// within a day of sending (editable_until); the post it shares and the
 	// messages it carries on stay.
 	EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error)
+	// The caller puts a reaction on a message of their dialog, in place of
+	// the one they had, or takes theirs away (an empty reaction): both
+	// sides hear an edit event. Not on a message taken back (NotFound).
+	ReactToMessage(context.Context, *ReactToMessageRequest) (*emptypb.Empty, error)
 	// The public key the caller's browsers seal and open messages of dialogs
 	// with from now on: set up the first time, or anew when the old one is
 	// lost. Messages sealed with the old one stay so.
@@ -622,6 +655,9 @@ type MessageServiceServer interface {
 	// The sender changes what their message says and the photos it shows,
 	// within a day of sending.
 	EditChatMessage(context.Context, *EditChatMessageRequest) (*EditChatMessageResponse, error)
+	// The caller, in the chat, puts a reaction on a message of it or takes
+	// theirs away, as in a dialog; not on an action.
+	ReactToChatMessage(context.Context, *ReactToChatMessageRequest) (*emptypb.Empty, error)
 	// Messages people wrote in the caller's chats, in all of them or in
 	// one, that say the query, themselves or in the messages they carry on,
 	// newest first: a substring, whatever the case.
@@ -685,6 +721,9 @@ func (UnimplementedMessageServiceServer) DeleteMessages(context.Context, *Delete
 func (UnimplementedMessageServiceServer) EditMessage(context.Context, *EditMessageRequest) (*EditMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EditMessage not implemented")
 }
+func (UnimplementedMessageServiceServer) ReactToMessage(context.Context, *ReactToMessageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReactToMessage not implemented")
+}
 func (UnimplementedMessageServiceServer) SetKey(context.Context, *SetKeyRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetKey not implemented")
 }
@@ -738,6 +777,9 @@ func (UnimplementedMessageServiceServer) GetChatMessage(context.Context, *GetCha
 }
 func (UnimplementedMessageServiceServer) EditChatMessage(context.Context, *EditChatMessageRequest) (*EditChatMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method EditChatMessage not implemented")
+}
+func (UnimplementedMessageServiceServer) ReactToChatMessage(context.Context, *ReactToChatMessageRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method ReactToChatMessage not implemented")
 }
 func (UnimplementedMessageServiceServer) SearchChatMessages(context.Context, *SearchChatMessagesRequest) (*SearchChatMessagesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SearchChatMessages not implemented")
@@ -954,6 +996,24 @@ func _MessageService_EditMessage_Handler(srv interface{}, ctx context.Context, d
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MessageServiceServer).EditMessage(ctx, req.(*EditMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_ReactToMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReactToMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).ReactToMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_ReactToMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).ReactToMessage(ctx, req.(*ReactToMessageRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1282,6 +1342,24 @@ func _MessageService_EditChatMessage_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_ReactToChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReactToChatMessageRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).ReactToChatMessage(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_ReactToChatMessage_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).ReactToChatMessage(ctx, req.(*ReactToChatMessageRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_SearchChatMessages_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SearchChatMessagesRequest)
 	if err := dec(in); err != nil {
@@ -1431,6 +1509,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _MessageService_EditMessage_Handler,
 		},
 		{
+			MethodName: "ReactToMessage",
+			Handler:    _MessageService_ReactToMessage_Handler,
+		},
+		{
 			MethodName: "SetKey",
 			Handler:    _MessageService_SetKey_Handler,
 		},
@@ -1501,6 +1583,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "EditChatMessage",
 			Handler:    _MessageService_EditChatMessage_Handler,
+		},
+		{
+			MethodName: "ReactToChatMessage",
+			Handler:    _MessageService_ReactToChatMessage_Handler,
 		},
 		{
 			MethodName: "SearchChatMessages",

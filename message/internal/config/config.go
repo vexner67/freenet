@@ -64,6 +64,9 @@ type Config struct {
 	// TypingLimits is how often a page tells that its user is typing:
 	// every few seconds while they do.
 	TypingLimits ratelimit.Rules `env:"RATE_LIMIT_TYPING" envDefault:"30/1m,5000/24h"`
+	// ReactionLimits is how often a user puts or takes a reaction on a
+	// message: each is told to the others.
+	ReactionLimits ratelimit.Rules `env:"RATE_LIMIT_REACTIONS" envDefault:"60/1m,2000/24h"`
 
 	// Access tokens are issued by the auth service; message only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`

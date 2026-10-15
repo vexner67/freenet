@@ -25,6 +25,8 @@ func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 		Sealed:      m.Sealed().Bytes(),
 		Sticker:     m.Sticker().String(),
 		DocumentIds: idStrings(m.Documents()),
+		ReplyTo:     toProtoQuote(m.Quote()),
+		Reactions:   toProtoReactions(m.Reactions()),
 	}
 
 	// A message taken back can be neither edited nor taken back again.
@@ -63,6 +65,43 @@ func toProtoForwarded(forwarded message.Forwards) []*messagev1.ForwardedMessage 
 	return out
 }
 
+// quoteLength is how much of a chat's message the quote of an answer
+// says: a line of it.
+const quoteLength = 200
+
+// toProtoQuote is nil when the message answers none.
+func toProtoQuote(q message.Quote, ok bool) *messagev1.Quote {
+	if !ok {
+		return nil
+	}
+
+	pq := &messagev1.Quote{Id: q.ID.String(), Found: q.Found}
+	if !q.Found {
+		return pq
+	}
+
+	pq.SenderId = q.SenderID.String()
+	pq.Text, pq.TextCut = q.Text.Excerpt(quoteLength)
+	pq.PhotoCount = int32(q.Photos)        //nolint:gosec // at most MaxPhotos
+	pq.ForwardedCount = int32(q.Forwarded) //nolint:gosec // at most MaxForwarded
+	pq.DocumentCount = int32(q.Documents)  //nolint:gosec // at most MaxDocuments
+	pq.Sticker = q.Sticker.String()
+	pq.Post = q.Post
+	pq.Photo = q.SharedPhoto
+	pq.Deleted = q.Deleted
+
+	return pq
+}
+
+func toProtoReactions(reactions message.Reactions) []*messagev1.Reaction {
+	out := make([]*messagev1.Reaction, len(reactions))
+	for i, r := range reactions {
+		out[i] = &messagev1.Reaction{UserId: r.UserID.String(), Reaction: string(r.Reaction)}
+	}
+
+	return out
+}
+
 // postString is "" for no post or no shared photo, as the proto fields say.
 func postString(id uuid.UUID) string {
 	if id == uuid.Nil {
@@ -92,6 +131,7 @@ type draftRequest interface {
 	GetForwardIds() []string
 	GetSticker() string
 	GetDocumentIds() []string
+	GetReplyToId() string
 }
 
 func fromProtoDraft(req draftRequest) (service.Draft, error) {
@@ -150,8 +190,16 @@ func fromProtoDraft(req draftRequest) (service.Draft, error) {
 		return service.Draft{}, status.Error(codes.InvalidArgument, err.Error())
 	}
 
+	var replyTo uuid.UUID
+	if req.GetReplyToId() != "" {
+		if replyTo, err = uuid.Parse(req.GetReplyToId()); err != nil {
+			return service.Draft{}, status.Error(codes.InvalidArgument, message.ErrReplyNotFound.Error())
+		}
+	}
+
 	return service.Draft{
 		Text: text, Photos: photos, Post: post, SharedPhoto: sharedPhoto, Forward: forward, Sticker: sticker, Documents: documents,
+		ReplyTo: replyTo,
 	}, nil
 }
 
