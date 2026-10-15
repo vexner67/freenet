@@ -74,6 +74,30 @@ func (m *Media) DeleteClubAvatars(ctx context.Context, accessToken, clubID, keep
 	return nil
 }
 
+// UploadChatAvatar stores a photo of a chat, which the caller is in, as
+// the gateway has checked.
+func (m *Media) UploadChatAvatar(ctx context.Context, accessToken, chatID string, image []byte) (string, error) {
+	resp, err := m.api.UploadChatAvatar(
+		withToken(ctx, accessToken),
+		&mediav1.UploadChatAvatarRequest{ChatId: chatID, Image: image},
+		grpc.MaxCallSendMsgSize(maxMessageBytes),
+	)
+	if err != nil {
+		return "", errs.Wrap("m.api.UploadChatAvatar", fromStatus(err))
+	}
+
+	return resp.GetAvatarId(), nil
+}
+
+func (m *Media) DeleteChatAvatars(ctx context.Context, accessToken, chatID, keep string) error {
+	_, err := m.api.DeleteChatAvatars(withToken(ctx, accessToken), &mediav1.DeleteChatAvatarsRequest{ChatId: chatID, KeepAvatarId: keep})
+	if err != nil {
+		return errs.Wrap("m.api.DeleteChatAvatars", fromStatus(err))
+	}
+
+	return nil
+}
+
 // UploadClubPhoto keeps a photo of the club for good: a side of its
 // backdrop.
 func (m *Media) UploadClubPhoto(ctx context.Context, accessToken, clubID string, image []byte) (string, error) {

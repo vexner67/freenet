@@ -1006,7 +1006,10 @@ type fakeMedia struct {
 	releaseFails int
 	// droppedDocuments are the documents deleted, "owner/id,id".
 	droppedDocuments []string
-	err              error
+	// chatPhotos are the uploads and clean-ups of chat photos, "upload
+	// chat" and "keep chat photo".
+	chatPhotos []string
+	err        error
 }
 
 func (f *fakeMedia) UploadDocument(_ context.Context, _ string, data []byte) (string, error) {
@@ -1043,6 +1046,17 @@ func (f *fakeMedia) UploadClubAvatar(_ context.Context, _, clubID string, image 
 
 func (f *fakeMedia) DeleteClubAvatars(_ context.Context, _, clubID, keep string) error {
 	f.clubAvatarOf, f.kept, f.deleted = clubID, keep, true
+	return nil
+}
+
+func (f *fakeMedia) UploadChatAvatar(_ context.Context, _, chatID string, image []byte) (string, error) {
+	f.uploaded = image
+	f.chatPhotos = append(f.chatPhotos, "upload "+chatID)
+	return "cp1", f.err
+}
+
+func (f *fakeMedia) DeleteChatAvatars(_ context.Context, _, chatID, keep string) error {
+	f.chatPhotos = append(f.chatPhotos, "keep "+chatID+" "+keep)
 	return nil
 }
 

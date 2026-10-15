@@ -36,7 +36,7 @@ func (f *fakeChats) did(token string, call ...string) {
 
 func (f *fakeChats) chat() model.Chat {
 	return model.Chat{
-		ID: "c1", Title: "Поход", OwnerID: "u1", CreatedAt: chatTime, MemberCount: 3, State: model.ChatStateActive, Unread: true,
+		ID: "c1", Title: "Поход", OwnerID: "u1", CreatedAt: chatTime, MemberCount: 3, State: model.ChatStateActive, Unread: true, PhotoID: "cp0",
 		LastMessage: &model.ChatMessage{ID: "m3", ChatID: "c1", SenderID: "u2", Text: "иду", CreatedAt: chatTime, Unread: true},
 	}
 }
@@ -52,7 +52,11 @@ func (f *fakeChats) Get(_ context.Context, token, id string) (model.ChatView, er
 		return model.ChatView{}, failure.New(failure.NotFound, "chat not found")
 	}
 
-	return model.ChatView{Chat: f.chat(), Members: []model.ChatMember{{UserID: "u1"}, {UserID: "u2"}, {UserID: "gone"}}}, nil
+	return model.ChatView{
+		Chat:    f.chat(),
+		Members: []model.ChatMember{{UserID: "u1"}, {UserID: "u2"}, {UserID: "gone"}},
+		Pinned:  &model.ChatMessage{ID: "m2", ChatID: "c1", SenderID: "u2", Text: "встречаемся в 9", CreatedAt: chatTime, DocumentIDs: []string{"d1"}},
+	}, nil
 }
 
 func (f *fakeChats) List(_ context.Context, token, cursor string, _ int) (model.ChatPage, error) {
@@ -66,6 +70,21 @@ func (f *fakeChats) List(_ context.Context, token, cursor string, _ int) (model.
 
 func (f *fakeChats) Rename(_ context.Context, token, id, title string) error {
 	f.did(token, "rename", id, title)
+	return f.err
+}
+
+func (f *fakeChats) Pin(_ context.Context, token, id, messageID string) error {
+	f.did(token, "pin", id, messageID)
+	return f.err
+}
+
+func (f *fakeChats) Unpin(_ context.Context, token, id string) error {
+	f.did(token, "unpin", id)
+	return f.err
+}
+
+func (f *fakeChats) SetPhoto(_ context.Context, token, id, photoID string) error {
+	f.did(token, "photo", id, photoID)
 	return f.err
 }
 
@@ -186,6 +205,10 @@ type chatJSON struct {
 	Unread      bool             `json:"unread"`
 	LastMessage *chatMessageJSON `json:"lastMessage"`
 	Members     []map[string]any `json:"members"`
+	Photo       *struct {
+		Small string `json:"small"`
+	} `json:"photo"`
+	Pinned *chatMessageJSON `json:"pinned"`
 	// Error is what a refusal says instead.
 	Error struct {
 		Message string `json:"message"`
@@ -263,6 +286,10 @@ func TestChangeChat(t *testing.T) {
 		{"remove", "DELETE", "/api/v1/chats/c1/members/bob", "", "kick c1 u2"},
 		{"leave", "DELETE", "/api/v1/chats/c1/membership", "", "leave c1"},
 		{"return", "PUT", "/api/v1/chats/c1/membership", "", "return c1"},
+		{"pin", "PUT", "/api/v1/chats/c1/pin", `{"messageId":"m2"}`, "pin c1 m2"},
+		{"unpin", "DELETE", "/api/v1/chats/c1/pin", "", "unpin c1"},
+		{"photo", "PUT", "/api/v1/chats/c1/photo", "img", "photo c1 cp1"},
+		{"no photo", "DELETE", "/api/v1/chats/c1/photo", "", "photo c1 "},
 	}
 
 	for _, tt := range tests {
@@ -300,6 +327,49 @@ func TestChangeChat(t *testing.T) {
 
 	if w := h.do("GET", "/api/v1/chats/c2", "", "Authorization", annAuth); w.Code != http.StatusNotFound {
 		t.Fatalf("an unknown chat: %d", w.Code)
+	}
+}
+
+func TestChatPhotoAndPin(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	w := h.do("GET", "/api/v1/chats/c1", "", "Authorization", annAuth)
+	got := decode[chatJSON](t, w)
+	if w.Code != http.StatusOK || got.Photo == nil || got.Photo.Small != "/media/avatars/c1/cp0/small.jpg" {
+		t.Fatalf("the photo of the chat: %d %+v", w.Code, got.Photo)
+	}
+	if got.Pinned == nil || got.Pinned.ID != "m2" || got.Pinned.Text != "встречаемся в 9" {
+		t.Fatalf("pinned = %+v", got.Pinned)
+	}
+
+	// A new photo is shown before the old one goes.
+	h = newHarness(rest.Config{})
+	if w = h.do("PUT", "/api/v1/chats/c1/photo", "img", "Authorization", annAuth); w.Code != http.StatusOK || string(h.media.uploaded) != "img" {
+		t.Fatalf("upload: %d", w.Code)
+	}
+	if !slices.Equal(h.media.chatPhotos, []string{"upload c1", "keep c1 cp1"}) {
+		t.Fatalf("media did %q", h.media.chatPhotos)
+	}
+
+	// Refused, the chat keeps the photo it shows.
+	h = newHarness(rest.Config{})
+	h.chats.err = failure.New(failure.Conflict, "you are not in this chat")
+	h.do("PUT", "/api/v1/chats/c1/photo", "img", "Authorization", annAuth)
+	if !slices.Equal(h.media.chatPhotos, []string{"upload c1", "keep c1 cp0"}) {
+		t.Fatalf("refused, media did %q", h.media.chatPhotos)
+	}
+
+	// Removed, nothing is kept.
+	h = newHarness(rest.Config{})
+	if w = h.do("DELETE", "/api/v1/chats/c1/photo", "", "Authorization", annAuth); w.Code != http.StatusOK || !slices.Equal(h.media.chatPhotos, []string{"keep c1 "}) {
+		t.Fatalf("delete: %d, media did %q", w.Code, h.media.chatPhotos)
+	}
+
+	// Who is not in the chat stores nothing under its ID.
+	h = newHarness(rest.Config{})
+	if w = h.do("PUT", "/api/v1/chats/c2/photo", "img", "Authorization", annAuth); w.Code != http.StatusNotFound || len(h.media.chatPhotos) != 0 {
+		t.Fatalf("a stranger: %d, media did %q", w.Code, h.media.chatPhotos)
 	}
 }
 

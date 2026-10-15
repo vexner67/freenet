@@ -46,6 +46,11 @@ func (c *Chats) Get(ctx context.Context, accessToken, id string) (model.ChatView
 		view.Members = append(view.Members, model.ChatMember{UserID: m.GetUserId(), JoinedAt: fromTimestamp(m.GetJoinedAt())})
 	}
 
+	if resp.GetPinned() != nil {
+		pinned := toChatMessage(resp.GetPinned())
+		view.Pinned = &pinned
+	}
+
 	return view, nil
 }
 
@@ -69,6 +74,34 @@ func (c *Chats) Rename(ctx context.Context, accessToken, id, title string) error
 	_, err := c.api.RenameChat(withToken(ctx, accessToken), &messagev1.RenameChatRequest{ChatId: id, Title: title})
 	if err != nil {
 		return errs.Wrap("c.api.RenameChat", fromStatus(err))
+	}
+
+	return nil
+}
+
+// Pin pins a message of the chat above it.
+func (c *Chats) Pin(ctx context.Context, accessToken, id, messageID string) error {
+	_, err := c.api.PinChatMessage(withToken(ctx, accessToken), &messagev1.PinChatMessageRequest{ChatId: id, MessageId: messageID})
+	if err != nil {
+		return errs.Wrap("c.api.PinChatMessage", fromStatus(err))
+	}
+
+	return nil
+}
+
+func (c *Chats) Unpin(ctx context.Context, accessToken, id string) error {
+	if _, err := c.api.UnpinChatMessage(withToken(ctx, accessToken), &messagev1.UnpinChatMessageRequest{ChatId: id}); err != nil {
+		return errs.Wrap("c.api.UnpinChatMessage", fromStatus(err))
+	}
+
+	return nil
+}
+
+// SetPhoto shows a photo uploaded under the chat's ID as its photo; ""
+// removes it.
+func (c *Chats) SetPhoto(ctx context.Context, accessToken, id, photoID string) error {
+	if _, err := c.api.SetChatPhoto(withToken(ctx, accessToken), &messagev1.SetChatPhotoRequest{ChatId: id, PhotoId: photoID}); err != nil {
+		return errs.Wrap("c.api.SetChatPhoto", fromStatus(err))
 	}
 
 	return nil
@@ -210,6 +243,7 @@ func toChat(pc *messagev1.Chat) model.Chat {
 		MemberCount: int(pc.GetMemberCount()),
 		State:       enumName(pc.GetState().String(), chatStatePrefix),
 		Unread:      pc.GetUnread(),
+		PhotoID:     pc.GetPhotoId(),
 	}
 
 	if pc.GetLastMessage() != nil {

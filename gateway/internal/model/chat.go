@@ -22,13 +22,18 @@ type Chat struct {
 	// LastMessage is the last one the caller is shown, nil for none.
 	LastMessage *ChatMessage
 	Unread      bool
+	// PhotoID is the photo of the chat, filed under its ID in the media
+	// service; "" for none.
+	PhotoID string
 }
 
 // ChatView is a chat with who is in it, who joined first first; nobody
-// for a caller who is not in it anymore.
+// for a caller who is not in it anymore. Pinned is the message pinned
+// above it, whole; nil for none.
 type ChatView struct {
 	Chat    Chat
 	Members []ChatMember
+	Pinned  *ChatMessage
 }
 
 type ChatMember struct {
@@ -38,7 +43,8 @@ type ChatMember struct {
 
 // ChatMessage is what SenderID said in a chat or, with Action, what they
 // did there: "create" and "title" (Text is the title), "invite" and "kick"
-// (of TargetID), "leave", "return".
+// (of TargetID), "leave", "return", "pin" and "unpin" (a message),
+// "photo" and "photo_remove" (the photo of the chat).
 type ChatMessage struct {
 	ID       string
 	ChatID   string

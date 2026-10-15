@@ -4571,6 +4571,92 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: "`you are not in this chat`" }
 
+  /api/v1/chats/{id}/pin:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Pin a message above a chat ("Закрепить"); anyone in it may
+      description: >-
+        One message at a time: it takes the place of the pinned one. A
+        message someone wrote in the chat and has not taken back; the
+        chat hears of it (`pin`).
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [messageId]
+              properties:
+                messageId: { type: string, format: uuid }
+      responses:
+        "200":
+          description: The chat as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`you are not in this chat`" }
+    delete:
+      summary: Take the pinned message down ("Открепить"); anyone in the chat may
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The chat as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`you are not in this chat`" }
+
+  /api/v1/chats/{id}/photo:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Set the photo of a chat ("Обновить фотографию"); anyone in it may
+      description: >-
+        A square, as the avatar of a page: the site cuts it out. The chat
+        hears of it (`photo`); the photo it showed is deleted.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          image/*:
+            schema: { type: string, format: binary }
+      responses:
+        "200":
+          description: The chat as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`you are not in this chat`" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Remove the photo of a chat ("Удалить фотографию"); anyone in it may
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: The chat as it is now
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Chat" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409": { description: "`you are not in this chat`" }
+
   /api/v1/chats/{id}/members:
     post:
       summary: Add people to a chat ("Добавить участников"); anyone in it may
@@ -6308,6 +6394,15 @@ components:
           type: array
           description: Who is in it, who joined first first; told by the chat itself, not by lists, and only to those in it
           items: { $ref: "#/components/schemas/Author" }
+        photo:
+          oneOf: [{ $ref: "#/components/schemas/Avatar" }, { type: "null" }]
+          description: The photo of the chat; null for none
+        pinned:
+          description: >-
+            The message pinned above the chat, whole; told by the chat
+            itself, absent when nothing is pinned, its sender took it back
+            or you went before it was written
+          $ref: "#/components/schemas/ChatMessage"
 
     ChatMessage:
       type: object
@@ -6324,11 +6419,12 @@ components:
           items: { $ref: "#/components/schemas/Photo" }
         action:
           type: string
-          enum: ["", create, title, invite, kick, leave, return]
+          enum: ["", create, title, invite, kick, leave, return, pin, unpin, photo, photo_remove]
           description: >-
             Not empty: the message tells what `author` did instead of
             saying something — created the chat, renamed it (`text`),
-            added or removed `target`, left, came back.
+            added or removed `target`, left, came back, pinned a message or
+            took it down, set the photo of the chat or removed it.
         target: { $ref: "#/components/schemas/Author" }
         createdAt: { type: string, format: date-time }
         editedAt: { type: [string, "null"], format: date-time }

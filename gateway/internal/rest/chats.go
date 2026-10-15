@@ -23,6 +23,10 @@ type (
 		Title string `json:"title"`
 	}
 
+	pinChatMessageRequest struct {
+		MessageID string `json:"messageId"`
+	}
+
 	addChatMembersRequest struct {
 		Members []string `json:"members"`
 	}
@@ -42,11 +46,17 @@ type chatJSON struct {
 	Unread      bool             `json:"unread"`
 	LastMessage *chatMessageJSON `json:"lastMessage"`
 	Members     []authorJSON     `json:"members,omitempty"`
+	// Photo is null for a chat without one: it is shown by who is in it.
+	Photo *avatarJSON `json:"photo"`
+	// Pinned is the message pinned above the chat, told by the chat
+	// itself; absent for none.
+	Pinned *chatMessageJSON `json:"pinned,omitempty"`
 }
 
 // chatMessageJSON is what Author said in a chat or, with Action, what they
 // did there: "create" and "title" (Text is the title), "invite" and "kick"
-// (of Target), "leave", "return". Out is the caller's own, which they may
+// (of Target), "leave", "return", "pin" and "unpin" (a message), "photo"
+// and "photo_remove" (the photo of the chat). Out is the caller's own, which they may
 // edit until EditableUntil and take back until DeletableUntil. It shows
 // what a message of a dialog may: a shared post, a shared photo of an
 // album and the messages it carries on, except in the list of dialogs.
@@ -142,6 +152,7 @@ func toChatJSON(c model.Chat, me string, people map[string]model.Author) chatJSO
 		MemberCount: c.MemberCount,
 		State:       c.State,
 		Unread:      c.Unread,
+		Photo:       toAvatarJSON(c.ID, c.PhotoID),
 	}
 
 	if c.LastMessage != nil {
@@ -172,6 +183,17 @@ func (a *api) shownChat(r *http.Request, me string, view model.ChatView) (chatJS
 	for _, m := range view.Members {
 		if p, ok := people[m.UserID]; ok {
 			j.Members = append(j.Members, toAuthorJSON(p))
+		}
+	}
+
+	if view.Pinned != nil {
+		pinned, err := a.shownChatMessages(r, me, []model.ChatMessage{*view.Pinned})
+		if err != nil {
+			return chatJSON{}, err
+		}
+
+		if len(pinned) == 1 {
+			j.Pinned = &pinned[0]
 		}
 	}
 
@@ -354,6 +376,90 @@ func (a *api) renameChat(w http.ResponseWriter, r *http.Request) {
 	a.changeChat(w, r, func(token, id string) error {
 		return a.chats.Rename(r.Context(), token, id, req.Title)
 	})
+}
+
+func (a *api) pinChatMessage(w http.ResponseWriter, r *http.Request) {
+	var req pinChatMessageRequest
+	if err := decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.changeChat(w, r, func(token, id string) error {
+		return a.chats.Pin(r.Context(), token, id, req.MessageID)
+	})
+}
+
+func (a *api) unpinChatMessage(w http.ResponseWriter, r *http.Request) {
+	a.changeChat(w, r, func(token, id string) error {
+		return a.chats.Unpin(r.Context(), token, id)
+	})
+}
+
+// uploadChatPhoto uploads the photo of a chat under its ID, shows it and
+// only then deletes the photo it showed, as a club does. Only someone in
+// the chat may: they are asked first, so that nobody else stores files
+// under its ID.
+func (a *api) uploadChatPhoto(w http.ResponseWriter, r *http.Request) {
+	a.changeChat(w, r, func(token, id string) error {
+		shown, err := a.inChat(r, token, id)
+		if err != nil {
+			return err
+		}
+
+		image, err := readImage(w, r)
+		if err != nil {
+			return err
+		}
+
+		photoID, err := a.media.UploadChatAvatar(r.Context(), token, id, image)
+		if err != nil {
+			return err
+		}
+
+		if err = a.chats.SetPhoto(r.Context(), token, id, photoID); err != nil {
+			a.cleanUpChatPhotos(r, token, id, shown)
+			return err
+		}
+
+		a.cleanUpChatPhotos(r, token, id, photoID)
+
+		return nil
+	})
+}
+
+func (a *api) deleteChatPhoto(w http.ResponseWriter, r *http.Request) {
+	a.changeChat(w, r, func(token, id string) error {
+		if err := a.chats.SetPhoto(r.Context(), token, id, ""); err != nil {
+			return err
+		}
+
+		a.cleanUpChatPhotos(r, token, id, "")
+
+		return nil
+	})
+}
+
+// inChat is the photo the chat shows, for someone in it now.
+func (a *api) inChat(r *http.Request, token, id string) (string, error) {
+	view, err := a.chats.Get(r.Context(), token, id)
+	if err != nil {
+		return "", err
+	}
+
+	if view.Chat.State != model.ChatStateActive {
+		return "", failure.New(failure.Conflict, "you are not in this chat")
+	}
+
+	return view.Chat.PhotoID, nil
+}
+
+// cleanUpChatPhotos deletes photos the chat no longer shows. A failure
+// only leaves unused files behind, so it is logged, not returned.
+func (a *api) cleanUpChatPhotos(r *http.Request, token, chatID, keep string) {
+	if err := a.media.DeleteChatAvatars(r.Context(), token, chatID, keep); err != nil {
+		a.logger.WarnContext(r.Context(), "old chat photos left behind", "error", err)
+	}
 }
 
 func (a *api) addChatMembers(w http.ResponseWriter, r *http.Request) {

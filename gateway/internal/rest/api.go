@@ -97,6 +97,8 @@ type Media interface {
 	// checks that the user runs the club.
 	UploadClubAvatar(ctx context.Context, accessToken, clubID string, image []byte) (string, error)
 	DeleteClubAvatars(ctx context.Context, accessToken, clubID, keep string) error
+	UploadChatAvatar(ctx context.Context, accessToken, chatID string, image []byte) (string, error)
+	DeleteChatAvatars(ctx context.Context, accessToken, chatID, keep string) error
 	UploadClubPhoto(ctx context.Context, accessToken, clubID string, image []byte) (string, error)
 	DeleteClubPhotos(ctx context.Context, accessToken, clubID string, keep []string) error
 
@@ -329,6 +331,10 @@ type Chats interface {
 	Get(ctx context.Context, accessToken, id string) (model.ChatView, error)
 	List(ctx context.Context, accessToken, cursor string, limit int) (model.ChatPage, error)
 	Rename(ctx context.Context, accessToken, id, title string) error
+	Pin(ctx context.Context, accessToken, id, messageID string) error
+	Unpin(ctx context.Context, accessToken, id string) error
+	// SetPhoto shows a photo uploaded under the chat's ID; "" removes it.
+	SetPhoto(ctx context.Context, accessToken, id, photoID string) error
 	Invite(ctx context.Context, accessToken, id string, userIDs []string) error
 	Kick(ctx context.Context, accessToken, id, userID string) error
 	Leave(ctx context.Context, accessToken, id string) error
@@ -572,6 +578,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/chats", a.createChat)
 	mux.HandleFunc("GET /api/v1/chats/{id}", a.getChat)
 	mux.HandleFunc("PATCH /api/v1/chats/{id}", a.renameChat)
+	mux.HandleFunc("PUT /api/v1/chats/{id}/pin", a.pinChatMessage)
+	mux.HandleFunc("DELETE /api/v1/chats/{id}/pin", a.unpinChatMessage)
+	mux.HandleFunc("PUT /api/v1/chats/{id}/photo", a.uploadChatPhoto)
+	mux.HandleFunc("DELETE /api/v1/chats/{id}/photo", a.deleteChatPhoto)
 	mux.HandleFunc("POST /api/v1/chats/{id}/members", a.addChatMembers)
 	mux.HandleFunc("DELETE /api/v1/chats/{id}/members/{nickname}", a.removeChatMember)
 	mux.HandleFunc("PUT /api/v1/chats/{id}/membership", a.returnToChat)
