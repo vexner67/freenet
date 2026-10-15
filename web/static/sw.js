@@ -104,6 +104,29 @@ function mustShow() {
   return /^((?!chrome|android).)*safari/i.test(self.navigator.userAgent);
 }
 
+// The number on the icon of the site on the home screen: the pages say
+// what is unread (push.js showUnread), and each push of something new
+// adds one until a page says it again. A worker lives only while it
+// works, so the number is kept in its cache.
+const UNREAD = '/unread';
+
+async function unread() {
+  const kept = await (await caches.open('freenet')).match(UNREAD);
+  return kept ? Number(await kept.text()) || 0 : 0;
+}
+
+async function keepUnread(n) {
+  await (await caches.open('freenet')).put(UNREAD, new Response(String(n)));
+}
+
+async function countPush() {
+  if (!('setAppBadge' in self.navigator)) return;
+
+  const n = await unread() + 1;
+  await keepUnread(n);
+  await self.navigator.setAppBadge(n);
+}
+
 async function show(payload) {
   const shown = notificationOf(payload);
   if (!shown) return;
@@ -112,10 +135,16 @@ async function show(payload) {
   const inFront = windows.some((w) => w.focused);
   if (inFront && !mustShow()) return;
 
+  // Another message of a dialog already in the shade is not one more
+  // unread dialog.
+  const fresh = (await self.registration.getNotifications({ tag: shown.tag })).length === 0;
+
   const icon = payload.actor?.avatar || '/static/icon-192.png';
   await self.registration.showNotification(shown.title, {
     body: shown.body,
     icon,
+    // Android draws it, white, in the status bar.
+    badge: '/static/badge.png',
     tag: shown.tag,
     renotify: Boolean(shown.renotify),
     data: { url: shown.url },
@@ -124,7 +153,10 @@ async function show(payload) {
   // The page in front shows it live already.
   if (inFront) {
     for (const n of await self.registration.getNotifications({ tag: shown.tag })) n.close();
+    return;
   }
+
+  if (fresh) await countPush().catch(() => {});
 }
 
 self.addEventListener('install', () => self.skipWaiting());
@@ -151,6 +183,11 @@ async function open(url) {
 
   return self.clients.openWindow(url);
 }
+
+self.addEventListener('message', (event) => {
+  const n = event.data?.unread;
+  if (Number.isInteger(n) && n >= 0) event.waitUntil(keepUnread(n));
+});
 
 self.addEventListener('notificationclick', (event) => {
   event.notification.close();

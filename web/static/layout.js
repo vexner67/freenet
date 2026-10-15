@@ -6,9 +6,9 @@ import { accountName, canPark, onAccountChange, park, parkedAccounts, signedInAs
 import { api } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
-import { errorText, foundParts, isLongText, mentionParts, setTimezone, unreadCountText } from './labels.js';
+import { errorText, foundParts, isLongText, mentionParts, pushOfferText, pushStateTexts, setTimezone, unreadCountText } from './labels.js';
 import { nicknameLookup } from './nicknames.js';
-import { forgetPushAccount, syncPush } from './push.js';
+import { closePushes, endPushOffer, enablePush, forgetPushAccount, pushOffer, showUnread, syncPush } from './push.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -392,6 +392,7 @@ export function renderChrome(me) {
     ensureKey(me.id).catch(() => {});
     // The pushes of this browser, when on, go to whoever is signed in.
     syncPush(me).catch(() => {});
+    offerPush(me).catch(() => {});
   } else {
     // A guest sees the site as it is, whoever was here before.
     forgetLook();
@@ -407,6 +408,38 @@ export function renderChrome(me) {
       el('a', { href: '/search', textContent: 'Люди' }),
     );
   }
+}
+
+// offerPush asks once over the page of a phone whether to send pushes
+// there, as an app would: the browser asks for permission only on a tap,
+// and the switch in the settings is a long way off on a phone. An iPhone
+// is told first how to get them at all.
+async function offerPush(me) {
+  const body = document.querySelector('.page-body');
+  if (!body || location.pathname === '/settings') return;
+
+  const offer = await pushOffer();
+  if (!offer) return;
+
+  const bar = el('div', { className: 'notice push-offer' });
+  const done = () => {
+    endPushOffer();
+    bar.remove();
+  };
+
+  const buttons = offer === 'install'
+    ? [button('Понятно', done, { secondary: true })]
+    : [
+      button('Включить уведомления', async () => {
+        done();
+        await enablePush(me).catch(() => {});
+      }),
+      button('Не сейчас', done, { secondary: true }),
+    ];
+
+  bar.append(el('p', { textContent: offer === 'install' ? pushStateTexts.install : pushOfferText }),
+    el('div', { className: 'push-offer-actions' }, ...buttons));
+  body.prepend(bar);
 }
 
 // addMenuToggle puts the button that opens the left menu into the header:
@@ -518,8 +551,18 @@ function applyCounters(event) {
   if (event.notifications !== undefined) setCounter('notifications', event.notifications);
 }
 
+// What the counters say, for the icon of the site on the home screen.
+const unread = {};
+
+// Pushes about what is read here leave the notification shade.
+const pushTags = { messages: ['im:', 'chat:'], notifications: ['n:'] };
+
 export function setCounter(name, n) {
   counterVersions[name]++;
+
+  unread[name] = n;
+  if (unread.messages !== undefined && unread.notifications !== undefined) showUnread(unread.messages + unread.notifications);
+  if (n <= 0) closePushes(...pushTags[name]).catch(() => {});
 
   const counter = $(counters[name].id);
   if (!counter) return;
