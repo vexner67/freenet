@@ -662,7 +662,7 @@ func (f *fakePosts) DeletePostponed(_ context.Context, token, id string) error {
 
 func (f *fakePosts) Create(_ context.Context, token string, np model.NewPost) (model.Post, error) {
 	f.token, f.wall, f.created, f.photos, f.newPost = token, np.WallID, np.Text, np.PhotoIDs, np
-	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, NSFW: np.NSFW, Mine: true, Polled: np.Poll != nil, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
+	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, NSFW: np.NSFW, Mine: true, Polled: np.Poll != nil, DocumentIDs: np.DocumentIDs, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
 }
 
 // Edit edits the posts Get knows.
@@ -1004,7 +1004,26 @@ type fakeMedia struct {
 	claimed, released []string
 	// releaseFails is how many releases fail before one goes through.
 	releaseFails int
-	err          error
+	// droppedDocuments are the documents deleted, "owner/id,id".
+	droppedDocuments []string
+	err              error
+}
+
+func (f *fakeMedia) UploadDocument(_ context.Context, _ string, data []byte) (string, error) {
+	f.uploaded = data
+	return "d9", f.err
+}
+
+func (f *fakeMedia) Document(_ context.Context, ownerID, documentID string) ([]byte, error) {
+	if ownerID != "u1" || documentID != "d1" {
+		return nil, failure.New(failure.NotFound, "document not found")
+	}
+	return []byte("%PDF-1.7"), nil
+}
+
+func (f *fakeMedia) DeleteDocuments(_ context.Context, ownerID string, ids []string) error {
+	f.droppedDocuments = append(f.droppedDocuments, ownerID+"/"+strings.Join(ids, ","))
+	return nil
 }
 
 func (f *fakeMedia) PublishPhotos(_ context.Context, ownerID string, photoIDs []string) error {
@@ -1181,6 +1200,8 @@ type fakeMessages struct {
 	// hidden is the message deleted for the caller alone, edited
 	// "id/sealed" of the last edit.
 	hidden, edited string
+	// typingTo is whom the caller last told they type to.
+	typingTo string
 	// addedPhotos and removedPhotos are those of the last edit;
 	// deletedMany "ids forEveryone".
 	addedPhotos, removedPhotos []string
@@ -1244,7 +1265,7 @@ func (f *fakeMessages) Send(_ context.Context, token, recipientID string, d mode
 
 	return model.Message{
 		ID: "m9", SenderID: "u1", RecipientID: recipientID, Sealed: d.Sealed, PhotoIDs: d.PhotoIDs, PostID: d.PostID, Forwarded: forwarded,
-		SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker,
+		SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker, DocumentIDs: d.DocumentIDs,
 		CreatedAt: time.Date(2026, 10, 5, 22, 0, 0, 0, time.UTC),
 	}, f.err
 }
@@ -1328,6 +1349,11 @@ func (f *fakeMessages) MarkRead(_ context.Context, token, peerID, upTo string) e
 	return f.err
 }
 
+func (f *fakeMessages) Typing(_ context.Context, token, peerID string) error {
+	f.token, f.typingTo = token, peerID
+	return f.err
+}
+
 type harness struct {
 	handler       http.Handler
 	metrics       *prometheus.Registry
@@ -1346,6 +1372,7 @@ type harness struct {
 	gifts         *fakeGifts
 	stickers      *fakeStickers
 	votes         *fakeVotes
+	documents     *fakeDocuments
 }
 
 func newHarness(cfg rest.Config) harness {
@@ -1369,6 +1396,7 @@ func newHarness(cfg rest.Config) harness {
 		stickers:      &fakeStickers{},
 		votes:         &fakeVotes{},
 		faves:         &fakeFaves{},
+		documents:     &fakeDocuments{},
 	}
 	h.metrics = prometheus.NewRegistry()
 	h.handler = mustServer(cfg, rest.Backends{
@@ -1387,6 +1415,7 @@ func newHarness(cfg rest.Config) harness {
 		Stickers:      h.stickers,
 		Votes:         h.votes,
 		Faves:         h.faves,
+		Documents:     h.documents,
 	}, h.metrics).Handler()
 
 	return h

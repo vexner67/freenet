@@ -95,7 +95,7 @@ func (f *fakeChats) Send(_ context.Context, token, id string, d model.MessageDra
 
 	m := model.ChatMessage{
 		ID: "m9", ChatID: id, SenderID: "u1", Text: d.Text, PhotoIDs: d.PhotoIDs, CreatedAt: chatTime, DeletableUntil: chatTime, EditableUntil: chatTime,
-		PostID: d.PostID, SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker,
+		PostID: d.PostID, SharedPhotoID: d.SharedPhotoID, Sticker: d.Sticker, DocumentIDs: d.DocumentIDs,
 	}
 	for range d.ForwardIDs {
 		m.Forwarded = append(m.Forwarded, model.ForwardedMessage{SenderID: "u2", Text: "дальше", CreatedAt: chatTime})
@@ -154,6 +154,11 @@ func (f *fakeChats) Delete(_ context.Context, token, id string) error {
 
 func (f *fakeChats) MarkRead(_ context.Context, token, id, upTo string) error {
 	f.did(token, "read", id, upTo)
+	return f.err
+}
+
+func (f *fakeChats) Typing(_ context.Context, token, id string) error {
+	f.did(token, "typing", id)
 	return f.err
 }
 
@@ -367,7 +372,11 @@ func TestChatMessages(t *testing.T) {
 		t.Fatalf("read: %d", w.Code)
 	}
 
-	if want := []string{"message m2", "edit m9 пока", "delete m9", "read c1 m2"}; !slices.Equal(h.chats.calls, want) {
+	if w = h.do("POST", "/api/v1/chats/c1/typing", "", "Authorization", annAuth); w.Code != http.StatusNoContent {
+		t.Fatalf("typing: %d", w.Code)
+	}
+
+	if want := []string{"message m2", "edit m9 пока", "delete m9", "read c1 m2", "typing c1"}; !slices.Equal(h.chats.calls, want) {
 		t.Fatalf("calls = %q, want %q", h.chats.calls, want)
 	}
 
@@ -456,6 +465,7 @@ func TestChatMessages(t *testing.T) {
 	for _, req := range [][2]string{
 		{"GET", "/api/v1/chats/c1/messages"}, {"POST", "/api/v1/chats/c1/messages"}, {"GET", "/api/v1/chat-messages/m2"},
 		{"PATCH", "/api/v1/chat-messages/m2"}, {"DELETE", "/api/v1/chat-messages/m2"}, {"POST", "/api/v1/chats/c1/read"},
+		{"POST", "/api/v1/chats/c1/typing"},
 	} {
 		if w = newHarness(rest.Config{}).do(req[0], req[1], `{}`); w.Code != http.StatusUnauthorized {
 			t.Fatalf("%s %s without token: %d", req[0], req[1], w.Code)

@@ -21,7 +21,7 @@ func NewMessages(api messagev1.MessageServiceClient) *Messages {
 // Send writes d to recipientID.
 func (m *Messages) Send(ctx context.Context, accessToken, recipientID string, d model.MessageDraft) (model.Message, error) {
 	resp, err := m.api.SendMessage(withToken(ctx, accessToken), &messagev1.SendMessageRequest{
-		RecipientId: recipientID, Text: d.Text, Sealed: d.Sealed, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID,
+		RecipientId: recipientID, Text: d.Text, Sealed: d.Sealed, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID, DocumentIds: d.DocumentIDs,
 		ForwardIds: d.ForwardIDs, Sticker: d.Sticker,
 	})
 	if err != nil {
@@ -92,6 +92,15 @@ func (m *Messages) MarkRead(ctx context.Context, accessToken, peerID, upTo strin
 	_, err := m.api.MarkDialogRead(withToken(ctx, accessToken), &messagev1.MarkDialogReadRequest{PeerId: peerID, UpToId: upTo})
 	if err != nil {
 		return errs.Wrap("m.api.MarkDialogRead", fromStatus(err))
+	}
+
+	return nil
+}
+
+// Typing tells peerID that the caller is writing to them.
+func (m *Messages) Typing(ctx context.Context, accessToken, peerID string) error {
+	if _, err := m.api.SetTyping(withToken(ctx, accessToken), &messagev1.SetTypingRequest{PeerId: peerID}); err != nil {
+		return errs.Wrap("m.api.SetTyping", fromStatus(err))
 	}
 
 	return nil
@@ -191,6 +200,10 @@ func (m *Messages) Subscribe(ctx context.Context, accessToken string) (model.Mes
 			return model.MessageEvent{ChatEdited: &edited}, nil
 		}
 
+		if t := resp.GetTyping(); t != nil {
+			return model.MessageEvent{Typing: &model.Typing{UserID: t.GetUserId(), ChatID: t.GetChatId()}}, nil
+		}
+
 		if cr := resp.GetChatRead(); cr != nil {
 			return model.MessageEvent{ChatRead: &model.ChatRead{ChatID: cr.GetChatId(), UpTo: cr.GetUpToId()}}, nil
 		}
@@ -235,6 +248,7 @@ func toForwarded(carried []*messagev1.ForwardedMessage) []model.ForwardedMessage
 			SharedPhotoID: f.GetPhotoId(),
 			Depth:         int(f.GetDepth()),
 			Sticker:       f.GetSticker(),
+			DocumentIDs:   f.GetDocumentIds(),
 		})
 	}
 
@@ -250,6 +264,7 @@ func toMessage(pm *messagev1.Message) model.Message {
 		RecipientID:    pm.GetRecipientId(),
 		Sealed:         pm.GetSealed(),
 		PhotoIDs:       pm.GetPhotoIds(),
+		DocumentIDs:    pm.GetDocumentIds(),
 		CreatedAt:      pm.GetCreatedAt().AsTime(),
 		Read:           pm.GetRead(),
 		DeletableUntil: fromTimestamp(pm.GetDeletableUntil()),

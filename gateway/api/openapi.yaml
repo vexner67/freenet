@@ -853,6 +853,106 @@ paths:
               schema: { type: string, format: binary }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /media/documents/{id}:
+    get:
+      summary: Download a document
+      description: |
+        No token needed: whoever knows the ID downloads it, as with photos.
+        Always an attachment (`application/octet-stream`), named after the
+        document; a deleted document is gone.
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string } }
+      responses:
+        "200":
+          description: The file
+          content:
+            application/octet-stream:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/me/documents:
+    get:
+      summary: Your documents ("Мои Документы"), newest first
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: A page
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [documents, nextCursor, total]
+                properties:
+                  documents:
+                    type: array
+                    items: { $ref: "#/components/schemas/Document" }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer, description: How many documents you have }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Upload a document ("Загрузить документ")
+      description: |
+        The body is the file itself, up to 10 MB; `name` is its file name,
+        whose end tells the format. The formats are openvk's: jpg, jpeg,
+        png, gif, webp, psd, aep, docx, doc, odt, txt, md, pptx, ppt, xls,
+        xlsx, pdf, djvu, fb2, ps, apk, zip, 7z, mp4, avi, mp3, flac.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: name, in: query, required: true, schema: { type: string, maxLength: 128 } }
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema: { type: string, format: binary }
+      responses:
+        "201":
+          description: Uploaded
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Document" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/documents/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    patch:
+      summary: Rename your document ("Редактирование документа")
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [name]
+              properties:
+                name: { type: string, minLength: 1, maxLength: 128 }
+      responses:
+        "200":
+          description: Renamed
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Document" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not your document", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Delete your document
+      description: It disappears from the posts and messages that attach it too.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not your document", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/me/posts:
     post:
       summary: Write on your own wall
@@ -4356,6 +4456,9 @@ paths:
           or nothing: its sender edited it or took it back (`deleted`).
         - `chat_read` — you have read chat `chat` up to `upTo` on another
           page.
+        - `typing` — `user` (Author) is writing to you: in chat `chat` or,
+          without it, in your dialog. Show it for a few seconds ("печатает...")
+          unless told again, and no more once their message comes.
         - `notification` — `change` is `new`, `gone` or `read`.
 
         While it is open, you are on the site ("Онлайн" on your page).
@@ -4625,6 +4728,7 @@ paths:
                   items: { type: string, format: uuid }
                 post: { type: string, format: uuid }
                 albumPhoto: { type: string, format: uuid }
+                documents: { $ref: "#/components/schemas/DocumentIDs" }
                 sticker: { type: string, description: "A sticker of a pack among your stickers (GET /stickers); it goes alone, with nothing else" }
                 forward:
                   type: array
@@ -4666,6 +4770,28 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/chats/{id}/typing:
+    post:
+      summary: Tell the others in a chat that you are writing there
+      description: >-
+        They hear a `typing` event; nothing is kept. Send it every few
+        seconds while typing.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema: { type: string, format: uuid }
+      responses:
+        "204": { description: Told }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: You are not in the chat anymore (`you are not in this chat`)
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/Error" } }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/chat-messages/{id}:
     parameters:
@@ -4821,6 +4947,7 @@ paths:
                 photos: { $ref: "#/components/schemas/PhotoIDs" }
                 post: { type: string, format: uuid }
                 albumPhoto: { type: string, format: uuid }
+                documents: { $ref: "#/components/schemas/DocumentIDs" }
                 sticker: { type: string, description: "A sticker of a pack among your stickers (GET /stickers); it goes alone, with nothing else" }
                 forward:
                   type: array
@@ -4927,6 +5054,29 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/dialogs/{nickname}/typing:
+    post:
+      summary: Tell a user that you are writing to them
+      description: >-
+        They hear a `typing` event; nothing is kept. Only to someone you may
+        write to; send it every few seconds while typing.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: nickname
+          in: path
+          required: true
+          schema: { type: string }
+      responses:
+        "204": { description: Told }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You may not write to the user (`you cannot write to this user`)
+          content:
+            application/json: { schema: { $ref: "#/components/schemas/Error" } }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/users/{nickname}/follow:
     parameters:
@@ -5689,6 +5839,7 @@ components:
         signed: { type: boolean, description: "With fromClub: name yourself under the post (\"Подпись автора\")" }
         nsfw: { type: boolean, description: "Marks the post as adult (\"Содержит NSFW-контент\")" }
         poll: { $ref: "#/components/schemas/NewPoll" }
+        documents: { $ref: "#/components/schemas/DocumentIDs" }
 
     NewPost:
       type: object
@@ -5696,6 +5847,10 @@ components:
       properties:
         text: { type: string, maxLength: 60000 }
         photos: { $ref: "#/components/schemas/PhotoIDs" }
+        documents:
+          description: "Documents of yours to attach (GET /me/documents). Only when writing: an edit that carries them is refused (400)"
+          allOf:
+            - { $ref: "#/components/schemas/DocumentIDs" }
         nsfw: { type: boolean, description: "Marks the post as adult (\"Содержит NSFW-контент\"); an edit that leaves it out keeps the mark" }
         poll:
           description: "The poll a new post asks; with it `text` and `photos` may be empty. Only when writing: the poll of a post stays as asked, and an edit that carries one is refused (400)"
@@ -5749,6 +5904,25 @@ components:
           type: array
           items: { type: integer }
 
+    DocumentIDs:
+      description: IDs of your documents (GET /api/v1/me/documents), in the order shown
+      type: array
+      maxItems: 10
+      uniqueItems: true
+      items: { type: string, format: uuid }
+
+    Document:
+      type: object
+      description: A document ("Мои Документы")
+      required: [id, name, ext, size, url, createdAt]
+      properties:
+        id: { type: string, format: uuid }
+        name: { type: string, description: "Its name, up to 128 characters" }
+        ext: { type: string, description: "Its format, the end of the file name in lower case, as `pdf`" }
+        size: { type: integer, description: "In bytes, up to 10 MB" }
+        url: { type: string, description: "Where it is downloaded: /media/documents/{id}" }
+        createdAt: { type: string, format: date-time }
+
     PhotoIDs:
       description: IDs from `POST /api/v1/me/photos`, yours, in the order shown
       type: array
@@ -5789,6 +5963,10 @@ components:
           oneOf:
             - $ref: "#/components/schemas/SharedPost"
             - type: "null"
+        documents:
+          type: array
+          description: The documents it attaches that are still there; absent for none
+          items: { $ref: "#/components/schemas/Document" }
         poll:
           description: The poll the post asks; null for a post without one
           oneOf:
@@ -5848,6 +6026,10 @@ components:
           items: { $ref: "#/components/schemas/Photo" }
         createdAt: { type: string }
         repostOf: { type: string, description: "Empty unless the shared post is itself a repost" }
+        documents:
+          type: array
+          description: The documents it attaches that are still there; absent for none
+          items: { $ref: "#/components/schemas/Document" }
         poll:
           description: "The poll the shared post asks, as Post's poll; in a message and in live events without `voted`"
           oneOf:
@@ -6045,6 +6227,11 @@ components:
           description: The shared photo, as in a post that shares one; absent in the list of dialogs and without one
           $ref: "#/components/schemas/SharedPhoto"
         sticker: { type: string, description: "The sticker the message is, alone; empty for none" }
+        documentCount: { type: integer, description: "How many documents it attached" }
+        documents:
+          type: array
+          description: The documents it attaches that are still there; absent in the list of dialogs and without any
+          items: { $ref: "#/components/schemas/Document" }
         forwardedCount: { type: integer, description: "How many messages it carries on from dialogs and chats" }
         forwarded:
           type: array
@@ -6072,6 +6259,9 @@ components:
         albumPhoto: { type: string, description: "A photo of an album shared in it; empty for none" }
         sharedPhoto: { $ref: "#/components/schemas/SharedPhoto" }
         sticker: { type: string, description: "The sticker it is; empty for none" }
+        documents:
+          type: array
+          items: { $ref: "#/components/schemas/Document" }
 
     SharedPhoto:
       type: object
@@ -6155,6 +6345,11 @@ components:
           description: The shared photo; absent in the list of dialogs and without one
           $ref: "#/components/schemas/SharedPhoto"
         sticker: { type: string, description: "The sticker the message is, alone; empty for none" }
+        documentCount: { type: integer, description: "How many documents it attached" }
+        documents:
+          type: array
+          description: The documents it attaches that are still there; absent in the list of dialogs and without any
+          items: { $ref: "#/components/schemas/Document" }
         forwardedCount: { type: integer, description: "How many messages it carries on from dialogs and chats" }
         forwarded:
           type: array

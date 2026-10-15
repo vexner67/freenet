@@ -31,9 +31,11 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 		Text:     np.Text,
 		PhotoIds: np.PhotoIDs,
 		ClubWall: np.ClubWall,
-		FromWall: np.FromWall,
-		Signed:   np.Signed,
-		Nsfw:     np.NSFW,
+
+		DocumentIds: np.DocumentIDs,
+		FromWall:    np.FromWall,
+		Signed:      np.Signed,
+		Nsfw:        np.NSFW,
 
 		MentionedIds: np.Mentions,
 		AvatarUpdate: np.AvatarUpdate,
@@ -662,10 +664,12 @@ func toPost(p *postv1.Post) model.Post {
 		PhotoIDs:  p.GetPhotoIds(),
 		CreatedAt: p.GetCreatedAt().AsTime(),
 		Likes:     int(p.GetLikeCount()),
-		Comments:  int(p.GetCommentCount()),
-		Reposts:   int(p.GetRepostCount()),
-		Liked:     p.GetLiked(),
-		RepostOf:  p.GetRepostOf(),
+
+		DocumentIDs: p.GetDocumentIds(),
+		Comments:    int(p.GetCommentCount()),
+		Reposts:     int(p.GetRepostCount()),
+		Liked:       p.GetLiked(),
+		RepostOf:    p.GetRepostOf(),
 		// Unset timestamps are zero times, not the Unix epoch.
 		EditedAt:       fromTimestamp(p.GetEditedAt()),
 		EditableUntil:  fromTimestamp(p.GetEditableUntil()),

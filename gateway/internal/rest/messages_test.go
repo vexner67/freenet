@@ -360,6 +360,26 @@ func TestMarkDialogRead(t *testing.T) {
 	}
 }
 
+func TestDialogTyping(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	if w := h.do("POST", "/api/v1/dialogs/bob/typing", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.messages.typingTo != "u2" {
+		t.Fatalf("%d %+v", w.Code, h.messages)
+	}
+
+	// Only to someone the caller may write to.
+	h = newHarness(rest.Config{})
+	h.users.closedMessages = true
+	if w := h.do("POST", "/api/v1/dialogs/bob/typing", "", "Authorization", "Bearer tok"); w.Code != http.StatusForbidden || h.messages.typingTo != "" {
+		t.Fatalf("to who does not take messages: %d %q", w.Code, h.messages.typingTo)
+	}
+
+	if w := newHarness(rest.Config{}).do("POST", "/api/v1/dialogs/bob/typing", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", w.Code)
+	}
+}
+
 func TestDeleteMessage(t *testing.T) {
 	t.Parallel()
 

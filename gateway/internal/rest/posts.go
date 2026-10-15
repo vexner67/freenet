@@ -26,6 +26,9 @@ type postRequest struct {
 	// Poll is the poll a new post asks, with which the text and the
 	// photos may be none; an edit takes none, the poll stays as asked.
 	Poll *pollRequest `json:"poll"`
+	// Documents are IDs of the caller's documents a new post attaches;
+	// an edit keeps those the post has.
+	Documents []string `json:"documents"`
 }
 
 type authorJSON struct {
@@ -69,6 +72,9 @@ type postResponse struct {
 	SharedPhoto *sharedPhotoJSON `json:"sharedPhoto"`
 	// Poll is the poll the post asks, null for other posts.
 	Poll *pollJSON `json:"poll"`
+	// Documents are the documents of its author it attaches, those that
+	// are still there.
+	Documents []documentJSON `json:"documents,omitempty"`
 	// EditedAt is null for a post never edited; its author may edit it
 	// until EditableUntil.
 	EditedAt      *string `json:"editedAt"`
@@ -145,7 +151,8 @@ type repostJSON struct {
 	// NSFW: the author of the shared post marked it as adult.
 	NSFW bool `json:"nsfw"`
 	// Poll is the poll the shared post asks, null for none.
-	Poll *pollJSON `json:"poll"`
+	Poll      *pollJSON      `json:"poll"`
+	Documents []documentJSON `json:"documents,omitempty"`
 }
 
 type likeResponse struct {
@@ -356,6 +363,11 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 		return nil, err
 	}
 
+	docs, err := a.postDocuments(r, slices.Concat(posts, slices.Collect(maps.Values(shared)))...)
+	if err != nil {
+		return nil, err
+	}
+
 	if err = a.unsign(r, posts); err != nil {
 		return nil, err
 	}
@@ -369,12 +381,14 @@ func (a *api) withPeople(r *http.Request, posts []model.Post) ([]postResponse, e
 		resp := toPostResponse(p)
 		resp.SharedPhoto = a.sharedPhoto(r, p.SharedPhotoID)
 		resp.Poll = polls[p.ID]
+		resp.Documents = documentsJSON(p.DocumentIDs, docs)
 
 		if p.RepostOf != "" {
 			resp.Repost = &repostJSON{ID: p.RepostOf, Deleted: true}
 			if s, ok := shared[p.RepostOf]; ok && withProfiles(&s, people) {
 				resp.Repost = toRepostJSON(s)
 				resp.Repost.Poll = polls[s.ID]
+				resp.Repost.Documents = documentsJSON(s.DocumentIDs, docs)
 			}
 		}
 
@@ -721,6 +735,11 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 		return
 	}
 
+	if err = a.checkDocuments(r.Context(), me.ID, req.Documents); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
 	if err = a.claimPhotos(r, token, req.Photos); err != nil {
 		a.writeError(w, r, err)
 		return
@@ -728,7 +747,7 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 
 	p, err := a.posts.Create(r.Context(), token, model.NewPost{
 		WallID: wall.ID, Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW != nil && *req.NSFW, Mentions: mentions,
-		Poll: toNewPoll(req.Poll),
+		Poll: toNewPoll(req.Poll), DocumentIDs: req.Documents,
 	})
 	if err != nil {
 		a.releasePhotos(r, token, req.Photos, err)
@@ -960,6 +979,11 @@ func (a *api) repostsByID(r *http.Request, ids []string) (map[string]*repostJSON
 		return nil, err
 	}
 
+	docs, err := a.postDocuments(r, found...)
+	if err != nil {
+		return nil, err
+	}
+
 	shown := make(map[string]*repostJSON, len(ids))
 	for _, id := range ids {
 		shown[id] = &repostJSON{ID: id, Deleted: true}
@@ -968,6 +992,7 @@ func (a *api) repostsByID(r *http.Request, ids []string) (map[string]*repostJSON
 		if withProfiles(&p, authors) {
 			shown[p.ID] = toRepostJSON(p)
 			shown[p.ID].Poll = polls[p.ID]
+			shown[p.ID].Documents = documentsJSON(p.DocumentIDs, docs)
 		}
 	}
 
@@ -1009,6 +1034,11 @@ func (a *api) editPost(w http.ResponseWriter, r *http.Request) {
 
 	if req.Poll != nil {
 		a.writeError(w, r, failure.New(failure.InvalidArgument, "the poll of a post cannot be changed"))
+		return
+	}
+
+	if req.Documents != nil {
+		a.writeError(w, r, failure.New(failure.InvalidArgument, "the documents of a post cannot be changed"))
 		return
 	}
 

@@ -115,7 +115,7 @@ func (c *Chats) Return(ctx context.Context, accessToken, id string) error {
 // Send writes d into the chat.
 func (c *Chats) Send(ctx context.Context, accessToken, id string, d model.MessageDraft) (model.ChatMessage, error) {
 	resp, err := c.api.SendChatMessage(withToken(ctx, accessToken), &messagev1.SendChatMessageRequest{
-		ChatId: id, Text: d.Text, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID, ForwardIds: d.ForwardIDs,
+		ChatId: id, Text: d.Text, PhotoIds: d.PhotoIDs, PostId: d.PostID, PhotoId: d.SharedPhotoID, ForwardIds: d.ForwardIDs, DocumentIds: d.DocumentIDs,
 		Sticker: d.Sticker,
 	})
 	if err != nil {
@@ -228,6 +228,7 @@ func toChatMessage(pm *messagev1.ChatMessage) model.ChatMessage {
 		Text:           pm.GetText(),
 		TextCut:        pm.GetTextCut(),
 		PhotoIDs:       pm.GetPhotoIds(),
+		DocumentIDs:    pm.GetDocumentIds(),
 		TargetID:       pm.GetTargetId(),
 		CreatedAt:      fromTimestamp(pm.GetCreatedAt()),
 		EditedAt:       fromTimestamp(pm.GetEditedAt()),
@@ -246,4 +247,13 @@ func toChatMessage(pm *messagev1.ChatMessage) model.ChatMessage {
 	}
 
 	return m
+}
+
+// Typing tells the others in the chat that the caller is writing there.
+func (c *Chats) Typing(ctx context.Context, accessToken, id string) error {
+	if _, err := c.api.SetChatTyping(withToken(ctx, accessToken), &messagev1.SetChatTypingRequest{ChatId: id}); err != nil {
+		return errs.Wrap("c.api.SetChatTyping", fromStatus(err))
+	}
+
+	return nil
 }

@@ -111,6 +111,24 @@ type Media interface {
 	// of the backdrop; DeletePublishedPhotos deletes such photos.
 	PublishPhotos(ctx context.Context, ownerID string, photoIDs []string) error
 	DeletePublishedPhotos(ctx context.Context, ownerID string, photoIDs []string) error
+
+	// The bytes of documents: UploadDocument keeps a file of the caller,
+	// Document reads one of ownerID, DeleteDocuments deletes those of a
+	// document the post service refused.
+	UploadDocument(ctx context.Context, accessToken string, data []byte) (string, error)
+	Document(ctx context.Context, ownerID, documentID string) ([]byte, error)
+	DeleteDocuments(ctx context.Context, ownerID string, documentIDs []string) error
+}
+
+// Documents are openvk's "Мои Документы", which the post service keeps:
+// files of people that posts and messages attach.
+type Documents interface {
+	Add(ctx context.Context, accessToken, id, fileName string, size int64) (model.Document, error)
+	List(ctx context.Context, accessToken, cursor string, limit int) (model.DocumentPage, error)
+	// GetMany tells the documents of up to 50 ids that exist, anyone's.
+	GetMany(ctx context.Context, ids []string) ([]model.Document, error)
+	Rename(ctx context.Context, accessToken, id, name string) (model.Document, error)
+	Delete(ctx context.Context, accessToken, id string) error
 }
 
 // Posts: methods that read take an optional access token ("" for
@@ -285,6 +303,8 @@ type Messages interface {
 	CountUnread(ctx context.Context, accessToken string) (int, error)
 	History(ctx context.Context, accessToken, peerID string, at model.MessagesAt, limit int) (model.MessagePage, error)
 	MarkRead(ctx context.Context, accessToken, peerID, upTo string) error
+	// Typing tells the peer the caller is writing to them.
+	Typing(ctx context.Context, accessToken, peerID string) error
 	Delete(ctx context.Context, accessToken, id string) error
 	// Hide deletes a message for the caller alone; Edit changes what
 	// their own says.
@@ -322,6 +342,8 @@ type Chats interface {
 	Search(ctx context.Context, accessToken, chatID, query, cursor string, limit int) (model.FoundChatMessages, error)
 	Delete(ctx context.Context, accessToken, id string) error
 	MarkRead(ctx context.Context, accessToken, id, upTo string) error
+	// Typing tells the others in the chat the caller is writing there.
+	Typing(ctx context.Context, accessToken, id string) error
 }
 
 // Clubs: Get and Members take an optional access token ("" for anonymous
@@ -415,6 +437,7 @@ type Backends struct {
 	Gifts         Gifts
 	Stickers      Stickers
 	Votes         Votes
+	Documents     Documents
 }
 
 type api struct {
@@ -433,6 +456,7 @@ type api struct {
 	gifts             Gifts
 	stickers          Stickers
 	votes             Votes
+	documents         Documents
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -536,6 +560,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/dialogs/{nickname}/messages", a.listMessages)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/messages", a.sendMessage)
 	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/read", a.markDialogRead)
+	mux.HandleFunc("POST /api/v1/dialogs/{nickname}/typing", a.dialogTyping)
 	mux.HandleFunc("GET /api/v1/messages/search", a.searchMessages)
 	mux.HandleFunc("PATCH /api/v1/messages/{id}", a.editMessage)
 	mux.HandleFunc("DELETE /api/v1/messages/{id}", a.deleteMessage)
@@ -554,6 +579,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/chats/{id}/messages", a.listChatMessages)
 	mux.HandleFunc("POST /api/v1/chats/{id}/messages", a.sendChatMessage)
 	mux.HandleFunc("POST /api/v1/chats/{id}/read", a.markChatRead)
+	mux.HandleFunc("POST /api/v1/chats/{id}/typing", a.chatTyping)
 	mux.HandleFunc("GET /api/v1/chat-messages/{id}", a.getChatMessage)
 	mux.HandleFunc("PATCH /api/v1/chat-messages/{id}", a.editChatMessage)
 	mux.HandleFunc("DELETE /api/v1/chat-messages/{id}", a.deleteChatMessage)
@@ -649,6 +675,11 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/users/{nickname}/gifts", a.listGifts)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/gifts", a.sendGift)
 	mux.HandleFunc("DELETE /api/v1/gifts/{id}", a.deleteGift)
+	mux.HandleFunc("GET /api/v1/me/documents", a.listDocuments)
+	mux.HandleFunc("POST /api/v1/me/documents", a.uploadDocument)
+	mux.HandleFunc("PATCH /api/v1/documents/{id}", a.renameDocument)
+	mux.HandleFunc("DELETE /api/v1/documents/{id}", a.deleteDocument)
+
 	mux.HandleFunc("GET /api/v1/stickers", a.stickerCatalog)
 	mux.HandleFunc("PUT /api/v1/me/stickers/{pack}", a.addStickerPack)
 	mux.HandleFunc("DELETE /api/v1/me/stickers/{pack}", a.removeStickerPack)
@@ -674,6 +705,7 @@ func (a *api) routes() *http.ServeMux {
 
 	mux.HandleFunc("POST /api/v1/me/photos", a.uploadPhoto)
 	mux.HandleFunc("GET /media/photos/{userID}/{photoID}/{file}", a.servePhoto)
+	mux.HandleFunc("GET /media/documents/{id}", a.serveDocument)
 
 	if a.webDir != "" {
 		registerPages(mux, a.webDir)

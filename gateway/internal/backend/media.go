@@ -8,11 +8,15 @@ import (
 	"google.golang.org/grpc"
 )
 
-// MaxAvatarBytes is the largest upload the media service accepts.
+// MaxAvatarBytes is the largest image the media service accepts.
 const MaxAvatarBytes = 8 << 20
 
-// maxMessageBytes lets an upload through; gRPC allows 4 MB by default.
-const maxMessageBytes = MaxAvatarBytes + 1<<20
+// MaxDocumentBytes is the largest document the media service accepts.
+const MaxDocumentBytes = 10 << 20
+
+// maxMessageBytes lets an upload or a document through; gRPC allows 4 MB
+// by default.
+const maxMessageBytes = max(MaxAvatarBytes, MaxDocumentBytes) + 1<<20
 
 type Media struct {
 	api mediav1.MediaServiceClient
@@ -175,4 +179,43 @@ func (m *Media) Photo(ctx context.Context, userID, photoID string, small bool) (
 	}
 
 	return resp.GetImage(), nil
+}
+
+// UploadDocument stores a file of the caller for "Мои Документы" and
+// returns its ID.
+func (m *Media) UploadDocument(ctx context.Context, accessToken string, data []byte) (string, error) {
+	resp, err := m.api.UploadDocument(
+		withToken(ctx, accessToken),
+		&mediav1.UploadDocumentRequest{Data: data},
+		grpc.MaxCallSendMsgSize(maxMessageBytes),
+	)
+	if err != nil {
+		return "", errs.Wrap("m.api.UploadDocument", fromStatus(err))
+	}
+
+	return resp.GetDocumentId(), nil
+}
+
+// Document returns the bytes of a document of ownerID.
+func (m *Media) Document(ctx context.Context, ownerID, documentID string) ([]byte, error) {
+	resp, err := m.api.GetDocument(
+		ctx,
+		&mediav1.GetDocumentRequest{OwnerId: ownerID, DocumentId: documentID},
+		grpc.MaxCallRecvMsgSize(maxMessageBytes),
+	)
+	if err != nil {
+		return nil, errs.Wrap("m.api.GetDocument", fromStatus(err))
+	}
+
+	return resp.GetData(), nil
+}
+
+// DeleteDocuments deletes documents of ownerID: one stored that the post
+// service then refused.
+func (m *Media) DeleteDocuments(ctx context.Context, ownerID string, documentIDs []string) error {
+	if _, err := m.api.DeleteDocuments(ctx, &mediav1.DeleteDocumentsRequest{OwnerId: ownerID, DocumentIds: documentIDs}); err != nil {
+		return errs.Wrap("m.api.DeleteDocuments", fromStatus(err))
+	}
+
+	return nil
 }

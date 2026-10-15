@@ -97,7 +97,9 @@ func toChatMessageJSON(m model.ChatMessage, me string, people map[string]model.A
 		Deleted:   !m.DeletedAt.IsZero(),
 		Unread:    m.Unread,
 
-		attachedJSON: toAttachedJSON(m.PostID, m.SharedPhotoID, m.Sticker, m.Forwarded),
+		attachedJSON: toAttachedJSON(attachment{
+			PostID: m.PostID, SharedPhotoID: m.SharedPhotoID, Sticker: m.Sticker, Forwarded: m.Forwarded, DocumentIDs: m.DocumentIDs,
+		}),
 	}
 
 	if m.TargetID != "" {
@@ -467,7 +469,7 @@ func (a *api) sendChatMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	draft, err := a.draft(r, token, req)
+	draft, err := a.draft(r, token, me, req)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -564,6 +566,23 @@ func (a *api) markChatRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.chats.MarkRead(r.Context(), token, r.PathValue("id"), req.UpTo); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// chatTyping tells the others in the chat that the caller is writing
+// there ("печатает...").
+func (a *api) chatTyping(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.chats.Typing(r.Context(), token, r.PathValue("id")); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

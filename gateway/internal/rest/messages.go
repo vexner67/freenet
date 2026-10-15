@@ -47,6 +47,8 @@ type messageRequest struct {
 	AlbumPhoto string `json:"albumPhoto"`
 	// Sticker is a sticker of a pack among the caller's stickers, alone.
 	Sticker string `json:"sticker"`
+	// Documents are IDs of the caller's documents the message attaches.
+	Documents []string `json:"documents"`
 }
 
 // messageJSON: Out is the caller's own message, Read means its recipient
@@ -88,13 +90,32 @@ type attachedJSON struct {
 	Forwarded      []forwardedJSON `json:"forwarded,omitempty"`
 	// Sticker is the sticker the message is, "" for none.
 	Sticker string `json:"sticker"`
+	// DocumentCount is how many documents it attaches; Documents shows
+	// those that are still there, except in the list of dialogs.
+	DocumentCount int            `json:"documentCount"`
+	Documents     []documentJSON `json:"documents,omitempty"`
 
-	// carried is what Forwarded is made of (showAttached).
-	carried []model.ForwardedMessage
+	// carried is what Forwarded is made of, documentIDs what Documents is
+	// (showAttached).
+	carried     []model.ForwardedMessage
+	documentIDs []string
 }
 
-func toAttachedJSON(postID, sharedPhotoID, sticker string, forwarded []model.ForwardedMessage) attachedJSON {
-	return attachedJSON{Post: postID, AlbumPhoto: sharedPhotoID, Sticker: sticker, ForwardedCount: len(forwarded), carried: forwarded}
+// attachment is what a message shows besides its words, as the message
+// service tells it.
+type attachment struct {
+	PostID        string
+	SharedPhotoID string
+	Sticker       string
+	Forwarded     []model.ForwardedMessage
+	DocumentIDs   []string
+}
+
+func toAttachedJSON(at attachment) attachedJSON {
+	return attachedJSON{
+		Post: at.PostID, AlbumPhoto: at.SharedPhotoID, Sticker: at.Sticker, ForwardedCount: len(at.Forwarded), carried: at.Forwarded,
+		DocumentCount: len(at.DocumentIDs), documentIDs: at.DocumentIDs,
+	}
 }
 
 // attachedTo are the attachments of the messages, to fill in in place.
@@ -125,6 +146,7 @@ type forwardedJSON struct {
 	AlbumPhoto  string           `json:"albumPhoto"`
 	SharedPhoto *sharedPhotoJSON `json:"sharedPhoto,omitempty"`
 	Sticker     string           `json:"sticker"`
+	Documents   []documentJSON   `json:"documents,omitempty"`
 }
 
 // dialogJSON is a row of "Мои Сообщения": the dialog with Peer or, with
@@ -162,8 +184,10 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 		Read:      m.Read,
 		EditedAt:  optionalTime(m.EditedAt),
 
-		attachedJSON: toAttachedJSON(m.PostID, m.SharedPhotoID, m.Sticker, m.Forwarded),
-		Deleted:      !m.DeletedAt.IsZero(),
+		attachedJSON: toAttachedJSON(attachment{
+			PostID: m.PostID, SharedPhotoID: m.SharedPhotoID, Sticker: m.Sticker, Forwarded: m.Forwarded, DocumentIDs: m.DocumentIDs,
+		}),
+		Deleted: !m.DeletedAt.IsZero(),
 	}
 
 	if j.Out && !j.Deleted {
@@ -432,7 +456,7 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	draft, err := a.draft(r, token, req)
+	draft, err := a.draft(r, token, me.ID, req)
 	if err != nil {
 		a.writeError(w, r, err)
 		return
@@ -458,7 +482,11 @@ func (a *api) sendMessage(w http.ResponseWriter, r *http.Request) {
 // send, once what it shares is there for the caller and its photos are
 // claimed: the message service knows neither posts nor photos. A caller
 // whom the send is refused gives the photos back (releasePhotos).
-func (a *api) draft(r *http.Request, token string, req messageRequest) (model.MessageDraft, error) {
+func (a *api) draft(r *http.Request, token, meID string, req messageRequest) (model.MessageDraft, error) {
+	if err := a.checkDocuments(r.Context(), meID, req.Documents); err != nil {
+		return model.MessageDraft{}, err
+	}
+
 	if err := a.checkSharedPost(r, token, req.Post); err != nil {
 		return model.MessageDraft{}, err
 	}
@@ -484,7 +512,7 @@ func (a *api) draft(r *http.Request, token string, req messageRequest) (model.Me
 
 	return model.MessageDraft{
 		Text: req.Text, Sealed: req.Sealed, PhotoIDs: req.Photos, PostID: req.Post, SharedPhotoID: req.AlbumPhoto, ForwardIDs: req.Forward,
-		Sticker: req.Sticker,
+		Sticker: req.Sticker, DocumentIDs: req.Documents,
 	}, nil
 }
 
@@ -508,18 +536,25 @@ func (a *api) checkSharedPost(r *http.Request, token, postID string) error {
 // is gone is left out, as what they wrote is everywhere, with what it
 // carried on.
 func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
-	var posts, people []string
+	var posts, people, documents []string
 	for _, m := range messages {
 		if m.Post != "" {
 			posts = append(posts, m.Post)
 		}
+		documents = append(documents, m.documentIDs...)
 
 		for _, f := range m.carried {
 			people = append(people, f.SenderID)
+			documents = append(documents, f.DocumentIDs...)
 			if f.PostID != "" {
 				posts = append(posts, f.PostID)
 			}
 		}
+	}
+
+	docs, err := a.documentsOf(r.Context(), documents)
+	if err != nil {
+		return err
 	}
 
 	shown, err := a.repostsByID(r, posts)
@@ -551,6 +586,7 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 			m.Repost = shown[m.Post]
 		}
 		m.SharedPhoto = sharedPhoto(m.AlbumPhoto)
+		m.Documents = documentsJSON(m.documentIDs, docs)
 
 		// gone is the depth of a message left out: those under it go too.
 		gone := -1
@@ -579,6 +615,7 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 				AlbumPhoto:  f.SharedPhotoID,
 				SharedPhoto: sharedPhoto(f.SharedPhotoID),
 				Sticker:     f.Sticker,
+				Documents:   documentsJSON(f.DocumentIDs, docs),
 			}
 			if f.PostID != "" {
 				fj.Repost = shown[f.PostID]
@@ -613,6 +650,40 @@ func (a *api) markDialogRead(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.messages.MarkRead(r.Context(), token, peer.ID, req.UpTo); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// dialogTyping tells the peer that the caller is writing to them
+// ("печатает..."): only to someone they may write to, as a message.
+func (a *api) dialogTyping(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	peer, err := a.users.GetProfile(r.Context(), "", r.PathValue("nickname"))
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	allowed, err := a.canMessage(r, token, peer.ID)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if !allowed {
+		a.writeError(w, r, failure.New(failure.PermissionDenied, "you cannot write to this user"))
+		return
+	}
+
+	if err = a.messages.Typing(r.Context(), token, peer.ID); err != nil {
 		a.writeError(w, r, err)
 		return
 	}

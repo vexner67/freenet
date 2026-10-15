@@ -294,6 +294,9 @@ type Post struct {
 	SharedPhotoID string
 	// Polled: the post asks a poll, which Posts.Polls tells.
 	Polled bool
+	// DocumentIDs are documents of its author it attaches, in order; a
+	// deleted one is gone from it.
+	DocumentIDs []string
 }
 
 // NewPoll is the poll a new post asks ("Новый опрос"): a title and up to
@@ -347,9 +350,11 @@ type NewPost struct {
 	WallID   string
 	Text     string
 	PhotoIDs []string
-	ClubWall bool
-	FromWall bool
-	Signed   bool
+	// DocumentIDs are documents of the caller the post attaches.
+	DocumentIDs []string
+	ClubWall    bool
+	FromWall    bool
+	Signed      bool
 	// NSFW marks the post as adult ("Содержит NSFW-контент").
 	NSFW bool
 	// Mentions are the IDs of the people the text names, who hear of it.
@@ -566,6 +571,8 @@ type Message struct {
 	// DeletedAt is when the sender took it back from both sides, zero if
 	// never: it says nothing then.
 	DeletedAt time.Time
+	// DocumentIDs are documents of the sender it attaches.
+	DocumentIDs []string
 }
 
 // ForwardedMessage is a message as another one carries it on: a copy of
@@ -582,7 +589,8 @@ type ForwardedMessage struct {
 	// 1 for one that message carried on.
 	Depth int
 	// Sticker is the sticker it was, "" for none.
-	Sticker string
+	Sticker     string
+	DocumentIDs []string
 }
 
 // MessageDraft is a message to send, into a dialog or a chat: text,
@@ -599,6 +607,8 @@ type MessageDraft struct {
 	SharedPhotoID string
 	ForwardIDs    []string
 	Sticker       string
+	// DocumentIDs are documents of the caller the message attaches.
+	DocumentIDs []string
 }
 
 // MessageEdit is what an edit makes of a message: its words and, with
@@ -655,6 +665,14 @@ type MessageEvent struct {
 	ChatMessage *ChatMessage
 	ChatEdited  *ChatMessage
 	ChatRead    *ChatRead
+	Typing      *Typing
+}
+
+// Typing: UserID is writing to the caller, in chat ChatID or, when it is
+// "", in their dialog.
+type Typing struct {
+	UserID string
+	ChatID string
 }
 
 // ChatRead: the caller has read chat ChatID up to UpTo.
@@ -1228,4 +1246,23 @@ type StickerPack struct {
 	Stickers []string
 	Bought   bool
 	Added    bool
+}
+
+// Document is a file of "Мои Документы": its bytes are in the media
+// service, the rest in the post service. Ext is its format, the extension
+// of its file in lower case.
+type Document struct {
+	ID        string
+	OwnerID   string
+	Name      string
+	Ext       string
+	Size      int64
+	CreatedAt time.Time
+}
+
+// DocumentPage is one screen of the caller's documents, newest first.
+type DocumentPage struct {
+	Documents  []Document
+	NextCursor string
+	Total      int
 }
