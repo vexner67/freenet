@@ -49,6 +49,9 @@ type messageRequest struct {
 	Sticker string `json:"sticker"`
 	// Documents are IDs of the caller's documents the message attaches.
 	Documents []string `json:"documents"`
+	// ReplyTo is a message of the same dialog or chat it answers
+	// ("Ответить"); the words it quotes of a dialog's go in Sealed.
+	ReplyTo string `json:"replyTo"`
 }
 
 // messageJSON: Out is the caller's own message, Read means its recipient
@@ -94,11 +97,52 @@ type attachedJSON struct {
 	// those that are still there, except in the list of dialogs.
 	DocumentCount int            `json:"documentCount"`
 	Documents     []documentJSON `json:"documents,omitempty"`
+	// ReplyTo is what it shows of the message it answers; absent for none.
+	ReplyTo *replyJSON `json:"replyTo,omitempty"`
+	// Reactions are those to it, the oldest first.
+	Reactions []reactionJSON `json:"reactions"`
 
-	// carried is what Forwarded is made of, documentIDs what Documents is
-	// (showAttached).
+	// carried is what Forwarded is made of, documentIDs what Documents is,
+	// quote what ReplyTo is (showAttached).
 	carried     []model.ForwardedMessage
 	documentIDs []string
+	quote       *model.Quote
+}
+
+// replyJSON is what an answer shows of the message it answers: who wrote
+// it and, in short, what it is. Author is null, and the rest says
+// nothing, when the message is gone for good or its author's page is
+// gone. Text is a chat's beginning: a message of a dialog carries the
+// words it quotes sealed itself.
+type replyJSON struct {
+	ID             string      `json:"id"`
+	Author         *authorJSON `json:"author"`
+	Text           string      `json:"text"`
+	TextCut        bool        `json:"textCut"`
+	PhotoCount     int         `json:"photoCount"`
+	ForwardedCount int         `json:"forwardedCount"`
+	DocumentCount  int         `json:"documentCount"`
+	Sticker        string      `json:"sticker"`
+	Post           bool        `json:"post"`
+	AlbumPhoto     bool        `json:"albumPhoto"`
+	// Deleted: it was taken back and says nothing.
+	Deleted bool `json:"deleted"`
+}
+
+// reactionJSON is one person's reaction: heart, like, laugh, wow, sad or
+// fire.
+type reactionJSON struct {
+	UserID   string `json:"userId"`
+	Reaction string `json:"reaction"`
+}
+
+func toReactionsJSON(reactions []model.Reaction) []reactionJSON {
+	out := make([]reactionJSON, len(reactions))
+	for i, r := range reactions {
+		out[i] = reactionJSON{UserID: r.UserID, Reaction: r.Reaction}
+	}
+
+	return out
 }
 
 // attachment is what a message shows besides its words, as the message
@@ -109,12 +153,26 @@ type attachment struct {
 	Sticker       string
 	Forwarded     []model.ForwardedMessage
 	DocumentIDs   []string
+	ReplyTo       *model.Quote
+	Reactions     []model.Reaction
 }
 
 func toAttachedJSON(at attachment) attachedJSON {
 	return attachedJSON{
 		Post: at.PostID, AlbumPhoto: at.SharedPhotoID, Sticker: at.Sticker, ForwardedCount: len(at.Forwarded), carried: at.Forwarded,
-		DocumentCount: len(at.DocumentIDs), documentIDs: at.DocumentIDs,
+		DocumentCount: len(at.DocumentIDs), documentIDs: at.DocumentIDs, quote: at.ReplyTo, Reactions: toReactionsJSON(at.Reactions),
+	}
+}
+
+// toReplyJSON shows q written by author; nil author for one gone.
+func toReplyJSON(q *model.Quote, author *authorJSON) *replyJSON {
+	if author == nil || !q.Found {
+		return &replyJSON{ID: q.ID}
+	}
+
+	return &replyJSON{
+		ID: q.ID, Author: author, Text: q.Text, TextCut: q.TextCut, PhotoCount: q.PhotoCount, ForwardedCount: q.ForwardedCount,
+		DocumentCount: q.DocumentCount, Sticker: q.Sticker, Post: q.Post, AlbumPhoto: q.SharedPhoto, Deleted: q.Deleted,
 	}
 }
 
@@ -186,6 +244,7 @@ func toMessageJSON(m model.Message, peerID string) messageJSON {
 
 		attachedJSON: toAttachedJSON(attachment{
 			PostID: m.PostID, SharedPhotoID: m.SharedPhotoID, Sticker: m.Sticker, Forwarded: m.Forwarded, DocumentIDs: m.DocumentIDs,
+			ReplyTo: m.ReplyTo, Reactions: m.Reactions,
 		}),
 		Deleted: !m.DeletedAt.IsZero(),
 	}
@@ -512,7 +571,7 @@ func (a *api) draft(r *http.Request, token, meID string, req messageRequest) (mo
 
 	return model.MessageDraft{
 		Text: req.Text, Sealed: req.Sealed, PhotoIDs: req.Photos, PostID: req.Post, SharedPhotoID: req.AlbumPhoto, ForwardIDs: req.Forward,
-		Sticker: req.Sticker, DocumentIDs: req.Documents,
+		Sticker: req.Sticker, DocumentIDs: req.Documents, ReplyToID: req.ReplyTo,
 	}, nil
 }
 
@@ -542,6 +601,10 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 			posts = append(posts, m.Post)
 		}
 		documents = append(documents, m.documentIDs...)
+
+		if m.quote != nil && m.quote.Found {
+			people = append(people, m.quote.SenderID)
+		}
 
 		for _, f := range m.carried {
 			people = append(people, f.SenderID)
@@ -588,6 +651,16 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 		m.SharedPhoto = sharedPhoto(m.AlbumPhoto)
 		m.Documents = documentsJSON(m.documentIDs, docs)
 
+		if m.quote != nil {
+			var shown *authorJSON
+			if author, ok := authors[m.quote.SenderID]; ok {
+				j := toAuthorJSON(author)
+				shown = &j
+			}
+
+			m.ReplyTo = toReplyJSON(m.quote, shown)
+		}
+
 		// gone is the depth of a message left out: those under it go too.
 		gone := -1
 		for i, f := range m.carried {
@@ -626,6 +699,54 @@ func (a *api) showAttached(r *http.Request, messages []*attachedJSON) error {
 	}
 
 	return nil
+}
+
+// reactionRequest is the reaction to put on a message: heart, like,
+// laugh, wow, sad or fire.
+type reactionRequest struct {
+	Reaction string `json:"reaction"`
+}
+
+// reaction is what a PUT puts, "" for a DELETE, which takes the caller's
+// away.
+func reaction(w http.ResponseWriter, r *http.Request) (string, error) {
+	if r.Method == http.MethodDelete {
+		return "", nil
+	}
+
+	var req reactionRequest
+	if err := decode(w, r, &req); err != nil {
+		return "", err
+	}
+
+	if req.Reaction == "" {
+		return "", failure.New(failure.InvalidArgument, "invalid reaction")
+	}
+
+	return req.Reaction, nil
+}
+
+// reactToMessage puts the caller's reaction on a message of their dialog
+// or takes it away; both sides hear the message as it is now.
+func (a *api) reactToMessage(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	given, err := reaction(w, r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.messages.React(r.Context(), token, r.PathValue("id"), given); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
 
 // markDialogRead reads the dialog up to upTo, the newest message from the

@@ -119,6 +119,16 @@ func (f *fakeChats) Send(_ context.Context, token, id string, d model.MessageDra
 	for range d.ForwardIDs {
 		m.Forwarded = append(m.Forwarded, model.ForwardedMessage{SenderID: "u2", Text: "дальше", CreatedAt: chatTime})
 	}
+	// A reply to "gone" quotes one whose author's page is gone; any other,
+	// bob's words.
+	if d.ReplyToID != "" {
+		sender := "u2"
+		if d.ReplyToID == "gone" {
+			sender = "gone"
+		}
+		m.ReplyTo = &model.Quote{ID: d.ReplyToID, SenderID: sender, Text: "кто берёт палатку?", Found: true}
+		m.Reactions = []model.Reaction{{UserID: "u2", Reaction: "fire"}}
+	}
 
 	return m, f.err
 }
@@ -151,6 +161,11 @@ func (f *fakeChats) Edit(_ context.Context, token, id string, e model.MessageEdi
 	f.edit = e
 
 	return model.ChatMessage{ID: id, ChatID: "c1", SenderID: "u1", Text: e.Text, PhotoIDs: e.AddPhotoIDs, CreatedAt: chatTime, EditedAt: chatTime, EditableUntil: chatTime}, f.err
+}
+
+func (f *fakeChats) React(_ context.Context, token, id, reaction string) error {
+	f.did(token, "react", id, reaction)
+	return f.err
 }
 
 // Search: bob said it in the chat c1, carrying on what cat wrote.

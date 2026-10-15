@@ -1775,6 +1775,43 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/messages/{id}/reaction:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Put your reaction on a message of your dialog
+      description: >-
+        One reaction a person, as in VK: a new one takes the place of
+        yours. Both sides hear the message as it is now (`edit` event).
+        Not on a message taken back.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reaction]
+              properties:
+                reaction: { type: string, enum: [heart, like, laugh, wow, sad, fire] }
+      responses:
+        "204": { description: Put }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Take your reaction away
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken away, or there was none }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
   /api/v1/messages/{id}:
     patch:
       summary: Edit your message
@@ -4891,6 +4928,7 @@ paths:
                   type: array
                   maxItems: 20
                   items: { type: string, format: uuid }
+                replyTo: { type: string, format: uuid, description: "A message of this conversation to answer (\"Ответить\"): one you see, not an action; 400 `replied message not found` otherwise" }
       responses:
         "201":
           description: The message
@@ -4948,6 +4986,44 @@ paths:
           description: You are not in the chat anymore (`you are not in this chat`)
           content:
             application/json: { schema: { $ref: "#/components/schemas/Error" } }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/chat-messages/{id}/reaction:
+    parameters:
+      - name: id
+        in: path
+        required: true
+        schema: { type: string, format: uuid }
+    put:
+      summary: Put your reaction on a message of your chat
+      description: >-
+        One reaction a person, as in VK: a new one takes the place of
+        yours. Everyone in the chat hears the message as it is now (`chat_edit` event).
+        Not on a message taken back or an action.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [reaction]
+              properties:
+                reaction: { type: string, enum: [heart, like, laugh, wow, sad, fire] }
+      responses:
+        "204": { description: Put }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Take your reaction away
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken away, or there was none }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/chat-messages/{id}:
@@ -5110,6 +5186,7 @@ paths:
                   type: array
                   maxItems: 20
                   items: { type: string, format: uuid }
+                replyTo: { type: string, format: uuid, description: "A message of this conversation to answer (\"Ответить\"): one you see, not an action; 400 `replied message not found` otherwise" }
       responses:
         "201":
           description: The sent message
@@ -6358,7 +6435,9 @@ components:
             with no salt and the info "freenet message v1" followed by the
             two public keys, the smaller first. The plaintext is the JSON
             `{"t": text, "f": [the texts of the messages it carries on, in
-            the order of all of them]}`, plain text with \\n line breaks.
+            the order of all of them], "r": the beginning of the message it
+            answers}`, plain text with \\n line breaks; `r` only in an
+            answer: the server cannot quote the words of a dialog.
         photos:
           type: array
           items: { $ref: "#/components/schemas/Photo" }
@@ -6397,6 +6476,41 @@ components:
         deleted:
           type: boolean
           description: "Its sender took it back from both sides: it says nothing (\"Сообщение удалено\") and can be neither edited nor taken back again, only deleted for yourself"
+        replyTo:
+          description: What it shows of the message it answers ("Ответить"); absent when it answers none
+          $ref: "#/components/schemas/Reply"
+        reactions:
+          type: array
+          description: The reactions to it, one per person, the oldest first; empty for a message taken back
+          items: { $ref: "#/components/schemas/Reaction" }
+
+    Reply:
+      type: object
+      description: >-
+        The message an answer answers, in short. `author` is null, and the
+        rest says nothing, when it is gone for good or the page of who
+        wrote it is gone.
+      required: [id, author, text, textCut, photoCount, forwardedCount, documentCount, sticker, post, albumPhoto, deleted]
+      properties:
+        id: { type: string, format: uuid, description: "Open the conversation around it with `?around=`" }
+        author:
+          oneOf: [{ $ref: "#/components/schemas/Author" }, { type: "null" }]
+        text: { type: string, description: "The beginning of a chat's message, 200 characters; empty in a dialog, whose answer quotes the words sealed itself (`r`)" }
+        textCut: { type: boolean }
+        photoCount: { type: integer }
+        forwardedCount: { type: integer }
+        documentCount: { type: integer }
+        sticker: { type: string }
+        post: { type: boolean, description: It shares a post }
+        albumPhoto: { type: boolean, description: It shares a photo of an album }
+        deleted: { type: boolean, description: Its sender took it back }
+
+    Reaction:
+      type: object
+      required: [userId, reaction]
+      properties:
+        userId: { type: string, format: uuid }
+        reaction: { type: string, enum: [heart, like, laugh, wow, sad, fire] }
 
     ForwardedMessage:
       type: object
@@ -6522,6 +6636,13 @@ components:
           type: array
           description: The messages it carries on, as in Message; absent in the list of dialogs and without any
           items: { $ref: "#/components/schemas/ForwardedMessage" }
+        replyTo:
+          description: What it shows of the message it answers ("Ответить"); absent when it answers none
+          $ref: "#/components/schemas/Reply"
+        reactions:
+          type: array
+          description: The reactions to it, one per person, the oldest first; empty for a message taken back
+          items: { $ref: "#/components/schemas/Reaction" }
 
     ChatMessagePage:
       type: object
