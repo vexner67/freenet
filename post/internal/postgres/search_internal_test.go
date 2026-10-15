@@ -7,10 +7,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
+
 	"github.com/vexner67/freenet/pkg/pgpool"
 )
 
-// The search of a wall is served by the trigram index: ask the planner.
+// The searches of a wall and of all posts are served by their indexes:
+// ask the planner.
 func TestWallSearch_Indexed(t *testing.T) {
 	dsn := os.Getenv("TEST_DATABASE_URL")
 	if dsn == "" {
@@ -38,10 +41,34 @@ func TestWallSearch_Indexed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	rows, err := tx.Query(ctx, "EXPLAIN SELECT id FROM posts WHERE text ILIKE $1", "%привет%")
+	tests := []struct {
+		name, query, arg, index string
+	}{
+		{name: "wall", query: "SELECT id FROM posts WHERE text ILIKE $1", arg: "%привет%", index: "posts_wall_search_idx"},
+		{name: "text", query: countPostsByTextQuery, arg: "%привет%", index: "posts_wall_search_idx"},
+		{name: "tag", query: countPostsByTagQuery, arg: "поход", index: "posts_hashtags_idx"},
+	}
+
+	for _, tt := range tests {
+		args := []any{tt.arg}
+		if tt.name != "wall" {
+			args = []any{nil, []string{}, tt.arg}
+		}
+
+		if plan := explain(ctx, t, tx, tt.query, args...); !strings.Contains(plan, tt.index) {
+			t.Errorf("%s: the search does not use %s:\n%s", tt.name, tt.index, plan)
+		}
+	}
+}
+
+func explain(ctx context.Context, t *testing.T, tx pgx.Tx, query string, args ...any) string {
+	t.Helper()
+
+	rows, err := tx.Query(ctx, "EXPLAIN "+query, args...)
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer rows.Close()
 
 	var plan strings.Builder
 	for rows.Next() {
@@ -55,7 +82,5 @@ func TestWallSearch_Indexed(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !strings.Contains(plan.String(), "posts_wall_search_idx") {
-		t.Fatalf("the search does not use posts_wall_search_idx:\n%s", plan.String())
-	}
+	return plan.String()
 }

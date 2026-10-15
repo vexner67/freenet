@@ -61,6 +61,9 @@ type App struct {
 	// postponedEvery.
 	postponed      *service.PostponedService
 	postponedEvery time.Duration
+	// stories deletes the stories whose day is over, every storiesEvery.
+	stories      *service.StoryService
+	storiesEvery time.Duration
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -167,6 +170,10 @@ func (a *App) build(cfg config.Config) error {
 		Postponed: repos.postponed, Poster: posts, Tx: repos.tx, Photos: photos, Moderators: moderators,
 	})
 	a.postponedEvery = cfg.PostponedInterval
+	a.stories = service.NewStoryService(service.StoryDeps{
+		Stories: repos.stories, Views: repos.storyViews, Tx: repos.tx, Photos: photos,
+	})
+	a.storiesEvery = cfg.StoryCleanupInterval
 
 	postv1.RegisterPostServiceServer(
 		a.server.Registrar(),
@@ -190,6 +197,7 @@ func (a *App) build(cfg config.Config) error {
 				Notes: repos.notes, Comments: repos.noteComments, Tx: repos.tx, Notifier: notifier, Pages: repos.pages,
 			}),
 			Documents: service.NewDocumentService(repos.documents, repos.tx, photos),
+			Stories:   a.stories,
 			Faves: service.NewFaveService(service.FaveDeps{
 				PostLikes: repos.likes, CommentLikes: repos.commentLikes, PhotoLikes: repos.photoLikes,
 				Posts: repos.posts, Comments: repos.comments, Photos: repos.albumPhotos, Albums: repos.albums, Walls: repos.sources,
@@ -199,6 +207,7 @@ func (a *App) build(cfg config.Config) error {
 				Votes:  repos.polls,
 				Topics: repos.topics, Albums: repos.albums, Notes: repos.notes, Tx: repos.tx, Notifier: notifier, Photos: photos,
 				Held: repos.held, Sources: repos.sources, Postponed: repos.postponed, Documents: repos.documents,
+				Stories: repos.stories,
 			}),
 			Holds:   service.NewHoldService(repos.tx, repos.held...),
 			Sources: service.NewSourceService(repos.sources),
@@ -460,6 +469,11 @@ type repositories struct {
 		service.DocumentRepository
 		service.DocumentEraser
 	}
+	stories interface {
+		service.StoryRepository
+		service.StoryEraser
+	}
+	storyViews service.StoryViewRepository
 	// held keep the likes and votes of deleted pages aside.
 	held []service.ReactionHolder
 	// pages knows the deleted pages, for what is read by its ID.
@@ -508,7 +522,8 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 			photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 			notes: notes, noteComments: notes.Comments(),
 			documents: inmem.NewDocumentRepository(),
-			held:      []service.ReactionHolder{store.Holds(), topics, albums, notes},
+			stories:   store.Stories(), storyViews: store.StoryViews(),
+			held: []service.ReactionHolder{store.Holds(), topics, albums, notes},
 			// Every store is told of a deleted page; one answers for all.
 			pages:   store.Holds(),
 			sources: store.Sources(),
@@ -563,9 +578,10 @@ func (a *App) newRepositories(cfg config.Config) (repositories, error) {
 		photoComments: albums.PhotoComments(), photoCommentLikes: albums.PhotoComments(),
 		notes: notes, noteComments: notes.Comments(),
 		documents: postgres.NewDocumentRepository(a.pool),
-		held:      []service.ReactionHolder{held},
-		pages:     held,
-		sources:   postgres.NewSourceRepository(a.pool),
+		stories:   postgres.NewStoryRepository(a.pool), storyViews: postgres.NewStoryViewRepository(a.pool),
+		held:    []service.ReactionHolder{held},
+		pages:   held,
+		sources: postgres.NewSourceRepository(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)
@@ -596,34 +612,40 @@ func (a *App) Run(ctx context.Context) error {
 	}
 
 	g.Go(func() error {
-		return errs.Wrap("a.runPostponed", a.runPostponed(ctx))
+		a.runEvery(ctx, a.postponedEvery, a.postponed.PublishDue, "publish postponed posts", "postponed posts published")
+		return nil
+	})
+
+	g.Go(func() error {
+		a.runEvery(ctx, a.storiesEvery, a.stories.DeleteExpired, "delete expired stories", "expired stories deleted")
+		return nil
 	})
 
 	return g.Wait()
 }
 
-// runPostponed publishes the postponed posts whose time has come until
+// runEvery does a round of work at once and then every so often, until
 // ctx is cancelled. A failed round is logged and tried again next time:
-// the posts stay due.
-func (a *App) runPostponed(ctx context.Context) error {
-	ticker := time.NewTicker(a.postponedEvery)
+// the work stays to be done. A round reports how much it did.
+func (a *App) runEvery(ctx context.Context, every time.Duration, round func(context.Context) (int, error), failed, done string) {
+	ticker := time.NewTicker(every)
 	defer ticker.Stop()
 
 	for {
-		published, err := a.postponed.PublishDue(ctx)
+		count, err := round(ctx)
 
 		switch {
 		case ctx.Err() != nil:
-			return nil
+			return
 		case err != nil:
-			a.logger.ErrorContext(ctx, "publish postponed posts", "error", err)
-		case published > 0:
-			a.logger.InfoContext(ctx, "postponed posts published", "count", published)
+			a.logger.ErrorContext(ctx, failed, "error", err)
+		case count > 0:
+			a.logger.InfoContext(ctx, done, "count", count)
 		}
 
 		select {
 		case <-ctx.Done():
-			return nil
+			return
 		case <-ticker.C:
 		}
 	}

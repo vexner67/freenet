@@ -48,11 +48,12 @@ const savePostQuery = `
 		suggested,
 		avatar_update,
 		shared_photo_id,
+		hashtags,
 		nsfw,
 		polled,
 		document_ids
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -61,7 +62,7 @@ const saveRepostQuery = `
 	WITH shared AS (
 		UPDATE posts
 		SET repost_count = repost_count + 1
-		WHERE id = $12
+		WHERE id = $13
 		RETURNING id
 	)
 	INSERT INTO posts (
@@ -76,9 +77,10 @@ const saveRepostQuery = `
 		suggested,
 		avatar_update,
 		shared_photo_id,
+		hashtags,
 		repost_of
 	)
-	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, shared.id
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, shared.id
 	FROM shared
 `
 
@@ -88,6 +90,7 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	args := []any{
 		p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photoIDs(content.Photos()), p.CreatedAt(),
 		p.FromWall(), p.Signed(), p.Suggested(), p.AvatarUpdate(), nullID(content.SharedPhoto()),
+		hashtags(content.Text()),
 	}
 
 	if content.RepostOf() == uuid.Nil {
@@ -224,7 +227,8 @@ const updatePostQuery = `
 	SET text = $2,
 		photo_ids = $3,
 		edited_at = $4,
-		nsfw = $5
+		nsfw = $5,
+		hashtags = $6
 	WHERE id = $1
 `
 
@@ -232,7 +236,8 @@ const updatePostQuery = `
 func (r *PostRepository) Update(ctx context.Context, p *post.Post) error {
 	content := p.Content()
 
-	tag, err := r.conn(ctx).Exec(ctx, updatePostQuery, p.ID(), content.Text().String(), photoIDs(content.Photos()), p.EditedAt(), p.NSFW())
+	tag, err := r.conn(ctx).Exec(ctx, updatePostQuery,
+		p.ID(), content.Text().String(), photoIDs(content.Photos()), p.EditedAt(), p.NSFW(), hashtags(content.Text()))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -661,6 +666,111 @@ func (r *PostRepository) Count(ctx context.Context) (int, error) {
 	var count int
 
 	if err := r.conn(ctx).QueryRow(ctx, countPostsQuery).Scan(&count); err != nil {
+		return 0, errs.Wrap("r.conn.QueryRow", err)
+	}
+
+	return count, nil
+}
+
+// hashtags are the tags a text says for the hashtags column.
+func hashtags(text post.Text) []string {
+	tags := []string{}
+	for _, tag := range text.Hashtags() {
+		tags = append(tags, tag.String())
+	}
+
+	return tags
+}
+
+// searchPostsSelect is listGlobalFeedQuery for the posts a search finds
+// ($3), without the people the reader blacklisted ($2) and the walls
+// closed to the reader ($1); searchPostsOrder pages them.
+const (
+	searchPostsSelect = `
+	SELECT
+		id,
+		wall_id,
+		author_id,
+		text,
+		photo_ids,
+		created_at,
+		repost_of,
+		like_count,
+		comment_count - hidden_comments(id) AS comment_count,
+		repost_count - unseen_reposts(id) AS repost_count,
+		edited_at,
+		from_wall,
+		signed,
+		suggested,
+		avatar_update,
+		shared_photo_id,
+		archived,
+		comments_closed,
+		nsfw,
+		polled,
+		document_ids,
+		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
+	FROM posts
+	WHERE id < $4
+`
+	searchPostsCount = `
+	SELECT count(*)
+	FROM posts
+	WHERE TRUE
+`
+	searchPostsWhere = `
+		AND NOT archived
+		AND NOT (author_id = ANY($2) AND NOT from_wall)
+		AND NOT post_hidden(wall_id, author_id, from_wall)
+		AND NOT wall_closed_to(wall_id, $1)
+`
+	searchPostsOrder = `
+	ORDER BY id DESC
+	LIMIT $5
+`
+)
+
+// A tag is found by posts_hashtags_idx, any other text by the trigrams
+// of posts_wall_search_idx: a statement of its own for each, as for the
+// search of a wall.
+const (
+	searchPostsByTagQuery  = searchPostsSelect + searchPostsWhere + `AND hashtags @> ARRAY[$3::text]` + searchPostsOrder
+	searchPostsByTextQuery = searchPostsSelect + searchPostsWhere + `AND text ILIKE $3` + searchPostsOrder
+	countPostsByTagQuery   = searchPostsCount + searchPostsWhere + `AND hashtags @> ARRAY[$3::text]`
+	countPostsByTextQuery  = searchPostsCount + searchPostsWhere + `AND text ILIKE $3`
+)
+
+// searchArgs are what both statements of a search read, and which ones.
+func searchArgs(query post.SearchQuery, sources service.FeedSources) (list, count string, args []any) {
+	args = []any{reader(sources.Reader), ids(sources.Hidden)}
+
+	if tag, ok := query.Hashtag(); ok {
+		return searchPostsByTagQuery, countPostsByTagQuery, append(args, tag.String())
+	}
+
+	return searchPostsByTextQuery, countPostsByTextQuery, append(args, likePattern(query.String()))
+}
+
+func (r *PostRepository) Search(ctx context.Context, query post.SearchQuery, sources service.FeedSources, before uuid.UUID, limit int) ([]*post.Post, error) {
+	if before == uuid.Nil {
+		before = newestCursor
+	}
+
+	statement, _, args := searchArgs(query, sources)
+
+	rows, err := r.conn(ctx).Query(ctx, statement, append(args, before, limit)...)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	return collectPosts(rows)
+}
+
+func (r *PostRepository) CountSearch(ctx context.Context, query post.SearchQuery, sources service.FeedSources) (int, error) {
+	_, statement, args := searchArgs(query, sources)
+
+	var count int
+	if err := r.conn(ctx).QueryRow(ctx, statement, args...).Scan(&count); err != nil {
 		return 0, errs.Wrap("r.conn.QueryRow", err)
 	}
 

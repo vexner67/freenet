@@ -65,6 +65,10 @@ type PostRepository interface {
 	// ListReposts is ListByWall for the reposts of a post, on whichever
 	// walls; the archived ones only when asked for.
 	ListReposts(ctx context.Context, postID, before uuid.UUID, limit int, archived bool) ([]*post.Post, error)
+	// Search is ListFeed of every wall (sources.Everyone) for the posts a
+	// query, which is not empty, finds, and CountSearch counts them.
+	Search(ctx context.Context, query post.SearchQuery, sources FeedSources, before uuid.UUID, limit int) ([]*post.Post, error)
+	CountSearch(ctx context.Context, query post.SearchQuery, sources FeedSources) (int, error)
 }
 
 // WallPick is which posts of a wall to read: a tab of openvk's wall, for
@@ -683,6 +687,49 @@ func (s *PostService) Own(ctx context.Context, userID, cursor uuid.UUID, size in
 	}
 
 	if page.Liked, err = s.liked(ctx, userID, page.Posts); err != nil {
+		return Page{}, errs.Wrap("s.liked", err)
+	}
+
+	return page, nil
+}
+
+// Search pages the posts of every wall that query finds for viewerID,
+// newest first (openvk's "Поиск записей"): what "Все новости" shows them,
+// without the people they blacklisted (hidden). Total counts them; an
+// empty query finds nothing.
+func (s *PostService) Search(ctx context.Context, viewerID uuid.UUID, query post.SearchQuery, hidden []uuid.UUID, cursor uuid.UUID, size int) (Page, error) {
+	if len(hidden) > MaxFeedHidden {
+		return Page{}, ErrTooManyAuthors
+	}
+
+	if query == "" {
+		return Page{}, nil
+	}
+
+	if size <= 0 || size > MaxPageSize {
+		size = DefaultPageSize
+	}
+
+	sources := FeedSources{Reader: viewerID, Everyone: true, Hidden: hidden}
+
+	posts, err := s.postRepo.Search(ctx, query, sources, cursor, size+1)
+	if err != nil {
+		return Page{}, errs.Wrap("s.postRepo.Search", err)
+	}
+
+	total, err := s.postRepo.CountSearch(ctx, query, sources)
+	if err != nil {
+		return Page{}, errs.Wrap("s.postRepo.CountSearch", err)
+	}
+
+	page := Page{Posts: posts, Total: total}
+
+	if len(posts) > size {
+		page.Posts = posts[:size]
+		page.NextCursor = posts[size-1].ID()
+	}
+
+	if page.Liked, err = s.liked(ctx, viewerID, page.Posts); err != nil {
 		return Page{}, errs.Wrap("s.liked", err)
 	}
 

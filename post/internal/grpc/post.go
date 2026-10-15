@@ -34,6 +34,7 @@ type PostService interface {
 	Feed(ctx context.Context, viewerID uuid.UUID, sources service.FeedSources, cursor uuid.UUID, size int) (service.Page, error)
 	Reposts(ctx context.Context, viewerID, postID, cursor uuid.UUID, size int) (service.Page, error)
 	Own(ctx context.Context, userID, cursor uuid.UUID, size int) (service.Page, error)
+	Search(ctx context.Context, viewerID uuid.UUID, query post.SearchQuery, hidden []uuid.UUID, cursor uuid.UUID, size int) (service.Page, error)
 	Like(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Unlike(ctx context.Context, userID, postID uuid.UUID) (int, error)
 	Likers(ctx context.Context, postID uuid.UUID, cursor *service.LikerCursor, size int) (service.LikerPage, error)
@@ -145,6 +146,7 @@ type Services struct {
 	Polls       PollService
 	Notes       NoteService
 	Documents   DocumentService
+	Stories     StoryService
 	Faves       FaveService
 	Purge       PurgeService
 	Holds       HoldService
@@ -162,6 +164,7 @@ type PostHandler struct {
 	pollService       PollService
 	noteService       NoteService
 	documentService   DocumentService
+	storyService      StoryService
 	faveService       FaveService
 	purgeService      PurgeService
 	holdService       HoldService
@@ -180,6 +183,7 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		pollService:       s.Polls,
 		noteService:       s.Notes,
 		documentService:   s.Documents,
+		storyService:      s.Stories,
 		faveService:       s.Faves,
 		purgeService:      s.Purge,
 		holdService:       s.Holds,
@@ -698,6 +702,43 @@ func (h *PostHandler) ListFeed(ctx context.Context, req *postv1.ListFeedRequest)
 	return &postv1.ListFeedResponse{
 		Posts:      toProtoPosts(page, viewerID(ctx), req.GetTextLimit()),
 		NextCursor: cursorString(page.NextCursor),
+	}, nil
+}
+
+func (h *PostHandler) SearchPosts(ctx context.Context, req *postv1.SearchPostsRequest) (*postv1.SearchPostsResponse, error) {
+	if len(req.GetHiddenAuthorIds()) > service.MaxFeedHidden {
+		return nil, status.Error(codes.InvalidArgument, "too many authors")
+	}
+
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	query, err := post.NewSearchQuery(req.GetQuery())
+	if err != nil {
+		return nil, err
+	}
+
+	hidden, err := parseFeedIDs(req.GetHiddenAuthorIds(), "invalid author id")
+	if err != nil {
+		return nil, err
+	}
+
+	cursor, err := parseCursor(req.GetCursor())
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.postService.Search(ctx, userID, query, hidden, cursor, int(req.GetLimit()))
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.SearchPostsResponse{
+		Posts:      toProtoPosts(page, userID, req.GetTextLimit()),
+		NextCursor: cursorString(page.NextCursor),
+		Total:      int32(page.Total), //nolint:gosec // nobody writes 2^31 posts
 	}, nil
 }
 
