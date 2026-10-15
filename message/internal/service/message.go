@@ -76,7 +76,8 @@ type PhotoCopy struct {
 // and one of them is there. SharedPhoto, a photo of an album to share,
 // goes with text alone. A message of a dialog says Sealed instead of
 // Text: its words and those of what it carries on, sealed by the sender's
-// browser. A Sticker goes alone.
+// browser. A Sticker goes alone. Documents of the sender's "Мои
+// Документы" go with anything else, or alone.
 type Draft struct {
 	Text        message.Text
 	Sealed      message.Sealed
@@ -85,6 +86,7 @@ type Draft struct {
 	SharedPhoto uuid.UUID
 	Forward     []uuid.UUID
 	Sticker     message.Sticker
+	Documents   message.Documents
 }
 
 // sticker is the draft that is a sticker, with nothing else.
@@ -99,8 +101,40 @@ func (d Draft) sticker() (message.Content, error) {
 }
 
 // content is what the draft says itself in a chat, with the messages it
-// carries on.
+// carries on and the documents it attaches.
 func (d Draft) content(forwarded message.Forwards) (message.Content, error) {
+	return d.attach(d.said(forwarded))
+}
+
+// sealedContent is what the draft says in a dialog: sealed, with the
+// messages it carries on and the documents it attaches.
+func (d Draft) sealedContent(forwarded message.Forwards) (message.Content, error) {
+	return d.attach(d.sealedSaid(forwarded))
+}
+
+// attach is content, or the error of making it, with the documents of the
+// draft: with them it may say nothing else.
+func (d Draft) attach(content message.Content, err error) (message.Content, error) {
+	if len(d.Documents) == 0 {
+		return content, err
+	}
+
+	if errors.Is(err, message.ErrTextEmpty) {
+		content, err = message.NewDocumentContent(d.Documents)
+		return content, errs.Wrap("message.NewDocumentContent", err)
+	}
+
+	if err != nil {
+		return message.Content{}, err
+	}
+
+	content, err = content.Attaching(d.Documents)
+
+	return content, errs.Wrap("content.Attaching", err)
+}
+
+// said is what the draft says in a chat.
+func (d Draft) said(forwarded message.Forwards) (message.Content, error) {
 	if d.Sealed != "" {
 		return message.Content{}, message.ErrSealedInChat
 	}
@@ -123,9 +157,8 @@ func (d Draft) content(forwarded message.Forwards) (message.Content, error) {
 	return content, errs.Wrap("message.NewPhotoShare", err)
 }
 
-// sealedContent is what the draft says in a dialog: sealed, with the
-// messages it carries on.
-func (d Draft) sealedContent(forwarded message.Forwards) (message.Content, error) {
+// sealedSaid is what the draft says in a dialog, sealed.
+func (d Draft) sealedSaid(forwarded message.Forwards) (message.Content, error) {
 	if d.Text != "" {
 		return message.Content{}, message.ErrPlainText
 	}
@@ -203,6 +236,15 @@ type Event struct {
 	Deleted *Deleted
 	Edited  *message.Message
 	Chat    *ChatEvent
+	Typing  *Typing
+}
+
+// Typing: UserID is writing a message to whoever hears it, in the dialog
+// with them or, when ChatID is not uuid.Nil, in that chat. It is not kept:
+// the page shows it for a few seconds unless told again.
+type Typing struct {
+	UserID uuid.UUID
+	ChatID uuid.UUID
 }
 
 // Deleted: message ID is gone from the dialog of whoever hears it, who
@@ -673,6 +715,19 @@ func (s *MessageService) MarkRead(ctx context.Context, userID, peerID, upTo uuid
 	read := Event{Read: &ReadMark{ReaderID: userID, PeerID: peerID, UpTo: upTo}}
 	s.events.Publish(ctx, userID, read)
 	s.events.Publish(ctx, peerID, read)
+
+	return nil
+}
+
+// Typing tells peerID that userID is writing to them ("печатает...").
+// Whether userID may write to peerID the caller has checked; nothing is
+// kept.
+func (s *MessageService) Typing(ctx context.Context, userID, peerID uuid.UUID) error {
+	if userID == peerID {
+		return message.ErrToYourself
+	}
+
+	s.events.Publish(ctx, peerID, Event{Typing: &Typing{UserID: userID}})
 
 	return nil
 }

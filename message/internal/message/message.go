@@ -379,7 +379,9 @@ type Forwarded struct {
 	// SharedPhoto is a photo of an album it shared, uuid.Nil for none.
 	SharedPhoto uuid.UUID
 	// Sticker is the sticker it was, "" for none.
-	Sticker   Sticker
+	Sticker Sticker
+	// Documents are the documents it attached.
+	Documents Documents
 	CreatedAt time.Time
 	// Depth is how deep it is carried: 0 for a message forwarded itself,
 	// 1 for one that message carried on, and so on, as VK nests them.
@@ -416,8 +418,8 @@ func NewForwards(carried []Forwarded) (Forwards, error) {
 
 // Content is what a message shows: text, photos, a post shared into the
 // dialog (openvk's "Поделиться" "в переписку"), messages carried on from
-// other dialogs or some of them, or a photo of an album shared into the
-// dialog with text, never nothing. The post and the photo of an album
+// other dialogs, documents or some of them, or a photo of an album shared
+// into the dialog with text, never nothing. The post and the photo of an album
 // live in the post service: the message keeps the ID, and a deleted one
 // stays "Запись удалена." or "Фотография удалена.". A message of a dialog
 // says it all sealed instead: its words and those of what it carries on.
@@ -433,6 +435,8 @@ type Content struct {
 	// sticker is the sticker the message is, "" for none; nothing goes
 	// with it.
 	sticker Sticker
+	// documents are files of "Мои Документы" the message attaches.
+	documents Documents
 }
 
 // NewContent: post is uuid.Nil for none; whether it exists the caller has
@@ -568,12 +572,19 @@ func (c Content) revised(rev Revision) (Content, error) {
 
 	switch {
 	case c.sharedPhoto == uuid.Nil:
-		return newContent(rev.Text, rev.Sealed, photos, c.post, c.forwarded)
+		revised, err := newContent(rev.Text, rev.Sealed, photos, c.post, c.forwarded)
+		if errors.Is(err, ErrTextEmpty) && len(c.documents) > 0 {
+			// The documents stay: they are enough.
+			revised, err = Content{text: rev.Text, sealed: rev.Sealed, photos: photos}, nil
+		}
+		revised.documents = c.documents
+
+		return revised, err
 	case len(photos) > 0:
 		return Content{}, ErrSharedPhotoAlone
 	default:
 		// It shares the photo still: the words are what changes.
-		return Content{text: rev.Text, sealed: rev.Sealed, sharedPhoto: c.sharedPhoto}, nil
+		return Content{text: rev.Text, sealed: rev.Sealed, sharedPhoto: c.sharedPhoto, documents: c.documents}, nil
 	}
 }
 
@@ -588,6 +599,7 @@ func (c Content) carried(senderID uuid.UUID, createdAt time.Time) []Forwarded {
 		Post:        c.post,
 		SharedPhoto: c.sharedPhoto,
 		Sticker:     c.sticker,
+		Documents:   c.documents,
 		CreatedAt:   createdAt,
 	})
 
@@ -855,6 +867,11 @@ func (m *Message) SharedPhoto() uuid.UUID {
 // Sticker is the sticker m is, "" for none.
 func (m *Message) Sticker() Sticker {
 	return m.content.sticker
+}
+
+// Documents are the documents m attaches, nil for none.
+func (m *Message) Documents() Documents {
+	return m.content.documents
 }
 
 func (m *Message) CreatedAt() time.Time {

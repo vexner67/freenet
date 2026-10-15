@@ -25,6 +25,7 @@ const (
 	MessageService_CountUnreadDialogs_FullMethodName = "/message.v1.MessageService/CountUnreadDialogs"
 	MessageService_ListMessages_FullMethodName       = "/message.v1.MessageService/ListMessages"
 	MessageService_MarkDialogRead_FullMethodName     = "/message.v1.MessageService/MarkDialogRead"
+	MessageService_SetTyping_FullMethodName          = "/message.v1.MessageService/SetTyping"
 	MessageService_DeleteMessage_FullMethodName      = "/message.v1.MessageService/DeleteMessage"
 	MessageService_HideMessage_FullMethodName        = "/message.v1.MessageService/HideMessage"
 	MessageService_DeleteMessages_FullMethodName     = "/message.v1.MessageService/DeleteMessages"
@@ -47,6 +48,7 @@ const (
 	MessageService_SearchChatMessages_FullMethodName = "/message.v1.MessageService/SearchChatMessages"
 	MessageService_DeleteChatMessage_FullMethodName  = "/message.v1.MessageService/DeleteChatMessage"
 	MessageService_MarkChatRead_FullMethodName       = "/message.v1.MessageService/MarkChatRead"
+	MessageService_SetChatTyping_FullMethodName      = "/message.v1.MessageService/SetChatTyping"
 	MessageService_Subscribe_FullMethodName          = "/message.v1.MessageService/Subscribe"
 	MessageService_PurgeUser_FullMethodName          = "/message.v1.MessageService/PurgeUser"
 )
@@ -70,6 +72,10 @@ type MessageServiceClient interface {
 	ListMessages(ctx context.Context, in *ListMessagesRequest, opts ...grpc.CallOption) (*ListMessagesResponse, error)
 	// The caller has read the dialog up to a message from the peer.
 	MarkDialogRead(ctx context.Context, in *MarkDialogReadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller is writing to peer_id ("печатает..."): the peer hears a
+	// typing event, nothing is kept. Whether the caller may write to the
+	// peer, the gateway checks.
+	SetTyping(ctx context.Context, in *SetTypingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The caller takes their message back from both sides of the dialog,
 	// within a day of sending (deletable_until): it stays there saying
 	// nothing (deleted_at) until each side deletes it for themselves; media
@@ -140,6 +146,9 @@ type MessageServiceClient interface {
 	DeleteChatMessage(ctx context.Context, in *DeleteChatMessageRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// The caller has read the chat up to a message of it.
 	MarkChatRead(ctx context.Context, in *MarkChatReadRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller is writing in the chat: the others in it hear a typing
+	// event, nothing is kept.
+	SetChatTyping(ctx context.Context, in *SetChatTypingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token: the caller's events as they happen — new
 	// messages of their dialogs, sent or received, read marks that move,
 	// messages deleted and messages edited, and the same of their chats.
@@ -205,6 +214,16 @@ func (c *messageServiceClient) MarkDialogRead(ctx context.Context, in *MarkDialo
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, MessageService_MarkDialogRead_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *messageServiceClient) SetTyping(ctx context.Context, in *SetTypingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_SetTyping_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -431,6 +450,16 @@ func (c *messageServiceClient) MarkChatRead(ctx context.Context, in *MarkChatRea
 	return out, nil
 }
 
+func (c *messageServiceClient) SetChatTyping(ctx context.Context, in *SetChatTypingRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_SetChatTyping_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) Subscribe(ctx context.Context, in *SubscribeRequest, opts ...grpc.CallOption) (grpc.ServerStreamingClient[SubscribeResponse], error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	stream, err := c.cc.NewStream(ctx, &MessageService_ServiceDesc.Streams[0], MessageService_Subscribe_FullMethodName, cOpts...)
@@ -479,6 +508,10 @@ type MessageServiceServer interface {
 	ListMessages(context.Context, *ListMessagesRequest) (*ListMessagesResponse, error)
 	// The caller has read the dialog up to a message from the peer.
 	MarkDialogRead(context.Context, *MarkDialogReadRequest) (*emptypb.Empty, error)
+	// The caller is writing to peer_id ("печатает..."): the peer hears a
+	// typing event, nothing is kept. Whether the caller may write to the
+	// peer, the gateway checks.
+	SetTyping(context.Context, *SetTypingRequest) (*emptypb.Empty, error)
 	// The caller takes their message back from both sides of the dialog,
 	// within a day of sending (deletable_until): it stays there saying
 	// nothing (deleted_at) until each side deletes it for themselves; media
@@ -549,6 +582,9 @@ type MessageServiceServer interface {
 	DeleteChatMessage(context.Context, *DeleteChatMessageRequest) (*emptypb.Empty, error)
 	// The caller has read the chat up to a message of it.
 	MarkChatRead(context.Context, *MarkChatReadRequest) (*emptypb.Empty, error)
+	// The caller is writing in the chat: the others in it hear a typing
+	// event, nothing is kept.
+	SetChatTyping(context.Context, *SetChatTypingRequest) (*emptypb.Empty, error)
 	// Requires an access token: the caller's events as they happen — new
 	// messages of their dialogs, sent or received, read marks that move,
 	// messages deleted and messages edited, and the same of their chats.
@@ -584,6 +620,9 @@ func (UnimplementedMessageServiceServer) ListMessages(context.Context, *ListMess
 }
 func (UnimplementedMessageServiceServer) MarkDialogRead(context.Context, *MarkDialogReadRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkDialogRead not implemented")
+}
+func (UnimplementedMessageServiceServer) SetTyping(context.Context, *SetTypingRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetTyping not implemented")
 }
 func (UnimplementedMessageServiceServer) DeleteMessage(context.Context, *DeleteMessageRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteMessage not implemented")
@@ -650,6 +689,9 @@ func (UnimplementedMessageServiceServer) DeleteChatMessage(context.Context, *Del
 }
 func (UnimplementedMessageServiceServer) MarkChatRead(context.Context, *MarkChatReadRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method MarkChatRead not implemented")
+}
+func (UnimplementedMessageServiceServer) SetChatTyping(context.Context, *SetChatTypingRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetChatTyping not implemented")
 }
 func (UnimplementedMessageServiceServer) Subscribe(*SubscribeRequest, grpc.ServerStreamingServer[SubscribeResponse]) error {
 	return status.Error(codes.Unimplemented, "method Subscribe not implemented")
@@ -764,6 +806,24 @@ func _MessageService_MarkDialogRead_Handler(srv interface{}, ctx context.Context
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(MessageServiceServer).MarkDialogRead(ctx, req.(*MarkDialogReadRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MessageService_SetTyping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetTypingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).SetTyping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_SetTyping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).SetTyping(ctx, req.(*SetTypingRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1164,6 +1224,24 @@ func _MessageService_MarkChatRead_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_SetChatTyping_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetChatTypingRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).SetChatTyping(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_SetChatTyping_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).SetChatTyping(ctx, req.(*SetChatTypingRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_Subscribe_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(SubscribeRequest)
 	if err := stream.RecvMsg(m); err != nil {
@@ -1219,6 +1297,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MarkDialogRead",
 			Handler:    _MessageService_MarkDialogRead_Handler,
+		},
+		{
+			MethodName: "SetTyping",
+			Handler:    _MessageService_SetTyping_Handler,
 		},
 		{
 			MethodName: "DeleteMessage",
@@ -1307,6 +1389,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MarkChatRead",
 			Handler:    _MessageService_MarkChatRead_Handler,
+		},
+		{
+			MethodName: "SetChatTyping",
+			Handler:    _MessageService_SetChatTyping_Handler,
 		},
 		{
 			MethodName: "PurgeUser",

@@ -869,6 +869,37 @@ func (s *ChatService) MarkRead(ctx context.Context, userID, chatID, upTo uuid.UU
 	return nil
 }
 
+// Typing tells the others in the chat that userID is writing there
+// ("печатает..."): only someone in it may. Nothing is kept.
+func (s *ChatService) Typing(ctx context.Context, userID, chatID uuid.UUID) error {
+	me, known, err := s.memberRepo.Get(ctx, chatID, userID)
+	if err != nil {
+		return errs.Wrap("s.memberRepo.Get", err)
+	}
+
+	if !known {
+		return message.ErrChatNotFound
+	}
+
+	if err = me.CheckActive(); err != nil {
+		return errs.Wrap("me.CheckActive", err)
+	}
+
+	members, err := s.memberRepo.Active(ctx, chatID)
+	if err != nil {
+		return errs.Wrap("s.memberRepo.Active", err)
+	}
+
+	typing := Event{Typing: &Typing{UserID: userID, ChatID: chatID}}
+	for _, m := range members {
+		if m.UserID != userID {
+			s.events.Publish(ctx, m.UserID, typing)
+		}
+	}
+
+	return nil
+}
+
 // PurgeUser takes a user whose page was deleted for good out of every
 // chat, with what they wrote there; their photos media erases with the
 // rest of the user, the copies of others' photos their messages carried

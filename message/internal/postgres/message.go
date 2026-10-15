@@ -53,9 +53,10 @@ const saveMessageQuery = `
 			forwarded,
 			created_at,
 			sealed,
-			sticker
+			sticker,
+			document_ids
 		)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id, sender_id, recipient_id
 	)
 	INSERT INTO dialogs (
@@ -85,7 +86,7 @@ func (r *MessageRepository) Save(ctx context.Context, m *message.Message) error 
 		return errs.Wrap("forwardedToDB", err)
 	}
 
-	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt(), m.Sealed().Bytes(), m.Sticker().String())
+	_, err = r.conn(ctx).Exec(ctx, saveMessageQuery, m.ID(), m.SenderID(), m.RecipientID(), m.Text().String(), photoIDs(m.Photos()), postIDToDB(m.Post()), postIDToDB(m.SharedPhoto()), forwarded, m.CreatedAt(), m.Sealed().Bytes(), m.Sticker().String(), documentIDs(m.Documents()))
 	if err != nil {
 		return errs.Wrap("r.conn.Exec", err)
 	}
@@ -109,7 +110,8 @@ const getMessageQuery = `
 		forwarded,
 		deleted_at,
 		sealed,
-		sticker
+		sticker,
+		document_ids
 	FROM messages
 	WHERE id = $1
 `
@@ -159,7 +161,8 @@ const (
 			forwarded,
 			deleted_at,
 			sealed,
-			sticker
+			sticker,
+			document_ids
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
@@ -184,7 +187,8 @@ const (
 			forwarded,
 			deleted_at,
 			sealed,
-			sticker
+			sticker,
+			document_ids
 		FROM messages
 		WHERE user_lo = LEAST($1::uuid, $2::uuid)
 			AND user_hi = GREATEST($1::uuid, $2::uuid)
@@ -249,13 +253,14 @@ type scanned struct {
 	deletedAt   *time.Time
 	sealed      []byte
 	sticker     string
+	documents   []uuid.UUID
 }
 
 // dest are the columns of a message, in the order the queries list them.
 func (s *scanned) dest() []any {
 	return []any{
 		&s.stored.ID, &s.stored.SenderID, &s.stored.RecipientID, &s.text, &s.photos, &s.post, &s.sharedPhoto, &s.stored.CreatedAt,
-		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt, &s.sealed, &s.sticker,
+		&s.editedAt, &s.stored.HiddenFromSender, &s.stored.HiddenFromRecipient, &s.forwarded, &s.deletedAt, &s.sealed, &s.sticker, &s.documents,
 	}
 }
 
@@ -288,7 +293,8 @@ func (s *scanned) message() (*message.Message, error) {
 	}
 
 	stored := s.stored
-	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded).WithSealed(message.Sealed(s.sealed)).WithSticker(message.Sticker(s.sticker))
+	stored.Content = message.RestoreContent(message.Text(s.text), photos, postID, forwarded).WithSealed(message.Sealed(s.sealed)).WithSticker(message.Sticker(s.sticker)).
+		WithDocuments(documentsFromDB(s.documents))
 	if s.sharedPhoto != nil {
 		stored.Content = stored.Content.WithSharedPhoto(*s.sharedPhoto)
 	}
@@ -313,6 +319,7 @@ type forwardedJSON struct {
 	Post      *uuid.UUID  `json:"post,omitempty"`
 	Photo     *uuid.UUID  `json:"photo,omitempty"`
 	Sticker   string      `json:"sticker,omitempty"`
+	Documents []uuid.UUID `json:"documents,omitempty"`
 	CreatedAt time.Time   `json:"created_at"`
 	// Depth is absent for a message forwarded itself, as all were before
 	// forwards nested.
@@ -329,6 +336,7 @@ func forwardedToDB(forwarded message.Forwards) ([]byte, error) {
 			Post:      postIDToDB(f.Post),
 			Photo:     postIDToDB(f.SharedPhoto),
 			Sticker:   f.Sticker.String(),
+			Documents: f.Documents,
 			CreatedAt: f.CreatedAt,
 			Depth:     f.Depth,
 		}
@@ -360,6 +368,7 @@ func forwardedFromDB(data []byte) (message.Forwards, error) {
 			CreatedAt: row.CreatedAt.UTC(),
 			Depth:     row.Depth,
 			Sticker:   message.Sticker(row.Sticker),
+			Documents: documentsFromDB(row.Documents),
 		}
 		if len(row.Photos) > 0 {
 			forwarded[i].Photos = row.Photos
@@ -394,6 +403,25 @@ func photoIDs(photos message.Photos) []uuid.UUID {
 	return photos
 }
 
+// documentIDs is documents for the document_ids column, which wants an
+// empty array rather than NULL.
+func documentIDs(documents message.Documents) []uuid.UUID {
+	if documents == nil {
+		return []uuid.UUID{}
+	}
+
+	return documents
+}
+
+// documentsFromDB is nil for none, as a new message has them.
+func documentsFromDB(ids []uuid.UUID) message.Documents {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	return ids
+}
+
 type DialogRepository struct {
 	pool *pgxpool.Pool
 }
@@ -426,7 +454,8 @@ const listDialogsQuery = `
 		m.forwarded,
 		m.deleted_at,
 		m.sealed,
-		m.sticker
+		m.sticker,
+		m.document_ids
 	FROM dialogs d
 	JOIN messages m ON m.id = d.last_message_id
 	LEFT JOIN dialogs p ON p.user_id = d.peer_id AND p.peer_id = d.user_id
@@ -643,6 +672,7 @@ const retractMessageQuery = `
 		forwarded = '[]',
 		sealed = NULL,
 		sticker = '',
+		document_ids = '{}',
 		edited_at = NULL,
 		deleted_at = $2
 	WHERE id = $1
@@ -779,7 +809,8 @@ const deleteUserDialogsQuery = `
 			m.forwarded,
 			m.deleted_at,
 			m.sealed,
-			m.sticker
+			m.sticker,
+			m.document_ids
 	), gone_dialogs AS (
 		DELETE FROM dialogs
 		WHERE user_id = $1
@@ -804,7 +835,8 @@ const deleteUserDialogsQuery = `
 		forwarded,
 		deleted_at,
 		sealed,
-		sticker
+		sticker,
+		document_ids
 	FROM gone_messages
 	WHERE cardinality(photo_ids) > 0
 		OR forwarded <> '[]'

@@ -24,6 +24,7 @@ func toProtoMessage(m *message.Message, read bool) *messagev1.Message {
 		Forwarded:   toProtoForwarded(m.Forwarded()),
 		Sealed:      m.Sealed().Bytes(),
 		Sticker:     m.Sticker().String(),
+		DocumentIds: idStrings(m.Documents()),
 	}
 
 	// A message taken back can be neither edited nor taken back again.
@@ -47,14 +48,15 @@ func toProtoForwarded(forwarded message.Forwards) []*messagev1.ForwardedMessage 
 	out := make([]*messagev1.ForwardedMessage, len(forwarded))
 	for i, f := range forwarded {
 		out[i] = &messagev1.ForwardedMessage{
-			SenderId:  f.SenderID.String(),
-			Text:      f.Text.String(),
-			PhotoIds:  photoStrings(f.Photos),
-			PostId:    postString(f.Post),
-			PhotoId:   postString(f.SharedPhoto),
-			CreatedAt: timestamppb.New(f.CreatedAt),
-			Depth:     int32(f.Depth), //nolint:gosec // at most MaxForwarded
-			Sticker:   f.Sticker.String(),
+			SenderId:    f.SenderID.String(),
+			Text:        f.Text.String(),
+			PhotoIds:    photoStrings(f.Photos),
+			PostId:      postString(f.Post),
+			PhotoId:     postString(f.SharedPhoto),
+			CreatedAt:   timestamppb.New(f.CreatedAt),
+			Depth:       int32(f.Depth), //nolint:gosec // at most MaxForwarded
+			Sticker:     f.Sticker.String(),
+			DocumentIds: idStrings(f.Documents),
 		}
 	}
 
@@ -89,6 +91,7 @@ type draftRequest interface {
 	GetPhotoId() string
 	GetForwardIds() []string
 	GetSticker() string
+	GetDocumentIds() []string
 }
 
 func fromProtoDraft(req draftRequest) (service.Draft, error) {
@@ -137,7 +140,19 @@ func fromProtoDraft(req draftRequest) (service.Draft, error) {
 		}
 	}
 
-	return service.Draft{Text: text, Photos: photos, Post: post, SharedPhoto: sharedPhoto, Forward: forward, Sticker: sticker}, nil
+	ids, err = parseIDs(req.GetDocumentIds(), message.ErrInvalidDocument.Error())
+	if err != nil {
+		return service.Draft{}, err
+	}
+
+	documents, err := message.NewDocuments(ids)
+	if err != nil {
+		return service.Draft{}, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	return service.Draft{
+		Text: text, Photos: photos, Post: post, SharedPhoto: sharedPhoto, Forward: forward, Sticker: sticker, Documents: documents,
+	}, nil
 }
 
 // revisionRequest is an edit as the requests of dialogs and of chats name
@@ -182,6 +197,20 @@ func fromProtoRevision(req revisionRequest, baseText *string) (message.Revision,
 	}
 
 	return rev, nil
+}
+
+// idStrings is nil for none.
+func idStrings(ids []uuid.UUID) []string {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	out := make([]string, len(ids))
+	for i, id := range ids {
+		out[i] = id.String()
+	}
+
+	return out
 }
 
 func parseIDs(raw []string, invalid string) ([]uuid.UUID, error) {
@@ -248,6 +277,13 @@ func optionalID(id uuid.UUID) string {
 func toProtoEvent(e service.Event) *messagev1.SubscribeResponse {
 	if e.Chat != nil {
 		return toProtoChatEvent(e.Chat)
+	}
+
+	if e.Typing != nil {
+		return &messagev1.SubscribeResponse{Event: &messagev1.SubscribeResponse_Typing{Typing: &messagev1.Typing{
+			UserId: e.Typing.UserID.String(),
+			ChatId: optionalID(e.Typing.ChatID),
+		}}}
 	}
 
 	if e.Deleted != nil {

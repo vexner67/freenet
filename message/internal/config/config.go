@@ -54,6 +54,9 @@ type Config struct {
 	// ChatLimits is how often a user creates chats, renames them and adds
 	// people to them.
 	ChatLimits ratelimit.Rules `env:"RATE_LIMIT_CHATS" envDefault:"10/1m,100/24h"`
+	// TypingLimits is how often a page tells that its user is typing:
+	// every few seconds while they do.
+	TypingLimits ratelimit.Rules `env:"RATE_LIMIT_TYPING" envDefault:"30/1m,5000/24h"`
 
 	// Access tokens are issued by the auth service; message only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`

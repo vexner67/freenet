@@ -22,6 +22,10 @@ service MessageService {
   rpc ListMessages(ListMessagesRequest) returns (ListMessagesResponse);
   // The caller has read the dialog up to a message from the peer.
   rpc MarkDialogRead(MarkDialogReadRequest) returns (google.protobuf.Empty);
+  // The caller is writing to peer_id ("печатает..."): the peer hears a
+  // typing event, nothing is kept. Whether the caller may write to the
+  // peer, the gateway checks.
+  rpc SetTyping(SetTypingRequest) returns (google.protobuf.Empty);
   // The caller takes their message back from both sides of the dialog,
   // within a day of sending (deletable_until): it stays there saying
   // nothing (deleted_at) until each side deletes it for themselves; media
@@ -93,6 +97,9 @@ service MessageService {
   rpc DeleteChatMessage(DeleteChatMessageRequest) returns (google.protobuf.Empty);
   // The caller has read the chat up to a message of it.
   rpc MarkChatRead(MarkChatReadRequest) returns (google.protobuf.Empty);
+  // The caller is writing in the chat: the others in it hear a typing
+  // event, nothing is kept.
+  rpc SetChatTyping(SetChatTypingRequest) returns (google.protobuf.Empty);
 
   // Requires an access token: the caller's events as they happen — new
   // messages of their dialogs, sent or received, read marks that move,
@@ -147,6 +154,9 @@ message Message {
   // The sticker the message is ("Стикеры" of openvk), nothing else with
   // it; empty for none.
   string sticker = 17;
+  // Documents of "Мои Документы" the message attaches, which the post
+  // service keeps; a deleted one is gone.
+  repeated string document_ids = 18;
 }
 
 // A message as another one carries it on: a copy of what it showed. One
@@ -167,6 +177,8 @@ message ForwardedMessage {
   int32 depth = 7;
   // The sticker it was; empty for none.
   string sticker = 8;
+  // The documents it attached.
+  repeated string document_ids = 9;
 }
 
 message Dialog {
@@ -203,6 +215,9 @@ message SendMessageRequest {
   // goes alone, anything else with it fails with InvalidArgument "a
   // sticker goes alone".
   string sticker = 8;
+  // Documents of the sender, at most 10, as the caller has checked: with
+  // them the message may say nothing else.
+  repeated string document_ids = 9;
 }
 
 message SendMessageResponse {
@@ -261,6 +276,10 @@ message ListMessagesResponse {
 message MarkDialogReadRequest {
   string peer_id = 1;
   string up_to_id = 2;
+}
+
+message SetTypingRequest {
+  string peer_id = 1;
 }
 
 message DeleteMessageRequest {
@@ -352,7 +371,17 @@ message SubscribeResponse {
     ChatMessage chat_edited = 6;
     // The caller has read a chat, on another page.
     ChatRead chat_read = 7;
+    // Someone is writing to the caller, in a dialog or a chat; the page
+    // shows it for a few seconds unless told again.
+    Typing typing = 8;
   }
+}
+
+// user_id is writing in chat_id or, when it is empty, in the dialog with
+// the caller.
+message Typing {
+  string user_id = 1;
+  string chat_id = 2;
 }
 
 // The caller has read chat_id up to up_to_id.
@@ -461,6 +490,8 @@ message ChatMessage {
   repeated ForwardedMessage forwarded = 17;
   // The sticker the message is; empty for none.
   string sticker = 18;
+  // The documents the message attaches.
+  repeated string document_ids = 19;
 }
 
 message CreateChatRequest {
@@ -534,6 +565,8 @@ message SendChatMessageRequest {
   repeated string forward_ids = 5;
   string photo_id = 6;
   string sticker = 7;
+  // Documents of the sender, as in a dialog.
+  repeated string document_ids = 8;
 }
 
 message SendChatMessageResponse {
@@ -616,4 +649,8 @@ message DeleteChatMessageRequest {
 message MarkChatReadRequest {
   string chat_id = 1;
   string up_to_id = 2;
+}
+
+message SetChatTypingRequest {
+  string chat_id = 1;
 }
