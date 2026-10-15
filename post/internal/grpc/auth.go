@@ -60,6 +60,7 @@ func PublicMethods() []string {
 		postv1.PostService_ListNoteComments_FullMethodName,
 		postv1.PostService_GetNoteComment_FullMethodName,
 		postv1.PostService_GetNoteComments_FullMethodName,
+		postv1.PostService_GetDocuments_FullMethodName,
 		postv1.PostService_PurgeUser_FullMethodName,
 		postv1.PostService_HoldUserReactions_FullMethodName,
 		postv1.PostService_ReleaseUserReactions_FullMethodName,

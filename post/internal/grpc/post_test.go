@@ -57,6 +57,7 @@ func newServer(t *testing.T) testServer {
 	topics := inmem.NewTopicRepository()
 	albums := inmem.NewAlbumRepository()
 	notes := inmem.NewNoteRepository()
+	documents := inmem.NewDocumentRepository()
 	albumService := service.NewAlbumService(service.AlbumDeps{
 		Albums: albums, Photos: albums.Photos(), Tx: inmem.TxManager{}, Media: mediaclient.Nop{}, Moderators: clubclient.Nop{},
 		Likes: albums.PhotoLikes(), Comments: albums.PhotoComments(), CommentLikes: albums.PhotoComments(), Notifier: notifyclient.Nop{},
@@ -82,12 +83,13 @@ func newServer(t *testing.T) testServer {
 			PostLikes: store.Likes(), CommentLikes: store.CommentLikes(), PhotoLikes: albums.PhotoLikes(),
 			Posts: store.Posts(), Comments: store.Comments(), Photos: albums.Photos(), Albums: albums, Walls: store.Sources(),
 		}),
-		Notes: service.NewNoteService(service.NoteDeps{Notes: notes, Comments: notes.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}}),
+		Notes:     service.NewNoteService(service.NoteDeps{Notes: notes, Comments: notes.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}}),
+		Documents: service.NewDocumentService(documents, inmem.TxManager{}, mediaclient.Nop{}),
 		Purge: service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
 			Topics: topics, Albums: albums, Notes: notes, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Photos: mediaclient.Nop{},
 			Held: []service.ReactionHolder{store.Holds(), topics, albums}, Sources: store.Sources(),
-			Postponed: postponed,
+			Postponed: postponed, Documents: documents,
 		}),
 		Holds:   service.NewHoldService(inmem.TxManager{}, store.Holds(), topics, albums),
 		Sources: service.NewSourceService(store.Sources()),

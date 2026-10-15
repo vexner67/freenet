@@ -118,6 +118,10 @@ func topicStatus(err error) (*status.Status, bool) {
 		{post.ErrCannotSeePostponed, codes.PermissionDenied},
 		{post.ErrCannotPostpone, codes.PermissionDenied},
 		{post.ErrTooManyPostponed, codes.FailedPrecondition},
+		{post.ErrDocumentNotFound, codes.NotFound},
+		{post.ErrCannotChangeDocument, codes.PermissionDenied},
+		{post.ErrInvalidDocument, codes.InvalidArgument},
+		{post.ErrInvalidDocumentSize, codes.InvalidArgument},
 	} {
 		if errors.Is(err, known.err) {
 			return status.New(known.code, known.err.Error()), true
