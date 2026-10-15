@@ -16,10 +16,12 @@ import (
 	messagegrpc "github.com/vexner67/freenet/message/internal/grpc"
 	"github.com/vexner67/freenet/message/internal/inmem"
 	"github.com/vexner67/freenet/message/internal/mediaclient"
+	"github.com/vexner67/freenet/message/internal/notifyclient"
 	"github.com/vexner67/freenet/message/internal/postgres"
 	messageredis "github.com/vexner67/freenet/message/internal/redis"
 	"github.com/vexner67/freenet/message/internal/service"
 	"github.com/vexner67/freenet/message/migrations"
+	notificationv1 "github.com/vexner67/freenet/notification/api/notification/v1"
 	"github.com/vexner67/freenet/pkg/errs"
 	"github.com/vexner67/freenet/pkg/grpcclient"
 	"github.com/vexner67/freenet/pkg/grpcserver"
@@ -55,7 +57,10 @@ type App struct {
 	mediaConn *grpc.ClientConn
 	queue     *outbox.Postgres
 	relay     *outbox.Relay
-	redis     *goredis.Client
+	// notificationConn and pusher tell notification of new messages.
+	notificationConn *grpc.ClientConn
+	pusher           *notifyclient.Pusher
+	redis            *goredis.Client
 	// shared carries live events between replicas; nil keeps them here.
 	shared  *pubsub.Redis[uuid.UUID, service.Event]
 	server  *grpcserver.Server
@@ -105,6 +110,10 @@ func (a *App) build(cfg config.Config) error {
 		return errs.Wrap("a.newPhotoKeeper", err)
 	}
 
+	if err = a.newPusher(cfg); err != nil {
+		return errs.Wrap("a.newPusher", err)
+	}
+
 	limiter, err := a.newLimiter(cfg)
 	if err != nil {
 		return errs.Wrap("a.newLimiter", err)
@@ -150,11 +159,11 @@ func (a *App) build(cfg config.Config) error {
 		messagegrpc.NewMessageHandler(
 			service.NewMessageService(service.Deps{
 				Messages: repos.messages, Dialogs: repos.dialogs, Keys: repos.keys, ChatMessages: repos.chatMessages, ChatMembers: repos.chatMembers,
-				Events: events, Tx: repos.tx, Photos: photos,
+				Events: events, Tx: repos.tx, Photos: photos, Pusher: a.servicePusher(),
 			}),
 			service.NewChatService(service.ChatDeps{
 				Chats: repos.chats, Members: repos.chatMembers, Messages: repos.chatMessages, DialogMessages: repos.messages,
-				Events: events, Tx: repos.tx, Photos: photos,
+				Events: events, Tx: repos.tx, Photos: photos, Pusher: a.servicePusher(),
 			}),
 			a.logger,
 		),
@@ -166,7 +175,7 @@ func (a *App) build(cfg config.Config) error {
 		a.metrics = metrics.NewServer(fmt.Sprintf(":%d", cfg.MetricsPort), reg, a.logger)
 	}
 
-	a.logger.Info("message configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(), "media", cfg.MediaServiceAddr != "")
+	a.logger.Info("message configured", "storage", cfg.Storage, "mtls", cfg.TLS.Enabled(), "media", cfg.MediaServiceAddr != "", "notification", cfg.NotificationServiceAddr != "")
 
 	return nil
 }
@@ -215,6 +224,38 @@ func (a *App) newPhotoKeeper(cfg config.Config, queue outboxQueue, reg prometheu
 	}
 
 	return mediaclient.NewOutbox(queue), nil
+}
+
+// newPusher sets up what tells notification of new messages, to push
+// them to browsers; the connection is lazy, as media's.
+func (a *App) newPusher(cfg config.Config) error {
+	if cfg.NotificationServiceAddr == "" {
+		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: browsers get no pushes of messages")
+		return nil
+	}
+
+	creds, err := mtls.ClientCredentials(cfg.TLS)
+	if err != nil {
+		return errs.Wrap("mtls.ClientCredentials", err)
+	}
+
+	a.notificationConn, err = grpcclient.New(cfg.NotificationServiceAddr, creds, a.tracer.DialOption())
+	if err != nil {
+		return errs.Wrap("grpcclient.New", err)
+	}
+
+	a.pusher = notifyclient.New(notificationv1.NewNotificationServiceClient(a.notificationConn), cfg.NotifyTimeout, cfg.PushQueue, a.logger)
+
+	return nil
+}
+
+// servicePusher is the pusher for the services; nil pushes nothing.
+func (a *App) servicePusher() service.Pusher {
+	if a.pusher == nil {
+		return nil
+	}
+
+	return a.pusher
 }
 
 // outboxQueue is the outbox of the storage in use.
@@ -367,6 +408,13 @@ func (a *App) Run(ctx context.Context) error {
 		})
 	}
 
+	if a.pusher != nil {
+		g.Go(func() error {
+			a.pusher.Run(ctx)
+			return nil
+		})
+	}
+
 	return g.Wait()
 }
 
@@ -411,6 +459,12 @@ func (a *App) Close() {
 	if a.mediaConn != nil {
 		if err := a.mediaConn.Close(); err != nil {
 			a.logger.Error("media connection close", "error", err)
+		}
+	}
+
+	if a.notificationConn != nil {
+		if err := a.notificationConn.Close(); err != nil {
+			a.logger.Error("notification connection close", "error", err)
 		}
 	}
 

@@ -128,6 +128,8 @@ type ChatDeps struct {
 	Events         Events
 	Tx             TxManager
 	Photos         PhotoKeeper
+	// Pusher may be nil, as in Deps.
+	Pusher Pusher
 }
 
 // ChatService is the chats of several people ("беседы" of openvk).
@@ -138,6 +140,7 @@ type ChatService struct {
 	events      Events
 	tx          TxManager
 	photos      PhotoKeeper
+	pusher      Pusher
 	forwards    forwarder
 	now         func() time.Time
 }
@@ -150,6 +153,7 @@ func NewChatService(d ChatDeps) *ChatService {
 		events:      d.Events,
 		tx:          d.Tx,
 		photos:      d.Photos,
+		pusher:      pusherOr(d.Pusher),
 		forwards:    forwarder{messages: d.DialogMessages, chatMessages: d.Messages, members: d.Members},
 		now:         time.Now,
 	}
@@ -339,20 +343,22 @@ func (s *ChatService) save(ctx context.Context, messages []*message.ChatMessage)
 }
 
 // tell publishes e to everyone in the chat now and to also, who may have
-// just gone.
-func (s *ChatService) tell(ctx context.Context, e Event, also ...uuid.UUID) {
+// just gone; it returns who is in the chat.
+func (s *ChatService) tell(ctx context.Context, e Event, also ...uuid.UUID) []uuid.UUID {
 	chatID := e.Chat.chatID()
 
 	members, err := s.memberRepo.Active(ctx, chatID)
 	if err != nil {
 		// Best effort, as every event: the pages catch up from storage.
-		return
+		return nil
 	}
 
 	heard := make(map[uuid.UUID]bool, len(members)+len(also))
+	in := make([]uuid.UUID, 0, len(members))
 
 	for _, m := range members {
 		heard[m.UserID] = true
+		in = append(in, m.UserID)
 		s.events.Publish(ctx, m.UserID, e)
 	}
 
@@ -362,6 +368,8 @@ func (s *ChatService) tell(ctx context.Context, e Event, also ...uuid.UUID) {
 			s.events.Publish(ctx, id, e)
 		}
 	}
+
+	return in
 }
 
 func (e *ChatEvent) chatID() uuid.UUID {
@@ -677,7 +685,8 @@ func (s *ChatService) Return(ctx context.Context, userID, chatID uuid.UUID) erro
 // Send writes into the chat as senderID, who is in it: what a message of
 // a dialog may be (Draft). The caller has made sure the photos are the
 // sender's and what is shared exists. Media keeps the photos, and those
-// of the forwarded messages once more. Everyone in the chat hears of it.
+// of the forwarded messages once more. Everyone in the chat hears of it;
+// the browsers of the others get a push.
 func (s *ChatService) Send(ctx context.Context, senderID, chatID uuid.UUID, d Draft) (*message.ChatMessage, error) {
 	forwarded, copies, err := s.forwards.forwarded(ctx, senderID, d.Forward)
 	if err != nil {
@@ -694,8 +703,10 @@ func (s *ChatService) Send(ctx context.Context, senderID, chatID uuid.UUID, d Dr
 		return nil, errs.Wrap("message.NewChatMessage", err)
 	}
 
+	var title message.Title
+
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		_, me, err := s.locked(ctx, chatID, senderID)
+		chat, me, err := s.locked(ctx, chatID, senderID)
 		if err != nil {
 			return errs.Wrap("s.locked", err)
 		}
@@ -703,6 +714,8 @@ func (s *ChatService) Send(ctx context.Context, senderID, chatID uuid.UUID, d Dr
 		if err = me.CheckActive(); err != nil {
 			return errs.Wrap("me.CheckActive", err)
 		}
+
+		title = chat.Title()
 
 		if err = s.messageRepo.Save(ctx, m); err != nil {
 			return errs.Wrap("s.messageRepo.Save", err)
@@ -714,7 +727,10 @@ func (s *ChatService) Send(ctx context.Context, senderID, chatID uuid.UUID, d Dr
 		return nil, errs.Wrap("s.tx.WithinTx", err)
 	}
 
-	s.tell(ctx, Event{Chat: &ChatEvent{Message: m}})
+	others := slices.DeleteFunc(s.tell(ctx, Event{Chat: &ChatEvent{Message: m}}), func(id uuid.UUID) bool { return id == senderID })
+	if len(others) > 0 {
+		s.pusher.Push(ctx, Pushed{ID: m.ID(), SenderID: senderID, RecipientIDs: others, ChatID: chatID, ChatTitle: title.String()})
+	}
 
 	return m, nil
 }

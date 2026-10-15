@@ -51,6 +51,13 @@ type Config struct {
 	MediaServiceAddr string          `env:"MEDIA_SERVICE_ADDR"`
 	MediaTimeout     time.Duration   `env:"MEDIA_TIMEOUT" envDefault:"2s"`
 	MessageLimits    ratelimit.Rules `env:"RATE_LIMIT_MESSAGES" envDefault:"30/1m,1000/24h"`
+	// NotificationServiceAddr is told of every new message, within
+	// NotifyTimeout, to push it to the browsers of its recipients; at most
+	// PushQueue wait, more are dropped. Without it nobody's browsers hear
+	// of messages.
+	NotificationServiceAddr string        `env:"NOTIFICATION_SERVICE_ADDR"`
+	NotifyTimeout           time.Duration `env:"NOTIFY_TIMEOUT" envDefault:"2s"`
+	PushQueue               int           `env:"PUSH_QUEUE" envDefault:"1000"`
 	// ChatLimits is how often a user creates chats, renames them and adds
 	// people to them.
 	ChatLimits ratelimit.Rules `env:"RATE_LIMIT_CHATS" envDefault:"10/1m,100/24h"`
