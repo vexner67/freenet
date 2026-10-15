@@ -339,6 +339,7 @@ export function applyInterface(me) {
     menuLink(me, 'feed', '/feed', 'Новости'),
     menuLink(me, 'notifications', '/notifications', 'Ответы', 'notifications-count'),
     el('a', { href: '/settings', textContent: 'Настройки' }),
+    el('a', { href: '/docs', textContent: 'Документы' }),
     accountsLink(me),
     el('a', { href: '/search', textContent: 'Люди' }),
     el('a', { href: '/', textContent: 'Выйти', onclick: logout }),

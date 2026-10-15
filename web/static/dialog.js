@@ -5,7 +5,8 @@
 // peer's until you read them, yours until the peer does. As on VK: any
 // message can be deleted for yourself, your own for both for a day
 // ("Удалить для всех") and edited for a day; a click on a message selects
-// it, and several are deleted or forwarded ("Переслать") at once. A
+// it, and several are deleted or forwarded ("Переслать") at once, and
+// "печатает..." shows while the peer types (typing.js). A
 // message taken back stays as "Сообщение удалено". With ?msg=<id> the
 // dialog opens around that message, as a search leads to it. What the
 // messages say is sealed for the two people (e2ee.js): the page opens it
@@ -14,6 +15,7 @@
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
+import { initDocuments } from './docs.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
 import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
@@ -21,8 +23,10 @@ import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, phot
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { initStickers } from './stickers.js';
+import { typingLine, watchTyping } from './typing.js';
 
 const POLL_MS = 5000;
+const typists = typingLine((text) => { $('typing').textContent = text; });
 // How many messages one request deletes.
 const DELETED_AT_ONCE = 100;
 // How close to the top, in pixels, loads older messages.
@@ -46,6 +50,10 @@ let loadingOlder = false;
 let gap = false;
 let loadingNewer = false;
 let attachments;
+// documents are those of "Мои Документы" attached to the message.
+let documents;
+// typingWatch tells the peer while the user types.
+let typingWatch;
 // The key messages to the peer are sealed with, as the server has it.
 let peerKey = null;
 // Message ID → node, so polling neither repeats a message nor misses a read.
@@ -257,6 +265,9 @@ function startEdit(m) {
   attachments.set(m.photos ?? []);
   $('editing').hidden = false;
   $('send').textContent = 'Сохранить';
+  // An edit changes the words and the photos; the documents stay.
+  documents.clear();
+  $('doc').hidden = true;
   if (m.sharedPhoto) $('attach').hidden = true;
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
@@ -269,6 +280,7 @@ function cancelEdit() {
   $('text').value = '';
   autosize($('text'));
   attachments.clear();
+  $('doc').hidden = false;
   $('editing').hidden = true;
   $('send').textContent = 'Отправить';
 }
@@ -461,7 +473,9 @@ async function poll() {
 
 function listenToEvents() {
   onEvent('message', async (e) => {
-    if (e.peer.id !== peer.id || gap) return;
+    if (e.peer.id !== peer.id) return;
+    if (!e.message.out) typists.stopped(peer.id);
+    if (gap) return;
 
     await openMessages(me.id, [e.message]);
     showNew([e.message]);
@@ -478,6 +492,9 @@ function listenToEvents() {
 
     await openMessages(me.id, [e.message]);
     edited(e.message);
+  });
+  onEvent('typing', (e) => {
+    if (!e.chat && e.user.id === peer.id) typists.typing(e.user);
   });
   // Whatever happened while disconnected.
   onEvent('ready', catchUp);
@@ -511,7 +528,7 @@ async function send(event) {
     return;
   }
 
-  if (!text.value.trim() && attachments.count() === 0) return;
+  if (!text.value.trim() && attachments.count() === 0 && documents.count() === 0) return;
 
   if (attachments.busy()) {
     showError($('error'), 'Дождитесь, пока загрузятся фотографии.');
@@ -521,11 +538,13 @@ async function send(event) {
   button.disabled = true;
 
   try {
-    const m = await sendSealed(me.id, nickname, text.value, { photos: attachments.ids() });
+    const m = await sendSealed(me.id, nickname, text.value, { photos: attachments.ids(), documents: documents.ids() });
 
     text.value = '';
     autosize(text);
+    typingWatch.sent();
     attachments.clear();
+    documents.clear();
     showSent(m);
   } catch (e) {
     showError($('error'), e);
@@ -584,6 +603,7 @@ async function setUpInput(canWrite) {
   $('my-avatar').src = avatarURL(me, 'small');
   $('peer-avatar').src = avatarURL(peer, 'small');
   attachments = initAttachments({ link: $('attach'), input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
+  documents = initDocuments({ link: $('doc'), list: $('documents') });
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   $('form').addEventListener('submit', send);
   $('editing-cancel').addEventListener('click', cancelEdit);
@@ -594,6 +614,8 @@ async function setUpInput(canWrite) {
       $('form').requestSubmit();
     }
   });
+  // Editing a message is not writing one.
+  typingWatch = watchTyping($('text'), () => (editing ? Promise.resolve() : api.dialogTyping(peer.nickname)));
 }
 
 // keyHint is why this browser can neither open nor seal messages, with

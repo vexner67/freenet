@@ -11,6 +11,7 @@ import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
 import { lastComments } from './postcomments.js';
 import { pollNode } from './poll.js';
+import { documentsNode } from './docs.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -69,6 +70,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       // Whole on the page of the post, which has no link to open it.
       post.text ? textNode(post.text, { whole: !withCommentsLink, rest: post.textCut ? () => wholeText(post) : null, found }) : '',
       photosNode(post.photos ?? []) ?? '',
+      documentsNode(post.documents) ?? '',
       post.poll ? pollNode(post, { canVote: canLike, onError }) : '',
       signatureNode(post.signer) ?? '',
     );
@@ -303,6 +305,7 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
   const content = el('div', { className: 'shared-content' },
     shared.text ? textNode(shared.text, { rest: shared.textCut ? () => wholeText(shared) : null }) : null,
     photosNode(shared.photos ?? []),
+    documentsNode(shared.documents),
     shared.poll ? pollNode(shared, { canVote, onError }) : null,
   );
   revealOnClick(content);

@@ -39,15 +39,18 @@
           <div class="messenger-messages" id="messages">
             <p class="hint center" id="empty" hidden>Здесь пока нет сообщений.</p>
           </div>
+          <div class="messenger-typing" id="typing" aria-live="polite"></div>
           <form class="messenger-input" id="form">
             <img class="messenger-avatar" id="my-avatar" src="/static/avatar.svg" alt="">
             <div class="messenger-box">
               <textarea id="text" maxlength="60000" placeholder="Введите сообщение" aria-label="Сообщение"></textarea>
               <div class="reply-to" id="editing" hidden>Редактирование сообщения <a class="reply-cancel" id="editing-cancel" title="Не редактировать">×</a></div>
               <div class="attachments" id="photos" hidden></div>
+              <div class="doc-attached" id="documents" hidden></div>
               <div class="messenger-buttons">
                 <button class="button" type="submit" id="send">Отправить</button>
                 <a class="attach-link" id="attach">Прикрепить фотографию</a>
+                <a class="attach-link" id="doc">Прикрепить документ</a>
                 <a class="attach-link" id="stickers-link">Стикеры</a>
               </div>
               <div class="sticker-panel" id="stickers" hidden></div>

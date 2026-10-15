@@ -426,11 +426,11 @@ async function withKeys(userID, nickname, payload, write) {
 
 // sendSealed writes text from userID to nickname, with forward carried on
 // (their words sealed with it) and photos, a post or a photo of an album.
-export async function sendSealed(userID, nickname, text, { forward = [], photos = [], post = '', albumPhoto = '' } = {}) {
+export async function sendSealed(userID, nickname, text, { forward = [], photos = [], post = '', albumPhoto = '', documents = [] } = {}) {
   const payload = { t: text, f: await carriedWords(forward) };
 
   const m = await withKeys(userID, nickname, payload, (sealed) =>
-    api.sendMessage(nickname, { sealed, photos, post, albumPhoto, forward: forward.map((f) => f.id) }));
+    api.sendMessage(nickname, { sealed, photos, post, albumPhoto, documents, forward: forward.map((f) => f.id) }));
 
   return (await openMessages(userID, [m]))[0];
 }

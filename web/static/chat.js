@@ -9,10 +9,12 @@
 // again. Your own message is edited and taken back within a day; any
 // message is carried on ("Переслать"), and a click selects several to
 // carry on at once. With ?msg=<id> the chat opens around that message, as
-// a search leads to it.
+// a search leads to it. While others type, "печатает..." shows under the
+// messages (typing.js).
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
+import { initDocuments } from './docs.js';
 import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
 import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
@@ -20,8 +22,10 @@ import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle,
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
 import { initStickers } from './stickers.js';
+import { typingLine, watchTyping } from './typing.js';
 
 const POLL_MS = 5000;
+const typists = typingLine((text) => { $('typing').textContent = text; });
 // How close to the top, in pixels, loads older messages.
 const LOAD_OLDER_AT = 40;
 
@@ -43,6 +47,10 @@ let loadingOlder = false;
 let gap = false;
 let loadingNewer = false;
 let attachments;
+// documents are those of "Мои Документы" attached to the message.
+let documents;
+// typingWatch tells the others while the user types.
+let typingWatch;
 let editing = null;
 // What the message said when its edit began: saving names it, so an edit
 // made in another window meanwhile is not overwritten.
@@ -231,6 +239,9 @@ async function startEdit(m) {
   attachments.set(m.photos ?? []);
   $('editing').hidden = false;
   $('attach').hidden = Boolean(m.sharedPhoto);
+  // An edit changes the words and the photos; the documents stay.
+  documents.clear();
+  $('doc').hidden = true;
   $('send').textContent = 'Сохранить';
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
@@ -245,6 +256,7 @@ function cancelEdit() {
   attachments.clear();
   $('editing').hidden = true;
   $('attach').hidden = false;
+  $('doc').hidden = false;
   $('send').textContent = 'Отправить';
 }
 
@@ -424,7 +436,12 @@ async function poll() {
 
 function listenToEvents() {
   onEvent('chat_message', (e) => {
-    if (e.chat === chatID && !gap) showNew([e.message]);
+    if (e.chat !== chatID) return;
+    if (e.message.author) typists.stopped(e.message.author.id);
+    if (!gap) showNew([e.message]);
+  });
+  onEvent('typing', (e) => {
+    if (e.chat === chatID) typists.typing(e.user);
   });
   onEvent('chat_edit', (e) => {
     if (e.chat === chatID) edited(e.message);
@@ -440,7 +457,7 @@ async function send(event) {
   const text = $('text');
   const sendButton = $('send');
 
-  if (!editing && !text.value.trim() && attachments.count() === 0) return;
+  if (!editing && !text.value.trim() && attachments.count() === 0 && documents.count() === 0) return;
 
   if (attachments.busy()) {
     showError($('error'), 'Дождитесь, пока загрузятся фотографии.');
@@ -454,11 +471,13 @@ async function send(event) {
       edited(await api.editChatMessage(editing.id, text.value, { ...photoChanges(editing.photos, attachments.ids()), base: editingBase }));
       cancelEdit();
     } else {
-      const m = await api.sendChatMessage(chatID, text.value, attachments.ids());
+      const m = await api.sendChatMessage(chatID, text.value, attachments.ids(), '', [], '', documents.ids());
 
       text.value = '';
       autosize(text);
+      typingWatch.sent();
       attachments.clear();
+      documents.clear();
       showSent(m);
     }
   } catch (e) {
@@ -618,6 +637,7 @@ async function sendSticker(sticker) {
 function setUpInput() {
   $('my-avatar').src = avatarURL(me, 'small');
   attachments = initAttachments({ link: $('attach'), input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
+  documents = initDocuments({ link: $('doc'), list: $('documents') });
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   $('form').addEventListener('submit', send);
   $('editing-cancel').addEventListener('click', cancelEdit);
@@ -628,6 +648,8 @@ function setUpInput() {
       $('form').requestSubmit();
     }
   });
+  // Editing a message is not writing one.
+  typingWatch = watchTyping($('text'), () => (editing ? Promise.resolve() : api.chatTyping(chatID)));
 }
 
 me = await currentUser().catch(() => null);

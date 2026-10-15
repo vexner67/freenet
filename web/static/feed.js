@@ -2,6 +2,7 @@ import { api, currentUser } from './api.js';
 import { $, el, isMicroblog, renderChrome, showError, hideError, autosize } from './layout.js';
 import { postNode, wallOwnerID } from './posts.js';
 import { initAttachments } from './attach.js';
+import { initDocuments } from './docs.js';
 import { initPollDraft } from './poll.js';
 import { initTimer, postponedNotice } from './postponed.js';
 import { openFeedSettings, readFeedSettings } from './feedsettings.js';
@@ -112,6 +113,14 @@ function initForm(me) {
     },
   });
 
+  const documents = initDocuments({
+    link: $('post-doc'),
+    list: $('post-documents'),
+    onChange: () => {
+      if (documents.count()) form.classList.add('expanded');
+    },
+  });
+
   let poll = null;
 
   poll = initPollDraft({
@@ -152,6 +161,11 @@ function initForm(me) {
       return;
     }
 
+    if (timer.active() && documents.count()) {
+      showError(error, 'К отложенной записи нельзя прикрепить документ.');
+      return;
+    }
+
     $('post-submit').disabled = true;
 
     try {
@@ -160,7 +174,7 @@ function initForm(me) {
         $('posts').prepend(postponedNotice(p, me));
         timer.clear();
       } else {
-        $('posts').prepend(feedNode(await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked, poll.value()), me));
+        $('posts').prepend(feedNode(await api.createPost(me.nickname, text.value, attachments.ids(), $('post-nsfw').checked, poll.value(), documents.ids()), me));
       }
       showEmpty();
       text.value = '';
@@ -168,6 +182,7 @@ function initForm(me) {
       autosize(text);
       text.blur();
       attachments.clear();
+      documents.clear();
       poll.clear();
       form.classList.remove('expanded');
       updateCounter();
@@ -180,7 +195,7 @@ function initForm(me) {
   text.addEventListener('focus', () => form.classList.add('expanded'));
   // The form stays open while it holds text, photos or a poll.
   text.addEventListener('blur', () => {
-    if (!text.value.trim() && attachments.count() === 0 && !poll.value() && !timer.active()) form.classList.remove('expanded');
+    if (!text.value.trim() && attachments.count() === 0 && documents.count() === 0 && !poll.value() && !timer.active()) form.classList.remove('expanded');
   });
   text.addEventListener('input', updateCounter);
   // Ctrl+Enter (Cmd+Enter on a Mac) sends, as on a wall.

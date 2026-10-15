@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackAction, postponedCount, publishesAt, nextHour } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -883,4 +883,36 @@ test('postponed posts', () => {
   assert.equal(nextHour(new Date('2026-10-15T12:34:56Z')), '2026-10-15T13:00:00.000Z');
   assert.equal(nextHour(new Date('2026-10-15T23:00:00Z')), '2026-10-16T00:00:00.000Z');
   assert.equal(errorText({ message: 'too many postponed posts' }), 'Отложено слишком много записей: не больше 100 на стену.');
+});
+
+test('who is typing', () => {
+  const ann = { id: '1', name: 'Анна', nickname: 'ann' };
+  const peter = { id: '2', name: 'Пётр', nickname: 'peter' };
+
+  assert.equal(typingText([]), '');
+  assert.equal(typingText([ann]), 'Анна печатает...');
+  assert.equal(typingText([ann, peter]), 'Анна и Пётр печатают...');
+  assert.equal(typingText([ann, peter, { id: '3', name: '', nickname: 'cat' }]), 'Несколько человек печатают...');
+  assert.equal(typingText([{ id: '3', name: '', nickname: 'cat' }]), 'cat печатает...');
+});
+
+test('documents: formats as the post service takes them, counts and sizes', () => {
+  const source = readFileSync(new URL('../../post/internal/post/document.go', import.meta.url), 'utf8');
+  const listed = source.match(/var documentFormats = \[\]string\{([^}]*)\}/)[1].match(/"[^"]+"/g).map((s) => s.slice(1, -1));
+  assert.deepEqual(DOCUMENT_FORMATS, listed);
+
+  assert.equal(documentFormat('Отчёт.v2.PDF'), 'pdf');
+  assert.equal(documentFormat('README'), '');
+
+  assert.equal(documentsCount(1), '1 документ');
+  assert.equal(documentsCount(3), '3 документа');
+  assert.equal(haveDocuments(11), 'У Вас 11 документов');
+
+  assert.equal(fileSize(512), '512 Б');
+  assert.equal(fileSize(1536), '1,5 КБ');
+  assert.equal(fileSize(2048), '2 КБ');
+  assert.equal(fileSize(10 << 20), '10 МБ');
+
+  assert.equal(messagePreview({ documentCount: 2 }), 'Документ');
+  assert.equal(messagePreview({ text: 'вот', documentCount: 2 }), 'вот');
 });
