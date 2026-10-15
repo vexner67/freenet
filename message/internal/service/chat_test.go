@@ -447,3 +447,48 @@ func TestChatService_PurgeUser(t *testing.T) {
 		t.Fatalf("the chat goes on: %v", err)
 	}
 }
+
+func TestChatService_Typing(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	f := newChats()
+	ann, bob, cat, stranger := uuid.New(), uuid.New(), uuid.New(), uuid.New()
+	chatID := chatOf(t, f.svc, ann, bob, cat)
+
+	if err := f.svc.Leave(ctx, cat, chatID); err != nil {
+		t.Fatal(err)
+	}
+
+	annEvents, cancelAnn := f.events.Subscribe(ann)
+	defer cancelAnn()
+	bobEvents, cancelBob := f.events.Subscribe(bob)
+	defer cancelBob()
+	catEvents, cancelCat := f.events.Subscribe(cat)
+	defer cancelCat()
+
+	if err := f.svc.Typing(ctx, stranger, chatID); !errors.Is(err, message.ErrChatNotFound) {
+		t.Fatalf("a stranger types: %v", err)
+	}
+	if err := f.svc.Typing(ctx, cat, chatID); !errors.Is(err, message.ErrNotInChat) {
+		t.Fatalf("who has left types: %v", err)
+	}
+
+	if err := f.svc.Typing(ctx, bob, chatID); err != nil {
+		t.Fatal(err)
+	}
+
+	want := service.Typing{UserID: bob, ChatID: chatID}
+	if e := <-annEvents; e.Typing == nil || *e.Typing != want {
+		t.Fatalf("ann got %+v, want typing %+v", e, want)
+	}
+
+	// Neither the one who types nor who has left is told.
+	for name, events := range map[string]<-chan service.Event{"bob": bobEvents, "cat": catEvents} {
+		select {
+		case e := <-events:
+			t.Fatalf("%s got unexpected event %+v", name, e)
+		default:
+		}
+	}
+}

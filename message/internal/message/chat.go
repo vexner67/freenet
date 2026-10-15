@@ -379,6 +379,11 @@ func (m *ChatMessage) Sticker() Sticker {
 	return m.content.sticker
 }
 
+// Documents are the documents m attaches, nil for none.
+func (m *ChatMessage) Documents() Documents {
+	return m.content.documents
+}
+
 // Forwarded are the messages m carries on, nil for none.
 func (m *ChatMessage) Forwarded() Forwards {
 	return m.content.forwarded

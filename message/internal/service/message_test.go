@@ -1131,3 +1131,36 @@ func TestMessageService_DeleteMany(t *testing.T) {
 		t.Fatalf("a message hidden by both: %v", err)
 	}
 }
+
+func TestMessageService_Typing(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc := newService()
+	ann, bob := uuid.New(), uuid.New()
+
+	annEvents, cancelAnn := svc.Subscribe(ann)
+	defer cancelAnn()
+	bobEvents, cancelBob := svc.Subscribe(bob)
+	defer cancelBob()
+
+	if err := svc.Typing(ctx, bob, bob); !errors.Is(err, message.ErrToYourself) {
+		t.Fatalf("typing to yourself: %v", err)
+	}
+
+	if err := svc.Typing(ctx, bob, ann); err != nil {
+		t.Fatal(err)
+	}
+
+	want := service.Typing{UserID: bob}
+	if e := <-annEvents; e.Typing == nil || *e.Typing != want {
+		t.Fatalf("ann got %+v, want typing %+v", e, want)
+	}
+
+	// The one who types is not told.
+	select {
+	case e := <-bobEvents:
+		t.Fatalf("unexpected event %+v", e)
+	default:
+	}
+}

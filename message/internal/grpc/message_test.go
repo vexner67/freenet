@@ -455,6 +455,16 @@ func TestSubscribe(t *testing.T) {
 		t.Fatalf("event = %v, %v; want the deletion", resp, err)
 	}
 
+	if _, err = s.client.SetTyping(s.as(t, bob), &messagev1.SetTypingRequest{PeerId: bob.String()}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("typing to yourself: %v", err)
+	}
+	if _, err = s.client.SetTyping(s.as(t, bob), &messagev1.SetTypingRequest{PeerId: ann.String()}); err != nil {
+		t.Fatal(err)
+	}
+	if resp, err := stream.Recv(); err != nil || resp.GetTyping().GetUserId() != bob.String() || resp.GetTyping().GetChatId() != "" {
+		t.Fatalf("event = %v, %v; want bob typing", resp, err)
+	}
+
 	noToken, err := s.client.Subscribe(context.Background(), &messagev1.SubscribeRequest{})
 	if err == nil {
 		_, err = noToken.Recv()

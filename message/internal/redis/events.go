@@ -16,7 +16,7 @@ import (
 // Channel is the Redis channel of the events.
 const Channel = "message:events"
 
-var errNoEvent = errors.New("event is neither a message, a read mark, a deletion, an edit nor of a chat")
+var errNoEvent = errors.New("event is neither a message, a read mark, a deletion, an edit, typing nor of a chat")
 
 // EventCodec is a pubsub.Codec for service.Event.
 type EventCodec struct{}
@@ -28,6 +28,14 @@ type eventJSON struct {
 	Deleted *deletedJSON `json:"deleted,omitempty"`
 	Edited  *messageJSON `json:"edited,omitempty"`
 	Chat    *chatJSON    `json:"chat,omitempty"`
+	Typing  *typingJSON  `json:"typing,omitempty"`
+}
+
+// typingJSON: user_id is writing, in chat_id or, when it is the nil UUID,
+// in the dialog with whoever hears it.
+type typingJSON struct {
+	UserID uuid.UUID `json:"user_id"`
+	ChatID uuid.UUID `json:"chat_id"`
 }
 
 // chatJSON is what happened in a chat: one of the three.
@@ -58,6 +66,7 @@ type chatMessageJSON struct {
 	SharedPhoto uuid.UUID       `json:"shared_photo"`
 	Forwarded   []forwardedJSON `json:"forwarded,omitempty"`
 	Sticker     string          `json:"sticker,omitempty"`
+	Documents   []uuid.UUID     `json:"documents,omitempty"`
 }
 
 func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
@@ -81,6 +90,7 @@ func toChatMessageJSON(m *message.ChatMessage) *chatMessageJSON {
 		SharedPhoto: m.SharedPhoto(),
 		Forwarded:   toForwardedJSON(m.Forwarded()),
 		Sticker:     m.Sticker().String(),
+		Documents:   m.Documents(),
 	}
 }
 
@@ -114,8 +124,8 @@ func (m *chatMessageJSON) message() (*message.ChatMessage, error) {
 		return message.RestoreChatMessage(stored), nil
 	}
 
-	var err error
-	if stored.Content, err = contentOf(m.Text, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker); err != nil {
+	content, err := contentOf(m.Text, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker)
+	if stored.Content, err = documented(content, err, m.Documents); err != nil {
 		return nil, errs.Wrap("contentOf", err)
 	}
 
@@ -170,8 +180,9 @@ type messageJSON struct {
 	// DeletedAt is zero for a message never taken back.
 	DeletedAt time.Time `json:"deleted_at"`
 	// Sealed is what a message of a dialog says, sealed: base64 in JSON.
-	Sealed  []byte `json:"sealed,omitempty"`
-	Sticker string `json:"sticker,omitempty"`
+	Sealed    []byte      `json:"sealed,omitempty"`
+	Sticker   string      `json:"sticker,omitempty"`
+	Documents []uuid.UUID `json:"documents,omitempty"`
 }
 
 type forwardedJSON struct {
@@ -183,6 +194,7 @@ type forwardedJSON struct {
 	CreatedAt time.Time   `json:"created_at"`
 	Depth     int         `json:"depth,omitempty"`
 	Sticker   string      `json:"sticker,omitempty"`
+	Documents []uuid.UUID `json:"documents,omitempty"`
 }
 
 func toForwardedJSON(carried message.Forwards) []forwardedJSON {
@@ -190,7 +202,7 @@ func toForwardedJSON(carried message.Forwards) []forwardedJSON {
 	for i, f := range carried {
 		forwarded[i] = forwardedJSON{
 			SenderID: f.SenderID, Text: f.Text.String(), Photos: f.Photos, Post: f.Post, Photo: f.SharedPhoto, CreatedAt: f.CreatedAt, Depth: f.Depth,
-			Sticker: f.Sticker.String(),
+			Sticker: f.Sticker.String(), Documents: f.Documents,
 		}
 	}
 
@@ -212,6 +224,7 @@ func toMessageJSON(m *message.Message) *messageJSON {
 		EditedAt:    m.EditedAt(),
 		Sealed:      m.Sealed().Bytes(),
 		Sticker:     m.Sticker().String(),
+		Documents:   m.Documents(),
 	}
 }
 
@@ -232,7 +245,8 @@ func (m *messageJSON) message() (*message.Message, error) {
 		return nil, errs.Wrap("message.NewSealed", err)
 	}
 
-	if stored.Content, err = sealedContentOf(sealed, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker); err != nil {
+	content, err := sealedContentOf(sealed, m.Photos, m.Post, m.SharedPhoto, m.Forwarded, m.Sticker)
+	if stored.Content, err = documented(content, err, m.Documents); err != nil {
 		return nil, errs.Wrap("sealedContentOf", err)
 	}
 
@@ -300,6 +314,32 @@ func contentOf(said string, photoIDs []uuid.UUID, post, sharedPhoto uuid.UUID, c
 	return content, errs.Wrap("message.NewContent", err)
 }
 
+// documented is content, or the error of making it, with the documents
+// of a message: with them it may say nothing else.
+func documented(content message.Content, err error, ids []uuid.UUID) (message.Content, error) {
+	if len(ids) == 0 {
+		return content, err
+	}
+
+	documents, derr := message.NewDocuments(ids)
+	if derr != nil {
+		return message.Content{}, errs.Wrap("message.NewDocuments", derr)
+	}
+
+	if errors.Is(err, message.ErrTextEmpty) {
+		content, err = message.NewDocumentContent(documents)
+		return content, errs.Wrap("message.NewDocumentContent", err)
+	}
+
+	if err != nil {
+		return message.Content{}, err
+	}
+
+	content, err = content.Attaching(documents)
+
+	return content, errs.Wrap("content.Attaching", err)
+}
+
 // stickerContentOf rebuilds a message that is a sticker.
 func stickerContentOf(name string) (message.Content, error) {
 	sticker, err := message.NewSticker(name)
@@ -334,6 +374,10 @@ func forwardsOf(raw []forwardedJSON) (message.Forwards, error) {
 				return nil, errs.Wrap("message.NewSticker", err)
 			}
 		}
+
+		if carried[i].Documents, err = message.NewDocuments(f.Documents); err != nil {
+			return nil, errs.Wrap("message.NewDocuments", err)
+		}
 	}
 
 	forwards, err := message.NewForwards(carried)
@@ -364,6 +408,8 @@ func (EventCodec) Encode(userID uuid.UUID, e service.Event) ([]byte, error) {
 		ej.Read = &readJSON{ReaderID: e.Read.ReaderID, PeerID: e.Read.PeerID, UpTo: e.Read.UpTo}
 	case e.Deleted != nil:
 		ej.Deleted = &deletedJSON{ID: e.Deleted.ID, SenderID: e.Deleted.SenderID, RecipientID: e.Deleted.RecipientID}
+	case e.Typing != nil:
+		ej.Typing = &typingJSON{UserID: e.Typing.UserID, ChatID: e.Typing.ChatID}
 	default:
 		return nil, errNoEvent
 	}
@@ -412,6 +458,8 @@ func (EventCodec) Decode(data []byte) (uuid.UUID, service.Event, error) {
 		return ej.UserID, service.Event{
 			Deleted: &service.Deleted{ID: ej.Deleted.ID, SenderID: ej.Deleted.SenderID, RecipientID: ej.Deleted.RecipientID},
 		}, nil
+	case ej.Typing != nil:
+		return ej.UserID, service.Event{Typing: &service.Typing{UserID: ej.Typing.UserID, ChatID: ej.Typing.ChatID}}, nil
 	default:
 		return uuid.Nil, service.Event{}, errNoEvent
 	}

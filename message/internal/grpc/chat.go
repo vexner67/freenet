@@ -34,6 +34,7 @@ type ChatService interface {
 	Around(ctx context.Context, userID, chatID, id uuid.UUID, size int) (service.ChatHistoryPage, error)
 	Search(ctx context.Context, userID, chatID uuid.UUID, q message.Query, cursor uuid.UUID, size int) (service.ChatSearchPage, error)
 	MarkRead(ctx context.Context, userID, chatID, upTo uuid.UUID) error
+	Typing(ctx context.Context, userID, chatID uuid.UUID) error
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
 }
 
@@ -425,6 +426,19 @@ func (h *MessageHandler) MarkChatRead(ctx context.Context, req *messagev1.MarkCh
 	return &emptypb.Empty{}, nil
 }
 
+func (h *MessageHandler) SetChatTyping(ctx context.Context, req *messagev1.SetChatTypingRequest) (*emptypb.Empty, error) {
+	userID, chatID, err := chatCaller(ctx, req.GetChatId())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.chatService.Typing(ctx, userID, chatID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 // toProtoChat cuts the text of the last message to textLimit.
 func toProtoChat(view message.ChatView, textLimit int32) *messagev1.Chat {
 	c := &messagev1.Chat{
@@ -478,18 +492,19 @@ func toProtoChatAction(a message.Action) messagev1.ChatAction {
 
 func toProtoChatMessage(m *message.ChatMessage) *messagev1.ChatMessage {
 	pm := &messagev1.ChatMessage{
-		Id:        m.ID().String(),
-		ChatId:    m.ChatID().String(),
-		SenderId:  m.SenderID().String(),
-		Text:      m.Text().String(),
-		PhotoIds:  photoStrings(m.Photos()),
-		Action:    toProtoChatAction(m.Action()),
-		TargetId:  optionalID(m.TargetID()),
-		CreatedAt: timestamppb.New(m.CreatedAt()),
-		PostId:    postString(m.Post()),
-		PhotoId:   postString(m.SharedPhoto()),
-		Forwarded: toProtoForwarded(m.Forwarded()),
-		Sticker:   m.Sticker().String(),
+		Id:          m.ID().String(),
+		ChatId:      m.ChatID().String(),
+		SenderId:    m.SenderID().String(),
+		Text:        m.Text().String(),
+		PhotoIds:    photoStrings(m.Photos()),
+		Action:      toProtoChatAction(m.Action()),
+		TargetId:    optionalID(m.TargetID()),
+		CreatedAt:   timestamppb.New(m.CreatedAt()),
+		PostId:      postString(m.Post()),
+		PhotoId:     postString(m.SharedPhoto()),
+		Forwarded:   toProtoForwarded(m.Forwarded()),
+		Sticker:     m.Sticker().String(),
+		DocumentIds: idStrings(m.Documents()),
 	}
 
 	if m.IsDeleted() {

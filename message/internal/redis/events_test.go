@@ -2,6 +2,7 @@ package redis_test
 
 import (
 	"bytes"
+	"slices"
 	"testing"
 	"time"
 
@@ -249,5 +250,73 @@ func TestEventCodec_Stickers(t *testing.T) {
 	}
 	if _, e, err := codec.Decode(data); err != nil || e.Chat == nil || e.Chat.Message == nil || e.Chat.Message.Sticker() != "cat_hi" {
 		t.Fatalf("a sticker of a chat round trip = %+v, %v", e, err)
+	}
+}
+
+func TestEventCodec_Documents(t *testing.T) {
+	t.Parallel()
+
+	var codec redis.EventCodec
+	ann, bob := uuid.New(), uuid.New()
+	sent := time.Date(2026, 10, 7, 12, 0, 0, 0, time.UTC)
+	docs := message.Documents{uuid.New()}
+
+	content, err := message.NewDocumentContent(docs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	alone := message.Restore(message.Stored{ID: uuid.New(), SenderID: ann, RecipientID: bob, Content: content, CreatedAt: sent})
+
+	data, err := codec.Encode(bob, service.Event{Message: alone})
+	if err != nil {
+		t.Fatalf("Encode documents: %v", err)
+	}
+	if _, e, err := codec.Decode(data); err != nil || e.Message == nil || !slices.Equal(e.Message.Documents(), docs) {
+		t.Fatalf("documents round trip = %+v, %v", e.Message, err)
+	}
+
+	forward := message.Restore(message.Stored{
+		ID: uuid.New(), SenderID: bob, RecipientID: ann, Content: message.RestoreContent("", nil, uuid.Nil, message.Forwards(alone.Carried())), CreatedAt: sent,
+	})
+	if data, err = codec.Encode(ann, service.Event{Message: forward}); err != nil {
+		t.Fatalf("Encode forwarded documents: %v", err)
+	}
+	if _, e, err := codec.Decode(data); err != nil || e.Message == nil || len(e.Message.Forwarded()) != 1 || !slices.Equal(e.Message.Forwarded()[0].Documents, docs) {
+		t.Fatalf("forwarded documents round trip = %+v, %v", e.Message, err)
+	}
+
+	worded, err := message.NewContent("вот", nil, uuid.Nil, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if worded, err = worded.Attaching(docs); err != nil {
+		t.Fatal(err)
+	}
+	inChat := message.RestoreChatMessage(message.StoredChatMessage{ID: uuid.New(), ChatID: uuid.New(), SenderID: ann, Content: worded, CreatedAt: sent})
+	if data, err = codec.Encode(bob, service.Event{Chat: &service.ChatEvent{Message: inChat}}); err != nil {
+		t.Fatalf("Encode documents of a chat: %v", err)
+	}
+	if _, e, err := codec.Decode(data); err != nil || e.Chat == nil || e.Chat.Message == nil ||
+		!slices.Equal(e.Chat.Message.Documents(), docs) || e.Chat.Message.Text() != "вот" {
+		t.Fatalf("documents of a chat round trip = %+v, %v", e, err)
+	}
+}
+
+func TestEventCodec_Typing(t *testing.T) {
+	t.Parallel()
+
+	var codec redis.EventCodec
+	ann, bob := uuid.New(), uuid.New()
+
+	for _, typing := range []service.Typing{{UserID: ann}, {UserID: ann, ChatID: uuid.New()}} {
+		data, err := codec.Encode(bob, service.Event{Typing: &typing})
+		if err != nil {
+			t.Fatalf("Encode typing: %v", err)
+		}
+
+		key, e, err := codec.Decode(data)
+		if err != nil || key != bob || e.Message != nil || e.Typing == nil || *e.Typing != typing {
+			t.Fatalf("typing round trip = %v %+v %v", key, e.Typing, err)
+		}
 	}
 }

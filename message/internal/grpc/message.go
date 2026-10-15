@@ -23,6 +23,7 @@ type MessageService interface {
 	Newer(ctx context.Context, userID, peerID, after uuid.UUID, size int) (service.HistoryPage, error)
 	Around(ctx context.Context, userID, peerID, id uuid.UUID, size int) (service.HistoryPage, error)
 	MarkRead(ctx context.Context, userID, peerID, upTo uuid.UUID) error
+	Typing(ctx context.Context, userID, peerID uuid.UUID) error
 	Delete(ctx context.Context, userID, id uuid.UUID) error
 	Hide(ctx context.Context, userID, id uuid.UUID) error
 	DeleteMany(ctx context.Context, userID uuid.UUID, ids []uuid.UUID, forEveryone bool) error
@@ -265,6 +266,24 @@ func (h *MessageHandler) MarkDialogRead(ctx context.Context, req *messagev1.Mark
 	}
 
 	if err = h.messageService.MarkRead(ctx, userID, peerID, upTo); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) SetTyping(ctx context.Context, req *messagev1.SetTypingRequest) (*emptypb.Empty, error) {
+	userID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	peerID, err := parseID(req.GetPeerId(), "invalid peer id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.messageService.Typing(ctx, userID, peerID); err != nil {
 		return nil, err
 	}
 
