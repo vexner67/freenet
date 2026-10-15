@@ -212,6 +212,14 @@ export const api = {
   // "Опубликовать сейчас": the post it became, null if it is not shown.
   publishPostponed: (id) => authorized('POST', `/api/v1/postponed/${encodeURIComponent(id)}/publish`),
   deletePostponed: (id) => authorized('DELETE', `/api/v1/postponed/${encodeURIComponent(id)}`),
+  // Stories, VK's "истории": a photo with a few words shown for a day.
+  // stories are those above the news, grouped by author.
+  stories: () => authorized('GET', '/api/v1/stories'),
+  userStories: (nickname) => authorized('GET', `/api/v1/users/${encodeURIComponent(nickname)}/stories`),
+  tellStory: (photo, text) => authorized('POST', '/api/v1/me/stories', { photo, text }),
+  viewStory: (id) => authorized('PUT', `/api/v1/stories/${encodeURIComponent(id)}/view`),
+  storyViewers: (id, cursor = '', limit = 0) => authorized('GET', page(`/api/v1/stories/${encodeURIComponent(id)}/viewers`, cursor, limit)),
+  deleteStory: (id) => authorized('DELETE', `/api/v1/stories/${encodeURIComponent(id)}`),
   // Uploads a photo for a post; the post refers to it by ID.
   uploadPhoto: (file) => authorized('POST', '/api/v1/me/photos', file),
   // "Мои Документы": a file up to 10 MB, named by its file name; posts
@@ -596,6 +604,15 @@ export const api = {
 
   // filters are those openvk's page links to: { hometown, city, film,
   // show, book }; with one, query may be empty.
+  // "Поиск записей": the posts of every wall a tag or a part of the text
+  // finds; comments brings their newest comments ("Микроблог").
+  searchPosts(query, cursor = '', comments = false) {
+    const params = new URLSearchParams({ q: query });
+    if (cursor) params.set('cursor', cursor);
+    if (comments) params.set('comments', 'last');
+    return authorized('GET', '/api/v1/posts?' + params);
+  },
+
   search(query, cursor = '', filters = {}) {
     const params = new URLSearchParams({ q: query, ...filters });
     if (cursor) params.set('cursor', cursor);

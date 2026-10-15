@@ -92,6 +92,7 @@
   --line-b9b597: #b9b597;
   --line-aaa: #aaa;
   --line-e89b88: #e89b88;
+  --line-5b7aa1: #5b7aa1;
   --line-8fa7c2: #8fa7c2;
   --line-8b8b8b: #8b8b8b;
   --line-808080: #808080;
@@ -1341,7 +1342,59 @@ a.poll-result-name { cursor: pointer; }
    be read on a phone, and fields are 16px, or iOS zooms in on them. */
 .menu-toggle { display: none; }
 
+/* Stories, VK's: circles above the news and the stories over the screen. */
+.story-bar { display: flex; gap: 8px; overflow-x: auto; margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-e8ebee); }
+.story-circle { flex: none; width: 62px; color: var(--text-333); text-align: center; cursor: pointer; }
+.story-circle:hover { text-decoration: none; }
+.story-circle img { display: block; width: 48px; height: 48px; margin: 0 auto 3px; padding: 2px; border: 2px solid var(--line-ccc); border-radius: 50%; object-fit: cover; }
+.story-fresh img { border-color: var(--line-5b7aa1); }
+.story-circle span { display: block; overflow: hidden; font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.story-add img { border-style: dashed; }
+.story-add span { white-space: normal; }
+.story-viewer {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, .94);
+}
+.story-box { display: flex; flex-direction: column; width: min(420px, 100vw); height: min(100dvh, 780px); color: rgba(255, 255, 255, .95); }
+.story-progress { display: flex; gap: 3px; padding: 8px 8px 0; }
+.story-segment { flex: 1; height: 3px; overflow: hidden; background: rgba(255, 255, 255, .3); border-radius: 2px; }
+.story-fill { width: 0; height: 100%; background: rgba(255, 255, 255, .95); }
+.story-filled { width: 100%; }
+.story-head { display: flex; align-items: center; gap: 8px; padding: 8px; }
+.story-head img { display: block; width: 30px; height: 30px; border-radius: 50%; object-fit: cover; }
+.story-head a { color: rgba(255, 255, 255, .95); font-weight: bold; }
+.story-age { color: rgba(255, 255, 255, .6); }
+.story-head .story-close { margin-left: auto; font-size: 20px; font-weight: normal; line-height: 1; cursor: pointer; }
+.story-stage { position: relative; display: flex; flex: 1; align-items: center; justify-content: center; min-height: 0; }
+.story-photo { display: block; width: 100%; height: 100%; object-fit: contain; }
+.story-text {
+  position: absolute;
+  right: 10px;
+  bottom: 12px;
+  left: 10px;
+  padding: 6px 8px;
+  background: rgba(0, 0, 0, .55);
+  font-size: 13px;
+  text-align: center;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+.story-zone { position: absolute; top: 0; bottom: 0; cursor: pointer; }
+.story-zone-prev { left: 0; width: 35%; }
+.story-zone-next { right: 0; width: 65%; }
+.story-foot { display: flex; justify-content: center; gap: 16px; padding: 8px; }
+.story-foot a { color: rgba(255, 255, 255, .9); cursor: pointer; }
+.story-form textarea { width: 100%; height: 50px; margin-top: 6px; }
+.story-preview { display: block; width: auto; max-width: 100%; height: auto; max-height: 240px; margin: 6px auto 0; }
+
 @media (max-width: 800px) {
+  .story-viewer { background: rgba(0, 0, 0, 1); }
+  .story-viewer .viewer-nav { display: none; }
   body { font-size: 13px; -webkit-text-size-adjust: 100%; }
   /* Whatever rule sets a field's type, smaller would zoom the page. */
   input, select, textarea { font-size: 16px !important; }

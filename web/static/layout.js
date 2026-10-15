@@ -6,7 +6,7 @@ import { accountName, canPark, onAccountChange, park, parkedAccounts, signedInAs
 import { api } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
-import { errorText, foundParts, isLongText, mentionParts, pushOfferText, pushStateTexts, setTimezone, unreadCountText } from './labels.js';
+import { errorText, foundParts, hashtagPath, isLongText, pushOfferText, pushStateTexts, setTimezone, textParts, unreadCountText } from './labels.js';
 import { nicknameLookup } from './nicknames.js';
 import { closePushes, endPushOffer, enablePush, forgetPushAccount, pushOffer, showUnread, syncPush } from './push.js';
 
@@ -42,13 +42,15 @@ if (typeof document !== 'undefined') {
 const knownNickname = nicknameLookup((nicknames) => api.knownNicknames(nicknames).then((r) => r.nicknames));
 
 // mentionNodes are text with the people it names as links to their pages,
-// openvk's "[id1|Анна]" and "@ann". A text says "@word" of anything: the
+// openvk's "[id1|Анна]" and "@ann", and its tags ("#поход") as links to
+// the search of posts. A text says "@word" of anything: the
 // link of a word that is nobody's nickname becomes plain text again once
 // the server says so, and stays if it cannot be asked. found is what a
 // search looked for: the words that say it are highlighted, as on openvk.
 export function mentionNodes(text, found = '') {
-  return mentionParts(text).flatMap((p) => {
+  return textParts(text).flatMap((p) => {
     if (typeof p === 'string') return foundNodes(p, found);
+    if (p.hashtag) return el('a', { href: hashtagPath(p.hashtag) }, ...foundNodes(p.text, found));
 
     const link = el('a', { href: '/' + encodeURIComponent(p.nickname), textContent: p.text });
     knownNickname(p.nickname).then((known) => {
