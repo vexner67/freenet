@@ -56,8 +56,20 @@ service MediaService {
   // or the message. Idempotent; missing photos are fine.
   rpc CopyPhotos(CopyPhotosRequest) returns (google.protobuf.Empty);
 
+  // Require an access token; the document belongs to the caller. It is
+  // kept for good at once: the gateway adds it to the caller's documents
+  // in the post service ("Мои Документы"), which knows its name, and
+  // deletes it here when that fails.
+  rpc UploadDocument(UploadDocumentRequest) returns (UploadDocumentResponse);
+  // Public: a document as it was uploaded.
+  rpc GetDocument(GetDocumentRequest) returns (GetDocumentResponse);
+  // Internal, for post (documents deleted from "Мои Документы") and the
+  // gateway (an upload the post service refused): the documents of
+  // owner_id go. Idempotent; missing documents are fine.
+  rpc DeleteDocuments(DeleteDocumentsRequest) returns (google.protobuf.Empty);
+
   // Internal, for user: the user's page was deleted and not restored in
-  // time; all their avatars and photos go. Idempotent.
+  // time; all their avatars, photos and documents go. Idempotent.
   rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
 }
 
@@ -185,4 +197,27 @@ message GetPhotoResponse {
 
 message PurgeUserRequest {
   string user_id = 1;
+}
+
+message UploadDocumentRequest {
+  // Any file of at most 10 MB.
+  bytes data = 1;
+}
+
+message UploadDocumentResponse {
+  string document_id = 1;
+}
+
+message GetDocumentRequest {
+  string owner_id = 1;
+  string document_id = 2;
+}
+
+message GetDocumentResponse {
+  bytes data = 1;
+}
+
+message DeleteDocumentsRequest {
+  string owner_id = 1;
+  repeated string document_ids = 2;
 }

@@ -9,18 +9,21 @@ import (
 
 // PurgeService erases the files of a user whose page was deleted for good.
 type PurgeService struct {
-	avatars AvatarStore
-	photos  PhotoStore
+	avatars   AvatarStore
+	photos    PhotoStore
+	documents DocumentStore
 }
 
-func NewPurgeService(avatars AvatarStore, photos PhotoStore) *PurgeService {
+func NewPurgeService(avatars AvatarStore, photos PhotoStore, documents DocumentStore) *PurgeService {
 	return &PurgeService{
-		avatars: avatars,
-		photos:  photos,
+		avatars:   avatars,
+		photos:    photos,
+		documents: documents,
 	}
 }
 
-// PurgeUser removes all avatars and photos of userID; nothing left is fine.
+// PurgeUser removes all avatars, photos and documents of userID; nothing
+// left is fine.
 func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 	if err := s.avatars.DeleteExcept(ctx, userID, uuid.Nil); err != nil {
 		return errs.Wrap("s.avatars.DeleteExcept", err)
@@ -28,6 +31,10 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 
 	if err := s.photos.DeleteAll(ctx, userID); err != nil {
 		return errs.Wrap("s.photos.DeleteAll", err)
+	}
+
+	if err := s.documents.DeleteAll(ctx, userID); err != nil {
+		return errs.Wrap("s.documents.DeleteAll", err)
 	}
 
 	return nil

@@ -72,6 +72,8 @@ type Config struct {
 	RedisAddr    string          `env:"REDIS_ADDR"`
 	PhotoLimits  ratelimit.Rules `env:"RATE_LIMIT_PHOTOS" envDefault:"30/1m,300/24h"`
 	AvatarLimits ratelimit.Rules `env:"RATE_LIMIT_AVATARS" envDefault:"5/1m,30/24h"`
+	// DocumentLimits is how often a user uploads to "Мои Документы".
+	DocumentLimits ratelimit.Rules `env:"RATE_LIMIT_DOCUMENTS" envDefault:"10/1m,100/24h"`
 
 	// Access tokens are issued by the auth service; media only verifies them.
 	JWTPublicKeyPath string `env:"JWT_PUBLIC_KEY_PATH,required,notEmpty"`

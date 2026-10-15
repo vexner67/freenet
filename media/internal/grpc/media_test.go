@@ -45,18 +45,18 @@ func newServer(t *testing.T) testServer {
 	}
 
 	log := slog.New(slog.NewTextHandler(io.Discard, nil))
-	avatars, photos := inmem.NewAvatarStore(), inmem.NewPhotoStore()
+	avatars, photos, documents := inmem.NewAvatarStore(), inmem.NewPhotoStore(), inmem.NewDocumentStore()
 	lis := bufconn.Listen(1 << 20)
 	srv := grpc.NewServer(grpc.ChainUnaryInterceptor(
 		mediagrpc.ErrorInterceptor(log),
 		jwtauth.UnaryServerInterceptor(jwtauth.NewVerifier(&key.PublicKey, issuer), jwtauth.Access{Public: mediagrpc.PublicMethods()}),
 	))
-	mediav1.RegisterMediaServiceServer(srv, mediagrpc.NewMediaHandler(
-		service.NewAvatarService(avatars),
-		service.NewPhotoService(photos, time.Hour, 24*time.Hour, 0),
-		service.NewPurgeService(avatars, photos),
-		log,
-	))
+	mediav1.RegisterMediaServiceServer(srv, mediagrpc.NewMediaHandler(mediagrpc.Services{
+		Avatars:   service.NewAvatarService(avatars),
+		Photos:    service.NewPhotoService(photos, time.Hour, 24*time.Hour, 0),
+		Documents: service.NewDocumentService(documents),
+		Purges:    service.NewPurgeService(avatars, photos, documents),
+	}, log))
 
 	go func() { _ = srv.Serve(lis) }()
 	t.Cleanup(srv.Stop)
@@ -279,6 +279,10 @@ func TestPurgeUser(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	annsDocument, err := s.client.UploadDocument(s.as(t, ann), &mediav1.UploadDocumentRequest{Data: []byte("%PDF")})
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// Called by the user service, with no user token; twice is fine.
 	for range 2 {
@@ -295,6 +299,9 @@ func TestPurgeUser(t *testing.T) {
 	}
 	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: ann.String(), PhotoId: annsPhoto.GetPhotoId()}); status.Code(err) != codes.NotFound {
 		t.Fatalf("ann's photo after the purge: %v", err)
+	}
+	if _, err = s.client.GetDocument(context.Background(), &mediav1.GetDocumentRequest{OwnerId: ann.String(), DocumentId: annsDocument.GetDocumentId()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("ann's document after the purge: %v", err)
 	}
 	if _, err = s.client.GetPhoto(context.Background(), &mediav1.GetPhotoRequest{UserId: bob.String(), PhotoId: bobsPhoto.GetPhotoId()}); err != nil {
 		t.Fatalf("bob's photo after ann's purge: %v", err)
@@ -386,5 +393,43 @@ func TestClubPhotos(t *testing.T) {
 
 	if _, err = s.client.DeleteClubPhotos(s.as(t, admin), &mediav1.DeleteClubPhotosRequest{ClubId: club.String(), KeepPhotoIds: []string{"x"}}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("a bad photo id: %v", err)
+	}
+}
+
+func TestDocuments(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann := uuid.New()
+
+	if _, err := s.client.UploadDocument(context.Background(), &mediav1.UploadDocumentRequest{Data: []byte("x")}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("upload without a token: %v", err)
+	}
+	if _, err := s.client.UploadDocument(s.as(t, ann), &mediav1.UploadDocumentRequest{}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("an empty document: %v", err)
+	}
+
+	uploaded, err := s.client.UploadDocument(s.as(t, ann), &mediav1.UploadDocumentRequest{Data: []byte("привет")})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Anyone downloads it by its address.
+	got, err := s.client.GetDocument(context.Background(), &mediav1.GetDocumentRequest{OwnerId: ann.String(), DocumentId: uploaded.GetDocumentId()})
+	if err != nil || string(got.GetData()) != "привет" {
+		t.Fatalf("GetDocument = %q, %v", got.GetData(), err)
+	}
+	if _, err = s.client.GetDocument(context.Background(), &mediav1.GetDocumentRequest{OwnerId: uuid.NewString(), DocumentId: uploaded.GetDocumentId()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("under another owner: %v", err)
+	}
+
+	// Deleted by the post service, twice is fine.
+	for range 2 {
+		if _, err = s.client.DeleteDocuments(context.Background(), &mediav1.DeleteDocumentsRequest{OwnerId: ann.String(), DocumentIds: []string{uploaded.GetDocumentId()}}); err != nil {
+			t.Fatalf("DeleteDocuments: %v", err)
+		}
+	}
+	if _, err = s.client.GetDocument(context.Background(), &mediav1.GetDocumentRequest{OwnerId: ann.String(), DocumentId: uploaded.GetDocumentId()}); status.Code(err) != codes.NotFound {
+		t.Fatalf("a deleted document: %v", err)
 	}
 }

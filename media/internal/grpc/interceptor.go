@@ -5,6 +5,7 @@ import (
 	"log/slog"
 
 	"github.com/vexner67/freenet/media/internal/avatar"
+	"github.com/vexner67/freenet/media/internal/document"
 	"github.com/vexner67/freenet/media/internal/imaging"
 	"github.com/vexner67/freenet/media/internal/photo"
 	"github.com/vexner67/freenet/media/internal/service"
@@ -20,7 +21,7 @@ func ErrorInterceptor(log *slog.Logger) grpc.UnaryServerInterceptor {
 }
 
 func toStatus(err error) (*status.Status, bool) {
-	for _, invalid := range []error{imaging.ErrTooLarge, imaging.ErrNotImage, imaging.ErrTooManyPixels, avatar.ErrTooSmall} {
+	for _, invalid := range []error{imaging.ErrTooLarge, imaging.ErrNotImage, imaging.ErrTooManyPixels, avatar.ErrTooSmall, document.ErrEmpty, document.ErrTooBig} {
 		if errors.Is(err, invalid) {
 			return status.New(codes.InvalidArgument, invalid.Error()), true
 		}
@@ -28,6 +29,10 @@ func toStatus(err error) (*status.Status, bool) {
 
 	if errors.Is(err, avatar.ErrNotFound) {
 		return status.New(codes.NotFound, "avatar not found"), true
+	}
+
+	if errors.Is(err, document.ErrNotFound) {
+		return status.New(codes.NotFound, "document not found"), true
 	}
 
 	if errors.Is(err, photo.ErrNotFound) {

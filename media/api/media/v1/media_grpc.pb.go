@@ -34,6 +34,9 @@ const (
 	MediaService_PublishPhotos_FullMethodName         = "/media.v1.MediaService/PublishPhotos"
 	MediaService_DeletePublishedPhotos_FullMethodName = "/media.v1.MediaService/DeletePublishedPhotos"
 	MediaService_CopyPhotos_FullMethodName            = "/media.v1.MediaService/CopyPhotos"
+	MediaService_UploadDocument_FullMethodName        = "/media.v1.MediaService/UploadDocument"
+	MediaService_GetDocument_FullMethodName           = "/media.v1.MediaService/GetDocument"
+	MediaService_DeleteDocuments_FullMethodName       = "/media.v1.MediaService/DeleteDocuments"
 	MediaService_PurgeUser_FullMethodName             = "/media.v1.MediaService/PurgeUser"
 )
 
@@ -84,8 +87,19 @@ type MediaServiceClient interface {
 	// стены" or of a forwarded message, so that the copy outlives the post
 	// or the message. Idempotent; missing photos are fine.
 	CopyPhotos(ctx context.Context, in *CopyPhotosRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token; the document belongs to the caller. It is
+	// kept for good at once: the gateway adds it to the caller's documents
+	// in the post service ("Мои Документы"), which knows its name, and
+	// deletes it here when that fails.
+	UploadDocument(ctx context.Context, in *UploadDocumentRequest, opts ...grpc.CallOption) (*UploadDocumentResponse, error)
+	// Public: a document as it was uploaded.
+	GetDocument(ctx context.Context, in *GetDocumentRequest, opts ...grpc.CallOption) (*GetDocumentResponse, error)
+	// Internal, for post (documents deleted from "Мои Документы") and the
+	// gateway (an upload the post service refused): the documents of
+	// owner_id go. Idempotent; missing documents are fine.
+	DeleteDocuments(ctx context.Context, in *DeleteDocumentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
-	// time; all their avatars and photos go. Idempotent.
+	// time; all their avatars, photos and documents go. Idempotent.
 	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -237,6 +251,36 @@ func (c *mediaServiceClient) CopyPhotos(ctx context.Context, in *CopyPhotosReque
 	return out, nil
 }
 
+func (c *mediaServiceClient) UploadDocument(ctx context.Context, in *UploadDocumentRequest, opts ...grpc.CallOption) (*UploadDocumentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(UploadDocumentResponse)
+	err := c.cc.Invoke(ctx, MediaService_UploadDocument_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) GetDocument(ctx context.Context, in *GetDocumentRequest, opts ...grpc.CallOption) (*GetDocumentResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetDocumentResponse)
+	err := c.cc.Invoke(ctx, MediaService_GetDocument_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *mediaServiceClient) DeleteDocuments(ctx context.Context, in *DeleteDocumentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MediaService_DeleteDocuments_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *mediaServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -294,8 +338,19 @@ type MediaServiceServer interface {
 	// стены" or of a forwarded message, so that the copy outlives the post
 	// or the message. Idempotent; missing photos are fine.
 	CopyPhotos(context.Context, *CopyPhotosRequest) (*emptypb.Empty, error)
+	// Require an access token; the document belongs to the caller. It is
+	// kept for good at once: the gateway adds it to the caller's documents
+	// in the post service ("Мои Документы"), which knows its name, and
+	// deletes it here when that fails.
+	UploadDocument(context.Context, *UploadDocumentRequest) (*UploadDocumentResponse, error)
+	// Public: a document as it was uploaded.
+	GetDocument(context.Context, *GetDocumentRequest) (*GetDocumentResponse, error)
+	// Internal, for post (documents deleted from "Мои Документы") and the
+	// gateway (an upload the post service refused): the documents of
+	// owner_id go. Idempotent; missing documents are fine.
+	DeleteDocuments(context.Context, *DeleteDocumentsRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
-	// time; all their avatars and photos go. Idempotent.
+	// time; all their avatars, photos and documents go. Idempotent.
 	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMediaServiceServer()
 }
@@ -348,6 +403,15 @@ func (UnimplementedMediaServiceServer) DeletePublishedPhotos(context.Context, *D
 }
 func (UnimplementedMediaServiceServer) CopyPhotos(context.Context, *CopyPhotosRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method CopyPhotos not implemented")
+}
+func (UnimplementedMediaServiceServer) UploadDocument(context.Context, *UploadDocumentRequest) (*UploadDocumentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method UploadDocument not implemented")
+}
+func (UnimplementedMediaServiceServer) GetDocument(context.Context, *GetDocumentRequest) (*GetDocumentResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetDocument not implemented")
+}
+func (UnimplementedMediaServiceServer) DeleteDocuments(context.Context, *DeleteDocumentsRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteDocuments not implemented")
 }
 func (UnimplementedMediaServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
@@ -625,6 +689,60 @@ func _MediaService_CopyPhotos_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MediaService_UploadDocument_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UploadDocumentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).UploadDocument(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_UploadDocument_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).UploadDocument(ctx, req.(*UploadDocumentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_GetDocument_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetDocumentRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).GetDocument(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_GetDocument_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).GetDocument(ctx, req.(*GetDocumentRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _MediaService_DeleteDocuments_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteDocumentsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MediaServiceServer).DeleteDocuments(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MediaService_DeleteDocuments_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MediaServiceServer).DeleteDocuments(ctx, req.(*DeleteDocumentsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MediaService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(PurgeUserRequest)
 	if err := dec(in); err != nil {
@@ -705,6 +823,18 @@ var MediaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "CopyPhotos",
 			Handler:    _MediaService_CopyPhotos_Handler,
+		},
+		{
+			MethodName: "UploadDocument",
+			Handler:    _MediaService_UploadDocument_Handler,
+		},
+		{
+			MethodName: "GetDocument",
+			Handler:    _MediaService_GetDocument_Handler,
+		},
+		{
+			MethodName: "DeleteDocuments",
+			Handler:    _MediaService_DeleteDocuments_Handler,
 		},
 		{
 			MethodName: "PurgeUser",
