@@ -9,10 +9,11 @@
 // site, "Ваучеры" (?act=vouchers: the vouchers and the form that makes one).
 
 import { api, currentUser } from './api.js';
-import { deviceName, formatDateTime, keyStateText, sessionsCount, plural, votesCount, voucherCode, voucherGave, voucherStatus, voucherUsages, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes } from './labels.js';
+import { deviceName, formatDateTime, keyStateText, sessionsCount, plural, votesCount, voucherCode, voucherGave, voucherStatus, voucherUsages, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
 import { $, applyInterface, deviceTheme, el, fullName, pagePath, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
+import { disablePush, enablePush, pushState } from './push.js';
 import { ensureKey, exportKeys, forgetKeys, hasKeys, importKeys, KEY_READY, newCode, newKey } from './e2ee.js';
 
 const error = $('error');
@@ -66,6 +67,30 @@ function initMain(me) {
   });
 
   $('delete-link').addEventListener('click', () => openDeactivate(me));
+  showPush(me).catch((e) => showError(error, e));
+}
+
+// showPush is "Уведомления на этом устройстве": whether this browser gets
+// the pushes, and the button that changes it.
+async function showPush(me) {
+  const state = await pushState();
+  $('push-state').textContent = pushStateTexts[state];
+
+  const change = async (turn) => {
+    hideError(error);
+    try {
+      await turn();
+    } catch (e) {
+      showError(error, e);
+    }
+    await showPush(me);
+  };
+
+  const actions = {
+    off: () => button('Включить уведомления', () => change(() => enablePush(me))),
+    on: () => button('Выключить уведомления', () => change(disablePush)),
+  };
+  $('push-actions').replaceChildren(...(actions[state] ? [actions[state]()] : []));
 }
 
 const reads = {

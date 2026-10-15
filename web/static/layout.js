@@ -8,6 +8,7 @@ import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
 import { errorText, foundParts, isLongText, mentionParts, setTimezone, unreadCountText } from './labels.js';
 import { nicknameLookup } from './nicknames.js';
+import { forgetPushAccount, syncPush } from './push.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -127,6 +128,9 @@ function menuLink(me, item, href, text, counter) {
 
 async function logout(event) {
   event.preventDefault();
+  // While the token still works: the pushes of this browser are no longer
+  // the account's.
+  await forgetPushAccount().catch(() => {});
   await api.logout();
   signedInAs('');
   forgetLook();
@@ -386,6 +390,8 @@ export function renderChrome(me) {
     // The key messages of dialogs are sealed with: made here for one who
     // has none, checked now and then against the server's.
     ensureKey(me.id).catch(() => {});
+    // The pushes of this browser, when on, go to whoever is signed in.
+    syncPush(me).catch(() => {});
   } else {
     // A guest sees the site as it is, whoever was here before.
     forgetLook();
