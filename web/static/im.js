@@ -8,7 +8,9 @@
 // (?msg=<id>). Chats of several people ("беседы") stand in the same list,
 // and "Новая беседа" starts one. Messages of dialogs are sealed
 // (e2ee.js): the page opens the last ones itself, and searches a dialog
-// itself, page by page, the server searching chats only.
+// itself, page by page, the server searching chats only. While someone
+// types in a dialog or a chat, its row says so instead of the last
+// message, as on VK (typing.js).
 
 import { api, currentUser } from './api.js';
 import { openMessages } from './e2ee.js';
@@ -16,6 +18,7 @@ import { onEvent } from './events.js';
 import { openNewChat, chatPath } from './chats.js';
 import { chatPreview, chatTitle, formatPostDate, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, renderChrome, showError, hideError } from './layout.js';
+import { typingLine } from './typing.js';
 
 const PREVIEW = 120;
 
@@ -25,6 +28,33 @@ let cursor = '';
 const shown = new Map();
 
 const keyOf = (d) => (d.chat ? 'chat:' + d.chat.id : d.peer.id);
+
+// Row key → typingLine of who types there, and what the row says of them
+// meanwhile instead of the last message.
+const typing = new Map();
+const typingNow = new Map();
+
+// typistsOf keeps who types in the row with key, redrawing its text.
+function typistsOf(key) {
+  if (!typing.has(key)) {
+    typing.set(key, typingLine((text) => {
+      if (text) typingNow.set(key, text);
+      else typingNow.delete(key);
+
+      const entry = shown.get(key);
+      if (entry) show(entry.dialog, false);
+    }));
+  }
+
+  return typing.get(key);
+}
+
+// textNode is the line under a row: who types, or else the last message.
+function textNode(d, preview) {
+  const now = typingNow.get(keyOf(d));
+
+  return el('div', { className: now ? 'dialog-text dialog-typing' : 'dialog-text', textContent: now ?? snippet(preview, PREVIEW) });
+}
 
 // chatNode is a chat of several people as a row: its name, when it was
 // last written to, and who said what.
@@ -39,7 +69,7 @@ function chatNode(d) {
     ),
     el('div', { className: d.unread ? 'dialog-message unread' : 'dialog-message' },
       m && el('img', { src: avatarURL(m.author, 'small'), alt: '' }),
-      el('div', { className: 'dialog-text', textContent: snippet(chatPreview(m), PREVIEW) }),
+      textNode(d, chatPreview(m)),
     ),
   );
 }
@@ -61,7 +91,7 @@ function dialogNode(d) {
     el('div', { className: unread ? 'dialog-message unread' : 'dialog-message' },
       m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
       // A message without words says what it shows, as on VK.
-      el('div', { className: 'dialog-text', textContent: snippet(messagePreview(m), PREVIEW) }),
+      textNode(d, messagePreview(m)),
     ),
   );
 }
@@ -85,7 +115,13 @@ function show(d, atTop) {
 }
 
 function listenToEvents() {
+  onEvent('typing', (e) => {
+    const key = e.chat ? 'chat:' + e.chat : e.user.id;
+    if (shown.has(key)) typistsOf(key).typing(e.user);
+  });
+
   onEvent('message', async (e) => {
+    if (!e.message.out) typing.get(e.peer.id)?.stopped(e.peer.id);
     await openMessages(me.id, [e.message]);
     show({ peer: e.peer, lastMessage: e.message, unread: !e.message.out }, true);
   });
@@ -121,6 +157,8 @@ function listenToEvents() {
   // A chat written to comes to the top; one not shown yet, as a new one I
   // was added to, is known only to the server.
   onEvent('chat_message', (e) => {
+    if (e.message.author) typing.get('chat:' + e.chat)?.stopped(e.message.author.id);
+
     const entry = shown.get('chat:' + e.chat);
     if (!entry) {
       reload();

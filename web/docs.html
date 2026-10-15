@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <title>Мои Документы | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/docs-page.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Документы</span></div>
+      <div class="page-body">
+        <div class="tabs">
+          <a class="active" href="/docs">Все</a>
+          <a class="tabs-side" id="upload">Загрузить документ</a>
+        </div>
+        <div class="error" id="error" hidden></div>
+        <p class="hint" id="summary" hidden></p>
+        <div class="doc-list" id="docs"></div>
+        <p class="hint" id="empty" hidden>Здесь нет документов.</p>
+        <a class="wall-more" id="more" hidden>Показать ещё</a>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>

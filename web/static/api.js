@@ -196,9 +196,9 @@ export const api = {
   // Writes on the wall of nickname: someone else's or your own.
   // nsfw marks the post as adult ("Содержит NSFW-контент").
   // poll: the poll the post asks ({ title, options, anonymous, multiple,
-  // locked, days }), null for none.
-  createPost: (nickname, text, photos = [], nsfw = false, poll = null) =>
-    authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos, nsfw, ...(poll && { poll }) }),
+  // locked, days }), null for none. documents are IDs of your documents.
+  createPost: (nickname, text, photos = [], nsfw = false, poll = null, documents = []) =>
+    authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/posts`, { text, photos, nsfw, documents, ...(poll && { poll }) }),
   // VK's "Таймер": a post kept to come out at publishAt (ISO) on your own
   // wall, or, as postponeClubPost, speaking for a club you run.
   postpone: (text, photos, nsfw, publishAt) => authorized('POST', '/api/v1/me/postponed', { text, photos, nsfw, publishAt }),
@@ -214,6 +214,14 @@ export const api = {
   deletePostponed: (id) => authorized('DELETE', `/api/v1/postponed/${encodeURIComponent(id)}`),
   // Uploads a photo for a post; the post refers to it by ID.
   uploadPhoto: (file) => authorized('POST', '/api/v1/me/photos', file),
+  // "Мои Документы": a file up to 10 MB, named by its file name; posts
+  // and messages attach it by ID.
+  documents(cursor = '') {
+    return authorized('GET', withQuery('/api/v1/me/documents', cursor ? 'cursor=' + encodeURIComponent(cursor) : ''));
+  },
+  uploadDocument: (file) => authorized('POST', '/api/v1/me/documents?name=' + encodeURIComponent(file.name), file),
+  renameDocument: (id, name) => authorized('PATCH', `/api/v1/documents/${encodeURIComponent(id)}`, { name }),
+  deleteDocument: (id) => authorized('DELETE', `/api/v1/documents/${encodeURIComponent(id)}`),
   // Shares a post on your wall, with a comment that may be empty.
   // to is { club, fromClub, signed } to share it in a community ("в группу").
   // to: the community and how to sign, and the photos added to the words.
@@ -314,8 +322,8 @@ export const api = {
   // plain words are refused. post shares a post into the dialog
   // ("Поделиться" "в переписку"), albumPhoto a photo of an album; forward
   // carries messages of your dialogs and chats on ("Переслать").
-  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '' } = {}) =>
-    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto }),
+  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '', documents = [] } = {}) =>
+    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto, documents }),
   // A sticker is a message by itself, not sealed: it says nothing.
   sendSticker: (nickname, sticker) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sticker }),
   // Chats of several people ("беседы"): members are nicknames.
@@ -337,10 +345,11 @@ export const api = {
   },
   // As a message of a dialog, it may share a post or a photo of an album
   // and carry messages on.
-  sendChatMessage: (id, text, photos = [], post = '', forward = [], albumPhoto = '') =>
-    authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos, post, forward, albumPhoto }),
+  sendChatMessage: (id, text, photos = [], post = '', forward = [], albumPhoto = '', documents = []) =>
+    authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos, post, forward, albumPhoto, documents }),
   sendChatSticker: (id, sticker) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { sticker }),
   markChatRead: (id, upTo) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/read`, { upTo }),
+  chatTyping: (id) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/typing`),
   // A message of a chat whole; your own is edited and taken back within
   // a day.
   chatMessage: (id) => authorized('GET', `/api/v1/chat-messages/${encodeURIComponent(id)}`),
@@ -350,6 +359,7 @@ export const api = {
     authorized('PATCH', `/api/v1/chat-messages/${encodeURIComponent(id)}`, { text, baseText: base, addPhotos: add, removePhotos: remove }),
   deleteChatMessage: (id) => authorized('DELETE', `/api/v1/chat-messages/${encodeURIComponent(id)}`),
   markDialogRead: (nickname, upTo) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/read`, { upTo }),
+  dialogTyping: (nickname) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/typing`),
   // Your own message, from both sides, within a day of sending: it stays
   // in the dialog as "Сообщение удалено"; forMe
   // deletes any message of your dialog for you alone ("Удалить у себя").
@@ -458,8 +468,8 @@ export const api = {
     withQuery(`/api/v1/clubs/${encodeURIComponent(ref)}/posts/archive`, year ? 'year=' + year : '')),
   // fromClub: the post speaks for the club ("От имени сообщества"),
   // signed: naming you under it ("Подпись автора").
-  createClubPost: (ref, text, photos = [], { fromClub = false, signed = false, nsfw = false, poll = null } = {}) =>
-    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub, signed, nsfw, ...(poll && { poll }) }),
+  createClubPost: (ref, text, photos = [], { fromClub = false, signed = false, nsfw = false, poll = null, documents = [] } = {}) =>
+    authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/posts`, { text, photos, fromClub, signed, nsfw, documents, ...(poll && { poll }) }),
   // "Предложка": a post suggested for the admins of a club to publish.
   suggestClubPost: (ref, text, photos = []) => authorized('POST', `/api/v1/clubs/${encodeURIComponent(ref)}/suggestions`, { text, photos }),
   // mine: only yours ("Предложенные вами записи"); all of them for the admins.

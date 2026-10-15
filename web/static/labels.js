@@ -852,6 +852,50 @@ export function giftsCount(n) {
   return n === 0 ? 'Нет подарков' : `${n} ${plural(n, ['подарок', 'подарка', 'подарков'])}`;
 }
 
+// Documents ("Мои Документы" openvk). DOCUMENT_FORMATS are the formats
+// openvk takes, the end of the file name; a document is up to 10 MB, and
+// a post or a message attaches up to 10.
+export const DOCUMENT_FORMATS = [
+  'jpg', 'jpeg', 'png', 'gif', 'webp', 'psd', 'aep', 'docx', 'doc', 'odt', 'txt', 'md', 'pptx', 'ppt',
+  'xls', 'xlsx', 'pdf', 'djvu', 'fb2', 'ps', 'apk', 'zip', '7z', 'mp4', 'avi', 'mp3', 'flac',
+];
+export const MAX_DOCUMENT_BYTES = 10 << 20;
+export const MAX_DOCUMENTS = 10;
+
+// documentFormat is the format of a file name, as the server reads it:
+// what follows the last dot, in lower case; '' for none.
+export function documentFormat(fileName) {
+  const dot = fileName.lastIndexOf('.');
+
+  return dot < 0 ? '' : fileName.slice(dot + 1).toLowerCase();
+}
+
+// documentsCount is openvk's "3 документа"; haveDocuments heads "Мои
+// Документы", "У Вас 3 документа".
+export function documentsCount(n) {
+  return `${n} ${plural(n, ['документ', 'документа', 'документов'])}`;
+}
+
+export function haveDocuments(n) {
+  return 'У Вас ' + documentsCount(n);
+}
+
+// fileSize is openvk's readable_filesize: "512 Б", "1,5 КБ", "10 МБ".
+export function fileSize(bytes) {
+  const units = ['Б', 'КБ', 'МБ', 'ГБ'];
+  let n = bytes;
+  let unit = 0;
+
+  while (n >= 1024 && unit < units.length - 1) {
+    n /= 1024;
+    unit++;
+  }
+
+  const shown = unit === 0 || n >= 10 ? String(Math.round(n)) : String(Math.round(n * 10) / 10).replace('.', ',');
+
+  return `${shown} ${units[unit]}`;
+}
+
 // notesCount is openvk's "notes" of the block on a page: "3 заметки";
 // foundNotes heads the list of notes, "Найдено 3 заметки".
 export function notesCount(n) {
@@ -1192,6 +1236,15 @@ const errorTexts = {
   'invalid sticker': 'Такого стикера нет.',
   'you do not have this sticker': 'Набор с этим стикером не добавлен.',
   'a sticker goes alone': 'Стикер отправляется отдельным сообщением.',
+  'document not found': 'Документ не найден.',
+  'too many documents': 'Можно прикрепить не больше 10 документов.',
+  'document is larger than 10 MB': 'Файл слишком большой: не больше 10 МБ.',
+  'document is empty': 'Файл пустой.',
+  'this file format is not allowed': 'Формат файла не разрешён.',
+  'document name is empty': 'Укажите название документа.',
+  'document name is too long': 'Название слишком длинное: не больше 128 символов.',
+  'only the owner can change the document': 'Это не ваш документ.',
+  'the documents of a post cannot be changed': 'Документы записи нельзя изменить.',
   'unknown sticker pack': 'Такого набора стикеров нет.',
   'voucher is not valid': 'Ваучер недействительный. Возможно, вы ввели неверный серийный номер, уже использовали данный ваучер или же он просто истёк.',
   'you cannot transfer votes to yourself': 'Нельзя передать голоса самому себе.',
@@ -1376,6 +1429,7 @@ export function messagePreview(m) {
   if (m.text) return plainMentions(m.text);
   if (m.photos?.length || m.albumPhoto) return 'Фотография';
   if (m.post) return 'Запись';
+  if (m.documentCount || m.documents?.length) return 'Документ';
   if (m.forwardedCount) return forwardedCount(m.forwardedCount);
 
   return '';
@@ -1516,4 +1570,21 @@ export function ignoreLabel(kind, ignored) {
   const whom = { user: 'пользователя', club: 'группу', event: 'встречу' }[kind];
 
   return (ignored ? 'Не игнорировать ' : 'Игнорировать ') + whom;
+}
+
+// typingText is VK's "печатает..." under a dialog or a chat: who of users
+// (by first name) is writing now; '' for nobody.
+export function typingText(users) {
+  const names = users.map((u) => u.name || u.nickname);
+
+  switch (names.length) {
+    case 0:
+      return '';
+    case 1:
+      return `${names[0]} печатает...`;
+    case 2:
+      return `${names[0]} и ${names[1]} печатают...`;
+    default:
+      return 'Несколько человек печатают...';
+  }
 }

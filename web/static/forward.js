@@ -10,13 +10,16 @@ import { el, fullName, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, sharedNode, sharedPhotoNode } from './posts.js';
 import { stickerNode } from './stickers.js';
+import { documentsNode } from './docs.js';
 
-// attachedNodes is what a message shows under its words: its photos, the
-// post or the photo of an album it shares, or the sticker it is.
+// attachedNodes is what a message shows under its words: its photos and
+// documents, the post or the photo of an album it shares, or the sticker
+// it is.
 export function attachedNodes(m) {
   return [
     m.sticker ? stickerNode(m.sticker) : null,
     photosNode(m.photos ?? []),
+    documentsNode(m.documents),
     m.repost ? sharedNode(m.repost, { canVote: true }) : null,
     m.sharedPhoto ? sharedPhotoNode(m.sharedPhoto) : null,
   ];
@@ -51,7 +54,7 @@ export function forwardedNode(m, textOf) {
 // nothing.
 export function takenBack(m) {
   return {
-    ...m, text: '', photos: [], post: '', sticker: '', repost: undefined, albumPhoto: '', sharedPhoto: undefined, forwarded: [], forwardedCount: 0,
+    ...m, text: '', photos: [], post: '', sticker: '', repost: undefined, albumPhoto: '', sharedPhoto: undefined, forwarded: [], forwardedCount: 0, documents: [], documentCount: 0,
     editedAt: null, deletableUntil: '', editableUntil: '', deleted: true,
   };
 }

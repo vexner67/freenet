@@ -568,9 +568,12 @@ a.like:hover svg { opacity: .7; }
 .dialog-message.unread { background: var(--back-e6e6e6); }
 .dialog-message img { width: 32px; height: 32px; object-fit: cover; border-radius: 3px; }
 .dialog-text { max-height: 40px; overflow: hidden; color: var(--text-404036); overflow-wrap: anywhere; }
+.dialog-text.dialog-typing { color: var(--text-808080); }
 
 .messenger { margin: -10px; border-bottom: 1px solid var(--line-c3cad2); }
 .messenger-messages { height: 420px; padding: 10px 20px; overflow-y: auto; }
+/* "Печатает...": a line of its own, empty when nobody types, so the form does not jump. */
+.messenger-typing { height: 14px; padding: 0 20px 3px 67px; color: var(--text-808080); line-height: 14px; }
 .im-message { display: flex; gap: 10px; margin-bottom: 3px; padding: 8px 10px; border-radius: 3px; }
 .im-message.unread { background: var(--back-ededed); }
 .im-message img { display: block; width: 37px; height: 37px; object-fit: cover; border-radius: 3px; }
@@ -1267,3 +1270,30 @@ a.poll-result-name { cursor: pointer; }
 .list-table { width: 100%; margin-bottom: 10px; border-collapse: collapse; }
 .list-table th { padding: 4px 6px; background: var(--back-e6e6e6); color: var(--text-555); font-weight: normal; text-align: left; vertical-align: bottom; }
 .list-table td { padding: 5px 6px; border-bottom: 1px solid var(--line-ececec); }
+
+/* Documents ("Мои Документы" openvk): a row with the format in a grey
+   box, the name and "date, size". */
+.doc-list { padding: 4px 0; }
+.doc-item { display: flex; align-items: center; gap: 10px; padding: 7px; border-bottom: 1px solid var(--line-eee); }
+.doc-item:last-child { border-bottom: none; }
+.doc-item:hover { background: var(--back-f7f7f7); }
+.doc-icon {
+  flex: none;
+  width: 50px;
+  padding: 3px 0;
+  background: var(--back-e6e6e6);
+  border-radius: 2px;
+  color: var(--text-626262);
+  font-weight: bold;
+  text-align: center;
+  text-transform: lowercase;
+}
+.doc-icon:hover { text-decoration: none; }
+.doc-content { flex: 1; min-width: 0; }
+.doc-name { display: block; overflow: hidden; color: var(--text-000); font-weight: bold; text-overflow: ellipsis; white-space: nowrap; }
+.doc-info { color: var(--text-777); }
+.doc-tools { display: flex; gap: 8px; }
+.doc-remove { font-size: 14px; color: var(--text-999); }
+.doc-picker { max-height: 360px; overflow-y: auto; }
+.doc-attached { margin-top: 6px; }
+.doc-attached .doc-item { padding: 4px; }

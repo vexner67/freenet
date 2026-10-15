@@ -6,6 +6,7 @@ import { wallCount } from './labels.js';
 import { $, clubRef, el, isMicroblog, showError, hideError, autosize } from './layout.js';
 import { postNode as renderPost } from './posts.js';
 import { initAttachments } from './attach.js';
+import { initDocuments } from './docs.js';
 import { initPollDraft } from './poll.js';
 import { initTimer, postponedNotice, showPostponedLink } from './postponed.js';
 
@@ -39,9 +40,11 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   // openvk.
   const fromClub = () => owner.wall !== 'open' || $('post-from-club').checked;
   const create = owner.club
-    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked, nsfw: $('post-nsfw').checked, poll: poll.value() })
-    : (text, photos) => api.createPost(owner.nickname, text, photos, $('post-nsfw').checked, poll.value());
+    ? (text, photos) => api.createClubPost(clubRef(owner), text, photos, { fromClub: fromClub(), signed: fromClub() && $('post-signed').checked, nsfw: $('post-nsfw').checked, poll: poll.value(), documents: documents.ids() })
+    : (text, photos) => api.createPost(owner.nickname, text, photos, $('post-nsfw').checked, poll.value(), documents.ids());
   let attachments;
+  // documents are those of "Мои Документы" attached to the post.
+  let documents;
   // poll is the poll attached to the post being written ("Опрос").
   let poll;
   // timer is VK's "Таймер": the post waits for its time.
@@ -146,6 +149,11 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       return;
     }
 
+    if ((timer?.active() || suggesting) && documents.count()) {
+      showError(error, suggesting ? 'К предложенной записи нельзя прикрепить документ.' : 'К отложенной записи нельзя прикрепить документ.');
+      return;
+    }
+
     const button = $('post-submit');
     button.disabled = true;
 
@@ -174,6 +182,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       autosize($('post-text'));
       $('post-text').blur();
       attachments.clear();
+      documents.clear();
       poll.clear();
       $('post-form').classList.remove('expanded');
       updateCount();
@@ -227,7 +236,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
 
     // The form stays open while it holds text, photos or a poll.
     const collapseIfEmpty = () => {
-      if (!text.value.trim() && attachments.count() === 0 && !poll.value() && !timer?.active() && document.activeElement !== text) {
+      if (!text.value.trim() && attachments.count() === 0 && documents.count() === 0 && !poll.value() && !timer?.active() && document.activeElement !== text) {
         form.classList.remove('expanded');
       }
     };
@@ -241,6 +250,16 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
         if (attachments?.count()) form.classList.add('expanded');
       },
     });
+
+    documents = initDocuments({
+      link: $('post-doc'),
+      list: $('post-documents'),
+      onChange: () => {
+        if (documents.count()) form.classList.add('expanded');
+      },
+    });
+    // A suggested post attaches no documents.
+    if (suggest) $('post-doc').hidden = true;
 
     poll = initPollDraft({
       link: $('post-poll'),
