@@ -15,6 +15,7 @@
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
+import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
@@ -268,7 +269,7 @@ function startEdit(m) {
   // An edit changes the words and the photos; the documents stay.
   documents.clear();
   $('doc').hidden = true;
-  if (m.sharedPhoto) $('attach').hidden = true;
+  if (m.sharedPhoto) $('attach').hidden = $('graffiti').hidden = true;
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
 }
@@ -602,7 +603,8 @@ async function setUpInput(canWrite) {
 
   $('my-avatar').src = avatarURL(me, 'small');
   $('peer-avatar').src = avatarURL(peer, 'small');
-  attachments = initAttachments({ link: $('attach'), input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
+  attachments = initAttachments({ link: $('attach'), also: [$('graffiti')], input: $('file'), list: $('photos'), error: $('error'), onChange: () => {} });
+  initGraffiti({ link: $('graffiti'), attachments });
   documents = initDocuments({ link: $('doc'), list: $('documents') });
   initStickers({ link: $('stickers-link'), panel: $('stickers'), error: $('error'), onPick: sendSticker });
   $('form').addEventListener('submit', send);

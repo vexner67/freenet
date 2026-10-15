@@ -330,6 +330,12 @@ export const api = {
   createChat: (title, members) => authorized('POST', '/api/v1/chats', { title, members }),
   chat: (id) => authorized('GET', `/api/v1/chats/${encodeURIComponent(id)}`),
   renameChat: (id, title) => authorized('PATCH', `/api/v1/chats/${encodeURIComponent(id)}`, { title }),
+  // One message is pinned above a chat at a time; anyone in it pins.
+  pinChatMessage: (id, messageId) => authorized('PUT', `/api/v1/chats/${encodeURIComponent(id)}/pin`, { messageId }),
+  unpinChatMessage: (id) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}/pin`),
+  // The photo of a chat, a square cut out by avatar.js.
+  uploadChatPhoto: (id, file) => authorized('PUT', `/api/v1/chats/${encodeURIComponent(id)}/photo`, file),
+  deleteChatPhoto: (id) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}/photo`),
   addChatMembers: (id, members) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/members`, { members }),
   removeChatMember: (id, nickname) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}/members/${encodeURIComponent(nickname)}`),
   leaveChat: (id) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}/membership`),

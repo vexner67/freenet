@@ -625,12 +625,21 @@ a.like:hover svg { opacity: .7; }
   border: 1px solid var(--line-c0cad5);
   font: 11px tahoma, verdana, arial, sans-serif;
 }
-.messenger-buttons { display: flex; align-items: center; gap: 10px; }
+.messenger-buttons { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 10px; }
+.messenger-buttons .attach-link { white-space: nowrap; }
 .messenger-box .attachments { margin: 0 0 6px; }
 /* Chats of several people: the line of what happened between the
    messages, and the people to tick in "Новая беседа". */
 .chat-bar a, .messenger-blocked a, .page-title .aside { cursor: pointer; }
 .chat-action { margin: 6px 0; color: var(--text-777); text-align: center; }
+/* The message pinned above a chat, as VK's: a line under the bar. */
+.chat-pinned { display: flex; align-items: center; gap: 8px; padding: 6px 20px; background: var(--back-f7f7f7); border-bottom: 1px solid var(--line-d6d6d6); }
+.chat-pinned-body { flex: 1; min-width: 0; overflow: hidden; white-space: nowrap; text-overflow: ellipsis; cursor: pointer; }
+.chat-pinned-head { display: block; color: var(--text-808080); }
+.chat-pinned-remove { color: var(--text-808080); font-size: 14px; cursor: pointer; }
+.chat-about-photo { display: block; width: 100px; height: 100px; margin: 0 auto 4px; object-fit: cover; border-radius: 3px; }
+.chat-about-links { margin-bottom: 8px; text-align: center; }
+.chat-about-links a { cursor: pointer; }
 .chat-action-date { margin-left: 8px; font-size: 9px; }
 .modal-box.chat-dialog { width: 440px; }
 .modal-body input[type="text"], .modal-body input[type="search"] { padding: 3px 4px; border: 1px solid var(--line-c0cad5); font: 11px tahoma, verdana, arial, sans-serif; }
@@ -758,6 +767,17 @@ label.chat-person { cursor: pointer; }
 /* openvk's "Загрузка новой фотографии" (avatar.js). */
 .modal-box.avatar-dialog { width: 487px; }
 .avatar-crop { display: block; margin: 4px auto; cursor: move; touch-action: none; }
+/* openvk's "Граффити": a white sheet and the tools under it. */
+.modal-box.graffiti-dialog { width: 600px; max-width: calc(100vw - 32px); }
+.graffiti-canvas { display: block; width: 100%; border: 1px solid var(--line-c0cad5); cursor: crosshair; touch-action: none; }
+.graffiti-tools { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; margin-top: 8px; }
+.graffiti-tools a { cursor: pointer; }
+.graffiti-tools label { display: flex; align-items: center; gap: 4px; }
+.graffiti-tools input[type="range"] { width: 80px; }
+.graffiti-colors { display: flex; align-items: center; gap: 3px; width: 100%; }
+.graffiti-swatch { width: 18px; height: 18px; border: 1px solid var(--line-c0cad5); cursor: pointer; }
+.graffiti-swatch.picked { outline: 2px solid var(--text-2b587a); outline-offset: 1px; }
+.graffiti-colors input[type="color"] { width: 26px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
 .avatar-turn { display: flex; justify-content: center; gap: 6px; }
 .modal-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; background: var(--back-f2f2f2); border-top: 1px solid var(--line-ddd); }
 

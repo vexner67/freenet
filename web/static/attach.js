@@ -10,8 +10,10 @@ const MAX_BYTES = 8 << 20;
 
 // initAttachments wires the link, the hidden file input and the list of
 // thumbnails; onChange runs whenever photos come or go. photos are those
-// attached already, as when a post is edited.
-export function initAttachments({ link, input, list, error, onChange, photos = [] }) {
+// attached already, as when a post is edited. also are other links that
+// attach photos, as "Граффити": they hide with link when there
+// is no room left.
+export function initAttachments({ link, input, list, error, onChange, photos = [], also = [] }) {
   // Entries keep the order the photos were picked in; an entry has its
   // photo once the upload is done.
   let entries = photos.map((photo) => ({ photo }));
@@ -26,7 +28,7 @@ export function initAttachments({ link, input, list, error, onChange, photos = [
       entry.photo && el('a', { className: 'attachment-remove', title: 'Не прикреплять', textContent: '×', onclick: () => remove(entry) }),
     )));
     list.hidden = entries.length === 0;
-    link.hidden = entries.length >= MAX_PHOTOS;
+    for (const l of [link, ...also]) l.hidden = entries.length >= MAX_PHOTOS;
     onChange();
   }
 
@@ -79,6 +81,24 @@ export function initAttachments({ link, input, list, error, onChange, photos = [
     clear() {
       entries = [];
       render();
+    },
+    // add uploads a picture made on the page, as a drawing, and attaches
+    // it; it fails with the error of the upload, which attaches nothing.
+    async add(file) {
+      if (entries.length >= MAX_PHOTOS) throw new Error(`К записи можно прикрепить не больше ${MAX_PHOTOS} фотографий.`);
+
+      const entry = { photo: null };
+      entries.push(entry);
+      render();
+
+      try {
+        entry.photo = await api.uploadPhoto(file);
+      } catch (e) {
+        entries = entries.filter((x) => x !== entry);
+        throw e;
+      } finally {
+        render();
+      }
     },
     // set puts photos attached already in place of what is there, as
     // when a message is edited.

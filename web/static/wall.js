@@ -6,6 +6,7 @@ import { wallCount } from './labels.js';
 import { $, clubRef, el, isMicroblog, showError, hideError, autosize } from './layout.js';
 import { postNode as renderPost } from './posts.js';
 import { initAttachments } from './attach.js';
+import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
 import { initPollDraft } from './poll.js';
 import { initTimer, postponedNotice, showPostponedLink } from './postponed.js';
@@ -243,6 +244,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
 
     attachments = initAttachments({
       link: $('post-attach'),
+      also: [$('post-graffiti')],
       input: $('post-file'),
       list: $('post-photos'),
       error,
@@ -250,6 +252,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
         if (attachments?.count()) form.classList.add('expanded');
       },
     });
+    initGraffiti({ link: $('post-graffiti'), attachments });
 
     documents = initDocuments({
       link: $('post-doc'),

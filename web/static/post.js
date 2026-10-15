@@ -3,6 +3,7 @@
 
 import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
+import { initGraffiti } from './graffiti.js';
 import { commentNode } from './comments.js';
 import { genitiveName, replyMention } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
@@ -188,11 +189,13 @@ function initComments(post, me, moderates) {
 
     attachments = initAttachments({
       link: $('comment-attach'),
+      also: [$('comment-graffiti')],
       input: $('comment-file'),
       list: $('comment-photos'),
       error,
       onChange: () => {},
     });
+    initGraffiti({ link: $('comment-graffiti'), attachments });
 
     $('comment-from-club-label').hidden = !speaksForClub;
     form.hidden = false;

@@ -17,7 +17,7 @@ import { openMessages } from './e2ee.js';
 import { onEvent } from './events.js';
 import { openNewChat, chatPath } from './chats.js';
 import { chatPreview, chatTitle, formatPostDate, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
-import { $, avatarURL, el, fullName, renderChrome, showError, hideError } from './layout.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, renderChrome, showError, hideError } from './layout.js';
 import { typingLine } from './typing.js';
 
 const PREVIEW = 120;
@@ -62,7 +62,7 @@ function chatNode(d) {
   const m = d.chat.lastMessage;
 
   return el('a', { className: 'dialog', href: chatPath(d.chat.id) },
-    el('img', { className: 'dialog-avatar', src: '/static/chat.svg', alt: '' }),
+    el('img', { className: 'dialog-avatar', src: chatPhotoURL(d.chat, 'small'), alt: '' }),
     el('div', { className: 'dialog-info' },
       el('b', { className: 'dialog-name', textContent: chatTitle(d.chat) }),
       el('div', { className: 'dialog-date', textContent: formatPostDate(m?.createdAt ?? d.chat.createdAt) }),
@@ -241,7 +241,7 @@ function foundNode({ peer, message, chat, chatMessage }) {
   const parts = foundParts(foundSnippet(said.text, query, PREVIEW), query);
 
   return el('a', { className: 'dialog', href },
-    el('img', { className: 'dialog-avatar', src: chat ? '/static/chat.svg' : avatarURL(peer, 'small'), alt: '' }),
+    el('img', { className: 'dialog-avatar', src: chat ? chatPhotoURL(chat, 'small') : avatarURL(peer, 'small'), alt: '' }),
     el('div', { className: 'dialog-info' },
       el('b', { className: 'dialog-name', textContent: chat ? chatTitle(chat) : fullName(peer) }),
       el('div', { className: 'dialog-date', textContent: formatPostDate(m.createdAt) }),

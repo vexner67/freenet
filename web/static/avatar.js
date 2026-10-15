@@ -26,8 +26,8 @@ const HANDLE = 10;
 
 // openAvatarDialog asks for the photo and calls upload(blob, onWall) with
 // the chosen square; it closes once upload resolves and shows its error
-// otherwise.
-export function openAvatarDialog({ club = false, upload }) {
+// otherwise. The photo of a chat has no wall to post it on.
+export function openAvatarDialog({ club = false, chat = false, upload }) {
   const modal = openModal('Загрузка новой фотографии');
   modal.box.classList.add('avatar-dialog');
 
@@ -35,9 +35,7 @@ export function openAvatarDialog({ club = false, upload }) {
   const error = el('p', { className: 'error', hidden: true });
 
   modal.body.append(
-    el('p', { textContent: club
-      ? 'Хорошее фото сделает Ваше сообщество более узнаваемым.'
-      : 'Друзьям будет проще узнать Вас, если вы загрузите свою настоящую фотографию.' }),
+    el('p', { textContent: intro(club, chat) }),
     el('p', { textContent: 'Вы можете загрузить изображение в формате JPG, GIF, PNG или WebP.' }),
     el('p', { className: 'center' }, button('Обзор', () => file.click()), file),
     el('p', { className: 'hint', textContent: 'Если возникают проблемы с загрузкой, попробуйте выбрать фотографию меньшего размера.' }),
@@ -56,7 +54,7 @@ export function openAvatarDialog({ club = false, upload }) {
     }
 
     try {
-      showCropper(modal, await loadImage(picked), { club, upload });
+      showCropper(modal, await loadImage(picked), { club, chat, upload });
     } catch {
       showError(error, 'Не удалось открыть изображение.');
     }
@@ -97,7 +95,23 @@ function upright(img, quarters) {
   return canvas;
 }
 
-function showCropper(modal, img, { club, upload }) {
+function intro(club, chat) {
+  if (chat) return 'Фотография поможет участникам быстрее найти беседу в списке.';
+
+  return club
+    ? 'Хорошее фото сделает Ваше сообщество более узнаваемым.'
+    : 'Друзьям будет проще узнать Вас, если вы загрузите свою настоящую фотографию.';
+}
+
+function shownWhere(club, chat) {
+  if (chat) return 'Выбранная область будет показываться в беседе и в списке диалогов.';
+
+  return club
+    ? 'Выбранная область будет показываться на странице сообщества.'
+    : 'Выбранная область будет показываться на вашей странице.';
+}
+
+function showCropper(modal, img, { club, chat, upload }) {
   let quarters = 0;
   let picture = upright(img, quarters);
   let square = cropSquare(picture.width, picture.height);
@@ -178,7 +192,7 @@ function showCropper(modal, img, { club, upload }) {
     sendButton.disabled = true;
     try {
       const blob = await new Promise((resolve) => out.toBlob(resolve, 'image/jpeg', 0.92));
-      await upload(blob, onWall.checked);
+      await upload(blob, !chat && onWall.checked);
       modal.close();
     } catch (e) {
       showError(error, e);
@@ -187,15 +201,13 @@ function showCropper(modal, img, { club, upload }) {
   }
 
   modal.body.replaceChildren(
-    el('p', { textContent: club
-      ? 'Выбранная область будет показываться на странице сообщества.'
-      : 'Выбранная область будет показываться на вашей странице.' }),
+    el('p', { textContent: shownWhere(club, chat) }),
     el('p', { textContent: 'Если изображение ориентировано неправильно, фотографию можно повернуть.' }),
     view,
     el('div', { className: 'avatar-turn' },
       button('Повернуть влево', () => turn(-1), { secondary: true }),
       button('Повернуть вправо', () => turn(1), { secondary: true })),
-    el('label', { className: 'modal-option' }, onWall, 'Опубликовать запись на стене'),
+    !chat && el('label', { className: 'modal-option' }, onWall, 'Опубликовать запись на стене'),
     error,
   );
 
