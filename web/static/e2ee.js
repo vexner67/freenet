@@ -10,6 +10,7 @@
 // Messages of chats are not sealed.
 
 import { api } from './api.js';
+import { quoteSnippet } from './labels.js';
 
 const KEYS = 'freenet.keys';
 const PEERS = 'freenet.peerkeys';
@@ -296,7 +297,8 @@ async function derive(own, peerPublic) {
 
 // seal is what a message from userID to the owner of peerKey (base64)
 // says, sealed, base64: payload is { t: its words, f: the words of the
-// messages it carries on, in the order of all of them }.
+// messages it carries on, in the order of all of them, r: the beginning
+// of the message it answers, only in an answer }.
 export async function seal(userID, peerKey, payload) {
   const own = mine(userID).keys[0];
   if (!own) throw 'На этом устройстве нет ключа шифрования сообщений.';
@@ -313,7 +315,7 @@ export async function seal(userID, peerKey, payload) {
   return toBase64(concat(header, new Uint8Array(sealed)));
 }
 
-// open is what a sealed message of a dialog of userID says ({ t, f }), or
+// open is what a sealed message of a dialog of userID says ({ t, f, r }), or
 // null when none of the keys kept here opens it.
 export async function open(userID, sealedText) {
   try {
@@ -339,7 +341,11 @@ export async function open(userID, sealedText) {
       );
       const payload = JSON.parse(decoder.decode(plain));
 
-      return { t: String(payload.t ?? ''), f: Array.isArray(payload.f) ? payload.f.map((x) => String(x ?? '')) : [] };
+      return {
+        t: String(payload.t ?? ''),
+        f: Array.isArray(payload.f) ? payload.f.map((x) => String(x ?? '')) : [],
+        r: String(payload.r ?? ''),
+      };
     }
   } catch {
     // A message that does not open says nothing readable.
@@ -351,16 +357,18 @@ export async function open(userID, sealedText) {
 // openMessages puts into messages of dialogs of userID what they say:
 // text, and the text of each message carried on (by its index). A
 // message none of the keys here opens is unreadable, saying nothing;
-// words keeps what it said, for an edit to seal again.
+// words keeps what it said, for an edit to seal again, and quoted the
+// words of the message it answers, as its sender saw them.
 export async function openMessages(userID, messages) {
   await Promise.all(messages.map(async (m) => {
     if (!m || m.text !== undefined) return;
 
-    const said = m.sealed ? await open(userID, m.sealed) : { t: '', f: [] };
+    const said = m.sealed ? await open(userID, m.sealed) : { t: '', f: [], r: '' };
 
     m.unreadable = !said;
     m.text = said?.t ?? '';
     m.words = said?.f ?? [];
+    m.quoted = said?.r ?? '';
     for (const f of m.forwarded ?? []) f.text = m.words[f.index] ?? '';
   }));
 
@@ -413,7 +421,7 @@ async function withKeys(userID, nickname, payload, write) {
   for (let attempt = 0; ; attempt++) {
     await ready(userID, attempt > 0);
 
-    const says = payload.t !== '' || payload.f.some(Boolean);
+    const says = payload.t !== '' || payload.f.some(Boolean) || Boolean(payload.r);
     const sealed = says ? await seal(userID, await peerKey(nickname), payload) : null;
 
     try {
@@ -425,12 +433,15 @@ async function withKeys(userID, nickname, payload, write) {
 }
 
 // sendSealed writes text from userID to nickname, with forward carried on
-// (their words sealed with it) and photos, a post or a photo of an album.
-export async function sendSealed(userID, nickname, text, { forward = [], photos = [], post = '', albumPhoto = '', documents = [] } = {}) {
+// (their words sealed with it) and photos, a post or a photo of an album;
+// replyTo answers a message of the dialog, whose words the answer quotes
+// sealed (the server cannot).
+export async function sendSealed(userID, nickname, text, { forward = [], photos = [], post = '', albumPhoto = '', documents = [], replyTo = null } = {}) {
   const payload = { t: text, f: await carriedWords(forward) };
+  if (replyTo) payload.r = quoteSnippet(replyTo.text ?? '');
 
   const m = await withKeys(userID, nickname, payload, (sealed) =>
-    api.sendMessage(nickname, { sealed, photos, post, albumPhoto, documents, forward: forward.map((f) => f.id) }));
+    api.sendMessage(nickname, { sealed, photos, post, albumPhoto, documents, forward: forward.map((f) => f.id), replyTo: replyTo?.id ?? '' }));
 
   return (await openMessages(userID, [m]))[0];
 }
@@ -440,6 +451,7 @@ export async function sendSealed(userID, nickname, text, { forward = [], photos 
 // so one made elsewhere meanwhile is not overwritten.
 export async function editSealed(userID, nickname, m, text, { add = [], remove = [] } = {}) {
   const payload = { t: text, f: m.words ?? [] };
+  if (m.quoted) payload.r = m.quoted;
 
   const edited = await withKeys(userID, nickname, payload, (sealed) =>
     api.editMessage(m.id, { sealed, base: m.sealed ?? '', add, remove }));

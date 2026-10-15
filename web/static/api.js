@@ -326,9 +326,15 @@ export const api = {
   // sealed is what the message says, sealed by e2ee.js (sendSealed):
   // plain words are refused. post shares a post into the dialog
   // ("Поделиться" "в переписку"), albumPhoto a photo of an album; forward
-  // carries messages of your dialogs and chats on ("Переслать").
-  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '', documents = [] } = {}) =>
-    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto, documents }),
+  // carries messages of your dialogs and chats on ("Переслать"); replyTo
+  // answers a message of the dialog ("Ответить").
+  sendMessage: (nickname, { sealed = null, photos = [], post = '', forward = [], albumPhoto = '', documents = [], replyTo = '' } = {}) =>
+    authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sealed, photos, post, forward, albumPhoto, documents, replyTo }),
+  // One reaction a person on a message of a dialog (heart, like, laugh,
+  // wow, sad, fire); '' takes yours away.
+  reactToMessage: (id, reaction) => (reaction
+    ? authorized('PUT', `/api/v1/messages/${encodeURIComponent(id)}/reaction`, { reaction })
+    : authorized('DELETE', `/api/v1/messages/${encodeURIComponent(id)}/reaction`)),
   // A sticker is a message by itself, not sealed: it says nothing.
   sendSticker: (nickname, sticker) => authorized('POST', `/api/v1/dialogs/${encodeURIComponent(nickname)}/messages`, { sticker }),
   // Chats of several people ("беседы"): members are nicknames.
@@ -356,8 +362,11 @@ export const api = {
   },
   // As a message of a dialog, it may share a post or a photo of an album
   // and carry messages on.
-  sendChatMessage: (id, text, photos = [], post = '', forward = [], albumPhoto = '', documents = []) =>
-    authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos, post, forward, albumPhoto, documents }),
+  sendChatMessage: (id, text, photos = [], post = '', forward = [], albumPhoto = '', documents = [], replyTo = '') =>
+    authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { text, photos, post, forward, albumPhoto, documents, replyTo }),
+  reactToChatMessage: (id, reaction) => (reaction
+    ? authorized('PUT', `/api/v1/chat-messages/${encodeURIComponent(id)}/reaction`, { reaction })
+    : authorized('DELETE', `/api/v1/chat-messages/${encodeURIComponent(id)}/reaction`)),
   sendChatSticker: (id, sticker) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/messages`, { sticker }),
   markChatRead: (id, upTo) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/read`, { upTo }),
   chatTyping: (id) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/typing`),
