@@ -285,6 +285,46 @@ func TestRepositories(t *testing.T) {
 			t.Fatalf("notifications after both are taken back = %d, want 0", got)
 		}
 	})
+	t.Run("invite", func(t *testing.T) {
+		newcomer := uuid.New()
+		e := notification.Event{Kind: notification.KindInvite, RecipientID: bob, ActorID: newcomer}
+
+		count := func() int {
+			t.Helper()
+
+			got, err := repo.List(ctx, service.Query{RecipientID: bob, Unread: true, Limit: 10})
+			if err != nil {
+				t.Fatal(err)
+			}
+
+			return len(got)
+		}
+
+		before := count()
+
+		// One notification per invited person, told twice or not.
+		for range 2 {
+			n, err := notification.New(e, time.Now())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err = repo.Save(ctx, n); err != nil {
+				t.Fatalf("Save: %v", err)
+			}
+		}
+
+		if got := count() - before; got != 1 {
+			t.Fatalf("notifications about one invitation = %d, want 1", got)
+		}
+
+		if err := repo.Delete(ctx, e); err != nil {
+			t.Fatal(err)
+		}
+
+		if got := count() - before; got != 0 {
+			t.Fatalf("notifications after it is taken back = %d, want 0", got)
+		}
+	})
 	t.Run("accepted post", func(t *testing.T) {
 		published, club := uuid.New(), uuid.New()
 		e := notification.Event{Kind: notification.KindPostAccepted, RecipientID: bob, ActorID: club, PostID: published}

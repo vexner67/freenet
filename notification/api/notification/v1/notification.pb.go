@@ -78,6 +78,9 @@ const (
 	// The actor transferred votes ("Перевод голосов") to the recipient;
 	// post_id is the transfer, which the user service names.
 	Kind_KIND_VOTES Kind = 22
+	// The actor signed up by the recipient's invitation link ("Пригласить"
+	// of openvk) and follows the recipient now.
+	Kind_KIND_INVITE Kind = 23
 )
 
 // Enum value maps for Kind.
@@ -106,6 +109,7 @@ var (
 		20: "KIND_NOTE_COMMENT",
 		21: "KIND_GIFT",
 		22: "KIND_VOTES",
+		23: "KIND_INVITE",
 	}
 	Kind_value = map[string]int32{
 		"KIND_UNSPECIFIED":        0,
@@ -131,6 +135,7 @@ var (
 		"KIND_NOTE_COMMENT":       20,
 		"KIND_GIFT":               21,
 		"KIND_VOTES":              22,
+		"KIND_INVITE":             23,
 	}
 )
 
@@ -267,7 +272,7 @@ func (Change) EnumDescriptor() ([]byte, []int) {
 	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{2}
 }
 
-// Event: post_id is set for all but follows, appointments and reminders
+// Event: post_id is set for all but follows, invitations, appointments and reminders
 // (of a gift it is the sent gift, of votes the transfer),
 // comment_id for comments, replies, comment likes, messages of topics
 // and mentions in comments and topics.
@@ -1304,7 +1309,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\rrecipient_ids\x18\x03 \x03(\tR\frecipientIds\x12\x17\n" +
 	"\achat_id\x18\x04 \x01(\tR\x06chatId\x12\x1d\n" +
 	"\n" +
-	"chat_title\x18\x05 \x01(\tR\tchatTitle*\xfa\x03\n" +
+	"chat_title\x18\x05 \x01(\tR\tchatTitle*\x8b\x04\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -1330,7 +1335,8 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x11KIND_NOTE_COMMENT\x10\x14\x12\r\n" +
 	"\tKIND_GIFT\x10\x15\x12\x0e\n" +
 	"\n" +
-	"KIND_VOTES\x10\x16*;\n" +
+	"KIND_VOTES\x10\x16\x12\x0f\n" +
+	"\vKIND_INVITE\x10\x17*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

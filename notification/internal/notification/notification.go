@@ -76,6 +76,9 @@ const (
 	// KindVotes: the actor transferred votes to the recipient; PostID
 	// names the transfer.
 	KindVotes Kind = "votes"
+	// KindInvite: the actor signed up by the recipient's invitation link
+	// and follows the recipient now.
+	KindInvite Kind = "invite"
 )
 
 var (
@@ -88,7 +91,7 @@ var (
 )
 
 // Event is what happened, to whom and by whom. PostID is set for all but
-// follows and appointments (it is the photo or the topic for theirs),
+// follows, invitations and appointments (it is the photo or the topic for theirs),
 // CommentID for comments, replies, comment likes, messages of topics and
 // their likes, comments of photos and mentions in comments and topics;
 // unused IDs are uuid.Nil.
@@ -125,7 +128,7 @@ func (e Event) Validate() error {
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
 		KindPhotoComment, KindTopicMessageLike, KindPhotoMention, KindNoteComment:
 		ok = hasPost && hasComment
-	case KindFollow, KindClubAdmin, KindEventReminder:
+	case KindFollow, KindClubAdmin, KindEventReminder, KindInvite:
 		ok = !hasPost && !hasComment
 	default:
 		return ErrUnknownKind
