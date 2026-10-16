@@ -260,6 +260,7 @@ const listPostsByAuthorQuery = `
 		nsfw,
 		polled,
 		document_ids,
+		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE author_id = $1

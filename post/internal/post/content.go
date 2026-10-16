@@ -53,6 +53,8 @@ type Content struct {
 	polled bool
 	// documents are files of "Мои Документы" the post attaches.
 	documents Documents
+	// link is the card of the page the text links to; zero for none.
+	link Link
 }
 
 func NewContent(text Text, photos Photos) (Content, error) {
@@ -78,6 +80,28 @@ func NewDocumented(text Text, photos Photos, documents Documents) (Content, erro
 func (c Content) WithDocuments(documents Documents) Content {
 	c.documents = documents
 	return c
+}
+
+// WithLink is c showing the card of the page its text links to; the
+// text says the link, so the card is never all of it.
+func (c Content) WithLink(link Link) Content {
+	c.link = link
+	return c
+}
+
+// Link is the card of the page the post links to, zero for none.
+func (c Content) Link() Link {
+	return c.link
+}
+
+// OwnPhotos are the photos of the post's author that go with the post:
+// those it shows and the picture of its card.
+func (c Content) OwnPhotos() Photos {
+	if c.link.photoID == uuid.Nil {
+		return c.photos
+	}
+
+	return append(append(Photos{}, c.photos...), c.link.photoID)
 }
 
 // Documents are the documents the post attaches.

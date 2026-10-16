@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"strings"
 	"time"
@@ -51,9 +52,10 @@ const savePostQuery = `
 		hashtags,
 		nsfw,
 		polled,
-		document_ids
+		document_ids,
+		link
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -94,7 +96,7 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 	}
 
 	if content.RepostOf() == uuid.Nil {
-		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, append(args, p.NSFW(), content.Polled(), documentIDs(content.Documents()))...); err != nil {
+		if _, err := r.conn(ctx).Exec(ctx, savePostQuery, append(args, p.NSFW(), content.Polled(), documentIDs(content.Documents()), linkToDB(content.Link()))...); err != nil {
 			return errs.Wrap("r.conn.Exec", err)
 		}
 
@@ -137,6 +139,7 @@ const getPostQuery = `
 		nsfw,
 		polled,
 		document_ids,
+		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = $1
@@ -177,6 +180,7 @@ const getPostsQuery = `
 		nsfw,
 		polled,
 		document_ids,
+		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id = ANY($1)
@@ -312,6 +316,7 @@ const getPinnedPostQuery = `
 		nsfw,
 		polled,
 		document_ids,
+		link,
 		true AS pinned
 	FROM posts
 	WHERE id = (SELECT post_id FROM pinned_posts WHERE wall_id = $1)
@@ -352,6 +357,7 @@ const postsByWallSelect = `
 		nsfw,
 		polled,
 		document_ids,
+		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE wall_id = $1
@@ -469,6 +475,7 @@ const listFeedQuery = `
 		nsfw,
 		polled,
 		document_ids,
+		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE (
@@ -522,6 +529,7 @@ const listGlobalFeedQuery = `
 		nsfw,
 		polled,
 		document_ids,
+		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id < $1
@@ -586,6 +594,7 @@ const listRepostsQuery = `
 		nsfw,
 		polled,
 		document_ids,
+		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE repost_of = $1
@@ -709,6 +718,7 @@ const (
 		nsfw,
 		polled,
 		document_ids,
+		link,
 		EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	FROM posts
 	WHERE id < $4
@@ -930,11 +940,12 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 		photo    *uuid.UUID
 		polled   bool
 		docs     []uuid.UUID
+		link     []byte
 	)
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
 		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested, &s.AvatarUpdate,
-		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &polled, &docs, &s.Pinned)
+		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &polled, &docs, &link, &s.Pinned)
 	if err != nil {
 		return nil, err
 	}
@@ -958,6 +969,13 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	}
 	if len(docs) > 0 {
 		s.Content = s.Content.WithDocuments(post.Documents(docs))
+	}
+	if link != nil {
+		card, err := linkFromDB(link)
+		if err != nil {
+			return nil, err
+		}
+		s.Content = s.Content.WithLink(card)
 	}
 	s.CreatedAt = s.CreatedAt.UTC()
 	if editedAt != nil {
@@ -998,6 +1016,7 @@ const deletePostsByUserQuery = `
 			nsfw,
 			polled,
 			document_ids,
+			link,
 			EXISTS (SELECT 1 FROM pinned_posts pp WHERE pp.post_id = posts.id) AS pinned
 	), uncounted AS (
 		UPDATE posts p
@@ -1034,6 +1053,7 @@ const deletePostsByUserQuery = `
 		nsfw,
 		polled,
 		document_ids,
+		link,
 		pinned
 	FROM deleted
 `
@@ -1054,4 +1074,39 @@ func nullID(id uuid.UUID) *uuid.UUID {
 	}
 
 	return &id
+}
+
+// linkRow is a card in the link column.
+type linkRow struct {
+	URL         string     `json:"url"`
+	Title       string     `json:"title"`
+	Description string     `json:"description,omitempty"`
+	Site        string     `json:"site,omitempty"`
+	PhotoID     *uuid.UUID `json:"photo_id,omitempty"`
+}
+
+// linkToDB is the link column of a card: NULL for none.
+func linkToDB(l post.Link) []byte {
+	if l.IsZero() {
+		return nil
+	}
+
+	// A struct of strings and an ID always marshals.
+	b, _ := json.Marshal(linkRow{URL: l.URL(), Title: l.Title(), Description: l.Description(), Site: l.Site(), PhotoID: nullID(l.PhotoID())})
+
+	return b
+}
+
+func linkFromDB(b []byte) (post.Link, error) {
+	var row linkRow
+	if err := json.Unmarshal(b, &row); err != nil {
+		return post.Link{}, errs.Wrap("json.Unmarshal", err)
+	}
+
+	d := post.LinkDraft{URL: row.URL, Title: row.Title, Description: row.Description, Site: row.Site}
+	if row.PhotoID != nil {
+		d.PhotoID = *row.PhotoID
+	}
+
+	return post.RestoreLink(d), nil
 }

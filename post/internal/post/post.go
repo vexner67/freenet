@@ -371,6 +371,9 @@ func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.
 		return nil, err
 	}
 
+	// The card stays: an edit changes the words and the photos.
+	content.link = p.content.link
+
 	edited := *p
 	edited.content = content
 	edited.editedAt = now.UTC().Truncate(time.Microsecond)
