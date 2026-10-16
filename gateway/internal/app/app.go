@@ -11,6 +11,7 @@ import (
 	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	"github.com/vexner67/freenet/gateway/internal/backend"
 	"github.com/vexner67/freenet/gateway/internal/config"
+	"github.com/vexner67/freenet/gateway/internal/preview"
 	"github.com/vexner67/freenet/gateway/internal/rest"
 	mediav1 "github.com/vexner67/freenet/media/api/media/v1"
 	messagev1 "github.com/vexner67/freenet/message/api/message/v1"
@@ -146,6 +147,7 @@ func (a *App) build(cfg config.Config) error {
 			Stories:       backend.NewStories(postv1.NewPostServiceClient(a.postConn)),
 			Votes:         backend.NewVotes(userv1.NewUserServiceClient(a.userConn)),
 			Faves:         backend.NewFaves(postv1.NewPostServiceClient(a.postConn)),
+			Previews:      previews(cfg.LinkPreviewTimeout),
 		},
 		a.logger,
 		reg,
@@ -241,4 +243,14 @@ func (a *App) Close() {
 			a.logger.Error("connection close", "service", name, "error", err)
 		}
 	}
+}
+
+// previews reads the cards of links, nil when they are off: a nil
+// interface, not a nil *preview.Reader in one.
+func previews(timeout time.Duration) rest.Previews {
+	if timeout == 0 {
+		return nil
+	}
+
+	return preview.New(timeout)
 }

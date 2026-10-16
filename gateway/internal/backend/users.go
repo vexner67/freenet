@@ -216,6 +216,14 @@ func (u *Users) Follow(ctx context.Context, accessToken, userID string) error {
 	return nil
 }
 
+func (u *Users) AcceptInvite(ctx context.Context, accessToken, userID string) error {
+	if _, err := u.api.AcceptInvite(withToken(ctx, accessToken), &userv1.AcceptInviteRequest{UserId: userID}); err != nil {
+		return errs.Wrap("u.api.AcceptInvite", fromStatus(err))
+	}
+
+	return nil
+}
+
 func (u *Users) Unfollow(ctx context.Context, accessToken, userID string) error {
 	if _, err := u.api.Unfollow(withToken(ctx, accessToken), &userv1.UnfollowRequest{UserId: userID}); err != nil {
 		return errs.Wrap("u.api.Unfollow", fromStatus(err))

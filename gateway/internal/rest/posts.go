@@ -75,6 +75,9 @@ type postResponse struct {
 	// Documents are the documents of its author it attaches, those that
 	// are still there.
 	Documents []documentJSON `json:"documents,omitempty"`
+	// Link is the card of the page the text links to, as it was when the
+	// post was written; null for none.
+	Link *linkJSON `json:"link"`
 	// EditedAt is null for a post never edited; its author may edit it
 	// until EditableUntil.
 	EditedAt      *string `json:"editedAt"`
@@ -153,6 +156,8 @@ type repostJSON struct {
 	// Poll is the poll the shared post asks, null for none.
 	Poll      *pollJSON      `json:"poll"`
 	Documents []documentJSON `json:"documents,omitempty"`
+	// Link is the card of the shared post, null for none.
+	Link *linkJSON `json:"link"`
 }
 
 type likeResponse struct {
@@ -264,7 +269,32 @@ func toPostResponse(p model.Post) postResponse {
 		AvatarUpdate:   p.AvatarUpdate,
 		Mine:           p.Mine,
 		Signer:         signerJSON(p),
+		Link:           toLinkJSON(p.Author.ID, p.Link),
 	}
+}
+
+// linkJSON is the card of a page: its picture is a photo of the post's
+// author, null for none.
+type linkJSON struct {
+	URL         string     `json:"url"`
+	Title       string     `json:"title"`
+	Description string     `json:"description"`
+	Site        string     `json:"site"`
+	Photo       *photoJSON `json:"photo"`
+}
+
+func toLinkJSON(authorID string, l *model.Link) *linkJSON {
+	if l == nil {
+		return nil
+	}
+
+	j := &linkJSON{URL: l.URL, Title: l.Title, Description: l.Description, Site: l.Site}
+	if l.PhotoID != "" {
+		photo := toPhotoJSON(authorID, l.PhotoID)
+		j.Photo = &photo
+	}
+
+	return j
 }
 
 // signerJSON is the author named under a signed post for a community; null
@@ -306,6 +336,7 @@ func toRepostJSON(p model.Post) *repostJSON {
 
 		AvatarUpdate: p.AvatarUpdate,
 		NSFW:         p.NSFW,
+		Link:         toLinkJSON(p.Author.ID, p.Link),
 	}
 }
 
@@ -745,12 +776,15 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 		return
 	}
 
+	link := a.linkCard(r, token, me.ID, req.Text)
+
 	p, err := a.posts.Create(r.Context(), token, model.NewPost{
 		WallID: wall.ID, Text: req.Text, PhotoIDs: req.Photos, NSFW: req.NSFW != nil && *req.NSFW, Mentions: mentions,
-		Poll: toNewPoll(req.Poll), DocumentIDs: req.Documents,
+		Poll: toNewPoll(req.Poll), DocumentIDs: req.Documents, Link: link,
 	})
 	if err != nil {
 		a.releasePhotos(r, token, req.Photos, err)
+		a.dropCard(r, me.ID, link)
 		a.writeError(w, r, err)
 		return
 	}

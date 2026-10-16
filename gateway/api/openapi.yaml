@@ -1067,6 +1067,8 @@ paths:
       summary: Write on your own wall
       description: |
         The profile must be filled in first (it gives the wall its address).
+        The first web address in the text gets a card (`link`), here and on
+        the walls of others and of communities.
         Text, photos or both; photos are IDs from `POST /api/v1/me/photos`
         and must be yours.
       security: [{ bearer: [] }]
@@ -5490,6 +5492,38 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/users/{nickname}/invitation:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    post:
+      summary: Accept the invitation of the user
+      description: |
+        "Пригласить" of openvk: you signed up by the user's invitation link
+        (`/?invite=<nickname>`), so you follow them, and they are notified
+        of the invitation (`invite`) instead of a follow. Once per page,
+        and only within a week of signing up; your profile must be filled
+        in first. Limited as follows are.
+      security: [{ bearer: [] }]
+      responses:
+        "200": { $ref: "#/components/responses/FollowStats" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: One of you blacklisted the other, or their page is deleted
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: "`an invitation is accepted already` or `only new pages accept invitations`"
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
   /api/v1/users/{nickname}/followers:
     get:
       summary: Who follows the user, newest follow first
@@ -6384,6 +6418,11 @@ components:
           oneOf:
             - $ref: "#/components/schemas/Poll"
             - type: "null"
+        link:
+          description: "The card of the first web address in the text of a new post, as the page told it then; null for none. Edits keep it"
+          oneOf:
+            - $ref: "#/components/schemas/LinkCard"
+            - type: "null"
         editedAt:
           description: When the author last edited the post; null if never ("ред.")
           oneOf:
@@ -6446,6 +6485,30 @@ components:
           description: "The poll the shared post asks, as Post's poll; in a message and in live events without `voted`"
           oneOf:
             - $ref: "#/components/schemas/Poll"
+            - type: "null"
+        link:
+          description: "The card of the shared post, as Post's link"
+          oneOf:
+            - $ref: "#/components/schemas/LinkCard"
+            - type: "null"
+
+    LinkCard:
+      type: object
+      description: |
+        What a page a post links to said of itself (Open Graph, else its
+        <title> and description) when the post was written. The gateway reads
+        the page itself, only at public addresses on ports 80 and 443, within
+        LINK_PREVIEW_TIMEOUT; a page that tells nothing makes no card.
+      required: [url, title, description, site, photo]
+      properties:
+        url: { type: string, description: "The address as the text says it" }
+        title: { type: string, description: "Up to 256 characters, one line" }
+        description: { type: string, description: "Up to 512 characters; may be empty" }
+        site: { type: string, description: "Its og:site_name, else the host" }
+        photo:
+          description: "Its picture, kept as a photo of the post's author; null for none"
+          oneOf:
+            - $ref: "#/components/schemas/Photo"
             - type: "null"
 
     Photo:
@@ -6539,8 +6602,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, event_reminder, note_comment, gift, votes]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; event_reminder: the actor, an event you are going to (surely or maybe), starts within a day — told once, and again if the event is moved; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, event_reminder, note_comment, gift, votes, invite]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; event_reminder: the actor, an event you are going to (surely or maybe), starts within a day — told once, and again if the event is moved; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; invite: the actor signed up by your invitation link and follows you"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:

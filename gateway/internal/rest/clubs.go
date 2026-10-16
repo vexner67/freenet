@@ -1185,7 +1185,10 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	link := a.linkCard(r, token, me.ID, req.Text)
+
 	p, err := a.posts.Create(r.Context(), token, model.NewPost{
+		Link:        link,
 		DocumentIDs: req.Documents,
 		WallID:      c.Club.ID,
 		Text:        req.Text,
@@ -1199,6 +1202,7 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		a.releasePhotos(r, token, req.Photos, err)
+		a.dropCard(r, me.ID, link)
 		a.writeError(w, r, err)
 		return
 	}
