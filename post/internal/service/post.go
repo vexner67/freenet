@@ -615,7 +615,7 @@ func (s *PostService) Delete(ctx context.Context, requesterID, postID uuid.UUID)
 			return errs.Wrap("s.forgetReposts", err)
 		}
 
-		if photos := p.Content().Photos(); len(photos) > 0 {
+		if photos := p.Content().OwnPhotos(); len(photos) > 0 {
 			return errs.Wrap("s.photos.Delete", s.photos.Delete(ctx, p.AuthorID(), photos))
 		}
 

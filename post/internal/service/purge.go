@@ -246,7 +246,7 @@ func (s *PurgeService) PurgeUser(ctx context.Context, userID uuid.UUID) error {
 
 			// Others' posts on the wall; the user's own photos media
 			// erases with the rest of the user.
-			if ids := p.Content().Photos(); len(ids) > 0 && p.AuthorID() != userID {
+			if ids := p.Content().OwnPhotos(); len(ids) > 0 && p.AuthorID() != userID {
 				if err = s.photos.Delete(ctx, p.AuthorID(), ids); err != nil {
 					return errs.Wrap("s.photos.Delete", err)
 				}

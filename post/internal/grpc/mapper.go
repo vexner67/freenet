@@ -23,13 +23,18 @@ func fromProtoContent(req *postv1.CreatePostRequest) (post.Content, *post.PollDr
 		return post.Content{}, nil, err
 	}
 
+	link, err := fromProtoLink(req.GetLink())
+	if err != nil {
+		return post.Content{}, nil, err
+	}
+
 	if req.GetPoll() != nil {
 		poll, err := fromProtoPollDraft(req.GetPoll())
 		if err != nil {
 			return post.Content{}, nil, status.Error(codes.InvalidArgument, err.Error())
 		}
 
-		return post.NewPolled(text, photos).WithDocuments(documents), &poll, nil
+		return post.NewPolled(text, photos).WithDocuments(documents).WithLink(link), &poll, nil
 	}
 
 	content, err := post.NewDocumented(text, photos, documents)
@@ -37,7 +42,40 @@ func fromProtoContent(req *postv1.CreatePostRequest) (post.Content, *post.PollDr
 		return post.Content{}, nil, status.Error(codes.InvalidArgument, err.Error())
 	}
 
-	return content, nil, nil
+	return content.WithLink(link), nil, nil
+}
+
+// fromProtoLink is the card of a new post; zero for none.
+func fromProtoLink(l *postv1.Link) (post.Link, error) {
+	if l == nil {
+		return post.Link{}, nil
+	}
+
+	d := post.LinkDraft{URL: l.GetUrl(), Title: l.GetTitle(), Description: l.GetDescription(), Site: l.GetSite()}
+
+	if l.GetPhotoId() != "" {
+		id, err := uuid.Parse(l.GetPhotoId())
+		if err != nil || id == uuid.Nil {
+			return post.Link{}, status.Error(codes.InvalidArgument, post.ErrInvalidLink.Error())
+		}
+		d.PhotoID = id
+	}
+
+	link, err := post.NewLink(d)
+	if err != nil {
+		return post.Link{}, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	return link, nil
+}
+
+// toProtoLink is the card of a post, nil for none.
+func toProtoLink(l post.Link) *postv1.Link {
+	if l.IsZero() {
+		return nil
+	}
+
+	return &postv1.Link{Url: l.URL(), Title: l.Title(), Description: l.Description(), Site: l.Site(), PhotoId: idString(l.PhotoID())}
 }
 
 func fromProtoPollDraft(d *postv1.PollDraft) (post.PollDraft, error) {
@@ -211,6 +249,7 @@ func toProtoPost(p *post.Post, liked bool, viewerID uuid.UUID) *postv1.Post {
 		Nsfw:           p.NSFW(),
 		Polled:         p.Content().Polled(),
 		DocumentIds:    idStrings(p.Content().Documents()),
+		Link:           toProtoLink(p.Content().Link()),
 	}
 
 	if !p.EditedAt().IsZero() {

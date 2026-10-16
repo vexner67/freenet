@@ -402,6 +402,23 @@ message Post {
   // Documents the post attaches, in the order shown; GetDocuments tells
   // what they are, and a deleted one is gone.
   repeated string document_ids = 25;
+  // The card of the page the text links to; unset for none.
+  Link link = 26;
+}
+
+// Link is the card of a page a post links to, as the page tells it.
+message Link {
+  // An http or https address, up to 2048 bytes.
+  string url = 1;
+  // One line, up to 256 characters; never empty.
+  string title = 2;
+  // One line, up to 512 characters.
+  string description = 3;
+  // The name of the site, one line, up to 128 characters.
+  string site = 4;
+  // The picture: a published photo of the post's author in media, which
+  // goes with the post; empty for none.
+  string photo_id = 5;
 }
 
 message Comment {
@@ -615,6 +632,10 @@ message CreatePostRequest {
   // Documents of the author, at most 10, as the caller has checked: with
   // them the text and the photos may be none.
   repeated string document_ids = 11;
+  // The card of the page the text links to, as the caller read it; its
+  // picture is a photo of the author the caller has published already.
+  // An edit keeps it.
+  Link link = 12;
 }
 
 // PollDraft is a poll as its author asks it.
