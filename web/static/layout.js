@@ -7,6 +7,7 @@ import { api } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
 import { errorText, foundParts, hashtagPath, isLongText, pushOfferText, pushStateTexts, setTimezone, textParts, unreadCountText } from './labels.js';
+import { acceptInvite } from './invite.js';
 import { nicknameLookup } from './nicknames.js';
 import { closePushes, endPushOffer, enablePush, forgetPushAccount, pushOffer, showUnread, syncPush } from './push.js';
 
@@ -42,8 +43,8 @@ if (typeof document !== 'undefined') {
 const knownNickname = nicknameLookup((nicknames) => api.knownNicknames(nicknames).then((r) => r.nicknames));
 
 // mentionNodes are text with the people it names as links to their pages,
-// openvk's "[id1|Анна]" and "@ann", and its tags ("#поход") as links to
-// the search of posts. A text says "@word" of anything: the
+// openvk's "[id1|Анна]" and "@ann", its tags ("#поход") as links to
+// the search of posts, and its web addresses as links to them. A text says "@word" of anything: the
 // link of a word that is nobody's nickname becomes plain text again once
 // the server says so, and stays if it cannot be asked. found is what a
 // search looked for: the words that say it are highlighted, as on openvk.
@@ -51,6 +52,7 @@ export function mentionNodes(text, found = '') {
   return textParts(text).flatMap((p) => {
     if (typeof p === 'string') return foundNodes(p, found);
     if (p.hashtag) return el('a', { href: hashtagPath(p.hashtag) }, ...foundNodes(p.text, found));
+    if (p.url) return externalLink(p.url, foundNodes(p.text, found));
 
     const link = el('a', { href: '/' + encodeURIComponent(p.nickname), textContent: p.text });
     knownNickname(p.nickname).then((known) => {
@@ -59,6 +61,12 @@ export function mentionNodes(text, found = '') {
 
     return link;
   });
+}
+
+// externalLink leads to an address of another site, in a new tab, without
+// telling it this page or vouching for it.
+export function externalLink(url, children) {
+  return el('a', { className: 'text-link', href: url, target: '_blank', rel: 'noopener noreferrer nofollow ugc', title: url }, ...children);
 }
 
 // foundNodes are text with what says query highlighted.
@@ -381,9 +389,12 @@ export function renderChrome(me) {
     links.replaceChildren(
       el('a', { href: profilePath(me), textContent: 'моя страница' }),
       el('a', { href: '/feed', textContent: 'новости' }),
+      el('a', { href: '/invite', textContent: 'пригласить', className: 'header-invite' }),
       el('a', { href: '/', textContent: 'выход', onclick: logout }),
     );
     applyInterface(me);
+    // The page was made by an invitation link: the inviter is followed.
+    acceptInvite(me).catch(() => {});
 
     // Live counters: the stream says them on connecting and on changes.
     onEvent('ready', applyCounters);

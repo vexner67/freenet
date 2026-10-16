@@ -269,6 +269,9 @@ export const api = {
 
   follow: (nickname) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/follow`),
   unfollow: (nickname) => authorized('DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/follow`),
+  // acceptInvite follows the one whose invitation link you signed up by;
+  // they hear of the invitation ("Пригласить" of openvk).
+  acceptInvite: (nickname) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/invitation`),
   // The blacklist ("Чёрный список"); blocking drops the follows both ways.
   block: (nickname) => authorized('PUT', `/api/v1/me/blacklist/${encodeURIComponent(nickname)}`),
   unblock: (nickname) => authorized('DELETE', `/api/v1/me/blacklist/${encodeURIComponent(nickname)}`),

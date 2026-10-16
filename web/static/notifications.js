@@ -161,6 +161,11 @@ function notificationText(n) {
     return [name, ` ${notificationVerb('gift', n.actor)} вам `, el('a', { href: '/gifts' }, el('b', { textContent: 'подарок' })), '.'];
   }
 
+  // Signed up by your link of "Пригласить" and follows you now.
+  if (n.type === 'invite') {
+    return [name, ` ${notificationVerb('invite', n.actor)} по вашему `, el('a', { href: '/invite' }, el('b', { textContent: 'приглашению' })), '.'];
+  }
+
   // openvk's "передал вам голоса"; the balance is in the settings.
   if (n.type === 'votes') {
     return [name, ` ${notificationVerb('votes', n.actor)} вам `, el('a', { href: '/settings?act=finance' }, el('b', { textContent: 'голоса' })), '.'];

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Пригласить | Freenet</title>
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#3e3e3e">
+  <link rel="stylesheet" href="/static/style.css">
+  <script src="/static/theme.js"></script>
+  <script type="module" src="/static/invite-page.js"></script>
+</head>
+<body>
+<div class="layout">
+  <div class="header">
+    <a class="logo" href="/"><span class="logo-mark">f</span>freenet</a>
+    <nav class="header-links" id="header-links"></nav>
+  </div>
+
+  <div class="columns">
+    <div class="sidebar">
+      <nav class="menu" id="menu"></nav>
+    </div>
+
+    <div class="page">
+      <div class="page-title"><span id="title">Пригласить</span></div>
+      <div class="page-body">
+        <div id="invite">
+          <p>Вы можете пригласить своих друзей или знакомых в сеть с помощью индивидуальной ссылки:</p>
+          <div class="invite-link">
+            <input type="text" id="invite-link" readonly aria-label="Ссылка-приглашение">
+            <button class="button" type="button" id="copy">Скопировать</button>
+          </div>
+          <div class="notice" id="copied" hidden>Ссылка скопирована.</div>
+          <p>Приложите эту ссылку к вашему сообщению. Человек зарегистрируется и сразу подпишется на вас, а вы получите уведомление.</p>
+        </div>
+        <p id="no-nickname" hidden>Чтобы приглашать друзей, <a href="/edit">заполните свою страницу</a>: ссылка называет её адрес.</p>
+      </div>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a href="/about">о сайте</a><a href="/terms">правила</a><a href="/help">помощь</a>
+    <p>Freenet © 2026</p>
+  </div>
+</div>
+</body>
+</html>
