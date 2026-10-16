@@ -25,6 +25,13 @@ type FollowRepository interface {
 	Counts(ctx context.Context, userID uuid.UUID) (followers, following int, err error)
 }
 
+// InviteRepository remembers who invited a page to the site.
+type InviteRepository interface {
+	// SetInviter names inviterID as who invited userID; user.ErrAlreadyInvited
+	// when someone is named already.
+	SetInviter(ctx context.Context, userID, inviterID uuid.UUID) error
+}
+
 // FollowListRepository lists the people on one side of a user's follows,
 // newest follow first. Cursors are follow IDs (UUIDv7).
 type FollowListRepository interface {
@@ -65,6 +72,7 @@ type FollowService struct {
 	followRepo FollowRepository
 	listRepo   FollowListRepository
 	blockRepo  BlockChecker
+	inviteRepo InviteRepository
 	tx         TxManager
 	notifier   Notifier
 	now        func() time.Time
@@ -76,23 +84,89 @@ type FollowDeps struct {
 	Follows  FollowRepository
 	Lists    FollowListRepository
 	Blocks   BlockChecker
+	Invites  InviteRepository
 	Tx       TxManager
 	Notifier Notifier
+	// Now is the clock; nil is time.Now.
+	Now func() time.Time
 }
 
 func NewFollowService(d FollowDeps) *FollowService {
+	if d.Now == nil {
+		d.Now = time.Now
+	}
+
 	return &FollowService{
 		userRepo:   d.Users,
 		followRepo: d.Follows,
 		listRepo:   d.Lists,
 		blockRepo:  d.Blocks,
+		inviteRepo: d.Invites,
 		tx:         d.Tx,
 		notifier:   d.Notifier,
-		now:        time.Now,
+		now:        d.Now,
 	}
 }
 
 func (s *FollowService) Follow(ctx context.Context, followerID, followeeID uuid.UUID) error {
+	if err := s.checkFollow(ctx, followerID, followeeID); err != nil {
+		return err
+	}
+
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.followRepo.Follow(ctx, followerID, followeeID); err != nil {
+			return errs.Wrap("s.followRepo.Follow", err)
+		}
+
+		// Following twice notifies once: the notification service keeps
+		// one notification per follow.
+		return errs.Wrap("s.notifier.Followed", s.notifier.Followed(ctx, followerID, followeeID))
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return nil
+}
+
+// AcceptInvite is a new page following the one whose invitation link it
+// signed up by, openvk's "Пригласить": once, while the page is new, and
+// as a follow would be; the inviter hears of the invitation, not of a
+// follow.
+func (s *FollowService) AcceptInvite(ctx context.Context, inviteeID, inviterID uuid.UUID) error {
+	invitee, err := s.userRepo.GetByID(ctx, inviteeID)
+	if err != nil {
+		return errs.Wrap("s.userRepo.GetByID", err)
+	}
+
+	if err := invitee.CheckInvitedAt(s.now().UTC()); err != nil {
+		return errs.Wrap("invitee.CheckInvitedAt", err)
+	}
+
+	if err := s.checkFollow(ctx, inviteeID, inviterID); err != nil {
+		return err
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		if err := s.inviteRepo.SetInviter(ctx, inviteeID, inviterID); err != nil {
+			return errs.Wrap("s.inviteRepo.SetInviter", err)
+		}
+
+		if err := s.followRepo.Follow(ctx, inviteeID, inviterID); err != nil {
+			return errs.Wrap("s.followRepo.Follow", err)
+		}
+
+		return errs.Wrap("s.notifier.Invited", s.notifier.Invited(ctx, inviteeID, inviterID))
+	})
+	if err != nil {
+		return errs.Wrap("s.tx.WithinTx", err)
+	}
+
+	return nil
+}
+
+// checkFollow tells whether followerID may follow followeeID.
+func (s *FollowService) checkFollow(ctx context.Context, followerID, followeeID uuid.UUID) error {
 	if followerID == followeeID {
 		return user.ErrFollowSelf
 	}
@@ -114,19 +188,6 @@ func (s *FollowService) Follow(ctx context.Context, followerID, followeeID uuid.
 
 	if byFollower || byFollowee {
 		return user.ErrFollowBlocked
-	}
-
-	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if err := s.followRepo.Follow(ctx, followerID, followeeID); err != nil {
-			return errs.Wrap("s.followRepo.Follow", err)
-		}
-
-		// Following twice notifies once: the notification service keeps
-		// one notification per follow.
-		return errs.Wrap("s.notifier.Followed", s.notifier.Followed(ctx, followerID, followeeID))
-	})
-	if err != nil {
-		return errs.Wrap("s.tx.WithinTx", err)
 	}
 
 	return nil

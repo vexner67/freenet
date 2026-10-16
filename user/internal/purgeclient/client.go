@@ -165,6 +165,11 @@ func (f *Follows) Followed(ctx context.Context, followerID, followeeID uuid.UUID
 	return f.add(ctx, followerID, FollowKind, pair(followerID, followeeID))
 }
 
+// Invited is a follow to post: the news do not tell invitations apart.
+func (f *Follows) Invited(ctx context.Context, inviteeID, inviterID uuid.UUID) error {
+	return f.Followed(ctx, inviteeID, inviterID)
+}
+
 func (f *Follows) Unfollowed(ctx context.Context, followerID, followeeID uuid.UUID) error {
 	return f.add(ctx, followerID, UnfollowKind, pair(followerID, followeeID))
 }

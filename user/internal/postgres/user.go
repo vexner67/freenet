@@ -340,6 +340,28 @@ func (r *UserRepository) SetBackdrop(ctx context.Context, id uuid.UUID, side use
 	return idFromDB(previous), nil
 }
 
+// setInviterQuery names the inviter of a page that names none yet.
+const setInviterQuery = `
+	UPDATE users
+	SET invited_by = $2
+	WHERE id = $1
+		AND invited_by IS NULL
+`
+
+// SetInviter runs in the transaction of ctx, with the follow it comes with.
+func (r *UserRepository) SetInviter(ctx context.Context, userID, inviterID uuid.UUID) error {
+	tag, err := r.conn(ctx).Exec(ctx, setInviterQuery, userID, inviterID)
+	if err != nil {
+		return errs.Wrap("r.conn.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return user.ErrAlreadyInvited
+	}
+
+	return nil
+}
+
 // userColumns are what scanUser reads, in its order.
 const userColumns = `
 		id,

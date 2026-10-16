@@ -251,6 +251,33 @@ func TestUserRepository(t *testing.T) {
 		}
 	})
 
+	t.Run("inviter is named once", func(t *testing.T) {
+		inviter, err := user.New(user.Email(unique("inviter") + "@example.com"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = repo.Save(ctx, inviter); err != nil {
+			t.Fatal(err)
+		}
+
+		if err = repo.SetInviter(ctx, u.ID(), inviter.ID()); err != nil {
+			t.Fatalf("SetInviter: %v", err)
+		}
+		if err = repo.SetInviter(ctx, u.ID(), inviter.ID()); !errors.Is(err, user.ErrAlreadyInvited) {
+			t.Fatalf("SetInviter again: got %v, want ErrAlreadyInvited", err)
+		}
+
+		// An erased inviter leaves nobody named.
+		if _, err = pool.Exec(ctx, "DELETE FROM users WHERE id = $1", inviter.ID()); err != nil {
+			t.Fatal(err)
+		}
+
+		var named *uuid.UUID
+		if err = pool.QueryRow(ctx, "SELECT invited_by FROM users WHERE id = $1", u.ID()).Scan(&named); err != nil || named != nil {
+			t.Fatalf("invited_by after the inviter is erased = %v, %v; want NULL", named, err)
+		}
+	})
+
 	t.Run("not found", func(t *testing.T) {
 		if _, err := repo.GetByID(ctx, uuid.New()); !errors.Is(err, user.ErrNotFound) {
 			t.Fatalf("GetByID: got %v", err)

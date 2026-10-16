@@ -162,6 +162,7 @@ func (a *App) build(cfg config.Config) error {
 				Follows:  store.follows,
 				Lists:    store.follows,
 				Blocks:   store.blocks,
+				Invites:  store.users,
 				Tx:       store.tx,
 				Notifier: notifier,
 			}),
@@ -208,6 +209,8 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		userv1.UserService_Follow_FullMethodName:   cfg.FollowLimits,
 		userv1.UserService_SendGift_FullMethodName: cfg.GiftLimits,
+		// An invitation is a follow, counted apart.
+		userv1.UserService_AcceptInvite_FullMethodName: cfg.FollowLimits,
 
 		userv1.UserService_TransferVotes_FullMethodName: cfg.TransferLimits,
 		userv1.UserService_RedeemVoucher_FullMethodName: cfg.VoucherLimits,
@@ -241,6 +244,7 @@ type storage struct {
 		service.DueUserDeleter
 		service.PresenceRepository
 		service.BackdropRepository
+		service.InviteRepository
 	}
 	follows interface {
 		service.FollowRepository

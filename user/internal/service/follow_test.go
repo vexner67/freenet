@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"testing"
+	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/user/internal/inmem"
@@ -18,7 +19,16 @@ type follow struct{ follower, followee uuid.UUID }
 type fakeNotifier struct {
 	followed   []follow
 	unfollowed []follow
+	invited    []follow
 	err        error
+}
+
+func (f *fakeNotifier) Invited(_ context.Context, invitee, inviter uuid.UUID) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.invited = append(f.invited, follow{invitee, inviter})
+	return nil
 }
 
 func (f *fakeNotifier) Followed(_ context.Context, follower, followee uuid.UUID) error {
@@ -96,5 +106,78 @@ func TestFollowService_Notifies(t *testing.T) {
 	}
 	if err = svc.Unfollow(ctx, bob, ann); !errors.Is(err, notifier.err) {
 		t.Fatalf("unfollow with a broken outbox: %v, want its error", err)
+	}
+}
+
+func TestFollowService_AcceptInvite(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	users := inmem.NewUserRepository()
+	follows := inmem.NewFollowRepository(users)
+	blocks := inmem.NewBlockRepository(follows)
+	notifier := &fakeNotifier{}
+	now := time.Now()
+
+	userSvc := service.NewUserService(users)
+	svc := service.NewFollowService(service.FollowDeps{
+		Users: users, Follows: follows, Lists: follows, Blocks: blocks, Invites: users, Tx: inmem.TxManager{}, Notifier: notifier,
+		Now: func() time.Time { return now },
+	})
+
+	signUp := func(email string) uuid.UUID {
+		t.Helper()
+
+		id, err := userSvc.GetOrCreateByEmail(ctx, mustEmail(t, email))
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		return id
+	}
+
+	ann, bob, cat := signUp("ann@example.com"), signUp("bob@example.com"), signUp("cat@example.com")
+
+	if err := svc.AcceptInvite(ctx, bob, bob); !errors.Is(err, user.ErrFollowSelf) {
+		t.Fatalf("invited by oneself: %v", err)
+	}
+	if err := svc.AcceptInvite(ctx, bob, uuid.New()); !errors.Is(err, user.ErrNotFound) {
+		t.Fatalf("invited by nobody: %v", err)
+	}
+
+	if _, err := blocks.Block(ctx, ann, cat); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.AcceptInvite(ctx, cat, ann); !errors.Is(err, user.ErrFollowBlocked) {
+		t.Fatalf("invited by one who blacklisted: %v", err)
+	}
+
+	if err := svc.AcceptInvite(ctx, bob, ann); err != nil {
+		t.Fatalf("AcceptInvite: %v", err)
+	}
+
+	following, err := follows.IsFollowing(ctx, bob, ann)
+	if err != nil || !following {
+		t.Fatalf("the invited follows the inviter: %v, %v", following, err)
+	}
+
+	want := follow{follower: bob, followee: ann}
+	if len(notifier.invited) != 1 || notifier.invited[0] != want || len(notifier.followed) != 0 {
+		t.Fatalf("invited = %+v, followed = %+v, want one invitation %+v", notifier.invited, notifier.followed, want)
+	}
+
+	// Once: the next link names nobody new.
+	if err := svc.AcceptInvite(ctx, bob, cat); !errors.Is(err, user.ErrAlreadyInvited) {
+		t.Fatalf("invited twice: %v", err)
+	}
+
+	// An old page names nobody.
+	now = now.Add(user.InviteFor + time.Hour)
+	if err := svc.AcceptInvite(ctx, cat, bob); !errors.Is(err, user.ErrInviteExpired) {
+		t.Fatalf("invited when old: %v", err)
+	}
+
+	if len(notifier.invited) != 1 {
+		t.Fatalf("notified about failed invitations: %+v", notifier.invited)
 	}
 }

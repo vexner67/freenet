@@ -37,6 +37,7 @@ const (
 	UserService_SearchUsers_FullMethodName        = "/user.v1.UserService/SearchUsers"
 	UserService_Follow_FullMethodName             = "/user.v1.UserService/Follow"
 	UserService_Unfollow_FullMethodName           = "/user.v1.UserService/Unfollow"
+	UserService_AcceptInvite_FullMethodName       = "/user.v1.UserService/AcceptInvite"
 	UserService_GetFollowStats_FullMethodName     = "/user.v1.UserService/GetFollowStats"
 	UserService_ListFollowers_FullMethodName      = "/user.v1.UserService/ListFollowers"
 	UserService_ListFollowing_FullMethodName      = "/user.v1.UserService/ListFollowing"
@@ -111,6 +112,11 @@ type UserServiceClient interface {
 	// Require an access token; the follower is the caller. Idempotent.
 	Follow(ctx context.Context, in *FollowRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	Unfollow(ctx context.Context, in *UnfollowRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// AcceptInvite follows the user whose invitation link the caller signed
+	// up by ("Пригласить" of openvk), and notifies them of the invitation:
+	// once and only while the caller's page is new (FailedPrecondition),
+	// as Follow would.
+	AcceptInvite(ctx context.Context, in *AcceptInviteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Public. With an access token GetFollowStats also tells whether the
 	// caller follows the user.
 	GetFollowStats(ctx context.Context, in *GetFollowStatsRequest, opts ...grpc.CallOption) (*GetFollowStatsResponse, error)
@@ -377,6 +383,16 @@ func (c *userServiceClient) Unfollow(ctx context.Context, in *UnfollowRequest, o
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, UserService_Unfollow_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) AcceptInvite(ctx context.Context, in *AcceptInviteRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_AcceptInvite_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -761,6 +777,11 @@ type UserServiceServer interface {
 	// Require an access token; the follower is the caller. Idempotent.
 	Follow(context.Context, *FollowRequest) (*emptypb.Empty, error)
 	Unfollow(context.Context, *UnfollowRequest) (*emptypb.Empty, error)
+	// AcceptInvite follows the user whose invitation link the caller signed
+	// up by ("Пригласить" of openvk), and notifies them of the invitation:
+	// once and only while the caller's page is new (FailedPrecondition),
+	// as Follow would.
+	AcceptInvite(context.Context, *AcceptInviteRequest) (*emptypb.Empty, error)
 	// Public. With an access token GetFollowStats also tells whether the
 	// caller follows the user.
 	GetFollowStats(context.Context, *GetFollowStatsRequest) (*GetFollowStatsResponse, error)
@@ -913,6 +934,9 @@ func (UnimplementedUserServiceServer) Follow(context.Context, *FollowRequest) (*
 }
 func (UnimplementedUserServiceServer) Unfollow(context.Context, *UnfollowRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method Unfollow not implemented")
+}
+func (UnimplementedUserServiceServer) AcceptInvite(context.Context, *AcceptInviteRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method AcceptInvite not implemented")
 }
 func (UnimplementedUserServiceServer) GetFollowStats(context.Context, *GetFollowStatsRequest) (*GetFollowStatsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetFollowStats not implemented")
@@ -1339,6 +1363,24 @@ func _UserService_Unfollow_Handler(srv interface{}, ctx context.Context, dec fun
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(UserServiceServer).Unfollow(ctx, req.(*UnfollowRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_AcceptInvite_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(AcceptInviteRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).AcceptInvite(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_AcceptInvite_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).AcceptInvite(ctx, req.(*AcceptInviteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -2029,6 +2071,10 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "Unfollow",
 			Handler:    _UserService_Unfollow_Handler,
+		},
+		{
+			MethodName: "AcceptInvite",
+			Handler:    _UserService_AcceptInvite_Handler,
 		},
 		{
 			MethodName: "GetFollowStats",

@@ -304,3 +304,28 @@ func TestBlacklist(t *testing.T) {
 		}
 	}
 }
+
+func TestAcceptInvite(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	_, annID := s.member(t, "ann")
+	bob, _ := s.member(t, "bob")
+
+	if _, err := s.client.AcceptInvite(bob, &userv1.AcceptInviteRequest{UserId: annID}); err != nil {
+		t.Fatalf("AcceptInvite: %v", err)
+	}
+
+	stats, err := s.client.GetFollowStats(bob, &userv1.GetFollowStatsRequest{UserId: annID})
+	if err != nil || !stats.GetIsFollowing() {
+		t.Fatalf("the invited follows the inviter: %v, %v", stats, err)
+	}
+
+	if _, err = s.client.AcceptInvite(bob, &userv1.AcceptInviteRequest{UserId: annID}); status.Code(err) != codes.FailedPrecondition {
+		t.Fatalf("AcceptInvite again: %v, want FailedPrecondition", err)
+	}
+
+	if _, err = s.client.AcceptInvite(context.Background(), &userv1.AcceptInviteRequest{UserId: annID}); status.Code(err) != codes.Unauthenticated {
+		t.Fatalf("AcceptInvite without a token: %v, want Unauthenticated", err)
+	}
+}
