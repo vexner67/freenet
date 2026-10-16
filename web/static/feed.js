@@ -42,14 +42,14 @@ async function loadMore(me) {
   }
 }
 
-// showEmpty says why there are no news: nobody is followed yet, or the
-// settings of the feed leave everything out.
+// showEmpty says why there are no news: nobody is followed yet, and,
+// while the posts on the walls of others are left out (by default, as on
+// openvk), that the settings of the feed can show them.
 function showEmpty() {
   const empty = $('posts').children.length === 0;
-  const narrowed = !settings.alien;
 
-  $('empty-settings').hidden = !(empty && narrowed);
-  $(all ? 'empty-all' : 'empty').hidden = !(empty && !narrowed);
+  $('empty-settings').hidden = !(empty && !settings.alien);
+  $(all ? 'empty-all' : 'empty').hidden = !empty;
 }
 
 // applySettings reads the news again as the box of settings said.

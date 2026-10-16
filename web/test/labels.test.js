@@ -677,11 +677,12 @@ test('errorText knows what a poll refuses', () => {
 });
 
 test('feedSettings takes what the browser kept and the defaults for the rest', () => {
-  assert.deepEqual(feedSettings(null), { posts: 20, alien: true });
+  assert.deepEqual(feedSettings(null), { posts: 20, alien: false });
+  assert.deepEqual(feedSettings('{"posts":5,"alien":true}'), { posts: 5, alien: true });
   assert.deepEqual(feedSettings('{"posts":5,"alien":false}'), { posts: 5, alien: false });
-  assert.deepEqual(feedSettings('{"posts":7,"alien":"no"}'), { posts: 20, alien: true });
-  assert.deepEqual(feedSettings('not json'), { posts: 20, alien: true });
-  assert.deepEqual(feedSettings('[]'), { posts: 20, alien: true });
+  assert.deepEqual(feedSettings('{"posts":7,"alien":"no"}'), { posts: 20, alien: false });
+  assert.deepEqual(feedSettings('not json'), { posts: 20, alien: false });
+  assert.deepEqual(feedSettings('[]'), { posts: 20, alien: false });
   assert.ok(feedPageSizes.every((n) => n >= 1 && n <= 50));
 });
 

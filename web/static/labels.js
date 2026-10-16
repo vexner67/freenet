@@ -1690,7 +1690,9 @@ export function selectedCount(n) {
 // there. They are kept by the browser, as openvk keeps them in a cookie.
 export const feedPageSizes = [1, 5, 10, 20, 30, 40, 50];
 
-export const defaultFeedSettings = Object.freeze({ posts: 20, alien: true });
+// The posts on the walls of others are left out unless asked for, as on
+// openvk.
+export const defaultFeedSettings = Object.freeze({ posts: 20, alien: false });
 
 // feedSettings reads what the browser kept; anything else is the default.
 export function feedSettings(raw) {
