@@ -18,6 +18,7 @@ const notificationVerbs = {
   mention: ['упомянул', 'упомянула', 'упомянул(а)', 'упомянуло'],
   gift: ['отправил', 'отправила', 'отправил(а)', 'отправило'],
   votes: ['передал', 'передала', 'передал(а)', 'передало'],
+  invite: ['присоединился', 'присоединилась', 'присоединился(-ась)', 'присоединилось'],
 };
 
 // Each kind of notification: the verb and what follows it. The payload
@@ -41,6 +42,7 @@ const pushTexts = {
   note_comment: ['comment', 'комментарий под вашей заметкой'],
   gift: ['gift', 'вам подарок'],
   votes: ['votes', 'вам голоса'],
+  invite: ['invite', 'по вашему приглашению'],
 };
 
 // Those said of the community itself, which is the title.

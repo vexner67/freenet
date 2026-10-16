@@ -193,7 +193,7 @@ func (r *NotificationRepository) Delete(ctx context.Context, e notification.Even
 		_, err = r.pool.Exec(ctx, deleteVotesNotificationQuery, e.PostID)
 	case notification.KindSuggestedPost:
 		_, err = r.pool.Exec(ctx, deleteSuggestedPostNotificationQuery, e.RecipientID, e.PostID)
-	case notification.KindClubAdmin, notification.KindEventReminder:
+	case notification.KindClubAdmin, notification.KindEventReminder, notification.KindInvite:
 		_, err = r.pool.Exec(ctx, deleteClubNotificationQuery, string(e.Kind), e.ActorID, e.RecipientID)
 	case notification.KindTopicMessage:
 		_, err = r.pool.Exec(ctx, deleteTopicMessageNotificationQuery, e.CommentID)

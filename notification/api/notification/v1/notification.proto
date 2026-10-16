@@ -100,9 +100,12 @@ enum Kind {
   // The actor transferred votes ("Перевод голосов") to the recipient;
   // post_id is the transfer, which the user service names.
   KIND_VOTES = 22;
+  // The actor signed up by the recipient's invitation link ("Пригласить"
+  // of openvk) and follows the recipient now.
+  KIND_INVITE = 23;
 }
 
-// Event: post_id is set for all but follows, appointments and reminders
+// Event: post_id is set for all but follows, invitations, appointments and reminders
 // (of a gift it is the sent gift, of votes the transfer),
 // comment_id for comments, replies, comment likes, messages of topics
 // and mentions in comments and topics.
