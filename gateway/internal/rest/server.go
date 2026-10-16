@@ -82,6 +82,7 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 		a.recoverPanics,
 		logRequests(logger),
 		secureHeaders,
+		noIndex,
 		cors(cfg.AllowedOrigins),
 		timeout(cfg.RequestTimeout),
 		// Next to the mux, as observe: it names the span by the route.

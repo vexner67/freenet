@@ -760,6 +760,8 @@ func (a *api) routes() *http.ServeMux {
 
 	if a.webDir != "" {
 		registerPages(mux, a.webDir)
+		mux.HandleFunc("GET /robots.txt", a.robots)
+		mux.HandleFunc("GET /sitemap.xml", a.sitemap)
 	}
 
 	// Catch-all for JSON errors instead of the mux's plain-text ones.

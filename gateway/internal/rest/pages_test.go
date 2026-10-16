@@ -218,3 +218,63 @@ func TestPages(t *testing.T) {
 		}
 	})
 }
+
+func TestSearchEngines(t *testing.T) {
+	t.Parallel()
+
+	tests := []struct {
+		name   string
+		trust  bool
+		proto  string
+		origin string
+	}{
+		{name: "behind the proxy over HTTPS", trust: true, proto: "https", origin: "https://freenet.test"},
+		{name: "a client that says HTTPS itself", proto: "https", origin: "http://freenet.test"},
+		{name: "plain HTTP", trust: true, origin: "http://freenet.test"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Parallel()
+
+			handler := mustServer(
+				rest.Config{RequestTimeout: time.Second, WebDir: webDir(t), TrustForwardedFor: tt.trust},
+				rest.Backends{Auth: &fakeAuth{}, Users: &fakeUsers{}, Posts: &fakePosts{}, Media: &fakeMedia{}, Notifications: &fakeNotifications{}, Messages: &fakeMessages{}, Clubs: &fakeClubs{}},
+				prometheus.NewRegistry(),
+			).Handler()
+
+			get := func(path string) *httptest.ResponseRecorder {
+				r := httptest.NewRequest("GET", "http://freenet.test"+path, nil)
+				if tt.proto != "" {
+					r.Header.Set("X-Forwarded-Proto", tt.proto)
+				}
+
+				w := httptest.NewRecorder()
+				handler.ServeHTTP(w, r)
+				return w
+			}
+
+			robots := get("/robots.txt")
+			body := robots.Body.String()
+			if robots.Code != 200 || !strings.Contains(body, "Sitemap: "+tt.origin+"/sitemap.xml") ||
+				!strings.Contains(body, "Disallow: /im$") || strings.Contains(body, "Disallow: /api/") {
+				t.Fatalf("robots.txt: %d %q", robots.Code, body)
+			}
+
+			sitemap := get("/sitemap.xml")
+			if sitemap.Code != 200 || !strings.Contains(sitemap.Header().Get("Content-Type"), "xml") ||
+				!strings.Contains(sitemap.Body.String(), "<loc>"+tt.origin+"/</loc>") ||
+				!strings.Contains(sitemap.Body.String(), "<loc>"+tt.origin+"/about</loc>") {
+				t.Fatalf("sitemap.xml: %d %q", sitemap.Code, sitemap.Body.String())
+			}
+
+			// The API is read to render the pages, but is no page itself.
+			if api := get("/api/v1/users/ann"); api.Header().Get("X-Robots-Tag") != "noindex" {
+				t.Fatalf("API: X-Robots-Tag %q", api.Header().Get("X-Robots-Tag"))
+			}
+			if page := get("/"); page.Header().Get("X-Robots-Tag") != "" {
+				t.Fatalf("a page: X-Robots-Tag %q", page.Header().Get("X-Robots-Tag"))
+			}
+		})
+	}
+}
