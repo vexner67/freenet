@@ -249,6 +249,13 @@ h1.page-title { font-size: inherit; }
   border: 1px solid var(--line-ddd09a);
 }
 
+/* Who invites, over the main page (login.js), and the link of
+   "Пригласить" (invite-page.js). */
+.invited { display: flex; align-items: center; gap: 8px; }
+.invited-photo { width: 30px; height: 30px; object-fit: cover; }
+.invite-link { display: flex; justify-content: center; gap: 6px; margin: 12px 0; }
+.invite-link input { flex: 0 1 360px; min-width: 0; }
+
 /* The offer of pushes over the page of a phone (layout.js offerPush). */
 .push-offer p { margin: 0 0 8px; }
 .push-offer-actions { display: flex; flex-wrap: wrap; gap: 6px; }
@@ -758,6 +765,14 @@ label.chat-person { cursor: pointer; }
 .viewer-next { right: 10px; }
 
 /* A shared post inside its repost, compact as on openvk. */
+.text-link { overflow-wrap: anywhere; }
+.link-card { display: flex; gap: 10px; margin: 6px 4px; padding: 6px; border: 1px solid var(--line-dae1e8); background: var(--back-f7f7f7); color: inherit; }
+.link-card:hover { background: var(--back-f2f5f8); text-decoration: none; }
+.link-card-photo { flex: none; width: 120px; height: 90px; object-fit: cover; }
+.link-card-text { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.link-card-title { color: var(--text-2b587a); overflow-wrap: anywhere; }
+.link-card-site { color: var(--text-808080); }
+.link-card-description { color: var(--text-333); overflow-wrap: anywhere; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow: hidden; }
 .post-shared { display: flex; gap: 6px; margin: 6px 4px; padding-left: 6px; border-left: 2px solid var(--line-dae1e8); }
 .post-shared .post-avatar img { width: 30px; height: 30px; }
 .post-shared .post-author { padding: 2px 5px; }
@@ -1394,6 +1409,7 @@ a.poll-result-name { cursor: pointer; }
 .story-preview { display: block; width: auto; max-width: 100%; height: auto; max-height: 240px; margin: 6px auto 0; }
 
 @media (max-width: 800px) {
+  .link-card-photo { width: 90px; height: 68px; }
   .story-viewer { background: rgba(0, 0, 0, 1); }
   .story-viewer .viewer-nav { display: none; }
   body { font-size: 13px; -webkit-text-size-adjust: 100%; }

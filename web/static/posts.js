@@ -5,7 +5,7 @@
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
 import { commentsLink, formatPostDate, genitiveName, sharedBy, shareLink, updatedPhoto, wrote } from './labels.js';
-import { adult, avatarURL, el, fullName, isMicroblog, pagePath, textNode } from './layout.js';
+import { adult, avatarURL, el, externalLink, fullName, isMicroblog, pagePath, textNode } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
@@ -70,6 +70,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
       // Whole on the page of the post, which has no link to open it.
       post.text ? textNode(post.text, { whole: !withCommentsLink, rest: post.textCut ? () => wholeText(post) : null, found }) : '',
       photosNode(post.photos ?? []) ?? '',
+      linkCardNode(post.link) ?? '',
       documentsNode(post.documents) ?? '',
       post.poll ? pollNode(post, { canVote: canLike, onError }) : '',
       signatureNode(post.signer) ?? '',
@@ -305,6 +306,7 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
   const content = el('div', { className: 'shared-content' },
     shared.text ? textNode(shared.text, { rest: shared.textCut ? () => wholeText(shared) : null }) : null,
     photosNode(shared.photos ?? []),
+    linkCardNode(shared.link),
     documentsNode(shared.documents),
     shared.poll ? pollNode(shared, { canVote, onError }) : null,
   );
@@ -367,6 +369,24 @@ function wallLink(wall, viewer) {
   else if (viewer?.id === wall.id) text = 'на вашей стене';
 
   return el('a', { className: 'post-wall', href: pagePath(wall), textContent: text });
+}
+
+// linkCardNode is the card of the page a post links to, as the page told
+// it when the post was written: its picture, title, site and description,
+// all leading to it.
+export function linkCardNode(link) {
+  if (!link) return null;
+
+  const card = externalLink(link.url, [
+    link.photo ? el('img', { className: 'link-card-photo', src: link.photo.small, alt: '', loading: 'lazy' }) : null,
+    el('span', { className: 'link-card-text' },
+      el('b', { className: 'link-card-title', textContent: link.title }),
+      el('span', { className: 'link-card-site', textContent: link.site }),
+      link.description ? el('span', { className: 'link-card-description', textContent: link.description }) : null),
+  ].filter(Boolean));
+  card.className = 'link-card';
+
+  return card;
 }
 
 // photosNode lays the photos of a post, comment or message out: one at its

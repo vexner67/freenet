@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -920,4 +920,46 @@ test('documents: formats as the post service takes them, counts and sizes', () =
 
   assert.equal(messagePreview({ documentCount: 2 }), 'Документ');
   assert.equal(messagePreview({ text: 'вот', documentCount: 2 }), 'вот');
+});
+
+test('inviteNickname takes a nickname of the link and nothing else', () => {
+  assert.equal(inviteNickname('?invite=ann_lee'), 'ann_lee');
+  assert.equal(inviteNickname('?q=1&invite=Ann'), 'Ann');
+  assert.equal(inviteNickname(''), '');
+  assert.equal(inviteNickname('?invite=ann_'), '');
+  assert.equal(inviteNickname('?invite=1ann'), '');
+  assert.equal(inviteNickname('?invite=%3Cb%3E'), '');
+  assert.equal(inviteNickname('?invite=' + 'a'.repeat(33)), '');
+});
+
+test('inviteURL invites to the main page', () => {
+  assert.equal(inviteURL('https://freenet19.fun', 'ann'), 'https://freenet19.fun/?invite=ann');
+  assert.equal(notificationVerb('invite', { gender: 'female' }), 'присоединилась');
+});
+
+test('linkParts finds web addresses as the gateway does', () => {
+  assert.deepEqual(linkParts('нет ссылок'), ['нет ссылок']);
+  assert.deepEqual(linkParts('Смотрите: https://example.com/a?b=1#c.'), [
+    'Смотрите: ', { url: 'https://example.com/a?b=1#c', text: 'example.com/a?b=1#c' }, '.',
+  ]);
+  assert.deepEqual(linkParts('(https://ru.wikipedia.org/wiki/Кот_(значения))'), [
+    '(', { url: 'https://ru.wikipedia.org/wiki/Кот_(значения)', text: 'ru.wikipedia.org/wiki/Кот_(значения)' }, ')',
+  ]);
+  assert.deepEqual(linkParts('«http://www.example.com»'), ['«', { url: 'http://www.example.com', text: 'example.com' }, '»']);
+  assert.deepEqual(linkParts('ftp://example.com xhttps://example.com https://'), ['ftp://example.com xhttps://example.com https://']);
+});
+
+test('shownLink cuts a long address', () => {
+  const shown = shownLink('https://example.com/' + 'a'.repeat(100));
+  assert.equal([...shown].length, 60);
+  assert.ok(shown.endsWith('…'));
+});
+
+test('textParts leaves "#" and "@" of an address to it', () => {
+  assert.deepEqual(textParts('#кошки https://medium.com/@ann#top @bob'), [
+    { hashtag: 'кошки', text: '#кошки' }, ' ',
+    { url: 'https://medium.com/@ann#top', text: 'medium.com/@ann#top' }, ' ',
+    { nickname: 'bob', text: '@bob' },
+  ]);
+  assert.deepEqual(textParts('[ann|https://example.com]'), [{ nickname: 'ann', text: 'https://example.com' }]);
 });

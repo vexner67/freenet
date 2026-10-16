@@ -1,6 +1,7 @@
 import { api, currentUser } from './api.js';
 import { settle, signedInAs } from './accounts.js';
-import { $, accountLinks, renderChrome, showAccounts, homePath, showError, hideError } from './layout.js';
+import { keepInvite } from './invite.js';
+import { $, accountLinks, avatarURL, el, fullName, renderChrome, showAccounts, homePath, showError, hideError } from './layout.js';
 
 const emailForm = $('email-form');
 const codeForm = $('code-form');
@@ -56,6 +57,20 @@ $('change-email').addEventListener('click', () => {
   $('email').focus();
 });
 
+// showInviter says who invites, openvk's "<b>Анна</b> приглашает вас в
+// OpenVK"; a nickname of nobody says nothing.
+async function showInviter(nickname) {
+  if (!nickname) return;
+
+  const inviter = await api.profile(nickname).catch(() => null);
+  if (!inviter || inviter.deactivated) return;
+
+  $('invited').replaceChildren(
+    el('img', { className: 'invited-photo', src: avatarURL(inviter, 'small'), alt: '' }),
+    el('span', {}, el('b', { textContent: fullName(inviter) }), ' приглашает вас во Freenet.'));
+  $('invited').hidden = false;
+}
+
 $('resend').addEventListener('click', () => withButton($('code-submit'), sendCode));
 
 const me = await currentUser().catch(() => null);
@@ -71,5 +86,6 @@ if (me) {
     $('accounts-list').replaceChildren(...waiting);
     $('accounts').hidden = waiting.length === 0;
   });
+  showInviter(keepInvite());
   $('email').focus();
 }

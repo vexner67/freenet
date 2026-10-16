@@ -1040,6 +1040,7 @@ const notificationVerbs = {
   mention: ['упомянул', 'упомянула', 'упомянул(а)', 'упомянуло'],
   gift: ['отправил', 'отправила', 'отправил(а)', 'отправило'],
   votes: ['передал', 'передала', 'передал(а)', 'передало'],
+  invite: ['присоединился', 'присоединилась', 'присоединился(-ась)', 'присоединилось'],
 };
 
 // notificationVerb agrees with actor: a person's gender, or a community.
@@ -1426,10 +1427,65 @@ export function hashtagPath(tag) {
   return '/search?section=posts&q=' + encodeURIComponent('#' + tag);
 }
 
-// textParts is mentionParts with the tags too: the strings say
-// { hashtag, text } of each, the tag without "#".
+// textParts is mentionParts with the web addresses and the tags too: the
+// strings say { url, text } of each address and { hashtag, text } of each
+// tag, without "#". Inside an address "#" and "@" are its own.
 export function textParts(text) {
-  return mentionParts(text).flatMap((part, i) => (typeof part === 'string' ? hashtagParts(part, i === 0) : [part]));
+  return mentionParts(text).flatMap((part, i) => {
+    if (typeof part !== 'string') return [part];
+
+    return linkParts(part).flatMap((p, j) => (typeof p === 'string' ? hashtagParts(p, i === 0 && j === 0) : [p]));
+  });
+}
+
+// linkPattern finds a web address as the gateway does (model.FirstLink):
+// http or https, up to a space or a character no address has.
+const linkPattern = /\bhttps?:\/\/[^\s<>"«»[\]]+/g;
+
+// MAX_LINK_SHOWN: a longer address is shown cut, as VK does.
+const MAX_LINK_SHOWN = 60;
+
+// linkParts cuts s into strings and the addresses it says, { url, text }:
+// text is the address as shown, cut when long.
+export function linkParts(s) {
+  const parts = [];
+  let from = 0;
+
+  for (const m of s.matchAll(linkPattern)) {
+    const url = trimLink(m[0]);
+    if (!url) continue;
+
+    if (m.index > from) parts.push(s.slice(from, m.index));
+    parts.push({ url, text: shownLink(url) });
+    from = m.index + url.length;
+  }
+
+  if (from < s.length) parts.push(s.slice(from));
+
+  return parts;
+}
+
+// trimLink drops what ends a sentence rather than an address: ".", ",",
+// "!" and the like, and ")" that closes no "(" of the address.
+function trimLink(link) {
+  for (;;) {
+    let trimmed = link.replace(/[.,;:!?'"’”…]+$/u, '');
+    const opened = trimmed.split('(').length;
+    if (trimmed.endsWith(')') && opened < trimmed.split(')').length) trimmed = trimmed.slice(0, -1);
+
+    if (trimmed === link) break;
+    link = trimmed;
+  }
+
+  return link.endsWith('://') ? '' : link;
+}
+
+// shownLink is an address without its scheme, cut when long.
+export function shownLink(url) {
+  const shown = url.replace(/^https?:\/\//, '').replace(/^www\./, '');
+  const chars = [...shown];
+
+  return chars.length > MAX_LINK_SHOWN ? chars.slice(0, MAX_LINK_SHOWN - 1).join('') + '…' : shown;
 }
 
 // hashtagParts cuts a string of a text into strings and tags; atStart: the
@@ -1733,4 +1789,21 @@ export function typingText(users) {
     default:
       return 'Несколько человек печатают...';
   }
+}
+
+// A nickname as the user service takes it (user/internal/user/nickname.go).
+const nicknameShape = /^[A-Za-z](?:[A-Za-z0-9_]*[A-Za-z0-9])?$/;
+
+// inviteNickname is who invites by the link of the page, openvk's
+// "/reg?ref=": "?invite=ann" on the main page; '' for none or a word that
+// is no nickname.
+export function inviteNickname(search) {
+  const nickname = new URLSearchParams(search).get('invite') ?? '';
+  return nickname.length <= 32 && nicknameShape.test(nickname) ? nickname : '';
+}
+
+// inviteURL is the link of "Пригласить" that invites in the name of
+// nickname.
+export function inviteURL(origin, nickname) {
+  return `${origin}/?invite=${encodeURIComponent(nickname)}`;
 }
