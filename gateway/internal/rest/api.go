@@ -65,6 +65,9 @@ type Users interface {
 	IgnoredIDs(ctx context.Context, accessToken string) ([]string, error)
 
 	Follow(ctx context.Context, accessToken, userID string) error
+	// AcceptInvite follows the user whose invitation link the caller
+	// signed up by, once and while the caller's page is new.
+	AcceptInvite(ctx context.Context, accessToken, userID string) error
 	Unfollow(ctx context.Context, accessToken, userID string) error
 	BlockedIDs(ctx context.Context, accessToken string) ([]string, error)
 	FollowStats(ctx context.Context, accessToken, userID string) (model.FollowStats, error)
@@ -470,6 +473,15 @@ type Backends struct {
 	Votes         Votes
 	Documents     Documents
 	Stories       Stories
+	// Previews reads the cards of the pages posts link to; nil makes
+	// posts without cards.
+	Previews Previews
+}
+
+// Previews reads what a web page says of itself for the card of a post;
+// it never reaches inside the network the gateway is in.
+type Previews interface {
+	Read(ctx context.Context, url string) (model.LinkPreview, error)
 }
 
 type api struct {
@@ -490,6 +502,7 @@ type api struct {
 	votes             Votes
 	documents         Documents
 	stories           Stories
+	previews          Previews
 	logger            *slog.Logger
 	trustForwardedFor bool
 	webDir            string
@@ -568,6 +581,7 @@ func (a *api) routes() *http.ServeMux {
 
 	mux.HandleFunc("POST /api/v1/users/{nickname}/follow", a.follow)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/follow", a.unfollow)
+	mux.HandleFunc("POST /api/v1/users/{nickname}/invitation", a.acceptInvite)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/followers", a.listFollowers)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/following", a.listFollowing)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/clubs", a.listUserClubs)

@@ -57,6 +57,12 @@ func (a *api) follow(w http.ResponseWriter, r *http.Request) {
 	a.changeFollow(w, r, a.users.Follow)
 }
 
+// acceptInvite is the follow of one whose invitation link ("Пригласить"
+// of openvk) the caller signed up by: the inviter hears of the invitation.
+func (a *api) acceptInvite(w http.ResponseWriter, r *http.Request) {
+	a.changeFollow(w, r, a.users.AcceptInvite)
+}
+
 func (a *api) unfollow(w http.ResponseWriter, r *http.Request) {
 	a.changeFollow(w, r, a.users.Unfollow)
 }

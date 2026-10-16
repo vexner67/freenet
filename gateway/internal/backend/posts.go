@@ -40,6 +40,7 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 		MentionedIds: np.Mentions,
 		AvatarUpdate: np.AvatarUpdate,
 		Poll:         toProtoPollDraft(np.Poll),
+		Link:         toProtoLink(np.Link),
 	})
 	if err != nil {
 		return model.Post{}, errs.Wrap("p.api.CreatePost", fromStatus(err))
@@ -701,6 +702,26 @@ func toPost(p *postv1.Post) model.Post {
 		SharedPhotoID:  p.GetSharedPhotoId(),
 		Mine:           p.GetMine(),
 		Polled:         p.GetPolled(),
+		Link:           toLink(p.GetLink()),
+	}
+}
+
+func toProtoLink(l *model.Link) *postv1.Link {
+	if l == nil {
+		return nil
+	}
+
+	return &postv1.Link{Url: l.URL, Title: l.Title, Description: l.Description, Site: l.Site, PhotoId: l.PhotoID}
+}
+
+// toLink is nil for a post with no card.
+func toLink(l *postv1.Link) *model.Link {
+	if l.GetUrl() == "" {
+		return nil
+	}
+
+	return &model.Link{
+		URL: l.GetUrl(), Title: l.GetTitle(), Description: l.GetDescription(), Site: l.GetSite(), PhotoID: l.GetPhotoId(),
 	}
 }
 

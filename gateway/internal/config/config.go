@@ -48,6 +48,10 @@ type Config struct {
 	// "о сайте": each is a count over a whole table of its service.
 	StatisticsTTL time.Duration `env:"STATISTICS_TTL" envDefault:"1m"`
 
+	// LinkPreviewTimeout is the most the gateway spends reading the page a
+	// new post links to, for its card; 0 makes posts without cards.
+	LinkPreviewTimeout time.Duration `env:"LINK_PREVIEW_TIMEOUT" envDefault:"4s"`
+
 	// WebDir is the website (the web/ directory) to serve on the same
 	// origin as the API; empty serves the API only.
 	WebDir string `env:"WEB_DIR"`
@@ -60,6 +64,10 @@ func Load() (Config, error) {
 func (c Config) Validate() error {
 	if c.RequestTimeout <= 0 {
 		return errors.New("REQUEST_TIMEOUT must be positive")
+	}
+
+	if c.LinkPreviewTimeout < 0 || c.LinkPreviewTimeout >= c.RequestTimeout {
+		return errors.New("LINK_PREVIEW_TIMEOUT must be at least 0 and shorter than REQUEST_TIMEOUT")
 	}
 
 	if c.StatisticsTTL < 0 {

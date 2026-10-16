@@ -90,14 +90,14 @@ type fakeUsers struct {
 	ignored    string
 	unignored  [][]string
 	// ui is how the site looks to the caller, as GetMe tells.
-	ui                                              model.Interface
-	token, statsToken, followed, unfollowed, listed string
-	profileIDs                                      []string
-	profileCalls                                    int
-	avatarID, query, cursor                         string
-	profile                                         model.Profile
-	wallAsked                                       string
-	closedWall                                      bool
+	ui                                                         model.Interface
+	token, statsToken, followed, unfollowed, invitedBy, listed string
+	profileIDs                                                 []string
+	profileCalls                                               int
+	avatarID, query, cursor                                    string
+	profile                                                    model.Profile
+	wallAsked                                                  string
+	closedWall                                                 bool
 	// Privacy: the parts of every page hidden from the caller; accessAsked
 	// is whose page the gateway asked about, profileToken the token
 	// GetProfile got.
@@ -326,6 +326,11 @@ func (f *fakeUsers) Relation(_ context.Context, token, userID string) (model.Rel
 
 func (f *fakeUsers) Follow(_ context.Context, token, userID string) error {
 	f.token, f.followed = token, userID
+	return f.err
+}
+
+func (f *fakeUsers) AcceptInvite(_ context.Context, token, userID string) error {
+	f.token, f.invitedBy = token, userID
 	return f.err
 }
 
@@ -664,7 +669,7 @@ func (f *fakePosts) DeletePostponed(_ context.Context, token, id string) error {
 
 func (f *fakePosts) Create(_ context.Context, token string, np model.NewPost) (model.Post, error) {
 	f.token, f.wall, f.created, f.photos, f.newPost = token, np.WallID, np.Text, np.PhotoIDs, np
-	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, NSFW: np.NSFW, Mine: true, Polled: np.Poll != nil, DocumentIDs: np.DocumentIDs, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
+	return model.Post{ID: "p9", Text: np.Text, PhotoIDs: np.PhotoIDs, FromWall: np.FromWall, Signed: np.Signed, NSFW: np.NSFW, Mine: true, Polled: np.Poll != nil, DocumentIDs: np.DocumentIDs, Link: np.Link, CreatedAt: time.Date(2026, 10, 4, 15, 30, 0, 0, time.UTC)}, f.err
 }
 
 // Edit edits the posts Get knows.
@@ -1434,6 +1439,7 @@ type harness struct {
 	votes         *fakeVotes
 	documents     *fakeDocuments
 	stories       *fakeStories
+	previews      *fakePreviews
 }
 
 func newHarness(cfg rest.Config) harness {
@@ -1459,6 +1465,7 @@ func newHarness(cfg rest.Config) harness {
 		faves:         &fakeFaves{},
 		documents:     &fakeDocuments{},
 		stories:       &fakeStories{},
+		previews:      &fakePreviews{},
 	}
 	h.metrics = prometheus.NewRegistry()
 	h.handler = mustServer(cfg, rest.Backends{
@@ -1479,6 +1486,7 @@ func newHarness(cfg rest.Config) harness {
 		Faves:         h.faves,
 		Documents:     h.documents,
 		Stories:       h.stories,
+		Previews:      h.previews,
 	}, h.metrics).Handler()
 
 	return h

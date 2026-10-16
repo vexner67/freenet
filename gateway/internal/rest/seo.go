@@ -20,6 +20,7 @@ Disallow: /edit$
 Disallow: /*/edit$
 Disallow: /*/create$
 Disallow: /settings$
+Disallow: /invite$
 Disallow: /settings/
 Disallow: /feed$
 Disallow: /feed/

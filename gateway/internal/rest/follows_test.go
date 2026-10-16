@@ -52,6 +52,18 @@ func TestFollow(t *testing.T) {
 		}
 	})
 
+	t.Run("an invitation follows the inviter", func(t *testing.T) {
+		t.Parallel()
+
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Bob", Nickname: "bob"}
+
+		w := h.do("POST", "/api/v1/users/ann/invitation", "", "Authorization", "Bearer tok")
+		if w.Code != http.StatusOK || h.users.invitedBy != "u1" || h.users.followed != "" {
+			t.Fatalf("invitation: %d, invited by %q, followed %q", w.Code, h.users.invitedBy, h.users.followed)
+		}
+	})
+
 	t.Run("needs a filled-in profile", func(t *testing.T) {
 		t.Parallel()
 

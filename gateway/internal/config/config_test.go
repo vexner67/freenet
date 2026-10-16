@@ -29,7 +29,7 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Fatalf("parse: %v", err)
 	}
-	if cfg.TrustForwardedFor || cfg.RequestTimeout.String() != "10s" || len(cfg.CORSAllowedOrigins) != 0 {
+	if cfg.TrustForwardedFor || cfg.RequestTimeout.String() != "10s" || len(cfg.CORSAllowedOrigins) != 0 || cfg.LinkPreviewTimeout.String() != "4s" {
 		t.Fatalf("defaults: %+v", cfg)
 	}
 
@@ -53,5 +53,17 @@ func TestParse(t *testing.T) {
 
 	if _, err = envconfig.Parse[config.Config](env.Options{Environment: partial}); err == nil {
 		t.Fatal("partial mTLS must fail")
+	}
+
+	// The card of a link is read within the request that writes the post.
+	for _, timeout := range []string{"-1s", "10s"} {
+		slow := map[string]string{"LINK_PREVIEW_TIMEOUT": timeout}
+		for k, v := range base {
+			slow[k] = v
+		}
+
+		if _, err = envconfig.Parse[config.Config](env.Options{Environment: slow}); err == nil {
+			t.Fatalf("LINK_PREVIEW_TIMEOUT=%s must fail", timeout)
+		}
 	}
 }

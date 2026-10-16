@@ -297,6 +297,29 @@ type Post struct {
 	// DocumentIDs are documents of its author it attaches, in order; a
 	// deleted one is gone from it.
 	DocumentIDs []string
+	// Link is the card of the page the text links to, nil for none.
+	Link *Link
+}
+
+// Link is the card of a page a post links to, as the page told it when
+// the post was written. PhotoID is its picture, a photo of the post's
+// author in media; "" for none.
+type Link struct {
+	URL         string
+	Title       string
+	Description string
+	Site        string
+	PhotoID     string
+}
+
+// LinkPreview is what a page says of itself: its card, and the bytes of
+// its picture, nil for none.
+type LinkPreview struct {
+	URL         string
+	Title       string
+	Description string
+	Site        string
+	Image       []byte
 }
 
 // NewPoll is the poll a new post asks ("Новый опрос"): a title and up to
@@ -365,6 +388,9 @@ type NewPost struct {
 	// Poll is the poll the post asks, nil for none; with it the text and
 	// the photos may be none.
 	Poll *NewPoll
+	// Link is the card of the page the text links to, nil for none; its
+	// picture is published already.
+	Link *Link
 }
 
 // PostEdit is what an edit makes of a post: its text and photos, whole,
