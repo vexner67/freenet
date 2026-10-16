@@ -45,6 +45,11 @@ service UserService {
   // Require an access token; the follower is the caller. Idempotent.
   rpc Follow(FollowRequest) returns (google.protobuf.Empty);
   rpc Unfollow(UnfollowRequest) returns (google.protobuf.Empty);
+  // AcceptInvite follows the user whose invitation link the caller signed
+  // up by ("Пригласить" of openvk), and notifies them of the invitation:
+  // once and only while the caller's page is new (FailedPrecondition),
+  // as Follow would.
+  rpc AcceptInvite(AcceptInviteRequest) returns (google.protobuf.Empty);
 
   // Public. With an access token GetFollowStats also tells whether the
   // caller follows the user.
@@ -527,6 +532,11 @@ message GetProfilesResponse {
 }
 
 message FollowRequest {
+  string user_id = 1;
+}
+
+message AcceptInviteRequest {
+  // The inviter.
   string user_id = 1;
 }
 

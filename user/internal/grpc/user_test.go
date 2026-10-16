@@ -74,7 +74,7 @@ func newServer(t *testing.T) testServer {
 		Users:    service.NewUserService(users),
 		Accounts: service.NewAccountService(users, inmem.TxManager{}, purgeclient.NoReactions{}, time.Hour),
 		Follows: service.NewFollowService(service.FollowDeps{
-			Users: users, Follows: follows, Lists: follows, Blocks: blocks, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
+			Users: users, Follows: follows, Lists: follows, Blocks: blocks, Invites: users, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{},
 		}),
 		Blocks:  service.NewBlockService(users, blocks, inmem.TxManager{}, notifyclient.Nop{}),
 		Ignores: service.NewIgnoreService(inmem.NewIgnoreRepository(users)),

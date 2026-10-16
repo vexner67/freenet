@@ -22,6 +22,8 @@ type UserRepository struct {
 	users      map[uuid.UUID]user.User
 	byEmail    map[string]uuid.UUID
 	byNickname map[string]uuid.UUID
+	// invitedBy is who invited each page that names someone.
+	invitedBy map[uuid.UUID]uuid.UUID
 	// cascade drops what other repositories keep of a deleted user, as
 	// the foreign keys do in PostgreSQL.
 	cascade []func(uuid.UUID)
@@ -32,6 +34,7 @@ func NewUserRepository() *UserRepository {
 		users:      make(map[uuid.UUID]user.User),
 		byEmail:    make(map[string]uuid.UUID),
 		byNickname: make(map[string]uuid.UUID),
+		invitedBy:  make(map[uuid.UUID]uuid.UUID),
 	}
 }
 
@@ -52,6 +55,27 @@ func (r *UserRepository) Save(ctx context.Context, u *user.User) error {
 	}
 
 	r.put(u)
+
+	return nil
+}
+
+func (r *UserRepository) SetInviter(ctx context.Context, userID, inviterID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	if _, ok := r.users[userID]; !ok {
+		return user.ErrNotFound
+	}
+
+	if _, ok := r.invitedBy[userID]; ok {
+		return user.ErrAlreadyInvited
+	}
+
+	r.invitedBy[userID] = inviterID
 
 	return nil
 }
@@ -326,6 +350,13 @@ func (r *UserRepository) DeleteDue(ctx context.Context, now time.Time, limit int
 		delete(r.byEmail, emailKey(u.Email()))
 		if nickname := u.Profile().Nickname; nickname != "" {
 			delete(r.byNickname, nicknameKey(nickname))
+		}
+		delete(r.invitedBy, id)
+	}
+
+	for invitee, inviter := range r.invitedBy {
+		if slices.Contains(due, inviter) {
+			delete(r.invitedBy, invitee)
 		}
 	}
 

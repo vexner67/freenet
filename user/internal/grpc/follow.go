@@ -16,6 +16,7 @@ const maxProfilesPerRequest = 100
 
 type FollowService interface {
 	Follow(ctx context.Context, followerID, followeeID uuid.UUID) error
+	AcceptInvite(ctx context.Context, inviteeID, inviterID uuid.UUID) error
 	Unfollow(ctx context.Context, followerID, followeeID uuid.UUID) error
 	Stats(ctx context.Context, userID, viewerID uuid.UUID) (service.FollowStats, error)
 	ListFollowers(ctx context.Context, userID, cursor uuid.UUID, size int) (service.FollowPage, error)
@@ -66,6 +67,10 @@ func (h *UserHandler) Follow(ctx context.Context, req *userv1.FollowRequest) (*e
 
 func (h *UserHandler) Unfollow(ctx context.Context, req *userv1.UnfollowRequest) (*emptypb.Empty, error) {
 	return h.changeFollow(ctx, req.GetUserId(), h.followService.Unfollow)
+}
+
+func (h *UserHandler) AcceptInvite(ctx context.Context, req *userv1.AcceptInviteRequest) (*emptypb.Empty, error) {
+	return h.changeFollow(ctx, req.GetUserId(), h.followService.AcceptInvite)
 }
 
 func (h *UserHandler) changeFollow(

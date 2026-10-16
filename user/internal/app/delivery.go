@@ -47,7 +47,8 @@ type delivery struct {
 	sources service.Sources
 }
 
-// notifiers tells each of them, in order, about a follow and its end.
+// notifiers tells each of them, in order, about a follow, an invitation
+// and the end of a follow.
 type notifiers []service.Notifier
 
 func (n notifiers) Followed(ctx context.Context, followerID, followeeID uuid.UUID) error {
@@ -64,6 +65,16 @@ func (n notifiers) Unfollowed(ctx context.Context, followerID, followeeID uuid.U
 	for _, notifier := range n {
 		if err := notifier.Unfollowed(ctx, followerID, followeeID); err != nil {
 			return errs.Wrap("notifier.Unfollowed", err)
+		}
+	}
+
+	return nil
+}
+
+func (n notifiers) Invited(ctx context.Context, inviteeID, inviterID uuid.UUID) error {
+	for _, notifier := range n {
+		if err := notifier.Invited(ctx, inviteeID, inviterID); err != nil {
+			return errs.Wrap("notifier.Invited", err)
 		}
 	}
 

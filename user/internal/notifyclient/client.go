@@ -1,7 +1,7 @@
-// Package notifyclient tells the notification service about follows and
-// gifts through the outbox: Outbox records them with the change that caused
-// them, Deliverer hands them over afterwards. It is the only place in user
-// that knows the notification proto contract.
+// Package notifyclient tells the notification service about follows,
+// invitations, gifts and votes through the outbox: Outbox records them
+// with the change that caused them, Deliverer hands them over afterwards.
+// It is the only place in user that knows the notification proto contract.
 package notifyclient
 
 import (
@@ -51,6 +51,14 @@ func (o *Outbox) Followed(ctx context.Context, followerID, followeeID uuid.UUID)
 
 func (o *Outbox) Unfollowed(ctx context.Context, followerID, followeeID uuid.UUID) error {
 	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: followEvent(followerID, followeeID)})
+}
+
+func (o *Outbox) Invited(ctx context.Context, inviteeID, inviterID uuid.UUID) error {
+	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: &notificationv1.Event{
+		Kind:        notificationv1.Kind_KIND_INVITE,
+		RecipientId: inviterID.String(),
+		ActorId:     inviteeID.String(),
+	}})
 }
 
 func (o *Outbox) GiftSent(ctx context.Context, giftID, senderID, recipientID uuid.UUID) error {
@@ -155,6 +163,7 @@ type Nop struct{}
 
 func (Nop) Followed(context.Context, uuid.UUID, uuid.UUID) error   { return nil }
 func (Nop) Unfollowed(context.Context, uuid.UUID, uuid.UUID) error { return nil }
+func (Nop) Invited(context.Context, uuid.UUID, uuid.UUID) error    { return nil }
 
 func (Nop) GiftSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error    { return nil }
 func (Nop) GiftDeleted(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }

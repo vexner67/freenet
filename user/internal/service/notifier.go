@@ -14,6 +14,9 @@ type Notifier interface {
 	Followed(ctx context.Context, followerID, followeeID uuid.UUID) error
 	// Unfollowed takes back the notification of the follow.
 	Unfollowed(ctx context.Context, followerID, followeeID uuid.UUID) error
+	// Invited is a follow of the inviter by the page it invited: the same
+	// follow to whoever keeps follows, an invitation to the inviter.
+	Invited(ctx context.Context, inviteeID, inviterID uuid.UUID) error
 }
 
 // TxManager runs fn in one transaction: everything it saves is kept if it
