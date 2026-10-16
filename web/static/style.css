@@ -119,6 +119,7 @@ a { color: var(--text-2b587a); text-decoration: none; cursor: pointer; }
 a:hover { text-decoration: underline; }
 
 h1, h2, h3, p, ul { margin: 0; }
+h1.page-title { font-size: inherit; }
 
 .layout { width: 791px; margin: 0 auto; }
 
