@@ -88,6 +88,9 @@ service MessageService {
   // чат"); who was removed fails with FailedPrecondition.
   rpc LeaveChat(LeaveChatRequest) returns (google.protobuf.Empty);
   rpc ReturnToChat(ReturnToChatRequest) returns (google.protobuf.Empty);
+  // The creator deletes the chat for everyone in it, with its messages
+  // and their photos; the photo of the chat is the caller's to delete.
+  rpc DeleteChat(DeleteChatRequest) returns (google.protobuf.Empty);
   // What a message of a dialog may be: text, photos, a shared post or
   // photo of an album, forwarded messages; the gateway has checked the
   // photos are the sender's and what is shared exists. Who is not in the
@@ -644,6 +647,10 @@ message RemoveChatMemberRequest {
 }
 
 message LeaveChatRequest {
+  string chat_id = 1;
+}
+
+message DeleteChatRequest {
   string chat_id = 1;
 }
 

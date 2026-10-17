@@ -229,6 +229,35 @@ func (r *ChatRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]
 	return carrying, nil
 }
 
+func (r *ChatRepository) Delete(ctx context.Context, chatID uuid.UUID) ([]*message.ChatMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	var shown []*message.ChatMessage
+
+	for id, m := range r.s.chatMessages {
+		if m.ChatID() != chatID {
+			continue
+		}
+
+		if len(m.Photos()) > 0 || len(m.Forwarded()) > 0 {
+			shown = append(shown, m)
+		}
+
+		delete(r.s.chatMessages, id)
+		delete(r.s.chatReactions, id)
+	}
+
+	delete(r.s.chats, chatID)
+	delete(r.s.chatMembers, chatID)
+
+	return shown, nil
+}
+
 // settleChat brings m back to the messages the chat has left for them;
 // the caller holds the write lock.
 func (s *Store) settleChat(chatID uuid.UUID, m *message.Member) {

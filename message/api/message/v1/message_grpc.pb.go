@@ -45,6 +45,7 @@ const (
 	MessageService_RemoveChatMember_FullMethodName   = "/message.v1.MessageService/RemoveChatMember"
 	MessageService_LeaveChat_FullMethodName          = "/message.v1.MessageService/LeaveChat"
 	MessageService_ReturnToChat_FullMethodName       = "/message.v1.MessageService/ReturnToChat"
+	MessageService_DeleteChat_FullMethodName         = "/message.v1.MessageService/DeleteChat"
 	MessageService_SendChatMessage_FullMethodName    = "/message.v1.MessageService/SendChatMessage"
 	MessageService_ListChatMessages_FullMethodName   = "/message.v1.MessageService/ListChatMessages"
 	MessageService_GetChatMessage_FullMethodName     = "/message.v1.MessageService/GetChatMessage"
@@ -142,6 +143,9 @@ type MessageServiceClient interface {
 	// чат"); who was removed fails with FailedPrecondition.
 	LeaveChat(ctx context.Context, in *LeaveChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ReturnToChat(ctx context.Context, in *ReturnToChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The creator deletes the chat for everyone in it, with its messages
+	// and their photos; the photo of the chat is the caller's to delete.
+	DeleteChat(ctx context.Context, in *DeleteChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// What a message of a dialog may be: text, photos, a shared post or
 	// photo of an album, forwarded messages; the gateway has checked the
 	// photos are the sender's and what is shared exists. Who is not in the
@@ -440,6 +444,16 @@ func (c *messageServiceClient) ReturnToChat(ctx context.Context, in *ReturnToCha
 	return out, nil
 }
 
+func (c *messageServiceClient) DeleteChat(ctx context.Context, in *DeleteChatRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, MessageService_DeleteChat_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *messageServiceClient) SendChatMessage(ctx context.Context, in *SendChatMessageRequest, opts ...grpc.CallOption) (*SendChatMessageResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(SendChatMessageResponse)
@@ -643,6 +657,9 @@ type MessageServiceServer interface {
 	// чат"); who was removed fails with FailedPrecondition.
 	LeaveChat(context.Context, *LeaveChatRequest) (*emptypb.Empty, error)
 	ReturnToChat(context.Context, *ReturnToChatRequest) (*emptypb.Empty, error)
+	// The creator deletes the chat for everyone in it, with its messages
+	// and their photos; the photo of the chat is the caller's to delete.
+	DeleteChat(context.Context, *DeleteChatRequest) (*emptypb.Empty, error)
 	// What a message of a dialog may be: text, photos, a shared post or
 	// photo of an album, forwarded messages; the gateway has checked the
 	// photos are the sender's and what is shared exists. Who is not in the
@@ -765,6 +782,9 @@ func (UnimplementedMessageServiceServer) LeaveChat(context.Context, *LeaveChatRe
 }
 func (UnimplementedMessageServiceServer) ReturnToChat(context.Context, *ReturnToChatRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method ReturnToChat not implemented")
+}
+func (UnimplementedMessageServiceServer) DeleteChat(context.Context, *DeleteChatRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteChat not implemented")
 }
 func (UnimplementedMessageServiceServer) SendChatMessage(context.Context, *SendChatMessageRequest) (*SendChatMessageResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method SendChatMessage not implemented")
@@ -1270,6 +1290,24 @@ func _MessageService_ReturnToChat_Handler(srv interface{}, ctx context.Context, 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _MessageService_DeleteChat_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteChatRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(MessageServiceServer).DeleteChat(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: MessageService_DeleteChat_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(MessageServiceServer).DeleteChat(ctx, req.(*DeleteChatRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _MessageService_SendChatMessage_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SendChatMessageRequest)
 	if err := dec(in); err != nil {
@@ -1567,6 +1605,10 @@ var MessageService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReturnToChat",
 			Handler:    _MessageService_ReturnToChat_Handler,
+		},
+		{
+			MethodName: "DeleteChat",
+			Handler:    _MessageService_DeleteChat_Handler,
 		},
 		{
 			MethodName: "SendChatMessage",

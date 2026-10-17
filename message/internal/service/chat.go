@@ -32,6 +32,10 @@ type ChatRepository interface {
 	// there; a chat they created goes to who has been in it longest. It
 	// returns the deleted messages that carried other messages on.
 	DeleteByUser(ctx context.Context, userID uuid.UUID) ([]*message.ChatMessage, error)
+	// Delete deletes the chat with its people and messages. It returns
+	// the deleted messages that showed photos or carried other messages
+	// on: their photos go with them.
+	Delete(ctx context.Context, chatID uuid.UUID) ([]*message.ChatMessage, error)
 }
 
 // ChatMemberRepository keeps who is in a chat and how far they have read.
@@ -685,6 +689,38 @@ func (s *ChatService) Return(ctx context.Context, userID, chatID uuid.UUID) erro
 			return errs.Wrap("s.memberRepo.Set", s.memberRepo.Set(ctx, chatID, userID, message.MemberActive, now))
 		},
 	})
+}
+
+// DeleteChat deletes the chat for everyone in it with all it said: only
+// its creator may. Media deletes the photos of its messages and the
+// copies they carried on; the photo of the chat is the caller's to
+// delete. Nobody is told: the chat is gone from their list.
+func (s *ChatService) DeleteChat(ctx context.Context, userID, chatID uuid.UUID) error {
+	err := s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		chat, _, err := s.locked(ctx, chatID, userID)
+		if err != nil {
+			return errs.Wrap("s.locked", err)
+		}
+
+		if err = chat.CheckDelete(userID); err != nil {
+			return errs.Wrap("chat.CheckDelete", err)
+		}
+
+		gone, err := s.chatRepo.Delete(ctx, chatID)
+		if err != nil {
+			return errs.Wrap("s.chatRepo.Delete", err)
+		}
+
+		for _, m := range gone {
+			if err = dropPhotos(ctx, s.photos, m.SenderID(), m.Photos(), m.Forwarded(), uuid.Nil); err != nil {
+				return errs.Wrap("dropPhotos", err)
+			}
+		}
+
+		return nil
+	})
+
+	return errs.Wrap("s.tx.WithinTx", err)
 }
 
 // Send writes into the chat as senderID, who is in it: what a message of

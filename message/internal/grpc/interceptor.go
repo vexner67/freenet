@@ -60,6 +60,8 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, "a chat needs at least two other people"), true
 	case errors.Is(err, message.ErrKickYourself):
 		return status.New(codes.InvalidArgument, "you cannot remove yourself, leave the chat instead"), true
+	case errors.Is(err, message.ErrCannotDeleteChat):
+		return status.New(codes.PermissionDenied, "only the creator can delete the chat"), true
 	case errors.Is(err, message.ErrCannotKick):
 		return status.New(codes.PermissionDenied, "only the creator can remove members"), true
 	case errors.Is(err, message.ErrChatFull):

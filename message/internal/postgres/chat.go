@@ -390,6 +390,48 @@ func (r *ChatRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([]
 	return carrying, nil
 }
 
+// deleteChatMessagesQuery returns the deleted messages that showed
+// photos or carried other messages on: the photos go with them. The
+// people and the reactions go by cascade with the chat and the messages.
+const (
+	deleteChatMessagesQuery = `
+		WITH gone AS (
+			DELETE FROM chat_messages
+			WHERE chat_id = $1
+			RETURNING` + chatMessageColumns + `
+		)
+		SELECT` + chatMessageColumns + `
+		FROM gone
+		WHERE cardinality(photo_ids) > 0
+			OR forwarded <> '[]'
+	`
+
+	deleteChatQuery = `
+		DELETE FROM chats
+		WHERE id = $1
+	`
+)
+
+func (r *ChatRepository) Delete(ctx context.Context, chatID uuid.UUID) ([]*message.ChatMessage, error) {
+	conn := r.conn(ctx)
+
+	rows, err := conn.Query(ctx, deleteChatMessagesQuery, chatID)
+	if err != nil {
+		return nil, errs.Wrap("conn.Query", err)
+	}
+
+	shown, err := collectChatMessages(rows)
+	if err != nil {
+		return nil, errs.Wrap("collectChatMessages", err)
+	}
+
+	if _, err = conn.Exec(ctx, deleteChatQuery, chatID); err != nil {
+		return nil, errs.Wrap("conn.Exec", err)
+	}
+
+	return shown, nil
+}
+
 type ChatMemberRepository struct {
 	pool *pgxpool.Pool
 }

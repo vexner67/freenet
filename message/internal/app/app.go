@@ -288,6 +288,7 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 		messagev1.MessageService_CreateChat_FullMethodName:      cfg.ChatLimits,
 		messagev1.MessageService_AddChatMembers_FullMethodName:  cfg.ChatLimits,
 		messagev1.MessageService_RenameChat_FullMethodName:      cfg.ChatLimits,
+		messagev1.MessageService_DeleteChat_FullMethodName:      cfg.ChatLimits,
 		messagev1.MessageService_PinChatMessage_FullMethodName:  cfg.ChatLimits,
 		messagev1.MessageService_SetChatPhoto_FullMethodName:    cfg.ChatLimits,
 		// Typing tells others nothing to keep, but it is told to them.

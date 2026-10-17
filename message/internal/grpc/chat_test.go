@@ -492,3 +492,33 @@ func TestChat_PinAndPhoto(t *testing.T) {
 		t.Fatalf("a stranger sets the photo: %v", err)
 	}
 }
+
+func TestDeleteChat(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	created, err := s.client.CreateChat(s.as(t, ann), &messagev1.CreateChatRequest{Title: "Поход", MemberIds: []string{bob.String(), cat.String()}})
+	if err != nil {
+		t.Fatalf("CreateChat: %v", err)
+	}
+	id := created.GetChat().GetId()
+
+	if _, err = s.client.DeleteChat(s.as(t, bob), &messagev1.DeleteChatRequest{ChatId: id}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("a member deletes it: %v", err)
+	}
+	if _, err = s.client.DeleteChat(s.as(t, uuid.New()), &messagev1.DeleteChatRequest{ChatId: id}); status.Code(err) != codes.NotFound {
+		t.Fatalf("a stranger deletes it: %v", err)
+	}
+
+	if _, err = s.client.DeleteChat(s.as(t, ann), &messagev1.DeleteChatRequest{ChatId: id}); err != nil {
+		t.Fatalf("DeleteChat: %v", err)
+	}
+	if _, err = s.client.GetChat(s.as(t, bob), &messagev1.GetChatRequest{ChatId: id}); status.Code(err) != codes.NotFound {
+		t.Fatalf("GetChat after DeleteChat = %v", err)
+	}
+	if chats, err := s.client.ListChats(s.as(t, bob), &messagev1.ListChatsRequest{}); err != nil || len(chats.GetChats()) != 0 {
+		t.Fatalf("ListChats after DeleteChat = %v, %v", chats, err)
+	}
+}

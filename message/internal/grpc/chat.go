@@ -27,6 +27,7 @@ type ChatService interface {
 	Invite(ctx context.Context, userID, chatID uuid.UUID, ids []uuid.UUID) error
 	Kick(ctx context.Context, userID, chatID, targetID uuid.UUID) error
 	Leave(ctx context.Context, userID, chatID uuid.UUID) error
+	DeleteChat(ctx context.Context, userID, chatID uuid.UUID) error
 	Return(ctx context.Context, userID, chatID uuid.UUID) error
 	Send(ctx context.Context, senderID, chatID uuid.UUID, d service.Draft) (*message.ChatMessage, error)
 	Message(ctx context.Context, userID, id uuid.UUID) (*message.ChatMessage, message.Member, error)
@@ -259,6 +260,19 @@ func (h *MessageHandler) LeaveChat(ctx context.Context, req *messagev1.LeaveChat
 	}
 
 	if err = h.chatService.Leave(ctx, userID, chatID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (h *MessageHandler) DeleteChat(ctx context.Context, req *messagev1.DeleteChatRequest) (*emptypb.Empty, error) {
+	userID, chatID, err := chatCaller(ctx, req.GetChatId())
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.chatService.DeleteChat(ctx, userID, chatID); err != nil {
 		return nil, err
 	}
 

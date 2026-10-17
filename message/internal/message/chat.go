@@ -36,6 +36,8 @@ var (
 	// ErrCannotKick: only the creator removes others.
 	ErrCannotKick   = errors.New("only the creator can remove members")
 	ErrKickYourself = errors.New("you cannot remove yourself, leave the chat instead")
+	// ErrCannotDeleteChat: only the creator deletes a chat, for everyone.
+	ErrCannotDeleteChat = errors.New("only the creator can delete the chat")
 	// ErrMemberNotFound: whoever is to be removed is not in the chat.
 	ErrMemberNotFound = errors.New("member not found")
 	// ErrMemberLeft: who left on their own comes back on their own.
@@ -204,6 +206,16 @@ func (c *Chat) CheckKick(byID, targetID uuid.UUID) error {
 
 	if targetID == byID {
 		return ErrKickYourself
+	}
+
+	return nil
+}
+
+// CheckDelete tells whether byID may delete the chat for everyone in it:
+// only its creator, in it or not.
+func (c *Chat) CheckDelete(byID uuid.UUID) error {
+	if byID != c.ownerID {
+		return ErrCannotDeleteChat
 	}
 
 	return nil
