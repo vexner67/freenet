@@ -1,5 +1,5 @@
 import { api, currentUser, started } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -15,8 +15,6 @@ import { openStories } from './stories.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
 const CLUBS_SHOWN = 6;
-const ONLINE_SHOWN = 6;
-const COMMON_SHOWN = 6;
 // openvk shows the first page of albums on a person's page.
 const ALBUMS_SHOWN = 10;
 // The newest notes of the block "Заметки".
@@ -211,20 +209,6 @@ function showCompleteness(user, isOwner) {
   $('completeness').hidden = false;
 }
 
-// showCommon is openvk's "Общие друзья": whom the viewer follows too.
-async function showCommon(user) {
-  try {
-    const page = await api.common(user.nickname, '', COMMON_SHOWN);
-
-    $('common-count').textContent = commonCount(page.total);
-    $('common-all').href = `/follows?u=${encodeURIComponent(user.nickname)}&type=common`;
-    $('common-grid').replaceChildren(...page.users.map((u) => personCell(u)));
-    $('common-block').hidden = page.total === 0;
-  } catch {
-    // Not to be had: the page works without it.
-  }
-}
-
 // showAlbums is openvk's block "Альбомы", when there are any.
 async function showAlbums(user) {
   try {
@@ -233,21 +217,6 @@ async function showAlbums(user) {
     $('albums-block').replaceChildren(...albumsBlock(page.owner, page, false));
     $('albums-block').hidden = page.total === 0;
     linkAvatar(page.albums.find(isAvatarAlbum));
-  } catch {
-    // Not to be had: the page works without it.
-  }
-}
-
-// showOnline is openvk's "Друзья онлайн", to the owner only: how many of
-// the people they follow are online now, "Все" and the first of them.
-async function showOnline(user) {
-  try {
-    const page = await api.online(user.nickname, '', ONLINE_SHOWN);
-
-    $('online-count').textContent = onlineCount(page.total);
-    $('online-all').href = `/follows?u=${encodeURIComponent(user.nickname)}&type=online`;
-    $('online-grid').replaceChildren(...page.users.map((u) => personCell(u)));
-    $('online-block').hidden = page.total === 0;
   } catch {
     // Not to be had: the page works without it.
   }
@@ -471,8 +440,6 @@ try {
     if (profile.access.notes) showNotes(profile);
     showGifts(profile, me, isOwner);
     if (me) showStories(profile);
-    if (isOwner) showOnline(profile);
-    if (me && !isOwner && profile.access.friends) showCommon(profile);
     showCompleteness(isOwner ? me : profile, isOwner);
 
     // As on openvk: write to anyone but yourself.

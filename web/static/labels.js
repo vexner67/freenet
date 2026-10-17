@@ -597,11 +597,6 @@ export function followersCount(n) {
   return `${n} ${plural(n, ['подписчик', 'подписчика', 'подписчиков'])}`;
 }
 
-// onlineCount is openvk's "3 человека онлайн".
-export function onlineCount(n) {
-  return `${n} ${plural(n, ['человек', 'человека', 'человек'])} онлайн`;
-}
-
 // presence is openvk's "Онлайн" or "была в сети сегодня в 12:00" of a
 // page, '' when it is not told.
 export function presence(user, now = new Date()) {
@@ -997,11 +992,6 @@ export function archiveYears(years, chosen = 0, shown = 6) {
   const all = years.includes(chosen) || !chosen ? years : [...years, chosen].sort((a, b) => b - a);
 
   return { shown: all.slice(0, shown), more: all.slice(shown), action: chosen || all[0] || 0 };
-}
-
-// commonCount is openvk's "3 общих друга", of the people followed.
-export function commonCount(n) {
-  return `${n} ${plural(n, ['общая подписка', 'общие подписки', 'общих подписок'])}`;
 }
 
 // completenessHints are openvk's hints under the gauge of the owner's page:

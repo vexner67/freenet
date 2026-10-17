@@ -34,9 +34,30 @@ export function autosize(textarea) {
   }
 }
 
+// switchAttachMenu is openvk's "Прикрепить" of a form: a link that opens
+// the list of what can be attached, each item with its icon (.attach-menu
+// of the page). The items are the links the form's script wires, so a
+// click on one does what it did, and the list closes after it; a click
+// anywhere else and Esc close it too.
+function switchAttachMenu(event) {
+  const toggle = event.target.closest?.('.attach-toggle');
+  const menu = toggle?.closest('.attach-menu');
+
+  for (const open of document.querySelectorAll('.attach-menu.open')) {
+    if (open !== menu) open.classList.remove('open');
+  }
+
+  menu?.classList.toggle('open');
+}
+
 if (typeof document !== 'undefined') {
   document.addEventListener('input', (event) => {
     if (event.target instanceof HTMLTextAreaElement) autosize(event.target);
+  });
+  document.addEventListener('click', switchAttachMenu);
+  document.addEventListener('keydown', (event) => {
+    if (event.key !== 'Escape') return;
+    for (const open of document.querySelectorAll('.attach-menu.open')) open.classList.remove('open');
   });
 }
 

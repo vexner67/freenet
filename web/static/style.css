@@ -361,7 +361,6 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
   height: 200px;
   border: 1px solid var(--line-e0e0e0);
 }
-.profile-left .button { display: block; width: 100%; margin-top: 6px; text-align: center; }
 
 .name { color: var(--text-45688e); font-size: 13px; font-weight: bold; }
 .status { margin: 3px 0 10px; }
@@ -491,8 +490,6 @@ a.like:hover svg { opacity: .7; }
 
 /* Follows */
 
-.follow-state { margin-top: 4px; color: var(--text-808080); text-align: center; }
-.profile-left button.button { width: 100%; margin-top: 6px; }
 
 .side-block { margin-top: 12px; }
 .side-block .section-title { margin: 0; }
@@ -549,8 +546,21 @@ a.like:hover svg { opacity: .7; }
 /* Photo */
 
 .avatar { object-fit: cover; }
-.avatar-actions { padding: 4px 0 0; text-align: center; }
-.avatar-actions a { display: block; padding: 2px 0; }
+/* The controls on the photo for whom it is theirs to change, as openvk's
+   .avatar_controls: they show when the photo is pointed at — "Загрузить
+   новую фотографию" on a dark band along its bottom and "×" in its top
+   right corner; a touch screen shows them always. */
+.avatar-box { position: relative; }
+.avatar-controls { position: absolute; inset: 0; pointer-events: none; }
+.avatar-controls a { position: absolute; color: var(--text-fff); background: rgb(0 0 0 / 75%); opacity: 0; transition: opacity 200ms ease-in-out; pointer-events: auto; cursor: pointer; }
+.avatar-controls a:hover { text-decoration: none; }
+.avatar-box:hover .avatar-controls a { opacity: 0.85; }
+.avatar-box:hover .avatar-controls a:hover { opacity: 1; }
+.avatar-upload { right: 1px; bottom: 1px; left: 1px; padding: 6px 8px; }
+.avatar-delete { top: 1px; right: 1px; width: 20px; height: 20px; border-radius: 0 0 0 5px; font-size: 14px; line-height: 18px; text-align: center; }
+@media (hover: none) {
+  .avatar-controls a { opacity: 0.85; }
+}
 .post-avatar img, .person img, .person-cell img { object-fit: cover; }
 
 /* Search */
@@ -703,6 +713,37 @@ label.chat-person { cursor: pointer; }
 
 /* Photos attached to a post being written. */
 .attach-link { margin-right: 8px; }
+
+/* "Прикрепить" of a form, as openvk's #wallAttachmentMenu: the list opens
+   over the link with "Прикрепить" as its grey head, each item with its
+   icon; .attach-up opens it upwards, for a form at the bottom of a page.
+   With every item hidden there is nothing to attach, and no link. */
+.attach-menu { position: relative; display: inline-block; margin-right: 8px; }
+.attach-menu:not(:has(.attach-list .attach-link:not([hidden]))) { display: none; }
+.attach-toggle { cursor: pointer; white-space: nowrap; }
+.attach-list {
+  display: none;
+  position: absolute;
+  top: -5px;
+  left: -10px;
+  z-index: 32;
+  min-width: 110px;
+  border: 1px solid var(--line-aaa);
+  background: var(--back-fff);
+  box-shadow: 0 1px 3px -1px rgb(0 0 0 / 50%);
+  user-select: none;
+}
+.attach-menu.open .attach-list { display: flex; flex-direction: column; }
+.attach-up .attach-list { top: auto; bottom: -5px; flex-direction: column-reverse; }
+.attach-head { padding: 4px 10px; background: var(--back-ededed); color: var(--text-2b587a); }
+.attach-list .attach-link { display: flex; align-items: center; gap: 5px; margin: 0; padding: 3px 8px; white-space: nowrap; cursor: pointer; }
+.attach-list .attach-link:hover { background: var(--back-f0f0f0); text-decoration: none; }
+.attach-list .attach-link::before { content: ''; flex-shrink: 0; width: 16px; height: 16px; background-repeat: no-repeat; background-position: center; }
+.attach-photo::before { background-image: url("/static/icons/photo.svg"); }
+.attach-graffiti::before { background-image: url("/static/icons/graffiti.svg"); }
+.attach-document::before { background-image: url("/static/icons/document.svg"); }
+.attach-poll::before { background-image: url("/static/icons/poll.svg"); }
+.attach-timer::before { background-image: url("/static/icons/timer.svg"); }
 .attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .attachment { position: relative; }
 .attachment img { display: block; width: 75px; height: 75px; object-fit: cover; border: 1px solid var(--line-ccc); }
@@ -841,7 +882,6 @@ label.chat-person { cursor: pointer; }
 .club-side { width: 200px; flex-shrink: 0; }
 .club-side .section-title,
 .club-side > div > .section-title:first-child { margin: 10px 0 0; }
-.club-side .button { display: block; width: 100%; margin-top: 6px; }
 .side-text { padding: 4px; }
 .people-grid.wide { grid-template-columns: repeat(6, 1fr); }
 
@@ -904,7 +944,22 @@ label.chat-person { cursor: pointer; }
 .gray-bar { display: flex; gap: 8px; margin: -10px -10px 0; padding: 12px; background: var(--back-f6f6f6); }
 .gray-bar-search { flex: 1; }
 .summary-bar { margin: 0 -10px; padding: 11px 10px; border-bottom: 1px solid var(--line-dedede); color: var(--text-45688e); font-weight: bold; }
-.profile-links { margin-top: 6px; }
+/* The links under the photo of a person and of a community: openvk's
+   #profile_links, plain text one under another, each over a grey line. */
+.profile-links { margin: 10px 0; }
+.profile-links .profile-link {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 3px;
+  border: none;
+  border-bottom: 1px solid var(--line-ccc);
+  background: transparent;
+  font: inherit;
+  text-align: left;
+}
+.profile-links .profile-link:hover { background: var(--back-ededed); }
+.profile-links .profile-link:disabled { color: var(--text-808080); cursor: default; }
 
 /* "Предложка": the link above the wall, the head of the suggestions and
    the buttons of an admin under each, as on openvk. */
@@ -1473,13 +1528,13 @@ a.poll-result-name { cursor: pointer; }
   .profile-left { display: contents; }
   .profile-left > .side-block { order: 2; }
   .profile-right { order: 1; }
-  .profile-left .avatar { width: 200px; max-width: 100%; height: auto; aspect-ratio: 1; margin: 0 auto; }
-  .profile-left .button, .profile-left .profile-link, .profile-left .follow-state, .profile-left .avatar-actions { width: 100%; }
+  .profile-left .avatar-box, .club-side .avatar-box { width: 200px; max-width: 100%; margin: 0 auto; }
+  .profile-left .avatar { width: 100%; height: auto; aspect-ratio: 1; }
 
   /* A community's: its photo and links first. */
   .club { flex-direction: column; }
   .club-side { order: -1; width: auto; }
-  .club-side .avatar { width: 200px; max-width: 100%; height: auto; aspect-ratio: 1; margin: 0 auto; }
+  .club-side .avatar { width: 100%; height: auto; aspect-ratio: 1; }
   .people-grid.wide { grid-template-columns: repeat(4, 1fr); }
 
   .tabs { flex-wrap: wrap; }

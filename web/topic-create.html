@@ -40,7 +40,13 @@
               <td class="control">
                 <textarea id="topic-text" maxlength="60000"></textarea>
                 <div class="attachments" id="topic-photos" hidden></div>
-                <a class="attach-link" id="topic-attach">Прикрепить фотографию</a>
+                <span class="attach-menu">
+                  <a class="attach-toggle">Прикрепить</a>
+                  <span class="attach-list">
+                    <a class="attach-toggle attach-head">Прикрепить</a>
+                    <a class="attach-link attach-photo" id="topic-attach">Фотография</a>
+                  </span>
+                </span>
                 <div class="post-options">
                   <label id="topic-from-club-label" hidden><input type="checkbox" id="topic-from-club"> От имени сообщества</label>
                 </div>
