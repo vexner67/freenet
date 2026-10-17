@@ -253,7 +253,6 @@ const listPostsByAuthorQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		archived,
 		comments_closed,

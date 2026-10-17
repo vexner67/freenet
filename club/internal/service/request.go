@@ -84,7 +84,7 @@ func (s *ClubService) Accept(ctx context.Context, requesterID, clubID, userID uu
 			return club.ErrNoRequest
 		}
 
-		if err = s.members.Join(ctx, clubID, userID, false); err != nil {
+		if err = s.members.Join(ctx, clubID, userID); err != nil {
 			return errs.Wrap("s.members.Join", err)
 		}
 

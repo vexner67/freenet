@@ -55,8 +55,6 @@ func TestEvent_Validate(t *testing.T) {
 		{"like of a topic message", notification.Event{Kind: notification.KindTopicMessageLike, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, nil},
 		{"like of a topic message without the message", notification.Event{Kind: notification.KindTopicMessageLike, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},
 		{"club admin", notification.Event{Kind: notification.KindClubAdmin, RecipientID: ann, ActorID: bob}, nil},
-		{"event reminder", notification.Event{Kind: notification.KindEventReminder, RecipientID: ann, ActorID: bob}, nil},
-		{"event reminder with a post", notification.Event{Kind: notification.KindEventReminder, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},
 		{"club admin with a post", notification.Event{Kind: notification.KindClubAdmin, RecipientID: ann, ActorID: bob, PostID: post}, notification.ErrTargetMismatch},
 		{"suggested post without the suggestion", notification.Event{Kind: notification.KindSuggestedPost, RecipientID: ann, ActorID: bob}, notification.ErrTargetMismatch},
 		{"wall post with a comment", notification.Event{Kind: notification.KindWallPost, RecipientID: ann, ActorID: bob, PostID: post, CommentID: comment}, notification.ErrTargetMismatch},

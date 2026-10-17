@@ -285,9 +285,6 @@ type Post struct {
 	// still its writer, whom the API shows only when Signed.
 	FromWall bool
 	Signed   bool
-	// AvatarUpdate: the post shows the new photo of its wall's owner, a
-	// user or a community; nobody edits it.
-	AvatarUpdate bool
 	// Mine: the viewer wrote it; false for anonymous viewers.
 	Mine bool
 	// SharedPhotoID is a photo of an album the post shares, "" for none.
@@ -382,9 +379,6 @@ type NewPost struct {
 	NSFW bool
 	// Mentions are the IDs of the people the text names, who hear of it.
 	Mentions []string
-	// AvatarUpdate: the post of the new photo of the wall's owner, the
-	// photo alone.
-	AvatarUpdate bool
 	// Poll is the poll the post asks, nil for none; with it the text and
 	// the photos may be none.
 	Poll *NewPoll
@@ -822,34 +816,19 @@ type Club struct {
 	// club, filed under its ID; "" for none.
 	BackdropLeft  string
 	BackdropRight string
-	// Kind is "group" or "event" ("встреча"): an event has the time it
-	// StartsAt and, unless zero, EndsAt, and Maybes of its Members only
-	// might come.
-	Kind     string
-	StartsAt time.Time
-	EndsAt   time.Time
-	Maybes   int
 	// Closed: one joins by a request its admins accept, and only the
 	// members see what is in the club ("Закрытая группа").
 	Closed bool
 }
 
-// ClubKinds are what a club may be.
-const (
-	ClubKindGroup = "group"
-	ClubKindEvent = "event"
-)
-
 // ClubView is a club as the caller sees it. Role is what the caller is in
 // it: "" (not a member, or anonymous), "member", "admin" or "owner";
 // OwnerID is "" when its owner's page was erased or the club hides its
 // owner from the caller; OwnerTitle is what the owner does in the club.
-// CanStartTopic: the caller may start a topic in its discussions. Maybe:
-// the caller only might come to the event.
+// CanStartTopic: the caller may start a topic in its discussions.
 type ClubView struct {
 	Club          Club
 	Role          string
-	Maybe         bool
 	OwnerID       string
 	OwnerTitle    string
 	CanStartTopic bool
@@ -885,9 +864,6 @@ type ClubChanges struct {
 	TopicsAboveWall bool
 	// Closed is "Тип группы: закрытая".
 	Closed bool
-	// StartsAt and EndsAt are the schedule of an event; zero for none.
-	StartsAt time.Time
-	EndsAt   time.Time
 }
 
 // SeatChange is what a change of an admin's seat names: the title, the
@@ -908,40 +884,18 @@ type ClubMember struct {
 	Role   string
 	Title  string
 	Hidden bool
-	// Maybe: they only might come to the event.
-	Maybe bool
-}
-
-// NewEvent is an event to create; EndsAt is zero for one with no end.
-type NewEvent struct {
-	Name        string
-	Description string
-	StartsAt    time.Time
-	EndsAt      time.Time
 }
 
 // ClubMemberFilter picks the members of a club: only its owner and
-// admins, or those who come to the event for sure ("sure") or only might
-// ("maybe").
+// admins with AdminsOnly.
 type ClubMemberFilter struct {
 	AdminsOnly bool
-	Going      string
 }
 
-// ClubFilter picks the clubs of a user: only those they run, only those
-// of Kind unless it is "", only the events of Period ("upcoming" — ahead
-// or going on, "past" — over) unless it is "".
+// ClubFilter picks the clubs of a user: only those they run with Managed.
 type ClubFilter struct {
 	Managed bool
-	Kind    string
-	Period  string
 }
-
-// ClubPeriods are the times a list of events may be of.
-const (
-	ClubPeriodUpcoming = "upcoming"
-	ClubPeriodPast     = "past"
-)
 
 // ClubMemberPage is one screen of members, the newest first; Total counts
 // them, or the admins, on all pages.

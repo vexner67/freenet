@@ -19,11 +19,11 @@ type ClubService interface {
 	Find(ctx context.Context, viewerID uuid.UUID, ref service.Ref) (service.View, error)
 	GetMany(ctx context.Context, ids []uuid.UUID) ([]*club.Club, error)
 	Update(ctx context.Context, userID, clubID uuid.UUID, changes club.Changes) (service.View, error)
-	CreateEvent(ctx context.Context, ownerID uuid.UUID, name club.Name, description club.Description, schedule club.Schedule) (service.View, error)
-	Join(ctx context.Context, userID, clubID uuid.UUID, maybe bool) (service.View, error)
+	Join(ctx context.Context, userID, clubID uuid.UUID) (service.View, error)
 	Leave(ctx context.Context, userID, clubID uuid.UUID) (service.View, error)
 	Appoint(ctx context.Context, requesterID, clubID, userID uuid.UUID, role club.Role) error
 	Transfer(ctx context.Context, requesterID, clubID, userID uuid.UUID) error
+	Delete(ctx context.Context, requesterID, clubID uuid.UUID) error
 	Describe(ctx context.Context, requesterID, clubID, userID uuid.UUID, d club.SeatChange) error
 	Members(ctx context.Context, viewerID, clubID, cursor uuid.UUID, size int, pick service.MemberPick) (service.MemberPage, error)
 	Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, filter service.ClubFilter) (service.ClubPage, error)
@@ -77,35 +77,6 @@ func (h *ClubHandler) CreateClub(ctx context.Context, req *clubv1.CreateClubRequ
 	}
 
 	return &clubv1.CreateClubResponse{Club: toProtoView(v)}, nil
-}
-
-func (h *ClubHandler) CreateEvent(ctx context.Context, req *clubv1.CreateEventRequest) (*clubv1.CreateEventResponse, error) {
-	userID, err := currentUserID(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	name, err := club.NewName(req.GetName())
-	if err != nil {
-		return nil, err
-	}
-
-	description, err := club.NewDescription(req.GetDescription())
-	if err != nil {
-		return nil, err
-	}
-
-	schedule, err := fromProtoSchedule(req.GetStartsAt(), req.GetEndsAt())
-	if err != nil {
-		return nil, err
-	}
-
-	v, err := h.clubService.CreateEvent(ctx, userID, name, description, schedule)
-	if err != nil {
-		return nil, err
-	}
-
-	return &clubv1.CreateEventResponse{Club: toProtoView(v)}, nil
 }
 
 func (h *ClubHandler) GetClub(ctx context.Context, req *clubv1.GetClubRequest) (*clubv1.GetClubResponse, error) {
@@ -166,7 +137,7 @@ func (h *ClubHandler) UpdateClub(ctx context.Context, req *clubv1.UpdateClubRequ
 
 func (h *ClubHandler) JoinClub(ctx context.Context, req *clubv1.JoinClubRequest) (*clubv1.JoinClubResponse, error) {
 	v, err := h.membership(ctx, req.GetClubId(), func(ctx context.Context, userID, clubID uuid.UUID) (service.View, error) {
-		return h.clubService.Join(ctx, userID, clubID, req.GetMaybe())
+		return h.clubService.Join(ctx, userID, clubID)
 	})
 	if err != nil {
 		return nil, err
@@ -209,7 +180,7 @@ func (h *ClubHandler) ListMembers(ctx context.Context, req *clubv1.ListMembersRe
 		return nil, err
 	}
 
-	pick := picks[req.GetGoing()]
+	pick := service.PickAll
 	if req.GetAdminsOnly() {
 		pick = service.PickAdmins
 	}
@@ -226,7 +197,7 @@ func (h *ClubHandler) ListMembers(ctx context.Context, req *clubv1.ListMembersRe
 	}
 	for _, m := range page.Members {
 		resp.Members = append(resp.Members, &clubv1.Member{
-			UserId: m.UserID.String(), Role: roles[m.Role], Title: m.Title.String(), Hidden: m.Hidden, Maybe: m.Maybe,
+			UserId: m.UserID.String(), Role: roles[m.Role], Title: m.Title.String(), Hidden: m.Hidden,
 		})
 	}
 
@@ -400,6 +371,24 @@ func (h *ClubHandler) TransferClub(ctx context.Context, req *clubv1.TransferClub
 	return &emptypb.Empty{}, nil
 }
 
+func (h *ClubHandler) DeleteClub(ctx context.Context, req *clubv1.DeleteClubRequest) (*emptypb.Empty, error) {
+	requesterID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	clubID, err := parseID(req.GetClubId(), "invalid club id")
+	if err != nil {
+		return nil, err
+	}
+
+	if err = h.clubService.Delete(ctx, requesterID, clubID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (h *ClubHandler) ListUserClubs(ctx context.Context, req *clubv1.ListUserClubsRequest) (*clubv1.ListUserClubsResponse, error) {
 	userID, err := parseID(req.GetUserId(), "invalid user id")
 	if err != nil {
@@ -411,9 +400,7 @@ func (h *ClubHandler) ListUserClubs(ctx context.Context, req *clubv1.ListUserClu
 		return nil, err
 	}
 
-	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), service.ClubFilter{
-		Kind: fromProtoKind(req.GetKind()), Period: fromProtoPeriod(req.GetPeriod()),
-	})
+	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), service.ClubFilter{})
 	if err != nil {
 		return nil, err
 	}
@@ -442,9 +429,7 @@ func (h *ClubHandler) ListMyClubs(ctx context.Context, req *clubv1.ListMyClubsRe
 		return nil, err
 	}
 
-	filter := service.ClubFilter{
-		Managed: req.GetManaged(), Kind: fromProtoKind(req.GetKind()), Period: fromProtoPeriod(req.GetPeriod()),
-	}
+	filter := service.ClubFilter{Managed: req.GetManaged()}
 
 	page, err := h.clubService.Clubs(ctx, userID, cursor, int(req.GetLimit()), filter)
 	if err != nil {

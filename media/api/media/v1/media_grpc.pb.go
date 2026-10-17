@@ -106,7 +106,9 @@ type MediaServiceClient interface {
 	// owner_id go. Idempotent; missing documents are fine.
 	DeleteDocuments(ctx context.Context, in *DeleteDocumentsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
-	// time; all their avatars, photos and documents go. Idempotent.
+	// time; all their avatars, photos and documents go. For post: the
+	// community of this ID is gone, and its photo and backdrop go.
+	// Idempotent.
 	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 }
 
@@ -382,7 +384,9 @@ type MediaServiceServer interface {
 	// owner_id go. Idempotent; missing documents are fine.
 	DeleteDocuments(context.Context, *DeleteDocumentsRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
-	// time; all their avatars, photos and documents go. Idempotent.
+	// time; all their avatars, photos and documents go. For post: the
+	// community of this ID is gone, and its photo and backdrop go.
+	// Idempotent.
 	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
 	mustEmbedUnimplementedMediaServiceServer()
 }

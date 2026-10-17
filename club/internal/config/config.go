@@ -55,12 +55,6 @@ type Config struct {
 	// club, which mends its copy after a word lost on the way; 0: never.
 	FeedSyncInterval time.Duration `env:"FEED_SYNC_INTERVAL" envDefault:"6h"`
 
-	// EventReminderAhead is how long before an event starts its members
-	// are reminded of it; EventReminderInterval how often the events that
-	// are due are looked for.
-	EventReminderAhead    time.Duration `env:"EVENT_REMINDER_AHEAD" envDefault:"24h"`
-	EventReminderInterval time.Duration `env:"EVENT_REMINDER_INTERVAL" envDefault:"5m"`
-
 	// Spam protection, per user. REDIS_ADDR shares the counters between
 	// replicas; without it each counts on its own.
 	RedisAddr  string          `env:"REDIS_ADDR"`
@@ -90,10 +84,6 @@ func (c Config) Validate() error {
 
 	if c.FeedSyncInterval < 0 {
 		return errors.New("FEED_SYNC_INTERVAL must not be negative")
-	}
-
-	if c.EventReminderAhead <= 0 || c.EventReminderInterval <= 0 {
-		return errors.New("EVENT_REMINDER_AHEAD and EVENT_REMINDER_INTERVAL must be positive")
 	}
 
 	if err := c.Tracing.Validate(); err != nil {

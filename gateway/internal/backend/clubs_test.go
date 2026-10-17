@@ -4,7 +4,6 @@ import (
 	"context"
 	"slices"
 	"testing"
-	"time"
 
 	clubv1 "github.com/vexner67/freenet/club/api/club/v1"
 	"github.com/vexner67/freenet/gateway/internal/failure"
@@ -25,9 +24,6 @@ type fakeClubAPI struct {
 	described *clubv1.DescribeMemberRequest
 	// hiddenOf are the clubs ListHiddenManagers was asked about.
 	hiddenOf []string
-	event    *clubv1.CreateEventRequest
-	join     *clubv1.JoinClubRequest
-	mine     *clubv1.ListMyClubsRequest
 }
 
 var protoCats = &clubv1.Club{
@@ -133,60 +129,5 @@ func TestClubs(t *testing.T) {
 	page, err := clubs.Members(ctx, "tok", "k1", "", 0, model.ClubMemberFilter{AdminsOnly: true})
 	if err != nil || len(page.Members) != 1 || page.Members[0].Role != "owner" || page.Members[0].Title != "главная" || !page.Members[0].Hidden || page.NextCursor != "m1" || page.Total != 2 {
 		t.Fatalf("Members = %+v, %v", page, err)
-	}
-}
-
-func (f *fakeClubAPI) CreateEvent(_ context.Context, req *clubv1.CreateEventRequest, _ ...grpc.CallOption) (*clubv1.CreateEventResponse, error) {
-	f.event = req
-	return &clubv1.CreateEventResponse{Club: &clubv1.ClubView{
-		Club:  &clubv1.Club{Id: "e1", Name: req.GetName(), Kind: clubv1.Kind_KIND_EVENT, StartsAt: req.GetStartsAt(), EndsAt: req.GetEndsAt(), MemberCount: 3, MaybeCount: 1},
-		Role:  clubv1.Role_ROLE_OWNER,
-		Maybe: true,
-	}}, nil
-}
-
-func (f *fakeClubAPI) JoinClub(_ context.Context, req *clubv1.JoinClubRequest, _ ...grpc.CallOption) (*clubv1.JoinClubResponse, error) {
-	f.join = req
-	return &clubv1.JoinClubResponse{Club: &clubv1.ClubView{Club: protoCats}}, nil
-}
-
-func (f *fakeClubAPI) ListMyClubs(_ context.Context, req *clubv1.ListMyClubsRequest, _ ...grpc.CallOption) (*clubv1.ListMyClubsResponse, error) {
-	f.mine = req
-	return &clubv1.ListMyClubsResponse{}, nil
-}
-
-func TestClubs_Events(t *testing.T) {
-	t.Parallel()
-
-	api := &fakeClubAPI{}
-	clubs := NewClubs(api)
-	ctx := context.Background()
-	start := time.Date(2026, 12, 31, 20, 0, 0, 0, time.UTC)
-
-	v, err := clubs.CreateEvent(ctx, "tok", model.NewEvent{Name: "Новый год", StartsAt: start})
-	if err != nil || v.Club.Kind != model.ClubKindEvent || !v.Club.StartsAt.Equal(start) || !v.Club.EndsAt.IsZero() || v.Club.Maybes != 1 || !v.Maybe {
-		t.Fatalf("CreateEvent = %+v, %v", v, err)
-	}
-	if api.event.GetEndsAt() != nil || api.event.GetStartsAt().AsTime() != start {
-		t.Fatalf("request = %v; want no end", api.event)
-	}
-
-	if _, err = clubs.Join(ctx, "tok", "e1", true); err != nil || !api.join.GetMaybe() {
-		t.Fatalf("Join = %v, request %v", err, api.join)
-	}
-
-	if _, err = clubs.Mine(ctx, "tok", "", 0, model.ClubFilter{Managed: true, Kind: model.ClubKindEvent}); err != nil ||
-		api.mine.GetKind() != clubv1.Kind_KIND_EVENT || !api.mine.GetManaged() {
-		t.Fatalf("Mine = %v, request %v", err, api.mine)
-	}
-	if _, err = clubs.Mine(ctx, "tok", "", 0, model.ClubFilter{}); err != nil || api.mine.GetKind() != clubv1.Kind_KIND_UNSPECIFIED {
-		t.Fatalf("Mine of any kind = %v, request %v", err, api.mine)
-	}
-
-	if _, err = clubs.Members(ctx, "", "e1", "", 0, model.ClubMemberFilter{Going: "later"}); failure.From(err).Kind != failure.InvalidArgument {
-		t.Fatalf("an unknown going: %v", err)
-	}
-	if _, err = clubs.Members(ctx, "", "e1", "", 0, model.ClubMemberFilter{Going: "maybe"}); err != nil {
-		t.Fatalf("those who might come: %v", err)
 	}
 }

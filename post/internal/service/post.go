@@ -264,8 +264,6 @@ func NewPostService(d PostDeps) *PostService {
 // author's or someone else's. ClubWall tells that the wall is a
 // community's, whose owner is nobody to notify; FromWall that the post
 // speaks for that community, Signed that it names its author too.
-// AvatarUpdate makes it the post of the new photo of the wall's owner (see
-// post.NewAvatarUpdate).
 type CreateInput struct {
 	WallID   uuid.UUID
 	AuthorID uuid.UUID
@@ -280,8 +278,6 @@ type CreateInput struct {
 	// Poll is the poll the post asks, nil for none; with it Content is
 	// post.NewPolled.
 	Poll *post.PollDraft
-
-	AvatarUpdate bool
 }
 
 // Create writes a post; the owner of a user's wall hears about posts by
@@ -296,8 +292,6 @@ func (s *PostService) Create(ctx context.Context, in CreateInput) (*post.Post, e
 		err error
 	)
 	switch {
-	case in.AvatarUpdate:
-		p, err = post.NewAvatarUpdate(wallID, authorID, content, s.now())
 	case in.FromWall:
 		p, err = post.NewFromWall(wallID, authorID, content, in.Signed, s.now())
 	default:

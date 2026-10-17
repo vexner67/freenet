@@ -21,8 +21,6 @@ type Store struct {
 	mu      sync.RWMutex
 	clubs   map[uuid.UUID]club.Stored
 	members map[uuid.UUID]*member
-	// reminded are the events whose members were told they start soon.
-	reminded map[uuid.UUID]bool
 	// requests are who asked to join which closed club, keyed by the ID
 	// of the request.
 	requests map[uuid.UUID]request
@@ -39,12 +37,11 @@ type member struct {
 	role           club.Role
 	title          club.Title
 	hidden         bool
-	maybe          bool
 	pinned         bool
 }
 
 func (m *member) seat() club.Seat {
-	return club.Seat{Role: m.role, Title: m.title, Hidden: m.hidden, Maybe: m.maybe}
+	return club.Seat{Role: m.role, Title: m.title, Hidden: m.hidden}
 }
 
 // picked tells whether filter lists the member.
@@ -54,10 +51,6 @@ func (m *member) picked(filter service.MemberFilter) bool {
 		return m.role.Manages()
 	case service.ShownManagers:
 		return m.role.Manages() && !m.hidden
-	case service.SureComers:
-		return !m.maybe
-	case service.MaybeComers:
-		return m.maybe
 	default:
 		return true
 	}
@@ -67,7 +60,6 @@ func NewStore() *Store {
 	return &Store{
 		clubs:    make(map[uuid.UUID]club.Stored),
 		members:  make(map[uuid.UUID]*member),
-		reminded: make(map[uuid.UUID]bool),
 		requests: make(map[uuid.UUID]request),
 	}
 }
@@ -84,10 +76,6 @@ func (s *Store) Requests() *RequestRepository {
 	return &RequestRepository{s: s}
 }
 
-func (s *Store) Reminders() *ReminderRepository {
-	return &ReminderRepository{s: s}
-}
-
 // club restores a stored club with its count; the caller holds a lock.
 func (s *Store) club(id uuid.UUID) (*club.Club, bool) {
 	stored, ok := s.clubs[id]
@@ -101,9 +89,6 @@ func (s *Store) club(id uuid.UUID) (*club.Club, bool) {
 		}
 
 		stored.Members++
-		if m.maybe {
-			stored.Maybes++
-		}
 	}
 
 	return club.Restore(stored), true
@@ -122,13 +107,13 @@ func (s *Store) membership(clubID, userID uuid.UUID) (uuid.UUID, *member) {
 }
 
 // join adds a membership; the caller holds the write lock.
-func (s *Store) join(clubID, userID uuid.UUID, role club.Role, maybe bool) error {
+func (s *Store) join(clubID, userID uuid.UUID, role club.Role) error {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return errs.Wrap("uuid.NewV7", err)
 	}
 
-	s.members[id] = &member{clubID: clubID, userID: userID, role: role, maybe: maybe}
+	s.members[id] = &member{clubID: clubID, userID: userID, role: role}
 
 	return nil
 }
@@ -147,7 +132,7 @@ func (r *ClubRepository) Create(ctx context.Context, c *club.Club, ownerID uuid.
 
 	r.s.clubs[c.ID()] = stored(c)
 
-	return r.s.join(c.ID(), ownerID, club.RoleOwner, false)
+	return r.s.join(c.ID(), ownerID, club.RoleOwner)
 }
 
 func stored(c *club.Club) club.Stored {
@@ -165,9 +150,6 @@ func stored(c *club.Club) club.Stored {
 		OpenTopics:      c.OpenTopics(),
 		TopicsAboveWall: c.TopicsAboveWall(),
 		Backdrop:        c.Backdrop(),
-
-		Kind:     c.Kind(),
-		Schedule: c.Schedule(),
 
 		Closed: c.Closed(),
 	}
@@ -233,7 +215,7 @@ func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 	r.s.mu.Lock()
 	defer r.s.mu.Unlock()
 
-	old, ok := r.s.clubs[c.ID()]
+	_, ok := r.s.clubs[c.ID()]
 	if !ok {
 		return club.ErrNotFound
 	}
@@ -242,11 +224,6 @@ func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 		if id != c.ID() && c.Address() != "" && strings.EqualFold(other.Address.String(), c.Address().String()) {
 			return club.ErrAddressTaken
 		}
-	}
-
-	// An event moved to another time is reminded of again.
-	if !old.Schedule.Start.Equal(c.Schedule().Start) {
-		delete(r.s.reminded, c.ID())
 	}
 
 	r.s.clubs[c.ID()] = stored(c)
@@ -297,7 +274,7 @@ func (r *ClubRepository) SetBackdrop(ctx context.Context, c *club.Club, side clu
 	return nil
 }
 
-func (r *ClubRepository) Count(ctx context.Context, kind club.Kind) (int, error) {
+func (r *ClubRepository) Count(ctx context.Context) (int, error) {
 	if err := ctx.Err(); err != nil {
 		return 0, errs.Wrap("ctx.Err", err)
 	}
@@ -305,14 +282,36 @@ func (r *ClubRepository) Count(ctx context.Context, kind club.Kind) (int, error)
 	r.s.mu.RLock()
 	defer r.s.mu.RUnlock()
 
-	n := 0
-	for _, c := range r.s.clubs {
-		if c.Kind == kind {
-			n++
+	return len(r.s.clubs), nil
+}
+
+func (r *ClubRepository) Delete(ctx context.Context, clubID, ownerID uuid.UUID) error {
+	if err := ctx.Err(); err != nil {
+		return errs.Wrap("ctx.Err", err)
+	}
+
+	r.s.mu.Lock()
+	defer r.s.mu.Unlock()
+
+	if _, m := r.s.membership(clubID, ownerID); m == nil || m.role != club.RoleOwner {
+		return club.ErrCannotDelete
+	}
+
+	delete(r.s.clubs, clubID)
+
+	for id, m := range r.s.members {
+		if m.clubID == clubID {
+			delete(r.s.members, id)
 		}
 	}
 
-	return n, nil
+	for id, req := range r.s.requests {
+		if req.clubID == clubID {
+			delete(r.s.requests, id)
+		}
+	}
+
+	return nil
 }
 
 func (r *ClubRepository) Search(ctx context.Context, q club.SearchQuery, before uuid.UUID, limit int) ([]*club.Club, error) {
@@ -391,7 +390,7 @@ func (r *MemberRepository) Owner(ctx context.Context, clubID uuid.UUID) (uuid.UU
 	return uuid.Nil, nil
 }
 
-func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID, maybe bool) error {
+func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID) error {
 	if err := ctx.Err(); err != nil {
 		return errs.Wrap("ctx.Err", err)
 	}
@@ -404,13 +403,10 @@ func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID, m
 	}
 
 	if _, m := r.s.membership(clubID, userID); m != nil {
-		if m.role != club.RoleOwner {
-			m.maybe = maybe
-		}
 		return nil
 	}
 
-	return r.s.join(clubID, userID, club.RoleMember, maybe)
+	return r.s.join(clubID, userID, club.RoleMember)
 }
 
 func (r *MemberRepository) Roles(ctx context.Context, userID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID]club.Role, error) {
@@ -613,10 +609,7 @@ func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UU
 // caller holds a lock.
 func (s *Store) clubsOf(userID uuid.UUID, filter service.ClubFilter) func(*member) bool {
 	return func(m *member) bool {
-		c := s.clubs[m.clubID]
-
-		return m.userID == userID && (!filter.Managed || m.role.Manages()) &&
-			(filter.Kind == "" || c.Kind == filter.Kind) && filter.Period.Takes(c.Schedule, filter.At)
+		return m.userID == userID && (!filter.Managed || m.role.Manages())
 	}
 }
 
@@ -703,7 +696,7 @@ func (r *MemberRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) e
 
 	for _, clubID := range orphaned {
 		if heir := r.s.heir(clubID); heir != nil {
-			heir.role, heir.maybe = club.RoleOwner, false
+			heir.role = club.RoleOwner
 		}
 	}
 

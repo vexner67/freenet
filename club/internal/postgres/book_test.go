@@ -54,7 +54,7 @@ func TestBook(t *testing.T) {
 				t.Fatalf("Create: %v", err)
 			}
 			for _, m := range members[1:] {
-				if err = s.members.Join(ctx, c.ID(), m, false); err != nil {
+				if err = s.members.Join(ctx, c.ID(), m); err != nil {
 					t.Fatalf("Join: %v", err)
 				}
 			}

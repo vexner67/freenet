@@ -27,7 +27,6 @@ import (
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/grpc/status"
 	"google.golang.org/grpc/test/bufconn"
-	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 const issuer = "freenet-test"
@@ -312,6 +311,14 @@ func TestErrors(t *testing.T) {
 			_, err := s.client.TransferClub(s.as(t, bob), &clubv1.TransferClubRequest{ClubId: id, UserId: bob.String()})
 			return err
 		}, codes.PermissionDenied},
+		{"a stranger deletes the club", func() error {
+			_, err := s.client.DeleteClub(s.as(t, bob), &clubv1.DeleteClubRequest{ClubId: id})
+			return err
+		}, codes.PermissionDenied},
+		{"delete a bad club id", func() error {
+			_, err := s.client.DeleteClub(s.as(t, ann), &clubv1.DeleteClubRequest{ClubId: "x"})
+			return err
+		}, codes.InvalidArgument},
 		{"hand it over to a stranger", func() error {
 			_, err := s.client.TransferClub(s.as(t, ann), &clubv1.TransferClubRequest{ClubId: id, UserId: bob.String()})
 			return err
@@ -353,6 +360,26 @@ func TestErrors(t *testing.T) {
 	}
 }
 
+func TestDeleteClub(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann := uuid.New()
+
+	created, err := s.client.CreateClub(s.as(t, ann), &clubv1.CreateClubRequest{Name: "Кошки"})
+	if err != nil {
+		t.Fatalf("CreateClub: %v", err)
+	}
+	id := created.GetClub().GetClub().GetId()
+
+	if _, err = s.client.DeleteClub(s.as(t, ann), &clubv1.DeleteClubRequest{ClubId: id}); err != nil {
+		t.Fatalf("DeleteClub: %v", err)
+	}
+	if _, err = s.client.GetClub(context.Background(), &clubv1.GetClubRequest{Ref: id}); status.Code(err) != codes.NotFound {
+		t.Fatalf("GetClub after DeleteClub = %v", err)
+	}
+}
+
 func TestSetClubBackdrop(t *testing.T) {
 	t.Parallel()
 
@@ -374,92 +401,5 @@ func TestSetClubBackdrop(t *testing.T) {
 	}
 	if _, err = s.client.SetClubBackdrop(s.as(t, ann), &clubv1.SetClubBackdropRequest{ClubId: id, PhotoId: photo}); status.Code(err) != codes.InvalidArgument {
 		t.Fatalf("no side: %v", err)
-	}
-}
-
-func TestEvents(t *testing.T) {
-	t.Parallel()
-
-	s := newServer(t)
-	ann, bob := uuid.New(), uuid.New()
-	start := time.Now().Add(time.Hour)
-
-	if _, err := s.client.CreateEvent(s.as(t, ann), &clubv1.CreateEventRequest{Name: "Новый год"}); status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("an event with no start: %v", err)
-	}
-	if _, err := s.client.CreateEvent(s.as(t, ann), &clubv1.CreateEventRequest{
-		Name: "Новый год", StartsAt: timestamppb.New(start), EndsAt: timestamppb.New(start.Add(-time.Minute)),
-	}); status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("an event ending before it starts: %v", err)
-	}
-	if _, err := s.client.CreateEvent(context.Background(), &clubv1.CreateEventRequest{Name: "Новый год", StartsAt: timestamppb.New(start)}); status.Code(err) != codes.Unauthenticated {
-		t.Fatalf("CreateEvent without a token: %v", err)
-	}
-
-	created, err := s.client.CreateEvent(s.as(t, ann), &clubv1.CreateEventRequest{Name: "Новый год", Description: "ёлка", StartsAt: timestamppb.New(start)})
-	if err != nil {
-		t.Fatalf("CreateEvent: %v", err)
-	}
-	event := created.GetClub().GetClub()
-	if event.GetKind() != clubv1.Kind_KIND_EVENT || event.GetStartsAt().AsTime().Unix() != start.Unix() || event.GetEndsAt() != nil ||
-		created.GetClub().GetRole() != clubv1.Role_ROLE_OWNER {
-		t.Fatalf("CreateEvent = %v", created)
-	}
-	id := event.GetId()
-
-	joined, err := s.client.JoinClub(s.as(t, bob), &clubv1.JoinClubRequest{ClubId: id, Maybe: true})
-	if err != nil || !joined.GetClub().GetMaybe() || joined.GetClub().GetClub().GetMemberCount() != 2 || joined.GetClub().GetClub().GetMaybeCount() != 1 {
-		t.Fatalf("JoinClub as a maybe = %v, %v", joined, err)
-	}
-	// Joining again changes the answer.
-	if joined, err = s.client.JoinClub(s.as(t, bob), &clubv1.JoinClubRequest{ClubId: id}); err != nil || joined.GetClub().GetMaybe() || joined.GetClub().GetClub().GetMaybeCount() != 0 {
-		t.Fatalf("a maybe now sure = %v, %v", joined, err)
-	}
-	if joined, err = s.client.JoinClub(s.as(t, bob), &clubv1.JoinClubRequest{ClubId: id, Maybe: true}); err != nil || !joined.GetClub().GetMaybe() || joined.GetClub().GetClub().GetMaybeCount() != 1 {
-		t.Fatalf("a sure one now a maybe = %v, %v", joined, err)
-	}
-
-	sure, err := s.client.ListMembers(context.Background(), &clubv1.ListMembersRequest{ClubId: id, Going: clubv1.Going_GOING_SURE})
-	if err != nil || sure.GetTotal() != 1 || len(sure.GetMembers()) != 1 || sure.GetMembers()[0].GetUserId() != ann.String() {
-		t.Fatalf("sure = %v, %v", sure, err)
-	}
-	maybe, err := s.client.ListMembers(context.Background(), &clubv1.ListMembersRequest{ClubId: id, Going: clubv1.Going_GOING_MAYBE})
-	if err != nil || maybe.GetTotal() != 1 || len(maybe.GetMembers()) != 1 || !maybe.GetMembers()[0].GetMaybe() {
-		t.Fatalf("maybe = %v, %v", maybe, err)
-	}
-
-	group, err := s.client.CreateClub(s.as(t, ann), &clubv1.CreateClubRequest{Name: "Кошки"})
-	if err != nil || group.GetClub().GetClub().GetKind() != clubv1.Kind_KIND_GROUP || group.GetClub().GetClub().GetStartsAt() != nil {
-		t.Fatalf("CreateClub = %v, %v", group, err)
-	}
-
-	if n, err := s.client.CountClubs(context.Background(), &clubv1.CountClubsRequest{}); err != nil || n.GetCount() != 1 {
-		t.Fatalf("CountClubs = %v, %v; the group, not the event", n, err)
-	}
-
-	events, err := s.client.ListMyClubs(s.as(t, ann), &clubv1.ListMyClubsRequest{Kind: clubv1.Kind_KIND_EVENT})
-	if err != nil || events.GetTotal() != 1 || events.GetClubs()[0].GetClub().GetId() != id {
-		t.Fatalf("my events = %v, %v", events, err)
-	}
-	groups, err := s.client.ListUserClubs(context.Background(), &clubv1.ListUserClubsRequest{UserId: ann.String(), Kind: clubv1.Kind_KIND_GROUP})
-	if err != nil || groups.GetTotal() != 1 || groups.GetClubs()[0].GetKind() != clubv1.Kind_KIND_GROUP {
-		t.Fatalf("their groups = %v, %v", groups, err)
-	}
-	if all, err := s.client.ListMyClubs(s.as(t, ann), &clubv1.ListMyClubsRequest{}); err != nil || all.GetTotal() != 2 {
-		t.Fatalf("all my clubs = %v, %v", all, err)
-	}
-
-	// The event moves with its settings; without a start it is refused.
-	update := &clubv1.UpdateClubRequest{
-		ClubId: id, Name: "Новый год", Wall: clubv1.Wall_WALL_OPEN, AdminsDisplay: clubv1.AdminsDisplay_ADMINS_DISPLAY_CREATOR,
-		StartsAt: timestamppb.New(start.Add(time.Hour)), EndsAt: timestamppb.New(start.Add(2 * time.Hour)),
-	}
-	moved, err := s.client.UpdateClub(s.as(t, ann), update)
-	if err != nil || moved.GetClub().GetClub().GetEndsAt().AsTime().Unix() != start.Add(2*time.Hour).Unix() {
-		t.Fatalf("UpdateClub = %v, %v", moved, err)
-	}
-	update.StartsAt, update.EndsAt = nil, nil
-	if _, err = s.client.UpdateClub(s.as(t, ann), update); status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("an event updated to no start: %v", err)
 	}
 }

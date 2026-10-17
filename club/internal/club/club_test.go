@@ -390,6 +390,20 @@ func TestCheckTransfer(t *testing.T) {
 	}
 }
 
+func TestCheckDelete(t *testing.T) {
+	t.Parallel()
+
+	if err := club.CheckDelete(club.RoleOwner); err != nil {
+		t.Fatalf("the owner: %v", err)
+	}
+
+	for _, role := range []club.Role{club.RoleAdmin, club.RoleMember, club.RoleNone} {
+		if err := club.CheckDelete(role); !errors.Is(err, club.ErrCannotDelete) {
+			t.Errorf("CheckDelete(%q) = %v", role, err)
+		}
+	}
+}
+
 func TestNewTitle(t *testing.T) {
 	t.Parallel()
 
@@ -481,138 +495,5 @@ func TestCheckDescribe(t *testing.T) {
 		if err := club.CheckDescribe(tt.requester, tt.target); !errors.Is(err, tt.err) {
 			t.Errorf("CheckDescribe(%q, %q) = %v, want %v", tt.requester, tt.target, err, tt.err)
 		}
-	}
-}
-
-func TestSchedule(t *testing.T) {
-	t.Parallel()
-
-	start := time.Date(2026, 12, 31, 20, 0, 0, 0, time.UTC)
-
-	tests := []struct {
-		name       string
-		start, end time.Time
-		err        error
-	}{
-		{"with no end", start, time.Time{}, nil},
-		{"with an end", start, start.Add(time.Hour), nil},
-		{"with no start", time.Time{}, start, club.ErrNoStart},
-		{"ending as it starts", start, start, club.ErrEndsBeforeStart},
-		{"ending before it starts", start, start.Add(-time.Minute), club.ErrEndsBeforeStart},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			got, err := club.NewSchedule(tt.start, tt.end)
-			if !errors.Is(err, tt.err) {
-				t.Fatalf("NewSchedule = %v, want %v", err, tt.err)
-			}
-			if err == nil && (!got.Start.Equal(tt.start) || !got.End.Equal(tt.end)) {
-				t.Fatalf("NewSchedule = %+v", got)
-			}
-		})
-	}
-}
-
-func TestPeriod(t *testing.T) {
-	t.Parallel()
-
-	now := time.Date(2026, 12, 31, 20, 0, 0, 0, time.UTC)
-	schedule := func(start, end time.Duration) club.Schedule {
-		s := club.Schedule{Start: now.Add(start)}
-		if end != 0 {
-			s.End = now.Add(end)
-		}
-
-		return s
-	}
-
-	tests := []struct {
-		name     string
-		schedule club.Schedule
-		past     bool
-	}{
-		{"ahead", schedule(time.Hour, 0), false},
-		{"begun without an end", schedule(-time.Hour, 0), true},
-		{"begins now", schedule(0, 0), true},
-		{"going on", schedule(-time.Hour, time.Hour), false},
-		{"ended", schedule(-2*time.Hour, -time.Hour), true},
-	}
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			t.Parallel()
-
-			if got := club.PeriodPast.Takes(tt.schedule, now); got != tt.past {
-				t.Errorf("past = %v, want %v", got, tt.past)
-			}
-			if got := club.PeriodUpcoming.Takes(tt.schedule, now); got == tt.past {
-				t.Errorf("upcoming = %v, want %v", got, !tt.past)
-			}
-			if !club.PeriodAny.Takes(tt.schedule, now) {
-				t.Error("any period takes every event")
-			}
-		})
-	}
-
-	// A group has no time: it is of no period but any.
-	if club.PeriodPast.Takes(club.Schedule{}, now) || club.PeriodUpcoming.Takes(club.Schedule{}, now) || !club.PeriodAny.Takes(club.Schedule{}, now) {
-		t.Error("a group is of a period")
-	}
-}
-
-func TestEvent(t *testing.T) {
-	t.Parallel()
-
-	now := time.Date(2026, 12, 1, 12, 0, 0, 0, time.UTC)
-	start := now.Add(24 * time.Hour)
-	schedule, _ := club.NewSchedule(start, start.Add(time.Hour))
-
-	if _, err := club.NewEvent("Новый год", "", club.Schedule{}, now); !errors.Is(err, club.ErrNoStart) {
-		t.Fatalf("an event with no start: %v", err)
-	}
-
-	event, err := club.NewEvent("Новый год", "", schedule, now)
-	if err != nil || !event.IsEvent() || event.Kind() != club.KindEvent || event.Schedule() != schedule {
-		t.Fatalf("NewEvent = %+v, %v", event, err)
-	}
-
-	group, _ := club.New("Кошки", "", now)
-	if group.IsEvent() || group.Kind() != club.KindGroup || group.Started(start) {
-		t.Fatalf("a group = %+v", group)
-	}
-
-	// "Возможно приду" is for an event that has not started.
-	if !event.JoinsAsMaybe(true, now) || event.JoinsAsMaybe(false, now) {
-		t.Error("an event to come takes a maybe as asked")
-	}
-	if event.Started(now) || !event.Started(start) || event.JoinsAsMaybe(true, start) {
-		t.Error("an event that started takes no maybe")
-	}
-	if group.JoinsAsMaybe(true, now) {
-		t.Error("a group takes no maybe")
-	}
-
-	// An event keeps a schedule when edited; a group gets none.
-	later, _ := club.NewSchedule(start.Add(time.Hour), time.Time{})
-	changes := club.Changes{Name: "Новый год", Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator, Schedule: later}
-
-	if edited, err := event.Edited(club.RoleOwner, changes); err != nil || edited.Schedule() != later {
-		t.Fatalf("Edited = %+v, %v", edited, err)
-	}
-	changes.Schedule = club.Schedule{}
-	if _, err := event.Edited(club.RoleOwner, changes); !errors.Is(err, club.ErrNoStart) {
-		t.Fatalf("an event edited to no start: %v", err)
-	}
-	changes.Schedule = later
-	if edited, err := group.Edited(club.RoleOwner, changes); err != nil || edited.Schedule() != (club.Schedule{}) {
-		t.Fatalf("a group edited with a schedule = %+v, %v", edited, err)
-	}
-
-	if _, err := club.NewKind("party"); !errors.Is(err, club.ErrInvalidKind) {
-		t.Fatalf("NewKind: %v", err)
-	}
-	if k, err := club.NewKind("event"); err != nil || k != club.KindEvent {
-		t.Fatalf("NewKind = %q, %v", k, err)
 	}
 }

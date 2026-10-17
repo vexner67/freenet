@@ -366,6 +366,9 @@ type Chats interface {
 	Kick(ctx context.Context, accessToken, id, userID string) error
 	Leave(ctx context.Context, accessToken, id string) error
 	Return(ctx context.Context, accessToken, id string) error
+	// DeleteChat deletes the chat for everyone in it with its messages:
+	// the creator's call.
+	DeleteChat(ctx context.Context, accessToken, id string) error
 	Send(ctx context.Context, accessToken, id string, d model.MessageDraft) (model.ChatMessage, error)
 	History(ctx context.Context, accessToken, id string, at model.MessagesAt, limit int) (model.ChatMessagePage, error)
 	// Message is a message with its whole text.
@@ -384,13 +387,12 @@ type Chats interface {
 // viewers); a club ref is its ID or its address.
 type Clubs interface {
 	Create(ctx context.Context, accessToken, name, description string) (model.ClubView, error)
-	CreateEvent(ctx context.Context, accessToken string, e model.NewEvent) (model.ClubView, error)
 	Get(ctx context.Context, accessToken, ref string) (model.ClubView, error)
 	GetMany(ctx context.Context, ids []string) ([]model.Club, error)
-	// Count counts the groups, events not among them.
+	// Count counts the groups.
 	Count(ctx context.Context) (int, error)
 	Update(ctx context.Context, accessToken, clubID string, changes model.ClubChanges) (model.ClubView, error)
-	Join(ctx context.Context, accessToken, clubID string, maybe bool) (model.ClubView, error)
+	Join(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
 	Leave(ctx context.Context, accessToken, clubID string) (model.ClubView, error)
 	Members(ctx context.Context, accessToken, clubID, cursor string, limit int, filter model.ClubMemberFilter) (model.ClubMemberPage, error)
 	// JoinRequests are those who ask to join a closed club; Decide lets
@@ -400,6 +402,9 @@ type Clubs interface {
 	Describe(ctx context.Context, accessToken, clubID, userID string, change model.SeatChange) error
 	SetAdmin(ctx context.Context, accessToken, clubID, userID string, admin bool) error
 	Transfer(ctx context.Context, accessToken, clubID, userID string) error
+	// Delete deletes the club with its wall, topics and albums: the
+	// owner's call.
+	Delete(ctx context.Context, accessToken, clubID string) error
 	OfUser(ctx context.Context, userID, cursor string, limit int, filter model.ClubFilter) (model.UserClubPage, error)
 	Mine(ctx context.Context, accessToken, cursor string, limit int, filter model.ClubFilter) (model.ClubPage, error)
 	Search(ctx context.Context, query, cursor string, limit int) (model.ClubSearchPage, error)
@@ -596,7 +601,6 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/users/{nickname}/followers", a.listFollowers)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/following", a.listFollowing)
 	mux.HandleFunc("GET /api/v1/users/{nickname}/clubs", a.listUserClubs)
-	mux.HandleFunc("GET /api/v1/users/{nickname}/events", a.listUserEvents)
 
 	mux.HandleFunc("GET /api/v1/feed", a.feed)
 	mux.HandleFunc("GET /api/v1/me/feed/ignored", a.listIgnored)
@@ -636,6 +640,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/chats", a.createChat)
 	mux.HandleFunc("GET /api/v1/chats/{id}", a.getChat)
 	mux.HandleFunc("PATCH /api/v1/chats/{id}", a.renameChat)
+	mux.HandleFunc("DELETE /api/v1/chats/{id}", a.deleteChat)
 	mux.HandleFunc("PUT /api/v1/chats/{id}/pin", a.pinChatMessage)
 	mux.HandleFunc("DELETE /api/v1/chats/{id}/pin", a.unpinChatMessage)
 	mux.HandleFunc("PUT /api/v1/chats/{id}/photo", a.uploadChatPhoto)
@@ -655,15 +660,14 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/chat-messages/{id}/reaction", a.reactToChatMessage)
 
 	mux.HandleFunc("POST /api/v1/clubs", a.createClub)
-	mux.HandleFunc("POST /api/v1/events", a.createEvent)
 	mux.HandleFunc("GET /api/v1/about", a.about)
 	mux.HandleFunc("GET /api/v1/nicknames", a.knownNicknames)
 	mux.HandleFunc("GET /api/v1/me/clubs", a.listMyClubs)
-	mux.HandleFunc("GET /api/v1/me/events", a.listMyEvents)
 	mux.HandleFunc("GET /api/v1/me/clubs/pinned", a.listPinnedClubs)
 	mux.HandleFunc("GET /api/v1/clubs", a.searchClubs)
 	mux.HandleFunc("GET /api/v1/clubs/{ref}", a.getClub)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}", a.updateClub)
+	mux.HandleFunc("DELETE /api/v1/clubs/{ref}", a.deleteClub)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/avatar", a.uploadClubAvatar)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/avatar", a.deleteClubAvatar)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/backdrop/{side}", a.uploadClubBackdrop)

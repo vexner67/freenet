@@ -314,6 +314,10 @@ service PostService {
   // time. Their posts and the posts on their wall go, with all their likes
   // and comments, and their likes and comments on others' posts. Idempotent.
   rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
+  // Internal, for club: the community is gone. The posts on its wall go,
+  // with their likes and comments, and so do what was suggested and
+  // postponed for it, its topics and its albums. Idempotent.
+  rpc PurgeClub(PurgeClubRequest) returns (google.protobuf.Empty);
   // Internal, for user: the user deleted their page. Their likes and
   // their votes in polls leave the counts and the lists of who liked,
   // kept aside until the page is restored or erased. Idempotent.
@@ -382,9 +386,9 @@ message Post {
   // A post that speaks for a community names its author, author_id, as
   // "Автор: ..." under it.
   bool signed = 17;
-  // The post shows the new photo of the wall's owner, a user or a
-  // community ("обновил фотографию на своей странице"); never edited.
-  bool avatar_update = 18;
+  // The post of a new photo of a page, no longer written.
+  reserved 18;
+  reserved "avatar_update";
   // A photo of an album the post shares ("Поделиться" under a photo);
   // empty for none. A deleted photo leaves the post.
   string shared_photo_id = 19;
@@ -617,10 +621,9 @@ message CreatePostRequest {
   bool from_wall = 5;
   // With from_wall: the post names its author ("Подпись автора").
   bool signed = 6;
-  // The post of the new photo of the wall's owner: the caller's own wall,
-  // or a community's they run, as the caller has checked; one photo and
-  // nothing else. It speaks for the community on its wall.
-  bool avatar_update = 7;
+  // The post of a new photo of a page, no longer written.
+  reserved 7;
+  reserved "avatar_update";
   // The post is marked as adult.
   bool nsfw = 8;
   // The people the text names ("@nickname"), at most 10, who hear of it:
@@ -1151,6 +1154,10 @@ message ListLastCommentsResponse {
 
 message PurgeUserRequest {
   string user_id = 1;
+}
+
+message PurgeClubRequest {
+  string club_id = 1;
 }
 
 message HoldUserReactionsRequest {

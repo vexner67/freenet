@@ -209,6 +209,10 @@ func (a *App) build(cfg config.Config) error {
 				Held: repos.held, Sources: repos.sources, Postponed: repos.postponed, Documents: repos.documents,
 				Stories: repos.stories,
 			}),
+			ClubPurge: service.NewClubPurgeService(service.ClubPurgeDeps{
+				Posts: repos.posts, Comments: repos.comments, Suggestions: repos.suggestions, Postponed: repos.postponed,
+				Topics: repos.topics, Albums: repos.albums, Sources: repos.sources, Tx: repos.tx, Notifier: notifier, Media: photos,
+			}),
 			Holds:   service.NewHoldService(repos.tx, repos.held...),
 			Sources: service.NewSourceService(repos.sources),
 		}, a.logger),
@@ -357,7 +361,7 @@ func (a *App) newModerators(cfg config.Config) (service.SuggestionModerators, er
 // mediaKeeper records what media has to do with the photos of posts and
 // the documents of people.
 type mediaKeeper interface {
-	service.PhotoKeeper
+	service.MediaPurger
 	service.DocumentKeeper
 }
 
@@ -440,14 +444,17 @@ type repositories struct {
 	suggestions interface {
 		service.SuggestionRepository
 		service.SuggestionEraser
+		service.WallSuggestionEraser
 	}
 	postponed interface {
 		service.PostponedRepository
 		service.PostponedEraser
+		service.WallPostponedEraser
 	}
 	topics interface {
 		service.TopicRepository
 		service.TopicEraser
+		service.ClubTopicEraser
 	}
 	topicMessages interface {
 		service.TopicMessageRepository
@@ -456,6 +463,7 @@ type repositories struct {
 	albums interface {
 		service.AlbumRepository
 		service.AlbumEraser
+		service.OwnerAlbumEraser
 	}
 	polls interface {
 		service.PollRepository

@@ -94,6 +94,10 @@ func newServer(t *testing.T) testServer {
 			Held: []service.ReactionHolder{store.Holds(), topics, albums}, Sources: store.Sources(),
 			Postponed: postponed, Documents: documents,
 		}),
+		ClubPurge: service.NewClubPurgeService(service.ClubPurgeDeps{
+			Posts: store.Posts(), Comments: store.Comments(), Suggestions: suggestions, Postponed: postponed,
+			Topics: topics, Albums: albums, Sources: store.Sources(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Media: mediaclient.Nop{},
+		}),
 		Holds:   service.NewHoldService(inmem.TxManager{}, store.Holds(), topics, albums),
 		Sources: service.NewSourceService(store.Sources()),
 	}, log))
@@ -670,35 +674,6 @@ func TestClubWall(t *testing.T) {
 	byAuthor, err := s.client.ListFeed(s.reads(t, uuid.New(), []uuid.UUID{admin}), &postv1.ListFeedRequest{})
 	if err != nil || len(byAuthor.GetPosts()) != 0 {
 		t.Fatalf("ListFeed of the admin = %v, %v; the post is the club's", byAuthor, err)
-	}
-}
-
-func TestAvatarUpdate(t *testing.T) {
-	t.Parallel()
-
-	s := newServer(t)
-	club, ann, photo := uuid.New(), uuid.New(), uuid.New()
-
-	own, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{PhotoIds: []string{photo.String()}, AvatarUpdate: true})
-	if err != nil || !own.GetPost().GetAvatarUpdate() || own.GetPost().GetFromWall() || own.GetPost().GetWallId() != ann.String() {
-		t.Fatalf("on ann's wall = %v, %v", own, err)
-	}
-	if !own.GetPost().GetEditableUntil().AsTime().Equal(own.GetPost().GetCreatedAt().AsTime()) {
-		t.Fatalf("editable until %v", own.GetPost().GetEditableUntil())
-	}
-	_, err = s.client.EditPost(s.as(t, ann), &postv1.EditPostRequest{Id: own.GetPost().GetId(), Text: "подпись"})
-	if status.Code(err) != codes.PermissionDenied {
-		t.Fatalf("EditPost = %v", err)
-	}
-
-	clubs, err := s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{PhotoIds: []string{uuid.NewString()}, WallId: club.String(), ClubWall: true, FromWall: true, AvatarUpdate: true})
-	if err != nil || !clubs.GetPost().GetAvatarUpdate() || !clubs.GetPost().GetFromWall() {
-		t.Fatalf("for the club = %v, %v", clubs, err)
-	}
-
-	_, err = s.client.CreatePost(s.as(t, ann), &postv1.CreatePostRequest{Text: "новое фото", PhotoIds: []string{uuid.NewString()}, AvatarUpdate: true})
-	if status.Code(err) != codes.InvalidArgument {
-		t.Fatalf("with words = %v", err)
 	}
 }
 

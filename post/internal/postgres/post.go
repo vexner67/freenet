@@ -47,7 +47,6 @@ const savePostQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		hashtags,
 		nsfw,
@@ -55,7 +54,7 @@ const savePostQuery = `
 		document_ids,
 		link
 	)
-	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+	VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
 `
 
 // saveRepostQuery counts the repost in the shared post and adds it in one
@@ -64,7 +63,7 @@ const saveRepostQuery = `
 	WITH shared AS (
 		UPDATE posts
 		SET repost_count = repost_count + 1
-		WHERE id = $13
+		WHERE id = $12
 		RETURNING id
 	)
 	INSERT INTO posts (
@@ -77,12 +76,11 @@ const saveRepostQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		hashtags,
 		repost_of
 	)
-	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, shared.id
+	SELECT $1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, shared.id
 	FROM shared
 `
 
@@ -91,7 +89,7 @@ func (r *PostRepository) Save(ctx context.Context, p *post.Post) error {
 
 	args := []any{
 		p.ID(), p.WallID(), p.AuthorID(), content.Text().String(), photoIDs(content.Photos()), p.CreatedAt(),
-		p.FromWall(), p.Signed(), p.Suggested(), p.AvatarUpdate(), nullID(content.SharedPhoto()),
+		p.FromWall(), p.Signed(), p.Suggested(), nullID(content.SharedPhoto()),
 		hashtags(content.Text()),
 	}
 
@@ -132,7 +130,6 @@ const getPostQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		archived,
 		comments_closed,
@@ -173,7 +170,6 @@ const getPostsQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		archived,
 		comments_closed,
@@ -309,7 +305,6 @@ const getPinnedPostQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		archived,
 		comments_closed,
@@ -350,7 +345,6 @@ const postsByWallSelect = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		archived,
 		comments_closed,
@@ -468,7 +462,6 @@ const listFeedQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		archived,
 		comments_closed,
@@ -522,7 +515,6 @@ const listGlobalFeedQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		archived,
 		comments_closed,
@@ -587,7 +579,6 @@ const listRepostsQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		archived,
 		comments_closed,
@@ -711,7 +702,6 @@ const (
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		archived,
 		comments_closed,
@@ -944,7 +934,7 @@ func scanPost(row pgx.Row) (*post.Post, error) {
 	)
 
 	err := row.Scan(&s.ID, &s.WallID, &s.AuthorID, &text, &photos, &s.CreatedAt, &repostOf,
-		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested, &s.AvatarUpdate,
+		&s.Counters.Likes, &s.Counters.Comments, &s.Counters.Reposts, &editedAt, &s.FromWall, &s.Signed, &s.Suggested,
 		&photo, &s.Archived, &s.CommentsClosed, &s.NSFW, &polled, &docs, &link, &s.Pinned)
 	if err != nil {
 		return nil, err
@@ -1009,7 +999,6 @@ const deletePostsByUserQuery = `
 			from_wall,
 			signed,
 			suggested,
-			avatar_update,
 			shared_photo_id,
 			archived,
 			comments_closed,
@@ -1046,7 +1035,6 @@ const deletePostsByUserQuery = `
 		from_wall,
 		signed,
 		suggested,
-		avatar_update,
 		shared_photo_id,
 		archived,
 		comments_closed,

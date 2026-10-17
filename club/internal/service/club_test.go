@@ -5,7 +5,6 @@ import (
 	"errors"
 	"slices"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/club/internal/club"
@@ -20,6 +19,14 @@ type notifier struct {
 	readers   map[[2]uuid.UUID]bool
 	// walls are what the news were told of clubs closed and opened.
 	walls []string
+	// deleted are the clubs post and notification were told are gone,
+	// once by each.
+	deleted []uuid.UUID
+}
+
+func (n *notifier) Deleted(_ context.Context, clubID uuid.UUID) error {
+	n.deleted = append(n.deleted, clubID)
+	return nil
 }
 
 func (n *notifier) Closed(_ context.Context, clubID uuid.UUID) error {
@@ -76,6 +83,47 @@ func create(t *testing.T, svc *service.ClubService, ownerID uuid.UUID) *club.Clu
 	}
 
 	return v.Club
+}
+
+func TestClubService_Delete(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	svc, n := newNotified()
+	owner, admin := uuid.New(), uuid.New()
+	c := create(t, svc, owner)
+
+	if _, err := svc.Join(ctx, admin, c.ID()); err != nil {
+		t.Fatalf("Join: %v", err)
+	}
+	if err := svc.Appoint(ctx, owner, c.ID(), admin, club.RoleAdmin); err != nil {
+		t.Fatalf("Appoint: %v", err)
+	}
+
+	for _, who := range []uuid.UUID{admin, uuid.New()} {
+		if err := svc.Delete(ctx, who, c.ID()); !errors.Is(err, club.ErrCannotDelete) {
+			t.Fatalf("Delete by not the owner = %v", err)
+		}
+	}
+	if len(n.deleted) != 0 {
+		t.Fatalf("told of %v", n.deleted)
+	}
+
+	if err := svc.Delete(ctx, owner, c.ID()); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if len(n.deleted) != 2 || n.deleted[0] != c.ID() || n.deleted[1] != c.ID() {
+		t.Fatalf("told of %v; post and notification hear of it", n.deleted)
+	}
+	if _, err := svc.Find(ctx, owner, service.Ref{ID: c.ID()}); !errors.Is(err, club.ErrNotFound) {
+		t.Fatalf("Find after Delete = %v", err)
+	}
+	if page, err := svc.Clubs(ctx, admin, uuid.Nil, 10, service.ClubFilter{}); err != nil || len(page.Clubs) != 0 {
+		t.Fatalf("the admin's clubs = %+v, %v", page, err)
+	}
+	if err := svc.Delete(ctx, owner, c.ID()); !errors.Is(err, club.ErrNotFound) {
+		t.Fatalf("Delete again = %v", err)
+	}
 }
 
 func TestClubService_Create(t *testing.T) {
@@ -141,7 +189,7 @@ func TestClubService_Update(t *testing.T) {
 }
 
 // The news of post hear of everyone who comes into a club and goes: the
-// owner with the club, an event's too, and the members after.
+// owner with the club and the members after.
 func TestClubService_Readers(t *testing.T) {
 	t.Parallel()
 
@@ -150,23 +198,18 @@ func TestClubService_Readers(t *testing.T) {
 	ann, bob := uuid.New(), uuid.New()
 
 	cats := create(t, svc, ann).ID()
-	party, err := svc.CreateEvent(ctx, ann, "Встреча", "", club.Schedule{Start: time.Now().Add(time.Hour)})
-	if err != nil {
-		t.Fatalf("CreateEvent: %v", err)
+	if !n.readers[[2]uuid.UUID{cats, ann}] {
+		t.Fatalf("readers = %v, want the owner of the club", n.readers)
 	}
 
-	if !n.readers[[2]uuid.UUID{cats, ann}] || !n.readers[[2]uuid.UUID{party.Club.ID(), ann}] {
-		t.Fatalf("readers = %v, want the owner of the club and of the event", n.readers)
-	}
-
-	if _, err = svc.Join(ctx, bob, cats, false); err != nil {
+	if _, err := svc.Join(ctx, bob, cats); err != nil {
 		t.Fatalf("Join: %v", err)
 	}
 	if !n.readers[[2]uuid.UUID{cats, bob}] {
 		t.Fatalf("readers = %v, want bob", n.readers)
 	}
 
-	if _, err = svc.Leave(ctx, bob, cats); err != nil {
+	if _, err := svc.Leave(ctx, bob, cats); err != nil {
 		t.Fatalf("Leave: %v", err)
 	}
 	if n.readers[[2]uuid.UUID{cats, bob}] {
@@ -174,13 +217,13 @@ func TestClubService_Readers(t *testing.T) {
 	}
 
 	// The owner cannot leave, and stays a reader.
-	if _, err = svc.Leave(ctx, ann, cats); err == nil || !n.readers[[2]uuid.UUID{cats, ann}] {
+	if _, err := svc.Leave(ctx, ann, cats); err == nil || !n.readers[[2]uuid.UUID{cats, ann}] {
 		t.Fatalf("the owner left: %v, readers %v", err, n.readers)
 	}
 
 	// Nobody joins a club that is not there.
 	nowhere := uuid.New()
-	if _, err = svc.Join(ctx, bob, nowhere, false); err == nil || n.readers[[2]uuid.UUID{nowhere, bob}] {
+	if _, err := svc.Join(ctx, bob, nowhere); err == nil || n.readers[[2]uuid.UUID{nowhere, bob}] {
 		t.Fatalf("joined no club: %v, readers %v", err, n.readers)
 	}
 }
@@ -193,18 +236,18 @@ func TestClubService_Membership(t *testing.T) {
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	c := create(t, svc, ann)
 
-	v, err := svc.Join(ctx, bob, c.ID(), false)
+	v, err := svc.Join(ctx, bob, c.ID())
 	if err != nil || v.Role != club.RoleMember || v.Club.Members() != 2 {
 		t.Fatalf("Join = %+v, %v", v, err)
 	}
-	if v, err = svc.Join(ctx, bob, c.ID(), false); err != nil || v.Club.Members() != 2 {
+	if v, err = svc.Join(ctx, bob, c.ID()); err != nil || v.Club.Members() != 2 {
 		t.Fatalf("join twice = %+v, %v", v, err)
 	}
-	if _, err = svc.Join(ctx, bob, uuid.New(), false); !errors.Is(err, club.ErrNotFound) {
+	if _, err = svc.Join(ctx, bob, uuid.New()); !errors.Is(err, club.ErrNotFound) {
 		t.Fatalf("join an unknown club: %v", err)
 	}
 
-	if _, err = svc.Join(ctx, cat, c.ID(), false); err != nil {
+	if _, err = svc.Join(ctx, cat, c.ID()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -256,7 +299,7 @@ func TestClubService_Appoint(t *testing.T) {
 	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
 	c := create(t, svc, ann)
 
-	if _, err := svc.Join(ctx, bob, c.ID(), false); err != nil {
+	if _, err := svc.Join(ctx, bob, c.ID()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -334,7 +377,7 @@ func TestClubService_Transfer(t *testing.T) {
 	c := create(t, svc, ann)
 
 	for _, id := range []uuid.UUID{bob, cat} {
-		if _, err := svc.Join(ctx, id, c.ID(), false); err != nil {
+		if _, err := svc.Join(ctx, id, c.ID()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -461,7 +504,7 @@ func TestClubService_PurgeUser(t *testing.T) {
 	ann, bob := uuid.New(), uuid.New()
 	c := create(t, svc, ann)
 
-	if _, err := svc.Join(ctx, bob, c.ID(), false); err != nil {
+	if _, err := svc.Join(ctx, bob, c.ID()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -489,7 +532,7 @@ func TestClubService_PurgeUser_Heir(t *testing.T) {
 
 	// Bob is in the club longest, cat and dan run it, cat longer.
 	for _, user := range []uuid.UUID{bob, cat, dan} {
-		if _, err := svc.Join(ctx, user, c.ID(), false); err != nil {
+		if _, err := svc.Join(ctx, user, c.ID()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -534,7 +577,7 @@ func TestClubService_AvatarSearchAndMenu(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err = svc.Join(ctx, bob, cats.ID(), false); err != nil {
+	if _, err = svc.Join(ctx, bob, cats.ID()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -613,7 +656,7 @@ func TestClubService_Describe(t *testing.T) {
 	c := create(t, svc, ann)
 
 	for _, id := range []uuid.UUID{bob, cat} {
-		if _, err := svc.Join(ctx, id, c.ID(), false); err != nil {
+		if _, err := svc.Join(ctx, id, c.ID()); err != nil {
 			t.Fatal(err)
 		}
 	}
@@ -735,112 +778,6 @@ func TestClubService_Describe(t *testing.T) {
 	admins, err := svc.Members(ctx, ann, c.ID(), uuid.Nil, 10, service.PickAdmins)
 	if err != nil || admins.Members[0].UserID != bob || admins.Members[0].Seat != (club.Seat{Role: club.RoleAdmin}) {
 		t.Fatalf("appointed again = %+v, %v; want no title", admins, err)
-	}
-}
-
-func TestClubService_Events(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	svc := newService()
-	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
-	group := create(t, svc, ann)
-
-	soon, _ := club.NewSchedule(time.Now().Add(time.Hour), time.Time{})
-	v, err := svc.CreateEvent(ctx, ann, "Новый год", "ёлка", soon)
-	if err != nil || !v.Club.IsEvent() || v.Role != club.RoleOwner || v.Maybe || v.Club.Members() != 1 || v.Club.Maybes() != 0 {
-		t.Fatalf("CreateEvent = %+v, %v", v, err)
-	}
-	event := v.Club
-
-	// Bob might come, Cat is sure to; asking again changes nothing.
-	if v, err = svc.Join(ctx, bob, event.ID(), true); err != nil || !v.Maybe || v.Club.Members() != 2 || v.Club.Maybes() != 1 {
-		t.Fatalf("a maybe = %+v, %v", v, err)
-	}
-	if v, err = svc.Join(ctx, bob, event.ID(), true); err != nil || !v.Maybe || v.Club.Members() != 2 || v.Club.Maybes() != 1 {
-		t.Fatalf("a maybe asking again = %+v, %v; want no change", v, err)
-	}
-	// A member changes the answer by joining again; the owner is sure.
-	if v, err = svc.Join(ctx, bob, event.ID(), false); err != nil || v.Maybe || v.Club.Members() != 2 || v.Club.Maybes() != 0 {
-		t.Fatalf("a maybe now sure = %+v, %v", v, err)
-	}
-	if v, err = svc.Join(ctx, bob, event.ID(), true); err != nil || !v.Maybe || v.Club.Members() != 2 || v.Club.Maybes() != 1 {
-		t.Fatalf("a sure one now a maybe = %+v, %v", v, err)
-	}
-	if v, err = svc.Join(ctx, ann, event.ID(), true); err != nil || v.Maybe || v.Role != club.RoleOwner || v.Club.Maybes() != 1 {
-		t.Fatalf("the owner asking to be a maybe = %+v, %v", v, err)
-	}
-	if v, err = svc.Join(ctx, cat, event.ID(), false); err != nil || v.Maybe || v.Club.Members() != 3 {
-		t.Fatalf("a sure one = %+v, %v", v, err)
-	}
-
-	sure, err := svc.Members(ctx, uuid.Nil, event.ID(), uuid.Nil, 10, service.PickSure)
-	if err != nil || sure.Total != 2 || len(sure.Members) != 2 || sure.Members[0].UserID != cat || sure.Members[1].UserID != ann {
-		t.Fatalf("sure = %+v, %v", sure, err)
-	}
-	maybe, err := svc.Members(ctx, uuid.Nil, event.ID(), uuid.Nil, 10, service.PickMaybe)
-	if err != nil || maybe.Total != 1 || len(maybe.Members) != 1 || maybe.Members[0].UserID != bob || !maybe.Members[0].Maybe {
-		t.Fatalf("maybe = %+v, %v", maybe, err)
-	}
-
-	// Leaving takes the maybe out of the count.
-	if v, err = svc.Leave(ctx, bob, event.ID()); err != nil || v.Maybe || v.Club.Members() != 2 || v.Club.Maybes() != 0 {
-		t.Fatalf("a maybe leaves = %+v, %v", v, err)
-	}
-
-	// A group takes no maybe, nor does an event that has started.
-	if v, err = svc.Join(ctx, bob, group.ID(), true); err != nil || v.Maybe || v.Club.Maybes() != 0 {
-		t.Fatalf("a maybe in a group = %+v, %v", v, err)
-	}
-	past, _ := club.NewSchedule(time.Now().Add(-time.Hour), time.Time{})
-	started, err := svc.CreateEvent(ctx, ann, "Вчера", "", past)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if v, err = svc.Join(ctx, bob, started.Club.ID(), true); err != nil || v.Maybe {
-		t.Fatalf("a maybe in a started event = %+v, %v", v, err)
-	}
-
-	// The site counts its groups; events are not groups.
-	if n, err := svc.Count(ctx); err != nil || n != 1 {
-		t.Fatalf("Count = %d, %v", n, err)
-	}
-
-	// The lists tell groups from events.
-	events, err := svc.Clubs(ctx, ann, uuid.Nil, 10, service.ClubFilter{Kind: club.KindEvent})
-	if err != nil || events.Total != 2 || len(events.Clubs) != 2 || events.Clubs[1].Club.ID() != event.ID() {
-		t.Fatalf("events = %+v, %v", events, err)
-	}
-	groups, err := svc.Clubs(ctx, ann, uuid.Nil, 10, service.ClubFilter{Kind: club.KindGroup})
-	if err != nil || groups.Total != 1 || groups.Clubs[0].Club.ID() != group.ID() {
-		t.Fatalf("groups = %+v, %v", groups, err)
-	}
-	if all, err := svc.Clubs(ctx, ann, uuid.Nil, 10, service.ClubFilter{}); err != nil || all.Total != 3 {
-		t.Fatalf("all = %+v, %v", all, err)
-	}
-	if managed, err := svc.Clubs(ctx, bob, uuid.Nil, 10, service.ClubFilter{Managed: true, Kind: club.KindEvent}); err != nil || managed.Total != 0 {
-		t.Fatalf("bob runs no events: %+v, %v", managed, err)
-	}
-
-	// And the events ahead from those over; a group is neither.
-	ahead, err := svc.Clubs(ctx, ann, uuid.Nil, 10, service.ClubFilter{Period: club.PeriodUpcoming})
-	if err != nil || ahead.Total != 1 || len(ahead.Clubs) != 1 || ahead.Clubs[0].Club.ID() != event.ID() {
-		t.Fatalf("upcoming = %+v, %v", ahead, err)
-	}
-	over, err := svc.Clubs(ctx, ann, uuid.Nil, 10, service.ClubFilter{Period: club.PeriodPast})
-	if err != nil || over.Total != 1 || len(over.Clubs) != 1 || over.Clubs[0].Club.ID() != started.Club.ID() {
-		t.Fatalf("past = %+v, %v", over, err)
-	}
-
-	// Its admins move the event; it never loses its start.
-	later, _ := club.NewSchedule(soon.Start.Add(time.Hour), soon.Start.Add(2*time.Hour))
-	changes := club.Changes{Name: "Новый год", Wall: club.WallOpen, AdminsDisplay: club.AdminsDisplayCreator, Schedule: later}
-	if v, err = svc.Update(ctx, ann, event.ID(), changes); err != nil || v.Club.Schedule() != later {
-		t.Fatalf("Update = %+v, %v", v, err)
-	}
-	changes.Schedule = club.Schedule{}
-	if _, err = svc.Update(ctx, ann, event.ID(), changes); !errors.Is(err, club.ErrNoStart) {
-		t.Fatalf("Update to no start: %v", err)
 	}
 }
 

@@ -11,6 +11,7 @@ import (
 func InternalMethods() map[string][]string {
 	return map[string][]string{
 		postv1.PostService_PurgeUser_FullMethodName:            {mtls.User},
+		postv1.PostService_PurgeClub_FullMethodName:            {mtls.Club},
 		postv1.PostService_HoldUserReactions_FullMethodName:    {mtls.User},
 		postv1.PostService_ReleaseUserReactions_FullMethodName: {mtls.User},
 		postv1.PostService_FollowSource_FullMethodName:         {mtls.User, mtls.Club},
@@ -62,6 +63,7 @@ func PublicMethods() []string {
 		postv1.PostService_GetNoteComments_FullMethodName,
 		postv1.PostService_GetDocuments_FullMethodName,
 		postv1.PostService_PurgeUser_FullMethodName,
+		postv1.PostService_PurgeClub_FullMethodName,
 		postv1.PostService_HoldUserReactions_FullMethodName,
 		postv1.PostService_ReleaseUserReactions_FullMethodName,
 		postv1.PostService_FollowSource_FullMethodName,

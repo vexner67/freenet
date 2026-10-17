@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/vexner67/freenet/club/internal/club"
@@ -32,7 +31,7 @@ func TestClubService_ClosedClub(t *testing.T) {
 	c := create(t, svc, ann)
 
 	// Bob joined while the club was open and stays in it.
-	if _, err := svc.Join(ctx, bob, c.ID(), false); err != nil {
+	if _, err := svc.Join(ctx, bob, c.ID()); err != nil {
 		t.Fatal(err)
 	}
 
@@ -47,12 +46,12 @@ func TestClubService_ClosedClub(t *testing.T) {
 
 	// Joining is asking now, twice as once.
 	for range 2 {
-		v, err := svc.Join(ctx, cat, c.ID(), false)
+		v, err := svc.Join(ctx, cat, c.ID())
 		if err != nil || v.Role != club.RoleNone || !v.Requested || v.Club.Members() != 2 {
 			t.Fatalf("cat asks = %+v, %v", v, err)
 		}
 	}
-	if _, err := svc.Join(ctx, dan, c.ID(), false); err != nil {
+	if _, err := svc.Join(ctx, dan, c.ID()); err != nil {
 		t.Fatal(err)
 	}
 	if n.readers[[2]uuid.UUID{c.ID(), cat}] {
@@ -60,7 +59,7 @@ func TestClubService_ClosedClub(t *testing.T) {
 	}
 
 	// A member who joins again asks for nothing.
-	if v, err := svc.Join(ctx, bob, c.ID(), false); err != nil || v.Requested || v.Role != club.RoleMember {
+	if v, err := svc.Join(ctx, bob, c.ID()); err != nil || v.Requested || v.Role != club.RoleMember {
 		t.Fatalf("bob joins again = %+v, %v", v, err)
 	}
 
@@ -129,7 +128,7 @@ func TestClubService_ClosedClub(t *testing.T) {
 	}
 
 	// Leaving takes a request back.
-	if _, err = svc.Join(ctx, dan, c.ID(), false); err != nil {
+	if _, err = svc.Join(ctx, dan, c.ID()); err != nil {
 		t.Fatal(err)
 	}
 	if v, err := svc.Leave(ctx, dan, c.ID()); err != nil || v.Requested {
@@ -137,7 +136,7 @@ func TestClubService_ClosedClub(t *testing.T) {
 	}
 
 	// An erased user asks for nothing.
-	if _, err = svc.Join(ctx, dan, c.ID(), false); err != nil {
+	if _, err = svc.Join(ctx, dan, c.ID()); err != nil {
 		t.Fatal(err)
 	}
 	if err = svc.PurgeUser(ctx, dan); err != nil {
@@ -148,7 +147,7 @@ func TestClubService_ClosedClub(t *testing.T) {
 	}
 
 	// A club that opens forgets who asked: they just join.
-	if _, err = svc.Join(ctx, dan, c.ID(), false); err != nil {
+	if _, err = svc.Join(ctx, dan, c.ID()); err != nil {
 		t.Fatal(err)
 	}
 	if v := closeClub(t, svc, ann, c, false); v.Club.Closed() {
@@ -157,7 +156,7 @@ func TestClubService_ClosedClub(t *testing.T) {
 	if len(n.walls) != 2 || n.walls[1] != "opened "+c.ID().String() {
 		t.Fatalf("the news heard %v", n.walls)
 	}
-	if v, err := svc.Join(ctx, dan, c.ID(), false); err != nil || v.Role != club.RoleMember || v.Requested {
+	if v, err := svc.Join(ctx, dan, c.ID()); err != nil || v.Role != club.RoleMember || v.Requested {
 		t.Fatalf("dan joins the opened club = %+v, %v", v, err)
 	}
 	closeClub(t, svc, ann, c, true)
@@ -167,29 +166,5 @@ func TestClubService_ClosedClub(t *testing.T) {
 
 	if _, err = svc.Requests(ctx, ann, uuid.New(), uuid.Nil, 10); !errors.Is(err, club.ErrNotFound) {
 		t.Fatalf("requests of an unknown club: %v", err)
-	}
-}
-
-// An event is never closed: one comes or does not.
-func TestClubService_ClosedEvent(t *testing.T) {
-	t.Parallel()
-
-	ctx := context.Background()
-	svc := newService()
-	ann := uuid.New()
-
-	schedule, err := club.NewSchedule(time.Now().Add(48*time.Hour), time.Time{})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	v, err := svc.CreateEvent(ctx, ann, "Встреча", "", schedule)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	v, err = svc.Update(ctx, ann, v.Club.ID(), club.Changes{Name: "Встреча", Wall: club.WallOpen, Schedule: schedule, Closed: true})
-	if err != nil || v.Club.Closed() {
-		t.Fatalf("a closed event = %+v, %v", v, err)
 	}
 }

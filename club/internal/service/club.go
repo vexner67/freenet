@@ -43,8 +43,11 @@ type ClubRepository interface {
 	// Search returns up to limit clubs that match q with IDs below before
 	// (uuid.Nil: from the newest), the newest first.
 	Search(ctx context.Context, q club.SearchQuery, before uuid.UUID, limit int) ([]*club.Club, error)
-	// Count counts the clubs of a kind.
-	Count(ctx context.Context, kind club.Kind) (int, error)
+	// Count counts the clubs.
+	Count(ctx context.Context) (int, error)
+	// Delete deletes the club with its members and requests while ownerID
+	// owns it; club.ErrCannotDelete otherwise.
+	Delete(ctx context.Context, clubID, ownerID uuid.UUID) error
 }
 
 type MemberRepository interface {
@@ -59,10 +62,8 @@ type MemberRepository interface {
 	Roles(ctx context.Context, userID uuid.UUID, clubIDs []uuid.UUID) (map[uuid.UUID]club.Role, error)
 	// Hidden are those who run each of the clubs and whom it hides.
 	Hidden(ctx context.Context, clubIDs []uuid.UUID) (map[uuid.UUID][]uuid.UUID, error)
-	// Join is idempotent; club.ErrNotFound when the club is gone. maybe:
-	// the member only might come to the event. A member who joins again
-	// changes that answer, unless they own the club.
-	Join(ctx context.Context, clubID, userID uuid.UUID, maybe bool) error
+	// Join is idempotent; club.ErrNotFound when the club is gone.
+	Join(ctx context.Context, clubID, userID uuid.UUID) error
 	Leave(ctx context.Context, clubID, userID uuid.UUID) error
 	// SetRole changes the role of a member who is not the owner;
 	// club.ErrNotMember when there is no such member. An admin made a
@@ -109,10 +110,6 @@ const (
 	Managers
 	// ShownManagers are those of them the club does not hide.
 	ShownManagers
-	// SureComers and MaybeComers are the members of an event who come for
-	// sure ("Точно придут") and who only might ("Возможно придут").
-	SureComers
-	MaybeComers
 )
 
 // MemberPick is the list of members a caller asks for.
@@ -122,18 +119,11 @@ const (
 	PickAll MemberPick = iota
 	// PickAdmins are the owner and the admins, as the caller sees them.
 	PickAdmins
-	PickSure
-	PickMaybe
 )
 
-// ClubFilter picks the clubs of a user: only those they run with Managed,
-// only those of Kind unless it is empty, only the events of Period as of
-// At, which the service sets.
+// ClubFilter picks the clubs of a user: only those they run with Managed.
 type ClubFilter struct {
 	Managed bool
-	Kind    club.Kind
-	Period  club.Period
-	At      time.Time
 }
 
 // Member is one user in a club; ID is the membership, the cursor of lists.
@@ -154,11 +144,10 @@ type Membership struct {
 
 // View is a club as a viewer sees it: what they are in it and who owns it
 // (uuid.Nil if nobody, or if the owner is hidden from the viewer), with
-// the owner's title. Maybe: the viewer only might come to the event.
+// the owner's title.
 type View struct {
 	Club       *club.Club
 	Role       club.Role
-	Maybe      bool
 	OwnerID    uuid.UUID
 	OwnerTitle club.Title
 	// Requested: the viewer asked to join the closed club and waits.
@@ -255,21 +244,6 @@ func (s *ClubService) found(ctx context.Context, c *club.Club, ownerID uuid.UUID
 	return errs.Wrap("s.tx.WithinTx", err)
 }
 
-// CreateEvent makes an event with ownerID as its owner, who comes for
-// sure: "Создать встречу" of openvk.
-func (s *ClubService) CreateEvent(ctx context.Context, ownerID uuid.UUID, name club.Name, description club.Description, schedule club.Schedule) (View, error) {
-	c, err := club.NewEvent(name, description, schedule, s.now())
-	if err != nil {
-		return View{}, errs.Wrap("club.NewEvent", err)
-	}
-
-	if err = s.found(ctx, c, ownerID); err != nil {
-		return View{}, errs.Wrap("s.found", err)
-	}
-
-	return s.view(ctx, ownerID, c.ID())
-}
-
 // Find is the club ref names as viewerID sees it; uuid.Nil is an
 // anonymous viewer.
 func (s *ClubService) Find(ctx context.Context, viewerID uuid.UUID, ref Ref) (View, error) {
@@ -303,7 +277,7 @@ func (s *ClubService) view(ctx context.Context, viewerID, clubID uuid.UUID) (Vie
 			return View{}, errs.Wrap("s.members.Seat", err)
 		}
 
-		v.Role, v.Maybe = viewer.Role, viewer.Maybe
+		v.Role = viewer.Role
 
 		if err = s.viewRequests(ctx, &v, viewerID); err != nil {
 			return View{}, err
@@ -419,11 +393,10 @@ func (s *ClubService) Update(ctx context.Context, userID, clubID uuid.UUID, chan
 	return s.view(ctx, userID, clubID)
 }
 
-// Join makes userID a member ("Вступить в группу", "Я приду"); joining
-// twice is fine. With maybe they only might come ("Возможно приду"),
-// which only an event that has not started takes. A closed club takes a
-// request instead ("Подать заявку"), which its admins accept.
-func (s *ClubService) Join(ctx context.Context, userID, clubID uuid.UUID, maybe bool) (View, error) {
+// Join makes userID a member ("Вступить в группу"); joining twice is fine.
+// A closed club takes a request instead ("Подать заявку"), which its
+// admins accept.
+func (s *ClubService) Join(ctx context.Context, userID, clubID uuid.UUID) (View, error) {
 	c, err := s.clubs.Get(ctx, clubID)
 	if err != nil {
 		return View{}, errs.Wrap("s.clubs.Get", err)
@@ -443,7 +416,7 @@ func (s *ClubService) Join(ctx context.Context, userID, clubID uuid.UUID, maybe 
 	}
 
 	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
-		if err := s.members.Join(ctx, clubID, userID, c.JoinsAsMaybe(maybe, s.now())); err != nil {
+		if err := s.members.Join(ctx, clubID, userID); err != nil {
 			return errs.Wrap("s.members.Join", err)
 		}
 
@@ -553,6 +526,40 @@ func (s *ClubService) Transfer(ctx context.Context, requesterID, clubID, userID 
 	return errs.Wrap("s.members.Transfer", s.members.Transfer(ctx, clubID, requesterID, userID))
 }
 
+// Delete deletes the club, its owner's call: its members and requests go
+// with it, and in the same transaction post is told to delete its wall,
+// topics, albums and photos and notification what it caused. openvk
+// deletes no club.
+func (s *ClubService) Delete(ctx context.Context, requesterID, clubID uuid.UUID) error {
+	if _, err := s.clubs.Get(ctx, clubID); err != nil {
+		return errs.Wrap("s.clubs.Get", err)
+	}
+
+	role, err := s.members.Role(ctx, clubID, requesterID)
+	if err != nil {
+		return errs.Wrap("s.members.Role", err)
+	}
+
+	if err = club.CheckDelete(role); err != nil {
+		return errs.Wrap("club.CheckDelete", err)
+	}
+
+	err = s.tx.WithinTx(ctx, func(ctx context.Context) error {
+		// The role may have changed since: the repository checks it again.
+		if err := s.clubs.Delete(ctx, clubID, requesterID); err != nil {
+			return errs.Wrap("s.clubs.Delete", err)
+		}
+
+		if err := s.readers.Deleted(ctx, clubID); err != nil {
+			return errs.Wrap("s.readers.Deleted", err)
+		}
+
+		return errs.Wrap("s.notifier.Deleted", s.notifier.Deleted(ctx, clubID))
+	})
+
+	return errs.Wrap("s.tx.WithinTx", err)
+}
+
 // Describe gives userID, one of those who run the club, a title, hides
 // or shows them, or both ("Изменить комментарий" and "Скрыт" of openvk):
 // those who run the club do it for each other.
@@ -640,22 +647,16 @@ func memberFilter(c *club.Club, pick MemberPick, viewer club.Role) (MemberFilter
 		}
 
 		return ShownManagers, 0
-	case PickSure:
-		return SureComers, c.Members() - c.Maybes()
-	case PickMaybe:
-		return MaybeComers, c.Maybes()
 	default:
 		return AllMembers, c.Members()
 	}
 }
 
-// Clubs pages the clubs of a user ("Мои Группы", "Мои Встречи"), the
-// newest joined first, as filter picks: only those they run
-// ("Управление"), only groups or only events, only the events ahead or
-// those over. Total counts them all.
+// Clubs pages the clubs of a user ("Мои Группы"), the newest joined
+// first, as filter picks: only those they run ("Управление"), or all.
+// Total counts them all.
 func (s *ClubService) Clubs(ctx context.Context, userID, cursor uuid.UUID, size int, filter ClubFilter) (ClubPage, error) {
 	size = pageSize(size)
-	filter.At = s.now()
 
 	clubs, err := s.members.ListClubs(ctx, userID, cursor, size+1, filter)
 	if err != nil {
@@ -694,10 +695,9 @@ func (s *ClubService) Search(ctx context.Context, query club.SearchQuery, cursor
 	return page, nil
 }
 
-// Count counts the groups of the site, for its page "о сайте"; events are
-// not groups.
+// Count counts the groups of the site, for its page "о сайте".
 func (s *ClubService) Count(ctx context.Context) (int, error) {
-	n, err := s.clubs.Count(ctx, club.KindGroup)
+	n, err := s.clubs.Count(ctx)
 	if err != nil {
 		return 0, errs.Wrap("s.clubs.Count", err)
 	}

@@ -35,10 +35,9 @@ var (
 		notification.KindNoteComment:      notificationv1.Kind_KIND_NOTE_COMMENT,
 		notification.KindTopicMessageLike: notificationv1.Kind_KIND_TOPIC_MESSAGE_LIKE,
 
-		notification.KindEventReminder: notificationv1.Kind_KIND_EVENT_REMINDER,
-		notification.KindGift:          notificationv1.Kind_KIND_GIFT,
-		notification.KindVotes:         notificationv1.Kind_KIND_VOTES,
-		notification.KindInvite:        notificationv1.Kind_KIND_INVITE,
+		notification.KindGift:   notificationv1.Kind_KIND_GIFT,
+		notification.KindVotes:  notificationv1.Kind_KIND_VOTES,
+		notification.KindInvite: notificationv1.Kind_KIND_INVITE,
 	}
 	kindFromProto = map[notificationv1.Kind]notification.Kind{
 		notificationv1.Kind_KIND_LIKE:      notification.KindLike,
@@ -65,10 +64,9 @@ var (
 		notificationv1.Kind_KIND_NOTE_COMMENT:       notification.KindNoteComment,
 		notificationv1.Kind_KIND_TOPIC_MESSAGE_LIKE: notification.KindTopicMessageLike,
 
-		notificationv1.Kind_KIND_EVENT_REMINDER: notification.KindEventReminder,
-		notificationv1.Kind_KIND_GIFT:           notification.KindGift,
-		notificationv1.Kind_KIND_VOTES:          notification.KindVotes,
-		notificationv1.Kind_KIND_INVITE:         notification.KindInvite,
+		notificationv1.Kind_KIND_GIFT:   notification.KindGift,
+		notificationv1.Kind_KIND_VOTES:  notification.KindVotes,
+		notificationv1.Kind_KIND_INVITE: notification.KindInvite,
 	}
 )
 

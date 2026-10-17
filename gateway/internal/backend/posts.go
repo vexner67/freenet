@@ -38,7 +38,6 @@ func (p *Posts) Create(ctx context.Context, accessToken string, np model.NewPost
 		Nsfw:        np.NSFW,
 
 		MentionedIds: np.Mentions,
-		AvatarUpdate: np.AvatarUpdate,
 		Poll:         toProtoPollDraft(np.Poll),
 		Link:         toProtoLink(np.Link),
 	})
@@ -698,7 +697,6 @@ func toPost(p *postv1.Post) model.Post {
 		NSFW:           p.GetNsfw(),
 		FromWall:       p.GetFromWall(),
 		Signed:         p.GetSigned(),
-		AvatarUpdate:   p.GetAvatarUpdate(),
 		SharedPhotoID:  p.GetSharedPhotoId(),
 		Mine:           p.GetMine(),
 		Polled:         p.GetPolled(),

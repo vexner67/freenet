@@ -139,11 +139,6 @@ func TestListNotifications(t *testing.T) {
 		t.Fatalf("club admin = %+v", appointed)
 	}
 
-	// So does a reminder of an event: the event is the actor.
-	if reminder := got.Notifications[14]; reminder.Type != "event_reminder" || reminder.Actor["name"] != "Кошки" || reminder.Post != nil {
-		t.Fatalf("event reminder = %+v", reminder)
-	}
-
 	archive := newHarness(rest.Config{})
 	if w = archive.do("GET", "/api/v1/notifications?box=archive", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || archive.notifications.unread {
 		t.Fatalf("archive: %d, unread = %v", w.Code, archive.notifications.unread)

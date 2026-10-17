@@ -19,7 +19,8 @@ service NotificationService {
   rpc ForgetComment(ForgetCommentRequest) returns (google.protobuf.Empty);
   // Internal, for user: the user's page was deleted and not restored in
   // time; their notifications go, whether they got them or caused them,
-  // and their read mark. Idempotent.
+  // and their read mark. For club: the community of this ID is gone, and
+  // the notifications it caused go. Idempotent.
   rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
 
   // Require an access token: the caller's own notifications.
@@ -88,8 +89,9 @@ enum Kind {
   KIND_PHOTO_COMMENT = 16;
   // The actor liked the recipient's message comment_id of topic post_id.
   KIND_TOPIC_MESSAGE_LIKE = 17;
-  // The actor, an event the recipient comes to, starts soon.
-  KIND_EVENT_REMINDER = 18;
+  // The reminders of events, which are gone.
+  reserved 18;
+  reserved "KIND_EVENT_REMINDER";
   // The actor named the recipient in comment_id under the photo post_id.
   KIND_PHOTO_MENTION = 19;
   // The actor wrote comment_id under the recipient's note post_id.
@@ -105,7 +107,7 @@ enum Kind {
   KIND_INVITE = 23;
 }
 
-// Event: post_id is set for all but follows, invitations, appointments and reminders
+// Event: post_id is set for all but follows, invitations and appointments
 // (of a gift it is the sent gift, of votes the transfer),
 // comment_id for comments, replies, comment likes, messages of topics
 // and mentions in comments and topics.

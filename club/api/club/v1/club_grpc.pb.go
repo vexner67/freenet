@@ -21,7 +21,6 @@ const _ = grpc.SupportPackageIsVersion9
 
 const (
 	ClubService_CreateClub_FullMethodName         = "/club.v1.ClubService/CreateClub"
-	ClubService_CreateEvent_FullMethodName        = "/club.v1.ClubService/CreateEvent"
 	ClubService_GetClub_FullMethodName            = "/club.v1.ClubService/GetClub"
 	ClubService_GetClubs_FullMethodName           = "/club.v1.ClubService/GetClubs"
 	ClubService_UpdateClub_FullMethodName         = "/club.v1.ClubService/UpdateClub"
@@ -34,6 +33,7 @@ const (
 	ClubService_SetMemberRole_FullMethodName      = "/club.v1.ClubService/SetMemberRole"
 	ClubService_DescribeMember_FullMethodName     = "/club.v1.ClubService/DescribeMember"
 	ClubService_TransferClub_FullMethodName       = "/club.v1.ClubService/TransferClub"
+	ClubService_DeleteClub_FullMethodName         = "/club.v1.ClubService/DeleteClub"
 	ClubService_ListMyClubs_FullMethodName        = "/club.v1.ClubService/ListMyClubs"
 	ClubService_ListUserClubs_FullMethodName      = "/club.v1.ClubService/ListUserClubs"
 	ClubService_SearchClubs_FullMethodName        = "/club.v1.ClubService/SearchClubs"
@@ -59,9 +59,6 @@ const (
 type ClubServiceClient interface {
 	// The caller creates a club and owns it.
 	CreateClub(ctx context.Context, in *CreateClubRequest, opts ...grpc.CallOption) (*CreateClubResponse, error)
-	// The caller creates an event ("Создать встречу"), owns it and comes to
-	// it for sure.
-	CreateEvent(ctx context.Context, in *CreateEventRequest, opts ...grpc.CallOption) (*CreateEventResponse, error)
 	// Public: a club by its ID or address, as the caller, if any, sees it.
 	GetClub(ctx context.Context, in *GetClubRequest, opts ...grpc.CallOption) (*GetClubResponse, error)
 	// Public: the clubs found among ids, at most 100, in no particular
@@ -70,9 +67,7 @@ type ClubServiceClient interface {
 	// Its admins change a club, everything at once as the settings form
 	// sends it.
 	UpdateClub(ctx context.Context, in *UpdateClubRequest, opts ...grpc.CallOption) (*UpdateClubResponse, error)
-	// Idempotent. With maybe the caller only might come to the event
-	// ("Возможно приду"); a group, and an event that has started, are
-	// joined for sure.
+	// Idempotent; a closed club is not joined but asked to let in.
 	JoinClub(ctx context.Context, in *JoinClubRequest, opts ...grpc.CallOption) (*JoinClubResponse, error)
 	// Idempotent; the owner cannot leave.
 	LeaveClub(ctx context.Context, in *LeaveClubRequest, opts ...grpc.CallOption) (*LeaveClubResponse, error)
@@ -97,19 +92,20 @@ type ClubServiceClient interface {
 	// The owner hands the club over to one of its admins and stays an
 	// admin ("Назначить владельцем").
 	TransferClub(ctx context.Context, in *TransferClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
-	// The caller's clubs ("Мои Группы", "Мои Встречи"), the newest joined
-	// first; with managed only those they run ("Управление"), with kind
-	// only groups or only events.
+	// The owner deletes the club with its members, wall, topics, albums and
+	// photos; openvk deletes none.
+	DeleteClub(ctx context.Context, in *DeleteClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The caller's clubs ("Мои Группы"), the newest joined first; with
+	// managed only those they run ("Управление").
 	ListMyClubs(ctx context.Context, in *ListMyClubsRequest, opts ...grpc.CallOption) (*ListMyClubsResponse, error)
-	// Public: the clubs of a user, the newest joined first, with kind only
-	// groups or only events. Whether the
+	// Public: the clubs of a user, the newest joined first. Whether the
 	// viewer may see them is the user's privacy setting, which the caller
 	// checks.
 	ListUserClubs(ctx context.Context, in *ListUserClubsRequest, opts ...grpc.CallOption) (*ListUserClubsResponse, error)
 	// Public: clubs whose name or address has every word of the query, the
 	// newest first.
 	SearchClubs(ctx context.Context, in *SearchClubsRequest, opts ...grpc.CallOption) (*SearchClubsResponse, error)
-	// Public: how many groups there are, events not counted, for the page
+	// Public: how many groups there are, for the page
 	// "о сайте".
 	CountClubs(ctx context.Context, in *CountClubsRequest, opts ...grpc.CallOption) (*CountClubsResponse, error)
 	// Its admins show a photo as the club's, which the media service has
@@ -160,16 +156,6 @@ func (c *clubServiceClient) CreateClub(ctx context.Context, in *CreateClubReques
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(CreateClubResponse)
 	err := c.cc.Invoke(ctx, ClubService_CreateClub_FullMethodName, in, out, cOpts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *clubServiceClient) CreateEvent(ctx context.Context, in *CreateEventRequest, opts ...grpc.CallOption) (*CreateEventResponse, error) {
-	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
-	out := new(CreateEventResponse)
-	err := c.cc.Invoke(ctx, ClubService_CreateEvent_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -290,6 +276,16 @@ func (c *clubServiceClient) TransferClub(ctx context.Context, in *TransferClubRe
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, ClubService_TransferClub_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *clubServiceClient) DeleteClub(ctx context.Context, in *DeleteClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ClubService_DeleteClub_FullMethodName, in, out, cOpts...)
 	if err != nil {
 		return nil, err
 	}
@@ -445,9 +441,6 @@ func (c *clubServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest,
 type ClubServiceServer interface {
 	// The caller creates a club and owns it.
 	CreateClub(context.Context, *CreateClubRequest) (*CreateClubResponse, error)
-	// The caller creates an event ("Создать встречу"), owns it and comes to
-	// it for sure.
-	CreateEvent(context.Context, *CreateEventRequest) (*CreateEventResponse, error)
 	// Public: a club by its ID or address, as the caller, if any, sees it.
 	GetClub(context.Context, *GetClubRequest) (*GetClubResponse, error)
 	// Public: the clubs found among ids, at most 100, in no particular
@@ -456,9 +449,7 @@ type ClubServiceServer interface {
 	// Its admins change a club, everything at once as the settings form
 	// sends it.
 	UpdateClub(context.Context, *UpdateClubRequest) (*UpdateClubResponse, error)
-	// Idempotent. With maybe the caller only might come to the event
-	// ("Возможно приду"); a group, and an event that has started, are
-	// joined for sure.
+	// Idempotent; a closed club is not joined but asked to let in.
 	JoinClub(context.Context, *JoinClubRequest) (*JoinClubResponse, error)
 	// Idempotent; the owner cannot leave.
 	LeaveClub(context.Context, *LeaveClubRequest) (*LeaveClubResponse, error)
@@ -483,19 +474,20 @@ type ClubServiceServer interface {
 	// The owner hands the club over to one of its admins and stays an
 	// admin ("Назначить владельцем").
 	TransferClub(context.Context, *TransferClubRequest) (*emptypb.Empty, error)
-	// The caller's clubs ("Мои Группы", "Мои Встречи"), the newest joined
-	// first; with managed only those they run ("Управление"), with kind
-	// only groups or only events.
+	// The owner deletes the club with its members, wall, topics, albums and
+	// photos; openvk deletes none.
+	DeleteClub(context.Context, *DeleteClubRequest) (*emptypb.Empty, error)
+	// The caller's clubs ("Мои Группы"), the newest joined first; with
+	// managed only those they run ("Управление").
 	ListMyClubs(context.Context, *ListMyClubsRequest) (*ListMyClubsResponse, error)
-	// Public: the clubs of a user, the newest joined first, with kind only
-	// groups or only events. Whether the
+	// Public: the clubs of a user, the newest joined first. Whether the
 	// viewer may see them is the user's privacy setting, which the caller
 	// checks.
 	ListUserClubs(context.Context, *ListUserClubsRequest) (*ListUserClubsResponse, error)
 	// Public: clubs whose name or address has every word of the query, the
 	// newest first.
 	SearchClubs(context.Context, *SearchClubsRequest) (*SearchClubsResponse, error)
-	// Public: how many groups there are, events not counted, for the page
+	// Public: how many groups there are, for the page
 	// "о сайте".
 	CountClubs(context.Context, *CountClubsRequest) (*CountClubsResponse, error)
 	// Its admins show a photo as the club's, which the media service has
@@ -545,9 +537,6 @@ type UnimplementedClubServiceServer struct{}
 func (UnimplementedClubServiceServer) CreateClub(context.Context, *CreateClubRequest) (*CreateClubResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method CreateClub not implemented")
 }
-func (UnimplementedClubServiceServer) CreateEvent(context.Context, *CreateEventRequest) (*CreateEventResponse, error) {
-	return nil, status.Error(codes.Unimplemented, "method CreateEvent not implemented")
-}
 func (UnimplementedClubServiceServer) GetClub(context.Context, *GetClubRequest) (*GetClubResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method GetClub not implemented")
 }
@@ -583,6 +572,9 @@ func (UnimplementedClubServiceServer) DescribeMember(context.Context, *DescribeM
 }
 func (UnimplementedClubServiceServer) TransferClub(context.Context, *TransferClubRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method TransferClub not implemented")
+}
+func (UnimplementedClubServiceServer) DeleteClub(context.Context, *DeleteClubRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteClub not implemented")
 }
 func (UnimplementedClubServiceServer) ListMyClubs(context.Context, *ListMyClubsRequest) (*ListMyClubsResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method ListMyClubs not implemented")
@@ -661,24 +653,6 @@ func _ClubService_CreateClub_Handler(srv interface{}, ctx context.Context, dec f
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ClubServiceServer).CreateClub(ctx, req.(*CreateClubRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _ClubService_CreateEvent_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(CreateEventRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(ClubServiceServer).CreateEvent(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: ClubService_CreateEvent_FullMethodName,
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ClubServiceServer).CreateEvent(ctx, req.(*CreateEventRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -895,6 +869,24 @@ func _ClubService_TransferClub_Handler(srv interface{}, ctx context.Context, dec
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ClubServiceServer).TransferClub(ctx, req.(*TransferClubRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ClubService_DeleteClub_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteClubRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ClubServiceServer).DeleteClub(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ClubService_DeleteClub_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ClubServiceServer).DeleteClub(ctx, req.(*DeleteClubRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1163,10 +1155,6 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 			Handler:    _ClubService_CreateClub_Handler,
 		},
 		{
-			MethodName: "CreateEvent",
-			Handler:    _ClubService_CreateEvent_Handler,
-		},
-		{
 			MethodName: "GetClub",
 			Handler:    _ClubService_GetClub_Handler,
 		},
@@ -1213,6 +1201,10 @@ var ClubService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "TransferClub",
 			Handler:    _ClubService_TransferClub_Handler,
+		},
+		{
+			MethodName: "DeleteClub",
+			Handler:    _ClubService_DeleteClub_Handler,
 		},
 		{
 			MethodName: "ListMyClubs",
