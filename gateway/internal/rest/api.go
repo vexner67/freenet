@@ -526,6 +526,9 @@ type api struct {
 	eventStreams      prometheus.Gauge
 	// statistics are the numbers of "о сайте", kept for a while.
 	statistics *statistics
+	// batched serves the reads of a batch: the routes, counted by the
+	// metrics as if each came by itself.
+	batched http.Handler
 	// stopping ends when the server stops, closing the event streams,
 	// whose connections Shutdown leaves alone; streams counts them.
 	stopping context.Context
@@ -541,6 +544,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("POST /api/v1/auth/verify", a.verifyCode)
 	mux.HandleFunc("POST /api/v1/auth/refresh", a.refreshToken)
 	mux.HandleFunc("POST /api/v1/auth/logout", a.logout)
+
+	mux.HandleFunc("POST "+batchPath, a.batch)
 
 	mux.HandleFunc("GET /api/v1/me", a.getMe)
 	mux.HandleFunc("PUT /api/v1/me/profile", a.updateProfile)

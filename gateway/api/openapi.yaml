@@ -93,6 +93,56 @@ paths:
         "204": { description: Signed out }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
+  /api/v1/batch:
+    post:
+      summary: Several reads at once
+      description: >-
+        Makes 1 to 20 GET requests of this API (but not of /api/v1/batch and
+        /api/v1/events) at once, each with the headers of this request, so
+        with its token, and answers what each would have answered by itself,
+        in the same order: its status and its JSON body (none for 204). A
+        page asks for what it shows in one round trip instead of one per
+        block. The batch itself is 200 whatever its reads answer. No token
+        needed: the reads answer as they would without one.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [requests]
+              properties:
+                requests:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  items:
+                    type: object
+                    required: [path]
+                    properties:
+                      path:
+                        type: string
+                        description: The path and query of the read, as "/api/v1/users/ann?x=1".
+      responses:
+        "200":
+          description: The answers of the reads
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [responses]
+                properties:
+                  responses:
+                    type: array
+                    items:
+                      type: object
+                      required: [status]
+                      properties:
+                        status: { type: integer }
+                        body:
+                          description: The JSON body of the answer, an error included.
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+
   /api/v1/me:
     get:
       summary: The caller's account
