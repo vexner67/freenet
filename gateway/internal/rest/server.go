@@ -77,8 +77,11 @@ func NewServer(cfg Config, backends Backends, logger *slog.Logger, reg prometheu
 		statistics:        &statistics{ttl: cfg.StatisticsTTL},
 	}
 
+	mux := a.routes()
+	a.batched = metrics.observe(mux)
+
 	handler := chain(
-		a.routes(),
+		mux,
 		requestID(cfg.TrustForwardedFor),
 		a.recoverPanics,
 		logRequests(logger),
