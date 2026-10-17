@@ -259,3 +259,41 @@ func TestAssets_Website(t *testing.T) {
 		}
 	}
 }
+
+func TestPages_PreloadTheirModules(t *testing.T) {
+	t.Parallel()
+
+	web := filepath.Join("..", "..", "..", "web")
+	handler := mustServer(
+		rest.Config{RequestTimeout: time.Second, WebDir: web},
+		rest.Backends{Auth: &fakeAuth{}, Users: &fakeUsers{}, Posts: &fakePosts{}, Media: &fakeMedia{}, Notifications: &fakeNotifications{}, Messages: &fakeMessages{}, Clubs: &fakeClubs{}},
+		prometheus.NewRegistry(),
+	).Handler()
+
+	w := httptest.NewRecorder()
+	handler.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/ann", nil))
+	page := w.Body.String()
+
+	preloaded := regexp.MustCompile(`<link rel="modulepreload" href="/static/c/\w+/([\w./-]+)">`)
+
+	got := map[string]bool{}
+	for _, m := range preloaded.FindAllStringSubmatch(page, -1) {
+		got[m[1]] = true
+	}
+
+	// What the page's script imports, and what those import (the wall
+	// draws posts), but not the script itself, which the page loads.
+	for _, name := range []string{"layout.js", "api.js", "labels.js", "wall.js", "posts.js"} {
+		if !got[name] {
+			t.Errorf("%s is not preloaded: %v", name, got)
+		}
+	}
+
+	if got["profile.js"] || !strings.Contains(page, `<script type="module" src="/static/c/`) {
+		t.Fatalf("the script of the page: %v", got)
+	}
+
+	if strings.Index(page, "modulepreload") > strings.Index(page, `<script type="module"`) {
+		t.Fatal("the modules are named after the script")
+	}
+}
