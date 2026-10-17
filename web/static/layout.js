@@ -349,14 +349,13 @@ export function applyInterface(me) {
     menuLink(me, 'messages', '/im', 'Сообщения', 'messages-count'),
     menuLink(me, 'notes', '/notes', 'Заметки'),
     menuLink(me, 'groups', '/groups', 'Группы'),
-    menuLink(me, 'events', '/events', 'Встречи'),
     menuLink(me, 'feed', '/feed', 'Новости'),
-    menuLink(me, 'notifications', '/notifications', 'Ответы', 'notifications-count'),
+    menuLink(me, 'notifications', '/notifications', 'Уведомления', 'notifications-count'),
     el('a', { href: '/settings', textContent: 'Настройки' }),
     el('a', { href: '/docs', textContent: 'Документы' }),
     el('a', { href: '/stickers', textContent: 'Стикеры' }),
     accountsLink(me),
-    el('a', { href: '/search', textContent: 'Люди' }),
+    el('a', { href: '/search', textContent: 'Поиск' }),
     el('a', { href: '/', textContent: 'Выйти', onclick: logout }),
   ].filter(Boolean));
   showCounter('messages');
@@ -419,7 +418,7 @@ export function renderChrome(me) {
     menu?.replaceChildren(
       el('a', { href: '/', textContent: 'Вход' }),
       el('a', { href: '/', textContent: 'Регистрация' }),
-      el('a', { href: '/search', textContent: 'Люди' }),
+      el('a', { href: '/search', textContent: 'Поиск' }),
     );
   }
 }

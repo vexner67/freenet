@@ -4,7 +4,7 @@
 
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
-import { commentsLink, formatPostDate, genitiveName, sharedBy, shareLink, updatedPhoto, wrote } from './labels.js';
+import { commentsLink, formatPostDate, genitiveName, sharedBy, shareLink, wrote } from './labels.js';
 import { adult, avatarURL, el, externalLink, fullName, isMicroblog, pagePath, textNode } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
@@ -209,7 +209,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
-        microblog && !post.avatarUpdate ? null : wroteBy(post),
+        microblog ? null : wroteBy(post),
         ...(onWallOf !== undefined && post.wall ? [' ', wallLink(post.wall, onWallOf)] : []),
         microblog ? actions : null,
         microblog ? null : date,
@@ -256,11 +256,9 @@ export function canEdit(post, viewer, now = new Date()) {
 }
 
 // wroteBy is " написал" after the name of a person, " опубликовали"
-// after a community's, as on openvk; for a new photo, openvk's "обновил
-// фотографию на своей странице" or "обновило фотографию группы".
+// after a community's, as on openvk.
 function wroteBy(post) {
   const { author } = post;
-  if (post.avatarUpdate) return ' ' + updatedPhoto(author);
 
   return ' ' + (author.club ? 'опубликовали' : wrote(author.gender));
 }

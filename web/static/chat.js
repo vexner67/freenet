@@ -580,6 +580,30 @@ function confirmLeave() {
   );
 }
 
+// confirmDelete is the creator's "Удалить беседу": the chat goes for
+// everyone in it with all its messages.
+function confirmDelete() {
+  const modal = openModal('Удалить беседу');
+  const error = el('div', { className: 'error', hidden: true });
+
+  modal.body.append(error, 'Вы действительно хотите удалить эту беседу? Она пропадёт у всех участников вместе со всеми сообщениями, и вернуть её будет нельзя.');
+  modal.actions.append(
+    button('Удалить', async (e) => {
+      e.target.disabled = true;
+      hideError(error);
+
+      try {
+        await api.deleteChat(chatID);
+        location.assign('/im');
+      } catch (err) {
+        showError(error, err);
+        e.target.disabled = false;
+      }
+    }),
+    button('Отмена', modal.close, { secondary: true }),
+  );
+}
+
 // showPinned is the line of the message pinned above the chat: who wrote
 // it and its beginning; a click goes to it, "×" takes it down.
 function showPinned() {
@@ -674,6 +698,8 @@ function openAbout() {
     el('b', { textContent: chatTitle(chat) }),
     el('div', { className: 'hint', textContent: chatMembers(chat.memberCount) }),
     people,
+    chat.ownerId === me.id && chat.state === 'active' && el('p', { className: 'album-delete' },
+      'Вы также можете ', el('a', { textContent: 'удалить беседу', onclick: () => { modal.close(); confirmDelete(); } }), '.'),
   );
   modal.actions.append(button('Закрыть', modal.close, { secondary: true }));
 }

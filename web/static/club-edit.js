@@ -1,19 +1,21 @@
 // "Редактировать группу", as on openvk: the name, the description, the
 // address of the page, the site, who may write on the wall and what the
-// page shows of its admins ("Список админов"); an event ("встреча") also
-// has when it starts and ends. Only the admins get here; the club service
-// checks it again.
+// page shows of its admins ("Список админов") and whether it is closed.
+// Only the admins get here; the club service checks it again. The owner
+// may delete the club too ("Вы также можете удалить группу"), which
+// openvk does not let.
 
 import { api, currentUser } from './api.js';
-import { adminsDisplays, clubTypes, inputDate, inputTime, localTime } from './labels.js';
+import { adminsDisplays, clubTypes } from './labels.js';
 import { $, clubRef, el, renderChrome, showError, hideError } from './layout.js';
+import { button, openModal } from './modal.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/edit'.length));
 
 function fill(club) {
   const path = '/club/' + encodeURIComponent(clubRef(club));
 
-  const heading = club.kind === 'event' ? 'Редактировать встречу' : 'Редактировать группу';
+  const heading = 'Редактировать группу';
 
   document.title = `${heading} | Freenet`;
   $('title').replaceChildren(el('a', { href: path, textContent: club.name }), ` » ${heading}`);
@@ -25,42 +27,13 @@ function fill(club) {
   $('address').value = club.address;
   $('website').value = club.website;
   $('wall').value = club.wall;
-  // An event is never closed.
-  $('type-row').hidden = club.kind === 'event';
   $('type').replaceChildren(...clubTypes.map(([value, text]) => el('option', { value, textContent: text })));
   $('type').value = club.closed ? 'closed' : 'open';
   $('admins-display').replaceChildren(...adminsDisplays.map(([value, text]) => el('label', {},
     el('input', { type: 'radio', name: 'admins-display', value, checked: value === club.adminsDisplay }), text)));
   $('open-topics').checked = club.openTopics;
   $('topics-above-wall').checked = club.topicsAboveWall;
-  fillSchedule(club);
   preview();
-}
-
-// fillSchedule shows "Начало" and "Окончание" of an event.
-function fillSchedule(club) {
-  const event = club.kind === 'event';
-
-  $('start-row').hidden = !event;
-  $('end-row').hidden = !event;
-  if (!event) return;
-
-  $('start-date').value = inputDate(club.startsAt);
-  $('start-time').value = inputTime(club.startsAt);
-  $('has-end').checked = Boolean(club.endsAt);
-  $('end').hidden = !club.endsAt;
-  $('end-date').value = club.endsAt ? inputDate(club.endsAt) : '';
-  $('end-time').value = club.endsAt ? inputTime(club.endsAt) : '';
-}
-
-// schedule is what the form says of when the event is; nothing of a group.
-function schedule(club) {
-  if (club.kind !== 'event') return {};
-
-  return {
-    startsAt: localTime($('start-date').value, $('start-time').value),
-    endsAt: $('has-end').checked ? localTime($('end-date').value, $('end-time').value) : '',
-  };
 }
 
 // preview shows where the page will be: its address, or its ID without one.
@@ -84,8 +57,7 @@ async function submit(event, club) {
       adminsDisplay: document.querySelector('input[name="admins-display"]:checked')?.value ?? 'creator',
       openTopics: $('open-topics').checked,
       topicsAboveWall: $('topics-above-wall').checked,
-      ...(club.kind === 'event' ? {} : { closed: $('type').value === 'closed' }),
-      ...schedule(club),
+      closed: $('type').value === 'closed',
     });
 
     Object.assign(club, saved);
@@ -97,6 +69,25 @@ async function submit(event, club) {
   } finally {
     $('submit').disabled = false;
   }
+}
+
+// confirmDelete asks before the club goes with its wall, topics, albums
+// and photos: nothing brings it back.
+function confirmDelete(club) {
+  const modal = openModal('Удалить группу');
+  modal.body.textContent = `Вы уверены, что хотите удалить группу «${club.name}»? Вместе с ней удалятся её участники, стена, обсуждения, альбомы и фотографии. Это нельзя отменить.`;
+  modal.actions.append(
+    button('Удалить', async () => {
+      try {
+        await api.deleteClub(clubRef(club));
+        location.assign('/groups');
+      } catch (e) {
+        modal.close();
+        showError($('error'), e);
+      }
+    }),
+    button('Отмена', modal.close, { secondary: true }),
+  );
 }
 
 const me = await currentUser().catch(() => null);
@@ -113,8 +104,11 @@ if (!me) {
     } else {
       fill(club);
       $('address').addEventListener('input', preview);
-      $('has-end').addEventListener('change', () => { $('end').hidden = !$('has-end').checked; });
       $('form').addEventListener('submit', (event) => submit(event, club));
+      if (club.role === 'owner') {
+        $('delete-club').hidden = false;
+        $('delete').addEventListener('click', () => confirmDelete(club));
+      }
       $('tabs').hidden = false;
       $('form').hidden = false;
     }

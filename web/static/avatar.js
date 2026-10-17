@@ -24,9 +24,9 @@ const MIN_SIDE = 50;
 // The handle at the bottom right corner that resizes the square.
 const HANDLE = 10;
 
-// openAvatarDialog asks for the photo and calls upload(blob, onWall) with
-// the chosen square; it closes once upload resolves and shows its error
-// otherwise. The photo of a chat has no wall to post it on.
+// openAvatarDialog asks for the photo and calls upload(blob) with the
+// chosen square; it closes once upload resolves and shows its error
+// otherwise. Unlike openvk, no post tells of the new photo.
 export function openAvatarDialog({ club = false, chat = false, upload }) {
   const modal = openModal('Загрузка новой фотографии');
   modal.box.classList.add('avatar-dialog');
@@ -118,7 +118,6 @@ function showCropper(modal, img, { club, chat, upload }) {
 
   const view = el('canvas', { className: 'avatar-crop' });
   const error = el('p', { className: 'error', hidden: true });
-  const onWall = el('input', { type: 'checkbox', checked: true });
   let scale = 1;
 
   function layout() {
@@ -197,7 +196,7 @@ function showCropper(modal, img, { club, chat, upload }) {
     sendButton.disabled = true;
     try {
       const blob = await new Promise((resolve) => out.toBlob(resolve, 'image/jpeg', 0.92));
-      await upload(blob, !chat && onWall.checked);
+      await upload(blob);
       modal.close();
     } catch (e) {
       showError(error, e);
@@ -212,7 +211,6 @@ function showCropper(modal, img, { club, chat, upload }) {
     el('div', { className: 'avatar-turn' },
       button('Повернуть влево', () => turn(-1), { secondary: true }),
       button('Повернуть вправо', () => turn(1), { secondary: true })),
-    !chat && el('label', { className: 'modal-option' }, onWall, 'Опубликовать запись на стене'),
     error,
   );
 

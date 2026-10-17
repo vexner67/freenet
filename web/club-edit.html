@@ -55,24 +55,7 @@
               <th><label for="website">Сайт</label></th>
               <td class="control"><input type="text" id="website" maxlength="256" spellcheck="false" placeholder="example.com"></td>
             </tr>
-            <tr id="start-row" hidden>
-              <th><label class="required" for="start-date">Начало</label></th>
-              <td class="control">
-                <input type="date" class="half" id="start-date" aria-label="Дата начала">
-                <input type="time" class="half" id="start-time" aria-label="Время начала">
-              </td>
-            </tr>
-            <tr id="end-row" hidden>
-              <th><label for="has-end">Окончание</label></th>
-              <td class="control">
-                <label><input type="checkbox" id="has-end"> Указать дату окончания</label>
-                <div id="end" hidden>
-                  <input type="date" class="half" id="end-date" aria-label="Дата окончания">
-                  <input type="time" class="half" id="end-time" aria-label="Время окончания">
-                </div>
-              </td>
-            </tr>
-            <tr id="type-row">
+            <tr>
               <th><label for="type">Тип группы</label></th>
               <td class="control"><select id="type"></select></td>
               <td class="note hint">В закрытую группу вступают по заявке, а её стену, участников, обсуждения и альбомы видят только участники.</td>
@@ -104,6 +87,7 @@
               <td class="control"><button class="button" type="submit" id="submit">Сохранить</button></td>
             </tr>
           </table>
+          <p class="album-delete" id="delete-club" hidden>Вы также можете <a id="delete">удалить группу</a>.</p>
         </form>
       </div>
     </div>

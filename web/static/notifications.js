@@ -99,11 +99,6 @@ function notificationText(n) {
     return ['Вас назначили руководителем сообщества ', el('a', { href: pagePath(n.actor) }, el('b', { textContent: fullName(n.actor) })), '.'];
   }
 
-  // An event you are going to starts within a day, in openvk's words.
-  if (n.type === 'event_reminder') {
-    return ['В ближайшее время состоится событие ', el('a', { href: pagePath(n.actor) }, el('b', { textContent: fullName(n.actor) })), '.'];
-  }
-
   // A message in the topic you started, openvk's "оставил комментарий
   // под вашей темой".
   if (n.type === 'topic_message') {
@@ -242,7 +237,7 @@ if (!me) {
 
   $('title').replaceChildren(
     el('a', { href: profilePath(me), textContent: fullName(me) || 'Моя страница' }),
-    ' » Ответы',
+    ' » Уведомления',
   );
   $(box === 'unread' ? 'tab-unread' : 'tab-archive').classList.add('active');
   $('more').addEventListener('click', loadMore);

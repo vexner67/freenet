@@ -218,9 +218,9 @@ function initAvatar(me) {
   show(me);
 
   $('avatar-upload').addEventListener('click', () => openAvatarDialog({
-    upload: async (blob, onWall) => {
+    upload: async (blob) => {
       hideError(error);
-      show(await api.uploadAvatar(blob, onWall));
+      show(await api.uploadAvatar(blob));
       saved();
     },
   }));

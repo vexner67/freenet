@@ -2,14 +2,12 @@
 // left "Информация", "Участники" and the wall; on the right the photo,
 // "Вступить в группу" or "Выйти из группы", "Редактировать группу" for
 // its admins, "Тип группы" and, as its settings say, its creator, all its
-// admins or nobody. An event ("встреча") is the same page with when it
-// starts and ends, "Я приду" and "Возможно приду", those who come and
-// those who might, and its "Организатор".
+// admins or nobody.
 
 import { api, currentUser } from './api.js';
 import { albumsBlock } from './albums.js';
 import { showBackdrop } from './backdrop.js';
-import { adminsCount, clubTypeHints, requestsLink, formatDateTime, formatPostDate, membersCount, suggestedByEveryone, suggestedByYou, topicsCount } from './labels.js';
+import { adminsCount, clubTypeHints, requestsLink, formatPostDate, membersCount, suggestedByEveryone, suggestedByYou, topicsCount } from './labels.js';
 import { $, avatarURL, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
 import { personCell } from './people.js';
 import { initPhoto } from './photo.js';
@@ -24,12 +22,9 @@ const TOPICS_SHOWN = 3;
 const ALBUMS_SHOWN = 3;
 
 const manages = (club) => club.role === 'admin' || club.role === 'owner';
-const isEvent = (club) => club.kind === 'event';
 // admitted: a closed group ("Закрытая группа") shows its wall, members,
 // topics and albums to its members alone.
 const admitted = (club) => !club.closed || Boolean(club.role);
-// started: openvk takes an event that has begun for over.
-const started = (club) => new Date(club.startsAt) <= new Date();
 
 function render(club, me) {
   document.title = `${club.name} | Freenet`;
@@ -43,8 +38,6 @@ function render(club, me) {
     ['Название:', el('b', { textContent: club.name })],
     ['Описание:', club.description && el('span', { className: 'pre-wrap', textContent: club.description })],
     ['Сайт:', club.website && el('a', { href: club.website, target: '_blank', rel: 'ugc noopener noreferrer', textContent: club.website })],
-    ['Начало:', club.startsAt && formatDateTime(club.startsAt)],
-    ['Окончание:', club.endsAt && formatDateTime(club.endsAt)],
   ].filter(([, value]) => value).map(([title, value]) => el('tr', {},
     el('th', { textContent: title }),
     el('td', {}, value),
@@ -54,7 +47,7 @@ function render(club, me) {
   $('edit').href = path + '/edit';
   if (me) {
     initIgnoreLink($('ignore'), {
-      kind: isEvent(club) ? 'event' : 'club',
+      kind: 'club',
       ignored: Boolean(club.ignoredByMe),
       change: (ignore) => (ignore ? api.ignoreClub(ref) : api.unignoreClub(ref)),
       error: $('join-error'),
@@ -62,7 +55,7 @@ function render(club, me) {
   }
 
   initPhoto(club, manages(club), {
-    upload: (file, onWall) => api.uploadClubAvatar(ref, file, onWall),
+    upload: (file) => api.uploadClubAvatar(ref, file),
     remove: () => api.deleteClubAvatar(ref),
     error: $('join-error'),
     club: true,
@@ -70,14 +63,7 @@ function render(club, me) {
   $('type-text').textContent = clubTypeHints[club.closed ? 'closed' : 'open'];
   $('wall-block').hidden = !admitted(club);
   showRequests(club);
-  // An event always names who holds it, as openvk does.
-  if (isEvent(club)) {
-    $('type-title').textContent = 'Тип встречи';
-    $('type-text').textContent = 'Это открытая встреча. В ней может поучаствовать любой желающий.';
-    $('owner-title').textContent = 'Организатор';
-    $('edit').textContent = 'Редактировать встречу';
-  }
-  renderOwner(club.adminsDisplay === 'creator' || isEvent(club) ? club.owner : null, club.ownerTitle);
+  renderOwner(club.adminsDisplay === 'creator' ? club.owner : null, club.ownerTitle);
   if (club.adminsDisplay === 'all') showAdmins(club);
   renderJoin(club, me);
   $('club').hidden = false;
@@ -194,19 +180,14 @@ async function showTopics(club) {
 function joinLabels(club) {
   // A closed group: a visitor asks to join and may take the request back.
   if (club.closed && !club.role) return { join: 'Подать заявку', leave: 'Отменить заявку' };
-  if (!isEvent(club)) return { join: 'Вступить в группу', leave: 'Выйти из группы' };
 
-  return { join: started(club) ? 'Добавить в список' : 'Я приду', leave: 'Я не приду' };
+  return { join: 'Вступить в группу', leave: 'Выйти из группы' };
 }
 
 // renderJoin is the one button openvk has: "Вступить в группу", or a grey
 // "Выйти из группы" for a member; the owner cannot leave and has neither.
-// An event that has not started has a second one, "Возможно приду"; who
-// answered changes the answer with it, without leaving: "Я приду" for
-// who only might come.
 function renderJoin(club, me) {
   const button = $('join');
-  const maybe = $('join-maybe');
   const error = $('join-error');
   const labels = joinLabels(club);
   const shown = Boolean(me?.profileCompleted) && club.role !== 'owner';
@@ -217,13 +198,10 @@ function renderJoin(club, me) {
 
   button.textContent = inside ? labels.leave : labels.join;
   button.classList.toggle('secondary', inside);
-  maybe.hidden = !shown || !isEvent(club) || started(club);
-  maybe.textContent = club.role && club.maybe ? 'Я приду' : 'Возможно приду';
 
   async function change(act) {
     hideError(error);
     button.disabled = true;
-    maybe.disabled = true;
 
     try {
       const was = admitted(club);
@@ -240,40 +218,26 @@ function renderJoin(club, me) {
       showError(error, e);
     } finally {
       button.disabled = false;
-      maybe.disabled = false;
     }
   }
 
   button.onclick = () => change(() => (inside ? api.leaveClub(ref) : api.joinClub(ref)));
-  maybe.onclick = () => change(() => api.joinClub(ref, { maybe: !(club.role && club.maybe) }));
 }
 
 // showMembers is the block "Участники": how many, "Все" and a row of
-// faces. An event has two: "Точно придут" and, if anyone, "Возможно
-// придут".
+// faces.
 async function showMembers(club) {
-  const path = `/club/${encodeURIComponent(clubRef(club))}/members`;
-
-  if (!isEvent(club)) {
-    await showFaces('members', club.members, path, {});
-    return;
-  }
-
-  $('members-title').textContent = 'Точно придут';
-  await Promise.all([
-    showFaces('members', club.members - club.maybes, path + '?going=sure', { going: 'sure' }),
-    showFaces('maybe', club.maybes, path + '?going=maybe', { going: 'maybe' }),
-  ]);
+  await showFaces('members', club.members, `/club/${encodeURIComponent(clubRef(club))}/members`);
 }
 
 // showFaces fills one block of people: how many, "Все" and the first of
 // them; nobody, no block.
-async function showFaces(id, count, all, filter) {
+async function showFaces(id, count, all) {
   $(id + '-block').hidden = count === 0;
   if (count === 0) return;
 
   try {
-    const page = await api.clubMembers(ref, { limit: MEMBERS_SHOWN, ...filter });
+    const page = await api.clubMembers(ref, { limit: MEMBERS_SHOWN });
 
     $(id + '-count').textContent = membersCount(count);
     $(id + '-all').href = all;

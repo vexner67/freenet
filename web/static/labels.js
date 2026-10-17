@@ -380,9 +380,8 @@ export const menuItems = [
   ['messages', 'Сообщения'],
   ['notes', 'Заметки'],
   ['groups', 'Группы'],
-  ['events', 'Встречи'],
   ['feed', 'Новости'],
-  ['notifications', 'Ответы'],
+  ['notifications', 'Уведомления'],
 ];
 
 // deactivationReasons are openvk's reasons to delete a page: a title and
@@ -404,14 +403,6 @@ function byGender(gender, male, female) {
 
 export function wrote(gender) {
   return byGender(gender, 'написал', 'написала');
-}
-
-// updatedPhoto is what openvk says of the post of a new photo (upd_m,
-// upd_f, upd_g).
-export function updatedPhoto(author) {
-  if (author.club) return 'обновило фотографию группы';
-
-  return byGender(author.gender, 'обновил', 'обновила') + ' фотографию на своей странице';
 }
 
 // limitedAccess is openvk's "$1 ограничил доступ к своей странице." for
@@ -635,26 +626,10 @@ export function myClubsCount(n) {
   return `Вы состоите в ${n} ${plural(n, ['группе', 'группах', 'группах'])}`;
 }
 
-// myEventsCount is the head of "Мои Встречи", openvk's "events_list".
-export function myEventsCount(n) {
-  if (n === 0) return 'Вы не участвуете ни в одной встрече';
-  return `Вы участвуете в ${n} ${plural(n, ['встрече', 'встречах', 'встречах'])}`;
-}
-
-// eventsCount is openvk's "meetings": "1 встреча", "5 встреч".
-export function eventsCount(n) {
-  return n === 0 ? 'Ни одной встречи' : `${n} ${plural(n, ['встреча', 'встречи', 'встреч'])}`;
-}
-
 // otherComments is openvk's "view_other_comments" under a post of
 // "Микроблог": how many comments are on the page of the post only.
 export function otherComments(n) {
   return `Показать остальные комментарии (${n})`;
-}
-
-// pastEventsCount heads "Прошедшие": the events that are over.
-export function pastEventsCount(n) {
-  return n === 0 ? 'Ни одной прошедшей встречи' : `${n} ${plural(n, ['прошедшая встреча', 'прошедшие встречи', 'прошедших встреч'])}`;
 }
 
 // aboutStatistics are the lines of "Статистика" on the page "о сайте",
@@ -1248,10 +1223,6 @@ const errorTexts = {
   'invalid view of posts': 'Неизвестный вид постов.',
   'invalid timezone': 'Неизвестный часовой пояс.',
   'title is too long': 'Комментарий слишком длинный: не больше 36 символов.',
-  'an event needs the time it starts': 'Вы не ввели название встречи и/или не указали дату начала встречи.',
-  'an event ends after it starts': 'Встреча должна заканчиваться позже, чем начинается.',
-  'invalid start time': 'Неверная дата начала встречи.',
-  'invalid end time': 'Неверная дата окончания встречи.',
   'the user does not run the club': 'Этот человек не руководит группой.',
   'only the admins can add the club to their menu': 'Добавить группу в левое меню могут только её администраторы.',
   'at most 10 clubs in the menu': 'В левом меню может быть не больше 10 групп.',
@@ -1770,7 +1741,7 @@ export const feedPageSizes = [1, 5, 10, 20, 30, 40, 50];
 
 // The posts on the walls of others are left out unless asked for, as on
 // openvk.
-export const defaultFeedSettings = Object.freeze({ posts: 20, alien: false });
+export const defaultFeedSettings = Object.freeze({ posts: 10, alien: false });
 
 // feedSettings reads what the browser kept; anything else is the default.
 export function feedSettings(raw) {
@@ -1789,9 +1760,9 @@ export function feedSettings(raw) {
 }
 
 // ignoreLabels are the link of a page: openvk's "Игнорировать
-// пользователя" and "Игнорировать группу" (ours for an event).
+// пользователя" and "Игнорировать группу".
 export function ignoreLabel(kind, ignored) {
-  const whom = { user: 'пользователя', club: 'группу', event: 'встречу' }[kind];
+  const whom = { user: 'пользователя', club: 'группу' }[kind];
 
   return (ignored ? 'Не игнорировать ' : 'Игнорировать ') + whom;
 }

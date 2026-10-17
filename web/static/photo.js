@@ -38,9 +38,9 @@ export function initPhoto(user, isOwner, {
   $('avatar-upload').addEventListener('click', () => openAvatarDialog({
     club,
     // The dialog shows what went wrong itself and stays open.
-    upload: async (blob, onWall) => {
+    upload: async (blob) => {
       hideError(error);
-      render(await upload(blob, onWall));
+      render(await upload(blob));
     },
   }));
   $('avatar-delete').addEventListener('click', () => change(() => remove(), 'Удаление…'));
