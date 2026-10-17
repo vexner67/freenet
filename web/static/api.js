@@ -552,6 +552,12 @@ export const api = {
   stickers: () => optional('GET', '/api/v1/stickers'),
   addStickerPack: (id) => authorized('PUT', `/api/v1/me/stickers/${encodeURIComponent(id)}`),
   removeStickerPack: (id) => authorized('DELETE', `/api/v1/me/stickers/${encodeURIComponent(id)}`),
+  // "Студия стикеров": the packs one makes of one's photos (uploadPhoto),
+  // free or for votes, in the shop when published.
+  myStickerPacks: () => authorized('GET', '/api/v1/me/sticker-packs'),
+  createStickerPack: (pack) => authorized('POST', '/api/v1/me/sticker-packs', pack),
+  editStickerPack: (id, pack) => authorized('PATCH', `/api/v1/sticker-packs/${encodeURIComponent(id)}`, pack),
+  deleteStickerPack: (id) => authorized('DELETE', `/api/v1/sticker-packs/${encodeURIComponent(id)}`),
   // Votes ("голоса"): a voucher gives them, a transfer hands them over;
   // the vouchers themselves are the administrators'.
   redeemVoucher: (code) => authorized('POST', '/api/v1/me/vouchers', { code }),

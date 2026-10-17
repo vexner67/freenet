@@ -812,10 +812,22 @@ const stickerImages = {
   bear_sad: '/static/stickers/bear_sad.svg',
 };
 
+// A sticker of a pack a person made is the ID of its photo in 32 hex
+// digits; the gateway serves its picture.
+const photoSticker = /^[0-9a-f]{32}$/;
+
 // stickerImage is the picture of a sticker; null for one this site does
 // not know yet (a newer catalogue).
 export function stickerImage(sticker) {
+  if (photoSticker.test(sticker)) return `/media/stickers/${sticker}`;
+
   return stickerImages[sticker] ?? null;
+}
+
+// stickerPackName is what a pack is called: its author named a pack made
+// of photos, the site names its own.
+export function stickerPackName(pack) {
+  return pack.name || stickerPacks[pack.id] || 'Стикеры';
 }
 
 // stickerPackAction is the button of a pack in the "Магазин стикеров", as
@@ -1270,6 +1282,16 @@ const errorTexts = {
   'only the owner can change the document': 'Это не ваш документ.',
   'the documents of a post cannot be changed': 'Документы записи нельзя изменить.',
   'unknown sticker pack': 'Такого набора стикеров нет.',
+  'sticker pack name is empty': 'Укажите название набора.',
+  'sticker pack name is too long': 'Название набора слишком длинное: не больше 64 символов.',
+  'sticker pack description is too long': 'Описание набора слишком длинное: не больше 500 символов.',
+  'invalid sticker pack price': 'Стоимость набора — от 0 до 1000 голосов.',
+  'a sticker pack needs a sticker': 'Добавьте в набор хотя бы один стикер.',
+  'too many stickers in the pack': 'В наборе может быть не больше 40 стикеров.',
+  'too many sticker packs': 'Можно создать не больше 20 наборов стикеров.',
+  'only the author can change a sticker pack': 'Это не ваш набор стикеров.',
+  'the sticker pack is taken by others': 'Набор уже установили другие: удалить его или его стикеры нельзя.',
+  'fill in your profile before making stickers': 'Сначала заполните свою страницу.',
   'voucher is not valid': 'Ваучер недействительный. Возможно, вы ввели неверный серийный номер, уже использовали данный ваучер или же он просто истёк.',
   'you cannot transfer votes to yourself': 'Нельзя передать голоса самому себе.',
   'you cannot transfer votes to this user': 'Вы не можете передать голоса этому пользователю.',
