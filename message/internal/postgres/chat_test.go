@@ -612,3 +612,39 @@ func TestChats_PinAndPhoto(t *testing.T) {
 		t.Fatalf("the chat without a photo = %+v, %v", details.View, err)
 	}
 }
+
+// Integration test: needs a database with migrations applied.
+func TestChats_Delete(t *testing.T) {
+	svc, ctx := chatService(t)
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+
+	view, err := svc.Create(ctx, ann, "Поход", []uuid.UUID{bob, cat})
+	if err != nil {
+		t.Fatal(err)
+	}
+	chatID := view.Chat.ID()
+
+	sent, err := svc.Send(ctx, bob, chatID, service.Draft{Text: "закреплённое"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Pin(ctx, ann, chatID, sent.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = svc.DeleteChat(ctx, bob, chatID); !errors.Is(err, message.ErrCannotDeleteChat) {
+		t.Fatalf("a member deletes it: %v", err)
+	}
+	if err = svc.DeleteChat(ctx, ann, chatID); err != nil {
+		t.Fatalf("DeleteChat: %v", err)
+	}
+
+	for _, who := range []uuid.UUID{ann, bob, cat} {
+		if _, err = svc.Get(ctx, who, chatID); !errors.Is(err, message.ErrChatNotFound) {
+			t.Fatalf("the chat after DeleteChat: %v", err)
+		}
+	}
+	if _, _, err = svc.Message(ctx, bob, sent.ID()); !errors.Is(err, message.ErrNotFound) && !errors.Is(err, message.ErrChatNotFound) {
+		t.Fatalf("a message of the chat after DeleteChat: %v", err)
+	}
+}

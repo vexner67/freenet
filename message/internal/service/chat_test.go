@@ -604,3 +604,43 @@ func TestChatSend_Pushes(t *testing.T) {
 		t.Fatalf("pushed %+v", p)
 	}
 }
+
+func TestChatService_DeleteChat(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	f := newChats()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	chatID := chatOf(t, f.svc, ann, bob, cat)
+	photo := uuid.New()
+
+	if _, err := f.svc.Send(ctx, bob, chatID, service.Draft{Photos: message.Photos{photo}}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := f.svc.Send(ctx, cat, chatID, service.Draft{Text: "без фото"}); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := f.svc.DeleteChat(ctx, bob, chatID); !errors.Is(err, message.ErrCannotDeleteChat) {
+		t.Fatalf("a member deletes it: %v", err)
+	}
+	if err := f.svc.DeleteChat(ctx, uuid.New(), chatID); !errors.Is(err, message.ErrChatNotFound) {
+		t.Fatalf("a stranger deletes it: %v", err)
+	}
+
+	if err := f.svc.DeleteChat(ctx, ann, chatID); err != nil {
+		t.Fatalf("DeleteChat: %v", err)
+	}
+	if len(f.photos.deleted) != 1 || f.photos.deleted[0].owner != bob || !slices.Equal(f.photos.deleted[0].photos, []uuid.UUID{photo}) || f.photos.outsideTx != 0 {
+		t.Fatalf("media heard %+v", f.photos.deleted)
+	}
+
+	for _, who := range []uuid.UUID{ann, bob, cat} {
+		if _, err := f.svc.Get(ctx, who, chatID); !errors.Is(err, message.ErrChatNotFound) {
+			t.Fatalf("the chat after DeleteChat: %v", err)
+		}
+		if page, err := f.svc.Chats(ctx, who, uuid.Nil, 20); err != nil || len(page.Chats) != 0 {
+			t.Fatalf("the chats after DeleteChat = %+v, %v", page, err)
+		}
+	}
+}
