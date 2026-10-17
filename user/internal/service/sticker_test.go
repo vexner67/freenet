@@ -52,10 +52,12 @@ func TestStickerService(t *testing.T) {
 		t.Fatalf("a free pack taken = %+v", got)
 	}
 
-	// A pack with a price takes votes once. That the pack is not taken
-	// without them is the transaction's: see the Postgres test.
+	// A pack with a price takes votes once, and without them is not taken.
 	if err = svc.Add(ctx, ann, "bears"); !errors.Is(err, user.ErrNotEnoughVotes) {
 		t.Fatalf("Add without votes: %v", err)
+	}
+	if got := packs(ann)["bears"]; got.Bought || got.Added {
+		t.Fatalf("a pack not paid for is taken: %+v", got)
 	}
 
 	price := user.StickerPackID("cats").Price()
@@ -153,8 +155,13 @@ func TestStickerService_Studio(t *testing.T) {
 		t.Fatal("a published pack is not in the shop")
 	}
 
-	// The votes paid go to the author. That a pack not paid for is not
-	// taken is the transaction's: see the Postgres test.
+	// The votes paid go to the author; without them nothing is taken.
+	if err = svc.Add(ctx, buyer, p.ID()); !errors.Is(err, user.ErrNotEnoughVotes) {
+		t.Fatalf("Add without votes: %v", err)
+	}
+	if authored, _ := svc.Authored(ctx, author); authored[0].Holders != 0 {
+		t.Fatalf("a pack not paid for has %d holders", authored[0].Holders)
+	}
 	if _, err = users.Credit(ctx, buyer, 3, 0); err != nil {
 		t.Fatal(err)
 	}

@@ -3,6 +3,7 @@ package postgres_test
 import (
 	"context"
 	"errors"
+	"sync"
 	"testing"
 	"time"
 
@@ -62,6 +63,29 @@ func TestStickerRepository(t *testing.T) {
 	}
 	if owned, _ := stickers.List(ctx, u.ID()); len(owned) != 2 {
 		t.Fatalf("List after buying = %+v", owned)
+	}
+
+	// Purchases of one pack at once are paid for once: the others wait for
+	// the votes, find the pack taken and are undone.
+	price := user.StickerPackID("cats").Price()
+	if _, err = wallets.Credit(ctx, u.ID(), 5*price, 0); err != nil {
+		t.Fatal(err)
+	}
+
+	var wg sync.WaitGroup
+	errs := make([]error, 5)
+	for i := range errs {
+		wg.Go(func() { errs[i] = svc.Add(ctx, u.ID(), "cats") })
+	}
+	wg.Wait()
+
+	for _, err := range errs {
+		if err != nil {
+			t.Fatalf("Add at once: %v", err)
+		}
+	}
+	if got, _ := repo.GetByID(ctx, u.ID()); got.Wallet().Votes != 4*price {
+		t.Fatalf("votes left %d, want %d", got.Wallet().Votes, 4*price)
 	}
 
 	if _, err = stickers.Add(ctx, uuid.New(), "smiles"); !errors.Is(err, user.ErrNotFound) {
