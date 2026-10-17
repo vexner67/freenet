@@ -1090,16 +1090,6 @@ export function foundText(m, query) {
   return carried ? { text: plain(carried.text), forwarded: true } : { text: messagePreview(m), forwarded: false };
 }
 
-// commentsLink is the link to the comments under a post, as on openvk.
-export function commentsLink(n) {
-  return n > 0 ? `Комментарии (${n})` : 'Комментировать';
-}
-
-// shareLink is openvk's "Поделиться" with how many times it was shared.
-export function shareLink(n) {
-  return n > 0 ? `Поделиться (${n})` : 'Поделиться';
-}
-
 const errorTexts = {
   'network error': 'Нет связи с сервером. Проверьте подключение.',
   'invalid email': 'Похоже, в адресе почты опечатка.',

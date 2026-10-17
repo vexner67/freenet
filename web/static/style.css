@@ -23,6 +23,7 @@
   --back-f6f0d2: #f6f0d2;
   --back-ededed: #ededed;
   --back-e9edf1: #e9edf1;
+  --back-e4e4e4: #e4e4e4;
   --back-f6ebbb: #f6ebbb;
   --back-e9e9e9: #e9e9e9;
   --back-e6e6e6: #e6e6e6;
@@ -37,6 +38,7 @@
   --back-5b7aa1: #5b7aa1;
   --back-6b6b6b: #6b6b6b;
   --back-636363: #636363;
+  --back-707070: #707070;
   --back-595959: #595959;
   --back-3e3e3e: #3e3e3e;
   /* Text */
@@ -76,7 +78,6 @@
   --line-e0e0e0: #e0e0e0;
   --line-dedede: #dedede;
   --line-ddd: #ddd;
-  --line-dadada: #dadada;
   --line-d5ddb6: #d5ddb6;
   --line-d6d6d6: #d6d6d6;
   --line-d0d0d0: #d0d0d0;
@@ -95,6 +96,7 @@
   --line-5b7aa1: #5b7aa1;
   --line-8fa7c2: #8fa7c2;
   --line-8b8b8b: #8b8b8b;
+  --line-707070: #707070;
   --line-808080: #808080;
   --line-7e7e7e: #7e7e7e;
   --line-777: #777;
@@ -202,11 +204,19 @@ h1.page-title { font-size: inherit; }
 
 /* Sidebar */
 
+/* As openvk's .navigation: black links with a line over the one pointed
+   at, "ред." at the right of the first. */
+.menu { position: relative; }
 .menu a {
   display: block;
-  padding: 3px 6px;
+  margin-bottom: 1px;
+  padding: 3px 3px 3px 6px;
+  border-top: 1px solid var(--line-fff);
+  color: var(--text-000);
 }
-.menu a:hover { background: var(--back-e9edf1); text-decoration: none; }
+.menu a:hover { background: var(--back-e4e4e4); border-top-color: var(--line-ccc); text-decoration: none; }
+.menu .menu-edit, .menu .menu-edit:hover { position: absolute; top: 0; right: 0; background: var(--back-fff); border-top-color: var(--line-fff); color: var(--text-808080); }
+.menu .menu-phone { display: none; }
 /* The unread counter next to "Мои Ответы", as on openvk. */
 .menu .counter {
   float: right;
@@ -349,6 +359,42 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 .actions { display: flex; gap: 6px; margin-top: 12px; padding-left: 170px; }
 .key-actions { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
 
+/* openvk's pages of settings and of "Редактировать страницу": a gray box
+   under the tabs, blue heads, forms of a table in the middle with gray
+   labels, and the buttons under the fields. */
+.container-gray { margin: -10px; padding: 12px; background: var(--back-f6f6f6); }
+.container-gray h4 {
+  margin: 14px 0 4px;
+  border-bottom: 1px solid var(--line-e8ebee);
+  color: var(--text-45688e);
+  font: bold 12px verdana, arial, sans-serif;
+}
+.container-gray > form > h4:first-child,
+.container-gray > div > h4:first-child,
+.container-gray > h4:first-child { margin-top: 0; }
+.container-gray .form { width: 60%; margin: 0 auto; border-collapse: separate; border-spacing: 7px; table-layout: fixed; }
+.container-gray .form th { width: 120px; padding: 0; color: var(--text-808080); text-align: left; line-height: normal; }
+.container-gray .form td { padding: 0; }
+.container-gray .form td.control { width: auto; }
+.container-gray .form .check-cell { text-align: right; }
+.container-gray .form .check-cell input { margin: 0; }
+.container-gray .actions { box-sizing: border-box; width: 60%; margin: 0 auto 4px; padding-left: 134px; }
+/* openvk's bold titles over the tables of "Приватность". */
+.container-gray .subhead { display: block; box-sizing: border-box; width: 60%; margin: 8px auto 0; padding: 0 7px; }
+/* Words and buttons in the middle, as openvk's sessions. */
+.settings-block { width: 60%; margin: 7px auto; }
+.settings-block .key-actions { justify-content: center; }
+.accent-box { margin: 5px; padding: 10px; background: var(--back-fff); border: 1px solid var(--line-c0cad5); }
+.accent-box p { margin: 0 0 6px; }
+.accent-box p:last-child { margin-bottom: 0; }
+/* What is under the settings: white, in the middle, to the end of the box. */
+.container-gray .settings-delete { margin: 12px -12px -12px; padding: 12px; background: var(--back-fff); text-align: center; }
+/* openvk's additional fields: a table each, under a line. */
+.container-gray .extra-field { width: 80%; margin: 0 auto 10px; }
+.container-gray .extra-field th { text-align: right; }
+.container-gray .extra-field td:not(.control) { width: 20px; }
+.column-actions { display: flex; flex-direction: column; align-items: center; gap: 5px; margin-top: 8px; }
+
 /* Profile */
 
 .profile { display: flex; gap: 12px; }
@@ -366,7 +412,6 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 .status { margin: 3px 0 10px; }
 .status.empty { color: var(--text-999); }
 /* openvk's deleted page: what is left instead of the information. */
-.settings-delete { margin-top: 20px; padding-left: 170px; }
 .deleted-info { margin: 40px 0; color: var(--text-aaa); font-size: 13px; text-align: center; }
 
 .info { width: 100%; border-collapse: collapse; }
@@ -417,6 +462,9 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 
 .post { display: flex; gap: 8px; margin-bottom: 10px; }
 .post-avatar img { display: block; width: 50px; height: 50px; }
+/* "Онлайн" under the photo of the author, as on openvk. */
+.post-online { display: block; width: 50px; padding-top: 5px; color: var(--text-aaa); text-align: center; }
+.post-online:hover { text-decoration: none; }
 .post-main { flex: 1; min-width: 0; }
 
 .post-author {
@@ -424,6 +472,7 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
   background: var(--back-f6f6f6);
   border-top: 1px solid var(--line-8b8b8b);
   border-bottom: 1px solid var(--line-ececec);
+  line-height: 125%;
 }
 .post-name { font-weight: bold; }
 /* "на стене Петра Петрова" in the news feed, bold as on openvk. */
@@ -431,13 +480,16 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 .post-date { color: var(--text-777); font-size: 9px; }
 
 .post-text {
-  padding: 6px 4px;
+  padding: 4px;
   border-bottom: 1px solid var(--line-ececec);
+  line-height: 130%;
   white-space: pre-wrap;
   overflow-wrap: anywhere;
 }
 
 .post-date a { color: var(--text-777); }
+/* The date under the name is black, as on openvk. */
+.post-author .post-date, .post-author .post-date a { color: var(--text-000); }
 
 /* Editing in place, as on openvk: the form takes the place of the text
    and photos (postedit.js). */
@@ -453,7 +505,8 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
   padding: 3px 4px;
   font-size: 9px;
 }
-.post-menu a { color: var(--text-999); }
+/* Blue links of the old post, gray ones of "Микроблог", as on openvk. */
+.posts-microblog .post-menu a { color: var(--text-999); }
 .separator { margin: 0 5px; color: var(--text-ccc); }
 
 .like { display: inline-flex; align-items: center; gap: 3px; color: var(--text-2b587a); }
@@ -523,23 +576,17 @@ a.like:hover svg { opacity: .7; }
 .person img { display: block; width: 50px; height: 50px; }
 .person-status { margin-top: 3px; color: var(--text-555); }
 
+/* openvk's .tabs: a dark line under them, the open tab dark over it. */
 .tabs {
   display: flex;
-  margin: -10px -10px 10px;
+  margin: 0 -10px 10px;
   padding: 0 10px;
-  background: var(--back-f0f0f0);
-  border-bottom: 1px solid var(--line-ccc);
+  border-bottom: 1px solid var(--line-707070);
+  white-space: nowrap;
 }
-.tabs a { padding: 5px 10px; }
-.tabs a.active {
-  margin-bottom: -1px;
-  background: var(--back-fff);
-  border: 1px solid var(--line-ccc);
-  border-bottom-color: var(--line-fff);
-  color: var(--text-000);
-  font-weight: bold;
-}
-.tabs a.active:hover { text-decoration: none; }
+.tabs a { margin-right: 3px; padding: 5px 10px; border-radius: 3px 3px 0 0; }
+.tabs a:hover { background: var(--back-e4e4e4); text-decoration: none; }
+.tabs a.active, .tabs a.active:hover { background: var(--back-707070); color: var(--text-fff); }
 /* A link at the right end of the tabs, as openvk's "Настройки ленты". */
 .tabs .tabs-side { margin-left: auto; cursor: pointer; }
 
@@ -714,28 +761,36 @@ label.chat-person { cursor: pointer; }
 /* Photos attached to a post being written. */
 .attach-link { margin-right: 8px; }
 
-/* "Прикрепить" of a form, as openvk's #wallAttachmentMenu: the list opens
-   over the link with "Прикрепить" as its grey head, each item with its
-   icon; .attach-up opens it upwards, for a form at the bottom of a page.
-   With every item hidden there is nothing to attach, and no link. */
+/* "Прикрепить" of a form, as openvk's #wallAttachmentMenu, each item with
+   its icon. The list drops under the link and covers no more than it must:
+   neither the field nor the button. Under a post form the link is at the
+   right, as on openvk, and the list keeps to the right edge; .attach-up
+   opens it upwards, for a form at the bottom of a page. With every item
+   hidden there is nothing to attach, and no link. */
 .attach-menu { position: relative; display: inline-block; margin-right: 8px; }
 .attach-menu:not(:has(.attach-list .attach-link:not([hidden]))) { display: none; }
 .attach-toggle { cursor: pointer; white-space: nowrap; }
+.attach-menu.open .attach-toggle { color: var(--text-000); }
 .attach-list {
   display: none;
   position: absolute;
-  top: -5px;
-  left: -10px;
+  top: calc(100% + 3px);
+  left: 0;
   z-index: 32;
   min-width: 110px;
+  padding: 2px 0;
   border: 1px solid var(--line-aaa);
   background: var(--back-fff);
   box-shadow: 0 1px 3px -1px rgb(0 0 0 / 50%);
   user-select: none;
 }
 .attach-menu.open .attach-list { display: flex; flex-direction: column; }
-.attach-up .attach-list { top: auto; bottom: -5px; flex-direction: column-reverse; }
-.attach-head { padding: 4px 10px; background: var(--back-ededed); color: var(--text-2b587a); }
+.attach-up .attach-list { top: auto; bottom: calc(100% + 3px); }
+/* openvk's form: the button at the left, "Прикрепить" at the right. */
+.wall-form .row { flex-direction: row-reverse; }
+.wall-form .row > span { display: inline-flex; flex-direction: row-reverse; align-items: center; gap: 8px; }
+.wall-form .row .attach-menu { margin-right: 0; }
+.wall-form .row .attach-list { left: auto; right: 0; }
 .attach-list .attach-link { display: flex; align-items: center; gap: 5px; margin: 0; padding: 3px 8px; white-space: nowrap; cursor: pointer; }
 .attach-list .attach-link:hover { background: var(--back-f0f0f0); text-decoration: none; }
 .attach-list .attach-link::before { content: ''; flex-shrink: 0; width: 16px; height: 16px; background-repeat: no-repeat; background-position: center; }
@@ -918,7 +973,7 @@ label.chat-person { cursor: pointer; }
 .club-row img { width: 50px; height: 50px; object-fit: cover; }
 
 /* The clubs pinned to the left menu, under a line, as on openvk. */
-.menu-divider { margin: 4px 0; border-top: 1px solid var(--line-dadada); }
+.menu-divider { margin: 4px 0 2px; border-top: 1px solid var(--line-ccc); }
 /* The other accounts of the browser, in the box "Аккаунты": a small photo
    before the name. */
 .account-list { min-width: 220px; }
@@ -1092,12 +1147,19 @@ label.chat-person { cursor: pointer; }
 /* openvk's "Заполненность страницы": a grey gauge, gold when full, and
    to the owner the hints of what to fill in. */
 .profile-hints { margin-top: 8px; }
-.completeness-gauge { position: relative; height: 16px; background: var(--back-e6e6e6); border-top: 1px solid var(--line-bbb); }
+.completeness-gauge { position: relative; width: 95%; height: 16px; background: var(--back-e6e6e6); border-top: 1px solid var(--line-bbb); }
 .completeness-gauge > div { height: 100%; background: var(--back-d4d4d4); }
 .completeness-gauge > span { position: absolute; top: 55%; left: 50%; transform: translate(-50%, -50%); }
 .completeness-gauge-gold { background: var(--back-f6ebbb); border-top-color: var(--line-b9b597); }
 .completeness-gauge-gold > div { background: var(--back-e1d7a2); }
-.completeness-hints a { display: block; margin-top: 4px; }
+/* The hints of openvk, each with its picture: what to tell about yourself,
+   how to be reached, what is new. */
+.completeness-hints { margin-top: 12px; }
+.completeness-hints a { display: flex; align-items: center; gap: 3px; margin-bottom: 2px; }
+.completeness-hint::before { content: ''; flex-shrink: 0; width: 16px; height: 16px; background-repeat: no-repeat; background-position: center; }
+.hint-interests::before { background-image: url("/static/icons/info.svg"); }
+.hint-email::before, .hint-telegram::before { background-image: url("/static/icons/document.svg"); }
+.hint-status::before { background-image: url("/static/icons/status.svg"); }
 
 /* The status edited on the page, as openvk's box under the name. */
 .status-editable { cursor: pointer; }
@@ -1505,7 +1567,10 @@ a.poll-result-name { cursor: pointer; }
   .sidebar { width: auto; }
   .sidebar:has(> .menu) { display: none; }
   .menu-open .sidebar:has(> .menu) { display: block; border-bottom: 1px solid var(--line-e0e0e0); }
-  .menu a { padding: 9px 12px; border-top: 1px solid var(--line-ececec); }
+  .menu a { margin: 0; padding: 9px 12px; border-top: 1px solid var(--line-ececec); }
+  .menu .menu-edit, .menu .menu-edit:hover { border-top-color: var(--line-ececec); }
+  .menu .menu-phone { display: block; }
+  .menu .menu-divider { margin: 0; }
   .menu .counter { margin-top: 0; }
   .sidebar-form { padding: 10px; }
 
@@ -1520,6 +1585,13 @@ a.poll-result-name { cursor: pointer; }
   .form td.control, .note-form .form td.control { width: auto; }
   .form td.note { padding-left: 0; }
   .actions, .settings-delete { padding-left: 0; }
+  .container-gray .form, .container-gray .extra-field, .container-gray .subhead, .container-gray .actions, .settings-block { width: auto; }
+  .container-gray .form { border-spacing: 0; }
+  .container-gray .form th { width: auto; }
+  .container-gray .actions { margin-top: 8px; padding-left: 0; }
+  .container-gray .subhead { margin-top: 12px; padding: 0; }
+  .container-gray .form tr:has(.check-cell) { display: flex; gap: 6px; padding: 3px 0; }
+  .container-gray .form .check-cell { padding: 0; }
   .info th { width: 125px; padding-right: 6px; }
 
   /* A person's page: the photo and buttons, then the name and the wall;

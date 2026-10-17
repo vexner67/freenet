@@ -37,12 +37,13 @@
           <a id="tab-interface" href="/settings?act=interface">Внешний вид</a>
           <a id="tab-vouchers" href="/settings?act=vouchers" hidden>Ваучеры</a>
         </div>
+        <div class="container-gray">
         <p id="loading">Загрузка…</p>
         <div class="error" id="error" hidden></div>
         <div class="notice" id="notice" hidden><b>Изменения сохранены</b><br>Новые данные появятся на вашей странице.</div>
 
         <div id="main" hidden>
-          <div class="section-title">Адрес Вашей электронной почты</div>
+          <h4>Адрес Вашей электронной почты</h4>
           <table class="form">
             <tr>
               <th>Текущий адрес</th>
@@ -50,8 +51,8 @@
             </tr>
           </table>
 
-          <div class="section-title">Адрес Вашей страницы</div>
           <form id="address">
+            <h4>Адрес Вашей страницы</h4>
             <table class="form">
               <tr>
                 <th>ID страницы</th>
@@ -65,30 +66,41 @@
             <div class="actions"><button class="button" type="submit">Сохранить</button></div>
           </form>
 
-          <div class="section-title">Уведомления на этом устройстве</div>
-          <p id="push-state">Загрузка…</p>
-          <div class="actions" id="push-actions"></div>
-          <p class="hint">Уведомления о том, что появилось в «Моих Ответах», и о новых сообщениях приходят, даже когда сайт закрыт. Что написано в сообщении, в них не говорится. Уведомления этого браузера получает тот, кто вошёл в нём последним.</p>
+          <h4>Уведомления на этом устройстве</h4>
+          <div class="settings-block">
+            <div class="accent-box">
+              <p id="push-state">Загрузка…</p>
+              <p class="hint">Уведомления о том, что появилось в «Моих Ответах», и о новых сообщениях приходят, даже когда сайт закрыт. Что написано в сообщении, в них не говорится. Уведомления этого браузера получает тот, кто вошёл в нём последним.</p>
+            </div>
+            <div class="center" id="push-actions"></div>
+          </div>
 
-          <p class="hint settings-delete"><a href="/fave">Понравившиеся записи</a> • <a href="/fave/own">Написанные мной записи</a></p>
-          <p class="hint settings-delete">Вы также можете <a id="delete-link">удалить свою страницу</a>.</p>
+          <div class="settings-delete">
+            <a href="/fave">Понравившиеся записи</a> • <a href="/fave/own">Написанные мной записи</a><br><br>
+            Вы также можете <a id="delete-link">удалить свою страницу</a>.
+          </div>
         </div>
 
         <div id="security" hidden>
-          <div class="section-title">Сессии</div>
-          <p class="hint" id="sessions-count"></p>
-          <div id="sessions"></div>
-
-          <div id="end-sessions-block" hidden>
-            <p>Если вы хотите выйти из Freenet на всех остальных устройствах, нажмите на кнопку ниже.</p>
-            <div class="actions"><button class="button" type="button" id="end-sessions">Сбросить все сессии</button></div>
+          <h4>Сессии</h4>
+          <div class="settings-block">
+            <p class="hint" id="sessions-count"></p>
+            <div id="sessions"></div>
+            <div id="end-sessions-block" hidden>
+              <div class="accent-box">Если вы хотите выйти из Freenet на всех остальных устройствах, нажмите на кнопку ниже.</div>
+              <div class="center"><button class="button" type="button" id="end-sessions">Сбросить все сессии</button></div>
+            </div>
           </div>
 
-          <div class="section-title">Шифрование сообщений</div>
-          <p>Личные сообщения шифруются на ваших устройствах: прочитать их можете только вы и собеседник, сервер хранит их зашифрованными. Ключ, которым они открываются, есть только у вас — в браузере, где вы вошли на сайт.</p>
-          <p><b id="key-state"></b></p>
-          <div class="key-actions" id="key-actions"></div>
-          <p class="hint">Чтобы читать сообщения на другом устройстве, сохраните ключ в файл и загрузите его там с кодом, который покажет сайт. Без ключа прочитать сообщения нельзя: если он потерян, создайте новый — сообщения, зашифрованные старым, останутся непрочитанными.</p>
+          <h4>Шифрование сообщений</h4>
+          <div class="settings-block">
+            <div class="accent-box">
+              <p>Личные сообщения шифруются на ваших устройствах: прочитать их можете только вы и собеседник, сервер хранит их зашифрованными. Ключ, которым они открываются, есть только у вас — в браузере, где вы вошли на сайт.</p>
+              <p><b id="key-state"></b></p>
+            </div>
+            <div class="key-actions" id="key-actions"></div>
+            <p class="hint">Чтобы читать сообщения на другом устройстве, сохраните ключ в файл и загрузите его там с кодом, который покажет сайт. Без ключа прочитать сообщения нельзя: если он потерян, создайте новый — сообщения, зашифрованные старым, останутся непрочитанными.</p>
+          </div>
         </div>
 
         <div id="finance" hidden>
@@ -121,7 +133,7 @@
         </div>
 
         <div id="vouchers" hidden>
-          <div class="section-title">Ваучеры</div>
+          <h4>Ваучеры</h4>
           <table class="list-table" id="voucher-table" hidden>
             <thead>
               <tr>
@@ -139,7 +151,7 @@
           <p class="hint" id="no-vouchers" hidden>Ваучеров пока нет.</p>
           <a class="wall-more" id="more-vouchers" hidden>Показать ещё</a>
 
-          <div class="section-title">Создать</div>
+          <h4>Создать</h4>
           <form id="voucher-create">
             <table class="form">
               <tr>
@@ -170,7 +182,7 @@
         </div>
 
         <form id="privacy" hidden>
-          <div class="section-title">Информация в профиле</div>
+          <b class="subhead">Информация в профиле</b>
           <table class="form">
             <tr>
               <th><label for="profile-type">Тип профиля</label></th>
@@ -206,7 +218,7 @@
             </tr>
           </table>
 
-          <div class="section-title">Контент в профиле</div>
+          <b class="subhead">Контент в профиле</b>
           <table class="form">
             <tr>
               <th><label for="clubs-read">Кому видно мои группы</label></th>
@@ -230,7 +242,7 @@
             </tr>
           </table>
 
-          <div class="section-title">Коммуникация</div>
+          <b class="subhead">Коммуникация</b>
           <table class="form">
             <tr>
               <th><label for="wall-write">Кто может писать у меня на стене</label></th>
@@ -253,7 +265,7 @@
         </form>
 
         <form id="interface" hidden>
-          <div class="section-title">Интерфейс</div>
+          <h4>Интерфейс</h4>
           <table class="form">
             <tr>
               <th><label for="avatar-style">Отображение аватаров</label></th>
@@ -285,7 +297,7 @@
             </tr>
           </table>
 
-          <div class="section-title">Часовой пояс</div>
+          <h4>Часовой пояс</h4>
           <table class="form">
             <tr>
               <th><label for="timezone">Часовой пояс</label></th>
@@ -293,16 +305,14 @@
             </tr>
           </table>
 
-          <div class="section-title">Левое меню</div>
+          <h4>Левое меню</h4>
           <table class="form">
-            <tr>
-              <th>Показывать</th>
-              <td class="checks" id="menu-items"></td>
-            </tr>
+            <tbody id="menu-items"></tbody>
           </table>
 
           <div class="actions"><button class="button" type="submit">Сохранить</button></div>
         </form>
+        </div>
       </div>
     </div>
   </div>

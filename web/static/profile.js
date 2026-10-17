@@ -197,7 +197,7 @@ function showCompleteness(user, isOwner) {
   const hints = isOwner
     ? (user.unfilled ?? []).filter((part) => completenessHints[part]).map((part) => {
       const [href, text] = completenessHints[part];
-      return el('a', { href, textContent: text });
+      return el('a', { className: 'completeness-hint hint-' + part, href, textContent: text });
     })
     : [];
 
