@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"errors"
 	"slices"
 
 	"github.com/google/uuid"
@@ -143,24 +144,65 @@ func (s *StickerService) Add(ctx context.Context, userID uuid.UUID, pack user.St
 			return errs.Wrap("s.priceOf", err)
 		}
 
+		bought, err := s.bought(ctx, userID, pack)
+		if err != nil {
+			return errs.Wrap("s.bought", err)
+		}
+
+		// The votes go before the pack is taken: refused, they leave
+		// nothing taken even where no transaction rolls back (inmem).
+		if !bought && price > 0 && authorID != userID {
+			if err = s.pay(ctx, userID, authorID, price); err != nil {
+				return errs.Wrap("s.pay", err)
+			}
+		}
+
 		taken, err := s.stickers.Add(ctx, userID, pack)
 		if err != nil {
 			return errs.Wrap("s.stickers.Add", err)
 		}
 
-		switch {
-		case !taken || price == 0 || authorID == userID:
-			return nil
-		case authorID == uuid.Nil:
-			_, err = s.wallets.Spend(ctx, userID, price)
-			return errs.Wrap("s.wallets.Spend", err)
-		default:
-			_, err = s.wallets.Move(ctx, userID, authorID, price)
-			return errs.Wrap("s.wallets.Move", err)
+		// Another purchase of the same pack by userID, waiting for the
+		// same votes, took it first: this one must not be paid for.
+		if !bought && !taken && price > 0 && authorID != userID {
+			return errBoughtMeanwhile
 		}
+
+		return nil
 	})
+	if errors.Is(err, errBoughtMeanwhile) {
+		return nil
+	}
 
 	return errs.Wrap("s.tx.WithinTx", err)
+}
+
+// errBoughtMeanwhile rolls back a payment for a pack that was bought while
+// it waited; the pack is the buyer's all the same.
+var errBoughtMeanwhile = errors.New("the sticker pack was bought meanwhile")
+
+// bought tells whether userID has taken the pack before, so that it
+// comes back free.
+func (s *StickerService) bought(ctx context.Context, userID uuid.UUID, pack user.StickerPackID) (bool, error) {
+	owned, err := s.stickers.List(ctx, userID)
+	if err != nil {
+		return false, errs.Wrap("s.stickers.List", err)
+	}
+
+	return slices.ContainsFunc(owned, func(o user.OwnedPack) bool { return o.Pack == pack }), nil
+}
+
+// pay takes the price of a pack from userID: the votes for a pack of the
+// site go nowhere, those for a pack of a person go to its author.
+func (s *StickerService) pay(ctx context.Context, userID, authorID uuid.UUID, price int64) error {
+	if authorID == uuid.Nil {
+		_, err := s.wallets.Spend(ctx, userID, price)
+		return errs.Wrap("s.wallets.Spend", err)
+	}
+
+	_, err := s.wallets.Move(ctx, userID, authorID, price)
+
+	return errs.Wrap("s.wallets.Move", err)
 }
 
 // priceOf is what the pack costs userID and who is paid for it, uuid.Nil
@@ -178,12 +220,12 @@ func (s *StickerService) priceOf(ctx context.Context, userID uuid.UUID, pack use
 	}
 
 	if !p.Draft().Published && p.AuthorID() != userID {
-		owned, err := s.stickers.List(ctx, userID)
+		bought, err := s.bought(ctx, userID, pack)
 		if err != nil {
-			return 0, uuid.Nil, errs.Wrap("s.stickers.List", err)
+			return 0, uuid.Nil, errs.Wrap("s.bought", err)
 		}
 
-		if !slices.ContainsFunc(owned, func(o user.OwnedPack) bool { return o.Pack == pack }) {
+		if !bought {
 			return 0, uuid.Nil, user.ErrUnknownStickerPack
 		}
 	}
