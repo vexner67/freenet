@@ -32,7 +32,7 @@ func TestInterface(t *testing.T) {
 	offset := -210
 	ui, err := user.NewInterface(user.InterfaceForm{
 		AvatarStyle: "round", Theme: "dark", HideRating: true, NSFW: "hide", PostView: "microblog",
-		MainPage: "feed", Timezone: &offset, HiddenMenu: []string{"events", "photos"},
+		MainPage: "feed", Timezone: &offset, HiddenMenu: []string{"groups", "photos"},
 	})
 	if err != nil {
 		t.Fatal(err)

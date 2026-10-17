@@ -902,8 +902,8 @@ type InterfaceSettings struct {
 	AvatarStyle string `protobuf:"bytes,1,opt,name=avatar_style,json=avatarStyle,proto3" json:"avatar_style,omitempty"`
 	// "page" (the default) or "feed": where the site opens.
 	MainPage string `protobuf:"bytes,2,opt,name=main_page,json=mainPage,proto3" json:"main_page,omitempty"`
-	// The links taken out of the left menu: "photos", "messages", "groups",
-	// "events", "feed", "notifications".
+	// The links taken out of the left menu: "photos", "messages", "notes",
+	// "groups", "feed", "notifications".
 	HiddenMenu []string `protobuf:"bytes,3,rep,name=hidden_menu,json=hiddenMenu,proto3" json:"hidden_menu,omitempty"`
 	// "default", "blue" or "dark": the look of the whole site.
 	Theme string `protobuf:"bytes,4,opt,name=theme,proto3" json:"theme,omitempty"`
