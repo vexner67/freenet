@@ -104,7 +104,7 @@ func TestUser_Interface(t *testing.T) {
 	}
 
 	form := defaultForm()
-	form.Theme, form.HiddenMenu = "blue", []string{"events"}
+	form.Theme, form.HiddenMenu = "blue", []string{"groups"}
 
 	ui, err := user.NewInterface(form)
 	if err != nil {

@@ -215,8 +215,8 @@ message InterfaceSettings {
   string avatar_style = 1;
   // "page" (the default) or "feed": where the site opens.
   string main_page = 2;
-  // The links taken out of the left menu: "photos", "messages", "groups",
-  // "events", "feed", "notifications".
+  // The links taken out of the left menu: "photos", "messages", "notes",
+  // "groups", "feed", "notifications".
   repeated string hidden_menu = 3;
   // "default", "blue" or "dark": the look of the whole site.
   string theme = 4;
