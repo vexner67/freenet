@@ -580,9 +580,9 @@ function confirmLeave() {
   );
 }
 
-// confirmDelete is the creator's "Удалить беседу": the chat goes for
+// confirmDeleteChat is the creator's "Удалить беседу": the chat goes for
 // everyone in it with all its messages.
-function confirmDelete() {
+function confirmDeleteChat() {
   const modal = openModal('Удалить беседу');
   const error = el('div', { className: 'error', hidden: true });
 
@@ -699,7 +699,7 @@ function openAbout() {
     el('div', { className: 'hint', textContent: chatMembers(chat.memberCount) }),
     people,
     chat.ownerId === me.id && chat.state === 'active' && el('p', { className: 'album-delete' },
-      'Вы также можете ', el('a', { textContent: 'удалить беседу', onclick: () => { modal.close(); confirmDelete(); } }), '.'),
+      'Вы также можете ', el('a', { textContent: 'удалить беседу', onclick: () => { modal.close(); confirmDeleteChat(); } }), '.'),
   );
   modal.actions.append(button('Закрыть', modal.close, { secondary: true }));
 }
