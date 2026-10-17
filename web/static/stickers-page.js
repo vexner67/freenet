@@ -161,6 +161,7 @@ function initForm(pack) {
   // { photo } uploaded (undefined while uploading).
   let items = (pack?.stickers ?? []).map((sticker) => ({ sticker }));
   const removed = [];
+  let id = pack?.id;
   let uploading = 0;
 
   $('studio').hidden = false;
@@ -185,6 +186,7 @@ function initForm(pack) {
         textContent: 'Удалить',
         onclick: () => {
           if (item.sticker) removed.push(photoOf(item.sticker));
+          else if (item.saved) removed.push(item.photo.id);
           items = items.filter((i) => i !== item);
           render();
         },
@@ -241,21 +243,33 @@ function initForm(pack) {
       price: Number($('pack-price').value) || 0,
       published: $('pack-published').checked,
     };
-    const added = items.filter((i) => i.photo).map((i) => i.photo.id);
-    const chunks = [];
-    for (let i = 0; i < added.length; i += PHOTOS_PER_REQUEST) chunks.push(added.slice(i, i + PHOTOS_PER_REQUEST));
-
     $('pack-save').disabled = true;
 
+    // The new photos go ten a request. A save that failed partway is
+    // taken up again by the next "Сохранить": the pack is made already,
+    // and the photos it holds are kept as its stickers.
     try {
-      let id = pack?.id;
+      let fresh = items.filter((i) => i.photo && !i.saved);
+      // A pack made just now says all it says; one there was has its
+      // words saved by an edit, even with no new photos.
+      let said = false;
+
       if (!id) {
-        ({ id } = await api.createStickerPack({ ...draft, photos: chunks.shift() ?? [] }));
-      } else {
-        await api.editStickerPack(id, { ...draft, addPhotos: chunks.shift() ?? [], removePhotos: removed });
+        const first = fresh.slice(0, PHOTOS_PER_REQUEST);
+        ({ id } = await api.createStickerPack({ ...draft, photos: first.map((i) => i.photo.id) }));
+        first.forEach((i) => { i.saved = true; });
+        fresh = fresh.slice(PHOTOS_PER_REQUEST);
+        said = true;
       }
 
-      for (const chunk of chunks) await api.editStickerPack(id, { ...draft, addPhotos: chunk });
+      while (fresh.length || !said) {
+        const chunk = fresh.slice(0, PHOTOS_PER_REQUEST);
+        await api.editStickerPack(id, { ...draft, addPhotos: chunk.map((i) => i.photo.id), removePhotos: removed });
+        chunk.forEach((i) => { i.saved = true; });
+        removed.length = 0;
+        fresh = fresh.slice(PHOTOS_PER_REQUEST);
+        said = true;
+      }
 
       location.assign('/stickers?act=author');
     } catch (e) {

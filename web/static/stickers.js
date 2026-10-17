@@ -9,10 +9,15 @@ import { el, showError } from './layout.js';
 // stickerNode is the sticker a message is: its picture, or the word for
 // one this site does not know yet.
 export function stickerNode(sticker) {
+  const word = () => el('div', { className: 'im-message-text hint', textContent: 'Стикер' });
   const src = stickerImage(sticker);
-  if (!src) return el('div', { className: 'im-message-text hint', textContent: 'Стикер' });
+  if (!src) return word();
 
-  return el('img', { className: 'sticker', src, alt: 'Стикер', title: 'Стикер', loading: 'lazy' });
+  // A sticker of a pack its author has deleted has no picture any more.
+  const image = el('img', { className: 'sticker', src, alt: 'Стикер', title: 'Стикер', loading: 'lazy' });
+  image.addEventListener('error', () => image.replaceWith(word()), { once: true });
+
+  return image;
 }
 
 // initStickers makes link open the panel of stickers under the form, in
