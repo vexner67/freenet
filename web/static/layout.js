@@ -370,7 +370,10 @@ export function applyInterface(me) {
   }
   applyLook(ui);
 
+  // As openvk's: "ред." at the right of the first link, the links of the
+  // pages, and under a line those of what the site keeps for you.
   menu?.replaceChildren(...[
+    el('a', { className: 'menu-edit', href: '/edit', textContent: 'ред.', title: 'Редактировать страницу' }),
     el('a', { href: profilePath(me), textContent: 'Страница' }),
     menuLink(me, 'photos', '/albums', 'Фотографии'),
     menuLink(me, 'messages', '/im', 'Сообщения', 'messages-count'),
@@ -379,11 +382,14 @@ export function applyInterface(me) {
     menuLink(me, 'feed', '/feed', 'Новости'),
     menuLink(me, 'notifications', '/notifications', 'Уведомления', 'notifications-count'),
     el('a', { href: '/settings', textContent: 'Настройки' }),
-    el('a', { href: '/docs', textContent: 'Документы' }),
+    el('div', { className: 'menu-divider' }),
     el('a', { href: '/stickers', textContent: 'Стикеры' }),
+    el('a', { href: '/docs', textContent: 'Документы' }),
     accountsLink(me),
     el('a', { href: '/search', textContent: 'Поиск' }),
-    el('a', { href: '/', textContent: 'Выйти', onclick: logout }),
+    // The header says "выход"; the phone, whose header is narrow, has it
+    // here too, as openvk's.
+    el('a', { className: 'menu-phone', href: '/', textContent: 'Выйти', onclick: logout }),
   ].filter(Boolean));
   showCounter('messages');
   showCounter('notifications');

@@ -36,6 +36,7 @@
           <a id="tab-avatar" href="/edit?act=avatar">Аватар</a>
           <a id="tab-backdrop" href="/edit?act=backdrop">Фон</a>
         </div>
+        <div class="container-gray">
         <p id="loading">Загрузка…</p>
         <div class="error" id="error" hidden></div>
         <div class="notice" id="notice" hidden></div>
@@ -46,42 +47,52 @@
             Обязательны только имя и никнейм — по никнейму вас найдут друзья.
           </div>
 
-          <div class="section-title">Основная информация</div>
+          <h4>Основная информация</h4>
           <table class="form">
             <tr>
-              <th><label class="required" for="name">Имя</label></th>
+              <th><label class="required" for="name">Имя:</label></th>
               <td class="control"><input type="text" id="name" maxlength="100" autocomplete="given-name"></td>
             </tr>
             <tr>
-              <th><label for="surname">Фамилия</label></th>
+              <th><label for="surname">Фамилия:</label></th>
               <td class="control"><input type="text" id="surname" maxlength="100" autocomplete="family-name"></td>
             </tr>
             <tr>
-              <th><label class="required" for="nickname">Никнейм</label></th>
-              <td class="control"><input type="text" id="nickname" maxlength="32" autocomplete="username" spellcheck="false"></td>
-              <td class="note hint">Адрес страницы: <span id="url-preview"></span></td>
+              <th><label class="required" for="nickname">Никнейм:</label></th>
+              <td class="control">
+                <input type="text" id="nickname" maxlength="32" autocomplete="username" spellcheck="false">
+                <div class="hint">Адрес страницы: <span id="url-preview"></span></div>
+              </td>
             </tr>
             <tr>
-              <th><label for="status">Статус</label></th>
+              <th><label for="status">Статус:</label></th>
               <td class="control"><input type="text" id="status" maxlength="200"></td>
             </tr>
             <tr>
-              <th><label for="hometown">Родной город</label></th>
+              <th><label for="hometown">Родной город:</label></th>
               <td class="control"><input type="text" id="hometown" maxlength="64"></td>
             </tr>
             <tr>
-              <th><label for="relationship">Семейное положение</label></th>
+              <th><label for="relationship">Семейное положение:</label></th>
               <td class="control">
                 <select id="relationship"></select>
                 <input type="text" id="partner" maxlength="32" placeholder="Никнейм" spellcheck="false" aria-label="С кем" hidden>
               </td>
             </tr>
             <tr>
-              <th><label for="gender">Пол</label></th>
+              <th><label for="political-views">Полит. взгляды:</label></th>
+              <td class="control"><select id="political-views"></select></td>
+            </tr>
+            <tr>
+              <th><label for="worldview">Мировоззрение:</label></th>
+              <td class="control"><select id="worldview"></select></td>
+            </tr>
+            <tr>
+              <th><label for="gender">Пол:</label></th>
               <td class="control"><select id="gender"></select></td>
             </tr>
             <tr>
-              <th><label for="birth-day">День рождения</label></th>
+              <th><label for="birth-day">День рождения:</label></th>
               <td class="control">
                 <div class="date">
                   <select id="birth-day" aria-label="День"></select>
@@ -94,14 +105,6 @@
                 </select>
               </td>
             </tr>
-            <tr>
-              <th><label for="worldview">Мировоззрение</label></th>
-              <td class="control"><select id="worldview"></select></td>
-            </tr>
-            <tr>
-              <th><label for="political-views">Полит. взгляды</label></th>
-              <td class="control"><select id="political-views"></select></td>
-            </tr>
           </table>
 
           <div class="actions">
@@ -111,26 +114,26 @@
         </form>
 
         <form id="contacts" hidden>
-          <div class="section-title">Контактная информация</div>
+          <h4>Контактная информация</h4>
           <table class="form">
             <tr>
-              <th><label for="contact-email">Электронная почта</label></th>
+              <th><label for="contact-email">Электронная почта:</label></th>
               <td class="control"><input type="email" id="contact-email" maxlength="254"></td>
             </tr>
             <tr>
-              <th><label for="telegram">Telegram</label></th>
+              <th><label for="telegram">Telegram:</label></th>
               <td class="control"><input type="text" id="telegram" maxlength="64" spellcheck="false"></td>
             </tr>
             <tr>
-              <th><label for="website">Личный сайт</label></th>
+              <th><label for="website">Личный сайт:</label></th>
               <td class="control"><input type="text" id="website" maxlength="256" spellcheck="false"></td>
             </tr>
             <tr>
-              <th><label for="city">Город</label></th>
+              <th><label for="city">Город:</label></th>
               <td class="control"><input type="text" id="city" maxlength="64"></td>
             </tr>
             <tr>
-              <th><label for="address">Адрес</label></th>
+              <th><label for="address">Адрес:</label></th>
               <td class="control"><input type="text" id="address" maxlength="255"></td>
             </tr>
           </table>
@@ -138,38 +141,38 @@
         </form>
 
         <form id="interests" hidden>
-          <div class="section-title">Личная информация</div>
+          <h4>Личная информация</h4>
           <table class="form">
             <tr>
-              <th><label for="interests-text">Интересы</label></th>
+              <th><label for="interests-text">Интересы:</label></th>
               <td class="control"><textarea id="interests-text" maxlength="1000"></textarea></td>
             </tr>
             <tr>
-              <th><label for="music">Любимая музыка</label></th>
+              <th><label for="music">Любимая музыка:</label></th>
               <td class="control"><textarea id="music" maxlength="1000"></textarea></td>
             </tr>
             <tr>
-              <th><label for="films">Любимые фильмы</label></th>
+              <th><label for="films">Любимые фильмы:</label></th>
               <td class="control"><textarea id="films" maxlength="1000"></textarea></td>
             </tr>
             <tr>
-              <th><label for="shows">Любимые ТВ-шоу</label></th>
+              <th><label for="shows">Любимые ТВ-шоу:</label></th>
               <td class="control"><textarea id="shows" maxlength="1000"></textarea></td>
             </tr>
             <tr>
-              <th><label for="books">Любимые книги</label></th>
+              <th><label for="books">Любимые книги:</label></th>
               <td class="control"><textarea id="books" maxlength="1000"></textarea></td>
             </tr>
             <tr>
-              <th><label for="quotes">Любимые цитаты</label></th>
+              <th><label for="quotes">Любимые цитаты:</label></th>
               <td class="control"><textarea id="quotes" maxlength="1000"></textarea></td>
             </tr>
             <tr>
-              <th><label for="games">Любимые игры</label></th>
+              <th><label for="games">Любимые игры:</label></th>
               <td class="control"><textarea id="games" maxlength="1000"></textarea></td>
             </tr>
             <tr>
-              <th><label for="about">О себе</label></th>
+              <th><label for="about">О себе:</label></th>
               <td class="control"><textarea id="about" maxlength="1000"></textarea></td>
             </tr>
           </table>
@@ -177,11 +180,11 @@
         </form>
 
         <form id="additional" hidden>
-          <div class="section-title">Дополнительная информация</div>
-          <p class="hint">Здесь вы можете указать дополнительную информацию о себе: другие интересы, ссылки на другие социальные сети. Максимум можно добавить до 7 таких полей.</p>
+          <h4>Дополнительная информация</h4>
+          <p>Здесь вы можете указать дополнительную информацию о себе: другие интересы, ссылки на другие социальные сети. Максимум можно добавить до 7 таких полей.</p>
           <div id="fields"></div>
-          <div class="actions">
-            <button class="button secondary" type="button" id="field-add">Добавить</button>
+          <div class="column-actions">
+            <button class="button" type="button" id="field-add">Добавить</button>
             <button class="button" type="submit">Сохранить</button>
           </div>
         </form>
@@ -194,13 +197,13 @@
             <div class="backdrop-editor">
               <div class="backdrop-side">
                 <img id="left-preview" alt="" hidden>
-                <button class="button secondary" type="button" id="left-browse">Обзор</button>
+                <button class="button" type="button" id="left-browse">Обзор</button>
                 <input type="file" id="left-file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
               </div>
               <div class="backdrop-page"></div>
               <div class="backdrop-side">
                 <img id="right-preview" alt="" hidden>
-                <button class="button secondary" type="button" id="right-browse">Обзор</button>
+                <button class="button" type="button" id="right-browse">Обзор</button>
                 <input type="file" id="right-file" accept="image/jpeg,image/png,image/gif,image/webp" hidden>
               </div>
             </div>
@@ -216,16 +219,17 @@
         </div>
 
         <div id="avatar-tab" hidden>
-          <div class="section-title">Изображение страницы</div>
+          <h4>Изображение страницы</h4>
           <table class="form">
             <tr>
-              <th>Изображение</th>
+              <th>Изображение:</th>
               <td class="control">
                 <img class="edit-avatar" id="avatar" src="/static/avatar.svg" alt="">
                 <button class="button" type="button" id="avatar-upload">Обзор</button>
               </td>
             </tr>
           </table>
+        </div>
         </div>
 
       </div>

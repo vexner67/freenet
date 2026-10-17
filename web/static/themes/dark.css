@@ -19,6 +19,7 @@
   --back-f6f0d2: #3a3522;
   --back-ededed: #2a2a2a;
   --back-e9edf1: #2a2f35;
+  --back-e4e4e4: #2c2c2c;
   --back-f6ebbb: #3a3520;
   --back-e9e9e9: #2e2e2e;
   --back-e6e6e6: #2a2a2a;
@@ -33,6 +34,7 @@
   --back-5b7aa1: #405571;
   --back-6b6b6b: #5a5a5a;
   --back-636363: #333333;
+  --back-707070: #4f4f4f;
   --back-595959: #4a4a4a;
   --back-3e3e3e: #222222;
   /* Text */
@@ -72,7 +74,6 @@
   --line-e0e0e0: #333333;
   --line-dedede: #333333;
   --line-ddd: #3a3a3a;
-  --line-dadada: #3a3a3a;
   --line-d5ddb6: #4d5236;
   --line-d6d6d6: #3e3e3e;
   --line-d0d0d0: #444444;
@@ -91,6 +92,7 @@
   --line-5b7aa1: #6f93c0;
   --line-8fa7c2: #5b7fa6;
   --line-8b8b8b: #555555;
+  --line-707070: #4f4f4f;
   --line-808080: #555555;
   --line-7e7e7e: #8c8c8c;
   --line-777: #676767;
@@ -128,13 +130,12 @@ input[type="text"], input[type="email"], input[type="date"], input[type="time"],
 input:focus, select:focus, textarea:focus,
 .form textarea:focus, .wall-form textarea:focus, .modal-body textarea:focus { outline-color: #5b7fa6; }
 .post-date, .post-date a, .reply-to, .wall-more { color: #8c8c8c; }
-.post-menu a { color: #808080; }
+.posts-microblog .post-menu a { color: #808080; }
 .post-shared { border-left-color: #3a4450; }
 .post-shared.deleted { color: #8c8c8c; }
 .wall-more:hover { background: #2c2c2c; }
 .posts-microblog .post, .posts-microblog .comment { border-color: #333; }
 .posts-microblog .post-buttons a.like:hover { background: #2c2c2c; }
-.tabs a.active { border-color: #444; color: #f0f0f0; }
 .dialogs, .dialog { border-color: #333; }
 .dialog-name { color: #7fa9d4; }
 .dialog-message.unread { background: #303030; }

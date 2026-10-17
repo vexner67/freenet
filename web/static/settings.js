@@ -131,8 +131,11 @@ function initInterface(me) {
   fill($('main-page'), mainPages, ui.mainPage);
   fill($('timezone'), timezones, ui.timezone === null ? '' : String(ui.timezone));
   $('theme-device').checked = device !== null;
-  $('menu-items').replaceChildren(...menuItems.map(([item, text]) => el('label', {},
-    el('input', { type: 'checkbox', value: item, checked: !ui.hiddenMenu.includes(item) }), text)));
+  // As openvk's: the box where the label would be, the name beside it.
+  $('menu-items').replaceChildren(...menuItems.map(([item, text]) => el('tr', {},
+    el('th', { className: 'check-cell' },
+      el('input', { type: 'checkbox', id: 'menu-' + item, value: item, checked: !ui.hiddenMenu.includes(item) })),
+    el('td', {}, el('label', { htmlFor: 'menu-' + item, textContent: text })))));
 
   onSubmit($('interface'), async () => {
     const hiddenMenu = [...$('menu-items').querySelectorAll('input')].filter((box) => !box.checked).map((box) => box.value);

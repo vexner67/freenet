@@ -4,7 +4,7 @@
 
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
-import { commentsLink, formatPostDate, genitiveName, sharedBy, shareLink, wrote } from './labels.js';
+import { formatPostDate, genitiveName, sharedBy, wrote } from './labels.js';
 import { adult, avatarURL, el, externalLink, fullName, isMicroblog, pagePath, textNode } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
@@ -87,35 +87,43 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   // comments.
   const ownsWall = () => moderates || Boolean(viewer && wallOwnerID(post) === viewer.id);
 
-  // changes are what the viewer may do to the post, in the order of
-  // openvk: words in the menu or, in "Микроблог", marks by the name.
+  // changes are what the viewer may do to the post: in "Микроблог" marks
+  // by the name, in the order of openvk's marks, otherwise words of the
+  // menu in the order of its old posts.
   function changes() {
-    const found = [];
-    if (canEdit(post, viewer)) found.push({ text: 'Редактировать', mark: pencil, run: edit });
-    if (onDelete) found.push({ text: 'Удалить', mark: cross, run: () => onDelete(post, node) });
+    const found = {};
+    if (canEdit(post, viewer)) found.edit = { text: 'Редактировать', mark: pencil, run: edit };
+    if (onDelete) found.delete = { text: 'Удалить', mark: cross, run: () => onDelete(post, node) };
     if (ownsWall()) {
       // An archived post is on no wall to be pinned on.
-      if (!post.archived) found.push({ text: post.pinned ? 'Открепить' : 'Закрепить', mark: pin, on: post.pinned, run: togglePin });
-      found.push({ text: post.archived ? 'Разархивировать' : 'Архивировать', mark: box, on: post.archived, run: toggleArchived });
+      if (!post.archived) found.pin = { text: post.pinned ? 'Открепить' : 'Закрепить', mark: pin, on: post.pinned, run: togglePin };
+      found.archive = { text: post.archived ? 'Разархивировать' : 'Архивировать', mark: box, on: post.archived, run: toggleArchived };
     }
-    return found;
+    const order = microblog ? ['edit', 'delete', 'pin', 'archive'] : ['edit', 'archive', 'delete', 'pin'];
+    return order.map((name) => found[name]).filter(Boolean);
   }
 
+  // menuLinks are the words under the post. On openvk the old post says
+  // what may be done to it, then "Комментарии" and "Поделиться"; closing
+  // the comments, which openvk has not, goes with what may be done.
   function menuLinks() {
-    const links = [];
-    if (comments) {
-      // The comments are under the post; with none, the field opens.
-      if (post.comments === 0 && comments.canOpen()) links.push(el('a', { textContent: 'Комментировать', onclick: openComments }));
-    } else if (withCommentsLink) {
-      links.push(el('a', { href: postPath(post), textContent: commentsLink(post.comments) }));
-    }
+    const closing = ownsWall()
+      ? el('a', { textContent: post.commentsClosed ? 'Открыть комментарии' : 'Закрыть комментарии', onclick: toggleComments })
+      : null;
+
     if (!microblog) {
-      links.push(shareButton(post, canLike));
-      links.push(...changes().map((c) => el('a', { textContent: c.text, onclick: c.run })));
+      return [
+        ...changes().map((c) => el('a', { textContent: c.text, onclick: c.run })),
+        closing,
+        withCommentsLink ? el('a', { href: postPath(post) }, ...counted('Комментарии', post.comments)) : null,
+        shareButton(post, canLike),
+      ].filter(Boolean);
     }
-    if (ownsWall()) {
-      links.push(el('a', { textContent: post.commentsClosed ? 'Открыть комментарии' : 'Закрыть комментарии', onclick: toggleComments }));
-    }
+
+    // The comments are under the post; with none, the field opens.
+    const links = [];
+    if (comments && post.comments === 0 && comments.canOpen()) links.push(el('a', { textContent: 'Комментировать', onclick: openComments }));
+    if (closing) links.push(closing);
     return links;
   }
 
@@ -205,7 +213,11 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   }
 
   const node = el('div', { className: 'post' },
-    el('a', { className: 'post-avatar', href: path }, el('img', { src: avatarURL(post.author, 'small'), alt: '' })),
+    el('a', { className: 'post-avatar', href: path },
+      el('img', { src: avatarURL(post.author, 'small'), alt: '' }),
+      // openvk's "Онлайн" under the photo of a person who is on the site.
+      !microblog && !post.author.club && post.author.online ? el('span', { className: 'post-online', textContent: 'Онлайн' }) : null,
+    ),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
@@ -336,7 +348,7 @@ function shareButton(post, canShare, { icon = false } = {}) {
 
   function render() {
     if (icon) count.textContent = post.reposts > 0 ? String(post.reposts) : '';
-    else button.textContent = shareLink(post.reposts);
+    else button.replaceChildren(...counted('Поделиться', post.reposts));
   }
 
   if (canShare) {
@@ -414,6 +426,12 @@ export function photosNode(photos) {
         openViewer(photos, i);
       },
     }, el('img', { src: photo.small, alt: '', loading: 'lazy' }))));
+}
+
+// counted is a word of the menu with how many there are, bold, as on
+// openvk: "Комментарии (2)".
+function counted(word, n) {
+  return n > 0 ? [word + ' (', el('b', { textContent: String(n) }), ')'] : [word];
 }
 
 // separated puts " | " between links, as in the menus of openvk.
