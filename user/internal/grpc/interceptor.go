@@ -16,7 +16,23 @@ func ErrorInterceptor(log *slog.Logger) grpc.UnaryServerInterceptor {
 	return grpcserver.ErrorInterceptor(log, toStatus)
 }
 
+// invalidStickerPack are what a pack of a person may not be.
+var invalidStickerPack = []error{
+	user.ErrStickerPackNameEmpty,
+	user.ErrStickerPackNameTooLong,
+	user.ErrStickerPackAboutTooLong,
+	user.ErrStickerPackPrice,
+	user.ErrStickerPackEmpty,
+	user.ErrTooManyPackStickers,
+}
+
 func toStatus(err error) (*status.Status, bool) {
+	for _, invalid := range invalidStickerPack {
+		if errors.Is(err, invalid) {
+			return status.New(codes.InvalidArgument, invalid.Error()), true
+		}
+	}
+
 	switch {
 	case errors.Is(err, user.ErrNotFound):
 		return status.New(codes.NotFound, "user not found"), true
@@ -51,6 +67,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.PermissionDenied, user.ErrCannotDeleteGift.Error()), true
 	case errors.Is(err, user.ErrUnknownStickerPack):
 		return status.New(codes.InvalidArgument, user.ErrUnknownStickerPack.Error()), true
+	case errors.Is(err, user.ErrTooManyStickerPacks):
+		return status.New(codes.FailedPrecondition, user.ErrTooManyStickerPacks.Error()), true
+	case errors.Is(err, user.ErrStickerPackTaken):
+		return status.New(codes.FailedPrecondition, user.ErrStickerPackTaken.Error()), true
+	case errors.Is(err, user.ErrCannotChangeStickerPack):
+		return status.New(codes.PermissionDenied, user.ErrCannotChangeStickerPack.Error()), true
 	case errors.Is(err, user.ErrNotEnoughVotes):
 		return status.New(codes.FailedPrecondition, user.ErrNotEnoughVotes.Error()), true
 	case errors.Is(err, user.ErrTransferSelf):

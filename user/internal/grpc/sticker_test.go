@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -53,5 +54,69 @@ func TestStickers(t *testing.T) {
 	}
 	if mine, err = s.client.GetStickerCatalog(ann, &userv1.GetStickerCatalogRequest{}); err != nil || mine.GetPacks()[0].GetAdded() {
 		t.Fatalf("a pack put away = %v, %v", mine, err)
+	}
+}
+
+func TestStickerStudio(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	ann, _ := s.member(t, "ann")
+	bob, _ := s.member(t, "bob")
+	photo := uuid.NewString()
+
+	if _, err := s.client.CreateStickerPack(ann, &userv1.CreateStickerPackRequest{Name: " ", PhotoIds: []string{photo}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("CreateStickerPack without a name: %v", err)
+	}
+	if _, err := s.client.CreateStickerPack(ann, &userv1.CreateStickerPackRequest{Name: "Котики", PhotoIds: []string{"nope"}}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("CreateStickerPack of a bad photo: %v", err)
+	}
+	if _, err := s.client.CreateStickerPack(ann, &userv1.CreateStickerPackRequest{Name: "Котики", Price: -1, PhotoIds: []string{photo}}); status.Code(err) != codes.InvalidArgument ||
+		status.Convert(err).Message() != "invalid sticker pack price" {
+		t.Fatalf("CreateStickerPack with a negative price: %v", err)
+	}
+
+	created, err := s.client.CreateStickerPack(ann, &userv1.CreateStickerPackRequest{Name: "Котики", Price: 1, Published: true, PhotoIds: []string{photo}})
+	if err != nil || created.GetPack().GetName() != "Котики" || !created.GetPack().GetAdded() || created.GetPack().GetAuthorId() == "" {
+		t.Fatalf("CreateStickerPack = %v, %v", created, err)
+	}
+	pack := created.GetPack()
+
+	catalog, err := s.client.GetStickerCatalog(context.Background(), &userv1.GetStickerCatalogRequest{})
+	if err != nil || catalog.GetPacks()[len(catalog.GetPacks())-1].GetId() != pack.GetId() {
+		t.Fatalf("the shop = %v, %v", catalog, err)
+	}
+
+	authors, err := s.client.GetStickerAuthors(context.Background(), &userv1.GetStickerAuthorsRequest{Stickers: pack.GetStickers()})
+	if err != nil || authors.GetAuthors()[pack.GetStickers()[0]] != pack.GetAuthorId() {
+		t.Fatalf("GetStickerAuthors = %v, %v", authors, err)
+	}
+
+	if _, err = s.client.EditStickerPack(bob, &userv1.EditStickerPackRequest{PackId: pack.GetId(), Name: "Мои"}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("EditStickerPack by another: %v", err)
+	}
+	if _, err = s.client.EditStickerPack(ann, &userv1.EditStickerPackRequest{PackId: "smiles", Name: "Мои"}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("EditStickerPack of the catalogue: %v", err)
+	}
+
+	added := uuid.NewString()
+	edited, err := s.client.EditStickerPack(ann, &userv1.EditStickerPackRequest{
+		PackId: pack.GetId(), Name: "Кошки", Price: 1, AddPhotoIds: []string{added}, RemovePhotoIds: []string{photo},
+	})
+	if err != nil || edited.GetPack().GetName() != "Кошки" || len(edited.GetRemovedPhotoIds()) != 1 || edited.GetRemovedPhotoIds()[0] != photo {
+		t.Fatalf("EditStickerPack = %v, %v", edited, err)
+	}
+
+	mine, err := s.client.ListMyStickerPacks(ann, &userv1.ListMyStickerPacksRequest{})
+	if err != nil || len(mine.GetPacks()) != 1 || mine.GetPacks()[0].GetHolders() != 0 {
+		t.Fatalf("ListMyStickerPacks = %v, %v", mine, err)
+	}
+
+	deleted, err := s.client.DeleteStickerPack(ann, &userv1.DeleteStickerPackRequest{PackId: pack.GetId()})
+	if err != nil || len(deleted.GetRemovedPhotoIds()) != 1 || deleted.GetRemovedPhotoIds()[0] != added {
+		t.Fatalf("DeleteStickerPack = %v, %v", deleted, err)
+	}
+	if _, err = s.client.DeleteStickerPack(ann, &userv1.DeleteStickerPackRequest{PackId: pack.GetId()}); status.Code(err) != codes.InvalidArgument {
+		t.Fatalf("DeleteStickerPack of none: %v", err)
 	}
 }

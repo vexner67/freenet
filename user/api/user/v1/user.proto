@@ -124,6 +124,17 @@ service UserService {
   rpc GetStickerCatalog(GetStickerCatalogRequest) returns (GetStickerCatalogResponse);
   rpc AddStickerPack(AddStickerPackRequest) returns (google.protobuf.Empty);
   rpc RemoveStickerPack(RemoveStickerPackRequest) returns (google.protobuf.Empty);
+  // "Студия стикеров": packs people make of their photos and put in the
+  // shop, free or for votes that go to the author. The photos are the
+  // author's in media: the gateway checks it and keeps and deletes the
+  // files. A pack others have taken keeps its stickers and is not deleted.
+  // GetStickerAuthors is public: whose photos the stickers of such packs
+  // are, which the site shows.
+  rpc ListMyStickerPacks(ListMyStickerPacksRequest) returns (ListMyStickerPacksResponse);
+  rpc CreateStickerPack(CreateStickerPackRequest) returns (CreateStickerPackResponse);
+  rpc EditStickerPack(EditStickerPackRequest) returns (EditStickerPackResponse);
+  rpc DeleteStickerPack(DeleteStickerPackRequest) returns (DeleteStickerPackResponse);
+  rpc GetStickerAuthors(GetStickerAuthorsRequest) returns (GetStickerAuthorsResponse);
 
   // Votes ("голоса" on openvk) pay for the gifts that have a price.
   // TransferVotes hands some of the caller's to a user ("Перевод
@@ -963,6 +974,15 @@ message StickerPack {
   bool bought = 4;
   // It is among the caller's stickers.
   bool added = 5;
+  // Who made it of their photos; empty for a pack of the site, whose name
+  // and pictures the site knows.
+  string author_id = 6;
+  string name = 7;
+  string about = 8;
+  // The shop shows it; a pack of the site always.
+  bool published = 9;
+  // How many others have taken it; only in ListMyStickerPacks.
+  int32 holders = 10;
 }
 
 message AddStickerPackRequest {
@@ -971,4 +991,63 @@ message AddStickerPackRequest {
 
 message RemoveStickerPackRequest {
   string pack_id = 1;
+}
+
+message ListMyStickerPacksRequest {}
+
+message ListMyStickerPacksResponse {
+  // Newest first.
+  repeated StickerPack packs = 1;
+}
+
+message CreateStickerPackRequest {
+  string name = 1;
+  string about = 2;
+  // In votes, 0 for a free one.
+  int64 price = 3;
+  bool published = 4;
+  // The caller's photos, in the order the stickers are shown.
+  repeated string photo_ids = 5;
+}
+
+message CreateStickerPackResponse {
+  StickerPack pack = 1;
+}
+
+message EditStickerPackRequest {
+  string pack_id = 1;
+  string name = 2;
+  string about = 3;
+  int64 price = 4;
+  bool published = 5;
+  // Photos of the caller to add after the stickers.
+  repeated string add_photo_ids = 6;
+  // Stickers to take out, by their photos.
+  repeated string remove_photo_ids = 7;
+}
+
+message EditStickerPackResponse {
+  StickerPack pack = 1;
+  // The photos the pack no longer has, whose files go.
+  repeated string removed_photo_ids = 2;
+}
+
+message DeleteStickerPackRequest {
+  string pack_id = 1;
+}
+
+message DeleteStickerPackResponse {
+  // The photos of the pack, whose files go.
+  repeated string removed_photo_ids = 1;
+}
+
+message GetStickerAuthorsRequest {
+  // Up to 100 sticker names.
+  repeated string stickers = 1;
+}
+
+message GetStickerAuthorsResponse {
+  // Sticker → the author whose photo it is; stickers of the site and
+  // unknown ones are left out.
+  map<string, string> authors = 1;
 }

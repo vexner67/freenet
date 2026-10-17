@@ -21,6 +21,7 @@ func PublicMethods() []string {
 		userv1.UserService_GetAccess_FullMethodName,
 		userv1.UserService_GetGiftCatalog_FullMethodName,
 		userv1.UserService_GetStickerCatalog_FullMethodName,
+		userv1.UserService_GetStickerAuthors_FullMethodName,
 		userv1.UserService_ListGifts_FullMethodName,
 		userv1.UserService_FindNicknames_FullMethodName,
 		userv1.UserService_GetOrCreateByEmail_FullMethodName,

@@ -64,6 +64,11 @@ const (
 	UserService_GetStickerCatalog_FullMethodName  = "/user.v1.UserService/GetStickerCatalog"
 	UserService_AddStickerPack_FullMethodName     = "/user.v1.UserService/AddStickerPack"
 	UserService_RemoveStickerPack_FullMethodName  = "/user.v1.UserService/RemoveStickerPack"
+	UserService_ListMyStickerPacks_FullMethodName = "/user.v1.UserService/ListMyStickerPacks"
+	UserService_CreateStickerPack_FullMethodName  = "/user.v1.UserService/CreateStickerPack"
+	UserService_EditStickerPack_FullMethodName    = "/user.v1.UserService/EditStickerPack"
+	UserService_DeleteStickerPack_FullMethodName  = "/user.v1.UserService/DeleteStickerPack"
+	UserService_GetStickerAuthors_FullMethodName  = "/user.v1.UserService/GetStickerAuthors"
 	UserService_TransferVotes_FullMethodName      = "/user.v1.UserService/TransferVotes"
 	UserService_RedeemVoucher_FullMethodName      = "/user.v1.UserService/RedeemVoucher"
 	UserService_CreateVoucher_FullMethodName      = "/user.v1.UserService/CreateVoucher"
@@ -185,6 +190,17 @@ type UserServiceClient interface {
 	GetStickerCatalog(ctx context.Context, in *GetStickerCatalogRequest, opts ...grpc.CallOption) (*GetStickerCatalogResponse, error)
 	AddStickerPack(ctx context.Context, in *AddStickerPackRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	RemoveStickerPack(ctx context.Context, in *RemoveStickerPackRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// "Студия стикеров": packs people make of their photos and put in the
+	// shop, free or for votes that go to the author. The photos are the
+	// author's in media: the gateway checks it and keeps and deletes the
+	// files. A pack others have taken keeps its stickers and is not deleted.
+	// GetStickerAuthors is public: whose photos the stickers of such packs
+	// are, which the site shows.
+	ListMyStickerPacks(ctx context.Context, in *ListMyStickerPacksRequest, opts ...grpc.CallOption) (*ListMyStickerPacksResponse, error)
+	CreateStickerPack(ctx context.Context, in *CreateStickerPackRequest, opts ...grpc.CallOption) (*CreateStickerPackResponse, error)
+	EditStickerPack(ctx context.Context, in *EditStickerPackRequest, opts ...grpc.CallOption) (*EditStickerPackResponse, error)
+	DeleteStickerPack(ctx context.Context, in *DeleteStickerPackRequest, opts ...grpc.CallOption) (*DeleteStickerPackResponse, error)
+	GetStickerAuthors(ctx context.Context, in *GetStickerAuthorsRequest, opts ...grpc.CallOption) (*GetStickerAuthorsResponse, error)
 	// Votes ("голоса" on openvk) pay for the gifts that have a price.
 	// TransferVotes hands some of the caller's to a user ("Перевод
 	// голосов"): PermissionDenied to a deleted page and across a blacklist,
@@ -659,6 +675,56 @@ func (c *userServiceClient) RemoveStickerPack(ctx context.Context, in *RemoveSti
 	return out, nil
 }
 
+func (c *userServiceClient) ListMyStickerPacks(ctx context.Context, in *ListMyStickerPacksRequest, opts ...grpc.CallOption) (*ListMyStickerPacksResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(ListMyStickerPacksResponse)
+	err := c.cc.Invoke(ctx, UserService_ListMyStickerPacks_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) CreateStickerPack(ctx context.Context, in *CreateStickerPackRequest, opts ...grpc.CallOption) (*CreateStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(CreateStickerPackResponse)
+	err := c.cc.Invoke(ctx, UserService_CreateStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) EditStickerPack(ctx context.Context, in *EditStickerPackRequest, opts ...grpc.CallOption) (*EditStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(EditStickerPackResponse)
+	err := c.cc.Invoke(ctx, UserService_EditStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) DeleteStickerPack(ctx context.Context, in *DeleteStickerPackRequest, opts ...grpc.CallOption) (*DeleteStickerPackResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(DeleteStickerPackResponse)
+	err := c.cc.Invoke(ctx, UserService_DeleteStickerPack_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) GetStickerAuthors(ctx context.Context, in *GetStickerAuthorsRequest, opts ...grpc.CallOption) (*GetStickerAuthorsResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetStickerAuthorsResponse)
+	err := c.cc.Invoke(ctx, UserService_GetStickerAuthors_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) TransferVotes(ctx context.Context, in *TransferVotesRequest, opts ...grpc.CallOption) (*TransferVotesResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(TransferVotesResponse)
@@ -850,6 +916,17 @@ type UserServiceServer interface {
 	GetStickerCatalog(context.Context, *GetStickerCatalogRequest) (*GetStickerCatalogResponse, error)
 	AddStickerPack(context.Context, *AddStickerPackRequest) (*emptypb.Empty, error)
 	RemoveStickerPack(context.Context, *RemoveStickerPackRequest) (*emptypb.Empty, error)
+	// "Студия стикеров": packs people make of their photos and put in the
+	// shop, free or for votes that go to the author. The photos are the
+	// author's in media: the gateway checks it and keeps and deletes the
+	// files. A pack others have taken keeps its stickers and is not deleted.
+	// GetStickerAuthors is public: whose photos the stickers of such packs
+	// are, which the site shows.
+	ListMyStickerPacks(context.Context, *ListMyStickerPacksRequest) (*ListMyStickerPacksResponse, error)
+	CreateStickerPack(context.Context, *CreateStickerPackRequest) (*CreateStickerPackResponse, error)
+	EditStickerPack(context.Context, *EditStickerPackRequest) (*EditStickerPackResponse, error)
+	DeleteStickerPack(context.Context, *DeleteStickerPackRequest) (*DeleteStickerPackResponse, error)
+	GetStickerAuthors(context.Context, *GetStickerAuthorsRequest) (*GetStickerAuthorsResponse, error)
 	// Votes ("голоса" on openvk) pay for the gifts that have a price.
 	// TransferVotes hands some of the caller's to a user ("Перевод
 	// голосов"): PermissionDenied to a deleted page and across a blacklist,
@@ -1015,6 +1092,21 @@ func (UnimplementedUserServiceServer) AddStickerPack(context.Context, *AddSticke
 }
 func (UnimplementedUserServiceServer) RemoveStickerPack(context.Context, *RemoveStickerPackRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method RemoveStickerPack not implemented")
+}
+func (UnimplementedUserServiceServer) ListMyStickerPacks(context.Context, *ListMyStickerPacksRequest) (*ListMyStickerPacksResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method ListMyStickerPacks not implemented")
+}
+func (UnimplementedUserServiceServer) CreateStickerPack(context.Context, *CreateStickerPackRequest) (*CreateStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method CreateStickerPack not implemented")
+}
+func (UnimplementedUserServiceServer) EditStickerPack(context.Context, *EditStickerPackRequest) (*EditStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method EditStickerPack not implemented")
+}
+func (UnimplementedUserServiceServer) DeleteStickerPack(context.Context, *DeleteStickerPackRequest) (*DeleteStickerPackResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method DeleteStickerPack not implemented")
+}
+func (UnimplementedUserServiceServer) GetStickerAuthors(context.Context, *GetStickerAuthorsRequest) (*GetStickerAuthorsResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetStickerAuthors not implemented")
 }
 func (UnimplementedUserServiceServer) TransferVotes(context.Context, *TransferVotesRequest) (*TransferVotesResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method TransferVotes not implemented")
@@ -1853,6 +1945,96 @@ func _UserService_RemoveStickerPack_Handler(srv interface{}, ctx context.Context
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_ListMyStickerPacks_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ListMyStickerPacksRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).ListMyStickerPacks(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_ListMyStickerPacks_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).ListMyStickerPacks(ctx, req.(*ListMyStickerPacksRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_CreateStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(CreateStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).CreateStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_CreateStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).CreateStickerPack(ctx, req.(*CreateStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_EditStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EditStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).EditStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_EditStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).EditStickerPack(ctx, req.(*EditStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_DeleteStickerPack_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(DeleteStickerPackRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).DeleteStickerPack(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_DeleteStickerPack_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).DeleteStickerPack(ctx, req.(*DeleteStickerPackRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_GetStickerAuthors_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetStickerAuthorsRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetStickerAuthors(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetStickerAuthors_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetStickerAuthors(ctx, req.(*GetStickerAuthorsRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_TransferVotes_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(TransferVotesRequest)
 	if err := dec(in); err != nil {
@@ -2179,6 +2361,26 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "RemoveStickerPack",
 			Handler:    _UserService_RemoveStickerPack_Handler,
+		},
+		{
+			MethodName: "ListMyStickerPacks",
+			Handler:    _UserService_ListMyStickerPacks_Handler,
+		},
+		{
+			MethodName: "CreateStickerPack",
+			Handler:    _UserService_CreateStickerPack_Handler,
+		},
+		{
+			MethodName: "EditStickerPack",
+			Handler:    _UserService_EditStickerPack_Handler,
+		},
+		{
+			MethodName: "DeleteStickerPack",
+			Handler:    _UserService_DeleteStickerPack_Handler,
+		},
+		{
+			MethodName: "GetStickerAuthors",
+			Handler:    _UserService_GetStickerAuthors_Handler,
 		},
 		{
 			MethodName: "TransferVotes",
