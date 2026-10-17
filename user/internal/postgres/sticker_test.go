@@ -17,7 +17,7 @@ func TestStickerRepository(t *testing.T) {
 	repo, pool := newRepo(t)
 	stickers := postgres.NewStickerRepository(pool)
 	wallets := postgres.NewWalletRepository(pool)
-	svc := service.NewStickerService(stickers, wallets, pgpool.NewTxManager(pool))
+	svc := service.NewStickerService(stickers, postgres.NewStickerPackRepository(pool), wallets, pgpool.NewTxManager(pool))
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
@@ -67,4 +67,138 @@ func TestStickerRepository(t *testing.T) {
 	if _, err = stickers.Add(ctx, uuid.New(), "smiles"); !errors.Is(err, user.ErrNotFound) {
 		t.Fatalf("Add for nobody: %v", err)
 	}
+}
+
+func TestStickerPackRepository(t *testing.T) {
+	repo, pool := newRepo(t)
+	stickers := postgres.NewStickerRepository(pool)
+	packs := postgres.NewStickerPackRepository(pool)
+	wallets := postgres.NewWalletRepository(pool)
+	svc := service.NewStickerService(stickers, packs, wallets, pgpool.NewTxManager(pool))
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+	defer cancel()
+
+	newUser := func() uuid.UUID {
+		t.Helper()
+
+		u, err := user.New(user.Email(unique("studio") + "@example.com"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err = repo.Save(ctx, u); err != nil {
+			t.Fatal(err)
+		}
+
+		return u.ID()
+	}
+
+	author, buyer := newUser(), newUser()
+	a, b, c := uuid.New(), uuid.New(), uuid.New()
+	draft := user.StickerPackDraft{Name: "Котики", About: "мои", Price: 2, Published: true}
+
+	p, err := svc.Create(ctx, author, draft, []uuid.UUID{b, a})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+
+	got, err := packs.Get(ctx, p.UUID())
+	if err != nil || got.Draft() != draft || got.AuthorID() != author || len(got.Photos()) != 2 || got.Photos()[0] != b {
+		t.Fatalf("Get = %+v %v, %v", got, got.Photos(), err)
+	}
+	if _, err = packs.Get(ctx, uuid.New()); !errors.Is(err, user.ErrUnknownStickerPack) {
+		t.Fatalf("Get nothing: %v", err)
+	}
+
+	// Seen by everyone once published; the author has it at once.
+	visible, err := packs.Visible(ctx, uuid.Nil)
+	if err != nil || !containsPack(visible, p.UUID()) {
+		t.Fatalf("Visible = %d packs, %v", len(visible), err)
+	}
+	if owned, _ := stickers.List(ctx, author); len(owned) != 1 || owned[0].Pack != p.ID() {
+		t.Fatalf("the author's stickers = %+v", owned)
+	}
+
+	// Bought, the votes go to the author.
+	if _, err = wallets.Credit(ctx, buyer, 2, 0); err != nil {
+		t.Fatal(err)
+	}
+	if err = svc.Add(ctx, buyer, p.ID()); err != nil {
+		t.Fatalf("Add: %v", err)
+	}
+	if u, _ := repo.GetByID(ctx, author); u.Wallet().Votes != 2 {
+		t.Fatalf("the author has %d votes", u.Wallet().Votes)
+	}
+
+	authored, err := packs.ByAuthor(ctx, author)
+	if err != nil || len(authored) != 1 || authored[0].Holders != 1 {
+		t.Fatalf("ByAuthor = %+v, %v", authored, err)
+	}
+
+	if taken, err := packs.TakenByOthers(ctx, p); err != nil || !taken {
+		t.Fatalf("TakenByOthers = %v, %v", taken, err)
+	}
+
+	edited, _, err := svc.Edit(ctx, author, p.UUID(), service.StickerPackEdit{Draft: user.StickerPackDraft{Name: "Кошки"}, Added: []uuid.UUID{c}})
+	if err != nil {
+		t.Fatalf("Edit: %v", err)
+	}
+	if got, _ := packs.Get(ctx, p.UUID()); got.Draft() != edited.Draft() || len(got.Photos()) != 3 || got.Photos()[2] != c {
+		t.Fatalf("after Edit = %+v %v", got.Draft(), got.Photos())
+	}
+
+	// Out of the shop, it is the author's and the buyer's only.
+	visible, _ = packs.Visible(ctx, newUser())
+	if containsPack(visible, p.UUID()) {
+		t.Fatal("an unpublished pack is visible")
+	}
+	visible, _ = packs.Visible(ctx, buyer)
+	if !containsPack(visible, p.UUID()) {
+		t.Fatal("a bought pack is not visible to its buyer")
+	}
+
+	authors, err := packs.Authors(ctx, []uuid.UUID{a, uuid.New()})
+	if err != nil || len(authors) != 1 || authors[a] != author {
+		t.Fatalf("Authors = %v, %v", authors, err)
+	}
+
+	if _, err = svc.Delete(ctx, author, p.UUID()); !errors.Is(err, user.ErrStickerPackTaken) {
+		t.Fatalf("Delete a taken pack: %v", err)
+	}
+
+	// A pack only its author had goes from their stickers too.
+	other, err := svc.Create(ctx, author, user.StickerPackDraft{Name: "Ещё"}, []uuid.UUID{uuid.New()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if photos, err := svc.Delete(ctx, author, other.UUID()); err != nil || len(photos) != 1 {
+		t.Fatalf("Delete = %v, %v", photos, err)
+	}
+	if owned, _ := stickers.List(ctx, author); len(owned) != 1 {
+		t.Fatalf("the author's stickers after Delete = %+v", owned)
+	}
+
+	// An author makes so many packs.
+	maker := newUser()
+	for range user.MaxStickerPacks {
+		if _, err = svc.Create(ctx, maker, draft, []uuid.UUID{uuid.New()}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if _, err = svc.Create(ctx, maker, draft, []uuid.UUID{uuid.New()}); !errors.Is(err, user.ErrTooManyStickerPacks) {
+		t.Fatalf("one pack too many: %v", err)
+	}
+	if _, err = svc.Create(ctx, uuid.New(), draft, []uuid.UUID{uuid.New()}); !errors.Is(err, user.ErrNotFound) {
+		t.Fatalf("Create for nobody: %v", err)
+	}
+}
+
+func containsPack(packs []*user.CustomStickerPack, id uuid.UUID) bool {
+	for _, p := range packs {
+		if p.UUID() == id {
+			return true
+		}
+	}
+
+	return false
 }

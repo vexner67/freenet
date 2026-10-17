@@ -176,7 +176,7 @@ func (a *App) build(cfg config.Config) error {
 				Wallets:     store.wallets,
 				Notifier:    deliver.gifts,
 			}),
-			Stickers: service.NewStickerService(store.stickers, store.wallets, store.tx),
+			Stickers: service.NewStickerService(store.stickers, store.stickerPacks, store.wallets, store.tx),
 			Wallets: service.NewWalletService(service.WalletDeps{
 				Users:       store.users,
 				Wallets:     store.wallets,
@@ -204,7 +204,8 @@ func (a *App) build(cfg config.Config) error {
 	return nil
 }
 
-// rateLimits are how often each user may follow people and send gifts.
+// rateLimits are how often each user may follow people, send gifts and
+// make packs of stickers.
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		userv1.UserService_Follow_FullMethodName:   cfg.FollowLimits,
@@ -214,6 +215,9 @@ func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 
 		userv1.UserService_TransferVotes_FullMethodName: cfg.TransferLimits,
 		userv1.UserService_RedeemVoucher_FullMethodName: cfg.VoucherLimits,
+
+		userv1.UserService_CreateStickerPack_FullMethodName: cfg.StickerPackLimits,
+		userv1.UserService_EditStickerPack_FullMethodName:   cfg.StickerPackLimits,
 	}
 }
 
@@ -256,6 +260,8 @@ type storage struct {
 	gifts   service.GiftRepository
 	// stickers are the packs of stickers users have taken.
 	stickers service.StickerRepository
+	// stickerPacks are the packs people make of their photos.
+	stickerPacks service.StickerPackRepository
 	// wallets are the votes and the rating of users.
 	wallets  service.WalletRepository
 	vouchers service.VoucherRepository
@@ -268,16 +274,18 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		users := inmem.NewUserRepository()
 		follows := inmem.NewFollowRepository(users)
+		stickers := inmem.NewStickerRepository(users)
 		return storage{
-			users:    users,
-			follows:  follows,
-			blocks:   inmem.NewBlockRepository(follows),
-			ignores:  inmem.NewIgnoreRepository(users),
-			gifts:    inmem.NewGiftRepository(users),
-			stickers: inmem.NewStickerRepository(users),
-			wallets:  users,
-			vouchers: inmem.NewVoucherRepository(users),
-			tx:       inmem.TxManager{},
+			users:        users,
+			follows:      follows,
+			blocks:       inmem.NewBlockRepository(follows),
+			ignores:      inmem.NewIgnoreRepository(users),
+			gifts:        inmem.NewGiftRepository(users),
+			stickers:     stickers,
+			stickerPacks: inmem.NewStickerPackRepository(users, stickers),
+			wallets:      users,
+			vouchers:     inmem.NewVoucherRepository(users),
+			tx:           inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -307,15 +315,16 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	}
 
 	return storage{
-		users:    postgres.NewUserRepository(a.pool),
-		follows:  postgres.NewFollowRepository(a.pool),
-		blocks:   postgres.NewBlockRepository(a.pool),
-		ignores:  postgres.NewIgnoreRepository(a.pool),
-		gifts:    postgres.NewGiftRepository(a.pool),
-		stickers: postgres.NewStickerRepository(a.pool),
-		wallets:  postgres.NewWalletRepository(a.pool),
-		vouchers: postgres.NewVoucherRepository(a.pool),
-		tx:       pgpool.NewTxManager(a.pool),
+		users:        postgres.NewUserRepository(a.pool),
+		follows:      postgres.NewFollowRepository(a.pool),
+		blocks:       postgres.NewBlockRepository(a.pool),
+		ignores:      postgres.NewIgnoreRepository(a.pool),
+		gifts:        postgres.NewGiftRepository(a.pool),
+		stickers:     postgres.NewStickerRepository(a.pool),
+		stickerPacks: postgres.NewStickerPackRepository(a.pool),
+		wallets:      postgres.NewWalletRepository(a.pool),
+		vouchers:     postgres.NewVoucherRepository(a.pool),
+		tx:           pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)

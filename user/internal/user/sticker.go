@@ -3,22 +3,32 @@ package user
 import (
 	"errors"
 	"slices"
+
+	"github.com/google/uuid"
 )
 
 var ErrUnknownStickerPack = errors.New("unknown sticker pack")
 
-// StickerPackID names a pack of the catalogue of stickers.
+// StickerPackID names a pack of the catalogue of stickers or one a person
+// made (CustomStickerPack).
 type StickerPackID string
 
 // Sticker names a sticker of the catalogue: what a message shows.
 type Sticker string
 
 // StickerPack is a pack of openvk's "Магазин стикеров": stickers that
-// come together and cost Price votes once, 0 for a free one.
+// come together and cost Price votes once, 0 for a free one. A pack of
+// the catalogue has no Author: the site names it and draws its stickers;
+// one a person made carries its name and is shown in the shop only when
+// Published.
 type StickerPack struct {
-	ID       StickerPackID
-	Price    int64
-	Stickers []Sticker
+	ID        StickerPackID
+	Price     int64
+	Stickers  []Sticker
+	Author    uuid.UUID
+	Name      string
+	About     string
+	Published bool
 }
 
 // stickerCatalog is all there is. openvk's packs are drawn, priced and
@@ -38,18 +48,23 @@ var stickerCatalog = []StickerPack{
 func StickerCatalog() []StickerPack {
 	catalog := make([]StickerPack, len(stickerCatalog))
 	for i, p := range stickerCatalog {
-		catalog[i] = StickerPack{ID: p.ID, Price: p.Price, Stickers: slices.Clone(p.Stickers)}
+		catalog[i] = StickerPack{ID: p.ID, Price: p.Price, Stickers: slices.Clone(p.Stickers), Published: true}
 	}
 
 	return catalog
 }
 
-// NewStickerPackID takes only a pack of the catalogue.
+// NewStickerPackID takes a pack of the catalogue or the name of one a
+// person made; whether there is such a pack, only the packs kept tell.
 func NewStickerPackID(s string) (StickerPackID, error) {
 	for _, p := range stickerCatalog {
 		if p.ID == StickerPackID(s) {
 			return p.ID, nil
 		}
+	}
+
+	if _, ok := parseHex(s); ok {
+		return StickerPackID(s), nil
 	}
 
 	return "", ErrUnknownStickerPack
@@ -59,7 +74,8 @@ func (id StickerPackID) String() string {
 	return string(id)
 }
 
-// Price is what the pack costs, in votes; 0 for a free one.
+// Price is what a pack of the catalogue costs, in votes; 0 for a free one
+// and for a pack of a person, whose price is kept with it.
 func (id StickerPackID) Price() int64 {
 	for _, p := range stickerCatalog {
 		if p.ID == id {
