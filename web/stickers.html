@@ -31,11 +31,57 @@
         <div class="tabs" id="tabs">
           <a id="tab-shop" href="/stickers">Магазин стикеров</a>
           <a id="tab-settings" href="/stickers?act=settings" hidden>Установленные наборы</a>
+          <a id="tab-author" href="/stickers?act=author" hidden>Студия стикеров</a>
           <a class="tabs-side" id="tab-dialogs" href="/im" hidden>Диалоги</a>
         </div>
         <div class="error" id="error" hidden></div>
         <div class="notice" id="added" hidden><b>Набор стикеров успешно добавлен!</b></div>
+        <div class="summary-bar sticker-studio-bar" id="studio-bar" hidden>
+          <span id="studio-count"></span>
+          <a class="button" href="/stickers?act=new">Создать набор</a>
+        </div>
         <p class="hint" id="balance" hidden></p>
+        <div class="gray-box" id="studio" hidden>
+          <h4 class="gray-box-title" id="studio-title">Новый набор стикеров</h4>
+          <form id="studio-form">
+            <table class="form sticker-pack-form">
+              <tr>
+                <th><label for="pack-name">Название набора:</label></th>
+                <td class="control"><input type="text" id="pack-name" maxlength="64" required></td>
+              </tr>
+              <tr>
+                <th><label for="pack-about">Описание:</label></th>
+                <td class="control"><textarea id="pack-about" maxlength="500" rows="3"></textarea></td>
+              </tr>
+              <tr>
+                <th><label for="pack-price">Стоимость:</label></th>
+                <td class="control"><input type="number" id="pack-price" min="0" max="1000" value="0" required></td>
+                <td class="note hint">в голосах, 0 — бесплатно</td>
+              </tr>
+              <tr>
+                <th></th>
+                <td class="control"><label><input type="checkbox" id="pack-published"> Опубликовать в магазине</label></td>
+              </tr>
+              <tr>
+                <th>Стикеры:</th>
+                <td class="control" colspan="2">
+                  <div class="sticker-grid sticker-studio-grid" id="pack-stickers"></div>
+                  <p class="hint">Стикер — ваша фотография, лучше квадратная и на белом фоне. Не больше 40 стикеров в наборе.</p>
+                  <a class="profile-link" id="pack-add">Добавить стикеры</a>
+                  <input type="file" id="pack-files" accept="image/jpeg,image/png,image/webp,image/gif" multiple hidden>
+                </td>
+              </tr>
+              <tr>
+                <th></th>
+                <td class="control">
+                  <button class="button" type="submit" id="pack-save">Сохранить набор</button>
+                  <a class="button secondary" href="/stickers?act=author">Отмена</a>
+                </td>
+              </tr>
+            </table>
+          </form>
+          <p class="hint" id="pack-delete-line" hidden>Вы также можете <a id="pack-delete">удалить набор</a>.</p>
+        </div>
         <div class="sticker-packs" id="packs"></div>
         <p class="hint" id="empty" hidden></p>
       </div>

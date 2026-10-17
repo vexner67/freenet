@@ -3,7 +3,7 @@
 // the user has added, with the way to the "Магазин стикеров".
 
 import { api } from './api.js';
-import { stickerImage, stickerPacks } from './labels.js';
+import { stickerImage, stickerPackName } from './labels.js';
 import { el, showError } from './layout.js';
 
 // stickerNode is the sticker a message is: its picture, or the word for
@@ -31,7 +31,7 @@ export function initStickers({ link, panel, error, onPick }) {
       loaded = true;
       panel.replaceChildren(
         ...(added.length ? added.map((pack) => el('div', { className: 'sticker-pack' },
-          el('b', { className: 'sticker-pack-title', textContent: stickerPacks[pack.id] ?? 'Стикеры' }),
+          el('b', { className: 'sticker-pack-title', textContent: stickerPackName(pack) }),
           el('div', { className: 'sticker-grid' }, ...pack.stickers.map((sticker) => el('a', {
             className: 'sticker-pick',
             title: 'Отправить стикер',
