@@ -2,8 +2,7 @@
 // on openvk, the newest first. Its owner makes members admins and back,
 // and hands the club over to an admin ("Назначить владельцем"); those who
 // run it give each other a title ("Изменить комментарий") and hide each
-// other from the rest ("Скрыт"). An event ("встреча") lists those who
-// come ("Точно придут") and those who might ("Возможно придут") apart.
+// other from the rest ("Скрыт").
 
 import { api, currentUser } from './api.js';
 import { clubRoles, membersCount, requestsCount } from './labels.js';
@@ -17,8 +16,6 @@ const params = new URLSearchParams(location.search);
 const admins = params.get('admins') === 'true';
 // requests: "Заявки" of a closed group, for those who run it.
 const requests = params.get('requests') === 'true';
-// going is the list of an event: 'sure' unless asked for those who might.
-let going = '';
 
 let club;
 let cursor = '';
@@ -220,7 +217,7 @@ async function loadMore() {
   hideError($('error'));
 
   try {
-    const page = await api.clubMembers(ref, { cursor, admins, going });
+    const page = await api.clubMembers(ref, { cursor, admins });
 
     $('people').append(...page.members.map(memberNode));
     cursor = page.nextCursor;
@@ -241,15 +238,10 @@ function tab(id, query, text, active) {
   link.hidden = false;
 }
 
-// tabs are "Участники" and "Руководство" or, of an event, "Точно придут",
-// "Возможно придут" and "Руководство".
+// tabs are "Участники", "Руководство" and, of a closed group for those
+// who run it, "Заявки".
 function tabs() {
-  if (club.kind !== 'event') {
-    tab('tab-all', '', `Участники · ${membersCount(club.members)}`, !admins && !requests);
-  } else {
-    tab('tab-all', '', `Точно придут · ${club.members - club.maybes}`, !admins && going === 'sure');
-    tab('tab-maybe', '?going=maybe', `Возможно придут · ${club.maybes}`, !admins && going === 'maybe');
-  }
+  tab('tab-all', '', `Участники · ${membersCount(club.members)}`, !admins && !requests);
 
   tab('tab-admins', '?admins=true', 'Руководство', admins);
   if (club.closed && manages(club.role)) tab('tab-requests', '?requests=true', `Заявки · ${club.requests ?? 0}`, requests);
@@ -267,8 +259,7 @@ try {
   $('title').textContent = admins ? `Руководство: ${club.name}` : `Участники: ${club.name}`;
   $('back').href = path;
 
-  if (club.kind === 'event' && !admins) going = params.get('going') === 'maybe' ? 'maybe' : 'sure';
-  $('back').textContent = club.kind === 'event' ? '← к встрече' : '← к группе';
+  $('back').textContent = '← к группе';
   tabs();
 
   // "Заявки" is for those who run a closed group; the others get the members.

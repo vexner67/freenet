@@ -137,7 +137,7 @@ function sourceRow(source) {
 }
 
 // initIgnoreLink wires the link of a page: kind is whose page it is
-// ('user', 'club' or 'event'), change(ignore) asks the server.
+// ('user' or 'club'), change(ignore) asks the server.
 export function initIgnoreLink(link, { kind, ignored, change, error }) {
   let busy = false;
 

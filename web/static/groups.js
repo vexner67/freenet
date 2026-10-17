@@ -5,38 +5,22 @@
 // and "Выйти из группы". With ?u=<nickname> it is someone else's list, as
 // "Все" of the block "Группы" on their page leads: "Имя » Группы", how
 // many and the clubs, as their "Кому видно мои группы" allows, each with
-// "Вступить в группу" or "Выйти из группы" for you. At /events
-// it is "Мои Встречи": the same page for the events you come to, with
-// "Создать встречу" and the links named for an event ("Просмотр встречи",
-// "Я приду", "Я не приду"); the events that are over stand apart, under
-// "Прошедшие".
+// "Вступить в группу" or "Выйти из группы" for you.
 
 import { api, currentUser } from './api.js';
-import { clubsCount, eventsCount, myClubsCount, myEventsCount, pastEventsCount } from './labels.js';
+import { clubsCount, myClubsCount } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showPinnedClubs, showError, hideError } from './layout.js';
 import { clubRow } from './clubs.js';
 
 const params = new URLSearchParams(location.search);
 const other = params.get('u');
-const events = location.pathname === '/events';
 const managed = params.get('act') === 'managed';
-// The events that are over: "Прошедшие".
-const past = events && params.get('act') === 'past';
 let cursor = '';
 
-// viewLink is "Просмотр группы", of an event "Просмотр встречи".
+// viewLink is "Просмотр группы".
 function viewLink(club) {
-  return el('a', { className: 'profile-link', href: pagePath({ ...club, club: true }), textContent: events ? 'Просмотр встречи' : 'Просмотр группы' });
+  return el('a', { className: 'profile-link', href: pagePath({ ...club, club: true }), textContent: 'Просмотр группы' });
 }
-
-// The links of a membership, as the buttons of the club's page name them.
-function joinText(club) {
-  if (!events) return 'Вступить в группу';
-
-  return new Date(club.startsAt) <= Date.now() ? 'Добавить в список' : 'Я приду';
-}
-
-const leaveText = () => (events ? 'Я не приду' : 'Выйти из группы');
 
 function clubNode(club) {
   const ref = clubRef(club);
@@ -72,18 +56,17 @@ function pinLink(club, ref) {
   return link;
 }
 
-// leaveLink is "Выйти из группы", of an event "Я не приду"; the club then
-// goes from the list.
+// leaveLink is "Выйти из группы"; the club then goes from the list.
 function leaveLink(club, ref, node) {
   return el('a', {
     className: 'profile-link',
-    textContent: leaveText(),
+    textContent: 'Выйти из группы',
     onclick: async () => {
       hideError($('error'));
 
       try {
         await api.leaveClub(ref);
-        node().replaceWith(el('div', { className: 'post-deleted', textContent: events ? `Вы не придёте на встречу «${club.name}».` : `Вы вышли из группы «${club.name}».` }));
+        node().replaceWith(el('div', { className: 'post-deleted', textContent: `Вы вышли из группы «${club.name}».` }));
         if (club.pinned) showPinnedClubs($('menu'));
       } catch (e) {
         showError($('error'), e);
@@ -109,27 +92,14 @@ async function load(list, node, summary) {
   }
 }
 
-// showMine is "Мои Группы" or, at /events, "Мои Встречи".
+// showMine is "Мои Группы".
 async function showMine() {
-  if (events) {
-    document.title = 'Мои Встречи | Freenet';
-    $('title').textContent = 'Мои Встречи';
-    $('tab-all').textContent = 'Встречи';
-    $('tab-all').href = '/events';
-    $('tab-managed').href = '/events?act=managed';
-    $('tab-past').hidden = false;
-    $('create').textContent = 'Создать встречу';
-    $('create').href = '/events/create';
-    $('search').placeholder = 'Поиск встреч';
-  }
-
-  $(managed ? 'tab-managed' : past ? 'tab-past' : 'tab-all').classList.add('active');
+  $(managed ? 'tab-managed' : 'tab-all').classList.add('active');
   $('tabs').hidden = false;
   $('gray-bar').hidden = false;
 
-  // "Встречи" are those ahead, "Управляемые" all you run.
-  const list = events ? (c) => api.myEvents(c, managed, managed ? '' : past ? 'past' : 'upcoming') : (c) => api.myClubs(c, managed);
-  const summary = events ? (managed ? eventsCount : past ? pastEventsCount : myEventsCount) : (managed ? clubsCount : myClubsCount);
+  const list = (c) => api.myClubs(c, managed);
+  const summary = managed ? clubsCount : myClubsCount;
   const more = () => load(list, clubNode, summary);
   $('more').addEventListener('click', more);
   await more();
@@ -144,7 +114,7 @@ function membershipLink(club) {
   const inside = () => Boolean(club.role) || Boolean(club.requested);
   const render = () => {
     if (club.closed && !club.role) link.textContent = club.requested ? 'Отменить заявку' : 'Подать заявку';
-    else link.textContent = club.role ? leaveText() : joinText(club);
+    else link.textContent = club.role ? 'Выйти из группы' : 'Вступить в группу';
   };
 
   link.addEventListener('click', async () => {
@@ -166,9 +136,8 @@ function membershipLink(club) {
 
 // showTheirs is someone else's list: "Просмотр группы" by each club and,
 // for a viewer with a page, "Вступить в группу" or "Выйти из группы".
-// Their events are those ahead and, under "Прошедшие", those over.
 async function showTheirs(nickname, me) {
-  const what = events ? 'Встречи' : 'Группы';
+  const what = 'Группы';
 
   try {
     const user = await api.profile(nickname);
@@ -182,23 +151,11 @@ async function showTheirs(nickname, me) {
     return;
   }
 
-  if (events) {
-    const path = '/events?u=' + encodeURIComponent(nickname);
-
-    $('tab-all').textContent = 'Встречи';
-    $('tab-all').href = path;
-    $('tab-past').href = path + '&act=past';
-    $('tab-past').hidden = false;
-    $('tab-managed').hidden = true;
-    $(past ? 'tab-past' : 'tab-all').classList.add('active');
-    $('tabs').hidden = false;
-  }
-
   const view = (club) => clubRow(club,
     viewLink(club),
     me?.profileCompleted && club.role !== 'owner' && membershipLink(club));
-  const list = events ? (c) => api.userEvents(nickname, past ? 'past' : 'upcoming', c) : (c) => api.userClubs(nickname, c);
-  const more = () => load(list, view, events ? (past ? pastEventsCount : eventsCount) : clubsCount);
+  const list = (c) => api.userClubs(nickname, c);
+  const more = () => load(list, view, clubsCount);
   $('more').addEventListener('click', more);
   await more();
 }

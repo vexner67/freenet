@@ -71,7 +71,6 @@ test('a community is the title of what it did', () => {
   const cats = { id: 'c1', name: 'Кошки', club: true, nickname: 'cats' };
 
   assert.equal(notificationOf({ type: 'notification', kind: 'suggested_post', id: 'n1', actor: cats }).url, '/club/cats/suggested');
-  assert.equal(notificationOf({ type: 'notification', kind: 'event_reminder', id: 'n1', actor: cats }).url, '/club/cats');
   assert.equal(notificationOf({ type: 'notification', kind: 'like', id: 'n1', actor: cats }).body, 'Оценило вашу запись.');
 });
 

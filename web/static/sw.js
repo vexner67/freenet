@@ -50,7 +50,6 @@ const clubTexts = {
   post_accepted: 'Опубликовало вашу предложенную запись.',
   suggested_post: 'Новые записи в предложке.',
   club_admin: 'Вас назначили руководителем сообщества.',
-  event_reminder: 'В ближайшее время состоится событие.',
 };
 
 function verbOf(type, actor) {
@@ -88,7 +87,7 @@ function notificationOf(p) {
   const tag = 'n:' + p.id;
 
   if (clubTexts[p.kind]) {
-    const url = { suggested_post: clubPath(actor) + '/suggested', event_reminder: clubPath(actor) }[p.kind] ?? '/notifications';
+    const url = { suggested_post: clubPath(actor) + '/suggested' }[p.kind] ?? '/notifications';
     return { title: name, body: clubTexts[p.kind], url, tag };
   }
 

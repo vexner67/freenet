@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { existsSync, readFileSync } from 'node:fs';
 
-import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, updatedPhoto, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, myEventsCount, eventsCount, pastEventsCount, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts } from '../static/labels.js';
+import { declinedName, partnerName, worldviews, politicalViews, photoChanges, forwardTree, forwardedCount, messagePreview, mentionParts, plainMentions, replyMention, isLongText, selectedCount, partnerPrefix, takesPartner, albumsCount, myAlbumsCount, photosCount, topicsCount, topicMessages, topicMessagesCount, resultsCount, membersCount, myClubsCount, clubsCount, adminsCount, suggestedByEveryone, suggestedByYou, suggestedInClub, audiences, pageReads, onlineReads, onlineCount, presence, wallCount, commonCount, completenessHints, likedBy, sharedBy, adminsDisplays, label, relationships, genders, formatBirthday, errorText, formatPostDate, postsCount, wrote, followersCount, followingCount, commentsLink, notificationVerb, unreadCountText, snippet, foundParts, foundSnippet, foundText, genitiveName, wallWrites, shareLink, blacklistCount, sessionsCount, deviceName, limitedAccess, messagesWrites, formatDateTime, deactivationReasons, localTime, inputDate, inputTime, aboutStatistics, avatarStyles, mainPages, menuItems, themes, ratings, nsfwContents, postViews, timezones, setTimezone, archiveYears, pollVoters, pollMeta, pollPercent, pollAsksVote, daysCount, notesCount, foundNotes, favesCount, feedSettings, feedPageSizes, ignoreLabel, chatTitle, defaultChatTitle, chatMembers, chatAction, chatActionParts, chatPreview, chatStateText, accusativeName, chatsInvites, conversationValue, conversationOf, conversationPath, profileTypes, clubTypes, clubTypeHints, requestsCount, requestsLink, closedFollows, giftsCount, giftCollections, giftNames, giftImage, votesCount, giftPrice, unusedVotes, voucherParts, voucherCode, voucherUsages, voucherStatus, voucherGave, stickerPacks, stickerImage, stickerPackName, stickerPackAction, postponedCount, publishesAt, nextHour, typingText, DOCUMENT_FORMATS, documentFormat, documentsCount, haveDocuments, fileSize, inviteNickname, inviteURL, linkParts, shownLink, textParts } from '../static/labels.js';
 
 test('relationship agrees with gender', () => {
   assert.equal(label(relationships('female'), 'married'), 'замужем');
@@ -49,9 +49,6 @@ test('posts count and verb agree', () => {
   assert.equal(postsCount(554), '554 записи');
   assert.equal(wrote('female'), 'написала');
   assert.equal(wrote(''), 'написал');
-  assert.equal(updatedPhoto({ gender: 'female' }), 'обновила фотографию на своей странице');
-  assert.equal(updatedPhoto({ gender: '' }), 'обновил фотографию на своей странице');
-  assert.equal(updatedPhoto({ club: true }), 'обновило фотографию группы');
 });
 
 test('follow counters agree with numbers', () => {
@@ -312,7 +309,6 @@ test('there are no pronouns: a gender is male, female or not set', () => {
 
   // openvk's "они/их", chosen before it was taken away, reads as not set.
   assert.equal(wrote('neutral'), 'написал');
-  assert.equal(updatedPhoto({ gender: 'neutral' }), 'обновил фотографию на своей странице');
   assert.equal(limitedAccess('neutral'), 'ограничил(а)');
   assert.equal(notificationVerb('like', { gender: 'neutral' }), 'оценил(а)');
   assert.equal(label(genders, 'neutral'), '');
@@ -431,21 +427,7 @@ test('selectedCount counts the selected messages', () => {
   assert.equal(selectedCount(11), 'Выбрано 11 сообщений');
 });
 
-test('events are counted as openvk counts them', () => {
-  assert.equal(myEventsCount(0), 'Вы не участвуете ни в одной встрече');
-  assert.equal(myEventsCount(1), 'Вы участвуете в 1 встрече');
-  assert.equal(myEventsCount(5), 'Вы участвуете в 5 встречах');
-  assert.equal(eventsCount(0), 'Ни одной встречи');
-  assert.equal(pastEventsCount(0), 'Ни одной прошедшей встречи');
-  assert.equal(pastEventsCount(1), '1 прошедшая встреча');
-  assert.equal(pastEventsCount(3), '3 прошедшие встречи');
-  assert.equal(pastEventsCount(5), '5 прошедших встреч');
-  assert.equal(eventsCount(1), '1 встреча');
-  assert.equal(eventsCount(3), '3 встречи');
-  assert.equal(eventsCount(11), '11 встреч');
-});
-
-test('the time of an event goes through the inputs and back', () => {
+test('a time goes through the inputs and back', () => {
   assert.equal(localTime('', '20:00'), '');
   assert.equal(localTime('2026-12-31', ''), '');
   assert.equal(localTime('когда-нибудь', '20:00'), '');
@@ -469,7 +451,7 @@ test('the site counts itself as openvk does', () => {
 test('the choices of the interface are those the API knows', () => {
   assert.deepEqual(avatarStyles.map(([v]) => v), ['square', 'round']);
   assert.deepEqual(mainPages.map(([v]) => v), ['page', 'feed']);
-  assert.deepEqual(menuItems.map(([v]) => v), ['photos', 'messages', 'notes', 'groups', 'events', 'feed', 'notifications']);
+  assert.deepEqual(menuItems.map(([v]) => v), ['photos', 'messages', 'notes', 'groups', 'feed', 'notifications']);
   assert.equal(errorText({ message: 'invalid menu item' }), 'Неизвестный пункт меню.');
 });
 
@@ -677,12 +659,12 @@ test('errorText knows what a poll refuses', () => {
 });
 
 test('feedSettings takes what the browser kept and the defaults for the rest', () => {
-  assert.deepEqual(feedSettings(null), { posts: 20, alien: false });
+  assert.deepEqual(feedSettings(null), { posts: 10, alien: false });
   assert.deepEqual(feedSettings('{"posts":5,"alien":true}'), { posts: 5, alien: true });
   assert.deepEqual(feedSettings('{"posts":5,"alien":false}'), { posts: 5, alien: false });
-  assert.deepEqual(feedSettings('{"posts":7,"alien":"no"}'), { posts: 20, alien: false });
-  assert.deepEqual(feedSettings('not json'), { posts: 20, alien: false });
-  assert.deepEqual(feedSettings('[]'), { posts: 20, alien: false });
+  assert.deepEqual(feedSettings('{"posts":7,"alien":"no"}'), { posts: 10, alien: false });
+  assert.deepEqual(feedSettings('not json'), { posts: 10, alien: false });
+  assert.deepEqual(feedSettings('[]'), { posts: 10, alien: false });
   assert.ok(feedPageSizes.every((n) => n >= 1 && n <= 50));
 });
 
@@ -691,7 +673,6 @@ test('ignoreLabel names the link of a page as openvk does', () => {
   assert.equal(ignoreLabel('user', true), 'Не игнорировать пользователя');
   assert.equal(ignoreLabel('club', false), 'Игнорировать группу');
   assert.equal(ignoreLabel('club', true), 'Не игнорировать группу');
-  assert.equal(ignoreLabel('event', true), 'Не игнорировать встречу');
 });
 
 test('errorText knows what ignoring refuses', () => {

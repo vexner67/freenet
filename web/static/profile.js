@@ -1,5 +1,5 @@
 import { api, currentUser } from './api.js';
-import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, eventsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows } from './labels.js';
+import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
@@ -266,15 +266,10 @@ function linkAvatar(album) {
   link.append(avatar);
 }
 
-// showClubs is openvk's blocks "Группы" and "Встречи": how many, "Все"
-// and the names of the newest, as the user's "Кому видно мои группы"
-// allows — openvk shows both by the one setting. The events are those
-// still ahead; "Все" has the ones that are over too.
+// showClubs is openvk's block "Группы": how many, "Все" and the names of
+// the newest, as the user's "Кому видно мои группы" allows.
 function showClubs(user) {
-  const u = encodeURIComponent(user.nickname);
-
-  showClubBlock('clubs', '/groups?u=' + u, clubsCount, () => api.userClubs(user.nickname, '', CLUBS_SHOWN));
-  showClubBlock('events', '/events?u=' + u, eventsCount, () => api.userEvents(user.nickname, 'upcoming', '', CLUBS_SHOWN));
+  showClubBlock('clubs', '/groups?u=' + encodeURIComponent(user.nickname), clubsCount, () => api.userClubs(user.nickname, '', CLUBS_SHOWN));
 }
 
 async function showClubBlock(id, all, count, list) {

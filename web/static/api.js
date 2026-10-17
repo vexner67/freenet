@@ -300,8 +300,7 @@ export const api = {
   ignoreClub: (ref) => authorized('PUT', `/api/v1/me/feed/ignored/clubs/${encodeURIComponent(ref)}`),
   unignoreClub: (ref) => authorized('DELETE', `/api/v1/me/feed/ignored/clubs/${encodeURIComponent(ref)}`),
 
-  // onWall: post the photo on your wall too ("Опубликовать запись на стене").
-  uploadAvatar: (file, onWall = false) => authorized('PUT', '/api/v1/me/avatar' + (onWall ? '?onWall=true' : ''), file),
+  uploadAvatar: (file) => authorized('PUT', '/api/v1/me/avatar', file),
   deleteAvatar: () => authorized('DELETE', '/api/v1/me/avatar'),
   // setBackdrop is a side, "left" or "right", of "Фон страницы".
   setBackdrop: (side, file) => authorized('PUT', `/api/v1/me/backdrop/${side}`, file),
@@ -360,6 +359,7 @@ export const api = {
   deleteChatPhoto: (id) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}/photo`),
   addChatMembers: (id, members) => authorized('POST', `/api/v1/chats/${encodeURIComponent(id)}/members`, { members }),
   removeChatMember: (id, nickname) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}/members/${encodeURIComponent(nickname)}`),
+  deleteChat: (id) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}`),
   leaveChat: (id) => authorized('DELETE', `/api/v1/chats/${encodeURIComponent(id)}/membership`),
   returnToChat: (id) => authorized('PUT', `/api/v1/chats/${encodeURIComponent(id)}/membership`),
   // Older messages with cursor, newer ones with after (polling).
@@ -427,24 +427,19 @@ export const api = {
   // With a session the club also says what you are in it.
   club: (ref) => optional('GET', '/api/v1/clubs/' + encodeURIComponent(ref)),
   updateClub: (ref, settings) => authorized('PUT', '/api/v1/clubs/' + encodeURIComponent(ref), settings),
-  // An event ("встреча"): startsAt and endsAt are ISO times, endsAt '' for none.
   // What the page "о сайте" counts: users, online, clubs, posts.
   about: () => request('GET', '/api/v1/about'),
   // Which of the nicknames (100 at most) are someone's: { nicknames }.
   knownNicknames: (nicknames) =>
     request('GET', '/api/v1/nicknames?' + nicknames.map((n) => 'nickname=' + encodeURIComponent(n)).join('&')),
-  createEvent: (event) => authorized('POST', '/api/v1/events', event),
-  // maybe: "Возможно приду" of an event.
-  joinClub: (ref, { maybe = false } = {}) =>
-    authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/membership${maybe ? '?maybe=true' : ''}`),
+  // A closed group is not joined but asked to let you in.
+  joinClub: (ref) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/membership`),
   leaveClub: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/membership`),
-  // admins: only the owner and the admins ("Руководство"); going: 'sure'
-  // or 'maybe', those who come to the event or only might.
-  clubMembers(ref, { cursor = '', limit = 0, admins = false, going = '' } = {}) {
+  // admins: only the owner and the admins ("Руководство").
+  clubMembers(ref, { cursor = '', limit = 0, admins = false } = {}) {
     const path = page(`/api/v1/clubs/${encodeURIComponent(ref)}/members`, cursor, limit);
-    const filter = admins ? 'admins=true' : going && 'going=' + going;
     // With the token: the club tells those who run it whom it hides.
-    return optional('GET', filter ? path + (path.includes('?') ? '&' : '?') + filter : path);
+    return optional('GET', admins ? path + (path.includes('?') ? '&' : '?') + 'admins=true' : path);
   },
   // Those who asked to join a closed group ("Заявки"), for those who run
   // it: { people, nextCursor, total }.
@@ -460,6 +455,8 @@ export const api = {
   // write over another.
   describeAdmin: (ref, nickname, { title, baseTitle, hidden }) =>
     authorized('PATCH', `/api/v1/clubs/${encodeURIComponent(ref)}/admins/${encodeURIComponent(nickname)}`, { title, baseTitle, hidden }),
+  // The owner deletes the club with its wall, topics, albums and photos.
+  deleteClub: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}`),
   // The owner hands the club over to one of its admins ("Назначить владельцем").
   transferClub: (ref, nickname) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/owner/${encodeURIComponent(nickname)}`),
   // The clubs of a user, as their "Кому видно мои группы" allows: 403 if hidden.
@@ -469,15 +466,6 @@ export const api = {
     const path = page('/api/v1/me/clubs', cursor, 0);
     return authorized('GET', managed ? path + (path.includes('?') ? '&' : '?') + 'managed=true' : path);
   },
-  // "Мои Встречи": the same for the events you come to; time is
-  // 'upcoming' for those ahead, 'past' for those over, '' for all.
-  myEvents(cursor = '', managed = false, time = '') {
-    const path = withQuery(page('/api/v1/me/events', cursor, 0), time && 'time=' + time);
-    return authorized('GET', withQuery(path, managed && 'managed=true'));
-  },
-  // The block "Встречи" of a page and its list, shown as the groups are.
-  userEvents: (nickname, time = '', cursor = '', limit = 0) => optional('GET',
-    withQuery(page(`/api/v1/users/${encodeURIComponent(nickname)}/events`, cursor, limit), time && 'time=' + time)),
   // The clubs you keep in the left menu ("Добавить в левое меню").
   pinnedClubs: () => authorized('GET', '/api/v1/me/clubs/pinned'),
   pinClub: (ref) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/pin`),
@@ -487,8 +475,7 @@ export const api = {
     if (cursor) params.set('cursor', cursor);
     return request('GET', '/api/v1/clubs?' + params);
   },
-  uploadClubAvatar: (ref, file, onWall = false) =>
-    authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/avatar` + (onWall ? '?onWall=true' : ''), file),
+  uploadClubAvatar: (ref, file) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/avatar`, file),
   deleteClubAvatar: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/avatar`),
   // "Фон страницы": side is left or right; deleting takes both away.
   setClubBackdrop: (ref, side, file) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/backdrop/${side}`, file),
