@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"time"
 )
@@ -134,7 +135,8 @@ func (a *assets) page(dir, name string) http.Handler {
 			return
 		}
 
-		html = a.current().versioned(html)
+		site := a.current()
+		html = site.versioned(site.preloading(html))
 
 		w.Header().Set("Content-Security-Policy", pageCSP)
 		w.Header().Set("Referrer-Policy", "same-origin")
@@ -142,6 +144,24 @@ func (a *assets) page(dir, name string) http.Handler {
 		w.Header().Set("Cache-Control", cacheRevalidate)
 		w.Header().Set("ETag", `"`+digestOf(html)+`"`)
 		http.ServeContent(w, r, name, time.Time{}, bytes.NewReader(html))
+	})
+}
+
+// moduleScript is how a page loads its script.
+var moduleScript = regexp.MustCompile(`<script type="module" src="/static/([\w./-]+)"></script>`)
+
+// preloading names, before the script of the page, every module the
+// script imports however deep: the browser then asks for them all at
+// once instead of learning of each from the one before it.
+func (s siteFiles) preloading(html []byte) []byte {
+	return moduleScript.ReplaceAllFunc(html, func(found []byte) []byte {
+		var links bytes.Buffer
+
+		for _, name := range s.preloaded(string(moduleScript.FindSubmatch(found)[1])) {
+			links.WriteString(`<link rel="modulepreload" href="` + staticPrefix + name + `">` + "\n  ")
+		}
+
+		return append(links.Bytes(), found...)
 	})
 }
 

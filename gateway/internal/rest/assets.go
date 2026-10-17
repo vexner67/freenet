@@ -48,6 +48,8 @@ type staticFile struct {
 	// content is the file as served at its version: with the versions of
 	// the files it names.
 	content []byte
+	// imports are the modules a module imports, by their paths in /static/.
+	imports []string
 }
 
 // siteFiles are the files of /static/ as last read, never changed afterwards.
@@ -181,7 +183,7 @@ func newSite(files map[string][]byte) siteFiles {
 				content = s.versioned(s.imported(name, content))
 			}
 
-			s[name] = staticFile{version: version, content: content}
+			s[name] = staticFile{version: version, content: content, imports: imports(name, files[name], files)}
 		}
 	}
 
@@ -217,6 +219,49 @@ func named(name string, content []byte, files map[string][]byte) []string {
 	slices.Sort(found)
 
 	return slices.Compact(found)
+}
+
+// imports are the modules of the site the script imports, each once.
+func imports(name string, content []byte, files map[string][]byte) []string {
+	if !strings.HasSuffix(name, ".js") {
+		return nil
+	}
+
+	var found []string
+
+	for _, m := range importPattern.FindAllSubmatch(content, -1) {
+		if other := path.Join(path.Dir(name), string(m[3])); files[other] != nil {
+			found = append(found, other)
+		}
+	}
+
+	slices.Sort(found)
+
+	return slices.Compact(found)
+}
+
+// preloaded are the modules the module name imports, and those they
+// import, all the way down: what a page loading it waits for.
+func (s siteFiles) preloaded(name string) []string {
+	seen := map[string]bool{name: true}
+	queue := []string{name}
+
+	var out []string
+
+	for len(queue) > 0 {
+		next := queue[0]
+		queue = queue[1:]
+
+		for _, other := range s[next].imports {
+			if !seen[other] {
+				seen[other] = true
+				out = append(out, other)
+				queue = append(queue, other)
+			}
+		}
+	}
+
+	return out
 }
 
 // imported puts the versions into the imports of the modules beside the
