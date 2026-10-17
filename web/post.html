@@ -46,8 +46,14 @@
             <div class="attachments" id="comment-photos" hidden></div>
             <div class="row">
               <span>
-                <a class="attach-link" id="comment-attach">Прикрепить фотографию</a>
-                <a class="attach-link" id="comment-graffiti">Граффити</a>
+                <span class="attach-menu">
+                  <a class="attach-toggle">Прикрепить</a>
+                  <span class="attach-list">
+                    <a class="attach-toggle attach-head">Прикрепить</a>
+                    <a class="attach-link attach-photo" id="comment-attach">Фотография</a>
+                    <a class="attach-link attach-graffiti" id="comment-graffiti">Граффити</a>
+                  </span>
+                </span>
                 <span class="hint" id="comment-counter"></span>
               </span>
               <button class="button" type="submit" id="comment-submit">Отправить</button>

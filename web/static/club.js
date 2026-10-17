@@ -184,8 +184,8 @@ function joinLabels(club) {
   return { join: 'Вступить в группу', leave: 'Выйти из группы' };
 }
 
-// renderJoin is the one button openvk has: "Вступить в группу", or a grey
-// "Выйти из группы" for a member; the owner cannot leave and has neither.
+// renderJoin is the one link openvk has: "Вступить в группу", or "Выйти
+// из группы" for a member; the owner cannot leave and has neither.
 function renderJoin(club, me) {
   const button = $('join');
   const error = $('join-error');
@@ -197,7 +197,6 @@ function renderJoin(club, me) {
   const inside = Boolean(club.role) || Boolean(club.requested);
 
   button.textContent = inside ? labels.leave : labels.join;
-  button.classList.toggle('secondary', inside);
 
   async function change(act) {
     hideError(error);

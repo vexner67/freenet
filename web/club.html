@@ -55,11 +55,17 @@
               <div class="post-has-poll" id="post-poll-marker" hidden></div>
               <div class="row">
                 <span>
-                  <a class="attach-link" id="post-attach">Прикрепить фотографию</a>
-                  <a class="attach-link" id="post-graffiti">Граффити</a>
-                  <a class="attach-link" id="post-doc">Прикрепить документ</a>
-                  <a class="attach-link" id="post-poll">Прикрепить опрос</a>
-                  <a class="attach-link" id="post-timer" hidden>Таймер</a>
+                  <span class="attach-menu">
+                    <a class="attach-toggle">Прикрепить</a>
+                    <span class="attach-list">
+                      <a class="attach-toggle attach-head">Прикрепить</a>
+                      <a class="attach-link attach-photo" id="post-attach">Фотография</a>
+                      <a class="attach-link attach-graffiti" id="post-graffiti">Граффити</a>
+                      <a class="attach-link attach-document" id="post-doc">Документ</a>
+                      <a class="attach-link attach-poll" id="post-poll">Опрос</a>
+                      <a class="attach-link attach-timer" id="post-timer" hidden>Таймер</a>
+                    </span>
+                  </span>
                   <span class="hint" id="post-counter"></span>
                 </span>
                 <button class="button" type="submit" id="post-submit">Отправить</button>
@@ -81,15 +87,17 @@
           </div>
 
           <div class="club-side" id="club-side">
-            <img class="avatar" id="avatar" src="/static/club.svg" alt="">
-            <div class="avatar-actions" id="avatar-actions" hidden>
-              <a id="avatar-upload">Загрузить фотографию</a>
-              <a id="avatar-delete" hidden>Удалить фотографию</a>
+            <div class="avatar-box">
+              <img class="avatar" id="avatar" src="/static/club.svg" alt="">
+              <div class="avatar-controls" id="avatar-actions" hidden>
+                <a class="avatar-delete" id="avatar-delete" title="Удалить фотографию" hidden>×</a>
+                <a class="avatar-upload" id="avatar-upload">Поставить изображение</a>
+              </div>
             </div>
             <p class="hint center" id="avatar-status" hidden></p>
 
             <div class="profile-links">
-              <button class="button" type="button" id="join" hidden>Вступить в группу</button>
+              <button class="profile-link" type="button" id="join" hidden>Вступить в группу</button>
               <a class="profile-link" id="edit" hidden>Редактировать группу</a>
               <a class="profile-link" id="ignore" hidden>Игнорировать группу</a>
             </div>

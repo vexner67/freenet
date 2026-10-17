@@ -1,6 +1,7 @@
-// The controls under the photo of a profile, for its owner, or of a
-// community (club), for its admins: upload (through openvk's dialog,
-// avatar.js) and remove call the API.
+// The controls on the photo of a profile, for its owner, or of a
+// community (club), for its admins, shown as openvk shows them when the
+// photo is pointed at: upload (through openvk's dialog, avatar.js) along
+// its bottom and remove in its corner call the API.
 
 import { api } from './api.js';
 import { openAvatarDialog } from './avatar.js';
@@ -15,6 +16,7 @@ export function initPhoto(user, isOwner, {
   function render(u) {
     img.src = avatarURL({ ...u, club }, 'large');
     $('avatar-delete').hidden = !u.avatar;
+    $('avatar-upload').textContent = u.avatar ? 'Загрузить новую фотографию' : 'Поставить изображение';
   }
 
   async function change(action, busyText) {

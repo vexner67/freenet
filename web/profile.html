@@ -33,28 +33,25 @@
 
         <div class="profile" id="profile" hidden>
           <div class="profile-left">
-            <img class="avatar" id="avatar" src="/static/avatar.svg" alt="">
-            <div class="avatar-actions" id="avatar-actions" hidden>
-              <a id="avatar-upload">Загрузить фотографию</a>
-              <a id="avatar-delete" hidden>Удалить фотографию</a>
+            <div class="avatar-box">
+              <img class="avatar" id="avatar" src="/static/avatar.svg" alt="">
+              <div class="avatar-controls" id="avatar-actions" hidden>
+                <a class="avatar-delete" id="avatar-delete" title="Удалить фотографию" hidden>×</a>
+                <a class="avatar-upload" id="avatar-upload">Поставить изображение</a>
+              </div>
             </div>
             <p class="hint center" id="avatar-status" hidden></p>
-            <a class="button" id="edit" href="/edit" hidden>Редактировать страницу</a>
-            <button class="button" type="button" id="follow" hidden>Подписаться</button>
-            <p class="follow-state" id="follow-state" hidden>Вы подписаны</p>
-            <a class="button" id="write" hidden>Отправить сообщение</a>
-            <a class="profile-link" id="stories" hidden>Смотреть историю</a>
-            <a class="profile-link" id="gift" hidden>Отправить подарок</a>
-            <a class="profile-link" id="blacklist" hidden>Добавить в чёрный список</a>
-            <a class="profile-link" id="ignore" hidden>Игнорировать пользователя</a>
+            <div class="profile-links">
+              <a class="profile-link" id="edit" href="/edit" hidden>Редактировать страницу</a>
+              <a class="profile-link" id="stories" hidden>Смотреть историю</a>
+              <a class="profile-link" id="gift" hidden>Отправить подарок</a>
+              <a class="profile-link" id="write" hidden>Отправить сообщение</a>
+              <button class="profile-link" type="button" id="follow" hidden>Подписаться</button>
+              <a class="profile-link" id="blacklist" hidden>Добавить в чёрный список</a>
+              <a class="profile-link" id="ignore" hidden>Игнорировать пользователя</a>
+            </div>
             <div class="error" id="follow-error" hidden></div>
             <div class="profile-hints" id="completeness" hidden></div>
-
-            <div class="side-block" id="common-block" hidden>
-              <div class="section-title">Общие подписки</div>
-              <div class="subtitle"><span id="common-count"></span><a id="common-all">Все</a></div>
-              <div class="people-grid" id="common-grid"></div>
-            </div>
 
             <div class="side-block" id="followers-block" hidden>
               <div class="section-title">Подписчики</div>
@@ -66,12 +63,6 @@
               <div class="section-title">Подписки</div>
               <div class="subtitle"><span id="following-count"></span><a id="following-all">Все</a></div>
               <div class="people-grid" id="following-grid"></div>
-            </div>
-
-            <div class="side-block" id="online-block" hidden>
-              <div class="section-title">Подписки онлайн</div>
-              <div class="subtitle"><span id="online-count"></span><a id="online-all">Все</a></div>
-              <div class="people-grid" id="online-grid"></div>
             </div>
 
             <div class="side-block" id="albums-block" hidden></div>
@@ -117,11 +108,17 @@
               <div class="post-has-poll" id="post-poll-marker" hidden></div>
               <div class="row">
                 <span>
-                  <a class="attach-link" id="post-attach">Прикрепить фотографию</a>
-                  <a class="attach-link" id="post-graffiti">Граффити</a>
-                  <a class="attach-link" id="post-doc">Прикрепить документ</a>
-                  <a class="attach-link" id="post-poll">Прикрепить опрос</a>
-                  <a class="attach-link" id="post-timer" hidden>Таймер</a>
+                  <span class="attach-menu">
+                    <a class="attach-toggle">Прикрепить</a>
+                    <span class="attach-list">
+                      <a class="attach-toggle attach-head">Прикрепить</a>
+                      <a class="attach-link attach-photo" id="post-attach">Фотография</a>
+                      <a class="attach-link attach-graffiti" id="post-graffiti">Граффити</a>
+                      <a class="attach-link attach-document" id="post-doc">Документ</a>
+                      <a class="attach-link attach-poll" id="post-poll">Опрос</a>
+                      <a class="attach-link attach-timer" id="post-timer" hidden>Таймер</a>
+                    </span>
+                  </span>
                   <span class="hint" id="post-counter"></span>
                 </span>
                 <button class="button" type="submit" id="post-submit">Отправить</button>

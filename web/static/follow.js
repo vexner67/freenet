@@ -35,8 +35,6 @@ export function initFollow(profile, me, isOwner) {
 
   function render() {
     button.textContent = stats.isFollowing ? 'Отписаться' : 'Подписаться';
-    button.classList.toggle('secondary', stats.isFollowing);
-    $('follow-state').hidden = !stats.isFollowing;
 
     renderBlock('followers', stats.followersCount, followersCount).catch((e) => showError(error, e));
     renderBlock('following', stats.followingCount, followingCount).catch((e) => showError(error, e));
