@@ -317,6 +317,67 @@ func (r *TopicRepository) DeleteByUser(ctx context.Context, userID uuid.UUID) ([
 	return collectTopicMessages(rows)
 }
 
+const lockClubTopicsQuery = `
+	SELECT id
+	FROM topics
+	WHERE club_id = $1
+	ORDER BY id
+	FOR UPDATE
+`
+
+// deleteClubTopicsQuery deletes the topics of a community, returning the
+// messages they take with them.
+const deleteClubTopicsQuery = `
+	WITH gone AS (
+		DELETE FROM topics
+		WHERE club_id = $1
+		RETURNING id
+	)
+	SELECT
+		id,
+		topic_id,
+		author_id,
+		text,
+		photo_ids,
+		from_wall,
+		created_at,
+		like_count
+	FROM topic_messages
+	WHERE topic_id IN (SELECT id FROM gone)
+`
+
+// DeleteByClub deletes the topics of a community, returning their IDs
+// and their messages. It runs in the transaction of ctx: the topics are
+// locked first, so a message written meanwhile waits and fails rather
+// than goes unseen.
+func (r *TopicRepository) DeleteByClub(ctx context.Context, clubID uuid.UUID) ([]uuid.UUID, []*post.TopicMessage, error) {
+	rows, err := r.conn(ctx).Query(ctx, lockClubTopicsQuery, clubID)
+	if err != nil {
+		return nil, nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	ids, err := pgx.CollectRows(rows, pgx.RowTo[uuid.UUID])
+	if err != nil {
+		return nil, nil, errs.Wrap("pgx.CollectRows", err)
+	}
+
+	if len(ids) == 0 {
+		return nil, nil, nil
+	}
+
+	rows, err = r.conn(ctx).Query(ctx, deleteClubTopicsQuery, clubID)
+	if err != nil {
+		return nil, nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	messages, err := collectTopicMessages(rows)
+	if err != nil {
+		return nil, nil, errs.Wrap("collectTopicMessages", err)
+	}
+
+	return ids, messages, nil
+}
+
 func scanTopic(row pgx.Row) (*post.Topic, error) {
 	var (
 		s     post.StoredTopic

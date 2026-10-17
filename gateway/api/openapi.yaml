@@ -733,8 +733,6 @@ paths:
         photo of its own, into your "Фотографии со страницы" (an album of
         `kind` "avatars"); failing that, the photo is changed all the same.
       security: [{ bearer: [] }]
-      parameters:
-        - $ref: "#/components/parameters/OnWall"
       requestBody:
         required: true
         content:
@@ -2147,8 +2145,8 @@ paths:
       summary: What the site counts ("о сайте")
       description: >-
         As openvk's "Об этой инстанции": the pages that are not deleted,
-        those of them whose owners are on the site now, the groups (events
-        are not groups) and the posts on all walls, archived ones left out.
+        those of them whose owners are on the site now, the groups and the
+        posts on all walls, archived ones left out.
         No token needed. The numbers are counted again no more often than
         once a minute (`STATISTICS_TTL` of the gateway).
       responses:
@@ -2196,78 +2194,10 @@ paths:
                     items: { type: string }
         "400": { $ref: "#/components/responses/InvalidArgument" }
 
-  /api/v1/events:
-    post:
-      summary: Create an event ("Создать встречу")
-      description: >-
-        An event is a community with the time it starts and, maybe, ends:
-        everything else of a community applies to it, by the same paths.
-        You own it and come to it. Your profile must be filled in first.
-      security: [{ bearer: [] }]
-      requestBody:
-        required: true
-        content:
-          application/json:
-            schema:
-              type: object
-              required: [name, startsAt]
-              properties:
-                name: { type: string, maxLength: 64 }
-                description: { type: string, maxLength: 1000 }
-                startsAt: { type: string, format: date-time }
-                endsAt: { type: string, format: date-time, description: "Later than startsAt; empty or absent for an event with no end" }
-      responses:
-        "201": { $ref: "#/components/responses/Club" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-        "429": { $ref: "#/components/responses/TooManyRequests" }
-
-  /api/v1/me/events:
-    get:
-      summary: Your events ("Мои Встречи"), the newest joined first
-      description: As `/api/v1/me/clubs`, for the events you come or might come to.
-      security: [{ bearer: [] }]
-      parameters:
-        - name: managed
-          in: query
-          schema: { type: boolean }
-        - name: time
-          in: query
-          description: "Only the events ahead or going on (`upcoming`) or those over (`past`: ended or, having no end, begun); all without it"
-          schema: { type: string, enum: [upcoming, past] }
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        "200":
-          description: One page, as of `/api/v1/me/clubs`
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [clubs, nextCursor]
-                properties:
-                  clubs:
-                    type: array
-                    items:
-                      allOf:
-                        - { $ref: "#/components/schemas/ClubInfo" }
-                        - type: object
-                          required: [role, pinned]
-                          properties:
-                            role: { type: string, enum: [member, admin, owner] }
-                            pinned: { type: boolean, description: "In your left menu" }
-                  nextCursor: { type: string, description: "Empty on the last page" }
-                  total: { type: integer }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-
   /api/v1/me/clubs:
     get:
       summary: Your communities ("Мои Группы"), the newest joined first
-      description: With `managed=true` only those you run ("Управляемые"). `total` counts all of them. Groups only; your events are at `/api/v1/me/events`.
+      description: With `managed=true` only those you run ("Управляемые"). `total` counts all of them.
       security: [{ bearer: [] }]
       parameters:
         - name: managed
@@ -2348,8 +2278,6 @@ paths:
       summary: Set the community's photo
       description: Its admins only. The body is the image itself, as for your own photo; the old photo is deleted, the new one goes into the community's "Фотографии со страницы" too.
       security: [{ bearer: [] }]
-      parameters:
-        - $ref: "#/components/parameters/OnWall"
       requestBody:
         required: true
         content:
@@ -2398,9 +2326,7 @@ paths:
         admins); `adminsDisplay` is what the page shows of those who run
         the community ("Список админов"); `openTopics` lets anyone start
         topics ("Все могут создавать темы"), `topicsAboveWall` lists them
-        above the wall. An event also sends its schedule, `startsAt` and
-        `endsAt` (empty for no end), and cannot lose its start; a group
-        sends neither.
+        above the wall.
       security: [{ bearer: [] }]
       requestBody:
         required: true
@@ -2418,9 +2344,7 @@ paths:
                 adminsDisplay: { $ref: "#/components/schemas/AdminsDisplay" }
                 openTopics: { type: boolean }
                 topicsAboveWall: { type: boolean }
-                closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): people ask to join, and only members see its wall, members, topics and albums. Left out, it stays as it is; an event is never closed. Opening the group drops the requests that wait" }
-                startsAt: { type: string, format: date-time, description: "Of an event" }
-                endsAt: { type: string, format: date-time, description: "Of an event; empty for no end" }
+                closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): people ask to join, and only members see its wall, members, topics and albums. Left out, it stays as it is. Opening the group drops the requests that wait" }
       responses:
         "200": { $ref: "#/components/responses/Club" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -2437,23 +2361,33 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
         "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Delete the community ("Удалить группу")
+      description: |
+        The owner only. The community goes with its members and join
+        requests at once; its wall, topics, albums, photos and the
+        notifications it caused go a moment later. It cannot be undone.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not the owner
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
 
   /api/v1/clubs/{ref}/membership:
     parameters:
       - $ref: "#/components/parameters/ClubRef"
     put:
-      summary: Join the community ("Вступить в группу", "Я приду")
+      summary: Join the community ("Вступить в группу")
       description: >-
-        Idempotent. Your profile must be filled in first. With
-        `maybe=true` you only might come to the event ("Возможно приду"):
-        a group, and an event that has started, are joined for sure all
-        the same. A member who joins again changes that answer ("Я приду"
-        or "Возможно приду") without leaving; the owner always comes.
+        Idempotent. Your profile must be filled in first. A closed group
+        is not joined but asked to let you in.
       security: [{ bearer: [] }]
-      parameters:
-        - name: maybe
-          in: query
-          schema: { type: boolean }
       responses:
         "200": { $ref: "#/components/responses/Club" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -2484,17 +2418,12 @@ paths:
         People whose page is deleted are left out. An admin the community
         hides ("Скрыт: Да") is a plain member, with no title, to everyone
         who does not run it, and is not among its admins; with a token of
-        one who runs it they are shown as they are, with `hidden`. Of an
-        event, `going=sure` are those who come ("Точно придут") and
-        `going=maybe` those who might ("Возможно придут"); `total` counts
-        the list asked for.
+        one who runs it they are shown as they are, with `hidden`. `total`
+        counts the list asked for.
       parameters:
         - name: admins
           in: query
           schema: { type: boolean }
-        - name: going
-          in: query
-          schema: { type: string, enum: [sure, maybe] }
         - name: cursor
           in: query
           schema: { type: string }
@@ -2514,13 +2443,12 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [user, role, title, hidden, maybe]
+                      required: [user, role, title, hidden]
                       properties:
                         user: { $ref: "#/components/schemas/Author" }
                         role: { type: string, enum: [member, admin, owner] }
                         title: { type: string, description: "What an admin does in the community, shown under the name; empty for none" }
                         hidden: { type: boolean, description: "The community hides that they run it; told only to those who run it" }
-                        maybe: { type: boolean, description: "They only might come to the event" }
                   nextCursor: { type: string, description: "Empty on the last page" }
                   total: { type: integer, description: "Members, or admins, on all pages, those whose page is deleted too" }
         "404": { $ref: "#/components/responses/NotFound" }
@@ -4921,6 +4849,18 @@ paths:
         "401": { $ref: "#/components/responses/Unauthenticated" }
         "404": { $ref: "#/components/responses/NotFound" }
         "409": { description: "`you are not in this chat`" }
+    delete:
+      summary: Delete a chat for everyone in it ("Удалить беседу")
+      description: >-
+        Only its creator may. The chat goes with all its messages, their
+        photos and the chat's photo; the others are not told, the chat is
+        just gone from their list.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: The chat is deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Only the creator deletes a chat: `permission denied`" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/chats/{id}/pin:
     parameters:
@@ -5678,7 +5618,7 @@ paths:
     get:
       summary: The communities of a user, the newest joined first
       description: |
-        The block "Группы" of a page: groups only, not events. No token needed; whether you may see
+        The block "Группы" of a page. No token needed; whether you may see
         them is the user's `clubsRead`, and those of a deleted page or of a
         page hidden from you are hidden. With a token each comes with your
         `role` in it, to join or leave it from the list.
@@ -5686,58 +5626,6 @@ paths:
       responses:
         "200":
           description: One page
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [clubs, nextCursor, total]
-                properties:
-                  clubs:
-                    type: array
-                    items:
-                      allOf:
-                        - $ref: "#/components/schemas/ClubInfo"
-                        - type: object
-                          required: [role]
-                          properties:
-                            role:
-                              type: string
-                              enum: ["", member, admin, owner]
-                              description: What you are in it; empty for none and without a token
-                  nextCursor: { type: string, description: "Empty on the last page" }
-                  total: { type: integer, description: "How many on all pages" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "403":
-          description: "`this page is deleted`, `this page is hidden` or `this user's clubs are hidden`"
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/Error" }
-        "404": { $ref: "#/components/responses/NotFound" }
-
-  /api/v1/users/{nickname}/events:
-    get:
-      summary: The events of a user, the newest joined first
-      description: |
-        The block "Встречи" of a page: as `/api/v1/users/{nickname}/clubs`, for the events
-        the user comes or might come to, shown by the same `clubsRead`.
-      parameters:
-        - name: nickname
-          in: path
-          required: true
-          schema: { type: string }
-        - name: time
-          in: query
-          description: "Only the events ahead or going on (`upcoming`) or those over (`past`); all without it"
-          schema: { type: string, enum: [upcoming, past] }
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        "200":
-          description: One page, as of `/api/v1/users/{nickname}/clubs`
           content:
             application/json:
               schema:
@@ -5864,15 +5752,6 @@ components:
       in: query
       description: The year (UTC) whose posts to move; none for the posts of every year
       schema: { type: integer, minimum: 1970, maximum: 9999 }
-    OnWall:
-      name: onWall
-      in: query
-      description: |
-        `true`: also post the photo on the wall ("Опубликовать запись на
-        стене"), yours or the community's, speaking for it. Without a filled
-        profile there is no post. If the post is refused (too many posts),
-        the photo is changed all the same and the error tells why.
-      schema: { type: boolean }
     ClubRef:
       name: ref
       in: path
@@ -5914,7 +5793,6 @@ components:
                       - { $ref: "#/components/schemas/Author" }
                       - { type: "null" }
                   ownerTitle: { type: string, description: "What the owner does in the community; empty for none or without `owner`" }
-                  maybe: { type: boolean, description: "You only might come to the event" }
     AlbumList:
       description: One page of albums with whom they belong to
       content:
@@ -6306,7 +6184,7 @@ components:
         hiddenMenu:
           type: array
           description: The links taken out of the left menu; none by default
-          items: { type: string, enum: [photos, messages, notes, groups, events, feed, notifications] }
+          items: { type: string, enum: [photos, messages, notes, groups, feed, notifications] }
         theme: { type: string, enum: [default, blue, dark], description: "The look of the whole site (\"Стиль\"); default when left out" }
         hideRating: { type: boolean, description: "Takes \"Заполненность страницы\" off the pages its owner reads (\"Рейтинг\")" }
         nsfw: { type: string, enum: [blur, hide, show], description: "Posts marked as adult: blurred until clicked (the default), blurred and left out of the news, or shown as any other" }
@@ -6322,7 +6200,7 @@ components:
 
     ClubInfo:
       type: object
-      required: [id, name, description, address, website, wall, adminsDisplay, members, createdAt, openTopics, topicsAboveWall, backdrop, kind, startsAt, endsAt, maybes]
+      required: [id, name, description, address, website, wall, adminsDisplay, members, createdAt, openTopics, topicsAboveWall, backdrop]
       properties:
         id: { type: string, format: uuid }
         name: { type: string }
@@ -6337,10 +6215,6 @@ components:
         openTopics: { type: boolean, description: "Anyone starts topics in its discussions, not only its admins (\"Все могут создавать темы\")" }
         topicsAboveWall: { type: boolean, description: "Its page lists the topics above the wall (\"Отображать список тем над стеной\")" }
         backdrop: { $ref: "#/components/schemas/Backdrop" }
-        kind: { type: string, enum: [group, event], description: "An event (\"встреча\") is a community with the time it starts" }
-        startsAt: { type: [string, "null"], format: date-time, description: "When the event starts; null for a group" }
-        endsAt: { type: [string, "null"], format: date-time, description: "When the event ends; null for none" }
-        maybes: { type: integer, description: "How many of `members` only might come to the event (\"Возможно придут\"); the others are sure to" }
         closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): joining it (`PUT .../membership`) only asks to, and its wall, members, topics and albums answer 403 `this club is closed` (topics and albums by ID - 404) to those who are not members" }
 
     Topic:
@@ -6522,7 +6396,7 @@ components:
 
     Post:
       type: object
-      required: [id, author, wall, text, photos, createdAt, likes, liked, comments, reposts, repost, editedAt, editableUntil, pinned, fromWall, avatarUpdate, mine, signer]
+      required: [id, author, wall, text, photos, createdAt, likes, liked, comments, reposts, repost, editedAt, editableUntil, pinned, fromWall, mine, signer]
       properties:
         id: { type: string, format: uuid }
         author: { $ref: "#/components/schemas/Author" }
@@ -6580,7 +6454,6 @@ components:
         fromWall:
           type: boolean
           description: "The post speaks for its wall, a community (\"От имени сообщества\"): `author` is the community, `wall` null, who wrote it is not told"
-        avatarUpdate: { type: boolean, description: "The post shows the new photo of its wall's owner, its one photo (\"обновил фотографию на своей странице\", \"обновило фотографию группы\"); never edited" }
         mine: { type: boolean, description: "You wrote it and may edit it; false without a token, and for a post you suggested that a community published, which is the community's" }
         moderated: { type: boolean, description: "Only in the feed: the post is on the wall of a community you run" }
         signer:
@@ -6599,11 +6472,10 @@ components:
         The post a repost shares, without counters. When it or its author is
         gone, only id and deleted: true are set ("Запись удалена"). repostOf
         is set when the shared post is itself a repost: link to it.
-      required: [id, deleted, author, wall, text, photos, createdAt, repostOf, avatarUpdate]
+      required: [id, deleted, author, wall, text, photos, createdAt, repostOf]
       properties:
         id: { type: string, format: uuid }
         deleted: { type: boolean }
-        avatarUpdate: { type: boolean, description: "It shows a new photo, as Post's avatarUpdate" }
         nsfw: { type: boolean, description: "Its author marked it as adult, as Post's nsfw" }
         textCut: { type: boolean, description: "`text` is only its beginning, as Post's textCut" }
         author:
@@ -6746,8 +6618,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, event_reminder, note_comment, gift, votes, invite]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; event_reminder: the actor, an event you are going to (surely or maybe), starts within a day — told once, and again if the event is moved; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; invite: the actor signed up by your invitation link and follows you"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, note_comment, gift, votes, invite]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; invite: the actor signed up by your invitation link and follows you"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:

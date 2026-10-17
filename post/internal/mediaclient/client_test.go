@@ -23,6 +23,7 @@ type fakeAPI struct {
 	deleted   *mediav1.DeletePublishedPhotosRequest
 	copied    *mediav1.CopyPhotosRequest
 	documents *mediav1.DeleteDocumentsRequest
+	purged    *mediav1.PurgeUserRequest
 	deadline  bool
 	err       error
 }
@@ -45,6 +46,11 @@ func (f *fakeAPI) CopyPhotos(_ context.Context, req *mediav1.CopyPhotosRequest, 
 
 func (f *fakeAPI) DeleteDocuments(_ context.Context, req *mediav1.DeleteDocumentsRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
 	f.documents = req
+	return &emptypb.Empty{}, f.err
+}
+
+func (f *fakeAPI) PurgeUser(_ context.Context, req *mediav1.PurgeUserRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.purged = req
 	return &emptypb.Empty{}, f.err
 }
 
@@ -105,6 +111,13 @@ func TestOutboxAndDeliverer(t *testing.T) {
 	}
 	if r := api.documents; r.GetOwnerId() != owner.String() || !slices.Equal(r.GetDocumentIds(), want) {
 		t.Fatalf("deleted documents %v", r)
+	}
+
+	if err := roundTrip(t, api, func(o *Outbox) error { return o.Purge(ctx, owner) }); err != nil {
+		t.Fatalf("deliver purge: %v", err)
+	}
+	if r := api.purged; r.GetUserId() != owner.String() {
+		t.Fatalf("purged %v", r)
 	}
 }
 

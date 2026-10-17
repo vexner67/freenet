@@ -139,3 +139,23 @@ func (r *SuggestionRepository) DeleteByUser(ctx context.Context, userID uuid.UUI
 
 	return deleted, nil
 }
+
+func (r *SuggestionRepository) DeleteOnWall(ctx context.Context, wallID uuid.UUID) ([]*post.Suggestion, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var deleted []*post.Suggestion
+
+	for id, s := range r.suggestions {
+		if s.WallID() == wallID {
+			delete(r.suggestions, id)
+			deleted = append(deleted, s)
+		}
+	}
+
+	return deleted, nil
+}

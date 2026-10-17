@@ -68,9 +68,6 @@ const (
 	// KindNoteComment: the actor wrote the comment CommentID under the
 	// recipient's note PostID.
 	KindNoteComment Kind = "note_comment"
-	// KindEventReminder: the actor, an event the recipient comes to,
-	// starts soon ("В ближайшее время состоится событие" of openvk).
-	KindEventReminder Kind = "event_reminder"
 	// KindGift: the actor sent the recipient the gift PostID.
 	KindGift Kind = "gift"
 	// KindVotes: the actor transferred votes to the recipient; PostID
@@ -128,7 +125,7 @@ func (e Event) Validate() error {
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
 		KindPhotoComment, KindTopicMessageLike, KindPhotoMention, KindNoteComment:
 		ok = hasPost && hasComment
-	case KindFollow, KindClubAdmin, KindEventReminder, KindInvite:
+	case KindFollow, KindClubAdmin, KindInvite:
 		ok = !hasPost && !hasComment
 	default:
 		return ErrUnknownKind

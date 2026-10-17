@@ -156,3 +156,23 @@ func (r *PostponedRepository) matching(pick func(*post.Postponed) bool) []*post.
 
 	return found
 }
+
+func (r *PostponedRepository) DeleteOnWall(ctx context.Context, wallID uuid.UUID) ([]*post.Postponed, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var deleted []*post.Postponed
+
+	for id, p := range r.postponed {
+		if p.WallID() == wallID {
+			delete(r.postponed, id)
+			deleted = append(deleted, p)
+		}
+	}
+
+	return deleted, nil
+}

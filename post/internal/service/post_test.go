@@ -71,6 +71,7 @@ type fakePhotos struct {
 	mu        sync.Mutex
 	published []photoCall
 	deleted   []photoCall
+	purged    []uuid.UUID
 	copied    []service.PhotoCopy
 	outsideTx int
 	err       error
@@ -109,6 +110,19 @@ func (f *fakePhotos) Copy(ctx context.Context, _ uuid.UUID, copies []service.Pho
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.copied = append(f.copied, copies...)
+
+	return nil
+}
+
+func (f *fakePhotos) Purge(ctx context.Context, owner uuid.UUID) error {
+	var call []photoCall
+	if err := f.record(ctx, &call, photoCall{}); err != nil {
+		return err
+	}
+
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.purged = append(f.purged, owner)
 
 	return nil
 }

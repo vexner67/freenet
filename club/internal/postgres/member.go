@@ -114,8 +114,7 @@ const seatQuery = `
 	SELECT
 		role,
 		title,
-		hidden,
-		maybe
+		hidden
 	FROM club_members
 	WHERE club_id = $1
 		AND user_id = $2
@@ -127,7 +126,7 @@ func (r *MemberRepository) Seat(ctx context.Context, clubID, userID uuid.UUID) (
 		role, title string
 	)
 
-	err := r.pool.QueryRow(ctx, seatQuery, clubID, userID).Scan(&role, &title, &seat.Hidden, &seat.Maybe)
+	err := r.pool.QueryRow(ctx, seatQuery, clubID, userID).Scan(&role, &title, &seat.Hidden)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return club.Seat{}, nil
 	}
@@ -162,43 +161,32 @@ func (r *MemberRepository) Owner(ctx context.Context, clubID uuid.UUID) (uuid.UU
 }
 
 // joinQuery counts the member in the statement that adds them, so the
-// counts never drift. A member who joins again changes only whether they
-// come for sure, and the owner not even that; xmax tells the new row from
-// the changed one.
+// count never drifts; a member who joins again changes nothing.
 const joinQuery = `
 	WITH joined AS (
 		INSERT INTO club_members (
 			id,
 			club_id,
 			user_id,
-			role,
-			maybe
+			role
 		)
-		VALUES ($1, $2, $3, 'member', $4)
-		ON CONFLICT (club_id, user_id) DO UPDATE
-		SET maybe = EXCLUDED.maybe
-		WHERE club_members.role <> 'owner'
-			AND club_members.maybe <> EXCLUDED.maybe
-		RETURNING club_id, (xmax = 0) AS added
+		VALUES ($1, $2, $3, 'member')
+		ON CONFLICT (club_id, user_id) DO NOTHING
+		RETURNING club_id
 	)
 	UPDATE clubs c
-	SET member_count = c.member_count + joined.added::integer,
-		maybe_count = c.maybe_count + CASE
-			WHEN joined.added THEN $4::boolean::integer
-			WHEN $4 THEN 1
-			ELSE -1
-		END
+	SET member_count = c.member_count + 1
 	FROM joined
 	WHERE c.id = joined.club_id
 `
 
-func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID, maybe bool) error {
+func (r *MemberRepository) Join(ctx context.Context, clubID, userID uuid.UUID) error {
 	id, err := uuid.NewV7()
 	if err != nil {
 		return errs.Wrap("uuid.NewV7", err)
 	}
 
-	_, err = pgpool.Conn(ctx, r.pool).Exec(ctx, joinQuery, id, clubID, userID, maybe)
+	_, err = pgpool.Conn(ctx, r.pool).Exec(ctx, joinQuery, id, clubID, userID)
 	if constraintOf(err) == "club_members_club_id_fkey" {
 		return club.ErrNotFound
 	}
@@ -216,11 +204,10 @@ const leaveQuery = `
 		WHERE club_id = $1
 			AND user_id = $2
 			AND role <> 'owner'
-		RETURNING club_id, maybe
+		RETURNING club_id
 	)
 	UPDATE clubs c
-	SET member_count = c.member_count - 1,
-		maybe_count = c.maybe_count - gone.maybe::integer
+	SET member_count = c.member_count - 1
 	FROM gone
 	WHERE c.id = gone.club_id
 `
@@ -382,22 +369,19 @@ func (r *MemberRepository) CountAdmins(ctx context.Context, clubID uuid.UUID, sh
 }
 
 // listMembersQuery: with $4, only those who run the club; with $5, not
-// those of them it hides; $6, if not NULL, picks those who only might
-// come to the event or those who are sure to.
+// those of them it hides.
 const listMembersQuery = `
 	SELECT
 		id,
 		user_id,
 		role,
 		title,
-		hidden,
-		maybe
+		hidden
 	FROM club_members
 	WHERE club_id = $1
 		AND id < $2
 		AND (NOT $4 OR role IN ('admin', 'owner'))
 		AND NOT ($5 AND hidden)
-		AND ($6::boolean IS NULL OR maybe = $6)
 	ORDER BY id DESC
 	LIMIT $3
 `
@@ -405,14 +389,8 @@ const listMembersQuery = `
 func (r *MemberRepository) List(ctx context.Context, clubID, before uuid.UUID, limit int, filter service.MemberFilter) ([]service.Member, error) {
 	managers := filter == service.Managers || filter == service.ShownManagers
 
-	var maybe *bool
-	if filter == service.SureComers || filter == service.MaybeComers {
-		maybe = new(bool)
-		*maybe = filter == service.MaybeComers
-	}
-
 	rows, err := r.pool.Query(ctx, listMembersQuery, clubID, cursor(before), limit,
-		managers, filter == service.ShownManagers, maybe)
+		managers, filter == service.ShownManagers)
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
@@ -424,7 +402,7 @@ func (r *MemberRepository) List(ctx context.Context, clubID, before uuid.UUID, l
 			m           service.Member
 			role, title string
 		)
-		if err = rows.Scan(&m.ID, &m.UserID, &role, &title, &m.Hidden, &m.Maybe); err != nil {
+		if err = rows.Scan(&m.ID, &m.UserID, &role, &title, &m.Hidden); err != nil {
 			return nil, errs.Wrap("rows.Scan", err)
 		}
 		m.Role, m.Title = club.Role(role), club.Title(title)
@@ -447,10 +425,7 @@ func cursor(before uuid.UUID) uuid.UUID {
 	return before
 }
 
-// listUserClubsQuery: with $4, only the clubs the user runs; with $5,
-// only those of the kind; with $6, only the events over ('past') or not
-// ('upcoming') at $7 — an event is over when it has ended or, having no
-// end, begun (club.Schedule.Over).
+// listUserClubsQuery: with $4, only the clubs the user runs.
 const listUserClubsQuery = `
 	SELECT
 		m.id,
@@ -470,25 +445,18 @@ const listUserClubsQuery = `
 		c.topics_above_wall,
 		c.backdrop_left,
 		c.backdrop_right,
-		c.kind,
-		c.starts_at,
-		c.ends_at,
-		c.maybe_count,
 		c.closed
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
 	WHERE m.user_id = $1
 		AND m.id < $2
 		AND (NOT $4 OR m.role IN ('admin', 'owner'))
-		AND ($5 = '' OR c.kind = $5)
-		AND ($6 = '' OR (c.starts_at IS NOT NULL AND (COALESCE(c.ends_at, c.starts_at) <= $7) = ($6 = 'past')))
 	ORDER BY m.id DESC
 	LIMIT $3
 `
 
 func (r *MemberRepository) ListClubs(ctx context.Context, userID, before uuid.UUID, limit int, filter service.ClubFilter) ([]service.Membership, error) {
-	rows, err := r.pool.Query(ctx, listUserClubsQuery, userID, cursor(before), limit, filter.Managed, filter.Kind.String(),
-		filter.Period.String(), filter.At)
+	rows, err := r.pool.Query(ctx, listUserClubsQuery, userID, cursor(before), limit, filter.Managed)
 	if err != nil {
 		return nil, errs.Wrap("r.pool.Query", err)
 	}
@@ -529,19 +497,15 @@ func scanMembership(row pgx.Row) (service.Membership, error) {
 
 const countUserClubsQuery = `
 	SELECT count(*)
-	FROM club_members m
-	JOIN clubs c ON c.id = m.club_id
-	WHERE m.user_id = $1
-		AND (NOT $2 OR m.role IN ('admin', 'owner'))
-		AND ($3 = '' OR c.kind = $3)
-		AND ($4 = '' OR (c.starts_at IS NOT NULL AND (COALESCE(c.ends_at, c.starts_at) <= $5) = ($4 = 'past')))
+	FROM club_members
+	WHERE user_id = $1
+		AND (NOT $2 OR role IN ('admin', 'owner'))
 `
 
 func (r *MemberRepository) CountClubs(ctx context.Context, userID uuid.UUID, filter service.ClubFilter) (int, error) {
 	var n int
 
-	if err := r.pool.QueryRow(ctx, countUserClubsQuery, userID, filter.Managed, filter.Kind.String(),
-		filter.Period.String(), filter.At).Scan(&n); err != nil {
+	if err := r.pool.QueryRow(ctx, countUserClubsQuery, userID, filter.Managed).Scan(&n); err != nil {
 		return 0, errs.Wrap("r.pool.QueryRow", err)
 	}
 
@@ -608,10 +572,6 @@ const pinnedClubsQuery = `
 		c.topics_above_wall,
 		c.backdrop_left,
 		c.backdrop_right,
-		c.kind,
-		c.starts_at,
-		c.ends_at,
-		c.maybe_count,
 		c.closed
 	FROM club_members m
 	JOIN clubs c ON c.id = m.club_id
@@ -638,11 +598,10 @@ const (
 		WITH gone AS (
 			DELETE FROM club_members
 			WHERE user_id = $1
-			RETURNING club_id, maybe, role
+			RETURNING club_id, role
 		), counted AS (
 			UPDATE clubs c
-			SET member_count = c.member_count - 1,
-				maybe_count = c.maybe_count - gone.maybe::integer
+			SET member_count = c.member_count - 1
 			FROM gone
 			WHERE c.id = gone.club_id
 		)
@@ -652,30 +611,19 @@ const (
 	`
 	// inheritClubsQuery gives each club left without an owner to who has
 	// been in it longest: of its admins or, when it has none, of all its
-	// members. An owner is sure to come to an event.
+	// members.
 	inheritClubsQuery = `
 		WITH heirs AS (
 			SELECT DISTINCT ON (club_id)
-				id,
-				club_id,
-				maybe
+				id
 			FROM club_members
 			WHERE club_id = ANY($1)
 			ORDER BY club_id, (role = 'admin') DESC, id
-		), promoted AS (
-			UPDATE club_members m
-			SET role = 'owner',
-				maybe = false
-			FROM heirs
-			WHERE m.id = heirs.id
-			RETURNING m.id
 		)
-		UPDATE clubs c
-		SET maybe_count = c.maybe_count - 1
+		UPDATE club_members m
+		SET role = 'owner'
 		FROM heirs
-		JOIN promoted ON promoted.id = heirs.id
-		WHERE c.id = heirs.club_id
-			AND heirs.maybe
+		WHERE m.id = heirs.id
 	`
 )
 

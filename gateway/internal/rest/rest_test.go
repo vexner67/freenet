@@ -1185,7 +1185,7 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n-11", Kind: "photo_like", ActorID: "u2", PostID: "ph6", CreatedAt: at},
 			{ID: "n-12", Kind: "photo_comment", ActorID: "u2", PostID: "ph6", CommentID: "pc1", CreatedAt: at},
 			{ID: "n-13", Kind: "photo_like", ActorID: "u2", PostID: "gone", CreatedAt: at},
-			{ID: "n-14", Kind: "event_reminder", ActorID: "k1", CreatedAt: at},
+			{ID: "n-14", Kind: "club_admin", ActorID: "k1", CreatedAt: at},
 			{ID: "n-15", Kind: "photo_mention", ActorID: "u2", PostID: "ph6", CommentID: "pc1", CreatedAt: at},
 			{ID: "n-16", Kind: "note_comment", ActorID: "u2", PostID: "note1", CommentID: "nc1", CreatedAt: at},
 			{ID: "n-17", Kind: "note_comment", ActorID: "u2", PostID: "note-deleted", CommentID: "nc1", CreatedAt: at},

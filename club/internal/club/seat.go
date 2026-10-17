@@ -36,20 +36,18 @@ func (t Title) String() string {
 
 // Seat is what a user is in a club and how the club shows it: the title
 // of those who run it, and whether they are hidden ("Скрыт: Да" of
-// openvk) and pass for a plain member to everyone but each other. Maybe:
-// they only might come to the event ("Возможно приду").
+// openvk) and pass for a plain member to everyone but each other.
 type Seat struct {
 	Role   Role
 	Title  Title
 	Hidden bool
-	Maybe  bool
 }
 
 // Shown is the seat as someone who is viewer in the club sees it: a
 // hidden admin is a member to those who do not run the club.
 func (s Seat) Shown(viewer Role) Seat {
 	if s.Hidden && !viewer.Manages() {
-		return Seat{Role: RoleMember, Maybe: s.Maybe}
+		return Seat{Role: RoleMember}
 	}
 
 	return s

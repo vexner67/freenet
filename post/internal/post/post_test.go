@@ -130,42 +130,6 @@ func TestPost_FromWall(t *testing.T) {
 	}
 }
 
-func TestNewAvatarUpdate(t *testing.T) {
-	t.Parallel()
-
-	ann, club, photo := uuid.New(), uuid.New(), uuid.New()
-	now := time.Now()
-	content, err := post.NewContent("", post.Photos{photo})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	own, err := post.NewAvatarUpdate(ann, ann, content, now)
-	if err != nil || !own.AvatarUpdate() || own.FromWall() || own.Notified() != ann {
-		t.Fatalf("on ann's wall = %+v, %v; hers", own, err)
-	}
-	if _, err = own.Edited(ann, "подпись", nil, now); !errors.Is(err, post.ErrCannotEdit) {
-		t.Fatalf("edited: %v", err)
-	}
-	if !own.EditableUntil().Equal(own.CreatedAt()) || !post.Restore(own.Stored()).AvatarUpdate() {
-		t.Fatalf("editable until %v; storage keeps it", own.EditableUntil())
-	}
-
-	clubs, err := post.NewAvatarUpdate(club, ann, content, now)
-	if err != nil || !clubs.FromWall() || clubs.Notified() != uuid.Nil {
-		t.Fatalf("for the club = %+v, %v; it speaks for the club", clubs, err)
-	}
-
-	withText, _ := post.NewContent("новое фото", post.Photos{photo})
-	twoPhotos, _ := post.NewContent("", post.Photos{photo, uuid.New()})
-	repost, _ := post.NewRepost(uuid.New(), "", nil)
-	for _, c := range []post.Content{withText, twoPhotos, repost} {
-		if _, err = post.NewAvatarUpdate(ann, ann, c, now); !errors.Is(err, post.ErrAvatarUpdate) {
-			t.Errorf("NewAvatarUpdate(%+v) = %v", c, err)
-		}
-	}
-}
-
 // textOnly is the content of a post without photos.
 func textOnly(t *testing.T, text string) post.Content {
 	t.Helper()
@@ -416,15 +380,11 @@ func TestPost_InWallAlbum(t *testing.T) {
 	own, _ := post.New(ann, ann, content, time.Now())
 	guest, _ := post.New(bob, ann, content, time.Now())
 	clubs, _ := post.NewFromWall(club, ann, content, false, time.Now())
-	avatar, err := post.NewAvatarUpdate(ann, ann, content, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
 
 	if !own.InWallAlbum() {
 		t.Error("a post on one's own wall keeps its photos in the album")
 	}
-	for name, p := range map[string]*post.Post{"on another's wall": guest, "for a community": clubs, "a new photo of the page": avatar} {
+	for name, p := range map[string]*post.Post{"on another's wall": guest, "for a community": clubs} {
 		if p.InWallAlbum() {
 			t.Errorf("a post %s keeps its photos in the album", name)
 		}

@@ -56,12 +56,9 @@ type App struct {
 	server  *grpcserver.Server
 	metrics *metrics.Server
 	addr    string
-	// reminder tells the members of events that they start soon.
-	reminder *service.ReminderService
 	// sync is nil without a post service to tell.
-	sync        *service.ReaderSyncService
-	syncEvery   time.Duration
-	remindEvery time.Duration
+	sync      *service.ReaderSyncService
+	syncEvery time.Duration
 }
 
 func New(cfg config.Config) (*App, error) {
@@ -152,8 +149,6 @@ func (a *App) build(cfg config.Config) error {
 		Clubs: store.clubs, Members: store.members, Requests: store.requests, Tx: store.tx, Notifier: notifier, Readers: readers,
 	})))
 
-	a.reminder = service.NewReminderService(store.reminders, store.tx, notifier, cfg.EventReminderAhead, time.Now)
-	a.remindEvery = cfg.EventReminderInterval
 	if rosters != nil && cfg.FeedSyncInterval > 0 {
 		a.sync = service.NewReaderSyncService(store.book, store.tx, rosters)
 		a.syncEvery = cfg.FeedSyncInterval
@@ -187,11 +182,10 @@ func restrictInternal(cfg config.Config) grpc.UnaryServerInterceptor {
 func rateLimits(cfg config.Config) map[string]ratelimit.Rules {
 	return map[string]ratelimit.Rules{
 		clubv1.ClubService_CreateClub_FullMethodName: cfg.ClubLimits,
-		// An event is a club, under the same limit with a counter of its own.
-		clubv1.ClubService_CreateEvent_FullMethodName: cfg.ClubLimits,
-		clubv1.ClubService_UpdateClub_FullMethodName:  cfg.EditLimits,
+		clubv1.ClubService_UpdateClub_FullMethodName: cfg.EditLimits,
 		// Handing a club over is rare; it counts as a change of settings.
 		clubv1.ClubService_TransferClub_FullMethodName:   cfg.EditLimits,
+		clubv1.ClubService_DeleteClub_FullMethodName:     cfg.EditLimits,
 		clubv1.ClubService_DescribeMember_FullMethodName: cfg.EditLimits,
 		// A photo is uploaded to media first, under its own limit; this
 		// counts as one more change of the settings.
@@ -225,9 +219,9 @@ func (a *App) newLimiter(cfg config.Config) (ratelimit.Limiter, error) {
 // that tells the notification service. The connection is lazy, so the
 // services may start in any order; until notification is up, the relay
 // retries.
-func (a *App) newNotifier(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (notifier, error) {
+func (a *App) newNotifier(cfg config.Config, newQueue func(stream string) outboxQueue, reg prometheus.Registerer) (service.Notifier, error) {
 	if cfg.NotificationServiceAddr == "" {
-		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: appointments and events that start soon notify nobody")
+		a.logger.Warn("NOTIFICATION_SERVICE_ADDR is not set: appointments notify nobody")
 		return notifyclient.Nop{}, nil
 	}
 
@@ -293,12 +287,6 @@ func (a *App) newStream(
 	return queue, nil
 }
 
-// notifier is what the notification service hears from club.
-type notifier interface {
-	service.Notifier
-	service.Reminder
-}
-
 // outboxQueue is a stream of the outbox of the storage in use.
 type outboxQueue interface {
 	outbox.Queue
@@ -307,10 +295,9 @@ type outboxQueue interface {
 
 // storage is the set of repositories chosen by STORAGE.
 type storage struct {
-	clubs     service.ClubRepository
-	members   service.MemberRepository
-	requests  service.RequestRepository
-	reminders service.DueEvents
+	clubs    service.ClubRepository
+	members  service.MemberRepository
+	requests service.RequestRepository
 	// book reads the memberships for post to match its copy of them.
 	book service.MemberBook
 	tx   service.TxManager
@@ -322,7 +309,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	if cfg.Storage == config.StorageInmem {
 		store := inmem.NewStore()
 		return storage{
-			clubs: store.Clubs(), members: store.Members(), requests: store.Requests(), reminders: store.Reminders(), book: store.Book(), tx: inmem.TxManager{},
+			clubs: store.Clubs(), members: store.Members(), requests: store.Requests(), book: store.Book(), tx: inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
 			},
@@ -352,12 +339,11 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 	}
 
 	return storage{
-		clubs:     postgres.NewClubRepository(a.pool),
-		members:   postgres.NewMemberRepository(a.pool),
-		requests:  postgres.NewRequestRepository(a.pool),
-		reminders: postgres.NewReminderRepository(a.pool),
-		book:      postgres.NewBookRepository(a.pool),
-		tx:        pgpool.NewTxManager(a.pool),
+		clubs:    postgres.NewClubRepository(a.pool),
+		members:  postgres.NewMemberRepository(a.pool),
+		requests: postgres.NewRequestRepository(a.pool),
+		book:     postgres.NewBookRepository(a.pool),
+		tx:       pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)
 			a.queues = append(a.queues, q)
@@ -388,10 +374,6 @@ func (a *App) Run(ctx context.Context) error {
 		})
 	}
 
-	g.Go(func() error {
-		return errs.Wrap("a.runReminder", a.runReminder(ctx))
-	})
-
 	if a.sync != nil {
 		g.Go(func() error {
 			return errs.Wrap("a.runSync", a.runSync(ctx))
@@ -420,33 +402,6 @@ func (a *App) runSync(ctx context.Context) error {
 		}
 
 		a.logger.InfoContext(ctx, "members told to post anew", "clubs", told)
-	}
-}
-
-// runReminder reminds of the events that start soon until ctx is
-// cancelled. A failed round is logged and tried again next time: the
-// events stay due.
-func (a *App) runReminder(ctx context.Context) error {
-	ticker := time.NewTicker(a.remindEvery)
-	defer ticker.Stop()
-
-	for {
-		reminded, err := a.reminder.RemindDue(ctx)
-
-		switch {
-		case ctx.Err() != nil:
-			return nil
-		case err != nil:
-			a.logger.ErrorContext(ctx, "remind of events", "error", err)
-		case reminded > 0:
-			a.logger.InfoContext(ctx, "events reminded of", "count", reminded)
-		}
-
-		select {
-		case <-ctx.Done():
-			return nil
-		case <-ticker.C:
-		}
 	}
 }
 

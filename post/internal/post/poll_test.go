@@ -255,8 +255,4 @@ func TestPost_EditedKeepsPoll(t *testing.T) {
 	if !edited.Content().Polled() || edited.Content().Text() != "" {
 		t.Fatalf("content = %+v", edited.Content())
 	}
-
-	if _, err = post.NewAvatarUpdate(author, author, post.NewPolled("", post.Photos{uuid.New()}), now); !errors.Is(err, post.ErrAvatarUpdate) {
-		t.Fatalf("a new photo with a poll: got %v", err)
-	}
 }

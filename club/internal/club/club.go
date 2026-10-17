@@ -23,6 +23,7 @@ var (
 	ErrClosed              = errors.New("this club is closed")
 	ErrCannotDecide        = errors.New("only the admins decide on join requests")
 	ErrNoRequest           = errors.New("join request not found")
+	ErrCannotDelete        = errors.New("only the owner deletes the club")
 )
 
 // MaxPinned is how many of the clubs they run a user keeps in the left
@@ -33,12 +34,7 @@ const MaxPinned = 10
 // creates it is its owner. A club does not change once made: Edited
 // returns a new one.
 type Club struct {
-	id uuid.UUID
-	// kind and schedule: a group, or an event with the time it starts.
-	kind     Kind
-	schedule Schedule
-	// maybes counts the members of an event who only might come.
-	maybes      int
+	id          uuid.UUID
 	name        Name
 	description Description
 	address     Address
@@ -89,7 +85,6 @@ func New(name Name, description Description, now time.Time) (*Club, error) {
 
 	return &Club{
 		id:            id,
-		kind:          KindGroup,
 		name:          name,
 		description:   description,
 		wall:          WallOpen,
@@ -116,10 +111,6 @@ type Stored struct {
 	TopicsAboveWall bool
 	Backdrop        Backdrop
 
-	Kind     Kind
-	Schedule Schedule
-	Maybes   int
-
 	Closed bool
 }
 
@@ -141,10 +132,6 @@ func Restore(s Stored) *Club {
 		topicsAboveWall: s.TopicsAboveWall,
 		backdrop:        s.Backdrop,
 
-		kind:     s.Kind,
-		schedule: s.Schedule,
-		maybes:   s.Maybes,
-
 		closed: s.Closed,
 	}
 }
@@ -161,28 +148,18 @@ type Changes struct {
 	// "Обсуждения": who starts topics and where the page lists them.
 	OpenTopics      bool
 	TopicsAboveWall bool
-	// Schedule is when an event starts and ends; a group has none.
-	Schedule Schedule
-	// Closed is "Тип группы: закрытая"; an event is never closed.
+	// Closed is "Тип группы: закрытая".
 	Closed bool
 }
 
 // Edited returns c with changes made by someone who is role in it: only
-// the admins edit a club. An event keeps a schedule, a group has none.
+// the admins edit a club.
 func (c *Club) Edited(role Role, changes Changes) (*Club, error) {
 	if !role.Manages() {
 		return nil, ErrCannotEdit
 	}
 
 	edited := *c
-
-	if c.IsEvent() {
-		if changes.Schedule.Start.IsZero() {
-			return nil, ErrNoStart
-		}
-		edited.schedule = changes.Schedule
-	}
-
 	edited.name = changes.Name
 	edited.description = changes.Description
 	edited.address = changes.Address
@@ -191,7 +168,7 @@ func (c *Club) Edited(role Role, changes Changes) (*Club, error) {
 	edited.adminsDisplay = changes.AdminsDisplay
 	edited.openTopics = changes.OpenTopics
 	edited.topicsAboveWall = changes.TopicsAboveWall
-	edited.closed = changes.Closed && !c.IsEvent()
+	edited.closed = changes.Closed
 
 	return &edited, nil
 }
@@ -338,6 +315,16 @@ func CheckTransfer(requester, target Role) error {
 
 	if target != RoleAdmin {
 		return ErrNotAdmin
+	}
+
+	return nil
+}
+
+// CheckDelete: only the owner deletes a club, with its wall, topics and
+// albums; openvk deletes none.
+func CheckDelete(requester Role) error {
+	if requester != RoleOwner {
+		return ErrCannotDelete
 	}
 
 	return nil

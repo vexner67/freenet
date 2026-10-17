@@ -510,3 +510,22 @@ func compareAlbumPhotos(a, b *post.AlbumPhoto) int {
 
 	return bytes.Compare(aID[:], bID[:])
 }
+
+func (r *AlbumRepository) DeleteByOwner(ctx context.Context, ownerID uuid.UUID) ([]*post.AlbumPhoto, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var gone []*post.AlbumPhoto
+
+	for id, s := range r.albums {
+		if s.OwnerID == ownerID {
+			gone = append(gone, r.deleteAlbum(id)...)
+		}
+	}
+
+	return gone, nil
+}

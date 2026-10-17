@@ -224,6 +224,48 @@ func (r *PostponedRepository) DeleteByUser(ctx context.Context, userID uuid.UUID
 	return nil
 }
 
+const deleteWallPostponedQuery = `
+	DELETE FROM postponed_posts
+	WHERE wall_id = $1
+	RETURNING
+		id,
+		wall_id,
+		author_id,
+		text,
+		photo_ids,
+		from_wall,
+		signed,
+		nsfw,
+		mentioned_ids,
+		publish_at,
+		created_at
+`
+
+// DeleteOnWall deletes, returning them, the posts waiting for their time
+// on a wall.
+func (r *PostponedRepository) DeleteOnWall(ctx context.Context, wallID uuid.UUID) ([]*post.Postponed, error) {
+	rows, err := r.conn(ctx).Query(ctx, deleteWallPostponedQuery, wallID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+	defer rows.Close()
+
+	var deleted []*post.Postponed
+	for rows.Next() {
+		p, err := scanPostponed(rows)
+		if err != nil {
+			return nil, errs.Wrap("scanPostponed", err)
+		}
+		deleted = append(deleted, p)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, errs.Wrap("rows.Err", err)
+	}
+
+	return deleted, nil
+}
+
 // mentionIDs are the people a text names as a column: never NULL.
 func mentionIDs(m post.Mentions) []uuid.UUID {
 	if m == nil {

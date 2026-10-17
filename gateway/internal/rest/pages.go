@@ -66,9 +66,6 @@ func registerPages(mux *http.ServeMux, dir string) {
 	mux.Handle("GET /invite", site.page(dir, "invite.html"))
 	mux.Handle("GET /groups", site.page(dir, "groups.html"))
 	mux.Handle("GET /groups/create", site.page(dir, "club-create.html"))
-	// "Мои Встречи" is the page of "Мои Группы" listing events.
-	mux.Handle("GET /events", site.page(dir, "groups.html"))
-	mux.Handle("GET /events/create", site.page(dir, "event-create.html"))
 	mux.Handle("GET /club/{ref}", site.page(dir, "club.html"))
 	mux.Handle("GET /club/{ref}/edit", site.page(dir, "club-edit.html"))
 	mux.Handle("GET /club/{ref}/members", site.page(dir, "club-members.html"))

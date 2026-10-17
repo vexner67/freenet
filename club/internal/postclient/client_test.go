@@ -66,6 +66,44 @@ func (f *fakePost) OpenWall(_ context.Context, req *postv1.OpenWallRequest, _ ..
 	return &emptypb.Empty{}, f.err
 }
 
+func (f *fakePost) PurgeClub(_ context.Context, req *postv1.PurgeClubRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.walls = append(f.walls, "purged "+req.GetClubId())
+	return &emptypb.Empty{}, f.err
+}
+
+// A club that is gone goes to post with its wall.
+func TestPurge(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	q := outbox.NewMemory()
+	cats := uuid.New()
+	lock := &fakeLock{}
+	api := &fakePost{}
+	deliver := Deliver(api, time.Second)
+
+	if err := NewOutbox(q, lock).Deleted(ctx, cats); err != nil {
+		t.Fatal(err)
+	}
+	head, _ := q.Head(ctx, 10)
+	if len(head) != 1 || head[0].Kind != PurgeKind || len(lock.clubs) != 1 || lock.clubs[0] != cats {
+		t.Fatalf("recorded %+v under %v, want a purge under the club's lock", head, lock.clubs)
+	}
+	if err := deliver(ctx, head[0]); err != nil {
+		t.Fatal(err)
+	}
+	if len(api.walls) != 1 || api.walls[0] != "purged "+cats.String() {
+		t.Fatalf("post heard %v", api.walls)
+	}
+	if err := (Nop{}).Deleted(ctx, cats); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := deliver(ctx, outbox.Message{Kind: PurgeKind, Payload: append(cats[:], cats[:]...)}); !outbox.IsPermanent(err) {
+		t.Fatalf("a purge of two IDs: %v, want it dropped", err)
+	}
+}
+
 // A club closed and opened goes to post as a wall of a club.
 func TestWalls(t *testing.T) {
 	t.Parallel()

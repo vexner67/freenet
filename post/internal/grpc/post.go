@@ -109,6 +109,12 @@ type PurgeService interface {
 	PurgeUser(ctx context.Context, userID uuid.UUID) error
 }
 
+// ClubPurgeService erases a community's wall, topics and albums once it is
+// gone.
+type ClubPurgeService interface {
+	PurgeClub(ctx context.Context, clubID uuid.UUID) error
+}
+
 // HoldService keeps a user's likes and votes out of the counts while
 // their page is deleted.
 type HoldService interface {
@@ -149,6 +155,7 @@ type Services struct {
 	Stories     StoryService
 	Faves       FaveService
 	Purge       PurgeService
+	ClubPurge   ClubPurgeService
 	Holds       HoldService
 	Sources     SourceService
 }
@@ -167,6 +174,7 @@ type PostHandler struct {
 	storyService      StoryService
 	faveService       FaveService
 	purgeService      PurgeService
+	clubPurgeService  ClubPurgeService
 	holdService       HoldService
 	sourceService     SourceService
 	logger            *slog.Logger
@@ -186,6 +194,7 @@ func NewPostHandler(s Services, logger *slog.Logger) *PostHandler {
 		storyService:      s.Stories,
 		faveService:       s.Faves,
 		purgeService:      s.Purge,
+		clubPurgeService:  s.ClubPurge,
 		holdService:       s.Holds,
 		sourceService:     s.Sources,
 		logger:            logger,
@@ -343,6 +352,19 @@ func (h *PostHandler) PurgeUser(ctx context.Context, req *postv1.PurgeUserReques
 	return &emptypb.Empty{}, nil
 }
 
+func (h *PostHandler) PurgeClub(ctx context.Context, req *postv1.PurgeClubRequest) (*emptypb.Empty, error) {
+	clubID, err := uuid.Parse(req.GetClubId())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, "invalid club id")
+	}
+
+	if err = h.clubPurgeService.PurgeClub(ctx, clubID); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
 func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequest) (*postv1.CreatePostResponse, error) {
 	authorID, err := currentUserID(ctx)
 	if err != nil {
@@ -376,8 +398,6 @@ func (h *PostHandler) CreatePost(ctx context.Context, req *postv1.CreatePostRequ
 		Signed:   req.GetSigned(),
 		NSFW:     req.GetNsfw(),
 		Mentions: mentions,
-
-		AvatarUpdate: req.GetAvatarUpdate(),
 	})
 	if err != nil {
 		return nil, err

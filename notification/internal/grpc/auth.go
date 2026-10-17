@@ -30,7 +30,7 @@ func InternalMethods() map[string][]string {
 		notificationv1.NotificationService_Retract_FullMethodName:       {mtls.Post, mtls.User, mtls.Club},
 		notificationv1.NotificationService_ForgetPost_FullMethodName:    {mtls.Post},
 		notificationv1.NotificationService_ForgetComment_FullMethodName: {mtls.Post},
-		notificationv1.NotificationService_PurgeUser_FullMethodName:     {mtls.User},
+		notificationv1.NotificationService_PurgeUser_FullMethodName:     {mtls.User, mtls.Club},
 		notificationv1.NotificationService_PushMessage_FullMethodName:   {mtls.Message},
 	}
 }

@@ -66,8 +66,6 @@ const (
 	Kind_KIND_PHOTO_COMMENT Kind = 16
 	// The actor liked the recipient's message comment_id of topic post_id.
 	Kind_KIND_TOPIC_MESSAGE_LIKE Kind = 17
-	// The actor, an event the recipient comes to, starts soon.
-	Kind_KIND_EVENT_REMINDER Kind = 18
 	// The actor named the recipient in comment_id under the photo post_id.
 	Kind_KIND_PHOTO_MENTION Kind = 19
 	// The actor wrote comment_id under the recipient's note post_id.
@@ -104,7 +102,6 @@ var (
 		15: "KIND_PHOTO_LIKE",
 		16: "KIND_PHOTO_COMMENT",
 		17: "KIND_TOPIC_MESSAGE_LIKE",
-		18: "KIND_EVENT_REMINDER",
 		19: "KIND_PHOTO_MENTION",
 		20: "KIND_NOTE_COMMENT",
 		21: "KIND_GIFT",
@@ -130,7 +127,6 @@ var (
 		"KIND_PHOTO_LIKE":         15,
 		"KIND_PHOTO_COMMENT":      16,
 		"KIND_TOPIC_MESSAGE_LIKE": 17,
-		"KIND_EVENT_REMINDER":     18,
 		"KIND_PHOTO_MENTION":      19,
 		"KIND_NOTE_COMMENT":       20,
 		"KIND_GIFT":               21,
@@ -272,7 +268,7 @@ func (Change) EnumDescriptor() ([]byte, []int) {
 	return file_api_notification_v1_notification_proto_rawDescGZIP(), []int{2}
 }
 
-// Event: post_id is set for all but follows, invitations, appointments and reminders
+// Event: post_id is set for all but follows, invitations and appointments
 // (of a gift it is the sent gift, of votes the transfer),
 // comment_id for comments, replies, comment likes, messages of topics
 // and mentions in comments and topics.
@@ -1309,7 +1305,7 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\rrecipient_ids\x18\x03 \x03(\tR\frecipientIds\x12\x17\n" +
 	"\achat_id\x18\x04 \x01(\tR\x06chatId\x12\x1d\n" +
 	"\n" +
-	"chat_title\x18\x05 \x01(\tR\tchatTitle*\x8b\x04\n" +
+	"chat_title\x18\x05 \x01(\tR\tchatTitle*\x8d\x04\n" +
 	"\x04Kind\x12\x14\n" +
 	"\x10KIND_UNSPECIFIED\x10\x00\x12\r\n" +
 	"\tKIND_LIKE\x10\x01\x12\x10\n" +
@@ -1329,14 +1325,13 @@ const file_api_notification_v1_notification_proto_rawDesc = "" +
 	"\x12KIND_TOPIC_MENTION\x10\x0e\x12\x13\n" +
 	"\x0fKIND_PHOTO_LIKE\x10\x0f\x12\x16\n" +
 	"\x12KIND_PHOTO_COMMENT\x10\x10\x12\x1b\n" +
-	"\x17KIND_TOPIC_MESSAGE_LIKE\x10\x11\x12\x17\n" +
-	"\x13KIND_EVENT_REMINDER\x10\x12\x12\x16\n" +
+	"\x17KIND_TOPIC_MESSAGE_LIKE\x10\x11\x12\x16\n" +
 	"\x12KIND_PHOTO_MENTION\x10\x13\x12\x15\n" +
 	"\x11KIND_NOTE_COMMENT\x10\x14\x12\r\n" +
 	"\tKIND_GIFT\x10\x15\x12\x0e\n" +
 	"\n" +
 	"KIND_VOTES\x10\x16\x12\x0f\n" +
-	"\vKIND_INVITE\x10\x17*;\n" +
+	"\vKIND_INVITE\x10\x17\"\x04\b\x12\x10\x12*\x13KIND_EVENT_REMINDER*;\n" +
 	"\x03Box\x12\x13\n" +
 	"\x0fBOX_UNSPECIFIED\x10\x00\x12\x0e\n" +
 	"\n" +

@@ -428,3 +428,26 @@ func (m *TopicMessageRepository) Last(ctx context.Context, topicIDs []uuid.UUID)
 func compareIDs(a, b uuid.UUID) int {
 	return bytes.Compare(a[:], b[:])
 }
+
+func (r *TopicRepository) DeleteByClub(ctx context.Context, clubID uuid.UUID) ([]uuid.UUID, []*post.TopicMessage, error) {
+	if err := ctx.Err(); err != nil {
+		return nil, nil, errs.Wrap("ctx.Err", err)
+	}
+
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	var (
+		ids  []uuid.UUID
+		gone []*post.TopicMessage
+	)
+
+	for id, s := range r.topics {
+		if s.ClubID == clubID {
+			ids = append(ids, id)
+			gone = append(gone, r.deleteTopic(id, uuid.Nil)...)
+		}
+	}
+
+	return ids, gone, nil
+}

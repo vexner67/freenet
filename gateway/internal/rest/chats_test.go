@@ -103,6 +103,11 @@ func (f *fakeChats) Leave(_ context.Context, token, id string) error {
 	return f.err
 }
 
+func (f *fakeChats) DeleteChat(_ context.Context, token, id string) error {
+	f.did(token, "delete-chat", id)
+	return f.err
+}
+
 func (f *fakeChats) Return(_ context.Context, token, id string) error {
 	f.did(token, "return", id)
 	return f.err
@@ -334,6 +339,17 @@ func TestChangeChat(t *testing.T) {
 	}
 
 	h := newHarness(rest.Config{})
+	if w := h.do("DELETE", "/api/v1/chats/c1", "", "Authorization", annAuth); w.Code != http.StatusNoContent ||
+		!slices.Equal(h.chats.calls, []string{"delete-chat c1"}) || !slices.Equal(h.media.chatPhotos, []string{"keep c1 "}) {
+		t.Fatalf("delete: %d, calls %q, media %q", w.Code, h.chats.calls, h.media.chatPhotos)
+	}
+	h = newHarness(rest.Config{})
+	h.chats.err = failure.New(failure.PermissionDenied, "permission denied")
+	if w := h.do("DELETE", "/api/v1/chats/c1", "", "Authorization", annAuth); w.Code != http.StatusForbidden || len(h.media.chatPhotos) != 0 {
+		t.Fatalf("delete refused: %d, media %q", w.Code, h.media.chatPhotos)
+	}
+
+	h = newHarness(rest.Config{})
 	h.users.uninvitable = "cat"
 
 	if w := h.do("POST", "/api/v1/chats/c1/members", `{"members":["cat"]}`, "Authorization", annAuth); w.Code != http.StatusForbidden || len(h.chats.calls) != 0 {

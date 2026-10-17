@@ -74,7 +74,9 @@ service MediaService {
   rpc DeleteDocuments(DeleteDocumentsRequest) returns (google.protobuf.Empty);
 
   // Internal, for user: the user's page was deleted and not restored in
-  // time; all their avatars, photos and documents go. Idempotent.
+  // time; all their avatars, photos and documents go. For post: the
+  // community of this ID is gone, and its photo and backdrop go.
+  // Idempotent.
   rpc PurgeUser(PurgeUserRequest) returns (google.protobuf.Empty);
 }
 

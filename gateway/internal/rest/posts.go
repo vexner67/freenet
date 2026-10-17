@@ -93,9 +93,6 @@ type postResponse struct {
 	// FromWall: the post speaks for its wall, a community, shown as its
 	// author; who wrote it is not told.
 	FromWall bool `json:"fromWall"`
-	// AvatarUpdate: the post shows the new photo of its wall's owner
-	// ("обновил фотографию на своей странице"); never edited.
-	AvatarUpdate bool `json:"avatarUpdate"`
 	// Mine: the viewer wrote it, and may edit it; false for anonymous
 	// viewers.
 	Mine bool `json:"mine"`
@@ -149,8 +146,6 @@ type repostJSON struct {
 	Photos    []photoJSON `json:"photos"`
 	CreatedAt string      `json:"createdAt"`
 	RepostOf  string      `json:"repostOf"`
-	// AvatarUpdate: the shared post shows a new photo, as Post's.
-	AvatarUpdate bool `json:"avatarUpdate"`
 	// NSFW: the author of the shared post marked it as adult.
 	NSFW bool `json:"nsfw"`
 	// Poll is the poll the shared post asks, null for none.
@@ -266,7 +261,6 @@ func toPostResponse(p model.Post) postResponse {
 		CommentsClosed: p.CommentsClosed,
 		NSFW:           p.NSFW,
 		FromWall:       p.FromWall,
-		AvatarUpdate:   p.AvatarUpdate,
 		Mine:           p.Mine,
 		Signer:         signerJSON(p),
 		Link:           toLinkJSON(p.Author.ID, p.Link),
@@ -334,9 +328,8 @@ func toRepostJSON(p model.Post) *repostJSON {
 		CreatedAt: p.CreatedAt.UTC().Format(time.RFC3339),
 		RepostOf:  p.RepostOf,
 
-		AvatarUpdate: p.AvatarUpdate,
-		NSFW:         p.NSFW,
-		Link:         toLinkJSON(p.Author.ID, p.Link),
+		NSFW: p.NSFW,
+		Link: toLinkJSON(p.Author.ID, p.Link),
 	}
 }
 

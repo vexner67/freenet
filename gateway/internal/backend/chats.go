@@ -136,6 +136,16 @@ func (c *Chats) Leave(ctx context.Context, accessToken, id string) error {
 	return nil
 }
 
+// DeleteChat deletes the chat for everyone in it: its creator's call.
+func (c *Chats) DeleteChat(ctx context.Context, accessToken, id string) error {
+	_, err := c.api.DeleteChat(withToken(ctx, accessToken), &messagev1.DeleteChatRequest{ChatId: id})
+	if err != nil {
+		return errs.Wrap("c.api.DeleteChat", fromStatus(err))
+	}
+
+	return nil
+}
+
 func (c *Chats) Return(ctx context.Context, accessToken, id string) error {
 	_, err := c.api.ReturnToChat(withToken(ctx, accessToken), &messagev1.ReturnToChatRequest{ChatId: id})
 	if err != nil {

@@ -177,6 +177,42 @@ func (r *SuggestionRepository) DeleteByUser(ctx context.Context, userID uuid.UUI
 	return ids, nil
 }
 
+const deleteWallSuggestionsQuery = `
+	DELETE FROM suggestions
+	WHERE wall_id = $1
+	RETURNING
+		id,
+		wall_id,
+		author_id,
+		text,
+		photo_ids,
+		created_at
+`
+
+// DeleteOnWall deletes, returning them, the posts suggested for a wall.
+func (r *SuggestionRepository) DeleteOnWall(ctx context.Context, wallID uuid.UUID) ([]*post.Suggestion, error) {
+	rows, err := r.conn(ctx).Query(ctx, deleteWallSuggestionsQuery, wallID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+	defer rows.Close()
+
+	var deleted []*post.Suggestion
+	for rows.Next() {
+		s, err := scanSuggestion(rows)
+		if err != nil {
+			return nil, errs.Wrap("scanSuggestion", err)
+		}
+		deleted = append(deleted, s)
+	}
+
+	if err = rows.Err(); err != nil {
+		return nil, errs.Wrap("rows.Err", err)
+	}
+
+	return deleted, nil
+}
+
 // optionalAuthor is NULL for uuid.Nil: the suggestions of everyone.
 func optionalAuthor(id uuid.UUID) *uuid.UUID {
 	if id == uuid.Nil {

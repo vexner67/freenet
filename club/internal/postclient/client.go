@@ -34,6 +34,11 @@ const (
 	OpenKind  = "open_wall"
 )
 
+// PurgeKind is about a club that is gone, whose wall, topics and albums
+// go with it; the payload is its ID. The migration that deleted the
+// events wrote it too.
+const PurgeKind = "purge_club"
+
 // SyncKind is the kind about a stretch of all the members of a club,
 // told now and then so that the copy of post matches. The payload is the
 // club's ID, the ID the stretch starts above, whether it is the last one,
@@ -138,6 +143,12 @@ func (o *Outbox) Opened(ctx context.Context, clubID uuid.UUID) error {
 	return errs.Wrap("o.recorder.Add", o.recorder.Add(ctx, OpenKind, clubID[:]))
 }
 
+// Deleted is recorded under the lock of the club: a membership told
+// before goes before it.
+func (o *Outbox) Deleted(ctx context.Context, clubID uuid.UUID) error {
+	return o.add(ctx, clubID, PurgeKind, clubID[:])
+}
+
 func pair(clubID, userID uuid.UUID) []byte {
 	return append(clubID[:], userID[:]...)
 }
@@ -149,6 +160,7 @@ func (Nop) Joined(context.Context, uuid.UUID, uuid.UUID) error { return nil }
 func (Nop) Left(context.Context, uuid.UUID, uuid.UUID) error   { return nil }
 func (Nop) Closed(context.Context, uuid.UUID) error            { return nil }
 func (Nop) Opened(context.Context, uuid.UUID) error            { return nil }
+func (Nop) Deleted(context.Context, uuid.UUID) error           { return nil }
 
 // Deliver makes the recorded calls to the post service.
 func Deliver(api postv1.PostServiceClient, timeout time.Duration) outbox.Deliver {
@@ -159,7 +171,7 @@ func Deliver(api postv1.PostServiceClient, timeout time.Duration) outbox.Deliver
 
 		switch m.Kind {
 		case JoinKind, LeaveKind:
-		case CloseKind, OpenKind:
+		case CloseKind, OpenKind, PurgeKind:
 			want = len(uuid.UUID{})
 		case SyncKind:
 			var ok bool
@@ -192,6 +204,8 @@ func Deliver(api postv1.PostServiceClient, timeout time.Duration) outbox.Deliver
 			_, err = api.UnfollowSource(ctx, &postv1.UnfollowSourceRequest{ReaderId: uuid.UUID(m.Payload[16:]).String(), SourceId: clubID})
 		case CloseKind:
 			_, err = api.CloseWall(ctx, &postv1.CloseWallRequest{WallId: clubID, Club: true})
+		case PurgeKind:
+			_, err = api.PurgeClub(ctx, &postv1.PurgeClubRequest{ClubId: clubID})
 		default:
 			_, err = api.OpenWall(ctx, &postv1.OpenWallRequest{WallId: clubID})
 		}

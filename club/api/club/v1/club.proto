@@ -12,9 +12,6 @@ import "google/protobuf/timestamp.proto";
 service ClubService {
   // The caller creates a club and owns it.
   rpc CreateClub(CreateClubRequest) returns (CreateClubResponse);
-  // The caller creates an event ("Создать встречу"), owns it and comes to
-  // it for sure.
-  rpc CreateEvent(CreateEventRequest) returns (CreateEventResponse);
   // Public: a club by its ID or address, as the caller, if any, sees it.
   rpc GetClub(GetClubRequest) returns (GetClubResponse);
   // Public: the clubs found among ids, at most 100, in no particular
@@ -23,9 +20,7 @@ service ClubService {
   // Its admins change a club, everything at once as the settings form
   // sends it.
   rpc UpdateClub(UpdateClubRequest) returns (UpdateClubResponse);
-  // Idempotent. With maybe the caller only might come to the event
-  // ("Возможно приду"); a group, and an event that has started, are
-  // joined for sure.
+  // Idempotent; a closed club is not joined but asked to let in.
   rpc JoinClub(JoinClubRequest) returns (JoinClubResponse);
   // Idempotent; the owner cannot leave.
   rpc LeaveClub(LeaveClubRequest) returns (LeaveClubResponse);
@@ -50,19 +45,20 @@ service ClubService {
   // The owner hands the club over to one of its admins and stays an
   // admin ("Назначить владельцем").
   rpc TransferClub(TransferClubRequest) returns (google.protobuf.Empty);
-  // The caller's clubs ("Мои Группы", "Мои Встречи"), the newest joined
-  // first; with managed only those they run ("Управление"), with kind
-  // only groups or only events.
+  // The owner deletes the club with its members, wall, topics, albums and
+  // photos; openvk deletes none.
+  rpc DeleteClub(DeleteClubRequest) returns (google.protobuf.Empty);
+  // The caller's clubs ("Мои Группы"), the newest joined first; with
+  // managed only those they run ("Управление").
   rpc ListMyClubs(ListMyClubsRequest) returns (ListMyClubsResponse);
-  // Public: the clubs of a user, the newest joined first, with kind only
-  // groups or only events. Whether the
+  // Public: the clubs of a user, the newest joined first. Whether the
   // viewer may see them is the user's privacy setting, which the caller
   // checks.
   rpc ListUserClubs(ListUserClubsRequest) returns (ListUserClubsResponse);
   // Public: clubs whose name or address has every word of the query, the
   // newest first.
   rpc SearchClubs(SearchClubsRequest) returns (SearchClubsResponse);
-  // Public: how many groups there are, events not counted, for the page
+  // Public: how many groups there are, for the page
   // "о сайте".
   rpc CountClubs(CountClubsRequest) returns (CountClubsResponse);
   // Its admins show a photo as the club's, which the media service has
@@ -121,32 +117,6 @@ enum AdminsDisplay {
   ADMINS_DISPLAY_NONE = 3;
 }
 
-// What a club is: a group, or an event ("встреча") with the time it
-// starts and people who come to it.
-enum Kind {
-  KIND_UNSPECIFIED = 0;
-  KIND_GROUP = 1;
-  KIND_EVENT = 2;
-}
-
-// Which events to list by their time: an event is past when it has ended
-// or, having no end, begun.
-enum Period {
-  PERIOD_UNSPECIFIED = 0;
-  PERIOD_UPCOMING = 1;
-  PERIOD_PAST = 2;
-}
-
-// Which members of an event to list.
-enum Going {
-  // Everyone.
-  GOING_UNSPECIFIED = 0;
-  // "Точно придут".
-  GOING_SURE = 1;
-  // "Возможно придут".
-  GOING_MAYBE = 2;
-}
-
 enum Role {
   // Not a member.
   ROLE_NONE = 0;
@@ -179,12 +149,9 @@ message Club {
   // and on the right of its page; empty for none.
   string backdrop_left = 13;
   string backdrop_right = 14;
-  Kind kind = 15;
-  // When an event starts and, if set, ends; unset for a group.
-  google.protobuf.Timestamp starts_at = 16;
-  google.protobuf.Timestamp ends_at = 17;
-  // How many of member_count only might come to the event.
-  int32 maybe_count = 18;
+  // The kind, the schedule and maybe_count of the events, which are gone.
+  reserved 15 to 18;
+  reserved "kind", "starts_at", "ends_at", "maybe_count";
   // "Тип группы: закрытая": one joins by a request its admins accept
   // (JoinClub makes it), and only the members see what is in the club.
   bool closed = 19;
@@ -202,24 +169,12 @@ message ClubView {
   bool can_start_topic = 4;
   // What the owner does in the club; empty for none.
   string owner_title = 5;
-  // The caller only might come to the event.
-  bool maybe = 6;
+  reserved 6;
+  reserved "maybe";
   // The caller asked to join the closed club and waits.
   bool requested = 7;
   // How many wait to be let in; told to those who run the club.
   int32 request_count = 8;
-}
-
-message CreateEventRequest {
-  string name = 1;
-  string description = 2;
-  google.protobuf.Timestamp starts_at = 3;
-  // Unset for an event with no end; else later than starts_at.
-  google.protobuf.Timestamp ends_at = 4;
-}
-
-message CreateEventResponse {
-  ClubView club = 1;
 }
 
 message CreateClubRequest {
@@ -260,10 +215,9 @@ message UpdateClubRequest {
   AdminsDisplay admins_display = 7;
   bool open_topics = 8;
   bool topics_above_wall = 9;
-  // The schedule of an event, which must have a start; a group has none.
-  google.protobuf.Timestamp starts_at = 10;
-  google.protobuf.Timestamp ends_at = 11;
-  // "Тип группы: закрытая"; an event is never closed.
+  reserved 10, 11;
+  reserved "starts_at", "ends_at";
+  // "Тип группы: закрытая".
   bool closed = 12;
 }
 
@@ -273,7 +227,8 @@ message UpdateClubResponse {
 
 message JoinClubRequest {
   string club_id = 1;
-  bool maybe = 2;
+  reserved 2;
+  reserved "maybe";
 }
 
 message JoinClubResponse {
@@ -295,9 +250,8 @@ message ListMembersRequest {
   // 1-50; anything else means 20.
   int32 limit = 3;
   bool admins_only = 4;
-  // Without admins_only: only those who come to the event for sure, or
-  // only those who might.
-  Going going = 5;
+  reserved 5;
+  reserved "going";
 }
 
 message Member {
@@ -307,8 +261,8 @@ message Member {
   string title = 3;
   // The club hides that they run it; only those who run it are told.
   bool hidden = 4;
-  // They only might come to the event.
-  bool maybe = 5;
+  reserved 5;
+  reserved "maybe";
 }
 
 message ListMembersResponse {
@@ -373,6 +327,10 @@ message TransferClubRequest {
   string user_id = 2;
 }
 
+message DeleteClubRequest {
+  string club_id = 1;
+}
+
 message ListMyClubsRequest {
   // Empty for the newest, else next_cursor of the previous page.
   string cursor = 1;
@@ -380,10 +338,8 @@ message ListMyClubsRequest {
   int32 limit = 2;
   // Only the clubs the caller runs.
   bool managed = 3;
-  // Only groups or only events; unspecified for both.
-  Kind kind = 4;
-  // Only the events ahead or only those over; unspecified for all clubs.
-  Period period = 5;
+  reserved 4, 5;
+  reserved "kind", "period";
 }
 
 message Membership {
@@ -407,10 +363,8 @@ message ListUserClubsRequest {
   string cursor = 2;
   // 1-50; anything else means 20.
   int32 limit = 3;
-  // Only groups or only events; unspecified for both.
-  Kind kind = 4;
-  // Only the events ahead or only those over; unspecified for all clubs.
-  Period period = 5;
+  reserved 4, 5;
+  reserved "kind", "period";
 }
 
 message ListUserClubsResponse {

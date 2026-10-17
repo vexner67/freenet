@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"strings"
-	"time"
 
 	"github.com/google/uuid"
 	"github.com/jackc/pgx/v5"
@@ -49,12 +48,9 @@ const createClubQuery = `
 			wall,
 			admins_display,
 			member_count,
-			created_at,
-			kind,
-			starts_at,
-			ends_at
+			created_at
 		)
-		VALUES ($1, $2, $3, $4, $8, 1, $5, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $8, 1, $5)
 	)
 	INSERT INTO club_members (
 		id,
@@ -73,22 +69,12 @@ func (r *ClubRepository) Create(ctx context.Context, c *club.Club, ownerID uuid.
 
 	_, err = pgpool.Conn(ctx, r.pool).Exec(ctx, createClubQuery,
 		c.ID(), c.Name().String(), c.Description().String(), c.Wall().String(), c.CreatedAt(), membershipID, ownerID,
-		c.AdminsDisplay().String(), c.Kind().String(), nullableTime(c.Schedule().Start), nullableTime(c.Schedule().End))
+		c.AdminsDisplay().String())
 	if err != nil {
 		return errs.Wrap("r.pool.Exec", err)
 	}
 
 	return nil
-}
-
-// nullableTime is NULL for the zero time: a group has no schedule, an
-// event may have no end.
-func nullableTime(t time.Time) *time.Time {
-	if t.IsZero() {
-		return nil
-	}
-
-	return &t
 }
 
 const (
@@ -108,10 +94,6 @@ const (
 			topics_above_wall,
 			backdrop_left,
 			backdrop_right,
-			kind,
-			starts_at,
-			ends_at,
-			maybe_count,
 			closed
 		FROM clubs
 		WHERE id = $1
@@ -132,10 +114,6 @@ const (
 			topics_above_wall,
 			backdrop_left,
 			backdrop_right,
-			kind,
-			starts_at,
-			ends_at,
-			maybe_count,
 			closed
 		FROM clubs
 		WHERE lower(address) = lower($1)
@@ -156,10 +134,6 @@ const (
 			topics_above_wall,
 			backdrop_left,
 			backdrop_right,
-			kind,
-			starts_at,
-			ends_at,
-			maybe_count,
 			closed
 		FROM clubs
 		WHERE id = ANY($1)
@@ -225,13 +199,11 @@ func scanClub(row pgx.Row, before ...any) (*club.Club, error) {
 		website, adminsDisplay           string
 		avatarID                         *uuid.UUID
 		backdropLeft, backdropRight      *uuid.UUID
-		kind                             string
-		startsAt, endsAt                 *time.Time
 	)
 
 	dest := append(before, &s.ID, &name, &description, &address, &wall, &s.CreatedAt, &s.Members, &avatarID,
 		&website, &adminsDisplay, &s.OpenTopics, &s.TopicsAboveWall, &backdropLeft, &backdropRight,
-		&kind, &startsAt, &endsAt, &s.Maybes, &s.Closed)
+		&s.Closed)
 	if err := row.Scan(dest...); err != nil {
 		return nil, err
 	}
@@ -253,19 +225,10 @@ func scanClub(row pgx.Row, before ...any) (*club.Club, error) {
 	s.Wall = club.Wall(wall)
 	s.AdminsDisplay = club.AdminsDisplay(adminsDisplay)
 	s.CreatedAt = s.CreatedAt.UTC()
-	s.Kind = club.Kind(kind)
-
-	if startsAt != nil {
-		s.Schedule.Start = startsAt.UTC()
-	}
-	if endsAt != nil {
-		s.Schedule.End = endsAt.UTC()
-	}
 
 	return club.Restore(s), nil
 }
 
-// updateClubQuery: an event moved to another time is reminded of again.
 const updateClubQuery = `
 	UPDATE clubs
 	SET name = $2,
@@ -276,18 +239,14 @@ const updateClubQuery = `
 		admins_display = $7,
 		open_topics = $8,
 		topics_above_wall = $9,
-		reminded_at = CASE WHEN starts_at IS DISTINCT FROM $10 THEN NULL ELSE reminded_at END,
-		starts_at = $10,
-		ends_at = $11,
-		closed = $12
+		closed = $10
 	WHERE id = $1
 `
 
 func (r *ClubRepository) Update(ctx context.Context, c *club.Club) error {
 	tag, err := pgpool.Conn(ctx, r.pool).Exec(ctx, updateClubQuery,
 		c.ID(), c.Name().String(), c.Description().String(), c.Address().String(), c.Wall().String(),
-		c.Website().String(), c.AdminsDisplay().String(), c.OpenTopics(), c.TopicsAboveWall(),
-		nullableTime(c.Schedule().Start), nullableTime(c.Schedule().End), c.Closed())
+		c.Website().String(), c.AdminsDisplay().String(), c.OpenTopics(), c.TopicsAboveWall(), c.Closed())
 	if constraintOf(err) == "clubs_address_key" {
 		return club.ErrAddressTaken
 	}
@@ -381,10 +340,6 @@ const searchClubsSelect = `
 		topics_above_wall,
 		backdrop_left,
 		backdrop_right,
-		kind,
-		starts_at,
-		ends_at,
-		maybe_count,
 		closed
 	FROM clubs
 	WHERE id < $1`
@@ -427,17 +382,43 @@ func (r *ClubRepository) Search(ctx context.Context, q club.SearchQuery, before 
 const countClubsQuery = `
 	SELECT count(*)
 	FROM clubs
-	WHERE kind = $1
 `
 
-func (r *ClubRepository) Count(ctx context.Context, kind club.Kind) (int, error) {
+func (r *ClubRepository) Count(ctx context.Context) (int, error) {
 	var n int
 
-	if err := r.pool.QueryRow(ctx, countClubsQuery, kind.String()).Scan(&n); err != nil {
+	if err := r.pool.QueryRow(ctx, countClubsQuery).Scan(&n); err != nil {
 		return 0, errs.Wrap("r.pool.QueryRow", err)
 	}
 
 	return n, nil
+}
+
+// deleteClubQuery deletes the club only while ownerID owns it; its
+// members and requests go by cascade.
+const deleteClubQuery = `
+	DELETE FROM clubs
+	WHERE id = $1
+		AND EXISTS (
+			SELECT 1
+			FROM club_members
+			WHERE club_id = $1
+				AND user_id = $2
+				AND role = 'owner'
+		)
+`
+
+func (r *ClubRepository) Delete(ctx context.Context, clubID, ownerID uuid.UUID) error {
+	tag, err := pgpool.Conn(ctx, r.pool).Exec(ctx, deleteClubQuery, clubID, ownerID)
+	if err != nil {
+		return errs.Wrap("r.pool.Exec", err)
+	}
+
+	if tag.RowsAffected() == 0 {
+		return club.ErrCannotDelete
+	}
+
+	return nil
 }
 
 // escapeLike makes % and _ in a word match themselves.

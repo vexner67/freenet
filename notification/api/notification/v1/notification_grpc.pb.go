@@ -50,7 +50,8 @@ type NotificationServiceClient interface {
 	ForgetComment(ctx context.Context, in *ForgetCommentRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time; their notifications go, whether they got them or caused them,
-	// and their read mark. Idempotent.
+	// and their read mark. For club: the community of this ID is gone, and
+	// the notifications it caused go. Idempotent.
 	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token: the caller's own notifications.
 	ListNotifications(ctx context.Context, in *ListNotificationsRequest, opts ...grpc.CallOption) (*ListNotificationsResponse, error)
@@ -237,7 +238,8 @@ type NotificationServiceServer interface {
 	ForgetComment(context.Context, *ForgetCommentRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user's page was deleted and not restored in
 	// time; their notifications go, whether they got them or caused them,
-	// and their read mark. Idempotent.
+	// and their read mark. For club: the community of this ID is gone, and
+	// the notifications it caused go. Idempotent.
 	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
 	// Require an access token: the caller's own notifications.
 	ListNotifications(context.Context, *ListNotificationsRequest) (*ListNotificationsResponse, error)

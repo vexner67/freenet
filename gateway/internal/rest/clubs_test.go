@@ -29,13 +29,12 @@ type fakeClubs struct {
 	suggestWall          bool
 	openTopics           bool
 	transferredTo        string
+	deleted              string
 	// described is the admin of the last change of a seat, change what it named.
-	described           string
-	change              model.SeatChange
-	event               model.NewEvent
-	going, kind, period string
-	clubsOf             string
-	rolesAsked          []string
+	described  string
+	change     model.SeatChange
+	clubsOf    string
+	rolesAsked []string
 	// hidden are those the clubs hide, by club; hiddenFor is whose token
 	// asked about them, hiddenAsked how many times.
 	hidden      map[string][]string
@@ -91,13 +90,6 @@ func (f *fakeClubs) Create(_ context.Context, token, name, description string) (
 	return model.ClubView{Club: c, Role: "owner", OwnerID: "u1"}, f.err
 }
 
-func (f *fakeClubs) CreateEvent(_ context.Context, token string, e model.NewEvent) (model.ClubView, error) {
-	f.token, f.event = token, e
-	c := cats
-	c.Name, c.Kind, c.StartsAt, c.EndsAt, c.Members = e.Name, model.ClubKindEvent, e.StartsAt, e.EndsAt, 1
-	return model.ClubView{Club: c, Role: "owner", OwnerID: "u1"}, f.err
-}
-
 func (f *fakeClubs) Get(_ context.Context, token, ref string) (model.ClubView, error) {
 	f.token = token
 	if ref != "k1" && ref != "cats" {
@@ -123,14 +115,14 @@ func (f *fakeClubs) Update(_ context.Context, token, clubID string, changes mode
 	return v, f.err
 }
 
-func (f *fakeClubs) Join(_ context.Context, token, clubID string, maybe bool) (model.ClubView, error) {
+func (f *fakeClubs) Join(_ context.Context, token, clubID string) (model.ClubView, error) {
 	f.token, f.joined = token, clubID
 	if f.closed && f.role == "" {
 		f.requested = true
 		return f.view(), f.err
 	}
 	v := f.view()
-	v.Role, v.Maybe = "member", maybe
+	v.Role = "member"
 	return v, f.err
 }
 
@@ -140,7 +132,7 @@ func (f *fakeClubs) Leave(_ context.Context, token, clubID string) (model.ClubVi
 }
 
 func (f *fakeClubs) Members(_ context.Context, token, clubID, cursor string, limit int, filter model.ClubMemberFilter) (model.ClubMemberPage, error) {
-	f.token, f.adminsOnly, f.going = token, filter.AdminsOnly, filter.Going
+	f.token, f.adminsOnly = token, filter.AdminsOnly
 	return model.ClubMemberPage{Members: f.members, NextCursor: "m1", Total: len(f.members)}, f.err
 }
 
@@ -153,8 +145,17 @@ func (f *fakeClubs) Transfer(_ context.Context, token, clubID, userID string) er
 	return f.err
 }
 
+// Delete lets the owner only, as the club service.
+func (f *fakeClubs) Delete(_ context.Context, token, clubID string) error {
+	if f.role != "owner" {
+		return failure.New(failure.PermissionDenied, "permission denied")
+	}
+	f.token, f.deleted = token, clubID
+	return f.err
+}
+
 func (f *fakeClubs) OfUser(_ context.Context, userID, cursor string, limit int, filter model.ClubFilter) (model.UserClubPage, error) {
-	f.clubsOf, f.kind, f.period = userID, filter.Kind, filter.Period
+	f.clubsOf = userID
 	return model.UserClubPage{Clubs: []model.Club{cats}, NextCursor: "k1", Total: 4}, f.err
 }
 
@@ -173,7 +174,7 @@ func (f *fakeClubs) SetAdmin(_ context.Context, token, clubID, userID string, ad
 }
 
 func (f *fakeClubs) Mine(_ context.Context, token, cursor string, limit int, filter model.ClubFilter) (model.ClubPage, error) {
-	f.token, f.managed, f.kind, f.period = token, filter.Managed, filter.Kind, filter.Period
+	f.token, f.managed = token, filter.Managed
 	return model.ClubPage{Clubs: []model.Membership{{Club: cats, Role: "admin", Pinned: true}}, Total: 3}, f.err
 }
 
@@ -593,14 +594,9 @@ func TestClubAvatar(t *testing.T) {
 		t.Fatalf("the club's post = %+v", posts.Posts[0])
 	}
 
-	if h.posts.newPost.AvatarUpdate {
-		t.Fatal("posted without onWall")
-	}
-	if w = h.do("PUT", "/api/v1/clubs/cats/avatar?onWall=true", "jpeg", "Authorization", "Bearer tok"); w.Code != http.StatusOK {
-		t.Fatalf("upload on the wall: %d", w.Code)
-	}
-	if np := h.posts.newPost; !np.AvatarUpdate || np.WallID != "k1" || !np.ClubWall || !np.FromWall || len(np.PhotoIDs) != 1 {
-		t.Fatalf("the club's post = %+v", np)
+	// No post tells of the new photo, whatever an old page asks.
+	if w = h.do("PUT", "/api/v1/clubs/cats/avatar?onWall=true", "jpeg", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.posts.newPost.WallID != "" {
+		t.Fatalf("upload with onWall: %d, post %+v", w.Code, h.posts.newPost)
 	}
 
 	if w = h.do("DELETE", "/api/v1/clubs/cats/avatar", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.clubs.avatarID != "" || h.media.kept != "" {
@@ -697,6 +693,24 @@ func TestTransferClub(t *testing.T) {
 		t.Fatalf("to nobody: %d", w.Code)
 	}
 	if w := h.do("PUT", "/api/v1/clubs/cats/owner/bob", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", w.Code)
+	}
+}
+
+func TestDeleteClub(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.clubs.role = "admin"
+	if w := h.do("DELETE", "/api/v1/clubs/cats", "", "Authorization", "Bearer tok"); w.Code != http.StatusForbidden || h.clubs.deleted != "" {
+		t.Fatalf("an admin deletes it: %d", w.Code)
+	}
+
+	h.clubs.role = "owner"
+	if w := h.do("DELETE", "/api/v1/clubs/cats", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.clubs.deleted != "k1" {
+		t.Fatalf("delete: %d, deleted %q", w.Code, h.clubs.deleted)
+	}
+	if w := h.do("DELETE", "/api/v1/clubs/cats", ""); w.Code != http.StatusUnauthorized {
 		t.Fatalf("without a token: %d", w.Code)
 	}
 }
@@ -875,79 +889,5 @@ func TestComment_ForClub(t *testing.T) {
 	if w.Code != http.StatusOK || len(page.Comments) != 1 || page.Comments[0].Author["club"] != true || page.Comments[0].Author["id"] != "k1" ||
 		page.Comments[0].Mine || page.Comments[0].Photos[0]["large"] != "/media/photos/u1/ph1/large.jpg" {
 		t.Fatalf("list: %d %+v", w.Code, page)
-	}
-}
-
-func TestClubEvents(t *testing.T) {
-	t.Parallel()
-
-	h := newHarness(rest.Config{})
-	h.users.profile = ann
-
-	type eventJSON struct {
-		ID       string  `json:"id"`
-		Name     string  `json:"name"`
-		Kind     string  `json:"kind"`
-		StartsAt *string `json:"startsAt"`
-		EndsAt   *string `json:"endsAt"`
-		Role     string  `json:"role"`
-		Maybe    bool    `json:"maybe"`
-	}
-
-	w := h.do("POST", "/api/v1/events", `{"name":"Новый год","description":"ёлка","startsAt":"2026-12-31T20:00:00+03:00"}`, "Authorization", "Bearer tok")
-	got := decode[eventJSON](t, w)
-	if w.Code != http.StatusCreated || got.Kind != "event" || got.StartsAt == nil || *got.StartsAt != "2026-12-31T17:00:00Z" || got.EndsAt != nil || got.Role != "owner" {
-		t.Fatalf("%d %s", w.Code, w.Body)
-	}
-	if h.clubs.event.Name != "Новый год" || h.clubs.event.Description != "ёлка" || !h.clubs.event.EndsAt.IsZero() {
-		t.Fatalf("the event sent = %+v", h.clubs.event)
-	}
-
-	if w = h.do("POST", "/api/v1/events", `{"name":"Новый год","startsAt":"завтра"}`, "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
-		t.Fatalf("a bad start: %d", w.Code)
-	}
-	if w = h.do("POST", "/api/v1/events", `{"name":"Новый год","startsAt":"2026-12-31T20:00:00Z"}`); w.Code != http.StatusUnauthorized {
-		t.Fatalf("without a token: %d", w.Code)
-	}
-
-	// "Возможно приду" and the two lists of those who come.
-	w = h.do("PUT", "/api/v1/clubs/cats/membership?maybe=true", "", "Authorization", "Bearer tok")
-	if joined := decode[eventJSON](t, w); w.Code != http.StatusOK || !joined.Maybe || joined.Role != "member" {
-		t.Fatalf("a maybe: %d %s", w.Code, w.Body)
-	}
-	if w = h.do("GET", "/api/v1/clubs/cats/members?going=maybe", ""); w.Code != http.StatusOK || h.clubs.going != "maybe" || h.clubs.adminsOnly {
-		t.Fatalf("those who might come: %d, going %q", w.Code, h.clubs.going)
-	}
-
-	// "Мои Встречи" are the caller's events, "Мои Группы" the groups.
-	if w = h.do("GET", "/api/v1/me/events?managed=true", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.clubs.kind != "event" || !h.clubs.managed {
-		t.Fatalf("my events: %d, kind %q", w.Code, h.clubs.kind)
-	}
-	if w = h.do("GET", "/api/v1/me/clubs", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.clubs.kind != "group" || h.clubs.managed {
-		t.Fatalf("my groups: %d, kind %q", w.Code, h.clubs.kind)
-	}
-
-	// Those ahead and those over are told apart; groups have no time.
-	if w = h.do("GET", "/api/v1/me/events?time=past", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.clubs.period != "past" {
-		t.Fatalf("my past events: %d, period %q", w.Code, h.clubs.period)
-	}
-	if w = h.do("GET", "/api/v1/me/clubs?time=past", "", "Authorization", "Bearer tok"); w.Code != http.StatusOK || h.clubs.period != "" {
-		t.Fatalf("my groups by time: %d, period %q", w.Code, h.clubs.period)
-	}
-
-	// The events of a person are shown as their groups are.
-	w = h.do("GET", "/api/v1/users/bob/events?time=upcoming", "")
-	if w.Code != http.StatusOK || h.clubs.kind != "event" || h.clubs.period != "upcoming" || h.clubs.clubsOf != "u2" {
-		t.Fatalf("bob's events: %d, kind %q, period %q, of %q", w.Code, h.clubs.kind, h.clubs.period, h.clubs.clubsOf)
-	}
-	if w = h.do("GET", "/api/v1/users/bob/events?time=never", ""); w.Code != http.StatusOK || h.clubs.period != "" {
-		t.Fatalf("bob's events of no time: %d, period %q", w.Code, h.clubs.period)
-	}
-
-	// An event moves with its settings.
-	h.clubs.role = "owner"
-	w = h.do("PUT", "/api/v1/clubs/cats", `{"name":"Новый год","wall":"open","adminsDisplay":"creator","startsAt":"2027-01-01T00:00:00Z","endsAt":"2027-01-01T03:00:00Z"}`, "Authorization", "Bearer tok")
-	if w.Code != http.StatusOK || h.clubs.changes.StartsAt.Year() != 2027 || h.clubs.changes.EndsAt.Hour() != 3 {
-		t.Fatalf("settings: %d %s, %+v", w.Code, w.Body, h.clubs.changes)
 	}
 }

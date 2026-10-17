@@ -32,9 +32,6 @@ var (
 	ErrRepostPhotos = errors.New("a post sharing a photo has no photos of its own")
 	ErrCannotPin    = errors.New("only the owner of the wall can pin the post")
 	ErrFromOwnWall  = errors.New("a post on your own wall speaks for you")
-	// ErrAvatarUpdate: the post of a new photo is that photo and nothing
-	// else.
-	ErrAvatarUpdate = errors.New("a new photo is posted alone")
 	// ErrCannotArchive and ErrCannotCloseComments: the owner of the wall,
 	// or the admins of the community it is, keep its archive and say
 	// which posts take comments.
@@ -196,10 +193,6 @@ type Post struct {
 	// neither edits nor deletes it, as openvk's "Вы не можете удалить ваш
 	// принятый пост".
 	suggested bool
-	// avatarUpdate: the post shows the new photo of the wall's owner, a
-	// user or a community ("обновил фотографию на своей странице" of
-	// openvk); nobody edits it.
-	avatarUpdate bool
 	// archived: the owner of the wall put the post away ("Архив записей"
 	// of openvk); only they see it, and no wall or feed shows it.
 	archived bool
@@ -249,41 +242,20 @@ func NewFromWall(wallID, authorID uuid.UUID, content Content, signed bool, now t
 	return p, nil
 }
 
-// NewAvatarUpdate creates the post of the new photo of the wall of wallID,
-// as openvk does when it is uploaded with "Опубликовать запись на стене":
-// content is that one photo. On a user's own wall it is theirs; for a
-// community, which the caller has checked authorID runs, it speaks for it.
-func NewAvatarUpdate(wallID, authorID uuid.UUID, content Content, now time.Time) (*Post, error) {
-	if content.text != "" || len(content.photos) != 1 || content.repostOf != uuid.Nil || content.polled {
-		return nil, ErrAvatarUpdate
-	}
-
-	p, err := New(wallID, authorID, content, now)
-	if err != nil {
-		return nil, err
-	}
-
-	p.fromWall = wallID != authorID
-	p.avatarUpdate = true
-
-	return p, nil
-}
-
 // Stored is a post as storage keeps it.
 type Stored struct {
-	ID           uuid.UUID
-	WallID       uuid.UUID
-	AuthorID     uuid.UUID
-	Content      Content
-	CreatedAt    time.Time
-	EditedAt     time.Time
-	Counters     Counters
-	Pinned       bool
-	FromWall     bool
-	Signed       bool
-	Suggested    bool
-	AvatarUpdate bool
-	Archived     bool
+	ID        uuid.UUID
+	WallID    uuid.UUID
+	AuthorID  uuid.UUID
+	Content   Content
+	CreatedAt time.Time
+	EditedAt  time.Time
+	Counters  Counters
+	Pinned    bool
+	FromWall  bool
+	Signed    bool
+	Suggested bool
+	Archived  bool
 	// CommentsClosed: nobody comments the post anymore.
 	CommentsClosed bool
 	NSFW           bool
@@ -303,9 +275,8 @@ func Restore(s Stored) *Post {
 		fromWall:  s.FromWall,
 		signed:    s.Signed,
 		suggested: s.Suggested,
+		archived:  s.Archived,
 
-		avatarUpdate:   s.AvatarUpdate,
-		archived:       s.Archived,
 		commentsClosed: s.CommentsClosed,
 		nsfw:           s.NSFW,
 	}
@@ -325,9 +296,8 @@ func (p *Post) Stored() Stored {
 		FromWall:  p.fromWall,
 		Signed:    p.signed,
 		Suggested: p.suggested,
+		Archived:  p.archived,
 
-		AvatarUpdate:   p.avatarUpdate,
-		Archived:       p.archived,
 		CommentsClosed: p.commentsClosed,
 		NSFW:           p.nsfw,
 	}
@@ -337,9 +307,9 @@ func (p *Post) Stored() Stored {
 // at now. Only the author edits, and for editWindow after posting, as in
 // openvk. A repost keeps the post it shares; a post that shares a photo of
 // an album keeps it and has no photos of its own; a post that asks a poll
-// asks it still. The post of a new photo is not edited at all.
+// asks it still.
 func (p *Post) Edited(requesterID uuid.UUID, text Text, photos Photos, now time.Time) (*Post, error) {
-	if !p.BelongsTo(requesterID) || p.avatarUpdate {
+	if !p.BelongsTo(requesterID) {
 		return nil, ErrCannotEdit
 	}
 
@@ -467,9 +437,9 @@ func (p *Post) OnOwnWall() bool {
 
 // InWallAlbum tells whether the photos of the post go to its author's
 // "Фотографии со стены", as openvk keeps what a person uploads writing on
-// their own wall. A new photo of the page is in "Фотографии со страницы".
+// their own wall.
 func (p *Post) InWallAlbum() bool {
-	return p.OnOwnWall() && !p.avatarUpdate
+	return p.OnOwnWall()
 }
 
 func (p *Post) ID() uuid.UUID {
@@ -492,13 +462,8 @@ func (p *Post) CreatedAt() time.Time {
 	return p.createdAt
 }
 
-// EditableUntil is when the author can no longer edit the post: when it
-// was made for the post of a new photo, which is never edited.
+// EditableUntil is when the author can no longer edit the post.
 func (p *Post) EditableUntil() time.Time {
-	if p.avatarUpdate {
-		return p.createdAt
-	}
-
 	return p.createdAt.Add(editWindow)
 }
 
@@ -526,9 +491,4 @@ func (p *Post) Signed() bool {
 
 func (p *Post) Suggested() bool {
 	return p.suggested
-}
-
-// AvatarUpdate: the post shows the new photo of its wall's owner.
-func (p *Post) AvatarUpdate() bool {
-	return p.avatarUpdate
 }

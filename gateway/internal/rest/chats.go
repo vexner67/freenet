@@ -499,6 +499,25 @@ func (a *api) leaveChat(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+// deleteChat is the creator's "Удалить беседу": the chat goes for
+// everyone with its messages, and then its photo.
+func (a *api) deleteChat(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	id := r.PathValue("id")
+	if err = a.chats.DeleteChat(r.Context(), token, id); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	a.cleanUpChatPhotos(r, token, id, "")
+	w.WriteHeader(http.StatusNoContent)
+}
+
 func (a *api) returnToChat(w http.ResponseWriter, r *http.Request) {
 	a.changeChat(w, r, func(token, id string) error {
 		return a.chats.Return(r.Context(), token, id)

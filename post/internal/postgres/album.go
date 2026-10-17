@@ -217,6 +217,37 @@ func (r *AlbumRepository) Delete(ctx context.Context, id uuid.UUID) ([]*post.Alb
 	return collectAlbumPhotos(rows)
 }
 
+// deleteOwnerAlbumsQuery returns the photos the albums take with them, as
+// deleteAlbumQuery does.
+const deleteOwnerAlbumsQuery = `
+	WITH gone AS (
+		DELETE FROM albums
+		WHERE owner_id = $1
+		RETURNING id
+	)
+	SELECT
+		id,
+		album_id,
+		author_id,
+		description,
+		created_at,
+		like_count,
+		comment_count - hidden_photo_comments(id) AS comment_count,
+		nsfw
+	FROM album_photos
+	WHERE album_id IN (SELECT id FROM gone)
+`
+
+// DeleteByOwner deletes the albums of an owner, returning their photos.
+func (r *AlbumRepository) DeleteByOwner(ctx context.Context, ownerID uuid.UUID) ([]*post.AlbumPhoto, error) {
+	rows, err := r.conn(ctx).Query(ctx, deleteOwnerAlbumsQuery, ownerID)
+	if err != nil {
+		return nil, errs.Wrap("r.conn.Query", err)
+	}
+
+	return collectAlbumPhotos(rows)
+}
+
 const listAlbumsQuery = `
 	SELECT
 		id,

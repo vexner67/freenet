@@ -16,6 +16,9 @@ type Notifier interface {
 	Appointed(ctx context.Context, clubID, userID uuid.UUID) error
 	// Dismissed takes back the notification of the appointment.
 	Dismissed(ctx context.Context, clubID, userID uuid.UUID) error
+	// Deleted: the club is gone, and the notifications it caused or
+	// that are about it go too.
+	Deleted(ctx context.Context, clubID uuid.UUID) error
 }
 
 // Readers records what the post service has to hear about memberships:
@@ -29,6 +32,9 @@ type Readers interface {
 	Left(ctx context.Context, clubID, userID uuid.UUID) error
 	Closed(ctx context.Context, clubID uuid.UUID) error
 	Opened(ctx context.Context, clubID uuid.UUID) error
+	// Deleted: the club is gone, its wall, topics, albums and photos go
+	// with it.
+	Deleted(ctx context.Context, clubID uuid.UUID) error
 }
 
 // TxManager runs fn in one transaction: everything it saves is kept if it

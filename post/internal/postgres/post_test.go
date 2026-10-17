@@ -294,21 +294,6 @@ func TestPostRepository_ClubWalls(t *testing.T) {
 	if got := here(mine); !slices.Equal(got, []uuid.UUID{adminsOwn.ID()}) {
 		t.Fatalf("the feed without the club = %v; the member's post there goes too", got)
 	}
-
-	photo, err := post.NewContent("", post.Photos{uuid.New()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	newPhoto, err := post.NewAvatarUpdate(club, admin, photo, time.Now())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err = repo.Save(ctx, newPhoto); err != nil {
-		t.Fatalf("Save: %v", err)
-	}
-	if got, err := repo.Get(ctx, newPhoto.ID()); err != nil || !got.AvatarUpdate() || !got.FromWall() {
-		t.Fatalf("the club's new photo = %+v, %v", got, err)
-	}
 }
 
 func TestSourceRepository(t *testing.T) {

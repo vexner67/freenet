@@ -128,6 +128,7 @@ const (
 	PostService_RenameDocument_FullMethodName         = "/post.v1.PostService/RenameDocument"
 	PostService_DeleteDocument_FullMethodName         = "/post.v1.PostService/DeleteDocument"
 	PostService_PurgeUser_FullMethodName              = "/post.v1.PostService/PurgeUser"
+	PostService_PurgeClub_FullMethodName              = "/post.v1.PostService/PurgeClub"
 	PostService_HoldUserReactions_FullMethodName      = "/post.v1.PostService/HoldUserReactions"
 	PostService_ReleaseUserReactions_FullMethodName   = "/post.v1.PostService/ReleaseUserReactions"
 	PostService_FollowSource_FullMethodName           = "/post.v1.PostService/FollowSource"
@@ -434,6 +435,10 @@ type PostServiceClient interface {
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
 	PurgeUser(ctx context.Context, in *PurgeUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Internal, for club: the community is gone. The posts on its wall go,
+	// with their likes and comments, and so do what was suggested and
+	// postponed for it, its topics and its albums. Idempotent.
+	PurgeClub(ctx context.Context, in *PurgeClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Internal, for user: the user deleted their page. Their likes and
 	// their votes in polls leave the counts and the lists of who liked,
 	// kept aside until the page is restored or erased. Idempotent.
@@ -1553,6 +1558,16 @@ func (c *postServiceClient) PurgeUser(ctx context.Context, in *PurgeUserRequest,
 	return out, nil
 }
 
+func (c *postServiceClient) PurgeClub(ctx context.Context, in *PurgeClubRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, PostService_PurgeClub_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *postServiceClient) HoldUserReactions(ctx context.Context, in *HoldUserReactionsRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1920,6 +1935,10 @@ type PostServiceServer interface {
 	// time. Their posts and the posts on their wall go, with all their likes
 	// and comments, and their likes and comments on others' posts. Idempotent.
 	PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error)
+	// Internal, for club: the community is gone. The posts on its wall go,
+	// with their likes and comments, and so do what was suggested and
+	// postponed for it, its topics and its albums. Idempotent.
+	PurgeClub(context.Context, *PurgeClubRequest) (*emptypb.Empty, error)
 	// Internal, for user: the user deleted their page. Their likes and
 	// their votes in polls leave the counts and the lists of who liked,
 	// kept aside until the page is restored or erased. Idempotent.
@@ -2282,6 +2301,9 @@ func (UnimplementedPostServiceServer) DeleteDocument(context.Context, *DeleteDoc
 }
 func (UnimplementedPostServiceServer) PurgeUser(context.Context, *PurgeUserRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method PurgeUser not implemented")
+}
+func (UnimplementedPostServiceServer) PurgeClub(context.Context, *PurgeClubRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method PurgeClub not implemented")
 }
 func (UnimplementedPostServiceServer) HoldUserReactions(context.Context, *HoldUserReactionsRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method HoldUserReactions not implemented")
@@ -4269,6 +4291,24 @@ func _PostService_PurgeUser_Handler(srv interface{}, ctx context.Context, dec fu
 	return interceptor(ctx, in, info, handler)
 }
 
+func _PostService_PurgeClub_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(PurgeClubRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(PostServiceServer).PurgeClub(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: PostService_PurgeClub_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(PostServiceServer).PurgeClub(ctx, req.(*PurgeClubRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _PostService_HoldUserReactions_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(HoldUserReactionsRequest)
 	if err := dec(in); err != nil {
@@ -4833,6 +4873,10 @@ var PostService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "PurgeUser",
 			Handler:    _PostService_PurgeUser_Handler,
+		},
+		{
+			MethodName: "PurgeClub",
+			Handler:    _PostService_PurgeClub_Handler,
 		},
 		{
 			MethodName: "HoldUserReactions",
