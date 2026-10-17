@@ -1115,7 +1115,7 @@ func (f *fakeMedia) ReleasePhotos(_ context.Context, _ string, photoIDs []string
 }
 
 func (f *fakeMedia) Photo(_ context.Context, userID, photoID string, small bool) ([]byte, error) {
-	if userID != "u1" || photoID != "ph1" {
+	if userID != "u1" || (photoID != "ph1" && photoID != stickerPhotoID) {
 		return nil, failure.New(failure.NotFound, "photo not found")
 	}
 	if small {

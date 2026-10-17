@@ -832,6 +832,20 @@ paths:
               schema: { type: string, format: binary }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /media/stickers/{sticker}:
+    get:
+      summary: A sticker a person made of their photo
+      description: The smaller size of its photo. Its name never changes, so responses are cached for a year.
+      parameters:
+        - { name: sticker, in: path, required: true, schema: { type: string, pattern: "^[0-9a-f]{32}$" } }
+      responses:
+        "200":
+          description: JPEG, up to 640 on the longer side
+          content:
+            image/jpeg:
+              schema: { type: string, format: binary }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /media/avatars/{userId}/{avatarId}/{file}:
     get:
       summary: A profile photo
@@ -1063,6 +1077,30 @@ paths:
         "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/me/posts:
+    get:
+      summary: The posts you wrote, newest first ("Написанные мной записи")
+      description: |
+        What you wrote on your wall and on the walls of others, people and
+        communities, with the beginnings of the texts; `total` counts it.
+        Not what was archived on the wall of another, nor what you
+        suggested for a community and its admins published. A post on the
+        wall of a deleted page is left out of `posts`, still counted.
+      security: [{ bearer: [] }]
+      parameters:
+        - name: cursor
+          in: query
+          schema: { type: string }
+        - name: limit
+          in: query
+          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
+      responses:
+        "200":
+          description: A page of your posts
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/PostPage" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
     post:
       summary: Write on your own wall
       description: |
@@ -3782,32 +3820,6 @@ paths:
         "400": { $ref: "#/components/responses/InvalidArgument" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
 
-  /api/v1/me/posts:
-    get:
-      summary: The posts you wrote, newest first ("Написанные мной записи")
-      description: |
-        What you wrote on your wall and on the walls of others, people and
-        communities, with the beginnings of the texts; `total` counts it.
-        Not what was archived on the wall of another, nor what you
-        suggested for a community and its admins published. A post on the
-        wall of a deleted page is left out of `posts`, still counted.
-      security: [{ bearer: [] }]
-      parameters:
-        - name: cursor
-          in: query
-          schema: { type: string }
-        - name: limit
-          in: query
-          schema: { type: integer, minimum: 1, maximum: 50, default: 20 }
-      responses:
-        "200":
-          description: A page of your posts
-          content:
-            application/json:
-              schema: { $ref: "#/components/schemas/PostPage" }
-        "400": { $ref: "#/components/responses/InvalidArgument" }
-        "401": { $ref: "#/components/responses/Unauthenticated" }
-
   /api/v1/gifts:
     get:
       summary: The catalogue of gifts ("Выбрать подарок")
@@ -4130,32 +4142,113 @@ paths:
       summary: The sticker shop ("Магазин стикеров")
       description: |
         No token needed; with one, each pack says whether it is yours. The
-        catalogue is fixed: a pack costs `price` votes ("голоса") once, 0
-        for a free one. The pictures are the site's, which knows a sticker
-        by its name.
+        packs of the site come first: their pictures are the site's, which
+        knows a sticker by its name. Then the packs people made of their
+        photos in the "Студия стикеров", newest first, with `author`:
+        those `published` (not of deleted pages), and, with a token, your
+        own and those you have taken. Their stickers are at
+        `/media/stickers/{sticker}`. A pack costs `price` votes
+        ("голоса") once, 0 for a free one; the votes for a pack a person
+        made go to its author.
       responses:
         "200":
           description: The catalogue
           content:
             application/json:
-              schema:
-                type: object
-                required: [packs]
-                properties:
-                  packs:
-                    type: array
-                    items:
-                      type: object
-                      required: [id, price, stickers, bought, added]
-                      properties:
-                        id: { type: string, description: "The name of the pack, as `cats`" }
-                        price: { type: integer, minimum: 0, description: "What it costs once, in votes; 0 is free" }
-                        stickers:
-                          type: array
-                          items: { type: string, description: "The name of a sticker, as `cat_hi`" }
-                        bought: { type: boolean, description: "You have taken it, free or for votes" }
-                        added: { type: boolean, description: "It is among your stickers: you can send them" }
+              schema: { $ref: "#/components/schemas/StickerPacks" }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+
+  /api/v1/me/sticker-packs:
+    get:
+      summary: The packs you made ("Студия стикеров"), newest first
+      description: Each with `holders`, how many others have taken it.
+      security: [{ bearer: [] }]
+      responses:
+        "200":
+          description: Your packs
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StickerPacks" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+    post:
+      summary: Make a pack of your photos ("Сохранить набор")
+      description: |
+        The profile must be filled in first: a pack is signed with your
+        name. `photos` are your uploads from `POST /api/v1/me/photos`, up
+        to 10 at once (more are added by edits, up to 40 in a pack), not
+        attached anywhere yet; each becomes a sticker, in this order. At
+        most 20 packs per person. The pack is among your stickers at once;
+        with `published` the shop shows it to everyone.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StickerPackRequest" }
+      responses:
+        "201":
+          description: The new pack
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StickerPack" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "409":
+          description: You have made 20 packs (`too many sticker packs`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/sticker-packs/{pack}:
+    parameters:
+      - name: pack
+        in: path
+        required: true
+        schema: { type: string }
+    patch:
+      summary: Change a pack you made
+      description: |
+        Name, description, price and `published` are set as given.
+        `addPhotos` (up to 10 uploads of yours) go after the stickers,
+        `removePhotos` (stickers by their photos) are taken out and their
+        files deleted — not from a pack others have taken (409). Those who
+        took the pack keep it, whatever its price or `published` becomes.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/StickerPackRequest" }
+      responses:
+        "200":
+          description: The pack
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StickerPack" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not your pack", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409":
+          description: Others have taken the pack (`the sticker pack is taken by others`)
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Delete a pack you made ("Удалить набор")
+      description: With its photos; a pack others have taken stays (409).
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403": { description: "Not your pack", content: { application/json: { schema: { $ref: "#/components/schemas/Error" } } } }
+        "409":
+          description: Others have taken the pack
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/v1/me/stickers/{pack}:
     parameters:
@@ -5937,6 +6030,57 @@ components:
         ip: { type: string, description: 'Where from, "" when unknown' }
         userAgent: { type: string, description: 'What the browser called itself, "" when unknown' }
         current: { type: boolean, description: The session of the access token that asks }
+    StickerPacks:
+      type: object
+      required: [packs]
+      properties:
+        packs:
+          type: array
+          items: { $ref: "#/components/schemas/StickerPack" }
+
+    StickerPack:
+      type: object
+      required: [id, price, stickers, bought, added, author, published]
+      properties:
+        id: { type: string, description: "The name of the pack: `cats`, or 32 hex digits for one a person made" }
+        price: { type: integer, minimum: 0, description: "What it costs once, in votes; 0 is free" }
+        stickers:
+          type: array
+          items: { type: string, description: "The name of a sticker: `cat_hi`, or 32 hex digits for a photo" }
+        bought: { type: boolean, description: "You have taken it, free or for votes" }
+        added: { type: boolean, description: "It is among your stickers: you can send them" }
+        author:
+          description: Who made it of their photos; null for a pack of the site (and of a deleted page)
+          nullable: true
+          allOf: [{ $ref: "#/components/schemas/Author" }]
+        name: { type: string, description: "Of a pack a person made" }
+        about: { type: string, description: "Of a pack a person made" }
+        published: { type: boolean, description: "The shop shows it; a pack of the site always" }
+        holders: { type: integer, description: "How many others have taken it; in your own packs only" }
+
+    StickerPackRequest:
+      type: object
+      required: [name]
+      properties:
+        name: { type: string, maxLength: 64, description: "One line" }
+        about: { type: string, maxLength: 500 }
+        price: { type: integer, minimum: 0, maximum: 1000, description: "In votes, 0 for a free pack" }
+        published: { type: boolean, description: "Show it in the shop" }
+        photos:
+          type: array
+          maxItems: 10
+          items: { type: string }
+          description: Of a new pack
+        addPhotos:
+          type: array
+          maxItems: 10
+          items: { type: string }
+          description: Of an edit
+        removePhotos:
+          type: array
+          items: { type: string }
+          description: Of an edit
+
     Error:
       type: object
       required: [error]
