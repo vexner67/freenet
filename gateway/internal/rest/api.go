@@ -430,13 +430,24 @@ type Gifts interface {
 }
 
 // Stickers are openvk's "Стикеры", which the user service keeps: packs
-// people take, free or for votes, and send in messages.
+// people take, free or for votes, and send in messages, and those they
+// make of their photos in the "Студия стикеров".
 type Stickers interface {
 	// Catalog is every pack, with which of them the caller, anonymous
 	// without accessToken, has taken and keeps among their stickers.
 	Catalog(ctx context.Context, accessToken string) ([]model.StickerPack, error)
 	Add(ctx context.Context, accessToken, packID string) error
 	Remove(ctx context.Context, accessToken, packID string) error
+	// Mine are the packs the caller made, newest first.
+	Mine(ctx context.Context, accessToken string) ([]model.StickerPack, error)
+	// Create makes a pack of the caller's photos in d.Added.
+	Create(ctx context.Context, accessToken string, d model.StickerPackDraft) (model.StickerPack, error)
+	// Edit returns the pack and the photos it no longer has.
+	Edit(ctx context.Context, accessToken, packID string, d model.StickerPackDraft) (model.StickerPack, []string, error)
+	// Delete returns the photos the pack had.
+	Delete(ctx context.Context, accessToken, packID string) ([]string, error)
+	// Author is whose photo the sticker is; "" for one of the site or none.
+	Author(ctx context.Context, sticker string) (string, error)
 }
 
 // Votes are openvk's "голоса", which the user service keeps: vouchers give
@@ -748,6 +759,10 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/stickers", a.stickerCatalog)
 	mux.HandleFunc("PUT /api/v1/me/stickers/{pack}", a.addStickerPack)
 	mux.HandleFunc("DELETE /api/v1/me/stickers/{pack}", a.removeStickerPack)
+	mux.HandleFunc("GET /api/v1/me/sticker-packs", a.myStickerPacks)
+	mux.HandleFunc("POST /api/v1/me/sticker-packs", a.createStickerPack)
+	mux.HandleFunc("PATCH /api/v1/sticker-packs/{pack}", a.editStickerPack)
+	mux.HandleFunc("DELETE /api/v1/sticker-packs/{pack}", a.deleteStickerPack)
 	mux.HandleFunc("POST /api/v1/me/vouchers", a.redeemVoucher)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/votes", a.transferVotes)
 	mux.HandleFunc("GET /api/v1/vouchers", a.listVouchers)
@@ -770,6 +785,7 @@ func (a *api) routes() *http.ServeMux {
 
 	mux.HandleFunc("POST /api/v1/me/photos", a.uploadPhoto)
 	mux.HandleFunc("GET /media/photos/{userID}/{photoID}/{file}", a.servePhoto)
+	mux.HandleFunc("GET /media/stickers/{sticker}", a.serveSticker)
 	mux.HandleFunc("GET /media/documents/{id}", a.serveDocument)
 
 	if a.webDir != "" {

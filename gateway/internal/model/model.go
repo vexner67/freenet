@@ -1309,13 +1309,32 @@ type VoucherPage struct {
 
 // StickerPack is a pack of the "Магазин стикеров": Price votes once, 0
 // for a free one. Bought: the caller has taken it; Added: it is among
-// their stickers.
+// their stickers. A pack of the site has no AuthorID — the site names it
+// and draws it; one a person made of their photos carries its Name and
+// About, and the shop shows it when Published. Holders is how many others
+// have taken it, told to its author only.
 type StickerPack struct {
-	ID       string
-	Price    int64
-	Stickers []string
-	Bought   bool
-	Added    bool
+	ID        string
+	Price     int64
+	Stickers  []string
+	Bought    bool
+	Added     bool
+	AuthorID  string
+	Name      string
+	About     string
+	Published bool
+	Holders   int
+}
+
+// StickerPackDraft is what the author of a pack says of it, and the
+// photos added to it or taken out of it.
+type StickerPackDraft struct {
+	Name      string
+	About     string
+	Price     int64
+	Published bool
+	Added     []string
+	Removed   []string
 }
 
 // Document is a file of "Мои Документы": its bytes are in the media
