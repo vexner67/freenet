@@ -4,7 +4,7 @@
 // While it is open, new ones appear at the top live (events.js).
 
 import { photoPath } from './albums.js';
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { onEvent } from './events.js';
 import { formatPostDate, notificationVerb, plainMentions, snippet } from './labels.js';
 import { $, avatarURL, el, fullName, pagePath, profilePath, renderChrome, setCounter, showError, hideError } from './layout.js';
@@ -210,7 +210,8 @@ async function loadMore() {
   hideError($('error'));
 
   try {
-    const page = await api.notifications(box, cursor);
+    const page = await (first ?? api.notifications(box, cursor));
+    first = null;
 
     $('notifications').append(...nodesOf(page.notifications));
     cursor = page.nextCursor;
@@ -229,6 +230,8 @@ async function loadMore() {
   }
 }
 
+// The page is asked for with who is signed in, in one round trip.
+let first = started(api.notifications(box, ''));
 const me = await currentUser().catch(() => null);
 if (!me) {
   location.replace('/');

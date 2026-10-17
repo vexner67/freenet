@@ -7,7 +7,7 @@
 // many and the clubs, as their "Кому видно мои группы" allows, each with
 // "Вступить в группу" or "Выйти из группы" for you.
 
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { clubsCount, myClubsCount } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showPinnedClubs, showError, hideError } from './layout.js';
 import { clubRow } from './clubs.js';
@@ -81,7 +81,8 @@ async function load(list, node, summary) {
   hideError($('error'));
 
   try {
-    const page = await list(cursor);
+    const page = await (first ?? list(cursor));
+    first = null;
 
     if (!cursor) $('summary').textContent = summary(page.total);
     $('clubs').append(...page.clubs.map((club) => node(club)));
@@ -160,6 +161,8 @@ async function showTheirs(nickname, me) {
   await more();
 }
 
+// Your own clubs are asked for with who is signed in, in one round trip.
+let first = other ? null : started(api.myClubs('', managed));
 const me = await currentUser().catch(() => null);
 if (other && other !== me?.nickname) {
   renderChrome(me);

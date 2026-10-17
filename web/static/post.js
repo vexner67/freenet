@@ -1,7 +1,7 @@
 // The page of a post at /post/<id>: the post, its comments oldest first and
 // the form for a new comment, as on openvk.
 
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { commentNode } from './comments.js';
@@ -231,11 +231,13 @@ async function removePost(post) {
   }
 }
 
+// The page is asked for with who is signed in, in one round trip.
+const wanted = started(api.post(postID));
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
-  const post = await api.post(postID);
+  const post = await wanted;
 
   renderTitle(post);
   const moderates = await moderatesWall(post, me);

@@ -4,7 +4,7 @@
 // "Редактировать" and "Удалить" for them, "Открыть оригинал" and
 // "Поделиться".
 
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { formatPostDate, replyMention } from './labels.js';
 import { $, adult, avatarURL, clubRef, el, fullName, pagePath, renderChrome, revealAdult, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -215,11 +215,13 @@ function initComments(page) {
   loadMore();
 }
 
+// The page is asked for with who is signed in, in one round trip.
+const wanted = started(api.albumPhoto(photoID));
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
-  const page = await api.albumPhoto(photoID);
+  const page = await wanted;
 
   render(page);
   $('content').hidden = false;

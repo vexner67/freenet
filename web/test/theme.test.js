@@ -5,9 +5,12 @@ import vm from 'node:vm';
 
 const source = readFileSync(new URL('../static/theme.js', import.meta.url), 'utf8');
 
-// written is what theme.js writes into a document whose storage holds items.
-function written(items, broken = false) {
+// run runs theme.js in a document whose storage holds items: what it
+// writes, the classes of the page and what it leaves for later.
+function run(items, broken = false) {
   const out = [];
+  const classes = new Set();
+  const later = [];
 
   vm.runInNewContext(source, {
     URL,
@@ -19,13 +22,29 @@ function written(items, broken = false) {
       },
     },
     Object,
+    setTimeout: (fn, ms) => later.push({ fn, ms }),
     document: {
       write: (html) => out.push(html),
+      documentElement: { classList: { add: (c) => classes.add(c), remove: (c) => classes.delete(c) } },
     },
   });
 
-  return out.join('');
+  return { html: out.join(''), classes, later };
 }
+
+// written is what theme.js writes into a document whose storage holds items.
+const written = (items, broken) => run(items, broken).html;
+
+test('the page is hidden until it is drawn, and shown anyway after a while', () => {
+  const { classes, later } = run({});
+
+  assert.ok(classes.has('pending'));
+  assert.equal(later.length, 1);
+  assert.ok(later[0].ms > 0 && later[0].ms <= 2000);
+
+  later[0].fn();
+  assert.ok(!classes.has('pending'));
+});
 
 test('the theme of the settings is put on by the path the server versions', () => {
   const html = written({ 'freenet.interface': JSON.stringify({ theme: 'dark' }) });

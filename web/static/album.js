@@ -3,7 +3,7 @@
 // may change it, and the photos, oldest first, in a grey box; a cross on a
 // photo deletes it for them, a click opens it over the page.
 
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { photosCount } from './labels.js';
 import { $, adult, el, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -115,11 +115,13 @@ function initPhotos(album, editable) {
   return loadMore();
 }
 
+// The page is asked for with who is signed in, in one round trip.
+const wanted = started(api.album(albumID));
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
-  const { album, owner, role } = await api.album(albumID);
+  const { album, owner, role } = await wanted;
   const editable = canChange(owner, role, me);
 
   renderHead(album, owner, editable);

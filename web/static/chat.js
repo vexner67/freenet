@@ -15,7 +15,7 @@
 // A message is answered ("Ответить") and reacted to, as on VK
 // (replies.js).
 
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
@@ -426,15 +426,17 @@ async function showFound() {
 // firstPage is the chat around the found message, or its newest messages:
 // without one, or when it is not there anymore.
 async function firstPage() {
-  if (foundID) {
-    try {
-      const page = await api.chatMessages(chatID, { around: foundID });
+  const asked = early;
+  early = null;
+  if (!foundID) return asked;
 
-      gap = true;
-      return page;
-    } catch (e) {
-      if (e.status !== 404 && e.status !== 400) throw e;
-    }
+  try {
+    const page = await asked;
+
+    gap = true;
+    return page;
+  } catch (e) {
+    if (e.status !== 404 && e.status !== 400) throw e;
   }
 
   return api.chatMessages(chatID);
@@ -787,6 +789,10 @@ function setUpInput() {
   typingWatch = watchTyping($('text'), () => (editing ? Promise.resolve() : api.chatTyping(chatID)));
 }
 
+// The page is asked for with who is signed in, in one round trip.
+const wanted = started(api.chat(chatID));
+// The messages first shown: the newest, or those around the one found.
+let early = started(api.chatMessages(chatID, foundID ? { around: foundID } : {}));
 me = await currentUser().catch(() => null);
 if (!me) {
   location.replace('/');
@@ -794,7 +800,7 @@ if (!me) {
   renderChrome(me);
 
   try {
-    const [found, page] = await Promise.all([api.chat(chatID), firstPage()]);
+    const [found, page] = await Promise.all([wanted, firstPage()]);
     const selectedMessages = () => [...selected].map((id) => shown.get(id)?.message).filter(Boolean);
 
     setUpInput();

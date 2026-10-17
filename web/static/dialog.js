@@ -14,7 +14,7 @@
 // with the key of this browser and seals what it sends; until the peer has
 // a key nobody can write to them.
 
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { initAttachments } from './attach.js';
 import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
@@ -184,7 +184,12 @@ const react = (m, reaction) => reactWith({ shown, userID: me.id, put: api.reactT
 
 // page is a page of the dialog with what its messages say opened.
 async function page(at = {}) {
-  const p = await api.messages(nickname, at);
+  return opened(api.messages(nickname, at));
+}
+
+// opened is the page asked, its messages opened with the keys here.
+async function opened(asked) {
+  const p = await asked;
 
   await openMessages(me.id, p.messages);
   return p;
@@ -475,15 +480,17 @@ async function showFound() {
 // firstPage is the dialog around the found message, or its newest
 // messages: without one, or when it is not there anymore.
 async function firstPage() {
-  if (foundID) {
-    try {
-      const around = await page({ around: foundID });
+  const asked = early;
+  early = null;
+  if (!foundID) return opened(asked);
 
-      gap = true;
-      return around;
-    } catch (e) {
-      if (e.status !== 404 && e.status !== 400) throw e;
-    }
+  try {
+    const around = await opened(asked);
+
+    gap = true;
+    return around;
+  } catch (e) {
+    if (e.status !== 404 && e.status !== 400) throw e;
   }
 
   return page();
@@ -734,6 +741,9 @@ async function whyNotWrite() {
   return [errorText({ message: 'you cannot write to this user' })];
 }
 
+// The page is asked for with who is signed in, in one round trip.
+// The messages first shown: the newest, or those around the one found.
+let early = started(api.messages(nickname, foundID ? { around: foundID } : {}));
 me = await currentUser().catch(() => null);
 if (!me) {
   location.replace('/');

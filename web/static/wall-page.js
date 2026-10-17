@@ -6,7 +6,7 @@
 // the first tab only. VK's "Отложенные записи" (openvk has none), the
 // posts that wait for their time, are a tab of the same page.
 
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { archiveYears, genitiveName } from './labels.js';
 import { $, clubRef, el, fullName, hideError, pagePath, renderChrome, showError } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -138,11 +138,13 @@ document.addEventListener('click', (event) => {
   }
 });
 
+// The page is asked for with who is signed in, in one round trip.
+const wanted = started(loadOwner());
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
-  const { owner, options } = await loadOwner();
+  const { owner, options } = await wanted;
   const name = owner.club ? owner.name : fullName(owner);
 
   document.title = `Стена | ${name} | Freenet`;

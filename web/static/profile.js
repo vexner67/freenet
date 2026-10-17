@@ -1,4 +1,4 @@
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, onlineCount, commonCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
@@ -433,13 +433,15 @@ async function reactivate() {
   }
 }
 
+// The page is asked for with who is signed in, in one round trip.
+const wanted = started(api.profile(nickname));
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
   // The public profile also brings the follow counters; the owner sees the
-  // whole profile from /me.
-  const profile = await (me?.deactivated ? api.publicProfile(nickname) : api.profile(nickname));
+  // whole profile from /me. A deleted page sees others as a guest does.
+  const profile = await (me?.deactivated ? api.publicProfile(nickname) : wanted);
   const isOwner = Boolean(me) && me.id === profile.id;
 
   if (profile.deactivated) {

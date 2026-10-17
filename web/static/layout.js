@@ -3,7 +3,7 @@
 
 import { button, openModal } from './modal.js';
 import { accountName, canPark, onAccountChange, park, parkedAccounts, signedInAs, switchTo, tendParked } from './accounts.js';
-import { api } from './api.js';
+import { api, idle } from './api.js';
 import { ensureKey } from './e2ee.js';
 import { connectEvents, onEvent } from './events.js';
 import { errorText, foundParts, hashtagPath, isLongText, pushOfferText, pushStateTexts, setTimezone, textParts, unreadCountText } from './labels.js';
@@ -302,6 +302,12 @@ function applyLook(ui) {
 }
 
 if (typeof document !== 'undefined') applyLook(storedLook());
+
+// theme.js hides the page until it is drawn whole: once the reads it
+// makes are answered, the answers that bring more reads included, so it
+// does not come up block by block. theme.js shows it anyway after a
+// while, for a slow server.
+if (typeof document !== 'undefined') idle().then(() => document.documentElement.classList.remove('pending'));
 
 // isMicroblog: posts are laid out as openvk's "Микроблог".
 export function isMicroblog() {

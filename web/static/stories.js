@@ -22,7 +22,8 @@ const viewers = {
 
 // initStoryBar fills bar with the stories above the news of me; one who
 // filled in their profile can tell a story of their own.
-export async function initStoryBar(bar, me) {
+// asked, when the page has asked already, are the stories first shown.
+export async function initStoryBar(bar, me, asked = null) {
   let authors = [];
 
   function render() {
@@ -42,7 +43,9 @@ export async function initStoryBar(bar, me) {
 
   async function load() {
     try {
-      authors = (await api.stories()).authors;
+      const got = asked ?? api.stories();
+      asked = null;
+      authors = (await got).authors;
     } catch {
       authors = []; // The stories are a nicety: the news go on without them.
     }
