@@ -1,4 +1,4 @@
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { $, el, isMicroblog, renderChrome, showError, hideError, autosize } from './layout.js';
 import { postNode, wallOwnerID } from './posts.js';
 import { initAttachments } from './attach.js';
@@ -27,11 +27,16 @@ const showIgnored = new URLSearchParams(location.search).get(SHOW_IGNORED) === '
 
 let cursor = '';
 
+function feedPage() {
+  return api.feed(cursor, isMicroblog(), all, { limit: settings.posts, alien: settings.alien, ignored: showIgnored });
+}
+
 async function loadMore(me) {
   hideError($('error'));
 
   try {
-    const page = await api.feed(cursor, isMicroblog(), all, { limit: settings.posts, alien: settings.alien, ignored: showIgnored });
+    const page = await (cursor ? feedPage() : first ?? feedPage());
+    first = null;
 
     $('posts').append(...page.posts.map((post) => feedNode(post, me)));
     cursor = page.nextCursor;
@@ -230,6 +235,9 @@ function gone(node, text) {
   node.replaceWith(el('div', { className: 'post-deleted', textContent: text }));
 }
 
+// The page is asked for with who is signed in, in one round trip.
+let first = started(feedPage());
+const stories = started(api.stories());
 const me = await currentUser().catch(() => null);
 if (!me) {
   location.replace('/');
@@ -239,7 +247,7 @@ if (!me) {
   $('example-url').textContent = `${location.host}/никнейм`;
   // Without a nickname of your own you have no name to sign a post.
   if (me.profileCompleted) initForm(me);
-  initStoryBar($('story-bar'), me);
+  initStoryBar($('story-bar'), me, stories);
   $('more').addEventListener('click', () => loadMore(me));
   $('feed-settings').addEventListener('click', () => openFeedSettings({
     showIgnored,

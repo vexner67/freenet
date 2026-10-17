@@ -7,6 +7,16 @@
 // the settings are known; the keys and the themes are the ones it names.
 // The stylesheets are named whole: the server puts their versions into
 // the paths, the same ones layout.js gets.
+//
+// It also hides the page below the header until the modules have drawn it
+// (layout.js shows it): a page comes up whole, not block by block. A slow
+// server or a broken script shows what there is after a while.
+(() => {
+  const root = document.documentElement;
+  root.classList.add('pending');
+  setTimeout(() => root.classList.remove('pending'), 1200);
+})();
+
 (() => {
   const themes = {
     blue: '/static/themes/blue.css',

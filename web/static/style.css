@@ -175,6 +175,8 @@ h1.page-title { font-size: inherit; }
 /* Columns */
 
 .columns { display: flex; gap: 8px; margin-top: 6px; }
+/* Until the page is drawn whole (theme.js, layout.js). */
+.pending .columns { visibility: hidden; }
 
 .sidebar { width: 140px; flex-shrink: 0; }
 

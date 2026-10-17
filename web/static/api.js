@@ -30,8 +30,49 @@ export const session = {
   },
 };
 
-// request sends body as JSON, or as is when it is a file (a photo).
-async function request(method, path, body, accessToken) {
+// request sends body as JSON, or as is when it is a file (a photo). The
+// reads of the API a page makes at once go to the server together.
+function request(method, path, body, accessToken) {
+  return tracked(untracked(method, path, body, accessToken));
+}
+
+function untracked(method, path, body, accessToken) {
+  if (method === 'GET' && body === undefined && path.startsWith('/api/v1/')) return read(path, accessToken);
+
+  return send(method, path, body, accessToken);
+}
+
+// The requests of the page on their way: the page is shown whole once
+// none are left (idle).
+let busy = 0;
+let idlers = [];
+
+function tracked(promise) {
+  busy++;
+
+  const done = () => {
+    busy--;
+    if (busy) return;
+
+    const waiting = idlers;
+    idlers = [];
+    setTimeout(() => waiting.forEach((check) => check()), 0);
+  };
+  promise.then(done, done);
+
+  return promise;
+}
+
+// idle is when the page has no request on its way, looked at after what
+// the page does at once: the reads that the answers start count as well.
+export function idle() {
+  return new Promise((resolve) => {
+    const check = () => (busy ? idlers.push(check) : resolve());
+    setTimeout(check, 0);
+  });
+}
+
+async function send(method, path, body, accessToken) {
   const isFile = body instanceof Blob;
   const headers = {};
   if (body !== undefined) headers['Content-Type'] = isFile ? body.type || 'application/octet-stream' : 'application/json';
@@ -57,11 +98,72 @@ async function request(method, path, body, accessToken) {
     // Not JSON, e.g. a proxy error page.
   }
 
-  if (!response.ok) {
-    throw new ApiError(response.status, data?.error?.code ?? 'internal', data?.error?.message ?? '');
+  return answered(response.status, data);
+}
+
+// answered is the data of an answer, or its error.
+function answered(status, data) {
+  if (status < 200 || status > 299) {
+    throw new ApiError(status, data?.error?.code ?? 'internal', data?.error?.message ?? '');
   }
 
-  return data;
+  return status === 204 ? null : data;
+}
+
+// The reads a page makes in one go (its blocks, who is signed in) wait
+// for one round trip to the server together instead of one each: they
+// are sent as one batch when the page is done asking. As many as the
+// server makes at once go in a batch.
+const BATCH_MAX = 20;
+let waiting = new Map();
+let flushing = null;
+
+function read(path, accessToken) {
+  return new Promise((resolve, reject) => {
+    const key = accessToken ?? '';
+    if (!waiting.has(key)) waiting.set(key, []);
+    waiting.get(key).push({ path, resolve, reject });
+
+    flushing ??= setTimeout(flush, 0);
+  });
+}
+
+function flush() {
+  const groups = waiting;
+  waiting = new Map();
+  flushing = null;
+
+  for (const [token, reads] of groups) {
+    for (let i = 0; i < reads.length; i += BATCH_MAX) {
+      sendReads(reads.slice(i, i + BATCH_MAX), token || undefined);
+    }
+  }
+}
+
+async function sendReads(reads, accessToken) {
+  const each = () => reads.forEach((r) => send('GET', r.path, undefined, accessToken).then(r.resolve, r.reject));
+  if (reads.length === 1) {
+    each();
+    return;
+  }
+
+  let batch;
+  try {
+    batch = await send('POST', '/api/v1/batch', { requests: reads.map((r) => ({ path: r.path })) }, accessToken);
+  } catch {
+    // A server of a build without batches, or none at all: each by itself.
+    each();
+    return;
+  }
+
+  reads.forEach((r, i) => {
+    const answer = batch?.responses?.[i];
+    try {
+      r.resolve(answered(answer?.status ?? 0, answer?.body ?? null));
+    } catch (e) {
+      r.reject(e);
+    }
+  });
 }
 
 // A refresh token works once, and reusing it ends the session. Tabs share
@@ -94,9 +196,19 @@ export async function exclusive(run) {
 }
 
 // The requests of an account that is not the one signed in (accounts.js):
-// new tokens for its refresh token, and a read with its access token.
-export const renewTokens = (refreshToken) => request('POST', '/api/v1/auth/refresh', { refreshToken });
-export const readAs = (accessToken, path) => request('GET', path, undefined, accessToken);
+// new tokens for its refresh token, and a read with its access token. The
+// page does not wait for them to be shown.
+export const renewTokens = (refreshToken) => untracked('POST', '/api/v1/auth/refresh', { refreshToken });
+export const readAs = (accessToken, path) => untracked('GET', path, undefined, accessToken);
+
+// started is a read a page sends before it knows who is signed in, so
+// that both come in one round trip; the page awaits it afterwards and
+// meets its error there.
+export function started(promise) {
+  promise.catch(() => {});
+
+  return promise;
+}
 
 // renewSession replaces an access token that expired, for the event
 // stream, which is no fetch; under the same lock as the requests.

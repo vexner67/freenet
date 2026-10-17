@@ -1,4 +1,4 @@
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { $, renderChrome, fullName, showError, hideError } from './layout.js';
 import { personRow } from './people.js';
 
@@ -31,11 +31,13 @@ function tab(id, kind, text) {
   link.classList.toggle('active', kind === type);
 }
 
+// The page is asked for with who is signed in, in one round trip.
+const wanted = started(api.profile(nickname));
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
-  const owner = await api.profile(nickname);
+  const owner = await wanted;
   const name = fullName(owner);
 
   $('title').textContent = { followers: 'Подписчики', following: 'Подписки', online: 'Подписки онлайн', common: 'Общие подписки' }[type] + ': ' + name;

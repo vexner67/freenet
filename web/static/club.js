@@ -4,7 +4,7 @@
 // its admins, "Тип группы" and, as its settings say, its creator, all its
 // admins or nobody.
 
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { albumsBlock } from './albums.js';
 import { showBackdrop } from './backdrop.js';
 import { adminsCount, clubTypeHints, requestsLink, formatPostDate, membersCount, suggestedByEveryone, suggestedByYou, topicsCount } from './labels.js';
@@ -247,11 +247,13 @@ async function showFaces(id, count, all) {
   }
 }
 
+// The page is asked for with who is signed in, in one round trip.
+const wanted = started(api.club(ref));
 const me = await currentUser().catch(() => null);
 renderChrome(me);
 
 try {
-  const club = await api.club(ref);
+  const club = await wanted;
 
   render(club, me);
   showBackdrop(club.backdrop);

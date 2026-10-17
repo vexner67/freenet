@@ -12,7 +12,7 @@
 // types in a dialog or a chat, its row says so instead of the last
 // message, as on VK (typing.js).
 
-import { api, currentUser } from './api.js';
+import { api, currentUser, started } from './api.js';
 import { openMessages } from './e2ee.js';
 import { onEvent } from './events.js';
 import { openNewChat, chatPath } from './chats.js';
@@ -206,7 +206,8 @@ async function loadMore() {
   hideError($('error'));
 
   try {
-    const page = await api.dialogs(cursor);
+    const page = await (first ?? api.dialogs(cursor));
+    first = null;
     const fresh = page.dialogs.filter((d) => !shown.has(keyOf(d)));
 
     await openMessages(me.id, fresh.filter((d) => !d.chat).map((d) => d.lastMessage));
@@ -326,6 +327,8 @@ function showSearch() {
   $('search-hint').hidden = !query || Boolean(searchPeer || searchChat);
 }
 
+// The page is asked for with who is signed in, in one round trip.
+let first = query || searchPeer || searchChat ? null : started(api.dialogs(''));
 me = await currentUser().catch(() => null);
 if (!me) {
   location.replace('/');
