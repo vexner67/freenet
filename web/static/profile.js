@@ -68,7 +68,7 @@ function external(href, text) {
 
 // renderAbout fills "Контактная информация" and "Личная информация", with
 // "[ Редактировать ]" for the owner; the fields of "Дополнительно" go where
-// their owner put them.
+// their owner put them. It tells whether there is anything to show.
 function renderAbout(user, isOwner) {
   const c = user.contacts;
   const i = user.interests;
@@ -94,14 +94,19 @@ function renderAbout(user, isOwner) {
     ['О себе:', i.about],
   ];
 
+  // Unlike openvk, an empty part is not shown with "Информация
+  // отсутствует.", and an empty block not at all.
+  let shown = false;
   for (const [id, list] of [['contacts', contacts], ['interests', interests]]) {
     const filled = list.filter(([, value]) => value);
     $(id).replaceChildren(...filled.map(([title, value]) => el('tr', {},
       el('th', { textContent: title }),
       el('td', { className: 'about-text' }, value))));
-    $(id + '-none').hidden = filled.length > 0;
+    $(id + '-part').hidden = filled.length === 0;
     $(id + '-edit').hidden = !isOwner;
+    shown ||= filled.length > 0;
   }
+  return shown;
 }
 
 // renderHeader is openvk's: the name, "(это вы)" to the owner, and on the
@@ -129,12 +134,12 @@ function render(user, isOwner, profile) {
     el('th', { textContent: title }),
     el('td', {}, value, isPrivate && el('span', { className: 'private-mark', textContent: ' · видно только вам' })),
   )));
-  renderAbout(user, isOwner);
+  const hasAbout = renderAbout(user, isOwner);
 
   // "Кому видно основную информацию моей страницы": openvk leaves the
   // names, the photo and the status.
   $('info').hidden = Boolean(user.infoHidden);
-  $('about-block').hidden = Boolean(user.infoHidden);
+  $('about-block').hidden = Boolean(user.infoHidden) || !hasAbout;
 
   $('edit').hidden = !isOwner;
   $('profile').hidden = false;

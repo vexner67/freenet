@@ -50,6 +50,20 @@ export function forwardedNode(m, textOf) {
   return shown;
 }
 
+// actionsNode is what can be done with a message, under its date: one
+// link "Действия" opening the list, as "Прикрепить" of a form does, so
+// that the actions do not stretch the message. actions are [name, click]
+// pairs; those not available are falsy.
+export function actionsNode(actions) {
+  const shown = actions.filter(Boolean);
+  if (!shown.length) return null;
+
+  return el('span', { className: 'attach-menu attach-auto message-actions' },
+    el('a', { className: 'attach-toggle im-message-action', textContent: 'Действия' }),
+    el('span', { className: 'attach-list' },
+      ...shown.map(([name, onclick]) => el('a', { className: 'attach-link', textContent: name, onclick }))));
+}
+
 // takenBack is a message after it was deleted for everyone: it says
 // nothing.
 export function takenBack(m) {

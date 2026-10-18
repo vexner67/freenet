@@ -21,10 +21,27 @@ export function stickerNode(sticker) {
 }
 
 // initStickers makes link open the panel of stickers under the form, in
-// panel; a sticker clicked there goes to onPick(sticker). The packs are
-// read when the panel first opens.
+// panel; a sticker clicked there is sent at once by onPick(sticker), which
+// tells whether it was. Until then the panel stays, dimmed and deaf to
+// more clicks, so that a slow server does not look as if nothing
+// happened; sent, the panel closes. The packs are read when the panel
+// first opens.
 export function initStickers({ link, panel, error, onPick }) {
   let loaded = false;
+  let sending = false;
+
+  const pick = async (sticker) => {
+    if (sending) return;
+
+    sending = true;
+    panel.classList.add('sending');
+    try {
+      if (await onPick(sticker)) panel.hidden = true;
+    } finally {
+      sending = false;
+      panel.classList.remove('sending');
+    }
+  };
 
   const show = async () => {
     if (loaded) return;
@@ -40,10 +57,7 @@ export function initStickers({ link, panel, error, onPick }) {
           el('div', { className: 'sticker-grid' }, ...pack.stickers.map((sticker) => el('a', {
             className: 'sticker-pick',
             title: 'Отправить стикер',
-            onclick: () => {
-              panel.hidden = true;
-              onPick(sticker);
-            },
+            onclick: () => pick(sticker),
           }, stickerNode(sticker)))),
         )) : [el('p', { className: 'hint', textContent: 'У вас пока нет стикеров' })]),
         el('a', { className: 'sticker-store', href: '/stickers', textContent: 'Магазин стикеров' }),
