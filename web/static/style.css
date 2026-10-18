@@ -234,27 +234,22 @@ h1.page-title { font-size: inherit; }
 
 /* Blocks */
 
+/* openvk's .content_title_expanded: the grey bar over a block, with its
+   arrow pointing down and aside. A count under it (.subtitle) touches it. */
 .section-title {
   position: relative;
   margin: 12px -10px 8px;
-  padding: 3px 10px 3px 22px;
-  background: var(--back-e6e6e6);
+  padding: 3px 8px 3px 24px;
+  background: var(--back-e6e6e6) url("/static/icons/block-arrow.svg") no-repeat 0 0;
   border-top: 1px solid var(--line-8b8b8b);
   color: var(--text-626262);
   font-weight: bold;
+  line-height: 13px;
 }
 .section-title:first-child { margin-top: -10px; }
+.section-title:has(+ .subtitle) { margin-bottom: 0; }
 /* The blocks of the profile under its name stand off it, as "Стена" does. */
 #profile-content > div > .section-title:first-child { margin-top: 12px; }
-
-.section-title::before {
-  content: "";
-  position: absolute;
-  left: 9px;
-  top: 7px;
-  border: 4px solid transparent;
-  border-top: 5px solid var(--line-8b8b8b);
-}
 
 .notice {
   margin-bottom: 10px;
@@ -399,9 +394,16 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 
 /* Profile */
 
-.profile { display: flex; gap: 12px; }
-.profile-left { width: 200px; flex-shrink: 0; }
-.profile-right { flex: 1; }
+/* openvk's columns: the narrow one with a line at its right, the wide one
+   whose titles cover it exactly and whose words stand 8px in. */
+.profile { display: flex; gap: 10px; }
+.profile-left { width: 200px; flex-shrink: 0; border-right: 1px solid var(--line-eee); }
+.profile-right { flex: 1; min-width: 0; }
+.profile-right .section-title { margin-left: 0; margin-right: 0; }
+.profile-right .info th { width: 120px; }
+/* The name and the status over a line, as openvk's .accountInfo. */
+.account-info { margin-left: 8px; border-bottom: 1px solid var(--line-dae1e8); }
+.account-info .status { margin: 0; padding: 3px 1px; }
 
 .avatar {
   display: block;
@@ -445,7 +447,14 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 
 .section-title .count { margin-left: 4px; color: var(--text-8b8b8b); font-weight: normal; }
 
-.wall-form { margin-bottom: 12px; }
+/* openvk's #write: a low field that opens at a click, and only then the
+   options and, last, the button at the left and "Прикрепить" at the
+   right (layout.js opens it; once open, it stays so until it is sent).
+   Comments are written in the same form. */
+.wall-form { display: flex; flex-direction: column; margin-bottom: 12px; padding: 5px 0; }
+.wall-form > .row { order: 1; }
+.wall-form:not(.expanded) > .row,
+.wall-form:not(.expanded) > .post-options { display: none; }
 .wall-form textarea,
 .modal-body textarea {
   display: block;
@@ -456,11 +465,10 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
   border: 1px solid var(--line-c0cad5);
   font: 11px tahoma, verdana, arial, sans-serif;
 }
+.wall-form textarea { height: 24px; min-height: 24px; resize: none; }
 .wall-form textarea:focus, .modal-body textarea:focus { outline: 1px solid var(--line-8fa7c2); }
-/* Set by wall.js: grows on focus and shrinks only when empty, so the
-   button does not jump away between pressing and releasing the mouse. */
-.wall-form.expanded textarea { height: 70px; }
-.wall-form .row { display: flex; justify-content: space-between; align-items: center; margin-top: 4px; }
+.wall-form.expanded textarea { height: 52px; min-height: 52px; }
+.wall-form .row { display: flex; justify-content: space-between; align-items: center; margin-top: 10px; }
 
 .post { display: flex; gap: 8px; margin-bottom: 10px; }
 .post-avatar img { display: block; width: 50px; height: 50px; }
@@ -522,8 +530,6 @@ a.like:hover svg { opacity: .7; }
 /* Comments: a post with a small avatar. */
 .comment .post-avatar img { width: 30px; height: 30px; }
 .comment .post-author { padding: 2px 5px; }
-.comment-form { margin-top: 10px; }
-.comment-form textarea { height: 50px; }
 .comment-hint { margin-top: 10px; }
 
 .post-deleted {
@@ -938,7 +944,7 @@ label.chat-person { cursor: pointer; }
    (a person's page is the other way round). */
 .club { display: flex; gap: 10px; }
 .club-main { flex: 1; min-width: 0; }
-.club-main .section-title { margin-right: 0; }
+.club-main .section-title { margin-left: 0; margin-right: 0; }
 /* Blocks that may be hidden open with their title: not the page's first. */
 .club-main > div > .section-title:first-child { margin-top: 12px; }
 .club-side { width: 200px; flex-shrink: 0; }
@@ -953,6 +959,7 @@ label.chat-person { cursor: pointer; }
 
 /* "От имени сообщества" and "Подпись автора" under the form. */
 .post-options { margin-top: 4px; }
+.wall-form > .post-options { margin-top: 10px; }
 /* "Таймер": when a postponed post comes out, under the form and in the
    box that edits it. */
 .post-timer, .postponed-time { margin-top: 4px; color: var(--text-555); }
@@ -1138,8 +1145,11 @@ label.chat-person { cursor: pointer; }
    "Контактная информация" and "Личная информация", and the tabs of
    "Редактировать страницу". */
 .basic-info { margin-bottom: 10px; }
-.about { padding: 6px 8px 12px; }
-.about-title { margin: 6px 0 4px; font-size: 11px; }
+.profile-right .basic-info { width: calc(100% - 8px); margin: 5px 0 15px 8px; }
+#about-block .section-title { margin-bottom: 0; }
+.about { padding: 10px 8px 15px; }
+.about-title { margin: 1px 0 0; padding: 4px 0 2px; font-size: 11px; }
+.about > div:not([hidden]) ~ div { margin-top: 13px; }
 .about-title .edit-link { margin-left: 4px; color: var(--text-808080); font-weight: normal; }
 .about-text { white-space: pre-line; overflow-wrap: anywhere; }
 #partner, #birth-year-shown { display: block; margin-top: 4px; }
@@ -1294,8 +1304,6 @@ body:not(.nsfw-shown) .shared-nsfw .shared-content::after {
   color: var(--text-fff);
   text-align: center;
 }
-/* The box of the form shows with the form opened, as openvk's. */
-.wall-form:not(.expanded) #post-nsfw-label { display: none; }
 .post-edit .post-options { margin: 4px 0; }
 
 /* A photo that came from an adult post: in the album, on its page, as a
@@ -1553,6 +1561,8 @@ a.poll-result-name { cursor: pointer; }
   body { font-size: 13px; -webkit-text-size-adjust: 100%; }
   /* Whatever rule sets a field's type, smaller would zoom the page. */
   input, select, textarea { font-size: 16px !important; }
+  .wall-form textarea { height: 32px; min-height: 32px; }
+  .wall-form.expanded textarea { height: 64px; min-height: 64px; }
   .button { font-size: 13px; }
 
   .layout { width: auto; }

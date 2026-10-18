@@ -69,6 +69,14 @@ if (typeof document !== 'undefined') {
     if (event.target instanceof HTMLTextAreaElement) autosize(event.target);
   });
   document.addEventListener('click', switchAttachMenu);
+  // openvk's #write: a form of a post or a comment opens when its field is
+  // clicked and stays open, so that "Прикрепить" under it does not slip
+  // away from under the mouse.
+  for (const type of ['focusin', 'click']) {
+    document.addEventListener(type, (event) => {
+      if (event.target instanceof HTMLTextAreaElement) event.target.closest('.wall-form')?.classList.add('expanded');
+    });
+  }
   document.addEventListener('keydown', (event) => {
     if (event.key !== 'Escape') return;
     for (const open of document.querySelectorAll('.attach-menu.open')) open.classList.remove('open');

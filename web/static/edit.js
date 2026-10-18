@@ -61,6 +61,7 @@ function updateRelationship() {
 function saved() {
   $('notice').textContent = 'Изменения сохранены. Новые данные появятся на вашей странице.';
   $('notice').hidden = false;
+  $('notice').scrollIntoView({ block: 'nearest' });
 }
 
 // submit runs a save of a tab with its button disabled; errors show above.
@@ -126,7 +127,14 @@ function initMain(me) {
     };
 
     const updated = await api.updateProfile(profile);
-    location.href = '/' + updated.nickname;
+    // The first fill of the page leads to it; later ones stay, as the
+    // other tabs do, with "Изменения сохранены".
+    if (!me.profileCompleted) {
+      location.href = '/' + updated.nickname;
+      return;
+    }
+    $('cancel').href = '/' + updated.nickname;
+    saved();
   });
 
   (me.profileCompleted ? $('status') : $('name')).focus();
