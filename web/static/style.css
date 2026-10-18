@@ -244,6 +244,8 @@ h1.page-title { font-size: inherit; }
   font-weight: bold;
 }
 .section-title:first-child { margin-top: -10px; }
+/* The blocks of the profile under its name stand off it, as "Стена" does. */
+#profile-content > div > .section-title:first-child { margin-top: 12px; }
 
 .section-title::before {
   content: "";
@@ -653,10 +655,15 @@ a.like:hover svg { opacity: .7; }
 .im-message-text { white-space: pre-wrap; overflow-wrap: anywhere; }
 .im-message-text.collapsed { max-height: 115px; overflow: hidden; }
 .im-message-date { width: 100px; color: var(--text-404036); font-size: 9px; text-align: right; }
-/* Shown on hover, as the message actions of VK; always on touch screens. */
-.im-message-action { display: block; margin-top: 4px; font-size: 10px; visibility: hidden; cursor: pointer; }
-.im-message:hover .im-message-action { visibility: visible; }
+/* "Действия" of a message: one link under the date, shown on hover, as
+   the message actions of VK, always on touch screens and while open; the
+   list is that of "Прикрепить", without icons, at the right edge. */
+.im-message-action { font-size: 10px; visibility: hidden; cursor: pointer; }
+.im-message:hover .im-message-action, .attach-menu.open .im-message-action { visibility: visible; }
 @media (hover: none) { .im-message-action { visibility: visible; } }
+.message-actions { display: block; margin: 3px 0 0; }
+.message-actions .attach-list { left: auto; right: 0; min-width: 100px; font-size: 11px; text-align: left; }
+.message-actions .attach-list .attach-link::before { display: none; }
 /* A click selects a message, as on VK; the bar over the dialog acts on
    the selected ones. */
 .im-message { cursor: default; }
@@ -1134,7 +1141,6 @@ label.chat-person { cursor: pointer; }
 .about { padding: 6px 8px 12px; }
 .about-title { margin: 6px 0 4px; font-size: 11px; }
 .about-title .edit-link { margin-left: 4px; color: var(--text-808080); font-weight: normal; }
-.about-none { margin: 0; padding: 10px; color: var(--text-808080); text-align: center; }
 .about-text { white-space: pre-line; overflow-wrap: anywhere; }
 #partner, #birth-year-shown { display: block; margin-top: 4px; }
 .extra-field { margin-bottom: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line-ececec); }
@@ -1410,14 +1416,17 @@ a.poll-result-name { cursor: pointer; }
 .gift-row { display: flex; gap: 10px; padding: 8px 5px; }
 
 /* Stickers: one in a message, the panel under the form and the shop. */
-.sticker { display: block; width: 128px; height: 128px; margin: 2px 0; }
-.im-message img.sticker { width: 128px; height: 128px; object-fit: contain; border-radius: 0; }
+/* A sticker keeps its shape: one of the studio, a photo of any shape,
+   is fitted into the square, not stretched over it. */
+.sticker { display: block; width: 160px; height: 160px; margin: 2px 0; object-fit: contain; }
+.im-message img.sticker { width: 160px; height: 160px; object-fit: contain; border-radius: 0; }
 .sticker-panel { margin: 8px 0 0; padding: 8px; max-height: 260px; overflow-y: auto; border: 1px solid var(--line-dedede); background: var(--back-fff); }
 .sticker-pack { margin: 0 0 8px; }
 .sticker-pack-title { display: block; margin: 0 0 4px; color: var(--text-45688e); }
 .sticker-grid { display: flex; flex-wrap: wrap; gap: 4px; }
-.sticker-grid .sticker { width: 64px; height: 64px; margin: 0; }
+.sticker-grid .sticker { width: 72px; height: 72px; margin: 0; }
 .sticker-pick { display: block; padding: 2px; cursor: pointer; }
+.sticker-panel.sending .sticker-pick { opacity: .5; cursor: progress; }
 .sticker-pick:hover { background: var(--back-f6f6f6); }
 .sticker-store { display: block; padding: 4px 0 0; border-top: 1px solid var(--line-dedede); }
 .sticker-pack-card { padding: 10px 0; border-bottom: 1px solid var(--line-dedede); }
@@ -1632,7 +1641,8 @@ a.poll-result-name { cursor: pointer; }
   .messenger-input .messenger-avatar { display: none; }
   .im-message { flex-wrap: wrap; gap: 4px 8px; padding: 6px; }
   .im-message-date { order: 3; width: 100%; padding-left: 45px; text-align: left; }
-  .im-message-action { display: inline-block; margin: 4px 0 0 14px; }
+  .message-actions { display: inline-block; margin: 0 0 0 14px; }
+  .message-actions .attach-list { left: 0; right: auto; }
   .im-selection, .chat-pinned { flex-wrap: wrap; gap: 4px; padding: 6px 10px; }
 
   .list-row { flex-wrap: wrap; }

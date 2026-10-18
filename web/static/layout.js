@@ -48,6 +48,20 @@ function switchAttachMenu(event) {
   }
 
   menu?.classList.toggle('open');
+  if (menu?.classList.contains('open') && menu.classList.contains('attach-auto')) placeAttachList(menu);
+}
+
+// placeAttachList opens the list of an .attach-auto menu upwards when
+// downwards it would end below what scrolls it (the last messages of a
+// dialog), or below the screen.
+function placeAttachList(menu) {
+  menu.classList.remove('attach-up');
+
+  let box = menu.parentElement;
+  while (box && !/(auto|scroll)/.test(getComputedStyle(box).overflowY)) box = box.parentElement;
+  const bottom = Math.min(box ? box.getBoundingClientRect().bottom : Infinity, window.innerHeight);
+
+  if (menu.querySelector('.attach-list').getBoundingClientRect().bottom > bottom) menu.classList.add('attach-up');
 }
 
 if (typeof document !== 'undefined') {

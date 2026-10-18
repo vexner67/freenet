@@ -20,7 +20,7 @@ import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
-import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
+import { actionsNode, attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
 import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, selectedCount } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -102,18 +102,18 @@ function messageNode(m) {
     date.replaceChildren(...[
       formatPostDate(shownMessage.createdAt),
       shownMessage.editedAt && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
-      replies && !shownMessage.deleted && !shownMessage.unreadable && el('a', { className: 'im-message-action', textContent: 'Ответить', onclick: () => answer(shownMessage) }),
-      !shownMessage.deleted && el('a', {
-        className: 'im-message-action',
-        textContent: 'Реакция',
-        onclick: () => {
+      actionsNode([
+        replies && !shownMessage.deleted && !shownMessage.unreadable && ['Ответить', () => answer(shownMessage)],
+        !shownMessage.deleted && ['Реакция', () => {
           node.picking = !node.picking;
           node.render();
-        },
-      }),
-      canEdit(shownMessage) && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(shownMessage) }),
-      !shownMessage.deleted && !shownMessage.unreadable && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => forward([shownMessage]) }),
-      el('a', { className: 'im-message-action', textContent: 'Удалить', onclick: () => confirmDelete([shownMessage]) }),
+          // Under the last message the picker would open out of sight.
+          if (node.picking) node.querySelector('.im-reaction-picker')?.scrollIntoView({ block: 'nearest' });
+        }],
+        canEdit(shownMessage) && ['Редактировать', () => startEdit(shownMessage)],
+        !shownMessage.deleted && !shownMessage.unreadable && ['Переслать', () => forward([shownMessage])],
+        ['Удалить', () => confirmDelete([shownMessage])],
+      ]),
     ].filter(Boolean));
   };
   node.message = m;
@@ -613,15 +613,17 @@ async function send(event) {
 }
 
 // sendSticker sends a sticker by itself: it is not sealed, it says
-// nothing.
+// nothing. It tells whether it was sent.
 async function sendSticker(sticker) {
   hideError($('error'));
   if (editing) cancelEdit();
 
   try {
     showSent((await openMessages(me.id, [await api.sendSticker(nickname, sticker)]))[0]);
+    return true;
   } catch (e) {
     showError($('error'), e);
+    return false;
   }
 }
 

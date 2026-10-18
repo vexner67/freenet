@@ -22,7 +22,7 @@ import { initDocuments } from './docs.js';
 import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
-import { attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
+import { actionsNode, attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
 import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, selectedCount, snippet } from './labels.js';
 import { $, avatarURL, chatPhotoURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -112,25 +112,19 @@ function messageNode(m) {
     date.replaceChildren(...[
       formatPostDate(now.createdAt),
       now.editedAt && !now.deleted && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
-      replies && !now.deleted && active && el('a', { className: 'im-message-action', textContent: 'Ответить', onclick: () => answer(now) }),
-      !now.deleted && active && el('a', {
-        className: 'im-message-action',
-        textContent: 'Реакция',
-        onclick: () => {
+      actionsNode([
+        replies && !now.deleted && active && ['Ответить', () => answer(now)],
+        !now.deleted && active && ['Реакция', () => {
           node.picking = !node.picking;
           node.render();
-        },
-      }),
-      mine && !now.sticker && now.editableUntil && new Date(now.editableUntil) > new Date()
-        && el('a', { className: 'im-message-action', textContent: 'Редактировать', onclick: () => startEdit(now) }),
-      !now.deleted && el('a', { className: 'im-message-action', textContent: 'Переслать', onclick: () => forward([now]) }),
-      !now.deleted && active && el('a', {
-        className: 'im-message-action',
-        textContent: pinned ? 'Открепить' : 'Закрепить',
-        onclick: () => change(() => (pinned ? api.unpinChatMessage(chatID) : api.pinChatMessage(chatID, now.id))),
-      }),
-      mine && now.deletableUntil && new Date(now.deletableUntil) > new Date()
-        && el('a', { className: 'im-message-action', textContent: 'Удалить', onclick: () => confirmDelete(now) }),
+          // Under the last message the picker would open out of sight.
+          if (node.picking) node.querySelector('.im-reaction-picker')?.scrollIntoView({ block: 'nearest' });
+        }],
+        mine && !now.sticker && now.editableUntil && new Date(now.editableUntil) > new Date() && ['Редактировать', () => startEdit(now)],
+        !now.deleted && ['Переслать', () => forward([now])],
+        !now.deleted && active && [pinned ? 'Открепить' : 'Закрепить', () => change(() => (pinned ? api.unpinChatMessage(chatID) : api.pinChatMessage(chatID, now.id)))],
+        mine && now.deletableUntil && new Date(now.deletableUntil) > new Date() && ['Удалить', () => confirmDelete(now)],
+      ]),
     ].filter(Boolean));
   };
   node.message = m;
@@ -752,15 +746,17 @@ async function refresh() {
   }
 }
 
-// sendSticker sends a sticker by itself.
+// sendSticker sends a sticker by itself and tells whether it was sent.
 async function sendSticker(sticker) {
   hideError($('error'));
   if (editing) cancelEdit();
 
   try {
     showSent(await api.sendChatSticker(chatID, sticker));
+    return true;
   } catch (e) {
     showError($('error'), e);
+    return false;
   }
 }
 
