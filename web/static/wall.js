@@ -235,13 +235,6 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       });
     }
 
-    // The form stays open while it holds text, photos or a poll.
-    const collapseIfEmpty = () => {
-      if (!text.value.trim() && attachments.count() === 0 && documents.count() === 0 && !poll.value() && !timer?.active() && document.activeElement !== text) {
-        form.classList.remove('expanded');
-      }
-    };
-
     attachments = initAttachments({
       link: $('post-attach'),
       also: [$('post-graffiti')],
@@ -276,8 +269,6 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
 
     form.hidden = false;
     form.addEventListener('submit', submit);
-    text.addEventListener('focus', () => form.classList.add('expanded'));
-    text.addEventListener('blur', collapseIfEmpty);
     text.addEventListener('input', updateCounter);
     // Ctrl+Enter (Cmd+Enter on a Mac) sends, as on the old sites.
     text.addEventListener('keydown', (event) => {

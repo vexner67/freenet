@@ -201,11 +201,6 @@ function initForm(me) {
       $('post-submit').disabled = false;
     }
   });
-  text.addEventListener('focus', () => form.classList.add('expanded'));
-  // The form stays open while it holds text, photos or a poll.
-  text.addEventListener('blur', () => {
-    if (!text.value.trim() && attachments.count() === 0 && documents.count() === 0 && !poll.value() && !timer.active()) form.classList.remove('expanded');
-  });
   text.addEventListener('input', updateCounter);
   // Ctrl+Enter (Cmd+Enter on a Mac) sends, as on a wall.
   text.addEventListener('keydown', (event) => {

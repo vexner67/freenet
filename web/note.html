@@ -33,12 +33,12 @@
           <div class="note" id="note"></div>
           <div class="section-title" id="comments-title">Комментарии</div>
           <div class="error" id="comments-error" hidden></div>
+          <form class="wall-form comment-form" id="comment-form" hidden>
+            <textarea id="comment-text" maxlength="60000" placeholder="Ваш комментарий..." aria-label="Комментарий"></textarea>
+            <div class="row"><span></span><button class="button" type="submit" id="comment-submit">Отправить</button></div>
+          </form>
           <div id="comments"></div>
           <a class="wall-more" id="comments-more" hidden>Показать ещё</a>
-          <form class="comment-form" id="comment-form" hidden>
-            <textarea id="comment-text" maxlength="60000" aria-label="Комментарий"></textarea>
-            <button class="button" type="submit" id="comment-submit">Отправить</button>
-          </form>
         </div>
       </div>
     </div>
