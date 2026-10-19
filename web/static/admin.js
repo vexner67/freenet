@@ -9,6 +9,7 @@
 
 import { api, currentUser, idle, started } from './api.js';
 import { accusativeName, adminOverview, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voteRate, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { tr } from './i18n.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -44,9 +45,9 @@ toggle.addEventListener('click', () => {
 $('sidebar-toggle').addEventListener('click', () => {
   const folded = root.classList.toggle('aui-collapsed');
   store('freenet.adminsidebar', folded ? 'folded' : 'open');
-  $('sidebar-toggle').title = folded ? 'Развернуть боковую панель' : 'Свернуть боковую панель';
+  $('sidebar-toggle').title = folded ? tr('Развернуть боковую панель') : tr('Свернуть боковую панель');
 });
-if (root.classList.contains('aui-collapsed')) $('sidebar-toggle').title = 'Развернуть боковую панель';
+if (root.classList.contains('aui-collapsed')) $('sidebar-toggle').title = tr('Развернуть боковую панель');
 
 // The link of the page is the active one; the form of a voucher is under
 // "Ваучеры".
@@ -82,7 +83,7 @@ async function summary(counts) {
 // checkmark is the site's mark of a confirmed page, as by its names.
 const checkmark = () => el('img', {
   className: 'name-checkmark', src: '/static/icons/checkmark.svg', alt: '', width: 13, height: 11,
-  title: 'Подтверждённая страница',
+  title: tr('Подтверждённая страница'),
 });
 
 // The pages that wear the checkmark, "Пользователи" and "Группы": each a
@@ -98,9 +99,9 @@ const verifiable = {
     address: (user) => '@' + user.nickname,
     avatar: (user) => user.avatar?.small ?? '/static/avatar.svg',
     verify: (user, verified) => api.setVerified(user.nickname, verified),
-    all: 'Подтверждённые страницы',
-    none: 'Никого не найдено.',
-    noneVerified: 'Подтверждённых страниц пока нет. Найдите человека поиском.',
+    all: tr('Подтверждённые страницы'),
+    none: tr('Никого не найдено.'),
+    noneVerified: tr('Подтверждённых страниц пока нет. Найдите человека поиском.'),
     banCell,
   },
   clubs: {
@@ -112,9 +113,9 @@ const verifiable = {
     address: (club) => '/club/' + (club.address || club.id),
     avatar: (club) => club.avatar?.small ?? '/static/club.svg',
     verify: (club, verified) => api.setClubVerified(club.address || club.id, verified),
-    all: 'Подтверждённые группы',
-    none: 'Ни одной группы не нашлось.',
-    noneVerified: 'Подтверждённых групп пока нет. Найдите группу поиском.',
+    all: tr('Подтверждённые группы'),
+    none: tr('Ни одной группы не нашлось.'),
+    noneVerified: tr('Подтверждённых групп пока нет. Найдите группу поиском.'),
   },
 };
 
@@ -126,13 +127,13 @@ function banCell(user) {
   const draw = () => {
     if (!user.ban) {
       cell.replaceChildren(el('button', {
-        className: 'aui-button aui-button-compact', type: 'button', textContent: 'Заблокировать',
+        className: 'aui-button aui-button-compact', type: 'button', textContent: tr('Заблокировать'),
         onclick: () => openBan(user, draw),
       }));
       return;
     }
 
-    const lift = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: 'Разблокировать' });
+    const lift = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: tr('Разблокировать') });
     lift.addEventListener('click', async () => {
       error.hidden = true;
       lift.disabled = true;
@@ -147,7 +148,7 @@ function banCell(user) {
     });
 
     cell.replaceChildren(
-      el('span', { className: 'aui-lozenge aui-lozenge-removed', textContent: 'заблокирован' }),
+      el('span', { className: 'aui-lozenge aui-lozenge-removed', textContent: tr('заблокирован') }),
       el('span', { className: 'admin-ban-until', textContent: banEnd(user.ban), title: user.ban.reason }),
       lift,
     );
@@ -165,9 +166,9 @@ function openBan(user, done) {
   const form = $('ban-form');
   const banError = $('ban-error');
 
-  $('ban-title').textContent = 'Заблокировать ' + accusativeName(user);
-  $('ban-about').textContent = `Вы собираетесь заблокировать страницу ${genitiveName(user)} (@${user.nickname}). `
-    + 'Пока блокировка действует, владелец сможет только прочитать её причину и выйти, а страница покажет другим лишь имя, фото и причину.';
+  $('ban-title').textContent = tr('Заблокировать ') + accusativeName(user);
+  $('ban-about').textContent = tr('Вы собираетесь заблокировать страницу {0} (@{1}). ', genitiveName(user), user.nickname)
+    + tr('Пока блокировка действует, владелец сможет только прочитать её причину и выйти, а страница покажет другим лишь имя, фото и причину.');
   form.reset();
   $('ban-date-group').hidden = true;
   banError.hidden = true;
@@ -198,7 +199,7 @@ function openBan(user, done) {
     const term = $('ban-term').value;
     const until = banUntil(term, new Date(), $('ban-date').value);
     if (term === 'date' && !until) {
-      banError.textContent = 'Укажите, до какого времени заблокировать.';
+      banError.textContent = tr('Укажите, до какого времени заблокировать.');
       banError.hidden = false;
       return;
     }
@@ -226,8 +227,8 @@ function verifications(kind, query, bans = false) {
   const k = bans ? {
     ...verifiable[kind],
     search: (q, after) => api.search(q, after, q ? {} : { banned: 'true' }),
-    all: 'Заблокированные пользователи',
-    noneVerified: 'Заблокированных пользователей нет.',
+    all: tr('Заблокированные пользователи'),
+    noneVerified: tr('Заблокированных пользователей нет.'),
   } : verifiable[kind];
   let cursor = '';
 
@@ -235,10 +236,10 @@ function verifications(kind, query, bans = false) {
     const mark = page.verified ? checkmark() : '';
     const name = k.name(page);
     const toggle = el('button', {
-      className: 'aui-toggle', type: 'button', title: 'Подтверждённая страница',
+      className: 'aui-toggle', type: 'button', title: tr('Подтверждённая страница'),
     }, el('span', { className: 'aui-toggle-knob' }));
     toggle.setAttribute('role', 'switch');
-    toggle.setAttribute('aria-label', `Верификация: ${name}`);
+    toggle.setAttribute('aria-label', tr('Верификация: {0}', name));
     toggle.setAttribute('aria-checked', String(Boolean(page.verified)));
 
     const person = el('div', { className: 'admin-person' },
@@ -292,7 +293,7 @@ function verifications(kind, query, bans = false) {
   }
 
   $(k.one + '-query').value = query;
-  $(kind + '-heading').textContent = query ? 'Результаты поиска' : k.all;
+  $(kind + '-heading').textContent = query ? tr('Результаты поиска') : k.all;
   $('no-' + kind).textContent = query ? k.none : k.noneVerified;
   $('more-' + kind).addEventListener('click', () => more(k.search(query, cursor)));
 
@@ -304,9 +305,9 @@ function vouchers() {
   let cursor = '';
 
   function row(voucher) {
-    const ended = voucherStatus(voucher) === 'закончился';
-    const remove = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: 'Удалить' });
-    const tr = el('tr', {},
+    const ended = voucher.usagesLeft === 0;
+    const remove = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: tr('Удалить') });
+    const line = el('tr', {},
       el('td', {}, el('span', { className: 'admin-code', textContent: voucherCode(voucher.code) })),
       el('td', { textContent: number(voucher.votes) }),
       el('td', { textContent: number(voucher.rating) }),
@@ -320,13 +321,13 @@ function vouchers() {
     );
 
     remove.addEventListener('click', async () => {
-      if (!confirm(`Удалить ваучер ${voucherCode(voucher.code)}? Полученное по нему останется у тех, кто им воспользовался.`)) return;
+      if (!confirm(tr('Удалить ваучер {0}? Полученное по нему останется у тех, кто им воспользовался.', voucherCode(voucher.code)))) return;
 
       error.hidden = true;
       remove.disabled = true;
       try {
         await api.deleteVoucher(voucher.id);
-        tr.remove();
+        line.remove();
         showEmpty();
       } catch (e) {
         remove.disabled = false;
@@ -334,7 +335,7 @@ function vouchers() {
       }
     });
 
-    return tr;
+    return line;
   }
 
   function showEmpty() {
@@ -409,8 +410,8 @@ async function gifts({ catalog, rate }) {
   function row(collection, { gift, price }) {
     const name = giftNames[gift] ?? gift;
     const field = el('input', { className: 'text', type: 'number', min: 0, max: 1000000, value: String(price), required: true });
-    field.setAttribute('aria-label', `Цена: ${name}`);
-    const save = el('button', { className: 'aui-button', type: 'submit', textContent: 'Сохранить' });
+    field.setAttribute('aria-label', tr('Цена: {0}', name));
+    const save = el('button', { className: 'aui-button', type: 'submit', textContent: tr('Сохранить') });
     const form = el('form', { className: 'aui admin-price' }, field, save);
 
     form.addEventListener('submit', async (event) => {
@@ -458,7 +459,7 @@ function showRate({ kopecks }) {
     try {
       const set = Math.round(Number(field.value) * 100);
       await api.setVoteRate(set);
-      $('priced').textContent = `Курс: ${voteRate(set)}.`;
+      $('priced').textContent = tr('Курс: {0}.', voteRate(set));
       $('priced').hidden = false;
     } catch (e) {
       showError(e);
@@ -489,12 +490,12 @@ if (!me) {
   location.replace('/');
 } else {
   if (!me.admin) {
-    showError('Админ-панель доступна только администраторам сайта.');
+    showError(tr('Админ-панель доступна только администраторам сайта.'));
   } else if (path === '/admin') {
     await summary(reads).catch(showError);
   } else if (listed) {
     if (path === '/admin/bans') {
-      $('users-title').textContent = 'Блокировки';
+      $('users-title').textContent = tr('Блокировки');
       $('user-search').action = '/admin/bans';
     }
     $(listed).hidden = false;
@@ -506,7 +507,7 @@ if (!me) {
   } else if (path === '/admin/gifts') {
     await gifts(reads).catch(showError);
   } else {
-    showError('Такой страницы нет.');
+    showError(tr('Такой страницы нет.'));
   }
 
   idle().then(() => root.classList.remove('pending'));

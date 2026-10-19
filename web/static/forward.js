@@ -11,6 +11,7 @@ import { button, openModal } from './modal.js';
 import { photosNode, sharedNode, sharedPhotoNode } from './posts.js';
 import { stickerNode } from './stickers.js';
 import { documentsNode } from './docs.js';
+import { tr } from './i18n.js';
 
 // attachedNodes is what a message shows under its words: its photos and
 // documents, the post or the photo of an album it shares, or the sticker
@@ -44,7 +45,7 @@ export function forwardedNode(m, textOf) {
   const shown = carried(forwardTree(forwarded));
   // Those of people whose pages are gone are not shown.
   if (forwarded.length < m.forwardedCount) {
-    shown.append(el('div', { className: 'im-forwarded-hint', textContent: 'Пересланное сообщение недоступно.' }));
+    shown.append(el('div', { className: 'im-forwarded-hint', textContent: tr('Пересланное сообщение недоступно.') }));
   }
 
   return shown;
@@ -71,7 +72,7 @@ export function actionsNode(actions) {
   if (!shown.length) return null;
 
   return el('span', { className: 'attach-menu attach-auto message-actions' },
-    el('a', { className: 'attach-toggle im-message-action', textContent: 'Действия' }),
+    el('a', { className: 'attach-toggle im-message-action', textContent: tr('Действия') }),
     el('span', { className: 'attach-list' },
       ...shown.map(([name, onclick]) => el('a', { className: `attach-link ${actionIcons[name] ?? ''}`.trim(), textContent: name, onclick }))));
 }
@@ -119,28 +120,28 @@ export function openForward({ me, messages, here, authorOf, onSent, onDone = () 
   // What a dialog says stays sealed: it goes on into dialogs only.
   const sealed = forward.some(fromDialog);
   const takes = (d) => writable(d) && !(sealed && d.chat);
-  const modal = openModal(forward.length > 1 ? 'Пересылка сообщений' : 'Пересылка сообщения', { tag: 'form' });
+  const modal = openModal(forward.length > 1 ? tr('Пересылка сообщений') : tr('Пересылка сообщения'), { tag: 'form' });
   const error = el('div', { className: 'error', hidden: true });
   const hereValue = conversationValue(here);
   // A chat I am not in anymore takes nothing from me.
   const first = takes(here) ? [conversationOption(here)] : [];
-  const chats = el('select', { ariaLabel: 'Переписка' }, ...first);
-  const person = el('input', { type: 'search', maxLength: 64, placeholder: 'Найти человека: имя, фамилия или никнейм', ariaLabel: 'Найти человека' });
-  const text = el('textarea', { maxLength: 60000, placeholder: '…', ariaLabel: 'Ваш комментарий' });
-  const send = button('Отправить', null, { type: 'submit' });
+  const chats = el('select', { ariaLabel: tr('Переписка') }, ...first);
+  const person = el('input', { type: 'search', maxLength: 64, placeholder: tr('Найти человека: имя, фамилия или никнейм'), ariaLabel: tr('Найти человека') });
+  const text = el('textarea', { maxLength: 60000, placeholder: '…', ariaLabel: tr('Ваш комментарий') });
+  const send = button(tr('Отправить'), null, { type: 'submit' });
 
   modal.body.append(
     error,
     el('div', { className: 'forward-list' }, ...forward.map((m) => el('div', {},
       el('b', { textContent: fullName(authorOf(m)) + ': ' }), snippet(messagePreview(m), 80)))),
-    el('b', { textContent: 'Кому' }),
-    ...(sealed ? [el('div', { className: 'hint', textContent: 'Сообщения диалогов зашифрованы: переслать их можно только в диалог.' })] : []),
+    el('b', { textContent: tr('Кому') }),
+    ...(sealed ? [el('div', { className: 'hint', textContent: tr('Сообщения диалогов зашифрованы: переслать их можно только в диалог.') })] : []),
     person,
     chats,
-    el('b', { textContent: 'Ваш комментарий' }),
+    el('b', { textContent: tr('Ваш комментарий') }),
     text,
   );
-  modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(send, button(tr('Отмена'), modal.close, { secondary: true }));
 
   // The latest dialogs and chats, this one first.
   let latest = first;
@@ -174,7 +175,7 @@ export function openForward({ me, messages, here, authorOf, onSent, onDone = () 
 
         chats.replaceChildren(...(people.length > 0
           ? people.map((peer) => conversationOption({ peer }))
-          : [el('option', { value: '', textContent: 'Никого не нашлось' })]));
+          : [el('option', { value: '', textContent: tr('Никого не нашлось') })]));
         send.disabled = people.length === 0;
       } catch (e) {
         showError(error, e);
@@ -189,16 +190,16 @@ export function openForward({ me, messages, here, authorOf, onSent, onDone = () 
 
     try {
       const to = chats.value;
-      if (!to) throw 'Выберите переписку.';
+      if (!to) throw tr('Выберите переписку.');
 
       const sent = await sendTo(to, text.value, { me, forward });
 
       onDone();
       if (to !== hereValue) {
         modal.body.replaceChildren(el('div', {},
-          forward.length > 1 ? 'Сообщения пересланы. ' : 'Сообщение переслано. ',
-          el('a', { href: conversationPath(to), textContent: 'Перейти' })));
-        modal.actions.replaceChildren(button('Закрыть', modal.close));
+          forward.length > 1 ? tr('Сообщения пересланы. ') : tr('Сообщение переслано. '),
+          el('a', { href: conversationPath(to), textContent: tr('Перейти') })));
+        modal.actions.replaceChildren(button(tr('Закрыть'), modal.close));
         return;
       }
 

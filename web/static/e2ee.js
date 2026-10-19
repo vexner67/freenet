@@ -11,6 +11,7 @@
 
 import { api } from './api.js';
 import { quoteSnippet } from './labels.js';
+import { tr } from './i18n.js';
 
 const KEYS = 'freenet.keys';
 const PEERS = 'freenet.peerkeys';
@@ -250,11 +251,11 @@ export async function importKeys(userID, file, code) {
     );
     const content = JSON.parse(decoder.decode(plain));
 
-    if (content.user !== userID) throw 'Это ключ другой страницы.';
+    if (content.user !== userID) throw tr('Это ключ другой страницы.');
     keys = content.keys;
   } catch (e) {
     if (typeof e === 'string') throw e;
-    throw 'Не удалось открыть файл: проверьте код и файл.';
+    throw tr('Не удалось открыть файл: проверьте код и файл.');
   }
 
   const kept = mine(userID).keys;
@@ -301,7 +302,7 @@ async function derive(own, peerPublic) {
 // of the message it answers, only in an answer }.
 export async function seal(userID, peerKey, payload) {
   const own = mine(userID).keys[0];
-  if (!own) throw 'На этом устройстве нет ключа шифрования сообщений.';
+  if (!own) throw tr('На этом устройстве нет ключа шифрования сообщений.');
 
   const peerPublic = fromBase64(peerKey);
   const iv = crypto.getRandomValues(new Uint8Array(IV_SIZE));
@@ -384,7 +385,7 @@ export async function carriedWords(messages) {
     .map((m) => (m.textCut && m.chatId ? api.chatMessage(m.id) : m)));
 
   return whole.flatMap((m) => {
-    if (m.unreadable) throw 'Сообщение не расшифровано, его нельзя переслать.';
+    if (m.unreadable) throw tr('Сообщение не расшифровано, его нельзя переслать.');
 
     const under = Array.from({ length: m.forwardedCount ?? 0 }, () => '');
     // In a dialog, what it carries says its words sealed with it; in a
@@ -397,7 +398,7 @@ export async function carriedWords(messages) {
 }
 
 // NO_PEER_KEY is why one cannot write to a person who has no key yet.
-export const NO_PEER_KEY = 'У собеседника ещё нет ключа шифрования сообщений: написать можно будет, когда собеседник зайдёт на сайт.';
+export const NO_PEER_KEY = tr('У собеседника ещё нет ключа шифрования сообщений: написать можно будет, когда собеседник зайдёт на сайт.');
 
 // peerKey is the key messages to nickname are sealed with; it throws a
 // sentence when they have none yet.
@@ -411,7 +412,7 @@ async function peerKey(nickname) {
 // ready throws a sentence when this browser cannot seal for userID.
 async function ready(userID, force = false) {
   const state = await ensureKey(userID, { force });
-  if (state !== KEY_READY) throw 'На этом устройстве нет ключа шифрования сообщений: перенесите его с другого устройства в «Настройках».';
+  if (state !== KEY_READY) throw tr('На этом устройстве нет ключа шифрования сообщений: перенесите его с другого устройства в «Настройках».');
 }
 
 // withKeys runs write with what the message says sealed for the keys of

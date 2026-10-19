@@ -3,6 +3,7 @@
 
 import { giftCollections, giftCosts, giftImage, giftNames, giftPrice, giftsCount } from './labels.js';
 import { el } from './layout.js';
+import { tr } from './i18n.js';
 
 // giftsPath is the list of gifts of user.
 export function giftsPath(user) {
@@ -21,19 +22,19 @@ export function menuPath(user, collection) {
 
 // giftPicture is the picture of a gift.
 export function giftPicture(gift) {
-  return el('img', { className: 'gift-pic', src: giftImage(gift), alt: giftNames[gift] ?? 'Подарок', loading: 'lazy' });
+  return el('img', { className: 'gift-pic', src: giftImage(gift), alt: giftNames[gift] ?? tr('Подарок'), loading: 'lazy' });
 }
 
 // giftsBlock is openvk's block "Подарки" of a page: how many, "Отправить
 // подарок" for who is signed in — on one's own page "Купить подарок", one
 // for oneself — "Все" and the newest.
 export function giftsBlock(user, page, canSend, mine) {
-  const links = [el('a', { href: giftsPath(user), textContent: 'Все' })];
-  if (mine) links.unshift(el('a', { href: pickPath(user), textContent: 'Купить подарок' }), ' | ');
-  else if (canSend) links.unshift(el('a', { href: pickPath(user), textContent: 'Отправить подарок' }), ' | ');
+  const links = [el('a', { href: giftsPath(user), textContent: tr('Все') })];
+  if (mine) links.unshift(el('a', { href: pickPath(user), textContent: tr('Купить подарок') }), ' | ');
+  else if (canSend) links.unshift(el('a', { href: pickPath(user), textContent: tr('Отправить подарок') }), ' | ');
 
   return [
-    el('div', { className: 'section-title', textContent: 'Подарки' }),
+    el('div', { className: 'section-title', textContent: tr('Подарки') }),
     el('div', { className: 'subtitle' }, el('span', { textContent: giftsCount(page.total) }), el('span', {}, ...links)),
     el('a', { className: 'gift-row', href: giftsPath(user) }, ...page.gifts.map((g) => giftPicture(g.gift))),
   ];
@@ -46,11 +47,11 @@ export function giftsBlock(user, page, canSend, mine) {
 export function giftRow(collection, { more = '', limit = Infinity } = {}, pick) {
   return el('div', { className: 'gift-cat-row' },
     el('div', { className: 'gift-cat-info' },
-      el('h4', { className: 'gift-cat-header', textContent: giftCollections[collection.id] ?? 'Подарки' }),
-      more ? el('a', { className: 'button', href: more, textContent: 'Показать больше' }) : null),
+      el('h4', { className: 'gift-cat-header', textContent: giftCollections[collection.id] ?? tr('Подарки') }),
+      more ? el('a', { className: 'button', href: more, textContent: tr('Показать больше') }) : null),
     el('div', { className: 'gift-grid' }, ...giftCosts(collection).slice(0, limit).map(({ gift, price }) => el('a', {
       className: 'gift-sel',
-      title: giftNames[gift] ?? 'Подарок',
+      title: giftNames[gift] ?? tr('Подарок'),
       onclick: () => pick(gift, price),
     },
     giftPicture(gift),

@@ -56,7 +56,51 @@ const clubTexts = {
   club_verified: 'Сообщество подтверждено: у его названия теперь галочка.',
 };
 
-function verbOf(type, actor) {
+// The same in English (i18n.js), when the pages are English: a verb has
+// one form, whoever did it.
+const english = {
+  verbs: {
+    like: 'liked', comment: 'left', follow: 'followed', wall_post: 'wrote', repost: 'shared', comment_reply: 'replied',
+    mention: 'mentioned', gift: 'sent', votes: 'gave', invite: 'joined', verified: 'verified',
+  },
+  texts: {
+    like: 'your post',
+    comment: 'a comment under your post',
+    follow: 'you',
+    wall_post: 'on your wall',
+    repost: 'your post',
+    comment_reply: 'to your comment',
+    comment_like: 'your comment',
+    topic_message: 'a comment under your topic',
+    topic_message_like: 'your message in a discussion',
+    post_mention: 'you in a post',
+    comment_mention: 'you in a comment',
+    topic_mention: 'you in a discussion',
+    photo_mention: 'you in a comment under a photo',
+    photo_like: 'your photo',
+    photo_comment: 'a comment under your photo',
+    story_like: 'your story',
+    story_comment: 'a comment under your story',
+    gift: 'you a gift',
+    votes: 'you votes',
+    invite: 'by your invitation',
+    verified: 'your page',
+  },
+  club: {
+    post_accepted: 'Published your suggested post.',
+    suggested_post: 'New suggested posts.',
+    club_admin: 'You were made a manager of the community.',
+    club_verified: 'The community is verified: its name has a check mark now.',
+  },
+  community: 'Community',
+  chat: 'Chat',
+  message: 'New message.',
+  chatMessage: ': new message.',
+};
+
+function verbOf(type, actor, lang) {
+  if (lang === 'en') return english.verbs[type];
+
   const [male, female, unknown, neuter] = notificationVerbs[type];
   if (actor.club) return neuter;
   return { male, female }[actor.gender] ?? unknown;
@@ -72,18 +116,22 @@ function clubPath(actor) {
 
 // notificationOf is what a push shows: the title, the text, where a click
 // leads, and the tag that puts one in place of another of the same; null
-// for what this worker does not know.
-function notificationOf(p) {
+// for what this worker does not know. lang is the language of the pages.
+function notificationOf(p, lang = 'ru') {
+  const en = lang === 'en';
   const actor = p.actor || {};
-  const name = actor.name || (actor.club ? 'Сообщество' : 'Freenet');
+  const name = actor.name || (actor.club ? (en ? english.community : 'Сообщество') : 'Freenet');
 
   if (p.type === 'message') {
-    return { title: name, body: 'Новое сообщение.', url: '/im/' + encodeURIComponent(actor.nickname), tag: 'im:' + actor.id, renotify: true };
+    const body = en ? english.message : 'Новое сообщение.';
+    return { title: name, body, url: '/im/' + encodeURIComponent(actor.nickname), tag: 'im:' + actor.id, renotify: true };
   }
 
   if (p.type === 'chat') {
     const chat = p.chat || {};
-    return { title: chat.title || 'Беседа', body: name + ': новое сообщение.', url: '/im/chat/' + encodeURIComponent(chat.id), tag: 'chat:' + chat.id, renotify: true };
+    const title = chat.title || (en ? english.chat : 'Беседа');
+    const body = name + (en ? english.chatMessage : ': новое сообщение.');
+    return { title, body, url: '/im/chat/' + encodeURIComponent(chat.id), tag: 'chat:' + chat.id, renotify: true };
   }
 
   if (p.type !== 'notification') return null;
@@ -92,15 +140,16 @@ function notificationOf(p) {
 
   if (clubTexts[p.kind]) {
     const url = { suggested_post: clubPath(actor) + '/suggested', club_verified: clubPath(actor) }[p.kind] ?? '/notifications';
-    return { title: name, body: clubTexts[p.kind], url, tag };
+    return { title: name, body: en ? english.club[p.kind] : clubTexts[p.kind], url, tag };
   }
 
   const text = pushTexts[p.kind];
   if (!text) return null;
 
   const url = { gift: '/gifts', votes: '/settings?act=finance' }[p.kind] ?? '/notifications';
+  const said = en ? english.texts[p.kind] : text[1];
 
-  return { title: name, body: capitalized(verbOf(text[0], actor) + ' ' + text[1] + '.'), url, tag };
+  return { title: name, body: capitalized(verbOf(text[0], actor, lang) + ' ' + said + '.'), url, tag };
 }
 
 // Safari takes the subscription back from a site whose pushes show
@@ -124,6 +173,19 @@ async function keepUnread(n) {
   await (await caches.open('freenet')).put(UNREAD, new Response(String(n)));
 }
 
+// The language of the pages (i18n.js), which they tell the worker as
+// they tell it the number; kept as the number is.
+const LANG = '/lang';
+
+async function language() {
+  const kept = await (await caches.open('freenet')).match(LANG);
+  return kept ? await kept.text() : 'ru';
+}
+
+async function keepLanguage(lang) {
+  await (await caches.open('freenet')).put(LANG, new Response(lang));
+}
+
 async function countPush() {
   if (!('setAppBadge' in self.navigator)) return;
 
@@ -133,7 +195,7 @@ async function countPush() {
 }
 
 async function show(payload) {
-  const shown = notificationOf(payload);
+  const shown = notificationOf(payload, await language().catch(() => 'ru'));
   if (!shown) return;
 
   const windows = await self.clients.matchAll({ type: 'window', includeUncontrolled: true });
@@ -192,6 +254,9 @@ async function open(url) {
 self.addEventListener('message', (event) => {
   const n = event.data?.unread;
   if (Number.isInteger(n) && n >= 0) event.waitUntil(keepUnread(n));
+
+  const lang = event.data?.lang;
+  if (lang === 'ru' || lang === 'en') event.waitUntil(keepLanguage(lang));
 });
 
 self.addEventListener('notificationclick', (event) => {

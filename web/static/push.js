@@ -8,6 +8,7 @@
 // not tell it again.
 
 import { api } from './api.js';
+import { lang } from './i18n.js';
 
 const KEY = 'freenet.push';
 
@@ -122,6 +123,9 @@ const AGAIN = 24 * 60 * 60 * 1000;
 export async function syncPush(me) {
   const state = stored();
   if (!state.on || !pushSupported() || Notification.permission !== 'granted') return;
+
+  // The worker says pushes in the language of the pages (sw.js).
+  navigator.serviceWorker.controller?.postMessage({ lang });
 
   const registration = await navigator.serviceWorker.getRegistration('/');
   const had = await registration?.pushManager.getSubscription();

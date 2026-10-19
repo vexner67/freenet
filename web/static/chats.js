@@ -7,6 +7,7 @@ import { api } from './api.js';
 import { CHAT_TITLE_MAX, defaultChatTitle, errorText } from './labels.js';
 import { avatarURL, el, fullName, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
+import { tr } from './i18n.js';
 
 const SEARCH_DELAY_MS = 300;
 
@@ -22,12 +23,12 @@ function peoplePicker(me, without = new Set()) {
   const picked = new Map();
   const list = el('div', { className: 'chat-people' });
   const count = el('div', { className: 'hint' });
-  const search = el('input', { type: 'search', maxLength: 64, placeholder: 'Найти человека: имя, фамилия или никнейм', ariaLabel: 'Найти человека' });
+  const search = el('input', { type: 'search', maxLength: 64, placeholder: tr('Найти человека: имя, фамилия или никнейм'), ariaLabel: tr('Найти человека') });
   let followers = [];
   let timer;
 
   function showCount() {
-    count.textContent = picked.size > 0 ? `Выбрано: ${picked.size}` : '';
+    count.textContent = picked.size > 0 ? tr('Выбрано: {0}', picked.size) : '';
   }
 
   function row(user) {
@@ -48,7 +49,7 @@ function peoplePicker(me, without = new Set()) {
     list.replaceChildren(...(offered.length > 0 ? offered.map(row) : [el('p', { className: 'hint', textContent: nobody })]));
   }
 
-  const showFollowers = () => show(followers, 'У вас пока нет подписчиков — найдите человека по имени.');
+  const showFollowers = () => show(followers, tr('У вас пока нет подписчиков — найдите человека по имени.'));
 
   api.followers(me.nickname, '', 50).then((page) => {
     followers = page.users;
@@ -67,9 +68,9 @@ function peoplePicker(me, without = new Set()) {
       try {
         const page = await api.search(q);
         // Only the answer to what the field says now is shown.
-        if (search.value.trim() === q) show(page.users, 'Никого не нашлось.');
+        if (search.value.trim() === q) show(page.users, tr('Никого не нашлось.'));
       } catch {
-        show([], 'Никого не нашлось.');
+        show([], tr('Никого не нашлось.'));
       }
     }, SEARCH_DELAY_MS);
   });
@@ -80,20 +81,20 @@ function peoplePicker(me, without = new Set()) {
 // openNewChat is "Новая беседа": a title, which may be left out — the chat
 // is then named by who is in it — and at least two people.
 export function openNewChat(me) {
-  const modal = openModal('Новая беседа', { tag: 'form' });
+  const modal = openModal(tr('Новая беседа'), { tag: 'form' });
   const error = el('div', { className: 'error', hidden: true });
-  const title = el('input', { type: 'text', maxLength: CHAT_TITLE_MAX, placeholder: 'Введите название беседы', ariaLabel: 'Название беседы' });
+  const title = el('input', { type: 'text', maxLength: CHAT_TITLE_MAX, placeholder: tr('Введите название беседы'), ariaLabel: tr('Название беседы') });
   const picker = peoplePicker(me);
-  const create = button('Создать беседу', null, { type: 'submit' });
+  const create = button(tr('Создать беседу'), null, { type: 'submit' });
 
   modal.box.classList.add('chat-dialog');
   modal.body.append(
     error,
     title,
-    el('p', { className: 'hint', textContent: 'Выберите друзей, которых вы хотели бы видеть в своей беседе.' }),
+    el('p', { className: 'hint', textContent: tr('Выберите друзей, которых вы хотели бы видеть в своей беседе.') }),
     ...picker.nodes,
   );
-  modal.actions.append(create, button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(create, button(tr('Отмена'), modal.close, { secondary: true }));
   title.focus();
 
   modal.box.addEventListener('submit', async (event) => {
@@ -122,14 +123,14 @@ export function openNewChat(me) {
 // openAddMembers is "Добавить участников" of a chat; done gets the chat as
 // it has become.
 export function openAddMembers(me, chat, done) {
-  const modal = openModal('Добавить участников', { tag: 'form' });
+  const modal = openModal(tr('Добавить участников'), { tag: 'form' });
   const error = el('div', { className: 'error', hidden: true });
   const picker = peoplePicker(me, new Set((chat.members ?? []).map((u) => u.nickname)));
-  const add = button('Добавить', null, { type: 'submit' });
+  const add = button(tr('Добавить'), null, { type: 'submit' });
 
   modal.box.classList.add('chat-dialog');
   modal.body.append(error, ...picker.nodes);
-  modal.actions.append(add, button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(add, button(tr('Отмена'), modal.close, { secondary: true }));
 
   modal.box.addEventListener('submit', async (event) => {
     event.preventDefault();

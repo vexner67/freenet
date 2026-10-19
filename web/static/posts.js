@@ -12,6 +12,7 @@ import { openViewer } from './viewer.js';
 import { lastComments } from './postcomments.js';
 import { pollNode } from './poll.js';
 import { documentsNode } from './docs.js';
+import { tr } from './i18n.js';
 
 const SVG = 'http://www.w3.org/2000/svg';
 
@@ -61,10 +62,10 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   function render() {
     date.replaceChildren(
       el('a', { href: postPath(post), textContent: formatPostDate(post.createdAt) }),
-      post.editedAt ? el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }) : '',
-      post.pinned ? ', закреплено' : '',
-      post.archived ? ', в архиве' : '',
-      post.commentsClosed ? ', комментарии закрыты' : '',
+      post.editedAt ? el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }) : '',
+      post.pinned ? tr(', закреплено') : '',
+      post.archived ? tr(', в архиве') : '',
+      post.commentsClosed ? tr(', комментарии закрыты') : '',
     );
     content.replaceChildren(
       // Whole on the page of the post, which has no link to open it.
@@ -92,12 +93,12 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   // menu in the order of its old posts.
   function changes() {
     const found = {};
-    if (canEdit(post, viewer)) found.edit = { text: 'Редактировать', mark: pencil, run: edit };
-    if (onDelete) found.delete = { text: 'Удалить', mark: cross, run: () => onDelete(post, node) };
+    if (canEdit(post, viewer)) found.edit = { text: tr('Редактировать'), mark: pencil, run: edit };
+    if (onDelete) found.delete = { text: tr('Удалить'), mark: cross, run: () => onDelete(post, node) };
     if (ownsWall()) {
       // An archived post is on no wall to be pinned on.
-      if (!post.archived) found.pin = { text: post.pinned ? 'Открепить' : 'Закрепить', mark: pin, on: post.pinned, run: togglePin };
-      found.archive = { text: post.archived ? 'Разархивировать' : 'Архивировать', mark: box, on: post.archived, run: toggleArchived };
+      if (!post.archived) found.pin = { text: post.pinned ? tr('Открепить') : tr('Закрепить'), mark: pin, on: post.pinned, run: togglePin };
+      found.archive = { text: post.archived ? tr('Разархивировать') : tr('Архивировать'), mark: box, on: post.archived, run: toggleArchived };
     }
     const order = microblog ? ['edit', 'delete', 'pin', 'archive'] : ['edit', 'archive', 'delete', 'pin'];
     return order.map((name) => found[name]).filter(Boolean);
@@ -108,21 +109,21 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
   // the comments, which openvk has not, goes with what may be done.
   function menuLinks() {
     const closing = ownsWall()
-      ? el('a', { textContent: post.commentsClosed ? 'Открыть комментарии' : 'Закрыть комментарии', onclick: toggleComments })
+      ? el('a', { textContent: post.commentsClosed ? tr('Открыть комментарии') : tr('Закрыть комментарии'), onclick: toggleComments })
       : null;
 
     if (!microblog) {
       return [
         ...changes().map((c) => el('a', { textContent: c.text, onclick: c.run })),
         closing,
-        withCommentsLink ? el('a', { href: postPath(post) }, ...counted('Комментарии', post.comments)) : null,
+        withCommentsLink ? el('a', { href: postPath(post) }, ...counted(tr('Комментарии'), post.comments)) : null,
         shareButton(post, canLike),
       ].filter(Boolean);
     }
 
     // The comments are under the post; with none, the field opens.
     const links = [];
-    if (comments && post.comments === 0 && comments.canOpen()) links.push(el('a', { textContent: 'Комментировать', onclick: openComments }));
+    if (comments && post.comments === 0 && comments.canOpen()) links.push(el('a', { textContent: tr('Комментировать'), onclick: openComments }));
     if (closing) links.push(closing);
     return links;
   }
@@ -216,7 +217,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     el('a', { className: 'post-avatar', href: path },
       el('img', { src: avatarURL(post.author, 'small'), alt: '' }),
       // openvk's "Онлайн" under the photo of a person who is on the site.
-      !microblog && !post.author.club && post.author.online ? el('span', { className: 'post-online', textContent: 'Онлайн' }) : null,
+      !microblog && !post.author.club && post.author.online ? el('span', { className: 'post-online', textContent: tr('Онлайн') }) : null,
     ),
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
@@ -273,7 +274,7 @@ export function canEdit(post, viewer, now = new Date()) {
 function wroteBy(post) {
   const { author } = post;
 
-  return ' ' + (author.club ? 'опубликовали' : wrote(author.gender));
+  return ' ' + (author.club ? tr('опубликовали') : wrote(author.gender));
 }
 
 // signatureNode is openvk's "Автор: Иван Иванов" under a post that speaks
@@ -282,7 +283,7 @@ function signatureNode(signer) {
   if (!signer) return null;
 
   return el('div', { className: 'post-signature' },
-    el('span', { textContent: 'Автор: ' }),
+    el('span', { textContent: tr('Автор: ') }),
     el('a', { href: pagePath(signer), textContent: fullName(signer) }),
     verifiedMark(signer),
   );
@@ -311,7 +312,7 @@ async function wholeText(post) {
 // takes votes there too, of a signed-in reader (canVote).
 export function sharedNode(shared, { canVote = false, onError } = {}) {
   if (shared.deleted) {
-    return el('div', { className: 'post-shared deleted', textContent: 'Запись удалена.' });
+    return el('div', { className: 'post-shared deleted', textContent: tr('Запись удалена.') });
   }
 
   const path = pagePath(shared.author);
@@ -335,7 +336,7 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
         el('div', { className: 'post-date' }, el('a', { href: postPath(shared), textContent: formatPostDate(shared.createdAt) })),
       ),
       content,
-      shared.repostOf ? el('a', { className: 'post-shared-link', href: postPath({ id: shared.repostOf }), textContent: 'Открыть запись' }) : null,
+      shared.repostOf ? el('a', { className: 'post-shared-link', href: postPath({ id: shared.repostOf }), textContent: tr('Открыть запись') }) : null,
     ),
   );
 }
@@ -346,12 +347,12 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
 function shareButton(post, canShare, { icon = false } = {}) {
   const count = el('span', { className: 'like-count' });
   const button = icon
-    ? el(canShare ? 'a' : 'span', { className: 'like share-icon', title: 'Поделиться' }, arrow(), count)
+    ? el(canShare ? 'a' : 'span', { className: 'like share-icon', title: tr('Поделиться') }, arrow(), count)
     : el(canShare ? 'a' : 'span', {});
 
   function render() {
     if (icon) count.textContent = post.reposts > 0 ? String(post.reposts) : '';
-    else button.replaceChildren(...counted('Поделиться', post.reposts));
+    else button.replaceChildren(...counted(tr('Поделиться'), post.reposts));
   }
 
   if (canShare) {
@@ -377,9 +378,9 @@ const sharers = {
 // wallLink names the wall a post is on: "на вашей стене" for the viewer's,
 // "в Любители котов" for a community's: openvk's "в $1", the name as is.
 function wallLink(wall, viewer) {
-  let text = 'на стене ' + genitiveName(wall);
-  if (wall.club) text = 'в ' + wall.name;
-  else if (viewer?.id === wall.id) text = 'на вашей стене';
+  let text = tr('на стене ') + genitiveName(wall);
+  if (wall.club) text = tr('в ') + wall.name;
+  else if (viewer?.id === wall.id) text = tr('на вашей стене');
 
   return el('a', { className: 'post-wall', href: pagePath(wall), textContent: text });
 }
@@ -408,7 +409,7 @@ export function linkCardNode(link) {
 // page, as openvk attaches a photo; a deleted one says so.
 export function sharedPhotoNode(shared) {
   if (shared.deleted) {
-    return el('div', { className: 'post-shared deleted', textContent: 'Фотография удалена.' });
+    return el('div', { className: 'post-shared deleted', textContent: tr('Фотография удалена.') });
   }
 
   return el('div', { className: 'post-photos single' },
@@ -453,7 +454,7 @@ export function likeButton(item, { canLike = false, onError, like = api.like, un
   function render() {
     button.classList.toggle('liked', item.liked);
     count.textContent = item.likes > 0 ? String(item.likes) : '';
-    button.title = item.liked ? 'Вам нравится' : 'Нравится';
+    button.title = item.liked ? tr('Вам нравится') : tr('Нравится');
   }
 
   let busy = false;

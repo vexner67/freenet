@@ -19,6 +19,7 @@ import { openNewChat, chatPath } from './chats.js';
 import { chatPreview, chatTitle, formatPostDate, foundParts, foundSnippet, foundText, messagePreview, snippet } from './labels.js';
 import { $, avatarURL, chatPhotoURL, el, fullName, renderChrome, showError, hideError, verifiedMark } from './layout.js';
 import { typingLine } from './typing.js';
+import { tr } from './i18n.js';
 
 const PREVIEW = 120;
 
@@ -250,7 +251,7 @@ function foundNode({ peer, message, chat, chatMessage }) {
     el('div', { className: 'dialog-message' },
       chat ? el('img', { src: avatarURL(m.author, 'small'), alt: '' }) : m.out && el('img', { src: avatarURL(me, 'small'), alt: '' }),
       el('div', { className: 'dialog-text' },
-        said.forwarded && el('span', { className: 'dialog-forwarded', textContent: 'Пересланное сообщение: ' }),
+        said.forwarded && el('span', { className: 'dialog-forwarded', textContent: tr('Пересланное сообщение: ') }),
         ...parts.map((p) => (p.found ? el('span', { className: 'found-words', textContent: p.text }) : p.text))),
     ),
   );
@@ -266,7 +267,7 @@ async function searchMore() {
     $('dialogs').append(...page.messages.map(foundNode));
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
-    $('empty').textContent = 'Ничего не найдено.';
+    $('empty').textContent = tr('Ничего не найдено.');
     $('empty').hidden = $('dialogs').children.length > 0;
   } catch (e) {
     showError($('error'), e);
@@ -308,13 +309,13 @@ function showSearch() {
   if (searchPeer) {
     $('search-peer').disabled = false;
     $('search-peer').value = searchPeer;
-    $('search-text').placeholder = 'Поиск по переписке';
+    $('search-text').placeholder = tr('Поиск по переписке');
   }
 
   if (searchChat) {
     $('search-chat').disabled = false;
     $('search-chat').value = searchChat;
-    $('search-text').placeholder = 'Поиск по переписке';
+    $('search-text').placeholder = tr('Поиск по переписке');
   }
 
   if (query || searchPeer || searchChat) {

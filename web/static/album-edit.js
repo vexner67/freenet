@@ -6,21 +6,22 @@ import { api, ApiError, currentUser } from './api.js';
 import { $, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { albumPath, albumsPath, albumsTitle, canChange, isKeptBySite } from './albums.js';
+import { tr } from './i18n.js';
 
 const albumID = decodeURIComponent(location.pathname.slice('/album/'.length, -'/edit'.length));
 
 function renderHead(album, owner) {
-  document.title = 'Редактировать альбом | Freenet';
+  document.title = tr('Редактировать альбом | Freenet');
   $('title').replaceChildren(...albumsTitle(owner, album.name));
 }
 
 // confirmDelete asks before the album goes with its photos; openvk deletes
 // it at once.
 function confirmDelete(album, owner) {
-  const modal = openModal('Удалить альбом');
-  modal.body.textContent = `Вы уверены, что хотите удалить альбом «${album.name}» со всеми фотографиями?`;
+  const modal = openModal(tr('Удалить альбом'));
+  modal.body.textContent = tr('Вы уверены, что хотите удалить альбом «{0}» со всеми фотографиями?', album.name);
   modal.actions.append(
-    button('Удалить', async () => {
+    button(tr('Удалить'), async () => {
       try {
         await api.deleteAlbum(album.id);
         location.assign(albumsPath(owner));
@@ -29,7 +30,7 @@ function confirmDelete(album, owner) {
         showError($('error'), e);
       }
     }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
 }
 
@@ -43,8 +44,8 @@ if (!me) {
     const { album, owner, role } = await api.album(albumID);
 
     renderHead(album, owner);
-    if (!canChange(owner, role, me)) throw new Error('Недостаточно прав.');
-    if (isKeptBySite(album)) throw new Error('Этот альбом сайт ведёт сам: его нельзя изменить.');
+    if (!canChange(owner, role, me)) throw new Error(tr('Недостаточно прав.'));
+    if (isKeptBySite(album)) throw new Error(tr('Этот альбом сайт ведёт сам: его нельзя изменить.'));
 
     $('tab-edit').href = albumPath(album) + '/edit';
     $('tab-upload').href = albumPath(album) + '/upload';
@@ -62,7 +63,7 @@ if (!me) {
       try {
         const saved = await api.editAlbum(album.id, $('name').value, $('description').value);
         renderHead(saved.album, saved.owner);
-        $('notice').textContent = 'Изменения сохранены.';
+        $('notice').textContent = tr('Изменения сохранены.');
         $('notice').hidden = false;
       } catch (e) {
         showError($('error'), e);
@@ -71,7 +72,7 @@ if (!me) {
       }
     });
   } catch (e) {
-    if (e.status === 404) $('title').textContent = 'Альбом не найден';
+    if (e.status === 404) $('title').textContent = tr('Альбом не найден');
     showError($('load-error'), e instanceof ApiError ? e : e.message);
   }
 }

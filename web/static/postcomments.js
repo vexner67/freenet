@@ -7,6 +7,7 @@ import { api } from './api.js';
 import { otherComments } from './labels.js';
 import { autosize, el } from './layout.js';
 import { commentNode } from './comments.js';
+import { tr } from './i18n.js';
 
 // lastComments draws them for post, which came with lastComments. Options:
 //   commenter: the signed-in viewer, null for anonymous; with a filled-in
@@ -25,8 +26,8 @@ export function lastComments(post, { commenter = null, moderates = false, path, 
 
   const more = el('a', { className: 'post-comments-more', href: path });
   const list = el('div', { className: 'post-comments-list' });
-  const text = el('textarea', { className: 'post-comment-text', rows: 1, maxLength: 60000, placeholder: 'Комментировать...' });
-  const submit = el('button', { type: 'submit', className: 'button', textContent: 'Отправить' });
+  const text = el('textarea', { className: 'post-comment-text', rows: 1, maxLength: 60000, placeholder: tr('Комментировать...') });
+  const submit = el('button', { type: 'submit', className: 'button', textContent: tr('Отправить') });
   const form = el('form', { className: 'post-comment-form', hidden: true }, text, submit);
   const node = el('div', { className: 'post-comments' }, more, list, form);
 

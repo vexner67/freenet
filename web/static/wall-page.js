@@ -12,6 +12,7 @@ import { $, clubRef, el, fullName, hideError, pagePath, renderChrome, showError 
 import { button, openModal } from './modal.js';
 import { showPostponedList } from './postponed.js';
 import { initWall, wallPath } from './wall.js';
+import { tr } from './i18n.js';
 
 const clubMatch = location.pathname.match(/^\/club\/([^/]+)\/wall$/);
 const params = new URLSearchParams(location.search);
@@ -52,8 +53,8 @@ function renderTabs(owner, moderates) {
 
   // openvk says "Записи Анна"; we decline the first name.
   $('tab-owner').textContent = owner.club
-    ? 'Записи сообщества'
-    : 'Записи ' + genitiveName({ name: owner.name, gender: owner.gender });
+    ? tr('Записи сообщества')
+    : tr('Записи ') + genitiveName({ name: owner.name, gender: owner.gender });
 }
 
 // archivePath is the archive of the wall for a year, 0 for all of them.
@@ -64,15 +65,15 @@ function archivePath(owner, y) {
 // confirmArchive asks before a whole year, or the whole wall, is moved:
 // openvk's confirm of "Действия". y is the year, 0 for every post.
 function confirmArchive(owner, y, archived) {
-  const modal = openModal(archived ? 'Архивирование записей' : 'Разархивирование записей');
+  const modal = openModal(archived ? tr('Архивирование записей') : tr('Разархивирование записей'));
   const error = el('div', { className: 'error', hidden: true });
   const question = !y
-    ? 'Архивировать все записи на этой стене?'
+    ? tr('Архивировать все записи на этой стене?')
     : archived
-      ? `Архивировать все записи, опубликованные в ${y} году?`
-      : `Разархивировать все записи, опубликованные в ${y} году?`;
+      ? tr('Архивировать все записи, опубликованные в {0} году?', y)
+      : tr('Разархивировать все записи, опубликованные в {0} году?', y);
 
-  const yes = button(archived ? 'Архивировать' : 'Разархивировать', async () => {
+  const yes = button(archived ? tr('Архивировать') : tr('Разархивировать'), async () => {
     hideError(error);
     yes.disabled = true;
 
@@ -88,7 +89,7 @@ function confirmArchive(owner, y, archived) {
   });
 
   modal.body.append(error, el('div', { textContent: question }));
-  modal.actions.append(yes, button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(yes, button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
 // renderArchive shows openvk's bar of the archive: "Все годы", the years
@@ -99,11 +100,11 @@ function renderArchive(owner, years) {
   const yearLink = (y) => el('a', { className: y === year ? 'archive-year current' : 'archive-year', href: archivePath(owner, y), textContent: String(y) });
 
   $('archive-years').replaceChildren(
-    el('a', { className: year ? 'archive-all' : 'archive-all active', href: archivePath(owner, 0), textContent: 'Все годы' }),
+    el('a', { className: year ? 'archive-all' : 'archive-all active', href: archivePath(owner, 0), textContent: tr('Все годы') }),
     ...shown.map(yearLink),
     more.length
       ? el('details', { className: 'archive-more' },
-        el('summary', { textContent: more.includes(year) ? `Ещё: ${year}` : 'Ещё' }),
+        el('summary', { textContent: more.includes(year) ? tr('Ещё: {0}', year) : tr('Ещё') }),
         el('div', { className: 'archive-menu' }, ...more.map(yearLink)))
       : '',
   );
@@ -120,12 +121,12 @@ function renderArchive(owner, years) {
   $('archive-actions-menu').replaceChildren(
     ...(action
       ? [
-        act(`Архивировать все записи за ${action}`, action, true),
-        act(`Разархивировать все записи за ${action}`, action, false),
+        act(tr('Архивировать все записи за {0}', action), action, true),
+        act(tr('Разархивировать все записи за {0}', action), action, false),
         el('div', { className: 'archive-divider' }),
       ]
       : []),
-    act('Архивировать все записи целиком', 0, true),
+    act(tr('Архивировать все записи целиком'), 0, true),
   );
 
   $('archive-manager').hidden = false;
@@ -147,8 +148,8 @@ try {
   const { owner, options } = await wanted;
   const name = owner.club ? owner.name : fullName(owner);
 
-  document.title = `Стена | ${name} | Freenet`;
-  $('title').replaceChildren(el('a', { href: pagePath(owner), textContent: name }), ' » Стена');
+  document.title = tr('Стена | {0} | Freenet', name);
+  $('title').replaceChildren(el('a', { href: pagePath(owner), textContent: name }), tr(' » Стена'));
   const moderates = options.moderates ?? me?.id === owner.id;
 
   if ((type === 'archive' || type === 'postponed') && !moderates) throw new Error('permission denied');
@@ -166,6 +167,6 @@ try {
     });
   }
 } catch (e) {
-  $('title').textContent = e.status === 404 ? 'Страница не найдена' : 'Стена';
+  $('title').textContent = e.status === 404 ? tr('Страница не найдена') : tr('Стена');
   showError($('error'), e);
 }

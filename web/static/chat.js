@@ -30,6 +30,7 @@ import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
+import { tr } from './i18n.js';
 
 const POLL_MS = 5000;
 const typists = typingLine((text) => { $('typing').textContent = text; });
@@ -105,26 +106,26 @@ function messageNode(m) {
     node.classList.toggle('deleted', now.deleted);
     content.replaceChildren(...[
       !now.deleted && now.replyTo && quoteNode(now.replyTo, now.replyTo.text, goTo),
-      now.deleted ? el('div', { className: 'im-message-text', textContent: 'Сообщение удалено' }) : now.text && textOf(now.text, node),
+      now.deleted ? el('div', { className: 'im-message-text', textContent: tr('Сообщение удалено') }) : now.text && textOf(now.text, node),
       ...attachedNodes(now),
       forwardedNode(now, (carried) => textOf(carried, node)),
       ...(now.deleted ? [] : reactionNodes(now, me.id, node.picking, react)),
     ].filter(Boolean));
     date.replaceChildren(...[
       formatPostDate(now.createdAt),
-      now.editedAt && !now.deleted && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
+      now.editedAt && !now.deleted && el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
       actionsNode([
-        replies && !now.deleted && active && ['Ответить', () => answer(now)],
-        !now.deleted && active && ['Реакция', () => {
+        replies && !now.deleted && active && [tr('Ответить'), () => answer(now)],
+        !now.deleted && active && [tr('Реакция'), () => {
           node.picking = !node.picking;
           node.render();
           // Under the last message the picker would open out of sight.
           if (node.picking) node.querySelector('.im-reaction-picker')?.scrollIntoView({ block: 'nearest' });
         }],
-        mine && !now.sticker && now.editableUntil && new Date(now.editableUntil) > new Date() && ['Редактировать', () => startEdit(now)],
-        !now.deleted && ['Переслать', () => forward([now])],
-        !now.deleted && active && [pinned ? 'Открепить' : 'Закрепить', () => change(() => (pinned ? api.unpinChatMessage(chatID) : api.pinChatMessage(chatID, now.id)))],
-        mine && now.deletableUntil && new Date(now.deletableUntil) > new Date() && ['Удалить', () => confirmDelete(now)],
+        mine && !now.sticker && now.editableUntil && new Date(now.editableUntil) > new Date() && [tr('Редактировать'), () => startEdit(now)],
+        !now.deleted && [tr('Переслать'), () => forward([now])],
+        !now.deleted && active && [pinned ? tr('Открепить') : tr('Закрепить'), () => change(() => (pinned ? api.unpinChatMessage(chatID) : api.pinChatMessage(chatID, now.id)))],
+        mine && now.deletableUntil && new Date(now.deletableUntil) > new Date() && [tr('Удалить'), () => confirmDelete(now)],
       ]),
     ].filter(Boolean));
   };
@@ -164,7 +165,7 @@ function textOf(text, node) {
 
   return el('div', {}, body, el('a', {
     className: 'post-text-more',
-    textContent: 'Показать больше',
+    textContent: tr('Показать больше'),
     onclick: async () => {
       try {
         await whole(m);
@@ -224,9 +225,9 @@ function showSent(m) {
 }
 
 function confirmDelete(m) {
-  const modal = openModal('Удаление сообщения');
+  const modal = openModal(tr('Удаление сообщения'));
   const error = el('div', { className: 'error', hidden: true });
-  const remove = button('Удалить', async () => {
+  const remove = button(tr('Удалить'), async () => {
     hideError(error);
     remove.disabled = true;
 
@@ -240,8 +241,8 @@ function confirmDelete(m) {
     }
   });
 
-  modal.body.append(error, 'Сообщение будет удалено у всех участников беседы.');
-  modal.actions.append(remove, button('Отмена', modal.close, { secondary: true }));
+  modal.body.append(error, tr('Сообщение будет удалено у всех участников беседы.'));
+  modal.actions.append(remove, button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
 // startEdit puts what the message says and its photos back in the form:
@@ -268,7 +269,7 @@ async function startEdit(m) {
   // An edit changes the words and the photos; the documents stay.
   documents.clear();
   $('doc').hidden = true;
-  $('send').textContent = 'Сохранить';
+  $('send').textContent = tr('Сохранить');
   text.focus();
   text.setSelectionRange(text.value.length, text.value.length);
 }
@@ -282,7 +283,7 @@ function cancelEdit() {
   attachments.clear();
   $('editing').hidden = true;
   $('doc').hidden = false;
-  $('send').textContent = 'Отправить';
+  $('send').textContent = tr('Отправить');
 }
 
 // edited shows what a message is after its sender edited it or took it
@@ -491,7 +492,7 @@ async function send(event) {
   if (!editing && !text.value.trim() && attachments.count() === 0 && documents.count() === 0) return;
 
   if (attachments.busy()) {
-    showError($('error'), 'Дождитесь, пока загрузятся фотографии.');
+    showError($('error'), tr('Дождитесь, пока загрузятся фотографии.'));
     return;
   }
 
@@ -534,13 +535,13 @@ async function change(request) {
 }
 
 function openRename() {
-  const modal = openModal('Обновить название', { tag: 'form' });
+  const modal = openModal(tr('Обновить название'), { tag: 'form' });
   const error = el('div', { className: 'error', hidden: true });
-  const title = el('input', { type: 'text', maxLength: CHAT_TITLE_MAX, value: chat.title, placeholder: 'Введите название беседы', ariaLabel: 'Название беседы' });
-  const save = button('Сохранить', null, { type: 'submit' });
+  const title = el('input', { type: 'text', maxLength: CHAT_TITLE_MAX, value: chat.title, placeholder: tr('Введите название беседы'), ariaLabel: tr('Название беседы') });
+  const save = button(tr('Сохранить'), null, { type: 'submit' });
 
   modal.body.append(error, title);
-  modal.actions.append(save, button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(save, button(tr('Отмена'), modal.close, { secondary: true }));
   title.focus();
 
   modal.box.addEventListener('submit', async (event) => {
@@ -560,27 +561,27 @@ function openRename() {
 }
 
 function confirmLeave() {
-  const modal = openModal('Покинуть чат');
+  const modal = openModal(tr('Покинуть чат'));
 
-  modal.body.append('Вы действительно хотите покинуть эту беседу?');
+  modal.body.append(tr('Вы действительно хотите покинуть эту беседу?'));
   modal.actions.append(
-    button('Покинуть чат', () => {
+    button(tr('Покинуть чат'), () => {
       modal.close();
       change(() => api.leaveChat(chatID));
     }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
 }
 
 // confirmDeleteChat is the creator's "Удалить беседу": the chat goes for
 // everyone in it with all its messages.
 function confirmDeleteChat() {
-  const modal = openModal('Удалить беседу');
+  const modal = openModal(tr('Удалить беседу'));
   const error = el('div', { className: 'error', hidden: true });
 
-  modal.body.append(error, 'Вы действительно хотите удалить эту беседу? Она пропадёт у всех участников вместе со всеми сообщениями, и вернуть её будет нельзя.');
+  modal.body.append(error, tr('Вы действительно хотите удалить эту беседу? Она пропадёт у всех участников вместе со всеми сообщениями, и вернуть её будет нельзя.'));
   modal.actions.append(
-    button('Удалить', async (e) => {
+    button(tr('Удалить'), async (e) => {
       e.target.disabled = true;
       hideError(error);
 
@@ -592,7 +593,7 @@ function confirmDeleteChat() {
         e.target.disabled = false;
       }
     }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
 }
 
@@ -605,12 +606,12 @@ function showPinned() {
   if (!m) return;
 
   $('pinned').replaceChildren(
-    el('div', { className: 'chat-pinned-body', title: 'Перейти к сообщению', onclick: () => goTo(m.id) },
-      el('span', { className: 'chat-pinned-head', textContent: 'Закреплённое сообщение' }),
+    el('div', { className: 'chat-pinned-body', title: tr('Перейти к сообщению'), onclick: () => goTo(m.id) },
+      el('span', { className: 'chat-pinned-head', textContent: tr('Закреплённое сообщение') }),
       el('b', { textContent: fullName(m.author) }), ': ', snippet(messagePreview(m), 200)),
     chat.state === 'active' && el('a', {
       className: 'chat-pinned-remove',
-      title: 'Открепить сообщение',
+      title: tr('Открепить сообщение'),
       textContent: '×',
       onclick: () => change(() => api.unpinChatMessage(chatID)),
     }),
@@ -646,7 +647,7 @@ function openPhoto() {
 // openAbout is "О чате": its photo, who is in it, its creator marked;
 // anyone in it changes the photo, the creator removes the others here.
 function openAbout() {
-  const modal = openModal('О чате');
+  const modal = openModal(tr('О чате'));
   const error = el('div', { className: 'error', hidden: true });
   const people = el('div', { className: 'chat-people tall' });
 
@@ -655,10 +656,10 @@ function openAbout() {
       el('img', { src: avatarURL(u, 'small'), alt: '' }),
       el('span', {},
         personLink(u),
-        u.id === chat.ownerId && el('span', { className: 'hint', textContent: ' — создатель' }),
+        u.id === chat.ownerId && el('span', { className: 'hint', textContent: tr(' — создатель') }),
         chat.ownerId === me.id && u.id !== me.id && chat.state === 'active' && el('a', {
           className: 'chat-kick',
-          textContent: 'Исключить из беседы',
+          textContent: tr('Исключить из беседы'),
           onclick: async () => {
             hideError(error);
 
@@ -676,9 +677,9 @@ function openAbout() {
   }
 
   const photoLinks = el('div', { className: 'chat-about-links' },
-    el('a', { textContent: 'Обновить фотографию', onclick: () => { modal.close(); openPhoto(); } }),
+    el('a', { textContent: tr('Обновить фотографию'), onclick: () => { modal.close(); openPhoto(); } }),
     chat.photo && ' | ',
-    chat.photo && el('a', { textContent: 'Удалить фотографию', onclick: () => { modal.close(); change(() => api.deleteChatPhoto(chatID)); } }),
+    chat.photo && el('a', { textContent: tr('Удалить фотографию'), onclick: () => { modal.close(); change(() => api.deleteChatPhoto(chatID)); } }),
   );
 
   fill();
@@ -691,9 +692,9 @@ function openAbout() {
     el('div', { className: 'hint', textContent: chatMembers(chat.memberCount) }),
     people,
     chat.ownerId === me.id && chat.state === 'active' && el('p', { className: 'album-delete' },
-      'Вы также можете ', el('a', { textContent: 'удалить беседу', onclick: () => { modal.close(); confirmDeleteChat(); } }), '.'),
+      tr('Вы также можете '), el('a', { textContent: tr('удалить беседу'), onclick: () => { modal.close(); confirmDeleteChat(); } }), '.'),
   );
-  modal.actions.append(button('Закрыть', modal.close, { secondary: true }));
+  modal.actions.append(button(tr('Закрыть'), modal.close, { secondary: true }));
 }
 
 // show draws what surrounds the messages: the name of the chat, how many
@@ -703,13 +704,13 @@ function show(now) {
 
   const active = chat.state === 'active';
   const link = (text, onclick) => el('a', { textContent: text, onclick });
-  const search = el('a', { href: '/im?chat=' + encodeURIComponent(chatID), textContent: 'Поиск по переписке' });
+  const search = el('a', { href: '/im?chat=' + encodeURIComponent(chatID), textContent: tr('Поиск по переписке') });
   const links = active
-    ? [search, link('Добавить участников', () => openAddMembers(me, chat, (changed) => { show(changed); catchUp(); })), link('Обновить название', openRename), link('Покинуть чат', confirmLeave)]
+    ? [search, link(tr('Добавить участников'), () => openAddMembers(me, chat, (changed) => { show(changed); catchUp(); })), link(tr('Обновить название'), openRename), link(tr('Покинуть чат'), confirmLeave)]
     : [search];
 
-  document.title = `${chatTitle(chat)} | Сообщения`;
-  $('title').replaceChildren(el('a', { href: '/im', textContent: 'Мои Сообщения' }), ' » ', chatTitle(chat));
+  document.title = tr('{0} | Сообщения', chatTitle(chat));
+  $('title').replaceChildren(el('a', { href: '/im', textContent: tr('Мои Сообщения') }), ' » ', chatTitle(chat));
   $('members').textContent = chatMembers(chat.memberCount);
   $('chat-avatar').src = chatPhotoURL(chat, 'small');
   showPinned();
@@ -721,12 +722,12 @@ function show(now) {
   $('form').hidden = !canWrite;
   $('blocked').hidden = canWrite;
   if (!active) {
-    const back = chat.state === 'left' ? [' ', link('Вернуться в чат', () => change(() => api.returnToChat(chatID)))] : [];
+    const back = chat.state === 'left' ? [' ', link(tr('Вернуться в чат'), () => change(() => api.returnToChat(chatID)))] : [];
 
     $('blocked').replaceChildren(chatStateText(chat.state), ...back);
     cancelEdit();
   } else if (!canWrite) {
-    $('blocked').replaceChildren('Чтобы писать сообщения, ', el('a', { href: '/edit', textContent: 'заполните свою страницу' }), '.');
+    $('blocked').replaceChildren(tr('Чтобы писать сообщения, '), el('a', { href: '/edit', textContent: tr('заполните свою страницу') }), '.');
   }
 
   // What I may do with my messages depends on whether I am in the chat.
@@ -824,7 +825,7 @@ if (!me) {
   } catch (e) {
     const missing = e.status === 404 || e.status === 400;
 
-    $('title').textContent = missing ? 'Страница не найдена' : 'Ошибка';
-    showError($('error'), missing ? 'Такой беседы нет.' : e);
+    $('title').textContent = missing ? tr('Страница не найдена') : tr('Ошибка');
+    showError($('error'), missing ? tr('Такой беседы нет.') : e);
   }
 }

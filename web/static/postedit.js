@@ -6,6 +6,7 @@
 import { api } from './api.js';
 import { initAttachments } from './attach.js';
 import { el, showError, hideError, autosize } from './layout.js';
+import { tr } from './i18n.js';
 
 const MAX_LENGTH = 60000;
 
@@ -14,16 +15,16 @@ export function editPost(post, node, { onSaved }) {
   const isRepost = Boolean(post.repost);
   const withPhotos = !post.sharedPhoto;
 
-  const text = el('textarea', { value: post.text, maxLength: MAX_LENGTH, placeholder: 'Текст записи' });
+  const text = el('textarea', { value: post.text, maxLength: MAX_LENGTH, placeholder: tr('Текст записи') });
   const error = el('div', { className: 'error', hidden: true });
   const list = el('div', { className: 'attachments', hidden: true });
   const input = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/gif,image/webp', multiple: true, hidden: true });
-  const attachLink = el('a', { className: 'attach-link', textContent: 'Прикрепить фотографию' });
+  const attachLink = el('a', { className: 'attach-link', textContent: tr('Прикрепить фотографию') });
   // "Содержит NSFW-контент", as in openvk's form; a repost is not marked:
   // the post it shares is.
   const nsfw = el('input', { type: 'checkbox', checked: Boolean(post.nsfw) });
-  const save = el('button', { className: 'button', type: 'submit', textContent: 'Сохранить' });
-  const cancel = el('button', { className: 'button secondary', type: 'button', textContent: 'Отмена' });
+  const save = el('button', { className: 'button', type: 'submit', textContent: tr('Сохранить') });
+  const cancel = el('button', { className: 'button secondary', type: 'button', textContent: tr('Отмена') });
 
   const attachments = !withPhotos
     ? null
@@ -36,7 +37,7 @@ export function editPost(post, node, { onSaved }) {
       el('span', {}, withPhotos ? attachLink : null),
       el('span', { className: 'post-edit-buttons' }, save, cancel),
     ),
-    isRepost || post.sharedPhoto ? null : el('div', { className: 'post-options' }, el('label', {}, nsfw, ' Содержит NSFW-контент')),
+    isRepost || post.sharedPhoto ? null : el('div', { className: 'post-options' }, el('label', {}, nsfw, tr(' Содержит NSFW-контент'))),
     input,
     error,
   );
@@ -51,7 +52,7 @@ export function editPost(post, node, { onSaved }) {
     hideError(error);
 
     if (attachments?.busy()) {
-      showError(error, 'Дождитесь, пока загрузятся фотографии.');
+      showError(error, tr('Дождитесь, пока загрузятся фотографии.'));
       return;
     }
 

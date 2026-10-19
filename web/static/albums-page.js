@@ -9,6 +9,7 @@ import { api, currentUser } from './api.js';
 import { albumsCount, formatPostDate, myAlbumsCount, photosCount } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, canChange, coverNode } from './albums.js';
+import { tr } from './i18n.js';
 
 const clubPage = location.pathname.startsWith('/club/');
 const ref = clubPage ? decodeURIComponent(location.pathname.slice('/club/'.length, -'/albums'.length)) : '';
@@ -25,8 +26,8 @@ function albumNode(album) {
       el('a', { href: path }, el('b', { textContent: album.name })),
       el('div', { className: 'list-description', textContent: album.description || album.name }),
       el('div', { className: 'hint', textContent: photosCount(album.photos) }),
-      el('div', { className: 'hint', textContent: 'Обновлено ' + formatPostDate(album.updatedAt) }),
-      el('div', { className: 'hint', textContent: 'Создано ' + formatPostDate(album.createdAt) }),
+      el('div', { className: 'hint', textContent: tr('Обновлено ') + formatPostDate(album.updatedAt) }),
+      el('div', { className: 'hint', textContent: tr('Создано ') + formatPostDate(album.createdAt) }),
     ),
   );
 }
@@ -37,14 +38,14 @@ function renderHead(page, me) {
   const { owner, role } = page;
   const mine = !owner.club && owner.id === me?.id;
 
-  document.title = `Альбомы ${fullName(owner)} | Freenet`;
-  if (mine) $('title').textContent = 'Мои Фотографии';
-  else $('title').replaceChildren(el('a', { href: pagePath(owner), textContent: fullName(owner) }), ' » Альбомы');
+  document.title = tr('Альбомы {0} | Freenet', fullName(owner));
+  if (mine) $('title').textContent = tr('Мои Фотографии');
+  else $('title').replaceChildren(el('a', { href: pagePath(owner), textContent: fullName(owner) }), tr(' » Альбомы'));
 
   $('summary-count').textContent = mine ? myAlbumsCount(page.total) : albumsCount(page.total);
   if (canChange(owner, role, me)) {
     const create = '/albums/create' + (owner.club ? '?club=' + encodeURIComponent(clubRef(owner)) : '');
-    $('summary-links').replaceChildren(' | ', el('a', { href: create, textContent: 'Создать альбом' }));
+    $('summary-links').replaceChildren(' | ', el('a', { href: create, textContent: tr('Создать альбом') }));
   }
   $('summary').hidden = false;
 }
@@ -57,7 +58,7 @@ async function loadMore(source, me) {
 
     if (!cursor) {
       renderHead(page, me);
-      if (page.albums.length === 0) $('albums').append(el('p', { className: 'hint', textContent: 'Тут ничего нет... Пока...' }));
+      if (page.albums.length === 0) $('albums').append(el('p', { className: 'hint', textContent: tr('Тут ничего нет... Пока...') }));
       $('albums').hidden = false;
     }
 
@@ -65,7 +66,7 @@ async function loadMore(source, me) {
     cursor = page.nextCursor;
     $('more').hidden = !cursor;
   } catch (e) {
-    if (!cursor) $('title').textContent = e.status === 404 ? 'Страница не найдена' : 'Альбомы';
+    if (!cursor) $('title').textContent = e.status === 404 ? tr('Страница не найдена') : tr('Альбомы');
     showError($('error'), e);
   }
 }
@@ -76,8 +77,8 @@ renderChrome(me);
 if (!ref && !nickname && !me) {
   location.replace('/');
 } else if (!ref && !nickname && !me.profileCompleted) {
-  $('title').textContent = 'Мои Фотографии';
-  showError($('error'), 'Сначала заполните свою страницу.');
+  $('title').textContent = tr('Мои Фотографии');
+  showError($('error'), tr('Сначала заполните свою страницу.'));
 } else {
   const source = ref ? { club: ref } : { nickname: nickname || me.nickname };
 

@@ -7,6 +7,7 @@ import { genders, relationships, takesPartner, worldviews, politicalViews, month
 import { $, avatarURL, el, renderChrome, showError, hideError } from './layout.js';
 import { openAvatarDialog } from './avatar.js';
 import { initBackdropForm } from './backdrop.js';
+import { tr } from './i18n.js';
 
 const MAX_FIELDS = 7;
 
@@ -26,9 +27,9 @@ function fillDate(birthday) {
   const [year, month, day] = birthday ? birthday.split('-').map(Number) : [];
   const thisYear = new Date().getFullYear();
 
-  fill($('birth-day'), [['', 'день'], ...Array.from({ length: 31 }, (_, i) => [String(i + 1), String(i + 1)])], day ? String(day) : '');
-  fill($('birth-month'), [['', 'месяц'], ...months.map((m, i) => [String(i + 1), m])], month ? String(month) : '');
-  fill($('birth-year'), [['', 'год'], ...Array.from({ length: 120 }, (_, i) => [String(thisYear - i), String(thisYear - i)])], year ? String(year) : '');
+  fill($('birth-day'), [['', tr('день')], ...Array.from({ length: 31 }, (_, i) => [String(i + 1), String(i + 1)])], day ? String(day) : '');
+  fill($('birth-month'), [['', tr('месяц')], ...months.map((m, i) => [String(i + 1), m])], month ? String(month) : '');
+  fill($('birth-year'), [['', tr('год')], ...Array.from({ length: 120 }, (_, i) => [String(thisYear - i), String(thisYear - i)])], year ? String(year) : '');
 }
 
 // birthday returns "YYYY-MM-DD", null for an empty date, or throws a
@@ -36,11 +37,11 @@ function fillDate(birthday) {
 function birthday() {
   const parts = [$('birth-year').value, $('birth-month').value, $('birth-day').value];
   if (parts.every((p) => p === '')) return null;
-  if (parts.some((p) => p === '')) throw 'Укажите дату рождения полностью или оставьте её пустой.';
+  if (parts.some((p) => p === '')) throw tr('Укажите дату рождения полностью или оставьте её пустой.');
 
   const [year, month, day] = parts.map(Number);
   const date = new Date(Date.UTC(year, month - 1, day));
-  if (date.getUTCMonth() !== month - 1) throw 'Такой даты не существует.';
+  if (date.getUTCMonth() !== month - 1) throw tr('Такой даты не существует.');
 
   return date.toISOString().slice(0, 10);
 }
@@ -59,7 +60,7 @@ function updateRelationship() {
 
 // saved shows openvk's "Изменения сохранены" over the form.
 function saved() {
-  $('notice').textContent = 'Изменения сохранены. Новые данные появятся на вашей странице.';
+  $('notice').textContent = tr('Изменения сохранены. Новые данные появятся на вашей странице.');
   $('notice').hidden = false;
   $('notice').scrollIntoView({ block: 'nearest' });
 }
@@ -174,18 +175,18 @@ function fieldNode(field = { name: '', text: '', place: 'contacts' }) {
   const name = el('input', { type: 'text', maxLength: 50, value: field.name, className: 'field-name' });
   const text = el('textarea', { maxLength: 1000, value: field.text, className: 'field-text' });
   const place = el('select', { className: 'field-place' },
-    el('option', { value: 'contacts', textContent: 'в «контактах»' }),
-    el('option', { value: 'interests', textContent: 'в «интересах»' }));
+    el('option', { value: 'contacts', textContent: tr('в «контактах»') }),
+    el('option', { value: 'interests', textContent: tr('в «интересах»') }));
   place.value = field.place;
 
   const node = el('table', { className: 'form extra-field' },
-    el('tr', {}, el('th', { textContent: 'Название' }), el('td', { className: 'control' }, name),
-      el('td', {}, el('a', { className: 'field-remove', title: 'Удалить поле', textContent: '×', onclick: () => {
+    el('tr', {}, el('th', { textContent: tr('Название') }), el('td', { className: 'control' }, name),
+      el('td', {}, el('a', { className: 'field-remove', title: tr('Удалить поле'), textContent: '×', onclick: () => {
         node.remove();
         updateAddButton();
       } }))),
-    el('tr', {}, el('th', { textContent: 'Текст' }), el('td', { className: 'control' }, text)),
-    el('tr', {}, el('th', { textContent: 'Отображение' }), el('td', { className: 'control' }, place)),
+    el('tr', {}, el('th', { textContent: tr('Текст') }), el('td', { className: 'control' }, text)),
+    el('tr', {}, el('th', { textContent: tr('Отображение') }), el('td', { className: 'control' }, place)),
   );
 
   return node;

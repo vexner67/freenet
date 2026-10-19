@@ -5,6 +5,7 @@
 import { api } from './api.js';
 import { el, fullName, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
+import { tr } from './i18n.js';
 
 // initBlacklistLink wires the link for profile; onChange(blocked) runs
 // after the blacklist changed, the page reloads to show what is left.
@@ -13,7 +14,7 @@ export function initBlacklistLink(profile, onChange) {
   let blocked = profile.blockedByMe;
 
   function render() {
-    link.textContent = blocked ? 'Удалить из чёрного списка' : 'Добавить в чёрный список';
+    link.textContent = blocked ? tr('Удалить из чёрного списка') : tr('Добавить в чёрный список');
   }
 
   async function unblock() {
@@ -24,9 +25,9 @@ export function initBlacklistLink(profile, onChange) {
   }
 
   function confirmBlock() {
-    const modal = openModal('Добавление в чёрный список');
+    const modal = openModal(tr('Добавление в чёрный список'));
     const error = el('div', { className: 'error', hidden: true });
-    const add = button('Добавить', async () => {
+    const add = button(tr('Добавить'), async () => {
       hideError(error);
       add.disabled = true;
 
@@ -44,10 +45,10 @@ export function initBlacklistLink(profile, onChange) {
 
     modal.body.append(
       error,
-      el('div', {}, `Вы уверены? ${fullName(profile)} не сможет писать вам сообщения, писать на вашей стене, ` +
-        'комментировать ваши записи и подписываться на вас, а ваши подписки друг на друга будут удалены.'),
+      el('div', {}, tr('Вы уверены? {0} не сможет писать вам сообщения, писать на вашей стене, ', fullName(profile)) +
+        tr('комментировать ваши записи и подписываться на вас, а ваши подписки друг на друга будут удалены.')),
     );
-    modal.actions.append(add, button('Отмена', modal.close, { secondary: true }));
+    modal.actions.append(add, button(tr('Отмена'), modal.close, { secondary: true }));
   }
 
   link.addEventListener('click', () => {

@@ -9,13 +9,14 @@ import { api, currentUser } from './api.js';
 import { adminsDisplays, clubTypes } from './labels.js';
 import { $, clubRef, el, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
+import { tr } from './i18n.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/edit'.length));
 
 function fill(club) {
   const path = '/club/' + encodeURIComponent(clubRef(club));
 
-  const heading = 'Редактировать группу';
+  const heading = tr('Редактировать группу');
 
   document.title = `${heading} | Freenet`;
   $('title').replaceChildren(el('a', { href: path, textContent: club.name }), ` » ${heading}`);
@@ -74,10 +75,10 @@ async function submit(event, club) {
 // confirmDelete asks before the club goes with its wall, topics, albums
 // and photos: nothing brings it back.
 function confirmDelete(club) {
-  const modal = openModal('Удалить группу');
-  modal.body.textContent = `Вы уверены, что хотите удалить группу «${club.name}»? Вместе с ней удалятся её участники, стена, обсуждения, альбомы и фотографии. Это нельзя отменить.`;
+  const modal = openModal(tr('Удалить группу'));
+  modal.body.textContent = tr('Вы уверены, что хотите удалить группу «{0}»? Вместе с ней удалятся её участники, стена, обсуждения, альбомы и фотографии. Это нельзя отменить.', club.name);
   modal.actions.append(
-    button('Удалить', async () => {
+    button(tr('Удалить'), async () => {
       try {
         await api.deleteClub(clubRef(club));
         location.assign('/groups');
@@ -86,7 +87,7 @@ function confirmDelete(club) {
         showError($('error'), e);
       }
     }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
 }
 
@@ -113,7 +114,7 @@ if (!me) {
       $('form').hidden = false;
     }
   } catch (e) {
-    $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';
+    $('title').textContent = e.status === 404 ? tr('Группа не найдена') : tr('Ошибка');
     showError($('error'), e);
     $('error').hidden = false;
     $('form').hidden = false;

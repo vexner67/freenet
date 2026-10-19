@@ -7,12 +7,13 @@ import { api, currentUser } from './api.js';
 import { $, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { boardPath, boardTitle, topicPath } from './topics.js';
+import { tr } from './i18n.js';
 
 const topicID = decodeURIComponent(location.pathname.slice('/topic/'.length, -'/edit'.length));
 
 function fill(topic, club, admin) {
-  document.title = `Редактирование темы «${topic.title}» | Freenet`;
-  $('title').replaceChildren(...boardTitle(club, 'Редактирование темы'));
+  document.title = tr('Редактирование темы «{0}» | Freenet', topic.title);
+  $('title').replaceChildren(...boardTitle(club, tr('Редактирование темы')));
   $('topic-title').textContent = topic.title;
   $('topic-author').textContent = fullName(topic.author);
   $('topic-author').href = pagePath(topic.author);
@@ -27,10 +28,10 @@ function fill(topic, club, admin) {
 
 // confirmDelete asks as openvk's message box does before the topic goes.
 function confirmDelete(topic, club) {
-  const modal = openModal('Удалить тему');
-  modal.body.textContent = 'Вы уверены, что хотите удалить эту тему со всеми сообщениями?';
+  const modal = openModal(tr('Удалить тему'));
+  modal.body.textContent = tr('Вы уверены, что хотите удалить эту тему со всеми сообщениями?');
   modal.actions.append(
-    button('Удалить', async () => {
+    button(tr('Удалить'), async () => {
       try {
         await api.deleteTopic(topic.id);
         location.assign(boardPath(club));
@@ -39,7 +40,7 @@ function confirmDelete(topic, club) {
         showError($('error'), e);
       }
     }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
 }
 
@@ -76,7 +77,7 @@ if (!me) {
       }
     });
   } catch (e) {
-    $('title').textContent = e.status === 404 ? 'Тема не найдена' : 'Ошибка';
+    $('title').textContent = e.status === 404 ? tr('Тема не найдена') : tr('Ошибка');
     showError($('error'), e);
   }
 }

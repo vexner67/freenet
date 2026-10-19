@@ -8,6 +8,7 @@ import { commentNode } from './comments.js';
 import { genitiveName, replyMention } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
 import { postNode } from './posts.js';
+import { tr } from './i18n.js';
 
 // openvk's limit of a post or a comment; the counter shows near the end.
 const MAX_LENGTH = 60000;
@@ -25,12 +26,12 @@ function renderTitle(post) {
   const path = pagePath(owner);
   const name = fullName(owner);
 
-  document.title = owner.club ? `Запись в группе ${owner.name} | Freenet` : `Запись на стене ${genitiveName(owner)} | Freenet`;
+  document.title = owner.club ? tr('Запись в группе {0} | Freenet', owner.name) : tr('Запись на стене {0} | Freenet', genitiveName(owner));
   $('title').replaceChildren(
     el('a', { href: path, textContent: name }),
     ' » ',
-    el('a', { href: path, textContent: 'Стена' }),
-    ' » Запись',
+    el('a', { href: path, textContent: tr('Стена') }),
+    tr(' » Запись'),
   );
 }
 
@@ -108,7 +109,7 @@ function initComments(post, me, moderates) {
       return;
     }
 
-    node.replaceWith(el('div', { className: 'post-deleted', textContent: 'Комментарий удалён.' }));
+    node.replaceWith(el('div', { className: 'post-deleted', textContent: tr('Комментарий удалён.') }));
     total--;
     updateCount();
   }
@@ -134,7 +135,7 @@ function initComments(post, me, moderates) {
 
   function updateCounter() {
     const left = MAX_LENGTH - $('comment-text').value.length;
-    $('comment-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? `осталось ${left}` : '';
+    $('comment-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? tr('осталось {0}', left) : '';
   }
 
   async function submit(event) {
@@ -142,7 +143,7 @@ function initComments(post, me, moderates) {
     hideError(error);
 
     if (attachments.busy()) {
-      showError(error, 'Дождитесь, пока загрузятся фотографии.');
+      showError(error, tr('Дождитесь, пока загрузятся фотографии.'));
       return;
     }
 
@@ -209,8 +210,8 @@ function initComments(post, me, moderates) {
   } else {
     const hint = $('comment-hint');
     hint.replaceChildren(...(me
-      ? ['Чтобы оставить комментарий, ', el('a', { href: '/edit', textContent: 'заполните свою страницу' }), '.']
-      : ['Чтобы оставить комментарий, ', el('a', { href: '/', textContent: 'войдите на сайт' }), '.']));
+      ? [tr('Чтобы оставить комментарий, '), el('a', { href: '/edit', textContent: tr('заполните свою страницу') }), '.']
+      : [tr('Чтобы оставить комментарий, '), el('a', { href: '/', textContent: tr('войдите на сайт') }), '.']));
     hint.hidden = false;
   }
 
@@ -256,7 +257,7 @@ try {
   await initComments(post, me, moderates);
 } catch (e) {
   const notFound = e.status === 404 || e.status === 400;
-  $('title').textContent = notFound ? 'Запись не найдена' : 'Ошибка';
+  $('title').textContent = notFound ? tr('Запись не найдена') : tr('Ошибка');
   document.title = $('title').textContent + ' | Freenet';
-  showError($('error'), notFound ? 'Запись удалена или никогда не существовала.' : e);
+  showError($('error'), notFound ? tr('Запись удалена или никогда не существовала.') : e);
 }

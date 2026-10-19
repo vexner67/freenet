@@ -12,6 +12,7 @@ import { albumPath, albumsTitle, canChange, isKeptBySite } from './albums.js';
 import { commentNode, photoCommentHearts } from './comments.js';
 import { likeButton } from './posts.js';
 import { openShare } from './share.js';
+import { tr } from './i18n.js';
 
 const photoID = decodeURIComponent(location.pathname.slice('/photo/'.length));
 
@@ -22,8 +23,8 @@ function showDescription(text) {
 }
 
 function render({ photo, author, album, owner }) {
-  document.title = 'Фотография | Freenet';
-  $('title').replaceChildren(...albumsTitle(owner, el('a', { href: albumPath(album), textContent: album.name }), 'Фотография'));
+  document.title = tr('Фотография | Freenet');
+  $('title').replaceChildren(...albumsTitle(owner, el('a', { href: albumPath(album), textContent: album.name }), tr('Фотография')));
 
   $('image').src = photo.large;
   // A photo of an adult post is blurred until clicked, as the post is.
@@ -39,12 +40,12 @@ function render({ photo, author, album, owner }) {
 
 // edit is openvk's "Изменить фотографию": the description in a box.
 function edit(photo) {
-  const modal = openModal('Изменить фотографию');
+  const modal = openModal(tr('Изменить фотографию'));
   const text = el('textarea', { maxLength: 255, rows: 4, value: $('description').textContent });
 
-  modal.body.append(el('div', { textContent: 'Описание' }), text);
+  modal.body.append(el('div', { textContent: tr('Описание') }), text);
   modal.actions.append(
-    button('Сохранить', async () => {
+    button(tr('Сохранить'), async () => {
       hideError($('error'));
 
       try {
@@ -56,16 +57,16 @@ function edit(photo) {
         showError($('error'), e);
       }
     }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
   text.focus();
 }
 
 function remove(photo, album) {
-  const modal = openModal('Удалить фотографию');
-  modal.body.textContent = 'Вы уверены, что хотите удалить эту фотографию из альбома?';
+  const modal = openModal(tr('Удалить фотографию'));
+  modal.body.textContent = tr('Вы уверены, что хотите удалить эту фотографию из альбома?');
   modal.actions.append(
-    button('Да', async () => {
+    button(tr('Да'), async () => {
       try {
         await api.deleteAlbumPhoto(photo.id);
         location.assign(albumPath(album));
@@ -74,7 +75,7 @@ function remove(photo, album) {
         showError($('error'), e);
       }
     }),
-    button('Нет', modal.close, { secondary: true }),
+    button(tr('Нет'), modal.close, { secondary: true }),
   );
 }
 
@@ -85,7 +86,7 @@ async function makeCover(photo, album) {
 
   try {
     await api.setAlbumCover(album.id, photo.id);
-    $('cover').replaceWith(el('span', { className: 'profile-link hint', textContent: 'Обложка альбома' }));
+    $('cover').replaceWith(el('span', { className: 'profile-link hint', textContent: tr('Обложка альбома') }));
   } catch (e) {
     showError($('error'), e);
   }
@@ -94,13 +95,13 @@ async function makeCover(photo, album) {
 // move puts the photo in another album of the same page: those people
 // made, the first screen of them.
 async function move(photo, album, owner) {
-  const modal = openModal('Перенести в альбом');
-  const albums = el('select', { ariaLabel: 'Альбом' });
+  const modal = openModal(tr('Перенести в альбом'));
+  const albums = el('select', { ariaLabel: tr('Альбом') });
   const error = el('div', { className: 'error', hidden: true });
 
-  modal.body.append(error, el('div', { textContent: 'Альбом' }), albums);
+  modal.body.append(error, el('div', { textContent: tr('Альбом') }), albums);
   modal.actions.append(
-    button('Перенести', async () => {
+    button(tr('Перенести'), async () => {
       if (!albums.value) return;
 
       try {
@@ -110,7 +111,7 @@ async function move(photo, album, owner) {
         showError(error, e);
       }
     }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
 
   try {
@@ -118,7 +119,7 @@ async function move(photo, album, owner) {
     const others = page.albums.filter((a) => a.id !== album.id && !isKeptBySite(a));
 
     albums.replaceChildren(...others.map((a) => el('option', { value: a.id, textContent: a.name })));
-    if (others.length === 0) albums.replaceChildren(el('option', { value: '', textContent: 'Других альбомов нет' }));
+    if (others.length === 0) albums.replaceChildren(el('option', { value: '', textContent: tr('Других альбомов нет') }));
   } catch (e) {
     showError(error, e);
   }
@@ -134,7 +135,7 @@ function initComments(page) {
   const moderates = Boolean(me) && (photo.mine || canChange(page.owner, page.role, me));
 
   function updateTitle() {
-    $('comments-title').textContent = total > 0 ? `Комментарии (${total})` : 'Комментарии';
+    $('comments-title').textContent = total > 0 ? tr('Комментарии ({0})', total) : tr('Комментарии');
   }
 
   // The comment the form answers, null for none.
@@ -253,6 +254,6 @@ try {
     $('move').addEventListener('click', () => move(page.photo, page.album, page.owner));
   }
 } catch (e) {
-  $('title').textContent = e.status === 404 ? 'Фотография не найдена' : 'Ошибка';
-  showError($('error'), e.status === 404 ? 'Фотография удалена или ещё не загружена.' : e);
+  $('title').textContent = e.status === 404 ? tr('Фотография не найдена') : tr('Ошибка');
+  showError($('error'), e.status === 404 ? tr('Фотография удалена или ещё не загружена.') : e);
 }

@@ -5,6 +5,7 @@
 import { likedBy } from './labels.js';
 import { avatarURL, el, fullName, pagePath, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
+import { tr } from './i18n.js';
 
 const TOOLTIP_SHOWN = 6;
 const BOX_PAGE = 24;
@@ -87,7 +88,7 @@ export function openLikers(total, id, load, list = likes) {
   const modal = openModal(list.head(total));
   const grid = el('div', { className: 'likers-grid' });
   const error = el('div', { className: 'error', hidden: true });
-  const more = el('a', { className: 'wall-more', textContent: 'Показать ещё', hidden: true });
+  const more = el('a', { className: 'wall-more', textContent: tr('Показать ещё'), hidden: true });
   let cursor = '';
 
   async function loadMore() {
@@ -107,7 +108,7 @@ export function openLikers(total, id, load, list = likes) {
 
   more.addEventListener('click', loadMore);
   modal.body.append(error, grid, more);
-  modal.actions.append(button('Закрыть', modal.close, { secondary: true }));
+  modal.actions.append(button(tr('Закрыть'), modal.close, { secondary: true }));
   modal.box.classList.add('likers-box');
   loadMore();
 }

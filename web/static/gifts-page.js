@@ -11,6 +11,7 @@ import { giftPicture, giftRow, giftsPath, menuPath, pickPath } from './gifts.js'
 import { $, avatarURL, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { separated } from './posts.js';
+import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
 const nickname = params.get('u') ?? '';
@@ -25,22 +26,22 @@ function renderHead(owner, me) {
   const mine = owner.id === me?.id;
   const link = (href, textContent) => el('a', { href, textContent });
 
-  document.title = `${picking ? 'Выбрать подарок' : 'Подарки'} | Freenet`;
-  if (!picking) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » Подарки');
-  else if (!collection) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), 'Выбрать подарок'), ' » Коллекции');
+  document.title = `${picking ? tr('Выбрать подарок') : tr('Подарки')} | Freenet`;
+  if (!picking) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), tr(' » Подарки'));
+  else if (!collection) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), tr('Выбрать подарок')), tr(' » Коллекции'));
   else {
-    $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), 'Выбрать подарок'), ' » ',
-      link(pickPath(owner), 'Коллекции'), ` » ${giftCollections[collection] ?? 'Подарки'}`);
+    $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), tr('Выбрать подарок')), ' » ',
+      link(pickPath(owner), tr('Коллекции')), ` » ${giftCollections[collection] ?? tr('Подарки')}`);
   }
 
-  $('tab-list').textContent = mine ? 'Мои подарки' : 'Подарки';
+  $('tab-list').textContent = mine ? tr('Мои подарки') : tr('Подарки');
   $('tab-list').href = giftsPath(owner);
   // One's own page buys a gift for oneself.
-  $('tab-send').textContent = mine ? 'Купить подарок' : 'Отправить подарок';
+  $('tab-send').textContent = mine ? tr('Купить подарок') : tr('Отправить подарок');
   $('tab-send').href = pickPath(owner);
   $('tab-send').hidden = !me;
   $(picking ? 'tab-send' : 'tab-list').classList.add('active');
-  $('tab-page').textContent = mine ? 'К моей странице' : `К странице ${genitiveName(owner)}`;
+  $('tab-page').textContent = mine ? tr('К моей странице') : tr('К странице {0}', genitiveName(owner));
   $('tab-page').href = pagePath(owner);
   $('tabs').hidden = false;
 }
@@ -53,8 +54,8 @@ function giftNode(gift, mine) {
   const { sender } = gift;
   const menu = [el('span', { className: 'post-date', textContent: formatPostDate(gift.sentAt) })];
 
-  if (mine && sender) menu.push(el('a', { href: pickPath(sender), textContent: 'Отправить подарок в ответ' }));
-  if (mine) menu.push(el('a', { textContent: 'Удалить', onclick: () => remove(gift, node) }));
+  if (mine && sender) menu.push(el('a', { href: pickPath(sender), textContent: tr('Отправить подарок в ответ') }));
+  if (mine) menu.push(el('a', { textContent: tr('Удалить'), onclick: () => remove(gift, node) }));
 
   const node = el('div', { className: 'post gift' },
     sender
@@ -65,8 +66,8 @@ function giftNode(gift, mine) {
         ? [el('a', { className: 'post-name', href: pagePath(sender), textContent: fullName(sender) }),
           verifiedMark(sender),
           // Told only to the two of them: others see "Подарок".
-          gift.anonymous ? el('span', { className: 'hint', textContent: ' (анонимно)' }) : null]
-        : el('b', { className: 'post-name', textContent: 'Подарок' })].flat()),
+          gift.anonymous ? el('span', { className: 'hint', textContent: tr(' (анонимно)') }) : null]
+        : el('b', { className: 'post-name', textContent: tr('Подарок') })].flat()),
       el('div', { className: 'user-gift' },
         giftPicture(gift.gift),
         gift.caption ? el('div', { className: 'gift-comment', textContent: gift.caption }) : null),
@@ -82,7 +83,7 @@ async function remove(gift, node) {
 
   try {
     await api.deleteGift(gift.id);
-    node.replaceWith(el('div', { className: 'post-deleted', textContent: 'Подарок удалён.' }));
+    node.replaceWith(el('div', { className: 'post-deleted', textContent: tr('Подарок удалён.') }));
   } catch (e) {
     showError($('error'), e);
   }
@@ -112,12 +113,12 @@ const rate = api.voteRate().then((r) => r.kopecks, () => 0);
 // nobody.
 function confirm(owner, me, gift, price) {
   const mine = owner.id === me.id;
-  const modal = openModal(mine ? 'Купить подарок' : 'Отправить подарок', { tag: 'form' });
-  const caption = el('textarea', { maxLength: 250, placeholder: 'Прикрепить сообщение...' });
+  const modal = openModal(mine ? tr('Купить подарок') : tr('Отправить подарок'), { tag: 'form' });
+  const caption = el('textarea', { maxLength: 250, placeholder: tr('Прикрепить сообщение...') });
   const anonymous = el('input', { type: 'checkbox' });
   const error = el('div', { className: 'error', hidden: true });
-  const send = button(mine ? 'Купить подарок' : 'Отправить подарок', null, { type: 'submit' });
-  const balance = el('div', { className: 'gift-send-balance', textContent: `У Вас ${votesCount(me.votes ?? 0)}` });
+  const send = button(mine ? tr('Купить подарок') : tr('Отправить подарок'), null, { type: 'submit' });
+  const balance = el('div', { className: 'gift-send-balance', textContent: tr('У Вас {0}', votesCount(me.votes ?? 0)) });
 
   rate.then((kopecks) => {
     if (kopecks) balance.append(` (${voteRate(kopecks)})`);
@@ -127,16 +128,16 @@ function confirm(owner, me, gift, price) {
   modal.body.append(
     el('div', { className: 'gift-send-top' },
       giftPicture(gift),
-      el('div', { className: 'gift-send-cost' }, 'Стоимость: ', el('b', { textContent: giftPrice(price) })),
+      el('div', { className: 'gift-send-cost' }, tr('Стоимость: '), el('b', { textContent: giftPrice(price) })),
       balance),
     el('div', { className: 'gift-send-field' },
-      el('b', { textContent: 'Получатель:' }),
+      el('b', { textContent: tr('Получатель:') }),
       el('div', { className: 'gift-recipient' }, el('span', { textContent: fullName(owner) }))),
-    el('div', { className: 'gift-send-field' }, el('b', { textContent: 'Сообщение к подарку:' }), caption),
+    el('div', { className: 'gift-send-field' }, el('b', { textContent: tr('Сообщение к подарку:') }), caption),
   );
-  if (!mine) modal.body.append(el('div', { className: 'gift-send-field' }, el('label', {}, anonymous, ' Отправить анонимно')));
+  if (!mine) modal.body.append(el('div', { className: 'gift-send-field' }, el('label', {}, anonymous, tr(' Отправить анонимно'))));
   modal.body.append(error);
-  modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(send, button(tr('Отмена'), modal.close, { secondary: true }));
 
   modal.box.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -149,7 +150,7 @@ function confirm(owner, me, gift, price) {
       me.votes = Math.max((me.votes ?? 0) - price, 0);
       sent(owner, mine);
     } catch (e) {
-      showError(error, e.message === 'not enough votes' ? 'Недостаточно голосов для покупки.' : e);
+      showError(error, e.message === 'not enough votes' ? tr('Недостаточно голосов для покупки.') : e);
       send.disabled = false;
     }
   });
@@ -159,11 +160,11 @@ function confirm(owner, me, gift, price) {
 // sent is openvk's "Подарок отправлен"; one bought for oneself leads to
 // one's gifts.
 function sent(owner, mine) {
-  const modal = openModal('Успех');
+  const modal = openModal(tr('Успех'));
 
   modal.body.append(mine
-    ? el('span', {}, 'Подарок куплен. Он уже на вашей странице — ', el('a', { href: giftsPath(owner), textContent: 'Мои подарки' }), '.')
-    : 'Подарок отправлен');
+    ? el('span', {}, tr('Подарок куплен. Он уже на вашей странице — '), el('a', { href: giftsPath(owner), textContent: tr('Мои подарки') }), '.')
+    : tr('Подарок отправлен'));
   modal.actions.append(button('OK', modal.close));
 }
 
@@ -200,7 +201,7 @@ async function show(me) {
     $('more').addEventListener('click', () => loadMore(owner, mine));
     await loadMore(owner, mine);
   } catch (e) {
-    $('title').textContent = e.status === 404 ? 'Страница не найдена' : 'Подарки';
+    $('title').textContent = e.status === 404 ? tr('Страница не найдена') : tr('Подарки');
     showError($('error'), e);
   }
 }
@@ -211,8 +212,8 @@ renderChrome(me);
 if (!me && (picking || !nickname)) {
   location.replace('/');
 } else if (!nickname && !me.profileCompleted) {
-  $('title').textContent = 'Мои подарки';
-  showError($('error'), 'Сначала заполните свою страницу.');
+  $('title').textContent = tr('Мои подарки');
+  showError($('error'), tr('Сначала заполните свою страницу.'));
 } else {
   await show(me);
 }

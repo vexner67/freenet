@@ -5,6 +5,7 @@
 
 import { el, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
+import { tr } from './i18n.js';
 
 // The canvas as it is drawn on, and what is saved: twice as sharp.
 export const GRAFFITI = { width: 560, height: 280, scale: 2 };
@@ -67,7 +68,7 @@ export function canvasPoint(event, canvas) {
 // openGraffiti is the window to draw in; onDone gets the picture as a PNG
 // file and may refuse it with an error, which the window shows.
 export function openGraffiti(onDone) {
-  const modal = openModal('Граффити');
+  const modal = openModal(tr('Граффити'));
   const error = el('div', { className: 'error', hidden: true });
   const canvas = el('canvas', { className: 'graffiti-canvas', width: GRAFFITI.width, height: GRAFFITI.height });
   const ctx = canvas.getContext('2d');
@@ -75,9 +76,9 @@ export function openGraffiti(onDone) {
   let drawing = null;
   let color = GRAFFITI_COLORS[0];
 
-  const picker = el('input', { type: 'color', value: color, title: 'Другой цвет', ariaLabel: 'Цвет' });
-  const width = el('input', { type: 'range', min: GRAFFITI_WIDTHS.min, max: GRAFFITI_WIDTHS.max, value: GRAFFITI_WIDTHS.start, ariaLabel: 'Толщина' });
-  const opacity = el('input', { type: 'range', min: 10, max: 100, value: 100, ariaLabel: 'Интенсивность' });
+  const picker = el('input', { type: 'color', value: color, title: tr('Другой цвет'), ariaLabel: tr('Цвет') });
+  const width = el('input', { type: 'range', min: GRAFFITI_WIDTHS.min, max: GRAFFITI_WIDTHS.max, value: GRAFFITI_WIDTHS.start, ariaLabel: tr('Толщина') });
+  const opacity = el('input', { type: 'range', min: 10, max: 100, value: 100, ariaLabel: tr('Интенсивность') });
   const swatches = GRAFFITI_COLORS.map((c) => {
     const swatch = el('a', { className: 'graffiti-swatch', title: c, onclick: () => pick(c) });
     // CSSOM, not a style attribute: the pages' CSP forbids those.
@@ -144,7 +145,7 @@ export function openGraffiti(onDone) {
   async function save() {
     hideError(error);
     if (strokes.length === 0) {
-      showError(error, 'Нарисуйте что-нибудь.');
+      showError(error, tr('Нарисуйте что-нибудь.'));
       return;
     }
 
@@ -166,7 +167,7 @@ export function openGraffiti(onDone) {
     }
   }
 
-  const saveButton = button('Прикрепить', save);
+  const saveButton = button(tr('Прикрепить'), save);
 
   modal.box.classList.add('graffiti-dialog');
   modal.body.append(
@@ -174,13 +175,13 @@ export function openGraffiti(onDone) {
     canvas,
     el('div', { className: 'graffiti-tools' },
       el('div', { className: 'graffiti-colors' }, ...swatches, picker),
-      el('label', {}, 'Толщина ', width),
-      el('label', {}, 'Интенсивность ', opacity),
-      el('a', { textContent: 'Отменить', title: 'Ctrl+Z', onclick: undo }),
-      el('a', { textContent: 'Очистить', onclick: () => { strokes.length = 0; redraw(); } }),
+      el('label', {}, tr('Толщина '), width),
+      el('label', {}, tr('Интенсивность '), opacity),
+      el('a', { textContent: tr('Отменить'), title: 'Ctrl+Z', onclick: undo }),
+      el('a', { textContent: tr('Очистить'), onclick: () => { strokes.length = 0; redraw(); } }),
     ),
   );
-  modal.actions.append(saveButton, button('Отмена', close, { secondary: true }));
+  modal.actions.append(saveButton, button(tr('Отмена'), close, { secondary: true }));
 
   pick(color);
   redraw();

@@ -3,6 +3,7 @@
 
 import { api, currentUser } from './api.js';
 import { $, clubRef, el, renderChrome, showError, hideError } from './layout.js';
+import { tr } from './i18n.js';
 
 async function submit(event) {
   event.preventDefault();
@@ -23,11 +24,11 @@ if (!me) {
   location.replace('/');
 } else {
   renderChrome(me);
-  document.title = 'Создать группу | Freenet';
+  document.title = tr('Создать группу | Freenet');
 
   if (me.profileCompleted) {
     $('form').addEventListener('submit', submit);
   } else {
-    $('form').replaceChildren(el('p', {}, 'Чтобы создать группу, ', el('a', { href: '/edit', textContent: 'заполните свою страницу' }), '.'));
+    $('form').replaceChildren(el('p', {}, tr('Чтобы создать группу, '), el('a', { href: '/edit', textContent: tr('заполните свою страницу') }), '.'));
   }
 }

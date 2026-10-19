@@ -8,6 +8,7 @@ import { haveDocuments } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { documentNode, uploadFile } from './docs.js';
+import { tr } from './i18n.js';
 
 let cursor = '';
 let total = 0;
@@ -23,8 +24,8 @@ function showSummary() {
 function shown(doc) {
   const node = documentNode(doc, {
     tools: [
-      el('a', { textContent: 'Редактировать', onclick: () => openRename(doc, node) }),
-      el('a', { textContent: 'Удалить', onclick: () => confirmDelete(doc, node) }),
+      el('a', { textContent: tr('Редактировать'), onclick: () => openRename(doc, node) }),
+      el('a', { textContent: tr('Удалить'), onclick: () => confirmDelete(doc, node) }),
     ],
   });
 
@@ -32,13 +33,13 @@ function shown(doc) {
 }
 
 function openRename(doc, node) {
-  const modal = openModal('Редактирование документа', { tag: 'form' });
+  const modal = openModal(tr('Редактирование документа'), { tag: 'form' });
   const error = el('div', { className: 'error', hidden: true });
-  const name = el('input', { type: 'text', maxLength: 128, value: doc.name, ariaLabel: 'Название' });
-  const save = button('Сохранить', null, { type: 'submit' });
+  const name = el('input', { type: 'text', maxLength: 128, value: doc.name, ariaLabel: tr('Название') });
+  const save = button(tr('Сохранить'), null, { type: 'submit' });
 
-  modal.body.append(error, el('p', {}, el('b', { textContent: 'Название' })), name);
-  modal.actions.append(save, button('Отмена', modal.close, { secondary: true }));
+  modal.body.append(error, el('p', {}, el('b', { textContent: tr('Название') })), name);
+  modal.actions.append(save, button(tr('Отмена'), modal.close, { secondary: true }));
   name.focus();
 
   modal.box.addEventListener('submit', async (event) => {
@@ -59,10 +60,10 @@ function openRename(doc, node) {
 // confirmDelete asks first: the document disappears from the posts and
 // messages that attach it too.
 function confirmDelete(doc, node) {
-  const modal = openModal('Удалить документ');
-  modal.body.append(el('p', { textContent: `Документ «${doc.name}» пропадёт и из записей и сообщений, к которым он прикреплён. Удалить?` }));
+  const modal = openModal(tr('Удалить документ'));
+  modal.body.append(el('p', { textContent: tr('Документ «{0}» пропадёт и из записей и сообщений, к которым он прикреплён. Удалить?', doc.name) }));
   modal.actions.append(
-    button('Удалить', async () => {
+    button(tr('Удалить'), async () => {
       modal.close();
       hideError($('error'));
 
@@ -75,7 +76,7 @@ function confirmDelete(doc, node) {
         showError($('error'), e);
       }
     }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
 }
 

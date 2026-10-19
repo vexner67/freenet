@@ -2,6 +2,7 @@
 // paths and the title "Кошки » Обсуждения » …" of openvk.
 
 import { clubRef, el, pagePath } from './layout.js';
+import { tr } from './i18n.js';
 
 export function topicPath(topic) {
   return '/topic/' + encodeURIComponent(topic.id);
@@ -17,7 +18,7 @@ export function boardTitle(club, what) {
   return [
     el('a', { href: pagePath({ ...club, club: true }), textContent: club.name }),
     ' » ',
-    el('a', { href: boardPath(club), textContent: 'Обсуждения' }),
+    el('a', { href: boardPath(club), textContent: tr('Обсуждения') }),
     ' » ' + what,
   ];
 }

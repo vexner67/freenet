@@ -66,6 +66,18 @@ test('the worker leads a message to its dialog and a chat to the chat', () => {
   assert.equal(notificationOf({ type: 'notification', kind: 'wat', id: 'x', actor: ann }), null);
 });
 
+test('the worker speaks English when the pages do', () => {
+  const { notificationOf } = worker();
+
+  for (const kind of kinds()) {
+    const shown = notificationOf({ type: 'notification', kind, id: 'n1', actor: ann }, 'en');
+    assert.ok(shown && !/[А-Яа-яЁё]/.test(shown.body), kind);
+  }
+  assert.equal(notificationOf({ type: 'notification', kind: 'like', id: 'n1', actor: ann }, 'en').body, 'Liked your post.');
+  assert.equal(notificationOf({ type: 'message', id: 'm1', actor: ann }, 'en').body, 'New message.');
+  assert.equal(notificationOf({ type: 'chat', id: 'm2', actor: ann, chat: { id: 'c1' } }, 'en').title, 'Chat');
+});
+
 test('a community is the title of what it did', () => {
   const { notificationOf } = worker();
   const cats = { id: 'c1', name: 'Кошки', club: true, nickname: 'cats' };

@@ -1,47 +1,59 @@
-// Russian texts for API values and errors.
+// Russian texts for API values and errors, in the language of the page
+// (i18n.js): the grammar of English is here too.
+import { lang, tr } from './i18n.js';
 
 // genders are "Пол" of the profile form. The site has no pronouns: the
 // gender is asked only because Russian words agree with it. openvk's
 // "они/их" (neutral) is no longer offered, and a page that chose it is
 // spoken of as one whose gender is not set.
 export const genders = [
-  ['', 'не указан'],
-  ['male', 'мужской'],
-  ['female', 'женский'],
+  ['', tr('не указан')],
+  ['male', tr('мужской')],
+  ['female', tr('женский')],
 ];
 
 // Relationship labels agree with gender, as in Russian they must; '' is
 // for a gender not set.
 const relationshipLabels = {
-  single: { male: 'не женат', female: 'не замужем', '': 'не женат / не замужем' },
-  dating: { male: 'встречается', female: 'встречается', '': 'встречается' },
-  engaged: { male: 'помолвлен', female: 'помолвлена', '': 'помолвлен(а)' },
-  married: { male: 'женат', female: 'замужем', '': 'в браке' },
-  civil_union: { male: 'в гражданском браке', female: 'в гражданском браке', '': 'в гражданском браке' },
-  in_love: { male: 'влюблён', female: 'влюблена', '': 'влюблён(а)' },
-  complicated: { male: 'всё сложно', female: 'всё сложно', '': 'всё сложно' },
-  looking: { male: 'в активном поиске', female: 'в активном поиске', '': 'в активном поиске' },
+  single: { male: tr('не женат'), female: tr('не замужем'), '': tr('не женат / не замужем') },
+  dating: { male: tr('встречается'), female: tr('встречается'), '': tr('встречается') },
+  engaged: { male: tr('помолвлен'), female: tr('помолвлена'), '': tr('помолвлен(а)') },
+  married: { male: tr('женат'), female: tr('замужем'), '': tr('в браке') },
+  civil_union: { male: tr('в гражданском браке'), female: tr('в гражданском браке'), '': tr('в гражданском браке') },
+  in_love: { male: tr('влюблён'), female: tr('влюблена'), '': tr('влюблён(а)') },
+  complicated: { male: tr('всё сложно'), female: tr('всё сложно'), '': tr('всё сложно') },
+  looking: { male: tr('в активном поиске'), female: tr('в активном поиске'), '': tr('в активном поиске') },
 };
 
 export function relationships(gender) {
-  return [['', 'не выбрано'], ...Object.entries(relationshipLabels).map(([value, byGender]) => [value, byGender[gender] ?? byGender['']])];
+  return [['', tr('не выбрано')], ...Object.entries(relationshipLabels).map(([value, byGender]) => [value, byGender[gender] ?? byGender['']])];
 }
 
+// i18n: off — Russian grammar, not text to show.
 // partnerPrefixes are openvk's "relationship_N_prefix": the word before
 // whom a relationship names, "Женат на …", "Замужем за …".
 const partnerPrefixes = {
   dating: 'с', engaged: 'с', civil_union: 'с', complicated: 'с', in_love: 'в',
   married: { male: 'на', female: 'за', '': 'с' },
 };
+// i18n: on
 
 // takesPartner: the relationship names someone, as in the user service.
 export function takesPartner(relationship) {
   return relationship in partnerPrefixes;
 }
 
-export function partnerPrefix(relationship, gender) {
+function russianPrefix(relationship, gender) {
   const prefix = partnerPrefixes[relationship];
   return typeof prefix === 'string' ? prefix : prefix[gender] ?? prefix[''];
+}
+
+// englishPrefixes: "married to", "in love with".
+const englishPrefixes = { engaged: 'to', married: 'to' };
+
+export function partnerPrefix(relationship, gender) {
+  if (lang === 'en') return englishPrefixes[relationship] ?? 'with';
+  return russianPrefix(relationship, gender);
 }
 
 // The case each of the prefixes asks of the name after it.
@@ -51,95 +63,95 @@ const prefixCases = { с: 'ins', за: 'ins', на: 'pre', в: 'acc' };
 // Петровым", "женат на Анне Ивановой", "влюблена в Петра Петрова". openvk
 // leaves the name as it is.
 export function partnerName(relationship, gender, partner) {
-  return declinedName(partner, prefixCases[partnerPrefix(relationship, gender)]);
+  return declinedName(partner, prefixCases[russianPrefix(relationship, gender)]);
 }
 
 export const worldviews = [
-  ['', 'не выбрано'],
-  ['orthodox', 'православие'],
-  ['catholicism', 'католицизм'],
-  ['protestantism', 'протестантизм'],
-  ['islam', 'ислам'],
-  ['judaism', 'иудаизм'],
-  ['buddhism', 'буддизм'],
-  ['confucianism', 'конфуцианство'],
-  ['secular_humanism', 'светский гуманизм'],
+  ['', tr('не выбрано')],
+  ['orthodox', tr('православие')],
+  ['catholicism', tr('католицизм')],
+  ['protestantism', tr('протестантизм')],
+  ['islam', tr('ислам')],
+  ['judaism', tr('иудаизм')],
+  ['buddhism', tr('буддизм')],
+  ['confucianism', tr('конфуцианство')],
+  ['secular_humanism', tr('светский гуманизм')],
 ];
 
 export const politicalViews = [
-  ['', 'не выбраны'],
-  ['indifferent', 'индифферентные'],
-  ['communist', 'коммунистические'],
-  ['socialist', 'социалистические'],
-  ['liberal', 'либеральные'],
-  ['conservative', 'консервативные'],
-  ['monarchist', 'монархические'],
-  ['ultraconservative', 'ультраконсервативные'],
-  ['libertarian', 'либертарианские'],
-  ['moderate_islamism', 'умеренный исламизм'],
-  ['radical_islamism', 'радикальный исламизм'],
+  ['', tr('не выбраны')],
+  ['indifferent', tr('индифферентные')],
+  ['communist', tr('коммунистические')],
+  ['socialist', tr('социалистические')],
+  ['liberal', tr('либеральные')],
+  ['conservative', tr('консервативные')],
+  ['monarchist', tr('монархические')],
+  ['ultraconservative', tr('ультраконсервативные')],
+  ['libertarian', tr('либертарианские')],
+  ['moderate_islamism', tr('умеренный исламизм')],
+  ['radical_islamism', tr('радикальный исламизм')],
 ];
 
 // wallWrites is "Кто может писать у меня на стене" of openvk. There are no
 // friends here: openvk's "Друзья" are the people you follow.
 export const wallWrites = [
-  ['everyone', 'все желающие'],
-  ['following', 'те, на кого я подписан(а)'],
-  ['only_me', 'только я'],
+  ['everyone', tr('все желающие')],
+  ['following', tr('те, на кого я подписан(а)')],
+  ['only_me', tr('только я')],
 ];
 
 // messagesWrites is "Кто может писать мне сообщения" of openvk, with its
 // "Друзья" as the people you follow; whoever you wrote to may answer.
 // chatsInvites are "Кто может добавлять меня в чаты" of openvk.
 export const chatsInvites = [
-  ['everyone', 'все желающие'],
-  ['following', 'те, на кого я подписан(а)'],
-  ['nobody', 'никто'],
+  ['everyone', tr('все желающие')],
+  ['following', tr('те, на кого я подписан(а)')],
+  ['nobody', tr('никто')],
 ];
 
 // profileTypes is "Тип профиля" of openvk.
 export const profileTypes = [
-  ['open', 'открытый'],
-  ['closed', 'закрытый'],
+  ['open', tr('открытый')],
+  ['closed', tr('закрытый')],
 ];
 
 // clubTypes is "Тип группы" of openvk; clubTypeHints is what the page of
 // a group says under it.
 export const clubTypes = [
-  ['open', 'открытая'],
-  ['closed', 'закрытая'],
+  ['open', tr('открытая')],
+  ['closed', tr('закрытая')],
 ];
 
 export const clubTypeHints = {
-  open: 'Это открытая группа. В неё может вступить любой желающий.',
-  closed: 'Это закрытая группа. Для вступления необходимо подавать заявку.',
+  open: tr('Это открытая группа. В неё может вступить любой желающий.'),
+  closed: tr('Это закрытая группа. Для вступления необходимо подавать заявку.'),
 };
 
 // requestsCount is the head of "Заявки" of a closed group, as on openvk.
 export function requestsCount(n) {
-  if (n <= 0) return 'Не найдено ни одной заявки...';
+  if (n <= 0) return tr('Не найдено ни одной заявки...');
   return `${plural(n, ['Найдена', 'Найдено', 'Найдено'])} ${n} ${plural(n, ['заявка', 'заявки', 'заявок'])}`;
 }
 
 // requestsLink is the link to them on the page of the group.
 export function requestsLink(n) {
-  return `${n} ${plural(n, ['заявка', 'заявки', 'заявок'])} на вступление`;
+  return tr('{0} {1} на вступление', n, plural(n, ['заявка', 'заявки', 'заявок']));
 }
 
 export const messagesWrites = [
-  ['everyone', 'все желающие'],
-  ['following', 'те, на кого я подписан(а)'],
-  ['nobody', 'никто'],
+  ['everyone', tr('все желающие')],
+  ['following', tr('те, на кого я подписан(а)')],
+  ['nobody', tr('никто')],
 ];
 
 // audiences are who sees a part of a page ("Кому видно мои группы",
 // "… мои фотографии", "… моих друзей", "… основную информацию моей
 // страницы" of openvk), with its "Друзьям" as the people you follow.
 export const audiences = [
-  ['everyone', 'всем желающим'],
-  ['users', 'пользователям Freenet'],
-  ['following', 'тем, на кого я подписан(а)'],
-  ['only_me', 'только мне'],
+  ['everyone', tr('всем желающим')],
+  ['users', tr('пользователям Freenet')],
+  ['following', tr('тем, на кого я подписан(а)')],
+  ['only_me', tr('только мне')],
 ];
 
 // pageReads is "Кому в интернете видно мою страницу" of openvk.
@@ -147,22 +159,22 @@ export const pageReads = audiences.slice(0, 2);
 
 // onlineReads is "Кто видит мою неактивность" of openvk, in its words.
 export const onlineReads = [
-  ['everyone', 'все'],
-  ['users', 'пользователи Freenet'],
-  ['following', 'те, на кого я подписан(а)'],
-  ['only_me', 'никто'],
+  ['everyone', tr('все')],
+  ['users', tr('пользователи Freenet')],
+  ['following', tr('те, на кого я подписан(а)')],
+  ['only_me', tr('никто')],
 ];
 
 // adminsDisplays is "Список админов" of a community's settings in openvk.
 export const adminsDisplays = [
-  ['creator', 'отображать только создателя группы'],
-  ['all', 'отображать всех администраторов'],
-  ['none', 'ничего не отображать'],
+  ['creator', tr('отображать только создателя группы')],
+  ['all', tr('отображать всех администраторов')],
+  ['none', tr('ничего не отображать')],
 ];
 
 export const months = [
-  'января', 'февраля', 'марта', 'апреля', 'мая', 'июня',
-  'июля', 'августа', 'сентября', 'октября', 'ноября', 'декабря',
+  tr('января'), tr('февраля'), tr('марта'), tr('апреля'), tr('мая'), tr('июня'),
+  tr('июля'), tr('августа'), tr('сентября'), tr('октября'), tr('ноября'), tr('декабря'),
 ];
 
 // label is the text of a set value; "" for a value that is not set, so the
@@ -172,12 +184,27 @@ export function label(options, value) {
   return options.find(([v]) => v === value)?.[1] ?? '';
 }
 
-export function plural(n, [one, few, many]) {
+// plural is the form of a word after the number n: the Russian forms
+// for one, a few and many ("голос", "голоса", "голосов"). English has
+// two, and they are one text of en.js: "голос|голоса|голосов" is
+// "vote|votes" — Russian forms that are alike may be different English.
+export function plural(n, forms) {
+  if (lang === 'en') {
+    const [one, other = one] = tr(forms.join('|')).split('|');
+    return n === 1 ? one : other;
+  }
+
+  const [one, few, many] = forms;
   const mod10 = n % 10;
   const mod100 = n % 100;
   if (mod10 === 1 && mod100 !== 11) return one;
   if (mod10 >= 2 && mod10 <= 4 && (mod100 < 12 || mod100 > 14)) return few;
   return many;
+}
+
+// dayOfMonth is "17 мая", in English "May 17".
+function dayOfMonth(day, month) {
+  return lang === 'en' ? `${months[month]} ${day}` : `${day} ${months[month]}`;
 }
 
 // formatBirthday turns "1990-05-17" into "17 мая 1990 г., 35 лет".
@@ -186,7 +213,7 @@ export function plural(n, [one, few, many]) {
 export function formatBirthday(iso) {
   if (iso.startsWith('--')) {
     const [month, day] = iso.slice(2).split('-').map(Number);
-    return `${day} ${months[month - 1]}`;
+    return dayOfMonth(day, month - 1);
   }
 
   const [year, month, day] = iso.split('-').map(Number);
@@ -195,7 +222,7 @@ export function formatBirthday(iso) {
   let age = today.getFullYear() - year;
   if (today.getMonth() + 1 < month || (today.getMonth() + 1 === month && today.getDate() < day)) age--;
 
-  return `${day} ${months[month - 1]} ${year} г., ${age} ${plural(age, ['год', 'года', 'лет'])}`;
+  return tr('{0} {1} г., {2} {3}', dayOfMonth(day, month - 1), year, age, plural(age, ['год', 'года', 'лет']));
 }
 
 // The clock dates are read by: null for the browser's own, or minutes
@@ -228,12 +255,12 @@ export function formatPostDate(iso, now = new Date()) {
   const midnight = (d) => Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate());
   const daysAgo = Math.round((midnight(today) - midnight(date)) / 86_400_000);
 
-  if (daysAgo === 0) return `сегодня в ${time}`;
-  if (daysAgo === 1) return `вчера в ${time}`;
+  if (daysAgo === 0) return tr('сегодня в {0}', time);
+  if (daysAgo === 1) return tr('вчера в {0}', time);
 
-  const day = `${date.getUTCDate()} ${months[date.getUTCMonth()]}`;
+  const day = dayOfMonth(date.getUTCDate(), date.getUTCMonth());
 
-  return date.getUTCFullYear() === today.getUTCFullYear() ? `${day} в ${time}` : `${day} ${date.getUTCFullYear()} в ${time}`;
+  return date.getUTCFullYear() === today.getUTCFullYear() ? tr('{0} в {1}', day, time) : tr('{0} {1} в {2}', day, date.getUTCFullYear(), time);
 }
 
 // storyAge is how long ago a story was told, as VK writes it: "только
@@ -241,12 +268,12 @@ export function formatPostDate(iso, now = new Date()) {
 export function storyAge(iso, now = new Date()) {
   const minutes = Math.floor((now - new Date(iso)) / 60_000);
 
-  if (minutes < 1) return 'только что';
-  if (minutes < 60) return `${minutes} ${plural(minutes, ['минуту', 'минуты', 'минут'])} назад`;
+  if (minutes < 1) return tr('только что');
+  if (minutes < 60) return tr('{0} {1} назад', minutes, plural(minutes, ['минуту', 'минуты', 'минут']));
 
   const hours = Math.floor(minutes / 60);
 
-  return `${hours} ${plural(hours, ['час', 'часа', 'часов'])} назад`;
+  return tr('{0} {1} назад', hours, plural(hours, ['час', 'часа', 'часов']));
 }
 
 // storyViews is "N просмотров" under a story of one's own.
@@ -257,12 +284,12 @@ export function storyViews(n) {
 // storyComments is the link to the comments under a story: "Комментарии"
 // or "Комментарии (3)".
 export function storyComments(n) {
-  return n > 0 ? `Комментарии (${n})` : 'Комментировать';
+  return n > 0 ? tr('Комментарии ({0})', n) : tr('Комментировать');
 }
 
 // storyViewers heads the box of who viewed a story.
 export function storyViewers(n) {
-  return `Историю ${plural(n, ['посмотрел', 'посмотрели', 'посмотрели'])} ${n} ${plural(n, ['человек', 'человека', 'человек'])}`;
+  return tr('Историю {0} {1} {2}', plural(n, ['посмотрел', 'посмотрели', 'посмотрели']), n, plural(n, ['человек', 'человека', 'человек']));
 }
 
 // formatDateTime turns an ISO time into openvk's "7 мая 2027 в 12:00".
@@ -270,7 +297,7 @@ export function formatDateTime(iso) {
   const date = onClock(new Date(iso));
   const time = `${date.getUTCHours()}:${two(date.getUTCMinutes())}`;
 
-  return `${date.getUTCDate()} ${months[date.getUTCMonth()]} ${date.getUTCFullYear()} в ${time}`;
+  return tr('{0} {1} в {2}', dayOfMonth(date.getUTCDate(), date.getUTCMonth()), date.getUTCFullYear(), time);
 }
 
 // banTerms are how long the admin panel blocks a page for: a number of
@@ -297,7 +324,7 @@ export function banUntil(term, now = new Date(), value = '') {
 // banEnd is until when a page is blocked, as openvk's "до: …" or
 // "навсегда".
 export function banEnd(ban) {
-  return ban.until ? 'до ' + formatDateTime(ban.until) : 'навсегда';
+  return ban.until ? tr('до ') + formatDateTime(ban.until) : tr('навсегда');
 }
 
 // localTime turns the values of a date and a time input, taken on the
@@ -331,100 +358,100 @@ export function inputTime(iso) {
 // avatarStyles, mainPages and menuItems are the choices of "Интерфейс" of
 // the settings, as on openvk; the photos here are square as they are.
 export const avatarStyles = [
-  ['square', 'квадратные (по умолчанию)'],
-  ['round', 'круглые'],
+  ['square', tr('квадратные (по умолчанию)')],
+  ['round', tr('круглые')],
 ];
 
 // themes, ratings, nsfwContents and postViews are the rest of openvk's
 // "Интерфейс"; the themes are ours.
 export const themes = [
-  ['default', 'обычный (по умолчанию)'],
-  ['blue', 'синий'],
-  ['dark', 'тёмный'],
+  ['default', tr('обычный (по умолчанию)')],
+  ['blue', tr('синий')],
+  ['dark', tr('тёмный')],
 ];
 
 export const ratings = [
-  ['show', 'показывать'],
-  ['hide', 'скрывать'],
+  ['show', tr('показывать')],
+  ['hide', tr('скрывать')],
 ];
 
 export const nsfwContents = [
-  ['hide', 'не показывать в ленте'],
-  ['blur', 'только замазывать'],
-  ['show', 'показывать'],
+  ['hide', tr('не показывать в ленте')],
+  ['blur', tr('только замазывать')],
+  ['show', tr('показывать')],
 ];
 
 export const postViews = [
-  ['old', 'старый'],
-  ['microblog', 'микроблог'],
+  ['old', tr('старый')],
+  ['microblog', tr('микроблог')],
 ];
 
 // timezones are openvk's clocks ("Часовой пояс"), by minutes east of
 // UTC; the first is the browser's own.
 export const timezones = [
-  ['', 'как в браузере (по умолчанию)'],
-  ['-720', '(GMT-12): Остров Бейкер, Хауленд'],
-  ['-660', '(GMT-11): Паго-Паго, Ниуэ, Мидуэй'],
-  ['-600', '(GMT-10): Гонолулу, Папеэте, Адак'],
-  ['-540', '(GMT-09): Анкоридж, Фэрбанкс, Джуно'],
-  ['-480', '(GMT-08): Лос-Анджелес, Ванкувер, Тихуана'],
-  ['-420', '(GMT-07): Денвер, Эдмонтон, Финикс'],
-  ['-360', '(GMT-06): Мехико, Чикаго, Гватемала'],
-  ['-300', '(GMT-05): Нью-Йорк, Торонто, Гавана'],
-  ['-270', '(GMT-04:30): Каракас, Маракайбо'],
-  ['-240', '(GMT-04): Сантьяго, Ла-Пас, Галифакс'],
-  ['-210', '(GMT-03:30): Сент-Джонс (Ньюфаундленд)'],
-  ['-180', '(GMT-03): Буэнос-Айрес, Сан-Паулу, Монтевидео'],
-  ['-120', '(GMT-02): Южная Георгия'],
-  ['-60', '(GMT-01): Азорские острова, Прая'],
-  ['0', '(GMT): Лондон, Лиссабон, Касабланка'],
-  ['60', '(GMT+1): Берлин, Париж, Рим'],
-  ['120', '(GMT+2): Калининград (МСК-1), Киев, Каир'],
-  ['180', '(GMT+3): Москва, Стамбул, Минск'],
-  ['210', '(GMT+3:30): Тегеран, Исфахан'],
-  ['240', '(GMT+4): Самара (МСК+1), Дубай, Баку'],
-  ['270', '(GMT+4:30): Кабул, Кандагар'],
-  ['300', '(GMT+5): Екатеринбург (МСК+2), Ташкент, Карачи'],
-  ['330', '(GMT+5:30): Нью-Дели, Мумбаи, Коломбо'],
-  ['345', '(GMT+5:45): Катманду, Покхара'],
-  ['360', '(GMT+6): Омск (МСК+3), Алматы, Дакка'],
-  ['390', '(GMT+6:30): Янгон (Рангун), Нейпьидо'],
-  ['420', '(GMT+7): Новосибирск (МСК+4), Красноярск, Бангкок'],
-  ['480', '(GMT+8): Иркутск (МСК+5), Пекин, Сингапур'],
-  ['510', '(GMT+8:30): Пхеньян'],
-  ['540', '(GMT+9): Якутск (МСК+6), Токио, Сеул'],
-  ['570', '(GMT+9:30): Аделаида, Дарвин'],
-  ['600', '(GMT+10): Владивосток (МСК+7), Сидней, Мельбурн'],
-  ['630', '(GMT+10:30): Лорд-Хау'],
-  ['660', '(GMT+11): Магадан (МСК+8), Сахалин, Чокурдах'],
-  ['720', '(GMT+12): Камчатка (МСК+9), Анадырь, Окленд'],
-  ['765', '(GMT+12:45): Острова Чатем'],
-  ['780', '(GMT+13): Нукуалофа, Апиа'],
-  ['840', '(GMT+14): Киритимати (о-ва Лайн)'],
+  ['', tr('как в браузере (по умолчанию)')],
+  ['-720', tr('(GMT-12): Остров Бейкер, Хауленд')],
+  ['-660', tr('(GMT-11): Паго-Паго, Ниуэ, Мидуэй')],
+  ['-600', tr('(GMT-10): Гонолулу, Папеэте, Адак')],
+  ['-540', tr('(GMT-09): Анкоридж, Фэрбанкс, Джуно')],
+  ['-480', tr('(GMT-08): Лос-Анджелес, Ванкувер, Тихуана')],
+  ['-420', tr('(GMT-07): Денвер, Эдмонтон, Финикс')],
+  ['-360', tr('(GMT-06): Мехико, Чикаго, Гватемала')],
+  ['-300', tr('(GMT-05): Нью-Йорк, Торонто, Гавана')],
+  ['-270', tr('(GMT-04:30): Каракас, Маракайбо')],
+  ['-240', tr('(GMT-04): Сантьяго, Ла-Пас, Галифакс')],
+  ['-210', tr('(GMT-03:30): Сент-Джонс (Ньюфаундленд)')],
+  ['-180', tr('(GMT-03): Буэнос-Айрес, Сан-Паулу, Монтевидео')],
+  ['-120', tr('(GMT-02): Южная Георгия')],
+  ['-60', tr('(GMT-01): Азорские острова, Прая')],
+  ['0', tr('(GMT): Лондон, Лиссабон, Касабланка')],
+  ['60', tr('(GMT+1): Берлин, Париж, Рим')],
+  ['120', tr('(GMT+2): Калининград (МСК-1), Киев, Каир')],
+  ['180', tr('(GMT+3): Москва, Стамбул, Минск')],
+  ['210', tr('(GMT+3:30): Тегеран, Исфахан')],
+  ['240', tr('(GMT+4): Самара (МСК+1), Дубай, Баку')],
+  ['270', tr('(GMT+4:30): Кабул, Кандагар')],
+  ['300', tr('(GMT+5): Екатеринбург (МСК+2), Ташкент, Карачи')],
+  ['330', tr('(GMT+5:30): Нью-Дели, Мумбаи, Коломбо')],
+  ['345', tr('(GMT+5:45): Катманду, Покхара')],
+  ['360', tr('(GMT+6): Омск (МСК+3), Алматы, Дакка')],
+  ['390', tr('(GMT+6:30): Янгон (Рангун), Нейпьидо')],
+  ['420', tr('(GMT+7): Новосибирск (МСК+4), Красноярск, Бангкок')],
+  ['480', tr('(GMT+8): Иркутск (МСК+5), Пекин, Сингапур')],
+  ['510', tr('(GMT+8:30): Пхеньян')],
+  ['540', tr('(GMT+9): Якутск (МСК+6), Токио, Сеул')],
+  ['570', tr('(GMT+9:30): Аделаида, Дарвин')],
+  ['600', tr('(GMT+10): Владивосток (МСК+7), Сидней, Мельбурн')],
+  ['630', tr('(GMT+10:30): Лорд-Хау')],
+  ['660', tr('(GMT+11): Магадан (МСК+8), Сахалин, Чокурдах')],
+  ['720', tr('(GMT+12): Камчатка (МСК+9), Анадырь, Окленд')],
+  ['765', tr('(GMT+12:45): Острова Чатем')],
+  ['780', tr('(GMT+13): Нукуалофа, Апиа')],
+  ['840', tr('(GMT+14): Киритимати (о-ва Лайн)')],
 ];
 
 export const mainPages = [
-  ['page', 'страница'],
-  ['feed', 'новости'],
+  ['page', tr('страница')],
+  ['feed', tr('новости')],
 ];
 
 export const menuItems = [
-  ['photos', 'Фотографии'],
-  ['messages', 'Сообщения'],
-  ['groups', 'Группы'],
-  ['feed', 'Новости'],
-  ['notifications', 'Уведомления'],
+  ['photos', tr('Фотографии')],
+  ['messages', tr('Сообщения')],
+  ['groups', tr('Группы')],
+  ['feed', tr('Новости')],
+  ['notifications', tr('Уведомления')],
 ];
 
 // deactivationReasons are openvk's reasons to delete a page: a title and
 // the words it puts in the message; the last one leaves them to the user.
 export const deactivationReasons = [
-  ['У меня есть другая страница на сайте', 'Я создал новую страницу и теперь хочу подтереть своё прошлое.'],
-  ['Сайт отнимает у меня слишком много времени', 'Пусть этот сайт хорош и прекрасен, но он отнимает у меня время, которое мне нужно для работы и жизни.'],
-  ['Сайт содержит слишком много неприемлемых материалов', 'Я нашёл достаточно порнографии и пиратского контента - хватит на всю жизнь. Теперь я ухожу.'],
-  ['Меня беспокоит безопасность моих данных', 'За мной следят и мне страшно здесь находится. Извините, я вынужден уйти.'],
-  ['Мою страницу не комментируют', 'Меня никто не смотрит здесь и это грустно. Вы пожалеете о том, что я ушёл.'],
-  ['Другая причина', ''],
+  [tr('У меня есть другая страница на сайте'), tr('Я создал новую страницу и теперь хочу подтереть своё прошлое.')],
+  [tr('Сайт отнимает у меня слишком много времени'), tr('Пусть этот сайт хорош и прекрасен, но он отнимает у меня время, которое мне нужно для работы и жизни.')],
+  [tr('Сайт содержит слишком много неприемлемых материалов'), tr('Я нашёл достаточно порнографии и пиратского контента - хватит на всю жизнь. Теперь я ухожу.')],
+  [tr('Меня беспокоит безопасность моих данных'), tr('За мной следят и мне страшно здесь находится. Извините, я вынужден уйти.')],
+  [tr('Мою страницу не комментируют'), tr('Меня никто не смотрит здесь и это грустно. Вы пожалеете о том, что я ушёл.')],
+  [tr('Другая причина'), ''],
 ];
 
 // byGender picks the form of a verb for a person; the masculine speaks of
@@ -434,33 +461,33 @@ function byGender(gender, male, female) {
 }
 
 export function wrote(gender) {
-  return byGender(gender, 'написал', 'написала');
+  return byGender(gender, tr('написал'), tr('написала'));
 }
 
 // limitedAccess is openvk's "$1 ограничил доступ к своей странице." for
 // whoever blacklisted the viewer.
 export function limitedAccess(gender) {
-  return { male: 'ограничил', female: 'ограничила' }[gender] ?? 'ограничил(а)';
+  return { male: tr('ограничил'), female: tr('ограничила') }[gender] ?? tr('ограничил(а)');
 }
 
 // closedFollows says whom the owner of a closed profile lets in.
 export function closedFollows(gender) {
-  return { male: 'подписан сам', female: 'подписана сама' }[gender] ?? 'подписан(а)';
+  return { male: tr('подписан сам'), female: tr('подписана сама') }[gender] ?? tr('подписан(а)');
 }
 
 // blacklistCount is the head of the blacklist, as on openvk.
 export function blacklistCount(n) {
-  if (n <= 0) return 'В вашем чёрном списке ещё нет пользователей.';
-  return `В вашем чёрном списке ${n} ${plural(n, ['пользователь', 'пользователя', 'пользователей'])}.`;
+  if (n <= 0) return tr('В вашем чёрном списке ещё нет пользователей.');
+  return tr('В вашем чёрном списке {0} {1}.', n, plural(n, ['пользователь', 'пользователя', 'пользователей']));
 }
 
 // sessionsCount heads the list of sessions in the settings.
 export function sessionsCount(n) {
-  return `Вы вошли на сайт с ${n} ${plural(n, ['устройства', 'устройств', 'устройств'])}.`;
+  return tr('Вы вошли на сайт с {0} {1}.', n, plural(n, ['устройства', 'устройств', 'устройств']));
 }
 
 const browsers = [
-  [/YaBrowser\//, 'Яндекс Браузер'],
+  [/YaBrowser\//, tr('Яндекс Браузер')],
   [/Edg(e|A|iOS)?\//, 'Edge'],
   [/OPR\/|Opera/, 'Opera'],
   [/Firefox\/|FxiOS\//, 'Firefox'],
@@ -484,7 +511,7 @@ const systems = [
 // that says nothing we know is shown as it is, cut short.
 export function deviceName(userAgent) {
   const agent = (userAgent ?? '').trim();
-  if (!agent) return 'Неизвестное устройство';
+  if (!agent) return tr('Неизвестное устройство');
 
   const known = [browsers, systems]
     .map((list) => list.find(([pattern]) => pattern.test(agent))?.[1])
@@ -500,7 +527,7 @@ export function deviceName(userAgent) {
 // Ивановой". Names are declined by their endings; whatever the rules do
 // not know (Latin letters, Шевченко, Кармен) stays as it is.
 export function declinedName({ name = '', surname = '', gender = '' }, grammaticalCase) {
-  const at = CASES.indexOf(grammaticalCase);
+  const at = lang === 'en' ? -1 : CASES.indexOf(grammaticalCase);
 
   return [
     decline(name, firstNameParadigm(name, gender), at),
@@ -512,6 +539,7 @@ export function genitiveName(person) {
   return declinedName(person, 'gen');
 }
 
+// i18n: off — Russian grammar, not text to show.
 // The order of the endings in a paradigm.
 const CASES = ['gen', 'acc', 'ins', 'pre'];
 
@@ -619,6 +647,7 @@ function nounParadigm(word, gender) {
 
   return [0, '', ['а', 'а', /[жчшщ]$/i.test(word) ? 'ем' : 'ом', 'е']];
 }
+// i18n: on
 
 // sameCase writes a stem in capitals when the word it is of is.
 function sameCase(word, stem) {
@@ -632,10 +661,10 @@ export function followersCount(n) {
 // presence is openvk's "Онлайн" or "была в сети сегодня в 12:00" of a
 // page, '' when it is not told.
 export function presence(user, now = new Date()) {
-  if (user.online) return 'Онлайн';
+  if (user.online) return tr('Онлайн');
   if (!user.lastSeenAt) return '';
 
-  return `${byGender(user.gender, 'был', 'была')} в сети ${formatPostDate(user.lastSeenAt, now)}`;
+  return tr('{0} в сети {1}', byGender(user.gender, tr('был'), tr('была')), formatPostDate(user.lastSeenAt, now));
 }
 
 export function followingCount(n) {
@@ -644,19 +673,19 @@ export function followingCount(n) {
 
 // membersCount is openvk's "participants": "Ни одного участника", "3 участника".
 export function membersCount(n) {
-  return n === 0 ? 'Ни одного участника' : `${n} ${plural(n, ['участник', 'участника', 'участников'])}`;
+  return n === 0 ? tr('Ни одного участника') : `${n} ${plural(n, ['участник', 'участника', 'участников'])}`;
 }
 
 // myClubsCount is the head of "Мои Группы", openvk's "groups_list".
 export function myClubsCount(n) {
-  if (n === 0) return 'Вы не состоите ни в одной группе';
-  return `Вы состоите в ${n} ${plural(n, ['группе', 'группах', 'группах'])}`;
+  if (n === 0) return tr('Вы не состоите ни в одной группе');
+  return tr('Вы состоите в {0} {1}', n, plural(n, ['группе', 'группах', 'группах']));
 }
 
 // otherComments is openvk's "view_other_comments" under a post of
 // "Микроблог": how many comments are on the page of the post only.
 export function otherComments(n) {
-  return `Показать остальные комментарии (${n})`;
+  return tr('Показать остальные комментарии ({0})', n);
 }
 
 // aboutStatistics are the lines of "Статистика" on the page "о сайте",
@@ -676,7 +705,7 @@ export function aboutStatistics({ users, online, clubs, posts }) {
 export function adminOverview({ users, verified = 0, clubs, posts }) {
   return {
     users: plural(users, ['зарегистрированный пользователь:', 'зарегистрированных пользователя, из них:', 'зарегистрированных пользователей, из них:']),
-    online: 'онлайн',
+    online: tr('онлайн'),
     verified: plural(verified, ['верифицированный', 'верифицированных', 'верифицированных']),
     clubs: plural(clubs, ['группа', 'группы', 'групп']),
     posts: plural(posts, ['запись', 'записи', 'записей']),
@@ -685,7 +714,7 @@ export function adminOverview({ users, verified = 0, clubs, posts }) {
 
 // clubsCount is openvk's "groups": "1 группа", "5 групп".
 export function clubsCount(n) {
-  return n === 0 ? 'Ни одной группы' : `${n} ${plural(n, ['группа', 'группы', 'групп'])}`;
+  return n === 0 ? tr('Ни одной группы') : `${n} ${plural(n, ['группа', 'группы', 'групп'])}`;
 }
 
 // adminsCount is openvk's "administrators": "1 администратор", "5 администраторов".
@@ -705,14 +734,14 @@ export function suggestedByYou(n) {
 
 // postponedCount is VK's link above the wall: "3 отложенные записи".
 export function postponedCount(n) {
-  if (n === 0) return 'Нет отложенных записей';
+  if (n === 0) return tr('Нет отложенных записей');
 
   return `${n} ${plural(n, ['отложенная запись', 'отложенные записи', 'отложенных записей'])}`;
 }
 
 // publishesAt is when a postponed post comes out, as VK says it.
 export function publishesAt(iso) {
-  return 'Будет опубликована ' + formatDateTime(iso);
+  return tr('Будет опубликована ') + formatDateTime(iso);
 }
 
 // nextHour is the time "Таймер" offers first: the next full hour.
@@ -735,45 +764,45 @@ export function topicMessages(n) {
 
 // topicMessagesCount heads a topic, openvk's "topic_messages_count".
 export function topicMessagesCount(n) {
-  return n === 0 ? 'В теме нет сообщений' : `В теме ${topicMessages(n)}`;
+  return n === 0 ? tr('В теме нет сообщений') : tr('В теме {0}', topicMessages(n));
 }
 
 // resultsCount is openvk's "results": "Ни одного результата", "2 результата".
 export function resultsCount(n) {
-  return n === 0 ? 'Ни одного результата' : `${n} ${plural(n, ['результат', 'результата', 'результатов'])}`;
+  return n === 0 ? tr('Ни одного результата') : `${n} ${plural(n, ['результат', 'результата', 'результатов'])}`;
 }
 
 // suggestedInClub is the head of the suggestions of a club, openvk's
 // "suggested_posts_in_group" and, for your own, "..._by_you"; at 0, once
 // all are handled.
 export function suggestedInClub(n, mine) {
-  if (n === 0) return mine ? 'Вы не предлагали в эту группу никаких записей' : 'Вы посмотрели всю предложку, поздравляю!';
+  if (n === 0) return mine ? tr('Вы не предлагали в эту группу никаких записей') : tr('Вы посмотрели всю предложку, поздравляю!');
 
   const posts = `${n} ${plural(n, ['запись', 'записи', 'записей'])}`;
-  return mine ? `Вы предложили в эту группу ${posts}` : `В эту группу предложили ${posts}`;
+  return mine ? tr('Вы предложили в эту группу {0}', posts) : tr('В эту группу предложили {0}', posts);
 }
 
 // albumsCount is openvk's "albums": "Ни одного альбома", "3 альбома".
 export function albumsCount(n) {
-  return n === 0 ? 'Ни одного альбома' : `${n} ${plural(n, ['альбом', 'альбома', 'альбомов'])}`;
+  return n === 0 ? tr('Ни одного альбома') : `${n} ${plural(n, ['альбом', 'альбома', 'альбомов'])}`;
 }
 
 // myAlbumsCount is the head of your own albums, openvk's "albums_list".
 export function myAlbumsCount(n) {
-  return n === 0 ? 'У Вас нет ни одного альбома' : `У Вас ${albumsCount(n)}`;
+  return n === 0 ? tr('У Вас нет ни одного альбома') : tr('У Вас {0}', albumsCount(n));
 }
 
 // Gifts ("Подарки" of openvk): the collections there are to choose from,
 // what each gift is called and its picture. The gifts themselves are the
 // catalogue of the user service; a picture is a file of the site, named
 // by its whole path so that it is served with its version.
-export const giftCollections = { flowers: 'Цветы', sweets: 'Сладости', holidays: 'Праздники', freenet: 'Freenet' };
+export const giftCollections = { flowers: tr('Цветы'), sweets: tr('Сладости'), holidays: tr('Праздники'), freenet: 'Freenet' };
 
 export const giftNames = {
-  rose: 'Роза', tulip: 'Тюльпан', bouquet: 'Букет', sunflower: 'Подсолнух', cactus: 'Кактус',
-  cake: 'Торт', candy: 'Конфета', chocolate: 'Шоколад', icecream: 'Мороженое', cupcake: 'Пирожное',
-  present: 'Подарок', balloons: 'Шарики', heart: 'Сердце', bear: 'Мишка', star: 'Звезда',
-  freenet_crystal: 'Кристалл Freenet', freenet_coin: 'Золотая монета', freenet_ring: 'Перстень', freenet_crown: 'Корона', freenet_heart: 'Рубиновое сердце', freenet_cup: 'Кубок',
+  rose: tr('Роза'), tulip: tr('Тюльпан'), bouquet: tr('Букет'), sunflower: tr('Подсолнух'), cactus: tr('Кактус'),
+  cake: tr('Торт'), candy: tr('Конфета'), chocolate: tr('Шоколад'), icecream: tr('Мороженое'), cupcake: tr('Пирожное'),
+  present: tr('Подарок'), balloons: tr('Шарики'), heart: tr('Сердце'), bear: tr('Мишка'), star: tr('Звезда'),
+  freenet_crystal: tr('Кристалл Freenet'), freenet_coin: tr('Золотая монета'), freenet_ring: tr('Перстень'), freenet_crown: tr('Корона'), freenet_heart: tr('Рубиновое сердце'), freenet_cup: tr('Кубок'),
 };
 
 const giftImages = {
@@ -809,7 +838,7 @@ export function giftImage(gift) {
 // Stickers ("Стикеры" of openvk): what each pack is called and the
 // picture of each sticker. The packs are the catalogue of the user
 // service; a picture is a file of the site, named by its whole path.
-export const stickerPacks = { smiles: 'Смайлы', cats: 'Котики', bears: 'Мишки' };
+export const stickerPacks = { smiles: tr('Смайлы'), cats: tr('Котики'), bears: tr('Мишки') };
 
 const stickerImages = {
   smile_happy: '/static/stickers/smile_happy.svg',
@@ -849,30 +878,30 @@ export function stickerImage(sticker) {
 // stickerPackName is what a pack is called: its author named a pack made
 // of photos, the site names its own.
 export function stickerPackName(pack) {
-  return pack.name || stickerPacks[pack.id] || 'Стикеры';
+  return pack.name || stickerPacks[pack.id] || tr('Стикеры');
 }
 
 // stickerPackAction is the button of a pack in openvk's box "Информация о
 // наборе": a pack once bought and put away comes back free.
 export function stickerPackAction(pack) {
-  if (pack.added) return 'Приобретён';
-  if (pack.bought || !pack.price) return 'Добавить';
+  if (pack.added) return tr('Приобретён');
+  if (pack.bought || !pack.price) return tr('Добавить');
 
-  return `Купить за ${votesCount(pack.price)}`;
+  return tr('Купить за {0}', votesCount(pack.price));
 }
 
 // stickerPackPrice is the foot of a card of the shop, as openvk's: text
 // and its kind — "purchased" grey, "free" green, "paid" blue.
 export function stickerPackPrice(pack) {
-  if (pack.added) return { text: 'Приобретён', kind: 'purchased' };
-  if (pack.bought) return { text: 'Добавить', kind: 'free' };
+  if (pack.added) return { text: tr('Приобретён'), kind: 'purchased' };
+  if (pack.bought) return { text: tr('Добавить'), kind: 'free' };
   if (pack.price) return { text: votesCount(pack.price), kind: 'paid' };
 
-  return { text: 'Бесплатно', kind: 'free' };
+  return { text: tr('Бесплатно'), kind: 'free' };
 }
 
 // STICKER_SECTIONS are the sections of openvk's shop.
-export const STICKER_SECTIONS = { popular: 'Популярные', free: 'Бесплатные', all: 'Все' };
+export const STICKER_SECTIONS = { popular: tr('Популярные'), free: tr('Бесплатные'), all: tr('Все') };
 
 // shopPacks are the packs of a section of the shop, as openvk's: "Популярные"
 // — those with a price, "Бесплатные" — the free ones, both the most taken
@@ -911,7 +940,7 @@ export function votesCount(n) {
 }
 
 export function giftPrice(price) {
-  return price > 0 ? votesCount(price) : 'Бесплатно';
+  return price > 0 ? votesCount(price) : tr('Бесплатно');
 }
 
 // giftCosts are the gifts of a collection of the catalogue with what each
@@ -932,13 +961,13 @@ export function rubles(kopecks) {
 
 // voteRate is what a vote is worth: "1 голос = 7 ₽".
 export function voteRate(kopecks) {
-  return `1 голос = ${rubles(kopecks)}`;
+  return tr('1 голос = {0}', rubles(kopecks));
 }
 
 // unusedVotes is openvk's "У Вас N неиспользованных голосов.", in parts:
 // the number is bold.
 export function unusedVotes(n) {
-  return ['У Вас ', String(n), ` ${plural(n, ['неиспользованный голос', 'неиспользованных голоса', 'неиспользованных голосов'])}.`];
+  return [tr('У Вас '), String(n), ` ${plural(n, ['неиспользованный голос', 'неиспользованных голоса', 'неиспользованных голосов'])}.`];
 }
 
 // voucherCode is a serial number as openvk shows it: four groups of six,
@@ -958,18 +987,18 @@ export function voucherUsages(left) {
 }
 
 export function voucherStatus(voucher) {
-  return voucher.usagesLeft === 0 ? 'закончился' : 'активен';
+  return voucher.usagesLeft === 0 ? tr('закончился') : tr('активен');
 }
 
 // voucherGave is what an activated voucher gave: "10 голосов и 5%
 // рейтинга".
 export function voucherGave({ votes, rating }) {
-  return [votes > 0 && votesCount(votes), rating > 0 && `${rating}% рейтинга`].filter(Boolean).join(' и ');
+  return [votes > 0 && votesCount(votes), rating > 0 && tr('{0}% рейтинга', rating)].filter(Boolean).join(tr(' и '));
 }
 
 // giftsCount is openvk's "gifts": "3 подарка", "Нет подарков".
 export function giftsCount(n) {
-  return n === 0 ? 'Нет подарков' : `${n} ${plural(n, ['подарок', 'подарка', 'подарков'])}`;
+  return n === 0 ? tr('Нет подарков') : `${n} ${plural(n, ['подарок', 'подарка', 'подарков'])}`;
 }
 
 // Documents ("Мои Документы" openvk). DOCUMENT_FORMATS are the formats
@@ -997,12 +1026,12 @@ export function documentsCount(n) {
 }
 
 export function haveDocuments(n) {
-  return 'У Вас ' + documentsCount(n);
+  return tr('У Вас ') + documentsCount(n);
 }
 
 // fileSize is openvk's readable_filesize: "512 Б", "1,5 КБ", "10 МБ".
 export function fileSize(bytes) {
-  const units = ['Б', 'КБ', 'МБ', 'ГБ'];
+  const units = [tr('Б'), tr('КБ'), tr('МБ'), tr('ГБ')];
   let n = bytes;
   let unit = 0;
 
@@ -1011,14 +1040,15 @@ export function fileSize(bytes) {
     unit++;
   }
 
-  const shown = unit === 0 || n >= 10 ? String(Math.round(n)) : String(Math.round(n * 10) / 10).replace('.', ',');
+  const fraction = String(Math.round(n * 10) / 10);
+  const shown = unit === 0 || n >= 10 ? String(Math.round(n)) : lang === 'en' ? fraction : fraction.replace('.', ',');
 
   return `${shown} ${units[unit]}`;
 }
 
 // favesCount is openvk's "N закладок" above what you like.
 export function favesCount(n) {
-  return n === 0 ? 'Ни одной закладки' : `${n} ${plural(n, ['закладка', 'закладки', 'закладок'])}`;
+  return n === 0 ? tr('Ни одной закладки') : `${n} ${plural(n, ['закладка', 'закладки', 'закладок'])}`;
 }
 
 // photosCount is under an album: openvk writes "N фотографий" whatever N
@@ -1028,7 +1058,7 @@ export function photosCount(n) {
 }
 
 // clubRoles name what a member is in a community.
-export const clubRoles = { owner: 'Владелец', admin: 'Администратор', member: 'Участник' };
+export const clubRoles = { owner: tr('Владелец'), admin: tr('Администратор'), member: tr('Участник') };
 
 export function postsCount(n) {
   return `${n} ${plural(n, ['запись', 'записи', 'записей'])}`;
@@ -1036,31 +1066,31 @@ export function postsCount(n) {
 
 // likedBy is openvk's "Понравилось 3 людям".
 export function likedBy(n) {
-  return n === 0 ? 'Никому не понравилось' : `Понравилось ${n} ${plural(n, ['человеку', 'людям', 'людям'])}`;
+  return n === 0 ? tr('Никому не понравилось') : tr('Понравилось {0} {1}', n, plural(n, ['человеку', 'людям', 'людям']));
 }
 
 // sharedBy heads the list of who shared a post: "Поделились 3 человека".
 export function sharedBy(n) {
-  if (n === 0) return 'Никто не поделился';
+  if (n === 0) return tr('Никто не поделился');
 
   return `${plural(n, ['Поделился', 'Поделились', 'Поделились'])} ${n} ${plural(n, ['человек', 'человека', 'человек'])}`;
 }
 
 // pollVoters is openvk's line under a poll: how many people voted.
 export function pollVoters(n) {
-  if (n === 0) return 'Будьте первым, кто проголосует!';
+  if (n === 0) return tr('Будьте первым, кто проголосует!');
 
-  return `В опросе ${plural(n, ['проголосовал', 'проголосовало', 'проголосовало'])} ${n} ${plural(n, ['человек', 'человека', 'человек'])}.`;
+  return tr('В опросе {0} {1} {2}.', plural(n, ['проголосовал', 'проголосовало', 'проголосовало']), n, plural(n, ['человек', 'человека', 'человек']));
 }
 
 // pollMeta is openvk's second line: how the poll is held, its parts
 // joined with " • ": "Публичное голосование • много вариантов • нельзя
 // переголосовать • до 12 октября в 15:30".
 export function pollMeta(poll, now = new Date()) {
-  const parts = [poll.anonymous ? 'Анонимное голосование' : 'Публичное голосование'];
-  if (poll.multiple) parts.push('много вариантов');
-  if (poll.locked) parts.push('нельзя переголосовать');
-  if (poll.endsAt) parts.push('до ' + formatPostDate(poll.endsAt, now));
+  const parts = [poll.anonymous ? tr('Анонимное голосование') : tr('Публичное голосование')];
+  if (poll.multiple) parts.push(tr('много вариантов'));
+  if (poll.locked) parts.push(tr('нельзя переголосовать'));
+  if (poll.endsAt) parts.push(tr('до ') + formatPostDate(poll.endsAt, now));
 
   return parts.join(' • ');
 }
@@ -1086,7 +1116,7 @@ export function daysCount(n) {
 
 // wallCount is openvk's counter of a wall: "нет записей", "5 записей".
 export function wallCount(n) {
-  return n === 0 ? 'нет записей' : postsCount(n);
+  return n === 0 ? tr('нет записей') : postsCount(n);
 }
 
 // archiveYears lays out the years of openvk's "Архив записей", the
@@ -1102,28 +1132,28 @@ export function archiveYears(years, chosen = 0, shown = 6) {
 // completenessHints are openvk's hints under the gauge of the owner's page:
 // what is missing, where to fill it in and what it adds.
 export const completenessHints = {
-  interests: ['/edit?act=interests', 'Интересы (+20%)'],
+  interests: ['/edit?act=interests', tr('Интересы (+20%)')],
   email: ['/edit?act=contacts', 'Email (+20%)'],
   telegram: ['/edit?act=contacts', 'Telegram (+15%)'],
-  status: ['/edit', 'Статус (+15%)'],
+  status: ['/edit', tr('Статус (+15%)')],
 };
 
 // Notification phrases, as on openvk: "<name> оценил(а) вашу запись" and
 // so on; the verb agrees with the actor's gender, or is neuter for a
 // community: "Сообщество Кошки оставило комментарий".
 const notificationVerbs = {
-  like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
-  comment: ['оставил', 'оставила', 'оставил(а)', 'оставило'],
-  follow: ['подписался', 'подписалась', 'подписался(-ась)', 'подписалось'],
-  wall_post: ['написал', 'написала', 'написал(а)', 'написало'],
-  repost: ['поделился', 'поделилась', 'поделился(-лась)', 'поделилось'],
-  comment_reply: ['ответил', 'ответила', 'ответил(а)', 'ответило'],
-  comment_like: ['оценил', 'оценила', 'оценил(а)', 'оценило'],
-  mention: ['упомянул', 'упомянула', 'упомянул(а)', 'упомянуло'],
-  gift: ['отправил', 'отправила', 'отправил(а)', 'отправило'],
-  votes: ['передал', 'передала', 'передал(а)', 'передало'],
-  invite: ['присоединился', 'присоединилась', 'присоединился(-ась)', 'присоединилось'],
-  verified: ['подтвердил', 'подтвердила', 'подтвердил(а)', 'подтвердило'],
+  like: [tr('оценил'), tr('оценила'), tr('оценил(а)'), tr('оценило')],
+  comment: [tr('оставил'), tr('оставила'), tr('оставил(а)'), tr('оставило')],
+  follow: [tr('подписался'), tr('подписалась'), tr('подписался(-ась)'), tr('подписалось')],
+  wall_post: [tr('написал'), tr('написала'), tr('написал(а)'), tr('написало')],
+  repost: [tr('поделился'), tr('поделилась'), tr('поделился(-лась)'), tr('поделилось')],
+  comment_reply: [tr('ответил'), tr('ответила'), tr('ответил(а)'), tr('ответило')],
+  comment_like: [tr('оценил'), tr('оценила'), tr('оценил(а)'), tr('оценило')],
+  mention: [tr('упомянул'), tr('упомянула'), tr('упомянул(а)'), tr('упомянуло')],
+  gift: [tr('отправил'), tr('отправила'), tr('отправил(а)'), tr('отправило')],
+  votes: [tr('передал'), tr('передала'), tr('передал(а)'), tr('передало')],
+  invite: [tr('присоединился'), tr('присоединилась'), tr('присоединился(-ась)'), tr('присоединилось')],
+  verified: [tr('подтвердил'), tr('подтвердила'), tr('подтвердил(а)'), tr('подтвердило')],
 };
 
 // notificationVerb agrees with actor: a person's gender, or a community.
@@ -1197,235 +1227,235 @@ export function foundText(m, query) {
 }
 
 const errorTexts = {
-  'network error': 'Нет связи с сервером. Проверьте подключение.',
-  'invalid email': 'Похоже, в адресе почты опечатка.',
-  'invalid or expired code': 'Неверный или устаревший код.',
-  'too many requests, try again later': 'Слишком часто. Подождите немного и попробуйте снова.',
-  'poll not found': 'Опрос не найден.',
-  'poll title is empty': 'Укажите тему опроса.',
-  'poll title is too long': 'Тема опроса длиннее 128 символов.',
-  'poll option is empty': 'Вариант ответа не может быть пустым.',
-  'poll option is too long': 'Вариант ответа длиннее 128 символов.',
-  'a poll has at least one option': 'Добавьте хотя бы один вариант ответа.',
-  'a poll has at most 10 options': 'Слишком много вариантов в опросе.',
-  'a poll is open for 1 to 31 days, or for good': 'Опрос может длиться от 1 до 31 дня.',
-  'invalid choice of poll options': 'Выберите вариант ответа.',
-  'the poll has ended': 'Голосование окончено.',
-  'you have voted in the poll already': 'Вы уже проголосовали в этом опросе.',
-  'you have not voted in the poll': 'Вы не голосовали в этом опросе.',
-  'the poll does not let a vote be taken back': 'В этом опросе нельзя отменить голос.',
-  'the poll is anonymous': 'Невозможно просмотреть список проголосовавших в анонимном голосовании.',
-  'the poll of a post cannot be changed': 'Опрос записи изменить нельзя.',
-  'too many attempts, request a new code': 'Слишком много неверных попыток. Запросите новый код.',
-  'name is empty': 'Укажите имя.',
-  'name is too long': 'Имя слишком длинное.',
-  'surname is too long': 'Фамилия слишком длинная.',
-  'nickname is empty': 'Придумайте никнейм.',
-  'nickname is too long': 'Никнейм длиннее 32 символов.',
-  'nickname contains invalid characters': 'Никнейм: латинские буквы, цифры и «_», начинается с буквы, не заканчивается «_».',
-  'nickname is reserved': 'Этот никнейм зарезервирован, выберите другой.',
-  'nickname is already taken': 'Этот никнейм уже занят.',
-  'status is too long': 'Статус длиннее 200 символов.',
-  'text contains invisible characters': 'Невидимые символы использовать нельзя.',
-  'birthday is in the future': 'Дата рождения не может быть в будущем.',
-  'user not found': 'Страница не найдена.',
-  'session not found': 'Эта сессия уже завершена.',
-  'post text is empty': 'Напишите что-нибудь.',
-  'post text is too long': 'Запись длиннее 60 000 символов.',
-  'post not found': 'Запись уже удалена.',
-  'the post can no longer be edited': 'Запись можно редактировать только в течение недели после публикации.',
-  'a post sharing a photo has no photos of its own': 'К записи с фотографией из альбома нельзя прикрепить другие фотографии.',
-  'a shared photo goes with text alone': 'Фотографию из альбома можно отправить только с текстом.',
-  'photo not found': 'Фотография не найдена, прикрепите её снова.',
-  'a post has at most 10 photos': 'К записи можно прикрепить не больше 10 фотографий.',
-  'the same photo is attached twice': 'Эта фотография уже прикреплена.',
-  'fill in your profile before posting': 'Сначала заполните свою страницу.',
-  'this club is closed': 'Это закрытая группа. Для вступления необходимо подавать заявку.',
-  'join request not found': 'Заявка не найдена.',
-  'you cannot post on this wall': 'Хозяин страницы не разрешает вам писать у него на стене.',
-  'you cannot add this user to a chat': 'Пользователь запретил добавлять себя в беседы.',
-  'a chat needs at least two other people': 'В беседе должно быть как минимум два других пользователя.',
-  'the chat is full': 'В беседе не может быть больше 50 человек.',
-  'you are not in this chat': 'Вы не состоите в этой беседе.',
-  'the user has left the chat': 'Пользователь сам покинул беседу и может вернуться только сам.',
-  'you were removed from this chat': 'Вас исключили из беседы: вернуться можно, только если вас снова пригласят.',
-  'you cannot remove yourself, leave the chat instead': 'Себя нельзя исключить — покиньте чат.',
-  'chat not found': 'Такой беседы нет.',
-  'member not found': 'Этого человека нет в беседе.',
-  'you cannot write to this user': 'Вы не можете отправить сообщение этому пользователю, поскольку он ограничил круг лиц, которые могут присылать ему сообщения.',
-  'you cannot comment on this post': 'Вы не можете комментировать эту запись.',
-  'topic title is empty': 'Заголовок не указан.',
-  'topic title is too long': 'Заголовок длиннее 127 символов.',
-  'topic not found': 'Тема не найдена или удалена.',
-  'message not found': 'Сообщение уже удалено.',
-  'you cannot start topics here': 'Создавать темы в этой группе могут только администраторы.',
-  'you cannot write for this community': 'Писать от имени сообщества могут только его администраторы.',
-  'the topic is closed': 'Тема закрыта.',
-  'only a topic of the community can be restricted': 'Ограничить комментарии можно только в теме от имени сообщества.',
-  'album name is empty': 'Укажите название альбома.',
-  'album name is too long': 'Название альбома длиннее 36 символов.',
-  'description is too long': 'Описание слишком длинное.',
-  'album not found': 'Альбом не найден или удалён.',
-  'no photos to add': 'Загрузите хотя бы одну фотографию.',
-  'at most 10 photos are added at once': 'Вы можете загружать до 10 фотографий за один раз.',
-  'fill in your profile before creating albums': 'Сначала заполните свою страницу.',
-  'fill in your profile before uploading photos': 'Сначала заполните свою страницу.',
-  'partner not found': 'Пользователь с таким никнеймом не найден.',
-  'you cannot name yourself in your relationship': 'Нельзя указать в семейном положении себя.',
-  'place is too long': 'Название города длиннее 64 символов.',
-  'invalid telegram username': 'Неверное имя пользователя Telegram.',
-  'website is not a link': 'Укажите адрес сайта, например example.com.',
-  'website is too long': 'Адрес сайта длиннее 256 символов.',
-  'address is too long': 'Адрес длиннее 255 символов.',
-  'text is too long': 'Текст длиннее 60 000 символов.',
-  'at most 7 additional fields': 'Можно добавить не больше 7 полей.',
-  'field name is empty': 'Укажите название поля.',
-  'field name is too long': 'Название поля длиннее 50 символов.',
-  'field text is empty': 'Заполните текст поля.',
-  'you cannot blacklist yourself': 'Нельзя внести в чёрный список самого себя.',
-  'you cannot ignore yourself': 'Нельзя игнорировать самого себя.',
-  'too many ignored sources': 'Превышен лимит игнорируемых источников.',
-  'invalid post id': 'Запись не найдена.',
-  'comment text is empty': 'Напишите что-нибудь.',
-  'comment text is too long': 'Комментарий длиннее 60 000 символов.',
-  'comment not found': 'Комментарий уже удалён.',
-  'fill in your profile before commenting': 'Сначала заполните свою страницу.',
-  'notification not found': 'Уведомление уже удалено.',
-  'message text is empty': 'Напишите что-нибудь.',
-  'message text is too long': 'Сообщение слишком длинное.',
-  'message not found': 'Сообщение не найдено.',
-  'club not found': 'Группа не найдена.',
-  'club name is empty': 'Укажите название группы.',
-  'club name is too long': 'Название группы длиннее 64 символов.',
-  'club description is too long': 'Описание длиннее 1000 символов.',
-  'club address is too long': 'Адрес страницы длиннее 32 символов.',
-  'club address contains invalid characters': 'Адрес страницы может состоять из латинских букв, цифр и _ и начинаться с буквы.',
-  'club address is already taken': 'Этот адрес уже занят.',
-  'the owner cannot leave the club': 'Владелец не может выйти из своей группы.',
-  'invalid avatar style': 'Неизвестный вид аватаров.',
-  'invalid main page': 'Неизвестная главная страница.',
-  'invalid menu item': 'Неизвестный пункт меню.',
-  'invalid theme': 'Неизвестный стиль.',
-  'invalid nsfw setting': 'Неизвестная настройка NSFW-контента.',
-  'invalid view of posts': 'Неизвестный вид постов.',
-  'invalid timezone': 'Неизвестный часовой пояс.',
-  'title is too long': 'Комментарий слишком длинный: не больше 36 символов.',
-  'the user does not run the club': 'Этот человек не руководит группой.',
-  'only the admins can add the club to their menu': 'Добавить группу в левое меню могут только её администраторы.',
-  'at most 10 clubs in the menu': 'В левом меню может быть не больше 10 групп.',
-  'only the admins can edit the club': 'Изменять группу могут только её администраторы.',
-  'club website is too long': 'Адрес сайта длиннее 256 символов.',
-  'club website is not a link': 'Укажите адрес сайта, например example.com.',
-  'the new owner must be an admin of the club': 'Владельцем можно назначить только администратора группы.',
-  "this user's clubs are hidden": 'Пользователь скрыл список своих групп.',
-  "this user's photos are hidden": 'Пользователь скрыл свои фотографии.',
-  "this user's gifts are hidden": 'Пользователь скрыл свои подарки.',
-  'you cannot send a gift to this user': 'Вы не можете отправить подарок этому пользователю.',
-  'fill in your profile before sending gifts': 'Сначала заполните свою страницу.',
-  'unknown gift': 'Такого подарка нет.',
-  'gift caption is too long': 'Сообщение слишком длинное: не больше 250 символов.',
-  'gift not found': 'Подарок не найден.',
-  'not enough votes': 'У вас недостаточно голосов.',
-  'invalid sticker': 'Такого стикера нет.',
-  'you do not have this sticker': 'Набор с этим стикером не добавлен.',
-  'a sticker goes alone': 'Стикер отправляется отдельным сообщением.',
-  'document not found': 'Документ не найден.',
-  'too many documents': 'Можно прикрепить не больше 10 документов.',
-  'document is larger than 10 MB': 'Файл слишком большой: не больше 10 МБ.',
-  'document is empty': 'Файл пустой.',
-  'this file format is not allowed': 'Формат файла не разрешён.',
-  'document name is empty': 'Укажите название документа.',
-  'document name is too long': 'Название слишком длинное: не больше 128 символов.',
-  'only the owner can change the document': 'Это не ваш документ.',
-  'the documents of a post cannot be changed': 'Документы записи нельзя изменить.',
-  'unknown sticker pack': 'Такого набора стикеров нет.',
-  'sticker pack name is empty': 'Укажите название набора.',
-  'sticker pack name is too long': 'Название набора слишком длинное: не больше 64 символов.',
-  'sticker pack description is too long': 'Описание набора слишком длинное: не больше 500 символов.',
-  'invalid sticker pack price': 'Стоимость набора — от 0 до 1000 голосов.',
-  'a sticker pack needs a sticker': 'Добавьте в набор хотя бы один стикер.',
-  'too many stickers in the pack': 'В наборе может быть не больше 40 стикеров.',
-  'too many sticker packs': 'Можно создать не больше 20 наборов стикеров.',
-  'only the author can change a sticker pack': 'Это не ваш набор стикеров.',
-  'the sticker pack is taken by others': 'Набор уже установили другие: удалить его или его стикеры нельзя.',
-  'fill in your profile before making stickers': 'Сначала заполните свою страницу.',
-  'voucher is not valid': 'Ваучер недействительный. Возможно, вы ввели неверный серийный номер, уже использовали данный ваучер или же он просто истёк.',
-  'a ban needs a reason': 'Укажите причину блокировки.',
-  'the reason of a ban is too long': 'Причина блокировки слишком длинная.',
-  'a ban must end in the future': 'Блокировка должна кончаться в будущем.',
-  'invalid until': 'Неверная дата окончания блокировки.',
-  'you cannot ban yourself': 'Нельзя заблокировать самого себя.',
-  'an administrator cannot be banned': 'Администратора сайта заблокировать нельзя.',
-  'you cannot transfer votes to yourself': 'Нельзя передать голоса самому себе.',
-  'you cannot transfer votes to this user': 'Вы не можете передать голоса этому пользователю.',
-  'the number of votes must be between 1 and 1000000': 'Количество голосов — от 1 до 1 000 000.',
-  'voucher serial number must be 24 letters and digits': 'Серийный номер — 24 латинские буквы и цифры.',
-  'voucher must give votes or rating': 'Ваучер должен давать голоса или рейтинг.',
-  'voucher gives up to 1000000 votes and up to 1000 of rating': 'Ваучер даёт не больше 1 000 000 голосов и 1000 рейтинга.',
-  'voucher usages must be -1 or between 1 and 1000000': 'Количество использований — от 1 до 1 000 000 или -1.',
-  'voucher with this serial number already exists': 'Ваучер с таким серийным номером уже есть.',
-  'only the sender can edit the message': 'Редактировать можно только свои сообщения.',
-  'the message can no longer be edited': 'Сообщение можно редактировать только в течение суток после отправки.',
-  'the title was changed': 'Комментарий уже изменил другой руководитель. Обновите страницу и попробуйте снова.',
-  'the message was changed': 'Сообщение изменили, пока вы его редактировали. Отмените правку и начните её заново.',
-  'messages are end-to-end encrypted': 'Сообщения диалогов шифруются: обновите страницу.',
-  'messages of dialogs are end-to-end encrypted': 'Сообщения диалогов зашифрованы: искать в них можно только на странице диалога.',
-  'push notifications are off': 'Сайт пока не отправляет уведомления.',
-  'invalid push endpoint': 'Браузер не смог подписаться на уведомления.',
-  'invalid push keys': 'Браузер не смог подписаться на уведомления.',
-  'the encryption keys changed': 'Ключ шифрования собеседника изменился. Обновите страницу и отправьте ещё раз.',
-  'encrypted messages cannot be forwarded into a chat': 'Сообщения диалогов зашифрованы, их нельзя переслать в беседу.',
-  'messages of chats are not encrypted': 'Сообщения бесед не шифруются: обновите страницу.',
-  'invalid encryption key': 'Неверный ключ шифрования.',
-  'invalid encrypted message': 'Не удалось зашифровать сообщение.',
-  'encrypted message is too long': 'Сообщение слишком длинное.',
-  'forwarded message not found': 'Сообщение не удалось переслать: его уже нет.',
-  'replied message not found': 'Сообщение, на которое вы отвечаете, уже недоступно.',
-  'invalid reaction': 'Такой реакции нет.',
-  'a message forwards at most 20 messages': 'За один раз можно переслать не больше 20 сообщений.',
-  'search query is empty': 'Введите, что искать.',
-  'the comments are closed': 'Комментарии к этой записи закрыты.',
-  'search query is too long': 'Запрос длиннее 100 символов.',
-  'this album is kept by the site': 'Этот альбом сайт ведёт сам: его нельзя изменить.',
-  'a photo moves between the albums of one owner': 'Фотографию можно перенести только в другой альбом той же страницы.',
-  "this user's follows are hidden": 'Пользователь скрыл список своих подписок.',
-  'this page is hidden': 'Настройки приватности этого пользователя не разрешают вам смотреть на его страницу.',
-  'you cannot suggest posts here': 'В эту группу нельзя предлагать записи.',
-  'suggestion not found': 'Запись уже опубликована или отклонена.',
-  'postponed post not found': 'Запись уже опубликована или удалена.',
-  'invalid publish time': 'Укажите дату и время публикации.',
-  'a postponed post is published within a year from now': 'Время публикации должно быть в будущем, но не позже чем через год.',
-  'a postponed post says words and shows photos only': 'К отложенной записи можно прикрепить только фотографии.',
-  'too many postponed posts': 'Отложено слишком много записей: не больше 100 на стену.',
-  'too many stories': 'Сразу можно показывать не больше 30 историй.',
-  'story not found': 'Этой истории уже нет.',
-  'story comment not found': 'Этого комментария уже нет.',
-  'story comment is too long': 'Комментарий к истории — не больше 1000 символов.',
-  'you cannot comment on this story': 'Вы не можете комментировать эту историю.',
-  'story text is too long': 'Подпись истории — не больше 200 символов.',
-  'a story shows a photo': 'Выберите фотографию для истории.',
-  'fill in your profile before creating a club': 'Сначала заполните свою страницу.',
-  'fill in your profile before joining a club': 'Сначала заполните свою страницу.',
-  'the message can no longer be deleted': 'Сообщение можно удалить только в течение суток после отправки.',
-  'you cannot write to yourself': 'Нельзя написать самому себе.',
-  'fill in your profile before writing messages': 'Сначала заполните свою страницу.',
-  'permission denied': 'Недостаточно прав.',
-  'this page is deleted': 'Страница пользователя заблокирована или удалена.',
-  'this page is not deleted': 'Ваша страница не удалена.',
-  'this page can no longer be restored': 'Срок восстановления страницы истёк.',
-  'reason is too long': 'Сообщение длиннее 1000 символов.',
-  'you cannot follow yourself': 'Нельзя подписаться на себя.',
-  'image is larger than 8 MB': 'Фотография больше 8 МБ.',
-  'not a JPEG, PNG, GIF or WebP image': 'Это не фотография: подойдут JPEG, PNG, GIF и WebP.',
-  'image dimensions are too large': 'Слишком большое разрешение фотографии.',
-  'image is smaller than 50x50': 'Фотография меньше 50×50 точек.',
-  'search query is empty': 'Введите имя, фамилию или никнейм.',
-  'search query is too long': 'Слишком длинный запрос.',
-  'fill in your profile before following': 'Сначала заполните свою страницу.',
-  'service temporarily unavailable': 'Сервис временно недоступен. Попробуйте чуть позже.',
-  'missing access token': 'Сессия истекла, войдите снова.',
-  'invalid access token': 'Сессия истекла, войдите снова.',
-  'invalid refresh token': 'Сессия истекла, войдите снова.',
+  'network error': tr('Нет связи с сервером. Проверьте подключение.'),
+  'invalid email': tr('Похоже, в адресе почты опечатка.'),
+  'invalid or expired code': tr('Неверный или устаревший код.'),
+  'too many requests, try again later': tr('Слишком часто. Подождите немного и попробуйте снова.'),
+  'poll not found': tr('Опрос не найден.'),
+  'poll title is empty': tr('Укажите тему опроса.'),
+  'poll title is too long': tr('Тема опроса длиннее 128 символов.'),
+  'poll option is empty': tr('Вариант ответа не может быть пустым.'),
+  'poll option is too long': tr('Вариант ответа длиннее 128 символов.'),
+  'a poll has at least one option': tr('Добавьте хотя бы один вариант ответа.'),
+  'a poll has at most 10 options': tr('Слишком много вариантов в опросе.'),
+  'a poll is open for 1 to 31 days, or for good': tr('Опрос может длиться от 1 до 31 дня.'),
+  'invalid choice of poll options': tr('Выберите вариант ответа.'),
+  'the poll has ended': tr('Голосование окончено.'),
+  'you have voted in the poll already': tr('Вы уже проголосовали в этом опросе.'),
+  'you have not voted in the poll': tr('Вы не голосовали в этом опросе.'),
+  'the poll does not let a vote be taken back': tr('В этом опросе нельзя отменить голос.'),
+  'the poll is anonymous': tr('Невозможно просмотреть список проголосовавших в анонимном голосовании.'),
+  'the poll of a post cannot be changed': tr('Опрос записи изменить нельзя.'),
+  'too many attempts, request a new code': tr('Слишком много неверных попыток. Запросите новый код.'),
+  'name is empty': tr('Укажите имя.'),
+  'name is too long': tr('Имя слишком длинное.'),
+  'surname is too long': tr('Фамилия слишком длинная.'),
+  'nickname is empty': tr('Придумайте никнейм.'),
+  'nickname is too long': tr('Никнейм длиннее 32 символов.'),
+  'nickname contains invalid characters': tr('Никнейм: латинские буквы, цифры и «_», начинается с буквы, не заканчивается «_».'),
+  'nickname is reserved': tr('Этот никнейм зарезервирован, выберите другой.'),
+  'nickname is already taken': tr('Этот никнейм уже занят.'),
+  'status is too long': tr('Статус длиннее 200 символов.'),
+  'text contains invisible characters': tr('Невидимые символы использовать нельзя.'),
+  'birthday is in the future': tr('Дата рождения не может быть в будущем.'),
+  'user not found': tr('Страница не найдена.'),
+  'session not found': tr('Эта сессия уже завершена.'),
+  'post text is empty': tr('Напишите что-нибудь.'),
+  'post text is too long': tr('Запись длиннее 60 000 символов.'),
+  'post not found': tr('Запись уже удалена.'),
+  'the post can no longer be edited': tr('Запись можно редактировать только в течение недели после публикации.'),
+  'a post sharing a photo has no photos of its own': tr('К записи с фотографией из альбома нельзя прикрепить другие фотографии.'),
+  'a shared photo goes with text alone': tr('Фотографию из альбома можно отправить только с текстом.'),
+  'photo not found': tr('Фотография не найдена, прикрепите её снова.'),
+  'a post has at most 10 photos': tr('К записи можно прикрепить не больше 10 фотографий.'),
+  'the same photo is attached twice': tr('Эта фотография уже прикреплена.'),
+  'fill in your profile before posting': tr('Сначала заполните свою страницу.'),
+  'this club is closed': tr('Это закрытая группа. Для вступления необходимо подавать заявку.'),
+  'join request not found': tr('Заявка не найдена.'),
+  'you cannot post on this wall': tr('Хозяин страницы не разрешает вам писать у него на стене.'),
+  'you cannot add this user to a chat': tr('Пользователь запретил добавлять себя в беседы.'),
+  'a chat needs at least two other people': tr('В беседе должно быть как минимум два других пользователя.'),
+  'the chat is full': tr('В беседе не может быть больше 50 человек.'),
+  'you are not in this chat': tr('Вы не состоите в этой беседе.'),
+  'the user has left the chat': tr('Пользователь сам покинул беседу и может вернуться только сам.'),
+  'you were removed from this chat': tr('Вас исключили из беседы: вернуться можно, только если вас снова пригласят.'),
+  'you cannot remove yourself, leave the chat instead': tr('Себя нельзя исключить — покиньте чат.'),
+  'chat not found': tr('Такой беседы нет.'),
+  'member not found': tr('Этого человека нет в беседе.'),
+  'you cannot write to this user': tr('Вы не можете отправить сообщение этому пользователю, поскольку он ограничил круг лиц, которые могут присылать ему сообщения.'),
+  'you cannot comment on this post': tr('Вы не можете комментировать эту запись.'),
+  'topic title is empty': tr('Заголовок не указан.'),
+  'topic title is too long': tr('Заголовок длиннее 127 символов.'),
+  'topic not found': tr('Тема не найдена или удалена.'),
+  'message not found': tr('Сообщение уже удалено.'),
+  'you cannot start topics here': tr('Создавать темы в этой группе могут только администраторы.'),
+  'you cannot write for this community': tr('Писать от имени сообщества могут только его администраторы.'),
+  'the topic is closed': tr('Тема закрыта.'),
+  'only a topic of the community can be restricted': tr('Ограничить комментарии можно только в теме от имени сообщества.'),
+  'album name is empty': tr('Укажите название альбома.'),
+  'album name is too long': tr('Название альбома длиннее 36 символов.'),
+  'description is too long': tr('Описание слишком длинное.'),
+  'album not found': tr('Альбом не найден или удалён.'),
+  'no photos to add': tr('Загрузите хотя бы одну фотографию.'),
+  'at most 10 photos are added at once': tr('Вы можете загружать до 10 фотографий за один раз.'),
+  'fill in your profile before creating albums': tr('Сначала заполните свою страницу.'),
+  'fill in your profile before uploading photos': tr('Сначала заполните свою страницу.'),
+  'partner not found': tr('Пользователь с таким никнеймом не найден.'),
+  'you cannot name yourself in your relationship': tr('Нельзя указать в семейном положении себя.'),
+  'place is too long': tr('Название города длиннее 64 символов.'),
+  'invalid telegram username': tr('Неверное имя пользователя Telegram.'),
+  'website is not a link': tr('Укажите адрес сайта, например example.com.'),
+  'website is too long': tr('Адрес сайта длиннее 256 символов.'),
+  'address is too long': tr('Адрес длиннее 255 символов.'),
+  'text is too long': tr('Текст длиннее 60 000 символов.'),
+  'at most 7 additional fields': tr('Можно добавить не больше 7 полей.'),
+  'field name is empty': tr('Укажите название поля.'),
+  'field name is too long': tr('Название поля длиннее 50 символов.'),
+  'field text is empty': tr('Заполните текст поля.'),
+  'you cannot blacklist yourself': tr('Нельзя внести в чёрный список самого себя.'),
+  'you cannot ignore yourself': tr('Нельзя игнорировать самого себя.'),
+  'too many ignored sources': tr('Превышен лимит игнорируемых источников.'),
+  'invalid post id': tr('Запись не найдена.'),
+  'comment text is empty': tr('Напишите что-нибудь.'),
+  'comment text is too long': tr('Комментарий длиннее 60 000 символов.'),
+  'comment not found': tr('Комментарий уже удалён.'),
+  'fill in your profile before commenting': tr('Сначала заполните свою страницу.'),
+  'notification not found': tr('Уведомление уже удалено.'),
+  'message text is empty': tr('Напишите что-нибудь.'),
+  'message text is too long': tr('Сообщение слишком длинное.'),
+  'message not found': tr('Сообщение не найдено.'),
+  'club not found': tr('Группа не найдена.'),
+  'club name is empty': tr('Укажите название группы.'),
+  'club name is too long': tr('Название группы длиннее 64 символов.'),
+  'club description is too long': tr('Описание длиннее 1000 символов.'),
+  'club address is too long': tr('Адрес страницы длиннее 32 символов.'),
+  'club address contains invalid characters': tr('Адрес страницы может состоять из латинских букв, цифр и _ и начинаться с буквы.'),
+  'club address is already taken': tr('Этот адрес уже занят.'),
+  'the owner cannot leave the club': tr('Владелец не может выйти из своей группы.'),
+  'invalid avatar style': tr('Неизвестный вид аватаров.'),
+  'invalid main page': tr('Неизвестная главная страница.'),
+  'invalid menu item': tr('Неизвестный пункт меню.'),
+  'invalid theme': tr('Неизвестный стиль.'),
+  'invalid nsfw setting': tr('Неизвестная настройка NSFW-контента.'),
+  'invalid view of posts': tr('Неизвестный вид постов.'),
+  'invalid timezone': tr('Неизвестный часовой пояс.'),
+  'title is too long': tr('Комментарий слишком длинный: не больше 36 символов.'),
+  'the user does not run the club': tr('Этот человек не руководит группой.'),
+  'only the admins can add the club to their menu': tr('Добавить группу в левое меню могут только её администраторы.'),
+  'at most 10 clubs in the menu': tr('В левом меню может быть не больше 10 групп.'),
+  'only the admins can edit the club': tr('Изменять группу могут только её администраторы.'),
+  'club website is too long': tr('Адрес сайта длиннее 256 символов.'),
+  'club website is not a link': tr('Укажите адрес сайта, например example.com.'),
+  'the new owner must be an admin of the club': tr('Владельцем можно назначить только администратора группы.'),
+  "this user's clubs are hidden": tr('Пользователь скрыл список своих групп.'),
+  "this user's photos are hidden": tr('Пользователь скрыл свои фотографии.'),
+  "this user's gifts are hidden": tr('Пользователь скрыл свои подарки.'),
+  'you cannot send a gift to this user': tr('Вы не можете отправить подарок этому пользователю.'),
+  'fill in your profile before sending gifts': tr('Сначала заполните свою страницу.'),
+  'unknown gift': tr('Такого подарка нет.'),
+  'gift caption is too long': tr('Сообщение слишком длинное: не больше 250 символов.'),
+  'gift not found': tr('Подарок не найден.'),
+  'not enough votes': tr('У вас недостаточно голосов.'),
+  'invalid sticker': tr('Такого стикера нет.'),
+  'you do not have this sticker': tr('Набор с этим стикером не добавлен.'),
+  'a sticker goes alone': tr('Стикер отправляется отдельным сообщением.'),
+  'document not found': tr('Документ не найден.'),
+  'too many documents': tr('Можно прикрепить не больше 10 документов.'),
+  'document is larger than 10 MB': tr('Файл слишком большой: не больше 10 МБ.'),
+  'document is empty': tr('Файл пустой.'),
+  'this file format is not allowed': tr('Формат файла не разрешён.'),
+  'document name is empty': tr('Укажите название документа.'),
+  'document name is too long': tr('Название слишком длинное: не больше 128 символов.'),
+  'only the owner can change the document': tr('Это не ваш документ.'),
+  'the documents of a post cannot be changed': tr('Документы записи нельзя изменить.'),
+  'unknown sticker pack': tr('Такого набора стикеров нет.'),
+  'sticker pack name is empty': tr('Укажите название набора.'),
+  'sticker pack name is too long': tr('Название набора слишком длинное: не больше 64 символов.'),
+  'sticker pack description is too long': tr('Описание набора слишком длинное: не больше 500 символов.'),
+  'invalid sticker pack price': tr('Стоимость набора — от 0 до 1000 голосов.'),
+  'a sticker pack needs a sticker': tr('Добавьте в набор хотя бы один стикер.'),
+  'too many stickers in the pack': tr('В наборе может быть не больше 40 стикеров.'),
+  'too many sticker packs': tr('Можно создать не больше 20 наборов стикеров.'),
+  'only the author can change a sticker pack': tr('Это не ваш набор стикеров.'),
+  'the sticker pack is taken by others': tr('Набор уже установили другие: удалить его или его стикеры нельзя.'),
+  'fill in your profile before making stickers': tr('Сначала заполните свою страницу.'),
+  'voucher is not valid': tr('Ваучер недействительный. Возможно, вы ввели неверный серийный номер, уже использовали данный ваучер или же он просто истёк.'),
+  'a ban needs a reason': tr('Укажите причину блокировки.'),
+  'the reason of a ban is too long': tr('Причина блокировки слишком длинная.'),
+  'a ban must end in the future': tr('Блокировка должна кончаться в будущем.'),
+  'invalid until': tr('Неверная дата окончания блокировки.'),
+  'you cannot ban yourself': tr('Нельзя заблокировать самого себя.'),
+  'an administrator cannot be banned': tr('Администратора сайта заблокировать нельзя.'),
+  'you cannot transfer votes to yourself': tr('Нельзя передать голоса самому себе.'),
+  'you cannot transfer votes to this user': tr('Вы не можете передать голоса этому пользователю.'),
+  'the number of votes must be between 1 and 1000000': tr('Количество голосов — от 1 до 1 000 000.'),
+  'voucher serial number must be 24 letters and digits': tr('Серийный номер — 24 латинские буквы и цифры.'),
+  'voucher must give votes or rating': tr('Ваучер должен давать голоса или рейтинг.'),
+  'voucher gives up to 1000000 votes and up to 1000 of rating': tr('Ваучер даёт не больше 1 000 000 голосов и 1000 рейтинга.'),
+  'voucher usages must be -1 or between 1 and 1000000': tr('Количество использований — от 1 до 1 000 000 или -1.'),
+  'voucher with this serial number already exists': tr('Ваучер с таким серийным номером уже есть.'),
+  'only the sender can edit the message': tr('Редактировать можно только свои сообщения.'),
+  'the message can no longer be edited': tr('Сообщение можно редактировать только в течение суток после отправки.'),
+  'the title was changed': tr('Комментарий уже изменил другой руководитель. Обновите страницу и попробуйте снова.'),
+  'the message was changed': tr('Сообщение изменили, пока вы его редактировали. Отмените правку и начните её заново.'),
+  'messages are end-to-end encrypted': tr('Сообщения диалогов шифруются: обновите страницу.'),
+  'messages of dialogs are end-to-end encrypted': tr('Сообщения диалогов зашифрованы: искать в них можно только на странице диалога.'),
+  'push notifications are off': tr('Сайт пока не отправляет уведомления.'),
+  'invalid push endpoint': tr('Браузер не смог подписаться на уведомления.'),
+  'invalid push keys': tr('Браузер не смог подписаться на уведомления.'),
+  'the encryption keys changed': tr('Ключ шифрования собеседника изменился. Обновите страницу и отправьте ещё раз.'),
+  'encrypted messages cannot be forwarded into a chat': tr('Сообщения диалогов зашифрованы, их нельзя переслать в беседу.'),
+  'messages of chats are not encrypted': tr('Сообщения бесед не шифруются: обновите страницу.'),
+  'invalid encryption key': tr('Неверный ключ шифрования.'),
+  'invalid encrypted message': tr('Не удалось зашифровать сообщение.'),
+  'encrypted message is too long': tr('Сообщение слишком длинное.'),
+  'forwarded message not found': tr('Сообщение не удалось переслать: его уже нет.'),
+  'replied message not found': tr('Сообщение, на которое вы отвечаете, уже недоступно.'),
+  'invalid reaction': tr('Такой реакции нет.'),
+  'a message forwards at most 20 messages': tr('За один раз можно переслать не больше 20 сообщений.'),
+  'search query is empty': tr('Введите, что искать.'),
+  'the comments are closed': tr('Комментарии к этой записи закрыты.'),
+  'search query is too long': tr('Запрос длиннее 100 символов.'),
+  'this album is kept by the site': tr('Этот альбом сайт ведёт сам: его нельзя изменить.'),
+  'a photo moves between the albums of one owner': tr('Фотографию можно перенести только в другой альбом той же страницы.'),
+  "this user's follows are hidden": tr('Пользователь скрыл список своих подписок.'),
+  'this page is hidden': tr('Настройки приватности этого пользователя не разрешают вам смотреть на его страницу.'),
+  'you cannot suggest posts here': tr('В эту группу нельзя предлагать записи.'),
+  'suggestion not found': tr('Запись уже опубликована или отклонена.'),
+  'postponed post not found': tr('Запись уже опубликована или удалена.'),
+  'invalid publish time': tr('Укажите дату и время публикации.'),
+  'a postponed post is published within a year from now': tr('Время публикации должно быть в будущем, но не позже чем через год.'),
+  'a postponed post says words and shows photos only': tr('К отложенной записи можно прикрепить только фотографии.'),
+  'too many postponed posts': tr('Отложено слишком много записей: не больше 100 на стену.'),
+  'too many stories': tr('Сразу можно показывать не больше 30 историй.'),
+  'story not found': tr('Этой истории уже нет.'),
+  'story comment not found': tr('Этого комментария уже нет.'),
+  'story comment is too long': tr('Комментарий к истории — не больше 1000 символов.'),
+  'you cannot comment on this story': tr('Вы не можете комментировать эту историю.'),
+  'story text is too long': tr('Подпись истории — не больше 200 символов.'),
+  'a story shows a photo': tr('Выберите фотографию для истории.'),
+  'fill in your profile before creating a club': tr('Сначала заполните свою страницу.'),
+  'fill in your profile before joining a club': tr('Сначала заполните свою страницу.'),
+  'the message can no longer be deleted': tr('Сообщение можно удалить только в течение суток после отправки.'),
+  'you cannot write to yourself': tr('Нельзя написать самому себе.'),
+  'fill in your profile before writing messages': tr('Сначала заполните свою страницу.'),
+  'permission denied': tr('Недостаточно прав.'),
+  'this page is deleted': tr('Страница пользователя заблокирована или удалена.'),
+  'this page is not deleted': tr('Ваша страница не удалена.'),
+  'this page can no longer be restored': tr('Срок восстановления страницы истёк.'),
+  'reason is too long': tr('Сообщение длиннее 1000 символов.'),
+  'you cannot follow yourself': tr('Нельзя подписаться на себя.'),
+  'image is larger than 8 MB': tr('Фотография больше 8 МБ.'),
+  'not a JPEG, PNG, GIF or WebP image': tr('Это не фотография: подойдут JPEG, PNG, GIF и WebP.'),
+  'image dimensions are too large': tr('Слишком большое разрешение фотографии.'),
+  'image is smaller than 50x50': tr('Фотография меньше 50×50 точек.'),
+  'search query is empty': tr('Введите имя, фамилию или никнейм.'),
+  'search query is too long': tr('Слишком длинный запрос.'),
+  'fill in your profile before following': tr('Сначала заполните свою страницу.'),
+  'service temporarily unavailable': tr('Сервис временно недоступен. Попробуйте чуть позже.'),
+  'missing access token': tr('Сессия истекла, войдите снова.'),
+  'invalid access token': tr('Сессия истекла, войдите снова.'),
+  'invalid refresh token': tr('Сессия истекла, войдите снова.'),
 };
 
 // keyStateText says why this browser cannot open and seal messages of
@@ -1433,27 +1463,27 @@ const errorTexts = {
 // ('missing'), or this one has an older key ('stale').
 export function keyStateText(state) {
   return state === 'stale'
-    ? 'На этом устройстве старый ключ шифрования сообщений: новый создан на другом устройстве.'
-    : 'На этом устройстве нет ключа шифрования сообщений: он на другом устройстве.';
+    ? tr('На этом устройстве старый ключ шифрования сообщений: новый создан на другом устройстве.')
+    : tr('На этом устройстве нет ключа шифрования сообщений: он на другом устройстве.');
 }
 
 // pushStateTexts say what the push notifications of this browser are
 // (push.js pushState).
 export const pushStateTexts = {
-  on: 'Уведомления включены.',
-  off: 'Уведомления выключены.',
-  denied: 'Уведомления запрещены в настройках браузера. Чтобы включить их, разрешите их этому сайту там.',
-  'off-server': 'Сайт пока не отправляет уведомления.',
-  unsupported: 'Этот браузер не получает уведомления.',
-  install: 'На iPhone и iPad уведомления приходят, только когда сайт добавлен на экран «Домой»: нажмите «Поделиться», затем «На экран «Домой»» и откройте сайт оттуда.',
+  on: tr('Уведомления включены.'),
+  off: tr('Уведомления выключены.'),
+  denied: tr('Уведомления запрещены в настройках браузера. Чтобы включить их, разрешите их этому сайту там.'),
+  'off-server': tr('Сайт пока не отправляет уведомления.'),
+  unsupported: tr('Этот браузер не получает уведомления.'),
+  install: tr('На iPhone и iPad уведомления приходят, только когда сайт добавлен на экран «Домой»: нажмите «Поделиться», затем «На экран «Домой»» и откройте сайт оттуда.'),
 };
 
 // pushOfferText is what a phone is asked once over its pages (layout.js
 // offerPush).
-export const pushOfferText = 'Получать на этом телефоне уведомления о новых сообщениях и ответах, даже когда сайт закрыт?';
+export const pushOfferText = tr('Получать на этом телефоне уведомления о новых сообщениях и ответах, даже когда сайт закрыт?');
 
 export function errorText(e) {
-  return errorTexts[e?.message] ?? 'Что-то пошло не так. Попробуйте позже.';
+  return errorTexts[e?.message] ?? tr('Что-то пошло не так. Попробуйте позже.');
 }
 
 // mentionPattern finds the two ways a text names a person, as the gateway
@@ -1611,7 +1641,7 @@ export function isLongText(text) {
 // forwardedCount names the messages a message carries on: "2 пересланных
 // сообщения".
 export function forwardedCount(n) {
-  return n === 1 ? 'Пересланное сообщение' : `${n} ${plural(n, ['пересланное сообщение', 'пересланных сообщения', 'пересланных сообщений'])}`;
+  return n === 1 ? tr('Пересланное сообщение') : `${n} ${plural(n, ['пересланное сообщение', 'пересланных сообщения', 'пересланных сообщений'])}`;
 }
 
 // forwardTree nests the messages a message carries on: the list names a
@@ -1646,13 +1676,13 @@ export function forwardTree(forwarded) {
 // it says or, without words, what it shows, as on VK. Whom the text
 // names is read by name: "[ann|Анна]" is "Анна".
 export function messagePreview(m) {
-  if (m.deleted) return 'Сообщение удалено';
-  if (m.sticker) return 'Стикер';
-  if (m.unreadable) return 'Зашифрованное сообщение';
+  if (m.deleted) return tr('Сообщение удалено');
+  if (m.sticker) return tr('Стикер');
+  if (m.unreadable) return tr('Зашифрованное сообщение');
   if (m.text) return plainMentions(m.text);
-  if (m.photos?.length || m.albumPhoto) return 'Фотография';
-  if (m.post) return 'Запись';
-  if (m.documentCount || m.documents?.length) return 'Документ';
+  if (m.photos?.length || m.albumPhoto) return tr('Фотография');
+  if (m.post) return tr('Запись');
+  if (m.documentCount || m.documents?.length) return tr('Документ');
   if (m.forwardedCount) return forwardedCount(m.forwardedCount);
 
   return '';
@@ -1673,22 +1703,22 @@ export function quoteSnippet(text) {
 // quoteText is what the line says of q, the message answered; text is
 // its words as the page knows them.
 export function quoteText(q, text = q.text) {
-  if (!q.author) return 'Сообщение недоступно';
+  if (!q.author) return tr('Сообщение недоступно');
 
   return messagePreview({
     deleted: q.deleted, sticker: q.sticker, text: text ? quoteSnippet(text) : '', photos: q.photoCount ? [q.id] : [],
     albumPhoto: q.albumPhoto, post: q.post, documentCount: q.documentCount, forwardedCount: q.forwardedCount,
-  }) || 'Сообщение';
+  }) || tr('Сообщение');
 }
 
 // Reactions to messages, as on VK: one a person, of these.
 export const REACTIONS = [
-  { name: 'heart', emoji: '❤️', title: 'Сердечко' },
-  { name: 'like', emoji: '👍', title: 'Нравится' },
-  { name: 'laugh', emoji: '😂', title: 'Смешно' },
-  { name: 'wow', emoji: '😮', title: 'Удивительно' },
-  { name: 'sad', emoji: '😢', title: 'Грустно' },
-  { name: 'fire', emoji: '🔥', title: 'Огонь' },
+  { name: 'heart', emoji: '❤️', title: tr('Сердечко') },
+  { name: 'like', emoji: '👍', title: tr('Нравится') },
+  { name: 'laugh', emoji: '😂', title: tr('Смешно') },
+  { name: 'wow', emoji: '😮', title: tr('Удивительно') },
+  { name: 'sad', emoji: '😢', title: tr('Грустно') },
+  { name: 'fire', emoji: '🔥', title: tr('Огонь') },
 ];
 
 // reactionCounts are the reactions put on a message, in the order of
@@ -1714,7 +1744,7 @@ export function reacted(reactions = [], userID, reaction) {
 export const CHAT_TITLE_MAX = 64;
 
 export function chatTitle(chat) {
-  return chat.title || 'Беседа';
+  return chat.title || tr('Беседа');
 }
 
 export function defaultChatTitle(people) {
@@ -1750,27 +1780,27 @@ export function chatActionParts(m) {
 
   switch (m.action) {
     case 'create':
-      return [`${byGender(g, 'создал', 'создала')} беседу` + (m.text ? ` «${m.text}»` : ''), '', ''];
+      return [tr('{0} беседу', byGender(g, tr('создал'), tr('создала'))) + (m.text ? ` «${m.text}»` : ''), '', ''];
     case 'title':
       return [m.text
-        ? `${byGender(g, 'изменил', 'изменила')} название беседы на «${m.text}»`
-        : `${byGender(g, 'убрал', 'убрала')} название беседы`, '', ''];
+        ? tr('{0} название беседы на «{1}»', byGender(g, tr('изменил'), tr('изменила')), m.text)
+        : tr('{0} название беседы', byGender(g, tr('убрал'), tr('убрала'))), '', ''];
     case 'invite':
-      return [`${byGender(g, 'пригласил', 'пригласила')} `, whom, ''];
+      return [`${byGender(g, tr('пригласил'), tr('пригласила'))} `, whom, ''];
     case 'kick':
-      return [`${byGender(g, 'исключил', 'исключила')} `, whom, ' из беседы'];
+      return [`${byGender(g, tr('исключил'), tr('исключила'))} `, whom, tr(' из беседы')];
     case 'leave':
-      return [`${byGender(g, 'покинул', 'покинула')} беседу`, '', ''];
+      return [tr('{0} беседу', byGender(g, tr('покинул'), tr('покинула'))), '', ''];
     case 'return':
-      return [`${byGender(g, 'вернулся', 'вернулась')} в беседу`, '', ''];
+      return [tr('{0} в беседу', byGender(g, tr('вернулся'), tr('вернулась'))), '', ''];
     case 'pin':
-      return [`${byGender(g, 'закрепил', 'закрепила')} сообщение`, '', ''];
+      return [tr('{0} сообщение', byGender(g, tr('закрепил'), tr('закрепила'))), '', ''];
     case 'unpin':
-      return [`${byGender(g, 'открепил', 'открепила')} сообщение`, '', ''];
+      return [tr('{0} сообщение', byGender(g, tr('открепил'), tr('открепила'))), '', ''];
     case 'photo':
-      return [`${byGender(g, 'обновил', 'обновила')} фотографию беседы`, '', ''];
+      return [tr('{0} фотографию беседы', byGender(g, tr('обновил'), tr('обновила'))), '', ''];
     case 'photo_remove':
-      return [`${byGender(g, 'удалил', 'удалила')} фотографию беседы`, '', ''];
+      return [tr('{0} фотографию беседы', byGender(g, tr('удалил'), tr('удалила'))), '', ''];
     default:
       return ['', '', ''];
   }
@@ -1813,13 +1843,18 @@ export function conversationPath(value) {
 // chatStateText is why someone who is not in a chat anymore cannot write
 // there.
 export function chatStateText(state) {
-  return state === 'kicked' ? 'Вас исключили из беседы.' : 'Вы покинули беседу.';
+  return state === 'kicked' ? tr('Вас исключили из беседы.') : tr('Вы покинули беседу.');
 }
 
 // selectedCount is over a dialog while messages are selected: "Выбрано 2
 // сообщения".
 export function selectedCount(n) {
-  return `Выбрано ${n} ${plural(n, ['сообщение', 'сообщения', 'сообщений'])}`;
+  return tr('Выбрано {0}', messagesCount(n));
+}
+
+// messagesCount is "2 сообщения".
+export function messagesCount(n) {
+  return `${n} ${plural(n, ['сообщение', 'сообщения', 'сообщений'])}`;
 }
 
 // "Настройки ленты" of openvk: how many posts a page of the news holds
@@ -1850,9 +1885,9 @@ export function feedSettings(raw) {
 // ignoreLabels are the link of a page: openvk's "Игнорировать
 // пользователя" and "Игнорировать группу".
 export function ignoreLabel(kind, ignored) {
-  const whom = { user: 'пользователя', club: 'группу' }[kind];
+  const whom = { user: tr('пользователя'), club: tr('группу') }[kind];
 
-  return (ignored ? 'Не игнорировать ' : 'Игнорировать ') + whom;
+  return (ignored ? tr('Не игнорировать ') : tr('Игнорировать ')) + whom;
 }
 
 // typingText is VK's "печатает..." under a dialog or a chat: who of users
@@ -1864,11 +1899,11 @@ export function typingText(users) {
     case 0:
       return '';
     case 1:
-      return `${names[0]} печатает...`;
+      return tr('{0} печатает...', names[0]);
     case 2:
-      return `${names[0]} и ${names[1]} печатают...`;
+      return tr('{0} и {1} печатают...', names[0], names[1]);
     default:
-      return 'Несколько человек печатают...';
+      return tr('Несколько человек печатают...');
   }
 }
 

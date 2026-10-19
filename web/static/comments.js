@@ -6,6 +6,7 @@ import { api } from './api.js';
 import { formatPostDate } from './labels.js';
 import { avatarURL, el, fullName, pagePath, textNode, verifiedMark } from './layout.js';
 import { likeButton, photosNode, separated } from './posts.js';
+import { tr } from './i18n.js';
 
 // commentAnchor is the id of a comment's node, for links to it.
 export function commentAnchor(id) {
@@ -36,9 +37,9 @@ export function commentNode(comment, { onDelete, onReply, canLike = false, onErr
   const path = pagePath(comment.author);
 
   const menu = [el('a', { className: 'post-date', href: href + '#' + commentAnchor(comment.id), textContent: formatPostDate(comment.createdAt) })];
-  if (comment.replyTo) menu.push(el('a', { href: href + '#' + commentAnchor(comment.replyTo), textContent: 'в ответ' }));
-  if (onDelete) menu.push(el('a', { textContent: 'Удалить', onclick: () => onDelete(comment, node) }));
-  if (onReply) menu.push(el('a', { textContent: 'Ответить', onclick: () => onReply(comment) }));
+  if (comment.replyTo) menu.push(el('a', { href: href + '#' + commentAnchor(comment.replyTo), textContent: tr('в ответ') }));
+  if (onDelete) menu.push(el('a', { textContent: tr('Удалить'), onclick: () => onDelete(comment, node) }));
+  if (onReply) menu.push(el('a', { textContent: tr('Ответить'), onclick: () => onReply(comment) }));
 
   const like = withLike ? likeButton(comment, { canLike, onError, ...hearts }) : '';
 

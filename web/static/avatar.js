@@ -10,6 +10,7 @@
 import { button, openModal } from './modal.js';
 import { el, showError } from './layout.js';
 import { cropSquare, fitInside, movedSquare, resizedSquare } from './crop.js';
+import { tr } from './i18n.js';
 
 const MAX_BYTES = 8 << 20;
 // The picture is worked on at most this big: enough for the 400×400
@@ -28,7 +29,7 @@ const HANDLE = 10;
 // chosen square; it closes once upload resolves and shows its error
 // otherwise. Unlike openvk, no post tells of the new photo.
 export function openAvatarDialog({ club = false, chat = false, upload }) {
-  const modal = openModal('Загрузка новой фотографии');
+  const modal = openModal(tr('Загрузка новой фотографии'));
   modal.box.classList.add('avatar-dialog');
 
   const file = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/gif,image/webp', hidden: true });
@@ -36,12 +37,12 @@ export function openAvatarDialog({ club = false, chat = false, upload }) {
 
   modal.body.append(
     el('p', { textContent: intro(club, chat) }),
-    el('p', { textContent: 'Вы можете загрузить изображение в формате JPG, GIF, PNG или WebP.' }),
-    el('p', { className: 'center' }, button('Обзор', () => file.click()), file),
-    el('p', { className: 'hint', textContent: 'Если возникают проблемы с загрузкой, попробуйте выбрать фотографию меньшего размера.' }),
+    el('p', { textContent: tr('Вы можете загрузить изображение в формате JPG, GIF, PNG или WebP.') }),
+    el('p', { className: 'center' }, button(tr('Обзор'), () => file.click()), file),
+    el('p', { className: 'hint', textContent: tr('Если возникают проблемы с загрузкой, попробуйте выбрать фотографию меньшего размера.') }),
     error,
   );
-  modal.actions.append(button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(button(tr('Отмена'), modal.close, { secondary: true }));
 
   file.addEventListener('change', async () => {
     const picked = file.files[0];
@@ -49,14 +50,14 @@ export function openAvatarDialog({ club = false, chat = false, upload }) {
     if (!picked) return;
 
     if (picked.size > MAX_BYTES) {
-      showError(error, 'Фотография больше 8 МБ.');
+      showError(error, tr('Фотография больше 8 МБ.'));
       return;
     }
 
     try {
       showCropper(modal, await loadImage(picked), { club, chat, upload });
     } catch {
-      showError(error, 'Не удалось открыть изображение.');
+      showError(error, tr('Не удалось открыть изображение.'));
     }
   });
 }
@@ -96,19 +97,19 @@ function upright(img, quarters) {
 }
 
 function intro(club, chat) {
-  if (chat) return 'Фотография поможет участникам быстрее найти беседу в списке.';
+  if (chat) return tr('Фотография поможет участникам быстрее найти беседу в списке.');
 
   return club
-    ? 'Хорошее фото сделает Ваше сообщество более узнаваемым.'
-    : 'Друзьям будет проще узнать Вас, если вы загрузите свою настоящую фотографию.';
+    ? tr('Хорошее фото сделает Ваше сообщество более узнаваемым.')
+    : tr('Друзьям будет проще узнать Вас, если вы загрузите свою настоящую фотографию.');
 }
 
 function shownWhere(club, chat) {
-  if (chat) return 'Выбранная область будет показываться в беседе и в списке диалогов.';
+  if (chat) return tr('Выбранная область будет показываться в беседе и в списке диалогов.');
 
   return club
-    ? 'Выбранная область будет показываться на странице сообщества.'
-    : 'Выбранная область будет показываться на вашей странице.';
+    ? tr('Выбранная область будет показываться на странице сообщества.')
+    : tr('Выбранная область будет показываться на вашей странице.');
 }
 
 function showCropper(modal, img, { club, chat, upload }) {
@@ -206,16 +207,16 @@ function showCropper(modal, img, { club, chat, upload }) {
 
   modal.body.replaceChildren(
     el('p', { textContent: shownWhere(club, chat) }),
-    el('p', { textContent: 'Если изображение ориентировано неправильно, фотографию можно повернуть.' }),
+    el('p', { textContent: tr('Если изображение ориентировано неправильно, фотографию можно повернуть.') }),
     view,
     el('div', { className: 'avatar-turn' },
-      button('Повернуть влево', () => turn(-1), { secondary: true }),
-      button('Повернуть вправо', () => turn(1), { secondary: true })),
+      button(tr('Повернуть влево'), () => turn(-1), { secondary: true }),
+      button(tr('Повернуть вправо'), () => turn(1), { secondary: true })),
     error,
   );
 
-  const sendButton = button('Загрузить', () => send(sendButton));
-  modal.actions.replaceChildren(button('Отмена', modal.close, { secondary: true }), sendButton);
+  const sendButton = button(tr('Загрузить'), () => send(sendButton));
+  modal.actions.replaceChildren(button(tr('Отмена'), modal.close, { secondary: true }), sendButton);
 
   layout();
 }

@@ -7,6 +7,7 @@ import { daysCount, pollAsksVote, pollMeta, pollPercent, pollVoters } from './la
 import { el, pagePath } from './layout.js';
 import { openLikers } from './likers.js';
 import { button, openModal } from './modal.js';
+import { tr } from './i18n.js';
 
 export const MAX_OPTIONS = 10;
 const MAX_LINE = 128;
@@ -48,7 +49,7 @@ export function pollNode(post, { canVote = false, onError } = {}) {
         else vote([i]);
       },
     }));
-    const cast = button('Проголосовать!', () => vote(inputs.flatMap((input, i) => (input.checked ? [i] : []))));
+    const cast = button(tr('Проголосовать!'), () => vote(inputs.flatMap((input, i) => (input.checked ? [i] : []))));
     cast.disabled = true;
 
     return el('div', { className: 'poll-options' },
@@ -63,7 +64,7 @@ export function pollNode(post, { canVote = false, onError } = {}) {
     const mayRetract = canVote && poll.voted.length > 0 && !poll.locked && !poll.ended;
 
     return el('div', { className: 'poll-results' },
-      mayRetract ? el('a', { className: 'poll-retract', textContent: 'Отменить голос', onclick: () => change(() => api.retractVote(post.id)) }) : null,
+      mayRetract ? el('a', { className: 'poll-retract', textContent: tr('Отменить голос'), onclick: () => change(() => api.retractVote(post.id)) }) : null,
       ...poll.options.map((option, i) => {
         const listed = !poll.anonymous && option.votes > 0;
         const fill = el('div', { className: 'poll-result-fill' });
@@ -108,7 +109,7 @@ export function pollNode(post, { canVote = false, onError } = {}) {
 // of those who like a post.
 function openVoters(postID, option, place) {
   openLikers(option.votes, postID, (id, cursor, limit) => api.pollVoters(id, place, cursor, limit), {
-    head: () => 'Список проголосовавших » ' + option.name,
+    head: () => tr('Список проголосовавших » ') + option.name,
     people: (page) => page.users.map((user) => ({ user, href: pagePath(user) })),
   });
 }
@@ -122,9 +123,9 @@ export function initPollDraft({ link, marker, onChange }) {
 
   function render() {
     marker.replaceChildren(...(draft ? [
-      el('a', { textContent: 'Опрос', title: 'Изменить опрос', onclick: open }),
+      el('a', { textContent: tr('Опрос'), title: tr('Изменить опрос'), onclick: open }),
       ': ' + draft.title + ' ',
-      el('a', { className: 'poll-remove', title: 'Не прикреплять', textContent: '×', onclick: () => set(null) }),
+      el('a', { className: 'poll-remove', title: tr('Не прикреплять'), textContent: '×', onclick: () => set(null) }),
     ] : []));
     marker.hidden = !draft;
     link.hidden = Boolean(draft);
@@ -154,11 +155,11 @@ export function initPollDraft({ link, marker, onChange }) {
 // one removes it, Enter or Tab in the last adds another) and how the poll
 // is held. draft is the poll attached already, to change it.
 function openPollEditor(draft, onAttach) {
-  const modal = openModal('Новый опрос', { tag: 'form' });
+  const modal = openModal(tr('Новый опрос'), { tag: 'form' });
   const error = el('div', { className: 'error', hidden: true });
-  const title = el('input', { type: 'text', maxLength: MAX_LINE, placeholder: 'Тема опроса', value: draft?.title ?? '' });
+  const title = el('input', { type: 'text', maxLength: MAX_LINE, placeholder: tr('Тема опроса'), value: draft?.title ?? '' });
   const options = el('div', { className: 'poll-editor-options' });
-  const adder = el('input', { type: 'text', placeholder: 'Добавить вариант ответа...', className: 'poll-editor-adder' });
+  const adder = el('input', { type: 'text', placeholder: tr('Добавить вариант ответа...'), className: 'poll-editor-adder' });
   const anonymous = el('input', { type: 'checkbox', checked: Boolean(draft?.anonymous) });
   const multiple = el('input', { type: 'checkbox', checked: Boolean(draft?.multiple) });
   const locked = el('input', { type: 'checkbox', checked: Boolean(draft?.locked) });
@@ -219,9 +220,9 @@ function openPollEditor(draft, onAttach) {
 
     const names = inputs().map((input) => input.value.trim()).filter(Boolean);
     if (title.value.trim() === '') {
-      error.textContent = 'Укажите тему опроса.';
+      error.textContent = tr('Укажите тему опроса.');
     } else if (names.length === 0) {
-      error.textContent = 'Добавьте хотя бы один вариант ответа.';
+      error.textContent = tr('Добавьте хотя бы один вариант ответа.');
     } else {
       modal.close();
       onAttach({
@@ -242,12 +243,12 @@ function openPollEditor(draft, onAttach) {
     title,
     options,
     adder,
-    el('label', {}, anonymous, ' Анонимный опрос'),
-    el('label', {}, multiple, ' Множественный выбор'),
-    el('label', {}, locked, ' Запретить отменять свой голос'),
-    el('label', { className: 'poll-editor-expires' }, expires, ' Голосование истекает через: ', days),
-    el('div', { className: 'hint', textContent: 'Нажатие Backspace в пустом варианте приводит к его удалению. Tab/Enter в последнем добавляет новый.' }),
+    el('label', {}, anonymous, tr(' Анонимный опрос')),
+    el('label', {}, multiple, tr(' Множественный выбор')),
+    el('label', {}, locked, tr(' Запретить отменять свой голос')),
+    el('label', { className: 'poll-editor-expires' }, expires, tr(' Голосование истекает через: '), days),
+    el('div', { className: 'hint', textContent: tr('Нажатие Backspace в пустом варианте приводит к его удалению. Tab/Enter в последнем добавляет новый.') }),
   );
-  modal.actions.append(button('Прикрепить', null, { type: 'submit' }), button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(button(tr('Прикрепить'), null, { type: 'submit' }), button(tr('Отмена'), modal.close, { secondary: true }));
   title.focus();
 }

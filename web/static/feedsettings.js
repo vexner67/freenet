@@ -9,6 +9,7 @@ import { api } from './api.js';
 import { defaultFeedSettings, feedPageSizes, feedSettings, ignoreLabel } from './labels.js';
 import { avatarURL, el, fullName, pagePath, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
+import { tr } from './i18n.js';
 
 const KEY = 'freenet.feed';
 
@@ -37,14 +38,14 @@ function keep(settings) {
 // the ignored sources now; onApply(settings, showIgnored) runs after
 // "Применить", onUnignored after sources stopped being ignored.
 export function openFeedSettings({ showIgnored, onApply, onUnignored }) {
-  const modal = openModal('Настройки ленты');
+  const modal = openModal(tr('Настройки ленты'));
   const content = el('div', { className: 'feed-settings' });
   const error = el('div', { className: 'error', hidden: true });
   const tabs = {
-    main: el('a', { textContent: 'Основное', onclick: () => open('main') }),
-    ignored: el('a', { textContent: 'Игнорируемые источники', onclick: () => open('ignored') }),
+    main: el('a', { textContent: tr('Основное'), onclick: () => open('main') }),
+    ignored: el('a', { textContent: tr('Игнорируемые источники'), onclick: () => open('ignored') }),
   };
-  const close = button('Закрыть', modal.close, { secondary: true });
+  const close = button(tr('Закрыть'), modal.close, { secondary: true });
 
   modal.box.classList.add('feed-settings-box');
   modal.body.append(el('div', { className: 'tabs modal-tabs' }, tabs.main, tabs.ignored), error, content);
@@ -70,11 +71,11 @@ export function openFeedSettings({ showIgnored, onApply, onUnignored }) {
 
     posts.value = String(settings.posts);
     content.append(
-      el('label', { className: 'feed-settings-row', htmlFor: 'feed-posts' }, el('span', { textContent: 'Количество записей на странице' }), posts),
-      el('label', { className: 'modal-option' }, ignored, 'Показывать игнорируемые источники'),
-      el('label', { className: 'modal-option' }, alien, 'Показывать посты на чужих стенах'),
+      el('label', { className: 'feed-settings-row', htmlFor: 'feed-posts' }, el('span', { textContent: tr('Количество записей на странице') }), posts),
+      el('label', { className: 'modal-option' }, ignored, tr('Показывать игнорируемые источники')),
+      el('label', { className: 'modal-option' }, alien, tr('Показывать посты на чужих стенах')),
     );
-    modal.actions.prepend(button('Применить', () => {
+    modal.actions.prepend(button(tr('Применить'), () => {
       const chosen = { posts: Number(posts.value), alien: alien.checked };
 
       keep(chosen);
@@ -87,12 +88,12 @@ export function openFeedSettings({ showIgnored, onApply, onUnignored }) {
     const { sources } = await api.ignored();
 
     if (sources.length === 0) {
-      content.append(el('div', { className: 'hint', textContent: 'Игнорируемых источников нет.' }));
+      content.append(el('div', { className: 'hint', textContent: tr('Игнорируемых источников нет.') }));
       return;
     }
 
     const list = el('div', { className: 'ignored-list' });
-    const stop = button('Не игнорировать', async () => {
+    const stop = button(tr('Не игнорировать'), async () => {
       hideError(error);
       stop.disabled = true;
 
@@ -131,7 +132,7 @@ function sourceRow(source) {
 
   return el('label', { className: 'ignored-row' },
     el('img', { src: avatarURL(source, 'small'), alt: '' }),
-    el('a', { href: pagePath(source), textContent: source.deactivated ? `${name} (страница удалена)` : name }),
+    el('a', { href: pagePath(source), textContent: source.deactivated ? tr('{0} (страница удалена)', name) : name }),
     el('input', { type: 'checkbox', value: source.id }),
   );
 }

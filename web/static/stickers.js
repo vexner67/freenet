@@ -5,16 +5,17 @@
 import { api } from './api.js';
 import { stickerImage, stickerPackName } from './labels.js';
 import { el, showError } from './layout.js';
+import { tr } from './i18n.js';
 
 // stickerNode is the sticker a message is: its picture, or the word for
 // one this site does not know yet.
 export function stickerNode(sticker) {
-  const word = () => el('div', { className: 'im-message-text hint', textContent: 'Стикер' });
+  const word = () => el('div', { className: 'im-message-text hint', textContent: tr('Стикер') });
   const src = stickerImage(sticker);
   if (!src) return word();
 
   // A sticker of a pack its author has deleted has no picture any more.
-  const image = el('img', { className: 'sticker', src, alt: 'Стикер', title: 'Стикер', loading: 'lazy' });
+  const image = el('img', { className: 'sticker', src, alt: tr('Стикер'), title: tr('Стикер'), loading: 'lazy' });
   image.addEventListener('error', () => image.replaceWith(word()), { once: true });
 
   return image;
@@ -56,11 +57,11 @@ export function initStickers({ link, panel, error, onPick }) {
           el('b', { className: 'sticker-pack-title', textContent: stickerPackName(pack) }),
           el('div', { className: 'sticker-grid' }, ...pack.stickers.map((sticker) => el('a', {
             className: 'sticker-pick',
-            title: 'Отправить стикер',
+            title: tr('Отправить стикер'),
             onclick: () => pick(sticker),
           }, stickerNode(sticker)))),
-        )) : [el('p', { className: 'hint', textContent: 'У вас пока нет стикеров' })]),
-        el('a', { className: 'sticker-store', href: '/stickers', textContent: 'Магазин стикеров' }),
+        )) : [el('p', { className: 'hint', textContent: tr('У вас пока нет стикеров') })]),
+        el('a', { className: 'sticker-store', href: '/stickers', textContent: tr('Магазин стикеров') }),
       );
     } catch (e) {
       panel.hidden = true;
