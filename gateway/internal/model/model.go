@@ -1273,8 +1273,8 @@ type VoucherPage struct {
 // for a free one. Bought: the caller has taken it; Added: it is among
 // their stickers. A pack of the site has no AuthorID — the site names it
 // and draws it; one a person made of their photos carries its Name and
-// About, and the shop shows it when Published. Holders is how many others
-// have taken it, told to its author only.
+// About, and the shop shows it when Published. Holders is how many people
+// have taken it, its author left out.
 type StickerPack struct {
 	ID        string
 	Price     int64
