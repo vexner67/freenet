@@ -2,7 +2,6 @@ package user
 
 import (
 	"errors"
-	"strings"
 	"unicode/utf8"
 )
 
@@ -16,7 +15,10 @@ var (
 type Name string
 
 func NewName(s string) (Name, error) {
-	s = strings.TrimSpace(s)
+	s, err := visibleText(s)
+	if err != nil {
+		return "", err
+	}
 
 	if s == "" {
 		return "", ErrNameEmpty

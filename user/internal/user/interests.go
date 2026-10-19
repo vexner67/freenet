@@ -27,7 +27,10 @@ type Interests struct {
 type About string
 
 func NewAbout(s string) (About, error) {
-	s = strings.TrimSpace(strings.ReplaceAll(s, "\r\n", "\n"))
+	s, err := visibleText(strings.ReplaceAll(s, "\r\n", "\n"))
+	if err != nil {
+		return "", err
+	}
 
 	if utf8.RuneCountInString(s) > maxAboutLen {
 		return "", ErrAboutTooLong
