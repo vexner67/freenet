@@ -187,6 +187,7 @@ func (a *App) build(cfg config.Config) error {
 				Users:       store.users,
 				Wallets:     store.wallets,
 				Vouchers:    store.vouchers,
+				Rates:       store.rates,
 				Permissions: permissions,
 				Tx:          store.tx,
 				Notifier:    deliver.votes,
@@ -284,7 +285,9 @@ type storage struct {
 	// wallets are the votes and the rating of users.
 	wallets  service.WalletRepository
 	vouchers service.VoucherRepository
-	tx       service.TxManager
+	// rates is what a vote is worth in rubles.
+	rates service.VoteRateRepository
+	tx    service.TxManager
 	// newQueue opens a stream of the outbox.
 	newQueue func(stream string) outboxQueue
 }
@@ -304,6 +307,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 			stickerPacks: inmem.NewStickerPackRepository(users, stickers),
 			wallets:      users,
 			vouchers:     inmem.NewVoucherRepository(users),
+			rates:        inmem.NewVoteRateRepository(),
 			tx:           inmem.TxManager{},
 			newQueue: func(string) outboxQueue {
 				return outbox.NewMemory()
@@ -343,6 +347,7 @@ func (a *App) newStorage(cfg config.Config) (storage, error) {
 		stickerPacks: postgres.NewStickerPackRepository(a.pool),
 		wallets:      postgres.NewWalletRepository(a.pool),
 		vouchers:     postgres.NewVoucherRepository(a.pool),
+		rates:        postgres.NewVoteRateRepository(a.pool),
 		tx:           pgpool.NewTxManager(a.pool),
 		newQueue: func(stream string) outboxQueue {
 			q := outbox.NewPostgres(a.pool, stream)

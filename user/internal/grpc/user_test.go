@@ -86,7 +86,7 @@ func newServer(t *testing.T) testServer {
 		}),
 		Stickers: service.NewStickerService(stickers, inmem.NewStickerPackRepository(users, stickers), users, inmem.TxManager{}),
 		Wallets: service.NewWalletService(service.WalletDeps{
-			Users: users, Wallets: users, Vouchers: inmem.NewVoucherRepository(users), Permissions: permissions,
+			Users: users, Wallets: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Permissions: permissions,
 			Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
 		}),
 		Verification: service.NewVerificationService(service.VerificationDeps{

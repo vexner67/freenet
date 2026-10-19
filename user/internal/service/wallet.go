@@ -38,6 +38,13 @@ type VoucherRepository interface {
 	Delete(ctx context.Context, id uuid.UUID) error
 }
 
+// VoteRateRepository keeps what a vote is worth in rubles.
+type VoteRateRepository interface {
+	// Rate is user.DefaultVoteRate until one is set.
+	Rate(ctx context.Context) (user.VoteRate, error)
+	SetRate(ctx context.Context, rate user.VoteRate) error
+}
+
 // VotesNotifier records what the notification service has to hear about
 // transfers, in the transaction of the transfer, as Notifier does.
 type VotesNotifier interface {
@@ -73,6 +80,7 @@ type WalletService struct {
 	userRepo    UserRepository
 	wallets     WalletRepository
 	vouchers    VoucherRepository
+	rates       VoteRateRepository
 	permissions *PermissionService
 	tx          TxManager
 	notifier    VotesNotifier
@@ -84,6 +92,7 @@ type WalletDeps struct {
 	Users       UserRepository
 	Wallets     WalletRepository
 	Vouchers    VoucherRepository
+	Rates       VoteRateRepository
 	Permissions *PermissionService
 	Tx          TxManager
 	Notifier    VotesNotifier
@@ -95,6 +104,7 @@ func NewWalletService(d WalletDeps) *WalletService {
 		userRepo:    d.Users,
 		wallets:     d.Wallets,
 		vouchers:    d.Vouchers,
+		rates:       d.Rates,
 		permissions: d.Permissions,
 		tx:          d.Tx,
 		notifier:    d.Notifier,
@@ -232,6 +242,25 @@ func (s *WalletService) DeleteVoucher(ctx context.Context, adminID, voucherID uu
 	}
 
 	return errs.Wrap("s.vouchers.Delete", s.vouchers.Delete(ctx, voucherID))
+}
+
+// Rate is what a vote is worth in rubles; anyone may ask.
+func (s *WalletService) Rate(ctx context.Context) (user.VoteRate, error) {
+	rate, err := s.rates.Rate(ctx)
+	if err != nil {
+		return 0, errs.Wrap("s.rates.Rate", err)
+	}
+
+	return rate, nil
+}
+
+// SetRate says what a vote is worth from now on; user.ErrNotAdmin.
+func (s *WalletService) SetRate(ctx context.Context, adminID uuid.UUID, rate user.VoteRate) error {
+	if err := checkAdmin(ctx, s.userRepo, s.admins, adminID); err != nil {
+		return errs.Wrap("checkAdmin", err)
+	}
+
+	return errs.Wrap("s.rates.SetRate", s.rates.SetRate(ctx, rate))
 }
 
 // checkAdmin is user.ErrNotAdmin unless userID runs the site.

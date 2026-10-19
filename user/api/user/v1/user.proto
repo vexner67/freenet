@@ -153,6 +153,12 @@ service UserService {
   rpc ListVouchers(ListVouchersRequest) returns (ListVouchersResponse);
   rpc DeleteVoucher(DeleteVoucherRequest) returns (google.protobuf.Empty);
 
+  // The rate of a vote: what one is worth in rubles. GetVoteRate is
+  // public; SetVoteRate is for the administrators (PermissionDenied for
+  // others).
+  rpc GetVoteRate(GetVoteRateRequest) returns (GetVoteRateResponse);
+  rpc SetVoteRate(SetVoteRateRequest) returns (google.protobuf.Empty);
+
   // Requires an access token of an administrator of the site
   // (PermissionDenied otherwise): gives a page the checkmark of a
   // confirmed one ("Верификация" of openvk) or takes it.
@@ -1013,6 +1019,18 @@ message ListVouchersResponse {
 
 message DeleteVoucherRequest {
   string voucher_id = 1;
+}
+
+message GetVoteRateRequest {}
+
+message GetVoteRateResponse {
+  // What one vote is worth, in kopecks.
+  int64 kopecks = 1;
+}
+
+message SetVoteRateRequest {
+  // In kopecks, 1-100000000.
+  int64 kopecks = 1;
 }
 
 message SetVerifiedRequest {

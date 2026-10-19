@@ -19,6 +19,8 @@ type WalletService interface {
 	CreateVoucher(ctx context.Context, adminID uuid.UUID, d service.VoucherDraft) (*user.Voucher, error)
 	ListVouchers(ctx context.Context, adminID, cursor uuid.UUID, size int) (service.VoucherPage, error)
 	DeleteVoucher(ctx context.Context, adminID, voucherID uuid.UUID) error
+	Rate(ctx context.Context) (user.VoteRate, error)
+	SetRate(ctx context.Context, adminID uuid.UUID, rate user.VoteRate) error
 }
 
 func (h *UserHandler) TransferVotes(ctx context.Context, req *userv1.TransferVotesRequest) (*userv1.TransferVotesResponse, error) {
@@ -147,4 +149,31 @@ func toProtoVoucher(v *user.Voucher) *userv1.Voucher {
 		UsagesLeft:  int32(v.UsagesLeft()),  //nolint:gosec // up to 1000000
 		Activations: int32(v.Activations()), //nolint:gosec // counts of accounts fit in int32
 	}
+}
+
+func (h *UserHandler) GetVoteRate(ctx context.Context, _ *userv1.GetVoteRateRequest) (*userv1.GetVoteRateResponse, error) {
+	rate, err := h.walletService.Rate(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	return &userv1.GetVoteRateResponse{Kopecks: rate.Kopecks()}, nil
+}
+
+func (h *UserHandler) SetVoteRate(ctx context.Context, req *userv1.SetVoteRateRequest) (*emptypb.Empty, error) {
+	adminID, err := currentUserID(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	rate, err := user.NewVoteRate(req.GetKopecks())
+	if err != nil {
+		return nil, status.Error(codes.InvalidArgument, err.Error())
+	}
+
+	if err = h.walletService.SetRate(ctx, adminID, rate); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
 }

@@ -65,7 +65,7 @@ func newWalletWorld(t *testing.T) walletWorld {
 			Tx: inmem.TxManager{}, Wallets: users, Notifier: &fakeGiftNotifier{}, Admins: admins,
 		}),
 		wallets: service.NewWalletService(service.WalletDeps{
-			Users: users, Wallets: users, Vouchers: inmem.NewVoucherRepository(users), Permissions: permissions,
+			Users: users, Wallets: users, Vouchers: inmem.NewVoucherRepository(users), Rates: inmem.NewVoteRateRepository(), Permissions: permissions,
 			Tx: inmem.TxManager{}, Notifier: notifier, Admins: admins,
 		}),
 		notifier: notifier,
@@ -318,5 +318,28 @@ func TestGiftService_Prices(t *testing.T) {
 		if _, err = w.gifts.Send(ctx, ann, bob, service.GiftDraft{Kind: paid}); !errors.Is(err, user.ErrNotEnoughVotes) {
 			t.Fatalf("the second paid gift: %v", err)
 		}
+	}
+}
+
+func TestWalletService_Rate(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	w := newWalletWorld(t)
+	admin, ann := w.person(t, "admin"), w.person(t, "ann")
+
+	if rate, err := w.wallets.Rate(ctx); err != nil || rate != user.DefaultVoteRate {
+		t.Fatalf("Rate = %d, %v; want the default", rate, err)
+	}
+
+	// Only the administrators say what a vote is worth.
+	if err := w.wallets.SetRate(ctx, ann, 1000); !errors.Is(err, user.ErrNotAdmin) {
+		t.Fatalf("SetRate by ann: %v", err)
+	}
+	if err := w.wallets.SetRate(ctx, admin, 1250); err != nil {
+		t.Fatal(err)
+	}
+	if rate, err := w.wallets.Rate(ctx); err != nil || rate.Kopecks() != 1250 {
+		t.Fatalf("Rate = %d, %v; want 1250", rate, err)
 	}
 }
