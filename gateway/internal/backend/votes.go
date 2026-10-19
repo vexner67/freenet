@@ -81,6 +81,23 @@ func (v *Votes) DeleteVoucher(ctx context.Context, accessToken, voucherID string
 	return nil
 }
 
+func (v *Votes) Rate(ctx context.Context) (int64, error) {
+	resp, err := v.api.GetVoteRate(ctx, &userv1.GetVoteRateRequest{})
+	if err != nil {
+		return 0, errs.Wrap("v.api.GetVoteRate", fromStatus(err))
+	}
+
+	return resp.GetKopecks(), nil
+}
+
+func (v *Votes) SetRate(ctx context.Context, accessToken string, kopecks int64) error {
+	if _, err := v.api.SetVoteRate(withToken(ctx, accessToken), &userv1.SetVoteRateRequest{Kopecks: kopecks}); err != nil {
+		return errs.Wrap("v.api.SetVoteRate", fromStatus(err))
+	}
+
+	return nil
+}
+
 func toVoucher(pv *userv1.Voucher) model.Voucher {
 	return model.Voucher{
 		ID:          pv.GetId(),

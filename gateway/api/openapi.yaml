@@ -4248,6 +4248,35 @@ paths:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
 
+  /api/v1/vote-rate:
+    get:
+      summary: What a vote is worth
+      description: Public. The rate the site tells people, in kopecks for one vote; 700 (7 ₽) until the administrators set another.
+      responses:
+        "200":
+          description: The rate
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/VoteRate" }
+    put:
+      summary: Set what a vote is worth
+      description: Only for the administrators of the site.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema: { $ref: "#/components/schemas/VoteRate" }
+      responses:
+        "204": { description: Set }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+
   /api/v1/users/{nickname}/verification:
     parameters:
       - name: nickname
@@ -7227,6 +7256,12 @@ components:
             - $ref: "#/components/schemas/Author"
             - type: "null"
           description: "Who sent it; null when you are not told (an anonymous gift) and when the page of the sender is deleted"
+
+    VoteRate:
+      type: object
+      required: [kopecks]
+      properties:
+        kopecks: { type: integer, format: int64, minimum: 1, maximum: 100000000, description: What one vote is worth, in kopecks }
 
     Voucher:
       type: object

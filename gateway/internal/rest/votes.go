@@ -189,3 +189,42 @@ func (a *api) deleteVoucher(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusNoContent)
 }
+
+// voteRateJSON is what a vote is worth in rubles, in kopecks.
+type voteRateJSON struct {
+	Kopecks int64 `json:"kopecks"`
+}
+
+// voteRate is public: the site tells everyone what a vote is worth.
+func (a *api) voteRate(w http.ResponseWriter, r *http.Request) {
+	kopecks, err := a.votes.Rate(r.Context())
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	writeJSON(w, http.StatusOK, voteRateJSON{Kopecks: kopecks})
+}
+
+// setVoteRate is "Подарки" of the admin panel: an administrator says what
+// a vote is worth from now on.
+func (a *api) setVoteRate(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req voteRateJSON
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.votes.SetRate(r.Context(), token, req.Kopecks); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
