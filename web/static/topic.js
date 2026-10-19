@@ -9,6 +9,7 @@ import { commentNode, topicHearts } from './comments.js';
 import { formatPostDate, replyMention, topicMessagesCount } from './labels.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError, autosize } from './layout.js';
 import { boardTitle, topicPath } from './topics.js';
+import { tr } from './i18n.js';
 
 // openvk's limit of a post or a comment; the counter shows near the end.
 const MAX_LENGTH = 60000;
@@ -17,24 +18,24 @@ const COUNTER_FROM = MAX_LENGTH - 100;
 const topicID = decodeURIComponent(location.pathname.slice('/topic/'.length));
 
 function renderHead(topic, club, canEdit) {
-  document.title = `Тема «${topic.title}» | Freenet`;
-  $('title').replaceChildren(...boardTitle(club, 'Просмотр темы'));
+  document.title = tr('Тема «{0}» | Freenet', topic.title);
+  $('title').replaceChildren(...boardTitle(club, tr('Просмотр темы')));
   if (canEdit) {
-    $('title-links').replaceChildren(el('a', { href: topicPath(topic) + '/edit', textContent: 'Редактировать тему' }));
+    $('title-links').replaceChildren(el('a', { href: topicPath(topic) + '/edit', textContent: tr('Редактировать тему') }));
   }
 
   $('topic-title').textContent = topic.title;
   $('topic-author').textContent = fullName(topic.author);
   $('topic-author').href = pagePath(topic.author);
-  $('topic-created').textContent = 'Создано ' + formatPostDate(topic.createdAt);
+  $('topic-created').textContent = tr('Создано ') + formatPostDate(topic.createdAt);
 }
 
 // writeRefusal is why the viewer may not write, null when they may.
 function writeRefusal(topic, me, admin) {
-  if (topic.closed) return 'Тема закрыта.';
-  if (topic.restricted && !admin) return 'Комментировать могут только администраторы.';
+  if (topic.closed) return tr('Тема закрыта.');
+  if (topic.restricted && !admin) return tr('Комментировать могут только администраторы.');
   if (!me) return null;
-  if (!me.profileCompleted) return 'Чтобы писать в обсуждениях, заполните свою страницу.';
+  if (!me.profileCompleted) return tr('Чтобы писать в обсуждениях, заполните свою страницу.');
 
   return null;
 }
@@ -88,7 +89,7 @@ function initMessages(topic, me, admin) {
       return;
     }
 
-    node.replaceWith(el('div', { className: 'post-deleted', textContent: 'Сообщение удалено.' }));
+    node.replaceWith(el('div', { className: 'post-deleted', textContent: tr('Сообщение удалено.') }));
     total--;
     updateCount();
   }
@@ -114,7 +115,7 @@ function initMessages(topic, me, admin) {
 
   function updateCounter() {
     const left = MAX_LENGTH - $('message-text').value.length;
-    $('message-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? `осталось ${left}` : '';
+    $('message-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? tr('осталось {0}', left) : '';
   }
 
   async function submit(event) {
@@ -122,7 +123,7 @@ function initMessages(topic, me, admin) {
     hideError(error);
 
     if (attachments.busy()) {
-      showError(error, 'Дождитесь, пока загрузятся фотографии.');
+      showError(error, tr('Дождитесь, пока загрузятся фотографии.'));
       return;
     }
 
@@ -184,6 +185,6 @@ try {
   $('content').hidden = false;
   await initMessages(topic, me, admin);
 } catch (e) {
-  $('title').textContent = e.status === 404 ? 'Тема не найдена' : 'Ошибка';
+  $('title').textContent = e.status === 404 ? tr('Тема не найдена') : tr('Ошибка');
   showError($('error'), e);
 }

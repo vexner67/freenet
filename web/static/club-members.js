@@ -10,6 +10,7 @@ import { $, clubRef, el, fullName, renderChrome, showError, hideError } from './
 import { button, openModal } from './modal.js';
 import { personRow } from './people.js';
 import { separated } from './posts.js';
+import { tr } from './i18n.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/members'.length));
 const params = new URLSearchParams(location.search);
@@ -27,7 +28,7 @@ function memberNode(member) {
 
   function render() {
     role.textContent = clubRoles[member.role];
-    title.textContent = member.title ? `Комментарий: ${member.title}` : '';
+    title.textContent = member.title ? tr('Комментарий: {0}', member.title) : '';
     title.hidden = !member.title;
     links.replaceChildren(...separated([...appointments(), ...descriptions()].filter(Boolean)));
   }
@@ -40,10 +41,10 @@ function memberNode(member) {
     const appoint = member.role === 'member';
     return [
       el('a', {
-        textContent: appoint ? 'Назначить администратором' : 'Снять полномочия администратора',
+        textContent: appoint ? tr('Назначить администратором') : tr('Снять полномочия администратора'),
         onclick: () => setAdmin(appoint),
       }),
-      !appoint && el('a', { textContent: 'Назначить владельцем', onclick: () => confirmTransfer(member.user) }),
+      !appoint && el('a', { textContent: tr('Назначить владельцем'), onclick: () => confirmTransfer(member.user) }),
     ];
   }
 
@@ -52,8 +53,8 @@ function memberNode(member) {
     if (!manages(club.role) || !manages(member.role)) return [];
 
     return [
-      el('a', { textContent: 'Изменить комментарий', onclick: () => editTitle(member, render) }),
-      el('a', { textContent: member.hidden ? 'Скрыт: Да' : 'Скрыт: Нет', onclick: toggleHidden }),
+      el('a', { textContent: tr('Изменить комментарий'), onclick: () => editTitle(member, render) }),
+      el('a', { textContent: member.hidden ? tr('Скрыт: Да') : tr('Скрыт: Нет'), onclick: toggleHidden }),
     ];
   }
 
@@ -65,8 +66,8 @@ function memberNode(member) {
       member.hidden = !member.hidden;
       render();
       notice(member.hidden
-        ? `Теперь ${fullName(member.user)} будет показываться как обычный подписчик всем, кроме других администраторов`
-        : `Теперь все будут знать, что ${fullName(member.user)} — администратор.`);
+        ? tr('Теперь {0} будет показываться как обычный подписчик всем, кроме других администраторов', fullName(member.user))
+        : tr('Теперь все будут знать, что {0} — администратор.', fullName(member.user)));
     } catch (e) {
       showError($('error'), e);
     }
@@ -96,8 +97,8 @@ function memberNode(member) {
 // "Отклонить заявку" does not; either way the row goes.
 function requestNode(user) {
   const row = personRow(user, el('div', {}, ...separated([
-    el('a', { textContent: 'Принять заявку', onclick: () => decide(api.acceptClubRequest, 1) }),
-    el('a', { textContent: 'Отклонить заявку', onclick: () => decide(api.rejectClubRequest, 0) }),
+    el('a', { textContent: tr('Принять заявку'), onclick: () => decide(api.acceptClubRequest, 1) }),
+    el('a', { textContent: tr('Отклонить заявку'), onclick: () => decide(api.rejectClubRequest, 0) }),
   ])));
 
   async function decide(act, joined) {
@@ -145,14 +146,14 @@ function notice(text) {
 // editTitle is openvk's "Изменить комментарий к администратору": the few
 // words under the admin's name; empty takes them away.
 function editTitle(member, done) {
-  const modal = openModal('Изменить комментарий к администратору', { tag: 'form' });
+  const modal = openModal(tr('Изменить комментарий к администратору'), { tag: 'form' });
   const error = el('div', { className: 'error', hidden: true });
   const input = el('input', { type: 'text', className: 'modal-input', maxLength: 36, value: member.title });
 
   modal.body.append(input, error);
   modal.actions.append(
-    button('Изменить', null, { type: 'submit' }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Изменить'), null, { type: 'submit' }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
   modal.box.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -165,7 +166,7 @@ function editTitle(member, done) {
       member.title = title;
       modal.close();
       done();
-      notice(title ? 'Комментарий к администратору изменён' : 'Комментарий к администратору удален');
+      notice(title ? tr('Комментарий к администратору изменён') : tr('Комментарий к администратору удален'));
     } catch (e) {
       showError(error, e);
     }
@@ -176,16 +177,16 @@ function editTitle(member, done) {
 // confirmTransfer is openvk's "Передача прав владельца". openvk also asks
 // for the password; there are no passwords here, sign-in is by email.
 function confirmTransfer(user) {
-  const modal = openModal('Передача прав владельца');
+  const modal = openModal(tr('Передача прав владельца'));
   const error = el('div', { className: 'error', hidden: true });
 
   modal.body.append(
-    el('p', {}, `Внимание! Вы передаёте права владельца пользователю ${fullName(user)}. Это действие необратимо. ` +
-      'После передачи вы останетесь администратором, но сможете легко перестать им быть.'),
+    el('p', {}, tr('Внимание! Вы передаёте права владельца пользователю {0}. Это действие необратимо. ', fullName(user)) +
+      tr('После передачи вы останетесь администратором, но сможете легко перестать им быть.')),
     error,
   );
   modal.actions.append(
-    button('Передать', async (event) => {
+    button(tr('Передать'), async (event) => {
       event.target.disabled = true;
       hideError(error);
 
@@ -198,7 +199,7 @@ function confirmTransfer(user) {
         event.target.disabled = false;
       }
     }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
 }
 
@@ -206,8 +207,8 @@ function confirmTransfer(user) {
 // as they now are.
 function transferred(user) {
   club.role = 'admin';
-  notice(`Новый владелец (${fullName(user)}) успешно назначен в сообщество ${club.name}. ` +
-    'Вам выданы права администратора в сообществе.');
+  notice(tr('Новый владелец ({0}) успешно назначен в сообщество {1}. ', fullName(user), club.name) +
+    tr('Вам выданы права администратора в сообществе.'));
   $('people').replaceChildren();
   cursor = '';
   loadMore();
@@ -241,10 +242,10 @@ function tab(id, query, text, active) {
 // tabs are "Участники", "Руководство" and, of a closed group for those
 // who run it, "Заявки".
 function tabs() {
-  tab('tab-all', '', `Участники · ${membersCount(club.members)}`, !admins && !requests);
+  tab('tab-all', '', tr('Участники · {0}', membersCount(club.members)), !admins && !requests);
 
-  tab('tab-admins', '?admins=true', 'Руководство', admins);
-  if (club.closed && manages(club.role)) tab('tab-requests', '?requests=true', `Заявки · ${club.requests ?? 0}`, requests);
+  tab('tab-admins', '?admins=true', tr('Руководство'), admins);
+  if (club.closed && manages(club.role)) tab('tab-requests', '?requests=true', tr('Заявки · {0}', club.requests ?? 0), requests);
   $('tabs').hidden = false;
 }
 
@@ -255,20 +256,20 @@ try {
   club = await api.club(ref);
   const path = '/club/' + encodeURIComponent(clubRef(club));
 
-  document.title = `Участники: ${club.name} | Freenet`;
-  $('title').textContent = admins ? `Руководство: ${club.name}` : `Участники: ${club.name}`;
+  document.title = tr('Участники: {0} | Freenet', club.name);
+  $('title').textContent = admins ? tr('Руководство: {0}', club.name) : tr('Участники: {0}', club.name);
   $('back').href = path;
 
-  $('back').textContent = '← к группе';
+  $('back').textContent = tr('← к группе');
   tabs();
 
   // "Заявки" is for those who run a closed group; the others get the members.
   const load = requests && club.closed && manages(club.role) ? loadRequests : loadMore;
 
-  if (load === loadRequests) $('title').textContent = `Заявки: ${club.name}`;
+  if (load === loadRequests) $('title').textContent = tr('Заявки: {0}', club.name);
   $('more').addEventListener('click', load);
   await load();
 } catch (e) {
-  $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';
+  $('title').textContent = e.status === 404 ? tr('Группа не найдена') : tr('Ошибка');
   showError($('error'), e);
 }

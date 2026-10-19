@@ -12,6 +12,7 @@ import { autosize, avatarURL, el, fullName, pagePath, showError, verifiedMark } 
 import { openLikers } from './likers.js';
 import { button, openModal } from './modal.js';
 import { likeButton, separated } from './posts.js';
+import { tr } from './i18n.js';
 
 // How long a story is shown before the next one, as on VK.
 const STORY_SHOWN = 6000;
@@ -56,7 +57,7 @@ export async function initStoryBar(bar, me, asked = null) {
     }, verifiedMark(entry.author)));
 
     if (me.profileCompleted) {
-      const add = circle(me, true, 'Добавить историю', () => openStoryForm(load));
+      const add = circle(me, true, tr('Добавить историю'), () => openStoryForm(load));
       add.classList.add('story-add');
       circles.unshift(add);
     }
@@ -154,7 +155,7 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
       el('a', { href: pagePath(entry.author) }, el('img', { src: avatarURL(entry.author, 'small'), alt: '' })),
       el('a', { href: pagePath(entry.author) }, fullName(entry.author), verifiedMark(entry.author)),
       el('span', { className: 'story-age', textContent: storyAge(s.createdAt) }),
-      el('a', { className: 'story-close', textContent: '×', title: 'Закрыть', onclick: close }));
+      el('a', { className: 'story-close', textContent: '×', title: tr('Закрыть'), onclick: close }));
     text.textContent = s.text;
     text.hidden = !s.text;
     comments.hidden = true;
@@ -215,12 +216,12 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
   // open at once.
   async function showComments(s) {
     const list = el('div', { className: 'post-comments-list' });
-    const more = el('a', { className: 'story-comments-more', textContent: 'Показать ещё', hidden: true });
+    const more = el('a', { className: 'story-comments-more', textContent: tr('Показать ещё'), hidden: true });
     const error = el('div', { className: 'error', hidden: true });
-    const field = el('textarea', { className: 'post-comment-text', rows: 1, maxLength: MAX_COMMENT, placeholder: 'Комментировать...', ariaLabel: 'Ваш комментарий' });
-    const send = el('button', { className: 'button', type: 'submit', textContent: 'Отправить' });
+    const field = el('textarea', { className: 'post-comment-text', rows: 1, maxLength: MAX_COMMENT, placeholder: tr('Комментировать...'), ariaLabel: tr('Ваш комментарий') });
+    const send = el('button', { className: 'button', type: 'submit', textContent: tr('Отправить') });
     const form = el('form', { className: 'post-comment-form' }, field, send);
-    const empty = el('p', { className: 'story-comments-empty', textContent: 'Комментариев пока нет.', hidden: true });
+    const empty = el('p', { className: 'story-comments-empty', textContent: tr('Комментариев пока нет.'), hidden: true });
     let cursor = '';
 
     const render = (page) => {
@@ -299,16 +300,16 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
       ? el('a', { textContent: storyViews(s.views), onclick: () => openLikers(s.views, s.id, api.storyViewers, viewers) })
       : el('span', { textContent: storyViews(0) });
 
-    return [views, el('a', { textContent: 'Удалить', onclick: () => confirmDelete(s) })];
+    return [views, el('a', { textContent: tr('Удалить'), onclick: () => confirmDelete(s) })];
   }
 
   function confirmDelete(s) {
-    const modal = openModal('Удалить историю');
+    const modal = openModal(tr('Удалить историю'));
     const error = el('div', { className: 'error', hidden: true });
 
-    modal.body.append(el('p', { textContent: 'Вы уверены, что хотите удалить эту историю?' }), error);
+    modal.body.append(el('p', { textContent: tr('Вы уверены, что хотите удалить эту историю?') }), error);
     modal.actions.append(
-      button('Удалить', async () => {
+      button(tr('Удалить'), async () => {
         try {
           await api.deleteStory(s.id);
         } catch (e) {
@@ -319,7 +320,7 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
         modal.close();
         removeStory(s);
       }),
-      button('Отмена', modal.close, { secondary: true }));
+      button(tr('Отмена'), modal.close, { secondary: true }));
   }
 
   function removeStory(s) {
@@ -400,16 +401,16 @@ function firstUnviewed(entry) {
 // it is chosen (as the photos of a post), and a few words over it; onTold
 // reads the stories again.
 export function openStoryForm(onTold) {
-  const modal = openModal('Новая история');
+  const modal = openModal(tr('Новая история'));
   const file = el('input', { type: 'file', accept: 'image/jpeg,image/png,image/gif,image/webp' });
   const preview = el('img', { className: 'story-preview', alt: '', hidden: true });
-  const caption = el('textarea', { maxLength: MAX_TEXT, placeholder: 'Подпись', ariaLabel: 'Подпись' });
+  const caption = el('textarea', { maxLength: MAX_TEXT, placeholder: tr('Подпись'), ariaLabel: tr('Подпись') });
   const error = el('div', { className: 'error', hidden: true });
   let photo = null;
 
-  const publish = button('Опубликовать', async () => {
+  const publish = button(tr('Опубликовать'), async () => {
     if (!photo) {
-      showError(error, 'Выберите фотографию для истории.');
+      showError(error, tr('Выберите фотографию для истории.'));
       return;
     }
 
@@ -445,8 +446,8 @@ export function openStoryForm(onTold) {
   });
 
   modal.body.append(
-    el('p', { className: 'hint', textContent: 'История — фотография с подписью, которую 24 часа видят ваши подписчики над новостями.' }),
+    el('p', { className: 'hint', textContent: tr('История — фотография с подписью, которую 24 часа видят ваши подписчики над новостями.') }),
     file, preview, caption, error);
   modal.box.classList.add('story-form');
-  modal.actions.append(publish, button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(publish, button(tr('Отмена'), modal.close, { secondary: true }));
 }

@@ -6,6 +6,7 @@
 import { api } from './api.js';
 import { openAvatarDialog } from './avatar.js';
 import { $, avatarURL, showError, hideError } from './layout.js';
+import { tr } from './i18n.js';
 
 export function initPhoto(user, isOwner, {
   upload = api.uploadAvatar, remove = api.deleteAvatar, error = $('follow-error'), club = false,
@@ -16,7 +17,7 @@ export function initPhoto(user, isOwner, {
   function render(u) {
     img.src = avatarURL({ ...u, club }, 'large');
     $('avatar-delete').hidden = !u.avatar;
-    $('avatar-upload').textContent = u.avatar ? 'Загрузить новую фотографию' : 'Поставить изображение';
+    $('avatar-upload').textContent = u.avatar ? tr('Загрузить новую фотографию') : tr('Поставить изображение');
   }
 
   async function change(action, busyText) {
@@ -45,5 +46,5 @@ export function initPhoto(user, isOwner, {
       render(await upload(blob));
     },
   }));
-  $('avatar-delete').addEventListener('click', () => change(() => remove(), 'Удаление…'));
+  $('avatar-delete').addEventListener('click', () => change(() => remove(), tr('Удаление…')));
 }

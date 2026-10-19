@@ -4,15 +4,16 @@
 // photo: for a photo of an album its description, heart and comments.
 
 import { adult, el, revealAdult } from './layout.js';
+import { tr } from './i18n.js';
 
 export function openViewer(photos, start, { details } = {}) {
   let index = start;
 
   const counter = el('span');
   const img = el('img', { className: 'viewer-photo', alt: '' });
-  const prev = el('a', { className: 'viewer-nav viewer-prev', title: 'Предыдущая', textContent: '‹' });
-  const next = el('a', { className: 'viewer-nav viewer-next', title: 'Следующая', textContent: '›' });
-  const close = el('a', { className: 'viewer-close', textContent: 'Закрыть' });
+  const prev = el('a', { className: 'viewer-nav viewer-prev', title: tr('Предыдущая'), textContent: '‹' });
+  const next = el('a', { className: 'viewer-nav viewer-next', title: tr('Следующая'), textContent: '›' });
+  const close = el('a', { className: 'viewer-close', textContent: tr('Закрыть') });
 
   const footer = el('div', { className: 'viewer-details', hidden: !details });
   const box = el('div', { className: 'viewer-box' },
@@ -26,7 +27,7 @@ export function openViewer(photos, start, { details } = {}) {
     index = (i + photos.length) % photos.length;
     img.src = photos[index].large;
     adult(img, photos[index].nsfw);
-    counter.textContent = `Фотография ${index + 1} из ${photos.length}`;
+    counter.textContent = tr('Фотография {0} из {1}', index + 1, photos.length);
     if (details) footer.replaceChildren(details(photos[index]));
   }
 

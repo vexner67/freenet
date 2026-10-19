@@ -15,6 +15,7 @@ import { pickPath } from './gifts.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { stickerNode } from './stickers.js';
+import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
 const act = ['settings', 'author', 'new', 'edit', 'gifts'].includes(params.get('act')) ? params.get('act') : 'shop';
@@ -60,20 +61,20 @@ function packCard(pack) {
   let foot;
   if (studio) {
     foot = [
-      link({ className: 'stickers-pack-price paid', textContent: 'Редактировать' }),
-      el('div', { className: 'stickers-pack-installs', textContent: `Всего установок: ${pack.holders ?? 0}` }),
+      link({ className: 'stickers-pack-price paid', textContent: tr('Редактировать') }),
+      el('div', { className: 'stickers-pack-installs', textContent: tr('Всего установок: {0}', pack.holders ?? 0) }),
     ];
   } else {
     const price = stickerPackPrice(pack);
     foot = [link({ className: `stickers-pack-price ${price.kind}`, textContent: price.text })];
-    if (act === 'settings') foot.push(button('Убрать набор', () => confirmRemove(pack), { secondary: true }));
+    if (act === 'settings') foot.push(button(tr('Убрать набор'), () => confirmRemove(pack), { secondary: true }));
   }
 
   return el('div', { className: 'stickers-pack-card' },
     link({ className: 'stickers-pack-thumb' }, thumb(pack)),
     el('div', { className: 'stickers-pack-name' }, link({ textContent: stickerPackName(pack), title: stickerPackName(pack) })),
     studio
-      ? el('div', { className: 'stickers-pack-author', textContent: pack.published ? 'в магазине' : 'не опубликован' })
+      ? el('div', { className: 'stickers-pack-author', textContent: pack.published ? tr('в магазине') : tr('не опубликован') })
       : pack.author ? el('div', { className: 'stickers-pack-author' }, author(pack)) : null,
     el('div', { className: 'stickers-pack-desc', textContent: pack.about ?? '' }),
     el('div', { className: 'stickers-pack-footer' }, ...foot),
@@ -87,14 +88,14 @@ function openPack(pack) {
   const modal = openModal(stickerPackName(pack));
   const error = el('div', { className: 'error', hidden: true });
   const action = button(stickerPackAction(pack), () => add(pack, action, error));
-  const copy = el('a', { className: 'stickers-modal-copy', textContent: 'Скопировать ссылку' });
+  const copy = el('a', { className: 'stickers-modal-copy', textContent: tr('Скопировать ссылку') });
 
   action.disabled = Boolean(pack.added);
   copy.addEventListener('click', async () => {
     try {
       await navigator.clipboard.writeText(`${location.origin}/stickers?pack=${encodeURIComponent(pack.id)}`);
-      copy.textContent = 'Ссылка скопирована!';
-      setTimeout(() => { copy.textContent = 'Скопировать ссылку'; }, 2000);
+      copy.textContent = tr('Ссылка скопирована!');
+      setTimeout(() => { copy.textContent = tr('Скопировать ссылку'); }, 2000);
     } catch {
       // A browser that keeps the clipboard shut leaves the link as it was.
     }
@@ -102,7 +103,7 @@ function openPack(pack) {
 
   // What one has to pay with, under the button of a pack one buys.
   const balance = me && pack.price && !pack.bought
-    ? el('span', { className: 'hint', textContent: `У Вас ${votesCount(me.votes ?? 0)}` })
+    ? el('span', { className: 'hint', textContent: tr('У Вас {0}', votesCount(me.votes ?? 0)) })
     : null;
 
   modal.box.classList.add('stickers-pack-modal');
@@ -123,7 +124,7 @@ function openPack(pack) {
     el('div', { className: 'stickers-modal-grid' },
       ...pack.stickers.map((sticker) => el('div', { className: 'stickers-modal-item' }, stickerNode(sticker)))),
   );
-  modal.actions.append(button('Закрыть', modal.close));
+  modal.actions.append(button(tr('Закрыть'), modal.close));
 }
 
 // add takes the pack; a guest is sent to sign in. Taken, the box says
@@ -147,17 +148,17 @@ async function add(pack, action, error) {
     render();
   } catch (e) {
     action.disabled = false;
-    showError(error, e.message === 'not enough votes' ? 'Недостаточно голосов для покупки.' : e);
+    showError(error, e.message === 'not enough votes' ? tr('Недостаточно голосов для покупки.') : e);
   }
 }
 
 // confirmRemove is openvk's "Вы уверены, что хотите удалить этот набор из
 // своих стикеров?".
 function confirmRemove(pack) {
-  const modal = openModal('Предупреждение');
+  const modal = openModal(tr('Предупреждение'));
 
-  modal.body.append('Вы уверены, что хотите удалить этот набор из своих стикеров?');
-  modal.actions.append(button('Да', async () => {
+  modal.body.append(tr('Вы уверены, что хотите удалить этот набор из своих стикеров?'));
+  modal.actions.append(button(tr('Да'), async () => {
     modal.close();
     hideError($('error'));
 
@@ -168,7 +169,7 @@ function confirmRemove(pack) {
     } catch (e) {
       showError($('error'), e);
     }
-  }), button('Отмена', modal.close, { secondary: true }));
+  }), button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
 // render draws the cards of the packs the page shows.
@@ -199,7 +200,7 @@ async function showShop() {
 }
 
 async function showSettings() {
-  $('summary-text').textContent = 'Установленные наборы';
+  $('summary-text').textContent = tr('Установленные наборы');
   $('summary').hidden = false;
 
   try {
@@ -211,7 +212,7 @@ async function showSettings() {
 }
 
 async function showStudio() {
-  $('summary-text').textContent = 'Автор стикеров';
+  $('summary-text').textContent = tr('Автор стикеров');
   $('create').hidden = false;
   $('summary').hidden = false;
 
@@ -241,8 +242,8 @@ function initForm(pack) {
   let uploading = 0;
 
   $('studio').hidden = false;
-  $('studio-title').textContent = pack ? 'Редактирование набора' : 'Новый набор стикеров';
-  $('pack-save').textContent = pack ? 'Сохранить' : 'Сохранить набор';
+  $('studio-title').textContent = pack ? tr('Редактирование набора') : tr('Новый набор стикеров');
+  $('pack-save').textContent = pack ? tr('Сохранить') : tr('Сохранить набор');
   $('pack-delete-line').hidden = !pack;
 
   if (pack) {
@@ -255,11 +256,11 @@ function initForm(pack) {
   const render = () => {
     $('pack-stickers').replaceChildren(...items.map((item) => el('div', { className: 'sticker-studio-item' },
       item.sticker ? stickerNode(item.sticker)
-        : item.photo ? el('img', { src: item.photo.small, alt: 'Стикер' })
-          : el('div', { className: 'attachment-loading', textContent: 'Загрузка…' }),
+        : item.photo ? el('img', { src: item.photo.small, alt: tr('Стикер') })
+          : el('div', { className: 'attachment-loading', textContent: tr('Загрузка…') }),
       el('a', {
         className: 'profile-link',
-        textContent: 'Удалить',
+        textContent: tr('Удалить'),
         onclick: () => {
           if (item.sticker) removed.push(photoOf(item.sticker));
           else if (item.saved) removed.push(item.photo.id);
@@ -277,7 +278,7 @@ function initForm(pack) {
     hideError($('error'));
 
     const room = MAX_PACK_STICKERS - items.length;
-    if (files.length > room) showError($('error'), `В наборе может быть не больше ${MAX_PACK_STICKERS} стикеров.`);
+    if (files.length > room) showError($('error'), tr('В наборе может быть не больше {0} стикеров.', MAX_PACK_STICKERS));
 
     const picked = files.slice(0, Math.max(room, 0)).map((file) => ({ file }));
     items.push(...picked);
@@ -309,7 +310,7 @@ function initForm(pack) {
     hideError($('error'));
 
     if (uploading) {
-      showError($('error'), 'Дождитесь, пока загрузятся все стикеры.');
+      showError($('error'), tr('Дождитесь, пока загрузятся все стикеры.'));
       return;
     }
 
@@ -361,10 +362,10 @@ function initForm(pack) {
 // confirmDelete deletes a pack of one's own with its photos; a pack
 // others have taken stays.
 function confirmDelete(pack) {
-  const modal = openModal('Удалить набор');
+  const modal = openModal(tr('Удалить набор'));
 
-  modal.body.append(`Вы уверены, что хотите удалить набор «${stickerPackName(pack)}»? Его стикеры пропадут из переписки.`);
-  modal.actions.append(button('Удалить', async () => {
+  modal.body.append(tr('Вы уверены, что хотите удалить набор «{0}»? Его стикеры пропадут из переписки.', stickerPackName(pack)));
+  modal.actions.append(button(tr('Удалить'), async () => {
     modal.close();
     hideError($('error'));
 
@@ -374,7 +375,7 @@ function confirmDelete(pack) {
     } catch (e) {
       showError($('error'), e);
     }
-  }), button('Отмена', modal.close, { secondary: true }));
+  }), button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
 async function showEdit() {
@@ -383,7 +384,7 @@ async function showEdit() {
     const pack = packs.find((p) => p.id === params.get('pack'));
 
     if (!pack) {
-      showError($('error'), 'Набор стикеров не найден.');
+      showError($('error'), tr('Набор стикеров не найден.'));
       return;
     }
 
@@ -394,11 +395,11 @@ async function showEdit() {
 }
 
 const titles = {
-  shop: 'Стикеры',
-  settings: 'Установленные наборы',
-  author: 'Студия стикеров',
-  new: 'Новый набор стикеров',
-  edit: 'Редактирование набора',
+  shop: tr('Стикеры'),
+  settings: tr('Установленные наборы'),
+  author: tr('Студия стикеров'),
+  new: tr('Новый набор стикеров'),
+  edit: tr('Редактирование набора'),
 };
 
 me = await currentUser().catch(() => null);

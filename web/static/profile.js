@@ -11,6 +11,7 @@ import { initWall } from './wall.js';
 import { showBackdrop } from './backdrop.js';
 import { personCell } from './people.js';
 import { openStories } from './stories.js';
+import { tr } from './i18n.js';
 
 const nickname = decodeURIComponent(location.pathname.slice(1));
 const CLUBS_SHOWN = 6;
@@ -21,12 +22,12 @@ const ALBUMS_SHOWN = 10;
 // rows others cannot see (only the owner gets them at all, from /me).
 function rows(user, privacy) {
   return [
-    ['Семейное положение:', relationship(user), privacy && !privacy.showRelationship],
-    ['Дата регистрации:', user.registeredAt ? formatDateTime(user.registeredAt) : '', false],
-    ['Родной город:', user.hometown && searchLink('hometown', user.hometown), false],
-    ['Полит. взгляды:', label(politicalViews, user.politicalViews), privacy && !privacy.showPoliticalViews],
-    ['Мировоззрение:', label(worldviews, user.worldview), privacy && !privacy.showWorldview],
-    ['Дата рождения:', user.birthday ? birthdayText(user) : '', privacy && !privacy.showBirthday],
+    [tr('Семейное положение:'), relationship(user), privacy && !privacy.showRelationship],
+    [tr('Дата регистрации:'), user.registeredAt ? formatDateTime(user.registeredAt) : '', false],
+    [tr('Родной город:'), user.hometown && searchLink('hometown', user.hometown), false],
+    [tr('Полит. взгляды:'), label(politicalViews, user.politicalViews), privacy && !privacy.showPoliticalViews],
+    [tr('Мировоззрение:'), label(worldviews, user.worldview), privacy && !privacy.showWorldview],
+    [tr('Дата рождения:'), user.birthday ? birthdayText(user) : '', privacy && !privacy.showBirthday],
   ].filter(([, value]) => value);
 }
 
@@ -45,7 +46,7 @@ function relationship(user) {
 // sees the year too, and that the others do not.
 function birthdayText(user) {
   const text = formatBirthday(user.birthday);
-  return user.hideBirthYear ? text + ' (год видите только вы)' : text;
+  return user.hideBirthYear ? text + tr(' (год видите только вы)') : text;
 }
 
 // searchLink finds the people sharing a value, as openvk links them.
@@ -72,23 +73,23 @@ function renderAbout(user, isOwner) {
   const extra = (place) => (user.fields ?? []).filter((f) => f.place === place).map((f) => [f.name + ':', f.text]);
 
   const contacts = [
-    ['Электронная почта:', c.email && external('mailto:' + c.email, c.email)],
+    [tr('Электронная почта:'), c.email && external('mailto:' + c.email, c.email)],
     ['Telegram:', c.telegram && external('https://t.me/' + c.telegram, '@' + c.telegram)],
-    ['Личный сайт:', c.website && external(c.website, c.website)],
-    ['Город:', c.city && searchLink('city', c.city)],
-    ['Адрес:', c.address],
+    [tr('Личный сайт:'), c.website && external(c.website, c.website)],
+    [tr('Город:'), c.city && searchLink('city', c.city)],
+    [tr('Адрес:'), c.address],
     ...extra('contacts'),
   ];
   const interests = [
-    ['Интересы:', i.interests],
-    ['Любимая музыка:', i.music],
-    ['Любимые фильмы:', i.films && linkedList('film', i.films)],
-    ['Любимые ТВ-шоу:', i.shows && linkedList('show', i.shows)],
-    ['Любимые книги:', i.books && linkedList('book', i.books)],
-    ['Любимые цитаты:', i.quotes],
-    ['Любимые игры:', i.games],
+    [tr('Интересы:'), i.interests],
+    [tr('Любимая музыка:'), i.music],
+    [tr('Любимые фильмы:'), i.films && linkedList('film', i.films)],
+    [tr('Любимые ТВ-шоу:'), i.shows && linkedList('show', i.shows)],
+    [tr('Любимые книги:'), i.books && linkedList('book', i.books)],
+    [tr('Любимые цитаты:'), i.quotes],
+    [tr('Любимые игры:'), i.games],
     ...extra('interests'),
-    ['О себе:', i.about],
+    [tr('О себе:'), i.about],
   ];
 
   // Unlike openvk, an empty part is not shown with "Информация
@@ -111,11 +112,11 @@ function renderAbout(user, isOwner) {
 // page open, is online.
 function renderHeader(profile, isOwner) {
   const name = fullName(profile);
-  const seen = isOwner ? 'Онлайн' : presence(profile);
+  const seen = isOwner ? tr('Онлайн') : presence(profile);
 
   document.title = `${name} | Freenet`;
-  $('title').replaceChildren(name, verifiedMark(profile), ...(isOwner ? [' ', el('b', { textContent: '(это вы)' })] : []));
-  $('title-aside').replaceChildren(seen === 'Онлайн' ? el('b', { textContent: seen }) : seen || '@' + profile.nickname);
+  $('title').replaceChildren(name, verifiedMark(profile), ...(isOwner ? [' ', el('b', { textContent: tr('(это вы)') })] : []));
+  $('title-aside').replaceChildren(isOwner || profile.online ? el('b', { textContent: seen }) : seen || '@' + profile.nickname);
 }
 
 function render(user, isOwner, profile) {
@@ -129,7 +130,7 @@ function render(user, isOwner, profile) {
   const info = rows(user, isOwner ? user.privacy : null);
   $('info').replaceChildren(...info.map(([title, value, isPrivate]) => el('tr', {},
     el('th', { textContent: title }),
-    el('td', {}, value, isPrivate && el('span', { className: 'private-mark', textContent: ' · видно только вам' })),
+    el('td', {}, value, isPrivate && el('span', { className: 'private-mark', textContent: tr(' · видно только вам') })),
   )));
   const hasAbout = renderAbout(user, isOwner);
 
@@ -150,7 +151,7 @@ function showStatus(text, isOwner) {
   const status = $('status');
   status.classList.toggle('empty', !text);
   status.classList.toggle('status-editable', isOwner);
-  status.replaceChildren(text || (isOwner ? '[ изменить статус ]' : ''));
+  status.replaceChildren(text || (isOwner ? tr('[ изменить статус ]') : ''));
   status.onclick = isOwner ? () => editStatus(text) : null;
 }
 
@@ -158,8 +159,8 @@ function showStatus(text, isOwner) {
 // "Сохранить"; Escape leaves it as it was.
 function editStatus(text) {
   const status = $('status');
-  const input = el('input', { type: 'text', maxLength: 200, value: text, ariaLabel: 'Статус' });
-  const save = el('button', { className: 'button', type: 'submit', textContent: 'Сохранить' });
+  const input = el('input', { type: 'text', maxLength: 200, value: text, ariaLabel: tr('Статус') });
+  const save = el('button', { className: 'button', type: 'submit', textContent: tr('Сохранить') });
   const form = el('form', { className: 'status-edit' }, input, save);
 
   form.addEventListener('submit', async (event) => {
@@ -310,8 +311,8 @@ function renderHidden(profile) {
   document.title = `${name} | Freenet`;
   $('title').replaceChildren(name, verifiedMark(profile));
   $('title-aside').textContent = '@' + profile.nickname;
-  $('error').replaceChildren(el('b', { textContent: 'Ошибка доступа' }), el('br'),
-    'Настройки приватности этого пользователя не разрешают вам смотреть на его страницу.');
+  $('error').replaceChildren(el('b', { textContent: tr('Ошибка доступа') }), el('br'),
+    tr('Настройки приватности этого пользователя не разрешают вам смотреть на его страницу.'));
   $('error').hidden = false;
 }
 
@@ -319,19 +320,19 @@ function renderHidden(profile) {
 // its owner does not follow: the photo, the name and how to ask for more.
 function renderClosed(profile) {
   const name = fullName(profile);
-  const whose = { male: 'его', female: 'её' }[profile.gender] ?? 'его(её)';
+  const whose = { male: tr('его'), female: tr('её') }[profile.gender] ?? tr('его(её)');
 
   document.title = `${name} | Freenet`;
   $('title').replaceChildren(name, verifiedMark(profile));
   $('title-aside').textContent = '@' + profile.nickname;
   $('name').textContent = name;
-  $('status').textContent = 'Закрытая страница';
+  $('status').textContent = tr('Закрытая страница');
   $('status').classList.add('empty');
   $('limited').replaceChildren(
-    el('b', { textContent: `${name} ${limitedAccess(profile.gender)} доступ к своей странице.` }), el('br'),
+    el('b', { textContent: tr('{0} {1} доступ к своей странице.', name, limitedAccess(profile.gender)) }), el('br'),
     me
-      ? `Страницу видят те, на кого ${name} ${closedFollows(profile.gender)}. Вы можете подписаться на ${whose} обновления.`
-      : `Зарегистрируйтесь, чтобы получить доступ к ${whose} странице.`,
+      ? tr('Страницу видят те, на кого {0} {1}. Вы можете подписаться на {2} обновления.', name, closedFollows(profile.gender), whose)
+      : tr('Зарегистрируйтесь, чтобы получить доступ к {0} странице.', whose),
   );
   $('limited').hidden = false;
   $('profile-content').hidden = true;
@@ -349,8 +350,8 @@ function renderLimited(profile) {
   $('title-aside').textContent = '@' + profile.nickname;
   $('name').textContent = name;
   $('limited').textContent = profile.blockedMe
-    ? `${name} ${limitedAccess(profile.gender)} доступ к своей странице.`
-    : `${name} — в вашем чёрном списке.`;
+    ? tr('{0} {1} доступ к своей странице.', name, limitedAccess(profile.gender))
+    : tr('{0} — в вашем чёрном списке.', name);
   $('limited').hidden = false;
   $('profile-content').hidden = true;
   $('profile').hidden = false;
@@ -366,18 +367,18 @@ function renderDeactivated(profile, isOwner) {
   $('title').replaceChildren(name, verifiedMark(profile));
   $('title-aside').textContent = '@' + profile.nickname;
   $('name').textContent = name;
-  $('status').textContent = 'Страница удалена';
+  $('status').textContent = tr('Страница удалена');
   $('status').classList.add('empty');
   $('profile-content').replaceChildren(el('p', { className: 'deleted-info' },
-    'Страница пользователя удалена.', el('br'), 'Информация недоступна.'));
+    tr('Страница пользователя удалена.'), el('br'), tr('Информация недоступна.')));
   $('profile').hidden = false;
 
   if (isOwner) {
-    const restore = el('a', { textContent: 'восстановить свою страницу', onclick: reactivate });
+    const restore = el('a', { textContent: tr('восстановить свою страницу'), onclick: reactivate });
     $('deactivated').replaceChildren(
-      el('p', {}, 'Ваша страница ', el('b', { textContent: 'удалена' }), '.'),
-      el('p', {}, 'Если Вы захотите снова начать пользоваться сайтом, Вы можете ', restore,
-        ` до ${formatDateTime(me.purgeAt)}.`),
+      el('p', {}, tr('Ваша страница '), el('b', { textContent: tr('удалена') }), '.'),
+      el('p', {}, tr('Если Вы захотите снова начать пользоваться сайтом, Вы можете '), restore,
+        tr(' до {0}.', formatDateTime(me.purgeAt))),
     );
     $('deactivated').hidden = false;
   }
@@ -395,30 +396,30 @@ function renderBanned(profile, isOwner) {
   $('title').replaceChildren(name, verifiedMark(profile));
   $('title-aside').textContent = '@' + profile.nickname;
   $('name').textContent = name;
-  $('status').textContent = 'Пользователь заблокирован';
+  $('status').textContent = tr('Пользователь заблокирован');
   $('status').classList.add('empty');
   $('profile').hidden = false;
 
   if (isOwner) {
     $('profile-content').replaceChildren(el('div', { className: 'banned-info' },
-      el('p', {}, 'Извините, ', el('b', { textContent: name }), ', но вы были верискокнуты.'),
-      el('p', {}, 'А причина этому проста: ', el('b', { textContent: ban.reason }), '.'),
+      el('p', {}, tr('Извините, '), el('b', { textContent: name }), tr(', но вы были верискокнуты.')),
+      el('p', {}, tr('А причина этому проста: '), el('b', { textContent: ban.reason }), '.'),
       ban.until
-        ? el('p', {}, 'На этот раз нам пришлось заблокировать вас до ', el('b', { textContent: formatDateTime(ban.until) }), '.')
-        : el('p', { textContent: 'К сожалению, на этот раз нам пришлось заблокировать вас навсегда.' }),
-      el('p', {}, 'Вы всё ещё можете ', el('a', { href: '/', textContent: 'выйти', onclick: logout }), '.'),
+        ? el('p', {}, tr('На этот раз нам пришлось заблокировать вас до '), el('b', { textContent: formatDateTime(ban.until) }), '.')
+        : el('p', { textContent: tr('К сожалению, на этот раз нам пришлось заблокировать вас навсегда.') }),
+      el('p', {}, tr('Вы всё ещё можете '), el('a', { href: '/', textContent: tr('выйти'), onclick: logout }), '.'),
     ));
     return;
   }
 
   const info = el('div', { className: 'banned-info' },
-    el('p', {}, 'К сожалению, нам пришлось заблокировать страницу пользователя ', el('b', { textContent: genitiveName(profile) }), '.'),
-    el('p', {}, 'Комментарий модератора: ', el('b', { textContent: ban.reason }), '.'),
-    el('p', {}, 'Пользователь заблокирован ', el('b', { textContent: banEnd(ban) }), '.'),
+    el('p', {}, tr('К сожалению, нам пришлось заблокировать страницу пользователя '), el('b', { textContent: genitiveName(profile) }), '.'),
+    el('p', {}, tr('Комментарий модератора: '), el('b', { textContent: ban.reason }), '.'),
+    el('p', {}, tr('Пользователь заблокирован '), el('b', { textContent: banEnd(ban) }), '.'),
   );
 
   if (me?.admin) {
-    const lift = el('a', { textContent: 'Разблокировать пользователя' });
+    const lift = el('a', { textContent: tr('Разблокировать пользователя') });
     lift.addEventListener('click', async () => {
       try {
         await api.unban(profile.nickname);
@@ -502,7 +503,7 @@ try {
     });
   }
 } catch (e) {
-  $('title').textContent = e.status === 404 || e.status === 400 ? 'Страница не найдена' : 'Ошибка';
+  $('title').textContent = e.status === 404 || e.status === 400 ? tr('Страница не найдена') : tr('Ошибка');
   document.title = $('title').textContent + ' | Freenet';
-  showError($('error'), e.status === 400 ? 'Страница не найдена.' : e);
+  showError($('error'), e.status === 400 ? tr('Страница не найдена.') : e);
 }

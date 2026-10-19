@@ -10,6 +10,7 @@ import { $, el, isMicroblog, renderChrome, showError, hideError } from './layout
 import { clubRow } from './clubs.js';
 import { personRow } from './people.js';
 import { postNode, wallOwnerID } from './posts.js';
+import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
 const query = (params.get('q') ?? '').trim();
@@ -17,7 +18,7 @@ const kind = ['groups', 'posts'].includes(params.get('section')) ? params.get('s
 const groups = kind === 'groups';
 
 // filterNames say what a filter of a page's link looks for.
-const filterNames = { hometown: 'Родной город', city: 'Город', film: 'Любимые фильмы', show: 'Любимые ТВ-шоу', book: 'Любимые книги' };
+const filterNames = { hometown: tr('Родной город'), city: tr('Город'), film: tr('Любимые фильмы'), show: tr('Любимые ТВ-шоу'), book: tr('Любимые книги') };
 const filters = kind ? {} : Object.fromEntries(Object.keys(filterNames)
   .map((key) => [key, (params.get(key) ?? '').trim()])
   .filter(([, value]) => value));
@@ -35,7 +36,7 @@ function foundPost(post) {
     viewer: me,
     moderates,
     onDelete: (post.mine || moderates || wallOwnerID(post) === me.id) && removePost,
-    onArchived: (p, node) => { if (p.archived) gone(node, 'Запись перенесена в архив.'); },
+    onArchived: (p, node) => { if (p.archived) gone(node, tr('Запись перенесена в архив.')); },
     canLike: true,
     onError: (e) => showError($('error'), e),
     onWallOf: me,
@@ -53,7 +54,7 @@ async function removePost(post, node) {
     return;
   }
 
-  gone(node, 'Запись удалена.');
+  gone(node, tr('Запись удалена.'));
 }
 
 function gone(node, text) {
@@ -63,17 +64,17 @@ function gone(node, text) {
 // What each section asks and shows; a count, if given, says how many the
 // first page says there are.
 const sections = {
-  '': { title: 'Поиск людей', tab: 'Люди', placeholder: 'Имя, фамилия или никнейм', search: api.search, items: (page) => page.users, row: personRow, none: 'Никого не нашлось.' },
-  groups: { title: 'Поиск групп', tab: 'Группы', placeholder: 'Название или адрес группы', search: api.searchClubs, items: (page) => page.clubs, row: (c) => clubRow(c), none: 'Ни одной группы не нашлось.' },
+  '': { title: tr('Поиск людей'), tab: tr('Люди'), placeholder: tr('Имя, фамилия или никнейм'), search: api.search, items: (page) => page.users, row: personRow, none: tr('Никого не нашлось.') },
+  groups: { title: tr('Поиск групп'), tab: tr('Группы'), placeholder: tr('Название или адрес группы'), search: api.searchClubs, items: (page) => page.clubs, row: (c) => clubRow(c), none: tr('Ни одной группы не нашлось.') },
   posts: {
-    title: 'Поиск записей',
-    tab: 'Записи',
-    placeholder: 'Слова записи или #хэштег',
+    title: tr('Поиск записей'),
+    tab: tr('Записи'),
+    placeholder: tr('Слова записи или #хэштег'),
     search: (q, from) => api.searchPosts(q, from, isMicroblog()),
     items: (page) => page.posts,
     row: foundPost,
     // openvk's "no_results_by_this_query" and "results".
-    count: (total) => (total === 0 ? 'По данному запросу ничего не найдено.' : resultsCount(total)),
+    count: (total) => (total === 0 ? tr('По данному запросу ничего не найдено.') : resultsCount(total)),
   },
 };
 const section = sections[kind];
@@ -95,7 +96,7 @@ async function loadMore() {
     cursor = page.nextCursor;
 
     $('more').hidden = !cursor;
-    $('count').textContent = section.count ? section.count(total) : (shown === 0 ? section.none : `Найдено: ${shown}${cursor ? '+' : ''}`);
+    $('count').textContent = section.count ? section.count(total) : (shown === 0 ? section.none : tr('Найдено: {0}{1}', shown, cursor ? '+' : ''));
     $('count').hidden = false;
   } catch (e) {
     showError($('error'), e);
@@ -132,7 +133,7 @@ if (filtered) {
   const [key, value] = Object.entries(filters)[0];
   const rest = new URLSearchParams(query ? { q: query } : {});
   $('filter').replaceChildren(`${filterNames[key]}: `, el('b', { textContent: value }), ' ',
-    el('a', { href: '/search' + (rest.size ? '?' + rest : ''), textContent: '(сбросить)' }));
+    el('a', { href: '/search' + (rest.size ? '?' + rest : ''), textContent: tr('(сбросить)') }));
   $('filter').hidden = false;
 }
 

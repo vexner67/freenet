@@ -11,6 +11,7 @@ import { formatPostDate, notificationVerb, plainMentions, snippet } from './labe
 import { $, avatarURL, el, fullName, pagePath, profilePath, renderChrome, setCounter, showError, hideError, verifiedMark } from './layout.js';
 import { postPath } from './posts.js';
 import { topicPath } from './topics.js';
+import { tr } from './i18n.js';
 
 const COMMENT_SNIPPET = 200;
 
@@ -68,7 +69,7 @@ function photoLink(photo, text) {
 // quote is what a comment or a post says, cut short, with the people it
 // names in plain words.
 function quote(text) {
-  return snippet(plainMentions(text || 'Фотография'), COMMENT_SNIPPET);
+  return snippet(plainMentions(text || tr('Фотография')), COMMENT_SNIPPET);
 }
 
 // said ends a sentence with what the message or the comment it is about
@@ -82,127 +83,127 @@ function said(n) {
 function notificationText(n) {
   const link = el('a', { className: 'post-name', href: pagePath(n.actor), textContent: fullName(n.actor) });
   // A community acts by itself, as openvk says: "Сообщество Кошки ...".
-  const name = el('span', {}, ...(n.actor.club ? ['Сообщество '] : []), link, verifiedMark(n.actor));
+  const name = el('span', {}, ...(n.actor.club ? [tr('Сообщество ')] : []), link, verifiedMark(n.actor));
 
   if (n.type === 'post_accepted') {
-    return [name, ' опубликовало вашу предложенную ', postLink(n.post, 'запись'), '.'];
+    return [name, tr(' опубликовало вашу предложенную '), postLink(n.post, tr('запись')), '.'];
   }
 
   // The community you run, as openvk says it; the link opens the
   // suggestions, which only its admins see.
   if (n.type === 'suggested_post') {
-    return ['В сообществе ', el('a', { href: `${pagePath(n.actor)}/suggested` }, el('b', { textContent: fullName(n.actor) })),
-      verifiedMark(n.actor), ' новые записи в предложке'];
+    return [tr('В сообществе '), el('a', { href: `${pagePath(n.actor)}/suggested` }, el('b', { textContent: fullName(n.actor) })),
+      verifiedMark(n.actor), tr(' новые записи в предложке')];
   }
 
   // Made an admin by its owner; openvk names who did it, we the community.
   if (n.type === 'club_admin') {
-    return ['Вас назначили руководителем сообщества ', el('a', { href: pagePath(n.actor) }, el('b', { textContent: fullName(n.actor) })),
+    return [tr('Вас назначили руководителем сообщества '), el('a', { href: pagePath(n.actor) }, el('b', { textContent: fullName(n.actor) })),
       verifiedMark(n.actor), '.'];
   }
 
   // An administrator of the site gave your page the checkmark; openvk
   // tells nobody.
   if (n.type === 'verified') {
-    return [name, ` ${notificationVerb('verified', n.actor)} вашу страницу: теперь рядом с вашим именем стоит галочка.`];
+    return [name, tr(' {0} вашу страницу: теперь рядом с вашим именем стоит галочка.', notificationVerb('verified', n.actor))];
   }
 
   // The community you own got the checkmark; the actor is the community.
   if (n.type === 'club_verified') {
-    return [name, ' подтверждено: теперь рядом с его названием стоит галочка.'];
+    return [name, tr(' подтверждено: теперь рядом с его названием стоит галочка.')];
   }
 
   // A message in the topic you started, openvk's "оставил комментарий
   // под вашей темой".
   if (n.type === 'topic_message') {
-    return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей темой `,
+    return [name, tr(' {0} комментарий под вашей темой ', notificationVerb('comment', n.actor)),
       el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), said(n)];
   }
 
   // Named in a message of a topic: openvk's "Вас упомянул пользователь ...
   // в обсуждении", said as our other answers are.
   if (n.type === 'topic_mention') {
-    return [name, ` ${notificationVerb('mention', n.actor)} вас в обсуждении `,
+    return [name, tr(' {0} вас в обсуждении ', notificationVerb('mention', n.actor)),
       el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), said(n)];
   }
 
   if (n.type === 'post_mention') {
-    return [name, ` ${notificationVerb('mention', n.actor)} вас в `, postLink(n.post, 'записи'),
+    return [name, tr(' {0} вас в ', notificationVerb('mention', n.actor)), postLink(n.post, tr('записи')),
       ...(n.post.text ? [`: «${quote(n.post.text)}».`] : ['.'])];
   }
 
   if (n.type === 'comment_mention') {
-    return [name, ` ${notificationVerb('mention', n.actor)} вас в комментарии под `, postLink(n.post, 'записью'),
-      ` от ${formatPostDate(n.post.createdAt)}: «${quote(n.comment.text)}».`];
+    return [name, tr(' {0} вас в комментарии под ', notificationVerb('mention', n.actor)), postLink(n.post, tr('записью')),
+      tr(' от {0}: «{1}».', formatPostDate(n.post.createdAt), quote(n.comment.text))];
   }
 
   // A heart on your message of a topic, as on a comment.
   if (n.type === 'topic_message_like') {
-    return [name, ` ${notificationVerb('like', n.actor)} ваше сообщение в обсуждении `,
+    return [name, tr(' {0} ваше сообщение в обсуждении ', notificationVerb('like', n.actor)),
       el('a', { href: topicPath(n.topic) }, el('b', { textContent: `«${n.topic.title}»` })), said(n)];
   }
 
   // A heart and a comment on a photo of your album; openvk's "оставил
   // комментарий под вашей фотографией".
   if (n.type === 'photo_like') {
-    return [name, ` ${notificationVerb('like', n.actor)} вашу `, photoLink(n.photo, 'фотографию'), '.'];
+    return [name, tr(' {0} вашу ', notificationVerb('like', n.actor)), photoLink(n.photo, tr('фотографию')), '.'];
   }
 
   // Named in a comment under a photo, whoever uploaded it.
   if (n.type === 'photo_mention') {
-    return [name, ` ${notificationVerb('mention', n.actor)} вас в комментарии под `, photoLink(n.photo, 'фотографией'), said(n)];
+    return [name, tr(' {0} вас в комментарии под ', notificationVerb('mention', n.actor)), photoLink(n.photo, tr('фотографией')), said(n)];
   }
 
   if (n.type === 'photo_comment') {
-    return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей `, photoLink(n.photo, 'фотографией'), said(n)];
+    return [name, tr(' {0} комментарий под вашей ', notificationVerb('comment', n.actor)), photoLink(n.photo, tr('фотографией')), said(n)];
   }
 
   // A like and a comment of your story, as VK tells them; the story lives
   // a day, and the notification goes with it.
   if (n.type === 'story_like') {
-    return [name, ` ${notificationVerb('like', n.actor)} вашу `, el('b', { textContent: 'историю' }), '.'];
+    return [name, tr(' {0} вашу ', notificationVerb('like', n.actor)), el('b', { textContent: tr('историю') }), '.'];
   }
 
   if (n.type === 'story_comment') {
-    return [name, ` ${notificationVerb('comment', n.actor)} комментарий под вашей `, el('b', { textContent: 'историей' }), '.'];
+    return [name, tr(' {0} комментарий под вашей ', notificationVerb('comment', n.actor)), el('b', { textContent: tr('историей') }), '.'];
   }
 
   // openvk's "отправил вам подарок"; the gifts are on your page.
   if (n.type === 'gift') {
-    return [name, ` ${notificationVerb('gift', n.actor)} вам `, el('a', { href: '/gifts' }, el('b', { textContent: 'подарок' })), '.'];
+    return [name, tr(' {0} вам ', notificationVerb('gift', n.actor)), el('a', { href: '/gifts' }, el('b', { textContent: tr('подарок') })), '.'];
   }
 
   // Signed up by your link of "Пригласить" and follows you now.
   if (n.type === 'invite') {
-    return [name, ` ${notificationVerb('invite', n.actor)} по вашему `, el('a', { href: '/invite' }, el('b', { textContent: 'приглашению' })), '.'];
+    return [name, tr(' {0} по вашему ', notificationVerb('invite', n.actor)), el('a', { href: '/invite' }, el('b', { textContent: tr('приглашению') })), '.'];
   }
 
   // openvk's "передал вам голоса"; the balance is in the settings.
   if (n.type === 'votes') {
-    return [name, ` ${notificationVerb('votes', n.actor)} вам `, el('a', { href: '/settings?act=finance' }, el('b', { textContent: 'голоса' })), '.'];
+    return [name, tr(' {0} вам ', notificationVerb('votes', n.actor)), el('a', { href: '/settings?act=finance' }, el('b', { textContent: tr('голоса') })), '.'];
   }
 
   const verb = notificationVerb(n.type, n.actor);
 
   switch (n.type) {
     case 'like':
-      return [name, ` ${verb} вашу `, postLink(n.post, 'запись'), ` от ${formatPostDate(n.post.createdAt)}.`];
+      return [name, tr(' {0} вашу ', verb), postLink(n.post, tr('запись')), tr(' от {0}.', formatPostDate(n.post.createdAt))];
     case 'comment':
-      return [name, ` ${verb} комментарий под вашей `, postLink(n.post, 'записью'),
-        ` от ${formatPostDate(n.post.createdAt)}: «${quote(n.comment.text)}».`];
+      return [name, tr(' {0} комментарий под вашей ', verb), postLink(n.post, tr('записью')),
+        tr(' от {0}: «{1}».', formatPostDate(n.post.createdAt), quote(n.comment.text))];
     case 'comment_reply':
-      return [name, ` ${verb} на ваш комментарий под `, postLink(n.post, 'записью'),
-        ` от ${formatPostDate(n.post.createdAt)}: «${quote(n.comment.text)}».`];
+      return [name, tr(' {0} на ваш комментарий под ', verb), postLink(n.post, tr('записью')),
+        tr(' от {0}: «{1}».', formatPostDate(n.post.createdAt), quote(n.comment.text))];
     case 'comment_like':
-      return [name, ` ${verb} ваш комментарий под `, postLink(n.post, 'записью'),
-        ` от ${formatPostDate(n.post.createdAt)}: «${quote(n.comment.text)}».`];
+      return [name, tr(' {0} ваш комментарий под ', verb), postLink(n.post, tr('записью')),
+        tr(' от {0}: «{1}».', formatPostDate(n.post.createdAt), quote(n.comment.text))];
     case 'follow':
-      return [name, ` ${verb} на вас.`];
+      return [name, tr(' {0} на вас.', verb)];
     case 'repost':
-      return [name, ` ${verb} вашей `, postLink(n.post, 'записью'),
+      return [name, tr(' {0} вашей ', verb), postLink(n.post, tr('записью')),
         ...(n.post.text ? [`: «${quote(n.post.text)}».`] : ['.'])];
     case 'wall_post':
-      return [name, ` ${verb} на вашей стене `, postLink(n.post, 'запись'),
+      return [name, tr(' {0} на вашей стене ', verb), postLink(n.post, tr('запись')),
         ...(n.post.text ? [`: «${quote(n.post.text)}».`] : ['.'])];
     default:
       return null;
@@ -269,8 +270,8 @@ if (!me) {
   renderChrome(me);
 
   $('title').replaceChildren(
-    el('a', { href: profilePath(me), textContent: fullName(me) || 'Моя страница' }),
-    ' » Уведомления',
+    el('a', { href: profilePath(me), textContent: fullName(me) || tr('Моя страница') }),
+    tr(' » Уведомления'),
   );
   await toArchive();
   $(box === 'unread' ? 'tab-unread' : 'tab-archive').classList.add('active');

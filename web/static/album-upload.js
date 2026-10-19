@@ -6,6 +6,7 @@
 import { api, ApiError, currentUser } from './api.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsTitle, canChange, isKeptBySite } from './albums.js';
+import { tr } from './i18n.js';
 
 const MAX_PHOTOS = 10;
 const MAX_BYTES = 8 << 20;
@@ -13,8 +14,8 @@ const MAX_BYTES = 8 << 20;
 const albumID = decodeURIComponent(location.pathname.slice('/album/'.length, -'/upload'.length));
 
 function renderHead(album, owner) {
-  document.title = 'Загрузить фотографию | Freenet';
-  $('title').replaceChildren(...albumsTitle(owner, el('a', { href: albumPath(album), textContent: album.name }), 'Загрузить фотографию'));
+  document.title = tr('Загрузить фотографию | Freenet');
+  $('title').replaceChildren(...albumsTitle(owner, el('a', { href: albumPath(album), textContent: album.name }), tr('Загрузить фотографию')));
   $('tab-edit').href = albumPath(album) + '/edit';
   $('tab-upload').href = albumPath(album) + '/upload';
 }
@@ -34,12 +35,12 @@ function initUpload(album) {
   }
 
   function entryNode(entry) {
-    const image = el('div', { className: 'uploaded-image' }, el('div', { className: 'attachment-loading', textContent: 'Загрузка…' }));
+    const image = el('div', { className: 'uploaded-image' }, el('div', { className: 'attachment-loading', textContent: tr('Загрузка…') }));
 
     entry.description = el('textarea', { maxLength: 255, rows: 4 });
     entry.image = image;
     entry.node = el('div', { className: 'uploaded-photo' },
-      el('label', { className: 'uploaded-description' }, el('span', { textContent: 'Описание:' }), entry.description),
+      el('label', { className: 'uploaded-description' }, el('span', { textContent: tr('Описание:') }), entry.description),
       image,
     );
   }
@@ -51,7 +52,7 @@ function initUpload(album) {
         el('img', { src: entry.photo.small, alt: '' }),
         el('a', {
           className: 'profile-link',
-          textContent: 'Удалить',
+          textContent: tr('Удалить'),
           onclick: () => {
             entries = entries.filter((e) => e !== entry);
             render();
@@ -74,12 +75,12 @@ function initUpload(album) {
     $('file').value = '';
 
     if (entries.length + files.length > MAX_PHOTOS) {
-      showError($('error'), 'Вы можете загружать до 10 фотографий за один раз.');
+      showError($('error'), tr('Вы можете загружать до 10 фотографий за один раз.'));
       return;
     }
 
     if (files.some((f) => f.size > MAX_BYTES)) {
-      showError($('error'), 'Фотография больше 8 МБ.');
+      showError($('error'), tr('Фотография больше 8 МБ.'));
       return;
     }
 
@@ -102,7 +103,7 @@ function initUpload(album) {
     hideError($('error'));
 
     if (entries.some((e) => !e.photo)) {
-      showError($('error'), 'Дождитесь, пока загрузятся фотографии.');
+      showError($('error'), tr('Дождитесь, пока загрузятся фотографии.'));
       return;
     }
 
@@ -132,13 +133,13 @@ if (!me) {
     const { album, owner, role } = await api.album(albumID);
 
     renderHead(album, owner);
-    if (!canChange(owner, role, me)) throw new Error('Недостаточно прав.');
-    if (isKeptBySite(album)) throw new Error('Этот альбом сайт ведёт сам: его нельзя изменить.');
+    if (!canChange(owner, role, me)) throw new Error(tr('Недостаточно прав.'));
+    if (isKeptBySite(album)) throw new Error(tr('Этот альбом сайт ведёт сам: его нельзя изменить.'));
 
     $('content').hidden = false;
     initUpload(album);
   } catch (e) {
-    if (e.status === 404) $('title').textContent = 'Альбом не найден';
+    if (e.status === 404) $('title').textContent = tr('Альбом не найден');
     showError($('load-error'), e instanceof ApiError ? e : e.message);
   }
 }

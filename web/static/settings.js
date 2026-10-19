@@ -15,6 +15,7 @@ import { button, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
 import { disablePush, enablePush, pushState } from './push.js';
 import { ensureKey, exportKeys, forgetKeys, hasKeys, importKeys, KEY_READY, newCode, newKey } from './e2ee.js';
+import { tr } from './i18n.js';
 
 const error = $('error');
 const tabs = {
@@ -89,8 +90,8 @@ async function showPush(me) {
   };
 
   const actions = {
-    off: () => button('Включить уведомления', () => change(() => enablePush(me))),
-    on: () => button('Выключить уведомления', () => change(disablePush)),
+    off: () => button(tr('Включить уведомления'), () => change(() => enablePush(me))),
+    on: () => button(tr('Выключить уведомления'), () => change(disablePush)),
   };
   $('push-actions').replaceChildren(...(actions[state] ? [actions[state]()] : []));
 }
@@ -167,18 +168,18 @@ function initInterface(me) {
 // is open in is ended by "выход" in the header.
 function sessionRow(session, onEnd) {
   const facts = [
-    session.ip && `IP-адрес: ${session.ip}`,
-    `вход: ${formatDateTime(session.createdAt)}`,
-    `последняя активность: ${formatDateTime(session.lastUsedAt)}`,
+    session.ip && tr('IP-адрес: {0}', session.ip),
+    tr('вход: {0}', formatDateTime(session.createdAt)),
+    tr('последняя активность: {0}', formatDateTime(session.lastUsedAt)),
   ].filter(Boolean);
 
   return el('div', { className: 'session-row' },
     el('div', { className: 'session-device' },
       el('b', { textContent: deviceName(session.userAgent), title: session.userAgent }),
-      session.current && el('span', { className: 'hint', textContent: ' — текущая сессия' }),
+      session.current && el('span', { className: 'hint', textContent: tr(' — текущая сессия') }),
       el('div', { className: 'hint', textContent: facts.join(' | ') }),
     ),
-    !session.current && el('a', { textContent: 'Завершить', onclick: () => onEnd(session) }),
+    !session.current && el('a', { textContent: tr('Завершить'), onclick: () => onEnd(session) }),
   );
 }
 
@@ -208,7 +209,7 @@ function initSecurity(me) {
 
   $('end-sessions').addEventListener('click', () => run(async () => {
     await api.endOtherSessions();
-    $('notice').replaceChildren(el('b', { textContent: 'Все остальные сессии сброшены' }));
+    $('notice').replaceChildren(el('b', { textContent: tr('Все остальные сессии сброшены') }));
     $('notice').hidden = false;
   }));
 
@@ -229,12 +230,12 @@ async function showKey(me, state) {
   const ready = state === KEY_READY;
   const again = (next) => showKey(me, next);
 
-  $('key-state').textContent = ready ? 'На этом устройстве есть ключ шифрования сообщений.' : keyStateText(state);
+  $('key-state').textContent = ready ? tr('На этом устройстве есть ключ шифрования сообщений.') : keyStateText(state);
   $('key-actions').replaceChildren(...[
-    ready && button('Сохранить ключ в файл', () => openExport(me)),
-    button('Загрузить ключ из файла', () => openImport(me, again), { secondary: ready }),
-    button('Создать новый ключ', () => openNewKey(me, again), { secondary: true }),
-    hasKeys(me.id) && button('Удалить ключ с этого устройства', () => openForget(me, again), { secondary: true }),
+    ready && button(tr('Сохранить ключ в файл'), () => openExport(me)),
+    button(tr('Загрузить ключ из файла'), () => openImport(me, again), { secondary: ready }),
+    button(tr('Создать новый ключ'), () => openNewKey(me, again), { secondary: true }),
+    hasKeys(me.id) && button(tr('Удалить ключ с этого устройства'), () => openForget(me, again), { secondary: true }),
   ].filter(Boolean));
 }
 
@@ -243,41 +244,41 @@ async function showKey(me, state) {
 async function openExport(me) {
   const code = newCode();
   const file = new Blob([await exportKeys(me.id, code)], { type: 'application/json' });
-  const link = el('a', { href: URL.createObjectURL(file), download: `freenet-key-${me.nickname}.json`, textContent: 'Скачать файл ещё раз' });
-  const modal = openModal('Перенос ключа');
+  const link = el('a', { href: URL.createObjectURL(file), download: `freenet-key-${me.nickname}.json`, textContent: tr('Скачать файл ещё раз') });
+  const modal = openModal(tr('Перенос ключа'));
 
   modal.body.append(
-    el('p', {}, 'Файл с ключом сохраняется. Перенесите его на другое устройство и загрузите там в «Настройках» → «Безопасность», введя этот код:'),
+    el('p', {}, tr('Файл с ключом сохраняется. Перенесите его на другое устройство и загрузите там в «Настройках» → «Безопасность», введя этот код:')),
     el('p', { className: 'safety-code', textContent: code }),
-    el('p', { className: 'hint', textContent: 'Код показывается один раз: запишите его. С файлом и кодом можно прочитать ваши сообщения — не храните их вместе и никому не передавайте.' }),
+    el('p', { className: 'hint', textContent: tr('Код показывается один раз: запишите его. С файлом и кодом можно прочитать ваши сообщения — не храните их вместе и никому не передавайте.') }),
     link,
   );
-  modal.actions.append(button('Закрыть', modal.close));
+  modal.actions.append(button(tr('Закрыть'), modal.close));
   link.click();
 }
 
 // openImport takes keys from a file openExport made, with its code.
 function openImport(me, done) {
-  const modal = openModal('Загрузка ключа', { tag: 'form' });
+  const modal = openModal(tr('Загрузка ключа'), { tag: 'form' });
   const fail = el('div', { className: 'error', hidden: true });
-  const file = el('input', { type: 'file', accept: 'application/json,.json', ariaLabel: 'Файл с ключом' });
-  const code = el('input', { type: 'text', maxLength: 40, autocomplete: 'off', placeholder: 'XXXX-XXXX-XXXX-XXXX-XXXX', ariaLabel: 'Код' });
-  const load = button('Загрузить', null, { type: 'submit' });
+  const file = el('input', { type: 'file', accept: 'application/json,.json', ariaLabel: tr('Файл с ключом') });
+  const code = el('input', { type: 'text', maxLength: 40, autocomplete: 'off', placeholder: 'XXXX-XXXX-XXXX-XXXX-XXXX', ariaLabel: tr('Код') });
+  const load = button(tr('Загрузить'), null, { type: 'submit' });
 
-  modal.body.append(fail, el('p', {}, 'Файл с ключом:'), file, el('p', {}, 'Код, который показало другое устройство:'), code);
-  modal.actions.append(load, button('Отмена', modal.close, { secondary: true }));
+  modal.body.append(fail, el('p', {}, tr('Файл с ключом:')), file, el('p', {}, tr('Код, который показало другое устройство:')), code);
+  modal.actions.append(load, button(tr('Отмена'), modal.close, { secondary: true }));
   modal.box.addEventListener('submit', async (event) => {
     event.preventDefault();
     hideError(fail);
     load.disabled = true;
 
     try {
-      if (!file.files[0]) throw 'Выберите файл с ключом.';
+      if (!file.files[0]) throw tr('Выберите файл с ключом.');
 
       const state = await importKeys(me.id, await file.files[0].text(), code.value);
 
       modal.close();
-      say(state === KEY_READY ? 'Ключ загружен' : 'Ключ загружен, но он не тот, что действует сейчас: загрузите файл, сохранённый позже.');
+      say(state === KEY_READY ? tr('Ключ загружен') : tr('Ключ загружен, но он не тот, что действует сейчас: загрузите файл, сохранённый позже.'));
       done(state);
     } catch (e) {
       showError(fail, e);
@@ -289,9 +290,9 @@ function openImport(me, done) {
 // openNewKey sets up a new key: what the old one sealed opens only where
 // it is kept.
 function openNewKey(me, done) {
-  const modal = openModal('Новый ключ шифрования');
+  const modal = openModal(tr('Новый ключ шифрования'));
   const fail = el('div', { className: 'error', hidden: true });
-  const make = button('Создать', async () => {
+  const make = button(tr('Создать'), async () => {
     hideError(fail);
     make.disabled = true;
 
@@ -299,7 +300,7 @@ function openNewKey(me, done) {
       const state = await newKey(me.id);
 
       modal.close();
-      say('Новый ключ создан', 'Собеседники увидят, что ваш ключ изменился. Перенесите его на другие свои устройства.');
+      say(tr('Новый ключ создан'), tr('Собеседники увидят, что ваш ключ изменился. Перенесите его на другие свои устройства.'));
       done(state);
     } catch (e) {
       showError(fail, e);
@@ -307,21 +308,21 @@ function openNewKey(me, done) {
     }
   });
 
-  modal.body.append(fail, el('p', {}, 'Новые сообщения будут шифроваться новым ключом. Сообщения, зашифрованные прежним, откроются только там, где он есть, а на других своих устройствах нужно будет загрузить новый ключ.'));
-  modal.actions.append(make, button('Отмена', modal.close, { secondary: true }));
+  modal.body.append(fail, el('p', {}, tr('Новые сообщения будут шифроваться новым ключом. Сообщения, зашифрованные прежним, откроются только там, где он есть, а на других своих устройствах нужно будет загрузить новый ключ.')));
+  modal.actions.append(make, button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
 // openForget removes the keys from this browser, as on a computer that is
 // not yours.
 function openForget(me, done) {
-  const modal = openModal('Удаление ключа');
+  const modal = openModal(tr('Удаление ключа'));
 
-  modal.body.append(el('p', {}, 'После удаления на этом устройстве нельзя будет читать и писать личные сообщения, пока вы не загрузите ключ снова. Если ключ не сохранён в файл или на другом устройстве, сообщения будет не прочитать нигде.'));
-  modal.actions.append(button('Удалить', () => {
+  modal.body.append(el('p', {}, tr('После удаления на этом устройстве нельзя будет читать и писать личные сообщения, пока вы не загрузите ключ снова. Если ключ не сохранён в файл или на другом устройстве, сообщения будет не прочитать нигде.')));
+  modal.actions.append(button(tr('Удалить'), () => {
     forgetKeys(me.id);
     modal.close();
     done();
-  }), button('Отмена', modal.close, { secondary: true }));
+  }), button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
 // say shows the notice above the tab: a bold line and what follows it.
@@ -344,7 +345,7 @@ async function showRate(me) {
   kopecksPerVote = await rate;
   if (!kopecksPerVote) return;
 
-  $('vote-rate').textContent = `Курс: ${voteRate(kopecksPerVote)}.`;
+  $('vote-rate').textContent = tr('Курс: {0}.', voteRate(kopecksPerVote));
   $('vote-rate').hidden = false;
   showVotes(me);
 }
@@ -352,21 +353,21 @@ async function showRate(me) {
 // openTransfer is openvk's "Передача голосов": how many and to whom, by
 // the address of their page.
 function openTransfer(me) {
-  const modal = openModal('Передача голосов', { tag: 'form' });
+  const modal = openModal(tr('Передача голосов'), { tag: 'form' });
   const votes = el('input', { type: 'text', inputMode: 'numeric', pattern: '[0-9]{1,7}', maxLength: 7, required: true, autocomplete: 'off' });
   const address = el('input', { type: 'text', maxLength: 64, required: true, spellcheck: false, autocomplete: 'off' });
   const failed = el('div', { className: 'error', hidden: true });
-  const send = button('Передать голоса', null, { type: 'submit' });
+  const send = button(tr('Передать голоса'), null, { type: 'submit' });
 
   modal.box.classList.add('votes-transfer');
   modal.body.append(
-    el('p', { textContent: 'Вы можете отправить в подарок или передать часть голосов другому человеку.' }),
-    el('p', {}, 'Ваш текущий баланс: ', el('b', { textContent: votesCount(me.votes ?? 0) })),
-    el('label', {}, 'Количество голосов', votes),
-    el('label', {}, 'Адрес получателя', address),
+    el('p', { textContent: tr('Вы можете отправить в подарок или передать часть голосов другому человеку.') }),
+    el('p', {}, tr('Ваш текущий баланс: '), el('b', { textContent: votesCount(me.votes ?? 0) })),
+    el('label', {}, tr('Количество голосов'), votes),
+    el('label', {}, tr('Адрес получателя'), address),
     failed,
   );
-  modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(send, button(tr('Отмена'), modal.close, { secondary: true }));
 
   modal.box.addEventListener('submit', async (event) => {
     event.preventDefault();
@@ -385,10 +386,10 @@ function openTransfer(me) {
       showVotes(me);
       modal.close();
       hideError(error);
-      say('Голоса переданы', 'Вы успешно передали ', el('b', { textContent: votesCount(sent) }), ' — ',
+      say(tr('Голоса переданы'), tr('Вы успешно передали '), el('b', { textContent: votesCount(sent) }), ' — ',
         el('a', { href: pagePath(recipient), textContent: fullName(recipient) }), '.');
     } catch (e) {
-      showError(failed, e.status === 404 ? 'Получатель не найден.' : e);
+      showError(failed, e.status === 404 ? tr('Получатель не найден.') : e);
       send.disabled = false;
     }
   });
@@ -447,8 +448,8 @@ function initTopUp(me) {
 
       me.votes = got.balance;
       for (const key of keys) key.value = '';
-      say('Ваучер активирован', `Вам начислено: ${voucherGave(got)}. Этим кодом вы больше не сможете его активировать. `,
-        el('a', { href: '/settings?act=finance', textContent: `На вашем счету ${votesCount(got.balance)}.` }));
+      say(tr('Ваучер активирован'), tr('Вам начислено: {0}. Этим кодом вы больше не сможете его активировать. ', voucherGave(got)),
+        el('a', { href: '/settings?act=finance', textContent: tr('На вашем счету {0}.', votesCount(got.balance)) }));
     } catch (e) {
       showError(error, e);
     } finally {

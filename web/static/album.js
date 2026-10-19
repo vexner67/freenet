@@ -11,18 +11,19 @@ import { openViewer } from './viewer.js';
 import { likeButton } from './posts.js';
 import { openShare } from './share.js';
 import { albumPath, albumsTitle, canChange, isKeptBySite, photoPath } from './albums.js';
+import { tr } from './i18n.js';
 
 const albumID = decodeURIComponent(location.pathname.slice('/album/'.length));
 
 function renderHead(album, owner, editable) {
-  document.title = `Альбом ${album.name} | Freenet`;
+  document.title = tr('Альбом {0} | Freenet', album.name);
   $('title').replaceChildren(...albumsTitle(owner, album.name));
   $('count-link').href = albumPath(album);
 
   if (editable && !isKeptBySite(album)) {
     $('links').replaceChildren(
-      ' | ', el('a', { href: albumPath(album) + '/upload', textContent: 'Загрузить фотографию' }),
-      ' | ', el('a', { href: albumPath(album) + '/edit', textContent: 'Редактировать альбом' }),
+      ' | ', el('a', { href: albumPath(album) + '/upload', textContent: tr('Загрузить фотографию') }),
+      ' | ', el('a', { href: albumPath(album) + '/edit', textContent: tr('Редактировать альбом') }),
     );
   }
 }
@@ -30,14 +31,14 @@ function renderHead(album, owner, editable) {
 // photoDetails is what the viewer shows under a photo of the album, as
 // openvk's: its description, the heart, "Поделиться" and its comments.
 function photoDetails(photo) {
-  const comments = photo.comments > 0 ? `Комментарии (${photo.comments})` : 'Комментировать';
+  const comments = photo.comments > 0 ? tr('Комментарии ({0})', photo.comments) : tr('Комментировать');
 
   return el('div', {},
     photo.description ? el('p', { className: 'viewer-description', textContent: photo.description }) : null,
     el('div', { className: 'viewer-actions' },
       likeButton(photo, { canLike: Boolean(me), like: api.likePhoto, unlike: api.unlikePhoto, likers: api.photoLikers }),
       el('a', { href: photoPath(photo), textContent: comments }),
-      me ? el('a', { textContent: 'Поделиться', onclick: () => openShare(photo, () => {}, { share: api.sharePhoto }) }) : null,
+      me ? el('a', { textContent: tr('Поделиться'), onclick: () => openShare(photo, () => {}, { share: api.sharePhoto }) }) : null,
     ),
   );
 }
@@ -56,10 +57,10 @@ function initPhotos(album, editable) {
 
   // remove asks as openvk's "Удалить фотографию" before the photo goes.
   function remove(photo, node) {
-    const modal = openModal('Удалить фотографию');
-    modal.body.textContent = 'Вы уверены, что хотите удалить эту фотографию из альбома?';
+    const modal = openModal(tr('Удалить фотографию'));
+    modal.body.textContent = tr('Вы уверены, что хотите удалить эту фотографию из альбома?');
     modal.actions.append(
-      button('Да', async () => {
+      button(tr('Да'), async () => {
         modal.close();
         hideError($('error'));
 
@@ -73,7 +74,7 @@ function initPhotos(album, editable) {
           showError($('error'), e);
         }
       }),
-      button('Нет', modal.close, { secondary: true }),
+      button(tr('Нет'), modal.close, { secondary: true }),
     );
   }
 
@@ -87,7 +88,7 @@ function initPhotos(album, editable) {
       openViewer(shown, shown.indexOf(photo), { details: photoDetails });
     });
     // Node.append writes false as text: only nodes go in.
-    if (editable) node.append(el('a', { className: 'album-photo-delete', title: 'Удалить фотографию', textContent: '×', onclick: () => remove(photo, node) }));
+    if (editable) node.append(el('a', { className: 'album-photo-delete', title: tr('Удалить фотографию'), textContent: '×', onclick: () => remove(photo, node) }));
     node.append(link);
 
     return node;
@@ -128,6 +129,6 @@ try {
   $('content').hidden = false;
   await initPhotos(album, editable);
 } catch (e) {
-  $('title').textContent = e.status === 404 ? 'Альбом не найден' : 'Ошибка';
+  $('title').textContent = e.status === 404 ? tr('Альбом не найден') : tr('Ошибка');
   showError($('error'), e);
 }

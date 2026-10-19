@@ -3,6 +3,7 @@
 
 import { albumsCount, formatPostDate } from './labels.js';
 import { adult, clubRef, el, fullName, pagePath } from './layout.js';
+import { tr } from './i18n.js';
 
 // albumsPath is the list of albums of owner, a person or a community (an
 // author).
@@ -26,7 +27,7 @@ export function albumsTitle(owner, ...what) {
   return [
     el('a', { href: pagePath(owner), textContent: fullName(owner) }),
     ' » ',
-    el('a', { href: albumsPath(owner), textContent: 'Альбомы' }),
+    el('a', { href: albumsPath(owner), textContent: tr('Альбомы') }),
     ...what.flatMap((w) => [' » ', w]),
   ];
 }
@@ -68,17 +69,17 @@ export function coverNode(album, alt = '') {
 // "Загрузить" to whoever may add albums (canAdd), as on a community's page.
 export function albumsBlock(owner, page, canAdd) {
   return [
-    el('div', { className: 'section-title', textContent: 'Альбомы' }),
+    el('div', { className: 'section-title', textContent: tr('Альбомы') }),
     el('div', { className: 'subtitle' },
       el('span', { textContent: albumsCount(page.total) }),
-      el('a', { href: albumsPath(owner), textContent: 'Все' })),
+      el('a', { href: albumsPath(owner), textContent: tr('Все') })),
     page.total === 0 && canAdd
-      ? el('p', { className: 'side-text center' }, el('a', { href: albumsPath(owner), textContent: 'Загрузить' }))
+      ? el('p', { className: 'side-text center' }, el('a', { href: albumsPath(owner), textContent: tr('Загрузить') }))
       : el('div', { className: 'side-albums' }, ...page.albums.map((album) => el('div', { className: 'side-album' },
         el('a', { href: albumPath(album) }, coverNode(album)),
         el('div', {},
           el('a', { href: albumPath(album) }, el('b', { textContent: album.name })),
-          el('div', { className: 'hint', textContent: 'Обновлено ' + formatPostDate(album.updatedAt) }),
+          el('div', { className: 'hint', textContent: tr('Обновлено ') + formatPostDate(album.updatedAt) }),
         ),
       ))),
   ];

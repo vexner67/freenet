@@ -14,6 +14,7 @@ import { initPhoto } from './photo.js';
 import { boardPath, topicPath } from './topics.js';
 import { initIgnoreLink } from './feedsettings.js';
 import { initWall } from './wall.js';
+import { tr } from './i18n.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length));
 const MEMBERS_SHOWN = 6;
@@ -35,9 +36,9 @@ function render(club, me) {
   if (decodeURIComponent(location.pathname) !== decodeURIComponent(path)) history.replaceState(null, '', path);
 
   $('info').replaceChildren(...[
-    ['Название:', el('b', { textContent: club.name })],
-    ['Описание:', club.description && el('span', { className: 'pre-wrap', textContent: club.description })],
-    ['Сайт:', club.website && el('a', { href: club.website, target: '_blank', rel: 'ugc noopener noreferrer', textContent: club.website })],
+    [tr('Название:'), el('b', { textContent: club.name })],
+    [tr('Описание:'), club.description && el('span', { className: 'pre-wrap', textContent: club.description })],
+    [tr('Сайт:'), club.website && el('a', { href: club.website, target: '_blank', rel: 'ugc noopener noreferrer', textContent: club.website })],
   ].filter(([, value]) => value).map(([title, value]) => el('tr', {},
     el('th', { textContent: title }),
     el('td', {}, value),
@@ -157,15 +158,15 @@ async function showTopics(club) {
 
     const items = page.topics.map((topic) => el('div', { className: 'topic-short' },
       el('b', {}, el('a', { href: topicPath(topic), textContent: topic.title })),
-      el('div', { className: 'hint', textContent: 'Обновлено ' + formatPostDate(topic.updatedAt) }),
+      el('div', { className: 'hint', textContent: tr('Обновлено ') + formatPostDate(topic.updatedAt) }),
     ));
     if (page.total === 0) {
-      items.push(el('p', { className: 'side-text' }, el('a', { href: boardPath(club) + '/create', textContent: 'Создать' })));
+      items.push(el('p', { className: 'side-text' }, el('a', { href: boardPath(club) + '/create', textContent: tr('Создать') })));
     }
 
     const block = el('div', { className: 'topics-block' },
-      el('div', { className: 'section-title', textContent: 'Обсуждения' }),
-      el('div', { className: 'subtitle' }, el('span', { textContent: topicsCount(page.total) }), el('a', { href: boardPath(club), textContent: 'Все' })),
+      el('div', { className: 'section-title', textContent: tr('Обсуждения') }),
+      el('div', { className: 'subtitle' }, el('span', { textContent: topicsCount(page.total) }), el('a', { href: boardPath(club), textContent: tr('Все') })),
       ...items,
     );
 
@@ -180,9 +181,9 @@ async function showTopics(club) {
 // and what a member presses to leave.
 function joinLabels(club) {
   // A closed group: a visitor asks to join and may take the request back.
-  if (club.closed && !club.role) return { join: 'Подать заявку', leave: 'Отменить заявку' };
+  if (club.closed && !club.role) return { join: tr('Подать заявку'), leave: tr('Отменить заявку') };
 
-  return { join: 'Вступить в группу', leave: 'Выйти из группы' };
+  return { join: tr('Вступить в группу'), leave: tr('Выйти из группы') };
 }
 
 // renderJoin is the one link openvk has: "Вступить в группу", or "Выйти
@@ -265,6 +266,6 @@ try {
     await initWall({ ...club, club: true }, me, { moderates: manages(club), speaksForClub: manages(club) });
   }
 } catch (e) {
-  $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';
+  $('title').textContent = e.status === 404 ? tr('Группа не найдена') : tr('Ошибка');
   showError($('error'), e);
 }

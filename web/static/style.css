@@ -175,7 +175,8 @@ h1.page-title { font-size: inherit; }
 
 .columns { display: flex; gap: 8px; margin-top: 6px; }
 /* Until the page is drawn whole (theme.js, layout.js). */
-.pending .columns { visibility: hidden; }
+.pending .columns,
+.pending .footer { visibility: hidden; }
 
 .sidebar { width: 140px; flex-shrink: 0; }
 
@@ -291,16 +292,16 @@ h1.page-title { font-size: inherit; }
 
 /* Controls */
 
-.button {
 /* openvk's button (main.css): dark gray, white text with a shadow, only
    the text lightens under the pointer and the box darkens when pressed.
    openvk has no light buttons: "Отмена" is the same, so "secondary" is. */
+.button {
   padding: 4px 8px;
   background: var(--back-595959);
   border: 1px solid var(--line-595959);
   border-radius: 2px;
-  color: var(--text-fff);
   outline: none;
+  color: var(--text-fff);
   text-shadow: 0 1px 0 var(--text-686868);
   font: 11px tahoma, verdana, arial, sans-serif;
   white-space: nowrap;
@@ -449,6 +450,19 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 }
 .footer a { margin: 0 6px; }
 .footer p { margin-top: 6px; }
+.footer .footer-language { display: inline-block; margin: 0 1px; padding: 3px 4px; border-top: 1px solid var(--line-fff); line-height: 0; }
+.footer .footer-language:hover { background: var(--back-e4e4e4); border-top-color: var(--line-ccc); }
+
+/* openvk's "Выбрать язык": languages in five columns, the flag over the name. */
+.languages { display: grid; grid-template-columns: repeat(5, 1fr); gap: 10px; margin-bottom: 4px; }
+.languages .language {
+  padding: 20px 10px 5px;
+  border-top: 1px solid var(--line-fff);
+  color: var(--text-000);
+  text-align: center;
+  text-decoration: none;
+}
+.languages .language:hover { background: var(--back-e4e4e4); border-top-color: var(--line-ccc); }
 
 /* Wall */
 
@@ -1696,6 +1710,7 @@ a.poll-result-name { cursor: pointer; }
   .page-title { flex-wrap: wrap; gap: 2px 10px; padding: 6px 10px; border-left: 0; border-right: 0; }
   .page-body { border-left: 0; border-right: 0; }
   .footer a { display: inline-block; padding: 4px 0; }
+  .languages { grid-template-columns: repeat(3, 1fr); }
 
   /* Forms of two columns: the label over its field. */
   .form, .form tbody, .form tr, .form th, .form td { display: block; width: auto; }

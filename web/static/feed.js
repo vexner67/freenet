@@ -8,6 +8,7 @@ import { initPollDraft } from './poll.js';
 import { initTimer, postponedNotice } from './postponed.js';
 import { openFeedSettings, readFeedSettings } from './feedsettings.js';
 import { initStoryBar } from './stories.js';
+import { tr } from './i18n.js';
 
 // openvk's limit of a post; the counter shows near the end.
 const MAX_LENGTH = 60000;
@@ -152,7 +153,7 @@ function initForm(me) {
 
   function updateCounter() {
     const left = MAX_LENGTH - text.value.length;
-    $('post-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? `осталось ${left}` : '';
+    $('post-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? tr('осталось {0}', left) : '';
   }
 
   form.hidden = false;
@@ -161,17 +162,17 @@ function initForm(me) {
     hideError(error);
 
     if (attachments.busy()) {
-      showError(error, 'Дождитесь, пока загрузятся фотографии.');
+      showError(error, tr('Дождитесь, пока загрузятся фотографии.'));
       return;
     }
 
     if (timer.active() && poll.value()) {
-      showError(error, 'К отложенной записи нельзя прикрепить опрос.');
+      showError(error, tr('К отложенной записи нельзя прикрепить опрос.'));
       return;
     }
 
     if (timer.active() && documents.count()) {
-      showError(error, 'К отложенной записи нельзя прикрепить документ.');
+      showError(error, tr('К отложенной записи нельзя прикрепить документ.'));
       return;
     }
 
@@ -218,12 +219,12 @@ async function remove(post, node) {
     return;
   }
 
-  gone(node, 'Запись удалена.');
+  gone(node, tr('Запись удалена.'));
 }
 
 // archived: a post put away leaves the news, as it leaves its wall.
 function archived(post, node) {
-  if (post.archived) gone(node, 'Запись перенесена в архив.');
+  if (post.archived) gone(node, tr('Запись перенесена в архив.'));
 }
 
 function gone(node, text) {
@@ -239,7 +240,7 @@ if (!me) {
 } else {
   renderChrome(me);
   $(all ? 'tab-all' : 'tab-mine').classList.add('active');
-  $('example-url').textContent = `${location.host}/никнейм`;
+  $('example-url').textContent = tr('{0}/никнейм', location.host);
   // Without a nickname of your own you have no name to sign a post.
   if (me.profileCompleted) initForm(me);
   initStoryBar($('story-bar'), me, stories);

@@ -11,6 +11,7 @@ import { api, currentUser, started } from './api.js';
 import { clubsCount, myClubsCount } from './labels.js';
 import { $, clubRef, el, fullName, pagePath, renderChrome, showPinnedClubs, showError, hideError } from './layout.js';
 import { clubRow } from './clubs.js';
+import { tr } from './i18n.js';
 
 const params = new URLSearchParams(location.search);
 const other = params.get('u');
@@ -19,7 +20,7 @@ let cursor = '';
 
 // viewLink is "Просмотр группы".
 function viewLink(club) {
-  return el('a', { className: 'profile-link', href: pagePath({ ...club, club: true }), textContent: 'Просмотр группы' });
+  return el('a', { className: 'profile-link', href: pagePath({ ...club, club: true }), textContent: tr('Просмотр группы') });
 }
 
 function clubNode(club) {
@@ -36,7 +37,7 @@ function clubNode(club) {
 // pinLink is "Добавить в левое меню" or "Удалить из левого меню".
 function pinLink(club, ref) {
   const link = el('a', { className: 'profile-link' });
-  const render = () => { link.textContent = club.pinned ? 'Удалить из левого меню' : 'Добавить в левое меню'; };
+  const render = () => { link.textContent = club.pinned ? tr('Удалить из левого меню') : tr('Добавить в левое меню'); };
 
   link.addEventListener('click', async () => {
     hideError($('error'));
@@ -60,13 +61,13 @@ function pinLink(club, ref) {
 function leaveLink(club, ref, node) {
   return el('a', {
     className: 'profile-link',
-    textContent: 'Выйти из группы',
+    textContent: tr('Выйти из группы'),
     onclick: async () => {
       hideError($('error'));
 
       try {
         await api.leaveClub(ref);
-        node().replaceWith(el('div', { className: 'post-deleted', textContent: `Вы вышли из группы «${club.name}».` }));
+        node().replaceWith(el('div', { className: 'post-deleted', textContent: tr('Вы вышли из группы «{0}».', club.name) }));
         if (club.pinned) showPinnedClubs($('menu'));
       } catch (e) {
         showError($('error'), e);
@@ -114,8 +115,8 @@ function membershipLink(club) {
   // A closed group takes a request ("Подать заявку"), which may be taken back.
   const inside = () => Boolean(club.role) || Boolean(club.requested);
   const render = () => {
-    if (club.closed && !club.role) link.textContent = club.requested ? 'Отменить заявку' : 'Подать заявку';
-    else link.textContent = club.role ? 'Выйти из группы' : 'Вступить в группу';
+    if (club.closed && !club.role) link.textContent = club.requested ? tr('Отменить заявку') : tr('Подать заявку');
+    else link.textContent = club.role ? tr('Выйти из группы') : tr('Вступить в группу');
   };
 
   link.addEventListener('click', async () => {
@@ -138,7 +139,7 @@ function membershipLink(club) {
 // showTheirs is someone else's list: "Просмотр группы" by each club and,
 // for a viewer with a page, "Вступить в группу" or "Выйти из группы".
 async function showTheirs(nickname, me) {
-  const what = 'Группы';
+  const what = tr('Группы');
 
   try {
     const user = await api.profile(nickname);

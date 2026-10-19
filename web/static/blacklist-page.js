@@ -6,6 +6,7 @@ import { api, currentUser } from './api.js';
 import { blacklistCount } from './labels.js';
 import { $, el, renderChrome, showError, hideError } from './layout.js';
 import { personRow } from './people.js';
+import { tr } from './i18n.js';
 
 let cursor = '';
 let total = 0;
@@ -18,7 +19,7 @@ function row(user) {
   const node = el('div', { className: 'blacklist-row' },
     personRow(user),
     el('a', {
-      textContent: 'Удалить из чёрного списка',
+      textContent: tr('Удалить из чёрного списка'),
       onclick: async () => {
         hideError($('error'));
 

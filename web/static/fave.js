@@ -9,6 +9,7 @@ import { $, adult, el, renderChrome, showError, hideError } from './layout.js';
 import { postNode, wallOwnerID } from './posts.js';
 import { commentNode } from './comments.js';
 import { photoPath } from './albums.js';
+import { tr } from './i18n.js';
 
 const own = location.pathname.replace(/\/+$/, '') === '/fave/own';
 const SECTIONS = ['posts', 'comments', 'photos'];
@@ -17,16 +18,16 @@ const section = SECTIONS.includes(asked) ? asked : 'posts';
 
 // openvk's "faves_<section>_empty_tip".
 const EMPTY = {
-  posts: 'Здесь будут отображаться понравившиеся Вам записи.',
-  comments: 'Здесь будут отображаться понравившиеся Вам комментарии.',
-  photos: 'Здесь будут отображаться понравившиеся Вам фотографии.',
+  posts: tr('Здесь будут отображаться понравившиеся Вам записи.'),
+  comments: tr('Здесь будут отображаться понравившиеся Вам комментарии.'),
+  photos: tr('Здесь будут отображаться понравившиеся Вам фотографии.'),
 };
 
 let cursor = '';
 let total = 0;
 
 function showCount() {
-  $('summary-count').textContent = own ? (total === 0 ? 'Ни одной записи' : postsCount(total)) : favesCount(total);
+  $('summary-count').textContent = own ? (total === 0 ? tr('Ни одной записи') : postsCount(total)) : favesCount(total);
   $('summary').hidden = false;
   $('empty').hidden = total > 0;
 }
@@ -47,7 +48,7 @@ async function remove(post, node) {
     return;
   }
 
-  gone(node, 'Запись удалена.');
+  gone(node, tr('Запись удалена.'));
 }
 
 // A post as in the news: I edit and delete what I wrote, and delete, pin
@@ -58,7 +59,7 @@ function shownPost(post, me) {
     onDelete: (post.mine || wallOwnerID(post) === me.id) && remove,
     // What I archived on my wall stays among what I wrote; a liked post
     // put away leaves the faves.
-    onArchived: (p, node) => { if (p.archived && !own) gone(node, 'Запись перенесена в архив.'); },
+    onArchived: (p, node) => { if (p.archived && !own) gone(node, tr('Запись перенесена в архив.')); },
     canLike: true,
     onError: (e) => showError($('error'), e),
     onWallOf: me,
@@ -108,10 +109,10 @@ if (!me) {
 } else {
   renderChrome(me);
 
-  const title = own ? 'Написанные мной записи' : 'Понравившиеся записи';
+  const title = own ? tr('Написанные мной записи') : tr('Понравившиеся записи');
   document.title = `${title} | Freenet`;
   $('title').textContent = title;
-  $('empty').textContent = own ? 'Вы ещё ничего не написали.' : EMPTY[section];
+  $('empty').textContent = own ? tr('Вы ещё ничего не написали.') : EMPTY[section];
   if (!own) {
     $('tabs').hidden = false;
     $('tab-' + section).classList.add('active');

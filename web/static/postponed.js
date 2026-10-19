@@ -8,6 +8,7 @@ import { inputDate, inputTime, localTime, nextHour, postponedCount, publishesAt 
 import { $, autosize, avatarURL, clubRef, el, fullName, hideError, pagePath, showError, textNode } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, postPath } from './posts.js';
+import { tr } from './i18n.js';
 
 // postponedPath is the tab of the wall page with the posts that wait for
 // the wall of owner, a person or a community.
@@ -22,10 +23,10 @@ export function postponedPath(owner) {
 // timeInputs are a date and a time input showing iso on the visitor's
 // clock; value() reads them back, '' unless both are filled in.
 function timeInputs(iso) {
-  const date = el('input', { type: 'date', value: inputDate(iso), ariaLabel: 'Дата публикации' });
-  const time = el('input', { type: 'time', value: inputTime(iso), ariaLabel: 'Время публикации' });
+  const date = el('input', { type: 'date', value: inputDate(iso), ariaLabel: tr('Дата публикации') });
+  const time = el('input', { type: 'time', value: inputTime(iso), ariaLabel: tr('Время публикации') });
 
-  return { nodes: [date, ' в ', time], value: () => localTime(date.value, time.value) };
+  return { nodes: [date, tr(' в '), time], value: () => localTime(date.value, time.value) };
 }
 
 // initTimer is VK's "Таймер" of a form: the link opens the date and the
@@ -39,11 +40,11 @@ export function initTimer({ link, box, submit, onChange }) {
   function set(on) {
     inputs = on ? timeInputs(nextHour()) : null;
     box.replaceChildren(...(inputs
-      ? ['Запись будет опубликована ', ...inputs.nodes, ' ', el('a', { className: 'timer-remove', title: 'Не откладывать', textContent: '×', onclick: () => set(false) })]
+      ? [tr('Запись будет опубликована '), ...inputs.nodes, ' ', el('a', { className: 'timer-remove', title: tr('Не откладывать'), textContent: '×', onclick: () => set(false) })]
       : []));
     box.hidden = !inputs;
     link.hidden = Boolean(inputs);
-    submit.textContent = inputs ? 'В очередь' : label;
+    submit.textContent = inputs ? tr('В очередь') : label;
     onChange?.(Boolean(inputs));
   }
 
@@ -62,7 +63,7 @@ export function initTimer({ link, box, submit, onChange }) {
 export function postponedNotice(p, owner) {
   return el('div', { className: 'post-deleted' },
     publishesAt(p.publishAt) + '. ',
-    el('a', { href: postponedPath(owner), textContent: 'Отложенные записи' }),
+    el('a', { href: postponedPath(owner), textContent: tr('Отложенные записи') }),
   );
 }
 
@@ -102,7 +103,7 @@ export async function showPostponedList(owner) {
 
   function updateCount() {
     $('wall-count').textContent = postponedCount(total);
-    $('wall-empty').textContent = 'Отложенных записей нет. Чтобы отложить запись, нажмите «Таймер» под формой новой записи.';
+    $('wall-empty').textContent = tr('Отложенных записей нет. Чтобы отложить запись, нажмите «Таймер» под формой новой записи.');
     $('wall-empty').hidden = total > 0;
   }
 
@@ -118,8 +119,8 @@ export async function showPostponedList(owner) {
     try {
       const post = await api.publishPostponed(p.id);
       gone(node, el('div', { className: 'post-deleted' },
-        'Запись опубликована. ',
-        post ? el('a', { href: postPath(post), textContent: 'Перейти к ней' }) : ''));
+        tr('Запись опубликована. '),
+        post ? el('a', { href: postPath(post), textContent: tr('Перейти к ней') }) : ''));
     } catch (e) {
       showError(error, e);
     }
@@ -130,7 +131,7 @@ export async function showPostponedList(owner) {
 
     try {
       await api.deletePostponed(p.id);
-      gone(node, el('div', { className: 'post-deleted', textContent: 'Запись удалена.' }));
+      gone(node, el('div', { className: 'post-deleted', textContent: tr('Запись удалена.') }));
     } catch (e) {
       showError(error, e);
     }
@@ -149,7 +150,7 @@ export async function showPostponedList(owner) {
       return;
     }
 
-    const modal = openModal('Редактирование записи');
+    const modal = openModal(tr('Редактирование записи'));
     const text = el('textarea', { className: 'publish-text', maxLength: 60000, value: p.text });
     const at = timeInputs(p.publishAt);
     const nsfw = el('input', { type: 'checkbox', checked: Boolean(p.nsfw) });
@@ -157,13 +158,13 @@ export async function showPostponedList(owner) {
 
     modal.body.append(
       text,
-      el('div', { className: 'postponed-time' }, 'Запись будет опубликована ', ...at.nodes),
-      el('label', { className: 'publish-signed' }, nsfw, ' Содержит NSFW-контент'),
+      el('div', { className: 'postponed-time' }, tr('Запись будет опубликована '), ...at.nodes),
+      el('label', { className: 'publish-signed' }, nsfw, tr(' Содержит NSFW-контент')),
       failed,
     );
     autosize(text);
     modal.actions.append(
-      button('Сохранить', async (event) => {
+      button(tr('Сохранить'), async (event) => {
         event.target.disabled = true;
         hideError(failed);
 
@@ -176,7 +177,7 @@ export async function showPostponedList(owner) {
           event.target.disabled = false;
         }
       }),
-      button('Отмена', modal.close, { secondary: true }),
+      button(tr('Отмена'), modal.close, { secondary: true }),
     );
     text.focus();
   }
@@ -196,15 +197,15 @@ export async function showPostponedList(owner) {
         el('div', { className: 'post-content' },
           p.text ? textNode(p.text, { rest: p.textCut ? () => wholeText(p) : null }) : '',
           photosNode(p.photos) ?? '',
-          p.signed ? el('div', { className: 'post-signature' }, el('span', { textContent: 'Автор: ' }), el('a', { href: pagePath(p.author), textContent: fullName(p.author) })) : '',
+          p.signed ? el('div', { className: 'post-signature' }, el('span', { textContent: tr('Автор: ') }), el('a', { href: pagePath(p.author), textContent: fullName(p.author) })) : '',
         ),
         el('div', { className: 'post-menu' },
           el('span', {},
-            el('a', { textContent: 'Опубликовать сейчас', onclick: () => publish(p, node) }),
+            el('a', { textContent: tr('Опубликовать сейчас'), onclick: () => publish(p, node) }),
             ' | ',
-            el('a', { textContent: 'Редактировать', onclick: () => edit(p) }),
+            el('a', { textContent: tr('Редактировать'), onclick: () => edit(p) }),
             ' | ',
-            el('a', { textContent: 'Удалить', onclick: () => remove(p, node) }),
+            el('a', { textContent: tr('Удалить'), onclick: () => remove(p, node) }),
           ),
         ),
       ),

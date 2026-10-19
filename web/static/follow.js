@@ -4,6 +4,7 @@ import { api } from './api.js';
 import { followersCount, followingCount } from './labels.js';
 import { $, showError, hideError } from './layout.js';
 import { personCell } from './people.js';
+import { tr } from './i18n.js';
 
 const SIDE_BLOCK_SIZE = 6;
 
@@ -34,7 +35,7 @@ export function initFollow(profile, me, isOwner) {
   }
 
   function render() {
-    button.textContent = stats.isFollowing ? 'Отписаться' : 'Подписаться';
+    button.textContent = stats.isFollowing ? tr('Отписаться') : tr('Подписаться');
 
     renderBlock('followers', stats.followersCount, followersCount).catch((e) => showError(error, e));
     renderBlock('following', stats.followingCount, followingCount).catch((e) => showError(error, e));

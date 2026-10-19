@@ -7,6 +7,7 @@ import { api } from './api.js';
 import { DOCUMENT_FORMATS, MAX_DOCUMENTS, MAX_DOCUMENT_BYTES, documentFormat, fileSize, formatPostDate } from './labels.js';
 import { el, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
+import { tr } from './i18n.js';
 
 // ACCEPT is what the file picker offers: the formats the server takes.
 export const ACCEPT = DOCUMENT_FORMATS.map((f) => '.' + f).join(',');
@@ -39,9 +40,9 @@ export function documentsNode(docs) {
 
 // checkFile tells why a file is not taken before it is sent; '' when it is.
 export function checkFile(file) {
-  if (!DOCUMENT_FORMATS.includes(documentFormat(file.name))) return 'Формат файла не разрешён.';
-  if (file.size > MAX_DOCUMENT_BYTES) return 'Файл слишком большой: не больше 10 МБ.';
-  if (file.size === 0) return 'Файл пустой.';
+  if (!DOCUMENT_FORMATS.includes(documentFormat(file.name))) return tr('Формат файла не разрешён.');
+  if (file.size > MAX_DOCUMENT_BYTES) return tr('Файл слишком большой: не больше 10 МБ.');
+  if (file.size === 0) return tr('Файл пустой.');
 
   return '';
 }
@@ -77,10 +78,10 @@ export function uploadFile(error, onDone) {
 // openPicker is openvk's "Выбор документа": one's documents, newest
 // first, and "Загрузить документ"; a click attaches one.
 function openPicker(onPick) {
-  const modal = openModal('Выбор документа');
+  const modal = openModal(tr('Выбор документа'));
   const error = el('div', { className: 'error', hidden: true });
   const list = el('div', { className: 'doc-picker' });
-  const more = el('a', { className: 'wall-more', textContent: 'Показать ещё', hidden: true });
+  const more = el('a', { className: 'wall-more', textContent: tr('Показать ещё'), hidden: true });
   let cursor = '';
 
   const pick = (doc) => {
@@ -94,7 +95,7 @@ function openPicker(onPick) {
       const page = await api.documents(cursor);
       cursor = page.nextCursor;
       list.append(...page.documents.map((d) => documentNode(d, { pick })));
-      if (!list.childElementCount) list.append(el('p', { className: 'hint', textContent: 'Документов нет' }));
+      if (!list.childElementCount) list.append(el('p', { className: 'hint', textContent: tr('Документов нет') }));
       more.hidden = !cursor;
     } catch (e) {
       showError(error, e);
@@ -104,8 +105,8 @@ function openPicker(onPick) {
   more.addEventListener('click', load);
   modal.body.append(error, list, more);
   modal.actions.append(
-    button('Загрузить документ', () => uploadFile(error, pick)),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Загрузить документ'), () => uploadFile(error, pick)),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
   load();
 }
@@ -118,7 +119,7 @@ export function initDocuments({ link, list, onChange = () => {} }) {
 
   function render(changed = true) {
     list.replaceChildren(...docs.map((doc) => documentNode(doc, {
-      tools: [el('a', { className: 'doc-remove', title: 'Не прикреплять', textContent: '×', onclick: () => remove(doc) })],
+      tools: [el('a', { className: 'doc-remove', title: tr('Не прикреплять'), textContent: '×', onclick: () => remove(doc) })],
     })));
     list.hidden = docs.length === 0;
     link.hidden = docs.length >= MAX_DOCUMENTS;

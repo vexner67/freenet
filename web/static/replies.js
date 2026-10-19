@@ -6,13 +6,14 @@
 
 import { REACTIONS, genitiveName, quoteText, reactionCounts, reacted } from './labels.js';
 import { $, el, fullName, showError } from './layout.js';
+import { tr } from './i18n.js';
 
 // quoteNode is the block over an answer's words; text is the words of the
 // message it answers as the page knows them, open leads to that message.
 export function quoteNode(q, text, open) {
   return el('a', {
     className: 'im-quote',
-    title: 'Перейти к сообщению',
+    title: tr('Перейти к сообщению'),
     onclick: () => open(q.id),
   },
   q.author && el('span', { className: 'im-quote-name', textContent: fullName(q.author) }),

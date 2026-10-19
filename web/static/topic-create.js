@@ -6,6 +6,7 @@ import { api, currentUser } from './api.js';
 import { initAttachments } from './attach.js';
 import { $, clubRef, renderChrome, showError, hideError } from './layout.js';
 import { boardTitle, topicPath } from './topics.js';
+import { tr } from './i18n.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/board/create'.length));
 
@@ -18,18 +19,18 @@ if (!me) {
   try {
     const club = await api.club(ref);
 
-    document.title = 'Новая тема | Freenet';
-    $('title').replaceChildren(...boardTitle(club, 'Новая тема'));
+    document.title = tr('Новая тема | Freenet');
+    $('title').replaceChildren(...boardTitle(club, tr('Новая тема')));
 
     if (!club.canStartTopic) {
-      showError($('error'), 'Создавать темы в этой группе могут только администраторы.');
+      showError($('error'), tr('Создавать темы в этой группе могут только администраторы.'));
     } else if (!me.profileCompleted) {
-      showError($('error'), 'Сначала заполните свою страницу.');
+      showError($('error'), tr('Сначала заполните свою страницу.'));
     } else {
       initForm(club);
     }
   } catch (e) {
-    $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';
+    $('title').textContent = e.status === 404 ? tr('Группа не найдена') : tr('Ошибка');
     showError($('error'), e);
   }
 }
@@ -54,7 +55,7 @@ function initForm(club) {
     hideError(error);
 
     if (attachments.busy()) {
-      showError(error, 'Дождитесь, пока загрузятся фотографии.');
+      showError(error, tr('Дождитесь, пока загрузятся фотографии.'));
       return;
     }
 

@@ -10,6 +10,7 @@ import { errorText, foundParts, hashtagPath, isLongText, pushOfferText, pushStat
 import { acceptInvite } from './invite.js';
 import { nicknameLookup } from './nicknames.js';
 import { closePushes, endPushOffer, enablePush, forgetPushAccount, pushOffer, showUnread, syncPush } from './push.js';
+import { setLanguage, tr } from './i18n.js';
 
 export const $ = (id) => document.getElementById(id);
 
@@ -102,6 +103,16 @@ if (typeof document !== 'undefined') {
     if (event.target instanceof HTMLTextAreaElement) autosize(event.target);
   });
   document.addEventListener('click', switchAttachMenu);
+  // A flag of the footer switches the language of this very page, as
+  // openvk's do; its address leads to the page of languages without a script.
+  document.addEventListener('click', (event) => {
+    const flag = event.target.closest?.('a.footer-language');
+    if (!flag) return;
+
+    event.preventDefault();
+    setLanguage(new URL(flag.href).searchParams.get('lg'));
+    location.reload();
+  });
   // openvk's #write: a form of a post or a comment opens when its field is
   // clicked and stays open, so that "Прикрепить" under it does not slip
   // away from under the mouse.
@@ -165,7 +176,7 @@ export function textNode(text, { whole = false, rest = null, found = '' } = {}) 
 
   node.classList.add('collapsed');
 
-  const more = el('a', { className: 'post-text-more', textContent: 'Показать больше' });
+  const more = el('a', { className: 'post-text-more', textContent: tr('Показать больше') });
   more.addEventListener('click', async () => {
     if (rest) {
       try {
@@ -248,7 +259,7 @@ async function addAccount(me) {
 export function accountLinks(me = null) {
   return parkedAccounts().map((a) => el('a', {
     className: 'menu-account',
-    title: `Войти как ${accountName(a)}`,
+    title: tr('Войти как {0}', accountName(a)),
     onclick: () => switchAccount(a.id, me),
   },
   a.unread > 0 && el('span', { className: 'counter', textContent: unreadCountText(a.unread) }),
@@ -262,11 +273,11 @@ export function accountLinks(me = null) {
 // that switches to it, with "Добавить аккаунт" while there is room for
 // one more.
 function accountsLink(me) {
-  return el('a', { textContent: 'Аккаунты', onclick: () => openAccounts(me) });
+  return el('a', { textContent: tr('Аккаунты'), onclick: () => openAccounts(me) });
 }
 
 function openAccounts(me) {
-  const modal = openModal('Аккаунты');
+  const modal = openModal(tr('Аккаунты'));
 
   function draw() {
     // Closed meanwhile: there is nothing to draw in.
@@ -276,10 +287,10 @@ function openAccounts(me) {
 
     modal.body.replaceChildren(waiting.length > 0
       ? el('nav', { className: 'menu account-list' }, ...waiting)
-      : el('p', { className: 'hint', textContent: 'Других аккаунтов в этом браузере нет.' }));
+      : el('p', { className: 'hint', textContent: tr('Других аккаунтов в этом браузере нет.') }));
     modal.actions.replaceChildren(
-      canPark() && button('Добавить аккаунт', () => addAccount(me)),
-      button('Закрыть', modal.close, { secondary: true }),
+      canPark() && button(tr('Добавить аккаунт'), () => addAccount(me)),
+      button(tr('Закрыть'), modal.close, { secondary: true }),
     );
   }
 
@@ -430,26 +441,26 @@ export function applyInterface(me) {
   // As openvk's: "ред." at the right of the first link, the links of the
   // pages, and under a line those of what the site keeps for you.
   menu?.replaceChildren(...[
-    el('a', { className: 'menu-edit', href: '/edit', textContent: 'ред.', title: 'Редактировать страницу' }),
-    el('a', { href: profilePath(me), textContent: 'Страница' }),
-    menuLink(me, 'photos', '/albums', 'Фотографии'),
-    menuLink(me, 'messages', '/im', 'Сообщения', 'messages-count'),
-    menuLink(me, 'groups', '/groups', 'Группы'),
-    menuLink(me, 'feed', '/feed', 'Новости'),
-    menuLink(me, 'notifications', '/notifications', 'Уведомления', 'notifications-count'),
-    el('a', { href: '/settings', textContent: 'Настройки' }),
+    el('a', { className: 'menu-edit', href: '/edit', textContent: tr('ред.'), title: tr('Редактировать страницу') }),
+    el('a', { href: profilePath(me), textContent: tr('Страница') }),
+    menuLink(me, 'photos', '/albums', tr('Фотографии')),
+    menuLink(me, 'messages', '/im', tr('Сообщения'), 'messages-count'),
+    menuLink(me, 'groups', '/groups', tr('Группы')),
+    menuLink(me, 'feed', '/feed', tr('Новости')),
+    menuLink(me, 'notifications', '/notifications', tr('Уведомления'), 'notifications-count'),
+    el('a', { href: '/settings', textContent: tr('Настройки') }),
     el('div', { className: 'menu-divider' }),
-    el('a', { href: '/stickers', textContent: 'Стикеры' }),
-    el('a', { href: '/docs', textContent: 'Документы' }),
+    el('a', { href: '/stickers', textContent: tr('Стикеры') }),
+    el('a', { href: '/docs', textContent: tr('Документы') }),
     accountsLink(me),
-    el('a', { href: '/search', textContent: 'Поиск' }),
+    el('a', { href: '/search', textContent: tr('Поиск') }),
     // The administrators of the site have openvk's "Админ-панель" under
     // a line of its own.
     me.admin && el('div', { className: 'menu-divider' }),
-    me.admin && el('a', { href: '/admin', textContent: 'Админ-панель' }),
+    me.admin && el('a', { href: '/admin', textContent: tr('Админ-панель') }),
     // The header says "выход"; the phone, whose header is narrow, has it
     // here too, as openvk's.
-    el('a', { className: 'menu-phone', href: '/', textContent: 'Выйти', onclick: logout }),
+    el('a', { className: 'menu-phone', href: '/', textContent: tr('Выйти'), onclick: logout }),
   ].filter(Boolean));
   showCounter('messages');
   showCounter('notifications');
@@ -481,10 +492,10 @@ export function renderChrome(me) {
 
   if (me) {
     links.replaceChildren(
-      el('a', { href: profilePath(me), textContent: 'моя страница' }),
-      el('a', { href: '/feed', textContent: 'новости' }),
-      el('a', { href: '/invite', textContent: 'пригласить', className: 'header-invite' }),
-      el('a', { href: '/', textContent: 'выход', onclick: logout }),
+      el('a', { href: profilePath(me), textContent: tr('моя страница') }),
+      el('a', { href: '/feed', textContent: tr('новости') }),
+      el('a', { href: '/invite', textContent: tr('пригласить'), className: 'header-invite' }),
+      el('a', { href: '/', textContent: tr('выход'), onclick: logout }),
     );
     applyInterface(me);
     // The page was made by an invitation link: the inviter is followed.
@@ -506,13 +517,13 @@ export function renderChrome(me) {
     applyLook({});
 
     links.replaceChildren(
-      el('a', { href: '/', textContent: 'вход' }),
-      el('a', { href: '/', textContent: 'регистрация' }),
+      el('a', { href: '/', textContent: tr('вход') }),
+      el('a', { href: '/', textContent: tr('регистрация') }),
     );
     menu?.replaceChildren(
-      el('a', { href: '/', textContent: 'Вход' }),
-      el('a', { href: '/', textContent: 'Регистрация' }),
-      el('a', { href: '/search', textContent: 'Поиск' }),
+      el('a', { href: '/', textContent: tr('Вход') }),
+      el('a', { href: '/', textContent: tr('Регистрация') }),
+      el('a', { href: '/search', textContent: tr('Поиск') }),
     );
   }
 }
@@ -535,13 +546,13 @@ async function offerPush(me) {
   };
 
   const buttons = offer === 'install'
-    ? [button('Понятно', done, { secondary: true })]
+    ? [button(tr('Понятно'), done, { secondary: true })]
     : [
-      button('Включить уведомления', async () => {
+      button(tr('Включить уведомления'), async () => {
         done();
         await enablePush(me).catch(() => {});
       }),
-      button('Не сейчас', done, { secondary: true }),
+      button(tr('Не сейчас'), done, { secondary: true }),
     ];
 
   bar.append(el('p', { textContent: offer === 'install' ? pushStateTexts.install : pushOfferText }),
@@ -556,7 +567,7 @@ function addMenuToggle(menu) {
   const header = document.querySelector('.header');
   if (!menu || !header || header.querySelector('.menu-toggle')) return;
 
-  const toggle = el('a', { className: 'menu-toggle', title: 'Меню', ariaLabel: 'Меню', ariaExpanded: 'false' },
+  const toggle = el('a', { className: 'menu-toggle', title: tr('Меню'), ariaLabel: tr('Меню'), ariaExpanded: 'false' },
     el('span'), el('span'), el('span'));
   toggle.setAttribute('role', 'button');
   toggle.addEventListener('click', () => {
@@ -571,7 +582,7 @@ function addMenuToggle(menu) {
 // menu, only "выход" in the header, and no page but their own, where they
 // can restore it.
 function renderDeactivatedChrome(me, links, menu) {
-  links.replaceChildren(el('a', { href: '/', textContent: 'выход', onclick: logout }));
+  links.replaceChildren(el('a', { href: '/', textContent: tr('выход'), onclick: logout }));
 
   // Of the menu only "Аккаунты" is left, when
   // there are any: the way to them without signing out.
@@ -700,7 +711,7 @@ export function verifiedMark(user) {
 
   return el('img', {
     className: 'name-checkmark', src: '/static/icons/checkmark.svg', alt: '', width: 13, height: 11,
-    title: 'Подтверждённая страница',
+    title: tr('Подтверждённая страница'),
   });
 }
 

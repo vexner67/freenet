@@ -10,6 +10,7 @@ import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
 import { initPollDraft } from './poll.js';
 import { initTimer, postponedNotice, showPostponedLink } from './postponed.js';
+import { tr } from './i18n.js';
 
 // openvk's limit of a post or a comment; the counter shows near the end.
 const MAX_LENGTH = 60000;
@@ -61,8 +62,8 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   function updateCount() {
     $('wall-count').textContent = wallCount(total);
     $('wall-empty').hidden = total > 0 || canPost;
-    if (query) $('wall-empty').textContent = 'Ничего не найдено.';
-    else if (type === 'archive') $('wall-empty').textContent = year ? `В архиве нет записей за ${year} год.` : 'В архиве пока нет ни одной записи.';
+    if (query) $('wall-empty').textContent = tr('Ничего не найдено.');
+    else if (type === 'archive') $('wall-empty').textContent = year ? tr('В архиве нет записей за {0} год.', year) : tr('В архиве пока нет ни одной записи.');
   }
 
   const postNode = (post) => renderPost(post, {
@@ -88,7 +89,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
   function archived(post, node) {
     if (post.archived === (type === 'archive')) return;
 
-    node.replaceWith(el('div', { className: 'post-deleted', textContent: post.archived ? 'Запись перенесена в архив.' : 'Запись возвращена на стену.' }));
+    node.replaceWith(el('div', { className: 'post-deleted', textContent: post.archived ? tr('Запись перенесена в архив.') : tr('Запись возвращена на стену.') }));
     total--;
     updateCount();
   }
@@ -103,7 +104,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
       return;
     }
 
-    node.replaceWith(el('div', { className: 'post-deleted', textContent: 'Запись удалена.' }));
+    node.replaceWith(el('div', { className: 'post-deleted', textContent: tr('Запись удалена.') }));
     total--;
     updateCount();
   }
@@ -133,7 +134,7 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
 
   function updateCounter() {
     const left = MAX_LENGTH - $('post-text').value.length;
-    $('post-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? `осталось ${left}` : '';
+    $('post-counter').textContent = left <= MAX_LENGTH - COUNTER_FROM ? tr('осталось {0}', left) : '';
   }
 
   async function submit(event) {
@@ -141,17 +142,17 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     hideError(error);
 
     if (attachments.busy()) {
-      showError(error, 'Дождитесь, пока загрузятся фотографии.');
+      showError(error, tr('Дождитесь, пока загрузятся фотографии.'));
       return;
     }
 
     if (timer?.active() && poll.value()) {
-      showError(error, 'К отложенной записи нельзя прикрепить опрос.');
+      showError(error, tr('К отложенной записи нельзя прикрепить опрос.'));
       return;
     }
 
     if ((timer?.active() || suggesting) && documents.count()) {
-      showError(error, suggesting ? 'К предложенной записи нельзя прикрепить документ.' : 'К отложенной записи нельзя прикрепить документ.');
+      showError(error, suggesting ? tr('К предложенной записи нельзя прикрепить документ.') : tr('К отложенной записи нельзя прикрепить документ.'));
       return;
     }
 
@@ -204,8 +205,8 @@ export function initWall(owner, me, { moderates = me?.id === owner.id, speaksFor
     suggesting = suggest;
     // As on openvk: "Написать" on someone else's wall, "Предложить
     // новость" on a "Предложка".
-    if (!isOwner && !owner.club) text.placeholder = 'Написать';
-    if (suggest) text.placeholder = 'Предложить новость';
+    if (!isOwner && !owner.club) text.placeholder = tr('Написать');
+    if (suggest) text.placeholder = tr('Предложить новость');
     // A suggested post is marked by the admins, if at all.
     $('post-nsfw-label').hidden = suggest;
     let showSigned = null;

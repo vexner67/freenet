@@ -4,13 +4,14 @@
 import { api, currentUser } from './api.js';
 import { initBackdropForm } from './backdrop.js';
 import { $, clubRef, el, renderChrome, showError } from './layout.js';
+import { tr } from './i18n.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/backdrop'.length));
 
 function render(club) {
   const path = '/club/' + encodeURIComponent(clubRef(club));
 
-  $('title').replaceChildren(el('a', { href: path, textContent: club.name }), ' » Фон страницы');
+  $('title').replaceChildren(el('a', { href: path, textContent: club.name }), tr(' » Фон страницы'));
   $('tab-main').href = path + '/edit';
   $('tab-backdrop').href = path + '/backdrop';
   $('tab-members').href = path + '/members';
@@ -24,11 +25,11 @@ if (!me) {
 } else {
   try {
     const club = await api.club(ref);
-    document.title = `${club.name} | Фон страницы | Freenet`;
+    document.title = tr('{0} | Фон страницы | Freenet', club.name);
     render(club);
 
     if (club.role !== 'admin' && club.role !== 'owner') {
-      showError($('error'), 'Менять фон группы могут только её администраторы.');
+      showError($('error'), tr('Менять фон группы могут только её администраторы.'));
     } else {
       initBackdropForm(club.backdrop, {
         upload: async (side, file) => (await api.setClubBackdrop(ref, side, file)).backdrop,
@@ -38,7 +39,7 @@ if (!me) {
       $('form').hidden = false;
     }
   } catch (e) {
-    $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';
+    $('title').textContent = e.status === 404 ? tr('Группа не найдена') : tr('Ошибка');
     showError($('error'), e);
   }
 }

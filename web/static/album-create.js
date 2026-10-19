@@ -4,6 +4,7 @@
 import { api, ApiError, currentUser } from './api.js';
 import { $, renderChrome, showError, hideError } from './layout.js';
 import { albumPath, albumsTitle, canChange } from './albums.js';
+import { tr } from './i18n.js';
 
 const ref = new URLSearchParams(location.search).get('club') ?? '';
 
@@ -22,14 +23,14 @@ renderChrome(me);
 if (!me) {
   location.replace('/');
 } else if (!ref && !me.profileCompleted) {
-  $('title').textContent = 'Создание альбома';
-  showError($('error'), 'Сначала заполните свою страницу.');
+  $('title').textContent = tr('Создание альбома');
+  showError($('error'), tr('Сначала заполните свою страницу.'));
 } else {
   try {
     const { owner, role } = await ownerOf(me);
 
-    $('title').replaceChildren(...albumsTitle(owner, 'Создание альбома'));
-    if (!canChange(owner, role, me)) throw new Error('Создавать альбомы группы могут только её администраторы.');
+    $('title').replaceChildren(...albumsTitle(owner, tr('Создание альбома')));
+    if (!canChange(owner, role, me)) throw new Error(tr('Создавать альбомы группы могут только её администраторы.'));
     $('content').hidden = false;
 
     $('form').addEventListener('submit', async (event) => {
@@ -46,7 +47,7 @@ if (!me) {
       }
     });
   } catch (e) {
-    if (e.status === 404) $('title').textContent = 'Группа не найдена';
+    if (e.status === 404) $('title').textContent = tr('Группа не найдена');
     showError($('error'), e instanceof ApiError ? e : e.message);
   }
 }

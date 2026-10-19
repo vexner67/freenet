@@ -4,6 +4,7 @@
 // tokens live in localStorage next to those of the session (api.js).
 
 import { exclusive, readAs, renewTokens, session } from './api.js';
+import { tr } from './i18n.js';
 
 const KEY = 'freenet.accounts';
 // CURRENT_KEY names the account signed in, for the other tabs to hear
@@ -36,7 +37,7 @@ export function accountOf(me, tokens) {
 // accountName is how the menu calls an account: by name or, before the
 // page is filled in, by nothing better than "Новая страница".
 export function accountName(account) {
-  return [account.name, account.surname].filter(Boolean).join(' ') || 'Новая страница';
+  return [account.name, account.surname].filter(Boolean).join(' ') || tr('Новая страница');
 }
 
 // kept puts account first among the parked, once.

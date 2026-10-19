@@ -4,6 +4,7 @@
 
 import { api } from './api.js';
 import { el, showError, hideError } from './layout.js';
+import { tr } from './i18n.js';
 
 export const MAX_PHOTOS = 10;
 const MAX_BYTES = 8 << 20;
@@ -24,8 +25,8 @@ export function initAttachments({ link, input, list, error, onChange, photos = [
     list.replaceChildren(...entries.map((entry) => el('div', { className: 'attachment' },
       entry.photo
         ? el('img', { src: entry.photo.small, alt: '' })
-        : el('div', { className: 'attachment-loading', textContent: 'Загрузка…' }),
-      entry.photo && el('a', { className: 'attachment-remove', title: 'Не прикреплять', textContent: '×', onclick: () => remove(entry) }),
+        : el('div', { className: 'attachment-loading', textContent: tr('Загрузка…') }),
+      entry.photo && el('a', { className: 'attachment-remove', title: tr('Не прикреплять'), textContent: '×', onclick: () => remove(entry) }),
     )));
     list.hidden = entries.length === 0;
     for (const l of [link, ...also]) l.hidden = entries.length >= MAX_PHOTOS;
@@ -55,12 +56,12 @@ export function initAttachments({ link, input, list, error, onChange, photos = [
     input.value = '';
 
     const room = MAX_PHOTOS - entries.length;
-    if (files.length > room) showError(error, `К записи можно прикрепить не больше ${MAX_PHOTOS} фотографий.`);
+    if (files.length > room) showError(error, tr('К записи можно прикрепить не больше {0} фотографий.', MAX_PHOTOS));
 
     for (const file of files.slice(0, room)) {
       // Checked here too, so a huge file is not sent for nothing.
       if (file.size > MAX_BYTES) {
-        showError(error, 'Фотография больше 8 МБ.');
+        showError(error, tr('Фотография больше 8 МБ.'));
         continue;
       }
 
@@ -85,7 +86,7 @@ export function initAttachments({ link, input, list, error, onChange, photos = [
     // add uploads a picture made on the page, as a drawing, and attaches
     // it; it fails with the error of the upload, which attaches nothing.
     async add(file) {
-      if (entries.length >= MAX_PHOTOS) throw new Error(`К записи можно прикрепить не больше ${MAX_PHOTOS} фотографий.`);
+      if (entries.length >= MAX_PHOTOS) throw new Error(tr('К записи можно прикрепить не больше {0} фотографий.', MAX_PHOTOS));
 
       const entry = { photo: null };
       entries.push(entry);

@@ -8,6 +8,7 @@ import { formatPostDate, suggestedInClub, wrote } from './labels.js';
 import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError, autosize, textNode } from './layout.js';
 import { button, openModal } from './modal.js';
 import { photosNode, postPath } from './posts.js';
+import { tr } from './i18n.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/suggested'.length));
 const mine = new URLSearchParams(location.search).get('type') === 'my';
@@ -22,7 +23,7 @@ let handled = false;
 function updateCount() {
   $('count').textContent = suggestedInClub(total, mine);
   $('count').hidden = total === 0 && !handled;
-  $('empty').textContent = mine ? 'Вы ещё не предлагали записей в эту группу.' : 'В эту группу ещё не предлагали записей.';
+  $('empty').textContent = mine ? tr('Вы ещё не предлагали записей в эту группу.') : tr('В эту группу ещё не предлагали записей.');
   $('empty').hidden = total > 0 || handled;
 }
 
@@ -44,10 +45,10 @@ function suggestionNode(s) {
         photosNode(s.photos) ?? '',
       ),
       mine
-        ? el('div', { className: 'post-menu' }, el('span', {}, el('a', { textContent: 'Удалить', onclick: () => remove(s, node) })))
+        ? el('div', { className: 'post-menu' }, el('span', {}, el('a', { textContent: tr('Удалить'), onclick: () => remove(s, node) })))
         : el('div', { className: 'suggestion-controls' },
-          button('Опубликовать запись', () => openPublish(s, node)),
-          button('Отклонить', () => remove(s, node), { secondary: true }),
+          button(tr('Опубликовать запись'), () => openPublish(s, node)),
+          button(tr('Отклонить'), () => remove(s, node), { secondary: true }),
         ),
     ),
   );
@@ -78,15 +79,15 @@ async function openPublish(s, node) {
     return;
   }
 
-  const modal = openModal('Публикация предложенной записи');
+  const modal = openModal(tr('Публикация предложенной записи'));
   const text = el('textarea', { className: 'publish-text', maxLength: 60000, value: s.text });
   const signed = el('input', { type: 'checkbox', checked: true });
   const error = el('div', { className: 'error', hidden: true });
 
-  modal.body.append(text, el('label', { className: 'publish-signed' }, signed, ' Подпись автора'), error);
+  modal.body.append(text, el('label', { className: 'publish-signed' }, signed, tr(' Подпись автора')), error);
   autosize(text);
   modal.actions.append(
-    button('Опубликовать', async (event) => {
+    button(tr('Опубликовать'), async (event) => {
       event.target.disabled = true;
       hideError(error);
 
@@ -100,15 +101,15 @@ async function openPublish(s, node) {
         event.target.disabled = false;
       }
     }),
-    button('Отмена', modal.close, { secondary: true }),
+    button(tr('Отмена'), modal.close, { secondary: true }),
   );
   text.focus();
 }
 
 // published is openvk's "Запись успешно опубликована" with the way to it.
 function published(post) {
-  const link = post ? el('a', { href: postPath(post), textContent: 'Перейти к ней' }) : '';
-  $('notice').replaceChildren('Запись успешно опубликована. ', link);
+  const link = post ? el('a', { href: postPath(post), textContent: tr('Перейти к ней') }) : '';
+  $('notice').replaceChildren(tr('Запись успешно опубликована. '), link);
   $('notice').hidden = false;
 }
 
@@ -155,14 +156,14 @@ if (!me) {
   try {
     club = await api.club(ref);
     const path = '/club/' + encodeURIComponent(clubRef(club));
-    const heading = mine ? 'Предложенные вами записи' : 'Предложенные записи';
+    const heading = mine ? tr('Предложенные вами записи') : tr('Предложенные записи');
 
     document.title = `${heading}: ${club.name} | Freenet`;
     $('title').replaceChildren(el('a', { href: path, textContent: club.name }), ` » ${heading}`);
     $('more').addEventListener('click', loadMore);
     await loadMore();
   } catch (e) {
-    $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';
+    $('title').textContent = e.status === 404 ? tr('Группа не найдена') : tr('Ошибка');
     showError($('error'), e);
   }
 }

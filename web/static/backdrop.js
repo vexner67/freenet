@@ -3,6 +3,7 @@
 // a scheme of the page, "Сохранить фон", "Удалить фон").
 
 import { $, el, showError, hideError } from './layout.js';
+import { tr } from './i18n.js';
 
 const MAX_BYTES = 8 << 20;
 
@@ -50,7 +51,7 @@ export function initBackdropForm(backdrop, { upload, remove }) {
       if (!chosen) return;
 
       if (chosen.size > MAX_BYTES) {
-        showError($('error'), 'Фотография больше 8 МБ.');
+        showError($('error'), tr('Фотография больше 8 МБ.'));
         return;
       }
 
@@ -72,7 +73,7 @@ export function initBackdropForm(backdrop, { upload, remove }) {
 
     const sides = ['left', 'right'].filter((side) => picked[side]);
     if (sides.length === 0) {
-      showError($('error'), 'Не удалось сохранить фон: выберите хотя бы одно изображение.');
+      showError($('error'), tr('Не удалось сохранить фон: выберите хотя бы одно изображение.'));
       return;
     }
 
@@ -84,7 +85,7 @@ export function initBackdropForm(backdrop, { upload, remove }) {
         picked[side] = null;
       }
       showPreviews(backdrop);
-      notice('Фон сохранён.');
+      notice(tr('Фон сохранён.'));
     } catch (e) {
       showError($('error'), e);
     } finally {
@@ -101,7 +102,7 @@ export function initBackdropForm(backdrop, { upload, remove }) {
       backdrop = await remove();
       picked.left = picked.right = null;
       showPreviews(backdrop);
-      notice('Фон удалён.');
+      notice(tr('Фон удалён.'));
     } catch (e) {
       showError($('error'), e);
     } finally {

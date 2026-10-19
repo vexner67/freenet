@@ -7,6 +7,7 @@ import { api, currentUser } from './api.js';
 import { formatPostDate, resultsCount, topicMessages } from './labels.js';
 import { $, avatarURL, clubRef, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { topicPath } from './topics.js';
+import { tr } from './i18n.js';
 
 const ref = decodeURIComponent(location.pathname.slice('/club/'.length, -'/board'.length));
 const query = new URLSearchParams(location.search).get('q') ?? '';
@@ -21,15 +22,15 @@ function topicNode(topic) {
   return el('div', { className: 'topic-item' },
     el('div', { className: 'topic-main' },
       el('a', { className: 'topic-name', href: topicPath(topic), textContent: topic.title }),
-      topic.pinned ? el('span', { className: 'hint', textContent: ' — закреплена' }) : '',
-      topic.closed ? el('span', { className: 'hint', textContent: ' — закрыта' }) : '',
+      topic.pinned ? el('span', { className: 'hint', textContent: tr(' — закреплена') }) : '',
+      topic.closed ? el('span', { className: 'hint', textContent: tr(' — закрыта') }) : '',
       el('div', { textContent: topicMessages(topic.messages) }),
     ),
     last ? el('div', { className: 'topic-last' },
       el('a', { href: pagePath(last.author) }, el('img', { src: avatarURL(last.author, 'small'), alt: '' })),
       el('div', {},
         el('a', { href: pagePath(last.author), textContent: fullName(last.author) }),
-        el('div', { className: 'hint', textContent: `ответил ${formatPostDate(last.createdAt)}` }),
+        el('div', { className: 'hint', textContent: tr('ответил {0}', formatPostDate(last.createdAt)) }),
       ),
     ) : '',
   );
@@ -58,10 +59,10 @@ try {
   const club = await api.club(ref);
   const path = '/club/' + encodeURIComponent(clubRef(club));
 
-  document.title = `Обсуждения ${club.name} | Freenet`;
-  $('title').replaceChildren(el('a', { href: path, textContent: club.name }), ' » Обсуждения');
+  document.title = tr('Обсуждения {0} | Freenet', club.name);
+  $('title').replaceChildren(el('a', { href: path, textContent: club.name }), tr(' » Обсуждения'));
   if (me?.profileCompleted && club.canStartTopic) {
-    $('title-links').replaceChildren(el('a', { href: path + '/board/create', textContent: 'Создать тему' }));
+    $('title-links').replaceChildren(el('a', { href: path + '/board/create', textContent: tr('Создать тему') }));
   }
 
   $('q').value = query;
@@ -69,6 +70,6 @@ try {
   $('more').addEventListener('click', loadMore);
   await loadMore();
 } catch (e) {
-  $('title').textContent = e.status === 404 ? 'Группа не найдена' : 'Ошибка';
+  $('title').textContent = e.status === 404 ? tr('Группа не найдена') : tr('Ошибка');
   showError($('error'), e);
 }

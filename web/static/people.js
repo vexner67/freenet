@@ -2,6 +2,7 @@
 // a row for the full list page, which says who is on the site now.
 
 import { avatarURL, el, fullName, verifiedMark } from './layout.js';
+import { tr } from './i18n.js';
 
 export function personCell(user) {
   const path = '/' + user.nickname;
@@ -26,7 +27,7 @@ export function personRow(user, ...extra) {
     el('div', {},
       el('a', { className: 'post-name', href: path, textContent: fullName(user) }),
       verifiedMark(user),
-      user.online && el('span', { className: 'person-online', textContent: 'Онлайн' }),
+      user.online && el('span', { className: 'person-online', textContent: tr('Онлайн') }),
       user.status && el('div', { className: 'person-status', textContent: user.status }),
       ...extra,
     ),

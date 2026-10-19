@@ -2,6 +2,7 @@ import { api, currentUser } from './api.js';
 import { settle, signedInAs } from './accounts.js';
 import { keepInvite } from './invite.js';
 import { $, accountLinks, avatarURL, el, fullName, renderChrome, showAccounts, homePath, showError, hideError } from './layout.js';
+import { tr } from './i18n.js';
 
 const emailForm = $('email-form');
 const codeForm = $('code-form');
@@ -67,7 +68,7 @@ async function showInviter(nickname) {
 
   $('invited').replaceChildren(
     el('img', { className: 'invited-photo', src: avatarURL(inviter, 'small'), alt: '' }),
-    el('span', {}, el('b', { textContent: fullName(inviter) }), ' приглашает вас во Freenet.'));
+    el('span', {}, el('b', { textContent: fullName(inviter) }), tr(' приглашает вас во Freenet.')));
   $('invited').hidden = false;
 }
 

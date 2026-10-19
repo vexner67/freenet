@@ -21,13 +21,14 @@ import { initDocuments } from './docs.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
-import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, selectedCount } from './labels.js';
+import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, messagesCount, selectedCount } from './labels.js';
 import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
 import { initStickers } from './stickers.js';
 import { typingLine, watchTyping } from './typing.js';
+import { tr } from './i18n.js';
 
 const POLL_MS = 5000;
 const typists = typingLine((text) => { $('typing').textContent = text; });
@@ -88,12 +89,12 @@ function messageNode(m) {
   // and taken back it says nothing.
   node.render = () => {
     const shownMessage = node.message ?? m;
-    const text = shownMessage.deleted ? 'Сообщение удалено' : shownMessage.text;
+    const text = shownMessage.deleted ? tr('Сообщение удалено') : shownMessage.text;
 
     node.classList.toggle('deleted', Boolean(shownMessage.deleted));
     content.replaceChildren(...[
       !shownMessage.deleted && shownMessage.unreadable
-        ? el('div', { className: 'im-message-text unreadable', textContent: 'Не удалось расшифровать сообщение: оно зашифровано ключом, которого нет на этом устройстве.' })
+        ? el('div', { className: 'im-message-text unreadable', textContent: tr('Не удалось расшифровать сообщение: оно зашифровано ключом, которого нет на этом устройстве.') })
         : text && textOf(text, node),
       ...attachedNodes(shownMessage),
       forwardedNode(shownMessage, (carried) => textOf(carried, node)),
@@ -102,18 +103,18 @@ function messageNode(m) {
     if (shownMessage.replyTo && !shownMessage.deleted) content.prepend(quoteNode(shownMessage.replyTo, quotedText(shownMessage), goTo));
     date.replaceChildren(...[
       formatPostDate(shownMessage.createdAt),
-      shownMessage.editedAt && el('span', { className: 'post-edited', title: 'Отредактировано', textContent: ' (ред.)' }),
+      shownMessage.editedAt && el('span', { className: 'post-edited', title: tr('Отредактировано'), textContent: tr(' (ред.)') }),
       actionsNode([
-        replies && !shownMessage.deleted && !shownMessage.unreadable && ['Ответить', () => answer(shownMessage)],
-        !shownMessage.deleted && ['Реакция', () => {
+        replies && !shownMessage.deleted && !shownMessage.unreadable && [tr('Ответить'), () => answer(shownMessage)],
+        !shownMessage.deleted && [tr('Реакция'), () => {
           node.picking = !node.picking;
           node.render();
           // Under the last message the picker would open out of sight.
           if (node.picking) node.querySelector('.im-reaction-picker')?.scrollIntoView({ block: 'nearest' });
         }],
-        canEdit(shownMessage) && ['Редактировать', () => startEdit(shownMessage)],
-        !shownMessage.deleted && !shownMessage.unreadable && ['Переслать', () => forward([shownMessage])],
-        ['Удалить', () => confirmDelete([shownMessage])],
+        canEdit(shownMessage) && [tr('Редактировать'), () => startEdit(shownMessage)],
+        !shownMessage.deleted && !shownMessage.unreadable && [tr('Переслать'), () => forward([shownMessage])],
+        [tr('Удалить'), () => confirmDelete([shownMessage])],
       ]),
     ].filter(Boolean));
   };
@@ -139,7 +140,7 @@ function textOf(text, node) {
 
   const more = el('a', {
     className: 'post-text-more',
-    textContent: 'Показать больше',
+    textContent: tr('Показать больше'),
     onclick: () => {
       node.opened = true;
       node.render();
@@ -227,10 +228,10 @@ function showSelection() {
 // both: offered while every one of them is mine and still may be taken
 // back.
 function confirmDelete(messages) {
-  const modal = openModal(messages.length > 1 ? 'Удаление сообщений' : 'Удаление сообщения');
+  const modal = openModal(messages.length > 1 ? tr('Удаление сообщений') : tr('Удаление сообщения'));
   const error = el('div', { className: 'error', hidden: true });
   const forAll = el('input', { type: 'checkbox' });
-  const remove = button('Удалить', async () => {
+  const remove = button(tr('Удалить'), async () => {
     hideError(error);
     remove.disabled = true;
 
@@ -265,12 +266,12 @@ function confirmDelete(messages) {
   });
 
   modal.body.append(error, el('div', {}, messages.length > 1
-    ? `Вы действительно хотите удалить ${selectedCount(messages.length).replace('Выбрано ', '')}?`
-    : 'Вы действительно хотите удалить это сообщение?'));
+    ? tr('Вы действительно хотите удалить {0}?', messagesCount(messages.length))
+    : tr('Вы действительно хотите удалить это сообщение?')));
   if (messages.every(canDeleteForAll)) {
-    modal.body.append(el('label', { className: 'publish-signed' }, forAll, ` Удалить для всех (и у ${genitiveName(peer)})`));
+    modal.body.append(el('label', { className: 'publish-signed' }, forAll, tr(' Удалить для всех (и у {0})', genitiveName(peer))));
   }
-  modal.actions.append(remove, button('Отмена', modal.close, { secondary: true }));
+  modal.actions.append(remove, button(tr('Отмена'), modal.close, { secondary: true }));
 }
 
 // forward carries messages on ("Переслать"), into this dialog or another
@@ -313,7 +314,7 @@ function startEdit(m) {
   autosize(text);
   attachments.set(m.photos ?? []);
   $('editing').hidden = false;
-  $('send').textContent = 'Сохранить';
+  $('send').textContent = tr('Сохранить');
   // An edit changes the words and the photos; the documents stay.
   documents.clear();
   $('doc').hidden = true;
@@ -331,7 +332,7 @@ function cancelEdit() {
   attachments.clear();
   $('doc').hidden = false;
   $('editing').hidden = true;
-  $('send').textContent = 'Отправить';
+  $('send').textContent = tr('Отправить');
 }
 
 // edited shows what a message is after its sender, me or the peer,
@@ -562,7 +563,7 @@ async function send(event) {
 
   if (editing) {
     if (attachments.busy()) {
-      showError($('error'), 'Дождитесь, пока загрузятся фотографии.');
+      showError($('error'), tr('Дождитесь, пока загрузятся фотографии.'));
       return;
     }
 
@@ -584,7 +585,7 @@ async function send(event) {
   if (!text.value.trim() && attachments.count() === 0 && documents.count() === 0) return;
 
   if (attachments.busy()) {
-    showError($('error'), 'Дождитесь, пока загрузятся фотографии.');
+    showError($('error'), tr('Дождитесь, пока загрузятся фотографии.'));
     return;
   }
 
@@ -628,14 +629,14 @@ async function sendSticker(sticker) {
 async function setUpInput(canWrite) {
   if (me.id === peer.id) {
     $('form').hidden = true;
-    $('blocked').textContent = 'Нельзя написать самому себе.';
+    $('blocked').textContent = tr('Нельзя написать самому себе.');
     $('blocked').hidden = false;
     return;
   }
 
   if (!me.profileCompleted) {
     $('form').hidden = true;
-    $('blocked').replaceChildren('Чтобы писать сообщения, ', el('a', { href: '/edit', textContent: 'заполните свою страницу' }), '.');
+    $('blocked').replaceChildren(tr('Чтобы писать сообщения, '), el('a', { href: '/edit', textContent: tr('заполните свою страницу') }), '.');
     $('blocked').hidden = false;
     return;
   }
@@ -684,7 +685,7 @@ async function setUpInput(canWrite) {
 // keyHint is why this browser can neither open nor seal messages, with
 // where to bring the key.
 function keyHint(state) {
-  return [keyStateText(state) + ' ', el('a', { href: '/settings?act=security', textContent: 'Перейти к настройкам шифрования' }), '.'];
+  return [keyStateText(state) + ' ', el('a', { href: '/settings?act=security', textContent: tr('Перейти к настройкам шифрования') }), '.'];
 }
 
 // showKeys learns the peer's key and says when it is not the one this
@@ -695,8 +696,8 @@ async function showKeys() {
 
   if (notePeerKey(me.id, peer.id, peerKey) === 'changed') {
     $('key-notice').replaceChildren(
-      `Ключ шифрования собеседника изменился: возможно, ${fullName(peer)} настраивает новое устройство. `,
-      el('a', { textContent: 'Сравните код безопасности', onclick: showSafetyCode }),
+      tr('Ключ шифрования собеседника изменился: возможно, {0} настраивает новое устройство. ', fullName(peer)),
+      el('a', { textContent: tr('Сравните код безопасности'), onclick: showSafetyCode }),
       '.',
     );
     $('key-notice').hidden = false;
@@ -706,21 +707,21 @@ async function showKeys() {
 // showSafetyCode is the code both people compare, each in their dialog,
 // to be sure no one reads between them.
 async function showSafetyCode() {
-  const modal = openModal('Шифрование сообщений');
+  const modal = openModal(tr('Шифрование сообщений'));
   const own = ownKey(me.id);
 
-  modal.body.append(el('p', {}, 'Сообщения этого диалога зашифрованы: прочитать их можете только вы и ',
-    fullName(peer), ', даже сервер их не видит.'));
+  modal.body.append(el('p', {}, tr('Сообщения этого диалога зашифрованы: прочитать их можете только вы и '),
+    fullName(peer), tr(', даже сервер их не видит.')));
   if (own && peerKey) {
     modal.body.append(
-      el('p', {}, 'Код безопасности:'),
+      el('p', {}, tr('Код безопасности:')),
       el('p', { className: 'safety-code', textContent: await safetyCode(own, peerKey) }),
-      el('p', { className: 'hint', textContent: 'Сравните его с кодом в этом диалоге у собеседника — при встрече или по другому каналу. Если коды совпадают, вашу переписку никто не подменяет.' }),
+      el('p', { className: 'hint', textContent: tr('Сравните его с кодом в этом диалоге у собеседника — при встрече или по другому каналу. Если коды совпадают, вашу переписку никто не подменяет.') }),
     );
   } else {
     modal.body.append(el('p', { className: 'hint', textContent: own ? NO_PEER_KEY : keyStateText(keyState(me.id) || 'missing') }));
   }
-  modal.actions.append(button('Закрыть', modal.close));
+  modal.actions.append(button(tr('Закрыть'), modal.close));
 }
 
 // whyNotWrite tells the caller's own blacklist and a deleted page apart
@@ -729,7 +730,7 @@ async function whyNotWrite() {
   const profile = await api.profile(peer.nickname).catch(() => null);
 
   if (profile?.blockedByMe) {
-    return [`${fullName(peer)} — в вашем `, el('a', { href: '/settings/blacklist', textContent: 'чёрном списке' }), '.'];
+    return [tr('{0} — в вашем ', fullName(peer)), el('a', { href: '/settings/blacklist', textContent: tr('чёрном списке') }), '.'];
   }
 
   if (profile?.deactivated) {
@@ -752,9 +753,9 @@ if (!me) {
     const first = await firstPage();
     peer = first.peer;
 
-    document.title = `${fullName(peer)} | Сообщения`;
+    document.title = tr('{0} | Сообщения', fullName(peer));
     $('title').replaceChildren(
-      el('a', { href: '/im', textContent: 'Мои Сообщения' }),
+      el('a', { href: '/im', textContent: tr('Мои Сообщения') }),
       ' » ',
       el('a', { href: '/' + peer.nickname, textContent: fullName(peer) }),
       verifiedMark(peer),
@@ -793,7 +794,7 @@ if (!me) {
     listenToEvents();
     setTimeout(poll, POLL_MS);
   } catch (e) {
-    $('title').textContent = e.status === 404 ? 'Страница не найдена' : 'Ошибка';
-    showError($('error'), e.status === 404 ? 'Такого пользователя нет.' : e);
+    $('title').textContent = e.status === 404 ? tr('Страница не найдена') : tr('Ошибка');
+    showError($('error'), e.status === 404 ? tr('Такого пользователя нет.') : e);
   }
 }
