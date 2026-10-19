@@ -78,8 +78,12 @@ func (f *fakeAuth) EndOtherSessions(context.Context, string) (int, error) {
 func (f *fakeAuth) Logout(context.Context, string) error { return f.err }
 
 type fakeUsers struct {
-	// verified are the checkmarks given and taken: "token:id:bool".
+	// verified are the checkmarks given and taken: "token:id:bool"; bans
+	// the blocks given and lifted: "token:id:reason:until" and
+	// "token:id:-"; ban blocks the caller's page.
 	verified []string
+	bans     []string
+	ban      *model.Ban
 	// admin: the caller is an administrator of the site.
 	admin bool
 	// named are the nicknames the gateway asked ResolveMentions about.
@@ -131,7 +135,7 @@ type fakeUsers struct {
 }
 
 func (f *fakeUsers) user() model.User {
-	u := model.User{ID: "u1", Email: "ann@example.com", Profile: f.profile, ProfileCompleted: f.profile.Nickname != "", About: f.about, Interface: f.ui, Admin: f.admin}
+	u := model.User{ID: "u1", Email: "ann@example.com", Profile: f.profile, ProfileCompleted: f.profile.Nickname != "", About: f.about, Interface: f.ui, Admin: f.admin, Ban: f.ban}
 	if f.deactivated {
 		u.Deactivated, u.PurgeAt = true, time.Date(2027, 5, 7, 12, 0, 0, 0, time.UTC)
 	}
@@ -209,6 +213,11 @@ func (f *fakeUsers) profileOf(nickname string) (model.PublicProfile, error) {
 		return model.PublicProfile{ID: "u3", Profile: model.Profile{Name: "Cat", Nickname: "cat"}, Deactivated: true}, nil
 	case "vera":
 		return model.PublicProfile{ID: "u5", Profile: model.Profile{Name: "Vera", Nickname: "vera"}, Verified: true}, nil
+	case "boris":
+		return model.PublicProfile{
+			ID: "u6", Profile: model.Profile{Name: "Boris", Nickname: "boris"}, InfoHidden: true,
+			Ban: &model.Ban{Reason: "spam", At: time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)},
+		}, nil
 	case "dina":
 		return model.PublicProfile{
 			ID: "u4", Profile: model.Profile{Name: "Dina", Nickname: "dina", Birthday: time.Date(2000, 5, 17, 0, 0, 0, 0, time.UTC), PartnerID: "u2"},
@@ -472,6 +481,29 @@ func (f *fakeUsers) SetVerified(_ context.Context, token, userID string, verifie
 	}
 	f.verified = append(f.verified, token+":"+userID+":"+strconv.FormatBool(verified))
 	return nil
+}
+
+func (f *fakeUsers) Ban(_ context.Context, token, userID, reason string, until time.Time) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.bans = append(f.bans, token+":"+userID+":"+reason+":"+timeOrEmpty(until))
+	return nil
+}
+
+func (f *fakeUsers) Unban(_ context.Context, token, userID string) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.bans = append(f.bans, token+":"+userID+":-")
+	return nil
+}
+
+func timeOrEmpty(t time.Time) string {
+	if t.IsZero() {
+		return ""
+	}
+	return t.UTC().Format(time.RFC3339)
 }
 
 // MarkOnline counts the visits the event stream tells, from its goroutine.
@@ -1208,6 +1240,8 @@ func (f *fakeNotifications) List(_ context.Context, token string, unread bool, c
 			{ID: "n-17", Kind: "note_comment", ActorID: "u2", PostID: "note-deleted", CommentID: "nc1", CreatedAt: at},
 			{ID: "n-18", Kind: "note_comment", ActorID: "u2", PostID: "note1", CommentID: "nc-deleted", CreatedAt: at},
 			{ID: "n-19", Kind: "gift", ActorID: "u2", PostID: "g1", CreatedAt: at},
+			{ID: "n-20", Kind: "story_like", ActorID: "u2", PostID: "s1", CreatedAt: at},
+			{ID: "n-21", Kind: "story_comment", ActorID: "u2", PostID: "s1", CommentID: "sc1", CreatedAt: at},
 		},
 		NextCursor: "n-2",
 	}, f.err

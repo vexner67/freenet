@@ -95,8 +95,18 @@ type UserQuery struct {
 	Film     string
 	Show     string
 	Book     string
-	// Verified keeps the pages with the checkmark only.
+	// Verified keeps the pages with the checkmark only, Banned the pages
+	// blocked now.
 	Verified bool
+	Banned   bool
+}
+
+// Ban is a block of a page by the administrators of the site ("Заблокировать
+// пользователя"): why, since when and until when, the zero Until for good.
+type Ban struct {
+	Reason string
+	At     time.Time
+	Until  time.Time
 }
 
 // Privacy: WallWrite is who may write on the wall besides its owner,
@@ -189,6 +199,8 @@ type User struct {
 	Admin bool
 	// Verified: the administrators confirmed the page (a checkmark).
 	Verified bool
+	// Ban: the administrators blocked the page, nil if they did not.
+	Ban *Ban
 }
 
 // Interface is how the site looks to its owner ("Интерфейс" of the
@@ -234,6 +246,9 @@ type PublicProfile struct {
 	// Verified: the administrators confirmed the page ("Подтверждённая
 	// страница"), a checkmark by the name.
 	Verified bool
+	// Ban: the administrators blocked the page, which then tells only the
+	// names, the photo and the ban; nil if they did not.
+	Ban *Ban
 	// LastSeen is when the user last visited ("был в сети"), zero if never
 	// or hidden; Online: just now ("Онлайн").
 	LastSeen time.Time
@@ -1363,4 +1378,27 @@ type Story struct {
 	Viewed bool
 	Mine   bool
 	Views  int
+	// Liked: the viewer liked it; Likes and Comments count those of the
+	// pages that are not deleted.
+	Liked    bool
+	Likes    int
+	Comments int
+}
+
+// StoryComment is a few words under a story; Mine: the viewer wrote it.
+type StoryComment struct {
+	ID        string
+	StoryID   string
+	AuthorID  string
+	Text      string
+	CreatedAt time.Time
+	Mine      bool
+}
+
+// StoryCommentPage is one screen of the comments of a story, the oldest
+// first.
+type StoryCommentPage struct {
+	Comments   []StoryComment
+	NextCursor string
+	Total      int
 }

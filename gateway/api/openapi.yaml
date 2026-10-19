@@ -823,6 +823,10 @@ paths:
           in: query
           description: "true: only the pages with the checkmark of a confirmed one; may go without `q`"
           schema: { type: boolean }
+        - name: banned
+          in: query
+          description: "true: only the pages blocked now (\"Пользователи\" of the admin panel); may go without `q`"
+          schema: { type: boolean }
         - name: cursor
           in: query
           schema: { type: string }
@@ -1104,6 +1108,105 @@ paths:
       responses:
         "204": { description: Viewed }
         "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/stories/{id}/like:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    put:
+      summary: Like a story you see; its author hears about it (`story_like`)
+      description: Idempotent. Limited as likes are.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Liked }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+    delete:
+      summary: Take your like of a story back
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Not liked }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/stories/{id}/comments:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    get:
+      summary: The comments of a story you see, the oldest first
+      description: Those of deleted pages are left out of `comments` and of `total`.
+      security: [{ bearer: [] }]
+      parameters:
+        - { name: cursor, in: query, schema: { type: string } }
+        - { name: limit, in: query, schema: { type: integer, minimum: 1, maximum: 50, default: 20 } }
+      responses:
+        "200":
+          description: One page of comments
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [comments, nextCursor, total]
+                properties:
+                  comments:
+                    type: array
+                    items: { $ref: "#/components/schemas/StoryComment" }
+                  nextCursor: { type: string, description: "Empty on the last page" }
+                  total: { type: integer }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    post:
+      summary: Comment a story you see
+      description: |
+        Text only. Needs a filled-in profile and no blacklist between you
+        and the author of the story (`you cannot comment on this story`).
+        The author hears about it (`story_comment`). Limited as comments
+        are.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+              required: [text]
+              properties:
+                text: { type: string, minLength: 1, maxLength: 1000 }
+      responses:
+        "201":
+          description: The comment
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/StoryComment" }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: A blacklist stands between you and the author
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "429": { $ref: "#/components/responses/TooManyRequests" }
+
+  /api/v1/story-comments/{id}:
+    parameters:
+      - { name: id, in: path, required: true, schema: { type: string } }
+    delete:
+      summary: Delete a comment under a story
+      description: Its author or the author of the story.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Deleted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: Not yours to delete
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/stories/{id}/viewers:
@@ -4178,6 +4281,56 @@ paths:
               schema: { $ref: "#/components/schemas/Error" }
         "404": { $ref: "#/components/responses/NotFound" }
 
+  /api/v1/users/{nickname}/ban:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Block a page
+      description: 'Only for the administrators: openvk''s "Заблокировать пользователя", for a while or for good. The page shows others only the names, the photo and the reason; its owner can do nothing but read why, from their next refresh of the tokens (up to 15 minutes). An administrator cannot be blocked, nor block themselves (409). Blocking again replaces the block.'
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [reason]
+              additionalProperties: false
+              properties:
+                reason: { type: string, minLength: 1, maxLength: 255, description: '"Причина блокировки", which the owner and others read' }
+                until: { type: string, format: date-time, description: "When the block ends; absent or empty for good" }
+      responses:
+        "204": { description: Blocked }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+        "409":
+          description: The page is an administrator's, or yours
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+    delete:
+      summary: Lift the block of a page
+      description: Only for the administrators. Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Lifted }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
   /api/v1/clubs/{ref}/verification:
     parameters:
       - name: ref
@@ -6063,6 +6216,18 @@ components:
           schema: { $ref: "#/components/schemas/Error" }
 
   schemas:
+    Ban:
+      type: object
+      description: 'A block of a page by the administrators of the site'
+      required: [reason, bannedAt, until]
+      properties:
+        reason: { type: string, description: 'openvk''s "Комментарий модератора"' }
+        bannedAt: { type: string, format: date-time }
+        until:
+          description: When the block ends; null for good
+          oneOf:
+            - { type: string, format: date-time }
+            - { type: "null" }
     Session:
       type: object
       required: [id, createdAt, lastUsedAt, ip, userAgent, current]
@@ -6301,6 +6466,11 @@ components:
             verified:
               type: boolean
               description: The administrators confirmed your page (a checkmark by the name)
+            ban:
+              description: "The administrators blocked your page: then the token lets you only read your account (and sign out), everything else answers 403"
+              oneOf:
+                - { $ref: "#/components/schemas/Ban" }
+                - { type: "null" }
             unfilled:
               type: array
               items: { type: string, enum: [interests, email, telegram, status, city] }
@@ -6520,7 +6690,7 @@ components:
     Story:
       type: object
       description: A photo with a few words shown for a day
-      required: [id, photo, text, createdAt, expiresAt, viewed, views]
+      required: [id, photo, text, createdAt, expiresAt, viewed, views, liked, likes, comments]
       properties:
         id: { type: string, format: uuid }
         photo: { $ref: "#/components/schemas/Photo" }
@@ -6530,6 +6700,20 @@ components:
         viewed: { type: boolean, description: "You viewed it" }
         mine: { type: boolean, description: "You told it" }
         views: { type: integer, description: "Of yours: how many others viewed it; 0 otherwise" }
+        liked: { type: boolean, description: "You liked it" }
+        likes: { type: integer, description: "How many liked it, deleted pages aside" }
+        comments: { type: integer, description: "How many comments it has, deleted pages aside" }
+
+    StoryComment:
+      type: object
+      description: A few words under a story
+      required: [id, author, text, createdAt, mine]
+      properties:
+        id: { type: string, format: uuid }
+        author: { $ref: "#/components/schemas/Author" }
+        text: { type: string }
+        createdAt: { type: string, format: date-time }
+        mine: { type: boolean, description: "You wrote it" }
 
     StoryList:
       type: object
@@ -6790,8 +6974,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, note_comment, gift, votes, invite, verified, club_verified]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken)"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, note_comment, gift, votes, invite, verified, club_verified, story_like, story_comment]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken); story_like, story_comment: the actor liked or commented your story (until the like is taken back, the comment deleted or the story gone)"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:
@@ -7235,6 +7419,11 @@ components:
             verified:
               type: boolean
               description: "The administrators confirmed the page (\"Подтверждённая страница\"): a checkmark by the name, told on a hidden page too and never on a deleted one"
+            ban:
+              description: "The administrators blocked the page: only the names and the photo are left besides; null otherwise"
+              oneOf:
+                - { $ref: "#/components/schemas/Ban" }
+                - { type: "null" }
             infoHidden:
               type: boolean
               description: "The owner hid the information of the page from you (`infoRead`): only the names, the photo, the status and the pronouns are left"

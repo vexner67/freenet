@@ -117,14 +117,28 @@ const kindGift = "gift"
 // the notification says only who sent them.
 const kindVotes = "votes"
 
+// kindStoryLike and kindStoryComment name a story by PostID (and a comment
+// under it by CommentID): the notification says only who liked or
+// commented, the story is gone in a day and takes them along.
+const (
+	kindStoryLike    = "story_like"
+	kindStoryComment = "story_comment"
+)
+
+// namesStory tells whether PostID of a notification of kind is a story.
+func namesStory(kind string) bool {
+	return kind == kindStoryLike || kind == kindStoryComment
+}
+
 // namesPost tells whether PostID of a notification of kind is a post, and
 // namesComment whether its CommentID is a comment.
 func namesPost(kind string) bool {
-	return kind != kindSuggestedPost && kind != kindNoteComment && kind != kindGift && kind != kindVotes && !namesTopic(kind) && !namesPhoto(kind)
+	return kind != kindSuggestedPost && kind != kindNoteComment && kind != kindGift && kind != kindVotes &&
+		!namesTopic(kind) && !namesPhoto(kind) && !namesStory(kind)
 }
 
 func namesComment(kind string) bool {
-	return kind != kindNoteComment && !namesTopic(kind) && !namesPhoto(kind)
+	return kind != kindNoteComment && !namesTopic(kind) && !namesPhoto(kind) && !namesStory(kind)
 }
 
 // targets are what a page of notifications refers to, by ID; what was
@@ -429,6 +443,10 @@ func toNotificationJSON(n model.Notification, t targets) (notificationJSON, bool
 		item.Note = &notificationNoteJSON{ID: note.ID, Title: note.Title}
 		item.Comment = quoted(n, t)
 
+		return item, true
+	}
+
+	if namesStory(n.Kind) {
 		return item, true
 	}
 

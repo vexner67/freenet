@@ -264,6 +264,8 @@ type userResponse struct {
 	Admin bool  `json:"admin"`
 	// Verified: the page wears the checkmark of a confirmed one.
 	Verified bool `json:"verified"`
+	// Ban: the administrators blocked the page, null if they did not.
+	Ban *banJSON `json:"ban"`
 	// PinnedClubs are the clubs in the left menu ("Добавить в левое
 	// меню"); GET /me alone tells them.
 	PinnedClubs []clubJSON `json:"pinnedClubs,omitempty"`
@@ -325,6 +327,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 		Votes:        u.Votes,
 		Admin:        u.Admin,
 		Verified:     u.Verified,
+		Ban:          toBanJSON(u.Ban),
 		Interface: interfaceJSON{
 			AvatarStyle: u.Interface.AvatarStyle,
 			MainPage:    u.Interface.MainPage,
@@ -336,6 +339,22 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 			Timezone:    u.Interface.Timezone,
 		},
 	}
+}
+
+// banJSON is a block of a page: why (openvk's "Комментарий модератора"),
+// since when and until when (RFC 3339), null for good.
+type banJSON struct {
+	Reason   string  `json:"reason"`
+	BannedAt string  `json:"bannedAt"`
+	Until    *string `json:"until"`
+}
+
+func toBanJSON(b *model.Ban) *banJSON {
+	if b == nil {
+		return nil
+	}
+
+	return &banJSON{Reason: b.Reason, BannedAt: timeString(b.At), Until: optionalTime(b.Until)}
 }
 
 // timeString is "" for the zero time.
@@ -364,6 +383,9 @@ type publicProfileResponse struct {
 	// Verified: the administrators confirmed the page ("Подтверждённая
 	// страница"); never told of a deleted one.
 	Verified bool `json:"verified"`
+	// Ban: the administrators blocked the page, which tells only the names
+	// and the photo besides; null if they did not.
+	Ban *banJSON `json:"ban"`
 	// LastSeenAt is when the user last visited ("был в сети"), null if
 	// never, hidden or in a list; Online: just now ("Онлайн"), which a
 	// list tells too if the page is open to everyone.
@@ -394,6 +416,7 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 		PageHidden:  p.PageHidden,
 		Closed:      p.Closed,
 		Verified:    p.Verified,
+		Ban:         toBanJSON(p.Ban),
 		InfoHidden:  p.InfoHidden,
 		LastSeenAt:  optionalTime(p.LastSeen),
 		Online:      p.Online,

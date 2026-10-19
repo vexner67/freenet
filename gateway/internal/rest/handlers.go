@@ -122,7 +122,7 @@ func (a *api) getMe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := toUserResponse(u, partner)
-	if !u.Deactivated {
+	if !u.Deactivated && u.Ban == nil {
 		resp.PinnedClubs = toClubsJSON(<-pinned)
 	}
 

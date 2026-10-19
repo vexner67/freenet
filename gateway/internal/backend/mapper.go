@@ -190,6 +190,7 @@ func toUser(u *userv1.User) model.User {
 		Votes:            u.GetVotes(),
 		Admin:            u.GetAdmin(),
 		Verified:         u.GetVerified(),
+		Ban:              toBan(u.GetBan()),
 		Interface: model.Interface{
 			AvatarStyle: u.GetInterface().GetAvatarStyle(),
 			MainPage:    u.GetInterface().GetMainPage(),
@@ -263,4 +264,13 @@ func fromTimezoneOffset(ui *userv1.InterfaceSettings) *int {
 	minutes := int(ui.GetTimezoneOffset())
 
 	return &minutes
+}
+
+// toBan is nil for a page that is not blocked.
+func toBan(b *userv1.Ban) *model.Ban {
+	if b == nil {
+		return nil
+	}
+
+	return &model.Ban{Reason: b.GetReason(), At: fromTimestamp(b.GetBannedAt()), Until: fromTimestamp(b.GetUntil())}
 }

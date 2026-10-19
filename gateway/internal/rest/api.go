@@ -6,6 +6,7 @@ import (
 	"log/slog"
 	"net/http"
 	"sync"
+	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/vexner67/freenet/gateway/internal/model"
@@ -88,6 +89,10 @@ type Users interface {
 	// SetVerified gives userID the checkmark of a confirmed page or takes
 	// it; only an administrator of the site may.
 	SetVerified(ctx context.Context, accessToken, userID string, verified bool) error
+	// Ban blocks userID until a time, the zero time for good; Unban lifts
+	// the block. Only an administrator of the site may.
+	Ban(ctx context.Context, accessToken, userID, reason string, until time.Time) error
+	Unban(ctx context.Context, accessToken, userID string) error
 	// SetBackdrop shows photoID ("" for none) on a side of the caller's
 	// page, telling the photo it showed before.
 	SetBackdrop(ctx context.Context, accessToken, side, photoID string) (model.User, string, error)
@@ -148,7 +153,14 @@ type Stories interface {
 	// caller first, then those with a story not viewed yet.
 	Feed(ctx context.Context, accessToken string, hidden, ignored []string) ([]model.Story, error)
 	User(ctx context.Context, accessToken, userID string, hidden []string) ([]model.Story, error)
+	Get(ctx context.Context, accessToken, id string) (model.Story, error)
 	View(ctx context.Context, accessToken, id string) error
+	Like(ctx context.Context, accessToken, id string) error
+	Unlike(ctx context.Context, accessToken, id string) error
+	Comment(ctx context.Context, accessToken, id, text string) (model.StoryComment, error)
+	// Comments pages the comments of a story, the oldest first.
+	Comments(ctx context.Context, accessToken, id, cursor string, limit int) (model.StoryCommentPage, error)
+	DeleteComment(ctx context.Context, accessToken, id string) error
 	// Viewers are who viewed a story of the caller, the latest first.
 	Viewers(ctx context.Context, accessToken, id, cursor string, limit int) (model.LikerPage, error)
 	Delete(ctx context.Context, accessToken, id string) error
@@ -775,6 +787,11 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("PUT /api/v1/stories/{id}/view", a.viewStory)
 	mux.HandleFunc("GET /api/v1/stories/{id}/viewers", a.listStoryViewers)
 	mux.HandleFunc("DELETE /api/v1/stories/{id}", a.deleteStory)
+	mux.HandleFunc("PUT /api/v1/stories/{id}/like", a.likeStory)
+	mux.HandleFunc("DELETE /api/v1/stories/{id}/like", a.unlikeStory)
+	mux.HandleFunc("GET /api/v1/stories/{id}/comments", a.listStoryComments)
+	mux.HandleFunc("POST /api/v1/stories/{id}/comments", a.createStoryComment)
+	mux.HandleFunc("DELETE /api/v1/story-comments/{id}", a.deleteStoryComment)
 
 	mux.HandleFunc("GET /api/v1/stickers", a.stickerCatalog)
 	mux.HandleFunc("PUT /api/v1/me/stickers/{pack}", a.addStickerPack)
@@ -790,6 +807,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/vouchers/{id}", a.deleteVoucher)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/verification", a.verify)
+	mux.HandleFunc("PUT /api/v1/users/{nickname}/ban", a.ban)
+	mux.HandleFunc("DELETE /api/v1/users/{nickname}/ban", a.unban)
 	mux.HandleFunc("PUT /api/v1/clubs/{ref}/verification", a.verifyClub)
 	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/verification", a.verifyClub)
 
