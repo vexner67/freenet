@@ -1,7 +1,8 @@
 // "Мои Ответы", as on openvk: what others did with your posts and page,
 // with the tabs "Непрочитанное" and "Архив". Opening the unread tab reads
 // it: the notifications move to the archive and the menu counter clears.
-// While it is open, new ones appear at the top live (events.js).
+// While it is open, new ones appear at the top live (events.js). Opened
+// from the menu with nothing unread, the page shows the archive at once.
 
 import { photoPath } from './albums.js';
 import { api, currentUser, started } from './api.js';
@@ -13,8 +14,9 @@ import { topicPath } from './topics.js';
 
 const COMMENT_SNIPPET = 200;
 
-let box = new URLSearchParams(location.search).get('box') === 'archive' ? 'archive' : 'unread';
-const unreadTab = box === 'unread';
+const asked = new URLSearchParams(location.search).get('box');
+let box = asked === 'archive' ? 'archive' : 'unread';
+let unreadTab = box === 'unread';
 let cursor = '';
 // IDs of the notifications shown, so a live update repeats none.
 const shownIDs = new Set();
@@ -244,8 +246,22 @@ async function loadMore() {
   }
 }
 
-// The page is asked for with who is signed in, in one round trip.
+// The page is asked for with who is signed in, in one round trip; from
+// the menu (no tab named) the archive too, should nothing be unread.
 let first = started(api.notifications(box, ''));
+const archive = asked ? null : started(api.notifications('archive', ''));
+
+// toArchive turns the page to the archive when the menu opened it with
+// nothing unread: the tab "Непрочитанное" itself stays empty.
+async function toArchive() {
+  const page = await first.catch(() => null);
+  if (!archive || page?.notifications.length !== 0) return;
+
+  box = 'archive';
+  unreadTab = false;
+  first = archive;
+  history.replaceState(null, '', '/notifications?box=archive');
+}
 const me = await currentUser().catch(() => null);
 if (!me) {
   location.replace('/');
@@ -256,6 +272,7 @@ if (!me) {
     el('a', { href: profilePath(me), textContent: fullName(me) || 'Моя страница' }),
     ' » Уведомления',
   );
+  await toArchive();
   $(box === 'unread' ? 'tab-unread' : 'tab-archive').classList.add('active');
   $('more').addEventListener('click', loadMore);
 

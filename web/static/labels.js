@@ -852,13 +852,55 @@ export function stickerPackName(pack) {
   return pack.name || stickerPacks[pack.id] || 'Стикеры';
 }
 
-// stickerPackAction is the button of a pack in the "Магазин стикеров", as
-// openvk's: a pack once bought and put away comes back free.
+// stickerPackAction is the button of a pack in openvk's box "Информация о
+// наборе": a pack once bought and put away comes back free.
 export function stickerPackAction(pack) {
-  if (pack.added) return 'Набор добавлен';
-  if (pack.bought || !pack.price) return pack.bought ? 'Добавить' : 'Добавить бесплатно';
+  if (pack.added) return 'Приобретён';
+  if (pack.bought || !pack.price) return 'Добавить';
 
   return `Купить за ${votesCount(pack.price)}`;
+}
+
+// stickerPackPrice is the foot of a card of the shop, as openvk's: text
+// and its kind — "purchased" grey, "free" green, "paid" blue.
+export function stickerPackPrice(pack) {
+  if (pack.added) return { text: 'Приобретён', kind: 'purchased' };
+  if (pack.bought) return { text: 'Добавить', kind: 'free' };
+  if (pack.price) return { text: votesCount(pack.price), kind: 'paid' };
+
+  return { text: 'Бесплатно', kind: 'free' };
+}
+
+// STICKER_SECTIONS are the sections of openvk's shop.
+export const STICKER_SECTIONS = { popular: 'Популярные', free: 'Бесплатные', all: 'Все' };
+
+// shopPacks are the packs of a section of the shop, as openvk's: "Популярные"
+// — those with a price, "Бесплатные" — the free ones, both the most taken
+// first and then the newest, "Все" — all, the oldest first (those of the
+// site, then those of people, whose names are UUIDv7). query keeps those
+// whose name, description or author has it, in any case.
+export function shopPacks(packs, section, query = '') {
+  const q = query.trim().toLocaleLowerCase('ru');
+  const found = packs.filter((p) => !q || [stickerPackName(p), p.about ?? '', p.author ? `${p.author.name} ${p.author.surname}` : '']
+    .some((s) => s.toLocaleLowerCase('ru').includes(q)));
+  const site = (p) => (p.author || p.name ? 1 : 0);
+  const older = (a, b) => site(a) - site(b) || (site(a) ? a.id.localeCompare(b.id) : 0);
+
+  if (section === 'all') return [...found].sort(older);
+
+  return found
+    .filter((p) => (section === 'free' ? !p.price : p.price > 0))
+    .sort((a, b) => (b.holders ?? 0) - (a.holders ?? 0) || older(b, a));
+}
+
+// stickersCount is openvk's "stickers_count": "1 стикер", "5 стикеров";
+// installsCount is "stickers_installs_count": "2 установки".
+export function stickersCount(n) {
+  return `${n} ${plural(n, ['стикер', 'стикера', 'стикеров'])}`;
+}
+
+export function installsCount(n) {
+  return `${n} ${plural(n, ['установка', 'установки', 'установок'])}`;
 }
 
 // votesCount is openvk's "points_amount": "1 голос", "3 голоса", "0

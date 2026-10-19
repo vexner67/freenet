@@ -3,10 +3,11 @@
 // stories, a ring around those not viewed yet; a click opens them over
 // the whole screen, one after another, as VK plays them. Under each, in a
 // white panel like that of the photo viewer, are the heart of a post and
-// the comments with the form of the site's comments.
+// the comments, laid out as those under a post of a wall.
 
 import { api } from './api.js';
 import { storyAge, storyComments, storyViewers, storyViews } from './labels.js';
+import { commentNode } from './comments.js';
 import { autosize, avatarURL, el, fullName, pagePath, showError, verifiedMark } from './layout.js';
 import { openLikers } from './likers.js';
 import { button, openModal } from './modal.js';
@@ -17,6 +18,24 @@ const STORY_SHOWN = 6000;
 const MAX_TEXT = 200;
 const MAX_COMMENT = 1000;
 const COMMENTS_PAGE = 50;
+
+// asked are the first pages of the comments of stories, by story, asked
+// for as the story is shown: "Комментарии" then opens without waiting.
+const asked = new Map();
+
+function commentsOf(s) {
+  if (!asked.has(s.id)) {
+    const page = s.comments ? api.storyComments(s.id, '', COMMENTS_PAGE) : Promise.resolve({ comments: [], nextCursor: '' });
+    page.catch(() => asked.delete(s.id));
+    asked.set(s.id, page);
+  }
+  return asked.get(s.id);
+}
+
+// forget drops what was asked of a story whose comments changed.
+function forget(s) {
+  asked.delete(s.id);
+}
 
 // viewers is what the box of who viewed a story lists.
 const viewers = {
@@ -141,6 +160,7 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
     comments.hidden = true;
     comments.replaceChildren();
     renderFoot(s);
+    commentsOf(s).catch(() => {}); // Shown when asked: a failure shows then.
 
     photo.onload = photo.onerror = () => {
       ready = true;
@@ -186,35 +206,39 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
     }
 
     comments.hidden = false;
-    loadComments(s);
+    showComments(s);
   }
 
-  // loadComments fills the comments under the photo: the form of the
-  // site's comments first, as on a post, then the oldest first.
-  async function loadComments(s) {
-    const list = el('div', { className: 'story-comment-list' });
+  // showComments lays the comments out as under a post of a wall: the
+  // comments of the site, oldest first, "Показать ещё", and the field to
+  // answer in at the bottom. They were asked for with the story, so they
+  // open at once.
+  async function showComments(s) {
+    const list = el('div', { className: 'post-comments-list' });
     const more = el('a', { className: 'story-comments-more', textContent: 'Показать ещё', hidden: true });
     const error = el('div', { className: 'error', hidden: true });
-    const field = el('textarea', { maxLength: MAX_COMMENT, placeholder: 'Ваш комментарий...', ariaLabel: 'Ваш комментарий' });
+    const field = el('textarea', { className: 'post-comment-text', rows: 1, maxLength: MAX_COMMENT, placeholder: 'Комментировать...', ariaLabel: 'Ваш комментарий' });
     const send = el('button', { className: 'button', type: 'submit', textContent: 'Отправить' });
-    const form = el('form', { className: 'wall-form comment-form story-comment-form' }, field, el('div', { className: 'row' }, send));
+    const form = el('form', { className: 'post-comment-form' }, field, send);
+    const empty = el('p', { className: 'story-comments-empty', textContent: 'Комментариев пока нет.', hidden: true });
     let cursor = '';
 
-    async function page() {
+    const render = (page) => {
+      list.append(...page.comments.map((c) => commentOf(s, c)));
+      cursor = page.nextCursor;
+      more.hidden = !cursor;
+      empty.hidden = list.children.length > 0;
+    };
+
+    more.addEventListener('click', async () => {
+      more.hidden = true;
       try {
-        const got = await api.storyComments(s.id, cursor, COMMENTS_PAGE);
-        list.append(...got.comments.map((c) => commentNode(s, c)));
-        cursor = got.nextCursor;
-        more.hidden = !cursor;
-        if (!cursor && list.children.length === 0) {
-          list.append(el('p', { className: 'story-comments-empty', textContent: 'Комментариев пока нет.' }));
-        }
+        render(await api.storyComments(s.id, cursor, COMMENTS_PAGE));
       } catch (e) {
         showError(error, e);
+        more.hidden = false;
       }
-    }
-
-    more.addEventListener('click', page);
+    });
     form.addEventListener('submit', async (event) => {
       event.preventDefault();
       if (!field.value.trim()) return;
@@ -222,13 +246,14 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
       send.disabled = true;
       try {
         const c = await api.commentStory(s.id, field.value);
-        list.querySelector('.story-comments-empty')?.remove();
-        list.append(commentNode(s, c));
-        comments.scrollTop = comments.scrollHeight;
+        list.append(commentOf(s, c));
+        empty.hidden = true;
         field.value = '';
         autosize(field);
         s.comments++;
+        forget(s);
         renderFoot(s);
+        comments.scrollTop = comments.scrollHeight;
       } catch (e) {
         showError(error, e);
       } finally {
@@ -236,36 +261,35 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
       }
     });
 
-    comments.replaceChildren(form, error, list, more);
-    await page();
+    comments.replaceChildren(el('div', { className: 'post-comments story-comment-list' }, list, more, empty), error, form);
+
+    try {
+      const page = await commentsOf(s);
+      if (current() === s && !comments.hidden) render(page);
+    } catch (e) {
+      showError(error, e);
+    }
   }
 
-  function commentNode(s, c) {
-    const node = el('div', { className: 'story-comment' },
-      el('a', { className: 'story-comment-avatar', href: pagePath(c.author) }, el('img', { src: avatarURL(c.author, 'small'), alt: '' })),
-      el('div', { className: 'story-comment-body' },
-        el('a', { className: 'story-comment-author', href: pagePath(c.author) }, fullName(c.author), verifiedMark(c.author)),
-        el('div', { className: 'story-comment-text', textContent: c.text }),
-        el('span', { className: 'story-comment-date', textContent: storyAge(c.createdAt) })));
+  // commentOf is a comment of a story as one under a post: no heart, the
+  // date not a link; its author and the author of the story delete it.
+  function commentOf(s, c) {
+    const node = commentNode(c, {
+      withLike: false,
+      onDelete: (c.mine || s.mine) ? async (comment, drawn) => {
+        try {
+          await api.deleteStoryComment(comment.id);
+        } catch {
+          return; // Gone already, or not ours: it stays until the next look.
+        }
+        drawn.remove();
+        s.comments = Math.max(0, s.comments - 1);
+        forget(s);
+        renderFoot(s);
+      } : null,
+    });
 
-    // Its author and the author of the story delete it.
-    if (c.mine || s.mine) {
-      node.lastChild.append(' ', el('a', {
-        className: 'story-comment-delete',
-        textContent: 'Удалить',
-        onclick: async () => {
-          try {
-            await api.deleteStoryComment(c.id);
-          } catch {
-            return; // Gone already, or not ours: it stays until the next look.
-          }
-          node.remove();
-          s.comments = Math.max(0, s.comments - 1);
-          renderFoot(s);
-        },
-      }));
-    }
-
+    node.querySelector('.post-date')?.removeAttribute('href');
     return node;
   }
 

@@ -809,10 +809,10 @@ test('stickers are named and pictured as the catalogue of the user service has t
   assert.equal(errorText({ message: 'the sticker pack is taken by others' }), 'Набор уже установили другие: удалить его или его стикеры нельзя.');
 
   // The button of openvk's shop: a pack once bought comes back free.
-  assert.equal(stickerPackAction({ price: 0 }), 'Добавить бесплатно');
+  assert.equal(stickerPackAction({ price: 0 }), 'Добавить');
   assert.equal(stickerPackAction({ price: 2 }), 'Купить за 2 голоса');
   assert.equal(stickerPackAction({ price: 4, bought: true }), 'Добавить');
-  assert.equal(stickerPackAction({ price: 4, bought: true, added: true }), 'Набор добавлен');
+  assert.equal(stickerPackAction({ price: 4, bought: true, added: true }), 'Приобретён');
 
   assert.equal(messagePreview({ sticker: 'cat_hi', text: '' }), 'Стикер');
   assert.equal(errorText({ message: 'you do not have this sticker' }), 'Набор с этим стикером не добавлен.');
@@ -975,4 +975,40 @@ test('rubles and the rate of a vote', () => {
   assert.equal(rubles(125000), '1 250 ₽');
   assert.equal(rubles(100_000_000), '1 000 000 ₽');
   assert.equal(voteRate(700), '1 голос = 7 ₽');
+});
+
+test('stickerPackPrice: the foot of a card of the shop', async () => {
+  const { stickerPackPrice } = await import('../static/labels.js');
+  assert.deepEqual(stickerPackPrice({ price: 0 }), { text: 'Бесплатно', kind: 'free' });
+  assert.deepEqual(stickerPackPrice({ price: 5 }), { text: '5 голосов', kind: 'paid' });
+  assert.deepEqual(stickerPackPrice({ price: 5, bought: true }), { text: 'Добавить', kind: 'free' });
+  assert.deepEqual(stickerPackPrice({ price: 5, bought: true, added: true }), { text: 'Приобретён', kind: 'purchased' });
+});
+
+test('shopPacks: the sections of the shop and its search', async () => {
+  const { shopPacks } = await import('../static/labels.js');
+  const packs = [
+    { id: 'smiles', price: 0, holders: 1 },
+    { id: 'cats', price: 2, holders: 5 },
+    { id: 'bears', price: 4, holders: 5 },
+    { id: '0198', name: 'Мой кот', price: 3, holders: 9, author: { name: 'Анна', surname: 'Иванова' } },
+    { id: '0199', name: 'Собаки', about: 'гав', price: 0 },
+  ];
+  const ids = (list) => list.map((p) => p.id);
+
+  assert.deepEqual(ids(shopPacks(packs, 'popular')), ['0198', 'cats', 'bears']);
+  assert.deepEqual(ids(shopPacks(packs, 'free')), ['smiles', '0199']);
+  assert.deepEqual(ids(shopPacks(packs, 'all')), ['smiles', 'cats', 'bears', '0198', '0199']);
+  assert.deepEqual(ids(shopPacks(packs, 'all', 'КОТ')), ['cats', '0198']);
+  assert.deepEqual(ids(shopPacks(packs, 'all', 'анна')), ['0198']);
+  assert.deepEqual(ids(shopPacks(packs, 'free', 'гав')), ['0199']);
+});
+
+test('stickersCount and installsCount', async () => {
+  const { stickersCount, installsCount } = await import('../static/labels.js');
+  assert.equal(stickersCount(1), '1 стикер');
+  assert.equal(stickersCount(3), '3 стикера');
+  assert.equal(stickersCount(8), '8 стикеров');
+  assert.equal(installsCount(0), '0 установок');
+  assert.equal(installsCount(21), '21 установка');
 });
