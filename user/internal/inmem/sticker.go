@@ -97,6 +97,21 @@ func (r *StickerRepository) holders(pack user.StickerPackID) []uuid.UUID {
 	return ids
 }
 
+// taken are those who have taken each pack.
+func (r *StickerRepository) taken() map[user.StickerPackID][]uuid.UUID {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+
+	taken := make(map[user.StickerPackID][]uuid.UUID)
+	for userID, owned := range r.packs {
+		for _, o := range owned {
+			taken[o.Pack] = append(taken[o.Pack], userID)
+		}
+	}
+
+	return taken
+}
+
 // drop takes the pack away from everyone, as its row in the table goes.
 func (r *StickerRepository) drop(pack user.StickerPackID) {
 	r.mu.Lock()
