@@ -219,7 +219,7 @@ func (a *api) createPhotoComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, toPhotoCommentJSON(c, authorOf(me.ID, me.AvatarID, me.Profile)))
+	writeJSON(w, http.StatusCreated, toPhotoCommentJSON(c, meAuthor(me)))
 }
 
 func (a *api) deletePhotoComment(w http.ResponseWriter, r *http.Request) {

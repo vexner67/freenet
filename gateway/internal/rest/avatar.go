@@ -134,7 +134,8 @@ func (a *api) serveAvatar(w http.ResponseWriter, r *http.Request) {
 
 // searchUsers finds people by name, surname or nickname: GET
 // /api/v1/users?q=, also by the filters openvk's page links to: hometown,
-// city, film, show and book.
+// city, film, show and book, and verified=true: only the pages with the
+// checkmark.
 func (a *api) searchUsers(w http.ResponseWriter, r *http.Request) {
 	limit, err := pageLimit(r)
 	if err != nil {
@@ -147,6 +148,7 @@ func (a *api) searchUsers(w http.ResponseWriter, r *http.Request) {
 	page, err := a.users.Search(r.Context(), model.UserQuery{
 		Text: query.Get("q"), Hometown: query.Get("hometown"), City: query.Get("city"),
 		Film: query.Get("film"), Show: query.Get("show"), Book: query.Get("book"),
+		Verified: query.Get("verified") == "true",
 	}, query.Get("cursor"), limit)
 	if err != nil {
 		a.writeError(w, r, err)

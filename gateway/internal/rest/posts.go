@@ -47,6 +47,8 @@ type authorJSON struct {
 	Address string `json:"address,omitempty"`
 	// Online: on the site now ("Онлайн"), if their page tells everyone.
 	Online bool `json:"online,omitempty"`
+	// Verified: the page is confirmed by the administrators (a checkmark).
+	Verified bool `json:"verified,omitempty"`
 }
 
 type postResponse struct {
@@ -195,6 +197,15 @@ func authorOfProfile(p model.PublicProfile) model.Author {
 	a := authorOf(p.ID, p.AvatarID, p.Profile)
 	a.Deactivated = p.Deactivated
 	a.Online = p.Online
+	a.Verified = p.Verified
+
+	return a
+}
+
+// meAuthor is the caller as the author of what they just wrote.
+func meAuthor(me model.User) model.Author {
+	a := authorOf(me.ID, me.AvatarID, me.Profile)
+	a.Verified = me.Verified
 
 	return a
 }
@@ -216,6 +227,7 @@ func toAuthorJSON(a model.Author) authorJSON {
 		Club:        a.Club,
 		Address:     a.Address,
 		Online:      a.Online,
+		Verified:    a.Verified,
 	}
 }
 
@@ -745,7 +757,7 @@ func (a *api) writePost(w http.ResponseWriter, r *http.Request, nickname string)
 		return
 	}
 
-	author := authorOf(me.ID, me.AvatarID, me.Profile)
+	author := meAuthor(me)
 
 	wall, err := a.wallFor(r, token, me.ID, nickname)
 	if err != nil {
@@ -835,7 +847,7 @@ func (a *api) wallFor(r *http.Request, token, myID, nickname string) (model.Auth
 		return model.Author{}, failure.New(failure.PermissionDenied, "you cannot post on this wall")
 	}
 
-	return authorOf(owner.ID, owner.AvatarID, owner.Profile), nil
+	return authorOfProfile(owner), nil
 }
 
 // repostPost shares a post on the caller's wall, as openvk's "Поделиться",

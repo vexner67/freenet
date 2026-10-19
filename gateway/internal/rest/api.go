@@ -82,8 +82,12 @@ type Users interface {
 	UpdateInterface(ctx context.Context, accessToken string, ui model.Interface) (model.User, error)
 	// MarkOnline: the caller is on the site now.
 	MarkOnline(ctx context.Context, accessToken string) error
-	// Statistics counts the people of the site and those on it now.
-	Statistics(ctx context.Context) (users, online int, err error)
+	// Statistics counts the people of the site, those on it now and
+	// those with the checkmark.
+	Statistics(ctx context.Context) (model.People, error)
+	// SetVerified gives userID the checkmark of a confirmed page or takes
+	// it; only an administrator of the site may.
+	SetVerified(ctx context.Context, accessToken, userID string, verified bool) error
 	// SetBackdrop shows photoID ("" for none) on a side of the caller's
 	// page, telling the photo it showed before.
 	SetBackdrop(ctx context.Context, accessToken, side, photoID string) (model.User, string, error)
@@ -777,6 +781,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/vouchers", a.listVouchers)
 	mux.HandleFunc("POST /api/v1/vouchers", a.createVoucher)
 	mux.HandleFunc("DELETE /api/v1/vouchers/{id}", a.deleteVoucher)
+	mux.HandleFunc("PUT /api/v1/users/{nickname}/verification", a.verify)
+	mux.HandleFunc("DELETE /api/v1/users/{nickname}/verification", a.verify)
 
 	mux.HandleFunc("GET /api/v1/users/{nickname}/notes", a.listUserNotes)
 	mux.HandleFunc("POST /api/v1/me/notes", a.createNote)

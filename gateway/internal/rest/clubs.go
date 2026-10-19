@@ -1069,7 +1069,7 @@ func (a *api) createClubPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	p.Author, p.Wall = authorOf(me.ID, me.AvatarID, me.Profile), clubAuthor(c.Club)
+	p.Author, p.Wall = meAuthor(me), clubAuthor(c.Club)
 
 	resp, err := a.asked(r, p)
 	if err != nil {

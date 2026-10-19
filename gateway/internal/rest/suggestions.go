@@ -99,7 +99,7 @@ func (a *api) suggestClubPost(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, toSuggestionJSON(s, authorOf(me.ID, me.AvatarID, me.Profile)))
+	writeJSON(w, http.StatusCreated, toSuggestionJSON(s, meAuthor(me)))
 }
 
 // listClubSuggestions are openvk's "Предложенные записи" of a club, for

@@ -435,14 +435,26 @@ func (u *Users) ListCommonFollowing(ctx context.Context, accessToken, userID, cu
 	return toUserPage(resp), nil
 }
 
-// Statistics counts the people of the site and those on it now.
-func (u *Users) Statistics(ctx context.Context) (int, int, error) {
+// Statistics counts the people of the site, those on it now and those
+// with the checkmark.
+func (u *Users) Statistics(ctx context.Context) (model.People, error) {
 	resp, err := u.api.GetStatistics(ctx, &userv1.GetStatisticsRequest{})
 	if err != nil {
-		return 0, 0, errs.Wrap("u.api.GetStatistics", fromStatus(err))
+		return model.People{}, errs.Wrap("u.api.GetStatistics", fromStatus(err))
 	}
 
-	return int(resp.GetUsers()), int(resp.GetOnline()), nil
+	return model.People{
+		Users:    int(resp.GetUsers()),
+		Online:   int(resp.GetOnline()),
+		Verified: int(resp.GetVerified()),
+	}, nil
+}
+
+// SetVerified gives userID the checkmark of a confirmed page or takes it.
+func (u *Users) SetVerified(ctx context.Context, accessToken, userID string, verified bool) error {
+	_, err := u.api.SetVerified(withToken(ctx, accessToken), &userv1.SetVerifiedRequest{UserId: userID, Verified: verified})
+
+	return errs.Wrap("u.api.SetVerified", fromStatus(err))
 }
 
 // MarkOnline tells that the caller is on the site now ("Онлайн").
@@ -494,6 +506,7 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		PageHidden:      p.GetPageHidden(),
 		Closed:          p.GetClosed(),
 		InfoHidden:      p.GetInfoHidden(),
+		Verified:        p.GetVerified(),
 		LastSeen:        fromTimestamp(p.GetLastSeenAt()),
 		Online:          p.GetOnline(),
 		Backdrop:        model.Backdrop{Left: p.GetBackdropLeft(), Right: p.GetBackdropRight()},
@@ -559,6 +572,7 @@ func (u *Users) Search(ctx context.Context, q model.UserQuery, cursor string, li
 		Film:     q.Film,
 		Show:     q.Show,
 		Book:     q.Book,
+		Verified: q.Verified,
 		Cursor:   cursor,
 		Limit:    int32(min(max(limit, 0), 1<<10)), //nolint:gosec // clamped above
 	})

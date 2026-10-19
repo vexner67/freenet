@@ -207,7 +207,7 @@ func (a *api) createComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shown := authorOf(me.ID, me.AvatarID, me.Profile)
+	shown := meAuthor(me)
 	if req.FromClub {
 		if shown, err = a.speakForWall(r, token, p); err != nil {
 			a.writeError(w, r, err)
@@ -235,7 +235,7 @@ func (a *api) createComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	c.Author = authorOf(me.ID, me.AvatarID, me.Profile)
+	c.Author = meAuthor(me)
 
 	writeJSON(w, http.StatusCreated, toCommentResponse(c, shown))
 }

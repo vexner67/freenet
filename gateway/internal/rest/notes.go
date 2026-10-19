@@ -345,7 +345,7 @@ func (a *api) createNoteComment(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, toNoteCommentJSON(c, authorOf(me.ID, me.AvatarID, me.Profile)))
+	writeJSON(w, http.StatusCreated, toNoteCommentJSON(c, meAuthor(me)))
 }
 
 // deleteNoteComment: its author or the author of the note, which the
