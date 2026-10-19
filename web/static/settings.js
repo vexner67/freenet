@@ -5,11 +5,11 @@
 // (?act=interface: the style, the photos and the posts, the clock, where
 // the site opens and what the left menu shows); "Чёрный список" is a page of its own.
 // "Голоса" (?act=finance: the balance and "передать голоса";
-// ?act=finance.top-up: "Есть ваучер?") and, for the administrators of the
-// site, "Ваучеры" (?act=vouchers: the vouchers and the form that makes one).
+// ?act=finance.top-up: "Есть ваучер?"). The vouchers themselves are made in
+// "Админ-панель" (admin.js); ?act=vouchers, where they were, leads there.
 
 import { api, currentUser } from './api.js';
-import { deviceName, formatDateTime, keyStateText, sessionsCount, plural, votesCount, voucherCode, voucherGave, voucherStatus, voucherUsages, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
+import { deviceName, formatDateTime, keyStateText, sessionsCount, plural, votesCount, voucherGave, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
 import { $, applyInterface, deviceTheme, el, fullName, pagePath, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
@@ -19,7 +19,7 @@ import { ensureKey, exportKeys, forgetKeys, hasKeys, importKeys, KEY_READY, newC
 const error = $('error');
 const tabs = {
   security: initSecurity, privacy: initPrivacy, interface: initInterface,
-  finance: initFinance, 'finance.top-up': initTopUp, vouchers: initVouchers,
+  finance: initFinance, 'finance.top-up': initTopUp,
 };
 const asked = new URLSearchParams(location.search).get('act');
 
@@ -443,105 +443,19 @@ function initTopUp(me) {
   keys[0].focus();
 }
 
-// initVouchers is the administrators' "Ваучеры": every voucher with what
-// it gives and how it is used, and the form that makes one.
-function initVouchers() {
-  let cursor = '';
-
-  function row(voucher) {
-    const tr = el('tr', {},
-      el('td', { className: 'voucher-code', textContent: voucherCode(voucher.code) }),
-      el('td', { textContent: voucher.votes }),
-      el('td', { textContent: voucher.rating }),
-      el('td', { textContent: voucherUsages(voucher.usagesLeft) }),
-      el('td', { textContent: voucher.activations }),
-      el('td', { textContent: voucherStatus(voucher) }),
-      el('td', {}, el('a', { textContent: 'Удалить', onclick: () => remove(voucher, tr) })),
-    );
-
-    return tr;
-  }
-
-  function showEmpty() {
-    const none = !$('voucher-rows').children.length;
-    $('voucher-table').hidden = none;
-    $('no-vouchers').hidden = !none;
-  }
-
-  async function remove(voucher, tr) {
-    hideError(error);
-    $('notice').hidden = true;
-
-    try {
-      await api.deleteVoucher(voucher.id);
-      tr.remove();
-      showEmpty();
-    } catch (e) {
-      showError(error, e);
-    }
-  }
-
-  async function more() {
-    hideError(error);
-
-    try {
-      const page = await api.vouchers(cursor);
-
-      $('voucher-rows').append(...page.vouchers.map(row));
-      cursor = page.nextCursor;
-      $('more-vouchers').hidden = !cursor;
-      showEmpty();
-    } catch (e) {
-      showError(error, e);
-    }
-  }
-
-  $('more-vouchers').addEventListener('click', more);
-
-  $('voucher-create').addEventListener('submit', async (event) => {
-    event.preventDefault();
-    hideError(error);
-    $('notice').hidden = true;
-
-    const submit = $('voucher-create').querySelector('button[type="submit"]');
-    submit.disabled = true;
-
-    try {
-      const voucher = await api.createVoucher({
-        code: $('voucher-code').value.trim(),
-        votes: Number($('voucher-votes').value),
-        rating: Number($('voucher-rating').value),
-        usages: Number($('voucher-usages').value),
-      });
-
-      $('voucher-rows').prepend(row(voucher));
-      showEmpty();
-      $('voucher-code').value = '';
-      say('Ваучер создан', 'Серийный номер: ', el('b', { className: 'voucher-code', textContent: voucherCode(voucher.code) }));
-    } catch (e) {
-      showError(error, e);
-    } finally {
-      submit.disabled = false;
-    }
-  });
-
-  more();
-}
-
 const me = await currentUser().catch(() => null);
-if (!me) {
+if (asked === 'vouchers') {
+  location.replace(me?.admin ? '/admin/vouchers' : '/settings');
+} else if (!me) {
   location.replace('/');
 } else if (!me.profileCompleted) {
   // Without a page there is nothing to set up yet: fill it in first.
   location.replace('/edit');
 } else {
-  // "Ваучеры" is for those who make them; ?act=finance.top-up is a page
-  // of the tab "Голоса".
-  const known = Object.hasOwn(tabs, asked) && (asked !== 'vouchers' || me.admin);
-  const act = known ? asked : 'main';
+  // ?act=finance.top-up is a page of the tab "Голоса".
+  const act = Object.hasOwn(tabs, asked) ? asked : 'main';
 
   renderChrome(me);
-  $('tab-vouchers').hidden = !me.admin;
   $('tab-' + act.split('.')[0]).classList.add('active');
   $(act.replaceAll('.', '-')).hidden = false;
   (tabs[act] ?? initMain)(me);

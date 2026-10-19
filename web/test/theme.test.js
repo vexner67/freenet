@@ -6,10 +6,11 @@ import vm from 'node:vm';
 const source = readFileSync(new URL('../static/theme.js', import.meta.url), 'utf8');
 
 // run runs theme.js in a document whose storage holds items: what it
-// writes, the classes of the page and what it leaves for later.
-function run(items, broken = false) {
+// writes, the classes of the page and what it leaves for later. The page
+// starts with the classes given; dark is what the system prefers.
+function run(items, broken = false, { start = [], dark = false } = {}) {
   const out = [];
-  const classes = new Set();
+  const classes = new Set(start);
   const later = [];
 
   vm.runInNewContext(source, {
@@ -23,9 +24,17 @@ function run(items, broken = false) {
     },
     Object,
     setTimeout: (fn, ms) => later.push({ fn, ms }),
+    matchMedia: () => ({ matches: dark }),
     document: {
       write: (html) => out.push(html),
-      documentElement: { classList: { add: (c) => classes.add(c), remove: (c) => classes.delete(c) } },
+      documentElement: {
+        classList: {
+          add: (c) => classes.add(c),
+          remove: (c) => classes.delete(c),
+          contains: (c) => classes.has(c),
+          toggle: (c, on) => (on ? classes.add(c) : classes.delete(c), on),
+        },
+      },
     },
   });
 
@@ -67,6 +76,21 @@ test('nothing is written for the default theme, an unknown one or broken storage
   assert.equal(written({ 'freenet.theme': 'dark' }, true), '');
 });
 
+test('the admin panel wears its own dark mode and no theme of the site', () => {
+  const admin = (items, options) => run(items, false, { start: ['aui'], ...options });
+
+  let page = admin({ 'freenet.theme': 'dark' });
+  assert.equal(page.html, '');
+  assert.ok(!page.classes.has('aui-theme-dark'));
+
+  assert.ok(admin({}, { dark: true }).classes.has('aui-theme-dark'), 'it follows the system at first');
+  assert.ok(!admin({ 'freenet.admintheme': 'light' }, { dark: true }).classes.has('aui-theme-dark'));
+
+  page = admin({ 'freenet.admintheme': 'dark', 'freenet.adminsidebar': 'folded' });
+  assert.ok(page.classes.has('aui-theme-dark') && page.classes.has('aui-collapsed'));
+  assert.ok(!admin({ 'freenet.adminsidebar': 'open' }).classes.has('aui-collapsed'));
+});
+
 test('every page runs the script right after style.css, before its modules', () => {
   const dir = new URL('../', import.meta.url);
   const pages = readdirSync(dir).filter((name) => name.endsWith('.html'));
@@ -75,6 +99,12 @@ test('every page runs the script right after style.css, before its modules', () 
 
   for (const name of pages) {
     const html = readFileSync(new URL(name, dir), 'utf8');
+
+    // The admin panel has a stylesheet of its own instead.
+    if (name === 'admin.html') {
+      assert.match(html, /<script src="\/static\/theme\.js"><\/script>\n\s*<link rel="stylesheet" href="\/static\/admin\.css">\n\s*<script type="module"/);
+      continue;
+    }
 
     assert.match(
       html,

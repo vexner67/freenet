@@ -1,0 +1,133 @@
+<!doctype html>
+<html lang="ru" class="aui">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Админ-панель | Freenet</title>
+  <meta name="robots" content="noindex">
+  <link rel="icon" href="/static/favicon.png" sizes="32x32">
+  <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
+  <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
+  <link rel="manifest" href="/static/manifest.json">
+  <meta name="theme-color" content="#0747a6">
+  <script src="/static/theme.js"></script>
+  <link rel="stylesheet" href="/static/admin.css">
+  <script type="module" src="/static/admin.js"></script>
+</head>
+<body>
+<header class="aui-header">
+  <a class="aui-header-logo" href="/">Freenet</a>
+  <button class="aui-toggle" id="switch-theme" type="button" role="switch" aria-checked="false" title="Тёмная тема"><span class="aui-toggle-knob"></span></button>
+</header>
+
+<div class="aui-content">
+  <nav class="aui-sidebar" id="sidebar" aria-label="Админ-панель">
+    <div class="aui-sidebar-body">
+      <div class="aui-sidebar-group">
+        <div class="aui-nav-heading">Обзор</div>
+        <a class="aui-nav-item" href="/admin" title="Сводка"><span class="aui-icon aui-icon-dashboard"></span><span class="aui-nav-item-label">Сводка</span></a>
+      </div>
+      <div class="aui-sidebar-group">
+        <div class="aui-nav-heading">Платные услуги</div>
+        <a class="aui-nav-item" href="/admin/vouchers" title="Ваучеры"><span class="aui-icon aui-icon-card"></span><span class="aui-nav-item-label">Ваучеры</span></a>
+      </div>
+      <div class="aui-sidebar-group">
+        <div class="aui-nav-heading">О Freenet</div>
+        <a class="aui-nav-item" href="/about" title="О сайте"><span class="aui-icon aui-icon-info"></span><span class="aui-nav-item-label">О сайте</span></a>
+        <a class="aui-nav-item" href="/terms" title="Правила"><span class="aui-icon aui-icon-rules"></span><span class="aui-nav-item-label">Правила</span></a>
+      </div>
+    </div>
+    <div class="aui-sidebar-footer">
+      <button class="aui-button aui-button-subtle" id="sidebar-toggle" type="button" title="Свернуть боковую панель"><span class="aui-icon aui-icon-collapse"></span></button>
+    </div>
+  </nav>
+
+  <main class="aui-page-panel" id="main">
+    <div class="aui-message aui-message-error" id="error" hidden></div>
+
+    <section id="summary" hidden>
+      <h1 class="aui-page-heading">Сводка</h1>
+      <hr>
+      <h1>Люди</h1>
+      <div class="admin-cards">
+        <div class="admin-card">
+          <div class="admin-card-digit" id="count-users"></div>
+          <div id="users-words"></div>
+          <ul>
+            <li class="admin-online"><b id="count-online"></b> <span id="online-words"></span></li>
+          </ul>
+        </div>
+      </div>
+      <h1>Контент</h1>
+      <div class="admin-cards">
+        <div class="admin-card admin-card-centered">
+          <div class="admin-card-digit" id="count-clubs"></div>
+          <div id="clubs-words"></div>
+        </div>
+        <div class="admin-card admin-card-centered">
+          <div class="admin-card-digit" id="count-posts"></div>
+          <div id="posts-words"></div>
+        </div>
+      </div>
+    </section>
+
+    <section id="vouchers" hidden>
+      <div class="aui-page-header">
+        <a class="aui-button aui-button-primary" href="/admin/vouchers/new">Создать</a>
+        <h1 class="aui-page-heading">Ваучеры</h1>
+      </div>
+      <div class="aui-table-wrap" id="voucher-table" hidden>
+        <table class="aui">
+          <thead>
+            <tr>
+              <th>Серийный номер</th>
+              <th>Голоса</th>
+              <th>Рейтинг</th>
+              <th>Осталось использований</th>
+              <th>Воспользовавшиеся</th>
+              <th>Состояние</th>
+              <th>Действия</th>
+            </tr>
+          </thead>
+          <tbody id="voucher-rows"></tbody>
+        </table>
+      </div>
+      <p class="aui-empty" id="no-vouchers" hidden>Ваучеров пока нет.</p>
+      <div class="aui-pager"><button class="aui-button" id="more-vouchers" type="button" hidden>Показать ещё</button></div>
+    </section>
+
+    <section id="voucher-new" hidden>
+      <h1 class="aui-page-heading">Создание ваучера</h1>
+      <div class="aui-message aui-message-success" id="created" hidden>
+        <p class="title">Ваучер создан</p>
+        <p>Серийный номер: <b class="admin-code" id="created-code"></b></p>
+      </div>
+      <form class="aui" id="voucher-create">
+        <div class="field-group">
+          <label for="voucher-code">Серийный номер</label>
+          <input class="text" type="text" id="voucher-code" maxlength="27" autocomplete="off" spellcheck="false">
+          <div class="description">Номер состоит из 24 символов. Если поле не заполнено, будет назначен автоматически.</div>
+        </div>
+        <div class="field-group">
+          <label for="voucher-votes">Количество голосов</label>
+          <input class="text" type="number" id="voucher-votes" min="0" max="1000000" value="0" required>
+        </div>
+        <div class="field-group">
+          <label for="voucher-rating">Количество рейтинга</label>
+          <input class="text" type="number" id="voucher-rating" min="0" max="1000" value="0" required>
+        </div>
+        <div class="field-group">
+          <label for="voucher-usages">Количество использований</label>
+          <input class="text" type="number" id="voucher-usages" min="-1" max="1000000" value="1" required>
+          <div class="description">Количество аккаунтов, которые могут использовать ваучер. Если написать -1, будет бесконечность.</div>
+        </div>
+        <div class="buttons-container">
+          <button class="aui-button aui-button-primary" type="submit">Сохранить</button>
+          <a class="aui-button aui-button-link" href="/admin/vouchers">Отмена</a>
+        </div>
+      </form>
+    </section>
+  </main>
+</div>
+</body>
+</html>

@@ -40,3 +40,21 @@ test('the dark theme gives every variable of the palette', () => {
   assert.deepEqual([...plain.keys()].filter((name) => !dark.has(name)), [], 'a colour the dark theme leaves light');
   assert.deepEqual([...dark.keys()].filter((name) => !plain.has(name)), [], 'a variable the stylesheet does not have');
 });
+
+// The admin panel has its own palette: AUI's, light under .aui and dark
+// under .aui.aui-theme-dark.
+test('the admin panel writes colours only in its two palettes', () => {
+  const css = read('admin.css');
+  const block = (selector) => new RegExp(`^${selector}\\s*\\{([^}]*)\\}`, 'm').exec(css)?.[1] ?? '';
+  const names = (body) => [...body.matchAll(/(--aui-[\w-]+)\s*:/g)].map((m) => m[1]);
+  const light = block('\\.aui');
+  const dark = block('\\.aui\\.aui-theme-dark');
+
+  const rules = css.replace(/^\.aui(\.aui-theme-dark)?\s*\{[^}]*\}/gm, '');
+  assert.deepEqual(rules.match(/#[0-9a-f]{3,8}\b|(?<![-\w])(?:white|black|gr[ae]y|red|silver)(?![-\w(])/gi) ?? [], []);
+  assert.deepEqual(names(dark), names(light), 'the dark palette gives every colour of the light one');
+
+  const used = new Set([...rules.matchAll(/var\((--aui-[\w-]+)\)/g)].map((m) => m[1]));
+  assert.deepEqual([...used].filter((name) => !names(light).includes(name)), []);
+  assert.deepEqual(names(light).filter((name) => !used.has(name)), [], 'a colour nothing uses');
+});

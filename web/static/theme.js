@@ -18,6 +18,24 @@
 })();
 
 (() => {
+  const root = document.documentElement;
+  // "Админ-панель" (admin.html) wears none of the themes: it has AUI's
+  // dark mode of its own, as openvk's, and its sidebar may be folded.
+  if (root.classList.contains('aui')) {
+    let dark = null;
+    let folded = false;
+    try {
+      dark = localStorage.getItem('freenet.admintheme');
+      folded = localStorage.getItem('freenet.adminsidebar') === 'folded';
+    } catch {
+      // Without storage the panel follows the system.
+    }
+    if (dark === null) dark = matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    root.classList.toggle('aui-theme-dark', dark === 'dark');
+    root.classList.toggle('aui-collapsed', folded);
+    return;
+  }
+
   const themes = {
     blue: '/static/themes/blue.css',
     dark: '/static/themes/dark.css',
