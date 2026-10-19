@@ -61,6 +61,24 @@ func (o *Outbox) Invited(ctx context.Context, inviteeID, inviterID uuid.UUID) er
 	}})
 }
 
+func (o *Outbox) Verified(ctx context.Context, adminID, userID uuid.UUID) error {
+	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: verifiedEvent(adminID, userID)})
+}
+
+func (o *Outbox) Unverified(ctx context.Context, adminID, userID uuid.UUID) error {
+	return o.add(ctx, kindRetract, &notificationv1.RetractRequest{Event: verifiedEvent(adminID, userID)})
+}
+
+// verifiedEvent is from the administrator who gave the checkmark; the one
+// taken back goes whoever gave it.
+func verifiedEvent(adminID, userID uuid.UUID) *notificationv1.Event {
+	return &notificationv1.Event{
+		Kind:        notificationv1.Kind_KIND_VERIFIED,
+		RecipientId: userID.String(),
+		ActorId:     adminID.String(),
+	}
+}
+
 func (o *Outbox) GiftSent(ctx context.Context, giftID, senderID, recipientID uuid.UUID) error {
 	return o.add(ctx, kindNotify, &notificationv1.NotifyRequest{Event: giftEvent(giftID, senderID, recipientID)})
 }
@@ -169,3 +187,6 @@ func (Nop) GiftSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error    {
 func (Nop) GiftDeleted(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
 
 func (Nop) VotesSent(context.Context, uuid.UUID, uuid.UUID, uuid.UUID) error { return nil }
+
+func (Nop) Verified(context.Context, uuid.UUID, uuid.UUID) error   { return nil }
+func (Nop) Unverified(context.Context, uuid.UUID, uuid.UUID) error { return nil }

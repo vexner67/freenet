@@ -1,6 +1,7 @@
 package grpc_test
 
 import (
+	"slices"
 	"testing"
 
 	"github.com/google/uuid"
@@ -39,6 +40,12 @@ func TestSetVerified(t *testing.T) {
 	found, err := s.client.SearchUsers(admin, &userv1.SearchUsersRequest{Verified: true})
 	if err != nil || len(found.GetUsers()) != 1 || found.GetUsers()[0].GetId() != annID || !found.GetUsers()[0].GetVerified() {
 		t.Fatalf("SearchUsers = %v, %v", found, err)
+	}
+
+	// A mention of ann shows the checkmark too.
+	known, err := s.client.FindNicknames(ann, &userv1.FindNicknamesRequest{Nicknames: []string{"ANN", "admin_page"}})
+	if err != nil || !slices.Equal(known.GetVerified(), []string{"ann"}) {
+		t.Fatalf("FindNicknames = %v, %v", known, err)
 	}
 
 	if stats, err := s.client.GetStatistics(admin, &userv1.GetStatisticsRequest{}); err != nil || stats.GetVerified() != 1 {

@@ -118,7 +118,7 @@ func TestUserRepository(t *testing.T) {
 		// Which nicknames are someone's, whatever the case, as written.
 		asked := []user.Nickname{user.Nickname(strings.ToUpper(nickname.String())), "nobody_here", nickname}
 		known, err := repo.Nicknames(ctx, asked)
-		if err != nil || len(known) != 1 || known[0] != nickname {
+		if err != nil || len(known) != 1 || known[0] != (user.KnownNickname{Nickname: nickname}) {
 			t.Fatalf("Nicknames = %v, %v; want only %v", known, err, nickname)
 		}
 	})

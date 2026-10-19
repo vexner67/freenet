@@ -4825,7 +4825,9 @@ func (x *FindNicknamesRequest) GetNicknames() []string {
 type FindNicknamesResponse struct {
 	state protoimpl.MessageState `protogen:"open.v1"`
 	// As their owners write them, each once, in no particular order.
-	Nicknames     []string `protobuf:"bytes,1,rep,name=nicknames,proto3" json:"nicknames,omitempty"`
+	Nicknames []string `protobuf:"bytes,1,rep,name=nicknames,proto3" json:"nicknames,omitempty"`
+	// Those of nicknames whose pages wear the checkmark.
+	Verified      []string `protobuf:"bytes,2,rep,name=verified,proto3" json:"verified,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -4863,6 +4865,13 @@ func (*FindNicknamesResponse) Descriptor() ([]byte, []int) {
 func (x *FindNicknamesResponse) GetNicknames() []string {
 	if x != nil {
 		return x.Nicknames
+	}
+	return nil
+}
+
+func (x *FindNicknamesResponse) GetVerified() []string {
+	if x != nil {
+		return x.Verified
 	}
 	return nil
 }
@@ -7471,9 +7480,10 @@ const file_api_user_v1_user_proto_rawDesc = "" +
 	"\auser_id\x18\x02 \x01(\tR\x06userId\x12\x18\n" +
 	"\aallowed\x18\x03 \x01(\bR\aallowed\"4\n" +
 	"\x14FindNicknamesRequest\x12\x1c\n" +
-	"\tnicknames\x18\x01 \x03(\tR\tnicknames\"5\n" +
+	"\tnicknames\x18\x01 \x03(\tR\tnicknames\"Q\n" +
 	"\x15FindNicknamesResponse\x12\x1c\n" +
-	"\tnicknames\x18\x01 \x03(\tR\tnicknames\"-\n" +
+	"\tnicknames\x18\x01 \x03(\tR\tnicknames\x12\x1a\n" +
+	"\bverified\x18\x02 \x03(\tR\bverified\"-\n" +
 	"\x12GetRelationRequest\x12\x17\n" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\"X\n" +
 	"\x13GetRelationResponse\x12\"\n" +

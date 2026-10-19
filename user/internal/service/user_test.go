@@ -321,7 +321,7 @@ func TestUserService_KnownNicknames(t *testing.T) {
 
 	// As the owner writes it, whatever the case asked, and once.
 	known, err := svc.KnownNicknames(ctx, []user.Nickname{"ann", "nobody_here", "ANN"})
-	if err != nil || len(known) != 1 || known[0] != "Ann" {
+	if err != nil || len(known) != 1 || known[0] != (user.KnownNickname{Nickname: "Ann"}) {
 		t.Fatalf("KnownNicknames = %v, %v; want only Ann", known, err)
 	}
 

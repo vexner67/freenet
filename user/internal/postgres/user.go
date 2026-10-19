@@ -525,13 +525,15 @@ func (r *UserRepository) GetByNickname(ctx context.Context, nickname user.Nickna
 }
 
 const getNicknamesQuery = `
-	SELECT nickname
+	SELECT
+		nickname,
+		verified AND deactivated_at IS NULL
 	FROM users
 	WHERE lower(nickname) = ANY($1)
 		AND nickname <> ''
 `
 
-func (r *UserRepository) Nicknames(ctx context.Context, nicknames []user.Nickname) ([]user.Nickname, error) {
+func (r *UserRepository) Nicknames(ctx context.Context, nicknames []user.Nickname) ([]user.KnownNickname, error) {
 	lowered := make([]string, len(nicknames))
 	for i, nickname := range nicknames {
 		lowered[i] = strings.ToLower(nickname.String())
@@ -543,13 +545,16 @@ func (r *UserRepository) Nicknames(ctx context.Context, nicknames []user.Nicknam
 	}
 	defer rows.Close()
 
-	known := make([]user.Nickname, 0, len(nicknames))
+	known := make([]user.KnownNickname, 0, len(nicknames))
 	for rows.Next() {
-		var nickname string
-		if err := rows.Scan(&nickname); err != nil {
+		var (
+			nickname string
+			verified bool
+		)
+		if err := rows.Scan(&nickname, &verified); err != nil {
 			return nil, errs.Wrap("rows.Scan", err)
 		}
-		known = append(known, user.Nickname(nickname))
+		known = append(known, user.KnownNickname{Nickname: user.Nickname(nickname), Verified: verified})
 	}
 
 	return known, errs.Wrap("rows.Err", rows.Err())

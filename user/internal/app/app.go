@@ -186,10 +186,16 @@ func (a *App) build(cfg config.Config) error {
 				Notifier:    deliver.votes,
 				Admins:      admins,
 			}),
-			Verification: service.NewVerificationService(store.users, store.users, admins),
-			Permissions:  permissions,
-			Presence:     a.presence,
-			Backdrops:    service.NewBackdropService(store.users, store.users),
+			Verification: service.NewVerificationService(service.VerificationDeps{
+				Users:         store.users,
+				Verifications: store.users,
+				Tx:            store.tx,
+				Notifier:      deliver.verified,
+				Admins:        admins,
+			}),
+			Permissions: permissions,
+			Presence:    a.presence,
+			Backdrops:   service.NewBackdropService(store.users, store.users),
 		}, a.logger),
 	)
 

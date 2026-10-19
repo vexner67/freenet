@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/vexner67/freenet/user/internal/inmem"
 	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 )
@@ -16,7 +17,10 @@ func TestVerificationService_Set(t *testing.T) {
 	ctx := context.Background()
 	w := newWalletWorld(t)
 	admins, _ := user.NewAdmins([]string{"admin@example.com"})
-	verification := service.NewVerificationService(w.users, w.users, admins)
+	told := &fakeVerifiedNotifier{}
+	verification := service.NewVerificationService(service.VerificationDeps{
+		Users: w.users, Verifications: w.users, Tx: inmem.TxManager{}, Notifier: told, Admins: admins,
+	})
 	admin, ann := w.person(t, "admin"), w.person(t, "ann")
 
 	verified := func() bool {
@@ -38,6 +42,9 @@ func TestVerificationService_Set(t *testing.T) {
 	if err := verification.Set(ctx, admin, ann, true); err != nil || !verified() {
 		t.Fatalf("Set = %v, verified %v", err, verified())
 	}
+	if told.verified[ann] != admin {
+		t.Fatalf("ann was not told by the admin: %v", told.verified)
+	}
 
 	// Saving the profile keeps the checkmark given meanwhile.
 	if _, err := w.userSvc.UpdateProfile(ctx, ann, user.Profile{Name: "Анна", Nickname: "ann"}, ""); err != nil || !verified() {
@@ -53,4 +60,30 @@ func TestVerificationService_Set(t *testing.T) {
 	if err = verification.Set(ctx, admin, ann, false); err != nil || verified() {
 		t.Fatalf("taking it: %v, verified %v", err, verified())
 	}
+	if _, ok := told.verified[ann]; ok {
+		t.Fatal("the notification was not taken back")
+	}
+
+	// An administrator confirming their own page tells nobody.
+	if err = verification.Set(ctx, admin, admin, true); err != nil || len(told.verified) != 0 {
+		t.Fatalf("Set of their own page = %v, told %v", err, told.verified)
+	}
+}
+
+// fakeVerifiedNotifier remembers who was told of a checkmark, and by whom.
+type fakeVerifiedNotifier struct {
+	verified map[uuid.UUID]uuid.UUID
+}
+
+func (n *fakeVerifiedNotifier) Verified(_ context.Context, adminID, userID uuid.UUID) error {
+	if n.verified == nil {
+		n.verified = make(map[uuid.UUID]uuid.UUID)
+	}
+	n.verified[userID] = adminID
+	return nil
+}
+
+func (n *fakeVerifiedNotifier) Unverified(_ context.Context, _, userID uuid.UUID) error {
+	delete(n.verified, userID)
+	return nil
 }

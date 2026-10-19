@@ -176,8 +176,11 @@ func (h *UserHandler) FindNicknames(ctx context.Context, req *userv1.FindNicknam
 	}
 
 	resp := &userv1.FindNicknamesResponse{Nicknames: make([]string, 0, len(known))}
-	for _, nickname := range known {
-		resp.Nicknames = append(resp.Nicknames, nickname.String())
+	for _, k := range known {
+		resp.Nicknames = append(resp.Nicknames, k.Nickname.String())
+		if k.Verified {
+			resp.Verified = append(resp.Verified, k.Nickname.String())
+		}
 	}
 
 	return resp, nil

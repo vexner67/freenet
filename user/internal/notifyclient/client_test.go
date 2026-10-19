@@ -107,6 +107,30 @@ func TestOutbox_Gifts(t *testing.T) {
 	}
 }
 
+func TestOutbox_Verified(t *testing.T) {
+	t.Parallel()
+
+	admin, ann := uuid.New(), uuid.New()
+	api := &fakeAPI{}
+
+	queue := outbox.NewMemory()
+	if err := NewOutbox(queue).Verified(context.Background(), admin, ann); err != nil {
+		t.Fatal(err)
+	}
+	if err := NewOutbox(queue).Unverified(context.Background(), admin, ann); err != nil {
+		t.Fatal(err)
+	}
+	if errs := deliverAll(t, queue, NewDeliverer(api, time.Second)); len(errs) != 2 || errs[0] != nil || errs[1] != nil {
+		t.Fatalf("deliver = %v", errs)
+	}
+	for _, e := range []*notificationv1.Event{api.notified, api.retracted} {
+		if e.GetKind() != notificationv1.Kind_KIND_VERIFIED || e.GetActorId() != admin.String() ||
+			e.GetRecipientId() != ann.String() || e.GetPostId() != "" {
+			t.Fatalf("checkmark event = %v", e)
+		}
+	}
+}
+
 func TestDeliverer_Errors(t *testing.T) {
 	t.Parallel()
 
