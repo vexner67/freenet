@@ -18,6 +18,7 @@ var storyTime = time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)
 // first story the viewer viewed, his second not.
 type fakeStories struct {
 	token, told, text, viewed, deleted, of, cursor string
+	liked, unliked, commented, uncommented         string
 	hidden, ignored                                []string
 	err                                            error
 }
@@ -63,6 +64,44 @@ func (f *fakeStories) Viewers(_ context.Context, token, _, cursor string, _ int)
 
 func (f *fakeStories) Delete(_ context.Context, token, id string) error {
 	f.token, f.deleted = token, id
+	return f.err
+}
+
+func (f *fakeStories) Get(_ context.Context, token, id string) (model.Story, error) {
+	f.token = token
+	for _, s := range f.stories() {
+		if s.ID == id {
+			return s, f.err
+		}
+	}
+	return model.Story{}, failure.New(failure.NotFound, "story not found")
+}
+
+func (f *fakeStories) Like(_ context.Context, token, id string) error {
+	f.token, f.liked = token, id
+	return f.err
+}
+
+func (f *fakeStories) Unlike(_ context.Context, token, id string) error {
+	f.token, f.unliked = token, id
+	return f.err
+}
+
+func (f *fakeStories) Comment(_ context.Context, token, id, text string) (model.StoryComment, error) {
+	f.token, f.commented = token, id+"/"+text
+	return model.StoryComment{ID: "sc9", StoryID: id, AuthorID: "u1", Text: text, CreatedAt: storyTime, Mine: true}, f.err
+}
+
+func (f *fakeStories) Comments(_ context.Context, token, id, cursor string, _ int) (model.StoryCommentPage, error) {
+	f.token, f.cursor = token, cursor
+	comment := func(cid, author string) model.StoryComment {
+		return model.StoryComment{ID: cid, StoryID: id, AuthorID: author, Text: cid, CreatedAt: storyTime, Mine: author == "u1"}
+	}
+	return model.StoryCommentPage{Comments: []model.StoryComment{comment("sc1", "u2"), comment("sc2", "u3")}, NextCursor: "sc2", Total: 2}, f.err
+}
+
+func (f *fakeStories) DeleteComment(_ context.Context, token, id string) error {
+	f.token, f.uncommented = token, id
 	return f.err
 }
 
@@ -182,5 +221,79 @@ func TestStoryViews(t *testing.T) {
 
 	if w = h.do("DELETE", "/api/v1/stories/s1", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.stories.deleted != "s1" {
 		t.Fatalf("delete: %d", w.Code)
+	}
+}
+
+func TestStoryLikes(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	if w := h.do("PUT", "/api/v1/stories/s2/like", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.stories.liked != "s2" {
+		t.Fatalf("like: %d, liked %q", w.Code, h.stories.liked)
+	}
+	if w := h.do("DELETE", "/api/v1/stories/s2/like", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.stories.unliked != "s2" {
+		t.Fatalf("unlike: %d, unliked %q", w.Code, h.stories.unliked)
+	}
+	if w := h.do("PUT", "/api/v1/stories/s2/like", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("a guest likes: %d", w.Code)
+	}
+}
+
+func TestStoryComments(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	w := h.do("GET", "/api/v1/stories/s2/comments?cursor=c", "", "Authorization", "Bearer tok")
+	got := decode[struct {
+		Comments []struct {
+			ID     string         `json:"id"`
+			Author map[string]any `json:"author"`
+		} `json:"comments"`
+		NextCursor string `json:"nextCursor"`
+		Total      int    `json:"total"`
+	}](t, w)
+	// Cat's page is deleted: her comment is left out.
+	if w.Code != http.StatusOK || len(got.Comments) != 1 || got.Comments[0].Author["nickname"] != "bob" || got.NextCursor != "sc2" || got.Total != 2 || h.stories.cursor != "c" {
+		t.Fatalf("%d %+v", w.Code, got)
+	}
+
+	completed := func() harness {
+		h := newHarness(rest.Config{})
+		h.users.profile = model.Profile{Name: "Ann", Nickname: "ann"}
+		return h
+	}
+
+	// Under her own story nobody asks about a blacklist.
+	h = completed()
+	if w = h.do("POST", "/api/v1/stories/s1/comments", `{"text":"мур"}`, "Authorization", "Bearer tok"); w.Code != http.StatusCreated ||
+		h.stories.commented != "s1/мур" || h.users.relationWith != "" {
+		t.Fatalf("under her own story: %d %s, relation with %q", w.Code, w.Body, h.users.relationWith)
+	}
+
+	h = completed()
+	if w = h.do("POST", "/api/v1/stories/s2/comments", `{"text":"мур"}`, "Authorization", "Bearer tok"); w.Code != http.StatusCreated || h.users.relationWith != "u2" {
+		t.Fatalf("under the story of another: %d, relation with %q", w.Code, h.users.relationWith)
+	}
+
+	h = completed()
+	h.users.relation = model.Relation{BlockedMe: true}
+	w = h.do("POST", "/api/v1/stories/s2/comments", `{"text":"мур"}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusForbidden || decode[errorBody](t, w).Error.Message != "you cannot comment on this story" || h.stories.commented != "" {
+		t.Fatalf("blacklisted: %d %s", w.Code, w.Body)
+	}
+
+	h = completed()
+	if w = h.do("POST", "/api/v1/stories/nope/comments", `{"text":"мур"}`, "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		t.Fatalf("no story: %d", w.Code)
+	}
+
+	h = newHarness(rest.Config{})
+	w = h.do("POST", "/api/v1/stories/s2/comments", `{"text":"мур"}`, "Authorization", "Bearer tok")
+	if w.Code != http.StatusBadRequest || decode[errorBody](t, w).Error.Message != "fill in your profile before commenting" {
+		t.Fatalf("without a profile: %d %s", w.Code, w.Body)
+	}
+
+	if w = h.do("DELETE", "/api/v1/story-comments/sc1", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent || h.stories.uncommented != "sc1" {
+		t.Fatalf("delete: %d, deleted %q", w.Code, h.stories.uncommented)
 	}
 }

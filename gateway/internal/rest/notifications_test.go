@@ -57,7 +57,7 @@ func TestListNotifications(t *testing.T) {
 	// The follow by a vanished account, the like of a deleted post, the
 	// message in a deleted topic, the like of a deleted photo and the
 	// comments under a deleted note and deleted themselves are left out.
-	if len(got.Notifications) != 18 {
+	if len(got.Notifications) != 20 {
 		t.Fatalf("notifications = %+v", got.Notifications)
 	}
 
@@ -88,6 +88,12 @@ func TestListNotifications(t *testing.T) {
 	// A gift names no post: only who sent it.
 	if g := got.Notifications[17]; g.Type != "gift" || g.Actor["nickname"] != "bob" || g.Post != nil || g.Comment != nil {
 		t.Fatalf("gift = %+v", g)
+	}
+	// A like and a comment of a story say only who did it.
+	for i, kind := range []string{"story_like", "story_comment"} {
+		if s := got.Notifications[18+i]; s.Type != kind || s.Actor["nickname"] != "bob" || s.Post != nil || s.Comment != nil {
+			t.Fatalf("%s = %+v", kind, s)
+		}
 	}
 	if c := got.Notifications[16]; c.Type != "note_comment" || c.Note == nil || c.Note.ID != "note1" || c.Note.Title != "Про котов" ||
 		c.Post != nil || c.Comment == nil || c.Comment.ID != "nc1" || c.Comment.Text != "мяу" {

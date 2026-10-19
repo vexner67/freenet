@@ -25,6 +25,10 @@ type storyJSON struct {
 	// Mine: the viewer told it, and Views others viewed it.
 	Mine  bool `json:"mine,omitempty"`
 	Views int  `json:"views"`
+	// Liked: the viewer liked it; Likes and Comments count them.
+	Liked    bool `json:"liked"`
+	Likes    int  `json:"likes"`
+	Comments int  `json:"comments"`
 }
 
 // storyAuthorJSON is a person with their live stories, the oldest first;
@@ -49,6 +53,9 @@ func toStoryJSON(s model.Story) storyJSON {
 		Viewed:    s.Viewed,
 		Mine:      s.Mine,
 		Views:     s.Views,
+		Liked:     s.Liked,
+		Likes:     s.Likes,
+		Comments:  s.Comments,
 	}
 }
 

@@ -2,11 +2,13 @@ package backend
 
 import (
 	"context"
+	"time"
 
 	"github.com/vexner67/freenet/gateway/internal/model"
 	"github.com/vexner67/freenet/pkg/errs"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type Users struct {
@@ -507,12 +509,33 @@ func toPublicProfile(p *userv1.PublicProfile) model.PublicProfile {
 		Closed:          p.GetClosed(),
 		InfoHidden:      p.GetInfoHidden(),
 		Verified:        p.GetVerified(),
+		Ban:             toBan(p.GetBan()),
 		LastSeen:        fromTimestamp(p.GetLastSeenAt()),
 		Online:          p.GetOnline(),
 		Backdrop:        model.Backdrop{Left: p.GetBackdropLeft(), Right: p.GetBackdropRight()},
 		Completeness:    int(p.GetCompleteness()),
 		About:           toAbout(p),
 	}
+}
+
+// Ban blocks userID until a time, the zero time for good; only an
+// administrator of the site may.
+func (u *Users) Ban(ctx context.Context, accessToken, userID, reason string, until time.Time) error {
+	req := &userv1.BanUserRequest{UserId: userID, Reason: reason}
+	if !until.IsZero() {
+		req.Until = timestamppb.New(until)
+	}
+
+	_, err := u.api.BanUser(withToken(ctx, accessToken), req)
+
+	return errs.Wrap("u.api.BanUser", fromStatus(err))
+}
+
+// Unban lifts the block of userID.
+func (u *Users) Unban(ctx context.Context, accessToken, userID string) error {
+	_, err := u.api.UnbanUser(withToken(ctx, accessToken), &userv1.UnbanUserRequest{UserId: userID})
+
+	return errs.Wrap("u.api.UnbanUser", fromStatus(err))
 }
 
 // Deactivate deletes the caller's page; reason may be empty.
@@ -573,6 +596,7 @@ func (u *Users) Search(ctx context.Context, q model.UserQuery, cursor string, li
 		Show:     q.Show,
 		Book:     q.Book,
 		Verified: q.Verified,
+		Banned:   q.Banned,
 		Cursor:   cursor,
 		Limit:    int32(min(max(limit, 0), 1<<10)), //nolint:gosec // clamped above
 	})

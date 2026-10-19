@@ -53,6 +53,79 @@ func (s *Stories) User(ctx context.Context, accessToken, userID string, hidden [
 	return toStories(resp.GetStories()), nil
 }
 
+// Get is a live story the caller sees.
+func (s *Stories) Get(ctx context.Context, accessToken, id string) (model.Story, error) {
+	resp, err := s.api.GetStory(withToken(ctx, accessToken), &postv1.GetStoryRequest{Id: id})
+	if err != nil {
+		return model.Story{}, errs.Wrap("s.api.GetStory", fromStatus(err))
+	}
+
+	return toStory(resp.GetStory()), nil
+}
+
+func (s *Stories) Like(ctx context.Context, accessToken, id string) error {
+	if _, err := s.api.LikeStory(withToken(ctx, accessToken), &postv1.LikeStoryRequest{Id: id}); err != nil {
+		return errs.Wrap("s.api.LikeStory", fromStatus(err))
+	}
+
+	return nil
+}
+
+func (s *Stories) Unlike(ctx context.Context, accessToken, id string) error {
+	if _, err := s.api.UnlikeStory(withToken(ctx, accessToken), &postv1.UnlikeStoryRequest{Id: id}); err != nil {
+		return errs.Wrap("s.api.UnlikeStory", fromStatus(err))
+	}
+
+	return nil
+}
+
+// Comment comments a story the caller sees.
+func (s *Stories) Comment(ctx context.Context, accessToken, id, text string) (model.StoryComment, error) {
+	resp, err := s.api.CreateStoryComment(withToken(ctx, accessToken), &postv1.CreateStoryCommentRequest{StoryId: id, Text: text})
+	if err != nil {
+		return model.StoryComment{}, errs.Wrap("s.api.CreateStoryComment", fromStatus(err))
+	}
+
+	return toStoryComment(resp.GetComment()), nil
+}
+
+// Comments pages the comments of a story the caller sees, the oldest
+// first.
+func (s *Stories) Comments(ctx context.Context, accessToken, id, cursor string, limit int) (model.StoryCommentPage, error) {
+	resp, err := s.api.ListStoryComments(withToken(ctx, accessToken), &postv1.ListStoryCommentsRequest{
+		StoryId: id, Cursor: cursor, Limit: toLimit(limit),
+	})
+	if err != nil {
+		return model.StoryCommentPage{}, errs.Wrap("s.api.ListStoryComments", fromStatus(err))
+	}
+
+	page := model.StoryCommentPage{NextCursor: resp.GetNextCursor(), Total: int(resp.GetTotal())}
+	for _, c := range resp.GetComments() {
+		page.Comments = append(page.Comments, toStoryComment(c))
+	}
+
+	return page, nil
+}
+
+func (s *Stories) DeleteComment(ctx context.Context, accessToken, id string) error {
+	if _, err := s.api.DeleteStoryComment(withToken(ctx, accessToken), &postv1.DeleteStoryCommentRequest{Id: id}); err != nil {
+		return errs.Wrap("s.api.DeleteStoryComment", fromStatus(err))
+	}
+
+	return nil
+}
+
+func toStoryComment(p *postv1.StoryComment) model.StoryComment {
+	return model.StoryComment{
+		ID:        p.GetId(),
+		StoryID:   p.GetStoryId(),
+		AuthorID:  p.GetAuthorId(),
+		Text:      p.GetText(),
+		CreatedAt: p.GetCreatedAt().AsTime(),
+		Mine:      p.GetMine(),
+	}
+}
+
 func (s *Stories) View(ctx context.Context, accessToken, id string) error {
 	if _, err := s.api.ViewStory(withToken(ctx, accessToken), &postv1.ViewStoryRequest{Id: id}); err != nil {
 		return errs.Wrap("s.api.ViewStory", fromStatus(err))
@@ -106,5 +179,8 @@ func toStory(p *postv1.Story) model.Story {
 		Viewed:    p.GetViewed(),
 		Mine:      p.GetMine(),
 		Views:     int(p.GetViews()),
+		Liked:     p.GetLiked(),
+		Likes:     int(p.GetLikeCount()),
+		Comments:  int(p.GetCommentCount()),
 	}
 }
