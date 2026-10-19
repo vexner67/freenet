@@ -1698,3 +1698,15 @@ a.poll-result-name { cursor: pointer; }
 @media (hover: none) {
   .album-photo-delete { opacity: 1; }
 }
+
+/* openvk's checkmark after the name of a confirmed page. It stands among
+   the photos of lists and records, whose rules size every img there: the
+   doubled class outweighs them, and it comes last. */
+img.name-checkmark.name-checkmark {
+  display: inline;
+  width: 13px;
+  height: 11px;
+  margin: 0 0 0 2pt;
+  border-radius: 0;
+  vertical-align: baseline;
+}

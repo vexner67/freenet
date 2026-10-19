@@ -6,7 +6,7 @@
 import { api, currentUser } from './api.js';
 import { formatPostDate, genitiveName, giftCollections, giftPrice, unusedVotes } from './labels.js';
 import { giftPicture, giftsPath, pickPath } from './gifts.js';
-import { $, avatarURL, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
+import { $, avatarURL, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { separated } from './posts.js';
 
@@ -52,6 +52,7 @@ function giftNode(gift, mine) {
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' }, ...[sender
         ? [el('a', { className: 'post-name', href: pagePath(sender), textContent: fullName(sender) }),
+          verifiedMark(sender),
           // Told only to the two of them: others see "Подарок".
           gift.anonymous ? el('span', { className: 'hint', textContent: ' (анонимно)' }) : null]
         : el('b', { className: 'post-name', textContent: 'Подарок' })].flat()),

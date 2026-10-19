@@ -1,7 +1,9 @@
-// "Админ-панель", openvk's /admin: "Сводка" (/admin), "Ваучеры"
-// (/admin/vouchers) and the form of a new one (/admin/vouchers/new). The
-// page is its own, AUI as openvk's: none of the site's chrome. Only the
-// administrators of the site (ADMIN_EMAILS of the user service) get in.
+// "Админ-панель", openvk's /admin: "Сводка" (/admin), "Пользователи"
+// (/admin/users: the verified pages, or those ?q= finds, with the switch
+// of "Верификация" each), "Ваучеры" (/admin/vouchers) and the form of a
+// new one (/admin/vouchers/new). The page is its own, AUI as openvk's:
+// none of the site's chrome. Only the administrators of the site
+// (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
 import { adminOverview, errorText, voucherCode, voucherStatus, voucherUsages } from './labels.js';
@@ -58,6 +60,8 @@ function showError(e) {
   error.hidden = false;
 }
 
+const fullName = (user) => [user.name, user.surname].filter(Boolean).join(' ');
+
 // number is written as openvk's: "1 234".
 const number = (n) => n.toLocaleString('ru-RU');
 
@@ -66,11 +70,90 @@ async function summary(counts) {
   const answer = await counts;
   const words = adminOverview(answer);
 
-  for (const key of ['users', 'online', 'clubs', 'posts']) {
+  for (const key of ['users', 'online', 'verified', 'clubs', 'posts']) {
     $('count-' + key).textContent = number(answer[key]);
     $(key + '-words').textContent = words[key];
   }
   $('summary').hidden = false;
+}
+
+// checkmark is the site's mark of a confirmed page, as by its names.
+const checkmark = () => el('img', {
+  className: 'name-checkmark', src: '/static/icons/checkmark.svg', alt: '', width: 13, height: 11,
+  title: 'Подтверждённая страница',
+});
+
+// users is "Пользователи": the pages the query finds or, without one, the
+// verified pages, each with the switch of openvk's "Верификация".
+function users(query) {
+  let cursor = '';
+  const search = (after) => api.search(query, after, query ? {} : { verified: 'true' });
+
+  function row(user) {
+    const mark = user.verified ? checkmark() : '';
+    const name = fullName(user);
+    const toggle = el('button', {
+      className: 'aui-toggle', type: 'button', title: 'Подтверждённая страница',
+    }, el('span', { className: 'aui-toggle-knob' }));
+    toggle.setAttribute('role', 'switch');
+    toggle.setAttribute('aria-label', `Верификация: ${name}`);
+    toggle.setAttribute('aria-checked', String(Boolean(user.verified)));
+
+    const person = el('div', { className: 'admin-person' },
+      el('img', { className: 'admin-avatar', src: user.avatar?.small ?? '/static/avatar.svg', alt: '' }),
+      el('span', {}, el('a', { href: '/' + user.nickname, textContent: name }), mark));
+
+    toggle.addEventListener('click', async () => {
+      const verified = toggle.getAttribute('aria-checked') !== 'true';
+      error.hidden = true;
+      toggle.disabled = true;
+      try {
+        await api.setVerified(user.nickname, verified);
+        toggle.setAttribute('aria-checked', String(verified));
+        const shown = person.querySelector('.name-checkmark');
+        if (verified && !shown) person.lastChild.append(checkmark());
+        if (!verified) shown?.remove();
+      } catch (e) {
+        showError(e);
+      } finally {
+        toggle.disabled = false;
+      }
+    });
+
+    return el('tr', {},
+      el('td', {}, person),
+      el('td', {}, el('span', { className: 'admin-code', textContent: '@' + user.nickname })),
+      el('td', {}, toggle),
+    );
+  }
+
+  async function more(page) {
+    error.hidden = true;
+    const button = $('more-users');
+    button.disabled = true;
+
+    try {
+      const answer = await page;
+      $('user-rows').append(...answer.users.map(row));
+      cursor = answer.nextCursor;
+      button.hidden = !cursor;
+
+      const none = !$('user-rows').children.length;
+      $('user-table').hidden = none;
+      $('no-users').hidden = !none;
+    } catch (e) {
+      showError(e);
+    } finally {
+      button.disabled = false;
+    }
+  }
+
+  $('user-query').value = query;
+  $('users-heading').textContent = query ? 'Результаты поиска' : 'Подтверждённые страницы';
+  $('no-users').textContent = query ? 'Никого не найдено.' : 'Подтверждённых страниц пока нет. Найдите человека поиском.';
+  $('more-users').addEventListener('click', () => more(search(cursor)));
+
+  return { more, first: () => search('') };
 }
 
 // vouchers is the list of openvk's "Ваучеры", newest first.
@@ -177,8 +260,12 @@ function newVoucher() {
 
 // The reads of the page go with /me in one round trip; a guest or one who
 // is not an administrator gets nothing from them.
+const query = new URLSearchParams(location.search).get('q')?.trim() ?? '';
+const usersPage = path === '/admin/users' ? users(query) : null;
+
 const reads = {
   '/admin': () => started(api.about()),
+  '/admin/users': () => started(usersPage.first()),
   '/admin/vouchers': () => started(api.vouchers()),
 }[path]?.();
 
@@ -191,6 +278,9 @@ if (!me) {
     showError('Админ-панель доступна только администраторам сайта.');
   } else if (path === '/admin') {
     await summary(reads).catch(showError);
+  } else if (path === '/admin/users') {
+    $('users').hidden = false;
+    await usersPage.more(reads);
   } else if (path === '/admin/vouchers') {
     await vouchers()(reads);
   } else if (path === '/admin/vouchers/new') {

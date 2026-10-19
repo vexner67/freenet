@@ -4,7 +4,7 @@
 
 import { api } from './api.js';
 import { formatPostDate } from './labels.js';
-import { avatarURL, el, fullName, pagePath, textNode } from './layout.js';
+import { avatarURL, el, fullName, pagePath, textNode, verifiedMark } from './layout.js';
 import { likeButton, photosNode, separated } from './posts.js';
 
 // commentAnchor is the id of a comment's node, for links to it.
@@ -48,6 +48,7 @@ export function commentNode(comment, { onDelete, onReply, canLike = false, onErr
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(comment.author) }),
+        verifiedMark(comment.author),
       ),
       comment.text ? textNode(comment.text, { rest: comment.textCut ? () => whole(comment.id).then((c) => c.text) : null }) : null,
       photosNode(comment.photos ?? []),

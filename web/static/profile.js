@@ -1,6 +1,6 @@
 import { api, currentUser, started } from './api.js';
 import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, politicalViews, label, clubsCount, completenessHints, presence, formatBirthday, formatDateTime, limitedAccess, closedFollows } from './labels.js';
-import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
+import { $, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
 import { notesBlock } from './notes.js';
@@ -117,7 +117,7 @@ function renderHeader(profile, isOwner) {
   const seen = isOwner ? 'Онлайн' : presence(profile);
 
   document.title = `${name} | Freenet`;
-  $('title').replaceChildren(name, ...(isOwner ? [' ', el('b', { textContent: '(это вы)' })] : []));
+  $('title').replaceChildren(name, verifiedMark(profile), ...(isOwner ? [' ', el('b', { textContent: '(это вы)' })] : []));
   $('title-aside').replaceChildren(seen === 'Онлайн' ? el('b', { textContent: seen }) : seen || '@' + profile.nickname);
 }
 
@@ -323,7 +323,7 @@ function renderHidden(profile) {
   const name = fullName(profile);
 
   document.title = `${name} | Freenet`;
-  $('title').textContent = name;
+  $('title').replaceChildren(name, verifiedMark(profile));
   $('title-aside').textContent = '@' + profile.nickname;
   $('error').replaceChildren(el('b', { textContent: 'Ошибка доступа' }), el('br'),
     'Настройки приватности этого пользователя не разрешают вам смотреть на его страницу.');
@@ -337,7 +337,7 @@ function renderClosed(profile) {
   const whose = { male: 'его', female: 'её' }[profile.gender] ?? 'его(её)';
 
   document.title = `${name} | Freenet`;
-  $('title').textContent = name;
+  $('title').replaceChildren(name, verifiedMark(profile));
   $('title-aside').textContent = '@' + profile.nickname;
   $('name').textContent = name;
   $('status').textContent = 'Закрытая страница';
@@ -360,7 +360,7 @@ function renderLimited(profile) {
   const name = fullName(profile);
 
   document.title = `${name} | Freenet`;
-  $('title').textContent = name;
+  $('title').replaceChildren(name, verifiedMark(profile));
   $('title-aside').textContent = '@' + profile.nickname;
   $('name').textContent = name;
   $('limited').textContent = profile.blockedMe
@@ -378,7 +378,7 @@ function renderDeactivated(profile, isOwner) {
   const name = fullName(profile);
 
   document.title = `${name} | Freenet`;
-  $('title').textContent = name;
+  $('title').replaceChildren(name, verifiedMark(profile));
   $('title-aside').textContent = '@' + profile.nickname;
   $('name').textContent = name;
   $('status').textContent = 'Страница удалена';
