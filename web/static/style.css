@@ -53,6 +53,7 @@
   --text-555: #555;
   --text-5c5c5c: #5c5c5c;
   --text-626262: #626262;
+  --text-43a047: #43a047;
   --text-45688e: #45688e;
   --text-d94c4c: #d94c4c;
   --text-777: #777;
@@ -143,19 +144,17 @@ h1.page-title { font-size: inherit; }
 .logo:hover { text-decoration: none; }
 
 /* The mark is the "f" of the word: a tile, as the icon of the site, with
-   "reenet" drawn after it by the same pen. */
+   "reenet" drawn after it in the letter of the "f" — its weight, its cut
+   ends and its curves (the "r" is its hook, the "t" it upside down). */
 .logo-mark { display: block; width: 26px; height: 26px; }
 .logo-mark rect { fill: var(--back-fff); }
 .logo-mark path { fill: none; stroke: var(--text-3e3e3e); }
 .logo-word {
   display: block;
-  width: 95px;
+  width: 81px;
   height: 26px;
   fill: none;
   stroke: currentColor;
-  stroke-width: 3.3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 .header-links { display: flex; }
@@ -1411,22 +1410,37 @@ a.poll-result-name { cursor: pointer; }
 .ignored-row a { flex: 1; min-width: 0; overflow-wrap: anywhere; font-weight: bold; }
 .avatars-round .ignored-row img { border-radius: 50%; }
 
-/* "Подарки": a gift is laid out as a post — who sent it, the picture with
-   what was written under it; the collections are rows of pictures to
-   choose from, as openvk's. */
+/* "Подарки", as openvk's: a gift is laid out as a post — who sent it, the
+   picture in the middle with what was written under it; "Выбрать подарок"
+   is a row a collection, its gifts in a grid, the price showing on the
+   gift pointed at ("Бесплатно" always). */
 .gift-pic { display: block; width: 96px; height: 96px; }
-.user-gift { padding: 8px 5px; }
-.user-gift .gift-comment { margin-top: 6px; overflow-wrap: anywhere; white-space: pre-wrap; }
-.gift-collection { padding: 10px 0; border-bottom: 1px solid var(--line-dedede); }
-.gift-collection:last-child { border-bottom: 0; }
-.gift-collection-title { margin: 0 0 8px; color: var(--text-45688e); font-size: 11px; }
-.gift-grid { display: flex; flex-wrap: wrap; gap: 6px; }
-.gift-sel { display: flex; flex-direction: column; align-items: center; gap: 6px; width: 112px; padding: 8px 0; cursor: pointer; }
-.gift-sel:hover { background: var(--back-f6f6f6); text-decoration: none; }
-.gift-price { color: var(--text-808080); font-weight: normal; }
-.gift-send .modal-body { align-items: center; }
-.gift-send .modal-body textarea { width: 100%; }
-.gift-send .modal-body label { align-self: flex-start; }
+.user-gift { padding: 15px; text-align: center; }
+.user-gift .gift-pic { width: 195px; height: auto; margin: 0 auto; }
+.user-gift .gift-comment { margin-top: 15px; overflow-wrap: anywhere; white-space: pre-wrap; }
+.gift-cat-row { padding: 10px 0; }
+.gift-cat-row:first-child { padding-top: 5px; }
+.gift-cat-row:not(:last-child) { border-bottom: 1px solid var(--line-ddd); }
+.gift-cat-info { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; min-height: 23px; margin: 0 0 4px; }
+.gift-cat-header { margin: 0; padding: 4px 0 3px; color: var(--text-45688e); font-size: 11px; }
+.gift-grid { display: flex; flex-wrap: wrap; width: calc(100% + 16px); margin: 0 -8px; }
+.gift-sel { position: relative; box-sizing: border-box; width: 122px; padding: 8px 10px; border-radius: 3px; text-align: center; cursor: pointer; }
+.gift-sel:hover { text-decoration: none; }
+.gift-sel .gift-pic { width: 102px; height: 102px; object-fit: contain; border-radius: 3px; transition: .2s; }
+.gift-sel:hover .gift-pic { opacity: .8; }
+.gift-sel .gift-price { position: absolute; bottom: 0; left: 0; box-sizing: border-box; width: 102px; margin: 0 10px; padding: 3px 4px 4px; border-radius: 3px; background: var(--back-f0f0f0); color: var(--text-333); visibility: hidden; }
+.gift-sel:hover .gift-price, .gift-sel .gift-price.free { visibility: visible; }
+.gift-send .modal-body { gap: 0; }
+.gift-send-top { margin: 0 0 12px; text-align: center; }
+.gift-send-top .gift-pic { width: auto; height: auto; max-width: 256px; max-height: 200px; min-height: 100px; margin: 0 auto 8px; }
+.gift-send-cost { color: var(--text-555); font-size: 12px; }
+.gift-send-cost b { color: var(--text-333); }
+.gift-send-balance { margin-top: 2px; color: var(--text-777); }
+.gift-send-field { margin: 0 0 12px; }
+.gift-send-field > b { display: block; margin: 0 0 5px; }
+.gift-send-field textarea { width: 100%; height: 60px; resize: vertical; }
+.gift-recipient { display: flex; flex-wrap: wrap; gap: 3px; min-height: 24px; padding: 2px; box-sizing: border-box; border: 1px solid var(--line-c0cad5); background: var(--back-fff); }
+.gift-recipient span { padding: 1px 5px 2px; border-radius: 2px; background: var(--back-5b7aa1); color: var(--text-fff); font-weight: bold; line-height: 15px; }
 /* The block of a page: five of the newest, as wide as the column. */
 .gift-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 8px 5px; }
 .gift-row .gift-pic { width: 100%; height: auto; aspect-ratio: 1; }
@@ -1445,15 +1459,53 @@ a.poll-result-name { cursor: pointer; }
 .sticker-panel.sending .sticker-pick { opacity: .5; cursor: progress; }
 .sticker-pick:hover { background: var(--back-f6f6f6); }
 .sticker-store { display: block; padding: 4px 0 0; border-top: 1px solid var(--line-dedede); }
-.sticker-pack-card { padding: 10px 0; border-bottom: 1px solid var(--line-dedede); }
-.sticker-pack-card:last-child { border-bottom: 0; }
-.sticker-pack-head { display: flex; gap: 8px; align-items: baseline; margin: 0 0 8px; }
-.sticker-pack-head b { color: var(--text-45688e); }
-.sticker-pack-actions { margin: 8px 0 0; }
-.sticker-pack-author { margin: -4px 0 6px; }
-.sticker-pack-about { margin: 0 0 8px; white-space: pre-wrap; overflow-wrap: anywhere; }
-.sticker-studio-bar { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
-.sticker-studio-bar .button { font-weight: normal; }
+/* The shop, as openvk's: a grey bar of sections with the search under the
+   tabs, then the packs as cards four a row; a card opens the box of its
+   pack. */
+.mb-tabs { margin: -10px -10px 0; padding: 10px; border-bottom: 1px solid var(--line-dedede); background: var(--back-f6f6f6); }
+.mb-tab-row { margin: 0 0 8px; }
+.mb-tab { display: inline-block; margin-right: 10px; padding: 5px 9px; border-radius: 2px; font-weight: bold; }
+.mb-tab:hover { background: var(--back-e4e4e4); text-decoration: none; }
+.mb-tab.active, .mb-tab.active:hover { background: var(--back-707070); color: var(--text-fff); }
+.mb-tabs input[type="search"] { box-sizing: border-box; width: 100%; padding: 3px 4px; border: 1px solid var(--line-c0cad5); font: inherit; }
+.sticker-summary { display: flex; justify-content: space-between; align-items: center; margin-top: -10px; }
+.sticker-summary .button { font-weight: normal; }
+.stickers-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.stickers-pack-card { display: flex; flex-direction: column; flex: 0 0 calc((100% - 24px) / 4); max-width: calc((100% - 24px) / 4); box-sizing: border-box; padding: 8px; border: 1px solid var(--line-c0cad5); border-radius: 2px; background: var(--back-fff); transition: border-color .15s ease, box-shadow .15s ease; }
+.stickers-pack-card:hover { border-color: var(--line-8fa7c2); box-shadow: 0 1px 4px rgba(0, 0, 0, .08); }
+.stickers-pack-thumb { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; margin-bottom: 6px; overflow: hidden; border-radius: 2px; background: var(--back-f7f7f7); }
+.stickers-pack-thumb img { display: block; width: 100%; height: 100%; object-fit: contain; }
+.stickers-pack-thumb-empty { width: 100%; height: 100%; background: var(--back-f0f0f0); }
+.stickers-pack-name { overflow: hidden; font-size: 12px; font-weight: bold; line-height: 1.25; text-overflow: ellipsis; white-space: nowrap; }
+.stickers-pack-author { margin-top: 2px; overflow: hidden; color: var(--text-777); text-overflow: ellipsis; white-space: nowrap; }
+.stickers-pack-author a { color: var(--text-777); text-decoration: underline; }
+.stickers-pack-desc { display: -webkit-box; height: 42px; margin-top: 3px; overflow: hidden; color: var(--text-555); line-height: 1.25; -webkit-line-clamp: 3; -webkit-box-orient: vertical; overflow-wrap: anywhere; }
+.stickers-pack-footer { margin-top: auto; padding-top: 8px; }
+.stickers-pack-price { font-weight: bold; }
+.stickers-pack-price:hover { text-decoration: none; }
+.stickers-pack-price.free { color: var(--text-43a047); }
+.stickers-pack-price.purchased { color: var(--text-777); }
+.stickers-pack-installs { margin-top: 4px; color: var(--text-555); font-size: 10px; }
+.stickers-pack-footer .button { box-sizing: border-box; width: 100%; margin-top: 6px; padding: 2px 4px; font-size: 10px; }
+/* The box "Информация о наборе": the cover by what the pack is, how many
+   stickers and the link, then the stickers five a row. */
+.modal-box.stickers-pack-modal { width: 540px; max-width: 95vw; }
+.stickers-pack-modal .modal-body { gap: 12px; }
+.stickers-modal-header { display: flex; gap: 14px; align-items: flex-start; }
+.stickers-modal-cover { display: flex; align-items: center; justify-content: center; flex: none; box-sizing: border-box; width: 108px; height: 108px; padding: 4px; overflow: hidden; border: 1px solid var(--line-e0e6ec); border-radius: 4px; background: var(--back-fafafa); }
+.stickers-modal-cover img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.stickers-modal-info { display: flex; flex-direction: column; flex: 1; gap: 4px; min-width: 0; align-self: stretch; }
+.stickers-modal-title { color: var(--text-333); font-size: 16px; font-weight: bold; line-height: 1.25; overflow-wrap: anywhere; }
+.stickers-modal-author, .stickers-modal-author a { color: var(--text-777); }
+.stickers-modal-desc { margin-bottom: 6px; color: var(--text-464646); font-size: 12px; line-height: 1.4; white-space: pre-wrap; overflow-wrap: anywhere; }
+.stickers-modal-actions { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; margin-top: auto; }
+.stickers-modal-subbar { display: flex; justify-content: space-between; align-items: center; margin: 4px 0 -4px; }
+.stickers-modal-count { color: var(--text-777); }
+.stickers-modal-copy { cursor: pointer; }
+.stickers-modal-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; max-height: 290px; padding: 4px 0; overflow-y: auto; }
+.stickers-modal-item { display: flex; align-items: center; justify-content: center; aspect-ratio: 1; box-sizing: border-box; padding: 4px; border: 1px solid transparent; border-radius: 4px; }
+.stickers-modal-item:hover { border-color: var(--line-c3cad2); }
+.stickers-modal-item .sticker { width: 100%; height: 100%; margin: 0; }
 .sticker-pack-form input[type="text"], .sticker-pack-form textarea { width: 100%; }
 .sticker-pack-form input[type="number"] { width: 80px; }
 .sticker-pack-form .button.secondary { margin-left: 6px; }
@@ -1585,16 +1637,8 @@ a.poll-result-name { cursor: pointer; }
   border-top: 1px solid var(--line-dae1e8);
   overflow-y: auto;
 }
-.story-comment-form { margin: 0; padding: 8px 0 4px; }
-.story-comment-form .row { justify-content: flex-start; margin-top: 6px; }
-.story-comment { display: flex; gap: 8px; padding: 6px 0; border-top: 1px solid var(--line-e8ebee); }
-.story-comment-avatar img { display: block; width: 30px; height: 30px; object-fit: cover; }
-.story-comment-body { flex: 1; min-width: 0; }
-.story-comment-author { font-weight: bold; }
-.story-comment-text { margin: 2px 0; word-wrap: break-word; white-space: pre-wrap; }
-.story-comment-date { color: var(--text-808080); }
-.story-comment .story-comment-delete { margin-left: 6px; color: var(--text-808080); cursor: pointer; }
 .story-comments-more { display: block; padding: 6px 0 0; text-align: center; cursor: pointer; }
+.story-comments .post-comment-form { flex: none; padding: 6px 0 0; }
 .story-comments-empty { margin: 6px 0 0; color: var(--text-808080); text-align: center; }
 .story-form textarea { width: 100%; height: 50px; margin-top: 6px; }
 .story-preview { display: block; width: auto; max-width: 100%; height: auto; max-height: 240px; margin: 6px auto 0; }

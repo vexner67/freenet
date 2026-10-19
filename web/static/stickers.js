@@ -60,7 +60,7 @@ export function initStickers({ link, panel, error, onPick }) {
             onclick: () => pick(sticker),
           }, stickerNode(sticker)))),
         )) : [el('p', { className: 'hint', textContent: 'У вас пока нет стикеров' })]),
-        el('a', { className: 'sticker-store', href: '/shop', textContent: 'Магазин стикеров' }),
+        el('a', { className: 'sticker-store', href: '/stickers', textContent: 'Магазин стикеров' }),
       );
     } catch (e) {
       panel.hidden = true;

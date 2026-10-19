@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Магазин | Freenet</title>
+  <title>Стикеры | Freenet</title>
   <link rel="icon" href="/static/favicon.png" sizes="32x32">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -16,7 +16,7 @@
 <body>
 <div class="layout">
   <div class="header">
-    <a class="logo" href="/" aria-label="Freenet"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 102 28" aria-hidden="true"><path d="M35.6 22V9M35.6 13.5a4.5 4.5 0 0 1 4.5-4.5h1.6M47.3 15.5h13a6.5 6.5 0 1 0-1.9 4.6M65.9 15.5h13a6.5 6.5 0 1 0-1.9 4.6M84.5 22V9M84.5 14a5 5 0 0 1 10 0V22M100.1 15.5h13a6.5 6.5 0 1 0-1.9 4.6M122 4.5V18a4 4 0 0 0 4 4h1.5M118.6 9h8"/></svg></a>
+    <a class="logo" href="/" aria-label="Freenet"><svg class="logo-mark" viewBox="0 0 28 28" aria-hidden="true"><rect width="28" height="28" rx="6"/><path d="M19.4 6.6h-1.8a4 4 0 0 0-4 4V23" stroke-width="4"/><path d="M8.4 13.5h10.6" stroke-width="3.6"/></svg><svg class="logo-word" viewBox="28 0 87 28" aria-hidden="true"><path d="M32.5 23v-7.6a4 4 0 0 1 4-4h1.8M52.9 16.25a4.85 4.85 0 1 0-1.25 3.25M69 16.25a4.85 4.85 0 1 0-1.25 3.25M75.4 9.5V23m0-6.75a4.85 4.85 0 0 1 9.7 0V23M101.2 16.25a4.85 4.85 0 1 0-1.25 3.25M107.6 6.6v10.5a4 4 0 0 0 4 4h1.8" stroke-width="3.8"/><path d="M41.3 16.25h13.5M57.4 16.25h13.5M89.6 16.25h13.5M104.1 11.2h9.3" stroke-width="3.4"/></svg></a>
     <nav class="header-links" id="header-links"></nav>
   </div>
 
@@ -26,23 +26,30 @@
     </div>
 
     <div class="page">
-      <div class="page-title"><span id="title">Магазин</span></div>
+      <div class="page-title"><span id="title">Стикеры</span></div>
       <div class="page-body">
         <div class="tabs" id="tabs">
-          <a id="tab-shop" href="/shop">Стикеры</a>
-          <a id="tab-gifts" href="/shop?act=gifts">Подарки</a>
-          <a id="tab-settings" href="/shop?act=settings" hidden>Установленные наборы</a>
-          <a id="tab-author" href="/shop?act=author" hidden>Студия стикеров</a>
+          <a id="tab-shop" href="/stickers">Магазин стикеров</a>
+          <a id="tab-settings" href="/stickers?act=settings" hidden>Установленные наборы</a>
+          <a id="tab-author" href="/stickers?act=author" hidden>Студия стикеров</a>
           <a class="tabs-side" id="tab-dialogs" href="/im" hidden>Диалоги</a>
         </div>
-        <div class="error" id="error" hidden></div>
-        <div class="notice" id="added" hidden><b>Набор стикеров успешно добавлен!</b></div>
-        <div class="notice" id="bought" hidden><b>Подарок куплен.</b> Он уже на вашей странице — <a id="bought-link">Мои подарки</a>.</div>
-        <div class="summary-bar sticker-studio-bar" id="studio-bar" hidden>
-          <span id="studio-count"></span>
-          <a class="button" href="/shop?act=new">Создать набор</a>
+        <div class="mb-tabs" id="sections" hidden>
+          <div class="mb-tab-row">
+            <a class="mb-tab" id="section-popular" href="/stickers?section=popular">Популярные</a>
+            <a class="mb-tab" id="section-free" href="/stickers?section=free">Бесплатные</a>
+            <a class="mb-tab" id="section-all" href="/stickers?section=all">Все</a>
+          </div>
+          <form action="/stickers" method="get" id="search">
+            <input type="hidden" name="section" id="search-section">
+            <input type="search" name="q" id="search-query" placeholder="Поиск по наборам стикеров">
+          </form>
         </div>
-        <p class="hint" id="balance" hidden></p>
+        <div class="summary-bar sticker-summary" id="summary" hidden>
+          <span id="summary-text"></span>
+          <a class="button" id="create" href="/stickers?act=new" hidden>+ Создать набор</a>
+        </div>
+        <div class="error" id="error" hidden></div>
         <div class="gray-box" id="studio" hidden>
           <h4 class="gray-box-title" id="studio-title">Новый набор стикеров</h4>
           <form id="studio-form">
@@ -77,16 +84,15 @@
                 <th></th>
                 <td class="control">
                   <button class="button" type="submit" id="pack-save">Сохранить набор</button>
-                  <a class="button secondary" href="/shop?act=author">Отмена</a>
+                  <a class="button secondary" href="/stickers?act=author">Отмена</a>
                 </td>
               </tr>
             </table>
           </form>
           <p class="hint" id="pack-delete-line" hidden>Вы также можете <a id="pack-delete">удалить набор</a>.</p>
         </div>
-        <div class="sticker-packs" id="packs"></div>
-        <div id="gift-catalog" hidden></div>
-        <p class="hint" id="empty" hidden></p>
+        <div class="stickers-grid" id="packs"></div>
+        <p class="hint" id="empty" hidden>Тут ничего нет... Пока...</p>
       </div>
     </div>
   </div>

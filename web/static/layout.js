@@ -439,7 +439,7 @@ export function applyInterface(me) {
     menuLink(me, 'notifications', '/notifications', 'Уведомления', 'notifications-count'),
     el('a', { href: '/settings', textContent: 'Настройки' }),
     el('div', { className: 'menu-divider' }),
-    el('a', { href: '/shop', textContent: 'Магазин' }),
+    el('a', { href: '/stickers', textContent: 'Стикеры' }),
     el('a', { href: '/docs', textContent: 'Документы' }),
     accountsLink(me),
     el('a', { href: '/search', textContent: 'Поиск' }),

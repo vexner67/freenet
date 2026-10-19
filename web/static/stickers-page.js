@@ -1,22 +1,25 @@
-// "Магазин" (/shop, also /stickers): the stickers, as openvk's /stickers:
-// "Магазин стикеров" — every pack with its stickers, what it costs and the
-// button that adds it — with ?act=gifts the gifts one buys for oneself,
-// with ?act=settings, "Установленные наборы" — the packs one has, each with
-// "Убрать набор" — and with ?act=author, "Студия стикеров": the packs one
-// made of one's photos, made (?act=new) and changed (?act=edit&pack=) by a
-// form. A pack bought once comes back free; the votes paid for a pack of a
-// person go to its author.
+// "Стикеры" (/stickers, also /shop), as openvk's: the "Магазин стикеров" —
+// the packs as cards in the sections "Популярные", "Бесплатные" and "Все",
+// with a search, each opening the box "Информация о наборе" that adds or
+// buys it — with ?act=settings, "Установленные наборы" — the packs one has,
+// each with "Убрать набор" — and with ?act=author, "Студия стикеров": the
+// packs one made of one's photos, made (?act=new) and changed
+// (?act=edit&pack=) by a form. A pack bought once comes back free; the
+// votes paid for a pack of a person go to its author. ?pack=<id> opens the
+// box of the pack, as the link it gives does. The gifts the shop sold once
+// are chosen from a person's page now: ?act=gifts leads to one's own.
 
 import { api, currentUser } from './api.js';
-import { giftPrice, stickerPackAction, stickerPackName, unusedVotes, voteRate, votesCount } from './labels.js';
-import { giftPicture, giftShelves, giftsPath } from './gifts.js';
+import { STICKER_SECTIONS, installsCount, shopPacks, stickerImage, stickerPackAction, stickerPackName, stickerPackPrice, stickersCount, votesCount } from './labels.js';
+import { pickPath } from './gifts.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { stickerNode } from './stickers.js';
 
 const params = new URLSearchParams(location.search);
-const act = ['gifts', 'settings', 'author', 'new', 'edit'].includes(params.get('act')) ? params.get('act') : 'shop';
-const settings = act === 'settings';
+const act = ['settings', 'author', 'new', 'edit', 'gifts'].includes(params.get('act')) ? params.get('act') : 'shop';
+const section = Object.hasOwn(STICKER_SECTIONS, params.get('section')) ? params.get('section') : 'popular';
+const query = params.get('q') ?? '';
 
 // As many stickers as a pack holds, and as many photos as one request
 // adds to it (the gateway takes no more).
@@ -24,136 +27,197 @@ const MAX_PACK_STICKERS = 40;
 const PHOTOS_PER_REQUEST = 10;
 
 let me = null;
+// packs are those of the catalogue the page shows, kept to redraw them.
+let packs = [];
 
-// showBalance is "У Вас N неиспользованных голосов.", as over the gifts.
-function showBalance() {
-  const [before, votes, after] = unusedVotes(me.votes ?? 0);
+// thumb is the picture of a pack: its first sticker, as openvk's cover.
+function thumb(pack) {
+  const src = pack.stickers.length ? stickerImage(pack.stickers[0]) : null;
+  if (!src) return el('div', { className: 'stickers-pack-thumb-empty' });
 
-  $('balance').replaceChildren(before, el('b', { textContent: votes }), after, ' ',
-    el('a', { href: '/settings?act=finance.top-up', textContent: 'Есть ваучер?' }));
-  $('balance').hidden = false;
-  showRate($('balance'));
+  return el('img', { src, alt: stickerPackName(pack), loading: 'lazy' });
 }
 
-// rate is what a vote is worth, asked with the page; 0 when unknown.
-const rate = api.voteRate().then((r) => r.kopecks, () => 0);
-
-// showRate adds "1 голос = 7 ₽" to the balance line.
-async function showRate(line) {
-  const kopecks = await rate;
-  if (kopecks) line.append(' ', el('span', { className: 'hint', textContent: `(${voteRate(kopecks)})` }));
+// author is who made a pack, a link to their page; a pack of the site
+// names nobody.
+function author(pack) {
+  return pack.author ? el('a', { href: pagePath(pack.author), textContent: fullName(pack.author) }) : null;
 }
 
-// packHead is what a pack is called and costs, then who made it and what
-// they said of it.
-function packHead(pack, ...more) {
-  return [
-    el('div', { className: 'sticker-pack-head' },
-      el('b', { textContent: stickerPackName(pack) }),
-      el('span', { className: 'hint', textContent: pack.price ? votesCount(pack.price) : 'Бесплатно' }),
-      ...more,
-    ),
-    pack.author ? el('div', { className: 'sticker-pack-author hint' },
-      'Автор: ', el('a', { href: pagePath(pack.author), textContent: fullName(pack.author) })) : '',
-    pack.about ? el('div', { className: 'sticker-pack-about', textContent: pack.about }) : '',
-  ];
-}
+// packCard is a pack as a card of openvk's shop: the cover, the name, who
+// made it, the start of what they said of it and, at the foot, what it
+// costs or that it is one's own — with "Убрать набор" among one's packs.
+// A click opens the box of the pack; in the studio, its form.
+function packCard(pack) {
+  const studio = act === 'author';
+  const edit = `/stickers?act=edit&pack=${encodeURIComponent(pack.id)}`;
+  const open = (event) => {
+    event.preventDefault();
+    openPack(pack);
+  };
+  const link = (props, ...children) => el('a', studio ? { ...props, href: edit } : { ...props, href: `/stickers?pack=${encodeURIComponent(pack.id)}`, onclick: open }, ...children);
 
-// packNode is a pack as a card of openvk's shop: its name, its stickers,
-// what it costs and its button — or "Убрать набор" among one's own.
-function packNode(pack) {
-  const action = settings
-    ? button('Убрать набор', () => confirmRemove(pack), { secondary: true })
-    : stickerButton(pack);
+  let foot;
+  if (studio) {
+    foot = [
+      link({ className: 'stickers-pack-price paid', textContent: 'Редактировать' }),
+      el('div', { className: 'stickers-pack-installs', textContent: `Всего установок: ${pack.holders ?? 0}` }),
+    ];
+  } else {
+    const price = stickerPackPrice(pack);
+    foot = [link({ className: `stickers-pack-price ${price.kind}`, textContent: price.text })];
+    if (act === 'settings') foot.push(button('Убрать набор', () => confirmRemove(pack), { secondary: true }));
+  }
 
-  return el('div', { className: 'sticker-pack-card' },
-    ...packHead(pack),
-    el('div', { className: 'sticker-grid' }, ...pack.stickers.map(stickerNode)),
-    el('div', { className: 'sticker-pack-actions' }, action),
+  return el('div', { className: 'stickers-pack-card' },
+    link({ className: 'stickers-pack-thumb' }, thumb(pack)),
+    el('div', { className: 'stickers-pack-name' }, link({ textContent: stickerPackName(pack), title: stickerPackName(pack) })),
+    studio
+      ? el('div', { className: 'stickers-pack-author', textContent: pack.published ? 'в магазине' : 'не опубликован' })
+      : pack.author ? el('div', { className: 'stickers-pack-author' }, author(pack)) : null,
+    el('div', { className: 'stickers-pack-desc', textContent: pack.about ?? '' }),
+    el('div', { className: 'stickers-pack-footer' }, ...foot),
   );
 }
 
-// stickerButton adds the pack; a guest is sent to sign in, and an added
-// pack says so.
-function stickerButton(pack) {
-  const text = stickerPackAction(pack);
-  if (pack.added) return el('span', { className: 'hint', textContent: text });
-  if (!me) return button(text, () => location.assign('/'));
+// openPack is openvk's box "Информация о наборе": the cover, the name, who
+// made it and what they said, the button that adds or buys it, how many
+// stickers and the link to the box, and the stickers.
+function openPack(pack) {
+  const modal = openModal(stickerPackName(pack));
+  const error = el('div', { className: 'error', hidden: true });
+  const action = button(stickerPackAction(pack), () => add(pack, action, error));
+  const copy = el('a', { className: 'stickers-modal-copy', textContent: 'Скопировать ссылку' });
 
-  const add = button(text, async () => {
-    hideError($('error'));
-    add.disabled = true;
-
+  action.disabled = Boolean(pack.added);
+  copy.addEventListener('click', async () => {
     try {
-      await api.addStickerPack(pack.id);
-      if (pack.price && !pack.bought) me.votes = Math.max((me.votes ?? 0) - pack.price, 0);
-      $('added').hidden = false;
-      await show();
-      scrollTo(0, 0);
-    } catch (e) {
-      add.disabled = false;
-      showError($('error'), e.message === 'not enough votes' ? 'Недостаточно голосов для покупки.' : e);
+      await navigator.clipboard.writeText(`${location.origin}/stickers?pack=${encodeURIComponent(pack.id)}`);
+      copy.textContent = 'Ссылка скопирована!';
+      setTimeout(() => { copy.textContent = 'Скопировать ссылку'; }, 2000);
+    } catch {
+      // A browser that keeps the clipboard shut leaves the link as it was.
     }
   });
 
-  return add;
+  // What one has to pay with, under the button of a pack one buys.
+  const balance = me && pack.price && !pack.bought
+    ? el('span', { className: 'hint', textContent: `У Вас ${votesCount(me.votes ?? 0)}` })
+    : null;
+
+  modal.box.classList.add('stickers-pack-modal');
+  modal.body.append(
+    el('div', { className: 'stickers-modal-header' },
+      el('div', { className: 'stickers-modal-cover' }, thumb(pack)),
+      el('div', { className: 'stickers-modal-info' },
+        el('div', { className: 'stickers-modal-title', textContent: stickerPackName(pack) }),
+        pack.author ? el('div', { className: 'stickers-modal-author' }, author(pack)) : null,
+        pack.about ? el('div', { className: 'stickers-modal-desc', textContent: pack.about }) : null,
+        el('div', { className: 'stickers-modal-actions' }, action, balance),
+      ),
+    ),
+    error,
+    el('div', { className: 'stickers-modal-subbar' },
+      el('span', { className: 'stickers-modal-count', textContent: stickersCount(pack.stickers.length) }),
+      copy),
+    el('div', { className: 'stickers-modal-grid' },
+      ...pack.stickers.map((sticker) => el('div', { className: 'stickers-modal-item' }, stickerNode(sticker)))),
+  );
+  modal.actions.append(button('Закрыть', modal.close));
+}
+
+// add takes the pack; a guest is sent to sign in. Taken, the box says
+// "Приобретён" and the cards follow.
+async function add(pack, action, error) {
+  if (!me) {
+    location.assign('/');
+    return;
+  }
+
+  hideError(error);
+  action.disabled = true;
+
+  try {
+    await api.addStickerPack(pack.id);
+    if (pack.price && !pack.bought) me.votes = Math.max((me.votes ?? 0) - pack.price, 0);
+    pack.bought = true;
+    pack.added = true;
+    action.textContent = stickerPackAction(pack);
+    action.nextElementSibling?.remove();
+    render();
+  } catch (e) {
+    action.disabled = false;
+    showError(error, e.message === 'not enough votes' ? 'Недостаточно голосов для покупки.' : e);
+  }
 }
 
 // confirmRemove is openvk's "Вы уверены, что хотите удалить этот набор из
 // своих стикеров?".
 function confirmRemove(pack) {
-  const modal = openModal('Убрать набор');
+  const modal = openModal('Предупреждение');
 
   modal.body.append('Вы уверены, что хотите удалить этот набор из своих стикеров?');
-  modal.actions.append(button('Убрать', async () => {
+  modal.actions.append(button('Да', async () => {
     modal.close();
     hideError($('error'));
 
     try {
       await api.removeStickerPack(pack.id);
-      await show();
+      pack.added = false;
+      render();
     } catch (e) {
       showError($('error'), e);
     }
   }), button('Отмена', modal.close, { secondary: true }));
 }
 
-async function show() {
-  try {
-    const { packs } = await api.stickers();
-    const shown = settings ? packs.filter((p) => p.added) : packs.filter((p) => p.published || p.added);
+// render draws the cards of the packs the page shows.
+function render() {
+  const shown = act === 'settings' ? packs.filter((p) => p.added)
+    : act === 'author' ? packs
+      : shopPacks(packs.filter((p) => p.published || p.added), section, query);
 
-    if (me && !settings) showBalance();
-    $('packs').replaceChildren(...shown.map(packNode));
-    $('empty').textContent = settings ? 'У вас пока нет стикеров' : 'Наборов стикеров пока нет';
-    $('empty').hidden = shown.length > 0;
+  $('packs').replaceChildren(...shown.map(packCard));
+  $('empty').hidden = shown.length > 0;
+}
+
+async function showShop() {
+  $('sections').hidden = false;
+  $(`section-${section}`).classList.add('active');
+  $('search-section').value = section;
+  $('search-query').value = query;
+
+  try {
+    ({ packs } = await api.stickers());
+    render();
+
+    const asked = packs.find((p) => p.id === params.get('pack'));
+    if (asked) openPack(asked);
   } catch (e) {
     showError($('error'), e);
   }
 }
 
-// authoredNode is a pack in the "Студия стикеров": whether the shop shows
-// it, its stickers, how many have taken it and "Редактировать".
-function authoredNode(pack) {
-  return el('div', { className: 'sticker-pack-card' },
-    ...packHead({ ...pack, author: null }, el('span', { className: 'hint', textContent: pack.published ? '• в магазине' : '• не опубликован' })),
-    el('div', { className: 'sticker-grid' }, ...pack.stickers.map(stickerNode)),
-    el('div', { className: 'sticker-pack-actions' },
-      el('span', { className: 'hint', textContent: `Всего установок: ${pack.holders ?? 0}` }), ' | ',
-      el('a', { href: `/shop?act=edit&pack=${encodeURIComponent(pack.id)}`, textContent: 'Редактировать' })),
-  );
+async function showSettings() {
+  $('summary-text').textContent = 'Установленные наборы';
+  $('summary').hidden = false;
+
+  try {
+    ({ packs } = await api.stickers());
+    render();
+  } catch (e) {
+    showError($('error'), e);
+  }
 }
 
 async function showStudio() {
-  $('studio-bar').hidden = false;
+  $('summary-text').textContent = 'Автор стикеров';
+  $('create').hidden = false;
+  $('summary').hidden = false;
 
   try {
-    const { packs } = await api.myStickerPacks();
-
-    $('studio-count').textContent = packs.length ? `Ваши наборы стикеров: ${packs.length}` : 'Студия стикеров';
-    $('packs').replaceChildren(...packs.map(authoredNode));
-    $('empty').textContent = 'Вы ещё не создали ни одного набора. Наберите стикеры из своих фотографий и опубликуйте их в магазине — бесплатно или за голоса.';
-    $('empty').hidden = packs.length > 0;
+    ({ packs } = await api.myStickerPacks());
+    render();
   } catch (e) {
     showError($('error'), e);
   }
@@ -283,7 +347,7 @@ function initForm(pack) {
         said = true;
       }
 
-      location.assign('/shop?act=author');
+      location.assign('/stickers?act=author');
     } catch (e) {
       $('pack-save').disabled = false;
       showError($('error'), e);
@@ -306,7 +370,7 @@ function confirmDelete(pack) {
 
     try {
       await api.deleteStickerPack(pack.id);
-      location.assign('/shop?act=author');
+      location.assign('/stickers?act=author');
     } catch (e) {
       showError($('error'), e);
     }
@@ -329,61 +393,8 @@ async function showEdit() {
   }
 }
 
-// buy is the box of a gift of the shop: the gift, what it costs, the words
-// one keeps with it and "Купить"; the gift goes to one's own page.
-function buy(gift, price) {
-  if (!me) {
-    location.assign('/');
-    return;
-  }
-
-  const modal = openModal('Купить подарок', { tag: 'form' });
-  const caption = el('textarea', { maxLength: 250, placeholder: 'Подпись к подарку' });
-  const error = el('div', { className: 'error', hidden: true });
-  const send = button('Купить', null, { type: 'submit' });
-
-  modal.box.classList.add('gift-send');
-  modal.body.append(giftPicture(gift), el('div', { className: 'hint', textContent: `Стоимость: ${giftPrice(price).toLowerCase()}` }), caption, error);
-  modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
-
-  modal.box.addEventListener('submit', async (event) => {
-    event.preventDefault();
-    hideError(error);
-    send.disabled = true;
-
-    try {
-      await api.sendGift(me.nickname, gift, caption.value.trim(), false);
-      modal.close();
-      me.votes = Math.max((me.votes ?? 0) - price, 0);
-      showBalance();
-      $('bought-link').href = giftsPath(me);
-      $('bought').hidden = false;
-      scrollTo(0, 0);
-    } catch (e) {
-      showError(error, e.message === 'not enough votes' ? 'Недостаточно голосов для покупки.' : e);
-      send.disabled = false;
-    }
-  });
-  caption.focus();
-}
-
-// showGifts is the gifts of the shop: the collections, each gift with its
-// price; one bought goes to one's own page.
-async function showGifts() {
-  try {
-    const { collections } = await api.giftCatalog();
-
-    if (me) showBalance();
-    $('gift-catalog').replaceChildren(...giftShelves(collections, buy));
-    $('gift-catalog').hidden = false;
-  } catch (e) {
-    showError($('error'), e);
-  }
-}
-
 const titles = {
-  shop: 'Магазин стикеров',
-  gifts: 'Подарки',
+  shop: 'Стикеры',
   settings: 'Установленные наборы',
   author: 'Студия стикеров',
   new: 'Новый набор стикеров',
@@ -391,20 +402,23 @@ const titles = {
 };
 
 me = await currentUser().catch(() => null);
-renderChrome(me);
 
-if (act !== 'shop' && act !== 'gifts' && !me) {
+if (act === 'gifts') {
+  // The gifts one bought here are bought from one's own page now.
+  location.replace(me?.nickname ? pickPath(me) : '/');
+} else if (act !== 'shop' && !me) {
   location.replace('/');
 } else {
+  renderChrome(me);
   document.title = `${titles[act]} | Freenet`;
-  $(['shop', 'gifts', 'settings'].includes(act) ? `tab-${act}` : 'tab-author').classList.add('active');
+  $(['shop', 'settings'].includes(act) ? `tab-${act}` : 'tab-author').classList.add('active');
   $('tab-settings').hidden = !me;
   $('tab-author').hidden = !me;
   $('tab-dialogs').hidden = !me;
 
-  if (act === 'gifts') await showGifts();
+  if (act === 'settings') await showSettings();
   else if (act === 'author') await showStudio();
   else if (act === 'new') initForm(null);
   else if (act === 'edit') await showEdit();
-  else await show();
+  else await showShop();
 }

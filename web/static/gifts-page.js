@@ -1,34 +1,43 @@
 // "Подарки" of a person, as openvk's: the gifts sent to the page, newest
-// first, and "Отправить подарок" — the collections to choose from and the
-// box that sends one. /gifts is yours, /gifts?u=<nickname> someone's,
-// ?act=pick chooses a gift for them.
+// first, and "Отправить подарок" — the collections to choose from, five
+// gifts of each, "Показать больше" to all the gifts of one, and the box
+// that sends one. /gifts is yours, /gifts?u=<nickname> someone's,
+// ?act=pick chooses a gift for them and ?act=menu&pack=<collection> in a
+// collection. On one's own page it is "Купить подарок": one for oneself.
 
 import { api, currentUser } from './api.js';
-import { formatPostDate, genitiveName, giftPrice, unusedVotes, voteRate } from './labels.js';
-import { SHOP_GIFTS, giftPicture, giftShelves, giftsPath, pickPath } from './gifts.js';
+import { formatPostDate, genitiveName, giftCollections, giftPrice, voteRate, votesCount } from './labels.js';
+import { giftPicture, giftRow, giftsPath, menuPath, pickPath } from './gifts.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { separated } from './posts.js';
 
 const params = new URLSearchParams(location.search);
 const nickname = params.get('u') ?? '';
-const picking = params.get('act') === 'pick';
+const act = params.get('act');
+// The collection chosen with ?act=menu; picking is both.
+const collection = act === 'menu' ? params.get('pack') ?? '' : '';
+const picking = act === 'pick' || act === 'menu';
 
 let cursor = '';
 
 function renderHead(owner, me) {
   const mine = owner.id === me?.id;
-  const name = el('a', { href: pagePath(owner), textContent: fullName(owner) });
+  const link = (href, textContent) => el('a', { href, textContent });
 
   document.title = `${picking ? 'Выбрать подарок' : 'Подарки'} | Freenet`;
-  if (picking) $('title').replaceChildren(name, ' » Выбрать подарок » Коллекции');
-  else $('title').replaceChildren(name, ' » Подарки');
+  if (!picking) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » Подарки');
+  else if (!collection) $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), 'Выбрать подарок'), ' » Коллекции');
+  else {
+    $('title').replaceChildren(link(pagePath(owner), fullName(owner)), ' » ', link(pickPath(owner), 'Выбрать подарок'), ' » ',
+      link(pickPath(owner), 'Коллекции'), ` » ${giftCollections[collection] ?? 'Подарки'}`);
+  }
 
   $('tab-list').textContent = mine ? 'Мои подарки' : 'Подарки';
   $('tab-list').href = giftsPath(owner);
-  // One buys gifts for oneself in the shop.
-  $('tab-send').textContent = mine && !picking ? 'Купить подарок' : 'Отправить подарок';
-  $('tab-send').href = mine && !picking ? SHOP_GIFTS : pickPath(owner);
+  // One's own page buys a gift for oneself.
+  $('tab-send').textContent = mine ? 'Купить подарок' : 'Отправить подарок';
+  $('tab-send').href = pickPath(owner);
   $('tab-send').hidden = !me;
   $(picking ? 'tab-send' : 'tab-list').classList.add('active');
   $('tab-page').textContent = mine ? 'К моей странице' : `К странице ${genitiveName(owner)}`;
@@ -94,38 +103,39 @@ async function loadMore(owner, mine) {
   }
 }
 
-// showBalance is openvk's "У Вас N неиспользованных голосов." over the
-// collections: what there is to pay for the gifts that have a price.
-function showBalance(me) {
-  const [before, votes, after] = unusedVotes(me.votes ?? 0);
-
-  $('balance').replaceChildren(before, el('b', { textContent: votes }), after, ' ',
-    el('a', { href: '/settings?act=finance.top-up', textContent: 'Есть ваучер?' }));
-  $('balance').hidden = false;
-  showRate($('balance'));
-}
-
 // rate is what a vote is worth, asked with the page; 0 when unknown.
 const rate = api.voteRate().then((r) => r.kopecks, () => 0);
 
-// showRate adds "1 голос = 7 ₽" to the balance line.
-async function showRate(line) {
-  const kopecks = await rate;
-  if (kopecks) line.append(' ', el('span', { className: 'hint', textContent: `(${voteRate(kopecks)})` }));
-}
-
-// confirm is openvk's "Подтверждение": the gift, what it costs, "Ваше
-// сообщение", "Анонимно" and "Отправить".
+// confirm is openvk's box "Отправить подарок": the gift, what it costs and
+// what one has, to whom, "Сообщение к подарку" and "Отправить анонимно".
+// One's own page buys the gift for oneself, and anonymous there is
+// nobody.
 function confirm(owner, me, gift, price) {
-  const modal = openModal('Отправить подарок', { tag: 'form' });
-  const caption = el('textarea', { maxLength: 250, placeholder: 'Ваше сообщение' });
+  const mine = owner.id === me.id;
+  const modal = openModal(mine ? 'Купить подарок' : 'Отправить подарок', { tag: 'form' });
+  const caption = el('textarea', { maxLength: 250, placeholder: 'Прикрепить сообщение...' });
   const anonymous = el('input', { type: 'checkbox' });
   const error = el('div', { className: 'error', hidden: true });
-  const send = button('Отправить', null, { type: 'submit' });
+  const send = button(mine ? 'Купить подарок' : 'Отправить подарок', null, { type: 'submit' });
+  const balance = el('div', { className: 'gift-send-balance', textContent: `У Вас ${votesCount(me.votes ?? 0)}` });
+
+  rate.then((kopecks) => {
+    if (kopecks) balance.append(` (${voteRate(kopecks)})`);
+  });
 
   modal.box.classList.add('gift-send');
-  modal.body.append(giftPicture(gift), el('div', { className: 'hint', textContent: `Стоимость: ${giftPrice(price).toLowerCase()}` }),
-    caption, el('label', {}, anonymous, ' Анонимно'), error);
+  modal.body.append(
+    el('div', { className: 'gift-send-top' },
+      giftPicture(gift),
+      el('div', { className: 'gift-send-cost' }, 'Стоимость: ', el('b', { textContent: giftPrice(price) })),
+      balance),
+    el('div', { className: 'gift-send-field' },
+      el('b', { textContent: 'Получатель:' }),
+      el('div', { className: 'gift-recipient' }, el('span', { textContent: fullName(owner) }))),
+    el('div', { className: 'gift-send-field' }, el('b', { textContent: 'Сообщение к подарку:' }), caption),
+  );
+  if (!mine) modal.body.append(el('div', { className: 'gift-send-field' }, el('label', {}, anonymous, ' Отправить анонимно')));
+  modal.body.append(error);
   modal.actions.append(send, button('Отмена', modal.close, { secondary: true }));
 
   modal.box.addEventListener('submit', async (event) => {
@@ -136,28 +146,40 @@ function confirm(owner, me, gift, price) {
     try {
       await api.sendGift(owner.nickname, gift, caption.value.trim(), anonymous.checked);
       modal.close();
-      // The gift is paid for: the balance over the collections follows.
       me.votes = Math.max((me.votes ?? 0) - price, 0);
-      showBalance(me);
-      $('sent').hidden = false;
-      scrollTo(0, 0);
+      sent(owner, mine);
     } catch (e) {
-      showError(error, e);
+      showError(error, e.message === 'not enough votes' ? 'Недостаточно голосов для покупки.' : e);
       send.disabled = false;
     }
   });
   caption.focus();
 }
 
-// showCatalog is "Выбрать подарок": the collections, each with its gifts.
+// sent is openvk's "Подарок отправлен"; one bought for oneself leads to
+// one's gifts.
+function sent(owner, mine) {
+  const modal = openModal('Успех');
+
+  modal.body.append(mine
+    ? el('span', {}, 'Подарок куплен. Он уже на вашей странице — ', el('a', { href: giftsPath(owner), textContent: 'Мои подарки' }), '.')
+    : 'Подарок отправлен');
+  modal.actions.append(button('OK', modal.close));
+}
+
+// showCatalog is "Выбрать подарок": the collections, five gifts of each,
+// or all the gifts of the one chosen.
 async function showCatalog(owner, me) {
   try {
     const { collections } = await api.giftCatalog();
+    const pick = (gift, price) => confirm(owner, me, gift, price);
+    const rows = collection
+      ? collections.filter((c) => c.id === collection).map((c) => giftRow(c, {}, pick))
+      : collections.map((c) => giftRow(c, { more: menuPath(owner, c.id), limit: 5 }, pick));
 
-    showBalance(me);
-
-    $('catalog').replaceChildren(...giftShelves(collections, (gift, price) => confirm(owner, me, gift, price)));
+    $('catalog').replaceChildren(...rows);
     $('catalog').hidden = false;
+    $('empty').hidden = rows.length > 0;
   } catch (e) {
     showError($('error'), e);
   }
