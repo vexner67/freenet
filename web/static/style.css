@@ -36,13 +36,15 @@
   --back-d4d4d4: #d4d4d4;
   --back-8b8b8b: #8b8b8b;
   --back-5b7aa1: #5b7aa1;
-  --back-6b6b6b: #6b6b6b;
   --back-636363: #636363;
   --back-707070: #707070;
   --back-595959: #595959;
+  --back-444: #444;
   --back-3e3e3e: #3e3e3e;
   /* Text */
   --text-000: #000;
+  --text-686868: #686868;
+  --text-e8e8e8: #e8e8e8;
   --text-c00: #c00;
   --text-333: #333;
   --text-3e3e3e: #3e3e3e;
@@ -89,7 +91,6 @@
   --line-ccc: #ccc;
   --line-c3cad2: #c3cad2;
   --line-c0cad5: #c0cad5;
-  --line-c4c4c4: #c4c4c4;
   --line-bbb: #bbb;
   --line-b9b597: #b9b597;
   --line-aaa: #aaa;
@@ -291,18 +292,27 @@ h1.page-title { font-size: inherit; }
 /* Controls */
 
 .button {
-  padding: 4px 9px;
+/* openvk's button (main.css): dark gray, white text with a shadow, only
+   the text lightens under the pointer and the box darkens when pressed.
+   openvk has no light buttons: "Отмена" is the same, so "secondary" is. */
+  padding: 4px 8px;
   background: var(--back-595959);
   border: 1px solid var(--line-595959);
   border-radius: 2px;
   color: var(--text-fff);
-  font: 12px tahoma, verdana, arial, sans-serif;
+  outline: none;
+  text-shadow: 0 1px 0 var(--text-686868);
+  font: 11px tahoma, verdana, arial, sans-serif;
+  white-space: nowrap;
+  text-decoration: none;
   cursor: pointer;
 }
-.button:hover { background: var(--back-6b6b6b); text-decoration: none; }
-.button:disabled { opacity: 0.6; cursor: default; }
-.button.secondary { background: var(--back-f2f2f2); border-color: var(--line-c4c4c4); color: var(--text-333); }
-.button.secondary:hover { background: var(--back-e6e6e6); }
+.button:hover { color: var(--text-e8e8e8); text-decoration: none; }
+.button:active { background: var(--back-444); }
+.button:disabled,
+.button[disabled] { filter: opacity(0.5); cursor: not-allowed; }
+.button:disabled:hover { color: var(--text-fff); }
+input.button { padding: 5px 7px 4px; }
 
 input[type="text"],
 input[type="email"],
@@ -944,7 +954,7 @@ label.chat-person { cursor: pointer; }
 .graffiti-swatch.picked { outline: 2px solid var(--text-2b587a); outline-offset: 1px; }
 .graffiti-colors input[type="color"] { width: 26px; height: 22px; padding: 0; border: 0; background: none; cursor: pointer; }
 .avatar-turn { display: flex; justify-content: center; gap: 6px; }
-.modal-actions { display: flex; justify-content: flex-end; gap: 6px; padding: 8px 12px; background: var(--back-f2f2f2); border-top: 1px solid var(--line-ddd); }
+.modal-actions { display: flex; justify-content: flex-end; gap: 10px; padding: 10px; background: var(--back-d4d4d4); }
 
 /* Links under the profile photo, as openvk's profile_link. */
 .profile-link { display: block; margin-top: 4px; padding: 3px 6px; background: var(--back-f2f2f2); color: var(--text-2b587a); cursor: pointer; }

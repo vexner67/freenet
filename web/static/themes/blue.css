@@ -18,9 +18,7 @@ a { color: #2b587a; }
 .menu .counter { background: #dae1e8; }
 
 .button { background: #6383a8; border-color: #45688e; }
-.button:hover { background: #7191b5; }
-.button.secondary { background: #f2f2f2; border-color: #c4c4c4; }
-.button.secondary:hover { background: #e6e6e6; }
+.button:active { background: #45688e; }
 
 .post-author { background: #f1f4f7; border-top-color: #b1bdd6; border-bottom-color: #e3e8ee; }
 .modal-header { background: linear-gradient(#5d80a8, #45688e); }
