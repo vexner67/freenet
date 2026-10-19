@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 
-import { storyAge, storyViewers, storyViews } from '../static/labels.js';
+import { storyAge, storyComments, storyViewers, storyViews } from '../static/labels.js';
 
 test('storyAge says how long ago a story was told', () => {
   const now = new Date('2026-10-16T12:00:00Z');
@@ -23,4 +23,9 @@ test('the views of a story are counted in words', () => {
   assert.equal(storyViews(11), '11 просмотров');
   assert.equal(storyViewers(1), 'Историю посмотрел 1 человек');
   assert.equal(storyViewers(5), 'Историю посмотрели 5 человек');
+});
+
+test('the link to the comments of a story counts them', () => {
+  assert.equal(storyComments(0), 'Комментировать');
+  assert.equal(storyComments(3), 'Комментарии (3)');
 });

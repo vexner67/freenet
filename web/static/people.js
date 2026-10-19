@@ -8,9 +8,11 @@ export function personCell(user) {
 
   return el('div', { className: 'person-cell' },
     el('a', { href: path }, el('img', { src: avatarURL(user, 'small'), alt: '' })),
-    el('a', { href: path, textContent: user.name }),
-    verifiedMark(user),
-    el('div', { className: 'hint person-surname', textContent: user.surname }),
+    // One link of both names, the surname under the name and smaller, as
+    // openvk's .cl_name: a long one fits the cell.
+    el('a', { className: 'person-name', href: path },
+      el('span', {}, user.name, verifiedMark(user)),
+      el('span', { className: 'person-surname', textContent: user.surname })),
   );
 }
 

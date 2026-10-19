@@ -332,6 +332,11 @@ export const api = {
   viewStory: (id) => authorized('PUT', `/api/v1/stories/${encodeURIComponent(id)}/view`),
   storyViewers: (id, cursor = '', limit = 0) => authorized('GET', page(`/api/v1/stories/${encodeURIComponent(id)}/viewers`, cursor, limit)),
   deleteStory: (id) => authorized('DELETE', `/api/v1/stories/${encodeURIComponent(id)}`),
+  likeStory: (id) => authorized('PUT', `/api/v1/stories/${encodeURIComponent(id)}/like`),
+  unlikeStory: (id) => authorized('DELETE', `/api/v1/stories/${encodeURIComponent(id)}/like`),
+  storyComments: (id, cursor = '', limit = 0) => authorized('GET', page(`/api/v1/stories/${encodeURIComponent(id)}/comments`, cursor, limit)),
+  commentStory: (id, text) => authorized('POST', `/api/v1/stories/${encodeURIComponent(id)}/comments`, { text }),
+  deleteStoryComment: (id) => authorized('DELETE', `/api/v1/story-comments/${encodeURIComponent(id)}`),
   // Uploads a photo for a post; the post refers to it by ID.
   uploadPhoto: (file) => authorized('POST', '/api/v1/me/photos', file),
   // "Мои Документы": a file up to 10 MB, named by its file name; posts
@@ -669,6 +674,11 @@ export const api = {
   // only the administrators may.
   setVerified: (nickname, verified) =>
     authorized(verified ? 'PUT' : 'DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/verification`),
+  // ban blocks a page until a time (ISO), '' for good; unban lifts it.
+  // Only the administrators may.
+  ban: (nickname, reason, until) =>
+    authorized('PUT', `/api/v1/users/${encodeURIComponent(nickname)}/ban`, until ? { reason, until } : { reason }),
+  unban: (nickname) => authorized('DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/ban`),
   setClubVerified: (ref, verified) =>
     authorized(verified ? 'PUT' : 'DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/verification`),
 

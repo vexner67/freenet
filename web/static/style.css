@@ -417,6 +417,7 @@ input:focus, select:focus { outline: 1px solid var(--line-8fa7c2); }
 .status.empty { color: var(--text-999); }
 /* openvk's deleted page: what is left instead of the information. */
 .deleted-info { margin: 40px 0; color: var(--text-aaa); font-size: 13px; text-align: center; }
+.banned-info { margin: 30px 10px; text-align: center; line-height: 1.6; }
 
 .info { width: 100%; border-collapse: collapse; }
 .info th {
@@ -587,9 +588,10 @@ a.like:hover svg { opacity: .7; }
 }
 .person-cell { min-width: 0; overflow-wrap: anywhere; }
 .person-cell img { display: block; width: 45px; height: 45px; margin: 0 auto 3px; }
-/* The surname is smaller, as openvk's .cl_lname: a long one fits the cell
-   instead of breaking. */
-.person-cell .person-surname { padding: 0 2px; font-size: 7pt; }
+/* openvk's .cl_name: the names are one link, the surname under the name
+   in 7pt (.cl_lname), so that a long one fits the cell. */
+.person-cell .person-name { display: flex; flex-direction: column; padding: 0 3px; }
+.person-cell .person-surname { font-size: 7pt; }
 
 .person {
   display: flex;
@@ -1574,6 +1576,31 @@ a.poll-result-name { cursor: pointer; }
 .story-zone-next { right: 0; width: 65%; }
 .story-foot { display: flex; justify-content: center; gap: 16px; padding: 8px; }
 .story-foot a { color: rgba(255, 255, 255, .9); cursor: pointer; }
+.story-like { font-size: 13px; }
+.story-foot .story-liked { color: var(--text-d94c4c); }
+.story-comments {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  max-height: 60%;
+  padding: 8px;
+  background: rgba(0, 0, 0, .8);
+}
+.story-comment-list { flex: 1; min-height: 0; overflow-y: auto; }
+.story-comment { display: flex; gap: 6px; margin-bottom: 8px; }
+.story-comment img { display: block; width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+.story-comment a { color: rgba(255, 255, 255, .95); cursor: pointer; }
+.story-comment-author { font-weight: bold; }
+.story-comment-text { word-wrap: break-word; white-space: pre-wrap; }
+.story-comment .story-comment-delete { color: rgba(255, 255, 255, .6); }
+.story-comments-more { display: block; margin-bottom: 6px; color: rgba(255, 255, 255, .9); text-align: center; cursor: pointer; }
+.story-comments-empty { color: rgba(255, 255, 255, .6); text-align: center; }
+.story-comment-form { display: flex; gap: 6px; align-items: flex-end; }
+.story-comment-form textarea { flex: 1; height: 32px; min-height: 32px; }
 .story-form textarea { width: 100%; height: 50px; margin-top: 6px; }
 .story-preview { display: block; width: auto; max-width: 100%; height: auto; max-height: 240px; margin: 6px auto 0; }
 

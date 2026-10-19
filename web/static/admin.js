@@ -1,13 +1,14 @@
 // "Админ-панель", openvk's /admin: "Сводка" (/admin), "Пользователи"
 // (/admin/users: the verified pages, or those ?q= finds, with the switch
-// of "Верификация" each), "Группы" (/admin/clubs: the same of groups),
+// of "Верификация" and "Заблокировать" each), "Блокировки" (/admin/bans:
+// the pages blocked now), "Группы" (/admin/clubs: the same of groups),
 // "Ваучеры" (/admin/vouchers), the form of a new one
 // (/admin/vouchers/new) and "Подарки" (/admin/gifts: what each gift costs). The page is its own, AUI as openvk's:
 // none of the site's chrome. Only the administrators of the site
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { adminOverview, errorText, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { accusativeName, adminOverview, banEnd, banUntil, errorText, genitiveName, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -100,6 +101,7 @@ const verifiable = {
     all: 'Подтверждённые страницы',
     none: 'Никого не найдено.',
     noneVerified: 'Подтверждённых страниц пока нет. Найдите человека поиском.',
+    banCell,
   },
   clubs: {
     one: 'club',
@@ -116,9 +118,117 @@ const verifiable = {
   },
 };
 
-// verifications is the page of a kind of verifiable, for query.
-function verifications(kind, query) {
-  const k = verifiable[kind];
+// banCell is "Блокировка" of a person: "заблокирован", until when and
+// "Разблокировать", or "Заблокировать", which opens the dialog.
+function banCell(user) {
+  const cell = el('div', { className: 'admin-ban' });
+
+  const draw = () => {
+    if (!user.ban) {
+      cell.replaceChildren(el('button', {
+        className: 'aui-button aui-button-compact', type: 'button', textContent: 'Заблокировать',
+        onclick: () => openBan(user, draw),
+      }));
+      return;
+    }
+
+    const lift = el('button', { className: 'aui-button aui-button-compact', type: 'button', textContent: 'Разблокировать' });
+    lift.addEventListener('click', async () => {
+      error.hidden = true;
+      lift.disabled = true;
+      try {
+        await api.unban(user.nickname);
+        user.ban = null;
+        draw();
+      } catch (e) {
+        showError(e);
+        lift.disabled = false;
+      }
+    });
+
+    cell.replaceChildren(
+      el('span', { className: 'aui-lozenge aui-lozenge-removed', textContent: 'заблокирован' }),
+      el('span', { className: 'admin-ban-until', textContent: banEnd(user.ban), title: user.ban.reason }),
+      lift,
+    );
+  };
+
+  draw();
+
+  return cell;
+}
+
+// openBan asks why and for how long to block user, openvk's "Забанить …",
+// and draws the cell anew once blocked.
+function openBan(user, done) {
+  const dialog = $('ban-dialog');
+  const form = $('ban-form');
+  const banError = $('ban-error');
+
+  $('ban-title').textContent = 'Заблокировать ' + accusativeName(user);
+  $('ban-about').textContent = `Вы собираетесь заблокировать страницу ${genitiveName(user)} (@${user.nickname}). `
+    + 'Пока блокировка действует, владелец сможет только прочитать её причину и выйти, а страница покажет другим лишь имя, фото и причину.';
+  form.reset();
+  $('ban-date-group').hidden = true;
+  banError.hidden = true;
+  dialog.hidden = false;
+  $('ban-reason').focus();
+
+  const close = () => {
+    dialog.hidden = true;
+    form.onsubmit = null;
+    document.removeEventListener('keydown', onKey);
+  };
+  const onKey = (e) => {
+    if (e.key === 'Escape') close();
+  };
+  document.addEventListener('keydown', onKey);
+  $('ban-cancel').onclick = close;
+  dialog.onclick = (e) => {
+    if (e.target === dialog) close();
+  };
+  $('ban-term').onchange = () => {
+    $('ban-date-group').hidden = $('ban-term').value !== 'date';
+  };
+
+  form.onsubmit = async (e) => {
+    e.preventDefault();
+    banError.hidden = true;
+
+    const term = $('ban-term').value;
+    const until = banUntil(term, new Date(), $('ban-date').value);
+    if (term === 'date' && !until) {
+      banError.textContent = 'Укажите, до какого времени заблокировать.';
+      banError.hidden = false;
+      return;
+    }
+
+    const submit = form.querySelector('[type=submit]');
+    submit.disabled = true;
+    try {
+      const reason = $('ban-reason').value.trim();
+      await api.ban(user.nickname, reason, until);
+      user.ban = { reason, bannedAt: new Date().toISOString(), until: until || null };
+      close();
+      done();
+    } catch (err) {
+      banError.textContent = errorText(err);
+      banError.hidden = false;
+    } finally {
+      submit.disabled = false;
+    }
+  };
+}
+
+// verifications is the page of a kind of verifiable, for query; bans:
+// without a query it lists the pages blocked now ("Блокировки").
+function verifications(kind, query, bans = false) {
+  const k = bans ? {
+    ...verifiable[kind],
+    search: (q, after) => api.search(q, after, q ? {} : { banned: 'true' }),
+    all: 'Заблокированные пользователи',
+    noneVerified: 'Заблокированных пользователей нет.',
+  } : verifiable[kind];
   let cursor = '';
 
   function row(page) {
@@ -152,11 +262,12 @@ function verifications(kind, query) {
       }
     });
 
-    return el('tr', {},
+    return el('tr', {}, ...[
       el('td', {}, person),
       el('td', {}, el('span', { className: 'admin-code', textContent: k.address(page) })),
       el('td', {}, toggle),
-    );
+      k.banCell && el('td', {}, k.banCell(page)),
+    ].filter(Boolean));
   }
 
   async function more(answered) {
@@ -334,12 +445,13 @@ async function gifts(catalog) {
 // The reads of the page go with /me in one round trip; a guest or one who
 // is not an administrator gets nothing from them.
 const query = new URLSearchParams(location.search).get('q')?.trim() ?? '';
-const listed = { '/admin/users': 'users', '/admin/clubs': 'clubs' }[path];
-const listPage = listed ? verifications(listed, query) : null;
+const listed = { '/admin/users': 'users', '/admin/bans': 'users', '/admin/clubs': 'clubs' }[path];
+const listPage = listed ? verifications(listed, query, path === '/admin/bans') : null;
 
 const reads = {
   '/admin': () => started(api.about()),
   '/admin/users': () => started(listPage.first()),
+  '/admin/bans': () => started(listPage.first()),
   '/admin/clubs': () => started(listPage.first()),
   '/admin/vouchers': () => started(api.vouchers()),
   '/admin/gifts': () => started(api.giftCatalog()),
@@ -355,6 +467,10 @@ if (!me) {
   } else if (path === '/admin') {
     await summary(reads).catch(showError);
   } else if (listed) {
+    if (path === '/admin/bans') {
+      $('users-title').textContent = 'Блокировки';
+      $('user-search').action = '/admin/bans';
+    }
     $(listed).hidden = false;
     await listPage.more(reads);
   } else if (path === '/admin/vouchers') {

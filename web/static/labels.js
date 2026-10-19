@@ -254,6 +254,12 @@ export function storyViews(n) {
   return `${n} ${plural(n, ['просмотр', 'просмотра', 'просмотров'])}`;
 }
 
+// storyComments is the link to the comments under a story: "Комментарии"
+// or "Комментарии (3)".
+export function storyComments(n) {
+  return n > 0 ? `Комментарии (${n})` : 'Комментировать';
+}
+
 // storyViewers heads the box of who viewed a story.
 export function storyViewers(n) {
   return `Историю ${plural(n, ['посмотрел', 'посмотрели', 'посмотрели'])} ${n} ${plural(n, ['человек', 'человека', 'человек'])}`;
@@ -265,6 +271,33 @@ export function formatDateTime(iso) {
   const time = `${date.getUTCHours()}:${two(date.getUTCMinutes())}`;
 
   return `${date.getUTCDate()} ${months[date.getUTCMonth()]} ${date.getUTCFullYear()} в ${time}`;
+}
+
+// banTerms are how long the admin panel blocks a page for: a number of
+// days, months or years from now.
+const banTerms = { day: [0, 0, 1], week: [0, 0, 7], month: [0, 1, 0], year: [1, 0, 0] };
+
+// banUntil is when a block chosen in the admin panel ends, as ISO: a term
+// from now, '' for good ("forever"); "date" takes the value of a
+// datetime-local input, on the visitor's clock ('' if empty).
+export function banUntil(term, now = new Date(), value = '') {
+  if (term === 'forever') return '';
+  if (term === 'date') {
+    const [date, time] = value.split('T');
+    return localTime(date, time);
+  }
+
+  const [years, months, days] = banTerms[term] ?? banTerms.month;
+  const at = new Date(now.getTime());
+  at.setUTCFullYear(at.getUTCFullYear() + years, at.getUTCMonth() + months, at.getUTCDate() + days);
+
+  return at.toISOString();
+}
+
+// banEnd is until when a page is blocked, as openvk's "до: …" or
+// "навсегда".
+export function banEnd(ban) {
+  return ban.until ? 'до ' + formatDateTime(ban.until) : 'навсегда';
 }
 
 // localTime turns the values of a date and a time input, taken on the
@@ -1273,6 +1306,12 @@ const errorTexts = {
   'the sticker pack is taken by others': 'Набор уже установили другие: удалить его или его стикеры нельзя.',
   'fill in your profile before making stickers': 'Сначала заполните свою страницу.',
   'voucher is not valid': 'Ваучер недействительный. Возможно, вы ввели неверный серийный номер, уже использовали данный ваучер или же он просто истёк.',
+  'a ban needs a reason': 'Укажите причину блокировки.',
+  'the reason of a ban is too long': 'Причина блокировки слишком длинная.',
+  'a ban must end in the future': 'Блокировка должна кончаться в будущем.',
+  'invalid until': 'Неверная дата окончания блокировки.',
+  'you cannot ban yourself': 'Нельзя заблокировать самого себя.',
+  'an administrator cannot be banned': 'Администратора сайта заблокировать нельзя.',
   'you cannot transfer votes to yourself': 'Нельзя передать голоса самому себе.',
   'you cannot transfer votes to this user': 'Вы не можете передать голоса этому пользователю.',
   'the number of votes must be between 1 and 1000000': 'Количество голосов — от 1 до 1 000 000.',
@@ -1323,6 +1362,9 @@ const errorTexts = {
   'too many postponed posts': 'Отложено слишком много записей: не больше 100 на стену.',
   'too many stories': 'Сразу можно показывать не больше 30 историй.',
   'story not found': 'Этой истории уже нет.',
+  'story comment not found': 'Этого комментария уже нет.',
+  'story comment is too long': 'Комментарий к истории — не больше 1000 символов.',
+  'you cannot comment on this story': 'Вы не можете комментировать эту историю.',
   'story text is too long': 'Подпись истории — не больше 200 символов.',
   'a story shows a photo': 'Выберите фотографию для истории.',
   'fill in your profile before creating a club': 'Сначала заполните свою страницу.',
