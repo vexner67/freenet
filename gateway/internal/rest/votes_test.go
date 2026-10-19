@@ -49,6 +49,15 @@ func (f *fakeVotes) DeleteVoucher(_ context.Context, token, voucherID string) er
 	return f.err
 }
 
+func (f *fakeVotes) Rate(context.Context) (int64, error) {
+	return 700, f.err
+}
+
+func (f *fakeVotes) SetRate(_ context.Context, token string, kopecks int64) error {
+	f.token, f.votes = token, kopecks
+	return f.err
+}
+
 type voucherBody struct {
 	ID          string `json:"id"`
 	Code        string `json:"code"`
@@ -172,5 +181,31 @@ func TestVouchers(t *testing.T) {
 
 	if w = newHarness(rest.Config{}).do("GET", "/api/v1/vouchers?limit=x", "", "Authorization", "Bearer tok"); w.Code != http.StatusBadRequest {
 		t.Fatalf("a broken limit: %d", w.Code)
+	}
+}
+
+func TestVoteRate(t *testing.T) {
+	t.Parallel()
+
+	// Anyone reads the rate, without signing in.
+	w := newHarness(rest.Config{}).do("GET", "/api/v1/vote-rate", "")
+	if got := decode[map[string]int64](t, w); w.Code != http.StatusOK || got["kopecks"] != 700 {
+		t.Fatalf("%d %v", w.Code, got)
+	}
+
+	h := newHarness(rest.Config{})
+	if w = h.do("PUT", "/api/v1/vote-rate", `{"kopecks":1250}`, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent ||
+		h.votes.token != "tok" || h.votes.votes != 1250 {
+		t.Fatalf("set: %d, %+v", w.Code, h.votes)
+	}
+
+	if w = newHarness(rest.Config{}).do("PUT", "/api/v1/vote-rate", `{"kopecks":1250}`); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without token: %d", w.Code)
+	}
+
+	h = newHarness(rest.Config{})
+	h.votes.err = failure.New(failure.PermissionDenied, "permission denied")
+	if w = h.do("PUT", "/api/v1/vote-rate", `{"kopecks":1250}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("not an administrator: %d", w.Code)
 	}
 }

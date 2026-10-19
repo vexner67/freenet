@@ -473,6 +473,10 @@ type Votes interface {
 	CreateVoucher(ctx context.Context, accessToken string, d model.VoucherDraft) (model.Voucher, error)
 	ListVouchers(ctx context.Context, accessToken, cursor string, limit int) (model.VoucherPage, error)
 	DeleteVoucher(ctx context.Context, accessToken, voucherID string) error
+	// Rate is what a vote is worth, in kopecks; SetRate is the
+	// administrators'.
+	Rate(ctx context.Context) (int64, error)
+	SetRate(ctx context.Context, accessToken string, kopecks int64) error
 }
 
 // Backends are the services the API is made of.
@@ -786,6 +790,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/vouchers", a.listVouchers)
 	mux.HandleFunc("POST /api/v1/vouchers", a.createVoucher)
 	mux.HandleFunc("DELETE /api/v1/vouchers/{id}", a.deleteVoucher)
+	mux.HandleFunc("GET /api/v1/vote-rate", a.voteRate)
+	mux.HandleFunc("PUT /api/v1/vote-rate", a.setVoteRate)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/ban", a.ban)

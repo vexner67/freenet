@@ -23,7 +23,19 @@ type fakeVotesAPI struct {
 	created     *userv1.CreateVoucherRequest
 	listed      *userv1.ListVouchersRequest
 	deleted     string
+	rate        int64
 	err         error
+}
+
+func (f *fakeVotesAPI) GetVoteRate(context.Context, *userv1.GetVoteRateRequest, ...grpc.CallOption) (*userv1.GetVoteRateResponse, error) {
+	return &userv1.GetVoteRateResponse{Kopecks: 700}, f.err
+}
+
+func (f *fakeVotesAPI) SetVoteRate(ctx context.Context, req *userv1.SetVoteRateRequest, _ ...grpc.CallOption) (*emptypb.Empty, error) {
+	f.md, _ = metadata.FromOutgoingContext(ctx)
+	f.rate = req.GetKopecks()
+
+	return &emptypb.Empty{}, f.err
 }
 
 func (f *fakeVotesAPI) TransferVotes(ctx context.Context, req *userv1.TransferVotesRequest, _ ...grpc.CallOption) (*userv1.TransferVotesResponse, error) {
@@ -135,5 +147,20 @@ func TestVotes(t *testing.T) {
 	_, err = votes.Transfer(ctx, "tok", "u2", 1)
 	if f := failure.From(err); f.Kind != failure.Conflict || f.Message != "not enough votes" {
 		t.Fatalf("a transfer of too much: %v", err)
+	}
+}
+
+func TestVotes_Rate(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	api := &fakeVotesAPI{}
+	votes := NewVotes(api)
+
+	if kopecks, err := votes.Rate(ctx); err != nil || kopecks != 700 {
+		t.Fatalf("Rate = %d, %v", kopecks, err)
+	}
+	if err := votes.SetRate(ctx, "tok", 1250); err != nil || api.rate != 1250 || api.md.Get("authorization")[0] != "Bearer tok" {
+		t.Fatalf("SetRate: %v; asked %d", err, api.rate)
 	}
 }
