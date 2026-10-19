@@ -3,7 +3,6 @@ import { relationships, partnerName, partnerPrefix, takesPartner, worldviews, po
 import { $, el, fullName, hideError, logout, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { albumPath, albumsBlock, isAvatarAlbum } from './albums.js';
 import { giftsBlock, pickPath } from './gifts.js';
-import { notesBlock } from './notes.js';
 import { initBlacklistLink } from './blacklist.js';
 import { initIgnoreLink } from './feedsettings.js';
 import { initFollow } from './follow.js';
@@ -17,8 +16,6 @@ const nickname = decodeURIComponent(location.pathname.slice(1));
 const CLUBS_SHOWN = 6;
 // openvk shows the first page of albums on a person's page.
 const ALBUMS_SHOWN = 10;
-// The newest notes of the block "Заметки".
-const NOTES_SHOWN = 4;
 
 // rows lists the table under the name, in openvk's order; private marks
 // rows others cannot see (only the owner gets them at all, from /me).
@@ -304,19 +301,6 @@ async function showStories(user) {
   $('stories').addEventListener('click', () => openStories(authors, 0));
 }
 
-// showNotes is openvk's block "Заметки": how many, "Все" and the newest,
-// as the user's "Кому видно мои заметки" allows.
-async function showNotes(user) {
-  try {
-    const page = await api.notes(user.nickname, '', NOTES_SHOWN);
-
-    $('notes-block').replaceChildren(...notesBlock(page));
-    $('notes-block').hidden = page.total === 0;
-  } catch {
-    // Hidden by the user, or not to be had: the page works without it.
-  }
-}
-
 // renderHidden is openvk's page whose owner hides it from the viewer
 // ("Кому в интернете видно мою страницу"): the name and why there is
 // nothing else.
@@ -496,7 +480,6 @@ try {
     // As openvk, the blocks the owner hides from the viewer are not there.
     if (profile.access.photos) showAlbums(profile);
     if (profile.access.clubs) showClubs(profile);
-    if (profile.access.notes) showNotes(profile);
     showGifts(profile, me, isOwner);
     if (me) showStories(profile);
     showCompleteness(isOwner ? me : profile, isOwner);

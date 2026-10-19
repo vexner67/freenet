@@ -8,7 +8,7 @@
 // person go to its author.
 
 import { api, currentUser } from './api.js';
-import { giftPrice, stickerPackAction, stickerPackName, unusedVotes, votesCount } from './labels.js';
+import { giftPrice, stickerPackAction, stickerPackName, unusedVotes, voteRate, votesCount } from './labels.js';
 import { giftPicture, giftShelves, giftsPath } from './gifts.js';
 import { $, el, fullName, pagePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -32,6 +32,16 @@ function showBalance() {
   $('balance').replaceChildren(before, el('b', { textContent: votes }), after, ' ',
     el('a', { href: '/settings?act=finance.top-up', textContent: 'Есть ваучер?' }));
   $('balance').hidden = false;
+  showRate($('balance'));
+}
+
+// rate is what a vote is worth, asked with the page; 0 when unknown.
+const rate = api.voteRate().then((r) => r.kopecks, () => 0);
+
+// showRate adds "1 голос = 7 ₽" to the balance line.
+async function showRate(line) {
+  const kopecks = await rate;
+  if (kopecks) line.append(' ', el('span', { className: 'hint', textContent: `(${voteRate(kopecks)})` }));
 }
 
 // packHead is what a pack is called and costs, then who made it and what

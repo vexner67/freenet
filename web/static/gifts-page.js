@@ -4,7 +4,7 @@
 // ?act=pick chooses a gift for them.
 
 import { api, currentUser } from './api.js';
-import { formatPostDate, genitiveName, giftPrice, unusedVotes } from './labels.js';
+import { formatPostDate, genitiveName, giftPrice, unusedVotes, voteRate } from './labels.js';
 import { SHOP_GIFTS, giftPicture, giftShelves, giftsPath, pickPath } from './gifts.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
@@ -102,6 +102,16 @@ function showBalance(me) {
   $('balance').replaceChildren(before, el('b', { textContent: votes }), after, ' ',
     el('a', { href: '/settings?act=finance.top-up', textContent: 'Есть ваучер?' }));
   $('balance').hidden = false;
+  showRate($('balance'));
+}
+
+// rate is what a vote is worth, asked with the page; 0 when unknown.
+const rate = api.voteRate().then((r) => r.kopecks, () => 0);
+
+// showRate adds "1 голос = 7 ₽" to the balance line.
+async function showRate(line) {
+  const kopecks = await rate;
+  if (kopecks) line.append(' ', el('span', { className: 'hint', textContent: `(${voteRate(kopecks)})` }));
 }
 
 // confirm is openvk's "Подтверждение": the gift, what it costs, "Ваше

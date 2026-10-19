@@ -9,7 +9,7 @@
 // "Админ-панель" (admin.js); ?act=vouchers, where they were, leads there.
 
 import { api, currentUser } from './api.js';
-import { deviceName, formatDateTime, keyStateText, sessionsCount, plural, votesCount, voucherGave, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
+import { deviceName, formatDateTime, keyStateText, sessionsCount, plural, rubles, voteRate, votesCount, voucherGave, audiences, avatarStyles, mainPages, menuItems, nsfwContents, pageReads, postViews, onlineReads, ratings, themes, timezones, wallWrites, messagesWrites, chatsInvites, profileTypes, pushStateTexts } from './labels.js';
 import { $, applyInterface, deviceTheme, el, fullName, pagePath, setDeviceTheme, profilePath, renderChrome, showError, hideError } from './layout.js';
 import { button, openModal } from './modal.js';
 import { openDeactivate } from './deactivate.js';
@@ -22,6 +22,8 @@ const tabs = {
   finance: initFinance, 'finance.top-up': initTopUp,
 };
 const asked = new URLSearchParams(location.search).get('act');
+// What a vote is worth, asked with the page for "Голоса"; 0 when unknown.
+const rate = asked === 'finance' ? api.voteRate().then((r) => r.kopecks, () => 0) : Promise.resolve(0);
 
 function fill(select, options, value) {
   select.replaceChildren(...options.map(([v, text]) => el('option', { value: v, textContent: text })));
@@ -96,7 +98,7 @@ async function showPush(me) {
 const reads = {
   'page-read': 'pageRead', 'info-read': 'infoRead', 'online-read': 'onlineRead',
   'clubs-read': 'clubsRead', 'photos-read': 'photosRead', 'friends-read': 'friendsRead',
-  'notes-read': 'notesRead', 'gifts-read': 'giftsRead',
+  'gifts-read': 'giftsRead',
 };
 const readOptions = { 'page-read': pageReads, 'online-read': onlineReads };
 const shows = { 'show-birthday': 'showBirthday', 'show-relationship': 'showRelationship', 'show-worldview': 'showWorldview', 'show-political-views': 'showPoliticalViews' };
@@ -332,6 +334,19 @@ function say(title, ...rest) {
 function showVotes(me) {
   $('votes').textContent = me.votes ?? 0;
   $('votes-word').textContent = plural(me.votes ?? 0, ['голос', 'голоса', 'голосов']);
+  $('votes-rubles').textContent = kopecksPerVote ? `≈ ${rubles((me.votes ?? 0) * kopecksPerVote)}` : '';
+}
+
+let kopecksPerVote = 0;
+
+// showRate is what a vote is worth and what the balance is worth with it.
+async function showRate(me) {
+  kopecksPerVote = await rate;
+  if (!kopecksPerVote) return;
+
+  $('vote-rate').textContent = `Курс: ${voteRate(kopecksPerVote)}.`;
+  $('vote-rate').hidden = false;
+  showVotes(me);
 }
 
 // openTransfer is openvk's "Передача голосов": how many and to whom, by
@@ -384,6 +399,7 @@ function openTransfer(me) {
 // ваучер?" and "передать голоса".
 function initFinance(me) {
   showVotes(me);
+  showRate(me);
   $('transfer-link').addEventListener('click', () => openTransfer(me));
 }
 

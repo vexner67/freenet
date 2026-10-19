@@ -343,6 +343,10 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
 .admin-gift img { width: 40px; height: 40px; }
 form.aui.admin-price { display: flex; gap: 8px; align-items: center; }
 form.aui.admin-price .text { width: 110px; }
+form.aui.admin-rate { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 16px; }
+form.aui.admin-rate label { font-weight: bold; }
+form.aui.admin-rate .text { width: 110px; }
+form.aui.admin-rate .description { flex-basis: 100%; max-width: none; margin-top: 0; }
 .aui-pager { margin-top: 15px; text-align: right; }
 
 /* Lozenges: the state of a voucher. */

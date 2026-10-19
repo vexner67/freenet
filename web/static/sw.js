@@ -40,7 +40,6 @@ const pushTexts = {
   photo_mention: ['mention', 'вас в комментарии под фотографией'],
   photo_like: ['like', 'вашу фотографию'],
   photo_comment: ['comment', 'комментарий под вашей фотографией'],
-  note_comment: ['comment', 'комментарий под вашей заметкой'],
   story_like: ['like', 'вашу историю'],
   story_comment: ['comment', 'комментарий под вашей историей'],
   gift: ['gift', 'вам подарок'],

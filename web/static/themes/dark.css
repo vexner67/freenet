@@ -114,7 +114,7 @@ img.name-checkmark { filter: brightness(2.4); }
 /* What the palette does not give: a block that is not its plain self in
    another colour. */
 a { color: #7fa9d4; }
-.logo-mark { background: #d4d4d4; }
+.logo-mark rect { fill: #d4d4d4; }
 .page-title { color: #e6dfb6; }
 .menu .counter { background: #333; }
 .section-title::before { border-top-color: #777; }
