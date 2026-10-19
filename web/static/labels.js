@@ -638,6 +638,18 @@ export function aboutStatistics({ users, online, clubs, posts }) {
   ];
 }
 
+// adminOverview are the words under the numbers of "Сводка" of the
+// admin panel, openvk's "admin_overview_*": the users with the list of
+// those online under them, the groups and the posts.
+export function adminOverview({ users, online, clubs, posts }) {
+  return {
+    users: plural(users, ['зарегистрированный пользователь:', 'зарегистрированных пользователя, из них:', 'зарегистрированных пользователей, из них:']),
+    online: 'онлайн',
+    clubs: plural(clubs, ['группа', 'группы', 'групп']),
+    posts: plural(posts, ['запись', 'записи', 'записей']),
+  };
+}
+
 // clubsCount is openvk's "groups": "1 группа", "5 групп".
 export function clubsCount(n) {
   return n === 0 ? 'Ни одной группы' : `${n} ${plural(n, ['группа', 'группы', 'групп'])}`;
@@ -1127,6 +1139,7 @@ const errorTexts = {
   'nickname is reserved': 'Этот никнейм зарезервирован, выберите другой.',
   'nickname is already taken': 'Этот никнейм уже занят.',
   'status is too long': 'Статус длиннее 200 символов.',
+  'text contains invisible characters': 'Невидимые символы использовать нельзя.',
   'birthday is in the future': 'Дата рождения не может быть в будущем.',
   'user not found': 'Страница не найдена.',
   'session not found': 'Эта сессия уже завершена.',

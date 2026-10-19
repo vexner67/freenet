@@ -409,6 +409,10 @@ export function applyInterface(me) {
     el('a', { href: '/docs', textContent: 'Документы' }),
     accountsLink(me),
     el('a', { href: '/search', textContent: 'Поиск' }),
+    // The administrators of the site have openvk's "Админ-панель" under
+    // a line of its own.
+    me.admin && el('div', { className: 'menu-divider' }),
+    me.admin && el('a', { href: '/admin', textContent: 'Админ-панель' }),
     // The header says "выход"; the phone, whose header is narrow, has it
     // here too, as openvk's.
     el('a', { className: 'menu-phone', href: '/', textContent: 'Выйти', onclick: logout }),

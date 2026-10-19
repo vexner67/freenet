@@ -1,0 +1,445 @@
+/* "Админ-панель", laid out as openvk's: the Atlassian AUI of its
+   AdminPresenter — a blue header, a grey sidebar of grouped links that
+   folds to icons, a white panel with a big heading, AUI tables, buttons,
+   lozenges and forms. Its own page and stylesheet: the site's look and
+   themes are not its. Every colour is a variable of the palette below;
+   the dark one is AUI's dark mode, the toggle in the header. */
+
+.aui {
+  --aui-header: #0747a6;
+  --aui-header-text: #ffffff;
+  --aui-body: #f4f5f7;
+  --aui-panel: #ffffff;
+  --aui-sidebar: #f4f5f7;
+  --aui-line: #dfe1e6;
+  --aui-rule: #8993a4;
+  --aui-text: #172b4d;
+  --aui-subtle: #6b778c;
+  --aui-icon: #42526e;
+  --aui-link: #0052cc;
+  --aui-hover: #ebecf0;
+  --aui-active: #dfe1e6;
+  --aui-primary: #0052cc;
+  --aui-primary-hover: #0065ff;
+  --aui-primary-text: #ffffff;
+  --aui-button: #f4f5f7;
+  --aui-button-hover: #ebecf0;
+  --aui-button-text: #42526e;
+  --aui-input: #fafbfc;
+  --aui-input-focus: #4c9aff;
+  --aui-added: #006644;
+  --aui-added-back: #e3fcef;
+  --aui-removed: #bf2600;
+  --aui-removed-back: #ffebe6;
+  --aui-toggle-off: #6b778c;
+  --aui-toggle-on: #36b37e;
+  --aui-knob: #ffffff;
+}
+
+.aui.aui-theme-dark {
+  --aui-header: #0c3e8c;
+  --aui-header-text: #e6edf6;
+  --aui-body: #1d2125;
+  --aui-panel: #22272b;
+  --aui-sidebar: #1d2125;
+  --aui-line: #38414a;
+  --aui-rule: #596773;
+  --aui-text: #c7d1db;
+  --aui-subtle: #8c9bab;
+  --aui-icon: #9fadbc;
+  --aui-link: #579dff;
+  --aui-hover: #2c333a;
+  --aui-active: #333c43;
+  --aui-primary: #579dff;
+  --aui-primary-hover: #85b8ff;
+  --aui-primary-text: #1d2125;
+  --aui-button: #2c333a;
+  --aui-button-hover: #38414a;
+  --aui-button-text: #b6c2cf;
+  --aui-input: #22272b;
+  --aui-input-focus: #85b8ff;
+  --aui-added: #7ee2b8;
+  --aui-added-back: #1c3329;
+  --aui-removed: #fd9891;
+  --aui-removed-back: #42221f;
+  --aui-toggle-off: #596773;
+  --aui-toggle-on: #4bce97;
+  --aui-knob: #1d2125;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+
+body {
+  margin: 0;
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: var(--aui-body);
+  color: var(--aui-text);
+  font: 14px/20px -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+}
+
+a { color: var(--aui-link); text-decoration: none; }
+a:hover { text-decoration: underline; }
+
+/* The panel stays empty until the page is drawn, as the site's do. */
+.pending .aui-page-panel > * { visibility: hidden; }
+
+/* The header: the name of the site and the dark mode toggle. */
+.aui-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 55px;
+  padding: 0 10px 0 20px;
+  background: var(--aui-header);
+  color: var(--aui-header-text);
+}
+
+.aui-header-logo {
+  color: var(--aui-header-text);
+  font-size: 24px;
+  line-height: 30px;
+}
+
+.aui-header-logo:hover { text-decoration: none; }
+
+.aui-toggle {
+  position: relative;
+  width: 60px;
+  height: 28px;
+  padding: 0;
+  border: 0;
+  border-radius: 14px;
+  background: var(--aui-toggle-off);
+  cursor: pointer;
+}
+
+.aui-toggle::after {
+  content: "✕";
+  position: absolute;
+  right: 11px;
+  top: 4px;
+  color: var(--aui-knob);
+  font-size: 14px;
+  line-height: 20px;
+}
+
+.aui-toggle-knob {
+  position: absolute;
+  left: 3px;
+  top: 3px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: var(--aui-knob);
+  transition: left 0.2s;
+}
+
+.aui-toggle[aria-checked="true"] { background: var(--aui-toggle-on); }
+.aui-toggle[aria-checked="true"]::after { content: "✓"; left: 11px; right: auto; }
+.aui-toggle[aria-checked="true"] .aui-toggle-knob { left: 35px; }
+
+/* The sidebar: groups under grey headings, folded to icons. */
+.aui-content {
+  flex: 1;
+  display: flex;
+  align-items: stretch;
+}
+
+.aui-sidebar {
+  flex: 0 0 240px;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--aui-sidebar);
+  border-right: 1px solid var(--aui-line);
+}
+
+.aui-sidebar-body { flex: 1; padding: 10px; }
+.aui-sidebar-group + .aui-sidebar-group { margin-top: 15px; }
+
+.aui-nav-heading {
+  padding: 0 10px;
+  color: var(--aui-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 20px;
+  text-transform: uppercase;
+}
+
+.aui-nav-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 2px;
+  padding: 7px 10px;
+  border-radius: 3px;
+  color: var(--aui-text);
+}
+
+.aui-nav-item:hover { background: var(--aui-hover); text-decoration: none; }
+.aui-nav-item.active { background: var(--aui-active); color: var(--aui-link); font-weight: 600; }
+
+.aui-icon {
+  flex: none;
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  background: var(--aui-icon);
+  -webkit-mask: var(--icon) center / contain no-repeat;
+  mask: var(--icon) center / contain no-repeat;
+}
+
+.aui-nav-item.active .aui-icon { background: var(--aui-link); }
+.aui-icon-dashboard { --icon: url("/static/icons/admin-dashboard.svg"); }
+.aui-icon-card { --icon: url("/static/icons/admin-card.svg"); }
+.aui-icon-info { --icon: url("/static/icons/admin-info.svg"); }
+.aui-icon-rules { --icon: url("/static/icons/admin-rules.svg"); }
+.aui-icon-collapse { --icon: url("/static/icons/admin-collapse.svg"); }
+
+.aui-sidebar-footer { padding: 10px; text-align: right; }
+
+.aui-collapsed .aui-sidebar { flex-basis: 56px; }
+.aui-collapsed .aui-sidebar-footer { text-align: center; }
+.aui-collapsed .aui-icon-collapse { transform: scaleX(-1); }
+.aui-collapsed .aui-nav-item-label { display: none; }
+.aui-collapsed .aui-nav-item { justify-content: center; padding: 8px 0; }
+
+/* Folded, a heading is the line between the groups. */
+.aui-collapsed .aui-nav-heading {
+  height: 1px;
+  margin: 0 0 13px;
+  padding: 0;
+  overflow: hidden;
+  background: var(--aui-line);
+  font-size: 0;
+}
+
+.aui-collapsed .aui-sidebar-group:first-child .aui-nav-heading { display: none; }
+
+/* The page. */
+.aui-page-panel {
+  flex: 1;
+  min-width: 0;
+  align-self: flex-start;
+  padding: 20px;
+  background: var(--aui-panel);
+  border-bottom: 1px solid var(--aui-line);
+}
+
+.aui-page-panel > section { max-width: 1200px; }
+
+h1 {
+  margin: 0 0 10px;
+  color: var(--aui-text);
+  font-size: 24px;
+  font-weight: 400;
+  line-height: 28px;
+}
+
+hr {
+  height: 1px;
+  margin: 10px 0 20px;
+  border: 0;
+  background: var(--aui-rule);
+}
+
+.aui-page-header { display: flow-root; }
+.aui-page-header .aui-button { float: right; }
+
+/* "Сводка": the cards with the big numbers. */
+.admin-cards {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 32px;
+  margin-bottom: 30px;
+}
+
+.admin-card {
+  width: 400px;
+  max-width: 100%;
+  min-height: 100px;
+  padding: 10px;
+  border: 1px solid var(--aui-line);
+  border-radius: 10px;
+}
+
+.admin-card-centered { display: flex; flex-direction: column; justify-content: center; }
+
+.admin-card-digit {
+  font-size: 48px;
+  line-height: 60px;
+  word-break: break-all;
+}
+
+.admin-card ul { margin: 10px 0 0; padding-left: 40px; }
+.admin-online { color: var(--aui-added); }
+
+/* Tables. */
+.aui-table-wrap { overflow-x: auto; }
+
+table.aui {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+table.aui th {
+  padding: 7px 10px;
+  border-bottom: 2px solid var(--aui-line);
+  color: var(--aui-subtle);
+  font-size: 12px;
+  font-weight: 600;
+  text-align: left;
+  white-space: nowrap;
+}
+
+table.aui td {
+  padding: 7px 10px;
+  border-bottom: 1px solid var(--aui-line);
+  vertical-align: middle;
+}
+
+table.aui tbody tr:hover { background: var(--aui-hover); }
+
+.admin-code {
+  font-family: "SFMono-Regular", Consolas, "Liberation Mono", Menlo, monospace;
+  font-size: 13px;
+  white-space: nowrap;
+}
+
+.aui-empty { color: var(--aui-subtle); }
+.aui-pager { margin-top: 15px; text-align: right; }
+
+/* Lozenges: the state of a voucher. */
+.aui-lozenge {
+  display: inline-block;
+  padding: 2px 4px 3px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 700;
+  line-height: 11px;
+  text-transform: uppercase;
+}
+
+.aui-lozenge-success { background: var(--aui-added-back); color: var(--aui-added); }
+.aui-lozenge-removed { background: var(--aui-removed-back); color: var(--aui-removed); }
+
+/* Buttons. */
+.aui-button {
+  display: inline-block;
+  height: 32px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 3px;
+  background: var(--aui-button);
+  color: var(--aui-button-text);
+  font: inherit;
+  font-weight: 500;
+  line-height: 32px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.aui-button:hover { background: var(--aui-button-hover); text-decoration: none; }
+.aui-button:disabled { opacity: 0.5; cursor: default; }
+.aui-button-primary { background: var(--aui-primary); color: var(--aui-primary-text); }
+.aui-button-primary:hover { background: var(--aui-primary-hover); }
+.aui-button-subtle { background: transparent; }
+.aui-button-link { background: transparent; color: var(--aui-link); }
+.aui-button-link:hover { background: transparent; text-decoration: underline; }
+.aui-button-compact { height: 24px; line-height: 24px; }
+
+/* Messages over the page. */
+.aui-message {
+  margin-bottom: 15px;
+  padding: 15px 20px;
+  border-radius: 3px;
+}
+
+.aui-message p { margin: 0; }
+.aui-message .title { margin-bottom: 5px; font-weight: 600; }
+.aui-message-error { background: var(--aui-removed-back); }
+.aui-message-success { background: var(--aui-added-back); }
+
+/* Forms: the label at the left of the field, the description under it. */
+form.aui { margin-top: 10px; }
+
+form.aui .field-group {
+  position: relative;
+  padding: 4px 0 4px 250px;
+  min-height: 40px;
+}
+
+form.aui .field-group > label {
+  float: left;
+  width: 235px;
+  margin-left: -250px;
+  padding: 6px 0;
+  color: var(--aui-subtle);
+  text-align: right;
+}
+
+form.aui .text {
+  width: 100%;
+  max-width: 500px;
+  height: 36px;
+  padding: 4px 8px;
+  border: 2px solid var(--aui-line);
+  border-radius: 3px;
+  background: var(--aui-input);
+  color: var(--aui-text);
+  font: inherit;
+}
+
+form.aui .text:focus { outline: 0; border-color: var(--aui-input-focus); background: var(--aui-panel); }
+
+form.aui .description {
+  margin-top: 5px;
+  max-width: 500px;
+  color: var(--aui-subtle);
+  font-size: 12px;
+  line-height: 16px;
+}
+
+.buttons-container {
+  display: flex;
+  gap: 10px;
+  padding: 10px 0 0 250px;
+}
+
+/* A phone: the sidebar folded to icons, labels over the fields. */
+@media (max-width: 800px) {
+  .aui-sidebar { flex-basis: 56px; }
+  .aui-sidebar-footer { display: none; }
+  .aui-nav-item-label { display: none; }
+  .aui-nav-item { justify-content: center; padding: 8px 0; }
+
+  .aui-nav-heading {
+    height: 1px;
+    margin: 0 0 13px;
+    padding: 0;
+    overflow: hidden;
+    background: var(--aui-line);
+    font-size: 0;
+  }
+
+  .aui-sidebar-group:first-child .aui-nav-heading { display: none; }
+  .aui-page-panel { padding: 16px; }
+
+  form.aui .field-group { padding-left: 0; }
+
+  form.aui .field-group > label {
+    float: none;
+    display: block;
+    width: auto;
+    margin-left: 0;
+    padding: 5px 0;
+    text-align: left;
+  }
+
+  form.aui .text { font-size: 16px; }
+  .buttons-container { padding-left: 0; }
+}
