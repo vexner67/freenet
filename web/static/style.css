@@ -587,6 +587,9 @@ a.like:hover svg { opacity: .7; }
 }
 .person-cell { min-width: 0; overflow-wrap: anywhere; }
 .person-cell img { display: block; width: 45px; height: 45px; margin: 0 auto 3px; }
+/* The surname is smaller, as openvk's .cl_lname: a long one fits the cell
+   instead of breaking. */
+.person-cell .person-surname { padding: 0 2px; font-size: 7pt; }
 
 .person {
   display: flex;
@@ -667,7 +670,7 @@ a.like:hover svg { opacity: .7; }
 .messenger-messages { height: 420px; padding: 10px 20px; overflow-y: auto; }
 /* "Печатает...": a line of its own, empty when nobody types, so the form does not jump. */
 .messenger-typing { height: 14px; padding: 0 20px 3px 67px; color: var(--text-808080); line-height: 14px; }
-.im-message { display: flex; gap: 10px; margin-bottom: 3px; padding: 8px 10px; border-radius: 3px; }
+.im-message { display: flex; gap: 10px; margin-bottom: 3px; padding: 8px 10px; border-radius: 3px; touch-action: manipulation; }
 .im-message.unread { background: var(--back-ededed); }
 .im-message img { display: block; width: 37px; height: 37px; object-fit: cover; border-radius: 3px; }
 .im-message-content { flex: 1; min-width: 0; line-height: 1.45; }
@@ -682,7 +685,6 @@ a.like:hover svg { opacity: .7; }
 @media (hover: none) { .im-message-action { visibility: visible; } }
 .message-actions { display: block; margin: 3px 0 0; }
 .message-actions .attach-list { left: auto; right: 0; min-width: 100px; font-size: 11px; text-align: left; }
-.message-actions .attach-list .attach-link::before { display: none; }
 /* A click selects a message, as on VK; the bar over the dialog acts on
    the selected ones. */
 .im-message { cursor: default; }
@@ -825,6 +827,13 @@ label.chat-person { cursor: pointer; }
 .attach-document::before { background-image: url("/static/icons/document.svg"); }
 .attach-poll::before { background-image: url("/static/icons/poll.svg"); }
 .attach-timer::before { background-image: url("/static/icons/timer.svg"); }
+.action-reply::before { background-image: url("/static/icons/reply.svg"); }
+.action-reaction::before { background-image: url("/static/icons/reaction.svg"); }
+.action-edit::before { background-image: url("/static/icons/edit.svg"); }
+.action-pin::before { background-image: url("/static/icons/pin.svg"); }
+.action-unpin::before { background-image: url("/static/icons/unpin.svg"); }
+.action-forward::before { background-image: url("/static/icons/forward.svg"); }
+.action-delete::before { background-image: url("/static/icons/delete.svg"); }
 .attachments { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: 6px; }
 .attachment { position: relative; }
 .attachment img { display: block; width: 75px; height: 75px; object-fit: cover; border: 1px solid var(--line-ccc); }
@@ -1434,7 +1443,9 @@ a.poll-result-name { cursor: pointer; }
 .gift-send .modal-body { align-items: center; }
 .gift-send .modal-body textarea { width: 100%; }
 .gift-send .modal-body label { align-self: flex-start; }
-.gift-row { display: flex; gap: 10px; padding: 8px 5px; }
+/* The block of a page: five of the newest, as wide as the column. */
+.gift-row { display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; padding: 8px 5px; }
+.gift-row .gift-pic { width: 100%; height: auto; aspect-ratio: 1; }
 
 /* Stickers: one in a message, the panel under the form and the shop. */
 /* A sticker keeps its shape: one of the studio, a photo of any shape,
@@ -1465,7 +1476,6 @@ a.poll-result-name { cursor: pointer; }
 .sticker-studio-grid { margin: 0 0 6px; }
 .sticker-studio-item { display: flex; flex-direction: column; align-items: center; width: 72px; }
 .sticker-studio-item img, .sticker-studio-item .attachment-loading { width: 64px; height: 64px; object-fit: contain; background: var(--back-fff); }
-.gift-row .gift-pic { width: 72px; height: 72px; }
 
 /* "Голоса" of the settings, as openvk's: what votes are on the left, the
    account on the right; the serial number of a voucher in four fields. */

@@ -4,8 +4,8 @@
 // ?act=pick chooses a gift for them.
 
 import { api, currentUser } from './api.js';
-import { formatPostDate, genitiveName, giftCollections, giftPrice, unusedVotes } from './labels.js';
-import { giftPicture, giftsPath, pickPath } from './gifts.js';
+import { formatPostDate, genitiveName, giftPrice, unusedVotes } from './labels.js';
+import { SHOP_GIFTS, giftPicture, giftShelves, giftsPath, pickPath } from './gifts.js';
 import { $, avatarURL, el, fullName, hideError, pagePath, renderChrome, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { separated } from './posts.js';
@@ -26,7 +26,9 @@ function renderHead(owner, me) {
 
   $('tab-list').textContent = mine ? 'Мои подарки' : 'Подарки';
   $('tab-list').href = giftsPath(owner);
-  $('tab-send').href = pickPath(owner);
+  // One buys gifts for oneself in the shop.
+  $('tab-send').textContent = mine && !picking ? 'Купить подарок' : 'Отправить подарок';
+  $('tab-send').href = mine && !picking ? SHOP_GIFTS : pickPath(owner);
   $('tab-send').hidden = !me;
   $(picking ? 'tab-send' : 'tab-list').classList.add('active');
   $('tab-page').textContent = mine ? 'К моей странице' : `К странице ${genitiveName(owner)}`;
@@ -144,13 +146,7 @@ async function showCatalog(owner, me) {
 
     showBalance(me);
 
-    $('catalog').replaceChildren(...collections.map((collection) => el('div', { className: 'gift-collection' },
-      el('h4', { className: 'gift-collection-title', textContent: giftCollections[collection.id] ?? 'Подарки' }),
-      el('div', { className: 'gift-grid' }, ...collection.gifts.map((gift) => el('a', { className: 'gift-sel', onclick: () => confirm(owner, me, gift, collection.price ?? 0) },
-        giftPicture(gift),
-        el('strong', { className: 'gift-price', textContent: giftPrice(collection.price ?? 0) }),
-      ))),
-    )));
+    $('catalog').replaceChildren(...giftShelves(collections, (gift, price) => confirm(owner, me, gift, price)));
     $('catalog').hidden = false;
   } catch (e) {
     showError($('error'), e);

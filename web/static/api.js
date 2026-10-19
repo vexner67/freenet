@@ -641,8 +641,9 @@ export const api = {
   ownPosts: (cursor = '') => authorized('GET', page('/api/v1/me/posts', cursor, 0)),
 
   // "Подарки": what there is to send, what a page was sent, sending and
-  // removing from your own page.
+  // removing from your own page; the administrators price the gifts.
   giftCatalog: () => request('GET', '/api/v1/gifts'),
+  setGiftPrice: (gift, price) => authorized('PUT', `/api/v1/gifts/${encodeURIComponent(gift)}/price`, { price }),
   gifts: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/gifts`, cursor, limit)),
   sendGift: (nickname, gift, caption, anonymous) => authorized('POST', `/api/v1/users/${encodeURIComponent(nickname)}/gifts`, { gift, caption, anonymous }),
   deleteGift: (id) => authorized('DELETE', `/api/v1/gifts/${encodeURIComponent(id)}`),

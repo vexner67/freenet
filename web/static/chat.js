@@ -22,9 +22,9 @@ import { initDocuments } from './docs.js';
 import { openAddMembers } from './chats.js';
 import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
-import { actionsNode, attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
+import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
 import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, selectedCount, snippet } from './labels.js';
-import { $, avatarURL, chatPhotoURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, verifiedMark } from './layout.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
@@ -131,14 +131,9 @@ function messageNode(m) {
   node.message = m;
   node.render();
 
-  // A click on the message itself, not on a link or a photo in it,
-  // selects it, as in a dialog.
-  node.addEventListener('click', (event) => {
-    if (event.target.closest('a, img, button')) return;
-    if (window.getSelection()?.toString()) return;
-
-    toggleSelected(m.id);
-  });
+  // A double click on the message itself, not on a link or a photo in
+  // it, selects it; then a click selects more.
+  selectOnDoubleClick(node, () => toggleSelected(m.id), () => selected.size > 0);
 
   return node;
 }
@@ -808,8 +803,12 @@ if (!me) {
     show(found);
     add(page.messages, false);
     olderCursor = page.nextCursor;
-    toBottom();
-    if (gap) await showFound();
+    // At the end, and kept there while the messages take their height.
+    const stick = stickToBottom(list);
+    if (gap) {
+      stick(false);
+      await showFound();
+    }
 
     list.addEventListener('scroll', () => {
       if (list.scrollTop < LOAD_OLDER_AT) loadOlder();

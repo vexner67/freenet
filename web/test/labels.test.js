@@ -956,3 +956,11 @@ test('textParts leaves "#" and "@" of an address to it', () => {
   ]);
   assert.deepEqual(textParts('[ann|https://example.com]'), [{ nickname: 'ann', text: 'https://example.com' }]);
 });
+
+test('giftCosts: a gift priced apart from its collection', async () => {
+  const { giftCosts } = await import('../static/labels.js');
+  assert.deepEqual(giftCosts({ gifts: ['rose', 'tulip'], price: 1, prices: [4, 0] }), [{ gift: 'rose', price: 4 }, { gift: 'tulip', price: 0 }]);
+  // A server that does not say what each costs prices them as the collection.
+  assert.deepEqual(giftCosts({ gifts: ['cake'], price: 2 }), [{ gift: 'cake', price: 2 }]);
+  assert.deepEqual(giftCosts({ gifts: ['cake'], price: 2, prices: [] }), [{ gift: 'cake', price: 2 }]);
+});

@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Стикеры | Freenet</title>
+  <title>Магазин | Freenet</title>
   <link rel="icon" href="/static/favicon.png" sizes="32x32">
   <link rel="icon" href="/static/favicon.svg" type="image/svg+xml">
   <link rel="apple-touch-icon" href="/static/apple-touch-icon.png">
@@ -26,19 +26,21 @@
     </div>
 
     <div class="page">
-      <div class="page-title"><span id="title">Стикеры</span></div>
+      <div class="page-title"><span id="title">Магазин</span></div>
       <div class="page-body">
         <div class="tabs" id="tabs">
-          <a id="tab-shop" href="/stickers">Магазин стикеров</a>
-          <a id="tab-settings" href="/stickers?act=settings" hidden>Установленные наборы</a>
-          <a id="tab-author" href="/stickers?act=author" hidden>Студия стикеров</a>
+          <a id="tab-shop" href="/shop">Стикеры</a>
+          <a id="tab-gifts" href="/shop?act=gifts">Подарки</a>
+          <a id="tab-settings" href="/shop?act=settings" hidden>Установленные наборы</a>
+          <a id="tab-author" href="/shop?act=author" hidden>Студия стикеров</a>
           <a class="tabs-side" id="tab-dialogs" href="/im" hidden>Диалоги</a>
         </div>
         <div class="error" id="error" hidden></div>
         <div class="notice" id="added" hidden><b>Набор стикеров успешно добавлен!</b></div>
+        <div class="notice" id="bought" hidden><b>Подарок куплен.</b> Он уже на вашей странице — <a id="bought-link">Мои подарки</a>.</div>
         <div class="summary-bar sticker-studio-bar" id="studio-bar" hidden>
           <span id="studio-count"></span>
-          <a class="button" href="/stickers?act=new">Создать набор</a>
+          <a class="button" href="/shop?act=new">Создать набор</a>
         </div>
         <p class="hint" id="balance" hidden></p>
         <div class="gray-box" id="studio" hidden>
@@ -75,7 +77,7 @@
                 <th></th>
                 <td class="control">
                   <button class="button" type="submit" id="pack-save">Сохранить набор</button>
-                  <a class="button secondary" href="/stickers?act=author">Отмена</a>
+                  <a class="button secondary" href="/shop?act=author">Отмена</a>
                 </td>
               </tr>
             </table>
@@ -83,6 +85,7 @@
           <p class="hint" id="pack-delete-line" hidden>Вы также можете <a id="pack-delete">удалить набор</a>.</p>
         </div>
         <div class="sticker-packs" id="packs"></div>
+        <div id="gift-catalog" hidden></div>
         <p class="hint" id="empty" hidden></p>
       </div>
     </div>

@@ -34,6 +34,39 @@ export function autosize(textarea) {
   }
 }
 
+// stickToBottom keeps a scrolled list of messages at its end while what
+// it shows grows after it was scrolled there — pictures and stickers
+// loading, texts decrypted, the form under it taking its place — for as
+// long as the reader stays at the end. It scrolls there now and returns
+// stick(on): false lets a found message hold the view, true goes back to
+// the end.
+export function stickToBottom(list) {
+  let atEnd = true;
+  const end = () => { list.scrollTop = list.scrollHeight; };
+  const resized = new ResizeObserver(() => {
+    if (atEnd) end();
+  });
+  const watch = (node) => {
+    if (node.nodeType === Node.ELEMENT_NODE) resized.observe(node);
+  };
+
+  resized.observe(list);
+  [...list.children].forEach(watch);
+  new MutationObserver((changes) => {
+    for (const change of changes) change.addedNodes.forEach(watch);
+  }).observe(list, { childList: true });
+  list.addEventListener('scroll', () => {
+    atEnd = list.scrollHeight - list.scrollTop - list.clientHeight < 60;
+  });
+
+  end();
+
+  return (on) => {
+    atEnd = on;
+    if (on) end();
+  };
+}
+
 // switchAttachMenu is openvk's "Прикрепить" of a form: a link that opens
 // the list of what can be attached, each item with its icon (.attach-menu
 // of the page). The items are the links the form's script wires, so a
@@ -407,7 +440,7 @@ export function applyInterface(me) {
     menuLink(me, 'notifications', '/notifications', 'Уведомления', 'notifications-count'),
     el('a', { href: '/settings', textContent: 'Настройки' }),
     el('div', { className: 'menu-divider' }),
-    el('a', { href: '/stickers', textContent: 'Стикеры' }),
+    el('a', { href: '/shop', textContent: 'Магазин' }),
     el('a', { href: '/docs', textContent: 'Документы' }),
     accountsLink(me),
     el('a', { href: '/search', textContent: 'Поиск' }),

@@ -262,7 +262,7 @@ async function showClubBlock(id, all, count, list) {
 }
 
 // The newest gifts of the block "Подарки".
-const GIFTS_SHOWN = 4;
+const GIFTS_SHOWN = 5;
 
 // showGifts is openvk's block "Подарки" over the wall: how many, "Отправить
 // подарок", "Все" and the newest, as "Кому видны мои подарки" allows. A
@@ -275,7 +275,7 @@ async function showGifts(user, me, isOwner) {
       const page = await api.gifts(user.nickname, '', GIFTS_SHOWN);
 
       shown = page.total > 0;
-      $('gifts-block').replaceChildren(...giftsBlock(user, page, Boolean(me)));
+      $('gifts-block').replaceChildren(...giftsBlock(user, page, Boolean(me), isOwner));
       $('gifts-block').hidden = !shown;
     }
   } catch {

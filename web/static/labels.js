@@ -840,6 +840,13 @@ export function giftPrice(price) {
   return price > 0 ? votesCount(price) : 'Бесплатно';
 }
 
+// giftCosts are the gifts of a collection of the catalogue with what each
+// costs: the administrators price a gift apart from its collection, and a
+// server that does not say so prices them all as the collection.
+export function giftCosts(collection) {
+  return collection.gifts.map((gift, i) => ({ gift, price: collection.prices?.[i] ?? collection.price ?? 0 }));
+}
+
 // unusedVotes is openvk's "У Вас N неиспользованных голосов.", in parts:
 // the number is bold.
 export function unusedVotes(n) {

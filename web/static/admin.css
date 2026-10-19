@@ -5,7 +5,7 @@
    themes are not its. Every colour is a variable of the palette below;
    the dark one is AUI's dark mode, the toggle in the header. */
 
-.aui {
+html.aui {
   --aui-header: #0747a6;
   --aui-header-text: #ffffff;
   --aui-body: #f4f5f7;
@@ -36,7 +36,7 @@
   --aui-knob: #ffffff;
 }
 
-.aui.aui-theme-dark {
+html.aui.aui-theme-dark {
   --aui-header: #0c3e8c;
   --aui-header-text: #e6edf6;
   --aui-body: #1d2125;
@@ -196,6 +196,7 @@ a:hover { text-decoration: underline; }
 .aui-nav-item.active .aui-icon { background: var(--aui-link); }
 .aui-icon-dashboard { --icon: url("/static/icons/admin-dashboard.svg"); }
 .aui-icon-card { --icon: url("/static/icons/admin-card.svg"); }
+.aui-icon-gift { --icon: url("/static/icons/admin-gift.svg"); }
 .aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
 .aui-icon-clubs { --icon: url("/static/icons/admin-clubs.svg"); }
 .aui-icon-info { --icon: url("/static/icons/admin-info.svg"); }
@@ -332,6 +333,13 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
 .aui-theme-dark .name-checkmark { filter: brightness(2.4); }
 
 .aui-empty { color: var(--aui-subtle); }
+
+/* "Подарки": each gift with its picture and the field of its price. */
+.admin-lead { color: var(--aui-subtle); }
+.admin-gift { display: flex; align-items: center; gap: 10px; }
+.admin-gift img { width: 40px; height: 40px; }
+form.aui.admin-price { display: flex; gap: 8px; align-items: center; }
+form.aui.admin-price .text { width: 110px; }
 .aui-pager { margin-top: 15px; text-align: right; }
 
 /* Lozenges: the state of a voucher. */

@@ -50,10 +50,22 @@ export function forwardedNode(m, textOf) {
   return shown;
 }
 
+// actionIcons are the icons of the actions of a message, as those of
+// "Прикрепить" (static/icons): the class of the link names its picture.
+const actionIcons = {
+  Ответить: 'action-reply',
+  Реакция: 'action-reaction',
+  Редактировать: 'action-edit',
+  Закрепить: 'action-pin',
+  Открепить: 'action-unpin',
+  Переслать: 'action-forward',
+  Удалить: 'action-delete',
+};
+
 // actionsNode is what can be done with a message, under its date: one
 // link "Действия" opening the list, as "Прикрепить" of a form does, so
-// that the actions do not stretch the message. actions are [name, click]
-// pairs; those not available are falsy.
+// that the actions do not stretch the message; each is a link with its
+// icon. actions are [name, click] pairs; those not available are falsy.
 export function actionsNode(actions) {
   const shown = actions.filter(Boolean);
   if (!shown.length) return null;
@@ -61,7 +73,7 @@ export function actionsNode(actions) {
   return el('span', { className: 'attach-menu attach-auto message-actions' },
     el('a', { className: 'attach-toggle im-message-action', textContent: 'Действия' }),
     el('span', { className: 'attach-list' },
-      ...shown.map(([name, onclick]) => el('a', { className: 'attach-link', textContent: name, onclick }))));
+      ...shown.map(([name, onclick]) => el('a', { className: `attach-link ${actionIcons[name] ?? ''}`.trim(), textContent: name, onclick }))));
 }
 
 // takenBack is a message after it was deleted for everyone: it says
@@ -204,4 +216,40 @@ export function openForward({ me, messages, here, authorOf, onSent, onDone = () 
 // writable: a chat takes messages only from who is in it.
 export function writable(d) {
   return !d.chat || d.chat.state === 'active';
+}
+
+// The wait that makes two clicks one double click.
+const DOUBLE_CLICK_MS = 400;
+
+// selectOnDoubleClick calls select when a message is clicked twice in a
+// row — a double click of a mouse or a double tap of a finger — not on a
+// link, a photo or a button in it: a single click does nothing, so that
+// reading and tapping links does not select, and the double click selects
+// no words of the text. While selecting() — some messages are selected —
+// one click is enough, as on VK, and a double one counts once.
+export function selectOnDoubleClick(node, select, selecting) {
+  let last = -Infinity;
+  const onMessage = (event) => !event.target.closest('a, img, button, input, textarea');
+
+  node.addEventListener('mousedown', (event) => {
+    if (event.detail > 1 && onMessage(event)) event.preventDefault();
+  });
+  node.addEventListener('click', (event) => {
+    if (!onMessage(event)) return;
+
+    const double = event.timeStamp - last < DOUBLE_CLICK_MS;
+
+    if (selecting()) {
+      if (double) return;
+      last = event.timeStamp;
+      select();
+    } else if (double) {
+      last = event.timeStamp;
+      window.getSelection()?.removeAllRanges();
+      select();
+    } else {
+      // Words picked out by dragging are not a first click.
+      last = window.getSelection()?.toString() ? -Infinity : event.timeStamp;
+    }
+  });
 }
