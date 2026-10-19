@@ -197,6 +197,7 @@ a:hover { text-decoration: underline; }
 .aui-icon-dashboard { --icon: url("/static/icons/admin-dashboard.svg"); }
 .aui-icon-card { --icon: url("/static/icons/admin-card.svg"); }
 .aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
+.aui-icon-clubs { --icon: url("/static/icons/admin-clubs.svg"); }
 .aui-icon-info { --icon: url("/static/icons/admin-info.svg"); }
 .aui-icon-rules { --icon: url("/static/icons/admin-rules.svg"); }
 .aui-icon-collapse { --icon: url("/static/icons/admin-collapse.svg"); }
@@ -326,6 +327,7 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
 
 .admin-person { display: flex; align-items: center; gap: 8px; }
 .admin-person img.admin-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+.admin-person img.admin-avatar.admin-club { border-radius: 3px; }
 .name-checkmark { margin-left: 2pt; }
 .aui-theme-dark .name-checkmark { filter: brightness(2.4); }
 

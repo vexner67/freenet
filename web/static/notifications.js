@@ -7,7 +7,7 @@ import { photoPath } from './albums.js';
 import { api, currentUser, started } from './api.js';
 import { onEvent } from './events.js';
 import { formatPostDate, notificationVerb, plainMentions, snippet } from './labels.js';
-import { $, avatarURL, el, fullName, pagePath, profilePath, renderChrome, setCounter, showError, hideError } from './layout.js';
+import { $, avatarURL, el, fullName, pagePath, profilePath, renderChrome, setCounter, showError, hideError, verifiedMark } from './layout.js';
 import { notePath } from './notes.js';
 import { postPath } from './posts.js';
 import { topicPath } from './topics.js';
@@ -81,7 +81,7 @@ function said(n) {
 function notificationText(n) {
   const link = el('a', { className: 'post-name', href: pagePath(n.actor), textContent: fullName(n.actor) });
   // A community acts by itself, as openvk says: "Сообщество Кошки ...".
-  const name = n.actor.club ? el('span', {}, 'Сообщество ', link) : link;
+  const name = el('span', {}, ...(n.actor.club ? ['Сообщество '] : []), link, verifiedMark(n.actor));
 
   if (n.type === 'post_accepted') {
     return [name, ' опубликовало вашу предложенную ', postLink(n.post, 'запись'), '.'];
@@ -91,12 +91,24 @@ function notificationText(n) {
   // suggestions, which only its admins see.
   if (n.type === 'suggested_post') {
     return ['В сообществе ', el('a', { href: `${pagePath(n.actor)}/suggested` }, el('b', { textContent: fullName(n.actor) })),
-      ' новые записи в предложке'];
+      verifiedMark(n.actor), ' новые записи в предложке'];
   }
 
   // Made an admin by its owner; openvk names who did it, we the community.
   if (n.type === 'club_admin') {
-    return ['Вас назначили руководителем сообщества ', el('a', { href: pagePath(n.actor) }, el('b', { textContent: fullName(n.actor) })), '.'];
+    return ['Вас назначили руководителем сообщества ', el('a', { href: pagePath(n.actor) }, el('b', { textContent: fullName(n.actor) })),
+      verifiedMark(n.actor), '.'];
+  }
+
+  // An administrator of the site gave your page the checkmark; openvk
+  // tells nobody.
+  if (n.type === 'verified') {
+    return [name, ` ${notificationVerb('verified', n.actor)} вашу страницу: теперь рядом с вашим именем стоит галочка.`];
+  }
+
+  // The community you own got the checkmark; the actor is the community.
+  if (n.type === 'club_verified') {
+    return [name, ' подтверждено: теперь рядом с его названием стоит галочка.'];
   }
 
   // A message in the topic you started, openvk's "оставил комментарий

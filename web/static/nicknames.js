@@ -6,8 +6,10 @@
 const BATCH = 50;
 
 // nicknameLookup returns known(nickname), a promise of whether anyone has
-// the nickname, whatever the case. fetchKnown(nicknames) asks the server
-// and resolves with those that are someone's; later runs the request once
+// the nickname, whatever the case, and whether that page wears the
+// checkmark: { known, verified }. fetchKnown(nicknames) asks the server and
+// resolves as it answers, with those that are someone's and those of them
+// that are verified ({ nicknames, verified }); later runs the request once
 // the page has named all it shows now. A failed request rejects those who
 // waited for it and is tried again when they ask again.
 export function nicknameLookup(fetchKnown, later = (fn) => setTimeout(fn, 0)) {
@@ -16,8 +18,11 @@ export function nicknameLookup(fetchKnown, later = (fn) => setTimeout(fn, 0)) {
 
   const ask = async (batch) => {
     try {
-      const found = new Set((await fetchKnown(batch.map((w) => w.key))).map((n) => n.toLowerCase()));
-      for (const w of batch) w.resolve(found.has(w.key));
+      const answer = await fetchKnown(batch.map((w) => w.key));
+      const lowered = (nicknames = []) => new Set(nicknames.map((n) => n.toLowerCase()));
+      const found = lowered(answer.nicknames);
+      const verified = lowered(answer.verified);
+      for (const w of batch) w.resolve({ known: found.has(w.key), verified: verified.has(w.key) });
     } catch (err) {
       for (const w of batch) {
         answers.delete(w.key);

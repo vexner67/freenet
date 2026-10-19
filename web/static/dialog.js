@@ -22,7 +22,7 @@ import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, o
 import { isLive, onEvent } from './events.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
 import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, selectedCount } from './labels.js';
-import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
+import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
@@ -78,6 +78,7 @@ function messageNode(m) {
     el('a', { href: '/' + author.nickname }, el('img', { src: avatarURL(author, 'small'), alt: '' })),
     el('div', { className: 'im-message-content' },
       el('a', { className: 'post-name', href: '/' + author.nickname, textContent: fullName(author) }),
+      verifiedMark(author),
       content,
     ),
     date,
@@ -761,6 +762,7 @@ if (!me) {
       el('a', { href: '/im', textContent: 'Мои Сообщения' }),
       ' » ',
       el('a', { href: '/' + peer.nickname, textContent: fullName(peer) }),
+      verifiedMark(peer),
     );
 
     $('search-link').href = '/im?peer=' + encodeURIComponent(peer.nickname);

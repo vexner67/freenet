@@ -9,25 +9,28 @@ function lookup(answer) {
   const timers = [];
   const known = nicknameLookup(async (nicknames) => {
     asked.push(nicknames);
-    return answer(nicknames);
+    const known = answer(nicknames);
+    return { nicknames: known, verified: known.filter((n) => n.toLowerCase() === 'vera') };
   }, (fn) => timers.push(fn));
 
   return { known, asked, run: () => timers.splice(0).forEach((fn) => fn()) };
 }
 
 test('the nicknames of a page are asked about together, each once', async () => {
-  const { known, asked, run } = lookup((nicknames) => nicknames.filter((n) => n === 'ann').map(() => 'Ann'));
+  const { known, asked, run } = lookup((nicknames) => nicknames.filter((n) => n === 'ann' || n === 'vera').map((n) => n === 'ann' ? 'Ann' : 'Vera'));
 
-  const answers = [known('Ann'), known('nobody'), known('ann')];
+  const answers = [known('Ann'), known('nobody'), known('ann'), known('vera')];
   assert.deepEqual(asked, []);
   run();
 
-  assert.deepEqual(await Promise.all(answers), [true, false, true]);
-  assert.deepEqual(asked, [['ann', 'nobody']]);
+  const yes = { known: true, verified: false };
+  const no = { known: false, verified: false };
+  assert.deepEqual(await Promise.all(answers), [yes, no, yes, { known: true, verified: true }]);
+  assert.deepEqual(asked, [['ann', 'nobody', 'vera']]);
 
   // What is known is not asked again.
-  assert.equal(await known('ANN'), true);
-  assert.equal(await known('nobody'), false);
+  assert.deepEqual(await known('ANN'), yes);
+  assert.deepEqual(await known('nobody'), no);
   run();
   assert.equal(asked.length, 1);
 });
@@ -38,7 +41,7 @@ test('many nicknames go in requests of 50', async () => {
   const answers = Array.from({ length: 120 }, (_, i) => known('user' + i));
   run();
 
-  assert.deepEqual(await Promise.all(answers), Array(120).fill(false));
+  assert.deepEqual(await Promise.all(answers), Array(120).fill({ known: false, verified: false }));
   assert.deepEqual(asked.map((a) => a.length), [50, 50, 20]);
 });
 
@@ -56,6 +59,6 @@ test('a failed request is tried again when asked again', async () => {
   fail = false;
   const second = known('ann');
   run();
-  assert.equal(await second, true);
+  assert.equal((await second).known, true);
   assert.equal(asked.length, 2);
 });
