@@ -18,9 +18,15 @@ type StoryService interface {
 	Tell(ctx context.Context, authorID, photoID uuid.UUID, text post.StoryText) (*post.Story, error)
 	Feed(ctx context.Context, audience service.StoryAudience) (service.StoryPage, error)
 	User(ctx context.Context, audience service.StoryAudience, authorID uuid.UUID) (service.StoryPage, error)
+	Get(ctx context.Context, viewerID, id uuid.UUID) (service.StoryPage, error)
 	View(ctx context.Context, viewerID, id uuid.UUID) error
 	Viewers(ctx context.Context, requesterID, id uuid.UUID, after *service.ViewCursor, size int) (service.ViewerPage, error)
 	Delete(ctx context.Context, requesterID, id uuid.UUID) error
+	Like(ctx context.Context, userID, id uuid.UUID) error
+	Unlike(ctx context.Context, userID, id uuid.UUID) error
+	Comment(ctx context.Context, authorID, id uuid.UUID, text post.CommentText) (*post.StoryComment, error)
+	Comments(ctx context.Context, viewerID, id, after uuid.UUID, size int) (service.StoryCommentPage, error)
+	DeleteComment(ctx context.Context, requesterID, id uuid.UUID) error
 }
 
 func (h *PostHandler) CreateStory(ctx context.Context, req *postv1.CreateStoryRequest) (*postv1.CreateStoryResponse, error) {
@@ -101,6 +107,20 @@ func (h *PostHandler) ListUserStories(ctx context.Context, req *postv1.ListUserS
 	}
 
 	return &postv1.ListUserStoriesResponse{Stories: toProtoStories(page, viewer)}, nil
+}
+
+func (h *PostHandler) GetStory(ctx context.Context, req *postv1.GetStoryRequest) (*postv1.GetStoryResponse, error) {
+	viewer, id, err := callerAndStory(ctx, req.GetId())
+	if err != nil {
+		return nil, err
+	}
+
+	page, err := h.storyService.Get(ctx, viewer, id)
+	if err != nil {
+		return nil, err
+	}
+
+	return &postv1.GetStoryResponse{Story: toProtoStory(page.Stories[0], page, viewer)}, nil
 }
 
 func (h *PostHandler) ViewStory(ctx context.Context, req *postv1.ViewStoryRequest) (*emptypb.Empty, error) {
@@ -189,14 +209,17 @@ func toProtoStories(page service.StoryPage, viewerID uuid.UUID) []*postv1.Story 
 
 func toProtoStory(s *post.Story, page service.StoryPage, viewerID uuid.UUID) *postv1.Story {
 	return &postv1.Story{
-		Id:        s.ID().String(),
-		AuthorId:  s.AuthorID().String(),
-		PhotoId:   s.PhotoID().String(),
-		Text:      s.Text().String(),
-		CreatedAt: timestamppb.New(s.CreatedAt()),
-		ExpiresAt: timestamppb.New(s.ExpiresAt()),
-		Viewed:    page.Viewed[s.ID()],
-		Mine:      s.Mine(viewerID),
-		Views:     int32(page.Views[s.ID()]), //nolint:gosec // views of a story are far fewer than 2^31
+		Id:           s.ID().String(),
+		AuthorId:     s.AuthorID().String(),
+		PhotoId:      s.PhotoID().String(),
+		Text:         s.Text().String(),
+		CreatedAt:    timestamppb.New(s.CreatedAt()),
+		ExpiresAt:    timestamppb.New(s.ExpiresAt()),
+		Viewed:       page.Viewed[s.ID()],
+		Mine:         s.Mine(viewerID),
+		Views:        int32(page.Views[s.ID()]), //nolint:gosec // views of a story are far fewer than 2^31
+		Liked:        page.Liked[s.ID()],
+		LikeCount:    int32(page.Likes[s.ID()]),    //nolint:gosec // likes of a story are far fewer than 2^31
+		CommentCount: int32(page.Comments[s.ID()]), //nolint:gosec // comments of a story are far fewer than 2^31
 	}
 }

@@ -51,6 +51,11 @@ const (
 	// EventNoteComment: the comment CommentID under the recipient's
 	// note PostID.
 	EventNoteComment
+	// EventStoryLike: a like of the recipient's story PostID.
+	EventStoryLike
+	// EventStoryComment: the comment CommentID under the recipient's
+	// story PostID.
+	EventStoryComment
 )
 
 // Event: RecipientID is the author of the post for likes, comments,

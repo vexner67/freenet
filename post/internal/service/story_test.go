@@ -13,16 +13,21 @@ import (
 )
 
 type storyFixture struct {
-	svc    *service.StoryService
-	store  *inmem.Store
-	photos *fakePhotos
-	now    time.Time
+	svc      *service.StoryService
+	store    *inmem.Store
+	photos   *fakePhotos
+	notifier *fakeNotifier
+	now      time.Time
 }
 
 func newStoryFixture() *storyFixture {
-	f := &storyFixture{store: inmem.NewStore(), photos: &fakePhotos{}, now: time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC)}
+	f := &storyFixture{
+		store: inmem.NewStore(), photos: &fakePhotos{}, notifier: &fakeNotifier{},
+		now: time.Date(2026, 10, 15, 12, 0, 0, 0, time.UTC),
+	}
 	f.svc = service.NewStoryService(service.StoryDeps{
-		Stories: f.store.Stories(), Views: f.store.StoryViews(), Tx: fakeTx{}, Photos: f.photos,
+		Stories: f.store.Stories(), Views: f.store.StoryViews(), Likes: f.store.StoryLikes(), Comments: f.store.StoryComments(),
+		Tx: fakeTx{}, Photos: f.photos, Notifier: f.notifier,
 		Now: func() time.Time { return f.now },
 	})
 
@@ -251,5 +256,137 @@ func TestStoryService_DeleteExpired(t *testing.T) {
 	}
 	if len(f.photos.deleted) != 1 || f.photos.deleted[0].photos[0] != old.PhotoID() {
 		t.Fatalf("the photos deleted: %+v", f.photos.deleted)
+	}
+}
+
+func TestStoryService_Likes(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	f := newStoryFixture()
+	f.follow(t, bob, ann)
+	story := f.tell(t, ann, "")
+
+	if err := f.svc.Like(ctx, cat, uuid.New()); !errors.Is(err, post.ErrStoryNotFound) {
+		t.Fatalf("cat likes a story that is not there: %v", err)
+	}
+
+	for range 2 {
+		if err := f.svc.Like(ctx, bob, story.ID()); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := f.svc.Like(ctx, ann, story.ID()); err != nil {
+		t.Fatal(err)
+	}
+
+	// Ann hears of bob's like once and of her own not at all.
+	if len(f.notifier.notified) != 1 || f.notifier.outsideTx != 0 {
+		t.Fatalf("notified %+v, %d outside a transaction", f.notifier.notified, f.notifier.outsideTx)
+	}
+	if e := f.notifier.notified[0]; e.Kind != service.EventStoryLike || e.RecipientID != ann || e.ActorID != bob || e.PostID != story.ID() {
+		t.Fatalf("the notification = %+v", e)
+	}
+
+	page, err := f.svc.Get(ctx, bob, story.ID())
+	if err != nil || len(page.Stories) != 1 || page.Likes[story.ID()] != 2 || !page.Liked[story.ID()] {
+		t.Fatalf("likes %v, liked %v: %v", page.Likes, page.Liked, err)
+	}
+
+	if err = f.svc.Unlike(ctx, bob, story.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if err = f.svc.Unlike(ctx, bob, story.ID()); err != nil {
+		t.Fatalf("unlike twice: %v", err)
+	}
+	if len(f.notifier.retracted) != 1 || f.notifier.retracted[0].ActorID != bob {
+		t.Fatalf("retracted %+v", f.notifier.retracted)
+	}
+
+	page, _ = f.svc.Feed(ctx, service.StoryAudience{Viewer: bob})
+	if page.Likes[story.ID()] != 1 || page.Liked[story.ID()] {
+		t.Fatalf("after the unlike: likes %v, liked %v", page.Likes, page.Liked)
+	}
+}
+
+func TestStoryService_Comments(t *testing.T) {
+	t.Parallel()
+
+	ctx := context.Background()
+	ann, bob, cat := uuid.New(), uuid.New(), uuid.New()
+	f := newStoryFixture()
+	f.follow(t, bob, ann)
+	f.follow(t, cat, ann)
+	story := f.tell(t, ann, "")
+
+	if _, err := f.svc.Comment(ctx, bob, uuid.New(), "Привет"); !errors.Is(err, post.ErrStoryNotFound) {
+		t.Fatalf("a comment of a story that is not there: %v", err)
+	}
+
+	byBob, err := f.svc.Comment(ctx, bob, story.ID(), "Красиво")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.now = f.now.Add(time.Second)
+	byAnn, err := f.svc.Comment(ctx, ann, story.ID(), "Спасибо")
+	if err != nil {
+		t.Fatal(err)
+	}
+	f.now = f.now.Add(time.Second)
+	byCat, err := f.svc.Comment(ctx, cat, story.ID(), "Где это?")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Ann hears of the comments of others.
+	if len(f.notifier.notified) != 2 || f.notifier.notified[0].Kind != service.EventStoryComment ||
+		f.notifier.notified[0].CommentID != byBob.ID() || f.notifier.notified[1].CommentID != byCat.ID() {
+		t.Fatalf("notified %+v", f.notifier.notified)
+	}
+
+	first, err := f.svc.Comments(ctx, cat, story.ID(), uuid.Nil, 2)
+	if err != nil || first.Total != 3 || len(first.Comments) != 2 || first.Comments[0].ID() != byBob.ID() || first.Next != byAnn.ID() {
+		t.Fatalf("the first page = %+v: %v", first, err)
+	}
+	second, _ := f.svc.Comments(ctx, cat, story.ID(), first.Next, 2)
+	if len(second.Comments) != 1 || second.Comments[0].ID() != byCat.ID() || second.Next != uuid.Nil {
+		t.Fatalf("the second page = %+v", second)
+	}
+	if _, err = f.svc.Comments(ctx, cat, uuid.New(), uuid.Nil, 10); !errors.Is(err, post.ErrStoryNotFound) {
+		t.Fatalf("the comments of a story that is not there: %v", err)
+	}
+
+	page, _ := f.svc.Feed(ctx, service.StoryAudience{Viewer: ann})
+	if page.Comments[story.ID()] != 3 {
+		t.Fatalf("comments %v", page.Comments)
+	}
+
+	// Cat cannot delete bob's comment; ann, whose story it is, can.
+	if err = f.svc.DeleteComment(ctx, cat, byBob.ID()); !errors.Is(err, post.ErrCannotDeleteStoryComment) {
+		t.Fatalf("cat deletes bob's comment: %v", err)
+	}
+	if err = f.svc.DeleteComment(ctx, ann, byBob.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if err = f.svc.DeleteComment(ctx, cat, byCat.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.notifier.forgottenComments) != 2 || f.notifier.forgottenComments[0] != byBob.ID() {
+		t.Fatalf("forgotten comments %v", f.notifier.forgottenComments)
+	}
+	if err = f.svc.DeleteComment(ctx, ann, byBob.ID()); !errors.Is(err, post.ErrStoryCommentNotFound) {
+		t.Fatalf("deleted twice: %v", err)
+	}
+
+	// The story takes its comments and their notifications along.
+	if err = f.svc.Delete(ctx, ann, story.ID()); err != nil {
+		t.Fatal(err)
+	}
+	if len(f.notifier.forgotten) != 1 || f.notifier.forgotten[0] != story.ID() {
+		t.Fatalf("forgotten %v", f.notifier.forgotten)
+	}
+	if _, err = f.store.StoryComments().Get(ctx, byAnn.ID()); !errors.Is(err, post.ErrStoryCommentNotFound) {
+		t.Fatalf("a comment outlives its story: %v", err)
 	}
 }

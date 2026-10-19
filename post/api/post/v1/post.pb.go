@@ -12396,7 +12396,12 @@ type Story struct {
 	// The caller told it.
 	Mine bool `protobuf:"varint,8,opt,name=mine,proto3" json:"mine,omitempty"`
 	// Of the caller's own: how many others viewed it.
-	Views         int32 `protobuf:"varint,9,opt,name=views,proto3" json:"views,omitempty"`
+	Views int32 `protobuf:"varint,9,opt,name=views,proto3" json:"views,omitempty"`
+	// The caller liked it.
+	Liked bool `protobuf:"varint,10,opt,name=liked,proto3" json:"liked,omitempty"`
+	// How many liked and commented it, deleted pages aside.
+	LikeCount     int32 `protobuf:"varint,11,opt,name=like_count,json=likeCount,proto3" json:"like_count,omitempty"`
+	CommentCount  int32 `protobuf:"varint,12,opt,name=comment_count,json=commentCount,proto3" json:"comment_count,omitempty"`
 	unknownFields protoimpl.UnknownFields
 	sizeCache     protoimpl.SizeCache
 }
@@ -12490,6 +12495,27 @@ func (x *Story) GetMine() bool {
 func (x *Story) GetViews() int32 {
 	if x != nil {
 		return x.Views
+	}
+	return 0
+}
+
+func (x *Story) GetLiked() bool {
+	if x != nil {
+		return x.Liked
+	}
+	return false
+}
+
+func (x *Story) GetLikeCount() int32 {
+	if x != nil {
+		return x.LikeCount
+	}
+	return 0
+}
+
+func (x *Story) GetCommentCount() int32 {
+	if x != nil {
+		return x.CommentCount
 	}
 	return 0
 }
@@ -12786,6 +12812,94 @@ func (x *ListUserStoriesResponse) GetStories() []*Story {
 	return nil
 }
 
+type GetStoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStoryRequest) Reset() {
+	*x = GetStoryRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[215]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStoryRequest) ProtoMessage() {}
+
+func (x *GetStoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[215]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStoryRequest.ProtoReflect.Descriptor instead.
+func (*GetStoryRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{215}
+}
+
+func (x *GetStoryRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type GetStoryResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Story         *Story                 `protobuf:"bytes,1,opt,name=story,proto3" json:"story,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *GetStoryResponse) Reset() {
+	*x = GetStoryResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[216]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *GetStoryResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*GetStoryResponse) ProtoMessage() {}
+
+func (x *GetStoryResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[216]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use GetStoryResponse.ProtoReflect.Descriptor instead.
+func (*GetStoryResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{216}
+}
+
+func (x *GetStoryResponse) GetStory() *Story {
+	if x != nil {
+		return x.Story
+	}
+	return nil
+}
+
 type ViewStoryRequest struct {
 	state         protoimpl.MessageState `protogen:"open.v1"`
 	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
@@ -12795,7 +12909,7 @@ type ViewStoryRequest struct {
 
 func (x *ViewStoryRequest) Reset() {
 	*x = ViewStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[215]
+	mi := &file_api_post_v1_post_proto_msgTypes[217]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12807,7 +12921,7 @@ func (x *ViewStoryRequest) String() string {
 func (*ViewStoryRequest) ProtoMessage() {}
 
 func (x *ViewStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[215]
+	mi := &file_api_post_v1_post_proto_msgTypes[217]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12820,7 +12934,7 @@ func (x *ViewStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ViewStoryRequest.ProtoReflect.Descriptor instead.
 func (*ViewStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{215}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{217}
 }
 
 func (x *ViewStoryRequest) GetId() string {
@@ -12843,7 +12957,7 @@ type ListStoryViewersRequest struct {
 
 func (x *ListStoryViewersRequest) Reset() {
 	*x = ListStoryViewersRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[216]
+	mi := &file_api_post_v1_post_proto_msgTypes[218]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12855,7 +12969,7 @@ func (x *ListStoryViewersRequest) String() string {
 func (*ListStoryViewersRequest) ProtoMessage() {}
 
 func (x *ListStoryViewersRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[216]
+	mi := &file_api_post_v1_post_proto_msgTypes[218]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12868,7 +12982,7 @@ func (x *ListStoryViewersRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoryViewersRequest.ProtoReflect.Descriptor instead.
 func (*ListStoryViewersRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{216}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{218}
 }
 
 func (x *ListStoryViewersRequest) GetId() string {
@@ -12903,7 +13017,7 @@ type StoryViewer struct {
 
 func (x *StoryViewer) Reset() {
 	*x = StoryViewer{}
-	mi := &file_api_post_v1_post_proto_msgTypes[217]
+	mi := &file_api_post_v1_post_proto_msgTypes[219]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12915,7 +13029,7 @@ func (x *StoryViewer) String() string {
 func (*StoryViewer) ProtoMessage() {}
 
 func (x *StoryViewer) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[217]
+	mi := &file_api_post_v1_post_proto_msgTypes[219]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12928,7 +13042,7 @@ func (x *StoryViewer) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StoryViewer.ProtoReflect.Descriptor instead.
 func (*StoryViewer) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{217}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{219}
 }
 
 func (x *StoryViewer) GetUserId() string {
@@ -12958,7 +13072,7 @@ type ListStoryViewersResponse struct {
 
 func (x *ListStoryViewersResponse) Reset() {
 	*x = ListStoryViewersResponse{}
-	mi := &file_api_post_v1_post_proto_msgTypes[218]
+	mi := &file_api_post_v1_post_proto_msgTypes[220]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -12970,7 +13084,7 @@ func (x *ListStoryViewersResponse) String() string {
 func (*ListStoryViewersResponse) ProtoMessage() {}
 
 func (x *ListStoryViewersResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[218]
+	mi := &file_api_post_v1_post_proto_msgTypes[220]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -12983,7 +13097,7 @@ func (x *ListStoryViewersResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListStoryViewersResponse.ProtoReflect.Descriptor instead.
 func (*ListStoryViewersResponse) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{218}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{220}
 }
 
 func (x *ListStoryViewersResponse) GetViewers() []*StoryViewer {
@@ -13016,7 +13130,7 @@ type DeleteStoryRequest struct {
 
 func (x *DeleteStoryRequest) Reset() {
 	*x = DeleteStoryRequest{}
-	mi := &file_api_post_v1_post_proto_msgTypes[219]
+	mi := &file_api_post_v1_post_proto_msgTypes[221]
 	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 	ms.StoreMessageInfo(mi)
 }
@@ -13028,7 +13142,7 @@ func (x *DeleteStoryRequest) String() string {
 func (*DeleteStoryRequest) ProtoMessage() {}
 
 func (x *DeleteStoryRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_api_post_v1_post_proto_msgTypes[219]
+	mi := &file_api_post_v1_post_proto_msgTypes[221]
 	if x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -13041,10 +13155,449 @@ func (x *DeleteStoryRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteStoryRequest.ProtoReflect.Descriptor instead.
 func (*DeleteStoryRequest) Descriptor() ([]byte, []int) {
-	return file_api_post_v1_post_proto_rawDescGZIP(), []int{219}
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{221}
 }
 
 func (x *DeleteStoryRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type LikeStoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *LikeStoryRequest) Reset() {
+	*x = LikeStoryRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[222]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *LikeStoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*LikeStoryRequest) ProtoMessage() {}
+
+func (x *LikeStoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[222]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use LikeStoryRequest.ProtoReflect.Descriptor instead.
+func (*LikeStoryRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{222}
+}
+
+func (x *LikeStoryRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+type UnlikeStoryRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *UnlikeStoryRequest) Reset() {
+	*x = UnlikeStoryRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[223]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *UnlikeStoryRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*UnlikeStoryRequest) ProtoMessage() {}
+
+func (x *UnlikeStoryRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[223]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use UnlikeStoryRequest.ProtoReflect.Descriptor instead.
+func (*UnlikeStoryRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{223}
+}
+
+func (x *UnlikeStoryRequest) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+// StoryComment is a few words under a story.
+type StoryComment struct {
+	state     protoimpl.MessageState `protogen:"open.v1"`
+	Id        string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	StoryId   string                 `protobuf:"bytes,2,opt,name=story_id,json=storyId,proto3" json:"story_id,omitempty"`
+	AuthorId  string                 `protobuf:"bytes,3,opt,name=author_id,json=authorId,proto3" json:"author_id,omitempty"`
+	Text      string                 `protobuf:"bytes,4,opt,name=text,proto3" json:"text,omitempty"`
+	CreatedAt *timestamppb.Timestamp `protobuf:"bytes,5,opt,name=created_at,json=createdAt,proto3" json:"created_at,omitempty"`
+	// The caller wrote it.
+	Mine          bool `protobuf:"varint,6,opt,name=mine,proto3" json:"mine,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *StoryComment) Reset() {
+	*x = StoryComment{}
+	mi := &file_api_post_v1_post_proto_msgTypes[224]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *StoryComment) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*StoryComment) ProtoMessage() {}
+
+func (x *StoryComment) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[224]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use StoryComment.ProtoReflect.Descriptor instead.
+func (*StoryComment) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{224}
+}
+
+func (x *StoryComment) GetId() string {
+	if x != nil {
+		return x.Id
+	}
+	return ""
+}
+
+func (x *StoryComment) GetStoryId() string {
+	if x != nil {
+		return x.StoryId
+	}
+	return ""
+}
+
+func (x *StoryComment) GetAuthorId() string {
+	if x != nil {
+		return x.AuthorId
+	}
+	return ""
+}
+
+func (x *StoryComment) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+func (x *StoryComment) GetCreatedAt() *timestamppb.Timestamp {
+	if x != nil {
+		return x.CreatedAt
+	}
+	return nil
+}
+
+func (x *StoryComment) GetMine() bool {
+	if x != nil {
+		return x.Mine
+	}
+	return false
+}
+
+type CreateStoryCommentRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	StoryId string                 `protobuf:"bytes,1,opt,name=story_id,json=storyId,proto3" json:"story_id,omitempty"`
+	// 1-1000 characters.
+	Text          string `protobuf:"bytes,2,opt,name=text,proto3" json:"text,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateStoryCommentRequest) Reset() {
+	*x = CreateStoryCommentRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[225]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateStoryCommentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateStoryCommentRequest) ProtoMessage() {}
+
+func (x *CreateStoryCommentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[225]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateStoryCommentRequest.ProtoReflect.Descriptor instead.
+func (*CreateStoryCommentRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{225}
+}
+
+func (x *CreateStoryCommentRequest) GetStoryId() string {
+	if x != nil {
+		return x.StoryId
+	}
+	return ""
+}
+
+func (x *CreateStoryCommentRequest) GetText() string {
+	if x != nil {
+		return x.Text
+	}
+	return ""
+}
+
+type CreateStoryCommentResponse struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Comment       *StoryComment          `protobuf:"bytes,1,opt,name=comment,proto3" json:"comment,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *CreateStoryCommentResponse) Reset() {
+	*x = CreateStoryCommentResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[226]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *CreateStoryCommentResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*CreateStoryCommentResponse) ProtoMessage() {}
+
+func (x *CreateStoryCommentResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[226]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use CreateStoryCommentResponse.ProtoReflect.Descriptor instead.
+func (*CreateStoryCommentResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{226}
+}
+
+func (x *CreateStoryCommentResponse) GetComment() *StoryComment {
+	if x != nil {
+		return x.Comment
+	}
+	return nil
+}
+
+type ListStoryCommentsRequest struct {
+	state   protoimpl.MessageState `protogen:"open.v1"`
+	StoryId string                 `protobuf:"bytes,1,opt,name=story_id,json=storyId,proto3" json:"story_id,omitempty"`
+	// Empty for the oldest comments, else next_cursor of the previous page.
+	Cursor string `protobuf:"bytes,2,opt,name=cursor,proto3" json:"cursor,omitempty"`
+	// 1-50; anything else means 20.
+	Limit         int32 `protobuf:"varint,3,opt,name=limit,proto3" json:"limit,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListStoryCommentsRequest) Reset() {
+	*x = ListStoryCommentsRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[227]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListStoryCommentsRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListStoryCommentsRequest) ProtoMessage() {}
+
+func (x *ListStoryCommentsRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[227]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListStoryCommentsRequest.ProtoReflect.Descriptor instead.
+func (*ListStoryCommentsRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{227}
+}
+
+func (x *ListStoryCommentsRequest) GetStoryId() string {
+	if x != nil {
+		return x.StoryId
+	}
+	return ""
+}
+
+func (x *ListStoryCommentsRequest) GetCursor() string {
+	if x != nil {
+		return x.Cursor
+	}
+	return ""
+}
+
+func (x *ListStoryCommentsRequest) GetLimit() int32 {
+	if x != nil {
+		return x.Limit
+	}
+	return 0
+}
+
+type ListStoryCommentsResponse struct {
+	state    protoimpl.MessageState `protogen:"open.v1"`
+	Comments []*StoryComment        `protobuf:"bytes,1,rep,name=comments,proto3" json:"comments,omitempty"`
+	// Empty on the last page.
+	NextCursor string `protobuf:"bytes,2,opt,name=next_cursor,json=nextCursor,proto3" json:"next_cursor,omitempty"`
+	// How many comments it has.
+	Total         int32 `protobuf:"varint,3,opt,name=total,proto3" json:"total,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *ListStoryCommentsResponse) Reset() {
+	*x = ListStoryCommentsResponse{}
+	mi := &file_api_post_v1_post_proto_msgTypes[228]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *ListStoryCommentsResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*ListStoryCommentsResponse) ProtoMessage() {}
+
+func (x *ListStoryCommentsResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[228]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use ListStoryCommentsResponse.ProtoReflect.Descriptor instead.
+func (*ListStoryCommentsResponse) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{228}
+}
+
+func (x *ListStoryCommentsResponse) GetComments() []*StoryComment {
+	if x != nil {
+		return x.Comments
+	}
+	return nil
+}
+
+func (x *ListStoryCommentsResponse) GetNextCursor() string {
+	if x != nil {
+		return x.NextCursor
+	}
+	return ""
+}
+
+func (x *ListStoryCommentsResponse) GetTotal() int32 {
+	if x != nil {
+		return x.Total
+	}
+	return 0
+}
+
+type DeleteStoryCommentRequest struct {
+	state         protoimpl.MessageState `protogen:"open.v1"`
+	Id            string                 `protobuf:"bytes,1,opt,name=id,proto3" json:"id,omitempty"`
+	unknownFields protoimpl.UnknownFields
+	sizeCache     protoimpl.SizeCache
+}
+
+func (x *DeleteStoryCommentRequest) Reset() {
+	*x = DeleteStoryCommentRequest{}
+	mi := &file_api_post_v1_post_proto_msgTypes[229]
+	ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+	ms.StoreMessageInfo(mi)
+}
+
+func (x *DeleteStoryCommentRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*DeleteStoryCommentRequest) ProtoMessage() {}
+
+func (x *DeleteStoryCommentRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_api_post_v1_post_proto_msgTypes[229]
+	if x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use DeleteStoryCommentRequest.ProtoReflect.Descriptor instead.
+func (*DeleteStoryCommentRequest) Descriptor() ([]byte, []int) {
+	return file_api_post_v1_post_proto_rawDescGZIP(), []int{229}
+}
+
+func (x *DeleteStoryCommentRequest) GetId() string {
 	if x != nil {
 		return x.Id
 	}
@@ -13923,7 +14476,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x16RenameDocumentResponse\x12-\n" +
 	"\bdocument\x18\x01 \x01(\v2\x11.post.v1.DocumentR\bdocument\"'\n" +
 	"\x15DeleteDocumentRequest\x12\x0e\n" +
-	"\x02id\x18\x01 \x01(\tR\x02id\"\x9b\x02\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xf5\x02\n" +
 	"\x05Story\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\x12\x1b\n" +
 	"\tauthor_id\x18\x02 \x01(\tR\bauthorId\x12\x19\n" +
@@ -13935,7 +14488,12 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"expires_at\x18\x06 \x01(\v2\x1a.google.protobuf.TimestampR\texpiresAt\x12\x16\n" +
 	"\x06viewed\x18\a \x01(\bR\x06viewed\x12\x12\n" +
 	"\x04mine\x18\b \x01(\bR\x04mine\x12\x14\n" +
-	"\x05views\x18\t \x01(\x05R\x05views\"C\n" +
+	"\x05views\x18\t \x01(\x05R\x05views\x12\x14\n" +
+	"\x05liked\x18\n" +
+	" \x01(\bR\x05liked\x12\x1d\n" +
+	"\n" +
+	"like_count\x18\v \x01(\x05R\tlikeCount\x12#\n" +
+	"\rcomment_count\x18\f \x01(\x05R\fcommentCount\"C\n" +
 	"\x12CreateStoryRequest\x12\x19\n" +
 	"\bphoto_id\x18\x01 \x01(\tR\aphotoId\x12\x12\n" +
 	"\x04text\x18\x02 \x01(\tR\x04text\";\n" +
@@ -13950,7 +14508,11 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\auser_id\x18\x01 \x01(\tR\x06userId\x12*\n" +
 	"\x11hidden_author_ids\x18\x02 \x03(\tR\x0fhiddenAuthorIds\"C\n" +
 	"\x17ListUserStoriesResponse\x12(\n" +
-	"\astories\x18\x01 \x03(\v2\x0e.post.v1.StoryR\astories\"\"\n" +
+	"\astories\x18\x01 \x03(\v2\x0e.post.v1.StoryR\astories\"!\n" +
+	"\x0fGetStoryRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"8\n" +
+	"\x10GetStoryResponse\x12$\n" +
+	"\x05story\x18\x01 \x01(\v2\x0e.post.v1.StoryR\x05story\"\"\n" +
 	"\x10ViewStoryRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id\"W\n" +
 	"\x17ListStoryViewersRequest\x12\x0e\n" +
@@ -13966,6 +14528,34 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"nextCursor\x12\x14\n" +
 	"\x05total\x18\x03 \x01(\x05R\x05total\"$\n" +
 	"\x12DeleteStoryRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\"\n" +
+	"\x10LikeStoryRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"$\n" +
+	"\x12UnlikeStoryRequest\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\"\xb9\x01\n" +
+	"\fStoryComment\x12\x0e\n" +
+	"\x02id\x18\x01 \x01(\tR\x02id\x12\x19\n" +
+	"\bstory_id\x18\x02 \x01(\tR\astoryId\x12\x1b\n" +
+	"\tauthor_id\x18\x03 \x01(\tR\bauthorId\x12\x12\n" +
+	"\x04text\x18\x04 \x01(\tR\x04text\x129\n" +
+	"\n" +
+	"created_at\x18\x05 \x01(\v2\x1a.google.protobuf.TimestampR\tcreatedAt\x12\x12\n" +
+	"\x04mine\x18\x06 \x01(\bR\x04mine\"J\n" +
+	"\x19CreateStoryCommentRequest\x12\x19\n" +
+	"\bstory_id\x18\x01 \x01(\tR\astoryId\x12\x12\n" +
+	"\x04text\x18\x02 \x01(\tR\x04text\"M\n" +
+	"\x1aCreateStoryCommentResponse\x12/\n" +
+	"\acomment\x18\x01 \x01(\v2\x15.post.v1.StoryCommentR\acomment\"c\n" +
+	"\x18ListStoryCommentsRequest\x12\x19\n" +
+	"\bstory_id\x18\x01 \x01(\tR\astoryId\x12\x16\n" +
+	"\x06cursor\x18\x02 \x01(\tR\x06cursor\x12\x14\n" +
+	"\x05limit\x18\x03 \x01(\x05R\x05limit\"\x85\x01\n" +
+	"\x19ListStoryCommentsResponse\x121\n" +
+	"\bcomments\x18\x01 \x03(\v2\x15.post.v1.StoryCommentR\bcomments\x12\x1f\n" +
+	"\vnext_cursor\x18\x02 \x01(\tR\n" +
+	"nextCursor\x12\x14\n" +
+	"\x05total\x18\x03 \x01(\x05R\x05total\"+\n" +
+	"\x19DeleteStoryCommentRequest\x12\x0e\n" +
 	"\x02id\x18\x01 \x01(\tR\x02id*j\n" +
 	"\n" +
 	"WallFilter\x12\x14\n" +
@@ -13976,7 +14566,7 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\tAlbumKind\x12\x13\n" +
 	"\x0fALBUM_KIND_NONE\x10\x00\x12\x16\n" +
 	"\x12ALBUM_KIND_AVATARS\x10\x01\x12\x13\n" +
-	"\x0fALBUM_KIND_WALL\x10\x022\xd6F\n" +
+	"\x0fALBUM_KIND_WALL\x10\x022\xa8J\n" +
 	"\vPostService\x12E\n" +
 	"\n" +
 	"CreatePost\x12\x1a.post.v1.CreatePostRequest\x1a\x1b.post.v1.CreatePostResponse\x12@\n" +
@@ -14034,10 +14624,16 @@ const file_api_post_v1_post_proto_rawDesc = "" +
 	"\x0fDeletePostponed\x12\x1f.post.v1.DeletePostponedRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
 	"\vCreateStory\x12\x1b.post.v1.CreateStoryRequest\x1a\x1c.post.v1.CreateStoryResponse\x12T\n" +
 	"\x0fListFeedStories\x12\x1f.post.v1.ListFeedStoriesRequest\x1a .post.v1.ListFeedStoriesResponse\x12T\n" +
-	"\x0fListUserStories\x12\x1f.post.v1.ListUserStoriesRequest\x1a .post.v1.ListUserStoriesResponse\x12>\n" +
+	"\x0fListUserStories\x12\x1f.post.v1.ListUserStoriesRequest\x1a .post.v1.ListUserStoriesResponse\x12?\n" +
+	"\bGetStory\x12\x18.post.v1.GetStoryRequest\x1a\x19.post.v1.GetStoryResponse\x12>\n" +
 	"\tViewStory\x12\x19.post.v1.ViewStoryRequest\x1a\x16.google.protobuf.Empty\x12W\n" +
 	"\x10ListStoryViewers\x12 .post.v1.ListStoryViewersRequest\x1a!.post.v1.ListStoryViewersResponse\x12B\n" +
-	"\vDeleteStory\x12\x1b.post.v1.DeleteStoryRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
+	"\vDeleteStory\x12\x1b.post.v1.DeleteStoryRequest\x1a\x16.google.protobuf.Empty\x12>\n" +
+	"\tLikeStory\x12\x19.post.v1.LikeStoryRequest\x1a\x16.google.protobuf.Empty\x12B\n" +
+	"\vUnlikeStory\x12\x1b.post.v1.UnlikeStoryRequest\x1a\x16.google.protobuf.Empty\x12]\n" +
+	"\x12CreateStoryComment\x12\".post.v1.CreateStoryCommentRequest\x1a#.post.v1.CreateStoryCommentResponse\x12Z\n" +
+	"\x11ListStoryComments\x12!.post.v1.ListStoryCommentsRequest\x1a\".post.v1.ListStoryCommentsResponse\x12P\n" +
+	"\x12DeleteStoryComment\x12\".post.v1.DeleteStoryCommentRequest\x1a\x16.google.protobuf.Empty\x12H\n" +
 	"\vCreateTopic\x12\x1b.post.v1.CreateTopicRequest\x1a\x1c.post.v1.CreateTopicResponse\x12?\n" +
 	"\bGetTopic\x12\x18.post.v1.GetTopicRequest\x1a\x19.post.v1.GetTopicResponse\x12E\n" +
 	"\n" +
@@ -14117,7 +14713,7 @@ func file_api_post_v1_post_proto_rawDescGZIP() []byte {
 }
 
 var file_api_post_v1_post_proto_enumTypes = make([]protoimpl.EnumInfo, 2)
-var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 220)
+var file_api_post_v1_post_proto_msgTypes = make([]protoimpl.MessageInfo, 230)
 var file_api_post_v1_post_proto_goTypes = []any{
 	(WallFilter)(0),                        // 0: post.v1.WallFilter
 	(AlbumKind)(0),                         // 1: post.v1.AlbumKind
@@ -14336,37 +14932,47 @@ var file_api_post_v1_post_proto_goTypes = []any{
 	(*ListFeedStoriesResponse)(nil),        // 214: post.v1.ListFeedStoriesResponse
 	(*ListUserStoriesRequest)(nil),         // 215: post.v1.ListUserStoriesRequest
 	(*ListUserStoriesResponse)(nil),        // 216: post.v1.ListUserStoriesResponse
-	(*ViewStoryRequest)(nil),               // 217: post.v1.ViewStoryRequest
-	(*ListStoryViewersRequest)(nil),        // 218: post.v1.ListStoryViewersRequest
-	(*StoryViewer)(nil),                    // 219: post.v1.StoryViewer
-	(*ListStoryViewersResponse)(nil),       // 220: post.v1.ListStoryViewersResponse
-	(*DeleteStoryRequest)(nil),             // 221: post.v1.DeleteStoryRequest
-	(*timestamppb.Timestamp)(nil),          // 222: google.protobuf.Timestamp
-	(*emptypb.Empty)(nil),                  // 223: google.protobuf.Empty
+	(*GetStoryRequest)(nil),                // 217: post.v1.GetStoryRequest
+	(*GetStoryResponse)(nil),               // 218: post.v1.GetStoryResponse
+	(*ViewStoryRequest)(nil),               // 219: post.v1.ViewStoryRequest
+	(*ListStoryViewersRequest)(nil),        // 220: post.v1.ListStoryViewersRequest
+	(*StoryViewer)(nil),                    // 221: post.v1.StoryViewer
+	(*ListStoryViewersResponse)(nil),       // 222: post.v1.ListStoryViewersResponse
+	(*DeleteStoryRequest)(nil),             // 223: post.v1.DeleteStoryRequest
+	(*LikeStoryRequest)(nil),               // 224: post.v1.LikeStoryRequest
+	(*UnlikeStoryRequest)(nil),             // 225: post.v1.UnlikeStoryRequest
+	(*StoryComment)(nil),                   // 226: post.v1.StoryComment
+	(*CreateStoryCommentRequest)(nil),      // 227: post.v1.CreateStoryCommentRequest
+	(*CreateStoryCommentResponse)(nil),     // 228: post.v1.CreateStoryCommentResponse
+	(*ListStoryCommentsRequest)(nil),       // 229: post.v1.ListStoryCommentsRequest
+	(*ListStoryCommentsResponse)(nil),      // 230: post.v1.ListStoryCommentsResponse
+	(*DeleteStoryCommentRequest)(nil),      // 231: post.v1.DeleteStoryCommentRequest
+	(*timestamppb.Timestamp)(nil),          // 232: google.protobuf.Timestamp
+	(*emptypb.Empty)(nil),                  // 233: google.protobuf.Empty
 }
 var file_api_post_v1_post_proto_depIdxs = []int32{
-	222, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
-	222, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
-	222, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
+	232, // 0: post.v1.Post.created_at:type_name -> google.protobuf.Timestamp
+	232, // 1: post.v1.Post.edited_at:type_name -> google.protobuf.Timestamp
+	232, // 2: post.v1.Post.editable_until:type_name -> google.protobuf.Timestamp
 	3,   // 3: post.v1.Post.link:type_name -> post.v1.Link
-	222, // 4: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
-	222, // 5: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
+	232, // 4: post.v1.Comment.created_at:type_name -> google.protobuf.Timestamp
+	232, // 5: post.v1.Suggestion.created_at:type_name -> google.protobuf.Timestamp
 	5,   // 6: post.v1.SuggestPostResponse.suggestion:type_name -> post.v1.Suggestion
 	5,   // 7: post.v1.ListSuggestionsResponse.suggestions:type_name -> post.v1.Suggestion
 	2,   // 8: post.v1.PublishSuggestionResponse.post:type_name -> post.v1.Post
-	222, // 9: post.v1.PostponedPost.publish_at:type_name -> google.protobuf.Timestamp
-	222, // 10: post.v1.PostponedPost.created_at:type_name -> google.protobuf.Timestamp
-	222, // 11: post.v1.PostponePostRequest.publish_at:type_name -> google.protobuf.Timestamp
+	232, // 9: post.v1.PostponedPost.publish_at:type_name -> google.protobuf.Timestamp
+	232, // 10: post.v1.PostponedPost.created_at:type_name -> google.protobuf.Timestamp
+	232, // 11: post.v1.PostponePostRequest.publish_at:type_name -> google.protobuf.Timestamp
 	13,  // 12: post.v1.PostponePostResponse.postponed:type_name -> post.v1.PostponedPost
 	13,  // 13: post.v1.ListPostponedResponse.postponed:type_name -> post.v1.PostponedPost
 	13,  // 14: post.v1.GetPostponedResponse.postponed:type_name -> post.v1.PostponedPost
-	222, // 15: post.v1.EditPostponedRequest.publish_at:type_name -> google.protobuf.Timestamp
+	232, // 15: post.v1.EditPostponedRequest.publish_at:type_name -> google.protobuf.Timestamp
 	13,  // 16: post.v1.EditPostponedResponse.postponed:type_name -> post.v1.PostponedPost
 	2,   // 17: post.v1.PublishPostponedResponse.post:type_name -> post.v1.Post
 	26,  // 18: post.v1.CreatePostRequest.poll:type_name -> post.v1.PollDraft
 	3,   // 19: post.v1.CreatePostRequest.link:type_name -> post.v1.Link
 	28,  // 20: post.v1.Poll.options:type_name -> post.v1.PollOption
-	222, // 21: post.v1.Poll.ends_at:type_name -> google.protobuf.Timestamp
+	232, // 21: post.v1.Poll.ends_at:type_name -> google.protobuf.Timestamp
 	27,  // 22: post.v1.GetPollsResponse.polls:type_name -> post.v1.Poll
 	27,  // 23: post.v1.VotePollResponse.poll:type_name -> post.v1.Poll
 	27,  // 24: post.v1.RetractPollVoteResponse.poll:type_name -> post.v1.Poll
@@ -14388,10 +14994,10 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	4,   // 40: post.v1.ListCommentsResponse.comments:type_name -> post.v1.Comment
 	4,   // 41: post.v1.GetCommentsResponse.comments:type_name -> post.v1.Comment
 	4,   // 42: post.v1.ListLastCommentsResponse.comments:type_name -> post.v1.Comment
-	222, // 43: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
-	222, // 44: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
+	232, // 43: post.v1.Topic.created_at:type_name -> google.protobuf.Timestamp
+	232, // 44: post.v1.Topic.updated_at:type_name -> google.protobuf.Timestamp
 	104, // 45: post.v1.Topic.last_message:type_name -> post.v1.TopicMessage
-	222, // 46: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
+	232, // 46: post.v1.TopicMessage.created_at:type_name -> google.protobuf.Timestamp
 	104, // 47: post.v1.GetTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
 	103, // 48: post.v1.CreateTopicResponse.topic:type_name -> post.v1.Topic
 	103, // 49: post.v1.GetTopicResponse.topic:type_name -> post.v1.Topic
@@ -14399,11 +15005,11 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	103, // 51: post.v1.EditTopicResponse.topic:type_name -> post.v1.Topic
 	104, // 52: post.v1.CreateTopicMessageResponse.message:type_name -> post.v1.TopicMessage
 	104, // 53: post.v1.ListTopicMessagesResponse.messages:type_name -> post.v1.TopicMessage
-	222, // 54: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
-	222, // 55: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
+	232, // 54: post.v1.Album.created_at:type_name -> google.protobuf.Timestamp
+	232, // 55: post.v1.Album.updated_at:type_name -> google.protobuf.Timestamp
 	128, // 56: post.v1.Album.cover:type_name -> post.v1.AlbumPhoto
 	1,   // 57: post.v1.Album.kind:type_name -> post.v1.AlbumKind
-	222, // 58: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
+	232, // 58: post.v1.AlbumPhoto.created_at:type_name -> google.protobuf.Timestamp
 	127, // 59: post.v1.CreateAlbumResponse.album:type_name -> post.v1.Album
 	127, // 60: post.v1.GetAlbumResponse.album:type_name -> post.v1.Album
 	127, // 61: post.v1.ListAlbumsResponse.albums:type_name -> post.v1.Album
@@ -14415,16 +15021,16 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	128, // 67: post.v1.GetAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
 	127, // 68: post.v1.GetAlbumPhotoResponse.album:type_name -> post.v1.Album
 	128, // 69: post.v1.EditAlbumPhotoResponse.photo:type_name -> post.v1.AlbumPhoto
-	222, // 70: post.v1.PhotoComment.created_at:type_name -> google.protobuf.Timestamp
+	232, // 70: post.v1.PhotoComment.created_at:type_name -> google.protobuf.Timestamp
 	158, // 71: post.v1.GetPhotoCommentsResponse.comments:type_name -> post.v1.PhotoComment
 	158, // 72: post.v1.CreatePhotoCommentResponse.comment:type_name -> post.v1.PhotoComment
 	158, // 73: post.v1.ListPhotoCommentsResponse.comments:type_name -> post.v1.PhotoComment
 	5,   // 74: post.v1.GetSuggestionResponse.suggestion:type_name -> post.v1.Suggestion
 	104, // 75: post.v1.GetTopicMessageResponse.message:type_name -> post.v1.TopicMessage
 	158, // 76: post.v1.GetPhotoCommentResponse.comment:type_name -> post.v1.PhotoComment
-	222, // 77: post.v1.Note.created_at:type_name -> google.protobuf.Timestamp
-	222, // 78: post.v1.Note.edited_at:type_name -> google.protobuf.Timestamp
-	222, // 79: post.v1.NoteComment.created_at:type_name -> google.protobuf.Timestamp
+	232, // 77: post.v1.Note.created_at:type_name -> google.protobuf.Timestamp
+	232, // 78: post.v1.Note.edited_at:type_name -> google.protobuf.Timestamp
+	232, // 79: post.v1.NoteComment.created_at:type_name -> google.protobuf.Timestamp
 	180, // 80: post.v1.CreateNoteResponse.note:type_name -> post.v1.Note
 	180, // 81: post.v1.GetNoteResponse.note:type_name -> post.v1.Note
 	180, // 82: post.v1.ListNotesResponse.notes:type_name -> post.v1.Note
@@ -14433,255 +15039,271 @@ var file_api_post_v1_post_proto_depIdxs = []int32{
 	181, // 85: post.v1.ListNoteCommentsResponse.comments:type_name -> post.v1.NoteComment
 	181, // 86: post.v1.GetNoteCommentResponse.comment:type_name -> post.v1.NoteComment
 	181, // 87: post.v1.GetNoteCommentsResponse.comments:type_name -> post.v1.NoteComment
-	222, // 88: post.v1.Document.created_at:type_name -> google.protobuf.Timestamp
+	232, // 88: post.v1.Document.created_at:type_name -> google.protobuf.Timestamp
 	200, // 89: post.v1.AddDocumentResponse.document:type_name -> post.v1.Document
 	200, // 90: post.v1.ListDocumentsResponse.documents:type_name -> post.v1.Document
 	200, // 91: post.v1.GetDocumentsResponse.documents:type_name -> post.v1.Document
 	200, // 92: post.v1.RenameDocumentResponse.document:type_name -> post.v1.Document
-	222, // 93: post.v1.Story.created_at:type_name -> google.protobuf.Timestamp
-	222, // 94: post.v1.Story.expires_at:type_name -> google.protobuf.Timestamp
+	232, // 93: post.v1.Story.created_at:type_name -> google.protobuf.Timestamp
+	232, // 94: post.v1.Story.expires_at:type_name -> google.protobuf.Timestamp
 	210, // 95: post.v1.CreateStoryResponse.story:type_name -> post.v1.Story
 	210, // 96: post.v1.ListFeedStoriesResponse.stories:type_name -> post.v1.Story
 	210, // 97: post.v1.ListUserStoriesResponse.stories:type_name -> post.v1.Story
-	222, // 98: post.v1.StoryViewer.viewed_at:type_name -> google.protobuf.Timestamp
-	219, // 99: post.v1.ListStoryViewersResponse.viewers:type_name -> post.v1.StoryViewer
-	25,  // 100: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
-	40,  // 101: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
-	38,  // 102: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
-	41,  // 103: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
-	43,  // 104: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
-	44,  // 105: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
-	45,  // 106: post.v1.PostService.ArchivePost:input_type -> post.v1.ArchivePostRequest
-	50,  // 107: post.v1.PostService.UnarchivePost:input_type -> post.v1.UnarchivePostRequest
-	46,  // 108: post.v1.PostService.ArchiveWall:input_type -> post.v1.ArchiveWallRequest
-	48,  // 109: post.v1.PostService.ListWallYears:input_type -> post.v1.ListWallYearsRequest
-	51,  // 110: post.v1.PostService.CloseComments:input_type -> post.v1.CloseCommentsRequest
-	52,  // 111: post.v1.PostService.OpenComments:input_type -> post.v1.OpenCommentsRequest
-	53,  // 112: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
-	55,  // 113: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
-	178, // 114: post.v1.PostService.CountPosts:input_type -> post.v1.CountPostsRequest
-	57,  // 115: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
-	59,  // 116: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
-	61,  // 117: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
-	63,  // 118: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
-	65,  // 119: post.v1.PostService.ListPostLikers:input_type -> post.v1.ListPostLikersRequest
-	77,  // 120: post.v1.PostService.ListReposts:input_type -> post.v1.ListRepostsRequest
-	79,  // 121: post.v1.PostService.ListCommentLikers:input_type -> post.v1.ListCommentLikersRequest
-	67,  // 122: post.v1.PostService.ListLikedPosts:input_type -> post.v1.ListLikedPostsRequest
-	69,  // 123: post.v1.PostService.ListLikedComments:input_type -> post.v1.ListLikedCommentsRequest
-	71,  // 124: post.v1.PostService.ListLikedAlbumPhotos:input_type -> post.v1.ListLikedAlbumPhotosRequest
-	73,  // 125: post.v1.PostService.ListOwnPosts:input_type -> post.v1.ListOwnPostsRequest
-	75,  // 126: post.v1.PostService.SearchPosts:input_type -> post.v1.SearchPostsRequest
-	29,  // 127: post.v1.PostService.GetPolls:input_type -> post.v1.GetPollsRequest
-	31,  // 128: post.v1.PostService.VotePoll:input_type -> post.v1.VotePollRequest
-	33,  // 129: post.v1.PostService.RetractPollVote:input_type -> post.v1.RetractPollVoteRequest
-	35,  // 130: post.v1.PostService.ListPollVoters:input_type -> post.v1.ListPollVotersRequest
-	81,  // 131: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
-	83,  // 132: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
-	84,  // 133: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
-	86,  // 134: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
-	88,  // 135: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
-	90,  // 136: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
-	92,  // 137: post.v1.PostService.ListLastComments:input_type -> post.v1.ListLastCommentsRequest
-	6,   // 138: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
-	8,   // 139: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
-	172, // 140: post.v1.PostService.GetSuggestion:input_type -> post.v1.GetSuggestionRequest
-	10,  // 141: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
-	12,  // 142: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
-	14,  // 143: post.v1.PostService.PostponePost:input_type -> post.v1.PostponePostRequest
-	16,  // 144: post.v1.PostService.ListPostponed:input_type -> post.v1.ListPostponedRequest
-	18,  // 145: post.v1.PostService.GetPostponed:input_type -> post.v1.GetPostponedRequest
-	20,  // 146: post.v1.PostService.EditPostponed:input_type -> post.v1.EditPostponedRequest
-	22,  // 147: post.v1.PostService.PublishPostponed:input_type -> post.v1.PublishPostponedRequest
-	24,  // 148: post.v1.PostService.DeletePostponed:input_type -> post.v1.DeletePostponedRequest
-	211, // 149: post.v1.PostService.CreateStory:input_type -> post.v1.CreateStoryRequest
-	213, // 150: post.v1.PostService.ListFeedStories:input_type -> post.v1.ListFeedStoriesRequest
-	215, // 151: post.v1.PostService.ListUserStories:input_type -> post.v1.ListUserStoriesRequest
-	217, // 152: post.v1.PostService.ViewStory:input_type -> post.v1.ViewStoryRequest
-	218, // 153: post.v1.PostService.ListStoryViewers:input_type -> post.v1.ListStoryViewersRequest
-	221, // 154: post.v1.PostService.DeleteStory:input_type -> post.v1.DeleteStoryRequest
-	113, // 155: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
-	115, // 156: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
-	117, // 157: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
-	119, // 158: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
-	121, // 159: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
-	122, // 160: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
-	124, // 161: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
-	174, // 162: post.v1.PostService.GetTopicMessage:input_type -> post.v1.GetTopicMessageRequest
-	126, // 163: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
-	105, // 164: post.v1.PostService.LikeTopicMessage:input_type -> post.v1.LikeTopicMessageRequest
-	107, // 165: post.v1.PostService.UnlikeTopicMessage:input_type -> post.v1.UnlikeTopicMessageRequest
-	109, // 166: post.v1.PostService.ListTopicMessageLikers:input_type -> post.v1.ListTopicMessageLikersRequest
-	111, // 167: post.v1.PostService.GetTopicMessages:input_type -> post.v1.GetTopicMessagesRequest
-	129, // 168: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
-	131, // 169: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
-	133, // 170: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
-	135, // 171: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
-	137, // 172: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
-	139, // 173: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
-	141, // 174: post.v1.PostService.AddAvatarPhoto:input_type -> post.v1.AddAvatarPhotoRequest
-	143, // 175: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
-	145, // 176: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
-	147, // 177: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
-	149, // 178: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
-	150, // 179: post.v1.PostService.SetAlbumCover:input_type -> post.v1.SetAlbumCoverRequest
-	151, // 180: post.v1.PostService.MoveAlbumPhoto:input_type -> post.v1.MoveAlbumPhotoRequest
-	152, // 181: post.v1.PostService.LikeAlbumPhoto:input_type -> post.v1.LikeAlbumPhotoRequest
-	154, // 182: post.v1.PostService.UnlikeAlbumPhoto:input_type -> post.v1.UnlikeAlbumPhotoRequest
-	156, // 183: post.v1.PostService.ListAlbumPhotoLikers:input_type -> post.v1.ListAlbumPhotoLikersRequest
-	159, // 184: post.v1.PostService.CreatePhotoComment:input_type -> post.v1.CreatePhotoCommentRequest
-	169, // 185: post.v1.PostService.DeletePhotoComment:input_type -> post.v1.DeletePhotoCommentRequest
-	170, // 186: post.v1.PostService.ListPhotoComments:input_type -> post.v1.ListPhotoCommentsRequest
-	176, // 187: post.v1.PostService.GetPhotoComment:input_type -> post.v1.GetPhotoCommentRequest
-	160, // 188: post.v1.PostService.GetPhotoComments:input_type -> post.v1.GetPhotoCommentsRequest
-	162, // 189: post.v1.PostService.LikePhotoComment:input_type -> post.v1.LikePhotoCommentRequest
-	164, // 190: post.v1.PostService.UnlikePhotoComment:input_type -> post.v1.UnlikePhotoCommentRequest
-	166, // 191: post.v1.PostService.ListPhotoCommentLikers:input_type -> post.v1.ListPhotoCommentLikersRequest
-	182, // 192: post.v1.PostService.CreateNote:input_type -> post.v1.CreateNoteRequest
-	184, // 193: post.v1.PostService.GetNote:input_type -> post.v1.GetNoteRequest
-	186, // 194: post.v1.PostService.ListNotes:input_type -> post.v1.ListNotesRequest
-	188, // 195: post.v1.PostService.EditNote:input_type -> post.v1.EditNoteRequest
-	190, // 196: post.v1.PostService.DeleteNote:input_type -> post.v1.DeleteNoteRequest
-	191, // 197: post.v1.PostService.CreateNoteComment:input_type -> post.v1.CreateNoteCommentRequest
-	193, // 198: post.v1.PostService.DeleteNoteComment:input_type -> post.v1.DeleteNoteCommentRequest
-	194, // 199: post.v1.PostService.ListNoteComments:input_type -> post.v1.ListNoteCommentsRequest
-	196, // 200: post.v1.PostService.GetNoteComment:input_type -> post.v1.GetNoteCommentRequest
-	198, // 201: post.v1.PostService.GetNoteComments:input_type -> post.v1.GetNoteCommentsRequest
-	201, // 202: post.v1.PostService.AddDocument:input_type -> post.v1.AddDocumentRequest
-	203, // 203: post.v1.PostService.ListDocuments:input_type -> post.v1.ListDocumentsRequest
-	205, // 204: post.v1.PostService.GetDocuments:input_type -> post.v1.GetDocumentsRequest
-	207, // 205: post.v1.PostService.RenameDocument:input_type -> post.v1.RenameDocumentRequest
-	209, // 206: post.v1.PostService.DeleteDocument:input_type -> post.v1.DeleteDocumentRequest
-	94,  // 207: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
-	95,  // 208: post.v1.PostService.PurgeClub:input_type -> post.v1.PurgeClubRequest
-	96,  // 209: post.v1.PostService.HoldUserReactions:input_type -> post.v1.HoldUserReactionsRequest
-	102, // 210: post.v1.PostService.ReleaseUserReactions:input_type -> post.v1.ReleaseUserReactionsRequest
-	97,  // 211: post.v1.PostService.FollowSource:input_type -> post.v1.FollowSourceRequest
-	98,  // 212: post.v1.PostService.UnfollowSource:input_type -> post.v1.UnfollowSourceRequest
-	99,  // 213: post.v1.PostService.SyncSources:input_type -> post.v1.SyncSourcesRequest
-	100, // 214: post.v1.PostService.CloseWall:input_type -> post.v1.CloseWallRequest
-	101, // 215: post.v1.PostService.OpenWall:input_type -> post.v1.OpenWallRequest
-	37,  // 216: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
-	223, // 217: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
-	39,  // 218: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
-	42,  // 219: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
-	223, // 220: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
-	223, // 221: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
-	223, // 222: post.v1.PostService.ArchivePost:output_type -> google.protobuf.Empty
-	223, // 223: post.v1.PostService.UnarchivePost:output_type -> google.protobuf.Empty
-	47,  // 224: post.v1.PostService.ArchiveWall:output_type -> post.v1.ArchiveWallResponse
-	49,  // 225: post.v1.PostService.ListWallYears:output_type -> post.v1.ListWallYearsResponse
-	223, // 226: post.v1.PostService.CloseComments:output_type -> google.protobuf.Empty
-	223, // 227: post.v1.PostService.OpenComments:output_type -> google.protobuf.Empty
-	54,  // 228: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
-	56,  // 229: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
-	179, // 230: post.v1.PostService.CountPosts:output_type -> post.v1.CountPostsResponse
-	58,  // 231: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
-	60,  // 232: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
-	62,  // 233: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
-	64,  // 234: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
-	66,  // 235: post.v1.PostService.ListPostLikers:output_type -> post.v1.ListPostLikersResponse
-	78,  // 236: post.v1.PostService.ListReposts:output_type -> post.v1.ListRepostsResponse
-	80,  // 237: post.v1.PostService.ListCommentLikers:output_type -> post.v1.ListCommentLikersResponse
-	68,  // 238: post.v1.PostService.ListLikedPosts:output_type -> post.v1.ListLikedPostsResponse
-	70,  // 239: post.v1.PostService.ListLikedComments:output_type -> post.v1.ListLikedCommentsResponse
-	72,  // 240: post.v1.PostService.ListLikedAlbumPhotos:output_type -> post.v1.ListLikedAlbumPhotosResponse
-	74,  // 241: post.v1.PostService.ListOwnPosts:output_type -> post.v1.ListOwnPostsResponse
-	76,  // 242: post.v1.PostService.SearchPosts:output_type -> post.v1.SearchPostsResponse
-	30,  // 243: post.v1.PostService.GetPolls:output_type -> post.v1.GetPollsResponse
-	32,  // 244: post.v1.PostService.VotePoll:output_type -> post.v1.VotePollResponse
-	34,  // 245: post.v1.PostService.RetractPollVote:output_type -> post.v1.RetractPollVoteResponse
-	36,  // 246: post.v1.PostService.ListPollVoters:output_type -> post.v1.ListPollVotersResponse
-	82,  // 247: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
-	223, // 248: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
-	85,  // 249: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
-	87,  // 250: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
-	89,  // 251: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
-	91,  // 252: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
-	93,  // 253: post.v1.PostService.ListLastComments:output_type -> post.v1.ListLastCommentsResponse
-	7,   // 254: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
-	9,   // 255: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
-	173, // 256: post.v1.PostService.GetSuggestion:output_type -> post.v1.GetSuggestionResponse
-	11,  // 257: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
-	223, // 258: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
-	15,  // 259: post.v1.PostService.PostponePost:output_type -> post.v1.PostponePostResponse
-	17,  // 260: post.v1.PostService.ListPostponed:output_type -> post.v1.ListPostponedResponse
-	19,  // 261: post.v1.PostService.GetPostponed:output_type -> post.v1.GetPostponedResponse
-	21,  // 262: post.v1.PostService.EditPostponed:output_type -> post.v1.EditPostponedResponse
-	23,  // 263: post.v1.PostService.PublishPostponed:output_type -> post.v1.PublishPostponedResponse
-	223, // 264: post.v1.PostService.DeletePostponed:output_type -> google.protobuf.Empty
-	212, // 265: post.v1.PostService.CreateStory:output_type -> post.v1.CreateStoryResponse
-	214, // 266: post.v1.PostService.ListFeedStories:output_type -> post.v1.ListFeedStoriesResponse
-	216, // 267: post.v1.PostService.ListUserStories:output_type -> post.v1.ListUserStoriesResponse
-	223, // 268: post.v1.PostService.ViewStory:output_type -> google.protobuf.Empty
-	220, // 269: post.v1.PostService.ListStoryViewers:output_type -> post.v1.ListStoryViewersResponse
-	223, // 270: post.v1.PostService.DeleteStory:output_type -> google.protobuf.Empty
-	114, // 271: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
-	116, // 272: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
-	118, // 273: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
-	120, // 274: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
-	223, // 275: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
-	123, // 276: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
-	125, // 277: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
-	175, // 278: post.v1.PostService.GetTopicMessage:output_type -> post.v1.GetTopicMessageResponse
-	223, // 279: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
-	106, // 280: post.v1.PostService.LikeTopicMessage:output_type -> post.v1.LikeTopicMessageResponse
-	108, // 281: post.v1.PostService.UnlikeTopicMessage:output_type -> post.v1.UnlikeTopicMessageResponse
-	110, // 282: post.v1.PostService.ListTopicMessageLikers:output_type -> post.v1.ListTopicMessageLikersResponse
-	112, // 283: post.v1.PostService.GetTopicMessages:output_type -> post.v1.GetTopicMessagesResponse
-	130, // 284: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
-	132, // 285: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
-	134, // 286: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
-	136, // 287: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
-	223, // 288: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
-	140, // 289: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
-	142, // 290: post.v1.PostService.AddAvatarPhoto:output_type -> post.v1.AddAvatarPhotoResponse
-	144, // 291: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
-	146, // 292: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
-	148, // 293: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
-	223, // 294: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
-	223, // 295: post.v1.PostService.SetAlbumCover:output_type -> google.protobuf.Empty
-	223, // 296: post.v1.PostService.MoveAlbumPhoto:output_type -> google.protobuf.Empty
-	153, // 297: post.v1.PostService.LikeAlbumPhoto:output_type -> post.v1.LikeAlbumPhotoResponse
-	155, // 298: post.v1.PostService.UnlikeAlbumPhoto:output_type -> post.v1.UnlikeAlbumPhotoResponse
-	157, // 299: post.v1.PostService.ListAlbumPhotoLikers:output_type -> post.v1.ListAlbumPhotoLikersResponse
-	168, // 300: post.v1.PostService.CreatePhotoComment:output_type -> post.v1.CreatePhotoCommentResponse
-	223, // 301: post.v1.PostService.DeletePhotoComment:output_type -> google.protobuf.Empty
-	171, // 302: post.v1.PostService.ListPhotoComments:output_type -> post.v1.ListPhotoCommentsResponse
-	177, // 303: post.v1.PostService.GetPhotoComment:output_type -> post.v1.GetPhotoCommentResponse
-	161, // 304: post.v1.PostService.GetPhotoComments:output_type -> post.v1.GetPhotoCommentsResponse
-	163, // 305: post.v1.PostService.LikePhotoComment:output_type -> post.v1.LikePhotoCommentResponse
-	165, // 306: post.v1.PostService.UnlikePhotoComment:output_type -> post.v1.UnlikePhotoCommentResponse
-	167, // 307: post.v1.PostService.ListPhotoCommentLikers:output_type -> post.v1.ListPhotoCommentLikersResponse
-	183, // 308: post.v1.PostService.CreateNote:output_type -> post.v1.CreateNoteResponse
-	185, // 309: post.v1.PostService.GetNote:output_type -> post.v1.GetNoteResponse
-	187, // 310: post.v1.PostService.ListNotes:output_type -> post.v1.ListNotesResponse
-	189, // 311: post.v1.PostService.EditNote:output_type -> post.v1.EditNoteResponse
-	223, // 312: post.v1.PostService.DeleteNote:output_type -> google.protobuf.Empty
-	192, // 313: post.v1.PostService.CreateNoteComment:output_type -> post.v1.CreateNoteCommentResponse
-	223, // 314: post.v1.PostService.DeleteNoteComment:output_type -> google.protobuf.Empty
-	195, // 315: post.v1.PostService.ListNoteComments:output_type -> post.v1.ListNoteCommentsResponse
-	197, // 316: post.v1.PostService.GetNoteComment:output_type -> post.v1.GetNoteCommentResponse
-	199, // 317: post.v1.PostService.GetNoteComments:output_type -> post.v1.GetNoteCommentsResponse
-	202, // 318: post.v1.PostService.AddDocument:output_type -> post.v1.AddDocumentResponse
-	204, // 319: post.v1.PostService.ListDocuments:output_type -> post.v1.ListDocumentsResponse
-	206, // 320: post.v1.PostService.GetDocuments:output_type -> post.v1.GetDocumentsResponse
-	208, // 321: post.v1.PostService.RenameDocument:output_type -> post.v1.RenameDocumentResponse
-	223, // 322: post.v1.PostService.DeleteDocument:output_type -> google.protobuf.Empty
-	223, // 323: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
-	223, // 324: post.v1.PostService.PurgeClub:output_type -> google.protobuf.Empty
-	223, // 325: post.v1.PostService.HoldUserReactions:output_type -> google.protobuf.Empty
-	223, // 326: post.v1.PostService.ReleaseUserReactions:output_type -> google.protobuf.Empty
-	223, // 327: post.v1.PostService.FollowSource:output_type -> google.protobuf.Empty
-	223, // 328: post.v1.PostService.UnfollowSource:output_type -> google.protobuf.Empty
-	223, // 329: post.v1.PostService.SyncSources:output_type -> google.protobuf.Empty
-	223, // 330: post.v1.PostService.CloseWall:output_type -> google.protobuf.Empty
-	223, // 331: post.v1.PostService.OpenWall:output_type -> google.protobuf.Empty
-	216, // [216:332] is the sub-list for method output_type
-	100, // [100:216] is the sub-list for method input_type
-	100, // [100:100] is the sub-list for extension type_name
-	100, // [100:100] is the sub-list for extension extendee
-	0,   // [0:100] is the sub-list for field type_name
+	210, // 98: post.v1.GetStoryResponse.story:type_name -> post.v1.Story
+	232, // 99: post.v1.StoryViewer.viewed_at:type_name -> google.protobuf.Timestamp
+	221, // 100: post.v1.ListStoryViewersResponse.viewers:type_name -> post.v1.StoryViewer
+	232, // 101: post.v1.StoryComment.created_at:type_name -> google.protobuf.Timestamp
+	226, // 102: post.v1.CreateStoryCommentResponse.comment:type_name -> post.v1.StoryComment
+	226, // 103: post.v1.ListStoryCommentsResponse.comments:type_name -> post.v1.StoryComment
+	25,  // 104: post.v1.PostService.CreatePost:input_type -> post.v1.CreatePostRequest
+	40,  // 105: post.v1.PostService.DeletePost:input_type -> post.v1.DeletePostRequest
+	38,  // 106: post.v1.PostService.RepostPost:input_type -> post.v1.RepostPostRequest
+	41,  // 107: post.v1.PostService.EditPost:input_type -> post.v1.EditPostRequest
+	43,  // 108: post.v1.PostService.PinPost:input_type -> post.v1.PinPostRequest
+	44,  // 109: post.v1.PostService.UnpinPost:input_type -> post.v1.UnpinPostRequest
+	45,  // 110: post.v1.PostService.ArchivePost:input_type -> post.v1.ArchivePostRequest
+	50,  // 111: post.v1.PostService.UnarchivePost:input_type -> post.v1.UnarchivePostRequest
+	46,  // 112: post.v1.PostService.ArchiveWall:input_type -> post.v1.ArchiveWallRequest
+	48,  // 113: post.v1.PostService.ListWallYears:input_type -> post.v1.ListWallYearsRequest
+	51,  // 114: post.v1.PostService.CloseComments:input_type -> post.v1.CloseCommentsRequest
+	52,  // 115: post.v1.PostService.OpenComments:input_type -> post.v1.OpenCommentsRequest
+	53,  // 116: post.v1.PostService.GetPost:input_type -> post.v1.GetPostRequest
+	55,  // 117: post.v1.PostService.GetPosts:input_type -> post.v1.GetPostsRequest
+	178, // 118: post.v1.PostService.CountPosts:input_type -> post.v1.CountPostsRequest
+	57,  // 119: post.v1.PostService.ListPosts:input_type -> post.v1.ListPostsRequest
+	59,  // 120: post.v1.PostService.ListFeed:input_type -> post.v1.ListFeedRequest
+	61,  // 121: post.v1.PostService.LikePost:input_type -> post.v1.LikePostRequest
+	63,  // 122: post.v1.PostService.UnlikePost:input_type -> post.v1.UnlikePostRequest
+	65,  // 123: post.v1.PostService.ListPostLikers:input_type -> post.v1.ListPostLikersRequest
+	77,  // 124: post.v1.PostService.ListReposts:input_type -> post.v1.ListRepostsRequest
+	79,  // 125: post.v1.PostService.ListCommentLikers:input_type -> post.v1.ListCommentLikersRequest
+	67,  // 126: post.v1.PostService.ListLikedPosts:input_type -> post.v1.ListLikedPostsRequest
+	69,  // 127: post.v1.PostService.ListLikedComments:input_type -> post.v1.ListLikedCommentsRequest
+	71,  // 128: post.v1.PostService.ListLikedAlbumPhotos:input_type -> post.v1.ListLikedAlbumPhotosRequest
+	73,  // 129: post.v1.PostService.ListOwnPosts:input_type -> post.v1.ListOwnPostsRequest
+	75,  // 130: post.v1.PostService.SearchPosts:input_type -> post.v1.SearchPostsRequest
+	29,  // 131: post.v1.PostService.GetPolls:input_type -> post.v1.GetPollsRequest
+	31,  // 132: post.v1.PostService.VotePoll:input_type -> post.v1.VotePollRequest
+	33,  // 133: post.v1.PostService.RetractPollVote:input_type -> post.v1.RetractPollVoteRequest
+	35,  // 134: post.v1.PostService.ListPollVoters:input_type -> post.v1.ListPollVotersRequest
+	81,  // 135: post.v1.PostService.CreateComment:input_type -> post.v1.CreateCommentRequest
+	83,  // 136: post.v1.PostService.DeleteComment:input_type -> post.v1.DeleteCommentRequest
+	84,  // 137: post.v1.PostService.LikeComment:input_type -> post.v1.LikeCommentRequest
+	86,  // 138: post.v1.PostService.UnlikeComment:input_type -> post.v1.UnlikeCommentRequest
+	88,  // 139: post.v1.PostService.ListComments:input_type -> post.v1.ListCommentsRequest
+	90,  // 140: post.v1.PostService.GetComments:input_type -> post.v1.GetCommentsRequest
+	92,  // 141: post.v1.PostService.ListLastComments:input_type -> post.v1.ListLastCommentsRequest
+	6,   // 142: post.v1.PostService.SuggestPost:input_type -> post.v1.SuggestPostRequest
+	8,   // 143: post.v1.PostService.ListSuggestions:input_type -> post.v1.ListSuggestionsRequest
+	172, // 144: post.v1.PostService.GetSuggestion:input_type -> post.v1.GetSuggestionRequest
+	10,  // 145: post.v1.PostService.PublishSuggestion:input_type -> post.v1.PublishSuggestionRequest
+	12,  // 146: post.v1.PostService.DeleteSuggestion:input_type -> post.v1.DeleteSuggestionRequest
+	14,  // 147: post.v1.PostService.PostponePost:input_type -> post.v1.PostponePostRequest
+	16,  // 148: post.v1.PostService.ListPostponed:input_type -> post.v1.ListPostponedRequest
+	18,  // 149: post.v1.PostService.GetPostponed:input_type -> post.v1.GetPostponedRequest
+	20,  // 150: post.v1.PostService.EditPostponed:input_type -> post.v1.EditPostponedRequest
+	22,  // 151: post.v1.PostService.PublishPostponed:input_type -> post.v1.PublishPostponedRequest
+	24,  // 152: post.v1.PostService.DeletePostponed:input_type -> post.v1.DeletePostponedRequest
+	211, // 153: post.v1.PostService.CreateStory:input_type -> post.v1.CreateStoryRequest
+	213, // 154: post.v1.PostService.ListFeedStories:input_type -> post.v1.ListFeedStoriesRequest
+	215, // 155: post.v1.PostService.ListUserStories:input_type -> post.v1.ListUserStoriesRequest
+	217, // 156: post.v1.PostService.GetStory:input_type -> post.v1.GetStoryRequest
+	219, // 157: post.v1.PostService.ViewStory:input_type -> post.v1.ViewStoryRequest
+	220, // 158: post.v1.PostService.ListStoryViewers:input_type -> post.v1.ListStoryViewersRequest
+	223, // 159: post.v1.PostService.DeleteStory:input_type -> post.v1.DeleteStoryRequest
+	224, // 160: post.v1.PostService.LikeStory:input_type -> post.v1.LikeStoryRequest
+	225, // 161: post.v1.PostService.UnlikeStory:input_type -> post.v1.UnlikeStoryRequest
+	227, // 162: post.v1.PostService.CreateStoryComment:input_type -> post.v1.CreateStoryCommentRequest
+	229, // 163: post.v1.PostService.ListStoryComments:input_type -> post.v1.ListStoryCommentsRequest
+	231, // 164: post.v1.PostService.DeleteStoryComment:input_type -> post.v1.DeleteStoryCommentRequest
+	113, // 165: post.v1.PostService.CreateTopic:input_type -> post.v1.CreateTopicRequest
+	115, // 166: post.v1.PostService.GetTopic:input_type -> post.v1.GetTopicRequest
+	117, // 167: post.v1.PostService.ListTopics:input_type -> post.v1.ListTopicsRequest
+	119, // 168: post.v1.PostService.EditTopic:input_type -> post.v1.EditTopicRequest
+	121, // 169: post.v1.PostService.DeleteTopic:input_type -> post.v1.DeleteTopicRequest
+	122, // 170: post.v1.PostService.CreateTopicMessage:input_type -> post.v1.CreateTopicMessageRequest
+	124, // 171: post.v1.PostService.ListTopicMessages:input_type -> post.v1.ListTopicMessagesRequest
+	174, // 172: post.v1.PostService.GetTopicMessage:input_type -> post.v1.GetTopicMessageRequest
+	126, // 173: post.v1.PostService.DeleteTopicMessage:input_type -> post.v1.DeleteTopicMessageRequest
+	105, // 174: post.v1.PostService.LikeTopicMessage:input_type -> post.v1.LikeTopicMessageRequest
+	107, // 175: post.v1.PostService.UnlikeTopicMessage:input_type -> post.v1.UnlikeTopicMessageRequest
+	109, // 176: post.v1.PostService.ListTopicMessageLikers:input_type -> post.v1.ListTopicMessageLikersRequest
+	111, // 177: post.v1.PostService.GetTopicMessages:input_type -> post.v1.GetTopicMessagesRequest
+	129, // 178: post.v1.PostService.CreateAlbum:input_type -> post.v1.CreateAlbumRequest
+	131, // 179: post.v1.PostService.GetAlbum:input_type -> post.v1.GetAlbumRequest
+	133, // 180: post.v1.PostService.ListAlbums:input_type -> post.v1.ListAlbumsRequest
+	135, // 181: post.v1.PostService.EditAlbum:input_type -> post.v1.EditAlbumRequest
+	137, // 182: post.v1.PostService.DeleteAlbum:input_type -> post.v1.DeleteAlbumRequest
+	139, // 183: post.v1.PostService.AddAlbumPhotos:input_type -> post.v1.AddAlbumPhotosRequest
+	141, // 184: post.v1.PostService.AddAvatarPhoto:input_type -> post.v1.AddAvatarPhotoRequest
+	143, // 185: post.v1.PostService.ListAlbumPhotos:input_type -> post.v1.ListAlbumPhotosRequest
+	145, // 186: post.v1.PostService.GetAlbumPhoto:input_type -> post.v1.GetAlbumPhotoRequest
+	147, // 187: post.v1.PostService.EditAlbumPhoto:input_type -> post.v1.EditAlbumPhotoRequest
+	149, // 188: post.v1.PostService.DeleteAlbumPhoto:input_type -> post.v1.DeleteAlbumPhotoRequest
+	150, // 189: post.v1.PostService.SetAlbumCover:input_type -> post.v1.SetAlbumCoverRequest
+	151, // 190: post.v1.PostService.MoveAlbumPhoto:input_type -> post.v1.MoveAlbumPhotoRequest
+	152, // 191: post.v1.PostService.LikeAlbumPhoto:input_type -> post.v1.LikeAlbumPhotoRequest
+	154, // 192: post.v1.PostService.UnlikeAlbumPhoto:input_type -> post.v1.UnlikeAlbumPhotoRequest
+	156, // 193: post.v1.PostService.ListAlbumPhotoLikers:input_type -> post.v1.ListAlbumPhotoLikersRequest
+	159, // 194: post.v1.PostService.CreatePhotoComment:input_type -> post.v1.CreatePhotoCommentRequest
+	169, // 195: post.v1.PostService.DeletePhotoComment:input_type -> post.v1.DeletePhotoCommentRequest
+	170, // 196: post.v1.PostService.ListPhotoComments:input_type -> post.v1.ListPhotoCommentsRequest
+	176, // 197: post.v1.PostService.GetPhotoComment:input_type -> post.v1.GetPhotoCommentRequest
+	160, // 198: post.v1.PostService.GetPhotoComments:input_type -> post.v1.GetPhotoCommentsRequest
+	162, // 199: post.v1.PostService.LikePhotoComment:input_type -> post.v1.LikePhotoCommentRequest
+	164, // 200: post.v1.PostService.UnlikePhotoComment:input_type -> post.v1.UnlikePhotoCommentRequest
+	166, // 201: post.v1.PostService.ListPhotoCommentLikers:input_type -> post.v1.ListPhotoCommentLikersRequest
+	182, // 202: post.v1.PostService.CreateNote:input_type -> post.v1.CreateNoteRequest
+	184, // 203: post.v1.PostService.GetNote:input_type -> post.v1.GetNoteRequest
+	186, // 204: post.v1.PostService.ListNotes:input_type -> post.v1.ListNotesRequest
+	188, // 205: post.v1.PostService.EditNote:input_type -> post.v1.EditNoteRequest
+	190, // 206: post.v1.PostService.DeleteNote:input_type -> post.v1.DeleteNoteRequest
+	191, // 207: post.v1.PostService.CreateNoteComment:input_type -> post.v1.CreateNoteCommentRequest
+	193, // 208: post.v1.PostService.DeleteNoteComment:input_type -> post.v1.DeleteNoteCommentRequest
+	194, // 209: post.v1.PostService.ListNoteComments:input_type -> post.v1.ListNoteCommentsRequest
+	196, // 210: post.v1.PostService.GetNoteComment:input_type -> post.v1.GetNoteCommentRequest
+	198, // 211: post.v1.PostService.GetNoteComments:input_type -> post.v1.GetNoteCommentsRequest
+	201, // 212: post.v1.PostService.AddDocument:input_type -> post.v1.AddDocumentRequest
+	203, // 213: post.v1.PostService.ListDocuments:input_type -> post.v1.ListDocumentsRequest
+	205, // 214: post.v1.PostService.GetDocuments:input_type -> post.v1.GetDocumentsRequest
+	207, // 215: post.v1.PostService.RenameDocument:input_type -> post.v1.RenameDocumentRequest
+	209, // 216: post.v1.PostService.DeleteDocument:input_type -> post.v1.DeleteDocumentRequest
+	94,  // 217: post.v1.PostService.PurgeUser:input_type -> post.v1.PurgeUserRequest
+	95,  // 218: post.v1.PostService.PurgeClub:input_type -> post.v1.PurgeClubRequest
+	96,  // 219: post.v1.PostService.HoldUserReactions:input_type -> post.v1.HoldUserReactionsRequest
+	102, // 220: post.v1.PostService.ReleaseUserReactions:input_type -> post.v1.ReleaseUserReactionsRequest
+	97,  // 221: post.v1.PostService.FollowSource:input_type -> post.v1.FollowSourceRequest
+	98,  // 222: post.v1.PostService.UnfollowSource:input_type -> post.v1.UnfollowSourceRequest
+	99,  // 223: post.v1.PostService.SyncSources:input_type -> post.v1.SyncSourcesRequest
+	100, // 224: post.v1.PostService.CloseWall:input_type -> post.v1.CloseWallRequest
+	101, // 225: post.v1.PostService.OpenWall:input_type -> post.v1.OpenWallRequest
+	37,  // 226: post.v1.PostService.CreatePost:output_type -> post.v1.CreatePostResponse
+	233, // 227: post.v1.PostService.DeletePost:output_type -> google.protobuf.Empty
+	39,  // 228: post.v1.PostService.RepostPost:output_type -> post.v1.RepostPostResponse
+	42,  // 229: post.v1.PostService.EditPost:output_type -> post.v1.EditPostResponse
+	233, // 230: post.v1.PostService.PinPost:output_type -> google.protobuf.Empty
+	233, // 231: post.v1.PostService.UnpinPost:output_type -> google.protobuf.Empty
+	233, // 232: post.v1.PostService.ArchivePost:output_type -> google.protobuf.Empty
+	233, // 233: post.v1.PostService.UnarchivePost:output_type -> google.protobuf.Empty
+	47,  // 234: post.v1.PostService.ArchiveWall:output_type -> post.v1.ArchiveWallResponse
+	49,  // 235: post.v1.PostService.ListWallYears:output_type -> post.v1.ListWallYearsResponse
+	233, // 236: post.v1.PostService.CloseComments:output_type -> google.protobuf.Empty
+	233, // 237: post.v1.PostService.OpenComments:output_type -> google.protobuf.Empty
+	54,  // 238: post.v1.PostService.GetPost:output_type -> post.v1.GetPostResponse
+	56,  // 239: post.v1.PostService.GetPosts:output_type -> post.v1.GetPostsResponse
+	179, // 240: post.v1.PostService.CountPosts:output_type -> post.v1.CountPostsResponse
+	58,  // 241: post.v1.PostService.ListPosts:output_type -> post.v1.ListPostsResponse
+	60,  // 242: post.v1.PostService.ListFeed:output_type -> post.v1.ListFeedResponse
+	62,  // 243: post.v1.PostService.LikePost:output_type -> post.v1.LikePostResponse
+	64,  // 244: post.v1.PostService.UnlikePost:output_type -> post.v1.UnlikePostResponse
+	66,  // 245: post.v1.PostService.ListPostLikers:output_type -> post.v1.ListPostLikersResponse
+	78,  // 246: post.v1.PostService.ListReposts:output_type -> post.v1.ListRepostsResponse
+	80,  // 247: post.v1.PostService.ListCommentLikers:output_type -> post.v1.ListCommentLikersResponse
+	68,  // 248: post.v1.PostService.ListLikedPosts:output_type -> post.v1.ListLikedPostsResponse
+	70,  // 249: post.v1.PostService.ListLikedComments:output_type -> post.v1.ListLikedCommentsResponse
+	72,  // 250: post.v1.PostService.ListLikedAlbumPhotos:output_type -> post.v1.ListLikedAlbumPhotosResponse
+	74,  // 251: post.v1.PostService.ListOwnPosts:output_type -> post.v1.ListOwnPostsResponse
+	76,  // 252: post.v1.PostService.SearchPosts:output_type -> post.v1.SearchPostsResponse
+	30,  // 253: post.v1.PostService.GetPolls:output_type -> post.v1.GetPollsResponse
+	32,  // 254: post.v1.PostService.VotePoll:output_type -> post.v1.VotePollResponse
+	34,  // 255: post.v1.PostService.RetractPollVote:output_type -> post.v1.RetractPollVoteResponse
+	36,  // 256: post.v1.PostService.ListPollVoters:output_type -> post.v1.ListPollVotersResponse
+	82,  // 257: post.v1.PostService.CreateComment:output_type -> post.v1.CreateCommentResponse
+	233, // 258: post.v1.PostService.DeleteComment:output_type -> google.protobuf.Empty
+	85,  // 259: post.v1.PostService.LikeComment:output_type -> post.v1.LikeCommentResponse
+	87,  // 260: post.v1.PostService.UnlikeComment:output_type -> post.v1.UnlikeCommentResponse
+	89,  // 261: post.v1.PostService.ListComments:output_type -> post.v1.ListCommentsResponse
+	91,  // 262: post.v1.PostService.GetComments:output_type -> post.v1.GetCommentsResponse
+	93,  // 263: post.v1.PostService.ListLastComments:output_type -> post.v1.ListLastCommentsResponse
+	7,   // 264: post.v1.PostService.SuggestPost:output_type -> post.v1.SuggestPostResponse
+	9,   // 265: post.v1.PostService.ListSuggestions:output_type -> post.v1.ListSuggestionsResponse
+	173, // 266: post.v1.PostService.GetSuggestion:output_type -> post.v1.GetSuggestionResponse
+	11,  // 267: post.v1.PostService.PublishSuggestion:output_type -> post.v1.PublishSuggestionResponse
+	233, // 268: post.v1.PostService.DeleteSuggestion:output_type -> google.protobuf.Empty
+	15,  // 269: post.v1.PostService.PostponePost:output_type -> post.v1.PostponePostResponse
+	17,  // 270: post.v1.PostService.ListPostponed:output_type -> post.v1.ListPostponedResponse
+	19,  // 271: post.v1.PostService.GetPostponed:output_type -> post.v1.GetPostponedResponse
+	21,  // 272: post.v1.PostService.EditPostponed:output_type -> post.v1.EditPostponedResponse
+	23,  // 273: post.v1.PostService.PublishPostponed:output_type -> post.v1.PublishPostponedResponse
+	233, // 274: post.v1.PostService.DeletePostponed:output_type -> google.protobuf.Empty
+	212, // 275: post.v1.PostService.CreateStory:output_type -> post.v1.CreateStoryResponse
+	214, // 276: post.v1.PostService.ListFeedStories:output_type -> post.v1.ListFeedStoriesResponse
+	216, // 277: post.v1.PostService.ListUserStories:output_type -> post.v1.ListUserStoriesResponse
+	218, // 278: post.v1.PostService.GetStory:output_type -> post.v1.GetStoryResponse
+	233, // 279: post.v1.PostService.ViewStory:output_type -> google.protobuf.Empty
+	222, // 280: post.v1.PostService.ListStoryViewers:output_type -> post.v1.ListStoryViewersResponse
+	233, // 281: post.v1.PostService.DeleteStory:output_type -> google.protobuf.Empty
+	233, // 282: post.v1.PostService.LikeStory:output_type -> google.protobuf.Empty
+	233, // 283: post.v1.PostService.UnlikeStory:output_type -> google.protobuf.Empty
+	228, // 284: post.v1.PostService.CreateStoryComment:output_type -> post.v1.CreateStoryCommentResponse
+	230, // 285: post.v1.PostService.ListStoryComments:output_type -> post.v1.ListStoryCommentsResponse
+	233, // 286: post.v1.PostService.DeleteStoryComment:output_type -> google.protobuf.Empty
+	114, // 287: post.v1.PostService.CreateTopic:output_type -> post.v1.CreateTopicResponse
+	116, // 288: post.v1.PostService.GetTopic:output_type -> post.v1.GetTopicResponse
+	118, // 289: post.v1.PostService.ListTopics:output_type -> post.v1.ListTopicsResponse
+	120, // 290: post.v1.PostService.EditTopic:output_type -> post.v1.EditTopicResponse
+	233, // 291: post.v1.PostService.DeleteTopic:output_type -> google.protobuf.Empty
+	123, // 292: post.v1.PostService.CreateTopicMessage:output_type -> post.v1.CreateTopicMessageResponse
+	125, // 293: post.v1.PostService.ListTopicMessages:output_type -> post.v1.ListTopicMessagesResponse
+	175, // 294: post.v1.PostService.GetTopicMessage:output_type -> post.v1.GetTopicMessageResponse
+	233, // 295: post.v1.PostService.DeleteTopicMessage:output_type -> google.protobuf.Empty
+	106, // 296: post.v1.PostService.LikeTopicMessage:output_type -> post.v1.LikeTopicMessageResponse
+	108, // 297: post.v1.PostService.UnlikeTopicMessage:output_type -> post.v1.UnlikeTopicMessageResponse
+	110, // 298: post.v1.PostService.ListTopicMessageLikers:output_type -> post.v1.ListTopicMessageLikersResponse
+	112, // 299: post.v1.PostService.GetTopicMessages:output_type -> post.v1.GetTopicMessagesResponse
+	130, // 300: post.v1.PostService.CreateAlbum:output_type -> post.v1.CreateAlbumResponse
+	132, // 301: post.v1.PostService.GetAlbum:output_type -> post.v1.GetAlbumResponse
+	134, // 302: post.v1.PostService.ListAlbums:output_type -> post.v1.ListAlbumsResponse
+	136, // 303: post.v1.PostService.EditAlbum:output_type -> post.v1.EditAlbumResponse
+	233, // 304: post.v1.PostService.DeleteAlbum:output_type -> google.protobuf.Empty
+	140, // 305: post.v1.PostService.AddAlbumPhotos:output_type -> post.v1.AddAlbumPhotosResponse
+	142, // 306: post.v1.PostService.AddAvatarPhoto:output_type -> post.v1.AddAvatarPhotoResponse
+	144, // 307: post.v1.PostService.ListAlbumPhotos:output_type -> post.v1.ListAlbumPhotosResponse
+	146, // 308: post.v1.PostService.GetAlbumPhoto:output_type -> post.v1.GetAlbumPhotoResponse
+	148, // 309: post.v1.PostService.EditAlbumPhoto:output_type -> post.v1.EditAlbumPhotoResponse
+	233, // 310: post.v1.PostService.DeleteAlbumPhoto:output_type -> google.protobuf.Empty
+	233, // 311: post.v1.PostService.SetAlbumCover:output_type -> google.protobuf.Empty
+	233, // 312: post.v1.PostService.MoveAlbumPhoto:output_type -> google.protobuf.Empty
+	153, // 313: post.v1.PostService.LikeAlbumPhoto:output_type -> post.v1.LikeAlbumPhotoResponse
+	155, // 314: post.v1.PostService.UnlikeAlbumPhoto:output_type -> post.v1.UnlikeAlbumPhotoResponse
+	157, // 315: post.v1.PostService.ListAlbumPhotoLikers:output_type -> post.v1.ListAlbumPhotoLikersResponse
+	168, // 316: post.v1.PostService.CreatePhotoComment:output_type -> post.v1.CreatePhotoCommentResponse
+	233, // 317: post.v1.PostService.DeletePhotoComment:output_type -> google.protobuf.Empty
+	171, // 318: post.v1.PostService.ListPhotoComments:output_type -> post.v1.ListPhotoCommentsResponse
+	177, // 319: post.v1.PostService.GetPhotoComment:output_type -> post.v1.GetPhotoCommentResponse
+	161, // 320: post.v1.PostService.GetPhotoComments:output_type -> post.v1.GetPhotoCommentsResponse
+	163, // 321: post.v1.PostService.LikePhotoComment:output_type -> post.v1.LikePhotoCommentResponse
+	165, // 322: post.v1.PostService.UnlikePhotoComment:output_type -> post.v1.UnlikePhotoCommentResponse
+	167, // 323: post.v1.PostService.ListPhotoCommentLikers:output_type -> post.v1.ListPhotoCommentLikersResponse
+	183, // 324: post.v1.PostService.CreateNote:output_type -> post.v1.CreateNoteResponse
+	185, // 325: post.v1.PostService.GetNote:output_type -> post.v1.GetNoteResponse
+	187, // 326: post.v1.PostService.ListNotes:output_type -> post.v1.ListNotesResponse
+	189, // 327: post.v1.PostService.EditNote:output_type -> post.v1.EditNoteResponse
+	233, // 328: post.v1.PostService.DeleteNote:output_type -> google.protobuf.Empty
+	192, // 329: post.v1.PostService.CreateNoteComment:output_type -> post.v1.CreateNoteCommentResponse
+	233, // 330: post.v1.PostService.DeleteNoteComment:output_type -> google.protobuf.Empty
+	195, // 331: post.v1.PostService.ListNoteComments:output_type -> post.v1.ListNoteCommentsResponse
+	197, // 332: post.v1.PostService.GetNoteComment:output_type -> post.v1.GetNoteCommentResponse
+	199, // 333: post.v1.PostService.GetNoteComments:output_type -> post.v1.GetNoteCommentsResponse
+	202, // 334: post.v1.PostService.AddDocument:output_type -> post.v1.AddDocumentResponse
+	204, // 335: post.v1.PostService.ListDocuments:output_type -> post.v1.ListDocumentsResponse
+	206, // 336: post.v1.PostService.GetDocuments:output_type -> post.v1.GetDocumentsResponse
+	208, // 337: post.v1.PostService.RenameDocument:output_type -> post.v1.RenameDocumentResponse
+	233, // 338: post.v1.PostService.DeleteDocument:output_type -> google.protobuf.Empty
+	233, // 339: post.v1.PostService.PurgeUser:output_type -> google.protobuf.Empty
+	233, // 340: post.v1.PostService.PurgeClub:output_type -> google.protobuf.Empty
+	233, // 341: post.v1.PostService.HoldUserReactions:output_type -> google.protobuf.Empty
+	233, // 342: post.v1.PostService.ReleaseUserReactions:output_type -> google.protobuf.Empty
+	233, // 343: post.v1.PostService.FollowSource:output_type -> google.protobuf.Empty
+	233, // 344: post.v1.PostService.UnfollowSource:output_type -> google.protobuf.Empty
+	233, // 345: post.v1.PostService.SyncSources:output_type -> google.protobuf.Empty
+	233, // 346: post.v1.PostService.CloseWall:output_type -> google.protobuf.Empty
+	233, // 347: post.v1.PostService.OpenWall:output_type -> google.protobuf.Empty
+	226, // [226:348] is the sub-list for method output_type
+	104, // [104:226] is the sub-list for method input_type
+	104, // [104:104] is the sub-list for extension type_name
+	104, // [104:104] is the sub-list for extension extendee
+	0,   // [0:104] is the sub-list for field type_name
 }
 
 func init() { file_api_post_v1_post_proto_init() }
@@ -14696,7 +15318,7 @@ func file_api_post_v1_post_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: unsafe.Slice(unsafe.StringData(file_api_post_v1_post_proto_rawDesc), len(file_api_post_v1_post_proto_rawDesc)),
 			NumEnums:      2,
-			NumMessages:   220,
+			NumMessages:   230,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

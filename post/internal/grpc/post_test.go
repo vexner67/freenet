@@ -86,7 +86,8 @@ func newServer(t *testing.T) testServer {
 		Notes:     service.NewNoteService(service.NoteDeps{Notes: notes, Comments: notes.Comments(), Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}}),
 		Documents: service.NewDocumentService(documents, inmem.TxManager{}, mediaclient.Nop{}),
 		Stories: service.NewStoryService(service.StoryDeps{
-			Stories: store.Stories(), Views: store.StoryViews(), Tx: inmem.TxManager{}, Photos: mediaclient.Nop{},
+			Stories: store.Stories(), Views: store.StoryViews(), Likes: store.StoryLikes(), Comments: store.StoryComments(),
+			Tx: inmem.TxManager{}, Photos: mediaclient.Nop{}, Notifier: notifyclient.Nop{},
 		}),
 		Purge: service.NewPurgeService(service.PurgeDeps{
 			Posts: store.Posts(), Likes: store.Likes(), CommentLikes: store.CommentLikes(), Votes: store.Polls(), Comments: store.Comments(), Suggestions: suggestions,
