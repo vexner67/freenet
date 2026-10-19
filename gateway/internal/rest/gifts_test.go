@@ -14,6 +14,8 @@ import (
 // fakeGifts knows the gifts g2 (anonymous, untold) and g1 (of u2, bob).
 type fakeGifts struct {
 	token, userID, cursor, deleted string
+	priced                         string
+	price                          int64
 	limit                          int
 	sent                           model.GiftDraft
 	err                            error
@@ -22,7 +24,15 @@ type fakeGifts struct {
 var giftTime = time.Date(2026, 10, 12, 9, 30, 0, 0, time.UTC)
 
 func (f *fakeGifts) Catalog(context.Context) ([]model.GiftCollection, error) {
-	return []model.GiftCollection{{ID: "flowers", Gifts: []string{"rose", "tulip"}}, {ID: "sweets", Gifts: []string{"cake"}, Price: 2}}, f.err
+	return []model.GiftCollection{
+		{ID: "flowers", Gifts: []string{"rose", "tulip"}, Prices: []int64{4, 0}},
+		{ID: "sweets", Gifts: []string{"cake"}, Price: 2},
+	}, f.err
+}
+
+func (f *fakeGifts) SetPrice(_ context.Context, token, gift string, price int64) error {
+	f.token, f.priced, f.price = token, gift, price
+	return f.err
 }
 
 func (f *fakeGifts) Send(_ context.Context, token, userID string, d model.GiftDraft) (model.Gift, error) {
@@ -64,15 +74,41 @@ func TestGiftCatalog(t *testing.T) {
 	w := newHarness(rest.Config{}).do("GET", "/api/v1/gifts", "")
 	got := decode[struct {
 		Collections []struct {
-			ID    string   `json:"id"`
-			Gifts []string `json:"gifts"`
-			Price int64    `json:"price"`
+			ID     string   `json:"id"`
+			Gifts  []string `json:"gifts"`
+			Price  int64    `json:"price"`
+			Prices []int64  `json:"prices"`
 		} `json:"collections"`
 	}](t, w)
 
 	if w.Code != http.StatusOK || len(got.Collections) != 2 || got.Collections[0].ID != "flowers" || len(got.Collections[0].Gifts) != 2 ||
 		got.Collections[1].Gifts[0] != "cake" || got.Collections[0].Price != 0 || got.Collections[1].Price != 2 {
 		t.Fatalf("%d %+v", w.Code, got)
+	}
+	// A service that does not know the prices of gifts gives none: an
+	// empty list, not null.
+	if p := got.Collections[0].Prices; len(p) != 2 || p[0] != 4 || got.Collections[1].Prices == nil || len(got.Collections[1].Prices) != 0 {
+		t.Fatalf("prices: %+v", got.Collections)
+	}
+}
+
+func TestSetGiftPrice(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	if w := h.do("PUT", "/api/v1/gifts/rose/price", `{"price":3}`, "Authorization", "Bearer tok"); w.Code != http.StatusNoContent ||
+		h.gifts.priced != "rose" || h.gifts.price != 3 || h.gifts.token != "tok" {
+		t.Fatalf("%d, priced %q at %d", w.Code, h.gifts.priced, h.gifts.price)
+	}
+
+	h = newHarness(rest.Config{})
+	h.gifts.err = failure.New(failure.PermissionDenied, "permission denied")
+	if w := h.do("PUT", "/api/v1/gifts/rose/price", `{"price":3}`, "Authorization", "Bearer tok"); w.Code != http.StatusForbidden {
+		t.Fatalf("not an administrator: %d", w.Code)
+	}
+
+	if w := newHarness(rest.Config{}).do("PUT", "/api/v1/gifts/rose/price", `{"price":3}`); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without token: %d", w.Code)
 	}
 }
 

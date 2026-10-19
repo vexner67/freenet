@@ -10,7 +10,14 @@ import (
 type giftCollectionJSON struct {
 	ID    string   `json:"id"`
 	Gifts []string `json:"gifts"`
-	// Price is what a gift of the collection costs, in votes; 0 is free.
+	// Price is what a gift of the collection costs, in votes, unless
+	// priced otherwise; 0 is free.
+	Price int64 `json:"price"`
+	// Prices are what each of gifts costs now, in their order.
+	Prices []int64 `json:"prices"`
+}
+
+type giftPriceRequest struct {
 	Price int64 `json:"price"`
 }
 
@@ -69,7 +76,12 @@ func (a *api) giftCatalog(w http.ResponseWriter, r *http.Request) {
 
 	resp := giftCatalogResponse{Collections: make([]giftCollectionJSON, 0, len(catalog))}
 	for _, c := range catalog {
-		resp.Collections = append(resp.Collections, giftCollectionJSON(c))
+		collection := giftCollectionJSON(c)
+		if collection.Prices == nil {
+			collection.Prices = []int64{}
+		}
+
+		resp.Collections = append(resp.Collections, collection)
 	}
 
 	writeJSON(w, http.StatusOK, resp)
@@ -159,6 +171,29 @@ func (a *api) deleteGift(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = a.gifts.Delete(r.Context(), token, r.PathValue("id")); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
+}
+
+// setGiftPrice is "Подарки" of the admin panel: an administrator of the
+// site makes a gift cost so many votes from now on.
+func (a *api) setGiftPrice(w http.ResponseWriter, r *http.Request) {
+	token, err := bearerToken(r)
+	if err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	var req giftPriceRequest
+	if err = decode(w, r, &req); err != nil {
+		a.writeError(w, r, err)
+		return
+	}
+
+	if err = a.gifts.SetPrice(r.Context(), token, r.PathValue("gift"), req.Price); err != nil {
 		a.writeError(w, r, err)
 		return
 	}
