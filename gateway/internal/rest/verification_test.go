@@ -60,3 +60,40 @@ func TestVerification_Shown(t *testing.T) {
 		t.Fatalf("about: %v", got)
 	}
 }
+
+func TestVerification_Clubs(t *testing.T) {
+	t.Parallel()
+
+	h := newHarness(rest.Config{})
+	h.users.admin = true
+	if w := h.do("PUT", "/api/v1/clubs/cats/verification", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent {
+		t.Fatalf("PUT: %d %s", w.Code, w.Body)
+	}
+	if w := h.do("DELETE", "/api/v1/clubs/k1/verification", "", "Authorization", "Bearer tok"); w.Code != http.StatusNoContent {
+		t.Fatalf("DELETE: %d %s", w.Code, w.Body)
+	}
+	if want := []string{"k1:true", "k1:false"}; !slices.Equal(h.clubs.checkmarks, want) {
+		t.Fatalf("asked %v, want %v", h.clubs.checkmarks, want)
+	}
+	if w := h.do("PUT", "/api/v1/clubs/dogs/verification", "", "Authorization", "Bearer tok"); w.Code != http.StatusNotFound {
+		t.Fatalf("an unknown club: %d", w.Code)
+	}
+	if w := h.do("PUT", "/api/v1/clubs/cats/verification", ""); w.Code != http.StatusUnauthorized {
+		t.Fatalf("without a token: %d", w.Code)
+	}
+
+	// The club service does not tell administrators: the gateway does.
+	h = newHarness(rest.Config{})
+	if w := h.do("PUT", "/api/v1/clubs/cats/verification", "", "Authorization", "Bearer tok"); w.Code != http.StatusForbidden || len(h.clubs.checkmarks) != 0 {
+		t.Fatalf("by a stranger: %d, asked %v", w.Code, h.clubs.checkmarks)
+	}
+
+	// The club and its posts show it; the admin panel finds them.
+	h.clubs.verified = true
+	if got := decode[map[string]any](t, h.do("GET", "/api/v1/clubs/cats", "")); got["verified"] != true {
+		t.Fatalf("the club: %v", got)
+	}
+	if w := h.do("GET", "/api/v1/clubs?verified=true", ""); w.Code != http.StatusOK || !h.clubs.verifiedOnly {
+		t.Fatalf("the verified clubs: %d %s", w.Code, w.Body)
+	}
+}

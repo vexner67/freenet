@@ -317,13 +317,13 @@ func (u *Users) ResolveInvites(ctx context.Context, accessToken string, nickname
 }
 
 // KnownNicknames are those of nicknames that are someone's.
-func (u *Users) KnownNicknames(ctx context.Context, nicknames []string) ([]string, error) {
+func (u *Users) KnownNicknames(ctx context.Context, nicknames []string) (model.KnownNicknames, error) {
 	resp, err := u.api.FindNicknames(ctx, &userv1.FindNicknamesRequest{Nicknames: nicknames})
 	if err != nil {
-		return nil, errs.Wrap("u.api.FindNicknames", fromStatus(err))
+		return model.KnownNicknames{}, errs.Wrap("u.api.FindNicknames", fromStatus(err))
 	}
 
-	return resp.GetNicknames(), nil
+	return model.KnownNicknames{Known: resp.GetNicknames(), Verified: resp.GetVerified()}, nil
 }
 
 func (u *Users) Block(ctx context.Context, accessToken, userID string) error {

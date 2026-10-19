@@ -66,6 +66,8 @@ type clubJSON struct {
 	// Closed: one joins by a request its admins accept, and only the
 	// members see what is in the club.
 	Closed bool `json:"closed"`
+	// Verified: the club wears the checkmark of a confirmed one.
+	Verified bool `json:"verified"`
 }
 
 // backdropJSON is the photos on the left and on the right of a club's
@@ -179,7 +181,8 @@ func toClubJSON(c model.Club) clubJSON {
 		TopicsAboveWall: c.TopicsAboveWall,
 		Backdrop:        toBackdropJSON(c.ID, model.Backdrop{Left: c.BackdropLeft, Right: c.BackdropRight}),
 
-		Closed: c.Closed,
+		Closed:   c.Closed,
+		Verified: c.Verified,
 	}
 }
 
@@ -791,7 +794,8 @@ func (a *api) listPinnedClubs(w http.ResponseWriter, r *http.Request) {
 	writeJSON(w, http.StatusOK, clubListResponse{Clubs: toClubsJSON(clubs)})
 }
 
-// searchClubs finds clubs by name or address: GET /api/v1/clubs?q=.
+// searchClubs finds clubs by name or address: GET /api/v1/clubs?q=; with
+// ?verified=true, the clubs with the checkmark, words or not.
 func (a *api) searchClubs(w http.ResponseWriter, r *http.Request) {
 	limit, err := pageLimit(r)
 	if err != nil {
@@ -801,7 +805,9 @@ func (a *api) searchClubs(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 
-	page, err := a.clubs.Search(r.Context(), query.Get("q"), query.Get("cursor"), limit)
+	q := model.ClubQuery{Text: query.Get("q"), Verified: query.Get("verified") == "true"}
+
+	page, err := a.clubs.Search(r.Context(), q, query.Get("cursor"), limit)
 	if err != nil {
 		a.writeError(w, r, err)
 		return

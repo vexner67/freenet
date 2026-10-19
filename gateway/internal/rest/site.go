@@ -94,6 +94,9 @@ const maxKnownNicknames = 100
 
 type nicknamesResponse struct {
 	Nicknames []string `json:"nicknames"`
+	// Verified are those of nicknames whose pages wear the checkmark: a
+	// mention shows it after the name.
+	Verified []string `json:"verified"`
 }
 
 // knownNicknames tells which of the nicknames asked ("?nickname=", up to
@@ -106,7 +109,7 @@ func (a *api) knownNicknames(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	resp := nicknamesResponse{Nicknames: []string{}}
+	resp := nicknamesResponse{Nicknames: []string{}, Verified: []string{}}
 
 	if len(asked) > 0 {
 		known, err := a.users.KnownNicknames(r.Context(), asked)
@@ -115,7 +118,8 @@ func (a *api) knownNicknames(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 
-		resp.Nicknames = append(resp.Nicknames, known...)
+		resp.Nicknames = append(resp.Nicknames, known.Known...)
+		resp.Verified = append(resp.Verified, known.Verified...)
 	}
 
 	writeJSON(w, http.StatusOK, resp)
