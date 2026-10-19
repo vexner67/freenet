@@ -68,6 +68,21 @@ func TestStreamServerInterceptor(t *testing.T) {
 		}
 	})
 
+	t.Run("a blocked page gets no stream", func(t *testing.T) {
+		t.Parallel()
+
+		opts := validOpts(key, userID, uuid.New())
+		opts.banned = true
+
+		err := open(metadata.Pairs("authorization", "Bearer "+sign(t, opts)), func(any, grpc.ServerStream) error {
+			t.Fatal("the stream opened")
+			return nil
+		})
+		if got := status.Code(err); got != codes.PermissionDenied {
+			t.Fatalf("code = %v, want PermissionDenied", got)
+		}
+	})
+
 	t.Run("ends with Unauthenticated when the token expires", func(t *testing.T) {
 		t.Parallel()
 

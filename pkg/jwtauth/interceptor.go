@@ -27,6 +27,10 @@ func IdentityFromContext(ctx context.Context) (Identity, bool) {
 // on what only an active page may do.
 var ErrPageDeleted = errors.New("your page is deleted")
 
+// ErrPageBanned refuses the token of a blocked page (Claims.Banned) on
+// what only a page in good standing may do.
+var ErrPageBanned = errors.New("your page is banned")
+
 // Access lists the methods (full names, e.g.
 // "/user.v1.UserService/GetProfile") that need less than the access token
 // of an active page.
@@ -36,6 +40,9 @@ type Access struct {
 	// Deactivated methods take the token of a deleted page too: its owner
 	// sees and restores it with them.
 	Deactivated []string
+	// Banned methods take the token of a blocked page too: its owner
+	// sees with them why and until when.
+	Banned []string
 }
 
 // UnaryServerInterceptor requires a valid access token in the
@@ -49,7 +56,8 @@ type Access struct {
 //
 // The token of a deleted page works on the Deactivated methods; public
 // ones see its owner as an anonymous viewer, and all others refuse it
-// with PermissionDenied (ErrPageDeleted).
+// with PermissionDenied (ErrPageDeleted). So does the token of a blocked
+// page on the Banned methods (ErrPageBanned).
 //
 // The health check is always public: it tells only whether the service
 // serves, and the container healthcheck has no token.
@@ -57,6 +65,7 @@ func UnaryServerInterceptor(v *Verifier, access Access) grpc.UnaryServerIntercep
 	public := set(access.Public)
 	public[grpc_health_v1.Health_Check_FullMethodName] = struct{}{}
 	deactivated := set(access.Deactivated)
+	banned := set(access.Banned)
 
 	return func(
 		ctx context.Context,
@@ -90,6 +99,16 @@ func UnaryServerInterceptor(v *Verifier, access Access) grpc.UnaryServerIntercep
 			}
 		}
 
+		if id.Banned {
+			if _, ok := banned[info.FullMethod]; !ok {
+				if isPublic {
+					return handler(ctx, req)
+				}
+
+				return nil, status.Error(codes.PermissionDenied, ErrPageBanned.Error())
+			}
+		}
+
 		return handler(ContextWithIdentity(ctx, id), req)
 	}
 }
@@ -109,7 +128,7 @@ func set(methods []string) map[string]struct{} {
 // the handler reports Unauthenticated (see ErrTokenExpired), so the client
 // subscribes again with a fresh token. A token that was revoked meanwhile
 // keeps its stream until then, as it keeps its calls. The token of a
-// deleted page gets no streams.
+// deleted or blocked page gets no streams.
 func StreamServerInterceptor(v *Verifier) grpc.StreamServerInterceptor {
 	return func(srv any, ss grpc.ServerStream, _ *grpc.StreamServerInfo, handler grpc.StreamHandler) error {
 		token, ok := bearerToken(ss.Context())
@@ -124,6 +143,10 @@ func StreamServerInterceptor(v *Verifier) grpc.StreamServerInterceptor {
 
 		if id.Deactivated {
 			return status.Error(codes.PermissionDenied, ErrPageDeleted.Error())
+		}
+
+		if id.Banned {
+			return status.Error(codes.PermissionDenied, ErrPageBanned.Error())
 		}
 
 		ctx, cancel := context.WithDeadline(ContextWithIdentity(ss.Context(), id), id.ExpiresAt)
