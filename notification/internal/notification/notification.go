@@ -83,6 +83,11 @@ const (
 	// checkmark of the administrators of the site. One per community,
 	// whoever owns it.
 	KindClubVerified Kind = "club_verified"
+	// KindStoryLike: the actor liked the recipient's story PostID.
+	KindStoryLike Kind = "story_like"
+	// KindStoryComment: the actor wrote the comment CommentID under the
+	// recipient's story PostID.
+	KindStoryComment Kind = "story_comment"
 )
 
 var (
@@ -128,10 +133,11 @@ func (e Event) Validate() error {
 
 	switch e.Kind {
 	case KindLike, KindWallPost, KindRepost, KindPostAccepted, KindSuggestedPost, KindPostMention, KindPhotoLike, KindGift,
-		KindVotes:
+		KindVotes, KindStoryLike:
 		ok = hasPost && !hasComment
 	case KindComment, KindCommentReply, KindCommentLike, KindTopicMessage, KindCommentMention, KindTopicMention,
-		KindPhotoComment, KindTopicMessageLike, KindPhotoMention, KindNoteComment:
+		KindPhotoComment, KindTopicMessageLike, KindPhotoMention, KindNoteComment,
+		KindStoryComment:
 		ok = hasPost && hasComment
 	case KindFollow, KindClubAdmin, KindInvite, KindVerified, KindClubVerified:
 		ok = !hasPost && !hasComment

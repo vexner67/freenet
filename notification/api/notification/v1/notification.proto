@@ -111,6 +111,10 @@ enum Kind {
   // The actor, a community the recipient owns, got the checkmark of the
   // administrators of the site; one per community, taken back with it.
   KIND_CLUB_VERIFIED = 25;
+  // The actor liked the recipient's story post_id.
+  KIND_STORY_LIKE = 26;
+  // The actor wrote comment_id under the recipient's story post_id.
+  KIND_STORY_COMMENT = 27;
 }
 
 // Event: post_id is set for all but follows, invitations, appointments
