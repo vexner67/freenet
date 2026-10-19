@@ -2,7 +2,7 @@
 // with "Название" and "Размер", the description, and links on the right.
 
 import { membersCount } from './labels.js';
-import { avatarURL, clubRef, el, pagePath } from './layout.js';
+import { avatarURL, clubRef, el, pagePath, verifiedMark } from './layout.js';
 
 // clubRow renders club; actions are the links of the right column.
 export function clubRow(club, ...actions) {
@@ -13,7 +13,7 @@ export function clubRow(club, ...actions) {
     el('a', { className: 'list-cover', href: path }, el('img', { src: avatarURL(author, 'large'), alt: '' })),
     el('div', { className: 'list-info' },
       el('table', { className: 'info' },
-        el('tr', {}, el('th', { textContent: 'Название:' }), el('td', {}, el('a', { href: path, textContent: club.name }))),
+        el('tr', {}, el('th', { textContent: 'Название:' }), el('td', {}, el('a', { href: path, textContent: club.name }), verifiedMark(club))),
         el('tr', {}, el('th', { textContent: 'Размер:' }),
           el('td', {}, el('a', { href: `/club/${encodeURIComponent(clubRef(club))}/members`, textContent: membersCount(club.members) }))),
       ),

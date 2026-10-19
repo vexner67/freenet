@@ -28,7 +28,7 @@ const admitted = (club) => !club.closed || Boolean(club.role);
 
 function render(club, me) {
   document.title = `${club.name} | Freenet`;
-  $('title').textContent = club.name;
+  $('title').replaceChildren(club.name, verifiedMark(club));
 
   // The address of the page is its address, once it has one.
   const path = '/club/' + encodeURIComponent(clubRef(club));

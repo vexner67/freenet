@@ -1,6 +1,7 @@
 // "Админ-панель", openvk's /admin: "Сводка" (/admin), "Пользователи"
 // (/admin/users: the verified pages, or those ?q= finds, with the switch
-// of "Верификация" each), "Ваучеры" (/admin/vouchers) and the form of a
+// of "Верификация" each), "Группы" (/admin/clubs: the same of groups),
+// "Ваучеры" (/admin/vouchers) and the form of a
 // new one (/admin/vouchers/new). The page is its own, AUI as openvk's:
 // none of the site's chrome. Only the administrators of the site
 // (ADMIN_EMAILS of the user service) get in.
@@ -83,32 +84,63 @@ const checkmark = () => el('img', {
   title: 'Подтверждённая страница',
 });
 
-// users is "Пользователи": the pages the query finds or, without one, the
-// verified pages, each with the switch of openvk's "Верификация".
-function users(query) {
-  let cursor = '';
-  const search = (after) => api.search(query, after, query ? {} : { verified: 'true' });
+// The pages that wear the checkmark, "Пользователи" and "Группы": each a
+// table of what the query finds or, without one, of the verified, with
+// the switch of openvk's "Верификация".
+const verifiable = {
+  users: {
+    one: 'user',
+    search: (query, after) => api.search(query, after, query ? {} : { verified: 'true' }),
+    items: (answer) => answer.users,
+    name: fullName,
+    path: (user) => '/' + user.nickname,
+    address: (user) => '@' + user.nickname,
+    avatar: (user) => user.avatar?.small ?? '/static/avatar.svg',
+    verify: (user, verified) => api.setVerified(user.nickname, verified),
+    all: 'Подтверждённые страницы',
+    none: 'Никого не найдено.',
+    noneVerified: 'Подтверждённых страниц пока нет. Найдите человека поиском.',
+  },
+  clubs: {
+    one: 'club',
+    search: (query, after) => api.searchClubs(query, after, query ? {} : { verified: 'true' }),
+    items: (answer) => answer.clubs,
+    name: (club) => club.name,
+    path: (club) => '/club/' + encodeURIComponent(club.address || club.id),
+    address: (club) => '/club/' + (club.address || club.id),
+    avatar: (club) => club.avatar?.small ?? '/static/club.svg',
+    verify: (club, verified) => api.setClubVerified(club.address || club.id, verified),
+    all: 'Подтверждённые группы',
+    none: 'Ни одной группы не нашлось.',
+    noneVerified: 'Подтверждённых групп пока нет. Найдите группу поиском.',
+  },
+};
 
-  function row(user) {
-    const mark = user.verified ? checkmark() : '';
-    const name = fullName(user);
+// verifications is the page of a kind of verifiable, for query.
+function verifications(kind, query) {
+  const k = verifiable[kind];
+  let cursor = '';
+
+  function row(page) {
+    const mark = page.verified ? checkmark() : '';
+    const name = k.name(page);
     const toggle = el('button', {
       className: 'aui-toggle', type: 'button', title: 'Подтверждённая страница',
     }, el('span', { className: 'aui-toggle-knob' }));
     toggle.setAttribute('role', 'switch');
     toggle.setAttribute('aria-label', `Верификация: ${name}`);
-    toggle.setAttribute('aria-checked', String(Boolean(user.verified)));
+    toggle.setAttribute('aria-checked', String(Boolean(page.verified)));
 
     const person = el('div', { className: 'admin-person' },
-      el('img', { className: 'admin-avatar', src: user.avatar?.small ?? '/static/avatar.svg', alt: '' }),
-      el('span', {}, el('a', { href: '/' + user.nickname, textContent: name }), mark));
+      el('img', { className: kind === 'clubs' ? 'admin-avatar admin-club' : 'admin-avatar', src: k.avatar(page), alt: '' }),
+      el('span', {}, el('a', { href: k.path(page), textContent: name }), mark));
 
     toggle.addEventListener('click', async () => {
       const verified = toggle.getAttribute('aria-checked') !== 'true';
       error.hidden = true;
       toggle.disabled = true;
       try {
-        await api.setVerified(user.nickname, verified);
+        await k.verify(page, verified);
         toggle.setAttribute('aria-checked', String(verified));
         const shown = person.querySelector('.name-checkmark');
         if (verified && !shown) person.lastChild.append(checkmark());
@@ -122,25 +154,25 @@ function users(query) {
 
     return el('tr', {},
       el('td', {}, person),
-      el('td', {}, el('span', { className: 'admin-code', textContent: '@' + user.nickname })),
+      el('td', {}, el('span', { className: 'admin-code', textContent: k.address(page) })),
       el('td', {}, toggle),
     );
   }
 
-  async function more(page) {
+  async function more(answered) {
     error.hidden = true;
-    const button = $('more-users');
+    const button = $('more-' + kind);
     button.disabled = true;
 
     try {
-      const answer = await page;
-      $('user-rows').append(...answer.users.map(row));
+      const answer = await answered;
+      $(k.one + '-rows').append(...k.items(answer).map(row));
       cursor = answer.nextCursor;
       button.hidden = !cursor;
 
-      const none = !$('user-rows').children.length;
-      $('user-table').hidden = none;
-      $('no-users').hidden = !none;
+      const none = !$(k.one + '-rows').children.length;
+      $(k.one + '-table').hidden = none;
+      $('no-' + kind).hidden = !none;
     } catch (e) {
       showError(e);
     } finally {
@@ -148,12 +180,12 @@ function users(query) {
     }
   }
 
-  $('user-query').value = query;
-  $('users-heading').textContent = query ? 'Результаты поиска' : 'Подтверждённые страницы';
-  $('no-users').textContent = query ? 'Никого не найдено.' : 'Подтверждённых страниц пока нет. Найдите человека поиском.';
-  $('more-users').addEventListener('click', () => more(search(cursor)));
+  $(k.one + '-query').value = query;
+  $(kind + '-heading').textContent = query ? 'Результаты поиска' : k.all;
+  $('no-' + kind).textContent = query ? k.none : k.noneVerified;
+  $('more-' + kind).addEventListener('click', () => more(k.search(query, cursor)));
 
-  return { more, first: () => search('') };
+  return { more, first: () => k.search(query, '') };
 }
 
 // vouchers is the list of openvk's "Ваучеры", newest first.
@@ -261,11 +293,13 @@ function newVoucher() {
 // The reads of the page go with /me in one round trip; a guest or one who
 // is not an administrator gets nothing from them.
 const query = new URLSearchParams(location.search).get('q')?.trim() ?? '';
-const usersPage = path === '/admin/users' ? users(query) : null;
+const listed = { '/admin/users': 'users', '/admin/clubs': 'clubs' }[path];
+const listPage = listed ? verifications(listed, query) : null;
 
 const reads = {
   '/admin': () => started(api.about()),
-  '/admin/users': () => started(usersPage.first()),
+  '/admin/users': () => started(listPage.first()),
+  '/admin/clubs': () => started(listPage.first()),
   '/admin/vouchers': () => started(api.vouchers()),
 }[path]?.();
 
@@ -278,9 +312,9 @@ if (!me) {
     showError('Админ-панель доступна только администраторам сайта.');
   } else if (path === '/admin') {
     await summary(reads).catch(showError);
-  } else if (path === '/admin/users') {
-    $('users').hidden = false;
-    await usersPage.more(reads);
+  } else if (listed) {
+    $(listed).hidden = false;
+    await listPage.more(reads);
   } else if (path === '/admin/vouchers') {
     await vouchers()(reads);
   } else if (path === '/admin/vouchers/new') {

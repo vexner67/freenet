@@ -582,8 +582,8 @@ export const api = {
   pinnedClubs: () => authorized('GET', '/api/v1/me/clubs/pinned'),
   pinClub: (ref) => authorized('PUT', `/api/v1/clubs/${encodeURIComponent(ref)}/pin`),
   unpinClub: (ref) => authorized('DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/pin`),
-  searchClubs(query, cursor = '') {
-    const params = new URLSearchParams({ q: query });
+  searchClubs(query, cursor = '', filters = {}) {
+    const params = new URLSearchParams({ q: query, ...filters });
     if (cursor) params.set('cursor', cursor);
     return request('GET', '/api/v1/clubs?' + params);
   },
@@ -668,6 +668,8 @@ export const api = {
   // only the administrators may.
   setVerified: (nickname, verified) =>
     authorized(verified ? 'PUT' : 'DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/verification`),
+  setClubVerified: (ref, verified) =>
+    authorized(verified ? 'PUT' : 'DELETE', `/api/v1/clubs/${encodeURIComponent(ref)}/verification`),
 
   notes: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/notes`, cursor, limit)),
   createNote: (title, text) => authorized('POST', '/api/v1/me/notes', { title, text }),

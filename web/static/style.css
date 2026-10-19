@@ -1707,6 +1707,11 @@ img.name-checkmark.name-checkmark {
   width: 13px;
   height: 11px;
   margin: 0 0 0 2pt;
+  padding: 0;
+  border: 0;
   border-radius: 0;
   vertical-align: baseline;
 }
+
+/* On the black of the story viewer, as in the dark theme. */
+.story-head img.name-checkmark.name-checkmark { filter: brightness(2.4); }

@@ -24,7 +24,7 @@ import { isLive, onEvent } from './events.js';
 import { openAvatarDialog } from './avatar.js';
 import { actionsNode, attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
 import { CHAT_TITLE_MAX, chatActionParts, chatMembers, chatStateText, chatTitle, formatPostDate, isLongText, messagePreview, photoChanges, selectedCount, snippet } from './labels.js';
-import { $, avatarURL, chatPhotoURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize } from './layout.js';
+import { $, avatarURL, chatPhotoURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
@@ -89,7 +89,8 @@ function messageNode(m) {
   const date = el('div', { className: 'im-message-date' });
   const node = el('div', { className: m.unread ? 'im-message unread' : 'im-message' },
     el('a', { href: '/' + m.author.nickname }, el('img', { src: avatarURL(m.author, 'small'), alt: '' })),
-    el('div', { className: 'im-message-content' }, el('a', { className: 'post-name', href: '/' + m.author.nickname, textContent: fullName(m.author) }), content),
+    el('div', { className: 'im-message-content' },
+      el('a', { className: 'post-name', href: '/' + m.author.nickname, textContent: fullName(m.author) }), verifiedMark(m.author), content),
     date,
   );
 

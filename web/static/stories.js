@@ -5,7 +5,7 @@
 
 import { api } from './api.js';
 import { storyAge, storyViewers, storyViews } from './labels.js';
-import { avatarURL, el, fullName, pagePath, showError } from './layout.js';
+import { avatarURL, el, fullName, pagePath, showError, verifiedMark } from './layout.js';
 import { openLikers } from './likers.js';
 import { button, openModal } from './modal.js';
 
@@ -29,7 +29,7 @@ export async function initStoryBar(bar, me, asked = null) {
   function render() {
     const circles = authors.map((entry, i) => circle(entry.author, entry.viewed, fullName(entry.author), () => {
       openStories(authors, i, { onChange: render });
-    }));
+    }, verifiedMark(entry.author)));
 
     if (me.profileCompleted) {
       const add = circle(me, true, 'Добавить историю', () => openStoryForm(load));
@@ -55,10 +55,10 @@ export async function initStoryBar(bar, me, asked = null) {
   await load();
 }
 
-function circle(person, viewed, caption, onclick) {
+function circle(person, viewed, caption, onclick, mark = '') {
   return el('a', { className: viewed ? 'story-circle' : 'story-circle story-fresh', title: caption, onclick },
     el('img', { src: avatarURL(person, 'small'), alt: '' }),
-    el('span', { textContent: caption }));
+    el('span', {}, caption, mark));
 }
 
 // openStories plays the stories of authors (as the API gives them) from
@@ -126,7 +126,7 @@ export function openStories(authors, index, { onChange = () => {} } = {}) {
       el('div', { className: i < story ? 'story-fill story-filled' : 'story-fill' }))));
     head.replaceChildren(
       el('a', { href: pagePath(entry.author) }, el('img', { src: avatarURL(entry.author, 'small'), alt: '' })),
-      el('a', { href: pagePath(entry.author), textContent: fullName(entry.author) }),
+      el('a', { href: pagePath(entry.author) }, fullName(entry.author), verifiedMark(entry.author)),
       el('span', { className: 'story-age', textContent: storyAge(s.createdAt) }),
       el('a', { className: 'story-close', textContent: '×', title: 'Закрыть', onclick: close }));
     text.textContent = s.text;

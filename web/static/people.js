@@ -9,6 +9,7 @@ export function personCell(user) {
   return el('div', { className: 'person-cell' },
     el('a', { href: path }, el('img', { src: avatarURL(user, 'small'), alt: '' })),
     el('a', { href: path, textContent: user.name }),
+    verifiedMark(user),
     el('div', { className: 'hint', textContent: user.surname }),
   );
 }

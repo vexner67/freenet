@@ -83,13 +83,14 @@ if (typeof document !== 'undefined') {
   });
 }
 
-const knownNickname = nicknameLookup((nicknames) => api.knownNicknames(nicknames).then((r) => r.nicknames));
+const knownNickname = nicknameLookup((nicknames) => api.knownNicknames(nicknames));
 
 // mentionNodes are text with the people it names as links to their pages,
 // openvk's "[id1|Анна]" and "@ann", its tags ("#поход") as links to
 // the search of posts, and its web addresses as links to them. A text says "@word" of anything: the
 // link of a word that is nobody's nickname becomes plain text again once
-// the server says so, and stays if it cannot be asked. found is what a
+// the server says so, and stays if it cannot be asked; the link to a
+// verified page gets the checkmark after it. found is what a
 // search looked for: the words that say it are highlighted, as on openvk.
 export function mentionNodes(text, found = '') {
   return textParts(text).flatMap((p) => {
@@ -98,8 +99,9 @@ export function mentionNodes(text, found = '') {
     if (p.url) return externalLink(p.url, foundNodes(p.text, found));
 
     const link = el('a', { href: '/' + encodeURIComponent(p.nickname), textContent: p.text });
-    knownNickname(p.nickname).then((known) => {
+    knownNickname(p.nickname).then(({ known, verified }) => {
       if (!known) link.replaceWith(p.text);
+      else if (verified) link.after(verifiedMark({ verified }));
     }, () => {});
 
     return link;

@@ -30,6 +30,7 @@
       <div class="aui-sidebar-group">
         <div class="aui-nav-heading">Пользовательский контент</div>
         <a class="aui-nav-item" href="/admin/users" title="Пользователи"><span class="aui-icon aui-icon-users"></span><span class="aui-nav-item-label">Пользователи</span></a>
+        <a class="aui-nav-item" href="/admin/clubs" title="Группы"><span class="aui-icon aui-icon-clubs"></span><span class="aui-nav-item-label">Группы</span></a>
       </div>
       <div class="aui-sidebar-group">
         <div class="aui-nav-heading">Платные услуги</div>
@@ -97,6 +98,29 @@
       </div>
       <p class="aui-empty" id="no-users" hidden></p>
       <div class="aui-pager"><button class="aui-button" id="more-users" type="button" hidden>Показать ещё</button></div>
+    </section>
+
+    <section id="clubs" hidden>
+      <h1 class="aui-page-heading">Группы</h1>
+      <form class="aui admin-search" id="club-search" action="/admin/clubs" role="search">
+        <input class="text" type="search" id="club-query" name="q" maxlength="64" placeholder="Поиск групп" autocomplete="off" aria-label="Поиск групп">
+        <button class="aui-button" type="submit">Найти</button>
+      </form>
+      <h2 id="clubs-heading"></h2>
+      <div class="aui-table-wrap" id="club-table" hidden>
+        <table class="aui">
+          <thead>
+            <tr>
+              <th>Группа</th>
+              <th>Адрес страницы</th>
+              <th>Верификация</th>
+            </tr>
+          </thead>
+          <tbody id="club-rows"></tbody>
+        </table>
+      </div>
+      <p class="aui-empty" id="no-clubs" hidden></p>
+      <div class="aui-pager"><button class="aui-button" id="more-clubs" type="button" hidden>Показать ещё</button></div>
     </section>
 
     <section id="vouchers" hidden>
