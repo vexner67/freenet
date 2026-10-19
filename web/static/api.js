@@ -664,6 +664,10 @@ export const api = {
   vouchers: (cursor = '') => authorized('GET', page('/api/v1/vouchers', cursor, 0)),
   createVoucher: (voucher) => authorized('POST', '/api/v1/vouchers', voucher),
   deleteVoucher: (id) => authorized('DELETE', `/api/v1/vouchers/${encodeURIComponent(id)}`),
+  // setVerified gives a page the checkmark ("Верификация") or takes it;
+  // only the administrators may.
+  setVerified: (nickname, verified) =>
+    authorized(verified ? 'PUT' : 'DELETE', `/api/v1/users/${encodeURIComponent(nickname)}/verification`),
 
   notes: (nickname, cursor = '', limit = 0) => optional('GET', page(`/api/v1/users/${encodeURIComponent(nickname)}/notes`, cursor, limit)),
   createNote: (title, text) => authorized('POST', '/api/v1/me/notes', { title, text }),

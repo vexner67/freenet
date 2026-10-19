@@ -5,7 +5,7 @@
 import { api } from './api.js';
 import { attachLikers } from './likers.js';
 import { formatPostDate, genitiveName, sharedBy, wrote } from './labels.js';
-import { adult, avatarURL, el, externalLink, fullName, isMicroblog, pagePath, textNode } from './layout.js';
+import { adult, avatarURL, el, externalLink, fullName, isMicroblog, pagePath, textNode, verifiedMark } from './layout.js';
 import { editPost } from './postedit.js';
 import { openShare } from './share.js';
 import { openViewer } from './viewer.js';
@@ -221,6 +221,7 @@ export function postNode(post, { viewer = null, moderates = false, onDelete, onP
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(post.author) }),
+        verifiedMark(post.author),
         microblog ? null : wroteBy(post),
         ...(onWallOf !== undefined && post.wall ? [' ', wallLink(post.wall, onWallOf)] : []),
         microblog ? actions : null,
@@ -283,6 +284,7 @@ function signatureNode(signer) {
   return el('div', { className: 'post-signature' },
     el('span', { textContent: 'Автор: ' }),
     el('a', { href: pagePath(signer), textContent: fullName(signer) }),
+    verifiedMark(signer),
   );
 }
 
@@ -327,6 +329,7 @@ export function sharedNode(shared, { canVote = false, onError } = {}) {
     el('div', { className: 'post-main' },
       el('div', { className: 'post-author' },
         el('a', { className: 'post-name', href: path, textContent: fullName(shared.author) }),
+        verifiedMark(shared.author),
         wroteBy(shared),
         ...(shared.wall ? [' ', wallLink(shared.wall, null)] : []),
         el('div', { className: 'post-date' }, el('a', { href: postPath(shared), textContent: formatPostDate(shared.createdAt) })),

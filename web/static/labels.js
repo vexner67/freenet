@@ -640,11 +640,12 @@ export function aboutStatistics({ users, online, clubs, posts }) {
 
 // adminOverview are the words under the numbers of "Сводка" of the
 // admin panel, openvk's "admin_overview_*": the users with the list of
-// those online under them, the groups and the posts.
-export function adminOverview({ users, online, clubs, posts }) {
+// those online and the verified ones under them, the groups and the posts.
+export function adminOverview({ users, verified = 0, clubs, posts }) {
   return {
     users: plural(users, ['зарегистрированный пользователь:', 'зарегистрированных пользователя, из них:', 'зарегистрированных пользователей, из них:']),
     online: 'онлайн',
+    verified: plural(verified, ['верифицированный', 'верифицированных', 'верифицированных']),
     clubs: plural(clubs, ['группа', 'группы', 'групп']),
     posts: plural(posts, ['запись', 'записи', 'записей']),
   };

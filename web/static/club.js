@@ -8,7 +8,7 @@ import { api, currentUser, started } from './api.js';
 import { albumsBlock } from './albums.js';
 import { showBackdrop } from './backdrop.js';
 import { adminsCount, clubTypeHints, requestsLink, formatPostDate, membersCount, suggestedByEveryone, suggestedByYou, topicsCount } from './labels.js';
-import { $, avatarURL, clubRef, el, fullName, renderChrome, showError, hideError } from './layout.js';
+import { $, avatarURL, clubRef, el, fullName, hideError, renderChrome, showError, verifiedMark } from './layout.js';
 import { personCell } from './people.js';
 import { initPhoto } from './photo.js';
 import { boardPath, topicPath } from './topics.js';
@@ -92,6 +92,7 @@ function avatarItem(user, title) {
     el('a', { href: path }, el('img', { src: avatarURL(user, 'small'), alt: '' })),
     el('div', {},
       el('a', { href: path, textContent: fullName(user) }),
+      verifiedMark(user),
       title && el('div', { className: 'hint', textContent: title }),
     ),
   );

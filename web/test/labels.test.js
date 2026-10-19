@@ -439,13 +439,15 @@ test('the site counts itself as openvk does', () => {
 });
 
 test('the admin panel counts the site as openvk\'s "Сводка"', () => {
-  assert.deepEqual(adminOverview({ users: 1, online: 0, clubs: 3, posts: 25 }), {
+  assert.deepEqual(adminOverview({ users: 1, online: 0, verified: 1, clubs: 3, posts: 25 }), {
     users: 'зарегистрированный пользователь:',
     online: 'онлайн',
+    verified: 'верифицированный',
     clubs: 'группы',
     posts: 'записей',
   });
   assert.equal(adminOverview({ users: 12, online: 0, clubs: 0, posts: 0 }).users, 'зарегистрированных пользователей, из них:');
+  assert.equal(adminOverview({ users: 12, online: 0, verified: 3, clubs: 0, posts: 0 }).verified, 'верифицированных');
 });
 
 test('the choices of the interface are those the API knows', () => {

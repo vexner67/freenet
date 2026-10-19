@@ -196,6 +196,7 @@ a:hover { text-decoration: underline; }
 .aui-nav-item.active .aui-icon { background: var(--aui-link); }
 .aui-icon-dashboard { --icon: url("/static/icons/admin-dashboard.svg"); }
 .aui-icon-card { --icon: url("/static/icons/admin-card.svg"); }
+.aui-icon-users { --icon: url("/static/icons/admin-users.svg"); }
 .aui-icon-info { --icon: url("/static/icons/admin-info.svg"); }
 .aui-icon-rules { --icon: url("/static/icons/admin-rules.svg"); }
 .aui-icon-collapse { --icon: url("/static/icons/admin-collapse.svg"); }
@@ -238,6 +239,14 @@ h1 {
   font-size: 24px;
   font-weight: 400;
   line-height: 28px;
+}
+
+h2 {
+  margin: 20px 0 10px;
+  color: var(--aui-text);
+  font-size: 16px;
+  font-weight: 600;
+  line-height: 20px;
 }
 
 hr {
@@ -309,6 +318,16 @@ table.aui tbody tr:hover { background: var(--aui-hover); }
   font-size: 13px;
   white-space: nowrap;
 }
+
+/* "Пользователи": the search above the table, the people in it with
+   their photos and checkmarks. */
+.admin-search { display: flex; gap: 10px; max-width: 500px; }
+.admin-search .text { flex: 1; min-width: 0; }
+
+.admin-person { display: flex; align-items: center; gap: 8px; }
+.admin-person img.admin-avatar { width: 24px; height: 24px; border-radius: 50%; object-fit: cover; }
+.name-checkmark { margin-left: 2pt; }
+.aui-theme-dark .name-checkmark { filter: brightness(2.4); }
 
 .aui-empty { color: var(--aui-subtle); }
 .aui-pager { margin-top: 15px; text-align: right; }

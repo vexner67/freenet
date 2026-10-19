@@ -108,6 +108,8 @@
    are the same pictures turned over. The address ends with the file name
    whatever version stands before it. */
 img[src$="/avatar.svg"], img[src$="/club.svg"], img[src$="/chat.svg"] { filter: invert(1) hue-rotate(180deg) brightness(1.35); }
+/* The dark olive of openvk's checkmark would vanish on the dark page. */
+img.name-checkmark { filter: brightness(2.4); }
 
 /* What the palette does not give: a block that is not its plain self in
    another colour. */

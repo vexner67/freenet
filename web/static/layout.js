@@ -658,6 +658,17 @@ export function fullName(user) {
   return [user.name, user.surname].filter(Boolean).join(' ');
 }
 
+// verifiedMark is openvk's checkmark after the name of a page the
+// administrators confirmed ("Подтверждённая страница"), nothing for others.
+export function verifiedMark(user) {
+  if (!user?.verified) return '';
+
+  return el('img', {
+    className: 'name-checkmark', src: '/static/icons/checkmark.svg', alt: '', width: 13, height: 11,
+    title: 'Подтверждённая страница',
+  });
+}
+
 export function showError(container, error) {
   container.textContent = typeof error === 'string' ? error : errorText(error);
   container.hidden = false;

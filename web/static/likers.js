@@ -3,7 +3,7 @@
 // likes the post or the comment, "Показать ещё" for more.
 
 import { likedBy } from './labels.js';
-import { avatarURL, el, fullName, pagePath, showError } from './layout.js';
+import { avatarURL, el, fullName, pagePath, showError, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 
 const TOOLTIP_SHOWN = 6;
@@ -97,7 +97,7 @@ export function openLikers(total, id, load, list = likes) {
       const page = await load(id, cursor, BOX_PAGE);
       grid.append(...list.people(page).map(({ user, href }) => el('div', { className: 'likers-item' },
         el('a', { href }, el('img', { src: avatarURL(user, 'small'), alt: '' })),
-        el('a', { href, textContent: fullName(user) }))));
+        el('div', {}, el('a', { href, textContent: fullName(user) }), verifiedMark(user)))));
       cursor = page.nextCursor;
       more.hidden = !cursor;
     } catch (e) {

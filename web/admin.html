@@ -28,6 +28,10 @@
         <a class="aui-nav-item" href="/admin" title="Сводка"><span class="aui-icon aui-icon-dashboard"></span><span class="aui-nav-item-label">Сводка</span></a>
       </div>
       <div class="aui-sidebar-group">
+        <div class="aui-nav-heading">Пользовательский контент</div>
+        <a class="aui-nav-item" href="/admin/users" title="Пользователи"><span class="aui-icon aui-icon-users"></span><span class="aui-nav-item-label">Пользователи</span></a>
+      </div>
+      <div class="aui-sidebar-group">
         <div class="aui-nav-heading">Платные услуги</div>
         <a class="aui-nav-item" href="/admin/vouchers" title="Ваучеры"><span class="aui-icon aui-icon-card"></span><span class="aui-nav-item-label">Ваучеры</span></a>
       </div>
@@ -55,6 +59,7 @@
           <div id="users-words"></div>
           <ul>
             <li class="admin-online"><b id="count-online"></b> <span id="online-words"></span></li>
+            <li><b id="count-verified"></b> <span id="verified-words"></span></li>
           </ul>
         </div>
       </div>
@@ -69,6 +74,29 @@
           <div id="posts-words"></div>
         </div>
       </div>
+    </section>
+
+    <section id="users" hidden>
+      <h1 class="aui-page-heading">Пользователи</h1>
+      <form class="aui admin-search" id="user-search" action="/admin/users" role="search">
+        <input class="text" type="search" id="user-query" name="q" maxlength="64" placeholder="Поиск пользователей" autocomplete="off" aria-label="Поиск пользователей">
+        <button class="aui-button" type="submit">Найти</button>
+      </form>
+      <h2 id="users-heading"></h2>
+      <div class="aui-table-wrap" id="user-table" hidden>
+        <table class="aui">
+          <thead>
+            <tr>
+              <th>Пользователь</th>
+              <th>Адрес страницы</th>
+              <th>Верификация</th>
+            </tr>
+          </thead>
+          <tbody id="user-rows"></tbody>
+        </table>
+      </div>
+      <p class="aui-empty" id="no-users" hidden></p>
+      <div class="aui-pager"><button class="aui-button" id="more-users" type="button" hidden>Показать ещё</button></div>
     </section>
 
     <section id="vouchers" hidden>
