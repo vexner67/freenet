@@ -1230,8 +1230,13 @@ type NoteCommentPage struct {
 type GiftCollection struct {
 	ID    string
 	Gifts []string
-	// Price is what each of them costs the sender, in votes; 0 for free.
+	// Price is what each of them costs the sender, in votes, unless
+	// priced otherwise; 0 for free.
 	Price int64
+	// Prices are what each of Gifts costs now, in their order: the
+	// administrators price a gift apart from its collection. Empty from a
+	// user service that does not know them.
+	Prices []int64
 }
 
 // GiftDraft is a gift to send: its name in the catalogue, the words with

@@ -31,7 +31,7 @@ func (g *Gifts) Catalog(ctx context.Context) ([]model.GiftCollection, error) {
 
 	catalog := make([]model.GiftCollection, 0, len(resp.GetCollections()))
 	for _, c := range resp.GetCollections() {
-		catalog = append(catalog, model.GiftCollection{ID: c.GetId(), Gifts: c.GetGifts(), Price: c.GetPrice()})
+		catalog = append(catalog, model.GiftCollection{ID: c.GetId(), Gifts: c.GetGifts(), Price: c.GetPrice(), Prices: c.GetPrices()})
 	}
 
 	return catalog, nil
@@ -87,6 +87,17 @@ func (g *Gifts) List(ctx context.Context, accessToken, userID, cursor string, li
 func (g *Gifts) Delete(ctx context.Context, accessToken, giftID string) error {
 	if _, err := g.api.DeleteGift(withToken(ctx, accessToken), &userv1.DeleteGiftRequest{GiftId: giftID}); err != nil {
 		return errs.Wrap("g.api.DeleteGift", fromStatus(err))
+	}
+
+	return nil
+}
+
+// SetPrice makes a gift cost price votes from now on; for the
+// administrators of the site.
+func (g *Gifts) SetPrice(ctx context.Context, accessToken, gift string, price int64) error {
+	_, err := g.api.SetGiftPrice(withToken(ctx, accessToken), &userv1.SetGiftPriceRequest{Gift: gift, Price: price})
+	if err != nil {
+		return errs.Wrap("g.api.SetGiftPrice", fromStatus(err))
 	}
 
 	return nil

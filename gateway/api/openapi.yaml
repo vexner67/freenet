@@ -3818,9 +3818,10 @@ paths:
       description: |
         No token needed. The collections ("Коллекции") and the names of
         their gifts, in the order they are shown. The catalogue is fixed;
-        the gifts of a collection cost the sender its `price` in votes
-        ("голоса"), 0 for a free one. The pictures are the site's, which
-        knows a gift by its name.
+        a gift costs the sender `prices[i]` votes ("голоса"), 0 for a
+        free one: the administrators of the site price each gift, the
+        rest cost their collection's `price`. The pictures are the
+        site's, which knows a gift by its name.
       responses:
         "200":
           description: The catalogue
@@ -3834,13 +3835,49 @@ paths:
                     type: array
                     items:
                       type: object
-                      required: [id, gifts, price]
+                      required: [id, gifts, price, prices]
                       properties:
                         id: { type: string, description: "The name of the collection, as `flowers`" }
-                        price: { type: integer, minimum: 0, description: "What each of its gifts costs the sender, in votes; 0 is free" }
+                        price: { type: integer, minimum: 0, description: "What its gifts cost the sender unless priced otherwise, in votes; 0 is free" }
                         gifts:
                           type: array
                           items: { type: string, description: "The name of a gift, as `rose`" }
+                        prices:
+                          type: array
+                          description: What each of `gifts` costs now, in their order; empty from a server that does not know them
+                          items: { type: integer, minimum: 0 }
+
+  /api/v1/gifts/{gift}/price:
+    parameters:
+      - name: gift
+        in: path
+        required: true
+        schema: { type: string }
+        description: The name of a gift, as `rose`
+    put:
+      summary: Price a gift ("Подарки" of the admin panel)
+      description: |
+        For the administrators of the site: the gift costs `price` votes
+        from now on, 0 makes it free. Gifts already sent are not touched.
+      security: [{ bearer: [] }]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [price]
+              properties:
+                price: { type: integer, minimum: 0, maximum: 1000000 }
+      responses:
+        "204": { description: Priced }
+        "400": { $ref: "#/components/responses/InvalidArgument" }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator of the site
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
 
   /api/v1/users/{nickname}/gifts:
     parameters:

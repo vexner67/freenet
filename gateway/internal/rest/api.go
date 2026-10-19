@@ -439,6 +439,9 @@ type Gifts interface {
 	// accessToken, sees them, newest first.
 	List(ctx context.Context, accessToken, userID, cursor string, limit int) (model.GiftPage, error)
 	Delete(ctx context.Context, accessToken, giftID string) error
+	// SetPrice is for the administrators of the site: what a gift costs
+	// from now on.
+	SetPrice(ctx context.Context, accessToken, gift string, price int64) error
 }
 
 // Stickers are openvk's "Стикеры", which the user service keeps: packs
@@ -761,6 +764,7 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("GET /api/v1/users/{nickname}/gifts", a.listGifts)
 	mux.HandleFunc("POST /api/v1/users/{nickname}/gifts", a.sendGift)
 	mux.HandleFunc("DELETE /api/v1/gifts/{id}", a.deleteGift)
+	mux.HandleFunc("PUT /api/v1/gifts/{gift}/price", a.setGiftPrice)
 	mux.HandleFunc("GET /api/v1/me/documents", a.listDocuments)
 	mux.HandleFunc("POST /api/v1/me/documents", a.uploadDocument)
 	mux.HandleFunc("PATCH /api/v1/documents/{id}", a.renameDocument)
