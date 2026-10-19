@@ -69,7 +69,7 @@ func (s *PermissionService) Access(ctx context.Context, viewerID, ownerID uuid.U
 		return user.Access{}, errs.Wrap("s.ties", err)
 	}
 
-	return owner.AccessFor(viewerID, ties), nil
+	return owner.AccessFor(viewerID, ties, s.now()), nil
 }
 
 // ProfileFor is the page of nickname as viewerID (uuid.Nil: anonymous)

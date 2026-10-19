@@ -162,7 +162,7 @@ func (u *User) GiftFrom(senderID uuid.UUID, t Ties, kind GiftKind, caption GiftC
 		return nil, ErrDeactivated
 	}
 
-	if senderID != u.id && (t.Blocked || !u.AccessFor(senderID, t).Page) {
+	if senderID != u.id && (t.Blocked || !u.access(senderID, t, false).Page) {
 		return nil, ErrGiftRefused
 	}
 

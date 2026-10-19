@@ -194,7 +194,7 @@ func TestUser_AccessFor_Gifts(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if !u.AccessFor(uuid.Nil, user.Ties{}).Gifts {
+	if !u.AccessFor(uuid.Nil, user.Ties{}, time.Now()).Gifts {
 		t.Fatal("gifts are shown to everyone by default")
 	}
 
@@ -205,7 +205,7 @@ func TestUser_AccessFor_Gifts(t *testing.T) {
 	}
 
 	viewer := uuid.New()
-	if u.AccessFor(viewer, user.Ties{}).Gifts || !u.AccessFor(viewer, user.Ties{Followed: true}).Gifts || !u.AccessFor(u.ID(), user.Ties{}).Gifts {
+	if u.AccessFor(viewer, user.Ties{}, time.Now()).Gifts || !u.AccessFor(viewer, user.Ties{Followed: true}, time.Now()).Gifts || !u.AccessFor(u.ID(), user.Ties{}, time.Now()).Gifts {
 		t.Fatal("gifts for the followed and the owner only")
 	}
 

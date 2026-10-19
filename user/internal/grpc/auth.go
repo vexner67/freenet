@@ -38,6 +38,14 @@ func DeactivatedMethods() []string {
 	}
 }
 
+// BannedMethods take the access token of a page the administrators
+// blocked: its owner reads why (see jwtauth.Access).
+func BannedMethods() []string {
+	return []string{
+		userv1.UserService_GetMe_FullMethodName,
+	}
+}
+
 // InternalMethods are for other services only, by mTLS identity
 // (see mtls.RestrictMethods).
 func InternalMethods() map[string][]string {

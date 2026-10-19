@@ -2,6 +2,7 @@ package user
 
 import (
 	"errors"
+	"time"
 
 	"github.com/google/uuid"
 )
@@ -78,16 +79,23 @@ type Access struct {
 }
 
 // AccessFor is what viewerID (uuid.Nil: anonymous), tied to u by t, may
-// see of u's page. The owner sees everything; of a deleted page there is
-// nothing but the page saying so. A block closes contact, not what the
+// see of u's page at now. The owner sees everything; of a deleted page
+// and of one blocked at now there is nothing but the page saying so. A block closes contact, not what the
 // page shows, so it does not hide any of it. A closed page ("Тип
 // профиля: закрытый") shows itself only to those its owner follows.
-func (u *User) AccessFor(viewerID uuid.UUID, t Ties) Access {
+func (u *User) AccessFor(viewerID uuid.UUID, t Ties, now time.Time) Access {
+	return u.access(viewerID, t, u.IsBannedAt(now))
+}
+
+// access is AccessFor of a page banned or not.
+func (u *User) access(viewerID uuid.UUID, t Ties, banned bool) Access {
 	if viewerID == u.id {
 		return Access{Page: true, Info: true, Photos: true, Friends: true, Clubs: true, Notes: true, Gifts: true}
 	}
 
-	if u.IsDeactivated() {
+	// Of a deleted or a blocked page only the page itself is shown: what
+	// became of it.
+	if u.IsDeactivated() || banned {
 		return Access{Page: true}
 	}
 

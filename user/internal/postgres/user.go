@@ -426,7 +426,10 @@ const userColumns = `
 		gifts_read,
 		votes,
 		rating,
-		verified`
+		verified,
+		banned_at,
+		banned_until,
+		ban_reason`
 
 // qualifiedUserColumns are userColumns of the users table joined as u.
 const qualifiedUserColumns = `
@@ -491,7 +494,10 @@ const qualifiedUserColumns = `
 		u.gifts_read,
 		u.votes,
 		u.rating,
-		u.verified`
+		u.verified,
+		u.banned_at,
+		u.banned_until,
+		u.ban_reason`
 
 const getUserByIDQuery = `
 	SELECT` + userColumns + `
@@ -637,6 +643,8 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		timezone                                   *int16
 		wallet                                     user.Wallet
 		verified                                   bool
+		bannedAt, bannedUntil                      *time.Time
+		banReason                                  string
 	)
 
 	err := row.Scan(
@@ -681,6 +689,9 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		&wallet.Votes,
 		&wallet.Rating,
 		&verified,
+		&bannedAt,
+		&bannedUntil,
+		&banReason,
 	)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return nil, user.ErrNotFound
@@ -761,6 +772,11 @@ func scanUser(row pgx.Row) (*user.User, error) {
 		},
 		Wallet:   wallet,
 		Verified: verified,
+		Ban: user.Ban{
+			At:     timeFromDB(bannedAt),
+			Until:  timeFromDB(bannedUntil),
+			Reason: user.BanReason(banReason),
+		},
 	}), nil
 }
 
@@ -943,6 +959,12 @@ func searchConditions(q user.SearchQuery) []searchCondition {
 	// users_verified_idx serves "verified = true".
 	if f.Verified {
 		conds = append(conds, searchCondition{"verified = $%d", true})
+	}
+
+	// users_banned_idx serves "banned_at IS NOT NULL"; an ended block does
+	// not count.
+	if f.Banned {
+		conds = append(conds, searchCondition{"banned_at IS NOT NULL AND coalesce(banned_until > now(), true) = $%d", true})
 	}
 
 	for _, c := range []struct{ sql, param string }{

@@ -157,6 +157,14 @@ service UserService {
   // (PermissionDenied otherwise): gives a page the checkmark of a
   // confirmed one ("Верификация" of openvk) or takes it.
   rpc SetVerified(SetVerifiedRequest) returns (google.protobuf.Empty);
+  // Require an access token of an administrator of the site
+  // (PermissionDenied otherwise): blocks a page for a while or for good
+  // and lifts the block ("Заблокировать пользователя" of openvk). A
+  // blocked page shows others only its names, its photo and the block;
+  // its access tokens work only for GetMe, which tells its owner why and
+  // until when. An administrator is not blocked (FailedPrecondition).
+  rpc BanUser(BanUserRequest) returns (google.protobuf.Empty);
+  rpc UnbanUser(UnbanUserRequest) returns (google.protobuf.Empty);
 
   // Require an access token: deleting the caller's page ("Удаление
   // страницы" on openvk) and restoring it. A deleted page is hidden: others
@@ -216,6 +224,17 @@ message User {
   bool admin = 30;
   // The page is confirmed by the administrators: a checkmark by the name.
   bool verified = 31;
+  // The administrators blocked the page: why and until when; unset when
+  // it is not blocked.
+  Ban ban = 32;
+}
+
+// Ban is a block of a page by the administrators of the site.
+message Ban {
+  string reason = 1;
+  google.protobuf.Timestamp banned_at = 2;
+  // Unset: for good.
+  google.protobuf.Timestamp until = 3;
 }
 
 // InterfaceSettings are how the site looks to its owner ("Интерфейс").
@@ -414,6 +433,9 @@ message PublicProfile {
   // страница"): a checkmark by the name; told on a hidden page too, never
   // on a deleted one.
   bool verified = 28;
+  // The administrators blocked the page: only the names and the photo are
+  // told with it. Unset when it is not blocked.
+  Ban ban = 29;
 }
 
 enum Gender {
@@ -474,6 +496,8 @@ message GetOrCreateByEmailResponse {
   string user_id = 1;
   // The page is deleted (see DeactivateAccount).
   bool deactivated = 2;
+  // The page is blocked (see BanUser).
+  bool banned = 3;
 }
 
 message GetMeRequest {}
@@ -669,6 +693,8 @@ message SearchUsersRequest {
   string book = 8;
   // Only the pages with the checkmark; may go without the words too.
   bool verified = 9;
+  // Only the pages blocked now; may go without the words too.
+  bool banned = 10;
 }
 
 message SearchUsersResponse {
@@ -840,6 +866,7 @@ message GetAccountStateRequest {
 
 message GetAccountStateResponse {
   bool deactivated = 1;
+  bool banned = 2;
 }
 
 message GetGiftCatalogRequest {}
@@ -990,6 +1017,18 @@ message DeleteVoucherRequest {
 message SetVerifiedRequest {
   string user_id = 1;
   bool verified = 2;
+}
+
+message BanUserRequest {
+  string user_id = 1;
+  // Why, as the blocked person and others will read it: 1-255 characters.
+  string reason = 2;
+  // When the block ends, in the future; unset: never.
+  google.protobuf.Timestamp until = 3;
+}
+
+message UnbanUserRequest {
+  string user_id = 1;
 }
 
 message GetStickerCatalogRequest {}

@@ -5,6 +5,7 @@ import (
 
 	"github.com/google/uuid"
 	userv1 "github.com/vexner67/freenet/user/api/user/v1"
+	"github.com/vexner67/freenet/user/internal/service"
 	"github.com/vexner67/freenet/user/internal/user"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
@@ -13,7 +14,7 @@ import (
 type AccountService interface {
 	Deactivate(ctx context.Context, id uuid.UUID, reason user.DeactivationReason) (*user.User, error)
 	Reactivate(ctx context.Context, id uuid.UUID) (*user.User, error)
-	IsDeactivated(ctx context.Context, id uuid.UUID) (bool, error)
+	State(ctx context.Context, id uuid.UUID) (service.AccountState, error)
 }
 
 func (h *UserHandler) DeactivateAccount(
@@ -64,10 +65,10 @@ func (h *UserHandler) GetAccountState(
 		return nil, status.Error(codes.InvalidArgument, "invalid user id")
 	}
 
-	deactivated, err := h.accountService.IsDeactivated(ctx, id)
+	state, err := h.accountService.State(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return &userv1.GetAccountStateResponse{Deactivated: deactivated}, nil
+	return &userv1.GetAccountStateResponse{Deactivated: state.Deactivated, Banned: state.Banned}, nil
 }

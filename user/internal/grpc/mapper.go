@@ -45,7 +45,17 @@ func toProtoUser(u *user.User) *userv1.User {
 		Unfilled:              unfilled,
 		Votes:                 u.Wallet().Votes,
 		Verified:              u.IsVerified(),
+		Ban:                   toProtoBan(u.BanAt(time.Now())),
 	}
+}
+
+// toProtoBan is nil for a page that is not blocked.
+func toProtoBan(b user.Ban) *userv1.Ban {
+	if b.At.IsZero() {
+		return nil
+	}
+
+	return &userv1.Ban{Reason: b.Reason.String(), BannedAt: timestamppb.New(b.At), Until: toProtoTime(b.Until)}
 }
 
 func toProtoContacts(c user.Contacts) *userv1.Contacts {
@@ -412,6 +422,7 @@ func toProtoPublicProfile(p user.PublicProfile) *userv1.PublicProfile {
 		Closed:                p.Closed,
 		InfoHidden:            p.InfoHidden,
 		Verified:              p.Verified,
+		Ban:                   toProtoBan(p.Ban),
 	}
 
 	// The date of registration is information too. A list tells who is

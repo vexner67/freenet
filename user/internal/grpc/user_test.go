@@ -61,7 +61,7 @@ func newServer(t *testing.T) testServer {
 		usergrpc.ErrorInterceptor(log),
 		jwtauth.UnaryServerInterceptor(
 			jwtauth.NewVerifier(&key.PublicKey, issuer),
-			jwtauth.Access{Public: usergrpc.PublicMethods(), Deactivated: usergrpc.DeactivatedMethods()},
+			jwtauth.Access{Public: usergrpc.PublicMethods(), Deactivated: usergrpc.DeactivatedMethods(), Banned: usergrpc.BannedMethods()},
 		),
 	))
 	blocks := inmem.NewBlockRepository(follows)
@@ -92,6 +92,7 @@ func newServer(t *testing.T) testServer {
 		Verification: service.NewVerificationService(service.VerificationDeps{
 			Users: users, Verifications: users, Tx: inmem.TxManager{}, Notifier: notifyclient.Nop{}, Admins: admins,
 		}),
+		Bans:        service.NewBanService(users, users, admins),
 		Permissions: permissions,
 		Presence:    presence,
 		Backdrops:   service.NewBackdropService(users, users),

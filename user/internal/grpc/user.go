@@ -41,6 +41,7 @@ type UserHandler struct {
 	stickerService    StickerService
 	walletService     WalletService
 	verification      VerificationService
+	bans              BanService
 	permissionService PermissionService
 	presenceService   PresenceService
 	backdropService   BackdropService
@@ -59,9 +60,11 @@ type Services struct {
 	Wallets  WalletService
 	// Verification gives and takes the checkmark.
 	Verification VerificationService
-	Permissions  PermissionService
-	Presence     PresenceService
-	Backdrops    BackdropService
+	// Bans block pages and let them be.
+	Bans        BanService
+	Permissions PermissionService
+	Presence    PresenceService
+	Backdrops   BackdropService
 }
 
 func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
@@ -75,6 +78,7 @@ func NewUserHandler(s Services, logger *slog.Logger) *UserHandler {
 		stickerService:    s.Stickers,
 		walletService:     s.Wallets,
 		verification:      s.Verification,
+		bans:              s.Bans,
 		permissionService: s.Permissions,
 		presenceService:   s.Presence,
 		backdropService:   s.Backdrops,
@@ -96,13 +100,14 @@ func (h *UserHandler) GetOrCreateByEmail(
 		return nil, err
 	}
 
-	// For the access tokens auth issues: a deleted page gets restricted ones.
-	deactivated, err := h.accountService.IsDeactivated(ctx, id)
+	// For the access tokens auth issues: a deleted or a blocked page gets
+	// restricted ones.
+	state, err := h.accountService.State(ctx, id)
 	if err != nil {
 		return nil, err
 	}
 
-	return &userv1.GetOrCreateByEmailResponse{UserId: id.String(), Deactivated: deactivated}, nil
+	return &userv1.GetOrCreateByEmailResponse{UserId: id.String(), Deactivated: state.Deactivated, Banned: state.Banned}, nil
 }
 
 func (h *UserHandler) GetMe(ctx context.Context, _ *userv1.GetMeRequest) (*userv1.GetMeResponse, error) {
@@ -344,7 +349,7 @@ func (h *UserHandler) SetAvatar(ctx context.Context, req *userv1.SetAvatarReques
 func (h *UserHandler) SearchUsers(ctx context.Context, req *userv1.SearchUsersRequest) (*userv1.SearchUsersResponse, error) {
 	q, err := user.NewSearchQuery(req.GetQuery(), user.SearchFilters{
 		Hometown: req.GetHometown(), City: req.GetCity(), Film: req.GetFilm(), Show: req.GetShow(), Book: req.GetBook(),
-		Verified: req.GetVerified(),
+		Verified: req.GetVerified(), Banned: req.GetBanned(),
 	})
 	if err != nil {
 		return nil, status.Error(codes.InvalidArgument, err.Error())

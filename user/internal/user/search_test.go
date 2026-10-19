@@ -4,6 +4,7 @@ import (
 	"errors"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/vexner67/freenet/user/internal/user"
 )
@@ -38,7 +39,7 @@ func TestSearchQuery(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if q.Matches(ann) != tt.match {
+			if q.Matches(ann, time.Now()) != tt.match {
 				t.Fatalf("Matches = %v, want %v", !tt.match, tt.match)
 			}
 		})
@@ -82,7 +83,7 @@ func TestSearchQuery_Filters(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if q.Matches(ann) != tt.match {
+		if q.Matches(ann, time.Now()) != tt.match {
 			t.Errorf("%q %+v: Matches = %v", tt.query, tt.filters, !tt.match)
 		}
 	}
@@ -110,15 +111,42 @@ func TestSearchQuery_Verified(t *testing.T) {
 	if q.Filters().LookIntoInfo() {
 		t.Fatal("the checkmark looks into the information")
 	}
-	if q.Matches(ann) {
+	if q.Matches(ann, time.Now()) {
 		t.Fatal("a page without the checkmark is found")
 	}
 	// A closed page tells the checkmark, as it does on the page itself.
-	if !q.Matches(ann.WithVerified(true)) {
+	if !q.Matches(ann.WithVerified(true), time.Now()) {
 		t.Fatal("a closed page with the checkmark is not found")
 	}
 
-	if q, _ = user.NewSearchQuery("боб", user.SearchFilters{Verified: true}); q.Matches(ann.WithVerified(true)) {
+	if q, _ = user.NewSearchQuery("боб", user.SearchFilters{Verified: true}); q.Matches(ann.WithVerified(true), time.Now()) {
 		t.Fatal("the words are not looked at")
+	}
+}
+
+func TestSearchQuery_Banned(t *testing.T) {
+	t.Parallel()
+
+	now := time.Date(2026, 10, 19, 12, 0, 0, 0, time.UTC)
+	ann, _ := user.New("ann@example.com")
+	_ = ann.UpdateProfile(user.Profile{Name: "Анна", Nickname: "ann"})
+
+	q, err := user.NewSearchQuery("", user.SearchFilters{Banned: true})
+	if err != nil {
+		t.Fatalf("the block alone: %v", err)
+	}
+	if q.Filters().LookIntoInfo() {
+		t.Fatal("the block looks into the information")
+	}
+	if q.Matches(ann, now) {
+		t.Fatal("a page that is not blocked is found")
+	}
+
+	ban, _ := user.NewBan("spam", now, now.Add(time.Hour))
+	if !q.Matches(ann.WithBan(ban), now) {
+		t.Fatal("a blocked page is not found")
+	}
+	if q.Matches(ann.WithBan(ban), now.Add(2*time.Hour)) {
+		t.Fatal("a page whose block ended is found")
 	}
 }

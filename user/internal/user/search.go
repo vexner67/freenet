@@ -3,6 +3,7 @@ package user
 import (
 	"errors"
 	"strings"
+	"time"
 	"unicode/utf8"
 )
 
@@ -27,8 +28,8 @@ type SearchQuery struct {
 // SearchFilters narrow a search as the links of openvk's page do: people
 // of a hometown or a city (whatever the case), or who name a film, a show
 // or a book among their favourites. Values are lower-cased; "" filters
-// nothing. Verified keeps the pages with the checkmark only, for the
-// administrators' list of people.
+// nothing. Verified keeps the pages with the checkmark only, Banned the
+// pages blocked now, for the administrators' lists of people.
 type SearchFilters struct {
 	Hometown string
 	City     string
@@ -36,13 +37,14 @@ type SearchFilters struct {
 	Show     string
 	Book     string
 	Verified bool
+	Banned   bool
 }
 
 // LookIntoInfo tells whether the filters read the information of a page,
-// which only the pages open to everyone tell; the checkmark is no
-// information.
+// which only the pages open to everyone tell; the checkmark and a block
+// are no information.
 func (f SearchFilters) LookIntoInfo() bool {
-	f.Verified = false
+	f.Verified, f.Banned = false, false
 
 	return f != SearchFilters{}
 }
@@ -88,8 +90,8 @@ func Haystack(p Profile) string {
 }
 
 // Matches reports whether every word of q occurs in the user's haystack
-// and the user passes its filters.
-func (q SearchQuery) Matches(u *User) bool {
+// and the user passes its filters at now.
+func (q SearchQuery) Matches(u *User, now time.Time) bool {
 	haystack := Haystack(u.profile)
 
 	for _, w := range q.words {
@@ -106,6 +108,10 @@ func (q SearchQuery) Matches(u *User) bool {
 	}
 
 	if f.Verified && !u.verified {
+		return false
+	}
+
+	if f.Banned && !u.IsBannedAt(now) {
 		return false
 	}
 

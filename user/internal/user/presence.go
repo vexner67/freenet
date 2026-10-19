@@ -41,6 +41,10 @@ func (u *User) IsOnline(now time.Time) bool {
 // open to everyone says it; when the person last visited, a list never
 // tells.
 func (u *User) ListedProfile(now time.Time) PublicProfile {
+	if u.IsBannedAt(now) {
+		return u.bannedProfile(now)
+	}
+
 	p := u.PublicProfile()
 	p.Online = !u.IsDeactivated() && u.privacy.PageRead == AudienceEveryone && !u.privacy.Closed && u.IsOnline(now)
 

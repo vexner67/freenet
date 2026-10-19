@@ -102,9 +102,9 @@ func (r *UserRepository) Update(ctx context.Context, u *user.User) error {
 	}
 
 	// As in PostgreSQL, Update stores neither visits, backdrops nor the
-	// wallet nor the checkmark, which change on their own: a user read
-	// before keeps the newer ones.
-	stored := *u.WithWallet(old.Wallet()).WithVerified(old.IsVerified())
+	// wallet nor the checkmark nor a block, which change on their own: a
+	// user read before keeps the newer ones.
+	stored := *u.WithWallet(old.Wallet()).WithVerified(old.IsVerified()).WithBan(old.Ban())
 	stored.MarkSeen(old.LastSeen())
 	stored.SetBackdrop(user.BackdropLeft, old.Backdrop().Left)
 	stored.SetBackdrop(user.BackdropRight, old.Backdrop().Right)
@@ -244,7 +244,7 @@ func (r *UserRepository) Search(ctx context.Context, q user.SearchQuery, before 
 
 	var found []*user.User
 	for id, u := range r.users {
-		if u.IsProfileCompleted() && !u.IsDeactivated() && q.Matches(&u) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
+		if u.IsProfileCompleted() && !u.IsDeactivated() && q.Matches(&u, time.Now()) && (before == uuid.Nil || bytes.Compare(id[:], before[:]) < 0) {
 			found = append(found, &u)
 		}
 	}
