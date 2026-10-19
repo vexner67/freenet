@@ -36,6 +36,7 @@ var testKey = sync.OnceValue(func() *rsa.PrivateKey {
 type fakeUserProvider struct {
 	id          uuid.UUID
 	deactivated bool
+	banned      bool
 	// gone: the user was erased, Account finds nobody.
 	gone  bool
 	err   error
@@ -44,14 +45,14 @@ type fakeUserProvider struct {
 
 func (f *fakeUserProvider) GetOrCreateByEmail(context.Context, account.Email) (service.Account, error) {
 	f.calls++
-	return service.Account{UserID: f.id, Deactivated: f.deactivated}, f.err
+	return service.Account{UserID: f.id, Deactivated: f.deactivated, Banned: f.banned}, f.err
 }
 
 func (f *fakeUserProvider) Account(_ context.Context, id uuid.UUID) (service.Account, error) {
 	if f.gone {
 		return service.Account{}, service.ErrAccountNotFound
 	}
-	return service.Account{UserID: id, Deactivated: f.deactivated}, f.err
+	return service.Account{UserID: id, Deactivated: f.deactivated, Banned: f.banned}, f.err
 }
 
 // countingSessions records saves on top of the real in-memory repository.
@@ -643,5 +644,44 @@ func TestAuthService_DeactivatedAccount(t *testing.T) {
 	f.users.gone = false
 	if _, err = f.svc.RefreshToken(ctx, pair.Refresh, testDevice); !errors.Is(err, service.ErrSessionNotFound) {
 		t.Fatalf("the session of an erased user is still there: %v", err)
+	}
+}
+
+// A blocked page gets access tokens good only to read why, from sign-in
+// and refresh alike; the block lifted, a full one again.
+func TestAuthService_BannedAccount(t *testing.T) {
+	t.Parallel()
+
+	f := newFixture(t, nil)
+	verifier := jwtauth.NewVerifier(&f.key.PublicKey, "freenet-test")
+	ctx := context.Background()
+
+	banned := func(access string) bool {
+		t.Helper()
+
+		id, err := verifier.Verify(access, jwtauth.AccessToken)
+		if err != nil {
+			t.Fatalf("Verify: %v", err)
+		}
+		return id.Banned
+	}
+
+	pair := f.signIn(t)
+	if banned(pair.Access) {
+		t.Fatal("the token of a page that is not blocked is marked")
+	}
+
+	f.users.banned = true
+	pair, err := f.svc.RefreshToken(ctx, pair.Refresh, testDevice)
+	if err != nil || !banned(pair.Access) {
+		t.Fatalf("refresh after the block: %v", err)
+	}
+	if again := f.signIn(t); !banned(again.Access) {
+		t.Fatal("signing in to a blocked page gave a full token")
+	}
+
+	f.users.banned = false
+	if pair, err = f.svc.RefreshToken(ctx, pair.Refresh, testDevice); err != nil || banned(pair.Access) {
+		t.Fatalf("refresh after the block was lifted: %v", err)
 	}
 }

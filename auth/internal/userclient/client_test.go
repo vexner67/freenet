@@ -101,8 +101,8 @@ func TestClient_Account(t *testing.T) {
 
 	id := uuid.New()
 
-	got, err := userclient.New(&fakeAPI{state: &userv1.GetAccountStateResponse{Deactivated: true}}).Account(context.Background(), id)
-	if err != nil || got != (service.Account{UserID: id, Deactivated: true}) {
+	got, err := userclient.New(&fakeAPI{state: &userv1.GetAccountStateResponse{Deactivated: true, Banned: true}}).Account(context.Background(), id)
+	if err != nil || got != (service.Account{UserID: id, Deactivated: true, Banned: true}) {
 		t.Fatalf("Account = %+v, %v", got, err)
 	}
 

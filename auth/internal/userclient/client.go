@@ -37,7 +37,7 @@ func (c *Client) GetOrCreateByEmail(ctx context.Context, email account.Email) (s
 		return service.Account{}, errs.Wrap("uuid.Parse", err)
 	}
 
-	return service.Account{UserID: userID, Deactivated: resp.GetDeactivated()}, nil
+	return service.Account{UserID: userID, Deactivated: resp.GetDeactivated(), Banned: resp.GetBanned()}, nil
 }
 
 func (c *Client) Account(ctx context.Context, userID uuid.UUID) (service.Account, error) {
@@ -46,7 +46,7 @@ func (c *Client) Account(ctx context.Context, userID uuid.UUID) (service.Account
 		return service.Account{}, errs.Wrap("c.api.GetAccountState", translateError(err))
 	}
 
-	return service.Account{UserID: userID, Deactivated: resp.GetDeactivated()}, nil
+	return service.Account{UserID: userID, Deactivated: resp.GetDeactivated(), Banned: resp.GetBanned()}, nil
 }
 
 func translateError(err error) error {
