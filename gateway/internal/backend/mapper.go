@@ -189,6 +189,7 @@ func toUser(u *userv1.User) model.User {
 		Unfilled:         u.GetUnfilled(),
 		Votes:            u.GetVotes(),
 		Admin:            u.GetAdmin(),
+		Verified:         u.GetVerified(),
 		Interface: model.Interface{
 			AvatarStyle: u.GetInterface().GetAvatarStyle(),
 			MainPage:    u.GetInterface().GetMainPage(),

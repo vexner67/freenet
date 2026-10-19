@@ -78,6 +78,8 @@ func (f *fakeAuth) EndOtherSessions(context.Context, string) (int, error) {
 func (f *fakeAuth) Logout(context.Context, string) error { return f.err }
 
 type fakeUsers struct {
+	// verified are the checkmarks given and taken: "token:id:bool".
+	verified []string
 	// named are the nicknames the gateway asked ResolveMentions about.
 	named []string
 	// uninvitable is the nickname of who lets nobody add them to chats.
@@ -203,6 +205,8 @@ func (f *fakeUsers) profileOf(nickname string) (model.PublicProfile, error) {
 		}, nil
 	case "cat":
 		return model.PublicProfile{ID: "u3", Profile: model.Profile{Name: "Cat", Nickname: "cat"}, Deactivated: true}, nil
+	case "vera":
+		return model.PublicProfile{ID: "u5", Profile: model.Profile{Name: "Vera", Nickname: "vera"}, Verified: true}, nil
 	case "dina":
 		return model.PublicProfile{
 			ID: "u4", Profile: model.Profile{Name: "Dina", Nickname: "dina", Birthday: time.Date(2000, 5, 17, 0, 0, 0, 0, time.UTC), PartnerID: "u2"},
@@ -453,8 +457,16 @@ func (f *fakeUsers) ListOnlineFollowing(_ context.Context, userID, cursor string
 	return model.UserPage{Users: []model.PublicProfile{{ID: "u2", Profile: model.Profile{Nickname: "bob"}}}, Total: 1}, nil
 }
 
-func (f *fakeUsers) Statistics(context.Context) (int, int, error) {
-	return 12, 3, f.err
+func (f *fakeUsers) Statistics(context.Context) (model.People, error) {
+	return model.People{Users: 12, Online: 3, Verified: 2}, f.err
+}
+
+func (f *fakeUsers) SetVerified(_ context.Context, token, userID string, verified bool) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.verified = append(f.verified, token+":"+userID+":"+strconv.FormatBool(verified))
+	return nil
 }
 
 // MarkOnline counts the visits the event stream tells, from its goroutine.

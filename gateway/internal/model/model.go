@@ -95,6 +95,8 @@ type UserQuery struct {
 	Film     string
 	Show     string
 	Book     string
+	// Verified keeps the pages with the checkmark only.
+	Verified bool
 }
 
 // Privacy: WallWrite is who may write on the wall besides its owner,
@@ -128,6 +130,14 @@ type Privacy struct {
 	// Closed is openvk's "Тип профиля: закрытый": only the owner and the
 	// people the owner follows see the page.
 	Closed bool
+}
+
+// People is what the site counts of its people: the pages that are not
+// deleted, those of them on the site now and those with the checkmark.
+type People struct {
+	Users    int
+	Online   int
+	Verified int
 }
 
 // Access is what of a page the viewer may see: the page, its information,
@@ -177,6 +187,8 @@ type User struct {
 	Votes int64
 	// Admin: the user makes the vouchers.
 	Admin bool
+	// Verified: the administrators confirmed the page (a checkmark).
+	Verified bool
 }
 
 // Interface is how the site looks to its owner ("Интерфейс" of the
@@ -219,6 +231,9 @@ type PublicProfile struct {
 	// hidden page tells too.
 	Closed     bool
 	InfoHidden bool
+	// Verified: the administrators confirmed the page ("Подтверждённая
+	// страница"), a checkmark by the name.
+	Verified bool
 	// LastSeen is when the user last visited ("был в сети"), zero if never
 	// or hidden; Online: just now ("Онлайн").
 	LastSeen time.Time
@@ -247,6 +262,8 @@ type Author struct {
 	// Online: the person is on the site now ("Онлайн"), if their page
 	// tells everyone.
 	Online bool
+	// Verified: the page is confirmed by the administrators (a checkmark).
+	Verified bool
 }
 
 type Post struct {

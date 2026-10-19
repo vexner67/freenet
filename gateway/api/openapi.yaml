@@ -819,6 +819,10 @@ paths:
         - { name: film, in: query, schema: { type: string, maxLength: 64 } }
         - { name: show, in: query, schema: { type: string, maxLength: 64 } }
         - { name: book, in: query, schema: { type: string, maxLength: 64 } }
+        - name: verified
+          in: query
+          description: "true: only the pages with the checkmark of a confirmed one; may go without `q`"
+          schema: { type: boolean }
         - name: cursor
           in: query
           schema: { type: string }
@@ -2210,6 +2214,7 @@ paths:
                 properties:
                   users: { type: integer }
                   online: { type: integer }
+                  verified: { type: integer, description: "Pages with the checkmark, for the administrators' summary" }
                   clubs: { type: integer }
                   posts: { type: integer }
 
@@ -4093,6 +4098,39 @@ paths:
           content:
             application/json:
               schema: { $ref: "#/components/schemas/Error" }
+
+  /api/v1/users/{nickname}/verification:
+    parameters:
+      - name: nickname
+        in: path
+        required: true
+        schema: { type: string }
+    put:
+      summary: Give a page the checkmark
+      description: 'Only for the administrators: openvk''s "Верификация". The page wears a checkmark by its name ("Подтверждённая страница") wherever the name is shown. Idempotent.'
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Given }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Take the checkmark from a page
+      description: Only for the administrators. Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
 
   /api/v1/gifts/{id}:
     parameters:
@@ -6180,6 +6218,9 @@ components:
             admin:
               type: boolean
               description: You are an administrator of the site and make the vouchers
+            verified:
+              type: boolean
+              description: The administrators confirmed your page (a checkmark by the name)
             unfilled:
               type: array
               items: { type: string, enum: [interests, email, telegram, status, city] }
@@ -6223,6 +6264,7 @@ components:
           description: "A community, as the owner of a wall or the voice of a post: only `id`, `name` and `address` are set, its page is /club/<address or id>"
         address: { type: string, description: "A community's address; empty for none" }
         online: { type: boolean, description: "The person is on the site now (\"Онлайн\"); told only of a page open to everyone, absent otherwise" }
+        verified: { type: boolean, description: "The page is confirmed by the administrators (\"Подтверждённая страница\"): a checkmark by the name; absent otherwise" }
 
     Interface:
       type: object
@@ -7110,6 +7152,9 @@ components:
             closed:
               type: boolean
               description: "A closed profile (\"Закрытая страница\")"
+            verified:
+              type: boolean
+              description: "The administrators confirmed the page (\"Подтверждённая страница\"): a checkmark by the name, told on a hidden page too and never on a deleted one"
             infoHidden:
               type: boolean
               description: "The owner hid the information of the page from you (`infoRead`): only the names, the photo, the status and the pronouns are left"

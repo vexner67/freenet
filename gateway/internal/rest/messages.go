@@ -423,7 +423,7 @@ func (a *api) listMessages(w http.ResponseWriter, r *http.Request) {
 	}
 
 	resp := messagePageResponse{
-		Peer:         toAuthorJSON(authorOf(peer.ID, peer.AvatarID, peer.Profile)),
+		Peer:         toAuthorJSON(peerAuthor(peer)),
 		Messages:     make([]messageJSON, 0, len(page.Messages)),
 		NextCursor:   page.NextCursor,
 		PeerReadUpTo: page.PeerReadUpTo,
@@ -1102,4 +1102,13 @@ func (a *api) getMessageKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	writeJSON(w, http.StatusOK, keyJSON{PublicKey: key})
+}
+
+// peerAuthor is the other side of a dialog over its history: the names,
+// the photo and the checkmark.
+func peerAuthor(p model.PublicProfile) model.Author {
+	a := authorOf(p.ID, p.AvatarID, p.Profile)
+	a.Verified = p.Verified
+
+	return a
 }

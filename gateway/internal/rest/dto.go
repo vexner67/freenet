@@ -262,6 +262,8 @@ type userResponse struct {
 	// Votes is "Баланс"; Admin tells the one who makes the vouchers.
 	Votes int64 `json:"votes"`
 	Admin bool  `json:"admin"`
+	// Verified: the page wears the checkmark of a confirmed one.
+	Verified bool `json:"verified"`
 	// PinnedClubs are the clubs in the left menu ("Добавить в левое
 	// меню"); GET /me alone tells them.
 	PinnedClubs []clubJSON `json:"pinnedClubs,omitempty"`
@@ -322,6 +324,7 @@ func toUserResponse(u model.User, partner *authorJSON) userResponse {
 		Unfilled:     append([]string{}, u.Unfilled...),
 		Votes:        u.Votes,
 		Admin:        u.Admin,
+		Verified:     u.Verified,
 		Interface: interfaceJSON{
 			AvatarStyle: u.Interface.AvatarStyle,
 			MainPage:    u.Interface.MainPage,
@@ -358,6 +361,9 @@ type publicProfileResponse struct {
 	// Closed: the page is a closed one ("Закрытая страница"): with
 	// pageHidden, the viewer is not one of those its owner follows.
 	Closed bool `json:"closed"`
+	// Verified: the administrators confirmed the page ("Подтверждённая
+	// страница"); never told of a deleted one.
+	Verified bool `json:"verified"`
 	// LastSeenAt is when the user last visited ("был в сети"), null if
 	// never, hidden or in a list; Online: just now ("Онлайн"), which a
 	// list tells too if the page is open to everyone.
@@ -387,6 +393,7 @@ func toPublicProfileResponse(p model.PublicProfile) publicProfileResponse {
 		Deactivated: p.Deactivated,
 		PageHidden:  p.PageHidden,
 		Closed:      p.Closed,
+		Verified:    p.Verified,
 		InfoHidden:  p.InfoHidden,
 		LastSeenAt:  optionalTime(p.LastSeen),
 		Online:      p.Online,

@@ -15,8 +15,11 @@ import (
 type aboutResponse struct {
 	Users  int `json:"users"`
 	Online int `json:"online"`
-	Clubs  int `json:"clubs"`
-	Posts  int `json:"posts"`
+	// Verified counts the pages with the checkmark, for "Сводка" of the
+	// administrators.
+	Verified int `json:"verified"`
+	Clubs    int `json:"clubs"`
+	Posts    int `json:"posts"`
 }
 
 // statistics keeps what the site counted last for ttl: every count reads
@@ -68,9 +71,12 @@ func (a *api) count(ctx context.Context) (aboutResponse, error) {
 		err  error
 	)
 
-	if resp.Users, resp.Online, err = a.users.Statistics(ctx); err != nil {
+	people, err := a.users.Statistics(ctx)
+	if err != nil {
 		return aboutResponse{}, fmt.Errorf("a.users.Statistics: %w", err)
 	}
+
+	resp.Users, resp.Online, resp.Verified = people.Users, people.Online, people.Verified
 
 	if resp.Clubs, err = a.clubs.Count(ctx); err != nil {
 		return aboutResponse{}, fmt.Errorf("a.clubs.Count: %w", err)

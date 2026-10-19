@@ -260,7 +260,7 @@ func (a *api) createTopic(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shown := authorOf(me.ID, me.AvatarID, me.Profile)
+	shown := meAuthor(me)
 	if t.FromWall {
 		shown = clubAuthor(c.Club)
 	}
@@ -470,7 +470,7 @@ func (a *api) createTopicMessage(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shown := authorOf(me.ID, me.AvatarID, me.Profile)
+	shown := meAuthor(me)
 	if m.FromWall {
 		shown = clubAuthor(c.Club)
 	}

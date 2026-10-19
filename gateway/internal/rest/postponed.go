@@ -157,7 +157,7 @@ func (a *api) postpone(w http.ResponseWriter, r *http.Request, wall func(token s
 		return
 	}
 
-	writeJSON(w, http.StatusCreated, toPostponedJSON(p, authorOf(me.ID, me.AvatarID, me.Profile)))
+	writeJSON(w, http.StatusCreated, toPostponedJSON(p, meAuthor(me)))
 }
 
 // listMyPostponed are the posts that wait for the caller's own wall.
