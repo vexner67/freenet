@@ -75,6 +75,8 @@ const (
 	UserService_CreateVoucher_FullMethodName      = "/user.v1.UserService/CreateVoucher"
 	UserService_ListVouchers_FullMethodName       = "/user.v1.UserService/ListVouchers"
 	UserService_DeleteVoucher_FullMethodName      = "/user.v1.UserService/DeleteVoucher"
+	UserService_GetVoteRate_FullMethodName        = "/user.v1.UserService/GetVoteRate"
+	UserService_SetVoteRate_FullMethodName        = "/user.v1.UserService/SetVoteRate"
 	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
 	UserService_BanUser_FullMethodName            = "/user.v1.UserService/BanUser"
 	UserService_UnbanUser_FullMethodName          = "/user.v1.UserService/UnbanUser"
@@ -220,6 +222,11 @@ type UserServiceClient interface {
 	CreateVoucher(ctx context.Context, in *CreateVoucherRequest, opts ...grpc.CallOption) (*CreateVoucherResponse, error)
 	ListVouchers(ctx context.Context, in *ListVouchersRequest, opts ...grpc.CallOption) (*ListVouchersResponse, error)
 	DeleteVoucher(ctx context.Context, in *DeleteVoucherRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// The rate of a vote: what one is worth in rubles. GetVoteRate is
+	// public; SetVoteRate is for the administrators (PermissionDenied for
+	// others).
+	GetVoteRate(ctx context.Context, in *GetVoteRateRequest, opts ...grpc.CallOption) (*GetVoteRateResponse, error)
+	SetVoteRate(ctx context.Context, in *SetVoteRateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -803,6 +810,26 @@ func (c *userServiceClient) DeleteVoucher(ctx context.Context, in *DeleteVoucher
 	return out, nil
 }
 
+func (c *userServiceClient) GetVoteRate(ctx context.Context, in *GetVoteRateRequest, opts ...grpc.CallOption) (*GetVoteRateResponse, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(GetVoteRateResponse)
+	err := c.cc.Invoke(ctx, UserService_GetVoteRate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) SetVoteRate(ctx context.Context, in *SetVoteRateRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_SetVoteRate_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(emptypb.Empty)
@@ -1000,6 +1027,11 @@ type UserServiceServer interface {
 	CreateVoucher(context.Context, *CreateVoucherRequest) (*CreateVoucherResponse, error)
 	ListVouchers(context.Context, *ListVouchersRequest) (*ListVouchersResponse, error)
 	DeleteVoucher(context.Context, *DeleteVoucherRequest) (*emptypb.Empty, error)
+	// The rate of a vote: what one is worth in rubles. GetVoteRate is
+	// public; SetVoteRate is for the administrators (PermissionDenied for
+	// others).
+	GetVoteRate(context.Context, *GetVoteRateRequest) (*GetVoteRateResponse, error)
+	SetVoteRate(context.Context, *SetVoteRateRequest) (*emptypb.Empty, error)
 	// Requires an access token of an administrator of the site
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
@@ -1197,6 +1229,12 @@ func (UnimplementedUserServiceServer) ListVouchers(context.Context, *ListVoucher
 }
 func (UnimplementedUserServiceServer) DeleteVoucher(context.Context, *DeleteVoucherRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeleteVoucher not implemented")
+}
+func (UnimplementedUserServiceServer) GetVoteRate(context.Context, *GetVoteRateRequest) (*GetVoteRateResponse, error) {
+	return nil, status.Error(codes.Unimplemented, "method GetVoteRate not implemented")
+}
+func (UnimplementedUserServiceServer) SetVoteRate(context.Context, *SetVoteRateRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method SetVoteRate not implemented")
 }
 func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
@@ -2227,6 +2265,42 @@ func _UserService_DeleteVoucher_Handler(srv interface{}, ctx context.Context, de
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_GetVoteRate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(GetVoteRateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).GetVoteRate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_GetVoteRate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).GetVoteRate(ctx, req.(*GetVoteRateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_SetVoteRate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(SetVoteRateRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).SetVoteRate(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_SetVoteRate_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).SetVoteRate(ctx, req.(*SetVoteRateRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(SetVerifiedRequest)
 	if err := dec(in); err != nil {
@@ -2561,6 +2635,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "DeleteVoucher",
 			Handler:    _UserService_DeleteVoucher_Handler,
+		},
+		{
+			MethodName: "GetVoteRate",
+			Handler:    _UserService_GetVoteRate_Handler,
+		},
+		{
+			MethodName: "SetVoteRate",
+			Handler:    _UserService_SetVoteRate_Handler,
 		},
 		{
 			MethodName: "SetVerified",

@@ -240,3 +240,31 @@ func TestSetGiftPrice(t *testing.T) {
 		}
 	}
 }
+
+func TestVoteRate(t *testing.T) {
+	t.Parallel()
+
+	s := newServer(t)
+	admin := s.signIn(t, adminEmail)
+	ann, _ := s.member(t, "ann")
+
+	// Anyone, even without a token, reads the rate.
+	if got, err := s.client.GetVoteRate(context.Background(), &userv1.GetVoteRateRequest{}); err != nil || got.GetKopecks() != 700 {
+		t.Fatalf("GetVoteRate = %v, %v", got, err)
+	}
+
+	if _, err := s.client.SetVoteRate(ann, &userv1.SetVoteRateRequest{Kopecks: 1000}); status.Code(err) != codes.PermissionDenied {
+		t.Fatalf("not an administrator sets the rate: %v", err)
+	}
+	for _, kopecks := range []int64{0, -1, 100_000_001} {
+		if _, err := s.client.SetVoteRate(admin, &userv1.SetVoteRateRequest{Kopecks: kopecks}); status.Code(err) != codes.InvalidArgument {
+			t.Fatalf("SetVoteRate(%d): %v", kopecks, err)
+		}
+	}
+	if _, err := s.client.SetVoteRate(admin, &userv1.SetVoteRateRequest{Kopecks: 1250}); err != nil {
+		t.Fatalf("SetVoteRate: %v", err)
+	}
+	if got, err := s.client.GetVoteRate(ann, &userv1.GetVoteRateRequest{}); err != nil || got.GetKopecks() != 1250 {
+		t.Fatalf("GetVoteRate after = %v, %v", got, err)
+	}
+}
