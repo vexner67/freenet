@@ -20,9 +20,9 @@ import { initGraffiti } from './graffiti.js';
 import { initDocuments } from './docs.js';
 import { editSealed, ensureKey, KEY_READY, keyState, NO_PEER_KEY, notePeerKey, openMessages, ownKey, safetyCode, sendSealed } from './e2ee.js';
 import { isLive, onEvent } from './events.js';
-import { actionsNode, attachedNodes, forwardedNode, openForward, takenBack } from './forward.js';
+import { actionsNode, attachedNodes, forwardedNode, openForward, selectOnDoubleClick, takenBack } from './forward.js';
 import { errorText, formatPostDate, genitiveName, isLongText, keyStateText, photoChanges, selectedCount } from './labels.js';
-import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, verifiedMark } from './layout.js';
+import { $, avatarURL, el, fullName, mentionNodes, renderChrome, showCounter, showError, hideError, autosize, stickToBottom, verifiedMark } from './layout.js';
 import { button, openModal } from './modal.js';
 import { closePushes } from './push.js';
 import { quoteNode, reactionNodes, reactWith, replyBar } from './replies.js';
@@ -120,14 +120,9 @@ function messageNode(m) {
   node.message = m;
   node.render();
 
-  // A click on the message itself, not on a link or a photo in it,
-  // selects it, as on VK.
-  node.addEventListener('click', (event) => {
-    if (event.target.closest('a, img, button')) return;
-    if (window.getSelection()?.toString()) return;
-
-    toggleSelected(m.id);
-  });
+  // A double click on the message itself, not on a link or a photo in
+  // it, selects it; then a click selects more.
+  selectOnDoubleClick(node, () => toggleSelected(m.id), () => selected.size > 0);
 
   return node;
 }
@@ -778,9 +773,13 @@ if (!me) {
     $('messenger').hidden = false;
     add(first.messages, false);
     olderCursor = first.nextCursor;
-    toBottom();
+    // At the end, and kept there while the messages take their height.
+    const stick = stickToBottom(list);
     await setUpInput(first.canWrite);
-    if (gap) await showFound();
+    if (gap) {
+      stick(false);
+      await showFound();
+    }
 
     list.addEventListener('scroll', () => {
       if (list.scrollTop < LOAD_OLDER_AT) loadOlder();

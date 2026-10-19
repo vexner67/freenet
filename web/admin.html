@@ -35,6 +35,7 @@
       <div class="aui-sidebar-group">
         <div class="aui-nav-heading">Платные услуги</div>
         <a class="aui-nav-item" href="/admin/vouchers" title="Ваучеры"><span class="aui-icon aui-icon-card"></span><span class="aui-nav-item-label">Ваучеры</span></a>
+        <a class="aui-nav-item" href="/admin/gifts" title="Подарки"><span class="aui-icon aui-icon-gift"></span><span class="aui-nav-item-label">Подарки</span></a>
       </div>
       <div class="aui-sidebar-group">
         <div class="aui-nav-heading">О Freenet</div>
@@ -146,6 +147,24 @@
       </div>
       <p class="aui-empty" id="no-vouchers" hidden>Ваучеров пока нет.</p>
       <div class="aui-pager"><button class="aui-button" id="more-vouchers" type="button" hidden>Показать ещё</button></div>
+    </section>
+
+    <section id="gifts" hidden>
+      <h1 class="aui-page-heading">Подарки</h1>
+      <p class="admin-lead">Цена — в голосах, 0 — бесплатно. Новая цена действует для подарков, которые отправят после неё.</p>
+      <div class="aui-message aui-message-success" id="priced" hidden></div>
+      <div class="aui-table-wrap">
+        <table class="aui">
+          <thead>
+            <tr>
+              <th>Подарок</th>
+              <th>Коллекция</th>
+              <th>Цена</th>
+            </tr>
+          </thead>
+          <tbody id="gift-rows"></tbody>
+        </table>
+      </div>
     </section>
 
     <section id="voucher-new" hidden>

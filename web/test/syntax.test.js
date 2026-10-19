@@ -27,3 +27,35 @@ test('every script of the site parses', async () => {
 
   names.forEach((name, i) => assert.equal(said[i], '', name));
 });
+
+// The names a module exports: export function, const, class and lists.
+function exported(source) {
+  const names = new Set();
+
+  for (const m of source.matchAll(/^export\s+(?:async\s+)?(?:function\*?|const|let|class)\s+([\w$]+)/gm)) names.add(m[1]);
+  for (const m of source.matchAll(/^export\s*\{([^}]*)\}/gm)) {
+    for (const part of m[1].split(',')) {
+      const name = part.trim().split(/\s+as\s+/).pop();
+      if (name) names.add(name);
+    }
+  }
+  return names;
+}
+
+// A name imported that the module does not export also leaves the page
+// blank (a lost conversationOption of forward.js did so).
+test('every module exports what is imported from it', () => {
+  const names = readdirSync(statics).filter((n) => n.endsWith('.js') && !classic.has(n));
+  const exports = new Map(names.map((n) => [n, exported(readFileSync(new URL(n, statics), 'utf8'))]));
+
+  for (const name of names) {
+    const source = readFileSync(new URL(name, statics), 'utf8');
+
+    for (const m of source.matchAll(/import\s*\{([^}]*)\}\s*from\s*'\.\/([\w-]+\.js)'/g)) {
+      for (const part of m[1].split(',')) {
+        const wanted = part.trim().split(/\s+as\s+/)[0];
+        if (wanted) assert.ok(exports.get(m[2])?.has(wanted), `${name} imports ${wanted} from ${m[2]}`);
+      }
+    }
+  }
+});

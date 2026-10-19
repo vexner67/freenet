@@ -1,13 +1,13 @@
 // "Админ-панель", openvk's /admin: "Сводка" (/admin), "Пользователи"
 // (/admin/users: the verified pages, or those ?q= finds, with the switch
 // of "Верификация" each), "Группы" (/admin/clubs: the same of groups),
-// "Ваучеры" (/admin/vouchers) and the form of a
-// new one (/admin/vouchers/new). The page is its own, AUI as openvk's:
+// "Ваучеры" (/admin/vouchers), the form of a new one
+// (/admin/vouchers/new) and "Подарки" (/admin/gifts: what each gift costs). The page is its own, AUI as openvk's:
 // none of the site's chrome. Only the administrators of the site
 // (ADMIN_EMAILS of the user service) get in.
 
 import { api, currentUser, idle, started } from './api.js';
-import { adminOverview, errorText, voucherCode, voucherStatus, voucherUsages } from './labels.js';
+import { adminOverview, errorText, giftCollections, giftCosts, giftImage, giftNames, giftPrice, voucherCode, voucherStatus, voucherUsages } from './labels.js';
 
 const $ = (id) => document.getElementById(id);
 
@@ -290,6 +290,47 @@ function newVoucher() {
   $('voucher-code').focus();
 }
 
+// gifts is "Подарки": every gift of the catalogue with the field of its
+// price, saved row by row.
+async function gifts(catalog) {
+  const { collections } = await catalog;
+
+  function row(collection, { gift, price }) {
+    const name = giftNames[gift] ?? gift;
+    const field = el('input', { className: 'text', type: 'number', min: 0, max: 1000000, value: String(price), required: true });
+    field.setAttribute('aria-label', `Цена: ${name}`);
+    const save = el('button', { className: 'aui-button', type: 'submit', textContent: 'Сохранить' });
+    const form = el('form', { className: 'aui admin-price' }, field, save);
+
+    form.addEventListener('submit', async (event) => {
+      event.preventDefault();
+      error.hidden = true;
+      $('priced').hidden = true;
+      save.disabled = true;
+
+      try {
+        const priced = Number(field.value);
+        await api.setGiftPrice(gift, priced);
+        $('priced').textContent = `${name}: ${giftPrice(priced).toLowerCase()}.`;
+        $('priced').hidden = false;
+      } catch (e) {
+        showError(e);
+      } finally {
+        save.disabled = false;
+      }
+    });
+
+    return el('tr', {},
+      el('td', {}, el('div', { className: 'admin-gift' }, el('img', { src: giftImage(gift), alt: '' }), name)),
+      el('td', { textContent: giftCollections[collection.id] ?? collection.id }),
+      el('td', {}, form),
+    );
+  }
+
+  $('gift-rows').replaceChildren(...collections.flatMap((c) => giftCosts(c).map((g) => row(c, g))));
+  $('gifts').hidden = false;
+}
+
 // The reads of the page go with /me in one round trip; a guest or one who
 // is not an administrator gets nothing from them.
 const query = new URLSearchParams(location.search).get('q')?.trim() ?? '';
@@ -301,6 +342,7 @@ const reads = {
   '/admin/users': () => started(listPage.first()),
   '/admin/clubs': () => started(listPage.first()),
   '/admin/vouchers': () => started(api.vouchers()),
+  '/admin/gifts': () => started(api.giftCatalog()),
 }[path]?.();
 
 const me = await currentUser().catch(() => null);
@@ -319,6 +361,8 @@ if (!me) {
     await vouchers()(reads);
   } else if (path === '/admin/vouchers/new') {
     newVoucher();
+  } else if (path === '/admin/gifts') {
+    await gifts(reads).catch(showError);
   } else {
     showError('Такой страницы нет.');
   }
