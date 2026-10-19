@@ -76,6 +76,8 @@ const (
 	UserService_ListVouchers_FullMethodName       = "/user.v1.UserService/ListVouchers"
 	UserService_DeleteVoucher_FullMethodName      = "/user.v1.UserService/DeleteVoucher"
 	UserService_SetVerified_FullMethodName        = "/user.v1.UserService/SetVerified"
+	UserService_BanUser_FullMethodName            = "/user.v1.UserService/BanUser"
+	UserService_UnbanUser_FullMethodName          = "/user.v1.UserService/UnbanUser"
 	UserService_DeactivateAccount_FullMethodName  = "/user.v1.UserService/DeactivateAccount"
 	UserService_ReactivateAccount_FullMethodName  = "/user.v1.UserService/ReactivateAccount"
 	UserService_GetAccountState_FullMethodName    = "/user.v1.UserService/GetAccountState"
@@ -222,6 +224,14 @@ type UserServiceClient interface {
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
 	SetVerified(ctx context.Context, in *SetVerifiedRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	// Require an access token of an administrator of the site
+	// (PermissionDenied otherwise): blocks a page for a while or for good
+	// and lifts the block ("Заблокировать пользователя" of openvk). A
+	// blocked page shows others only its names, its photo and the block;
+	// its access tokens work only for GetMe, which tells its owner why and
+	// until when. An administrator is not blocked (FailedPrecondition).
+	BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	UnbanUser(ctx context.Context, in *UnbanUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	// Require an access token: deleting the caller's page ("Удаление
 	// страницы" on openvk) and restoring it. A deleted page is hidden: others
 	// see only its name and photo, nobody may follow it, write on its wall
@@ -803,6 +813,26 @@ func (c *userServiceClient) SetVerified(ctx context.Context, in *SetVerifiedRequ
 	return out, nil
 }
 
+func (c *userServiceClient) BanUser(ctx context.Context, in *BanUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_BanUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *userServiceClient) UnbanUser(ctx context.Context, in *UnbanUserRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, UserService_UnbanUser_FullMethodName, in, out, cOpts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *userServiceClient) DeactivateAccount(ctx context.Context, in *DeactivateAccountRequest, opts ...grpc.CallOption) (*DeactivateAccountResponse, error) {
 	cOpts := append([]grpc.CallOption{grpc.StaticMethod()}, opts...)
 	out := new(DeactivateAccountResponse)
@@ -974,6 +1004,14 @@ type UserServiceServer interface {
 	// (PermissionDenied otherwise): gives a page the checkmark of a
 	// confirmed one ("Верификация" of openvk) or takes it.
 	SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error)
+	// Require an access token of an administrator of the site
+	// (PermissionDenied otherwise): blocks a page for a while or for good
+	// and lifts the block ("Заблокировать пользователя" of openvk). A
+	// blocked page shows others only its names, its photo and the block;
+	// its access tokens work only for GetMe, which tells its owner why and
+	// until when. An administrator is not blocked (FailedPrecondition).
+	BanUser(context.Context, *BanUserRequest) (*emptypb.Empty, error)
+	UnbanUser(context.Context, *UnbanUserRequest) (*emptypb.Empty, error)
 	// Require an access token: deleting the caller's page ("Удаление
 	// страницы" on openvk) and restoring it. A deleted page is hidden: others
 	// see only its name and photo, nobody may follow it, write on its wall
@@ -1162,6 +1200,12 @@ func (UnimplementedUserServiceServer) DeleteVoucher(context.Context, *DeleteVouc
 }
 func (UnimplementedUserServiceServer) SetVerified(context.Context, *SetVerifiedRequest) (*emptypb.Empty, error) {
 	return nil, status.Error(codes.Unimplemented, "method SetVerified not implemented")
+}
+func (UnimplementedUserServiceServer) BanUser(context.Context, *BanUserRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method BanUser not implemented")
+}
+func (UnimplementedUserServiceServer) UnbanUser(context.Context, *UnbanUserRequest) (*emptypb.Empty, error) {
+	return nil, status.Error(codes.Unimplemented, "method UnbanUser not implemented")
 }
 func (UnimplementedUserServiceServer) DeactivateAccount(context.Context, *DeactivateAccountRequest) (*DeactivateAccountResponse, error) {
 	return nil, status.Error(codes.Unimplemented, "method DeactivateAccount not implemented")
@@ -2201,6 +2245,42 @@ func _UserService_SetVerified_Handler(srv interface{}, ctx context.Context, dec 
 	return interceptor(ctx, in, info, handler)
 }
 
+func _UserService_BanUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BanUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).BanUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_BanUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).BanUser(ctx, req.(*BanUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _UserService_UnbanUser_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(UnbanUserRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(UserServiceServer).UnbanUser(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: UserService_UnbanUser_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(UserServiceServer).UnbanUser(ctx, req.(*UnbanUserRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _UserService_DeactivateAccount_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(DeactivateAccountRequest)
 	if err := dec(in); err != nil {
@@ -2485,6 +2565,14 @@ var UserService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SetVerified",
 			Handler:    _UserService_SetVerified_Handler,
+		},
+		{
+			MethodName: "BanUser",
+			Handler:    _UserService_BanUser_Handler,
+		},
+		{
+			MethodName: "UnbanUser",
+			Handler:    _UserService_UnbanUser_Handler,
 		},
 		{
 			MethodName: "DeactivateAccount",

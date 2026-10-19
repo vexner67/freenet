@@ -75,8 +75,8 @@ func TestAccountService(t *testing.T) {
 	if d := u.Deactivation(); !u.IsDeactivated() || d.PurgeAt.Sub(d.At) != time.Hour || d.Reason != "надоело" {
 		t.Fatalf("deactivation = %+v", d)
 	}
-	if deactivated, err := accounts.IsDeactivated(ctx, ann); err != nil || !deactivated {
-		t.Fatalf("IsDeactivated = %v, %v", deactivated, err)
+	if state, err := accounts.State(ctx, ann); err != nil || !state.Deactivated || state.Banned {
+		t.Fatalf("State = %+v, %v", state, err)
 	}
 	if _, err = accounts.Deactivate(ctx, ann, ""); !errors.Is(err, user.ErrDeactivated) {
 		t.Fatalf("Deactivate twice: %v", err)

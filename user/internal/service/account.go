@@ -53,15 +53,24 @@ func (s *AccountService) Reactivate(ctx context.Context, id uuid.UUID) (*user.Us
 	})
 }
 
-// IsDeactivated tells the auth service which access tokens to issue:
-// those of a deleted page are good only to restore it.
-func (s *AccountService) IsDeactivated(ctx context.Context, id uuid.UUID) (bool, error) {
+// AccountState is what the access tokens of a page may do.
+type AccountState struct {
+	// Deactivated: the page is deleted; its tokens are good only to
+	// restore it.
+	Deactivated bool
+	// Banned: the administrators blocked the page; its tokens are good
+	// only to read why.
+	Banned bool
+}
+
+// State tells the auth service which access tokens to issue.
+func (s *AccountService) State(ctx context.Context, id uuid.UUID) (AccountState, error) {
 	u, err := s.userRepo.GetByID(ctx, id)
 	if err != nil {
-		return false, errs.Wrap("s.userRepo.GetByID", err)
+		return AccountState{}, errs.Wrap("s.userRepo.GetByID", err)
 	}
 
-	return u.IsDeactivated(), nil
+	return AccountState{Deactivated: u.IsDeactivated(), Banned: u.IsBannedAt(s.now())}, nil
 }
 
 // change saves the page as fn left it and records the change by record,

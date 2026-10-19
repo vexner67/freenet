@@ -91,6 +91,12 @@ func toStatus(err error) (*status.Status, bool) {
 		return status.New(codes.InvalidArgument, user.ErrVoucherAmountInvalid.Error()), true
 	case errors.Is(err, user.ErrVoucherUsagesInvalid):
 		return status.New(codes.InvalidArgument, user.ErrVoucherUsagesInvalid.Error()), true
+	case errors.Is(err, user.ErrBanUntilPast):
+		return status.New(codes.InvalidArgument, user.ErrBanUntilPast.Error()), true
+	case errors.Is(err, user.ErrBanSelf):
+		return status.New(codes.FailedPrecondition, user.ErrBanSelf.Error()), true
+	case errors.Is(err, user.ErrBanAdmin):
+		return status.New(codes.FailedPrecondition, user.ErrBanAdmin.Error()), true
 	case errors.Is(err, user.ErrNotAdmin):
 		return status.New(codes.PermissionDenied, user.ErrNotAdmin.Error()), true
 	case errors.Is(err, user.ErrDeactivated):

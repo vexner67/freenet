@@ -125,6 +125,10 @@ type PublicProfile struct {
 	// Completeness is how full the page is, in percent; 0 when the page is
 	// deleted or hidden. The parts it weighs may be hidden, the sum is not.
 	Completeness int
+	// Ban is the block of the page by the administrators; with one, only
+	// the names, the photo and the checkmark are told, as of a deleted
+	// page.
+	Ban Ban
 }
 
 // birthYearMask is the year of a birthday told without one: a leap year,
@@ -158,6 +162,9 @@ type User struct {
 	// verified is the checkmark the administrators give ("Подтверждённая
 	// страница"); like wallet, storage alone changes it.
 	verified bool
+	// ban is the block by the administrators, which may have ended; like
+	// verified, storage alone changes it.
+	ban Ban
 }
 
 // New creates a user with only an email set, as happens on the first
@@ -197,6 +204,7 @@ type Stored struct {
 	Interface    Interface
 	Wallet       Wallet
 	Verified     bool
+	Ban          Ban
 }
 
 // Restore rebuilds a user from storage without validation or new IDs.
@@ -216,6 +224,7 @@ func Restore(s Stored) *User {
 		ui:           s.Interface,
 		wallet:       s.Wallet,
 		verified:     s.Verified,
+		ban:          s.Ban,
 	}
 }
 
@@ -364,7 +373,11 @@ func (u *User) PublicProfile() PublicProfile {
 // tied to u by t, sees it at now (see AccessFor), with when u was last
 // online (see lastSeenFor).
 func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties, now time.Time) PublicProfile {
-	access := u.AccessFor(viewerID, t)
+	if viewerID != u.id && u.IsBannedAt(now) {
+		return u.bannedProfile(now)
+	}
+
+	access := u.AccessFor(viewerID, t, now)
 	if !access.Page {
 		return PublicProfile{
 			ID: u.id, AvatarID: u.avatarID, Name: u.profile.Name, Surname: u.profile.Surname,
@@ -383,6 +396,17 @@ func (u *User) PublicProfileFor(viewerID uuid.UUID, t Ties, now time.Time) Publi
 	}
 
 	return p
+}
+
+// bannedProfile is a page blocked at now as others see it: openvk's
+// "К сожалению, нам пришлось заблокировать страницу" with the names, the
+// photo and why.
+func (u *User) bannedProfile(now time.Time) PublicProfile {
+	return PublicProfile{
+		ID: u.id, AvatarID: u.avatarID, Name: u.profile.Name, Surname: u.profile.Surname,
+		Nickname: u.profile.Nickname, Gender: u.profile.Gender, InfoHidden: true,
+		Verified: u.verified && !u.IsDeactivated(), Ban: u.BanAt(now),
+	}
 }
 
 func (u *User) publicProfile(showInfo bool) PublicProfile {

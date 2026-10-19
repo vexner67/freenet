@@ -137,7 +137,11 @@ func (a *App) build(cfg config.Config) error {
 
 	interceptors = append(interceptors, jwtauth.UnaryServerInterceptor(
 		jwtauth.NewVerifier(publicKey, cfg.JWTIssuer),
-		jwtauth.Access{Public: usergrpc.PublicMethods(), Deactivated: usergrpc.DeactivatedMethods()},
+		jwtauth.Access{
+			Public:      usergrpc.PublicMethods(),
+			Deactivated: usergrpc.DeactivatedMethods(),
+			Banned:      usergrpc.BannedMethods(),
+		},
 	))
 	interceptors = append(interceptors, ratelimit.UnaryServerInterceptor(limiter, rateLimits(cfg), a.logger))
 
@@ -195,6 +199,7 @@ func (a *App) build(cfg config.Config) error {
 				Notifier:      deliver.verified,
 				Admins:        admins,
 			}),
+			Bans:        service.NewBanService(store.users, store.users, admins),
 			Permissions: permissions,
 			Presence:    a.presence,
 			Backdrops:   service.NewBackdropService(store.users, store.users),
@@ -259,6 +264,7 @@ type storage struct {
 		service.BackdropRepository
 		service.InviteRepository
 		service.VerificationRepository
+		service.BanRepository
 	}
 	follows interface {
 		service.FollowRepository

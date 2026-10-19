@@ -246,7 +246,7 @@ func (s *GiftService) List(ctx context.Context, viewerID, ownerID, cursor uuid.U
 		return GiftPage{}, errs.Wrap("s.permissions.ties", err)
 	}
 
-	if access := owner.AccessFor(viewerID, ties); !access.Page || !access.Gifts {
+	if access := owner.AccessFor(viewerID, ties, s.now()); !access.Page || !access.Gifts {
 		return GiftPage{}, user.ErrGiftsHidden
 	}
 

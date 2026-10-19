@@ -39,5 +39,5 @@ func (r ClubsRead) String() string {
 // ClubsVisibleTo tells whether viewerID (uuid.Nil: anonymous) may see
 // the communities u is in (see AccessFor).
 func (u *User) ClubsVisibleTo(viewerID uuid.UUID, t Ties) bool {
-	return u.AccessFor(viewerID, t).Clubs
+	return u.access(viewerID, t, false).Clubs
 }
