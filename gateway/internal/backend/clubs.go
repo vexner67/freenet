@@ -278,14 +278,23 @@ func (c *Clubs) Mine(ctx context.Context, accessToken, cursor string, limit int,
 	return page, nil
 }
 
-// Search pages the clubs whose name or address has every word of query.
-func (c *Clubs) Search(ctx context.Context, query, cursor string, limit int) (model.ClubSearchPage, error) {
-	resp, err := c.api.SearchClubs(ctx, &clubv1.SearchClubsRequest{Query: query, Cursor: cursor, Limit: toLimit(limit)})
+// Search pages the clubs whose name or address has every word of q.
+func (c *Clubs) Search(ctx context.Context, q model.ClubQuery, cursor string, limit int) (model.ClubSearchPage, error) {
+	resp, err := c.api.SearchClubs(ctx, &clubv1.SearchClubsRequest{Query: q.Text, Cursor: cursor, Limit: toLimit(limit), Verified: q.Verified})
 	if err != nil {
 		return model.ClubSearchPage{}, errs.Wrap("c.api.SearchClubs", fromStatus(err))
 	}
 
 	return model.ClubSearchPage{Clubs: toClubs(resp.GetClubs()), NextCursor: resp.GetNextCursor()}, nil
+}
+
+// SetVerified gives the club the checkmark of a confirmed one or takes it.
+// The club service leaves it to the gateway to tell an administrator of
+// the site.
+func (c *Clubs) SetVerified(ctx context.Context, clubID string, verified bool) error {
+	_, err := c.api.SetClubVerified(ctx, &clubv1.SetClubVerifiedRequest{ClubId: clubID, Verified: verified})
+
+	return errs.Wrap("c.api.SetClubVerified", fromStatus(err))
 }
 
 // SetAvatar shows a photo stored in media as the club's; "" takes it away.
@@ -407,7 +416,8 @@ func toClub(c *clubv1.Club) model.Club {
 		BackdropLeft:    c.GetBackdropLeft(),
 		BackdropRight:   c.GetBackdropRight(),
 
-		Closed: c.GetClosed(),
+		Closed:   c.GetClosed(),
+		Verified: c.GetVerified(),
 	}
 }
 

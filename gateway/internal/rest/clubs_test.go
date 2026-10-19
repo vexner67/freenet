@@ -4,6 +4,7 @@ import (
 	"context"
 	"net/http"
 	"slices"
+	"strconv"
 	"testing"
 	"time"
 
@@ -47,6 +48,11 @@ type fakeClubs struct {
 	requested bool
 	requests  []string
 	decided   []string
+	// verified: the club wears the checkmark; checkmarks are those given
+	// and taken, "id:bool"; verifiedOnly: the search asked for them only.
+	verified     bool
+	checkmarks   []string
+	verifiedOnly bool
 }
 
 func (f *fakeClubs) JoinRequests(_ context.Context, token, clubID, cursor string, limit int) (model.JoinRequestPage, error) {
@@ -76,7 +82,7 @@ func (f *fakeClubs) view() model.ClubView {
 	if f.suggestWall {
 		c.Wall = "suggest"
 	}
-	c.Closed = f.closed
+	c.Closed, c.Verified = f.closed, f.verified
 	return model.ClubView{
 		Club: c, Role: f.role, OwnerID: "u1", CanStartTopic: f.openTopics || f.role == "admin" || f.role == "owner",
 		Requested: f.requested, Requests: len(f.requests),
@@ -182,12 +188,17 @@ func (f *fakeClubs) Count(context.Context) (int, error) {
 	return 5, f.err
 }
 
-func (f *fakeClubs) Search(_ context.Context, query, cursor string, limit int) (model.ClubSearchPage, error) {
-	f.query = query
-	if query == "" {
+func (f *fakeClubs) Search(_ context.Context, q model.ClubQuery, cursor string, limit int) (model.ClubSearchPage, error) {
+	f.query, f.verifiedOnly = q.Text, q.Verified
+	if q.Text == "" && !q.Verified {
 		return model.ClubSearchPage{}, failure.New(failure.InvalidArgument, "search query is empty")
 	}
 	return model.ClubSearchPage{Clubs: []model.Club{cats}, NextCursor: "k1"}, f.err
+}
+
+func (f *fakeClubs) SetVerified(_ context.Context, clubID string, verified bool) error {
+	f.checkmarks = append(f.checkmarks, clubID+":"+strconv.FormatBool(verified))
+	return f.err
 }
 
 // SetAvatar lets admins only, as the club service.

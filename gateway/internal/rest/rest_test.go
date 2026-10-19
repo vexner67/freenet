@@ -80,6 +80,8 @@ func (f *fakeAuth) Logout(context.Context, string) error { return f.err }
 type fakeUsers struct {
 	// verified are the checkmarks given and taken: "token:id:bool".
 	verified []string
+	// admin: the caller is an administrator of the site.
+	admin bool
 	// named are the nicknames the gateway asked ResolveMentions about.
 	named []string
 	// uninvitable is the nickname of who lets nobody add them to chats.
@@ -129,7 +131,7 @@ type fakeUsers struct {
 }
 
 func (f *fakeUsers) user() model.User {
-	u := model.User{ID: "u1", Email: "ann@example.com", Profile: f.profile, ProfileCompleted: f.profile.Nickname != "", About: f.about, Interface: f.ui}
+	u := model.User{ID: "u1", Email: "ann@example.com", Profile: f.profile, ProfileCompleted: f.profile.Nickname != "", About: f.about, Interface: f.ui, Admin: f.admin}
 	if f.deactivated {
 		u.Deactivated, u.PurgeAt = true, time.Date(2027, 5, 7, 12, 0, 0, 0, time.UTC)
 	}
@@ -268,12 +270,15 @@ func (f *fakeUsers) CanMessage(_ context.Context, token, _ string, wroteFirst bo
 	return !f.relation.Blocked() && (!f.closedMessages || wroteFirst), f.err
 }
 
-// KnownNicknames knows ann and bob.
-func (f *fakeUsers) KnownNicknames(_ context.Context, nicknames []string) ([]string, error) {
-	var known []string
+// KnownNicknames knows ann and bob, who is verified.
+func (f *fakeUsers) KnownNicknames(_ context.Context, nicknames []string) (model.KnownNicknames, error) {
+	var known model.KnownNicknames
 	for _, n := range nicknames {
 		if l := strings.ToLower(n); l == "ann" || l == "bob" {
-			known = append(known, l)
+			known.Known = append(known.Known, l)
+		}
+		if strings.EqualFold(n, "bob") {
+			known.Verified = append(known.Verified, "bob")
 		}
 	}
 

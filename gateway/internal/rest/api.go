@@ -48,8 +48,8 @@ type Users interface {
 	// to a chat, and whether each lets them; nobody for an unknown one.
 	ResolveInvites(ctx context.Context, accessToken string, nicknames []string) ([]model.Invitee, error)
 	// KnownNicknames are those of nicknames that are someone's, as their
-	// owners write them.
-	KnownNicknames(ctx context.Context, nicknames []string) ([]string, error)
+	// owners write them, and which of them are verified.
+	KnownNicknames(ctx context.Context, nicknames []string) (model.KnownNicknames, error)
 	// Access is what of userID's page the caller may see.
 	Access(ctx context.Context, accessToken, userID string) (model.Access, error)
 
@@ -411,7 +411,10 @@ type Clubs interface {
 	Delete(ctx context.Context, accessToken, clubID string) error
 	OfUser(ctx context.Context, userID, cursor string, limit int, filter model.ClubFilter) (model.UserClubPage, error)
 	Mine(ctx context.Context, accessToken, cursor string, limit int, filter model.ClubFilter) (model.ClubPage, error)
-	Search(ctx context.Context, query, cursor string, limit int) (model.ClubSearchPage, error)
+	Search(ctx context.Context, q model.ClubQuery, cursor string, limit int) (model.ClubSearchPage, error)
+	// SetVerified gives the club the checkmark or takes it; whether the
+	// caller is an administrator of the site is the gateway's to tell.
+	SetVerified(ctx context.Context, clubID string, verified bool) error
 	SetAvatar(ctx context.Context, accessToken, clubID, avatarID string) (model.ClubView, error)
 	SetBackdrop(ctx context.Context, accessToken, clubID, side, photoID string) (model.ClubView, error)
 	Pin(ctx context.Context, accessToken, clubID string, pinned bool) error
@@ -783,6 +786,8 @@ func (a *api) routes() *http.ServeMux {
 	mux.HandleFunc("DELETE /api/v1/vouchers/{id}", a.deleteVoucher)
 	mux.HandleFunc("PUT /api/v1/users/{nickname}/verification", a.verify)
 	mux.HandleFunc("DELETE /api/v1/users/{nickname}/verification", a.verify)
+	mux.HandleFunc("PUT /api/v1/clubs/{ref}/verification", a.verifyClub)
+	mux.HandleFunc("DELETE /api/v1/clubs/{ref}/verification", a.verifyClub)
 
 	mux.HandleFunc("GET /api/v1/users/{nickname}/notes", a.listUserNotes)
 	mux.HandleFunc("POST /api/v1/me/notes", a.createNote)

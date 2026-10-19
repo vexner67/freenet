@@ -2163,8 +2163,12 @@ paths:
       parameters:
         - name: q
           in: query
-          required: true
+          description: Required unless `verified` is
           schema: { type: string, maxLength: 64 }
+        - name: verified
+          in: query
+          description: "`true` keeps the communities with the checkmark only, and needs no `q` (\"Группы\" of the admin panel)"
+          schema: { type: boolean }
         - name: cursor
           in: query
           schema: { type: string }
@@ -2242,10 +2246,14 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [nicknames]
+                required: [nicknames, verified]
                 properties:
                   nicknames:
                     type: array
+                    items: { type: string }
+                  verified:
+                    type: array
+                    description: Those of `nicknames` whose pages wear the checkmark, shown after a mention
                     items: { type: string }
         "400": { $ref: "#/components/responses/InvalidArgument" }
 
@@ -2399,7 +2407,8 @@ paths:
                 adminsDisplay: { $ref: "#/components/schemas/AdminsDisplay" }
                 openTopics: { type: boolean }
                 topicsAboveWall: { type: boolean }
-                closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): people ask to join, and only members see its wall, members, topics and albums. Left out, it stays as it is. Opening the group drops the requests that wait" }
+                verified: { type: boolean, description: "The administrators of the site confirmed the community: a checkmark by its name" }
+        closed: { type: boolean, description: "A closed group (\"Закрытая группа\"): people ask to join, and only members see its wall, members, topics and albums. Left out, it stays as it is. Opening the group drops the requests that wait" }
       responses:
         "200": { $ref: "#/components/responses/Club" }
         "400": { $ref: "#/components/responses/InvalidArgument" }
@@ -4107,7 +4116,7 @@ paths:
         schema: { type: string }
     put:
       summary: Give a page the checkmark
-      description: 'Only for the administrators: openvk''s "Верификация". The page wears a checkmark by its name ("Подтверждённая страница") wherever the name is shown. Idempotent.'
+      description: 'Only for the administrators: openvk''s "Верификация". The page wears a checkmark by its name ("Подтверждённая страница") wherever the name is shown, and its owner hears of it (`verified`). Idempotent.'
       security: [{ bearer: [] }]
       responses:
         "204": { description: Given }
@@ -4121,6 +4130,40 @@ paths:
     delete:
       summary: Take the checkmark from a page
       description: Only for the administrators. Idempotent.
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Taken }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+
+  /api/v1/clubs/{ref}/verification:
+    parameters:
+      - name: ref
+        in: path
+        required: true
+        description: The address of the community or its ID
+        schema: { type: string }
+    put:
+      summary: Give a community the checkmark
+      description: 'Only for the administrators of the site, as for a page; the owner of the community hears of it (`club_verified`). Idempotent.'
+      security: [{ bearer: [] }]
+      responses:
+        "204": { description: Given }
+        "401": { $ref: "#/components/responses/Unauthenticated" }
+        "403":
+          description: You are not an administrator
+          content:
+            application/json:
+              schema: { $ref: "#/components/schemas/Error" }
+        "404": { $ref: "#/components/responses/NotFound" }
+    delete:
+      summary: Take the checkmark from a community
+      description: Only for the administrators. Idempotent; takes the owner's notification back.
       security: [{ bearer: [] }]
       responses:
         "204": { description: Taken }
@@ -6264,7 +6307,7 @@ components:
           description: "A community, as the owner of a wall or the voice of a post: only `id`, `name` and `address` are set, its page is /club/<address or id>"
         address: { type: string, description: "A community's address; empty for none" }
         online: { type: boolean, description: "The person is on the site now (\"Онлайн\"); told only of a page open to everyone, absent otherwise" }
-        verified: { type: boolean, description: "The page is confirmed by the administrators (\"Подтверждённая страница\"): a checkmark by the name; absent otherwise" }
+        verified: { type: boolean, description: "The page or the community is confirmed by the administrators (\"Подтверждённая страница\"): a checkmark by the name; absent otherwise" }
 
     Interface:
       type: object
@@ -6710,8 +6753,8 @@ components:
         id: { type: string, format: uuid }
         type:
           type: string
-          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, note_comment, gift, votes, invite]
-          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; invite: the actor signed up by your invitation link and follows you"
+          enum: [like, comment, follow, wall_post, repost, comment_reply, comment_like, post_accepted, suggested_post, club_admin, topic_message, post_mention, comment_mention, topic_mention, topic_message_like, photo_like, photo_comment, photo_mention, note_comment, gift, votes, invite, verified, club_verified]
+          description: "wall_post: the actor wrote on your wall; repost: the actor shared your post, post is the repost; comment_reply: the actor answered your comment under post, comment is the answer; comment_like: the actor liked your comment; post_accepted: the actor, a community, published the post you suggested; suggested_post: someone suggested a post for the actor, a community you run (until it is published, declined or withdrawn); club_admin: you were made an admin of the actor, a community (until you are dismissed); topic_message: the actor, a person or the community, wrote in the topic you started, named by `topic` (until the message or the topic is deleted); post_mention, comment_mention, topic_mention: the actor named you (\"@nickname\" or \"[nickname|Name]\") in post, in comment under post, or in a message of topic; topic_message_like: the actor liked your message in topic (until the like is taken back or the message deleted); photo_like, photo_comment: the actor liked or commented the photo you put into an album, named by `photo`; photo_mention: the actor named you in comment under `photo`; note_comment: the actor commented your note, named by `note` (until the comment or the note is deleted); gift: the actor sent you a gift (until you delete it); votes: the actor handed you votes; invite: the actor signed up by your invitation link and follows you; verified: the actor, an administrator, gave your page the checkmark (until it is taken); club_verified: the actor, a community you own, got the checkmark (until it is taken)"
         createdAt: { type: string, format: date-time }
         actor: { $ref: "#/components/schemas/Author" }
         post:

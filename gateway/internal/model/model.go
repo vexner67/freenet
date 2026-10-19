@@ -836,6 +836,9 @@ type Club struct {
 	// Closed: one joins by a request its admins accept, and only the
 	// members see what is in the club ("Закрытая группа").
 	Closed bool
+	// Verified: the administrators of the site confirmed the club (a
+	// checkmark).
+	Verified bool
 }
 
 // ClubView is a club as the caller sees it. Role is what the caller is in
@@ -936,6 +939,21 @@ type ClubPage struct {
 	Clubs      []Membership
 	NextCursor string
 	Total      int
+}
+
+// KnownNicknames are those of the nicknames asked that are someone's, as
+// their owners write them, and those of them whose pages wear the
+// checkmark.
+type KnownNicknames struct {
+	Known    []string
+	Verified []string
+}
+
+// ClubQuery is a search for clubs: words of the name or the address, or
+// none with Verified, which keeps the clubs with the checkmark only.
+type ClubQuery struct {
+	Text     string
+	Verified bool
 }
 
 // ClubSearchPage is one screen of found clubs, the newest first.

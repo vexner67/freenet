@@ -212,7 +212,7 @@ func meAuthor(me model.User) model.Author {
 
 // clubAuthor is a community as the owner of a wall or the voice of a post.
 func clubAuthor(c model.Club) model.Author {
-	return model.Author{ID: c.ID, AvatarID: c.AvatarID, Name: c.Name, Club: true, Address: c.Address}
+	return model.Author{ID: c.ID, AvatarID: c.AvatarID, Name: c.Name, Club: true, Address: c.Address, Verified: c.Verified}
 }
 
 func toAuthorJSON(a model.Author) authorJSON {

@@ -126,12 +126,13 @@ func TestKnownNicknames(t *testing.T) {
 	w := h.do("GET", "/api/v1/nicknames?nickname=Ann&nickname=nobody&nickname=bob", "")
 	got := decode[struct {
 		Nicknames []string `json:"nicknames"`
+		Verified  []string `json:"verified"`
 	}](t, w)
-	if w.Code != http.StatusOK || !slices.Equal(got.Nicknames, []string{"ann", "bob"}) {
+	if w.Code != http.StatusOK || !slices.Equal(got.Nicknames, []string{"ann", "bob"}) || !slices.Equal(got.Verified, []string{"bob"}) {
 		t.Fatalf("%d %s", w.Code, w.Body)
 	}
 
-	if w = h.do("GET", "/api/v1/nicknames", ""); w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) != `{"nicknames":[]}` {
+	if w = h.do("GET", "/api/v1/nicknames", ""); w.Code != http.StatusOK || strings.TrimSpace(w.Body.String()) != `{"nicknames":[],"verified":[]}` {
 		t.Fatalf("no nicknames: %d %s", w.Code, w.Body)
 	}
 
