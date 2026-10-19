@@ -11,7 +11,7 @@ import (
 var sitePages = []string{"/", "/about", "/terms", "/help"}
 
 // robotsRules keep search engines off the pages of one's own (settings,
-// messages, news...) and the internal search; "$" ends a path, so that a
+// messages, news...), the admin panel and the internal search; "$" ends a path, so that a
 // person whose nickname starts so ("/imogen") is still indexed. The API
 // is not disallowed: a crawler renders the pages with it, and its
 // answers say noindex themselves.
@@ -31,6 +31,8 @@ Disallow: /fave$
 Disallow: /fave/
 Disallow: /docs$
 Disallow: /stickers$
+Disallow: /admin$
+Disallow: /admin/
 Disallow: /search$
 Disallow: /search?
 Disallow: /media/documents/
