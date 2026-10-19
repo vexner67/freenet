@@ -433,6 +433,34 @@ func TestAuthService_RefreshToken(t *testing.T) {
 		}
 	})
 
+	t.Run("a lost answer keeps the previous token good", func(t *testing.T) {
+		t.Parallel()
+
+		f := newFixture(t, nil)
+		ctx := context.Background()
+		kept := f.signIn(t)
+
+		// The page left before the answers came: twice in a row.
+		if _, err := f.svc.RefreshToken(ctx, kept.Refresh, testDevice); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := f.svc.RefreshToken(ctx, kept.Refresh, testDevice); err != nil {
+			t.Fatalf("refresh with the previous token: %v", err)
+		}
+		got, err := f.svc.RefreshToken(ctx, kept.Refresh, testDevice)
+		if err != nil {
+			t.Fatalf("again with the previous token: %v", err)
+		}
+
+		// The latest is used: the previous one is old now.
+		if _, err = f.svc.RefreshToken(ctx, got.Refresh, testDevice); err != nil {
+			t.Fatalf("the latest token: %v", err)
+		}
+		if _, err = f.svc.RefreshToken(ctx, kept.Refresh, testDevice); !errors.Is(err, service.ErrInvalidRefreshToken) {
+			t.Fatalf("a token older than the previous: got %v, want ErrInvalidRefreshToken", err)
+		}
+	})
+
 	t.Run("reusing an old token ends the session", func(t *testing.T) {
 		t.Parallel()
 
@@ -440,7 +468,11 @@ func TestAuthService_RefreshToken(t *testing.T) {
 		ctx := context.Background()
 		stolen := f.signIn(t)
 
-		current, err := f.svc.RefreshToken(ctx, stolen.Refresh, testDevice)
+		previous, err := f.svc.RefreshToken(ctx, stolen.Refresh, testDevice)
+		if err != nil {
+			t.Fatal(err)
+		}
+		current, err := f.svc.RefreshToken(ctx, previous.Refresh, testDevice)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -449,6 +481,30 @@ func TestAuthService_RefreshToken(t *testing.T) {
 			t.Fatalf("reuse: got %v, want ErrInvalidRefreshToken", err)
 		}
 		if _, err = f.svc.RefreshToken(ctx, current.Refresh, testDevice); !errors.Is(err, service.ErrSessionNotFound) {
+			t.Fatalf("after reuse the session must be gone, got %v", err)
+		}
+	})
+
+	t.Run("the client of a lost answer and a thief end the session", func(t *testing.T) {
+		t.Parallel()
+
+		f := newFixture(t, nil)
+		ctx := context.Background()
+		stolen := f.signIn(t)
+
+		// The owner refreshes; the thief, with the copy, refreshes too.
+		owners, err := f.svc.RefreshToken(ctx, stolen.Refresh, testDevice)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if _, err = f.svc.RefreshToken(ctx, stolen.Refresh, testDevice); err != nil {
+			t.Fatalf("the previous token: %v", err)
+		}
+
+		if _, err = f.svc.RefreshToken(ctx, owners.Refresh, testDevice); !errors.Is(err, service.ErrInvalidRefreshToken) {
+			t.Fatalf("the owner's replaced token: got %v, want ErrInvalidRefreshToken", err)
+		}
+		if _, err = f.svc.RefreshToken(ctx, stolen.Refresh, testDevice); !errors.Is(err, service.ErrSessionNotFound) {
 			t.Fatalf("after reuse the session must be gone, got %v", err)
 		}
 	})
